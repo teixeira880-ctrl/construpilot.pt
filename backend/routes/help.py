@@ -17,16 +17,16 @@ router = APIRouter(prefix="/help", tags=["help"])
 
 # Règles d'actions : mot-clé → bouton pré-rempli (label + route)
 ACTION_RULES = [
-    (("plan", "dwg", "dxf", "métré", "metre"), {"label": "Analyser un plan", "to": "/plan"}),
+    (("plan", "dwg", "dxf", "métré", "metre"), {"label": "Analisar uma planta", "to": "/plan"}),
     (("étanch", "etanch", "toiture", "vrd", "réseau", "reseau", "ferraill", "acier", "approvision", "commande", "fournisseur"),
-     {"label": "Ouvrir l'Approvisionnement", "to": "/appro"}),
+     {"label": "Abrir o Aprovisionamento", "to": "/appro"}),
     (("devis", "estim", "chiffr", "budget", "prix", "coût", "cout"),
-     {"label": "Démarrer mon estimation", "to": "/estimation"}),
-    (("calcul", "surface", "volume", "quantit"), {"label": "Ouvrir les calculateurs", "to": "/calculateurs"}),
-    (("tarif", "offre", "abonn", "pro"), {"label": "Voir les tarifs", "to": "/tarifs"}),
+     {"label": "Iniciar a minha estimativa", "to": "/estimation"}),
+    (("calcul", "surface", "volume", "quantit"), {"label": "Abrir as calculadoras", "to": "/calculateurs"}),
+    (("tarif", "offre", "abonn", "pro"), {"label": "Ver as tarifas", "to": "/tarifs"}),
 ]
-DEFAULT_ACTIONS = [{"label": "Démarrer mon estimation", "to": "/estimation"},
-                   {"label": "Analyser un plan", "to": "/plan"}]
+DEFAULT_ACTIONS = [{"label": "Iniciar a minha estimativa", "to": "/estimation"},
+                   {"label": "Analisar uma planta", "to": "/plan"}]
 
 
 def _suggest_actions(text: str, page: str | None) -> list:
@@ -89,11 +89,10 @@ async def contact(body: ContactIn, request: Request, response: Response) -> dict
     status = "sent"
     try:
         await send_email(support_to, f"[Assistance {doc['ticket_id']}] {doc['subject']}",
-                         wrap_html("Nouvelle demande d'assistance", f"<p><strong>{doc['name']}</strong> &lt;{doc['email']}&gt;</p><p><strong>{doc['subject']}</strong></p><p style='white-space:pre-wrap'>{doc['message']}</p><p>Page : {doc['page'] or '—'}</p>"),
+                         wrap_html("Novo pedido de assistência", f"<p><strong>{doc['name']}</strong> &lt;{doc['email']}&gt;</p><p><strong>{doc['subject']}</strong></p><p style='white-space:pre-wrap'>{doc['message']}</p><p>Page : {doc['page'] or '—'}</p>"),
                          reply_to=doc["email"])
-        await send_email(doc["email"], f"Votre demande d'assistance {doc['ticket_id']} est bien reçue",
-                         wrap_html("Demande reçue", f"<p>Bonjour {doc['name']},</p><p>Nous avons bien reçu votre demande <strong>« {doc['subject']} »</strong> (référence {doc['ticket_id']}). Notre équipe vous répond par e-mail sous 1 jour ouvré.</p>"
-                                                    f"<p>En attendant, l'assistant en ligne (bouton « Besoin d'aide ? ») répond immédiatement aux questions courantes.</p>"))
+        await send_email(doc["email"], f"O seu pedido de assistência {doc['ticket_id']} foi recebido",
+                         wrap_html("Pedido recebido", f"<p>Olá {doc['name']},</p><p>Recebemos o seu pedido <strong>«{doc['subject']}»</strong> (referência {doc['ticket_id']}). A nossa equipa responde-lhe por e-mail no prazo de 1 dia útil.</p><p>Entretanto, o assistente online (botão «Precisa de ajuda?») responde imediatamente às perguntas frequentes.</p>"))
     except Exception as e:  # noqa: BLE001
         status = "failed"
         logger.warning("support email failed: %s", e)
@@ -146,11 +145,11 @@ class TicketUpdateIn(BaseModel):
 async def update_ticket(ticket_id: str, body: TicketUpdateIn) -> dict:
     t = await db.support_requests.find_one({"ticket_id": ticket_id})
     if not t:
-        raise HTTPException(404, "Ticket introuvable")
+        raise HTTPException(404, "Pedido não encontrado")
     now = datetime.now(timezone.utc).isoformat()
     changes = {k: v for k, v in body.model_dump().items() if v is not None}
     if not changes:
-        raise HTTPException(422, "Aucune modification")
+        raise HTTPException(422, "Nenhuma alteração")
     if changes.get("status") == "closed" and not t.get("closed_at"):
         changes["closed_at"] = now
     if changes.get("status") and changes["status"] != "closed":
@@ -169,14 +168,13 @@ async def reply_ticket(ticket_id: str, body: TicketReplyIn, admin=Depends(curren
     """Réponse rapide envoyée par e-mail au demandeur (reply-to support) ; état d'envoi vérifié, jamais de faux succès."""
     t = await db.support_requests.find_one({"ticket_id": ticket_id})
     if not t:
-        raise HTTPException(404, "Ticket introuvable")
+        raise HTTPException(404, "Pedido não encontrado")
     now = datetime.now(timezone.utc).isoformat()
     from engines.emailer import send_email, wrap_html
     support_to = os.environ.get("SUPPORT_EMAIL") or os.environ.get("ADMIN_SEED_EMAIL") or "info@construpilot.fr"
     try:
         await send_email(t["email"], f"Re: [Assistance {ticket_id}] {t['subject']}",
-                         wrap_html(f"Réponse à votre demande {ticket_id}", f"<p>Bonjour {t['name']},</p><div style='white-space:pre-wrap'>{body.message.strip()}</div>"
-                                                                            f"<hr><p style='color:#6b7280;font-size:12px'>Votre demande : « {t['subject']} »<br>{t['message'][:800]}</p>"),
+                         wrap_html(f'Resposta ao seu pedido {ticket_id}', f"<p>Olá {t['name']},</p><div style='white-space:pre-wrap'>{body.message.strip()}</div><hr><p style='color:#6b7280;font-size:12px'>O seu pedido: «{t['subject']} »<br>{t['message'][:800]}</p>"),
                          reply_to=support_to, from_name="Assistance ConstruPilot")
         status = "sent"
     except Exception as e:  # noqa: BLE001

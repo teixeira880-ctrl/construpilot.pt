@@ -13,17 +13,17 @@ MAX_SOURCE_SIZE = 50 * CHUNK_SIZE
 
 def _owner(plan_id, user_id):
     if not plan_id or not user_id:
-        raise ValueError("Identité du plan et du compte requises")
+        raise ValueError("Identidade da planta e da conta obrigatórias")
     return {"plan_id": plan_id, "user_id": user_id}
 
 
 def _check(data, record):
     if not data or len(data) > MAX_SOURCE_SIZE:
-        raise HTTPException(409, "Source vide ou trop volumineuse : réimportez les pages utiles")
+        raise HTTPException(409, "Fonte vazia ou demasiado volumosa: volte a importar as páginas úteis")
     if record.get('size_bytes') is not None and len(data) != record['size_bytes']:
-        raise HTTPException(409, "Source incomplète : réimportez le plan")
+        raise HTTPException(409, "Fonte incompleta: volte a importar a planta")
     if record.get('sha256') and hashlib.sha256(data).hexdigest() != record['sha256']:
-        raise HTTPException(409, "Intégrité de la source non vérifiée : réimportez le plan")
+        raise HTTPException(409, "Integridade da fonte não verificada: volte a importar a planta")
     return data
 
 
@@ -36,16 +36,16 @@ async def load_plan_source(db, plan_id, user_id):
         if record.get('chunk_count'):
             expected = record['chunk_count']
             if not isinstance(expected, int) or not 1 <= expected <= MAX_SOURCE_SIZE // CHUNK_SIZE:
-                raise ValueError('Nombre de morceaux invalide')
+                raise ValueError("Número de fragmentos inválido")
             query = {**owner, 'source_generation': record['source_generation']}
             chunks = [c async for c in db.plan_source_chunks.find(query, {'_id': 0}).sort('index', 1).limit(expected+1)]
             if [c['index'] for c in chunks] != list(range(expected)):
-                raise ValueError('Morceau manquant ou dupliqué')
+                raise ValueError("Fragmento em falta ou duplicado")
             data = b''.join(base64.b64decode(c['data_b64'], validate=True) for c in chunks)
         else:
             data = base64.b64decode(record['data_b64'], validate=True)
     except (KeyError, ValueError, TypeError):
-        raise HTTPException(409, "Source illisible ou incomplète : réimportez le plan") from None
+        raise HTTPException(409, "Fonte ilegível ou incompleta: volte a importar a planta") from None
     _check(data, record)
     return {**record, 'data_b64': base64.b64encode(data).decode('ascii')}
 
@@ -91,7 +91,7 @@ async def save_plan_source(db, plan_id, user_id, data, **metadata):
 async def save_cad_source(db, plan_id, user_id, source_kind, data):
     owner = _owner(plan_id, user_id)
     if source_kind not in ('original', 'converted_dxf'):
-        raise ValueError('Source CAO inconnue')
+        raise ValueError("Fonte CAD desconhecida")
     _check(data, {})
     count = (len(data)+CHUNK_SIZE-1)//CHUNK_SIZE
     digest = hashlib.sha256(data).hexdigest()
@@ -109,11 +109,11 @@ async def load_cad_source(db, plan_id, user_id, source_kind):
         return None
     expected = chunks[0].get('chunk_count', len(chunks))  # v2 compatibility
     if len(chunks) > MAX_SOURCE_SIZE//CHUNK_SIZE or [c['index'] for c in chunks] != list(range(expected)):
-        raise HTTPException(409, 'Source CAO incomplète : réimportez le dessin')
+        raise HTTPException(409, "Fonte CAD incompleta: volte a importar o desenho")
     try:
         data = b''.join(base64.b64decode(c['data_b64'], validate=True) for c in chunks)
     except (KeyError, ValueError, TypeError):
-        raise HTTPException(409, 'Source CAO illisible : réimportez le dessin') from None
+        raise HTTPException(409, "Fonte CAD ilegível: volte a importar o desenho") from None
     return _check(data, chunks[0])
 
 

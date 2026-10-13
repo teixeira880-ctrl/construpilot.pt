@@ -23,7 +23,7 @@ router = APIRouter(prefix="/admin/calc-audit", tags=["calc-audit"],
 async def run_now() -> dict:
     """Démarre une audit en arrière-plan. Renvoie l'audit en cours s'il y en a déjà une."""
     if not calc_auditor._pplx_configured():
-        raise HTTPException(400, "Perplexity non configuré (PERPLEXITY_API_KEY).")
+        raise HTTPException(400, "Perplexity não configurado (PERPLEXITY_API_KEY).")
     running = await db.calc_audits.find_one({"status": "running"}, {"_id": 0, "audit_id": 1})
     if running:
         return {"audit_id": running["audit_id"], "status": "running", "already": True}
@@ -59,7 +59,7 @@ async def apply(body: CodeIn, admin=Depends(admin_user)) -> dict:
 async def revert(body: CodeIn) -> dict:
     ok = await calc_auditor.revert_override(body.code)
     if not ok:
-        raise HTTPException(404, "Aucune correction à annuler pour cet article")
+        raise HTTPException(404, "Nenhuma correção a anular para este artigo")
     return {"ok": True, "code": body.code}
 
 

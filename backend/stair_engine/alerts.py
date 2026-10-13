@@ -57,8 +57,7 @@ def check_blondel(blondel_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optiona
             level="red",
             code="BLONDEL_OUT_OF_RANGE",
             message_fr=(
-                f"Formule de Blondel (2h+g) = {blondel_mm:.0f} mm hors plage acceptable "
-                f"[{norms.blondel_acceptable_min_mm:.0f}, {norms.blondel_acceptable_max_mm:.0f}]."
+                f'Fórmula de Blondel (2h+g) = {blondel_mm:.0f} mm hors plage acceptable [{norms.blondel_acceptable_min_mm:.0f}, {norms.blondel_acceptable_max_mm:.0f}].'
             ),
             metric="blondel_mm",
             value=blondel_mm,
@@ -69,8 +68,7 @@ def check_blondel(blondel_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optiona
             level="orange",
             code="BLONDEL_OUT_OF_RANGE",
             message_fr=(
-                f"Formule de Blondel (2h+g) = {blondel_mm:.0f} mm hors plage optimale "
-                f"[{norms.blondel_optimal_min_mm:.0f}, {norms.blondel_optimal_max_mm:.0f}]."
+                f'Fórmula de Blondel (2h+g) = {blondel_mm:.0f} mm fora do intervalo ótimo [{norms.blondel_optimal_min_mm:.0f}, {norms.blondel_optimal_max_mm:.0f}].'
             ),
             metric="blondel_mm",
             value=blondel_mm,
@@ -85,8 +83,7 @@ def check_riser(h_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]
             level="red",
             code="RISER_TOO_HIGH",
             message_fr=(
-                f"Hauteur de marche {h_mm:.1f} mm > {norms.riser_height_max_mm:.0f} mm "
-                "(non conforme DTU 36.3)."
+                f'Altura do espelho {h_mm:.1f} mm > {norms.riser_height_max_mm:.0f} mm (não conforme com as regras de boa prática / RGEU / DL 163/2006).'
             ),
             metric="riser_height_mm",
             value=h_mm,
@@ -97,8 +94,7 @@ def check_riser(h_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]
             level="orange",
             code="RISER_TOO_HIGH",
             message_fr=(
-                f"Hauteur de marche {h_mm:.1f} mm au-delà de la plage optimale "
-                f"({norms.riser_height_optimal_max_mm:.0f} mm)."
+                f'Altura do espelho {h_mm:.1f} mm acima do intervalo ótimo ({norms.riser_height_optimal_max_mm:.0f} mm).'
             ),
             metric="riser_height_mm",
             value=h_mm,
@@ -109,8 +105,7 @@ def check_riser(h_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]
             level="orange",
             code="RISER_TOO_LOW",
             message_fr=(
-                f"Hauteur de marche {h_mm:.1f} mm inférieure au confort recommandé "
-                f"(<{norms.riser_height_optimal_min_mm - 10:.0f} mm)."
+                f'Altura do espelho {h_mm:.1f} mm inferior ao conforto recomendado (<{norms.riser_height_optimal_min_mm - 10:.0f} mm).'
             ),
             metric="riser_height_mm",
             value=h_mm,
@@ -125,7 +120,7 @@ def check_tread(g_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]
             level="red",
             code="TREAD_TOO_SMALL",
             message_fr=(
-                f"Giron {g_mm:.1f} mm < minimum absolu {norms.tread_depth_hard_min_mm:.0f} mm."
+                f'Cobertor {g_mm:.1f} mm < minimum absolu {norms.tread_depth_hard_min_mm:.0f} mm.'
             ),
             metric="tread_depth_mm",
             value=g_mm,
@@ -136,8 +131,7 @@ def check_tread(g_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]
             level="orange",
             code="TREAD_TOO_SMALL",
             message_fr=(
-                f"Giron {g_mm:.1f} mm inférieur à la plage optimale "
-                f"({norms.tread_depth_optimal_min_mm:.0f} mm)."
+                f'Cobertor {g_mm:.1f} mm inferior ao intervalo ótimo ({norms.tread_depth_optimal_min_mm:.0f} mm).'
             ),
             metric="tread_depth_mm",
             value=g_mm,
@@ -152,8 +146,7 @@ def check_slope(slope_deg: float, norms: StairNorms = DTU_36_3_FR) -> Optional[A
             level="red",
             code="SLOPE_TOO_STEEP",
             message_fr=(
-                f"Pente {slope_deg:.1f}° > {norms.slope_hard_max_deg:.0f}° "
-                "(escalier trop raide, dangereux)."
+                f'Inclinação {slope_deg:.1f}° > {norms.slope_hard_max_deg:.0f}° (escada demasiado íngreme, perigosa).'
             ),
             metric="slope_deg",
             value=slope_deg,
@@ -164,8 +157,7 @@ def check_slope(slope_deg: float, norms: StairNorms = DTU_36_3_FR) -> Optional[A
             level="orange",
             code="SLOPE_TOO_STEEP",
             message_fr=(
-                f"Pente {slope_deg:.1f}° au-delà de la plage confortable "
-                f"({norms.slope_acceptable_max_deg:.0f}°)."
+                f'Inclinação {slope_deg:.1f}° acima do intervalo confortável ({norms.slope_acceptable_max_deg:.0f}°).'
             ),
             metric="slope_deg",
             value=slope_deg,
@@ -180,13 +172,12 @@ def check_headroom(
     norms: StairNorms = DTU_36_3_FR,
 ) -> Optional[Alert]:
     if headroom_mm < norms.headroom_min_mm:
-        tread_str = f" au niveau de la marche n°{tread_index}" if tread_index else ""
+        tread_str = f' ao nível do degrau n.º{tread_index}' if tread_index else ""
         return Alert(
             level="red",
             code="HEADROOM_INSUFFICIENT",
             message_fr=(
-                f"Échappée {headroom_mm:.0f} mm{tread_str} < minimum "
-                f"{norms.headroom_min_mm:.0f} mm (DTU 36.3)."
+                f'Altura livre {headroom_mm:.0f} mm{tread_str} < minimum {norms.headroom_min_mm:.0f} mm (DTU 36.3).'
             ),
             metric="headroom_mm",
             value=headroom_mm,
@@ -202,8 +193,7 @@ def check_stair_width(width_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optio
             level="orange",
             code="STAIR_WIDTH_TOO_SMALL",
             message_fr=(
-                f"Largeur d'escalier {width_mm:.0f} mm < minimum de confort "
-                f"{norms.stair_width_min_mm:.0f} mm."
+                f'Largura da escada {width_mm:.0f} mm < mínimo de conforto {norms.stair_width_min_mm:.0f} mm.'
             ),
             metric="stair_width_mm",
             value=width_mm,
@@ -220,8 +210,7 @@ def check_stair_run_fits(
             level="red",
             code="STAIR_RUN_TOO_LONG",
             message_fr=(
-                f"Reculement nécessaire {required_run_mm:.0f} mm > disponible "
-                f"{available_length_mm:.0f} mm. L'escalier ne rentre pas."
+                f'Desenvolvimento em planta necessário {required_run_mm:.0f} mm > disponível {available_length_mm:.0f} mm. A escada não cabe.'
             ),
             metric="stair_run_mm",
             value=required_run_mm,
@@ -240,7 +229,7 @@ def check_optimal(
         return Alert(
             level="green",
             code="OPTIMAL_CONFIG",
-            message_fr="Configuration optimale : Blondel et pente dans les plages idéales.",
+            message_fr="Configuração ótima: Blondel e inclinação nos intervalos ideais.",
         )
     return None
 
@@ -253,7 +242,7 @@ def summarize(alerts: List[Alert]) -> List[Alert]:
             Alert(
                 level="green",
                 code="GEOMETRY_OK",
-                message_fr="Géométrie conforme aux seuils DTU 36.3.",
+                message_fr="Geometria conforme com os limites RGEU / DL 163/2006.",
             )
         )
     return alerts

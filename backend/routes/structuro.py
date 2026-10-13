@@ -23,7 +23,7 @@ router = APIRouter(prefix="/structuro", tags=["structuro"])
 async def _get_study(study_id: str, user_id: str) -> dict:
     s = await db.structuro_studies.find_one({"study_id": study_id, "user_id": user_id}, {"_id": 0})
     if not s:
-        raise HTTPException(404, "Étude introuvable.")
+        raise HTTPException(404, "Estudo não encontrado.")
     return s
 
 
@@ -96,10 +96,7 @@ META = {
     "sources": sm.SOURCES,
     "element_types": sm.ELEMENT_TYPES,
     "verification_catalogue": sm.VERIFICATIONS,
-    "disclaimer": ("StructuroPilot (Lot A) est un outil de collecte et de structuration de "
-                   "données et d'esquisse. Il ne réalise AUCUN calcul structurel chiffré et ne "
-                   "remplace pas la vérification d'un ingénieur structure. Aucun document n'est "
-                   "« bon pour exécution »."),
+    "disclaimer": ("O StructuroPilot (Lote A) é uma ferramenta de recolha e estruturação de dados e de esboço. NÃO realiza NENHUM cálculo estrutural quantificado e não substitui a verificação de um engenheiro de estruturas. Nenhum documento é «bom para execução»."),
 }
 
 
@@ -185,7 +182,7 @@ async def set_datum(study_id: str, body: DatumIn, user=Depends(current_user)) ->
 async def add_element(study_id: str, body: ElementIn, user=Depends(current_user)) -> dict:
     s = await _get_study(study_id, user["user_id"])
     if body.type not in sm.ELEMENT_TYPES:
-        raise HTTPException(422, "Type d'élément inconnu.")
+        raise HTTPException(422, "Tipo de elemento desconhecido.")
     s.setdefault("elements", []).append({
         "id": sm.new_id("el"), "type": body.type,
         "ref": (body.ref or body.type[:2].upper()), "label": body.label or body.type,
@@ -213,10 +210,10 @@ async def patch_element(study_id: str, element_id: str, body: ElementPatchIn,
     s = await _get_study(study_id, user["user_id"])
     el = next((e for e in s.get("elements", []) if e.get("id") == element_id), None)
     if not el:
-        raise HTTPException(404, "Élément introuvable.")
+        raise HTTPException(404, "Elemento não encontrado.")
     if body.type is not None:
         if body.type not in sm.ELEMENT_TYPES:
-            raise HTTPException(422, "Type d'élément inconnu.")
+            raise HTTPException(422, "Tipo de elemento desconhecido.")
         el["type"] = body.type
     if body.ref is not None:
         el["ref"] = body.ref.strip() or el.get("ref")
@@ -250,7 +247,7 @@ async def patch_level(study_id: str, level_id: str, body: LevelPatchIn,
     s = await _get_study(study_id, user["user_id"])
     lvl = next((l for l in s.get("levels", []) if l.get("id") == level_id), None)
     if not lvl:
-        raise HTTPException(404, "Niveau introuvable.")
+        raise HTTPException(404, "Nível não encontrado.")
     if body.name is not None and body.name.strip():
         lvl["name"] = body.name.strip()
     if body.elevation_m is not None:
@@ -268,7 +265,7 @@ async def delete_level(study_id: str, level_id: str, user=Depends(current_user))
     before = len(s.get("levels", []))
     s["levels"] = [l for l in s.get("levels", []) if l.get("id") != level_id]
     if len(s["levels"]) == before:
-        raise HTTPException(404, "Niveau introuvable.")
+        raise HTTPException(404, "Nível não encontrado.")
     s = sm.recompute(s)
     await _save(s)
     s["meta"] = META
@@ -282,8 +279,7 @@ async def approve(study_id: str, body: ApproveIn, user=Depends(current_user)) ->
     s = await _get_study(study_id, user["user_id"])
     blocked = [v for v in s.get("verifications", []) if v["status"] == "bloquee"]
     if blocked:
-        raise HTTPException(409, f"Approbation impossible : {len(blocked)} vérification(s) bloquée(s) "
-                                 "par des données manquantes.")
+        raise HTTPException(409, f'Aprovação impossível: {len(blocked)} verificação(ões) bloqueada(s) por dados em falta.')
     s.setdefault("approvals", []).append({
         "id": sm.new_id("ap"),
         "user_id": user["user_id"],
@@ -295,8 +291,7 @@ async def approve(study_id: str, body: ApproveIn, user=Depends(current_user)) ->
         "level": "etude_preliminaire",   # jamais "execution"
         "status": "valide",
         "at": sm.now(),
-        "note": "Approbation d'étude préliminaire. NON valable pour exécution : vérification "
-                "structurelle par un ingénieur requise (moteur de calcul non qualifié).",
+        "note": "Aprovação de estudo preliminar. NÃO válido para execução: verificação estrutural por um engenheiro necessária (motor de cálculo não qualificado).",
     })
     s = sm.recompute(s)
     await _save(s)
@@ -326,19 +321,19 @@ async def upload_plan(study_id: str, file: UploadFile = File(...),
     s = await _get_study(study_id, user["user_id"])
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "").lower()
     if ext not in ALLOWED_EXT:
-        raise HTTPException(422, f"Extension non prise en charge ({ext}). Formats : {', '.join(sorted(ALLOWED_EXT))}.")
+        raise HTTPException(422, f"Extensão não suportada ({ext}). Formats : {', '.join(sorted(ALLOWED_EXT))}.")
     data = await file.read()
     if not data:
-        raise HTTPException(422, "Fichier vide.")
+        raise HTTPException(422, "Ficheiro vazio.")
     if len(data) > MAX_PLAN_BYTES:
-        raise HTTPException(413, "Fichier trop volumineux (max 30 Mo).")
+        raise HTTPException(413, "Ficheiro demasiado volumoso (máx. 30 MB).")
     plan_id = sm.new_id("pl")
     path = f"{obj.APP_NAME}/structuro/{user['user_id']}/{study_id}/{plan_id}.{ext}"
     ctype = obj.mime_for(file.filename)
     try:
         result = await asyncio.to_thread(obj.put_object, path, data, ctype)
     except Exception as e:
-        raise HTTPException(502, f"Stockage du fichier impossible : {str(e)[:120]}")
+        raise HTTPException(502, f'Armazenamento do ficheiro impossível: {str(e)[:120]}')
     recognition = reco.recognize(data, file.filename)
     plan = {
         "id": plan_id,
@@ -367,11 +362,11 @@ async def download_plan(study_id: str, plan_id: str, user=Depends(current_user))
     s = await _get_study(study_id, user["user_id"])
     plan = next((p for p in s.get("plans", []) if p["id"] == plan_id and not p.get("is_deleted")), None)
     if not plan:
-        raise HTTPException(404, "Plan introuvable.")
+        raise HTTPException(404, "Planta não encontrada.")
     try:
         content, ctype = await asyncio.to_thread(obj.get_object, plan["storage_path"])
     except Exception as e:
-        raise HTTPException(502, f"Lecture du fichier impossible : {str(e)[:120]}")
+        raise HTTPException(502, f'Leitura do ficheiro impossível: {str(e)[:120]}')
     return Response(content=content, media_type=plan.get("content_type") or ctype, headers={
         "Content-Disposition": f'inline; filename="{plan.get("original_filename", "plan")}"'})
 
@@ -382,7 +377,7 @@ async def patch_plan(study_id: str, plan_id: str, body: PlanPatchIn, user=Depend
     s = await _get_study(study_id, user["user_id"])
     plan = next((p for p in s.get("plans", []) if p["id"] == plan_id and not p.get("is_deleted")), None)
     if not plan:
-        raise HTTPException(404, "Plan introuvable.")
+        raise HTTPException(404, "Planta não encontrada.")
     if body.level is not None:
         plan["level"] = body.level.strip() or None
     if body.kind is not None and body.kind in PLAN_KINDS:
@@ -401,7 +396,7 @@ async def delete_plan(study_id: str, plan_id: str, user=Depends(current_user)) -
     s = await _get_study(study_id, user["user_id"])
     plan = next((p for p in s.get("plans", []) if p["id"] == plan_id), None)
     if not plan:
-        raise HTTPException(404, "Plan introuvable.")
+        raise HTTPException(404, "Planta não encontrada.")
     plan["is_deleted"] = True
     await _save(s)
     s["meta"] = META
@@ -453,7 +448,7 @@ async def compute_lintel(study_id: str, body: LintelComputeIn, user=Depends(curr
     if "permanent_line_kn_m" not in opts and dval("ouverture.charges_reprises") is not None:
         opts["permanent_line_kn_m"] = dval("ouverture.charges_reprises")
     if not opts.get("clear_span_m"):
-        raise HTTPException(422, "Portée de l'ouverture requise (documentez « ouverture.portee » ou envoyez clear_span_m).")
+        raise HTTPException(422, "Vão da abertura necessário (documente «ouverture.portee» ou envie clear_span_m).")
     result = lintel.lintel_design(opts)
     s["lintel"] = {"inputs": opts, "result": result, "at": sm.now()}
     await _save(s)
@@ -477,7 +472,7 @@ async def study_sheets(study_id: str, user=Depends(current_user)):
     s = await _get_study(study_id, user["user_id"])
     pdf = build_study_sheets(s)
     return Response(content=pdf, media_type="application/pdf", headers={
-        "Content-Disposition": f'inline; filename="structuro-{study_id}-esquisses.pdf"'})
+        "Content-Disposition": f'inline; filename="structuro-{study_id}-esbocos.pdf"'})
 
 
 @router.get("/studies/{study_id}/note.pdf")
@@ -495,5 +490,5 @@ async def study_note(study_id: str, user=Depends(current_user)):
 async def delete_study(study_id: str, user=Depends(current_user)) -> dict:
     r = await db.structuro_studies.delete_one({"study_id": study_id, "user_id": user["user_id"]})
     if not r.deleted_count:
-        raise HTTPException(404, "Étude introuvable.")
+        raise HTTPException(404, "Estudo não encontrado.")
     return {"ok": True}

@@ -25,7 +25,7 @@ def summarize_inputs(inputs: list) -> dict:
 
 def instruction_blocks(instructions: str) -> list[dict]:
     blocks, start = [], 0
-    for marker in ("Tu accompagnes la résolution", "Photos de chantier :", "Méthode pour un problème de chantier", "Outils déterministes", "Sources"):
+    for marker in ("Acompanhas a resolução", "Fotografias de obra:", "Método para um problema de obra", "Ferramentas determinísticas", "Fontes"):
         i = instructions.find(marker, start)
         if i > 0:
             blocks.append({"until": marker[:40], "chars": i - start})

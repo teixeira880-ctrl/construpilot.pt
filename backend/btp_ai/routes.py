@@ -22,7 +22,7 @@ def _now():
 async def _plan(plan_id: str, user: dict) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages.image_png_b64": 0, "pages.vectors": 0, "pages.text_blocks": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return p
 
 
@@ -39,8 +39,8 @@ async def get_analysis(plan_id: str, user=Depends(current_user)) -> dict:
     pages = [{"index": pg.get("index", i), "width_px": pg.get("width_px"), "height_px": pg.get("height_px"), "calibrated": str(pg.get("index", i)) in (p.get("calibrations") or {})} for i, pg in enumerate(p.get("pages") or [])]
     stat = {s: sum(1 for q in lines if q["status"] == s) for s in ("to_verify", "provisional", "validated", "undetermined")}
     return {"plan": {"plan_id": plan_id, "filename": p.get("filename"), "project_id": p.get("project_id"), "updated_at": p.get("updated_at"), "pages": pages}, "analysis": a, "elements": elements, "quantities": lines,
-            "overrides": overrides, "stats": stat, "state": "en erreur" if not elements and (p.get("rooms")) else ("partiellement analysé" if a.get("missing") else "analysé"),
-            "disclaimer": "Contrôle de cohérence et métré à partir des pièces tracées et calibrées du plan. Ne constitue pas une note de calcul structurel."}
+            "overrides": overrides, "stats": stat, "state": "com erro" if not elements and (p.get("rooms")) else ("parcialmente analisada" if a.get("missing") else "analysé"),
+            "disclaimer": "Controlo de coerência e medição a partir das divisões traçadas e calibradas da planta. Não constitui uma memória de cálculo estrutural."}
 
 
 @router.post("/plans/{plan_id}/rebuild")
@@ -59,7 +59,7 @@ async def set_assumption(plan_id: str, element_id: str, body: OverrideIn, user=D
     """Explicit, visible assumption for a missing dimension (never a silent default). Dependent lines are recomputed as « provisoire »."""
     p = await _plan(plan_id, user)
     if not await db.btp_elements.find_one({"plan_id": plan_id, "element_id": element_id}):
-        raise HTTPException(404, "Ouvrage introuvable")
+        raise HTTPException(404, "Elemento não encontrado")
     sets = {k: v for k, v in body.model_dump().items() if v is not None and k != "reason"}
     if not sets:
         await db.btp_overrides.delete_one({"plan_id": plan_id, "element_id": element_id})
@@ -78,7 +78,7 @@ class ReviewIn(BaseModel):
 async def review_quantity(plan_id: str, quantity_id: str, body: ReviewIn, user=Depends(current_user)) -> dict:
     q = await db.btp_quantities.find_one({"plan_id": plan_id, "quantity_id": quantity_id, "superseded": {"$ne": True}, "user_id": user["user_id"]}, {"_id": 0})
     if not q:
-        raise HTTPException(404, "Ligne introuvable")
+        raise HTTPException(404, "Linha não encontrada")
     sets = {"status": body.status, "reviewed_by": user.get("email") or user["user_id"], "reviewed_at": _now(), "comment": body.comment}
     if body.status == "validated":
         sets.update({"validated_by": sets["reviewed_by"], "validated_at": sets["reviewed_at"]})
@@ -96,17 +96,17 @@ async def quote_draft(plan_id: str, client_name: str = Body("", embed=True), inc
     lines = await db.btp_quantities.find({"plan_id": plan_id, "superseded": {"$ne": True}, "status": {"$ne": "rejected"}}, {"_id": 0}).to_list(500)
     usable = [q for q in lines if q.get("quantity_net") is not None or include_undetermined]
     if not usable:
-        raise HTTPException(400, "Aucune quantité déterminée à reporter")
+        raise HTTPException(400, "Nenhuma quantidade determinada a transferir")
     conv = {"conversation_id": f"conv_btp_{plan_id[-8:]}", "user_id": user["user_id"], "_quote_request_id": uuid.uuid4().hex}
     if p.get("chantier_id"):
         from routes.chantiers import _get
         chantier = await _get(p["chantier_id"], user["user_id"])
         conv["_chantier"] = {"chantier_id": chantier["chantier_id"], "client_id": chantier.get("client_id")}
 
-    q_lines = [{"line_id": None, "designation": q["designation"], "description": f"Métré {q['quantity_id']} · {q['formula']} · {q['rule_version']} · statut {q['status']}" + (f" · hypothèses : {', '.join(a['name'] + '=' + str(a['value']) + a['unit'] for a in q['assumptions'])}" if q.get("assumptions") else ""),
+    q_lines = [{"line_id": None, "designation": q["designation"], "description": f"Medição {q['quantity_id']} · {q['formula']} · {q['rule_version']} · statut {q['status']}" + (f" · hipóteses: {', '.join((a['name'] + '=' + str(a['value']) + a['unit'] for a in q['assumptions']))}" if q.get("assumptions") else ""),
                 "quantity": q.get("quantity_to_order"), "unit": q["unit"], "unit_price": None, "price_origin": "unpriced", "vat_rate": None, "lot": q["lot"]} for q in usable]
-    args = {"title": f"Devis d'après métré — {p.get('filename') or plan_id}", "client_name": client_name or "", "vat_rate": None, "lines": q_lines,
-            "notes": f"Brouillon généré depuis l'analyse traçable du plan {plan_id} (révision {metre.revision_of(p)}). Prix à compléter depuis la bibliothèque ; quantités indéterminées non reportées." if not include_undetermined else f"Brouillon depuis le plan {plan_id} ; certaines quantités sont indéterminées (à compléter)."}
+    args = {"title": f"Orçamento segundo medição — {p.get('filename') or plan_id}", "client_name": client_name or "", "vat_rate": None, "lines": q_lines,
+            "notes": f'Rascunho gerado a partir da análise rastreável da planta {plan_id} (revisão {metre.revision_of(p)}). Preços a completar a partir da biblioteca; quantidades indeterminadas não transferidas.' if not include_undetermined else f'Rascunho a partir da planta {plan_id} ; algumas quantidades estão indeterminadas (a completar).'}
     res = await save_quote(args, user, conv)
     doc_id = res.get("doc_id") if isinstance(res, dict) else getattr(res, "doc_id", None)
     await db.btp_quantities.update_many({"quantity_id": {"$in": [q["quantity_id"] for q in usable]}, "superseded": {"$ne": True}}, {"$addToSet": {"dependent_documents": doc_id}})
@@ -177,7 +177,7 @@ async def _diff(plan_id: str, a: str, b: str, user_id: str) -> dict:
     ra = await db.btp_revisions.find_one({"plan_id": plan_id, "revision": a, "user_id": user_id}, {"_id": 0})
     rb = await db.btp_revisions.find_one({"plan_id": plan_id, "revision": b, "user_id": user_id}, {"_id": 0})
     if not ra or not rb:
-        raise HTTPException(404, "Révision introuvable")
+        raise HTTPException(404, "Revisão não encontrada")
     la = {x["quantity_id"]: x for x in ra["lines"]}
     lb = {x["quantity_id"]: x for x in rb["lines"]}
     prices = await _quote_prices(plan_id, user_id)
@@ -195,7 +195,7 @@ async def _diff(plan_id: str, a: str, b: str, user_id: str) -> dict:
     linked = {p["doc_id"]: {k: p[k] for k in ("doc_id", "number", "status", "title")} for p in prices.values()}
     return {"a": {k: ra[k] for k in ("revision", "at", "count")}, "b": {k: rb[k] for k in ("revision", "at", "count")}, "rows": rows, "changed": sum(1 for r in rows if r["kind"] in ("modifiée", "ajoutée", "supprimée")),
             "impact_total_ht": round(total, 2), "priced_rows": sum(1 for r in rows if r["impact_ht"] is not None), "unpriced_changes": sum(1 for r in rows if r["kind"] in ("modifiée", "ajoutée", "supprimée") and r["impact_ht"] is None),
-            "linked_documents": list(linked.values()), "note": "Incidence = écart des quantités à commander × prix HT remisé du devis de référence. Prix multiples, unités différentes ou quantité du devis modifiée : incidence indéterminée."}
+            "linked_documents": list(linked.values()), "note": "Impacto = diferença das quantidades a encomendar × preço s/ IVA com desconto do orçamento de referência. Preços múltiplos, unidades diferentes ou quantidade do orçamento alterada: impacto indeterminado."}
 
 
 @router.get("/plans/{plan_id}/revisions/diff")
@@ -212,12 +212,12 @@ async def amendment_draft(plan_id: str, a: str = Body(..., embed=True), b: str =
     d = await _diff(plan_id, a, b, user["user_id"])
     changes = [r for r in d["rows"] if r["kind"] in ("modifiée", "ajoutée", "supprimée") and r["delta_to_order"] is not None]
     if not changes:
-        raise HTTPException(400, "Aucun écart déterminé à reporter entre ces révisions")
+        raise HTTPException(400, "Nenhuma diferença determinada a transferir entre estas revisões")
     lines = []
     for r in changes:
         price = (r["quote"] or {}).get("unit_price_ht") if r["pricing_usable"] else None
-        lines.append(DocLine(designation=f"Avenant — {r['designation']}",
-            description=f"Métré {r['quantity_id']} · {r['kind']} · net {r['before']} → {r['after']} {r['unit']} · écart à commander {r['delta_to_order']} {r['unit']} (révision {a[:6]} → {b[:6]})",
+        lines.append(DocLine(designation=f"Trabalhos a mais — {r['designation']}",
+            description=f"Medição {r['quantity_id']} · {r['kind']} · net {r['before']} → {r['after']} {r['unit']} · diferença a encomendar {r['delta_to_order']} {r['unit']} (revisão {a[:6]} → {b[:6]})",
             qty=r["delta_to_order"], unit=r["unit"], unit_price_ht=price if price is not None else 0,
             price_missing=price is None, price_source="revision_reference" if price is not None else "unpriced",
             vat_rate=None, category=r["lot"]))
@@ -226,12 +226,12 @@ async def amendment_draft(plan_id: str, a: str = Body(..., embed=True), b: str =
         from routes.chantiers import _get
         chantier = await _get(p["chantier_id"], user["user_id"])
         client_id = chantier.get("client_id")
-    linked = ", ".join(x.get("number") or x["doc_id"] for x in d["linked_documents"]) or "aucun devis rattaché"
+    linked = ", ".join(x.get("number") or x["doc_id"] for x in d["linked_documents"]) or "nenhum orçamento associado"
     skipped = sum(r["kind"] != "inchangée" and r["delta_to_order"] is None for r in d["rows"])
     # The document API supports negative quantities for reductions. The assistant schema intentionally does not.
     res = await create_document(DocIn(doc_type="quote", status="draft", chantier_id=p.get("chantier_id"), client_id=client_id,
-        title=f"Avenant — {p.get('filename') or plan_id} — révision {b[:6]}", lines=lines,
-        notes=f"Écarts entre révisions {a} et {b} du plan {plan_id}. Référence : {linked}. Incidence partielle {d['impact_total_ht']} € HT ; {d['unpriced_changes']} écart(s) sans prix et {skipped} indéterminé(s) non reporté(s). TVA et métrés à vérifier."), user)
+        title=f"Trabalhos a mais — {p.get('filename') or plan_id} — revisão {b[:6]}", lines=lines,
+        notes=f"Diferenças entre revisões {a} et {b} da planta {plan_id}. Référence : {linked}. Incidence partielle {d['impact_total_ht']} € HT ; {d['unpriced_changes']} diferença(s) sem preço e {skipped} indeterminada(s) não transferida(s). IVA e medições a verificar."), user)
     doc_id = res["doc_id"]
     if client_name.strip() and not client_id:
         await db.pro_documents.update_one({"doc_id": doc_id, "user_id": user["user_id"], "status": "draft"},

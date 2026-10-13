@@ -154,7 +154,7 @@ async def analyse(body: DescribeIn, user=Depends(optional_user)) -> dict:
 async def advice(body: dict) -> dict:
     est = body.get("estimation")
     if not est:
-        raise HTTPException(status_code=400, detail="estimation requise")
+        raise HTTPException(status_code=400, detail="estimativa necessária")
     return {"advice": await ai.project_advice(est)}
 
 
@@ -172,12 +172,12 @@ class PdfIn(BaseModel):
 async def estimation_pdf(body: PdfIn):
     """Génère un PDF de devis à partir d'une estimation calculée (avant sauvegarde)."""
     if not body.estimation or not body.estimation.get("lots"):
-        raise HTTPException(status_code=400, detail="Estimation requise")
+        raise HTTPException(status_code=400, detail="Estimativa necessária")
     data = pdf.build_estimation_pdf(body.project or {},
                                     body.estimation,
                                     body.estimation.get("planning") or [],
                                     body.advice or "", None)
-    name = (body.project or {}).get("name") or "Projet"
+    name = (body.project or {}).get("name") or "Projeto"
     safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
     return Response(content=data, media_type="application/pdf", headers={
         "Content-Disposition": f'attachment; filename="Estimation-ConstruPilot-{safe}.pdf"'})
@@ -197,9 +197,9 @@ class PdfEmailIn(BaseModel):
 async def estimation_pdf_email(body: PdfEmailIn) -> dict:
     """Envoie le PDF d'estimation par email via Resend (route publique)."""
     if not body.estimation or not body.estimation.get("lots"):
-        raise HTTPException(status_code=400, detail="Estimation requise")
+        raise HTTPException(status_code=400, detail="Estimativa necessária")
     from engines import emailer
-    name = (body.project or {}).get("name") or "Votre projet"
+    name = (body.project or {}).get("name") or "O seu projeto"
     total = body.estimation.get("total_avg", 0)
     total_min = body.estimation.get("total_min", 0)
     total_max = body.estimation.get("total_max", 0)
@@ -208,51 +208,31 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
     # Note rassurante intégrée au PDF pour les particuliers
     advice = body.advice
     if b2c and not advice:
-        advice = ("Cette estimation est indicative et gratuite : elle vous donne une fourchette "
-                  "de budget réaliste pour préparer votre projet et comparer sereinement les devis "
-                  "d'artisans. Aucun engagement de votre part.")
+        advice = ("Esta estimativa é indicativa e gratuita: dá-lhe um intervalo de orçamento realista para preparar o seu projeto e comparar com tranquilidade os orçamentos dos empreiteiros. Sem qualquer compromisso da sua parte.")
     data = pdf.build_estimation_pdf(body.project or {}, body.estimation,
                                     body.estimation.get("planning") or [], advice or "", None)
     safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
     fmt = lambda v: f"{v:,.0f}".replace(",", " ")
     if b2c:
-        hello = f"Bonjour {body.client_name}," if body.client_name else "Bonjour,"
-        fourchette = (f"<li><b>Fourchette de budget</b> : {fmt(total_min)} € à {fmt(total_max)} €</li>"
+        hello = f'Olá {body.client_name},' if body.client_name else "Bom dia,"
+        fourchette = (f'<li><b>Intervalo de orçamento</b>: {fmt(total_min)} € à {fmt(total_max)} €</li>'
                       if total_min and total_max else "")
-        subject = f"Votre estimation travaux — {fmt(total)} € (indicatif)"
+        subject = f'A sua estimativa de obras — {fmt(total)} € (indicatif)'
         html = emailer.wrap_html(
-            "Votre estimation de budget travaux",
-            f"""<p>{hello}</p>
-<p>Merci pour votre demande sur <b>ConstruPilot</b> 👋 Voici votre estimation, calculée à partir de votre description.</p>
-<ul>
-<li><b>Surface</b> : {surface} m²</li>
-<li><b>Budget moyen estimé</b> : {fmt(total)} €</li>
-{fourchette}
-</ul>
-<p>Le PDF joint détaille chaque poste (peinture, sol, plomberie…), une durée indicative et les prix des matériaux.</p>
-<p style='margin-top:16px;padding:14px;background:#f0fdf4;border-left:3px solid #10b981;border-radius:6px'>
-<b>Pas de mauvaise surprise :</b> cette estimation est <b>gratuite et sans engagement</b>. Elle vous aide à préparer votre projet et à comparer les devis d'artisans en toute confiance.</p>
-<p>Vous pouvez affiner votre estimation à tout moment sur l'application.</p>
-<p style='color:#64748b;font-size:13px'>À très vite,<br/>L'équipe ConstruPilot</p>""")
+            "A sua estimativa de orçamento de obras",
+            f"<p>{hello}</p>\n<p>Obrigado pelo seu pedido no <b>ConstruPilot</b> 👋 Eis a sua estimativa, calculada a partir da sua descrição.</p>\n<ul>\n<li><b>Área</b>: {surface} m²</li>\n<li><b>Orçamento médio estimado</b>: {fmt(total)} €</li>\n{fourchette}\n</ul>\n<p>O PDF anexado detalha cada artigo (pintura, pavimento, canalização…), uma duração indicativa e os preços dos materiais.</p>\n<p style='margin-top:16px;padding:14px;background:#f0fdf4;border-left:3px solid #10b981;border-radius:6px'>\n<b>Sem más surpresas:</b> esta estimativa é <b>gratuita e sem compromisso</b>. Ajuda-o a preparar o seu projeto e a comparar os orçamentos dos empreiteiros com toda a confiança.</p>\n<p>Pode afinar a sua estimativa a qualquer momento na aplicação.</p>\n<p style='color:#64748b;font-size:13px'>Até breve,<br/>A equipa ConstruPilot</p>")
     else:
         subject = f"Estimation ConstruPilot — {name}"
         extra = (f"<p style='margin-top:20px;padding:16px;background:#f8fafc;border-left:3px solid #FF5A00'>{body.message}</p>"
                  if body.message else "")
         html = emailer.wrap_html(
-            f"Votre estimation : {name}",
-            f"""<p>Bonjour,</p>
-<p>Vous trouverez en pièce jointe l'estimation détaillée générée par <b>ConstruPilot</b>.</p>
-<ul>
-<li><b>Surface</b> : {surface} m²</li>
-<li><b>Coût moyen estimé</b> : {fmt(total)} €</li>
-</ul>
-<p>Le PDF détaille chaque lot, le planning, les matériaux et les recommandations.</p>{extra}
-<p>Pour affiner ou obtenir une intervention ConstruPilot, revenez sur l'application.</p>""")
+            f'A sua estimativa: {name}',
+            f'<p>Olá,</p>\n<p>Segue em anexo a estimativa detalhada gerada pelo <b>ConstruPilot</b>.</p>\n<ul>\n<li><b>Área</b>: {surface} m²</li>\n<li><b>Custo médio estimado</b>: {fmt(total)} €</li>\n</ul>\n<p>O PDF detalha cada lote, o planeamento, os materiais e as recomendações.</p>{extra}\n<p>Para afinar ou obter uma intervenção ConstruPilot, volte à aplicação.</p>')
     try:
         await emailer.send_email_with_pdf(body.to, subject, html, data,
                                           filename=f"Estimation-ConstruPilot-{safe}.pdf")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Envoi impossible: {e}")
+        raise HTTPException(status_code=502, detail=f'Envio impossível: {e}')
     return {"ok": True, "to": body.to}
 
 
@@ -269,14 +249,14 @@ MASONRY_CONFIG_DEFAULT = {
         "gobetis_kg_per_m2": 5.0,
     },
     "blocks": [
-        {"key": "parpaing_20", "label": "Parpaing creux 20×20×50", "material": "parpaing",
-         "blocks_per_m2": 10, "price": 1.20, "search": "parpaing creux 20x20x50"},
-        {"key": "parpaing_15", "label": "Parpaing creux 15×20×50", "material": "parpaing",
-         "blocks_per_m2": 10, "price": 1.00, "search": "parpaing creux 15x20x50"},
-        {"key": "brique_creuse_20", "label": "Brique creuse 20×20×50", "material": "brique",
-         "blocks_per_m2": 10, "price": 0.90, "search": "brique creuse 20x20x50"},
-        {"key": "brique_rouge", "label": "Brique rouge 22×10,5×6", "material": "brique",
-         "blocks_per_m2": 48, "price": 0.60, "search": "brique rouge pleine"},
+        {"key": "parpaing_20", "label": "Bloco furado 20×20×50", "material": "parpaing",
+         "blocks_per_m2": 10, "price": 1.20, "search": "bloco furado 20x20x50"},
+        {"key": "parpaing_15", "label": "Bloco furado 15×20×50", "material": "parpaing",
+         "blocks_per_m2": 10, "price": 1.00, "search": "bloco de cimento 50x20x15"},
+        {"key": "brique_creuse_20", "label": "Tijolo furado 20×20×50", "material": "brique",
+         "blocks_per_m2": 10, "price": 0.90, "search": "tijolo furado 30x20x20"},
+        {"key": "brique_rouge", "label": "Tijolo vermelho 22×10,5×6", "material": "brique",
+         "blocks_per_m2": 48, "price": 0.60, "search": "tijolo maciço"},
     ],
 }
 
@@ -364,29 +344,29 @@ async def materials_list(body: MaterialsIn) -> dict:
             items += calculators.insulation(qty)["materials"]
         elif key == "salle_de_bain":
             items += [
-                {"name": "Receveur de douche", "quantity": 1, "unit": "u", "search": "receveur douche 90x90"},
-                {"name": "Mitigeur douche", "quantity": 1, "unit": "u", "search": "mitigeur douche"},
-                {"name": "WC suspendu", "quantity": 1, "unit": "u", "search": "wc suspendu bati support"},
-                {"name": "Meuble vasque", "quantity": 1, "unit": "u", "search": "meuble vasque salle de bain"},
-                {"name": "Placo hydrofuge", "quantity": max(4, round(qty * 0.8)), "unit": "plaque",
-                 "search": "ba13 hydrofuge 250x120"},
+                {"name": "Base de duche", "quantity": 1, "unit": "u", "search": "base de duche 90x90"},
+                {"name": "Misturadora duche", "quantity": 1, "unit": "u", "search": "misturadora de duche"},
+                {"name": "Sanita suspensa", "quantity": 1, "unit": "u", "search": "sanita suspensa estrutura de apoio"},
+                {"name": "Móvel lavatório", "quantity": 1, "unit": "u", "search": "móvel lavatório casa de banho"},
+                {"name": "Pladur hidrófugo", "quantity": max(4, round(qty * 0.8)), "unit": "plaque",
+                 "search": "pladur hidrófugo 250x120"},
             ]
         elif key == "plomberie":
             items += [
-                {"name": "Tube multicouche 16mm", "quantity": max(1, round(qty / 20)), "unit": "couronne 50m",
-                 "search": "tube multicouche 16mm 50m"},
-                {"name": "Raccords à sertir", "quantity": max(1, round(qty / 10)), "unit": "lot",
-                 "search": "raccord multicouche a sertir"},
+                {"name": "Tubo multicamada 16mm", "quantity": max(1, round(qty / 20)), "unit": "couronne 50m",
+                 "search": "tubo multicamada 16mm 50m"},
+                {"name": "Conexões de cravação", "quantity": max(1, round(qty / 10)), "unit": "lot",
+                 "search": "acessório multicamada de cravar"},
             ]
         elif key == "electricite":
             items += [
-                {"name": "Câble R2V 3G2.5", "quantity": max(1, round(qty / 40)), "unit": "couronne 100m",
+                {"name": "Cabo R2V 3G2.5", "quantity": max(1, round(qty / 40)), "unit": "couronne 100m",
                  "search": "cable r2v 3g2.5 100m"},
-                {"name": "Gaine ICTA 20mm", "quantity": max(1, round(qty / 30)), "unit": "couronne",
-                 "search": "gaine icta 20mm"},
+                {"name": "Conduta ICTA 20mm", "quantity": max(1, round(qty / 30)), "unit": "couronne",
+                 "search": "tubo corrugado 20mm"},
             ]
         elif key == "parquet":
-            items.append({"name": "Parquet stratifié", "quantity": round(qty * 1.07, 2), "unit": "m²",
+            items.append({"name": "Parquet laminado", "quantity": round(qty * 1.07, 2), "unit": "m²",
                           "search": "parquet stratifie clipsable"})
         elif key in ("maconnerie", "parpaing", "brique", "mur_parpaing", "mur_brique"):
             material = "brique" if "brique" in key else lot.get("material", "parpaing")
@@ -397,7 +377,7 @@ async def materials_list(body: MaterialsIn) -> dict:
                 block_key=lot.get("block"), include_render=bool(lot.get("include_render")))
             items += calculators.masonry(**mk)["materials"]
         elif key == "menuiseries":
-            items.append({"name": "Fenêtre PVC double vitrage", "quantity": round(qty), "unit": "u",
+            items.append({"name": "Janela PVC vidro duplo", "quantity": round(qty), "unit": "u",
                           "search": "fenetre pvc double vitrage"})
     merged: dict[str, dict] = {}
     for it in items:

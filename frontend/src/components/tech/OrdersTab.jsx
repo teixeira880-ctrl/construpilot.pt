@@ -128,8 +128,8 @@ export default function OrdersTab({ suppliers = [] }) {
                           data-testid={`order-status-${o.order_id}`}
                           className={`text-[11px] font-bold rounded-full px-2 py-1 border-0 cursor-pointer ${STATUS[o.status] || STATUS.brouillon}`}>
                     <option value="brouillon">Rascunho</option>
-                    <option value="enviado">Enviada</option>
-                    <option value="confirmado">Confirmada</option>
+                    <option value="envoyé">Enviada</option>
+                    <option value="confirmé">Confirmada</option>
                   </select>
                   <button onClick={() => del(o.order_id)} data-testid={`order-delete-${o.order_id}`}>
                     <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />

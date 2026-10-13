@@ -340,32 +340,29 @@ def quick_conclusion(report: dict) -> str:
     bad_c = [c for c in chains if c["status"] != "ok"]
     parts = []
     if bad_f:
-        parts.append("Les dimensions générales opposées présentent des écarts de "
+        parts.append("As dimensões gerais opostas apresentam diferenças de "
                      + " et ".join(f"{abs(f['delta_cm']):g} cm ({f['a_m']:.2f} m {f['a_side']} / {f['b_m']:.2f} m {f['b_side']})" for f in bad_f)
-                     + " : l'emprise n'est pas confirmée rectangulaire sans cote unique, diagonale ou plan d'axes.")
+                     + " : a implantação não está confirmada como retangular sem cota única, diagonal ou planta de eixos.")
     if bad_c:
-        parts.append("Chaîne(s) de cotes ne se refermant pas : "
-                     + " ; ".join(f"{c['total_m']:.2f} m contre {c['sum_m']:.2f} m en cotes partielles ({c['delta_cm']:+g} cm)" for c in bad_c) + ".")
+        parts.append("Cadeia(s) de cotas que não fecham: "
+                     + " ; ".join(f"{c['total_m']:.2f} m contra {c['sum_m']:.2f} m en cotes partielles ({c['delta_cm']:+g} cm)" for c in bad_c) + ".")
     for f in bad_f:
         if f.get("diag"):
-            parts.append(f"Si l'écart de {f['diag']['offset_cm']:g} cm est un défaut d'équerrage, les diagonales diffèrent d'environ "
-                         f"{abs(f['diag']['diff_cm']):g} cm ({f['diag']['d1_m']:.2f} m / {f['diag']['d2_m']:.2f} m), soit un angle dévié de {f['diag']['angle_deg']:g}°.")
+            parts.append(f"Se a diferença de {f['diag']['offset_cm']:g} cm for um defeito de esquadria, as diagonais diferem cerca de {abs(f['diag']['diff_cm']):g} cm ({f['diag']['d1_m']:.2f} m / {f['diag']['d2_m']:.2f} m), ou seja, um desvio angular de {f['diag']['angle_deg']:g}°.")
     bad_e = [e for e in report.get("elements") or [] if e["status"] != "ok"]
     if bad_e:
-        parts.append("Éléments dessinés dont la largeur ne correspond pas à l'étiquette : "
+        parts.append("Elementos desenhados cuja largura não corresponde à etiqueta: "
                      + " ; ".join(f"{e['label']} dessiné {e['measured_w_m'] * 100:.0f} cm ({e['delta_mm']:+.0f} mm)" for e in bad_e[:6])
                      + (f" et {len(bad_e) - 6} autre(s)" if len(bad_e) > 6 else "") + ".")
     floating = [it for it in report.get("items") or [] if it.get("anchor_status") in ("warn", "ko") and not it.get("ignored")]
     if floating:
-        parts.append(f"{len(floating)} cote(s) probablement erronée(s) : leurs extrémités ne sont alignées sur aucune face ni axe de mur dessiné (écart > 10 mm en projection perpendiculaire) — "
+        parts.append(f'{len(floating)} cota(s) provavelmente errada(s): as suas extremidades não estão alinhadas com nenhuma face nem eixo de parede desenhado (diferença > 10 mm em projeção perpendicular) — '
                      + ", ".join(f"#{it['index']} {it['indicated_m']:.2f} m ({max(a for a in it['anchor_mm'] if a is not None):.0f} mm)" for it in floating[:6]) + ".")
     if sm.get("ko") or sm.get("warn"):
-        parts.append(f"{sm.get('ko', 0)} cote(s) incohérente(s) et {sm.get('warn', 0)} à vérifier entre valeur inscrite et mesure.")
+        parts.append(f"{sm.get('ko', 0)} cota(s) incoerente(s) e {sm.get('warn', 0)} a verificar entre o valor inscrito e a medição.")
     if not parts:
-        return ("Toutes les cotes inscrites correspondent à la mesure, les chaînes se referment, les dimensions "
-                "générales opposées sont égales, les cotes sont rattachées au dessin et les éléments étiquetés ont la largeur "
-                "annoncée : aucune incohérence relevée sur cette page.")
-    parts.append("Ces points doivent être clarifiés sur un plan corrigé avant l'implantation.")
+        return ("Todas as cotas inscritas correspondem à medição, as cadeias fecham, as dimensões gerais opostas são iguais, as cotas estão associadas ao desenho e os elementos etiquetados têm a largura anunciada: nenhuma incoerência registada nesta página.")
+    parts.append("Estes pontos devem ser esclarecidos numa planta corrigida antes da implantação.")
     return " ".join(parts)
 
 
@@ -448,9 +445,7 @@ def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float
         "auto_spans": [{**sp, "index": i + 1} for i, sp in enumerate(auto_spans or [])],
         "measure_reliable": measure_reliable,
         "abstention": None if measure_reliable else (
-            "Mesure à l'échelle non fiable sur cette page (dispersion des ratios mesure/cote) : les écarts "
-            "mesurés ne sont pas signalés comme incohérences. Seuls les contrôles arithmétiques (chaînes, "
-            "fermetures) font foi. Calibrez l'échelle manuellement pour réactiver la mesure."),
+            "Medição à escala não fiável nesta página (dispersão das razões medição/cota): as diferenças medidas não são assinaladas como incoerências. Só os controlos aritméticos (cadeias, fechos) fazem fé. Calibre a escala manualmente para reativar a medição."),
         "summary": {"total": len(active), "ignored": len(items) - len(active), **counts,
                     "chains_total": len(chains),
                     "chains_ko": chain_counts["ko"], "chains_warn": chain_counts["warn"],

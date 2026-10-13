@@ -55,7 +55,7 @@ async def deck_requests_csv():
     rows = await db.deck_downloads.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)
     buf = io.StringIO()
     wr = csv.writer(buf, delimiter=";")
-    wr.writerow(["Date", "Nom", "E-mail", "Fonds / société", "Note", "IP", "Referer"])
+    wr.writerow(["Data", "Nome", "E-mail", "Fundo / sociedade", "Nota", "IP", "Referer"])
     for r in rows:
         wr.writerow([
             (r.get("created_at") or "")[:19].replace("T", " "),
@@ -64,7 +64,7 @@ async def deck_requests_csv():
         ])
     data = buf.getvalue().encode("utf-8-sig")
     return Response(content=data, media_type="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=leads-investisseurs.csv"})
+                    headers={"Content-Disposition": "attachment; filename=leads-investidores.csv"})
 
 
 @router.api_route("/pitch-deck.pdf", methods=["GET", "HEAD"])

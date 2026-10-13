@@ -71,9 +71,9 @@ class CheckoutIn(BaseModel):
 async def checkout(body: CheckoutIn, user=Depends(current_user)):
     plan = await db.plans.find_one({"plan_id": body.plan_id, "active": True}, {"_id": 0})
     if not plan:
-        raise HTTPException(status_code=404, detail="Plan introuvable")
+        raise HTTPException(status_code=404, detail="Planta não encontrada")
     if plan["kind"] == "free":
-        raise HTTPException(status_code=400, detail="Le plan gratuit ne nécessite pas de paiement")
+        raise HTTPException(status_code=400, detail="O plano gratuito não requer pagamento")
     try:
         result = await monetization.create_checkout(user, plan, body.origin_url, body.promo_code)
     except Exception as e:
@@ -86,7 +86,7 @@ async def checkout(body: CheckoutIn, user=Depends(current_user)):
             except Exception as e2:  # noqa: BLE001
                 e = e2
         logger.exception("Checkout error")
-        raise HTTPException(status_code=502, detail=f"Stripe indisponible: {e}")
+        raise HTTPException(status_code=502, detail=f'Stripe indisponível: {e}')
     return result
 
 
@@ -95,7 +95,7 @@ async def payment_status(session_id: str) -> dict:
     try:
         rec = await monetization.sync_status(session_id)
     except ValueError:
-        raise HTTPException(status_code=404, detail="Session inconnue")
+        raise HTTPException(status_code=404, detail="Sessão desconhecida")
     return {"session_id": rec["session_id"],
             "status": rec["status"],
             "payment_status": rec["payment_status"],
@@ -167,7 +167,7 @@ class PortalIn(BaseModel):
 async def customer_portal(body: PortalIn, user=Depends(current_user)) -> dict:
     import stripe
     if not user.get("stripe_customer_id"):
-        raise HTTPException(status_code=404, detail="Aucun compte de facturation")
+        raise HTTPException(status_code=404, detail="Nenhuma conta de faturação")
     session = stripe.billing_portal.Session.create(
         customer=user["stripe_customer_id"],
         return_url=body.return_url)

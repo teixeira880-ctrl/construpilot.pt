@@ -189,7 +189,7 @@ def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False, 
             except Exception:
                 pass  # si deskew échoue, on continue avec l'image originale
         return process_image(data, mime or "image/png")
-    raise ValueError(f"Format non supporté : {mime or filename}")
+    raise ValueError(f'Formato não suportado: {mime or filename}')
 
 
 # ============ Auto échelle en pixels/mètre (méthode A) ============

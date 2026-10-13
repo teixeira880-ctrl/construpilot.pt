@@ -87,7 +87,7 @@ async def update_preset(preset_id: str, body: ToolPresetIn, user=Depends(current
         {"$set": _normalize(body)},
     )
     if res.matched_count == 0:
-        raise HTTPException(404, "Modèle introuvable")
+        raise HTTPException(404, "Modelo não encontrado")
     doc = await db.tool_presets.find_one(
         {"preset_id": preset_id, "user_id": user["user_id"]}, {"_id": 0}
     )
@@ -100,7 +100,7 @@ async def delete_preset(preset_id: str, user=Depends(current_user)) -> dict:
         {"preset_id": preset_id, "user_id": user["user_id"]}
     )
     if res.deleted_count == 0:
-        raise HTTPException(404, "Modèle introuvable")
+        raise HTTPException(404, "Modelo não encontrado")
     return {"ok": True}
 
 
@@ -111,22 +111,22 @@ async def seed_default_presets(user=Depends(current_user)) -> dict:
     if existing > 0:
         return {"ok": True, "created": 0, "already_had": existing}
     defaults = [
-        {"name": "Mur ext. porteur 20 cm", "kind": "wall", "unit": "m²",
+        {"name": "Parede ext. resistente 20 cm", "kind": "wall", "unit": "m²",
          "color": "#0ea5e9", "price_per_unit": 85.0,
          "params": {"thickness_mm": 200, "material": "parpaing"}},
-        {"name": "Cloison BA13 72/48 + laine 45 mm", "kind": "wall", "unit": "m²",
+        {"name": "Divisória em pladur 72/48 + lã 45 mm", "kind": "wall", "unit": "m²",
          "color": "#22c55e", "price_per_unit": 42.0,
          "params": {"thickness_mm": 72, "material": "placo", "insulation_r": 1.25}},
-        {"name": "Isolant combles laine roche 200 mm", "kind": "insulation", "unit": "m²",
+        {"name": "Isolamento do desvão em lã de rocha 200 mm", "kind": "insulation", "unit": "m²",
          "color": "#a855f7", "price_per_unit": 18.5,
          "params": {"thickness_mm": 200, "r_value": 5.0}},
-        {"name": "Sol carrelage grès cérame 60×60", "kind": "floor", "unit": "m²",
+        {"name": "Pavimento em grés porcelânico 60×60", "kind": "floor", "unit": "m²",
          "color": "#f97316", "price_per_unit": 55.0,
          "params": {"format_cm": "60x60", "antidérapant": True}},
-        {"name": "Peinture mate blanche 2 couches", "kind": "paint", "unit": "m²",
+        {"name": "Pintura mate branca 2 demãos", "kind": "paint", "unit": "m²",
          "color": "#eab308", "price_per_unit": 12.5,
          "params": {"coats": 2, "finish": "mate"}},
-        {"name": "Ossature bois 45×145 entraxe 60", "kind": "wall", "unit": "ml",
+        {"name": "Estrutura de madeira 45×145 afastamento 60", "kind": "wall", "unit": "ml",
          "color": "#8b5cf6", "price_per_unit": 9.0,
          "params": {"section_mm": "45x145", "spacing_cm": 60}},
     ]

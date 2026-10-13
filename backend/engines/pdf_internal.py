@@ -51,18 +51,16 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
     story: list = []
     _story_header_branding(story, branding, S)
 
-    story.append(Paragraph("VERSION INTERNE — CONFIDENTIEL", S["kicker"]))
+    story.append(Paragraph("VERSÃO INTERNA — CONFIDENCIAL", S["kicker"]))
     story.append(Paragraph(
-        f"Analyse de marge · Devis {escape(doc.get('number') or doc.get('doc_id') or '')}"
-        f"{' · ' + escape(doc.get('title')) if doc.get('title') else ''}", S["h1"]))
+        f"Análise de margem · Orçamento {escape(doc.get('number') or doc.get('doc_id') or '')}{(' · ' + escape(doc.get('title')) if doc.get('title') else '')}", S["h1"]))
     story.append(Paragraph(
-        "Coûts de revient (main-d'œuvre + fournitures) et marge prévisionnelle par ouvrage et par lot. "
-        "<b>Ne pas transmettre au client.</b>", S["muted"] if "muted" in S else S["body"]))
+        "Custos de produção (mão de obra + materiais) e margem previsional por artigo e por capítulo. <b>Não transmitir ao cliente.</b>", S["muted"] if "muted" in S else S["body"]))
     story.append(Spacer(1, 6))
 
     lines = doc.get("lines") or []
-    header = ["Désignation", "Qté", "U", "PU vente HT", "Coût unit. HT", "Total vente HT",
-              "Coût total", "Marge €", "Marge %"]
+    header = ["Designação", "Qtd.", "U", "PU venda s/ IVA", "Custo unit. s/ IVA", "Total venda s/ IVA",
+              "Custo total", "Marge €", "Marge %"]
     rows: list = [header]
     styles: list = []
 
@@ -111,7 +109,7 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
         sub_margin = round(sub_sale - sub_cost, 2) if sub_has_cost else None
         sub_pct = (sub_margin / sub_sale * 100) if sub_margin is not None and sub_sale > 0 else None
         ri = len(rows)
-        rows.append([Paragraph(f"<b>Sous-total · {escape(cat)}</b>", S["body"]), "", "", "", "",
+        rows.append([Paragraph(f'<b>Subtotal · {escape(cat)}</b>', S["body"]), "", "", "", "",
                      Paragraph(f"<b>{_fmt(round(sub_sale, 2), '€')}</b>", S["body"]),
                      _fmt(round(sub_cost, 2), "€") if sub_has_cost else "—",
                      _fmt(sub_margin, "€") if sub_margin is not None else "—", _pct(sub_pct)])
@@ -126,7 +124,7 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
         lot_summary.append((cat, sub_sale, sub_margin, sub_pct, sub_loss))
 
     if not lines:
-        rows.append(["Aucune ligne"] + [""] * 8)
+        rows.append(["Sem linhas"] + [""] * 8)
 
     extras = [
         ("BACKGROUND", (0, 0), (-1, 0), DARK), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -142,11 +140,11 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
     # Récapitulatif
     tot_margin = round(tot_sale - tot_cost, 2) if has_cost else None
     tot_pct = (tot_margin / tot_sale * 100) if tot_margin is not None and tot_sale > 0 else None
-    story.append(Paragraph("Synthèse", S["h2"]))
-    recap = [["Total vente HT", _fmt(round(tot_sale, 2), "€")],
-             ["Coût de revient total", _fmt(round(tot_cost, 2), "€") if has_cost else "— (aucun coût saisi)"],
-             ["Marge prévisionnelle", f"{_fmt(tot_margin, '€')} · {_pct(tot_pct)}" if tot_margin is not None else "—"],
-             ["Ouvrages chiffrés à perte", str(loss_count) if has_cost else "—"]]
+    story.append(Paragraph("Síntese", S["h2"]))
+    recap = [["Total venda s/ IVA", _fmt(round(tot_sale, 2), "€")],
+             ["Custo de produção total", _fmt(round(tot_cost, 2), "€") if has_cost else "— (nenhum custo introduzido)"],
+             ["Margem previsional", f"{_fmt(tot_margin, '€')} · {_pct(tot_pct)}" if tot_margin is not None else "—"],
+             ["Artigos orçamentados com prejuízo", str(loss_count) if has_cost else "—"]]
     rextras = [("FONTSIZE", (0, 0), (-1, -1), 9), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
                ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
                ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, LIGHT_GREY])]
@@ -159,7 +157,7 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
     if lot_summary and has_cost:
         story.append(Spacer(1, 8))
         story.append(Paragraph("Marge par lot", S["h2"]))
-        lrows = [["Lot", "Vente HT", "Marge €", "Marge %", "À perte"]]
+        lrows = [["Lote", "Venda s/ IVA", "Marge €", "Marge %", "Com prejuízo"]]
         lstyles = [("BACKGROUND", (0, 0), (-1, 0), DARK), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                    ("FONTSIZE", (0, 0), (-1, -1), 8.5), ("ALIGN", (1, 1), (-1, -1), "RIGHT")]
         for i, (cat, sale, margin, pct, loss) in enumerate(lot_summary, start=1):
@@ -171,15 +169,14 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
 
     story.append(Spacer(1, 12))
     story.append(Paragraph(
-        "Document de travail interne généré par ConstruPilot. Les coûts de revient proviennent de votre bibliothèque "
-        "et de vos saisies ; la marge est prévisionnelle (hors frais généraux non affectés).",
+        "Documento de trabalho interno gerado pelo ConstruPilot. Os custos de produção vêm da sua biblioteca e das suas introduções; a margem é previsional (sem custos gerais não afetados).",
         S["small"] if "small" in S else S["body"]))
 
     def _watermark(canvas, _doc):
         canvas.saveState()
         canvas.setFont("Helvetica-Bold", 9)
         canvas.setFillColor(ORANGE)
-        canvas.drawRightString(landscape(A4)[0] - 14 * mm, 8 * mm, "VERSION INTERNE — NE PAS TRANSMETTRE AU CLIENT")
+        canvas.drawRightString(landscape(A4)[0] - 14 * mm, 8 * mm, "VERSÃO INTERNA — NÃO TRANSMITIR AO CLIENTE")
         canvas.restoreState()
 
     pdf.build(story, onFirstPage=_watermark, onLaterPages=_watermark)

@@ -9,7 +9,7 @@ from __future__ import annotations
 from engines.structuro_check import DISCLAIMER, util_status
 
 VERSION = "ec2-crack-0.1.0"
-SOURCE = "EN 1992-1-1 §7.3.2 (As,min) & §7.3.4 (ouverture de fissures) — méthodologie publique — à vérifier"
+SOURCE = "NP EN 1992-1-1 §7.3.2 (As,min) e §7.3.4 (abertura de fendas) — metodologia pública — a verificar"
 ES = 200000.0
 
 
@@ -60,12 +60,12 @@ def crack_study(model: dict, result: dict, opts: dict, auto: dict | None = None)
         d = designs.get(eid)
         if not d:
             rows.append({"id": eid, "status": "no_design",
-                         "message": "Pas d'armature EN 1992 calculée (voir panneau béton)."})
+                         "message": "Sem armadura NP EN 1992 calculada (ver painel de betão)."})
             continue
         mqp = _max_moment(cases, "ELSqp", eid)
         if not mqp:
             rows.append({"id": eid, "status": "need_sls",
-                         "message": "Générez les combinaisons ELS quasi-permanentes (moment de service manquant)."})
+                         "message": "Gere as combinações ELS quase permanentes (momento de serviço em falta)."})
             continue
         b, h, dd = d["b_m"] * 1000, d["h_m"] * 1000, d["d_m"] * 1000
         scheme = d.get("scheme") or {}
@@ -93,7 +93,6 @@ def crack_study(model: dict, result: dict, opts: dict, auto: dict | None = None)
     reinjected = bool(ec2_out.get("reinjected_from_automation"))
     return {"version": VERSION, "elements": rows, "execution_ready": False,
             "reinjected_from_automation": reinjected,
-            "note": "Ouverture de fissures sous moment quasi-permanent ELSqp (As,prov du ferraillage proposé ; "
-                    "hc,ef simplifié ; σs=Mqp/(As·0.9d))."
-                    + (" Ø issu des aciers CHOISIS par la chaîne automatique (réinjectés §7.3)." if reinjected else "")
+            "note": "Abertura de fendas sob momento quase permanente ELSqp (As,prov das armaduras propostas; hc,ef simplificado; σs=Mqp/(As·0.9d))."
+                    + (" Ø proveniente dos aços ESCOLHIDOS pela cadeia automática (reinjetados §7.3)." if reinjected else "")
                     + " " + DISCLAIMER}

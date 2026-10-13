@@ -52,7 +52,7 @@ def cracked_long_term(w_elastic_mm: float, ei_ref_kn_m2: float, *, b_m: float, h
             "ec_eff_mpa": round(ec_eff, 0), "i_cracked_cm4": round(i2 / 1e4, 0), "i_gross_cm4": round(ig / 1e4, 0),
             "phi_creep": phi_creep,
             "formula": "w=ζ·w_II+(1−ζ)·w_I ; ζ=1−β(Mcr/M)² ; Ec,eff=Ecm/(1+φ) (EN 1992-1-1 §7.4.3)",
-            "note": "Retrait non inclus ; φ=2,0 valeur usuelle à vérifier selon âge de chargement et humidité."}
+            "note": "Retração não incluída; φ=2,0 valor usual a verificar consoante a idade de carregamento e a humidade."}
 
 
 def _max_defl(cases: list, prefix: str, eid: str):
@@ -91,13 +91,13 @@ def deflection_study(model: dict, result: dict, opts: dict) -> dict:
             L, span_source = None, "manquant"
         if not L:
             rows.append({"id": eid, "status": "need_span", "span_source": span_source,
-                         "message": "Portée absente du plan : saisir la portée pour vérifier la flèche."})
+                         "message": "Vão ausente da planta: introduza o vão para verificar a flecha."})
             continue
         wc = _max_defl(cases, "ELScar", eid)
         wq = _max_defl(cases, "ELSqp", eid)
         if wc is None and wq is None:
             rows.append({"id": eid, "status": "no_deflection", "span_m": round(float(L), 3), "span_source": span_source,
-                         "message": "Flèche non calculée : définir l'EI (rigidité) de la poutre dans le modèle."})
+                         "message": "Flecha não calculada: defina o EI (rigidez) da viga no modelo."})
             continue
         lim_c, lim_q = float(L) * 1000 / rc, float(L) * 1000 / rq
         rows.append({"id": eid, "status": "ok", "span_m": round(float(L), 3), "span_source": span_source,
@@ -108,5 +108,4 @@ def deflection_study(model: dict, result: dict, opts: dict) -> dict:
                             "limit_mm": round(lim_q, 2), "ratio_label": f"L/{int(rq)}",
                             "utilisation": util_status(wq["value"] / lim_q if wq else None)}})
     return {"version": VERSION, "elements": rows, "execution_ready": False,
-            "note": "Flèches élastiques de l'enveloppe EN 1990 (caractéristique / quasi-permanente) "
-                    "vs L/ratio. La flèche dépend de l'EI saisi (béton/acier/bois). " + DISCLAIMER}
+            "note": "Flechas elásticas da envolvente EN 1990 (característica / quase-permanente) vs L/razão. A flecha depende do EI introduzido (betão/aço/madeira). " + DISCLAIMER}

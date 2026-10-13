@@ -26,9 +26,9 @@ LINE = colors.HexColor("#cbd5e1")
 
 def _fmt_datum(d: dict | None) -> str:
     if not d or d.get("value") in (None, ""):
-        return "? (à documenter)"
+        return "? (a documentar)"
     if d.get("source") not in sm.DOCUMENTED_SOURCES:
-        return f"{d.get('value')} {d.get('unit') or ''} (déclaré, à confirmer)".strip()
+        return f"{d.get('value')} {d.get('unit') or ''} (declarado, a confirmar)".strip()
     return f"{d.get('value')} {d.get('unit') or ''}".strip()
 
 
@@ -41,16 +41,14 @@ def _header(c, study: dict, sheet_code: str, sheet_title: str):
     c.setFont("Helvetica", 8)
     c.drawRightString(W - 10 * mm, H - 7 * mm, (study.get("title") or "")[:70])
     c.drawRightString(W - 10 * mm, H - 12 * mm,
-                      f"Rév. {study.get('revision', 1)} · Niveau : "
-                      f"{study.get('output_level', 'exploration')}")
+                      f"Rev. {study.get('revision', 1)} · Niveau : {study.get('output_level', 'exploration')}")
     # Bandeau statut (honnêteté)
     c.setFillColor(colors.HexColor("#fff7ed"))
     c.rect(0, H - 24 * mm, W, 8 * mm, fill=1, stroke=0)
     c.setFillColor(WARN)
     c.setFont("Helvetica-Bold", 8)
     c.drawString(10 * mm, H - 21.5 * mm,
-                 "ESQUISSE — ÉTUDE PRÉLIMINAIRE, NON À L'ÉCHELLE, COTES À CONFIRMER. "
-                 "NON VALABLE POUR EXÉCUTION. Moteur de calcul non disponible (aucun dimensionnement).")
+                 "ESBOÇO — ESTUDO PRELIMINAR, SEM ESCALA, COTAS A CONFIRMAR. NÃO VÁLIDO PARA EXECUÇÃO. Motor de cálculo indisponível (nenhum dimensionamento).")
 
 
 def _footer(c, study: dict):
@@ -60,7 +58,7 @@ def _footer(c, study: dict):
     c.setFont("Helvetica", 7)
     note = sm.RULEPACK.get("note", "")
     c.drawString(10 * mm, 8 * mm, f"Référentiel calcul : {sm.RULEPACK.get('status')} — {note}"[:150])
-    c.drawRightString(W - 10 * mm, 8 * mm, "StructuroPilot · Lot A · esquisse associée à la révision ci-dessus")
+    c.drawRightString(W - 10 * mm, 8 * mm, "StructuroPilot · Lote A · esboço associado à revisão acima")
 
 
 def _draw_elevation(c, study: dict, x0: float, y0: float, w: float, h: float, project: bool):
@@ -68,10 +66,10 @@ def _draw_elevation(c, study: dict, x0: float, y0: float, w: float, h: float, pr
     levels = study.get("levels") or []
     c.setFont("Helvetica-Bold", 9)
     c.setFillColor(INK)
-    c.drawString(x0, y0 + h + 4 * mm, "Élévation schématique (niveaux)")
+    c.drawString(x0, y0 + h + 4 * mm, "Alçado esquemático (níveis)")
     if not levels:
         c.setFont("Helvetica", 8); c.setFillColor(MUTED)
-        c.drawString(x0, y0 + h / 2, "Aucun niveau défini — à documenter.")
+        c.drawString(x0, y0 + h / 2, "Nenhum nível definido — a documentar.")
         return
     n = len(levels)
     band = h / n
@@ -83,7 +81,7 @@ def _draw_elevation(c, study: dict, x0: float, y0: float, w: float, h: float, pr
         c.setFillColor(colors.HexColor("#f1f5f9"))
         c.rect(x0, y, w, band - 2, fill=1, stroke=1)
         c.setFillColor(INK); c.setFont("Helvetica-Bold", 8)
-        c.drawString(x0 + 3 * mm, y + band / 2 - 1 * mm, lvl.get("name", "Niveau"))
+        c.drawString(x0 + 3 * mm, y + band / 2 - 1 * mm, lvl.get("name", "Piso"))
         c.setFont("Helvetica", 7); c.setFillColor(MUTED)
         c.drawRightString(x0 + w - 3 * mm, y + band / 2 - 1 * mm,
                           "±" + _fmt_datum(lvl.get("elevation_m")))
@@ -96,14 +94,14 @@ def _draw_elevation(c, study: dict, x0: float, y0: float, w: float, h: float, pr
         c.rect(x0 + w * 0.35, y + 2, ow, band - 6, fill=1, stroke=1)
         c.setFillColor(WARN); c.setFont("Helvetica-Bold", 6.5)
         op = _fmt_datum((study.get("data") or {}).get("ouverture.portee"))
-        c.drawCentredString(x0 + w * 0.35 + ow / 2, y + band / 2 - 1 * mm, f"Ouverture {op}")
+        c.drawCentredString(x0 + w * 0.35 + ow / 2, y + band / 2 - 1 * mm, f'Vão {op}')
 
 
 def _draw_tables(c, study: dict, x0: float, y_top: float):
     data = study.get("data") or {}
     # Éléments
     c.setFont("Helvetica-Bold", 9); c.setFillColor(INK)
-    c.drawString(x0, y_top, "Éléments du modèle")
+    c.drawString(x0, y_top, "Elementos do modelo")
     y = y_top - 5 * mm
     c.setFont("Helvetica", 7.5)
     for el in (study.get("elements") or [])[:10]:
@@ -112,12 +110,12 @@ def _draw_tables(c, study: dict, x0: float, y_top: float):
                             f"({el.get('level') or '—'})")
         y -= 4.2 * mm
     if not study.get("elements"):
-        c.setFillColor(MUTED); c.drawString(x0, y, "Aucun élément."); y -= 4.2 * mm
+        c.setFillColor(MUTED); c.drawString(x0, y, "Nenhum elemento."); y -= 4.2 * mm
 
     # Données géométriques documentées / inconnues
     y -= 3 * mm
     c.setFont("Helvetica-Bold", 9); c.setFillColor(INK)
-    c.drawString(x0, y, "Données & zones à reconnaître")
+    c.drawString(x0, y, "Dados e zonas a reconhecer")
     y -= 5 * mm
     c.setFont("Helvetica", 7.5)
     shown = ["ouverture.position", "ouverture.portee", "mur.epaisseur", "mur.materiau_resistance",
@@ -143,7 +141,7 @@ def _sheet(c, study: dict, code: str, title: str, project: bool):
 def build_study_sheets(study: dict) -> bytes:
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=PAGE)
-    _sheet(c, study, "EXI", "Existant (esquisse)", project=False)
-    _sheet(c, study, "STR", "Projet — ouverture (esquisse)", project=True)
+    _sheet(c, study, "EXI", "Existente (esboço)", project=False)
+    _sheet(c, study, "STR", "Projeto — abertura (esboço)", project=True)
     c.save()
     return buf.getvalue()

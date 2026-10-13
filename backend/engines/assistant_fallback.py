@@ -36,12 +36,10 @@ def friendly_error(exc: Exception) -> str:
     """Message clair pour l'utilisateur, sans aucun détail technique (clé, coût, fournisseur, litellm)."""
     msg = str(exc).lower()
     if any(m in msg for m in ("budget", "exceeded", "current cost", "max budget", "quota", "no credits", "credits remaining", "insufficient", "payment", "billing")):
-        return ("L'assistant a atteint sa limite d'utilisation pour le moment. "
-                "Merci de réessayer dans quelques minutes.")
+        return ("O assistente atingiu o seu limite de utilização por agora. Tente novamente dentro de alguns minutos.")
     if is_rate_error(exc):
-        return ("L'assistant est très sollicité en ce moment. "
-                "Merci de réessayer dans quelques instants.")
-    return "L'assistant est momentanément indisponible. Merci de réessayer dans un instant."
+        return ("O assistente está muito solicitado neste momento. Tente novamente dentro de instantes.")
+    return "O assistente está momentaneamente indisponível. Tente novamente dentro de instantes."
 
 
 def primary_provider() -> str:
@@ -55,7 +53,7 @@ def fallback_available() -> bool:
 async def openai_degraded() -> dict | None:
     """Active degradation record (or None). Missing OpenAI key counts as degraded."""
     if not os.environ.get("OPENAI_API_KEY"):
-        return {"reason": "clé OpenAI absente", "until": None}
+        return {"reason": "chave OpenAI ausente", "until": None}
     rec = await db.assistant_runtime.find_one({"key": "openai_degraded"}, {"_id": 0})
     if rec and rec.get("until") and rec["until"] > datetime.now(timezone.utc).isoformat():
         return rec
@@ -77,8 +75,8 @@ async def clear_openai_degraded() -> None:
 async def use_fallback_now() -> tuple[bool, str | None]:
     """(fallback?, reason) for a new turn."""
     if primary_provider() == "anthropic":
-        return True, "fournisseur principal : clé universelle"
+        return True, "fornecedor principal: chave universal"
     if not fallback_available():
         return False, None
     rec = await openai_degraded()
-    return (True, f"clé OpenAI indisponible ({rec['reason']}) — repli sur la clé universelle") if rec else (False, None)
+    return (True, f"chave OpenAI indisponível ({rec['reason']}) — recurso à chave universal") if rec else (False, None)

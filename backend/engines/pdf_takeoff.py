@@ -15,16 +15,16 @@ from reportlab.graphics.shapes import Drawing, Circle, String
 # Iter 61 — icônes visuelles par catégorie pour la table des modèles.
 # Chaque catégorie a une couleur + une lettre (initiale) affichée dans un cercle.
 PRESET_KIND_ICONS = {
-    "wall":       {"color": colors.HexColor("#0ea5e9"), "letter": "M", "label": "Mur", "full": "Mur"},
-    "opening":    {"color": colors.HexColor("#a855f7"), "letter": "O", "label": "Ouvert.", "full": "Ouverture"},
-    "floor":      {"color": colors.HexColor("#f97316"), "letter": "S", "label": "Sol", "full": "Sol"},
-    "ceiling":    {"color": colors.HexColor("#8b5cf6"), "letter": "P", "label": "Plafond", "full": "Plafond"},
-    "paint":      {"color": colors.HexColor("#eab308"), "letter": "PEI", "label": "Peint.", "full": "Peinture"},
-    "insulation": {"color": colors.HexColor("#22c55e"), "letter": "I", "label": "Isol.", "full": "Isolation"},
-    "counter":    {"color": colors.HexColor("#ec4899"), "letter": "#", "label": "Cptr.", "full": "Comptage"},
-    "roof":       {"color": colors.HexColor("#3b82f6"), "letter": "T", "label": "Toit.", "full": "Toiture"},
-    "note":       {"color": colors.HexColor("#64748b"), "letter": "N", "label": "Note", "full": "Note"},
-    "other":      {"color": colors.HexColor("#64748b"), "letter": "?", "label": "Autre", "full": "Autre"},
+    "wall":       {"color": colors.HexColor("#0ea5e9"), "letter": "M", "label": "Parede", "full": "Parede"},
+    "opening":    {"color": colors.HexColor("#a855f7"), "letter": "O", "label": "Aberto.", "full": "Vão"},
+    "floor":      {"color": colors.HexColor("#f97316"), "letter": "S", "label": "Pavimento", "full": "Pavimento"},
+    "ceiling":    {"color": colors.HexColor("#8b5cf6"), "letter": "P", "label": "Teto", "full": "Teto"},
+    "paint":      {"color": colors.HexColor("#eab308"), "letter": "PEI", "label": "Peint.", "full": "Pintura"},
+    "insulation": {"color": colors.HexColor("#22c55e"), "letter": "I", "label": "Isol.", "full": "Isolamento"},
+    "counter":    {"color": colors.HexColor("#ec4899"), "letter": "#", "label": "Cptr.", "full": "Contagem"},
+    "roof":       {"color": colors.HexColor("#3b82f6"), "letter": "T", "label": "Cobert.", "full": "Toiture"},
+    "note":       {"color": colors.HexColor("#64748b"), "letter": "N", "label": "Nota", "full": "Nota"},
+    "other":      {"color": colors.HexColor("#64748b"), "letter": "?", "label": "Outro", "full": "Outro"},
 }
 
 
@@ -128,8 +128,7 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
         info_lines.append(Paragraph(f"<b>{branding['company_name']}</b>", S["body"]))
     if branding.get("verified"):
         info_lines.append(Paragraph(
-            '<font color="#3F7D54"><b>&#10004; Pro vérifié</b></font> '
-            '<font color="#64748B">— identité et assurance décennale contrôlées par ConstruPilot</font>',
+            "<font color=\"#3F7D54\"><b>&#10004; Profissional verificado</b></font> <font color=\"#64748B\">— identidade e seguro de responsabilidade civil controlados pelo ConstruPilot</font>",
             S["muted"]))
     if branding.get("contact_line"):
         info_lines.append(Paragraph(branding["contact_line"], S["muted"]))
@@ -137,9 +136,9 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
     if branding.get("nif"):
         _fisc.append(f"NIF {branding['nif']}")
     if not branding.get("nif") and branding.get("siret"):
-        _fisc.append(f"SIRET {branding['siret']}")
+        _fisc.append(f"Estabelecimento {branding['siret']}")
     if branding.get("vat"):
-        _fisc.append(f"{'IVA' if branding.get('nif') else 'TVA'} {branding['vat']}")
+        _fisc.append(f"{('IVA' if branding.get('nif') else 'IVA')} {branding['vat']}")
     if branding.get("alvara"):
         _fisc.append(f"Alvará {branding['alvara']}")
     if _fisc:
@@ -153,7 +152,7 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
             lbl = _cert_labels.get(c.get("code"), (c.get("code") or "").upper())
             parts.append(lbl + (f" (n° {c['number']})" if c.get("number") else ""))
         info_lines.append(Paragraph(
-            "<b>Certifications :</b> " + " · ".join(parts), S["muted"]))
+            "<b>Certificações:</b> " + " · ".join(parts), S["muted"]))
     cells = [logo_cell or "", info_lines]
     widths = [35 * mm, None]
     if photo_cell:
@@ -171,24 +170,23 @@ def _story_header_branding(story: list, branding: dict | None, S: dict) -> None:
 
 def _story_takeoff_title(story: list, plan: dict, takeoff: dict, S: dict) -> None:
     """Section 2 — main title + subtitle line."""
-    story.append(Paragraph("MÉTRÉ CONSTRUPILOT", S["kicker"]))
-    story.append(Paragraph(plan.get("filename") or "Plan", S["h1"]))
+    story.append(Paragraph("MEDIÇÃO CONSTRUPILOT", S["kicker"]))
+    story.append(Paragraph(plan.get("filename") or "Planta", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     story.append(Paragraph(
-        f"Plan ID <b>{plan.get('plan_id', '?')}</b> · {plan.get('page_count', 1)} page(s) · "
-        f"{takeoff.get('room_count', 0)} pièces · généré le {date_str}", S["muted"]))
+        f"Plan ID <b>{plan.get('plan_id', '?')}</b> · {plan.get('page_count', 1)} page(s) · {takeoff.get('room_count', 0)} divisões · gerado em {date_str}", S["muted"]))
     story.append(Spacer(1, 10))
 
 
 def _story_totals_global(story: list, totals: dict, S: dict) -> None:
     """Section 3 — global totals two-column table."""
-    story.append(Paragraph("Totaux globaux", S["h2"]))
+    story.append(Paragraph("Totais globais", S["h2"]))
     data = [
-        ["Sol", _fmt(totals.get("floor_m2", 0), "m²")],
-        ["Plafonds", _fmt(totals.get("ceiling_m2", 0), "m²")],
-        ["Murs bruts", _fmt(totals.get("walls_gross_m2", 0), "m²")],
-        ["Murs nets", _fmt(totals.get("walls_net_m2", 0), "m²")],
-        ["Périmètre total", _fmt(totals.get("perimeter_m", 0), "m")],
+        ["Pavimento", _fmt(totals.get("floor_m2", 0), "m²")],
+        ["Tetos", _fmt(totals.get("ceiling_m2", 0), "m²")],
+        ["Paredes brutas", _fmt(totals.get("walls_gross_m2", 0), "m²")],
+        ["Paredes líquidas", _fmt(totals.get("walls_net_m2", 0), "m²")],
+        ["Perímetro total", _fmt(totals.get("perimeter_m", 0), "m")],
     ]
     story.append(_table(data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
@@ -203,8 +201,8 @@ def _story_totals_per_level(story: list, levels: list, S: dict) -> None:
     """Section 4 — per-level breakdown (only if >1 level)."""
     if len(levels) <= 1:
         return
-    story.append(Paragraph("Totaux par niveau", S["h2"]))
-    rows = [["Niveau", "Pièces", "Sol", "Murs nets", "Périmètre"]]
+    story.append(Paragraph("Totais por piso", S["h2"]))
+    rows = [["Piso", "Divisões", "Pavimento", "Paredes líquidas", "Perímetro"]]
     for lvl in levels:
         lt = lvl.get("totals", {})
         rows.append([lvl.get("level_label", "—"),
@@ -225,9 +223,9 @@ def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
     """Section 5 — one-row-per-room detail table."""
     if not rooms:
         return
-    story.append(Paragraph("Détail par pièce", S["h2"]))
-    rows = [["Pièce", "Sol", "Périm.", "Murs bruts", "Ouvert.", "Murs nets",
-             "Volume", "Ép. plancher", "H."]]
+    story.append(Paragraph("Detalhe por divisão", S["h2"]))
+    rows = [["Divisão", "Pavimento", "Perím.", "Paredes brutas", "Aberto.", "Paredes líquidas",
+             "Volume", "Esp. pavimento", "H."]]
     for r in rooms:
         rows.append([r.get("name", "—"),
                      _fmt(r.get("surface_m2", 0), "m²"),
@@ -263,9 +261,9 @@ def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
                                   _fmt(o.get("area_m2", 0), "m²")])
     if all_openings:
         story.append(Spacer(1, 4 * mm))
-        story.append(Paragraph("Ouvertures détaillées", S["h2"]))
+        story.append(Paragraph("Vãos detalhados", S["h2"]))
         story.append(_table(
-            [["Pièce", "Type", "Libellé", "Larg.", "Haut.", "Nb", "Surface"]] + all_openings,
+            [["Divisão", "Type", "Descrição", "Larg.", "Alt.", "Nb", "Superfície"]] + all_openings,
             [40 * mm, 22 * mm, 30 * mm, 18 * mm, 18 * mm, 12 * mm, 22 * mm],
             style_extras=[
                 ("BACKGROUND", (0, 0), (-1, 0), DARK),
@@ -280,15 +278,15 @@ def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
 def _material_row(section: str, m: dict) -> list[str] | None:
     """Map (section, material meta) to a printable table row, or None to skip."""
     if section == "floor":
-        return [f"Sol ({m.get('material', '?')}) — surface + pertes",
+        return [f"Sol ({m.get('material', '?')}) — área + perdas",
                 _fmt(m.get("quantity_m2", 0), "m²")]
     if section == "paint":
-        return [f"Peinture ({m.get('coats', 2)} couches, marge {m.get('margin_pct', 15)}%)",
+        return [f"Tinta ({m.get('coats', 2)} demãos, margem {m.get('margin_pct', 15)}%)",
                 _fmt(m.get("liters_recommended", 0), "L")]
     if section == "placo":
-        return ["Plaques BA13 (pertes 5%)", _fmt(m.get("plates", 0), "plaques")]
+        return ["Placas de gesso cartonado (perdas 5%)", _fmt(m.get("plates", 0), "plaques")]
     if section == "skirting":
-        return ["Plinthes (périmètre - portes + pertes)",
+        return ["Rodapés (perímetro - portas + perdas)",
                 _fmt(m.get("quantity_m", 0), "m")]
     return None
 
@@ -298,8 +296,8 @@ def _story_materials(story: list, materials: dict | None, S: dict) -> None:
     if not materials:
         return
     story.append(PageBreak())
-    story.append(Paragraph("Quantitatif matériaux", S["h2"]))
-    rows = [["Matériau", "Quantité"]]
+    story.append(Paragraph("Quantitativo de materiais", S["h2"]))
+    rows = [["Material", "Quantidade"]]
     for section in ("floor", "paint", "placo", "skirting"):
         row = _material_row(section, materials.get(section) or {})
         if row and materials.get(section):
@@ -319,8 +317,7 @@ def _story_footer(story: list, S: dict) -> None:
     """Section 7 — small legal disclaimer footer."""
     story.append(Spacer(1, 20))
     story.append(Paragraph(
-        "Métré généré par <b>ConstruPilot</b> — Estimez. Comparez. Construisez. "
-        "<br/>Document de relevé de quantités (surfaces, linéaires, volumes) — sans prix.",
+        "Medição gerada pelo <b>ConstruPilot</b> — Estime. Compare. Construa. <br/>Documento de levantamento de quantidades (áreas, lineares, volumes) — sem preços.",
         S["muted"]))
 
 
@@ -340,8 +337,8 @@ def _story_room_presets(story: list, rooms: list, presets_by_id: dict, S: dict) 
     ]
     if not rooms_with_preset:
         return
-    story.append(Paragraph("Modèles d'ouvrages appliqués", S["h2"]))
-    rows = [["Pièce", "Modèle", "Cat.", "Unité", "Prix", "Notes"]]
+    story.append(Paragraph("Modelos de artigos aplicados", S["h2"]))
+    rows = [["Divisão", "Modelo", "Cat.", "Un.", "Preço", "Notas"]]
     for r, p in rooms_with_preset:
         rows.append([
             r.get("name", "—"),
@@ -392,7 +389,7 @@ def _story_preset_legend(story: list, kinds: list[str], S: dict) -> None:
         ("TOPPADDING", (0, 0), (-1, -1), 1),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
     ]))
-    story.append(Paragraph("Légende des catégories :", S["muted"]))
+    story.append(Paragraph("Legenda das categorias:", S["muted"]))
     story.append(t)
 
 
@@ -400,9 +397,9 @@ def _story_measurements(story: list, measurements: list, S: dict) -> None:
     """Iter66 — mesures ad-hoc enregistrées (trace imprimable avec libellés)."""
     if not measurements:
         return
-    story.append(Paragraph("Mesures enregistrées", S["h2"]))
-    kind_fr = {"distance": "Distance", "polyline": "Polyligne", "polygon": "Polygone"}
-    rows = [["Libellé", "Type", "Page", "Valeur", "Créée le"]]
+    story.append(Paragraph("Medições guardadas", S["h2"]))
+    kind_fr = {"distance": "Distância", "polyline": "Polilinha", "polygon": "Polygone"}
+    rows = [["Descrição", "Type", "Página", "Valor", "Criada em"]]
     for m in measurements:
         if m.get("kind") == "polygon":
             value = f"{_fmt(m.get('area_m2', 0), 'm²')}"
@@ -463,40 +460,39 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
 # ============ RAPPORT ÉCARTS SURFACES (iter63) ============
 
 ECARTS_METHOD_LABELS = {
-    "auto_pdf_scale": "échelle PDF", "two_points": "2 points",
-    "known_dimension": "cote connue", "auto_cotes": "auto (cotes IA)",
-    "reconcile_surfaces": "recalé (surfaces écrites)", "ai_scale_text": "échelle écrite",
+    "auto_pdf_scale": "escala do PDF", "two_points": "2 pontos",
+    "known_dimension": "cota conhecida", "auto_cotes": "auto (cotes IA)",
+    "reconcile_surfaces": "reajustada (áreas escritas)", "ai_scale_text": "escala escrita",
 }
 GREEN = colors.HexColor("#16a34a")
 AMBER = colors.HexColor("#d97706")
 
 
 def _ecarts_title(story: list, plan: dict, page_index: int, S: dict) -> None:
-    story.append(Paragraph("RAPPORT DE CONTRÔLE DES SURFACES", S["kicker"]))
-    story.append(Paragraph(plan.get("filename") or "Plan", S["h1"]))
+    story.append(Paragraph("RELATÓRIO DE CONTROLO DAS ÁREAS", S["kicker"]))
+    story.append(Paragraph(plan.get("filename") or "Planta", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     story.append(Paragraph(
-        f"Plan ID <b>{plan.get('plan_id', '?')}</b> · page {page_index + 1} · généré le {date_str} — "
-        "comparaison des surfaces mesurées numériquement avec les surfaces écrites sur le plan.",
+        f"Plan ID <b>{plan.get('plan_id', '?')}</b> · page {page_index + 1} · gerado em {date_str} — comparação das áreas medidas digitalmente com as áreas escritas na planta.",
         S["muted"]))
     story.append(Spacer(1, 10))
 
 
 def _ecarts_calibration(story: list, calibration: dict | None, S: dict) -> None:
-    story.append(Paragraph("Calibration utilisée", S["h2"]))
+    story.append(Paragraph("Calibração utilizada", S["h2"]))
     if not calibration:
-        story.append(Paragraph("Page non calibrée — calibrez la page pour des mesures fiables.",
+        story.append(Paragraph("Página não calibrada — calibre a página para medições fiáveis.",
                                S["muted"]))
         return
     method = ECARTS_METHOD_LABELS.get(calibration.get("method"),
                                       calibration.get("method") or "—")
-    rows = [["Méthode", method],
-            ["Échelle", _fmt(calibration.get("pixels_per_meter", 0), "px/m")]]
+    rows = [["Método", method],
+            ["Escala", _fmt(calibration.get("pixels_per_meter", 0), "px/m")]]
     if calibration.get("samples_used"):
-        rows.append(["Cotes utilisées",
+        rows.append(["Cotas utilizadas",
                      f"{calibration['samples_used']} (dispersion ±{calibration.get('spread_pct', 0)} %)"])
     if calibration.get("confidence") is not None:
-        rows.append(["Confiance", f"{int(round(calibration['confidence'] * 100))} %"])
+        rows.append(["Confiança", f"{int(round(calibration['confidence'] * 100))} %"])
     story.append(_table(rows, [60 * mm, 60 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
@@ -505,8 +501,8 @@ def _ecarts_calibration(story: list, calibration: dict | None, S: dict) -> None:
 
 
 def _ecarts_table(story: list, matches: list[dict], unmatched: list[dict], S: dict) -> None:
-    story.append(Paragraph("Écarts par pièce", S["h2"]))
-    rows = [["Pièce", "Mesurée", "Écrite (plan)", "Écart", "Statut"]]
+    story.append(Paragraph("Diferenças por divisão", S["h2"]))
+    rows = [["Divisão", "Medida", "Escrita (planta)", "Desvio", "Estado"]]
     row_styles = []
     for i, m in enumerate(matches, start=1):
         delta = m.get("delta_pct") or 0
@@ -515,12 +511,12 @@ def _ecarts_table(story: list, matches: list[dict], unmatched: list[dict], S: di
                      _fmt(m.get("measured_m2", 0), "m²"),
                      _fmt(m.get("written_m2", 0), "m²"),
                      f"{'+' if delta > 0 else ''}{delta} %",
-                     "Conforme" if ok else "Écart"])
+                     "Conforme" if ok else "Desvio"])
         row_styles.append(("TEXTCOLOR", (3, i), (4, i), GREEN if ok else AMBER))
         row_styles.append(("FONTNAME", (4, i), (4, i), "Helvetica-Bold"))
     for j, r in enumerate(unmatched, start=len(matches) + 1):
         rows.append([r.get("name") or "—", _fmt(r.get("surface_m2", 0), "m²"),
-                     "—", "—", "Sans référence"])
+                     "—", "—", "Sem referência"])
         row_styles.append(("TEXTCOLOR", (2, j), (4, j), GREY))
     story.append(_table(rows, [45 * mm, 28 * mm, 30 * mm, 22 * mm, 30 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (-1, 0), DARK),
@@ -535,17 +531,17 @@ def _ecarts_table(story: list, matches: list[dict], unmatched: list[dict], S: di
 
 def _ecarts_summary(story: list, matches: list[dict], unmatched: list[dict], S: dict) -> None:
     story.append(Spacer(1, 10))
-    story.append(Paragraph("Synthèse", S["h2"]))
+    story.append(Paragraph("Síntese", S["h2"]))
     deltas = sorted(abs(m.get("delta_pct") or 0) for m in matches)
     conformes = sum(1 for d in deltas if d <= 5.0)
     ecarts = len(deltas) - conformes
-    rows = [["Pièces conformes (écart ≤ 5 %)", str(conformes)],
-            ["Pièces en écart (> 5 %)", str(ecarts)],
-            ["Pièces sans surface écrite", str(len(unmatched))]]
+    rows = [["Divisões conformes (diferença ≤ 5 %)", str(conformes)],
+            ["Divisões com diferença (> 5 %)", str(ecarts)],
+            ["Divisões sem área escrita", str(len(unmatched))]]
     if deltas:
         n = len(deltas)
         med = deltas[n // 2] if n % 2 else (deltas[n // 2 - 1] + deltas[n // 2]) / 2
-        rows.append(["Écart médian absolu", f"{round(med, 1)} %"])
+        rows.append(["Diferença mediana absoluta", f"{round(med, 1)} %"])
     story.append(_table(rows, [90 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
@@ -558,15 +554,12 @@ def _ecarts_summary(story: list, matches: list[dict], unmatched: list[dict], S: 
         verdict = ParagraphStyle("v_ok", fontName="Helvetica-Bold", fontSize=10,
                                  textColor=GREEN, leading=13)
         story.append(Paragraph(
-            "Toutes les surfaces mesurées sont conformes aux surfaces écrites "
-            "sur le plan (tolérance 5 %).", verdict))
+            "Todas as áreas medidas estão conformes com as áreas escritas na planta (tolerância 5 %).", verdict))
     elif ecarts:
         verdict = ParagraphStyle("v_ko", fontName="Helvetica-Bold", fontSize=10,
                                  textColor=AMBER, leading=13)
         story.append(Paragraph(
-            f"{ecarts} pièce(s) présentent un écart supérieur à 5 % — utilisez "
-            "« Recaler l'échelle » dans ConstruPilot PLAN ou vérifiez le tracé "
-            "de ces pièces.", verdict))
+            f'{ecarts} divisão(ões) apresentam uma diferença superior a 5 % — utilize «Reajustar a escala» no ConstruPilot PLANTA ou verifique o traçado dessas divisões.', verdict))
 
 
 def build_ecarts_pdf(plan: dict, calibration: dict | None, matches: list[dict],
@@ -591,9 +584,7 @@ def build_ecarts_pdf(plan: dict, calibration: dict | None, matches: list[dict],
     _ecarts_summary(story, matches, unmatched, S)
     story.append(Spacer(1, 16))
     story.append(Paragraph(
-        "Rapport généré par <b>ConstruPilot</b> — les surfaces « écrites » sont lues "
-        "automatiquement sur le plan par l'IA ; les surfaces « mesurées » proviennent du "
-        "métré numérique calibré. Document de contrôle indicatif.", S["muted"]))
+        "Relatório gerado pelo <b>ConstruPilot</b> — as áreas «escritas» são lidas automaticamente na planta pela IA; as áreas «medidas» vêm da medição digital calibrada. Documento de controlo indicativo.", S["muted"]))
 
     doc.build(story)
     return buf.getvalue()
@@ -603,26 +594,25 @@ def build_ecarts_pdf(plan: dict, calibration: dict | None, matches: list[dict],
 
 def _story_quote_title(story: list, quote: dict, S: dict) -> None:
     """Devis title + subtitle line."""
-    story.append(Paragraph("DEVIS ESTIMATIF CONSTRUPILOT", S["kicker"]))
-    story.append(Paragraph(quote.get("filename") or "Devis travaux", S["h1"]))
+    story.append(Paragraph("ORÇAMENTO ESTIMATIVO CONSTRUPILOT", S["kicker"]))
+    story.append(Paragraph(quote.get("filename") or "Orçamento de obras", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
+    finish_label = {"eco": "Eco", "std": "Standard", "premium": "Premium"}.get(
         quote.get("finish", "std"), "Standard")
     story.append(Paragraph(
-        f"Plan <b>{quote.get('plan_id', '?')}</b> · Gamme <b>{finish_label}</b> · "
-        f"Sol : <b>{quote.get('floor_material', '').capitalize()}</b> · généré le {date_str}",
+        f"Plan <b>{quote.get('plan_id', '?')}</b> · Gama <b>{finish_label}</b> · Sol : <b>{quote.get('floor_material', '').capitalize()}</b> · gerado em {date_str}",
         S["muted"]))
     story.append(Spacer(1, 10))
 
 
 def _story_quote_surfaces(story: list, totals: dict, S: dict) -> None:
     """Surfaces mesurées section."""
-    story.append(Paragraph("Surfaces mesurées", S["h2"]))
+    story.append(Paragraph("Áreas medidas", S["h2"]))
     surf_data = [
-        ["Sol", _fmt(totals.get("floor_m2", 0), "m²")],
-        ["Plafonds", _fmt(totals.get("ceiling_m2", 0), "m²")],
-        ["Murs nets", _fmt(totals.get("walls_net_m2", 0), "m²")],
-        ["Périmètre", _fmt(totals.get("perimeter_m", 0), "m")],
+        ["Pavimento", _fmt(totals.get("floor_m2", 0), "m²")],
+        ["Tetos", _fmt(totals.get("ceiling_m2", 0), "m²")],
+        ["Paredes líquidas", _fmt(totals.get("walls_net_m2", 0), "m²")],
+        ["Perímetro", _fmt(totals.get("perimeter_m", 0), "m")],
     ]
     story.append(_table(surf_data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
@@ -634,8 +624,8 @@ def _story_quote_surfaces(story: list, totals: dict, S: dict) -> None:
 
 def _story_quote_line_items(story: list, line_items: list, S: dict) -> None:
     """Detail table (one row per lot)."""
-    story.append(Paragraph("Détail des postes", S["h2"]))
-    rows = [["Désignation", "Qté", "Unit.", "Matériaux", "M.O.", "Total HT"]]
+    story.append(Paragraph("Detalhe dos artigos", S["h2"]))
+    rows = [["Designação", "Qtd.", "Unit.", "Materiais", "M.O.", "Total s/ IVA"]]
     for li in line_items:
         rows.append([
             li["name"], _fmt(li["quantity"]), li["unit"],
@@ -658,14 +648,14 @@ def _story_quote_line_items(story: list, line_items: list, S: dict) -> None:
 def _story_quote_recap(story: list, quote: dict, S: dict) -> None:
     """Recap : sous-totaux, TVA, total TTC."""
     story.append(Spacer(1, 12))
-    story.append(Paragraph("Récapitulatif", S["h2"]))
+    story.append(Paragraph("Resumo", S["h2"]))
     tva_pct = int(round(quote.get("tva_rate", 0.06) * 100))
     tot_rows = [
-        ["Sous-total matériaux", _fmt(quote.get("subtotal_material", 0), "€")],
-        ["Sous-total main d'œuvre", _fmt(quote.get("subtotal_labour", 0), "€")],
-        ["Sous-total HT", _fmt(quote.get("subtotal_ht", 0), "€")],
-        [f"TVA {tva_pct} %", _fmt(quote.get("tva", 0), "€")],
-        ["TOTAL TTC", _fmt(quote.get("total_ttc", 0), "€")],
+        ["Subtotal de materiais", _fmt(quote.get("subtotal_material", 0), "€")],
+        ["Subtotal de mão de obra", _fmt(quote.get("subtotal_labour", 0), "€")],
+        ["Subtotal s/ IVA", _fmt(quote.get("subtotal_ht", 0), "€")],
+        [f'IVA {tva_pct} %', _fmt(quote.get("tva", 0), "€")],
+        ["TOTAL C/ IVA", _fmt(quote.get("total_ttc", 0), "€")],
     ]
     story.append(_table(tot_rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
@@ -701,13 +691,13 @@ def _story_quote_signature(story: list, signature: dict | None, S: dict) -> None
     if not signature or not signature.get("b64"):
         return
     story.append(Spacer(1, 18))
-    story.append(Paragraph("Bon pour accord — Signature client", S["h2"]))
+    story.append(Paragraph("Aceito — Assinatura do cliente", S["h2"]))
     sig_img = _decode_signature_image(signature["b64"])
     signed_date = (signature.get("at") or "")[:10]
     info = [
         Paragraph(f"<b>Signataire :</b> {signature.get('name') or ''}", S["body"]),
         Paragraph(f"<b>Email :</b> {signature.get('client_email') or ''}", S["body"]),
-        Paragraph(f"<b>Signé le :</b> {signed_date}", S["body"]),
+        Paragraph(f'<b>Assinado em:</b> {signed_date}', S["body"]),
     ]
     sig_table = Table([[sig_img, info]], colWidths=[70 * mm, None])
     sig_table.setStyle(TableStyle([
@@ -725,11 +715,7 @@ def _story_quote_signature(story: list, signature: dict | None, S: dict) -> None
 def _story_quote_footer(story: list, S: dict) -> None:
     story.append(Spacer(1, 18))
     story.append(Paragraph(
-        "Devis <b>estimatif</b> généré par ConstruPilot à partir de votre plan métré. "
-        "Prix moyens France 2026 (base de référence + main d'œuvre). "
-        "TVA à 10 % applicable en rénovation logement de plus de 2 ans. "
-        "Ce document ne constitue pas un devis contractuel : demandez plusieurs devis "
-        "artisans pour comparer.", S["muted"]))
+        "Orçamento <b>estimativo</b> gerado pelo ConstruPilot a partir da sua planta medida. Preços médios Portugal 2026 (base de referência + mão de obra). IVA a 6 % aplicável nas empreitadas de reabilitação de habitação (verba 2.27 CIVA), 23 % nos restantes casos. Este documento não constitui um orçamento contratual: peça vários orçamentos a profissionais para comparar.", S["muted"]))
 
 
 def _story_quote_reviews(story: list, reviews: dict | None, S: dict) -> None:
@@ -739,15 +725,14 @@ def _story_quote_reviews(story: list, reviews: dict | None, S: dict) -> None:
     story.append(Spacer(1, 16))
     avg = reviews.get("average", 0)
     story.append(Paragraph(
-        f"Avis clients — note moyenne {avg}/5 sur {reviews.get('count')} avis vérifiés",
+        f"Opiniões de clientes — classificação média {avg}/5 sur {reviews.get('count')} opiniões verificadas",
         S["h2"]))
     for it in (reviews.get("items") or [])[:3]:
         comment = (it.get("comment") or "").strip()
         if not comment:
             continue
         story.append(Paragraph(
-            f"<b>{it.get('rating')}/5</b> — « {comment} » "
-            f"<i>({it.get('author_name') or 'Client'})</i>", S["body"]))
+            f"<b>{it.get('rating')}/5</b> — « {comment} » <i>({it.get('author_name') or 'Cliente'})</i>", S["body"]))
         story.append(Spacer(1, 4))
 
 
@@ -781,24 +766,23 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
 # ============ MULTI-PLAN PROJECT PDF ============
 
 def _pq_title(story: list, project: dict, S: dict) -> None:
-    story.append(Paragraph("DEVIS PROJET CONSOLIDÉ", S["kicker"]))
+    story.append(Paragraph("ORÇAMENTO CONSOLIDADO DO PROJETO", S["kicker"]))
     story.append(Paragraph(project.get("project_name") or "Projet ConstruPilot", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    finish_label = {"eco": "Éco", "std": "Standard",
+    finish_label = {"eco": "Eco", "std": "Standard",
                     "premium": "Premium"}.get(project.get("finish", "std"), "Standard")
     story.append(Paragraph(
-        f"<b>{project.get('plan_count', 0)} plans</b> · Gamme <b>{finish_label}</b> · "
-        f"généré le {date_str}", S["muted"]))
+        f"<b>{project.get('plan_count', 0)} plantas</b> · Gama <b>{finish_label}</b> · gerado em {date_str}", S["muted"]))
     story.append(Spacer(1, 12))
 
 
 def _pq_totals(story: list, totals: dict, S: dict) -> None:
-    story.append(Paragraph("Surfaces totales du projet", S["h2"]))
+    story.append(Paragraph("Áreas totais do projeto", S["h2"]))
     data = [
-        ["Sol total", _fmt(totals.get("floor_m2", 0), "m²")],
-        ["Plafonds total", _fmt(totals.get("ceiling_m2", 0), "m²")],
-        ["Murs nets total", _fmt(totals.get("walls_net_m2", 0), "m²")],
-        ["Périmètre total", _fmt(totals.get("perimeter_m", 0), "m")],
+        ["Pavimento total", _fmt(totals.get("floor_m2", 0), "m²")],
+        ["Tetos total", _fmt(totals.get("ceiling_m2", 0), "m²")],
+        ["Paredes líquidas total", _fmt(totals.get("walls_net_m2", 0), "m²")],
+        ["Perímetro total", _fmt(totals.get("perimeter_m", 0), "m")],
     ]
     story.append(_table(data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
@@ -810,14 +794,13 @@ def _pq_totals(story: list, totals: dict, S: dict) -> None:
 
 def _pq_sub_quote(story: list, sq: dict, index: int, S: dict) -> None:
     """Render one sub-quote block (per-plan detail table)."""
-    story.append(Paragraph(f"Plan {index} : {sq.get('filename', 'Sans nom')}", S["h2"]))
+    story.append(Paragraph(f"Planta {index} : {sq.get('filename', 'Sans nom')}", S["h2"]))
     story.append(Paragraph(
-        f"Sol {sq['totals']['floor_m2']} m² · Murs nets {sq['totals']['walls_net_m2']} m² · "
-        f"Périmètre {sq['totals']['perimeter_m']} m", S["muted"]))
-    rows = [["Désignation", "Qté", "Unit.", "Total HT"]]
+        f"Pavimento {sq['totals']['floor_m2']} m² · Paredes líquidas {sq['totals']['walls_net_m2']} m² · Perímetro {sq['totals']['perimeter_m']} m", S["muted"]))
+    rows = [["Designação", "Qtd.", "Unit.", "Total s/ IVA"]]
     for li in sq.get("line_items", []):
         rows.append([li["name"], _fmt(li["quantity"]), li["unit"], _fmt(li["total"], "€")])
-    rows.append(["", "", "TOTAL HT plan", _fmt(sq.get("subtotal_ht", 0), "€")])
+    rows.append(["", "", "TOTAL s/ IVA da planta", _fmt(sq.get("subtotal_ht", 0), "€")])
     story.append(_table(rows, [85 * mm, 20 * mm, 20 * mm, 30 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (-1, 0), DARK),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -832,14 +815,14 @@ def _pq_sub_quote(story: list, sq: dict, index: int, S: dict) -> None:
 
 def _pq_recap(story: list, project: dict, S: dict) -> None:
     story.append(Spacer(1, 8))
-    story.append(Paragraph("Récapitulatif projet", S["h2"]))
+    story.append(Paragraph("Resumo do projeto", S["h2"]))
     tva_pct = int(round(project.get("tva_rate", 0.06) * 100))
     rows = [
-        ["Sous-total matériaux", _fmt(project.get("subtotal_material", 0), "€")],
-        ["Sous-total main d'œuvre", _fmt(project.get("subtotal_labour", 0), "€")],
-        ["Sous-total HT", _fmt(project.get("subtotal_ht", 0), "€")],
-        [f"TVA {tva_pct} %", _fmt(project.get("tva", 0), "€")],
-        ["TOTAL PROJET TTC", _fmt(project.get("total_ttc", 0), "€")],
+        ["Subtotal de materiais", _fmt(project.get("subtotal_material", 0), "€")],
+        ["Subtotal de mão de obra", _fmt(project.get("subtotal_labour", 0), "€")],
+        ["Subtotal s/ IVA", _fmt(project.get("subtotal_ht", 0), "€")],
+        [f'IVA {tva_pct} %', _fmt(project.get("tva", 0), "€")],
+        ["TOTAL DO PROJETO c/ IVA", _fmt(project.get("total_ttc", 0), "€")],
     ]
     story.append(_table(rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
@@ -858,9 +841,7 @@ def _pq_recap(story: list, project: dict, S: dict) -> None:
 def _pq_footer(story: list, S: dict) -> None:
     story.append(Spacer(1, 18))
     story.append(Paragraph(
-        "Devis <b>projet consolidé</b> généré par ConstruPilot à partir de plusieurs "
-        "plans mesurés. Prix moyens France 2026. TVA à 10 % applicable en rénovation "
-        "logement de plus de 2 ans. Document estimatif non contractuel.", S["muted"]))
+        "Orçamento <b>consolidado do projeto</b> gerado pelo ConstruPilot a partir de várias plantas medidas. Preços médios Portugal 2026. IVA a 6 % aplicável nas empreitadas de reabilitação de habitação (verba 2.27 CIVA). Documento estimativo não contratual.", S["muted"]))
 
 
 def build_project_quote_pdf(project: dict, branding: dict | None = None) -> bytes:
@@ -930,9 +911,9 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
             comp_lines.append(Paragraph(branding["company_email"], white_small))
         fisc = []
         if branding.get("siret"):
-            fisc.append("SIRET " + str(branding["siret"]))
+            fisc.append("Estabelecimento " + str(branding["siret"]))
         if branding.get("vat"):
-            fisc.append("TVA " + str(branding["vat"]))
+            fisc.append("IVA " + str(branding["vat"]))
         if fisc:
             comp_lines.append(Paragraph(" · ".join(fisc), white_small))
     if not comp_lines:
@@ -950,24 +931,23 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
     if branding and branding.get("verified"):
         story.append(Spacer(1, 4))
         story.append(Paragraph(
-            '<font color="#3F7D54"><b>&#10004; Pro vérifié</b></font> '
-            '<font color="#64748B">— identité et assurance contrôlées par ConstruPilot</font>',
+            "<font color=\"#3F7D54\"><b>&#10004; Profissional verificado</b></font> <font color=\"#64748B\">— identidade e seguro controlados pelo ConstruPilot</font>",
             S["muted"]))
     story.append(Spacer(1, 34 * mm))
 
     # --- Titre principal ---
-    story.append(Paragraph("DOSSIER DE CHIFFRAGE", kicker_green))
-    story.append(Paragraph(project.get("name") or "Projet", ParagraphStyle(
+    story.append(Paragraph("PROCESSO DE ORÇAMENTAÇÃO", kicker_green))
+    story.append(Paragraph(project.get("name") or "Projeto", ParagraphStyle(
         "cv_title", fontName="Helvetica-Bold", fontSize=28, textColor=DARK,
         leading=32, spaceAfter=6)))
     story.append(Paragraph(
-        f"Projet multi-niveaux · {project.get('levels_count', 0)} niveau(x)", S["muted"]))
+        f"Projeto multinível · {project.get('levels_count', 0)} niveau(x)", S["muted"]))
 
     ttc = project.get("total_ttc")
     if ttc:
         story.append(Spacer(1, 10 * mm))
         amount_box = Table([[
-            [Paragraph("MONTANT ESTIMÉ TTC", ParagraphStyle(
+            [Paragraph("MONTANTE ESTIMADO c/ IVA", ParagraphStyle(
                 "cv_ttc_lbl", fontName="Helvetica-Bold", fontSize=8.5,
                 textColor=colors.white, leading=11, spaceAfter=3)),
              Paragraph(_fmt(ttc, "€"), ParagraphStyle(
@@ -986,7 +966,7 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
 
     # --- Bloc client + métadonnées (2 colonnes) ---
     cli = client or {}
-    client_cell = [Paragraph("CLIENT", label_style)]
+    client_cell = [Paragraph("CLIENTE", label_style)]
     cname = cli.get("name") or cli.get("company")
     if cname:
         client_cell.append(Paragraph(f"<b>{cname}</b>", S["body"]))
@@ -1003,14 +983,14 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
 
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     meta_cell = [
-        Paragraph("RÉFÉRENCE DOSSIER", label_style),
+        Paragraph("REFERÊNCIA DO PROCESSO", label_style),
         Paragraph(f"<b>{reference}</b>", S["body"]),
         Spacer(1, 6),
-        Paragraph("ÉMIS LE", label_style),
+        Paragraph("EMITIDO EM", label_style),
         Paragraph(date_str, S["body"]),
         Spacer(1, 6),
-        Paragraph("VALIDITÉ", label_style),
-        Paragraph("Devis estimatif valable 30 jours", S["body"]),
+        Paragraph("VALIDADE", label_style),
+        Paragraph("Orçamento estimativo válido 30 dias", S["body"]),
     ]
     info = Table([[client_cell, meta_cell]], colWidths=[None, 62 * mm])
     info.setStyle(TableStyle([
@@ -1026,8 +1006,7 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
     story.append(info)
     story.append(Spacer(1, 16 * mm))
     story.append(Paragraph(
-        "Document généré par <b>ConstruPilot</b> — métré et chiffrage déterministes. "
-        "Estimation indicative ne constituant pas un devis contractuel.", S["muted"]))
+        "Documento gerado pelo <b>ConstruPilot</b> — medição e orçamentação determinísticas. Estimativa indicativa que não constitui um orçamento contratual.", S["muted"]))
     story.append(PageBreak())
     return story
 
@@ -1089,14 +1068,12 @@ class TvaAttestationInput:
 
 def _tva_header_and_intro(story: list, tva_pct: int, S: dict) -> None:
     is_reduced = tva_pct in (10, 5, 55)  # 5.5 arrondi
-    header_title = (f"ATTESTATION — TVA À TAUX RÉDUIT ({tva_pct} %)"
+    header_title = (f'DECLARAÇÃO — IVA À TAXA REDUZIDA ({tva_pct} %)'
                      if is_reduced else "ATTESTATION TRAVAUX")
     story.append(Paragraph(header_title, S["kicker"]))
-    story.append(Paragraph("Article 279-0 bis du Code Général des Impôts", S["h1"]))
+    story.append(Paragraph("Verba 2.27 da Lista I anexa ao Código do IVA", S["h1"]))
     story.append(Paragraph(
-        "Certificat à remettre à l'entreprise pour bénéficier du taux réduit de TVA "
-        "sur les travaux réalisés dans un local à usage d'habitation achevé "
-        "depuis plus de deux ans.", S["muted"]))
+        "Declaração a entregar à empresa para beneficiar da taxa reduzida de IVA nas empreitadas de reabilitação de imóveis afetos à habitação.", S["muted"]))
     story.append(Spacer(1, 12))
 
 
@@ -1120,29 +1097,25 @@ def _tva_labelled_block(story: list, title: str, rows: list, S: dict) -> None:
 
 
 def _tva_declarations(story: list, S: dict) -> None:
-    story.append(Paragraph("Certifie sur l'honneur que :", S["h2"]))
+    story.append(Paragraph("Declara sob compromisso de honra que:", S["h2"]))
     story.append(Paragraph(
-        "1. Le local dans lequel les travaux sont réalisés est <b>affecté à un "
-        "usage d'habitation</b> (résidence principale ou secondaire).",
+        "1. O imóvel onde são realizados os trabalhos está <b>afeto à habitação</b> (habitação própria permanente ou secundária).",
         S["body"]))
     story.append(Paragraph(
-        "2. Le local est <b>achevé depuis plus de deux ans</b> à la date de "
-        "démarrage des travaux.",
+        "2. Os trabalhos constituem uma <b>empreitada de reabilitação</b> (beneficiação, remodelação, renovação, restauro, reparação ou conservação) do imóvel.",
         S["body"]))
     story.append(Paragraph(
-        "3. Les travaux réalisés ne concourent pas à la production d'un "
-        "immeuble neuf, ni à une élévation de plus de 10 % de la surface de "
-        "plancher.",
+        "3. O valor dos materiais incorporados não excede 20 % do valor global da prestação de serviços (se exceder, a taxa reduzida aplica-se apenas à mão de obra).",
         S["body"]))
     story.append(Spacer(1, 12))
 
 
 def _tva_signature_and_footer(story: list, S: dict) -> None:
     story.append(Paragraph(
-        "Fait à …………………………………………… le ……… / ……… / ………………",
+        "Feito em …………………………………………… a ……… / ……… / ………………",
         S["body"]))
     story.append(Spacer(1, 20))
-    story.append(Paragraph("Signature du client (précédée de « Bon pour accord ») :",
+    story.append(Paragraph("Assinatura do cliente (precedida de «Aceito»):",
                             S["body"]))
     story.append(Spacer(1, 40))
     sig_frame = Table([[""]], colWidths=[90 * mm], rowHeights=[30 * mm])
@@ -1150,10 +1123,7 @@ def _tva_signature_and_footer(story: list, S: dict) -> None:
     story.append(sig_frame)
     story.append(Spacer(1, 12))
     story.append(Paragraph(
-        "<b>Attention</b> : toute fausse déclaration engage la responsabilité du "
-        "client. L'administration peut demander le paiement du complément de TVA "
-        "correspondant à la différence entre le taux réduit et le taux normal. "
-        "Conservez ce document 5 ans.", S["muted"]))
+        "<b>Atenção</b>: qualquer declaração falsa responsabiliza o cliente. A Autoridade Tributária pode exigir o pagamento do complemento de IVA correspondente à diferença entre a taxa reduzida e a taxa normal. Conserve este documento durante 10 anos.", S["muted"]))
 
 
 def _coalesce_tva_input(data, kw) -> "TvaAttestationInput":
@@ -1199,18 +1169,18 @@ def build_tva_attestation_pdf(
     tva_pct = int(round(data.tva_rate * 100))
 
     _tva_header_and_intro(story, tva_pct, S)
-    _tva_labelled_block(story, "Je soussigné(e)", [
-        ["Nom / Prénom :", data.client_name or "………………………………………………"],
-        ["Adresse (client) :", data.client_address or "………………………………………………"],
-        ["Adresse des travaux :", data.work_address or "………………………………………………"],
+    _tva_labelled_block(story, "O(A) abaixo assinado(a)", [
+        ["Nome / Apelido:", data.client_name or "………………………………………………"],
+        ["Morada (cliente):", data.client_address or "………………………………………………"],
+        ["Morada da obra:", data.work_address or "………………………………………………"],
     ], S)
     _tva_declarations(story, S)
-    story.append(Paragraph("Nature des travaux :", S["h2"]))
+    story.append(Paragraph("Natureza dos trabalhos:", S["h2"]))
     story.append(Paragraph(data.work_description or "………………………………………………", S["body"]))
     story.append(Spacer(1, 20))
-    _tva_labelled_block(story, "Entreprise réalisant les travaux :", [
-        ["Raison sociale :", data.company_name or "………………………………………………"],
-        ["Adresse :", data.company_address or "………………………………………………"],
+    _tva_labelled_block(story, "Empresa que realiza os trabalhos:", [
+        ["Denominação social:", data.company_name or "………………………………………………"],
+        ["Morada:", data.company_address or "………………………………………………"],
     ], S)
     story.append(Spacer(1, 8))
     _tva_signature_and_footer(story, S)
@@ -1243,21 +1213,20 @@ def build_accounting_recap_pdf(period: str, rows: list[dict],
     _story_header_branding(story, branding, S)
     year, month = period.split("-")
     month_label = _FR_MONTHS[int(month) - 1].capitalize()
-    story.append(Paragraph("RAPPORT COMPTABLE MENSUEL", S["kicker"]))
+    story.append(Paragraph("RELATÓRIO CONTABILÍSTICO MENSAL", S["kicker"]))
     story.append(Paragraph(f"{month_label} {year}", S["h1"]))
     story.append(Paragraph(
-        "Récapitulatif des devis envoyés et signés sur la période — "
-        "document à transmettre à votre comptable.", S["muted"]))
+        "Resumo dos orçamentos enviados e assinados no período — documento a transmitir ao seu contabilista certificado.", S["muted"]))
     story.append(Spacer(1, 12))
 
-    header = ["Date", "Client", "Document", "TTC (€)", "Statut", "Signé le"]
+    header = ["Data", "Cliente", "Documento", "c/ IVA (€)", "Estado", "Assinado a"]
     trows = [header]
     signed_ttc = 0.0
     sent_ttc = 0.0
     signed_n = 0
     for r in sorted(rows, key=lambda x: x.get("created_at") or ""):
-        status = ("Signé" if r.get("signed")
-                  else "Ouvert" if r.get("opened") else "Envoyé")
+        status = ("Assinado" if r.get("signed")
+                  else "Em aberto" if r.get("opened") else "Enviado")
         ttc = r.get("total_ttc") or 0
         sent_ttc += ttc
         if r.get("signed"):
@@ -1272,7 +1241,7 @@ def build_accounting_recap_pdf(period: str, rows: list[dict],
             (r.get("signed_at") or "")[:10],
         ])
     if len(trows) == 1:
-        trows.append(["—", "Aucun devis sur la période", "", "", "", ""])
+        trows.append(["—", "Nenhum orçamento no período", "", "", "", ""])
     story.append(_table(
         trows, [22 * mm, 40 * mm, 36 * mm, 24 * mm, 20 * mm, 22 * mm],
         style_extras=[
@@ -1287,14 +1256,14 @@ def build_accounting_recap_pdf(period: str, rows: list[dict],
 
     signed_ht = round(signed_ttc / 1.10, 2)
     signed_tva = round(signed_ttc - signed_ht, 2)
-    story.append(Paragraph("Synthèse comptable", S["h2"]))
+    story.append(Paragraph("Síntese contabilística", S["h2"]))
     tot_rows = [
-        ["Devis envoyés (nombre)", str(len(rows))],
-        ["Devis signés (nombre)", str(signed_n)],
-        ["CA signé HT", _fmt(signed_ht, "€")],
-        ["TVA 10 % collectée", _fmt(signed_tva, "€")],
-        ["CA signé TTC", _fmt(signed_ttc, "€")],
-        ["Pipeline TTC (envoyé non signé)", _fmt(round(sent_ttc - signed_ttc, 2), "€")],
+        ["Orçamentos enviados (número)", str(len(rows))],
+        ["Orçamentos assinados (número)", str(signed_n)],
+        ["Volume de negócios assinado s/ IVA", _fmt(signed_ht, "€")],
+        ["IVA 6 % liquidado", _fmt(signed_tva, "€")],
+        ["Volume de negócios assinado c/ IVA", _fmt(signed_ttc, "€")],
+        ["Pipeline c/ IVA (enviado não assinado)", _fmt(round(sent_ttc - signed_ttc, 2), "€")],
     ]
     story.append(_table(tot_rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
@@ -1310,9 +1279,7 @@ def build_accounting_recap_pdf(period: str, rows: list[dict],
     ]))
     story.append(Spacer(1, 16))
     story.append(Paragraph(
-        "Document généré par ConstruPilot. La TVA affichée suppose le taux réduit de 10 % "
-        "(rénovation d'un logement de plus de 2 ans). Vérifiez le taux applicable à chaque "
-        "chantier avec votre comptable.", S["muted"]))
+        "Documento gerado pelo ConstruPilot. O IVA apresentado pressupõe a taxa reduzida de 6 % (empreitadas de reabilitação de habitação, verba 2.27 CIVA). Verifique a taxa aplicável a cada obra com o seu contabilista certificado.", S["muted"]))
 
     doc.build(story)
     return buf.getvalue()

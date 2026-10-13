@@ -2,9 +2,7 @@
 import math
 
 
-SCOPE_NOTICE = ("Estimation partielle des mesures enregistrées, pas un budget global du chantier. "
-                "Les bâtiments, niveaux et lots sans métré ou sans prix restent à compléter ; "
-                "une absence de donnée ne vaut pas zéro euro.")
+SCOPE_NOTICE = ("Estimativa parcial das medições guardadas, não um orçamento global da obra. Os edifícios, pisos e capítulos sem medição ou sem preço ficam por completar; uma ausência de dados não vale zero euros.")
 
 
 def unique_levels(levels):
@@ -55,15 +53,15 @@ def group_coverage(levels, by_id, quantity, known_poste):
                 unpriced += 1
     warnings = [SCOPE_NOTICE]
     if missing:
-        warnings.append(f"{len(missing)} plan(s) du groupe sont indisponibles pour ce compte.")
+        warnings.append(f'{len(missing)} planta(s) do grupo estão indisponíveis para esta conta.')
     if empty:
-        warnings.append(f"{len(empty)} plan(s) ne contiennent aucune mesure enregistrée.")
+        warnings.append(f'{len(empty)} planta(s) não contêm nenhuma medição guardada.')
     if invalid:
-        warnings.append(f"{invalid} mesure(s) ont une quantité absente, nulle ou invalide, non valorisée.")
+        warnings.append(f'{invalid} medição(ões) têm uma quantidade ausente, nula ou inválida, não valorizada.')
     if unpriced:
-        warnings.append(f"{unpriced} mesure(s) restent sans poste chiffrable.")
+        warnings.append(f'{unpriced} medição(ões) continuam sem artigo orçamentável.')
     if duplicates:
-        warnings.append(f"{len(duplicates)} plan(s) répété(s) dans le groupe sont comptés une seule fois.")
+        warnings.append(f'{len(duplicates)} planta(s) repetida(s) no grupo são contadas uma única vez.')
     return {"status": "partial", "project_complete": False,
             "recorded_measurements_complete": bool(measurements) and not (missing or empty or invalid or unpriced),
             "plans_count": len(unique), "available_plans": len(unique)-len(missing),

@@ -32,7 +32,7 @@ def configured():
 
 def _env(key):
     if not os.environ.get(key):
-        raise PostalProviderError("not_configured", "Service postal non configuré. Contactez l'administrateur.")
+        raise PostalProviderError("not_configured", "Serviço postal não configurado. Contacte o administrador.")
     return os.environ[key]
 
 
@@ -43,35 +43,35 @@ async def _call(method, operation, headers, **kwargs):
             response = await asyncio.wait_for(client.request(method, f'{_env("MERCIFACTEUR_BASE_URL").rstrip("/")}/{operation}',
                 headers={**headers, "Accept": "application/json"}, **kwargs), timeout=25)
     except (httpx.HTTPError, asyncio.TimeoutError):
-        raise PostalProviderError("provider_timeout", "Le service postal ne répond pas dans le délai prévu.", uncertain=billable)
+        raise PostalProviderError("provider_timeout", "O serviço postal não responde no prazo previsto.", uncertain=billable)
     try:
         data = response.json()
         if not isinstance(data, dict):
             raise ValueError()
     except ValueError:
         log.warning("Postal provider non-JSON: operation=%s status=%s", operation, response.status_code)
-        raise PostalProviderError("provider_unavailable", "Le service postal renvoie une réponse invalide. Réessayez le tarif ultérieurement.", uncertain=billable)
+        raise PostalProviderError("provider_unavailable", "O serviço postal devolve uma resposta inválida. Tente o preço mais tarde.", uncertain=billable)
     error = data.get("error") or {}
     code = str(error.get("code") or "provider_rejected") if isinstance(error, dict) else "provider_rejected"
     if response.status_code >= 500:
-        raise PostalProviderError("provider_unavailable", "Le service postal est temporairement indisponible.", uncertain=billable)
+        raise PostalProviderError("provider_unavailable", "O serviço postal está temporariamente indisponível.", uncertain=billable)
     if response.status_code >= 400 or data.get("success") is False:
         log.warning("Postal provider rejected operation=%s code=%s status=%s", operation, code, response.status_code)
         if code == "INVALID_TOKEN_FOR_IP":
             _token.clear()
-            message = "L'adresse IP du serveur n'est pas autorisée par Merci Facteur. L'administrateur doit mettre à jour la configuration postale."
+            message = "O endereço IP do servidor não está autorizado pela Merci Facteur. O administrador deve atualizar a configuração postal."
         elif response.status_code in (401, 403):
             _token.clear()
-            message = "Merci Facteur refuse l'accès au compte postal. Vérifiez les autorisations du compte."
+            message = "A Merci Facteur recusa o acesso à conta postal. Verifique as autorizações da conta."
         elif "DOUBL" in code.upper() or "DUPLIC" in code.upper():
-            message = "Merci Facteur signale un doublon. Vérifiez l'historique avant tout nouvel envoi."
+            message = "A Merci Facteur assinala um duplicado. Verifique o histórico antes de qualquer novo envio."
             billable = True
         else:
-            message = "Merci Facteur a refusé la demande. Vérifiez le compte postal et les coordonnées avant de réessayer."
+            message = "A Merci Facteur recusou o pedido. Verifique a conta postal e os contactos antes de tentar novamente."
         duplicate = "DOUBL" in code.upper() or "DUPLIC" in code.upper()
         raise PostalProviderError(code, message, uncertain=duplicate)
     if data.get("success") is not True:
-        raise PostalProviderError("provider_invalid_response", "Le service postal n'a pas confirmé la demande.", uncertain=billable)
+        raise PostalProviderError("provider_invalid_response", "O serviço postal não confirmou o pedido.", uncertain=billable)
     return data
 
 
@@ -100,7 +100,7 @@ async def get_token(force=False):
             if not isinstance(token, str) or not token or expires <= now:
                 raise ValueError()
         except (KeyError, TypeError, ValueError):
-            raise PostalProviderError("invalid_token", "Merci Facteur a renvoyé une autorisation invalide.")
+            raise PostalProviderError("invalid_token", "A Merci Facteur devolveu uma autorização inválida.")
         _token.update(value=token, expire=expires, config=fingerprint)
         return token
 
@@ -112,7 +112,7 @@ async def request(method, op, **kw):
 
 def _addr(address):
     keys = ("civilite", "nom", "prenom", "societe", "adresse1", "adresse2", "adresse3", "cp", "ville", "pays", "phone", "email")
-    return {key: str(address.get(key) or ("France" if key == "pays" else "")) for key in keys}
+    return {key: str(address.get(key) or ("França" if key == "pays" else "")) for key in keys}
 
 
 async def postage_price(mode="normal", pages=1, pays="france"):
@@ -124,7 +124,7 @@ async def postage_price(mode="normal", pages=1, pays="france"):
         if not all(math.isfinite(v) and v >= 0 for v in (postage, content)) or postage + content <= 0:
             raise ValueError()
     except (KeyError, TypeError, ValueError):
-        raise PostalProviderError("invalid_price", "Le tarif postal reçu est incomplet. Aucun envoi n'est autorisé.")
+        raise PostalProviderError("invalid_price", "O preço postal recebido está incompleto. Nenhum envio é autorizado.")
     return {"mode": mode, "pages": pages, "postage": postage, "content_ttc": content,
             "total_ttc": round(postage + content, 2), "currency": "EUR"}
 

@@ -176,7 +176,7 @@ async def get_assistant_conversation(conversation_id: str, user=Depends(pro_requ
 # ESCALIER → DEVIS : 3 lignes (béton m³, coffrage m², ferraillage kg)
 # ---------------------------------------------------------------------------
 class StairToQuoteIn(BaseModel):
-    project_name: str = "Escalier"
+    project_name: str = "Escada"
     stair_result: dict
     concrete_analysis: dict | None = None
     client_id: str | None = None
@@ -201,15 +201,15 @@ async def stair_to_quote(body: StairToQuoteIn, user=Depends(pro_required)):
     cls = "C25/30"
     lines = []
     if float(q.get("concrete_volume_m3", 0)) > 0:
-        lines.append(DocLine(kind="line", line_kind="ouvrage", designation=f"Béton {cls} pour escalier",
-                             description="Paillasse + marches (métré déterministe)", unit="m3",
+        lines.append(DocLine(kind="line", line_kind="ouvrage", designation=f'Betão {cls} para escada',
+                             description="Laje da escada + degraus (medição determinística)", unit="m3",
                              qty=round(float(q.get("concrete_volume_m3", 0)), 3), unit_price_ht=0,
-                             category="Escalier béton armé", price_missing=True, price_estimated=True))
+                             category="Escada betão armado", price_missing=True, price_estimated=True))
     if float(q.get("formwork_area_m2", 0)) > 0:
-        lines.append(DocLine(kind="line", line_kind="ouvrage", designation="Coffrage escalier",
-                             description="Paillasse + joues + marches", unit="m2",
+        lines.append(DocLine(kind="line", line_kind="ouvrage", designation="Cofragem da escada",
+                             description="Laje + faces laterais + degraus", unit="m2",
                              qty=round(float(q.get("formwork_area_m2", 0)), 2), unit_price_ht=0,
-                             category="Escalier béton armé", price_missing=True, price_estimated=True))
+                             category="Escada betão armado", price_missing=True, price_estimated=True))
     nomen = ca.get("nomenclature") or []
     if body.detailed_steel and nomen:
         for r in nomen:
@@ -217,16 +217,16 @@ async def stair_to_quote(body: StairToQuoteIn, user=Depends(pro_required)):
                 continue
             desc = f"Ø {r.get('diameter', '')} · L={r.get('length_m', 0)} m × {r.get('count', 0)} = {r.get('total_length_m', 0)} ml"
             lines.append(DocLine(kind="line", line_kind="ouvrage",
-                                 designation=f"Acier rep.{r.get('repere', '')} — {r.get('designation', 'Armature')}",
+                                 designation=f"Armadura ref.{r.get('repere', '')} — {r.get('designation', 'Armature')}",
                                  description=desc, unit="kg", qty=round(float(r.get("weight_kg", 0)), 2),
-                                 unit_price_ht=0, category="Ferraillage escalier", price_missing=True, price_estimated=True))
+                                 unit_price_ht=0, category="Armaduras da escada", price_missing=True, price_estimated=True))
     elif float(steel) > 0:
-        lines.append(DocLine(kind="line", line_kind="ouvrage", designation="Ferraillage (aciers HA)",
+        lines.append(DocLine(kind="line", line_kind="ouvrage", designation="Armaduras (aço A500)",
                              description="Nomenclature indicative DTU 21", unit="kg",
                              qty=round(float(steel), 2), unit_price_ht=0,
-                             category="Escalier béton armé", price_missing=True, price_estimated=True))
+                             category="Escada betão armado", price_missing=True, price_estimated=True))
     if not lines:
-        raise HTTPException(422, "Quantités nulles — calculez d'abord un escalier réalisable")
+        raise HTTPException(422, "Quantidades nulas — calcule primeiro uma escada exequível")
     doc = DocIn(doc_type="quote", title=f"Escalier — {body.project_name}"[:160],
                 client_id=body.client_id, chantier_id=body.chantier_id, lines=lines, status="draft")
     return await create_document(doc, user)
@@ -256,7 +256,7 @@ async def create_project(body: StairProjectIn, user=Depends(pro_required)):
     doc = {
         "project_id": f"stp_{secrets.token_hex(8)}",
         "user_id": user["user_id"],
-        "name": (body.name or "Escalier sans nom").strip()[:120],
+        "name": (body.name or "Escada sem nome").strip()[:120],
         "stair_type": body.stair_type,
         "input": body.input or {},
         "result": body.result,
@@ -273,13 +273,13 @@ async def get_project(project_id: str, user=Depends(pro_required)):
     doc = await db.stair_projects.find_one(
         {"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0, "user_id": 0})
     if not doc:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     return doc
 
 
 @router.put("/projects/{project_id}")
 async def update_project(project_id: str, body: StairProjectIn, user=Depends(pro_required)):
-    upd = {"name": (body.name or "Escalier sans nom").strip()[:120],
+    upd = {"name": (body.name or "Escada sem nome").strip()[:120],
            "stair_type": body.stair_type, "updated_at": _now()}
     if body.input is not None:
         upd["input"] = body.input
@@ -290,7 +290,7 @@ async def update_project(project_id: str, body: StairProjectIn, user=Depends(pro
     res = await db.stair_projects.update_one(
         {"project_id": project_id, "user_id": user["user_id"]}, {"$set": upd})
     if not res.matched_count:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     return {"ok": True}
 
 

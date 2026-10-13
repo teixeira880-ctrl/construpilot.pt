@@ -82,18 +82,18 @@ def build_planning_pdf(chantier: dict, plan: dict, result: dict, suggestions: li
     small = ParagraphStyle("small", parent=ss["Normal"], fontSize=7.5, textColor=colors.grey, leading=10)
     story = []
     company = (branding or {}).get("company") or "ConstruPilot"
-    story.append(Paragraph(f"Planning de chantier — {chantier.get('name', '')}", h1))
+    story.append(Paragraph(f"Planeamento da obra — {chantier.get('name', '')}", h1))
     p = result["project"]
     story.append(Paragraph(
-        f"{company} · Début {_fr(p['start_date'])} · Fin prévue <b>{_fr(p['end_date'])}</b> · {p['duration_workdays']} jours ouvrés"
+        f"{company} · Início {_fr(p['start_date'])} · Fim previsto <b>{_fr(p['end_date'])}</b> · {p['duration_workdays']} dias úteis"
         + (f" · Objectif {_fr(p['deadline'])} ({'+' if p['deadline_gap_days'] >= 0 else ''}{p['deadline_gap_days']} j)" if p.get("deadline") else "")
-        + f" · Situation au {_fr(p['as_of'])} · Édité le {datetime.now(timezone.utc).strftime('%d/%m/%Y')}", sub))
+        + f" · Situação em {_fr(p['as_of'])} · Emitido em {datetime.now(timezone.utc).strftime('%d/%m/%Y')}", sub))
     story.append(Spacer(1, 4 * mm))
-    story.append(Paragraph("Diagramme de Gantt (jours ouvrés — orange = chemin critique, vert = avancement saisi)", h2))
+    story.append(Paragraph("Diagrama de Gantt (dias úteis — laranja = caminho crítico, verde = avanço introduzido)", h2))
     story.append(Gantt(result["tasks"], doc.width))
 
-    story.append(Paragraph("Tâches", h2))
-    rows = [["#", "Tâche", "Équipe / lot", "Durée", "Début", "Fin", "Marge", "Avanc.", "Prédécesseurs"]]
+    story.append(Paragraph("Tarefas", h2))
+    rows = [["#", "Tarefa", "Equipa / capítulo", "Duração", "Início", "Fim", "Margem", "Avanc.", "Antecessoras"]]
     for t in result["tasks"]:
         rows.append([t["id"], Paragraph(t["name"], body), t["resource"], f"{t['duration']} j", _fr(t["start_date"]), _fr(t["end_date"]),
                      "critique" if t["critical"] else f"{t['slack']} j", f"{t['progress']} %",
@@ -110,12 +110,11 @@ def build_planning_pdf(chantier: dict, plan: dict, result: dict, suggestions: li
     story.append(tbl)
 
     if suggestions:
-        story.append(Paragraph("Propositions de réorganisation (gains mesurés en rejouant le planning)", h2))
+        story.append(Paragraph("Propostas de reorganização (ganhos medidos repetindo o planeamento)", h2))
         for s in suggestions:
             col = _SEV.get(s["severity"], _GREY)
             story.append(Paragraph(f"<font color='{col.hexval()}'>■</font> <b>{s['title']}</b> — {s['detail']}", body))
     story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph("Planning déterministe (chemin critique + capacité des équipes). Les durées marquées « par défaut » "
-                           "doivent être confirmées par l'entreprise ; aucune durée n'est estimée par IA.", small))
+    story.append(Paragraph("Planeamento determinístico (caminho crítico + capacidade das equipas). As durações marcadas «por omissão» devem ser confirmadas pela empresa; nenhuma duração é estimada por IA.", small))
     doc.build(story)
     return buf.getvalue()

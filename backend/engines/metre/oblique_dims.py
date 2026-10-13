@@ -161,10 +161,9 @@ def match_labels(page, pt_per_m: float, *, exclude_rects=(), tol_m: float = 0.01
             dims.append({"raw_text": lab["text"], "value_m": lab["value_m"], "measured_m": round(measured, 4), "difference_mm": round((measured - lab["value_m"]) * 1000, 1),
                          "x1": round(ox + a0 * ux, 2), "y1": round(oy + a0 * uy, 2), "x2": round(ox + a1 * ux, 2), "y2": round(oy + a1 * uy, 2),
                          "angle_deg": round(math.degrees(ang), 1), "bounds_source": cand["src"], "label_bbox": lab["bbox"],
-                         "location": "cote oblique (texte + ligne parallèle)", "state": "confirmed"})
+                         "location": "cota oblíqua (texto + linha paralela)", "state": "confirmed"})
         else:
             unmatched.append({"raw_text": lab["text"], "value_m": lab["value_m"], "label_bbox": lab["bbox"],
                               "nearest_measured_m": round(best[1], 3) if best else None, "state": "indeterminate"})
     return {"pt_per_m": round(pt_per_m, 4), "declared_pt_per_m": round(declared, 4), "calibration": cal, "labels": len(labels), "dimensions": dims, "unmatched": unmatched,
-            "note": ("Cote confirmée = texte numérique + ligne parallèle adjacente dont la longueur entre repères (ticks) ou l'étendue vaut la valeur imprimée "
-                     "(±1 cm ou 0,4 %) à l'échelle réelle du tirage (auto-calibrée sur les cotes elles-mêmes). Aucune valeur déduite du texte seul.")}
+            "note": ("Cota confirmada = texto numérico + linha paralela adjacente cujo comprimento entre marcas (ticks) ou extensão vale o valor impresso (±1 cm ou 0,4 %) à escala real da impressão (autocalibrada nas próprias cotas). Nenhum valor deduzido apenas do texto.")}

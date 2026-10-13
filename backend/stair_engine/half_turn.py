@@ -31,10 +31,10 @@ class HalfTurnInput(StairInput):
     def _check(cls, v):
         if isinstance(v, str):
             if v != "auto":
-                raise ValueError("num_winders doit être un int ou 'auto'")
+                raise ValueError("num_winders deve ser um int ou \'auto\'")
             return v
         if not (4 <= v <= 12):
-            raise ValueError("num_winders doit être entre 4 et 12 pour un demi-tournant")
+            raise ValueError("num_winders deve estar entre 4 e 12 para uma meia volta")
         return v
 
 
@@ -54,7 +54,7 @@ def _auto_balanced_half(base_inp, norms):
         if r.is_buildable:
             r.alerts.insert(0, Alert(
                 level="green", code="AUTO_WINDERS_SELECTED",
-                message_fr=f"Répartition automatique : {n} marches balancées à 180°.",
+                message_fr=f'Distribuição automática: {n} degraus em leque a 180°.',
                 metric="num_winders", value=float(n),
             ))
             return r
@@ -65,7 +65,7 @@ def _auto_balanced_half(base_inp, norms):
     if best is not None:
         best.alerts.insert(0, Alert(
             level="red", code="AUTO_WINDERS_NO_SOLUTION",
-            message_fr="Aucune répartition (4-12 winders) ne satisfait les contraintes.",
+            message_fr="Nenhuma distribuição (4-12 degraus em leque) satisfaz as restrições.",
         ))
     return best
 
@@ -74,7 +74,7 @@ def _compute_half_single(inp: HalfTurnInput, norms: StairNorms) -> StairResult:
     alerts_all: List[Alert] = []
     n_steps, h_mm, in_optimal = find_optimal_num_steps(inp.floor_height_mm, norms)
     if n_steps <= 0:
-        return _dead("half_turn", "GEOMETRY_INVALID", "Hauteur invalide.")
+        return _dead("half_turn", "GEOMETRY_INVALID", "Altura inválida.")
 
     g = optimal_giron_mm(h_mm, norms)
     blondel = blondel_value(h_mm, g)
@@ -82,7 +82,7 @@ def _compute_half_single(inp: HalfTurnInput, norms: StairNorms) -> StairResult:
     if not in_optimal:
         alerts_all.append(Alert(
             level="orange", code="RISER_HEIGHT_NON_OPTIMAL",
-            message_fr=f"Hauteur de marche {h_mm:.1f} mm hors plage optimale.",
+            message_fr=f'Altura do espelho {h_mm:.1f} mm fora do intervalo ótimo.',
             metric="riser_height_mm", value=h_mm,
         ))
 
@@ -139,13 +139,13 @@ def _compute_half_single(inp: HalfTurnInput, norms: StairNorms) -> StairResult:
         if dw < norms.winder_walkline_min_mm:
             alerts_all.append(Alert(
                 level="red", code="BALANCING_WALKLINE_TOO_SMALL",
-                message_fr=f"Giron ligne de foulée {dw:.0f} mm < minimum {norms.winder_walkline_min_mm:.0f} mm.",
+                message_fr=f'Cobertor na linha de passo {dw:.0f} mm < minimum {norms.winder_walkline_min_mm:.0f} mm.',
                 metric="depth_walkline_mm", value=dw, threshold=norms.winder_walkline_min_mm,
             ))
         if inp.inner_radius_mm > 0 and di < norms.winder_inner_min_mm:
             alerts_all.append(Alert(
                 level="orange", code="BALANCING_INNER_TOO_SMALL",
-                message_fr=f"Giron intérieur {di:.0f} mm < minimum {norms.winder_inner_min_mm:.0f} mm.",
+                message_fr=f'Cobertor interior {di:.0f} mm < minimum {norms.winder_inner_min_mm:.0f} mm.',
                 metric="depth_inner_mm", value=di,
             ))
 
@@ -154,7 +154,7 @@ def _compute_half_single(inp: HalfTurnInput, norms: StairNorms) -> StairResult:
         if remaining < 2:
             alerts_all.append(Alert(
                 level="red", code="BALANCING_IMPOSSIBLE",
-                message_fr=f"Trop de winders ({num_winders}) pour la hauteur.",
+                message_fr=f'Demasiados degraus em leque ({num_winders}) para a altura.',
             ))
             remaining = max(0, remaining)
         n_lower = remaining // 2
@@ -193,13 +193,13 @@ def _compute_half_single(inp: HalfTurnInput, norms: StairNorms) -> StairResult:
     if footprint_length > inp.available_length_mm:
         alerts_all.append(Alert(
             level="red", code="STAIR_RUN_TOO_LONG",
-            message_fr=f"Reculement nécessaire {footprint_length:.0f} mm > disponible {inp.available_length_mm:.0f} mm.",
+            message_fr=f'Desenvolvimento em planta necessário {footprint_length:.0f} mm > disponível {inp.available_length_mm:.0f} mm.',
             metric="stair_run_mm", value=footprint_length, threshold=inp.available_length_mm,
         ))
     if footprint_width > inp.available_width_mm:
         alerts_all.append(Alert(
             level="red", code="STAIR_WIDTH_INSUFFICIENT",
-            message_fr=f"Largeur nécessaire pour le demi-tournant {footprint_width:.0f} mm > disponible {inp.available_width_mm:.0f} mm.",
+            message_fr=f'Largura necessária para a meia volta {footprint_width:.0f} mm > disponível {inp.available_width_mm:.0f} mm.',
             metric="available_width_mm", value=footprint_width, threshold=inp.available_width_mm,
         ))
 

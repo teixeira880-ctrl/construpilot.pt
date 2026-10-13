@@ -8,16 +8,16 @@ from core.db import db
 
 RULES_VERSION = "metre-rules v3 (2026-10)"
 RULES = {
-    "dalle_surface": {"lot": "Gros œuvre / béton", "designation": "Dalle — surface", "unit": "m²", "formula": "aire du polygone calibré moins déductions de la pièce", "waste_pct": 0},
-    "mur_surface_nette": {"lot": "Gros œuvre / maçonnerie", "designation": "Murs — surface nette", "unit": "m²", "formula": "périmètre × hauteur − Σ surfaces des ouvertures", "waste_pct": 0},
-    "mur_lineaire": {"lot": "Gros œuvre / maçonnerie", "designation": "Murs — linéaire", "unit": "ml", "formula": "Σ longueurs des côtés du polygone calibré", "waste_pct": 0},
-    "mur_volume": {"lot": "Gros œuvre / béton", "designation": "Murs — volume", "unit": "m³", "formula": "surface nette × épaisseur", "waste_pct": 0},
-    "ouverture_unite": {"lot": "Menuiseries", "designation": "Menuiserie", "unit": "u", "formula": "1 unité par ouverture, dimensions lues (largeur × hauteur)", "waste_pct": 0},
-    "mur_dxf_lineaire": {"lot": "Gros œuvre / béton (DXF)", "designation": "Mur — linéaire", "unit": "ml", "formula": "longueur du corps de mur lu dans le DXF", "waste_pct": 0},
-    "mur_dxf_volume": {"lot": "Gros œuvre / béton (DXF)", "designation": "Mur — volume béton", "unit": "m³", "formula": "aire en plan (L × e lue) × hauteur du niveau", "waste_pct": 0},
-    "poteau_volume": {"lot": "Gros œuvre / béton (DXF)", "designation": "Poteau — volume béton", "unit": "m³", "formula": "section lue (a × b) × hauteur du niveau", "waste_pct": 0},
-    "poutre_lineaire": {"lot": "Gros œuvre / béton (DXF)", "designation": "Poutre — linéaire", "unit": "ml", "formula": "longueur de la poutre lue dans le DXF (retombée non lue en plan)", "waste_pct": 0},
-    "dalle_dxf_surface": {"lot": "Gros œuvre / béton (DXF)", "designation": "Dalle — surface nette", "unit": "m²", "formula": "union des faces fermées du calque dalle − trémies", "waste_pct": 0},
+    "dalle_surface": {"lot": "Estrutura / betão", "designation": "Laje — área", "unit": "m²", "formula": "área do polígono calibrado menos as deduções da divisão", "waste_pct": 0},
+    "mur_surface_nette": {"lot": "Estrutura / alvenaria", "designation": "Paredes — área líquida", "unit": "m²", "formula": "perímetro × altura − Σ áreas dos vãos", "waste_pct": 0},
+    "mur_lineaire": {"lot": "Estrutura / alvenaria", "designation": "Paredes — linear", "unit": "ml", "formula": "Σ comprimentos dos lados do polígono calibrado", "waste_pct": 0},
+    "mur_volume": {"lot": "Estrutura / betão", "designation": "Paredes — volume", "unit": "m³", "formula": "área líquida × espessura", "waste_pct": 0},
+    "ouverture_unite": {"lot": "Menuiseries", "designation": "Carpintaria", "unit": "u", "formula": "1 unidade por vão, dimensões lidas (largura × altura)", "waste_pct": 0},
+    "mur_dxf_lineaire": {"lot": "Estrutura / betão (DXF)", "designation": "Parede — linear", "unit": "ml", "formula": "comprimento do corpo da parede lido no DXF", "waste_pct": 0},
+    "mur_dxf_volume": {"lot": "Estrutura / betão (DXF)", "designation": "Parede — volume de betão", "unit": "m³", "formula": "área em planta (C × e lida) × altura do piso", "waste_pct": 0},
+    "poteau_volume": {"lot": "Estrutura / betão (DXF)", "designation": "Pilar — volume de betão", "unit": "m³", "formula": "secção lida (a × b) × altura do piso", "waste_pct": 0},
+    "poutre_lineaire": {"lot": "Estrutura / betão (DXF)", "designation": "Viga — linear", "unit": "ml", "formula": "comprimento da viga lido no DXF (altura abaixo da laje não lida em planta)", "waste_pct": 0},
+    "dalle_dxf_surface": {"lot": "Estrutura / betão (DXF)", "designation": "Laje — área líquida", "unit": "m²", "formula": "união das faces fechadas da camada laje − aberturas", "waste_pct": 0},
 }
 LEVEL_ELEMENT = "dxf_level"
 
@@ -50,7 +50,7 @@ def build_elements(plan: dict) -> tuple[list[dict], list[dict]]:
         base = {"plan_id": plan["plan_id"], "page_index": room.get("page_index", 0), "room_id": room["room_id"], "room_name": room.get("name") or room["room_id"]}
         if not ppm or len(pts) < 3:
             missing.append({"kind": "calibration" if not ppm else "geometry", "room_id": room["room_id"], "page_index": room.get("page_index", 0),
-                            "message": f"{base['room_name']} : {'page non calibrée — longueurs indéterminables' if not ppm else 'polygone incomplet'}", "blocks": ["dalle_surface", "mur_surface_nette", "mur_lineaire", "mur_volume"]})
+                            "message": f"{base['room_name']} : {('página não calibrada — comprimentos indetermináveis' if not ppm else 'polígono incompleto')}", "blocks": ["dalle_surface", "mur_surface_nette", "mur_lineaire", "mur_volume"]})
             continue
         area = _shoelace(pts) / (ppm ** 2)
         deductions = room.get("deductions") or []
@@ -59,25 +59,25 @@ def build_elements(plan: dict) -> tuple[list[dict], list[dict]]:
                             for d in deductions)
         area = max(0.0, area - deducted_area)
         sides = [math.dist(pts[i], pts[(i + 1) % len(pts)]) / ppm for i in range(len(pts))]
-        prov_len = {"source": "mesuré", "detail": f"polygone calibré ({cal.get('method')}, {ppm:.2f} px/m, confiance {cal.get('confidence')})"}
+        prov_len = {"source": "mesuré", "detail": f"polígono calibrado ({cal.get('method')}, {ppm:.2f} px/m, confiança {cal.get('confidence')})"}
         height = room.get("ceiling_height_m")
-        h_dim = {"value": height, "unit": "m", "source": "saisi" if height else "manquant", "detail": "hauteur sous plafond indiquée sur la pièce" if height else "hauteur non renseignée"}
-        elements.append({**base, "element_id": _id(plan["plan_id"], room["room_id"], "dalle"), "type": "dalle", "label": f"Dalle {base['room_name']}", "geometry": {"points_px": pts},
+        h_dim = {"value": height, "unit": "m", "source": "saisi" if height else "manquant", "detail": "pé-direito indicado na divisão" if height else "altura não indicada"}
+        elements.append({**base, "element_id": _id(plan["plan_id"], room["room_id"], "dalle"), "type": "dalle", "label": f"Laje {base['room_name']}", "geometry": {"points_px": pts},
                          "dimensions": {"surface_m2": {"value": round(area, 3), "unit": "m²", **prov_len}}, "status": "to_verify", "evidence": {"page_index": base["page_index"], "points_px": pts}})
         openings = room.get("openings") or []
-        elements.append({**base, "element_id": _id(plan["plan_id"], room["room_id"], "murs"), "type": "mur", "label": f"Murs {base['room_name']}", "geometry": {"points_px": pts},
+        elements.append({**base, "element_id": _id(plan["plan_id"], room["room_id"], "murs"), "type": "mur", "label": f"Paredes {base['room_name']}", "geometry": {"points_px": pts},
                          "dimensions": {"perimetre_m": {"value": round(sum(sides), 3), "unit": "m", **prov_len, "sides_m": [round(s, 3) for s in sides]}, "hauteur_m": h_dim,
-                                        "epaisseur_m": {"value": room.get("wall_thickness_m"), "unit": "m", "source": "saisi" if room.get("wall_thickness_m") else "manquant", "detail": "épaisseur non lisible sur un plan de pièces — à confirmer"}},
+                                        "epaisseur_m": {"value": room.get("wall_thickness_m"), "unit": "m", "source": "saisi" if room.get("wall_thickness_m") else "manquant", "detail": "espessura ilegível numa planta de divisões — a confirmar"}},
                          "openings": [o.get("kind") or o.get("type") for o in openings], "status": "to_verify", "evidence": {"page_index": base["page_index"], "points_px": pts}})
         if not height:
-            missing.append({"kind": "height", "room_id": room["room_id"], "element_id": _id(plan["plan_id"], room["room_id"], "murs"), "message": f"{base['room_name']} : hauteur sous plafond manquante — surfaces de murs provisoires", "blocks": ["mur_surface_nette", "mur_volume"]})
+            missing.append({"kind": "height", "room_id": room["room_id"], "element_id": _id(plan["plan_id"], room["room_id"], "murs"), "message": f"{base['room_name']} : pé-direito em falta — áreas de paredes provisórias", "blocks": ["mur_surface_nette", "mur_volume"]})
         if not room.get("wall_thickness_m"):
-            missing.append({"kind": "thickness", "room_id": room["room_id"], "element_id": _id(plan["plan_id"], room["room_id"], "murs"), "message": f"{base['room_name']} : épaisseur des murs manquante — volume non déterminé", "blocks": ["mur_volume"]})
+            missing.append({"kind": "thickness", "room_id": room["room_id"], "element_id": _id(plan["plan_id"], room["room_id"], "murs"), "message": f"{base['room_name']} : espessura das paredes em falta — volume não determinado", "blocks": ["mur_volume"]})
         for i, o in enumerate(openings):
             w, h = o.get("width_m"), o.get("height_m")
             count = max(1, int(o.get("count", 1)))
             elements.append({**base, "element_id": _id(plan["plan_id"], room["room_id"], "ouv", i), "type": "ouverture", "count": count, "subtype": o.get("kind") or o.get("type") or "ouverture", "label": f"{(o.get('kind') or o.get('type') or 'ouverture').capitalize()} {i + 1} — {base['room_name']}",
-                             "dimensions": {"largeur_m": {"value": w, "unit": "m", "source": "saisi" if w else "manquant", "detail": "dimension saisie sur l'ouverture"}, "hauteur_m": {"value": h, "unit": "m", "source": "saisi" if h else "manquant", "detail": "dimension saisie sur l'ouverture"}},
+                             "dimensions": {"largeur_m": {"value": w, "unit": "m", "source": "saisi" if w else "manquant", "detail": "dimensão introduzida no vão"}, "hauteur_m": {"value": h, "unit": "m", "source": "saisi" if h else "manquant", "detail": "dimensão introduzida no vão"}},
                              "status": "to_verify", "evidence": {"page_index": base["page_index"], "points_px": pts, "opening_index": i}})
     return elements, missing
 
@@ -104,30 +104,30 @@ def compute_quantities(elements: list[dict], overrides: dict) -> list[dict]:
             line("dalle_surface", d["surface_m2"]["value"], [{"name": "surface", **d["surface_m2"]}])
         elif e["type"] == "mur":
             per = d["perimetre_m"]
-            line("mur_lineaire", per["value"], [{"name": "périmètre", **{k: v for k, v in per.items() if k != "sides_m"}}])
+            line("mur_lineaire", per["value"], [{"name": "perímetro", **{k: v for k, v in per.items() if k != "sides_m"}}])
             h = d["hauteur_m"]["value"]
             assumptions, h_src = [], d["hauteur_m"]
             if h is None and ov.get("hauteur_m"):
-                h = ov["hauteur_m"]; h_src = {"value": h, "unit": "m", "source": "hypothèse", "detail": ov.get("reason") or "hypothèse utilisateur"}; assumptions.append({"name": "hauteur", "value": h, "unit": "m", "reason": ov.get("reason") or "hypothèse utilisateur", "by": ov.get("by")})
+                h = ov["hauteur_m"]; h_src = {"value": h, "unit": "m", "source": "hypothèse", "detail": ov.get("reason") or "hipótese do utilizador"}; assumptions.append({"name": "altura", "value": h, "unit": "m", "reason": ov.get("reason") or "hipótese do utilizador", "by": ov.get("by")})
             openings = [o for o in by_room[e["room_id"]] if o["type"] == "ouverture"]
             ded = [{"name": o["label"], "value": round((o["dimensions"]["largeur_m"]["value"] or 0) * (o["dimensions"]["hauteur_m"]["value"] or 0) * o.get("count", 1), 3), "unit": "m²", "element_id": o["element_id"]} for o in openings]
             if h is None:
-                line("mur_surface_nette", None, [{"name": "périmètre", **{k: v for k, v in per.items() if k != "sides_m"}}, {"name": "hauteur", **h_src}], ded, note="hauteur manquante : indiquez-la ou déclarez une hypothèse")
-                line("mur_volume", None, [], note="hauteur et/ou épaisseur manquantes")
+                line("mur_surface_nette", None, [{"name": "perímetro", **{k: v for k, v in per.items() if k != "sides_m"}}, {"name": "altura", **h_src}], ded, note="altura em falta: indique-a ou declare uma hipótese")
+                line("mur_volume", None, [], note="altura e/ou espessura em falta")
                 continue
             gross = per["value"] * h
             net = max(0.0, gross - sum(x["value"] for x in ded))
-            line("mur_surface_nette", net, [{"name": "périmètre", **{k: v for k, v in per.items() if k != "sides_m"}}, {"name": "hauteur", **h_src}, {"name": "surface brute", "value": round(gross, 3), "unit": "m²", "source": "calculé"}], ded, assumptions, status="provisional" if assumptions else "to_verify")
+            line("mur_surface_nette", net, [{"name": "perímetro", **{k: v for k, v in per.items() if k != "sides_m"}}, {"name": "altura", **h_src}, {"name": "área bruta", "value": round(gross, 3), "unit": "m²", "source": "calculé"}], ded, assumptions, status="provisional" if assumptions else "to_verify")
             th = d["epaisseur_m"]["value"] or ov.get("epaisseur_m")
             if th:
-                th_src = d["epaisseur_m"] if d["epaisseur_m"]["value"] else {"value": th, "unit": "m", "source": "hypothèse", "detail": ov.get("reason") or "hypothèse utilisateur"}
-                a2 = list(assumptions) + ([{"name": "épaisseur", "value": th, "unit": "m", "reason": ov.get("reason") or "hypothèse utilisateur", "by": ov.get("by")}] if not d["epaisseur_m"]["value"] else [])
-                line("mur_volume", net * th, [{"name": "surface nette", "value": round(net, 3), "unit": "m²", "source": "calculé"}, {"name": "épaisseur", **th_src}], [], a2, status="provisional" if a2 else "to_verify")
+                th_src = d["epaisseur_m"] if d["epaisseur_m"]["value"] else {"value": th, "unit": "m", "source": "hypothèse", "detail": ov.get("reason") or "hipótese do utilizador"}
+                a2 = list(assumptions) + ([{"name": "espessura", "value": th, "unit": "m", "reason": ov.get("reason") or "hipótese do utilizador", "by": ov.get("by")}] if not d["epaisseur_m"]["value"] else [])
+                line("mur_volume", net * th, [{"name": "área líquida", "value": round(net, 3), "unit": "m²", "source": "calculé"}, {"name": "espessura", **th_src}], [], a2, status="provisional" if a2 else "to_verify")
             else:
-                line("mur_volume", None, [{"name": "surface nette", "value": round(net, 3), "unit": "m²", "source": "calculé"}, {"name": "épaisseur", **d["epaisseur_m"]}], note="épaisseur manquante : volume non déterminé")
+                line("mur_volume", None, [{"name": "área líquida", "value": round(net, 3), "unit": "m²", "source": "calculé"}, {"name": "espessura", **d["epaisseur_m"]}], note="espessura em falta: volume não determinado")
         elif e["type"] == "ouverture":
             w, h = d["largeur_m"]["value"], d["hauteur_m"]["value"]
-            line("ouverture_unite", e.get("count", 1) if (w and h) else None, [{"name": "largeur", **d["largeur_m"]}, {"name": "hauteur", **d["hauteur_m"]}], note="" if (w and h) else "dimensions incomplètes")
+            line("ouverture_unite", e.get("count", 1) if (w and h) else None, [{"name": "largura", **d["largeur_m"]}, {"name": "altura", **d["hauteur_m"]}], note="" if (w and h) else "dimensões incompletas")
     return lines
 
 
@@ -142,7 +142,7 @@ async def rebuild(plan: dict, user_id: str) -> dict:
     cad = await load_cad_takeoff(plan, user_id)
     if cad is not None:
         if cad.get("error"):
-            missing.append({"kind": "dxf_error", "room_id": "dxf", "message": f"Lecture DXF impossible : {cad['error']}", "blocks": []})
+            missing.append({"kind": "dxf_error", "room_id": "dxf", "message": f"Leitura DXF impossível: {cad['error']}", "blocks": []})
         else:
             dxf_els, dxf_missing = build_dxf_elements(plan, cad)
             elements += dxf_els
@@ -152,7 +152,7 @@ async def rebuild(plan: dict, user_id: str) -> dict:
     for m in missing:
         ov = overrides.get(m.get("element_id") or "")
         if ov and ov.get({"height": "hauteur_m", "thickness": "epaisseur_m"}.get(m["kind"], "")):
-            m.update({"covered_by_assumption": True, "assumption": ov, "message": m["message"] + " — hypothèse déclarée : " + str(ov.get({"height": "hauteur_m", "thickness": "epaisseur_m"}[m["kind"]])) + " m (" + (ov.get("reason") or "") + ")"})
+            m.update({"covered_by_assumption": True, "assumption": ov, "message": m["message"] + " — hipótese declarada: " + str(ov.get({"height": "hauteur_m", "thickness": "epaisseur_m"}[m["kind"]])) + " m (" + (ov.get("reason") or "") + ")"})
     prev = {q["quantity_id"]: q async for q in db.btp_quantities.find({"plan_id": plan["plan_id"], "superseded": {"$ne": True}}, {"_id": 0})}
     conflicts = []
     for q in lines:
@@ -185,31 +185,31 @@ def build_dxf_elements(plan: dict, cad: dict) -> tuple[list[dict], list[dict]]:
     pid = plan["plan_id"]
     layers = cad.get("layers") or {}
     base = {"plan_id": pid, "page_index": 0, "room_id": "dxf", "room_name": "DXF", "source": "dxf"}
-    els.append({**base, "element_id": _id(pid, LEVEL_ELEMENT), "type": "niveau", "label": "Niveau — hauteur sous dalle", "dimensions": {"hauteur_m": {"value": None, "unit": "m", "source": "manquant", "detail": "hauteur du niveau non lisible sur un plan de coffrage : à déclarer (hypothèse visible)"}},
-                "status": "to_verify", "evidence": {"detail": "plan de coffrage : hauteur à lire sur la coupe ou à déclarer"}})
-    missing.append({"kind": "height", "element_id": _id(pid, LEVEL_ELEMENT), "room_id": "dxf", "message": "Niveau : hauteur sous dalle manquante — volumes des murs et poteaux DXF non déterminés", "blocks": ["mur_dxf_volume", "poteau_volume"]})
-    prov = lambda role: f"lu dans le DXF (calque {', '.join(layers.get(role) or ['?'])})"
+    els.append({**base, "element_id": _id(pid, LEVEL_ELEMENT), "type": "niveau", "label": "Piso — altura sob a laje", "dimensions": {"hauteur_m": {"value": None, "unit": "m", "source": "manquant", "detail": "altura do piso ilegível numa planta de cofragem: a declarar (hipótese visível)"}},
+                "status": "to_verify", "evidence": {"detail": "planta de cofragem: altura a ler no corte ou a declarar"}})
+    missing.append({"kind": "height", "element_id": _id(pid, LEVEL_ELEMENT), "room_id": "dxf", "message": "Piso: altura sob a laje em falta — volumes das paredes e pilares DXF não determinados", "blocks": ["mur_dxf_volume", "poteau_volume"]})
+    prov = lambda role: f"lido no DXF (camada {', '.join(layers.get(role) or ['?'])})"
     for w in ((cad.get("elements") or {}).get("walls") or {}).get("rows") or []:
-        els.append({**base, "element_id": _id(pid, "dxfwall", w["ref"]), "type": "mur", "ref": w["ref"], "label": f"Mur {w['ref']}",
+        els.append({**base, "element_id": _id(pid, "dxfwall", w["ref"]), "type": "mur", "ref": w["ref"], "label": f"Parede {w['ref']}",
                     "dimensions": {"longueur_m": {"value": w["length_m"], "unit": "m", "source": "mesuré", "detail": prov("wall")}, "epaisseur_m": {"value": w["thickness_m"], "unit": "m", "source": "mesuré", "detail": prov("wall")},
                                    "aire_plan_m2": {"value": w["plan_area_m2"], "unit": "m²", "source": "calculé", "detail": w.get("formula")}},
                     "status": "to_verify", "evidence": {"detail": prov("wall"), "centroid_m": w.get("centroid_m"), "formula": w.get("formula")}})
     for c in ((cad.get("elements") or {}).get("columns") or {}).get("rows") or []:
-        els.append({**base, "element_id": _id(pid, "dxfcol", c["ref"]), "type": "poteau", "ref": c["ref"], "label": f"Poteau {c['ref']}",
+        els.append({**base, "element_id": _id(pid, "dxfcol", c["ref"]), "type": "poteau", "ref": c["ref"], "label": f"Pilar {c['ref']}",
                     "dimensions": {"section_m2": {"value": c["section_m2"], "unit": "m²", "source": "mesuré", "detail": c.get("source")}, "a_cm": {"value": c["w_cm"], "unit": "cm", "source": "mesuré"}, "b_cm": {"value": c["h_cm"], "unit": "cm", "source": "mesuré"}},
                     "status": "to_verify", "evidence": {"detail": prov("column"), "centroid_m": c.get("centroid_m"), "formula": c.get("formula")}})
     for b in ((cad.get("elements") or {}).get("beams") or {}).get("rows") or []:
-        els.append({**base, "element_id": _id(pid, "dxfbeam", b["ref"]), "type": "poutre", "ref": b["ref"], "label": f"Poutre {b['ref']}",
+        els.append({**base, "element_id": _id(pid, "dxfbeam", b["ref"]), "type": "poutre", "ref": b["ref"], "label": f"Viga {b['ref']}",
                     "dimensions": {"longueur_m": {"value": b["length_m"], "unit": "m", "source": "mesuré", "detail": prov("beam")}, "largeur_m": {"value": b["width_m"], "unit": "m", "source": "mesuré", "detail": prov("beam")},
-                                   "retombee_m": {"value": None, "unit": "m", "source": "manquant", "detail": "retombée non lisible en plan"}},
+                                   "retombee_m": {"value": None, "unit": "m", "source": "manquant", "detail": "altura abaixo da laje ilegível em planta"}},
                     "status": "to_verify", "evidence": {"detail": prov("beam"), "centroid_m": b.get("centroid_m"), "formula": b.get("formula")}})
     slab = (cad.get("elements") or {}).get("slab")
     if slab:
-        els.append({**base, "element_id": _id(pid, "dxfslab"), "type": "dalle", "label": "Dalle (DXF)", "dimensions": {"surface_m2": {"value": slab["net_area_m2"], "unit": "m²", "source": "mesuré", "detail": prov("slab") + f" ; brute {slab['gross_area_m2']} m², {slab['openings_count']} trémie(s) = {slab['openings_area_m2']} m²"}},
+        els.append({**base, "element_id": _id(pid, "dxfslab"), "type": "dalle", "label": "Laje (DXF)", "dimensions": {"surface_m2": {"value": slab["net_area_m2"], "unit": "m²", "source": "mesuré", "detail": prov("slab") + f" ; brute {slab['gross_area_m2']} m², {slab['openings_count']} abertura(s) = {slab['openings_area_m2']} m²"}},
                     "status": "to_verify", "evidence": {"detail": slab.get("formula")}})
     excl = (((cad.get("elements") or {}).get("walls") or {}).get("thin_layers_excluded") or {})
     if excl.get("count"):
-        missing.append({"kind": "thin_layers", "room_id": "dxf", "message": f"{excl['count']} corps < 8 cm ({excl['length_m']} ml) exclus des murs béton — {excl.get('note')}", "blocks": []})
+        missing.append({"kind": "thin_layers", "room_id": "dxf", "message": f"{excl['count']} corps < 8 cm ({excl['length_m']} ml) excluídos das paredes de betão — {excl.get('note')}", "blocks": []})
     return els, missing
 
 
@@ -218,8 +218,8 @@ def compute_dxf_quantities(elements: list[dict], overrides: dict) -> list[dict]:
     level = next((e for e in elements if e["type"] == "niveau"), None)
     ov = overrides.get(level["element_id"]) if level else None
     h = ov.get("hauteur_m") if ov else None
-    h_input = {"name": "hauteur du niveau", "value": h, "unit": "m", "source": "hypothèse" if h else "manquant", "detail": (ov or {}).get("reason") or "à déclarer"}
-    assum = [{"name": "hauteur du niveau", "value": h, "unit": "m", "reason": ov.get("reason") or "hypothèse utilisateur", "by": ov.get("by")}] if h else []
+    h_input = {"name": "altura do piso", "value": h, "unit": "m", "source": "hypothèse" if h else "manquant", "detail": (ov or {}).get("reason") or "a declarar"}
+    assum = [{"name": "altura do piso", "value": h, "unit": "m", "reason": ov.get("reason") or "hipótese do utilizador", "by": ov.get("by")}] if h else []
 
     def line(e, rule_key, value, inputs, assumptions=None, note=""):
         r = RULES[rule_key]
@@ -231,14 +231,14 @@ def compute_dxf_quantities(elements: list[dict], overrides: dict) -> list[dict]:
     for e in elements:
         d = e["dimensions"]
         if e["type"] == "mur" and e.get("source") == "dxf":
-            line(e, "mur_dxf_lineaire", d["longueur_m"]["value"], [{"name": "longueur", **d["longueur_m"]}, {"name": "épaisseur", **d["epaisseur_m"]}])
-            line(e, "mur_dxf_volume", d["aire_plan_m2"]["value"] * h if h else None, [{"name": "aire en plan", **d["aire_plan_m2"]}, h_input], assum, "" if h else "hauteur du niveau à déclarer")
+            line(e, "mur_dxf_lineaire", d["longueur_m"]["value"], [{"name": "comprimento", **d["longueur_m"]}, {"name": "espessura", **d["epaisseur_m"]}])
+            line(e, "mur_dxf_volume", d["aire_plan_m2"]["value"] * h if h else None, [{"name": "área em planta", **d["aire_plan_m2"]}, h_input], assum, "" if h else "altura do piso a declarar")
         elif e["type"] == "poteau":
-            line(e, "poteau_volume", d["section_m2"]["value"] * h if h else None, [{"name": "section", **d["section_m2"]}, h_input], assum, "" if h else "hauteur du niveau à déclarer")
+            line(e, "poteau_volume", d["section_m2"]["value"] * h if h else None, [{"name": "section", **d["section_m2"]}, h_input], assum, "" if h else "altura do piso a declarar")
         elif e["type"] == "poutre":
-            line(e, "poutre_lineaire", d["longueur_m"]["value"], [{"name": "longueur", **d["longueur_m"]}, {"name": "largeur", **d["largeur_m"]}, {"name": "retombée", **d["retombee_m"]}], note="volume non déterminé : retombée non lue en plan")
+            line(e, "poutre_lineaire", d["longueur_m"]["value"], [{"name": "comprimento", **d["longueur_m"]}, {"name": "largura", **d["largeur_m"]}, {"name": "altura abaixo da laje", **d["retombee_m"]}], note="volume não determinado: altura abaixo da laje não lida em planta")
         elif e["type"] == "dalle" and e.get("source") == "dxf":
-            line(e, "dalle_dxf_surface", d["surface_m2"]["value"], [{"name": "surface nette", **d["surface_m2"]}])
+            line(e, "dalle_dxf_surface", d["surface_m2"]["value"], [{"name": "área líquida", **d["surface_m2"]}])
     return lines
 
 

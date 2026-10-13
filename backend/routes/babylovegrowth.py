@@ -25,7 +25,7 @@ SOURCE = "babylovegrowth"
 def _cfg() -> tuple[str, str]:
     key = os.environ.get("BABYLOVEGROWTH_API_KEY")
     if not key:
-        raise HTTPException(503, "BABYLOVEGROWTH_API_KEY non configurée")
+        raise HTTPException(503, "BABYLOVEGROWTH_API_KEY não configurada")
     return key, (os.environ.get("BABYLOVEGROWTH_API_BASE") or "https://api.babylovegrowth.ai/api/integrations").rstrip("/")
 
 
@@ -103,7 +103,7 @@ async def sync_articles(force: bool = False) -> dict:
         while True:
             r = await c.get(f"{base}/v1/articles", headers=headers, params={"limit": limit, "offset": offset})
             if r.status_code == 401:
-                raise HTTPException(401, "Clé API BabyLoveGrowth refusée")
+                raise HTTPException(401, "Chave API BabyLoveGrowth recusada")
             r.raise_for_status()
             items = r.json() or []
             for it in items:
@@ -158,7 +158,7 @@ async def blg_sync(force: bool = False, _=Depends(admin_user)):
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Synchronisation impossible : {str(e)[:200]}")
+        raise HTTPException(502, f'Sincronização impossível: {str(e)[:200]}')
 
 
 @router.delete("/admin/babylovegrowth/articles/{slug}")
@@ -172,7 +172,7 @@ async def blg_webhook(request: Request, authorization: str | None = Header(None)
     """Push temps réel (Settings → Integrations → Webhook). Bearer = BABYLOVEGROWTH_WEBHOOK_SECRET."""
     secret = os.environ.get("BABYLOVEGROWTH_WEBHOOK_SECRET")
     if not secret:
-        raise HTTPException(503, "Webhook non configuré")
+        raise HTTPException(503, "Webhook não configurado")
     if not authorization or not hmac.compare_digest(authorization.strip(), f"Bearer {secret}"):
         raise HTTPException(401, "Invalid or missing authorization token")
     payload = await request.json()

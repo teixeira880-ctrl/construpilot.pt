@@ -120,7 +120,7 @@ def peripheral_chains(cotes: list[dict], ppm: float) -> dict:
                 comparisons.append({"kind": "total", "side_a": sa, "side_b": sb, "a_index": ta.get("index"), "a_value_m": ta["value_m"],
                                     "b_index": tb_.get("index"), "b_value_m": tb_["value_m"], "delta_mm": d, "status": _status(abs(d))})
                 if abs(d) > OK_MM:
-                    incons.append({"kind": "opposite_totals", "side": f"{sa}/{sb}", "detail": f"Dimension générale {sa} {ta['value_m']:.2f} m ≠ {sb} {tb_['value_m']:.2f} m ({d:+.0f} mm)",
+                    incons.append({"kind": "opposite_totals", "side": f"{sa}/{sb}", "detail": f"Dimensão geral {sa} {ta['value_m']:.2f} m ≠ {sb} {tb_['value_m']:.2f} m ({d:+.0f} mm)",
                                    "delta_mm": d, "status": _status(abs(d)), "a_index": ta.get("index"), "b_index": tb_.get("index")})
             # partielles opposées alignées (même emprise le long de la chaîne, référence commune = début de ligne)
             used = set()
@@ -136,7 +136,7 @@ def peripheral_chains(cotes: list[dict], ppm: float) -> dict:
                         best = (ov, j, pb)
                 if not best:
                     if pa["value_m"] >= 0.5:
-                        incons.append({"kind": "missing_opposite", "side": sb, "detail": f"Cote {pa['value_m']:.2f} m ({sa}) sans cote de même emprise en face ({sb}) — références différentes (nu/axe) ou cote manquante",
+                        incons.append({"kind": "missing_opposite", "side": sb, "detail": f"Cote {pa['value_m']:.2f} m ({sa}) sem cota com a mesma implantação em frente ({sb}) — referências diferentes (face/eixo) ou cota em falta",
                                        "delta_mm": None, "status": "warn", "a_index": pa.get("index")})
                     continue
                 used.add(best[1])
@@ -147,7 +147,7 @@ def peripheral_chains(cotes: list[dict], ppm: float) -> dict:
                 st = "reference_shift" if (shift is not None and abs(d) > OK_MM) else _status(abs(d))
                 comparisons.append({"kind": "partial", "side_a": sa, "side_b": sb, "a_index": pa.get("index"), "a_value_m": pa["value_m"],
                                     "b_index": pb.get("index"), "b_value_m": pb["value_m"], "delta_mm": d, "status": st,
-                                    "explanation": f"écart = épaisseur(s) voisine(s) {shift:.2f} m : références différentes (nu/nu vs axe/axe), cohérent" if st == "reference_shift" else None})
+                                    "explanation": f'diferença = espessura(s) vizinha(s) {shift:.2f} m: referências diferentes (face/face vs eixo/eixo), coerente' if st == "reference_shift" else None})
                 if st != "reference_shift" and abs(d) > OK_MM:
                     incons.append({"kind": "opposite_partials", "side": f"{sa}/{sb}", "detail": f"{pa['value_m']:.2f} m ({sa}) ≠ {pb['value_m']:.2f} m ({sb}) : {d:+.0f} mm",
                                    "delta_mm": d, "status": _status(abs(d)), "a_index": pa.get("index"), "b_index": pb.get("index")})

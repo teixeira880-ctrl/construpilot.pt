@@ -91,6 +91,5 @@ def locate_coupe_marks(page, pt_per_m: float | None = None) -> dict:
             c["length_m"] = round(c["length_pt"] / pt_per_m, 2)
     names = sorted({c["name"] for c in res["coupes"]}, key=lambda s: int(s.split("-")[0]))
     res.update(heads_count=len(heads), names=names,
-               note="Têtes de coupe = numéral (police de titre) + équerre épaisse ; deux têtes de même numéro face à face (ligne ⟂ au texte) = un tracé. "
-                    "Une coupe répétée (ex. 11 ×3) désigne des zones identiques du plan. Rien n'est déduit du texte du cartouche ni des adresses.")
+               note="Marcas de corte = numeral (letra de título) + esquadro espesso; duas marcas com o mesmo número frente a frente (linha ⟂ ao texto) = um traçado. Um corte repetido (ex.: 11 ×3) designa zonas idênticas da planta. Nada é deduzido do texto da legenda nem das moradas.")
     return res

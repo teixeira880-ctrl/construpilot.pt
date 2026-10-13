@@ -17,24 +17,24 @@ META_KINDS = {"missing_title", "long_title", "missing_description", "long_descri
 CANONICAL_KINDS = {"canonical_mismatch", "missing_canonical"}
 REDIRECT_KINDS = {"http_error", "broken_links"}
 MANUAL_REASONS = {
-    "missing_h1": "Structure de page : le H1 se corrige dans le composant de la page (déploiement requis).",
-    "multiple_h1": "Structure de page : un seul H1 doit rester dans le composant (déploiement requis).",
-    "thin_html": "HTML initial trop léger : dépend du pré-rendu / SSR côté hébergement.",
-    "slow_response": "Temps de réponse : dépend de l'hébergement et du pré-rendu, pas d'une balise.",
-    "heavy_html": "Poids du HTML : optimisation du bundle à faire dans le code.",
-    "img_alt": "Attributs alt : à renseigner sur chaque image dans le code des pages.",
-    "jsonld_invalid": "JSON-LD invalide : à corriger dans le composant qui l'émet.",
-    "redirect_chain": "Chaîne de redirections : à simplifier dans la configuration du domaine / CDN.",
-    "hreflang_target_error": "La cible hreflang répond en erreur : publier la page équivalente ou retirer l'alternate.",
-    "missing_hreflang": "Hreflang : nécessite une page équivalente FR/PT confirmée.",
-    "hreflang_no_default": "x-default : géré par le code des balises <head> (déploiement requis).",
-    "sitemap_missing": "Sitemap absent : à générer côté serveur.",
-    "noindex": "noindex explicite : décision éditoriale à confirmer avant de l'enlever.",
-    "no_viewport": "Meta viewport : dans index.html (déploiement requis).",
-    "missing_lang": "Attribut lang : géré par le code des balises <head> (déploiement requis).",
-    "lang_mismatch": "Attribut lang : géré par le code des balises <head> (déploiement requis).",
-    "inaccessible": "Page inaccessible : vérifier l'hébergement ou la redirection.",
-    "no_html": "Contenu non HTML : à servir en HTML côté serveur.",
+    "missing_h1": "Estrutura da página: o H1 corrige-se no componente da página (implementação necessária).",
+    "multiple_h1": "Estrutura da página: apenas um H1 deve ficar no componente (implementação necessária).",
+    "thin_html": "HTML inicial demasiado leve: depende da pré-renderização / SSR no alojamento.",
+    "slow_response": "Tempo de resposta: depende do alojamento e da pré-renderização, não de uma etiqueta.",
+    "heavy_html": "Peso do HTML: otimização do bundle a fazer no código.",
+    "img_alt": "Atributos alt: a preencher em cada imagem no código das páginas.",
+    "jsonld_invalid": "JSON-LD inválido: a corrigir no componente que o emite.",
+    "redirect_chain": "Cadeia de redirecionamentos: a simplificar na configuração do domínio / CDN.",
+    "hreflang_target_error": "O destino hreflang responde com erro: publicar a página equivalente ou retirar o alternate.",
+    "missing_hreflang": "Hreflang: requer uma página equivalente FR/PT confirmada.",
+    "hreflang_no_default": "x-default: gerido pelo código das etiquetas <head> (implementação necessária).",
+    "sitemap_missing": "Sitemap ausente: a gerar no servidor.",
+    "noindex": "noindex explícito: decisão editorial a confirmar antes de o remover.",
+    "no_viewport": "Meta viewport: em index.html (implementação necessária).",
+    "missing_lang": "Atributo lang: gerido pelo código das etiquetas <head> (implementação necessária).",
+    "lang_mismatch": "Atributo lang: gerido pelo código das etiquetas <head> (implementação necessária).",
+    "inaccessible": "Página inacessível: verificar o alojamento ou o redirecionamento.",
+    "no_html": "Conteúdo não HTML: a servir em HTML no servidor.",
 }
 
 
@@ -62,8 +62,8 @@ async def _fix_meta(project: dict, audit: dict, issues: list[dict]) -> list[dict
         ov = await db.growth_seo_overrides.find_one({"project_id": project["project_id"], "path": _path(url), "status": "approved"}, {"_id": 0, "override_id": 1, "title": 1})
         if not ov:
             continue
-        await _mark_fixing([i["issue_id"] for i in items], f"Surcharge title/description appliquée ({ov['override_id']})")
-        out.append({"kind": "meta", "url": url, "how": f"Titre « {ov['title']} » et description appliqués à chaud", "issue_ids": [i["issue_id"] for i in items], "ref": ov["override_id"]})
+        await _mark_fixing([i["issue_id"] for i in items], f"Substituição de title/description aplicada ({ov['override_id']})")
+        out.append({"kind": "meta", "url": url, "how": f"Título «{ov['title']}» e descrição aplicados em tempo real", "issue_ids": [i["issue_id"] for i in items], "ref": ov["override_id"]})
     if created:
         logger.info("autofix meta: %s surcharge(s) créée(s)", created)
     return out
@@ -79,8 +79,8 @@ async def _fix_canonical(project: dict, issues: list[dict]) -> list[dict]:
             {"$set": {"canonical": path, "url": i["url"], "status": "approved", "updated_at": now_iso(), "created_by": "autofix", "issue_kinds": [i["kind"]]},
              "$setOnInsert": {"override_id": new_id("seo"), "created_at": now_iso(), "project_id": project["project_id"], "path": path, "kind": "canonical"},
              "$addToSet": {"issue_ids": i["issue_id"]}}, upsert=True)
-        await _mark_fixing([i["issue_id"]], f"Canonical forcée sur {path}")
-        out.append({"kind": "canonical", "url": i["url"], "how": f"Canonical fixée à {path}", "issue_ids": [i["issue_id"]]})
+        await _mark_fixing([i["issue_id"]], f'Canonical forçada em {path}')
+        out.append({"kind": "canonical", "url": i["url"], "how": f'Canonical fixada em {path}', "issue_ids": [i["issue_id"]]})
     return out
 
 
@@ -96,7 +96,7 @@ async def _fix_redirects(project: dict, audit: dict, issues: list[dict]) -> tupl
                 continue
             best = difflib.get_close_matches(src, [p for p in ok_paths if p != src], n=1, cutoff=0.6)
             if not best:
-                manual.append({"kind": i["kind"], "url": url, "reason": "Aucune page valide assez proche pour une redirection sûre."})
+                manual.append({"kind": i["kind"], "url": url, "reason": "Nenhuma página válida suficientemente próxima para um redirecionamento seguro."})
                 continue
             await db.growth_redirects.update_one({"project_id": project["project_id"], "from_path": src},
                                                  {"$set": {"to_path": best[0], "status": "approved", "created_by": "autofix", "updated_at": now_iso(), "issue_id": i["issue_id"]},
@@ -114,11 +114,11 @@ async def _align_stale(project_id: str, audit_id: str) -> int:
         latest = await db.growth_issues.find_one({"audit_id": audit_id, "url": i["url"], "kind": i["kind"]}, {"_id": 0, "status": 1, "fix_applied": 1})
         sets = None
         if latest and latest["status"] in ("fixed", "fixing", "ignored"):
-            sets = {"status": latest["status"], "fix_applied": latest.get("fix_applied") or "Aligné sur le dernier audit", "fixed_by": "autofix"}
+            sets = {"status": latest["status"], "fix_applied": latest.get("fix_applied") or "Alinhado com a última auditoria", "fixed_by": "autofix"}
         elif i["kind"] in META_KINDS | CANONICAL_KINDS:
             kind_q = {"kind": "canonical"} if i["kind"] in CANONICAL_KINDS else {"kind": {"$ne": "canonical"}}
             if await db.growth_seo_overrides.find_one({"project_id": project_id, "path": _path(i["url"]), "status": "approved", **kind_q}, {"_id": 1}):
-                sets = {"status": "fixing", "fix_applied": "Surcharge approuvée déjà en place", "fixed_by": "autofix"}
+                sets = {"status": "fixing", "fix_applied": "Substituição aprovada já em vigor", "fixed_by": "autofix"}
         if sets:
             await db.growth_issues.update_one({"issue_id": i["issue_id"]}, {"$set": {**sets, "fix_applied_at": now_iso()}})
             n += 1
@@ -128,7 +128,7 @@ async def _align_stale(project_id: str, audit_id: str) -> int:
 async def run(project: dict, audit: dict | None, trigger: str = "manual") -> dict:
     """Corrige tout ce qui est corrigeable sur les problèmes ouverts du dernier audit ; liste le reste avec sa raison."""
     if not audit:
-        return {"status": "skipped", "note": "Aucun audit terminé"}
+        return {"status": "skipped", "note": "Nenhuma auditoria concluída"}
     run_id = new_id("fix")
     report = {"run_id": run_id, "project_id": project["project_id"], "audit_id": audit["audit_id"], "trigger": trigger, "started_at": now_iso(), "status": "running",
               "fixed": [], "manual": [], "counts": {}}
@@ -146,7 +146,7 @@ async def run(project: dict, audit: dict | None, trigger: str = "manual") -> dic
             if (await budget_state(project))["ok"]:
                 report["fixed"] += await _fix_meta(project, audit, meta)
             else:
-                report["manual"] += [{"kind": i["kind"], "url": i["url"], "reason": "Plafond budget IA atteint : génération des titres suspendue."} for i in meta]
+                report["manual"] += [{"kind": i["kind"], "url": i["url"], "reason": "Limite de orçamento IA atingido: geração de títulos suspensa."} for i in meta]
         report["fixed"] += await _fix_canonical(project, canon)
         f, m = await _fix_redirects(project, audit, redir)
         report["fixed"] += f
@@ -155,12 +155,12 @@ async def run(project: dict, audit: dict | None, trigger: str = "manual") -> dic
         for i in issues:  # les doublons d'audits précédents (même URL, même défaut) suivent la même correction
             if i["issue_id"] in handled:
                 await db.growth_issues.update_many({"project_id": project["project_id"], "url": i["url"], "kind": i["kind"], "status": "open"},
-                                                   {"$set": {"status": "fixing", "fix_applied": "Même correction que le dernier audit", "fix_applied_at": now_iso(), "fixed_by": "autofix"}})
+                                                   {"$set": {"status": "fixing", "fix_applied": "Mesma correção que a última auditoria", "fix_applied_at": now_iso(), "fixed_by": "autofix"}})
         for i in issues:
             if i["issue_id"] in handled or i["kind"] in REDIRECT_KINDS:
                 continue
             if i["kind"] in META_KINDS:
-                report["manual"].append({"kind": i["kind"], "url": i["url"], "reason": "Génération du titre/description impossible pour cette page (réessai au prochain cycle)."})
+                report["manual"].append({"kind": i["kind"], "url": i["url"], "reason": "Geração de título/descrição impossível para esta página (nova tentativa no próximo ciclo)."})
             elif i["kind"] not in CANONICAL_KINDS:
                 report["manual"].append({"kind": i["kind"], "url": i["url"], "reason": MANUAL_REASONS.get(i["kind"], i.get("fix") or "Correction manuelle nécessaire.")})
         report["counts"] = {"open_before": len(issues), "fixed": sum(len(x["issue_ids"]) for x in report["fixed"]), "manual": len(report["manual"]),
@@ -179,6 +179,6 @@ async def flag_reappeared(project_id: str, audit_id: str) -> int:
     async for i in db.growth_issues.find({"audit_id": audit_id, "status": "open"}, {"_id": 0, "issue_id": 1, "url": 1, "kind": 1}):
         prev = await db.growth_issues.find_one({"project_id": project_id, "url": i["url"], "kind": i["kind"], "status": "fixing", "audit_id": {"$ne": audit_id}}, {"_id": 0, "fix_applied": 1})
         if prev:
-            await db.growth_issues.update_one({"issue_id": i["issue_id"]}, {"$set": {"fix_active": True, "fix_note": f"Correction déjà appliquée ({prev.get('fix_applied')}) mais non visible sur le site crawlé — vérifier que la dernière version est déployée."}})
+            await db.growth_issues.update_one({"issue_id": i["issue_id"]}, {"$set": {"fix_active": True, "fix_note": f"Correction déjà appliquée ({prev.get('fix_applied')}) mas não visível no site rastreado — verificar se a última versão está implementada."}})
             n += 1
     return n

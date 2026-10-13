@@ -125,7 +125,7 @@ def register(pdf_axes: dict, dxf_axes: dict, *, declared_pt_per_m: float | None,
             if pa and pd:
                 src.append((pa[0], -pa[1] if flip_y else pa[1])); dst.append(pd); used.append(f"{a}∩{b}")
     if len(src) < 2:
-        return {"ok": False, "common_axes": common, "error": "moins de deux intersections d'axes communes : pas de recalage plan ↔ DXF"}
+        return {"ok": False, "common_axes": common, "error": "menos de duas interseções de eixos comuns: sem reajuste planta ↔ DXF"}
     T = fit_similarity(src, dst)
     T["flip_y"] = flip_y
     out = {"ok": True, "transform": T, "common_axes": common, "intersections_used": used, "residual_m": T["residual"], "m_per_pt": round(T["scale"], 6)}

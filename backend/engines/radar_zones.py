@@ -10,7 +10,7 @@ def normalize_departments(values):
     codes = [str(v).strip().upper() for v in values if str(v).strip()]
     result = list(dict.fromkeys(str(int(v)).zfill(2) if v.isdigit() else v for v in codes))
     if any(v not in DEPARTMENTS for v in result):
-        raise HTTPException(422, "Code département invalide. Corse : 2A ou 2B ; outre-mer : 971 à 974, 976.")
+        raise HTTPException(422, "Código de distrito inválido.")
     return result
 
 

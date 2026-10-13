@@ -105,13 +105,13 @@ export default function Renovation() {
   };
 
   const setField = (path, value, unknown = false) => {
-    setInputs((s) => ({ ...s, [path]: { ...(s[path] || {}), value: unknown ? null : value, status: unknown ? "inconnu" : "declarado" } }));
+    setInputs((s) => ({ ...s, [path]: { ...(s[path] || {}), value: unknown ? null : value, status: unknown ? "inconnu" : "déclaré" } }));
   };
 
   const applyProposals = (proposals) => {
     setInputs((s) => {
       const next = { ...s };
-      for (const pr of proposals) next[pr.path] = { value: pr.value, status: pr.status || "declarado", source: pr.source || "ia" };
+      for (const pr of proposals) next[pr.path] = { value: pr.value, status: pr.status || "déclaré", source: pr.source || "ia" };
       return next;
     });
   };
@@ -222,7 +222,7 @@ export default function Renovation() {
     try {
       const payload = fieldsSpec
         .filter((f) => inputs[f.path] !== undefined)
-        .map((f) => ({ path: f.path, value: inputs[f.path]?.value ?? null, status: inputs[f.path]?.status || "declarado" }));
+        .map((f) => ({ path: f.path, value: inputs[f.path]?.value ?? null, status: inputs[f.path]?.status || "déclaré" }));
       await api.patch(`/renovation/projects/${project.project_id}/inputs`, { fields: payload });
       toast.success("Dados guardados");
     } catch { toast.error("Não foi possível guardar"); }

@@ -15,7 +15,7 @@ async def labor_scope(db, chantier, user_id):
     linked = await db.projects.find({"user_id": user_id, "chantier_id": chantier["chantier_id"]}, {"project_id": 1}).to_list(501)
     if len(linked) > 500:
         from fastapi import HTTPException
-        raise HTTPException(422, "Trop de projets RH liés à ce dossier")
+        raise HTTPException(422, "Demasiados projetos RH ligados a este processo")
     ids = [p["project_id"] for p in linked if p.get("project_id")]
     if ids:
         query["$or"].append({"project_id": {"$in": ids}})
@@ -27,7 +27,7 @@ async def purchase_scope(db, chantier, user_id):
     plans = await db.plans_takeoff.find({"user_id": user_id, "chantier_id": chantier["chantier_id"]}, {"plan_id": 1}).to_list(1001)
     if len(plans) > 1000:
         from fastapi import HTTPException
-        raise HTTPException(422, "Trop de plans liés à ce dossier")
+        raise HTTPException(422, "Demasiadas plantas ligadas a este processo")
     ids = [p["plan_id"] for p in plans if p.get("plan_id")]
     if ids:
         query["$or"].extend([{"chantier_id": None, "plan_id": {"$in": ids}}, {"chantier_id": None, "plan_ids": {"$in": ids}}])

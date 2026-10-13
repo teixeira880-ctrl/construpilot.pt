@@ -33,7 +33,7 @@ class SyncOut(BaseModel):
 @router.post("/sync", response_model=SyncOut)
 async def refresh_official(body: SyncIn, user=Depends(current_user)):
     if user.get("account_type") != "pro" and user.get("role") != "admin":
-        raise HTTPException(403, "Radar réservé aux professionnels.")
+        raise HTTPException(403, "Radar reservado a profissionais.")
     departments = normalize_departments(body.departments)
     await ensure_sync(departments, force=True)
     return await sync_status(departments)

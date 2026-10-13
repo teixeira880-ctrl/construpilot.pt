@@ -62,5 +62,4 @@ def panel_labels(page, pt_per_m: float, mesh_rows: list[dict], exclude_rects) ->
         out_rows.append({"mark": info["mark"], "in_schedule": bool(row), "panel": row.get("panel") if row else None, "expected_cm": sorted(expected),
                          "labels": checked, "missing_expected_cm": sorted(expected - {l["value_cm"] for l in checked}) if row else []})
     return {"marks_in_drawing": len(marks), "rows": out_rows, "counts": counts, "calibration": res["calibration"],
-            "note": ("Étiquettes de panneaux rattachées au repère Tnn le plus proche (≤ 3,2 m) ; confirmées par la géométrie (ligne parallèle de même longueur) "
-                     "ou par la nomenclature (dimension de découpe / recouvrement imprimé) ; les autres restent à éclaircir. Aucune valeur déduite.")}
+            "note": ("Etiquetas de painéis associadas à marca Tnn mais próxima (≤ 3,2 m); confirmadas pela geometria (linha paralela do mesmo comprimento) ou pela lista (dimensão de corte / sobreposição impressa); as outras ficam por esclarecer. Nenhum valor deduzido.")}

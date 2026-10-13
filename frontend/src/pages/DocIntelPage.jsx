@@ -403,7 +403,7 @@ export default function DocIntelPage() {
                                 </Badge>
                                 <span className="flex-1">{c.label} — medido <b className="num">{num(c.measured)} {c.unit}</b> vs orçamento <b className="num">{num(c.devis_qty)} {c.unit}</b></span>
                                 {c.source === "dxf" && <Badge variant="outline" className="h-4 border-sky-400 text-sky-600 text-[10px]">CAD</Badge>}
-                                {c.method === "semântico" && <Badge variant="outline" className="h-4 border-primary/40 text-primary text-[10px]">semântico</Badge>}
+                                {c.method === "sémantique" && <Badge variant="outline" className="h-4 border-primary/40 text-primary text-[10px]">semântico</Badge>}
                                 {c.flag && c.devis_line_id && (
                                   <Button size="sm" variant="outline" className="h-6 gap-1 text-[11px]"
                                           data-testid={`plan-comp-fix-${c.measurement_id}`}

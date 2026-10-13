@@ -28,7 +28,7 @@ class SearchIn(BaseModel):
 @router.post("/search")
 async def search(body: SearchIn, user=Depends(optional_user)):
     if len(body.query.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Requête trop courte")
+        raise HTTPException(status_code=400, detail="Pedido demasiado curto")
     await db.search_stats.update_one({"query": body.query.lower()},
                                      {"$inc": {"count": 1},
                                       "$set": {"last_at": datetime.now(timezone.utc).isoformat()}},
@@ -58,7 +58,7 @@ async def departments():
 @router.post("/optimize")
 async def optimize(body: CartIn, user=Depends(optional_user)):
     if not body.items:
-        raise HTTPException(status_code=400, detail="Panier vide")
+        raise HTTPException(status_code=400, detail="Carrinho vazio")
     catalog = None
     if user:
         catalog = await db.price_catalog.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(1000)
@@ -73,17 +73,17 @@ async def catalog_template():
     from openpyxl.styles import Font, PatternFill
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Tarifs"
+    ws.title = "Preços"
     headers = ["nom", "prix", "unité", "fournisseur", "catégorie"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor="16A34A")
     examples = [
-        ["Plaque BA13 250x120", 6.50, "plaque", "Point P", "Placo"],
-        ["Rail R48 (barre 3m)", 3.20, "barre", "Point P", "Placo"],
-        ["Carrelage grès 60x60", 24.90, "m²", "Leroy Merlin", "Carrelage"],
-        ["Peinture blanche 10L", 45.90, "pot", "Leroy Merlin", "Peinture"],
+        ["Plaque BA13 250x120", 6.50, "plaque", "Point P", "Pladur"],
+        ["Rail R48 (barre 3m)", 3.20, "barre", "Point P", "Pladur"],
+        ["Mosaico de grés porcelânico 60x60", 24.90, "m²", "Leroy Merlin", "Revestimento cerâmico"],
+        ["Tinta branca 10L", 45.90, "pot", "Leroy Merlin", "Pintura"],
     ]
     for row in examples:
         ws.append(row)
@@ -94,7 +94,7 @@ async def catalog_template():
     buf.seek(0)
     return StreamingResponse(
         buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": 'attachment; filename="modele-tarifs-construpilot.xlsx"'})
+        headers={"Content-Disposition": "attachment; filename=\"modelo-precos-construpilot.xlsx\""})
 
 
 # ─────────────────────────── Catalogue de prix perso ───────────────────────────
@@ -117,7 +117,7 @@ async def catalog_list(user=Depends(current_user)):
 @router.post("/catalog")
 async def catalog_upsert(body: CatalogItemIn, user=Depends(current_user)):
     if not body.name.strip():
-        raise HTTPException(422, "Nom requis")
+        raise HTTPException(422, "Nome obrigatório")
     now = datetime.now(timezone.utc).isoformat()
     existing = await db.price_catalog.find_one(
         {"user_id": user["user_id"], "name_lc": body.name.lower().strip()}, {"_id": 0, "catalog_id": 1})
@@ -152,7 +152,7 @@ async def catalog_import(file: UploadFile = File(...), user=Depends(current_user
             ws = wb.active
             data = list(ws.iter_rows(values_only=True))
             if not data:
-                raise HTTPException(400, "Fichier vide")
+                raise HTTPException(400, "Ficheiro vazio")
             headers = [str(h or "").lower().strip() for h in data[0]]
             for r in data[1:]:
                 rows.append({headers[i]: r[i] for i in range(min(len(headers), len(r)))})
@@ -166,7 +166,7 @@ async def catalog_import(file: UploadFile = File(...), user=Depends(current_user
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(400, "Fichier illisible. Utilisez un CSV (;) ou un .xlsx avec en-têtes.")
+        raise HTTPException(400, "Ficheiro ilegível. Utilize um CSV (;) ou um .xlsx com cabeçalhos.")
 
     def pick(d, *keys):
         for k in keys:
@@ -225,10 +225,10 @@ async def create_alert(body: AlertIn, user=Depends(current_user)):
         channels = ["email"]
     if "sms" in channels:
         if not body.phone:
-            raise HTTPException(422, "Numéro requis pour recevoir les alertes SMS")
+            raise HTTPException(422, "Número necessário para receber os alertas SMS")
         normalized = "".join(ch for ch in body.phone if ch.isdigit() or ch == "+")
         if not normalized.startswith("+") or len(normalized) < 8:
-            raise HTTPException(422, "Numéro invalide : utilisez le format +33…")
+            raise HTTPException(422, "Número inválido: utilize o formato +351…")
     doc = {"alert_id": f"al_{datetime.now(timezone.utc).timestamp():.0f}",
            "user_id": user["user_id"], "query": body.query, "target_price": body.target_price,
            "product": body.product or body.query, "active": True,

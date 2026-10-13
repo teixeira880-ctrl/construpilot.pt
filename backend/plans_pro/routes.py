@@ -51,15 +51,15 @@ _ACCEPT_MIME: dict[str, tuple[str, bool]] = {
 
 FINAL_STATUSES = {"done", "partial", "needs_review", "failed", "cancelled"}
 STATUS_HELP = {
-    "queued": "En file d'attente.",
-    "autodesk_translating": "Traduction Autodesk en cours (2 à 10 min selon le fichier).",
-    "autodesk_done": "Modèle Autodesk lu, lecture IA de l'aperçu en cours.",
-    "running_vision": "Lecture IA du plan en cours.",
-    "done": "Analyse terminée : toutes les étapes ont produit un résultat exploitable.",
-    "needs_review": "Analyse terminée mais des comptages divergent entre lectures : vérifiez les éléments signalés.",
-    "partial": "Résultat partiel : une étape n'a pas abouti. Les données obtenues restent utilisables, les contrôles manquants sont indiqués.",
-    "failed": "L'analyse n'a produit aucun résultat exploitable. Relancez-la ou changez de fichier.",
-    "cancelled": "Analyse annulée.",
+    "queued": "Em fila de espera.",
+    "autodesk_translating": "Tradução Autodesk em curso (2 a 10 min consoante o ficheiro).",
+    "autodesk_done": "Modelo Autodesk lido, leitura IA da pré-visualização em curso.",
+    "running_vision": "Leitura IA da planta em curso.",
+    "done": "Análise concluída: todas as etapas produziram um resultado utilizável.",
+    "needs_review": "Análise concluída mas há contagens divergentes entre leituras: verifique os elementos assinalados.",
+    "partial": "Resultado parcial: uma etapa não foi concluída. Os dados obtidos continuam utilizáveis, os controlos em falta estão indicados.",
+    "failed": "A análise não produziu nenhum resultado utilizável. Relance-a ou mude de ficheiro.",
+    "cancelled": "Análise cancelada.",
 }
 
 
@@ -68,19 +68,19 @@ def _finalize(*, needs_autodesk: bool, autodesk_ok: bool, vision: Optional[dict]
     checks = []
     v_status = (vision or {}).get("status") if vision else None
     if needs_autodesk and not autodesk_ok:
-        return "failed", ["Extraction Autodesk : échec"]
+        return "failed", ["Extração Autodesk: falha"]
     if needs_autodesk:
-        checks.append("Extraction Autodesk : réussie")
+        checks.append("Extração Autodesk: bem-sucedida")
     if vision is None:
-        checks.append("Lecture IA : non exécutée")
+        checks.append("Leitura IA: não executada")
         return ("partial" if needs_autodesk else "failed"), checks
     if v_status == "failed":
-        checks.append("Lecture IA : échec")
+        checks.append("Leitura IA: falha")
         return ("partial" if needs_autodesk and autodesk_ok else "failed"), checks
     if v_status == "needs_review":
-        checks.append("Lecture IA : désaccords à vérifier")
+        checks.append("Leitura IA: desacordos a verificar")
         return "needs_review", checks
-    checks.append("Lecture IA : réussie")
+    checks.append("Leitura IA: bem-sucedida")
     return "done", checks
 
 
@@ -100,8 +100,8 @@ async def _pipeline(job_id: str, file_bytes: bytes, filename: str,
     try:
         if needs_autodesk:
             if not autodesk_pipeline.is_configured():
-                await _upd(status="failed", progress="0%", error="Autodesk (APS) n'est pas configuré : ce format ne peut pas être analysé.",
-                           checks=["Extraction Autodesk : non configurée"], finished_at=datetime.now(timezone.utc))
+                await _upd(status="failed", progress="0%", error="O Autodesk (APS) não está configurado: este formato não pode ser analisado.",
+                           checks=["Extração Autodesk: não configurada"], finished_at=datetime.now(timezone.utc))
                 return
             await _upd(status="autodesk_translating", progress="10%")
             try:
@@ -138,17 +138,17 @@ async def _pipeline(job_id: str, file_bytes: bytes, filename: str,
         status, checks = _finalize(needs_autodesk=needs_autodesk, autodesk_ok=autodesk_ok, vision=vision)
         error = None
         if status == "failed":
-            error = autodesk_error and f"Autodesk n'a pas pu traiter ce fichier : {autodesk_error}" or (vision or {}).get("error") or "Aucun résultat exploitable."
+            error = autodesk_error and f'O Autodesk não conseguiu processar este ficheiro: {autodesk_error}' or (vision or {}).get("error") or "Nenhum resultado utilizável."
         elif status == "partial":
-            error = (vision or {}).get("error") or "Lecture IA indisponible sur l'aperçu Autodesk."
+            error = (vision or {}).get("error") or "Leitura IA indisponível na pré-visualização Autodesk."
         await _upd(status=status, progress="100%", checks=checks, error=error, help=STATUS_HELP[status],
                    finished_at=datetime.now(timezone.utc))
 
     except Exception as e:
         logger.exception("Pipeline plans-pro failed for %s", job_id)
         try:
-            await _upd(status="failed", error="Erreur interne pendant l'analyse : relancez-la.", technical_error=str(e)[:300],
-                       checks=["Pipeline : interrompu"], finished_at=datetime.now(timezone.utc))
+            await _upd(status="failed", error="Erro interno durante a análise: relance-a.", technical_error=str(e)[:300],
+                       checks=["Pipeline: interrompido"], finished_at=datetime.now(timezone.utc))
         except Exception:
             pass
 
@@ -183,16 +183,16 @@ async def upload(request: Request, response: Response, background: BackgroundTas
     filename = file.filename or "plan"
     ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in _ACCEPT_MIME:
-        raise HTTPException(400, f"Format non supporté ({ext}). Accepté : {', '.join(_ACCEPT_MIME)}")
+        raise HTTPException(400, f"Formato não suportado ({ext}). Aceite: {', '.join(_ACCEPT_MIME)}")
     _, needs_autodesk = _ACCEPT_MIME[ext]
     if needs_autodesk and not autodesk_pipeline.is_configured():
-        raise HTTPException(409, f"Le format {ext} nécessite Autodesk (APS), qui n'est pas configuré sur ce serveur. Importez une image PNG/JPG du plan ou contactez l'administrateur.")
+        raise HTTPException(409, f'O formato {ext} requer o Autodesk (APS), que não está configurado neste servidor. Importe uma imagem PNG/JPG da planta ou contacte o administrador.')
 
     data = await file.read()
     if not data:
-        raise HTTPException(400, "Fichier vide")
+        raise HTTPException(400, "Ficheiro vazio")
     if len(data) > 100 * 1024 * 1024:
-        raise HTTPException(400, "Fichier trop volumineux (100 Mo max)")
+        raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 100 MB)")
     started = await _start_job(background, user, filename, ext, data)
     from routes.chantiers import owned_chantier_id
     owned = await owned_chantier_id(user["user_id"], chantier_id)
@@ -207,18 +207,18 @@ async def retry_job(job_id: str, request: Request, response: Response, backgroun
     """Relance une analyse depuis le fichier source conservé (nouveau job lié)."""
     doc = await db.plans_pro_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Job introuvable")
+        raise HTTPException(404, "Tarefa não encontrada")
     if doc.get("status") not in FINAL_STATUSES:
         raise HTTPException(409, "Analyse encore en cours")
     if not doc.get("source_stored"):
-        raise HTTPException(409, "Fichier source non conservé : importez-le à nouveau.")
+        raise HTTPException(409, "Ficheiro de origem não conservado: importe-o novamente.")
     ext = doc.get("extension") or ""
     if _ACCEPT_MIME.get(ext, ("", False))[1] and not autodesk_pipeline.is_configured():
-        raise HTTPException(409, "Autodesk (APS) n'est pas configuré : relance impossible pour ce format.")
+        raise HTTPException(409, "O Autodesk (APS) não está configurado: relançamento impossível para este formato.")
     try:
         data, _ = await asyncio.to_thread(storage.get_object, _job_path(user["user_id"], job_id, ext))
     except Exception:  # noqa: BLE001
-        raise HTTPException(409, "Fichier source introuvable : importez-le à nouveau.") from None
+        raise HTTPException(409, "Ficheiro de origem não encontrado: importe-o novamente.") from None
     return await _start_job(background, user, doc.get("filename") or "plan", ext, data, retry_of=job_id)
 
 
@@ -229,7 +229,7 @@ async def job_status(job_id: str, user=Depends(current_user)):
         {"_id": 0, "user_id": 0},
     )
     if not doc:
-        raise HTTPException(404, "Job introuvable")
+        raise HTTPException(404, "Tarefa não encontrada")
     return doc
 
 
@@ -239,10 +239,10 @@ async def job_quantities_xlsx(job_id: str, user=Depends(current_user)):
     doc = await db.plans_pro_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]},
                                            {"_id": 0, "filename": 1, "status": 1, "autodesk_quantities": 1, "autodesk_elements_count": 1, "autodesk_views": 1, "created_at": 1})
     if not doc:
-        raise HTTPException(404, "Job introuvable")
+        raise HTTPException(404, "Tarefa não encontrada")
     quantities = doc.get("autodesk_quantities") or {}
     if doc.get("status") not in FINAL_STATUSES or not quantities:
-        raise HTTPException(409, "Aucune quantité Autodesk disponible pour ce job")
+        raise HTTPException(409, "Nenhuma quantidade Autodesk disponível para esta tarefa")
     data = await asyncio.to_thread(_quantities_workbook, doc, quantities)
     stem = os.path.splitext(doc.get("filename") or "plan")[0][:40].replace('"', "")
     return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -258,13 +258,13 @@ def _quantities_workbook(doc: dict, quantities: dict) -> bytes:
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Quantités"
+    ws.title = "Quantidades"
     head_fill, head_font = PatternFill("solid", fgColor="0F766E"), Font(bold=True, color="FFFFFF")
-    ws.append(["ConstruPilot — Analyse de plan Pro", doc.get("filename")])
-    ws.append(["Généré le", datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), "Entités Autodesk", doc.get("autodesk_elements_count")])
-    ws.append(["Source", "Comptage par calque (DWG) — quantités indicatives à valider par métré ; surfaces/volumes uniquement Revit/IFC"])
+    ws.append(["ConstruPilot — Análise de planta Pro", doc.get("filename")])
+    ws.append(["Gerado em", datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), "Entidades Autodesk", doc.get("autodesk_elements_count")])
+    ws.append(["Fonte", "Contagem por camada (DWG) — quantidades indicativas a validar por medição; áreas/volumes apenas Revit/IFC"])
     ws.append([])
-    headers = ["Ouvrage", "Nombre d'entités", "Surface (m²)", "Volume (m³)", "Longueur (m)", "Source", "Calques principaux"]
+    headers = ["Artigo", "Número de entidades", "Superfície (m²)", "Volume (m³)", "Comprimento (m)", "Fonte", "Camadas principais"]
     ws.append(headers)
     for c in range(1, len(headers) + 1):
         cell = ws.cell(row=5, column=c)
@@ -277,8 +277,8 @@ def _quantities_workbook(doc: dict, quantities: dict) -> bytes:
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A6"
 
-    ws2 = wb.create_sheet("Calques")
-    ws2.append(["Ouvrage", "Calque", "Nombre d'entités"])
+    ws2 = wb.create_sheet("Camadas")
+    ws2.append(["Artigo", "Calque", "Número de entidades"])
     for c in range(1, 4):
         ws2.cell(row=1, column=c).fill, ws2.cell(row=1, column=c).font = head_fill, head_font
     for cat, q in quantities.items():
@@ -287,8 +287,8 @@ def _quantities_workbook(doc: dict, quantities: dict) -> bytes:
     ws2.column_dimensions["A"].width, ws2.column_dimensions["B"].width, ws2.column_dimensions["C"].width = 22, 40, 18
     ws2.freeze_panes = "A2"
 
-    ws3 = wb.create_sheet("Métré")
-    ws3.append(["Ouvrage", "Désignation", "Unité", "Quantité", "PU HT (€)", "Total HT (€)"])
+    ws3 = wb.create_sheet("Medição")
+    ws3.append(["Artigo", "Designação", "Un.", "Quantidade", "PU HT (€)", "Total s/ IVA (€)"])
     for c in range(1, 7):
         ws3.cell(row=1, column=c).fill, ws3.cell(row=1, column=c).font = head_fill, head_font
     r = 2
@@ -297,13 +297,13 @@ def _quantities_workbook(doc: dict, quantities: dict) -> bytes:
             continue
         ws3.append([cat, "", "u", q.get("count"), None, f"=D{r}*E{r}"])
         r += 1
-    ws3.append(["", "", "", "", "Total HT", f"=SUM(F2:F{max(r - 1, 2)})"])
+    ws3.append(["", "", "", "", "Total s/ IVA", f"=SUM(F2:F{max(r - 1, 2)})"])
     for i, w in enumerate([22, 40, 8, 12, 12, 14], start=1):
         ws3.column_dimensions[get_column_letter(i)].width = w
 
     if doc.get("autodesk_views"):
         ws4 = wb.create_sheet("Vues")
-        ws4.append(["Vue", "Type", "Objets"])
+        ws4.append(["Vista", "Type", "Objetos"])
         for v in doc["autodesk_views"]:
             ws4.append([v.get("name"), v.get("role"), v.get("objects")])
     buf = io.BytesIO()
@@ -318,9 +318,9 @@ async def job_result(job_id: str, user=Depends(current_user)):
         {"_id": 0, "user_id": 0},
     )
     if not doc:
-        raise HTTPException(404, "Job introuvable")
+        raise HTTPException(404, "Tarefa não encontrada")
     if doc.get("status") not in FINAL_STATUSES:
-        raise HTTPException(409, f"Job non terminé ({doc.get('status')})")
+        raise HTTPException(409, f"Tarefa não concluída ({doc.get('status')})")
     return {
         "job_id": job_id,
         "filename": doc.get("filename"),
@@ -347,7 +347,7 @@ async def job_result(job_id: str, user=Depends(current_user)):
 
 
 class ImageIn(BaseModel):
-    image_b64: str = Field(..., description="Image encodée base64 (sans préfixe data:)")
+    image_b64: str = Field(..., description="Imagem codificada em base64 (sem prefixo data:)")
     mime: str = "image/png"
 
 
@@ -358,9 +358,9 @@ async def analyze_image(body: ImageIn, request: Request, response: Response, use
     try:
         raw = base64.b64decode(body.image_b64)
     except Exception:
-        raise HTTPException(400, "image_b64 invalide")
+        raise HTTPException(400, "image_b64 inválido")
     if len(raw) > 20 * 1024 * 1024:
-        raise HTTPException(400, "Image trop grande (20 Mo max)")
+        raise HTTPException(400, "Imagem demasiado grande (máx. 20 MB)")
     return await vision_cascade.analyze_plan_image(image_bytes=raw, image_mime=body.mime)
 
 

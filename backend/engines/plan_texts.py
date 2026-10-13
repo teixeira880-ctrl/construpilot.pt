@@ -160,7 +160,7 @@ def reconcile_written_surfaces(measured_rooms: list[dict], ai_rooms: list[dict],
         })
     if not ratios:
         return {"matches": [], "can_reconcile": False,
-                "reason": "Aucune pièce appariée avec une surface écrite sur le plan"}
+                "reason": "Nenhuma divisão emparelhada com uma área escrita na planta"}
     med_ratio = _median(ratios)
     deviation_pct = round(abs(med_ratio - 1) * 100, 1)
     proposed_ppm = round(current_ppm * math.sqrt(1.0 / med_ratio), 4)

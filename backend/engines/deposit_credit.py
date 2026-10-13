@@ -105,11 +105,11 @@ def deduction_lines(amount_ht: float, state: dict, label_suffix: str = "") -> li
         allocated = round(allocated + part, 2)
         if part <= 0:
             continue
-        desig = "Acompte déjà versé — déduction"
+        desig = "Adiantamento já pago — dedução"
         if label_suffix:
             desig += f" {label_suffix}"
         if multi:
             desig += f" — TVA {rate:g}%"
         lines.append({"designation": desig, "description": "", "unit": "forfait", "qty": 1,
-                      "unit_price_ht": -part, "vat_rate": rate, "category": "Acompte déduit"})
+                      "unit_price_ht": -part, "vat_rate": rate, "category": "Adiantamento deduzido"})
     return lines

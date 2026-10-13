@@ -23,12 +23,12 @@ RESERVE = 60.0
 
 # Postes de dépense et enveloppes par défaut (total planifié 440 € + 60 € de réserve).
 ENVELOPES = {
-    "infra": {"label": "Hébergement, base, stockage, sauvegardes", "amount": 150.0},
-    "ai_api": {"label": "IA, Autodesk et API métier", "amount": 100.0},
-    "tools": {"label": "Outils, automatisations et e-mails", "amount": 30.0},
-    "ads": {"label": "Publicité", "amount": 120.0},
-    "print": {"label": "Impression et distribution", "amount": 40.0},
-    "reserve": {"label": "Réserve pour imprévus", "amount": 60.0},
+    "infra": {"label": "Alojamento, base de dados, armazenamento, cópias de segurança", "amount": 150.0},
+    "ai_api": {"label": "IA, Autodesk e APIs profissionais", "amount": 100.0},
+    "tools": {"label": "Ferramentas, automatizações e e-mails", "amount": 30.0},
+    "ads": {"label": "Publicidade", "amount": 120.0},
+    "print": {"label": "Impressão e distribuição", "amount": 40.0},
+    "reserve": {"label": "Reserva para imprevistos", "amount": 60.0},
 }
 
 # Rattachement des fournisseurs de l'inventaire vérifié aux postes ci-dessus.
@@ -130,12 +130,12 @@ async def status(month: str | None = None) -> dict:
         "percent": round(used / cfg["cap_eur"] * 100, 1) if cfg["cap_eur"] else None,
         "state": state,
         "new_engagements_allowed": state in ("ok", "warning") and not source_stale,
-        "blocking_reason": ("plafond de 500 € atteint" if state == "exceeded"
-                           else "seuil de gel de 440 € atteint : seuls les engagements obligatoires ou déjà autorisés restent possibles" if state == "frozen"
-                           else "source de coûts périmée ou absente : rapprochez les factures avant tout nouvel engagement" if source_stale
+        "blocking_reason": ("teto de 500 € atingido" if state == "exceeded"
+                           else "limiar de congelamento de 440 € atingido: só os compromissos obrigatórios ou já autorizados continuam possíveis" if state == "frozen"
+                           else "fonte de custos desatualizada ou ausente: reconcilie as faturas antes de qualquer novo compromisso" if source_stale
                            else None),
         "cost_source": {"last_sync": last.isoformat() if isinstance(last, datetime) else last, "stale": source_stale, "days_since": stale_days,
-                        "note": "les montants incluent les dépenses confirmées, les estimations et les engagements réservés"},
+                        "note": "os montantes incluem as despesas confirmadas, as estimativas e os compromissos reservados"},
         "incomplete": bool(overall["unavailable"] or overall["unconverted"]),
         "envelopes": per_env,
         "holds": holds,
@@ -149,19 +149,19 @@ async def check_engagement(amount_eur: float, envelope: str, essential: bool = F
     st = await status(month)
     env = st["envelopes"].get(envelope)
     if not env:
-        return {"allowed": False, "reason": f"poste inconnu : {envelope}", "status": st}
+        return {"allowed": False, "reason": f'rubrica desconhecida: {envelope}', "status": st}
     after = round(st["used_eur"] + amount_eur, 2)
     if st["cost_source"]["stale"]:
         return {"allowed": False, "reason": st["blocking_reason"], "projected_used_eur": after, "status": st}
     if after > st["cap_eur"]:
-        return {"allowed": False, "reason": "dépasserait le plafond de 500 €",
+        return {"allowed": False, "reason": "ultrapassaria o teto de 500 €",
                 "projected_used_eur": after, "status": st}
     if after > st["freeze_at"] and not essential:
         return {"allowed": False,
-                "reason": "dépasserait le seuil de gel de 440 € (réserve de 60 € préservée pour les dépenses obligatoires)",
+                "reason": "ultrapassaria o limiar de congelamento de 440 € (reserva de 60 € preservada para as despesas obrigatórias)",
                 "projected_used_eur": after, "status": st}
     if env["used_eur"] + amount_eur > env["budget_eur"] and not essential:
-        return {"allowed": False, "reason": f"dépasserait l'enveloppe « {env['label']} »",
+        return {"allowed": False, "reason": f"ultrapassaria o envelope «{env['label']} »",
                 "projected_used_eur": after, "status": st}
     return {"allowed": True, "reason": None, "projected_used_eur": after, "status": st}
 

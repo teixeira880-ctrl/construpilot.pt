@@ -32,9 +32,7 @@ async def chat(body: ChatIn, request: Request, response: Response, user=Depends(
                                        {"_id": 0})
         if p:
             e = p["estimation"]
-            context = (f"Projet « {p['name']} » : {e['project_type_name']}, {e['surface']} m², "
-                       f"finition {e['finish_level_name']}, budget estimé {e['total_avg']:.0f} €. "
-                       f"Lots : {', '.join(l['name'] for l in e['lots'])}.")
+            context = (f"Projet « {p['name']} » : {e['project_type_name']}, {e['surface']} m², acabamento {e['finish_level_name']}, orçamento estimado {e['total_avg']:.0f} €. Lots : {', '.join((l['name'] for l in e['lots']))}.")
 
     await db.chat_messages.insert_one({
         "session_id": session_id, "user_id": user["user_id"] if user else None,
@@ -132,13 +130,13 @@ async def analyse_quote(body: QuoteIn, user=Depends(optional_user)):
         try:
             extracted = _extract_pdf_text(body.pdf_base64)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"PDF illisible: {e}")
+            raise HTTPException(status_code=400, detail=f'PDF ilegível: {e}')
         if not extracted or len(extracted) < 30:
             raise HTTPException(status_code=422,
-                                detail="Le PDF ne contient pas de texte extractible (scan image ?). Utilisez une capture JPEG/PNG.")
+                                detail="O PDF não contém texto extraível (digitalização em imagem?). Utilize uma captura JPEG/PNG.")
         text = (text + "\n\n" + extracted).strip() if text else extracted
     if not text and not b64:
-        raise HTTPException(status_code=400, detail="Fournissez un texte, une image ou un PDF")
+        raise HTTPException(status_code=400, detail="Forneça um texto, uma imagem ou um PDF")
     result = await ai.analyse_quote(text, b64, reference)
     doc = {"quote_id": f"qt_{uuid.uuid4().hex[:10]}",
            "user_id": user["user_id"] if user else None, "project_id": body.project_id,
@@ -166,11 +164,11 @@ async def compare(body: CompareIn, user=Depends(current_user)):
     if body.quote_ids:
         docs = await db.quote_analyses.find(
             {"quote_id": {"$in": body.quote_ids}, "user_id": user["user_id"]}, {"_id": 0}).to_list(20)
-        quotes = [{"company": d.get("company") or "Entreprise",
+        quotes = [{"company": d.get("company") or "Empresa",
                    "total": d["analysis"].get("total_ttc") or d["analysis"].get("total_ht"),
                    "lines": d["analysis"].get("lines", []),
                    "exclusions": d["analysis"].get("exclusions", []),
                    "warranties": d["analysis"].get("warranties", [])} for d in docs]
     if len(quotes) < 2:
-        raise HTTPException(status_code=400, detail="Au moins 2 devis sont nécessaires")
+        raise HTTPException(status_code=400, detail="São necessários pelo menos 2 orçamentos")
     return await ai.compare_quotes(quotes)

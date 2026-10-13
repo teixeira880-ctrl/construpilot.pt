@@ -65,15 +65,15 @@ def extract_pdf_page(page, px_per_pt: float, *, vectors=None, text_blocks=None) 
     if dims.get("scale_conflict"):
         context["auto_calibration_blocked"] = True
         context["interior_analysis_blocked"] = True
-        warning = ("Échelle du cartouche contredite par plusieurs cotes : PDF possiblement redimensionné. Calibrez sur une cote vérifiée avant le métré."
+        warning = ("Escala da legenda contrariada por várias cotas: PDF possivelmente redimensionado. Calibre com uma cota verificada antes da medição."
                    if dims.get("declared_scale_conflict") else
-                   "Échelles vectorielles contradictoires : isolez et calibrez chaque vue avant le métré.")
+                   "Escalas vetoriais contraditórias: isole e calibre cada vista antes da medição.")
         context["reading_warnings"].append(warning)
     ppm = dims.get("pt_per_m")
     trusted_dimensions = [d for d in dims["dimensions"] if not d.get("unverified")]
     uncertain = len(dims["dimensions"]) - len(trusted_dimensions)
     if uncertain:
-        context["reading_warnings"].append(f"{uncertain} rattachements de cotes incertains : contrôlez leurs extrémités sur le dessin avant de les utiliser pour le métré.")
+        context["reading_warnings"].append(f'{uncertain} associações de cotas incertas: controle as suas extremidades no desenho antes de as utilizar na medição.')
     eligible = not context["interior_analysis_blocked"]
     walls = analyze_walls(lines if eligible else [],
                           [{**d, "index": i+1} for i,d in enumerate(dims["dimensions"]) if not d.get("unverified")] if eligible else [],
@@ -107,7 +107,7 @@ def refresh_interior(page: dict, items: list[dict], pixels_per_meter: float | No
     """
     if page.get("interior_analysis_blocked"):
         result = analyze_walls([], [], [], None, 1)
-        result["validation"]["failed_checks"] = page.get("reading_warnings") or ["vue à isoler avant analyse intérieure"]
+        result["validation"]["failed_checks"] = page.get("reading_warnings") or ["vista a isolar antes da análise interior"]
         return result
     previous = page.get("walls_analysis") or {}
     px = 1.0 if page.get("geometry_coordinate_space") == "image_px" else float(page.get("dpi") or 0) / 72
@@ -120,7 +120,7 @@ def refresh_interior(page: dict, items: list[dict], pixels_per_meter: float | No
     segments = previous.get("segments") if previous.get("engine_version") == 2 else None
     if not segments and (page.get("vectors_truncated") or len(page.get("vectors") or []) >= 2500):
         result = analyze_walls([], [], [], None, 1)
-        result["validation"]["failed_checks"] = ["réextraire le PDF original : anciens vecteurs tronqués"]
+        result["validation"]["failed_checks"] = ["voltar a extrair o PDF original: vetores antigos truncados"]
     else:
         result = analyze_walls(page.get("vectors") or [], dims, page.get("text_blocks") or [], ppm, px,
                                segments=segments, page_size_px=(page.get("width_px",1),page.get("height_px",1)))
@@ -129,5 +129,5 @@ def refresh_interior(page: dict, items: list[dict], pixels_per_meter: float | No
         from engines.plan_walls import INCOMPLETE_MSG
         result["validation"]["complete"] = False
         result["validation"]["message"] = INCOMPLETE_MSG
-        result["validation"]["failed_checks"].append("import CAO avec réserves : consulter les diagnostics")
+        result["validation"]["failed_checks"].append("importação CAD com reservas: consultar os diagnósticos")
     return result

@@ -52,20 +52,20 @@ async def extract_full(file_bytes: bytes, filename: str, *, user_id: str) -> dic
 
 
 _LAYER_RULES: list[tuple[tuple[str, ...], str]] = [
-    (("wall", "mur", "voile", "cloison", "partition"), "Murs"),
-    (("beam", "poutre", "linteau"), "Poutres"),
-    (("cols", "col", "column", "poteau", "pilier"), "Poteaux"),
-    (("flor", "floor", "slab", "dalle", "plancher", "sol"), "Sols"),
-    (("door", "porte"), "Portes"),
-    (("glaz", "wind", "fenetre", "fenêtre", "vitrage", "chassis", "châssis"), "Fenêtres"),
-    (("strs", "stair", "escalier"), "Escaliers"),
-    (("roof", "toit", "couverture"), "Toitures"),
+    (("wall", "mur", "voile", "cloison", "partition"), "Paredes"),
+    (("beam", "poutre", "linteau"), "Vigas"),
+    (("cols", "col", "column", "poteau", "pilier"), "Pilares"),
+    (("flor", "floor", "slab", "dalle", "plancher", "sol"), "Pavimentos"),
+    (("door", "porte"), "Portas"),
+    (("glaz", "wind", "fenetre", "fenêtre", "vitrage", "chassis", "châssis"), "Janelas"),
+    (("strs", "stair", "escalier"), "Escadas"),
+    (("roof", "toit", "couverture"), "Coberturas"),
     (("fndn", "found", "fondation", "semelle", "longrine"), "Fondations"),
     (("grid", "trame", "axe", "file"), "Trames / axes"),
     (("detl", "detail", "détail"), "Détails"),
     (("site", "topo", "terrain"), "Site"),
-    (("plmb", "plomb", "sanit", "evac"), "Plomberie"),
-    (("elec", "lght", "light"), "Électricité"),
+    (("plmb", "plomb", "sanit", "evac"), "Canalização"),
+    (("elec", "lght", "light"), "Eletricidade"),
     (("hvac", "cvc", "vent"), "CVC"),
     (("anno", "dims", "text", "symb", "iden", "revc", "titl", "nplt", "cote", "texte"), "Annotations"),
 ]
@@ -149,7 +149,7 @@ def _aggregate_quantities(raw: dict) -> dict[str, dict[str, Any]]:
     for cur in result.values():
         if not cur["layers"]:
             cur.pop("layers")
-    order = ["Murs", "Sols", "Poutres", "Poteaux", "Fondations", "Portes", "Fenêtres", "Escaliers", "Toitures"]
+    order = ["Paredes", "Pavimentos", "Vigas", "Pilares", "Fondations", "Portas", "Janelas", "Escadas", "Coberturas"]
     return dict(sorted(result.items(), key=lambda kv: (order.index(kv[0]) if kv[0] in order else 50 + (kv[0] in ("Annotations", "Autres", "Détails", "Trames / axes")), -kv[1]["count"])))
 
 
@@ -164,11 +164,11 @@ def _detect_category(obj: dict) -> str:
             return props[k]
     name = (obj.get("name") or "").lower()
     for word, cat in [
-        ("wall", "Murs"), ("floor", "Sols"), ("ceiling", "Plafonds"),
-        ("door", "Portes"), ("window", "Fenêtres"), ("column", "Poteaux"),
-        ("beam", "Poutres"), ("stair", "Escaliers"), ("roof", "Toitures"),
-        ("mur", "Murs"), ("dalle", "Sols"), ("porte", "Portes"),
-        ("fenêtre", "Fenêtres"), ("poteau", "Poteaux"), ("poutre", "Poutres"),
+        ("wall", "Paredes"), ("floor", "Pavimentos"), ("ceiling", "Tetos"),
+        ("door", "Portas"), ("window", "Janelas"), ("column", "Pilares"),
+        ("beam", "Vigas"), ("stair", "Escadas"), ("roof", "Coberturas"),
+        ("mur", "Paredes"), ("dalle", "Pavimentos"), ("porte", "Portas"),
+        ("fenêtre", "Janelas"), ("poteau", "Pilares"), ("poutre", "Vigas"),
     ]:
         if word in name:
             return cat

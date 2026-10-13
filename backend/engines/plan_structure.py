@@ -19,86 +19,7 @@ from engines.plan_ai import plan_model
 
 logger = logging.getLogger(__name__)
 
-PROMPT = """Tu es un métreur / ingénieur structure expert. Analyse ce plan 2D (plan d'ARCHITECTE
-d'habitation OU plan de COFFRAGE / structure béton) et extrais TOUTE la structure pour un
-métré. Sois EXHAUSTIF : sur un plan de coffrage dense, il y a souvent de NOMBREUX poteaux,
-poutres et dalles — liste-les TOUS. NE compte PAS les meubles, textes, cotes (traits de
-mesure), légendes ni cartouche.
-
-Rends STRICTEMENT du JSON (aucun markdown, aucun texte hors JSON) :
-
-{
-  "walls": [
-    // Murs / VOILES / murs porteurs (traits pleins épais ou hachurés). Un mur = une ligne droite.
-    // Décompose les murs longs en segments entre angles. Coordonnées normalisées 0-1.
-    {"x1": 0.10, "y1": 0.12, "x2": 0.90, "y2": 0.12, "type": "porteur" | "cloison"}
-  ],
-  "columns": [
-    // POTEAUX (plan de coffrage) : petits carrés/rectangles/cercles PLEINS (souvent hachurés
-    // en croix / trame serrée), disposés sur une TRAME structurelle régulière, souvent
-    // repérés "P1", "P2"… ou cotés (ex "20x20", "Ø30"). Donne les DEUX coins opposés.
-    // NE COMPTE PAS comme poteau : les réservations/trémies (Ø de gaines, EU/EP/VB/élec),
-    // les intersections de poutres, les symboles de descente de charge, les cercles de
-    // canalisation. En cas de doute (petit cercle annoté Ø ou d'un repère fluide) → c'est une
-    // RÉSERVATION, pas un poteau. Reste réaliste : un niveau courant a typiquement 15 à 35
-    // poteaux, rarement plus — ne gonfle pas le compte avec des trémies.
-    {"x1": 0.20, "y1": 0.30, "x2": 0.23, "y2": 0.33}
-  ],
-  "beams": [
-    // POUTRES / linteaux (souvent en pointillés, ou repères type "L20", "LN33"). Segment de la poutre.
-    {"x1": 0.20, "y1": 0.40, "x2": 0.70, "y2": 0.40}
-  ],
-  "openings": [
-    // Ouvertures dans les murs (plan d'habitation). Segment = largeur de l'ouverture SUR le mur.
-    // kind : "porte" (arc de battement) | "fenetre" | "baie"
-    {"kind": "porte" | "fenetre" | "baie",
-     "x1": 0.30, "y1": 0.12, "x2": 0.40, "y2": 0.12,
-     "swing": {"x": 0.40, "y": 0.20} | null}
-  ],
-  "footings": [
-    // SEMELLES / fondations (souvent surlignées en JAUNE) : rectangle d'emprise.
-    // Donne les DEUX coins opposés. Coordonnées normalisées 0-1.
-    {"x1": 0.18, "y1": 0.28, "x2": 0.26, "y2": 0.36}
-  ],
-  "floors": [
-    // SURFACES DE SOL / DALLES / PLANCHERS (souvent surlignés en VERT) : un polygone fermé.
-    // IMPORTANT : relève le CONTOUR COMPLET de la dalle/plancher (toute l'emprise du niveau,
-    // pas seulement une pièce). S'il y a une seule grande dalle, renvoie UN grand polygone.
-    // Reprends la cote NGF (ex "NGF 53.69") et l'épaisseur (ex "ep 20 cm" -> 20) si annotées.
-    {"name": "Dalle" | "Séjour" | ...,
-     "points": [[0.12, 0.14], [0.48, 0.14], [0.48, 0.50], [0.12, 0.50]],
-     "ngf": 53.69, "thickness_cm": 20}
-  ],
-  "reservations": [
-    // RÉSERVATIONS / TRÉMIES dans le plancher (petits rectangles/cercles annotés Ø, dims
-    // type "40x20", repères Elec/VB/PLB/EU/EP, cote "Ai:"). Un point central suffit.
-    {"x": 0.55, "y": 0.42, "kind": "elec" | "plomberie" | "ventilation" | "trémie" | null,
-     "size": "40x20" | "Ø200" | null}
-  ],
-  "plan_kind": "habitation" | "coffrage",
-  "confidence": 0.0-1.0
-}
-
-CODE COULEUR (si le plan est colorisé, respecte-le STRICTEMENT) :
-- ORANGE = murs / voiles porteurs (walls, type "porteur")
-- ROUGE = poutres (beams)
-- JAUNE = semelles / fondations (footings)
-- VERT = planchers / dalles (floors) — relève la cote NGF et l'épaisseur en cm si présentes
-
-RÈGLES :
-- Respecte le code couleur ci-dessus en priorité. Sinon : murs = traits épais, poutres = pointillés.
-- Poteaux = petits éléments PLEINS isolés sur une trame, cotés/repérés "Px" — voir la définition
-  détaillée dans "columns". Distingue-les STRICTEMENT des réservations/trémies.
-- PLANCHER : relève le contour COMPLET de la dalle (toute l'emprise du niveau), pas une seule pièce.
-- BANDES NOYÉES (BN) / poutres noyées : traite-les comme des "beams" (repère "BN", trait renforcé dans la dalle).
-- RÉSERVATIONS / trémies : liste-les TOUTES dans "reservations" (jamais dans "openings" ni "columns").
-  Tout petit rectangle/cercle DANS la dalle annoté d'un Ø, d'une dimension (ex "40x20") ou d'un
-  repère fluide (EU, EP, VB, Élec, PLB, gaine) = RÉSERVATION.
-- COFFRAGE : sur un plan de coffrage/structure, "openings" DOIT rester VIDE ([]). Les trous dans la
-  dalle sont des réservations, pas des ouvertures de mur. Ne mets JAMAIS de trémie dans "openings".
-- Sois EXHAUSTIF sur murs/poutres/réservations, mais PRÉCIS sur les poteaux (pas de sur-comptage).
-- Réponds UNIQUEMENT le JSON.
-"""
+PROMPT = "És um medidor / engenheiro de estruturas especialista. Analisa esta planta 2D (planta de ARQUITETURA\nde habitação OU planta de COFRAGEM / estrutura de betão) e extrai TODA a estrutura para uma\nmedição. Sê EXAUSTIVO: numa planta de cofragem densa, há muitas vezes NUMEROSOS pilares,\nvigas e lajes — lista-os TODOS. NÃO contes os móveis, textos, cotas (linhas de\nmedida), legendas nem a legenda da folha.\n\nDevolve ESTRITAMENTE JSON (nenhum markdown, nenhum texto fora do JSON; mantém as chaves e os valores enumerados tal como indicados):\n\n{\n  \"walls\": [\n    // Murs / VOILES / murs porteurs (traits pleins épais ou hachurés). Un mur = une ligne droite.\n    // Décompose les murs longs en segments entre angles. Coordonnées normalisées 0-1.\n    {\"x1\": 0.10, \"y1\": 0.12, \"x2\": 0.90, \"y2\": 0.12, \"type\": \"porteur\" | \"cloison\"}\n  ],\n  \"columns\": [\n    // POTEAUX (plan de coffrage) : petits carrés/rectangles/cercles PLEINS (souvent hachurés\n    // en croix / trame serrée), disposés sur une TRAME structurelle régulière, souvent\n    // repérés \"P1\", \"P2\"… ou cotés (ex \"20x20\", \"Ø30\"). Donne les DEUX coins opposés.\n    // NE COMPTE PAS comme poteau : les réservations/trémies (Ø de gaines, EU/EP/VB/élec),\n    // les intersections de poutres, les symboles de descente de charge, les cercles de\n    // canalisation. En cas de doute (petit cercle annoté Ø ou d\'un repère fluide) → c\'est une\n    // RÉSERVATION, pas un poteau. Reste réaliste : un niveau courant a typiquement 15 à 35\n    // poteaux, rarement plus — ne gonfle pas le compte avec des trémies.\n    {\"x1\": 0.20, \"y1\": 0.30, \"x2\": 0.23, \"y2\": 0.33}\n  ],\n  \"beams\": [\n    // POUTRES / linteaux (souvent en pointillés, ou repères type \"L20\", \"LN33\"). Segment de la poutre.\n    {\"x1\": 0.20, \"y1\": 0.40, \"x2\": 0.70, \"y2\": 0.40}\n  ],\n  \"openings\": [\n    // Ouvertures dans les murs (plan d\'habitation). Segment = largeur de l\'ouverture SUR le mur.\n    // kind : \"porte\" (arc de battement) | \"fenetre\" | \"baie\"\n    {\"kind\": \"porte\" | \"fenetre\" | \"baie\",\n     \"x1\": 0.30, \"y1\": 0.12, \"x2\": 0.40, \"y2\": 0.12,\n     \"swing\": {\"x\": 0.40, \"y\": 0.20} | null}\n  ],\n  \"footings\": [\n    // SEMELLES / fondations (souvent surlignées en JAUNE) : rectangle d\'emprise.\n    // Donne les DEUX coins opposés. Coordonnées normalisées 0-1.\n    {\"x1\": 0.18, \"y1\": 0.28, \"x2\": 0.26, \"y2\": 0.36}\n  ],\n  \"floors\": [\n    // SURFACES DE SOL / DALLES / PLANCHERS (souvent surlignés en VERT) : un polygone fermé.\n    // IMPORTANT : relève le CONTOUR COMPLET de la dalle/plancher (toute l\'emprise du niveau,\n    // pas seulement une pièce). S\'il y a une seule grande dalle, renvoie UN grand polygone.\n    // Reprends la cote NGF (ex \"NGF 53.69\") et l\'épaisseur (ex \"ep 20 cm\" -> 20) si annotées.\n    {\"name\": \"Dalle\" | \"Séjour\" | ...,\n     \"points\": [[0.12, 0.14], [0.48, 0.14], [0.48, 0.50], [0.12, 0.50]],\n     \"ngf\": 53.69, \"thickness_cm\": 20}\n  ],\n  \"reservations\": [\n    // RÉSERVATIONS / TRÉMIES dans le plancher (petits rectangles/cercles annotés Ø, dims\n    // type \"40x20\", repères Elec/VB/PLB/EU/EP, cote \"Ai:\"). Un point central suffit.\n    {\"x\": 0.55, \"y\": 0.42, \"kind\": \"elec\" | \"plomberie\" | \"ventilation\" | \"trémie\" | null,\n     \"size\": \"40x20\" | \"Ø200\" | null}\n  ],\n  \"plan_kind\": \"habitation\" | \"coffrage\",\n  \"confidence\": 0.0-1.0\n}\n\nCÓDIGO DE CORES (se a planta estiver colorida, respeita-o ESTRITAMENTE):\n- LARANJA = paredes / paredes resistentes (walls, type \"porteur\")\n- VERMELHO = vigas (beams)\n- AMARELO = sapatas / fundações (footings)\n- VERDE = pavimentos / lajes (floors) — regista a cota altimétrica e a espessura em cm se presentes\n\nREGRAS:\n- Respeita prioritariamente o código de cores acima. Caso contrário: paredes = traços espessos, vigas = tracejado.\n- Pilares = pequenos elementos CHEIOS isolados numa malha, cotados/marcados \"Px\" — ver a definição\n  detalhada em \"columns\". Distingue-os ESTRITAMENTE dos negativos/aberturas.\n- PAVIMENTO: regista o contorno COMPLETO da laje (toda a implantação do piso), não uma única divisão.\n- BANDAS EMBEBIDAS (BN) / vigas embebidas: trata-as como \"beams\" (marca \"BN\", traço reforçado na laje).\n- NEGATIVOS / aberturas: lista-os TODOS em \"reservations\" (nunca em \"openings\" nem em \"columns\").\n  Qualquer pequeno retângulo/círculo DENTRO da laje anotado com um Ø, uma dimensão (ex.: \"40x20\") ou uma\n  marca de fluido (EU, EP, VB, Elec, PLB, courette) = NEGATIVO.\n- COFRAGEM: numa planta de cofragem/estrutura, \"openings\" TEM de ficar VAZIO ([]). Os furos na\n  laje são negativos, não vãos de parede. NUNCA ponhas uma abertura em \"openings\".\n- Sê EXAUSTIVO nas paredes/vigas/negativos, mas PRECISO nos pilares (sem contagem excessiva).\n- Os nomes livres (ex.: name das lajes) em português europeu.\n- Responde APENAS com o JSON.\n"
 
 
 def _parse_json(raw: str) -> dict:
@@ -185,7 +106,7 @@ def _to_px(structure: dict, w: int, h: int) -> dict:
         if len(clean) >= 3:
             floors.append({
                 "floor_id": "sf_" + uuid.uuid4().hex[:6],
-                "name": (f.get("name") or "Pièce")[:60],
+                "name": (f.get("name") or "Divisão")[:60],
                 "points": clean,
                 "ngf": f.get("ngf"),
                 "thickness_cm": f.get("thickness_cm"),
@@ -248,7 +169,7 @@ async def detect_structure(image_b64_png: str, width_px: int, height_px: int) ->
         from engines.expenses.metering import MeteredChat as LlmChat
         chat = LlmChat(
             api_key=api_key, session_id="plan-structure", expense_feature="plan_structure",
-            system_message="Tu réponds toujours en JSON strict, sans markdown.",
+            system_message="Respondes sempre em JSON estrito, sem markdown.",
         ).with_model("gemini", "gemini-3-flash-preview")
         raw = await chat.send_message(UserMessage(
             text=PROMPT, file_contents=[ImageContent(image_base64=image_b64_png)]))
@@ -297,23 +218,21 @@ async def refine_structure(image_b64_png: str, width_px: int, height_px: int,
     """
     api_key = studies_key("gemini")
     if not api_key:
-        return {"error": "EMERGENT_LLM_KEY absent", "reply": "Clé IA absente."}
+        return {"error": "EMERGENT_LLM_KEY absent", "reply": "Chave IA ausente."}
     cur_norm = _px_to_norm(current or {}, width_px, height_px)
     hist_txt = ""
     if history:
         recent = [h for h in history[-8:] if h]
         if recent:
-            hist_txt = "\n\nCONSIGNES PRÉCÉDENTES (déjà appliquées) :\n" + "\n".join(f"- {h}" for h in recent)
+            hist_txt = "\n\nINSTRUÇÕES ANTERIORES (já aplicadas):\n" + "\n".join(f"- {h}" for h in recent)
     user_text = (
         PROMPT
-        + "\n\n===== STRUCTURE ACTUELLE (à corriger — coordonnées normalisées 0-1) =====\n"
+        + "\n\n===== ESTRUTURA ATUAL (a corrigir — coordenadas normalizadas 0-1) =====\n"
         + json.dumps(cur_norm, ensure_ascii=False)
         + hist_txt
-        + "\n\n===== CONSIGNE DE L'UTILISATEUR (applique-la PRÉCISÉMENT) =====\n"
+        + "\n\n===== INSTRUÇÃO DO UTILIZADOR (aplica-a COM PRECISÃO) =====\n"
         + instruction.strip()
-        + "\n\nRenvoie le JSON COMPLET mis à jour (même schéma qu'au-dessus) en appliquant la consigne. "
-          "Conserve les éléments corrects existants. Ajoute EN PLUS un champ "
-          "\"reply\": \"...\" contenant UNE phrase en français expliquant ce que tu as modifié."
+        + "\n\nDevolve o JSON COMPLETO atualizado (mesmo esquema que acima) aplicando a instrução. Conserva os elementos corretos existentes. Acrescenta AINDA um campo \"reply\": \"...\" com UMA frase em português europeu a explicar o que alteraste."
     )
     try:
         from emergentintegrations.llm.chat import ImageContent, UserMessage
@@ -321,17 +240,17 @@ async def refine_structure(image_b64_png: str, width_px: int, height_px: int,
         from engines.expenses.metering import MeteredChat as LlmChat
         chat = LlmChat(
             api_key=api_key, session_id="plan-structure-refine", expense_feature="plan_structure_refine",
-            system_message="Tu réponds toujours en JSON strict, sans markdown.",
+            system_message="Respondes sempre em JSON estrito, sem markdown.",
         ).with_model("gemini", "gemini-3-flash-preview")
         raw = await chat.send_message(UserMessage(
             text=user_text, file_contents=[ImageContent(image_base64=image_b64_png)]))
     except Exception as e:
         logger.warning(f"refine_structure AI failed: {e}")
-        return {"error": f"AI call failed: {type(e).__name__}", "reply": "L'IA n'a pas pu traiter la consigne."}
+        return {"error": f"AI call failed: {type(e).__name__}", "reply": "A IA não conseguiu tratar a instrução."}
     parsed = _parse_json(raw)
     reply = parsed.pop("reply", None) if isinstance(parsed, dict) else None
     result = _to_px(parsed, width_px, height_px)
-    result["reply"] = reply or "Analyse mise à jour selon votre consigne."
+    result["reply"] = reply or "Análise atualizada segundo a sua instrução."
     if parsed.get("error"):
         result["error"] = parsed["error"]
     return result

@@ -64,7 +64,7 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=16 * mm, bottomMargin=14 * mm,
                             leftMargin=16 * mm, rightMargin=16 * mm,
-                            title="Économies & ROI — ConstruPilot")
+                            title="Poupanças e ROI — ConstruPilot")
     ss = getSampleStyleSheet()
     h1 = ParagraphStyle("h1", parent=ss["Title"], textColor=GREEN, fontSize=21, leading=24, spaceAfter=2)
     sub = ParagraphStyle("sub", parent=ss["Normal"], textColor=COPPER, fontSize=10.5, leading=13, spaceAfter=9)
@@ -77,22 +77,19 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
                          fontName="Helvetica-Bold", alignment=TA_CENTER)
 
     s = []
-    s.append(Paragraph("Combien ConstruPilot fait économiser", h1))
-    s.append(Paragraph("En % du chiffre d'affaires + le personnel et le temps automatisés par l'IA", sub))
+    s.append(Paragraph("Quanto faz o ConstruPilot poupar", h1))
+    s.append(Paragraph("Em % do volume de negócios + o pessoal e o tempo automatizados pela IA", sub))
     s.append(Paragraph(
-        "ConstruPilot réduit des pertes bien réelles ET prend en charge, via l'IA, une grande partie du "
-        "travail d'études : <b>métré, devis, calculs de quantités, chiffrage, suivi administratif</b>. "
-        "On additionne donc deux blocs : (A) les pertes évitées, en % du CA, et (B) le coût du personnel / "
-        "des heures que l'entreprise n'a plus besoin de mobiliser.", body))
+        "O ConstruPilot reduz perdas bem reais E assume, através da IA, uma grande parte do trabalho de estudos: <b>medição, orçamentos, cálculos de quantidades, orçamentação, acompanhamento administrativo</b>. Somamos portanto dois blocos: (A) as perdas evitadas, em % do volume de negócios, e (B) o custo do pessoal / das horas que a empresa já não precisa de mobilizar.", body))
 
     # ---- A) pertes ----
-    s.append(Paragraph("A. Pertes réduites (en % du CA)", h2))
+    s.append(Paragraph("A. Perdas reduzidas (em % do volume de negócios)", h2))
     arows = [
-        [Paragraph("<b>Levier</b>", cell), Paragraph("<b>Fonctionnalité</b>", cell), Paragraph("<b>% du CA</b>", cell)],
-        [Paragraph("Moins de gaspillage matériaux", cell), Paragraph("Calculateurs de quantités exactes", cell), Paragraph("0,5 – 1,5 %", cellb)],
-        [Paragraph("Marge protégée (prix justes)", cell), Paragraph("Moteurs déterministes + marge dans le devis", cell), Paragraph("0,5 – 1,5 %", cellb)],
-        [Paragraph("Moins de litiges / oublis", cell), Paragraph("Métré précis, comparaison avant/après", cell), Paragraph("0,3 – 0,5 %", cellb)],
-        [Paragraph("<b>Sous-total A</b>", cellb), Paragraph("typique ~2 % du CA", cell), Paragraph("<b>1,3 – 3,5 %</b>", cellb)],
+        [Paragraph("<b>Levier</b>", cell), Paragraph("<b>Funcionalidade</b>", cell), Paragraph("<b>% do volume de negócios</b>", cell)],
+        [Paragraph("Menos desperdício de materiais", cell), Paragraph("Calculadoras de quantidades exatas", cell), Paragraph("0,5 – 1,5 %", cellb)],
+        [Paragraph("Margem protegida (preços justos)", cell), Paragraph("Motores determinísticos + margem no orçamento", cell), Paragraph("0,5 – 1,5 %", cellb)],
+        [Paragraph("Menos litígios / esquecimentos", cell), Paragraph("Medição precisa, comparação antes/depois", cell), Paragraph("0,3 – 0,5 %", cellb)],
+        [Paragraph("<b>Subtotal A</b>", cellb), Paragraph("típico ~2 % do volume de negócios", cell), Paragraph("<b>1,3 – 3,5 %</b>", cellb)],
     ]
     at = Table(arows, colWidths=[58 * mm, 74 * mm, 36 * mm])
     at.setStyle(TableStyle([
@@ -106,19 +103,17 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     s.append(at)
 
     # ---- B) personnel ----
-    s.append(Paragraph("B. Personnel & temps automatisés par l'IA", h2))
+    s.append(Paragraph("B. Pessoal e tempo automatizados pela IA", h2))
     s.append(Paragraph(
-        "Le métré, les devis, les calculs et une partie du chiffrage/administratif sont réalisés par "
-        "ConstruPilot. L'entreprise n'a donc plus besoin de mobiliser (ou de recruter) autant de temps "
-        "d'un profil <b>métreur / deviseur / chargé d'études</b> — ou libère ce temps pour le chantier.", body))
+        "A medição, os orçamentos, os cálculos e parte da orçamentação/administração são realizados pelo ConstruPilot. A empresa já não precisa de mobilizar (ou de recrutar) tanto tempo de um perfil <b>medidor / orçamentista / técnico de estudos</b> — ou liberta esse tempo para a obra.", body))
     detrows = [
-        [Paragraph("<b>Détail du coût employeur réel (par ETP)</b>", cellb), Paragraph("", cell)],
-        [Paragraph("Salaire brut mensuel", cell), Paragraph(_eur(salaire_brut), cell)],
-        [Paragraph(f"+ Charges patronales (URSSAF, retraite, chômage…) {charges_pct:.0f} %", cell),
+        [Paragraph("<b>Detalhe do custo real para o empregador (por ETI)</b>", cellb), Paragraph("", cell)],
+        [Paragraph("Salário bruto mensal", cell), Paragraph(_eur(salaire_brut), cell)],
+        [Paragraph(f'+ Encargos patronais (Segurança Social, seguros…) {charges_pct:.0f} %', cell),
          Paragraph("+ " + _eur(charges_eur), cell)],
-        [Paragraph("+ Frais générés (poste, logiciels, mutuelle, congés…)", cell),
+        [Paragraph("+ Custos gerados (posto, software, seguros, férias…)", cell),
          Paragraph("+ " + _eur(frais_generes), cell)],
-        [Paragraph("<b>= Coût employeur TOTAL / mois</b>", cellb), Paragraph("<b>" + _eur(loaded) + "</b>", cellb)],
+        [Paragraph("<b>= Custo TOTAL para o empregador / mês</b>", cellb), Paragraph("<b>" + _eur(loaded) + "</b>", cellb)],
     ]
     dt = Table(detrows, colWidths=[118 * mm, 50 * mm])
     dt.setStyle(TableStyle([
@@ -132,9 +127,9 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     s.append(dt)
     s.append(Spacer(1, 4))
     brows = [
-        [Paragraph("<b>Profil automatisé</b>", cell), Paragraph("<b>Coût chargé</b>", cell),
-         Paragraph("<b>Équivalent ETP</b>", cell), Paragraph("<b>Économie / mois</b>", cell)],
-        [Paragraph("Métreur / deviseur / chargé d'études", cell), Paragraph(_eur(loaded) + " / mois", cell),
+        [Paragraph("<b>Perfil automatizado</b>", cell), Paragraph("<b>Custo com encargos</b>", cell),
+         Paragraph("<b>Equivalente ETI</b>", cell), Paragraph("<b>Poupança / mês</b>", cell)],
+        [Paragraph("Medidor / orçamentista / técnico de estudos", cell), Paragraph(_eur(loaded) + " / mois", cell),
          Paragraph(f"{fte_saved:.2f} ETP".replace(".", ","), cellb), Paragraph(_eur(b_month), cellb)],
     ]
     bt = Table(brows, colWidths=[72 * mm, 36 * mm, 30 * mm, 30 * mm])
@@ -147,19 +142,15 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     ]))
     s.append(bt)
     s.append(Paragraph(
-        "Le « coût employeur total » intègre le salaire brut, les charges patronales (URSSAF, retraite, "
-        "chômage, etc.) et les frais générés (poste de travail, logiciels, mutuelle, congés payés). Part "
-        "automatisable selon la taille : 0,4 ETP pour un artisan, jusqu'à 2–2,5 ETP pour une PME structurée.", small))
+        "O «custo total para o empregador» integra o salário bruto, os encargos patronais (Segurança Social, seguro de acidentes de trabalho, etc.) e os custos gerados (posto de trabalho, software, seguros, férias pagas). Parte automatizável segundo a dimensão: 0,4 ETI para um profissional independente, até 2–2,5 ETI para uma PME estruturada.", small))
 
     # ---- Encadré entreprise ----
-    s.append(Paragraph("Pour votre entreprise", h2))
-    head = Paragraph(f"CA : <b>{_eur(ca_annual)}</b>/an &bull; CA/mois : <b>{_eur(ca_month)}</b> &bull; "
-                     f"coût employeur : <b>{_eur(loaded)}</b>/mois/ETP &bull; "
-                     f"automatisé : <b>{('%.2f' % fte_saved).replace('.', ',')} ETP</b>", body)
+    s.append(Paragraph("Para a sua empresa", h2))
+    head = Paragraph(f"CA : <b>{_eur(ca_annual)}</b>/ano &bull; VN/mês: <b>{_eur(ca_month)}</b> &bull; custo para o empregador: <b>{_eur(loaded)}</b>/mês/ETI &bull; automatizado: <b>{('%.2f' % fte_saved).replace('.', ',')} ETI</b>", body)
     cells = Table([[
-        Paragraph(_eur(a_typ) + "<br/><font size=7>A · pertes (2%)</font>", big),
+        Paragraph(_eur(a_typ) + "<br/><font size=7>A · perdas (2%)</font>", big),
         Paragraph(_eur(b_month) + "<br/><font size=7>B · personnel IA</font>", big),
-        Paragraph(_eur(tot_typ) + "<br/><font size=7>TOTAL / mois</font>", big),
+        Paragraph(_eur(tot_typ) + "<br/><font size=7>TOTAL / mês</font>", big),
     ]], colWidths=[52 * mm, 52 * mm, 54 * mm])
     cells.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                                ("LINEAFTER", (0, 0), (1, 0), 0.5, LINE)]))
@@ -171,14 +162,13 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     ]))
     s.append(box)
     s.append(Spacer(1, 3))
-    s.append(Paragraph(f"Fourchette totale : <b>{_eur(tot_low)} à {_eur(tot_high)} / mois</b> — soit, au "
-                       f"scénario typique, <b>{_eur(tot_typ * 12)} / an</b>.", body))
+    s.append(Paragraph(f'Intervalo total: <b>{_eur(tot_low)} à {_eur(tot_high)} / mês</b> — ou seja, no cenário típico, <b>{_eur(tot_typ * 12)} / an</b>.', body))
 
     # ---- Tableau par taille ----
-    s.append(Paragraph("Économie mensuelle selon la taille (A + B)", h2))
-    hdr = [Paragraph("<b>CA annuel</b>", cell), Paragraph("<b>CA / mois</b>", cell),
-           Paragraph("<b>A · pertes 2%</b>", cell), Paragraph("<b>B · personnel (ETP)</b>", cell),
-           Paragraph("<b>TOTAL / mois</b>", cell)]
+    s.append(Paragraph("Poupança mensal segundo a dimensão (A + B)", h2))
+    hdr = [Paragraph("<b>CA annuel</b>", cell), Paragraph("<b>VN / mês</b>", cell),
+           Paragraph("<b>A · perdas 2%</b>", cell), Paragraph("<b>B · pessoal (ETI)</b>", cell),
+           Paragraph("<b>TOTAL / mês</b>", cell)]
     rows = [hdr]
     for ca in (250_000, 500_000, 1_000_000, 2_000_000):
         m = ca / 12
@@ -199,9 +189,7 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     s.append(mt)
     s.append(Spacer(1, 7))
     s.append(Paragraph(
-        "⚠ Modèle d'estimation avec hypothèses explicites, pas une garantie. Le résultat dépend du "
-        "volume de devis, de la part des matériaux dans le CA, du coût chargé réel et de l'adhésion des "
-        "équipes. ConstruPilot — des chiffres issus de moteurs déterministes, jamais inventés.", small))
+        "⚠ Modelo de estimativa com hipóteses explícitas, não uma garantia. O resultado depende do volume de orçamentos, do peso dos materiais no volume de negócios, do custo real com encargos e da adesão das equipas. ConstruPilot — números provenientes de motores determinísticos, nunca inventados.", small))
 
     doc.build(s)
     return buf.getvalue()

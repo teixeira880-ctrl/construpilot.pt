@@ -126,7 +126,7 @@ def _build_row(cells: list, colmap: dict[str, int]) -> dict | None:
         vat = round(vat * 100, 1)
     unit = (str(g("unit")).strip() if g("unit") is not None else "") or "u"
     return {
-        "category": (str(g("category")).strip() if g("category") is not None else "") or "Autre",
+        "category": (str(g("category")).strip() if g("category") is not None else "") or "Outro",
         "designation": designation[:220],
         "unit": unit[:16],
         "vat_rate": vat,
@@ -200,7 +200,7 @@ def parse_shared_library(content: bytes, filename: str) -> dict:
     colmap = _map_headers(headers)
     if "designation" not in colmap:
         raise ValueError(
-            "Colonne 'Désignation' introuvable. En-têtes détectés : "
+            "Coluna \'Designação\' não encontrada. Cabeçalhos detetados: "
             + ", ".join([h for h in headers if h][:30]))
     out = []
     for cells in data_rows:
@@ -212,12 +212,7 @@ def parse_shared_library(content: bytes, filename: str) -> dict:
 
 
 CSV_TEMPLATE = (
-    "Categorie;Designation;Unite;Prix_bas;Prix_moyen;Prix_haut;TVA;Source;Date_reference\n"
-    "Gros oeuvre;Mur en parpaing 20 cm;m2;65;80;100;10;Marche 2026;2026-01\n"
-    "Plomberie;Creation douche a l'italienne;ens;950;1200;1600;10;Marche 2026;2026-01\n"
-    "Menuiserie;Fenetre PVC double vitrage;u;450;550;700;10;Marche 2026;2026-01\n"
-    "# Variante detaillee acceptee : remplacez Prix_* par "
-    "Materiaux_bas;Materiaux_moyen;Materiaux_haut;MO_bas;MO_moyen;MO_haut\n"
+    "Categorie;Designation;Unite;Prix_bas;Prix_moyen;Prix_haut;TVA;Source;Date_reference\nEstrutura;Parede em bloco de betão 20 cm;m2;45;55;70;23;Mercado 2026;2026-01\nCanalizacao;Duche de nivel;ens;750;950;1300;6;Mercado 2026;2026-01\nCaixilharia;Janela PVC vidro duplo;u;350;450;600;6;Mercado 2026;2026-01\n# Variante detalhada aceite: substitua Prix_* por Materiaux_bas;Materiaux_moyen;Materiaux_haut;MO_bas;MO_moyen;MO_haut\n"
 )
 
 
@@ -245,20 +240,20 @@ def parse_constructpilot_gammes(content: bytes) -> list[dict]:
         h = _hdr_idx(rows[0])
         gi = lambda r, k: r[h[k]] if k in h and h[k] < len(r) else None  # noqa: E731
         for r in rows[1:]:
-            desig = str(gi(r, "désignation ouvrage") or "").strip()
+            desig = str(gi(r, "designação do artigo") or "").strip()
             if not desig:
                 continue
-            cat = str(gi(r, "lot / famille") or "Autre").strip()
+            cat = str(gi(r, "capítulo / família") or "Outro").strip()
             unit = str(gi(r, "unité") or "u").strip()
             key = (cat.lower(), desig.lower(), unit.lower())
             it = items.setdefault(key, {
                 "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 6.0,
                 "code": str(gi(r, "code") or "")[:24].rsplit("-", 1)[0], "lang": "pt", "country": "PT",
-                "source": str(gi(r, "source") or "")[:120] or None, "ref_date": str(gi(r, "date prix") or "")[:40] or None,
+                "source": str(gi(r, "source") or "")[:120] or None, "ref_date": str(gi(r, "data do preço") or "")[:40] or None,
                 "hours_mid": None})
             gamme = str(gi(r, "gamme") or "").lower()
             lvl = "low" if "conom" in gamme else "high" if "premium" in gamme else "mid"
-            it[f"price_{lvl}"] = _f(gi(r, "prix médian référence")) or _f(gi(r, "prix calculé"))
+            it[f"price_{lvl}"] = _f(gi(r, "preço mediano de referência")) or _f(gi(r, "preço calculado"))
             it[f"mat_{lvl}"] = _f(gi(r, "matériaux"))
             it[f"labor_{lvl}"] = _f(gi(r, "main-d'œuvre"))
             if lvl == "mid":
@@ -271,16 +266,16 @@ def parse_constructpilot_gammes(content: bytes) -> list[dict]:
             desig = str(gi(r, "désignation") or "").strip()
             if not desig:
                 continue
-            cat = str(gi(r, "catégorie") or "Piscines").strip()
+            cat = str(gi(r, "catégorie") or "Piscinas").strip()
             unit = str(gi(r, "unité") or "u").strip()
             key = (cat.lower(), desig.lower(), unit.lower())
-            mid = _f(gi(r, "prix moyen"))
+            mid = _f(gi(r, "preço médio"))
             items[key] = {
                 "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 6.0,
                 "code": str(gi(r, "code") or "")[:24], "lang": "pt", "country": "PT",
-                "price_low": _f(gi(r, "prix bas")) or mid, "price_mid": mid, "price_high": _f(gi(r, "prix haut")) or mid,
+                "price_low": _f(gi(r, "preço baixo")) or mid, "price_mid": mid, "price_high": _f(gi(r, "preço alto")) or mid,
                 "mat_mid": _f(gi(r, "matériaux")), "labor_mid": _f(gi(r, "main-d'œuvre")),
-                "source": "ConstruPilot FR 2026 – Piscines", "ref_date": "2026-09"}
+                "source": "ConstruPilot PT 2026 – Piscinas", "ref_date": "2026-09"}
     out = []
     for it in items.values():
         mid = it.get("price_mid") or it.get("price_low") or it.get("price_high")

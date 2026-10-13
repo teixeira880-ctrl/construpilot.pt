@@ -131,7 +131,7 @@ async def _lead_link(lead_id: str | None, user_id: str) -> dict:
 def _pdf_filename(doc: dict) -> str:
     """Nom de fichier du PDF : type + numéro + titre + client (si renseignés)."""
     import re as _re
-    kind = {"quote": "Devis", "invoice": "Facture"}.get(doc.get("doc_type"), "Document")
+    kind = {"quote": "Orçamento", "invoice": "Fatura"}.get(doc.get("doc_type"), "Documento")
     parts = [kind, (doc.get("number") or "").strip()]
     if (doc.get("title") or "").strip():
         parts.append(doc["title"].strip())
@@ -278,23 +278,10 @@ def _email_template(doc: dict, company: str, client_name: str | None) -> str:
     number = doc.get("number") or ""
     name = (client_name or "").strip() or "Madame, Monsieur"
     if doc.get("doc_type") == "invoice":
-        return (f"Bonjour {name},\n\n"
-                f"Vous trouverez ci-joint votre facture n° {number}.\n\n"
-                f"Dans l'attente de votre aimable règlement.\n\n"
-                f"Cordialement,\n{company}")
+        return (f'Olá {name},\n\nSegue em anexo a sua fatura n.º {number}.\n\nAguardamos o seu pagamento.\n\nCom os melhores cumprimentos,\n{company}')
     if _reduced_vat_rate(doc) is not None:
-        return (f"Bonjour {name},\n\n"
-                f"Vous trouverez ci-joint votre devis n° {number} ainsi que l'attestation de TVA "
-                f"correspondante, pré-remplie et vous permettant de bénéficier de la TVA à taux "
-                f"réduit sur vos travaux.\n\n"
-                f"Nous vous remercions pour votre confiance.\n\n"
-                f"Cordialement,\n{company}")
-    return (f"Bonjour {name},\n\n"
-            f"Veuillez trouver ci-joint le devis correspondant à votre demande devis n° {number}.\n\n"
-            f"Nous restons à votre entière disposition pour toute information complémentaire ou pour "
-            f"échanger sur certains points si nécessaire.\n\n"
-            f"Dans l'attente de votre retour, nous vous remercions pour votre confiance.\n\n"
-            f"Cordialement,\n{company}")
+        return (f'Olá {name},\n\nSegue em anexo o seu orçamento n.º {number} bem como a declaração correspondente, pré-preenchida, que permite beneficiar da taxa reduzida de IVA nas suas obras (verba 2.27 da Lista I do CIVA, quando aplicável).\n\nAgradecemos a sua confiança.\n\nCom os melhores cumprimentos,\n{company}')
+    return (f'Olá {name},\n\nSegue em anexo o orçamento correspondente ao seu pedido de orçamento n.º {number}.\n\nContinuamos ao seu inteiro dispor para qualquer informação complementar ou para discutir alguns pontos, se necessário.\n\nAguardando o seu contacto, agradecemos a sua confiança.\n\nCom os melhores cumprimentos,\n{company}')
 
 
 def _text_to_html(text: str) -> str:
@@ -312,10 +299,7 @@ def _render_button_html(url: str) -> str:
     """Bouton e-mail vers la projection avant/après du chantier (rendu IA)."""
     if not url:
         return ""
-    return (f'<p style="margin:18px 0"><a href="{url}" '
-            f'style="background:#0A0D14;color:#fff;padding:12px 22px;border-radius:8px;'
-            f'text-decoration:none;font-weight:bold;display:inline-block">'
-            f'🏠 Voir la projection avant / après du chantier</a></p>')
+    return (f'<p style="margin:18px 0"><a href="{url}" style="background:#0A0D14;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">🏠 Ver a projeção antes / depois da obra</a></p>')
 
 
 
@@ -332,7 +316,7 @@ async def _get_owned(doc_id: str, user: dict) -> dict:
     doc = await db.pro_documents.find_one(
         {"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Document introuvable")
+        raise HTTPException(404, "Documento não encontrado")
     require_feature(user, document_feature(doc.get("doc_type")))
     return doc
 
@@ -347,13 +331,13 @@ async def ai_describe_line(body: DescribeIn, user=Depends(current_user)) -> dict
     """Suggestions IA : génère une description de prestations pour une ligne de devis."""
     designation = (body.designation or "").strip()
     if not designation:
-        raise HTTPException(400, "Indiquez d'abord une désignation de ligne")
+        raise HTTPException(400, "Indique primeiro uma designação de linha")
     from engines.ai import suggest_line_description
     try:
         text = await suggest_line_description(designation, (body.context or "").strip()[:400])
     except Exception as e:
         logging.getLogger("documents").exception("ai describe failed")
-        raise HTTPException(502, f"Suggestion IA indisponible : {type(e).__name__}")
+        raise HTTPException(502, f'Sugestão IA indisponível: {type(e).__name__}')
     return {"description": (text or "").strip()}
 
 
@@ -437,11 +421,11 @@ async def build_deposit_invoice(doc_id: str, user: dict, pct: float = 30) -> dic
     Réutilisée par l'endpoint manuel et par l'automatisme déclenché à la signature du client."""
     q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
     if not q or q.get("doc_type") != "quote":
-        raise HTTPException(status_code=404, detail="Devis introuvable")
+        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
     if not (q.get("signed") or q.get("status") == "signed"):
-        raise HTTPException(status_code=400, detail="Le devis doit être signé pour facturer un acompte")
+        raise HTTPException(status_code=400, detail="O orçamento tem de estar assinado para faturar um adiantamento")
     if q.get("deposit_invoice_id"):
-        raise HTTPException(status_code=400, detail="Une facture d'acompte existe déjà pour ce devis")
+        raise HTTPException(status_code=400, detail="Já existe uma fatura de adiantamento para este orçamento")
     pct = max(1.0, min(100.0, float(pct or 30)))
 
     ht_by_rate: dict[float, float] = {}
@@ -453,17 +437,17 @@ async def build_deposit_invoice(doc_id: str, user: dict, pct: float = 30) -> dic
                         * (1 - float(ln.get("discount_pct") or 0) / 100), 2)
         ht_by_rate[rate] = ht_by_rate.get(rate, 0) + line_ht
     if not ht_by_rate:
-        raise HTTPException(status_code=400, detail="Le devis ne contient aucune ligne chiffrée")
+        raise HTTPException(status_code=400, detail="O orçamento não contém nenhuma linha com preço")
 
     num = q.get("number") or q["doc_id"]
     pct_txt = f"{pct:g}"
     multi = len(ht_by_rate) > 1
     lines = []
     for rate, ht in sorted(ht_by_rate.items()):
-        desig = f"Acompte {pct_txt}% sur devis N°{num}" + (f" — TVA {rate:g}%" if multi else "")
+        desig = f'Adiantamento {pct_txt}% sobre o orçamento N.º{num}' + (f" — TVA {rate:g}%" if multi else "")
         lines.append({"designation": desig, "description": (q.get("title") or "").strip()[:200],
                       "unit": "forfait", "qty": 1, "unit_price_ht": round(ht * pct / 100, 2),
-                      "vat_rate": rate, "category": "Acompte"})
+                      "vat_rate": rate, "category": "Adiantamento"})
 
     from datetime import timedelta
     number = await _next_number(user["user_id"], "invoice")
@@ -472,10 +456,10 @@ async def build_deposit_invoice(doc_id: str, user: dict, pct: float = 30) -> dic
     inv = {
         "doc_id": "doc_" + secrets.token_hex(6), "user_id": user["user_id"],
         "doc_type": "invoice", "number": number,
-        "title": f"Facture d'acompte {pct_txt}% — devis N°{num}",
+        "title": f'Fatura de adiantamento {pct_txt}% — orçamento N.º{num}',
         "client_id": q.get("client_id"), "client": q.get("client"),
         "status": "draft", "lines": lines,
-        "notes": f"Facture d'acompte de {pct_txt}% correspondant au devis N°{num}.",
+        "notes": f'Fatura de adiantamento de {pct_txt}% correspondente ao orçamento N.º{num}.',
         "payment_terms": q.get("payment_terms") or "",
         "deposit_pct": 0, "totals": totals,
         "payments": [], "paid": 0.0, "remaining_due": totals["ttc"],
@@ -542,7 +526,7 @@ async def billing_recap(doc_id: str, user=Depends(current_user)) -> dict:
     """Décompte général : devis + toutes ses factures liées (acomptes, situations, solde)."""
     q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
     if not q or q.get("doc_type") != "quote":
-        raise HTTPException(status_code=404, detail="Devis introuvable")
+        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
     children = await _quote_children(user["user_id"], doc_id)
     q_ht = q.get("totals", {}).get("ht", 0)
     q_ttc = q.get("totals", {}).get("ttc", 0)
@@ -600,9 +584,9 @@ async def create_situation_invoice(doc_id: str, body: SituationIn, user=Depends(
     from engines.deposit_credit import deposit_state, imputation_amount, deduction_lines
     q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
     if not q or q.get("doc_type") != "quote":
-        raise HTTPException(status_code=404, detail="Devis introuvable")
+        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
     if not (q.get("signed") or q.get("status") == "signed"):
-        raise HTTPException(status_code=400, detail="Le devis doit être signé")
+        raise HTTPException(status_code=400, detail="O orçamento deve ser assinado")
     pct = float(body.pct)
     num = q.get("number") or q["doc_id"]
     children = await _quote_children(user["user_id"], doc_id)
@@ -613,9 +597,9 @@ async def create_situation_invoice(doc_id: str, body: SituationIn, user=Depends(
     lines = []
     for rate, ht in sorted(quote_ht_by_rate.items()):
         suffix = f" — TVA {rate:g}%" if multi else ""
-        lines.append({"designation": f"Situation n°{sit_no} — avancement {pct:g}% — devis N°{num}{suffix}",
+        lines.append({"designation": f'Auto de medição n.º{sit_no} — avancement {pct:g}% — orçamento N.º{num}{suffix}',
                       "description": (q.get("title") or "").strip()[:200], "unit": "forfait", "qty": 1,
-                      "unit_price_ht": round(ht * pct / 100, 2), "vat_rate": rate, "category": "Situation"})
+                      "unit_price_ht": round(ht * pct / 100, 2), "vat_rate": rate, "category": "Situação"})
     works_ht = round(sum(l["unit_price_ht"] for l in lines), 2)
     quote_ht = float((q.get("totals") or {}).get("ht") or 0)
     billed_before = round(sum(float(c.get("works_ht") or (c.get("totals") or {}).get("ht") or 0)
@@ -627,9 +611,9 @@ async def create_situation_invoice(doc_id: str, body: SituationIn, user=Depends(
                                    works_ht, body.deposit_amount_ht)
     lines += deduction_lines(deposit_ht, dep_state)
 
-    title = f"Situation n°{sit_no} ({pct:g}%) — devis N°{num}"
-    note = f"Facture de situation n°{sit_no} au prorata ({pct:g}% d'avancement) du devis N°{num}." \
-           + (f" Acompte déjà versé déduit : -{deposit_ht:.2f} € HT." if deposit_ht else "")
+    title = f'Auto de medição n.º{sit_no} ({pct:g}%) — orçamento N.º{num}'
+    note = f'Auto de medição n.º{sit_no} pro rata ({pct:g}% de execução) do orçamento N.º{num}.' \
+           + (f' Adiantamento já pago deduzido: -{deposit_ht:.2f} € HT.' if deposit_ht else "")
     inv = await _create_child_invoice(q, user, lines, title, note, "situation",
                                       {"works_ht": works_ht, "deposit_imputed_ht": deposit_ht,
                                        "deposit_mode": body.deposit_mode})
@@ -641,9 +625,9 @@ async def create_balance_invoice(doc_id: str, user=Depends(current_user)) -> dic
     """Facture de solde : reste dû = total devis − déjà facturé (acomptes + situations), par taux de TVA."""
     q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
     if not q or q.get("doc_type") != "quote":
-        raise HTTPException(status_code=404, detail="Devis introuvable")
+        raise HTTPException(status_code=404, detail="Orçamento não encontrado")
     if not (q.get("signed") or q.get("status") == "signed"):
-        raise HTTPException(status_code=400, detail="Le devis doit être signé")
+        raise HTTPException(status_code=400, detail="O orçamento deve ser assinado")
     num = q.get("number") or q["doc_id"]
     children = await _quote_children(user["user_id"], doc_id)
     quote_ht_by_rate = _ht_by_rate(q.get("lines", []))
@@ -658,13 +642,13 @@ async def create_balance_invoice(doc_id: str, user=Depends(current_user)) -> dic
         if abs(remaining) < 0.01:
             continue
         suffix = f" — TVA {rate:g}%" if multi else ""
-        lines.append({"designation": f"Solde — devis N°{num}{suffix}",
+        lines.append({"designation": f'Saldo — orçamento N.º{num}{suffix}',
                       "description": (q.get("title") or "").strip()[:200], "unit": "forfait", "qty": 1,
-                      "unit_price_ht": remaining, "vat_rate": rate, "category": "Solde"})
+                      "unit_price_ht": remaining, "vat_rate": rate, "category": "Saldo"})
     if not lines:
-        raise HTTPException(status_code=400, detail="Rien à facturer : le devis est déjà entièrement facturé")
-    inv = await _create_child_invoice(q, user, lines, f"Facture de solde — devis N°{num}",
-                                      f"Facture de solde du devis N°{num} (déduction des acomptes et situations déjà facturés).",
+        raise HTTPException(status_code=400, detail="Nada a faturar: o orçamento já está totalmente faturado")
+    inv = await _create_child_invoice(q, user, lines, f'Fatura de saldo — orçamento N.º{num}',
+                                      f'Fatura de saldo do orçamento N.º{num} (dedução dos adiantamentos e autos de medição já faturados).',
                                       "balance")
     return inv
 
@@ -750,7 +734,7 @@ async def fiscal_profile(user=Depends(current_user)) -> dict:
     branding = await _resolve_branding(user["user_id"])
     policy = policy_for((branding or {}).get("country"))
     return {**policy, "source": "company_profile" if policy["known"] else "unknown",
-            "message": None if policy["known"] else "Pays de l'entreprise non renseigné : choisissez le taux de TVA de chaque ligne, aucun défaut n'est appliqué."}
+            "message": None if policy["known"] else "País da empresa não preenchido: escolha a taxa de IVA de cada linha, nenhuma predefinição é aplicada."}
 
 
 @router.post("")
@@ -905,7 +889,7 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
     }
     chosen = status if status in STATUS_MAP else "sent"
     if not files:
-        raise HTTPException(400, "Aucun fichier fourni")
+        raise HTTPException(400, "Nenhum ficheiro fornecido")
     results: list[dict] = []
     max_seq: dict[str, int] = {}
     for f in files[:20]:
@@ -913,23 +897,23 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
         try:
             data = await f.read()
             if not data or not name.lower().endswith(".pdf"):
-                results.append({"file": name, "ok": False, "error": "Fichier non PDF"})
+                results.append({"file": name, "ok": False, "error": "Ficheiro não PDF"})
                 continue
             text = _pdf_extract_text(data)
             images = [] if len(text) >= 120 else _pdf_render_images(data)
             if len(text) < 120 and not images:
-                results.append({"file": name, "ok": False, "error": "PDF illisible"})
+                results.append({"file": name, "ok": False, "error": "PDF ilegível"})
                 continue
             ext = await extract_document_from_pdf(
                 text=text if len(text) >= 120 else "", images=images or None)
             lines = ext.get("lines") or []
             if not lines:
-                results.append({"file": name, "ok": False, "error": "Aucune ligne détectée"})
+                results.append({"file": name, "ok": False, "error": "Nenhuma linha detetada"})
                 continue
             dtype = ext.get("doc_type") or "quote"
             client_id = await _find_or_create_client(user["user_id"], ext.get("client") or {})
             number = (ext.get("number") or "").strip() or None
-            label = "Facture" if dtype == "invoice" else ("Avoir" if dtype == "credit_note" else "Devis")
+            label = "Fatura" if dtype == "invoice" else ("Nota de crédito" if dtype == "credit_note" else "Orçamento")
             totals = _compute_totals(lines, 0)
             doc_status = STATUS_MAP[chosen][dtype]
             doc = {
@@ -937,7 +921,7 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
                 "user_id": user["user_id"],
                 "doc_type": dtype,
                 "number": number,
-                "title": f"{label} importé — {name[:60]}",
+                "title": f'{label} importado — {name[:60]}',
                 "client_id": client_id,
                 "client": await _client_snapshot(client_id, user),
                 "status": doc_status,
@@ -989,14 +973,14 @@ async def _extract_pdf_item(f: UploadFile) -> dict:
     name = f.filename or "document.pdf"
     data = await f.read()
     if not data or not name.lower().endswith(".pdf"):
-        return {"file": name, "ok": False, "error": "Fichier non PDF"}
+        return {"file": name, "ok": False, "error": "Ficheiro não PDF"}
     text = _pdf_extract_text(data)
     images = [] if len(text) >= 120 else _pdf_render_images(data)
     if len(text) < 120 and not images:
-        return {"file": name, "ok": False, "error": "PDF illisible"}
+        return {"file": name, "ok": False, "error": "PDF ilegível"}
     ext = await extract_document_from_pdf(text=text if len(text) >= 120 else "", images=images or None)
     if not ext.get("lines"):
-        return {"file": name, "ok": False, "error": "Aucune ligne détectée"}
+        return {"file": name, "ok": False, "error": "Nenhuma linha detetada"}
     return {"file": name, "ok": True, **ext}
 
 
@@ -1012,11 +996,11 @@ async def _persist_imported_doc(user: dict, item: dict, chosen: str) -> tuple[di
             "qty": max(0.0, float(l.get("qty") or 0)),
             "unit_price_ht": max(0.0, float(l.get("unit_price_ht") or 0)),
             "vat_rate": float(l.get("vat_rate") if l.get("vat_rate") is not None else 20),
-            "category": l.get("category") or "Importé",
+            "category": l.get("category") or "Importado",
         })
     client_id = await _find_or_create_client(user["user_id"], item.get("client") or {})
     number = (item.get("number") or "").strip() or None
-    label = "Facture" if dtype == "invoice" else ("Avoir" if dtype == "credit_note" else "Devis")
+    label = "Fatura" if dtype == "invoice" else ("Nota de crédito" if dtype == "credit_note" else "Orçamento")
     src = (item.get("file") or "").strip()
     totals = _compute_totals(lines, 0)
     doc_status = IMPORT_STATUS_MAP.get(chosen, IMPORT_STATUS_MAP["sent"])[dtype]
@@ -1058,7 +1042,7 @@ async def import_pdf_preview(files: list[UploadFile] = File(...),
                              user=Depends(current_user)) -> dict:
     """Étape 1 : extraction IA sans création — renvoie un aperçu éditable."""
     if not files:
-        raise HTTPException(400, "Aucun fichier fourni")
+        raise HTTPException(400, "Nenhum ficheiro fornecido")
     items: list[dict] = []
     for f in files[:20]:
         name = f.filename or "document.pdf"
@@ -1083,7 +1067,7 @@ async def import_pdf_confirm(body: ImportConfirmIn, user=Depends(current_user)) 
     max_seq: dict[str, int] = {}
     for it in (body.items or [])[:50]:
         if not (it.get("lines")):
-            results.append({"file": it.get("file", ""), "ok": False, "error": "Aucune ligne"})
+            results.append({"file": it.get("file", ""), "ok": False, "error": "Sem linhas"})
             continue
         try:
             res, dtype, seq = await _persist_imported_doc(user, it, chosen)
@@ -1120,7 +1104,7 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
             "qty": round(qty, 2),
             "unit_price_ht": pu,
             "vat_rate": 6,
-            "category": "Depuis plan IA",
+            "category": "A partir de planta IA",
         })
     await _apply_pt_vat(user, lines, quote.get("filename") or "")
     doc = {
@@ -1128,7 +1112,7 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
         "user_id": user["user_id"],
         "doc_type": "quote",
         "number": None,
-        "title": f"Devis — {quote.get('filename') or 'plan'}",
+        "title": f"Orçamento — {quote.get('filename') or 'plan'}",
         "client_id": client_id,
         "client": await _client_snapshot(client_id, user),
         "status": "draft",
@@ -1149,7 +1133,7 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
     return doc
 
 
-_CONCRETE_LABELS = {"slab": "Dalles", "beam": "Poutres", "column": "Poteaux", "wall": "Voiles", "footing": "Semelles"}
+_CONCRETE_LABELS = {"slab": "Lajes", "beam": "Vigas", "column": "Pilares", "wall": "Paredes", "footing": "Sapatas"}
 
 
 @router.post("/from-autopilot/{dossier_id}")
@@ -1160,40 +1144,40 @@ async def document_from_autopilot(dossier_id: str, client_id: str | None = None,
     d = await db.bet_dossiers.find_one(
         {"dossier_id": dossier_id, "user_id": user["user_id"]}, {"_id": 0, "autopilot": 1, "title": 1})
     if not d or not d.get("autopilot"):
-        raise HTTPException(404, "Aucun auto-pilote généré pour ce dossier.")
+        raise HTTPException(404, "Nenhum piloto automático gerado para este processo.")
     metre = ((d["autopilot"].get("summary") or {}).get("metre"))
     if not metre or not metre.get("concrete"):
-        raise HTTPException(422, "Métré indisponible : relancez la génération de l'auto-pilote.")
+        raise HTTPException(422, "Medição indisponível: relance a geração do piloto automático.")
     margin = max(0.0, min(float(margin_pct or 0), 100.0)) / 100.0
     vat = max(0.0, min(float(vat_rate or 0), 100.0))
     pc = float(metre["cost"].get("concrete_eur_m3") or 150)
     ps = float(metre["cost"].get("steel_eur_kg") or 2)
-    lines: list[dict] = [{"kind": "section", "title": "Gros œuvre (auto-pilote BET)"}]
+    lines: list[dict] = [{"kind": "section", "title": "Estrutura (piloto automático de projeto)"}]
     for k, v in (metre["concrete"].get("by_type_m3") or {}).items():
         if float(v or 0) <= 0:
             continue
         lines.append({"kind": "line", "line_kind": "ouvrage",
-                      "designation": f"Béton {_CONCRETE_LABELS.get(k, k)} (fourniture + mise en œuvre)",
-                      "description": "Volume issu du pré-dimensionnement déterministe — indicatif, à vérifier",
+                      "designation": f'Betão {_CONCRETE_LABELS.get(k, k)} (fornecimento + aplicação)',
+                      "description": "Volume resultante do pré-dimensionamento determinístico — indicativo, a verificar",
                       "unit": "m³", "qty": round(float(v), 2), "unit_price_ht": round(pc * (1 + margin), 2),
-                      "vat_rate": vat, "vat_confirmed": True, "category": "Gros œuvre · Béton", "price_estimated": True})
+                      "vat_rate": vat, "vat_confirmed": True, "category": "Estrutura · Betão", "price_estimated": True})
     for r in (metre["steel"].get("schedule") or []):
         kg = round(float(r.get("weight_kg") or 0), 1)
         if kg <= 0:
             continue
         lines.append({"kind": "line", "line_kind": "fourniture",
-                      "designation": f"Acier {r.get('mark', '')} — {r.get('type', '')} (fourniture, façonnage & pose)".strip(),
+                      "designation": f"Aço {r.get('mark', '')} — {r.get('type', '')} (fornecimento, moldagem e colocação)".strip(),
                       "description": f"{r.get('level', '')} · {r.get('bars', '')}".strip(" ·"),
                       "unit": "kg", "qty": kg, "unit_price_ht": round(ps * (1 + margin), 2),
-                      "vat_rate": vat, "vat_confirmed": True, "category": "Gros œuvre · Acier", "price_estimated": True})
+                      "vat_rate": vat, "vat_confirmed": True, "category": "Estrutura · Aço", "price_estimated": True})
     if len(lines) <= 1:
-        raise HTTPException(422, "Métré vide : aucune quantité à devis.")
-    await _apply_pt_vat(user, lines, "gros oeuvre beton acier auto-pilote")
+        raise HTTPException(422, "Medição vazia: nenhuma quantidade a orçamentar.")
+    await _apply_pt_vat(user, lines, "estrutura betao aco piloto automatico")
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6), "user_id": user["user_id"], "doc_type": "quote",
-        "number": None, "title": f"Devis gros œuvre — {d.get('title') or 'Auto-pilote BET'}",
+        "number": None, "title": f"Orçamento de estrutura — {d.get('title') or 'Auto-pilote BET'}",
         "client_id": client_id, "client": await _client_snapshot(client_id, user),
-        "status": "draft", "lines": lines, "notes": "Quantités issues du pré-dimensionnement déterministe (auto-pilote BET) — indicatives, à vérifier et compléter par l'ingénieur.",
+        "status": "draft", "lines": lines, "notes": "Quantidades resultantes do pré-dimensionamento determinístico (piloto automático de projeto) — indicativas, a verificar e completar pelo engenheiro.",
         "payment_terms": "", "deposit_pct": 0, "totals": _compute_totals(lines, 0),
         "issue_date": None, "due_date": None, "source": "autopilot_bet",
         "autopilot_dossier_id": dossier_id, "created_at": _now(), "updated_at": _now(),
@@ -1235,8 +1219,8 @@ async def _ferraillage_lines(fid: str, user_id: str, prefix: str, vat: float) ->
         if kg <= 0:
             continue
         out.append({
-            "designation": f"Acier {dia.get('diameter', '')} — fourniture, façonnage & pose",
-            "description": f"{dia.get('ml', 0)} ml (pertes {int(loss*100)}%)",
+            "designation": f"Aço {dia.get('diameter', '')} — fornecimento, moldagem e colocação",
+            "description": f"{dia.get('ml', 0)} ml (perdas {int(loss * 100)}%)",
             "unit": "kg", "qty": kg, "unit_price_ht": ACIER_PRICE_KG,
             "vat_rate": vat, "category": f"{prefix} · Ferraillage",
         })
@@ -1245,7 +1229,7 @@ async def _ferraillage_lines(fid: str, user_id: str, prefix: str, vat: float) ->
         if panels <= 0:
             continue
         out.append({
-            "designation": f"Treillis soudé {t.get('ref', '')}".strip(),
+            "designation": f"Malha eletrossoldada {t.get('ref', '')}".strip(),
             "description": f"{t.get('area_m2', '')} m²",
             "unit": "panneau", "qty": panels, "unit_price_ht": TREILLIS_PRICE_PANEL,
             "vat_rate": vat, "category": f"{prefix} · Ferraillage",
@@ -1269,7 +1253,7 @@ async def _consolidated_lines_for_plan(plan_id: str, user_id: str, subcontract: 
     if p.get("structural_metre"):
         # GROS ŒUVRE (coffrage/DWG) — TVA 20 % (ou 0 % sous-traitance)
         vat = 0.0 if subcontract else 20.0
-        prefix = f"Gros œuvre · {fname}"
+        prefix = f'Estrutura · {fname}'
         from routes.plans_crud import _rescale_metre_to_calibration
         from engines.dxf_takeoff import cost_structural
         metre, _ = _rescale_metre_to_calibration(p["structural_metre"], p)
@@ -1291,7 +1275,7 @@ async def _consolidated_lines_for_plan(plan_id: str, user_id: str, subcontract: 
             if fid in processed_ferr:
                 continue
             processed_ferr.add(fid)
-            lines += await _ferraillage_lines(fid, user_id, f"Gros œuvre · {fname}", vat)
+            lines += await _ferraillage_lines(fid, user_id, f'Estrutura · {fname}', vat)
         return lines, prefix
 
     if p.get("rooms"):
@@ -1309,7 +1293,7 @@ async def _consolidated_lines_for_plan(plan_id: str, user_id: str, subcontract: 
                     "designation": li.get("name") or "",
                     "unit": li.get("unit") or "u", "qty": round(qty, 2),
                     "unit_price_ht": pu, "vat_rate": vat,
-                    "category": f"{prefix} · Depuis plan IA",
+                    "category": f'{prefix} · A partir de planta IA',
                 })
         except HTTPException:
             pass
@@ -1319,9 +1303,9 @@ async def _consolidated_lines_for_plan(plan_id: str, user_id: str, subcontract: 
     if plan_id not in processed_ferr:
         processed_ferr.add(plan_id)
         vat = 0.0 if subcontract else 20.0
-        ferr = await _ferraillage_lines(plan_id, user_id, f"Ferraillage · {fname}", vat)
+        ferr = await _ferraillage_lines(plan_id, user_id, f'Armaduras · {fname}', vat)
         if ferr:
-            return ferr, f"Ferraillage · {fname}"
+            return ferr, f'Armaduras · {fname}'
     return [], fname
 
 
@@ -1348,10 +1332,9 @@ async def document_from_plans(body: FromPlansIn, user=Depends(current_user)) -> 
             all_lines.extend(lns)
             included.append(label)
     if not all_lines:
-        raise HTTPException(400, "Aucun plan sélectionné ne contient de métré chiffrable "
-                                 "(mesurez/analysez les plans d'abord).")
+        raise HTTPException(400, "Nenhuma planta selecionada contém medição orçamentável (meça/analise primeiro as plantas).")
     title = (body.project_name.strip()
-             or f"Devis projet — {len(included)} plan{'s' if len(included) > 1 else ''}")
+             or f"Orçamento de projeto — {len(included)} plan{('s' if len(included) > 1 else '')}")
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": uid, "doc_type": "quote", "number": None,
@@ -1372,10 +1355,7 @@ async def document_from_plans(body: FromPlansIn, user=Depends(current_user)) -> 
             "line_count": len(all_lines), "included": included}
 
 
-_WHISPER_PROMPT_FR = ("Devis de travaux BTP : dépose, démolition, placo, cloison, doublage, enduit, ragréage, "
-                      "carrelage, faïence, parquet, peinture, plomberie, douche à l'italienne, meuble vasque, WC suspendu, "
-                      "électricité, tableau électrique, prises, domotique KNX, VMC, isolation, menuiseries, toiture, "
-                      "maçonnerie, parpaing, dalle béton, terrassement, mètres carrés, mètres linéaires, forfait.")
+_WHISPER_PROMPT_FR = ("Orçamento de obras de construção: remoção, demolição, pladur, divisória, forro, reboco, betonilha de regularização, cerâmico, azulejo, soalho, pintura, canalização, base de duche embutida, móvel de lavatório, sanita suspensa, eletricidade, quadro elétrico, tomadas, domótica KNX, ventilação mecânica, isolamento, caixilharia, cobertura, alvenaria, bloco de cimento, laje de betão, movimentos de terras, metros quadrados, metros lineares, valor global.")
 _WHISPER_PROMPT_PT = ("Orçamento de obras : demolição, pladur, divisórias, reboco, azulejo, mosaico, pavimento, pintura, "
                       "canalização, base de duche, móvel de lavatório, eletricidade, quadro elétrico, tomadas, domótica, "
                       "isolamento, caixilharia, cobertura, alvenaria, betão, metros quadrados, metros lineares.")
@@ -1388,9 +1368,9 @@ async def _transcribe_video_bytes(raw: bytes, lang: str = "pt") -> str:
     import subprocess
     import tempfile
     if not raw:
-        raise HTTPException(400, "Vidéo vide")
+        raise HTTPException(400, "Vídeo vazio")
     if len(raw) > 80 * 1024 * 1024:
-        raise HTTPException(413, "Vidéo trop volumineuse (>80 Mo). Filmez une séquence plus courte.")
+        raise HTTPException(413, "Vídeo demasiado volumoso (>80 MB). Filme uma sequência mais curta.")
     tmpdir = tempfile.mkdtemp(prefix="cp_vid_")
     src = os.path.join(tmpdir, "input")
     audio = os.path.join(tmpdir, "audio.mp3")
@@ -1402,9 +1382,9 @@ async def _transcribe_video_bytes(raw: bytes, lang: str = "pt") -> str:
             capture_output=True, timeout=120)
         if proc.returncode != 0 or not os.path.exists(audio):
             logging.getLogger("documents").warning("ffmpeg failed: %s", proc.stderr[-500:])
-            raise HTTPException(422, "Impossible d'extraire l'audio de la vidéo.")
+            raise HTTPException(422, "Impossível extrair o áudio do vídeo.")
         if os.path.getsize(audio) > 25 * 1024 * 1024:
-            raise HTTPException(413, "Audio trop long (>25 Mo). Filmez une séquence plus courte.")
+            raise HTTPException(413, "Áudio demasiado longo (>25 MB). Filme uma sequência mais curta.")
         from emergentintegrations.llm.openai import OpenAISpeechToText
         stt = OpenAISpeechToText(api_key=os.environ["EMERGENT_LLM_KEY"])
         with open(audio, "rb") as af:
@@ -1416,11 +1396,11 @@ async def _transcribe_video_bytes(raw: bytes, lang: str = "pt") -> str:
         raise
     except Exception as e:
         logging.getLogger("documents").exception("video transcription failed")
-        raise HTTPException(502, f"Transcription indisponible : {type(e).__name__}")
+        raise HTTPException(502, f'Transcrição indisponível: {type(e).__name__}')
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
     if not transcript.strip():
-        raise HTTPException(422, "Aucune parole détectée dans la vidéo.")
+        raise HTTPException(422, "Nenhuma fala detetada no vídeo.")
     return transcript.strip()
 
 
@@ -1434,13 +1414,13 @@ async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
     hints = await library_hints_for_user(user["user_id"])
     lines, title = await quote_lines_from_text(text, images=images or None, library_hints=hints)
     if not lines:
-        raise HTTPException(422, "L'IA n'a pas pu générer de lignes de devis à partir de la description.")
+        raise HTTPException(422, "A IA não conseguiu gerar linhas de orçamento a partir da descrição.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
     await _apply_pt_vat(user, lines, title or "", text or "")
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"], "doc_type": "quote", "number": None,
-        "title": title or "Devis (vidéo)",
+        "title": title or "Orçamento (vídeo)",
         "client_id": client_id, "client": await _client_snapshot(client_id, user),
         "status": "draft", "lines": lines,
         "notes": f"Description :\n{text.strip()[:1500]}",
@@ -1500,24 +1480,23 @@ async def cctp_extract(file: UploadFile = File(...), lot: str = "", user=Depends
     from routes.plans_analysis import _apply_library_prices
     raw = await file.read()
     if len(raw) > 40 * 1024 * 1024:
-        raise HTTPException(413, "PDF trop volumineux (40 Mo max)")
+        raise HTTPException(413, "PDF demasiado volumoso (máx. 40 MB)")
     text = await asyncio.to_thread(_pdf_extract_text_long, raw)
     ocr_used = False
     if len(text) < 200:
         from engines.ai import ocr_pages_to_text
         images = await asyncio.to_thread(_pdf_render_images, raw, 16)
         if not images:
-            raise HTTPException(422, "CCTP illisible : impossible de lire ou de rastériser ce PDF.")
+            raise HTTPException(422, "Caderno de encargos ilegível: impossível ler ou rasterizar este PDF.")
         text = await ocr_pages_to_text(images)
         ocr_used = True
         if len(text) < 200:
-            raise HTTPException(422, "CCTP illisible : l'OCR n'a pas pu extraire de texte exploitable "
-                                     "(scan trop flou ou trop clair). Réessayez avec un scan plus net.")
+            raise HTTPException(422, "Caderno de encargos ilegível: o OCR não conseguiu extrair texto utilizável (digitalização demasiado desfocada ou clara). Tente novamente com uma digitalização mais nítida.")
     from routes.plans_analysis import library_hints_for_user
     lines, title, prescriptions = await cctp_lines_from_text(
         text, lot_filter=lot.strip(), library_hints=await library_hints_for_user(user["user_id"]))
     if not lines:
-        raise HTTPException(422, "Aucun ouvrage identifié dans ce CCTP.")
+        raise HTTPException(422, "Nenhum trabalho identificado neste caderno de encargos.")
     lines, priced = await _apply_library_prices(user["user_id"], lines)
     return {"title": title, "lines": lines, "priced_lines": priced,
             "prescriptions": prescriptions, "chars": len(text), "ocr": ocr_used,
@@ -1563,7 +1542,7 @@ async def update_document(doc_id: str, body: DocIn,
                           user=Depends(current_user)) -> dict:
     previous = await _get_owned(doc_id, user)
     if body.expected_updated_at is not None and previous.get("updated_at") != body.expected_updated_at:
-        raise HTTPException(409, "Ce document a été modifié ailleurs. Relisez la version enregistrée avant de sauvegarder.")
+        raise HTTPException(409, "Este documento foi modificado noutro local. Releia a versão guardada antes de guardar.")
     lines = [ln.model_dump() for ln in body.lines]
     await normalize_generated_vat(user, lines)
     if _is_frozen(previous):
@@ -1572,12 +1551,12 @@ async def update_document(doc_id: str, body: DocIn,
                      "deposit_pct": body.deposit_pct or 0}
         if _content_hash(candidate) != _content_hash(previous):
             if previous.get("doc_type") in ("invoice", "credit_note"):
-                raise HTTPException(409, "Facture émise : son contenu est figé. Corrigez-la par un avoir (« Créer un avoir »), jamais par modification.")
+                raise HTTPException(409, "Fatura emitida: o seu conteúdo está bloqueado. Corrija-a com uma nota de crédito («Criar uma nota de crédito»), nunca por modificação.")
             revision = await _create_revision(previous, candidate, user)
             return {**revision, "revision_created": True,
-                    "message": "Devis signé : le contenu figé a été conservé et une nouvelle révision brouillon (non signée) a été créée."}
+                    "message": "Orçamento assinado: o conteúdo bloqueado foi conservado e foi criada uma nova revisão em rascunho (não assinada)."}
         if body.status and body.status != previous.get("status"):
-            raise HTTPException(409, "Utilisez le changement de statut dédié pour un document signé/émis.")
+            raise HTTPException(409, "Utilize a mudança de estado dedicada para um documento assinado/emitido.")
         return previous
     upd = {
         "title": (body.title or "").strip()[:160],
@@ -1607,7 +1586,7 @@ async def update_document(doc_id: str, body: DocIn,
         update_filter["updated_at"] = body.expected_updated_at
     result = await db.pro_documents.update_one(update_filter, {"$set": upd})
     if not result.matched_count:
-        raise HTTPException(409, "Ce document a été modifié ailleurs. Relisez sa version actuelle.")
+        raise HTTPException(409, "Este documento foi modificado noutro local. Releia a sua versão atual.")
     try:
         from routes.library import auto_save_from_lines
         await auto_save_from_lines(user["user_id"], upd.get("lines"))
@@ -1633,7 +1612,7 @@ ALLOWED_TRANSITIONS = {
 async def set_status(doc_id: str, body: StatusIn, user=Depends(current_user)) -> dict:
     allowed = {"draft", "sent", "signed", "refused", "partial", "paid", "issued"}
     if body.status not in allowed:
-        raise HTTPException(400, "Statut invalide")
+        raise HTTPException(400, "Estado inválido")
     doc = await _get_owned(doc_id, user)
     current = doc.get("status") or "draft"
     if body.status == current:
@@ -1641,8 +1620,8 @@ async def set_status(doc_id: str, body: StatusIn, user=Depends(current_user)) ->
     transitions = ALLOWED_TRANSITIONS.get(doc.get("doc_type"), ALLOWED_TRANSITIONS["quote"])
     if body.status not in transitions.get(current, set()):
         if current == "signed":
-            raise HTTPException(409, "Devis signé : la signature ne peut pas être retirée. Modifiez le devis pour créer une nouvelle révision.")
-        raise HTTPException(409, f"Transition {current} → {body.status} non autorisée pour ce document.")
+            raise HTTPException(409, "Orçamento assinado: a assinatura não pode ser retirada. Modifique o orçamento para criar uma nova revisão.")
+        raise HTTPException(409, f'Transition {current} → {body.status} não autorizada para este documento.')
     upd = {"status": body.status, "updated_at": _now()}
     if body.status == "signed":
         upd["signed"] = True
@@ -1668,9 +1647,9 @@ async def delete_document(doc_id: str, confirm_signed: bool = False, user=Depend
     from routes.trash import trash_record
     doc = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Document introuvable")
+        raise HTTPException(404, "Documento não encontrado")
     if doc.get("status") == "signed" and not confirm_signed:
-        raise HTTPException(409, "Ce document est signé : sa suppression demande une confirmation explicite (confirm_signed=true).")
+        raise HTTPException(409, "Este documento está assinado: a sua eliminação requer uma confirmação explícita (confirm_signed=true).")
     res = await trash_record("document", doc, user["user_id"], {"doc_type": doc.get("doc_type"), "status": doc.get("status"), "signed_confirmed": doc.get("status") == "signed"})
     await db.pro_documents.delete_one({"doc_id": doc_id, "user_id": user["user_id"]})
     from engines import activity
@@ -1688,7 +1667,7 @@ async def issue_batch(body: dict, user=Depends(current_user)) -> dict:
         doc = await db.pro_documents.find_one(
             {"doc_id": did, "user_id": user["user_id"]}, {"_id": 0, "doc_type": 1, "number": 1})
         if not doc:
-            results.append({"doc_id": did, "ok": False, "error": "Introuvable"})
+            results.append({"doc_id": did, "ok": False, "error": "Não encontrado"})
             continue
         number = doc.get("number") or await _next_number(user["user_id"], doc["doc_type"])
         await db.pro_documents.update_one(
@@ -1762,7 +1741,7 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
         base_brand = await _rb(user["user_id"])
         cover = build_cover_story(
             base_brand,
-            {"name": cm.get("project_name") or doc.get("title") or "Projet",
+            {"name": cm.get("project_name") or doc.get("title") or "Projeto",
              "levels_count": cm.get("levels_count", 0),
              "total_ttc": doc.get("total_ttc") or (doc.get("totals") or {}).get("ttc")},
             cm.get("client") or {}, cm.get("reference") or "", _cover_styles())
@@ -1779,7 +1758,7 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
                 {"group_id": cm["group_id"], "user_id": user["user_id"]}, {"_id": 0})
             if g:
                 aps = _ap_styles()
-                ap = [Paragraph("ANNEXE — DÉTAIL DES COTES", aps["kicker"]), Spacer(1, 4 * mm)]
+                ap = [Paragraph("ANEXO — DETALHE DAS COTAS", aps["kicker"]), Spacer(1, 4 * mm)]
                 lvl_ids = [lv.get("plan_id") for lv in (g.get("levels") or [])]
                 plan_docs = await db.plans_takeoff.find(
                     {"plan_id": {"$in": lvl_ids}, "user_id": user["user_id"]},
@@ -1789,7 +1768,7 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
                     pd = dby.get(lv.get("plan_id"))
                     if not pd:
                         continue
-                    ap.append(Paragraph(f"DÉTAIL DES COTES — {lv.get('level_label') or 'Niveau'}", aps["kicker"]))
+                    ap.append(Paragraph(f"DETALHE DAS COTAS — {lv.get('level_label') or 'Piso'}", aps["kicker"]))
                     thumb = await _ensure_level_thumb(lv.get("plan_id"), user["user_id"])
                     sub = _detail_cotes_flowables(pd.get("measurements") or [], aps, thumb_b64=thumb)
                     if sub:
@@ -1813,7 +1792,7 @@ async def document_sign_link(doc_id: str, user=Depends(current_user)) -> dict:
     """Lien de signature du devis, pour faire signer le client sur place (tablette/téléphone)."""
     doc = await _get_owned(doc_id, user)
     if doc.get("doc_type") != "quote":
-        raise HTTPException(400, "Seuls les devis peuvent être signés")
+        raise HTTPException(400, "Apenas os orçamentos podem ser assinados")
     if doc.get("signed"):
         return {"already_signed": True, "sign_url": None}
     if not doc.get("number"):
@@ -1837,7 +1816,7 @@ async def document_pdf_internal(doc_id: str, user=Depends(current_user)):
     doc = await _get_owned(doc_id, user)
     branding = await _resolve_branding(user["user_id"])
     pdf_bytes = build_internal_quote_pdf(doc, branding=branding)
-    fname = f"{doc.get('number') or doc['doc_id']}-INTERNE.pdf"
+    fname = f"{doc.get('number') or doc['doc_id']}-INTERNO.pdf"
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
@@ -1875,8 +1854,8 @@ async def get_email_template(doc_id: str, client_name: str | None = None,
     name = client_name or ((doc.get("client") or {}).get("first_name") or "")
     number = doc.get("number") or ""
     is_quote = doc["doc_type"] == "quote"
-    subject = (f"Devis n° {number} · {company}" if is_quote
-               else f"Facture n° {number} · {company}")
+    subject = (f'Orçamento n.º {number} · {company}' if is_quote
+               else f'Fatura n.º {number} · {company}')
     return {"subject": subject,
             "message": _resolved_email_message(doc, company, name, branding),
             "attach_tva_attestation": is_quote and _reduced_vat_rate(doc) is not None}
@@ -1902,19 +1881,14 @@ async def email_preview(doc_id: str, body: EmailPreviewIn, user=Depends(current_
     name = body.client_name or ((doc.get("client") or {}).get("first_name") or "")
     body_text = (body.message or "").strip() or _resolved_email_message(doc, company, name, branding)
     inner = _text_to_html(body_text)
-    subject = (f"Devis n° {number} · {company}" if is_quote
-               else f"Facture n° {number} · {company}")
+    subject = (f'Orçamento n.º {number} · {company}' if is_quote
+               else f'Fatura n.º {number} · {company}')
     if is_quote:
-        inner += ('<p style="margin:22px 0"><a href="#" '
-                  'style="background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;'
-                  'text-decoration:none;font-weight:bold;display:inline-block">'
-                  '✍️ Consulter et signer le devis en ligne</a></p>')
+        inner += ("<p style=\"margin:22px 0\"><a href=\"#\" style=\"background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block\">✍️ Consultar e assinar o orçamento online</a></p>")
     inner += _render_button_html((body.render_url or "").strip())
     if doc.get("doc_type") in ("invoice", "credit_note") and user.get("bank_details"):
         _bank = str(user["bank_details"]).replace(chr(10), "<br/>")
-        inner += (f'<div style="margin:18px 0;padding:14px 16px;background:#f6f8fa;border-radius:8px">'
-                  f'<p style="margin:0 0 6px 0;font-weight:bold">Coordonnées bancaires</p>'
-                  f'<p style="margin:0;color:#333;font-size:13px">{_bank}</p></div>')
+        inner += (f'<div style="margin:18px 0;padding:14px 16px;background:#f6f8fa;border-radius:8px"><p style="margin:0 0 6px 0;font-weight:bold">Dados bancários</p><p style="margin:0;color:#333;font-size:13px">{_bank}</p></div>')
     html = wrap_company_html(
         subject, inner, company_name=company,
         logo_url=logo_url_for(user["user_id"], branding),
@@ -1938,15 +1912,15 @@ async def send_status(log_id: str, user=Depends(current_user)) -> dict:
     log = await db.quote_sends.find_one({"log_id": log_id, "user_id": user["user_id"]},
                                         {"_id": 0, "email_status": 1, "error": 1, "email_via": 1, "client_email": 1, "email_id": 1})
     if not log:
-        raise HTTPException(404, "Envoi introuvable")
+        raise HTTPException(404, "Envio não encontrado")
     err = log.get("error") or ""
     if log.get("email_status") == "sent" and log.get("email_id"):
         from engines.emailer import email_last_event
         ev = await email_last_event(log["email_id"])
         if ev in ("bounced", "complained", "suppressed", "failed", "delivery_delayed"):
-            causes = {"bounced": "adresse rejetée par le serveur du destinataire (rebond)",
-                      "suppressed": "adresse en liste de suppression Resend (rebond antérieur) — retirée automatiquement, renvoyez le devis",
-                      "complained": "destinataire a signalé un spam", "failed": "échec de remise", "delivery_delayed": "remise retardée"}
+            causes = {"bounced": "endereço rejeitado pelo servidor do destinatário (devolução)",
+                      "suppressed": "endereço na lista de supressão Resend (devolução anterior) — retirado automaticamente, reenvie o orçamento",
+                      "complained": "o destinatário assinalou spam", "failed": "falha na entrega", "delivery_delayed": "entrega atrasada"}
             err = f"Resend : {causes.get(ev, ev)}"
             log["email_status"] = "failed" if ev != "delivery_delayed" else "queued"
             await db.quote_sends.update_one({"log_id": log_id}, {"$set": {"email_status": log["email_status"], "error": err, "last_event": ev}})
@@ -1954,13 +1928,11 @@ async def send_status(log_id: str, user=Depends(current_user)) -> dict:
                 from engines.emailer import unsuppress
                 await unsuppress(log.get("client_email") or "")
     if "only send testing emails" in err or "own email address" in err or "resend.dev" in err:
-        err = ("Expéditeur non configuré sur le serveur (SENDER_EMAIL absent ou domaine non vérifié chez Resend) : "
-               "Resend n'autorise alors l'envoi qu'à votre propre adresse. Renseignez SENDER_EMAIL avec une adresse "
-               "d'un domaine vérifié (ex. info@construpilot.fr).")
+        err = ("Remetente não configurado no servidor (SENDER_EMAIL ausente ou domínio não verificado na Resend): a Resend só autoriza então o envio para o seu próprio endereço. Preencha SENDER_EMAIL com um endereço de um domínio verificado (ex. info@construpilot.pt).")
     elif "SENDER_EMAIL" in err:
-        err = "SENDER_EMAIL absent sur le serveur : configurez une adresse d'un domaine vérifié chez Resend (ex. info@construpilot.fr)."
+        err = "SENDER_EMAIL ausente no servidor: configure um endereço de um domínio verificado na Resend (ex. info@construpilot.pt)."
     elif "RESEND_API_KEY" in err:
-        err = "Clé RESEND_API_KEY absente sur le serveur : aucun e-mail ne peut partir."
+        err = "Chave RESEND_API_KEY ausente no servidor: nenhum e-mail pode ser enviado."
     return {"email_status": log.get("email_status"), "error": err or None, "via": log.get("email_via"), "to": log.get("client_email")}
 
 
@@ -1977,13 +1949,13 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     _emails = [e.strip() for e in _re.split(r"[,;\s]+", body.client_email or "") if e.strip()]
     _recipients = [e for e in _emails if _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e)]
     if not _recipients:
-        raise HTTPException(400, "Email client invalide.")
+        raise HTTPException(400, "Email do cliente inválido.")
     _recipients = list(dict.fromkeys(_recipients))[:10]  # dédup, max 10 destinataires
     body.client_email = _recipients[0]
     # E-mail du pro requis vérifié avant tout envoi (grand-fathering : comptes sans le champ = OK)
     if user.get("email_verified") is False:
         raise HTTPException(
-            403, "Confirmez d'abord votre adresse e-mail (lien reçu à l'inscription) avant d'envoyer un devis.")
+            403, "Confirme primeiro o seu endereço de e-mail (ligação recebida no registo) antes de enviar um orçamento.")
     doc = await _get_owned(doc_id, user)
     if not doc.get("number"):
         doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
@@ -2003,25 +1975,19 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     body_text = (body.message or "").strip() or _resolved_email_message(
         doc, company, body.client_name or ((doc.get("client") or {}).get("first_name") or ""), branding)
     inner = _text_to_html(body_text)
-    subject = (f"Devis n° {number} · {company}" if is_quote
-               else f"Facture n° {number} · {company}")
+    subject = (f'Orçamento n.º {number} · {company}' if is_quote
+               else f'Fatura n.º {number} · {company}')
     sender_u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "email": 1})
     cc = (sender_u or {}).get("email")
     log_id = "qs_" + _secrets.token_hex(6)
     sign_token = _secrets.token_urlsafe(24)
     sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{sign_token}"
     if is_quote:
-        inner += (f'<p style="margin:22px 0"><a href="{sign_url}" '
-                  f'style="background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;'
-                  f'text-decoration:none;font-weight:bold;display:inline-block">'
-                  f'✍️ Consulter et signer le devis en ligne</a></p>'
-                  f'<p style="font-size:12px;color:#666">Ou copiez ce lien : {sign_url}</p>')
+        inner += (f'<p style="margin:22px 0"><a href="{sign_url}" style="background:#3F7D54;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">✍️ Consultar e assinar o orçamento online</a></p><p style="font-size:12px;color:#666">Ou copie esta ligação: {sign_url}</p>')
     inner += _render_button_html((body.render_url or "").strip())
     if doc.get("doc_type") in ("invoice", "credit_note") and user.get("bank_details"):
         _bank = str(user["bank_details"]).replace(chr(10), "<br/>")
-        inner += (f'<div style="margin:18px 0;padding:14px 16px;background:#f6f8fa;border-radius:8px">'
-                  f'<p style="margin:0 0 6px 0;font-weight:bold">Coordonnées bancaires</p>'
-                  f'<p style="margin:0;color:#333;font-size:13px">{_bank}</p></div>')
+        inner += (f'<div style="margin:18px 0;padding:14px 16px;background:#f6f8fa;border-radius:8px"><p style="margin:0 0 6px 0;font-weight:bold">Dados bancários</p><p style="margin:0;color:#333;font-size:13px">{_bank}</p></div>')
     from engines.emailer import logo_url_for
     logo_url = logo_url_for(user["user_id"], branding)
     html = wrap_company_html(subject, inner, company_name=company,
@@ -2050,7 +2016,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
             work_desc = " ; ".join([ln.get("designation") or ln.get("description") or ""
                                     for ln in doc.get("lines", []) if
                                     (ln.get("designation") or ln.get("description"))]) \
-                or "Travaux de rénovation"
+                or "Obras de remodelação"
             att_pdf = build_tva_attestation_pdf(
                 client_name=body.client_name or "",
                 client_address=addr, work_address=addr,
@@ -2087,7 +2053,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                 continue
             total += len(content)
             if total > 15 * 1024 * 1024:
-                raise HTTPException(400, "Pièces jointes trop volumineuses (15 Mo maximum au total).")
+                raise HTTPException(400, "Anexos demasiado volumosos (máximo 15 MB no total).")
             extra_attachments.append({
                 "filename": (att.filename or "piece-jointe").strip()[:120],
                 "content": content,
@@ -2167,7 +2133,7 @@ async def _ensure_facturx(doc_id: str, user: dict, force: bool = False):
 
     doc = await _get_owned(doc_id, user)
     if doc.get("doc_type") != "invoice":
-        raise HTTPException(status_code=400, detail="Factur-X réservé aux factures")
+        raise HTTPException(status_code=400, detail="Fatura eletrónica (Factur-X) reservada às faturas")
     if not doc.get("number"):
         doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
         doc["issue_date"] = doc.get("issue_date") or _now()
@@ -2232,9 +2198,9 @@ async def quote_to_invoice(doc_id: str, body: ToInvoiceIn,
     from datetime import timedelta
     q = await _get_owned(doc_id, user)
     if q["doc_type"] != "quote":
-        raise HTTPException(400, "Seul un devis peut être transformé en facture")
+        raise HTTPException(400, "Apenas um orçamento pode ser transformado em fatura")
     if q.get("status") != "signed":
-        raise HTTPException(400, "Le devis doit être signé avant d'être facturé")
+        raise HTTPException(400, "O orçamento deve ser assinado antes de ser faturado")
     scaled = body.mode in ("prorata", "acompte")
     factor = (max(0.0, min(body.pct, 100)) / 100) if scaled else 1.0
     note = q.get("notes") or ""
@@ -2242,15 +2208,13 @@ async def quote_to_invoice(doc_id: str, body: ToInvoiceIn,
         lines = [{**dict(ln), "qty": round((ln.get("qty") or 0) * factor, 4)}
                  for ln in q.get("lines", [])]
         if body.mode == "acompte":
-            title = f"Facture d'acompte {int(round(body.pct))}% — {q.get('title') or 'devis'}"
-            note = (f"Facture d'acompte de {int(round(body.pct))} % sur le devis "
-                    f"{q.get('number') or ''}. Le solde sera facturé à l'achèvement "
-                    f"des travaux.").strip()
+            title = f"Fatura de adiantamento {int(round(body.pct))}% — {q.get('title') or 'devis'}"
+            note = (f"Fatura de adiantamento de {int(round(body.pct))} % sobre o orçamento {q.get('number') or ''}. O saldo será faturado na conclusão das obras.").strip()
         else:
-            title = f"Facture situation {int(round(body.pct))}% — {q.get('title') or 'devis'}"
+            title = f"Fatura de auto de medição {int(round(body.pct))}% — {q.get('title') or 'devis'}"
     else:
         lines = [dict(ln) for ln in q.get("lines", [])]
-        title = f"Facture — {q.get('title') or 'devis'}"
+        title = f"Fatura — {q.get('title') or 'devis'}"
     totals = _compute_totals(lines, 0)
     now = _now()
     number = await _next_number(user["user_id"], "invoice")
@@ -2289,7 +2253,7 @@ async def invoice_to_credit_note(doc_id: str, user=Depends(current_user)) -> dic
     """Crée un avoir à partir d'une facture (montants à ajuster ensuite si partiel)."""
     inv = await _get_owned(doc_id, user)
     if inv["doc_type"] != "invoice":
-        raise HTTPException(400, "Seule une facture peut donner lieu à un avoir")
+        raise HTTPException(400, "Apenas uma fatura pode dar origem a uma nota de crédito")
     lines = [dict(ln) for ln in inv.get("lines", [])]
     totals = _compute_totals(lines, 0)
     now = _now()
@@ -2299,12 +2263,12 @@ async def invoice_to_credit_note(doc_id: str, user=Depends(current_user)) -> dic
         "user_id": user["user_id"],
         "doc_type": "credit_note",
         "number": number,
-        "title": f"Avoir — facture {inv.get('number') or ''}".strip(),
+        "title": f"Nota de crédito — fatura {inv.get('number') or ''}".strip(),
         "client_id": inv.get("client_id"),
         "client": inv.get("client"),
         "status": "issued",
         "lines": lines,
-        "notes": f"Avoir émis en référence à la facture {inv.get('number') or inv['doc_id']}.",
+        "notes": f"Nota de crédito emitida com referência à fatura {inv.get('number') or inv['doc_id']}.",
         "payment_terms": "",
         "deposit_pct": 0,
         "totals": totals,
@@ -2343,7 +2307,7 @@ def _apply_payment_status(payments: list, ttc: float) -> tuple[float, float, str
 async def add_payment(doc_id: str, body: PaymentIn, user=Depends(current_user)) -> dict:
     doc = await _get_owned(doc_id, user)
     if doc["doc_type"] != "invoice":
-        raise HTTPException(400, "Les paiements ne concernent que les factures")
+        raise HTTPException(400, "Os pagamentos só dizem respeito às faturas")
     pay = {
         "payment_id": "pay_" + secrets.token_hex(4),
         "amount": round(body.amount, 2),

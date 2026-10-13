@@ -12,11 +12,11 @@ RETENTION_DAYS = 30
 
 # kind → (collection, id field, label builder)
 KINDS = {
-    "document": ("pro_documents", "doc_id", lambda d: f"{ {'quote': 'Devis', 'invoice': 'Facture', 'credit_note': 'Avoir'}.get(d.get('doc_type'), d.get('doc_type', 'Document')) } {d.get('number') or ''} — {d.get('title') or d.get('client_name') or ''}".strip(" —")),
-    "project": ("projects", "project_id", lambda d: f"Projet {d.get('name') or d.get('title') or ''}".strip()),
-    "client": ("clients", "client_id", lambda d: f"Client {d.get('name') or d.get('company') or d.get('email') or ''}".strip()),
+    "document": ("pro_documents", "doc_id", lambda d: f"{ {'quote': 'Orçamento', 'invoice': 'Fatura', 'credit_note': 'Nota de crédito'}.get(d.get('doc_type'), d.get('doc_type', 'Documento'))} {d.get('number') or ''} — {d.get('title') or d.get('client_name') or ''}".strip(" —")),
+    "project": ("projects", "project_id", lambda d: f"Projeto {d.get('name') or d.get('title') or ''}".strip()),
+    "client": ("clients", "client_id", lambda d: f"Cliente {d.get('name') or d.get('company') or d.get('email') or ''}".strip()),
     "conversation": ("assistant_convs", "conversation_id", lambda d: f"Conversation {d.get('title') or ''}".strip()),
-    "plan": ("plans_takeoff", "plan_id", lambda d: f"Plan {d.get('filename') or d.get('name') or ''}".strip()),
+    "plan": ("plans_takeoff", "plan_id", lambda d: f"Planta {d.get('filename') or d.get('name') or ''}".strip()),
 }
 # Kinds kept in their own collection with a `trashed_at` flag (records too large to copy); the bin holds only a stub.
 SOFT_KINDS = {"plan"}
@@ -53,13 +53,13 @@ async def restore_record(kind: str, item_id: str, user_id: str) -> dict:
     coll, id_field, _ = KINDS[kind]
     item = await db.trash_items.find_one({"kind": kind, "item_id": item_id, "user_id": user_id}, {"_id": 0})
     if not item:
-        raise HTTPException(404, "Élément introuvable dans la corbeille")
+        raise HTTPException(404, "Elemento não encontrado na reciclagem")
     record = item["record"]
     restored_from = "trash"
     if kind in SOFT_KINDS:
         res = await db[coll].update_one({id_field: item_id, "user_id": user_id}, {"$unset": {"trashed_at": ""}})
         if not res.matched_count:
-            raise HTTPException(410, "Le contenu de cet élément n'existe plus")
+            raise HTTPException(410, "O conteúdo deste elemento já não existe")
     else:
         if kind == "document" and item.get("partial"):
             snap = await latest_snapshot(user_id, record.get("doc_id"), record.get("number"))
@@ -102,7 +102,7 @@ async def list_trash(kind: str = "", user=Depends(current_user)) -> dict:
 @router.post("/{kind}/{item_id}/restore")
 async def restore(kind: str, item_id: str, user=Depends(current_user)) -> dict:
     if kind not in KINDS:
-        raise HTTPException(400, "Type inconnu")
+        raise HTTPException(400, "Tipo desconhecido")
     return await restore_record(kind, item_id, user["user_id"])
 
 
@@ -126,7 +126,7 @@ async def restore_all(user=Depends(current_user)) -> dict:
 async def purge(kind: str, item_id: str, user=Depends(current_user)) -> dict:
     res = await db.trash_items.delete_one({"kind": kind, "item_id": item_id, "user_id": user["user_id"]})
     if not res.deleted_count:
-        raise HTTPException(404, "Élément introuvable dans la corbeille")
+        raise HTTPException(404, "Elemento não encontrado na reciclagem")
     await _purge_soft(kind, item_id, user["user_id"])
     return {"ok": True, "purged": True}
 
@@ -192,11 +192,11 @@ async def recover_history(user=Depends(current_user)) -> dict:
         subject = s.get("subject") or ""
         number = next((w for w in subject.replace("—", " ").split() if w.upper().startswith(("DEV-", "FAC-", "AV-"))), None)
         act = next((a for a in acts if a.get("label") and (a["label"] == number or a["label"] in subject)), None)
-        record = {"doc_id": doc_id, "user_id": uid, "doc_type": "invoice" if (number or "").upper().startswith("FAC-") else "quote", "number": number, "title": subject[:160] or "Document récupéré",
+        record = {"doc_id": doc_id, "user_id": uid, "doc_type": "invoice" if (number or "").upper().startswith("FAC-") else "quote", "number": number, "title": subject[:160] or "Documento recuperado",
                   "client_name": s.get("client_name"), "client_email": s.get("client_email"), "status": "signed" if s.get("signed") else "sent",
                   "totals": {"ttc": s.get("total_ttc")} if s.get("total_ttc") is not None else {}, "lines": [], "issue_date": (s.get("created_at") or "")[:10],
                   "created_at": s.get("created_at"), "source": "recovered_from_history",
-                  "notes": "Document reconstitué partiellement depuis l'historique d'envoi : montant et client repris, contenu détaillé non récupérable."}
+                  "notes": "Documento reconstituído parcialmente a partir do histórico de envio: montante e cliente retomados, conteúdo detalhado não recuperável."}
         extra = {"partial": True, "recovered_from": ["quote_sends"] + (["activity_log"] if act else []), "deleted_at_hint": (act or {}).get("created_at"), "status": record["status"], "doc_type": record["doc_type"]}
         await trash_record("document", record, uid, extra)
         created.append({"doc_id": doc_id, "label": record["title"], "partial": True})
@@ -214,11 +214,11 @@ async def recover_history(user=Depends(current_user)) -> dict:
             continue
         doc_id = f"doc_rec_{uuid.uuid4().hex[:10]}"
         is_number = label.upper().startswith(("DEV-", "FAC-", "AV-"))
-        record = {"doc_id": doc_id, "user_id": uid, "doc_type": "invoice" if label.upper().startswith("FAC-") else "quote", "number": label if is_number else None, "title": label if not is_number else f"Document {label}",
+        record = {"doc_id": doc_id, "user_id": uid, "doc_type": "invoice" if label.upper().startswith("FAC-") else "quote", "number": label if is_number else None, "title": label if not is_number else f'Documento {label}',
                   "status": "draft", "totals": {}, "lines": [], "created_at": a.get("created_at"), "source": "recovered_from_history",
-                  "notes": "Document reconstitué depuis le journal d'activité : seul l'intitulé est connu, contenu et montants non récupérables."}
+                  "notes": "Documento reconstituído a partir do registo de atividade: apenas o título é conhecido, conteúdo e montantes não recuperáveis."}
         await trash_record("document", record, uid, {"partial": True, "recovered_from": ["activity_log"], "deleted_at_hint": a.get("created_at"), "status": "draft", "doc_type": record["doc_type"]})
         created.append({"doc_id": doc_id, "label": label, "partial": True})
     full = sum(1 for c in created if not c["partial"])
     return {"ok": True, "recovered": len(created), "full": full, "partial": len(created) - full, "items": created,
-            "note": "Les documents présents dans la sauvegarde quotidienne sont reconstitués intégralement (lignes incluses) ; les autres, effacés avant la corbeille, ne conservent que l'intitulé, le client, le montant TTC et l'état de signature."}
+            "note": "Os documentos presentes na cópia de segurança diária são reconstituídos integralmente (linhas incluídas); os outros, apagados antes da reciclagem, apenas conservam o título, o cliente, o montante c/ IVA e o estado de assinatura."}

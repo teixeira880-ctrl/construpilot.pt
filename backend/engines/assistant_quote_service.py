@@ -39,11 +39,8 @@ def _validation_hint(exc: ValidationError) -> str:
     """Message clair et actionnable pour le modèle (pas de secret ni de texte de document)."""
     err = exc.errors()[0] if exc.errors() else {}
     loc = " → ".join(str(p) for p in err.get("loc", []))
-    msg = err.get("msg", "argument invalide")
-    return (f"Arguments du devis invalides ({loc}) : {msg}. "
-            "Rappels : price_origin='user' (prix client fourni) ou 'estimate' (prix moyen marché/web) "
-            "exigent un unit_price numérique ; 'library'/'unpriced' exigent unit_price=null. "
-            "quantity, unit_price et vat_rate sont des nombres (jamais des chaînes). Corrige et rappelle l'outil.")
+    msg = err.get("msg", "argumento inválido")
+    return (f"Argumentos do orçamento inválidos ({loc}) : {msg}. Lembretes: price_origin='user' (preço do cliente fornecido) ou 'estimate' (preço médio de mercado/web) exigem um unit_price numérico; 'library'/'unpriced' exigem unit_price=null. quantity, unit_price e vat_rate são números (nunca cadeias). Corrige e volta a chamar a ferramenta.")
 
 
 class QuoteResult(BaseModel):
@@ -54,7 +51,7 @@ class QuoteResult(BaseModel):
     edit_url: str
     tracking_url: str = "/devis"
     tool_input: dict
-    note: str = "Brouillon enregistré dans Suivi devis ; aucun envoi au client. Prix et TVA à vérifier."
+    note: str = "Rascunho guardado em Acompanhamento de orçamentos; nenhum envio ao cliente. Preços e IVA a verificar."
 
 
 def present(doc):
@@ -83,7 +80,7 @@ async def read_quote(doc_id, user):
     require_feature(user, "devis")
     doc = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": user["user_id"], "doc_type": "quote"}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Devis introuvable pour ce compte.")
+        raise HTTPException(404, "Orçamento não encontrado para esta conta.")
     return present(doc)
 
 
@@ -109,7 +106,7 @@ async def find_quotes(user, query: str = ""):
         if len(out) >= 10:
             break
     return {"ok": True, "count": len(out), "quotes": out,
-            "note": "Reprends-en un avec read_quote_draft (doc_id) puis update_quote_draft. N'en crée pas un nouveau."}
+            "note": "Retoma um deles com read_quote_draft (doc_id) e depois update_quote_draft. Não cries um novo."}
 
 
 async def save_quote(args, user, conv, *, doc_id=None, expected_updated_at=None):
@@ -134,19 +131,19 @@ async def save_quote(args, user, conv, *, doc_id=None, expected_updated_at=None)
     if previous and not doc_id:
         return present(previous)
     if doc_id and not previous:
-        raise HTTPException(404, "Devis introuvable pour ce compte.")
+        raise HTTPException(404, "Orçamento não encontrado para esta conta.")
     if doc_id and (previous.get("status") != "draft" or previous.get("signed")):
-        raise HTTPException(409, "Seul un devis en brouillon peut être révisé par l'assistant.")
+        raise HTTPException(409, "Só um orçamento em rascunho pode ser revisto pelo assistente.")
     if doc_id and previous.get("updated_at") != expected_updated_at:
-        raise HTTPException(409, "Le devis a changé. Relisez sa version actuelle avant de le modifier.")
+        raise HTTPException(409, "O orçamento mudou. Releia a sua versão atual antes de o alterar.")
     chantier = conv.get("_chantier") or {}
     same_chantier = bool(previous and previous.get("chantier_id") and previous.get("chantier_id") == chantier.get("chantier_id"))
     if previous and previous.get("client_id") and not same_chantier and body.client_name != present(previous)["draft"]["client_name"]:
-        raise HTTPException(409, "Ce devis est lié à un client CRM. Modifiez ce client dans l'éditeur.")
+        raise HTTPException(409, "Este orçamento está associado a um cliente do CRM. Altere esse cliente no editor.")
     lines = await build_lines(body, user, previous)
     totals = _compute_totals(lines, (previous or {}).get("deposit_pct", 0))
     if totals["ttc"] > 1_000_000_000_000:
-        raise HTTPException(422, "Montant total trop élevé.")
+        raise HTTPException(422, "Montante total demasiado elevado.")
     fields = {"title": body.title, "lines": lines, "totals": totals, "updated_at": timestamp,
               "client_name": body.client_name, "assistant_review_required": True,
               "facturx_pdf_b64": None, "facturx_validation": None, "facturx_hash": None}
@@ -163,7 +160,7 @@ async def save_quote(args, user, conv, *, doc_id=None, expected_updated_at=None)
     if doc_id:
         result = await db.pro_documents.update_one({**query, "updated_at": expected_updated_at, "status": "draft", "signed": {"$ne": True}}, {"$set": fields})
         if not result.matched_count:
-            raise HTTPException(409, "Le devis a changé. Relisez sa version actuelle.")
+            raise HTTPException(409, "O orçamento mudou. Releia a sua versão atual.")
     else:
         # Mongo _id is an atomic idempotency key; $setOnInsert never overwrites an edited draft.
         await db.pro_documents.update_one({"_id": f"assistant_quote:{ident}"}, {"$setOnInsert": {
@@ -205,9 +202,9 @@ async def append_quote_lines(args, user, conv, *, doc_id):
     query = {"doc_id": doc_id, "user_id": user["user_id"], "doc_type": "quote"}
     previous = await db.pro_documents.find_one(query, {"_id": 0})
     if not previous:
-        raise HTTPException(404, "Devis introuvable pour ce compte.")
+        raise HTTPException(404, "Orçamento não encontrado para esta conta.")
     if previous.get("status") != "draft" or previous.get("signed"):
-        raise HTTPException(409, "Seul un devis en brouillon peut être complété par l'assistant.")
+        raise HTTPException(409, "Só um orçamento em rascunho pode ser completado pelo assistente.")
     append_key = None
     if conv.get("_quote_request_id"):
         append_key = hashlib.sha256(json.dumps(
@@ -221,10 +218,10 @@ async def append_quote_lines(args, user, conv, *, doc_id):
     new_lines = await build_lines(_LineBatch(body.lines, body.vat_rate), user, previous=None)
     merged = (previous.get("lines") or []) + new_lines
     if len(merged) > 400:
-        raise HTTPException(422, "Trop de lignes au total pour ce devis ; finalisez-le dans l'éditeur.")
+        raise HTTPException(422, "Demasiadas linhas no total para este orçamento; finalize-o no editor.")
     totals = _compute_totals(merged, previous.get("deposit_pct", 0))
     if totals["ttc"] > 1_000_000_000_000:
-        raise HTTPException(422, "Montant total trop élevé.")
+        raise HTTPException(422, "Montante total demasiado elevado.")
     timestamp = datetime.now(timezone.utc).isoformat()
     update = {"$set": {"lines": merged, "totals": totals, "updated_at": timestamp, "assistant_review_required": True,
                        "facturx_pdf_b64": None, "facturx_validation": None, "facturx_hash": None}}
@@ -235,7 +232,7 @@ async def append_quote_lines(args, user, conv, *, doc_id):
          "updated_at": previous.get("updated_at"), "lines": previous.get("lines") or []},
         update)
     if not result.matched_count:
-        raise HTTPException(409, "Le devis a changé. Relisez sa version actuelle avant de le compléter.")
+        raise HTTPException(409, "O orçamento mudou. Releia a sua versão atual antes de o completar.")
     out = await read_quote(doc_id, user)
     try:
         from routes.library import auto_save_from_lines

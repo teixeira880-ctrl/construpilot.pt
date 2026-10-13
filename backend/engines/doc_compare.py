@@ -41,21 +41,9 @@ COMPARE_SCHEMA = {"type": "object", "additionalProperties": False, "properties":
     "required": ["comparison_type", "summary", "document_a", "document_b", "line_matches", "only_in_a", "only_in_b", "differences",
                  "questions_to_ask", "caveats", "confidence"]}
 
-PROMPT_PRO = """Tu es le comparateur de documents ConstruPilot pour un PROFESSIONNEL du BTP (langue : {lang}). Compare rigoureusement le
-DOCUMENT A et le DOCUMENT B : rapproche les ouvrages équivalents (même prestation, même unité), relève les écarts de quantités,
-de prix unitaires, de totaux (delta_pct = (B − A) / A × 100 quand les deux valeurs existent), les prestations présentes dans un
-seul document, les différences de périmètre, d'options, de TVA, de garanties, de délais et de conditions. Pour un devis face à un
-plan : confronte les quantités du devis aux surfaces/longueurs lisibles ou calculables sur le plan (indique observé / calculé /
-déduit / à confirmer). Jamais d'invention : une valeur illisible reste null et le commentaire l'indique. Style : direct, chiffré,
-professionnel. Focus demandé : {focus}"""
+PROMPT_PRO = "És o comparador de documentos ConstruPilot para um PROFISSIONAL da construção (língua: {lang}). Compara rigorosamente o\nDOCUMENTO A e o DOCUMENTO B: aproxima os trabalhos equivalentes (mesma prestação, mesma unidade), regista as diferenças de quantidades,\nde preços unitários, de totais (delta_pct = (B − A) / A × 100 quando os dois valores existem), as prestações presentes num\nsó documento, as diferenças de âmbito, de opções, de IVA, de garantias, de prazos e de condições. Para um orçamento face a uma\nplanta: confronta as quantidades do orçamento com as áreas/comprimentos legíveis ou calculáveis na planta (indica observado / calculado /\ndeduzido / a confirmar). Nunca inventes: um valor ilegível fica null e o comentário indica-o. Estilo: direto, quantificado,\nprofissional. Foco pedido: {focus}"
 
-PROMPT_INDIVIDUAL = """Tu es l'assistant ConstruPilot pour un PARTICULIER (langue : {lang}). Compare le DOCUMENT A et le DOCUMENT B de façon
-pédagogique et neutre : explique les différences de prestations, de quantités, de matériaux, de finitions, de garanties, de
-délais, de TVA et de prix, en définissant les termes techniques. INTERDIT : déclarer qu'un devis est trop cher, frauduleux,
-malhonnête ou incorrect sur la base d'un écart de prix ; donner un classement ou un « gagnant ». Pour chaque écart, propose des
-explications possibles (matériaux, finition, complexité, main-d'œuvre, localisation, accès, garanties, délais) et des questions
-à poser aux artisans. Pour un devis face à un plan : vérifie si les quantités sont cohérentes avec ce qui est lisible sur le plan,
-en signalant observé / calculé / déduit / à confirmer. Jamais d'invention : une valeur illisible reste null. Focus : {focus}"""
+PROMPT_INDIVIDUAL = "És o assistente ConstruPilot para um PARTICULAR (língua: {lang}). Compara o DOCUMENTO A e o DOCUMENTO B de forma\npedagógica e neutra: explica as diferenças de prestações, de quantidades, de materiais, de acabamentos, de garantias, de\nprazos, de IVA e de preços, definindo os termos técnicos. PROIBIDO: declarar que um orçamento é demasiado caro, fraudulento,\ndesonesto ou incorreto com base numa diferença de preço; dar uma classificação ou um «vencedor». Para cada diferença, propõe\nexplicações possíveis (materiais, acabamento, complexidade, mão de obra, localização, acesso, garantias, prazos) e perguntas\na fazer aos profissionais. Para um orçamento face a uma planta: verifica se as quantidades são coerentes com o que é legível na planta,\nassinalando observado / calculado / deduzido / a confirmar. Nunca inventes: um valor ilegível fica null. Foco: {focus}"
 
 
 async def compare_documents(*, user_id: str, project_id: str | None, doc_a: dict, doc_b: dict, focus: str, individual: bool,
@@ -74,12 +62,11 @@ async def compare_documents(*, user_id: str, project_id: str | None, doc_a: dict
             elif d.get("image_b64"):
                 content.append({"type": "input_image", "image_url": f"data:image/png;base64,{d['image_b64']}", "detail": "high"})
             if d.get("text"):
-                content.append({"type": "input_text", "text": f"Texte extrait du document {tag} :\n{d['text'][:30000]}"})
+                content.append({"type": "input_text", "text": f"Texto extraído do documento {tag} :\n{d['text'][:30000]}"})
             if d.get("extra_json"):
-                content.append({"type": "input_text", "text": f"Données ConstruPilot (calculs exacts) du document {tag} :\n"
-                                                              f"{json.dumps(d['extra_json'], ensure_ascii=False)[:20000]}"})
+                content.append({"type": "input_text", "text": f"Dados ConstruPilot (cálculos exatos) do documento {tag} :\n{json.dumps(d['extra_json'], ensure_ascii=False)[:20000]}"})
         tpl = PROMPT_INDIVIDUAL if individual else PROMPT_PRO
-        r = await _respond(client, MODEL_COMPARE, "high", tpl.format(lang="pt-PT" if lang == "pt" else "pt", focus=focus or "comparaison complète"),
+        r = await _respond(client, MODEL_COMPARE, "high", tpl.format(lang="pt-PT" if lang == "pt" else "pt", focus=focus or "comparação completa"),
                            content, COMPARE_SCHEMA, "document_comparison")
         await _log_usage(user_id, project_id, "assistant_compare", MODEL_COMPARE, r.usage, None)
         data = json.loads(r.output_text)

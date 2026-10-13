@@ -128,5 +128,5 @@ def period(month):
         start = datetime.strptime(month, "%Y-%m").replace(tzinfo=timezone.utc)
         end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
     except (ValueError, OverflowError):
-        raise HTTPException(422, "Mois invalide") from None
+        raise HTTPException(422, "Mês inválido") from None
     return start, end

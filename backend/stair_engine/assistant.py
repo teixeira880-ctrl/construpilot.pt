@@ -25,27 +25,7 @@ MODEL_PROVIDER = "anthropic"
 MODEL_NAME = "claude-sonnet-4-5-20250929"
 
 SYSTEM_PROMPT = (
-    "Tu es l'assistant STAIRPILOT, expert en calcul d'escaliers béton (France, DTU 36.3). "
-    "Tu ne calcules JAMAIS un escalier toi-même. Tu appelles les fonctions moteur fournies "
-    "via tool-use pour obtenir toute cote (hauteur de marche, giron, pente, blondel, "
-    "reculement, échappée, ferraillage, béton). "
-    "Si des paramètres essentiels manquent (hauteur d'étage, reculement, trémie), "
-    "demande-les précisément avant tout appel d'outil. "
-    "Réponses courtes et professionnelles en français, sans jamais inventer de cotes. "
-    "Après un appel d'outil, résume les résultats en 3-6 lignes max, mets en avant "
-    "la solution recommandée et signale les alertes rouges/oranges. "
-    "N'invente pas de code d'alerte : reprends uniquement ceux fournis par l'outil.\n\n"
-    "RÈGLE IMPORTANTE — TOUJOURS PROPOSER UNE SOLUTION :\n"
-    "1. Si `optimize_stair` ne renvoie AUCUNE solution avec `is_buildable=true`, "
-    "   tu DOIS immédiatement appeler `force_stair_solution` avec les mêmes contraintes.\n"
-    "2. Si l'utilisateur demande EXPLICITEMENT un type précis (droit, quart tournant, demi-tournant, hélicoïdal) "
-    "   et que ce type n'apparaît pas dans les `solutions` de `optimize_stair` (il est dans `excluded` ou absent), "
-    "   appelle aussi `force_stair_solution` pour ne pas frustrer l'utilisateur avec un type imposé qu'il ne veut pas.\n"
-    "3. Quand tu utilises `force_stair_solution`, explique clairement : "
-    "   (a) que la solution est constructible mais HORS NORMES DTU, "
-    "   (b) quels compromis ont été acceptés (pente, giron, échappée exacts en mm/°), "
-    "   (c) l'usage acceptable (accès technique, cave, meunière — jamais habitat principal), "
-    "   (d) 1 ou 2 alternatives conformes possibles (augmenter le recul, ajouter un palier, changer de type)."
+    "És o assistente STAIRPILOT, especialista em cálculo de escadas de betão (Portugal: RGEU, DL 163/2006 para acessibilidades, EN 1992 / Eurocódigo 2 com Anexo Nacional português). NUNCA calculas uma escada por ti próprio. Chamas as funções do motor fornecidas via tool-use para obter qualquer cota (altura do degrau (espelho), cobertor, inclinação, Blondel, desenvolvimento, altura livre, armaduras, betão). Se faltarem parâmetros essenciais (altura entre pisos, desenvolvimento disponível, abertura na laje), pede-os com precisão antes de qualquer chamada de ferramenta. Respostas curtas e profissionais em português europeu, sem nunca inventar cotas. Após uma chamada de ferramenta, resume os resultados em 3-6 linhas no máximo, destaca a solução recomendada e assinala os alertas vermelhos/laranja. Não inventes códigos de alerta: retoma apenas os fornecidos pela ferramenta.\n\nREGRA IMPORTANTE — PROPOR SEMPRE UMA SOLUÇÃO:\n1. Se `optimize_stair` NÃO devolver NENHUMA solução com `is_buildable=true`,    DEVES chamar imediatamente `force_stair_solution` com as mesmas restrições.\n2. Se o utilizador pedir EXPLICITAMENTE um tipo preciso (reta, em L / um quarto de volta, em U / meia volta, helicoidal)    e esse tipo não aparecer nas `solutions` de `optimize_stair` (está em `excluded` ou ausente),    chama também `force_stair_solution` para não frustrar o utilizador com um tipo imposto que não quer.\n3. Quando utilizas `force_stair_solution`, explica claramente:    (a) que a solução é construível mas FORA DAS REGRAS DE BOA PRÁTICA / RGEU,    (b) que compromissos foram aceites (inclinação, cobertor, altura livre exatos em mm/°),    (c) o uso aceitável (acesso técnico, cave, escada de sótão — nunca habitação principal),    (d) 1 ou 2 alternativas conformes possíveis (aumentar o desenvolvimento, acrescentar um patamar, mudar de tipo)."
 )
 
 
@@ -58,22 +38,20 @@ TOOLS: List[Dict[str, Any]] = [
         "function": {
             "name": "optimize_stair",
             "description": (
-                "Propose les meilleures configurations d'escalier béton (droit, quart tournant, "
-                "demi-tournant, hélicoïdal) à partir des contraintes de la pièce. "
-                "Retourne jusqu'à 5 solutions triées par score global."
+                "Propõe as melhores configurações de escada de betão (reta, um quarto de volta, meia volta, helicoidal) a partir das restrições do espaço. Devolve até 5 soluções ordenadas por pontuação global."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "floor_height_mm": {"type": "number", "description": "Hauteur sol fini à sol fini en mm"},
-                    "available_length_mm": {"type": "number", "description": "Reculement disponible en mm"},
-                    "available_width_mm": {"type": "number", "description": "Largeur disponible en mm"},
-                    "stair_width_mm": {"type": "number", "description": "Largeur souhaitée de la volée en mm", "default": 900},
-                    "stairwell_length_mm": {"type": "number", "description": "Longueur de la trémie en mm (optionnel)"},
-                    "stairwell_width_mm": {"type": "number", "description": "Largeur de la trémie en mm (optionnel)"},
-                    "ceiling_height_mm": {"type": "number", "description": "Hauteur sous plafond (pour échappée)"},
-                    "slab_thickness_mm": {"type": "number", "description": "Épaisseur dalle haute en mm", "default": 200},
-                    "max_solutions": {"type": "integer", "description": "Nb max de solutions", "default": 3},
+                    "floor_height_mm": {"type": "number", "description": "Altura de pavimento acabado a pavimento acabado em mm"},
+                    "available_length_mm": {"type": "number", "description": "Desenvolvimento disponível em mm"},
+                    "available_width_mm": {"type": "number", "description": "Largura disponível em mm"},
+                    "stair_width_mm": {"type": "number", "description": "Largura pretendida do lanço em mm", "default": 900},
+                    "stairwell_length_mm": {"type": "number", "description": "Comprimento da abertura na laje em mm (opcional)"},
+                    "stairwell_width_mm": {"type": "number", "description": "Largura da abertura na laje em mm (opcional)"},
+                    "ceiling_height_mm": {"type": "number", "description": "Pé-direito (para altura livre)"},
+                    "slab_thickness_mm": {"type": "number", "description": "Espessura da laje superior em mm", "default": 200},
+                    "max_solutions": {"type": "integer", "description": "N.º máx. de soluções", "default": 3},
                 },
                 "required": ["floor_height_mm", "available_length_mm", "available_width_mm"],
             },
@@ -83,7 +61,7 @@ TOOLS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "calculate_straight",
-            "description": "Calcule un escalier droit béton précis (chiffres exacts, alertes DTU).",
+            "description": "Calcula uma escada reta de betão precisa (números exatos, alertas regulamentares).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -105,14 +83,12 @@ TOOLS: List[Dict[str, Any]] = [
         "function": {
             "name": "analyze_concrete",
             "description": (
-                "Pré-dimensionnement béton armé (paillasse, ferraillage indicatif, métré) à partir "
-                "d'un résultat d'escalier déjà calculé. Utilise seulement si l'utilisateur demande "
-                "explicitement le béton armé, le métré ou le ferraillage."
+                "Pré-dimensionamento de betão armado (laje da escada, armaduras indicativas, medição) a partir de um resultado de escada já calculado. Utiliza apenas se o utilizador pedir explicitamente o betão armado, a medição ou as armaduras."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "stair_result": {"type": "object", "description": "Résultat StairResult renvoyé par un outil précédent"},
+                    "stair_result": {"type": "object", "description": "Resultado StairResult devolvido por uma ferramenta anterior"},
                     "stair_type": {"type": "string", "enum": ["straight", "quarter_turn_bottom", "quarter_turn_top", "half_turn", "helicoidal"], "default": "straight"},
                     "concrete_class": {"type": "string", "enum": ["C20/25", "C25/30", "C30/37"], "default": "C25/30"},
                     "steel_grade": {"type": "string", "enum": ["B500A", "B500B"], "default": "B500B"},
@@ -128,13 +104,7 @@ TOOLS: List[Dict[str, Any]] = [
         "function": {
             "name": "force_stair_solution",
             "description": (
-                "SOLVEUR FORCÉ — retourne TOUJOURS une solution géométrique constructible, "
-                "quitte à sacrifier les normes DTU (pente jusqu'à 55°, giron jusqu'à 180 mm, "
-                "hauteur marche jusqu'à 220 mm, échappée jusqu'à 1700 mm). "
-                "À utiliser UNIQUEMENT après que `optimize_stair` ait échoué à trouver une solution "
-                "`is_buildable=true` (toutes les solutions exclues pour impossibilité géométrique). "
-                "La solution retournée inclut une alerte NON_CONFORMING_FORCED_SOLUTION qui liste "
-                "les seuils DTU enfreints."
+                "SOLVER FORÇADO — devolve SEMPRE uma solução geométrica construível, ainda que sacrifique as regras de boa prática (inclinação até 55°, cobertor até 180 mm, altura do degrau até 220 mm, altura livre até 1700 mm). A utilizar APENAS depois de `optimize_stair` não ter encontrado uma solução `is_buildable=true` (todas as soluções excluídas por impossibilidade geométrica). A solução devolvida inclui um alerta NON_CONFORMING_FORCED_SOLUTION que lista os limites regulamentares infringidos."
             ),
             "parameters": {
                 "type": "object",
@@ -258,7 +228,7 @@ def _dispatch_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
                 "total_steel_kg": res.reinforcement.total_steel_kg,
                 "load_ELU_kN_m2": res.load_breakdown_kN_m2.total_ELU,
             }
-        return {"ok": False, "error": f"Outil inconnu: {name}"}
+        return {"ok": False, "error": f'Ferramenta desconhecida: {name}'}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
 
@@ -290,7 +260,7 @@ async def chat_with_assistant(
     """
     api_key = os.environ.get("EMERGENT_LLM_KEY")
     if not api_key:
-        raise RuntimeError("EMERGENT_LLM_KEY manquant dans backend/.env")
+        raise RuntimeError("EMERGENT_LLM_KEY em falta em backend/.env")
 
     t0 = time.perf_counter()
 
@@ -333,7 +303,7 @@ async def chat_with_assistant(
 
     reply_text = (getattr(response, "content", None) or "").strip()
     if not reply_text:
-        reply_text = "Je n'ai pas pu générer de réponse. Reformule ta demande ?"
+        reply_text = "Não consegui gerar uma resposta. Pode reformular o pedido?"
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     return AssistantReply(

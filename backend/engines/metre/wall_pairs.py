@@ -84,5 +84,5 @@ def complete_walls(msp, wall_layers: set[str], unit_to_m: float, thicknesses_cm:
             "added_by_thickness": added, "added_length_m": round(sum(v["length_m"] for v in added.values()), 2),
             "added_plan_area_m2": round(acc_area - closed_union.area, 3), "union_plan_area_m2": round(acc_area, 3), "bodies": bodies,
             "unpaired": {"count": len(unpaired), "length_m": round(unpaired_len, 2),
-                         "note": "lignes du calque murs sans parallèle à une épaisseur lue sur les coupes : non comptées (bords de trémies, tracés, murs d'une épaisseur non lue ?)"},
-            "note": "Corps de murs = deux lignes natives parallèles à une épaisseur lue sur les coupes (±1 cm), union avec les faces fermées ; aucun trait isolé n'est compté."}
+                         "note": "linhas da camada paredes sem paralela a uma espessura lida nos cortes: não contadas (bordos de aberturas, traçados, paredes de espessura não lida?)"},
+            "note": "Corpos de paredes = duas linhas nativas paralelas a uma espessura lida nos cortes (±1 cm), união com as faces fechadas; nenhum traço isolado é contado."}

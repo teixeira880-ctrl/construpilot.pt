@@ -25,7 +25,7 @@ async def generate_image(prompt: str, *, session_id: str) -> tuple[bytes, str]:
     chat.with_model("gemini", NANO_MODEL).with_params(modalities=["image", "text"])
     _text, images = await chat.send_message_multimodal_response(UserMessage(text=prompt))
     if not images:
-        raise RuntimeError("Aucune image générée par le modèle.")
+        raise RuntimeError("Nenhuma imagem gerada pelo modelo.")
     img = images[0]
     data = base64.b64decode(img["data"])
     ctype = img.get("mime_type") or "image/png"

@@ -61,7 +61,7 @@ def _t_measurement(rng, level):
     door_area = min(n_doors * 0.8 * 2.1, gross * 0.5)  # jamais plus de 50% de la surface
     net = gross - door_area
     ok = (gross >= 0) and (0 <= net <= gross) and (abs(gross - L * W) < 1e-2)
-    return ok, "aire nette/brute incohérente" if not ok else None
+    return ok, "área líquida/bruta incoerente" if not ok else None
 
 
 def _t_material_waste(rng, level):
@@ -79,13 +79,13 @@ def _t_material_waste(rng, level):
             ok = False
         if it.get("qty", 0) < 0:
             ok = False
-    return ok, "quantité négative ou rampant < projeté" if not ok else None
+    return ok, "quantidade negativa ou vertente < projetada" if not ok else None
 
 
 def _t_pricing(rng, level):
-    items = [{"designation": "Tuiles terre cuite", "commandable_qty": rng.randint(100, 5000), "unit": "u"},
-             {"designation": "Gouttière égout", "commandable_qty": rng.randint(10, 200), "unit": "ml"}]
-    supplier = {"price_list": [{"label": "tuiles terre cuite", "price": 0.85},
+    items = [{"designation": "Telhas cerâmicas", "commandable_qty": rng.randint(100, 5000), "unit": "u"},
+             {"designation": "Caleira de beirado", "commandable_qty": rng.randint(10, 200), "unit": "ml"}]
+    supplier = {"price_list": [{"label": "telhas cerâmicas", "price": 0.85},
                                {"label": "gouttiere egout", "price": 9.5}]}
     res = pricing.price_items(items, supplier, [], {})
     total = round(sum(i["line_total"] for i in res["items"]), 2)
@@ -93,7 +93,7 @@ def _t_pricing(rng, level):
     # override manuel prioritaire
     res2 = pricing.price_items(items, supplier, [], {"0": 99})
     ok = ok and abs(res2["items"][0]["unit_price"] - 99) < 1e-6
-    return ok, "total != somme lignes ou override ignoré" if not ok else None
+    return ok, "total != soma das linhas ou substituição ignorada" if not ok else None
 
 
 def _t_phase_sequence(rng, level):
@@ -104,7 +104,7 @@ def _t_phase_sequence(rng, level):
         seq[i], seq[j] = seq[j], seq[i]  # inversion volontaire
     detected_valid = is_valid_sequence(seq)
     ok = detected_valid == should_be_valid
-    return ok, "séquence incorrecte non détectée" if not ok else None
+    return ok, "sequência incorreta não detetada" if not ok else None
 
 
 def _t_robustness(rng, level):
@@ -116,13 +116,13 @@ def _t_robustness(rng, level):
         for it in comp["items"]:
             v = it.get("commandable_qty")
             if v is not None and (v != v or v < 0):  # NaN or negative
-                return False, "sortie NaN/négative sur entrée adverse"
+                return False, "saída NaN/negativa com entrada adversa"
         vc = vrd.compute([{"key": "EP", "length_ml": rng.choice([-10, 0])}])
         wc = waterproofing.compute(-10, -5, -1, "bicouche", [], 0.5)
         _ = (vc, wc)
         return True, None
     except Exception as e:  # noqa: BLE001
-        return False, f"exception moteur: {type(e).__name__}"
+        return False, f'exceção do motor: {type(e).__name__}'
 
 
 _TESTS = {"measurement": _t_measurement, "material_waste": _t_material_waste,
@@ -186,25 +186,21 @@ def _ai_scenario(rng: random.Random) -> tuple:
     if kind == "rampant":
         s = rng.randint(80, 300); p = rng.choice([25, 35, 45])
         gt = round(s / math.cos(math.atan(p / 100)), 1)
-        q = (f"Une toiture a une surface projetée au sol de {s} m² et une pente de {p} %. "
-             f"Quelle est la surface rampante (développée) en m² ? Réponds par un seul nombre.")
+        q = (f'Uma cobertura tem uma área projetada em planta de {s} m² e uma inclinação de {p} %. Qual é a área inclinada (desenvolvida) em m²? Responde com um único número.')
         return q, gt, 0.03, "rampant"
     if kind == "tuiles":
         s = rng.randint(60, 200); dens = 10.5; loss = 8
         gt = math.ceil(s * dens * (1 + loss / 100))
-        q = (f"Pour {s} m² de couverture en tuiles (densité {dens} tuiles/m², pertes {loss} %), "
-             f"combien de tuiles commander ? Réponds par un seul nombre entier.")
+        q = (f'Para {s} m² de cobertura em telha (densidade {dens} telhas/m², perdas {loss} %), quantas telhas encomendar? Responde com um único número inteiro.')
         return q, gt, 0.05, "tuiles"
     if kind == "tranchee":
         L = rng.randint(20, 100); larg = 0.4; prof = 0.8
         gt = round(L * larg * prof, 1)
-        q = (f"Une tranchée de {L} m de long, {larg} m de large et {prof} m de profondeur. "
-             f"Quel est le volume de déblai en m³ ? Réponds par un seul nombre.")
+        q = (f'Uma vala com {L} m de comprimento, {larg} m de largura e {prof} m de profundidade. Qual é o volume de escavação em m³? Responde com um único número.')
         return q, gt, 0.05, "tranchee"
     s = rng.randint(50, 200); rec = 10
     gt = round(s * (1 + rec / 100), 1)
-    q = (f"Membrane d'étanchéité sur {s} m² avec {rec} % de recouvrement. "
-         f"Quelle surface de membrane commander en m² ? Réponds par un seul nombre.")
+    q = (f'Membrana de impermeabilização em {s} m² com {rec} % de sobreposição. Que área de membrana encomendar em m²? Responde com um único número.')
     return q, gt, 0.05, "membrane"
 
 
@@ -242,8 +238,7 @@ async def run_ai_batch(n: int, level: int = 2, seed: int | None = None,
         async with sem:
             t0 = time.time()
             try:
-                sysmsg = ("Tu es un métreur expert du bâtiment. Réponds de façon concise, "
-                          "en terminant par le résultat numérique demandé.")
+                sysmsg = ("És um medidor especialista da construção. Responde de forma concisa, terminando com o resultado numérico pedido.")
                 chat = ai._chat(sysmsg, "evo_ai_" + uuid.uuid4().hex[:8], prov, mdl)
                 out = []
                 async for ev in chat.stream_message(_UM(text=q)):

@@ -30,10 +30,7 @@ LINE = colors.HexColor("#cbd5e1")
 HEAD_BG = colors.HexColor("#f1f5f9")
 
 DISCLAIMER = (
-    "Rapport de CONTRÔLE en lecture seule. StructuroPilot n'effectue aucun calcul "
-    "structurel et ne décide pas quelle valeur est correcte : il rapporte ce qui est écrit "
-    "dans les documents et signale les écarts à faire vérifier. Ce document ne remplace pas "
-    "la vérification d'un ingénieur structure et n'est pas « bon pour exécution »."
+    "Relatório de CONTROLO só de leitura. O StructuroPilot não efetua nenhum cálculo estrutural e não decide qual valor está correto: relata o que está escrito nos documentos e assinala as diferenças a verificar. Este documento não substitui a verificação de um engenheiro de estruturas e não é «apto para execução»."
 )
 
 
@@ -77,13 +74,13 @@ def build_control_report(dossier: dict) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=16 * mm, bottomMargin=16 * mm,
                             leftMargin=15 * mm, rightMargin=15 * mm,
-                            title=f"Contrôle dossier BET — {dossier.get('title', '')}")
+                            title=f"Controlo do processo de engenharia — {dossier.get('title', '')}")
     story = []
     docs = [d for d in dossier.get("documents", []) if not d.get("is_deleted")]
 
-    story.append(_p("Rapport de contrôle — Dossier BET", ss["CPTitle"]))
-    story.append(_p(dossier.get("title") or "Dossier sans titre", ss["CPSub"]))
-    story.append(_p("Généré le " + datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M") + " · StructuroPilot (lecture seule)", ss["CPSub"]))
+    story.append(_p("Relatório de controlo — Processo de engenharia", ss["CPTitle"]))
+    story.append(_p(dossier.get("title") or "Processo sem título", ss["CPSub"]))
+    story.append(_p("Gerado em " + datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M") + " · StructuroPilot (só de leitura)", ss["CPSub"]))
     story.append(Spacer(1, 6))
     story.append(HRFlowable(width="100%", thickness=0.6, color=LINE))
 
@@ -107,9 +104,9 @@ def build_control_report(dossier: dict) -> bytes:
     for it in (dossier.get("inconsistencies") or {}).get("incoherences", []):
         vals = ", ".join(f"{v.get('document','?')}={v.get('valeur','')}" for v in it.get("valeurs", []))
         flags.append(f"{it.get('sujet','')} · {vals}")
-    story.append(_p("Points à vérifier", ss["CPH2"]))
+    story.append(_p("Pontos a verificar", ss["CPH2"]))
     if not flags:
-        story.append(_p("Aucun conflit signalé à ce stade (ou analyses non lancées).", ss["CPBody"]))
+        story.append(_p("Nenhum conflito assinalado nesta fase (ou análises não lançadas).", ss["CPBody"]))
     else:
         srows = [[_p(f"⚠ {f}", ss["CPRed"])] for f in flags]
         summary = _table(srows, [180 * mm], ss, header=False)
@@ -121,54 +118,54 @@ def build_control_report(dossier: dict) -> bytes:
         story.append(summary)
 
     # 1. Inventaire des documents
-    story.append(_p("1. Documents importés", ss["CPH2"]))
-    rows = [["Document", "Type", "Indice", "Lecture IA"]]
+    story.append(_p("1. Documentos importados", ss["CPH2"]))
+    rows = [["Documento", "Type", "Índice", "Lecture IA"]]
     for d in docs:
         ext = (d.get("extraction") or {})
         idx = d.get("index") or ext.get("indice_detecte") or "—"
         eng = ext.get("source_engine")
-        read = {"claude": "Analysé", "skipped": "Non lisible (DWG/IFC)", "error": "Échec", "fallback": "Partiel"}.get(eng, "En attente")
+        read = {"claude": "Analisado", "skipped": "Ilegível (DWG/IFC)", "error": "Falha", "fallback": "Partiel"}.get(eng, "Em espera")
         rows.append([_p(d.get("original_filename", "—"), ss["CPCell"]),
                      _p((d.get("kind") or "").upper() or "—", ss["CPCell"]),
                      _p(str(idx), ss["CPCell"]), _p(read, ss["CPCell"])])
     if len(rows) == 1:
-        rows.append([_p("Aucun document importé.", ss["CPCell"]), "", "", ""])
+        rows.append([_p("Nenhum documento importado.", ss["CPCell"]), "", "", ""])
     story.append(_table(rows, [78 * mm, 26 * mm, 24 * mm, 42 * mm], ss))
 
     # 2. Comparaisons de versions
-    story.append(_p("2. Comparaisons de versions (A → B)", ss["CPH2"]))
+    story.append(_p("2. Comparações de versões (A → B)", ss["CPH2"]))
     comps = dossier.get("comparisons", [])
     by_id = {d["id"]: d for d in docs}
     if not comps:
-        story.append(_p("Aucune comparaison enregistrée.", ss["CPBody"]))
+        story.append(_p("Nenhuma comparação registada.", ss["CPBody"]))
     for c in comps:
         res = c.get("result", {})
         na = by_id.get(c.get("doc_a"), {}).get("original_filename", c.get("doc_a", "?"))
         nb = by_id.get(c.get("doc_b"), {}).get("original_filename", c.get("doc_b", "?"))
         story.append(Spacer(1, 4))
         story.append(_p(f"• {na}  →  {nb}", ss["CPBody"]))
-        crows = [["Nature", "Détail"]]
+        crows = [["Natureza", "Detalhe"]]
         for m in res.get("modifications", []):
-            crows.append([_p("Modifié", ss["CPCell"]),
+            crows.append([_p("Alterado", ss["CPCell"]),
                           _p(f"{m.get('sujet','')} : « {m.get('avant','')} » → « {m.get('apres','')} »", ss["CPCell"])])
         for a in res.get("ajouts", []):
-            crows.append([_p("Ajout", ss["CPCell"]), _p(str(a), ss["CPCell"])])
+            crows.append([_p("Adição", ss["CPCell"]), _p(str(a), ss["CPCell"])])
         for s in res.get("suppressions", []):
             crows.append([_p("Suppression", ss["CPCell"]), _p(str(s), ss["CPCell"])])
         for cf in res.get("conflits_a_verifier", []):
             crows.append([_p("⚠ Conflit", ss["CPRedBold"]),
                           _p(f"{cf.get('sujet','')} — {cf.get('detail','')}", ss["CPRed"])])
         if len(crows) == 1:
-            crows.append([_p("Aucune différence détectée.", ss["CPCell"]), ""])
+            crows.append([_p("Nenhuma diferença detetada.", ss["CPCell"]), ""])
         story.append(_table(crows, [30 * mm, 150 * mm], ss))
 
     # 3. Incohérences entre documents
-    story.append(_p("3. Incohérences signalées entre documents", ss["CPH2"]))
+    story.append(_p("3. Incoerências assinaladas entre documentos", ss["CPH2"]))
     inco = (dossier.get("inconsistencies") or {}).get("incoherences", [])
     if not inco:
-        story.append(_p("Aucune incohérence signalée (ou analyse non lancée).", ss["CPBody"]))
+        story.append(_p("Nenhuma incoerência assinalada (ou análise não lançada).", ss["CPBody"]))
     else:
-        irows = [["Sujet", "Valeurs relevées", "Note"]]
+        irows = [["Assunto", "Valores registados", "Nota"]]
         for it in inco:
             vals = "  |  ".join(f"{v.get('document','?')}: {v.get('valeur','')}" for v in it.get("valeurs", []))
             irows.append([_p(it.get("sujet", ""), ss["CPCell"]),
@@ -178,15 +175,14 @@ def build_control_report(dossier: dict) -> bytes:
     story.append(Spacer(1, 14))
     story.append(HRFlowable(width="100%", thickness=0.6, color=LINE))
     story.append(Spacer(1, 4))
-    story.append(_p("Points de vigilance à faire vérifier par un ingénieur structure. "
-                    "Aucune valeur n'a été recalculée ni validée par StructuroPilot.", ss["CPSub"]))
+    story.append(_p("Pontos de atenção a verificar por um engenheiro de estruturas. Nenhum valor foi recalculado nem validado pelo StructuroPilot.", ss["CPSub"]))
 
     # Bloc signature — établi par le responsable du contrôle.
     story.append(Spacer(1, 16))
     resp = (dossier.get("responsable") or "").strip()
     sig_rows = [[
-        _p("Contrôle établi par", ss["CPCell"]),
-        _p("Date", ss["CPCell"]),
+        _p("Controlo elaborado por", ss["CPCell"]),
+        _p("Data", ss["CPCell"]),
         _p("Signature", ss["CPCell"]),
     ], [
         _p(f"<b>{resp}</b>" if resp else "…………………………………", ss["CPBody"]),

@@ -25,9 +25,9 @@ TIMEOUT = 20.0
 TYPE_MAP = {"maison": "maison", "appartement": "appartement", "immeuble": "appartement"}
 # L'API ne connaît que 4 tranches ; tout bâti ancien = « au moins 15 ans ».
 PERIODE_MAP = {
-    "avant 1948": "au moins 15 ans", "1948-1974": "au moins 15 ans",
-    "1975-1988": "au moins 15 ans", "1989-2000": "au moins 15 ans",
-    "2001-2012": "au moins 15 ans", "après 2012": "de 10 à 15 ans",
+    "avant 1948": "pelo menos 15 anos", "1948-1974": "pelo menos 15 anos",
+    "1975-1988": "pelo menos 15 anos", "1989-2000": "pelo menos 15 anos",
+    "2001-2012": "pelo menos 15 anos", "après 2012": "de 10 a 15 anos",
 }
 DPE_LETTER_TO_NUM = {"A": "1", "B": "2", "C": "3", "D": "4", "E": "5", "F": "6", "G": "7"}
 
@@ -80,28 +80,28 @@ def _entry(data: dict, field: str) -> dict | None:
 
 
 GESTE_CATALOGUE = [
-    {"code": "pac_air_eau", "label": "Pompe à chaleur air/eau",
+    {"code": "pac_air_eau", "label": "Bomba de calor ar/água",
      "base": "gestes.chauffage.PAC.air-eau", "input": None, "unit": None},
     {"code": "vmc_double_flux", "label": "VMC double flux",
      "base": "gestes.ventilation.double flux", "input": None, "unit": None},
-    {"code": "iso_rampants", "label": "Isolation rampants / sous-toiture",
+    {"code": "iso_rampants", "label": "Isolamento de vertentes / sob a cobertura",
      "base": "gestes.isolation.rampants",
      "input": "gestes.isolation.rampants.MPR.surface", "unit": "m²"},
-    {"code": "iso_toiture_terrasse", "label": "Isolation toiture-terrasse",
+    {"code": "iso_toiture_terrasse", "label": "Isolamento de cobertura em terraço",
      "base": "gestes.isolation.toitures terrasses",
      "input": "gestes.isolation.toitures terrasses.MPR.surface", "unit": "m²"},
-    {"code": "fenetres", "label": "Remplacement fenêtres (simple vitrage)",
+    {"code": "fenetres", "label": "Substituição de janelas (vidro simples)",
      "base": "gestes.isolation.vitres",
      "input": "gestes.isolation.vitres.MPR.quantité", "unit": "équipements"},
     # Murs / plancher bas : l'API ADEME renvoie fréquemment un 500 sur ces postes.
     # → calcul de repli déterministe à partir du forfait officiel MPR par classe de revenu.
-    {"code": "iso_murs_ext", "label": "Isolation des murs par l'extérieur (ITE)",
+    {"code": "iso_murs_ext", "label": "Isolamento das paredes pelo exterior (ETICS)",
      "base": "gestes.isolation.murs extérieurs",
      "input": "gestes.isolation.murs extérieurs.MPR.surface", "unit": "m²", "repli": "iso_murs_ext"},
-    {"code": "iso_murs_int", "label": "Isolation des murs par l'intérieur (ITI)",
+    {"code": "iso_murs_int", "label": "Isolamento das paredes pelo interior",
      "base": "gestes.isolation.murs intérieurs",
      "input": "gestes.isolation.murs intérieurs.MPR.surface", "unit": "m²", "repli": "iso_murs_int"},
-    {"code": "iso_plancher_bas", "label": "Isolation du plancher bas",
+    {"code": "iso_plancher_bas", "label": "Isolamento do pavimento térreo",
      "base": "gestes.isolation.planchers bas",
      "input": "gestes.isolation.planchers bas.MPR.surface", "unit": "m²", "repli": "iso_plancher_bas"},
 ]
@@ -258,9 +258,9 @@ async def estimate_gestes(situation: dict, items: list[dict]) -> dict:
             if forfait and val_num:
                 mpr = round(forfait * val_num, 2)
                 used_repli = True
-                notes.append(f"MPR repli — forfait officiel {forfait} €/m² (classe {classe_norm}) × surface, indicatif")
+                notes.append(f'Apoio indicativo — valor fixo oficial {forfait} €/m² (classe {classe_norm}) × área, indicativo')
             else:
-                notes.append("MPR : poste éligible — montant à confirmer (API indisponible)")
+                notes.append("Apoio: rubrica elegível — montante a confirmar (API indisponível)")
 
         # --- Repli CEE (volume officiel BAR-EN × prix de rachat indicatif) ---
         if cee is None and g["code"] in CEE_BAR_EN_KWHC:
@@ -270,10 +270,9 @@ async def estimate_gestes(situation: dict, items: list[dict]) -> dict:
                 cee = round(cee_kwhc * CEE_PRIX_KWHC, 2)
                 source = "repli"
                 used_repli = True
-                notes.append(f"CEE repli — BAR-EN zone {zone} {forfait_kwhc} kWhc/m² × {val_num:g} m² "
-                             f"× {CEE_PRIX_KWHC} €/kWhc (prix de rachat indicatif)")
+                notes.append(f'Certificados de poupança — zona {zone} {forfait_kwhc} kWhc/m² × {val_num:g} m² × {CEE_PRIX_KWHC} €/kWhc (prix de rachat indicatif)')
             elif g.get("repli"):
-                notes.append("CEE : à confirmer (zone/surface manquante ou API indisponible)")
+                notes.append("Certificados de poupança: a confirmar (zona/área em falta ou API indisponível)")
 
         if isinstance(mpr, (int, float)):
             total_mpr += mpr
@@ -282,15 +281,11 @@ async def estimate_gestes(situation: dict, items: list[dict]) -> dict:
         results.append({"code": g["code"], "label": g["label"], "unit": g["unit"],
                         "value": value, "mpr": mpr, "cee": cee, "cee_kwhc": cee_kwhc,
                         "source": source, "note": " · ".join(notes) or None})
-    disclaimer = ("Montants INDICATIFS par geste (API officielle Publicodes). Non opposable.")
+    disclaimer = ("Montantes INDICATIVOS por intervenção. Não vinculativos.")
     if used_repli:
-        disclaimer = ("Montants INDICATIFS par geste. Certains postes (murs / plancher bas) sont "
-                      "estimés en REPLI car l'API ADEME était indisponible : MaPrimeRénov' = forfait "
-                      "officiel par classe de revenu ; CEE = volume officiel BAR-EN (kWh cumac) × "
-                      f"prix de rachat indicatif ({CEE_PRIX_KWHC} €/kWhc, non réglementé). "
-                      "À confirmer auprès d'un conseiller France Rénov' / d'un obligé CEE. Non opposable.")
+        disclaimer = (f'Montantes INDICATIVOS por intervenção, calculados com a referência francesa (API ADEME) e não aplicáveis diretamente em Portugal: apoio = valor fixo por classe de rendimento; certificados = volume oficial (kWh cumac) × preço indicativo ({CEE_PRIX_KWHC} €/kWhc, não regulamentado). Em Portugal, confirme junto do Fundo Ambiental / ADENE. Não vinculativo.')
     return {
-        "source": "Mes Aides Réno (France Rénov') — parcours par geste",
+        "source": "Simulador de apoios (referência francesa) — percurso por intervenção",
         "disclaimer": disclaimer,
         "gestes": results,
         "used_repli": used_repli,
@@ -355,11 +350,8 @@ async def estimate_aides(situation: dict, travaux_ht: float | None = None) -> di
         reste_a_charge = round(max(travaux_ht - total_subventions, 0), 2)
 
     return {
-        "source": "Mes Aides Réno (France Rénov' / ANAH)",
-        "disclaimer": ("Montants INDICATIFS issus de l'API officielle Publicodes. "
-                       "L'ANAH signale que certains barèmes peuvent ne plus être à jour "
-                       "suite aux évolutions réglementaires — à confirmer auprès d'un "
-                       "conseiller France Rénov'. Non opposable."),
+        "source": "Simulador de apoios (referência francesa)",
+        "disclaimer": ("Montantes INDICATIVOS de uma API oficial francesa. Em Portugal, consulte os programas do Fundo Ambiental e o portal da ADENE. Não vinculativo."),
         "revenu_classe": (classe or {}).get("rawValue"),
         "mpr_accompagnee": mpr,
         "eco_ptz": ptz,

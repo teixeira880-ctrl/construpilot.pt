@@ -55,7 +55,7 @@ async def remember_prices(user_id: str, items: list[dict], origin: str = "DPGF")
              "unit": it.get("unit") or "u",
              "unit_price_ht": float(it.get("unit_price") or 0),
              "vat_rate": it.get("vat_rate") if it.get("vat_rate") is not None else 10,
-             "category": (it.get("category") or it.get("lot") or "").strip() or "Depuis DPGF"}
+             "category": (it.get("category") or it.get("lot") or "").strip() or "A partir do mapa de quantidades"}
             for it in (items or [])
             if (it.get("designation") or "").strip() and float(it.get("unit_price") or 0) > 0
         ], source="dpgf")
@@ -76,14 +76,14 @@ async def upload_library(file: UploadFile = File(...), user=Depends(current_user
             images = price_library.pdf_to_images_b64(raw)
             lines = await ai.extract_price_library(images)
         else:
-            raise HTTPException(400, "Format non supporté (.xlsx ou .pdf attendu).")
+            raise HTTPException(400, "Formato não suportado (.xlsx ou .pdf esperado).")
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(400, "Fichier illisible (.xlsx ou .pdf attendu).")
+        raise HTTPException(400, "Ficheiro ilegível (.xlsx ou .pdf esperado).")
 
     if not lines:
-        raise HTTPException(422, "Aucune ligne tarifaire détectée dans le fichier.")
+        raise HTTPException(422, "Nenhuma linha de preço detetada no ficheiro.")
 
     now = datetime.now(timezone.utc).isoformat()
     docs = [{
@@ -114,7 +114,7 @@ async def delete_line(item_id: str, user=Depends(current_user)) -> dict:
     res = await db.company_price_libraries.delete_one(
         {"item_id": item_id, "user_id": user["user_id"]})
     if not res.deleted_count:
-        raise HTTPException(404, "Ligne introuvable.")
+        raise HTTPException(404, "Linha não encontrada.")
     return {"deleted": 1}
 
 

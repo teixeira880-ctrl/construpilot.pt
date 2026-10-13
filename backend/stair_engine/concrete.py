@@ -72,15 +72,15 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
 
     if inp.concrete_class not in CONCRETE_CLASSES:
         alerts.append(Alert(level="orange", code="CONCRETE_CLASS_UNUSUAL",
-                            message_fr=f"Classe béton non standard '{inp.concrete_class}'."))
+                            message_fr=f"Classe de betão não normalizada '{inp.concrete_class}'."))
     if inp.steel_grade not in STEEL_GRADES:
         alerts.append(Alert(level="orange", code="STEEL_GRADE_UNUSUAL",
-                            message_fr=f"Nuance acier non standard '{inp.steel_grade}'."))
+                            message_fr=f"Classe de aço não normalizada '{inp.steel_grade}'."))
     if inp.exposure_class not in EXPOSURE_CLASSES:
         inp.exposure_class = "XC1"
     if inp.exposure_class in ("XC3", "XC4"):
         alerts.append(Alert(level="orange", code="HIGH_EXPOSURE_REQUIRES_VALIDATION",
-                            message_fr=f"Classe d'exposition {inp.exposure_class} : validation BE requise pour enrobage/durabilité."))
+                            message_fr=f"Classe d'exposition {inp.exposure_class}: validação pelo gabinete de projeto necessária para recobrimento/durabilidade."))
 
     r = inp.stair_result
 
@@ -102,10 +102,10 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
     thickness_reco, abaque_line, out_of_abaque = lookup_paillasse_thickness(span_mm, load_total)
     if out_of_abaque:
         alerts.append(Alert(level="red", code="PAILLASSE_OUT_OF_ABAQUE",
-                            message_fr=f"Portée {span_mm:.0f} mm ou charge {load_total:.1f} kN/m² hors abaque simplifié. Calcul EC2 requis."))
+                            message_fr=f'Âmbito {span_mm:.0f} mm ou carga {load_total:.1f} kN/m² fora do ábaco simplificado. Cálculo EC2 necessário.'))
     if span_mm > 5000:
         alerts.append(Alert(level="red", code="SPAN_EXCEEDS_SIMPLE_ANALYSIS",
-                            message_fr=f"Portée {span_mm:.0f} mm > 5000 mm : calcul Eurocode 2 rigoureux nécessaire."))
+                            message_fr=f'Âmbito {span_mm:.0f} mm > 5000 mm: cálculo rigoroso segundo o Eurocódigo 2 necessário.'))
 
     # Recalcul poids propre avec épaisseur retenue
     thickness_final = max(thickness_reco, thickness_min_L25) if thickness_reco > 0 else thickness_min_L25
@@ -114,7 +114,7 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
 
     if thickness_final < thickness_min_L25:
         alerts.append(Alert(level="red", code="PAILLASSE_THICKNESS_INSUFFICIENT",
-                            message_fr=f"Épaisseur paillasse {thickness_final:.0f} mm < L/25 = {thickness_min_L25:.0f} mm."))
+                            message_fr=f'Espessura da laje da escada {thickness_final:.0f} mm < L/25 = {thickness_min_L25:.0f} mm.'))
 
     # Volume béton (paillasse rampante + marches)
     paillasse_area_m2 = (stair_length_mm / 1000) * (width_mm / 1000)
@@ -205,24 +205,24 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
     }
 
     nomenclature: List[NomenclatureRow] = [
-        NomenclatureRow(repere="1", designation="Armature principale inférieure",
+        NomenclatureRow(repere="1", designation="Armadura principal inferior",
                         diameter=f"HA{main_diam}", length_m=round(main_length_m, 2),
                         count=main_count, total_length_m=round(main_length_m * main_count, 2),
                         weight_kg=round(main_weight, 2)),
-        NomenclatureRow(repere="2", designation="Armature de répartition",
+        NomenclatureRow(repere="2", designation="Armadura de distribuição",
                         diameter=f"HA{dist_diam}", length_m=round(dist_length_m, 2),
                         count=dist_count, total_length_m=round(dist_length_m * dist_count, 2),
                         weight_kg=round(dist_weight, 2)),
-        NomenclatureRow(repere="3", designation="Chapeaux sur appuis",
+        NomenclatureRow(repere="3", designation="Armaduras superiores sobre apoios",
                         diameter=f"HA{upper_diam}", length_m=round(upper_length_m, 2),
                         count=upper_count * 2,
                         total_length_m=round(upper_length_m * upper_count * 2, 2),
                         weight_kg=round(upper_weight, 2)),
-        NomenclatureRow(repere="4", designation="Aciers de contremarche",
+        NomenclatureRow(repere="4", designation="Armaduras do espelho",
                         diameter=f"HA{tread_diam}", length_m=round(tread_length_m, 2),
                         count=tread_count, total_length_m=round(tread_length_m * tread_count, 2),
                         weight_kg=round(tread_weight, 2)),
-        NomenclatureRow(repere="5", designation="Attentes en pied",
+        NomenclatureRow(repere="5", designation="Armaduras de espera na base",
                         diameter=f"HA{starter_diam}", length_m=round(starter_length_m, 2),
                         count=starter_count,
                         total_length_m=round(starter_length_m * starter_count, 2),
@@ -231,11 +231,11 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
 
     # Disclaimer systématique (orange informatif)
     alerts.append(Alert(level="orange", code="CONCRETE_ANALYSIS_INDICATIVE",
-                        message_fr="Analyse indicative — validation BE requise avant exécution."))
+                        message_fr="Análise indicativa — validação pelo gabinete de projeto necessária antes da execução."))
 
     if inp.is_flying:
         alerts.append(Alert(level="red", code="FLYING_STAIRS_OUT_OF_SCOPE",
-                            message_fr="Les escaliers suspendus (marches flottantes) ne sont pas dans le périmètre Phase 3."))
+                            message_fr="As escadas suspensas (degraus flutuantes) não fazem parte do âmbito da Fase 3."))
 
     return ConcreteAnalysisResult(
         stair_type=inp.stair_type,
@@ -276,10 +276,7 @@ def compute_concrete_analysis(inp: ConcreteAnalysisInput) -> ConcreteAnalysisRes
         disclaimer={
             "level": "warning",
             "message_fr": (
-                "Les calculs de pré-dimensionnement et le schéma de ferraillage sont indicatifs. "
-                "Ils reposent sur des abaques simplifiés DTU 21 et ne remplacent pas une étude "
-                "structurelle complète conforme à l'Eurocode 2. Toute exécution doit être validée "
-                "par un ingénieur structure titulaire des qualifications requises."
+                "Os cálculos de pré-dimensionamento e o esquema de armaduras são indicativos. Baseiam-se em ábacos simplificados e não substituem um estudo estrutural completo conforme com o Eurocódigo 2 (NP EN 1992-1-1). Qualquer execução deve ser validada por um engenheiro de estruturas com as qualificações exigidas."
             ),
         },
     )

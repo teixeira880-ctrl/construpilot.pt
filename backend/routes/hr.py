@@ -51,7 +51,7 @@ async def _require_employer(user: dict) -> None:
 def _require_worker(user: dict) -> None:
     require_feature(user, "pointage")
     if user.get("role") != "worker":
-        raise HTTPException(403, "Réservé aux comptes ouvriers")
+        raise HTTPException(403, "Reservado às contas de operários")
 
 
 def _employer_id_of(user: dict) -> str:
@@ -69,15 +69,15 @@ def _public_worker(u: dict) -> dict:
 
 async def _decode_and_store_selfie(data_url: str, employer_id: str, worker_id: str) -> str:
     if not data_url or "base64," not in data_url:
-        raise HTTPException(400, "Selfie manquant ou invalide")
+        raise HTTPException(400, "Selfie em falta ou inválida")
     header, b64 = data_url.split("base64,", 1)
     ext = "png" if "image/png" in header else "jpg"
     try:
         raw = base64.b64decode(b64)
     except Exception:
-        raise HTTPException(400, "Selfie illisible")
+        raise HTTPException(400, "Selfie ilegível")
     if len(raw) > 6 * 1024 * 1024:
-        raise HTTPException(413, "Selfie trop volumineux (max 6 Mo)")
+        raise HTTPException(413, "Selfie demasiado volumosa (máx. 6 MB)")
     path = f"{storage.APP_NAME}/hr/{employer_id}/{worker_id}/{uuid.uuid4().hex}.{ext}"
     ct = storage.MIME.get(ext, "image/jpeg")
     result = await asyncio.to_thread(storage.put_object, path, raw, ct)
@@ -116,9 +116,9 @@ async def create_worker(body: WorkerIn, user=Depends(current_user)):
     await _require_employer(user)
     email = body.email.lower().strip()
     if await db.users.find_one({"email": email}):
-        raise HTTPException(409, "Un compte existe déjà avec cet email")
+        raise HTTPException(409, "Já existe uma conta com este email")
     if len(body.password) < 6:
-        raise HTTPException(400, "Mot de passe trop court (min 6 caractères)")
+        raise HTTPException(400, "Palavra-passe demasiado curta (mín. 6 caracteres)")
     doc = {
         "user_id": new_user_id(), "email": email, "name": body.name.strip(),
         "password_hash": hash_password(body.password), "picture": None,
@@ -144,7 +144,7 @@ async def _get_owned_worker(worker_id: str, employer_id: str) -> dict:
     w = await db.users.find_one({"user_id": worker_id, "role": "worker",
                                  "employer_id": employer_id}, {"_id": 0})
     if not w:
-        raise HTTPException(404, "Ouvrier introuvable")
+        raise HTTPException(404, "Operário não encontrado")
     return w
 
 
@@ -163,7 +163,7 @@ async def reset_worker_password(worker_id: str, body: PasswordReset, user=Depend
     await _require_employer(user)
     await _get_owned_worker(worker_id, user["user_id"])
     if len(body.password) < 6:
-        raise HTTPException(400, "Mot de passe trop court (min 6 caractères)")
+        raise HTTPException(400, "Palavra-passe demasiado curta (mín. 6 caracteres)")
     await db.users.update_one({"user_id": worker_id},
                               {"$set": {"password_hash": hash_password(body.password),
                                         "must_change_password": True}})
@@ -218,12 +218,12 @@ async def clock_in(body: ClockIn, user=Depends(current_user)):
     _require_worker(user)
     emp = user.get("employer_id")
     if await db.hr_timesheets.find_one({"worker_id": user["user_id"], "status": "open"}):
-        raise HTTPException(409, "Vous avez déjà un pointage en cours. Terminez-le d'abord.")
+        raise HTTPException(409, "Já tem um registo de ponto em curso. Termine-o primeiro.")
     proj = await db.projects.find_one({"project_id": body.project_id, "user_id": emp},
                                       {"_id": 0, "name": 1, "site_lat": 1, "site_lng": 1,
                                        "geofence_radius": 1})
     if not proj:
-        raise HTTPException(404, "Chantier introuvable")
+        raise HTTPException(404, "Obra não encontrada")
     selfie_path = await _decode_and_store_selfie(body.selfie, emp, user["user_id"])
     gps_in = {"lat": body.lat, "lng": body.lng, "accuracy": body.accuracy}
     zone = _check_zone(proj, gps_in)
@@ -240,7 +240,7 @@ async def clock_in(body: ClockIn, user=Depends(current_user)):
     await db.hr_timesheets.insert_one(entry)
     entry.pop("_id", None)
     from engines import activity
-    await activity.log(user, "clock.in", "pointage", proj.get("name") or "Chantier")
+    await activity.log(user, "clock.in", "pointage", proj.get("name") or "Obra")
     return entry
 
 
@@ -250,7 +250,7 @@ async def clock_out(body: ClockOut, user=Depends(current_user)):
     ts = await db.hr_timesheets.find_one({"worker_id": user["user_id"], "status": "open"},
                                          {"_id": 0})
     if not ts:
-        raise HTTPException(404, "Aucun pointage en cours")
+        raise HTTPException(404, "Nenhum registo de ponto em curso")
     selfie_path = await _decode_and_store_selfie(body.selfie, ts["employer_id"], user["user_id"])
     out = datetime.now(timezone.utc)
     start = datetime.fromisoformat(ts["clock_in"])
@@ -269,7 +269,7 @@ async def clock_out(body: ClockOut, user=Depends(current_user)):
                   "out_of_zone": ts.get("out_of_zone") or zone["out_of_zone"]}})
     from engines import activity
     await activity.log(user, "clock.out", "pointage",
-                       f"{ts.get('project_name') or 'Chantier'} · {hours}h")
+                       f"{ts.get('project_name') or 'Obra'} · {hours}h")
     return await db.hr_timesheets.find_one({"entry_id": ts["entry_id"]}, {"_id": 0})
 
 
@@ -313,13 +313,13 @@ async def list_timesheets(user=Depends(current_user), worker_id: str | None = No
 async def validate_timesheet(entry_id: str, body: ValidateIn, user=Depends(current_user)):
     await _require_employer(user)
     if body.status not in ("validated", "rejected"):
-        raise HTTPException(400, "Statut invalide")
+        raise HTTPException(400, "Estado inválido")
     ts = await db.hr_timesheets.find_one({"entry_id": entry_id,
                                           "employer_id": user["user_id"]}, {"_id": 0})
     if not ts:
-        raise HTTPException(404, "Pointage introuvable")
+        raise HTTPException(404, "Registo de ponto não encontrado")
     if ts.get("status") == "open":
-        raise HTTPException(400, "Pointage encore en cours (non terminé)")
+        raise HTTPException(400, "Registo de ponto ainda em curso (não terminado)")
     await db.hr_timesheets.update_one(
         {"entry_id": entry_id},
         {"$set": {"status": body.status, "validation_note": body.note,
@@ -428,7 +428,7 @@ async def reply_note(note_id: str, body: ReplyIn, user=Depends(current_user)):
     n = await db.hr_notes.find_one({"note_id": note_id, "employer_id": user["user_id"]},
                                    {"_id": 0})
     if not n:
-        raise HTTPException(404, "Message introuvable")
+        raise HTTPException(404, "Mensagem não encontrada")
     await db.hr_notes.update_one(
         {"note_id": note_id},
         {"$set": {"reply": body.reply.strip(), "status": "answered",
@@ -494,7 +494,7 @@ async def set_geofence(project_id: str, body: GeofenceIn, user=Depends(current_u
     proj = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                       {"_id": 0, "project_id": 1})
     if not proj:
-        raise HTTPException(404, "Chantier introuvable")
+        raise HTTPException(404, "Obra não encontrada")
     await db.projects.update_one(
         {"project_id": project_id},
         {"$set": {"site_lat": body.lat, "site_lng": body.lng,
@@ -542,8 +542,8 @@ async def export_csv(user=Depends(current_user), date_from: str | None = None,
                db.users.find({"role": "worker", "employer_id": user["user_id"]}, {"_id": 0})}
     buf = io.StringIO()
     wr = csv.writer(buf, delimiter=";")
-    wr.writerow(["Ouvrier", "Poste", "Semaine", "Date", "Chantier",
-                 "Heures validées", "Taux horaire", "Montant"])
+    wr.writerow(["Trabalhador", "Artigo", "Semana", "Data", "Obra",
+                 "Horas validadas", "Taxa horária", "Montante"])
     for r in rows:
         w = workers.get(r["worker_id"], {})
         rate = w.get("hourly_rate")
@@ -554,7 +554,7 @@ async def export_csv(user=Depends(current_user), date_from: str | None = None,
                      rate if rate is not None else "", amount])
     data = buf.getvalue().encode("utf-8-sig")
     return Response(content=data, media_type="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=paie.csv"})
+                    headers={"Content-Disposition": "attachment; filename=salarios.csv"})
 
 
 @router.get("/export/pdf")
@@ -573,7 +573,7 @@ async def export_pdf(user=Depends(current_user), date_from: str | None = None,
         a["total"] += r.get("hours") or 0
     pdf = await asyncio.to_thread(_build_payroll_pdf, agg, workers, date_from, date_to)
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": "attachment; filename=paie.pdf"})
+                    headers={"Content-Disposition": "attachment; filename=salarios.pdf"})
 
 
 def _build_payroll_pdf(agg: dict, workers: dict, date_from, date_to) -> bytes:
@@ -586,11 +586,11 @@ def _build_payroll_pdf(agg: dict, workers: dict, date_from, date_to) -> bytes:
     doc = SimpleDocTemplate(b, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                             leftMargin=16 * mm, rightMargin=16 * mm)
     S = getSampleStyleSheet()
-    story = [Paragraph("Récapitulatif des heures validées — Paie", S["Title"])]
-    period = f"Période : {date_from or '—'} → {date_to or '—'}"
+    story = [Paragraph("Resumo das horas validadas — Processamento salarial", S["Title"])]
+    period = f"Período: {date_from or '—'} → {date_to or '—'}"
     story.append(Paragraph(period, S["Normal"]))
     story.append(Spacer(1, 10))
-    data = [["Ouvrier", "Poste", "Heures validées", "Taux (€/h)", "Montant (€)"]]
+    data = [["Trabalhador", "Artigo", "Horas validadas", "Taxa (€/h)", "Montante (€)"]]
     grand = 0.0
     for wid, a in sorted(agg.items(), key=lambda x: -x[1]["total"]):
         w = workers.get(wid, {})
@@ -631,13 +631,10 @@ async def run_forgotten_clockouts() -> int:
         emp = await db.users.find_one({"user_id": ts["employer_id"]},
                                       {"_id": 0, "email": 1, "lang": 1})
         if emp and emp.get("email"):
-            html = (f"<p>Bonjour,</p><p>L'ouvrier <b>{ts.get('worker_name')}</b> a pointé "
-                    f"son entrée le {ts['clock_in'][:16].replace('T',' ')} sur le chantier "
-                    f"<b>{ts.get('project_name')}</b> mais n'a jamais pointé sa sortie.</p>"
-                    f"<p>Vérifiez le pointage dans votre espace RH.</p><p>— ConstruPilot</p>")
+            html = (f"<p>Olá,</p><p>O operário <b>{ts.get('worker_name')}</b> registou a entrada em {ts['clock_in'][:16].replace('T', ' ')} na obra <b>{ts.get('project_name')}</b> mas nunca registou a saída.</p><p>Verifique o registo na sua área de RH.</p><p>— ConstruPilot</p>")
             try:
                 await send_email(emp["email"],
-                                 f"⚠️ Pointage non terminé — {ts.get('worker_name')}", html)
+                                 f"⚠️ Registo de ponto não terminado — {ts.get('worker_name')}", html)
                 sent += 1
             except Exception:
                 pass
@@ -656,13 +653,13 @@ async def get_selfie(path: str = Query(...), user=Depends(current_user)):
         await _require_employer(user)
     rec = await db.hr_files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
     if not rec:
-        raise HTTPException(404, "Image introuvable")
+        raise HTTPException(404, "Imagem não encontrada")
     # Accès : l'employeur propriétaire, ou l'ouvrier concerné
     role = user.get("role")
     allowed = (rec.get("worker_id") == user["user_id"]) or \
               (role != "worker" and rec.get("employer_id") == user["user_id"]) or \
               (role == "admin")
     if not allowed:
-        raise HTTPException(403, "Accès refusé")
+        raise HTTPException(403, "Acesso recusado")
     data, ct = await asyncio.to_thread(storage.get_object, path)
     return Response(content=data, media_type=rec.get("content_type", ct))

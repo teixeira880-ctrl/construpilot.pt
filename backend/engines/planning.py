@@ -10,24 +10,24 @@ from datetime import date, timedelta
 from typing import Optional
 
 TRADE_ORDER = [
-    ("demolition", "Démolition", ["demol", "dépose", "depose", "curage"]),
-    ("terrassement", "Terrassement", ["terrass", "fouille", "vrd", "réseaux ext"]),
-    ("gros_oeuvre", "Gros œuvre", ["gros", "maçon", "macon", "béton", "beton", "fondation", "dalle", "semelle", "parpaing", "structure", "ipn"]),
-    ("charpente", "Charpente", ["charpente", "ossature bois"]),
-    ("couverture", "Couverture", ["couvert", "toiture", "tuile", "zinguerie", "étanch", "etanch"]),
-    ("menuiseries_ext", "Menuiseries extérieures", ["menuiserie ext", "fenêtre", "fenetre", "porte d'entrée", "volet", "baie"]),
-    ("plomberie", "Plomberie", ["plomb", "sanitaire", "evacuation", "évacuation"]),
-    ("electricite", "Électricité", ["élec", "elec", "courant", "tableau"]),
-    ("chauffage", "Chauffage / CVC", ["chauff", "pac", "pompe à chaleur", "vmc", "ventil", "clim", "radiateur"]),
-    ("isolation", "Isolation", ["isol", "ite", "iti", "laine"]),
-    ("platrerie", "Plâtrerie / Cloisons", ["plâtre", "platre", "placo", "cloison", "doublage", "faux plafond", "ba13"]),
-    ("chape", "Chape / Ragréage", ["chape", "ragré", "ragre"]),
-    ("carrelage", "Carrelage / Faïence", ["carrel", "faïence", "faience"]),
-    ("menuiseries_int", "Menuiseries intérieures", ["menuiserie int", "porte int", "placard", "escalier", "parquet"]),
-    ("peinture", "Peinture", ["peint", "enduit", "ravalement", "papier peint"]),
-    ("sols", "Sols souples", ["sol souple", "pvc", "lino", "moquette", "stratifié"]),
+    ("demolition", "Demolição", ["demol", "dépose", "depose", "curage"]),
+    ("terrassement", "Movimentação de terras", ["terrass", "fouille", "vrd", "réseaux ext"]),
+    ("gros_oeuvre", "Obra grossa", ["gros", "maçon", "macon", "béton", "beton", "fondation", "dalle", "semelle", "parpaing", "structure", "ipn"]),
+    ("charpente", "Carpintaria", ["charpente", "ossature bois"]),
+    ("couverture", "Cobertura", ["couvert", "toiture", "tuile", "zinguerie", "étanch", "etanch"]),
+    ("menuiseries_ext", "Caixilharia exterior", ["menuiserie ext", "fenêtre", "fenetre", "porte d'entrée", "volet", "baie"]),
+    ("plomberie", "Canalização", ["plomb", "sanitaire", "evacuation", "évacuation"]),
+    ("electricite", "Eletricidade", ["élec", "elec", "courant", "tableau"]),
+    ("chauffage", "Chauffage / CVC", ["chauff", "pac", "bomba de calor", "vmc", "ventil", "clim", "radiateur"]),
+    ("isolation", "Isolamento", ["isol", "ite", "iti", "laine"]),
+    ("platrerie", "Estuques / Divisórias", ["plâtre", "platre", "placo", "cloison", "doublage", "faux plafond", "ba13"]),
+    ("chape", "Betonilha / Autonivelante", ["chape", "ragré", "ragre"]),
+    ("carrelage", "Revestimento cerâmico / Azulejo", ["carrel", "faïence", "faience"]),
+    ("menuiseries_int", "Carpintarias interiores", ["menuiserie int", "porte int", "placard", "escalier", "parquet"]),
+    ("peinture", "Pintura", ["peint", "enduit", "ravalement", "papier peint"]),
+    ("sols", "Pavimentos vinílicos", ["sol souple", "pvc", "lino", "moquette", "stratifié"]),
     ("cuisine", "Cuisine / Agencement", ["cuisine", "agencement", "meuble"]),
-    ("nettoyage", "Nettoyage / Réception", ["nettoy", "réception", "reception", "livraison"]),
+    ("nettoyage", "Limpeza / Receção", ["nettoy", "réception", "reception", "livraison"]),
 ]
 _RANK = {code: i for i, (code, _, _) in enumerate(TRADE_ORDER)}
 DEFAULT_DURATION = 5
@@ -98,7 +98,7 @@ def _topo(tasks: dict) -> list[str]:
     for t in tasks.values():
         for p in t["predecessors"]:
             if p["id"] not in tasks:
-                raise PlanningError(f"Prédécesseur inconnu « {p['id']} » pour la tâche « {t['name']} »")
+                raise PlanningError(f"Antecessora desconhecida «{p['id']}» para a tarefa «{t['name']} »")
             indeg[t["id"]] += 1
     order, stack = [], sorted([t for t, d in indeg.items() if d == 0])
     while stack:
@@ -111,7 +111,7 @@ def _topo(tasks: dict) -> list[str]:
                     stack.append(t["id"])
         stack.sort()
     if len(order) != len(tasks):
-        raise PlanningError("Boucle de dépendances détectée : une tâche dépend (indirectement) d'elle-même.")
+        raise PlanningError("Ciclo de dependências detetado: uma tarefa depende (indiretamente) de si própria.")
     return order
 
 
@@ -120,16 +120,16 @@ def _normalize(raw_tasks: list[dict]) -> dict:
     for t in raw_tasks:
         tid = str(t.get("id") or "").strip()
         if not tid:
-            raise PlanningError("Tâche sans identifiant")
+            raise PlanningError("Tarefa sem identificador")
         dur = int(t.get("duration") or 0)
         if dur < 1:
-            raise PlanningError(f"Durée invalide pour « {t.get('name') or tid} » (≥ 1 jour ouvré)")
+            raise PlanningError(f"Duração inválida para «{t.get('name') or tid}» (≥ 1 dia útil)")
         preds = []
         for p in t.get("predecessors") or []:
             pid = p.get("id") if isinstance(p, dict) else p
             if pid and pid != tid:
                 preds.append({"id": str(pid), "lag": int((p.get("lag") if isinstance(p, dict) else 0) or 0)})
-        tasks[tid] = {"id": tid, "name": (t.get("name") or tid).strip(), "resource": (t.get("resource") or "Équipe").strip(),
+        tasks[tid] = {"id": tid, "name": (t.get("name") or tid).strip(), "resource": (t.get("resource") or "Equipa").strip(),
                       "duration": dur, "predecessors": preds, "progress": max(0, min(100, int(t.get("progress") or 0))),
                       "not_before": t.get("not_before") or None, "actual_start": t.get("actual_start") or None,
                       "actual_end": t.get("actual_end") or None, "auto_link": bool(t.get("auto_link")),
@@ -298,12 +298,12 @@ def suggestions(plan: dict, result: dict, today: Optional[date] = None, baseline
     gap = result["project"].get("deadline_gap_days")
     if gap is not None:
         if gap < 0:
-            out.append({"kind": "deadline", "severity": "critical", "title": f"Fin prévue {abs(gap)} j ouvré(s) après la date objectif",
-                        "detail": f"Fin calculée le {result['project']['end_date']} pour un objectif au {plan['deadline']}. Voir les leviers ci-dessous (gain mesuré).",
+            out.append({"kind": "deadline", "severity": "critical", "title": f'Fim previsto {abs(gap)} dia(s) útil(eis) após a data objetivo',
+                        "detail": f"Fim calculado em {result['project']['end_date']} para um objetivo a {plan['deadline']}. Ver as alavancas abaixo (ganho medido).",
                         "task_ids": [], "gain_days": 0})
         else:
-            out.append({"kind": "deadline", "severity": "success", "title": f"Objectif tenu avec {gap} j ouvré(s) d'avance",
-                        "detail": f"Fin calculée le {result['project']['end_date']}.", "task_ids": [], "gain_days": gap})
+            out.append({"kind": "deadline", "severity": "success", "title": f'Objetivo cumprido com {gap} dia(s) útil(eis) de antecedência',
+                        "detail": f"Fim calculado em {result['project']['end_date']}.", "task_ids": [], "gain_days": gap})
 
     if baseline and baseline.get("end_date"):
         b_end = date.fromisoformat(baseline["end_date"])
@@ -311,14 +311,14 @@ def suggestions(plan: dict, result: dict, today: Optional[date] = None, baseline
         drift = (cur_end - b_end).days
         if drift > 0:
             shifted = [r["id"] for r in rows if (baseline.get("tasks") or {}).get(r["id"]) and r["end_date"] > baseline["tasks"][r["id"]]]
-            out.append({"kind": "drift", "severity": "high", "title": f"Dérive de {drift} jour(s) calendaires vs planning de référence",
-                        "detail": f"Référence : fin le {baseline['end_date']} → désormais {result['project']['end_date']}. {len(shifted)} tâche(s) décalée(s).",
+            out.append({"kind": "drift", "severity": "high", "title": f'Desvio de {drift} dia(s) de calendário vs planeamento de referência',
+                        "detail": f"Referência: fim em {baseline['end_date']} → agora {result['project']['end_date']}. {len(shifted)} tarefa(s) desfasada(s).",
                         "task_ids": shifted[:20], "gain_days": 0})
 
     late = [r for r in rows if r["late"]]
     if late:
-        out.append({"kind": "late", "severity": "high", "title": f"{len(late)} tâche(s) auraient dû être terminées",
-                    "detail": "Saisissez l'avancement réel (%) ou la date de fin : le planning est recalculé à partir d'aujourd'hui.",
+        out.append({"kind": "late", "severity": "high", "title": f'{len(late)} tarefa(s) deveriam estar concluídas',
+                    "detail": "Introduza o avanço real (%) ou a data de fim: o planeamento é recalculado a partir de hoje.",
                     "task_ids": [r["id"] for r in late], "gain_days": 0})
 
     # Levier 1 : équipe supplémentaire — gain MESURÉ en rejouant le planning
@@ -332,8 +332,8 @@ def suggestions(plan: dict, result: dict, today: Optional[date] = None, baseline
         alt = compute_schedule(plan, today, capacity_override={res: cur_cap + 1})
         gain = end - alt["project"]["duration_workdays"]
         if gain > 0:
-            out.append({"kind": "add_crew", "severity": "medium", "title": f"Une équipe « {res} » de plus : fin avancée de {gain} j ouvré(s)",
-                        "detail": f"{len(tids)} tâche(s) attendent qu'une équipe {res} se libère (capacité actuelle {cur_cap}). Passer à {cur_cap + 1} équipes raccourcit le chantier à {alt['project']['end_date']}.",
+            out.append({"kind": "add_crew", "severity": "medium", "title": f'Uma equipa «{res}» a mais: fim antecipado em {gain} dia(s) útil(eis)',
+                        "detail": f"{len(tids)} tarefa(s) aguardam que uma equipa {res} fique livre (capacidade atual {cur_cap}). Passar a {cur_cap + 1} equipas encurta a obra para {alt['project']['end_date']}.",
                         "task_ids": tids, "gain_days": gain, "action": {"type": "capacity", "resource": res, "value": cur_cap + 1}})
 
     # Levier 2 : raccourcir une tâche critique — gain mesuré (−1 j)
@@ -342,8 +342,8 @@ def suggestions(plan: dict, result: dict, today: Optional[date] = None, baseline
         alt = compute_schedule(plan, today, duration_override={r["id"]: r["duration"] - 1})
         gain = end - alt["project"]["duration_workdays"]
         if gain > 0:
-            out.append({"kind": "crash", "severity": "info", "title": f"Chemin critique : « {r['name']} » −1 j = fin −{gain} j",
-                        "detail": f"Tâche critique ({r['duration']} j, {r['resource']}). Tout jour gagné ici se répercute sur la fin de chantier ; un jour perdu la décale d'autant.",
+            out.append({"kind": "crash", "severity": "info", "title": f"Caminho crítico: «{r['name']} » −1 j = fin −{gain} j",
+                        "detail": f"Tarefa crítica ({r['duration']} j, {r['resource']}). Cada dia ganho aqui repercute-se no fim da obra; um dia perdido atrasa-o outro tanto.",
                         "task_ids": [r["id"]], "gain_days": gain})
 
     # Levier 3 : enchaînements automatiques (ordre BTP par défaut) → chevauchement possible si validé par le pro
@@ -351,16 +351,16 @@ def suggestions(plan: dict, result: dict, today: Optional[date] = None, baseline
         if r["auto_link"] and r["predecessors"] and not r["fixed"] and r["critical"]:
             p = by_id.get(r["predecessors"][0]["id"])
             if p and p["resource"] != r["resource"]:
-                out.append({"kind": "overlap", "severity": "info", "title": f"« {p['name']} » → « {r['name']} » : enchaînement par défaut",
-                            "detail": "Ce lien a été posé automatiquement (ordre BTP classique). Si les corps d'état peuvent se chevaucher sur site, retirez ou réduisez la dépendance (décalage négatif) : le planning se recalculera.",
+                out.append({"kind": "overlap", "severity": "info", "title": f"« {p['name']} » → « {r['name']}» : encadeamento por omissão",
+                            "detail": "Esta ligação foi criada automaticamente (ordem clássica da construção). Se as especialidades se puderem sobrepor na obra, remova ou reduza a dependência (desfasamento negativo): o planeamento será recalculado.",
                             "task_ids": [p["id"], r["id"]], "gain_days": 0})
     out = out[:12] if len([o for o in out if o["kind"] == "overlap"]) > 4 else out
 
     # Marges disponibles
     slackers = [r for r in rows if r["slack"] >= 5 and not r["fixed"] and r["progress"] < 100]
     if slackers:
-        out.append({"kind": "slack", "severity": "info", "title": f"{len(slackers)} tâche(s) avec ≥ 5 j de marge",
-                    "detail": "Ces tâches peuvent être décalées sans retarder la fin : utile pour lisser la charge des équipes ou absorber un imprévu. "
+        out.append({"kind": "slack", "severity": "info", "title": f'{len(slackers)} tarefa(s) com ≥ 5 d de folga',
+                    "detail": "Estas tarefas podem ser desfasadas sem atrasar o fim: útil para alisar a carga das equipas ou absorver um imprevisto. "
                               + ", ".join(f"{r['name']} ({r['slack']} j)" for r in slackers[:6]),
                     "task_ids": [r["id"] for r in slackers], "gain_days": 0})
 
@@ -370,8 +370,8 @@ def suggestions(plan: dict, result: dict, today: Optional[date] = None, baseline
         for a, b in zip(rr, rr[1:]):
             idle = b["start_idx"] - a["end_idx"]
             if idle > 3:
-                out.append({"kind": "idle", "severity": "info", "title": f"Équipe {res} inoccupée {idle} j ouvrés",
-                            "detail": f"Entre « {a['name']} » et « {b['name']} ». Prévoir une autre affectation ou avancer une tâche sans prédécesseur bloquant.",
+                out.append({"kind": "idle", "severity": "info", "title": f'Equipa {res} inoccupée {idle} dias úteis',
+                            "detail": f"Entre «{a['name']} » et « {b['name']}». Prever outra atribuição ou antecipar uma tarefa sem antecessora bloqueante.",
                             "task_ids": [a["id"], b["id"]], "gain_days": 0})
     sev = {"critical": 0, "high": 1, "medium": 2, "info": 3, "success": 4}
     out.sort(key=lambda s: (sev.get(s["severity"], 9), -s["gain_days"]))
@@ -422,7 +422,7 @@ def optimize(plan: dict, today: Optional[date] = None, time_limit_s: float = 10.
     solver.parameters.num_workers = 4
     status = solver.Solve(m)
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        return {"ok": False, "reason": "Aucune solution trouvée dans le temps imparti", "baseline_days": base["project"]["duration_workdays"]}
+        return {"ok": False, "reason": "Nenhuma solução encontrada no tempo disponível", "baseline_days": base["project"]["duration_workdays"]}
     rows = []
     for r in base["tasks"]:
         s = solver.Value(st[r["id"]])

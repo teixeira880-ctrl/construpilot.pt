@@ -7,10 +7,10 @@ SCALE = re.compile(r"(?<!\d)1\s*[/:]\s*(20|25|50|75|100|200|250|500)(?!\d)")
 REV_ROW_NUM = re.compile(r"(?<![\w/])(\d{1,2}|[A-K])\s+((?:1[èe]re|Premi[èe]re|Diffusion|Mise|Modif\w*|Cr[ée]ation|Ajout|Suppression|Correction|R[ée]vision|[ÉE]mission)[^|\n]{0,60}?)\s+(\d{2}/\d{2}/\d{4})")
 DOC_CODE = re.compile(r"\b(COF|FER|ARM|ARC|PLA|ELE|PLB|CVC|STR|SYN)\s?(\d{4})\s+((?:R\+\d|RDC|SS\d?|N\d|TOIT)[\w+]*)\b", re.I)
 DOC_CODE_LOT = re.compile(r"\b(GO|CO|FE|AR|ST|EL|PL|CV|VRD)\s*-\s*([A-Z]\d{1,2})\s*-\s*(R\d|SS\d|RDC|N\d)\s*-\s*(\d{3})\b")
-LOT = {"GO": "Gros œuvre", "CO": "Coffrage", "FE": "Ferraillage", "AR": "Architecture", "ST": "Structure", "EL": "Électricité", "PL": "Plomberie", "CV": "CVC", "VRD": "VRD"}
+LOT = {"GO": "Obra grossa", "CO": "Cofragem", "FE": "Armação", "AR": "Architecture", "ST": "Estrutura", "EL": "Eletricidade", "PL": "Canalização", "CV": "CVC", "VRD": "VRD"}
 LEVEL = re.compile(r"\b(PH\s*)?(R\+\d|RDC|SS\d|Sous-sol|Toiture|Combles|N\d)\b", re.I)
-DISCIPLINE = {"COF": "Structure — coffrage", "FER": "Structure — ferraillage", "ARM": "Structure — armatures", "ARC": "Architecture",
-              "PLA": "Architecture", "ELE": "Électricité", "PLB": "Plomberie", "CVC": "CVC", "STR": "Structure", "SYN": "Synthèse"}
+DISCIPLINE = {"COF": "Estrutura — cofragem", "FER": "Estrutura — armaduras", "ARM": "Estrutura — armaduras", "ARC": "Architecture",
+              "PLA": "Architecture", "ELE": "Eletricidade", "PLB": "Canalização", "CVC": "CVC", "STR": "Estrutura", "SYN": "Síntese"}
 
 
 def _date(s: str):
@@ -63,7 +63,7 @@ def identify_document(text: str, words=None) -> dict:
     return {"revision_index": latest["index"] if latest else None, "revision_date": latest["date"] if latest else None,
             "revision_label": latest["label"] if latest else None, "revision_history": uniq[:12],
             "revision_index_is_numeric": bool(latest and latest["index"].isdigit()),
-            "declared_scale": f"1/{scale.group(1)}" if scale else ("sans échelle" if no_scale else None),
+            "declared_scale": f"1/{scale.group(1)}" if scale else ("sem escala" if no_scale else None),
             "document_code": code_str, "discipline": discipline,
             "level": level.group(2).upper() if level else None, "title": title_m.group(0).strip() if title_m else None,
-            "note": "Révision et date lues dans le cartouche du document ; la date d'import n'est pas la date de révision."}
+            "note": "Revisão e data lidas na legenda do documento; a data de importação não é a data de revisão."}

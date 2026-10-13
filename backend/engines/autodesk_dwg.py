@@ -41,7 +41,7 @@ def now():
 
 
 def pending_error():
-    return AutodeskError("conversion_pending", "Conversion Autodesk en cours ou à vérifier. Réimportez le même fichier pour consulter le résultat, sans lancer une seconde tâche.")
+    return AutodeskError("conversion_pending", "Conversão Autodesk em curso ou a verificar. Volte a importar o mesmo ficheiro para consultar o resultado, sem lançar uma segunda tarefa.")
 
 
 async def update(job, **values):
@@ -94,7 +94,7 @@ async def prepare_and_submit(job, data):
         await update(job, status="failed_before_submit", error_code="preparation_failed")
         cleaned = await storage.delete_objects(job.get("input_key"), job.get("output_key"))
         await update(job, cleanup_pending=not cleaned)
-        raise AutodeskError("preparation_failed", "Préparation Autodesk impossible. Aucun travail AutoCAD n'a été lancé.", fallback_safe=True) from None
+        raise AutodeskError("preparation_failed", "Preparação Autodesk impossível. Nenhum trabalho AutoCAD foi lançado.", fallback_safe=True) from None
     try:
         response = await request("POST", f"{api_base()}/workitems", json={
             "activityId": config("APS_ACTIVITY_QUALIFIED"),
@@ -144,7 +144,7 @@ async def poll(job):
                 return
             cleaned = await storage.delete_objects(job.get("input_key"), job.get("output_key"))
             await update(job, cleanup_pending=not cleaned)
-            raise AutodeskError("terminal_failure", "AutoCAD n'a pas pu exporter ce DWG. Aucun deuxième travail Autodesk n'a été lancé.", fallback_safe=True)
+            raise AutodeskError("terminal_failure", "O AutoCAD não conseguiu exportar este DWG. Nenhum segundo trabalho Autodesk foi lançado.", fallback_safe=True)
         if status not in {"pending", "inprogress"}:
             await update(job, status="unknown", error_code="unknown_status")
             raise pending_error()
@@ -207,20 +207,20 @@ async def cached_result(job):
     cached = await load_cad_source(db, job["cache_id"], job["user_id"], "converted_dxf")
     if cached:
         return cached, {**job["provenance"], "cached": True}
-    raise AutodeskError("cache_unavailable", "Résultat Autodesk temporairement indisponible. Aucune nouvelle tâche n'a été facturée.")
+    raise AutodeskError("cache_unavailable", "Resultado Autodesk temporariamente indisponível. Nenhuma nova tarefa foi faturada.")
 
 
 async def convert(data, *, user_id):
     if not user_id or not isinstance(user_id, str):
-        raise AutodeskError("missing_owner", "Compte requis pour la conversion Autodesk.")
+        raise AutodeskError("missing_owner", "Conta necessária para a conversão Autodesk.")
     if not data or len(data) > MAX_BYTES or not re.match(rb"AC10[0-9]{2}", data[:6]):
-        raise AutodeskError("invalid_input", "Fichier DWG vide, trop volumineux ou invalide.")
+        raise AutodeskError("invalid_input", "Ficheiro DWG vazio, demasiado volumoso ou inválido.")
     config("APS_ACTIVITY_QUALIFIED")
     job, created = await claim(data, user_id)
     if not created and job["status"] == "success":
         return await cached_result(job)
     if not created and job["status"] == "failed":
-        raise AutodeskError("terminal_failure", "Ce DWG a déjà échoué dans AutoCAD. Vérifiez le dessin avant un nouvel essai.", fallback_safe=True)
+        raise AutodeskError("terminal_failure", "Este DWG já falhou no AutoCAD. Verifique o desenho antes de uma nova tentativa.", fallback_safe=True)
     if created:
         await prepare_and_submit(job, data)
     if not job.get("workitem_id"):

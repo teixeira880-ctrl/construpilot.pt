@@ -23,10 +23,10 @@ class CadUnitsRequired(ValueError):
 def resolve_units(doc, override=None):
     code=int(doc.header.get('$INSUNITS',0))
     if override:
-        if override not in UNIT_FACTORS: raise ValueError('Unité CAO non supportée')
+        if override not in UNIT_FACTORS: raise ValueError("Unidade CAD não suportada")
         return {'name':override,'unit_to_m':UNIT_FACTORS[override],'source':'user','declared_code':code}
     if code not in INSUNITS:
-        raise CadUnitsRequired('CAD_UNIT_REQUIRED : unité du dessin non définie ; choisissez mm, cm, m, pouces ou pieds.')
+        raise CadUnitsRequired("CAD_UNIT_REQUIRED: unidade do desenho não definida; escolha mm, cm, m, polegadas ou pés.")
     name,factor=INSUNITS[code]
     return {'name':name,'unit_to_m':factor,'source':'INSUNITS','declared_code':code}
 
@@ -88,7 +88,7 @@ def walk_entities(doc, entities=None, *, explode_dimensions=True, keep_inserts=F
                 except Exception as exc: issues.append({'code':'DIMENSION_RENDER_MISSING','reason':type(exc).__name__})
                 continue
             emitted+=1
-            if emitted>max_entities: raise ValueError('CAO trop complexe : limite d’entités atteinte, sélectionner une zone ou une présentation.')
+            if emitted>max_entities: raise ValueError("CAD demasiado complexo: limite de entidades atingido, selecione uma zona ou uma apresentação.")
             if entity.is_virtual or (depth==0 and effective==entity.dxf.get('layer','0')):
                 clone=entity  # entité virtuelle (déjà une copie) ou entité du document lue seule : pas de deepcopy
             else:

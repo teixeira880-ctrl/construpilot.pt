@@ -50,14 +50,10 @@ async def propose_seo_overrides(project: dict, audit: dict, apply_mode: str) -> 
         page = await db.growth_pages.find_one({"audit_id": audit["audit_id"], "url": url}, {"_id": 0, "title": 1, "meta_description": 1, "h1": 1, "h2": 1})
         if not page:
             continue
-        lang = "français" if project["key"] == "fr" else "portugais du Portugal"
-        prompt = (f"Page : {url}\nTitre actuel : {page.get('title') or '(vide)'}\nDescription actuelle : {page.get('meta_description') or '(vide)'}\n"
-                  f"H1 : {page.get('h1')}\nH2 : {(page.get('h2') or [])[:8]}\nDéfauts : {sorted({i['kind'] for i in issues})}\n"
-                  f"Écris en {lang} un <title> unique (max 58 caractères, sans « | », terminer par « · ConstruPilot » seulement si la place le permet) "
-                  f"et une meta description (140 à 158 caractères, bénéfice concret, sans superlatif ni promesse de classement). "
-                  'Réponds en JSON strict : {"title": str, "description": str}')
+        lang = "français" if project["key"] == "fr" else "português de Portugal"
+        prompt = (f"""Page : {url}\nTítulo atual: {page.get('title') or '(vide)'}\nDescrição atual: {page.get('meta_description') or '(vide)'}\nH1 : {page.get('h1')}\nH2 : {(page.get('h2') or [])[:8]}\nDefeitos: {sorted({i['kind'] for i in issues})}\nEscreve em {lang} um <title> único (máx. 58 caracteres, sem «|», terminar com «· ConstruPilot» apenas se houver espaço) e uma meta description (140 a 158 caracteres, benefício concreto, sem superlativos nem promessas de posicionamento). Responde em JSON estrito: {{"title": str, "description": str}}""")
         try:
-            data = ct._json(await ct._llm("Tu es un consultant SEO rigoureux. JSON strict uniquement.", prompt, project["project_id"], "seo_override"))
+            data = ct._json(await ct._llm("És um consultor SEO rigoroso. Apenas JSON estrito.", prompt, project["project_id"], "seo_override"))
         except Exception as e:  # noqa: BLE001
             logger.warning("seo override llm failed %s: %s", url, e); continue
         if "error" in data or not data.get("title"):
@@ -116,7 +112,7 @@ async def ideas_from_signals(project: dict, limit: int) -> list[dict]:
             ranked.append((1, q["question_id"], q.get("text") or ""))
     out = []
     for _, qid, text in ranked[:limit]:
-        c = {"content_id": new_id("cnt"), "project_id": pid, "topic": text.strip(), "intent": "découverte", "audience": "professionnels du bâtiment et particuliers", "format": "guide pratique",
+        c = {"content_id": new_id("cnt"), "project_id": pid, "topic": text.strip(), "intent": "découverte", "audience": "profissionais da construção e particulares", "format": "guide pratique",
              "status": "idea", "version": 1, "question_id": qid, "created_by": "autopilot", "created_at": now_iso(), "updated_at": now_iso(), "autopilot_log": []}
         await db.growth_contents.insert_one(dict(c))
         out.append(c)
@@ -133,7 +129,7 @@ async def run_pipeline(project: dict, content: dict) -> dict:
     try:
         research = await find_sources(project, content)
         await db.growth_contents.update_one({"content_id": cid}, {"$set": {"research": research, "updated_at": now_iso()}})
-        await _log(cid, "research", True, f"{len(research['sources'])} sources vérifiées ({research['trusted_count']} officielles), {len(research['rejected'])} rejetées")
+        await _log(cid, "research", True, f"{len(research['sources'])} fontes verificadas ({research['trusted_count']} officielles), {len(research['rejected'])} rejetées")
         content = await db.growth_contents.find_one({"content_id": cid}, {"_id": 0})
         b = await ct.generate_brief(project, content)
         await db.growth_contents.update_one({"content_id": cid}, {"$set": {**{k: b.get(k) for k in ("title", "slug", "description", "audience", "outline", "internal_links", "sources_to_check", "cta", "search_intent_note")}, "status": "brief", "updated_at": now_iso()}})
@@ -202,8 +198,8 @@ async def run(project_id: str, trigger: str = "manual", resume_only: bool = Fals
                 report["overrides_proposed"] = await propose_seo_overrides(project, audit, st.get("seo_override_mode", "review"))
         if not budget["ok"]:
             report["skipped_budget"] = True
-            report["notes"].append(f"Plafond mensuel atteint ({budget['spent_usd']:.2f} / {budget['cap_usd']:.2f} $) : aucune génération IA")
-            await notify_admins(f"Growth auto-pilote : plafond budget mensuel atteint ({budget['spent_usd']:.2f} $ / {budget['cap_usd']:.2f} $). Générations suspendues.", "/admin/growth?tab=budget")
+            report["notes"].append(f"Limite mensal atingido ({budget['spent_usd']:.2f} / {budget['cap_usd']:.2f} $): nenhuma geração IA")
+            await notify_admins(f"Growth piloto automático: limite de orçamento mensal atingido ({budget['spent_usd']:.2f} $ / {budget['cap_usd']:.2f} $). Gerações suspensas.", "/admin/growth?tab=budget")
         else:
             pending = await db.growth_contents.find({"project_id": project_id, "created_by": "autopilot", "status": {"$in": list(AUTO_STATES)}}, {"_id": 0}).to_list(10)
             if not resume_only:
@@ -224,7 +220,7 @@ async def run(project_id: str, trigger: str = "manual", resume_only: bool = Fals
         ready = await db.growth_contents.count_documents({"project_id": project_id, "status": "review", "created_by": "autopilot"})
         proposed = await db.growth_seo_overrides.count_documents({"project_id": project_id, "status": "proposed"})
         if trigger != "manual" and (ready or proposed):
-            await notify_admins(f"Growth auto-pilote ({project['name']}) : {ready} article(s) à relire, {proposed} correction(s) SEO à approuver.", "/admin/growth?tab=autopilot")
+            await notify_admins(f"Growth auto-pilote ({project['name']}) : {ready} artigo(s) a rever, {proposed} correção(ões) SEO a aprovar.", "/admin/growth?tab=autopilot")
         report.update({"status": "completed", "finished_at": now_iso(), "pending_review": ready, "pending_overrides": proposed})
     except Exception as e:  # noqa: BLE001
         logger.exception("autopilot run failed")

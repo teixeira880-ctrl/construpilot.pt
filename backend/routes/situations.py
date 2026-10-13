@@ -32,9 +32,9 @@ async def _base_doc(marche_id: str, user: dict) -> dict:
     doc = await db.pro_documents.find_one(
         {"doc_id": marche_id, "user_id": _uid(user)}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Marché introuvable")
+        raise HTTPException(404, "Empreitada não encontrada")
     if not (doc.get("lines") or []):
-        raise HTTPException(400, "Ce document n'a aucune ligne à facturer")
+        raise HTTPException(400, "Este documento não tem nenhuma linha a faturar")
     return doc
 
 
@@ -114,10 +114,10 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
             inv_lines.append({
                 "designation": f"{bl.get('designation', '')} — avancement {delta:g}% (cumul {cum:g}%)",
                 "unit": "u", "qty": 1, "unit_price_ht": sit_ht,
-                "vat_rate": bl.get("vat_rate", 6), "category": f"Situation n°{seq}"})
+                "vat_rate": bl.get("vat_rate", 6), "category": f'Auto de medição n.º{seq}'})
 
     if not inv_lines:
-        raise HTTPException(400, "Aucun avancement à facturer (delta nul sur toutes les lignes)")
+        raise HTTPException(400, "Nenhuma execução a faturar (variação nula em todas as linhas)")
 
     works_totals = _compute_totals(inv_lines, 0)
     works_ht = works_totals["ht"]
@@ -132,18 +132,17 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
     net_due = round(totals["ttc"] - retention_amount, 2)
     marche_label = base.get("number") or base.get("title") or base["doc_id"]
 
-    note = f"Situation de travaux n°{seq} — marché {marche_label}."
+    note = f'Auto de medição de trabalhos n.º{seq} — empreitada {marche_label}.'
     if deposit_ht:
-        note += f" Acompte déjà versé déduit : -{deposit_ht:.2f} € HT."
+        note += f' Adiantamento já pago deduzido: -{deposit_ht:.2f} € HT.'
     if retention_amount:
-        note += (f" Retenue de garantie {body.retention_pct:g}% : -{retention_amount:.2f} € · "
-                 f"Net à payer : {net_due:.2f} € TTC.")
+        note += (f' Retenção de garantia {body.retention_pct:g}% : -{retention_amount:.2f} € · Líquido a pagar: {net_due:.2f} € TTC.')
 
     number = await _next_number(_uid(user), "invoice")
     inv = {
         "doc_id": "doc_" + secrets.token_hex(6), "user_id": _uid(user),
         "doc_type": "invoice", "number": number,
-        "title": f"Situation n°{seq} — {base.get('title') or marche_label}",
+        "title": f"Auto de medição n.º{seq} — {base.get('title') or marche_label}",
         "client_id": base.get("client_id"),
         "client": await _client_snapshot(base.get("client_id"), user) or base.get("client"),
         "status": "draft", "lines": inv_lines, "notes": note,
@@ -175,7 +174,7 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
     await db.situations.insert_one(dict(sit))
     sit.pop("_id", None)
     await activity.log(user, "situation.create", "situation",
-                       f"Situation n°{seq} — {marche_label}",
+                       f'Auto de medição n.º{seq} — {marche_label}',
                        {"invoice_number": number, "total_ttc": totals["ttc"]})
     return sit
 
@@ -185,7 +184,7 @@ async def delete_situation(situation_id: str, user=Depends(current_user)):
     sit = await db.situations.find_one(
         {"situation_id": situation_id, "user_id": _uid(user)}, {"_id": 0})
     if not sit:
-        raise HTTPException(404, "Situation introuvable")
+        raise HTTPException(404, "Auto de medição não encontrado")
     await db.situations.delete_one({"situation_id": situation_id, "user_id": _uid(user)})
     if sit.get("invoice_doc_id"):
         await db.pro_documents.delete_one(
@@ -202,7 +201,7 @@ async def situation_pdf(situation_id: str, user=Depends(current_user)):
     sit = await db.situations.find_one(
         {"situation_id": situation_id, "user_id": _uid(user)}, {"_id": 0})
     if not sit:
-        raise HTTPException(404, "Situation introuvable")
+        raise HTTPException(404, "Auto de medição não encontrado")
     base = await db.pro_documents.find_one(
         {"doc_id": sit.get("marche_id"), "user_id": _uid(user)}, {"_id": 0, "client": 1})
     branding = await _resolve_branding(user["user_id"])
@@ -221,7 +220,7 @@ async def situation_certificate(situation_id: str, user=Depends(current_user)):
     sit = await db.situations.find_one(
         {"situation_id": situation_id, "user_id": _uid(user)}, {"_id": 0})
     if not sit:
-        raise HTTPException(404, "Situation introuvable")
+        raise HTTPException(404, "Auto de medição não encontrado")
     base = await db.pro_documents.find_one(
         {"doc_id": sit.get("marche_id"), "user_id": _uid(user)}, {"_id": 0, "client": 1})
     branding = await _resolve_branding(user["user_id"])
@@ -247,7 +246,7 @@ async def marche_summary(marche_id: str, user=Depends(current_user)):
         billed = round(contract * pct / 100, 2)
         total_contract += contract
         total_billed += billed
-        lines.append({"designation": bl.get("designation", f"Lot {i+1}"),
+        lines.append({"designation": bl.get("designation", f'Lote {i + 1}'),
                       "contract_ht": contract, "cumul_pct": pct,
                       "billed_ht": billed, "remaining_ht": round(contract - billed, 2)})
 
@@ -355,20 +354,17 @@ async def remind_retention(marche_id: str, user=Depends(current_user)):
     client = base.get("client") or {}
     email = client.get("email")
     if not email:
-        raise HTTPException(400, "Aucun e-mail client sur ce marché.")
+        raise HTTPException(400, "Nenhum e-mail de cliente nesta empreitada.")
     sits = await db.situations.find(
         {"user_id": _uid(user), "marche_id": marche_id, "retention_amount": {"$gt": 0}},
         {"_id": 0, "retention_amount": 1}).to_list(500)
     held = round(sum(s.get("retention_amount", 0) for s in sits), 2)
     label = base.get("number") or base.get("title") or marche_id
     due = base.get("retention_release_due") or "—"
-    html = (f"<p>Bonjour,</p><p>La retenue de garantie du marché <b>{label}</b> "
-            f"d'un montant de <b>{held:.2f} €</b> arrive à échéance de libération le <b>{due}</b>.</p>"
-            f"<p>Nous vous remercions de bien vouloir procéder à sa libération.</p>"
-            f"<p>Cordialement.</p>")
+    html = (f'<p>Exmos. Senhores,</p><p>A retenção de garantia da empreitada <b>{label}</b> no montante de <b>{held:.2f} €</b> atinge a data de libertação em <b>{due}</b>.</p><p>Agradecemos que procedam à sua libertação.</p><p>Com os melhores cumprimentos.</p>')
     sent = 0
     try:
-        await emailer.send_email(email, f"Libération de retenue de garantie — {label}", html)
+        await emailer.send_email(email, f'Libertação da retenção de garantia — {label}', html)
         sent = 1
     except Exception:
         sent = 0
@@ -400,11 +396,9 @@ async def run_retention_reminders() -> int:
             continue
         label = m.get("number") or m.get("title") or m["doc_id"]
         due = m.get("retention_release_due")
-        html = (f"<p>Bonjour,</p><p>La retenue de garantie du marché <b>{label}</b> "
-                f"({held:.2f} €) arrive à échéance de libération le <b>{due}</b>.</p>"
-                f"<p>Merci de bien vouloir procéder à sa libération.</p><p>Cordialement.</p>")
+        html = (f'<p>Exmos. Senhores,</p><p>A retenção de garantia da empreitada <b>{label}</b> ({held:.2f} €) atinge a data de libertação em <b>{due}</b>.</p><p>Agradecemos que procedam à sua libertação.</p><p>Com os melhores cumprimentos.</p>')
         try:
-            await emailer.send_email(email, f"Échéance de retenue de garantie — {label}", html)
+            await emailer.send_email(email, f'Prazo da retenção de garantia — {label}', html)
             await db.pro_documents.update_one(
                 {"doc_id": m["doc_id"]}, {"$set": {"retention_reminded_at": _now()}})
             sent += 1
@@ -435,7 +429,7 @@ def _prorata_view(base: dict, cfg: dict) -> dict:
         lot_ht = round((l.get("qty") or 0) * (l.get("unit_price_ht") or 0), 2)
         share_pct = round(lot_ht / total_ht * 100, 2) if total_ht else 0
         participants.append({
-            "designation": l.get("designation", f"Lot {i+1}"),
+            "designation": l.get("designation", f'Lote {i + 1}'),
             "lot_ht": lot_ht, "share_pct": share_pct,
             "share_amount": round(pot * share_pct / 100, 2),
         })
@@ -505,7 +499,7 @@ async def create_dgd(body: DgdIn, user=Depends(current_user)):
     """Génère la facture de solde (décompte général définitif) du marché."""
     base = await _base_doc(body.marche_id, user)
     if base.get("dgd_doc_id"):
-        raise HTTPException(400, "Un décompte général définitif existe déjà pour ce marché")
+        raise HTTPException(400, "Já existe uma conta final para esta empreitada")
     recap = await _dgd_recap(body.marche_id, user)
     sits = await db.situations.find(
         {"user_id": _uid(user), "marche_id": body.marche_id}, {"_id": 0}).sort("seq", 1).to_list(500)
@@ -521,10 +515,10 @@ async def create_dgd(body: DgdIn, user=Depends(current_user)):
             continue
         q = round(qty * left_pct / 100, 4)
         works_ht = round(works_ht + q * pu, 2)
-        lines.append({"designation": f"{bl.get('designation', f'Poste {i + 1}')} — solde ({left_pct:g}%)",
+        lines.append({"designation": f"{bl.get('designation', f'Artigo {i + 1}')} — solde ({left_pct:g}%)",
                       "description": "", "unit": bl.get("unit") or "u", "qty": q,
                       "unit_price_ht": pu, "vat_rate": float(bl.get("vat_rate") or 0),
-                      "category": "Solde de marché"})
+                      "category": "Saldo da empreitada"})
 
     dep = await deposit_state(_uid(user), body.marche_id)
     deposit_ht = 0.0
@@ -534,29 +528,28 @@ async def create_dgd(body: DgdIn, user=Depends(current_user)):
 
     held = recap["totals"]["retention_held"]
     if body.release_retention and held > 0:
-        lines.append({"designation": "Libération de la retenue de garantie",
-                      "description": "Retenue conservée sur les situations, libérée au DGD",
+        lines.append({"designation": "Libertação da retenção de garantia",
+                      "description": "Retenção mantida nos autos de medição, libertada na conta final",
                       "unit": "forfait", "qty": 1, "unit_price_ht": held, "vat_rate": 0,
-                      "category": "Retenue de garantie"})
+                      "category": "Retenção de garantia"})
     if not lines:
-        raise HTTPException(400, "Rien à facturer : marché soldé et retenue déjà libérée")
+        raise HTTPException(400, "Nada a faturar: empreitada liquidada e retenção já libertada")
 
     totals = _compute_totals(lines, 0)
     number = await _next_number(_uid(user), "invoice")
     marche_label = base.get("number") or base.get("title") or body.marche_id
-    notes = [f"Décompte général définitif du marché {marche_label}.",
-             f"Travaux du marché : {recap['totals']['contract_ht']:.2f} € HT — "
-             f"déjà facturé : {recap['totals']['billed_ht']:.2f} € HT."]
+    notes = [f'Conta final da empreitada {marche_label}.',
+             f"Trabalhos da empreitada: {recap['totals']['contract_ht']:.2f} € s/ IVA — já faturado: {recap['totals']['billed_ht']:.2f} € HT."]
     if deposit_ht:
-        notes.append(f"Acompte déjà versé déduit : -{deposit_ht:.2f} € HT.")
+        notes.append(f'Adiantamento já pago deduzido: -{deposit_ht:.2f} € HT.')
     if body.release_retention and held:
-        notes.append(f"Retenue de garantie libérée : {held:.2f} €.")
+        notes.append(f'Retenção de garantia libertada: {held:.2f} €.')
     elif held:
-        notes.append(f"Retenue de garantie détenue : {held:.2f} € (libérable à l'échéance légale).")
+        notes.append(f'Retenção de garantia detida: {held:.2f} € (libertável no prazo legal).')
 
     inv = {
         "doc_id": "doc_" + secrets.token_hex(6), "user_id": _uid(user), "doc_type": "invoice",
-        "number": number, "title": f"Décompte général définitif — {marche_label}",
+        "number": number, "title": f'Conta final — {marche_label}',
         "client_id": base.get("client_id"),
         "client": await _client_snapshot(base.get("client_id"), user) or base.get("client"),
         "status": "draft", "lines": lines, "notes": "\n".join(notes)[:3000],
@@ -587,7 +580,7 @@ async def cancel_dgd(marche_id: str, user=Depends(current_user)):
     base = await _base_doc(marche_id, user)
     doc_id = base.get("dgd_doc_id")
     if not doc_id:
-        raise HTTPException(404, "Aucun décompte général à annuler")
+        raise HTTPException(404, "Nenhuma conta final a anular")
     await db.pro_documents.delete_one({"doc_id": doc_id, "user_id": _uid(user)})
     await db.pro_documents.update_one({"doc_id": marche_id, "user_id": _uid(user)},
                                      {"$unset": {"dgd_doc_id": "", "dgd_at": ""}})
@@ -605,4 +598,4 @@ async def dgd_pdf(marche_id: str, user=Depends(current_user)):
     pdf = build_dgd_pdf(recap, branding, (recap.get("marche") or {}).get("client"))
     label = (recap.get("marche") or {}).get("number") or marche_id
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="dgd-{label}.pdf"'})
+                    headers={"Content-Disposition": f'attachment; filename="conta-final-{label}.pdf"'})

@@ -28,7 +28,7 @@ async def get_job(job_id: str, user=Depends(current_user)):
 async def cancel_job(job_id: str, user=Depends(current_user)):
     job = await owned_job(job_id, user)
     if job["status"] == "committing":
-        raise HTTPException(409, "Enregistrement du résultat en cours ; il sera disponible dans quelques secondes")
+        raise HTTPException(409, "Registo do resultado em curso; ficará disponível dentro de alguns segundos")
     if job["status"] in ("queued", "running"):
         fields = {"cancel_requested": True, "updated_at": now().isoformat()}
         if job["status"] == "queued":
@@ -52,7 +52,7 @@ class DossierRevisionIn(BaseModel):
     @classmethod
     def finite_changes(cls, values):
         if len(values) > 1500 or any(v is not None and (not math.isfinite(v) or abs(v) > 1e12) for v in values.values()):
-            raise ValueError("Valeurs hors limites")
+            raise ValueError("Valores fora dos limites")
         return values
 
 
@@ -62,20 +62,20 @@ async def revise_dossier(plan_id: str, body: DossierRevisionIn, user=Depends(cur
     p = await _plan_and_study(plan_id, user, write=True)
     old = p["pc_study"]
     if old.get("schema_version") != VERSION:
-        raise HTTPException(409, "Relancez cette ancienne étude pour utiliser les mesures sourcées")
+        raise HTTPException(409, "Relance este estudo antigo para utilizar as medições fundamentadas")
     if old.get("revision") != body.expected_revision:
-        raise HTTPException(409, "L’étude a changé ; rechargez avant de corriger")
+        raise HTTPException(409, "O estudo mudou; recarregue antes de corrigir")
     spec = copy.deepcopy(old["spec"])
     parameters = {x["id"]: x for x in spec.get("parameters", [])}
     items = {x["id"]: x for x in spec.get("items", [])}
     if not set(body.parameter_changes).issubset(parameters) or not set(body.price_changes).issubset(items) or not (set(body.reviewed_parameters) | set(body.review_states)).issubset(parameters):
-        raise HTTPException(422, "Mesure ou poste inconnu")
+        raise HTTPException(422, "Medição ou artigo desconhecido")
     for key, value in body.parameter_changes.items():
         if parameters[key].get("expression"):
-            raise HTTPException(422, "Corrigez les données de la formule, pas son résultat dérivé")
+            raise HTTPException(422, "Corrija os dados da fórmula, não o seu resultado derivado")
         previous = parameters[key].get("value")
         parameters[key].update(value=value, status="manual", reviewed=False, conflict=False,
-            note=f"Valeur corrigée par l’utilisateur (précédente : {previous}). " + str(parameters[key].get("note") or "")[:1200])
+            note=f'Valor corrigido pelo utilizador (anterior: {previous}). ' + str(parameters[key].get("note") or "")[:1200])
     for key in body.reviewed_parameters:
         parameters[key]["reviewed"] = True
     for key, value in body.review_states.items():
@@ -85,7 +85,7 @@ async def revise_dossier(plan_id: str, body: DossierRevisionIn, user=Depends(cur
     saved = dict(old.get("settings_snapshot") or {})
     if body.country is not None:
         if body.country not in ("FR", "PT"):
-            raise HTTPException(422, "Pays fiscal non pris en charge")
+            raise HTTPException(422, "País fiscal não suportado")
         from core.fiscal import policy_for
         saved.update(country=body.country, vat_rate=policy_for(body.country)["default_rate"], vat_assumed=True)
     if body.vat_rate is not None:
@@ -99,9 +99,9 @@ async def revise_dossier(plan_id: str, body: DossierRevisionIn, user=Depends(cur
     query = {"plan_id": plan_id, "user_id": p["user_id"], "pc_study.revision": body.expected_revision, "updated_at": p.get("updated_at")}
     result = await db.plans_takeoff.update_one(query, {"$set": {"pc_study": updated, "updated_at": now().isoformat()}})
     if not result.matched_count:
-        raise HTTPException(409, "Le dossier a changé pendant la correction")
+        raise HTTPException(409, "O processo mudou durante a correção")
     await db.pc_study_history.insert_one({"plan_id": plan_id, "user_id": p["user_id"], "saved_at": now().isoformat(),
-        "source": "révision des mesures/prix", "study": old, "ht": old["totals"]["ht"], "ttc": old["totals"]["ttc"]})
+        "source": "revisão das medições/preços", "study": old, "ht": old["totals"]["ht"], "ttc": old["totals"]["ttc"]})
     return updated
 
 
@@ -118,9 +118,9 @@ async def create_quote(plan_id: str, body: DossierQuoteIn, user=Depends(current_
     p = await _plan_and_study(plan_id, user)
     study = p["pc_study"]
     if study.get("schema_version") != VERSION or study.get("revision") != body.expected_revision:
-        raise HTTPException(409, "Rechargez la version actuelle de l’étude")
+        raise HTTPException(409, "Recarregue a versão atual do estudo")
     if study["totals"].get("partial") or study["totals"].get("ttc") is None:
-        raise HTTPException(422, "Complétez les quantités, les prix et la TVA avant de créer le devis commercial")
+        raise HTTPException(422, "Complete as quantidades, os preços e o IVA antes de criar o orçamento comercial")
     # Snapshot is reusable, never overwritten when the study or editor is changed.
     ident = "doc_"+fingerprint([user["user_id"],plan_id,study["revision"]])[:24]
     lines=[]
@@ -128,7 +128,7 @@ async def create_quote(plan_id: str, body: DossierQuoteIn, user=Depends(current_
         if not r["included"]:
             continue
         lines.append({"line_id": r["id"], "kind": "line", "line_kind": "ouvrage", "designation": r["designation"],
-            "description": r["detail"]+f"\nMétré : {r['expression']} [{r['quantity_status']}]", "qty": r["qty"],
+            "description": r["detail"]+f"\nMedição: {r['expression']} [{r['quantity_status']}]", "qty": r["qty"],
             "unit": r["unit"], "unit_price_ht": r["unit_price"], "vat_rate": study["totals"]["tva_rate"]*100,
             "vat_assumed": study.get("settings_snapshot",{}).get("vat_assumed",True), "discount_pct": 0,
             "cost_price_ht": 0, "cost_confirmed_zero": False, "category": r["group"],
@@ -140,7 +140,7 @@ async def create_quote(plan_id: str, body: DossierQuoteIn, user=Depends(current_
         "doc_id": ident, "user_id": user["user_id"], "doc_type": "quote", "status": "draft", "signed": False,
         "title": (study.get("project") or {}).get("title") or p.get("filename"), "lines": lines, "totals": totals,
         "number": None, "client_id": None, "client": None, "client_name": "", "deposit_pct": 0,
-        "payment_terms": "", "notes": "Hypothèses :\n"+"\n".join(study.get("assumptions", []))+"\nExclusions :\n"+"\n".join(study.get("exclusions", [])), "lang": "fr", "source": "construction_study",
+        "payment_terms": "", "notes": "Hipóteses:\n"+"\n".join(study.get("assumptions", []))+"\nExclusions :\n"+"\n".join(study.get("exclusions", [])), "lang": "fr", "source": "construction_study",
         "source_plan_id": plan_id, "source_study_revision": study["revision"], "study_dossier": study,
         "study_lines_hash": quote_lines_hash(lines), "project_address": (study.get("project") or {}).get("address") or "",
         "created_at": timestamp, "updated_at": timestamp, "assistant_review_required": True}}, upsert=True)

@@ -14,13 +14,13 @@ import math
 from engines.structuro_check import DISCLAIMER, util_status
 
 VERSION = "ec7-bearing-0.1.0"
-SOURCE = "EN 1997-1 Annexe D (méthodologie publique) — approche DA2 AN FR par défaut — à vérifier"
+SOURCE = "NP EN 1997-1 Anexo D (metodologia pública) — Abordagem de Cálculo 1 do Anexo Nacional português por omissão — a verificar"
 DEFAULTS = {"design_approach": "DA2", "gamma_Rv": 1.4, "gamma_phi": 1.0, "gamma_c": 1.0, "gamma_cu": 1.0}
 
 
 def catalog() -> dict:
     return {"version": VERSION, "defaults": DEFAULTS, "modes": ["drained", "undrained"],
-            "note": "Semelle rectangulaire, charge verticale centrée, Annexe D. " + DISCLAIMER}
+            "note": "Sapata retangular, carga vertical centrada, Anexo D. " + DISCLAIMER}
 
 
 def bearing(mode: str, b_m: float, l_m: float, *, q_ed_kpa: float = 0.0, d_m: float = 0.0,
@@ -28,19 +28,19 @@ def bearing(mode: str, b_m: float, l_m: float, *, q_ed_kpa: float = 0.0, d_m: fl
             gamma_Rv: float = 1.4, gamma_phi: float = 1.0, gamma_c: float = 1.0,
             gamma_cu: float = 1.0) -> dict:
     if b_m <= 0 or l_m <= 0:
-        raise ValueError("Dimensions de semelle invalides")
+        raise ValueError("Dimensões de sapata inválidas")
     B, L = min(b_m, l_m), max(b_m, l_m)
     q_ov = gamma_soil * d_m
 
     if mode == "drained":
         missing = []
         if phi_deg <= 0:
-            missing.append("angle de frottement φ'")
+            missing.append("ângulo de atrito φ\'")
         if gamma_soil <= 0:
-            missing.append("poids volumique du sol γ")
+            missing.append("peso volúmico do solo γ")
         if missing:
             return {"version": VERSION, "mode": mode, "status": "missing",
-                    "message": "Données de sol manquantes : " + ", ".join(missing), "source": SOURCE}
+                    "message": "Dados de solo em falta: " + ", ".join(missing), "source": SOURCE}
         phi_d = math.atan(math.tan(math.radians(phi_deg)) / gamma_phi)
         c_d = c_kpa / gamma_c
         Nq = math.exp(math.pi * math.tan(phi_d)) * math.tan(math.pi / 4 + phi_d / 2) ** 2
@@ -54,19 +54,19 @@ def bearing(mode: str, b_m: float, l_m: float, *, q_ed_kpa: float = 0.0, d_m: fl
                    "sc": round(sc, 3), "sq": round(sq, 3), "sgamma": round(sg, 3),
                    "phi_d_deg": round(math.degrees(phi_d), 2), "c_d_kpa": round(c_d, 2),
                    "q_overburden_kpa": round(q_ov, 2)}
-        formula = "R/A'=c'·Nc·sc+q'·Nq·sq+0.5·γ·B·Nγ·sγ (EN 1997-1 D.4, drainé)"
+        formula = "R/A\'=c\'·Nc·sc+q\'·Nq·sq+0.5·γ·B·Nγ·sγ (NP EN 1997-1 D.4, drenado)"
     elif mode == "undrained":
         if cu_kpa <= 0:
             return {"version": VERSION, "mode": mode, "status": "missing",
-                    "message": "Donnée de sol manquante : cohésion non drainée cu", "source": SOURCE}
+                    "message": "Dado de solo em falta: coesão não drenada cu", "source": SOURCE}
         cu_d = cu_kpa / gamma_cu
         sc = 1 + 0.2 * (B / L)
         R_A = (math.pi + 2) * cu_d * sc + q_ov
         factors = {"(pi+2)": round(math.pi + 2, 3), "sc": round(sc, 3),
                    "cu_d_kpa": round(cu_d, 2), "q_overburden_kpa": round(q_ov, 2)}
-        formula = "R/A'=(π+2)·cu·sc+q (EN 1997-1 D.3, non drainé)"
+        formula = "R/A\'=(π+2)·cu·sc+q (NP EN 1997-1 D.3, não drenado)"
     else:
-        raise ValueError("Mode : drained ou undrained")
+        raise ValueError("Modo: drained ou undrained")
 
     q_Rd = R_A / gamma_Rv
     ratio = q_ed_kpa / q_Rd if q_Rd > 0 else None
@@ -90,12 +90,12 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
         p = (ee.get("uls") or {}).get("pressure_kpa")
         if not p:
             rows.append({"id": rid, "status": "no_envelope",
-                         "message": "Générez d'abord les combinaisons EN 1990 (pression dimensionnante manquante)."})
+                         "message": "Gere primeiro as combinações NP EN 1990 (pressão condicionante em falta)."})
             continue
         b, l = el.get("width_m"), el.get("length_m")
         if not b or not l:
             rows.append({"id": rid, "status": "missing_section",
-                         "message": "Longueur et largeur de semelle requises dans le modèle."})
+                         "message": "Comprimento e largura da sapata obrigatórios no modelo."})
             continue
         res = bearing(opts.get("mode", "drained"), b, l, q_ed_kpa=p["value"],
                       d_m=float(opts.get("d_m", 0)), gamma_soil=float(opts.get("gamma_soil", 0)),

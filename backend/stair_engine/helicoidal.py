@@ -48,14 +48,14 @@ def compute_helicoidal(inp: HelicoidalInput, norms: StairNorms = DTU_36_3_FR) ->
     if inp.outer_radius_mm <= inp.inner_radius_mm + 300:
         alerts_all.append(Alert(
             level="red", code="STAIR_WIDTH_TOO_SMALL",
-            message_fr=f"Largeur d'escalier {inp.outer_radius_mm - inp.inner_radius_mm:.0f} mm < 300 mm minimum.",
+            message_fr=f'Largura da escada {inp.outer_radius_mm - inp.inner_radius_mm:.0f} mm < 300 mm minimum.',
         ))
 
     stair_width_mm = inp.outer_radius_mm - inp.inner_radius_mm
 
     n_steps, h_mm, in_optimal = find_optimal_num_steps(inp.floor_height_mm, norms)
     if n_steps <= 0:
-        return _dead("Hauteur invalide.")
+        return _dead("Altura inválida.")
 
     angle_per_step_deg = inp.sweep_angle_deg / n_steps
     angle_per_step_rad = math.radians(angle_per_step_deg)
@@ -75,32 +75,32 @@ def compute_helicoidal(inp: HelicoidalInput, norms: StairNorms = DTU_36_3_FR) ->
     if tread_inner < 100:
         alerts_all.append(Alert(
             level="red", code="HELICOIDAL_INNER_TREAD_TOO_SMALL",
-            message_fr=f"Giron intérieur {tread_inner:.0f} mm < 100 mm minimum. Augmentez le rayon du fût central.",
+            message_fr=f'Cobertor interior {tread_inner:.0f} mm < 100 mm mínimo. Aumente o raio do núcleo central.',
             metric="tread_inner_mm", value=tread_inner, threshold=100,
         ))
     if tread_walkline < 220:
         alerts_all.append(Alert(
             level="red", code="HELICOIDAL_WALKLINE_TREAD_TOO_SMALL",
-            message_fr=f"Giron ligne de foulée {tread_walkline:.0f} mm < 220 mm minimum absolu.",
+            message_fr=f'Cobertor na linha de passo {tread_walkline:.0f} mm < 220 mm minimum absolu.',
             metric="tread_walkline_mm", value=tread_walkline, threshold=220,
         ))
     elif tread_walkline < 240:
         alerts_all.append(Alert(
             level="orange", code="HELICOIDAL_WALKLINE_TREAD_TOO_SMALL",
-            message_fr=f"Giron ligne de foulée {tread_walkline:.0f} mm < 240 mm confort DTU.",
+            message_fr=f'Cobertor na linha de passo {tread_walkline:.0f} mm < 240 mm confort DTU.',
             metric="tread_walkline_mm", value=tread_walkline, threshold=240,
         ))
     elif 250 <= tread_walkline <= 300:
         alerts_all.append(Alert(
             level="green", code="HELICOIDAL_WALKLINE_TREAD_OPTIMAL",
-            message_fr=f"Giron ligne de foulée {tread_walkline:.0f} mm : confort optimal.",
+            message_fr=f'Cobertor na linha de passo {tread_walkline:.0f} mm : confort optimal.',
         ))
 
     # Autres checks DTU
     if not in_optimal:
         alerts_all.append(Alert(
             level="orange", code="RISER_HEIGHT_NON_OPTIMAL",
-            message_fr=f"Hauteur de marche {h_mm:.1f} mm hors plage optimale.",
+            message_fr=f'Altura do espelho {h_mm:.1f} mm fora do intervalo ótimo.',
         ))
     ra = A.check_riser(h_mm, norms)
     if ra:
@@ -119,7 +119,7 @@ def compute_helicoidal(inp: HelicoidalInput, norms: StairNorms = DTU_36_3_FR) ->
         if headroom_mm < norms.headroom_min_mm:
             alerts_all.append(Alert(
                 level="red", code="HELICOIDAL_HEADROOM_INSUFFICIENT",
-                message_fr=f"Échappée {headroom_mm:.0f} mm entre tours < 1900 mm (DTU).",
+                message_fr=f'Altura livre {headroom_mm:.0f} mm entre voltas < 1900 mm (regras de boa prática).',
                 metric="headroom_mm", value=headroom_mm, threshold=norms.headroom_min_mm,
             ))
 

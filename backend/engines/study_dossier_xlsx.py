@@ -32,19 +32,19 @@ def build_dossier_xlsx(study):
         ws.auto_filter.ref = ws.dimensions
         return ws
 
-    sheet('Devis', ['Lot','Désignation','Détail','Unité','Quantité','Statut','PU HT','Total HT','Origine du prix','Inclus'],
+    sheet("Orçamento", ["Lote","Designação","Detalhe","Un.","Quantidade","Estado","PU s/ IVA","Total s/ IVA","Origem do preço","Incluído"],
           [24,44,60,9,14,10,15,17,26,10],
           [[r['group'],r['designation'],r['detail'],r['unit'],r['qty'],r['quantity_status'],r['unit_price'],r['total'],r['price_source'],r['included']] for r in study['items']])
-    sheet('Calculs', ['Ouvrage','Formule','Résultat','Unité','Statut','Erreur'], [44,80,16,10,10,60],
+    sheet("Cálculos", ["Artigo","Planta","Resultado","Un.","Estado","Erro"], [44,80,16,10,10,60],
           [[r['designation'],r['expression'],r['qty'],r['unit'],r['quantity_status'],r.get('error') or ''] for r in study['items']])
-    sheet('Mesures et sources', ['Identifiant','Mesure','Valeur','Unité','Formule','Contrôlée','Source','Note'], [28,42,16,10,65,12,70,60],
+    sheet("Medições e fontes", ["Identificador","Medição","Valor","Un.","Planta","Controlada","Fonte","Nota"], [28,42,16,10,65,12,70,60],
           [[p['id'],p.get('label') or p['id'],p.get('value'),p.get('unit'),p.get('expression') or '',bool(p.get('reviewed')),
             '; '.join(f"p. {s['page']} : {s.get('text','')}" for s in p.get('sources',[])),p.get('note') or ''] for p in study['spec']['parameters']])
     t = study['totals']
-    sheet('Synthèse', ['Indicateur','Valeur'], [55,70],
-          [['HT partiel' if t['partial'] else 'HT',t['ht']],['TVA',t['tva']],['TTC',t['ttc']],
-           ['TVA (%)',t['tva_rate']*100 if t['tva_rate'] is not None else None],['Révision',study['revision']],
-           *[['Point à contrôler',w] for w in study['warnings']], *[['Hypothèse',x] for x in study['assumptions']],
+    sheet("Síntese", ["Indicador","Valor"], [55,70],
+          [["Parcial s/ IVA" if t['partial'] else 'HT',t['ht']],["IVA",t['tva']],["c/ IVA",t['ttc']],
+           ['TVA (%)',t['tva_rate']*100 if t['tva_rate'] is not None else None],["Revisão",study['revision']],
+           *[["Ponto a controlar",w] for w in study['warnings']], *[["Hipótese",x] for x in study['assumptions']],
            *[['Exclusion',x] for x in study['exclusions']]])
     out = BytesIO()
     wb.save(out)

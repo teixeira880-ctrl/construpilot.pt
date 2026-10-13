@@ -39,7 +39,7 @@ async def verify_url(client: httpx.AsyncClient, url: str) -> dict:
     """Test réel : statut HTTP, type de contenu, titre et date détectés. Ne suit que des URL http(s)."""
     out = {"url": url, "ok": False, "status": None, "title": None, "date": None, "content_type": None}
     if not url.startswith(("http://", "https://")):
-        out["error"] = "URL non http"; return out
+        out["error"] = "URL não http"; return out
     try:
         r = await client.get(url, headers={"User-Agent": UA, "Accept": "text/html,application/pdf,*/*;q=0.8"}, follow_redirects=True)
         out["status"] = r.status_code
@@ -61,7 +61,7 @@ async def verify_url(client: httpx.AsyncClient, url: str) -> dict:
                 out["date"] = dm.group(0) if dm else None
             text = re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I))
             if len(text.split()) < 60:
-                out["error"] = "page quasi vide (rendu JS ?)"; return out
+                out["error"] = "página quase vazia (renderização JS?)"; return out
         elif ct != "application/pdf":
             out["error"] = f"type {ct or 'inconnu'}"; return out
         out["ok"] = True
@@ -74,12 +74,8 @@ async def _perplexity_sources(topic: str, lang: str, n: int = 8) -> tuple[list[d
     from perplexity import AsyncPerplexity
     client = AsyncPerplexity(api_key=os.environ["PERPLEXITY_API_KEY"], max_retries=1, timeout=120.0)
     trusted = ", ".join(TRUSTED[lang][:12])
-    instructions = ("Tu es documentaliste pour un média professionnel du bâtiment. Tu réponds UNIQUEMENT en JSON strict : "
-                    '{"sources":[{"url":str,"title":str,"publisher":str,"date":str|null,"why":str}]}. '
-                    f"Priorité absolue aux sources officielles ou institutionnelles ({trusted}), puis fédérations professionnelles, puis presse spécialisée. "
-                    "Exclure blogs commerciaux, forums, pages génériques. Chaque URL doit être une page précise (pas une page d'accueil). Sources récentes (moins de 24 mois) sauf textes réglementaires de référence.")
-    q = (f"Trouve {n} sources fiables et précises pour rédiger un article {'en français (France)' if lang == 'fr' else 'em português (Portugal)'} sur : « {topic} ». "
-         "Donne l'URL exacte de chaque page.")
+    instructions = (f'És documentalista de um meio de comunicação profissional da construção. Respondes APENAS em JSON estrito: {{"sources":[{{"url":str,"title":str,"publisher":str,"date":str|null,"why":str}}]}}. Prioridade absoluta às fontes oficiais ou institucionais ({trusted}), depois associações profissionais, depois imprensa especializada. Excluir blogues comerciais, fóruns, páginas genéricas. Cada URL deve ser uma página precisa (não uma página inicial). Fontes recentes (menos de 24 meses) exceto textos regulamentares de referência.')
+    q = (f"Encontra {n} fontes fiáveis e precisas para redigir um artigo {('em francês (França)' if lang == 'fr' else 'em português (Portugal)')} sobre: «{topic}». Indica o URL exato de cada página.")
     r = await client.responses.create(input=q, instructions=instructions, tools=[{"type": "web_search", "search_context_size": "medium", "max_results": 15}],
                                       store=False, max_output_tokens=1500, preset="fast")
     d = r.model_dump()
@@ -93,7 +89,7 @@ async def _perplexity_sources(topic: str, lang: str, n: int = 8) -> tuple[list[d
         pass
     for item in d.get("output") or []:
         if item.get("type") == "search_results":
-            found.extend({"url": x.get("url"), "title": x.get("title"), "publisher": _domain(x.get("url") or ""), "date": x.get("date"), "why": "résultat de recherche", "from_search": True}
+            found.extend({"url": x.get("url"), "title": x.get("title"), "publisher": _domain(x.get("url") or ""), "date": x.get("date"), "why": "resultado de pesquisa", "from_search": True}
                          for x in item.get("results") or [])
     return found, cost, d.get("model")
 

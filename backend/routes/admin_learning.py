@@ -39,7 +39,7 @@ async def list_examples() -> dict:
 async def preview(scope: str = "devis") -> dict:
     """Aperçu du bloc d'exemples injecté dans le prompt pour une portée donnée."""
     if scope not in learning.SCOPES:
-        raise HTTPException(400, "Portée inconnue")
+        raise HTTPException(400, "Âmbito desconhecido")
     text = await learning.learning_block_for_scope(scope)
     return {"scope": scope, "preview": text, "empty": not text.strip()}
 
@@ -62,7 +62,7 @@ async def create_bulk(body: BulkBody, admin=Depends(admin_user)) -> dict:
     items = [{**it.model_dump(), "approved": body.approved} for it in body.items]
     created = await learning.create_many(items, body.scope, who)
     if not created:
-        raise HTTPException(400, "Aucun exemple valide (contenu vide).")
+        raise HTTPException(400, "Nenhum exemplo válido (conteúdo vazio).")
     return {"ok": True, "created": len(created), "examples": created}
 
 
@@ -72,13 +72,13 @@ async def import_file(file: UploadFile = File(...), scope: str = "devis",
     """Importe un fichier (PDF/Excel/CSV/Word/TXT) → un exemple de référence (texte extrait)."""
     raw = await file.read()
     if len(raw) > 15 * 1024 * 1024:
-        raise HTTPException(400, "Fichier trop volumineux (max 15 Mo).")
+        raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 15 MB).")
     try:
         text = learning.extract_file_text(raw, file.filename or "fichier")
     except ValueError as e:
         raise HTTPException(400, str(e))
     if not (text or "").strip():
-        raise HTTPException(400, "Aucun texte exploitable dans le fichier.")
+        raise HTTPException(400, "Nenhum texto utilizável no ficheiro.")
     who = (admin or {}).get("email") or (admin or {}).get("user_id")
     ex = await learning.create_example(
         {"scope": scope, "title": (file.filename or "Import")[:120],
@@ -96,11 +96,11 @@ async def from_document(doc_id: str, admin=Depends(admin_user)) -> dict:
     doc = await db.pro_documents.find_one(
         {"doc_id": doc_id, "user_id": admin["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Devis introuvable")
+        raise HTTPException(404, "Orçamento não encontrado")
     who = (admin or {}).get("email") or (admin or {}).get("user_id")
     ex, already = await learning.create_from_document(doc, who)
     if ex is None:
-        raise HTTPException(400, "Ce devis ne contient aucune ligne exploitable.")
+        raise HTTPException(400, "Este orçamento não contém nenhuma linha utilizável.")
     return {"ok": True, "already": already, "example": ex}
 
 
@@ -114,12 +114,12 @@ async def create_example(body: ExampleBody, admin=Depends(admin_user)) -> dict:
 async def update_example(example_id: str, body: ExamplePatch) -> dict:
     updated = await learning.update_example(example_id, body.model_dump(exclude_none=True))
     if not updated:
-        raise HTTPException(404, "Exemple introuvable")
+        raise HTTPException(404, "Exemplo não encontrado")
     return {"ok": True, "example": updated}
 
 
 @router.delete("/{example_id}")
 async def delete_example(example_id: str) -> dict:
     if not await learning.delete_example(example_id):
-        raise HTTPException(404, "Exemple introuvable")
+        raise HTTPException(404, "Exemplo não encontrado")
     return {"ok": True}

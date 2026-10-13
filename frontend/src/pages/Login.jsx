@@ -48,8 +48,8 @@ export default function Login() {
         const acct = form.account_type || "particulier";
         const isPro = acct === "pro" || acct === "pro_business";
         if (isPro) {
-          if (!form.siret || form.siret.replace(/[ .\-]/g, "").length !== 14) {
-            toast.error("SIRET obrigatório (14 dígitos) para uma conta profissional");
+          if (!form.siret || form.siret.replace(/[ .\-]/g, "").replace(/^PT/i, "").length !== 9) {
+            toast.error("NIF/NIPC obrigatório (9 dígitos) para uma conta profissional");
             setBusy(false); return;
           }
           if (!form.kbis || !form.decennale) {
@@ -289,9 +289,9 @@ export default function Login() {
                   <div className="grid gap-3 rounded-sm border border-primary/30 bg-primary/5 p-3" data-testid="pro-documents-block">
                     <p className="text-xs font-semibold text-primary">Comprovativos profissionais obrigatórios</p>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">N° SIRET (14 dígitos)</Label>
+                      <Label className="text-xs">NIF / NIPC (9 dígitos)</Label>
                       <Input required value={form.siret} onChange={set("siret")} inputMode="numeric"
-                             maxLength={17} placeholder="123 456 789 00012"
+                             maxLength={14} placeholder="501 234 567"
                              data-testid="register-siret-input" className="rounded-sm h-10" />
                     </div>
                     <div className="grid gap-1.5">

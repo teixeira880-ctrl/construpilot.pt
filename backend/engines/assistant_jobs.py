@@ -31,7 +31,7 @@ def public_job(job):
 async def owned_job(job_id, uid):
     job = await db.assistant_jobs.find_one({"job_id": job_id, "user_id": uid}, {"_id": 0})
     if not job:
-        raise HTTPException(404, "Traitement introuvable.")
+        raise HTTPException(404, "Tratamento não encontrado.")
     return job
 
 
@@ -49,10 +49,10 @@ async def enqueue(body, user):
     from routes.assistant import _allowed_doc, _allowed_plan, _allowed_project, _now
     uid = user["user_id"]
     if user.get("active") is False or user.get("company_active") is False:
-        raise HTTPException(403, "Compte désactivé.")
+        raise HTTPException(403, "Conta desativada.")
     conv = await db.assistant_convs.find_one({"conversation_id": body.conversation_id, "user_id": uid}, {"_id": 0})
     if not conv:
-        raise HTTPException(404, "Conversation introuvable.")
+        raise HTTPException(404, "Conversa não encontrada.")
     if conv.get("project_id"):
         await _allowed_project(conv["project_id"], uid)
     body.request_id = body.request_id or uuid.uuid4().hex
@@ -62,10 +62,10 @@ async def enqueue(body, user):
     old = await db.assistant_jobs.find_one({"job_id": ident, "user_id": uid}, {"_id": 0})
     if old:
         if old["payload_hash"] != digest:
-            raise HTTPException(409, "Cet identifiant correspond déjà à une autre demande.")
+            raise HTTPException(409, "Este identificador já corresponde a outro pedido.")
         return public_job(old)
     if await db.assistant_jobs.count_documents({"user_id": uid, "status": {"$in": ["queued", "running"]}}) >= 20:
-        raise HTTPException(429, "20 demandes en attente : attendez la fin d’un traitement.")
+        raise HTTPException(429, "20 pedidos pendentes: aguarde o fim de um tratamento.")
     attached, requested = [], set(body.attachments)
     try:
         for pid in body.plan_ids:
@@ -77,9 +77,9 @@ async def enqueue(body, user):
             if did in requested:
                 attached.append({"doc_id": did, "filename": doc["filename"], "kind": doc["kind"], "mime": doc["mime"]})
     except PermissionError as exc:
-        raise HTTPException(403, "Pièce jointe inaccessible.") from exc
+        raise HTTPException(403, "Anexo inacessível.") from exc
     if not requested.issubset(set(body.plan_ids + body.doc_ids)):
-        raise HTTPException(422, "Une pièce jointe manque dans le contexte.")
+        raise HTTPException(422, "Falta um anexo no contexto.")
     counter = await db.assistant_convs.find_one_and_update({"conversation_id": body.conversation_id, "user_id": uid},
         {"$inc": {"turn_sequence": 1}}, return_document=ReturnDocument.AFTER, projection={"_id": 0, "turn_sequence": 1})
     now = _now()
@@ -91,7 +91,7 @@ async def enqueue(body, user):
     except DuplicateKeyError:
         old = await owned_job(ident, uid)
         if old["payload_hash"] != digest:
-            raise HTTPException(409, "Identifiant déjà utilisé.") from None
+            raise HTTPException(409, "Identificador já utilizado.") from None
         return public_job(old)
     await db.assistant_msgs.update_one({"user_id": uid, "conversation_id": body.conversation_id, "request_id": body.request_id, "role": "user"}, {"$setOnInsert": {
         "message_id": "msg_" + uuid.uuid4().hex, "content": body.text, "attachments": attached, "created_at": now, "turn_seq": job["sequence"]}}, upsert=True)
@@ -137,10 +137,10 @@ async def run_job(job):
     from routes.assistant import MsgIn, _prepare, _run_chat
     user = await db.users.find_one({"user_id": job["user_id"]}, {"_id": 0, "password_hash": 0, "password": 0})
     if not user or user.get("active") is False or user.get("company_active") is False:
-        await _finish(job, "failed", None, "Compte indisponible.")
+        await _finish(job, "failed", None, "Conta indisponível.")
         return
     bind(user)
-    live = {"role": "assistant", "content": "", "actions": [], "sources": [], "status": "Analyse en arrière-plan…"}
+    live = {"role": "assistant", "content": "", "actions": [], "sources": [], "status": "Análise em segundo plano…"}
     state = {"image_running": False, "last_save": 0., "error": None, "completed": False}
 
     async def consume():
@@ -201,7 +201,7 @@ async def run_job(job):
             await db.assistant_msgs.update_many({"user_id": job["user_id"], "request_id": job["request_id"], "role": "user"}, {"$set": {"cancelled": True}})
     except Exception as exc:  # noqa: BLE001 -- queue boundary: persist failure without logging private payloads
         log.error("Assistant job %s failed (%s)", job["job_id"], type(exc).__name__)
-        state["error"] = "Traitement non abouti. Vos pièces et votre demande sont conservées."
+        state["error"] = "Tratamento não concluído. As suas peças e o seu pedido são conservados."
     finally:
         live["status"] = None
         await _finish(job, outcome, dict(live), state["error"])
@@ -213,7 +213,7 @@ async def claim_next(worker):
     now = datetime.now(timezone.utc)
     expired = await db.assistant_jobs.find({"status": "running", "lease_until": {"$lt": now}}, {"_id": 0}).to_list(20)
     for old in expired:
-        await _finish(old, "interrupted", old.get("live"), "Connexion du traitement perdue. Aucun redémarrage automatique pour éviter une action en double.")
+        await _finish(old, "interrupted", old.get("live"), "Ligação do tratamento perdida. Nenhum reinício automático para evitar uma ação em duplicado.")
     await db.assistant_jobs.update_many({"status": "preparing", "created_at": {"$lt": (now - timedelta(minutes=2)).isoformat()}},
         {"$set": {"status": "failed", "error": "Demande non mise en file. Réessayez explicitement."}})
     queued = await db.assistant_jobs.find({"status": "queued"}, {"_id": 0}).sort("created_at", 1).to_list(50)

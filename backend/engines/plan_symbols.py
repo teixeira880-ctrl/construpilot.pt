@@ -8,17 +8,17 @@ import re
 from functools import lru_cache
 
 _PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "symbols_btp.json")
-STRUCTURE_CATS = ("Architecture & ouvertures", "Béton armé & structure", "Cotations, niveaux & repères", "Maçonnerie, isolation & finitions")
+STRUCTURE_CATS = ("Arquitetura e vãos", "Betão armado e estrutura", "Cotagem, níveis e marcas", "Alvenaria, isolamento e acabamentos")
 
 # texte voisin → classe candidate (indicatif ; la légende du plan reste prioritaire)
 LABEL_RULES = [
-    (re.compile(r"^(?:PP|P\.P\.)\s*\d*$", re.I), "Poutre", "repère PP (poutre principale)"),
-    (re.compile(r"^(?:PS|P\.S\.)\s*\d*$", re.I), "Poutre", "repère PS (poutre secondaire)"),
-    (re.compile(r"^L\s*\d+$", re.I), "Longrine", "repère L (longrine)"),
-    (re.compile(r"^S\s*\d+$", re.I), "Semelle filante", "repère S (semelle)"),
-    (re.compile(r"^(\d{2,3})\s*[xX×]\s*(\d{2,3})$"), "SECTION", "section (largeur × hauteur en cm)"),
-    (re.compile(r"^(?:EF|ECS|EU|EV|EP|BECS)$", re.I), "Réseau", "canalisation repérée"),
-    (re.compile(r"^(?:ST)\s*\d+", re.I), "Treillis soudé", "repère STxx"),
+    (re.compile(r"^(?:PP|P\.P\.)\s*\d*$", re.I), "Poutre", "marca PP (viga principal)"),
+    (re.compile(r"^(?:PS|P\.S\.)\s*\d*$", re.I), "Poutre", "marca PS (viga secundária)"),
+    (re.compile(r"^L\s*\d+$", re.I), "Longrine", "marca L (viga de fundação)"),
+    (re.compile(r"^S\s*\d+$", re.I), "Semelle filante", "marca S (sapata)"),
+    (re.compile(r"^(\d{2,3})\s*[xX×]\s*(\d{2,3})$"), "SECTION", "secção (largura × altura em cm)"),
+    (re.compile(r"^(?:EF|ECS|EU|EV|EP|BECS)$", re.I), "Rede", "canalização identificada"),
+    (re.compile(r"^(?:ST)\s*\d+", re.I), "Malha eletrossoldada", "marca STxx"),
 ]
 
 
@@ -31,12 +31,12 @@ def library() -> dict:
 def prompt_block(categories: tuple[str, ...] = STRUCTURE_CATS, max_chars: int = 6000) -> str:
     """Bloc texte compact du référentiel (catégories structure par défaut) pour les prompts IA."""
     lib = library()
-    lines = [f"RÉFÉRENTIEL SYMBOLES DE PLANS BTP ConstruPilot (v{lib['version']}). Priorité des sources : "
-             + " > ".join(lib["priority_of_sources"]) + f". {lib['safety_rule']} Pour chaque ouvrage identifié, renvoyer : "
+    lines = [f"REFERENCIAL DE SÍMBOLOS DE PLANTAS DE CONSTRUÇÃO ConstruPilot (v{lib['version']}). Prioridade das fontes: "
+             + " > ".join(lib["priority_of_sources"]) + f". {lib['safety_rule']} Para cada elemento identificado, devolver: "
              + ", ".join(lib["expected_output"]) + "."]
     for it in lib["items"]:
         if it["category"] in categories:
-            lines.append(f"- {it['name']} : {it['convention']} (à distinguer : {it['confusable_with']})")
+            lines.append(f"- {it['name']} : {it['convention']} (a distinguir: {it['confusable_with']})")
     txt = "\n".join(lines)
     return txt[:max_chars]
 
@@ -49,7 +49,7 @@ def classify_by_label(text: str) -> tuple[str, str] | None:
             if cls == "SECTION":
                 # 50x30 peut désigner une poutre, une semelle ou un autre
                 # ouvrage. La section seule ne permet pas de choisir sa classe.
-                return "Section d'ouvrage", "section annotée ; fonction à déterminer par la légende et le contexte"
+                return "Section d'ouvrage", "secção anotada; função a determinar pela legenda e pelo contexto"
             return cls, why
     return None
 
@@ -76,12 +76,12 @@ def label_walls(walls: list[dict], text_blocks: list[dict], px_per_pt: float, pp
         if classes:
             best = max(classes, key=classes.get)
             w["ouvrage_class"] = best
-            w["class_source"] = "repère / annotation (bibliothèque symboles, indicatif — légende prioritaire)"
+            w["class_source"] = "marca / anotação (biblioteca de símbolos, indicativa — legenda prioritária)"
             w["class_alternatives"] = [k for k in classes if k != best]
         else:
-            w["ouvrage_class"] = ("Voile béton / mur poché" if w.get("source") == "hatched_band" else "Mur (deux traits parallèles)")
-            w["class_source"] = "géométrie vectorielle (convention générale, indicatif)"
-            w["class_alternatives"] = ["Semelle filante", "Longrine", "Ligne de cote"] if not w.get("thickness_cote_m") else ["Cloison", "Voile béton"]
+            w["ouvrage_class"] = ("Parede de betão / parede preenchida" if w.get("source") == "hatched_band" else "Parede (dois traços paralelos)")
+            w["class_source"] = "geometria vetorial (convenção geral, indicativa)"
+            w["class_alternatives"] = ["Semelle filante", "Longrine", "Linha de cota"] if not w.get("thickness_cote_m") else ["Divisória", "Parede de betão"]
 
 
 _LEGEND_RX = re.compile(r"^(l[ée]gende|nomenclature|symboles?|conventions?)\b", re.I)
@@ -104,7 +104,7 @@ def extract_legend(text_blocks: list[dict], width_px: float, height_px: float) -
     cartouche = [t["text"].strip() for t in sorted(zone, key=lambda t: (round(t["y"] / 12), t["x"]))]
     kind = None
     joined = " ".join(cartouche).lower()
-    for k, lbl in (("fondation", "plan de fondations"), ("vide sanitaire", "plan du vide sanitaire"), ("coupe", "coupe"), ("façade", "façade"),
+    for k, lbl in (("fondation", "plan de fondations"), ("caixa de ar", "planta da caixa de ar"), ("coupe", "coupe"), ("façade", "façade"),
                    ("facade", "façade"), ("toiture", "plan de toiture"), ("rdc", "plan du RDC"), ("étage", "plan d'étage"), ("plan", "plan")):
         if k in joined:
             kind = lbl

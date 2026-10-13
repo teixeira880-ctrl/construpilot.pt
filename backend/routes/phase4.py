@@ -31,7 +31,7 @@ async def create_api_key(body: ApiKeyIssueIn, user=Depends(current_user)):
         {"user_id": user["user_id"], "status": "active", "plan_id": body.plan_id},
         {"_id": 0})
     if not ent and user.get("role") != "admin":
-        raise HTTPException(status_code=402, detail="Souscrivez à un plan API avant de créer une clé")
+        raise HTTPException(status_code=402, detail="Subscreva um plano API antes de criar uma chave")
     try:
         doc = await api_commerciale.issue_api_key(user["user_id"], body.plan_id, body.name)
     except ValueError as e:
@@ -100,11 +100,11 @@ async def public_calc(body: PublicCalcIn, key=Depends(api_commerciale.require_ap
               "insulation": calculators.insulation}
     fn = fn_map.get(body.kind)
     if not fn:
-        raise HTTPException(status_code=400, detail="Type de calculateur invalide")
+        raise HTTPException(status_code=400, detail="Tipo de calculadora inválido")
     try:
         result = fn(**body.params)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Paramètres invalides: {e}")
+        raise HTTPException(status_code=400, detail=f'Parâmetros inválidos: {e}')
     return {"data": result, "meta": {"plan_id": key["plan_id"]}}
 
 
@@ -127,7 +127,7 @@ class KycSubmitIn(BaseModel):
 async def submit_kyc(body: KycSubmitIn, user=Depends(current_user)) -> dict:
     siren = "".join(c for c in body.siren if c.isdigit())
     if len(siren) not in (9, 14):
-        raise HTTPException(status_code=400, detail="SIREN/SIRET invalide (9 ou 14 chiffres)")
+        raise HTTPException(status_code=400, detail="NIF/NIPC inválido (9 dígitos)")
     doc = body.model_dump()
     doc["siren"] = siren
     doc["user_id"] = user["user_id"]
@@ -141,7 +141,7 @@ async def submit_kyc(body: KycSubmitIn, user=Depends(current_user)) -> dict:
                                           "$setOnInsert": {"credits_cents": 0,
                                                            "created_at": _now().isoformat()}},
                                          upsert=True)
-    return {"ok": True, "status": "pending", "message": "Dossier reçu — vérification sous 48h ouvrées."}
+    return {"ok": True, "status": "pending", "message": "Processo recebido — verificação em 48 h úteis."}
 
 
 @router.get("/marketplace/kyc/me")
@@ -169,7 +169,7 @@ async def review_kyc(body: KycAdminAction, admin=Depends(admin_user)) -> dict:
            "rejected_reason": None if body.approve else body.reason}
     r = await db.marketplace_pros.update_one({"user_id": body.user_id}, {"$set": upd})
     if r.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Dossier introuvable")
+        raise HTTPException(status_code=404, detail="Processo não encontrado")
     return {"ok": True, "status": upd["status"]}
 
 
@@ -219,9 +219,9 @@ async def recharge_credits(body: RechargeIn, user=Depends(current_user)) -> dict
     pro = await db.marketplace_pros.find_one({"user_id": user["user_id"], "verified": True},
                                              {"_id": 0})
     if not pro:
-        raise HTTPException(status_code=403, detail="Compte pro non vérifié")
+        raise HTTPException(status_code=403, detail="Conta profissional não verificada")
     if body.amount_cents < 2000:
-        raise HTTPException(status_code=400, detail="Montant minimum : 20 €")
+        raise HTTPException(status_code=400, detail="Montante mínimo: 20 €")
     from engines.monetization import get_or_create_customer
     customer_id = await get_or_create_customer(user)
     # Bonus : +5% si >=250€, +10% si >=500€
@@ -232,7 +232,7 @@ async def recharge_credits(body: RechargeIn, user=Depends(current_user)) -> dict
         line_items=[{
             "price_data": {
                 "currency": "eur",
-                "product_data": {"name": f"Crédits ConstruPilot Pro {body.amount_cents/100:.0f} €"
+                "product_data": {"name": f'Créditos ConstruPilot Pro {body.amount_cents / 100:.0f} €'
                                   + (f" + bonus {bonus_cents/100:.0f} €" if bonus_cents else "")},
                 "unit_amount": body.amount_cents,
             },

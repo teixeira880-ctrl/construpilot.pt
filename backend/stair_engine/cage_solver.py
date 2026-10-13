@@ -39,18 +39,18 @@ class CageStairInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     floor_height_mm: float = Field(..., gt=0, le=8000)
-    cage_length_mm: float = Field(..., gt=500, le=10000, description="Bord de trémie → mur de fond")
+    cage_length_mm: float = Field(..., gt=500, le=10000, description="Bordo da abertura → parede de fundo")
     cage_width_mm: float = Field(..., gt=500, le=6000)
-    jour_mm: float = Field(default=100, ge=0, le=1500, description="Noyau / jour central")
+    jour_mm: float = Field(default=100, ge=0, le=1500, description="Núcleo / vazio central")
     turn: Literal["balanced", "landing", "auto"] = "auto"
-    max_start_extension: int = Field(default=3, ge=0, le=6, description="Marches de départ hors trémie")
+    max_start_extension: int = Field(default=3, ge=0, le=6, description="Degraus de arranque fora da abertura")
     start_free_length_mm: Optional[float] = Field(
         default=None, ge=0, le=5000,
-        description="Longueur maxi disponible devant la trémie pour les marches de départ (dégagement déduit)")
+        description="Comprimento máximo disponível diante da abertura para os degraus de arranque (folga deduzida)")
     walkline_offset_mm: Optional[float] = Field(default=None, gt=100, le=1000)
     inner_giron_target_mm: float = Field(default=120, gt=0, le=300)
-    slab_thickness_mm: float = Field(default=220, gt=0, le=600, description="Dalle haute au bord de trémie")
-    flight_thickness_mm: float = Field(default=150, gt=50, le=400, description="Paillasse (perpendiculaire)")
+    slab_thickness_mm: float = Field(default=220, gt=0, le=600, description="Laje superior no bordo da abertura")
+    flight_thickness_mm: float = Field(default=150, gt=50, le=400, description="Laje da escada (perpendicular)")
     num_risers: Optional[int] = Field(default=None, ge=3, le=40)
 
 
@@ -158,7 +158,7 @@ def _checks(h: float, g: float, width: float, inner_min: float, norms: StairNorm
             out.append(a)
     if inner_min < norms.winder_inner_min_mm:
         out.append(Alert(level="red", code="BALANCING_INNER_TOO_SMALL",
-                         message_fr=f"Giron intérieur {inner_min:.0f} mm < {norms.winder_inner_min_mm:.0f} mm.",
+                         message_fr=f'Cobertor interior {inner_min:.0f} mm < {norms.winder_inner_min_mm:.0f} mm.',
                          metric="giron_inner_mm", value=inner_min, threshold=norms.winder_inner_min_mm))
     return out
 
@@ -180,10 +180,10 @@ def solve_cage(inp: CageStairInput, norms: StairNorms = DTU_36_3_FR,
     W, L, j = inp.cage_width_mm, inp.cage_length_mm, inp.jour_mm
     b = (W - j) / 2                                   # emmarchement de chaque volée
     if b < 500:
-        raise ValueError("Cage trop étroite : emmarchement < 0,50 m")
+        raise ValueError("Caixa demasiado estreita: largura do degrau < 0,50 m")
     y_n = L - W / 2                                   # extrémité du noyau (zone tournante = demi-largeur)
     if y_n <= 0:
-        raise ValueError("Cage trop courte pour un demi-tournant")
+        raise ValueError("Caixa demasiado curta para uma meia volta")
     off = inp.walkline_offset_mm or min(500.0, b / 2)
     if inp.num_risers:
         n_list = [inp.num_risers]
@@ -225,7 +225,7 @@ def solve_cage(inp: CageStairInput, norms: StairNorms = DTU_36_3_FR,
                         continue
                     cands.append((_score(h, g, e, norms) + 5, mode, e, g, n1, n))
     if not cands:
-        raise ValueError("Aucune configuration géométrique")
+        raise ValueError("Nenhuma configuração geométrica")
     cands.sort(key=lambda c: c[0])
     best = None
     for c in cands:
@@ -236,13 +236,13 @@ def solve_cage(inp: CageStairInput, norms: StairNorms = DTU_36_3_FR,
         hr = stacked_headroom(res, above[0], above[1], shift_mm=above[2] if len(above) > 2 else 0.0)["min_headroom_mm"]
         if hr >= norms.headroom_min_mm:
             res.alerts.append(Alert(level="green", code="STACKED_HEADROOM_OK",
-                                    message_fr=f"Échappée sous l'escalier supérieur {hr:.0f} mm ≥ {norms.headroom_min_mm:.0f} mm."))
+                                    message_fr=f'Altura livre sob a escada superior {hr:.0f} mm ≥ {norms.headroom_min_mm:.0f} mm.'))
             return res
         if best is None:
             best = (res, hr)
     res, hr = best
     res.alerts.append(Alert(level="red", code="HEADROOM_INSUFFICIENT",
-                            message_fr=f"Échappée sous l'escalier supérieur {hr:.0f} mm < {norms.headroom_min_mm:.0f} mm.",
+                            message_fr=f'Altura livre sob a escada superior {hr:.0f} mm < {norms.headroom_min_mm:.0f} mm.',
                             metric="headroom_mm", value=hr, threshold=norms.headroom_min_mm))
     res.is_buildable = False
     res.dtu_compliant = False
@@ -345,8 +345,7 @@ def _build(inp, norms, mode, e, g, n1, n, W, L, j, b, y_n, off, cx, r_w, r_i) ->
     dtu = not any(a.level == "red" for a in alerts)
     if mode == "balanced":
         alerts.append(Alert(level="green", code="CAGE_BALANCED",
-                            message_fr=f"Demi-tournant balancé dans la cage : {n} hauteurs de {h:.1f} mm, giron "
-                                       f"{g:.0f} mm sur la LdF, giron intérieur mini {inner_min:.0f} mm (balancement k={k_used})."))
+                            message_fr=f'Meia volta com degraus em leque na caixa: {n} alturas de {h:.1f} mm, cobertor {g:.0f} mm na linha de passo, cobertor interior mínimo {inner_min:.0f} mm (balancement k={k_used}).'))
     return CageStairResult(mode=mode, num_risers=n, riser_mm=round(h, 2), giron_mm=round(g, 1),
                            blondel_mm=round(2 * h + g, 1), slope_deg=round(math.degrees(math.atan2(h, g)), 2),
                            start_extension=e, flight_width_mm=round(b, 1), walkline_offset_mm=round(off, 1),

@@ -24,51 +24,51 @@ UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"]
 # Catalogue de départ (prix HT indicatifs FR, modifiables par l'entreprise).
 STARTER_CATALOGUE: list[dict] = [
     # --- Gros œuvre / Maçonnerie ---
-    {"type": "ouvrage", "category": "Gros œuvre", "designation": "Démolition cloison", "unit": "m²", "unit_price_ht": 25, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Gros œuvre", "designation": "Ouverture mur porteur + pose IPN", "unit": "forfait", "unit_price_ht": 1800, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Gros œuvre", "designation": "Chape de ravoirage", "unit": "m²", "unit_price_ht": 35, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Gros œuvre", "designation": "Dalle béton armé", "unit": "m²", "unit_price_ht": 90, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Gros œuvre", "designation": "Mur en parpaing 20 cm", "unit": "m²", "unit_price_ht": 75, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Obra grossa", "designation": "Demolição de divisória", "unit": "m²", "unit_price_ht": 25, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Obra grossa", "designation": "Abertura em parede resistente + colocação de perfil IPE", "unit": "forfait", "unit_price_ht": 1800, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Obra grossa", "designation": "Betonilha de enchimento", "unit": "m²", "unit_price_ht": 35, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Obra grossa", "designation": "Laje de betão armado", "unit": "m²", "unit_price_ht": 90, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Obra grossa", "designation": "Parede de bloco de cimento 20 cm", "unit": "m²", "unit_price_ht": 75, "vat_rate": 6},
     # --- Plâtrerie / Isolation ---
-    {"type": "ouvrage", "category": "Plâtrerie / Isolation", "designation": "Cloison BA13 sur ossature métallique", "unit": "m²", "unit_price_ht": 45, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plâtrerie / Isolation", "designation": "Doublage isolant laine de verre", "unit": "m²", "unit_price_ht": 42, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plâtrerie / Isolation", "designation": "Faux plafond BA13", "unit": "m²", "unit_price_ht": 48, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plâtrerie / Isolation", "designation": "Enduit de lissage sur mur", "unit": "m²", "unit_price_ht": 18, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plâtrerie / Isolation", "designation": "Isolation combles laine soufflée", "unit": "m²", "unit_price_ht": 25, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Divisória em pladur sobre estrutura metálica", "unit": "m²", "unit_price_ht": 45, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Contra-fachada isolante em lã de vidro", "unit": "m²", "unit_price_ht": 42, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Faux plafond BA13", "unit": "m²", "unit_price_ht": 48, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Barramento de paredes", "unit": "m²", "unit_price_ht": 18, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Isolamento do desvão com lã insuflada", "unit": "m²", "unit_price_ht": 25, "vat_rate": 6},
     # --- Électricité ---
-    {"type": "ouvrage", "category": "Électricité", "designation": "Point lumineux (fourniture + pose)", "unit": "u", "unit_price_ht": 85, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Électricité", "designation": "Prise de courant 16A", "unit": "u", "unit_price_ht": 65, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Électricité", "designation": "Interrupteur va-et-vient", "unit": "u", "unit_price_ht": 70, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Électricité", "designation": "Tableau électrique équipé", "unit": "u", "unit_price_ht": 950, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Électricité", "designation": "Mise aux normes NF C 15-100", "unit": "forfait", "unit_price_ht": 1500, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Eletricidade", "designation": "Ponto de luz (fornecimento + aplicação)", "unit": "u", "unit_price_ht": 85, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Eletricidade", "designation": "Tomada 16A", "unit": "u", "unit_price_ht": 65, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Eletricidade", "designation": "Interruptor de escada (comutador de lustre)", "unit": "u", "unit_price_ht": 70, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Eletricidade", "designation": "Quadro elétrico equipado", "unit": "u", "unit_price_ht": 950, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Eletricidade", "designation": "Adequação às RTIEBT", "unit": "forfait", "unit_price_ht": 1500, "vat_rate": 6},
     # --- Plomberie / Sanitaire ---
-    {"type": "ouvrage", "category": "Plomberie", "designation": "Alimentation + évacuation point d'eau", "unit": "u", "unit_price_ht": 180, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plomberie", "designation": "Pose WC suspendu (bâti-support)", "unit": "u", "unit_price_ht": 350, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plomberie", "designation": "Création douche à l'italienne", "unit": "ens", "unit_price_ht": 1200, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plomberie", "designation": "Pose lavabo / vasque", "unit": "u", "unit_price_ht": 220, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Plomberie", "designation": "Chauffe-eau thermodynamique", "unit": "u", "unit_price_ht": 2200, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Canalização", "designation": "Abastecimento + esgoto de ponto de água", "unit": "u", "unit_price_ht": 180, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Canalização", "designation": "Colocação de sanita suspensa (estrutura de apoio)", "unit": "u", "unit_price_ht": 350, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Canalização", "designation": "Criação de duche de nível com o pavimento", "unit": "ens", "unit_price_ht": 1200, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Canalização", "designation": "Colocação de lavatório", "unit": "u", "unit_price_ht": 220, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Canalização", "designation": "Termoacumulador com bomba de calor", "unit": "u", "unit_price_ht": 2200, "vat_rate": 6},
     # --- Menuiserie ---
-    {"type": "ouvrage", "category": "Menuiserie", "designation": "Fenêtre PVC double vitrage", "unit": "u", "unit_price_ht": 550, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Menuiserie", "designation": "Porte-fenêtre aluminium", "unit": "u", "unit_price_ht": 950, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Menuiserie", "designation": "Porte intérieure (bloc-porte)", "unit": "u", "unit_price_ht": 280, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Menuiserie", "designation": "Volet roulant électrique", "unit": "u", "unit_price_ht": 480, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Menuiserie", "designation": "Placard sur mesure", "unit": "ml", "unit_price_ht": 350, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Carpintaria", "designation": "Janela PVC vidro duplo", "unit": "u", "unit_price_ht": 550, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Carpintaria", "designation": "Porta-janela em alumínio", "unit": "u", "unit_price_ht": 950, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Carpintaria", "designation": "Porta interior (kit completo)", "unit": "u", "unit_price_ht": 280, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Carpintaria", "designation": "Estore elétrico", "unit": "u", "unit_price_ht": 480, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Carpintaria", "designation": "Roupeiro por medida", "unit": "ml", "unit_price_ht": 350, "vat_rate": 6},
     # --- Peinture / Revêtements ---
-    {"type": "ouvrage", "category": "Peinture / Revêtements", "designation": "Peinture murs 2 couches", "unit": "m²", "unit_price_ht": 28, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Peinture / Revêtements", "designation": "Peinture plafond 2 couches", "unit": "m²", "unit_price_ht": 30, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Peinture / Revêtements", "designation": "Pose parquet flottant", "unit": "m²", "unit_price_ht": 38, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Peinture / Revêtements", "designation": "Pose carrelage sol", "unit": "m²", "unit_price_ht": 55, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Peinture / Revêtements", "designation": "Pose faïence murale", "unit": "m²", "unit_price_ht": 60, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Pintura / Revestimentos", "designation": "Pintura de paredes 2 demãos", "unit": "m²", "unit_price_ht": 28, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Pintura / Revestimentos", "designation": "Pintura de tetos 2 demãos", "unit": "m²", "unit_price_ht": 30, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Pintura / Revestimentos", "designation": "Pose parquet flottant", "unit": "m²", "unit_price_ht": 38, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Pintura / Revestimentos", "designation": "Assentamento de pavimento cerâmico", "unit": "m²", "unit_price_ht": 55, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Pintura / Revestimentos", "designation": "Assentamento de azulejo", "unit": "m²", "unit_price_ht": 60, "vat_rate": 6},
     # --- Toiture / Extérieur ---
-    {"type": "ouvrage", "category": "Toiture / Extérieur", "designation": "Réfection couverture tuiles", "unit": "m²", "unit_price_ht": 110, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Toiture / Extérieur", "designation": "Zinguerie / gouttières", "unit": "ml", "unit_price_ht": 45, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Toiture / Extérieur", "designation": "Ravalement de façade", "unit": "m²", "unit_price_ht": 65, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Cobertura / Exterior", "designation": "Renovação de cobertura em telha", "unit": "m²", "unit_price_ht": 110, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Cobertura / Exterior", "designation": "Funilaria / caleiras", "unit": "ml", "unit_price_ht": 45, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Cobertura / Exterior", "designation": "Reabilitação de fachada", "unit": "m²", "unit_price_ht": 65, "vat_rate": 6},
     # --- Matériaux (fournitures) ---
-    {"type": "materiau", "category": "Matériaux", "designation": "Sac de ciment 35 kg", "unit": "u", "unit_price_ht": 8.5, "vat_rate": 23},
-    {"type": "materiau", "category": "Matériaux", "designation": "Plaque de plâtre BA13", "unit": "u", "unit_price_ht": 6.5, "vat_rate": 23},
-    {"type": "materiau", "category": "Matériaux", "designation": "Laine de verre 100 mm", "unit": "m²", "unit_price_ht": 9, "vat_rate": 23},
-    {"type": "materiau", "category": "Matériaux", "designation": "Peinture acrylique blanche 10 L", "unit": "u", "unit_price_ht": 65, "vat_rate": 23},
-    {"type": "materiau", "category": "Matériaux", "designation": "Carrelage grès cérame 60x60", "unit": "m²", "unit_price_ht": 32, "vat_rate": 23},
+    {"type": "materiau", "category": "Materiais", "designation": "Saco de cimento 25 kg", "unit": "u", "unit_price_ht": 8.5, "vat_rate": 23},
+    {"type": "materiau", "category": "Materiais", "designation": "Placa de gesso cartonado 13 mm", "unit": "u", "unit_price_ht": 6.5, "vat_rate": 23},
+    {"type": "materiau", "category": "Materiais", "designation": "Lã de vidro 100 mm", "unit": "m²", "unit_price_ht": 9, "vat_rate": 23},
+    {"type": "materiau", "category": "Materiais", "designation": "Tinta acrílica branca 10 L", "unit": "u", "unit_price_ht": 65, "vat_rate": 23},
+    {"type": "materiau", "category": "Materiais", "designation": "Mosaico de grés porcelânico 60x60", "unit": "m²", "unit_price_ht": 32, "vat_rate": 23},
 ]
 
 
@@ -123,9 +123,9 @@ async def _seed_if_needed(user: dict) -> None:
                               {"$set": {"library_seeded": True}})
 
 
-SOURCE_LABELS = {"starter": "Catalogue", "devis": "Devis", "dpgf": "DPGF",
-                 "import_devis": "Imports", "manual": "Saisie",
-                 "assistant_devis": "Assistant IA"}
+SOURCE_LABELS = {"starter": "Catálogo", "devis": "Orçamento", "dpgf": "DPGF",
+                 "import_devis": "Importações", "manual": "Introdução",
+                 "assistant_devis": "Assistente IA"}
 
 
 @router.get("")
@@ -146,7 +146,7 @@ async def list_items(q: str = "", type: str = "", category: str = "", source: st
     items = await db.library_items.find(query, {"_id": 0}).sort("designation", 1).to_list(5000)
     # Facettes calculées sur TOUTE la bibliothèque (indépendantes des filtres courants).
     meta = await db.library_items.find({"user_id": uid}, {"_id": 0, "category": 1, "source": 1}).to_list(10000)
-    cats = sorted({(i.get("category") or "Autre") for i in meta})
+    cats = sorted({(i.get("category") or "Outro") for i in meta})
     src_counts: dict = {}
     for i in meta:
         s = i.get("source") or "manual"
@@ -200,7 +200,7 @@ async def merge_items(body: MergeIn, user=Depends(current_user)) -> dict:
     uid = user["user_id"]
     keep = await db.library_items.find_one({"user_id": uid, "item_id": body.keep_id}, {"_id": 0, "item_id": 1})
     if not keep:
-        raise HTTPException(404, "Poste conservé introuvable")
+        raise HTTPException(404, "Artigo guardado não encontrado")
     to_remove = [i for i in body.remove_ids if i != body.keep_id][:200]
     res = await db.library_items.delete_many({"user_id": uid, "item_id": {"$in": to_remove}})
     return {"ok": True, "removed": res.deleted_count}
@@ -251,7 +251,7 @@ async def validate_learned(item_id: str, body: ValidateIn, user=Depends(current_
     res = await db.library_items.update_one(
         {"user_id": uid, "item_id": item_id}, {"$set": set_fields})
     if not res.matched_count:
-        raise HTTPException(404, "Élément introuvable")
+        raise HTTPException(404, "Elemento não encontrado")
     return await db.library_items.find_one({"user_id": uid, "item_id": item_id}, {"_id": 0})
 
 
@@ -261,7 +261,7 @@ async def validate_learned(item_id: str, body: ValidateIn, user=Depends(current_
 async def create_item(body: LibraryItemIn, user=Depends(current_user)) -> dict:
     data = _clean(body)
     if not data["designation"]:
-        raise HTTPException(400, "La désignation est obligatoire")
+        raise HTTPException(400, "A designação é obrigatória")
     doc = {
         "item_id": "lib_" + secrets.token_hex(6),
         "user_id": user["user_id"],
@@ -280,12 +280,12 @@ async def update_item(item_id: str, body: LibraryItemIn,
                       user=Depends(current_user)) -> dict:
     data = _clean(body)
     if not data["designation"]:
-        raise HTTPException(400, "La désignation est obligatoire")
+        raise HTTPException(400, "A designação é obrigatória")
     res = await db.library_items.update_one(
         {"item_id": item_id, "user_id": user["user_id"]},
         {"$set": {**data, "updated_at": _now()}})
     if not res.matched_count:
-        raise HTTPException(404, "Élément introuvable")
+        raise HTTPException(404, "Elemento não encontrado")
     doc = await db.library_items.find_one(
         {"item_id": item_id, "user_id": user["user_id"]}, {"_id": 0})
     return doc
@@ -296,7 +296,7 @@ async def delete_item(item_id: str, user=Depends(current_user)) -> dict:
     res = await db.library_items.delete_one(
         {"item_id": item_id, "user_id": user["user_id"]})
     if not res.deleted_count:
-        raise HTTPException(404, "Élément introuvable")
+        raise HTTPException(404, "Elemento não encontrado")
     return {"ok": True}
 
 
@@ -365,7 +365,7 @@ async def auto_save_from_lines(user_id: str, lines: list[dict], source: str = "d
             {"_id": 0, "item_id": 1, "estimated": 1})
         set_fields = {
             "designation": desig, "type": "ouvrage",
-            "category": cat or ("Estimé IA" if estimated else "Depuis devis"),
+            "category": cat or ("Estimado por IA" if estimated else "A partir de orçamento"),
             "unit": unit, "unit_price_ht": price,
             "vat_rate": float(ln["vat_rate"]) if ln.get("vat_rate") is not None else None, "estimated": estimated,
             "price_source": ln.get("price_source") or ("assistant_estimate" if estimated else source),
@@ -398,7 +398,7 @@ async def library_import_preview(files: list[UploadFile] = File(...),
     """Étape 1 : extrait les ouvrages + prix de vos anciens devis (IA), sans rien créer."""
     from routes.documents import _extract_pdf_item
     if not files:
-        raise HTTPException(400, "Aucun fichier fourni")
+        raise HTTPException(400, "Nenhum ficheiro fornecido")
     existing = await db.library_items.find(
         {"user_id": user["user_id"]}, {"_id": 0, "designation": 1, "unit_price_ht": 1}).to_list(5000)
     known = {(e.get("designation") or "").strip().lower(): e.get("unit_price_ht") for e in existing}
@@ -419,7 +419,7 @@ async def library_import_preview(files: list[UploadFile] = File(...),
                 "designation": desig[:200], "unit": l.get("unit") or "u",
                 "unit_price_ht": round(float(l["unit_price_ht"]), 2),
                 "vat_rate": float(l.get("vat_rate") or 10),
-                "category": (doc.get("title") or "Repris de mes devis")[:80],
+                "category": (doc.get("title") or "Retomado dos meus orçamentos")[:80],
                 "existing_price": known.get(desig.lower()),
             })
         items.append({"file": name, "ok": True, "number": doc.get("number") or "",
@@ -445,7 +445,7 @@ async def library_import_confirm(body: LibraryImportIn, user=Depends(current_use
             continue
         fields = {
             "designation": desig[:200], "type": "ouvrage",
-            "category": cat_override or (l.get("category") or "Repris de mes devis")[:80],
+            "category": cat_override or (l.get("category") or "Retomado dos meus orçamentos")[:80],
             "unit": (l.get("unit") or "u")[:12], "unit_price_ht": round(pu, 2),
             "vat_rate": float(l.get("vat_rate") or 10), "updated_at": _now(),
         }

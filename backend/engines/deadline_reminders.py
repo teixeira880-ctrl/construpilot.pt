@@ -77,10 +77,8 @@ async def _recipients(owner: dict, owner_names: set[str]) -> list[dict]:
 
 
 def _email_html(title: str, conv_id: str, entries: list[dict], target: date, base_url: str) -> str:
-    rows = "".join(f"<li><b>{e.get('statement', '')}</b>" + (f" — responsable : {e['owner']}" if e.get("owner") else "") + f" — échéance : {e.get('deadline')}</li>" for e in entries)
-    return (f"<p>Bonjour,</p><p>Rappel : {len(entries)} échéance(s) du dossier « {title} » arrive(nt) demain ({target.strftime('%d/%m/%Y')}).</p>"
-            f"<ul>{rows}</ul><p><a href=\"{base_url}/assistant?conversation={conv_id}\">Ouvrir le dossier dans ConstruPilot</a></p>"
-            "<p><small>Rappel automatique ConstruPilot — état du dossier Assistant BTP.</small></p>")
+    rows = "".join(f"<li><b>{e.get('statement', '')}</b>" + (f" — responsable : {e['owner']}" if e.get("owner") else "") + f" — prazo: {e.get('deadline')}</li>" for e in entries)
+    return (f'''<p>Olá,</p><p>Lembrete: {len(entries)} prazo(s) do processo «{title}» termina(m) amanhã ({target.strftime('%d/%m/%Y')}).</p><ul>{rows}</ul><p><a href="{base_url}/assistant?conversation={conv_id}">Abrir o processo no ConstruPilot</a></p><p><small>Lembrete automático ConstruPilot — estado do processo Assistente Construção.</small></p>''')
 
 
 async def run_deadline_reminders(now: datetime | None = None) -> dict:
@@ -107,7 +105,7 @@ async def run_deadline_reminders(now: datetime | None = None) -> dict:
         owner_names = {_fold(e["owner"]) for e in due if e.get("owner")}
         recips = await _recipients(owner, owner_names)
         labels = "; ".join((e.get("statement") or "")[:80] for e in due[:3]) + (" …" if len(due) > 3 else "")
-        msg = f"Échéance demain ({target.strftime('%d/%m')}) — « {title[:50]} » : {labels}"
+        msg = f"Prazo amanhã ({target.strftime('%d/%m')}) — « {title[:50]} » : {labels}"
         for r in recips:
             await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": r["user_id"], "type": "deadline_reminder",
                                                "url": f"/assistant?conversation={conv_id}", "message": msg, "conversation_id": conv_id,
@@ -115,7 +113,7 @@ async def run_deadline_reminders(now: datetime | None = None) -> dict:
             notified += 1
             if r.get("email"):
                 try:
-                    await send_email(r["email"], f"Rappel d'échéance — {title[:60]} — demain {target.strftime('%d/%m/%Y')}", _email_html(title, conv_id, due, target, base_url))
+                    await send_email(r["email"], f"Lembrete de prazo — {title[:60]} — demain {target.strftime('%d/%m/%Y')}", _email_html(title, conv_id, due, target, base_url))
                     emails += 1
                 except Exception as exc:  # noqa: BLE001 — l'e-mail ne doit pas bloquer la cloche
                     logger.warning("deadline reminder email failed for %s: %s", r.get("user_id"), exc)

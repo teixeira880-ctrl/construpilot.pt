@@ -59,15 +59,15 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
     # levels
     base = (coupes_summary.get("dominant") or {}).get("niveau_base_murs_m")
     if fw and fw["level_symbols"]["symbols"]:
-        levels = levels_from_symbols(fw["level_symbols"], base_level_m=base, source="symboles NGF du plan de coffrage" + (" + niveau de base des coupes" if base else ""))
+        levels = levels_from_symbols(fw["level_symbols"], base_level_m=base, source="símbolos altimétricos da planta de cofragem" + (" + nível de base dos cortes" if base else ""))
     else:
         dom = coupes_summary.get("dominant") or {}
         levels = {"as_plancher_haut_m": dom.get("as_plancher_haut_m"), "epaisseur_dalle_m": dom.get("epaisseur_dalle_cm") / 100 if dom.get("epaisseur_dalle_cm") else None,
-                  "niveau_base_murs_m": base, "source": "coupes (dominante)" if dom else None, "exceptions": []}
+                  "niveau_base_murs_m": base, "source": "cortes (dominante)" if dom else None, "exceptions": []}
     for k, v in (levels_override or {}).items():
         if v is not None and k in ("as_plancher_haut_m", "epaisseur_dalle_m", "niveau_base_murs_m"):
             levels[k] = v
-            levels["source"] = (levels.get("source") or "") + f" ; {k} indiqué par l'utilisateur"
+            levels["source"] = (levels.get("source") or "") + f' ; {k} indicado pelo utilizador'
     heights = derive_heights(levels)
     out["levels"] = levels
     out["heights"] = heights
@@ -97,10 +97,10 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
             out["coupes_located"] = links
             missing = sorted(set(sheet) - {t["name"] for t in traces}, key=lambda s: int(s.split("-")[0]))
             if missing:
-                out["findings"].append({"severity": "info", "subject": "Coupes du cahier non repérées sur le plan", "explanation": ", ".join(missing)})
-            out["findings"].append({"severity": "info", "subject": "Recalage plan ↔ DXF", "explanation": f"axes {', '.join(reg['common_axes'])} ; résidu {reg['residual_m'] * 1000:.0f} mm ; échelle mesurée/déclarée {reg.get('scale_vs_declared')}"})
+                out["findings"].append({"severity": "info", "subject": "Cortes do caderno não identificados na planta", "explanation": ", ".join(missing)})
+            out["findings"].append({"severity": "info", "subject": "Reajuste planta ↔ DXF", "explanation": f"axes {', '.join(reg['common_axes'])} ; resíduo {reg['residual_m'] * 1000:.0f} mm; escala medida/declarada {reg.get('scale_vs_declared')}"})
         else:
-            out["findings"].append({"severity": "warning", "subject": "Recalage plan ↔ DXF impossible", "explanation": reg["error"]})
+            out["findings"].append({"severity": "warning", "subject": "Reajuste planta ↔ DXF impossível", "explanation": reg["error"]})
     zones = assign_wall_zones(geom["wall_bodies"], traces, sheet, default_h_m=heights["h_murs_m"], extent=extent)
     for ex in levels.get("exceptions") or []:
         if "x" in ex:
@@ -109,7 +109,7 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
             if reg and reg.get("ok"):
                 mx, my = to_model(reg, x, y)
                 ex["position_model_m"] = [round(mx, 2), round(my, 2)]
-            ex["note"] = "symbole NGF local (zone de dalle à épaisseur différente) ; position en points PDF du plan de coffrage" + (" et en mètres DXF" if "position_model_m" in ex else "")
+            ex["note"] = "símbolo altimétrico local (zona de laje com espessura diferente); posição em pontos PDF da planta de cofragem" + (" e em metros DXF" if "position_model_m" in ex else "")
     out["walls_by_zone"] = {k: v for k, v in zones.items() if k != "rows"}
     out["walls_by_zone"]["thickness_distribution_cm"] = dict(Counter(r["thickness_cm"] for r in zones["rows"]).most_common())
 
@@ -119,24 +119,24 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
     if zones["rows"]:
         v = zones["volume_total_m3"]
         total += v
-        lines.append({"element": "Murs — volume béton", "formula": f"Σ (aire en plan × h zone) sur {zones['walls_in_extent']} corps ; h = AI plancher haut − base de la coupe la plus proche",
+        lines.append({"element": "Paredes — volume de betão", "formula": f"Σ (área em planta × h zona) em {zones['walls_in_extent']} corpos; h = AI pavimento superior − base do corte mais próximo",
                       "net": round(v, 2), "unit": "m³", "state": "confirmed" if
                       not zones.get("walls_missing_height") and all(r["state"] == "confirmed" for r in zones["rows"]) else "to_clarify",
                       "detail": {"confirmed_m3": zones["volume_confirmed_m3"], "to_clarify_m3": zones["volume_to_clarify_m3"], "by_coupe_m3": zones["volume_by_coupe_m3"]}})
     elif heights["h_murs_m"] is None:
-        lines.append({"element": "Murs — volume béton", "formula": "Σ (L × e) × h", "net": None, "unit": "m³", "state": "indeterminate", "missing": heights["missing"]})
+        lines.append({"element": "Paredes — volume de betão", "formula": "Σ (L × e) × h", "net": None, "unit": "m³", "state": "indeterminate", "missing": heights["missing"]})
     cols = clipped.get("columns") or {k: v for k, v in e["columns"].items() if k != "rows"}
     if heights["h_poteaux_m"] is not None and cols.get("count"):
         v = cols["section_total_m2"] * heights["h_poteaux_m"]
         total += v
-        lines.append({"element": "Poteaux — volume béton", "formula": f"Σ sections {cols['section_total_m2']:.3f} m² ({cols['count']} poteaux) × h {heights['h_poteaux_m']:.2f} m", "net": round(v, 2), "unit": "m³", "state": "confirmed"})
+        lines.append({"element": "Pilares — volume de betão", "formula": f"Σ secções {cols['section_total_m2']:.3f} m² ({cols['count']} pilares) × h {heights['h_poteaux_m']:.2f} m", "net": round(v, 2), "unit": "m³", "state": "confirmed"})
     slab = clipped.get("slab") if clipped.get("clipped") else e.get("slab")
     if heights["epaisseur_dalle_m"] is not None and slab:
         v = slab["net_area_m2"] * heights["epaisseur_dalle_m"]
         total += v
         state = "confirmed" if not levels.get("exceptions") else "to_clarify"
-        lines.append({"element": "Dalle — volume béton", "formula": f"surface nette {slab['net_area_m2']:.2f} m² × ép. {heights['epaisseur_dalle_m']:.2f} m", "net": round(v, 2), "unit": "m³", "state": state,
-                      "note": f"{len(levels.get('exceptions') or [])} symbole(s) NGF à épaisseur différente (zones locales)" if levels.get("exceptions") else None})
+        lines.append({"element": "Laje — volume de betão", "formula": f"área líquida {slab['net_area_m2']:.2f} m² × ép. {heights['epaisseur_dalle_m']:.2f} m", "net": round(v, 2), "unit": "m³", "state": state,
+                      "note": f"{len(levels.get('exceptions') or [])} símbolo(s) altimétrico(s) com espessura diferente (zonas locais)" if levels.get("exceptions") else None})
     beams = clipped.get("beams") or {k: v for k, v in e["beams"].items() if k != "rows"}
     drop, paired_in = 0.0, 0
     if beams_pairing and heights["epaisseur_dalle_m"] is not None:
@@ -149,18 +149,18 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
                     drop += d["length_m"] * d["width_m"] * retombee; paired_in += 1
     if drop:
         total += drop
-        lines.append({"element": "Poutres appariées — retombées sous dalle", "formula": f"Σ L_dxf × b × (h feuille Arche − ép. dalle) sur {paired_in} poutres appariées / {beams['count']} en plan",
+        lines.append({"element": "Vigas emparelhadas — alturas abaixo da laje", "formula": f"Σ C_dxf × b × (h folha Arche − esp. laje) em {paired_in} vigas emparelhadas / {beams['count']} en plan",
                       "net": round(drop, 2), "unit": "m³", "state": "to_clarify" if paired_in < beams["count"] else "confirmed",
-                      "note": f"{beams['count'] - paired_in} poutre(s) du plan sans feuille Arche appariée : retombée non comptée" if paired_in < beams["count"] else None})
+                      "note": f"{beams['count'] - paired_in} viga(s) da planta sem folha Arche emparelhada: altura abaixo da laje não contada" if paired_in < beams["count"] else None})
     elif beams["count"]:
-        lines.append({"element": "Poutres — retombées", "formula": f"{beams['count']} poutres, {beams['length_total_m']} ml en plan × largeur × (h poutre − ép. dalle)", "net": None, "unit": "m³",
-                      "state": "indeterminate", "missing": ["hauteurs de poutres (feuilles de ferraillage Arche ou plan de coffrage)"]})
+        lines.append({"element": "Vigas — alturas abaixo da laje", "formula": f"{beams['count']} poutres, {beams['length_total_m']} ml em planta × largura × (h viga − esp. laje)", "net": None, "unit": "m³",
+                      "state": "indeterminate", "missing": ["alturas das vigas (folhas de armaduras Arche ou planta de cofragem)"]})
     for miss in heights["missing"]:
-        lines.append({"element": f"Donnée manquante : {miss}", "formula": None, "net": None, "unit": "m³", "state": "indeterminate", "missing": [miss]})
+        lines.append({"element": f'Dado em falta: {miss}', "formula": None, "net": None, "unit": "m³", "state": "indeterminate", "missing": [miss]})
     out["lines"] = lines
     out["partial_total_m3"] = round(total, 2)
     out["total_m3"] = round(total, 2) if lines and not heights["missing"] and all(line["state"] == "confirmed" for line in lines) else None
-    out["scope"] = {"clipped_to_plan": clipped.get("clipped"), "extent_m": clipped.get("extent_m"), "note": "Quantités limitées à l'emprise du plan de coffrage (bâtiment dessiné) lorsque le recalage est disponible ; sinon niveau complet du DXF."}
+    out["scope"] = {"clipped_to_plan": clipped.get("clipped"), "extent_m": clipped.get("extent_m"), "note": "Quantidades limitadas à implantação da planta de cofragem (edifício desenhado) quando o reajuste está disponível; caso contrário, piso completo do DXF."}
     out["rule"] = heights["rule"]
     return out
 

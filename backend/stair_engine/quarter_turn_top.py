@@ -44,7 +44,7 @@ def _auto_balanced_top(base_inp, norms):
         if r.is_buildable:
             r.alerts.insert(0, Alert(
                 level="green", code="AUTO_WINDERS_SELECTED",
-                message_fr=f"Répartition automatique : {n} marches balancées.",
+                message_fr=f'Distribuição automática: {n} degraus em leque.',
                 metric="num_winders", value=float(n),
             ))
             return r
@@ -55,7 +55,7 @@ def _auto_balanced_top(base_inp, norms):
     if best is not None:
         best.alerts.insert(0, Alert(
             level="red", code="AUTO_WINDERS_NO_SOLUTION",
-            message_fr="Aucune répartition de marches balancées (3-9) ne satisfait les contraintes."
+            message_fr="Nenhuma distribuição de degraus em leque (3-9) satisfaz as restrições."
         ))
     return best
 
@@ -64,7 +64,7 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
     alerts_all: List[Alert] = []
     n_steps, h_mm, in_optimal = find_optimal_num_steps(inp.floor_height_mm, norms)
     if n_steps <= 0:
-        return _dead("quarter_turn_top", "GEOMETRY_INVALID", "Hauteur invalide.")
+        return _dead("quarter_turn_top", "GEOMETRY_INVALID", "Altura inválida.")
 
     g_straight = optimal_giron_mm(h_mm, norms)
     blondel = blondel_value(h_mm, g_straight)
@@ -72,7 +72,7 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
     if not in_optimal:
         alerts_all.append(Alert(
             level="orange", code="RISER_HEIGHT_NON_OPTIMAL",
-            message_fr=f"Hauteur de marche {h_mm:.1f} mm hors plage optimale.",
+            message_fr=f'Altura do espelho {h_mm:.1f} mm fora do intervalo ótimo.',
             metric="riser_height_mm", value=h_mm,
         ))
 
@@ -124,13 +124,13 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
         if dw < norms.winder_walkline_min_mm:
             alerts_all.append(Alert(
                 level="red", code="BALANCING_WALKLINE_TOO_SMALL",
-                message_fr=f"Giron ligne de foulée {dw:.0f} mm < minimum {norms.winder_walkline_min_mm:.0f} mm.",
+                message_fr=f'Cobertor na linha de passo {dw:.0f} mm < minimum {norms.winder_walkline_min_mm:.0f} mm.',
                 metric="depth_walkline_mm", value=dw, threshold=norms.winder_walkline_min_mm,
             ))
         if inp.inner_radius_mm > 0 and di < norms.winder_inner_min_mm:
             alerts_all.append(Alert(
                 level="orange", code="BALANCING_INNER_TOO_SMALL",
-                message_fr=f"Giron intérieur {di:.0f} mm < minimum {norms.winder_inner_min_mm:.0f} mm.",
+                message_fr=f'Cobertor interior {di:.0f} mm < minimum {norms.winder_inner_min_mm:.0f} mm.',
                 metric="depth_inner_mm", value=di,
             ))
 
@@ -138,7 +138,7 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
         if num_lower < 1:
             alerts_all.append(Alert(
                 level="red", code="BALANCING_IMPOSSIBLE",
-                message_fr=f"Nombre de winders ({num_winders}) trop élevé pour la hauteur.",
+                message_fr=f'Número de degraus em leque ({num_winders}) demasiado elevado para a altura.',
             ))
             num_lower = max(0, num_lower)
         num_lower_treads = max(0, num_lower - 0)  # tous les lower risers ont un tread (winders débutent au-dessus)
@@ -169,13 +169,13 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
     if total_horiz > inp.available_length_mm:
         alerts_all.append(Alert(
             level="red", code="STAIR_RUN_TOO_LONG",
-            message_fr=f"Reculement nécessaire {total_horiz:.0f} mm > disponible {inp.available_length_mm:.0f} mm.",
+            message_fr=f'Desenvolvimento em planta necessário {total_horiz:.0f} mm > disponível {inp.available_length_mm:.0f} mm.',
             metric="stair_run_mm", value=total_horiz, threshold=inp.available_length_mm,
         ))
     if turn_width > inp.available_width_mm:
         alerts_all.append(Alert(
             level="red", code="STAIR_WIDTH_INSUFFICIENT",
-            message_fr=f"Largeur nécessaire pour le quart tournant {turn_width:.0f} mm > disponible {inp.available_width_mm:.0f} mm.",
+            message_fr=f'Largura necessária para o quarto de volta {turn_width:.0f} mm > disponível {inp.available_width_mm:.0f} mm.',
             metric="available_width_mm", value=turn_width, threshold=inp.available_width_mm,
         ))
 
@@ -211,7 +211,7 @@ def _compute_qt_top_single(inp: QuarterTurnBottomInput, norms: StairNorms) -> St
     if inp.stairwell_width_mm is not None and inp.stairwell_width_mm < inp.stair_width_mm:
         alerts_all.append(Alert(
             level="red", code="STAIRWELL_TOO_SMALL",
-            message_fr=f"Largeur trémie {inp.stairwell_width_mm:.0f} mm < largeur escalier.",
+            message_fr=f'Largura da abertura {inp.stairwell_width_mm:.0f} mm < largura da escada.',
             metric="stairwell_width_mm", value=inp.stairwell_width_mm,
         ))
 

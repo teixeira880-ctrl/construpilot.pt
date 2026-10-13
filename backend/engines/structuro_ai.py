@@ -18,26 +18,11 @@ load_dotenv()
 _MODEL = ("anthropic", "claude-sonnet-4-6")
 
 _SYSTEM = (
-    "Tu es un assistant de LECTURE pour un logiciel de structure (BTP). Tu lis une description "
-    "de bâtiment en français et tu en extrais UNIQUEMENT les faits DÉCLARÉS par l'auteur. "
-    "Interdits absolus : n'invente jamais de résistance de matériau, de section, de charge, de "
-    "portance de sol, de dimension non écrite, ni de conclusion de calcul. Si une information "
-    "n'est pas écrite, ne la déduis pas (l'époque ne donne aucune résistance). "
-    "Réponds STRICTEMENT en JSON valide, sans texte autour."
+    "És um assistente de LEITURA para um software de estruturas (construção). Lês uma descrição de edifício e extrais APENAS os factos DECLARADOS pelo autor. Proibições absolutas: nunca inventes resistência de material, secção, carga, capacidade resistente do solo, dimensão não escrita, nem conclusão de cálculo. Se uma informação não estiver escrita, não a deduzas (a época não dá nenhuma resistência). Responde ESTRITAMENTE em JSON válido, sem texto à volta."
 )
 
 _EXTRACT_PROMPT = (
-    "Description:\n'''{desc}'''\n\n"
-    "Renvoie ce JSON :\n"
-    '{{"facts":[{{"text":"<fait déclaré court>"}}],'
-    '"declared":{{'
-    '"epoque":"<ex: vers 1850 ou null>",'
-    '"niveaux":"<ex: 2 niveaux sur cave ou null>",'
-    '"murs":"<ex: pierre ~50 cm ou null>",'
-    '"planchers":"<ex: bois ou null>",'
-    '"ouverture":"<ex: ~2,40 m séjour/cuisine ou null>"}}}}\n'
-    "Chaque fait doit être littéralement présent ou clairement impliqué par le texte. "
-    "N'ajoute aucune donnée non écrite."
+    "Description:\n\'\'\'{desc}\'\'\'\n\nDevolve este JSON (textos em português europeu):\n{{\"facts\":[{{\"text\":\"<facto declarado curto>\"}}],\"declared\":{{\"epoque\":\"<ex.: cerca de 1850 ou null>\",\"niveaux\":\"<ex.: 2 pisos sobre cave ou null>\",\"murs\":\"<ex.: pedra ~50 cm ou null>\",\"planchers\":\"<ex.: madeira ou null>\",\"ouverture\":\"<ex.: ~2,40 m sala/cozinha ou null>\"}}}}\nCada facto deve estar literalmente presente ou claramente implícito no texto. Não acrescentes nenhum dado não escrito."
 )
 
 
@@ -58,18 +43,18 @@ def _fallback_extract(description: str) -> dict:
     d = description or ""
     facts = []
     patterns = [
-        (r"(vers|en|autour de|circa)?\s*(1[6-9]\d{2}|20\d{2})", "Époque déclarée : {m}"),
+        (r"(vers|en|autour de|circa)?\s*(1[6-9]\d{2}|20\d{2})", "Época declarada: {m}"),
         (r"(\d+)\s*niveau", "{m} niveau(x) déclaré(s)"),
-        (r"(pierre|brique|pis[ée]|moellon|torchis|pan de bois)", "Murs déclarés : {m}"),
+        (r"(pierre|brique|pis[ée]|moellon|torchis|pan de bois)", "Paredes declaradas: {m}"),
         (r"(plancher[s]?\s+(?:bois|béton|béton|métal|acier))", "{m}"),
-        (r"(ouverture|baie|tr[ée]mie)", "Ouverture/baie mentionnée"),
+        (r"(ouverture|baie|tr[ée]mie)", "Abertura/vão mencionado"),
     ]
     for pat, tpl in patterns:
         mm = re.search(pat, d, re.IGNORECASE)
         if mm:
             facts.append({"text": tpl.format(m=mm.group(0).strip())})
     if not facts:
-        facts = [{"text": "Description reçue — aucun fait structuré détecté automatiquement."}]
+        facts = [{"text": "Descrição recebida — nenhum facto estruturado detetado automaticamente."}]
     return {"facts": facts, "declared": {}}
 
 

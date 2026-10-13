@@ -32,4 +32,4 @@ async def build_workspace(db, chantier, user):
         "status": 1, "created_at": 1, "error": 1}).sort("created_at", -1).to_list(10)
     return {"chantier_id": cid, "summary": summary, "resources": resources, "runs": runs,
             "truncated": truncated, "source_measurements_verified": False,
-            "note": "Contrôle des données enregistrées. Une modification du plan ou du devis impose un nouveau contrôle ; aucune précision de lecture n'est certifiée."}
+            "note": "Controlo dos dados registados. Uma alteração da planta ou do orçamento impõe um novo controlo; nenhuma precisão de leitura é certificada."}

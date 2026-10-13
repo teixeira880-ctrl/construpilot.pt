@@ -42,12 +42,12 @@ SITE_URL = "https://construpilot.pt"
 def _frontend() -> str:
     return (os.environ.get("FRONTEND_URL") or SITE_URL).rstrip("/")
 CEO_IMAGE_COST_EUR = float(os.environ.get("CEO_IMAGE_COST_EUR", "0.05"))
-AUDIENCE_LABEL = {"particuliers": "particuliers (propriétaires qui font des travaux)",
-                  "pros": "artisans et entreprises du BTP"}
+AUDIENCE_LABEL = {"particuliers": "particulares (proprietários que fazem obras)",
+                  "pros": "empreiteiros e empresas de construção"}
 CREATIVE_ASPECT = {
-    "flyer": "Affiche verticale A4 (portrait, ratio 3:4), hiérarchie claire titre/sous-titre.",
-    "social": "Visuel carré 1:1 pour les réseaux sociaux (Instagram/Facebook).",
-    "ad_banner": "Bannière large 16:9 pour une publicité display.",
+    "flyer": "Cartaz vertical A4 (retrato, rácio 3:4), hierarquia clara título/subtítulo.",
+    "social": "Visual quadrado 1:1 para as redes sociais (Instagram/Facebook).",
+    "ad_banner": "Banner largo 16:9 para publicidade display.",
 }
 
 
@@ -65,7 +65,7 @@ async def _budget_allows() -> tuple[bool, str | None]:
     except Exception:  # noqa: BLE001 -- si le module coût est indisponible, on n'empêche pas les brouillons
         return True, None
     if st.get("state") in ("exceeded", "frozen"):
-        return False, st.get("blocking_reason") or "plafond de coûts atteint"
+        return False, st.get("blocking_reason") or "teto de custos atingido"
     return True, None
 
 
@@ -98,24 +98,13 @@ class BlogIn(BaseModel):
 async def blog_draft(body: BlogIn, admin=Depends(admin_user)) -> dict:
     bind(admin)
     aud = AUDIENCE_LABEL.get(body.audience, AUDIENCE_LABEL["particuliers"])
-    system = ("Tu es le rédacteur en chef SEO de ConstruPilot, un SaaS BTP français. "
-              f"Tu écris pour les {aud}. Articles utiles, concrets et optimisés SEO. "
-              "RÈGLE ABSOLUE : n'invente AUCUNE statistique chiffrée, AUCUN montant d'aide, "
-              "AUCUNE norme ou référence réglementaire précise dont tu n'es pas certain ; "
-              "reste général et honnête, invite à vérifier les montants officiels. Écris en français.")
+    system = (f'És o editor-chefe SEO do ConstruPilot, um SaaS de construção para o mercado português. Escreves para os {aud}. Artigos úteis, concretos e otimizados para SEO. REGRA ABSOLUTA: não inventes NENHUMA estatística, NENHUM montante de apoio, NENHUMA norma ou referência regulamentar precisa de que não tenhas a certeza; mantém-te geral e honesto, convida a verificar os montantes oficiais. Escreve em português europeu (nunca brasileiro).')
     kw = ", ".join(body.keywords) if body.keywords else "(libre)"
-    prompt = (f"Sujet : {body.topic}\nMots-clés cibles : {kw}\nAudience : {aud}\n\n"
-              "Rédige un article de blog complet (600 à 900 mots) en HTML sémantique "
-              "(<h2>, <h3>, <p>, <ul><li>) SANS <html>/<head>/<body> ni style inline. "
-              "Intro accrocheuse, corps structuré, conclusion avec un appel à l'action vers ConstruPilot.\n\n"
-              "Réponds UNIQUEMENT en JSON : {\"title\":..., \"slug\":... (court, en-minuscules-avec-tirets), "
-              "\"meta_description\":... (max 155 caractères), \"keywords\":[...], \"content_html\":\"...\", "
-              "\"hero_image_prompt\":\"description EN ANGLAIS pour générer une photo hero professionnelle "
-              "(chantier/rénovation), sans aucun texte dans l'image\"}")
+    prompt = (f'Tema: {body.topic}\nPalavras-chave alvo: {kw}\nAudience : {aud}\n\nRedige um artigo de blogue completo (600 a 900 palavras) em HTML semântico (<h2>, <h3>, <p>, <ul><li>) SEM <html>/<head>/<body> nem estilos inline. Introdução cativante, corpo estruturado, conclusão com um apelo à ação para o ConstruPilot.\n\nResponde APENAS em JSON: {{"title":..., "slug":... (curto, em-minusculas-com-hifens), "meta_description":... (máx. 155 caracteres), "keywords":[...], "content_html":"...", "hero_image_prompt":"descrição EM INGLÊS para gerar uma fotografia hero profissional (obra/reabilitação), sem qualquer texto na imagem"}}')
     raw = await _complete(system, prompt, feature="ceo_blog")
     data = _json(raw, {})
     if not data.get("content_html") or not data.get("title"):
-        raise HTTPException(502, "Génération de l'article impossible, réessayez.")
+        raise HTTPException(502, "Geração do artigo impossível, tente novamente.")
 
     article_id = "ceo_" + secrets.token_hex(8)
     slug = await _unique_slug(_slugify(data.get("slug") or data["title"]))
@@ -125,7 +114,7 @@ async def blog_draft(body: BlogIn, admin=Depends(admin_user)) -> dict:
     if body.with_image and (data.get("hero_image_prompt")):
         ok, reason = await _budget_allows()
         if not ok:
-            warnings.append(f"Image hero non générée : {reason}")
+            warnings.append(f'Imagem hero não gerada: {reason}')
         else:
             try:
                 img_prompt = ("Professional editorial hero photograph for a French construction/renovation blog. "
@@ -137,7 +126,7 @@ async def blog_draft(body: BlogIn, admin=Depends(admin_user)) -> dict:
                 hero_url = f"/api/blog/media/{article_id}/hero"
             except Exception as exc:  # noqa: BLE001
                 log.error("CEO hero image failed (%s)", type(exc).__name__)
-                warnings.append("Image hero non générée (erreur du générateur).")
+                warnings.append("Imagem hero não gerada (erro do gerador).")
 
     doc = {
         "autoseo_id": article_id, "source": "ceo_agent", "status": "draft",
@@ -170,20 +159,16 @@ async def creative(body: CreativeIn, admin=Depends(admin_user)) -> dict:
     bind(admin)
     ok, reason = await _budget_allows()
     if not ok:
-        raise HTTPException(402, f"Plafond de coûts : {reason}")
+        raise HTTPException(402, f'Limite de custos: {reason}')
     aud = AUDIENCE_LABEL.get(body.audience, AUDIENCE_LABEL["particuliers"])
     aspect = CREATIVE_ASPECT.get(body.format, CREATIVE_ASPECT["flyer"])
-    prompt = (f"{aspect}\nMarque : ConstruPilot (SaaS BTP français). Cible : {aud}.\n"
-              f"Brief : {body.brief}\n"
-              "Design moderne et épuré, palette crème/vert profond/cuivre. "
-              "Tu peux intégrer un titre et un sous-titre courts en FRANÇAIS, lisibles et bien composés, "
-              "plus un petit appel à l'action. Mise en page professionnelle de niveau agence.")
+    prompt = (f'{aspect}\nMarca: ConstruPilot (SaaS de construção, Portugal). Público-alvo: {aud}.\nBrief : {body.brief}\nDesign moderno e limpo, paleta creme/verde profundo/cobre, com um toque discreto de azulejo português. Podes integrar um título e um subtítulo curtos em PORTUGUÊS EUROPEU, legíveis e bem compostos, mais um pequeno apelo à ação. Paginação profissional de nível de agência.')
     asset_id = "ast_" + secrets.token_hex(8)
     try:
         img_bytes, ctype = await ceo_media.generate_image(prompt, session_id=asset_id)
     except Exception as exc:  # noqa: BLE001
         log.error("CEO creative failed (%s)", type(exc).__name__)
-        raise HTTPException(502, "Génération du visuel impossible, réessayez.")
+        raise HTTPException(502, "Geração do visual impossível, tente novamente.")
     ext = "png" if "png" in ctype else "jpg"
     path = f"{storage.APP_NAME}/ceo/assets/{asset_id}.{ext}"
     await run_in_threadpool(storage.put_object, path, img_bytes, ctype)
@@ -198,12 +183,11 @@ async def creative(body: CreativeIn, admin=Depends(admin_user)) -> dict:
 # ============================== Campagnes e-mail ==============================
 
 EMAIL_PLAN = {
-    "promo": (1, "un e-mail promotionnel (offre / nouveauté), ton chaleureux et direct, un seul appel à l'action"),
-    "newsletter": (1, "un e-mail newsletter (actualités + 2-3 conseils utiles), ton informatif et sympathique"),
-    "nurture": (3, "une SÉQUENCE de 3 e-mails d'accompagnement (onboarding) à envoyer à J+0, J+2 et J+5, "
-                   "chacun apportant une valeur concrète et poussant doucement vers l'essai du produit"),
+    "promo": (1, "um e-mail promocional (oferta / novidade), tom caloroso e direto, um único apelo à ação"),
+    "newsletter": (1, "um e-mail de newsletter (notícias + 2-3 conselhos úteis), tom informativo e simpático"),
+    "nurture": (3, "uma SEQUÊNCIA de 3 e-mails de acompanhamento (onboarding) a enviar em D+0, D+2 e D+5, cada um trazendo um valor concreto e incentivando suavemente a experimentar o produto"),
 }
-EMAIL_TYPE_LABEL = {"promo": "Promotionnel", "newsletter": "Newsletter", "nurture": "Séquence nurture"}
+EMAIL_TYPE_LABEL = {"promo": "Promocional", "newsletter": "Newsletter", "nurture": "Sequência nurture"}
 
 
 class EmailIn(BaseModel):
@@ -218,23 +202,13 @@ async def email_draft(body: EmailIn, admin=Depends(admin_user)) -> dict:
     aud = AUDIENCE_LABEL.get(body.audience, AUDIENCE_LABEL["particuliers"])
     etype = body.email_type if body.email_type in EMAIL_PLAN else "promo"
     count, brief = EMAIL_PLAN[etype]
-    system = ("Tu es responsable CRM e-mail de ConstruPilot, un SaaS BTP français. "
-              f"Tu écris pour les {aud}. Des e-mails marketing clairs, chaleureux et efficaces, prêts à envoyer. "
-              "RÈGLE ABSOLUE : n'invente AUCUNE statistique chiffrée, AUCUN montant d'aide, AUCUN pourcentage de "
-              "remise, AUCUNE date limite ni promesse de performance ; reste honnête et général, invite à essayer "
-              "ou à vérifier les informations officielles. Écris en français.")
-    prompt = (f"Sujet de la campagne : {body.topic}\nAudience : {aud}\nType : {brief}\n\n"
-              "Rédige le corps en HTML sémantique simple (<p>, <ul><li>, <strong>, <h2>) SANS <html>/<head>/<body> "
-              "ni style inline. Chaque e-mail doit proposer 2 objets A/B et un pré-header court.\n\n"
-              "Réponds UNIQUEMENT en JSON : {\"campaign_name\":\"...\", \"emails\":["
-              "{\"step\":1, \"send_hint\":\"J+0\", \"subjects\":[\"objet A\",\"objet B\"], "
-              "\"preheader\":\"...\", \"body_html\":\"...\", \"cta_label\":\"...\"}]} "
-              f"— EXACTEMENT {count} e-mail(s) dans le tableau \"emails\".")
+    system = (f'És responsável de CRM e-mail do ConstruPilot, um SaaS de construção para o mercado português. Escreves para os {aud}. E-mails de marketing claros, calorosos e eficazes, prontos a enviar. REGRA ABSOLUTA: não inventes NENHUMA estatística, NENHUM montante de apoio, NENHUMA percentagem de desconto, NENHUM prazo nem promessa de desempenho; mantém-te honesto e geral, convida a experimentar ou a verificar as informações oficiais. Escreve em português europeu.')
+    prompt = (f'Tema da campanha: {body.topic}\nAudience : {aud}\nType : {brief}\n\nRedige o corpo em HTML semântico simples (<p>, <ul><li>, <strong>, <h2>) SEM <html>/<head>/<body> nem estilos inline. Cada e-mail deve propor 2 assuntos A/B e um pré-cabeçalho curto.\n\nResponde APENAS em JSON: {{"campaign_name":"...", "emails":[{{"step":1, "send_hint":"D+0", "subjects":["assunto A","assunto B"], "preheader":"...", "body_html":"...", "cta_label":"..."}}]}} — EXATAMENTE {count} e-mail(s) na tabela "emails".')
     raw = await _complete(system, prompt, feature="ceo_email")
     data = _json(raw, {})
     emails = data.get("emails") or []
     if not emails or not isinstance(emails, list):
-        raise HTTPException(502, "Génération de l'e-mail impossible, réessayez.")
+        raise HTTPException(502, "Geração do e-mail impossível, tente novamente.")
     copy_id = "cpy_" + secrets.token_hex(8)
     doc = {
         "copy_id": copy_id, "kind": "email", "email_type": etype, "audience": body.audience,
@@ -259,23 +233,12 @@ class AdIn(BaseModel):
 async def ad_draft(body: AdIn, admin=Depends(admin_user)) -> dict:
     bind(admin)
     aud = AUDIENCE_LABEL.get(body.audience, AUDIENCE_LABEL["particuliers"])
-    system = ("Tu es media buyer et copywriter publicitaire de ConstruPilot (SaaS BTP français). "
-              f"Tu écris pour les {aud}. Tu produis des accroches prêtes à coller dans les régies publicitaires. "
-              "RÈGLE ABSOLUE : n'invente AUCUN chiffre, pourcentage, prix ni promesse de résultat ; pas de "
-              "superlatifs trompeurs ni de mentions réglementées. Écris en français.")
-    prompt = (f"Brief : {body.brief}\nAudience : {aud}\n\n"
-              "Produis des variantes pour 3 plateformes en respectant STRICTEMENT les limites de caractères :\n"
-              "- Google Ads : jusqu'à 10 titres (≤ 30 caractères), 4 descriptions (≤ 90 caractères), 10 mots-clés.\n"
-              "- Meta (Facebook/Instagram) : 3 textes principaux (≈ 125 car.), 3 titres (≤ 40 car.), 2 descriptions (≤ 30 car.).\n"
-              "- LinkedIn : 2 textes d'introduction (≈ 150 car.), 2 titres (≤ 70 car.).\n\n"
-              "Réponds UNIQUEMENT en JSON : {\"campaign_name\":\"...\", "
-              "\"google\":{\"headlines\":[...], \"descriptions\":[...], \"keywords\":[...]}, "
-              "\"meta\":{\"primary_texts\":[...], \"headlines\":[...], \"descriptions\":[...]}, "
-              "\"linkedin\":{\"intro_texts\":[...], \"headlines\":[...]}}")
+    system = (f'És media buyer e copywriter publicitário do ConstruPilot (SaaS de construção, Portugal). Escreves para os {aud}. Produzes frases de impacto prontas a colar nas plataformas publicitárias. REGRA ABSOLUTA: não inventes NENHUM número, percentagem, preço nem promessa de resultado; nada de superlativos enganadores nem de menções regulamentadas. Escreve em português europeu.')
+    prompt = (f'Brief : {body.brief}\nAudience : {aud}\n\nProduz variantes para 3 plataformas respeitando ESTRITAMENTE os limites de caracteres:\n- Google Ads: até 10 títulos (≤ 30 caracteres), 4 descrições (≤ 90 caracteres), 10 palavras-chave.\n- Meta (Facebook/Instagram): 3 textos principais (≈ 125 car.), 3 títulos (≤ 40 car.), 2 descrições (≤ 30 car.).\n- LinkedIn: 2 textos de introdução (≈ 150 car.), 2 títulos (≤ 70 car.).\n\nResponde APENAS em JSON: {{"campaign_name":"...", "google":{{"headlines":[...], "descriptions":[...], "keywords":[...]}}, "meta":{{"primary_texts":[...], "headlines":[...], "descriptions":[...]}}, "linkedin":{{"intro_texts":[...], "headlines":[...]}}}}')
     raw = await _complete(system, prompt, feature="ceo_ad")
     data = _json(raw, {})
     if not (data.get("google") or data.get("meta") or data.get("linkedin")):
-        raise HTTPException(502, "Génération des annonces impossible, réessayez.")
+        raise HTTPException(502, "Geração dos anúncios impossível, tente novamente.")
     copy_id = "cpy_" + secrets.token_hex(8)
     doc = {
         "copy_id": copy_id, "kind": "ad", "audience": body.audience, "brief": body.brief,
@@ -331,24 +294,13 @@ async def _run_storyboard(copy_id: str, prompts: list[str]) -> None:
 async def video_draft(body: VideoIn, admin=Depends(admin_user)) -> dict:
     bind(admin)
     aud = AUDIENCE_LABEL.get(body.audience, AUDIENCE_LABEL["particuliers"])
-    system = ("Tu es scénariste publicitaire vidéo trilingue (français, portugais, anglais) pour ConstruPilot, "
-              f"un SaaS BTP français. Tu écris pour les {aud}. Tu produis des roteiros courts, rythmés et "
-              "tournables. RÈGLE ABSOLUE : n'invente AUCUN chiffre, pourcentage, prix ni promesse de résultat ; "
-              "reste honnête et concret.")
-    prompt = (f"Brief : {body.brief}\nAudience : {aud}\nDurée cible : {body.duration} secondes.\n\n"
-              "Découpe en scènes (4 à 6). Pour CHAQUE scène, donne la voix-off en français (fr), portugais (pt) "
-              "et anglais (en), une description visuelle (visual) et le texte à l'écran (on_screen). "
-              "Ajoute un CTA final trilingue, l'ambiance musicale (music_mood) et EXACTEMENT 4 'storyboard_prompts' "
-              "EN ANGLAIS (descriptions d'images clés, sans aucun texte dans l'image).\n\n"
-              "Réponds UNIQUEMENT en JSON : {\"campaign_name\":\"...\", \"duration_seconds\":30, "
-              "\"music_mood\":\"...\", \"scenes\":[{\"n\":1, \"t_start\":0, \"t_end\":4, \"visual\":\"...\", "
-              "\"fr\":\"...\", \"pt\":\"...\", \"en\":\"...\", \"on_screen\":\"...\"}], "
-              "\"cta\":{\"fr\":\"...\",\"pt\":\"...\",\"en\":\"...\"}, \"storyboard_prompts\":[\"...\",\"...\",\"...\",\"...\"]}")
+    system = (f'És argumentista publicitário de vídeo trilingue (francês, português, inglês) para o ConstruPilot, um SaaS de construção para o mercado português. Escreves para os {aud}. Produzes guiões curtos, ritmados e filmáveis. REGRA ABSOLUTA: não inventes NENHUM número, percentagem, preço nem promessa de resultado; mantém-te honesto e concreto.')
+    prompt = (f"""Brief : {body.brief}\nAudience : {aud}\nDuração alvo: {body.duration} segundos.\n\nDivide em cenas (4 a 6). Para CADA cena, dá a voz-off em francês (fr), português europeu (pt) e inglês (en), uma descrição visual (visual) e o texto no ecrã (on_screen, em português europeu). Acrescenta um CTA final trilingue, o ambiente musical (music_mood) e EXATAMENTE 4 'storyboard_prompts' EM INGLÊS (descrições de imagens-chave, sem qualquer texto na imagem).\n\nResponde APENAS em JSON: {{"campaign_name":"...", "duration_seconds":30, "music_mood":"...", "scenes":[{{"n":1, "t_start":0, "t_end":4, "visual":"...", "fr":"...", "pt":"...", "en":"...", "on_screen":"..."}}], "cta":{{"fr":"...","pt":"...","en":"..."}}, "storyboard_prompts":["...","...","...","..."]}}""")
     raw = await _complete(system, prompt, feature="ceo_video")
     data = _json(raw, {})
     scenes = data.get("scenes") or []
     if not scenes or not isinstance(scenes, list):
-        raise HTTPException(502, "Génération du roteiro impossible, réessayez.")
+        raise HTTPException(502, "Geração do guião impossível, tente novamente.")
     prompts = [p for p in (data.get("storyboard_prompts") or []) if isinstance(p, str)][:4]
     copy_id = "cpy_" + secrets.token_hex(8)
     storyboard = [{"index": i, "prompt": prompts[i] if i < len(prompts) else "",
@@ -388,12 +340,12 @@ async def list_drafts() -> dict:
 @router.post("/copy/{copy_id}/{action}")
 async def review_copy(copy_id: str, action: str) -> dict:
     if action not in ("publish", "reject"):
-        raise HTTPException(400, "Action inconnue")
+        raise HTTPException(400, "Ação desconhecida")
     status = "approved" if action == "publish" else "rejected"
     res = await db.ceo_copy.update_one({"copy_id": copy_id},
                                        {"$set": {"status": status, "updated_at": _now()}})
     if not res.matched_count:
-        raise HTTPException(404, "Contenu introuvable")
+        raise HTTPException(404, "Conteúdo não encontrado")
     return {"status": status, "copy_id": copy_id}
 
 
@@ -403,17 +355,17 @@ def _render_email_html(em: dict, unsub_url: str | None) -> str:
     subject = (em.get("subjects") or ["ConstruPilot"])[0]
     return emailer.wrap_html(
         title=subject, body=em.get("body_html") or "",
-        cta_url=SITE_URL, cta_label=em.get("cta_label") or "Découvrir ConstruPilot",
+        cta_url=SITE_URL, cta_label=em.get("cta_label") or "Descobrir ConstruPilot",
         unsubscribe_url=unsub_url)
 
 
 async def _get_email_copy(copy_id: str) -> dict:
     doc = await db.ceo_copy.find_one({"copy_id": copy_id, "kind": "email"}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Campagne e-mail introuvable")
+        raise HTTPException(404, "Campanha de e-mail não encontrada")
     emails = (doc.get("payload") or {}).get("emails") or []
     if not emails:
-        raise HTTPException(400, "Cette campagne ne contient aucun e-mail.")
+        raise HTTPException(400, "Esta campanha não contém nenhum e-mail.")
     return doc
 
 
@@ -426,7 +378,7 @@ async def email_send_test(copy_id: str, body: SendTestIn, admin=Depends(admin_us
     doc = await _get_email_copy(copy_id)
     to = (body.to or admin.get("email") or "").strip()
     if not to:
-        raise HTTPException(400, "Aucune adresse de test (renseignez votre e-mail).")
+        raise HTTPException(400, "Nenhum endereço de teste (indique o seu e-mail).")
     em = doc["payload"]["emails"][0]
     subject = (em.get("subjects") or ["ConstruPilot"])[0]
     html = _render_email_html(em, f"{_frontend()}/api/newsletter/unsubscribe?token=test")
@@ -434,7 +386,7 @@ async def email_send_test(copy_id: str, body: SendTestIn, admin=Depends(admin_us
         await emailer.send_email(to, f"[Test] {subject}", html, from_name="ConstruPilot")
     except Exception as exc:  # noqa: BLE001
         log.error("CEO email test failed (%s)", type(exc).__name__)
-        raise HTTPException(502, "Envoi du test impossible (vérifiez la configuration Resend).")
+        raise HTTPException(502, "Envio do teste impossível (verifique a configuração Resend).")
     return {"ok": True, "to": to}
 
 
@@ -473,12 +425,12 @@ async def _run_email_campaign(copy_id: str) -> None:
 async def email_send_campaign(copy_id: str) -> dict:
     doc = await _get_email_copy(copy_id)
     if doc.get("status") != "approved":
-        raise HTTPException(400, "Approuvez d'abord la campagne avant de l'envoyer.")
+        raise HTTPException(400, "Aprove primeiro a campanha antes de a enviar.")
     if doc.get("send_status") == "sending":
         return {"status": "sending", "total": doc.get("send_total", 0), "already": True}
     total = await db.newsletter_subscribers.count_documents({"unsubscribed_at": None})
     if total == 0:
-        raise HTTPException(400, "Aucun abonné newsletter actif à qui envoyer.")
+        raise HTTPException(400, "Nenhum subscritor ativo da newsletter a quem enviar.")
     asyncio.create_task(_run_email_campaign(copy_id))
     return {"status": "sending", "total": total}
 
@@ -489,7 +441,7 @@ async def publish_blog(article_id: str) -> dict:
         {"autoseo_id": article_id, "source": "ceo_agent"},
         {"$set": {"status": "published", "published_at": _now(), "updated_at": _now()}})
     if not res.matched_count:
-        raise HTTPException(404, "Brouillon introuvable")
+        raise HTTPException(404, "Rascunho não encontrado")
     return {"published": True, "article_id": article_id}
 
 
@@ -499,19 +451,19 @@ async def reject_blog(article_id: str) -> dict:
         {"autoseo_id": article_id, "source": "ceo_agent"},
         {"$set": {"status": "rejected", "updated_at": _now()}})
     if not res.matched_count:
-        raise HTTPException(404, "Brouillon introuvable")
+        raise HTTPException(404, "Rascunho não encontrado")
     return {"rejected": True, "article_id": article_id}
 
 
 @router.post("/creative/{asset_id}/{action}")
 async def review_asset(asset_id: str, action: str) -> dict:
     if action not in ("publish", "reject"):
-        raise HTTPException(400, "Action inconnue")
+        raise HTTPException(400, "Ação desconhecida")
     status = "approved" if action == "publish" else "rejected"
     res = await db.ceo_assets.update_one({"asset_id": asset_id},
                                          {"$set": {"status": status, "updated_at": _now()}})
     if not res.matched_count:
-        raise HTTPException(404, "Visuel introuvable")
+        raise HTTPException(404, "Visual não encontrado")
     return {"status": status, "asset_id": asset_id}
 
 
@@ -519,11 +471,11 @@ async def review_asset(asset_id: str, action: str) -> dict:
 async def asset_media(asset_id: str):
     doc = await db.ceo_assets.find_one({"asset_id": asset_id}, {"_id": 0, "storage_path": 1, "content_type": 1})
     if not doc or not doc.get("storage_path"):
-        raise HTTPException(404, "Introuvable")
+        raise HTTPException(404, "Não encontrado")
     try:
         data, ctype = await run_in_threadpool(storage.get_object, doc["storage_path"])
     except Exception:  # noqa: BLE001
-        raise HTTPException(404, "Média indisponible")
+        raise HTTPException(404, "Média indisponível")
     return StreamingResponse(io.BytesIO(data), media_type=ctype or doc.get("content_type") or "image/png",
                              headers={"Cache-Control": "private, max-age=600"})
 
@@ -532,30 +484,30 @@ async def asset_media(asset_id: str):
 
 # Thèmes saisonniers BTP par mois (1=janvier). Déterministe, pas d'appel IA.
 _SEASONAL = {
-    1: [("Rénovation énergétique : par où commencer en 2026", "particuliers", ["rénovation énergétique", "aides"]),
-        ("Isolation des combles : méthodes et bénéfices", "particuliers", ["isolation", "combles"])],
-    2: [("Rénover sa salle de bain : budget et étapes", "particuliers", ["salle de bain", "rénovation"]),
-        ("Devis BTP : comment chiffrer juste et vite", "pros", ["devis", "chiffrage"])],
-    3: [("Ravalement de façade : quand et comment", "particuliers", ["façade", "ravalement"]),
-        ("Métré de plans : gagner du temps sur vos chantiers", "pros", ["métré", "plans"])],
-    4: [("Aménager sa terrasse : budget et matériaux", "particuliers", ["terrasse", "extérieur"]),
-        ("Organiser le planning d'un chantier", "pros", ["planning", "chantier"])],
-    5: [("Agrandissement de maison : permis et coûts", "particuliers", ["agrandissement", "permis"]),
-        ("Facturation électronique : se préparer", "pros", ["facturation électronique", "factur-x"])],
-    6: [("Confort d'été : climatisation et ventilation", "particuliers", ["climatisation", "confort"]),
-        ("Suivre la rentabilité de ses chantiers", "pros", ["marge", "rentabilité"])],
-    7: [("Toiture : diagnostic avant l'automne", "particuliers", ["toiture", "diagnostic"]),
-        ("Gérer ses sous-traitants sereinement", "pros", ["sous-traitance", "chantier"])],
-    8: [("Rentrée travaux : planifier son projet", "particuliers", ["travaux", "planification"]),
-        ("Préparer son carnet de commandes d'automne", "pros", ["prospection", "leads"])],
-    9: [("Isolation avant l'hiver : murs et combles", "particuliers", ["isolation", "hiver"]),
-        ("Comparer les plans avant/après d'un chantier", "pros", ["comparaison plans", "avenant"])],
-    10: [("Chauffage : pompe à chaleur ou chaudière ?", "particuliers", ["pompe à chaleur", "chauffage"]),
-         ("Automatiser ses devis multi-niveaux", "pros", ["devis", "automatisation"])],
-    11: [("Salle de bain : tendances et rénovation d'hiver", "particuliers", ["salle de bain", "tendances"]),
-         ("Clôturer l'année : bilan et budget chantiers", "pros", ["bilan", "budget"])],
-    12: [("Préparer ses travaux pour la nouvelle année", "particuliers", ["travaux", "projet"]),
-         ("Objectifs commerciaux BTP pour l'année à venir", "pros", ["commercial", "objectifs"])],
+    1: [("Reabilitação energética: por onde começar em 2026", "particuliers", ["reabilitação energética", "aides"]),
+        ("Isolamento do desvão: métodos e benefícios", "particuliers", ["isolation", "combles"])],
+    2: [("Remodelar a casa de banho: orçamento e etapas", "particuliers", ["salle de bain", "rénovation"]),
+        ("Orçamentos de construção: como orçamentar bem e depressa", "pros", ["devis", "chiffrage"])],
+    3: [("Reabilitação de fachadas: quando e como", "particuliers", ["façade", "ravalement"]),
+        ("Medição de plantas: ganhar tempo nas suas obras", "pros", ["métré", "plans"])],
+    4: [("Arranjar o terraço: orçamento e materiais", "particuliers", ["terrasse", "extérieur"]),
+        ("Organizar o planeamento de uma obra", "pros", ["planning", "chantier"])],
+    5: [("Ampliação de moradia: licenciamento e custos", "particuliers", ["agrandissement", "permis"]),
+        ("Faturação eletrónica: preparar-se", "pros", ["facturation électronique", "factur-x"])],
+    6: [("Conforto de verão: climatização e ventilação", "particuliers", ["climatisation", "confort"]),
+        ("Acompanhar a rentabilidade das suas obras", "pros", ["marge", "rentabilité"])],
+    7: [("Cobertura: diagnóstico antes do outono", "particuliers", ["toiture", "diagnostic"]),
+        ("Gerir os subempreiteiros com tranquilidade", "pros", ["sous-traitance", "chantier"])],
+    8: [("Regresso às obras: planear o seu projeto", "particuliers", ["travaux", "planification"]),
+        ("Preparar a carteira de encomendas de outono", "pros", ["prospection", "leads"])],
+    9: [("Isolamento antes do inverno: paredes e desvão", "particuliers", ["isolation", "hiver"]),
+        ("Comparar as plantas antes/depois de uma obra", "pros", ["comparaison plans", "avenant"])],
+    10: [("Aquecimento: bomba de calor ou caldeira?", "particuliers", ["bomba de calor", "chauffage"]),
+         ("Automatizar orçamentos com vários pisos", "pros", ["devis", "automatisation"])],
+    11: [("Casa de banho: tendências e remodelação de inverno", "particuliers", ["salle de bain", "tendances"]),
+         ("Fechar o ano: balanço e orçamento das obras", "pros", ["bilan", "budget"])],
+    12: [("Preparar as obras para o novo ano", "particuliers", ["travaux", "projet"]),
+         ("Objetivos comerciais de construção para o próximo ano", "pros", ["commercial", "objectifs"])],
 }
 
 
@@ -564,11 +516,11 @@ async def editorial_calendar() -> dict:
     now = datetime.now(timezone.utc)
     this_m = now.month
     next_m = 1 if this_m == 12 else this_m + 1
-    months = [("Ce mois-ci", this_m), ("Le mois prochain", next_m)]
+    months = [("Este mês", this_m), ("O próximo mês", next_m)]
     slots = []
     for label, m in months:
         for title, audience, kws in _SEASONAL.get(m, []):
             slots.append({"period": label, "month": m, "title": title,
                           "audience": audience, "keywords": kws,
-                          "rationale": f"Sujet saisonnier pour {AUDIENCE_LABEL[audience]}."})
+                          "rationale": f'Tema sazonal para {AUDIENCE_LABEL[audience]}.'})
     return {"slots": slots, "generated_at": _now()}

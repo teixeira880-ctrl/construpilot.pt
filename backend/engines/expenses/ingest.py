@@ -37,7 +37,7 @@ async def refresh_local():
     claim = await db.api_expense_sync.update_one({"_id": "local", "$or": [{"lease_until": {"$exists": False}}, {"lease_until": {"$lt": now()}}]},
         {"$set": {"lease": lease, "lease_until": now() + timedelta(minutes=5)}})
     if not claim.modified_count:
-        raise HTTPException(409, "Synchronisation déjà en cours")
+        raise HTTPException(409, "Sincronização já em curso")
     counts, skipped, truncated, aggregate_calls = {}, 0, False, 0
     try:
         for collection, fields in SOURCES.items():

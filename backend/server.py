@@ -75,7 +75,7 @@ api_router = APIRouter(prefix="/api")
 
 @api_router.get("/")
 async def root():
-    return {"app": "ConstruPilot", "tagline": "Estimez, Comparez, Construisez.",
+    return {"app": "ConstruPilot", "tagline": "Estime, Compare, Construa.",
             "status": "ok"}
 
 
@@ -303,7 +303,7 @@ async def _seed_demo_org():
             "owner_user_id": pro["user_id"],
             "created_at": datetime.now(timezone.utc).isoformat(),
             "brand_company_name": "BTP Demo SAS",
-            "brand_contact_line": "12 rue des Compagnons · 75011 Paris · 01 45 67 89 00 · contact@btp-demo.fr",
+            "brand_contact_line": "Rua dos Construtores, 12 · 1000-001 Lisboa · 210 000 000 · contacto@obra-demo.pt",
             "brand_logo_b64": None,
         }
         await db.organizations.insert_one(doc)
@@ -336,10 +336,10 @@ async def seed():
     if os.environ.get("SEED_DEMO_DATA") == "true":
         accounts = (
             (ADMIN_EMAIL,     "Admin ConstruPilot", "admin", "premium", "Construpilot2026!"),
-            (DEMO_EMAIL,      "Client Démo",        "user",  "premium", "Demo2026!"),
-            (CLIENT_EMAIL,    "Alice Particulier",  "user",  "free",    "Client2026!"),
+            (DEMO_EMAIL,      "Cliente Demo",        "user",  "premium", "Demo2026!"),
+            (CLIENT_EMAIL,    "Ana Particular",  "user",  "free",    "Client2026!"),
             (PRO_EMAIL,       "Marc BTP (Pro)",     "user",  "premium", "Pro2026!"),
-            (COLLEGUE_EMAIL,  "Julie Collègue",     "user",  "free",    "Collegue2026!"),
+            (COLLEGUE_EMAIL,  "Joana Colega",     "user",  "free",    "Collegue2026!"),
         )
         for email, name, role, plan, pw in accounts:
             existing = await db.users.find_one({"email": email})
@@ -380,7 +380,7 @@ async def seed():
         existing = await db.users.find_one({"email": owner_email})
         if not existing:
             await db.users.insert_one({
-                "email": owner_email, "name": "Administrateur", "role": "admin",
+                "email": owner_email, "name": "Administrador", "role": "admin",
                 "plan": "premium", "password_hash": hash_password(owner_pwd),
                 "auth_provider": "password", "picture": None,
                 "user_id": new_user_id(), "must_change_password": True,
@@ -412,7 +412,7 @@ async def seed():
     sa = await db.users.find_one({"email": second_admin_email})
     if not sa:
         await db.users.insert_one({
-            "email": second_admin_email, "name": "Administrateur ConstruPilot",
+            "email": second_admin_email, "name": "Administrador ConstruPilot",
             "role": "admin", "plan": "premium",
             "password_hash": hash_password(second_admin_pwd),
             "auth_provider": "password", "picture": None,
@@ -591,13 +591,13 @@ async def seed():
         {"$set": {"quotas.free_renders_3d": 3}})
     # Migration textes annuels (économies recalculées avec les nouveaux prix)
     YEARLY_COPY = {
-        "premium_yearly": {"tagline": "Économisez ~17 %",
-                           "description": "Économisez environ 17 % avec l'abonnement annuel.",
-                           "features": ["Toutes les fonctionnalités Premium", "Économisez ~17 %"]},
-        "pro_yearly": {"tagline": "Économisez ~12 %",
-                       "description": "Facturation annuelle (~12 % d'économies)."},
-        "pro_business_yearly": {"tagline": "Économisez ~17 %",
-                                "description": "Facturation annuelle (~17 % d'économies)."},
+        "premium_yearly": {"tagline": "Poupe ~17 %",
+                           "description": "Poupe cerca de 17 % com a subscrição anual.",
+                           "features": ["Todas as funcionalidades Premium", "Poupe ~17 %"]},
+        "pro_yearly": {"tagline": "Poupe ~12 %",
+                       "description": "Faturação anual (~12 % de poupança)."},
+        "pro_business_yearly": {"tagline": "Poupe ~17 %",
+                                "description": "Faturação anual (~17 % de poupança)."},
     }
     for plan_id, copy in YEARLY_COPY.items():
         await db.plans.update_one({"plan_id": plan_id}, {"$set": copy})

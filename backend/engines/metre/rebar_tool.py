@@ -13,17 +13,17 @@ def _report_payload(native: dict | None, sheet: dict | None) -> dict:
     if native:
         ha, mesh, recap = native.get("ha_bars"), native.get("mesh"), native.get("mesh_recap")
         if ha:
-            out["calculation"] = {"kind": "rebar_mass_ha", "formula": f"Σ({ha['count']} repères HA) longueur totale × kg/m (EN 10080)",
+            out["calculation"] = {"kind": "rebar_mass_ha", "formula": f"Σ({ha['count']} marcas A500) comprimento total × kg/m (EN 10080)",
                                   "result": ha["total_mass_kg"], "unit": "kg", "state": "to_clarify" if ha["inconsistencies"] else "confirmed", "inputs": []}
             for dia, v in ha["by_diameter"].items():
-                out["lines"].append({"element": f"Aciers {dia}", "location": "nomenclature", "formula": f"{v['length_m']:g} m × {v['mass_kg'] / v['length_m'] if v['length_m'] else 0:.3f} kg/m",
+                out["lines"].append({"element": f'Aços {dia}', "location": "nomenclature", "formula": f"{v['length_m']:g} m × {v['mass_kg'] / v['length_m'] if v['length_m'] else 0:.3f} kg/m",
                                      "net": v["mass_kg"], "unit": "kg", "state": "confirmed"})
             if ha.get("comparison"):
                 c = ha["comparison"]
                 out["comparison"] = {"kind": "rebar_vs_recap", "formula": f"{c['a']} {c['a_kg']:g} kg − {c['b']} {c['b_kg']:g} kg", "result": c["difference_kg"], "unit": "kg",
                                      "state": "confirmed" if abs(c["difference_kg"]) <= max(1.0, 0.01 * c["b_kg"]) else "to_clarify", "inputs": []}
         if mesh:
-            out["lines"].append({"element": "Treillis soudés (nomenclature)", "location": f"{mesh['count']} panneaux", "formula": "Σ masses imprimées",
+            out["lines"].append({"element": "Malhas eletrossoldadas (lista)", "location": f"{mesh['count']} panneaux", "formula": "Σ massas impressas",
                                  "net": mesh["rows_mass_kg"], "unit": "kg", "state": "confirmed"})
             for cmp in mesh.get("comparisons", []):
                 if not cmp.get("expect_equal"):
@@ -32,20 +32,20 @@ def _report_payload(native: dict | None, sheet: dict | None) -> dict:
                     continue
                 state = "confirmed" if abs(cmp["difference_kg"]) <= max(3.0, 0.005 * (cmp["b_kg"] or 1)) else "to_clarify"
                 out["findings"].append({"severity": "info" if state == "confirmed" else "to_clarify", "subject": f"{cmp['a']} vs {cmp['b']}",
-                                        "explanation": f"{cmp['a_kg']:g} kg vs {cmp['b_kg']:g} kg (écart {cmp['difference_kg']:+g} kg)."})
+                                        "explanation": f"{cmp['a_kg']:g} kg vs {cmp['b_kg']:g} kg (diferença {cmp['difference_kg']:+g} kg)."})
         if recap and recap.get("mass_laid_kg") is not None:
-            out["lines"].append({"element": "Treillis — masse posée (cartouche)", "location": None, "formula": "valeur imprimée", "net": recap["mass_laid_kg"], "unit": "kg", "state": "confirmed"})
+            out["lines"].append({"element": "Malhas — massa colocada (legenda)", "location": None, "formula": "valor impresso", "net": recap["mass_laid_kg"], "unit": "kg", "state": "confirmed"})
         out["findings"].extend(native.get("findings", []))
     if sheet:
         el, chk = sheet.get("element") or {}, sheet.get("checks") or {}
         if el.get("steel_kg") is not None:
-            out["calculation"] = {"kind": "rebar_sheet_mass", "formula": f"Feuille {el.get('label') or '?'} : Σ Lg × kg/m = {chk.get('calc_mass_kg')} kg",
+            out["calculation"] = {"kind": "rebar_sheet_mass", "formula": f"Folha {el.get('label') or '?'} : Σ Lg × kg/m = {chk.get('calc_mass_kg')} kg",
                                   "result": el["steel_kg"], "unit": "kg", "state": "to_clarify" if chk.get("inconsistencies") else "confirmed", "inputs": []}
         for c in chk.get("inconsistencies", []):
-            out["findings"].append({"severity": "to_clarify", "subject": f"{el.get('label') or 'Feuille'} · HA{c.get('diameter_mm', '')}".rstrip(" ·HA"),
-                                    "explanation": f"{c['check']} : {c.get('formula')} vs {c.get('declared')} imprimé.", "action": "Vérifier la ligne sur la feuille (recadrage)."})
+            out["findings"].append({"severity": "to_clarify", "subject": f"{el.get('label') or 'Folha'} · HA{c.get('diameter_mm', '')}".rstrip(" ·HA"),
+                                    "explanation": f"{c['check']} : {c.get('formula')} vs {c.get('declared')} imprimé.", "action": "Verificar a linha na folha (recorte)."})
         for u in sheet.get("unreadable") or []:
-            out["findings"].append({"severity": "to_clarify", "subject": "Valeur illisible", "explanation": u})
+            out["findings"].append({"severity": "to_clarify", "subject": "Valor ilegível", "explanation": u})
     return out
 
 
@@ -60,7 +60,7 @@ def _drawn_dimensions(pdf: bytes, page: int, native: dict) -> dict | None:
         scale = identify_document(pg.get_text(), pg.get_text("words")).get("declared_scale") or ""
         denom = int(scale.split("/")[1]) if "/" in scale else None
         if not denom:
-            return {"error": "Échelle non lue dans le cartouche : cotes dessinées non vérifiables."}
+            return {"error": "Escala não lida na legenda: cotas desenhadas não verificáveis."}
         tables = [r["bbox_pt"] for tbl in ("ha_bars", "mesh") for r in ((native.get(tbl) or {}).get("rows") or [])]
         res = match_labels(pg, pt_per_m_from_scale(denom), exclude_rects=[(b[0] - 6, b[1] - 4, b[2] + 6, b[3] + 4) for b in tables])
     counts = {}
@@ -73,24 +73,24 @@ def _drawn_dimensions(pdf: bytes, page: int, native: dict) -> dict | None:
 async def run_read_rebar_schedule(db, *, user_id: str, conversation_id: str, plan_id: str, page: int, allow_vision: bool, now: str) -> dict:
     src = await load_plan_source(db, plan_id, user_id)
     if not src:
-        return {"error": "Source du plan indisponible : réimportez le document."}
+        return {"error": "Fonte da planta indisponível: volte a importar o documento."}
     if src.get("source_kind") == "cad_render":
-        return {"error": "Document CAO (DWG/DXF) : pas de nomenclature imprimée à lire ; utilisez read_native_dimensions pour les cotes natives et le métré structurel."}
+        return {"error": "Documento CAD (DWG/DXF): sem lista impressa para ler; utilize read_native_dimensions para as cotas nativas e a medição estrutural."}
     pdf = base64.b64decode(src["data_b64"])
     if not pdf.startswith(b"%PDF"):
-        return {"error": "La lecture des nomenclatures s'applique aux PDF."}
+        return {"error": "A leitura das listas aplica-se aos PDF."}
     import pymupdf
     with pymupdf.open(stream=pdf, filetype="pdf") as doc:
         page_count = len(doc)
     note = None
     if page == page_count and page > 0:
-        page, note = page - 1, "Numéro de page interprété comme 1-based (première page = index 0)."
+        page, note = page - 1, "Número de página interpretado como base 1 (primeira página = índice 0)."
     if not 0 <= page < page_count:
-        return {"error": f"Page {page} absente : le document compte {page_count} page(s) (index 0 = première page)."}
+        return {"error": f'Página {page} ausente: o documento tem {page_count} página(s) (índice 0 = primeira página).'}
     mode, native, sheet, vision = "native_text", None, None, None
     if is_vision_needed(pdf, page):
         if not allow_vision:
-            return {"error": "Cette page n'a pas de texte natif (texte vectorisé). Relancez avec allow_vision=true pour une lecture visuelle IA (appel facturé).",
+            return {"error": "Esta página não tem texto nativo (texto vetorizado). Volte a lançar com allow_vision=true para uma leitura visual IA (chamada faturada).",
                     "requires_vision": True, "plan_id": plan_id, "page": page}
         from engines.openai_studies import _log_usage
         vision = await analyze_pdf(pdf, user_id=user_id, plan_id=plan_id, pages=[page], log_usage=_log_usage)

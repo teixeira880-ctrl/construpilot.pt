@@ -66,7 +66,7 @@ async def _ensure_ref(chantier: dict) -> str:
         if not await db.chantiers.find_one({"ref": ref}, {"_id": 1}):
             await db.chantiers.update_one({"chantier_id": chantier["chantier_id"]}, {"$set": {"ref": ref}})
             return ref
-    raise HTTPException(500, "Impossible de générer un identifiant chantier")
+    raise HTTPException(500, "Impossível gerar um identificador de obra")
 
 
 def _public_participant(p: dict) -> dict:
@@ -99,17 +99,14 @@ async def _send_invite(pro: dict, chantier: dict, participant: dict, token: str)
     from engines.emailer import send_email, wrap_html
     from routes.plans_common import _resolve_branding
     branding = await _resolve_branding(pro["user_id"]) or {}
-    company = branding.get("company_name") or pro.get("name") or "Votre entreprise"
+    company = branding.get("company_name") or pro.get("name") or "A sua empresa"
     link = f"{_frontend_url()}/espace/invitation/{token}"
     role_label = "client" if participant["role"] == "client" else "sous-traitant"
-    html = wrap_html(f"Invitation — chantier {chantier['name']}",
-                     f"<p>Bonjour {participant.get('name') or ''},</p><p><strong>{company}</strong> vous invite en tant que <strong>{role_label}</strong> à suivre le chantier "
-                     f"<strong>{chantier['name']}</strong> sur ConstruPilot : avancement, photos, comptes rendus.</p>"
-                     f"<p>Identifiant du chantier : <strong>{chantier['ref']}</strong><br>E-mail d'accès : <strong>{participant['email']}</strong></p>"
-                     f"<p>Le lien est valable {INVITE_DAYS} jours. Ensuite, connectez-vous avec l'identifiant du chantier et votre e-mail : un code vous sera envoyé.</p>",
-                     cta_url=link, cta_label="Accéder à mon espace chantier")
+    html = wrap_html(f"Convite — obra {chantier['name']}",
+                     f"<p>Olá {participant.get('name') or ''},</p><p><strong>{company}</strong> convida-o na qualidade de <strong>{role_label}</strong> a acompanhar a obra <strong>{chantier['name']}</strong> no ConstruPilot: andamento, fotografias, atas.</p><p>Identificador da obra: <strong>{chantier['ref']}</strong><br>E-mail de acesso: <strong>{participant['email']}</strong></p><p>A ligação é válida durante {INVITE_DAYS} dias. Depois, inicie sessão com o identificador da obra e o seu e-mail: ser-lhe-á enviado um código.</p>",
+                     cta_url=link, cta_label="Aceder à minha área de obra")
     try:
-        await send_email(participant["email"], f"{company} vous invite à suivre le chantier {chantier['name']}", html, from_name=company)
+        await send_email(participant["email"], f"{company} convida-o a acompanhar a obra {chantier['name']}", html, from_name=company)
         return "sent"
     except Exception as e:  # noqa: BLE001
         logger.warning("invite email failed: %s", e)
@@ -122,7 +119,7 @@ async def invite_participant(chantier_id: str, body: ParticipantIn, user=Depends
     chantier["ref"] = await _ensure_ref(chantier)
     email = body.email.strip().lower()
     if await db.chantier_participants.find_one({"chantier_id": chantier_id, "email": email, "status": {"$ne": "revoked"}}, {"_id": 1}):
-        raise HTTPException(409, "Cet e-mail est déjà invité sur ce chantier")
+        raise HTTPException(409, "Este e-mail já está convidado para esta obra")
     token = secrets.token_urlsafe(32)
     now = _now()
     doc = {"participant_id": "part_" + secrets.token_hex(6), "chantier_id": chantier_id, "chantier_ref": chantier["ref"], "owner_user_id": user["user_id"],
@@ -148,7 +145,7 @@ async def resend_invite(chantier_id: str, participant_id: str, user=Depends(curr
     chantier["ref"] = await _ensure_ref(chantier)
     p = await db.chantier_participants.find_one({"participant_id": participant_id, "chantier_id": chantier_id}, {"_id": 0})
     if not p or p["status"] == "revoked":
-        raise HTTPException(404, "Invitation introuvable ou révoquée")
+        raise HTTPException(404, "Convite não encontrado ou revogado")
     token = secrets.token_urlsafe(32)
     now = _now()
     status = await _send_invite(user, chantier, p, token)
@@ -163,7 +160,7 @@ async def revoke_participant(chantier_id: str, participant_id: str, user=Depends
     r = await db.chantier_participants.update_one({"participant_id": participant_id, "chantier_id": chantier_id},
                                                   {"$set": {"status": "revoked", "revoked_at": _iso(_now()), "updated_at": _iso(_now())}, "$inc": {"session_version": 1}})
     if not r.matched_count:
-        raise HTTPException(404, "Participant introuvable")
+        raise HTTPException(404, "Participante não encontrado")
     await db.portal_otps.delete_many({"participant_id": participant_id})
     return {"ok": True}
 
@@ -173,7 +170,7 @@ async def set_permissions(chantier_id: str, participant_id: str, body: Permissio
     await get_chantier_owned(chantier_id, user["user_id"])
     p = await db.chantier_participants.find_one({"participant_id": participant_id, "chantier_id": chantier_id}, {"_id": 0, "role": 1, "permissions": 1})
     if not p:
-        raise HTTPException(404, "Participant introuvable")
+        raise HTTPException(404, "Participante não encontrado")
     perms = _perms(p["role"], {**p.get("permissions", {}), **body.permissions})
     await db.chantier_participants.update_one({"participant_id": participant_id}, {"$set": {"permissions": perms, "updated_at": _iso(_now())}})
     return {"permissions": perms}
@@ -206,7 +203,7 @@ async def update_milestone(chantier_id: str, milestone_id: str, body: MilestoneI
     await get_chantier_owned(chantier_id, user["user_id"])
     r = await db.chantier_milestones.update_one({"milestone_id": milestone_id, "chantier_id": chantier_id}, {"$set": {**body.model_dump(), "updated_at": _iso(_now())}})
     if not r.matched_count:
-        raise HTTPException(404, "Jalon introuvable")
+        raise HTTPException(404, "Marco não encontrado")
     return await db.chantier_milestones.find_one({"milestone_id": milestone_id}, {"_id": 0})
 
 
@@ -215,7 +212,7 @@ async def delete_milestone(chantier_id: str, milestone_id: str, user=Depends(cur
     await get_chantier_owned(chantier_id, user["user_id"])
     r = await db.chantier_milestones.delete_one({"milestone_id": milestone_id, "chantier_id": chantier_id})
     if not r.deleted_count:
-        raise HTTPException(404, "Jalon introuvable")
+        raise HTTPException(404, "Marco não encontrado")
     return {"ok": True}
 
 
@@ -230,7 +227,7 @@ async def publish_report(chantier_id: str, report_id: str, body: PublishIn, user
     r = await db.site_reports.update_one({"report_id": report_id, "user_id": user["user_id"]},
                                          {"$set": {"published": body.published, "published_at": _iso(_now()) if body.published else None, "chantier_id": chantier_id}})
     if not r.matched_count:
-        raise HTTPException(404, "Compte rendu introuvable")
+        raise HTTPException(404, "Ata não encontrada")
     return {"ok": True, "published": body.published}
 
 
@@ -247,16 +244,16 @@ def _set_cookie(response: Response, token: str) -> None:
 async def current_participant(request: Request) -> dict:
     token = request.cookies.get(COOKIE)
     if not token:
-        raise HTTPException(401, "Session invité requise")
+        raise HTTPException(401, "Sessão de convidado necessária")
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
     except jwt.PyJWTError:
-        raise HTTPException(401, "Session expirée")
+        raise HTTPException(401, "Sessão expirada")
     if payload.get("typ") != "participant":
-        raise HTTPException(401, "Session invalide")
+        raise HTTPException(401, "Sessão inválida")
     p = await db.chantier_participants.find_one({"participant_id": payload.get("sub")}, {"_id": 0, "invite_token_hash": 0})
     if not p or p["status"] != "active" or int(payload.get("sv") or 0) != int(p.get("session_version") or 0):
-        raise HTTPException(401, "Accès révoqué ou expiré")
+        raise HTTPException(401, "Acesso revogado ou expirado")
     await db.chantier_participants.update_one({"participant_id": p["participant_id"]}, {"$set": {"last_seen_at": _iso(_now())}})
     return p
 
@@ -266,17 +263,17 @@ async def current_participant(request: Request) -> dict:
 async def accept_invite(token: str, request: Request, response: Response) -> dict:
     p = await db.chantier_participants.find_one({"invite_token_hash": _hash(token)}, {"_id": 0})
     if not p or p["status"] == "revoked":
-        raise HTTPException(404, "Invitation introuvable ou révoquée")
+        raise HTTPException(404, "Convite não encontrado ou revogado")
     if p["status"] == "invited":
         if (p.get("invite_expires_at") or "") < _iso(_now()):
-            raise HTTPException(410, "Invitation expirée : demandez un nouveau lien à l'entreprise ou connectez-vous avec l'identifiant du chantier.")
+            raise HTTPException(410, "Convite expirado: peça uma nova ligação à empresa ou inicie sessão com o identificador da obra.")
         await db.chantier_participants.update_one({"participant_id": p["participant_id"]},
                                                   {"$set": {"status": "active", "accepted_at": _iso(_now()), "updated_at": _iso(_now())}})
         p["status"] = "active"
     elif (p.get("accepted_at") or "") < _iso(_now() - timedelta(minutes=ACCEPT_GRACE_MINUTES)):
         # lien déjà consommé : on le neutralise définitivement (usage unique, avec une courte tolérance pour le double appel du navigateur)
         await db.chantier_participants.update_one({"participant_id": p["participant_id"]}, {"$unset": {"invite_token_hash": ""}})
-        raise HTTPException(404, "Ce lien a déjà été utilisé : connectez-vous avec l'identifiant du chantier et votre e-mail.")
+        raise HTTPException(404, "Esta ligação já foi utilizada: inicie sessão com o identificador da obra e o seu e-mail.")
     _set_cookie(response, _session_token(p))
     return {"ok": True, "participant": _public_participant(p)}
 
@@ -303,15 +300,14 @@ async def portal_login(body: LoginIn, request: Request, response: Response) -> d
         await db.portal_otps.insert_one({"participant_id": p["participant_id"], "code_hash": _hash(code), "attempts": 0,
                                          "expires_at": _now() + timedelta(minutes=OTP_MINUTES), "created_at": _now()})
         asyncio.create_task(_send_otp(p, code))
-    return {"ok": True, "message": "Si cet e-mail est invité sur ce chantier, un code vient d'être envoyé."}
+    return {"ok": True, "message": "Se este e-mail estiver convidado para esta obra, acaba de ser enviado um código."}
 
 
 async def _send_otp(p: dict, code: str) -> None:
     from engines.emailer import send_email, wrap_html
     try:
-        await send_email(p["email"], f"Votre code d'accès chantier {p['chantier_ref']}",
-                         wrap_html("Code d'accès", f"<p>Votre code pour accéder au chantier <strong>{p['chantier_ref']}</strong> :</p>"
-                                                    f"<p style='font-size:28px;letter-spacing:6px'><strong>{code}</strong></p><p>Valable {OTP_MINUTES} minutes.</p>"))
+        await send_email(p["email"], f"O seu código de acesso à obra {p['chantier_ref']}",
+                         wrap_html("Código de acesso", f"<p>O seu código para aceder à obra <strong>{p['chantier_ref']}</strong> :</p><p style='font-size:28px;letter-spacing:6px'><strong>{code}</strong></p><p>Válido durante {OTP_MINUTES} minutes.</p>"))
     except Exception as e:  # noqa: BLE001
         logger.warning("otp email failed: %s", e)
 
@@ -324,13 +320,13 @@ async def portal_verify(body: VerifyIn, request: Request, response: Response) ->
     p = await db.chantier_participants.find_one({"chantier_ref": ref, "email": email, "status": {"$in": ["active", "invited"]}}, {"_id": 0})
     otp = await db.portal_otps.find_one({"participant_id": p["participant_id"]}) if p else None
     if not p or not otp or otp["expires_at"].replace(tzinfo=timezone.utc) < _now():
-        raise HTTPException(401, "Code expiré ou invalide : demandez un nouveau code.")
+        raise HTTPException(401, "Código expirado ou inválido: peça um novo código.")
     if otp["attempts"] >= OTP_MAX_ATTEMPTS:
         await db.portal_otps.delete_one({"_id": otp["_id"]})
-        raise HTTPException(429, "Trop de tentatives : demandez un nouveau code.")
+        raise HTTPException(429, "Demasiadas tentativas: peça um novo código.")
     if not hmac.compare_digest(otp["code_hash"], _hash(body.code.strip())):
         await db.portal_otps.update_one({"_id": otp["_id"]}, {"$inc": {"attempts": 1}})
-        raise HTTPException(401, "Code incorrect")
+        raise HTTPException(401, "Código incorreto")
     await db.portal_otps.delete_one({"_id": otp["_id"]})
     if p["status"] == "invited":
         await db.chantier_participants.update_one({"participant_id": p["participant_id"]}, {"$set": {"status": "active", "accepted_at": _iso(_now())}, "$unset": {"invite_token_hash": ""}})
@@ -348,7 +344,7 @@ async def portal_logout(response: Response) -> dict:
 async def _chantier_card(p: dict) -> dict:
     c = await db.chantiers.find_one({"chantier_id": p["chantier_id"]}, {"_id": 0, "name": 1, "ref": 1, "city": 1, "status": 1, "user_id": 1})
     if not c:
-        return {"participant_id": p["participant_id"], "ref": p["chantier_ref"], "name": "Chantier supprimé", "available": False}
+        return {"participant_id": p["participant_id"], "ref": p["chantier_ref"], "name": "Obra eliminada", "available": False}
     from routes.plans_common import _resolve_branding
     b = await _resolve_branding(c["user_id"]) or {}
     return {"participant_id": p["participant_id"], "ref": c.get("ref") or p["chantier_ref"], "name": c["name"], "city": c.get("city"), "status": c.get("status"),
@@ -370,14 +366,14 @@ async def portal_switch(body: SwitchIn, response: Response, p=Depends(current_pa
     """Même e-mail, autre chantier : nouvelle session limitée à ce chantier."""
     target = await db.chantier_participants.find_one({"participant_id": body.participant_id, "email": p["email"], "status": "active"}, {"_id": 0, "invite_token_hash": 0})
     if not target:
-        raise HTTPException(404, "Chantier non accessible")
+        raise HTTPException(404, "Obra não acessível")
     _set_cookie(response, _session_token(target))
     return {"ok": True, "participant": target}
 
 
 def _require_ref(p: dict, ref: str) -> None:
     if p["chantier_ref"] != ref.strip().upper():
-        raise HTTPException(403, "Ce chantier n'est pas accessible avec cette session")
+        raise HTTPException(403, "Esta obra não é acessível com esta sessão")
 
 
 @router.get("/{ref}/overview")
@@ -390,7 +386,7 @@ async def overview_for(p: dict) -> dict:
     """Vue « Avancement » pour un participant (réel ou simulé par le pro via « Voir comme le client »)."""
     c = await db.chantiers.find_one({"chantier_id": p["chantier_id"]}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Chantier introuvable")
+        raise HTTPException(404, "Obra não encontrada")
     from routes.plans_common import _resolve_branding
     b = await _resolve_branding(c["user_id"]) or {}
     pro = await db.users.find_one({"user_id": c["user_id"]}, {"_id": 0, "name": 1, "email": 1, "phone": 1, "brand_phone": 1, "brand_accent_color": 1})
@@ -421,7 +417,7 @@ async def preview_as(chantier_id: str, role: Literal["client", "subcontractor"] 
     chantier = await get_chantier_owned(chantier_id, user["user_id"])
     p = await db.chantier_participants.find_one({"participant_id": participant_id, "chantier_id": chantier_id}, {"_id": 0, "invite_token_hash": 0}) if participant_id else None
     if not p:
-        p = {"participant_id": None, "chantier_id": chantier_id, "chantier_ref": chantier.get("ref") or "CP-…", "role": role, "name": "Invité (aperçu)", "lot": "", "permissions": dict(DEFAULT_PERMS[role])}
+        p = {"participant_id": None, "chantier_id": chantier_id, "chantier_ref": chantier.get("ref") or "CP-…", "role": role, "name": "Convidado (pré-visualização)", "lot": "", "permissions": dict(DEFAULT_PERMS[role])}
     from routes.portal_chat import ISSUE_LABELS, channel_for
     overview = await overview_for(p)
     perms = p.get("permissions") or {}
@@ -450,10 +446,10 @@ async def preview_as(chantier_id: str, role: Literal["client", "subcontractor"] 
 async def portal_photo(ref: str, path: str, p=Depends(current_participant)):
     _require_ref(p, ref)
     if not (p.get("permissions") or {}).get("photos"):
-        raise HTTPException(403, "Photos non partagées")
+        raise HTTPException(403, "Fotografias não partilhadas")
     owned = await db.site_reports.find_one({"chantier_id": p["chantier_id"], "published": True, "photos": path}, {"_id": 1})
     if not owned:
-        raise HTTPException(404, "Photo introuvable")
+        raise HTTPException(404, "Fotografia não encontrada")
     data, ct = await asyncio.to_thread(storage.get_object, path)
     return StreamingResponse(io.BytesIO(data), media_type=ct, headers={"Cache-Control": "private, no-store"})
 
@@ -466,7 +462,7 @@ DOC_TYPE_PERM = {"quote": "quotes", "invoice": "invoices", "credit_note": "invoi
 async def _chantier_of(p: dict) -> dict:
     c = await db.chantiers.find_one({"chantier_id": p["chantier_id"]}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Chantier introuvable")
+        raise HTTPException(404, "Obra não encontrada")
     return c
 
 
@@ -534,7 +530,7 @@ async def _portal_doc(ref: str, doc_id: str, p: dict) -> tuple[dict, dict]:
     d = await db.pro_documents.find_one({**_doc_scope(c, types or ["quote", "invoice", "credit_note"]),
                                          "doc_id": doc_id}, {"_id": 0})
     if not d or d["doc_type"] not in types:
-        raise HTTPException(404, "Document introuvable")
+        raise HTTPException(404, "Documento não encontrado")
     return c, d
 
 
@@ -558,7 +554,7 @@ async def portal_document_pdf(ref: str, doc_id: str, p=Depends(current_participa
 async def _notify_pro_decision(d: dict, c: dict, p: dict, accepted: bool, signer: str = "") -> None:
     label = "accepté" if accepted else "refusé"
     who = signer or p.get("name") or p.get("email")
-    msg = f"Devis {d.get('number') or ''} {label} par {who} · chantier {c.get('name') or ''}".strip()
+    msg = f"Orçamento {d.get('number') or ''} {label} par {who} · obra {c.get('name') or ''}".strip()
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(6), "user_id": c["user_id"],
         "type": "quote_accepted" if accepted else "quote_declined", "doc_id": d["doc_id"],
@@ -567,8 +563,8 @@ async def _notify_pro_decision(d: dict, c: dict, p: dict, accepted: bool, signer
         from engines.emailer import send_email, wrap_html
         pro = await db.users.find_one({"user_id": c["user_id"]}, {"_id": 0, "email": 1})
         if pro and pro.get("email"):
-            await send_email(pro["email"], f"{'✅' if accepted else '✖'} Devis {label} — {c.get('name') or ''}",
-                             wrap_html(f"Devis {label}", f"<p>{msg}.</p><p>Retrouvez-le dans le suivi de vos devis.</p>"))
+            await send_email(pro["email"], f"{('✅' if accepted else '✖')} Orçamento {label} — {c.get('name') or ''}",
+                             wrap_html(f'Orçamento {label}', f'<p>{msg}.</p><p>Encontre-o no acompanhamento dos seus orçamentos.</p>'))
     except Exception:  # noqa: BLE001
         pass
 
@@ -582,12 +578,12 @@ async def portal_accept_quote(ref: str, doc_id: str, body: SignIn, request: Requ
                               p=Depends(current_participant)) -> dict:
     """Le client accepte le devis en ligne (bon pour accord signé de son nom)."""
     if not (p.get("permissions") or {}).get("sign"):
-        raise HTTPException(403, "La signature en ligne n'est pas autorisée sur ce chantier")
+        raise HTTPException(403, "A assinatura online não é autorizada nesta obra")
     c, d = await _portal_doc(ref, doc_id, p)
     if d["doc_type"] != "quote":
-        raise HTTPException(400, "Seul un devis peut être accepté")
+        raise HTTPException(400, "Apenas um orçamento pode ser aceite")
     if d.get("client_declined_at"):
-        raise HTTPException(400, "Ce devis a déjà été refusé")
+        raise HTTPException(400, "Este orçamento já foi recusado")
     if d.get("client_accepted_at") or d.get("signed"):
         return {"ok": True, "already": True, "document": _doc_card(d)}
     signer = body.signature.strip()[:120]
@@ -638,12 +634,12 @@ async def portal_decline_quote(ref: str, doc_id: str, body: DeclineIn,
                                p=Depends(current_participant)) -> dict:
     """Le client refuse le devis en ligne (motif facultatif)."""
     if not (p.get("permissions") or {}).get("sign"):
-        raise HTTPException(403, "L'action n'est pas autorisée sur ce chantier")
+        raise HTTPException(403, "A ação não é autorizada nesta obra")
     c, d = await _portal_doc(ref, doc_id, p)
     if d["doc_type"] != "quote":
-        raise HTTPException(400, "Seul un devis peut être refusé")
+        raise HTTPException(400, "Apenas um orçamento pode ser recusado")
     if d.get("signed") or d.get("client_accepted_at"):
-        raise HTTPException(400, "Ce devis a déjà été accepté")
+        raise HTTPException(400, "Este orçamento já foi aceite")
     now = _iso(_now())
     await db.pro_documents.update_one({"doc_id": doc_id, "user_id": c["user_id"]}, {"$set": {
         "client_declined_at": now, "client_declined_reason": body.reason.strip()[:500],
@@ -679,7 +675,7 @@ def _pv_public(pv: dict) -> dict:
 async def _owned_pv(pv_id: str, user_id: str) -> dict:
     pv = await db.pv_receptions.find_one({"pv_id": pv_id, "user_id": user_id}, {"_id": 0})
     if not pv:
-        raise HTTPException(404, "Procès-verbal introuvable")
+        raise HTTPException(404, "Auto não encontrado")
     return pv
 
 
@@ -693,7 +689,7 @@ async def _pv_branding(user_id: str) -> dict:
 async def create_pv(chantier_id: str, body: PvIn, user=Depends(current_user)) -> dict:
     c = await get_chantier_owned(chantier_id, user["user_id"])
     if body.decision not in PV_DECISIONS:
-        raise HTTPException(400, "Décision invalide")
+        raise HTTPException(400, "Decisão inválida")
     client = await db.clients.find_one({"client_id": c.get("client_id"), "user_id": user["user_id"]}, {"_id": 0}) if c.get("client_id") else None
     reserves = [{"id": secrets.token_hex(4), "description": r.description.strip()[:500],
                  "lot": r.lot.strip()[:80], "lifted_at": None, "lifted_by": None}
@@ -729,9 +725,9 @@ async def list_pv(chantier_id: str, user=Depends(current_user)) -> list:
 async def update_pv(pv_id: str, body: PvIn, user=Depends(current_user)) -> dict:
     pv = await _owned_pv(pv_id, user["user_id"])
     if pv.get("client_signature"):
-        raise HTTPException(409, "Le client a déjà signé ce PV : il ne peut plus être modifié")
+        raise HTTPException(409, "O cliente já assinou este auto: já não pode ser modificado")
     if body.decision not in PV_DECISIONS:
-        raise HTTPException(400, "Décision invalide")
+        raise HTTPException(400, "Decisão inválida")
     reserves = [{"id": secrets.token_hex(4), "description": r.description.strip()[:500],
                  "lot": r.lot.strip()[:80], "lifted_at": None, "lifted_by": None} for r in body.reserves]
     upd = {"decision": body.decision, "reserves": reserves, "notes": body.notes.strip()[:2000],
@@ -765,7 +761,7 @@ async def publish_pv(pv_id: str, user=Depends(current_user)) -> dict:
 async def delete_pv(pv_id: str, user=Depends(current_user)) -> dict:
     pv = await _owned_pv(pv_id, user["user_id"])
     if pv.get("client_signature"):
-        raise HTTPException(409, "PV signé par le client : suppression impossible")
+        raise HTTPException(409, "Auto assinado pelo cliente: eliminação impossível")
     await db.pv_receptions.delete_one({"pv_id": pv_id, "user_id": user["user_id"]})
     return {"ok": True}
 
@@ -814,11 +810,11 @@ async def portal_receptions(ref: str, p=Depends(current_participant)) -> dict:
 async def _portal_pv(ref: str, pv_id: str, p: dict) -> dict:
     _require_ref(p, ref)
     if p.get("role") != "client":
-        raise HTTPException(403, "Réservé au client du chantier")
+        raise HTTPException(403, "Reservado ao cliente da obra")
     pv = await db.pv_receptions.find_one(
         {"pv_id": pv_id, "chantier_id": p["chantier_id"], "status": {"$in": ["published", "signed"]}}, {"_id": 0})
     if not pv:
-        raise HTTPException(404, "Procès-verbal introuvable")
+        raise HTTPException(404, "Auto não encontrado")
     return pv
 
 
@@ -836,7 +832,7 @@ async def portal_pv_pdf(ref: str, pv_id: str, p=Depends(current_participant)):
 async def portal_pv_sign(ref: str, pv_id: str, body: PvSignIn, request: Request,
                          p=Depends(current_participant)) -> dict:
     if not (p.get("permissions") or {}).get("sign"):
-        raise HTTPException(403, "La signature en ligne n'est pas autorisée sur ce chantier")
+        raise HTTPException(403, "A assinatura online não é autorizada nesta obra")
     pv = await _portal_pv(ref, pv_id, p)
     if pv.get("client_signature"):
         return {"ok": True, "already": True}
@@ -848,14 +844,14 @@ async def portal_pv_sign(ref: str, pv_id: str, body: PvSignIn, request: Request,
     c = await db.chantiers.find_one({"chantier_id": pv["chantier_id"]}, {"_id": 0, "user_id": 1, "name": 1, "chantier_id": 1})
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(6), "user_id": pv["user_id"], "type": "pv_signed",
-        "message": f"PV de réception {pv.get('ref') or ''} signé par {sig['name']} · {(c or {}).get('name') or ''}".strip(),
+        "message": f"Auto de receção {pv.get('ref') or ''} assinado por {sig['name']} · {(c or {}).get('name') or ''}".strip(),
         "url": f"/chantiers/{pv['chantier_id']}", "read": False, "created_at": now})
     try:
         from engines.emailer import send_email, wrap_html
         pro = await db.users.find_one({"user_id": pv["user_id"]}, {"_id": 0, "email": 1})
         if pro and pro.get("email"):
-            await send_email(pro["email"], f"✅ PV de réception signé — {(c or {}).get('name') or ''}",
-                             wrap_html("PV de réception signé", f"<p>Le PV <strong>{pv.get('ref') or ''}</strong> vient d'être signé en ligne par {sig['name']}.</p>"))
+            await send_email(pro["email"], f"✅ Auto de receção assinado — {(c or {}).get('name') or ''}",
+                             wrap_html("Auto de receção assinado", f"<p>O auto <strong>{pv.get('ref') or ''}</strong> acaba de ser assinado online por {sig['name']}.</p>"))
     except Exception:  # noqa: BLE001
         pass
     return {"ok": True}
@@ -873,9 +869,9 @@ async def portal_lift_reserve(ref: str, pv_id: str, reserve_id: str, body: Reser
     reserves = pv.get("reserves") or []
     target = next((r for r in reserves if r.get("id") == reserve_id), None)
     if not target:
-        raise HTTPException(404, "Réserve introuvable")
+        raise HTTPException(404, "Reserva não encontrada")
     now = _iso(_now())
-    who = (p.get("display_name") or p.get("name") or p.get("email") or "Client")
+    who = (p.get("display_name") or p.get("name") or p.get("email") or "Cliente")
     for r in reserves:
         if r.get("id") == reserve_id:
             r["lifted_at"] = now if body.resolved else None
@@ -885,7 +881,7 @@ async def portal_lift_reserve(ref: str, pv_id: str, reserve_id: str, body: Reser
         c = await db.chantiers.find_one({"chantier_id": pv["chantier_id"]}, {"_id": 0, "name": 1, "chantier_id": 1})
         await db.notifications.insert_one({
             "notif_id": "n_" + secrets.token_hex(6), "user_id": pv["user_id"], "type": "reserve_lifted",
-            "message": f"Réserve levée par {who} sur le PV {pv.get('ref') or ''} · {(c or {}).get('name') or ''}".strip(),
+            "message": f"Reserva levantada por {who} no auto {pv.get('ref') or ''} · {(c or {}).get('name') or ''}".strip(),
             "url": f"/chantiers/{pv['chantier_id']}", "read": False, "created_at": now})
     lifted = sum(1 for r in reserves if r.get("lifted_at"))
     return {"ok": True, "reserve_id": reserve_id, "lifted_at": target.get("lifted_at"),

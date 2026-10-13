@@ -38,7 +38,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
         content={
-            "detail": "Trop de requêtes — merci de patienter quelques instants.",
+            "detail": "Demasiados pedidos — aguarde alguns instantes.",
             "limit": str(exc.detail),
         },
     )

@@ -45,7 +45,7 @@ class FinishIn(BaseModel):
 async def _quote(doc_id: str, uid: str) -> dict:
     q = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": uid, "doc_type": "quote"}, {"_id": 0})
     if not q:
-        raise HTTPException(404, "Devis introuvable")
+        raise HTTPException(404, "Orçamento não encontrado")
     return q
 
 
@@ -57,7 +57,7 @@ def _job_view(q: dict, costs: list[dict]) -> dict:
     margin = round(revenue - basis, 2)
     ref = q.get("job_finished_at") or q.get("signed_at") or q.get("issue_date") or q.get("updated_at")
     return {
-        "doc_id": q["doc_id"], "number": q.get("number"), "title": q.get("title") or "Devis",
+        "doc_id": q["doc_id"], "number": q.get("number"), "title": q.get("title") or "Orçamento",
         "client": ((q.get("client") or {}).get("name") or (q.get("client") or {}).get("company") or ""),
         "status": q.get("status"), "finished": bool(q.get("job_finished_at")),
         "finished_at": q.get("job_finished_at"), "month": _month(ref),
@@ -142,19 +142,14 @@ async def _check_overrun(doc_id: str, uid: str, user) -> None:
         return
     over = round(j["real_cost_ht"] - j["quoted_cost_ht"], 2)
     pct = round(over / j["quoted_cost_ht"] * 100, 1)
-    title = f"Dérive de coûts : {j['title']} — +{over:,.0f} € ({pct} %) au-dessus du devis".replace(",", " ")
+    title = f"Derrapagem de custos: {j['title']} — +{over:,.0f} € ({pct} %) acima do orçamento".replace(",", " ")
     await db.pro_documents.update_one({"doc_id": doc_id}, {"$set": {"cost_overrun_alerted_at": _now()}})
     await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": uid, "type": "cost_overrun",
                                        "doc_id": doc_id, "message": title, "created_at": _now(), "read": False})
     try:
         from engines.emailer import send_email, wrap_html
         if user.get("email"):
-            html = (f"<h2>⚠️ Dérive de coûts sur un chantier</h2><p><b>{j['title']}</b>{(' · ' + j['client']) if j['client'] else ''}</p>"
-                    f"<ul><li>Coût prévu au devis : <b>{j['quoted_cost_ht']:,.2f} € HT</b></li>"
-                    f"<li>Achats réels saisis : <b>{j['real_cost_ht']:,.2f} € HT</b></li>"
-                    f"<li>Dépassement : <b style='color:#dc2626'>+{over:,.2f} € ({pct} %)</b></li>"
-                    f"<li>Marge réelle actuelle : <b>{j['margin_ht']:,.2f} € ({j['margin_pct']} %)</b></li></ul>"
-                    "<p>Consultez le rapport de rentabilité pour le détail des dépenses.</p>").replace(",", " ")
+            html = (f"<h2>⚠️ Derrapagem de custos numa obra</h2><p><b>{j['title']}</b>{(' · ' + j['client'] if j['client'] else '')}</p><ul><li>Custo previsto no orçamento: <b>{j['quoted_cost_ht']:,.2f} € s/ IVA</b></li><li>Compras reais registadas: <b>{j['real_cost_ht']:,.2f} € s/ IVA</b></li><li>Excedente: <b style='color:#dc2626'>+{over:,.2f} € ({pct} %)</b></li><li>Margem real atual: <b>{j['margin_ht']:,.2f} € ({j['margin_pct']} %)</b></li></ul><p>Consulte o relatório de rentabilidade para o detalhe das despesas.</p>").replace(",", " ")
             await send_email(user["email"], title, wrap_html(html))
     except Exception:  # noqa: BLE001
         pass
@@ -164,7 +159,7 @@ async def _check_overrun(doc_id: str, uid: str, user) -> None:
 async def delete_cost(cost_id: str, user=Depends(current_user)) -> dict:
     c = await db.job_costs.find_one({"cost_id": cost_id, "user_id": user["user_id"]}, {"_id": 0, "doc_id": 1})
     if not c:
-        raise HTTPException(404, "Dépense introuvable")
+        raise HTTPException(404, "Despesa não encontrada")
     await db.job_costs.delete_one({"cost_id": cost_id})
     await db.pro_documents.update_one({"doc_id": c["doc_id"]}, {"$unset": {"cost_overrun_alerted_at": ""}})
     return {"ok": True}

@@ -76,7 +76,7 @@ def choose_mesh(as_req_cm2: float) -> dict:
             a = math.pi * dia ** 2 / 4 / 100 * 100 / s
             if a + 1e-9 >= as_req_cm2:
                 return {"type": "barres", "label": f"HA{dia} e={s:g}", "as_cm2_m": round(a, 2)}
-    return {"type": "barres", "label": "à revoir (épaisseur insuffisante)", "as_cm2_m": None}
+    return {"type": "barres", "label": "a rever (espessura insuficiente)", "as_cm2_m": None}
 
 
 def k_factor(edges: dict, one_way: bool) -> float:
@@ -122,12 +122,12 @@ def design(lx: float, ly: float, h: float, g2_kn_m2: float, q_kn_m2: float, edge
     d_m : hauteur utile flexion (défaut h − enrobage − 5 mm) ; d_defl_m : hauteur utile pour L/d (défaut d_m).
     """
     if lx <= 0 or ly <= 0 or h <= 0:
-        raise ValueError("Dimensions invalides")
+        raise ValueError("Dimensões inválidas")
     if lx > ly:
-        raise ValueError("lx doit être la petite portée")
+        raise ValueError("lx deve ser o vão menor")
     edges = {"x0": "rive", "x1": "rive", "y0": "rive", "y1": "rive", **(edges or {})}
     if any(t not in EDGE_TYPES for t in edges.values()):
-        raise ValueError(f"Type de bord inconnu (attendu : {EDGE_TYPES})")
+        raise ValueError(f'Tipo de bordo desconhecido (esperado: {EDGE_TYPES})')
     d = d_m if d_m is not None else round(h - cover_m - 0.005, 4)
     d_defl = d_defl_m if d_defl_m is not None else d
     g = h * density + g2_kn_m2
@@ -186,10 +186,9 @@ def design(lx: float, ly: float, h: float, g2_kn_m2: float, q_kn_m2: float, edge
     ld = ld_check(lx, d_defl, as_x, mesh_x["as_cm2_m"] or as_x, fck, K, fragile_partitions)
     warnings = []
     if not ld["ok"]:
-        warnings.append(f"Élancement L/d = {ld['l_over_d']} > {ld['limit']} : calcul de flèche détaillé requis "
-                        "(§7.4.3) ou épaisseur à augmenter.")
+        warnings.append(f"Esbelteza L/d = {ld['l_over_d']} > {ld['limit']}: cálculo detalhado da flecha necessário (§7.4.3) ou espessura a aumentar.")
     if v > vrd["vrdc_kn"]:
-        warnings.append("V_Ed > V_Rd,c : armatures d'effort tranchant ou épaisseur à revoir.")
+        warnings.append("V_Ed > V_Rd,c: armaduras de esforço transverso ou espessura a rever.")
     return {
         "version": VERSION, "execution_ready": False,
         "inputs": {"lx": lx, "ly": ly, "h": h, "d": d, "g2": g2_kn_m2, "q": q_kn_m2, "edges": edges,
@@ -205,6 +204,5 @@ def design(lx: float, ly: float, h: float, g2_kn_m2: float, q_kn_m2: float, edge
         "supports": sup_out, "as_min_cm2_m": round(as_min, 2),
         "shear": {"v_ed_kn_m": round(v, 2), "vrdc_kn_m": vrd["vrdc_kn"], "ok": v <= vrd["vrdc_kn"]},
         "deflection_ld": ld, "warnings": warnings,
-        "method": ("BAEL 91 Annexe E3 (Pigeaud) + règle forfaitaire de continuité Mt + (Mw+Me)/2 ≥ 1,25·M0 ; "
-                   "aciers EN 1992-1-1 §6.1 et §9.3 ; flèche L/d §7.4.2."),
+        "method": ("Método de Pigeaud (BAEL 91 Anexo E3) + regra forfetária de continuidade Mt + (Mw+Me)/2 ≥ 1,25·M0; armaduras EN 1992-1-1 §6.1 e §9.3; flecha L/d §7.4.2."),
     }

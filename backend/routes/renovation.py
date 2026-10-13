@@ -41,39 +41,39 @@ def _now() -> str:
 # importance: high = pilote l'analyse/le métré ; med = utile
 QUESTIONNAIRE = [
     # A — Identité & localisation
-    {"path": "localisation.code_postal", "section": "A — Localisation", "label": "Code postal", "unit": "", "type": "text", "importance": "high"},
-    {"path": "bien.type", "section": "A — Localisation", "label": "Type de bien", "unit": "", "type": "enum", "options": ["maison", "appartement", "immeuble"], "importance": "high"},
-    {"path": "bien.periode_construction", "section": "A — Localisation", "label": "Période de construction", "unit": "", "type": "enum", "options": ["avant 1948", "1948-1974", "1975-1988", "1989-2000", "2001-2012", "après 2012"], "importance": "high"},
-    {"path": "bien.mitoyennete", "section": "A — Localisation", "label": "Mitoyenneté", "unit": "", "type": "enum", "options": ["isolée", "1 mitoyenneté", "2 mitoyennetés", "+"], "importance": "med"},
+    {"path": "localisation.code_postal", "section": "A — Localização", "label": "Código postal", "unit": "", "type": "text", "importance": "high"},
+    {"path": "bien.type", "section": "A — Localização", "label": "Tipo de imóvel", "unit": "", "type": "enum", "options": ["maison", "appartement", "immeuble"], "importance": "high"},
+    {"path": "bien.periode_construction", "section": "A — Localização", "label": "Período de construção", "unit": "", "type": "enum", "options": ["avant 1948", "1948-1974", "1975-1988", "1989-2000", "2001-2012", "après 2012"], "importance": "high"},
+    {"path": "bien.mitoyennete", "section": "A — Localização", "label": "Contiguidade", "unit": "", "type": "enum", "options": ["isolée", "1 mitoyenneté", "2 mitoyennetés", "+"], "importance": "med"},
     # B — Géométrie
-    {"path": "geometrie.surface_habitable_m2", "section": "B — Géométrie", "label": "Surface habitable", "unit": "m²", "type": "number", "importance": "high"},
-    {"path": "geometrie.niveaux_chauffes", "section": "B — Géométrie", "label": "Nombre de niveaux chauffés", "unit": "", "type": "number", "importance": "high"},
-    {"path": "geometrie.hauteur_sous_plafond_m", "section": "B — Géométrie", "label": "Hauteur sous plafond", "unit": "m", "type": "number", "importance": "med"},
-    {"path": "geometrie.surface_murs_m2", "section": "B — Géométrie", "label": "Surface de murs (déperditifs)", "unit": "m²", "type": "number", "importance": "high"},
-    {"path": "geometrie.surface_toiture_m2", "section": "B — Géométrie", "label": "Surface toiture / plafond haut", "unit": "m²", "type": "number", "importance": "high"},
-    {"path": "geometrie.surface_plancher_bas_m2", "section": "B — Géométrie", "label": "Surface plancher bas", "unit": "m²", "type": "number", "importance": "high"},
-    {"path": "geometrie.surface_vitree_m2", "section": "B — Géométrie", "label": "Surface vitrée totale", "unit": "m²", "type": "number", "importance": "med"},
+    {"path": "geometrie.surface_habitable_m2", "section": "B — Geometria", "label": "Área útil", "unit": "m²", "type": "number", "importance": "high"},
+    {"path": "geometrie.niveaux_chauffes", "section": "B — Geometria", "label": "Número de pisos aquecidos", "unit": "", "type": "number", "importance": "high"},
+    {"path": "geometrie.hauteur_sous_plafond_m", "section": "B — Geometria", "label": "Pé-direito", "unit": "m", "type": "number", "importance": "med"},
+    {"path": "geometrie.surface_murs_m2", "section": "B — Geometria", "label": "Área de paredes (da envolvente)", "unit": "m²", "type": "number", "importance": "high"},
+    {"path": "geometrie.surface_toiture_m2", "section": "B — Geometria", "label": "Área de cobertura / teto superior", "unit": "m²", "type": "number", "importance": "high"},
+    {"path": "geometrie.surface_plancher_bas_m2", "section": "B — Geometria", "label": "Área de pavimento inferior", "unit": "m²", "type": "number", "importance": "high"},
+    {"path": "geometrie.surface_vitree_m2", "section": "B — Geometria", "label": "Área envidraçada total", "unit": "m²", "type": "number", "importance": "med"},
     # C — Parois
-    {"path": "murs.materiau", "section": "C — Parois", "label": "Matériau des murs", "unit": "", "type": "text", "importance": "med"},
-    {"path": "murs.isolation", "section": "C — Parois", "label": "Isolation des murs", "unit": "", "type": "enum", "options": ["aucune", "ITI", "ITE", "inconnue"], "importance": "high"},
-    {"path": "toiture.isolation", "section": "C — Parois", "label": "Isolation toiture / combles", "unit": "", "type": "enum", "options": ["aucune", "présente", "inconnue"], "importance": "high"},
-    {"path": "plancher_bas.isolation", "section": "C — Parois", "label": "Isolation plancher bas", "unit": "", "type": "enum", "options": ["aucune", "présente", "inconnue"], "importance": "high"},
-    {"path": "parois.humidite", "section": "C — Parois", "label": "Traces d'humidité / infiltration", "unit": "", "type": "enum", "options": ["non", "oui", "inconnu"], "importance": "high"},
+    {"path": "murs.materiau", "section": "C — Envolvente", "label": "Material das paredes", "unit": "", "type": "text", "importance": "med"},
+    {"path": "murs.isolation", "section": "C — Envolvente", "label": "Isolamento das paredes", "unit": "", "type": "enum", "options": ["aucune", "Isolamento pelo interior", "ITE", "inconnue"], "importance": "high"},
+    {"path": "toiture.isolation", "section": "C — Envolvente", "label": "Isolamento da cobertura / desvão", "unit": "", "type": "enum", "options": ["aucune", "présente", "inconnue"], "importance": "high"},
+    {"path": "plancher_bas.isolation", "section": "C — Envolvente", "label": "Isolamento do pavimento inferior", "unit": "", "type": "enum", "options": ["aucune", "présente", "inconnue"], "importance": "high"},
+    {"path": "parois.humidite", "section": "C — Envolvente", "label": "Sinais de humidade / infiltração", "unit": "", "type": "enum", "options": ["non", "oui", "inconnu"], "importance": "high"},
     # D — Menuiseries
-    {"path": "menuiseries.nombre", "section": "D — Menuiseries", "label": "Nombre de fenêtres/portes-fenêtres", "unit": "u", "type": "number", "importance": "high"},
-    {"path": "menuiseries.vitrage", "section": "D — Menuiseries", "label": "Type de vitrage", "unit": "", "type": "enum", "options": ["simple", "double", "triple", "inconnu"], "importance": "high"},
-    {"path": "menuiseries.materiau", "section": "D — Menuiseries", "label": "Matériau des cadres", "unit": "", "type": "enum", "options": ["bois", "PVC", "alu", "mixte", "inconnu"], "importance": "med"},
+    {"path": "menuiseries.nombre", "section": "D — Menuiseries", "label": "Número de janelas/portas-janelas", "unit": "u", "type": "number", "importance": "high"},
+    {"path": "menuiseries.vitrage", "section": "D — Menuiseries", "label": "Tipo de vidro", "unit": "", "type": "enum", "options": ["simple", "double", "triple", "inconnu"], "importance": "high"},
+    {"path": "menuiseries.materiau", "section": "D — Menuiseries", "label": "Material dos caixilhos", "unit": "", "type": "enum", "options": ["bois", "PVC", "alu", "mixte", "inconnu"], "importance": "med"},
     # E — Chauffage & ECS
-    {"path": "chauffage.energie", "section": "E — Chauffage / ECS", "label": "Énergie de chauffage", "unit": "", "type": "enum", "options": ["gaz", "fioul", "électricité", "bois", "réseau de chaleur", "PAC", "inconnu"], "importance": "high"},
-    {"path": "chauffage.type", "section": "E — Chauffage / ECS", "label": "Générateur", "unit": "", "type": "text", "importance": "med"},
-    {"path": "chauffage.annee", "section": "E — Chauffage / ECS", "label": "Année du générateur", "unit": "", "type": "number", "importance": "med"},
-    {"path": "ecs.production", "section": "E — Chauffage / ECS", "label": "Production eau chaude", "unit": "", "type": "text", "importance": "med"},
+    {"path": "chauffage.energie", "section": "E — Aquecimento / AQS", "label": "Energia de aquecimento", "unit": "", "type": "enum", "options": ["gaz", "fioul", "électricité", "bois", "rede urbana de calor", "PAC", "inconnu"], "importance": "high"},
+    {"path": "chauffage.type", "section": "E — Aquecimento / AQS", "label": "Gerador", "unit": "", "type": "text", "importance": "med"},
+    {"path": "chauffage.annee", "section": "E — Aquecimento / AQS", "label": "Ano do gerador", "unit": "", "type": "number", "importance": "med"},
+    {"path": "ecs.production", "section": "E — Aquecimento / AQS", "label": "Production eau chaude", "unit": "", "type": "text", "importance": "med"},
     # F — Ventilation
     {"path": "ventilation.type", "section": "F — Ventilation", "label": "Ventilation", "unit": "", "type": "enum", "options": ["naturelle", "VMC simple flux", "VMC double flux", "inconnue"], "importance": "high"},
     # H — Objectifs
-    {"path": "objectifs.budget_eur", "section": "H — Objectifs", "label": "Budget travaux envisagé", "unit": "€", "type": "number", "importance": "high"},
-    {"path": "objectifs.priorite", "section": "H — Objectifs", "label": "Priorité", "unit": "", "type": "enum", "options": ["économies", "confort", "carbone", "valeur du bien"], "importance": "med"},
-    {"path": "objectifs.phasage", "section": "H — Objectifs", "label": "Rénovation", "unit": "", "type": "enum", "options": ["en une fois", "par étapes"], "importance": "med"},
+    {"path": "objectifs.budget_eur", "section": "H — Objectifs", "label": "Orçamento de obras previsto", "unit": "€", "type": "number", "importance": "high"},
+    {"path": "objectifs.priorite", "section": "H — Objectifs", "label": "Prioridade", "unit": "", "type": "enum", "options": ["économies", "confort", "carbone", "valor do imóvel"], "importance": "med"},
+    {"path": "objectifs.phasage", "section": "H — Objectifs", "label": "Reabilitação", "unit": "", "type": "enum", "options": ["en une fois", "par étapes"], "importance": "med"},
 ]
 _FIELD_BY_PATH = {f["path"]: f for f in QUESTIONNAIRE}
 _VALID_STATUS = {"documenté", "mesuré", "déclaré", "hypothèse", "inconnu", "contradictoire"}
@@ -85,16 +85,16 @@ _VALID_STATUS = {"documenté", "mesuré", "déclaré", "hypothèse", "inconnu", 
 # metre: surface_toiture / surface_murs / surface_plancher_bas / menuiseries / forfait
 # poste: clé corps_etat réutilisée pour le chiffrage, ou None → « à chiffrer »
 RENO_CATALOGUE = [
-    {"code": "ISO_COMBLES", "lot": "LOT 01 — Isolation toiture", "label": "Isolation des combles / toiture", "component": "toiture", "metre": "surface_toiture", "poste": "isolation", "induced": [], "controls": ["Continuité de l'isolant", "Ventilation de la couverture", "Pare-vapeur adapté"]},
-    {"code": "ITE", "lot": "LOT 02 — Isolation des murs par l'extérieur", "label": "Isolation thermique par l'extérieur (ITE)", "component": "murs", "metre": "surface_murs", "poste": None, "induced": ["Échafaudage", "Traitement des points singuliers", "Reprise des appuis"], "controls": ["Support", "Fixations", "Continuité", "Documents produit"]},
-    {"code": "ITI", "lot": "LOT 02 — Isolation des murs par l'intérieur", "label": "Isolation thermique par l'intérieur (ITI)", "component": "murs", "metre": "surface_murs", "poste": "placo", "induced": ["Traitement des tableaux", "Reprise des réseaux", "Ponts thermiques"], "controls": ["Risque de condensation", "Continuité", "Perte de surface"]},
-    {"code": "ISO_PB", "lot": "LOT 03 — Isolation plancher bas", "label": "Isolation du plancher bas", "component": "plancher_bas", "metre": "surface_plancher_bas", "poste": "isolation", "induced": [], "controls": ["Accessibilité", "Continuité"]},
-    {"code": "MENUISERIES", "lot": "LOT 04 — Menuiseries", "label": "Remplacement des menuiseries extérieures", "component": "menuiseries", "metre": "menuiseries", "poste": None, "induced": ["Dépose", "Calfeutrement", "Tableaux", "Protections solaires"], "controls": ["Uw/Sw", "Étanchéité des joints", "Coordination ventilation"]},
-    {"code": "VMC", "lot": "LOT 05 — Ventilation", "label": "Ventilation mécanique (simple ou double flux)", "component": "ventilation", "metre": "forfait", "poste": None, "induced": ["Réseaux de gaines", "Entrées d'air"], "controls": ["Débits", "Entretien", "Renouvellement d'air"]},
-    {"code": "ETANCH_AIR", "lot": "LOT 05 — Étanchéité à l'air", "label": "Traitement de l'étanchéité à l'air", "component": "enveloppe", "metre": "forfait", "poste": None, "induced": [], "controls": ["Test d'infiltrométrie", "Appareils à combustion"]},
-    {"code": "CHAUFFAGE_PAC", "lot": "LOT 06 — Chauffage", "label": "Pompe à chaleur (étude requise)", "component": "chauffage", "metre": "forfait", "poste": None, "induced": ["Adaptation des émetteurs", "Électricité"], "controls": ["Déperditions après travaux", "Régimes d'eau", "Acoustique", "Implantation"]},
-    {"code": "REGULATION", "lot": "LOT 06 — Régulation", "label": "Régulation / thermostats programmables", "component": "chauffage", "metre": "forfait", "poste": None, "induced": [], "controls": ["Zonage", "Programmation"]},
-    {"code": "ECS", "lot": "LOT 07 — Eau chaude sanitaire", "label": "Production ECS performante (ex. chauffe-eau thermodynamique)", "component": "ecs", "metre": "forfait", "poste": None, "induced": [], "controls": ["Volume", "Emplacement", "Calorifugeage"]},
+    {"code": "ISO_COMBLES", "lot": "LOTE 01 — Isolamento da cobertura", "label": "Isolamento do desvão / cobertura", "component": "toiture", "metre": "surface_toiture", "poste": "isolation", "induced": [], "controls": ["Continuidade do isolamento", "Ventilação da cobertura", "Barreira pára-vapor adequada"]},
+    {"code": "ITE", "lot": "LOTE 02 — Isolamento das paredes pelo exterior", "label": "Isolamento térmico pelo exterior (ETICS / capoto)", "component": "murs", "metre": "surface_murs", "poste": None, "induced": ["Andaime", "Tratamento das pontes térmicas", "Reposição dos peitoris"], "controls": ["Support", "Fixations", "Continuidade", "Fichas técnicas dos produtos"]},
+    {"code": "Isolamento pelo interior", "lot": "LOTE 02 — Isolamento das paredes pelo interior", "label": "Isolamento térmico pelo interior", "component": "murs", "metre": "surface_murs", "poste": "placo", "induced": ["Tratamento das ombreiras", "Reposição das redes", "Ponts thermiques"], "controls": ["Risco de condensação", "Continuidade", "Perda de área"]},
+    {"code": "ISO_PB", "lot": "LOTE 03 — Isolamento do pavimento inferior", "label": "Isolamento do pavimento térreo", "component": "plancher_bas", "metre": "surface_plancher_bas", "poste": "isolation", "induced": [], "controls": ["Acessibilidade", "Continuidade"]},
+    {"code": "MENUISERIES", "lot": "LOT 04 — Menuiseries", "label": "Substituição da caixilharia exterior", "component": "menuiseries", "metre": "menuiseries", "poste": None, "induced": ["Remoção", "Calfeutrement", "Tableaux", "Protections solaires"], "controls": ["Uw/Sw", "Estanquidade das juntas", "Coordination ventilation"]},
+    {"code": "VMC", "lot": "LOT 05 — Ventilation", "label": "Ventilação mecânica (simples ou de duplo fluxo)", "component": "ventilation", "metre": "forfait", "poste": None, "induced": ["Redes de condutas", "Entradas de ar"], "controls": ["Caudais", "Manutenção", "Renouvellement d'air"]},
+    {"code": "ETANCH_AIR", "lot": "LOTE 05 — Estanquidade ao ar", "label": "Tratamento da estanquidade ao ar", "component": "enveloppe", "metre": "forfait", "poste": None, "induced": [], "controls": ["Ensaio de permeabilidade ao ar", "Aparelhos de combustão"]},
+    {"code": "CHAUFFAGE_PAC", "lot": "LOT 06 — Chauffage", "label": "Bomba de calor (estudo necessário)", "component": "chauffage", "metre": "forfait", "poste": None, "induced": ["Adaptação dos emissores", "Eletricidade"], "controls": ["Perdas térmicas após obras", "Regimes de temperatura da água", "Acoustique", "Implantation"]},
+    {"code": "REGULATION", "lot": "LOTE 06 — Regulação", "label": "Regulação / termóstatos programáveis", "component": "chauffage", "metre": "forfait", "poste": None, "induced": [], "controls": ["Zonage", "Programmation"]},
+    {"code": "ECS", "lot": "LOTE 07 — Água quente sanitária", "label": "Produção de AQS eficiente (ex. termoacumulador com bomba de calor)", "component": "ecs", "metre": "forfait", "poste": None, "induced": [], "controls": ["Volume", "Emplacement", "Calorifugeage"]},
 ]
 _CAT_BY_CODE = {m["code"]: m for m in RENO_CATALOGUE}
 
@@ -139,7 +139,7 @@ class AidesIn(BaseModel):
     residence_principale: bool = True
     dpe_actuel: str | None = None             # lettre A..G (sinon celle du projet)
     dpe_vise: str | None = None               # lettre A..G
-    parcours: str = "rénovation énergétique"
+    parcours: str = "reabilitação energética"
     gain_energetique_pct: int | None = 40     # gain projeté (parcours accompagné)
     scenario_key: str | None = None           # pour le reste à charge indicatif
     travaux_ht_override: float | None = None  # montant imposé (ex. coût d'un scénario d'audit ADEME)
@@ -165,7 +165,7 @@ class GesteToDevisIn(BaseModel):
 
 def _owned(project: dict | None):
     if not project:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     return project
 
 
@@ -186,7 +186,7 @@ async def create_project(body: RenoProjectIn, user=Depends(current_user)) -> dic
     pid = "reno_" + secrets.token_hex(6)
     doc = {
         "project_id": pid, "user_id": user["user_id"],
-        "title": (body.title or "Projet de rénovation").strip()[:160],
+        "title": (body.title or "Projeto de remodelação").strip()[:160],
         "country": (body.country or "PT").upper()[:4],
         "project_type": "renovation_existant",
         "status": "collecte",
@@ -258,7 +258,7 @@ async def missing_data(project_id: str, user=Depends(current_user)) -> dict:
     sm = _num(inputs.get("geometrie.surface_murs_m2"))
     if sv and sm and sv > sm:
         contradictions.append({"path": "geometrie.surface_vitree_m2",
-                               "label": "Surface vitrée supérieure à la surface de murs — à vérifier"})
+                               "label": "Área envidraçada superior à área de paredes — a verificar"})
     high = [m for m in missing if m["importance"] == "high"]
     coverage = round(100 * (len(QUESTIONNAIRE) - len(missing)) / len(QUESTIONNAIRE)) if QUESTIONNAIRE else 0
     return {"missing": missing, "missing_high_priority": high,
@@ -289,10 +289,10 @@ def _assess_component(label, iso_value, period_old, extra_reason=""):
     """Renvoie (assessment, reason) de façon déterministe, sans chiffre énergétique."""
     iso = (iso_value or "").lower()
     if iso in ("inconnue", "inconnu", "", None):
-        return "à vérifier", f"Isolation {label} non renseignée — à relever sur site."
+        return "a verificar", f'Isolamento {label} não preenchida — a levantar no local.'
     if iso in ("aucune",):
-        return "probablement déperditif", f"Absence d'isolation déclarée pour {label}."
-    return "correct (déclaré)", f"Isolation {label} déclarée présente — à confirmer par justificatif."
+        return "provavelmente com perdas", f'Ausência de isolamento declarada para {label}.'
+    return "correto (declarado)", f'Isolamento {label} declarado presente — a confirmar por comprovativo.'
 
 
 @router.post("/projects/{project_id}/analyze-baseline")
@@ -302,35 +302,33 @@ async def analyze_baseline(project_id: str, user=Depends(current_user)) -> dict:
     period = (_val(inputs, "bien.periode_construction") or "")
     period_old = period in ("avant 1948", "1948-1974", "1975-1988")
     posts = []
-    a, r = _assess_component("des murs", _val(inputs, "murs.isolation"), period_old)
-    posts.append({"component": "Murs", "assessment": a, "reason": r, "data_needed": ["murs.isolation", "murs.materiau"]})
-    a, r = _assess_component("de la toiture", _val(inputs, "toiture.isolation"), period_old)
-    posts.append({"component": "Toiture / combles", "assessment": a, "reason": r, "data_needed": ["toiture.isolation"]})
-    a, r = _assess_component("du plancher bas", _val(inputs, "plancher_bas.isolation"), period_old)
-    posts.append({"component": "Plancher bas", "assessment": a, "reason": r, "data_needed": ["plancher_bas.isolation"]})
+    a, r = _assess_component("as paredes", _val(inputs, "murs.isolation"), period_old)
+    posts.append({"component": "Paredes", "assessment": a, "reason": r, "data_needed": ["murs.isolation", "murs.materiau"]})
+    a, r = _assess_component("a cobertura", _val(inputs, "toiture.isolation"), period_old)
+    posts.append({"component": "Cobertura / desvão", "assessment": a, "reason": r, "data_needed": ["toiture.isolation"]})
+    a, r = _assess_component("o pavimento inferior", _val(inputs, "plancher_bas.isolation"), period_old)
+    posts.append({"component": "Pavimento inferior", "assessment": a, "reason": r, "data_needed": ["plancher_bas.isolation"]})
     vit = (_val(inputs, "menuiseries.vitrage") or "").lower()
     if vit in ("simple",):
-        posts.append({"component": "Menuiseries", "assessment": "probablement déperditif", "reason": "Simple vitrage déclaré.", "data_needed": ["menuiseries.vitrage"]})
+        posts.append({"component": "Menuiseries", "assessment": "provavelmente com perdas", "reason": "Vidro simples declarado.", "data_needed": ["menuiseries.vitrage"]})
     elif vit in ("", "inconnu"):
-        posts.append({"component": "Menuiseries", "assessment": "à vérifier", "reason": "Type de vitrage non renseigné.", "data_needed": ["menuiseries.vitrage"]})
+        posts.append({"component": "Menuiseries", "assessment": "a verificar", "reason": "Tipo de vidro não preenchido.", "data_needed": ["menuiseries.vitrage"]})
     else:
-        posts.append({"component": "Menuiseries", "assessment": "correct (déclaré)", "reason": f"Vitrage {vit} déclaré — Uw à confirmer.", "data_needed": ["menuiseries.vitrage"]})
+        posts.append({"component": "Menuiseries", "assessment": "correto (declarado)", "reason": f'Vitrage {vit} declarado — Uw a confirmar.', "data_needed": ["menuiseries.vitrage"]})
     vent = (_val(inputs, "ventilation.type") or "").lower()
-    posts.append({"component": "Ventilation", "assessment": "à vérifier" if vent in ("", "inconnue") else "correct (déclaré)",
-                  "reason": "Type de ventilation non renseigné." if vent in ("", "inconnue") else f"Ventilation {vent} déclarée.",
+    posts.append({"component": "Ventilation", "assessment": "a verificar" if vent in ("", "inconnue") else "correto (declarado)",
+                  "reason": "Tipo de ventilação não preenchido." if vent in ("", "inconnue") else f"Ventilation {vent} déclarée.",
                   "data_needed": ["ventilation.type"]})
     energie = (_val(inputs, "chauffage.energie") or "").lower()
-    posts.append({"component": "Chauffage / ECS",
-                  "assessment": "à vérifier" if energie in ("", "inconnu") else "à expertiser",
-                  "reason": "Énergie de chauffage non renseignée." if energie in ("", "inconnu") else f"Énergie {energie} déclarée — rendement du générateur à vérifier.",
+    posts.append({"component": "Aquecimento / AQS",
+                  "assessment": "a verificar" if energie in ("", "inconnu") else "a peritar",
+                  "reason": "Energia de aquecimento não preenchida." if energie in ("", "inconnu") else f'Energia {energie} declarada — rendimento do gerador a verificar.',
                   "data_needed": ["chauffage.energie", "chauffage.annee"]})
 
     energy = {
         "status": "moteur_non_configure",
         "class_simulee": None, "kwh_ep_m2_an": None, "ges": None,
-        "message": "Aucun moteur de calcul 3CL certifié n'est connecté. Aucune classe DPE ni "
-                   "consommation en kWh n'est calculée. Cette analyse est qualitative (Niveau A) "
-                   "et ne remplace pas un DPE ou un audit réglementaire.",
+        "message": "Nenhum motor de cálculo certificado está ligado. Nenhuma classe energética nem consumo em kWh é calculado. Esta análise é qualitativa (Nível A) e não substitui um certificado energético (SCE) nem uma auditoria regulamentar.",
     }
     md = await missing_data(project_id, user)
     baseline = {"posts": posts, "energy": energy, "coverage_pct": md["coverage_pct"],
@@ -345,11 +343,11 @@ async def analyze_baseline(project_id: str, user=Depends(current_user)) -> dict:
 # Scénarios P1/P2/P3 + métré + chiffrage (corps d'état)
 # ---------------------------------------------------------------------------
 _PARCOURS = {
-    "P1": {"name": "Priorités (budget)", "desc": "Meilleur gain réalisable dans le budget déclaré, prérequis essentiels.",
+    "P1": {"name": "Prioridades (orçamento)", "desc": "Melhor ganho realizável dentro do orçamento declarado, pré-requisitos essenciais.",
            "measures": ["ISO_COMBLES", "REGULATION", "ETANCH_AIR", "VMC"]},
-    "P2": {"name": "Équilibre", "desc": "Combinaison au meilleur compromis coût / gain / faisabilité.",
+    "P2": {"name": "Equilíbrio", "desc": "Combinação com o melhor compromisso custo / ganho / exequibilidade.",
            "measures": ["ISO_COMBLES", "MENUISERIES", "VMC", "REGULATION"]},
-    "P3": {"name": "Rénovation complète", "desc": "Objectif de performance ambitieux (en une fois ou par étapes).",
+    "P3": {"name": "Renovação completa", "desc": "Objetivo de desempenho ambicioso (de uma só vez ou por etapas).",
            "measures": ["ISO_COMBLES", "ITE", "ISO_PB", "MENUISERIES", "VMC", "CHAUFFAGE_PAC", "ECS"]},
 }
 
@@ -361,31 +359,31 @@ def _metre_for(measure, inputs):
         return 1, "forfait", "hypothèse"
     if basis == "menuiseries":
         n = _num(inputs.get("menuiseries.nombre"))
-        return (n, "u", "déclaré") if n else (None, "u", "à confirmer")
+        return (n, "u", "déclaré") if n else (None, "u", "a confirmar")
     path = {"surface_toiture": "geometrie.surface_toiture_m2",
             "surface_murs": "geometrie.surface_murs_m2",
             "surface_plancher_bas": "geometrie.surface_plancher_bas_m2"}[basis]
     q = _num(inputs.get(path))
-    return (q, "m²", "déclaré") if q else (None, "m²", "à confirmer")
+    return (q, "m²", "déclaré") if q else (None, "m²", "a confirmar")
 
 
 def _chiffrage_for(measure, qty):
     """Chiffrage déterministe : corps_etat si poste connu, sinon hypothèse forfait/unitaire ou « à chiffrer »."""
     if qty is None:
-        return {"total_ht": None, "status": "quantité à confirmer", "source": None, "lines": []}
+        return {"total_ht": None, "status": "quantidade a confirmar", "source": None, "lines": []}
     poste = measure.get("poste")
     if poste and poste in corps_etat.POSTES:
         est = corps_etat.estimate(poste, qty, {"margin_pct": 0})
-        return {"total_ht": round(est["totals"]["ht"], 2), "status": "chiffré (bibliothèque Corps d'état)",
+        return {"total_ht": round(est["totals"]["ht"], 2), "status": "com preço (biblioteca por especialidade)",
                 "source": f"corps_etat:{poste}", "lines": est["lines"], "poste": poste}
     if measure["code"] in _HYPO_UNIT:
         pu = _HYPO_UNIT[measure["code"]]
-        return {"total_ht": round(pu * qty, 2), "status": "hypothèse (PU indicatif à confirmer)",
+        return {"total_ht": round(pu * qty, 2), "status": "hipótese (PU indicativo a confirmar)",
                 "source": "hypothèse", "pu": pu, "lines": []}
     if measure["code"] in _HYPO_FORFAIT:
         return {"total_ht": round(_HYPO_FORFAIT[measure["code"]] * (qty or 1), 2),
-                "status": "hypothèse (forfait indicatif à confirmer)", "source": "hypothèse", "lines": []}
-    return {"total_ht": None, "status": "à chiffrer", "source": None, "lines": []}
+                "status": "hipótese (valor global indicativo a confirmar)", "source": "hypothèse", "lines": []}
+    return {"total_ht": None, "status": "a orçamentar", "source": None, "lines": []}
 
 
 def _build_work_item(measure, inputs):
@@ -403,18 +401,18 @@ def _build_work_item(measure, inputs):
 
 
 def _descriptif(measure, qty, unit, qstatus, chi):
-    qty_txt = f"{qty:.2f} {unit}" if qty is not None else f"à confirmer ({unit})"
+    qty_txt = f"{qty:.2f} {unit}" if qty is not None else f'a confirmar ({unit})'
     prix_txt = (f"{chi['total_ht']:.2f} € HT ({chi['status']})" if chi.get("total_ht") is not None
                 else chi["status"])
     return {
-        "localisation": "À préciser lors de la visite",
-        "constat": "État et composition existants à relever sur site (donnée non vérifiée).",
-        "objectif": f"{measure['label']} — réduire les déperditions et traiter les interfaces accessibles.",
-        "performance_cible": "Définie après simulation énergétique (moteur non configuré) et contrôle des exigences applicables — à confirmer.",
-        "metre": f"{qty_txt} ; compléments (tableaux, appuis, points singuliers) à relever séparément.",
-        "mise_en_oeuvre": "Préparation du support, dépose si nécessaire, fourniture et pose, finitions.",
-        "interfaces": ", ".join(measure.get("induced", [])) or "À coordonner avec les lots voisins.",
-        "prerequis_reserves": "Faisabilité, autorisations et composition à confirmer. Références normatives/DTU à vérifier (non générées).",
+        "localisation": "A precisar na visita",
+        "constat": "Estado e composição existentes a levantar no local (dado não verificado).",
+        "objectif": f"{measure['label']} — reduzir as perdas térmicas e tratar as interfaces acessíveis.",
+        "performance_cible": "Definida após simulação energética (motor não configurado) e controlo das exigências aplicáveis — a confirmar.",
+        "metre": f'{qty_txt}; complementos (ombreiras, peitoris, pontes térmicas) a levantar separadamente.',
+        "mise_en_oeuvre": "Preparação do suporte, remoção se necessário, fornecimento e aplicação, acabamentos.",
+        "interfaces": ", ".join(measure.get("induced", [])) or "A coordenar com os lotes vizinhos.",
+        "prerequis_reserves": "Exequibilidade, licenças e composição a confirmar. Referências normativas a verificar (não geradas).",
         "prix": prix_txt,
         "controles": ", ".join(measure.get("controls", [])),
     }
@@ -433,15 +431,14 @@ async def generate_scenarios(project_id: str, user=Depends(current_user)) -> dic
         a_chiffrer = [it["label"] for it in items if it["chiffrage"].get("total_ht") is None]
         budget_flag = None
         if budget is not None and total > 0:
-            budget_flag = "dans le budget" if total <= budget else "au-dessus du budget déclaré"
+            budget_flag = "dentro do orçamento" if total <= budget else "acima do orçamento declarado"
         scenarios.append({
             "scenario_id": f"{project_id}:{key}", "key": key, "name": spec["name"],
             "description": spec["desc"], "work_items": items,
             "total_ht_chiffrable": total, "a_chiffrer": a_chiffrer,
             "budget_flag": budget_flag,
             "energy_gain": {"status": "non_calcule",
-                            "message": "Gains énergétiques non calculés : moteur 3CL non configuré. "
-                                       "Les mesures interagissent — aucun cumul de pourcentages."},
+                            "message": "Ganhos energéticos não calculados: motor de cálculo não configurado. As medidas interagem — nenhuma soma de percentagens."},
         })
     await db.reno_projects.update_one(
         {"project_id": project_id, "user_id": user["user_id"]},
@@ -454,7 +451,7 @@ async def get_work_items(project_id: str, key: str, user=Depends(current_user)) 
     p = await _get_project(project_id, user["user_id"])
     sc = next((s for s in (p.get("scenarios") or []) if s["key"] == key), None)
     if not sc:
-        raise HTTPException(404, "Scénario introuvable — générez les scénarios d'abord")
+        raise HTTPException(404, "Cenário não encontrado — gere primeiro os cenários")
     return sc
 
 
@@ -465,7 +462,7 @@ async def create_estimate(project_id: str, key: str, user=Depends(current_user))
     p = await _get_project(project_id, user["user_id"])
     sc = next((s for s in (p.get("scenarios") or []) if s["key"] == key), None)
     if not sc:
-        raise HTTPException(404, "Scénario introuvable — générez les scénarios d'abord")
+        raise HTTPException(404, "Cenário não encontrado — gere primeiro os cenários")
     lines = []
     for it in sc["work_items"]:
         qty = it["metre"]["quantity"]
@@ -490,15 +487,13 @@ async def create_estimate(project_id: str, key: str, user=Depends(current_user))
             price_reference_label=chi.get("status", ""),
         ))
     body = docs_mod.DocIn(doc_type="quote",
-                          title=f"Rénovation — {p.get('title', '')} — {sc['name']}",
+                          title=f"Reabilitação — {p.get('title', '')} — {sc['name']}",
                           lines=lines,
-                          notes="Devis généré depuis RenoPilot (Étape 1). Les lignes « à chiffrer » "
-                                "et les prix indicatifs (hypothèse) doivent être confirmés par une "
-                                "source locale datée. Aucun gain énergétique n'est garanti.")
+                          notes="Orçamento gerado a partir do RenoPilot (Etapa 1). As linhas «a orçamentar» e os preços indicativos (hipótese) devem ser confirmados por uma fonte local datada. Nenhum ganho energético é garantido.")
     created = await docs_mod.create_document(body, user)
     doc_id = created.get("doc_id") if isinstance(created, dict) else None
     return {"ok": True, "doc_id": doc_id, "scenario": key,
-            "message": "Devis créé dans l'éditeur ConstruPilot."}
+            "message": "Orçamento criado no editor ConstruPilot."}
 
 
 @router.post("/projects/{project_id}/aides")
@@ -521,11 +516,11 @@ async def simulate_aides(project_id: str, body: AidesIn, user=Depends(current_us
                 commune = commune_options[0]["code"]
     if not commune:
         return {"ok": False, "need_commune": True, "commune_options": commune_options,
-                "message": "Précisez la commune (code INSEE) pour simuler les aides."}
+                "message": "Indique o concelho para simular os apoios."}
 
     bien_type = aides_reno.TYPE_MAP.get(str(_val(inputs, "bien.type") or "maison"), "maison")
     periode = aides_reno.PERIODE_MAP.get(
-        str(_val(inputs, "bien.periode_construction") or ""), "au moins 15 ans")
+        str(_val(inputs, "bien.periode_construction") or ""), "pelo menos 15 anos")
     surface = _num(inputs.get("geometrie.surface_habitable_m2"))
 
     dpe_actuel = (body.dpe_actuel or "").upper().strip()
@@ -538,7 +533,7 @@ async def simulate_aides(project_id: str, body: AidesIn, user=Depends(current_us
         "logement.période de construction": periode,
         "logement.propriétaire occupant": "oui" if body.proprietaire_occupant else "non",
         "logement.résidence principale propriétaire": "oui" if body.residence_principale else "non",
-        "vous.propriétaire.statut": "propriétaire" if body.proprietaire_occupant else "non propriétaire",
+        "vous.propriétaire.statut": "propriétaire" if body.proprietaire_occupant else "não proprietário",
         "parcours d'aide": body.parcours,
     }
     if body.revenu is not None:
@@ -559,7 +554,7 @@ async def simulate_aides(project_id: str, body: AidesIn, user=Depends(current_us
     scenario_name = None
     if body.travaux_ht_override is not None:
         travaux_ht = float(body.travaux_ht_override)
-        scenario_name = body.label_override or "Montant d'audit ADEME"
+        scenario_name = body.label_override or "Montante da auditoria ADEME"
     elif body.scenario_key:
         sc = next((s for s in (p.get("scenarios") or []) if s["key"] == body.scenario_key), None)
         if sc:
@@ -569,7 +564,7 @@ async def simulate_aides(project_id: str, body: AidesIn, user=Depends(current_us
     try:
         result = await aides_reno.estimate_aides(situation, travaux_ht=travaux_ht)
     except Exception as exc:
-        raise HTTPException(502, f"API Mes Aides Réno indisponible : {type(exc).__name__}")
+        raise HTTPException(502, f'API Mes Aides Réno indisponível: {type(exc).__name__}')
 
     result.update({"ok": True, "commune": commune,
                    "commune_options": commune_options,
@@ -615,17 +610,17 @@ async def simulate_aides_gestes(project_id: str, body: GestesAidesIn, user=Depen
                 commune = commune_options[0]["code"]
     if not commune:
         return {"ok": False, "need_commune": True, "commune_options": commune_options,
-                "message": "Précisez la commune (code INSEE) pour simuler les aides."}
+                "message": "Indique o concelho para simular os apoios."}
 
     bien_type = aides_reno.TYPE_MAP.get(str(_val(inputs, "bien.type") or "maison"), "maison")
     periode = aides_reno.PERIODE_MAP.get(
-        str(_val(inputs, "bien.periode_construction") or ""), "au moins 15 ans")
+        str(_val(inputs, "bien.periode_construction") or ""), "pelo menos 15 anos")
     situation = {
         "ménage.commune": commune, "logement.commune": commune,
         "logement.type": bien_type, "logement.période de construction": periode,
         "logement.propriétaire occupant": "oui" if body.proprietaire_occupant else "non",
         "logement.résidence principale propriétaire": "oui" if body.residence_principale else "non",
-        "vous.propriétaire.statut": "propriétaire" if body.proprietaire_occupant else "non propriétaire",
+        "vous.propriétaire.statut": "propriétaire" if body.proprietaire_occupant else "não proprietário",
         "parcours d'aide": "gestes",
     }
     if body.revenu is not None:
@@ -637,7 +632,7 @@ async def simulate_aides_gestes(project_id: str, body: GestesAidesIn, user=Depen
     try:
         result = await aides_reno.estimate_gestes(situation, items)
     except Exception as exc:
-        raise HTTPException(502, f"API Mes Aides Réno indisponible : {type(exc).__name__}")
+        raise HTTPException(502, f'API Mes Aides Réno indisponível: {type(exc).__name__}')
     result.update({"ok": True, "commune": commune, "commune_options": commune_options})
     await db.reno_projects.update_one(
         {"project_id": project_id, "user_id": user["user_id"]},
@@ -683,7 +678,7 @@ def _map_energie_ademe(energie: str | None) -> str | None:
     if "bois" in e or "granul" in e or "pellet" in e:
         return "bois"
     if "réseau" in e or "reseau" in e or "urbain" in e:
-        return "réseau de chaleur"
+        return "rede urbana de calor"
     if "pac" in e or "pompe" in e:
         return "PAC"
     return None
@@ -699,10 +694,9 @@ async def _apply_ademe_import(project_id: str, user_id: str, numero: str, base_i
     try:
         dpe = await ademe_dpe.fetch_dpe(numero)
     except Exception as exc:
-        raise HTTPException(502, f"API ADEME indisponible : {type(exc).__name__}")
+        raise HTTPException(502, f'API ADEME indisponível: {type(exc).__name__}')
     if not dpe:
-        raise HTTPException(404, "Aucun DPE trouvé pour ce numéro dans l'open data ADEME. "
-                                 "Vérifiez le numéro (13 caractères, en haut du PDF).")
+        raise HTTPException(404, "Nenhum DPE encontrado para este número nos dados abertos da ADEME. Verifique o número (13 caracteres, no topo do PDF).")
     try:
         audits = await ademe_dpe.fetch_audit_scenarios(numero)
     except Exception:
@@ -740,7 +734,7 @@ async def import_dpe_number(project_id: str, body: ImportDpeNumberIn, user=Depen
     numero = body.numero_dpe.strip().upper()
     res = await _apply_ademe_import(project_id, user["user_id"], numero, p.get("inputs") or {})
     return {"ok": True, "dpe": res["dpe"], "audits": res["audits"], "prefilled": True,
-            "message": f"DPE officiel {numero} importé — état actuel prérempli."}
+            "message": f'Certificado energético oficial {numero} importado — estado atual pré-preenchido.'}
 
 
 @router.post("/projects/{project_id}/import-dpe-immeuble")
@@ -750,18 +744,18 @@ async def import_dpe_immeuble(project_id: str, user=Depends(current_user)) -> di
     p = await _get_project(project_id, user["user_id"])
     numero = (p.get("ademe_dpe") or {}).get("numero_dpe_immeuble")
     if not numero:
-        raise HTTPException(404, "Aucun DPE immeuble associé à ce logement.")
+        raise HTTPException(404, "Nenhum certificado energético de edifício associado a esta habitação.")
     try:
         dpe = await ademe_dpe.fetch_dpe(numero)
     except Exception as exc:
-        raise HTTPException(502, f"API ADEME indisponible : {type(exc).__name__}")
+        raise HTTPException(502, f'API ADEME indisponível: {type(exc).__name__}')
     if not dpe:
-        raise HTTPException(404, "DPE immeuble introuvable dans l'open data ADEME.")
+        raise HTTPException(404, "Certificado de edifício não encontrado nos dados abertos da ADEME.")
     await db.reno_projects.update_one(
         {"project_id": project_id, "user_id": user["user_id"]},
         {"$set": {"ademe_dpe_immeuble": dpe, "updated_at": _now()}})
     return {"ok": True, "dpe_immeuble": dpe,
-            "message": f"DPE immeuble {numero} importé (parties communes)."}
+            "message": f'Certificado energético do edifício {numero} importado (partes comuns).'}
 
 
 @router.post("/projects/{project_id}/audit-to-devis")
@@ -773,11 +767,11 @@ async def audit_to_devis(project_id: str, body: AuditToDevisIn, user=Depends(cur
     p = await _get_project(project_id, user["user_id"])
     audits = p.get("ademe_audits") or []
     if body.audit_index >= len(audits):
-        raise HTTPException(404, "Audit introuvable — importez d'abord un DPE avec audit.")
+        raise HTTPException(404, "Auditoria não encontrada — importe primeiro um certificado energético com auditoria.")
     audit = audits[body.audit_index]
     steps = audit.get("steps") or []
     if body.step_index >= len(steps):
-        raise HTTPException(404, "Étape d'audit introuvable.")
+        raise HTTPException(404, "Etapa de auditoria não encontrada.")
     step = steps[body.step_index]
 
     dpe_initial = ((p.get("ademe_dpe") or {}).get("etiquette_energie")
@@ -786,32 +780,28 @@ async def audit_to_devis(project_id: str, body: AuditToDevisIn, user=Depends(cur
     travaux_text = step.get("travaux") or ""
     items = [t.strip() for t in re.split(r"[;,]", travaux_text) if t.strip()]
     if not items:
-        items = [f"Travaux de rénovation — {step.get('etape') or 'scénario audit'}"]
+        items = [f"Obras de reabilitação — {step.get('etape') or 'cenário de auditoria'}"]
 
     lines = [docs_mod.DocLine(kind="section",
-                              title=f"Travaux — scénario audit ADEME ({step.get('etape')})")]
+                              title=f"Obras — cenário de auditoria ADEME ({step.get('etape')})")]
     for it in items:
         lines.append(docs_mod.DocLine(
             kind="line", line_kind="ouvrage", designation=it,
             unit="u", qty=1, unit_price_ht=0.0,
-            price_missing=True, quantity_missing=True, price_reference_label="à chiffrer"))
+            price_missing=True, quantity_missing=True, price_reference_label="a orçamentar"))
 
     cout = step.get("cout_travaux")
     etq = step.get("etiquette_energie")
-    notes = (f"Devis généré depuis un scénario d'audit énergétique OFFICIEL ADEME "
-             f"(n° DPE {(p.get('ademe_dpe') or {}).get('numero_dpe', '—')}, audit {audit.get('n_audit')}). "
-             f"Montant global INDICATIF de l'audit : {int(cout)} € (coût travaux ADEME, non opposable). "
-             f"Étiquette énergie visée : {etq}. Chaque poste doit être chiffré par une source locale datée ; "
-             f"aucun gain énergétique n'est garanti.")
+    notes = (f"Orçamento gerado a partir de um cenário de auditoria energética OFICIAL ADEME (n.º DPE {(p.get('ademe_dpe') or {}).get('numero_dpe', '—')}, audit {audit.get('n_audit')}). Montante global INDICATIVO da auditoria: {int(cout)} € (custo de obras ADEME, não vinculativo). Classe energética pretendida: {etq}. Cada artigo deve ser orçamentado por uma fonte local datada; nenhum ganho energético é garantido.")
     doc_body = docs_mod.DocIn(
         doc_type="quote",
-        title=f"Rénovation (audit ADEME) — {step.get('etape')} — DPE {dpe_initial}→{etq}",
+        title=f"Reabilitação (auditoria ADEME) — {step.get('etape')} — DPE {dpe_initial}→{etq}",
         lines=lines, notes=notes)
     created = await docs_mod.create_document(doc_body, user)
     doc_id = created.get("doc_id") if isinstance(created, dict) else None
     return {"ok": True, "doc_id": doc_id,
             "cout_audit_indicatif": cout, "etiquette_visee": etq,
-            "message": "Devis créé depuis le scénario d'audit — postes à chiffrer dans l'éditeur."}
+            "message": "Orçamento criado a partir do cenário de auditoria — artigos a orçamentar no editor."}
 
 
 @router.post("/projects/{project_id}/geste-to-devis")
@@ -821,7 +811,7 @@ async def geste_to_devis(project_id: str, body: GesteToDevisIn, user=Depends(cur
     p = await _get_project(project_id, user["user_id"])
     g = next((x for x in aides_reno.GESTE_CATALOGUE if x["code"] == body.geste_code), None)
     if not g:
-        raise HTTPException(404, "Geste inconnu.")
+        raise HTTPException(404, "Medida desconhecida.")
     unit = g.get("unit") or "u"
     qty = float(body.value) if body.value not in (None, "") else 1.0
 
@@ -835,10 +825,10 @@ async def geste_to_devis(project_id: str, body: GesteToDevisIn, user=Depends(cur
     cee_txt = _eur_int(body.cee)
     aide_parts = []
     if mpr_txt:
-        aide_parts.append(f"MaPrimeRénov' : {mpr_txt}")
+        aide_parts.append(f"MaPrimeRénov': {mpr_txt}")
     if cee_txt:
-        aide_parts.append(f"CEE : {cee_txt}")
-    aide_line = " · ".join(aide_parts) if aide_parts else "Aide à confirmer (API indisponible)"
+        aide_parts.append(f'CEE: {cee_txt}')
+    aide_line = " · ".join(aide_parts) if aide_parts else "Apoio a confirmar (API indisponível)"
     total_aide = (body.mpr or 0) + (body.cee or 0)
     total_txt = _eur_int(total_aide) if total_aide else None
 
@@ -850,35 +840,34 @@ async def geste_to_devis(project_id: str, body: GesteToDevisIn, user=Depends(cur
     reste = round(price_ht - total_aide, 2) if price_ht is not None else None
     reste_txt = _eur_int(reste) if reste is not None else None
 
-    lines = [docs_mod.DocLine(kind="section", title=f"Rénovation — {g['label']}")]
+    lines = [docs_mod.DocLine(kind="section", title=f"Reabilitação — {g['label']}")]
     lines.append(docs_mod.DocLine(
         kind="line", line_kind="ouvrage", designation=g["label"],
-        description=f"Poste chiffré/estimé — aide associée : {aide_line}",
+        description=f'Artigo orçamentado/estimado — apoio associado: {aide_line}',
         unit=unit if unit != "équipements" else "u",
         qty=qty, unit_price_ht=pu,
         price_missing=(price_ht is None), price_estimated=(price_ht is not None),
         quantity_missing=(body.value in (None, "")),
-        price_reference_label="prix estimé (à confirmer)" if price_ht is not None else "à chiffrer"))
-    reste_block = (f" · Prix estimé travaux : {_eur_int(price_ht)}" if price_ht is not None else "")
-    reste_block += (f" · <b>Reste à charge estimé : {reste_txt}</b>" if reste_txt is not None else "")
+        price_reference_label="preço estimado (a confirmar)" if price_ht is not None else "a orçamentar"))
+    reste_block = (f' · Preço estimado das obras: {_eur_int(price_ht)}' if price_ht is not None else "")
+    reste_block += (f' · <b>Encargo final estimado: {reste_txt}</b>' if reste_txt is not None else "")
     lines.append(docs_mod.DocLine(
         kind="text",
-        text=(f"Aide associée (indicative, non opposable) — {aide_line}"
-              + (f" · Total aides : {total_txt}" if total_txt else "")
+        text=(f'Apoio associado (indicativo, não vinculativo) — {aide_line}'
+              + (f' · Total de apoios: {total_txt}' if total_txt else "")
               + reste_block
-              + ". Montants issus de « Mes Aides Réno » (France Rénov') ou d'un forfait officiel "
-                "MaPrimeRénov' en repli ; à confirmer auprès d'un conseiller.")))
+              + ". Montantes provenientes do simulador oficial de apoios ou de um valor fixo oficial em alternativa; a confirmar junto de um técnico (ex. Fundo Ambiental).")))
 
-    notes = (f"Devis généré depuis un geste RenoPilot « {g['label']} ». "
-             + (f"Prix estimé des travaux : {_eur_int(price_ht)} ; reste à charge estimé après aides : {reste_txt}. "
-                if price_ht is not None else "Le prix du poste est à chiffrer par une source locale datée. ")
-             + f"Aide associée (indicative) : {aide_line}. Aucun gain énergétique garanti.")
+    notes = (f"Orçamento gerado a partir de uma medida RenoPilot «{g['label']} ». "
+             + (f'Preço estimado das obras: {_eur_int(price_ht)}; encargo final estimado após apoios: {reste_txt}. '
+                if price_ht is not None else "O preço do artigo deve ser orçamentado por uma fonte local datada. ")
+             + f'Apoio associado (indicativo): {aide_line}. Nenhum ganho energético garantido.')
     doc_body = docs_mod.DocIn(doc_type="quote",
-                              title=f"Rénovation — {g['label']}", lines=lines, notes=notes)
+                              title=f"Reabilitação — {g['label']}", lines=lines, notes=notes)
     created = await docs_mod.create_document(doc_body, user)
     doc_id = created.get("doc_id") if isinstance(created, dict) else None
     return {"ok": True, "doc_id": doc_id, "aide_associee": aide_line,
-            "message": "Devis créé depuis le geste — poste à chiffrer dans l'éditeur."}
+            "message": "Orçamento criado a partir da medida — artigo a orçamentar no editor."}
 
 
 
@@ -908,7 +897,7 @@ async def import_dpe(project_id: str, file: UploadFile = File(...), user=Depends
     p = await _get_project(project_id, user["user_id"])
     raw = await file.read()
     if len(raw) > 25 * 1024 * 1024:
-        raise HTTPException(413, "Fichier trop volumineux (max 25 Mo)")
+        raise HTTPException(413, "Ficheiro demasiado volumoso (máx. 25 MB)")
     fname = (file.filename or "document").strip()
     lower = fname.lower()
     text = ""
@@ -932,8 +921,7 @@ async def import_dpe(project_id: str, file: UploadFile = File(...), user=Depends
         except Exception:
             text = text
     if not text.strip():
-        raise HTTPException(422, "Document illisible (format non reconnu). "
-                                 "Saisissez les données manuellement.")
+        raise HTTPException(422, "Documento ilegível (formato não reconhecido). Introduza os dados manualmente.")
 
     # Détection automatique du n° de DPE (13 car.) → import officiel ADEME direct.
     ademe = None
@@ -953,13 +941,13 @@ async def import_dpe(project_id: str, file: UploadFile = File(...), user=Depends
         return {"ok": True, "ademe": True, "numero_dpe": mnum.group(0),
                 "dpe": ademe["dpe"], "audits": ademe["audits"],
                 "filled": filled, "count": len(filled),
-                "message": f"Numéro de DPE détecté ({mnum.group(0)}) — DPE officiel ADEME importé automatiquement."}
+                "message": f'Número de certificado energético detetado ({mnum.group(0)}) — certificado oficial ADEME importado automaticamente.'}
 
     extracted = await ai_engine.renovation_extract(text, QUESTIONNAIRE)
     inputs = p.get("inputs") or {}
     filled = []
     for path, val in extracted.items():
-        inputs[path] = _evidence(val, status="documenté", source=f"DPE/doc importé : {fname}",
+        inputs[path] = _evidence(val, status="documenté", source=f'Certificado/documento importado: {fname}',
                                  unit=_FIELD_BY_PATH[path].get("unit", ""))
         filled.append({"path": path, "label": _FIELD_BY_PATH[path]["label"], "value": val})
     # classe DPE éventuellement présente dans le texte → stockée comme DOCUMENT importé (pas simulation)
@@ -976,8 +964,8 @@ async def import_dpe(project_id: str, file: UploadFile = File(...), user=Depends
         {"$set": {"inputs": inputs, "documents": documents, "updated_at": _now()}})
     return {"ok": True, "filled": filled, "count": len(filled),
             "imported_class": imported_class,
-            "note": ("Classe DPE lue dans le document (document importé, non recalculé)."
-                     if imported_class else "Aucune classe DPE détectée automatiquement.")}
+            "note": ("Classe energética lida no documento (documento importado, não recalculado)."
+                     if imported_class else "Nenhuma classe energética detetada automaticamente.")}
 
 
 class PullSurfacesIn(BaseModel):
@@ -1016,7 +1004,7 @@ async def pull_surfaces(project_id: str, body: PullSurfacesIn, user=Depends(curr
         {"plan_id": body.plan_id, "user_id": user["user_id"]},
         {"_id": 0, "measurements": 1, "name": 1, "filename": 1})
     if not plan:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     sums = {"murs": 0.0, "toiture": 0.0, "plancher_bas": 0.0}
     counts = {"murs": 0, "toiture": 0, "plancher_bas": 0}
     for m in (plan.get("measurements") or []):
@@ -1033,7 +1021,7 @@ async def pull_surfaces(project_id: str, body: PullSurfacesIn, user=Depends(curr
                "plancher_bas": "geometrie.surface_plancher_bas_m2"}
     inputs = p.get("inputs") or {}
     filled = []
-    src = f"Éditeur de plans : {plan.get('name') or plan.get('filename') or body.plan_id}"
+    src = f"Editor de plantas: {plan.get('name') or plan.get('filename') or body.plan_id}"
     for fam, path in mapping.items():
         if counts[fam] > 0 and sums[fam] > 0:
             val = round(sums[fam], 2)
@@ -1042,8 +1030,7 @@ async def pull_surfaces(project_id: str, body: PullSurfacesIn, user=Depends(curr
             filled.append({"path": path, "label": _FIELD_BY_PATH[path]["label"],
                            "value": val, "count": counts[fam]})
     if not filled:
-        raise HTTPException(422, "Aucune surface mesurée exploitable dans ce plan "
-                                 "(tracez et nommez des surfaces murs/toiture/sol dans l'Éditeur).")
+        raise HTTPException(422, "Nenhuma área medida utilizável nesta planta (trace e nomeie áreas de paredes/cobertura/pavimento no Editor).")
     linked = (p.get("linked_plans") or [])
     if body.plan_id not in linked:
         linked.append(body.plan_id)
@@ -1109,7 +1096,7 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
             logo_flow = Image(BytesIO(raw), width=26 * mm, height=26 * mm, kind="proportional")
         except Exception:
             logo_flow = None
-    title_block = [Paragraph("RenoPilot — Rapport de rénovation énergétique", h1),
+    title_block = [Paragraph("RenoPilot — Relatório de reabilitação energética", h1),
                    Paragraph(p.get("title", ""), body)]
     if company:
         title_block.append(Paragraph(company, muted))
@@ -1129,11 +1116,9 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
         story.append(ht)
     story.append(Spacer(1, 4))
     if p.get("ademe_dpe"):
-        story.append(Paragraph("Les étiquettes et consommations proviennent du DPE officiel (open data ADEME) — "
-                               "données reprises telles quelles, non opposables. Les chiffrages travaux restent indicatifs.", muted))
+        story.append(Paragraph("As classes e consumos provêm do certificado energético oficial (dados abertos ADEME) — dados retomados tal como estão, não vinculativos. As orçamentações de obras continuam indicativas.", muted))
     else:
-        story.append(Paragraph("Estimation de rénovation — ne remplace pas un DPE ou un audit réglementaire. "
-                               "Calcul énergétique (classe, kWh) non effectué : moteur 3CL non configuré.", muted))
+        story.append(Paragraph("Estimativa de reabilitação — não substitui um certificado energético (SCE) nem uma auditoria regulamentar. Cálculo energético (classe, kWh) não efetuado: motor de cálculo não configurado.", muted))
     story.append(Spacer(1, 6))
 
     # ------- Bloc officiel ADEME : DPE + avant/après (audit) + aides & reste à charge -------
@@ -1165,8 +1150,8 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
         return tb
 
     if ademe:
-        story.append(Paragraph("DPE officiel (open data ADEME)", h2))
-        info = Table([[Paragraph("Énergie", muted), _etq(ademe.get("etiquette_energie")),
+        story.append(Paragraph("Certificado energético oficial (dados abertos ADEME)", h2))
+        info = Table([[Paragraph("Energia", muted), _etq(ademe.get("etiquette_energie")),
                        Paragraph("Climat", muted), _etq(ademe.get("etiquette_climat")),
                        Paragraph(f"{ademe.get('conso_ep_m2', '—')} kWh/m²·an · "
                                  f"{ademe.get('ges_m2', '—')} kgCO2/m²·an"
@@ -1179,14 +1164,12 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
                                f"{ademe.get('periode_construction', '')} · {ademe.get('adresse', '')} · "
                                f"DPE n° {ademe.get('numero_dpe', '')} ({ademe.get('date_dpe', '')})", muted))
         if ademe_imm:
-            story.append(Paragraph(f"Immeuble (parties communes) — DPE n° {ademe_imm.get('numero_dpe', '')} : "
-                                   f"énergie {ademe_imm.get('etiquette_energie', '—')} / climat "
-                                   f"{ademe_imm.get('etiquette_climat', '—')} (non moyenné avec le logement).", muted))
-        story.append(Paragraph("Source : open data ADEME — données officielles reprises telles quelles, non opposables.", why))
+            story.append(Paragraph(f"Edifício (partes comuns) — certificado n.º {ademe_imm.get('numero_dpe', '')}: energia {ademe_imm.get('etiquette_energie', '—')} / climat {ademe_imm.get('etiquette_climat', '—')} (não ponderado com a habitação).", muted))
+        story.append(Paragraph("Fonte: dados abertos ADEME — dados oficiais retomados tal como estão, não vinculativos.", why))
 
     if ademe_audits:
-        story.append(Paragraph("Scénarios d'audit officiels — avant / après (ADEME)", h2))
-        rows = [["Étape", "DPE", "Coût travaux", "Gain conso", "Travaux"]]
+        story.append(Paragraph("Cenários de auditoria oficiais — antes / depois (ADEME)", h2))
+        rows = [["Etapa", "DPE", "Custo das obras", "Gain conso", "Obras"]]
         for a in ademe_audits:
             for s in a.get("steps", []):
                 gain = (f"{round(abs(s['gain_relatif_ep']) * 100)} %"
@@ -1222,44 +1205,44 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
                         pass
                 d.add(bc)
                 story.append(d)
-                story.append(Paragraph("Coût des travaux par étape d'audit (€). Couleur = étiquette énergie atteinte.", muted))
+                story.append(Paragraph("Custo das obras por etapa de auditoria (€). Cor = classe energética atingida.", muted))
         except Exception:
             pass
 
     if aides and aides.get("ok"):
-        story.append(Paragraph("Aides financières & reste à charge (indicatif)", h2))
+        story.append(Paragraph("Apoios financeiros e encargo final (indicativo)", h2))
         sub = aides.get("total_subventions_indicatif")
         reste = aides.get("reste_a_charge_indicatif")
         tr = aides.get("travaux_ht")
         ptz = _clean((aides.get("eco_ptz") or {}).get("formattedValue"))
         kv = Table([
             [Paragraph("Travaux retenus", muted), Paragraph(f"<b>{_eur(tr)}</b>" if tr else "—", body),
-             Paragraph("Total subventions", muted), Paragraph(f"<b>{_eur(sub)}</b>" if sub else "—", body)],
-            [Paragraph("Reste à charge", muted), Paragraph(f"<b>{_eur(reste)}</b>" if reste is not None else "—", body),
-             Paragraph("Éco-PTZ (prêt 0 %)", muted), Paragraph(ptz or "—", body)],
+             Paragraph("Total de subsídios", muted), Paragraph(f"<b>{_eur(sub)}</b>" if sub else "—", body)],
+            [Paragraph("Valor a cargo", muted), Paragraph(f"<b>{_eur(reste)}</b>" if reste is not None else "—", body),
+             Paragraph("Empréstimo bonificado", muted), Paragraph(ptz or "—", body)],
         ], colWidths=[36 * mm, 42 * mm, 40 * mm, 60 * mm])
         kv.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.4, colors.lightgrey), ("FONTSIZE", (0, 0), (-1, -1), 8),
                                 ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
         story.append(kv)
-        rows = [["Aide", "Montant", "Statut"]]
+        rows = [["Apoio", "Montante", "Estado"]]
         for a in (aides.get("aides") or [])[:12]:
             rows.append([Paragraph(a.get("label") or "", muted), _clean(a.get("value")) or "—",
-                         "Applicable" if a.get("status") else "Non applicable"])
+                         "Applicable" if a.get("status") else "Não aplicável"])
         t = Table(rows, colWidths=[112 * mm, 30 * mm, 36 * mm])
         t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), GREEN), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                                ("FONTSIZE", (0, 0), (-1, -1), 7.5), ("GRID", (0, 0), (-1, -1), 0.4, colors.lightgrey),
                                ("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
                                ("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
         story.append(t)
-        story.append(Paragraph(aides.get("disclaimer") or "Montants indicatifs — non opposables.", why))
+        story.append(Paragraph(aides.get("disclaimer") or "Montantes indicativos — não vinculativos.", why))
     story.append(Spacer(1, 4))
 
     # ------- Aides par geste (MaPrimeRénov' + CEE par poste) -------
     aides_gestes = p.get("aides_gestes") or {}
     g_rows_src = aides_gestes.get("gestes") or []
     if g_rows_src:
-        story.append(Paragraph("Aides par geste (MaPrimeRénov' + CEE par poste)", h2))
-        rows = [["Poste", "Quantité", "MaPrimeRénov'", "CEE", "Total"]]
+        story.append(Paragraph("Apoios por intervenção", h2))
+        rows = [["Artigo", "Quantidade", "MaPrimeRénov'", "Certificados de poupança", "Total"]]
         for g in g_rows_src:
             val = g.get("value")
             qty_txt = f"{val} {g.get('unit') or ''}".strip() if val not in (None, "") else "—"
@@ -1273,7 +1256,7 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
             note = g.get("note")
             cell = Paragraph(label + (f"<br/><font color='#92400e' size=6.5>{_clean(note)}</font>" if note else ""), muted)
             rows.append([cell, qty_txt, mpr_txt, cee_txt, tot_txt])
-        rows.append([Paragraph("<b>Total aides (indicatif)</b>", muted), "",
+        rows.append([Paragraph("<b>Total de apoios (indicativo)</b>", muted), "",
                      _eur(aides_gestes.get("total_mpr_indicatif")),
                      _eur(aides_gestes.get("total_cee_indicatif")),
                      _eur(aides_gestes.get("total_aides_indicatif"))])
@@ -1284,43 +1267,41 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
                                ("BACKGROUND", (0, -1), (-1, -1), colors.Color(0.93, 0.98, 0.95)),
                                ("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
         story.append(t)
-        story.append(Paragraph(aides_gestes.get("disclaimer") or "Montants indicatifs par geste — non opposables.", why))
+        story.append(Paragraph(aides_gestes.get("disclaimer") or "Montantes indicativos por medida — não vinculativos.", why))
         story.append(Spacer(1, 4))
 
 
     cov = baseline.get("coverage_pct")
-    story.append(Paragraph("Données & fiabilité", h2))
-    story.append(Paragraph(f"Couverture des données renseignées : <b>{cov if cov is not None else '—'}%</b>. "
-                           "Les données inconnues restent visibles et ne sont pas remplacées par des valeurs par défaut.", body))
-    story.append(Paragraph("Pourquoi ? Les surfaces proviennent de la saisie, de l'Éditeur de plans (statut « mesuré ») "
-                           "ou d'un DPE importé (statut « documenté »). Les chiffrages sans source sont marqués « à chiffrer ».", why))
+    story.append(Paragraph("Dados e fiabilidade", h2))
+    story.append(Paragraph(f"Cobertura dos dados preenchidos: <b>{(cov if cov is not None else '—')}%</b>. Os dados desconhecidos continuam visíveis e não são substituídos por valores predefinidos.", body))
+    story.append(Paragraph("Porquê? As áreas provêm da introdução manual, do Editor de plantas (estado «medido») ou de um certificado importado (estado «documentado»). As orçamentações sem fonte estão marcadas «a orçamentar».", why))
     if thumb_b64:
         try:
             traw = base64.b64decode(thumb_b64)
             timg = Image(BytesIO(traw), width=45 * mm, height=45 * mm, kind="proportional")
             story.append(Spacer(1, 3))
-            story.append(Paragraph("Aperçu du plan lié (surfaces mesurées dans l'Éditeur de plans) :", muted))
+            story.append(Paragraph("Pré-visualização da planta associada (áreas medidas no Editor de plantas):", muted))
             story.append(timg)
         except Exception:
             pass
 
     posts = baseline.get("posts") or []
     if posts:
-        story.append(Paragraph("État estimé (analyse qualitative — Niveau A)", h2))
-        rows = [["Composant", "Évaluation", "Observation · Pourquoi ?"]]
+        story.append(Paragraph("Estado estimado (análise qualitativa — Nível A)", h2))
+        rows = [["Componente", "Avaliação", "Observação · Porquê?"]]
         for pt in posts:
             dn = ", ".join(pt.get("data_needed") or [])
-            cell = Paragraph(f"{pt['reason']}<br/><font color='#0a7a4d' size=7>Donnée(s) à vérifier : {dn or '—'}</font>", muted)
+            cell = Paragraph(f"{pt['reason']}<br/><font color='#0a7a4d' size=7>Dado(s) a verificar: {dn or '—'}</font>", muted)
             rows.append([pt["component"], pt["assessment"], cell])
         t = Table(rows, colWidths=[36 * mm, 40 * mm, 102 * mm])
         t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), GREEN), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                                ("FONTSIZE", (0, 0), (-1, -1), 8), ("GRID", (0, 0), (-1, -1), 0.4, colors.lightgrey),
                                ("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
         story.append(t)
-        story.append(Paragraph("Classe énergétique : non calculée. Consommation (kWh) : non calculée (moteur non configuré).", muted))
+        story.append(Paragraph("Classe energética: não calculada. Consumo (kWh): não calculado (motor não configurado).", muted))
 
     if scenarios:
-        story.append(Paragraph("Scénarios de rénovation comparés", h2))
+        story.append(Paragraph("Cenários de reabilitação comparados", h2))
         # Graphique : coût chiffrable par scénario
         try:
             d = Drawing(420, 150)
@@ -1335,10 +1316,10 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
             bc.valueAxis.labels.fontSize = 7
             d.add(bc)
             story.append(d)
-            story.append(Paragraph("Coût des travaux chiffrables par scénario (€ HT). Les postes « à chiffrer » ne sont pas inclus.", muted))
+            story.append(Paragraph("Custo das obras orçamentáveis por cenário (€ s/ IVA). Os artigos «a orçamentar» não estão incluídos.", muted))
         except Exception:
             pass
-        rows = [["Parcours", "Travaux chiffrés HT", "À chiffrer", "Budget"]]
+        rows = [["Percurso", "Obras orçamentadas s/ IVA", "A orçamentar", "Orçamento"]]
         for s in scenarios:
             rows.append([f"{s['key']} — {s['name']}",
                          f"{s.get('total_ht_chiffrable', 0):,.0f} €".replace(",", " "),
@@ -1349,19 +1330,17 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
                                ("FONTSIZE", (0, 0), (-1, -1), 8), ("GRID", (0, 0), (-1, -1), 0.4, colors.lightgrey),
                                ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
         story.append(t)
-        story.append(Paragraph("Pourquoi ? Gains énergétiques non calculés (moteur non configuré). Les mesures interagissent : "
-                               "aucun cumul de pourcentages. Prix « hypothèse »/« à chiffrer » à confirmer par une source locale datée.", why))
+        story.append(Paragraph("Porquê? Ganhos energéticos não calculados (motor não configurado). As medidas interagem: nenhuma soma de percentagens. Preços «hipótese»/«a orçamentar» a confirmar por uma fonte local datada.", why))
         sc = next((s for s in scenarios if s["key"] == "P3"), scenarios[-1])
-        story.append(Paragraph(f"Descriptif par lot — {sc['name']}", h2))
+        story.append(Paragraph(f"Descrição por lote — {sc['name']}", h2))
         for it in sc.get("work_items", []):
             story.append(Paragraph(f"<b>{it['lot']} — {it['label']}</b>", body))
             dd = it["descriptif"]
             q = it["metre"]
-            qty_txt = f"{q['quantity']} {q['unit']}" if q.get("quantity") is not None else f"{q['unit']} à confirmer"
-            story.append(Paragraph(f"Métré : {qty_txt} · Prix : {dd['prix']}", muted))
-            story.append(Paragraph(f"Objectif : {dd['objectif']} — Contrôles : {dd['controles']}", muted))
-            story.append(Paragraph(f"Pourquoi ce prix ? {it['chiffrage'].get('status', '')} "
-                                   f"(source : {it['chiffrage'].get('source') or 'non sourcé'}).", why))
+            qty_txt = f"{q['quantity']} {q['unit']}" if q.get("quantity") is not None else f"{q['unit']} a confirmar"
+            story.append(Paragraph(f"Medição: {qty_txt} · Preço: {dd['prix']}", muted))
+            story.append(Paragraph(f"Objetivo: {dd['objectif']} — Controlos: {dd['controles']}", muted))
+            story.append(Paragraph(f"Porquê este preço? {it['chiffrage'].get('status', '')} (source : {it['chiffrage'].get('source') or 'sem fonte'}).", why))
             story.append(Spacer(1, 3))
 
     doc.build(story)
@@ -1372,5 +1351,5 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
 async def delete_project(project_id: str, user=Depends(current_user)) -> dict:
     r = await db.reno_projects.delete_one({"project_id": project_id, "user_id": user["user_id"]})
     if not r.deleted_count:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     return {"ok": True}

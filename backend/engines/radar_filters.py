@@ -10,9 +10,9 @@ WorkType = Literal["neuf", "extension", "renovation", "inconnu"]
 BuildingType = Literal["maison", "collectif", "autre", "inconnu"]
 ClientType = Literal["particulier", "promoteur", "entreprise", "syndic", "banque", "architecte", "autre", "inconnu"]
 OPTIONS = {
-    "work_types": [("neuf", "Construction neuve"), ("extension", "Extension / agrandissement"), ("renovation", "Rénovation / existant"), ("inconnu", "Non identifié")],
-    "building_types": [("maison", "Maison individuelle"), ("collectif", "Immeuble collectif"), ("autre", "Autre bâtiment"), ("inconnu", "Non identifié")],
-    "client_types": [("particulier", "Particulier"), ("promoteur", "Promoteur"), ("entreprise", "Entreprise / professionnel"), ("syndic", "Copropriété / syndic"), ("banque", "Banque"), ("architecte", "Architecte"), ("autre", "Autre organisme"), ("inconnu", "Non identifié")],
+    "work_types": [("neuf", "Construção nova"), ("extension", "Ampliação"), ("renovation", "Reabilitação / existente"), ("inconnu", "Não identificado")],
+    "building_types": [("maison", "Moradia unifamiliar"), ("collectif", "Edifício multifamiliar"), ("autre", "Outro edifício"), ("inconnu", "Não identificado")],
+    "client_types": [("particulier", "Particular"), ("promoteur", "Promotor"), ("entreprise", "Empresa / profissional"), ("syndic", "Condomínio / administração"), ("banque", "Banco"), ("architecte", "Architecte"), ("autre", "Outro organismo"), ("inconnu", "Não identificado")],
 }
 
 
@@ -39,7 +39,7 @@ def query_filters(saved, **params):
     try:
         return RadarFilters.model_validate(values).model_dump()
     except ValidationError as exc:
-        raise HTTPException(422, "Catégorie de filtre Radar invalide.") from exc
+        raise HTTPException(422, "Categoria de filtro do Radar inválida.") from exc
 
 
 def observed_categories(row, kind):

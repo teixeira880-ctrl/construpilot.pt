@@ -20,7 +20,7 @@ export function ActionsPanel({ projectId, canEdit, onContent }) {
   const patch = async (a, changes) => { try { await api.put(`/growth/actions/${a.action_id}`, { ...a, ...changes }); reload(); } catch (e) { toast.error(err(e)); } };
   const remove = async (a) => { try { await api.delete(`/growth/actions/${a.action_id}`); reload(); } catch (e) { toast.error(err(e)); } };
   const toContent = async (a) => {
-    try { const r = await api.post(`/growth/projects/${projectId}/contents`, { topic: a.title.replace(/^Publier une réponse utile à : /, "").replace(/[«»]/g, "").trim(), intent: a.source === "campaign" ? "descoberta" : "necessidade profissional", action_id: a.action_id, question_id: a.question_id || "" }); toast.success("Ideia de conteúdo criada"); onContent?.(r.data.content_id); }
+    try { const r = await api.post(`/growth/projects/${projectId}/contents`, { topic: a.title.replace(/^Publier une réponse utile à : /, "").replace(/[«»]/g, "").trim(), intent: a.source === "campaign" ? "découverte" : "besoin métier", action_id: a.action_id, question_id: a.question_id || "" }); toast.success("Ideia de conteúdo criada"); onContent?.(r.data.content_id); }
     catch (e) { toast.error(err(e)); }
   };
   if (error) return <ErrorBox error={error} onRetry={reload} />;
@@ -38,7 +38,7 @@ export function ActionsPanel({ projectId, canEdit, onContent }) {
       <Input placeholder="Problema / oportunidade" value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} /><Input placeholder="Prova" value={form.evidence} onChange={(e) => setForm({ ...form, evidence: e.target.value })} />
       <Input placeholder="URL em causa" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} /><Input placeholder="Indicador a acompanhar" value={form.kpi} onChange={(e) => setForm({ ...form, kpi: e.target.value })} />
       <select className="h-9 rounded-md border bg-background px-2" value={form.impact} onChange={(e) => setForm({ ...form, impact: e.target.value })}><option value="fort">impact fort</option><option value="moyen">impacto médio</option><option value="faible">impact faible</option></select>
-      <select className="h-9 rounded-md border bg-background px-2" value={form.effort} onChange={(e) => setForm({ ...form, effort: e.target.value })}><option value="faible">effort faible</option><option value="moyen">esforço médio</option><option value="elevado">esforço elevado</option></select>
+      <select className="h-9 rounded-md border bg-background px-2" value={form.effort} onChange={(e) => setForm({ ...form, effort: e.target.value })}><option value="faible">effort faible</option><option value="moyen">esforço médio</option><option value="élevé">esforço elevado</option></select>
       <Input placeholder="Responsável" value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} /><Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
       <div className="flex gap-2 sm:col-span-2"><Button size="sm" onClick={save} disabled={!form.title.trim()} data-testid="growth-action-save">Guardar</Button><Button size="sm" variant="ghost" onClick={() => setForm(null)}>Cancelar</Button></div>
     </div>}

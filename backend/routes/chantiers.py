@@ -57,7 +57,7 @@ async def _client(user_id: str, client_id: Optional[str]) -> Optional[dict]:
         return None
     c = await db.clients.find_one({"client_id": client_id, "user_id": user_id}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Client introuvable")
+        raise HTTPException(404, "Cliente não encontrado")
     return c
 
 
@@ -70,7 +70,7 @@ def _client_label(c: Optional[dict]) -> str:
 async def _get(chantier_id: str, user_id: str) -> dict:
     c = await db.chantiers.find_one({"chantier_id": chantier_id, "user_id": user_id}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Dossier chantier introuvable")
+        raise HTTPException(404, "Processo de obra não encontrado")
     return c
 
 
@@ -198,7 +198,7 @@ async def assign_labor_lot(chantier_id: str, entry_id: str, body: LotAssignIn, u
     lot = (body.lot or "").strip() or None
     res = await db.hr_timesheets.update_one(q, {"$set": {"lot": lot}})
     if res.matched_count == 0:
-        raise HTTPException(404, "Saisie d'heures introuvable pour ce chantier")
+        raise HTTPException(404, "Registo de horas não encontrado para esta obra")
     return {"ok": True, "entry_id": entry_id, "lot": lot}
 
 
@@ -210,7 +210,7 @@ async def assign_purchase_lot(chantier_id: str, order_id: str, body: LotAssignIn
     lot = (body.lot or "").strip() or None
     res = await db.material_orders.update_one({**await purchase_scope(db, c, user["user_id"]), "order_id": order_id}, {"$set": {"lot": lot}})
     if res.matched_count == 0:
-        raise HTTPException(404, "Commande introuvable")
+        raise HTTPException(404, "Encomenda não encontrada")
     return {"ok": True, "order_id": order_id, "lot": lot}
 
 
@@ -241,7 +241,7 @@ async def attach(chantier_id: str, body: AttachIn, user=Depends(current_user)) -
     coll, key = ATTACH_KINDS[body.kind]
     r = await coll.update_one({key: body.ref_id, "user_id": user["user_id"]}, {"$set": {"chantier_id": chantier_id}})
     if not r.matched_count:
-        raise HTTPException(404, "Élément introuvable pour ce compte")
+        raise HTTPException(404, "Elemento não encontrado para esta conta")
     await db.chantiers.update_one({"chantier_id": chantier_id}, {"$set": {"updated_at": _now()}})
     return {"ok": True, "chantier_id": chantier_id, "kind": body.kind, "ref_id": body.ref_id}
 
@@ -254,7 +254,7 @@ async def detach(chantier_id: str, body: AttachIn, user=Depends(current_user)) -
     coll, key = ATTACH_KINDS[body.kind]
     r = await coll.update_one({key: body.ref_id, "user_id": user["user_id"], "chantier_id": chantier_id}, {"$unset": {"chantier_id": ""}})
     if not r.matched_count:
-        raise HTTPException(404, "Élément introuvable dans ce dossier")
+        raise HTTPException(404, "Elemento não encontrado neste processo")
     return {"ok": True}
 
 
@@ -274,14 +274,14 @@ async def save_cost_settings(chantier_id: str, body: CostSettingsIn, user=Depend
         quotes = await db.pro_documents.find({"user_id": user["user_id"], "chantier_id": chantier_id,
             "doc_type": "quote", "trashed_at": None, "doc_id": {"$in": body.quote_ids}}, {"doc_id": 1, "status": 1}).to_list(301)
         if len(body.quote_ids) != len(set(body.quote_ids)) or {q["doc_id"] for q in quotes if q.get("status") not in EXCLUDED_QUOTES} != set(body.quote_ids):
-            raise HTTPException(422, "Sélection de devis absente, dupliquée ou inaccessible dans ce dossier")
+            raise HTTPException(422, "Seleção de orçamentos ausente, duplicada ou inacessível neste processo")
     if c.get("cost_version", 0) != body.expected_version:
-        raise HTTPException(409, "Le budget a changé. Rechargez avant d'enregistrer.")
+        raise HTTPException(409, "O orçamento mudou. Recarregue antes de guardar.")
     version = c.get("cost_version", {"$exists": False})
     result = await db.chantiers.update_one({"user_id": user["user_id"], "chantier_id": chantier_id, "cost_version": version},
         {"$set": {"cost_settings": body.model_dump(exclude={"expected_version"}), "cost_version": body.expected_version + 1, "updated_at": _now()}})
     if not result.matched_count:
-        raise HTTPException(409, "Le budget a changé. Rechargez avant d'enregistrer.")
+        raise HTTPException(409, "O orçamento mudou. Recarregue antes de guardar.")
     return await chantier_costs(chantier_id, None, user)
 
 
@@ -299,23 +299,23 @@ async def save_delivery(chantier_id: str, order_id: str, body: DeliveryIn, user=
     query = {**await purchase_scope(db, c, user["user_id"]), "order_id": order_id}
     order = await db.material_orders.find_one(query)
     if not order:
-        raise HTTPException(404, "Commande introuvable dans ce dossier")
+        raise HTTPException(404, "Encomenda não encontrada neste processo")
     from engines.chantier_costs import ENGAGED
     if order.get("status") not in ENGAGED:
-        raise HTTPException(422, "La livraison concerne uniquement une commande envoyée ou confirmée")
+        raise HTTPException(422, "A entrega diz respeito apenas a uma encomenda enviada ou confirmada")
     if body.expected_date:
         from datetime import date
         try:
             date.fromisoformat(body.expected_date)
         except ValueError:
-            raise HTTPException(422, "Date de livraison invalide") from None
+            raise HTTPException(422, "Data de entrega inválida") from None
     if order.get("delivery_version", 0) != body.expected_version:
-        raise HTTPException(409, "Le suivi a changé. Rechargez la commande.")
+        raise HTTPException(409, "O seguimento mudou. Recarregue a encomenda.")
     delivery = {**body.model_dump(exclude={"expected_version"}), "updated_at": _now(), "updated_by": user["user_id"]}
     query.update(delivery_version=order.get("delivery_version", {"$exists": False}), status=order.get("status"))
     result = await db.material_orders.update_one(query, {"$set": {"delivery": delivery, "delivery_version": body.expected_version + 1}})
     if not result.matched_count:
-        raise HTTPException(409, "La commande a changé. Rechargez avant d'enregistrer.")
+        raise HTTPException(409, "A encomenda mudou. Recarregue antes de guardar.")
     return {"order_id": order_id, "delivery": delivery, "delivery_version": body.expected_version + 1}
 
 

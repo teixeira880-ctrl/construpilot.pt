@@ -9,7 +9,7 @@ from engines import mercifacteur as mf
 
 log = logging.getLogger(__name__)
 STAGES = ["accepted", "printed", "posted", "delivered"]
-LABELS = {"accepted": "Acceptée", "printed": "Imprimée", "posted": "Postée", "delivered": "Distribuée", "returned": "Retournée"}
+LABELS = {"accepted": "Aceite", "printed": "Impressa", "posted": "Enviada", "delivered": "Entregue", "returned": "Devolvida"}
 FINAL = {"delivered", "returned"}
 TRACK_WINDOW_DAYS = 60
 
@@ -38,7 +38,7 @@ def normalize(tracking: dict) -> dict:
     else:
         stage = "accepted"
     return {"stage": stage, "stage_label": LABELS[stage], "returned": returned,
-            "provider_status": last_state or print_status or "En cours de traitement",
+            "provider_status": last_state or print_status or "Em tratamento",
             "print_status": print_status, "last_state": last_state, "tracking_ref": letter.get("refTracking") or None,
             "history": letter.get("historique") or None, "tracked_at": datetime.now(timezone.utc).isoformat()}
 
@@ -46,13 +46,13 @@ def normalize(tracking: dict) -> dict:
 async def _notify_return(doc: dict) -> None:
     recipient = doc.get("recipient") or {}
     who = " · ".join(x for x in (recipient.get("nom"), recipient.get("ville")) if x)
-    message = f"Courrier retourné / non distribuable : {who}. Vérifiez l'adresse avant tout nouvel envoi."
+    message = f'Carta devolvida / não distribuível: {who}. Verifique a morada antes de qualquer novo envio.'
     await db.notifications.insert_one({"notif_id": "n_" + secrets.token_hex(5), "user_id": doc["user_id"],
         "type": "postal_returned", "postal_id": doc["postal_id"], "message": message, "url": "/radar",
         "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
     try:
         from routes.phase7 import notify_user
-        await notify_user(doc["user_id"], "Courrier retourné", message, "/radar")
+        await notify_user(doc["user_id"], "Carta devolvida", message, "/radar")
     except Exception as exc:
         log.warning("Push for returned letter failed: %s", exc)
 

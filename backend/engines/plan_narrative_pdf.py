@@ -28,17 +28,15 @@ from engines.plan_pdf_i18n import cover_story, disclaimer
 from engines.plan_report_pdf import _W, LVL_HEX, build_controls, render_marked_plan
 
 L = {
-    "fr": {"kicker": "RAPPORT NARRATIF DE CONTRÔLE DES COTES", "title": "Analyse des cotes du plan",
-           "doc": "Document analysé", "page": "page", "date": "Date de l'analyse", "scale": "Échelle effective",
-           "scale_decl": "déclarée", "level": "Niveau global", "intro": "Introduction", "method": "Méthode",
-           "sections": "Analyse détaillée par grande cote", "calc": "Calcul", "gap": "Écart", "concl": "Conclusion",
-           "facades": "Façades opposées", "synth": "Synthèse", "reco": "Recommandations", "final": "Conclusion générale",
-           "plan": "Plan annoté", "plan_legend": "Marqueurs CP-xx : vert cohérent · jaune à vérifier · orange incohérence · rouge incohérence majeure",
-           "footer": "Rapport narratif de contrôle des cotes", "cotes": "Cotes concernées",
-           "disclaimer": "Ce rapport est une aide à la vérification produite automatiquement par ConstruPilot à partir des cotes "
-                         "vectorielles du PDF, d'une double lecture IA et d'un contrôle adversarial. Les valeurs recalculées ne "
-                         "remplacent jamais les cotes du plan : les points signalés doivent être confirmés avec l'auteur du plan.",
-           "lvl": {"VERT": "Cohérent", "BLEU": "Information", "JAUNE": "À vérifier", "ORANGE": "Incohérence", "ROUGE": "Incohérence majeure"}},
+    "fr": {"kicker": "RELATÓRIO NARRATIVO DE CONTROLO DE COTAS", "title": "Análise das cotas da planta",
+           "doc": "Documento analisado", "page": "page", "date": "Data da análise", "scale": "Escala efetiva",
+           "scale_decl": "déclarée", "level": "Nível global", "intro": "Introdução", "method": "Método",
+           "sections": "Análise detalhada por cota geral", "calc": "Cálculo", "gap": "Desvio", "concl": "Conclusão",
+           "facades": "Fachadas opostas", "synth": "Síntese", "reco": "Recomendações", "final": "Conclusão geral",
+           "plan": "Planta anotada", "plan_legend": "Marcadores CP-xx: verde coerente · amarelo a verificar · laranja incoerência · vermelho incoerência grave",
+           "footer": "Relatório narrativo de controlo de cotas", "cotes": "Cotas em causa",
+           "disclaimer": "Este relatório é um auxiliar de verificação produzido automaticamente pela ConstruPilot a partir das cotas vetoriais do PDF, de uma dupla leitura por IA e de um controlo adversarial. Os valores recalculados nunca substituem as cotas da planta: os pontos assinalados devem ser confirmados com o autor da planta.",
+           "lvl": {"VERT": "Coerente", "BLEU": "Informação", "JAUNE": "A verificar", "ORANGE": "Incoerência", "ROUGE": "Incoerência grave"}},
     "pt": {"kicker": "RELATÓRIO NARRATIVO DE CONTROLO DE COTAS", "title": "Análise das cotas da planta",
            "doc": "Documento analisado", "page": "página", "date": "Data da análise", "scale": "Escala efetiva",
            "scale_decl": "declarada", "level": "Nível global", "intro": "Introdução", "method": "Método",
@@ -136,11 +134,11 @@ def build_narrative_report_multi(plan: dict, bundle: list[tuple], branding: dict
                             bottomMargin=16 * mm, title=t["title"], author="ConstruPilot")
     story: list = []
     story += cover_story(plan, page_index, report, branding, lang, S, _W,
-                         subtitle=("NARRATIVO — " if lang == "pt" else "NARRATIF — ") + t["title"].upper()
+                         subtitle=("NARRATIVO — " if lang == "pt" else "NARRATIVO — ") + t["title"].upper()
                          + (f" ({len(bundle)} {t['page']}s)" if len(bundle) > 1 else ""))
     story += [_scope_box(disclaimer(plan, page_index, report, branding, lang), S, _W)]
     if len(bundle) > 1:  # sommaire des pages
-        rows = [[t["page"].capitalize(), t["level"], "Sections"]]
+        rows = [[t["page"].capitalize(), t["level"], "Secções"]]
         for pi, rep, _ in bundle:
             g = rep.get("geometry") or {}
             lvl = g.get("niveau_global") or "JAUNE"

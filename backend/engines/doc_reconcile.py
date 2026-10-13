@@ -23,7 +23,7 @@ SYNONYMS = {
                   "ceramica", "azulejo", "revestimento ceramico", "ladrilho"],
     "cloison": ["cloison", "cloisonnement", "doublage", "divisoria", "tabique"],
     "platre": ["platre", "placo", "plaque de platre", "ba13", "ba 13", "gyproc", "gesso", "pladur"],
-    "isolant": ["isolant", "isolation", "laine de verre", "laine de roche", "polystyrene",
+    "isolant": ["isolant", "isolation", "laine de verre", "lã de rocha", "polystyrene",
                 "pse", "pu", "isolamento", "la de rocha", "la de vidro"],
     "peinture": ["peinture", "peint", "tinta", "pintura"],
     "beton": ["beton", "betao", "dalle beton", "chape", "betonilha"],
@@ -163,7 +163,7 @@ def reconcile(devis_lines: list[dict], prescriptions: list[dict],
                 if corr.get(sig, {}).get("resolution") not in ("resolved", "ignored"):
                     anomalies.append({
                         "signature": sig, "type": "thickness_mismatch",
-                        "message": f"Épaisseur CCTP {sorted(p_th)} mm vs devis {sorted(l_th)} mm — à vérifier",
+                        "message": f'Espessura do caderno de encargos {sorted(p_th)} mm vs orçamento {sorted(l_th)} mm — a verificar',
                         "cctp": {"text": best["text"], "page": best["page"], "value_mm": sorted(p_th)},
                         "devis": {"designation": des, "source": l["provenance"].get("designation"),
                                   "value_mm": sorted(l_th)},
@@ -180,7 +180,7 @@ def reconcile(devis_lines: list[dict], prescriptions: list[dict],
             continue
         anomalies.append({
             "signature": sig, "type": "prescribed_not_found",
-            "message": "Ouvrage prescrit au CCTP sans ligne de devis rapprochée — omission possible (à confirmer)",
+            "message": "Trabalho prescrito no caderno de encargos sem linha de orçamento correspondente — omissão possível (a confirmar)",
             "cctp": {"text": p["text"], "page": p["page"],
                      "value_mm": p["thickness_mm"], "family": p["family"]},
             "devis": None,
@@ -198,7 +198,7 @@ def reconcile(devis_lines: list[dict], prescriptions: list[dict],
             if corr.get(sig, {}).get("resolution") not in ("resolved", "ignored"):
                 anomalies.append({
                     "signature": sig, "type": "duplicate_lot",
-                    "message": f"Poste similaire présent dans « {prev.get('lot')} » et « {l.get('lot')} » — double comptage possible",
+                    "message": f"Artigo semelhante presente em «{prev.get('lot')} » et « {l.get('lot')}» — contagem dupla possível",
                     "cctp": None,
                     "devis": {"designation": l.get("designation"),
                               "source": l["provenance"].get("designation"),
@@ -264,13 +264,13 @@ def dxf_pseudo_measurements(metre: dict | None) -> list[dict]:
             out.append({"measurement_id": mid, "label": label, "kind": "cumulative_area",
                         "source": "dxf", "area_m2": float(val)})
 
-    add_len("dxf_murs", "Murs / voiles béton (CAO)", metre.get("walls_ml"))
-    add_len("dxf_cloisons", "Cloisons (CAO)", metre.get("partitions_ml"))
-    add_len("dxf_poutres", "Poutres (CAO)", metre.get("beams_ml"))
-    add_len("dxf_linteaux", "Linteaux (CAO)", metre.get("linteaux_ml"))
-    add_area("dxf_dalle", "Dalle / plancher (CAO)",
+    add_len("dxf_murs", "Paredes / paredes resistentes de betão (CAD)", metre.get("walls_ml"))
+    add_len("dxf_cloisons", "Divisórias (CAD)", metre.get("partitions_ml"))
+    add_len("dxf_poutres", "Vigas (CAD)", metre.get("beams_ml"))
+    add_len("dxf_linteaux", "Padieiras (CAD)", metre.get("linteaux_ml"))
+    add_area("dxf_dalle", "Laje / pavimento (CAD)",
              metre.get("slab_area_m2") or metre.get("footprint_m2"))
-    add_area("dxf_escaliers", "Escaliers (CAO)", metre.get("escaliers_area_m2"))
+    add_area("dxf_escaliers", "Escadas (CAD)", metre.get("escaliers_area_m2"))
     return out
 
 

@@ -55,7 +55,7 @@ async def _fetch(client: httpx.AsyncClient, url: str) -> dict:
     for _ in range(6):
         p = urlparse(cur)
         if p.scheme not in ("http", "https") or not p.hostname or not _safe_host(p.hostname):
-            return {"url": url, "final_url": cur, "status_code": None, "error": "hôte non autorisé (adresse privée ou schéma invalide)", "hops": hops}
+            return {"url": url, "final_url": cur, "status_code": None, "error": "anfitrião não autorizado (endereço privado ou esquema inválido)", "hops": hops}
         try:
             r = await client.get(cur, headers={"User-Agent": FETCH_UA, "Accept": "text/html,*/*;q=0.8"}, follow_redirects=False)
         except Exception as e:
@@ -68,7 +68,7 @@ async def _fetch(client: httpx.AsyncClient, url: str) -> dict:
         return {"url": url, "final_url": cur, "status_code": r.status_code, "hops": hops, "load_ms": int((time.monotonic() - t0) * 1000),
                 "content_type": r.headers.get("content-type", ""), "html": body.decode(r.encoding or "utf-8", errors="replace") if "html" in r.headers.get("content-type", "") else "",
                 "size": len(body), "x_robots": r.headers.get("x-robots-tag")}
-    return {"url": url, "final_url": cur, "status_code": None, "error": "trop de redirections", "hops": hops}
+    return {"url": url, "final_url": cur, "status_code": None, "error": "demasiados redirecionamentos", "hops": hops}
 
 
 def _analyze(html: str, url: str, domain: str) -> dict:
@@ -115,54 +115,54 @@ def _issues(page: dict, project: dict, audit_id: str) -> list[dict]:
                     "evidence": evidence, "observed_at": page["fetched_at"], "consequence": consequence, "fix": fix, "effort": effort, "is_fact": fact, "status": "open"})
     sc = page.get("status_code")
     if sc is None:
-        add("inaccessible", "haute", f"Erreur de récupération : {page.get('error')}", "Page non explorable par les moteurs", "Vérifier l'hébergement / la redirection", "moyen"); return out
+        add("inaccessible", "haute", f"Erro de obtenção: {page.get('error')}", "Página não explorável pelos motores", "Verificar o alojamento / o redirecionamento", "moyen"); return out
     if sc >= 400:
-        add("http_error", "haute", f"HTTP {sc}", "Page hors index, liens entrants gaspillés", "Corriger ou rediriger (301) vers la page équivalente", "faible"); return out
+        add("http_error", "haute", f"HTTP {sc}", "Página fora do índice, ligações recebidas desperdiçadas", "Corrigir ou redirecionar (301) para a página equivalente", "faible"); return out
     if len(page.get("hops") or []) > 1:
-        add("redirect_chain", "moyenne", f"{len(page['hops'])} redirections : " + " → ".join(h["to"] for h in page["hops"]), "Perte de temps de chargement et de signal", "Rediriger directement vers l'URL finale")
+        add("redirect_chain", "moyenne", f"{len(page['hops'])} redirections : " + " → ".join(h["to"] for h in page["hops"]), "Perda de tempo de carregamento e de sinal", "Redirecionar diretamente para o URL final")
     if not page.get("has_html"):
-        add("no_html", "moyenne", f"Content-Type {page.get('content_type')}", "Contenu non lisible comme HTML", "Servir du HTML aux moteurs", "moyen"); return out
+        add("no_html", "moyenne", f"Content-Type {page.get('content_type')}", "Conteúdo não legível como HTML", "Servir HTML aos motores", "moyen"); return out
     if page.get("word_count", 0) < 80:
-        add("thin_html", "haute", f"{page['word_count']} mots dans le HTML initial", "Application rendue côté client : les moteurs et les IA peuvent voir une page presque vide", "Pré-rendu / SSR ou HTML statique pour les pages publiques", "élevé", fact=True)
+        add("thin_html", "haute", f"{page['word_count']} palavras no HTML inicial", "Aplicação renderizada no cliente: os motores e as IA podem ver uma página quase vazia", "Pré-renderização / SSR ou HTML estático para as páginas públicas", "élevé", fact=True)
     if not page["title"]:
-        add("missing_title", "haute", "Balise <title> vide ou absente", "Titre générique dans les résultats", "Ajouter un titre unique de 50–60 caractères")
+        add("missing_title", "haute", "Etiqueta <title> vazia ou ausente", "Título genérico nos resultados", "Acrescentar um título único de 50–60 caracteres")
     elif len(page["title"]) > 65:
-        add("long_title", "basse", f"Titre de {len(page['title'])} caractères : « {page['title'][:80]} »", "Titre tronqué dans les résultats", "Raccourcir sous 60 caractères")
+        add("long_title", "basse", f"Título de {len(page['title'])} caracteres: «{page['title'][:80]} »", "Título truncado nos resultados", "Encurtar para menos de 60 caracteres")
     if not page["meta_description"]:
-        add("missing_description", "moyenne", "Meta description absente", "Extrait choisi automatiquement par le moteur", "Ajouter une description de 140–160 caractères")
+        add("missing_description", "moyenne", "Meta description ausente", "Excerto escolhido automaticamente pelo motor", "Acrescentar uma descrição de 140–160 caracteres")
     elif len(page["meta_description"]) > 170:
-        add("long_description", "basse", f"Description de {len(page['meta_description'])} caractères", "Description tronquée", "Raccourcir sous 160 caractères")
+        add("long_description", "basse", f"Descrição de {len(page['meta_description'])} caractères", "Descrição truncada", "Encurtar para menos de 160 caracteres")
     if not page["h1"]:
-        add("missing_h1", "moyenne", "Aucun <h1>", "Sujet principal non explicite", "Ajouter un H1 unique")
+        add("missing_h1", "moyenne", "Nenhum <h1>", "Tema principal não explícito", "Acrescentar um H1 único")
     elif len(page["h1"]) > 1:
-        add("multiple_h1", "basse", f"{len(page['h1'])} balises H1 : {page['h1'][:3]}", "Hiérarchie ambiguë", "Conserver un seul H1")
+        add("multiple_h1", "basse", f"{len(page['h1'])} balises H1 : {page['h1'][:3]}", "Hierarquia ambígua", "Manter apenas um H1")
     if not page["canonical"]:
-        add("missing_canonical", "moyenne", "Aucune balise canonical", "Risque de doublons entre variantes d'URL", "Ajouter <link rel=canonical>")
+        add("missing_canonical", "moyenne", "Nenhuma etiqueta canonical", "Risco de duplicados entre variantes de URL", "Acrescentar <link rel=canonical>")
     elif _norm(urljoin(url, page["canonical"])) != _norm(page.get("final_url") or url):
-        add("canonical_mismatch", "moyenne", f"canonical = {page['canonical']} ≠ URL finale {page.get('final_url')}", "La page indique une autre URL comme version principale", "Vérifier que la canonical est volontaire", fact=True)
+        add("canonical_mismatch", "moyenne", f"canonical = {page['canonical']} ≠ URL finale {page.get('final_url')}", "A página indica outro URL como versão principal", "Verificar se a canonical é intencional", fact=True)
     if "noindex" in (page["robots_meta"] or "").lower() or "noindex" in (page.get("x_robots") or "").lower():
-        add("noindex", "haute", f"robots = {page['robots_meta'] or page.get('x_robots')}", "Page explicitement exclue de l'index", "Retirer noindex si la page doit être visible", fact=True)
+        add("noindex", "haute", f"robots = {page['robots_meta'] or page.get('x_robots')}", "Página explicitamente excluída do índice", "Retirar noindex se a página tiver de ser visível", fact=True)
     if not page["viewport"]:
-        add("no_viewport", "moyenne", "Meta viewport absente", "Lisibilité mobile dégradée", "Ajouter <meta name=viewport>")
+        add("no_viewport", "moyenne", "Meta viewport ausente", "Legibilidade móvel degradada", "Acrescentar <meta name=viewport>")
     if not page.get("lang_attr"):
-        add("missing_lang", "basse", "Attribut lang absent sur <html>", "Langue non déclarée", f"Ajouter lang=\"{project['language'][:2]}\"")
+        add("missing_lang", "basse", "Atributo lang ausente em <html>", "Língua não declarada", f'''Acrescentar lang="{project['language'][:2]}"''')
     elif not page["lang_attr"].lower().startswith(project["language"][:2]):
-        add("lang_mismatch", "moyenne", f"lang=\"{page['lang_attr']}\" pour un site {project['language']}", "Langue déclarée incohérente", "Corriger l'attribut lang", fact=True)
+        add("lang_mismatch", "moyenne", f'''lang="{page['lang_attr']}" para um site {project['language']}''', "Língua declarada incoerente", "Corrigir o atributo lang", fact=True)
     if not page["hreflang"]:
-        add("missing_hreflang", "basse", "Aucun hreflang", "Correspondance FR/PT non déclarée (hypothèse : page équivalente existante)", "Ajouter hreflang fr-FR / pt-PT si une page équivalente existe", fact=False)
+        add("missing_hreflang", "basse", "Nenhum hreflang", "Correspondência FR/PT não declarada (hipótese: página equivalente existente)", "Acrescentar hreflang fr-FR / pt-PT se existir uma página equivalente", fact=False)
     else:
         langs = {h["lang"].lower() for h in page["hreflang"] if h.get("lang")}
         if not any(l.startswith("x-default") for l in langs):
-            add("hreflang_no_default", "basse", f"hreflang présents : {sorted(langs)}", "Pas de version par défaut", "Ajouter x-default")
+            add("hreflang_no_default", "basse", f'hreflang presentes: {sorted(langs)}', "Sem versão predefinida", "Acrescentar x-default")
     if "invalide" in page["jsonld_types"]:
-        add("jsonld_invalid", "moyenne", "Bloc JSON-LD non analysable", "Données structurées ignorées", "Corriger la syntaxe JSON-LD", fact=True)
+        add("jsonld_invalid", "moyenne", "Bloco JSON-LD não analisável", "Dados estruturados ignorados", "Corrigir a sintaxe JSON-LD", fact=True)
     if page.get("images_without_alt"):
-        add("img_alt", "basse", f"{page['images_without_alt']}/{page['images']} images sans alt", "Accessibilité et compréhension des visuels réduites", "Ajouter des textes alternatifs")
+        add("img_alt", "basse", f"{page['images_without_alt']}/{page['images']} imagens sem alt", "Acessibilidade e compreensão dos elementos visuais reduzidas", "Acrescentar textos alternativos")
     if (page.get("load_ms") or 0) > 3000:
-        add("slow_response", "basse", f"Réponse HTML en {page['load_ms']} ms (HTML pré-rendu servi aux robots ; le temps utilisateur réel n'est pas mesuré ici)",
-            "Temps de réponse élevé pour les robots (hypothèse : latence du pré-rendu, pas Core Web Vitals)", "Vérifier le pré-rendu / cache côté hébergeur", "moyen", fact=False)
+        add("slow_response", "basse", f"Resposta HTML em {page['load_ms']} ms (HTML pré-renderizado servido aos robôs; o tempo real do utilizador não é medido aqui)",
+            "Tempo de resposta elevado para os robôs (hipótese: latência da pré-renderização, não Core Web Vitals)", "Verificar a pré-renderização / cache no alojamento", "moyen", fact=False)
     if page.get("size", 0) > 1_000_000:
-        add("heavy_html", "basse", f"HTML de {page['size']//1024} ko", "Page lourde", "Réduire le HTML initial")
+        add("heavy_html", "basse", f"HTML de {page['size']//1024} ko", "Page lourde", "Reduzir o HTML inicial")
     return out
 
 
@@ -209,7 +209,7 @@ async def run_audit(audit_id: str):
                                     seen.add(_norm(loc)); queue.append(_norm(loc))
                     else:
                         issues.append({"issue_id": new_id("iss"), "audit_id": audit_id, "project_id": project["project_id"], "url": sm, "kind": "sitemap_missing", "severity": "moyenne",
-                                       "evidence": f"HTTP {raw.status_code}", "observed_at": now_iso(), "consequence": "Découverte des pages ralentie", "fix": "Publier un sitemap XML valide", "effort": "faible", "is_fact": True, "status": "open"})
+                                       "evidence": f"HTTP {raw.status_code}", "observed_at": now_iso(), "consequence": "Descoberta das páginas mais lenta", "fix": "Publicar um sitemap XML válido", "effort": "faible", "is_fact": True, "status": "open"})
                 except Exception as e:
                     logger.info("sitemap %s: %s", sm, e)
             if _norm(base + "/") not in seen:
@@ -250,8 +250,8 @@ async def run_audit(audit_id: str):
                 broken = [l for l in (p.get("internal_links") or []) if status_by_url.get(l) is not None and status_by_url[l] >= 400]
                 if broken:
                     issues.append({"issue_id": new_id("iss"), "audit_id": audit_id, "project_id": project["project_id"], "url": p["url"], "kind": "broken_links", "severity": "moyenne",
-                                   "evidence": f"{len(broken)} lien(s) interne(s) vers des pages en erreur : {broken[:3]}", "observed_at": now_iso(), "consequence": "Parcours interrompu, budget de crawl perdu",
-                                   "fix": "Corriger ou retirer ces liens", "effort": "faible", "is_fact": True, "status": "open"})
+                                   "evidence": f'{len(broken)} ligação(ões) interna(s) para páginas com erro: {broken[:3]}', "observed_at": now_iso(), "consequence": "Percurso interrompido, orçamento de rastreio perdido",
+                                   "fix": "Corrigir ou retirar estas ligações", "effort": "faible", "is_fact": True, "status": "open"})
             titles = {}
             for p in pages:
                 if p.get("title"):
@@ -259,8 +259,8 @@ async def run_audit(audit_id: str):
             for t, urls in titles.items():
                 if len(urls) > 1:
                     issues.append({"issue_id": new_id("iss"), "audit_id": audit_id, "project_id": project["project_id"], "url": urls[0], "kind": "duplicate_title", "severity": "moyenne",
-                                   "evidence": f"Titre « {t[:70]} » partagé par {len(urls)} pages : {urls[:3]}", "observed_at": now_iso(), "consequence": "Pages en concurrence sur le même titre",
-                                   "fix": "Différencier les titres", "effort": "faible", "is_fact": True, "status": "open"})
+                                   "evidence": f'Título «{t[:70]}» partilhado por {len(urls)} pages : {urls[:3]}', "observed_at": now_iso(), "consequence": "Páginas em concorrência pelo mesmo título",
+                                   "fix": "Diferenciar os títulos", "effort": "faible", "is_fact": True, "status": "open"})
             for p in pages:
                 for h in p.get("hreflang") or []:
                     if h.get("href") and _norm(h["href"]) != _norm(p.get("final_url") or p["url"]) and not (h.get("lang") or "").startswith("x-default"):
@@ -268,8 +268,8 @@ async def run_audit(audit_id: str):
                             chk = await _fetch(client, h["href"])
                             if (chk.get("status_code") or 0) >= 400 or chk.get("status_code") is None:
                                 issues.append({"issue_id": new_id("iss"), "audit_id": audit_id, "project_id": project["project_id"], "url": p["url"], "kind": "hreflang_target_error", "severity": "moyenne",
-                                               "evidence": f"hreflang {h['lang']} → {h['href']} répond HTTP {chk.get('status_code')}", "observed_at": now_iso(), "consequence": "Correspondance de langue non exploitable",
-                                               "fix": "Corriger la cible hreflang", "effort": "faible", "is_fact": True, "status": "open"})
+                                               "evidence": f"hreflang {h['lang']} → {h['href']} responde HTTP {chk.get('status_code')}", "observed_at": now_iso(), "consequence": "Correspondência de língua inutilizável",
+                                               "fix": "Corrigir o destino hreflang", "effort": "faible", "is_fact": True, "status": "open"})
                         except Exception:
                             pass
         if pages:
@@ -281,7 +281,7 @@ async def run_audit(audit_id: str):
         for i in issues:
             summary["by_kind"][i["kind"]] = summary["by_kind"].get(i["kind"], 0) + 1
         await db.growth_audits.update_one({"audit_id": audit_id}, {"$set": {"status": "stopped" if stopped else "completed", "finished_at": now_iso(), "progress": 100, "pages_crawled": len(pages),
-                                                                             "issues_count": len(issues), "facts": facts, "summary": summary, "note": "Indexation Google : inconnue (Search Console non connectée) — une URL accessible n'est pas nécessairement indexée."}})
+                                                                             "issues_count": len(issues), "facts": facts, "summary": summary, "note": "Indexação Google: desconhecida (Search Console não ligada) — um URL acessível não está necessariamente indexado."}})
         if (project.get("settings") or {}).get("autopilot_enabled", True):
             from growth.autopilot import after_audit
             try:

@@ -84,7 +84,7 @@ async def put_page(body: PageIn, user=Depends(pro_required)) -> dict:
     if body.slug is not None:
         slug = _slugify(body.slug)
         if await db.users.find_one({"public_slug": slug, "user_id": {"$ne": user["user_id"]}}, {"_id": 1}):
-            raise HTTPException(409, "Cette adresse est déjà utilisée par une autre entreprise.")
+            raise HTTPException(409, "Este endereço já é utilizado por outra empresa.")
         upd["public_slug"] = slug
     if upd:
         upd["public_updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -98,21 +98,21 @@ async def add_photo(request: Request, response: Response, file: UploadFile = Fil
                     user=Depends(pro_required)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "showcase_photos": 1}) or {}
     if len(u.get("showcase_photos") or []) >= MAX_PHOTOS:
-        raise HTTPException(409, f"Galerie pleine ({MAX_PHOTOS} photos max)")
+        raise HTTPException(409, f'Galeria cheia ({MAX_PHOTOS} photos max)')
     data = await file.read(12 * 1024 * 1024 + 1)
     if not data:
         raise HTTPException(400, "Photo vide")
     if len(data) > 12 * 1024 * 1024:
-        raise HTTPException(413, "Photo trop volumineuse (12 Mo max)")
+        raise HTTPException(413, "Fotografia demasiado volumosa (máx. 12 MB)")
     data, mime = await asyncio.to_thread(normalize_attachment, data)
     if not mime.startswith("image/"):
-        raise HTTPException(415, "Joindre une photo JPG, PNG ou WEBP")
+        raise HTTPException(415, "Anexe uma fotografia JPG, PNG ou WEBP")
     photo_id = f"shw_{uuid.uuid4().hex[:12]}"
     path = f"public/showcase/{user['user_id']}/{photo_id}.jpg"
     try:
         await asyncio.to_thread(storage.put_object, path, data, mime)
     except Exception:  # noqa: BLE001
-        raise HTTPException(503, "Stockage des photos momentanément indisponible") from None
+        raise HTTPException(503, "Armazenamento das fotografias momentaneamente indisponível") from None
     photo = {"photo_id": photo_id, "path": path, "mime": mime, "title": title.strip()[:120], "description": description.strip()[:600],
              "created_at": datetime.now(timezone.utc).isoformat()}
     await db.users.update_one({"user_id": user["user_id"]}, {"$push": {"showcase_photos": photo}})
@@ -131,7 +131,7 @@ async def update_photo(photo_id: str, body: PhotoMetaIn, user=Depends(pro_requir
         return {"ok": True}
     r = await db.users.update_one({"user_id": user["user_id"], "showcase_photos.photo_id": photo_id}, {"$set": upd})
     if not r.matched_count:
-        raise HTTPException(404, "Photo introuvable")
+        raise HTTPException(404, "Fotografia não encontrada")
     return {"ok": True}
 
 
@@ -139,7 +139,7 @@ async def update_photo(photo_id: str, body: PhotoMetaIn, user=Depends(pro_requir
 async def delete_photo(photo_id: str, user=Depends(pro_required)) -> dict:
     r = await db.users.update_one({"user_id": user["user_id"]}, {"$pull": {"showcase_photos": {"photo_id": photo_id}}})
     if not r.modified_count:
-        raise HTTPException(404, "Photo introuvable")
+        raise HTTPException(404, "Fotografia não encontrada")
     return {"ok": True}
 
 
@@ -147,7 +147,7 @@ async def delete_photo(photo_id: str, user=Depends(pro_required)) -> dict:
 async def public_company(slug: str) -> dict:
     u = await db.users.find_one({"public_slug": slug}, {"_id": 0})
     if not u or not u.get("public_published"):
-        raise HTTPException(404, "Page introuvable ou non publiée")
+        raise HTTPException(404, "Página não encontrada ou não publicada")
     payload = _public_payload(u)
     payload["user_id"] = u["user_id"]
     if payload["show_reviews"]:
@@ -182,7 +182,7 @@ async def _client_for_request(pro_id: str, body: QuoteRequestIn) -> tuple[str, b
     await db.clients.insert_one({"client_id": cid, "user_id": pro_id, "first_name": parts[0][:80], "last_name": (parts[1] if len(parts) > 1 else "")[:80],
                                  "company": "", "email": email[:160], "phone": body.phone.strip()[:40], "address": body.address.strip()[:200],
                                  "postal_code": body.postal_code.strip()[:16], "city": body.city.strip()[:80], "siret": "",
-                                 "notes": "Prospect créé depuis le formulaire de la page entreprise.", "source": "company_page",
+                                 "notes": "Potencial cliente criado a partir do formulário da página da empresa.", "source": "company_page",
                                  "created_at": now, "updated_at": now})
     return cid, True
 
@@ -191,17 +191,16 @@ async def _notify_quote_request(pro: dict, lead: dict) -> None:
     name = lead.get("name") or lead.get("email")
     await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": pro["user_id"], "type": "company_page_lead",
                                        "lead_id": lead["lead_id"], "url": "/mes-demandes", "read": False,
-                                       "message": f"Nouvelle demande de devis via votre page entreprise : {name}",
+                                       "message": f'Novo pedido de orçamento através da sua página de empresa: {name}',
                                        "created_at": datetime.now(timezone.utc).isoformat()})
     try:
         from engines.emailer import send_email, wrap_html
         from routes.leads import _frontend_url
-        html = wrap_html("Nouvelle demande de devis",
-                         f"<p>Bonjour,</p><p><strong>{name}</strong> vous a envoyé une demande de devis depuis votre page entreprise ConstruPilot.</p>"
-                         f"<p><em>{(lead.get('description') or '')[:600]}</em></p><p>Contact : {lead.get('email')} {lead.get('phone') or ''}</p>",
-                         cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Voir la demande")
+        html = wrap_html("Novo pedido de orçamento",
+                         f"<p>Olá,</p><p><strong>{name}</strong> enviou-lhe um pedido de orçamento a partir da sua página de empresa ConstruPilot.</p><p><em>{(lead.get('description') or '')[:600]}</em></p><p>Contact : {lead.get('email')} {lead.get('phone') or ''}</p>",
+                         cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Ver o pedido")
         if pro.get("email"):
-            await send_email(pro["email"], f"Nouvelle demande de devis — {name}", html)
+            await send_email(pro["email"], f'Novo pedido de orçamento — {name}', html)
     except Exception:  # noqa: BLE001 — l'e-mail est un plus, la demande est déjà enregistrée
         pass
 
@@ -211,7 +210,7 @@ async def _notify_quote_request(pro: dict, lead: dict) -> None:
 async def public_quote_request(slug: str, body: QuoteRequestIn, request: Request, response: Response) -> dict:
     u = await db.users.find_one({"public_slug": slug}, {"_id": 0, "user_id": 1, "email": 1, "public_published": 1, "brand_company_name": 1})
     if not u or not u.get("public_published"):
-        raise HTTPException(404, "Page introuvable ou non publiée")
+        raise HTTPException(404, "Página não encontrada ou não publicada")
     if body.website.strip():
         return {"ok": True}
     from routes.leads import _dept_from_text
@@ -232,10 +231,10 @@ async def public_quote_request(slug: str, body: QuoteRequestIn, request: Request
 async def public_photo(slug: str, photo_id: str):
     u = await db.users.find_one({"public_slug": slug}, {"_id": 0, "user_id": 1, "public_published": 1, "showcase_photos": 1})
     if not u:
-        raise HTTPException(404, "Page introuvable")
+        raise HTTPException(404, "Página não encontrada")
     photo = next((p for p in (u.get("showcase_photos") or []) if p.get("photo_id") == photo_id), None)
     if not photo:
-        raise HTTPException(404, "Photo introuvable")
+        raise HTTPException(404, "Fotografia não encontrada")
     data, _ = await asyncio.to_thread(storage.get_object, photo["path"])
     return Response(data, media_type=photo.get("mime") or "image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
 
@@ -245,6 +244,6 @@ async def own_photo(photo_id: str, user=Depends(current_user)):
     u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "showcase_photos": 1}) or {}
     photo = next((p for p in (u.get("showcase_photos") or []) if p.get("photo_id") == photo_id), None)
     if not photo:
-        raise HTTPException(404, "Photo introuvable")
+        raise HTTPException(404, "Fotografia não encontrada")
     data, _ = await asyncio.to_thread(storage.get_object, photo["path"])
     return Response(data, media_type=photo.get("mime") or "image/jpeg", headers={"Cache-Control": "private, max-age=600"})

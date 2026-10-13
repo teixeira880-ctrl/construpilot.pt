@@ -17,11 +17,11 @@ GREEN = colors.HexColor("#16a34a")
 AMBER = colors.HexColor("#d97706")
 
 T = {
-    "fr": {"kicker": "ESTIMATION BUDGÉTAIRE INDICATIVE", "title": "Fourchette de budget travaux", "low": "Prix bas", "central": "Central", "high": "Prix haut",
-           "range": "Amplitude", "finish": "Niveau de finition", "region": "Région de référence", "source": "Source des prix", "date": "Date des prix",
-           "conf": "Confiance", "incl": "Inclus dans l'estimation", "excl": "Non inclus", "assum": "Hypothèses retenues", "unc": "Facteurs d'incertitude",
-           "missing": "Informations manquantes", "questions": "Questions à poser aux entreprises consultées", "notice": "Mention obligatoire",
-           "gen": "Généré le", "foot": "ConstruPilot.fr · Estimation indicative — ne constitue pas un devis", "ref": "Référence"},
+    "fr": {"kicker": "ESTIMATIVA ORÇAMENTAL INDICATIVA", "title": "Intervalo de orçamento de obras", "low": "Preço baixo", "central": "Central", "high": "Preço alto",
+           "range": "Amplitude", "finish": "Nível de acabamento", "region": "Região de referência", "source": "Fonte dos preços", "date": "Data dos preços",
+           "conf": "Confiança", "incl": "Incluído na estimativa", "excl": "Não incluído", "assum": "Hipóteses consideradas", "unc": "Fatores de incerteza",
+           "missing": "Informações em falta", "questions": "Perguntas a colocar às empresas consultadas", "notice": "Menção obrigatória",
+           "gen": "Gerado em", "foot": "ConstruPilot.fr · Estimativa indicativa — não constitui um orçamento", "ref": "Referência"},
     "pt": {"kicker": "ESTIMATIVA ORÇAMENTAL INDICATIVA", "title": "Intervalo de orçamento de obras", "low": "Preço baixo", "central": "Central", "high": "Preço alto",
            "range": "Amplitude", "finish": "Nível de acabamento", "region": "Região de referência", "source": "Fonte dos preços", "date": "Data dos preços",
            "conf": "Confiança", "incl": "Incluído na estimativa", "excl": "Não incluído", "assum": "Hipóteses consideradas", "unc": "Fatores de incerteza",

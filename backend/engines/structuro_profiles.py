@@ -14,8 +14,7 @@ from __future__ import annotations
 import math
 
 VERSION = "profiles-en10365-0.1.0"
-SOURCE = ("Géométrie EN 10365 (DIN 1026 pour UPN) ; A/Iy/Iz/Wel/Wpl par intégration section réelle ; "
-          "Av §6.2.6(3) ; It El Darwish & Johnston 1965 ; Iw bi-symétrique — à vérifier")
+SOURCE = ("Geometria EN 10365 (DIN 1026 para UPN); A/Iy/Iz/Wel/Wpl por integração da secção real; Av §6.2.6(3); It El Darwish & Johnston 1965; Iw bissimétrico — a verificar")
 GRADES = {"S235": 235, "S275": 275, "S355": 355}  # fy (MPa), t ≤ 40 mm
 # Limites c/t de la Table 5.2 (× ε) : classe 1/2/3
 FLANGE_LIMITS = (9.0, 10.0, 14.0)          # banzo en console, compression

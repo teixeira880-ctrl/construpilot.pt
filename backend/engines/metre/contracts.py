@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 State = Literal["confirmed", "probable", "indeterminate", "not_verifiable"]
 STATE_LABEL_FR = {"confirmed": "confirmé", "probable": "probable", "indeterminate": "indéterminé",
-                  "not_verifiable": "non vérifiable avec les données disponibles"}
+                  "not_verifiable": "não verificável com os dados disponíveis"}
 
 
 def new_id(prefix: str) -> str:

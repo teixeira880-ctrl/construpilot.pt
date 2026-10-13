@@ -25,5 +25,5 @@ async def transcribe(data: bytes, filename: str = "audio.webm", language: str = 
 async def synthesize(text: str, voice: str = TTS_VOICE, speed: float = 1.0) -> bytes:
     clean = " ".join(text.split())[:MAX_TTS_CHARS]
     if not clean:
-        raise ValueError("Texte vide")
+        raise ValueError("Texto vazio")
     return await OpenAITextToSpeech(api_key=_key()).generate_speech(clean, model=TTS_MODEL, voice=voice, speed=speed, response_format="mp3")

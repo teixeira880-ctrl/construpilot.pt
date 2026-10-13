@@ -36,7 +36,7 @@ async def client_brochure(lang: str = Query("fr", pattern=LANG), branded: bool =
     """Plaquette commerciale, à l'en-tête de l'entreprise abonnée."""
     branding = await _resolve_branding(user["user_id"]) if branded else None
     return _file(presentation_pdf.build_client_pdf(lang, branding, (prospect or "").strip() or None),
-                 f"ConstruPilot-plaquette-{lang}.pdf", "application/pdf")
+                 f'ConstruPilot-brochura-{lang}.pdf', "application/pdf")
 
 
 @router.get("/plaquette.pptx")
@@ -63,7 +63,7 @@ async def investor_deck(lang: str = Query("fr", pattern=LANG), admin=Depends(adm
     except Exception:  # noqa: BLE001 — le PDF reste générable sans le suivi budgétaire
         budget = None
     return _file(presentation_pdf.build_investor_pdf(lang, metrics, budget, docs),
-                 f"ConstruPilot-investisseurs-{lang}.pdf", "application/pdf")
+                 f'ConstruPilot-investidores-{lang}.pdf', "application/pdf")
 
 
 @router.get("/investisseurs.pptx")
@@ -71,4 +71,4 @@ async def investor_deck_pptx(lang: str = Query("fr", pattern=LANG), admin=Depend
     """Deck investisseur PowerPoint : KPI réels, marché, plan d'exploitation de 500 000 €."""
     metrics, docs = await _investor_context()
     return _file(presentation_pptx.build_investor_pptx(lang, metrics, docs),
-                 f"ConstruPilot-investisseurs-{lang}.pptx", PPTX_MIME)
+                 f'ConstruPilot-investidores-{lang}.pptx', PPTX_MIME)

@@ -192,7 +192,7 @@ export default function ClientDetail() {
         {signed.map((d) => (
           <Row key={d.doc_id} d={d} extra={
             <Button size="sm" variant="outline" className="rounded-sm gap-1 h-7 text-[11px] border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                    onClick={() => { setConvert(d); setMode(d.deposit_pct > 0 ? "sinal" : "total"); setPct(d.deposit_pct > 0 ? d.deposit_pct : 30); }}
+                    onClick={() => { setConvert(d); setMode(d.deposit_pct > 0 ? "acompte" : "total"); setPct(d.deposit_pct > 0 ? d.deposit_pct : 30); }}
                     data-testid={`convert-invoice-${d.doc_id}`}>
               <Receipt className="h-3.5 w-3.5" /> {t("crm.bill_btn")}
             </Button>
@@ -249,9 +249,9 @@ export default function ClientDetail() {
                 <option value="detailed">{t("crm.mode_detailed")}</option>
               </select>
             </div>
-            {(mode === "prorata" || mode === "sinal") && (
+            {(mode === "prorata" || mode === "acompte") && (
               <div>
-                <Label>{mode === "sinal" ? t("crm.pct_acompte") : t("crm.pct_prorata")}</Label>
+                <Label>{mode === "acompte" ? t("crm.pct_acompte") : t("crm.pct_prorata")}</Label>
                 <Input type="number" min="1" max="100" value={pct} onChange={(e) => setPct(e.target.value)}
                        className="rounded-sm num mt-1 max-w-[120px]" data-testid="convert-pct" />
               </div>
@@ -259,7 +259,7 @@ export default function ClientDetail() {
             <p className="text-xs text-muted-foreground">
               {mode === "detailed"
                 ? t("crm.hint_detailed")
-                : mode === "sinal"
+                : mode === "acompte"
                   ? t("crm.hint_acompte")
                   : mode === "prorata"
                     ? t("crm.hint_prorata")

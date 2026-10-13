@@ -35,7 +35,7 @@ class FoundationRule(Strict):
     @model_validator(mode='after')
     def domain(self):
         if self.max_width_m<self.min_width_m or (self.max_width_m-self.min_width_m)/self.width_step_m>200:
-            raise ValueError('Catalogue de semelles invalide ou supérieur à 201 dimensions')
+            raise ValueError("Catálogo de sapatas inválido ou superior a 201 dimensões")
         return self
 
 
@@ -64,7 +64,7 @@ class AutomationSettings(Strict):
     @model_validator(mode='after')
     def unique(self):
         for values in (self.uls_case_ids,self.rc_element_ids,self.diameters_mm,self.stirrup_diameters_mm,self.spacings_mm,[f.element_id for f in self.foundations]):
-            if len(values)!=len(set(values)):raise ValueError('Valeur en double dans les règles automatiques')
+            if len(values)!=len(set(values)):raise ValueError("Valor duplicado nas regras automáticas")
         return self
 
 
@@ -88,7 +88,7 @@ def anchorage(phi,settings):
     return dict(fbd_mpa=fbd,sigma_sd_mpa=fyd,lb_rqd_mm=basic,
         lbd_mm=math.ceil(max(basic,.3*basic,10*phi,100)/10)*10,
         lap_mm=math.ceil(max(1.5*basic,.3*1.5*basic,15*phi,200)/10)*10,
-        basis='Traction droite à fyd ; alpha1..5=1 ; alpha6=1,5 ; conditions à vérifier',execution_ready=False)
+        basis="Tração reta a fyd; alpha1..5=1; alpha6=1,5; condições a verificar",execution_ready=False)
 
 
 def mark(eid,suffix):return 'AUTO_'+eid[:35]+'_'+hashlib.sha256(eid.encode()).hexdigest()[:6]+'_'+suffix
@@ -97,7 +97,7 @@ def group(e,tag,phi,count,pts,repeat,cover,role,radius=0.):
     return BarGroup(mark=mark(e.id,tag),element_id=e.id,diameter_mm=float(phi),count=count,
         points=[Point(x=float(x),y=float(y),z=float(z)) for x,y,z in pts],
         repeat=Point(x=float(repeat[0]),y=float(repeat[1]),z=float(repeat[2])),bend_radius_mm=float(radius),cover_mm=cover,
-        source=f'{VERSION} : efforts de la révision courante ; contrôles locaux seulement.',role=role,generated_by=VERSION)
+        source=f'{VERSION} : esforços da revisão atual; apenas controlos locais.',role=role,generated_by=VERSION)
 
 
 def section_cases(e,forces,settings,d,provided,kind='beam',b=None):
@@ -146,17 +146,17 @@ def choose_beam(e,forces,rules):
                 pitch=(L-2*xedge)/(links-1)
                 link=group(e,'E',stirrup,links,[(xedge,(low+projection)/1000,(top-projection)/1000),(xedge,low/1000,top/1000),
                     (xedge,low/1000,low/1000),(xedge,high/1000,low/1000),(xedge,high/1000,top/1000),(xedge,(high-projection)/1000,(top-projection)/1000)],
-                    (pitch,0,0),c,'Étriers 2 branches, retours 135° ; assemblage et ancrage local à vérifier',radius)
+                    (pitch,0,0),c,"Estribos de 2 ramos, dobras a 135°; montagem e amarração local a verificar",radius)
                 try:link_length,_=bar_geometry(link)
                 except ValueError:continue
                 end=(c+phi/2)/1000
                 if L<=2*end:continue
                 bottom=group(e,'B',phi,n,[(end,offset/1000,offset/1000),(L-end,offset/1000,offset/1000)],
-                    (0,(b-2*offset)/(n-1)/1000,0),c,'Travée : armatures calculées de flexion positive ; liaison aux appuis à vérifier')
+                    (0,(b-2*offset)/(n-1)/1000,0),c,"Vão: armaduras de flexão positiva calculadas; ligação aos apoios a verificar")
                 hanger_phi=min(rules.diameters_mm)
                 ho=max(c+stirrup+hanger_phi/2,c+stirrup/2+radius-(radius-stirrup/2-hanger_phi/2)/math.sqrt(2))
                 hanger=group(e,'H',hanger_phi,2,[((c+hanger_phi/2)/1000,ho/1000,(h-ho)/1000),(L-(c+hanger_phi/2)/1000,ho/1000,(h-ho)/1000)],
-                    (0,(b-2*ho)/1000,0),c,'Montage des étriers seulement ; aucun moment négatif couvert')
+                    (0,(b-2*ho)/1000,0),c,"Apenas montagem dos estribos; nenhum momento negativo coberto")
                 cost=n*area(phi)*(L-2*end)+links*area(stirrup)*link_length+2*area(hanger_phi)*(L-2*(c+hanger_phi/2)/1000)
                 if best is None or cost<best[0]:
                     best=(cost,[bottom,hanger,link],dict(element_id=e.id,kind='beam',status='local_checks_only',
@@ -193,11 +193,11 @@ def choose_slab(e,forces,rules,axis):
                 ts=(span-2*side)/(count-1)
                 if ts*1000-transverse<max(transverse,20,rules.aggregate_mm+5):continue
                 if axis=='x':
-                    main=group(e,'B',phi,n,[(edge,edge,edge),(span-edge,edge,edge)],(0,pitch,0),c,'Nappe principale, travée simplement appuyée')
-                    cross=group(e,'X',transverse,count,[(side,side,z/1000),(side,width-side,z/1000)],(ts,0,0),c,'Répartition transversale, minima locaux')
+                    main=group(e,'B',phi,n,[(edge,edge,edge),(span-edge,edge,edge)],(0,pitch,0),c,"Malha principal, vão simplesmente apoiado")
+                    cross=group(e,'X',transverse,count,[(side,side,z/1000),(side,width-side,z/1000)],(ts,0,0),c,"Distribuição transversal, mínimos locais")
                 else:
-                    main=group(e,'B',phi,n,[(edge,edge,edge),(edge,span-edge,edge)],(pitch,0,0),c,'Nappe principale Y, travée simplement appuyée')
-                    cross=group(e,'X',transverse,count,[(side,side,z/1000),(width-side,side,z/1000)],(0,ts,0),c,'Répartition transversale X, minima locaux')
+                    main=group(e,'B',phi,n,[(edge,edge,edge),(edge,span-edge,edge)],(pitch,0,0),c,"Malha principal Y, vão simplesmente apoiado")
+                    cross=group(e,'X',transverse,count,[(side,side,z/1000),(width-side,side,z/1000)],(0,ts,0),c,"Distribuição transversal X, mínimos locais")
                 cost=n*area(phi)*(span-2*edge)+count*area(transverse)*(width-2*side)
                 if best is None or cost<best[0]:best=(cost,[main,cross],dict(element_id=e.id,kind='slab',status='local_checks_only',
                     span_axis=axis,span_m=span,diameter_mm=phi,count=n,spacing_mm=pitch*1000,d_mm=d,
@@ -215,22 +215,22 @@ def resize_foundations(model,gravity,report):
     for rule in settings.foundations:
         def fail(message):report['issues'].append(dict(element=rule.element_id,stage='foundations',message=message))
         e=elements.get(rule.element_id)
-        if not e or e.kind!='footing':fail('Semelle introuvable.');continue
+        if not e or e.kind!='footing':fail("Sapata não encontrada.");continue
         if not rule.same_site_confirmed or not rule.centred_vertical_confirmed or not rule.soil_source.strip():
-            fail('G2 du même terrain et chargement vertical centré à confirmer ; aucune portance transférée entre sites.');continue
-        if any(c not in combos for c in rule.sls_case_ids+rule.uls_case_ids):fail('Combinaisons ELS/ELU explicites requises.');continue
-        if any(v is None for v in (e.x_m,e.y_m)):fail('Implantation nécessaire pour conserver le centre de la semelle.');continue
+            fail("Estudo geotécnico do mesmo terreno e carregamento vertical centrado a confirmar; nenhuma capacidade resistente transferida entre locais.");continue
+        if any(c not in combos for c in rule.sls_case_ids+rule.uls_case_ids):fail("Combinações ELS/ELU explícitas obrigatórias.");continue
+        if any(v is None for v in (e.x_m,e.y_m)):fail("Implantação necessária para conservar o centro da sapata.");continue
         incoming=[m for m in model.elements if any(s.target==e.id for s in m.supports)]
         expected='wall' if rule.mode=='strip' else 'column'
-        if len(incoming)!=1 or incoming[0].kind!=expected:fail('Une semelle doit recevoir un seul mur (filante) ou poteau (isolée) dans ce domaine.');continue
+        if len(incoming)!=1 or incoming[0].kind!=expected:fail("Uma sapata deve receber uma única parede (contínua) ou pilar (isolada) neste domínio.");continue
         support=incoming[0]
         # Explicit centred hypothesis must also agree with current geometry.
         if any(v is None for v in (support.x_m,support.y_m)) or abs(math.sin(math.radians(e.angle_deg-support.angle_deg)))>1e-8:
-            fail('Appui et semelle alignés, implantations connues requises.');continue
+            fail("Apoio e sapata alinhados, implantações conhecidas obrigatórias.");continue
         from engines.structuro_drawings import world
         a=world(e,(e.length_m/2,e.width_m/2,0));b=world(support,(support.length_m/2,support.width_m/2,0))
-        if math.dist(a[:2],b[:2])>.005:fail('Excentricité géométrique détectée ; aucune semelle centrée générée.');continue
-        if rule.mode=='strip' and e.length_m+1e-8<support.length_m:fail('La semelle doit couvrir la longueur du mur.');continue
+        if math.dist(a[:2],b[:2])>.005:fail("Excentricidade geométrica detetada; nenhuma sapata centrada gerada.");continue
+        if rule.mode=='strip' and e.length_m+1e-8<support.length_m:fail("A sapata deve cobrir o comprimento da parede.");continue
         selected=None
         for k in range(math.floor((rule.max_width_m-rule.min_width_m)/rule.width_step_m+1e-8)+1):
             width=round(rule.min_width_m+k*rule.width_step_m,9)
@@ -246,14 +246,14 @@ def resize_foundations(model,gravity,report):
                     force=old['total_kn']-oldweight+newweight;q=force/(length*width)
                     rows.append(dict(case_id=case_id,limit_state=label,total_kn=force,q_kpa=q,limit_kpa=limit,passes=q<=limit))
             if all(r['passes'] for r in rows):selected=(length,width,rows);break
-        if selected is None:fail('Aucune dimension du catalogue ne satisfait les pressions du rapport fourni.');continue
+        if selected is None:fail("Nenhuma dimensão do catálogo satisfaz as pressões do relatório fornecido.");continue
         length,width,rows=selected;old_dims=[e.length_m,e.width_m,e.height_m]
         angle=math.radians(e.angle_deg);dx=(e.length_m-length)/2;dy=(e.width_m-width)/2
         e.x_m+=dx*math.cos(angle)-dy*math.sin(angle);e.y_m+=dx*math.sin(angle)+dy*math.cos(angle)
         e.length_m=length;e.width_m=width
         report['foundations'].append(dict(element_id=e.id,mode=rule.mode,old_dimensions_m=old_dims,new_dimensions_m=[length,width,e.height_m],
             cases=rows,status='bearing_area_only',soil_source=rule.soil_source,
-            unresolved=['Épaisseur conservée, non dimensionnée','Ferraillage, cisaillement, poinçonnement et ancrage non dimensionnés','Assise, tassements, voisinage et stabilité non vérifiés']))
+            unresolved=["Espessura conservada, não dimensionada","Armaduras, corte, punçoamento e amarração não dimensionados","Assentamento, assentamentos diferenciais, vizinhança e estabilidade não verificados"]))
 
 
 def run_automation(original):
@@ -262,28 +262,28 @@ def run_automation(original):
     model=original.model_copy(deep=True)
     report=dict(engine_version=VERSION,execution_ready=False,status='blocked',issues=[],designs=[],foundations=[],coverage=[],generated_marks=[],
         source_input_hash=calculate(original)['input_hash'],limits=[
-            'Projet non validé pour exécution ; stabilité globale, ELS, feu et dispositions locales à vérifier.',
-            'Poteaux, voiles, continuités, torsion, poinçonnement et ouvertures : dimensionnement automatique non disponible.',
-            'Ancrage droit calculé à pleine contrainte ; implantation dans les appuis et recouvrements à détailler.',
-            'Fondations : recherche de surface portante seulement, sans dimensionnement de l’épaisseur ni des aciers.'])
+            "Projeto não validado para execução; estabilidade global, ELS, fogo e disposições locais a verificar.",
+            "Pilares, paredes resistentes, continuidades, torção, punçoamento e aberturas: dimensionamento automático indisponível.",
+            "Amarração reta calculada à tensão total; implantação nos apoios e emendas a detalhar.",
+            "Fundações: apenas pesquisa de área de apoio, sem dimensionamento da espessura nem dos aços."])
     report['coverage']=[dict(element_id=e.id,kind=e.kind,status='blocked') for e in model.elements]
     rules=model.automation_settings
     def issue(e,stage,message):report['issues'].append(dict(element=e,stage=stage,message=message))
-    if rules is None:issue('Projet','inputs','Règles d’automatisation absentes.');return model,report
+    if rules is None:issue("Projeto",'inputs',"Regras de automatização ausentes.");return model,report
     needed=[k for k in ('materials','cover_mm','aggregate_mm','fctk005_mpa','bond_eta1') if getattr(rules,k) is None]
-    if not rules.confirmed or not rules.source.strip():needed.append('confirmation et source des règles')
-    if not rules.uls_case_ids:needed.append('combinaisons ELU')
-    if needed:issue('Projet','inputs','À renseigner : '+', '.join(needed));return model,report
+    if not rules.confirmed or not rules.source.strip():needed.append("confirmação e fonte das regras")
+    if not rules.uls_case_ids:needed.append("combinações ELU")
+    if needed:issue("Projeto",'inputs',"A indicar: "+', '.join(needed));return model,report
     if rules.fctk005_mpa>rules.materials.fctm_mpa:
-        issue('Projet','inputs','fctk,0.05 ne peut pas dépasser fctm.');return model,report
+        issue("Projeto",'inputs',"fctk,0.05 não pode ultrapassar fctm.");return model,report
     if any(c not in {x.id for x in model.combinations} for c in rules.uls_case_ids):
-        issue('Projet','inputs','Sélectionnez des combinaisons du modèle, pas des actions isolées.');return model,report
+        issue("Projeto",'inputs',"Selecione combinações do modelo, não ações isoladas.");return model,report
     gravity=calculate(model)
     if gravity['status']=='blocked':
-        report['issues'] += [dict(element=x['element'] or 'Projet',stage='gravity',message=x['message']) for x in gravity['issues']]
+        report['issues'] += [dict(element=x['element'] or "Projeto",stage='gravity',message=x['message']) for x in gravity['issues']]
         return model,report
     if gravity.get('architectural_compatibility',{}).get('status') in ('conflicts','incomplete'):
-        issue('Projet','architecture','Résoudre les conflits et données manquantes des contrôles architecturaux.');return model,report
+        issue("Projeto",'architecture',"Resolver os conflitos e dados em falta dos controlos de arquitetura.");return model,report
     if model.drawings is None:model.drawings=DrawingStudy()
     d=model.drawings
     # Regenerate only generated marks; preserve explicitly drafted reinforcement.
@@ -301,41 +301,41 @@ def run_automation(original):
             if e.level in levelmap and e.height_m is not None:
                 base=levelmap[e.level]-(e.height_m if e.kind in ('beam','slab') else 0.)
                 d.placements.append(Placement(element_id=e.id,base_z_m=base,source=rules.source,generated_by=VERSION))
-            else:issue(e.id,'placement','Altitude du niveau absente ; aucune hauteur inventée.')
+            else:issue(e.id,'placement',"Cota do piso ausente; nenhuma altura inventada.")
         if e.kind not in ('beam','slab'):
             report['coverage'].append(dict(element_id=e.id,kind=e.kind,status='bearing_area_only' if any(x['element_id']==e.id for x in report['foundations']) else 'not_designed'))
             continue
         if e.id not in rules.rc_element_ids:
-            issue(e.id,'reinforcement','Élément non affecté explicitement au calcul béton armé automatique.');continue
+            issue(e.id,'reinforcement',"Elemento não atribuído explicitamente ao cálculo automático de betão armado.");continue
         if any(b.element_id==e.id for b in manual):
-            issue(e.id,'reinforcement','Aciers manuels conservés : retirer ces repères pour autoriser la génération de cet élément.');continue
+            issue(e.id,'reinforcement',"Aços manuais conservados: retire estas marcas para autorizar a geração deste elemento.");continue
         if any(o.element_id==e.id for o in d.openings):
-            issue(e.id,'reinforcement','Réservation présente : renforts de trémie/ouverture hors domaine, aucun acier automatique.');continue
-        if any(v is None for v in (e.x_m,e.y_m)):issue(e.id,'placement','Implantation X/Y absente.');continue
+            issue(e.id,'reinforcement',"Negativo presente: reforços de abertura fora do domínio, nenhum aço automático.");continue
+        if any(v is None for v in (e.x_m,e.y_m)):issue(e.id,'placement',"Implantação X/Y ausente.");continue
         if e.kind=='beam':
             linked=[s for s in model.linked_sections if s.element_id==e.id]
             if linked:
-                issue(e.id,'reinforcement','Section liée préexistante conservée ; retirez ce lien avant de choisir les aciers avec les règles globales.');continue
+                issue(e.id,'reinforcement',"Secção ligada preexistente conservada; retire esta ligação antes de escolher os aços com as regras globais.");continue
             forces=[(case,by_case[case][e.id]['moment_max_knm'],by_case[case][e.id]['shear_max_kn']) for case in rules.uls_case_ids]
             chosen=choose_beam(e,forces,rules)
         else:
             axis=rules.slab_span_axes.get(e.id)
             if not axis or len(e.supports)!=2 or any(abs(s.fraction-.5)>1e-8 for s in e.supports) or any(l.mode!='surface' for l in e.loads):
-                issue(e.id,'reinforcement','Dalle : sens de portée explicite, charges uniformes et deux transferts égaux requis.');continue
+                issue(e.id,'reinforcement',"Laje: direção de vão explícita, cargas uniformes e duas transferências iguais obrigatórias.");continue
             span=e.length_m if axis=='x' else e.width_m
             forces=[]
             for case in rules.uls_case_ids:
                 q=by_case[case][e.id]['total_kn']/(e.length_m*e.width_m)
                 forces.append((case,q*span**2/8,q*span/2))
             chosen=choose_slab(e,forces,rules,axis)
-        if chosen is None:issue(e.id,'reinforcement','Aucune disposition du catalogue ne satisfait flexion, cisaillement, géométrie et espacement.');continue
+        if chosen is None:issue(e.id,'reinforcement',"Nenhuma disposição do catálogo satisfaz flexão, corte, geometria e espaçamento.");continue
         bars,design=chosen
         available=rules.available_anchorage_mm.get(e.id)
         design['anchorage']['available_mm']=available
         design['anchorage']['length_comparison']='unknown' if available is None else 'sufficient_declared_length' if available>=design['anchorage']['lbd_mm'] else 'insufficient_declared_length'
         design['anchorage']['support_detail_verified']=False
-        if available is None:issue(e.id,'anchorage','Longueur d’ancrage calculée ; espace disponible dans les appuis à renseigner.')
-        elif available<design['anchorage']['lbd_mm']:issue(e.id,'anchorage','Longueur déclarée dans l’appui inférieure à l’ancrage droit calculé.')
+        if available is None:issue(e.id,'anchorage',"Comprimento de amarração calculado; espaço disponível nos apoios a indicar.")
+        elif available<design['anchorage']['lbd_mm']:issue(e.id,'anchorage',"Comprimento declarado no apoio inferior à amarração reta calculada.")
         design['straight_bar_anchorage']=[dict(mark=b.mark,diameter_mm=b.diameter_mm,**anchorage(b.diameter_mm,rules)) for b in bars if b.bend_radius_mm==0.]
         d.bars.extend(bars);report['designs'].append(design);report['generated_marks'].extend(b.mark for b in bars)
         report['coverage'].append(dict(element_id=e.id,kind=e.kind,status='local_checks_only'))
@@ -348,12 +348,12 @@ def run_automation(original):
             largest=max(drawable,key=lambda e:e.length_m*e.width_m);pts=outline(largest)
             cx=sum(p[0] for p in pts)/4;cy=sum(p[1] for p in pts)/4
             d.cuts=[Cut(id='AUTO_X',axis='x',at_m=cy),Cut(id='AUTO_Y',axis='y',at_m=cx)]
-    note='Aciers issus du moteur automatique restreint. Recalcul obligatoire après modification. Ancrages et assemblages dessinés partiellement ; aucun visa d’exécution.'
+    note="Aços provenientes do motor automático restrito. Recálculo obrigatório após alteração. Amarrações e ligações desenhadas parcialmente; nenhum visto de execução."
     if note not in d.notes:d.notes=(d.notes+[note])[-20:]
     # Enforce schema limits after generation; no oversized partial payload is saved.
     try:model.drawings=DrawingStudy.model_validate(d.model_dump())
     except ValueError:
-        issue('Projet','generation','Limites de complexité dépassées ; répartir le projet. Aucune génération conservée.')
+        issue("Projeto",'generation',"Limites de complexidade ultrapassados; dividir o projeto. Nenhuma geração conservada.")
         return original.model_copy(deep=True),report
     model.automation_generated_hash=generation_hash(model)
     from engines.structuro_drawings import compile_dossier

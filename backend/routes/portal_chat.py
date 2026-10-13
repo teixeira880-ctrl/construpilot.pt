@@ -28,7 +28,7 @@ MAX_FILES = 5
 MAX_FILE_BYTES = 8 * 1024 * 1024
 ALLOWED_CT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf"}
 ISSUE_STATUS = ("new", "in_progress", "scheduled", "resolved", "closed")
-ISSUE_LABELS = {"new": "Nouveau", "in_progress": "Pris en charge", "scheduled": "Planifié", "resolved": "Résolu", "closed": "Clôturé"}
+ISSUE_LABELS = {"new": "Novo", "in_progress": "Assumido", "scheduled": "Planeado", "resolved": "Resolvido", "closed": "Encerrado"}
 URGENCY = ("low", "normal", "high")
 EMAIL_COALESCE_MIN = 15
 
@@ -42,10 +42,10 @@ async def _store_uploads(files: list[UploadFile], folder: str) -> list[dict]:
     for f in (files or [])[:MAX_FILES]:
         ext = ALLOWED_CT.get((f.content_type or "").split(";")[0].strip())
         if not ext:
-            raise HTTPException(415, f"Format non accepté ({f.filename}) : photos JPG/PNG/WEBP ou PDF")
+            raise HTTPException(415, f'Formato não aceite ({f.filename}): fotografias JPG/PNG/WEBP ou PDF')
         data = await f.read(MAX_FILE_BYTES + 1)
         if len(data) > MAX_FILE_BYTES:
-            raise HTTPException(413, f"Fichier trop volumineux ({f.filename}) : 8 Mo max")
+            raise HTTPException(413, f'Ficheiro demasiado volumoso ({f.filename}) : 8 Mo max')
         if not data:
             continue
         path = f"{storage.APP_NAME}/portal/{folder}/{uuid.uuid4().hex}.{ext}"
@@ -63,7 +63,7 @@ async def _branding(owner_id: str) -> tuple[str, Optional[str]]:
     from routes.plans_common import _resolve_branding
     b = await _resolve_branding(owner_id) or {}
     pro = await db.users.find_one({"user_id": owner_id}, {"_id": 0, "name": 1, "email": 1})
-    return b.get("company_name") or (pro or {}).get("name") or "Votre entreprise", (pro or {}).get("email")
+    return b.get("company_name") or (pro or {}).get("name") or "A sua empresa", (pro or {}).get("email")
 
 
 async def _email(to: str, subject: str, title: str, body_html: str, cta_url: str, cta_label: str, from_name: Optional[str] = None) -> str:
@@ -90,7 +90,7 @@ async def _notify_pro(owner_id: str, ntype: str, message: str, url: str, subject
                                        "message": message, "created_at": _iso(_now())})
     pro = await db.users.find_one({"user_id": owner_id}, {"_id": 0, "email": 1})
     if pro and pro.get("email") and not await _coalesced(coalesce_key):
-        await _email(pro["email"], subject, subject, body_html, f"{_frontend_url()}{url}", "Ouvrir le dossier chantier")
+        await _email(pro["email"], subject, subject, body_html, f"{_frontend_url()}{url}", "Abrir o processo da obra")
 
 
 async def _notify_participants(chantier: dict, channel: str, exclude_pid: Optional[str], subject: str, body_html: str) -> None:
@@ -100,7 +100,7 @@ async def _notify_participants(chantier: dict, channel: str, exclude_pid: Option
     async for p in db.chantier_participants.find(q, {"_id": 0, "participant_id": 1, "email": 1, "chantier_ref": 1}):
         if p["participant_id"] == exclude_pid or await _coalesced(f"part:{p['participant_id']}:{channel}"):
             continue
-        await _email(p["email"], subject, subject, body_html, f"{_frontend_url()}/espace/{p['chantier_ref']}?tab=messages", "Ouvrir mon espace chantier", from_name=company)
+        await _email(p["email"], subject, subject, body_html, f"{_frontend_url()}/espace/{p['chantier_ref']}?tab=messages", "Abrir a minha área de obra", from_name=company)
 
 
 def _msg_doc(chantier: dict, channel: str, author_type: str, author_id: str, author_name: str, body: str, attachments: list[dict]) -> dict:
@@ -150,9 +150,9 @@ async def pro_send_message(chantier_id: str, channel: Literal["client", "subcont
     doc = _msg_doc(chantier, channel, "pro", user["user_id"], company, body, attachments)
     await db.chantier_messages.insert_one(dict(doc))
     doc.pop("_id", None)
-    excerpt = (doc["body"] or f"{len(attachments)} pièce(s) jointe(s)")[:300]
-    asyncio.create_task(_notify_participants(chantier, channel, None, f"Nouveau message de {company} — chantier {chantier['name']}",
-                                             f"<p><strong>{company}</strong> vous a écrit au sujet du chantier <strong>{chantier['name']}</strong> :</p><blockquote>{excerpt}</blockquote>"))
+    excerpt = (doc["body"] or f'{len(attachments)} anexo(s)')[:300]
+    asyncio.create_task(_notify_participants(chantier, channel, None, f"Nova mensagem de {company} — obra {chantier['name']}",
+                                             f"<p><strong>{company}</strong> escreveu-lhe a propósito da obra <strong>{chantier['name']}</strong> :</p><blockquote>{excerpt}</blockquote>"))
     return doc
 
 
@@ -162,7 +162,7 @@ async def pro_message_file(chantier_id: str, path: str, user=Depends(current_use
     ok = await db.chantier_messages.find_one({"chantier_id": chantier_id, "attachments.path": path}, {"_id": 1}) \
         or await db.chantier_issues.find_one({"chantier_id": chantier_id, "photos.path": path}, {"_id": 1})
     if not ok:
-        raise HTTPException(404, "Fichier introuvable")
+        raise HTTPException(404, "Ficheiro não encontrado")
     return await _serve(path)
 
 
@@ -186,10 +186,10 @@ async def pro_update_issue(chantier_id: str, issue_id: str, body: IssueUpdateIn,
     chantier = await get_chantier_owned(chantier_id, user["user_id"])
     issue = await db.chantier_issues.find_one({"issue_id": issue_id, "chantier_id": chantier_id}, {"_id": 0})
     if not issue:
-        raise HTTPException(404, "Signalement introuvable")
+        raise HTTPException(404, "Sinalização não encontrada")
     changes = {k: v for k, v in body.model_dump().items() if v is not None}
     if not changes:
-        raise HTTPException(422, "Aucune modification")
+        raise HTTPException(422, "Nenhuma alteração")
     now = _iso(_now())
     history = list(issue.get("history") or [])
     for k, v in changes.items():
@@ -213,21 +213,21 @@ async def _notify_reporter(chantier: dict, issue: dict) -> None:
         return
     company, _ = await _branding(chantier["user_id"])
     label = ISSUE_LABELS.get(issue.get("status"), issue.get("status"))
-    resp = f"<p>Réponse de l'entreprise :</p><blockquote>{issue['pro_response'][:800]}</blockquote>" if issue.get("pro_response") else ""
-    confirm = "<p>Dites-nous depuis votre espace si le problème est bien réglé.</p>" if issue.get("status") == "resolved" else ""
-    await _email(p["email"], f"Votre signalement « {issue['title'][:60]} » — {label}", f"Signalement : {label}",
-                 f"<p>Chantier <strong>{chantier['name']}</strong> — votre signalement <strong>{issue['title']}</strong> est passé au statut <strong>{label}</strong>.</p>{resp}{confirm}",
-                 f"{_frontend_url()}/espace/{p['chantier_ref']}?tab=issues", "Voir le suivi", from_name=company)
+    resp = f"<p>Resposta da empresa:</p><blockquote>{issue['pro_response'][:800]}</blockquote>" if issue.get("pro_response") else ""
+    confirm = "<p>Diga-nos na sua área se o problema ficou resolvido.</p>" if issue.get("status") == "resolved" else ""
+    await _email(p["email"], f"A sua sinalização «{issue['title'][:60]} » — {label}", f'Sinalização: {label}',
+                 f"<p>Obra <strong>{chantier['name']}</strong> — a sua sinalização <strong>{issue['title']}</strong> passou ao estado <strong>{label}</strong>.</p>{resp}{confirm}",
+                 f"{_frontend_url()}/espace/{p['chantier_ref']}?tab=issues", "Ver o acompanhamento", from_name=company)
 
 
 # ---------------------------------------------------------------- participant : messagerie
 async def _chat_ctx(ref: str, p: dict, perm: str) -> dict:
     _require_ref(p, ref)
     if not (p.get("permissions") or {}).get(perm):
-        raise HTTPException(403, "Cette fonction n'est pas activée pour votre accès")
+        raise HTTPException(403, "Esta função não está ativada para o seu acesso")
     c = await db.chantiers.find_one({"chantier_id": p["chantier_id"]}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Chantier introuvable")
+        raise HTTPException(404, "Obra não encontrada")
     return c
 
 
@@ -250,10 +250,10 @@ async def portal_send_message(ref: str, request: Request, response: Response, bo
     await db.chantier_messages.insert_one(dict(doc))
     doc.pop("_id", None)
     who = doc["author_name"]
-    excerpt = (doc["body"] or f"{len(attachments)} pièce(s) jointe(s)")[:300]
+    excerpt = (doc["body"] or f'{len(attachments)} anexo(s)')[:300]
     url = f"/chantiers/{chantier['chantier_id']}?tab=messages&channel={doc['channel']}"
-    asyncio.create_task(_notify_pro(chantier["user_id"], "portal_message", f"Message de {who} sur le chantier {chantier['name']}", url,
-                                    f"Nouveau message — chantier {chantier['name']}", f"<p><strong>{who}</strong> ({'client' if p['role'] == 'client' else 'sous-traitant'}) vous a écrit :</p><blockquote>{excerpt}</blockquote>",
+    asyncio.create_task(_notify_pro(chantier["user_id"], "portal_message", f"Mensagem de {who} na obra {chantier['name']}", url,
+                                    f"Nova mensagem — obra {chantier['name']}", f"<p><strong>{who}</strong> ({('client' if p['role'] == 'client' else 'sous-traitant')}) escreveu-lhe:</p><blockquote>{excerpt}</blockquote>",
                                     f"pro:{chantier['chantier_id']}:{doc['channel']}"))
     return doc
 
@@ -264,7 +264,7 @@ async def portal_message_file(ref: str, path: str, p=Depends(current_participant
     ok = await db.chantier_messages.find_one({"chantier_id": p["chantier_id"], "channel": channel_for(p), "attachments.path": path}, {"_id": 1}) \
         or await db.chantier_issues.find_one({"chantier_id": p["chantier_id"], "participant_id": p["participant_id"], "photos.path": path}, {"_id": 1})
     if not ok:
-        raise HTTPException(404, "Fichier introuvable")
+        raise HTTPException(404, "Ficheiro não encontrado")
     return await _serve(path)
 
 
@@ -286,7 +286,7 @@ async def portal_report_issue(ref: str, request: Request, response: Response, ti
     now = _iso(_now())
     reporter = p.get("name") or p["email"]
     reserve = {"reserve_id": "rs_" + secrets.token_hex(6), "user_id": chantier["user_id"], "project": chantier["name"], "doc_id": None, "chantier_id": chantier["chantier_id"],
-               "lot": (location or p.get("lot") or "").strip()[:80], "description": f"[Signalé par {reporter}] {title.strip()}", "company": "", "company_email": "",
+               "lot": (location or p.get("lot") or "").strip()[:80], "description": f'[Assinalado por {reporter}] {title.strip()}', "company": "", "company_email": "",
                "photos": [ph["path"] for ph in photos], "status": "open", "created_at": now, "lifted_at": None, "source": "portal_issue"}
     issue = {"issue_id": "iss_" + secrets.token_hex(6), "chantier_id": chantier["chantier_id"], "owner_user_id": chantier["user_id"], "participant_id": p["participant_id"],
              "reporter_name": reporter, "reporter_role": p["role"], "title": title.strip(), "description": description.strip(), "location": location.strip(),
@@ -298,9 +298,9 @@ async def portal_report_issue(ref: str, request: Request, response: Response, ti
     issue.pop("_id", None)
     url = f"/chantiers/{chantier['chantier_id']}?tab=issues"
     urg = {"low": "faible", "normal": "normale", "high": "URGENT"}[urgency]
-    asyncio.create_task(_notify_pro(chantier["user_id"], "portal_issue", f"Problème signalé par {reporter} sur {chantier['name']} : {title[:60]}", url,
-                                    f"Problème signalé — chantier {chantier['name']}",
-                                    f"<p><strong>{reporter}</strong> signale : <strong>{title}</strong> (urgence {urg}{', ' + location if location else ''}).</p><p>{description[:600]}</p><p>Une réserve a été créée automatiquement dans le suivi de chantier.</p>",
+    asyncio.create_task(_notify_pro(chantier["user_id"], "portal_issue", f"Problema assinalado por {reporter} sur {chantier['name']} : {title[:60]}", url,
+                                    f"Problema assinalado — obra {chantier['name']}",
+                                    f"<p><strong>{reporter}</strong> assinala: <strong>{title}</strong> (urgência {urg}{(', ' + location if location else '')}).</p><p>{description[:600]}</p><p>Foi criada automaticamente uma reserva no acompanhamento da obra.</p>",
                                     f"pro:{chantier['chantier_id']}:issue:{issue['issue_id']}"))
     return issue
 
@@ -315,9 +315,9 @@ async def portal_confirm_issue(ref: str, issue_id: str, body: ConfirmIn, p=Depen
     chantier = await _chat_ctx(ref, p, "report_issue")
     issue = await db.chantier_issues.find_one({"issue_id": issue_id, "chantier_id": p["chantier_id"], "participant_id": p["participant_id"]}, {"_id": 0})
     if not issue:
-        raise HTTPException(404, "Signalement introuvable")
+        raise HTTPException(404, "Sinalização não encontrada")
     if issue.get("status") not in ("resolved", "closed"):
-        raise HTTPException(409, "L'entreprise n'a pas encore marqué ce problème comme résolu")
+        raise HTTPException(409, "A empresa ainda não marcou este problema como resolvido")
     now = _iso(_now())
     status = "closed" if body.resolved else "in_progress"
     hist = list(issue.get("history") or []) + [{"at": now, "by": "participant", "field": "client_confirmed", "value": body.resolved, "comment": body.comment}]
@@ -325,8 +325,8 @@ async def portal_confirm_issue(ref: str, issue_id: str, body: ConfirmIn, p=Depen
     if issue.get("reserve_id"):
         await db.site_reserves.update_one({"reserve_id": issue["reserve_id"]}, {"$set": {"status": "lifted" if body.resolved else "open", "lifted_at": now if body.resolved else None}})
     reporter = p.get("name") or p["email"]
-    verdict = "confirme que c'est réglé" if body.resolved else "indique que le problème n'est PAS réglé"
+    verdict = "confirma que está resolvido" if body.resolved else "indica que o problema NÃO está resolvido"
     asyncio.create_task(_notify_pro(chantier["user_id"], "portal_issue", f"{reporter} {verdict} : {issue['title'][:60]}", f"/chantiers/{chantier['chantier_id']}?tab=issues",
-                                    f"Retour client — {issue['title'][:60]}", f"<p><strong>{reporter}</strong> {verdict} pour le signalement <strong>{issue['title']}</strong>.</p>{('<p>' + body.comment + '</p>') if body.comment else ''}",
+                                    f"Resposta do cliente — {issue['title'][:60]}", f"<p><strong>{reporter}</strong> {verdict} para a sinalização <strong>{issue['title']}</strong>.</p>{('<p>' + body.comment + '</p>' if body.comment else '')}",
                                     f"pro:{chantier['chantier_id']}:confirm:{issue_id}:{now}"))
     return {"ok": True, "status": status, "client_confirmed": body.resolved}

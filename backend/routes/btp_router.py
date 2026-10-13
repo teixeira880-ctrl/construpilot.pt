@@ -23,12 +23,12 @@ async def ask(prompt: str = Form(...), force_json: bool = Form(False),
               steel_ratios: str = Form(""), files: list[UploadFile] = File(default=[]),
               user=Depends(current_user)) -> dict:
     if not (prompt or "").strip() and not files:
-        raise HTTPException(400, "Fournissez une demande ou une pièce jointe.")
+        raise HTTPException(400, "Forneça um pedido ou um anexo.")
     attachments = []
     for f in files or []:
         data = await f.read()
         if len(data) > 25 * 1024 * 1024:
-            raise HTTPException(400, f"{f.filename} trop volumineux (max 25 Mo).")
+            raise HTTPException(400, f'{f.filename} demasiado volumoso (máx. 25 MB).')
         attachments.append({"filename": f.filename, "data": data})
     ratios = None
     if steel_ratios:

@@ -88,15 +88,15 @@ async def optional_user(request: Request):
 
 async def current_user(user=Depends(optional_user)):
     if not user:
-        raise HTTPException(status_code=401, detail="Non authentifié")
+        raise HTTPException(status_code=401, detail="Não autenticado")
     if user.get('active') is False:
-        raise HTTPException(status_code=403, detail="Compte désactivé")
+        raise HTTPException(status_code=403, detail="Conta desativada")
     return user
 
 
 async def admin_user(user=Depends(current_user)):
     if user.get('role') != 'admin':
-        raise HTTPException(status_code=403, detail="Accès administrateur requis")
+        raise HTTPException(status_code=403, detail="Acesso de administrador necessário")
     return user
 
 
@@ -112,12 +112,12 @@ async def pro_required(user=Depends(current_user)):
     level = await compute_level(user)
     if not meets(level, 'pro'):
         raise HTTPException(status_code=403,
-                            detail="Fonction réservée aux professionnels. Passez en compte Pro pour y accéder.")
+                            detail="Função reservada a profissionais. Passe para uma conta Pro para lhe aceder.")
     if user.get('company_active') is False or user.get('active') is False:
-        raise HTTPException(status_code=403, detail="Accès professionnel désactivé.")
+        raise HTTPException(status_code=403, detail="Acesso profissional desativado.")
     if user.get('organization_id'):
         from core.permissions import ROLE_PERMISSIONS
         if user.get('org_role') not in ROLE_PERMISSIONS:
-            raise HTTPException(status_code=403, detail="Rôle d'entreprise non reconnu.")
+            raise HTTPException(status_code=403, detail="Função na empresa não reconhecida.")
     return user
 

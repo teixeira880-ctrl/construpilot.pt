@@ -43,7 +43,7 @@ def _nid(prefix: str) -> str:
 async def _get(dossier_id: str, user_id: str) -> dict:
     d = await db.bet_dossiers.find_one({"dossier_id": dossier_id, "user_id": user_id}, {"_id": 0})
     if not d:
-        raise HTTPException(404, "Dossier introuvable.")
+        raise HTTPException(404, "Processo não encontrado.")
     return d
 
 
@@ -117,7 +117,7 @@ async def update_meta(dossier_id: str, body: MetaIn, user=Depends(current_user))
 async def delete_dossier(dossier_id: str, user=Depends(current_user)) -> dict:
     r = await db.bet_dossiers.delete_one({"dossier_id": dossier_id, "user_id": user["user_id"]})
     if not r.deleted_count:
-        raise HTTPException(404, "Dossier introuvable.")
+        raise HTTPException(404, "Processo não encontrado.")
     return {"ok": True}
 
 
@@ -128,12 +128,12 @@ async def upload_document(dossier_id: str, file: UploadFile = File(...),
     d = await _get(dossier_id, user["user_id"])
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "").lower()
     if ext not in ALLOWED_EXT:
-        raise HTTPException(422, f"Extension non prise en charge ({ext}). Formats : {', '.join(sorted(ALLOWED_EXT))}.")
+        raise HTTPException(422, f"Extensão não suportada ({ext}). Formats : {', '.join(sorted(ALLOWED_EXT))}.")
     data = await file.read()
     if not data:
-        raise HTTPException(422, "Fichier vide.")
+        raise HTTPException(422, "Ficheiro vazio.")
     if len(data) > MAX_BYTES:
-        raise HTTPException(413, "Fichier trop volumineux (max 30 Mo).")
+        raise HTTPException(413, "Ficheiro demasiado volumoso (máx. 30 MB).")
     doc_id = _nid("dc")
     ctype = obj.mime_for(file.filename) if ext not in {"pdf"} else "application/pdf"
     if ext == "pdf":
@@ -142,7 +142,7 @@ async def upload_document(dossier_id: str, file: UploadFile = File(...),
     try:
         result = await run_in_threadpool(obj.put_object, path, data, ctype)
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Stockage impossible : {str(e)[:120]}")
+        raise HTTPException(502, f'Armazenamento impossível: {str(e)[:120]}')
     extraction = await betai.extract_document(data, ctype, file.filename or "")
     doc = {
         "id": doc_id, "storage_path": result.get("path", path),
@@ -168,30 +168,27 @@ async def analyze_autodesk(dossier_id: str, doc_id: str, user=Depends(current_us
     d = await _get(dossier_id, user["user_id"])
     doc = next((x for x in _live_docs(d) if x["id"] == doc_id), None)
     if not doc:
-        raise HTTPException(404, "Document introuvable.")
+        raise HTTPException(404, "Documento não encontrado.")
     ext = (doc.get("original_filename", "").rsplit(".", 1)[-1] if "." in doc.get("original_filename", "") else "").lower()
     if ext not in {"dwg", "dxf", "ifc"}:
-        raise HTTPException(422, "Lecture Autodesk réservée aux fichiers DWG/DXF/IFC.")
+        raise HTTPException(422, "Leitura Autodesk reservada aos ficheiros DWG/DXF/IFC.")
     try:
         content, _ = await run_in_threadpool(obj.get_object, doc["storage_path"])
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Lecture du fichier impossible : {str(e)[:120]}")
+        raise HTTPException(502, f'Leitura do ficheiro impossível: {str(e)[:120]}')
     try:
         md = await autodesk_md.extract(content, doc.get("original_filename") or f"plan.{ext}", user_id=user["user_id"])
     except AutodeskError as e:
         raise HTTPException(502, f"Autodesk : {getattr(e, 'message', str(e))[:160]}")
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Traduction Autodesk impossible : {str(e)[:120]}")
+        raise HTTPException(502, f'Tradução Autodesk impossível: {str(e)[:120]}')
     views = md.get("views", [])
     summary_lines = []
     for v in views[:6]:
-        summary_lines.append(f"Vue « {v.get('name')} » : {v.get('objects')} objets. "
-                             f"Calques: {', '.join(str(x[0]) for x in (v.get('layers') or [])[:20])}. "
-                             f"Catégories: {', '.join(str(x[0]) for x in (v.get('categories') or [])[:20])}. "
-                             f"Propriétés: {', '.join((v.get('property_keys') or [])[:30])}.")
+        summary_lines.append(f"Vista «{v.get('name')} » : {v.get('objects')} objetos. Camadas: {', '.join((str(x[0]) for x in (v.get('layers') or [])[:20]))}. Catégories: {', '.join((str(x[0]) for x in (v.get('categories') or [])[:20]))}. Propriétés: {', '.join((v.get('property_keys') or [])[:30])}.")
     import json as _json
     sample = md.get("sample_objects") or []
-    meta_summary = "\n".join(summary_lines) + "\n\nÉchantillon d'objets:\n" + _json.dumps(sample[:12], ensure_ascii=False)[:8000]
+    meta_summary = "\n".join(summary_lines) + "\n\nAmostra de objetos:\n" + _json.dumps(sample[:12], ensure_ascii=False)[:8000]
     extraction = await betai.extract_from_metadata(meta_summary)
     extraction["autodesk"] = {"objects": sum(v.get("objects", 0) for v in views), "views": len(views),
                               "cached": md.get("cached", False)}
@@ -207,11 +204,11 @@ async def reanalyze_document(dossier_id: str, doc_id: str, user=Depends(current_
     d = await _get(dossier_id, user["user_id"])
     doc = next((x for x in _live_docs(d) if x["id"] == doc_id), None)
     if not doc:
-        raise HTTPException(404, "Document introuvable.")
+        raise HTTPException(404, "Documento não encontrado.")
     try:
         content, ctype = await run_in_threadpool(obj.get_object, doc["storage_path"])
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Lecture impossible : {str(e)[:120]}")
+        raise HTTPException(502, f'Leitura impossível: {str(e)[:120]}')
     doc["extraction"] = await betai.extract_document(content, doc.get("content_type") or ctype, doc.get("original_filename") or "")
     if not doc.get("index"):
         doc["index"] = doc["extraction"].get("indice_detecte") or None
@@ -225,7 +222,7 @@ async def delete_document(dossier_id: str, doc_id: str, user=Depends(current_use
     d = await _get(dossier_id, user["user_id"])
     doc = next((x for x in d.get("documents", []) if x["id"] == doc_id), None)
     if not doc:
-        raise HTTPException(404, "Document introuvable.")
+        raise HTTPException(404, "Documento não encontrado.")
     doc["is_deleted"] = True
     d["comparisons"] = [c for c in d.get("comparisons", []) if doc_id not in (c.get("doc_a"), c.get("doc_b"))]
     d["inconsistencies"] = None
@@ -238,11 +235,11 @@ async def download_document(dossier_id: str, doc_id: str, user=Depends(current_u
     d = await _get(dossier_id, user["user_id"])
     doc = next((x for x in _live_docs(d) if x["id"] == doc_id), None)
     if not doc:
-        raise HTTPException(404, "Document introuvable.")
+        raise HTTPException(404, "Documento não encontrado.")
     try:
         content, ctype = await run_in_threadpool(obj.get_object, doc["storage_path"])
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Lecture impossible : {str(e)[:120]}")
+        raise HTTPException(502, f'Leitura impossível: {str(e)[:120]}')
     return Response(content=content, media_type=doc.get("content_type") or ctype, headers={
         "Content-Disposition": f'inline; filename="{doc.get("original_filename", "document")}"'})
 
@@ -253,9 +250,9 @@ async def compare_versions(dossier_id: str, body: CompareIn, user=Depends(curren
     docs = {x["id"]: x for x in _live_docs(d)}
     a, b = docs.get(body.doc_a), docs.get(body.doc_b)
     if not a or not b:
-        raise HTTPException(404, "Document(s) introuvable(s).")
+        raise HTTPException(404, "Documento(s) não encontrado(s).")
     if a["id"] == b["id"]:
-        raise HTTPException(422, "Choisissez deux documents différents.")
+        raise HTTPException(422, "Escolha dois documentos diferentes.")
     result = await betai.compare_documents(a.get("extraction") or {}, b.get("extraction") or {})
     comp = {"comp_id": _nid("cmp"), "doc_a": a["id"], "doc_b": b["id"],
             "result": result, "created_at": _now()}
@@ -348,7 +345,7 @@ async def autopilot_extract(dossier_id: str, user=Depends(current_user)) -> dict
     d = await _get(dossier_id, user["user_id"])
     tagged = [x for x in _live_docs(d) if x.get("kind") in _AUTOPILOT_KINDS]
     if not tagged:
-        raise HTTPException(422, "Importez au moins un plan/PC ou une G2 (bouton d'import dédié de l'auto-pilote).")
+        raise HTTPException(422, "Importe pelo menos uma planta/projeto ou um estudo geotécnico (botão de importação dedicado do piloto automático).")
     geom = await _collect_images(d, {"plan", "pc"}, dpi=_GEOM_DPI, per_doc=_GEOM_PER_DOC,
                                  total_cap=_GEOM_TOTAL_CAP, keywords=_GEOM_KEYWORDS)
     soil = await _collect_images(d, {"g2"}, dpi=_SOIL_DPI, per_doc=_SOIL_PER_DOC,
@@ -378,13 +375,13 @@ async def autopilot_generate(dossier_id: str, body: GenerateIn, user=Depends(cur
     d = await _get(dossier_id, user["user_id"])
     raw = body.inputs.model_dump(exclude_none=False) if body.inputs else (d.get("autopilot") or {}).get("inputs")
     if not raw:
-        raise HTTPException(422, "Analysez les documents ou renseignez les données avant de générer.")
+        raise HTTPException(422, "Analise os documentos ou preencha os dados antes de gerar.")
     try:
         out = await run_in_threadpool(autopilot.build_and_compute, raw)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from None
     if out["result"].get("status") == "blocked":
-        raise HTTPException(422, {"message": "Le pré-modèle n'est pas calculable automatiquement.",
+        raise HTTPException(422, {"message": "O pré-modelo não é calculável automaticamente.",
                                   "issues": out["result"].get("issues")})
     study_id = "strcalc_" + uuid.uuid4().hex
     study = {"study_id": study_id, "user_id": user["user_id"], "revision": 1,
@@ -413,10 +410,10 @@ async def autopilot_coffrage(dossier_id: str, user=Depends(current_user)):
     ap = d.get("autopilot") or {}
     sid = ap.get("calc_study_id")
     if not sid:
-        raise HTTPException(422, "Générez d'abord le modèle (bouton « Accepter & générer »).")
+        raise HTTPException(422, "Gere primeiro o modelo (botão «Aceitar e gerar»).")
     study = await db.structuro_calculations.find_one({"study_id": sid, "user_id": user["user_id"]}, {"_id": 0})
     if not study:
-        raise HTTPException(404, "Étude de calcul introuvable ; relancez la génération.")
+        raise HTTPException(404, "Estudo de cálculo não encontrado; relance a geração.")
     model = study.get("model") or {}
     summary = ap.get("summary") or {}
     superst = summary.get("superstructure")
@@ -428,5 +425,5 @@ async def autopilot_coffrage(dossier_id: str, user=Depends(current_user)):
                                   model.get("title", "Auto-pilote BET"), superst, metre_data, marks,
                                   summary, soil, inputs)
     return Response(content=pdf, media_type="application/pdf", headers={
-        "Content-Disposition": f'inline; filename="coffrage-{dossier_id}.pdf"'})
+        "Content-Disposition": f'inline; filename="cofragem-{dossier_id}.pdf"'})
 

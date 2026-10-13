@@ -119,7 +119,7 @@ def test_verify_column_axial_bending_interaction_kyy_kzy():
     assert inter["eq_661"] > 0 and inter["eq_662"] > 0      # deux équations 6.61 & 6.62
     assert abs(inter["value"] - max(inter["eq_661"], inter["eq_662"])) < 1e-6
     assert 0 < inter["chi_lt"] <= 1.0
-    assert "méthode 2" in inter["method"]
+    assert "método 2" in inter["method"]
 
 
 def test_design_study_columns_from_envelope():

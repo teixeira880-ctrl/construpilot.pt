@@ -36,8 +36,8 @@ def build_situation_pdf(sit: dict, branding: dict | None, client: dict | None) -
     seller = branding.get("company_name") or "ConstruPilot"
     addr = " · ".join(filter(None, [branding.get("address"),
                                     " ".join(filter(None, [branding.get("postal_code"), branding.get("city")]))]))
-    ids = " · ".join(filter(None, [f"SIRET {branding.get('siret')}" if branding.get("siret") else None,
-                                   f"TVA {branding.get('vat')}" if branding.get("vat") else None]))
+    ids = " · ".join(filter(None, [f"Estabelecimento {branding.get('siret')}" if branding.get("siret") else None,
+                                   f"IVA {branding.get('vat')}" if branding.get("vat") else None]))
     E.append(Paragraph(seller, h))
     if addr:
         E.append(Paragraph(addr, small))
@@ -45,20 +45,20 @@ def build_situation_pdf(sit: dict, branding: dict | None, client: dict | None) -
         E.append(Paragraph(ids, small))
     E.append(Spacer(1, 8))
 
-    E.append(Paragraph(f"DÉCOMPTE DE SITUATION N°{sit.get('seq')}", h))
-    meta = f"Marché : {sit.get('marche_label') or '—'}"
+    E.append(Paragraph(f"AUTO DE MEDIÇÃO N.º{sit.get('seq')}", h))
+    meta = f"Empreitada: {sit.get('marche_label') or '—'}"
     if sit.get("invoice_number"):
-        meta += f" · Facture : {sit['invoice_number']}"
+        meta += f" · Fatura: {sit['invoice_number']}"
     if sit.get("created_at"):
         meta += f" · Date : {str(sit['created_at'])[:10]}"
     E.append(Paragraph(meta, small))
     cname = client.get("name") or client.get("company") or " ".join(
         filter(None, [client.get("first_name"), client.get("last_name")]))
     if cname:
-        E.append(Paragraph(f"Maître d'ouvrage : {cname}", small))
+        E.append(Paragraph(f'Dono de obra: {cname}', small))
     E.append(Spacer(1, 10))
 
-    head = ["Lot / Poste", "Marché HT", "% préc.", "% cumulé", "Cumul HT", "Cette situation HT"]
+    head = ["Capítulo / Artigo", "Valor s/ IVA", "% ant.", "% acumulado", "Acumulado s/ IVA", "Este auto s/ IVA"]
     rows = [head]
     for l in sit.get("lines", []):
         contract = float(l.get("contract_ht") or 0)
@@ -92,16 +92,16 @@ def build_situation_pdf(sit: dict, branding: dict | None, client: dict | None) -
     works = float(sit.get("works_ht") or (ht + dep))
     tot = []
     if dep:
-        tot.append(["Travaux de la situation HT", _eur(works)])
-        tot.append(["Acompte déjà versé (déduit) HT", "- " + _eur(dep)])
+        tot.append(["Trabalhos do auto s/ IVA", _eur(works)])
+        tot.append(["Adiantamento já pago (deduzido) s/ IVA", "- " + _eur(dep)])
     tot += [
-        ["Total situation HT", _eur(ht)],
-        ["TVA", _eur(tva)],
-        ["Total situation TTC", _eur(ttc)],
+        ["Total do auto s/ IVA", _eur(ht)],
+        ["IVA", _eur(tva)],
+        ["Total do auto c/ IVA", _eur(ttc)],
     ]
     if ret:
-        tot.append([f"Retenue de garantie ({float(sit.get('retention_pct') or 0):g}%)", "- " + _eur(ret)])
-    tot.append(["NET À PAYER", _eur(net)])
+        tot.append([f"Retenção de garantia ({float(sit.get('retention_pct') or 0):g}%)", "- " + _eur(ret)])
+    tot.append(["LÍQUIDO A PAGAR", _eur(net)])
     tt = Table(tot, colWidths=[120 * mm, 48 * mm], hAlign="RIGHT")
     last = len(tot) - 1
     tt.setStyle(TableStyle([
@@ -115,8 +115,7 @@ def build_situation_pdf(sit: dict, branding: dict | None, client: dict | None) -
     ]))
     E.append(tt)
     E.append(Spacer(1, 16))
-    E.append(Paragraph("Décompte établi à l'avancement des travaux. La retenue de garantie est "
-                       "conservée et libérable à l'expiration du délai légal (1 an après réception).", small))
+    E.append(Paragraph("Auto elaborado segundo o avanço dos trabalhos. A retenção de garantia é conservada e libertada no termo do prazo de garantia contratual.", small))
 
     doc.build(E)
     return buf.getvalue()
@@ -134,16 +133,16 @@ def build_payment_certificate(sit: dict, branding: dict | None, client: dict | N
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
                             topMargin=16 * mm, bottomMargin=16 * mm)
     E = [Paragraph(branding.get("company_name") or "ConstruPilot", h)]
-    ids = " · ".join(filter(None, [f"SIRET {branding.get('siret')}" if branding.get("siret") else None,
-                                   f"TVA {branding.get('vat')}" if branding.get("vat") else None]))
+    ids = " · ".join(filter(None, [f"Estabelecimento {branding.get('siret')}" if branding.get("siret") else None,
+                                   f"IVA {branding.get('vat')}" if branding.get("vat") else None]))
     if ids:
         E.append(Paragraph(ids, small))
     E.append(Spacer(1, 10))
-    E.append(Paragraph(f"CERTIFICAT DE PAIEMENT N°{sit.get('seq')}", h))
-    E.append(Paragraph(f"Marché : {sit.get('marche_label') or '—'} · Facture liée : {sit.get('invoice_number') or '—'}", small))
+    E.append(Paragraph(f"CERTIFICADO DE PAGAMENTO N.º{sit.get('seq')}", h))
+    E.append(Paragraph(f"Empreitada: {sit.get('marche_label') or '—'} · Fatura associada: {sit.get('invoice_number') or '—'}", small))
     cname = client.get("name") or client.get("company") or ""
     if cname:
-        E.append(Paragraph(f"Maître d'ouvrage : {cname}", small))
+        E.append(Paragraph(f'Dono de obra: {cname}', small))
     E.append(Spacer(1, 12))
 
     ht = float(sit.get("total_ht") or 0)
@@ -154,13 +153,13 @@ def build_payment_certificate(sit: dict, branding: dict | None, client: dict | N
     works = float(sit.get("works_ht") or (ht + dep))
     rows = []
     if dep:
-        rows.append(["Travaux de la situation HT", _eur(works)])
-        rows.append(["Acompte déjà versé (déduit) HT", "- " + _eur(dep)])
+        rows.append(["Trabalhos do auto s/ IVA", _eur(works)])
+        rows.append(["Adiantamento já pago (deduzido) s/ IVA", "- " + _eur(dep)])
     rows += [
-        ["Montant des travaux (situation) HT", _eur(ht)],
-        ["Montant TTC", _eur(ttc)],
-        [f"Retenue de garantie ({float(sit.get('retention_pct') or 0):g}%)", "- " + _eur(ret)],
-        ["MONTANT CERTIFIÉ — BON À PAYER (TTC)", _eur(net)],
+        ["Montante dos trabalhos (auto) s/ IVA", _eur(ht)],
+        ["Montante c/ IVA", _eur(ttc)],
+        [f"Retenção de garantia ({float(sit.get('retention_pct') or 0):g}%)", "- " + _eur(ret)],
+        ["MONTANTE CERTIFICADO — APTO PARA PAGAMENTO (c/ IVA)", _eur(net)],
     ]
     tt = Table(rows, colWidths=[120 * mm, 48 * mm])
     last = len(rows) - 1
@@ -174,10 +173,9 @@ def build_payment_certificate(sit: dict, branding: dict | None, client: dict | N
     ]))
     E.append(tt)
     E.append(Spacer(1, 24))
-    E.append(Paragraph("Je soussigné, maître d'œuvre, certifie que les travaux correspondant au présent "
-                       "décompte ont été exécutés et donne bon à payer pour le montant certifié ci-dessus.", small))
+    E.append(Paragraph("Eu, abaixo assinado, diretor de fiscalização, certifico que os trabalhos correspondentes ao presente auto foram executados e autorizo o pagamento do montante certificado acima.", small))
     E.append(Spacer(1, 20))
-    sign = Table([["Date : ______________________", "Visa & cachet du maître d'œuvre :"]],
+    sign = Table([["Date : ______________________", "Visto e carimbo da fiscalização:"]],
                  colWidths=[84 * mm, 84 * mm])
     sign.setStyle(TableStyle([("FONTSIZE", (0, 0), (-1, -1), 9), ("VALIGN", (0, 0), (-1, -1), "TOP"),
                               ("TOPPADDING", (0, 0), (-1, -1), 30)]))
@@ -211,18 +209,18 @@ def build_dgd_pdf(recap: dict, branding: dict | None, client: dict | None) -> by
     if addr:
         E.append(Paragraph(addr, small))
     E.append(Spacer(1, 8))
-    E.append(Paragraph("DÉCOMPTE GÉNÉRAL DÉFINITIF", h))
-    meta = f"Marché : {m.get('number') or m.get('title') or '—'}"
+    E.append(Paragraph("CONTA FINAL DA EMPREITADA", h))
+    meta = f"Empreitada: {m.get('number') or m.get('title') or '—'}"
     if m.get("reception_date"):
-        meta += f" · Réception : {m['reception_date']}"
+        meta += f" · Receção: {m['reception_date']}"
     E.append(Paragraph(meta, small))
     cname = client.get("name") or client.get("company") or " ".join(
         filter(None, [client.get("first_name"), client.get("last_name")]))
     if cname:
-        E.append(Paragraph(f"Maître d'ouvrage : {cname}", small))
+        E.append(Paragraph(f'Dono de obra: {cname}', small))
     E.append(Spacer(1, 10))
 
-    rows = [["Poste du marché", "Marché HT", "Avanc.", "Facturé HT", "Solde HT"]]
+    rows = [["Artigo da empreitada", "Valor s/ IVA", "Avanc.", "Faturado s/ IVA", "Saldo s/ IVA"]]
     for ln in recap.get("lines", [])[:120]:
         rows.append([Paragraph(str(ln.get("designation") or "")[:110], small),
                      _eur(ln.get("contract_ht")), f"{float(ln.get('cumul_pct') or 0):g}%",
@@ -240,17 +238,17 @@ def build_dgd_pdf(recap: dict, branding: dict | None, client: dict | None) -> by
     E.append(tb)
     E.append(Spacer(1, 12))
 
-    tot = [["Montant du marché HT", _eur(t.get("contract_ht"))],
-           ["Travaux facturés à ce jour HT", _eur(t.get("billed_ht"))],
-           ["Solde de travaux HT", _eur(t.get("remaining_ht"))]]
+    tot = [["Montante da empreitada s/ IVA", _eur(t.get("contract_ht"))],
+           ["Trabalhos faturados até à data s/ IVA", _eur(t.get("billed_ht"))],
+           ["Saldo dos trabalhos s/ IVA", _eur(t.get("remaining_ht"))]]
     if t.get("deposit_available_ht"):
-        tot.append(["Acompte encaissé restant à imputer HT", "- " + _eur(t["deposit_available_ht"])])
-    tot.append(["Solde à facturer HT", _eur(t.get("dgd_ht"))])
-    tot.append(["Solde à facturer TTC", _eur(t.get("dgd_ttc"))])
+        tot.append(["Adiantamento recebido por imputar s/ IVA", "- " + _eur(t["deposit_available_ht"])])
+    tot.append(["Saldo a faturar s/ IVA", _eur(t.get("dgd_ht"))])
+    tot.append(["Saldo a faturar c/ IVA", _eur(t.get("dgd_ttc"))])
     if t.get("retention_held"):
-        label = "Retenue de garantie libérée" if t.get("retention_released") else "Retenue de garantie détenue"
+        label = "Retenção de garantia libertada" if t.get("retention_released") else "Retenção de garantia detida"
         tot.append([label, _eur(t["retention_held"])])
-    tot.append(["TOTAL DÛ AU TITRE DU DGD", _eur(t.get("dgd_due"))])
+    tot.append(["TOTAL DEVIDO A TÍTULO DA CONTA FINAL", _eur(t.get("dgd_due"))])
     tt = Table(tot, colWidths=[120 * mm, 48 * mm], hAlign="RIGHT")
     last = len(tot) - 1
     tt.setStyle(TableStyle([
@@ -267,9 +265,9 @@ def build_dgd_pdf(recap: dict, branding: dict | None, client: dict | None) -> by
 
     sits = recap.get("situations") or []
     if sits:
-        srows = [["Situation", "Facture", "Montant TTC", "Acompte déduit HT", "Retenue"]]
+        srows = [["Situação", "Fatura", "Montante c/ IVA", "Adiantamento deduzido s/ IVA", "Retenção"]]
         for sx in sits:
-            srows.append([f"N°{sx.get('seq')}", str(sx.get("invoice_number") or "—"),
+            srows.append([f"N.º{sx.get('seq')}", str(sx.get("invoice_number") or "—"),
                           _eur(sx.get("total_ttc")), _eur(sx.get("deposit_imputed_ht")),
                           _eur(sx.get("retention_amount"))])
         st = Table(srows, colWidths=[24 * mm, 44 * mm, 34 * mm, 34 * mm, 32 * mm], repeatRows=1)
@@ -279,14 +277,12 @@ def build_dgd_pdf(recap: dict, branding: dict | None, client: dict | None) -> by
             ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
             ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
         ]))
-        E.append(Paragraph("Récapitulatif des situations", small))
+        E.append(Paragraph("Resumo dos autos de medição", small))
         E.append(Spacer(1, 4))
         E.append(st)
         E.append(Spacer(1, 12))
 
     E.append(Paragraph(
-        "Le présent décompte général définitif arrête les comptes du marché : travaux exécutés, "
-        "acomptes versés et retenue de garantie. Il vaut solde du marché sous réserve des réserves "
-        "de réception éventuelles.", small))
+        "A presente conta final encerra as contas da empreitada: trabalhos executados, adiantamentos pagos e retenção de garantia. Vale como saldo da empreitada, sob reserva das eventuais reservas de receção.", small))
     doc.build(E)
     return buf.getvalue()

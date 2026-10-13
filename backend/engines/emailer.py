@@ -24,7 +24,7 @@ def _configure():
 def _from(from_name: str | None = None):
     addr = os.environ.get("SENDER_EMAIL")
     if not addr:
-        raise RuntimeError("SENDER_EMAIL manquant : configurez une adresse d'un domaine vérifié chez Resend")
+        raise RuntimeError("SENDER_EMAIL em falta: configure um endereço de um domínio verificado na Resend")
     if from_name:
         clean = from_name.replace('"', "").replace("<", "").replace(">", "").strip()[:80]
         if clean:
@@ -35,7 +35,7 @@ def _from(from_name: str | None = None):
 async def send_email(to: str, subject: str, html: str,
                      reply_to: str | None = None, from_name: str | None = None) -> dict:
     if not _configure():
-        raise RuntimeError("RESEND_API_KEY manquant")
+        raise RuntimeError("RESEND_API_KEY em falta")
     params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html}
     if reply_to:
         params["reply_to"] = reply_to
@@ -58,7 +58,7 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
     extra_attachments : liste de dicts {filename, content (bytes)}.
     """
     if not _configure():
-        raise RuntimeError("RESEND_API_KEY manquant")
+        raise RuntimeError("RESEND_API_KEY em falta")
     attachments = [{
         "filename": filename,
         "content": base64.b64encode(pdf_bytes).decode("utf-8"),
@@ -141,10 +141,7 @@ def _footer(unsubscribe_url: str | None = None) -> str:
     unsub_row = ""
     if unsubscribe_url:
         unsub_row = (
-            f'<tr><td style="padding:8px 24px 20px;background:#f8fafc;text-align:center">'
-            f'<a href="{unsubscribe_url}" style="color:#94A3B8;font-size:11px;'
-            f'text-decoration:underline">Se désinscrire des emails marketing</a>'
-            f'</td></tr>'
+            f'<tr><td style="padding:8px 24px 20px;background:#f8fafc;text-align:center"><a href="{unsubscribe_url}" style="color:#94A3B8;font-size:11px;text-decoration:underline">Cancelar a subscrição dos e-mails de marketing</a></td></tr>'
         )
     # SVG logo inline (small brand mark)
     logo_svg = (
@@ -185,25 +182,7 @@ def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str 
                f'style="background:{BRAND};color:#fff;text-decoration:none;padding:12px 20px;'
                f'font-family:Arial,sans-serif;font-size:14px;font-weight:bold;border-radius:4px;'
                f'display:inline-block">{cta_label}</a></td></tr>')
-    return f"""<!doctype html>
-<html><body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">
-<tr><td align="center">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0"
-       style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
-<tr><td style="padding:24px;border-bottom:2px solid {BRAND}">
-  <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px">
-    ConstruPilot
-  </div>
-  <div style="color:#64748B;font-size:12px;margin-top:4px">Estimez, Comparez, Construisez.</div>
-</td></tr>
-<tr><td style="padding:28px">
-  <h1 style="font-size:20px;margin:0 0 16px 0">{title}</h1>
-  <div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>
-  {cta}
-</td></tr>
-{_footer(unsubscribe_url)}
-</table></td></tr></table></body></html>"""
+    return f'<!doctype html>\n<html><body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">\n<tr><td align="center">\n<table role="presentation" width="560" cellpadding="0" cellspacing="0"\n       style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">\n<tr><td style="padding:24px;border-bottom:2px solid {BRAND}">\n  <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px">\n    ConstruPilot\n  </div>\n  <div style="color:#64748B;font-size:12px;margin-top:4px">Estime, Compare, Construa.</div>\n</td></tr>\n<tr><td style="padding:28px">\n  <h1 style="font-size:20px;margin:0 0 16px 0">{title}</h1>\n  <div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>\n  {cta}\n</td></tr>\n{_footer(unsubscribe_url)}\n</table></td></tr></table></body></html>'
 
 
 
@@ -231,14 +210,11 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
         header = (f'<img src="{src}" alt="{company_name}" '
                   f'style="max-height:76px;max-width:260px;display:block;margin:0 auto"/>')
     else:
-        header = (f'<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;'
-                  f'text-align:center;color:#0A0D14">{company_name or "Devis"}</div>')
+        header = (f"""<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;text-align:center;color:#0A0D14">{company_name or 'Orçamento'}</div>""")
 
     badge = ""
     if verified:
-        chip = ('<span style="display:inline-block;background:#E8F3ED;color:#3F7D54;'
-                'font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;'
-                'border:1px solid #C4E1D0">&#10004; Pro vérifié par ConstruPilot</span>')
+        chip = ("<span style=\"display:inline-block;background:#E8F3ED;color:#3F7D54;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid #C4E1D0\">&#10004; Profissional verificado pelo ConstruPilot</span>")
         if verify_url:
             chip = (f'<a href="{verify_url}" style="text-decoration:none" '
                     f'target="_blank" rel="noopener">{chip}</a>')
@@ -251,9 +227,9 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
     if nif:
         _id_parts.append(f"NIF {nif}")
     if not nif and siret:
-        _id_parts.append(f"SIRET {siret}")
+        _id_parts.append(f'Estabelecimento {siret}')
     if vat:
-        _id_parts.append(f"{'IVA' if nif else 'TVA'} {vat}")
+        _id_parts.append(f"{('IVA' if nif else 'IVA')} {vat}")
     if alvara:
         _id_parts.append(f"Alvará {alvara}")
     ids = " · ".join(_id_parts)

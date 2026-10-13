@@ -238,14 +238,14 @@ export default function EInvoicing() {
           <p className="text-sm text-muted-foreground mt-2 mb-5">Indique o NIPC da sua empresa e a plataforma aprovada que a representa.</p>
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground">SIRET (14 dígitos)</label>
-              <Input value={siret} onChange={(e) => setSiret(e.target.value)} placeholder="542 109 227 00018" className="rounded-sm mt-1 num" data-testid="einv-siret-input" />
+              <label className="text-xs font-semibold text-muted-foreground">NIF / NIPC (9 dígitos)</label>
+              <Input value={siret} onChange={(e) => setSiret(e.target.value)} placeholder="501 234 567" className="rounded-sm mt-1 num" data-testid="einv-siret-input" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Plataforma (PDP)</label>
               <Input value={platform} onChange={(e) => setPlatform(e.target.value)} placeholder="Iopole" className="rounded-sm mt-1" data-testid="einv-platform-input" />
             </div>
-            <Button className="rounded-sm gap-2 w-full" disabled={busy || siret.replace(/\D/g, "").length !== 14} onClick={connect} data-testid="einv-connect-btn">
+            <Button className="rounded-sm gap-2 w-full" disabled={busy || siret.replace(/\D/g, "").length !== 9} onClick={connect} data-testid="einv-connect-btn">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />} Conectar (simulado)
             </Button>
           </div>

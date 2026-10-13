@@ -28,7 +28,7 @@ class LinkedSection(Strict):
     @model_validator(mode="after")
     def unique_cases(self):
         if len(set(self.case_ids)) != len(self.case_ids):
-            raise ValueError("Combinaison liée en double")
+            raise ValueError("Combinação ligada em duplicado")
         return self
 
 
@@ -41,22 +41,22 @@ def inspect_links(model):
     manual_ids = {s.id for s in model.reinforcement.sections} if model.reinforcement else set()
     for link in model.linked_sections:
         if link.id in ids or link.id in manual_ids:
-            issue(link, "repère d'aciers dupliqué entre sections liées ou indépendantes.")
+            issue(link, "referência de armaduras duplicada entre secções ligadas ou independentes.")
         ids.add(link.id)
         e = elements.get(link.element_id)
         if e is None or e.kind != "beam":
-            issue(link, "lier une poutre isostatique du modèle, ou une dalle représentée par une poutre équivalente.")
+            issue(link, "ligar uma viga isostática do modelo, ou uma laje representada por uma viga equivalente.")
             continue
         if any(case not in combinations for case in link.case_ids):
-            issue(link, "chaque cas doit être une combinaison explicite du modèle ; actions isolées exclues.")
+            issue(link, "cada caso deve ser uma combinação explícita do modelo; ações isoladas excluídas.")
         if e.height_m is None or link.tension_centroid_from_face_mm >= e.height_m*1000:
-            issue(link, "centre des aciers hors de la hauteur de section.")
+            issue(link, "centro das armaduras fora da altura da secção.")
         if link.kind == "slab_strip":
             if not link.uniform_across_width:
-                issue(link, "la répartition uniforme dans la largeur doit être justifiée explicitement.")
+                issue(link, "a distribuição uniforme na largura deve ser justificada explicitamente.")
             if any(l.mode == "point" for l in e.loads) or any(
                 s.target == e.id and s.receiving == "point" for incoming in model.elements for s in incoming.supports):
-                issue(link, "une charge ponctuelle ne peut pas être divisée automatiquement par la largeur de dalle.")
+                issue(link, "uma carga pontual não pode ser dividida automaticamente pela largura da laje.")
     return issues
 
 
@@ -64,7 +64,7 @@ def calculate_links(model, gravity_result):
     out = {"engine_version": VERSION, "input_hash": gravity_result["input_hash"],
            "status": "blocked" if gravity_result["status"] == "blocked" else "partial",
            "execution_ready": False, "sections": [], "unresolved": UNRESOLVED,
-           "scope": "Flexion positive de travées simplement appuyées ; aucune continuité ni armature sur appui déduite."}
+           "scope": "Flexão positiva de vãos simplesmente apoiados; nenhuma continuidade nem armadura sobre apoio deduzida."}
     if out["status"] == "blocked":
         out["issues"] = gravity_result["issues"]
         return out
@@ -90,7 +90,7 @@ def calculate_links(model, gravity_result):
         governing = max(complete, key=lambda r: r["result"]["as_required_mm2"]) if len(complete) == len(rows) else None
         out["sections"].append({"id": link.id, "element_id": e.id, "kind": link.kind,
             "status": status, "execution_ready": False, "input_hash": gravity_result["input_hash"],
-            "force_divisor": divisor, "force_basis": "Par mètre de largeur" if link.kind == "slab_strip" else "Section entière",
+            "force_divisor": divisor, "force_basis": "Por metro de largura" if link.kind == "slab_strip" else "Secção inteira",
             "span_m": e.length_m, "source": link.source, "cases": rows,
             "governing_flexure_case": governing["case_id"] if governing else None,
             "as_required_envelope_mm2": governing["result"]["as_required_mm2"] if governing else None})

@@ -25,27 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 ANALYSIS_SYSTEM = (
-    "Tu es expert en lecture de plans architecturaux et techniques BTP en France. "
-    "Analyse l'image fournie et détecte :\n"
-    "  - le type de plan (masse / niveau / coupe / façade / détail)\n"
-    "  - l'échelle si visible\n"
-    "  - les cotes principales et leurs valeurs\n"
-    "  - les éléments présents (murs, poteaux, portes, fenêtres, escaliers, sanitaires)\n"
-    "  - les annotations techniques (matériaux, sections, référentiels DTU)\n"
-    "  - toute pathologie visible (fissures, humidité, désordres)\n"
-    "Réponds en JSON strict :\n"
-    "{\n"
-    '  "plan_type": str,\n'
-    '  "scale": str|null,\n'
-    '  "orientation": str|null,\n'
-    '  "dimensions": [ { "label": str, "value_m": number|null, "raw": str } ],\n'
-    '  "elements": [ { "kind": str, "count": int, "confidence": 0..1, "notes": str|null } ],\n'
-    '  "annotations": [str],\n'
-    '  "pathologies": [str],\n'
-    '  "text_detected": str,\n'
-    '  "warnings": [str]\n'
-    "}\n"
-    "Ne renvoie AUCUN texte hors JSON."
+    "És especialista em leitura de plantas de arquitetura e técnicas de construção em Portugal. Analisa a imagem fornecida e deteta:\n  - o tipo de planta (implantação / piso / corte / alçado / pormenor)\n  - a escala, se visível\n  - as cotas principais e os seus valores\n  - os elementos presentes (paredes, pilares, portas, janelas, escadas, sanitários)\n  - as anotações técnicas (materiais, secções, referências normativas)\n  - qualquer patologia visível (fissuras, humidade, anomalias)\nResponde em JSON estrito (textos em português europeu):\n{\n  \"plan_type\": str,\n  \"scale\": str|null,\n  \"orientation\": str|null,\n  \"dimensions\": [ { \"label\": str, \"value_m\": number|null, \"raw\": str } ],\n  \"elements\": [ { \"kind\": str, \"count\": int, \"confidence\": 0..1, \"notes\": str|null } ],\n  \"annotations\": [str],\n  \"pathologies\": [str],\n  \"text_detected\": str,\n  \"warnings\": [str]\n}\nNão devolvas NENHUM texto fora do JSON."
 )
 
 
@@ -66,7 +46,7 @@ async def _analyze_with_provider(
             system_message=ANALYSIS_SYSTEM,
         ).with_model(provider, model)
         msg = UserMessage(
-            text="Analyse cette image et renvoie le JSON demandé.",
+            text="Analisa esta imagem e devolve o JSON pedido.",
             file_contents=[ImageContent(image_base64=image_b64)],
         )
         raw = await chat.send_message(msg)
@@ -140,7 +120,7 @@ def validate_provider_result(raw: dict, provider: str) -> dict | None:
             continue
         cnt, conf = el.get("count"), el.get("confidence")
         if isinstance(cnt, bool) or not isinstance(cnt, (int, float)) or cnt < 0:
-            out["warnings"].append(f"{provider} : comptage invalide pour « {el.get('kind')} » ignoré")
+            out["warnings"].append(f"{provider}: contagem inválida para «{el.get('kind')}» ignorada")
             continue
         conf = float(conf) if isinstance(conf, (int, float)) and not isinstance(conf, bool) else None
         out["elements"].append({"kind": _norm_kind(el["kind"]), "count": int(cnt),
@@ -225,7 +205,7 @@ async def analyze_plan_image(
     providers_used = [r["provider"] for r in results]
 
     if not results:
-        return {"ok": False, "status": "failed", "error": "Aucun fournisseur vision n'a répondu : lecture IA indisponible, relancez l'analyse.",
+        return {"ok": False, "status": "failed", "error": "Nenhum fornecedor de visão respondeu: leitura IA indisponível, relance a análise.",
                 "providers_used": [], "providers_failed": providers_failed, "elements": [], "warnings": []}
 
     elements, needs_review = merge_observations(results)
@@ -234,10 +214,10 @@ async def analyze_plan_image(
         warnings.extend(f"{r['provider']} : {w}" for w in r["warnings"])
     if len(results) < 2:
         needs_review = True
-        warnings.append("Un seul fournisseur a répondu : comptages non recoupés.")
+        warnings.append("Apenas um fornecedor respondeu: contagens não cruzadas.")
     disagreements = [e for e in elements if e["disagreement"]]
     if disagreements:
-        warnings.append("Désaccord entre fournisseurs sur : " + ", ".join(f"{e['kind']} ({e['count_range'][0]}–{e['count_range'][1]})" for e in disagreements[:6]))
+        warnings.append("Desacordo entre fornecedores sobre: " + ", ".join(f"{e['kind']} ({e['count_range'][0]}–{e['count_range'][1]})" for e in disagreements[:6]))
 
     def pick(field: str, default=None):
         for r in results:
@@ -265,22 +245,18 @@ async def analyze_plan_image(
         "providers_failed": providers_failed,
         "escalated_to_third_provider": escalated,
         "provider_count": len(providers_used),
-        "confidence_note": "Les confiances déclarées par les modèles ne sont pas des probabilités mesurées.",
+        "confidence_note": "As confianças declaradas pelos modelos não são probabilidades medidas.",
     }
 
     # Étape 3 : check normes/DTU applicables via Perplexity (optionnel)
     if include_web_check and pplx.configured() and (all_annotations or all_pathologies):
         try:
             check_question = (
-                "Éléments détectés sur ce plan : "
-                f"annotations = {', '.join(all_annotations[:10]) or '(aucune)'} ; "
-                f"pathologies = {', '.join(all_pathologies[:10]) or '(aucune)'} ; "
-                f"type = {result.get('plan_type') or 'inconnu'}. "
-                "Quels DTU / normes / points de vigilance réglementaires s'appliquent ?"
+                f"Elementos detetados nesta planta: anotações = {', '.join(all_annotations[:10]) or '(nenhuma)'} ; pathologies = {', '.join(all_pathologies[:10]) or '(nenhuma)'} ; type = {result.get('plan_type') or 'inconnu'}. Que normas / regulamentos / pontos de atenção regulamentares se aplicam?"
             )
             check = await pplx.ask(
                 question=check_question,
-                instructions="Réponds en français, concis, avec DTU / NF / URL. Liste maximum 8 points.",
+                instructions="Responde em português europeu, de forma concisa, com normas NP EN / regulamentos / URL. Lista no máximo 8 pontos.",
                 preset="medium",
                 domain_filter=["legifrance.gouv.fr", "cstb.fr", "afnor.org", "boutique.afnor.org"],
                 search_context_size="medium",

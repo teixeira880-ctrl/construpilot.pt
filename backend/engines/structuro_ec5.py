@@ -14,8 +14,7 @@ import math
 from engines.structuro_check import DISCLAIMER, util_status
 
 VERSION = "ec5-member-0.1.0"
-SOURCE = ("EN 1995-1-1 §6.1.6 (flexion), §6.1.7 (cisaillement, kcr), §6.3.3 (déversement) ; "
-          "valeurs EN 338 / EN 14080 publiques — à vérifier")
+SOURCE = ("NP EN 1995-1-1 §6.1.6 (flexão), §6.1.7 (corte, kcr), §6.3.3 (encurvadura lateral); valores EN 338 / EN 14080 públicos — a verificar")
 
 CLASSES = {
     "C18": {"fm_k": 18, "fv_k": 3.4, "E0_mean": 9000, "E0_05": 6000, "rho_k": 320, "kind": "solid"},
@@ -33,7 +32,7 @@ def catalog() -> dict:
     return {"version": VERSION, "classes": [{"key": k, **v} for k, v in CLASSES.items()],
             "kmod": KMOD, "gamma_m": GAMMA_M, "service_classes": ["1", "2", "3"],
             "load_durations": list(KMOD["1-2"]),
-            "note": "Classes EN 338 (massif) / EN 14080 (lamellé-collé). " + DISCLAIMER}
+            "note": "Classes EN 338 (maciça) / EN 14080 (lamelada colada). " + DISCLAIMER}
 
 
 def kmod_value(service_class, load_duration) -> float:
@@ -72,7 +71,7 @@ def verify(med_knm: float, ved_kn: float = 0.0, *, b_m: float, h_m: float, fm_k:
                 "formula": "σm,crit=0.78·b²·E0,05/(h·lef) ; λrel,m=√(fm,k/σm,crit) ; σm,d ≤ kcrit·fm,d"}
     else:
         stab = {"utilisation": util_status(None),
-                "note": "Déversement non calculé : fournir la longueur efficace lef (ou maintien latéral)."}
+                "note": "Encurvadura lateral não calculada: fornecer o comprimento efetivo lef (ou travamento lateral)."}
     return {"version": VERSION, "bending": bending, "shear": shear, "lateral_torsional": stab,
             "params": {"kmod": kmod, "gamma_m": gamma_m}, "source": SOURCE, "execution_ready": False}
 
@@ -94,12 +93,12 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
         v = (ee.get("uls") or {}).get("shear_kn")
         if not m:
             rows.append({"id": rid, "status": "no_envelope",
-                         "message": "Générez d'abord les combinaisons EN 1990 (moment dimensionnant manquant)."})
+                         "message": "Gere primeiro as combinações NP EN 1990 (momento condicionante em falta)."})
             continue
         b, h = el.get("width_m"), el.get("height_m")
         if not b or not h or not cls:
             rows.append({"id": rid, "status": "missing_section",
-                         "message": "Largeur, hauteur et classe de résistance requises."})
+                         "message": "Largura, altura e classe de resistência obrigatórias."})
             continue
         res = verify(m["value"], (v or {}).get("value", 0.0), b_m=b, h_m=h, fm_k=cls["fm_k"], fv_k=cls["fv_k"],
                      E0_05=cls["E0_05"], kmod=kmod, gamma_m=gm, kind=cls["kind"],
@@ -108,5 +107,4 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
         rows.append({"id": rid, "status": "ok", "strength_class": opts.get("strength_class", "C24"),
                      "b_m": round(b, 3), "h_m": round(h, 3), "med_case": m.get("label"), "result": res})
     return {"version": VERSION, "elements": rows, "execution_ready": False,
-            "note": f"kmod={kmod} (classe de service {opts.get('service_class', '1')}, "
-                    f"durée {opts.get('load_duration', 'medium')}). " + DISCLAIMER}
+            "note": f"kmod={kmod} (classe de serviço {opts.get('service_class', '1')}, duração {opts.get('load_duration', 'medium')}). " + DISCLAIMER}

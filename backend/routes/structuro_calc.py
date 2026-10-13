@@ -40,16 +40,16 @@ def now():
 
 async def owned(study_id,user):
     s=await db.structuro_calculations.find_one({"study_id":study_id,"user_id":user["user_id"]},{"_id":0})
-    if not s: raise HTTPException(404,"Étude introuvable")
+    if not s: raise HTTPException(404,"Estudo não encontrado")
     return s
 
 
 async def source_plan(s,user):
     if not s.get("plan_id"): return None
     p=await db.plans_takeoff.find_one({"plan_id":s["plan_id"],"user_id":user["user_id"]},{"_id":0})
-    if not p: raise HTTPException(404,"PC source introuvable")
+    if not p: raise HTTPException(404,"Projeto de origem não encontrado")
     if p.get("updated_at")!=s.get("source_updated_at"):
-        raise HTTPException(409,"Le PC source a changé. Créez une nouvelle étude depuis sa version actuelle.")
+        raise HTTPException(409,"O projeto de origem mudou. Crie um novo estudo a partir da sua versão atual.")
     return p
 
 
@@ -104,14 +104,14 @@ async def list_studies(user=Depends(current_user)):
 @router.post("/studies")
 async def create(body:CreateIn,user=Depends(current_user)):
     demos=(body.demonstration,body.drawing_demonstration,body.automation_demonstration)
-    if body.plan_id and any(demos): raise HTTPException(422,"Un exemple ne peut pas être associé à un PC réel")
-    if sum(demos)>1: raise HTTPException(422,"Choisir un seul exemple")
+    if body.plan_id and any(demos): raise HTTPException(422,"Um exemplo não pode ser associado a um projeto real")
+    if sum(demos)>1: raise HTTPException(422,"Escolher um único exemplo")
     plan=None
     if body.plan_id:
         plan=await db.plans_takeoff.find_one({"plan_id":body.plan_id,"user_id":user["user_id"]},{"_id":0})
-        if not plan: raise HTTPException(404,"PC introuvable")
+        if not plan: raise HTTPException(404,"Projeto não encontrado")
     model=example() if body.demonstration else Model(
-        title=(plan.get("filename") or "Étude structure")[:160] if plan else "Étude structure",
+        title=(plan.get("filename") or "Estudo de estruturas")[:160] if plan else "Estudo de estruturas",
         actions=[Action(id="G",kind="G",label="Permanentes"),Action(id="Q",kind="Q",label="Exploitation")],self_weight_action="G")
     if body.drawing_demonstration:
         from engines.structuro_drawing_example import drawing_example
@@ -145,7 +145,7 @@ async def get(study_id:str,user=Depends(current_user)):
 async def save(study_id:str,body:SaveIn,user=Depends(current_user)):
     s=await owned(study_id,user)
     await source_plan(s,user)
-    if s["revision"]!=body.expected_revision: raise HTTPException(409,"Étude modifiée ; rechargez avant de sauvegarder")
+    if s["revision"]!=body.expected_revision: raise HTTPException(409,"Estudo modificado; recarregue antes de guardar")
     model=body.model;auto_report=None
     if model.automation_settings and model.automation_settings.confirmed and model.automation_settings.regenerate_on_save:
         model,auto_report=await asyncio.to_thread(run_automation,model)
@@ -153,7 +153,7 @@ async def save(study_id:str,body:SaveIn,user=Depends(current_user)):
     patch={"model":model.model_dump(),"result":result,"revision":s["revision"]+1,"updated_at":now(),
            "last_editor":user["user_id"],"automation_result":auto_report}
     changed=await db.structuro_calculations.update_one({"study_id":study_id,"user_id":user["user_id"],"revision":body.expected_revision},{"$set":patch})
-    if not changed.matched_count: raise HTTPException(409,"Modification concurrente ; rechargez")
+    if not changed.matched_count: raise HTTPException(409,"Modificação concorrente; recarregue")
     return {**s,**patch}
 
 
@@ -161,25 +161,25 @@ async def save(study_id:str,body:SaveIn,user=Depends(current_user)):
 async def read_page(study_id:str,body:ReadIn,user=Depends(current_user)):
     s=await owned(study_id,user)
     p=await source_plan(s,user)
-    if not p: raise HTTPException(422,"Associez un PC à cette étude")
+    if not p: raise HTTPException(422,"Associe um projeto a este estudo")
     pages=p.get("pages") or []
-    if body.page>len(pages): raise HTTPException(422,"Page hors du document")
-    if s["revision"]!=body.expected_revision: raise HTTPException(409,"Étude modifiée ; rechargez")
+    if body.page>len(pages): raise HTTPException(422,"Página fora do documento")
+    if s["revision"]!=body.expected_revision: raise HTTPException(409,"Estudo modificado; recarregue")
     previous=(s.get("page_readings") or {}).get(str(body.page))
     if previous: return s  # idempotent; no repeat paid call or duplicate elements
     try:
         reading=await asyncio.wait_for(structuro_pc.read_page(pages[body.page-1],body.page,p.get("filename") or "PC"),timeout=85)
     except (ValueError,ValidationError):
-        raise HTTPException(422,"Lecture inexploitable ; aucune donnée n'a été ajoutée") from None
+        raise HTTPException(422,"Leitura inutilizável; nenhum dado foi acrescentado") from None
     except asyncio.TimeoutError:
-        raise HTTPException(504,"Lecture trop longue ; la page reste à analyser") from None
+        raise HTTPException(504,"Leitura demasiado longa; a página continua por analisar") from None
     except Exception:
-        raise HTTPException(502,"Lecture IA indisponible ; les données existantes sont conservées") from None
+        raise HTTPException(502,"Leitura IA indisponível; os dados existentes são conservados") from None
     # Store candidates independently: user must select and deduplicate across sheets.
     patch={f"page_readings.{body.page}":reading,"revision":s["revision"]+1,"updated_at":now()}
     await source_plan(s,user)  # source may have changed while the provider was reading
     changed=await db.structuro_calculations.update_one({"study_id":study_id,"user_id":user["user_id"],"revision":body.expected_revision},{"$set":patch})
-    if not changed.matched_count: raise HTTPException(409,"Étude modifiée pendant la lecture ; rechargez")
+    if not changed.matched_count: raise HTTPException(409,"Estudo modificado durante a leitura; recarregue")
     return await owned(study_id,user)
 
 
@@ -202,7 +202,7 @@ async def generate_combinations(study_id: str, body: GenCombosIn, user=Depends(c
     s = await owned(study_id, user)
     await source_plan(s, user)
     if s["revision"] != body.expected_revision:
-        raise HTTPException(409, "Étude modifiée ; rechargez avant de générer")
+        raise HTTPException(409, "Estudo modificado; recarregue antes de gerar")
     model = Model.model_validate(s["model"])
     generated = eurocode.generate(model.actions, body.categories, body.options, body.psi_overrides)
     proposal = [c.model_dump() for c in generated]
@@ -212,8 +212,7 @@ async def generate_combinations(study_id: str, body: GenCombosIn, user=Depends(c
             if not (eurocode.is_uls(c.id) or eurocode.is_sls(c.id))] if body.replace_generated else list(model.combinations)
     merged = kept + generated
     if len(merged) > 12:
-        raise HTTPException(422, "Trop de combinaisons (maximum 12). Réduisez les cas variables "
-                                 "ou désactivez une classe (p. ex. ELS fréquente).")
+        raise HTTPException(422, "Demasiadas combinações (máximo 12). Reduza os casos variáveis ou desative uma classe (p. ex. ELS frequente).")
     model.combinations = merged
     model = Model.model_validate(model.model_dump())
     result = await asyncio.to_thread(calculate, model)
@@ -222,7 +221,7 @@ async def generate_combinations(study_id: str, body: GenCombosIn, user=Depends(c
     changed = await db.structuro_calculations.update_one(
         {"study_id": study_id, "user_id": user["user_id"], "revision": body.expected_revision}, {"$set": patch})
     if not changed.matched_count:
-        raise HTTPException(409, "Modification concurrente ; rechargez")
+        raise HTTPException(409, "Modificação concorrente; recarregue")
     return {"generated": proposal, "applied": True, "study": {**s, **patch}}
 
 
@@ -426,7 +425,7 @@ class Ec5In(StrictModel):
 async def ec5_verify(body: Ec5In, user=Depends(current_user)):
     cls = ec5.CLASSES.get(body.strength_class)
     if not cls:
-        raise HTTPException(422, "Classe de résistance inconnue")
+        raise HTTPException(422, "Classe de resistência desconhecida")
     kmod = ec5.kmod_value(body.service_class, body.load_duration)
     gm = body.gamma_m or ec5.GAMMA_M[cls["kind"]]
     return ec5.verify(body.med_knm, body.ved_kn, b_m=body.b_m, h_m=body.h_m, fm_k=cls["fm_k"],
@@ -485,7 +484,7 @@ async def export_ferraillage(study_id: str, body: Ec2StudyIn, user=Depends(curre
     ec2_out = ec2.design_study(s.get("model") or {}, s.get("result") or {}, body.model_dump(), s.get("automation_result"))
     content = await asyncio.to_thread(build_ferraillage_pdf, s.get("model") or {}, s["revision"], ec2_out)
     return Response(content, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="ferraillage-{study_id}-r{s["revision"]}.pdf"'})
+                    headers={"Content-Disposition": f'''attachment; filename="armaduras-{study_id}-r{s['revision']}.pdf"'''})
 
 
 # ---- Fissuration EN 1992 §7.3 ----
@@ -574,7 +573,7 @@ async def opening_lintel(study_id: str, body: LintelIn, user=Depends(current_use
 # ---- Plusieurs ouvertures : liste de linteaux enregistrés dans l'étude ----
 class SavedLintelIn(LintelIn):
     id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,60}$")
-    name: str = Field(default="Ouverture", max_length=80)
+    name: str = Field(default="Vão", max_length=80)
     left: str | None = Field(default=None, max_length=60)
     right: str | None = Field(default=None, max_length=60)
 
@@ -609,7 +608,7 @@ async def save_lintels(study_id: str, body: LintelsIn, user=Depends(current_user
     await owned(study_id, user)
     ids = [x.id for x in body.lintels]
     if len(ids) != len(set(ids)):
-        raise HTTPException(422, "Identifiants de linteaux en doublon")
+        raise HTTPException(422, "Identificadores de padieiras duplicados")
     stored = _store_lintels(body.lintels)
     await db.structuro_calculations.update_one(
         {"study_id": study_id, "user_id": user["user_id"]},
@@ -622,18 +621,18 @@ async def export_lintel(study_id: str, lintel_id: str, fmt: str, user=Depends(cu
     s = await owned(study_id, user)
     entry = next((x for x in s.get("lintels", []) if x.get("id") == lintel_id), None)
     if not entry:
-        raise HTTPException(404, "Linteau introuvable ; enregistrez d'abord la liste des ouvertures")
+        raise HTTPException(404, "Padieira não encontrada; guarde primeiro a lista das aberturas")
     res = entry.get("result") or lintel.lintel_design(entry.get("inputs") or {})
-    nm = entry.get("name", "Ouverture")
+    nm = entry.get("name", "Vão")
     if fmt == "pdf":
         content = await asyncio.to_thread(build_lintel_pdf, res, nm, s["revision"]); mime = "application/pdf"
     elif fmt == "dxf":
         content = await asyncio.to_thread(build_lintel_dxf, res, nm); mime = "application/dxf"
     else:
-        raise HTTPException(422, "Format disponible : pdf ou dxf")
+        raise HTTPException(422, "Formato disponível: pdf ou dxf")
     safe = "".join(c if c.isalnum() else "-" for c in nm)[:40] or "linteau"
     return Response(content, media_type=mime, headers={"Cache-Control": "no-store",
-                    "Content-Disposition": f'attachment; filename="linteau-{safe}-{lintel_id}.{fmt}"'})
+                    "Content-Disposition": f'attachment; filename="padieira-{safe}-{lintel_id}.{fmt}"'})
 
 
 
@@ -685,7 +684,7 @@ async def export_dossier(study_id: str, body: DossierIn, user=Depends(current_us
     if "lintel" in inc:
         saved = s.get("lintels") or []
         if saved:
-            sections["lintels"] = [{"name": x.get("name", "Ouverture"),
+            sections["lintels"] = [{"name": x.get("name", "Vão"),
                                     "result": x.get("result") or lintel.lintel_design(x.get("inputs") or {})}
                                    for x in saved]
         elif body.lintel is not None:
@@ -700,23 +699,23 @@ async def export(study_id:str,fmt:str,user=Depends(current_user),expected_revisi
     s=await owned(study_id,user)
     await source_plan(s,user)
     if expected_revision is not None and expected_revision!=s["revision"]:
-        raise HTTPException(409,"Révision dépassée ; rechargez l'étude avant l'export")
+        raise HTTPException(409,"Revisão ultrapassada; recarregue o estudo antes da exportação")
     model=Model.model_validate(s["model"])
     if fmt=="pdf":
         content=await asyncio.to_thread(build_pdf,model,s["revision"]);mime="application/pdf"
     elif fmt=="dxf":
         content=await asyncio.to_thread(build_dxf,model,s["revision"]);mime="application/dxf"
     elif fmt=="aciers":
-        if model.reinforcement is None and not model.linked_sections: raise HTTPException(422,"Aucun dossier d'armatures")
+        if model.reinforcement is None and not model.linked_sections: raise HTTPException(422,"Nenhum processo de armaduras")
         content=await asyncio.to_thread(build_rebar_pdf,model,s["revision"]);mime="application/pdf"
     elif fmt in ("plans","nomenclature","dossier"):
         manifest=await asyncio.to_thread(compile_dossier,model,s["revision"])
-        if not manifest["can_export"]: raise HTTPException(422,{"message":"Dossier géométrique incomplet","errors":manifest["errors"]})
+        if not manifest["can_export"]: raise HTTPException(422,{"message":"Processo geométrico incompleto","errors":manifest["errors"]})
         if fmt=="dossier":
             from engines.structuro_automation_exports import build_automation_pdf
             auto=s.get("automation_result")
             if not auto or auto.get("output_input_hash")!=calculate(model)["input_hash"]:
-                raise HTTPException(409,"Relancez la génération automatique pour produire le dossier complet")
+                raise HTTPException(409,"Relance a geração automática para produzir o processo completo")
             def make_zip():
                 out=io.BytesIO()
                 with zipfile.ZipFile(out,"w",zipfile.ZIP_DEFLATED) as z:
@@ -733,10 +732,10 @@ async def export(study_id:str,fmt:str,user=Depends(current_user),expected_revisi
             mime="application/pdf" if fmt=="plans" else "text/csv"
     elif fmt=="json":
         content=model.model_dump_json(indent=2).encode();mime="application/json"
-    else: raise HTTPException(422,"Format disponible : pdf, dxf, aciers, plans, nomenclature, dossier ou json")
+    else: raise HTTPException(422,"Formato disponível: pdf, dxf, aciers, plans, nomenclature, dossier ou json")
     await source_plan(s,user)
     if (await owned(study_id,user))["revision"]!=s["revision"]:
-        raise HTTPException(409,"Étude modifiée pendant la génération ; rechargez")
+        raise HTTPException(409,"Estudo modificado durante a geração; recarregue")
     suffix={"aciers":"pdf","plans":"pdf","nomenclature":"csv","dossier":"zip"}.get(fmt,fmt)
     return Response(content,media_type=mime,headers={"Cache-Control":"no-store","X-Study-Revision":str(s["revision"]),
         "Content-Disposition":f'attachment; filename="structure-{fmt}-{study_id}-r{s["revision"]}.{suffix}"'})
@@ -746,10 +745,10 @@ async def export(study_id:str,fmt:str,user=Depends(current_user),expected_revisi
 async def drawings(study_id:str,expected_revision:int,user=Depends(current_user)):
     s=await owned(study_id,user)
     await source_plan(s,user)
-    if expected_revision!=s["revision"]: raise HTTPException(409,"Révision dépassée ; rechargez l'étude")
+    if expected_revision!=s["revision"]: raise HTTPException(409,"Revisão ultrapassada; recarregue o estudo")
     manifest=await asyncio.to_thread(compile_dossier,Model.model_validate(s["model"]),s["revision"])
     await source_plan(s,user)
-    if (await owned(study_id,user))["revision"]!=s["revision"]: raise HTTPException(409,"Étude modifiée pendant la génération")
+    if (await owned(study_id,user))["revision"]!=s["revision"]: raise HTTPException(409,"Estudo modificado durante a geração")
     return manifest
 
 
@@ -757,15 +756,15 @@ async def drawings(study_id:str,expected_revision:int,user=Depends(current_user)
 async def drawing_sheet(study_id:str,sheet_id:str,expected_revision:int,user=Depends(current_user)):
     s=await owned(study_id,user)
     await source_plan(s,user)
-    if expected_revision!=s["revision"]: raise HTTPException(409,"Révision dépassée ; rechargez l'étude")
+    if expected_revision!=s["revision"]: raise HTTPException(409,"Revisão ultrapassada; recarregue o estudo")
     model=Model.model_validate(s["model"])
     manifest=await asyncio.to_thread(compile_dossier,model,s["revision"])
-    if not manifest["can_export"]: raise HTTPException(422,"Corrigez les erreurs du dossier avant l'aperçu")
+    if not manifest["can_export"]: raise HTTPException(422,"Corrija os erros do processo antes da pré-visualização")
     sheet=next((sh for sh in manifest["sheets"] if sh["id"]==sheet_id),None)
-    if not sheet: raise HTTPException(404,"Planche introuvable")
+    if not sheet: raise HTTPException(404,"Folha não encontrada")
     content=await asyncio.to_thread(lambda:scene_svg(build_scene(model,manifest,sheet)))
     await source_plan(s,user)
-    if (await owned(study_id,user))["revision"]!=s["revision"]: raise HTTPException(409,"Étude modifiée pendant la génération")
+    if (await owned(study_id,user))["revision"]!=s["revision"]: raise HTTPException(409,"Estudo modificado durante a geração")
     return Response(content,media_type="image/svg+xml",headers={"Cache-Control":"no-store","X-Study-Revision":str(s["revision"]),
         "Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; sandbox"})
 
@@ -774,12 +773,12 @@ async def drawing_sheet(study_id:str,sheet_id:str,expected_revision:int,user=Dep
 async def automate(study_id:str,body:SaveIn,user=Depends(current_user)):
     s=await owned(study_id,user)
     await source_plan(s,user)
-    if s["revision"]!=body.expected_revision: raise HTTPException(409,"Étude modifiée ; rechargez avant de générer")
+    if s["revision"]!=body.expected_revision: raise HTTPException(409,"Estudo modificado; recarregue antes de gerar")
     candidate,report=await asyncio.to_thread(run_automation,body.model)
     result=await asyncio.to_thread(calculate,candidate)
     await source_plan(s,user)
     patch={"model":candidate.model_dump(),"result":result,"automation_result":report,
         "revision":s["revision"]+1,"updated_at":now(),"last_editor":user["user_id"]}
     changed=await db.structuro_calculations.update_one({"study_id":study_id,"user_id":user["user_id"],"revision":body.expected_revision},{"$set":patch})
-    if not changed.matched_count: raise HTTPException(409,"Étude modifiée pendant la génération ; rechargez")
+    if not changed.matched_count: raise HTTPException(409,"Estudo modificado durante a geração; recarregue")
     return {**s,**patch}

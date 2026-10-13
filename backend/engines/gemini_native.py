@@ -73,7 +73,7 @@ async def check_key() -> tuple[bool, str]:
     try:
         from google.genai import types
         resp = await _client().aio.models.generate_content(
-            model=NATIVE_FLASH, contents="Réponds uniquement : OK",
+            model=NATIVE_FLASH, contents="Responde apenas: OK",
             config=types.GenerateContentConfig(max_output_tokens=200))
         # Pas d'exception = clé valide (les modèles « thinking » peuvent renvoyer un texte vide
         # si le budget de tokens est consommé par le raisonnement).

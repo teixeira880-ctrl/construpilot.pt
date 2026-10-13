@@ -75,8 +75,7 @@ def _compute_min_headroom(
                     level="red",
                     code="STAIRWELL_TOO_SMALL",
                     message_fr=(
-                        f"La marche n°{i} émerge au-delà de la trémie côté haut "
-                        f"(x={x_i:.0f} mm > bord haut trémie {x_end:.0f} mm)."
+                        f'O degrau n.º{i} emerge para além da abertura do lado superior (x={x_i:.0f} mm > bordo superior da abertura {x_end:.0f} mm).'
                     ),
                     metric="stairwell_length_mm",
                     value=stairwell_length_mm,
@@ -144,7 +143,7 @@ def compute_straight(
                 Alert(
                     level="red",
                     code="GEOMETRY_INVALID",
-                    message_fr="Hauteur d'étage invalide ou impossible à découper.",
+                    message_fr="Altura entre pisos inválida ou impossível de dividir.",
                 )
             ],
             is_buildable=False,
@@ -181,8 +180,7 @@ def compute_straight(
                 level="orange",
                 code="RISER_HEIGHT_NON_OPTIMAL",
                 message_fr=(
-                    f"Hauteur de marche {h_mm:.1f} mm hors plage optimale "
-                    f"[{norms.riser_height_optimal_min_mm:.0f}, {norms.riser_height_optimal_max_mm:.0f}] mm."
+                    f'Altura do espelho {h_mm:.1f} mm fora do intervalo ótimo [{norms.riser_height_optimal_min_mm:.0f}, {norms.riser_height_optimal_max_mm:.0f}] mm.'
                 ),
                 metric="riser_height_mm",
                 value=h_mm,
@@ -218,8 +216,7 @@ def compute_straight(
                 level="red",
                 code="STAIRWELL_TOO_SMALL",
                 message_fr=(
-                    f"Largeur trémie {inp.stairwell_width_mm:.0f} mm < largeur escalier "
-                    f"{inp.stair_width_mm:.0f} mm."
+                    f'Largura da abertura {inp.stairwell_width_mm:.0f} mm < largura da escada {inp.stair_width_mm:.0f} mm.'
                 ),
                 metric="stairwell_width_mm",
                 value=inp.stairwell_width_mm,

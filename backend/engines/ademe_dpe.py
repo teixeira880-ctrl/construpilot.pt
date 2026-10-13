@@ -76,9 +76,9 @@ async def fetch_dpe(numero: str) -> dict | None:
         return None
     p = rows[0]
     source = {
-        "existant": "DPE officiel — open data ADEME (dpe03existant)",
-        "neuf": "DPE neuf officiel — open data ADEME (dpe02neuf)",
-        "tertiaire": "DPE tertiaire officiel — open data ADEME (dpe01tertiaire)",
+        "existant": "Certificado energético oficial — dados abertos (existente)",
+        "neuf": "Certificado energético oficial — dados abertos (novo)",
+        "tertiaire": "Certificado energético oficial — dados abertos (serviços)",
     }[kind]
     return {
         "source": source,

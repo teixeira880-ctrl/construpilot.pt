@@ -35,15 +35,7 @@ IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FALLBACK_PAGES = 12  # limite de pages rendues en images pour le repli
 
 PROMPT = (
-    "Tu es un OCR documentaire pour le BTP (factures, devis, CCTP, DPGF, DPE). "
-    "Lis le document fourni et RESTITUE uniquement ce qui est visible. "
-    "INTERDICTION ABSOLUE de calculer, additionner, convertir, arrondir ou déduire "
-    "la moindre valeur : recopie les nombres EXACTEMENT comme affichés (chaînes). "
-    "Si un champ est absent ou illisible, mets null et ajoute un avertissement court. "
-    "N'invente jamais une valeur. Réponds en respectant le schéma JSON demandé. "
-    "Dans 'pages', mets le texte intégral de chaque page (conserve l'ordre des lignes "
-    "et les tableaux sous forme de texte). Dans 'document' et 'line_items', relève les "
-    "champs d'en-tête et les lignes du document s'il s'agit d'une facture/devis/DPGF."
+    "És um OCR documental para a construção (faturas, orçamentos, cadernos de encargos, mapas de quantidades, certificados energéticos). Lê o documento fornecido e RESTITUI apenas o que é visível. PROIBIÇÃO ABSOLUTA de calcular, somar, converter, arredondar ou deduzir qualquer valor: copia os números EXATAMENTE como apresentados (cadeias). Se um campo estiver ausente ou ilegível, põe null e acrescenta um aviso curto. Nunca inventes um valor. Responde respeitando o esquema JSON pedido. Em \'pages\', põe o texto integral de cada página (conserva a ordem das linhas e as tabelas em forma de texto). Em \'document\' e \'line_items\', regista os campos do cabeçalho e as linhas do documento se se tratar de uma fatura/orçamento/mapa de quantidades."
 )
 
 # Schéma de sortie (identique entre les deux moteurs).
@@ -118,7 +110,7 @@ def _primary_sync(raw: bytes, mime: str) -> dict:
             resp = client.models.generate_content(
                 model=model,
                 contents=[types.Part.from_bytes(data=raw, mime_type=mime), PROMPT,
-                          "Schéma attendu (exemple de structure) : " + json.dumps(_SCHEMA_HINT)],
+                          "Esquema esperado (exemplo de estrutura): " + json.dumps(_SCHEMA_HINT)],
                 config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0),
             )
             parsed = getattr(resp, "parsed", None)
@@ -127,7 +119,7 @@ def _primary_sync(raw: bytes, mime: str) -> dict:
         except ServerError as exc:  # 503 surcharge → on tente le modèle suivant
             last_exc = exc
             continue
-    raise last_exc or RuntimeError("Aucun modèle Gemini disponible")
+    raise last_exc or RuntimeError("Nenhum modelo Gemini disponível")
 
 
 async def _primary(raw: bytes, mime: str) -> dict:
@@ -162,11 +154,7 @@ async def _fallback_one(img: bytes, page_no: int) -> dict:
         system_message=PROMPT,
     ).with_model("gemini", FALLBACK_MODEL).with_params(max_tokens=8000)
     msg = UserMessage(
-        text=("Lis cette page et renvoie UNIQUEMENT un objet JSON (aucun texte autour) : "
-              '{"text": "<texte intégral de la page, lignes conservées>", '
-              '"document": {"document_type":null,"supplier_name":null,"customer_name":null,'
-              '"doc_number":null,"issue_date":null,"currency":null,"subtotal":null,"tax":null,"total":null}, '
-              '"line_items": [{"description":null,"quantity":null,"unit":null,"unit_price":null,"amount":null}]}'),
+        text=("Lê esta página e devolve APENAS um objeto JSON (nenhum texto à volta): {\"text\": \"<texto integral da página, linhas conservadas>\", \"document\": {\"document_type\":null,\"supplier_name\":null,\"customer_name\":null,\"doc_number\":null,\"issue_date\":null,\"currency\":null,\"subtotal\":null,\"tax\":null,\"total\":null}, \"line_items\": [{\"description\":null,\"quantity\":null,\"unit\":null,\"unit_price\":null,\"amount\":null}]}"),
         file_contents=[ImageContent(image_base64=base64.b64encode(img).decode("ascii"))],
     )
     text = await chat.send_message(msg)
@@ -183,7 +171,7 @@ async def _fallback(raw: bytes, mime: str, filename: str) -> dict:
     else:
         images = [raw]
     if not images:
-        raise RuntimeError("Aucune page exploitable pour le repli")
+        raise RuntimeError("Nenhuma página utilizável para o recurso")
 
     pages, line_items = [], []
     document: dict = {}
@@ -212,15 +200,15 @@ async def ocr(raw: bytes, mime: str, filename: str = "") -> dict:
             res = await _primary(raw, mime)
             if res.get("pages"):
                 return res
-            errors.append("Gemini (clé perso) : aucune page lue")
+            errors.append("Gemini (chave pessoal): nenhuma página lida")
         except Exception as exc:  # pragma: no cover - dépend du réseau
-            errors.append(f"Gemini (clé perso) indisponible : {type(exc).__name__}")
+            errors.append(f'Gemini (chave pessoal) indisponível: {type(exc).__name__}')
     if _env("EMERGENT_LLM_KEY"):
         try:
             res = await _fallback(raw, mime, filename)
             if errors:
-                res.setdefault("warnings", []).insert(0, "Repli IA utilisé — " + errors[0])
+                res.setdefault("warnings", []).insert(0, "Recurso IA utilizado — " + errors[0])
             return res
         except Exception as exc:  # pragma: no cover
-            errors.append(f"Repli Emergent indisponible : {type(exc).__name__}")
-    raise RuntimeError("; ".join(errors) or "Aucun moteur OCR configuré")
+            errors.append(f'Recurso Emergent indisponível: {type(exc).__name__}')
+    raise RuntimeError("; ".join(errors) or "Nenhum motor OCR configurado")

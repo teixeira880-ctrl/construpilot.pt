@@ -43,7 +43,7 @@ def _clean(body: ClientIn) -> dict:
 async def create_client(body: ClientIn, user=Depends(current_user)) -> dict:
     data = _clean(body)
     if not (data["first_name"] or data["last_name"] or data["company"] or data["email"]):
-        raise HTTPException(400, "Renseignez au moins un nom, une société ou un email")
+        raise HTTPException(400, "Preencha pelo menos um nome, empresa ou email")
     doc = {
         "client_id": "cli_" + secrets.token_hex(6),
         "user_id": user["user_id"],
@@ -73,7 +73,7 @@ async def get_client(client_id: str, user=Depends(current_user)) -> dict:
     doc = await db.clients.find_one(
         {"client_id": client_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Client introuvable")
+        raise HTTPException(404, "Cliente não encontrado")
     return doc
 
 
@@ -84,7 +84,7 @@ async def update_client(client_id: str, body: ClientIn,
         {"client_id": client_id, "user_id": user["user_id"]},
         {"$set": {**_clean(body), "updated_at": _now()}})
     if not res.matched_count:
-        raise HTTPException(404, "Client introuvable")
+        raise HTTPException(404, "Cliente não encontrado")
     return await get_client(client_id, user)
 
 
@@ -93,12 +93,12 @@ async def delete_client(client_id: str, user=Depends(current_user)) -> dict:
     exists = await db.clients.find_one(
         {"client_id": client_id, "user_id": user["user_id"]}, {"_id": 0, "client_id": 1})
     if not exists:
-        raise HTTPException(404, "Client introuvable")
+        raise HTTPException(404, "Cliente não encontrado")
     n_docs = await db.pro_documents.count_documents(
         {"client_id": client_id, "user_id": user["user_id"]})
     if n_docs:
         raise HTTPException(
-            400, f"Ce client a {n_docs} document(s) lié(s). Supprimez d'abord ses devis/factures.")
+            400, f'Este cliente tem {n_docs} documento(s) associado(s). Elimine primeiro os seus orçamentos/faturas.')
     from routes.trash import trash_record
     client = await db.clients.find_one({"client_id": client_id, "user_id": user["user_id"]}, {"_id": 0})
     res = await trash_record("client", client, user["user_id"])
@@ -113,12 +113,12 @@ async def client_from_plan(plan_id: str, user=Depends(current_user)) -> dict:
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "ai_analysis": 1})
     if not plan:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ci = ((plan.get("ai_analysis") or {}).get("client_info")) or {}
     has_data = any(ci.get(k) for k in ("first_name", "last_name", "company", "address"))
     if not (ci.get("detected") and has_data):
         raise HTTPException(
-            400, "Aucune information client détectée sur ce plan. Lancez d'abord l'analyse IA.")
+            400, "Nenhuma informação de cliente detetada nesta planta. Lance primeiro a análise IA.")
 
     last = (ci.get("last_name") or "").strip()
     addr = (ci.get("address") or "").strip()
@@ -140,7 +140,7 @@ async def client_from_plan(plan_id: str, user=Depends(current_user)) -> dict:
         "postal_code": (ci.get("postal_code") or "").strip()[:16],
         "city": (ci.get("city") or "").strip()[:80],
         "siret": "",
-        "notes": f"Fiche créée automatiquement depuis le plan {plan_id}.",
+        "notes": f'Ficha criada automaticamente a partir da planta {plan_id}.',
         "source": "ai_plan",
         "created_at": _now(),
         "updated_at": _now(),

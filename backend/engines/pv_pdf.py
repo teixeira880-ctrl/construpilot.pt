@@ -17,18 +17,18 @@ from engines.pdf_docs import _palette, _doc_styles, _header_banner, _page_footer
 from engines.pdf_i18n import pdf_labels
 
 DECISIONS = {
-    "sans_reserve": "Réception PRONONCÉE SANS réserve",
-    "avec_reserve": "Réception PRONONCÉE AVEC réserves",
-    "refus": "Réception REFUSÉE",
+    "sans_reserve": "Receção EFETUADA SEM reservas",
+    "avec_reserve": "Receção EFETUADA COM reservas",
+    "refus": "Receção RECUSADA",
 }
 
 
 def _client_name(c: dict) -> str:
     if not c:
-        return "Client"
+        return "Cliente"
     if c.get("company"):
         return c["company"]
-    return " ".join(x for x in [c.get("first_name"), c.get("last_name")] if x) or "Client"
+    return " ".join(x for x in [c.get("first_name"), c.get("last_name")] if x) or "Cliente"
 
 
 def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> bytes:
@@ -41,20 +41,20 @@ def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> by
     story: list = []
     _header_banner(story, branding, S, P)
 
-    story.append(Paragraph("PROCÈS-VERBAL", S["kicker"]))
-    story.append(Paragraph("Réception de travaux", S["h1"]))
+    story.append(Paragraph("AUTO DE RECEÇÃO", S["kicker"]))
+    story.append(Paragraph("Receção da obra", S["h1"]))
     meta = []
     if pv.get("ref"):
-        meta.append(f"N° {escape(str(pv['ref']))}")
+        meta.append(f"N.º {escape(str(pv['ref']))}")
     if pv.get("date_reception"):
-        meta.append(f"Date de réception : {pv['date_reception'][:10]}")
+        meta.append(f"Data de receção: {pv['date_reception'][:10]}")
     if meta:
         story.append(Paragraph(" · ".join(meta), S["muted"]))
     story.append(Spacer(1, 10))
 
     # Parties : entreprise / maître d'ouvrage
     b = branding or {}
-    ent = [f"<b>{escape(b.get('company_name') or 'Entreprise')}</b>"]
+    ent = [f"<b>{escape(b.get('company_name') or 'Empresa')}</b>"]
     if b.get("contact_line"):
         ent.append(escape(b["contact_line"]))
     fisc = _fiscal_parts(b)
@@ -71,7 +71,7 @@ def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> by
     kicker.spaceAfter = 3
     story.append(_table([[
         [Paragraph("ENTREPRISE", kicker), Paragraph("<br/>".join(ent), S["body"])],
-        [Paragraph("MAÎTRE D'OUVRAGE", kicker), Paragraph("<br/>".join(cli), S["body"])],
+        [Paragraph("DONO DE OBRA", kicker), Paragraph("<br/>".join(cli), S["body"])],
     ]], [87 * mm, 87 * mm], style_extras=[
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (0, -1), 0), ("LEFTPADDING", (1, 0), (1, -1), 12),
@@ -84,7 +84,7 @@ def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> by
     if pv.get("chantier_address"):
         site = f"{site} — {pv['chantier_address']}" if site else pv["chantier_address"]
     if site:
-        story.append(Paragraph(f"<b>Chantier :</b> {escape(site)}", S["body"]))
+        story.append(Paragraph(f'<b>Obra:</b> {escape(site)}', S["body"]))
         story.append(Spacer(1, 8))
 
     # Décision
@@ -98,11 +98,11 @@ def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> by
 
     # Réserves
     reserves = pv.get("reserves") or []
-    story.append(Paragraph(f"Réserves ({len(reserves)})", S["h2"]))
+    story.append(Paragraph(f'Reservas ({len(reserves)})', S["h2"]))
     if not reserves:
-        story.append(Paragraph("Aucune réserve n'a été formulée lors de la réception.", S["body"]))
+        story.append(Paragraph("Não foi formulada nenhuma reserva na receção.", S["body"]))
     else:
-        rows = [["N°", "Lot", "Description"]]
+        rows = [["N.º", "Lote", "Descrição"]]
         for i, r in enumerate(reserves, 1):
             rows.append([str(i), escape(r.get("lot") or "—"),
                          Paragraph(escape(r.get("description") or ""), S["body"])])
@@ -118,25 +118,25 @@ def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> by
     story.append(Spacer(1, 12))
 
     if pv.get("notes"):
-        story.append(Paragraph("Observations", S["h2"]))
+        story.append(Paragraph("Observações", S["h2"]))
         story.append(Paragraph(escape(pv["notes"]).replace("\n", "<br/>"), S["body"]))
         story.append(Spacer(1, 12))
 
     # Signatures
     pro_sig = pv.get("pro_signature") or {}
     cli_sig = pv.get("client_signature") or {}
-    pro_cell = [Paragraph("<b>Pour l'entreprise</b>", S["body"])]
+    pro_cell = [Paragraph("<b>Pela empresa</b>", S["body"])]
     if pro_sig.get("name"):
-        pro_cell.append(Paragraph(f"Signé : {escape(pro_sig['name'])}", S["muted"]))
+        pro_cell.append(Paragraph(f"Assinado: {escape(pro_sig['name'])}", S["muted"]))
         pro_cell.append(Paragraph(f"Le {pro_sig.get('at', '')[:10]}", S["muted"]))
     else:
-        pro_cell.append(Paragraph("Date et signature :", S["muted"]))
-    cli_cell = [Paragraph("<b>Pour le maître d'ouvrage</b>", S["body"])]
+        pro_cell.append(Paragraph("Data e assinatura:", S["muted"]))
+    cli_cell = [Paragraph("<b>Pelo dono de obra</b>", S["body"])]
     if cli_sig.get("name"):
-        cli_cell.append(Paragraph(f"Signé : {escape(cli_sig['name'])}", S["muted"]))
-        cli_cell.append(Paragraph(f"Le {cli_sig.get('at', '')[:10]} · en ligne", S["muted"]))
+        cli_cell.append(Paragraph(f"Assinado: {escape(cli_sig['name'])}", S["muted"]))
+        cli_cell.append(Paragraph(f"Le {cli_sig.get('at', '')[:10]} · online", S["muted"]))
     else:
-        cli_cell.append(Paragraph("Date et signature :", S["muted"]))
+        cli_cell.append(Paragraph("Data e assinatura:", S["muted"]))
     story.append(_table([[pro_cell, cli_cell]], [87 * mm, 87 * mm], style_extras=[
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("BOX", (0, 0), (0, -1), 0.6, P["line"]), ("BOX", (1, 0), (1, -1), 0.6, P["line"]),

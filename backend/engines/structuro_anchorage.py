@@ -13,7 +13,7 @@ import math
 from engines.structuro_check import DISCLAIMER
 
 VERSION = "ec2-anchorage-0.1.0"
-SOURCE = "EN 1992-1-1 §8.4 (ancrage) & §8.7 (recouvrement) — méthodologie publique, AN FR — à vérifier"
+SOURCE = "NP EN 1992-1-1 §8.4 (amarração) e §8.7 (emenda) — metodologia pública, Anexo Nacional português — a verificar"
 
 
 def _r(x, n=1):
@@ -27,7 +27,7 @@ def anchorage(bar_mm: float, *, fck: float = 25, fyk: float = 500, as_req_cm2: f
               rho1_pct: float = 50.0) -> dict:
     """Ancrage/recouvrement d'une barre tendue (Ø en mm). Longueurs rendues en mm et m."""
     if fck > 50:
-        raise ValueError("Ancrages couverts jusqu'à C50/60 (fctk0,05 = 0,7·fctm).")
+        raise ValueError("Amarrações cobertas até C50/60 (fctk0,05 = 0,7·fctm).")
     phi = float(bar_mm)
     fctm = 0.30 * fck ** (2.0 / 3.0)
     fctk05 = 0.7 * fctm
@@ -108,7 +108,6 @@ def anchorage_study(model: dict, result: dict, opts: dict, auto: dict | None = N
     reinjected = bool(ec2_out.get("reinjected_from_automation"))
     return {"version": VERSION, "elements": rows, "execution_ready": False,
             "reinjected_from_automation": reinjected,
-            "note": "Longueurs d'ancrage lbd (§8.4) et de recouvrement l0 (§8.7) du ferraillage proposé "
-                    "(bonne adhérence/barres droites par défaut, α éditables)."
-                    + (" Ø et As,prov issus des aciers CHOISIS par la chaîne automatique (réinjectés §8)." if reinjected else "")
+            "note": "Comprimentos de amarração lbd (§8.4) e de emenda l0 (§8.7) das armaduras propostas (boa aderência/varões retos por omissão, α editáveis)."
+                    + (" Ø e As,prov provenientes dos aços ESCOLHIDOS pela cadeia automática (reinjetados §8)." if reinjected else "")
                     + " " + DISCLAIMER}

@@ -12,8 +12,8 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 from engines.pdf_takeoff import DARK, ORANGE, _story_header_branding, _styles
 from engines.plan_cotes_pdf import _fit_image, _tbl
 
-STATUS = {"to_verify": "à vérifier", "provisional": "provisoire (hypothèse)", "validated": "validé", "undetermined": "non déterminé", "rejected": "rejeté"}
-DISCLAIMER = "Contrôle de cohérence et métré à partir des éléments lus sur le plan. Ce rapport ne constitue pas une note de calcul structurel ; les dimensions manquantes ou supposées sont listées et doivent être confirmées avant exécution."
+STATUS = {"to_verify": "a verificar", "provisional": "provisório (hipótese)", "validated": "validé", "undetermined": "não determinado", "rejected": "rejeté"}
+DISCLAIMER = "Controlo de coerência e medição a partir dos elementos lidos na planta. Este relatório não constitui uma memória de cálculo estrutural; as dimensões em falta ou supostas são listadas e devem ser confirmadas antes da execução."
 
 
 def _annotated(page: dict, elements: list[dict]) -> bytes | None:
@@ -46,40 +46,40 @@ def build_analysis_report(plan: dict, analysis: dict, elements: list[dict], line
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=14 * mm, bottomMargin=14 * mm, title=f"Rapport d'analyse — {plan.get('filename')}")
     story = []
     _story_header_branding(story, branding, S)
-    story += [_p(f"Rapport d'analyse traçable — {plan.get('filename') or plan['plan_id']}", S, "h1"),
-              _p(f"Révision {analysis.get('revision')} · règles {analysis.get('rules_version')} · généré le {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M')} UTC · {len(elements)} ouvrages · {len(lines)} lignes"
-                 + (" · source DXF lue" if analysis.get("has_dxf") else ""), S, "muted"),
+    story += [_p(f"Relatório de análise rastreável — {plan.get('filename') or plan['plan_id']}", S, "h1"),
+              _p(f"Revisão {analysis.get('revision')} · regras {analysis.get('rules_version')} · gerado em {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M')} UTC · {len(elements)} trabalhos · {len(lines)} lignes"
+                 + (" · fonte DXF lida" if analysis.get("has_dxf") else ""), S, "muted"),
               Spacer(1, 4), _p(DISCLAIMER, S, "muted"), Spacer(1, 8)]
     stats = {k: sum(1 for q in lines if q["status"] == k) for k in STATUS}
-    story.append(_tbl([["Statut", "Lignes"]] + [[STATUS[k], str(v)] for k, v in stats.items() if v], [70 * mm, 30 * mm], S))
+    story.append(_tbl([["Estado", "Linhas"]] + [[STATUS[k], str(v)] for k, v in stats.items() if v], [70 * mm, 30 * mm], S))
     story.append(Spacer(1, 8))
     if analysis.get("missing"):
-        story.append(_p("Informations manquantes et hypothèses déclarées", S, "h2"))
+        story.append(_p("Informações em falta e hipóteses declaradas", S, "h2"))
         for m in analysis["missing"]:
-            story.append(_p(("[hypothèse] " if m.get("covered_by_assumption") else "[manquant] ") + m["message"], S, "muted"))
+            story.append(_p(("[hipótese] " if m.get("covered_by_assumption") else "[manquant] ") + m["message"], S, "muted"))
         story.append(Spacer(1, 6))
     if overrides:
-        story.append(_p("Hypothèses (visibles, révisables)", S, "h2"))
-        story.append(_tbl([["Ouvrage", "Hauteur", "Épaisseur", "Motif", "Par", "Le"]] + [[next((e["label"] for e in elements if e["element_id"] == o["element_id"]), o["element_id"]), o.get("hauteur_m") or "—", o.get("epaisseur_m") or "—", o.get("reason") or "", o.get("by") or "", (o.get("at") or "")[:10]] for o in overrides],
+        story.append(_p("Hipóteses (visíveis, revisíveis)", S, "h2"))
+        story.append(_tbl([["Artigo", "Altura", "Espessura", "Motivo", "Par", "Le"]] + [[next((e["label"] for e in elements if e["element_id"] == o["element_id"]), o["element_id"]), o.get("hauteur_m") or "—", o.get("epaisseur_m") or "—", o.get("reason") or "", o.get("by") or "", (o.get("at") or "")[:10]] for o in overrides],
                           [45 * mm, 18 * mm, 18 * mm, 55 * mm, 30 * mm, 16 * mm], S))
         story.append(Spacer(1, 6))
     if analysis.get("conflicts"):
-        story.append(_p("Conflits entre validations et recalcul", S, "h2"))
+        story.append(_p("Conflitos entre validações e recálculo", S, "h2"))
         for c in analysis["conflicts"]:
-            story.append(_p(f"{c['designation']} : validé {c['previous']} par {c['validated_by']}, recalculé {c['new']}", S, "muted"))
+            story.append(_p(f"{c['designation']} : validado {c['previous']} par {c['validated_by']}, recalculado {c['new']}", S, "muted"))
     for pg in pages:
         png = _annotated(pg, [e for e in elements if e.get("page_index") == pg.get("index", 0) and e.get("source") != "dxf"])
         if png:
-            story += [PageBreak(), _p(f"Plan annoté — page {pg.get('index', 0) + 1} (bleu : dalles, vert : murs)", S, "h2"), _fit_image(png, 180 * mm, 210 * mm)]
+            story += [PageBreak(), _p(f"Planta anotada — página {pg.get('index', 0) + 1} (azul: lajes, verde: paredes)", S, "h2"), _fit_image(png, 180 * mm, 210 * mm)]
     story.append(PageBreak())
-    story.append(_p("Quantités par lot — formule, données et provenance", S, "h2"))
+    story.append(_p("Quantidades por capítulo — fórmula, dados e proveniência", S, "h2"))
     for lot in sorted({q["lot"] for q in lines}):
         story.append(_p(lot, S, "kicker"))
-        rows = [["Désignation", "Formule / données (provenance)", "Net", "À cmd", "Statut"]]
+        rows = [["Designação", "Fórmula / dados (proveniência)", "Net", "A enc.", "Estado"]]
         for q in [x for x in lines if x["lot"] == lot]:
             data = " ; ".join(f"{i['name']}={i.get('value') if i.get('value') is not None else '?'} {i.get('unit') or ''} ({i.get('source')})" for i in q["inputs"])
-            ded = (" ; déductions : " + ", ".join(f"{d['name']} −{d['value']} {d['unit']}" for d in q["deductions"])) if q.get("deductions") else ""
-            val = f" · validé par {q.get('validated_by')} le {(q.get('validated_at') or '')[:10]}" if q.get("validated_by") else ""
+            ded = (" ; deduções: " + ", ".join(f"{d['name']} −{d['value']} {d['unit']}" for d in q["deductions"])) if q.get("deductions") else ""
+            val = f" · validado por {q.get('validated_by')} le {(q.get('validated_at') or '')[:10]}" if q.get("validated_by") else ""
             rows.append([_p(q["designation"], S, "muted"), _p(f"{q['formula']} — {data}{ded}{val}{(' — ' + q['note']) if q.get('note') else ''}", S, "muted"),
                          f"{q['quantity_net'] if q['quantity_net'] is not None else '—'} {q['unit']}", f"{q['quantity_to_order'] if q['quantity_to_order'] is not None else '—'}", STATUS.get(q["status"], q["status"])])
         story.append(_tbl(rows, [42 * mm, 88 * mm, 20 * mm, 14 * mm, 18 * mm], S))

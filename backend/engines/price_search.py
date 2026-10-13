@@ -24,15 +24,15 @@ PRICE_MAX_EUR = 3000.0
 
 # Coefficients de prix régionaux indicatifs (main-d'œuvre + matériaux) par grande zone.
 DEPARTMENT_COEFF = [
-    {"code": "IDF", "name": "Île-de-France (75, 92, 93, 94...)", "coefficient": 1.15},
-    {"code": "PACA", "name": "PACA / Côte d'Azur (06, 13, 83...)", "coefficient": 1.10},
-    {"code": "AURA", "name": "Auvergne-Rhône-Alpes (69, 38, 74...)", "coefficient": 1.06},
+    {"code": "IDF", "name": "Lisboa e Vale do Tejo (Lisboa, Setúbal, Santarém)", "coefficient": 1.15},
+    {"code": "Norte", "name": "Norte (Porto, Braga, Viana do Castelo...)", "coefficient": 1.10},
+    {"code": "AURA", "name": "Centro (Coimbra, Aveiro, Leiria, Viseu...)", "coefficient": 1.06},
     {"code": "OCC", "name": "Occitanie (31, 34...)", "coefficient": 1.02},
-    {"code": "NAQ", "name": "Nouvelle-Aquitaine (33, 64...)", "coefficient": 1.02},
-    {"code": "GES", "name": "Grand Est (67, 57...)", "coefficient": 1.00},
-    {"code": "HDF", "name": "Hauts-de-France (59, 62...)", "coefficient": 0.98},
-    {"code": "BRE", "name": "Bretagne / Pays de la Loire (35, 44...)", "coefficient": 0.99},
-    {"code": "AUTRE", "name": "Autre / Moyenne nationale", "coefficient": 1.00},
+    {"code": "NAQ", "name": "Algarve (Faro)", "coefficient": 1.02},
+    {"code": "GES", "name": "Alentejo (Évora, Beja, Portalegre)", "coefficient": 1.00},
+    {"code": "HDF", "name": "Madeira", "coefficient": 0.98},
+    {"code": "BRE", "name": "Açores", "coefficient": 0.99},
+    {"code": "OUTRO", "name": "Outro / Média nacional", "coefficient": 1.00},
     {"code": "DOM", "name": "Outre-mer (971, 972, 974...)", "coefficient": 1.25},
 ]
 
@@ -63,42 +63,42 @@ SUPPLIERS_BY_KEY = {s["key"]: s for s in SUPPLIERS}
 
 # Prix de référence de démonstration (€) par famille de produit
 DEMO_CATALOG = [
-    {"match": ["ba13", "placo", "plaque de platre", "plaque platre"], "label": "Plaque de plâtre BA13 250x120",
+    {"match": ["ba13", "placo", "plaque de platre", "plaque platre"], "label": "Placa de gesso cartonado 13 mm 250x120",
      "base": 7.60, "unit": "plaque"},
-    {"match": ["hydrofuge", "hydro"], "label": "Plaque de plâtre BA13 hydrofuge 250x120", "base": 12.40, "unit": "plaque"},
-    {"match": ["rail", "montant"], "label": "Rail / montant placo 48mm 3m", "base": 6.20, "unit": "barre"},
-    {"match": ["suspente"], "label": "Suspente plafond (lot de 100)", "base": 42.00, "unit": "lot"},
-    {"match": ["fourrure"], "label": "Fourrure F530 3m", "base": 5.10, "unit": "barre"},
-    {"match": ["vis"], "label": "Vis TTPC 25mm (500)", "base": 11.90, "unit": "boîte"},
-    {"match": ["bande"], "label": "Bande à joint papier 150m", "base": 6.40, "unit": "rouleau"},
-    {"match": ["enduit"], "label": "Enduit à joint 25kg", "base": 17.50, "unit": "sac"},
-    {"match": ["peinture"], "label": "Peinture murale mate blanche 10L", "base": 48.90, "unit": "pot 10L"},
-    {"match": ["sous couche", "sous-couche", "primaire", "impression"], "label": "Sous-couche universelle 10L",
+    {"match": ["hydrofuge", "hydro"], "label": "Placa de gesso cartonado hidrófuga 13 mm 250x120", "base": 12.40, "unit": "plaque"},
+    {"match": ["rail", "montant"], "label": "Calha / montante pladur 48 mm 3 m", "base": 6.20, "unit": "barre"},
+    {"match": ["suspente"], "label": "Tirante de teto (conjunto de 100)", "base": 42.00, "unit": "lot"},
+    {"match": ["fourrure"], "label": "Perfil F530 3 m", "base": 5.10, "unit": "barre"},
+    {"match": ["vis"], "label": "Parafusos pladur 25 mm (500)", "base": 11.90, "unit": "boîte"},
+    {"match": ["bande"], "label": "Fita de juntas em papel 150 m", "base": 6.40, "unit": "rouleau"},
+    {"match": ["enduit"], "label": "Massa de juntas 25 kg", "base": 17.50, "unit": "sac"},
+    {"match": ["peinture"], "label": "Tinta plástica mate branca interior 15 L", "base": 48.90, "unit": "pot 10L"},
+    {"match": ["sous couche", "sous-couche", "primaire", "impression"], "label": "Primário universal 15 L",
      "base": 39.90, "unit": "pot 10L"},
-    {"match": ["carrelage"], "label": "Carrelage grès cérame 60x60", "base": 24.90, "unit": "m²"},
-    {"match": ["colle carrelage", "colle"], "label": "Colle carrelage C2 25kg", "base": 15.20, "unit": "sac"},
-    {"match": ["joint"], "label": "Joint carrelage 5kg", "base": 11.80, "unit": "sac"},
-    {"match": ["croisillon"], "label": "Croisillons 3mm (250)", "base": 5.90, "unit": "boîte"},
-    {"match": ["laine de verre", "laine"], "label": "Laine de verre 200mm R6.25", "base": 11.40, "unit": "m²"},
-    {"match": ["laine de roche"], "label": "Laine de roche 100mm", "base": 12.90, "unit": "m²"},
-    {"match": ["polystyrene", "polyuréthane", "polyurethane"], "label": "Panneau isolant PU 100mm", "base": 21.50, "unit": "m²"},
-    {"match": ["pare vapeur", "pare-vapeur", "membrane"], "label": "Membrane pare-vapeur 75m²", "base": 79.00, "unit": "rouleau"},
-    {"match": ["beton", "béton"], "label": "Béton prêt à l'emploi 35kg", "base": 5.40, "unit": "sac"},
-    {"match": ["ciment"], "label": "Ciment CEM II 35kg", "base": 8.90, "unit": "sac"},
+    {"match": ["carrelage"], "label": "Mosaico de grés porcelânico 60x60", "base": 24.90, "unit": "m²"},
+    {"match": ["colle carrelage", "colle"], "label": "Cimento-cola C2 25 kg", "base": 15.20, "unit": "sac"},
+    {"match": ["joint"], "label": "Betume de juntas 5 kg", "base": 11.80, "unit": "sac"},
+    {"match": ["croisillon"], "label": "Espaçadores 3 mm (250)", "base": 5.90, "unit": "boîte"},
+    {"match": ["laine de verre", "laine"], "label": "Lã de vidro 200 mm R6.25", "base": 11.40, "unit": "m²"},
+    {"match": ["lã de rocha"], "label": "Lã de rocha 100 mm", "base": 12.90, "unit": "m²"},
+    {"match": ["polystyrene", "polyuréthane", "polyurethane"], "label": "Placa isolante PU 100 mm", "base": 21.50, "unit": "m²"},
+    {"match": ["pare vapeur", "pare-vapeur", "membrane"], "label": "Barreira pára-vapor 75 m²", "base": 79.00, "unit": "rouleau"},
+    {"match": ["beton", "béton"], "label": "Betão pronto 35 kg", "base": 5.40, "unit": "sac"},
+    {"match": ["ciment"], "label": "Cimento CEM II 35 kg", "base": 8.90, "unit": "sac"},
     {"match": ["sable"], "label": "Sable 0/4 35kg", "base": 3.60, "unit": "sac"},
-    {"match": ["gravier"], "label": "Gravier 4/20 35kg", "base": 3.90, "unit": "sac"},
-    {"match": ["treillis"], "label": "Treillis soudé ST25 3x2m", "base": 22.50, "unit": "panneau"},
-    {"match": ["parquet"], "label": "Parquet stratifié clipsable chêne", "base": 18.90, "unit": "m²"},
-    {"match": ["receveur", "douche"], "label": "Receveur de douche 90x90 extra-plat", "base": 189.00, "unit": "u"},
-    {"match": ["robinet", "mitigeur"], "label": "Mitigeur lavabo chromé", "base": 79.00, "unit": "u"},
-    {"match": ["wc", "toilette"], "label": "WC suspendu avec bâti-support", "base": 289.00, "unit": "u"},
-    {"match": ["fenetre", "fenêtre"], "label": "Fenêtre PVC double vitrage 120x100", "base": 349.00, "unit": "u"},
-    {"match": ["porte"], "label": "Bloc-porte intérieur 83cm", "base": 129.00, "unit": "u"},
-    {"match": ["per", "multicouche", "tube"], "label": "Tube multicouche 16mm 50m", "base": 68.00, "unit": "couronne"},
-    {"match": ["cable", "câble", "gaine"], "label": "Câble R2V 3G2.5 100m", "base": 89.00, "unit": "couronne"},
-    {"match": ["adhesif", "adhésif", "ruban"], "label": "Adhésif de masquage 50m", "base": 4.20, "unit": "rouleau"},
-    {"match": ["bache", "bâche"], "label": "Bâche de protection 4x5m", "base": 7.90, "unit": "u"},
-    {"match": ["rouleau"], "label": "Rouleau peinture + manchon", "base": 12.50, "unit": "u"},
+    {"match": ["gravier"], "label": "Brita 4/20 35 kg", "base": 3.90, "unit": "sac"},
+    {"match": ["treillis"], "label": "Malha eletrossoldada AQ38 3x2 m", "base": 22.50, "unit": "panneau"},
+    {"match": ["parquet"], "label": "Soalho flutuante laminado carvalho", "base": 18.90, "unit": "m²"},
+    {"match": ["receveur", "douche"], "label": "Base de duche 90x90 extraplana", "base": 189.00, "unit": "u"},
+    {"match": ["robinet", "mitigeur"], "label": "Misturadora de lavatório cromada", "base": 79.00, "unit": "u"},
+    {"match": ["wc", "toilette"], "label": "Sanita suspensa com estrutura", "base": 289.00, "unit": "u"},
+    {"match": ["fenetre", "fenêtre"], "label": "Janela PVC vidro duplo 120x100", "base": 349.00, "unit": "u"},
+    {"match": ["porte"], "label": "Porta interior completa 80 cm", "base": 129.00, "unit": "u"},
+    {"match": ["per", "multicouche", "tube"], "label": "Tubo multicamada 16 mm 50 m", "base": 68.00, "unit": "couronne"},
+    {"match": ["cable", "câble", "gaine"], "label": "Cabo XV 3G2,5 100 m", "base": 89.00, "unit": "couronne"},
+    {"match": ["adhesif", "adhésif", "ruban"], "label": "Fita de pintor 50 m", "base": 4.20, "unit": "rouleau"},
+    {"match": ["bache", "bâche"], "label": "Plástico de proteção 4x5 m", "base": 7.90, "unit": "u"},
+    {"match": ["rouleau"], "label": "Rolo de pintura + manga", "base": 12.50, "unit": "u"},
 ]
 
 
@@ -112,7 +112,7 @@ def _match_catalog(query: str):
                     best = (len(m), item)
     if best:
         return best[1]
-    return {"label": query.strip().title() or "Produit", "base": 24.90, "unit": "u"}
+    return {"label": query.strip().title() or "Produto", "base": 24.90, "unit": "u"}
 
 
 def _seeded(query: str, supplier_key: str) -> float:
@@ -180,7 +180,7 @@ async def tavily_search(query: str, limit: int = 10) -> list[dict]:
     if not key:
         return []
     base_payload = {
-        "query": f"{query} prix € France",
+        "query": f'{query} preço € Portugal',
         "search_depth": "basic", "topic": "general", "max_results": min(20, limit * 2),
         "country": "france",
     }
@@ -217,10 +217,10 @@ async def tavily_search(query: str, limit: int = 10) -> list[dict]:
         price = _parse_price(f"{item.get('title','')} {item.get('content','')}")
         out.append({
             "supplier": sup["name"], "supplier_key": sup["key"],
-            "product": (item.get("title") or "Produit")[:180], "unit": "u",
+            "product": (item.get("title") or "Produto")[:180], "unit": "u",
             "price": price, "currency": "EUR", "shipping": sup["shipping"],
             "free_shipping_from": sup["free_from"], "min_order": sup["min_order"],
-            "delivery_days": sup["delivery_days"], "stock": "À vérifier",
+            "delivery_days": sup["delivery_days"], "stock": "A verificar",
             "rating": sup["rating"], "url": url, "source": "web",
             "snippet": (item.get("content") or "")[:400], "checked_at": now.isoformat(),
         })
@@ -313,7 +313,7 @@ def optimize_cart(items: list[dict], catalog: list[dict] | None = None,
             price = round(float(cat.get("price") or 0), 2)
             cost = round(price * entry["quantity"], 2)
             lines.append({"name": entry["name"], "query": entry["query"], "quantity": entry["quantity"],
-                          "unit_price": price, "supplier": cat.get("supplier") or "Mon catalogue",
+                          "unit_price": price, "supplier": cat.get("supplier") or "O meu catálogo",
                           "supplier_key": "catalog", "total": cost,
                           "unit": cat.get("unit") or entry["offers"][0]["unit"],
                           "stock": True, "url": None, "source": "catalog"})
@@ -335,7 +335,7 @@ def optimize_cart(items: list[dict], catalog: list[dict] | None = None,
     for key, amount in by_supplier.items():
         s = SUPPLIERS_BY_KEY.get(key)
         if s is None:  # ligne issue du catalogue perso (aucun frais de port)
-            baskets.append({"supplier": "Mon catalogue", "supplier_key": key,
+            baskets.append({"supplier": "O meu catálogo", "supplier_key": key,
                             "products": round(amount, 2), "shipping": 0.0,
                             "total": round(amount, 2), "below_min_order": False})
             continue

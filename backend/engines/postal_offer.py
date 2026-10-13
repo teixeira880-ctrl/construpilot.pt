@@ -138,12 +138,12 @@ async def reserve(user: dict, postal_id: str, opp_id: str, kind: Kind = "demo", 
         try:
             await db.postal_demo_allowances.insert_one({"_id": key, "count": 1, "credits": 0, "sends": [entry], "created_at": _now()})
         except DuplicateKeyError:
-            raise _exhausted(f"Les {DEMO_LIMIT} envois offerts à votre entreprise sont déjà utilisés ou réservés. Aucun nouvel envoi n'a été déclenché.")
+            raise _exhausted(f'Les {DEMO_LIMIT} envios oferecidos à sua empresa já foram utilizados ou reservados. Nenhum novo envio foi desencadeado.')
         return
     if kind == "credit":
         if not await _push_entry(key, entry, {"credits": {"$gt": 0}}, {"$inc": {"credits": -1}}):
             raise HTTPException(409, {"code": "postal_payment_required", "message":
-                "Aucun crédit courrier disponible. Réglez cet envoi ou achetez un pack de crédits."})
+                "Nenhum crédito de correio disponível. Pague este envio ou compre um pack de créditos."})
         return
     if not await _push_entry(key, entry, {}, {}):
         try:
@@ -208,8 +208,7 @@ async def _maybe_alert_admins(user: dict, key: str) -> None:
         return
     try:
         label = await _company_label(user)
-        message = (f"Quota courrier : {label} a atteint {QUOTA_ALERT_AT}/{DEMO_LIMIT} envois offerts "
-                   f"(coût pris en charge par ConstruPilot). Passage au paiement après le {DEMO_LIMIT}e envoi.")
+        message = (f'Quota de correio: {label} atingiu {QUOTA_ALERT_AT}/{DEMO_LIMIT} envios oferecidos (custo suportado pelo ConstruPilot). Passagem a pagamento após o {DEMO_LIMIT}e envoi.')
         admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1, "email": 1}).to_list(50)
         for admin in admins:
             await db.notifications.insert_one({"notif_id": "n_" + secrets.token_hex(5), "user_id": admin["user_id"],
@@ -222,12 +221,10 @@ async def _maybe_alert_admins(user: dict, key: str) -> None:
 
 async def _email_admins(admins: list[dict], label: str, message: str) -> None:
     from engines.emailer import send_email
-    html = (f"<p>Bonjour,</p><p>{message}</p>"
-            f"<p>Entreprise : <b>{label}</b><br>Tarif après quota : {UNIT_NET_CENTS / 100:.2f} € HT par envoi "
-            f"({gross(UNIT_NET_CENTS) / 100:.2f} € TTC) ou packs de crédits.</p><p>— ConstruPilot</p>")
+    html = (f'<p>Olá,</p><p>{message}</p><p>Entreprise : <b>{label}</b><br>Preço após a quota: {UNIT_NET_CENTS / 100:.2f} € HT par envoi ({gross(UNIT_NET_CENTS) / 100:.2f} € c/ IVA) ou packs de créditos.</p><p>— ConstruPilot</p>')
     for admin in admins:
         if admin.get("email"):
             try:
-                await send_email(admin["email"], f"⚠️ Quota courrier {QUOTA_ALERT_AT}/{DEMO_LIMIT} — {label}", html)
+                await send_email(admin["email"], f'⚠️ Quota de correio {QUOTA_ALERT_AT}/{DEMO_LIMIT} — {label}', html)
             except Exception as exc:
                 log.warning("Quota alert email failed for %s: %s", admin["email"], exc)

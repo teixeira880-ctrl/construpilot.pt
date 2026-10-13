@@ -62,14 +62,14 @@ async def read_plan(file: UploadFile = File(...), title: str = Form(""),
                     steel_ratios: str = Form(""), user=Depends(current_user)) -> dict:
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "").lower()
     if ext != "pdf":
-        raise HTTPException(400, "Fournissez un PDF (idéalement vectoriel, exporté de la CAO).")
+        raise HTTPException(400, "Forneça um PDF (idealmente vetorial, exportado do CAD).")
     data = await file.read()
     if len(data) > 25 * 1024 * 1024:
-        raise HTTPException(400, "PDF trop volumineux (max 25 Mo).")
+        raise HTTPException(400, "PDF demasiado volumoso (máx. 25 MB).")
     try:
         result = await reader.read_plan(data, steel_ratios=_parse_ratios(steel_ratios))
     except reader.PlanVisionError:
-        raise HTTPException(503, "Service de lecture IA momentanément indisponible. Réessayez dans un instant.")
+        raise HTTPException(503, "Serviço de leitura IA momentaneamente indisponível. Tente novamente dentro de instantes.")
     doc = {
         "read_id": _nid(), "user_id": user["user_id"],
         "title": (title or file.filename or "Plan structure")[:160],
@@ -87,7 +87,7 @@ async def get_read(read_id: str, user=Depends(current_user)) -> dict:
     doc = await db.structuro_plan_reads.find_one(
         {"read_id": read_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Lecture introuvable")
+        raise HTTPException(404, "Leitura não encontrada")
     return doc
 
 
@@ -103,7 +103,7 @@ async def update_read(read_id: str, body: SaveBody, user=Depends(current_user)) 
     doc = await db.structuro_plan_reads.find_one(
         {"read_id": read_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Lecture introuvable")
+        raise HTTPException(404, "Leitura não encontrada")
     recomputed = await reader.recompute(body.fondations, body.murs, body.steel_ratios)
     patch = {"updated_at": _now(), **recomputed}
     if body.title is not None:
@@ -118,7 +118,7 @@ async def update_read(read_id: str, body: SaveBody, user=Depends(current_user)) 
 async def delete_read(read_id: str, user=Depends(current_user)) -> dict:
     r = await db.structuro_plan_reads.delete_one({"read_id": read_id, "user_id": user["user_id"]})
     if not r.deleted_count:
-        raise HTTPException(404, "Lecture introuvable")
+        raise HTTPException(404, "Leitura não encontrada")
     return {"ok": True}
 
 
@@ -127,7 +127,7 @@ async def export_pdf(read_id: str, user=Depends(current_user)) -> Response:
     doc = await db.structuro_plan_reads.find_one(
         {"read_id": read_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Lecture introuvable")
-    pdf = build_structure_report(doc, title=doc.get("title") or "Métré structure")
+        raise HTTPException(404, "Leitura não encontrada")
+    pdf = build_structure_report(doc, title=doc.get("title") or "Medições estrutura")
     return Response(content=pdf, media_type="application/pdf", headers={
         "Content-Disposition": f'attachment; filename="metre-{read_id}.pdf"'})

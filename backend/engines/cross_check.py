@@ -23,10 +23,7 @@ _MODELS = [
 ]
 
 _SYSTEM = (
-    "Tu es un expert technique et réglementaire du BTP en France (DTU, normes AFNOR, "
-    "Eurocodes, RE2020). Réponds de façon FACTUELLE et CONCISE (150 mots max). "
-    "ZÉRO HALLUCINATION : si une donnée clé manque pour conclure, dis-le explicitement "
-    "au lieu de l'inventer. Termine par une ligne « Certitude : élevée / moyenne / faible »."
+    "És um especialista técnico e regulamentar da construção em Portugal (NP EN, Eurocódigos com Anexos Nacionais, especificações LNEC, RGEU, REH). Responde de forma FACTUAL e CONCISA (máx. 150 palavras), em português europeu. ZERO ALUCINAÇÕES: se faltar um dado essencial para concluir, di-lo explicitamente em vez de o inventar. Termina com uma linha «Certeza: elevada / média / baixa»."
 )
 
 _TIMEOUT = float(os.environ.get("CROSS_CHECK_TIMEOUT", "60"))
@@ -39,11 +36,11 @@ async def _one(provider: str, model: str, label: str, system: str, prompt: str) 
             _call_provider(provider, model, system, prompt, None, None, "cross_check"), _TIMEOUT)
         answer = (out or "").strip()
         if not answer:
-            return {"model": label, "ok": False, "answer": None, "error": "réponse vide"}
+            return {"model": label, "ok": False, "answer": None, "error": "resposta vazia"}
         return {"model": label, "ok": True, "answer": answer}
     except Exception as exc:  # noqa: BLE001
         logger.warning("cross_check %s a échoué : %s", label, type(exc).__name__)
-        return {"model": label, "ok": False, "answer": None, "error": "indisponible"}
+        return {"model": label, "ok": False, "answer": None, "error": "indisponível"}
 
 
 async def cross_check(question: str, context: str = "", include_web: bool = False) -> dict:
@@ -53,8 +50,8 @@ async def cross_check(question: str, context: str = "", include_web: bool = Fals
     """
     question = (question or "").strip()
     if not question:
-        return {"ok": False, "error": "Question vide : préciser ce qui doit être croisé."}
-    prompt = question + (f"\n\nContexte fourni :\n{context.strip()}" if (context or "").strip() else "")
+        return {"ok": False, "error": "Pergunta vazia: precisar o que deve ser cruzado."}
+    prompt = question + (f'\n\nContexto fornecido:\n{context.strip()}' if (context or "").strip() else "")
 
     tasks = [_one(p, m, lbl, _SYSTEM, prompt) for p, m, lbl in _MODELS]
     opinions = list(await asyncio.gather(*tasks))
@@ -78,10 +75,7 @@ async def cross_check(question: str, context: str = "", include_web: bool = Fals
         "opinions": opinions,
         "web": web,
         "instruction": (
-            "Compare ces avis INDÉPENDANTS. Présente d'abord un CONSENSUS clair (ce sur quoi "
-            "les IA s'accordent), puis liste explicitement les DIVERGENCES (chiffres, règles, "
-            "conditions) et enfin ce qui reste À VÉRIFIER. N'ajoute aucune donnée au-delà de "
-            "ces avis ; si elles se contredisent, signale-le sans trancher arbitrairement."
-            + (" Cite les sources web officielles fournies." if web else "")
+            "Compara estes pareceres INDEPENDENTES. Apresenta primeiro um CONSENSO claro (aquilo em que as IA concordam), depois lista explicitamente as DIVERGÊNCIAS (números, regras, condições) e por fim o que fica POR VERIFICAR. Não acrescentes nenhum dado para além destes pareceres; se se contradisserem, assinala-o sem decidir arbitrariamente. Responde em português europeu."
+            + (" Cita as fontes web oficiais fornecidas." if web else "")
         ),
     }

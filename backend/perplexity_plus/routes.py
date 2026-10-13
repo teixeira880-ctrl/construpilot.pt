@@ -32,12 +32,7 @@ class ChatIn(BaseModel):
 
 
 CHAT_SYSTEM = (
-    "Tu es l'Assistant BTP, l'assistant d'œuvres IA de ConstruPilot. Tu réponds en français à des "
-    "professionnels du bâtiment (artisans, chefs de chantier, maîtres d'œuvre). "
-    "Cite systématiquement tes sources (URL) quand tu t'appuies sur du web. "
-    "Sois concis, structuré, orienté action. Rappelle systématiquement que "
-    "les informations réglementaires doivent être vérifiées auprès des textes "
-    "officiels avant application."
+    "És o Assistente de Construção, o assistente de obras IA do ConstruPilot. Respondes em português europeu a profissionais da construção (empreiteiros, encarregados, diretores de obra, projetistas). Cita sistematicamente as tuas fontes (URL) quando te apoias na web. Sê conciso, estruturado, orientado para a ação. Lembra sistematicamente que as informações regulamentares devem ser verificadas nos textos oficiais (Diário da República) antes de serem aplicadas."
 )
 
 
@@ -49,12 +44,12 @@ def _sse(event: dict) -> bytes:
 @limiter.limit("20/minute")
 async def chat_stream(body: ChatIn, request: Request, user=Depends(current_user)):
     if not pplx.configured():
-        raise HTTPException(503, "PERPLEXITY_API_KEY non configuré")
+        raise HTTPException(503, "PERPLEXITY_API_KEY não configurada")
 
     async def gen() -> AsyncIterator[bytes]:
         instructions = CHAT_SYSTEM
         if body.context:
-            instructions += f"\n\nContexte transmis par l'utilisateur :\n{body.context}"
+            instructions += f'\n\nContexto transmitido pelo utilizador:\n{body.context}'
         try:
             async for evt in pplx.stream(
                 question=body.message,
@@ -98,15 +93,7 @@ class ReglIn(BaseModel):
 
 
 REGL_SYSTEM = (
-    "Tu es expert en réglementation française du bâtiment (Code de la "
-    "construction, DTU, NF, RE2020, PMR, sécurité incendie). Réponds "
-    "précisément à la question posée en citant les articles / normes /"
-    " DTU applicables. Sois structuré : "
-    "1) Réponse synthétique · "
-    "2) Textes applicables (référence exacte + URL) · "
-    "3) Points de vigilance · "
-    "4) Disclaimer : « À vérifier auprès des textes officiels ». "
-    "Refuse de répondre si l'information n'est pas sourcée."
+    "És especialista em regulamentação portuguesa da construção (RJUE, RGEU, Eurocódigos NP EN e Anexos Nacionais, REH/RECS (SCE), acessibilidades DL 163/2006, SCIE – DL 220/2008 e RT-SCIE, especificações LNEC). Responde com precisão à pergunta feita citando os artigos / normas / diplomas aplicáveis. Sê estruturado: 1) Resposta sintética · 2) Textos aplicáveis (referência exata + URL) · 3) Pontos de atenção · 4) Aviso: «A verificar nos textos oficiais (Diário da República)». Recusa responder se a informação não tiver fonte."
 )
 
 
@@ -114,10 +101,10 @@ REGL_SYSTEM = (
 @limiter.limit("15/hour")
 async def reglementation(body: ReglIn, request: Request, response: Response, user=Depends(current_user)):
     if not pplx.configured():
-        raise HTTPException(503, "PERPLEXITY_API_KEY non configuré")
+        raise HTTPException(503, "PERPLEXITY_API_KEY não configurada")
     q = body.question
     if body.project_type:
-        q = f"[Type de projet : {body.project_type}] {q}"
+        q = f'[Tipo de projeto: {body.project_type}] {q}'
     res = await pplx.ask(
         question=q,
         instructions=REGL_SYSTEM,
@@ -141,22 +128,7 @@ class DevisIn(BaseModel):
 
 
 DEVIS_SYSTEM = (
-    "Tu es expert en chiffrage BTP en France. À partir de la description "
-    "d'un chantier, tu proposes une trame de devis structurée. Utilise les "
-    "prix du marché récents que tu trouves via recherche web. "
-    "Réponds STRICTEMENT en JSON valide, sans commentaire, avec ce schéma :\n"
-    "{\n"
-    '  "titre": str,\n'
-    '  "lignes": [ { "poste": str, "description": str, "unite": str,\n'
-    '                "quantite": float, "prix_unitaire_ht": float,\n'
-    '                "total_ht": float, "source": str|null } ],\n'
-    '  "total_ht": float,\n'
-    '  "tva_taux": 20 | 10 | 5.5,\n'
-    '  "total_ttc": float,\n'
-    '  "hypotheses": [ str ],\n'
-    '  "sources_prix": [ { "url": str, "titre": str } ]\n'
-    "}\n"
-    "Ne réponds RIEN d'autre que ce JSON."
+    "És especialista em orçamentação de construção em Portugal. A partir da descrição de uma obra, propões uma estrutura de orçamento organizada. Utiliza os preços de mercado recentes em Portugal que encontres através de pesquisa web. Responde ESTRITAMENTE em JSON válido, sem comentários, com este esquema:\n{\n  \"titre\": str,\n  \"lignes\": [ { \"poste\": str, \"description\": str, \"unite\": str,\n                \"quantite\": float, \"prix_unitaire_ht\": float,\n                \"total_ht\": float, \"source\": str|null } ],\n  \"total_ht\": float,\n  \"tva_taux\": 23 | 13 | 6,\n  \"total_ttc\": float,\n  \"hypotheses\": [ str ],\n  \"sources_prix\": [ { \"url\": str, \"titre\": str } ]\n}\nOs textos (titre, poste, description, hypotheses) em português europeu. Não respondas NADA além deste JSON."
 )
 
 
@@ -164,15 +136,15 @@ DEVIS_SYSTEM = (
 @limiter.limit("10/hour")
 async def draft_devis(body: DevisIn, request: Request, response: Response, user=Depends(current_user)):
     if not pplx.configured():
-        raise HTTPException(503, "PERPLEXITY_API_KEY non configuré")
-    q_parts = [f"Chantier : {body.description}"]
+        raise HTTPException(503, "PERPLEXITY_API_KEY não configurada")
+    q_parts = [f'Obra: {body.description}']
     if body.surface_m2:
-        q_parts.append(f"Surface : {body.surface_m2} m²")
+        q_parts.append(f'Área: {body.surface_m2} m²')
     if body.region:
-        q_parts.append(f"Région : {body.region}")
+        q_parts.append(f'Região: {body.region}')
     if body.prestations_incluses:
         q_parts.append(
-            "Prestations à inclure : " + ", ".join(body.prestations_incluses)
+            "Serviços a incluir: " + ", ".join(body.prestations_incluses)
         )
     q = "\n".join(q_parts)
     res = await pplx.ask(
@@ -215,17 +187,7 @@ class CctpIn(BaseModel):
 
 
 CCTP_SYSTEM = (
-    "Tu es rédacteur CCTP (Cahier des Clauses Techniques Particulières) "
-    "spécialisé en marchés privés BTP en France. Rédige un article CCTP "
-    "précis, en français, structuré ainsi :\n"
-    "1. Généralités\n"
-    "2. Description des ouvrages\n"
-    "3. Prescriptions techniques (matériaux, mise en œuvre) — cite les "
-    "DTU / NF / EN applicables (référence complète)\n"
-    "4. Contrôles et essais\n"
-    "5. Tolérances\n"
-    "Ne cite que des références vérifiables. Ajoute en fin de réponse la "
-    "liste des sources consultées."
+    "És redator de Cadernos de Encargos (cláusulas técnicas) especializado em obras particulares de construção em Portugal. Redige um artigo de caderno de encargos preciso, em português europeu, estruturado assim:\n1. Generalidades\n2. Descrição dos trabalhos\n3. Prescrições técnicas (materiais, execução) — cita as normas NP / NP EN / EN e especificações LNEC aplicáveis (referência completa)\n4. Controlos e ensaios\n5. Tolerâncias\nCita apenas referências verificáveis. Acrescenta no fim da resposta a lista das fontes consultadas."
 )
 
 
@@ -233,9 +195,9 @@ CCTP_SYSTEM = (
 @limiter.limit("10/hour")
 async def draft_cctp(body: CctpIn, request: Request, response: Response, user=Depends(current_user)):
     if not pplx.configured():
-        raise HTTPException(503, "PERPLEXITY_API_KEY non configuré")
+        raise HTTPException(503, "PERPLEXITY_API_KEY não configurada")
     ratio = {"court": 1000, "standard": 2000, "detaille": 3500}[body.niveau_detail]
-    q = f"Lot : {body.lot}\nOuvrage à décrire : {body.description}\nNiveau : {body.niveau_detail}"
+    q = f'Lot : {body.lot}\nTrabalho a descrever: {body.description}\nPiso: {body.niveau_detail}'
     res = await pplx.ask(
         question=q,
         instructions=CCTP_SYSTEM,

@@ -209,7 +209,7 @@ def _build_frame(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
     for ix in range(nx + 1):
         for iy in range(ny + 1):
             els.append(Element(id=f"F_{ix}_{iy}", kind="footing", level="Fondations",
-                material="Béton C25/30", length_m=1.0, width_m=1.0, height_m=0.4,
+                material="Betão C25/30", length_m=1.0, width_m=1.0, height_m=0.4,
                 x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                 source=src, mechanics_source=src, reviewed=True))
     # Poteaux empilés
@@ -219,7 +219,7 @@ def _build_frame(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
             for iy in range(ny + 1):
                 below = f"C_{s + 1}_{ix}_{iy}" if s < L - 1 else f"F_{ix}_{iy}"
                 els.append(Element(id=f"C_{s}_{ix}_{iy}", kind="column", level=_lvl_name(s, L),
-                    material="Béton C25/30", length_m=col_b, width_m=col_b, height_m=round(h, 3),
+                    material="Betão C25/30", length_m=col_b, width_m=col_b, height_m=round(h, 3),
                     x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                     source=src, mechanics_source=src, reviewed=True,
                     supports=[Support(target=below, fraction=1.0, receiving="axial")]))
@@ -228,7 +228,7 @@ def _build_frame(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
         for iy in range(ny + 1):
             for ix in range(nx):
                 els.append(Element(id=f"B_{s}_{ix}_{iy}", kind="beam", level=_lvl_name(s, L),
-                    material="Béton C25/30", length_m=bx[ix], width_m=bw, height_m=bh,
+                    material="Betão C25/30", length_m=bx[ix], width_m=bw, height_m=bh,
                     x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY, ei_kn_m2=ei,
                     source=src, mechanics_source=src, reviewed=True,
                     supports=[Support(target=f"C_{s}_{ix}_{iy}", receiving="axial"),
@@ -237,7 +237,7 @@ def _build_frame(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
             for ix in range(nx + 1):
                 for iy in range(ny):
                     els.append(Element(id=f"BY_{s}_{ix}_{iy}", kind="beam", level=_lvl_name(s, L),
-                        material="Béton C25/30", length_m=by[iy], width_m=bw, height_m=bh,
+                        material="Betão C25/30", length_m=by[iy], width_m=bw, height_m=bh,
                         x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY, ei_kn_m2=ei,
                         source=src, mechanics_source=src, reviewed=True,
                         supports=[Support(target=f"C_{s}_{ix}_{iy}", receiving="axial"),
@@ -274,7 +274,7 @@ def _build_frame(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
                     sup = [Support(target=f"B_{s}_{ix}_{iy}", fraction=0.5, receiving="uniform"),
                            Support(target=f"B_{s}_{ix}_{iy + 1}", fraction=0.5, receiving="uniform")]
                 els.append(Element(id=f"D_{s}_{ix}_{iy}", kind="slab", level=_lvl_name(s, L),
-                    material="Béton C25/30", length_m=bx[ix], width_m=by[iy], height_m=th,
+                    material="Betão C25/30", length_m=bx[ix], width_m=by[iy], height_m=th,
                     x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                     source=src, mechanics_source=src, reviewed=True,
                     loads=_slab_loads(perm, var, src), supports=sup))
@@ -306,14 +306,14 @@ def _build_walls(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
     for iy in range(ny + 1):
         for ix in range(nx):
             els.append(Element(id=f"SF_{ix}_{iy}", kind="footing", level="Fondations",
-                material="Béton C25/30", length_m=bx[ix], width_m=0.6, height_m=0.4,
+                material="Betão C25/30", length_m=bx[ix], width_m=0.6, height_m=0.4,
                 x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                 source=src, mechanics_source=src, reviewed=True))
     # Semelles filantes sous les pignons/refends sens Y (périmètre fermé)
     for ix in range(nx + 1):
         for iy in range(ny):
             els.append(Element(id=f"SFY_{ix}_{iy}", kind="footing", level="Fondations",
-                material="Béton C25/30", length_m=by[iy], width_m=0.6, height_m=0.4,
+                material="Betão C25/30", length_m=by[iy], width_m=0.6, height_m=0.4,
                 x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                 source=src, mechanics_source=src, reviewed=True))
     # Murs porteurs empilés — sens X (portent les planchers) sur chaque ligne Y
@@ -323,7 +323,7 @@ def _build_walls(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
             for ix in range(nx):
                 below = f"W_{s + 1}_{ix}_{iy}" if s < L - 1 else f"SF_{ix}_{iy}"
                 els.append(Element(id=f"W_{s}_{ix}_{iy}", kind="wall", level=_lvl_name(s, L),
-                    material="Béton/maçonnerie", length_m=bx[ix], width_m=wt, height_m=round(h, 3),
+                    material="Betão/alvenaria", length_m=bx[ix], width_m=wt, height_m=round(h, 3),
                     x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                     source=src, mechanics_source=src, reviewed=True,
                     supports=[Support(target=below, fraction=1.0, receiving="axial")]))
@@ -332,7 +332,7 @@ def _build_walls(cfg: dict, xs, ys, nx, ny, L, src) -> list[Element]:
             for iy in range(ny):
                 belowy = f"WY_{s + 1}_{ix}_{iy}" if s < L - 1 else f"SFY_{ix}_{iy}"
                 els.append(Element(id=f"WY_{s}_{ix}_{iy}", kind="wall", level=_lvl_name(s, L),
-                    material="Béton/maçonnerie", length_m=by[iy], width_m=wt, height_m=round(h, 3),
+                    material="Betão/alvenaria", length_m=by[iy], width_m=wt, height_m=round(h, 3),
                     x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                     source=src, mechanics_source=src, reviewed=True,
                     supports=[Support(target=belowy, fraction=1.0, receiving="axial")]))
@@ -355,7 +355,7 @@ def _add_slabs(els, cfg, xs, ys, nx, ny, L, th, src, support_prefix, receiving):
                 if var > 0:
                     loads.append(Load(action="Q", value=round(var, 3), mode="surface", source=src))
                 els.append(Element(id=f"D_{s}_{ix}_{iy}", kind="slab", level=_lvl_name(s, L),
-                    material="Béton C25/30", length_m=bx[ix], width_m=by[iy], height_m=th,
+                    material="Betão C25/30", length_m=bx[ix], width_m=by[iy], height_m=th,
                     x_m=xs[ix], y_m=ys[iy], density_kn_m3=CONCRETE_DENSITY,
                     source=src, mechanics_source=src, reviewed=True, loads=loads,
                     supports=[Support(target=f"{support_prefix}_{s}_{ix}_{iy}", fraction=0.5, receiving=receiving),
@@ -366,31 +366,28 @@ def build_model(inputs: dict) -> Model:
     """Treillis régulier déterministe — portique (poteaux/poutres) ou voiles (murs porteurs)."""
     cfg = normalize_inputs(inputs)
     if estimate_counts(cfg) > MAX_ELEMENTS:
-        raise ValueError("Trame trop grande pour la Phase 1 (max 200 éléments). "
-                         "Réduisez le nombre de travées ou de niveaux.")
+        raise ValueError("Malha demasiado grande para a Fase 1 (máx. 200 elementos). Reduza o número de vãos ou de pisos.")
     bx, by = cfg["grid"]["bays_x_m"], cfg["grid"]["bays_y_m"]
     xs, ys = _cum(bx), _cum(by)
     nx, ny = len(bx), len(by)
     L = cfg["building"]["levels"]
     dest = cfg["building"]["destination"]
     system = cfg["system"]["structure"]
-    src = Source(document="Auto-pilote BET", note="Pré-modèle généré automatiquement — À VÉRIFIER avant calcul")
+    src = Source(document="Auto-pilote BET", note="Pré-modelo gerado automaticamente — A VERIFICAR antes do cálculo")
     elements = _build_walls(cfg, xs, ys, nx, ny, L, src) if system == "voiles" \
         else _build_frame(cfg, xs, ys, nx, ny, L, src)
-    sys_label = "voiles / murs porteurs" if system == "voiles" else "portique poteaux-poutres"
-    actions = [Action(id="G", kind="G", label="Permanentes (poids propre + G complémentaires)"),
+    sys_label = "paredes resistentes" if system == "voiles" else "pórtico pilares-vigas"
+    actions = [Action(id="G", kind="G", label="Permanentes (peso próprio + G complementares)"),
                Action(id="Q", kind="Q", label=f"Exploitation ({dest})")]
-    model = Model(title=f"Auto-pilote BET — {dest} {L} niveau(x) — {sys_label}",
+    model = Model(title=f'Auto-pilote BET — {dest} {L} piso(s) — {sys_label}',
                   actions=actions, self_weight_action="G", gravity_model_reviewed=True, elements=elements,
                   assumptions=[
-                      f"Pré-modèle AUTOMATIQUE ({sys_label}) : trame régulière, transferts centrés"
-                      + (" ; dalles 2 sens : charges triangulaires/trapézoïdales sur les poutres." if cfg["system"]["two_way_slab"]
-                         else " ; planchers 1 sens."),
-                      f"Charges d'exploitation {IMPOSED[dest]['q']} kN/m² (EN 1991-1-1, cat. {IMPOSED[dest]['cat']}) — à vérifier.",
-                      "Aucune action horizontale (vent/séisme) ni second ordre. Portique : poutres traitées en "
-                      "files continues (trois moments, Q alternées) au dimensionnement ; descente de charges "
-                      "majorée de l'effet de continuité.",
-                      "NON EXÉCUTOIRE — modèle à valider et compléter par l'ingénieur.",
+                      f'Pré-modelo AUTOMÁTICO ({sys_label}) : malha regular, transferências centradas'
+                      + (" ; lajes armadas em 2 direções: cargas triangulares/trapezoidais nas vigas." if cfg["system"]["two_way_slab"]
+                         else " ; lajes armadas numa direção."),
+                      f"Sobrecargas de utilização {IMPOSED[dest]['q']} kN/m² (EN 1991-1-1, cat. {IMPOSED[dest]['cat']}) — a verificar.",
+                      "Nenhuma ação horizontal (vento/sismo — NP EN 1998-1 e respetivo Anexo Nacional) nem segunda ordem. Pórtico: vigas tratadas em alinhamentos contínuos (três momentos, Q alternadas) no dimensionamento; descida de cargas majorada pelo efeito de continuidade.",
+                      "NÃO EXECUTÓRIO — modelo a validar e completar pelo engenheiro.",
                   ])
     combos = eurocode.generate(model.actions, categories={"Q": IMPOSED[dest]["cat"]},
                                options={"uls": True, "sls_char": True, "sls_freq": False, "sls_qp": True})
@@ -406,8 +403,7 @@ def _case_rows(result: dict, prefix: str) -> dict:
             return {r["id"]: r for r in case.get("elements", [])}
     return {}
 
-SOIL_MISSING_MSG = ("Contrainte de sol non confirmée : fondations NON dimensionnées. "
-                    "Importez la G2 ou saisissez q_ELS/q_ELU du rapport et cochez « valeurs confirmées ».")
+SOIL_MISSING_MSG = ("Tensão de solo não confirmada: fundações NÃO dimensionadas. Importe o estudo geotécnico ou introduza q_ELS/q_ELU do relatório e assinale «valores confirmados».")
 
 
 def size_footings(model: dict, result: dict, q_els_kpa: float | None, q_elu_kpa: float | None,
@@ -519,7 +515,7 @@ def column_rebar(n_ed_kn: float, b_m: float, h_m: float, *, fck=25, fyk=500,
             "as_min_cm2": round(as_min / 100.0, 2), "as_max_cm2": round(as_max / 100.0, 2),
             "long_bars": f"{bars['count']}Ø{bars['bar_mm']}", "as_prov_cm2": bars["as_prov_cm2"],
             "ties": f"Ø{tie} e={s_tie} mm", "nrd_kn": round(n_rd_kn, 0), "status": status,
-            "note": "Compression centrée (As,min=max(0,10·N/fyd ; 0,002·Ac)). Flambement/moments non vérifiés."}
+            "note": "Compressão centrada (As,min=max(0,10·N/fyd ; 0,002·Ac)). Encurvadura/momentos não verificados."}
 
 
 def wall_rebar(n_ed_kn: float, thickness_m: float, length_m: float, *, fck=25, fyk=500) -> dict:
@@ -531,7 +527,7 @@ def wall_rebar(n_ed_kn: float, thickness_m: float, length_m: float, *, fck=25, f
     return {"kind": "wall", "thickness_m": round(thickness_m, 3), "length_m": round(length_m, 2),
             "n_ed_kn": round(n_ed_kn, 1), "as_vert_cm2": round(as_v / 100.0, 2),
             "as_horiz_cm2": round(as_h / 100.0, 2), "as_vert_cm2_per_m": round(per_m_v, 2),
-            "note": "Aciers minimaux de voile §9.6 ; répartis deux faces. Compression centrée, flambement non vérifié."}
+            "note": "Aços mínimos de parede §9.6; distribuídos nas duas faces. Compressão centrada, encurvadura não verificada."}
 
 
 # ----------------------------------------------------------------- continuité des poutres ----
@@ -612,8 +608,7 @@ def continuity_study(model: dict, result: dict) -> dict:
         out_lines.append({"line": f"{prefix}{s}-{fixed}", "beams": ids,
                           "support_moments_knm": [round(x["m_neg_knm"], 2) for x in uls_env["supports"]]})
     return {"version": cont.VERSION, "beams": beams, "node_delta": node_delta, "lines": out_lines,
-            "method": "Files de poutres continues — équation des trois moments, Q alternées ; "
-                      "appuis de rive articulés + chapeaux minimaux 0,15·As (EN 1992-1-1 §9.2.1.2)."}
+            "method": "Alinhamentos de vigas contínuas — equação dos três momentos, Q alternadas; apoios de extremidade articulados + armaduras superiores mínimas 0,15·As (NP EN 1992-1-1 §9.2.1.2)."}
 
 
 def apply_continuity(model: dict, result: dict, continuity: dict) -> dict:
@@ -646,8 +641,7 @@ def apply_continuity(model: dict, result: dict, continuity: dict) -> dict:
                 row["axial_stress_mpa"] = row["total_kn"] / area / 1000
             if area and "mean_pressure_kpa" in row:
                 row["mean_pressure_kpa"] = row["total_kn"] / area
-        case["continuity_note"] = ("Efforts normaux poteaux/semelles majorés de l'effet de continuité des poutres "
-                                   "(réaction continue enveloppe − réaction isostatique).")
+        case["continuity_note"] = ("Esforços normais de pilares/sapatas majorados pelo efeito de continuidade das vigas (reação contínua envolvente − reação isostática).")
     return result
 
 
@@ -664,7 +658,7 @@ def _top_steel_design(m_sup_knm: float, as_bottom_cm2: float, b: float, h: float
     req = max(as_calc, as_constr, as_min if m_sup_knm > 1e-6 else 0.0)
     return {"m_sup_knm": round(max(m_sup_knm, 0.0), 3), "as_calc_cm2": round(as_calc, 2),
             "as_constructive_cm2": round(as_constr, 2), "as_top_req_cm2": round(req, 2),
-            "rule": "As,sup = max(M⁻/(z·fyd) ; 0,15·As,travée [EN 1992-1-1 §9.2.1.2(1)] ; As,min)"}
+            "rule": "As,sup = max(M⁻/(z·fyd) ; 0,15·As,vão [NP EN 1992-1-1 §9.2.1.2(1)] ; As,min)"}
 
 
 def _continuous_beams(model: dict, result: dict, continuity: dict, fck: float, fyk: float) -> dict:
@@ -695,15 +689,14 @@ def _continuous_beams(model: dict, result: dict, continuity: dict, fck: float, f
         if row.get("deflection_sampled_mm") is not None and el.get("ei_kn_m2") and L:
             w_el = row["deflection_sampled_mm"]
             m_qp = row.get("moment_max_knm") or 0
-            basis = "Flèche isostatique fissurée + fluage."
+            basis = "Flecha isostática fendilhada + fluência."
             if "qp_m_left_knm" in env:
                 # Travée continue : les moments d'appui (quasi-permanents) relèvent la mi-travée de
                 # (|Mg|+|Md|)·L²/(16·EI) ; moment de travée continu pour ζ.
                 relief = (abs(env["qp_m_left_knm"]) + abs(env["qp_m_right_knm"])) * L ** 2 / (16 * el["ei_kn_m2"]) * 1000
                 w_el = max(w_el - relief, 0.0)
                 m_qp = env["qp_m_span_knm"]
-                basis = ("Travée continue : flèche élastique isostatique diminuée de l'effet des moments "
-                         "d'appui quasi-permanents, puis fissuration + fluage (§7.4.3).")
+                basis = ("Vão contínuo: flecha elástica isostática diminuída do efeito dos momentos de apoio quase permanentes, depois fendilhação + fluência (§7.4.3).")
             cr = cracked_long_term(w_el, el["ei_kn_m2"], b_m=b, h_m=h, d_m=d,
                                    as_mm2=bars["as_prov_cm2"] * 100, m_qp_knm=m_qp, fck=fck)
             lim = L * 1000 / 250
@@ -794,12 +787,9 @@ def _finish_superstructure(model, result, beams_by_level, by_id, fck, fyk, conti
             prev = walls_by_level.get(lvl)
             if prev is None or r["n_ed_kn"] > prev["n_ed_kn"]:
                 walls_by_level[lvl] = r
-    note = ("Ferraillage gouvernant par niveau (élément le plus sollicité). Efforts seulement ; "
-            "dispositions constructives, ancrages, flèche et flambement à valider par l'ingénieur.")
+    note = ("Armaduras condicionantes por piso (elemento mais solicitado). Apenas esforços; disposições construtivas, amarrações, flecha e encurvadura a validar pelo engenheiro.")
     if continuity:
-        note = ("Poutres en FILES CONTINUES (trois moments, Q alternées) : aciers inférieurs en travée, "
-                "chapeaux sur appuis, flèche fissurée long terme (§7.4.3). Poteaux majorés de l'effet de "
-                "continuité. " + note)
+        note = ("Vigas em ALINHAMENTOS CONTÍNUOS (três momentos, Q alternadas): aços inferiores no vão, armaduras superiores nos apoios, flecha fendilhada a longo prazo (§7.4.3). Pilares majorados pelo efeito de continuidade. " + note)
     return {"version": VERSION, "beams": list(beams_by_level.values()),
             "columns": list(cols_by_level.values()), "walls": list(walls_by_level.values()),
             "continuity": {"method": continuity.get("method"), "lines": continuity.get("lines")} if continuity else None,
@@ -812,7 +802,7 @@ _MARK_PREFIX = {"beam": "PTR", "column": "POT", "wall": "VOI", "slab": "DAL", "f
 
 
 def _mark(kind: str, level: str) -> str:
-    code = {"Toiture": "TOIT", "Fondations": "FOND", "RDC": "RDC", "Plancher haut": "PH"}.get(level, level.replace("+", "").replace(" ", ""))
+    code = {"Toiture": "COBERTURA", "Fondations": "FOND", "RDC": "RDC", "Plancher haut": "PH"}.get(level, level.replace("+", "").replace(" ", ""))
     return f"{_MARK_PREFIX.get(kind, 'EL')}-{code}"
 
 
@@ -870,7 +860,7 @@ def metre(model: dict, result: dict, superstructure: dict, prices: dict) -> dict
         steel_kg += w
         schedule.append({"mark": _mark("beam", b["level"]) + (f"-{b['family']}" if b.get("family") else ""),
                          "type": "Poutre", "level": b["level"],
-                         "section": f"{bwi}×{bh} m", "bars": f"{n_bot}+{n_top}Ø{dia} + cadres Ø8",
+                         "section": f"{bwi}×{bh} m", "bars": f'{n_bot}+{n_top}Ø{dia} + estribos Ø8',
                          "count": n_el, "unit_length_m": round(span + 2 * lap, 2), "weight_kg": round(w, 1)})
     for c in superstructure.get("columns", []):
         el = by_id.get(c["id"]) or {}
@@ -883,7 +873,7 @@ def metre(model: dict, result: dict, superstructure: dict, prices: dict) -> dict
         stir_len = max(2 * ((el.get("width_m", 0.3) - 0.05) + (el.get("length_m", 0.3) - 0.05)), 0.4)
         w = (long_len * _kg_per_m(dia) + nstir * stir_len * _kg_per_m(8)) * n_el
         steel_kg += w
-        schedule.append({"mark": _mark("column", c["level"]), "type": "Poteau", "level": c["level"],
+        schedule.append({"mark": _mark("column", c["level"]), "type": "Pilar", "level": c["level"],
                          "section": f"{el.get('width_m')}×{el.get('length_m')} m", "bars": f"{c.get('long_bars')} + {c.get('ties')}",
                          "count": n_el, "unit_length_m": round(h + lap, 2), "weight_kg": round(w, 1)})
     for wl in superstructure.get("walls", []):
@@ -893,7 +883,7 @@ def metre(model: dict, result: dict, superstructure: dict, prices: dict) -> dict
         as_tot_cm2 = (wl.get("as_vert_cm2", 0) + wl.get("as_horiz_cm2", 0))
         w = as_tot_cm2 * 1e-4 * h * 2.0 * 7850.0 * n_el / 1.0      # 2 faces, acier 7850 kg/m³
         steel_kg += w
-        schedule.append({"mark": _mark("wall", wl["level"]), "type": "Voile", "level": wl["level"],
+        schedule.append({"mark": _mark("wall", wl["level"]), "type": "Parede resistente", "level": wl["level"],
                          "section": f"{el.get('width_m')}×{el.get('length_m')} m",
                          "bars": f"vert. {wl.get('as_vert_cm2')} cm² + horiz. {wl.get('as_horiz_cm2')} cm²",
                          "count": n_el, "unit_length_m": round(h, 2), "weight_kg": round(w, 1)})
@@ -901,7 +891,7 @@ def metre(model: dict, result: dict, superstructure: dict, prices: dict) -> dict
     foot_ratio = 45.0
     foot_steel = round(vol.get("footing", 0.0) * foot_ratio, 1)
     steel_kg += foot_steel
-    schedule.append({"mark": "SEM-FOND", "type": "Semelles", "level": "Fondations", "section": "—",
+    schedule.append({"mark": "SEM-FOND", "type": "Sapatas", "level": "Fondations", "section": "—",
                      "bars": f"forfait {int(foot_ratio)} kg/m³", "count": _count_by_kind(model, "footing"),
                      "unit_length_m": None, "weight_kg": foot_steel})
     steel_kg = round(steel_kg, 0)
@@ -912,8 +902,7 @@ def metre(model: dict, result: dict, superstructure: dict, prices: dict) -> dict
                       "ratio_kg_m3": round(steel_kg / total_concrete, 1) if total_concrete else 0},
             "cost": {"concrete_eur": cost_c, "steel_eur": cost_s, "total_eur": round(cost_c + cost_s, 0),
                      "concrete_eur_m3": pc, "steel_eur_kg": ps},
-            "note": "Métré INDICATIF : béton exact, acier estimé d'après le ferraillage gouvernant par niveau "
-                    "(+ forfait semelles). Hors coffrage, chutes, aciers de peau et recouvrements détaillés."}
+            "note": "Medição INDICATIVA: betão exato, aço estimado segundo as armaduras condicionantes por piso (+ valor global das sapatas). Exclui cofragem, desperdícios, armaduras de pele e emendas detalhadas."}
 
 
 def _count_by_kind(model, kind):
@@ -922,47 +911,15 @@ def _count_by_kind(model, kind):
 
 
 _SYSTEM = (
-    "Tu es un assistant de bureau d'études structure (BTP, France). Tu LIS des plans cotés, "
-    "des pièces de permis de construire et des rapports géotechniques G2, et tu en extrais "
-    "UNIQUEMENT ce qui est écrit/lisible. N'INVENTE JAMAIS une cote, une charge ou une valeur de sol : "
-    "mets-la dans 'incertitudes' si absente. Réponds STRICTEMENT en JSON valide, sans texte autour."
+    "És um assistente de gabinete de projeto de estruturas (construção, Portugal). LÊS plantas cotadas, peças de projetos de licenciamento e relatórios geotécnicos, e extrais APENAS o que está escrito/legível. NUNCA INVENTES uma cota, uma carga ou um valor de solo: põe-no em \'incertitudes\' se estiver ausente. Responde ESTRITAMENTE em JSON válido, sem texto à volta."
 )
 
 _GEOM_PROMPT = (
-    "Tu analyses des PLANS COTÉS et des pièces de PERMIS DE CONSTRUIRE (plans de masse, "
-    "coupes, façades, plans de niveau). Renvoie CE JSON exact :\n"
-    '{"building":{"destination":"habitation|bureau|commerce|parking|industriel|erp","levels":<nombre de niveaux porteurs entier>,'
-    '"storey_height_m":<hauteur d\'étage courant>,"ground_height_m":<hauteur RDC>},'
-    '"system":{"structure":"portique|voiles","wall_thickness_m":<épaisseur mur porteur en m si lisible sinon null>},'
-    '"grid":{"bays_x_m":[<portées successives entre files de poteaux/murs selon X, en m>],"bays_y_m":[<idem selon Y, en m>]},'
-    '"loads":{"floor_var_kn_m2":<charge exploitation plancher si lisible sinon null>,"roof_var_kn_m2":<null si inconnu>},'
-    '"sections":{"col_side_m":<section poteau si cotée sinon null>,"beam_width_m":<null>,"beam_height_m":<null>,"slab_thickness_m":<épaisseur dalle/plancher si cotée sinon null>},'
-    '"incertitudes":[""]}\n'
-    "RÈGLES :\n"
-    "- Déduis le nombre de niveaux du type (R+1 = 2 niveaux porteurs, R+2 = 3, etc.), des coupes/façades ou des altitudes (±0.00, +3.10, +5.90…). Compte aussi un sous-sol s'il est porteur.\n"
-    "- SYSTÈME : maison/immeuble en MAÇONNERIE de blocs ou VOILES béton armé porteurs → structure='voiles' ; ossature POTEAUX-POUTRES (BA ou acier) → structure='portique'. Une maison individuelle courante est presque toujours en 'voiles' (murs porteurs).\n"
-    "- Lis les HAUTEURS sur la COUPE : storey_height_m = différence d'altitude entre deux planchers courants successifs.\n"
-    "- Utilise l'ÉCHELLE indiquée (ex 1/50, 1/100) ET les cotes écrites pour mesurer les portées. Chaque portée = distance d'axe à axe entre deux files consécutives.\n"
-    "- Si la trame est régulière de N files espacées de d, renvoie [d, d, …] (N-1 valeurs).\n"
-    "- Si la trame intérieure des murs/files porteurs n'est PAS cotée (fréquent en permis de construire), déduis l'EMPRISE hors-tout Lx x Ly depuis le plan de masse/toiture et renvoie bays_x_m=[Lx], bays_y_m=[Ly], puis signale-le dans 'incertitudes'.\n"
-    "- Ne renvoie QUE des nombres en MÈTRES. Mets null (jamais 0 inventé) quand une valeur n'est pas lisible, "
-    "et explique le doute dans 'incertitudes'. N'invente aucune cote."
+    "Analisas PLANTAS COTADAS e peças de PROJETOS DE LICENCIAMENTO (plantas de implantação, cortes, alçados, plantas de piso). Devolve ESTE JSON exato (valores enumerados inalterados):\n{\"building\":{\"destination\":\"habitation|bureau|commerce|parking|industriel|erp\",\"levels\":<nombre de niveaux porteurs entier>,\"storey_height_m\":<hauteur d\'étage courant>,\"ground_height_m\":<hauteur RDC>},\"system\":{\"structure\":\"portique|voiles\",\"wall_thickness_m\":<épaisseur mur porteur en m si lisible sinon null>},\"grid\":{\"bays_x_m\":[<portées successives entre files de poteaux/murs selon X, en m>],\"bays_y_m\":[<idem selon Y, en m>]},\"loads\":{\"floor_var_kn_m2\":<charge exploitation plancher si lisible sinon null>,\"roof_var_kn_m2\":<null si inconnu>},\"sections\":{\"col_side_m\":<section poteau si cotée sinon null>,\"beam_width_m\":<null>,\"beam_height_m\":<null>,\"slab_thickness_m\":<épaisseur dalle/plancher si cotée sinon null>},\"incertitudes\":[\"\"]}\nREGRAS:\n- Deduz o número de pisos do tipo (R/C+1 = 2 pisos estruturais, R/C+2 = 3, etc.), dos cortes/alçados ou das cotas (±0.00, +3.10, +5.90…). Conta também uma cave se for estrutural.\n- SISTEMA: moradia/edifício em ALVENARIA de blocos ou PAREDES de betão armado resistentes → structure=\'voiles\'; estrutura PILARES-VIGAS (BA ou aço) → structure=\'portique\'. Em Portugal, a maioria dos edifícios correntes é em pórtico de betão armado com paredes de alvenaria de enchimento → \'portique\', salvo paredes resistentes explícitas.\n- Lê as ALTURAS no CORTE: storey_height_m = diferença de cota entre dois pavimentos correntes sucessivos.\n- Utiliza a ESCALA indicada (ex.: 1/50, 1/100) E as cotas escritas para medir os vãos. Cada vão = distância de eixo a eixo entre dois alinhamentos consecutivos.\n- Se a malha for regular com N alinhamentos afastados de d, devolve [d, d, …] (N-1 valores).\n- Se a malha interior das paredes/alinhamentos estruturais NÃO estiver cotada (frequente nos projetos de licenciamento), deduz a IMPLANTAÇÃO fora a fora Lx x Ly a partir da planta de implantação/cobertura e devolve bays_x_m=[Lx], bays_y_m=[Ly], assinalando-o depois em \'incertitudes\'.\n- Devolve APENAS números em METROS. Põe null (nunca 0 inventado) quando um valor não for legível, e explica a dúvida em \'incertitudes\' (em português europeu). Não inventes nenhuma cota."
 )
 
 _SOIL_PROMPT = (
-    "Tu analyses un RAPPORT GÉOTECHNIQUE (mission G2 AVP/PRO, NF P94-500) — PLUSIEURS PAGES te sont fournies. Renvoie CE JSON exact :\n"
-    '{"soil":{"q_els_kpa":<contrainte admissible ELS en kPa ou null>,"q_elu_kpa":<ELU en kPa ou null>,'
-    '"foundation_type":"isolee|filante|radier","anchorage_depth_m":<profondeur d\'ancrage/encastrement D en m>,'
-    '"water_table":<true/false nappe/eau rencontrée>,"soil_class":"<nature/classe du sol d\'assise lue>",'
-    '"phi_deg":<angle de frottement phi\' ou null>,"c_kpa":<cohésion c\' ou null>,"cu_kpa":<cohésion non drainée cu ou null>,'
-    '"gamma_soil_kn_m3":<poids volumique du sol ou null>},"incertitudes":[""]}\n'
-    "RÈGLES :\n"
-    "- Cherche la 'contrainte admissible', 'qadm', 'contrainte de calcul ELS/ELU', 'qELS/qELU', ou une formule du type 'Vd ≤ q × A'' (alors q EST la contrainte admissible). "
-    "Convertis TOUT en kPa : 1 MPa = 1000 kPa, 1 bar = 100 kPa, 1 t/m2 = 10 kPa, 1 daN/cm2 = 100 kPa. Ex : 0,300 MPa → 300 kPa ; 0,492 MPa → 492 kPa.\n"
-    "- Prends la contrainte de la STRATE D'ASSISE des fondations superficielles (pas celle des butons/parois provisoires).\n"
-    "- Déduis 'foundation_type' de la recommandation (semelles isolées / filantes / radier / pieux->radier). Pour une maison en murs porteurs, retiens 'filante' si des semelles filantes sont citées.\n"
-    "- Mets null (jamais une valeur inventée) quand ce n'est pas écrit sur les pages fournies ; liste les doutes dans 'incertitudes'. "
-    "Ne tranche pas entre deux valeurs contradictoires : signale-les."
+    "Analisas um RELATÓRIO GEOTÉCNICO (estudo geotécnico de projeto, NP EN 1997-1/-2) — são-te fornecidas VÁRIAS PÁGINAS. Devolve ESTE JSON exato (valores enumerados inalterados):\n{\"soil\":{\"q_els_kpa\":<contrainte admissible ELS en kPa ou null>,\"q_elu_kpa\":<ELU en kPa ou null>,\"foundation_type\":\"isolee|filante|radier\",\"anchorage_depth_m\":<profondeur d\'ancrage/encastrement D en m>,\"water_table\":<true/false nappe/eau rencontrée>,\"soil_class\":\"<nature/classe du sol d\'assise lue>\",\"phi_deg\":<angle de frottement phi\' ou null>,\"c_kpa\":<cohésion c\' ou null>,\"cu_kpa\":<cohésion non drainée cu ou null>,\"gamma_soil_kn_m3\":<poids volumique du sol ou null>},\"incertitudes\":[\"\"]}\nREGRAS:\n- Procura a \'tensão admissível\', \'qadm\', \'tensão de cálculo ELS/ELU\', \'qELS/qELU\', \'capacidade resistente do terreno\', ou uma fórmula do tipo \'Vd ≤ q × A\'\' (então q É a tensão admissível). Converte TUDO em kPa: 1 MPa = 1000 kPa, 1 bar = 100 kPa, 1 t/m2 = 10 kPa, 1 kgf/cm2 ≈ 100 kPa. Ex.: 0,300 MPa → 300 kPa; 0,492 MPa → 492 kPa.\n- Toma a tensão do ESTRATO DE FUNDAÇÃO das fundações superficiais (não a das escoras/contenções provisórias).\n- Deduz \'foundation_type\' da recomendação (sapatas isoladas / contínuas / ensoleiramento / estacas->radier). Para uma moradia em paredes resistentes, adota \'filante\' se forem citadas sapatas contínuas.\n- Põe null (nunca um valor inventado) quando não estiver escrito nas páginas fornecidas; lista as dúvidas em \'incertitudes\' (em português europeu). Não decidas entre dois valores contraditórios: assinala-os."
 )
 
 
@@ -1075,7 +1032,7 @@ async def extract_inputs(geom_images: list[bytes], soil_images: list[bytes]) -> 
                     merged[k] = g[k]
             merged["incertitudes"] += [str(x) for x in (g.get("incertitudes") or [])]
     except Exception as e:  # noqa: BLE001
-        merged["incertitudes"].append(f"Lecture plan/PC indisponible : {str(e)[:120]}")
+        merged["incertitudes"].append(f'Leitura da planta/projeto indisponível: {str(e)[:120]}')
     try:
         s, s_inc = await _extract_soil_batched(soil_images)
         if s:
@@ -1086,13 +1043,13 @@ async def extract_inputs(geom_images: list[bytes], soil_images: list[bytes]) -> 
                     merged["soil"]["q_confirmed"] = True   # lu dans la G2 (à relire par l'utilisateur)
             merged["incertitudes"] += s_inc
     except Exception as e:  # noqa: BLE001
-        merged["incertitudes"].append(f"Lecture G2 indisponible : {str(e)[:120]}")
+        merged["incertitudes"].append(f'Leitura do estudo geotécnico indisponível: {str(e)[:120]}')
 
     inputs = normalize_inputs(merged)
     if not read_flags["geometry"]:
-        inputs["incertitudes"].insert(0, "Aucun plan/PC lisible : trame par défaut (à saisir).")
+        inputs["incertitudes"].insert(0, "Nenhuma planta/projeto legível: malha por omissão (a introduzir).")
     if not read_flags["soil"]:
-        inputs["incertitudes"].insert(0, "Aucune G2 lisible : contrainte de sol à saisir — fondations non dimensionnées sans elle.")
+        inputs["incertitudes"].insert(0, "Nenhum estudo geotécnico legível: tensão de solo a introduzir — fundações não dimensionadas sem ela.")
     inputs["read_flags"] = read_flags
     return inputs
 
@@ -1128,8 +1085,7 @@ def build_and_compute(inputs: dict) -> dict:
     for bm in rebar.get("beams", []):
         dfl = bm.get("deflection") or {}
         if dfl.get("status") == "a_revoir":
-            warnings.append(f"Poutre {bm['id']} ({bm['level']}) : flèche long terme {dfl['w_long_term_mm']} mm "
-                            f"> L/250 = {dfl['limit_mm']} mm — augmenter la hauteur.")
+            warnings.append(f"Viga {bm['id']} ({bm['level']}) : flecha a longo prazo {dfl['w_long_term_mm']} mm > L/250 = {dfl['limit_mm']} mm — aumentar a altura.")
     summary["warnings"] = warnings
     summary["soil_confirmed"] = soil["q_confirmed"]
     return {"model": m2, "result": result2, "footing_sizes": sizes,

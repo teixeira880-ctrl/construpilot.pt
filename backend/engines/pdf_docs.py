@@ -20,7 +20,7 @@ from engines.pdf_takeoff import (
 )
 from engines.pdf_i18n import pdf_labels
 
-DOC_LABELS = {"quote": "DEVIS", "invoice": "FACTURE", "credit_note": "AVOIR"}
+DOC_LABELS = {"quote": "ORÇAMENTO", "invoice": "FATURA", "credit_note": "NOTA DE CRÉDITO"}
 
 # Couleur par défaut des documents commerciaux (vert). Le pro peut la changer
 # dans « Ma page & mes documents » (champ accent_color) : toute la palette en dérive.
@@ -177,9 +177,9 @@ def _fiscal_parts(b: dict) -> list[str]:
     if b.get("nif"):
         fisc.append(f"NIF {b['nif']}")
     elif b.get("siret"):
-        fisc.append(f"SIRET {b['siret']}")
+        fisc.append(f"Estabelecimento {b['siret']}")
     if b.get("vat"):
-        fisc.append(f"{'IVA' if b.get('nif') else 'TVA'} {b['vat']}")
+        fisc.append(f"{('IVA' if b.get('nif') else 'IVA')} {b['vat']}")
     if b.get("alvara"):
         fisc.append(f"Alvará {b['alvara']}")
     return fisc
@@ -260,7 +260,7 @@ def _header_letterhead(story: list, branding: dict | None, S: dict, P: dict,
     doc_key = {"quote": "doc_quote", "invoice": "doc_invoice", "credit_note": "doc_credit"}
     label = L[doc_key.get(doc.get("doc_type"), "doc_generic")]
     if layout == "detaille" and doc.get("doc_type") == "quote":
-        label = "DEVIS PAR LOTS"
+        label = "ORÇAMENTO POR CAPÍTULOS"
     right: list = [Paragraph(f"<b>{escape(label)}</b>", label_style)]
     meta_style = muted if layout == "detaille" else S["muted_right"]
     if doc.get("number"):
@@ -292,7 +292,7 @@ def _header_letterhead(story: list, branding: dict | None, S: dict, P: dict,
     story.append(_table([[left, right]], [104 * mm, 70 * mm], style_extras=extras))
 
     if layout == "signature":
-        title = doc.get("title") or "Votre projet de rénovation"
+        title = doc.get("title") or "O seu projeto de remodelação"
         serif = S["h1"].clone("lh_serif")
         serif.fontName, serif.fontSize, serif.leading = "Times-Bold", 24, 27
         serif.textColor = colors.HexColor("#313834")
@@ -312,7 +312,7 @@ def _header_letterhead(story: list, branding: dict | None, S: dict, P: dict,
 def _signature_block(story: list, S: dict, L: dict, P: dict, sign_url: str | None) -> None:
     """Bon pour accord + QR code de signature en ligne (déterministe, aucun visuel généré)."""
     left = [Paragraph(f"<b>{L['agreement']}</b>", S["body"]),
-            Paragraph("Date et signature du client :", S["muted"]),
+            Paragraph("Data e assinatura do cliente:", S["muted"]),
             Spacer(1, 16)]
     qr_cell = ""
     if sign_url:
@@ -323,12 +323,12 @@ def _signature_block(story: list, S: dict, L: dict, P: dict, sign_url: str | Non
             img.save(bio, format="PNG")
             bio.seek(0)
             qr_cell = [Image(bio, width=24 * mm, height=24 * mm),
-                       Paragraph("Scanner pour signer", S["muted"])]
+                       Paragraph("Ler para assinar", S["muted"])]
             link_style = S["muted"].clone("doc_signlink")
             link_style.wordWrap = "CJK"   # force la coupe d'une URL sans espace
             link_style.fontSize = 6.2
             link_style.leading = 8
-            left.append(Paragraph("Ou signer en ligne :", S["muted"]))
+            left.append(Paragraph("Ou assinar online:", S["muted"]))
             left.append(Paragraph(f'<font color="#1F5F3F">{escape(sign_url)}</font>', link_style))
         except Exception:  # noqa: BLE001 — le devis reste valide sans QR
             qr_cell = ""
@@ -421,22 +421,22 @@ def _parties_block(story: list, doc: dict, S: dict, L: dict, P: dict) -> None:
     if client.get("email"):
         cl.append(escape(client["email"]))
 
-    columns = [(L.get("p_client", "CLIENT"), cl or [L.get("client", "Client")])]
+    columns = [(L.get("p_client", "CLIENTE"), cl or [L.get("client", "Cliente")])]
 
     site = []
     if doc.get("project_address"):
         site.append(f"<b>{escape(doc['project_address'])}</b>")
     if doc.get("project_duration"):
-        site.append(escape(f"{L.get('p_duration', 'Durée')} : {doc['project_duration']}"))
+        site.append(escape(f"{L.get('p_duration', 'Duração')} : {doc['project_duration']}"))
     if doc.get("project_start"):
-        site.append(escape(f"{L.get('p_start', 'Démarrage')} : {doc['project_start']}"))
+        site.append(escape(f"{L.get('p_start', 'Início')} : {doc['project_start']}"))
     if site:
-        columns.append((L.get("p_site", "CHANTIER"), site))
+        columns.append((L.get("p_site", "OBRA"), site))
 
     vu = _effective_validity(doc)
     if vu:
-        valid_label = L.get("p_valid_until", "Valable jusqu'au")
-        columns.append((L.get("p_validity", "VALIDITÉ"),
+        valid_label = L.get("p_valid_until", "Válido até")
+        columns.append((L.get("p_validity", "VALIDADE"),
                         [f"<b>{escape(valid_label)} {vu}</b>"]))
 
     kicker = S["kicker"].clone("party_kicker")
@@ -466,8 +466,8 @@ def _payment_schedule(story: list, doc: dict, S: dict, L: dict, P: dict) -> None
         return
     ttc = float((doc.get("totals") or {}).get("ttc", 0) or 0)
     story.append(Spacer(1, 12))
-    story.append(Paragraph(L.get("schedule_title", "Règlement prévisionnel"), S["h2"]))
-    rows = [[L.get("schedule_stage", "Échéance"), "%", L.get("schedule_amount", "Montant TTC")]]
+    story.append(Paragraph(L.get("schedule_title", "Plano de pagamento"), S["h2"]))
+    rows = [[L.get("schedule_stage", "Vencimento"), "%", L.get("schedule_amount", "Montante c/ IVA")]]
     for s in stages:
         pct = float(s.get("pct") or 0)
         rows.append([escape(s.get("label") or ""), f"{_fmt(pct)}%", _fmt(round(ttc * pct / 100, 2), "€")])
@@ -504,7 +504,7 @@ def _client_block(story: list, client: dict | None, S: dict, L: dict, P: dict,
     if client.get("phone"):
         lines.append(client["phone"])
     if client.get("siret"):
-        lines.append(f"SIRET {client['siret']}")
+        lines.append(f"Estabelecimento {client['siret']}")
     html = "<br/>".join(lines) or L["client"]
     tbl = _table([[Paragraph(f"<b>{L['addressed_to']}</b><br/>" + html, S["body"])]], [82 * mm],
                  style_extras=[
@@ -579,7 +579,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict, P: dict,
                  layout: str = DEFAULT_LAYOUT) -> None:
     story.append(Paragraph(L["lines_title"], S["h2"]))
     header = [L["c_designation"], L["c_qty"], L["c_unit"], L["c_pu_ht"],
-              L.get("c_discount", "Remise"), L["c_vat"], L["c_total_ht"]]
+              L.get("c_discount", "Desconto"), L["c_vat"], L["c_total_ht"]]
     col_widths = [66 * mm, 14 * mm, 14 * mm, 20 * mm, 14 * mm, 14 * mm, 26 * mm]
     SPECIAL = ("section", "subsection", "text", "pagebreak")
 
@@ -808,16 +808,11 @@ def _facturx_badge(story: list, S: dict, P: dict, facturx: bool) -> None:
     - facturx=False : une version Factur-X est disponible (le PDF simple ne contient pas le XML).
     """
     if facturx:
-        title = "Facture électronique Factur-X"
-        body_txt = ("Ce document est une facture électronique au format <b>Factur-X</b> : un PDF/A-3 "
-                    "avec un fichier <b>XML CII intégré</b> (norme européenne <b>EN 16931</b>, profil BASIC). "
-                    "Il est exploitable automatiquement par votre logiciel comptable et prêt pour la "
-                    "facturation électronique (réforme française).")
+        title = "Fatura eletrónica"
+        body_txt = ("Este documento é uma fatura eletrónica em formato estruturado: um PDF/A-3 com um ficheiro <b>XML CII integrado</b> (norma europeia <b>EN 16931</b>, perfil BASIC). Pode ser tratado automaticamente pelo seu software de contabilidade.")
     else:
-        title = "Compatible facturation électronique (Factur-X)"
-        body_txt = ("Une version <b>Factur-X</b> de cette facture (PDF/A-3 + <b>XML CII</b> intégré, norme "
-                    "<b>EN 16931</b>, profil BASIC) est disponible via le bouton « Factur-X » de votre "
-                    "espace, pour la facturation électronique (réforme française).")
+        title = "Compatível com faturação eletrónica"
+        body_txt = ("Uma versão estruturada desta fatura (PDF/A-3 + <b>XML CII</b> integrado, norma <b>EN 16931</b>, perfil BASIC) está disponível através do botão «Fatura eletrónica» do seu espaço.")
     inner = [Paragraph(f"<b>{title}</b>", S["body"]), Spacer(1, 2), Paragraph(body_txt, S["muted"])]
     box = Table([[inner]], colWidths=[174 * mm])
     box.setStyle(TableStyle([
@@ -899,7 +894,7 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
             img.drawWidth = max_w
             img.drawHeight = max_w * ratio
             story.append(Spacer(1, 14))
-            story.append(Paragraph(L.get("attachment_3d", "Vue 3D du projet"), S["h2"]))
+            story.append(Paragraph(L.get("attachment_3d", "Vista 3D do projeto"), S["h2"]))
             story.append(img)
         except Exception:
             pass
@@ -912,7 +907,7 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
     # RIB / coordonnées bancaires (factures et avoirs uniquement)
     if doc.get("doc_type") in ("invoice", "credit_note") and (branding or {}).get("bank_details"):
         story.append(Spacer(1, 12))
-        story.append(Paragraph("Coordonnées bancaires", S["h2"]))
+        story.append(Paragraph("Dados bancários", S["h2"]))
         story.append(Paragraph(str(branding["bank_details"]).replace("\n", "<br/>"), S["body"]))
 
     # Encart « Factur-X » — réassurance conformité facturation électronique (factures/avoirs)
@@ -923,8 +918,8 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
         if dossier:
             from engines.study_dossier import quote_lines_hash
             unchanged = quote_lines_hash(doc.get("lines", [])) == doc.get("study_lines_hash") and not doc.get("global_discount_pct")
-            note = ("Étude de référence annexée : métrés, formules, hypothèses et provisions. Les choix constructifs et les prix restent à confirmer."
-                    if unchanged else "Les lignes ou remises ont changé depuis l’étude. Les calculs de l’étude source ne sont pas annexés à ce devis modifié ; vérifiez la cohérence des nouveaux postes.")
+            note = ("Estudo de referência anexado: medições, fórmulas, hipóteses e provisões. As escolhas construtivas e os preços continuam por confirmar."
+                    if unchanged else "As linhas ou descontos mudaram desde o estudo. Os cálculos do estudo de origem não são anexados a este orçamento alterado; verifique a coerência dos novos artigos.")
             story.append(Paragraph(escape(note), S["muted"]))
         _signature_block(story, S, L, P, sign_url)
         _story_quote_reviews(story, reviews, S)

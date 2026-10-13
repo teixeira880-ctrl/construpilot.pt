@@ -14,8 +14,8 @@ from engines.llm_keys import studies_key
 logger = logging.getLogger(__name__)
 
 LEVELS = ["VERT", "BLEU", "JAUNE", "ORANGE", "ROUGE"]
-LEVEL_LABEL = {"VERT": "Cohérent", "BLEU": "Information", "JAUNE": "À vérifier",
-               "ORANGE": "Incohérence", "ROUGE": "Incohérence majeure"}
+LEVEL_LABEL = {"VERT": "Coerente", "BLEU": "Informação", "JAUNE": "A verificar",
+               "ORANGE": "Incoerência", "ROUGE": "Incoerência grave"}
 
 
 def level_for_mm(delta_mm: float) -> str:
@@ -54,8 +54,8 @@ def _cotes_for_prompt(report: dict) -> list[dict]:
         if it.get("ignored"):
             continue
         out.append({"index": it["index"], "cote_inscrite_m": it["indicated_m"], "mesure_m": it["measured_m"],
-                    "facade_opposee": it.get("facade_status"), "mesure": ("EXACTE (vecteurs PDF/DXF, mm)" if it.get("source") in ("pdf", "dxf")
-                               else "PIXEL NON VÉRIFIÉE" if it.get("unverified") else "pixel"),
+                    "facade_opposee": it.get("facade_status"), "mesure": ("EXATA (vetores PDF/DXF, mm)" if it.get("source") in ("pdf", "dxf")
+                               else "PÍXEL NÃO VERIFICADA" if it.get("unverified") else "pixel"),
                     "ecart_cm": it["delta_cm"], "orientation": {"h": "horizontale", "v": "verticale"}.get(it["orientation"], "oblique"),
                     "position_px": [it["x1"], it["y1"], it["x2"], it["y2"]], "localisation": it.get("location"),
                     "confiance_lecture": it.get("confidence")})
@@ -78,7 +78,7 @@ def _clean_anomalies(items: list, start: int = 1) -> list[dict]:
             ecart = float(a.get("ecart_mm")) if a.get("ecart_mm") is not None else None
         except (TypeError, ValueError):
             ecart = None
-        out.append({"numero": int(a.get("numero") or start + i), "localisation": a.get("localisation") or "NON INDIQUÉ",
+        out.append({"numero": int(a.get("numero") or start + i), "localisation": a.get("localisation") or "NÃO INDICADO",
                     "donnee_plan": a.get("donnee_plan") or "", "calcul": a.get("calcul") or "",
                     "formule": a.get("formule") or "", "resultat": a.get("resultat") or "",
                     "ecart_mm": ecart, "niveau": _norm_level(a.get("niveau"), ecart),
@@ -95,11 +95,11 @@ async def analyze_geometry(image_b64: str, report: dict, w: int, h: int, lang: s
     p1 = await _call(image_b64, PASS1_FORMAT.format(
         cotes_json=json.dumps(_cotes_for_prompt(report), ensure_ascii=False),
         ppm=round(float(cal.get("pixels_per_meter") or 0), 2), w=w, h=h,
-        source={"pdf_vector+ai": "vecteurs PDF exacts (mesure au mm entre lignes d'attache, fait foi) croisés avec l'IA",
-                "dxf": "DXF exact", "ai": "lecture IA sur image (mesure pixel ±1-2 %)"}.get(
+        source={"pdf_vector+ai": "vetores PDF exatos (medição ao mm entre linhas de chamada, prevalece) cruzados com a IA",
+                "dxf": "DXF exact", "ai": "leitura IA em imagem (medição em píxeis ±1-2 %)"}.get(
             (report.get("reading") or {}).get("source", "ai"), "ai")), lang)
     if p1.get("error"):
-        return {"error": f"Passage 1 impossible : {p1['error']}"}
+        return {"error": f"Passagem 1 impossível: {p1['error']}"}
     anomalies = _clean_anomalies(p1.get("anomalies"))
     p2 = await _call(image_b64, PASS2_FORMAT.format(pass1_json=json.dumps(
         {"anomalies": anomalies, "fermetures": p1.get("fermetures") or []}, ensure_ascii=False)[:12000]), lang)
@@ -112,9 +112,9 @@ async def analyze_geometry(image_b64: str, report: dict, w: int, h: int, lang: s
                                             "recalcul": v.get("recalcul") or "", "commentaire": v.get("commentaire") or ""}
         extra = _clean_anomalies(p2.get("anomalies_supplementaires"), start=100)
         for a in extra:
-            a["verification"] = {"verdict": "PASSAGE 2 UNIQUEMENT", "recalcul": "", "commentaire": ""}
+            a["verification"] = {"verdict": "APENAS PASSAGEM 2", "recalcul": "", "commentaire": ""}
     for a in anomalies:
-        a["verification"] = verifs.get(a["numero"]) or {"verdict": "NON REVUE", "recalcul": "", "commentaire": ""}
+        a["verification"] = verifs.get(a["numero"]) or {"verdict": "NÃO REVISTA", "recalcul": "", "commentaire": ""}
         if a["verification"]["verdict"] == "INFIRMÉE" and a["niveau"] in ("ORANGE", "ROUGE"):
             a["niveau_initial"] = a["niveau"]
             a["niveau"] = "JAUNE"
@@ -245,7 +245,7 @@ def _clean_sections(sections) -> list[dict]:
             cote = float(s["cote_plan_m"]) if s.get("cote_plan_m") is not None else None
         except (TypeError, ValueError):
             cote = None
-        out.append({"numero": int(s.get("numero") or i + 1), "titre": str(s.get("titre") or f"Section {i + 1}"),
+        out.append({"numero": int(s.get("numero") or i + 1), "titre": str(s.get("titre") or f'Secção {i + 1}'),
                     "cote_plan_m": cote, "texte": str(s.get("texte") or ""), "calcul": str(s.get("calcul") or ""),
                     "ecart_mm": ecart, "niveau": _norm_level(s.get("niveau"), ecart), "conclusion": str(s.get("conclusion") or ""),
                     "cotes_index": [int(x) for x in (s.get("cotes_index") or []) if str(x).isdigit()]})
@@ -259,10 +259,10 @@ async def write_narrative(image_b64: str, report: dict, geo: dict, lang: str = "
         lang_instruction=LANG_INSTRUCTION.get(lang, LANG_INSTRUCTION["fr"]),
         data_json=json.dumps(data, ensure_ascii=False)[:40000]), lang)
     if p4.get("error"):
-        return {"error": f"Rédaction impossible : {p4['error']}"}
+        return {"error": f"Redação impossível: {p4['error']}"}
     sections = _clean_sections(p4.get("sections"))
     if not sections:
-        return {"error": "Rédaction impossible : aucune section produite"}
+        return {"error": "Redação impossível: nenhuma secção produzida"}
     return {"titre": str(p4.get("titre") or ""), "introduction": str(p4.get("introduction") or ""),
             "methode": str(p4.get("methode") or ""), "sections": sections, "facades": str(p4.get("facades") or ""),
             "synthese": str(p4.get("synthese") or ""),

@@ -23,7 +23,7 @@ def level_candidates(text: str) -> list[dict]:
         levels.add(int(match.group(1)))
     if re.search(r"\b(?:combles?|grenier)\b", text, re.I):
         levels.add(99)
-    return [{"level_index": n, "level_label": "Combles" if n == 99 else "RDC" if n == 0 else "Sous-sol" if n == -1 else f"R{n:+d}"}
+    return [{"level_index": n, "level_label": "Sótão" if n == 99 else "RDC" if n == 0 else "Cave" if n == -1 else f"R{n:+d}"}
             for n in sorted(levels)]
 
 
@@ -60,17 +60,17 @@ def page_context(text: str) -> dict:
         kind = "text_unavailable"
     warnings = []
     if len(scales) > 1:
-        warnings.append("Plusieurs échelles sur cette page (" + ", ".join(f"1:{s}" for s in scales) + "). Isolez chaque vue avant de calibrer et calculer ses quantités.")
+        warnings.append("Várias escalas nesta página (" + ", ".join(f"1:{s}" for s in scales) + "). Isole cada vista antes de calibrar e calcular as suas quantidades.")
     if len(levels) > 1:
-        warnings.append("Plusieurs mentions de niveaux : " + ", ".join(x["level_label"] for x in levels) + ". Vérifiez le titre et affectez les mesures à leur vue et à leur niveau.")
+        warnings.append("Várias menções de pisos: " + ", ".join(x["level_label"] for x in levels) + ". Verifique o título e atribua as medições à sua vista e ao seu piso.")
     technical_blocked = technical_kind is not None or kind == "text_unavailable"
     interior_blocked = kind in ("section", "elevation", "opening_schedule", "mixed") or len(scales) > 1 or technical_blocked
     if kind in ("section", "elevation", "opening_schedule", "mixed"):
-        warnings.append("Cette page contient une coupe, une façade ou une nomenclature : ses contours ne sont pas automatiquement des pièces ou des murs en plan.")
+        warnings.append("Esta página contém um corte, um alçado ou uma lista: os seus contornos não são automaticamente divisões ou paredes em planta.")
     if technical_kind:
-        warnings.append("Document de structure ou note technique : les armatures, coffrages et coupes ne sont pas des murs intérieurs. Quantifiez les éléments par repère et par vue après contrôle.")
+        warnings.append("Documento de estrutura ou nota técnica: as armaduras, cofragens e cortes não são paredes interiores. Quantifique os elementos por marca e por vista após controlo.")
     if kind == "text_unavailable":
-        warnings.append("Aucun texte exploitable dans cette page : lecture visuelle/OCR et calibration contrôlée nécessaires avant le métré. Une importation réussie ne valide aucune quantité.")
+        warnings.append("Nenhum texto utilizável nesta página: leitura visual/OCR e calibração controlada necessárias antes da medição. Uma importação bem-sucedida não valida nenhuma quantidade.")
     unique_level = levels[0] if len(levels) == 1 and kind in ("floor_plan", "unknown") else {}
     return {"view_kind": kind, "scale_denominators": scales,
             "detected_scale_denominator": scales[0] if len(scales) == 1 else None,

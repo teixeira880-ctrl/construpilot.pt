@@ -3,7 +3,7 @@ import re
 from urllib.parse import urlparse
 
 RECO_PATTERNS = {
-    "fr": [r"\b(je (vous )?(recommande|conseille)|nous (recommandons|conseillons)|meilleur choix|option recommandée|à privilégier|le plus adapté)\b"],
+    "fr": ["\\b(recomend(o|amos|ado|ada)|aconselh(o|amos)|melhor (opção|escolha)|a privilegiar|o mais adequado)\\b"],
     "pt": [r"\b(recomend(o|amos|ado|ada)|aconselh(o|amos)|melhor (opção|escolha)|a privilegiar|o mais adequado)\b"],
 }
 GENERIC_EXCLUDE = re.compile(r"\b(construction|pilotage|pilote|construir|piloto)\b", re.IGNORECASE)
@@ -53,8 +53,8 @@ def detect(text: str, citations: list[dict], brands: list[dict], lang: str) -> l
                     entry["rank"] = i
                     break
         elif domain_cite:
-            entry["evidence"] = f"Citation de {domain_cite.get('url')}"
+            entry["evidence"] = f"Citação de {domain_cite.get('url')}"
         else:
-            entry["evidence"] = f"Domaine {domain_in_text} présent dans le texte"
+            entry["evidence"] = f'Domínio {domain_in_text} presente no texto'
         out.append(entry)
     return out

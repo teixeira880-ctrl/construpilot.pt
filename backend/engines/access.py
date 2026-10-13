@@ -52,6 +52,6 @@ def require_level(minimum: str):
         if not meets(level, minimum):
             raise HTTPException(
                 status_code=403,
-                detail=f"Fonction réservée à l'offre « {minimum} ». Mettez à niveau votre abonnement.")
+                detail=f'Função reservada à oferta «{minimum}». Atualize a sua subscrição.')
         return user
     return _dep

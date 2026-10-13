@@ -49,7 +49,7 @@ async def create_share_link(project_id: str, body: ShareIn | None = None,
                             user=Depends(current_user)) -> dict:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]})
     if not p:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     token = p.get("share_token")
     if not token:
         token = secrets.token_urlsafe(16)
@@ -74,7 +74,7 @@ async def revoke_share_link(project_id: str, user=Depends(current_user)) -> dict
         {"$unset": {"share_token": "", "share_created_at": "", "share_expires_at": ""}},
     )
     if res.matched_count == 0:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     return {"ok": True}
 
 
@@ -86,7 +86,7 @@ async def share_stats(project_id: str, user=Depends(current_user)) -> dict:
          "share_created_at": 1, "share_expires_at": 1, "share_events": 1},
     )
     if not p:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     token = p.get("share_token")
     return {
         "token": token,
@@ -104,11 +104,11 @@ async def public_estimation(token: str, request: Request) -> dict:
     p = await db.projects.find_one({"share_token": token},
                                    {"_id": 0, "user_id": 0})
     if not p:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     # Expiry check
     expires_at = p.get("share_expires_at")
     if expires_at and expires_at < _iso():
-        raise HTTPException(410, "Ce lien de partage a expiré")
+        raise HTTPException(410, "Esta ligação de partilha expirou")
 
     # Analytics — increment atomically, keep last 100 events
     now_iso = _iso()
@@ -176,15 +176,15 @@ async def send_sms(project_id: str, body: SmsShareIn, user=Depends(current_user)
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "share_token": 1})
     if not p:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
 
     if not (TWILIO_SID and TWILIO_TOKEN and TWILIO_FROM):
-        raise HTTPException(503, "Twilio non configuré : utilisez le lien SMS natif")
+        raise HTTPException(503, "Twilio não configurado: utilize a ligação SMS nativa")
 
     # Normalize E.164 : garde le +, retire espaces / tirets
     to = "".join(ch for ch in body.to if ch.isdigit() or ch == "+")
     if not to.startswith("+"):
-        raise HTTPException(422, "Le numéro doit être au format international (+33…)")
+        raise HTTPException(422, "O número deve estar no formato internacional (+351…)")
 
     try:
         from twilio.rest import Client
@@ -203,4 +203,4 @@ async def send_sms(project_id: str, body: SmsShareIn, user=Depends(current_user)
         # TwilioRestException also catched here
         code = getattr(e, "code", None)
         logger.warning(f"Twilio SMS failed code={code}: {e}")
-        raise HTTPException(502, f"Envoi SMS refusé par Twilio (code {code or 'inconnu'})")
+        raise HTTPException(502, f"Envio de SMS recusado pela Twilio (código {code or 'inconnu'})")

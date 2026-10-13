@@ -39,9 +39,9 @@ def _client():
     from engines.llm_keys import openai_direct_active
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
-        raise StudiesError("Clé OpenAI non configurée côté serveur")
+        raise StudiesError("Chave OpenAI não configurada no servidor")
     if not openai_direct_active():
-        raise StudiesError("Clé OpenAI de l'entreprise désactivée (crédit épuisé) — l'admin doit la réactiver dans Admin → IA")
+        raise StudiesError("Chave OpenAI da empresa desativada (crédito esgotado) — o administrador deve reativá-la em Admin → IA")
     from openai import AsyncOpenAI
     return AsyncOpenAI(api_key=key, timeout=900)
 
@@ -50,7 +50,7 @@ async def check_quota(user_id: str) -> None:
     since = datetime.now(timezone.utc) - timedelta(hours=1)
     n = await db.ai_usage.count_documents({"user_id": user_id, "engine": "openai_studies", "created": {"$gte": since}})
     if n >= MAX_PER_HOUR:
-        raise StudiesError(f"Limite atteinte : {MAX_PER_HOUR} analyses OpenAI par heure et par compte")
+        raise StudiesError(f'Limite atingido: {MAX_PER_HOUR} análises OpenAI por hora e por conta')
 
 
 async def _log_usage(user_id: str, project_id: str | None, kind: str, model: str, usage, plan_id: str | None) -> None:
@@ -109,7 +109,7 @@ def _file_part(file_id: str) -> dict:
 
 async def _upload_pdf(client, pdf_bytes: bytes, filename: str) -> str:
     if len(pdf_bytes) > MAX_PDF_MB * 1024 * 1024:
-        raise StudiesError(f"PDF trop volumineux (> {MAX_PDF_MB} Mo)")
+        raise StudiesError(f'PDF demasiado volumoso (> {MAX_PDF_MB} Mo)')
     f = await client.files.create(file=(filename or "plan.pdf", pdf_bytes, "application/pdf"), purpose="user_data")
     return f.id
 
@@ -117,7 +117,7 @@ async def _upload_pdf(client, pdf_bytes: bytes, filename: str) -> str:
 def _json_payload(value) -> str:
     text = json.dumps(value, ensure_ascii=False, allow_nan=False)
     if len(text) > 500_000:
-        raise StudiesError("Données d'analyse trop volumineuses : traiter des zones plus petites")
+        raise StudiesError("Dados de análise demasiado volumosos: tratar zonas mais pequenas")
     return text
 
 
@@ -125,7 +125,7 @@ def _selected_page_pdf(pdf_bytes: bytes, page_index: int) -> bytes:
     import pymupdf
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as src:
         if page_index < 0 or page_index >= len(src):
-            raise StudiesError("Page demandée absente du PDF")
+            raise StudiesError("Página pedida ausente do PDF")
         with pymupdf.open() as selected:
             selected.insert_pdf(src, from_page=page_index, to_page=page_index)
             return selected.tobytes()
@@ -137,12 +137,12 @@ async def _respond(client, model: str, effort: str, instructions: str, content: 
         input=[{"role": "user", "content": content}],
         text={"format": {"type": "json_schema", "name": name, "strict": True, "schema": schema}})
     if getattr(response, "status", "completed") != "completed" or not response.output_text:
-        raise StudiesError("Réponse IA incomplète : aucune analyse ne peut être validée")
+        raise StudiesError("Resposta IA incompleta: nenhuma análise pode ser validada")
     from jsonschema import ValidationError, validate
     try:
         validate(json.loads(response.output_text), schema)
     except (ValueError, ValidationError):
-        raise StudiesError("Réponse IA invalide : structure attendue non respectée") from None
+        raise StudiesError("Resposta IA inválida: estrutura esperada não respeitada") from None
     return response
 
 
@@ -159,7 +159,7 @@ def review_disagreements(review: dict, engine: dict, page_index: int) -> list[st
         originals = {m[key]: m for m in engine.get(field) or []}
         candidates = review.get(field) or []
         if len(candidates) != len(originals) or {m.get(key) for m in candidates} != set(originals):
-            reasons.append(f"inventaire IA différent du moteur : {field}")
+            reasons.append(f'inventário IA diferente do motor: {field}')
         for candidate in candidates:
             original = originals.get(candidate.get(key))
             if original is None:
@@ -171,11 +171,11 @@ def review_disagreements(review: dict, engine: dict, page_index: int) -> list[st
             else:
                 differs |= not same_number(candidate.get("exterior_dimension_m"), original.get("written_exterior_m"))
             if differs:
-                reasons.append(f"désaccord IA / géométrie à résoudre : {candidate.get(key)}")
+                reasons.append(f'desacordo IA / geometria a resolver: {candidate.get(key)}')
     if any(w.get("engine_agreement") != "confirmed" for w in review.get("walls") or []):
-        reasons.append("inventaire des murs corrigé ou rejeté par la relecture : géométrie à réexaminer")
+        reasons.append("inventário das paredes corrigido ou rejeitado pela revisão: geometria a reexaminar")
     if {w.get("wall_id") for w in review.get("walls") or []} != {w["wall_id"] for w in engine.get("walls") or []}:
-        reasons.append("inventaire des murs non rapproché du moteur")
+        reasons.append("inventário das paredes não comparado com o motor")
     return reasons
 
 
@@ -197,7 +197,7 @@ def zone_crops(pdf_bytes: bytes, page_index: int, walls_result: dict, px_per_pt:
                                          min(page.rect.width,(col+1.08)*page.rect.width/3), min(page.rect.height,(row+1.08)*page.rect.height/3))
                     z = min(zoom, 2600/max(rect.width,rect.height))
                     pix = page.get_pixmap(matrix=pymupdf.Matrix(z,z),clip=rect,alpha=False)
-                    result.append({"label": f"zone source {row+1}-{col+1} (murs non établis)",
+                    result.append({"label": f'zone source {row + 1}-{col + 1} (paredes não estabelecidas)',
                                    "data_url": "data:image/png;base64," + base64.b64encode(pix.tobytes("png")).decode("ascii"),
                                    "box_px": [round(v*px_per_pt) for v in rect], "zoom": round(z,2)})
             return result
@@ -205,10 +205,10 @@ def zone_crops(pdf_bytes: bytes, page_index: int, walls_result: dict, px_per_pt:
     ys = [v for w in walls for v in (w["face_1"]["y1"], w["face_1"]["y2"], w["face_2"]["y1"], w["face_2"]["y2"])]
     x0, x1, y0, y1 = min(xs) / px_per_pt, max(xs) / px_per_pt, min(ys) / px_per_pt, max(ys) / px_per_pt
     m = 1.6 * (walls_result.get("pt_per_m") or 40)  # marge ≈ 1,6 m (chaînes de cotes périphériques)
-    zones = [("périphérie haute", x0 - m, y0 - m, x1 + m, y0 + m * 0.4), ("périphérie basse", x0 - m, y1 - m * 0.4, x1 + m, y1 + m),
-             ("périphérie gauche", x0 - m, y0 - m, x0 + m * 0.4, y1 + m), ("périphérie droite", x1 - m * 0.4, y0 - m, x1 + m, y1 + m)]
+    zones = [("periferia superior", x0 - m, y0 - m, x1 + m, y0 + m * 0.4), ("periferia inferior", x0 - m, y1 - m * 0.4, x1 + m, y1 + m),
+             ("periferia esquerda", x0 - m, y0 - m, x0 + m * 0.4, y1 + m), ("periferia direita", x1 - m * 0.4, y0 - m, x1 + m, y1 + m)]
     h = (y1 - y0) / 3
-    zones += [(f"bande intérieure {lbl}", x0 - m * 0.3, y0 + i * h - m * 0.2, x1 + m * 0.3, y0 + (i + 1) * h + m * 0.2)
+    zones += [(f'faixa interior {lbl}', x0 - m * 0.3, y0 + i * h - m * 0.2, x1 + m * 0.3, y0 + (i + 1) * h + m * 0.2)
               for i, lbl in enumerate(("supérieure", "centrale", "inférieure"))]
     meas = sorted(walls_result.get("interior_measurements") or [], key=lambda mm: (mm["status"] != "to_confirm", -mm.get("geometric_dimension_m", 0)))
     for mm in meas:
@@ -239,29 +239,24 @@ async def analyze_interior(*, client, file_id: str, user_id: str, plan_id: str, 
                            walls_result: dict, crops: list[dict], lang: str, effort: str = "high") -> dict:
     """Trois passes séparées (géométrie → cotations → rapprochement), GPT-6 Astra, sortie JSON stricte."""
     from engines.interior_prompt import INTERIOR_PROMPT, INTERIOR_SCHEMA, PASS_DIMENSIONS, PASS_GEOMETRY, PASS_RECONCILE
-    lang_note = "Rédige tous les textes en portugais européen professionnel." if lang == "pt" else "Rédige tous les textes en français professionnel."
+    lang_note = "Redige todos os textos em português europeu profissional." if lang == "pt" else "Redige todos os textos em português europeu profissional."
     engine = {k: walls_result.get(k) for k in ("coverage", "walls", "interior_measurements", "closure_equations", "cotes", "sections_ignored", "stats", "validation",
                                                "peripheral", "legend")}
     lg = walls_result.get("legend") or {}
-    request_text = (f"{request_text}\nLÉGENDE DU PLAN (source prioritaire) : {' | '.join(lg.get('legend') or []) or 'aucune légende détectée'}\n"
-                    f"CARTOUCHE : {' | '.join(lg.get('cartouche') or []) or '—'} — type de document : {lg.get('document_kind') or 'non déterminé'}")
+    request_text = (f"{request_text}\nLEGENDA DA PLANTA (fonte prioritária): {' | '.join(lg.get('legend') or []) or 'nenhuma legenda detetada'}\nCARTOUCHE : {' | '.join(lg.get('cartouche') or []) or '—'} — tipo de documento: {lg.get('document_kind') or 'não determinado'}")
     engine_txt = _json_payload(engine)
     from engines.plan_symbols import prompt_block
-    head = [_file_part(file_id), {"type": "input_text", "text": f"{lang_note}\nPÉRIMÈTRE DEMANDÉ : {request_text}\nPage : {page_index + 1}.\n"
-                                                                  f"Le fichier transmis contient seulement cette page source ; utilise le numéro {page_index + 1} dans les résultats.\n"
-                                                                  "Conserve les identifiants et les références de faces du moteur sans les renommer. Toute correction proposée doit être expliquée dans review_findings.\n"
-                                                                  f"{prompt_block()}\n\n"
-                                                                  f"MURS / MESURES / COTES / FERMETURES : candidats géométriques à contrôler ; longueurs en mètres, coordonnées en pixels de l’aperçu :\n{engine_txt}"}]
+    head = [_file_part(file_id), {"type": "input_text", "text": f'{lang_note}\nÂMBITO PEDIDO: {request_text}\nPage : {page_index + 1}.\nO ficheiro transmitido contém apenas esta página de origem; utiliza o número {page_index + 1} nos resultados.\nConserva os identificadores e as referências de faces do motor sem os renomear. Qualquer correção proposta deve ser explicada em review_findings.\n{prompt_block()}\n\nPAREDES / MEDIÇÕES / COTAS / FECHOS: candidatos geométricos a controlar; comprimentos em metros, coordenadas em píxeis da pré-visualização:\n{engine_txt}'}]
     imgs = []
     for c in crops:
-        imgs.append({"type": "input_text", "text": f"Zoom haute résolution — {c['label']} (page {page_index + 1}, zone pixels {c['box_px']}, ×{c['zoom']}) :"})
+        imgs.append({"type": "input_text", "text": f"Ampliação de alta resolução — {c['label']} (page {page_index + 1}, zone pixels {c['box_px']}, ×{c['zoom']}) :"})
         imgs.append({"type": "input_image", "image_url": c["data_url"], "detail": "high"})
     r1 = await _respond(client, MODEL_ANALYSIS, effort, INTERIOR_PROMPT, head + [{"type": "input_text", "text": PASS_GEOMETRY}] + imgs,
                         INTERIOR_SCHEMA, "interior_pass_geometry")
     await _log_usage(user_id, project_id, "interior_geometry", MODEL_ANALYSIS, r1.usage, plan_id)
     p1 = json.loads(r1.output_text)
     r2 = await _respond(client, MODEL_ANALYSIS, effort, INTERIOR_PROMPT,
-                        head + [{"type": "input_text", "text": PASS_DIMENSIONS + "\nRÉSULTAT DU PASSAGE 1 (murs) :\n" + _json_payload(p1.get("walls"))}] + imgs,
+                        head + [{"type": "input_text", "text": PASS_DIMENSIONS + "\nRESULTADO DA PASSAGEM 1 (paredes):\n" + _json_payload(p1.get("walls"))}] + imgs,
                         INTERIOR_SCHEMA, "interior_pass_dimensions")
     await _log_usage(user_id, project_id, "interior_dimensions", MODEL_ANALYSIS, r2.usage, plan_id)
     p2 = json.loads(r2.output_text)
@@ -295,7 +290,7 @@ async def analyze_plan(*, user_id: str, plan_id: str, project_id: str | None, pd
         file_id = await _upload_pdf(client, scoped_pdf, f"page-{page_index + 1}.pdf")
         interior = None
         if walls_result is None:
-            walls_result = {"validation": {"complete": False, "failed_checks": ["géométrie intérieure absente"]}}
+            walls_result = {"validation": {"complete": False, "failed_checks": ["geometria interior ausente"]}}
         if walls_result is not None:
             interior = await analyze_interior(client=client, file_id=file_id, user_id=user_id, plan_id=plan_id, project_id=project_id,
                                               page_index=page_index, request_text=request_text, walls_result=walls_result,
@@ -304,28 +299,24 @@ async def analyze_plan(*, user_id: str, plan_id: str, project_id: str | None, pd
                                                                      "ai_summary": interior["ai"].get("summary"),
                                                                      "interior_measurements": interior["engine"].get("interior_measurements"),
                                                                      "closure_equations": interior["engine"].get("closure_equations")}}
-        lang_note = ("Rédige tous les textes en portugais européen professionnel." if lang == "pt"
-                     else "Rédige tous les textes en français professionnel.")
+        lang_note = ("Redige todos os textos em português europeu profissional." if lang == "pt"
+                     else "Redige todos os textos em português europeu profissional.")
         engine_txt = _json_payload(engine_json)
         content = [_file_part(file_id),
                    {"type": "input_text", "text":
-                    f"{lang_note}\nPÉRIMÈTRE DEMANDÉ : {request_text}\nPage à analyser : {page_index + 1} du document « {filename} » "
-                    f"(le fichier transmis contient seulement cette page source).\n"
-                    f"DONNÉES DU MOTEUR CONSTRUPILOT (mesures en mètres ; associations et classes à vérifier) :\n{engine_txt}"}]
+                    f'{lang_note}\nÂMBITO PEDIDO: {request_text}\nPágina a analisar: {page_index + 1} do documento «{filename}» (o ficheiro transmitido contém apenas esta página de origem).\nDADOS DO MOTOR CONSTRUPILOT (medições em metros; associações e classes a verificar):\n{engine_txt}'}]
         for i, c in enumerate(crops):
-            content.append({"type": "input_text", "text": f"Zoom haute résolution n°{i + 1} (page {page_index + 1}, "
-                                                          f"zone pixels {c['box_px']}, cotes ConstruPilot #{c['cotes']}) :"})
+            content.append({"type": "input_text", "text": f"Ampliação de alta resolução n.º{i + 1} (page {page_index + 1}, zone pixels {c['box_px']}, cotes ConstruPilot #{c['cotes']}) :"})
             content.append({"type": "input_image", "image_url": c["data_url"], "detail": "high"})
         from engines.plan_symbols import prompt_block
         r1 = await _respond(client, MODEL_ANALYSIS, effort, SYSTEM_PROMPT + "\n\n" + prompt_block(), content, ANALYSIS_SCHEMA, "construction_plan_analysis")
         await _log_usage(user_id, project_id, "plan_analysis", MODEL_ANALYSIS, r1.usage, plan_id)
         analysis = json.loads(r1.output_text)
         if analysis.get("pages_analyzed") != [page_index + 1]:
-            raise StudiesError("La réponse IA ne correspond pas à la page source demandée")
+            raise StudiesError("A resposta IA não corresponde à página de origem pedida")
         content2 = [_file_part(file_id),
                     {"type": "input_text", "text":
-                     f"{lang_note}\nPÉRIMÈTRE DEMANDÉ : {request_text}\nPage source : {page_index + 1}.\nJSON DE LA PREMIÈRE ANALYSE :\n{_json_payload(analysis)}\n\n"
-                     f"CALCULS DU MOTEUR CONSTRUPILOT :\n{engine_txt}"}]
+                     f'{lang_note}\nÂMBITO PEDIDO: {request_text}\nPage source : {page_index + 1}.\nJSON DA PRIMEIRA ANÁLISE:\n{_json_payload(analysis)}\n\nCÁLCULOS DO MOTOR CONSTRUPILOT:\n{engine_txt}'}]
         r2 = await _respond(client, MODEL_ANALYSIS, "high", VERIFY_PROMPT, content2 + content[2:], VERIFY_SCHEMA, "independent_verification")
         await _log_usage(user_id, project_id, "plan_verification", MODEL_ANALYSIS, r2.usage, plan_id)
         verification = json.loads(r2.output_text)
@@ -344,9 +335,9 @@ async def analyze_plan(*, user_id: str, plan_id: str, project_id: str | None, pd
     except Exception as e:  # noqa: BLE001
         from engines.llm_keys import note_openai_error
         if await note_openai_error(e):
-            raise StudiesError("Clé OpenAI de l'entreprise désactivée (crédit épuisé) — l'admin doit la réactiver dans Admin → IA") from None
+            raise StudiesError("Chave OpenAI da empresa desativada (crédito esgotado) — o administrador deve reativá-la em Admin → IA") from None
         logger.warning("openai studies failed: %s", _safe_error(e))
-        raise StudiesError(f"Analyse OpenAI impossible — {_safe_error(e)}") from None
+        raise StudiesError(f'Análise OpenAI impossível — {_safe_error(e)}') from None
 
     finally:
         if file_id:

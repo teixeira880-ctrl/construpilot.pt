@@ -40,20 +40,7 @@ SHEET_SCHEMA = _obj({
     "unreadable": {"type": "array", "items": {"type": "string"}},
 })
 
-INSTRUCTIONS = """Tu lis une feuille de ferraillage béton armé (bureau d'études) rendue en image. Transcris UNIQUEMENT ce qui est imprimé, sans rien
-calculer ni compléter : si une valeur n'est pas lisible, mets null et décris-la dans « unreadable ».
-- page_kind : « cover » pour la page d'indications/récap générale (RECAP DES ACIERS, RECAPITULATIF TREILLIS) ; « element_sheet » pour une feuille d'élément
-  unique (poutre, linteau…) avec cartouche « Béton=… m3 / Acier=… kg / d=… kg/m3 » et tableau Barre / Lg / Forme ; « schedule_sheet » pour une feuille
-  à plusieurs éléments (BN, PV, attentes…) avec un tableau « Nomenclature des aciers » (N°, Type, ∅, Nombre par élément / d'éléments / TOTAL, Esp,
-  Long. unitaire, Façonnage, Mandrin, Long. TOTALE) ; sinon « other ».
-- elements : tous les repères d'éléments dessinés sur la page (ex. BN3.2 « 1 unités » → label=BN3.2, units=1 ; PV3.45 ; Attente PV3.7 (x1u.) → units=1).
-- schedule_rows : chaque ligne du tableau Nomenclature des aciers, valeurs en cm telles qu'imprimées (mark = N°, ∅ en mm) ; schedule_partial=true si « (partielle) ».
-- element : uniquement pour element_sheet : label (ex. T3.11), niveau (ex. PH RDC), Béton m3, Acier kg, d kg/m3, section b×h en cm (coupe), portée en cm si cotée, tenue au feu, classe béton.
-- bars : chaque ligne du tableau Barre/Lg/Forme : numéro de repère, « 4HA12 » → count=4, diameter_mm=12 ; Lg en cm ; forme = cotes du croquis telles qu'écrites.
-- by_diameter : lignes « Barre | Lg/Poids » : « HA8 67.8/26.8 » → diameter_mm=8, length_m=67.8, mass_kg=26.8.
-- title_block : cartouche s'il est imprimé (code plan ex. GO-B3-R0-301, indice, date jj/mm/aaaa, nom d'affaire, n° d'affaire, niveau, auteur/BET, titre) ; sinon null.
-- recap : uniquement sur la page cover : Poids HA façonnés / non façonnés, tableau treillis (panneau, nombre, dimensions, masse), masse totale, masse posée.
-Aucune valeur inventée ; aucune tolérance appliquée ; ne corrige jamais une valeur imprimée."""
+INSTRUCTIONS = "Lês uma folha de armaduras de betão armado (gabinete de projeto) apresentada em imagem. Transcreve APENAS o que está impresso, sem nada\ncalcular nem completar: se um valor não for legível, põe null e descreve-o em «unreadable».\n- page_kind : «cover» pour la page d\'indications/récap générale (RECAP DES ACIERS, RECAPITULATIF TREILLIS) ; «element_sheet» pour une feuille d\'élément\n  unique (poutre, linteau…) avec cartouche «Béton=… m3 / Acier=… kg / d=… kg/m3» et tableau Barre / Lg / Forme ; «schedule_sheet» pour une feuille\n  à plusieurs éléments (BN, PV, attentes…) avec un tableau «Nomenclature des aciers» (N°, Type, ∅, Nombre par élément / d\'éléments / TOTAL, Esp,\n  Long. unitaire, Façonnage, Mandrin, Long. TOTALE) ; sinon «other».\n- elements : tous les repères d\'éléments dessinés sur la page (ex. BN3.2 «1 unités» → label=BN3.2, units=1 ; PV3.45 ; Attente PV3.7 (x1u.) → units=1).\n- schedule_rows : chaque ligne du tableau Nomenclature des aciers, valeurs en cm telles qu\'imprimées (mark = N°, ∅ en mm) ; schedule_partial=true si «(partielle)».\n- element : uniquement pour element_sheet : label (ex. T3.11), niveau (ex. PH RDC), Béton m3, Acier kg, d kg/m3, section b×h en cm (coupe), portée en cm si cotée, tenue au feu, classe béton.\n- bars : chaque ligne du tableau Barre/Lg/Forme : numéro de repère, «4HA12» → count=4, diameter_mm=12 ; Lg en cm ; forme = cotes du croquis telles qu\'écrites.\n- by_diameter : lignes «Barre | Lg/Poids» : «HA8 67.8/26.8» → diameter_mm=8, length_m=67.8, mass_kg=26.8.\n- title_block : cartouche s\'il est imprimé (code plan ex. GO-B3-R0-301, indice, date jj/mm/aaaa, nom d\'affaire, n° d\'affaire, niveau, auteur/BET, titre) ; sinon null.\n- recap : uniquement sur la page cover : Poids HA façonnés / non façonnés, tableau treillis (panneau, nombre, dimensions, masse), masse totale, masse posée.\nNenhum valor inventado; nenhuma tolerância aplicada; nunca corrijas um valor impresso."
 
 
 def render_page_png_b64(pdf_bytes: bytes, page_index: int, *, dpi: int = 170, rotate_deg: int = 0) -> str:
@@ -88,7 +75,7 @@ def check_sheet(sheet: dict) -> dict:
                 "checks": sched["checks"], "inconsistencies": sched["inconsistencies"], "indeterminate": []}
     for b in sheet.get("bars") or []:
         if b.get("count") is None or b.get("diameter_mm") is None or b.get("length_cm") is None:
-            checks.append({"mark": b.get("mark"), "check": "barre incomplète", "state": "indeterminate", "formula": None, "declared": None})
+            checks.append({"mark": b.get("mark"), "check": "varão incompleto", "state": "indeterminate", "formula": None, "declared": None})
             continue
         kg_m = STEEL_KG_PER_M.get(f"HA{b['diameter_mm']}")
         length_m = b["count"] * b["length_cm"] / 100
@@ -101,25 +88,25 @@ def check_sheet(sheet: dict) -> dict:
         dia = row.get("diameter_mm")
         calc = by_dia.get(dia)
         if not calc or dia is None:
-            checks.append({"diameter_mm": dia, "check": "Lg/Poids sans barre correspondante dans le tableau", "state": "to_clarify", "formula": None, "declared": row})
+            checks.append({"diameter_mm": dia, "check": "Comp./Peso sem varão correspondente na tabela", "state": "to_clarify", "formula": None, "declared": row})
             continue
         if row.get("length_m") is not None:
             ok = abs(calc["length_m"] - row["length_m"]) <= max(0.15, 0.01 * row["length_m"])
-            checks.append({"diameter_mm": dia, "check": "Σ count × Lg = Lg totale", "formula": f"Σ = {calc['length_m']:.2f} m", "declared": row["length_m"],
+            checks.append({"diameter_mm": dia, "check": "Σ count × Comp. = Comp. total", "formula": f"Σ = {calc['length_m']:.2f} m", "declared": row["length_m"],
                            "difference_m": round(calc["length_m"] - row["length_m"], 2), "state": "confirmed" if ok else "to_clarify"})
         if row.get("mass_kg") is not None:
             ok = abs(calc["mass_kg"] - row["mass_kg"]) <= max(0.3, 0.02 * row["mass_kg"])
-            checks.append({"diameter_mm": dia, "check": "Σ Lg × kg/m = Poids", "formula": f"Σ = {calc['mass_kg']:.1f} kg", "declared": row["mass_kg"],
+            checks.append({"diameter_mm": dia, "check": "Σ Comp. × kg/m = Peso", "formula": f"Σ = {calc['mass_kg']:.1f} kg", "declared": row["mass_kg"],
                            "difference_kg": round(calc["mass_kg"] - row["mass_kg"], 1), "state": "confirmed" if ok else "to_clarify"})
     total_calc = round(sum(d["mass_kg"] for d in by_dia.values()), 1)
     printed = sum(r["mass_kg"] for r in (sheet.get("by_diameter") or []) if r.get("mass_kg") is not None)
     el = sheet.get("element") or {}
     if el.get("steel_kg") is not None and printed:
-        checks.append({"check": "Σ Poids par diamètre = Acier (cartouche)", "formula": f"Σ = {printed:.1f} kg", "declared": el["steel_kg"],
+        checks.append({"check": "Σ Peso por diâmetro = Aço (legenda)", "formula": f"Σ = {printed:.1f} kg", "declared": el["steel_kg"],
                        "difference_kg": round(printed - el["steel_kg"], 1), "state": "confirmed" if abs(printed - el["steel_kg"]) <= max(0.5, 0.02 * el["steel_kg"]) else "to_clarify"})
     if el.get("steel_kg") and el.get("concrete_m3") and el.get("ratio_kg_m3"):
         ratio = el["steel_kg"] / el["concrete_m3"]
-        checks.append({"check": "Acier / Béton = d", "formula": f"{el['steel_kg']:g} / {el['concrete_m3']:g} = {ratio:.1f} kg/m3", "declared": el["ratio_kg_m3"],
+        checks.append({"check": "Aço / Betão = d", "formula": f"{el['steel_kg']:g} / {el['concrete_m3']:g} = {ratio:.1f} kg/m3", "declared": el["ratio_kg_m3"],
                        "state": "confirmed" if abs(ratio - el["ratio_kg_m3"]) <= max(0.6, 0.01 * el["ratio_kg_m3"]) else "to_clarify"})
     return {"by_diameter_calc": {f"HA{k}": {kk: round(vv, 2) for kk, vv in v.items()} for k, v in sorted(by_dia.items())},
             "calc_mass_kg": total_calc, "printed_mass_kg": round(printed, 1) if printed else None, "checks": checks,
@@ -149,21 +136,21 @@ def summarize(sheets: list[dict]) -> dict:
         rc = cover["recap"]
         recap_total = (rc.get("ha_shaped_kg") or 0) + (rc.get("ha_straight_kg") or 0)
         out["cover_recap"] = rc
-        out["comparison"] = {"a": "Σ Acier des feuilles d'éléments + Σ nomenclatures (masse théorique)", "a_kg": round(total_steel + schedule_steel, 1),
-                             "b": "RECAP DES ACIERS (HA façonnés + non façonnés)",
+        out["comparison"] = {"a": "Σ Aço das folhas de elementos + Σ listas (massa teórica)", "a_kg": round(total_steel + schedule_steel, 1),
+                             "b": "RESUMO DE AÇOS (A500 moldados + não moldados)",
                              "b_kg": round(recap_total, 1), "difference_kg": round(total_steel + schedule_steel - recap_total, 1),
-                             "note": "Le récap peut couvrir des éléments absents des feuilles lues (ou l'inverse) : écart à éclaircir, pas une erreur démontrée."}
+                             "note": "O resumo pode cobrir elementos ausentes das folhas lidas (ou o inverso): diferença a esclarecer, não um erro demonstrado."}
     return out
 
 
 async def read_sheet(client, model: str, png_b64: str, *, effort: str = "low") -> dict:
     response = await client.responses.create(
         model=model, reasoning={"effort": effort}, instructions=INSTRUCTIONS,
-        input=[{"role": "user", "content": [{"type": "input_text", "text": "Transcris cette feuille selon le schéma."},
+        input=[{"role": "user", "content": [{"type": "input_text", "text": "Transcreve esta folha segundo o esquema."},
                                             {"type": "input_image", "image_url": f"data:image/png;base64,{png_b64}", "detail": "high"}]}],
         text={"format": {"type": "json_schema", "name": "rebar_sheet", "strict": True, "schema": SHEET_SCHEMA}})
     if getattr(response, "status", "completed") != "completed" or not response.output_text:
-        raise RuntimeError("Réponse IA incomplète")
+        raise RuntimeError("Resposta IA incompleta")
     from jsonschema import validate
     data = json.loads(response.output_text)
     validate(data, SHEET_SCHEMA)
@@ -189,7 +176,7 @@ async def analyze_pdf(pdf_bytes: bytes, *, user_id: str, plan_id: str | None, pa
             except Exception as e:  # noqa: BLE001 — one unreadable page must not lose the others
                 logger.warning("rebar vision page %s failed: %s", idx, type(e).__name__)
                 sheets[idx] = {"page": idx, "page_kind": "other", "element": None, "elements": [], "schedule_rows": [], "schedule_partial": False, "bars": [], "by_diameter": [], "recap": None, "title_block": None, "notes": [],
-                               "unreadable": [f"Lecture IA échouée : {type(e).__name__}"], "error": True}
+                               "unreadable": [f'Leitura IA falhada: {type(e).__name__}'], "error": True}
                 return
             if log_usage:
                 await log_usage(user_id, None, "rebar_vision", MODEL_ANALYSIS, usage, plan_id)
@@ -198,8 +185,7 @@ async def analyze_pdf(pdf_bytes: bytes, *, user_id: str, plan_id: str | None, pa
     await asyncio.gather(*(one(i) for i in pages))
     ordered = [sheets[i] for i in pages]
     return {"pages": len(pages), "rotation_deg": rot, "model": MODEL_ANALYSIS, "sheets": ordered, "summary": summarize(ordered),
-            "note": ("Lecture visuelle (texte vectorisé, pas de texte natif) : chaque valeur est une transcription à vérifier sur le recadrage ; "
-                     "les contrôles arithmétiques signalent les écarts sans les corriger.")}
+            "note": ("Leitura visual (texto vetorizado, sem texto nativo): cada valor é uma transcrição a verificar no recorte; os controlos aritméticos assinalam as diferenças sem as corrigir.")}
 
 
 def is_vision_needed(pdf_bytes: bytes, page_index: int = 0) -> bool:

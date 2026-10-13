@@ -12,8 +12,7 @@ from datetime import datetime, timezone
 
 CALC_ENGINE_AVAILABLE = False  # verrouillé : normes/catalogues/cas de référence non fournis
 RULEPACK = {"id": "none", "version": "0", "status": "non_qualifie",
-            "note": "Moteur de vérification non disponible : textes normatifs (Eurocodes/NF/EN) "
-                    "non licenciés, catalogues de profilés et cas de référence ingénieur absents."}
+            "note": "Motor de verificação indisponível: textos normativos (Eurocódigos/NP EN) não licenciados, catálogos de perfis e casos de referência de engenheiro ausentes."}
 
 # Provenance d'une donnée (jamais déduite de l'âge ou d'une photo).
 SOURCES = ["declaration", "mesure", "observation", "document", "essai", "ia_proposition",
@@ -33,32 +32,32 @@ OUTPUT_LEVELS = ["exploration", "preliminaire", "calculee"]
 # required = clés de données (datum keys) devant être DOCUMENTÉES pour lever le blocage.
 VERIFICATIONS = {
     "descente_charges": {
-        "label": "Descente de charges jusqu'au sol",
+        "label": "Descida de cargas até ao terreno",
         "required": ["geometrie.niveaux", "plancher.sens_porteur", "plancher.portee",
                      "charges.permanentes", "charges.exploitation"],
         "domain": "generique"},
     "poutre_acier": {
-        "label": "Poutre acier (flexion / flèche / déversement / appuis)",
+        "label": "Viga de aço (flexão / flecha / encurvadura lateral / apoios)",
         "required": ["ouverture.portee", "ouverture.charges_reprises", "poutre.appuis",
                      "poutre.maintien_lateral"],
         "domain": "acier_en1993"},
     "mur_ouverture": {
-        "label": "Mur porteur & reprise d'ouverture (trumeaux, linteau, appuis)",
+        "label": "Parede resistente e abertura (nembos, padieira, apoios)",
         "required": ["mur.epaisseur", "mur.materiau_resistance", "ouverture.position",
                      "charges.sur_appuis"],
         "domain": "maconnerie_en1996"},
     "semelle": {
-        "label": "Semelle / fondation sous nouvel appui",
+        "label": "Sapata / fundação sob novo apoio",
         "required": ["fondation.geometrie", "fondation.niveau_assise", "sol.portance",
                      "charges.sur_appuis"],
         "domain": "geotech_en1997_nfp94"},
     "plancher": {
-        "label": "Plancher (portance, flèche, vibrations)",
+        "label": "Pavimento (capacidade resistente, flecha, vibrações)",
         "required": ["plancher.section", "plancher.entraxe", "plancher.portee",
                      "plancher.etat_abouts", "charges.exploitation"],
         "domain": "generique"},
     "etaiement": {
-        "label": "Étaiement / ouvrages provisoires par phase",
+        "label": "Escoramento / obras provisórias por fase",
         "required": ["etai.materiel", "etai.hauteur", "etai.charges_reprises",
                      "niveau_inferieur.capacite"],
         "domain": "provisoire_en12812"},
@@ -66,23 +65,23 @@ VERIFICATIONS = {
 
 # Données critiques du scénario « ouverture dans mur porteur ».
 OPENING_CRITICAL_DATA = [
-    {"key": "ouverture.position", "label": "Position et niveau de l'ouverture",
+    {"key": "ouverture.position", "label": "Posição e nível da abertura",
      "blocks": ["mur_ouverture", "descente_charges"]},
-    {"key": "ouverture.portee", "label": "Portée (largeur) de l'ouverture",
+    {"key": "ouverture.portee", "label": "Vão (largura) da abertura",
      "blocks": ["poutre_acier", "mur_ouverture"]},
-    {"key": "ouverture.charges_reprises", "label": "Charges reprises au-dessus de l'ouverture",
+    {"key": "ouverture.charges_reprises", "label": "Cargas suportadas acima da abertura",
      "blocks": ["poutre_acier"]},
-    {"key": "plancher.sens_porteur", "label": "Sens porteur des planchers",
+    {"key": "plancher.sens_porteur", "label": "Direção resistente dos pavimentos",
      "blocks": ["descente_charges", "plancher"]},
-    {"key": "plancher.portee", "label": "Portée des planchers", "blocks": ["descente_charges", "plancher"]},
-    {"key": "mur.epaisseur", "label": "Épaisseur du mur porteur", "blocks": ["mur_ouverture"]},
-    {"key": "mur.materiau_resistance", "label": "Résistance reconnue de la maçonnerie (essai requis)",
+    {"key": "plancher.portee", "label": "Vão dos pavimentos", "blocks": ["descente_charges", "plancher"]},
+    {"key": "mur.epaisseur", "label": "Espessura da parede resistente", "blocks": ["mur_ouverture"]},
+    {"key": "mur.materiau_resistance", "label": "Resistência reconhecida da alvenaria (ensaio necessário)",
      "blocks": ["mur_ouverture"], "requires_essai": True},
-    {"key": "poutre.appuis", "label": "Appuis de la poutre (trumeaux, longueur d'appui)",
+    {"key": "poutre.appuis", "label": "Apoios da viga (nembos, comprimento de entrega)",
      "blocks": ["poutre_acier"]},
-    {"key": "fondation.geometrie", "label": "Géométrie des fondations existantes",
+    {"key": "fondation.geometrie", "label": "Geometria das fundações existentes",
      "blocks": ["semelle"]},
-    {"key": "sol.portance", "label": "Portance du sol (rapport géotechnique)",
+    {"key": "sol.portance", "label": "Capacidade resistente do terreno (relatório geotécnico)",
      "blocks": ["semelle"], "requires_essai": True},
 ]
 
@@ -116,14 +115,14 @@ def new_study(user_id: str, title: str, country: str, description: str) -> dict:
     return {
         "study_id": new_id("struct"),
         "user_id": user_id,
-        "title": (title or "Étude structurelle").strip()[:160],
+        "title": (title or "Estudo estrutural").strip()[:160],
         "country": (country or "PT").upper()[:4],
         "description": (description or "").strip()[:8000],
         "revision": 1,
         "lifecycle": "brouillon",       # brouillon→donnees_a_confirmer→calcule→a_revoir→approuve
         "output_level": "exploration",
         "facts": [],                    # faits déclarés extraits (source tracée)
-        "goal": {"type": "ouverture_mur_porteur", "label": "Créer une ouverture dans un mur porteur"},
+        "goal": {"type": "ouverture_mur_porteur", "label": "Abrir um vão numa parede resistente"},
         "levels": [],                   # niveaux (esquisse)
         "elements": [],                 # éléments porteurs à ID stable
         "data": {},                     # datum keys -> datum()
@@ -146,10 +145,8 @@ def build_questionnaire(study: dict) -> list[dict]:
         requires_essai = crit.get("requires_essai", False)
         if is_documented(d, requires_essai):
             continue
-        how = ("Essai / sondage par un intervenant compétent (l'âge du bâtiment ne fournit "
-               "aucune résistance).") if requires_essai else \
-              ("Relevé coté sur site, plan vérifié ou mesure. Une description ou une photo ne "
-               "suffit pas comme mesure fiable.")
+        how = ("Ensaio / sondagem por um técnico competente (a idade do edifício não fornece qualquer resistência).") if requires_essai else \
+              ("Levantamento cotado no local, planta verificada ou medição. Uma descrição ou fotografia não basta como medição fiável.")
         questions.append({
             "id": new_id("q"),
             "datum_key": crit["key"],
@@ -236,45 +233,43 @@ def invalidate_dependents(study: dict, datum_key: str) -> dict:
     return recompute(study)
 
 
-DEMO_DESCRIPTION = ("Maison vers 1850, deux niveaux sur cave, murs en pierre d'environ 50 cm, "
-                    "planchers bois. Ouverture souhaitée d'environ 2,40 m entre le séjour et la "
-                    "cuisine au rez-de-chaussée.")
+DEMO_DESCRIPTION = ("Moradia de cerca de 1850, dois pisos sobre cave, paredes de pedra com cerca de 50 cm, pavimentos de madeira. Abertura pretendida de cerca de 2,40 m entre a sala e a cozinha no rés-do-chão.")
 
 
 def build_demo(study: dict) -> dict:
     """Jeu de démo « Maison 1850 » : faits déclarés + esquisse de niveaux, MAIS aucune
     résistance/fondation affectée (restent inconnues → vérifications bloquées)."""
-    study["title"] = "DÉMO — Maison 1850, ouverture séjour/cuisine"
+    study["title"] = "DEMO — Moradia 1850, abertura sala/cozinha"
     study["description"] = DEMO_DESCRIPTION
     study["facts"] = [
-        {"id": new_id("f"), "text": "Construction vers 1850", "source": "declaration"},
-        {"id": new_id("f"), "text": "Deux niveaux sur cave", "source": "declaration"},
-        {"id": new_id("f"), "text": "Murs en pierre ~50 cm", "source": "declaration"},
+        {"id": new_id("f"), "text": "Construção de cerca de 1850", "source": "declaration"},
+        {"id": new_id("f"), "text": "Dois pisos sobre cave", "source": "declaration"},
+        {"id": new_id("f"), "text": "Paredes de pedra ~50 cm", "source": "declaration"},
         {"id": new_id("f"), "text": "Planchers bois", "source": "declaration"},
-        {"id": new_id("f"), "text": "Ouverture ~2,40 m séjour/cuisine au RDC", "source": "declaration"},
+        {"id": new_id("f"), "text": "Abertura ~2,40 m sala/cozinha no R/C", "source": "declaration"},
     ]
     study["levels"] = [
         {"id": new_id("lvl"), "name": "Cave", "elevation_m": datum(-2.4, "m", "declaration")},
-        {"id": new_id("lvl"), "name": "Rez-de-chaussée", "elevation_m": datum(0.0, "m", "declaration")},
-        {"id": new_id("lvl"), "name": "Étage", "elevation_m": datum(2.7, "m", "declaration")},
+        {"id": new_id("lvl"), "name": "Rés-do-chão", "elevation_m": datum(0.0, "m", "declaration")},
+        {"id": new_id("lvl"), "name": "Piso 1", "elevation_m": datum(2.7, "m", "declaration")},
     ]
     study["elements"] = [
         {"id": new_id("el"), "type": "mur_porteur", "ref": "M1",
-         "label": "Mur porteur séjour/cuisine (pierre)", "level": "Rez-de-chaussée"},
+         "label": "Parede resistente sala/cozinha (pedra)", "level": "Rés-do-chão"},
         {"id": new_id("el"), "type": "ouverture", "ref": "O1",
-         "label": "Ouverture projetée ~2,40 m", "level": "Rez-de-chaussée"},
+         "label": "Abertura projetada ~2,40 m", "level": "Rés-do-chão"},
         {"id": new_id("el"), "type": "plancher", "ref": "P1",
-         "label": "Plancher bois sur RDC", "level": "Étage"},
+         "label": "Pavimento de madeira sobre R/C", "level": "Piso 1"},
     ]
     # Données : seulement ce qui est réellement déclaré/mesurable ; le reste reste INCONNU.
     study["data"] = {
-        "ouverture.position": datum("Mur M1, RDC, entre séjour et cuisine", None, "declaration"),
+        "ouverture.position": datum("Parede P1, R/C, entre sala e cozinha", None, "declaration"),
         "ouverture.portee": datum(2.40, "m", "declaration",
-                                  "Déclaré, à confirmer par relevé coté."),
-        "mur.epaisseur": datum(0.50, "m", "declaration", "Déclaré ~50 cm, à mesurer."),
+                                  "Declarado, a confirmar por levantamento cotado."),
+        "mur.epaisseur": datum(0.50, "m", "declaration", "Declarado ~50 cm, a medir."),
         # Volontairement INCONNUS (le cahier des charges l'exige) :
         "mur.materiau_resistance": datum(None, "MPa", "inconnu",
-                                         "La pierre ancienne n'a pas de résistance type ; essai requis."),
+                                         "A pedra antiga não tem resistência tipo; ensaio necessário."),
         "plancher.sens_porteur": datum(None, None, "inconnu"),
         "plancher.portee": datum(None, "m", "inconnu"),
         "ouverture.charges_reprises": datum(None, "kN/m", "inconnu"),

@@ -6,10 +6,10 @@ STR_OR_NULL = {"type": ["string", "null"]}
 
 READING = {"type": "object", "properties": {
     "label": {"type": "string"}, "value_m": NUM_OR_NULL,
-    "candidates_m": {"type": "array", "items": {"type": "number"}, "description": "Lectures OCR concurrentes si la valeur n'est pas résolue"},
+    "candidates_m": {"type": "array", "items": {"type": "number"}, "description": "Leituras OCR concorrentes se o valor não estiver resolvido"},
     "origin": {"type": "string", "enum": ["plan_reading", "native_text", "user_statement", "assumption"]},
     "plan_id": STR_OR_NULL, "page": {"type": ["integer", "null"]},
-    "box": {"type": ["array", "null"], "items": {"type": "number"}, "description": "Zone source de la cote sur la page, normalisée [x0,y0,x1,y1] (0-1)"}},
+    "box": {"type": ["array", "null"], "items": {"type": "number"}, "description": "Zona de origem da cota na página, normalizada [x0,y0,x1,y1] (0-1)"}},
     "required": ["label", "value_m", "candidates_m", "origin", "plan_id", "page", "box"], "additionalProperties": False}
 
 
@@ -20,31 +20,28 @@ def _fn(name, description, properties):
 
 METRE_TOOLS = [
     _fn("check_dimension_chain",
-        "Somme déterministe d'une chaîne de cotes : portées intérieures + épaisseurs des murs réellement traversés, comparée au total déclaré. "
-        "Ne ré-ajoute jamais les épaisseurs si la chaîne les inclut déjà. reference='axes' : demi-épaisseurs aux murs d'extrémité. "
-        "Toute lecture non résolue rend le résultat indéterminé.",
+        "Soma determinística de uma cadeia de cotas: vãos interiores + espessuras das paredes realmente atravessadas, comparada com o total declarado. Nunca volta a acrescentar as espessuras se a cadeia já as incluir. reference=\'axes\': meias-espessuras nas paredes de extremidade. Qualquer leitura não resolvida torna o resultado indeterminado.",
         {"spans": {"type": "array", "items": READING}, "thicknesses": {"type": "array", "items": READING},
          "chain_includes_thickness": {"type": "boolean"}, "reference": {"type": "string", "enum": ["faces", "axes"]},
          "declared_total": {"anyOf": [READING, {"type": "null"}]}}),
     _fn("compare_dimension_values",
-        "Différence arithmétique entre deux valeurs du même intervalle. Si intervalle ou référence diffèrent, l'écart est documenté sans être classé incohérence.",
+        "Diferença aritmética entre dois valores do mesmo intervalo. Se o intervalo ou a referência diferirem, a diferença é documentada sem ser classificada como incoerência.",
         {"a": READING, "b": READING, "same_interval": {"type": "boolean"}, "same_reference": {"type": "boolean"}}),
     _fn("resolve_ambiguous_reading",
-        "Tranche une lecture OCR ambiguë (ex. 13,27 / 13,72) UNIQUEMENT avec une preuve indépendante : texte natif PDF, zoom, déclaration utilisateur. "
-        "La concordance arithmétique n'est jamais une preuve.",
+        "Decide uma leitura OCR ambígua (ex.: 13,27 / 13,72) APENAS com uma prova independente: texto nativo PDF, ampliação, declaração do utilizador. A concordância aritmética nunca é uma prova.",
         {"label": {"type": "string"}, "candidates_m": {"type": "array", "items": {"type": "number"}},
          "confirmations": {"type": "array", "items": {"type": "object", "properties": {
              "kind": {"type": "string", "enum": ["native_text", "zoom_crop", "user_statement", "arithmetic_fit"]}, "value_m": {"type": "number"}, "ref": STR_OR_NULL},
              "required": ["kind", "value_m", "ref"], "additionalProperties": False}},
          "arithmetic_fit_m": NUM_OR_NULL}),
     _fn("classify_strokes",
-        "Classe des traits (calque, motif, flèches) en hachure / mobilier / axe / ligne de cote / caché / mur… Les traits non constructifs ou non classés n'entrent jamais dans un métré.",
+        "Classifica traços (camada, padrão, setas) em tracejado / mobiliário / eixo / linha de cota / oculto / parede… Os traços não construtivos ou não classificados nunca entram numa medição.",
         {"strokes": {"type": "array", "items": {"type": "object", "properties": {
             "stroke_id": {"type": "string"}, "kind": STR_OR_NULL, "layer": STR_OR_NULL, "pattern": STR_OR_NULL,
             "has_arrowheads": {"type": "boolean"}, "has_ticks": {"type": "boolean"}},
             "required": ["stroke_id", "kind", "layer", "pattern", "has_arrowheads", "has_ticks"], "additionalProperties": False}}}),
     _fn("dedupe_elements",
-        "Unifie les observations d'un même élément vu en plan, élévation, nomenclature ou détail (repère F1/P02, ou position). Compte chaque élément une fois et conserve toutes les preuves.",
+        "Unifica as observações de um mesmo elemento visto em planta, alçado, lista ou pormenor (marca F1/P02, ou posição). Conta cada elemento uma vez e conserva todas as provas.",
         {"observations": {"type": "array", "items": {"type": "object", "properties": {
             "obs_id": {"type": "string"}, "element_type": {"type": "string"}, "tag": STR_OR_NULL,
             "view": {"type": "string", "enum": ["plan", "section", "elevation", "schedule", "detail", "other"]},
@@ -54,9 +51,7 @@ METRE_TOOLS = [
                          "required": ["level", "x_m", "y_m"], "additionalProperties": False}},
             "required": ["obs_id", "element_type", "tag", "view", "dimensions", "location"], "additionalProperties": False}}}),
     _fn("calculate_quantities",
-        "Quantités par catégorie avec formule, déductions, net et état. wall_area : L × H − ouvertures selon deduction_rule EXPLICITE (full/none/threshold) ; "
-        "hauteur absente → longueur seule. concrete_volume : emprise × hauteur, sans hauteur → emprise seule. roof_area : sans pente → surface projetée. "
-        "packaged_units : quantité posée vs à commander. Aucune perte sans extra_pct/waste_pct explicite.",
+        "Quantidades por categoria com fórmula, deduções, líquido e estado. wall_area: C × A − vãos segundo deduction_rule EXPLÍCITA (full/none/threshold); altura ausente → só o comprimento. concrete_volume: implantação × altura, sem altura → só a implantação. roof_area: sem inclinação → área projetada. packaged_units: quantidade aplicada vs a encomendar. Nenhuma perda sem extra_pct/waste_pct explícito.",
         {"items": {"type": "array", "items": {"type": "object", "properties": {
             "category": {"type": "string", "enum": ["wall_area", "concrete_volume", "roof_area", "packaged_units"]},
             "element": {"type": "string"}, "location": STR_OR_NULL, "sources": {"type": "array", "items": {"type": "string"}},
@@ -73,15 +68,13 @@ METRE_TOOLS = [
 ]
 METRE_TOOLS += [
     _fn("calibrate_view",
-        "Calibre l'échelle d'UNE vue ou d'UN détail à partir de ses cotes explicites lisibles (longueur en pixels ↔ valeur). Détecte échelles multiples, "
-        "déformation h/v d'un scan et écart avec l'échelle du cartouche (PDF redimensionné). Une calibration ne vaut que pour sa vue.",
+        "Calibra a escala de UMA vista ou de UM pormenor a partir das suas cotas explícitas legíveis (comprimento em píxeis ↔ valor). Deteta escalas múltiplas, deformação h/v de uma digitalização e diferença face à escala da legenda (PDF redimensionado). Uma calibração só vale para a sua vista.",
         {"view_id": {"type": "string"}, "references": {"type": "array", "items": {"type": "object", "properties": {
             "label": {"type": "string"}, "value_m": {"type": "number"}, "px_length": {"type": "number"}, "axis": {"type": ["string", "null"], "enum": ["h", "v", None]}},
             "required": ["label", "value_m", "px_length", "axis"], "additionalProperties": False}},
          "declared_scale": STR_OR_NULL, "dpi": NUM_OR_NULL}),
     _fn("measure_pixels",
-        "Convertit une longueur mesurée en pixels avec la calibration d'une vue (résultat de calibrate_view). Refusé si la calibration est non fiable : "
-        "aucune mesure en pixels n'est alors présentée comme confirmée.",
+        "Converte um comprimento medido em píxeis com a calibração de uma vista (resultado de calibrate_view). Recusado se a calibração não for fiável: nenhuma medição em píxeis é então apresentada como confirmada.",
         {"calibration": {"type": "object", "properties": {"view_id": {"type": "string"}, "status": {"type": "string", "enum": ["reliable", "per_axis", "unreliable"]},
                                                           "px_per_m": NUM_OR_NULL, "px_per_m_by_axis": {"type": ["object", "null"], "properties": {"h": NUM_OR_NULL, "v": NUM_OR_NULL},
                                                                                                         "required": ["h", "v"], "additionalProperties": False},
@@ -91,21 +84,7 @@ METRE_TOOLS += [
 ]
 METRE_TOOL_NAMES = {t["name"] for t in METRE_TOOLS}
 
-METRE_INSTRUCTIONS = """Pour chaque lecture issue d'un plan attaché, renseigne plan_id, page et box (zone normalisée de la cote) afin que l'utilisateur
-puisse ouvrir le recadrage et corriger la lecture. Métré et contrôle de cotes : tout calcul (somme de chaîne, écart entre cotes, surface, volume, déduction, comptage) passe par les outils
-check_dimension_chain, compare_dimension_values, resolve_ambiguous_reading, classify_strokes, dedupe_elements et calculate_quantities ; ne calcule jamais
-ces valeurs de tête. Présente leurs entrées, formules, résultats et états (confirmé / probable / indéterminé / non vérifiable) tels que renvoyés.
-Toute mesure en pixels passe par calibrate_view (par vue / détail) puis measure_pixels ; sans calibration fiable, seules les cotes explicites sont utilisées.
-Une différence entre cotes est un point de lecture ou de cohérence à éclaircir, jamais une accusation d'erreur de calcul du BET. Aucune tolérance
-d'exécution, aucun pourcentage de perte et aucune règle de déduction ne sont appliqués sans être explicitement demandés ou référencés.
-Plans de structure (ferraillage, poutres, dalles) : une étude d'ouvrage les prend en compte au même titre que l'architecture. Les nomenclatures d'aciers et
-de treillis se lisent avec read_rebar_schedule (jamais de tête) ; les masses, totaux et écarts avec les récapitulatifs sont ceux renvoyés par l'outil. Une
-nomenclature marquée « partielle » ne permet aucune extrapolation au niveau complet.
-Volumes de béton d'un niveau (murs, poteaux, dalle, retombées) : uniquement avec compute_concrete_volumes, en lui passant le DXF/DWG du niveau, le plan de
-coffrage PDF et le cahier de coupes s'ils sont joints. Règle des niveaux : l'arase supérieure des murs est l'arase inférieure du plancher haut (AS plancher −
-épaisseur), sauf indication contraire imprimée ; la hauteur est prise par zone de coupe. Présente les volumes par élément avec la formule, la source de chaque
-niveau et l'état renvoyés ; si une donnée manque (niveau de base, épaisseur, hauteur de poutre), demande-la à l'utilisateur au lieu de la supposer. La lecture
-visuelle du cahier de coupes est facturée : ne passe allow_vision=true qu'avec l'accord de l'utilisateur (ou si les coupes ont déjà été lues)."""
+METRE_INSTRUCTIONS = "Para cada leitura proveniente de uma planta anexada, indica plan_id, página e box (zona normalizada da cota) para que o utilizador\npossa abrir o recorte e corrigir a leitura. Medição e controlo de cotas: qualquer cálculo (soma de cadeia, diferença entre cotas, área, volume, dedução, contagem) passa pelas ferramentas\ncheck_dimension_chain, compare_dimension_values, resolve_ambiguous_reading, classify_strokes, dedupe_elements e calculate_quantities; nunca calcules\nestes valores de cabeça. Apresenta as suas entradas, fórmulas, resultados e estados (confirmado / provável / indeterminado / não verificável) tal como devolvidos.\nQualquer medição em píxeis passa por calibrate_view (por vista / pormenor) e depois measure_pixels; sem calibração fiável, só são utilizadas as cotas explícitas.\nUma diferença entre cotas é um ponto de leitura ou de coerência a esclarecer, nunca uma acusação de erro de cálculo do gabinete de projeto. Nenhuma tolerância\nde execução, nenhuma percentagem de perda e nenhuma regra de dedução são aplicadas sem serem explicitamente pedidas ou referenciadas.\nPlantas de estrutura (armaduras, vigas, lajes): um estudo de obra tem-nas em conta tal como a arquitetura. As listas de aços e\nde malhas leem-se com read_rebar_schedule (nunca de cabeça); as massas, totais e diferenças face aos resumos são os devolvidos pela ferramenta. Uma\nlista marcada «parcial» não permite nenhuma extrapolação para o piso completo.\nVolumes de betão de um piso (paredes, pilares, laje, alturas de vigas): apenas com compute_concrete_volumes, passando-lhe o DXF/DWG do piso, a planta de\ncofragem PDF e o caderno de cortes se estiverem anexados. Regra dos níveis: a cota superior das paredes é a cota inferior do pavimento superior (AS pavimento −\nespessura), salvo indicação em contrário impressa; a altura é tomada por zona de corte. Apresenta os volumes por elemento com a fórmula, a fonte de cada\nnível e o estado devolvidos; se faltar um dado (nível de base, espessura, altura de viga), pede-o ao utilizador em vez de o supor. A leitura\nvisual do caderno de cortes é faturada: só passes allow_vision=true com o acordo do utilizador (ou se os cortes já tiverem sido lidos)."
 
 
 def run_metre_tool(name: str, args: dict) -> dict:
@@ -128,4 +107,4 @@ def run_metre_tool(name: str, args: dict) -> dict:
                                                           declared_scale=args.get("declared_scale"), dpi=args.get("dpi"))}
     if name == "measure_pixels":
         return {"ok": True, **calibration.measure_pixels(calibration=args["calibration"], label=args["label"], px_length=args["px_length"], axis=args.get("axis"))}
-    return {"ok": False, "error": "Outil métré inconnu"}
+    return {"ok": False, "error": "Ferramenta de medição desconhecida"}

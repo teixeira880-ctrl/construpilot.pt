@@ -1,52 +1,10 @@
 """Prompt et schéma « dimensions intérieures mur à mur » (passes géométrie / cotations / rapprochement)."""
 
-INTERIOR_PROMPT = """Tu dois contrôler toutes les dimensions intérieures réellement visibles dans le périmètre demandé.
+INTERIOR_PROMPT = "Deves controlar todas as dimensões interiores realmente visíveis no âmbito pedido.\n\nUma dimensão interior parede a parede é a distância perpendicular entre as duas faces interiores de duas paredes opostas.\nNão corresponde nem a uma distância entre eixos nem a uma simples dimensão exterior diminuída de duas paredes.\n\nComeça por inventariar todas as paredes e todos os vãos. Para cada fila horizontal e vertical, reconstrói a\nsucessão completa: parede exterior + espaço interior + parede interior + espaço interior + parede interior + espaço interior + parede exterior.\nConta todas as espessuras de paredes atravessadas.\n\nPara cada espaço, indica: a parede de partida; a face utilizada; a parede de chegada; a face utilizada; a cota escrita;\na medição geométrica; a diferença; o nível de confiança.\n\nSó podes declarar a análise concluída se cada espaço fechado visível tiver uma medição horizontal e uma medição\nvertical, ou uma justificação precisa que indique por que razão não pode ser determinada.\n\nNunca substituas as dimensões interiores individuais por uma única dimensão interior geral.\nNunca deduzas todas as dimensões apenas a partir das cotas exteriores.\nSe uma cota for ilegível, indica a sua localização e classifica-a como ilegível. Não a inventes.\n\nAntes de concluir, soma as dimensões interiores e todas as espessuras das paredes atravessadas. Compara o total obtido\ncom a dimensão exterior correspondente. Se o fecho não funcionar, procura primeiro: uma parede esquecida; uma face errada;\numa confusão eixo/face; uma cota associada ao segmento errado; uma cota parcial confundida com uma cota acumulada;\num erro de unidade; um texto de secção (50x30, 60x30) confundido com uma dimensão.\n\nREGRAS DE ASSOCIAÇÃO: uma cota vertical nunca é associada a um segmento horizontal; uma cota de espessura (0,13 / 0,20 m)\nnunca é um comprimento de vão; uma secção «50x30» nunca é uma cota parede a parede; duas dimensões de referências\ndiferentes (face/face, eixo/eixo, eixo/face, face ext./face ext.) nunca são comparadas diretamente; uma dimensão só se chama\n«fachada» se as suas extremidades forem as faces exteriores da fachada.\n\nO motor ConstruPilot fornece-te as paredes detetadas (duas faces, eixo, espessura), as medições interiores face a face, as\ncotas classificadas por tipo de referência e as equações de fecho, calculadas sobre os vetores exatos do PDF. CONTROLAS\nestas associações e raciocinas; não és um instrumento de medição píxel a píxel: nunca substituas um valor do\nmotor por uma estimativa visual, assinala antes o desacordo em `review_findings`. Escreve os textos em português europeu."
 
-Une dimension intérieure mur à mur est la distance perpendiculaire entre les deux faces intérieures de deux murs opposés.
-Elle ne correspond ni à une distance entre axes ni à une simple dimension extérieure diminuée de deux murs.
-
-Commence par inventorier tous les murs et toutes les travées. Pour chaque rangée horizontale et verticale, reconstruis la
-succession complète : mur extérieur + espace intérieur + refend + espace intérieur + refend + espace intérieur + mur extérieur.
-Compte toutes les épaisseurs de murs traversées.
-
-Pour chaque espace, indique : le mur de départ ; la face utilisée ; le mur d'arrivée ; la face utilisée ; la cote écrite ;
-la mesure géométrique ; la différence ; le niveau de confiance.
-
-Tu ne peux déclarer l'analyse terminée que si chaque espace fermé visible possède une mesure horizontale et une mesure
-verticale, ou une justification précise indiquant pourquoi elle ne peut pas être déterminée.
-
-Ne remplace jamais les dimensions intérieures individuelles par une unique dimension intérieure générale.
-Ne déduis jamais toutes les dimensions à partir des seules cotes extérieures.
-Si une cote est illisible, indique son emplacement et classe-la comme illisible. Ne l'invente pas.
-
-Avant de conclure, additionne les dimensions intérieures et toutes les épaisseurs des murs traversés. Compare le total obtenu
-à la dimension extérieure correspondante. Si la fermeture ne fonctionne pas, recherche d'abord : un mur oublié ; une mauvaise
-face ; une confusion axe/nu ; une cote rattachée au mauvais segment ; une cote partielle confondue avec une cote cumulée ;
-une erreur d'unité ; un texte de section (50x30, 60x30) confondu avec une dimension.
-
-RÈGLES D'ASSOCIATION : une cote verticale n'est jamais associée à un segment horizontal ; une cote d'épaisseur (0,13 / 0,20 m)
-n'est jamais une longueur de travée ; une section « 50x30 » n'est jamais une cote mur à mur ; deux dimensions de références
-différentes (nu/nu, axe/axe, axe/nu, nu ext./nu ext.) ne sont jamais comparées directement ; une dimension n'est appelée
-« façade » que si ses extrémités sont les faces extérieures de la façade.
-
-Le moteur ConstruPilot te fournit les murs détectés (deux faces, axe, épaisseur), les mesures intérieures nu-à-nu, les
-cotes classées par type de référence et les équations de fermeture, calculés sur les vecteurs exacts du PDF. Tu CONTRÔLES
-ces associations et tu raisonnes ; tu n'es pas un instrument de mesure pixel par pixel : ne remplace jamais une valeur du
-moteur par une estimation visuelle, signale plutôt le désaccord dans `review_findings`."""
-
-PASS_GEOMETRY = ("PASSAGE 1 — GÉOMÉTRIE. À partir du document, des zooms et des murs détectés par le moteur : vérifie l'inventaire "
-                 "des murs (deux faces, axe, épaisseur, extrémités, intersections, continuité, ouvertures). Signale tout mur oublié, "
-                 "toute paire de traits qui n'est pas un mur (ligne de cote, semelle, hachure, trait de coupe), toute face mal identifiée. "
-                 "Classe chaque ouvrage avec le RÉFÉRENTIEL SYMBOLES fourni (mur porteur, cloison, voile béton, poteau, poutre, longrine, "
-                 "semelle filante/isolée, ligne de cote, axe de trame…) : classe candidate, source (légende > cartouche > repère > géométrie > "
-                 "convention), alternatives, confiance. Lis d'abord la légende et le cartouche du plan : ils priment sur la convention générale. "
-                 "N'analyse PAS encore les cotes écrites.")
-PASS_DIMENSIONS = ("PASSAGE 2 — COTATIONS. Pour chaque texte numérique : texte brut, position, orientation, ligne de cote, traits "
-                   "d'attache, points réellement cotés, unité, distance géométrique, compatibilité valeur/segment. Rejette les "
-                   "associations incompatibles (orientation, attaches, extrémités, position dans la chaîne, voisines). Classe chaque "
-                   "cote : nu int./nu int., nu ext./nu ext., axe/axe, axe/nu, ouverture, épaisseur, cumulée, partielle, estimée.")
-PASS_RECONCILE = ("PASSAGE 3 — RAPPROCHEMENT. Compare géométrie et cotations : pour chaque espace, cote écrite vs mesure ; "
-                  "reconstitue chaque chaîne complète ; ferme chaque rangée ; localise chaque mesure ; décide de la complétude.")
+PASS_GEOMETRY = ("PASSAGEM 1 — GEOMETRIA. A partir do documento, das ampliações e das paredes detetadas pelo motor: verifica o inventário das paredes (duas faces, eixo, espessura, extremidades, interseções, continuidade, vãos). Assinala qualquer parede esquecida, qualquer par de traços que não seja uma parede (linha de cota, sapata, tracejado, traço de corte), qualquer face mal identificada. Classifica cada elemento com o REFERENCIAL DE SÍMBOLOS fornecido (parede resistente, divisória, parede de betão, pilar, viga, viga de fundação, sapata contínua/isolada, linha de cota, eixo da malha…): classe candidata, fonte (legenda > legenda da folha > marca > geometria > convenção), alternativas, confiança. Lê primeiro a legenda e o quadro da folha: prevalecem sobre a convenção geral. NÃO analises ainda as cotas escritas.")
+PASS_DIMENSIONS = ("PASSAGEM 2 — COTAGEM. Para cada texto numérico: texto bruto, posição, orientação, linha de cota, linhas de chamada, pontos realmente cotados, unidade, distância geométrica, compatibilidade valor/segmento. Rejeita as associações incompatíveis (orientação, chamadas, extremidades, posição na cadeia, vizinhas). Classifica cada cota: face int./face int., face ext./face ext., eixo/eixo, eixo/face, vão, espessura, acumulada, parcial, estimada.")
+PASS_RECONCILE = ("PASSAGEM 3 — COMPARAÇÃO. Compara geometria e cotagem: para cada espaço, cota escrita vs medição; reconstitui cada cadeia completa; fecha cada fila; localiza cada medição; decide sobre a completude.")
 
 _S = {"type": "string"}
 _NN = {"type": ["number", "null"]}

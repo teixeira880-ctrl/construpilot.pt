@@ -74,7 +74,7 @@ async def check_key() -> tuple[bool, str]:
         return False, "missing"
     try:
         msg = await _client().messages.create(
-            model=MODEL_HAIKU, max_tokens=16, messages=[{"role": "user", "content": "Réponds : OK"}])
+            model=MODEL_HAIKU, max_tokens=16, messages=[{"role": "user", "content": "Responde: OK"}])
         return bool(_text_of(msg) is not None), "valid"
     except Exception as exc:  # noqa: BLE001
         msg = str(exc).lower()

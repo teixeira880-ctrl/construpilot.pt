@@ -18,27 +18,23 @@ MAX_PHOTO_MB = 8
 MAX_PHOTOS = 3
 
 VISION_SYSTEM = (
-    "Tu es expert en pathologie du bâtiment (France). On te montre 1 à 3 photos d'un désordre décrit par l'utilisateur. "
-    "Décris uniquement ce qui est visible : type de désordre (fissure, humidité, décollement…), localisation sur l'ouvrage, "
-    "orientation et ouverture estimée des fissures (mm si lisible), matériaux apparents, traces annexes (efflorescences, moisissures, rouille), "
-    "indices sur la cause (tassement, dilatation, infiltration…). Signale ce que la photo ne permet PAS de conclure. "
-    "Réponds en français, 8 à 15 lignes, sans titre, sans markdown."
+    "És especialista em patologia da construção (Portugal). São-te mostradas 1 a 3 fotografias de uma patologia descrita pelo utilizador. Descreve apenas o que é visível: tipo de patologia (fissura, humidade, descolamento…), localização no elemento, orientação e abertura estimada das fissuras (mm se legível), materiais aparentes, vestígios anexos (eflorescências, bolores, ferrugem), indícios sobre a causa (assentamento, dilatação, infiltração…). Assinala o que a fotografia NÃO permite concluir. Responde em português europeu, 8 a 15 linhas, sem título, sem markdown."
 )
 
 
 async def store_photo(user_id: str, data: bytes) -> dict:
     if len(data) > MAX_PHOTO_MB * 1024 * 1024:
-        raise HTTPException(413, f"Photo trop volumineuse (> {MAX_PHOTO_MB} Mo)")
+        raise HTTPException(413, f'Fotografia demasiado grande (> {MAX_PHOTO_MB} Mo)')
     data, mime = await asyncio.to_thread(normalize_attachment, data)
     if mime == "application/pdf":
-        raise HTTPException(415, "Joindre une photo JPG, PNG ou WEBP")
+        raise HTTPException(415, "Anexe uma fotografia JPG, PNG ou WEBP")
     photo_id = f"sph_{uuid.uuid4().hex[:12]}"
     path = f"private/btp-solver/{user_id}/{photo_id}.jpg"
     try:
         await asyncio.to_thread(storage.put_object, path, data, mime)
     except Exception as exc:  # noqa: BLE001 — stockage objet indisponible
         logger.warning("btp_solver photo storage failed: %s", exc)
-        raise HTTPException(503, "Stockage des photos momentanément indisponible") from None
+        raise HTTPException(503, "Armazenamento das fotografias momentaneamente indisponível") from None
     doc = {"photo_id": photo_id, "user_id": user_id, "path": path, "mime": mime, "size": len(data),
            "created_at": datetime.now(timezone.utc)}
     await db.btp_solver_photos.insert_one(dict(doc))
@@ -52,7 +48,7 @@ async def load_photos(user_id: str, photo_ids: list[str]) -> list[dict]:
         return []
     docs = {d["photo_id"]: d async for d in db.btp_solver_photos.find({"photo_id": {"$in": ids}, "user_id": user_id}, {"_id": 0})}
     if len(docs) != len(ids):
-        raise HTTPException(404, "Photo introuvable")
+        raise HTTPException(404, "Fotografia não encontrada")
     out = []
     for pid in ids:
         d = docs[pid]
@@ -64,7 +60,7 @@ async def load_photos(user_id: str, photo_ids: list[str]) -> list[dict]:
 async def photo_bytes(user_id: str, photo_id: str) -> tuple[bytes, str]:
     d = await db.btp_solver_photos.find_one({"photo_id": photo_id, "user_id": user_id}, {"_id": 0})
     if not d:
-        raise HTTPException(404, "Photo introuvable")
+        raise HTTPException(404, "Fotografia não encontrada")
     data, _ = await asyncio.to_thread(storage.get_object, d["path"])
     return data, d.get("mime") or "image/jpeg"
 
@@ -81,7 +77,7 @@ async def analyze_photos(photos: list[dict], description: str) -> str | None:
         try:
             chat = MeteredChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"btp-solver-photos-{uuid.uuid4().hex[:8]}",
                                expense_feature="btp_solver_photos", system_message=VISION_SYSTEM).with_model(provider, model)
-            raw = await chat.send_message(UserMessage(text=f"Description de l'utilisateur : {description[:1500]}", file_contents=files))
+            raw = await chat.send_message(UserMessage(text=f'Descrição do utilizador: {description[:1500]}', file_contents=files))
             text = (raw if isinstance(raw, str) else str(raw)).strip()
             if text:
                 return text[:4000]

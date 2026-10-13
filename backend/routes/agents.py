@@ -38,40 +38,40 @@ router = APIRouter(tags=["agents"], prefix="/agents")
 AGENTS = {
     "supervise": {
         "name": "Pilote ConstruPilot", "icon": "ShieldCheck", "needs_plans": False,
-        "desc": "Contrôle vos plans, métrés et devis, corrige les valeurs recalculables et détaille les points à vérifier. Historique et restauration inclus.",
+        "desc": "Controla as suas plantas, medições e orçamentos, corrige os valores recalculáveis e detalha os pontos a verificar. Histórico e restauro incluídos.",
         "output": "supervision",
     },
     "report": {
-        "name": "Dossier automatique",
-        "desc": "Regroupe vos plans, relève le métré (murs, ouvertures, surfaces), chiffre et produit le dossier PDF complet avec page de garde.",
+        "name": "Processo automático",
+        "desc": "Agrupa as suas plantas, levanta a medição (paredes, aberturas, áreas), orçamenta e produz o processo PDF completo com capa.",
         "icon": "FileText",
         "needs_plans": True,
         "output": "pdf",
     },
     "devis": {
-        "name": "Devis automatique",
-        "desc": "Chiffre toutes les mesures affectées de vos plans et crée un devis consolidé modifiable.",
+        "name": "Orçamento automático",
+        "desc": "Orçamenta todas as medições atribuídas das suas plantas e cria um orçamento consolidado editável.",
         "icon": "ReceiptText",
         "needs_plans": True,
         "output": "quote",
     },
     "metre": {
-        "name": "Métré express",
-        "desc": "Fait le point sur le métré de vos plans : surfaces, linéaires, nombre de mesures et d'ouvertures, et signale les plans à compléter.",
+        "name": "Medição expresso",
+        "desc": "Faz o ponto da medição das suas plantas: áreas, lineares, número de medições e de aberturas, e assinala as plantas a completar.",
         "icon": "Ruler",
         "needs_plans": True,
         "output": "summary",
     },
     "detect": {
-        "name": "Détection murs auto",
-        "desc": "Lance la détection IA des murs et ouvertures sur un plan non encore mesuré. Un étalonnage (cote connue) reste obligatoire avant tout métré.",
+        "name": "Deteção automática de paredes",
+        "desc": "Lança a deteção IA das paredes e aberturas numa planta ainda não medida. Uma calibração (cota conhecida) continua obrigatória antes de qualquer medição.",
         "icon": "ScanLine",
         "needs_plans": True,
         "output": "detect",
     },
     "compare": {
-        "name": "Comparaison de plans",
-        "desc": "Compare deux versions d'un plan (avant / après) et liste les pièces et murs ajoutés, retirés ou modifiés.",
+        "name": "Comparação de plantas",
+        "desc": "Compara duas versões de uma planta (antes / depois) e lista as divisões e paredes acrescentadas, retiradas ou modificadas.",
         "icon": "GitCompare",
         "needs_plans": True,
         "output": "compare",
@@ -83,7 +83,7 @@ def _auto_level(filename: str, idx: int) -> str:
     """Déduit un libellé de niveau depuis le nom de fichier (sinon ordre)."""
     f = (filename or "").lower()
     rules = [
-        (r"sous[\s_-]?sol|ss\b|s/sol", "Sous-sol"),
+        (r"sous[\s_-]?sol|ss\b|s/sol", "Cave"),
         (r"fondation|semelle", "Fondations"),
         (r"\brdc\b|rez|r\.?d\.?c", "RDC"),
         (r"r\+?\s?4|4e|4ème|etage\s*4", "R+4"),
@@ -95,7 +95,7 @@ def _auto_level(filename: str, idx: int) -> str:
     for pat, label in rules:
         if re.search(pat, f):
             return label
-    return ["RDC", "R+1", "R+2", "R+3", "R+4"][idx] if idx < 5 else f"Niveau {idx + 1}"
+    return ["RDC", "R+1", "R+2", "R+3", "R+4"][idx] if idx < 5 else f'Piso {idx + 1}'
 
 
 async def _last_defaults(agent: str, user: dict) -> dict:
@@ -131,7 +131,7 @@ class ExecIn(BaseModel):
 async def _authorize_agent(agent, user):
     authorize(user)
     if agent not in AGENTS:
-        raise HTTPException(422, "Agent inconnu")
+        raise HTTPException(422, "Agente desconhecido")
     if agent != "supervise":
         await pro_required(user)
         require_feature(user, "devis" if agent in ("devis", "report") else "chantier")
@@ -139,12 +139,12 @@ async def _authorize_agent(agent, user):
 
 async def _load_owned_plans(ids, user):
     if len(set(ids)) != len(ids) or any(not isinstance(pid, str) or not pid.strip() for pid in ids):
-        raise HTTPException(422, "Sélection de plans invalide ou dupliquée")
+        raise HTTPException(422, "Seleção de plantas inválida ou duplicada")
     plans = await db.plans_takeoff.find(
         {"plan_id": {"$in": ids}, "user_id": user["user_id"]},
         {"_id": 0, "plan_id": 1, "filename": 1, "measurements": 1, "chantier_id": 1}).to_list(51)
     if {p["plan_id"] for p in plans} != set(ids):
-        raise HTTPException(404, "Un ou plusieurs plans sont introuvables pour ce compte")
+        raise HTTPException(404, "Uma ou várias plantas não foram encontradas para esta conta")
     order = {pid: i for i, pid in enumerate(ids)}
     return sorted(plans, key=lambda p: order[p["plan_id"]])
 
@@ -169,19 +169,19 @@ async def propose_plan(body: PlanIn, user=Depends(current_user)) -> dict:
         from routes.chantiers import _get
         await _get(body.chantier_id, user["user_id"])
     if body.quote_ids and body.agent != "supervise":
-        raise HTTPException(422, "Sélection de devis réservée au Pilote")
+        raise HTTPException(422, "Seleção de orçamentos reservada ao Piloto")
     if len(set(body.quote_ids)) != len(body.quote_ids):
-        raise HTTPException(422, "Sélection de devis dupliquée")
+        raise HTTPException(422, "Seleção de orçamentos duplicada")
     spec = AGENTS[body.agent]
     plans = []
     if spec["needs_plans"] or body.plan_ids:
         if spec["needs_plans"] and not body.plan_ids:
-            raise HTTPException(422, "Sélectionnez au moins un plan")
+            raise HTTPException(422, "Selecione pelo menos uma planta")
         if body.agent == "compare" and len(body.plan_ids) != 2:
-            raise HTTPException(422, "Sélectionnez exactement 2 plans (avant / après)")
+            raise HTTPException(422, "Selecione exatamente 2 plantas (antes / depois)")
         plans = await _load_owned_plans(body.plan_ids, user)
         if body.chantier_id and any(p.get("chantier_id") != body.chantier_id for p in plans):
-            raise HTTPException(422, "Un plan sélectionné appartient à un autre dossier")
+            raise HTTPException(422, "Uma planta selecionada pertence a outro processo")
     order = {pid: i for i, pid in enumerate(body.plan_ids)}
     plans.sort(key=lambda p: order.get(p["plan_id"], 99))
 
@@ -209,43 +209,42 @@ async def propose_plan(body: PlanIn, user=Depends(current_user)) -> dict:
     steps = []
     if body.agent == "supervise":
         steps = [
-            {"key": "inspect", "label": "Relire les données enregistrées", "detail": "Ressources sélectionnées, ou documents rattachés au dossier (200 par type maximum)." if body.chantier_id else "Ressources sélectionnées, ou ressources du compte (200 plans et 200 devis maximum)."},
-            {"key": "check", "label": "Contrôler la cohérence", "detail": "Échelles par page, géométrie, ouvertures, surfaces, quantités, prix et totaux des devis."},
-            {"key": "repair", "label": "Corriger puis vérifier à nouveau", "detail": "En mode correction : uniquement les valeurs dérivées recalculables. Historique et restauration ; aucune modification d'un devis engagé."},
+            {"key": "inspect", "label": "Rever os dados registados", "detail": "Recursos selecionados, ou documentos associados ao processo (máximo 200 por tipo)." if body.chantier_id else "Recursos selecionados, ou recursos da conta (máximo 200 plantas e 200 orçamentos)."},
+            {"key": "check", "label": "Controlar a coerência", "detail": "Escalas por página, geometria, aberturas, áreas, quantidades, preços e totais dos orçamentos."},
+            {"key": "repair", "label": "Corrigir e voltar a verificar", "detail": "Em modo correção: apenas os valores derivados recalculáveis. Histórico e restauro; nenhuma alteração de um orçamento já comprometido."},
         ]
     if body.agent in ("report", "devis"):
-        steps.append({"key": "group", "label": f"Regrouper {len(plans)} plan(s) en niveaux",
+        steps.append({"key": "group", "label": f'Agrupar {len(plans)} planta(s) em níveis',
                       "detail": " · ".join(f"{s['filename']} → {s['level']}" for s in plan_status)})
-        steps.append({"key": "metre", "label": "Relever le métré (murs, ouvertures, surfaces)",
-                      "detail": f"{sum(s['measures'] for s in plan_status)} mesures · "
-                                f"{sum(s['openings'] for s in plan_status)} ouvertures détectées"})
-        steps.append({"key": "chiffrage", "label": "Chiffrer avec vos prix (moteur déterministe)",
-                      "detail": f"{priced_total} mesure(s) déjà affectée(s) à un poste"})
+        steps.append({"key": "metre", "label": "Levantar a medição (paredes, aberturas, áreas)",
+                      "detail": f"{sum((s['measures'] for s in plan_status))} medições · {sum((s['openings'] for s in plan_status))} aberturas detetadas"})
+        steps.append({"key": "chiffrage", "label": "Orçamentar com os seus preços (motor determinístico)",
+                      "detail": f'{priced_total} medição(ões) já atribuída(s) a um artigo'})
     if body.agent == "report":
-        steps.append({"key": "pdf", "label": "Générer le dossier PDF complet",
-                      "detail": "Page de garde + métré par niveau + chiffrage + total TTC"})
+        steps.append({"key": "pdf", "label": "Gerar o processo PDF completo",
+                      "detail": "Capa + medição por nível + orçamentação + total c/ IVA"})
     elif body.agent == "devis":
-        steps.append({"key": "quote", "label": "Créer le devis consolidé modifiable",
-                      "detail": "Un poste par ouvrage, regroupé par niveau"})
+        steps.append({"key": "quote", "label": "Criar o orçamento consolidado editável",
+                      "detail": "Um artigo por trabalho, agrupado por nível"})
     elif body.agent == "metre":
-        steps.append({"key": "summary", "label": "Produire la synthèse de métré",
-                      "detail": f"{len(plans)} plan(s) analysé(s)"})
+        steps.append({"key": "summary", "label": "Produzir a síntese de medição",
+                      "detail": f'{len(plans)} planta(s) analisada(s)'})
     elif body.agent == "detect":
-        steps.append({"key": "detect", "label": "Détecter les murs et ouvertures (IA)",
-                      "detail": f"{len(plans)} plan(s) · rendu sémantique murs + portes/fenêtres"})
-        steps.append({"key": "calibrate", "label": "Étalonnage OBLIGATOIRE avant métré",
-                      "detail": "Ouvrez le plan et saisissez une cote connue : sans échelle fiable, aucune longueur n'est calculée."})
+        steps.append({"key": "detect", "label": "Detetar paredes e aberturas (IA)",
+                      "detail": f'{len(plans)} planta(s) · renderização semântica paredes + portas/janelas'})
+        steps.append({"key": "calibrate", "label": "Calibração OBRIGATÓRIA antes da medição",
+                      "detail": "Abra a planta e introduza uma cota conhecida: sem escala fiável, nenhum comprimento é calculado."})
     elif body.agent == "compare":
         a, b = plan_status[0], plan_status[1]
-        steps.append({"key": "compare", "label": "Rapprocher pièces et murs des 2 versions",
-                      "detail": f"Avant : {a['filename']} · Après : {b['filename']}"})
-        steps.append({"key": "diff", "label": "Lister les écarts (ajoutés / retirés / modifiés)",
-                      "detail": "Pièces et murs"})
+        steps.append({"key": "compare", "label": "Associar divisões e paredes das 2 versões",
+                      "detail": f"Avant : {a['filename']} · Depois: {b['filename']}"})
+        steps.append({"key": "diff", "label": "Listar as diferenças (acrescentadas / retiradas / modificadas)",
+                      "detail": "Divisões e paredes"})
 
-    warnings = [f"« {s['filename']} » n'a aucune mesure tracée — à compléter dans l'éditeur de plan avant chiffrage."
+    warnings = [f"« {s['filename']}» não tem nenhuma medição traçada — a completar no editor de plantas antes da orçamentação."
                 for s in plan_status if not s["ready"]]
     if body.agent in ("report", "devis") and priced_total == 0:
-        warnings.append("Aucune mesure n'est affectée à un poste : le chiffrage sera vide tant que vous n'aurez pas associé des postes aux mesures.")
+        warnings.append("Nenhuma medição está atribuída a um artigo: a orçamentação ficará vazia enquanto não associar artigos às medições.")
 
     defaults = await _last_defaults(body.agent, user)
     run = {
@@ -334,7 +333,7 @@ async def _do_execute(run: dict, body: ExecIn, user: dict) -> dict:
             try:
                 det = await PA.detect_structure_route(s["plan_id"], page_index=0, plan_kind="auto", user=user)
             except Exception:  # noqa: BLE001
-                rows.append({**s, "error": "Détection indisponible sur ce plan", "walls": 0, "openings": 0})
+                rows.append({**s, "error": "Deteção indisponível nesta planta", "walls": 0, "openings": 0})
                 continue
             rows.append({"plan_id": s["plan_id"], "filename": s["filename"],
                          "walls": len(det.get("walls") or []),
@@ -348,7 +347,7 @@ async def _do_execute(run: dict, body: ExecIn, user: dict) -> dict:
                   "needs_calibration": True,
                   "edit_plan_id": rows[0]["plan_id"] if rows else None}
         if rows and all(r.get("error") for r in rows):
-            raise HTTPException(502, "Aucun plan n'a pu être analysé")
+            raise HTTPException(502, "Nenhuma planta pôde ser analisada")
     elif agent == "compare":
         pid = run["plan_ids"]
         diff = await PA.compare_plans(PA.CompareIn(before_plan_id=pid[0], after_plan_id=pid[1]), user)
@@ -362,7 +361,7 @@ async def execute_run(run_id: str, body: ExecIn, user=Depends(current_user)) -> 
     """Exécution SYNCHRONE (page Plans & métré). Pour l'arrière-plan, voir /launch."""
     run = await db.agent_runs.find_one({"run_id": run_id, "user_id": user["user_id"]}, {"_id": 0})
     if not run:
-        raise HTTPException(404, "Exécution introuvable")
+        raise HTTPException(404, "Execução não encontrada")
     await _authorize_agent(run["agent"], user)
     claimed = await db.agent_runs.find_one_and_update(
         {"run_id": run_id, "user_id": user["user_id"], "status": "proposed"},
@@ -370,11 +369,11 @@ async def execute_run(run_id: str, body: ExecIn, user=Depends(current_user)) -> 
                   "lease_until": (datetime.now(timezone.utc) + timedelta(seconds=AGENT_LEASE_SECONDS)).isoformat(), "started_at": _now()}},
         return_document=ReturnDocument.AFTER, projection={"_id": 0})
     if not claimed:
-        raise HTTPException(409, "Cette tâche est déjà lancée ou terminée ; consultez son résultat")
+        raise HTTPException(409, "Esta tarefa já foi lançada ou concluída; consulte o seu resultado")
     await _run_agent_job(claimed)
     completed = await db.agent_runs.find_one({"run_id": run_id, "user_id": user["user_id"]}, {"_id": 0})
     if completed.get("status") != "done":
-        raise HTTPException(409, completed.get("error") or "Exécution interrompue")
+        raise HTTPException(409, completed.get("error") or "Execução interrompida")
     return {"ok": True, "result": completed["result"]}
 
 
@@ -384,7 +383,7 @@ async def launch_run(run_id: str, body: ExecIn, user=Depends(current_user)) -> d
     (survit au changement de page). L'avancement se suit via /agents/runs et /agents/active."""
     run = await db.agent_runs.find_one({"run_id": run_id, "user_id": user["user_id"]}, {"_id": 0})
     if not run:
-        raise HTTPException(404, "Exécution introuvable")
+        raise HTTPException(404, "Execução não encontrada")
     await _authorize_agent(run["agent"], user)
     if run.get("status") == "queued":
         return {"queued": True, "run_id": run_id}
@@ -393,14 +392,14 @@ async def launch_run(run_id: str, body: ExecIn, user=Depends(current_user)) -> d
         {"$set": {"status": "queued", "exec_params": body.model_dump(), "queued_at": _now(),
                   "result": None, "error": None}})
     if not changed.matched_count:
-        raise HTTPException(409, "Cette tâche est déjà lancée ou terminée ; consultez son résultat")
+        raise HTTPException(409, "Esta tarefa já foi lançada ou concluída; consulte o seu resultado")
     return {"queued": True, "run_id": run_id}
 
 
 @router.get("/{run_id}/checks")
 async def run_checks(run_id: str, offset: int = 0, user=Depends(current_user)):
     if not 0 <= offset <= 400:
-        raise HTTPException(422, "Page invalide")
+        raise HTTPException(422, "Página inválida")
     rows = await db.agent_checks.find({"run_id": run_id, "user_id": user["user_id"]}, {"_id": 0}).sort("resource_id", 1).skip(offset).to_list(51)
     return {"checks": rows[:50], "next_offset": offset + 50 if len(rows) > 50 else None}
 
@@ -414,7 +413,7 @@ async def cancel_run(run_id: str, user=Depends(current_user)):
         return {"ok": True, "cancel_requested": True}
     running = await db.agent_runs.update_one({**query, "status": "running"}, {"$set": {"cancel_requested": True}})
     if not running.matched_count:
-        raise HTTPException(409, "Tâche absente, inaccessible ou déjà terminée")
+        raise HTTPException(409, "Tarefa ausente, inacessível ou já concluída")
     return {"ok": True, "cancel_requested": True}
 
 
@@ -472,7 +471,7 @@ async def give_feedback(run_id: str, body: FeedbackIn, user=Depends(current_user
     niveau, marge) sont mémorisées et re-proposées ensuite (apprentissage)."""
     run = await db.agent_runs.find_one({"run_id": run_id, "user_id": user["user_id"]}, {"_id": 0})
     if not run:
-        raise HTTPException(404, "Exécution introuvable")
+        raise HTTPException(404, "Execução não encontrada")
     fb = {"rating": body.rating, "note": body.note.strip(),
           "level_labels": body.level_labels or {}, "margin_pct": body.margin_pct,
           "at": _now()}
@@ -495,7 +494,7 @@ async def revise_run(run_id: str, body: FeedbackIn, user=Depends(current_user)) 
     niveau et/ou marge revus), prête à être ré-exécutée."""
     run = await db.agent_runs.find_one({"run_id": run_id, "user_id": user["user_id"]}, {"_id": 0})
     if not run:
-        raise HTTPException(404, "Exécution introuvable")
+        raise HTTPException(404, "Execução não encontrada")
     await _authorize_agent(run["agent"], user)
     new_status = []
     for s in run.get("plan_status") or []:
@@ -508,17 +507,16 @@ async def revise_run(run_id: str, body: FeedbackIn, user=Depends(current_user)) 
     steps = []
     agent = run["agent"]
     if agent in ("report", "devis"):
-        steps.append({"key": "group", "label": f"Regrouper {len(new_status)} plan(s) en niveaux",
+        steps.append({"key": "group", "label": f'Agrupar {len(new_status)} planta(s) em níveis',
                       "detail": " · ".join(f"{s['filename']} → {s['level']}" for s in new_status)})
-        steps.append({"key": "metre", "label": "Relever le métré (murs, ouvertures, surfaces)",
-                      "detail": f"{sum(s['measures'] for s in new_status)} mesures · "
-                                f"{sum(s['openings'] for s in new_status)} ouvertures"})
-        steps.append({"key": "chiffrage", "label": "Chiffrer avec vos prix (moteur déterministe)",
-                      "detail": f"{sum(s['priced'] for s in new_status)} mesure(s) affectée(s)"})
+        steps.append({"key": "metre", "label": "Levantar a medição (paredes, aberturas, áreas)",
+                      "detail": f"{sum((s['measures'] for s in new_status))} medições · {sum((s['openings'] for s in new_status))} ouvertures"})
+        steps.append({"key": "chiffrage", "label": "Orçamentar com os seus preços (motor determinístico)",
+                      "detail": f"{sum((s['priced'] for s in new_status))} medição(ões) atribuída(s)"})
     if agent == "report":
-        steps.append({"key": "pdf", "label": "Régénérer le dossier PDF corrigé", "detail": "Avec vos corrections"})
+        steps.append({"key": "pdf", "label": "Regenerar o processo PDF corrigido", "detail": "Com as suas correções"})
     elif agent == "devis":
-        steps.append({"key": "quote", "label": "Recréer le devis corrigé", "detail": "Avec vos corrections"})
+        steps.append({"key": "quote", "label": "Recriar o orçamento corrigido", "detail": "Com as suas correções"})
     new = {
         "run_id": "agr_" + secrets.token_hex(6), "user_id": user["user_id"],
         "agent": agent, "prompt": run.get("prompt", ""), "plan_ids": run.get("plan_ids", []),
@@ -568,7 +566,7 @@ async def _heartbeat(run, operation):
         try:
             await _authorize_agent(run["agent"], user)
             if "organization_id" in run and user.get("organization_id") != run.get("organization_id"):
-                raise HTTPException(403, "Le rattachement du compte a changé")
+                raise HTTPException(403, "A associação da conta mudou")
         except HTTPException:
             operation.cancel()
             return
@@ -591,7 +589,7 @@ async def _run_agent_job(run: dict) -> None:
         user = await db.users.find_one({"user_id": run["user_id"]}, {"_id": 0, "password_hash": 0, "password": 0})
         await _authorize_agent(run["agent"], user)
         if "organization_id" in run and user.get("organization_id") != run.get("organization_id"):
-            raise HTTPException(403, "Le rattachement du compte a changé")
+            raise HTTPException(403, "A associação da conta mudou")
         bind(user)
         body = ExecIn(**(run.get("exec_params") or {}))
         operation = asyncio.create_task(_do_execute(run, body, user))
@@ -602,13 +600,13 @@ async def _run_agent_job(run: dict) -> None:
             {"$set": {"params": _exec_params(body)}})
         await _finish_agent(run, "done", result=result)
     except asyncio.CancelledError:
-        await _finish_agent(run, "error", error="Traitement interrompu ou autorisation retirée. Vérifiez les corrections déjà effectuées avant de relancer.")
+        await _finish_agent(run, "error", error="Processamento interrompido ou autorização retirada. Verifique as correções já efetuadas antes de relançar.")
         raise
     except HTTPException as exc:
         await _finish_agent(run, "error", error=str(exc.detail)[:300])
     except Exception as exc:  # noqa: BLE001 -- no provider secrets in client errors
         log.error("Agent run %s failed (%s)", run["run_id"], type(exc).__name__)
-        await _finish_agent(run, "error", error="Traitement interrompu. Consultez les résultats partiels avant de créer une nouvelle tâche.")
+        await _finish_agent(run, "error", error="Processamento interrompido. Consulte os resultados parciais antes de criar uma nova tarefa.")
     finally:
         for task in (operation, heartbeat):
             if task and not task.done():
@@ -625,7 +623,7 @@ async def _claim_agent_run(worker: str) -> dict | None:
         changed = await db.agent_runs.update_one(
             {"run_id": run["run_id"], "user_id": run["user_id"], "status": "running",
              "worker": run.get("worker"), "lease_until": {"$lt": now}},
-            {"$set": {"status": "error", "error": "Traitement interrompu (redémarrage). Vérifiez les résultats partiels.", "executed_at": now},
+            {"$set": {"status": "error", "error": "Processamento interrompido (reinício). Verifique os resultados parciais.", "executed_at": now},
              "$unset": {"lease_until": "", "worker": ""}})
         if changed.matched_count:
             await _agent_notify(run["run_id"], run["user_id"], "error", AGENTS.get(run["agent"], {}).get("name", "Agent"))

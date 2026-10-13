@@ -30,7 +30,7 @@ class PredIn(BaseModel):
 class TaskIn(BaseModel):
     id: str = Field(..., min_length=1, max_length=40)
     name: str = Field(..., min_length=1, max_length=160)
-    resource: str = Field("Équipe", max_length=80)
+    resource: str = Field("Equipa", max_length=80)
     duration: int = Field(..., ge=1, le=365)
     duration_source: str = "saisie"
     predecessors: list[PredIn] = []
@@ -69,7 +69,7 @@ class ProgressIn(BaseModel):
 async def _chantier(cid: str, uid: str) -> dict:
     c = await db.chantiers.find_one({"chantier_id": cid, "user_id": uid}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Dossier chantier introuvable")
+        raise HTTPException(404, "Processo de obra não encontrado")
     return c
 
 
@@ -186,7 +186,7 @@ async def save_plan(cid: str, body: PlanIn, user=Depends(current_user)) -> dict:
     await _chantier(cid, user["user_id"])
     ids = [t.id for t in body.tasks]
     if len(ids) != len(set(ids)):
-        raise HTTPException(422, "Identifiants de tâches en double")
+        raise HTTPException(422, "Identificadores de tarefas duplicados")
     prev = await COLL.find_one({"chantier_id": cid, "user_id": user["user_id"]}, {"_id": 0}) or {}
     plan = {**prev, "chantier_id": cid, "user_id": user["user_id"], **body.model_dump(),
             "created_at": prev.get("created_at") or _now()}
@@ -197,10 +197,10 @@ async def save_plan(cid: str, body: PlanIn, user=Depends(current_user)) -> dict:
 async def task_progress(cid: str, tid: str, body: ProgressIn, user=Depends(current_user)) -> dict:
     plan = await COLL.find_one({"chantier_id": cid, "user_id": user["user_id"]}, {"_id": 0})
     if not plan:
-        raise HTTPException(404, "Planning introuvable")
+        raise HTTPException(404, "Planeamento não encontrado")
     task = next((t for t in plan["tasks"] if t["id"] == tid), None)
     if not task:
-        raise HTTPException(404, "Tâche introuvable")
+        raise HTTPException(404, "Tarefa não encontrada")
     for k, v in body.model_dump(exclude_none=True).items():
         task[k] = v
     if body.progress is not None and body.progress_manual is None and float(task.get("planned_hours") or 0) > 0:
@@ -216,7 +216,7 @@ async def task_progress(cid: str, tid: str, body: ProgressIn, user=Depends(curre
 async def freeze_baseline(cid: str, user=Depends(current_user)) -> dict:
     plan = await COLL.find_one({"chantier_id": cid, "user_id": user["user_id"]}, {"_id": 0})
     if not plan:
-        raise HTTPException(404, "Planning introuvable")
+        raise HTTPException(404, "Planeamento não encontrado")
     res = _compute(plan)["schedule"]
     plan["baseline"] = {"frozen_at": _now(), "end_date": res["project"]["end_date"],
                         "tasks": {t["id"]: t["end_date"] for t in res["tasks"]}}
@@ -227,7 +227,7 @@ async def freeze_baseline(cid: str, user=Depends(current_user)) -> dict:
 async def optimize_plan(cid: str, apply: bool = False, user=Depends(current_user)) -> dict:
     plan = await COLL.find_one({"chantier_id": cid, "user_id": user["user_id"]}, {"_id": 0})
     if not plan:
-        raise HTTPException(404, "Planning introuvable")
+        raise HTTPException(404, "Planeamento não encontrado")
     try:
         opt = P.optimize(plan, time_limit_s=8.0)
     except P.PlanningError as e:
@@ -250,7 +250,7 @@ async def plan_pdf(cid: str, user=Depends(current_user)):
     c = await _chantier(cid, user["user_id"])
     plan = await COLL.find_one({"chantier_id": cid, "user_id": user["user_id"]}, {"_id": 0})
     if not plan:
-        raise HTTPException(404, "Planning introuvable")
+        raise HTTPException(404, "Planeamento não encontrado")
     computed = _compute(plan)
     from routes.plans_common import _resolve_branding
     branding = await _resolve_branding(user["user_id"])

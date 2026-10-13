@@ -61,12 +61,12 @@ METIER_LOTS = {
     "peinture": (30, 55), "carrelage": (40, 70), "renovation_complete": (900, 1500),
 }
 METIER_LABELS = {
-    "terrassement": "Terrassement", "vrd": "VRD", "fondations": "Fondations",
-    "gros_oeuvre": "Gros œuvre", "maconnerie": "Maçonnerie", "charpente": "Charpente",
-    "couverture": "Couverture", "etancheite": "Étanchéité", "isolation": "Isolation",
-    "facade": "Façade", "menuiserie": "Menuiserie", "plomberie": "Plomberie",
-    "chauffage": "Chauffage", "electricite": "Électricité", "placo": "Placo",
-    "peinture": "Peinture", "carrelage": "Carrelage", "renovation_complete": "Rénovation complète",
+    "terrassement": "Movimentação de terras", "vrd": "VRD", "fondations": "Fondations",
+    "gros_oeuvre": "Obra grossa", "maconnerie": "Alvenaria", "charpente": "Carpintaria",
+    "couverture": "Cobertura", "etancheite": "Impermeabilização", "isolation": "Isolamento",
+    "facade": "Fachada", "menuiserie": "Carpintaria", "plomberie": "Canalização",
+    "chauffage": "Aquecimento", "electricite": "Eletricidade", "placo": "Pladur",
+    "peinture": "Pintura", "carrelage": "Revestimento cerâmico", "renovation_complete": "Renovação completa",
 }
 
 METIER_MAP = {
@@ -145,7 +145,7 @@ async def _get_permits(user=None):
         if permit.get("mo") == "PARTICULIER" and cj.isdigit() and len(cj) == 4 and not cj.startswith("1"):
             permit["mo"] = _norm_mo(cj)
         elif permit.get("mo") == "PARTICULIER" and permit["classification"]["client_type"] == "inconnu":
-            permit["mo"] = "INCONNU"
+            permit["mo"] = "DESCONHECIDO"
     if user:
         contacts = await db.radar_contacts.find({"user_id": user["user_id"], "opp_id": {"$in": [p["id"] for p in permits]}}, {"_id": 0}).to_list(None)
         saved = {c["opp_id"]: c for c in contacts}
@@ -227,7 +227,7 @@ async def list_opportunities(km: int | None = None, metier: str | None = None, f
     p = await _profile(user)
     selected_filters = query_filters(p["filters"], work_types=work_types, building_types=building_types, client_types=client_types)
     if page < 1 or page_size < 1 or page_size > 100:
-        raise HTTPException(422, "Pagination invalide")
+        raise HTTPException(422, "Paginação inválida")
     selected = normalize_departments(departments.split(",")) if departments is not None else p["departments"]
     sync_deps = selected if (zone_mode or p["zone_mode"]) == "departments" else (p["departments"] or INITIAL_DEPARTMENTS)
     await ensure_sync(sync_deps)
@@ -271,7 +271,7 @@ async def get_opportunity(opp_id: str, user=Depends(current_user)):
     permits = await _get_permits(user)
     pm = next((x for x in permits if x["id"] == opp_id), None)
     if not pm:
-        raise HTTPException(404, "Opportunité introuvable")
+        raise HTTPException(404, "Oportunidade não encontrada")
     o = _build(pm, p["base"], p["metiers"])
     o["is_favorite"] = opp_id in p["favorites"]
     # RGPD : statut de contact selon le type de maître d'ouvrage
@@ -286,7 +286,7 @@ async def get_opportunity(opp_id: str, user=Depends(current_user)):
 async def toggle_favorite(opp_id: str, user=Depends(current_user)):
     permits = await _get_permits()
     if not any(x["id"] == opp_id for x in permits):
-        raise HTTPException(404, "Opportunité introuvable")
+        raise HTTPException(404, "Oportunidade não encontrada")
     p = await _profile(user)
     favs = set(p["favorites"])
     favs.symmetric_difference_update({opp_id})
@@ -325,23 +325,17 @@ def _eur_fr(v) -> str:
 async def _company_name(user_id: str) -> str:
     from routes.plans_common import _resolve_branding
     b = await _resolve_branding(user_id) or {}
-    return b.get("company_name") or "notre entreprise"
+    return b.get("company_name") or "a nossa empresa"
 
 
 def _default_intro_plain(opp: dict, company: str) -> str:
-    surf_txt = f" (surface publiée ≈ {opp.get('surf_created')} m²)" if opp.get("surf_created") else ""
+    surf_txt = f" (área publicada ≈ {opp.get('surf_created')} m²)" if opp.get("surf_created") else ""
     low, high = opp.get("my_lot_low") or 0, opp.get("my_lot_high") or 0
     price = ""
     if high:
-        price = (f"\n\nÀ titre indicatif, nos prestations sur un projet de cette nature se situent "
-                 f"généralement entre {_eur_fr(low)} et {_eur_fr(high)} "
-                 f"(estimation préliminaire, à affiner ensemble selon vos besoins).")
+        price = (f'\n\nA título indicativo, os nossos serviços num projeto desta natureza situam-se geralmente entre {_eur_fr(low)} et {_eur_fr(high)} (estimativa preliminar, a afinar em conjunto consoante as suas necessidades).')
     return (
-        f"Bonjour,\n\nNous avons constaté qu'une autorisation d'urbanisme a récemment été délivrée à "
-        f"{opp.get('commune')} pour un projet de {opp.get('batiment')}{surf_txt}.\n\n"
-        f"Entreprise locale du bâtiment, {company} réalise ce type de travaux dans votre secteur. "
-        f"Nous serions ravis de vous accompagner sur ce projet — de l'étude au chiffrage détaillé, "
-        f"jusqu'à la réalisation." + price)
+        f"Olá,\n\nVerificámos que foi recentemente emitida uma licença de obras a {opp.get('commune')} para um projeto de {opp.get('batiment')}{surf_txt}.\n\nEmpresa de construção local, a {company} realiza este tipo de obras na sua zona. Teríamos todo o gosto em acompanhá-lo neste projeto — do estudo à orçamentação detalhada, até à execução." + price)
 
 
 def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
@@ -360,7 +354,7 @@ def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
     )
 
     b = branding or {}
-    company = b.get("company_name") or "Votre entreprise du bâtiment"
+    company = b.get("company_name") or "A sua empresa de construção"
     ink = colors.HexColor("#0A0D14")
     muted = colors.HexColor("#64748B")
 
@@ -380,21 +374,21 @@ def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
     if addr:
         header_lines.append(addr)
     fisc = " · ".join([x for x in [
-        f"SIRET {b['siret']}" if b.get("siret") else "",
-        f"TVA {b['vat']}" if b.get("vat") else ""] if x])
+        f"Estabelecimento {b['siret']}" if b.get("siret") else "",
+        f"IVA {b['vat']}" if b.get("vat") else ""] if x])
     if fisc:
         header_lines.append(fisc)
     el.append(Paragraph("<br/>".join(header_lines), small))
     el.append(Spacer(1, 14))
 
     today = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    el.append(Paragraph(f"À l'attention du maître d'ouvrage<br/>{opp.get('commune')} ({opp.get('cp')})",
+    el.append(Paragraph(f"À atenção do dono de obra<br/>{opp.get('commune')} ({opp.get('cp')})",
                         body))
     el.append(Spacer(1, 6))
     el.append(Paragraph(f"{opp.get('city') or opp.get('commune')}, le {today}", small))
     el.append(Spacer(1, 14))
 
-    el.append(Paragraph(f"Objet : votre projet « {opp.get('batiment')} »", h1))
+    el.append(Paragraph(f"Assunto: o seu projeto «{opp.get('batiment')} »", h1))
     el.append(Spacer(1, 10))
 
     msg = (custom_message or "").strip() or _default_intro_plain(opp, company)
@@ -405,31 +399,26 @@ def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
     el.append(Spacer(1, 2))
 
     el.append(Paragraph(
-        "Pour recevoir <b>gratuitement et sans engagement</b> une première estimation personnalisée, "
-        "scannez le QR code ci-contre ou rendez-vous sur le lien indiqué. Cela ne prend qu'une minute.",
+        "Para receber <b>gratuitamente e sem compromisso</b> uma primeira estimativa personalizada, digitalize o código QR ao lado ou aceda à ligação indicada. Demora apenas um minuto.",
         body))
     el.append(Spacer(1, 6))
 
     # QR + lien
     qr_img = Image(BytesIO(qr_png), width=34 * mm, height=34 * mm)
     link_cell = Paragraph(
-        f"<b>Demandez votre estimation :</b><br/><font color='#3f7d54'>{public_url}</font><br/><br/>"
-        f"<font size=8 color='#64748B'>Réf. opportunité {opp.get('id')}</font>", body)
+        f"<b>Peça a sua estimativa:</b><br/><font color='#3f7d54'>{public_url}</font><br/><br/><font size=8 color='#64748B'>Ref. oportunidade {opp.get('id')}</font>", body)
     t = Table([[qr_img, link_cell]], colWidths=[38 * mm, 118 * mm])
     t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                            ("LEFTPADDING", (1, 0), (1, 0), 10)]))
     el.append(t)
     el.append(Spacer(1, 14))
 
-    el.append(Paragraph("Dans l'attente de votre retour, nous vous prions d'agréer, Madame, Monsieur, "
-                        "l'expression de nos salutations distinguées.", body))
+    el.append(Paragraph("Aguardando o seu contacto, apresentamos os nossos melhores cumprimentos.", body))
     el.append(Spacer(1, 10))
     el.append(Paragraph(f"<b>{company}</b>", body))
     el.append(Spacer(1, 16))
     el.append(Paragraph(
-        "Information issue de données publiques d'autorisations d'urbanisme (SITADEL). "
-        "Ce courrier est une proposition commerciale. Conformément au RGPD, vous pouvez vous opposer "
-        "à toute prospection en nous contactant.", small))
+        "Informação proveniente de dados públicos de licenças de obras. Esta carta é uma proposta comercial. Nos termos do RGPD, pode opor-se a qualquer prospeção contactando-nos.", small))
 
     doc.build(el)
     return buf.getvalue()
@@ -453,9 +442,9 @@ async def create_prospection(opp_id: str, body: ProspectionIn, user=Depends(curr
     permits = await _get_permits()
     pm = next((x for x in permits if x["id"] == opp_id), None)
     if not pm:
-        raise HTTPException(404, "Opportunité introuvable")
+        raise HTTPException(404, "Oportunidade não encontrada")
     if pm.get("is_demo"):
-        raise HTTPException(409, "Prospection désactivée pour les fiches fictives. Importez un permis réel.")
+        raise HTTPException(409, "Prospeção desativada para fichas fictícias. Importe uma licença real.")
     p = await _profile(user)
     opp = _build(pm, p["base"], p["metiers"])
 
@@ -498,13 +487,13 @@ class AiLetterIn(BaseModel):
 
 
 _TONE_HINT = {
-    "formel": "ton formel et professionnel, vouvoiement, registre soutenu",
-    "chaleureux": "ton chaleureux et humain, proche et rassurant, vouvoiement",
-    "direct": "ton direct et concis, orienté action, sans fioritures",
-    "commercial": "ton commercial et persuasif, met en avant les bénéfices et crée l'envie",
+    "formel": "tom formal e profissional, tratamento por «o senhor/a senhora», registo cuidado",
+    "chaleureux": "tom caloroso e humano, próximo e tranquilizador, tratamento formal",
+    "direct": "tom direto e conciso, orientado para a ação, sem floreados",
+    "commercial": "tom comercial e persuasivo, destaca os benefícios e cria vontade",
 }
-_LEN_HINT = {"court": "environ 90 à 130 mots", "moyen": "environ 150 à 220 mots",
-             "long": "environ 250 à 320 mots"}
+_LEN_HINT = {"court": "cerca de 90 a 130 palavras", "moyen": "cerca de 150 a 220 palavras",
+             "long": "cerca de 250 a 320 palavras"}
 
 
 @router.post("/opportunities/{opp_id}/prospection/ai")
@@ -513,43 +502,26 @@ async def ai_letter(opp_id: str, body: AiLetterIn, user=Depends(current_user)):
     permits = await _get_permits()
     pm = next((x for x in permits if x["id"] == opp_id), None)
     if not pm:
-        raise HTTPException(404, "Opportunité introuvable")
+        raise HTTPException(404, "Oportunidade não encontrada")
     p = await _profile(user)
     opp = _build(pm, p["base"], p["metiers"])
     company = await _company_name(user["user_id"])
     tone = _TONE_HINT.get(body.tone, _TONE_HINT["formel"])
     length = _LEN_HINT.get(body.length, _LEN_HINT["moyen"])
     system = (
-        "Tu es un expert en prospection commerciale pour les entreprises du bâtiment en France. "
-        "Tu rédiges le CORPS d'un courrier de prospection en français, prêt à être posté, adressé "
-        "au maître d'ouvrage d'un projet de construction/rénovation détecté via les autorisations "
-        "d'urbanisme publiques. Règles STRICTES : commence par « Bonjour, ». N'invente jamais de chiffres "
-        "précis ni de fausses références. N'inclus PAS l'en-tête entreprise, ni la date, ni l'adresse du "
-        "destinataire, ni la formule de politesse finale, ni la signature (ils sont ajoutés automatiquement). "
-        "N'inclus PAS de lien ni de QR code (ajoutés automatiquement). Reste crédible, local et non intrusif "
-        "(RGPD)."
+        "És um especialista em prospeção comercial para empresas de construção em Portugal. Redige o CORPO de uma carta de prospeção em português europeu, pronta a ser enviada pelo correio, dirigida ao dono de obra de um projeto de construção/reabilitação detetado através das licenças de obras públicas. Regras ESTRITAS: começa por «Olá,» ou «Exmo.(a) Senhor(a),». Nunca inventes números precisos nem falsas referências. NÃO incluas o cabeçalho da empresa, nem a data, nem a morada do destinatário, nem a fórmula de cortesia final, nem a assinatura (são acrescentados automaticamente). NÃO incluas ligações nem código QR (acrescentados automaticamente). Mantém-te credível, local e não intrusivo (RGPD)."
     )
     price = ""
     if opp.get("my_lot_high"):
-        price = (f"- Fourchette indicative de nos prestations : {_eur_fr(opp['my_lot_low'])} à "
-                 f"{_eur_fr(opp['my_lot_high'])}\n")
+        price = (f"- Intervalo indicativo dos nossos serviços: {_eur_fr(opp['my_lot_low'])} à {_eur_fr(opp['my_lot_high'])}\n")
     prompt = (
-        f"Rédige le corps du courrier ({length}), {tone}.\n\n"
-        f"Informations :\n"
-        f"- Entreprise expéditrice : {company}\n"
-        f"- Projet détecté : {opp.get('batiment')} ({opp.get('nature')})\n"
-        f"- Commune : {opp.get('commune')} ({opp.get('cp')})\n"
-        f"- Surface créée : {opp.get('surf_created') or 'n.c.'} m²\n"
-        f"{price}"
-        f"\nObjectif : proposer notre accompagnement et inviter à demander une estimation gratuite "
-        f"et sans engagement, sans être insistant. Termine le corps par une phrase invitant à la prise "
-        f"de contact, SANS formule de politesse finale ni signature."
+        f"Redige o corpo da carta ({length}), {tone}.\n\nInformações:\n- Empresa remetente: {company}\n- Projeto detetado: {opp.get('batiment')} ({opp.get('nature')})\n- Commune : {opp.get('commune')} ({opp.get('cp')})\n- Área criada: {opp.get('surf_created') or 'n.c.'} m²\n{price}\nObjetivo: propor o nosso acompanhamento e convidar a pedir uma estimativa gratuita e sem compromisso, sem ser insistente. Termina o corpo com uma frase que convide ao contacto, SEM fórmula de cortesia final nem assinatura."
     )
     from engines.ai import _complete
     try:
         text = await asyncio.wait_for(_complete(system, prompt, feature="radar_letter"), timeout=30)
     except asyncio.TimeoutError:
-        raise HTTPException(504, "La rédaction IA a pris trop de temps, réessayez.")
+        raise HTTPException(504, "A redação IA demorou demasiado, tente novamente.")
     return {"message": (text or "").strip()}
 
 
@@ -558,13 +530,13 @@ async def download_prospection_letter(token: str, user=Depends(current_user)):
     rec = await db.radar_prospections.find_one(
         {"token": token, "user_id": user["user_id"]}, {"_id": 0})
     if not rec:
-        raise HTTPException(404, "Campagne introuvable")
+        raise HTTPException(404, "Campanha não encontrada")
     permits = await _get_permits()
     pm = next((x for x in permits if x["id"] == rec["opp_id"]), None)
     if not pm:
-        raise HTTPException(404, "Opportunité introuvable")
+        raise HTTPException(404, "Oportunidade não encontrada")
     if pm.get("is_demo"):
-        raise HTTPException(409, "Courrier désactivé pour une fiche fictive.")
+        raise HTTPException(409, "Carta desativada para uma ficha fictícia.")
     p = await _profile(user)
     opp = _build(pm, p["base"], p["metiers"])
     public_url = f"{_frontend_url()}/prospection/{token}"
@@ -573,7 +545,7 @@ async def download_prospection_letter(token: str, user=Depends(current_user)):
                                  qr_png=_qr_png_bytes(public_url),
                                  custom_message=rec.get("message", ""))
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'inline; filename="courrier-{token}.pdf"'})
+                    headers={"Content-Disposition": f'inline; filename="carta-{token}.pdf"'})
 
 
 # ========= Envoi postal (Merci Facteur) =========
@@ -631,7 +603,7 @@ class PostalQuoteOut(BaseModel):
 
 def _sender_from_branding(b: dict | None, fallback_name: str) -> dict:
     b = require_sender_branding(b)
-    return {"nom": (b.get("company_name") or fallback_name or "Entreprise")[:38], "societe": "",
+    return {"nom": (b.get("company_name") or fallback_name or "Empresa")[:38], "societe": "",
             "adresse1": str(b["address"]).strip()[:38], "adresse2": "",
             "cp": str(b["postal_code"]).strip()[:10], "ville": str(b["city"]).strip()[:38],
             "pays": "france"}
@@ -650,7 +622,7 @@ async def postal_price(mode: Literal["normal", "suivi", "lrar"] = "normal", _=De
     from engines import mercifacteur as mf
     from engines.postal_delivery import provider_http_error
     if not mf.configured():
-        raise HTTPException(503, "Envoi postal non configuré")
+        raise HTTPException(503, "Envio postal não configurado")
     try:
         return await mf.postage_price(mode=mode, pages=1)
     except mf.PostalProviderError as exc:
@@ -660,16 +632,16 @@ async def postal_price(mode: Literal["normal", "suivi", "lrar"] = "normal", _=De
 async def _postal_context(token, user):
     from engines import mercifacteur as mf
     if not mf.configured():
-        raise HTTPException(503, "Envoi postal non configuré")
+        raise HTTPException(503, "Envio postal não configurado")
     rec = await db.radar_prospections.find_one({"token": token, "user_id": user["user_id"]}, {"_id": 0})
     if not rec:
-        raise HTTPException(404, "Campagne introuvable")
+        raise HTTPException(404, "Campanha não encontrada")
     permits = await _get_permits()
     pm = next((x for x in permits if x["id"] == rec["opp_id"]), None)
     if not pm:
-        raise HTTPException(404, "Opportunité introuvable")
+        raise HTTPException(404, "Oportunidade não encontrada")
     if pm.get("is_demo"):
-        raise HTTPException(409, "Envoi interdit pour une fiche fictive.")
+        raise HTTPException(409, "Envio proibido para uma ficha fictícia.")
     p = await _profile(user)
     opp = _build(pm, p["base"], p["metiers"])
     public_url = f"{_frontend_url()}/prospection/{token}"
@@ -772,7 +744,7 @@ async def postal_list(token: str, refresh: bool = False, user=Depends(pro_requir
                 upd.pop("tracking", None)
                 s.update(upd)
             except Exception:
-                refresh_error = "Le suivi postal n'a pas pu être actualisé. Le dernier statut connu est conservé."
+                refresh_error = "Não foi possível atualizar o seguimento postal. O último estado conhecido é conservado."
     return {"sends": sends, "refresh_error": refresh_error}
 
 
@@ -782,7 +754,7 @@ async def public_prospection(token: str, request: Request, _=Depends(optional_us
     """Landing publique (sans auth) : présente l'entreprise + l'opportunité au prospect."""
     rec = await db.radar_prospections.find_one({"token": token}, {"_id": 0})
     if not rec:
-        raise HTTPException(404, "Lien introuvable ou expiré")
+        raise HTTPException(404, "Ligação não encontrada ou expirada")
     ua = (request.headers.get("user-agent") or "").lower()
     bots = ("bot", "crawl", "spider", "facebookexternalhit", "whatsapp", "slack",
             "telegram", "discord", "preview", "embedly", "twitter")
@@ -796,7 +768,7 @@ async def public_prospection(token: str, request: Request, _=Depends(optional_us
     return {
         "token": token,
         "company": {
-            "name": b.get("company_name") or u.get("name") or "Entreprise du bâtiment",
+            "name": b.get("company_name") or u.get("name") or "Empresa de construção",
             "contact_line": b.get("contact_line"),
             "city": b.get("city"),
             "logo_b64": b.get("logo_b64"),
@@ -854,10 +826,10 @@ async def public_prospection_lead(token: str, body: ProspectLeadIn, request: Req
     if (body.website or "").strip():
         return {"ok": True}
     if await _rate_limited(_client_ip(request)):
-        raise HTTPException(429, "Trop de demandes, réessayez dans quelques minutes.")
+        raise HTTPException(429, "Demasiados pedidos, tente novamente dentro de alguns minutos.")
     rec = await db.radar_prospections.find_one({"token": token}, {"_id": 0})
     if not rec:
-        raise HTTPException(404, "Lien introuvable ou expiré")
+        raise HTTPException(404, "Ligação não encontrada ou expirada")
     pro_id = rec["user_id"]
     snap = rec.get("opp_snapshot") or {}
     # Anti-doublon : même e-mail déjà capté pour cette campagne → on ne recrée pas
@@ -873,7 +845,7 @@ async def public_prospection_lead(token: str, body: ProspectLeadIn, request: Req
         "name": body.name, "email": str(body.email).lower(), "phone": body.phone,
         "address": snap.get("commune") or "", "postal_code": snap.get("cp") or "",
         "description": (body.message or "").strip()
-        or f"Prospect Radar Chantiers — projet « {snap.get('batiment')} » à {snap.get('commune')}.",
+        or f"Prospect Radar Chantiers — projet « {snap.get('batiment')}» para {snap.get('commune')}.",
         "budget": None, "availability": "",
         "source": "radar_prospection", "radar_token": token, "radar_opp_id": rec.get("opp_id"),
         "project_snapshot": None,
@@ -889,7 +861,7 @@ async def public_prospection_lead(token: str, body: ProspectLeadIn, request: Req
         await db.notifications.insert_one({
             "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": pro_id,
             "type": "lead_assigned", "lead_id": lead["lead_id"],
-            "message": f"Nouveau prospect Radar : {body.name or body.email} ({snap.get('commune')})",
+            "message": f"Novo potencial cliente Radar: {body.name or body.email} ({snap.get('commune')})",
             "created_at": now, "read": False})
     except Exception:
         pass
@@ -897,13 +869,10 @@ async def public_prospection_lead(token: str, body: ProspectLeadIn, request: Req
         from engines.emailer import send_email, wrap_html
         if pro.get("email"):
             html = wrap_html(
-                "Nouveau prospect via Radar Chantiers",
-                f"<p>Bonjour,</p><p>Un prospect a répondu à votre courrier de prospection pour "
-                f"« {snap.get('batiment')} » à {snap.get('commune')} :</p>"
-                f"<p><b>{body.name or '—'}</b><br/>{body.email}<br/>{body.phone or ''}</p>"
-                f"<p>{lead['description']}</p>",
-                cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Voir mes demandes")
-            await send_email(pro["email"], "Nouveau prospect Radar Chantiers — ConstruPilot", html)
+                "Novo potencial cliente através do Radar de Obras",
+                f"<p>Olá,</p><p>Um potencial cliente respondeu à sua carta de prospeção para «{snap.get('batiment')}» para {snap.get('commune')} :</p><p><b>{body.name or '—'}</b><br/>{body.email}<br/>{body.phone or ''}</p><p>{lead['description']}</p>",
+                cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Ver os meus pedidos")
+            await send_email(pro["email"], "Novo potencial cliente Radar de Obras — ConstruPilot", html)
     except Exception:
         pass
     return {"ok": True}
@@ -962,9 +931,9 @@ def _norm_nature(v: str) -> str:
 
 _MO_ALIASES = {
     "particulier": "PARTICULIER", "personne physique": "PARTICULIER",
-    "promoteur": "PROMOTEUR", "sci": "SCI", "entreprise": "ENTREPRISE",
-    "société": "ENTREPRISE", "societe": "ENTREPRISE", "bailleur": "BAILLEUR",
-    "hlm": "BAILLEUR", "collectivité": "COLLECTIVITE", "collectivite": "COLLECTIVITE",
+    "promoteur": "PROMOTOR", "sci": "SCI", "entreprise": "ENTREPRISE",
+    "société": "ENTREPRISE", "societe": "ENTREPRISE", "bailleur": "SENHORIO",
+    "hlm": "SENHORIO", "collectivité": "COLLECTIVITE", "collectivite": "COLLECTIVITE",
     "commune": "COLLECTIVITE", "état": "COLLECTIVITE", "etat": "COLLECTIVITE",
 }
 
@@ -1042,7 +1011,7 @@ async def _row_to_permit(row: dict, idx: int):
         return None
     num = _pick(row, "num", "num_dau", "numero", "reference")
     pid = _pick(row, "id") or (num.replace(" ", "") if num else f"SITADEL-{idx}")
-    typ = _pick(row, "type", "type_dau") or "Permis de construire"
+    typ = _pick(row, "type", "type_dau") or "Licença de construção"
     nature = _norm_nature(_pick(row, "nature", "nature_projet", "nature_projet_declaree", "type"))
     batiment = _pick(row, "batiment", "libelle", "projet", "description") or typ
     return {
@@ -1055,7 +1024,7 @@ async def _row_to_permit(row: dict, idx: int):
         "logements": _to_int(_pick(row, "logements", "nb_lgt", "nb_lgt_tot_crees")),
         "date_depot": _norm_date(_pick(row, "date_depot", "date_depot_dau")),
         "date_auth": _norm_date(_pick(row, "date_auth", "date_autorisation", "date_reelle_autorisation")),
-        "statut": _pick(row, "statut", "etat") or "Autorisé",
+        "statut": _pick(row, "statut", "etat") or "Licenciado",
         "mo": _norm_mo(_pick(row, "mo", "maitre_ouvrage", "moa", "demandeur", "cj_dem")),
         "promoteur": promoteur,
         "coordonnees_status": "complet" if promoteur and promoteur["nom"] and promoteur["adresse1"] and promoteur["cp"] and promoteur["ville"]
@@ -1067,7 +1036,7 @@ async def _row_to_permit(row: dict, idx: int):
 @router.post("/admin/import-sitadel")
 async def import_sitadel(file: UploadFile = File(...), replace: bool = True,
                          _=Depends(admin_user)):
-    raise HTTPException(410, "L'import manuel a été remplacé par la synchronisation officielle SDES. Aucun fichier ne peut remplacer ces permis.")
+    raise HTTPException(410, "A importação manual foi substituída pela sincronização oficial. Nenhum ficheiro pode substituir estas licenças.")
 
 
 @router.get("/admin/permits/count")
@@ -1075,9 +1044,9 @@ async def permits_count(_=Depends(admin_user)):
     n = len(await _get_permits())
     loaded = await db.radar_sync.find({}, {"_id": 0, "department": 1}).to_list(None)
     departments = sorted(set(INITIAL_DEPARTMENTS + [r["department"] for r in loaded]))
-    return {"count": n, "using": "SDES · SITADEL officiel", "sync": await sync_status(departments)}
+    return {"count": n, "using": "Fonte oficial de licenças", "sync": await sync_status(departments)}
 
 
 @router.delete("/admin/permits")
 async def clear_permits(_=Depends(admin_user)):
-    raise HTTPException(409, "La suppression globale des permis officiels est désactivée. Utilisez Actualiser pour obtenir la dernière publication SDES.")
+    raise HTTPException(409, "A eliminação global das licenças oficiais está desativada. Utilize Atualizar para obter a última publicação.")

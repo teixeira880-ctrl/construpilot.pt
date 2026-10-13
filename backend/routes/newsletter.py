@@ -36,12 +36,12 @@ class SubscribeIn(BaseModel):
 async def subscribe(body: SubscribeIn, request: Request):
     email = (body.email or "").strip().lower()
     if not EMAIL_RE.match(email) or email.endswith("@example.com"):
-        raise HTTPException(400, "Adresse email invalide")
+        raise HTTPException(400, "Endereço de email inválido")
     ip = (request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip")
           or (request.client.host if request.client else "") or "").split(",")[0].strip()
     recent = await db.rate_limits.count_documents({"key": f"nl:{ip}"})
     if recent >= 10:
-        raise HTTPException(429, "Trop de tentatives, réessayez dans quelques minutes")
+        raise HTTPException(429, "Demasiadas tentativas, tente novamente dentro de alguns minutos")
     await db.rate_limits.insert_one({"key": f"nl:{ip}", "at": datetime.now(timezone.utc)})
     lang = "pt" if body.lang == "pt" else "pt"
     existing = await db.newsletter_subscribers.find_one({"email": email}, {"_id": 0})
@@ -62,10 +62,8 @@ async def subscribe(body: SubscribeIn, request: Request):
                 f"<p><a href='{_frontend()}/blog'>Ver o blog</a></p>"
                 f"<p style='font-size:11px;color:#888'><a href='{unsub}'>Cancelar a subscrição</a></p>")
         else:
-            subj, html = "Bienvenue dans le journal ConstruPilot", (
-                f"<p>Merci ! Vous recevrez nos nouveaux guides travaux, prix et méthodes dès leur publication.</p>"
-                f"<p><a href='{_frontend()}/blog'>Découvrir le blog</a></p>"
-                f"<p style='font-size:11px;color:#888'><a href='{unsub}'>Se désabonner</a></p>")
+            subj, html = "Bem-vindo ao jornal ConstruPilot", (
+                f"<p>Obrigado! Receberá os nossos novos guias de obras, preços e métodos logo que forem publicados.</p><p><a href='{_frontend()}/blog'>Découvrir le blog</a></p><p style='font-size:11px;color:#888'><a href='{unsub}'>Cancelar a subscrição</a></p>")
         await send_email(email, subj, html, from_name="ConstruPilot")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Newsletter welcome email failed for {email}: {e}")
@@ -75,7 +73,7 @@ async def subscribe(body: SubscribeIn, request: Request):
 @router.get("/unsubscribe", response_class=HTMLResponse)
 async def unsubscribe(token: str):
     r = await db.newsletter_subscribers.update_one({"token": token}, {"$set": {"unsubscribed_at": _now()}})
-    msg = "Vous êtes désabonné(e) du journal ConstruPilot." if r.matched_count else "Lien invalide ou déjà utilisé."
+    msg = "Cancelou a subscrição do jornal ConstruPilot." if r.matched_count else "Ligação inválida ou já utilizada."
     return HTMLResponse(f"<html><body style='font-family:sans-serif;padding:40px;text-align:center'>"
                         f"<h2>{msg}</h2><a href='{_frontend()}/blog'>Retour au blog</a></body></html>")
 
@@ -103,19 +101,15 @@ async def notify_new_article(article: dict) -> int:
     hero = article.get("hero_image_url") or ""
     if hero.startswith("/"):
         hero = _frontend() + hero
-    title = article.get("title") or "Nouvel article"
+    title = article.get("title") or "Novo artigo"
     excerpt = article.get("excerpt") or article.get("meta_description") or ""
     sent = 0
     for s in subs:
         unsub = f"{_frontend()}/api/newsletter/unsubscribe?token={s['token']}"
-        cta = "Lire l'article" if lang == "fr" else "Ler o artigo"
+        cta = "Ler o artigo" if lang == "fr" else "Ler o artigo"
         html = (f"<div style='font-family:sans-serif;max-width:560px'>"
                 + (f"<img src='{hero}' alt='' style='width:100%;border-radius:8px'/>" if hero else "")
-                + f"<h2 style='margin:16px 0 8px'>{title}</h2><p style='color:#444'>{excerpt}</p>"
-                f"<p><a href='{url}' style='background:#2ECC71;color:#fff;padding:10px 18px;border-radius:999px;"
-                f"text-decoration:none;font-weight:bold'>{cta}</a></p>"
-                f"<p style='font-size:11px;color:#888'>ConstruPilot · <a href='{unsub}'>"
-                f"{'Se désabonner' if lang == 'fr' else 'Cancelar'}</a></p></div>")
+                + f"<h2 style='margin:16px 0 8px'>{title}</h2><p style='color:#444'>{excerpt}</p><p><a href='{url}' style='background:#2ECC71;color:#fff;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:bold'>{cta}</a></p><p style='font-size:11px;color:#888'>ConstruPilot · <a href='{unsub}'>{('Cancelar a subscrição' if lang == 'fr' else 'Cancelar')}</a></p></div>")
         try:
             await send_email(s["email"], title, html, from_name="ConstruPilot")
             sent += 1

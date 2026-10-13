@@ -105,7 +105,7 @@ def summary(reports: dict[str, dict]) -> dict:
             "rebar_fields_correct": f"{sum(r['correct'] for r in rebar)}/{sum(r['total'] for r in rebar)}" if rebar else None,
             "dimension_recall_mean": round(sum(recalls) / len(recalls), 3) if recalls else None,
             "duplicate_readings": sum(d["duplicate_readings"] for d in dims),
-            "note": "Échantillon = plans autorisés vérifiés par une personne compétente ; aucun taux global n'est annoncé au-delà de cet échantillon."}
+            "note": "Amostra = plantas autorizadas verificadas por uma pessoa competente; nenhuma taxa global é anunciada para além desta amostra."}
 
 
 def score_quantities(readings: list[dict], truth: dict) -> dict:
@@ -123,15 +123,15 @@ def score_quantities(readings: list[dict], truth: dict) -> dict:
     def key(row):
         identifier, page = row.get("quantity_id"), row.get("page_index")
         if not isinstance(identifier, str) or not identifier or isinstance(page, bool) or not isinstance(page, int) or page < 0:
-            raise ValueError("Chaque quantité exige un quantity_id et un page_index (base 0)")
+            raise ValueError("Cada quantidade exige um quantity_id e um page_index (base 0)")
         return (identifier, page)
     if truth.get("verified") is not True:
-        raise ValueError("La référence doit être vérifiée indépendamment avant évaluation")
+        raise ValueError("A referência deve ser verificada de forma independente antes da avaliação")
     expected = truth.get("quantities")
     if not isinstance(expected, list) or not expected:
-        raise ValueError("La référence doit contenir des quantités vérifiées")
+        raise ValueError("A referência deve conter quantidades verificadas")
     if len({key(row) for row in expected}) != len(expected):
-        raise ValueError("La référence contient des identifiants dupliqués")
+        raise ValueError("A referência contém identificadores duplicados")
     grouped = {}
     for row in readings:
         grouped.setdefault(key(row), []).append(row)
@@ -142,7 +142,7 @@ def score_quantities(readings: list[dict], truth: dict) -> dict:
         unit = units.get(row.get("unit"), row.get("unit"))
         rel, absolute = row.get("relative_tolerance", 0 if unit == "u" else .02), row.get("absolute_tolerance", 0)
         if not unit or not numeric(value) or value < 0 or not numeric(rel) or not 0 <= rel <= 1 or not numeric(absolute) or absolute < 0:
-            raise ValueError("Valeur, unité ou tolérance de référence invalide")
+            raise ValueError("Valor, unidade ou tolerância de referência inválidos")
         candidates = grouped.get(k, [])
         output = candidates[0] if len(candidates) == 1 else {}
         read = output.get("value", output.get("quantity_net"))
@@ -166,4 +166,4 @@ def score_quantities(readings: list[dict], truth: dict) -> dict:
             "coverage": matched / len(results), "agreement": correct / len(results),
             "precision": correct / len(readings) if readings and truth.get("exhaustive") is True else None,
             "extra_readings": len(extra), "by_unit": by_unit, "rows": results,
-            "scope": "échantillon vérifié uniquement", "exhaustive_reference": truth.get("exhaustive") is True}
+            "scope": "apenas amostra verificada", "exhaustive_reference": truth.get("exhaustive") is True}

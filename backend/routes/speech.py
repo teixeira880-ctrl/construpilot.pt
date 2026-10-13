@@ -23,7 +23,7 @@ class TtsIn(BaseModel):
 async def _read(file: UploadFile) -> bytes:
     data = await file.read(MAX_AUDIO + 1)
     if len(data) > MAX_AUDIO:
-        raise HTTPException(413, "Audio trop volumineux (15 Mo max)")
+        raise HTTPException(413, "Áudio demasiado volumoso (máx. 15 MB)")
     if not data:
         raise HTTPException(422, "Audio vide")
     return data
@@ -34,7 +34,7 @@ async def _transcribe(file: UploadFile) -> dict:
     try:
         text = await speech.transcribe(data, file.filename or "audio.webm")
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Transcription impossible — {type(e).__name__}")
+        raise HTTPException(502, f'Transcrição impossível — {type(e).__name__}')
     return {"text": text, "engine": "emergent-whisper"}
 
 
@@ -54,7 +54,7 @@ async def tts(body: TtsIn, request: Request, response: Response, user=Depends(cu
     try:
         return _mp3(await speech.synthesize(body.text, body.voice, body.speed))
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Synthèse vocale impossible — {type(e).__name__}")
+        raise HTTPException(502, f'Síntese de voz impossível — {type(e).__name__}')
 
 
 @router.post("/portal/transcribe")
@@ -71,4 +71,4 @@ async def portal_tts(body: TtsIn, request: Request, response: Response, p=Depend
     try:
         return _mp3(await speech.synthesize(body.text, body.voice, body.speed))
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Synthèse vocale impossible — {type(e).__name__}")
+        raise HTTPException(502, f'Síntese de voz impossível — {type(e).__name__}')

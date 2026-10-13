@@ -74,7 +74,7 @@ async def build_lines(body, user, previous=None):
     for item in body.lines:
         original = old_lines.get(item.line_id)
         if item.line_id is not None and (original is None or item.line_id in seen):
-            raise HTTPException(422, "Identifiant de ligne inconnu ou dupliqué ; relire le devis.")
+            raise HTTPException(422, "Identificador de linha desconhecido ou duplicado; reler o orçamento.")
         if item.line_id:
             seen.add(item.line_id)
         vat = item.vat_rate if item.vat_rate is not None else body.vat_rate
@@ -87,7 +87,7 @@ async def build_lines(body, user, previous=None):
             row.update(unit_price_ht=item.unit_price, price_source="user_input")
         elif item.price_origin == "estimate":
             row.update(unit_price_ht=item.unit_price, price_source="assistant_estimate", price_estimated=True,
-                       price_reference_label="Prix moyen estimé — à vérifier")
+                       price_reference_label="Preço médio estimado — a verificar")
         else:
             keep = original and original.get("price_estimated") and all(original.get(k) == row[k] for k in ("designation", "unit", "description", "category"))
             if item.price_origin == "library" and keep:

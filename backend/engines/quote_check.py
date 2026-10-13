@@ -30,32 +30,32 @@ def _has_kw(text: str, kws: list[str]) -> bool:
 COMPLEMENTARY_RULES = [
     {"trigger": ["demolition", "depose", "demontage", "arrachage"],
      "expect": ["evacuation", "gravats", "benne", "decharge", "dechetterie", "mise en decharge"],
-     "title": "Évacuation des gravats",
-     "message": "Une dépose / démolition est prévue ; aucun poste d'évacuation des gravats n'a été identifié. Est-il inclus dans un autre poste ?"},
+     "title": "Remoção do entulho",
+     "message": "Está prevista uma desmontagem / demolição; não foi identificado nenhum artigo de remoção de entulho. Está incluído noutro artigo?"},
     {"trigger": ["carrelage", "faience", "carreaux"],
      "expect": ["colle", "joint", "plinthe", "mortier colle"],
-     "title": "Colle, joints et plinthes",
-     "message": "Pose de carrelage / faïence détectée ; vérifiez la présence de la colle, des joints et des plinthes."},
+     "title": "Cola, juntas e rodapés",
+     "message": "Assentamento de mosaico / azulejo detetado; verifique a presença da cola, das juntas e dos rodapés."},
     {"trigger": ["peinture", "mise en peinture"],
      "expect": ["preparation", "enduit", "sous couche", "sous-couche", "impression", "protection", "rebouchage", "ponçage", "poncage"],
-     "title": "Préparation & protection",
-     "message": "Peinture détectée ; vérifiez la préparation des supports (rebouchage / enduit / sous-couche) et la protection des sols et mobilier."},
+     "title": "Preparação e proteção",
+     "message": "Pintura detetada; verifique a preparação dos suportes (reparação / massa / primário) e a proteção dos pavimentos e mobiliário."},
     {"trigger": ["placo", "ba13", "cloison", "plaque de platre", "doublage", "faux plafond"],
-     "expect": ["bande", "enduit", "joint", "traitement des joints"],
-     "title": "Traitement des joints",
-     "message": "Cloison / plaque de plâtre détectée ; vérifiez le traitement des joints (bandes + enduit)."},
+     "expect": ["bande", "enduit", "joint", "tratamento das juntas"],
+     "title": "Tratamento das juntas",
+     "message": "Divisória / placa de gesso cartonado detetada; verifique o tratamento das juntas (fitas + massa)."},
     {"trigger": ["parquet", "sol souple", "stratifie", "moquette", "lino"],
      "expect": ["plinthe", "barre de seuil", "sous couche", "sous-couche", "ragreage", "seuil"],
-     "title": "Ragréage, plinthes & seuils",
-     "message": "Pose de revêtement de sol détectée ; vérifiez le ragréage / la sous-couche et les plinthes / barres de seuil."},
+     "title": "Autonivelante, rodapés e soleiras",
+     "message": "Aplicação de revestimento de pavimento detetada; verifique o autonivelante / a subcamada e os rodapés / perfis de soleira."},
     {"trigger": ["fenetre", "menuiserie", "porte fenetre", "baie", "volet"],
      "expect": ["depose", "calfeutrement", "habillage", "finition", "bavette", "appui"],
-     "title": "Dépose & finitions menuiserie",
-     "message": "Menuiseries détectées ; vérifiez la dépose de l'existant et les finitions (calfeutrement / habillage)."},
+     "title": "Desmontagem e acabamentos de caixilharia",
+     "message": "Caixilharia detetada; verifique a desmontagem da existente e os acabamentos (calafetagem / guarnições)."},
     {"trigger": ["douche italienne", "receveur", "wc", "lavabo", "sanitaire", "plomberie"],
      "expect": ["etancheite", "raccordement", "evacuation", "alimentation", "siphon"],
-     "title": "Étanchéité & raccordements",
-     "message": "Prestation sanitaire / plomberie détectée ; vérifiez l'étanchéité (douche) et les raccordements (alimentation / évacuation)."},
+     "title": "Impermeabilização e ligações",
+     "message": "Prestação de sanitários / canalização detetada; verifique a impermeabilização (duche) e as ligações (alimentação / esgoto)."},
 ]
 
 
@@ -85,26 +85,26 @@ def deterministic_checks(lines: list[dict], totals: dict, policy: dict | None = 
     for key, idxs in seen.items():
         if len(idxs) > 1:
             name = (lines[idxs[0]].get("designation") or "").strip()
-            alerts.append(_new("warning", "doublon", "Doublon potentiel",
-                               f"« {name} » apparaît {len(idxs)} fois avec la même unité. Vérifiez qu'il ne s'agit pas d'une répétition involontaire.",
-                               idxs, "désignation + unité identiques"))
+            alerts.append(_new("warning", "doublon", "Duplicado potencial",
+                               f'« {name}» aparece {len(idxs)} vezes com a mesma unidade. Verifique se não se trata de uma repetição involuntária.',
+                               idxs, "designação + unidade idênticas"))
 
     # 2. Cohérence unité / quantité / prix
     for i, ln in priced:
         qty = ln.get("qty")
         pu = ln.get("unit_price_ht")
         if qty is None or float(qty or 0) <= 0:
-            alerts.append(_new("error", "coherence", "Quantité manquante ou nulle",
-                               f"La ligne « {ln.get('designation')} » a une quantité de {qty}. Renseignez une quantité positive.",
+            alerts.append(_new("error", "coherence", "Quantidade em falta ou nula",
+                               f"A linha «{ln.get('designation')}» tem uma quantidade de {qty}. Indique uma quantidade positiva.",
                                [i], "qty ≤ 0"))
         if pu is None or float(pu or 0) <= 0:
-            alerts.append(_new("error", "coherence", "Prix unitaire manquant",
-                               f"La ligne « {ln.get('designation')} » n'a pas de prix unitaire HT. Le total serait sous-évalué.",
+            alerts.append(_new("error", "coherence", "Preço unitário em falta",
+                               f"A linha «{ln.get('designation')}» não tem preço unitário sem IVA. O total ficaria subavaliado.",
                                [i], "PU HT ≤ 0"))
         if not ln.get("unit"):
-            alerts.append(_new("warning", "coherence", "Unité manquante",
-                               f"La ligne « {ln.get('designation')} » n'a pas d'unité.",
-                               [i], "unité vide"))
+            alerts.append(_new("warning", "coherence", "Unidade em falta",
+                               f"A linha «{ln.get('designation')}» não tem unidade.",
+                               [i], "unidade vazia"))
 
     # 3. Coût de revient > prix de vente (perte de marge)
     for i, ln in priced:
@@ -112,8 +112,8 @@ def deterministic_checks(lines: list[dict], totals: dict, policy: dict | None = 
         pu = float(ln.get("unit_price_ht") or 0)
         if cost > 0 and pu > 0 and cost > pu:
             loss = round((cost - pu) * float(ln.get("qty") or 0), 2)
-            alerts.append(_new("error", "marge", "Vente inférieure au coût",
-                               f"« {ln.get('designation')} » : coût de revient {cost:.2f} € > prix de vente {pu:.2f} € HT (perte estimée {loss:.2f} € sur la ligne).",
+            alerts.append(_new("error", "marge", "Venda inferior ao custo",
+                               f"« {ln.get('designation')}» : custo de produção {cost:.2f} € > preço de venda {pu:.2f} € s/ IVA (perda estimada {loss:.2f} € na linha).",
                                [i], "cost_price_ht > unit_price_ht",
                                fix=None))
 
@@ -122,23 +122,22 @@ def deterministic_checks(lines: list[dict], totals: dict, policy: dict | None = 
     vat_missing = [i for i, ln in priced if ln.get("vat_rate") is None]
     if vat_missing:
         fix = ({"action": "set_vat", "rate": default_rate} if default_rate else None)
-        alerts.append(_new("warning", "tva", "TVA non renseignée",
-                           f"{len(vat_missing)} ligne(s) sans taux de TVA."
-                           + (f" Taux normal de l'entreprise : {default_rate} %." if default_rate else ""),
+        alerts.append(_new("warning", "tva", "IVA não indicado",
+                           f'{len(vat_missing)} linha(s) sem taxa de IVA.'
+                           + (f' Taxa normal da empresa: {default_rate} %.' if default_rate else ""),
                            vat_missing, "vat_rate = null", fix=fix))
     vat_assumed = [i for i, ln in priced if ln.get("vat_assumed") and ln.get("vat_rate") is not None]
     if vat_assumed:
-        alerts.append(_new("info", "tva", "TVA supposée, à confirmer",
-                           f"{len(vat_assumed)} ligne(s) ont un taux de TVA supposé automatiquement — confirmez-le avant l'envoi.",
+        alerts.append(_new("info", "tva", "IVA suposto, a confirmar",
+                           f'{len(vat_assumed)} linha(s) têm uma taxa de IVA suposta automaticamente — confirme-a antes do envio.',
                            vat_assumed, "vat_assumed = true"))
 
     # 5. Marge globale non vérifiable si coûts inconnus
     cov = totals.get("cost_coverage") or {}
     if not cov.get("complete"):
         missing = cov.get("missing_lines", 0)
-        alerts.append(_new("info", "marge", "Marge non vérifiable",
-                           f"{missing} ligne(s) sans coût de revient renseigné : la marge globale ne peut pas être contrôlée. "
-                           "Renseignez les coûts ou cochez « coût confirmé nul » pour un contrôle de marge complet.",
+        alerts.append(_new("info", "marge", "Margem não verificável",
+                           f'{missing} linha(s) sem custo de produção indicado: a margem global não pode ser controlada. Indique os custos ou assinale «custo nulo confirmado» para um controlo de margem completo.',
                            [], "cost_coverage.complete = false"))
 
     # 6. Écart vs quantités du métré du chantier (meilleur effort, surface de sol)
@@ -150,13 +149,13 @@ def deterministic_checks(lines: list[dict], totals: dict, policy: dict | None = 
                 if (ln.get("unit") or "").lower() in ("m²", "m2") and _has_kw(ln.get("designation", ""), floor_kw):
                     qty = float(ln.get("qty") or 0)
                     if qty > 0 and abs(qty - slab) / slab > 0.15:
-                        alerts.append(_new("warning", "metre", "Écart avec le métré du chantier",
-                                           f"« {ln.get('designation')} » : {qty:g} m² saisis vs {slab:g} m² de surface au sol relevée sur le plan du chantier (écart > 15 %). Vérifiez la quantité.",
+                        alerts.append(_new("warning", "metre", "Diferença face à medição da obra",
+                                           f"« {ln.get('designation')} » : {qty:g} m² introduzidos vs {slab:g} m² de área de pavimento registada na planta da obra (diferença > 15 %). Verifique a quantidade.",
                                            [i], f"slab_area_m2 = {slab:g}"))
-            alerts.append(_new("info", "metre", "Métré du chantier disponible",
-                               f"Métré relevé sur le plan lié : surface au sol {slab:g} m²"
-                               + (f", murs {metre.get('walls_ml'):g} ml" if metre.get('walls_ml') else "")
-                               + ". Utilisez-le pour recouper vos quantités.",
+            alerts.append(_new("info", "metre", "Medição da obra disponível",
+                               f'Medição registada na planta associada: área de pavimento {slab:g} m²'
+                               + (f", paredes {metre.get('walls_ml'):g} ml" if metre.get('walls_ml') else "")
+                               + ". Utilize-a para confrontar as suas quantidades.",
                                [], "plans_takeoff.structural_metre"))
 
     # 7. Postes complémentaires probablement manquants (règles métier — à vérifier)
@@ -166,7 +165,7 @@ def deterministic_checks(lines: list[dict], totals: dict, policy: dict | None = 
                     if _has_kw((ln.get("designation") or "") + " " + (ln.get("description") or ""), rule["trigger"])]
         if trig_idx and not _has_kw(all_text, rule["expect"]):
             alerts.append(_new("warning", "poste_manquant", rule["title"], rule["message"],
-                               trig_idx, "règle métier · à vérifier (peut être inclus ailleurs)", source="rule"))
+                               trig_idx, "regra profissional · a verificar (pode estar incluído noutro lado)", source="rule"))
 
     return alerts
 
@@ -181,21 +180,10 @@ async def ai_checks(lines: list[dict], context: str = "") -> list[dict]:
             for i, ln in enumerate(lines) if (ln.get("designation") or "").strip()][:120]
     if not slim:
         return []
-    system = ("Tu es économiste de la construction (BTP France). Tu relis un devis avant envoi et tu "
-              "signales UNIQUEMENT des points concrets à vérifier : ouvrage complémentaire probablement "
-              "oublié, ambiguïté d'une désignation, incohérence apparente. Tu ne réécris pas le devis et "
-              "tu n'inventes pas de prix. Tu retournes UNIQUEMENT du JSON valide.")
+    system = ("És orçamentista da construção (Portugal). Relês um orçamento antes do envio e assinalas APENAS pontos concretos a verificar: trabalho complementar provavelmente esquecido, ambiguidade de uma designação, incoerência aparente. Não reescreves o orçamento e não inventas preços. Devolves APENAS JSON válido, com textos em português europeu.")
     prompt = (
-        (f"Contexte : {context[:300]}\n\n" if context else "")
-        + f"Lignes du devis : {json.dumps(slim, ensure_ascii=False)}\n\n"
-        'Retourne UNIQUEMENT ce JSON : { "alerts": [ {\n'
-        '  "line_indexes": [index des lignes concernées, [] si global],\n'
-        '  "severity": "warning"|"info",\n'
-        '  "category": "poste_manquant"|"ambiguite"|"coherence",\n'
-        '  "title": "titre court (max 6 mots)",\n'
-        '  "message": "explication concrète, formulée comme une question ou une vérification à faire" } ] }\n'
-        "Maximum 8 alertes, les plus utiles. Présente les dépendances comme des éléments À VÉRIFIER "
-        "(un poste peut être forfaitaire, inclus ailleurs ou hors périmètre). N'invente pas d'alerte sans indice réel."
+        (f'Contexto: {context[:300]}\n\n' if context else "")
+        + f'Linhas do orçamento: {json.dumps(slim, ensure_ascii=False)}\n\nDevolve APENAS este JSON: {{ "alerts": [ {{\n  "line_indexes": [índices das linhas em causa, [] se global],\n  "severity": "warning"|"info",\n  "category": "poste_manquant"|"ambiguite"|"coherence",\n  "title": "título curto (máx. 6 palavras)",\n  "message": "explicação concreta, formulada como uma pergunta ou uma verificação a fazer" }} ] }}\nMáximo 8 alertas, os mais úteis. Apresenta as dependências como elementos A VERIFICAR (um artigo pode ser global, incluído noutro lado ou fora do âmbito). Não inventes alertas sem indício real. Textos em português europeu.'
     )
     try:
         data = _json(await _complete(system, prompt, feature="quote_check"), {"alerts": []})
@@ -218,7 +206,7 @@ async def ai_checks(lines: list[dict], context: str = "") -> list[dict]:
             except (TypeError, ValueError):
                 continue
         out.append({"id": f"chk_ai_{n+1}", "severity": sev, "category": cat, "title": title,
-                    "message": msg, "line_indexes": _fmt_idx(idx), "data_used": "analyse IA des descriptions",
+                    "message": msg, "line_indexes": _fmt_idx(idx), "data_used": "análise IA das descrições",
                     "fix": None, "source": "ai"})
     return out
 

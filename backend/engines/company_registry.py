@@ -37,13 +37,13 @@ async def search_companies(query):
                                         params={"q": query, "per_page": 10, "etat_administratif": "A"},
                                         headers={"Accept": "application/json", "User-Agent": "ConstruPilot-Radar/1.0"})
         if response.status_code == 429:
-            raise HTTPException(429, "Annuaire temporairement saturé. Réessayez dans quelques instants.")
+            raise HTTPException(429, "Diretório temporariamente saturado. Tente novamente dentro de instantes.")
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
             raise ValueError("Unexpected registry response")
     except httpx.TimeoutException:
-        raise HTTPException(504, "L'annuaire ne répond pas dans le délai prévu.")
+        raise HTTPException(504, "O diretório não responde no prazo previsto.")
     except (httpx.HTTPError, ValueError):
-        raise HTTPException(502, "Annuaire indisponible. Vous pouvez saisir des coordonnées connues manuellement.")
+        raise HTTPException(502, "Diretório indisponível. Pode introduzir manualmente contactos conhecidos.")
     return [candidate for item in payload["results"] if (candidate := normalize_company(item))]

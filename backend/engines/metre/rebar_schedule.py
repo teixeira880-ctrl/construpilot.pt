@@ -233,7 +233,7 @@ def _parse_cuts(tokens: list[str]) -> list[dict]:
 
 
 def parse_mesh_recap(words) -> dict | None:
-    title = _title(words, "RECAPITULATIF", "TREILLIS")
+    title = _title(words, "RECAPITULATIF", "MALHAS")
     if not title:
         return None
     hdr = [w for w in words if title[3] - 2 <= w[1] <= title[3] + 22 and title[0] - 130 <= w[0] <= title[2] + 300]
@@ -256,7 +256,7 @@ def parse_mesh_recap(words) -> dict | None:
         rows.append({"panel": " ".join(pw) or None, "count": nb, "width_cm": int(m.group(1)), "height_cm": int(m.group(2)), "mass_kg": ms,
                      "bbox_pt": _bbox(row_words), "origin": "native_text"})
     total = round(sum(r["mass_kg"] for r in rows if r["mass_kg"] is not None), 1) if rows else None
-    return {"rows": rows, "sum_mass_kg": total, "mass_laid_kg": _labelled_kg(words, "posée"), "mass_total_kg": _labelled_kg(words, "totale", prefix="Masse")}
+    return {"rows": rows, "sum_mass_kg": total, "mass_laid_kg": _labelled_kg(words, "posée"), "mass_total_kg": _labelled_kg(words, "totale", prefix="Massa")}
 
 
 def _labelled_kg(words, label, *, prefix=None):
@@ -279,7 +279,7 @@ def _labelled_kg(words, label, *, prefix=None):
 
 def parse_steel_recap(words) -> dict | None:
     """« RECAP DES ACIERS » : Poids HA façonnés / non façonnés (kg), when printed."""
-    title = _title(words, "RECAP", "DES", "ACIERS")
+    title = _title(words, "RECAP", "DES", "AÇOS")
     if not title:
         return None
     out = {}
@@ -332,15 +332,15 @@ def check_mesh(rows: list[dict], recap: dict | None) -> dict:
     out = {"rows_mass_kg": total, "by_panel": {k: {"count": v["count"], "mass_kg": round(v["mass_kg"], 1)} for k, v in sorted(by_panel.items())}, "comparisons": []}
     if recap:
         if recap.get("mass_laid_kg") is not None:
-            out["comparisons"].append({"a": "Σ nomenclature treillis (panneaux posés)", "a_kg": total, "b": "Masse posée (cartouche)", "b_kg": recap["mass_laid_kg"],
+            out["comparisons"].append({"a": "Σ lista de malhas (painéis colocados)", "a_kg": total, "b": "Massa colocada (legenda)", "b_kg": recap["mass_laid_kg"],
                                        "difference_kg": round(total - recap["mass_laid_kg"], 1), "expect_equal": True})
         if recap.get("sum_mass_kg") is not None and recap.get("mass_total_kg") is not None:
-            out["comparisons"].append({"a": "Σ récapitulatif treillis (panneaux à commander)", "a_kg": recap["sum_mass_kg"], "b": "Masse totale (cartouche)", "b_kg": recap["mass_total_kg"],
+            out["comparisons"].append({"a": "Σ resumo de malhas (painéis a encomendar)", "a_kg": recap["sum_mass_kg"], "b": "Massa total (legenda)", "b_kg": recap["mass_total_kg"],
                                        "difference_kg": round(recap["sum_mass_kg"] - recap["mass_total_kg"], 1), "expect_equal": True})
         if recap.get("mass_total_kg") is not None and recap.get("mass_laid_kg") is not None:
-            out["comparisons"].append({"a": "Masse totale (commandée)", "a_kg": recap["mass_total_kg"], "b": "Masse posée", "b_kg": recap["mass_laid_kg"],
+            out["comparisons"].append({"a": "Massa total (encomendada)", "a_kg": recap["mass_total_kg"], "b": "Massa colocada", "b_kg": recap["mass_laid_kg"],
                                        "difference_kg": round(recap["mass_total_kg"] - recap["mass_laid_kg"], 1), "expect_equal": False,
-                                       "meaning": "chutes de découpe des panneaux (valeurs imprimées, non recalculées)"})
+                                       "meaning": "desperdícios de corte dos painéis (valores impressos, não recalculados)"})
     return out
 
 
@@ -368,20 +368,20 @@ def extract_rebar_schedule(page) -> dict:
     recap = result["steel_recap"] or {}
     if result["ha_bars"] and recap.get("ha_shaped_kg") is not None:
         recap_total = round(recap["ha_shaped_kg"] + (recap.get("ha_straight_kg") or 0.0), 1)
-        result["ha_bars"]["comparison"] = {"a": "Σ nomenclature HA (masse théorique)", "a_kg": result["ha_bars"]["total_mass_kg"],
-                                          "b": "Récap aciers : HA façonnés + non façonnés", "b_kg": recap_total,
+        result["ha_bars"]["comparison"] = {"a": "Σ lista A500 (massa teórica)", "a_kg": result["ha_bars"]["total_mass_kg"],
+                                          "b": "Resumo de aços: A500 moldados + não moldados", "b_kg": recap_total,
                                           "difference_kg": round(result["ha_bars"]["total_mass_kg"] - recap_total, 1)}
     if result["mesh"]:
         result["mesh"].update(check_mesh(result["mesh"]["rows"], result["mesh_recap"]))
     if result["partial"]:
         result["findings"].append({"severity": "info", "subject": "Nomenclature partielle",
-                                   "explanation": "La feuille indique « (partielle) » : les totaux des tableaux ne représentent pas l'ensemble des aciers du niveau."})
+                                   "explanation": "A folha indica «(parcial)»: os totais das tabelas não representam o conjunto dos aços do piso."})
     for c in (result["ha_bars"] or {}).get("inconsistencies", []):
-        result["findings"].append({"severity": "to_clarify", "subject": f"Repère {c['mark']}", "explanation": f"{c['check']} : {c['formula']} ≠ {c['declared']:g} (valeur imprimée)."})
+        result["findings"].append({"severity": "to_clarify", "subject": f"Referência {c['mark']}", "explanation": f"{c['check']} : {c['formula']} ≠ {c['declared']:g} (valor impresso)."})
     if not (ha_title or mesh_title or result["mesh_recap"]):
-        result["findings"].append({"severity": "info", "subject": "Aucune nomenclature native",
-                                   "explanation": "Aucun tableau de nomenclature en texte natif sur cette page (texte vectorisé ou plan scanné : lecture visuelle nécessaire)."})
-    result["note"] = "Valeurs lues dans le texte natif du PDF ; masses HA = longueur totale × masse linéique théorique (EN 10080). Aucune valeur corrigée."
+        result["findings"].append({"severity": "info", "subject": "Nenhuma lista nativa",
+                                   "explanation": "Nenhuma tabela de lista em texto nativo nesta página (texto vetorizado ou planta digitalizada: leitura visual necessária)."})
+    result["note"] = "Valores lidos no texto nativo do PDF; massas A500 = comprimento total × massa linear teórica (EN 10080). Nenhum valor corrigido."
     return result
 
 
@@ -389,5 +389,5 @@ def extract_from_pdf_bytes(pdf_bytes: bytes, page_index: int = 0) -> dict:
     import pymupdf
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
         if page_index < 0 or page_index >= len(doc):
-            raise ValueError("Page absente du PDF")
+            raise ValueError("Página ausente do PDF")
         return {"page": page_index, **extract_rebar_schedule(doc[page_index])}

@@ -20,36 +20,15 @@ def _front() -> str:
 def _template(user: dict) -> tuple[str, str, str]:
     """Retourne (subject, body_html, cta_label)."""
     first = (user.get("name") or "").split(" ")[0].strip()
-    hello = f"Bonjour {first}," if first else "Bonjour,"
+    hello = f'Olá {first},' if first else "Bom dia,"
     pro = user.get("account_type") in ("pro", "pro_business") or user.get("role") == "pro"
     if pro:
-        subject = "Vos devis en 30 secondes, votre marge protégée : 7 jours de Pro offerts"
-        body = f"""<p>{hello}</p>
-<p>Vous avez testé ConstruPilot gratuitement. Voici ce que vous ne voyez pas encore avec le compte <b>Pro</b> :</p>
-<ul>
-<li><b>Métré IA sur plan</b> et lecture de DPGF / CCTP : les quantités sortent seules</li>
-<li><b>Devis à vos prix</b> depuis votre bibliothèque, marge visible lot par lot, alerte « à perte »</li>
-<li><b>Signature en ligne</b>, acompte, situations, facture Factur-X, paiement</li>
-<li><b>Radar des permis de construire</b> autour de vous + courrier de prospection posté en un clic</li>
-<li>Suivi de chantier, pointage d'équipe, prix fournisseurs en direct</li>
-</ul>
-<p>Un chiffrage complet qui prenait deux jours de bureau se fait en 30 secondes — vous gardez la relecture et les prix.</p>
-<p><b>149 € HT/mois, sans engagement, 7 jours d'essai offerts</b> — le coût d'une heure de bureau par semaine pour ne plus jamais chiffrer à perte.</p>"""
-        return subject, body, "Démarrer mon essai Pro"
-    subject = "Vos travaux méritent mieux qu'une estimation : 7 jours de Premium offerts"
-    body = f"""<p>{hello}</p>
-<p>Vous avez déjà utilisé ConstruPilot pour estimer vos travaux — c'est le bon départ. Mais entre l'estimation et le chantier terminé, il y a les devis à comparer, les prix à négocier et le budget à tenir.</p>
-<p><b>Le compte Premium a été conçu exactement pour ça :</b></p>
-<ul>
-<li><b>Projets illimités</b> et estimations détaillées, poste par poste</li>
-<li><b>Analyse de devis illimitée</b> : repérez les postes surfacturés avant de signer</li>
-<li><b>Comparaison et historique des prix</b> chez les grands fournisseurs + alertes baisse</li>
-<li><b>Budget intelligent et planning</b> de chantier</li>
-<li><b>ConstruPilot AI Advisor</b> : vos questions travaux, réponses précises</li>
-<li>Export PDF de tous vos dossiers</li>
-</ul>
-<p>Le Premium coûte <b>19 €/mois, sans engagement</b>, et les <b>7 premiers jours sont offerts</b>. Annulez en un clic depuis votre compte : vous ne payez rien pendant l'essai.</p>"""
-    return subject, body, "Activer mon essai Premium gratuit"
+        subject = "Os seus orçamentos em 30 segundos, a sua margem protegida: 7 dias de Pro grátis"
+        body = f'<p>{hello}</p>\n<p>Experimentou o ConstruPilot gratuitamente. Eis o que ainda não vê com a conta <b>Pro</b>:</p>\n<ul>\n<li><b>Medição IA sobre planta</b> e leitura de mapas de quantidades / cadernos de encargos: as quantidades saem sozinhas</li>\n<li><b>Orçamentos aos seus preços</b> a partir da sua biblioteca, margem visível capítulo a capítulo, alerta «com prejuízo»</li>\n<li><b>Assinatura online</b>, adiantamento, autos de medição, fatura eletrónica, pagamento</li>\n<li><b>Radar de obras e licenças</b> à sua volta + carta de prospeção enviada num clique</li>\n<li>Acompanhamento de obra, registo de horas da equipa, preços de fornecedores em direto</li>\n</ul>\n<p>Uma orçamentação completa que levava dois dias de escritório faz-se em 30 segundos — continua a ser o senhor da revisão e dos preços.</p>\n<p><b>149 € + IVA/mês, sem fidelização, 7 dias de experiência grátis</b> — o custo de uma hora de escritório por semana para nunca mais orçamentar com prejuízo.</p>'
+        return subject, body, "Iniciar a minha experiência Pro"
+    subject = "As suas obras merecem mais do que uma estimativa: 7 dias de Premium grátis"
+    body = f'<p>{hello}</p>\n<p>Já utilizou o ConstruPilot para estimar as suas obras — é um bom começo. Mas entre a estimativa e a obra concluída, há orçamentos a comparar, preços a negociar e um orçamento a cumprir.</p>\n<p><b>A conta Premium foi concebida exatamente para isso:</b></p>\n<ul>\n<li><b>Projetos ilimitados</b> e estimativas detalhadas, artigo a artigo</li>\n<li><b>Análise de orçamentos ilimitada</b>: identifique os artigos sobrefaturados antes de assinar</li>\n<li><b>Comparação e histórico de preços</b> nos grandes fornecedores + alertas de descida</li>\n<li><b>Orçamento inteligente e planeamento</b> da obra</li>\n<li><b>ConstruPilot AI Advisor</b>: as suas perguntas sobre obras, respostas precisas</li>\n<li>Exportação PDF de todos os seus processos</li>\n</ul>\n<p>O Premium custa <b>19 €/mês, sem fidelização</b>, e os <b>7 primeiros dias são grátis</b>. Cancele com um clique na sua conta: não paga nada durante a experiência.</p>'
+    return subject, body, "Ativar a minha experiência Premium grátis"
 
 
 async def run_upsell_emails(days_after_signup: int = 3, limit: int = 200) -> dict:
@@ -90,7 +69,7 @@ async def run_upsell_emails(days_after_signup: int = 3, limit: int = 200) -> dic
     if users:
         await db.email_campaigns.insert_one({
             "campaign_id": "auto_" + os.urandom(5).hex(), "type": "auto_upsell_j3",
-            "subject": "Incitation Premium / Pro (J+3 automatique)", "recipients_count": len(users),
+            "subject": "Incentivo Premium / Pro (D+3 automático)", "recipients_count": len(users),
             "sent": sent, "failed": failed, "sent_by": "system", "created_at": res["at"]})
     logger.info(f"Upsell J+{days_after_signup}: {res}")
     return res
@@ -112,7 +91,7 @@ async def _weekly_promo_code() -> tuple[str, str]:
     if cached:
         return code, cached["expires_iso"]
     if not stripe.api_key:
-        raise RuntimeError("Stripe non configuré")
+        raise RuntimeError("Stripe não configurado")
     coupon_id = f"construpilot_relance_{PROMO_PERCENT}"
     try:
         stripe.Coupon.retrieve(coupon_id)
@@ -132,21 +111,16 @@ async def _weekly_promo_code() -> tuple[str, str]:
 
 def _template_j10(user: dict, code: str, expires_iso: str) -> tuple[str, str, str]:
     first = (user.get("name") or "").split(" ")[0].strip()
-    hello = f"Bonjour {first}," if first else "Bonjour,"
+    hello = f'Olá {first},' if first else "Bom dia,"
     pro = user.get("account_type") in ("pro", "pro_business") or user.get("role") == "pro"
     until = datetime.fromisoformat(expires_iso).strftime("%d/%m")
     plan = "Pro" if pro else "Premium"
     price = "149 €" if pro else "19 €"
-    subject = f"-{PROMO_PERCENT} % pendant 3 mois sur ConstruPilot {plan} — jusqu'au {until}"
-    pitch = ("votre prochain devis peut être chiffré en 30 secondes, à vos prix, avec la marge visible lot par lot."
-             if pro else "vos prochains devis peuvent être comparés poste par poste avant de signer.")
-    body = f"""<p>{hello}</p>
-<p>Votre compte ConstruPilot est toujours gratuit — et pendant ce temps, {pitch}</p>
-<p>Pour vous décider, voici un coup de pouce : <b>-{PROMO_PERCENT} % pendant 3 mois</b> sur l'abonnement {plan}
-({price} HT/mois), avec le code :</p>
-<p style="text-align:center;font-size:22px;letter-spacing:2px;font-weight:bold;background:#F1F5F9;padding:14px;border-radius:8px">{code}</p>
-<p>Le code est valable <b>jusqu'au {until}</b>, à saisir au moment du paiement. Toujours sans engagement, 7 jours d'essai inclus.</p>"""
-    return subject, body, f"Activer mon offre -{PROMO_PERCENT} %"
+    subject = f'-{PROMO_PERCENT} % durante 3 meses no ConstruPilot {plan} — até {until}'
+    pitch = ("o seu próximo orçamento pode ser calculado em 30 segundos, aos seus preços, com a margem visível capítulo a capítulo."
+             if pro else "os seus próximos orçamentos podem ser comparados artigo a artigo antes de assinar.")
+    body = f'<p>{hello}</p>\n<p>A sua conta ConstruPilot continua gratuita — e entretanto, {pitch}</p>\n<p>Para ajudar a decidir, aqui fica um incentivo: <b>-{PROMO_PERCENT} % durante 3 meses</b> na subscrição {plan}\n({price} + IVA/mês), com o código:</p>\n<p style="text-align:center;font-size:22px;letter-spacing:2px;font-weight:bold;background:#F1F5F9;padding:14px;border-radius:8px">{code}</p>\n<p>O código é válido <b>até {until}</b>, a introduzir no momento do pagamento. Sempre sem fidelização, 7 dias de experiência incluídos.</p>'
+    return subject, body, f'Ativar a minha oferta -{PROMO_PERCENT} %'
 
 
 async def run_upsell_j10_emails(days_after_signup: int = 10, limit: int = 200) -> dict:

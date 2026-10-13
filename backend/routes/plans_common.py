@@ -296,10 +296,10 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
         {"_id": 0, "pages.image_png_b64": 0}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     if not rooms:
-        raise HTTPException(400, "Aucune pièce mesurée sur ce plan.")
+        raise HTTPException(400, "Nenhuma divisão medida nesta planta.")
 
     total_floor = sum(r.get("surface_m2", 0) for r in rooms)
     total_ceiling = sum(r.get("ceiling_area_m2", 0) for r in rooms)
@@ -313,13 +313,13 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
     if include_placo:
         placo = LOTS_BY_KEY.get("placo")
         if placo:
-            _add_quote_line(line_items, "Plâtrerie / Placo (murs + plafonds)",
+            _add_quote_line(line_items, "Gesso cartonado / Pladur (paredes + tetos)",
                              total_walls_net + total_ceiling, "m²",
                              placo.get(mat_key, 17), placo.get("labour", 26))
     if include_paint:
         peint = LOTS_BY_KEY.get("peinture")
         if peint:
-            _add_quote_line(line_items, "Peinture (murs + plafonds)",
+            _add_quote_line(line_items, "Pintura (paredes + tetos)",
                              total_walls_net + total_ceiling, "m²",
                              peint.get(mat_key, 8), peint.get("labour", 16))
     if include_floor:
@@ -332,7 +332,7 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
         door_count = sum(len([o for o in r.get("openings", [])
                               if (o.get("kind") or o.get("type") or "").lower().startswith("port")])
                          for r in rooms)
-        _add_quote_line(line_items, "Plinthes (ml)",
+        _add_quote_line(line_items, "Rodapés (ml)",
                          total_perim - 1.8 * door_count, "ml", 5.0, 6.0)
 
     subtotal_mat = round(sum(li["material_total"] for li in line_items), 2)
@@ -432,15 +432,15 @@ async def _apply_new_calibration(plan_id: str, user_id: str,
     import math
     ppm = payload["pixels_per_meter"]
     if not math.isfinite(ppm) or ppm <= 0:
-        raise HTTPException(422, "Échelle invalide")
+        raise HTTPException(422, "Escala inválida")
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user_id},
         {"_id": 0, "rooms": 1, "measurements": 1, "calibrations": 1, "cotes_checks": 1,
          "page_count": 1, "pages.index": 1, "updated_at": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     if page_index < 0 or page_index >= (p.get("page_count") or len(p.get("pages") or [])):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     rooms = copy.deepcopy(p.get("rooms") or [])
     measurements = copy.deepcopy(p.get("measurements") or [])
     updated = 0
@@ -468,5 +468,5 @@ async def _apply_new_calibration(plan_id: str, user_id: str,
          "calibrations": p.get("calibrations"), "cotes_checks": p.get("cotes_checks")},
         {"$set": sets, "$unset": {f"studies.{page_index}": ""}})
     if result.matched_count != 1:
-        raise HTTPException(409, "Plan modifié pendant la calibration — rechargez et réessayez")
+        raise HTTPException(409, "Planta modificada durante a calibração — recarregue e tente novamente")
     return updated

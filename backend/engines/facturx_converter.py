@@ -47,7 +47,7 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
     client = doc.get("client") or {}
     buyer_name = (client.get("company")
                   or " ".join(filter(None, [client.get("first_name"), client.get("last_name")]))
-                  or "Client")
+                  or "Cliente")
 
     # Lignes réelles uniquement (on ignore sections/sous-sections/texte/saut de page)
     # avec remise appliquée, pour une base de TVA cohérente avec le PDF visuel.
@@ -65,7 +65,7 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
         net_total = round(net_total + line_ht, 2)
         line_items.append({
             "number": str(i),
-            "description": (ln.get("designation") or ln.get("title") or "Prestation")[:200] or "Prestation",
+            "description": (ln.get("designation") or ln.get("title") or "Prestação")[:200] or "Prestação",
             "quantity": f"{qty:.4f}",
             "unit": _unit_code(ln.get("unit")),
             "unit_price": f"{net_price:.2f}",
@@ -97,8 +97,8 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
     seller = {
         "name": branding.get("company_name") or "ConstruPilot",
         "address": {
-            "street": branding.get("address") or "1 rue de la Construction",
-            "city": branding.get("city") or "Paris",
+            "street": branding.get("address") or "Rua da Construção, 1",
+            "city": branding.get("city") or "Lisboa",
             "postal_code": branding.get("postal_code") or "75001",
             "country": (branding.get("country") or "PT")[:2].upper(),
         },
@@ -120,7 +120,7 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
 
     issue_date = str(doc.get("issue_date") or "")[:10] or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return {
-        "invoice_number": str(doc.get("number") or doc.get("doc_id") or "FACTURE"),
+        "invoice_number": str(doc.get("number") or doc.get("doc_id") or "FATURA"),
         "issue_date": issue_date,
         "invoice_type": dtype,
         "currency": "EUR",
@@ -136,7 +136,7 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
     """Renvoie (pdf_facturx_pdfa3_bytes, rapport_validation). Lève FacturxConvertError."""
     api_key = os.environ.get("FACTURX_API_KEY")
     if not api_key:
-        raise FacturxConvertError("Clé FACTURX_API_KEY absente")
+        raise FacturxConvertError("Chave FACTURX_API_KEY ausente")
     url = f"{BASE_URL}/convert?lang=fr"
     form = {
         "validation_target": "en16931",
@@ -152,9 +152,9 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
         raise FacturxConvertError("Service Factur-X injoignable") from exc
 
     if resp.status_code == 401:
-        raise FacturxConvertError("Clé API Factur-X invalide")
+        raise FacturxConvertError("Chave API de faturação eletrónica inválida")
     if resp.status_code == 429:
-        raise FacturxConvertError("Quota Factur-X dépassé")
+        raise FacturxConvertError("Quota de faturação eletrónica ultrapassada")
     if resp.status_code >= 400:
         detail = ""
         try:
@@ -162,7 +162,7 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
         except Exception:
             detail = resp.text[:200]
         logger.warning("facturxapi /convert %s: %s", resp.status_code, detail)
-        raise FacturxConvertError(f"Conversion refusée (HTTP {resp.status_code})")
+        raise FacturxConvertError(f'Conversão recusada (HTTP {resp.status_code})')
 
     data = resp.json()
     result = data.get("result") or {}
@@ -177,10 +177,9 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
         hint = None
         rules = {i.get("rule") for i in issues}
         if {"BR-CO-26", "BR-S-02", "BR-S-08"} & rules:
-            hint = ("Complétez le SIRET et/ou le numéro de TVA de votre entreprise "
-                    "(Profil → Entreprise) : la norme EN 16931 les exige pour certifier la facture.")
+            hint = ("Complete o NIF e/ou o número de IVA da sua empresa (Perfil → Empresa): a norma EN 16931 exige-os para certificar a fatura.")
         raise FacturxConvertError(
-            f"Facture non conforme EN 16931 ({validation.get('summary', {}).get('errorCount', '?')} erreur(s))",
+            f"Fatura não conforme EN 16931 ({validation.get('summary', {}).get('errorCount', '?')} erreur(s))",
             issues=issues, hint=hint)
     report = {
         "valid": bool(validation.get("valid", data.get("success"))),

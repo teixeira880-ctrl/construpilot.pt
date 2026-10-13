@@ -56,7 +56,7 @@ async def sync_department(department, lease_id):
                 "last_success_at": completed, "last_checked_at": completed, "window_start": window_start(),
                 "received": received, "skipped": skipped, "unlocated": sum(p["lat"] is None for p in docs),
                 "filter_schema_version": FILTER_SCHEMA_VERSION,
-                "error": None, "stage": "Terminé"}, "$unset": {"lease_until": ""}})
+                "error": None, "stage": "Terminado"}, "$unset": {"lease_until": ""}})
             if result.modified_count:
                 published = True
                 try:
@@ -66,7 +66,7 @@ async def sync_department(department, lease_id):
             else:
                 await db.radar_permits.delete_many({"ingest_run": run_id})
     except Exception as exc:
-        message = str(exc) if isinstance(exc, SitadelSourceError) else "Synchronisation interrompue. Les dernières données valides sont conservées."
+        message = str(exc) if isinstance(exc, SitadelSourceError) else "Sincronização interrompida. Os últimos dados válidos são conservados."
         log.exception("SITADEL sync failed for department %s", department)
         if not published:
             await db.radar_permits.delete_many({"ingest_run": run_id})
@@ -96,7 +96,7 @@ async def ensure_sync(departments, force=False):
             lease = await db.radar_sync.find_one_and_update({"_id": dep, "$or": [
                 {"status": {"$ne": "running"}}, {"lease_until": {"$lte": current.isoformat()}}]}, {"$set": {
                 "department": dep, "status": "running", "lease_id": lease_id,
-                "lease_until": (current + timedelta(minutes=15)).isoformat(), "stage": "Connexion SDES",
+                "lease_until": (current + timedelta(minutes=15)).isoformat(), "stage": "Ligação à fonte oficial",
                 "error": None}}, upsert=True, return_document=ReturnDocument.AFTER, projection={"_id": 0})
         except DuplicateKeyError:
             continue

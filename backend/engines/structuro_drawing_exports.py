@@ -91,12 +91,12 @@ def title(s,model,manifest,sheet):
     s.lines(14,27,sheet["title"],width=365,size=4.8,leading=6,bold=True)
     s.line([(8,39),(412,39)],INK,.3)
     s.rect(8,253,404,12,color=RED,fill="#fff4ef",width=.25)
-    state="DÉMONSTRATION" if manifest["status"]=="demonstration" else "DOSSIER DE TRAVAIL"
-    s.text(14,260.5,f"{state} - NON EXÉCUTOIRE - NE PAS UTILISER POUR TRAVAUX OU FABRICATION",3.1,RED,True)
+    state="DEMONSTRAÇÃO" if manifest["status"]=="demonstration" else "PROCESSO DE TRABALHO"
+    s.text(14,260.5,f'{state} - NÃO EXECUTÓRIO - NÃO UTILIZAR PARA OBRAS OU FABRICO',3.1,RED,True)
     s.lines(14,272,model.title,width=245,size=3.1,leading=4)
-    s.text(14,284,f"Révision {manifest['revision']} | {manifest['version']} | Empreinte {manifest['drawing_hash'][:16]}",2.5,GREY)
-    s.text(406,274,f"A3 paysage | 420 × 297 mm | {sheet['id']}",2.8,anchor="end")
-    s.text(406,284,f"Échelle {'1:'+str(s.scale) if s.scale else 'sans échelle'} à 100 % | Unités : m / mm indiqués",2.5,anchor="end")
+    s.text(14,284,f"Revisão {manifest['revision']} | {manifest['version']} | Empreinte {manifest['drawing_hash'][:16]}",2.5,GREY)
+    s.text(406,274,f"A3 horizontal | 420 × 297 mm | {sheet['id']}",2.8,anchor="end")
+    s.text(406,284,f"Escala {('1:' + str(s.scale) if s.scale else 'sem escala')} a 100 % | Unidades: m / mm indicadas",2.5,anchor="end")
 
 
 def plan(s,model,manifest,sheet):
@@ -117,7 +117,7 @@ def plan(s,model,manifest,sheet):
         center=tuple(sum(p[k] for p in ps)/4 for k in range(2));s.text(center[0],center[1],o.id,2.5,RED,bold=True,anchor="middle")
     xs=[p[0] for p in coords];ys=[p[1] for p in coords]
     left,right=min(xs),max(xs);bottom,top=min(ys),max(ys)
-    a,b=xy((left,top)),xy((right,top));dimension(s,(a[0],a[1]-9),(b[0],b[1]-9),f"Hors tout {right-left:.3f} m")
+    a,b=xy((left,top)),xy((right,top));dimension(s,(a[0],a[1]-9),(b[0],b[1]-9),f'Fora a fora {right - left:.3f} m')
     a,b=xy((right,top)),xy((right,bottom));dimension(s,(a[0]+7,a[1]),(b[0]+7,b[1]),f"{top-bottom:.3f}",True)
     if sheet["kind"]=="reinforcement":
         for bar in d.bars:
@@ -140,15 +140,15 @@ def plan(s,model,manifest,sheet):
         ps=outline(e);center=tuple(sum(p[k] for p in ps)/4 for k in range(2));x,y=xy(center)
         s.text(x,y+4,e.id,2.6,INK,True,anchor="middle")
     s.line([(304,43),(304,248)],GREY,.15)
-    s.text(310,49,"LÉGENDE ET REPÈRES",3.2,GREEN,True)
-    yy=s.lines(310,57,"Projection des éléments du niveau. Les altitudes de base et de dessus figurent dans le repérage du dossier JSON. Réservations traversantes : blanc ; partielles : saumon.",width=93,size=2.7)
+    s.text(310,49,"LEGENDA E MARCAS",3.2,GREEN,True)
+    yy=s.lines(310,57,"Projeção dos elementos do piso. As cotas de base e de topo constam da marcação do processo JSON. Negativos atravessantes: branco; parciais: salmão.",width=93,size=2.7)
     s.text(310,yy+5,f"{len(es)} éléments | {sum(b.count for b in d.bars if any(e.id==b.element_id for e in es))} barres",2.8,bold=True);yy+=14
     placements={p.element_id:p.base_z_m for p in d.placements}
     for e in es[:8]:
         label=e.id if len(e.id)<=28 else e.id[:25]+"…"
         yy=s.lines(310,yy,f"{label} : {e.length_m:g} × {e.width_m:g} × {e.height_m:g} m\nBase {placements[e.id]:+.3f} / dessus {placements[e.id]+e.height_m:+.3f}",93,2.6,4.1);yy+=3
-    s.lines(310,yy+3,"Dimensions complètes et coordonnées : planches R / O.",93,2.6,4.1)
-    s.text(18,242,"X → / Y ↑ | coordonnées du modèle | sections saisies, non dimensionnées",2.8,GREY)
+    s.lines(310,yy+3,"Dimensões completas e coordenadas: folhas R / O.",93,2.6,4.1)
+    s.text(18,242,"X → / Y ↑ | coordenadas do modelo | secções introduzidas, não dimensionadas",2.8,GREY)
 
 
 def section(s,model,manifest,sheet):
@@ -171,12 +171,12 @@ def section(s,model,manifest,sheet):
                 s.line([xy(p) for p in ((ha,oz),(hb,oz),(hb,oz+oh),(ha,oz+oh))],RED,.25,fill="#ffffff",closed=True)
         x,y=xy(((a+b)/2,z+e.height_m/2));s.text(x,y-1,e.id,2.7,bold=True,anchor="middle")
     lo=min(p[0] for p in points);hi=max(p[0] for p in points)
-    dimension(s,(xy((lo,0))[0],237),(xy((hi,0))[0],237),f"Hors tout {hi-lo:.3f} m")
+    dimension(s,(xy((lo,0))[0],237),(xy((hi,0))[0],237),f'Fora a fora {hi - lo:.3f} m')
     for z in sorted(set(z for e,ab,z in rows)|set(z+e.height_m for e,ab,z in rows)):
         a,b=xy((lo,z)),xy((hi,z));s.line([(b[0]+1,b[1]),(296,b[1])],GREY,.15,True);s.text(298,b[1]+1,f"{z:+.3f}",2.5,anchor="start")
-    s.lines(327,53,f"Coupe {cut.id}\nAxe horizontal {cut.axis.upper()}\n{'Y' if cut.axis=='x' else 'X'} = {cut.at_m:g} m",75,3,5,bold=True)
-    s.lines(327,81,"Intersection réelle du plan de coupe avec les volumes saisis, y compris les éléments tournés et les réservations. Aucun terrain ni ouvrage caché n'est supposé.",75,2.8,4.5)
-    s.lines(327,122,"Cotes altimétriques en m. Les aciers sont documentés dans les plans F et les détails D. Cette coupe de coffrage ne constitue pas une vérification des assemblages.",75,2.8,4.5)
+    s.lines(327,53,f"Coupe {cut.id}\nEixo horizontal {cut.axis.upper()}\n{('Y' if cut.axis == 'x' else 'X')} = {cut.at_m:g} m",75,3,5,bold=True)
+    s.lines(327,81,"Interseção real do plano de corte com os volumes introduzidos, incluindo os elementos rodados e os negativos. Nenhum terreno nem elemento oculto é suposto.",75,2.8,4.5)
+    s.lines(327,122,"Cotas altimétricas em m. Os aços estão documentados nas plantas F e nos pormenores D. Este corte de cofragem não constitui uma verificação das ligações.",75,2.8,4.5)
 
 
 def detail(s,model,manifest,sheet):
@@ -189,7 +189,7 @@ def detail(s,model,manifest,sheet):
     planes=sorted(((0,1),(0,2),(1,2)),key=lambda ij:(extents[ij[0]]*extents[ij[1]],max(extents[i] for i in ij)),reverse=True)[:2]
     boxes=[(25,60,260,120),(25,210,260,35)]
     for view_index,(dims,box) in enumerate(zip(planes,boxes)):
-        label=f"Vue locale {'XYZ'[dims[0]]} / {'XYZ'[dims[1]]}"
+        label=f"Vista local {'XYZ'[dims[0]]} / {'XYZ'[dims[1]]}"
         ps=[(p[dims[0]],p[dims[1]]) for p in path];xy=fit(s,ps,box,detail_scale=True)
         s.text(20,box[1]-10,label,3,GREEN,True)
         s.line([xy(p) for p in ps],BLUE,.65)
@@ -203,32 +203,32 @@ def detail(s,model,manifest,sheet):
                 s.text(tx,ty,f"L{i}={math.dist(a,c):.3f} m",2.8,anchor=anchor)
     s.scale=None # independent projection scales; dimensions govern
     yy=s.lines(310,51,f"{b.mark} | HA {b.diameter_mm:g}",94,4,5,BLUE,True)
-    yy=s.lines(310,yy+5,f"Élément : {b.element_id}\nNombre : {b.count}\nLongueur développée : {row['developed_length_m']:.3f} m\nLongueur totale : {row['total_length_m']:.3f} m\nMasse théorique : {row['mass_kg']:.3f} kg\nRayon à l'axe : {b.bend_radius_mm:g} mm\nEnrobage déclaré : {b.cover_mm:g} mm",94,2.8,5)
-    brief=lambda value,n:value if len(value)<=n else value[:n]+"… (suite dans le JSON)"
-    yy=s.lines(310,yy+5,f"Rôle : {brief(b.role,90) or 'À préciser'}\nSource : {brief(b.source,160) or 'À renseigner'}",94,2.7,4.3)
-    s.lines(310,yy+5,"Cotes L : distances entre intersections théoriques. La longueur développée tient compte des plis circulaires. Aucun ancrage ni recouvrement n'est ajouté automatiquement. Les points et répétitions figurent dans le JSON.",94,2.7,4.3,color=RED)
+    yy=s.lines(310,yy+5,f"Elemento: {b.element_id}\nNombre : {b.count}\nComprimento desenvolvido: {row['developed_length_m']:.3f} m\nComprimento total: {row['total_length_m']:.3f} m\nMassa teórica: {row['mass_kg']:.3f} kg\nRaio ao eixo: {b.bend_radius_mm:g} mm\nRecobrimento declarado: {b.cover_mm:g} mm",94,2.8,5)
+    brief=lambda value,n:value if len(value)<=n else value[:n]+"… (continuação no JSON)"
+    yy=s.lines(310,yy+5,f"Função: {brief(b.role, 90) or 'A precisar'}\nFonte: {brief(b.source, 160) or 'A preencher'}",94,2.7,4.3)
+    s.lines(310,yy+5,"Cotas C: distâncias entre interseções teóricas. O comprimento desenvolvido tem em conta as dobras circulares. Nenhuma amarração nem emenda é acrescentada automaticamente. Os pontos e repetições constam do JSON.",94,2.7,4.3,color=RED)
 
 
 def general(s,model,manifest,sheet):
     d=model.drawings
-    s.text(17,53,"UN DOSSIER, UNE RÉVISION",4,GREEN,True)
-    s.lines(17,64,"Coffrage, coupes, ferraillage et nomenclature proviennent des mêmes éléments et des mêmes tracés d'aciers. Toute modification des dimensions, altitudes ou barres impose un nouvel enregistrement et une régénération.",width=260,size=3.2,leading=5)
-    s.text(17,86,f"{len(model.elements)} éléments | {len(d.openings)} réservations | {len(d.cuts)} coupes | {len(d.bars)} repères d'aciers",3.2,bold=True)
-    s.text(17,95,f"{sum(r['count'] for r in manifest['schedule'])} barres | {manifest['total_mass_kg']:.3f} kg théoriques | acier 7 850 kg/m³",3.2)
+    s.text(17,53,"UM PROCESSO, UMA REVISÃO",4,GREEN,True)
+    s.lines(17,64,"Cofragem, cortes, armaduras e lista provêm dos mesmos elementos e dos mesmos traçados de aços. Qualquer alteração das dimensões, cotas ou varões impõe uma nova gravação e uma regeneração.",width=260,size=3.2,leading=5)
+    s.text(17,86,f'{len(model.elements)} éléments | {len(d.openings)} réservations | {len(d.cuts)} coupes | {len(d.bars)} marcas de aços',3.2,bold=True)
+    s.text(17,95,f"{sum((r['count'] for r in manifest['schedule']))} barres | {manifest['total_mass_kg']:.3f} kg teóricos | aço 7 850 kg/m³",3.2)
     y=108
     for line in sheet["lines"]:
         s.text(17,y,line,2.8);y+=4.6
-    s.text(308,53,"CONTENU DU DOSSIER",3.5,GREEN,True)
+    s.text(308,53,"CONTEÚDO DO PROCESSO",3.5,GREEN,True)
     counts={kind:sum(sh["kind"]==kind for sh in manifest["sheets"]) for kind in ("general","formwork","section","reinforcement","detail","schedule","members","openings")}
     y=66
-    for kind,label in (("general","G · Données et contrôles"),("formwork","C · Coffrage par niveau"),("members","R · Repérage coffrage"),("openings","O · Réservations"),("section","S · Coupes"),("reinforcement","F · Plans d'aciers"),("detail","D · Détails de barres"),("schedule","N · Nomenclature")):
+    for kind,label in (("general","G · Dados e controlos"),("formwork","C · Cofragem por piso"),("members","R · Marcação da cofragem"),("openings","O · Negativos"),("section","S · Cortes"),("reinforcement","F · Plantas de aços"),("detail","D · Pormenores de varões"),("schedule","N · Nomenclature")):
         s.text(308,y,f"{label} : {counts[kind]}",3);y+=10
-    s.lines(308,154,"Imprimer en A3 à 100 %. Contrôler l'échelle et les cotes avant toute revue. Toutes les planches portent leur indice et l'empreinte des données.",95,2.8,4.5)
-    s.lines(308,195,"Les contrôles portent sur la géométrie dessinable, l'enrobage déclaré et les réservations. Ils ne valent pas validation de la résistance, du sol ou des dispositions d'exécution.",95,2.8,4.5,color=RED)
+    s.lines(308,154,"Imprimir em A3 a 100 %. Controlar a escala e as cotas antes de qualquer revisão. Todas as folhas têm o seu índice e a impressão digital dos dados.",95,2.8,4.5)
+    s.lines(308,195,"Os controlos incidem sobre a geometria desenhável, o recobrimento declarado e os negativos. Não valem como validação da resistência, do solo ou das disposições de execução.",95,2.8,4.5,color=RED)
 
 
 def schedule(s,model,manifest,sheet):
-    headers=["Repère / élément","Ø mm","Nb","L unitaire m","L totale m","kg"]
+    headers=["Marca / elemento","Ø mm","Nb","C unitário m","C total m","kg"]
     xs=[17,140,185,226,294,361,403]
     s.rect(14,48,392,10,fill=GREEN,color=GREEN)
     for i,h in enumerate(headers):s.text(xs[i]+2,54.5,h,2.9,"#ffffff",True)
@@ -237,11 +237,11 @@ def schedule(s,model,manifest,sheet):
         values=[f"{row['mark']} / {row['element_id']}",f"{row['diameter_mm']:g}",str(row['count']),f"{row['developed_length_m']:.3f}",f"{row['total_length_m']:.3f}",f"{row['mass_kg']:.3f}"]
         for i,v in enumerate(values):s.lines(xs[i]+2,y,v,xs[i+1]-xs[i]-5,2.8,3.5)
         s.line([(14,y+3),(406,y+3)],GREY,.12);y+=8.5
-    s.text(17,238,f"Masse totale du dossier : {manifest['total_mass_kg']:.3f} kg | longueurs calculées sans majoration ni chute | ne vaut pas bon de façonnage",2.8,RED)
+    s.text(17,238,f"Massa total do processo: {manifest['total_mass_kg']:.3f} kg | comprimentos calculados sem majoração nem desperdício | não vale como nota de moldagem",2.8,RED)
 
 
 def build_scene(model,manifest,sheet):
-    if not manifest["can_export"]:raise ValueError("Dossier incomplet : corriger les erreurs géométriques avant génération")
+    if not manifest["can_export"]:raise ValueError("Processo incompleto: corrigir os erros geométricos antes da geração")
     s=Scene()
     {"general":general,"formwork":plan,"section":section,"reinforcement":plan,"detail":detail,"schedule":schedule,"members":geometry_table,"openings":geometry_table}[sheet["kind"]](s,model,manifest,sheet)
     title(s,model,manifest,sheet)
@@ -265,10 +265,10 @@ def build_drawing_pdf(model,revision,manifest=None):
     from reportlab.lib.colors import HexColor
     from reportlab.lib.units import mm
     manifest=manifest or compile_dossier(model,revision)
-    if not manifest["can_export"]:raise ValueError("Dossier incomplet")
+    if not manifest["can_export"]:raise ValueError("Processo incompleto")
     ensure_fonts()
     out=io.BytesIO();c=canvas.Canvas(out,pagesize=(420*mm,297*mm),pageCompression=1,invariant=1)
-    c.setTitle(model.title+" - Dossier de travail");c.setAuthor("ConstruPilot")
+    c.setTitle(model.title+" - Processo de trabalho");c.setAuthor("ConstruPilot")
     for sheet in manifest["sheets"]:
         scene=build_scene(model,manifest,sheet)
         for p in scene.items:
@@ -291,10 +291,10 @@ def build_drawing_pdf(model,revision,manifest=None):
 
 
 def build_schedule_csv(manifest):
-    if not manifest["can_export"]:raise ValueError("Dossier incomplet")
+    if not manifest["can_export"]:raise ValueError("Processo incompleto")
     s=io.StringIO(newline="");w=csv.writer(s,delimiter=";")
-    w.writerow(["CONSTRUPILOT - DOSSIER NON EXECUTOIRE",f"Revision {manifest['revision']}",manifest["drawing_hash"]])
-    w.writerow(["Repere","Element","Diametre_mm","Nombre","L_unitaire_m","L_totale_m","Masse_kg","Rayon_axe_mm","Enrobage_mm"])
+    w.writerow(["CONSTRUPILOT - PROCESSO NÃO EXECUTÓRIO",f"Revision {manifest['revision']}",manifest["drawing_hash"]])
+    w.writerow(["Repere","Element","Diametre_mm","Número","L_unitaire_m","L_totale_m","Masse_kg","Rayon_axe_mm","Enrobage_mm"])
     for r in manifest["schedule"]:
         w.writerow([r[k] if isinstance(r[k],(int,str)) else format(r[k],".6f") for k in ("mark","element_id","diameter_mm","count","developed_length_m","total_length_m","mass_kg","bend_radius_mm","cover_mm")])
     return ("\ufeff"+s.getvalue()).encode("utf-8")
@@ -302,7 +302,7 @@ def build_schedule_csv(manifest):
 
 def geometry_table(s,model,manifest,sheet):
     openings=sheet['kind']=='openings'
-    heads=["Repère / "+("élément" if openings else "niveau"),"X / Y (m)","L / l / h (m)","Z base / dessus (m)","Rotation °"]
+    heads=["Marca / "+("élément" if openings else "niveau"),"X / Y (m)","L / l / h (m)","Z base / topo (m)","Rotation °"]
     xs=[17,135,211,291,374,404];s.rect(14,48,392,10,fill=GREEN,color=GREEN)
     for i,h in enumerate(heads):s.text(xs[i]+1,54.5,h,2.6,"#ffffff",True)
     places={p.element_id:p.base_z_m for p in model.drawings.placements}
@@ -313,4 +313,4 @@ def geometry_table(s,model,manifest,sheet):
         values=[f"{r.id}\n{r.element_id if openings else r.level}",f"{r.x_m:.3f}\n{r.y_m:.3f}",f"{r.length_m:.3f} / {r.width_m:.3f}\nh {r.height_m:.3f}",f"{base:+.3f}\n{base+r.height_m:+.3f}","locale" if openings else f"{r.angle_deg:g}"]
         for i,v in enumerate(values):s.lines(xs[i]+1,y,v,xs[i+1]-xs[i]-4,2.65,3.8)
         s.line([(14,y+10),(406,y+10)],GREY,.12);y+=14
-    s.lines(17,241,"Réservations : X/Y/Z locaux, origine à la base de l'élément et rotation identique à celui-ci." if openings else "Éléments : X/Y globaux du coin local (0,0), Z absolu. L suit X local, l suit Y local ; rotation positive autour de Z.",width=385,size=2.8,leading=4)
+    s.lines(17,241,"Negativos: X/Y/Z locais, origem na base do elemento e rotação idêntica à deste." if openings else "Elementos: X/Y globais do canto local (0,0), Z absoluto. C segue X local, l segue Y local; rotação positiva em torno de Z.",width=385,size=2.8,leading=4)

@@ -55,14 +55,13 @@ def altimetry_labels(dxf_bytes: bytes) -> dict:
     only_reservations = bool(levels) and all(re.search(r"r[ée]serv", l, re.I) for l in layers)
     findings = []
     if not levels:
-        findings.append({"severity": "to_clarify", "subject": "Aucune altimétrie", "explanation": "Aucun texte AI/AS dans le DXF."})
+        findings.append({"severity": "to_clarify", "subject": "Nenhuma altimetria", "explanation": "Nenhum texto AI/AS no DXF."})
     elif not as_:
-        findings.append({"severity": "to_clarify", "subject": "Arases supérieures absentes",
-                         "explanation": f"{len(ai)} étiquettes AI (arase inférieure) lues, 0 AS : aucune hauteur d'élément (AS − AI) n'est déductible de ce fichier."})
+        findings.append({"severity": "to_clarify", "subject": "Cotas superiores ausentes",
+                         "explanation": f'{len(ai)} etiquetas AI (cota inferior) lidas, 0 AS: nenhuma altura de elemento (AS − AI) é dedutível deste ficheiro.'})
     if only_reservations:
-        findings.append({"severity": "info", "subject": "Altimétries limitées aux réservations",
-                         "explanation": f"Les étiquettes AI se trouvent toutes sur le calque {', '.join(layers)} (réservations {len(reservations)} avec dimensions) : "
-                                        "elles datent la sous-face des trémies/réservations, pas les arases des murs/poutres/dalle. Le plan de coffrage PDF (avec AS/AI des éléments) est nécessaire pour les volumes."})
+        findings.append({"severity": "info", "subject": "Altimetrias limitadas aos negativos",
+                         "explanation": f"As etiquetas AI estão todas na camada {', '.join(layers)} (negativos {len(reservations)} com dimensões): datam a face inferior das aberturas/negativos, não as cotas das paredes/vigas/laje. A planta de cofragem PDF (com AS/AI dos elementos) é necessária para os volumes."})
     return {"unit_to_m": u, "levels": levels, "ai_count": len(ai), "as_count": len(as_), "element_heights": pairs, "reservations": reservations,
             "ai_range_m": [min(l["level_m"] for l in ai), max(l["level_m"] for l in ai)] if ai else None, "layers": layers, "findings": findings,
             "slab_symbols": {"count": len(symbols["symbols"]), "distinct_as_plancher_m": symbols["distinct_as_plancher_m"], "distinct_epaisseur_cm": symbols["distinct_epaisseur_cm"]}}

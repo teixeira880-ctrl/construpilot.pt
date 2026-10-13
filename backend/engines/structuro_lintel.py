@@ -19,10 +19,7 @@ from engines.structuro_rebar import Materials, Section, section_design
 VERSION = "lintel-0.2.0"
 E_STEEL = 210000.0  # MPa
 STEEL_DENSITY = 7850.0  # kg/m³
-DISCLAIMER = ("Dimensionnement INDICATIF, non exécutoire. Résistance de la maçonnerie, trumeaux, "
-              "étaiement provisoire et dispositions constructives à valider par l'ingénieur. "
-              "Le déversement n'est vérifié que si le maintien latéral par la maçonnerie est désactivé ; "
-              "sinon χLT=1 est supposé.")
+DISCLAIMER = ("Dimensionamento INDICATIVO, não executório. Resistência da alvenaria, nembos, escoramento provisório e disposições construtivas a validar pelo engenheiro. A encurvadura lateral só é verificada se o travamento lateral pela alvenaria estiver desativado; caso contrário assume-se χLT=1.")
 
 
 def _r(x, n=2):
@@ -76,24 +73,23 @@ def _loads(opts):
     h_apex = (L / 2.0) * math.tan(math.radians(theta))
     if model == "arching" and h_mas + 1e-9 >= h_apex:
         w_tri = 0.5 * L * h_apex * w_face                        # poids total du triangle (kN)
-        comps.append({"name": f"Maçonnerie (voûte {theta:g}°, triangle h={_r(h_apex)} m)",
+        comps.append({"name": f'Alvenaria (arco {theta:g}°, triangle h={_r(h_apex)} m)',
                       "nature": "G", "type": "tri", "value": w_tri, "L": L})
         masonry_model = "arching"
     else:
         if model == "arching":
-            notes.append(f"Hauteur de maçonnerie ({_r(h_mas)} m) < apex de voûte ({_r(h_apex)} m) : "
-                         "voûte incomplète, repli sur charge rectangulaire (sécuritaire).")
+            notes.append(f'Altura de alvenaria ({_r(h_mas)} m) < topo do arco ({_r(h_apex)} m): arco incompleto, recurso a carga retangular (do lado da segurança).')
         h_rect = min(h_mas, 10.0)
-        comps.append({"name": f"Maçonnerie rectangulaire (h={_r(h_rect)} m)", "nature": "G",
+        comps.append({"name": f'Alvenaria retangular (h={_r(h_rect)} m)', "nature": "G",
                       "type": "udl", "value": h_rect * w_face, "L": L})
         masonry_model = "rectangular"
     g_line = float(opts.get("permanent_line_kn_m", 0.0))
     q_line = float(opts.get("variable_line_kn_m", 0.0))
     if g_line:
-        comps.append({"name": "Charges permanentes reprises (planchers/toiture)", "nature": "G",
+        comps.append({"name": "Cargas permanentes suportadas (pavimentos/cobertura)", "nature": "G",
                       "type": "udl", "value": g_line, "L": L})
     if q_line:
-        comps.append({"name": "Charges d'exploitation reprises", "nature": "Q",
+        comps.append({"name": "Sobrecargas de utilização suportadas", "nature": "Q",
                       "type": "udl", "value": q_line, "L": L})
     return L, comps, masonry_model, notes
 
@@ -155,16 +151,15 @@ def _steel(opts, L, comps, m_ed, v_ed, psi2, load_kind="udl"):
             if best is None or mass < best["mass_kg"]:
                 best = cand
     if best is None:
-        msg = ("Aucun profilé du catalogue ne passe ; augmentez le nombre de profilés, la nuance "
-               "ou réduisez la portée.")
+        msg = ("Nenhum perfil do catálogo verifica; aumente o número de perfis, a classe do aço ou reduza o vão.")
         if not restrained:
-            msg += " Le déversement (maintien latéral désactivé) est souvent dimensionnant : "
-            msg += "prévoyez un maintien ou des profilés plus trapus (HEA/HEB)."
+            msg += " A encurvadura lateral (travamento lateral desativado) é muitas vezes condicionante: "
+            msg += "preveja um travamento ou perfis mais compactos (HEA/HEB)."
         return {"status": "no_solution", "message": msg}
-    note = ("Profilé le plus léger passant flexion (Wpl/Wel·fy/γM0), cisaillement (Av) et flèche. ")
-    note += ("Déversement vérifié (§6.3.2) : maintien latéral par la maçonnerie désactivé, Mcr auto."
+    note = ("Perfil mais leve que verifica flexão (Wpl/Wel·fy/γM0), esforço transverso (Av) e flecha. ")
+    note += ("Encurvadura lateral verificada (§6.3.2): travamento lateral pela alvenaria desativado, Mcr automático."
              if not restrained else
-             "Déversement non vérifié (maintien latéral par la maçonnerie supposé, χLT=1).")
+             "Encurvadura lateral não verificada (travamento lateral pela alvenaria assumido, χLT=1).")
     return {"status": "ok", **best, "note": note}
 
 
@@ -176,7 +171,7 @@ def _rc(opts, L, comps, m_ed, v_ed, psi2):
     mat = Materials(fck_mpa=fck, fyk_mpa=float(opts.get("fyk", 500)),
                     fctm_mpa=0.30 * fck ** (2.0 / 3.0), gamma_c=float(opts.get("gamma_c", 1.5)),
                     gamma_s=float(opts.get("gamma_s", 1.15)), alpha_cc=float(opts.get("alpha_cc", 1.0)),
-                    source="Matériaux usuels AN FR — à vérifier")
+                    source="Materiais usuais do Anexo Nacional português — a verificar")
     cot = float(opts.get("cot_theta", 2.5))
     sd_limit = float(opts.get("rc_span_depth_limit", 20.0))
     fixed_h = opts.get("rc_height_m")
@@ -190,7 +185,7 @@ def _rc(opts, L, comps, m_ed, v_ed, psi2):
             continue
         sec = Section(id="LINT", kind="beam", b_mm=b_mm, h_mm=h, d_mm=d, med_knm=m_ed,
                       ved_kn=v_ed, ned_kn=0.0, torsion_knm=0.0, materials=mat,
-                      as_provided_mm2=None, cot_theta=cot, source="Linteau BA — à vérifier", case="ELU")
+                      as_provided_mm2=None, cot_theta=cot, source="Padieira de betão armado — a verificar", case="ELU")
         res = section_design(sec)
         as_req = res.get("as_required_mm2")
         if as_req is None or res["status"] == "out_of_scope":
@@ -209,10 +204,8 @@ def _rc(opts, L, comps, m_ed, v_ed, psi2):
                 "span_depth_ratio": _r(L * 1000.0 / d, 1), "span_depth_limit": sd_limit,
                 "concrete_m3": _r(vol, 3), "rebar_kg": _r(rebar_kg, 1), "cost_eur": _r(cost, 0),
                 "fck": fck, "label": f"BA {int(b_mm)}×{int(h)} mm — As {_r(as_req / 100.0)} cm²",
-                "note": "Section BA mini passant flexion EN 1992 + pré-dimensionnement de flèche "
-                        "portée/hauteur utile ≤ limite. Aciers d'about/ancrage à détailler."}
-    return {"status": "no_solution", "message": "Aucune section BA raisonnable ne passe ; "
-            "augmentez la hauteur, la largeur ou la résistance du béton."}
+                "note": "Secção mínima de betão armado que verifica a flexão EN 1992 + pré-dimensionamento da flecha vão/altura útil ≤ limite. Armaduras de extremidade/amarração a pormenorizar."}
+    return {"status": "no_solution", "message": "Nenhuma secção de betão armado razoável verifica; aumente a altura, a largura ou a classe do betão."}
 
 
 def _anchorage(phi_mm, fck, fyk, gamma_c, gamma_s):
@@ -226,7 +219,7 @@ def _anchorage(phi_mm, fck, fyk, gamma_c, gamma_s):
     return {"fbd_mpa": _r(fbd), "lb_rqd_mm": _r(lb_rqd, 0),
             "straight_mm": _r(max(lb_rqd, lb_min), 0),
             "hook_mm": _r(max(0.7 * lb_rqd, lb_min), 0),
-            "note": "Ancrage barres inférieures aux appuis (§8.4) ; crochet α1=0,7. Attentes/chapeaux à détailler."}
+            "note": "Amarração dos varões inferiores nos apoios (§8.4); gancho α1=0,7. Armaduras de espera/superiores a pormenorizar."}
 
 
 def _bearing_plate(v_ed, t_m, allow_mpa, seat_m):
@@ -243,8 +236,7 @@ def _bearing_plate(v_ed, t_m, allow_mpa, seat_m):
     return {"width_mm": _r(b_p * 1000, 0), "length_mm": _r(l_p * 1000, 0), "thickness_mm": _r(t_p, 0),
             "sigma_kpa": _r(sigma, 1), "allow_kpa": _r(allow_kpa, 1),
             "status": "ok" if sigma <= allow_kpa else "fails_check",
-            "note": "Platine indicative : aire ≥ réaction ELU / résistance maçonnerie ; épaisseur par flexion "
-                    "du débord. Soudures, raidisseurs et scellements à étudier."}
+            "note": "Chapa de apoio indicativa: área ≥ reação ELU / resistência da alvenaria; espessura pela flexão da consola. Soldaduras, reforços e selagens a estudar."}
 
 
 def lintel_design(opts: dict) -> dict:
@@ -271,8 +263,7 @@ def lintel_design(opts: dict) -> dict:
                "sigma_kpa": _r(sigma, 1), "allow_kpa": _r(allow_kpa, 1),
                "required_length_m": _r(a_req, 3), "adopted_length_m": _r(a_adopt, 3),
                "status": "ok" if sigma <= allow_kpa else "fails_check",
-               "note": "Pression d'appui = réaction ELU / (about × épaisseur de mur) comparée à la "
-                       "résistance saisie de la maçonnerie. About adopté = max(saisi, requis, 0,10 m)."}
+               "note": "Pressão de apoio = reação ELU / (entrega × espessura da parede) comparada com a resistência introduzida da alvenaria. Entrega adotada = máx(introduzida, necessária, 0,10 m)."}
     # Détails d'exécution BA (crochets/ancrages) + platine acier
     if rc and rc.get("status") == "ok":
         rc["detailing"] = {"bearing": {"adopted_length_m": _r(a_adopt, 3)},
@@ -293,13 +284,12 @@ def lintel_design(opts: dict) -> dict:
     reco = None
     if recommended:
         reco = {"material": recommended,
-                "reason": "Coût matière estimé le plus bas" + (" (ex æquo → acier)" if len(options) == 2 and
+                "reason": "Custo de material estimado mais baixo" + (" (empate → aço)" if len(options) == 2 and
                           options[0][1] == options[1][1] else ""),
                 "label": (steel if recommended == "steel" else rc)["label"],
                 "cost_eur": (steel if recommended == "steel" else rc)["cost_eur"]}
     reactions = {"g_kn": _r(v_g), "q_kn": _r(v_q), "ed_kn": _r(v_ed),
-                 "note": "Réaction caractéristique par appui (une moitié de la charge), à réinjecter "
-                         "comme charge ponctuelle sur chaque trumeau pour boucler la descente de charges."}
+                 "note": "Reação característica por apoio (metade da carga), a reintroduzir como carga pontual em cada nembo para fechar a descida de cargas."}
     geometry = {"clear_span_m": _r(L, 3), "wall_thickness_m": t, "bearing_m": _r(a_adopt, 3),
                 "masonry_model": masonry_model,
                 "recommended": recommended, "steel": steel, "rc": rc}
@@ -307,7 +297,7 @@ def lintel_design(opts: dict) -> dict:
             "load_model": masonry_model, "notes": notes,
             "actions": {"m_g_knm": _r(m_g), "m_q_knm": _r(m_q), "v_g_kn": _r(v_g), "v_q_kn": _r(v_q),
                         "m_ed_knm": _r(m_ed), "v_ed_kn": _r(v_ed), "m_char_knm": _r(m_char),
-                        "combination": "ELU 1.35G+1.5Q ; flèche ELS caractéristique et quasi-permanente (ψ2)",
+                        "combination": "ELU 1.35G+1.5Q ; flecha ELS característica e quase-permanente (ψ2)",
                         "components": [{"name": c["name"], "nature": c["nature"], "type": c["type"],
                                         "value": _r(c["value"], 2)} for c in comps]},
             "steel": steel, "rc": rc, "bearing": bearing, "reactions": reactions,

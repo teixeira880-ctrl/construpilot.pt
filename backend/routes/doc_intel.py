@@ -87,12 +87,12 @@ async def import_document(file: UploadFile = File(...),
     ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
     is_image = ext in IMAGE_EXTS
     if ext not in ("xlsx", "xlsm", "pdf") and not is_image:
-        raise HTTPException(400, "Joignez un fichier .xlsx, .pdf ou une image (JPG/PNG/WEBP)")
+        raise HTTPException(400, "Anexe um ficheiro .xlsx, .pdf ou uma imagem (JPG/PNG/WEBP)")
     raw = await file.read()
     if not raw:
-        raise HTTPException(400, "Fichier vide")
+        raise HTTPException(400, "Ficheiro vazio")
     if len(raw) > MAX_BYTES:
-        raise HTTPException(400, "Fichier trop volumineux (max 30 Mo à cette étape)")
+        raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 30 MB nesta etapa)")
 
     sha = hashlib.sha256(raw).hexdigest()
 
@@ -113,7 +113,7 @@ async def import_document(file: UploadFile = File(...),
             f"doc_intel/{user['user_id']}/{import_id}/{filename}", raw,
             storage.mime_for(filename, "application/octet-stream"))
     except Exception as exc:  # pragma: no cover
-        store_warn = f"Original non archivé ({type(exc).__name__})"
+        store_warn = f'Original não arquivado ({type(exc).__name__})'
 
     doc = {
         "import_id": import_id, "user_id": user["user_id"],
@@ -133,7 +133,7 @@ async def import_document(file: UploadFile = File(...),
                       "tables": [], "warnings": [], "unread": [],
                       "engine_version": doc_intel.ENGINE_VERSION, "arithmetic": None}
             if not gemini_ocr.available():
-                raise RuntimeError("Lecture IA (OCR) non configurée")
+                raise RuntimeError("Leitura IA (OCR) não configurada")
             ocr_data = await gemini_ocr.ocr(raw, mime, filename)
             _merge_ocr(result, ocr_data)
         else:
@@ -146,7 +146,7 @@ async def import_document(file: UploadFile = File(...),
                     _merge_ocr(result, ocr_data)
                 except Exception as exc:  # pragma: no cover
                     result.setdefault("warnings", []).append(
-                        {"type": "ocr", "message": f"OCR indisponible : {type(exc).__name__}"})
+                        {"type": "ocr", "message": f'OCR indisponível: {type(exc).__name__}'})
         if store_warn:
             result.setdefault("warnings", []).append({"type": "storage", "message": store_warn})
         await db.doc_imports.update_one(
@@ -161,7 +161,7 @@ async def import_document(file: UploadFile = File(...),
         await db.doc_imports.update_one(
             {"import_id": import_id},
             {"$set": {"status": "error", "error": str(exc)[:500], "updated_at": _now()}})
-        raise HTTPException(422, f"Analyse impossible : {exc}")
+        raise HTTPException(422, f'Análise impossível: {exc}')
 
     doc = await db.doc_imports.find_one({"import_id": import_id}, {"_id": 0})
     return {"reused": False, **doc}
@@ -208,7 +208,7 @@ async def list_corrections(user=Depends(current_user)) -> list[dict]:
 async def delete_correction(correction_id: str, user=Depends(current_user)) -> dict:
     res = await db.doc_corrections.delete_one({**_scope(user), "correction_id": correction_id})
     if res.deleted_count == 0:
-        raise HTTPException(404, "Correction introuvable")
+        raise HTTPException(404, "Correção não encontrada")
     return {"ok": True}
 
 
@@ -216,7 +216,7 @@ async def delete_correction(correction_id: str, user=Depends(current_user)) -> d
 async def get_import(import_id: str, user=Depends(current_user)) -> dict:
     doc = await db.doc_imports.find_one({**_scope(user), "import_id": import_id}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Analyse introuvable")
+        raise HTTPException(404, "Análise não encontrada")
     return doc
 
 
@@ -224,7 +224,7 @@ async def get_import(import_id: str, user=Depends(current_user)) -> dict:
 async def delete_import(import_id: str, user=Depends(current_user)) -> dict:
     res = await db.doc_imports.delete_one({**_scope(user), "import_id": import_id})
     if res.deleted_count == 0:
-        raise HTTPException(404, "Analyse introuvable")
+        raise HTTPException(404, "Análise não encontrada")
     return {"ok": True}
 
 
@@ -237,29 +237,29 @@ async def reconcile(import_id: str,
                     user=Depends(current_user)) -> dict:
     base = await db.doc_imports.find_one({**_scope(user), "import_id": import_id}, {"_id": 0})
     if not base:
-        raise HTTPException(404, "Analyse DPGF/devis introuvable")
+        raise HTTPException(404, "Análise de mapa de quantidades/orçamento não encontrada")
     if base.get("format") != "xlsx":
-        raise HTTPException(400, "Le rapprochement part d'un DPGF/devis Excel")
+        raise HTTPException(400, "A conciliação parte de um mapa de quantidades/orçamento Excel")
     devis_lines = (base.get("result") or {}).get("lines") or []
 
     if cctp is not None and getattr(cctp, "filename", None):
         if not cctp.filename.lower().endswith(".pdf"):
-            raise HTTPException(400, "Le CCTP doit être un PDF")
+            raise HTTPException(400, "O caderno de encargos deve ser um PDF")
         raw = await cctp.read()
         if len(raw) > MAX_BYTES:
-            raise HTTPException(400, "CCTP trop volumineux (max 30 Mo)")
+            raise HTTPException(400, "Caderno de encargos demasiado volumoso (máx. 30 MB)")
         pres_lines = doc_intel.analyse(raw, cctp.filename).get("lines") or []
         cctp_ref = {"filename": cctp.filename}
     elif cctp_import_id:
         c = await db.doc_imports.find_one({**_scope(user), "import_id": cctp_import_id}, {"_id": 0})
         if not c:
-            raise HTTPException(404, "CCTP introuvable")
+            raise HTTPException(404, "Caderno de encargos não encontrado")
         if c.get("format") != "pdf":
-            raise HTTPException(400, "Le CCTP référencé doit être un PDF")
+            raise HTTPException(400, "O caderno de encargos referenciado deve ser um PDF")
         pres_lines = (c.get("result") or {}).get("lines") or []
         cctp_ref = {"import_id": cctp_import_id, "filename": c.get("filename")}
     else:
-        raise HTTPException(400, "Fournissez un CCTP (fichier PDF ou cctp_import_id)")
+        raise HTTPException(400, "Forneça um caderno de encargos (ficheiro PDF ou cctp_import_id)")
 
     prescriptions = doc_reconcile.extract_prescriptions(pres_lines)
     corrections = [c async for c in db.doc_corrections.find(_scope(user), {"_id": 0})]
@@ -294,16 +294,16 @@ async def plan_reconcile(import_id: str, body: PlanReconcileIn,
     par libellé, et signale les écarts sourcés (m² / ml). Déterministe."""
     base = await db.doc_imports.find_one({**_scope(user), "import_id": import_id}, {"_id": 0})
     if not base:
-        raise HTTPException(404, "Analyse DPGF/devis introuvable")
+        raise HTTPException(404, "Análise de mapa de quantidades/orçamento não encontrada")
     if base.get("format") != "xlsx":
-        raise HTTPException(400, "Le rapprochement part d'un DPGF/devis Excel")
+        raise HTTPException(400, "A conciliação parte de um mapa de quantidades/orçamento Excel")
     devis_lines = (base.get("result") or {}).get("lines") or []
 
     plan = await db.plans_takeoff.find_one(
         {"plan_id": body.plan_id, "user_id": user["user_id"]},
         {"_id": 0, "measurements": 1, "filename": 1, "structural_metre": 1})
     if not plan:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     measurements = plan.get("measurements") or []
     if body.page_index is not None:
         measurements = [m for m in measurements if m.get("page_index") == body.page_index]
@@ -343,12 +343,12 @@ async def correct_line_qty(import_id: str, line_id: str, body: LineQtyIn,
     La correction est tracée (`qty_corrected_from`)."""
     doc = await db.doc_imports.find_one({**_scope(user), "import_id": import_id}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Analyse introuvable")
+        raise HTTPException(404, "Análise não encontrada")
     result = doc.get("result") or {}
     lines = result.get("lines") or []
     line = next((l for l in lines if l.get("line_id") == line_id), None)
     if not line:
-        raise HTTPException(404, "Ligne introuvable")
+        raise HTTPException(404, "Linha não encontrada")
     old = (line.get("qty") or {}).get("value")
     line["qty"] = {"value": float(body.qty), "status": "ok", "raw": str(body.qty), "corrected": True}
     line["qty_corrected_from"] = old
@@ -391,12 +391,12 @@ async def plan_reconcile_apply_all(import_id: str, body: PlanReconcileIn,
     sur le métré du plan, recalcule montants + arithmétique, puis renvoie le rapprochement à jour."""
     base = await db.doc_imports.find_one({**_scope(user), "import_id": import_id}, {"_id": 0})
     if not base:
-        raise HTTPException(404, "Analyse introuvable")
+        raise HTTPException(404, "Análise não encontrada")
     plan = await db.plans_takeoff.find_one(
         {"plan_id": body.plan_id, "user_id": user["user_id"]},
         {"_id": 0, "measurements": 1, "filename": 1, "structural_metre": 1})
     if not plan:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
 
     rec = await _run_plan_reconcile(base, plan, body.plan_id)
     result = base.get("result") or {}

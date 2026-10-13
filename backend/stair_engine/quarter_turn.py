@@ -50,8 +50,7 @@ def _compute_balanced_auto(
                     level="green",
                     code="AUTO_WINDERS_SELECTED",
                     message_fr=(
-                        f"Répartition automatique : {n} marches balancées "
-                        "(minimum permettant à l'escalier de rentrer dans l'espace disponible)."
+                        f'Distribuição automática: {n} degraus em leque (mínimo que permite à escada caber no espaço disponível).'
                     ),
                     metric="num_winders",
                     value=float(n),
@@ -70,8 +69,7 @@ def _compute_balanced_auto(
                 level="red",
                 code="AUTO_WINDERS_NO_SOLUTION",
                 message_fr=(
-                    "Aucune répartition de marches balancées (3 à 9) ne satisfait les contraintes "
-                    "géométriques. Configuration retournée : celle avec le moins d'alertes rouges."
+                    "Nenhuma distribuição de degraus em leque (3 a 9) satisfaz as restrições geométricas. Configuração devolvida: a que tem menos alertas vermelhos."
                 ),
             ),
         )
@@ -86,7 +84,7 @@ def _compute_qt_single(
     # 1. Nombre total de marches et hauteur de marche
     n_steps, h_mm, in_optimal = find_optimal_num_steps(inp.floor_height_mm, norms)
     if n_steps <= 0:
-        return _dead_result("quarter_turn_bottom", "GEOMETRY_INVALID", "Hauteur invalide.")
+        return _dead_result("quarter_turn_bottom", "GEOMETRY_INVALID", "Altura inválida.")
 
     # 2. Giron droit optimal
     g_straight = optimal_giron_mm(h_mm, norms)
@@ -98,7 +96,7 @@ def _compute_qt_single(
                 level="orange",
                 code="RISER_HEIGHT_NON_OPTIMAL",
                 message_fr=(
-                    f"Hauteur de marche {h_mm:.1f} mm hors plage optimale."
+                    f'Altura do espelho {h_mm:.1f} mm fora do intervalo ótimo.'
                 ),
                 metric="riser_height_mm",
                 value=h_mm,
@@ -138,8 +136,7 @@ def _compute_qt_single(
                 level="red",
                 code="STAIR_RUN_TOO_LONG",
                 message_fr=(
-                    f"Reculement nécessaire {turn_footprint_length + upper_flight_run:.0f} mm > "
-                    f"disponible {inp.available_length_mm:.0f} mm (mode {inp.balancing})."
+                    f'Desenvolvimento em planta necessário {turn_footprint_length + upper_flight_run:.0f} mm > disponível {inp.available_length_mm:.0f} mm (mode {inp.balancing}).'
                 ),
                 metric="stair_run_mm",
                 value=turn_footprint_length + upper_flight_run,
@@ -153,8 +150,7 @@ def _compute_qt_single(
                 level="red",
                 code="STAIR_WIDTH_INSUFFICIENT",
                 message_fr=(
-                    f"Largeur nécessaire pour le quart tournant {turn_footprint_width:.0f} mm > "
-                    f"disponible {inp.available_width_mm:.0f} mm."
+                    f'Largura necessária para o quarto de volta {turn_footprint_width:.0f} mm > disponível {inp.available_width_mm:.0f} mm.'
                 ),
                 metric="available_width_mm",
                 value=turn_footprint_width,
@@ -210,8 +206,7 @@ def _compute_qt_single(
                         level="red",
                         code="STAIRWELL_TOO_SMALL",
                         message_fr=(
-                            f"La marche n°{t.index} émerge au-delà de la trémie "
-                            f"(x={x_i:.0f} mm > bord haut trémie {x_end:.0f} mm)."
+                            f'O degrau n.º{t.index} emerge para além da abertura (x={x_i:.0f} mm > bordo superior da abertura {x_end:.0f} mm).'
                         ),
                         metric="stairwell_length_mm",
                         value=inp.stairwell_length_mm,
@@ -232,8 +227,7 @@ def _compute_qt_single(
                 level="red",
                 code="STAIRWELL_TOO_SMALL",
                 message_fr=(
-                    f"Largeur trémie {inp.stairwell_width_mm:.0f} mm < largeur escalier "
-                    f"{inp.stair_width_mm:.0f} mm."
+                    f'Largura da abertura {inp.stairwell_width_mm:.0f} mm < largura da escada {inp.stair_width_mm:.0f} mm.'
                 ),
                 metric="stairwell_width_mm",
                 value=inp.stairwell_width_mm,
@@ -387,9 +381,7 @@ def _compute_balanced_mode(
                 level="red",
                 code="BALANCING_WALKLINE_TOO_SMALL",
                 message_fr=(
-                    f"Giron sur ligne de foulée {depth_walkline:.0f} mm < minimum "
-                    f"{norms.winder_walkline_min_mm:.0f} mm. Réduire le nombre de marches balancées "
-                    "ou augmenter l'offset ligne de foulée."
+                    f'Cobertor na linha de passo {depth_walkline:.0f} mm < minimum {norms.winder_walkline_min_mm:.0f} mm. Reduzir o número de degraus em leque ou aumentar o afastamento da linha de passo.'
                 ),
                 metric="depth_walkline_mm",
                 value=depth_walkline,
@@ -403,8 +395,7 @@ def _compute_balanced_mode(
                 level="orange",
                 code="BALANCING_INNER_TOO_SMALL",
                 message_fr=(
-                    f"Giron intérieur {depth_inner:.0f} mm < minimum recommandé "
-                    f"{norms.winder_inner_min_mm:.0f} mm."
+                    f'Cobertor interior {depth_inner:.0f} mm < mínimo recomendado {norms.winder_inner_min_mm:.0f} mm.'
                 ),
                 metric="depth_inner_mm",
                 value=depth_inner,
@@ -425,8 +416,7 @@ def _compute_balanced_mode(
                 level="red",
                 code="BALANCING_IMPOSSIBLE",
                 message_fr=(
-                    f"Nombre de marches balancées ({num_winders}) >= nombre total de marches ({n_steps}). "
-                    "Réduire le nombre de balancées."
+                    f'Número de degraus em leque ({num_winders}) >= número total de degraus ({n_steps}). Reduzir o número de degraus em leque.'
                 ),
                 metric="num_winders",
                 value=float(num_winders),

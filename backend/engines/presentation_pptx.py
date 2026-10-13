@@ -37,70 +37,69 @@ PATENT = "FR2611044"
 CLIENT = {
     "fr": {
         "cover": ("ConstruPilot",
-                  "Du bordereau de l'architecte au décompte final",
-                  "Chiffrage · métré · devis · chantier · facturation d'avancement — un seul outil "
-                  f"pour les artisans et les PME du bâtiment · {SITE}"),
+                  "Do mapa de quantidades do arquiteto à conta final",
+                  f'Orçamentação · medição · orçamentos · obra · faturação por autos de medição — uma única ferramenta para os profissionais e as PME da construção · {SITE}'),
         "slides": [
-            ("Ce que fait ConstruPilot", [
-                "Une seule base : l'information saisie une fois sert du premier appel du client au solde du marché.",
-                "Chiffrage des bordereaux d'architecte, métré sur plan, devis, suivi de chantier, situations de travaux, décompte final.",
-                "Deux espaces : PARTICULIER (projet personnel) et PROFESSIONNEL (artisan, PME, entreprise générale).",
-                "Web et applications mobiles dédiées Android et iOS.",
-                f"Brevet n° {PATENT} · hébergement en Union européenne.",
+            ("O que faz o ConstruPilot", [
+                "Uma única base: a informação introduzida uma vez serve da primeira chamada do cliente até ao saldo final.",
+                "Orçamentação de mapas de quantidades, medições sobre planta, orçamentos, acompanhamento de obra, autos de medição, conta final.",
+                "Dois espaços: PARTICULAR (projeto pessoal) e PROFISSIONAL (artesão, PME, empresa geral).",
+                "Web e aplicações móveis dedicadas para Android e iOS.",
+                f'Brevet n° {PATENT} · alojamento na União Europeia.',
             ], "dashboard.png"),
-            ("1. Chiffrer le bordereau de l'architecte", [
-                "DPGF / BPU / DQE : plusieurs bordereaux Excel et plusieurs CCTP dans une même étude.",
-                "Lots détectés, prix issus de VOTRE bibliothèque puis de l'IA pour les lignes inconnues.",
-                "Consignes en langage naturel : « ne chiffre pas le carrelage ni le parquet, marge 12 % ».",
-                "Lecture du CCTP : prescriptions rattachées aux lignes et alerte sur les ouvrages oubliés.",
-                "Marge par lot, alerte de marge faible, comparatif des offres sous-traitants, passage en devis en un clic.",
+            ("1. Orçamentar o mapa do arquiteto", [
+                "DPGF / BPU / DQE: vários mapas Excel e vários cadernos de encargos num mesmo estudo.",
+                "Lotes detetados, preços da SUA biblioteca e depois IA para as linhas desconhecidas.",
+                "Instruções em linguagem natural: «não orçamentes a cerâmica nem o parquet, margem 12 %».",
+                "Leitura do caderno de encargos: prescrições ligadas às linhas e alerta sobre trabalhos esquecidos.",
+                "Margem por lote, alerta de margem baixa, comparação de propostas de subempreiteiros, passagem a orçamento num clique.",
             ], "dpgf.png"),
-            ("2. Métré et devis signés", [
-                "Métré sur plan : import PDF / DWG, mise à l'échelle, longueurs, surfaces, quantitatifs exportables.",
-                "Devis : 3 mises en page, votre logo et vos couleurs, descriptifs détaillés, TVA 5,5 / 10 / 20 %.",
-                "Signature : QR code, signature en ligne ou sur place, relance automatique à 7 jours.",
-                "Bibliothèque de prix qui s'enrichit à chaque chiffrage validé.",
-                "Dictée vocale : devis, réserves et messages dictés depuis le chantier.",
+            ("2. Medições e orçamentos assinados", [
+                "Medições sobre planta: importação PDF / DWG, escala, comprimentos, áreas, quantidades exportáveis.",
+                "Orçamentos: 3 apresentações, o seu logótipo e cores, descritivos detalhados, IVA 5,5 / 10 / 20 %.",
+                "Assinatura: código QR, assinatura online ou no local, reativação automática aos 7 dias.",
+                "Biblioteca de preços que cresce em cada orçamentação validada.",
+                "Ditado por voz: orçamentos, reservas e mensagens ditados na obra.",
             ], "devis.png"),
-            ("3. Suivre le chantier et le client", [
-                "Dossier chantier : planning, tâches, photos avant/après, réserves, comptes rendus.",
-                "Espace client sécurisé : avancement, messagerie, documents, signalement de problème.",
-                "Sous-traitants et fournisseurs : fiches, appels d'offres par lot, réponses en ligne sans compte.",
-                "Approvisionnements et pointage des équipes.",
-                "Votre client ne voit que son chantier : isolation stricte des données.",
+            ("3. Acompanhar a obra e o cliente", [
+                "Processo de obra: planeamento, tarefas, fotografias antes/depois, reservas, relatórios.",
+                "Espaço do cliente seguro: progresso, mensagens, documentos, comunicação de problemas.",
+                "Subempreiteiros e fornecedores: fichas, consultas por lote, respostas online sem conta.",
+                "Aprovisionamentos e registo de horas das equipas.",
+                "O cliente vê apenas a sua obra: isolamento estrito dos dados.",
             ], "chantiers.png"),
-            ("4. Facturer sans rien perdre", [
-                "Facture d'acompte générée automatiquement dès la signature du devis.",
-                "Situations de travaux : avancement ligne par ligne, retenue de garantie, décompte PDF, certificat de paiement.",
-                "Acompte réellement encaissé déduit automatiquement (prorata, totalité ou montant choisi).",
-                "Décompte général définitif en un clic : solde, acompte restant, libération de la retenue.",
-                "Suivi des règlements, relances, avoirs, exports comptables.",
+            ("4. Faturar sem perder nada", [
+                "Fatura de adiantamento gerada automaticamente logo após a assinatura do orçamento.",
+                "Autos de medição: progresso linha a linha, retenção de garantia, conta em PDF, certificado de pagamento.",
+                "O adiantamento efetivamente recebido é deduzido automaticamente (proporcional, total ou valor escolhido).",
+                "Conta final num clique: saldo, adiantamento restante, libertação da retenção.",
+                "Acompanhamento de pagamentos, avisos, notas de crédito, exportações contabilísticas.",
             ], "situations.png"),
-            ("Assistant IA et dictée", [
-                "Réponses techniques : DTU, mises en œuvre, dosages, avec vos propres documents en contexte.",
-                "Rédaction assistée : courriers, comptes rendus, descriptifs de devis.",
-                "L'IA propose, vous décidez : tout prix reste modifiable et son origine est tracée.",
-                "Trois fournisseurs d'IA interchangeables : aucune dépendance à un seul acteur.",
-                "Estimations indicatives : elles vous aident à décider, vous restez l'auteur du devis.",
+            ("Assistente de IA e ditado", [
+                "Respostas técnicas: normas DTU, métodos de execução, dosagens, com os seus documentos em contexto.",
+                "Redação assistida: cartas, relatórios, descritivos de orçamento.",
+                "A IA propõe, você decide: qualquer preço é editável e a sua origem fica registada.",
+                "Três fornecedores de IA intercambiáveis: sem dependência de um único ator.",
+                "Estimativas indicativas: ajudam a decidir, o autor do orçamento continua a ser você.",
             ], "assistant.png"),
-            ("Applications Android et iOS", [
-                "Applications mobiles dédiées, pas un simple site adapté au téléphone.",
-                "Trois usages : Chantier (entreprise), Collaborateur (équipe), Particuliers (client final).",
-                "Sur le terrain : photos, réserves, dictée, avancement, signature sur place.",
-                "Notifications : devis signé, facture en retard, offre de sous-traitant reçue.",
-                "Suppression du compte et des données en autonomie, conformément aux règles des stores.",
+            ("Aplicações Android e iOS", [
+                "Aplicações móveis dedicadas, não um site adaptado ao telefone.",
+                "Três utilizações: Obra (empresa), Colaborador (equipa), Particulares (cliente final).",
+                "No terreno: fotografias, reservas, ditado, progresso, assinatura no local.",
+                "Notificações: orçamento assinado, fatura em atraso, proposta de subempreiteiro recebida.",
+                "Eliminação autónoma da conta e dos dados, conforme as regras das lojas de aplicações.",
             ], None),
-            ("Tarifs et démarrage", [
-                "Professionnel : 149 € / mois par entreprise · Particulier : 19 € / mois.",
-                "API et intégrations : 99 € / mois · options et modules à partir de 5 € / mois.",
-                "Essai de 7 jours, phase de lancement gratuite en cours, paiement par Stripe.",
-                f"Les prix affichés dans l'application font foi ({SITE}/tarifs) : ce document est indicatif.",
-                "Démarrage : créez votre compte, importez votre bibliothèque de prix, déposez votre premier bordereau.",
+            ("Preços e início", [
+                "Profissional: 149 € / mês por empresa · Particular: 19 € / mês.",
+                "API e integrações: 99 € / mês · opções e módulos a partir de 5 € / mês.",
+                "Teste de 7 dias, fase de lançamento gratuita em curso, pagamentos por Stripe.",
+                f'Os preços apresentados na aplicação prevalecem ({SITE}/tarifs) : ce document est indicatif.',
+                "Para começar: crie a conta, importe a sua biblioteca de preços, carregue o primeiro mapa de quantidades.",
             ], None),
         ],
-        "end": ("Parlons de votre prochain chantier",
+        "end": ("Falemos da sua próxima obra",
                 f"{CONTACT} · {SITE} · Brevet n° {PATENT}"),
-        "note": "Capture d'écran réelle de la plateforme.",
+        "note": "Captura de ecrã real da plataforma.",
     },
     "en": {
         "cover": ("ConstruPilot",
@@ -211,7 +210,7 @@ CLIENT = {
                 "Acompanhamento de pagamentos, avisos, notas de crédito, exportações contabilísticas.",
             ], "situations.png"),
             ("Assistente de IA e ditado", [
-                "Respostas técnicas: normas DTU, métodos de execução, dosagens, com os seus documentos em contexto.",
+                "Respostas técnicas: normas NP EN, especificações LNEC, métodos de execução, dosagens, com os seus documentos em contexto.",
                 "Redação assistida: cartas, relatórios, descritivos de orçamento.",
                 "A IA propõe, você decide: qualquer preço é editável e a sua origem fica registada.",
                 "Três fornecedores de IA intercambiáveis: sem dependência de um único ator.",
@@ -241,15 +240,15 @@ CLIENT = {
 # ══════════════════════════════════  Deck investisseur  ══════════════════════════════════
 
 FUNDS = {
-    "fr": [["Emploi des fonds", "Détail", "Montant", "Part"],
-           ["Produit & technique", "Développement, apps Android/iOS, fiabilité, tests", "150 000 €", "30 %"],
-           ["Acquisition & vente", "Commerciaux terrain, démonstrations, salons, CRM", "160 000 €", "32 %"],
-           ["Contenu & marketing", "SEO, contenus métier, prospectus à QR code", "60 000 €", "12 %"],
-           ["Infrastructure & IA", "Hébergement, API d'IA, stockage, sécurité", "50 000 €", "10 %"],
-           ["Support & réussite client", "Accompagnement, formation, migration des prix", "40 000 €", "8 %"],
-           ["Conformité & juridique", "RGPD, contrats, brevet, comptabilité", "20 000 €", "4 %"],
-           ["Réserve", "Aléas et opportunités non budgétés", "20 000 €", "4 %"],
-           ["Total", "24 mois · ~20 800 € / mois", "500 000 €", "100 %"]],
+    "fr": [["Aplicação dos fundos", "Detalhe", "Montante", "Parte"],
+           ["Produto & tecnologia", "Desenvolvimento, apps Android/iOS, fiabilidade, testes", "150 000 €", "30 %"],
+           ["Aquisição & vendas", "Comerciais no terreno, demonstrações, feiras, CRM", "160 000 €", "32 %"],
+           ["Conteúdo & marketing", "SEO, conteúdos do setor, folhetos com código QR", "60 000 €", "12 %"],
+           ["Infraestrutura & IA", "Alojamento, APIs de IA, armazenamento, segurança", "50 000 €", "10 %"],
+           ["Suporte & sucesso do cliente", "Acompanhamento, formação, migração de preços", "40 000 €", "8 %"],
+           ["Conformidade & jurídico", "RGPD, contratos, patente, contabilidade", "20 000 €", "4 %"],
+           ["Reserva", "Imprevistos e oportunidades não orçamentadas", "20 000 €", "4 %"],
+           ["Total", "24 meses · ~20 800 € / mês", "500 000 €", "100 %"]],
     "en": [["Use of funds", "Detail", "Amount", "Share"],
            ["Product & engineering", "Development, Android/iOS apps, reliability, testing", "€150,000", "30%"],
            ["Acquisition & sales", "Field sales, demos, trade shows, CRM", "€160,000", "32%"],
@@ -272,92 +271,90 @@ FUNDS = {
 
 INV = {
     "fr": {
-        "cover": ("ConstruPilot — présentation investisseur",
-                  "Le logiciel vertical du bâtiment français : chiffrage d'un DPGF d'architecte, "
-                  "métré sur plan et facturation d'avancement dans une seule base",
-                  "Document de travail · confidentiel · plan d'exploitation de 500 000 € sur 24 mois"),
-        "kpi_title": "Chiffres mesurés en base",
-        "kpi_cols": ["Indicateur", "Valeur"],
-        "kpi_note": "Mesuré le {d} · fenêtre de {w} jours · une métrique non mesurable s'affiche "
-                    "« non mesurable » : jamais 0, jamais un chiffre reconstitué.",
-        "nomeasure": "non mesurable",
-        "labels": ["Comptes existants (hors tests)", "Actifs sur 30 jours", "Abonnements payants actifs",
-                   "Inscriptions mesurées (30 j)", "Taux d'activation (30 j)",
-                   "Entreprises identifiées (SIRET)", "Devis & factures créés"],
-        "funds_title": "Plan d'exploitation — 500 000 € sur 24 mois",
+        "cover": ("ConstruPilot — apresentação a investidores",
+                  "Software vertical para a construção francesa: orçamentação do mapa de quantidades do arquiteto, medições sobre planta e faturação por autos na mesma base",
+                  "Documento de trabalho · confidencial · plano de exploração de 500 000 € em 24 meses"),
+        "kpi_title": "Números medidos na base de dados",
+        "kpi_cols": ["Indicador", "Valor"],
+        "kpi_note": "Medido em {d} · janela de {w} dias · uma métrica não mensurável é apresentada como «não mensurável»: nunca 0, nunca um número reconstituído.",
+        "nomeasure": "não mensurável",
+        "labels": ["Contas existentes (sem testes)", "Ativos em 30 dias", "Subscrições pagas ativas",
+                   "Registos medidos (30 d)", "Taxa de ativação (30 d)",
+                   "Empresas identificadas (SIRET)", "Orçamentos e faturas criados"],
+        "funds_title": "Plano de exploração — 500 000 € em 24 meses",
         "slides_before": [
-            ("1. Le problème", [
-                "Le petit et moyen bâtiment travaille encore au tableur : bordereaux d'architecte chiffrés à la main, métrés refaits, devis sans bibliothèque de prix fiable.",
-                "La marge se perd dans les oublis administratifs : ouvrages du CCTP non chiffrés, acomptes non imputés, situations mal calculées, retenues jamais réclamées.",
-                "Les outils existants couvrent la gestion, ou le chiffrage, ou le suivi de chantier : le raccord entre les trois reste humain, donc coûteux.",
-                "Conséquence : des heures de bureau non facturables et une marge qui s'évapore en fin de chantier.",
+            ("1. O problema", [
+                "As pequenas e médias empresas de construção continuam a trabalhar em folhas de cálculo: mapas do arquiteto orçamentados à mão, medições repetidas, orçamentos sem biblioteca de preços fiável.",
+                "A margem perde-se nos esquecimentos administrativos: trabalhos exigidos no caderno de encargos nunca orçamentados, adiantamentos não deduzidos, autos mal calculados, retenções nunca reclamadas.",
+                "As ferramentas existentes cobrem a gestão, ou a orçamentação, ou o acompanhamento de obra: a ligação entre as três continua a ser humana e, por isso, caro.",
+                "Resultado: horas de escritório não faturáveis e margem que desaparece no fim da obra.",
             ], None),
-            ("2. Le produit : la chaîne complète", [
-                "Un seul enregistrement du bordereau de l'architecte jusqu'au décompte général définitif.",
-                "Estimation, métré sur plan, chiffrage DPGF, devis, chantier, situations, DGD, espace client.",
-                "Web et applications natives Android et iOS pour l'usage terrain.",
-                "Pilotage interne embarqué : provenance des inscriptions, activation, dépenses par enveloppe.",
+            ("2. O produto: a cadeia completa", [
+                "Um único registo do mapa do arquiteto até à conta final.",
+                "Estimativa, medições sobre planta, orçamentação DPGF, orçamentos, obra, autos de medição, conta final, espaço do cliente.",
+                "Web e aplicações nativas Android e iOS para utilização no terreno.",
+                "Gestão interna integrada: origem dos registos, ativação, despesas por envelope.",
             ], "dashboard.png"),
-            ("3. Le cœur technique : chiffrage DPGF", [
-                "Lecture multi-onglets de plusieurs bordereaux Excel et de plusieurs CCTP dans une même étude.",
-                "Prix issus de la bibliothèque de l'entreprise, puis IA pour les lignes inconnues, origine de chaque prix tracée.",
-                "Consignes en langage naturel, marge par lot, alerte de marge faible, détection des ouvrages exigés au CCTP mais absents du bordereau.",
-                "Appels d'offres sous-traitants par lot, réponse en ligne sans compte, comparatif des offres.",
-                "La tâche la plus longue du métier passe de plusieurs heures à quelques minutes : c'est la porte d'entrée produit.",
+            ("3. O núcleo técnico: orçamentação DPGF", [
+                "Leitura multi-folha de vários mapas Excel e vários cadernos de encargos num mesmo estudo.",
+                "Preços da biblioteca da empresa e depois IA para as linhas desconhecidas, com a origem de cada preço registada.",
+                "Instruções em linguagem natural, margem por lote, alerta de margem baixa, deteção de trabalhos exigidos no caderno de encargos mas ausentes do mapa.",
+                "Consultas a subempreiteiros por lote, resposta online sem conta, comparação de propostas.",
+                "A tarefa mais longa da profissão passa de várias horas a alguns minutos: é a porta de entrada do produto.",
             ], "dpgf.png"),
-            ("4. Là où la marge se récupère : la facturation", [
-                "Acompte automatique à la signature, situations à l'avancement, retenue de garantie, certificat de paiement.",
-                "Acompte réellement encaissé déduit automatiquement — la source d'erreur la plus fréquente du métier.",
-                "Décompte général définitif en un clic : solde, acompte restant, libération de la retenue.",
-                "Bénéfice chiffrable par l'utilisateur lui-même : trésorerie encaissée plus tôt, marge conservée.",
+            ("4. Onde a margem se recupera: a faturação", [
+                "Adiantamento automático na assinatura, autos de medição, retenção de garantia, certificado de pagamento.",
+                "O adiantamento efetivamente recebido é deduzido automaticamente — a fonte de erro mais frequente do setor.",
+                "Conta final num clique: saldo, adiantamento restante, libertação da retenção.",
+                "Um benefício que o próprio utilizador consegue quantificar: tesouraria recebida mais cedo, margem preservada.",
             ], "situations.png"),
-            ("5. Le marché français", [
-                "450 000 entreprises du bâtiment à chiffre d'affaires positif, hors micro-entreprises pures (FFB, 2025).",
-                "Près de 95 % sont des structures artisanales : environ la moitié de l'activité et des effectifs salariés.",
-                "193 milliards d'euros HT de chiffre d'affaires du bâtiment en 2025 (FFB).",
-                "1 731 000 actifs dont 1 234 000 salariés et 407 000 artisans non salariés (FFB).",
-                "19 959 créations d'entreprises dans la construction au 3ᵉ trimestre 2025, +4,6 % sur un an (INSEE).",
-                "Sources : ffbatiment.fr/le-batiment-en-chiffres · note de conjoncture CAPEB T4 2025 · INSEE.",
+            ("5. O mercado francês", [
+                "450 000 empresas de construção com volume de negócios positivo, excluindo micro-empresas puras (FFB, 2025).",
+                "Cerca de 95 % são estruturas artesanais: aproximadamente metade da atividade e dos efetivos assalariados.",
+                "193 mil milhões de euros de volume de negócios da construção em 2025 (FFB).",
+                "1 731 000 ativos, dos quais 1 234 000 assalariados e 407 000 artesãos independentes (FFB).",
+                "19 959 criações de empresas na construção no 3.º trimestre de 2025, +4,6 % num ano (INSEE).",
+                "Fontes: ffbatiment.fr/le-batiment-en-chiffres · nota de conjuntura CAPEB T4 2025 · INSEE.",
             ], None),
-            ("6. Positionnement concurrentiel", [
-                "Outils de gestion (devis/factures) : ne chiffrent pas un DPGF, ne gèrent pas les situations complètes ni le DGD.",
-                "Logiciels de métré : puissants mais déconnectés de la facturation et du suivi de chantier.",
-                "ERP du bâtiment : coûteux et lourds, hors de portée des structures de 1 à 20 personnes.",
-                "ConstruPilot : la chaîne complète pour l'artisan et la PME, avec l'IA là où elle est vérifiable.",
-                "Barrière à la sortie : la bibliothèque de prix de l'entreprise s'enrichit à chaque affaire.",
+            ("6. Posicionamento concorrencial", [
+                "Ferramentas de gestão (orçamentos/faturas): não orçamentam um DPGF nem tratam autos completos ou conta final.",
+                "Software de medições: poderoso, mas desligado da faturação e do acompanhamento de obra.",
+                "ERP de construção: caro e pesado, fora do alcance de estruturas de 1 a 20 pessoas.",
+                "ConstruPilot: a cadeia completa para o artesão e a PME, com IA onde é verificável.",
+                "Barreira à saída: a biblioteca de preços da empresa enriquece em cada obra.",
             ], None),
-            ("7. Modèle économique", [
-                "Professionnel : 149 € / mois par entreprise — cœur du revenu récurrent.",
-                "Particulier : 19 € / mois · API et intégrations : 99 € / mois · options à partir de 5 € / mois.",
-                "Essai de 7 jours, phase de lancement gratuite en cours, paiements par Stripe.",
-                "Revenu récurrent par entreprise, coût marginal maîtrisé : l'IA n'est appelée que sur les lignes inconnues.",
-                "Extension naturelle : intégrations comptables, distribution par les négoces, API éditeurs.",
+            ("7. Modelo de negócio", [
+                "Profissional: 149 € / mês por empresa — núcleo da receita recorrente.",
+                "Particular: 19 € / mês · API e integrações: 99 € / mês · opções a partir de 5 € / mês.",
+                "Teste de 7 dias, fase de lançamento gratuita em curso, pagamentos por Stripe.",
+                "Receita recorrente por empresa com custo marginal controlado: a IA só é chamada nas linhas desconhecidas.",
+                "Extensões naturais: integrações contabilísticas, distribuição pelos armazenistas, API para editores.",
             ], None),
         ],
         "slides_after": [
-            ("Jalons du plan", [
-                "Mois 1-6 : publication des applications Android et iOS, premiers clients payants, industrialisation du chiffrage DPGF.",
-                "Mois 7-12 : acquisition encadrée (SEO, terrain, partenariats négoces), intégrations comptables.",
-                "Mois 13-18 : équipe commerciale, déploiement régional, modules de sous-traitance.",
-                "Mois 19-24 : ouverture de l'API, partenariats de distribution, préparation de l'international.",
-                "Ce sont des objectifs de travail : l'avancement est publié tel qu'il est mesuré, sans chiffre reconstitué.",
+            ("Marcos do plano", [
+                "Meses 1-6: publicação das aplicações Android e iOS, primeiros clientes pagantes, industrialização da orçamentação DPGF.",
+                "Meses 7-12: aquisição controlada (SEO, terreno, parcerias com armazenistas), integrações contabilísticas.",
+                "Meses 13-18: equipa comercial, implantação regional, módulos de subcontratação.",
+                "Meses 19-24: abertura da API, parcerias de distribuição, preparação da internacionalização.",
+                "São objetivos de trabalho: o progresso é publicado tal como é medido, sem números reconstituídos.",
             ], None),
-            ("Risques et réponses", [
-                "Qualité des prix proposés par l'IA → priorité absolue à la bibliothèque de l'entreprise, prix toujours modifiable et archivé.",
-                "Dépendance à un fournisseur d'IA → trois fournisseurs interchangeables derrière une même interface interne.",
-                "Hétérogénéité des bordereaux → lecture tolérante (multi-onglets, en-têtes variables) et correction ligne par ligne.",
-                "Dérive des coûts → emplois suivis par enveloppe dans le back-office, rapprochement mensuel avec les canaux d'acquisition.",
-                "Conformité (RGPD, stores) → pages légales, suppression de compte en autonomie, journalisation des accès.",
+            ("Riscos e respostas", [
+                "Qualidade dos preços propostos pela IA → prioridade absoluta à biblioteca da empresa, preços sempre editáveis e arquivados.",
+                "Dependência de um fornecedor de IA → três fornecedores intercambiáveis atrás de uma mesma interface interna.",
+                "Heterogeneidade dos mapas → leitura tolerante (multi-folha, cabeçalhos variáveis) e correção linha a linha.",
+                "Desvio de custos → aplicações seguidas por envelope no back-office, reconciliação mensal com os canais de aquisição.",
+                "Conformidade (RGPD, lojas) → páginas legais, eliminação autónoma da conta, registo de acessos.",
             ], None),
-            ("Ce que nous cherchons", [
-                "Accès au marché : introductions auprès des fédérations, groupements d'artisans, négoces et cabinets de maîtrise d'œuvre.",
-                "Capacité commerciale : financer un cycle de vente terrain et les recrutements associés sur les 24 mois du plan.",
-                "Partenariats d'intégration : éditeurs de comptabilité, distributeurs de matériaux, plateformes de plans.",
-                "Gouvernance : un suivi trimestriel sur les mêmes indicateurs mesurés que ceux présentés ici.",
+            ("O que procuramos", [
+                "Acesso ao mercado: apresentações a federações, agrupamentos de artesãos, armazenistas e gabinetes de projeto.",
+                "Capacidade comercial: financiar um ciclo de venda no terreno e as contratações associadas ao longo dos 24 meses do plano.",
+                "Parcerias de integração: software de contabilidade, distribuidores de materiais, plataformas de plantas.",
+                "Governação: reporte trimestral exatamente sobre os indicadores medidos aqui apresentados.",
             ], None),
         ],
-        "end": ("Contact", f"{CONTACT} · {SITE} · Brevet n° {PATENT}"),
-        "note": "Capture d'écran réelle de la plateforme.",
+        "end": ("Contacto", f"{CONTACT} · {SITE} · Brevet n° {PATENT}"),
+        "note": "Captura de ecrã real da plataforma.",
     },
     "en": {
         "cover": ("ConstruPilot — investor presentation",
@@ -444,7 +441,7 @@ INV = {
                 "Governance: quarterly reporting on exactly the measured indicators presented here.",
             ], None),
         ],
-        "end": ("Contact", f"{CONTACT} · {SITE} · Patent no. {PATENT}"),
+        "end": ("Contacto", f"{CONTACT} · {SITE} · Patent no. {PATENT}"),
         "note": "Real screenshot of the platform.",
     },
     "pt": {
@@ -578,7 +575,7 @@ def _cover(prs, title, subtitle, footer):
     return s
 
 
-PREPARED = {"fr": "Préparé pour", "en": "Prepared for", "pt": "Preparado para"}
+PREPARED = {"fr": "Preparado para", "en": "Prepared for", "pt": "Preparado para"}
 
 
 def _logo_stream(branding: dict | None):

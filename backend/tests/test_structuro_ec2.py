@@ -40,7 +40,7 @@ def test_double_reinforcement_needed():
     assert fx["mode"] == "double"
     assert fx["mu"] > fx["mu_lim"]
     assert fx["as_comp_cm2"] > 0
-    assert any("compression" in w for w in fx["warnings"])
+    assert any("compressão" in w for w in fx["warnings"])
 
 
 def test_shear_below_vrdc_uses_minimum():

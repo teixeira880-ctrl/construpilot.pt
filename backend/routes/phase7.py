@@ -82,7 +82,7 @@ async def notify_user(user_id: str, title: str, body: str, url: str = "/") -> in
 @router.post("/push/test")
 async def push_test(user=Depends(current_user)) -> dict:
     n = await notify_user(user["user_id"], "ConstruPilot",
-                          "🎉 Vos notifications push sont bien activées !", "/dashboard")
+                          "🎉 As suas notificações push estão ativadas!", "/dashboard")
     return {"ok": True, "sent": n}
 
 
@@ -271,7 +271,7 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         # Limite raisonnable : ~500 ko en base64 = 375 ko fichier
         b64_clean = body.logo_b64.split(",")[-1] if body.logo_b64 else ""
         if len(b64_clean) > 500_000:
-            raise HTTPException(413, "Logo trop volumineux (max ~375 Ko)")
+            raise HTTPException(413, "Logótipo demasiado volumoso (máx. ~375 KB)")
         upd["brand_logo_b64"] = b64_clean or None
     # Message d'accompagnement : préférence PERSONNELLE (toujours sur l'utilisateur,
     # même pour un membre d'organisation) → chacun peut avoir sa propre signature.
@@ -292,7 +292,7 @@ async def update_branding(body: BrandingIn, user=Depends(current_user)):
         # Seul le owner/admin de l'org peut modifier le branding partagé
         if u.get("org_role") not in ("owner", "admin"):
             raise HTTPException(403,
-                "Le branding de l'équipe ne peut être modifié que par un admin/propriétaire de l'organisation.")
+                "O branding da equipa só pode ser modificado por um admin/proprietário da organização.")
         if upd:
             await db.organizations.update_one({"org_id": org_id}, {"$set": upd})
     else:
@@ -362,7 +362,7 @@ async def org_create(body: OrgCreateIn, user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1})
     if u and u.get("organization_id"):
-        raise HTTPException(400, "Vous appartenez déjà à une organisation.")
+        raise HTTPException(400, "Já pertence a uma organização.")
     org_id = "org_" + secrets.token_hex(6)
     # Génère un code unique
     for _ in range(10):
@@ -370,7 +370,7 @@ async def org_create(body: OrgCreateIn, user=Depends(current_user)) -> dict:
         if not await db.organizations.find_one({"org_code": code}):
             break
     else:
-        raise HTTPException(500, "Impossible de générer un code d'organisation")
+        raise HTTPException(500, "Impossível gerar um código de organização")
     doc = {
         "org_id": org_id,
         "org_code": code,
@@ -404,11 +404,11 @@ async def org_join(body: OrgJoinCodeIn, user=Depends(current_user)) -> dict:
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1})
     if u and u.get("organization_id"):
-        raise HTTPException(400, "Vous appartenez déjà à une organisation. Quittez-la d'abord.")
+        raise HTTPException(400, "Já pertence a uma organização. Saia primeiro dela.")
     code = body.code.strip().upper()
     org = await db.organizations.find_one({"org_code": code}, {"_id": 0, "org_id": 1, "name": 1})
     if not org:
-        raise HTTPException(404, "Code d'organisation inconnu")
+        raise HTTPException(404, "Código de organização desconhecido")
     await db.users.update_one({"user_id": user["user_id"]},
                                {"$set": {"organization_id": org["org_id"],
                                           "org_role": "member",
@@ -422,15 +422,14 @@ async def org_leave(user=Depends(current_user)) -> dict:
                                  {"_id": 0, "organization_id": 1, "org_role": 1})
     org_id = (u or {}).get("organization_id")
     if not org_id:
-        raise HTTPException(400, "Aucune organisation.")
+        raise HTTPException(400, "Nenhuma organização.")
     if u.get("org_role") == "owner":
         # Check that there are other members
         others = await db.users.count_documents({"organization_id": org_id,
                                                   "user_id": {"$ne": user["user_id"]}})
         if others > 0:
             raise HTTPException(400,
-                "Le propriétaire ne peut pas quitter tant qu'il reste des membres. "
-                "Transférez la propriété ou retirez d'abord tous les membres.")
+                "O proprietário não pode sair enquanto houver membros. Transfira a propriedade ou retire primeiro todos os membros.")
         # Owner solo → supprime l'org
         await db.organizations.delete_one({"org_id": org_id})
     await db.users.update_one({"user_id": user["user_id"]},
@@ -449,17 +448,17 @@ async def org_transfer_ownership(body: OrgTransferIn, user=Depends(current_user)
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1})
     if not u or not u.get("organization_id"):
-        raise HTTPException(400, "Aucune organisation.")
+        raise HTTPException(400, "Nenhuma organização.")
     if u.get("org_role") != "owner":
-        raise HTTPException(403, "Réservé au propriétaire actuel.")
+        raise HTTPException(403, "Reservado ao proprietário atual.")
     if body.new_owner_user_id == user["user_id"]:
-        raise HTTPException(400, "Vous êtes déjà propriétaire.")
+        raise HTTPException(400, "Já é proprietário.")
     new_owner = await db.users.find_one(
         {"user_id": body.new_owner_user_id, "organization_id": u["organization_id"]},
         {"_id": 0, "user_id": 1, "email": 1, "name": 1}
     )
     if not new_owner:
-        raise HTTPException(404, "Ce membre ne fait pas partie de votre organisation.")
+        raise HTTPException(404, "Este membro não faz parte da sua organização.")
     # Swap roles
     await db.users.update_one({"user_id": user["user_id"]},
                                {"$set": {"org_role": "admin"}})
@@ -475,18 +474,18 @@ async def org_remove_member(member_user_id: str, user=Depends(current_user)) -> 
     u = await db.users.find_one({"user_id": user["user_id"]},
                                  {"_id": 0, "organization_id": 1, "org_role": 1})
     if not u or not u.get("organization_id"):
-        raise HTTPException(400, "Aucune organisation.")
+        raise HTTPException(400, "Nenhuma organização.")
     if u.get("org_role") not in ("owner", "admin"):
-        raise HTTPException(403, "Réservé au propriétaire/admin.")
+        raise HTTPException(403, "Reservado ao proprietário/admin.")
     if member_user_id == user["user_id"]:
-        raise HTTPException(400, "Utilisez /leave pour vous retirer vous-même.")
+        raise HTTPException(400, "Utilize /leave para se retirar a si próprio.")
     m = await db.users.find_one({"user_id": member_user_id,
                                   "organization_id": u["organization_id"]},
                                  {"_id": 0, "org_role": 1})
     if not m:
-        raise HTTPException(404, "Membre introuvable dans l'organisation.")
+        raise HTTPException(404, "Membro não encontrado na organização.")
     if m.get("org_role") == "owner":
-        raise HTTPException(400, "Impossible de retirer le propriétaire.")
+        raise HTTPException(400, "Impossível retirar o proprietário.")
     await db.users.update_one({"user_id": member_user_id},
                                {"$unset": {"organization_id": "", "org_role": "",
                                             "joined_org_at": ""}})
@@ -501,13 +500,13 @@ async def org_invite(body: OrgInviteIn, user=Depends(current_user)) -> dict:
                                   "name": 1})
     org_id = (u or {}).get("organization_id")
     if not org_id:
-        raise HTTPException(400, "Créez d'abord une organisation.")
+        raise HTTPException(400, "Crie primeiro uma organização.")
     if u.get("org_role") not in ("owner", "admin"):
-        raise HTTPException(403, "Réservé au propriétaire/admin.")
+        raise HTTPException(403, "Reservado ao proprietário/admin.")
     org = await db.organizations.find_one({"org_id": org_id},
                                             {"_id": 0, "org_code": 1, "name": 1})
     if not org:
-        raise HTTPException(404, "Organisation introuvable.")
+        raise HTTPException(404, "Organização não encontrada.")
 
     invite_id = "inv_" + secrets.token_hex(6)
     invite = {
@@ -522,17 +521,10 @@ async def org_invite(body: OrgInviteIn, user=Depends(current_user)) -> dict:
     email_status = "skipped"
     try:
         from engines.emailer import send_email, wrap_html
-        from_name = u.get("name") or u.get("email") or "Votre collègue"
+        from_name = u.get("name") or u.get("email") or "O seu colega"
         html = wrap_html(
-            f"{from_name} vous invite sur ConstruPilot",
-            f"<p>{from_name} vous invite à rejoindre l'organisation "
-            f"<b>{org['name']}</b> sur ConstruPilot.</p>"
-            f"<p style='font-size:16px'>Votre code d'invitation :</p>"
-            f"<div style='font-family:monospace;font-size:26px;font-weight:800;"
-            f"background:#f1f5f9;padding:14px 20px;border-radius:6px;text-align:center;"
-            f"letter-spacing:3px;color:#FF5A00'>{org['org_code']}</div>"
-            f"<p>Créez votre compte (ou connectez-vous) sur ConstruPilot puis rejoignez "
-            f"l'équipe depuis <b>Équipe</b> avec ce code.</p>",
+            f'{from_name} convida-o para o ConstruPilot',
+            f"<p>{from_name} convida-o a juntar-se à organização <b>{org['name']}</b> no ConstruPilot.</p><p style='font-size:16px'>O seu código de convite:</p><div style='font-family:monospace;font-size:26px;font-weight:800;background:#f1f5f9;padding:14px 20px;border-radius:6px;text-align:center;letter-spacing:3px;color:#FF5A00'>{org['org_code']}</div><p>Crie a sua conta (ou inicie sessão) no ConstruPilot e junte-se à equipa em <b>Equipa</b> com este código.</p>",
         )
         await send_email(body.email, f"Invitation ConstruPilot — {org['name']}", html)
         email_status = "sent"
@@ -563,7 +555,7 @@ async def _mailbox_target(user) -> tuple[str, dict]:
     if org_id:
         if u.get("org_role") not in ("owner", "admin"):
             raise HTTPException(403,
-                "Seul un admin/propriétaire peut configurer la boîte e-mail de l'équipe.")
+                "Apenas um admin/proprietário pode configurar a caixa de e-mail da equipa.")
         return "organizations", {"org_id": org_id}
     return "users", {"user_id": user["user_id"]}
 
@@ -613,12 +605,12 @@ async def update_mailbox(body: MailboxIn, user=Depends(current_user)) -> dict:
         try:
             pwd = decrypt_secret(enc)
         except Exception:  # noqa: BLE001
-            raise HTTPException(400, "Mot de passe illisible — ressaisissez-le.")
+            raise HTTPException(400, "Palavra-passe ilegível — volte a introduzi-la.")
     else:
-        raise HTTPException(400, "Mot de passe d'application requis.")
+        raise HTTPException(400, "Palavra-passe de aplicação necessária.")
 
     if body.security not in ("ssl", "starttls"):
-        raise HTTPException(400, "Sécurité invalide (ssl ou starttls).")
+        raise HTTPException(400, "Segurança inválida (ssl ou starttls).")
 
     cfg = {"host": body.host.strip(), "port": body.port,
            "security": body.security, "email": str(body.email).strip().lower(),
@@ -630,8 +622,7 @@ async def update_mailbox(body: MailboxIn, user=Depends(current_user)) -> dict:
     except Exception as e:  # noqa: BLE001
         logger.warning("SMTP verify failed for %s: %s", cfg["email"], e)
         raise HTTPException(400,
-            f"Connexion SMTP impossible : {str(e)[:180]}. Vérifiez l'hôte, le port, "
-            "l'e-mail et le mot de passe d'application.")
+            f'Ligação SMTP impossível: {str(e)[:180]}. Verifique o servidor, a porta, o e-mail e a palavra-passe de aplicação.')
 
     await db[coll].update_one(key, {"$set": {
         "smtp_host": cfg["host"], "smtp_port": cfg["port"],
@@ -649,15 +640,13 @@ async def test_mailbox(user=Depends(current_user)) -> dict:
     from engines.mailbox_smtp import smtp_send
     cfg = await get_mailbox_config(user["user_id"])
     if not cfg:
-        raise HTTPException(400, "Aucune boîte e-mail connectée/vérifiée.")
-    html = ("<p>Ceci est un e-mail de test envoyé depuis ConstruPilot via votre boîte.</p>"
-            "<p>Une copie doit apparaître dans votre dossier <b>Envoyés</b>. "
-            "Si c'est le cas, la configuration est parfaite ✅</p>")
+        raise HTTPException(400, "Nenhuma caixa de e-mail ligada/verificada.")
+    html = ("<p>Este é um e-mail de teste enviado a partir do ConstruPilot através da sua caixa.</p><p>Deve aparecer uma cópia na sua pasta <b>Enviados</b>. Se for o caso, a configuração está perfeita ✅</p>")
     try:
-        await smtp_send(cfg, cfg["email"], "Test ConstruPilot — envoi via votre boîte",
+        await smtp_send(cfg, cfg["email"], "Teste ConstruPilot — envio através da sua caixa",
                         html, from_name=cfg.get("from_name"))
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(400, f"Envoi de test échoué : {str(e)[:180]}")
+        raise HTTPException(400, f'Envio de teste falhado: {str(e)[:180]}')
     return {"ok": True, "sent_to": cfg["email"]}
 
 

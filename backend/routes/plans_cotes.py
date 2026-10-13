@@ -45,10 +45,10 @@ async def _plan_page(plan_id: str, user_id: str, page_index: int, with_image: bo
         proj["pages.image_png_b64"] = 1
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user_id}, proj)
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     for index, report in list((p.get("cotes_checks") or {}).items()):
         if report.get("calibration_stale") and 0 <= int(index) < len(pages):
             p["cotes_checks"][index] = await _recompute(
@@ -91,7 +91,7 @@ async def _ensure_calibration(p: dict, page: dict, plan_id: str, page_index: int
             [{"value_m": d["value_m"], "confidence": d.get("confidence", 0.5),
               "bbox_norm": [d["x1"] / w, d["y1"] / h, d["x2"] / w, d["y2"] / h]} for d in dims], w, h)
         if not auto:
-            raise HTTPException(422, "Plan non calibré et cotes insuffisantes pour calibrer automatiquement")
+            raise HTTPException(422, "Planta não calibrada e cotas insuficientes para calibrar automaticamente")
         payload = {"pixels_per_meter": auto["pixels_per_meter"], "meters_per_pixel": auto["meters_per_pixel"],
                    "method": "auto_cotes", "confidence": auto["confidence"],
                    "samples_used": auto["samples_used"], "samples_total": auto["samples_total"],
@@ -170,7 +170,7 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
     await _ensure_current_geometry(p, page, plan_id, page_index, user_id)
     w, h = int(page.get("width_px") or 0), int(page.get("height_px") or 0)
     if not w or not h:
-        raise HTTPException(500, "Dimensions de page manquantes")
+        raise HTTPException(500, "Dimensões da página em falta")
     reading: dict = {}
     vec: dict | None = None
     if p.get("kind") == "dxf" and page.get("dxf_dimensions") is not None:
@@ -179,7 +179,7 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
     else:
         img = page.get("image_png_b64")
         if not img:
-            raise HTTPException(500, "Image manquante")
+            raise HTTPException(500, "Imagem em falta")
         vec = _vector_dims(page) if p.get("kind") == "pdf" else None
         vdims = C.dims_from_pdf_vectors((vec or {}).get("dimensions"))
         res = await read_dimension_lines(_ai_image(img), await _report_lang(user_id))
@@ -200,13 +200,13 @@ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
             dims = adims
             reading.update({"source": "ai", "count": len(dims)})
     if not dims and p.get("kind") != "dxf":
-        raise HTTPException(422, "Aucune cote lisible sur cette page")
+        raise HTTPException(422, "Nenhuma cota legível nesta página")
     calib, auto = await _ensure_calibration(p, page, plan_id, page_index, dims, w, h, vec)
     from engines.plan_refresh import carry_user_edits
     previous = ((p.get("cotes_checks") or {}).get(str(page_index)) or {})
     unmatched = carry_user_edits(dims, previous.get("items") or [])
     if unmatched:
-        raise HTTPException(409, f"Corrections conservées dans le rapport précédent : cotes {unmatched} à rapprocher de la nouvelle extraction")
+        raise HTTPException(409, f'Correções conservadas no relatório anterior: cotas {unmatched} a associar à nova extração')
     report = C.check_dimensions(dims, float(calib["pixels_per_meter"]), tol_pct, tol_cm, w, h,
                                 elements=page.get("pdf_elements") or [], auto_spans=page.get("pdf_auto_spans") or [])
     ai_rooms = ((p.get("ai_analysis") or {}).get("rooms") or []) \
@@ -276,7 +276,7 @@ async def resolve_issue(plan_id: str, issue_id: str, body: dict, user=Depends(cu
     r = await db.plan_report_issues.update_one({"issue_id": issue_id, "plan_id": plan_id, "user_id": user["user_id"]},
                                                {"$set": {"status": "resolved", "resolved_at": _now(), "resolution": res}})
     if not r.matched_count:
-        raise HTTPException(404, "Signalement introuvable")
+        raise HTTPException(404, "Sinalização não encontrada")
     iss = await db.plan_report_issues.find_one({"issue_id": issue_id}, {"_id": 0})
     remaining = await db.plan_report_issues.count_documents({"plan_id": plan_id, "page_index": iss["page_index"], "status": "open"})
     await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {f"cotes_checks.{iss['page_index']}.under_review": remaining > 0,
@@ -291,7 +291,7 @@ async def inconsistencies_pdf(plan_id: str, page_index: int = Query(0, ge=0), us
     p, _ = await _plan_page(plan_id, user["user_id"], page_index, False)
     report = (p.get("cotes_checks") or {}).get(str(page_index))
     if not report or not (report.get("interior") or {}).get("peripheral"):
-        raise HTTPException(404, "Aucune chaîne périphérique analysée sur cette page")
+        raise HTTPException(404, "Nenhuma cadeia periférica analisada nesta página")
     branding = await _resolve_branding(user["user_id"])
     pdf = build_inconsistencies_pdf(p, page_index, report, branding, _lang_of(branding))
     return Response(content=pdf, media_type="application/pdf",
@@ -303,7 +303,7 @@ async def guided_reanalysis(plan_id: str, issue_id: str, user=Depends(current_us
     """Correction guidée en tâche de fond (ré-extraction + recalcul ciblé) → {job_id} à suivre sur /cotes-jobs/{job_id}."""
     iss = await db.plan_report_issues.find_one({"issue_id": issue_id, "plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "issue_id": 1})
     if not iss:
-        raise HTTPException(404, "Signalement introuvable")
+        raise HTTPException(404, "Sinalização não encontrada")
     return _start_job(lambda: _guided_reanalysis(plan_id, issue_id, user), user["user_id"])
 
 
@@ -312,7 +312,7 @@ async def _guided_reanalysis(plan_id: str, issue_id: str, user: dict) -> dict:
     vectorielle, compare avant/après et archive une version « guided_correction » ; clôt le signalement si la cible a changé."""
     iss = await db.plan_report_issues.find_one({"issue_id": issue_id, "plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
     if not iss:
-        raise HTTPException(404, "Signalement introuvable")
+        raise HTTPException(404, "Sinalização não encontrada")
     page_index = iss["page_index"]
     p, page = await _plan_page(plan_id, user["user_id"], page_index, True)
     before = (p.get("cotes_checks") or {}).get(str(page_index)) or {}
@@ -457,7 +457,7 @@ async def cotes_pdf_all(plan_id: str, user=Depends(current_user)):
         if rep:
             bundle.append((i, rep, render_cotes_overlay(page["image_png_b64"], rep)))
     if not bundle:
-        raise HTTPException(404, "Aucune page contrôlée — lancez d'abord le contrôle des cotes")
+        raise HTTPException(404, "Nenhuma página controlada — lance primeiro o controlo das cotas")
     branding = await _resolve_branding(user["user_id"])
     PDF_LANG.set(_lang_of(branding))
     pdf = build_cotes_pdf_multi(p, bundle, _global_summary([b[1] for b in bundle]), branding)
@@ -548,9 +548,9 @@ async def cotes_reextract(plan_id: str, user=Depends(current_user)) -> dict:
 
     owner = {"plan_id": plan_id, "user_id": user["user_id"]}
     p = await db.plans_takeoff.find_one(owner, {"_id": 0})
-    if not p: raise HTTPException(404, "Plan introuvable")
+    if not p: raise HTTPException(404, "Planta não encontrada")
     if p.get("kind") not in ("pdf", "dxf"):
-        raise HTTPException(422, "Ce plan image doit être relu par l’analyse visuelle, sans extraction vectorielle.")
+        raise HTTPException(422, "Esta planta em imagem deve ser relida pela análise visual, sem extração vetorial.")
     prepared = []
     if p.get("kind") == "dxf":
         from engines.plan_dxf import process_dxf
@@ -558,18 +558,18 @@ async def cotes_reextract(plan_id: str, user=Depends(current_user)) -> dict:
         filename = p.get("filename") or "plan.dxf"
         kind = "converted_dxf" if filename.lower().endswith(".dwg") else "original"
         data = await load_cad_source(db, plan_id, user["user_id"], kind)
-        if not data: raise HTTPException(409, "Source CAO native non conservée : réimportez le DWG/DXF")
+        if not data: raise HTTPException(409, "Origem CAD nativa não conservada: reimporte o DWG/DXF")
         units = (p.get("cad_import") or {}).get("units") or {}
         override = units.get("name") if units.get("source") == "user" and units.get("name") in UNIT_FACTORS else None
         parsed = await asyncio.to_thread(process_dxf, data, filename.rsplit(".", 1)[0]+".dxf", override)
         updated = parsed["pages"][0]
         old = p["pages"][0]
         if old.get("image_png_b64") != updated.get("image_png_b64"):
-            raise HTTPException(409, "Le rendu CAO a évolué : réimportez le dessin pour recaler les mesures. Le plan existant est conservé.")
+            raise HTTPException(409, "A renderização CAD evoluiu: reimporte o desenho para reajustar as medições. A planta existente é conservada.")
         prepared.append((0, updated, C.dims_from_dxf(updated["dxf_dimensions"])))
     else:
         src = await load_plan_source(db, plan_id, user["user_id"])
-        if not src: raise HTTPException(409, "PDF source absent : réimportez le fichier")
+        if not src: raise HTTPException(409, "PDF de origem ausente: reimporte o ficheiro")
         data = base64.b64decode(src["data_b64"])
         for pg in p["pages"]:
             if not pg.get("dpi"): continue
@@ -579,7 +579,7 @@ async def cotes_reextract(plan_id: str, user=Depends(current_user)) -> dict:
     for index, updated, dims in prepared:
         previous = (p.get("cotes_checks") or {}).get(str(index)) or {}
         unmatched = carry_user_edits(dims, previous.get("items") or [])
-        if unmatched: raise HTTPException(409, f"Corrections conservées : cotes {unmatched} de la page {index+1} à rapprocher avant réextraction")
+        if unmatched: raise HTTPException(409, f'Correções conservadas: cotas {unmatched} da página {index + 1} a associar antes da nova extração')
     out = []
     for index, updated, dims in prepared:
         values = {**{f"pages.$.{k}": v for k, v in updated.items()}, "updated_at": _now()}
@@ -638,7 +638,7 @@ async def cotes_narratif_pdf(plan_id: str, page_index: int = Query(0, ge=0), use
     p, page = await _plan_page(plan_id, user["user_id"], page_index, with_image=True)
     report = (p.get("cotes_checks") or {}).get(str(page_index))
     if not report or not (report.get("geometry") or {}).get("narratif"):
-        raise HTTPException(404, "Rédigez d'abord le rapport narratif")
+        raise HTTPException(404, "Redija primeiro o relatório narrativo")
     branding = await _resolve_branding(user["user_id"])
     lang = (report["geometry"]["narratif"].get("lang") or _lang_of(branding))
     PDF_LANG.set(lang)
@@ -656,20 +656,20 @@ async def cotes_narratif_all_pdf(plan_id: str, user=Depends(current_user)):
                                         {"_id": 0, "plan_id": 1, "filename": 1, "cotes_checks": 1, "pages.index": 1,
                                          "pages.image_png_b64": 1, "pages.level_label": 1, "detected_scale_denominator": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     bundle = []
     for pg in p.get("pages") or []:
         rep = (p.get("cotes_checks") or {}).get(str(pg["index"]))
         if rep and (rep.get("geometry") or {}).get("narratif") and pg.get("image_png_b64"):
             bundle.append((pg["index"], rep, pg["image_png_b64"]))
     if not bundle:
-        raise HTTPException(404, "Aucune page avec rapport narratif : rédigez-le d'abord")
+        raise HTTPException(404, "Nenhuma página com relatório narrativo: redija-o primeiro")
     branding = await _resolve_branding(user["user_id"])
     lang = bundle[0][1]["geometry"]["narratif"].get("lang") or _lang_of(branding)
     PDF_LANG.set(lang)
     pdf = build_narrative_report_multi(p, bundle, branding, lang)
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="rapport-narratif-{plan_id[-6:]}-complet.pdf"'})
+                    headers={"Content-Disposition": f'attachment; filename="relatorio-narrativo-{plan_id[-6:]}-completo.pdf"'})
 
 
 class StudiesIn(BaseModel):
@@ -700,9 +700,9 @@ async def studies_analyze(plan_id: str, body: StudiesIn, background: bool = Quer
     from engines.plan_sources import load_plan_source
     src = await load_plan_source(db, plan_id, user["user_id"])
     if not src:
-        raise HTTPException(409, "PDF original non conservé (plan importé avant cette version) : réimportez le fichier")
+        raise HTTPException(409, "PDF original não conservado (planta importada antes desta versão): reimporte o ficheiro")
     if (p.get("page_count") or 1) > 20:
-        raise HTTPException(413, "Document trop long (> 20 pages)")
+        raise HTTPException(413, "Documento demasiado longo (> 20 páginas)")
     try:
         await check_quota(user["user_id"])
     except StudiesError as e:
@@ -722,8 +722,7 @@ async def studies_analyze(plan_id: str, body: StudiesIn, background: bool = Quer
         if walls_result and page.get("geometry_coordinate_space") == "image_px":
             crop_geometry = {**walls_result, "pt_per_m": walls_result.get("pt_per_m", 0) / (float(page["dpi"]) / 72)}
         zcrops = zone_crops(base64.b64decode(src["data_b64"]), body.page_index, crop_geometry, float(page["dpi"]) / 72) if walls_result else []
-        req = body.request or ("Contrôle de cohérence des cotes, chaînes de cotes, alignements, épaisseurs de murs et éléments dessinés "
-                               "de la page fournie, sans analyse structurelle.")
+        req = body.request or ("Controlo de coerência das cotas, cadeias de cotas, alinhamentos, espessuras de paredes e elementos desenhados da página fornecida, sem análise estrutural.")
         try:
             study = await analyze_plan(user_id=user["user_id"], plan_id=plan_id, project_id=proj,
                                        pdf_bytes=base64.b64decode(src["data_b64"]), filename=src.get("filename") or p.get("filename") or "plan.pdf",
@@ -737,7 +736,7 @@ async def studies_analyze(plan_id: str, body: StudiesIn, background: bool = Quer
             {"plan_id": plan_id, "user_id": user["user_id"], f"cotes_checks.{body.page_index}.revision": report["revision"]},
             {"$set": {f"studies.{body.page_index}": study, "updated_at": _now()}})
         if not saved.matched_count:
-            raise HTTPException(409, "Les cotes ont changé pendant l'analyse : relancez l'étude sur les valeurs actuelles")
+            raise HTTPException(409, "As cotas mudaram durante a análise: relance o estudo sobre os valores atuais")
         await _snapshot(plan_id, user["user_id"], "studies_analyze", {"page": body.page_index, "verified": study["verified"],
                                                                       "inconsistencies": len(study["analysis"].get("inconsistencies") or [])})
         return study
@@ -751,7 +750,7 @@ async def studies_analyze(plan_id: str, body: StudiesIn, background: bool = Quer
 async def studies_get(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "studies": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return (p.get("studies") or {}).get(str(page_index)) or {}
 
 
@@ -762,7 +761,7 @@ async def studies_pdf(plan_id: str, page_index: int = Query(0, ge=0), user=Depen
     full = await db.plans_takeoff.find_one({"plan_id": plan_id}, {"_id": 0, "studies": 1})
     study = ((full or {}).get("studies") or {}).get(str(page_index))
     if not study:
-        raise HTTPException(404, "Lancez d'abord l'analyse OpenAI")
+        raise HTTPException(404, "Lance primeiro a análise OpenAI")
     report = (p.get("cotes_checks") or {}).get(str(page_index)) or {"items": [], "summary": {}}
     branding = await _resolve_branding(user["user_id"])
     lang = study.get("lang") or _lang_of(branding)
@@ -777,7 +776,7 @@ async def cotes_last(plan_id: str, page_index: int = Query(0, ge=0), user=Depend
     p, _ = await _plan_page(plan_id, user["user_id"], page_index, with_image=False)
     report = (p.get("cotes_checks") or {}).get(str(page_index))
     if not report:
-        raise HTTPException(404, "Aucun contrôle des cotes pour cette page")
+        raise HTTPException(404, "Nenhum controlo das cotas para esta página")
     return report
 
 
@@ -799,7 +798,7 @@ async def _recompute(p: dict, page: dict, plan_id: str, page_index: int, report:
     await _ensure_current_geometry(p, page, plan_id, page_index, report.get("user_id") or p.get("user_id", ""))
     ppm = float((report.get("calibration") or {}).get("pixels_per_meter") or 0)
     if not ppm:
-        raise HTTPException(400, "Calibration du rapport manquante — relancez le contrôle")
+        raise HTTPException(400, "Calibração do relatório em falta — relance o controlo")
     fresh = C.check_dimensions(C.items_to_dims(items), ppm, tol_pct, tol_cm, w, h,
                                elements=page.get("pdf_elements") or [], auto_spans=page.get("pdf_auto_spans") or [])
     ai_rooms = ((p.get("ai_analysis") or {}).get("rooms") or []) \
@@ -820,7 +819,7 @@ async def _recompute(p: dict, page: dict, plan_id: str, page_index: int, report:
         {"$set": {f"cotes_checks.{page_index}": new_report, "updated_at": _now()},
          "$unset": {f"studies.{page_index}": ""}})
     if saved.matched_count == 0:
-        raise HTTPException(409, "Les cotes ont changé pendant le recalcul — rechargez et réessayez")
+        raise HTTPException(409, "As cotas mudaram durante o recálculo — recarregue e tente novamente")
     return new_report
 
 
@@ -830,10 +829,10 @@ async def cotes_edit_item(plan_id: str, index: int, body: CoteEditIn, user=Depen
     p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=False)
     report = (p.get("cotes_checks") or {}).get(str(body.page_index))
     if not report:
-        raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
+        raise HTTPException(404, "Lance primeiro o controlo das cotas")
     items = report.get("items") or []
     if index < 1 or index > len(items):
-        raise HTTPException(404, "Cote inconnue")
+        raise HTTPException(404, "Cota desconhecida")
     it = items[index - 1]
     if body.indicated_m is not None and abs(body.indicated_m - it["indicated_m"]) > 1e-9:
         if it.get("original_m") is None:
@@ -857,7 +856,7 @@ async def cotes_recompute(plan_id: str, body: RecomputeIn, user=Depends(current_
     p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=False)
     report = (p.get("cotes_checks") or {}).get(str(body.page_index))
     if not report:
-        raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
+        raise HTTPException(404, "Lance primeiro o controlo das cotas")
     tol = report.get("tolerance") or {}
     return await _recompute(p, page, plan_id, body.page_index, report, report.get("items") or [],
                             body.tol_pct if body.tol_pct is not None else float(tol.get("pct", 2.0)),
@@ -868,7 +867,7 @@ async def _report_and_overlay(plan_id: str, user_id: str, page_index: int):
     p, page = await _plan_page(plan_id, user_id, page_index, with_image=True)
     report = (p.get("cotes_checks") or {}).get(str(page_index))
     if not report:
-        raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
+        raise HTTPException(404, "Lance primeiro o controlo das cotas")
     return p, report, render_cotes_overlay(page["image_png_b64"], report)
 
 
@@ -886,7 +885,7 @@ async def cotes_interior_overlay(plan_id: str, page_index: int = Query(0, ge=0),
     report = (p.get("cotes_checks") or {}).get(str(page_index)) or {}
     interior = report.get("interior") or _interior_report(page, report.get("items") or [])
     if not interior:
-        raise HTTPException(404, "Aucun mur à deux faces établi sur cette page")
+        raise HTTPException(404, "Nenhuma parede com duas faces estabelecida nesta página")
     return Response(content=render_interior_overlay(page["image_png_b64"], interior, highlight or None), media_type="image/png",
                     headers={"Cache-Control": "no-store"})
 
@@ -928,17 +927,12 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
     sm = report["summary"]
     company = branding.get("company_name") or user.get("name") or "ConstruPilot"
     perso = _html.escape(body.message.strip()[:2000]).replace("\n", "<br/>")
-    verdict = tr({"ok": "aucune incohérence", "warn": "écarts à vérifier",
+    verdict = tr({"ok": "nenhuma incoerência", "warn": "desvios a verificar",
                   "ko": f"{sm['ko']} incohérence(s)"}[sm["verdict"]], lang)
     fname = _html.escape(p.get("filename") or "plan")
     inner = _EMAIL_PT(sm, report, fname, body.page_index, verdict, perso) if lang == "pt" else (
         (f"<p>{perso}</p>" if perso else "") +
-        f"<p>Veuillez trouver ci-joint le <b>rapport de contrôle des cotes</b> du plan « {fname} » "
-        f"(page {body.page_index + 1}) : chaque cote inscrite a été mesurée à l'échelle et comparée à sa valeur.</p>"
-        f"<p><b>{sm['total']}</b> cotes contrôlées · <b>{sm['ok']}</b> conformes · <b>{sm['warn']}</b> à vérifier · "
-        f"<b>{sm['ko']}</b> incohérence(s) · {sm['chains_total']} chaîne(s) de cotes ({sm['chains_ko']} incohérente(s)) · "
-        f"écart max {sm['max_delta_cm']:.0f} cm — tolérance ±{report['tolerance']['pct']} % / {report['tolerance']['cm']} cm.</p>"
-        f"<p>Verdict : <b>{verdict}</b>. Le plan annoté (cotes mesurées en vert / orange / rouge) figure en dernière page du PDF.</p>")
+        f"<p>Segue em anexo o <b>relatório de controlo das cotas</b> da planta «{fname} » (page {body.page_index + 1}): cada cota inscrita foi medida à escala e comparada com o seu valor.</p><p><b>{sm['total']}</b> cotas controladas · <b>{sm['ok']}</b> conformes · <b>{sm['warn']}</b> a verificar · <b>{sm['ko']}</b> incoerência(s) · {sm['chains_total']} cadeia(s) de cotas ({sm['chains_ko']} incoerente(s)) · diferença máx. {sm['max_delta_cm']:.0f} cm — tolerância ±{report['tolerance']['pct']} % / {report['tolerance']['cm']} cm.</p><p>Verdict : <b>{verdict}</b>. A planta anotada (cotas medidas a verde / laranja / vermelho) consta da última página do PDF.</p>")
     geo = report.get("geometry")
     if geo and lang == "pt":
         inner += (f"<p><b>Análise geométrica ConstruPilot (dupla leitura)</b>: nível "
@@ -947,22 +941,18 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
                   f"{(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmada(s) na passagem 2. "
                   f"{_html.escape((geo.get('reponses') or {}).get('fermeture') or '')}</p>")
     elif geo:
-        inner += (f"<p><b>Analyse géométrique ConstruPilot (double lecture)</b> : niveau "
-                  f"<b>{_html.escape(geo.get('niveau_global_label') or geo.get('niveau_global') or '')}</b> — "
-                  f"{len(geo.get('anomalies') or [])} anomalie(s), "
-                  f"{(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmée(s) au passage 2. "
-                  f"{_html.escape((geo.get('reponses') or {}).get('fermeture') or '')}</p>")
+        inner += (f"<p><b>Análise geométrica ConstruPilot (dupla leitura)</b>: nível <b>{_html.escape(geo.get('niveau_global_label') or geo.get('niveau_global') or '')}</b> — {len(geo.get('anomalies') or [])} anomalie(s), {(geo.get('double_lecture') or {}).get('confirmees', 0)} confirmada(s) na passagem 2. {_html.escape((geo.get('reponses') or {}).get('fermeture') or '')}</p>")
     if sm.get("conclusion"):
-        inner += f"<p><b>{'Conclusão rápida' if lang == 'pt' else 'Conclusion rapide'} :</b> {_html.escape(tr(sm['conclusion'], lang))}</p>"
+        inner += f"<p><b>{('Conclusão rápida' if lang == 'pt' else 'Conclusão rápida')} :</b> {_html.escape(tr(sm['conclusion'], lang))}</p>"
     inner += f"<p style='color:#64748B;font-size:12px'>{disclaimer(p, body.page_index, report, branding, lang)}</p>"
-    title = f"Relatório de controlo de cotas — {fname}" if lang == "pt" else f"Rapport de contrôle des cotes — {fname}"
+    title = f"Relatório de controlo de cotas — {fname}" if lang == "pt" else f'Relatório de controlo das cotas — {fname}'
     html = wrap_company_html(
         title, inner, company_name=company,
         logo_url=logo_url_for(user["user_id"], branding), logo_b64=branding.get("logo_b64"),
         contact_line=branding.get("contact_line"), siret=branding.get("siret"),
         vat=branding.get("vat"), nif=branding.get("nif"), alvara=branding.get("alvara"),
         company_email=branding.get("company_email"), verified=bool(branding.get("verified")))
-    subject = f"{'Relatório de controlo de cotas' if lang == 'pt' else 'Rapport de contrôle des cotes'} — {p.get('filename') or 'plan'} ({verdict})"
+    subject = f"{('Relatório de controlo de cotas' if lang == 'pt' else 'Relatório de controlo das cotas')} — {p.get('filename') or 'plan'} ({verdict})"
     reply_to = branding.get("company_email") or user.get("email")
     try:
         await send_email_with_pdf(body.to_email, subject, html, pdf,
@@ -975,7 +965,7 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
-        raise HTTPException(502, "Envoi de l'e-mail impossible — réessayez plus tard")
+        raise HTTPException(502, "Envio do e-mail impossível — tente mais tarde")
     entry = {"kind": "cotes", "to_email": body.to_email, "page_index": body.page_index,
              "sent_at": _now(), "verdict": sm["verdict"], "ko": sm["ko"], "total": sm["total"]}
     await db.plans_takeoff.update_one(
@@ -993,7 +983,7 @@ async def cotes_rapport(plan_id: str, page_index: int = Query(0, ge=0), court: b
     p, page = await _plan_page(plan_id, user["user_id"], page_index, with_image=True)
     report = (p.get("cotes_checks") or {}).get(str(page_index))
     if not report:
-        raise HTTPException(404, "Lancez d'abord le contrôle des cotes")
+        raise HTTPException(404, "Lance primeiro o controlo das cotas")
     branding = await _resolve_branding(user["user_id"])
     PDF_LANG.set(_lang_of(branding))
     pdf = build_control_report(p, page_index, report, page["image_png_b64"], branding, court=court)

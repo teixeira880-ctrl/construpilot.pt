@@ -14,8 +14,8 @@ from reportlab.platypus import (
 _ORANGE = colors.HexColor("#E8562A")
 _DARK = colors.HexColor("#1A1A1A")
 _TYPE_LABEL = {
-    "semelle_isolee": "Semelle isolée", "semelle_filante": "Semelle filante",
-    "longrine": "Longrine", "chainage": "Chaînage", "poteau": "Poteau",
+    "semelle_isolee": "Sapata isolada", "semelle_filante": "Semelle filante",
+    "longrine": "Longrine", "chainage": "Lintel de travamento", "poteau": "Pilar",
 }
 
 
@@ -23,7 +23,7 @@ def _n(v, suffix=""):
     return (f"{v}{suffix}" if v is not None else "—")
 
 
-def build_structure_report(read: dict, title: str = "Métré structure") -> bytes:
+def build_structure_report(read: dict, title: str = "Medições estrutura") -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=16 * mm,
                             leftMargin=15 * mm, rightMargin=15 * mm)
@@ -36,21 +36,21 @@ def build_structure_report(read: dict, title: str = "Métré structure") -> byte
 
     story.append(Paragraph(title, h1))
     m = read.get("metre", {})
-    scale = read.get("scale_detected") or "non détectée"
+    scale = read.get("scale_detected") or "não detetada"
     story.append(Paragraph(
-        f"ConstruPilot · StructuroPilot — Lecture de plan · Échelle {scale} · "
+        f'ConstruPilot · StructuroPilot — Leitura de planta · Escala {scale} · '
         + datetime.now(timezone.utc).strftime("%d/%m/%Y"), sub))
     story.append(Spacer(1, 6))
 
     # Récapitulatif métré
-    story.append(Paragraph("Récapitulatif", h2))
+    story.append(Paragraph("Resumo", h2))
     recap = [
-        ["Béton total", _n(m.get("beton_total_m3"), " m³")],
-        ["Acier total" + ("" if m.get("acier_complet") else " (incomplet)"), _n(m.get("acier_total_kg"), " kg")],
-        ["Semelles", str(m.get("nb_semelles", 0))],
-        ["Poteaux", str(m.get("nb_poteaux", 0))],
-        ["Longrines/chaînages", _n(m.get("lineaire_longrines_ml"), " ml")],
-        ["Surface murs", _n(m.get("surface_murs_m2"), " m²")],
+        ["Betão total", _n(m.get("beton_total_m3"), " m³")],
+        ["Aço total" + ("" if m.get("acier_complet") else " (incompleto)"), _n(m.get("acier_total_kg"), " kg")],
+        ["Sapatas", str(m.get("nb_semelles", 0))],
+        ["Pilares", str(m.get("nb_poteaux", 0))],
+        ["Vigas de fundação/cintas", _n(m.get("lineaire_longrines_ml"), " ml")],
+        ["Área de paredes", _n(m.get("surface_murs_m2"), " m²")],
     ]
     t = Table(recap, colWidths=[70 * mm, 50 * mm])
     t.setStyle(TableStyle([
@@ -64,8 +64,8 @@ def build_structure_report(read: dict, title: str = "Métré structure") -> byte
     # Fondations
     fonds = read.get("fondations", [])
     if fonds:
-        story.append(Paragraph("Éléments de fondation / gros œuvre", h2))
-        head = ["Type", "Repère", "L (m)", "l (m)", "h (m)", "Nb", "Béton m³", "Acier kg", "Vérif."]
+        story.append(Paragraph("Elementos de fundação / estrutura", h2))
+        head = ["Type", "Referência", "L (m)", "l (m)", "h (m)", "Nb", "Betão m³", "Aço kg", "Verif."]
         rows = [head]
         for f in fonds:
             arm = f.get("armature") or {}
@@ -88,10 +88,10 @@ def build_structure_report(read: dict, title: str = "Métré structure") -> byte
     # Murs
     murs = read.get("murs", [])
     if murs:
-        story.append(Paragraph("Murs de soubassement", h2))
-        rows = [["Repère", "Matériau", "Épais. (m)", "Long. (m)", "Haut. (m)", "Surface m²", "Assise"]]
+        story.append(Paragraph("Muros de embasamento", h2))
+        rows = [["Referência", "Material", "Espes. (m)", "Long. (m)", "Alt. (m)", "Superfície m²", "Assentamento"]]
         for w in murs:
-            h = _n(w.get("hauteur_m")) + (" (déduite)" if w.get("hauteur_deduite") else "")
+            h = _n(w.get("hauteur_m")) + (" (deduzida)" if w.get("hauteur_deduite") else "")
             rows.append([
                 _n(w.get("repere")), w.get("materiau", ""), _n(w.get("epaisseur_m")),
                 _n(w.get("longueur_m")), h, _n(w.get("surface_m2")), _n(w.get("niveau_assise_m"), " m"),
@@ -112,13 +112,12 @@ def build_structure_report(read: dict, title: str = "Métré structure") -> byte
     # Données manquantes
     md = read.get("missing_data", [])
     if md:
-        story.append(Paragraph("Données à fournir (non devinées)", h2))
+        story.append(Paragraph("Dados a fornecer (não adivinhados)", h2))
         for q in md:
             story.append(Paragraph(f"• {q.get('question')}", ss["Normal"]))
 
     story.append(Spacer(1, 8))
     story.append(Paragraph(
-        "Métré établi par lecture assistée : vérifiez les éléments marqués ⚠ avant usage. "
-        "Les quantités déterministes (béton, linéaire) reposent sur les cotes lues.", small))
+        "Medição elaborada por leitura assistida: verifique os elementos marcados ⚠ antes de usar. As quantidades determinísticas (betão, linear) baseiam-se nas cotas lidas.", small))
     doc.build(story)
     return buf.getvalue()

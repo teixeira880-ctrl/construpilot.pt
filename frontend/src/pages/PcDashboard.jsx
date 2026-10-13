@@ -7,17 +7,21 @@ import { Button } from "@/components/ui/button";
 import { api, eur, num } from "@/lib/api";
 
 const STATUS_STYLE = {
-  "saldada": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
-  "sinal pago": "bg-violet-500/15 text-violet-600 border-violet-500/40",
-  "aceite": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
-  "aberta": "bg-sky-500/15 text-sky-600 border-sky-500/40",
-  "relançada": "bg-amber-500/15 text-amber-600 border-amber-500/40",
-  "enviada": "bg-primary/10 text-primary border-primary/40",
-  "gerada": "bg-muted text-muted-foreground border-border",
+  "soldée": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
+  "acompte versé": "bg-violet-500/15 text-violet-600 border-violet-500/40",
+  "acceptée": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
+  "ouverte": "bg-sky-500/15 text-sky-600 border-sky-500/40",
+  "relancée": "bg-amber-500/15 text-amber-600 border-amber-500/40",
+  "envoyée": "bg-primary/10 text-primary border-primary/40",
+  "générée": "bg-muted text-muted-foreground border-border",
+};
+const STATUS_LABEL = {
+  "soldée": "liquidada", "acompte versé": "adiantamento pago", "acceptée": "aceite", "ouverte": "aberta",
+  "relancée": "relançada", "envoyée": "enviada", "générée": "gerada",
 };
 const STATUS_ICON = {
-  "saldada": BadgeCheck, "sinal pago": CreditCard, "aceite": CheckCircle2, "aberta": Eye,
-  "relançada": BellRing, "enviada": Send, "gerada": FileStack,
+  "soldée": BadgeCheck, "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
+  "relancée": BellRing, "envoyée": Send, "générée": FileStack,
 };
 
 export default function PcDashboard() {
@@ -42,7 +46,7 @@ export default function PcDashboard() {
 
   const list = studies || [];
   const totalTtc = list.reduce((s, x) => s + (x.ttc || 0), 0);
-  const accepted = list.filter((x) => ["aceite", "sinal pago", "saldada"].includes(x.status)).length;
+  const accepted = list.filter((x) => ["acceptée", "acompte versé", "soldée"].includes(x.status)).length;
   const deposits = list.reduce((s, x) => s + (x.deposit_amount || 0), 0);
 
   return (
@@ -126,7 +130,7 @@ export default function PcDashboard() {
                   <td className="p-2">
                     <Badge className={`rounded-sm gap-1 text-[10px] border hover:bg-transparent ${STATUS_STYLE[s.status]}`}
                            data-testid={`pc-dash-row-${i}-status`}>
-                      <Icon className="h-3 w-3" /> {s.status}
+                      <Icon className="h-3 w-3" /> {STATUS_LABEL[s.status] || s.status}
                     </Badge>
                   </td>
                   <td className="p-2 text-right num text-xs">{s.sends} / {s.orders}</td>

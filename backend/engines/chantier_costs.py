@@ -38,7 +38,7 @@ def item_amount(item):
 
 def supplier_name(order):
     supplier = order.get("supplier")
-    return (supplier.get("name") or supplier.get("company") or "Fournisseur") if isinstance(supplier, dict) else (supplier or "Fournisseur")
+    return (supplier.get("name") or supplier.get("company") or "Fornecedor") if isinstance(supplier, dict) else (supplier or "Fornecedor")
 
 
 def _lot(category) -> str:
@@ -49,7 +49,7 @@ def _lot(category) -> str:
 async def bounded(collection, query, limit):
     rows = await collection.find(query, {"_id": 0, "frozen_pdf_b64": 0, "facturx_pdf_b64": 0}).to_list(limit + 1)
     if len(rows) > limit:
-        raise HTTPException(422, "Dossier trop volumineux pour ce calcul : réduisez le périmètre, aucun total partiel n'a été présenté")
+        raise HTTPException(422, "Processo demasiado volumoso para este cálculo: reduza o âmbito, nenhum total parcial foi apresentado")
     return rows
 
 
@@ -58,7 +58,7 @@ async def compute_chantier_costs(chantier: dict, user_id: str, labor_rate: float
     settings = chantier.get("cost_settings") or {}
     rate = number(labor_rate if labor_rate is not None else settings.get("labor_rate"))
     if labor_rate is not None and (rate is None or rate < 0 or rate > 10000):
-        raise HTTPException(422, "Taux horaire invalide")
+        raise HTTPException(422, "Taxa horária inválida")
     quotes = await bounded(db.pro_documents, {"user_id": user_id, "chantier_id": cid, "doc_type": "quote", "trashed_at": None}, 300)
     quotes = [q for q in quotes if q.get("status") not in EXCLUDED_QUOTES]
     signed = [q for q in quotes if q.get("status") == "signed" or q.get("signed") is True]
@@ -173,20 +173,20 @@ async def compute_chantier_costs(chantier: dict, user_id: str, labor_rate: float
     final_cost = round(real_known + remaining, 2) if forecast_ready else None
     notes = []
     if ambiguous or invalid_selection:
-        notes.append("Choisissez les devis à cumuler dans le budget : les versions et variantes ne sont jamais additionnées automatiquement.")
+        notes.append("Escolha os orçamentos a acumular no orçamento da obra: as versões e variantes nunca são somadas automaticamente.")
     if not complete and total:
-        notes.append(f"{total - known} ligne(s) sans coût de revient vérifiable ; marge prévisionnelle indisponible.")
+        notes.append(f'{total - known} linha(s) sem custo de produção verificável; margem previsional indisponível.')
     if invalid_lines:
-        notes.append("Des lignes contiennent des valeurs invalides : le total de vente est indisponible.")
+        notes.append("Algumas linhas contêm valores inválidos: o total de venda está indisponível.")
     if not signed and scope:
-        notes.append("Budget indicatif : aucun devis signé dans le dossier.")
+        notes.append("Orçamento indicativo: nenhum orçamento assinado no processo.")
     if not labor_complete:
-        notes.append("Main d'œuvre incomplète : vérifier le taux horaire et les pointages en attente ou invalides.")
+        notes.append("Mão de obra incompleta: verificar a taxa horária e os registos de horas pendentes ou inválidos.")
     if ambiguous_orders:
-        notes.append("Une commande regroupe plusieurs dossiers : rattachez-la explicitement au dossier qui en porte le coût. Aucun montant commun n’est additionné automatiquement.")
+        notes.append("Uma encomenda agrupa vários processos: associe-a explicitamente ao processo que suporta o custo. Nenhum montante comum é somado automaticamente.")
     if unpriced:
-        notes.append(f"{unpriced} ligne(s) ou commande(s) engagée(s) sans prix vérifiable.")
-    notes.append("Coûts enregistrés = heures validées + commandes envoyées/confirmées. Les brouillons sont exclus. Le reste à engager doit exclure ces commandes, même non livrées.")
+        notes.append(f'{unpriced} linha(s) ou encomenda(s) comprometida(s) sem preço verificável.')
+    notes.append("Custos registados = horas validadas + encomendas enviadas/confirmadas. Os rascunhos são excluídos. O valor por comprometer deve excluir estas encomendas, mesmo não entregues.")
     return {"chantier_id": cid, "chantier_name": chantier.get("name"),
             "scope": {"quotes": len(quotes), "signed": len(signed), "using_signed_only": bool(scope) and all(q in signed for q in scope),
                       "selection_required": ambiguous or invalid_selection, "selected_ids": [q["doc_id"] for q in scope],
@@ -199,4 +199,4 @@ async def compute_chantier_costs(chantier: dict, user_id: str, labor_rate: float
             "forecast": {"complete": forecast_ready, "remaining_cost_ht": remaining, "final_cost_ht": final_cost,
                          "margin_ht": round(sale - final_cost, 2) if forecast_ready else None,
                          "over_budget_ht": round(final_cost - cost, 2) if forecast_ready and complete else None,
-                         "basis": "engagements enregistrés + reste à engager renseigné", "inventory_complete": False}, "notes": notes}
+                         "basis": "compromissos registados + valor por comprometer indicado", "inventory_complete": False}, "notes": notes}

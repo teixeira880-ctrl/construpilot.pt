@@ -40,7 +40,7 @@ class OverviewOut(BaseModel):
 
 def selectors(provider, feature, user_id, company_id, evidence=None):
     if provider and provider not in PROVIDERS:
-        raise HTTPException(422, "Fournisseur inconnu")
+        raise HTTPException(422, "Fornecedor desconhecido")
     return {"provider": provider, "feature": feature, "user_id": user_id, "company_id": company_id, "evidence": evidence}
 
 
@@ -198,7 +198,7 @@ async def cap_envelopes(body: CapEnvelopesIn, admin: Admin):
     from engines.expenses import cap
     total = round(sum(body.envelopes.values()), 2)
     if total > cap.DEFAULT_CAP:
-        raise HTTPException(400, f"La somme des enveloppes ({total} €) dépasse le plafond de {cap.DEFAULT_CAP} €")
+        raise HTTPException(400, f'A soma dos envelopes ({total} €) excede o limite de {cap.DEFAULT_CAP} €')
     saved = await cap.save_config(body.envelopes, admin["user_id"])
     await audit(admin["user_id"], "budget_cap_envelopes", "global")
     return saved
@@ -218,6 +218,6 @@ async def cap_check(body: EngagementCheckIn):
 async def cap_release(hold_id: str, admin: Admin, actual_eur: float | None = None):
     from engines.expenses import cap
     if not await cap.release(hold_id, actual_eur):
-        raise HTTPException(404, "Réservation introuvable")
+        raise HTTPException(404, "Reserva não encontrada")
     await audit(admin["user_id"], "budget_hold_release", hold_id)
     return {"ok": True}

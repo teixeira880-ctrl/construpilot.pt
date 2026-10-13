@@ -198,13 +198,13 @@ def compute_optimize(inp: OptimizeInput) -> OptimizeResult:
             r = fn()
         except Exception as e:  # noqa: BLE001
             excluded.append(OptimizeExcluded(
-                type=type_name, variant=variant, reason=f"Erreur calcul: {str(e)[:100]}"
+                type=type_name, variant=variant, reason=f'Erro de cálculo: {str(e)[:100]}'
             ))
             continue
         if not r.is_buildable:
             reason = next(
                 (a.message_fr for a in r.alerts if a.level == "red"),
-                "Non constructible"
+                "Não construível"
             )
             excluded.append(OptimizeExcluded(type=type_name, variant=variant, reason=reason))
             continue

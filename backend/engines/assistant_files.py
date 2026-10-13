@@ -16,27 +16,14 @@ from engines.assistant_workspace import function
 from fastapi import HTTPException
 
 FILE_TOOLS = [
-    function("create_downloadable_file", "Créer un vrai fichier demandé explicitement : PDF pour un rapport/solution, JPG pour une illustration IA NON contractuelle. body contient le document PDF ou le prompt de l'illustration. La génération JPG part du texte, pas d'une retouche fidèle d'une photo. Ne jamais créer une image sans demande explicite. Les images déjà créées peuvent être incluses dans un PDF via source_artifact_ids.", {
+    function("create_downloadable_file", "Criar um verdadeiro ficheiro pedido explicitamente: PDF para um relatório/solução, JPG para uma ilustração IA NÃO contratual. body contém o documento PDF ou o prompt da ilustração. A geração JPG parte do texto, não de um retoque fiel de uma fotografia. Nunca criar uma imagem sem pedido explícito. As imagens já criadas podem ser incluídas num PDF via source_artifact_ids.", {
         "format": {"type": "string", "enum": ["pdf", "jpg"]}, "title": {"type": "string", "minLength": 1, "maxLength": 160},
         "body": {"type": "string", "minLength": 1, "maxLength": 45000},
         "source_artifact_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 4}}),
-    function("read_generated_file", "Relire le contenu ou voir une illustration générée précédemment dans cette conversation avant d'en proposer une nouvelle version. L'ancien fichier est conservé.", {"artifact_id": {"type": "string"}}),
+    function("read_generated_file", "Reler o conteúdo ou ver uma ilustração gerada anteriormente nesta conversa antes de propor uma nova versão. O ficheiro antigo é conservado.", {"artifact_id": {"type": "string"}}),
 ]
 
-FILE_INSTRUCTIONS = """
-Photos de chantier : examine réellement les images fournies, distingue ce qui est visible des hypothèses.
-Quand on demande une solution, propose des options constructives, avantages, limites, étapes et contrôles,
-pas seulement une série de questions. Pour une jonction entre bâtiments, traite notamment les mouvements
-différentiels, le joint, les infiltrations et les fixations, SANS inventer une dimension ou un diagnostic structurel.
-Utilise la recherche technique générique si activée, cite seulement ses sources réelles. Les informations
-manquantes déterminantes sont à vérifier sur site. Une photo ne valide ni capacité portante ni exécution.
-N'affiche pas un raisonnement interne détaillé : fournis observations, justification concise et avancement utile.
-Pour PDF/JPG explicitement demandés, appelle create_downloadable_file et annonce seulement les fichiers
-effectivement retournés. JPG = illustration IA hypothétique, pas photo réelle, ni détail d'exécution certifié.
-Une demande de correction produit une nouvelle version avec read_generated_file si nécessaire ; conserve l'ancienne.
-Les nouveaux messages reçus pendant le travail sont traités ensuite, dans l'ordre ; ne prétends pas avoir
-pris en compte une précision absente de ce tour. Ne génère jamais une image juste parce qu'une photo est jointe.
-"""
+FILE_INSTRUCTIONS = "\nFotografias de obra: examina realmente as imagens fornecidas, distingue o que é visível das hipóteses.\nQuando te pedem uma solução, propõe opções construtivas, vantagens, limites, etapas e controlos,\nnão apenas uma série de perguntas. Para uma junção entre edifícios, trata nomeadamente os movimentos\ndiferenciais, a junta, as infiltrações e as fixações, SEM inventar uma dimensão ou um diagnóstico estrutural.\nUtiliza a pesquisa técnica genérica se estiver ativada, cita apenas as suas fontes reais. As informações\nem falta determinantes devem ser verificadas no local. Uma fotografia não valida nem capacidade resistente nem execução.\nNão mostres um raciocínio interno detalhado: fornece observações, justificação concisa e avanço útil.\nPara PDF/JPG explicitamente pedidos, chama create_downloadable_file e anuncia apenas os ficheiros\nefetivamente devolvidos. JPG = ilustração IA hipotética, não uma fotografia real nem um pormenor de execução certificado.\nUm pedido de correção produz uma nova versão com read_generated_file se necessário; conserva a antiga.\nAs novas mensagens recebidas durante o trabalho são tratadas a seguir, por ordem; não afirmes ter\ntido em conta uma precisão ausente desta ronda. Nunca geres uma imagem só porque uma fotografia está anexada.\n"
 
 
 def image_requested(text):
@@ -58,7 +45,7 @@ async def owned_artifact(ident, uid, conversation_id=None):
         query["conversation_id"] = conversation_id
     doc = await db.assistant_artifacts.find_one(query, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Fichier inaccessible dans cette conversation.")
+        raise HTTPException(404, "Ficheiro inacessível nesta conversa.")
     return doc
 
 
@@ -127,7 +114,7 @@ def build_document_pdf(title, body, images=()):
             width, height = im.size
         scale = min(460 / width, 500 / height)
         story.extend([Spacer(1, 12), PDFImage(io.BytesIO(data), width=width * scale, height=height * scale)])
-    story.extend([Spacer(1, 12), Paragraph("Document d’aide à la décision — hypothèses et illustrations à vérifier sur site. Ne vaut pas validation structurelle ni plan d’exécution.", text_style)])
+    story.extend([Spacer(1, 12), Paragraph("Documento de apoio à decisão — hipóteses e ilustrações a verificar no local. Não vale como validação estrutural nem como planta de execução.", text_style)])
     output = io.BytesIO()
     SimpleDocTemplate(output, title=title, author="ConstruPilot", leftMargin=42, rightMargin=42, topMargin=42, bottomMargin=42).build(story)
     return output.getvalue()
@@ -155,7 +142,7 @@ def _generate_jpg_with(prompt, api_key):
     generator = OpenAIImageGeneration(api_key=api_key)
     images = asyncio.run(generator.generate_images(prompt=prompt, model=os.environ["ASSISTANT_IMAGE_MODEL"], number_of_images=1, quality="medium"))
     if not images:
-        raise RuntimeError("Aucune image retournée")
+        raise RuntimeError("Nenhuma imagem devolvida")
     with Image.open(io.BytesIO(images[0])) as original:
         image = original.convert("RGB")
         band = max(48, image.width // 24)
@@ -171,14 +158,14 @@ def _generate_jpg_with(prompt, api_key):
 async def create_file(args, user, conv):
     uid, cid = user["user_id"], conv["conversation_id"]
     if args["format"] == "jpg" and not image_requested(conv.get("_user_request_text", "")):
-        raise HTTPException(400, "Une demande explicite de création d’image/JPG est nécessaire pour lancer cette opération.")
+        raise HTTPException(400, "É necessário um pedido explícito de criação de imagem/JPG para lançar esta operação.")
     digest = hashlib.sha256((conv["_quote_request_id"] + str(conv.get("_file_call_id", ""))).encode()).hexdigest()[:28]
     ident = "file_" + digest
     old = await db.assistant_artifacts.find_one({"artifact_id": ident, "user_id": uid}, {"_id": 0})
     if old:
         return {"ok": True, "artifact": public_artifact(old)}
     if args["format"] == "jpg" and await db.assistant_artifacts.find_one({"user_id": uid, "conversation_id": cid, "request_id": conv["_quote_request_id"], "format": "jpg"}, {"_id": 1}):
-        raise HTTPException(409, "Une illustration a déjà été créée pour cette demande. Demandez une variante dans le message suivant.")
+        raise HTTPException(409, "Já foi criada uma ilustração para este pedido. Peça uma variante na mensagem seguinte.")
     images = []
     for source in args["source_artifact_ids"]:
         item = await owned_artifact(source, uid, cid)
@@ -188,13 +175,13 @@ async def create_file(args, user, conv):
         data = await asyncio.to_thread(build_document_pdf, args["title"], args["body"], images)
         mime = "application/pdf"
     else:
-        prompt = "Illustration technique BTP conceptuelle, pas un plan d'exécution ni une photo de chantier réelle. Aucune cote inventée. " + args["body"]
+        prompt = "Ilustração técnica concetual de construção, não uma planta de execução nem uma fotografia real de obra. Nenhuma cota inventada. " + args["body"]
         data = await asyncio.to_thread(_generate_jpg, prompt)
         mime = "image/jpeg"
         from engines.expenses.store import observe
         await observe(source="assistant_image", source_id=ident, provider="emergent" if os.environ.get("ASSISTANT_PROVIDER") == "anthropic" else "openai_direct", feature="assistant_image", model=os.environ["ASSISTANT_IMAGE_MODEL"], units={"images": 1}, state="completed")
     if len(data) > 8 * 1024 * 1024:
-        raise HTTPException(413, "Résultat trop volumineux ; demandez un document plus court.")
+        raise HTTPException(413, "Resultado demasiado volumoso; peça um documento mais curto.")
     doc = {"artifact_id": ident, "user_id": uid, "conversation_id": cid, "request_id": conv["_quote_request_id"], "title": args["title"], "body": args["body"],
            "filename": ident + "." + args["format"], "format": args["format"], "mime": mime, "size": len(data),
            "data_b64": base64.b64encode(data).decode(), "source_artifact_ids": args["source_artifact_ids"],
@@ -215,10 +202,10 @@ async def create_schema(args, user, conv):
     png = await asyncio.to_thread(draw_schema, args)
     with Image.open(io.BytesIO(png)) as im:
         buf = io.BytesIO(); im.convert("RGB").save(buf, "JPEG", quality=92); jpg = buf.getvalue()
-    body = "\n".join([f"Couches (gauche → droite) : " + " | ".join(f"{l['label']} {float(l['thickness_cm']):g} cm" for l in args["layers"])] +
+    body = "\n".join([f'Camadas (esquerda → direita): ' + " | ".join(f"{l['label']} {float(l['thickness_cm']):g} cm" for l in args["layers"])] +
                      [f"- {x['label']}" + (f" — {float(x['value_cm']):g} cm" if x.get("value_cm") else "") for x in args.get("features") or []] +
-                     [f"Hypothèse / à valider : {n}" for n in args.get("notes") or []])
-    pdf = await asyncio.to_thread(build_document_pdf, args["title"], body + "\n\nSchéma de principe — ne vaut pas validation technique d'exécution.", [jpg])
+                     [f'Hipótese / a validar: {n}' for n in args.get("notes") or []])
+    pdf = await asyncio.to_thread(build_document_pdf, args["title"], body + "\n\nEsquema de princípio — não vale como validação técnica de execução.", [jpg])
     now = datetime.now(timezone.utc).isoformat()
     docs = []
     for fmt, mime, data in (("png", "image/png", png), ("pdf", "application/pdf", pdf)):
@@ -228,4 +215,4 @@ async def create_schema(args, user, conv):
                "source_artifact_ids": [], "created_at": now, "illustrative": True, "vector_schema": True, "schema_args": args, "download": f"/assistant/artifacts/{aid}/content"}
         await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)
         docs.append(public_artifact(doc))
-    return {"ok": True, "artifact": docs[0], "pdf_artifact": docs[1], "note": "Schéma dessiné depuis les cotes fournies (aucune génération IA) ; PNG + PDF."}
+    return {"ok": True, "artifact": docs[0], "pdf_artifact": docs[1], "note": "Esquema desenhado a partir das cotas fornecidas (nenhuma geração IA); PNG + PDF."}

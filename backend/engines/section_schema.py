@@ -11,27 +11,25 @@ LABELS = {"masonry": "maçonnerie", "concrete": "béton", "insulation": "isolant
           "wood": "bois", "existing": "existant", "other": ""}
 
 SCHEMA_TOOL = {"type": "function", "name": "draw_section_schema", "strict": True,
-               "description": "Dessine un schéma de principe vectoriel (coupe horizontale d'une paroi ou d'un raccord de façades) avec étiquettes lisibles, chaîne de cotes en cm et "
-                              "éléments annexes (console d'appui, bavette/zinc, semelle, drain, membrane). Toutes les épaisseurs viennent des arguments : n'invente rien, "
-                              "signale dans notes ce qui est une hypothèse. Le fichier produit est un schéma de principe (PNG + PDF), jamais une validation d'exécution.",
+               "description": "Desenha um esquema de princípio vetorial (corte horizontal de uma parede ou de uma ligação de fachadas) com etiquetas legíveis, cadeia de cotas em cm e elementos anexos (consola de apoio, rufo/zinco, sapata, dreno, membrana). Todas as espessuras vêm dos argumentos: não inventes nada, assinala nas notas o que é uma hipótese. O ficheiro produzido é um esquema de princípio (PNG + PDF), nunca uma validação de execução. Etiquetas em português europeu.",
                "parameters": {"type": "object", "properties": {
                    "title": {"type": "string"},
                    "layers": {"type": "array", "minItems": 2, "maxItems": 12, "items": {"type": "object", "properties": {
                        "label": {"type": "string"}, "thickness_cm": {"type": "number"},
                        "material": {"type": "string", "enum": list(HATCH)}}, "required": ["label", "thickness_cm", "material"], "additionalProperties": False}},
-                   "left_label": {"type": ["string", "null"], "description": "ce qu'il y a à gauche (ex. intérieur maison)"},
-                   "right_label": {"type": ["string", "null"], "description": "ce qu'il y a à droite (ex. parcelle voisine)"},
+                   "left_label": {"type": ["string", "null"], "description": "o que está à esquerda (ex.: interior da casa)"},
+                   "right_label": {"type": ["string", "null"], "description": "o que está à direita (ex.: parcela vizinha)"},
                    "features": {"type": "array", "maxItems": 8, "items": {"type": "object", "properties": {
                        "kind": {"type": "string", "enum": ["console", "flashing", "footing", "drain", "membrane", "dilatation_joint", "note"]},
-                       "label": {"type": "string"}, "layer_index": {"type": "integer", "description": "couche concernée (0 = première)"},
-                       "value_cm": {"type": ["number", "null"], "description": "cote utile : hauteur console, largeur semelle, Ø drain, ouverture joint…"}},
+                       "label": {"type": "string"}, "layer_index": {"type": "integer", "description": "camada em causa (0 = primeira)"},
+                       "value_cm": {"type": ["number", "null"], "description": "cota útil: altura da consola, largura da sapata, Ø do dreno, abertura da junta…"}},
                        "required": ["kind", "label", "layer_index", "value_cm"], "additionalProperties": False}},
-                   "notes": {"type": "array", "maxItems": 6, "items": {"type": "string"}, "description": "hypothèses et points à valider, imprimés sous le schéma"},
-                   "orientation": {"type": "string", "enum": ["plan", "vertical"], "description": "plan = coupe horizontale (vue en plan) ; vertical = coupe verticale avec sol, semelle, drain"},
+                   "notes": {"type": "array", "maxItems": 6, "items": {"type": "string"}, "description": "hipóteses e pontos a validar, impressos sob o esquema"},
+                   "orientation": {"type": "string", "enum": ["plan", "vertical"], "description": "plan = corte horizontal (vista em planta); vertical = corte vertical com solo, sapata, dreno"},
                    "vertical": {"anyOf": [{"type": "object", "properties": {
-                       "height_above_ground_cm": {"type": "number"}, "footing_depth_cm": {"type": "number", "description": "profondeur du dessous de semelle sous le sol fini"},
+                       "height_above_ground_cm": {"type": "number"}, "footing_depth_cm": {"type": "number", "description": "profundidade da face inferior da sapata sob o pavimento acabado"},
                        "footing_width_cm": {"type": "number"}, "footing_height_cm": {"type": "number"},
-                       "drain_depth_cm": {"type": ["number", "null"], "description": "profondeur de l'axe du drain sous le sol fini"},
+                       "drain_depth_cm": {"type": ["number", "null"], "description": "profundidade do eixo do dreno sob o pavimento acabado"},
                        "drain_side": {"type": "string", "enum": ["left", "right"]}, "ground_label": {"type": ["string", "null"]}},
                        "required": ["height_above_ground_cm", "footing_depth_cm", "footing_width_cm", "footing_height_cm", "drain_depth_cm", "drain_side", "ground_label"], "additionalProperties": False}, {"type": "null"}],
                        "description": "obligatoire si orientation = vertical"}},
@@ -93,7 +91,7 @@ def draw_schema(args: dict) -> bytes:
     d = ImageDraw.Draw(img)
     f_title, f, f_small, f_dim = _font(38), _font(24), _font(19), _font(22)
     d.text((margin_x, 40), args["title"][:90], fill="#17483f", font=f_title)
-    d.text((margin_x, 92), "Schéma de principe — coupe horizontale (vue en plan) — non contractuel, ne vaut pas validation d'exécution", fill="#8a6d00", font=f_small)
+    d.text((margin_x, 92), "Esquema de princípio — corte horizontal (vista em planta) — não contratual, não vale como validação de execução", fill="#8a6d00", font=f_small)
     y0, y1 = top, H - bottom
     x = margin_x
     boxes = []
@@ -162,9 +160,9 @@ def draw_schema(args: dict) -> bytes:
         d.text((margin_x, fy), f"• {feat['label'][:110]}" + (f" — {float(val):g} cm" if val else ""), fill="#333333", font=f_small)
         fy += 28
     for note in args.get("notes") or []:
-        d.text((margin_x, fy), f"Hypothèse / à valider : {note[:120]}", fill="#8a6d00", font=f_small)
+        d.text((margin_x, fy), f'Hipótese / a validar: {note[:120]}', fill="#8a6d00", font=f_small)
         fy += 26
-    d.text((margin_x, H - 34), "ConstruPilot — schéma de principe dessiné à partir des données du dossier ; cotes en cm ; à valider par la MOE / le BET avant exécution.", fill="#555555", font=f_small)
+    d.text((margin_x, H - 34), "ConstruPilot — esquema de princípio desenhado a partir dos dados do processo; cotas em cm; a validar pelo projetista / gabinete de projeto antes da execução.", fill="#555555", font=f_small)
     out = io.BytesIO()
     img.save(out, "PNG", optimize=True)
     return out.getvalue()
@@ -200,7 +198,7 @@ def draw_vertical(args: dict) -> bytes:
     d = ImageDraw.Draw(img)
     f_title, f, f_small, f_dim = _font(38), _font(24), _font(19), _font(22)
     d.text((margin_x, 40), args["title"][:90], fill="#17483f", font=f_title)
-    d.text((margin_x, 92), "Schéma de principe — coupe verticale — non contractuel, ne vaut pas validation d'exécution", fill="#8a6d00", font=f_small)
+    d.text((margin_x, 92), "Esquema de princípio — corte vertical — não contratual, não vale como validação de execução", fill="#8a6d00", font=f_small)
     y_top, y_ground = top, top + h_up * sy
     y_foot_bottom = y_ground + f_depth * sy
     y_foot_top = y_foot_bottom - f_h * sy
@@ -244,13 +242,13 @@ def draw_vertical(args: dict) -> bytes:
             d.line([(bx, yd - 10), (bx, yd + 10)], fill="#111111", width=2)
         t = f"{float(l['thickness_cm']):g}"
         d.text(((bx0 + bx1) / 2 - d.textlength(t, font=f_dim) / 2, yd - 38), t, fill="#111111", font=f_dim)
-    d.text((cx - f_w * sx / 2, y_foot_bottom + 46), f"semelle largeur {f_w:g} cm", fill="#333333", font=f_small)
+    d.text((cx - f_w * sx / 2, y_foot_bottom + 46), f'sapata largura {f_w:g} cm', fill="#333333", font=f_small)
     if args.get("left_label"):
         d.text((margin_x, y_top), f"◄ {args['left_label'][:40]}", fill="#333333", font=f_small)
     if args.get("right_label"):
         d.text((x_left + wall_w + 20, y_top), f"{args['right_label'][:40]} ►", fill="#333333", font=f_small)
     if abs(sx / sy - 1) > 0.15:
-        d.text((margin_x, H - 62), f"Échelle horizontale dilatée ×{sx / sy:.1f} pour la lisibilité des couches (cotes exactes en cm).", fill="#8a6d00", font=f_small)
+        d.text((margin_x, H - 62), f'Escala horizontal dilatada ×{sx / sy:.1f} para a legibilidade das camadas (cotas exatas em cm).', fill="#8a6d00", font=f_small)
     for feat in args.get("features") or []:
         idx = min(max(feat["layer_index"], 0), len(boxes) - 1)
         bx0, _, bx1, _ = boxes[idx]
@@ -276,7 +274,7 @@ def draw_vertical(args: dict) -> bytes:
     for feat in args.get("features") or []:
         d.text((margin_x, fy), f"• {feat['label'][:110]}" + (f" — {float(feat['value_cm']):g} cm" if feat.get("value_cm") else ""), fill="#333333", font=f_small); fy += 28
     for note in args.get("notes") or []:
-        d.text((margin_x, fy), f"Hypothèse / à valider : {note[:120]}", fill="#8a6d00", font=f_small); fy += 26
-    d.text((margin_x, H - 34), "ConstruPilot — schéma de principe dessiné à partir des données du dossier ; cotes en cm ; à valider par la MOE / le BET avant exécution.", fill="#555555", font=f_small)
+        d.text((margin_x, fy), f'Hipótese / a validar: {note[:120]}', fill="#8a6d00", font=f_small); fy += 26
+    d.text((margin_x, H - 34), "ConstruPilot — esquema de princípio desenhado a partir dos dados do processo; cotas em cm; a validar pelo projetista / gabinete de projeto antes da execução.", fill="#555555", font=f_small)
     out = io.BytesIO(); img.save(out, "PNG", optimize=True)
     return out.getvalue()

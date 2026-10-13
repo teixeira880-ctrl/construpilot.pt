@@ -28,50 +28,11 @@ from perplexity_plus import client as pplx
 # Prompts
 # ─────────────────────────────────────────────────────────────────────────────
 _RESEARCH_SYSTEM = (
-    "Tu es expert en pathologie du bâtiment en France (fissures, humidité, "
-    "thermique, structure). À partir de la description d'un problème, tu "
-    "identifies les causes probables, cite les DTU / NF / Code de la "
-    "construction applicables et donne des ordres de grandeur de coût "
-    "(prix du marché français 2026). "
-    "Réponds en français, structure ta réponse en 3 sections : "
-    "1) Causes probables (numérotées, avec indicateurs cliniques) "
-    "2) Solutions techniques (2-4 options, avec fourchette de coût €, "
-    "durée en jours, niveau de risque, garantie éventuelle) "
-    "3) Références réglementaires (DTU, NF, articles précis avec URL Legifrance)"
+    "És especialista em patologia da construção em Portugal (fissuras, humidade, térmica, estrutura). A partir da descrição de um problema, identificas as causas prováveis, citas as normas aplicáveis (NP EN, Eurocódigos com Anexos Nacionais, especificações LNEC, RGEU, REH) e dás ordens de grandeza de custo (preços do mercado português 2026). Responde em português europeu, estrutura a resposta em 3 secções: 1) Causas prováveis (numeradas, com indicadores clínicos) 2) Soluções técnicas (2-4 opções, com intervalo de custo €, duração em dias, nível de risco, garantia eventual) 3) Referências regulamentares (NP EN, LNEC, decretos-lei com ligação para o Diário da República)"
 )
 
 _STRUCTURATION_SYSTEM = (
-    "Tu es un extracteur JSON. On te fournit une analyse d'un problème BTP "
-    "en texte libre + des sources web. Tu la convertis en JSON strict qui "
-    "respecte ce schéma. Ne renvoie AUCUN texte hors JSON.\n\n"
-    "SCHÉMA :\n"
-    "{\n"
-    '  "domain": "fissures|humidite|thermique|structure|sinistre|reception|autre",\n'
-    '  "urgency": "informative|planned|urgent|immediate",\n'
-    '  "summary": str (3-5 lignes),\n'
-    '  "causes": [ { "label": str, "confidence": "low|medium|high",\n'
-    '                "explanation": str, "indicators_matched": [str] } ],\n'
-    '  "solutions": [ { "id": str (slug),\n'
-    '                   "label": str, "description": str,\n'
-    '                   "cost_min_eur": number|null, "cost_max_eur": number|null,\n'
-    '                   "duration_days_min": number|null, "duration_days_max": number|null,\n'
-    '                   "risk": "low|medium|high|critical",\n'
-    '                   "warranty_years": integer|null,\n'
-    '                   "steps": [ { "order": int, "text": str,\n'
-    '                                "duration_hours": number|null,\n'
-    '                                "materials": [str] } ],\n'
-    '                   "references": [ { "kind": "dtu|nf|code|web|cctp",\n'
-    '                                     "code": str, "title": str|null,\n'
-    '                                     "url": str|null } ],\n'
-    '                   "recommended": bool } ],\n'
-    '  "references": [ ... même schéma que ci-dessus ... ],\n'
-    '  "action_plan": [ { "order": int, "text": str,\n'
-    '                     "duration_hours": number|null,\n'
-    '                     "materials": [str] } ]\n'
-    "}\n"
-    "Marque `recommended: true` sur la solution qui offre le meilleur "
-    "compromis coût / durabilité / rapidité. Trie les causes de la plus "
-    "probable à la moins probable."
+    "És um extrator de JSON. É-te fornecida uma análise de um problema de construção em texto livre + fontes web. Convertes em JSON estrito que respeita este esquema. Não devolvas NENHUM texto fora do JSON.\n\nESQUEMA:\n{\n  \"domain\": \"fissures|humidite|thermique|structure|sinistre|reception|autre\",\n  \"urgency\": \"informative|planned|urgent|immediate\",\n  \"summary\": str (3-5 linhas, em português europeu),\n  \"causes\": [ { \"label\": str, \"confidence\": \"low|medium|high\",\n                \"explanation\": str, \"indicators_matched\": [str] } ],\n  \"solutions\": [ { \"id\": str (slug),\n                   \"label\": str, \"description\": str,\n                   \"cost_min_eur\": number|null, \"cost_max_eur\": number|null,\n                   \"duration_days_min\": number|null, \"duration_days_max\": number|null,\n                   \"risk\": \"low|medium|high|critical\",\n                   \"warranty_years\": integer|null,\n                   \"steps\": [ { \"order\": int, \"text\": str,\n                                \"duration_hours\": number|null,\n                                \"materials\": [str] } ],\n                   \"references\": [ { \"kind\": \"dtu|nf|code|web|cctp\",\n                                     \"code\": str, \"title\": str|null,\n                                     \"url\": str|null } ],\n                   \"recommended\": bool } ],\n  \"references\": [ ... mesmo esquema que acima ... ],\n  \"action_plan\": [ { \"order\": int, \"text\": str,\n                     \"duration_hours\": number|null,\n                     \"materials\": [str] } ]\n}\nMarca `recommended: true` na solução que oferece o melhor compromisso custo / durabilidade / rapidez. Ordena as causas da mais provável para a menos provável. Todos os textos em português europeu."
 )
 
 
@@ -147,14 +108,14 @@ def _build_comparison_chart(solutions: list[Solution]) -> Chart | None:
     return Chart(
         id="cost_comparison",
         type="bar",
-        title="Comparatif de coût (fourchette min / max)",
+        title="Comparação de custos (intervalo mín. / máx.)",
         x_labels=labels,
         series=[
-            ChartSeries(name="Coût min €", data=[float(s.cost_min_eur or 0) for s in solutions_with_cost]),
-            ChartSeries(name="Coût max €", data=[float(s.cost_max_eur or s.cost_min_eur or 0) for s in solutions_with_cost]),
+            ChartSeries(name="Custo mín. €", data=[float(s.cost_min_eur or 0) for s in solutions_with_cost]),
+            ChartSeries(name="Custo máx. €", data=[float(s.cost_max_eur or s.cost_min_eur or 0) for s in solutions_with_cost]),
         ],
         unit="€ HT",
-        caption="Fourchettes indicatives (marché France 2026). Un devis local reste nécessaire.",
+        caption="Intervalos indicativos (mercado português 2026). Continua a ser necessário um orçamento local.",
     )
 
 
@@ -166,11 +127,11 @@ def _build_duration_chart(solutions: list[Solution]) -> Chart | None:
     return Chart(
         id="duration_comparison",
         type="bar",
-        title="Comparatif de durée de chantier",
+        title="Comparação da duração da obra",
         x_labels=[s.label[:40] for s in subset],
         series=[
-            ChartSeries(name="Durée min (j)", data=[float(s.duration_days_min or 0) for s in subset]),
-            ChartSeries(name="Durée max (j)", data=[float(s.duration_days_max or s.duration_days_min or 0) for s in subset]),
+            ChartSeries(name="Duração mín. (d)", data=[float(s.duration_days_min or 0) for s in subset]),
+            ChartSeries(name="Duração máx. (d)", data=[float(s.duration_days_max or s.duration_days_min or 0) for s in subset]),
         ],
         unit="jours",
     )
@@ -184,8 +145,8 @@ def _build_risk_radar(solutions: list[Solution]) -> Chart | None:
     return Chart(
         id="risk_radar",
         type="radar",
-        title="Profil risque / garantie / rapidité",
-        x_labels=["Risque (1-4)", "Garantie (années)", "Rapidité (0-10)"],
+        title="Perfil risco / garantia / rapidez",
+        x_labels=["Risque (1-4)", "Garantia (anos)", "Rapidez (0-10)"],
         series=[
             ChartSeries(
                 name=s.label[:30],
@@ -208,10 +169,10 @@ def _build_confidence_pie(causes: list[Cause]) -> Chart | None:
     return Chart(
         id="causes_confidence",
         type="pie",
-        title="Causes probables (par niveau de confiance)",
+        title="Causas prováveis (por nível de confiança)",
         x_labels=[c.label[:40] for c in causes],
-        series=[ChartSeries(name="Confiance", data=[float(_cw.get(c.confidence, 1)) for c in causes])],
-        caption="Somme pondérée normalisée à 100 % côté client.",
+        series=[ChartSeries(name="Confiança", data=[float(_cw.get(c.confidence, 1)) for c in causes])],
+        caption="Soma ponderada normalizada a 100 % do lado do cliente.",
     )
 
 
@@ -236,25 +197,25 @@ async def solve(
     if context:
         parts = []
         if context.get("region"):
-            parts.append(f"Région : {context['region']}")
+            parts.append(f"Região: {context['region']}")
         if context.get("type_batiment"):
-            parts.append(f"Type de bâtiment : {context['type_batiment']}")
+            parts.append(f"Tipo de edifício: {context['type_batiment']}")
         if context.get("surface_m2"):
-            parts.append(f"Surface : {context['surface_m2']} m²")
+            parts.append(f"Área: {context['surface_m2']} m²")
         if context.get("age_annees"):
-            parts.append(f"Âge du bâti : {context['age_annees']} ans")
+            parts.append(f"Idade do edifício: {context['age_annees']} ans")
         if context.get("budget_max_eur"):
-            parts.append(f"Budget max envisagé : {context['budget_max_eur']} €")
+            parts.append(f"Orçamento máximo previsto: {context['budget_max_eur']} €")
         if context.get("urgence_ressentie"):
-            parts.append(f"Urgence ressentie : {context['urgence_ressentie']}")
+            parts.append(f"Urgência sentida: {context['urgence_ressentie']}")
         if parts:
             ctx_txt = "\n\nContexte :\n" + "\n".join(f"- {p}" for p in parts)
 
     photos_txt = ""
     if photos_urls:
-        photos_txt = "\n\nPhotos jointes (URLs) :\n" + "\n".join(f"- {u}" for u in photos_urls[:5])
+        photos_txt = "\n\nFotografias anexadas (URL):\n" + "\n".join(f"- {u}" for u in photos_urls[:5])
     if photo_analysis:
-        photos_txt += "\n\nLecture des photos jointes par l'IA vision (observations visibles uniquement) :\n" + photo_analysis.strip()
+        photos_txt += "\n\nLeitura das fotografias anexadas pela IA de visão (apenas observações visíveis):\n" + photo_analysis.strip()
 
     research_question = f"{description}{ctx_txt}{photos_txt}"
 
@@ -283,10 +244,7 @@ async def solve(
 
     # Étape 2 : structuration en JSON via Claude puis fallback GPT
     structuration_input = (
-        f"Problème décrit par l'utilisateur :\n{description}"
-        f"{ctx_txt}{photos_txt}\n\n"
-        f"---\nAnalyse préliminaire (avec sources) :\n{research_txt or '(pas de recherche préliminaire)'}\n\n"
-        f"---\nSources web disponibles :\n"
+        f"Problema descrito pelo utilizador:\n{description}{ctx_txt}{photos_txt}\n\n---\nAnálise preliminar (com fontes):\n{research_txt or '(sem pesquisa preliminar)'}\n\n---\nFontes web disponíveis:\n"
         + "\n".join(f"- {c.get('title') or ''} → {c.get('url')}" for c in citations[:15])
     )
 
@@ -299,7 +257,7 @@ async def solve(
         data = {
             "domain": "autre",
             "urgency": "planned",
-            "summary": research_txt[:600] or "Analyse indisponible momentanément.",
+            "summary": research_txt[:600] or "Análise momentaneamente indisponível.",
             "causes": [],
             "solutions": [],
             "references": [],

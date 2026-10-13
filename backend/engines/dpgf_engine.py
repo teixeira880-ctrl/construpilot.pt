@@ -13,10 +13,10 @@ import unicodedata
 
 import openpyxl
 
-NOT_PRICED = "Non chiffré — hors marché"
+NOT_PRICED = "Não orçamentado — fora da empreitada"
 
 _DESIGN = ("désignation", "designation", "libellé", "libelle", "prestation", "descriptif",
-           "ouvrage", "description", "article", "nature des ouvrages", "nature")
+           "ouvrage", "description", "article", "natureza dos trabalhos", "nature")
 _UNIT = ("unité", "unite", "un.", "u.", "unit", "ui")
 _QTY = ("quantité", "quantite", "qté", "qte", "q.", "quant", "nombre")
 _PU = ("prix unitaire", "p.u", "pu ht", "pu", "prix u", "prix ht", "prix")
@@ -123,7 +123,7 @@ def parse_workbook(raw: bytes) -> dict:
                 continue
             rows.append({
                 "line_id": f"l{len(rows) + 1}",
-                "sheet": ws.title, "row": r, "lot": lot or "Sans lot",
+                "sheet": ws.title, "row": r, "lot": lot or "Sem capítulo",
                 "designation": text,
                 "description": " ".join(pending_desc)[:1500],
                 "unit": unit or "u", "qty": qty,
@@ -184,7 +184,7 @@ def dedup_rows(rows: list[dict]) -> int:
             seen[key] = r
             loser = kept
         loser["excluded"] = True
-        loser["exclusion_reason"] = "Doublon (déjà chiffré dans l'étude)"
+        loser["exclusion_reason"] = "Duplicado (já orçamentado no estudo)"
         loser["pu_base"] = None
         loser["pu"] = None
         loser["source"] = None
@@ -208,7 +208,7 @@ def apply_directives(rows: list[dict], directives: dict) -> dict:
             hit = next((k for k in ex_lots if k and (k in lot_f or lot_f in k)), None)
         if hit:
             r["excluded"] = True
-            r["exclusion_reason"] = f"Exclu par consigne « {hit} »"
+            r["exclusion_reason"] = f'Excluído por instrução «{hit} »'
             r["pu"] = None
             r["pu_base"] = None
             r["source"] = None

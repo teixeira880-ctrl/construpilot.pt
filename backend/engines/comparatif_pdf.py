@@ -31,51 +31,50 @@ FEAT = ParagraphStyle("feat", fontName="Helvetica-Bold", fontSize=7.6, textColor
 WBIG = ParagraphStyle("wbig", fontName="Helvetica-Bold", fontSize=15, textColor=colors.white, leading=18)
 WSM = ParagraphStyle("wsm", fontName="Helvetica", fontSize=8.5, textColor=colors.white, leading=11)
 
-COLS = ["ConstruPilot", "Obat", "Trustup Pro", "Vertuoza", "EBP Bât.", "Batappli", "Alobees", "BatiChiffrage", "Renalto"]
+COLS = ["ConstruPilot", "Obat", "Trustup Pro", "Vertuoza", "Primavera", "Batappli", "Alobees", "BatiChiffrage", "Renalto"]
 SLUGS = {"obat": 1, "trustup": 2, "vertuoza": 3, "ebp": 4, "batappli": 5, "alobees": 6, "batichiffrage": 7, "renalto": 8}
-FULLNAME = {"obat": "Obat", "trustup": "Trustup Pro", "vertuoza": "Vertuoza", "ebp": "EBP Bâtiment",
+FULLNAME = {"obat": "Obat", "trustup": "Trustup Pro", "vertuoza": "Vertuoza", "ebp": "PHC / Primavera",
             "batappli": "Batappli", "alobees": "Alobees", "batichiffrage": "BatiChiffrage", "renalto": "Renalto"}
 
 ROWS = [
-    ("Devis & factures", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel", "Oui", "Oui"]),
-    ("Facturation électronique (Factur-X / Chorus Pro)", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "—", "Oui", "Oui"]),
-    ("Bibliothèque d'ouvrages & prix", ["Oui", "Oui (30k)", "Oui", "Oui", "Option", "Oui", "Non", "Oui (80k)", "Oui (≤5k)"]),
-    ("Chiffrage 100% déterministe (0 IA sur les maths)", ["Oui", "—", "—", "—", "—", "—", "—", "—", "Non (IA)"]),
-    ("Métré sur plans (PDF/image) + étalonnage", ["Oui", "À venir", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]),
-    ("Lecture des cotes natives DWG / DXF", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Détection murs & ouvertures (IA / OpenCV)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]),
-    ("Projets multi-niveaux consolidés (RDC/R+1…)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Calcul d'escaliers (béton + ferraillage + 3D)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Lecture DPGF / CCTP → devis chiffré", ["Oui", "—", "—", "—", "Option", "Oui", "—", "Oui", "Oui"]),
-    ("Comparaison de versions de plans", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Assistant IA + agents métier orchestrés", ["Oui", "Partiel", "Non", "Partiel", "Non", "Non", "Non", "Partiel", "Oui (Rita)"]),
-    ("Suivi de chantier / contrôle des coûts", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel"]),
-    ("Signature électronique", ["Oui", "Oui", "—", "—", "Oui", "Oui", "—", "Oui", "—"]),
-    ("Dossier PDF brandé (page de garde, logo, filigrane)", ["Oui", "Partiel", "Partiel", "Partiel", "Partiel", "Partiel", "—", "Partiel", "Partiel"]),
+    ("Orçamentos e faturas", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel", "Oui", "Oui"]),
+    ("Faturação eletrónica (SAF-T / QR code ATCUD)", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "—", "Oui", "Oui"]),
+    ("Biblioteca de artigos e preços", ["Oui", "Sim (30k)", "Oui", "Oui", "Option", "Oui", "Non", "Sim (80k)", "Sim (≤5k)"]),
+    ("Orçamentação 100% determinística (0 IA na matemática)", ["Oui", "—", "—", "—", "—", "—", "—", "—", "Non (IA)"]),
+    ("Medição em plantas (PDF/imagem) + calibração", ["Oui", "À venir", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]),
+    ("Leitura das cotas nativas DWG / DXF", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
+    ("Deteção de paredes e vãos (IA / OpenCV)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]),
+    ("Projetos multinível consolidados (R/C, 1.º andar…)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
+    ("Cálculo de escadas (betão + armaduras + 3D)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
+    ("Leitura de mapas de quantidades / cadernos de encargos → orçamento detalhado", ["Oui", "—", "—", "—", "Option", "Oui", "—", "Oui", "Oui"]),
+    ("Comparação de versões de plantas", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
+    ("Assistente IA + agentes especializados orquestrados", ["Oui", "Partiel", "Non", "Partiel", "Non", "Non", "Non", "Partiel", "Sim (Rita)"]),
+    ("Acompanhamento de obra / controlo de custos", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel"]),
+    ("Assinatura eletrónica", ["Oui", "Oui", "—", "—", "Oui", "Oui", "—", "Oui", "—"]),
+    ("Processo PDF com a sua marca (página de rosto, logótipo, marca de água)", ["Oui", "Partiel", "Partiel", "Partiel", "Partiel", "Partiel", "—", "Partiel", "Partiel"]),
     ("PDF multilingue (FR / EN / PT)", ["Oui", "—", "—", "—", "—", "—", "—", "—", "—"]),
 ]
 
 PROFILES = [
-    ("ConstruPilot", "dès l'essai",
-     "SaaS de métré, chiffrage déterministe et gestion de chantier. Unique à combiner métré sur plans (PDF/images + cotes natives DWG), "
-     "détection murs/ouvertures, projets multi-niveaux consolidés, calcul d'escaliers béton/ferraillage 3D et agents IA — avec un chiffrage 0 % hallucination."),
-    ("Obat", "25–109 €/mois HT", "Facturation et suivi de chantier BTP, 30 000 ouvrages, situations de travaux, devis vocal IA. Métré depuis plan « à venir », pas de hors ligne."),
-    ("Trustup Pro", "dès 49 €/mois", "Simple et abordable pour indépendants et < 20 ouvriers : devis/factures, planning, pointeuse mobile, Peppol. Sans engagement."),
-    ("Vertuoza", "2 400–5 000 €/an", "ERP complet pour > 30 ouvriers : stock, compta, planning de production, sous-traitants, devis vocal IA. Engagement 1 an."),
-    ("EBP Bâtiment", "29–69 €/mois HT", "Gamme Hubbix/ACTIV/PRO : devis-factures, stocks, situations, suivi avancé, multi-sociétés. Biblio Batichiffrage/Batiprix en option."),
-    ("Batappli", "39–79 €/mois HT", "Spécialiste artisans : devis/factures avec Batichiffrage intégré, suivi de chantier, stocks, contrats d'entretien, Factur-X incluse."),
-    ("Alobees", "40–190 €/mois + 10 €/util.", "Orienté suivi de chantier et gestion d'équipe, nativement mobile. Pas de bibliothèque de prix."),
-    ("BatiChiffrage", "dès ~37–42 €/mois HT", "Référence de la bibliothèque de prix (80 000+ ouvrages) + devis/factures et version Estimatifs pour MOE."),
-    ("Renalto", "25–49 €/mois HT", "Assistant IA « Rita » : devis depuis voix/photo/DPGF en ~30 s (brouillon à relire). Centré chiffrage, pas d'ERP."),
+    ("ConstruPilot", "desde a experiência",
+     "SaaS de medição, orçamentação determinística e gestão de obra. Único a combinar medição em plantas (PDF/imagens + cotas nativas DWG), deteção de paredes/vãos, projetos multinível consolidados, cálculo de escadas em betão/armaduras 3D e agentes IA — com uma orçamentação 0 % alucinações."),
+    ("Obat", "25–109 €/mês s/ IVA", "Faturação e acompanhamento de obra, 30 000 artigos, autos de medição, orçamento por voz com IA. Medição a partir de planta «brevemente», sem modo offline."),
+    ("Trustup Pro", "desde 49 €/mês", "Simples e acessível para independentes e < 20 trabalhadores: orçamentos/faturas, planeamento, registo de horas móvel, Peppol. Sem fidelização."),
+    ("Vertuoza", "2 400–5 000 €/an", "ERP completo para > 30 trabalhadores: stock, contabilidade, planeamento de produção, subempreiteiros, orçamento por voz com IA. Fidelização de 1 ano."),
+    ("PHC / Primavera", "29–69 €/mês s/ IVA", "Gama Hubbix/ACTIV/PRO: orçamentos-faturas, stocks, autos de medição, acompanhamento avançado, multiempresa. Biblioteca Batichiffrage/Batiprix em opção."),
+    ("Batappli", "39–79 €/mês s/ IVA", "Especialista em profissionais: orçamentos/faturas com Batichiffrage integrado, acompanhamento de obra, stocks, contratos de manutenção, faturação eletrónica incluída."),
+    ("Alobees", "40–190 €/mês + 10 €/utiliz.", "Orientado para o acompanhamento de obra e a gestão de equipa, nativamente móvel. Sem biblioteca de preços."),
+    ("BatiChiffrage", "desde ~37–42 €/mês s/ IVA", "Referência de biblioteca de preços (80 000+ artigos) + orçamentos/faturas e versão de Estimativas para projetistas."),
+    ("Renalto", "25–49 €/mês s/ IVA", "Assistente IA «Rita»: orçamento a partir de voz/fotografia/mapa de quantidades em ~30 s (rascunho a rever). Centrado na orçamentação, sem ERP."),
 ]
 
 DIFFS = [
-    ("Chiffrage 100% déterministe", "Zéro hallucination sur les calculs : l'IA oriente, les moteurs calculent. Chaque montant est traçable — là où les générateurs « IA » produisent un brouillon à relire."),
-    ("Du plan au devis, vraiment", "Métré sur PDF/images avec étalonnage, cotes natives DWG/DXF, détection murs & ouvertures, projets multi-niveaux : la plupart s'arrêtent au devis saisi à la main."),
-    ("Expertise technique rare", "Calcul d'escaliers béton + ferraillage avec aperçu 3D et PDF — introuvable chez les logiciels de devis généralistes."),
-    ("Agents IA orchestrés", "Dossier, devis, détection, comparaison, DPGF→devis : l'agent enchaîne vos moteurs, propose, vous validez, il apprend vos corrections."),
-    ("Livrables haut de gamme", "Dossier PDF brandé (page de garde, logo, filigrane, total TTC), multilingue FR/EN/PT, signature en ligne."),
-    ("Comparaison & contrôle", "Comparaison de versions de plans et contrôle des cotes : vous sécurisez le métré avant de chiffrer."),
+    ("Orçamentação 100% determinística", "Zero alucinações nos cálculos: a IA orienta, os motores calculam. Cada montante é rastreável — onde os geradores «IA» produzem um rascunho a rever."),
+    ("Da planta ao orçamento, a sério", "Medição em PDF/imagens com calibração, cotas nativas DWG/DXF, deteção de paredes e vãos, projetos multinível: a maioria fica pelo orçamento introduzido à mão."),
+    ("Expertise technique rare", "Cálculo de escadas em betão + armaduras com pré-visualização 3D e PDF — inexistente nos softwares de orçamentação generalistas."),
+    ("Agentes IA orquestrados", "Processo, orçamento, deteção, comparação, mapa de quantidades→orçamento: o agente encadeia os seus motores, propõe, valida e aprende com as suas correções."),
+    ("Entregáveis de topo", "Processo PDF com a sua marca (página de rosto, logótipo, marca de água, total c/ IVA), multilingue PT/EN/FR, assinatura online."),
+    ("Comparação e controlo", "Comparação de versões de plantas e controlo das cotas: assegura a medição antes de orçamentar."),
 ]
 
 
@@ -130,31 +129,30 @@ def build(focus=None) -> bytes:
                              width=W, height=H, mask="auto", preserveAspectRatio=True)
             canvas.restoreState()
         canvas.setFont("Helvetica", 7); canvas.setFillColor(GREY)
-        canvas.drawString(14 * mm, 7 * mm, "ConstruPilot — Comparatif marché. Données publiques à la date d'édition, à vérifier avant usage contractuel.")
-        canvas.drawRightString(landscape(A4)[0] - 14 * mm, 7 * mm, f"Page {d.page}")
+        canvas.drawString(14 * mm, 7 * mm, "ConstruPilot — Comparativo de mercado. Dados públicos à data de edição, a verificar antes de uso contratual.")
+        canvas.drawRightString(landscape(A4)[0] - 14 * mm, 7 * mm, f'Página {d.page}')
 
     doc.addPageTemplates([PageTemplate(id="main", frames=[frame], onPage=on_page)])
 
     story = []
     banner = Table([[_logo_flow(16), [Paragraph("ConstruPilot", WBIG),
-                                       Paragraph("Métré · Chiffrage déterministe · Gestion de chantier", WSM)]]],
+                                       Paragraph("Medição · Orçamentação determinística · Gestão de obra", WSM)]]],
                    colWidths=[24 * mm, None])
     banner.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), GREEN), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                                 ("LEFTPADDING", (0, 0), (-1, -1), 12), ("TOPPADDING", (0, 0), (-1, -1), 10),
                                 ("BOTTOMPADDING", (0, 0), (-1, -1), 10)]))
     story.append(banner)
     story.append(Spacer(1, 7 * mm))
-    story.append(Paragraph("COMPARATIF MARCHÉ", KICK))
+    story.append(Paragraph("COMPARATIVO DE MERCADO", KICK))
     if focus_idx:
-        story.append(Paragraph(f"ConstruPilot, l'alternative à {FULLNAME[focus.lower()]}", H1))
+        story.append(Paragraph(f'ConstruPilot, a alternativa a {FULLNAME[focus.lower()]}', H1))
     else:
-        story.append(Paragraph("ConstruPilot face aux solutions BTP", H1))
+        story.append(Paragraph("O ConstruPilot face às soluções de construção", H1))
     story.append(Spacer(1, 2 * mm))
-    story.append(Paragraph("Obat · Trustup Pro · Vertuoza · EBP Bâtiment · Batappli · Alobees · BatiChiffrage · Renalto — "
-                           f"édition du {datetime.now(timezone.utc).strftime('%d/%m/%Y')}.", MUT))
+    story.append(Paragraph(f"Obat · Trustup Pro · Vertuoza · EBP Bâtiment · Batappli · Alobees · BatiChiffrage · Renalto — edição de {datetime.now(timezone.utc).strftime('%d/%m/%Y')}.", MUT))
     story.append(Spacer(1, 5 * mm))
 
-    header = [Paragraph("Fonctionnalité", CELLH)] + [Paragraph(c, CELLH) for c in COLS]
+    header = [Paragraph("Funcionalidade", CELLH)] + [Paragraph(c, CELLH) for c in COLS]
     data = [header]
     for feat, vals in ROWS:
         data.append([Paragraph(feat, FEAT)] + [_cell_para(v) for v in vals])
@@ -184,12 +182,11 @@ def build(focus=None) -> bytes:
     t.setStyle(TableStyle(style))
     story.append(t)
     story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph("Légende : <b>Oui</b> = disponible · <b>Partiel / Option / À venir</b> = partiel, en option ou annoncé · "
-                           "<b>Non</b> = non proposé · <b>—</b> = non documenté publiquement.", MUT))
+    story.append(Paragraph("Legenda: <b>Sim</b> = disponível · <b>Parcial / Opção / Brevemente</b> = parcial, em opção ou anunciado · <b>Não</b> = não proposto · <b>—</b> = não documentado publicamente.", MUT))
 
     story.append(PageBreak())
-    story.append(Paragraph("CE QUI DISTINGUE CONSTRUPILOT", KICK))
-    story.append(Paragraph("Nos avantages clés", H1))
+    story.append(Paragraph("O QUE DISTINGUE O CONSTRUPILOT", KICK))
+    story.append(Paragraph("As nossas vantagens principais", H1))
     story.append(Spacer(1, 4 * mm))
     rows3, row = [], []
     for t_, d_ in DIFFS:
@@ -208,10 +205,10 @@ def build(focus=None) -> bytes:
     story.append(ct)
 
     story.append(PageBreak())
-    story.append(Paragraph("FICHES SYNTHÉTIQUES", KICK))
-    story.append(Paragraph("Les solutions en un coup d'œil", H1))
+    story.append(Paragraph("FICHAS RESUMO", KICK))
+    story.append(Paragraph("As soluções num relance", H1))
     story.append(Spacer(1, 4 * mm))
-    prof = [[Paragraph("Solution", CELLH), Paragraph("Tarif indicatif (HT)", CELLH), Paragraph("Positionnement", CELLH)]]
+    prof = [[Paragraph("Solução", CELLH), Paragraph("Preço indicativo (s/ IVA)", CELLH), Paragraph("Positionnement", CELLH)]]
     for name, price, desc in PROFILES:
         nm = ParagraphStyle("nm", fontName="Helvetica-Bold", fontSize=9,
                             textColor=GREEN if name == "ConstruPilot" else DARK, leading=11)
@@ -223,8 +220,7 @@ def build(focus=None) -> bytes:
                             ("BACKGROUND", (0, 1), (-1, 1), TINT)]))
     story.append(pt)
     story.append(Spacer(1, 4 * mm))
-    story.append(Paragraph("Sources : sites éditeurs et comparateurs spécialisés consultés à la date d'édition. Tarifs et fonctionnalités "
-                           "susceptibles d'évoluer ; support de positionnement, non contractuel.", MUT))
+    story.append(Paragraph("Fontes: sites dos editores e comparadores especializados consultados à data de edição. Preços e funcionalidades suscetíveis de evoluir; suporte de posicionamento, não contratual.", MUT))
 
     doc.build(story)
     pdf = buf.getvalue(); buf.close()

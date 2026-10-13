@@ -23,7 +23,7 @@ def _now() -> str:
 async def _owned_project(project_id: str, user) -> dict:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0})
     if not p:
-        raise HTTPException(404, "Projet introuvable")
+        raise HTTPException(404, "Projeto não encontrado")
     return p
 
 
@@ -36,7 +36,7 @@ async def _pro_card(user_id: str) -> dict | None:
     b = await _resolve_branding(user_id) or {}
     rv = await get_reviews_for_user(user_id, limit=3)
     return {
-        "user_id": user_id, "company_name": b.get("company_name") or u.get("name") or "Professionnel",
+        "user_id": user_id, "company_name": b.get("company_name") or u.get("name") or "Profissional",
         "contact_name": u.get("name"), "email": b.get("email") or u.get("email"), "phone": b.get("phone") or u.get("phone"),
         "city": b.get("city"), "verified": u.get("kyc_status") == "verified",
         "rating": rv.get("average") or None, "reviews_count": rv.get("count", 0),
@@ -48,7 +48,7 @@ def _quote_view(d: dict, sign_token: str | None) -> dict:
     t = d.get("totals") or {}
     accepted = bool(d.get("client_accepted_at")) or bool(d.get("signed")) or d.get("status") in ("signed", "accepted")
     return {
-        "doc_id": d["doc_id"], "number": d.get("number"), "title": d.get("title") or "Devis", "status": d.get("status"),
+        "doc_id": d["doc_id"], "number": d.get("number"), "title": d.get("title") or "Orçamento", "status": d.get("status"),
         "issue_date": d.get("issue_date") or d.get("created_at"), "total_ht": t.get("ht"), "total_ttc": t.get("ttc"),
         "lines_count": len(d.get("lines") or []), "accepted": accepted, "accepted_at": d.get("client_accepted_at") or d.get("signed_at"),
         "declined_at": d.get("client_declined_at"), "signed": bool(d.get("signed")),
@@ -71,7 +71,7 @@ async def _sign_token(doc: dict, create: bool = False, who: dict | None = None) 
         "signature_token": token, "signature_token_created_at": _now(),
         "client_email": (who or {}).get("email") or (doc.get("client") or {}).get("email"),
         "client_name": (who or {}).get("name") or (doc.get("client") or {}).get("name"), "total_ttc": (doc.get("totals") or {}).get("ttc"),
-        "subject": "Acceptation depuis l'espace chantier", "email_status": "portal", "created_at": _now(),
+        "subject": "Aceitação a partir da área de obra", "email_status": "portal", "created_at": _now(),
         "opened": True, "open_count": 1, "signed": False, "reminder_sent": False})
     return token
 
@@ -101,12 +101,12 @@ async def _project_quote(project_id: str, doc_id: str, user) -> tuple[dict, dict
     p = await _owned_project(project_id, user)
     d = await db.pro_documents.find_one({"doc_id": doc_id, "doc_type": "quote"}, {"_id": 0})
     if not d:
-        raise HTTPException(404, "Devis introuvable")
+        raise HTTPException(404, "Orçamento não encontrado")
     ok = d.get("project_id") == project_id
     if not ok and d.get("lead_id"):
         ok = bool(await db.leads.find_one({"lead_id": d["lead_id"], "project_id": project_id}, {"_id": 1}))
     if not ok:
-        raise HTTPException(403, "Ce devis n'est pas rattaché à ce chantier")
+        raise HTTPException(403, "Este orçamento não está associado a esta obra")
     return p, d
 
 
@@ -117,7 +117,7 @@ async def get_artisan_block(project_id: str, user=Depends(current_user)) -> dict
 
 async def _notify_pro(doc: dict, project: dict, user, accepted: bool) -> None:
     label = "accepté" if accepted else "refusé"
-    msg = f"Devis {doc.get('number') or ''} {label} par {user.get('name') or user.get('email')} · {project.get('name') or 'chantier'}"
+    msg = f"Orçamento {doc.get('number') or ''} {label} par {user.get('name') or user.get('email')} · {project.get('name') or 'chantier'}"
     await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": doc["user_id"],
                                        "type": "quote_accepted" if accepted else "quote_declined", "doc_id": doc["doc_id"],
                                        "message": msg, "created_at": _now(), "read": False})
@@ -125,8 +125,8 @@ async def _notify_pro(doc: dict, project: dict, user, accepted: bool) -> None:
         from engines.emailer import send_email, wrap_html
         pro = await db.users.find_one({"user_id": doc["user_id"]}, {"_id": 0, "email": 1})
         if pro and pro.get("email"):
-            await send_email(pro["email"], f"{'✅' if accepted else '✖'} Devis {label} — {project.get('name') or ''}",
-                             wrap_html(f"<p>{msg}.</p><p>Retrouvez-le dans le suivi de vos devis.</p>"))
+            await send_email(pro["email"], f"{('✅' if accepted else '✖')} Orçamento {label} — {project.get('name') or ''}",
+                             wrap_html(f'<p>{msg}.</p><p>Encontre-o no acompanhamento dos seus orçamentos.</p>'))
     except Exception:  # noqa: BLE001
         pass
 
@@ -135,7 +135,7 @@ async def _notify_pro(doc: dict, project: dict, user, accepted: bool) -> None:
 async def accept_quote(project_id: str, doc_id: str, user=Depends(current_user)) -> dict:
     p, d = await _project_quote(project_id, doc_id, user)
     if d.get("client_declined_at"):
-        raise HTTPException(400, "Devis déjà refusé")
+        raise HTTPException(400, "Orçamento já recusado")
     if not d.get("client_accepted_at"):
         await db.pro_documents.update_one({"doc_id": doc_id}, {"$set": {
             "client_accepted_at": _now(), "client_accepted_by": user["user_id"], "project_id": project_id,
@@ -154,7 +154,7 @@ async def accept_quote(project_id: str, doc_id: str, user=Depends(current_user))
 async def decline_quote(project_id: str, doc_id: str, user=Depends(current_user)) -> dict:
     p, d = await _project_quote(project_id, doc_id, user)
     if d.get("signed") or d.get("client_accepted_at"):
-        raise HTTPException(400, "Devis déjà accepté")
+        raise HTTPException(400, "Orçamento já aceite")
     await db.pro_documents.update_one({"doc_id": doc_id}, {"$set": {"client_declined_at": _now(), "status": "refused", "project_id": project_id}})
     await _notify_pro(d, p, user, False)
     return await project_artisan_block(p)
@@ -169,7 +169,7 @@ async def project_quote_pdf(project_id: str, doc_id: str, user=Depends(current_u
     pdf = build_document_pdf(d, branding=await _resolve_branding(d["user_id"]), reviews=await get_reviews_for_user(d["user_id"]),
                              lang=d.get("lang") or user.get("lang"))
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'inline; filename="devis_{d.get("number") or doc_id}.pdf"'})
+                    headers={"Content-Disposition": f'''inline; filename="orcamento_{d.get('number') or doc_id}.pdf"'''})
 
 
 @router.get("/{project_id}/site")

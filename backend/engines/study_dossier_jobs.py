@@ -32,9 +32,9 @@ def public(job):
 def selection(pages, requested):
     ids = list(range(len(pages))) if requested is None else list(dict.fromkeys(requested))
     if not ids or len(ids) > MAX_PAGES:
-        raise HTTPException(422, f"Sélectionnez entre 1 et {MAX_PAGES} pages ; aucune page n’est retirée silencieusement.")
+        raise HTTPException(422, f'Selecione entre 1 e {MAX_PAGES} páginas; nenhuma página é retirada silenciosamente.')
     if any(type(i) is not int or i < 0 or i >= len(pages) for i in ids):
-        raise HTTPException(422, "Numéro de page invalide")
+        raise HTTPException(422, "Número de página inválido")
     return ids
 
 
@@ -54,32 +54,32 @@ async def study_settings(owner_id, saved=None):
 async def enqueue_study(plan_id, body, user):
     from routes.plans_pc import _pc_owner_id
     if user.get("active") is False or user.get("company_active") is False:
-        raise HTTPException(403, "Compte désactivé")
+        raise HTTPException(403, "Conta desativada")
     owner_id = await _pc_owner_id(plan_id, user, write=True)
     plan = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": owner_id},
                                         {"_id": 0, "pages.index": 1, "updated_at": 1})
     indices = selection((plan or {}).get("pages") or [], body.get("pages"))
-    request = str(body.get("request") or "Gros œuvre, sous-sol ou vide sanitaire si présent, enduits et maçonnerie de clôture ; hors charpente-couverture et second œuvre.")[:2000]
+    request = str(body.get("request") or "Estrutura e alvenarias, cave ou desvão sanitário se existir, rebocos e alvenaria de vedação; exclui cobertura e acabamentos.")[:2000]
     digest = fingerprint({"indices": indices, "request": request})
     active_key = f"{owner_id}:{plan_id}"
     old = await db.pc_study_jobs.find_one({"active_key": active_key, "active": True}, {"_id": 0})
     if old:
         if old["payload_hash"] != digest:
-            raise HTTPException(409, "Une étude différente est déjà en cours sur ce plan")
+            raise HTTPException(409, "Já está em curso um estudo diferente sobre esta planta")
         return public(old)
     request_id = str(body.get("request_id") or uuid.uuid4().hex)[:80]
     ident = "pcj_" + fingerprint([user["user_id"], plan_id, request_id])[:28]
     previous = await db.pc_study_jobs.find_one({"job_id": ident, "user_id": user["user_id"]}, {"_id": 0})
     if previous:
         if previous["payload_hash"] != digest:
-            raise HTTPException(409, "Identifiant de demande déjà utilisé")
+            raise HTTPException(409, "Identificador de pedido já utilizado")
         return public(previous)
     timestamp = now().isoformat()
     job = {"job_id": ident, "user_id": user["user_id"], "owner_id": owner_id, "plan_id": plan_id,
            "active_key": active_key, "active": True, "payload_hash": digest,
            "indices": indices, "request": request, "status": "queued", "created_at": timestamp,
            "updated_at": timestamp, "expected_updated_at": plan.get("updated_at"),
-           "progress": {"phase": "En attente", "completed_pages": 0, "total_pages": len(indices)},
+           "progress": {"phase": "Em espera", "completed_pages": 0, "total_pages": len(indices)},
            "cancel_requested": False, "error": None}
     try:
         await db.pc_study_jobs.insert_one(copy.deepcopy(job))
@@ -87,14 +87,14 @@ async def enqueue_study(plan_id, body, user):
         old = await db.pc_study_jobs.find_one({"active_key": active_key, "active": True}, {"_id": 0})
         if old and old.get("payload_hash") == digest:
             return public(old)
-        raise HTTPException(409, "Une étude est déjà en cours") from None
+        raise HTTPException(409, "Já está em curso um estudo") from None
     return public(job)
 
 
 async def owned_job(job_id, user):
     job = await db.pc_study_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]}, {"_id": 0})
     if not job:
-        raise HTTPException(404, "Étude introuvable")
+        raise HTTPException(404, "Estudo não encontrado")
     return job
 
 
@@ -103,8 +103,8 @@ async def finish(job, status, error=None):
         {"$set": {"status": status, "active": False, "error": error, "updated_at": now().isoformat()}, "$unset": {"lease_until": ""}})
     if result.matched_count and status in ("completed", "failed", "interrupted"):
         await db.notifications.update_one({"user_id": job["user_id"], "pc_job_id": job["job_id"]}, {"$setOnInsert": {
-            "notif_id": "n_"+job["job_id"], "title": "Étude et devis disponibles" if status == "completed" else "Étude à reprendre",
-            "message": "Consultez les métrés, hypothèses et prix." if status == "completed" else (error or "Traitement interrompu"),
+            "notif_id": "n_"+job["job_id"], "title": "Estudo e orçamento disponíveis" if status == "completed" else "Estudo a retomar",
+            "message": "Consulte as medições, hipóteses e preços." if status == "completed" else (error or "Traitement interrompu"),
             "link": f"/plan?open={job['plan_id']}&study=1", "type": "study", "read": False, "created_at": now().isoformat()}}, upsert=True)
 
 
@@ -115,12 +115,12 @@ async def run_job(job):
     from engines.study_dossier_ai import analyze_dossier
     user = await db.users.find_one({"user_id": job["user_id"]}, {"_id": 0, "password_hash": 0})
     if not user or user.get("active") is False or user.get("company_active") is False:
-        raise StudyError("Compte indisponible")
+        raise StudyError("Conta indisponível")
     owner = await _pc_owner_id(job["plan_id"], user, write=True)
     bind(user)
     plan = await db.plans_takeoff.find_one({"plan_id": job["plan_id"], "user_id": owner}, {"_id": 0})
     if not plan or plan.get("updated_at") != job["expected_updated_at"]:
-        raise StudyError("Le plan a changé depuis la demande ; relancez sur sa version actuelle")
+        raise StudyError("A planta mudou desde o pedido; relance sobre a versão atual")
     source = await load_plan_source(db, job["plan_id"], owner)
     pdf = base64.b64decode(source["data_b64"]) if source else None
     async def cancelled():
@@ -131,7 +131,7 @@ async def run_job(job):
                                        {"$set": {"progress": value, "updated_at": now().isoformat()}})
     spec, coverage, analyses = await analyze_dossier(plan.get("pages") or [], job["indices"], pdf_bytes=pdf,
                                                     request=job["request"], progress=progress, cancelled=cancelled)
-    await progress({"phase": "Calcul et contrôle du devis", "completed_pages": len(job["indices"]), "total_pages": len(job["indices"])})
+    await progress({"phase": "Cálculo e controlo do orçamento", "completed_pages": len(job["indices"]), "total_pages": len(job["indices"])})
     settings = await study_settings(owner)
     # The project country, when actually read, proposes the fiscal regime visibly.
     if not settings.get("country") and spec.get("country") in ("FR", "PT"):
@@ -141,17 +141,17 @@ async def run_job(job):
                           source={"filename": plan.get("filename"), "sha256": (source or {}).get("sha256"), "plan_id": job["plan_id"]})
     study["page_analyses"] = analyses
     if len(json.dumps(study, ensure_ascii=False).encode()) > 10_000_000:
-        raise StudyError("Étude trop volumineuse pour un dossier unique")
+        raise StudyError("Estudo demasiado volumoso para um único processo")
     if await cancelled():
         raise asyncio.CancelledError()
     # Permission and source generation are checked again before the only write.
     await _pc_owner_id(job["plan_id"], user, write=True)
     current_source = await db.plan_sources.find_one({"plan_id": job["plan_id"], "user_id": owner}, {"_id": 0, "sha256": 1})
     if (current_source or {}).get("sha256") != (source or {}).get("sha256"):
-        raise StudyError("Le fichier source a changé pendant l’étude")
+        raise StudyError("O ficheiro de origem mudou durante o estudo")
     claim = await db.pc_study_jobs.update_one({"job_id": job["job_id"], "worker": job["worker"],
         "status": "running", "cancel_requested": False, "lease_until": {"$gt": now()}},
-        {"$set": {"status": "committing", "progress.phase": "Enregistrement du résultat"}})
+        {"$set": {"status": "committing", "progress.phase": "Registo do resultado"}})
     if not claim.matched_count:
         raise asyncio.CancelledError()
     study["job_id"] = job["job_id"]
@@ -159,7 +159,7 @@ async def run_job(job):
                                              "updated_at": job["expected_updated_at"]},
         {"$set": {"pc_study": study, "updated_at": now().isoformat()}})
     if not result.matched_count:
-        raise StudyError("Le dossier a été modifié pendant l’étude ; les modifications existantes sont conservées")
+        raise StudyError("O processo foi modificado durante o estudo; as modificações existentes são conservadas")
     if plan.get("pc_study"):
         await db.pc_study_history.insert_one({"plan_id": job["plan_id"], "user_id": owner,
             "saved_at": now().isoformat(), "source": "dossier", "study": plan["pc_study"],
@@ -171,7 +171,7 @@ async def worker():
         job = None
         try:
             await db.pc_study_jobs.update_many({"status": {"$in": ["running", "committing"]}, "lease_until": {"$lt": now()}},
-                {"$set": {"status": "interrupted", "active": False, "error": "Serveur interrompu ; relancez l’étude. Aucun nouvel appel IA automatique.", "updated_at": now().isoformat()}})
+                {"$set": {"status": "interrupted", "active": False, "error": "Servidor interrompido; relance o estudo. Nenhuma nova chamada IA automática.", "updated_at": now().isoformat()}})
             job = await db.pc_study_jobs.find_one_and_update({"status": "queued", "cancel_requested": False},
                 {"$set": {"status": "running", "worker": uuid.uuid4().hex, "lease_until": now()+timedelta(seconds=LEASE_SECONDS)}},
                 sort=[("created_at", 1)], return_document=ReturnDocument.AFTER)
@@ -198,7 +198,7 @@ async def worker():
                 if stopping:
                     raise
             except Exception as exc:
-                msg = str(exc.detail) if isinstance(exc, HTTPException) else str(exc) if isinstance(exc, StudyError) else "Étude non aboutie ; vos pièces et votre ancienne étude sont conservées."
+                msg = str(exc.detail) if isinstance(exc, HTTPException) else str(exc) if isinstance(exc, StudyError) else "Estudo não concluído; as suas peças e o seu estudo anterior são conservados."
                 log.warning("PC job failed: %s", type(exc).__name__)
                 await finish(job, "failed", msg[:500])
         except asyncio.CancelledError:

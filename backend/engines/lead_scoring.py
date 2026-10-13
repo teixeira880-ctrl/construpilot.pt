@@ -39,7 +39,7 @@ def _score_budget(lead: dict, add) -> None:
     b = lead.get("budget") or 0
     if b <= 0:
         return
-    add("Budget renseigné", 10, f"{b} €")
+    add("Orçamento indicado", 10, f"{b} €")
     if b >= 5000:
         add("Budget significatif", 5, ">= 5 000 €")
     if b >= 20000:
@@ -51,22 +51,22 @@ def _score_address(lead: dict, add) -> None:
     if not addr:
         return
     if re.search(r"\b\d{5}\b", addr):
-        add("Adresse complète", 10, "code postal détecté")
+        add("Morada completa", 10, "código postal detetado")
     else:
-        add("Adresse partielle", 5, "sans code postal")
+        add("Morada parcial", 5, "sem código postal")
 
 
 def _score_description(lead: dict, add) -> None:
     desc = (lead.get("description") or "").strip()
     if len(desc) >= 100:
-        add("Description détaillée", 10, f"{len(desc)} caractères")
+        add("Descrição detalhada", 10, f"{len(desc)} caractères")
     elif len(desc) >= 30:
         add("Description sommaire", 5, f"{len(desc)} caractères")
 
 
 def _score_surface(lead: dict, add) -> None:
     if lead.get("surface"):
-        add("Surface indiquée", 10, f"{lead['surface']} m²")
+        add("Área indicada", 10, f"{lead['surface']} m²")
 
 
 def _score_delay(lead: dict, add) -> None:
@@ -74,41 +74,41 @@ def _score_delay(lead: dict, add) -> None:
     if d is None:
         return
     if d <= 90:
-        add("Démarrage rapide", 10, "≤ 3 mois")
+        add("Arranque rápido", 10, "≤ 3 mois")
     elif d <= 180:
-        add("Démarrage court terme", 5, "≤ 6 mois")
+        add("Arranque a curto prazo", 5, "≤ 6 mois")
 
 
 def _score_phone(lead: dict, add) -> None:
     phone = (lead.get("phone") or "").strip()
     if phone and len(re.sub(r"\D", "", phone)) >= 9:
-        add("Téléphone présent", 10, phone)
+        add("Telefone presente", 10, phone)
         if lead.get("phone_verified"):
-            add("Téléphone vérifié", 5)
+            add("Telefone verificado", 5)
 
 
 def _score_email(lead: dict, add) -> None:
     email = (lead.get("email") or "").strip()
     if "@" in email:
-        add("Email présent", 10)
+        add("E-mail presente", 10)
         if lead.get("email_verified"):
-            add("Email vérifié", 5)
+            add("E-mail verificado", 5)
 
 
 def _score_photos(lead: dict, add) -> None:
     photos = lead.get("photos_count", 0) or 0
     if photos:
-        add("Photos jointes", min(15, photos * 5), f"{photos} photo(s)")
+        add("Fotografias anexadas", min(15, photos * 5), f"{photos} photo(s)")
 
 
 def _score_keywords(lead: dict, add) -> None:
     low = (lead.get("description") or "").lower()
     matched = [kw for kw in LOT_KEYWORDS if kw in low]
     if matched:
-        add("Type de travaux détaillé", min(10, len(matched) * 3),
+        add("Tipo de obras detalhado", min(10, len(matched) * 3),
             ", ".join(matched[:4]))
     if any(kw in low for kw in ("urgent", "cette année", "asap", "au plus vite")):
-        add("Intention forte", 5, "mots-clés d'urgence")
+        add("Intention forte", 5, "palavras-chave de urgência")
 
 
 # Pipeline de règles — ajouter/retirer une règle = 1 ligne

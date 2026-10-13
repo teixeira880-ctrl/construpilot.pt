@@ -31,7 +31,7 @@ def _urls(origin_url: str) -> dict:
 async def _create_session(user: dict, *, name: str, description: str, unit_cents: int, quantity: int,
                           metadata: dict, origin_url: str):
     if not stripe.api_key:
-        raise HTTPException(503, "Paiement indisponible : Stripe non configuré.")
+        raise HTTPException(503, "Pagamento indisponível: Stripe não configurado.")
     customer_id = await monetization.get_or_create_customer(user)
     expires = datetime.now(timezone.utc) + SESSION_TTL
     kwargs = {"customer": customer_id, "mode": "payment", "expires_at": int(expires.timestamp()),
@@ -42,7 +42,7 @@ async def _create_session(user: dict, *, name: str, description: str, unit_cents
         return await asyncio.to_thread(stripe.checkout.Session.create, **kwargs)
     except Exception:
         log.exception("Stripe postal checkout")
-        raise HTTPException(502, "Paiement indisponible — réessayez dans quelques instants.")
+        raise HTTPException(502, "Pagamento indisponível — tente novamente dentro de instantes.")
 
 
 async def _pending_session(query: dict):
@@ -57,15 +57,15 @@ async def create_letter_checkout(*, user, token, quote_id, recipient, mode, cont
     offer = await postal_offer.offer_for(user)
     if offer.next_kind != "checkout" or quote.get("offer", {}).get("next_kind") != "checkout":
         raise HTTPException(409, {"code": "postal_free_available", "message":
-            "Un envoi offert ou un crédit est disponible : actualisez le tarif, cet envoi ne nécessite pas de paiement."})
+            "Está disponível um envio oferecido ou um crédito: atualize o preço, este envio não exige pagamento."})
     attempt = await db.radar_postal.find_one({"_id": quote["lock_id"]}, {"_id": 0, "status": 1})
     if attempt and attempt.get("status") != "rejected":
-        raise HTTPException(409, {"code": "postal_already_requested", "message": "Un envoi identique est déjà enregistré ou à vérifier."})
+        raise HTTPException(409, {"code": "postal_already_requested", "message": "Já está registado ou a verificar um envio idêntico."})
     pending = await _pending_session({"type": LETTER_TYPE, "lock_id": quote["lock_id"], "user_id": user["user_id"]})
     if pending:
         return {"url": pending["checkout_url"], "session_id": pending["session_id"], "amount_cents": pending["amount_cents"], "reused": True}
     gross = offer.unit_price_gross_cents
-    session = await _create_session(user, name="Courrier postal ConstruPilot — 1 lettre",
+    session = await _create_session(user, name="Correio postal ConstruPilot — 1 carta",
         description=f"{offer.unit_price_net_cents / 100:.2f} € HT + TVA {offer.vat_rate} % · destinataire {recipient.get('nom', '')[:40]}",
         unit_cents=gross, quantity=1, origin_url=origin_url,
         metadata={"type": LETTER_TYPE, "token": token, "quote_id": quote_id, "lock_id": quote["lock_id"]})
@@ -82,11 +82,11 @@ async def create_letter_checkout(*, user, token, quote_id, recipient, mode, cont
 async def create_credits_checkout(*, user, pack_id: str, origin_url: str) -> dict:
     letters = postal_offer.PACKS.get(pack_id)
     if not letters:
-        raise HTTPException(400, "Pack inconnu.")
+        raise HTTPException(400, "Pack desconhecido.")
     postal_offer.company_key(user)
     net = letters * postal_offer.UNIT_NET_CENTS
     gross = postal_offer.gross(net)
-    session = await _create_session(user, name=f"Pack {letters} courriers postaux ConstruPilot",
+    session = await _create_session(user, name=f'Pack {letters} cartas postais ConstruPilot',
         description=f"{letters} lettres · {net / 100:.2f} € HT + TVA {postal_offer.VAT_RATE} %",
         unit_cents=gross, quantity=1, origin_url=origin_url, metadata={"type": CREDITS_TYPE, "pack_id": pack_id, "letters": str(letters)})
     await db.payment_transactions.insert_one({
@@ -111,7 +111,7 @@ async def apply_letter_payment(rec: dict) -> None:
     outcome = {"fulfillment": "done"}
     try:
         if not user:
-            raise HTTPException(404, {"code": "user_missing", "message": "Utilisateur introuvable."})
+            raise HTTPException(404, {"code": "user_missing", "message": "Utilizador não encontrado."})
         doc = await postal_delivery.deliver(user=user, user_id=user["user_id"], token=rec["token"], quote_id=rec["quote_id"],
             recipient=rec["recipient"], mode=rec["mode"], context_hash=rec["context_hash"], paid_session_id=rec["session_id"])
         outcome["postal_id"] = doc["postal_id"]
@@ -141,7 +141,7 @@ async def apply_credits_payment(rec: dict) -> None:
     await db.payment_transactions.update_one({"session_id": rec["session_id"]}, {"$set": {
         "fulfillment": "done", "credits_balance": balance, "updated_at": _now()}})
     await db.notifications.insert_one({"notif_id": "n_" + secrets.token_hex(5), "user_id": user["user_id"],
-        "type": "postal_credits", "message": f"{rec.get('letters')} crédits courrier ajoutés à votre entreprise (solde : {balance}).",
+        "type": "postal_credits", "message": f"{rec.get('letters')} créditos de correio adicionados à sua empresa (saldo: {balance}).",
         "url": "/radar", "created_at": _now(), "read": False})
 
 
@@ -149,7 +149,7 @@ async def payment_view(user: dict, session_id: str) -> dict:
     rec = await db.payment_transactions.find_one({"session_id": session_id, "user_id": user["user_id"],
                                                   "type": {"$in": [LETTER_TYPE, CREDITS_TYPE]}}, {"_id": 0, "recipient": 0})
     if not rec:
-        raise HTTPException(404, "Paiement introuvable.")
+        raise HTTPException(404, "Pagamento não encontrado.")
     if rec.get("payment_status") != "paid":
         await monetization.sync_status(session_id)
         rec = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0, "recipient": 0})

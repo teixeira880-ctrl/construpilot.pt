@@ -113,12 +113,12 @@ def extract_xlsx(raw: bytes) -> dict:
         state = getattr(ws, "sheet_state", "visible")
         if state != "visible":
             warnings.append({"type": "hidden_sheet", "sheet": name, "state": state,
-                             "message": f"Feuille masquée « {name} » analysée (non ignorée)"})
+                             "message": f'Folha oculta «{name}» analisada (não ignorada)'})
         hrow, cols = _find_header(ws)
         if not hrow:
             sheets.append({"sheet": name, "state": state, "recognised": False, "lines": 0})
             unread.append({"type": "sheet_unrecognised", "sheet": name,
-                           "message": "En-têtes non reconnus (interprétation IA prévue en tranche suivante)"})
+                           "message": "Cabeçalhos não reconhecidos (interpretação IA prevista numa fase seguinte)"})
             continue
 
         merged: dict = {}
@@ -184,7 +184,7 @@ def extract_xlsx(raw: bytes) -> dict:
             if _looks_subtotal(text) and (qty["value"] in (None, 0)) and (pu["value"] in (None, 0)):
                 flags.append("subtotal_excluded_from_sum")
                 lines.append({"line_id": f"l{len(lines)+1}", "sheet": name, "row": r,
-                              "kind": "subtotal", "hidden": hidden, "lot": lot or "Sans lot",
+                              "kind": "subtotal", "hidden": hidden, "lot": lot or "Sem capítulo",
                               "designation": text, "description": "", "unit": unit or None,
                               "qty": qty, "pu": pu, "amount": amt, "provenance": prov, "flags": flags})
                 continue
@@ -195,7 +195,7 @@ def extract_xlsx(raw: bytes) -> dict:
                 continue
 
             lines.append({"line_id": f"l{len(lines)+1}", "sheet": name, "row": r,
-                          "kind": "detail", "hidden": hidden, "lot": lot or "Sans lot",
+                          "kind": "detail", "hidden": hidden, "lot": lot or "Sem capítulo",
                           "designation": text, "description": " ".join(pending)[:1500],
                           "unit": unit or None, "qty": qty, "pu": pu, "amount": amt,
                           "provenance": prov, "flags": flags})
@@ -216,7 +216,7 @@ def extract_xlsx(raw: bytes) -> dict:
 
 def extract_pdf(raw: bytes) -> dict:
     if fitz is None:
-        raise RuntimeError("PyMuPDF (fitz) indisponible")
+        raise RuntimeError("PyMuPDF (fitz) indisponível")
     t0 = time.time()
     doc = fitz.open(stream=raw, filetype="pdf")
     pages: list[dict] = []
@@ -247,7 +247,7 @@ def extract_pdf(raw: bytes) -> dict:
         scanned = (not text_present) and img_count > 0
         if scanned:
             warnings.append({"type": "scanned_page", "page": pno + 1,
-                             "message": "Page probablement scannée — OCR à activer (IA vision)"})
+                             "message": "Página provavelmente digitalizada — OCR a ativar (IA de visão)"})
             unread.append({"type": "scanned_page", "page": pno + 1})
 
         n_tab = 0
@@ -294,7 +294,7 @@ def arithmetic_check(lines: list[dict], vat_rate: float | None = None) -> dict:
              "provenance": ln["provenance"].get("amount") or ln["provenance"].get("pu")}
         if q is None or pu is None:
             e["status"] = "insufficient"
-            e["reason"] = "quantité ou PU manquant"
+            e["reason"] = "quantidade ou PU em falta"
             if amt is not None:
                 sum_file += _D(amt)
             checks.append(e)
@@ -347,7 +347,7 @@ def analyse(raw: bytes, filename: str, vat_rate: float | None = None) -> dict:
     elif ext == "pdf":
         res = extract_pdf(raw)
     else:
-        raise ValueError(f"Format non pris en charge à cette étape : .{ext or '?'} (XLSX ou PDF attendu)")
+        raise ValueError(f"Formato não suportado nesta etapa: .{ext or '?'} (XLSX ou PDF esperado)")
     res["arithmetic"] = arithmetic_check(res.get("lines", []), vat_rate) if res["format"] == "xlsx" else None
     res["engine_version"] = ENGINE_VERSION
     return res

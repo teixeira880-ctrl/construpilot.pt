@@ -32,7 +32,7 @@ def test_arching_falls_back_to_rectangular_when_masonry_too_low():
     out = L.lintel_design({"clear_span_m": 3.0, "wall_thickness_m": 0.2, "load_model": "arching",
                            "masonry_height_above_m": 0.4, "permanent_line_kn_m": 3, "material": "steel"})
     assert out["load_model"] == "rectangular"
-    assert any("voûte incomplète" in n for n in out["notes"])
+    assert any("arco incompleto" in n for n in out["notes"])
 
 
 def test_bearing_check_flags_insufficient_support():

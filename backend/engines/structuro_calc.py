@@ -76,8 +76,8 @@ class Support(StrictModel):
 class Element(StrictModel):
     id: IDENT
     kind: Literal["slab", "beam", "wall", "column", "footing"]
-    level: str = Field(default="À préciser", max_length=60)
-    material: str = Field(default="À préciser", max_length=80)
+    level: str = Field(default="A precisar", max_length=60)
+    material: str = Field(default="A precisar", max_length=80)
     # Rectangle footprint: length local x, width local y, height vertical.
     length_m: POS | None = None
     width_m: POS | None = None
@@ -102,7 +102,7 @@ class Combination(StrictModel):
 
 
 class Model(StrictModel):
-    title: str = Field(default="Étude de structure", max_length=160)
+    title: str = Field(default="Estudo de estrutura", max_length=160)
     country: Literal["FR", "PT"] = "PT"
     actions: list[Action] = Field(default_factory=list, max_length=8)
     self_weight_action: IDENT | None = None
@@ -140,20 +140,20 @@ class Model(StrictModel):
     def unique_identifiers(self):
         for rows in (self.actions, self.elements, self.combinations):
             if len({x.id for x in rows}) != len(rows):
-                raise ValueError("Repères dupliqués")
+                raise ValueError("Marcas duplicadas")
         if set(x.id for x in self.actions) & set(x.id for x in self.combinations):
-            raise ValueError("Un cas et une combinaison ne peuvent partager le même repère")
+            raise ValueError("Um caso e uma combinação não podem partilhar a mesma marca")
         return self
 
 
 LIMITS = [
-    "Efforts gravitaires uniquement ; aucune résistance ni conformité Eurocodes vérifiée.",
-    "Poutres isostatiques sur deux appuis simples, EI constant ; déformations petites et linéaires.",
-    "Planchers : répartition tributaire saisie, sans calcul de plaque ni redistribution par rigidité.",
-    "Murs et poteaux : compression centrée ; excentricités, flambement et second ordre non calculés.",
-    "Semelles : pression moyenne N/A sous charge centrée ; portance, tassement et ferraillage non vérifiés.",
-    "Vent, séisme, poussées, torsion, incendie, soutènements et phases provisoires non calculés.",
-    "Les sections dessinées sont des données ou propositions ; aucun dimensionnement automatique.",
+    "Apenas esforços gravíticos; nenhuma resistência nem conformidade com os Eurocódigos verificada.",
+    "Vigas isostáticas sobre dois apoios simples, EI constante; deformações pequenas e lineares.",
+    "Lajes: distribuição tributária introduzida, sem cálculo de placa nem redistribuição por rigidez.",
+    "Paredes e pilares: compressão centrada; excentricidades, encurvadura e segunda ordem não calculadas.",
+    "Sapatas: pressão média N/A sob carga centrada; capacidade resistente, assentamento e armaduras não verificados.",
+    "Vento, sismo, impulsos, torção, incêndio, contenções e fases provisórias não calculados.",
+    "As secções desenhadas são dados ou propostas; nenhum dimensionamento automático.",
 ]
 
 
@@ -187,67 +187,67 @@ def inspect(model: Model) -> tuple[list[dict], list[str]]:
     elements = {e.id: e for e in model.elements}
     actions = {a.id: a for a in model.actions}
     if not elements:
-        issue(None, "Ajouter les éléments porteurs et leurs appuis.")
+        issue(None, "Adicionar os elementos estruturais e os seus apoios.")
     if not model.gravity_model_reviewed:
-        issue(None, "Confirmer le modèle gravitaire, les transferts centrés et les hypothèses de répartition.")
+        issue(None, "Confirmar o modelo gravítico, as transferências centradas e as hipóteses de distribuição.")
     if model.self_weight_action not in actions or actions[model.self_weight_action].kind != "G":
-        issue(None, "Affecter le poids propre à une action permanente G existante.")
+        issue(None, "Atribuir o peso próprio a uma ação permanente G existente.")
     for c in model.combinations:
         if set(c.factors) != set(actions) or not _has_source(c.source):
-            issue(None, f"{c.id} : fournir un coefficient explicite par action et sa justification.")
+            issue(None, f'{c.id} : fornecer um coeficiente explícito por ação e a sua justificação.')
     indegree = dict.fromkeys(elements, 0)
     for e in model.elements:
         if not e.reviewed:
-            issue(e.id, "Géométrie, matériau, chargement et appuis à confirmer.")
+            issue(e.id, "Geometria, material, carregamento e apoios a confirmar.")
         if not _has_source(e.source) or not _has_source(e.mechanics_source):
-            issue(e.id, "Documenter la géométrie et les hypothèses mécaniques (poids propre, rigidité, appuis).")
+            issue(e.id, "Documentar a geometria e as hipóteses mecânicas (peso próprio, rigidez, apoios).")
         if any(v is None for v in (e.length_m, e.width_m, e.height_m, e.density_kn_m3)):
-            issue(e.id, "Longueur, largeur, hauteur et poids volumique requis ; inconnu n'est pas zéro.")
+            issue(e.id, "Comprimento, largura, altura e peso volúmico obrigatórios; desconhecido não é zero.")
         if e.kind == "beam" and (len(e.supports) != 2 or any(s.fraction is not None for s in e.supports)):
-            issue(e.id, "Poutre : exactement deux appuis ordonnés gauche/droite, sans fraction imposée.")
+            issue(e.id, "Viga: exatamente dois apoios ordenados esquerdo/direito, sem fração imposta.")
         if e.kind == "footing" and e.supports:
-            issue(e.id, "Une semelle termine le chemin de charges ; supprimer ses appuis.")
+            issue(e.id, "Uma sapata termina o percurso de cargas; eliminar os seus apoios.")
         if e.kind not in ("beam", "footing"):
             if not e.supports or any(s.fraction is None for s in e.supports) or abs(sum(s.fraction or 0 for s in e.supports)-1) > 1e-9:
-                issue(e.id, "Les fractions de répartition vers les appuis doivent totaliser 1.")
+                issue(e.id, "As frações de distribuição para os apoios devem totalizar 1.")
         for s in e.supports:
             target = elements.get(s.target)
             if not target:
-                issue(e.id, f"Appui inconnu : {s.target}")
+                issue(e.id, f'Apoio desconhecido: {s.target}')
                 continue
             indegree[s.target] += 1
             if target.kind == "slab":
-                issue(e.id, "Reprise par une dalle non couverte par ce modèle.")
+                issue(e.id, "Suporte por uma laje não coberto por este modelo.")
             if target.kind == "beam":
                 if s.receiving == "axial":
-                    issue(e.id, "Préciser charge uniforme ou ponctuelle sur la poutre réceptrice.")
+                    issue(e.id, "Precisar carga uniforme ou pontual na viga recetora.")
                 if s.receiving == "point" and (s.position_m is None or target.length_m is None or s.position_m > target.length_m):
-                    issue(e.id, "Position de charge absente ou hors de la poutre réceptrice.")
+                    issue(e.id, "Posição da carga ausente ou fora da viga recetora.")
                 if s.receiving == "uniform" and s.position_m is not None:
-                    issue(e.id, "Une charge uniforme ne possède pas de position ponctuelle.")
+                    issue(e.id, "Uma carga uniforme não tem posição pontual.")
                 if s.shape is not None:
                     if s.receiving != "uniform":
-                        issue(e.id, "Une forme triangle/trapèze s'applique à une charge répartie (receiving=uniform).")
+                        issue(e.id, "Uma forma triângulo/trapézio aplica-se a uma carga distribuída (receiving=uniform).")
                     elif target.length_m is not None:
                         ramp = _ramp(s, target.length_m)
                         if ramp is None or not (0 < ramp <= target.length_m / 2 + 1e-9):
-                            issue(e.id, "Trapèze : rampe absente ou supérieure à la demi-portée de la poutre réceptrice.")
+                            issue(e.id, "Trapézio: rampa ausente ou superior a metade do vão da viga recetora.")
                 elif s.ramp_m is not None:
-                    issue(e.id, "Rampe fournie sans forme de charge (triangle/trapèze).")
+                    issue(e.id, "Rampa fornecida sem forma de carga (triângulo/trapézio).")
             elif s.receiving != "axial" or s.position_m is not None or s.shape is not None or s.ramp_m is not None:
-                issue(e.id, "Les transferts vers murs/poteaux/semelles sont uniquement axiaux centrés.")
+                issue(e.id, "As transferências para paredes/pilares/sapatas são apenas axiais centradas.")
         for load in e.loads:
             if load.action not in actions or not _has_source(load.source):
-                issue(e.id, "Chaque charge doit référencer une action et une source explicites.")
+                issue(e.id, "Cada carga deve referenciar uma ação e uma fonte explícitas.")
             if load.mode == "surface" and e.kind != "slab":
-                issue(e.id, "Les charges surfaciques sont réservées aux planchers.")
+                issue(e.id, "As cargas por área são reservadas às lajes.")
             if load.mode == "line" and e.kind not in ("beam", "wall"):
-                issue(e.id, "Charge linéique réservée aux poutres et murs.")
+                issue(e.id, "Carga linear reservada às vigas e paredes.")
             if load.mode == "point" and e.kind == "beam":
                 if load.position_m is None or e.length_m is None or load.position_m > e.length_m:
-                    issue(e.id, "Position de charge ponctuelle absente ou hors de la portée.")
+                    issue(e.id, "Posição da carga pontual ausente ou fora do vão.")
             elif load.position_m is not None:
-                issue(e.id, "Position ponctuelle acceptée uniquement pour une charge ponctuelle sur poutre.")
+                issue(e.id, "Posição pontual aceite apenas para uma carga pontual numa viga.")
     q = deque(k for k, n in indegree.items() if n == 0)
     order = []
     while q:
@@ -259,7 +259,7 @@ def inspect(model: Model) -> tuple[list[dict], list[str]]:
                 if indegree[support.target] == 0:
                     q.append(support.target)
     if len(order) != len(elements):
-        issue(None, "Cycle dans les appuis : aucune descente de charges possible.")
+        issue(None, "Ciclo nos apoios: nenhuma descida de cargas possível.")
     return issues, order
 
 
@@ -311,14 +311,14 @@ def beam_response(length: float, udl: float, points: list[tuple[float, float]], 
     """
     traps = list(traps or [])
     if not math.isfinite(length) or length <= 0 or not math.isfinite(udl) or udl < 0:
-        raise ValueError("Portée/charge invalide")
+        raise ValueError("Vão/carga inválidos")
     if ei is not None and (not math.isfinite(ei) or ei <= 0):
-        raise ValueError("EI invalide")
+        raise ValueError("EI inválido")
     if any(not all(math.isfinite(v) for v in (p, x)) or p < 0 or x < 0 or x > length for p, x in points):
-        raise ValueError("Charge ponctuelle invalide")
+        raise ValueError("Carga pontual inválida")
     if any(not all(math.isfinite(v) for v in (w, a)) or w < 0 or a <= 0 or a > length / 2 + 1e-9
            for w, a in traps):
-        raise ValueError("Charge trapézoïdale invalide")
+        raise ValueError("Carga trapezoidal inválida")
     traps = [(w, min(a, length / 2)) for w, a in traps]
     w_traps = sum(w for w, _ in traps)
     left = udl*length/2 + sum(p*(length-x)/length for p, x in points) + w_traps/2
@@ -339,8 +339,7 @@ def beam_response(length: float, udl: float, points: list[tuple[float, float]], 
     xm = max(extrema, key=moment)
     formula = "RA=wL/2+ΣP(L-a)/L; RB=wL+ΣP-RA; M(x)=RA*x-w*x²/2-ΣP*max(x-a,0)"
     if traps:
-        formula += ("; trapèze symétrique (W, rampe a) : p=W/(L−a), R=W/2, "
-                    "M(x≤a)=R·x−p·x³/(6a), M(a≤x≤L/2)=R·x−p(a·x/2−a²/3)−p(x−a)²/2")
+        formula += ("; trapézio simétrico (W, rampa a) : p=W/(L−a), R=W/2, M(x≤a)=R·x−p·x³/(6a), M(a≤x≤L/2)=R·x−p(a·x/2−a²/3)−p(x−a)²/2")
     out = {"reaction_left_kn": left, "reaction_right_kn": right,
            "moment_max_knm": moment(xm), "moment_position_m": xm,
            "shear_max_kn": max(abs(left-sum(p for p,x in points if x==0)),
@@ -363,8 +362,7 @@ def beam_response(length: float, udl: float, points: list[tuple[float, float]], 
             out["deflection_sampled_mm"] = max(displacement(length*i/400) + extra[i*5] for i in range(401))*1000
         else:
             out["deflection_sampled_mm"] = max(displacement(length*i/400) for i in range(401))*1000
-        out["deflection_note"] = ("Maximum échantillonné (401 points), EI fourni, élastique NON fissuré, "
-                                  "hors fluage : utiliser la flèche fissurée long terme pour la vérification.")
+        out["deflection_note"] = ("Máximo amostrado (401 pontos), EI fornecido, elástico NÃO fendilhado, sem fluência: utilizar a flecha fendilhada a longo prazo para a verificação.")
     return out
 
 
@@ -382,7 +380,7 @@ def calculate(model: Model) -> dict:
     for e in model.elements:
         result["quantities"].append({"id": e.id, "material": e.material,
             "gross_volume_m3": e.length_m*e.width_m*e.height_m,
-            "note": "Volume brut par élément ; jonctions/baies non déduites, pas une commande."})
+            "note": "Volume bruto por elemento; ligações/vãos não deduzidos, não é uma encomenda."})
     for case_id, label, factors in cases:
         inbox = {k: [] for k in elements}
         rows, transfers = [], []
@@ -416,10 +414,10 @@ def calculate(model: Model) -> dict:
                 reactions = [force*s.fraction for s in e.supports]
                 if e.kind in ("wall", "column"):
                     row["axial_stress_mpa"] = force/(e.length_m*e.width_m)/1000
-                    row["formula"] = "σ=N/A ; compression centrée seulement"
+                    row["formula"] = "σ=N/A ; apenas compressão centrada"
                 elif e.kind == "footing":
                     row["mean_pressure_kpa"] = force/(e.length_m*e.width_m)
-                    row["formula"] = "q=N/A ; poids de la semelle inclus, remblai/eau à saisir explicitement"
+                    row["formula"] = "q=N/A ; peso da sapata incluído, aterro/água a introduzir explicitamente"
                     total_ground += force
             for s, reaction in zip(e.supports, reactions):
                 if s.shape is not None:
@@ -434,7 +432,7 @@ def calculate(model: Model) -> dict:
                                   "receiving": s.receiving, "position_m": s.position_m})
             rows.append(row)
         if abs(total_external-total_ground) > 1e-7*max(1., total_external):
-            raise ValueError("Déséquilibre du chemin de charges")
+            raise ValueError("Desequilíbrio do percurso de cargas")
         result["cases"].append({"id": case_id, "label": label, "factors": factors, "elements": rows,
             "transfers": transfers, "external_kn": total_external, "ground_kn": total_ground,
             "balance_error_kn": total_external-total_ground})
@@ -447,15 +445,15 @@ def calculate(model: Model) -> dict:
 
 def example() -> Model:
     """Independent teaching fixture. Never applied automatically to a user's PC."""
-    source = Source(note="EXEMPLE PÉDAGOGIQUE : valeurs fictives, ne pas utiliser sur chantier")
+    source = Source(note="EXEMPLO PEDAGÓGICO: valores fictícios, não utilizar em obra")
     def el(id, kind, length, width, height, x, y, supports=(), **kw):
         return Element(id=id, kind=kind, length_m=length, width_m=width, height_m=height,
             x_m=x, y_m=y, density_kn_m3=25., source=source, mechanics_source=source,
-            reviewed=True, material="Béton fictif", supports=list(supports), **kw)
+            reviewed=True, material="Betão fictício", supports=list(supports), **kw)
     axial = lambda id: Support(target=id, fraction=1.)
-    return Model(title="EXEMPLE FICTIF - travée gravitaire", actions=[Action(id="G",kind="G",label="Permanentes"),
+    return Model(title="EXEMPLO FICTÍCIO - vão gravítico", actions=[Action(id="G",kind="G",label="Permanentes"),
         Action(id="Q",kind="Q",label="Exploitation fictive")], self_weight_action="G", gravity_model_reviewed=True,
-        assumptions=["Exemple indépendant du PC. Transferts centrés. Aucune vérification de résistance."],
+        assumptions=["Exemplo independente do projeto de licenciamento. Transferências centradas. Nenhuma verificação de resistência."],
         elements=[
             el("D1","slab",4,3,.20,0,0,[Support(target="B1",fraction=.5,receiving="uniform"),Support(target="M1",fraction=.5)],
                 level="R+1",loads=[Load(action="Q",value=2,mode="surface",source=source)]),
@@ -466,4 +464,4 @@ def example() -> Model:
             el("S1","footing",1,1,.3,0,0,level="Fondations"),
             el("S2","footing",1,1,.3,4,0,level="Fondations"),
             el("S3","footing",4,.6,.3,0,3,level="Fondations"),
-        ], combinations=[Combination(id="GplusQ",label="Somme illustrative G+Q (pas une combinaison normative)",factors={"G":1.,"Q":1.},source=source)])
+        ], combinations=[Combination(id="GplusQ",label="Soma ilustrativa G+Q (não é uma combinação normativa)",factors={"G":1.,"Q":1.},source=source)])

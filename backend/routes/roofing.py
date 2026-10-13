@@ -20,7 +20,7 @@ def _now():
 async def _plan(plan_id, uid):
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": uid}, {"_id": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return p
 
 
@@ -37,7 +37,7 @@ async def analyze(plan_id: str, material: str = "tuiles_terre_cuite",
     p = await _plan(plan_id, user["user_id"])
     images = [pg["image_png_b64"] for pg in (p.get("pages") or []) if pg.get("image_png_b64")][:4]
     if not images:
-        raise HTTPException(422, "Aucune image de plan")
+        raise HTTPException(422, "Nenhuma imagem de planta")
     d = await ai.analyze_roofing(images)
     lengths = {"faitage_ml": d.get("faitage_ml"), "aretiers_ml": d.get("aretiers_ml"),
                "noues_ml": d.get("noues_ml"), "rives_ml": d.get("rives_ml"),
@@ -61,7 +61,7 @@ async def get_analysis(plan_id: str, user=Depends(current_user)) -> dict:
     d = await db.roofing_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                            {"_id": 0})
     if not d:
-        raise HTTPException(404, "Aucune analyse toiture")
+        raise HTTPException(404, "Nenhuma análise de cobertura")
     return d
 
 
@@ -82,7 +82,7 @@ async def recompute(plan_id: str, body: Recompute, user=Depends(current_user)) -
     d = await db.roofing_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                            {"_id": 0})
     if not d:
-        raise HTTPException(404, "Analyse introuvable")
+        raise HTTPException(404, "Análise não encontrada")
     lengths = {"faitage_ml": body.faitage_ml, "aretiers_ml": body.aretiers_ml,
                "noues_ml": body.noues_ml, "rives_ml": body.rives_ml, "egout_ml": body.egout_ml}
     comp = roofing.compute(body.surface_projetee_m2, body.pente_pct, body.material, lengths,
@@ -105,7 +105,7 @@ async def create_order(plan_id: str, body: OrderIn, user=Depends(current_user)) 
     d = await db.roofing_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                            {"_id": 0})
     if not d:
-        raise HTTPException(404, "Analyse toiture introuvable")
+        raise HTTPException(404, "Análise de cobertura não encontrada")
     items = (d.get("compute") or {}).get("items") or []
     supplier = await db.suppliers.find_one(
         {"supplier_id": body.supplier_id, "user_id": user["user_id"]}, {"_id": 0}) \

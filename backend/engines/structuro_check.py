@@ -5,11 +5,10 @@ données saisies. Couleurs : ok (≤0.90), proche (≤1.0), à revoir (>1.0).
 """
 from __future__ import annotations
 
-DISCLAIMER = ("Rapport indicatif Ed/Rd calculé à partir des données saisies — "
-              "ne vaut pas vérification réglementaire. À valider par l'ingénieur.")
+DISCLAIMER = ("Razão indicativa Ed/Rd calculada a partir dos dados introduzidos — não vale como verificação regulamentar. A validar pelo engenheiro.")
 
-_LABELS = {"ok": "OK (indicatif)", "proche": "proche de la limite (indicatif)",
-           "a_revoir": "à revoir (indicatif)", "non_calcule": "non calculé — donnée manquante"}
+_LABELS = {"ok": "OK (indicativo)", "proche": "próximo do limite (indicativo)",
+           "a_revoir": "a rever (indicativo)", "non_calcule": "não calculado — dado em falta"}
 
 
 def util_status(ratio: float | None) -> dict:

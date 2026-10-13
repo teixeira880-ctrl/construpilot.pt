@@ -38,7 +38,7 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
     is_cad = lower_name.endswith((".dxf", ".dwg"))
     if mime and mime not in ALLOWED_MIMES and not is_cad:
         if mime != "application/octet-stream":
-            raise HTTPException(415, f"Format non supporté : {mime}")
+            raise HTTPException(415, f'Formato não suportado: {mime}')
 
     conversion = {}
     # DWG → DXF through the configured provider; the analysis pipeline is unchanged.
@@ -54,7 +54,7 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
             raise HTTPException(422, str(e))
         except Exception:
             logger.exception("DWG conversion failed")
-            raise HTTPException(502, "Conversion DWG impossible — réessayez plus tard.")
+            raise HTTPException(502, "Conversão DWG impossível — tente mais tarde.")
         parse_name = (file.filename or "plan")[:-4] + ".dxf"
         mime = "image/vnd.dxf"
     else:
@@ -64,7 +64,7 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
         parsed = await asyncio.to_thread(process_upload, data, parse_name, mime, deskew, cad_unit)
     except Exception as e:
         logger.exception("plan process failed")
-        raise HTTPException(422, f"Impossible de lire le fichier : {e}")
+        raise HTTPException(422, f'Impossível ler o ficheiro: {e}')
 
     if conversion:
         parsed.setdefault("cad_import", {})["conversion"] = conversion
@@ -117,7 +117,7 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
         await db.plans_takeoff.delete_one({"plan_id": plan_id, "user_id": user["user_id"]})
         await delete_plan_sources(db, plan_id, user["user_id"])
         if isinstance(exc, asyncio.CancelledError): raise
-        raise HTTPException(503, "Import non enregistré entièrement. Réessayez l’import.") from None
+        raise HTTPException(503, "Importação não guardada na totalidade. Tente importar novamente.") from None
     return doc
 
 
@@ -136,14 +136,14 @@ async def upload_plan(
     immédiate puis traitement en tâche de fond (le proxy coupe à 120 s) et 202 {job_id} à suivre sur /upload-jobs/{job_id}."""
     data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
-        raise HTTPException(413, f"Fichier trop volumineux (>{MAX_UPLOAD_MB} Mo)")
-    if not data: raise HTTPException(422, "Fichier vide")
+        raise HTTPException(413, f'Ficheiro demasiado volumoso (>{MAX_UPLOAD_MB} Mo)')
+    if not data: raise HTTPException(422, "Ficheiro vazio")
     if project_id and not await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 1}):
-        raise HTTPException(403, "Chantier inaccessible pour ce compte")
+        raise HTTPException(403, "Obra inacessível para esta conta")
     mime = (file.content_type or "").lower()
     lower_name = (file.filename or "").lower()
     if mime and mime not in ALLOWED_MIMES and not lower_name.endswith((".dxf", ".dwg")) and mime != "application/octet-stream":
-        raise HTTPException(415, f"Format non supporté : {mime}")
+        raise HTTPException(415, f'Formato não suportado: {mime}')
     if wait or request.headers.get("x-async-upload") != "1":
         return _plan_summary(await _process_and_store(data, file.filename or "plan", mime, user, project_id, deskew, cad_unit, display_name))
     job_id = "pjob_" + secrets.token_hex(6)
@@ -169,7 +169,7 @@ async def _run_upload_job(job_id, data, filename, mime, user, project_id, deskew
 async def upload_job(job_id: str, user=Depends(current_user)):
     j = await db.plan_upload_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]}, {"_id": 0})
     if not j:
-        raise HTTPException(404, "Import introuvable")
+        raise HTTPException(404, "Importação não encontrada")
     if j["status"] == "done" and j.get("kind") is None:
         p = await db.plans_takeoff.find_one({"plan_id": j["plan_id"], "user_id": user["user_id"]}, {"_id": 0})
         j["plan"] = _plan_summary(p) if p else None
@@ -184,7 +184,7 @@ async def get_structural_metre(plan_id: str, user=Depends(current_user)) -> dict
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "structural_metre": 1, "structural_estimate": 1, "kind": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return {"metre": p.get("structural_metre"),
             "estimate": p.get("structural_estimate"),
             "kind": p.get("kind")}
@@ -215,10 +215,10 @@ async def compute_structural_estimate(plan_id: str, body: StructuralEstimateIn,
         {"_id": 0, "structural_metre": 1, "calibrations": 1,
          "pages.dxf_ratio": 1, "pages.index": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     metre = p.get("structural_metre")
     if not metre:
-        raise HTTPException(400, "Aucun métré structure disponible (plan non DWG/DXF ou sans calques exploitables)")
+        raise HTTPException(400, "Nenhuma medição de estrutura disponível (planta não DWG/DXF ou sem camadas utilizáveis)")
     # Recale le métré sur la calibration du plan (corrige toute échelle DWG erronée).
     metre, scale_src = _rescale_metre_to_calibration(metre, p)
     from engines.dxf_takeoff import cost_structural
@@ -244,10 +244,10 @@ async def structural_metre_to_quote(plan_id: str, body: StructuralEstimateIn,
         {"_id": 0, "structural_metre": 1, "calibrations": 1, "filename": 1,
          "pages.dxf_ratio": 1, "pages.index": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     metre = p.get("structural_metre")
     if not metre:
-        raise HTTPException(400, "Aucun métré structure disponible (plan non DWG/DXF ou sans calques exploitables)")
+        raise HTTPException(400, "Nenhuma medição de estrutura disponível (planta não DWG/DXF ou sem camadas utilizáveis)")
     metre, _scale_src = _rescale_metre_to_calibration(metre, p)
     from engines.dxf_takeoff import cost_structural
     estimate = cost_structural(metre, body.dict())
@@ -268,7 +268,7 @@ async def structural_metre_to_quote(plan_id: str, body: StructuralEstimateIn,
                 "category": lot.get("lot", ""),
             })
     if not lines:
-        raise HTTPException(422, "Le métré ne contient aucune ligne à chiffrer.")
+        raise HTTPException(422, "A medição não contém nenhuma linha a orçamentar.")
 
     from routes.documents import _compute_totals
     doc = {
@@ -276,12 +276,12 @@ async def structural_metre_to_quote(plan_id: str, body: StructuralEstimateIn,
         "user_id": user["user_id"],
         "doc_type": "quote",
         "number": None,
-        "title": f"Devis structure — {p.get('filename') or 'plan'}",
+        "title": f"Orçamento de estrutura — {p.get('filename') or 'plan'}",
         "client_id": None,
         "client": None,
         "status": "draft",
         "lines": lines,
-        "notes": "Devis généré à partir du métré structure (DWG/DXF).",
+        "notes": "Orçamento gerado a partir da medição de estrutura (DWG/DXF).",
         "payment_terms": "",
         "deposit_pct": 0,
         "totals": _compute_totals(lines, 0),
@@ -310,7 +310,7 @@ async def link_ferraillage(plan_id: str, body: LinkFerraillageIn,
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     valid = await db.plans_takeoff.find(
         {"plan_id": {"$in": body.ferraillage_plan_ids}, "user_id": user["user_id"]},
         {"_id": 0, "plan_id": 1}).to_list(30)
@@ -383,8 +383,7 @@ async def _insert_plan_safe(doc: dict) -> None:
     if _bson_size_mb(doc) > 15:
         raise HTTPException(
             413,
-            "Plan trop volumineux à stocker (trop de pages ou images très lourdes). "
-            "Essayez de n'importer que les pages utiles ou un plan en résolution moindre.",
+            "Planta demasiado volumosa para guardar (demasiadas páginas ou imagens muito pesadas). Tente importar apenas as páginas úteis ou uma planta com menor resolução.",
         )
     await db.plans_takeoff.insert_one(doc)
 
@@ -450,7 +449,7 @@ async def get_plan(plan_id: str, user=Depends(current_user)):
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return _plan_summary(p)
 
 
@@ -462,10 +461,10 @@ async def get_plan_page(plan_id: str, page_index: int, user=Depends(current_user
         {"_id": 0, "pages": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     return pages[page_index]
 
 
@@ -478,7 +477,7 @@ async def plan_thumbnail(plan_id: str, user=Depends(current_user)):
     cached = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "thumb_b64": 1})
     if cached is None:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     b64 = cached.get("thumb_b64")
     if not b64:
         doc = await db.plans_takeoff.find_one(
@@ -487,7 +486,7 @@ async def plan_thumbnail(plan_id: str, user=Depends(current_user)):
         pages = (doc or {}).get("pages") or []
         img_b64 = pages[0].get("image_png_b64") if pages else None
         if not img_b64:
-            raise HTTPException(404, "Aperçu indisponible")
+            raise HTTPException(404, "Pré-visualização indisponível")
         try:
             from PIL import Image
             im = Image.open(BytesIO(base64.b64decode(img_b64))).convert("RGB")
@@ -496,7 +495,7 @@ async def plan_thumbnail(plan_id: str, user=Depends(current_user)):
             im.save(out, format="JPEG", quality=70)
             b64 = base64.b64encode(out.getvalue()).decode()
         except Exception:
-            raise HTTPException(404, "Aperçu indisponible")
+            raise HTTPException(404, "Pré-visualização indisponível")
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"]}, {"$set": {"thumb_b64": b64}})
     return Response(content=base64.b64decode(b64), media_type="image/jpeg",
@@ -515,7 +514,7 @@ async def bulk_trash_plans(body: BulkTrashIn, user=Depends(current_user)) -> dic
     q = {"user_id": user["user_id"], "trashed_at": {"$exists": False}}
     if not body.all:
         if not body.plan_ids:
-            raise HTTPException(400, "Aucun plan sélectionné")
+            raise HTTPException(400, "Nenhuma planta selecionada")
         q["plan_id"] = {"$in": body.plan_ids}
     plans = await db.plans_takeoff.find(
         q, {"_id": 0, "pages": 0, "rooms": 0, "measurements": 0}
@@ -531,7 +530,7 @@ async def bulk_trash_plans(body: BulkTrashIn, user=Depends(current_user)) -> dic
 async def delete_plan(plan_id: str, user=Depends(current_user)) -> dict:
     plan = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 0, "rooms": 0, "measurements": 0})
     if not plan:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     from routes.trash import trash_record
     return await trash_record("plan", plan, user["user_id"])
 
@@ -560,7 +559,7 @@ async def duplicate_plan(plan_id: str, user=Depends(current_user)) -> dict:
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0}
     )
     if not src:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
 
     new_id = "plan_" + secrets.token_hex(6)
     dup = {
@@ -610,7 +609,7 @@ async def calibrate_plan(plan_id: str, body: CalibIn, user=Depends(current_user)
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     try:
         calib = G.compute_calibration(body.p1, body.p2, body.real_distance_m)
     except ValueError as e:
@@ -635,10 +634,10 @@ async def calibrate_check(plan_id: str, body: CalibCheckIn, user=Depends(current
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "calibrations": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     calib = (p.get("calibrations") or {}).get(str(body.page_index))
     if not calib:
-        raise HTTPException(400, "Page non calibrée")
+        raise HTTPException(400, "Página não calibrada")
     measured = G.distance_m(body.p1, body.p2, calib["pixels_per_meter"])
     return G.calibration_check(measured, body.expected_m)
 
@@ -660,7 +659,7 @@ async def update_plan_defaults(plan_id: str, body: PlanDefaultsIn, user=Depends(
                    "updated_at": _now()}},
     )
     if res.matched_count == 0:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return {"ok": True,
             "plan_defaults": {"ceiling_h_m": body.ceiling_h_m,
                               "floor_thickness_m": body.floor_thickness_m}}
@@ -678,9 +677,9 @@ async def set_page_level(plan_id: str, page_index: int, body: PageLevelIn,
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "pages": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     if page_index < 0 or page_index >= len(p.get("pages") or []):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {f"pages.{page_index}.level_index": body.level_index,
@@ -701,7 +700,7 @@ class CounterMarker(BaseModel):
 
 class CounterAnnotation(BaseModel):
     id: str
-    label: str = "Compteur"
+    label: str = "Contador"
     color: str = "#f97316"  # orange par défaut (ConstruPilot palette)
     unit: str = "u"          # u / prises / spots / radiateurs / m² / etc.
     markers: list[CounterMarker] = []
@@ -754,9 +753,9 @@ async def save_annotations(plan_id: str, body: AnnotationsIn, user=Depends(curre
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1, "annotations": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     if body.page_index < 0 or body.page_index >= len(p.get("pages") or []):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
 
     page_key = str(body.page_index)
     payload = {

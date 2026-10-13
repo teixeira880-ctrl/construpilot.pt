@@ -30,7 +30,7 @@ def status() -> dict:
     cid, sec = env("GOOGLE_GROWTH_CLIENT_ID"), env("GOOGLE_GROWTH_CLIENT_SECRET")
     return {"client_configured": bool(cid and sec), "project_id_hint": env("GOOGLE_GROWTH_PROJECT_ID"), "redirect_uri": redirect_uri(),
             "missing": [k for k, v in (("GOOGLE_GROWTH_CLIENT_ID", cid), ("GOOGLE_GROWTH_CLIENT_SECRET", sec)) if not v],
-            "how_to": "Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID (Web application) ; ajouter l'URI de redirection ci-dessus ; activer l'API « Google Search Console API ». Copier Client ID / Client secret dans backend/.env (ou Publish → Secrets), puis redémarrer."}
+            "how_to": "Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID (Web application); acrescentar o URI de redirecionamento acima; ativar a API «Google Search Console API». Copiar Client ID / Client secret para backend/.env (ou Publish → Secrets) e reiniciar."}
 
 
 ADS_SCOPES = "https://www.googleapis.com/auth/adwords openid email"
@@ -73,11 +73,11 @@ async def _access_token(conn: dict) -> str:
 async def sync(project_id: str) -> dict:
     conn = await db.growth_connections.find_one({"project_id": project_id, "provider": "google_search_console"}, {"_id": 0})
     if not conn or conn.get("status") != "connected":
-        return {"ok": False, "reason": "Search Console non connectée"}
+        return {"ok": False, "reason": "Search Console não ligada"}
     project = await db.growth_projects.find_one({"project_id": project_id}, {"_id": 0})
     site = conn.get("site_url") or next((s for s in conn.get("sites") or [] if project["domain"] in s), None)
     if not site:
-        return {"ok": False, "reason": "Aucune propriété Search Console correspondant au domaine ; choisir la propriété dans les intégrations", "sites": conn.get("sites")}
+        return {"ok": False, "reason": "Nenhuma propriedade Search Console correspondente ao domínio; escolher a propriedade nas integrações", "sites": conn.get("sites")}
     token = await _access_token(conn)
     end = (datetime.now(timezone.utc) - timedelta(days=2)).date()
     start = end - timedelta(days=28)
@@ -92,7 +92,7 @@ async def sync(project_id: str) -> dict:
             rows_all[dims[0]] = [{"key": x["keys"][0], "clicks": x.get("clicks", 0), "impressions": x.get("impressions", 0), "ctr": round(x.get("ctr", 0) * 100, 2), "position": round(x.get("position", 0), 1)} for x in r.json().get("rows") or []]
     snap = {"snapshot_id": new_id("gsc"), "project_id": project_id, "site_url": site, "start": start.isoformat(), "end": end.isoformat(), "synced_at": now_iso(), "data": rows_all,
             "totals": {"clicks": sum(x["clicks"] for x in rows_all["date"]), "impressions": sum(x["impressions"] for x in rows_all["date"])},
-            "limits": "Données agrégées Search Console (décalage ~2 jours). Elles ne ventilent pas les fonctionnalités IA de Google ; ne pas les présenter comme telles."}
+            "limits": "Dados agregados da Search Console (atraso de ~2 dias). Não discriminam as funcionalidades IA da Google; não os apresentar como tal."}
     await db.growth_gsc_snapshots.insert_one(dict(snap))
     await db.growth_connections.update_one({"project_id": project_id, "provider": "google_search_console"}, {"$set": {"last_sync": now_iso(), "site_url": site}})
     snap.pop("_id", None)

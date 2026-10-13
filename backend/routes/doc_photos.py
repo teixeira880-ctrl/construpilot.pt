@@ -29,9 +29,9 @@ def _now() -> str:
 async def upload_document_photo(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
     raw = await file.read()
     if not raw:
-        raise HTTPException(status_code=400, detail="Fichier vide")
+        raise HTTPException(status_code=400, detail="Ficheiro vazio")
     if len(raw) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Fichier trop lourd (max 12 Mo)")
+        raise HTTPException(status_code=413, detail="Ficheiro demasiado pesado (máx. 12 MB)")
     try:
         img = PILImage.open(io.BytesIO(raw))
         img = img.convert("RGB")
@@ -40,14 +40,14 @@ async def upload_document_photo(file: UploadFile = File(...), user=Depends(curre
         img.save(out, format="JPEG", quality=82, optimize=True)
         data = out.getvalue()
     except Exception:
-        raise HTTPException(status_code=400, detail="Image invalide")
+        raise HTTPException(status_code=400, detail="Imagem inválida")
 
     photo_id = f"dph_{uuid.uuid4().hex[:12]}"
     path = f"{storage.APP_NAME}/pro/{user['user_id']}/doc_photos/{uuid.uuid4().hex}.jpg"
     try:
         result = storage.put_object(path, data, "image/jpeg")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Upload impossible: {e}")
+        raise HTTPException(status_code=502, detail=f'Carregamento impossível: {e}')
 
     rec = {
         "photo_id": photo_id,
@@ -70,11 +70,11 @@ async def upload_document_photo(file: UploadFile = File(...), user=Depends(curre
 async def get_document_photo(photo_id: str, user=Depends(current_user)):
     rec = await db.doc_photos.find_one({"photo_id": photo_id, "user_id": user["user_id"]}, {"_id": 0})
     if not rec:
-        raise HTTPException(status_code=404, detail="Photo introuvable")
+        raise HTTPException(status_code=404, detail="Fotografia não encontrada")
     try:
         data, ctype = storage.get_object(rec["storage_path"])
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Lecture impossible: {e}")
+        raise HTTPException(status_code=502, detail=f'Leitura impossível: {e}')
     return Response(content=data,
                     media_type=rec.get("content_type") or ctype,
                     headers={"Cache-Control": "private, max-age=86400"})
@@ -84,6 +84,6 @@ async def get_document_photo(photo_id: str, user=Depends(current_user)):
 async def delete_document_photo(photo_id: str, user=Depends(current_user)) -> dict:
     rec = await db.doc_photos.find_one({"photo_id": photo_id, "user_id": user["user_id"]}, {"_id": 0})
     if not rec:
-        raise HTTPException(status_code=404, detail="Photo introuvable")
+        raise HTTPException(status_code=404, detail="Fotografia não encontrada")
     await db.doc_photos.delete_one({"photo_id": photo_id, "user_id": user["user_id"]})
     return {"ok": True}

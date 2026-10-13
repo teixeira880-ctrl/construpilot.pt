@@ -41,21 +41,20 @@ def cross_nappes(lower: dict, upper: dict, *, slab_area_m2: float | None, labels
             (same if all(a.get(k) == b.get(k) for k in key) else differ).append({"mark": m, labels[0]: {k: a.get(k) for k in key}, labels[1]: {k: b.get(k) for k in key}})
         out["duplicates"][kind] = {"common_marks": len(common), "identical": len(same), "different": differ}
         if differ:
-            out["findings"].append({"severity": "to_clarify", "subject": f"Repères {kind.upper()} communs aux deux nappes avec valeurs différentes",
-                                    "explanation": f"{len(differ)} repère(s) portent le même numéro sur les deux plans avec des caractéristiques différentes : "
-                                                   + ", ".join(d["mark"] for d in differ[:8]) + ". Numérotation par plan (normal) ou erreur de repère : à confirmer avec le BET."})
+            out["findings"].append({"severity": "to_clarify", "subject": f'Marcas {kind.upper()} comuns às duas malhas com valores diferentes',
+                                    "explanation": f'{len(differ)} marca(s) têm o mesmo número nas duas plantas com características diferentes: '
+                                                   + ", ".join(d["mark"] for d in differ[:8]) + ". Numeração por planta (normal) ou erro de marca: a confirmar com o gabinete de projeto."})
     if slab_area_m2:
         for label, info in out["layers"].items():
-            for key, name in (("mesh_laid_area_m2_from_cuts", "surface posée (découpes de la nomenclature)"), ("mesh_ordered_area_m2_from_recap", "surface commandée (récapitulatif)")):
+            for key, name in (("mesh_laid_area_m2_from_cuts", "área colocada (cortes da lista)"), ("mesh_ordered_area_m2_from_recap", "surface commandée (récapitulatif)")):
                 area = info[key]
                 if area:
                     out["coverage"].append({"layer": label, "quantity": name, "area_m2": area, "slab_area_m2": slab_area_m2, "ratio": round(area / slab_area_m2, 3),
-                                            "note": "ratio < 1 attendu (zones sans treillis : poutres, poteaux, nomenclature partielle) ; ratio > 1 = recouvrements/chutes"})
+                                            "note": "razão < 1 esperada (zonas sem malha: vigas, pilares, lista parcial); razão > 1 = sobreposições/desperdícios"})
         low_cov = [c for c in out["coverage"] if "posée" in c["quantity"] and c["ratio"] < 0.6]
         if low_cov:
-            out["findings"].append({"severity": "to_clarify", "subject": "Couverture treillis faible vs dalle",
-                                    "explanation": "; ".join(f"{c['layer']} : {c['area_m2']} m² posés pour {slab_area_m2} m² de dalle (ratio {c['ratio']})" for c in low_cov)
-                                    + ". Nomenclatures marquées « partielle » : la couverture réelle ne peut pas être conclue à partir de ces seules feuilles."})
-    out["note"] = ("Les PDF de ferraillage ne portent pas d'axes de quadrillage (X/Y) : pas de superposition géométrique possible avec le DWG ; "
-                   "comparaison par listes (repères, masses, surfaces) uniquement.")
+            out["findings"].append({"severity": "to_clarify", "subject": "Cobertura de malha fraca vs laje",
+                                    "explanation": "; ".join(f"{c['layer']} : {c['area_m2']} m² colocados para {slab_area_m2} m² de laje (razão {c['ratio']})" for c in low_cov)
+                                    + ". Listas marcadas «parcial»: a cobertura real não pode ser concluída apenas a partir destas folhas."})
+    out["note"] = ("Os PDF de armaduras não têm eixos de quadrícula (X/Y): nenhuma sobreposição geométrica possível com o DWG; comparação apenas por listas (marcas, massas, áreas).")
     return out

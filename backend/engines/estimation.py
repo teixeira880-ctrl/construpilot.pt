@@ -339,9 +339,9 @@ def diy_vs_pro(est: dict) -> dict:
         "pro_tasks": pro_only,
         "risk": risk,
         "conclusion": (
-            f"Vous pouvez réaliser vous-même : {', '.join(diy_ok) if diy_ok else 'aucun lot'}. "
-            + (f"Nous recommandons de confier à un professionnel : {', '.join(pro_only)}."
-               if pro_only else "Aucun lot ne nécessite obligatoirement un professionnel.")
+            f"Pode realizar sozinho: {(', '.join(diy_ok) if diy_ok else 'nenhum capítulo')}. "
+            + (f"Recomendamos confiar a um profissional: {', '.join(pro_only)}."
+               if pro_only else "Nenhuma especialidade requer obrigatoriamente um profissional.")
         ),
     }
 
@@ -357,6 +357,6 @@ def safety_check(text: str, lot_keys: list[str] | None = None) -> list[dict]:
             lot = LOTS_BY_KEY.get(key)
             if lot:
                 alerts.append({"trigger": lot["name"],
-                               "message": f"{lot['name']} : intervention d'un professionnel fortement recommandée.",
+                               "message": f"{lot['name']} : intervenção de um profissional fortemente recomendada.",
                                "level": "pro_recommended"})
     return alerts

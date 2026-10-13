@@ -22,8 +22,8 @@ from engines.plan_pdf_i18n import Paragraph, cover_story
 _W = A4[0] - 32 * mm
 from engines.studies_prompt import MENTION
 
-STATUS = {"confirmed": ("Incohérence confirmée", "#dc2626"), "probable": ("Incohérence probable", "#ea580c"),
-          "to_confirm": ("À confirmer", "#ca8a04"), "insufficient_information": ("Information insuffisante", "#64748B")}
+STATUS = {"confirmed": ("Incoerência confirmada", "#dc2626"), "probable": ("Incoerência provável", "#ea580c"),
+          "to_confirm": ("A confirmar", "#ca8a04"), "insufficient_information": ("Information insuffisante", "#64748B")}
 STATUS_PT = {"confirmed": "Incoerência confirmada", "probable": "Incoerência provável", "to_confirm": "A confirmar",
              "insufficient_information": "Informação insuficiente"}
 
@@ -63,38 +63,36 @@ def build_studies_report(plan: dict, page_index: int, study: dict, report: dict,
                          subtitle=L("ANALYSE OPENAI GPT-6 ASTRA — ", "ANÁLISE OPENAI GPT-6 ASTRA — ") + _e(str(title_doc)).upper()[:70])
     company = (branding or {}).get("company_name") or "—"
     mention = MENTION["pt" if pt else "pt"].format(plan=f"« {title_doc} »" + (f" ({meta.get('level')})" if meta.get("level") else ""), company=company)
-    story += [_scope_box(f"<b>{L('Objet du document', 'Objeto do documento')}.</b> {_e(mention)}", S, _W)]
-    badge = (L("VÉRIFIÉ — seconde passe sans anomalie bloquante", "VERIFICADO — segunda passagem sem anomalia bloqueante") if study.get("verified")
-             else L("NON VÉRIFIÉ — contrôles incomplets ou points bloquants", "NÃO VERIFICADO — controlos incompletos ou pontos bloqueantes"))
-    story += [Spacer(1, 4 * mm), Paragraph(f"<font color='{'#16a34a' if study.get('verified') else '#dc2626'}'><b>{badge}</b></font> · "
-                                           f"{L('Référence', 'Referência')} {rid} · {L('Modèle', 'Modelo')} {study.get('model')} (reasoning {study.get('effort')}) · "
-                                           f"{L('Confiance globale', 'Confiança global')} {a.get('global_confidence', 0):.0%}", S["muted"])]
+    story += [_scope_box(f"<b>{L('Objeto do documento', 'Objeto do documento')}.</b> {_e(mention)}", S, _W)]
+    badge = (L("VERIFICADO — segunda passagem sem anomalia bloqueante", "VERIFICADO — segunda passagem sem anomalia bloqueante") if study.get("verified")
+             else L("NÃO VERIFICADO — controlos incompletos ou pontos bloqueantes", "NÃO VERIFICADO — controlos incompletos ou pontos bloqueantes"))
+    story += [Spacer(1, 4 * mm), Paragraph(f"<font color='{('#16a34a' if study.get('verified') else '#dc2626')}'><b>{badge}</b></font> · {L('Referência', 'Referência')} {rid} · {L('Modelo', 'Modelo')} {study.get('model')} (reasoning {study.get('effort')}) · {L('Confiança global', 'Confiança global')} {a.get('global_confidence', 0):.0%}", S["muted"])]
     it = study.get("interior") or {}
     if it and not it.get("complete"):
         story += [Spacer(1, 3 * mm), _scope_box(f"<b>{_e(it.get('message') or '')}</b><br/>" + _e(" ; ".join(it.get("reasons") or [])[:1200]), S, _W)]
-    story += [PageBreak(), Paragraph(L("RÉSUMÉ EXÉCUTIF", "RESUMO EXECUTIVO"), S["kicker"]), Paragraph(_e(a.get("report_summary") or "—"), S["body"]),
+    story += [PageBreak(), Paragraph(L("RESUMO EXECUTIVO", "RESUMO EXECUTIVO"), S["kicker"]), Paragraph(_e(a.get("report_summary") or "—"), S["body"]),
               Spacer(1, 3 * mm)]
     if it:
         ai = it.get("ai") or {}
-        story += [Paragraph(L("DIMENSIONS INTÉRIEURES MUR À MUR — CONTRÔLE EN TROIS PASSES", "DIMENSÕES INTERIORES PAREDE A PAREDE — CONTROLO EM TRÊS PASSAGENS"), S["kicker"]),
+        story += [Paragraph(L("DIMENSÕES INTERIORES PAREDE A PAREDE — CONTROLO EM TRÊS PASSAGENS", "DIMENSÕES INTERIORES PAREDE A PAREDE — CONTROLO EM TRÊS PASSAGENS"), S["kicker"]),
                   Paragraph(_e(ai.get("summary") or "—"), S["body"]), Spacer(1, 2 * mm)]
         engine = it.get("engine") or report.get("interior") or {}
-        story.append(Paragraph(L("Mesures et fermetures ci-dessous : moteur géométrique ; relecture IA dans le commentaire ci-dessus.",
+        story.append(Paragraph(L("Medições e fechos abaixo: motor geométrico; revisão IA no comentário acima.",
                                   "Medições e fechos abaixo: motor geométrico; releitura IA no comentário acima."), S["muted"]))
         _story_interior(story, {"interior": engine}, S, width=_W)
         for u in ai.get("unreadable_dimensions") or []:
-            story.append(Paragraph(f"<font color='#dc2626'><b>{L('Illisible', 'Ilegível')}</b></font> — {_e(u.get('location'))} : {_e(u.get('comment'))}", S["body"]))
+            story.append(Paragraph(f"<font color='#dc2626'><b>{L('Ilegível', 'Ilegível')}</b></font> — {_e(u.get('location'))} : {_e(u.get('comment'))}", S["body"]))
         story.append(Spacer(1, 3 * mm))
-    rows = [[L("Type de document", "Tipo de documento"), a.get("document_type") or "—"], [L("Périmètre", "Âmbito"), ", ".join(a.get("analysis_scope") or []) or "—"],
-            [L("Pages analysées", "Páginas analisadas"), ", ".join(str(p) for p in a.get("pages_analyzed") or []) or str(page_index + 1)],
-            [L("Niveau", "Nível"), meta.get("level") or "—"], [L("Échelle", "Escala"), meta.get("scale") or "—"],
-            [L("Indice / date", "Revisão / data"), f"{meta.get('revision') or '—'} / {meta.get('date') or '—'}"]]
+    rows = [[L("Tipo de documento", "Tipo de documento"), a.get("document_type") or "—"], [L("Perímetro", "Âmbito"), ", ".join(a.get("analysis_scope") or []) or "—"],
+            [L("Páginas analisadas", "Páginas analisadas"), ", ".join(str(p) for p in a.get("pages_analyzed") or []) or str(page_index + 1)],
+            [L("Piso", "Nível"), meta.get("level") or "—"], [L("Escala", "Escala"), meta.get("scale") or "—"],
+            [L("Índice / data", "Revisão / data"), f"{meta.get('revision') or '—'} / {meta.get('date') or '—'}"]]
     t = Table([[Paragraph(f"<b>{_e(k)}</b>", S["body"]), Paragraph(_e(str(v)), S["body"])] for k, v in rows], colWidths=[45 * mm, _W - 45 * mm])
     t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1"))]))
     story += [t, Spacer(1, 5 * mm)]
     # contrôles effectués
-    story.append(Paragraph(L("Contrôles effectués", "Controlos efetuados"), S["h2"]))
-    rows = [[L("Page", "Página"), L("Zone", "Zona"), L("Chaîne (cotes partielles)", "Cadeia (cotas parciais)"), L("Somme", "Soma"), L("Cote totale", "Cota total"), L("Écart", "Desvio")]]
+    story.append(Paragraph(L("Controlos efetuados", "Controlos efetuados"), S["h2"]))
+    rows = [[L("Página", "Página"), L("Zona", "Zona"), L("Cadeia (cotas parciais)", "Cadeia (cotas parciais)"), L("Somme", "Soma"), L("Cota total", "Cota total"), L("Desvio", "Desvio")]]
     for c in a.get("dimension_chains") or []:
         rows.append([str(c.get("page", "")), Paragraph(_e(c.get("zone", "")), S["body"]),
                      Paragraph(" + ".join(f"{v:g}" for v in c.get("partials") or []) + (f" — {_e(c.get('note'))}" if c.get("note") else ""), S["body"]),
@@ -106,10 +104,10 @@ def build_studies_report(plan: dict, page_index: int, study: dict, report: dict,
     for cp in a.get("conforming_points") or []:
         story.append(Paragraph(f"<font color='#16a34a'>✔</font> {_e(cp)}", S["body"]))
     # incohérences
-    story += [PageBreak(), Paragraph(L("TABLEAU DES INCOHÉRENCES", "QUADRO DAS INCOERÊNCIAS"), S["kicker"])]
+    story += [PageBreak(), Paragraph(L("QUADRO DAS INCOERÊNCIAS", "QUADRO DAS INCOERÊNCIAS"), S["kicker"])]
     inc = a.get("inconsistencies") or []
     if not inc:
-        story.append(Paragraph(L("Aucune incohérence démontrable sur le document fourni.", "Nenhuma incoerência demonstrável no documento fornecido."), S["body"]))
+        story.append(Paragraph(L("Nenhuma incoerência demonstrável no documento fornecido.", "Nenhuma incoerência demonstrável no documento fornecido."), S["body"]))
     for x in inc:
         lbl, col = STATUS.get(x.get("status"), ("—", "#64748B"))
         if pt:
@@ -120,40 +118,40 @@ def build_studies_report(plan: dict, page_index: int, study: dict, report: dict,
                            f"{_fmt(x.get('calculated_value'), x.get('unit', ''))} · {L('écart', 'desvio')} <b>{_fmt(x.get('difference'), x.get('unit', ''))}</b>", S["body"]),
                  Paragraph(_e(x.get("explanation") or ""), S["body"])]
         if x.get("evidence"):
-            block.append(Paragraph(f"<b>{L('Preuves', 'Provas')} :</b> " + " ; ".join(_e(e) for e in x["evidence"]), S["muted"]))
+            block.append(Paragraph(f"<b>{L('Provas', 'Provas')} :</b> " + " ; ".join(_e(e) for e in x["evidence"]), S["muted"]))
         if x.get("possible_interpretations"):
-            block.append(Paragraph(f"<b>{L('Interprétations possibles', 'Interpretações possíveis')} :</b> " + " ; ".join(_e(e) for e in x["possible_interpretations"]), S["muted"]))
+            block.append(Paragraph(f"<b>{L('Interpretações possíveis', 'Interpretações possíveis')} :</b> " + " ; ".join(_e(e) for e in x["possible_interpretations"]), S["muted"]))
         if x.get("recommended_action"):
-            block.append(Paragraph(f"<b>{L('Action recommandée', 'Ação recomendada')} :</b> {_e(x['recommended_action'])}", S["body"]))
+            block.append(Paragraph(f"<b>{L('Ação recomendada', 'Ação recomendada')} :</b> {_e(x['recommended_action'])}", S["body"]))
         block.append(Spacer(1, 4 * mm))
         story.append(KeepTogether(block))
     # calculs détaillés
     calcs = a.get("calculations") or []
     if calcs:
-        story += [PageBreak(), Paragraph(L("CALCULS DÉTAILLÉS", "CÁLCULOS DETALHADOS"), S["kicker"])]
-        rows = [["ID", L("Page", "Pág."), L("Formule", "Fórmula"), L("Résultat", "Resultado"), L("Indiqué", "Indicado"), L("Écart", "Desvio")]]
+        story += [PageBreak(), Paragraph(L("CÁLCULOS DETALHADOS", "CÁLCULOS DETALHADOS"), S["kicker"])]
+        rows = [["ID", L("Página", "Pág."), L("Plano", "Fórmula"), L("Resultado", "Resultado"), L("Indicado", "Indicado"), L("Desvio", "Desvio")]]
         for c in calcs:
             rows.append([c.get("id", ""), str(c.get("page", "")), Paragraph(f"<font face='Courier'>{_e(c.get('formula'))}</font>", S["body"]),
                          _fmt(c.get("result"), c.get("unit", "")), _fmt(c.get("indicated"), c.get("unit", "")), _fmt(c.get("difference"), c.get("unit", ""))])
         story.append(_hdr(rows, [14 * mm, 12 * mm, 90 * mm, 22 * mm, 20 * mm, 20 * mm], S))
     # points à confirmer / informations manquantes
-    story += [Spacer(1, 5 * mm), Paragraph(L("Points à confirmer", "Pontos a confirmar"), S["h2"])]
+    story += [Spacer(1, 5 * mm), Paragraph(L("Pontos a confirmar", "Pontos a confirmar"), S["h2"])]
     story += [Paragraph(f"{i + 1}. {_e(p)}", S["body"]) for i, p in enumerate(a.get("points_to_confirm") or [])] or [Paragraph("—", S["body"])]
     if a.get("missing_information"):
-        story.append(Paragraph(L("Informations non fournies ou illisibles", "Informações não fornecidas ou ilegíveis"), S["h2"]))
+        story.append(Paragraph(L("Informações não fornecidas ou ilegíveis", "Informações não fornecidas ou ilegíveis"), S["h2"]))
         story += [Paragraph(f"• {_e(p)}", S["body"]) for p in a["missing_information"]]
     # seconde passe
-    story += [Spacer(1, 4 * mm), Paragraph(L("Seconde passe — contrôleur indépendant", "Segunda passagem — controlador independente"), S["h2"]),
+    story += [Spacer(1, 4 * mm), Paragraph(L("Segunda passagem — controlador independente", "Segunda passagem — controlador independente"), S["h2"]),
               Paragraph(_e(ver.get("summary") or "—"), S["body"])]
     for f in ver.get("findings") or []:
         story.append(Paragraph(f"• <b>{_e(f.get('severity'))}</b> — {_e(f.get('category'))}{(' (' + _e(f.get('target_id')) + ')') if f.get('target_id') else ''} : "
                                f"{_e(f.get('description'))} → {_e(f.get('correction'))}", S["muted"]))
-    story += [Spacer(1, 4 * mm), Paragraph(L("Conclusion", "Conclusão"), S["h2"]), Paragraph(_e(a.get("conclusion") or a.get("report_summary") or ""), S["body"]),
+    story += [Spacer(1, 4 * mm), Paragraph(L("Conclusão", "Conclusão"), S["h2"]), Paragraph(_e(a.get("conclusion") or a.get("report_summary") or ""), S["body"]),
               Spacer(1, 3 * mm), Paragraph(_e(mention), S["muted"])]
     if image_b64:
         from engines.plan_report_pdf import build_controls, render_marked_plan
         png, _ = render_marked_plan(image_b64, build_controls(report, report.get("geometry") or {}), report)
-        story += [PageBreak(), Paragraph(L("PLAN ANNOTÉ CONSTRUPILOT", "PLANTA ANOTADA CONSTRUPILOT"), S["kicker"]), _fit_image(png, _W, A4[1] - 70 * mm)]
+        story += [PageBreak(), Paragraph(L("PLANTA ANOTADA CONSTRUPILOT", "PLANTA ANOTADA CONSTRUPILOT"), S["kicker"]), _fit_image(png, _W, A4[1] - 70 * mm)]
 
     def _footer(canvas, d):
         canvas.saveState()

@@ -67,7 +67,7 @@ def _cctp_text(raw: bytes, filename: str, deadline: float | None = None,
     if name.endswith((".docx", ".txt", ".csv", ".xlsx")):
         from engines.office_text import extract_office_text
         return extract_office_text(raw, name.rsplit(".", 1)[-1])
-    raise HTTPException(400, "CCTP : formats acceptés .pdf, .docx, .txt")
+    raise HTTPException(400, "Caderno de encargos: formatos aceites .pdf, .docx, .txt")
 
 
 def _is_plan_page(page) -> bool:
@@ -81,7 +81,7 @@ def _is_plan_page(page) -> bool:
 async def _study(file_id: str, user_id: str) -> dict:
     doc = await db.dpgf_imports.find_one({"file_id": file_id, "user_id": user_id}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Étude DPGF introuvable")
+        raise HTTPException(404, "Estudo de mapa de quantidades não encontrado")
     return doc
 
 
@@ -146,17 +146,11 @@ async def _email_done(user_id: str, label: str, priced: int, line_count: int,
     total = f"{total_ht:,.0f}".replace(",", " ")
     greeting = f" {u['name']}" if u.get("name") else ""
     html = emailer.wrap_html(
-        "Votre chiffrage est terminé",
-        f"<p>Bonjour{greeting},</p>"
-        f"<p>Le chiffrage <strong>{label}</strong> vient de se terminer sur ConstruPilot.</p>"
-        f"<ul style='padding-left:18px'>"
-        f"<li><strong>{priced}/{line_count}</strong> ligne(s) chiffrée(s)</li>"
-        f"<li>Total : <strong>{total} € HT</strong></li></ul>"
-        f"<p>Ouvrez l'étude pour ajuster les prix, comparer une variante de marge ou "
-        f"la passer en devis.</p>",
-        cta_url=f"{base}/dpgf", cta_label="Ouvrir mon chiffrage")
+        "A sua orçamentação está concluída",
+        f"<p>Olá{greeting},</p><p>A orçamentação <strong>{label}</strong> acaba de ser concluída no ConstruPilot.</p><ul style='padding-left:18px'><li><strong>{priced}/{line_count}</strong> linha(s) com preço</li><li>Total: <strong>{total} € s/ IVA</strong></li></ul><p>Abra o estudo para ajustar os preços, comparar uma variante de margem ou convertê-lo em orçamento.</p>",
+        cta_url=f"{base}/dpgf", cta_label="Abrir a minha orçamentação")
     try:
-        await emailer.send_email(u["email"], f"Chiffrage terminé — {label}", html,
+        await emailer.send_email(u["email"], f'Orçamentação concluída — {label}', html,
                                  from_name="ConstruPilot")
     except Exception as exc:  # noqa: BLE001 — l'e-mail est un bonus, la cloche reste la source
         logger.warning("dpgf completion email failed: %s", exc)
@@ -204,7 +198,7 @@ async def _run_import(job_id: str, fid: str, user_id: str, xlsx: list[tuple[str,
             try:
                 parsed = await asyncio.to_thread(dpgf_engine.parse_workbook, raw)
             except Exception:  # noqa: BLE001 — fichier illisible : message clair au pro
-                await _job(job_id, status="error", error=f"Fichier Excel illisible : {filename}")
+                await _job(job_id, status="error", error=f'Ficheiro Excel ilegível: {filename}')
                 return
             for r in parsed["rows"]:
                 r["src"] = idx
@@ -218,8 +212,7 @@ async def _run_import(job_id: str, fid: str, user_id: str, xlsx: list[tuple[str,
                             "lines": len(parsed["rows"])})
         if not rows:
             await _job(job_id, status="error",
-                       error="Aucune ligne exploitable. Attendu : Désignation / Unité / "
-                             "Quantité / Prix unitaire.")
+                       error="Nenhuma linha utilizável. Esperado: Designação / Unidade / Quantidade / Preço unitário.")
             return
         # Neutralise les doublons stricts (feuille récap/DQE, fichier importé 2 fois) AVANT
         # tout chiffrage : on ne price jamais deux fois la même ligne.
@@ -279,7 +272,7 @@ async def _run_import(job_id: str, fid: str, user_id: str, xlsx: list[tuple[str,
                     dpgf_engine.apply_prescriptions(rows, res["prescriptions"])
                 except Exception as exc:  # noqa: BLE001 — le chiffrage continue sans le CCTP
                     logger.warning("cctp analysis failed: %s", exc)
-                    cctp_info["error"] = "Analyse CCTP indisponible"
+                    cctp_info["error"] = "Análise do caderno de encargos indisponível"
                 await _job(job_id, step="gaps")
                 try:
                     missing = await ai.cctp_missing_works(full, [r["designation"] for r in rows])
@@ -328,16 +321,15 @@ async def _run_import(job_id: str, fid: str, user_id: str, xlsx: list[tuple[str,
         await db.dpgf_imports.insert_one(dict(doc))
         await _job(job_id, status="done", step="done")
         label_txt = doc['label'] or doc['filename']
-        await _notify(user_id, f"Chiffrage terminé — {label_txt}",
-                      f"{totals['priced']} ligne(s) chiffrée(s) · "
-                      f"{totals['grand_total_ht']:,.0f} € HT".replace(",", " "))
+        await _notify(user_id, f'Orçamentação concluída — {label_txt}',
+                      f"{totals['priced']} linha(s) com preço · {totals['grand_total_ht']:,.0f} € HT".replace(",", " "))
         if len(rows) >= EMAIL_MIN_LINES or cctp_info.get("used"):
             await _email_done(user_id, label_txt, totals["priced"], len(rows),
                               totals["grand_total_ht"])
     except Exception as exc:  # noqa: BLE001 — l'échec doit rester lisible côté pro
         logger.exception("dpgf import job failed")
-        await _job(job_id, status="error", error=f"Chiffrage interrompu : {exc}")
-        await _notify(user_id, "Chiffrage interrompu", str(exc)[:200])
+        await _job(job_id, status="error", error=f'Orçamentação interrompida: {exc}')
+        await _notify(user_id, "Orçamentação interrompida", str(exc)[:200])
 
 
 @router.post("/import", status_code=202)
@@ -363,9 +355,9 @@ async def import_dpgf(
     uploads = [f for f in ([file] if file is not None else []) + list(files or [])
                if f is not None and getattr(f, "filename", None)]
     if not uploads:
-        raise HTTPException(400, "Joignez au moins un bordereau Excel (.xlsx)")
+        raise HTTPException(400, "Anexe pelo menos um mapa de quantidades Excel (.xlsx)")
     if len(uploads) > 10:
-        raise HTTPException(400, "Maximum 10 bordereaux par étude")
+        raise HTTPException(400, "Máximo 10 mapas de quantidades por estudo")
     cctp_uploads = [f for f in ([cctp] if cctp is not None else []) + list(cctp_files or [])
                     if f is not None and getattr(f, "filename", None)][:10]
 
@@ -401,11 +393,11 @@ async def import_job(job_id: str, user=Depends(current_user)) -> dict:
     """Avancement du chiffrage ; renvoie l'étude complète dès que le travail est terminé."""
     job = await db.dpgf_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]}, {"_id": 0})
     if not job:
-        raise HTTPException(404, "Chiffrage introuvable")
+        raise HTTPException(404, "Orçamentação não encontrada")
     if job["status"] == "running":
         seen = datetime.fromisoformat(job["updated_at"])
         if datetime.now(timezone.utc) - seen > timedelta(minutes=JOB_STALE_MIN):
-            job.update({"status": "error", "error": "Chiffrage interrompu (délai dépassé)"})
+            job.update({"status": "error", "error": "Orçamentação interrompida (prazo excedido)"})
             await _job(job_id, status="error", error=job["error"])
     if job["status"] == "done":
         doc = await db.dpgf_imports.find_one({"file_id": job["file_id"]}, {"_id": 0})
@@ -444,10 +436,10 @@ async def update_line(file_id: str, line_id: str, body: LineUpdate,
     rows = doc.get("lines", [])
     target = next((x for x in rows if x.get("line_id") == line_id), None)
     if not target:
-        raise HTTPException(404, "Ligne introuvable")
+        raise HTTPException(404, "Linha não encontrada")
     if body.excluded is not None:
         target["excluded"] = body.excluded
-        target["exclusion_reason"] = "Exclu manuellement" if body.excluded else ""
+        target["exclusion_reason"] = "Excluído manualmente" if body.excluded else ""
         if body.excluded:
             target["pu"] = None
             target["pu_base"] = None
@@ -455,7 +447,7 @@ async def update_line(file_id: str, line_id: str, body: LineUpdate,
     if body.source in ("bibliotheque", "ia", "fichier"):
         key = {"bibliotheque": "pu_library", "ia": "pu_ai", "fichier": "pu_file"}[body.source]
         if target.get(key) is None:
-            raise HTTPException(400, "Aucun prix disponible pour cette source")
+            raise HTTPException(400, "Nenhum preço disponível para esta fonte")
         target["pu_base"] = target[key]
         target["source"] = body.source
         target["excluded"] = False
@@ -486,14 +478,14 @@ async def add_gap_line(file_id: str, gap_id: str, body: GapAddIn,
     doc = await _study(file_id, user["user_id"])
     gap = next((g for g in doc.get("gaps", []) if g.get("gap_id") == gap_id), None)
     if not gap:
-        raise HTTPException(404, "Oubli introuvable")
+        raise HTTPException(404, "Omissão não encontrada")
     if gap.get("added"):
-        raise HTTPException(400, "Cet ouvrage a déjà été ajouté à l'étude")
+        raise HTTPException(400, "Este trabalho já foi acrescentado ao estudo")
     rows = doc.get("lines", [])
     unit = (body.unit or gap.get("unit") or "u")[:12]
     row = {
         "line_id": f"gap{gap_id}", "sheet": "", "row": None, "src": -1,
-        "src_name": "Ajout CCTP", "lot": gap.get("lot") or "Ajouts CCTP",
+        "src_name": "Acréscimo do caderno de encargos", "lot": gap.get("lot") or "Ajouts CCTP",
         "designation": gap["designation"], "description": gap.get("reason") or "",
         "unit": unit, "qty": round(float(body.qty), 3),
         "pu_file": None, "pu_library": None, "pu_ai": None,
@@ -567,7 +559,7 @@ async def dpgf_to_quote(file_id: str, body: QuoteIn, user=Depends(current_user))
                 "designation": f"{x['designation']} — {dpgf_engine.NOT_PRICED}",
                 "description": (desc or "")[:2000], "unit": x.get("unit") or "u",
                 "qty": x.get("qty") or 0, "unit_price_ht": 0, "vat_rate": body.vat_rate,
-                "category": x.get("lot") or "Sans lot"})
+                "category": x.get("lot") or "Sem capítulo"})
             continue
         if x.get("pu") is None:
             continue
@@ -575,21 +567,21 @@ async def dpgf_to_quote(file_id: str, body: QuoteIn, user=Depends(current_user))
             "designation": x["designation"][:300], "description": (desc or "")[:2000],
             "unit": x.get("unit") or "u", "qty": x.get("qty") if x.get("qty") is not None else 1,
             "unit_price_ht": x["pu"], "vat_rate": body.vat_rate,
-            "category": x.get("lot") or "Sans lot",
+            "category": x.get("lot") or "Sem capítulo",
             "price_source": x.get("source") or "",
             "price_reference": x.get("matched_designation") or ""})
     if not lines:
-        raise HTTPException(400, "Aucune ligne chiffrée à convertir en devis")
+        raise HTTPException(400, "Nenhuma linha com preço a converter em orçamento")
 
     totals = _compute_totals(lines, 0)
     now = _now()
-    notes = [f"Devis établi à partir du bordereau « {doc.get('filename') or 'DPGF'} »."]
+    notes = [f"Orçamento elaborado a partir do mapa de quantidades «{doc.get('filename') or 'DPGF'} »."]
     if doc.get("instructions"):
-        notes.append(f"Consignes appliquées : {doc['instructions']}")
+        notes.append(f"Instruções aplicadas: {doc['instructions']}")
     if (doc.get("cctp") or {}).get("summary"):
         notes.append(f"CCTP : {doc['cctp']['summary']}")
     if any(x.get("excluded") for x in rows):
-        notes.append("Les prestations marquées « Non chiffré — hors marché » ne sont pas incluses au total.")
+        notes.append("Os serviços marcados «Sem preço — fora do contrato» não estão incluídos no total.")
     quote = {
         "doc_id": "doc_" + secrets.token_hex(6), "user_id": user["user_id"],
         "doc_type": "quote", "number": None,
@@ -648,7 +640,7 @@ async def download_dpgf(file_id: str, src: int | None = None, user=Depends(curre
                                        "path": doc.get("source_path")}]
                                      if doc.get("source_path") else [])
     if not sources:
-        raise HTTPException(404, "Fichier source introuvable")
+        raise HTTPException(404, "Ficheiro de origem não encontrado")
     rows = doc.get("lines", [])
 
     def filled_for(s: dict) -> bytes:
@@ -669,7 +661,7 @@ async def download_dpgf(file_id: str, src: int | None = None, user=Depends(curre
             z.writestr(f"{base}_chiffre.xlsx", filled_for(s))
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/zip",
-                             headers={"Content-Disposition": 'attachment; filename="dpgf_chiffre.zip"'})
+                             headers={"Content-Disposition": "attachment; filename=\"mapa_quantidades_orcamentado.zip\""})
 
 
 @router.delete("/{file_id}")
@@ -713,7 +705,7 @@ async def create_rfq(file_id: str, body: RfqIn, user=Depends(current_user)) -> d
                   "unit": x.get("unit") or "u", "qty": x.get("qty")}
                  for x in doc.get("lines", []) if x["lot"] == body.lot and not x["excluded"]]
     if not lot_lines:
-        raise HTTPException(400, "Aucune ligne à chiffrer dans ce lot")
+        raise HTTPException(400, "Nenhuma linha a orçamentar neste lote")
 
     recipients: list[dict] = []
     if body.supplier_ids:
@@ -729,7 +721,7 @@ async def create_rfq(file_id: str, body: RfqIn, user=Depends(current_user)) -> d
         if "@" in em and em not in [r["email"] for r in recipients]:
             recipients.append({"supplier_id": None, "name": "", "email": em})
     if not recipients:
-        raise HTTPException(400, "Aucun destinataire avec e-mail valide")
+        raise HTTPException(400, "Nenhum destinatário com e-mail válido")
 
     due = (datetime.now(timezone.utc) + timedelta(days=body.due_days)).date().isoformat()
     origin = (body.origin_url or "").rstrip("/")
@@ -747,15 +739,13 @@ async def create_rfq(file_id: str, body: RfqIn, user=Depends(current_user)) -> d
         status = "skipped"
         if link:
             html = emailer.wrap_html(
-                f"Demande de prix — {body.lot}",
-                f"<p>Bonjour{(' ' + r['name']) if r['name'] else ''},</p>"
-                f"<p><strong>{sender}</strong> vous consulte pour le lot <strong>{body.lot}</strong> "
-                f"({len(lot_lines)} ligne(s)). Réponse souhaitée avant le <strong>{due}</strong>.</p>"
+                f'Pedido de preço — {body.lot}',
+                f"<p>Olá{(' ' + r['name'] if r['name'] else '')},</p><p><strong>{sender}</strong> consulta-o para o lote <strong>{body.lot}</strong> ({len(lot_lines)} linha(s)). Resposta pretendida até <strong>{due}</strong>.</p>"
                 + (f"<blockquote>{body.message.strip()}</blockquote>" if body.message.strip() else "")
-                + "<p>Saisissez vos prix unitaires en ligne (aucun compte nécessaire) :</p>",
-                cta_url=link, cta_label="Répondre à la demande de prix")
+                + "<p>Introduza os seus preços unitários online (nenhuma conta necessária):</p>",
+                cta_url=link, cta_label="Responder ao pedido de preço")
             try:
-                await emailer.send_email(r["email"], f"Demande de prix — {body.lot} ({sender})", html)
+                await emailer.send_email(r["email"], f'Pedido de preço — {body.lot} ({sender})', html)
                 status = "sent"
             except Exception as exc:  # noqa: BLE001 — le lien reste utilisable manuellement
                 logger.warning("rfq email failed: %s", exc)
@@ -786,14 +776,14 @@ class OfferIn(BaseModel):
 def _record_offer(rfq: dict, token: str, prices: dict, note: str, contact: str) -> dict:
     rec = next((r for r in rfq.get("recipients", []) if r.get("token") == token), None)
     if not rec:
-        raise HTTPException(404, "Destinataire introuvable")
+        raise HTTPException(404, "Destinatário não encontrado")
     clean = {}
     for line in rfq.get("lines", []):
         v = prices.get(line["line_id"])
         if v is not None and float(v) > 0:
             clean[line["line_id"]] = round(float(v), 2)
     if not clean:
-        raise HTTPException(400, "Aucun prix saisi")
+        raise HTTPException(400, "Nenhum preço introduzido")
     total = round(sum(clean[l["line_id"]] * (l.get("qty") or 0)
                       for l in rfq["lines"] if l["line_id"] in clean), 2)
     rec.update({"prices": clean, "total_ht": total, "responded_at": _now(),
@@ -809,7 +799,7 @@ async def record_offer_pro(file_id: str, rfq_id: str, body: OfferIn,
     """Saisie manuelle d'une offre reçue par téléphone ou par e-mail."""
     rfq = await db.dpgf_rfq.find_one({"rfq_id": rfq_id, "user_id": user["user_id"]}, {"_id": 0})
     if not rfq:
-        raise HTTPException(404, "Demande de prix introuvable")
+        raise HTTPException(404, "Pedido de preço não encontrado")
     _record_offer(rfq, body.token, body.prices, body.note, body.contact_name)
     await db.dpgf_rfq.update_one({"rfq_id": rfq_id}, {"$set": {"recipients": rfq["recipients"]}})
     return _rfq_public(rfq)
@@ -826,10 +816,10 @@ async def apply_offer(file_id: str, rfq_id: str, body: ApplyOfferIn,
     doc = await _study(file_id, user["user_id"])
     rfq = await db.dpgf_rfq.find_one({"rfq_id": rfq_id, "user_id": user["user_id"]}, {"_id": 0})
     if not rfq:
-        raise HTTPException(404, "Demande de prix introuvable")
+        raise HTTPException(404, "Pedido de preço não encontrado")
     rec = next((r for r in rfq.get("recipients", []) if r.get("token") == body.token), None)
     if not rec or not rec.get("prices"):
-        raise HTTPException(400, "Cette offre n'a pas encore de prix")
+        raise HTTPException(400, "Esta proposta ainda não tem preço")
     who = rec.get("name") or rec.get("email")
     rows = doc.get("lines", [])
     applied = 0
@@ -862,7 +852,7 @@ public_router = APIRouter(prefix="/public/rfq", tags=["dpgf"])
 async def public_rfq(token: str) -> dict:
     rfq = await db.dpgf_rfq.find_one({"recipients.token": token}, {"_id": 0})
     if not rfq:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     rec = next(r for r in rfq["recipients"] if r["token"] == token)
     owner = (await db.users.find_one({"user_id": rfq["user_id"]},
                                      {"_id": 0, "company_name": 1, "name": 1})) or {}
@@ -885,15 +875,14 @@ class PublicOfferIn(BaseModel):
 async def public_rfq_submit(token: str, body: PublicOfferIn) -> dict:
     rfq = await db.dpgf_rfq.find_one({"recipients.token": token}, {"_id": 0})
     if not rfq:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     rec = _record_offer(rfq, token, body.prices, body.note, body.contact_name)
     await db.dpgf_rfq.update_one({"rfq_id": rfq["rfq_id"]},
                                  {"$set": {"recipients": rfq["recipients"]}})
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(5), "user_id": rfq["user_id"],
         "type": "rfq_offer", "url": "/dashboard",
-        "message": f"Offre reçue pour le lot {rfq['lot']} : {rec['total_ht']:.2f} € HT "
-                   f"({rec.get('name') or rec.get('email')}).",
+        "message": f"Proposta recebida para o lote {rfq['lot']} : {rec['total_ht']:.2f} € HT ({rec.get('name') or rec.get('email')}).",
         "read": False, "created_at": _now()})
     return {"ok": True, "total_ht": rec["total_ht"]}
 
@@ -945,7 +934,7 @@ async def set_lot_margin(file_id: str, body: LotMarginIn, user=Depends(current_u
             x["margin_pct"] = float(body.margin_pct)
             touched += 1
     if not touched:
-        raise HTTPException(404, "Lot introuvable")
+        raise HTTPException(404, "Lote não encontrado")
     directives = doc.get("directives") or {}
     directives["lot_margins"] = {**(directives.get("lot_margins") or {}),
                                  body.lot: float(body.margin_pct)}
@@ -1046,7 +1035,7 @@ async def duplicate_study(file_id: str, body: DuplicateIn, user=Depends(current_
         await db.dpgf_imports.update_one({"file_id": file_id, "user_id": user["user_id"]},
                                          {"$set": {"variant_group": group}})
     new_fid = "dpgf_" + uuid.uuid4().hex[:12]
-    base_label = (doc.get("label") or doc.get("filename") or "Chiffrage").strip()
+    base_label = (doc.get("label") or doc.get("filename") or "Orçamentação").strip()
     copy = {k: v for k, v in doc.items() if k != "_id"}
     copy.update({
         "file_id": new_fid, "variant_group": group,
@@ -1076,7 +1065,7 @@ async def study_variants(file_id: str, user=Depends(current_user)) -> dict:
         cost = sum(float(x.get("cost_ht") or 0) for x in d.get("lot_totals", []))
         margin = round(d.get("grand_total_ht", 0) - cost, 2)
         variants.append({
-            "file_id": d["file_id"], "label": d.get("label") or d.get("filename") or "Chiffrage",
+            "file_id": d["file_id"], "label": d.get("label") or d.get("filename") or "Orçamentação",
             "created_at": d.get("created_at"), "quote_doc_id": d.get("quote_doc_id"),
             "current": d["file_id"] == file_id,
             "grand_total_ht": d.get("grand_total_ht", 0),

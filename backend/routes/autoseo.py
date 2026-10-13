@@ -66,7 +66,7 @@ async def autoseo_webhook(
 ):
     # 1) Bearer token — comparaison stricte, à temps constant
     if not WEBHOOK_TOKEN:
-        raise HTTPException(status_code=503, detail="Webhook non configuré (AUTOSEO_WEBHOOK_TOKEN)")
+        raise HTTPException(status_code=503, detail="Webhook não configurado (AUTOSEO_WEBHOOK_TOKEN)")
     expected = f"Bearer {WEBHOOK_TOKEN}"
     if not authorization or not hmac.compare_digest(authorization.strip(), expected):
         raise HTTPException(status_code=401, detail="Invalid or missing authorization token")

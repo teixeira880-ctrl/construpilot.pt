@@ -342,7 +342,7 @@ def _extract_axis_dimensions(vectors: list[dict], text_blocks: list[dict], px_pe
         dims.append({"unverified": uncertain, "x1": round(r["p1"][0] * px_per_pt, 2), "y1": round(r["p1"][1] * px_per_pt, 2),
                      "x2": round(r["p2"][0] * px_per_pt, 2), "y2": round(r["p2"][1] * px_per_pt, 2),
                      "value_m": round(r["value_m"], 4), "measured_m": round(measured, 4),
-                     "raw_text": r["text"], "location": "cote vectorielle PDF", "orientation": r["orientation"],
+                     "raw_text": r["text"], "location": "cota vetorial PDF", "orientation": r["orientation"],
                      "anchor_mm": anchors})
     return {"dimensions": dims, "pt_per_m": round(used, 4), "self_calibrated": self_calibrated,
             "scale_source": "declared" if pt_per_m else "vector_consensus",

@@ -38,7 +38,7 @@ def classify_strokes(strokes: list[dict]) -> dict:
         counts[s["classification"]] += 1
     return {"strokes": classified, "counts": dict(counts),
             "constructive_count": sum(1 for s in classified if s["constructive"]),
-            "note": "Seuls les traits classés constructifs alimentent les quantités ; « unclassified » reste hors métré."}
+            "note": "Só os traços classificados como construtivos alimentam as quantidades; «unclassified» fica fora da medição."}
 
 
 def _same_location(a: dict, b: dict, tol_m: float) -> bool:
@@ -82,7 +82,7 @@ def dedupe_elements(observations: list[dict], *, location_tol_m: float = 0.3) ->
                          "views": sorted({g.get("view") for g in group if g.get("view")}),
                          "evidence": [g.get("obs_id") for g in group], "dimensions": group[0].get("dimensions") or {},
                          "state": "confirmed" if compatible else "indeterminate",
-                         "note": None if compatible else "Dimensions divergentes entre vues : identité à confirmer"})
+                         "note": None if compatible else "Dimensões divergentes entre vistas: identidade a confirmar"})
     located = [o for o in untagged if (o.get("location") or {}).get("x_m") is not None]
     floating = [o for o in untagged if o not in located]
     while located:
@@ -94,19 +94,19 @@ def dedupe_elements(observations: list[dict], *, location_tol_m: float = 0.3) ->
                 located.remove(other)
         elements.append({"element_id": new_id("el"), "element_type": head.get("element_type"), "tag": None, "count": 1,
                          "views": sorted({g.get("view") for g in group if g.get("view")}), "evidence": [g.get("obs_id") for g in group],
-                         "dimensions": head.get("dimensions") or {}, "state": "probable", "note": "Identité par position (sans repère)"})
+                         "dimensions": head.get("dimensions") or {}, "state": "probable", "note": "Identidade por posição (sem marca)"})
     # Untagged AND unlocated observations (e.g. a schedule row) matching a known element are kept as uncertain, never counted twice.
     for o in floating:
         twins = [el for el in elements if el["element_type"] == o.get("element_type") and _dims_compatible({"dimensions": el["dimensions"]}, o)]
         if twins:
             uncertain.append({"obs_id": o.get("obs_id"), "element_type": o.get("element_type"), "view": o.get("view"),
-                              "possible_elements": [t["element_id"] for t in twins], "reason": "Même type et dimensions compatibles, sans repère ni position"})
+                              "possible_elements": [t["element_id"] for t in twins], "reason": "Mesmo tipo e dimensões compatíveis, sem marca nem posição"})
         else:
             elements.append({"element_id": new_id("el"), "element_type": o.get("element_type"), "tag": None, "count": 1,
                              "views": [o.get("view")] if o.get("view") else [], "evidence": [o.get("obs_id")],
-                             "dimensions": o.get("dimensions") or {}, "state": "indeterminate", "note": "Observation isolée sans repère ni position"})
+                             "dimensions": o.get("dimensions") or {}, "state": "indeterminate", "note": "Observação isolada sem marca nem posição"})
     counts = defaultdict(int)
     for el in elements:
         counts[el["element_type"]] += el["count"]
     return {"elements": elements, "uncertain_groups": uncertain, "counts": dict(counts),
-            "note": "Chaque élément est compté une fois ; les vues (plan, élévation, nomenclature) restent comme preuves."}
+            "note": "Cada elemento é contado uma vez; as vistas (planta, alçado, lista) ficam como provas."}

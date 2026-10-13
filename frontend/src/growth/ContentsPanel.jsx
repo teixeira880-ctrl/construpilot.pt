@@ -65,7 +65,7 @@ function Editor({ contentId, canEdit, isAdmin, onClose, onChanged }) {
 
 export function ContentsPanel({ projectId, canEdit, isAdmin, openId, onOpen }) {
   const { data, error, reload } = useApi(`/growth/projects/${projectId}/contents`, [projectId]);
-  const [draft, setDraft] = useState({ topic: "", intent: "descoberta", format: FORMATS[0] });
+  const [draft, setDraft] = useState({ topic: "", intent: "découverte", format: FORMATS[0] });
   const add = async () => { try { const r = await api.post(`/growth/projects/${projectId}/contents`, draft); setDraft({ ...draft, topic: "" }); reload(); onOpen(r.data.content_id); } catch (e) { toast.error(err(e)); } };
   if (error) return <ErrorBox error={error} onRetry={reload} />;
   if (!data) return null;
@@ -74,7 +74,7 @@ export function ContentsPanel({ projectId, canEdit, isAdmin, openId, onOpen }) {
     <p className="text-sm text-muted-foreground">Ideia → pesquisa de fontes verificadas → brief → rascunho → revisão (controlos: afirmações, duplicados, ligações, fontes) → aprovação → publicação no blogue. «Automatizar tudo» encadeia as etapas até à revisão. Modo «validação antes de publicar» por omissão; a publicação automática configura-se em Integrações.</p>
     {canEdit && <div className="surface p-3 flex flex-wrap gap-2 items-center" data-testid="growth-content-form">
       <Input className="flex-1 min-w-[240px]" placeholder="Assunto / intenção de pesquisa…" value={draft.topic} onChange={(e) => setDraft({ ...draft, topic: e.target.value })} data-testid="growth-content-new-topic" />
-      <select className="h-9 rounded-md border bg-background px-2 text-sm" value={draft.intent} onChange={(e) => setDraft({ ...draft, intent: e.target.value })}>{["descoberta", "comparaison", "achat", "necessidade profissional", "marque"].map((i) => <option key={i}>{i}</option>)}</select>
+      <select className="h-9 rounded-md border bg-background px-2 text-sm" value={draft.intent} onChange={(e) => setDraft({ ...draft, intent: e.target.value })}>{["découverte", "comparaison", "achat", "besoin métier", "marque"].map((i) => <option key={i} value={i}>{({ "découverte": "descoberta", comparaison: "comparação", achat: "compra", "besoin métier": "necessidade profissional", marque: "marca" })[i] || i}</option>)}</select>
       <select className="h-9 rounded-md border bg-background px-2 text-sm" value={draft.format} onChange={(e) => setDraft({ ...draft, format: e.target.value })}>{FORMATS.map((f) => <option key={f}>{f}</option>)}</select>
       <Button size="sm" onClick={add} disabled={draft.topic.trim().length < 4} data-testid="growth-content-add"><Plus className="h-4 w-4" /> Nova ideia</Button></div>}
     {openId && <Editor contentId={openId} canEdit={canEdit} isAdmin={isAdmin} onClose={() => onOpen(null)} onChanged={reload} />}

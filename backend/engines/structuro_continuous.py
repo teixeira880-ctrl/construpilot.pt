@@ -101,7 +101,7 @@ def solve(spans: list[dict]) -> dict:
         raise ValueError("File vide")
     Ls = [float(s["L"]) for s in spans]
     if any(not math.isfinite(L) or L <= 0 for L in Ls):
-        raise ValueError("Portée invalide")
+        raise ValueError("Vão inválido")
     eis = [float(s.get("EI") or 1.0) for s in spans]
     flex = [L / ei for L, ei in zip(Ls, eis)]               # L/EI
     terms = [_load_terms(L, s["loads"]) for L, s in zip(Ls, spans)]
@@ -232,8 +232,7 @@ def envelope(spans: list[dict], combos: list[dict], action_kinds: dict[str, str]
         # Majoration de descente de charges due à la continuité (jamais une minoration).
         out_sup[k]["continuity_delta_kn"] = max(0.0, out_sup[k]["r_max_kn"] - out_sup[k]["r_iso_kn"])
     return {"version": VERSION, "spans": out_spans, "supports": out_sup,
-            "method": "Équation des trois moments (Clapeyron), EI par travée, appuis de rive articulés ; "
-                      "actions G sur toutes les travées, actions Q alternées (enveloppe).",
+            "method": "Equação dos três momentos (Clapeyron), EI por vão, apoios de extremidade articulados; ações G em todos os vãos, ações Q alternadas (envolvente).",
             "execution_ready": False}
 
 

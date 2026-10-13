@@ -13,7 +13,7 @@ const BASE = process.env.REACT_APP_BACKEND_URL;
 const DECISIONS = [
   ["sans_reserve", "Sem reservas"],
   ["avec_reserve", "Com reservas"],
-  ["rejeição", "Receção recusada"],
+  ["refus", "Receção recusada"],
 ];
 const STATUS = { draft: ["Rascunho", "bg-slate-100 text-slate-600"], published: ["Partilhado com o cliente", "bg-sky-100 text-sky-700"], signed: ["Assinado pelo cliente", "bg-emerald-100 text-emerald-700"] };
 

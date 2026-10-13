@@ -9,7 +9,7 @@ def require_sender_branding(branding: dict | None, *, organization: bool = False
     if missing:
         raise HTTPException(400, {
             "code": "sender_address_required",
-            "message": "Complétez l’adresse d’expédition de votre entreprise dans Identité pro : adresse, code postal et ville.",
+            "message": "Complete a morada de expedição da sua empresa em Identidade profissional: morada, código postal e localidade.",
             "fields": missing,
             "source": "organization" if organization else "user",
             "action_url": "/entreprise",

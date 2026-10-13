@@ -4,33 +4,33 @@ import math
 # (motif de désignation bibliothèque, unité attendue, fonction quantité, variante)
 # variante : None = toujours ; "beton" / "coque" / "renovation" = seulement pour ce type de projet.
 _RULES = [
-    ("Terrassement piscine", "m³", lambda g: g["excav_m3"], ("beton", "coque")),
-    ("Évacuation des terres", "m³", lambda g: g["excav_m3"] * 0.8, ("beton", "coque")),
-    ("Couche de forme compactée", "m²", lambda g: g["floor"] * 1.15, ("beton", "coque")),
-    ("Béton de propreté", "m²", lambda g: g["floor"] * 1.1, ("beton",)),
-    ("Radier piscine béton armé", "m²", lambda g: g["floor"], ("beton",)),
-    ("Ferraillage radier", "m²", lambda g: g["floor"], ("beton",)),
-    ("Mur piscine blocs à bancher", "m²", lambda g: g["walls"], ("beton",)),
-    ("Escalier maçonné", "u", lambda g: 1, ("beton",)),
-    ("Enduit de dressage bassin", "m²", lambda g: g["floor"] + g["walls"], ("beton",)),
-    ("Étanchéité cimentaire bassin", "m²", lambda g: g["floor"] + g["walls"], ("renovation",)),
+    ("Movimento de terras da piscina", "m³", lambda g: g["excav_m3"], ("beton", "coque")),
+    ("Remoção de terras", "m³", lambda g: g["excav_m3"] * 0.8, ("beton", "coque")),
+    ("Camada de forma compactada", "m²", lambda g: g["floor"] * 1.15, ("beton", "coque")),
+    ("Betão de limpeza", "m²", lambda g: g["floor"] * 1.1, ("beton",)),
+    ("Laje de piscina em betão armado", "m²", lambda g: g["floor"], ("beton",)),
+    ("Armaduras do ensoleiramento", "m²", lambda g: g["floor"], ("beton",)),
+    ("Parede de piscina em blocos de cofragem", "m²", lambda g: g["walls"], ("beton",)),
+    ("Escada de alvenaria", "u", lambda g: 1, ("beton",)),
+    ("Reboco de regularização do tanque", "m²", lambda g: g["floor"] + g["walls"], ("beton",)),
+    ("Impermeabilização cimentícia tanque", "m²", lambda g: g["floor"] + g["walls"], ("renovation",)),
     ("Liner 75/100", "m²", lambda g: (g["floor"] + g["walls"]) * 1.05, ("beton", "renovation")),
-    ("Piscine coque polyester", "forfait", lambda g: 1, ("coque",)),
-    ("Margelle béton reconstitué", "ml", lambda g: g["perim"], ("beton", "coque", "renovation")),
+    ("Piscina monobloco em poliéster", "forfait", lambda g: 1, ("coque",)),
+    ("Borda de betão reconstituído", "ml", lambda g: g["perim"], ("beton", "coque", "renovation")),
     ("Skimmer", "u", lambda g: max(1, math.ceil(g["floor"] / 25)), ("beton", "renovation")),
-    ("Buse de refoulement", "u", lambda g: max(2, math.ceil(g["floor"] / 12)), ("beton",)),
-    ("Bonde de fond", "u", lambda g: 1, ("beton",)),
+    ("Bico de retorno", "u", lambda g: max(2, math.ceil(g["floor"] / 12)), ("beton",)),
+    ("Ralo de fundo", "u", lambda g: 1, ("beton",)),
     ("Projecteur LED piscine", "u", lambda g: 1 if g["floor"] < 30 else 2, ("beton", "coque")),
     ("Canalisation PVC pression Ø50", "ml", lambda g: g["perim"] + 12, ("beton", "coque")),
     ("Collecteur / vannes", "forfait", lambda g: 1, ("beton", "coque", "renovation")),
     ("Pompe filtration 0,75", "u", lambda g: 1, ("beton", "coque", "renovation")),
-    ("Filtre à sable", "u", lambda g: 1, ("beton", "coque", "renovation")),
-    ("Coffret électrique piscine", "u", lambda g: 1, ("beton", "coque")),
-    ("Local technique filtration équipé", "forfait", lambda g: 1, ("beton", "coque")),
-    ("Drainage périphérique", "ml", lambda g: g["perim"] + 4, ("beton", "coque")),
-    ("Remblai périphérique gravier", "m³", lambda g: g["perim"] * 0.6 * 1.5, ("beton", "coque")),
-    ("Plage piscine béton", "m²", lambda g: g["floor"] * 1.0, ("beton", "coque")),
-    ("Mise en eau et mise en service", "forfait", lambda g: 1, ("beton", "coque", "renovation")),
+    ("Filtro de areia", "u", lambda g: 1, ("beton", "coque", "renovation")),
+    ("Quadro elétrico piscina", "u", lambda g: 1, ("beton", "coque")),
+    ("Casa técnica de filtração equipada", "forfait", lambda g: 1, ("beton", "coque")),
+    ("Drenagem periférica", "ml", lambda g: g["perim"] + 4, ("beton", "coque")),
+    ("Aterro periférico gravilha", "m³", lambda g: g["perim"] * 0.6 * 1.5, ("beton", "coque")),
+    ("Praia de piscina em betão", "m²", lambda g: g["floor"] * 1.0, ("beton", "coque")),
+    ("Enchimento e colocação em serviço", "forfait", lambda g: 1, ("beton", "coque", "renovation")),
 ]
 
 _KIND = {"piscine_beton": "beton", "piscine_coque": "coque", "piscine_renovation": "renovation"}
@@ -71,7 +71,7 @@ def pool_lines(project_type: str, surface_m2: float, library: list[dict], depth_
                       "unit_price_ht": float(it["unit_price_ht"]),
                       "cost_price_ht": float(it.get("cost_price_ht") or 0),
                       "total_ht": round(qty * float(it["unit_price_ht"]), 2),
-                      "vat_rate": 23.0, "category": "Piscine"})
+                      "vat_rate": 23.0, "category": "Piscina"})
     return {"geometry": geo, "lines": lines, "total_ht": round(sum(l["total_ht"] for l in lines), 2)}
 
 

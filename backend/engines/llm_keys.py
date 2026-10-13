@@ -50,7 +50,7 @@ async def load_state() -> dict:
 def status() -> dict:
     return {"configured": bool(os.environ.get("OPENAI_API_KEY")), "active": openai_direct_active(),
             "disabled": _STATE["disabled"], "reason": _STATE["reason"], "since": _STATE["since"],
-            "fallback": "Clé LLM universelle Emergent"}
+            "fallback": "Chave LLM universal Emergent"}
 
 
 async def note_openai_error(exc: BaseException) -> bool:
@@ -88,8 +88,7 @@ async def _alert_admins(reason: str, since: str) -> None:
     if ai_doc.get("budget_email"):
         emails.add(ai_doc["budget_email"])
     url = f"{(os.environ.get('FRONTEND_URL') or '').rstrip('/')}/admin?tab=ai"
-    msg = ("Clé OpenAI de l'entreprise désactivée (crédit épuisé ou clé invalide). L'IA fonctionne sur la clé "
-           "universelle Emergent. Rechargez le crédit puis réactivez la clé dans Admin → IA.")
+    msg = ("Chave OpenAI da empresa desativada (crédito esgotado ou chave inválida). A IA funciona com a chave universal Emergent. Recarregue o crédito e depois reative a chave em Admin → IA.")
     for a in admins:
         try:
             await db.notifications.insert_one({
@@ -100,19 +99,9 @@ async def _alert_admins(reason: str, since: str) -> None:
             pass
     try:
         from engines.emailer import send_email
-        html = (f"<p>Bonjour,</p><p>La clé OpenAI de l'entreprise a été <b>désactivée automatiquement</b> "
-                f"le {since[:16].replace('T', ' à ')} UTC.</p>"
-                f"<p><b>Motif renvoyé par OpenAI :</b> {reason}</p>"
-                f"<p>Toutes les fonctions IA (devis dictés, comptes rendus, coach, analyses) fonctionnent "
-                f"désormais sur la <b>clé LLM universelle Emergent</b> : aucune interruption pour vos utilisateurs.</p>"
-                f"<p>Pour revenir sur votre clé OpenAI :</p><ol>"
-                f"<li>Rechargez le crédit sur <a href='https://platform.openai.com/settings/organization/billing'>"
-                f"platform.openai.com → Billing</a></li>"
-                f"<li>Ouvrez <a href='{url}'>Admin → IA</a> et cliquez « Réactiver la clé OpenAI » "
-                f"(un test de connexion est effectué avant la remise en service).</li></ol>"
-                f"<p>— ConstruPilot</p>")
+        html = (f"<p>Olá,</p><p>A chave OpenAI da empresa foi <b>desativada automaticamente</b> em {since[:16].replace('T', ' à ')} UTC.</p><p><b>Motivo devolvido pela OpenAI:</b> {reason}</p><p>Todas as funções IA (orçamentos ditados, relatórios, coach, análises) funcionam agora com a <b>chave LLM universal Emergent</b>: nenhuma interrupção para os seus utilizadores.</p><p>Para voltar à sua chave OpenAI:</p><ol><li>Recarregue o crédito em <a href='https://platform.openai.com/settings/organization/billing'>platform.openai.com → Billing</a></li><li>Abra <a href='{url}'>Admin → IA</a> e clique em «Reativar a chave OpenAI» (é efetuado um teste de ligação antes da reativação).</li></ol><p>— ConstruPilot</p>")
         for e in emails:
-            await send_email(e, "⚠️ Clé OpenAI désactivée — repli sur la clé Emergent", html)
+            await send_email(e, "⚠️ Chave OpenAI desativada — recurso à chave Emergent", html)
     except Exception as e:
         logger.warning("openai key alert email failed: %s", e)
 
@@ -121,14 +110,14 @@ async def reactivate_openai() -> dict:
     """Test réel (mini-requête) puis remise en service. Lève ValueError si OpenAI refuse encore."""
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
-        raise ValueError("Aucune clé OpenAI configurée côté serveur (OPENAI_API_KEY)")
+        raise ValueError("Nenhuma chave OpenAI configurada no servidor (OPENAI_API_KEY)")
     from openai import AsyncOpenAI
     try:
         client = AsyncOpenAI(api_key=key, timeout=30)
         await client.responses.create(model=os.environ.get("STUDIES_MODEL_LIGHT", "gpt-5.4-mini"),
                                       input="ping", max_output_tokens=16)
     except Exception as e:
-        raise ValueError(f"OpenAI refuse toujours la clé : {str(e)[:200]}") from None
+        raise ValueError(f'A OpenAI continua a recusar a chave: {str(e)[:200]}') from None
     _STATE.update({"disabled": False, "reason": None, "since": None, "alerted": False})
     await db.app_settings.update_one({"_id": _SETTINGS_ID},
                                      {"$set": {"disabled": False, "reason": None, "since": None, "alerted": False,

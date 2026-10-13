@@ -126,7 +126,7 @@ def _build_forced_straight(inp: ForceSolutionInput) -> Tuple[StairResult, List[s
 
     # Recensement des infractions DTU
     if h_mm > DTU_RISER_MAX:
-        infractions.append(f"hauteur marche {h_mm:.0f} mm > {DTU_RISER_MAX:.0f} mm max DTU")
+        infractions.append(f'altura do degrau {h_mm:.0f} mm > {DTU_RISER_MAX:.0f} mm max DTU')
     if g_mm < DTU_GIRON_MIN:
         infractions.append(f"giron {g_mm:.0f} mm < {DTU_GIRON_MIN:.0f} mm min DTU")
     if slope_deg > DTU_SLOPE_MAX:
@@ -137,8 +137,7 @@ def _build_forced_straight(inp: ForceSolutionInput) -> Tuple[StairResult, List[s
         infractions.append(f"échappée {headroom:.0f} mm < {DTU_HEADROOM_MIN:.0f} mm min DTU")
     if stair_run > inp.available_length_mm + 1:  # tolérance 1mm
         infractions.append(
-            f"reculement requis {stair_run:.0f} mm > disponible {inp.available_length_mm:.0f} mm "
-            f"(escalier dépasse — envisager quart tournant ou palier)"
+            f'desenvolvimento necessário {stair_run:.0f} mm > disponível {inp.available_length_mm:.0f} mm (a escada excede — considerar um quarto de volta ou patamar)'
         )
 
     alerts: List[Alert] = []
@@ -147,9 +146,9 @@ def _build_forced_straight(inp: ForceSolutionInput) -> Tuple[StairResult, List[s
             level="red",
             code="NON_CONFORMING_FORCED_SOLUTION",
             message_fr=(
-                "Solution hors normes DTU. Compromis acceptés : "
+                "Solução fora das regras de boa prática. Compromissos aceites: "
                 + " ; ".join(infractions)
-                + ". À valider par un bureau d'études selon l'usage (accès technique, cave, etc.)."
+                + ". A validar por um gabinete de projeto consoante o uso (acesso técnico, cave, etc.)."
             ),
         ))
     if slope_deg > FORCED_SLOPE_MAX_DEG:
@@ -157,7 +156,7 @@ def _build_forced_straight(inp: ForceSolutionInput) -> Tuple[StairResult, List[s
             level="red",
             code="SLOPE_DANGEROUS_EXTREME",
             message_fr=(
-                f"Pente extrême {slope_deg:.1f}° > {FORCED_SLOPE_MAX_DEG:.0f}° — usage type meunière/échelle uniquement."
+                f'Inclinação extrema {slope_deg:.1f}° > {FORCED_SLOPE_MAX_DEG:.0f}° — apenas uso tipo escada de sótão/escadote.'
             ),
             metric="slope_deg", value=slope_deg, threshold=FORCED_SLOPE_MAX_DEG,
         ))
@@ -166,7 +165,7 @@ def _build_forced_straight(inp: ForceSolutionInput) -> Tuple[StairResult, List[s
             level="red",
             code="HEADROOM_EXTREME",
             message_fr=(
-                f"Échappée {headroom:.0f} mm < {FORCED_HEADROOM_MIN:.0f} mm — passage debout impossible."
+                f'Altura livre {headroom:.0f} mm < {FORCED_HEADROOM_MIN:.0f} mm — passagem de pé impossível.'
             ),
             metric="headroom_mm", value=headroom, threshold=FORCED_HEADROOM_MIN,
         ))

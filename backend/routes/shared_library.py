@@ -68,7 +68,7 @@ async def _merge_import(content: bytes, filename: str, update_prices: bool = Fal
         except ValueError as e:
             raise HTTPException(400, str(e))
     if not rows:
-        raise HTTPException(400, "Aucun ouvrage valide détecté dans le fichier.")
+        raise HTTPException(400, "Nenhum trabalho válido detetado no ficheiro.")
     existing = await db.shared_library_items.find(
         {"$nor": [{"lang": "pt"}, {"country": "PT"}]},
         {"_id": 0, "designation": 1, "unit": 1, "item_id": 1, "price_low": 1, "price_mid": 1, "price_high": 1}).to_list(50000)
@@ -121,7 +121,7 @@ async def import_library(file: UploadFile = File(...), replace: bool = True, mer
                          update_prices: bool = False) -> dict:
     content = await file.read()
     if len(content) > 15 * 1024 * 1024:
-        raise HTTPException(400, "Fichier trop volumineux (max 15 Mo).")
+        raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 15 MB).")
     if merge:
         return await _merge_import(content, file.filename or "", update_prices=update_prices)
     try:
@@ -130,7 +130,7 @@ async def import_library(file: UploadFile = File(...), replace: bool = True, mer
         raise HTTPException(400, str(e))
     rows = parsed["rows"]
     if not rows:
-        raise HTTPException(400, "Aucun ouvrage valide détecté dans le fichier.")
+        raise HTTPException(400, "Nenhum trabalho válido detetado no ficheiro.")
     now = _now()
     docs = [{"item_id": "shl_" + secrets.token_hex(6), **r,
              "created_at": now, "updated_at": now} for r in rows]
@@ -184,7 +184,7 @@ class LevelIn(BaseModel):
 @router.put("/level")
 async def set_price_level(body: LevelIn, user=Depends(current_user)) -> dict:
     if body.level not in LEVELS:
-        raise HTTPException(400, "Niveau invalide (bas, moyen ou haut).")
+        raise HTTPException(400, "Nível inválido (baixo, médio ou alto).")
     await db.users.update_one({"user_id": user["user_id"]},
                               {"$set": {"price_level": body.level}})
     return {"level": body.level}
@@ -202,7 +202,7 @@ async def public_count() -> dict:
 async def list_shared(q: str = "", category: str = "", limit: int = 500,
                       user=Depends(current_user)) -> dict:
     if not await _is_pro_business(user):
-        raise HTTPException(402, "La bibliothèque partagée est réservée au plan Pro Business.")
+        raise HTTPException(402, "A biblioteca partilhada está reservada ao plano Pro Business.")
     query: dict = {}
     if category.strip():
         query["category"] = category.strip()
@@ -276,23 +276,23 @@ async def export_library_xlsx():
     wb = Workbook()
     ws = wb.active
     ws.title = "BIBLIOTHEQUE_PRIX"
-    ws.append(["Code", "Lot / Famille", "Désignation ouvrage", "Gamme", "Unité", "Mode de prix", "Prix bas",
-               "Prix médian référence", "Prix haut", "Matériaux", "Main-d'œuvre", "Matériel / engins",
-               "Coefficient entreprise", "Prix calculé", "Heures MO", "Zone de référence", "Date prix",
-               "Base fiscale", "Source", "URL source", "Observations"])
-    gammes = (("Économique", "low", "ECO"), ("Standard", "mid", "STD"), ("Premium", "high", "PRE"))
+    ws.append(["Código", "Lote / Família", "Designação do trabalho", "Gama", "Un.", "Modo de preço", "Preço baixo",
+               "Preço mediano de referência", "Preço alto", "Materiais", "Outro", "Equipamento / máquinas",
+               "Coefficient entreprise", "Preço calculado", "Heures MO", "Zona de referência", "Data do preço",
+               "Base fiscal", "Fonte", "URL source", "Observações"])
+    gammes = (("Económico", "low", "ECO"), ("Standard", "mid", "STD"), ("Premium", "high", "PRE"))
     for i, it in enumerate(items, start=1):
         code = it.get("code") or f"CP-{i:04d}"
         for label, lvl, suf in gammes:
             p = it.get(f"price_{lvl}") or it.get("price_mid")
             ws.append([f"{code}-{suf}", it.get("category"), it.get("designation"), label, it.get("unit"),
-                       "Prix médian", it.get("price_low"), p, it.get("price_high"),
+                       "Preço mediano", it.get("price_low"), p, it.get("price_high"),
                        it.get(f"mat_{lvl}") or it.get("mat_mid"), it.get(f"labor_{lvl}") or it.get("labor_mid"),
-                       None, 1.0, p, it.get("hours_mid") if lvl == "mid" else None, "France",
+                       None, 1.0, p, it.get("hours_mid") if lvl == "mid" else None, "França",
                        it.get("ref_date") or "", "HT", it.get("source") or "ConstruPilot", "", ""])
     ws2 = wb.create_sheet("README")
-    ws2.append(["Export bibliothèque FR ConstruPilot — 3 lignes par ouvrage (Économique/Standard/Premium)."])
-    ws2.append(["Modifiez les prix puis réimportez via Admin → Bibliothèque partagée → « Fusionner + actualiser les prix »."])
+    ws2.append(["Exportação da biblioteca PT ConstruPilot — 3 linhas por trabalho (Económico/Standard/Premium)."])
+    ws2.append(["Modifique os preços e reimporte em Admin → Biblioteca partilhada → «Fundir + atualizar os preços»."])
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)

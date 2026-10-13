@@ -35,17 +35,17 @@ def provider_http_error(exc):
 
 
 def quote_expired():
-    return HTTPException(409, {"code": "quote_expired", "message": "Le tarif a expiré ou le courrier a changé. Actualisez le tarif et confirmez-le à nouveau."})
+    return HTTPException(409, {"code": "quote_expired", "message": "O preço expirou ou a carta mudou. Atualize o preço e confirme-o novamente."})
 
 
 async def create_quote(*, user, user_id, token, opp_id, recipient, mode, address_source, sender, pdf, context_hash):
     if user["user_id"] != user_id:
-        raise HTTPException(403, "Accès refusé.")
+        raise HTTPException(403, "Acesso recusado.")
     offer = await postal_offer.require_available(user)
     lock_id = identity(user_id, token, recipient, mode)
     attempt = await db.radar_postal.find_one({"_id": lock_id}, {"_id": 0, "status": 1})
     if attempt and attempt.get("status") != "rejected":
-        raise HTTPException(409, {"code": "postal_already_requested", "message": "Un envoi identique est déjà enregistré ou à vérifier. Consultez son suivi avant toute nouvelle tentative."})
+        raise HTTPException(409, {"code": "postal_already_requested", "message": "Já está registado ou a verificar um envio idêntico. Consulte o seu acompanhamento antes de qualquer nova tentativa."})
     pages = len(PdfReader(BytesIO(pdf)).pages)
     try:
         price = await mf.postage_price(mode=mode, pages=pages)
@@ -66,7 +66,7 @@ async def create_quote(*, user, user_id, token, opp_id, recipient, mode, address
 async def load_quote(*, user, user_id, token, quote_id, recipient, mode, context_hash):
     """Returns the still-valid quote matching the confirmed letter, or raises quote_expired."""
     if user["user_id"] != user_id:
-        raise HTTPException(403, "Accès refusé.")
+        raise HTTPException(403, "Acesso recusado.")
     quote = await db.radar_postal_quotes.find_one({"quote_id": quote_id, "user_id": user_id, "token": token,
         "expires_at": {"$gt": datetime.now(timezone.utc)}}, {"_id": 0})
     if (not quote or quote["recipient"] != recipient or quote["mode"] != mode or quote["context_hash"] != context_hash
@@ -89,7 +89,7 @@ def _resolve_kind(quote: dict, offer: postal_offer.PostalOffer, paid_session_id:
         return "paid"
     if offer.next_kind == "checkout":
         raise HTTPException(402, {"code": "postal_payment_required", "message":
-            "Les envois offerts et vos crédits sont épuisés. Réglez cet envoi (20 € HT) ou achetez un pack de crédits.",
+            "Os envios oferecidos e os seus créditos estão esgotados. Pague este envio (20 € s/ IVA) ou compre um pack de créditos.",
             "offer": offer.model_dump()})
     if quoted != offer.next_kind or quote.get("offer", {}).get("customer_amount_cents") != 0:
         raise quote_expired()
@@ -120,9 +120,9 @@ async def deliver(*, user, user_id, token, quote_id, recipient, mode, context_ha
         if previous.get("status") == "rejected" and previous.get("quote_id") != quote_id:
             result = await db.radar_postal.replace_one({"_id": quote["lock_id"], "postal_id": previous["postal_id"], "status": "rejected"}, {"_id": quote["lock_id"], **doc})
             if not result.modified_count:
-                raise HTTPException(409, "Une tentative est déjà en cours.")
+                raise HTTPException(409, "Já está uma tentativa em curso.")
         else:
-            raise HTTPException(409, {"code": "postal_already_requested", "message": "Un envoi identique est déjà enregistré ou à vérifier. Aucun second envoi n'a été déclenché."})
+            raise HTTPException(409, {"code": "postal_already_requested", "message": "Já está registado ou a verificar um envio idêntico. Nenhum segundo envio foi desencadeado."})
     try:
         await postal_offer.reserve(user, doc["postal_id"], quote["opp_id"], kind, session_id=paid_session_id)
     except HTTPException as exc:
@@ -138,14 +138,14 @@ async def deliver(*, user, user_id, token, quote_id, recipient, mode, context_ha
         if isinstance(envoi, list):
             envoi = envoi[0] if len(envoi) == 1 else None
         if not envoi or not str(envoi).isdigit():
-            raise mf.PostalProviderError("missing_receipt", "Merci Facteur n'a pas fourni de référence d'envoi.", uncertain=True)
+            raise mf.PostalProviderError("missing_receipt", "A Merci Facteur não forneceu referência de envio.", uncertain=True)
         doc.update(status="submitted", envoi_id=str(envoi), provider_price=result.get("price"))
     except mf.PostalProviderError as exc:
         doc.update(status="unknown" if exc.uncertain else "rejected", error_code=exc.code,
-            error_message="Résultat incertain : ne renvoyez pas ce courrier. Vérifiez auprès de Merci Facteur avant toute nouvelle tentative." if exc.uncertain else str(exc))
+            error_message="Resultado incerto: não reenvie esta carta. Verifique junto da Merci Facteur antes de qualquer nova tentativa." if exc.uncertain else str(exc))
     except Exception:
         log.exception("Unexpected postal result for attempt %s", doc["postal_id"])
-        doc.update(status="unknown", error_code="unknown_result", error_message="Résultat incertain : consultez Merci Facteur avant tout nouvel envoi.")
+        doc.update(status="unknown", error_code="unknown_result", error_message="Resultado incerto: consulte a Merci Facteur antes de qualquer novo envio.")
     doc["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.radar_postal.update_one({"_id": quote["lock_id"]}, {"$set": doc})
     await postal_offer.settle(user, doc["postal_id"], doc["status"])

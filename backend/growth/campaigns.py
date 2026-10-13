@@ -46,9 +46,9 @@ async def run_campaign(campaign_id: str):
                             "branded": bool(q and q.get("branded")), "provider": p["provider"], "model_requested": p.get("model") or p.get("preset") or "défaut", "repetition": rep, "language": project["language"],
                             "country_requested": project["country"], "protocol_version": PROTOCOL_VERSION, "executed_at": now_iso()}
                     if not q:
-                        test.update({"status": "excluded", "exclusion_reason": "question supprimée"})
+                        test.update({"status": "excluded", "exclusion_reason": "pergunta eliminada"})
                     elif not status.get(p["provider"], {}).get("configured"):
-                        test.update({"status": "excluded", "exclusion_reason": f"connexion {p['provider']} non configurée"})
+                        test.update({"status": "excluded", "exclusion_reason": f"connexion {p['provider']} não configurada"})
                     else:
                         est = estimate_test_cost(p["provider"], p.get("model"))
                         ok, why = await budget_check(project, est)
@@ -61,7 +61,7 @@ async def run_campaign(campaign_id: str):
                             res = await run_test(p["provider"], q["text"], lang, p)
                             await db.growth_costs.update_one({"ref": test["test_id"]}, {"$set": {"usd": res["cost_usd"], "estimated": res["cost_estimated"]}})
                             if not (res.get("text") or "").strip():
-                                test.update({"status": "excluded", "exclusion_reason": "réponse vide", **{k: res[k] for k in ("model", "web_search", "cost_usd", "latency_ms")}})
+                                test.update({"status": "excluded", "exclusion_reason": "resposta vazia", **{k: res[k] for k in ("model", "web_search", "cost_usd", "latency_ms")}})
                             else:
                                 mentions = detect(res["text"], res["citations"], brands, lang)
                                 test.update({"status": "completed", "response_text": res["text"], "citations": res["citations"], "model": res["model"], "web_search": res["web_search"],
@@ -89,7 +89,7 @@ async def run_campaign(campaign_id: str):
 
 
 def _rate(num: int, den: int) -> dict:
-    return {"value": round(num * 100 / den, 1) if den else None, "numerator": num, "denominator": den, "display": f"{round(num * 100 / den, 1)} %" if den else "données indisponibles"}
+    return {"value": round(num * 100 / den, 1) if den else None, "numerator": num, "denominator": den, "display": f"{round(num * 100 / den, 1)} %" if den else "dados indisponíveis"}
 
 
 async def metrics(campaign_id: str) -> dict:
@@ -126,12 +126,12 @@ async def metrics(campaign_id: str) -> dict:
             dim[k] = {**d, **_rate(d["self"], d["valid"])}
     return {
         "campaign": c, "planned": c.get("planned_tests", 0), "valid": len(valid), "errors": len([t for t in tests if t["status"] == "error"]), "excluded_count": len(excluded), "excluded": excluded[:100],
-        "mention_rate": {**_rate(sum(1 for t in unbranded if t.get("self_mentioned")), len(unbranded)), "formula": "réponses valides SANS marque mentionnant ConstruPilot / réponses valides sans marque × 100"},
-        "mention_rate_all": {**_rate(sum(1 for t in valid if t.get("self_mentioned")), len(valid)), "formula": "réponses valides (toutes questions) mentionnant ConstruPilot / réponses valides × 100"},
-        "citation_rate": {**_rate(sum(1 for t in observable if t.get("self_cited")), len(observable)), "formula": "réponses citant un domaine ConstruPilot / réponses valides dont les citations sont observables × 100",
-                          "note": "Seuls les fournisseurs avec recherche web renvoient des citations observables."},
-        "share_of_mentions": {**_rate(pairs_self, pairs_all), "formula": "couples uniques réponse–ConstruPilot / couples uniques réponse–marque (marques suivies) × 100", "brands_scope": c.get("brands_scope") or []},
-        "coverage": {**_rate(len(valid), c.get("planned_tests", 0)), "formula": "tests valides terminés / tests planifiés × 100"},
+        "mention_rate": {**_rate(sum(1 for t in unbranded if t.get("self_mentioned")), len(unbranded)), "formula": "respostas válidas SEM marca que mencionam o ConstruPilot / respostas válidas sem marca × 100"},
+        "mention_rate_all": {**_rate(sum(1 for t in valid if t.get("self_mentioned")), len(valid)), "formula": "respostas válidas (todas as perguntas) que mencionam o ConstruPilot / respostas válidas × 100"},
+        "citation_rate": {**_rate(sum(1 for t in observable if t.get("self_cited")), len(observable)), "formula": "respostas que citam um domínio ConstruPilot / respostas válidas cujas citações são observáveis × 100",
+                          "note": "Apenas os fornecedores com pesquisa web devolvem citações observáveis."},
+        "share_of_mentions": {**_rate(pairs_self, pairs_all), "formula": "pares únicos resposta–ConstruPilot / pares únicos resposta–marca (marcas seguidas) × 100", "brands_scope": c.get("brands_scope") or []},
+        "coverage": {**_rate(len(valid), c.get("planned_tests", 0)), "formula": "testes válidos concluídos / testes planeados × 100"},
         "by_brand": sorted(by_brand.values(), key=lambda e: -e["responses_mentioning"]), "by_dimension": per_dim,
-        "caveat": "Tests via API : ils ne reproduisent pas nécessairement les réponses des interfaces grand public. Une variation entre périodes n'est pas la preuve d'un effet d'une action marketing.",
+        "caveat": "Testes via API: não reproduzem necessariamente as respostas das interfaces de grande público. Uma variação entre períodos não é prova de efeito de uma ação de marketing.",
     }

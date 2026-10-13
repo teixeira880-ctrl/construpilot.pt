@@ -18,15 +18,7 @@ import re
 # ──────────────────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT_BTP = (
-    "Tu es l'Assistant BTP, l'assistant d'œuvres IA de ConstruPilot. Tu as l'autorité et la capacité d'interpréter "
-    "n'importe quel document (image, PDF) ou texte pour réaliser des métrés, des estimations "
-    "de coûts, des analyses de plans et du conseil réglementaire BTP (normes françaises, DTU, "
-    "Eurocodes). Tu dois soit retourner des analyses détaillées en Markdown structuré "
-    "(titres, tableaux, puces), soit du JSON de données structurées, selon la demande.\n"
-    "RÈGLES STRICTES — ZÉRO HALLUCINATION : n'invente jamais une cote, une quantité, un prix "
-    "ou une règle. Si une information clé manque (ex. épaisseur de dalle, hauteur, ratio "
-    "d'acier), tu NE calcules PAS : tu le signales clairement et tu demandes la précision à "
-    "l'utilisateur. Distingue toujours une obligation réglementaire d'une recommandation."
+    "És o Assistente Construção, o assistente IA de obras do ConstruPilot. Tens autoridade e capacidade para interpretar qualquer documento (imagem, PDF) ou texto para realizar medições, estimativas de custos, análises de plantas e aconselhamento regulamentar de construção (normas portuguesas NP EN, Eurocódigos com Anexos Nacionais, especificações LNEC, RGEU). Deves devolver análises detalhadas em Markdown estruturado (títulos, tabelas, tópicos) ou JSON de dados estruturados, consoante o pedido. Responde em português europeu.\nREGRAS ESTRITAS — ZERO ALUCINAÇÕES: nunca inventes uma cota, uma quantidade, um preço ou uma regra. Se faltar uma informação essencial (ex.: espessura da laje, altura, rácio de aço), NÃO calculas: assinalas claramente e pedes a precisão ao utilizador. Distingue sempre uma obrigação regulamentar de uma recomendação."
 )
 
 # mots-clés de routage
@@ -77,14 +69,10 @@ async def web_search(query: str) -> dict:
     key = os.environ.get("PERPLEXITY_API_KEY")
     if not key:
         return {"enabled": False, "answer": None, "sources": [],
-                "error": "Recherche web désactivée (clé Perplexity absente)."}
+                "error": "Pesquisa web desativada (chave Perplexity ausente)."}
     from perplexity import AsyncPerplexity
     instructions = (
-        "Assistant de recherche réglementaire bâtiment (France). Réponds en français, de façon "
-        "concise et factuelle. Privilégie ABSOLUMENT les sources officielles et cite-les : "
-        "Legifrance, DTU (CSTB), normes AFNOR, RE2020/RT, service-public.fr, ANAH. Distingue "
-        "clairement DTU / norme / réglementation, indique les dates et rappelle quand une "
-        "vérification humaine est nécessaire.")
+        "Assistente de pesquisa regulamentar da construção (Portugal). Responde em português europeu, de forma concisa e factual. Privilegia ABSOLUTAMENTE as fontes oficiais e cita-as: Diário da República, LNEC, IPQ (normas NP EN), RGEU, REH/RECS, ADENE, portal das câmaras municipais. Distingue claramente especificação / norma / regulamentação, indica as datas e lembra quando é necessária uma verificação humana.")
     client = AsyncPerplexity(api_key=key, max_retries=1, timeout=45.0)
     try:
         r = await client.responses.create(
@@ -93,7 +81,7 @@ async def web_search(query: str) -> dict:
             store=False, max_output_tokens=1600)
     except Exception:  # noqa: BLE001
         return {"enabled": True, "answer": None, "sources": [],
-                "error": "Recherche web momentanément indisponible."}
+                "error": "Pesquisa web momentaneamente indisponível."}
     answer = (r.output_text or "").strip() or None
     sources, seen = [], set()
     try:
@@ -160,9 +148,9 @@ async def route_user_request(user_prompt: str, attachments: list[dict] | None = 
             result = await read_plan(first_pdf, steel_ratios=steel_ratios)
         except PlanVisionError:
             return {"intent": intent, "mode": "markdown",
-                    "markdown": "⚠️ Service de lecture IA momentanément indisponible, réessayez.",
+                    "markdown": "⚠️ Serviço de leitura IA momentaneamente indisponível, tente novamente.",
                     "warnings": ["vision_unavailable"]}
-        warn = [] if result.get("complete") else ["Cotes/ratios manquants — voir missing_data."]
+        warn = [] if result.get("complete") else ["Cotas/rácios em falta — ver missing_data."]
         return {"intent": intent, "mode": "metre", "metre": result,
                 "missing_data": result.get("missing_data", []), "warnings": warn}
 
@@ -173,17 +161,15 @@ async def route_user_request(user_prompt: str, attachments: list[dict] | None = 
         ws = await web_search(user_prompt)
         if ws.get("answer"):
             sources = ws.get("sources", [])
-            web_note = ("\n\nÉléments de recherche web (à vérifier) :\n" + ws["answer"])
+            web_note = ("\n\nElementos da pesquisa web (a verificar):\n" + ws["answer"])
         elif ws.get("enabled"):
-            web_note = "\n\n(Recherche web indisponible à l'instant.)"
+            web_note = "\n\n(Pesquisa web indisponível de momento.)"
 
     # 3) DONNÉES STRUCTURÉES → Gemini en mode JSON strict
     if intent == "structured_data":
         from engines.ai import _complete, _complete_vision, _json, GEMINI_PRO
         instr = (user_prompt + web_note +
-                 "\n\nRéponds UNIQUEMENT par un objet JSON valide et structuré (aucun texte "
-                 "autour). Si une donnée indispensable manque, mets-la dans un tableau "
-                 '"missing_data":[{"champ","question","unite"}] au lieu de l\'inventer.')
+                 "\n\nResponde APENAS com um objeto JSON válido e estruturado (nenhum texto à volta). Se faltar um dado indispensável, coloca-o numa tabela \"missing_data\":[{\"champ\",\"question\",\"unite\"}] em vez de o inventar.")
         raw = (await _complete_vision(SYSTEM_PROMPT_BTP, instr, images, *GEMINI_PRO,
                                       feature="btp_router")
                if images else await _complete(SYSTEM_PROMPT_BTP, instr, feature="btp_router"))
@@ -198,8 +184,7 @@ async def route_user_request(user_prompt: str, attachments: list[dict] | None = 
     # 4) Q&A multimodal / conseil → Markdown structuré
     from engines.ai import _complete, _complete_vision, GEMINI_PRO
     instr = (user_prompt + web_note +
-             "\n\nRéponds en Markdown clair et structuré (titres, tableaux, puces). Signale "
-             "explicitement toute donnée manquante nécessaire à un calcul au lieu de la deviner.")
+             "\n\nResponde em Markdown claro e estruturado (títulos, tabelas, tópicos), em português europeu. Assinala explicitamente qualquer dado em falta necessário a um cálculo em vez de o adivinhar.")
     answer = (await _complete_vision(SYSTEM_PROMPT_BTP, instr, images, *GEMINI_PRO,
                                      feature="btp_router")
               if images else await _complete(SYSTEM_PROMPT_BTP, instr, feature="btp_router"))

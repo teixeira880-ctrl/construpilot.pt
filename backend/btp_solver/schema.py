@@ -82,16 +82,14 @@ class SolverResponse(BaseModel):
     problem_id: str
     domain: str = Field(..., description="fissures | humidite | thermique | structure | sinistre | reception | autre")
     urgency: Urgency = "planned"
-    summary: str = Field(..., description="Résumé du diagnostic en 3-5 lignes")
+    summary: str = Field(..., description="Resumo do diagnóstico em 3-5 linhas")
     causes: list[Cause]
     solutions: list[Solution]
     charts: list[Chart] = Field(default_factory=list)
     references: list[Reference] = Field(default_factory=list)
     action_plan: list[SolutionStep] = Field(default_factory=list)
     disclaimer: str = (
-        "Diagnostic provisionnel basé sur les éléments fournis. "
-        "Une visite technique et l'avis d'un bureau d'études restent nécessaires "
-        "avant toute intervention structurelle. Les coûts sont indicatifs pour la France 2026."
+        "Diagnóstico provisório baseado nos elementos fornecidos. Uma visita técnica e o parecer de um gabinete de projeto continuam a ser necessários antes de qualquer intervenção estrutural. Os custos são indicativos para Portugal 2026."
     )
     generated_at_iso: str
     cost_usd: float | None = None

@@ -21,8 +21,7 @@ FACE_TOL_M = 0.012       # rattachement d'une extrémité de cote à une face / 
 CONFIRM_TOL_M = 0.010    # accord cote écrite / mesure géométrique
 _SECTION_RE = re.compile(r"^\d{2,3}\s*[xX×]\s*\d{2,3}$")
 
-INCOMPLETE_MSG = ("Analyse incomplète : les dimensions intérieures mur à mur n'ont pas toutes été établies. "
-                  "Le rapport final ne peut pas encore être validé.")
+INCOMPLETE_MSG = ("Análise incompleta: as dimensões interiores parede a parede não foram todas estabelecidas. O relatório final ainda não pode ser validado.")
 
 
 def merged_lines(vectors: list[dict]) -> tuple[list[tuple], list[tuple]]:
@@ -249,8 +248,8 @@ def detect_posts(hs: list[tuple], vs: list[tuple], ppm: float, text_blocks: list
     walls = []
     for k, p in enumerate(posts, 1):
         base = {"source": "post_rectangle", "confidence": 0.9, "ambiguous": False, "is_post": True, "post_id": f"P{k:02d}",
-                "ouvrage_class": "Poteau béton", "class_source": "rectangle fermé + repère de section (bibliothèque symboles)",
-                "class_alternatives": ["Semelle isolée"], "labels": [f"{int(round(p['size_m'] * 100))}x{int(round(p['size_m'] * 100))}"]}
+                "ouvrage_class": "Poteau béton", "class_source": "retângulo fechado + marca de secção (biblioteca de símbolos)",
+                "class_alternatives": ["Sapata isolada"], "labels": [f"{int(round(p['size_m'] * 100))}x{int(round(p['size_m'] * 100))}"]}
         walls.append({**base, "wall_id": None, "orientation": "vertical", "pos_1": p["x1"], "pos_2": p["x2"], "lo": p["y1"], "hi": p["y2"],
                       "face_1_extent": [p["y1"], p["y2"]], "face_2_extent": [p["y1"], p["y2"]], "axis_pos": (p["x1"] + p["x2"]) / 2,
                       "thickness_m": p["size_m"]})
@@ -515,39 +514,39 @@ def validate(result: dict) -> dict:
     walls, meas, rows, cotes = result["walls"], result["interior_measurements"], result["closure_equations"], result["cotes"]
     fails = []
     if not walls:
-        fails.append("nombre de murs détectés non établi")
+        fails.append("número de paredes detetadas não estabelecido")
     if walls and not any(w["ambiguous"] is False for w in walls):
-        fails.append("faces des murs intérieurs non détectées")
+        fails.append("faces das paredes interiores não detetadas")
     if not meas:
-        fails.append("aucune dimension intérieure mur à mur produite")
+        fails.append("nenhuma dimensão interior parede a parede produzida")
     for d, lbl in (("horizontal", "chaînes horizontales incomplètes"), ("vertical", "chaînes verticales incomplètes")):
         rs = [r for r in rows if r["direction"] == d]
         if not rs or any(r["status"] == "open" for r in rs):
             fails.append(lbl)
     ambiguous = [c for c in cotes if c["reference_type"] in ("unresolved", "partial_anchor")]
     if len(ambiguous) >= 4 or (cotes and len(ambiguous) > 0.5 * len(cotes)):
-        fails.append(f"association ambiguë entre texte et segment ({len(ambiguous)} cote(s))")
+        fails.append(f'associação ambígua entre texto e segmento ({len(ambiguous)} cote(s))')
     bad = [c for c in cotes if c["value_m"] is not None and c["reference_type"] not in ("unresolved", "partial_anchor")
            and abs(c["value_m"] - c["geometric_m"]) > 0.03]
     if len(bad) >= 4:
-        fails.append(f"quatre mauvaises associations ou plus ({len(bad)})")
+        fails.append(f'quatro ou mais associações erradas ({len(bad)})')
     if any(r["status"] == "not_compared" for r in rows):
-        fails.append("somme des travées et murs non comparée à la cote extérieure")
+        fails.append("soma dos vãos e paredes não comparada com a cota exterior")
     if meas and all(m["status"] != "confirmed" for m in meas):
-        fails.append("aucune dimension intérieure confirmée par une cote écrite")
+        fails.append("nenhuma dimensão interior confirmada por uma cota escrita")
     pending = [m for m in meas if m.get("status") != "confirmed"]
     if pending:
-        fails.append(f"dimensions intérieures non confirmées ({len(pending)})")
+        fails.append(f'dimensões interiores não confirmadas ({len(pending)})')
     for direction in ("horizontal", "vertical"):
         if not any(m.get("direction") == direction for m in meas):
-            fails.append(f"aucune mesure intérieure {direction}e")
+            fails.append(f'nenhuma medição interior {direction}e')
     coverage = result.get("coverage") or cell_coverage(meas)
     if not coverage["detected"] or coverage["with_both_directions"] != coverage["detected"]:
-        fails.append("couverture des cellules détectées non établie dans les deux directions")
+        fails.append("cobertura das células detetadas não estabelecida nas duas direções")
     if any(w.get("ambiguous") for w in walls):
-        fails.append("paires de faces ambiguës à confirmer")
+        fails.append("pares de faces ambíguos a confirmar")
     if any(w.get("ouvrage_class") in ("Poutre", "Semelle filante", "Longrine", "Poteau béton") for w in walls):
-        fails.append("des contours d'ouvrages structurels demandent confirmation avant identification comme murs")
+        fails.append("contornos de elementos estruturais exigem confirmação antes de serem identificados como paredes")
     return {"complete": not fails, "failed_checks": fails, "message": None if not fails else INCOMPLETE_MSG}
 
 
@@ -558,7 +557,7 @@ def analyze_walls(vectors: list[dict], dims_px: list[dict], text_blocks: list[di
         return {"walls": [], "interior_measurements": [], "closure_equations": [], "cotes": [], "sections_ignored": [],
                 "engine_version": 2, "posts": [], "coverage": cell_coverage([]),
                 "stats": {"walls": 0, "walls_ambiguous": 0, "measurements": 0, "confirmed": 0, "to_confirm": 0, "rows": 0, "rows_closed": 0},
-                "validation": {"complete": False, "failed_checks": ["échelle inconnue"], "message": INCOMPLETE_MSG}}
+                "validation": {"complete": False, "failed_checks": ["escala desconhecida"], "message": INCOMPLETE_MSG}}
     hs, vs = (segments["hs"], segments["vs"]) if segments else merged_lines(vectors)
     hs, vs = [tuple(x) for x in hs], [tuple(x) for x in vs]
     source_hs, source_vs = hs, vs

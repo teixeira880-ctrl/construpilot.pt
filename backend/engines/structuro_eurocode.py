@@ -20,21 +20,21 @@ GAMMA = {"G_sup": 1.35, "G_inf": 1.00, "Q": 1.50}
 # ψ0 (combinaison), ψ1 (fréquente), ψ2 (quasi-permanente).
 # Valeurs usuelles NF EN 1990/NA tableau A1.1 — à vérifier par l'ingénieur.
 PSI: dict[str, dict] = {
-    "A":          {"label": "A — Habitation, résidentiel",            "psi0": 0.7, "psi1": 0.5, "psi2": 0.3},
-    "B":          {"label": "B — Bureaux",                            "psi0": 0.7, "psi1": 0.5, "psi2": 0.3},
-    "C":          {"label": "C — Lieux de réunion",                   "psi0": 0.7, "psi1": 0.7, "psi2": 0.6},
+    "A":          {"label": "A — Habitação, residencial",            "psi0": 0.7, "psi1": 0.5, "psi2": 0.3},
+    "B":          {"label": "B — Escritórios",                            "psi0": 0.7, "psi1": 0.5, "psi2": 0.3},
+    "C":          {"label": "C — Locais de reunião",                   "psi0": 0.7, "psi1": 0.7, "psi2": 0.6},
     "D":          {"label": "D — Commerces",                          "psi0": 0.7, "psi1": 0.7, "psi2": 0.6},
-    "E":          {"label": "E — Stockage",                           "psi0": 1.0, "psi1": 0.9, "psi2": 0.8},
-    "F":          {"label": "F — Trafic, véhicules ≤ 30 kN",          "psi0": 0.7, "psi1": 0.7, "psi2": 0.6},
-    "G":          {"label": "G — Trafic, 30 à 160 kN",               "psi0": 0.7, "psi1": 0.5, "psi2": 0.3},
-    "H":          {"label": "H — Toitures (entretien)",              "psi0": 0.0, "psi1": 0.0, "psi2": 0.0},
+    "E":          {"label": "E — Armazenamento",                           "psi0": 1.0, "psi1": 0.9, "psi2": 0.8},
+    "F":          {"label": "F — Tráfego, veículos ≤ 30 kN",          "psi0": 0.7, "psi1": 0.7, "psi2": 0.6},
+    "G":          {"label": "G — Tráfego, 30 a 160 kN",               "psi0": 0.7, "psi1": 0.5, "psi2": 0.3},
+    "H":          {"label": "H — Coberturas (manutenção)",              "psi0": 0.0, "psi1": 0.0, "psi2": 0.0},
     "neige_bas":  {"label": "Neige, altitude ≤ 1000 m",              "psi0": 0.5, "psi1": 0.2, "psi2": 0.0},
     "neige_haut": {"label": "Neige, altitude > 1000 m",              "psi0": 0.7, "psi1": 0.5, "psi2": 0.2},
     "vent":       {"label": "Vent",                                  "psi0": 0.6, "psi1": 0.2, "psi2": 0.0},
-    "temperature": {"label": "Température (hors incendie)",           "psi0": 0.6, "psi1": 0.5, "psi2": 0.0},
+    "temperature": {"label": "Temperatura (exceto incêndio)",           "psi0": 0.6, "psi1": 0.5, "psi2": 0.0},
 }
 _DEFAULT_CAT = "A"
-SOURCE_DOC = "EN 1990 — valeurs usuelles NA FR — à vérifier"
+SOURCE_DOC = "EN 1990 — valores usuais do Anexo Nacional português — a verificar"
 
 DEFAULT_OPTIONS = {"uls": True, "sls_char": True, "sls_freq": False, "sls_qp": True}
 
@@ -73,12 +73,11 @@ def generate(actions: list[Action], categories: dict[str, str] | None = None,
         if opt["uls"]:
             combos.append(Combination(id="ELU", label="ELU STR — 1.35·G",
                 factors={g: GAMMA["G_sup"] for g in gids},
-                source=_src("EN 1990 §6.4.3.2 éq. 6.10 ; γG=1.35 (défavorable), aucune action variable. "
-                            "Valeurs usuelles NA FR — à vérifier.")))
+                source=_src("EN 1990 §6.4.3.2 eq. 6.10 ; γG=1.35 (desfavorável), nenhuma ação variável. Valores usuais do Anexo Nacional português — a verificar.")))
         if opt["sls_char"]:
-            combos.append(Combination(id="ELScar", label="ELS caractéristique — G",
+            combos.append(Combination(id="ELScar", label="ELS característica — G",
                 factors={g: 1.0 for g in gids},
-                source=_src("EN 1990 §6.5.3 éq. 6.14b ; G seul. Valeurs usuelles NA FR — à vérifier.")))
+                source=_src("EN 1990 §6.5.3 eq. 6.14b ; G apenas. Valores usuais do Anexo Nacional português — a verificar.")))
         return combos
 
     for i, lead in enumerate(qs, start=1):
@@ -88,24 +87,21 @@ def generate(actions: list[Action], categories: dict[str, str] | None = None,
                 factors[q.id] = round(GAMMA["Q"] * (1.0 if q.id == lead.id else psi_of(q)["psi0"]), 4)
             combos.append(Combination(id=f"ELU{i}", label=f"ELU STR — {lead.label} dominante",
                 factors=factors,
-                source=_src(f"EN 1990 §6.4.3.2 éq. 6.10 ; γG=1.35, γQ=1.5, ψ0 sur accompagnantes. "
-                            f"Action dominante : {lead.label}. Valeurs usuelles NA FR — à vérifier.")))
+                source=_src(f'EN 1990 §6.4.3.2 eq. 6.10 ; γG=1.35, γQ=1.5, ψ0 nas acompanhantes. Ação de base: {lead.label}. Valores usuais do Anexo Nacional português — a verificar.')))
         if opt["sls_char"]:
             factors = {g: 1.0 for g in gids}
             for q in qs:
                 factors[q.id] = round(1.0 if q.id == lead.id else psi_of(q)["psi0"], 4)
-            combos.append(Combination(id=f"ELScar{i}", label=f"ELS caractéristique — {lead.label} dominante",
+            combos.append(Combination(id=f"ELScar{i}", label=f'ELS característica — {lead.label} dominante',
                 factors=factors,
-                source=_src(f"EN 1990 §6.5.3 éq. 6.14b ; Qk,1 + ψ0·Qk,i. Dominante : {lead.label}. "
-                            "Valeurs usuelles NA FR — à vérifier.")))
+                source=_src(f'EN 1990 §6.5.3 eq. 6.14b ; Qk,1 + ψ0·Qk,i. Ação de base: {lead.label}. Valores usuais do Anexo Nacional português — a verificar.')))
         if opt["sls_freq"]:
             factors = {g: 1.0 for g in gids}
             for q in qs:
                 factors[q.id] = round(psi_of(lead)["psi1"] if q.id == lead.id else psi_of(q)["psi2"], 4)
-            combos.append(Combination(id=f"ELSfreq{i}", label=f"ELS fréquente — {lead.label} dominante",
+            combos.append(Combination(id=f"ELSfreq{i}", label=f'ELS frequente — {lead.label} dominante',
                 factors=factors,
-                source=_src(f"EN 1990 §6.5.3 éq. 6.15b ; ψ1·Qk,1 + ψ2·Qk,i. Dominante : {lead.label}. "
-                            "Valeurs usuelles NA FR — à vérifier.")))
+                source=_src(f'EN 1990 §6.5.3 eq. 6.15b ; ψ1·Qk,1 + ψ2·Qk,i. Ação de base: {lead.label}. Valores usuais do Anexo Nacional português — a verificar.')))
 
     if opt["sls_qp"]:
         factors = {g: 1.0 for g in gids}
@@ -113,7 +109,7 @@ def generate(actions: list[Action], categories: dict[str, str] | None = None,
             factors[q.id] = round(psi_of(q)["psi2"], 4)
         combos.append(Combination(id="ELSqp", label="ELS quasi-permanente",
             factors=factors,
-            source=_src("EN 1990 §6.5.3 éq. 6.16b ; ψ2·Qk,i. Valeurs usuelles NA FR — à vérifier.")))
+            source=_src("EN 1990 §6.5.3 eq. 6.16b ; ψ2·Qk,i. Valores usuais do Anexo Nacional português — a verificar.")))
     return combos
 
 
@@ -173,5 +169,4 @@ def design_envelope(result: dict) -> dict:
 
     return {"version": VERSION, "uls_count": len(uls), "sls_count": len(sls),
             "elements": list(env.values()),
-            "note": "Enveloppe des combinaisons EN 1990 générées. Efforts seulement ; "
-                    "aucune résistance, section ni ferraillage vérifié. À valider par l'ingénieur."}
+            "note": "Envolvente das combinações EN 1990 geradas. Apenas esforços; nenhuma resistência, secção ou armadura verificada. A validar pelo engenheiro."}

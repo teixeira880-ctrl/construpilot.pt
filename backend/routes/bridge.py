@@ -51,12 +51,6 @@ async def outreach(limit: int = 30) -> dict:
 async def unsubscribe(token: str):
     res = await db.artisans.update_one({"unsub_token": token}, {"$set": {"opt_out": True}})
     ok = res.matched_count > 0
-    msg = ("Vous êtes désinscrit." if ok else "Lien invalide ou déjà traité.")
+    msg = ("A sua subscrição foi cancelada." if ok else "Ligação inválida ou já processada.")
     return HTMLResponse(
-        f"""<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;
-        display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:32px 40px;text-align:center">
-        <div style="font-size:20px;font-weight:800;color:#0A0D14">ConstruPilot</div>
-        <p style="color:#334155;font-size:15px;margin-top:12px">{msg}</p>
-        <p style="color:#94A3B8;font-size:12px">Vous ne recevrez plus d'invitations de notre part.</p>
-        </div></body></html>""")
+        f'<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;\n        display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">\n        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:32px 40px;text-align:center">\n        <div style="font-size:20px;font-weight:800;color:#0A0D14">ConstruPilot</div>\n        <p style="color:#334155;font-size:15px;margin-top:12px">{msg}</p>\n        <p style="color:#94A3B8;font-size:12px">Não voltará a receber convites da nossa parte.</p>\n        </div></body></html>')

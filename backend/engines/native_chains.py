@@ -33,7 +33,7 @@ def _reading(d, idx, plan_id, page, size):
 def build_chains(dims: list[dict], *, px_per_m: float, plan_id: str | None = None, page: int = 0, size=(0, 0), max_chains: int = 40) -> dict:
     """Consecutive collinear dimensions sharing endpoints form a chain; a parallel dimension spanning the same interval is its declared total."""
     if not dims or px_per_m <= 0:
-        return {"chains": [], "overrides": [], "note": "Aucune cote native linéaire exploitable."}
+        return {"chains": [], "overrides": [], "note": "Nenhuma cota nativa linear utilizável."}
     join_tol = 0.02 * px_per_m  # 2 cm in drawing units, whatever the render scale
     indexed = [{**d, "idx": i + 1} for i, d in enumerate(dims)]
     overrides = [{"label": f"D{d['idx']}", "text": d.get("raw_text"), "value_m": d["value_m"], "measured_m": d["measured_m"],
@@ -92,14 +92,13 @@ def build_chains(dims: list[dict], *, px_per_m: float, plan_id: str | None = Non
         results.append({"chain_id": f"CH-{len(results) + 1:02d}", "direction_deg": round(line["angle"], 1), "segments": spans,
                         "declared_total": declared, "geometric_length_m": round((end - start) / px_per_m, 4),
                         "calculation": check["calculation"], "comparison": check.get("comparison"), "findings": check["findings"],
-                        "note": "Chaîne native : les épaisseurs traversées sont déjà des segments distincts, rien n'est ré-ajouté."})
+                        "note": "Cadeia nativa: as espessuras atravessadas já são segmentos distintos, nada é acrescentado de novo."})
     results.sort(key=lambda r: (r["declared_total"] is None, -len(r["segments"])))
     for i, r in enumerate(results, 1):
         r["chain_id"] = f"CH-{i:02d}"
     results = results[:max_chains]
     return {"chains": results, "chains_total": len(chains), "lines": len(lines), "overrides": overrides,
-            "note": ("Cotes lues dans le fichier CAO (texte natif). Une cote « forcée » (texte ≠ mesure géométrique) est listée dans overrides : "
-                     "les deux valeurs sont conservées, aucune n'est corrigée automatiquement.")}
+            "note": ("Cotas lidas no ficheiro CAD (texto nativo). Uma cota «forçada» (texto ≠ medição geométrica) é listada em overrides: os dois valores são conservados, nenhum é corrigido automaticamente.")}
 
 
 def native_chains_for_page(page_doc: dict, *, plan_id: str, page_index: int = 0) -> dict:

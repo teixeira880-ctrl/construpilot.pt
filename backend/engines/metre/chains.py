@@ -47,17 +47,17 @@ def check_dimension_chain(*, spans: list, thicknesses: list | None = None, chain
     formula = " + ".join(terms) if terms else "—"
     if unresolved:
         calc = Calculation(kind="dimension_chain", inputs=inputs, formula=formula, result=None, unit="m", state="indeterminate",
-                           reason=f"Lecture non résolue : {', '.join(unresolved)}. Aucun total n'est calculé avant confirmation.")
-        return {"calculation": calc.model_dump(), "findings": [Finding(subject="Chaîne de cotes", severity="to_clarify", certainty="indeterminate",
-                explanation=calc.reason, action="Zoom / extraction native de la cote ambiguë", calc_id=calc.calc_id).model_dump()]}
+                           reason=f"Leitura não resolvida: {', '.join(unresolved)}. Nenhum total é calculado antes da confirmação.")
+        return {"calculation": calc.model_dump(), "findings": [Finding(subject="Cadeia de cotas", severity="to_clarify", certainty="indeterminate",
+                explanation=calc.reason, action="Ampliação / extração nativa da cota ambígua", calc_id=calc.calc_id).model_dump()]}
     total = round(sum(r.value_m for r in spans_r) + sum(applied_thick), 4)
-    note = " (épaisseurs déjà incluses dans la chaîne, non ré-ajoutées)" if chain_includes_thickness and thick_r else ""
+    note = " (espessuras já incluídas na cadeia, não acrescentadas de novo)" if chain_includes_thickness and thick_r else ""
     calc = Calculation(kind="dimension_chain", inputs=inputs, formula=f"{formula} = {_fmt(total)} m{note}", result=total, unit="m",
-                       state=worst(*states), reason="Somme des portées" + ("" if chain_includes_thickness else " et des épaisseurs traversées"),
+                       state=worst(*states), reason="Soma dos vãos" + ("" if chain_includes_thickness else " e das espessuras atravessadas"),
                        tolerance={"reading_tol_m": reading_tol_m, "execution_tol": None})
     findings = []
     if total_r is not None:
-        cmp = compare_values(Reading(label="total calculé", value_m=total, origin="native_text"), total_r, same_interval=True,
+        cmp = compare_values(Reading(label="total calculado", value_m=total, origin="native_text"), total_r, same_interval=True,
                              same_reference=True, reading_tol_m=reading_tol_m)
         cmp["calculation"]["kind"] = "chain_vs_declared_total"
         findings = cmp["findings"]
@@ -73,27 +73,27 @@ def compare_values(a: Reading | dict, b: Reading | dict, *, same_interval: bool,
     inputs = [_input(r) for r in (ra, rb)]
     if ra.usable is None or rb.usable is None:
         calc = Calculation(kind="value_comparison", inputs=inputs, formula="—", result=None, unit="m", state="indeterminate",
-                           reason="Une des deux valeurs n'est pas résolue.")
+                           reason="Um dos dois valores não está resolvido.")
         return {"calculation": calc.model_dump(), "findings": []}
     diff = round(rb.usable - ra.usable, 4)
     formula = f"{_fmt(rb.usable)} − {_fmt(ra.usable)} = {_fmt(diff)} m ({round(abs(diff) * 100, 1):g} cm)"
     if not (same_interval and same_reference):
         calc = Calculation(kind="value_comparison", inputs=inputs, formula=formula, result=diff, unit="m", state="indeterminate",
-                           reason="Intervalles ou références différents : l'écart est documenté mais ne constitue pas une incohérence.")
+                           reason="Intervalos ou referências diferentes: a diferença está documentada mas não constitui uma incoerência.")
         return {"calculation": calc.model_dump(), "findings": [Finding(subject=f"{ra.label} / {rb.label}", severity="info", certainty="indeterminate",
-                explanation=calc.reason, action="Confirmer que les deux cotes couvrent le même intervalle et la même référence (faces / axes)",
+                explanation=calc.reason, action="Confirmar que as duas cotas cobrem o mesmo intervalo e a mesma referência (faces / eixos)",
                 calc_id=calc.calc_id).model_dump()]}
     certainty = worst(ra.state, rb.state)
     within = abs(diff) <= reading_tol_m
     calc = Calculation(kind="value_comparison", inputs=inputs, formula=formula, result=diff, unit="m", state=certainty,
-                       reason="Écart dans la tolérance de lecture" if within else "Écart supérieur à la tolérance de lecture — même intervalle et même référence",
+                       reason="Diferença dentro da tolerância de leitura" if within else "Diferença superior à tolerância de leitura — mesmo intervalo e mesma referência",
                        tolerance={"reading_tol_m": reading_tol_m, "execution_tol": None})
     if within:
         return {"calculation": calc.model_dump(), "findings": []}
     finding = Finding(subject=f"{ra.label} / {rb.label}", severity="demonstrated" if certainty == "confirmed" else "to_clarify", certainty=certainty,
-                      explanation=f"Écart de {round(abs(diff) * 100, 1):g} cm entre {ra.label} ({_fmt(ra.usable)} m) et {rb.label} ({_fmt(rb.usable)} m).",
-                      consequence="Point de lecture ou de cohérence à éclaircir ; aucune tolérance d'exécution n'est appliquée sans référence vérifiée.",
-                      action="Vérifier les deux cotes sur le plan (zoom / extraction native) et demander confirmation au BET si l'écart persiste",
+                      explanation=f'Diferença de {round(abs(diff) * 100, 1):g} cm entre {ra.label} ({_fmt(ra.usable)} m) et {rb.label} ({_fmt(rb.usable)} m).',
+                      consequence="Ponto de leitura ou de coerência a esclarecer; nenhuma tolerância de execução é aplicada sem referência verificada.",
+                      action="Verificar as duas cotas na planta (ampliação / extração nativa) e pedir confirmação ao gabinete de projeto se a diferença persistir",
                       calc_id=calc.calc_id)
     return {"calculation": calc.model_dump(), "findings": [finding.model_dump()]}
 
@@ -113,12 +113,12 @@ def resolve_reading(*, label: str, candidates_m: list[float], confirmations: lis
     matching = {v: e for v, e in supported.items() if any(abs(v - cand) < 1e-6 for cand in candidates_m)}
     notes = []
     if arithmetic_fit_m is not None:
-        notes.append(f"La concordance arithmétique avec {_fmt(arithmetic_fit_m)} m est ignorée : elle ne constitue pas une preuve de lecture.")
+        notes.append(f'A concordância aritmética com {_fmt(arithmetic_fit_m)} m é ignorada: não constitui prova de leitura.')
     if len(matching) == 1:
         value, ev = next(iter(matching.items()))
         origin = "user_statement" if any(e["kind"] == "user_statement" for e in ev) else "native_text"
         return {"reading": Reading(label=label, value_m=value, origin=origin).model_dump(), "state": "confirmed",
-                "reason": f"Confirmé par {', '.join(sorted({e['kind'] for e in ev}))}. " + " ".join(notes)}
-    reason = ("Plusieurs confirmations contradictoires." if len(matching) > 1 else "Aucune preuve indépendante (zoom, texte natif, déclaration).") + " " + " ".join(notes)
+                "reason": f"Confirmado por {', '.join(sorted({e['kind'] for e in ev}))}. " + " ".join(notes)}
+    reason = ("Várias confirmações contraditórias." if len(matching) > 1 else "Nenhuma prova independente (ampliação, texto nativo, declaração).") + " " + " ".join(notes)
     return {"reading": Reading(label=label, candidates_m=candidates_m).model_dump(), "state": "indeterminate", "reason": reason.strip(),
-            "action": "Agrandir la zone, extraire le texte natif du PDF ou demander la valeur à l'auteur du plan."}
+            "action": "Ampliar a zona, extrair o texto nativo do PDF ou pedir o valor ao autor da planta."}

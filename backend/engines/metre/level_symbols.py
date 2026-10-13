@@ -56,7 +56,7 @@ def parse_level_symbols(words: list[tuple], *, radius_pt: float | None = None) -
     return {"symbols": symbols, "distinct_as_plancher_m": levels, "distinct_epaisseur_cm": thicknesses, "openings": openings, "sizes": sizes,
             "dominant": {"as_plancher_m": max(levels, key=lambda v: sum(1 for s in symbols if s["as_plancher_m"] == v)) if levels else None,
                          "epaisseur_cm": max(thicknesses, key=lambda v: sum(1 for s in symbols if s["epaisseur_cm"] == v)) if thicknesses else None},
-            "note": "Niveaux lus dans les symboles NGF (niveau / épaisseur / CS-CSP) et étiquettes (Ai/As) ; AI plancher = NGF − épaisseur du même symbole. Aucun niveau déduit."}
+            "note": "Níveis lidos nos símbolos altimétricos (nível / espessura / CS-CSP) e etiquetas (Ai/As); AI pavimento = cota − espessura do mesmo símbolo. Nenhum nível deduzido."}
 
 
 def levels_from_symbols(parsed: dict, *, base_level_m: float | None, source: str) -> dict:

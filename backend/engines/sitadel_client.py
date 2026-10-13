@@ -30,17 +30,17 @@ class SitadelClient:
                 if attempt < 2:
                     await asyncio.sleep(2 ** attempt)
                     continue
-                raise SitadelSourceError("La source officielle ne répond pas. Réessayez plus tard.")
+                raise SitadelSourceError("A fonte oficial não responde. Tente novamente mais tarde.")
             except (httpx.HTTPStatusError, ValueError) as exc:
                 code = getattr(getattr(exc, "response", None), "status_code", "format")
-                raise SitadelSourceError(f"Source officielle indisponible ou contrat modifié ({code}).") from exc
+                raise SitadelSourceError(f'Fonte oficial indisponível ou contrato alterado ({code}).') from exc
 
     async def metadata(self, rid):
         meta = await self.get(f"{self.base}/datafiles/{rid}")
         columns = {c.get("name") for c in meta.get("columns", [])}
         required = {"NUM_DAU", "DEP_CODE", "TYPE_DAU", "ETAT_DAU", "DATE_REELLE_AUTORISATION", "ADR_CODPOST_TER"}
         if not required.issubset(columns) or not meta.get("millesime") or not meta.get("published"):
-            raise SitadelSourceError("Schéma SITADEL modifié : synchronisation suspendue, aucune donnée inventée.")
+            raise SitadelSourceError("Esquema da fonte de licenças alterado: sincronização suspensa, nenhum dado inventado.")
         return meta
 
     async def pages(self, rid, meta, department, start):
@@ -52,14 +52,14 @@ class SitadelClient:
                 "TYPE_DAU": "eq:PC", "page": page, "pageSize": 100,
             })
             if not isinstance(payload, dict) or not isinstance(payload.get("data"), list) or not isinstance(payload.get("total"), int):
-                raise SitadelSourceError("Réponse SITADEL inattendue : import non publié.")
+                raise SitadelSourceError("Resposta inesperada da fonte de licenças: importação não publicada.")
             if int(payload.get("page", 0)) != page or (expected is not None and expected != payload["total"]):
-                raise SitadelSourceError("La pagination SITADEL a changé pendant l'import. Réessayez.")
+                raise SitadelSourceError("A paginação da fonte de licenças mudou durante a importação. Tente novamente.")
             expected = payload["total"]
             rows = payload["data"]
             received += len(rows)
             if received > expected or (not rows and received < expected):
-                raise SitadelSourceError("Export SITADEL incomplet : données précédentes conservées.")
+                raise SitadelSourceError("Exportação incompleta: dados anteriores conservados.")
             yield rows, page, expected
             if received == expected:
                 break
@@ -71,5 +71,5 @@ class SitadelClient:
             "codeDepartement": department, "fields": "code,nom,centre", "format": "json", "geometry": "centre",
         })
         if not isinstance(data, list):
-            raise SitadelSourceError("Référentiel communal indisponible.")
+            raise SitadelSourceError("Referencial de concelhos indisponível.")
         return {str(c["code"]): c for c in data}

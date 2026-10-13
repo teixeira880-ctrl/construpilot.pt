@@ -12,7 +12,7 @@ def document_feature(doc_type: str) -> str:
 async def document_access(request: Request, user=Depends(pro_required)):
     perms = permissions_for(user)
     if not (perms["devis"] or perms["factures"]):
-        raise HTTPException(403, "Votre rôle ne permet pas cet accès.")
+        raise HTTPException(403, "A sua função não permite este acesso.")
     route = request.scope.get("route")
     path = getattr(route, "path", request.url.path)
     # Imports and batches can contain mixed accounting documents.

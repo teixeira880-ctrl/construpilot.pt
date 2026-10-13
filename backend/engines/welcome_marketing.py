@@ -12,44 +12,23 @@ from engines.emailer import BRAND, _footer
 
 logger = logging.getLogger(__name__)
 
-SUBJECT = "Bienvenue sur ConstruPilot — vos devis BTP, sans erreur ni approximation"
-PREHEADER = "Métré de plans, devis déterministes, rénovation énergétique et études structure. Essai gratuit, sans carte."
+SUBJECT = "Bem-vindo ao ConstruPilot — os seus orçamentos de construção, sem erros nem aproximações"
+PREHEADER = "Medição de plantas, orçamentos determinísticos, reabilitação energética e estudos de estruturas. Experiência grátis, sem cartão."
 
 # Version texte brut (pour l'aperçu et les clients sans HTML)
-TEXT = """Bienvenue sur ConstruPilot.
-
-ConstruPilot est le copilote des pros du bâtiment : des chiffres exacts, jamais inventés.
-Contrairement aux IA génériques, nos calculs sont 100 % déterministes — chaque euro est traçable.
-
-Ce que vous pouvez faire dès aujourd'hui :
-- Métré de plans : importez un plan, mesurez surfaces et longueurs en quelques clics.
-- Devis déterministes : des montants exacts, calculés (zéro hallucination), prêts pour le client.
-- RenoPilot : rénovation énergétique, aides (MaPrimeRénov') et calculs ADEME/Publicodes.
-- StructuroPilot : études de structure déterministes, sans hypothèse non vérifiée.
-- Facturation Factur-X : factures électroniques conformes à la norme EN 16931.
-
-Démarrez votre essai gratuit (sans carte bancaire) : {cta_url}
-
-À très vite,
-L'équipe ConstruPilot
-"""
+TEXT = "Bem-vindo ao ConstruPilot.\n\nO ConstruPilot é o copiloto dos profissionais da construção: números exatos, nunca inventados.\nAo contrário das IA genéricas, os nossos cálculos são 100 % determinísticos — cada euro é rastreável.\n\nO que pode fazer desde já:\n- Medição de plantas: importe uma planta, meça áreas e comprimentos em poucos cliques.\n- Orçamentos determinísticos: montantes exatos, calculados (zero alucinações), prontos para o cliente.\n- RenoPilot: reabilitação energética, apoios (Fundo Ambiental) e cálculos de desempenho.\n- StructuroPilot: estudos de estruturas determinísticos, sem hipóteses não verificadas.\n- Faturação eletrónica: faturas conformes com a norma EN 16931.\n\nInicie a sua experiência grátis (sem cartão bancário): {cta_url}\n\nAté breve,\nA equipa ConstruPilot\n"
 
 FEATURES = [
-    ("\U0001F4D0", "Métré de plans",
-     "Importez un plan PDF ou image, mesurez surfaces, longueurs et quantités à l'échelle. "
-     "Le métré alimente directement votre devis."),
-    ("\U0001F9EE", "Devis déterministes",
-     "Des montants <b>exacts et calculés</b>, jamais inventés par une IA. Chaque ligne est "
-     "traçable, chaque total est vérifiable. Export PDF propre, prêt pour le client."),
-    ("\U0001F343", "RenoPilot — rénovation énergétique",
-     "Simulez des travaux de rénovation, identifiez les aides (MaPrimeRénov') et appuyez-vous "
-     "sur les calculs officiels ADEME / Publicodes."),
-    ("\U0001F3D7\uFE0F", "StructuroPilot — études de structure",
-     "Un moteur de calcul <b>déterministe</b> qui construit le modèle à partir des faits et "
-     "bloque toute hypothèse non vérifiée. Pas d'approximation sur la sécurité."),
-    ("\U0001F9FE", "Facturation Factur-X",
-     "Générez des factures électroniques conformes à la norme EN 16931, prêtes pour vos clients "
-     "et l'administration."),
+    ("\U0001F4D0", "Medição de plantas",
+     "Importe uma planta PDF ou imagem, meça áreas, comprimentos e quantidades à escala. A medição alimenta diretamente o seu orçamento."),
+    ("\U0001F9EE", "Orçamentos determinísticos",
+     "Montantes <b>exatos e calculados</b>, nunca inventados por uma IA. Cada linha é rastreável, cada total é verificável. Exportação PDF limpa, pronta para o cliente."),
+    ("\U0001F343", "RenoPilot — reabilitação energética",
+     "Simule obras de reabilitação, identifique os apoios (Fundo Ambiental) e apoie-se em cálculos de desempenho energético."),
+    ("\U0001F3D7\uFE0F", "StructuroPilot — estudos de estrutura",
+     "Um motor de cálculo <b>determinístico</b> que constrói o modelo a partir dos factos e bloqueia qualquer hipótese não verificada. Sem aproximações na segurança."),
+    ("\U0001F9FE", "Faturação eletrónica",
+     "Gere faturas eletrónicas conformes à norma EN 16931, prontas para os seus clientes e para a administração."),
 ]
 
 
@@ -71,58 +50,11 @@ def _feature_rows() -> str:
 def welcome_marketing_html(first_name: str | None, cta_url: str,
                            unsubscribe_url: str | None = None) -> str:
     """Construit l'e-mail HTML de bienvenue (inline CSS, tables, compatible Gmail/Outlook)."""
-    greet = f"Bonjour {first_name}," if first_name else "Bonjour,"
+    greet = f'Olá {first_name},' if first_name else "Bom dia,"
     cta_btn = (
-        f'<tr><td align="center" style="padding:28px 0 8px">'
-        f'<a href="{cta_url}" style="background:{BRAND};color:#fff;text-decoration:none;'
-        f'padding:14px 32px;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;'
-        f'border-radius:6px;display:inline-block">Démarrer mon essai gratuit</a></td></tr>'
-        f'<tr><td align="center" style="padding:0 0 4px">'
-        f'<span style="font-size:12px;color:#94A3B8">Sans carte bancaire · activation immédiate</span>'
-        f'</td></tr>'
+        f'<tr><td align="center" style="padding:28px 0 8px"><a href="{cta_url}" style="background:{BRAND};color:#fff;text-decoration:none;padding:14px 32px;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;border-radius:6px;display:inline-block">Iniciar a minha experiência grátis</a></td></tr><tr><td align="center" style="padding:0 0 4px"><span style="font-size:12px;color:#94A3B8">Sem cartão bancário · ativação imediata</span></td></tr>'
     )
-    return f"""<!doctype html>
-<html><body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0">{PREHEADER}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">
-<tr><td align="center">
-<table role="presentation" width="580" cellpadding="0" cellspacing="0"
-       style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-<tr><td style="padding:26px 28px;border-bottom:3px solid {BRAND}">
-  <div style="font-size:24px;font-weight:800;letter-spacing:-0.5px">ConstruPilot</div>
-  <div style="color:#64748B;font-size:12px;margin-top:4px">Estimez, Comparez, Construisez.</div>
-</td></tr>
-<tr><td style="padding:30px 28px 8px">
-  <h1 style="font-size:22px;margin:0 0 14px 0;line-height:1.3">
-    {greet}<br/>Bienvenue sur ConstruPilot \U0001F389
-  </h1>
-  <div style="font-size:15px;line-height:1.6;color:#334155">
-    <p style="margin:0 0 12px">ConstruPilot est le <b>copilote des pros du bâtiment</b> :
-    des chiffres <b>exacts</b>, jamais inventés.</p>
-    <p style="margin:0">Contrairement aux IA génériques, nos calculs sont
-    <b>100 % déterministes</b> — chaque euro est calculé et traçable. Vous gagnez du temps
-    sans jamais sacrifier la fiabilité.</p>
-  </div>
-</td></tr>
-<tr><td style="padding:16px 28px 0">
-  <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-       color:{BRAND};margin-bottom:4px">Ce que vous pouvez faire dès aujourd'hui</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-  {_feature_rows()}
-  </table>
-</td></tr>
-<tr><td style="padding:0 28px">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">{cta_btn}</table>
-</td></tr>
-<tr><td style="padding:18px 28px 28px">
-  <div style="font-size:13px;line-height:1.6;color:#64748B">
-    Besoin d'un coup de main pour démarrer ? Répondez simplement à cet e-mail,
-    notre équipe vous accompagne.<br/><br/>
-    À très vite,<br/><b style="color:#334155">L'équipe ConstruPilot</b>
-  </div>
-</td></tr>
-{_footer(unsubscribe_url)}
-</table></td></tr></table></body></html>"""
+    return f'<!doctype html>\n<html><body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14">\n<div style="display:none;max-height:0;overflow:hidden;opacity:0">{PREHEADER}</div>\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">\n<tr><td align="center">\n<table role="presentation" width="580" cellpadding="0" cellspacing="0"\n       style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">\n<tr><td style="padding:26px 28px;border-bottom:3px solid {BRAND}">\n  <div style="font-size:24px;font-weight:800;letter-spacing:-0.5px">ConstruPilot</div>\n  <div style="color:#64748B;font-size:12px;margin-top:4px">Estime, Compare, Construa.</div>\n</td></tr>\n<tr><td style="padding:30px 28px 8px">\n  <h1 style="font-size:22px;margin:0 0 14px 0;line-height:1.3">\n    {greet}<br/>Bem-vindo ao ConstruPilot 🎉\n  </h1>\n  <div style="font-size:15px;line-height:1.6;color:#334155">\n    <p style="margin:0 0 12px">O ConstruPilot é o <b>copiloto dos profissionais da construção</b>:\n    números <b>exatos</b>, nunca inventados.</p>\n    <p style="margin:0">Ao contrário das IA genéricas, os nossos cálculos são\n    <b>100 % determinísticos</b> — cada euro é calculado e rastreável. Ganha tempo\n    sem nunca sacrificar a fiabilidade.</p>\n  </div>\n</td></tr>\n<tr><td style="padding:16px 28px 0">\n  <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;\n       color:{BRAND};margin-bottom:4px">O que pode fazer desde já</div>\n  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">\n  {_feature_rows()}\n  </table>\n</td></tr>\n<tr><td style="padding:0 28px">\n  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">{cta_btn}</table>\n</td></tr>\n<tr><td style="padding:18px 28px 28px">\n  <div style="font-size:13px;line-height:1.6;color:#64748B">\n    Precisa de ajuda para começar? Basta responder a este e-mail,\n    a nossa equipa acompanha-o.<br/><br/>\n    Até breve,<br/><b style="color:#334155">A equipa ConstruPilot</b>\n  </div>\n</td></tr>\n{_footer(unsubscribe_url)}\n</table></td></tr></table></body></html>'
 
 
 async def run_welcome_marketing_emails(limit: int = 500) -> dict:

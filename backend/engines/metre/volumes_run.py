@@ -31,15 +31,15 @@ async def coupes_for_plan(db, *, user_id: str, plan_id: str, allow_vision: bool,
     """Stored transcription first (plans_takeoff.coupes_analysis) ; vision only when allowed. Returns (result, status)."""
     plan = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user_id}, {"_id": 0, "coupes_analysis": 1, "filename": 1})
     if not plan:
-        return None, {"error": "plan de coupes introuvable pour ce compte"}
+        return None, {"error": "planta de cortes não encontrada para esta conta"}
     stored = plan.get("coupes_analysis")
     if stored:
         return recheck(stored, expected_top_m), {"origin": "stored_transcription", "pages": stored.get("pages"), "model": stored.get("model")}
     pdf = await _pdf(db, plan_id, user_id)
     if not pdf:
-        return None, {"error": "source PDF des coupes indisponible"}
+        return None, {"error": "fonte PDF dos cortes indisponível"}
     if not allow_vision:
-        return None, {"requires_vision": True, "error": "Cahier de coupes sans lecture enregistrée : relancez avec allow_vision=true (une page = un appel facturé, résultat conservé sur le plan)."}
+        return None, {"requires_vision": True, "error": "Caderno de cortes sem leitura registada: volte a lançar com allow_vision=true (uma página = uma chamada faturada, resultado conservado na planta)."}
     res = await analyze_coupes_pdf(pdf, user_id=user_id, plan_id=plan_id, log_usage=log_usage)
     res = recheck(res, expected_top_m)
     await db.plans_takeoff.update_one({"plan_id": plan_id, "user_id": user_id}, {"$set": {"coupes_analysis": res}})
@@ -50,10 +50,10 @@ async def run_compute_concrete_volumes(db, *, user_id: str, conversation_id: str
                                        allow_vision: bool, levels: dict | None, now: str, log_usage=None) -> dict:
     dxf = await load_cad_source(db, dxf_plan_id, user_id, "converted_dxf") or await load_cad_source(db, dxf_plan_id, user_id, "original")
     if not dxf:
-        return {"ok": False, "error": "Aucun fichier DXF/DWG converti pour ce plan : les quantités en plan (murs, poteaux, dalle) viennent du DXF."}
+        return {"ok": False, "error": "Nenhum ficheiro DXF/DWG convertido para esta planta: as quantidades em planta (paredes, pilares, laje) vêm do DXF."}
     raw = dxf if isinstance(dxf, (bytes, bytearray)) else base64.b64decode(dxf["data_b64"])
     if raw[:4] == b"AC10":
-        return {"ok": False, "error": "DWG non converti en DXF (conversion Autodesk en attente ou indisponible)."}
+        return {"ok": False, "error": "DWG não convertido em DXF (conversão Autodesk pendente ou indisponível)."}
     formwork = await _pdf(db, formwork_plan_id, user_id) if formwork_plan_id else None
     status = {"formwork_pdf": bool(formwork), "coupes": None}
     coupes = None

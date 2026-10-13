@@ -37,7 +37,7 @@ def _now():
 async def _get(project_id: str, user: dict):
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0})
     if not p:
-        raise HTTPException(status_code=404, detail="Projet introuvable")
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return p
 
 
@@ -143,8 +143,7 @@ async def budget(project_id: str, user=Depends(current_user)) -> dict:
         "initial": initial, "spent": spent, "remaining": round(initial - spent, 2),
         "forecast": forecast, "overrun": overrun if overrun > 0 else 0,
         "progress_pct": round(pct_done * 100, 1),
-        "warning": (f"Risque de dépassement de {overrun:,.0f} € détecté : "
-                    f"réduisez le niveau de finition ou renégociez un lot."
+        "warning": (f'Risco de excedente de {overrun:,.0f} € detetado: reduza o nível de acabamento ou renegocie um lote.'
                     .replace(",", " ") if overrun > 0 else None),
         "expenses": p.get("expenses", []),
     }
@@ -169,7 +168,7 @@ async def project_pdf(project_id: str, user=Depends(current_user)):
         "Content-Disposition": f'attachment; filename="Estimation-ConstruPilot-{safe}.pdf"'})
 
 
-PROGRESS_LABEL = {"todo": "à faire", "doing": "en cours", "done": "terminé"}
+PROGRESS_LABEL = {"todo": "a fazer", "doing": "en cours", "done": "terminé"}
 
 
 @router.get("/{project_id}/timeline")
@@ -180,15 +179,15 @@ async def project_timeline(project_id: str, user=Depends(current_user)) -> dict:
 
     events.append({
         "type": "project", "kind": "created", "at": p.get("created_at"),
-        "title": "Projet créé", "detail": p.get("name"),
+        "title": "Projeto criado", "detail": p.get("name"),
         "amount": p.get("estimation", {}).get("total_avg"),
     })
 
     for ph in p.get("photos", []):
         events.append({
             "type": "photo", "kind": ph.get("kind"), "at": ph.get("created_at"),
-            "title": {"before": "Photo AVANT", "after": "Photo APRÈS",
-                      "progress": "Photo chantier"}.get(ph.get("kind"), "Photo"),
+            "title": {"before": "Photo AVANT", "after": "Fotografia DEPOIS",
+                      "progress": "Fotografia da obra"}.get(ph.get("kind"), "Fotografia"),
             "detail": ph.get("caption") or ph.get("lot") or "",
             "photo_id": ph.get("photo_id"), "lot": ph.get("lot"),
         })
@@ -196,7 +195,7 @@ async def project_timeline(project_id: str, user=Depends(current_user)) -> dict:
     for e in p.get("expenses", []):
         events.append({
             "type": "expense", "kind": "spent", "at": e.get("date"),
-            "title": "Dépense", "detail": e.get("label"),
+            "title": "Despesa", "detail": e.get("label"),
             "amount": e.get("amount"), "lot": e.get("lot"),
         })
 
@@ -207,7 +206,7 @@ async def project_timeline(project_id: str, user=Depends(current_user)) -> dict:
             events.append({
                 "type": "progress", "kind": status,
                 "at": p.get("updated_at") or p.get("created_at"),
-                "title": f"Lot {PROGRESS_LABEL.get(status, status)}",
+                "title": f'Lote {PROGRESS_LABEL.get(status, status)}',
                 "detail": lot_info.get("name", key),
                 "amount": lot_info.get("total") if status == "done" else None,
             })
@@ -218,7 +217,7 @@ async def project_timeline(project_id: str, user=Depends(current_user)) -> dict:
         events.append({
             "type": "lead", "kind": l.get("status", "nouveau"),
             "at": l.get("created_at"),
-            "title": "Demande ConstruPilot envoyée",
+            "title": "Pedido ConstruPilot enviado",
             "detail": f"{l.get('name')} · {l.get('phone') or l.get('email')}",
         })
 

@@ -39,7 +39,7 @@ const PlanCard = ({ plan, highlight, busy, onSelect }) => {
 export default function ProUpsell() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
-  const analyse = sp.get("feature") === "análise";
+  const analyse = sp.get("feature") === "analyse";
   const [proPlans, setProPlans] = useState([]);
   const [partPlans, setPartPlans] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -44,11 +44,11 @@ def download_parts(record, target):
 async def cached_asset(variant):
     record = await db.presentation_assets.find_one({"variant": variant, "published": True}, {"_id": 0})
     if not record:
-        raise HTTPException(404, "Vidéo indisponible")
+        raise HTTPException(404, "Vídeo indisponível")
     digest = record.get("sha256", "")
     size = record.get("byte_size", 0)
     if not re.fullmatch(r"[a-f0-9]{64}", digest) or not 0 < size <= MAX_BYTES:
-        raise HTTPException(503, "Métadonnées vidéo invalides")
+        raise HTTPException(503, "Metadados de vídeo inválidos")
     CACHE.mkdir(parents=True, exist_ok=True)
     target = CACHE / f"{digest}.mp4"
     async with _locks.setdefault(variant, asyncio.Lock()):
@@ -56,7 +56,7 @@ async def cached_asset(variant):
             try:
                 await asyncio.to_thread(download_parts, record, target)
             except Exception as exc:
-                raise HTTPException(503, "Vidéo temporairement indisponible") from exc
+                raise HTTPException(503, "Vídeo temporariamente indisponível") from exc
     return record, target
 
 

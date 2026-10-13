@@ -32,7 +32,7 @@ def pair_beams(vision: dict, dxf_beams: list[dict], *, tol_w_m: float = 0.05, to
                               "formula": f"{d['length_m']:.2f} m × {b / 100:.2f} × {h / 100:.2f} = {vol:.3f} m³" if vol else None}
                 if vol and el.get("concrete_m3"):
                     row["dxf"]["difference_m3"] = round(vol - el["concrete_m3"], 3)
-                    row["dxf"]["note"] = "Béton Arche = b × h × longueur totale (appuis inclus) ; volume DXF = longueur entre faces d'appui : écart attendu = appuis."
+                    row["dxf"]["note"] = "Betão Arche = b × h × comprimento total (apoios incluídos); volume DXF = comprimento entre faces de apoio: diferença esperada = apoios."
                 row["state"] = "paired"
                 if vol and el.get("steel_kg"):
                     row["ratio_kg_m3_dxf_volume"] = round(el["steel_kg"] / vol, 1)
@@ -48,9 +48,8 @@ def pair_beams(vision: dict, dxf_beams: list[dict], *, tol_w_m: float = 0.05, to
     return {"rows": rows, "paired": len(paired), "unpaired_sheets": [r["label"] for r in rows if r["state"] != "paired"],
             "unpaired_dxf_beams": len(unpaired_dxf), "dxf_beams": len(dxf_beams),
             "aggregate": {"steel_kg": round(steel, 1), "concrete_m3": round(concrete, 2), "ratio_kg_m3": round(steel / concrete, 1) if concrete else None,
-                          "formula": f"Σ acier {steel:.1f} kg / Σ béton {concrete:.2f} m³ (feuilles Arche du niveau)"},
-            "note": ("Appariement par largeur de section et longueur (±5 cm / ±10 cm), sans nom : plusieurs corps DXF de même section (ex. 3 × 70 cm / 6,80 m) "
-                     "ne peuvent pas être distingués ; les feuilles BN/PV (masse théorique, pas de béton imprimé) restent hors ratio.")}
+                          "formula": f'Σ aço {steel:.1f} kg / Σ betão {concrete:.2f} m³ (folhas Arche do piso)'},
+            "note": ("Emparelhamento por largura de secção e comprimento (±5 cm / ±10 cm), sem nome: vários corpos DXF da mesma secção (ex.: 3 × 70 cm / 6,80 m) não podem ser distinguidos; as folhas BN/PV (massa teórica, sem betão impresso) ficam fora da razão.")}
 
 
 def ratio_lines(pairing: dict, schedule_steel_kg: float | None) -> list[dict]:
@@ -60,12 +59,12 @@ def ratio_lines(pairing: dict, schedule_steel_kg: float | None) -> list[dict]:
             printed = r.get("ratio_kg_m3_printed")
             rounding = r["ratio_kg_m3_calc"] * (0.005 / r["concrete_m3"] + 0.05 / r["steel_kg"])  # béton imprimé au cl, acier au 0,1 kg
             state = "confirmed" if printed is None or abs(r["ratio_kg_m3_calc"] - printed) <= max(0.6, rounding) else "to_clarify"
-            lines.append({"element": f"Poutre {r['label']} — ratio acier/béton", "location": f"p.{r['page']}" + (f" ↔ DXF {r['dxf']['ref']}" if r["dxf"] else " (sans pair DXF)"),
+            lines.append({"element": f"Viga {r['label']} — razão aço/betão", "location": f"p.{r['page']}" + (f" ↔ DXF {r['dxf']['ref']}" if r["dxf"] else " (sem par DXF)"),
                           "formula": f"{r['steel_kg']:g} kg / {r['concrete_m3']:g} m³", "net": r["ratio_kg_m3_calc"], "unit": "kg/m³", "state": state})
     agg = pairing["aggregate"]
     if agg["ratio_kg_m3"]:
-        lines.append({"element": "Poutres du niveau — ratio agrégé", "location": None, "formula": agg["formula"], "net": agg["ratio_kg_m3"], "unit": "kg/m³", "state": "confirmed"})
+        lines.append({"element": "Vigas do piso — razão agregada", "location": None, "formula": agg["formula"], "net": agg["ratio_kg_m3"], "unit": "kg/m³", "state": "confirmed"})
     if schedule_steel_kg:
-        lines.append({"element": "BN / PV / attentes — acier (masse théorique)", "location": "feuilles à nomenclature", "formula": "Σ long. totale × kg/m", "net": schedule_steel_kg, "unit": "kg",
-                      "state": "indeterminate", "missing": ["béton des BN/PV (non imprimé)"]})
+        lines.append({"element": "BN / PV / esperas — aço (massa teórica)", "location": "folhas com lista", "formula": "Σ comp. total × kg/m", "net": schedule_steel_kg, "unit": "kg",
+                      "state": "indeterminate", "missing": ["betão das BN/PV (não impresso)"]})
     return lines

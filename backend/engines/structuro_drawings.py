@@ -100,12 +100,12 @@ class DrawingStudy(Strict):
         for rows, key in ((self.placements,"element_id"),(self.openings,"id"),(self.cuts,"id"),(self.bars,"mark")):
             values=[getattr(r,key) for r in rows]
             if len(values)!=len(set(values)):
-                raise ValueError(f"Repères du dossier en double : {key}")
+                raise ValueError(f'Marcas do processo duplicadas: {key}')
         if sum(b.count for b in self.bars)>4000:
-            raise ValueError("Maximum 4 000 barres dessinées par dossier")
+            raise ValueError("Máximo de 4 000 varões desenhados por processo")
         work=sum(b.count*(2+42*(len(b.points)-2))*(1+sum(o.element_id==b.element_id for o in self.openings)) for b in self.bars)
         if work>2_000_000:
-            raise ValueError("Dossier trop complexe : répartissez les aciers et réservations dans plusieurs études")
+            raise ValueError("Processo demasiado complexo: distribua os aços e negativos por vários estudos")
         return self
 
 
@@ -125,16 +125,16 @@ def bar_geometry(bar):
     pts=[p.xyz() for p in bar.points]
     lengths=[math.dist(a,b) for a,b in zip(pts,pts[1:])]
     if min(lengths)<1e-6:
-        raise ValueError("Deux points de barre sont confondus")
+        raise ValueError("Dois pontos do varão estão confundidos")
     radius=bar.bend_radius_mm/1000
     trims=[0.]*len(lengths); bends={}; adjustment=0.
     for i in range(1,len(pts)-1):
         u=unit(sub(pts[i],pts[i-1])); v=unit(sub(pts[i+1],pts[i]))
         theta=math.acos(max(-1.,min(1.,dot(u,v))))
         if theta<1e-7: continue
-        if math.pi-theta<1e-6: raise ValueError("Demi-tour à décrire par plusieurs points")
+        if math.pi-theta<1e-6: raise ValueError("Meia volta a descrever por vários pontos")
         if radius<=bar.diameter_mm/2000:
-            raise ValueError("Rayon à l'axe supérieur au demi-diamètre requis pour un pli")
+            raise ValueError("Raio ao eixo superior ao meio diâmetro necessário para uma dobra")
         cut=radius*math.tan(theta/2)
         trims[i-1]+=cut;trims[i]+=cut;adjustment+=radius*theta-2*cut
         start=sub(pts[i],mul(u,cut)); end=add(pts[i],mul(v,cut))
@@ -152,7 +152,7 @@ def bar_geometry(bar):
         arc[0]=start;arc[-1]=end
         bends[i]=arc
     if any(t>length+1e-8 for t,length in zip(trims,lengths)):
-        raise ValueError("Le rayon de pli ne tient pas entre les points")
+        raise ValueError("O raio de dobragem não cabe entre os pontos")
     path=[pts[0]]
     for i in range(1,len(pts)-1): path.extend(bends.get(i,[pts[i]]))
     path.append(pts[-1])
@@ -203,38 +203,38 @@ def compile_dossier(model, revision=1):
     if model.automation_generated_hash or (d and any(b.generated_by for b in d.bars)):
         from engines.structuro_automation import generation_hash
         if model.automation_generated_hash!=generation_hash(model):
-            issue("automation_stale","Automatisation","Données modifiées : relancer la génération automatique avant l'export.")
-    if not d:issue("missing_dossier","Dossier","Activez le dossier plans et renseignez les altitudes.")
-    if not model.elements:issue("missing_elements","Modèle","Aucun élément à dessiner.")
+            issue("automation_stale","Automatização","Dados alterados: relançar a geração automática antes da exportação.")
+    if not d:issue("missing_dossier","Dossier","Ative o processo de plantas e indique as cotas.")
+    if not model.elements:issue("missing_elements","Modelo","Nenhum elemento a desenhar.")
     es={e.id:e for e in model.elements}
     places={p.element_id:p for p in d.placements} if d else {}
     valid=set()
     for e in es.values():
         if any(v is None for v in (e.x_m,e.y_m,e.length_m,e.width_m,e.height_m)):
-            issue("geometry",e.id,"Coordonnées x/y et trois dimensions requises.")
-        elif e.id not in places:issue("elevation",e.id,"Altitude de base manquante.")
+            issue("geometry",e.id,"Coordenadas x/y e três dimensões obrigatórias.")
+        elif e.id not in places:issue("elevation",e.id,"Cota de base em falta.")
         else:valid.add(e.id)
-        if not e.reviewed:warnings.append(f"{e.id} : saisie de l'élément à contrôler.")
+        if not e.reviewed:warnings.append(f'{e.id} : introdução do elemento a controlar.')
     if d:
         for p in d.placements:
-            if p.element_id not in es:issue("unknown_element",p.element_id,"Implantation sans élément correspondant.")
-            if not p.source.strip():warnings.append(f"{p.element_id} : source de l'altitude à renseigner.")
+            if p.element_id not in es:issue("unknown_element",p.element_id,"Implantação sem elemento correspondente.")
+            if not p.source.strip():warnings.append(f'{p.element_id} : fonte da cota a indicar.')
         for o in d.openings:
             e=es.get(o.element_id)
-            if o.element_id not in valid:issue("opening_element",o.id,"Réservation : élément absent ou géométrie incomplète.");continue
+            if o.element_id not in valid:issue("opening_element",o.id,"Negativo: elemento ausente ou geometria incompleta.");continue
             lo,hi=o.box();dims=(e.length_m,e.width_m,e.height_m)
             if any(a<-1e-8 or b>size+1e-8 for a,b,size in zip(lo,hi,dims)):
-                issue("opening_outside",o.id,"La réservation sort du volume de son élément.")
-            if not o.source.strip():warnings.append(f"{o.id} : source de la réservation à renseigner.")
+                issue("opening_outside",o.id,"O negativo sai do volume do seu elemento.")
+            if not o.source.strip():warnings.append(f'{o.id} : fonte do negativo a indicar.')
         for b in d.bars:
-            if b.element_id not in valid:issue("bar_element",b.mark,"Barre : élément absent ou géométrie incomplète.");continue
+            if b.element_id not in valid:issue("bar_element",b.mark,"Varão: elemento ausente ou geometria incompleta.");continue
             try:length,path=bar_geometry(b)
             except ValueError as ex:issue("bar_shape",b.mark,str(ex));continue
             e=es[b.element_id];dims=(e.length_m,e.width_m,e.height_m)
             cover=(b.cover_mm+b.diameter_mm/2)/1000
             vec=b.repeat.xyz()
             if b.count>1 and math.sqrt(dot(vec,vec))<b.diameter_mm/1000-1e-9:
-                issue("bar_repeat",b.mark,"Répétition trop faible : barres superposées.")
+                issue("bar_repeat",b.mark,"Repetição demasiado baixa: varões sobrepostos.")
             outside=False;hit=False
             for i in range(b.count):
                 ps=[add(p,mul(vec,i)) for p in path]
@@ -244,25 +244,25 @@ def compile_dossier(model, revision=1):
                     outside=True
                 for o in d.openings:
                     if o.element_id==b.element_id and any(segment_hits_box(a,c,o.box(),cover+.001) for a,c in zip(ps,ps[1:])):hit=True
-            if outside:issue("bar_cover",b.mark,"Une barre sort de l'élément ou de l'enrobage déclaré.")
-            if hit:issue("bar_opening",b.mark,"Une barre traverse une réservation ou son enrobage déclaré.")
-            if not b.source.strip():warnings.append(f"{b.mark} : justification du ferraillage à renseigner.")
+            if outside:issue("bar_cover",b.mark,"Um varão sai do elemento ou do recobrimento declarado.")
+            if hit:issue("bar_opening",b.mark,"Um varão atravessa um negativo ou o seu recobrimento declarado.")
+            if not b.source.strip():warnings.append(f'{b.mark} : justificação das armaduras a indicar.')
             mass=math.pi*(b.diameter_mm/1000)**2/4*7850*length*b.count
             rows.append(dict(mark=b.mark,element_id=b.element_id,diameter_mm=b.diameter_mm,count=b.count,
                 developed_length_m=length,total_length_m=length*b.count,mass_kg=mass,
                 bend_radius_mm=b.bend_radius_mm,cover_mm=b.cover_mm,source=b.source,role=b.role))
         for cut in d.cuts:
             if not any(section_interval(outline(es[eid]),cut) for eid in valid):
-                issue("empty_cut",cut.id,"La coupe ne traverse aucun élément.")
-        if not d.cuts:warnings.append("Aucune coupe définie.")
-        if not d.bars:warnings.append("Aucun acier dessiné : pas de ferraillage ni de nomenclature générés.")
-        if d.openings:warnings.append("Les réservations sont dessinées ; le moteur gravitaire conserve les volumes bruts et ne modélise pas leur effet sur la résistance. Adaptez le schéma porteur.")
-    if result["status"]=="blocked":warnings.append("Calcul gravitaire incomplet : les plans ne sont pas justifiés par une descente de charges complète.")
+                issue("empty_cut",cut.id,"O corte não atravessa nenhum elemento.")
+        if not d.cuts:warnings.append("Nenhum corte definido.")
+        if not d.bars:warnings.append("Nenhum aço desenhado: nem armaduras nem lista gerados.")
+        if d.openings:warnings.append("Os negativos estão desenhados; o motor gravítico conserva os volumes brutos e não modela o seu efeito na resistência. Adapte o esquema estrutural.")
+    if result["status"]=="blocked":warnings.append("Cálculo gravítico incompleto: as plantas não são justificadas por uma descida de cargas completa.")
     if d and any(b.generated_by for b in d.bars):
-        warnings.append("Sections béton saisies ; choix automatique des aciers limité aux poutres simples et dalles pleines. Murs, poteaux, épaisseur et aciers des semelles non dimensionnés par cette chaîne.")
-        warnings.append("Longueurs d'ancrage et recouvrement calculées dans la note automatique ; implantation dans les appuis, assemblages et interactions entre groupes à vérifier.")
+        warnings.append("Secções de betão introduzidas; escolha automática dos aços limitada a vigas simples e lajes maciças. Paredes, pilares, espessura e aços das sapatas não dimensionados por esta cadeia.")
+        warnings.append("Comprimentos de amarração e emenda calculados na nota automática; implantação nos apoios, ligações e interações entre grupos a verificar.")
     else:
-        warnings.append("Sections et aciers saisis : aucun dimensionnement global automatique. Ancrages, recouvrements, interactions entre groupes et règles constructives restent à vérifier.")
+        warnings.append("Secções e aços introduzidos: nenhum dimensionamento global automático. Amarrações, emendas, interações entre grupos e regras construtivas continuam por verificar.")
     levels=list(dict.fromkeys(e.level for e in model.elements))
     # Ordered, stable sheet families. Catalogue pagination never hides warnings.
     lines=[]
@@ -270,16 +270,16 @@ def compile_dossier(model, revision=1):
         lines.extend(textwrap.wrap("• "+msg,width=90,subsequent_indent="  ") or [""])
         lines.append("")
     for i in range(0,max(1,len(lines)),28):
-        sheets.append(dict(id=f"G{i//28+1:02}",kind="general",title="Dossier et contrôles",lines=lines[i:i+28]))
-    for n,lev in enumerate(levels,1):sheets.append(dict(id=f"C{n:02}",kind="formwork",title=f"Coffrage - {lev}",level=lev))
-    for i in range(0,len(model.elements),12):sheets.append(dict(id=f"R{i//12+1:02}",kind="members",title="Repérage et dimensions du coffrage",offset=i))
+        sheets.append(dict(id=f"G{i//28+1:02}",kind="general",title="Processo e controlos",lines=lines[i:i+28]))
+    for n,lev in enumerate(levels,1):sheets.append(dict(id=f"C{n:02}",kind="formwork",title=f'Cofragem - {lev}',level=lev))
+    for i in range(0,len(model.elements),12):sheets.append(dict(id=f"R{i//12+1:02}",kind="members",title="Marcação e dimensões da cofragem",offset=i))
     if d:
-        for i in range(0,len(d.openings),12):sheets.append(dict(id=f"O{i//12+1:02}",kind="openings",title="Repérage et dimensions des réservations",offset=i))
+        for i in range(0,len(d.openings),12):sheets.append(dict(id=f"O{i//12+1:02}",kind="openings",title="Marcação e dimensões dos negativos",offset=i))
         for n,c in enumerate(d.cuts,1):sheets.append(dict(id=f"S{n:02}",kind="section",title=f"Coupe {c.id}",cut=c.id))
         for n,lev in enumerate(levels,1):
-            if any(es.get(b.element_id) and es[b.element_id].level==lev for b in d.bars):sheets.append(dict(id=f"F{n:02}",kind="reinforcement",title=f"Ferraillage - {lev}",level=lev))
-        for n,b in enumerate(d.bars,1):sheets.append(dict(id=f"D{n:02}",kind="detail",title=f"Détail {b.mark} - {b.element_id}",mark=b.mark))
-        for i in range(0,len(rows),19):sheets.append(dict(id=f"N{i//19+1:02}",kind="schedule",title="Nomenclature des aciers",offset=i))
+            if any(es.get(b.element_id) and es[b.element_id].level==lev for b in d.bars):sheets.append(dict(id=f"F{n:02}",kind="reinforcement",title=f'Armaduras - {lev}',level=lev))
+        for n,b in enumerate(d.bars,1):sheets.append(dict(id=f"D{n:02}",kind="detail",title=f'Detalhe {b.mark} - {b.element_id}',mark=b.mark))
+        for i in range(0,len(rows),19):sheets.append(dict(id=f"N{i//19+1:02}",kind="schedule",title="Lista de aços",offset=i))
     normalized=type(model).model_validate_json(model.model_dump_json()).model_dump(mode="json")
     digest=hashlib.sha256(json.dumps(dict(version=VERSION,model=normalized),sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()).hexdigest()
     return dict(version=VERSION,revision=revision,input_hash=result["input_hash"],drawing_hash=digest,

@@ -24,8 +24,8 @@ from routes.documents import DocIn, DocLine
 
 router = APIRouter(prefix="/btp-solver", tags=["btp-solver"])
 logger = logging.getLogger(__name__)
-DOMAIN_LABELS = {"fissures": "Fissures", "humidite": "Humidité", "thermique": "Thermique", "structure": "Structure",
-                 "sinistre": "Sinistre", "reception": "Réception", "autre": "Travaux"}
+DOMAIN_LABELS = {"fissures": "Fissuras", "humidite": "Humidade", "thermique": "Térmica", "structure": "Estrutura",
+                 "sinistre": "Sinistre", "reception": "Receção", "autre": "Obras"}
 
 
 class SolveIn(BaseModel):
@@ -64,12 +64,12 @@ class ToQuoteIn(BaseModel):
 async def to_quote(problem_id: str, body: ToQuoteIn, user=Depends(pro_required)):
     """Transforme la solution recommandée (ou choisie) du diagnostic en brouillon de devis."""
     if not permissions_for(user)["devis"]:
-        raise HTTPException(403, "Votre rôle ne permet pas de créer des devis.")
+        raise HTTPException(403, "A sua função não permite criar orçamentos.")
     doc = await db.btp_problems.find_one({"problem_id": problem_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Diagnostic introuvable")
+        raise HTTPException(404, "Diagnóstico não encontrado")
     if doc.get("status") != "done" or not doc.get("solutions"):
-        raise HTTPException(409, "Diagnostic non terminé")
+        raise HTTPException(409, "Diagnóstico não concluído")
     sols = doc["solutions"]
     sol = next((s for s in sols if s.get("id") == body.solution_id), None) if body.solution_id else None
     sol = sol or next((s for s in sols if s.get("recommended")), sols[0])
@@ -80,14 +80,12 @@ async def to_quote(problem_id: str, body: ToQuoteIn, user=Depends(pro_required))
     for i, st in enumerate(steps or [{"text": sol["label"], "materials": []}]):
         price = round(mid / n, 2) if i < n - 1 else round(mid - round(mid / n, 2) * (n - 1), 2)
         lines.append(DocLine(designation=(st.get("text") or sol["label"])[:160], description=", ".join(st.get("materials") or [])[:400],
-                             unit="forfait", qty=1, unit_price_ht=max(price, 0), vat_rate=6, category=DOMAIN_LABELS.get(doc.get("domain"), "Travaux"),
+                             unit="forfait", qty=1, unit_price_ht=max(price, 0), vat_rate=6, category=DOMAIN_LABELS.get(doc.get("domain"), "Obras"),
                              price_source="btp_solver_estimate"))
-    notes = (f"Brouillon généré depuis le diagnostic ConstruPilot {problem_id} — solution « {sol['label']} ».\n"
-             f"Chiffrage provisionnel (fourchette {sol.get('cost_min_eur') or '—'} € à {sol.get('cost_max_eur') or '—'} € HT, milieu retenu) à ajuster après visite technique. "
-             f"Durée estimée : {sol.get('duration_days_min') or '—'}–{sol.get('duration_days_max') or sol.get('duration_days_min') or '—'} jours."
-             + (f" Garantie : {sol['warranty_years']} ans." if sol.get("warranty_years") else ""))
+    notes = (f"Rascunho gerado a partir do diagnóstico ConstruPilot {problem_id} — solution « {sol['label']}».\nOrçamentação provisória (intervalo {sol.get('cost_min_eur') or '—'} € à {sol.get('cost_max_eur') or '—'} € s/ IVA, valor médio adotado) a ajustar após a visita técnica. Duração estimada: {sol.get('duration_days_min') or '—'}–{sol.get('duration_days_max') or sol.get('duration_days_min') or '—'} jours."
+             + (f" Garantia: {sol['warranty_years']} ans." if sol.get("warranty_years") else ""))
     from routes.documents import create_document
-    quote = await create_document(DocIn(doc_type="quote", title=f"Devis — {sol['label']}"[:160], lines=lines, notes=notes), user)
+    quote = await create_document(DocIn(doc_type="quote", title=f"Orçamento — {sol['label']}"[:160], lines=lines, notes=notes), user)
     await db.pro_documents.update_one({"doc_id": quote["doc_id"]}, {"$set": {"source": "btp_solver", "source_ref": problem_id}})
     await db.btp_problems.update_one({"problem_id": problem_id}, {"$addToSet": {"quote_doc_ids": quote["doc_id"]}})
     return {"doc_id": quote["doc_id"], "title": quote["title"], "lines": len(lines), "total_ht": quote["totals"].get("ht"),
@@ -98,9 +96,9 @@ async def to_quote(problem_id: str, body: ToQuoteIn, user=Depends(pro_required))
 async def report_pdf(problem_id: str, user=Depends(current_user)):
     doc = await db.btp_problems.find_one({"problem_id": problem_id, "user_id": user["user_id"]}, {"_id": 0})
     if not doc:
-        raise HTTPException(404, "Diagnostic introuvable")
+        raise HTTPException(404, "Diagnóstico não encontrado")
     if doc.get("status") != "done":
-        raise HTTPException(409, "Diagnostic non terminé")
+        raise HTTPException(409, "Diagnóstico não concluído")
     from routes.plans_common import _resolve_branding
     branding = await _resolve_branding(user["user_id"])
     photos = []
@@ -184,5 +182,5 @@ async def detail(problem_id: str, user=Depends(current_user)):
         {"_id": 0, "user_id": 0, "created_at": 0},
     )
     if not doc:
-        raise HTTPException(404, "Diagnostic introuvable")
+        raise HTTPException(404, "Diagnóstico não encontrado")
     return doc

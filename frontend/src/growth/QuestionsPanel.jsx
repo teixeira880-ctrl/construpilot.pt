@@ -8,11 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { useApi, err } from "./lib";
 import { Empty, ErrorBox } from "./Bits";
 
-const INTENTS = ["descoberta", "comparaison", "achat", "necessidade profissional", "marque"];
+const INTENTS = ["découverte", "comparaison", "achat", "besoin métier", "marque"];
 
 export function QuestionsPanel({ projectId, canEdit }) {
   const { data, error, reload } = useApi(`/growth/projects/${projectId}/questions`, [projectId]);
-  const [draft, setDraft] = useState({ text: "", intent: "descoberta", branded: false });
+  const [draft, setDraft] = useState({ text: "", intent: "découverte", branded: false });
   const [editing, setEditing] = useState(null);
   const save = async (q) => { try { await api.put(`/growth/questions/${q.question_id}`, { text: q.text, intent: q.intent, branded: q.branded, active: q.active }); setEditing(null); reload(); } catch (e) { toast.error(err(e)); } };
   const add = async () => { try { await api.post(`/growth/projects/${projectId}/questions`, { ...draft, branded: draft.branded || draft.intent === "marque" }); setDraft({ ...draft, text: "" }); reload(); } catch (e) { toast.error(err(e)); } };
@@ -23,7 +23,7 @@ export function QuestionsPanel({ projectId, canEdit }) {
     <p className="text-sm text-muted-foreground">{data.questions.length} questions · {data.questions.filter((q) => q.branded).length} com marca · editáveis antes da ativação; qualquer alteração do texto cria uma nova versão.</p>
     {canEdit && <div className="surface p-3 flex flex-wrap gap-2 items-center" data-testid="growth-question-form">
       <Input className="flex-1 min-w-[260px]" placeholder="Nova pergunta…" value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} data-testid="growth-question-text" />
-      <select className="h-9 rounded-md border bg-background px-2 text-sm" value={draft.intent} onChange={(e) => setDraft({ ...draft, intent: e.target.value })} data-testid="growth-question-intent">{INTENTS.map((i) => <option key={i}>{i}</option>)}</select>
+      <select className="h-9 rounded-md border bg-background px-2 text-sm" value={draft.intent} onChange={(e) => setDraft({ ...draft, intent: e.target.value })} data-testid="growth-question-intent">{INTENTS.map((i) => <option key={i} value={i}>{({ "découverte": "descoberta", comparaison: "comparação", achat: "compra", "besoin métier": "necessidade profissional", marque: "marca" })[i] || i}</option>)}</select>
       <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={draft.branded} onChange={(e) => setDraft({ ...draft, branded: e.target.checked })} /> mentionne ConstruPilot</label>
       <Button size="sm" onClick={add} disabled={draft.text.trim().length < 8} data-testid="growth-question-add"><Plus className="h-4 w-4" /> Adicionar</Button>
     </div>}

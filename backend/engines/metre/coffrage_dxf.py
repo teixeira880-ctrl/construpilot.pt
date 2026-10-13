@@ -112,7 +112,7 @@ def coffrage_takeoff(dxf_bytes: bytes, *, wall_thicknesses_cm: list[float] | Non
         sides = sorted(math.hypot(xs[j + 1] - xs[j], ys[j + 1] - ys[j]) for j in range(2))
         rows.append({"ref": f"P{i:02d}", "w_cm": round(sides[0] * 100, 1), "h_cm": round(sides[1] * 100, 1), "section_m2": round(c.area, 4),
                      "formula": f"{sides[0] * 100:.0f} × {sides[1] * 100:.0f} cm = {c.area:.3f} m²", "centroid_m": [round(c.centroid.x, 2), round(c.centroid.y, 2)],
-                     "source": "HATCH section (calque poteaux)" if _hatch_polys(msp, layers.get("column", set()), u) else "face fermée (lignes calque poteaux)"})
+                     "source": "HATCH secção (camada pilares)" if _hatch_polys(msp, layers.get("column", set()), u) else "face fechada (linhas da camada pilares)"})
     out["elements"]["columns"] = {"count": len(rows), "section_total_m2": round(sum(r["section_m2"] for r in rows), 3), "rows": rows}
 
     walls, thin_layers, wall_faces = [], [], []
@@ -133,7 +133,7 @@ def coffrage_takeoff(dxf_bytes: bytes, *, wall_thicknesses_cm: list[float] | Non
     out["elements"]["walls"] = {"count": len(walls), "length_total_m": round(sum(w["length_m"] for w in walls), 2), "plan_area_m2": round(sum(w["plan_area_m2"] for w in walls), 2),
                                 "length_by_thickness_m": {k: round(v, 2) for k, v in sorted(by_t.items())}, "rows": walls,
                                 "thin_layers_excluded": {"count": len(thin_layers), "length_m": round(sum(t["length_m"] for t in thin_layers), 2),
-                                                         "note": "corps < 8 cm (doublage, isolant, enduit ?) exclus des murs béton — à confirmer"}}
+                                                         "note": "corpo < 8 cm (forro, isolante, reboco?) excluído das paredes de betão — a confirmar"}}
     wall_bodies = list(wall_faces)
     if wall_thicknesses_cm:
         from engines.metre.wall_pairs import complete_walls
@@ -156,7 +156,7 @@ def coffrage_takeoff(dxf_bytes: bytes, *, wall_thicknesses_cm: list[float] | Non
     beams.sort(key=lambda b: -b["length_m"])
     for i, b in enumerate(beams, 1):
         b["ref"] = f"PO{i:02d}"
-        b["formula"] = f"{b['length_m']:.2f} m × {b['width_m'] * 100:.0f} cm (largeur en plan)"
+        b["formula"] = f"{b['length_m']:.2f} m × {b['width_m'] * 100:.0f} cm (largura em planta)"
     out["elements"]["beams"] = {"count": len(beams), "length_total_m": round(sum(b["length_m"] for b in beams), 2), "rows": beams}
 
     slab_faces = faces("slab")
@@ -166,29 +166,29 @@ def coffrage_takeoff(dxf_bytes: bytes, *, wall_thicknesses_cm: list[float] | Non
         holes = [Polygon(r).area for p in polys for r in p.interiors]
         out["elements"]["slab"] = {"gross_area_m2": round(sum(p.area for p in polys) + sum(holes), 2), "openings_count": len(holes),
                                    "openings_area_m2": round(sum(holes), 2), "net_area_m2": round(sum(p.area for p in polys), 2), "panels": len(polys),
-                                   "formula": "aire des faces fermées du calque dalle (union) ; ouvertures = anneaux intérieurs"}
+                                   "formula": "área das faces fechadas da camada laje (união); aberturas = anéis interiores"}
     else:
         out["elements"]["slab"] = None
 
     lintels = sum(1 for e in msp if e.dxf.layer in layers.get("lintel", set()) and e.dxftype() == "INSERT")
-    out["elements"]["lintels"] = {"count_blocks": lintels, "note": "blocs comptés, dimensions non lues (symboles)"}
+    out["elements"]["lintels"] = {"count_blocks": lintels, "note": "blocos contados, dimensões não lidas (símbolos)"}
 
     L = out["lines"]
     if walls:
-        L.append({"element": "Murs — longueur cumulée", "formula": " + ".join(f"{w['length_m']:.2f}" for w in walls[:8]) + (" + …" if len(walls) > 8 else ""),
+        L.append({"element": "Paredes — comprimento acumulado", "formula": " + ".join(f"{w['length_m']:.2f}" for w in walls[:8]) + (" + …" if len(walls) > 8 else ""),
                   "net": out["elements"]["walls"]["length_total_m"], "unit": "ml", "state": "confirmed"})
-        L.append({"element": "Murs — volume béton", "formula": "Σ (L × e) × hauteur sous dalle", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["hauteur sous dalle"]})
+        L.append({"element": "Paredes — volume de betão", "formula": "Σ (C × e) × altura sob a laje", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["altura sob a laje"]})
     if rows:
-        L.append({"element": "Poteaux — sections", "formula": f"{len(rows)} poteaux, Σ sections", "net": out["elements"]["columns"]["section_total_m2"], "unit": "m²", "state": "confirmed"})
-        L.append({"element": "Poteaux — volume béton", "formula": "Σ sections × hauteur", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["hauteur poteaux"]})
+        L.append({"element": "Pilares — secções", "formula": f'{len(rows)} pilares, Σ secções', "net": out["elements"]["columns"]["section_total_m2"], "unit": "m²", "state": "confirmed"})
+        L.append({"element": "Pilares — volume de betão", "formula": "Σ secções × altura", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["altura dos pilares"]})
     if beams:
-        L.append({"element": "Poutres — longueur cumulée", "formula": f"{len(beams)} poutres", "net": out["elements"]["beams"]["length_total_m"], "unit": "ml", "state": "confirmed"})
-        L.append({"element": "Poutres — volume béton", "formula": "Σ (L × largeur) × retombée", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["retombée / hauteur de poutre"]})
+        L.append({"element": "Vigas — comprimento acumulado", "formula": f"{len(beams)} poutres", "net": out["elements"]["beams"]["length_total_m"], "unit": "ml", "state": "confirmed"})
+        L.append({"element": "Vigas — volume de betão", "formula": "Σ (C × largura) × altura abaixo da laje", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["altura abaixo da laje / altura da viga"]})
     if out["elements"]["slab"]:
-        L.append({"element": "Dalle — surface nette", "formula": out["elements"]["slab"]["formula"], "net": out["elements"]["slab"]["net_area_m2"], "unit": "m²", "state": "confirmed"})
-        L.append({"element": "Dalle — volume béton", "formula": "surface nette × épaisseur", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["épaisseur dalle"]})
-    out["findings"].append({"severity": "info", "subject": "Hauteurs absentes du plan", "explanation": "Vue en plan : aucune hauteur/épaisseur lisible dans le DXF ; les volumes restent indéterminés tant que ces valeurs ne sont pas fournies ou lues sur une coupe."})
-    out["note"] = "Quantités en plan issues des faces fermées de chaque calque (lignes natives) ; aucune dimension déduite de noms de blocs ou de textes."
+        L.append({"element": "Laje — área líquida", "formula": out["elements"]["slab"]["formula"], "net": out["elements"]["slab"]["net_area_m2"], "unit": "m²", "state": "confirmed"})
+        L.append({"element": "Laje — volume de betão", "formula": "área líquida × espessura", "net": None, "unit": "m³", "state": "indeterminate", "missing": ["espessura da laje"]})
+    out["findings"].append({"severity": "info", "subject": "Alturas ausentes da planta", "explanation": "Vista em planta: nenhuma altura/espessura legível no DXF; os volumes ficam indeterminados enquanto estes valores não forem fornecidos ou lidos num corte."})
+    out["note"] = "Quantidades em planta provenientes das faces fechadas de cada camada (linhas nativas); nenhuma dimensão deduzida de nomes de blocos ou de textos."
     if keep_geometry:
         out["_geometry"] = {"wall_bodies": wall_bodies, "beams": [f for f in faces("beam") if _thin(f, 1.0)], "columns": cols,
                             "slab": slab_union, "msp": msp, "unit_to_m": u, "layers": {k: set(v) for k, v in layers.items()}}

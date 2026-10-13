@@ -16,7 +16,7 @@ from engines import autodesk_storage as storage
 from engines.autodesk_client import AutodeskError, config, request
 
 MD_BASE = "https://developer.api.autodesk.com/modelderivative/v2"
-SUPPORTED = {"dwg": "AutoCAD (2D : calques, blocs, entités)", "dxf": "DXF", "rvt": "Revit (objets, familles, propriétés)", "ifc": "IFC (classes, propriétés)",
+SUPPORTED = {"dwg": "AutoCAD (2D: camadas, blocos, entidades)", "dxf": "DXF", "rvt": "Revit (objetos, famílias, propriedades)", "ifc": "IFC (classes, propriedades)",
              "nwd": "Navisworks", "dgn": "MicroStation"}
 MAX_PROPERTIES = 20000
 POLL_SECONDS, POLL_MAX = 6, 40
@@ -33,7 +33,7 @@ def urn_for(object_id: str) -> str:
 async def _job(data: bytes, filename: str, user_id: str):
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in SUPPORTED:
-        raise AutodeskError("unsupported_format", f"Format .{ext or '?'} non pris en charge par Model Derivative ici (formats : {', '.join(SUPPORTED)}).", fallback_safe=True)
+        raise AutodeskError("unsupported_format", f"Format .{ext or '?'} não suportado pelo Model Derivative aqui (formatos: {', '.join(SUPPORTED)}).", fallback_safe=True)
     digest = hashlib.sha256(data).hexdigest()
     key = hashlib.sha256(f"{user_id}:model-derivative:{digest}".encode()).hexdigest()
     job = {"key": key, "job_id": "md_" + secrets.token_hex(10), "user_id": user_id, "filename": filename, "ext": ext, "input_sha256": digest,
@@ -65,7 +65,7 @@ async def _submit(job, data):
         await _update(job, object_key=object_key, urn=urn, status="submitting")
     except Exception:  # noqa: BLE001
         await _update(job, status="failed_before_submit", error_code="preparation_failed")
-        raise AutodeskError("preparation_failed", "Préparation Autodesk impossible. Aucune traduction n'a été lancée.", fallback_safe=True) from None
+        raise AutodeskError("preparation_failed", "Preparação Autodesk impossível. Nenhuma tradução foi lançada.", fallback_safe=True) from None
     try:
         response = await request("POST", f"{MD_BASE}/designdata/job", json={
             "input": {"urn": urn}, "output": {"formats": [{"type": "svf2", "views": ["2d", "3d"]}]}}, accepted=(201,))
@@ -75,7 +75,7 @@ async def _submit(job, data):
         raise
     except Exception:  # noqa: BLE001
         await _update(job, status="unknown", error_code="receipt_unavailable")
-        raise AutodeskError("pending", "Réponse Autodesk perdue : la traduction n'est pas relancée.") from None
+        raise AutodeskError("pending", "Resposta Autodesk perdida: a tradução não é relançada.") from None
 
 
 async def _wait_manifest(job):
@@ -88,9 +88,9 @@ async def _wait_manifest(job):
         if status in ("failed", "timeout"):
             messages = [m.get("message") for d in manifest.get("derivatives", []) for m in d.get("messages", []) if m.get("message")]
             await _update(job, status="failed", error_code="translation_failed", provider_messages=messages[:5])
-            raise AutodeskError("translation_failed", "Autodesk n'a pas pu traduire ce fichier : " + "; ".join(str(m) for m in messages[:2]))
+            raise AutodeskError("translation_failed", "A Autodesk não conseguiu traduzir este ficheiro: " + "; ".join(str(m) for m in messages[:2]))
         await asyncio.sleep(POLL_SECONDS)
-    raise AutodeskError("translation_pending", "Traduction Autodesk toujours en cours : relancez la lecture plus tard (aucune nouvelle traduction).")
+    raise AutodeskError("translation_pending", "Tradução Autodesk ainda em curso: relance a leitura mais tarde (nenhuma nova tradução).")
 
 
 async def _views(urn):
@@ -120,9 +120,8 @@ def summarize(collection: list[dict], ext: str) -> dict:
                     layers[str(v)] += 1
                 if k.lower() in ("category", "catégorie", "ifc type", "type", "famille", "family"):
                     categories[str(v)] += 1
-    kind_note = ("Un DWG traduit fournit des entités (lignes, polylignes, blocs, textes) par calque : ce ne sont pas des murs identifiés. "
-                 "La classification constructive reste à faire (classify_strokes / lecture)." if ext in ("dwg", "dxf")
-                 else "Objets natifs avec propriétés : les catégories/classes sont exploitables telles quelles, dans le périmètre demandé.")
+    kind_note = ("Um DWG traduzido fornece entidades (linhas, polilinhas, blocos, textos) por camada: não são paredes identificadas. A classificação construtiva continua por fazer (classify_strokes / leitura)." if ext in ("dwg", "dxf")
+                 else "Objetos nativos com propriedades: as categorias/classes são utilizáveis tal como estão, no âmbito pedido.")
     return {"objects": len(collection), "layers": layers.most_common(40), "categories": categories.most_common(40),
             "property_keys": [k for k, _ in keys.most_common(60)], "note": kind_note}
 
@@ -136,7 +135,7 @@ async def extract(data: bytes, filename: str, *, user_id: str) -> dict:
     if not fresh and job.get("status") in ("pending", "submitting", "unknown", "preparing"):
         if job.get("urn") and job["status"] == "pending":
             return await _complete(job)
-        raise AutodeskError("pending", "Une traduction de ce fichier est déjà en cours ou incertaine : aucune nouvelle traduction n'est lancée.")
+        raise AutodeskError("pending", "Uma tradução deste ficheiro já está em curso ou incerta: nenhuma nova tradução é lançada.")
     await _submit(job, data)
     return await _complete(job)
 

@@ -17,8 +17,7 @@ VERSION = "ec2-rebar-0.1.0"
 ES_MPA = 200000.0          # module d'élasticité de l'acier (EN 1992-1-1 §3.2.7)
 EPS_CU3 = 0.0035           # déformation ultime du béton (fck ≤ 50 MPa), diagramme rect.
 LAMBDA = 0.8               # hauteur du bloc de compression (fck ≤ 50 MPa)
-SOURCE_DOC = ("EN 1992-1-1 §6.1 (flexion), §6.2.2/§6.2.3 (effort tranchant), "
-              "§9.2.1/§9.2.2 (As mini/maxi) — valeurs usuelles AN FR — à vérifier")
+SOURCE_DOC = ("NP EN 1992-1-1 §6.1 (flexão), §6.2.2/§6.2.3 (esforço transverso), §9.2.1/§9.2.2 (As mín./máx.) — valores usuais do Anexo Nacional português — a verificar")
 
 CONCRETE = [
     {"key": "C20/25", "fck": 20},
@@ -37,7 +36,7 @@ def materials_catalog() -> dict:
         "concrete": CONCRETE,
         "steel": {"grade": "B500B", "fyk": 500, "es_mpa": ES_MPA},
         "factors": {"gamma_c": 1.5, "gamma_s": 1.15, "alpha_cc": 1.0},
-        "note": "Valeurs usuelles AN FR, éditables. Aucune résistance validée — à vérifier par l'ingénieur.",
+        "note": "Valores usuais do Anexo Nacional português, editáveis. Nenhuma resistência validada — a verificar pelo engenheiro.",
     }
 
 
@@ -55,9 +54,9 @@ def design_section(med_knm: float, ved_kn: float = 0.0, *, b_m: float, h_m: floa
     Sorties d'acier en cm² (flexion) et cm²/m (effort tranchant).
     """
     if d_m <= 0 or d_m >= h_m:
-        raise ValueError("La hauteur utile d doit être strictement comprise entre 0 et h.")
+        raise ValueError("A altura útil d deve estar estritamente entre 0 e h.")
     if fck > 50:
-        raise ValueError("Ce lot couvre les bétons jusqu'à C50/60 (diagramme rectangulaire λ=0.8).")
+        raise ValueError("Este capítulo cobre os betões até C50/60 (diagrama retangular λ=0.8).")
 
     # Résistances de calcul
     fcd = alpha_cc * fck / gamma_c
@@ -93,24 +92,23 @@ def design_section(med_knm: float, ved_kn: float = 0.0, *, b_m: float, h_m: floa
         dm = M_Nmm - m1                                  # repris par acier comprimé + As2
         x_mm = xi_lim * d_mm
         if dp_mm >= x_mm:
-            warn_fx.append("Enrobage d' supérieur à la hauteur comprimée x : hypothèse d'armature "
-                           "comprimée invalide, revoir la section (à vérifier).")
+            warn_fx.append("Recobrimento d\' superior à altura comprimida x: hipótese de armadura comprimida inválida, rever a secção (a verificar).")
             sigma_sc = fyd
         else:
             eps_sc = EPS_CU3 * (x_mm - dp_mm) / x_mm
             sigma_sc = min(eps_sc * ES_MPA, fyd)
             if eps_sc < eps_yd:
-                warn_fx.append("Acier comprimé non plastifié (σ'sc < fyd) : contrainte réduite appliquée (à vérifier).")
+                warn_fx.append("Aço comprimido não plastificado (σ\'sc < fyd): tensão reduzida aplicada (a verificar).")
         as2 = dm / ((d_mm - dp_mm) * fyd)
         as_comp_mm2 = dm / ((d_mm - dp_mm) * sigma_sc)
         as_mm2 = as1 + as2
-        warn_fx.append("Moment > moment limite de section simplement armée : armature de compression requise.")
+        warn_fx.append("Momento > momento limite de secção simplesmente armada: armadura de compressão necessária.")
 
     as_min_mm2 = max(0.26 * fctm / fyk * b_mm * d_mm, 0.0013 * b_mm * d_mm)
     as_max_mm2 = 0.04 * b_mm * h_mm
     as_req_mm2 = max(as_mm2, as_min_mm2)
     if as_mm2 > as_max_mm2:
-        warn_fx.append("As de flexion supérieur au maximum 0,04·Ac : section insuffisante (à vérifier).")
+        warn_fx.append("As de flexão superior ao máximo 0,04·Ac: secção insuficiente (a verificar).")
 
     flexure = {
         "med_knm": _r(med_knm, 3), "mu": _r(mu, 4), "mu_lim": _r(mu_lim, 4), "mode": mode,
@@ -143,8 +141,7 @@ def design_section(med_knm: float, ved_kn: float = 0.0, *, b_m: float, h_m: floa
             # augmenter θ (réduire cotθ vers 1) pour relever V_Rd,max
             s = b_mm * z_v_mm * nu1 * fcd / V_N
             if s < 2.0:
-                warn_v.append("Effort tranchant supérieur à V_Rd,max même à θ=45° : "
-                              "section/bw/fck insuffisants (à vérifier).")
+                warn_v.append("Esforço transverso superior a V_Rd,max mesmo com θ=45°: secção/bw/fck insuficientes (a verificar).")
                 cot = 1.0
             else:
                 cot = (s + math.sqrt(s * s - 4)) / 2
@@ -162,8 +159,7 @@ def design_section(med_knm: float, ved_kn: float = 0.0, *, b_m: float, h_m: floa
         "vrdmax_kn": _r(vrdmax_N / 1000, 2), "cot_theta": _r(cot, 3), "k": _r(k, 3), "rho_l": _r(rho_l, 5),
         "asw_s_cm2_m": _r(asw_s_mm * 10), "asw_s_min_cm2_m": _r(asw_s_min_mm * 10),
         "asw_s_req_cm2_m": _r(asw_s_req_mm * 10), "s_max_m": _r(s_max_mm / 1000, 3),
-        "formula": "V_Rd,c=[0.18/γc·k·(100·ρl·fck)^⅓]·bw·d ; si V_Ed>V_Rd,c → treillis : "
-                   "Asw/s=V_Ed/(z·fywd·cotθ), z=0.9d ; V_Rd,max=bw·z·ν1·fcd/(cotθ+tanθ).",
+        "formula": "V_Rd,c=[0.18/γc·k·(100·ρl·fck)^⅓]·bw·d ; se V_Ed>V_Rd,c → treliça : Asw/s=V_Ed/(z·fywd·cotθ), z=0.9d ; V_Rd,max=bw·z·ν1·fcd/(cotθ+tanθ).",
         "warnings": warn_v,
     }
 
@@ -194,7 +190,7 @@ def _auto_provided(auto_design: dict, as_req_cm2: float, asw_s_req_cm2_m: float)
         "bar_mm": phi, "count": n, "as_provided_cm2": _r(as_prov),
         "as_req_cm2": _r(as_req_cm2), "label": f"{n}Ø{phi}",
         "ok": as_prov + 1e-9 >= as_req_cm2,
-        "note": "Aciers choisis par la chaîne automatique, réinjectés dans la vérification EN 1992."}
+        "note": "Aços escolhidos pela cadeia automática, reinjetados na verificação NP EN 1992."}
     stirrups = None
     s_mm = auto_design.get("stirrup_diameter_mm")
     if s_mm:
@@ -204,10 +200,10 @@ def _auto_provided(auto_design: dict, as_req_cm2: float, asw_s_req_cm2_m: float)
             "stirrup_mm": int(s_mm), "legs": 2, "s_adopt_m": _r(s_adopt, 3),
             "asw_s_prov_cm2_m": _r(asw_prov), "asw_s_req_cm2_m": _r(asw_s_req_cm2_m),
             "ok": asw_prov + 1e-9 >= asw_s_req_cm2_m,
-            "label": f"Ø{int(s_mm)} (2 brins) e={_r(s_adopt, 3)} m"}
+            "label": f'Ø{int(s_mm)} (2 ramos) e={_r(s_adopt, 3)} m'}
     return {"version": VERSION, "origin": "automation", "longitudinal": longitudinal,
             "stirrups": stirrups, "execution_ready": False,
-            "source": "Aciers réinjectés de la chaîne automatique — dispositions constructives à vérifier."}
+            "source": "Aços reinjetados da cadeia automática — disposições construtivas a verificar."}
 
 
 def design_study(model: dict, result: dict, opts: dict, auto: dict | None = None) -> dict:
@@ -237,17 +233,17 @@ def design_study(model: dict, result: dict, opts: dict, auto: dict | None = None
         v = (ee.get("uls") or {}).get("shear_kn")
         if not m:
             rows.append({"id": rid, "status": "no_envelope",
-                         "message": "Générez d'abord les combinaisons EN 1990 (moment dimensionnant manquant)."})
+                         "message": "Gere primeiro as combinações NP EN 1990 (momento condicionante em falta)."})
             continue
         b, h = el.get("width_m"), el.get("height_m")
         if not b or not h:
             rows.append({"id": rid, "status": "missing_section",
-                         "message": "Largeur et hauteur de la poutre requises dans le modèle."})
+                         "message": "Largura e altura da viga obrigatórias no modelo."})
             continue
         d = round(h - cover, 4)
         if d <= 0:
             rows.append({"id": rid, "status": "missing_section",
-                         "message": "Enrobage supérieur à la hauteur : hauteur utile d invalide."})
+                         "message": "Recobrimento superior à altura: altura útil d inválida."})
             continue
         try:
             design = design_section(
@@ -279,11 +275,8 @@ def design_study(model: dict, result: dict, opts: dict, auto: dict | None = None
                      "ved_kn": (v or {}).get("value"), "ved_case": (v or {}).get("label"),
                      "design": design, "scheme": scheme,
                      "reinforcement_source": reinforcement_source, "provided_ok": provided_ok})
-    note = ("Acier NÉCESSAIRE issu de l'enveloppe EN 1990. Efforts seulement ; "
-            "hauteur utile d = h − enrobage (hypothèse). Aucune disposition constructive, "
-            "ancrage, fissuration ni flèche vérifiés. À valider par l'ingénieur.")
+    note = ("Aço NECESSÁRIO proveniente da envolvente NP EN 1990. Apenas esforços; altura útil d = h − recobrimento (hipótese). Nenhuma disposição construtiva, amarração, fendilhação nem flecha verificadas. A validar pelo engenheiro.")
     if auto_designs:
-        note += (" Les poutres marquées « auto » comparent les aciers CHOISIS par la chaîne "
-                 "automatique à l'acier nécessaire EN 1992 (dossier BET unifié).")
+        note += (" As vigas marcadas «auto» comparam os aços ESCOLHIDOS pela cadeia automática com o aço necessário NP EN 1992 (processo de engenharia unificado).")
     return {"version": VERSION, "elements": rows, "execution_ready": False,
             "reinjected_from_automation": bool(auto_designs), "note": note}

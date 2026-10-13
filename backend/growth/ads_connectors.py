@@ -29,13 +29,13 @@ async def status(project_id: str) -> dict:
     conn = await db.growth_connections.find_one({"project_id": project_id, "provider": "google_ads", "status": "connected"}, {"_id": 0, "tokens_enc": 0})
     g_missing = [k for k in ("GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_ADS_CUSTOMER_ID") if not env(k)]
     if not conn:
-        g_missing.append("Autorisation Google (bouton « Autoriser Google Ads »)")
+        g_missing.append("Autorização Google (botão «Autorizar Google Ads»)")
     m_missing = [k for k in ("META_ADS_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PAGE_ID") if not env(k)]
     return {"google": {"configured": not g_missing, "missing": g_missing, "oauth_connected": bool(conn), "connected_at": (conn or {}).get("connected_at"),
                        "customer_id": env("GOOGLE_ADS_CUSTOMER_ID"), "login_customer_id": env("GOOGLE_ADS_LOGIN_CUSTOMER_ID"),
-                       "how_to": "Developer token : Google Ads → compte administrateur → Outils → Centre API. Customer ID : en haut à droite de Google Ads (sans tirets). Puis « Autoriser Google Ads » (scope adwords)."},
+                       "how_to": "Developer token: Google Ads → conta de administrador → Ferramentas → Centro de API. Customer ID: no canto superior direito do Google Ads (sem hífenes). Depois «Autorizar Google Ads» (scope adwords)."},
             "meta": {"configured": not m_missing, "missing": m_missing, "ad_account_id": env("META_AD_ACCOUNT_ID"), "page_id": env("META_PAGE_ID"),
-                     "how_to": "Meta Business Settings → Utilisateurs système → jeton avec ads_management, ads_read, pages_read_engagement ; Ad Account ID (act_…) et Page ID."}}
+                     "how_to": "Meta Business Settings → Utilizadores do sistema → token com ads_management, ads_read, pages_read_engagement; Ad Account ID (act_…) e Page ID."}}
 
 
 # ---------- Google Ads ----------
@@ -43,7 +43,7 @@ async def _google_token(project_id: str) -> str:
     from growth import google as g
     conn = await db.growth_connections.find_one({"project_id": project_id, "provider": "google_ads", "status": "connected"}, {"_id": 0})
     if not conn:
-        raise ConnectorError("Google Ads non autorisé : cliquez « Autoriser Google Ads »")
+        raise ConnectorError("Google Ads não autorizado: clique em «Autorizar Google Ads»")
     return await g._access_token(conn)
 
 
@@ -65,7 +65,7 @@ async def _gads_mutate(client: httpx.AsyncClient, token: str, customer_id: str, 
 async def publish_google(project: dict, ad: dict, daily_budget_eur: float = 10.0, validate_only: bool = False) -> dict:
     g = ad["platforms"]["google"]
     if len(g["headlines"]) < 3 or len(g["descriptions"]) < 2:
-        raise ConnectorError("RSA incomplète : 3 titres et 2 descriptions minimum")
+        raise ConnectorError("RSA incompleto: mínimo 3 títulos e 2 descrições")
     token = await _google_token(project["project_id"])
     cid = _digits(env("GOOGLE_ADS_CUSTOMER_ID"))
     name = f"Growth {project['key'].upper()} · {ad['title'][:80]}"
@@ -120,7 +120,7 @@ async def _meta_post(client: httpx.AsyncClient, path: str, data: dict) -> dict:
 
 async def meta_health() -> dict:
     if not env("META_ADS_ACCESS_TOKEN"):
-        raise ConnectorError("META_ADS_ACCESS_TOKEN manquant")
+        raise ConnectorError("META_ADS_ACCESS_TOKEN em falta")
     async with httpx.AsyncClient(timeout=20) as client:
         params = {"access_token": env("META_ADS_ACCESS_TOKEN"), "fields": "id,name,currency,account_status"}
         r = await client.get(f"https://graph.facebook.com/{META_V}/act_{_digits(env('META_AD_ACCOUNT_ID'))}", params=params)
@@ -135,7 +135,7 @@ async def meta_health() -> dict:
 async def publish_meta(project: dict, ad: dict, daily_budget_eur: float = 10.0) -> dict:
     m = ad["platforms"]["meta"]
     if not m["primary_texts"] or not m["headlines"]:
-        raise ConnectorError("Créa Meta incomplète")
+        raise ConnectorError("Criativo Meta incompleto")
     acct = _digits(env("META_AD_ACCOUNT_ID"))
     name = f"Growth {project['key'].upper()} · {ad['title'][:80]}"
     country = "PT" if project["key"] == "pt" else "FR"
@@ -143,10 +143,10 @@ async def publish_meta(project: dict, ad: dict, daily_budget_eur: float = 10.0) 
     async with httpx.AsyncClient(timeout=40) as client:
         camp = await _meta_post(client, f"act_{acct}/campaigns", {"name": name, "objective": "OUTCOME_TRAFFIC", "status": "PAUSED", "special_ad_categories": []})
         out["campaign_id"] = camp["id"]
-        adset = await _meta_post(client, f"act_{acct}/adsets", {"name": f"{name} — {country}", "campaign_id": camp["id"], "daily_budget": round(daily_budget_eur * 100), "billing_event": "IMPRESSIONS",
+        adset = await _meta_post(client, f"act_{acct}/adsets", {"name": f"{name} — {country}", "campaign_id": camp["id"], "daily_budget": round(daily_budget_eur * 100), "billing_event": "IMPRESSÕES",
                                                                  "optimization_goal": "LINK_CLICKS", "status": "PAUSED", "targeting": {"geo_locations": {"countries": [country]}}})
         out["adset_id"] = adset["id"]
-        creative = await _meta_post(client, f"act_{acct}/adcreatives", {"name": f"{name} — créa", "object_story_spec": {"page_id": env("META_PAGE_ID"), "link_data": {
+        creative = await _meta_post(client, f"act_{acct}/adcreatives", {"name": f'{name} — criativo', "object_story_spec": {"page_id": env("META_PAGE_ID"), "link_data": {
             "message": m["primary_texts"][0], "link": ad["final_url"], "name": m["headlines"][0], "description": (m["descriptions"] or [""])[0],
             "call_to_action": {"type": m.get("cta") or "LEARN_MORE", "value": {"link": ad["final_url"]}}}}})
         out["creative_id"] = creative["id"]

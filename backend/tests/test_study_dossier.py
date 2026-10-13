@@ -87,7 +87,7 @@ def test_sources_and_revision_and_missing_pages():
     spec=tiny(status='observed',sources=[{'page':11,'text':'cote'}],reviewed=True)
     a=calculate(spec,coverage={'analyzed_pages':[11],'omitted_pages':[1]})
     assert a['items'][0]['quantity_status']=='M' and a['items'][0]['sources'][0]['sources'][0]['page']==11
-    assert any('pages' in w for w in a['warnings'])
+    assert any('páginas' in w for w in a['warnings'])
     spec['parameters'][0]['value']=7
     assert a['revision']!=calculate(spec)['revision']
 
@@ -106,9 +106,9 @@ def test_xlsx_contains_same_prices_and_inert_sources():
     from engines.study_dossier_xlsx import build_dossier_xlsx
     spec=tiny();spec['items'][0]['designation']='=HYPERLINK("https://example.invalid")'
     s=calculate(spec);wb=load_workbook(BytesIO(build_dossier_xlsx(s)))
-    assert wb['Devis']['B2'].data_type=='s'
-    assert wb['Devis']['G2'].value==2.5 and wb['Devis']['H2'].value==20
-    assert wb['Calculs']['B2'].data_type=='s'
+    assert wb['Orçamento']['B2'].data_type=='s'
+    assert wb['Orçamento']['G2'].value==2.5 and wb['Orçamento']['H2'].value==20
+    assert wb['Cálculos']['B2'].data_type=='s'
 
 def test_docx_and_pdf_share_values_and_missing_labels():
     import pymupdf

@@ -3,7 +3,7 @@ from core.db import db
 from growth.common import new_id, now_iso
 
 PROJECTS = [
-    {"project_id": "growth_fr", "key": "fr", "name": "construpilot.fr", "domain": "construpilot.fr", "site_url": "https://construpilot.fr", "language": "fr-FR", "country": "FR", "market": "France"},
+    {"project_id": "growth_fr", "key": "fr", "name": "construpilot.pt", "domain": "construpilot.fr", "site_url": "https://construpilot.fr", "language": "fr-FR", "country": "FR", "market": "França"},
     {"project_id": "growth_pt", "key": "pt", "name": "construpilot.pt", "domain": "construpilot.pt", "site_url": "https://construpilot.pt", "language": "pt-PT", "country": "PT", "market": "Portugal"},
 ]
 DEFAULT_SETTINGS = {"max_pages": 60, "crawl_cadence_days": 7, "publish_mode": "review", "budgets": {"daily_usd": 5, "monthly_usd": 60},
@@ -16,29 +16,29 @@ COMPETITORS_FR = [{"name": "Obat", "variants": ["Obat"], "domains": ["obat.fr"],
                   {"name": "Vertuoza", "variants": ["Vertuoza"], "domains": ["vertuoza.com"], "is_self": False, "confirmed": False, "suggested": True}]
 
 FACTS = [
-    ("produit", "Logiciel BTP en ligne : devis, factures, suivi de chantier, clients", "confirmed"),
-    ("produit", "Assistant IA BTP capable d'analyser des plans PDF/DWG et d'en déduire des volumes (coffrage, béton)", "confirmed"),
-    ("produit", "Module de métré : mesure sur plan, pièces, ouvertures, quantités", "confirmed"),
-    ("produit", "Estimation de travaux pour particuliers avec fourchette indicative de 30 %", "confirmed"),
-    ("produit", "Radar Chantiers : permis de construire officiels (SITADEL) et courrier postal", "confirmed"),
-    ("marché", "Disponible en français (construpilot.fr) et en portugais du Portugal (construpilot.pt)", "confirmed"),
-    ("tarifs", "Tarifs et offres : à reprendre depuis la page tarifs publique avant toute affirmation", "to_verify"),
-    ("preuves", "Nombre de clients, témoignages, certifications : aucun chiffre confirmé — ne pas publier", "to_verify"),
-    ("conformité", "Facturation électronique (PDP) : en préparation, non opérationnelle", "planned"),
+    ("produit", "Software de construção online: orçamentos, faturas, acompanhamento de obra, clientes", "confirmed"),
+    ("produit", "Assistente IA de construção capaz de analisar plantas PDF/DWG e deduzir volumes (cofragem, betão)", "confirmed"),
+    ("produit", "Módulo de medição: medição sobre planta, divisões, aberturas, quantidades", "confirmed"),
+    ("produit", "Estimativa de obras para particulares com intervalo indicativo de 30 %", "confirmed"),
+    ("produit", "Radar de Obras: licenças de construção oficiais e correio postal", "confirmed"),
+    ("marché", "Disponível em francês (construpilot.fr) e em português de Portugal (construpilot.pt)", "confirmed"),
+    ("tarifs", "Preços e ofertas: a retomar da página pública de preços antes de qualquer afirmação", "to_verify"),
+    ("preuves", "Número de clientes, testemunhos, certificações: nenhum número confirmado — não publicar", "to_verify"),
+    ("conformité", "Faturação eletrónica: em preparação, não operacional", "planned"),
 ]
 
 QUESTIONS_FR = {
-    "découverte": ["Quel logiciel de devis choisir pour une entreprise de rénovation en France ?", "Quels logiciels permettent d'exploiter des plans pour préparer un métré ?",
-                   "Comment faire un métré à partir d'un plan PDF ?", "Quel outil pour calculer les quantités de béton à partir d'un plan ?", "Quels logiciels de gestion de chantier existent pour les PME du bâtiment ?",
-                   "Existe-t-il des assistants IA spécialisés dans le bâtiment ?"],
-    "comparaison": ["Quelles alternatives à Obat et Vertuoza pour une PME du bâtiment ?", "Obat ou Vertuoza : lequel choisir pour les devis et factures ?", "Quels sont les meilleurs logiciels de devis bâtiment en 2026 ?",
-                    "Quel logiciel BTP intègre à la fois devis, facturation et lecture de plans ?", "Comparatif des logiciels de facturation pour artisans du BTP", "Quel logiciel de métré est le plus simple pour un artisan ?"],
-    "achat": ["Combien coûte un logiciel de devis et factures pour artisan ?", "Quel logiciel de devis bâtiment gratuit ou pas cher pour démarrer ?", "Quel logiciel BTP choisir pour une entreprise de 5 salariés ?",
-              "Quel logiciel de gestion de chantier propose un essai gratuit ?", "Quel logiciel de devis est conforme à la facturation électronique 2026 ?", "Quel abonnement logiciel pour un maçon indépendant ?"],
-    "besoin métier": ["Comment estimer le coût d'une rénovation de maison en France ?", "Comment calculer le volume de béton d'une dalle et de fondations ?", "Comment lire un plan de coffrage ?",
-                      "Comment trouver des chantiers et des permis de construire près de chez moi ?", "Comment préparer un compte rendu de réunion de chantier ?", "Comment suivre la rentabilité d'un chantier ?"],
-    "marque": ["Qu'est-ce que ConstruPilot ?", "ConstruPilot avis : que vaut ce logiciel BTP ?", "ConstruPilot permet-il d'analyser des plans DWG ?",
-               "ConstruPilot ou Obat pour une entreprise de rénovation ?", "Quels sont les tarifs de ConstruPilot ?", "ConstruPilot est-il disponible au Portugal ?"],
+    "découverte": ["Que software de orçamentos escolher para uma empresa de remodelação em Portugal?", "Que software permite explorar plantas para preparar uma medição?",
+                   "Como fazer uma medição a partir de uma planta em PDF?", "Que ferramenta para calcular as quantidades de betão a partir de uma planta?", "Que software de gestão de obra existe para PME da construção?",
+                   "Existem assistentes IA especializados em construção?"],
+    "comparaison": ["Que alternativas existem aos programas de orçamentação tradicionais para uma PME da construção?", "Que programa escolher para orçamentos e faturas na construção?", "Quais são os melhores programas de orçamentos de construção em 2026?",
+                    "Que software de construção integra orçamentos, faturação e leitura de plantas?", "Comparativo de programas de faturação para profissionais da construção", "Que software de medição é o mais simples para um profissional independente?"],
+    "achat": ["Quanto custa um software de orçamentos e faturas para construção?", "Que software de orçamentos de construção gratuito ou barato para começar?", "Que software de construção escolher para uma empresa com 5 trabalhadores?",
+              "Que software de gestão de obra oferece uma experiência grátis?", "Que software de orçamentos está conforme com a faturação eletrónica?", "Que subscrição de software para um pedreiro independente?"],
+    "besoin métier": ["Como estimar o custo da remodelação de uma casa em Portugal?", "Como calcular o volume de betão de uma laje e de fundações?", "Como ler uma planta de cofragem?",
+                      "Como encontrar obras e licenças de construção perto de mim?", "Como preparar uma ata de reunião de obra?", "Como acompanhar a rentabilidade de uma obra?"],
+    "marque": ["O que é o ConstruPilot?", "ConstruPilot opiniões: o que vale este software de construção?", "O ConstruPilot permite analisar plantas DWG?",
+               "ConstruPilot ou outro programa para uma empresa de remodelação?", "Quais são os preços do ConstruPilot?", "O ConstruPilot está disponível em Portugal?"],
 }
 QUESTIONS_PT = {
     "découverte": ["Qual é o melhor software de orçamentos para empresas de construção em Portugal?", "Que software permite gerir obras e faturação em Portugal?",
@@ -73,7 +73,7 @@ async def ensure_seed() -> dict:
         if not await db.growth_brand_facts.find_one({"project_id": pid}):
             for cat, st, status in FACTS:
                 await db.growth_brand_facts.insert_one({"fact_id": new_id("fact"), "project_id": pid, "category": cat, "statement": st, "status": status,
-                                                        "source": "Inspection du code ConstruPilot (PRD.md) — à confirmer par l'équipe", "date": now_iso()[:10], "created_at": now_iso()})
+                                                        "source": "Inspeção do código ConstruPilot (PRD.md) — a confirmar pela equipa", "date": now_iso()[:10], "created_at": now_iso()})
                 created["facts"] += 1
         if not await db.growth_questions.find_one({"project_id": pid}):
             bank = QUESTIONS_FR if p["key"] == "fr" else QUESTIONS_PT

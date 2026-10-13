@@ -67,7 +67,7 @@ async def members(user=Depends(admin)) -> dict:
 async def upsert_member(body: MemberIn, user=Depends(admin)) -> dict:
     u = await db.users.find_one({"email": body.email.lower().strip()}, {"_id": 0, "user_id": 1, "email": 1, "name": 1})
     if not u:
-        raise HTTPException(404, "Aucun compte ConstruPilot avec cet email")
+        raise HTTPException(404, "Nenhuma conta ConstruPilot com este email")
     await db.growth_members.update_one({"user_id": u["user_id"]}, {"$set": {"user_id": u["user_id"], "email": u["email"], "name": u.get("name"), "role": body.role, "updated_at": now_iso()}}, upsert=True)
     return {"ok": True}
 
@@ -123,7 +123,7 @@ async def add_fact(project_id: str, body: FactIn, user=Depends(editor)) -> dict:
 async def edit_fact(fact_id: str, body: FactIn, user=Depends(editor)) -> dict:
     r = await db.growth_brand_facts.update_one({"fact_id": fact_id}, {"$set": {**body.model_dump(), "updated_at": now_iso(), "updated_by": user["user_id"]}})
     if not r.matched_count:
-        raise HTTPException(404, "Fait introuvable")
+        raise HTTPException(404, "Facto não encontrado")
     return {"ok": True}
 
 
@@ -165,7 +165,7 @@ async def edit_brand(brand_id: str, body: BrandIn, user=Depends(editor)) -> dict
 async def del_brand(brand_id: str, user=Depends(editor)) -> dict:
     b = await db.growth_brands.find_one({"brand_id": brand_id}, {"_id": 0})
     if b and b.get("is_self"):
-        raise HTTPException(400, "La marque ConstruPilot ne peut pas être retirée")
+        raise HTTPException(400, "A marca ConstruPilot não pode ser retirada")
     await db.growth_brands.delete_one({"brand_id": brand_id})
     return {"ok": True}
 
@@ -195,7 +195,7 @@ async def add_question(project_id: str, body: QuestionIn, user=Depends(editor)) 
 async def edit_question(question_id: str, body: QuestionIn, user=Depends(editor)) -> dict:
     q = await db.growth_questions.find_one({"question_id": question_id}, {"_id": 0})
     if not q:
-        raise HTTPException(404, "Question introuvable")
+        raise HTTPException(404, "Pergunta não encontrada")
     bump = q["text"] != body.text
     await db.growth_questions.update_one({"question_id": question_id}, {"$set": {**body.model_dump(), "updated_at": now_iso()}, **({"$inc": {"version": 1}} if bump else {})})
     return {"ok": True, "version_bumped": bump}
@@ -212,7 +212,7 @@ async def del_question(question_id: str, user=Depends(editor)) -> dict:
 async def start_audit(project_id: str, max_pages: int | None = Body(None, embed=True), user=Depends(editor)) -> dict:
     p = await get_project(project_id)
     if await db.growth_audits.find_one({"project_id": project_id, "status": {"$in": ["queued", "running"]}}):
-        raise HTTPException(409, "Un audit est déjà en cours pour ce projet")
+        raise HTTPException(409, "Já está em curso uma auditoria para este projeto")
     a = {"audit_id": new_id("aud"), "project_id": project_id, "status": "queued", "max_pages": min(int(max_pages or (p.get("settings") or {}).get("max_pages") or 50), 300),
          "created_at": now_iso(), "created_by": user["user_id"], "progress": 0, "pages_crawled": 0}
     await db.growth_audits.insert_one(dict(a))
@@ -229,7 +229,7 @@ async def list_audits(project_id: str, user=Depends(reader)) -> dict:
 async def get_audit(audit_id: str, user=Depends(reader)) -> dict:
     a = await db.growth_audits.find_one({"audit_id": audit_id}, {"_id": 0})
     if not a:
-        raise HTTPException(404, "Audit introuvable")
+        raise HTTPException(404, "Auditoria não encontrada")
     issues = await db.growth_issues.find({"audit_id": audit_id}, {"_id": 0}).sort([("severity", 1), ("url", 1)]).to_list(3000)
     pages = await db.growth_pages.find({"audit_id": audit_id}, {"_id": 0, "internal_links": 0}).to_list(500)
     return {"audit": a, "issues": issues, "pages": pages}
@@ -255,7 +255,7 @@ class ProviderCfg(BaseModel):
 
 
 class CampaignIn(BaseModel):
-    name: str = "Campagne"
+    name: str = "Campanha"
     question_ids: list[str] = Field(min_length=1)
     providers: list[ProviderCfg] = Field(min_length=1)
     repetitions: int = Field(1, ge=1, le=5)
@@ -272,7 +272,7 @@ async def create_campaign(project_id: str, body: CampaignIn, user=Depends(editor
     c["estimated_cost_usd"] = camp.estimate(c)
     c["missing_connections"] = missing
     b = (p.get("settings") or {}).get("budgets") or {}
-    c["budget_note"] = f"Plafonds : {b.get('daily_usd') or '∞'} $/jour, {b.get('monthly_usd') or '∞'} $/mois — dépensé aujourd'hui {await spent(project_id, 'day')} $"
+    c["budget_note"] = f"Limites: {b.get('daily_usd') or '∞'} $/jour, {b.get('monthly_usd') or '∞'} $/mês — gasto hoje {await spent(project_id, 'day')} $"
     await db.growth_campaigns.insert_one(dict(c))
     return c
 
@@ -286,11 +286,11 @@ async def list_campaigns(project_id: str, user=Depends(reader)) -> dict:
 async def run_campaign(campaign_id: str, user=Depends(editor)) -> dict:
     c = await db.growth_campaigns.find_one({"campaign_id": campaign_id}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Campagne introuvable")
+        raise HTTPException(404, "Campanha não encontrada")
     if c["status"] == "running":
-        raise HTTPException(409, "Campagne déjà en cours")
+        raise HTTPException(409, "Campanha já em curso")
     if c["status"] in ("completed", "budget_reached"):
-        raise HTTPException(409, "Campagne déjà terminée : créez une nouvelle campagne pour une nouvelle période")
+        raise HTTPException(409, "Campanha já terminada: crie uma nova campanha para um novo período")
     await db.growth_campaigns.update_one({"campaign_id": campaign_id}, {"$set": {"status": "running", "stop_requested": False, "run_by": user["user_id"]}})
     camp.RUNNING[campaign_id] = asyncio.create_task(camp.run_campaign(campaign_id))
     return {"ok": True}
@@ -305,7 +305,7 @@ async def stop_campaign(campaign_id: str, user=Depends(editor)) -> dict:
 @router.get("/campaigns/{campaign_id}")
 async def campaign_metrics(campaign_id: str, user=Depends(reader)) -> dict:
     if not await db.growth_campaigns.find_one({"campaign_id": campaign_id}):
-        raise HTTPException(404, "Campagne introuvable")
+        raise HTTPException(404, "Campanha não encontrada")
     return await camp.metrics(campaign_id)
 
 
@@ -318,7 +318,7 @@ async def campaign_tests(campaign_id: str, user=Depends(reader)) -> dict:
 async def get_test(test_id: str, user=Depends(reader)) -> dict:
     t = await db.growth_tests.find_one({"test_id": test_id}, {"_id": 0})
     if not t:
-        raise HTTPException(404, "Test introuvable")
+        raise HTTPException(404, "Teste não encontrado")
     return t
 
 
@@ -326,7 +326,7 @@ async def get_test(test_id: str, user=Depends(reader)) -> dict:
 async def flag_mention(test_id: str, brand_id: str, false_positive: bool = Body(..., embed=True), user=Depends(editor)) -> dict:
     t = await db.growth_tests.find_one({"test_id": test_id}, {"_id": 0})
     if not t:
-        raise HTTPException(404, "Test introuvable")
+        raise HTTPException(404, "Teste não encontrado")
     mentions = t.get("mentions") or []
     for m in mentions:
         if m["brand_id"] == brand_id:
@@ -342,16 +342,16 @@ async def flag_mention(test_id: str, brand_id: str, false_positive: bool = Body(
 async def compare(a: str = Query(...), b: str = Query(...), user=Depends(reader)) -> dict:
     ca, cb = await db.growth_campaigns.find_one({"campaign_id": a}, {"_id": 0}), await db.growth_campaigns.find_one({"campaign_id": b}, {"_id": 0})
     if not ca or not cb:
-        raise HTTPException(404, "Campagne introuvable")
+        raise HTTPException(404, "Campanha não encontrada")
     common_q = sorted(set(ca["question_ids"]) & set(cb["question_ids"]))
     same_cfg = sorted((p["provider"], p.get("model") or p.get("preset") or "") for p in ca["providers"]) == sorted((p["provider"], p.get("model") or p.get("preset") or "") for p in cb["providers"])
     changes = []
     if not same_cfg:
-        changes.append("fournisseurs/modèles différents")
+        changes.append("fornecedores/modelos diferentes")
     if ca.get("protocol_version") != cb.get("protocol_version"):
-        changes.append("version de protocole différente")
+        changes.append("versão de protocolo diferente")
     if set(ca["question_ids"]) != set(cb["question_ids"]):
-        changes.append(f"périmètre de questions différent ({len(common_q)} communes)")
+        changes.append(f'âmbito de perguntas diferente ({len(common_q)} communes)')
 
     async def per_q(cid):
         out = {}
@@ -362,7 +362,7 @@ async def compare(a: str = Query(...), b: str = Query(...), user=Depends(reader)
     pa, pb = await per_q(a), await per_q(b)
     rows = [{"question_id": q, "text": (pa.get(q) or pb.get(q) or {}).get("text"), "a": camp._rate(pa.get(q, {}).get("self", 0), pa.get(q, {}).get("valid", 0)), "b": camp._rate(pb.get(q, {}).get("self", 0), pb.get(q, {}).get("valid", 0))} for q in common_q]
     return {"a": ca, "b": cb, "common_questions": len(common_q), "changes": changes, "rows": rows,
-            "caveat": "Comparaison sur les questions communes uniquement. Tout changement listé ci-dessus limite l'interprétation ; une variation n'est pas une preuve de causalité."}
+            "caveat": "Comparação apenas sobre as perguntas comuns. Qualquer alteração listada acima limita a interpretação; uma variação não é prova de causalidade."}
 
 
 # ---------- actions ----------
@@ -423,9 +423,9 @@ async def generate_actions(project_id: str, user=Depends(editor)) -> dict:
             if ref in existing:
                 continue
             first = items[0]
-            await db.growth_actions.insert_one({"action_id": new_id("act"), "project_id": project_id, "title": f"Corriger « {kind} » sur {len(items)} page(s)", "problem": first["consequence"],
+            await db.growth_actions.insert_one({"action_id": new_id("act"), "project_id": project_id, "title": f'Corrigir «{kind}» em {len(items)} page(s)', "problem": first["consequence"],
                                                 "evidence": first["evidence"], "url": first["url"], "impact": impact[first["severity"]], "effort": first["effort"], "owner": "", "due_date": "",
-                                                "kpi": f"0 page avec « {kind} » au prochain audit", "status": "todo", "source": "audit", "source_ref": ref, "issue_ids": [i["issue_id"] for i in items][:200], "created_at": now_iso()})
+                                                "kpi": f'0 páginas com «{kind}» na próxima auditoria', "status": "todo", "source": "audit", "source_ref": ref, "issue_ids": [i["issue_id"] for i in items][:200], "created_at": now_iso()})
             created += 1
     campaign = await db.growth_campaigns.find_one({"project_id": project_id, "status": {"$in": ["completed", "stopped", "budget_reached"]}}, {"_id": 0}, sort=[("started_at", -1)])
     if campaign:
@@ -437,9 +437,9 @@ async def generate_actions(project_id: str, user=Depends(editor)) -> dict:
         for qid, d in absent.items():
             ref = f"campaign:{campaign['campaign_id']}:{qid}"
             if d["self"] == 0 and d["valid"] and ref not in existing:
-                await db.growth_actions.insert_one({"action_id": new_id("act"), "project_id": project_id, "title": f"Publier une réponse utile à : « {d['text'][:90]} »", "problem": "ConstruPilot absent des réponses IA testées pour cette question",
-                                                    "evidence": f"0/{d['valid']} réponses valides mentionnent ConstruPilot ; marques citées : {', '.join(sorted(d['others'])) or 'aucune'} (hypothèse : absence de contenu ciblé)",
-                                                    "url": "", "impact": "moyen", "effort": "moyen", "owner": "", "due_date": "", "kpi": "Mention de ConstruPilot sur cette question lors d'une prochaine campagne",
+                await db.growth_actions.insert_one({"action_id": new_id("act"), "project_id": project_id, "title": f"Publicar uma resposta útil a: «{d['text'][:90]} »", "problem": "ConstruPilot ausente das respostas IA testadas para esta pergunta",
+                                                    "evidence": f"0/{d['valid']} respostas válidas mencionam o ConstruPilot; marcas citadas: {', '.join(sorted(d['others'])) or 'aucune'} (hipótese: ausência de conteúdo direcionado)",
+                                                    "url": "", "impact": "moyen", "effort": "moyen", "owner": "", "due_date": "", "kpi": "Menção do ConstruPilot nesta pergunta numa próxima campanha",
                                                     "status": "todo", "source": "campaign", "source_ref": ref, "question_id": qid, "created_at": now_iso()})
                 created += 1
     return {"ok": True, "created": created}
@@ -481,14 +481,14 @@ async def add_content(project_id: str, body: ContentIn, user=Depends(editor)) ->
 async def get_content(content_id: str, user=Depends(reader)) -> dict:
     c = await db.growth_contents.find_one({"content_id": content_id}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Contenu introuvable")
+        raise HTTPException(404, "Conteúdo não encontrado")
     return c
 
 
 async def _load(content_id: str) -> tuple[dict, dict]:
     c = await db.growth_contents.find_one({"content_id": content_id}, {"_id": 0})
     if not c:
-        raise HTTPException(404, "Contenu introuvable")
+        raise HTTPException(404, "Conteúdo não encontrado")
     return c, await get_project(c["project_id"])
 
 
@@ -500,7 +500,7 @@ def _snapshot(c: dict) -> dict:
 async def edit_content(content_id: str, body: ContentIn, user=Depends(editor)) -> dict:
     c, _ = await _load(content_id)
     if c["status"] == "published" and user["growth_role"] != "admin":
-        raise HTTPException(403, "Modifier un article publié requiert le rôle admin")
+        raise HTTPException(403, "Modificar um artigo publicado requer a função admin")
     upd = {k: v for k, v in body.model_dump().items() if v != "" or k in ("body_markdown",)}
     changed = any(c.get(k) != v for k, v in upd.items())
     sets = {**upd, "updated_at": now_iso(), "updated_by": user["user_id"]}
@@ -519,7 +519,7 @@ async def make_brief(content_id: str, user=Depends(editor)) -> dict:
     try:
         b = await ct.generate_brief(p, c)
     except Exception as e:
-        raise HTTPException(502, f"Génération du brief impossible : {e}")
+        raise HTTPException(502, f'Geração do briefing impossível: {e}')
     await db.growth_contents.update_one({"content_id": content_id}, {"$set": {**{k: b.get(k) for k in ("title", "slug", "description", "audience", "outline", "internal_links", "sources_to_check", "cta", "search_intent_note")}, "status": "brief", "updated_at": now_iso()}})
     return await get_content(content_id, user)
 
@@ -528,11 +528,11 @@ async def make_brief(content_id: str, user=Depends(editor)) -> dict:
 async def make_draft(content_id: str, user=Depends(editor)) -> dict:
     c, p = await _load(content_id)
     if not c.get("outline"):
-        raise HTTPException(400, "Préparez d'abord le brief")
+        raise HTTPException(400, "Prepare primeiro o briefing")
     try:
         d = await ct.generate_draft(p, c)
     except Exception as e:
-        raise HTTPException(502, f"Rédaction impossible : {e}")
+        raise HTTPException(502, f'Redação impossível: {e}')
     sets = {"title": d.get("title") or c.get("title"), "body_markdown": d.get("body_markdown") or "", "claims_about_construpilot": d.get("claims_about_construpilot") or [], "sources": d.get("sources") or [], "faq": d.get("faq") or [],
             "status": "draft", "checks": None, "updated_at": now_iso(), "version": c.get("version", 1) + (1 if c.get("body_markdown") else 0)}
     await db.growth_contents.update_one({"content_id": content_id}, {"$set": sets, **({"$push": {"versions": _snapshot(c)}} if c.get("body_markdown") else {})})
@@ -543,7 +543,7 @@ async def make_draft(content_id: str, user=Depends(editor)) -> dict:
 async def check_content(content_id: str, user=Depends(editor)) -> dict:
     c, p = await _load(content_id)
     if not c.get("body_markdown"):
-        raise HTTPException(400, "Aucun texte à vérifier")
+        raise HTTPException(400, "Nenhum texto a verificar")
     checks = await ct.quality_checks(p, c)
     await db.growth_contents.update_one({"content_id": content_id}, {"$set": {"checks": checks, "status": "review" if c["status"] in ("draft", "brief") else c["status"]}})
     return checks
@@ -553,12 +553,12 @@ async def check_content(content_id: str, user=Depends(editor)) -> dict:
 async def set_status(content_id: str, status: str = Body(..., embed=True), scheduled_for: str = Body("", embed=True), user=Depends(editor)) -> dict:
     c, p = await _load(content_id)
     if status not in ct.STATES:
-        raise HTTPException(400, "État inconnu")
+        raise HTTPException(400, "Estado desconhecido")
     if status in ("approved", "scheduled"):
         if not (c.get("checks") or {}).get("passed") or c["checks"].get("checked_at", "") < c.get("updated_at", ""):
-            raise HTTPException(409, "Relancez les contrôles de qualité sur la version actuelle avant d'approuver")
+            raise HTTPException(409, "Relance os controlos de qualidade sobre a versão atual antes de aprovar")
         if user["growth_role"] not in ("admin", "editor"):
-            raise HTTPException(403, "Approbation réservée aux éditeurs/admins")
+            raise HTTPException(403, "Aprovação reservada a editores/admins")
     sets = {"status": status, "status_changed_at": now_iso()}
     if status in ("approved", "scheduled"):
         sets["approved_by"] = user["user_id"]; sets["approved_at"] = now_iso()
@@ -572,15 +572,15 @@ async def set_status(content_id: str, status: str = Body(..., embed=True), sched
 async def publish_content(content_id: str, user=Depends(editor)) -> dict:
     c, p = await _load(content_id)
     if c["status"] not in ("approved", "scheduled", "failed"):
-        raise HTTPException(409, "Le contenu doit être approuvé avant publication")
+        raise HTTPException(409, "O conteúdo deve ser aprovado antes da publicação")
     checks = c.get("checks") or {}
     if not checks.get("passed") or checks.get("checked_at", "") < c.get("updated_at", ""):
-        raise HTTPException(409, "Contrôles de qualité manquants ou obsolètes pour cette version : une affirmation non vérifiée bloque la publication")
+        raise HTTPException(409, "Controlos de qualidade em falta ou obsoletos para esta versão: uma afirmação não verificada bloqueia a publicação")
     if (p.get("settings") or {}).get("publish_mode") != "auto" and not c.get("approved_by"):
-        raise HTTPException(409, "Mode validation : une approbation explicite est requise")
+        raise HTTPException(409, "Modo validação: é necessária uma aprovação explícita")
     lock = await db.growth_contents.update_one({"content_id": content_id, "publishing": {"$ne": True}}, {"$set": {"publishing": True}})
     if not lock.modified_count:
-        raise HTTPException(409, "Publication déjà en cours")
+        raise HTTPException(409, "Publicação já em curso")
     try:
         res = await ct.publish(p, c, user["user_id"])
         await db.growth_contents.update_one({"content_id": content_id}, {"$set": {"status": "published", **res, "publishing": False, "updated_at": now_iso()}, "$push": {"publications": res}})
@@ -589,7 +589,7 @@ async def publish_content(content_id: str, user=Depends(editor)) -> dict:
         return res
     except Exception as e:
         await db.growth_contents.update_one({"content_id": content_id}, {"$set": {"status": "failed", "publish_error": str(e)[:300], "publishing": False}})
-        raise HTTPException(502, f"Publication échouée : {e}")
+        raise HTTPException(502, f'Publicação falhada: {e}')
 
 
 @router.post("/contents/{content_id}/rollback/{version}")
@@ -597,7 +597,7 @@ async def rollback(content_id: str, version: int, user=Depends(editor)) -> dict:
     c, p = await _load(content_id)
     snap = next((v for v in c.get("versions") or [] if v.get("version") == version), None)
     if not snap:
-        raise HTTPException(404, "Version introuvable")
+        raise HTTPException(404, "Versão não encontrada")
     sets = {k: snap.get(k) for k in ("title", "slug", "description", "body_markdown")}
     sets.update({"version": c.get("version", 1) + 1, "checks": None, "status": "review", "updated_at": now_iso()})
     await db.growth_contents.update_one({"content_id": content_id}, {"$set": sets, "$push": {"versions": _snapshot(c)}})
@@ -618,9 +618,9 @@ async def archive_content(content_id: str, user=Depends(editor)) -> dict:
 async def publish_inbox(payload: dict = Body(...), authorization: str = Header("")) -> dict:
     token = env("GROWTH_PUBLISH_TOKEN")
     if not token or not secrets.compare_digest(authorization.removeprefix("Bearer ").strip(), token):
-        raise HTTPException(401, "Jeton de publication invalide")
+        raise HTTPException(401, "Token de publicação inválido")
     if not payload.get("autoseo_id", "").startswith("growth_") or not payload.get("slug") or not payload.get("content_html"):
-        raise HTTPException(422, "Article incomplet")
+        raise HTTPException(422, "Artigo incompleto")
     allowed = {k: payload.get(k) for k in ("autoseo_id", "title", "slug", "published_url", "meta_description", "content_html", "content_markdown", "keywords", "language_code", "status", "published_at", "updated_at", "faq_schema", "source", "growth_content_id", "growth_version")}
     await db.autoseo_articles.update_one({"autoseo_id": allowed["autoseo_id"]}, {"$set": {**allowed, "received_at": now_iso()}, "$setOnInsert": {"first_received_at": now_iso()}}, upsert=True)
     return {"ok": True, "url": allowed["published_url"]}
@@ -669,14 +669,14 @@ async def integrations(user=Depends(reader)) -> dict:
     conns = await db.growth_connections.find({}, {"_id": 0, "tokens_enc": 0}).to_list(50)
     return {"providers": provider_status(), "google": gsc.status(), "connections": conns,
             "pt_publish": {"configured": bool(env("GROWTH_PT_SITE_URL") and env("GROWTH_PUBLISH_TOKEN")), "site_url": env("GROWTH_PT_SITE_URL"), "inbox_token_set": bool(env("GROWTH_PUBLISH_TOKEN")),
-                           "how_to": "Définir GROWTH_PUBLISH_TOKEN (même valeur) sur les deux déploiements et GROWTH_PT_SITE_URL=https://construpilot.pt sur celui-ci."},
-            "ga4": {"configured": False, "how_to": "GA4 : nécessite l'API Analytics Data et une propriété ; non connecté."}}
+                           "how_to": "Definir GROWTH_PUBLISH_TOKEN (mesmo valor) nas duas implementações e GROWTH_PT_SITE_URL=https://construpilot.pt nesta."},
+            "ga4": {"configured": False, "how_to": "GA4: requer a API Analytics Data e uma propriedade; não ligado."}}
 
 
 @router.post("/integrations/google/start")
 async def google_start(project_id: str = Body(..., embed=True), provider: Literal["google_search_console", "google_ads"] = Body("google_search_console", embed=True), user=Depends(admin)) -> dict:
     if not gsc.status()["client_configured"]:
-        raise HTTPException(409, {"message": "Client OAuth Google non configuré", **gsc.status()})
+        raise HTTPException(409, {"message": "Cliente OAuth Google não configurado", **gsc.status()})
     return {"url": gsc.start_url(project_id, user["user_id"], provider)}
 
 
@@ -705,7 +705,7 @@ async def google_sync(project_id: str = Body(..., embed=True), site_url: str = B
 async def search_console(project_id: str, user=Depends(reader)) -> dict:
     snap = await db.growth_gsc_snapshots.find_one({"project_id": project_id}, {"_id": 0}, sort=[("synced_at", -1)])
     conn = await db.growth_connections.find_one({"project_id": project_id, "provider": "google_search_console"}, {"_id": 0, "tokens_enc": 0})
-    return {"connection": conn, "snapshot": snap, "conversions": {"available": False, "note": "Inscriptions / demandes de démo : aucun événement instrumenté relié à Growth — non affiché."}}
+    return {"connection": conn, "snapshot": snap, "conversions": {"available": False, "note": "Registos / pedidos de demonstração: nenhum evento instrumentado ligado ao Growth — não apresentado."}}
 
 
 # ---------- budget ----------
@@ -716,7 +716,7 @@ async def costs(project_id: str, user=Depends(reader)) -> dict:
     by_day = await db.growth_costs.aggregate([{"$match": {"project_id": project_id}}, {"$group": {"_id": "$day", "usd": {"$sum": "$usd"}}}, {"$sort": {"_id": -1}}, {"$limit": 31}]).to_list(31)
     return {"budgets": (p.get("settings") or {}).get("budgets"), "spent_day": await spent(project_id, "day"), "spent_month": await spent(project_id, "month"),
             "by_provider": [{"provider": r["_id"]["provider"], "month": r["_id"]["month"], "estimated": r["_id"]["estimated"], "usd": round(r["usd"], 4), "calls": r["n"]} for r in by_provider],
-            "by_day": [{"day": r["_id"], "usd": round(r["usd"], 4)} for r in by_day], "note": "Coûts Perplexity = montants réels renvoyés par l'API ; coûts via clé universelle = estimations à partir des tokens."}
+            "by_day": [{"day": r["_id"], "usd": round(r["usd"], 4)} for r in by_day], "note": "Custos Perplexity = montantes reais devolvidos pela API; custos via chave universal = estimativas a partir dos tokens."}
 
 
 # ---------- résultats (article → Search Console → inscriptions) ----------
@@ -748,9 +748,9 @@ async def results(project_id: str, user=Depends(reader)) -> dict:
     return {"rows": rows, "totals": totals, "newsletters": nl_stats, "site": site,
             "gsc": {"connected": bool(snap), "period": {"start": snap["start"], "end": snap["end"]} if snap else None, "synced_at": (snap or {}).get("synced_at")},
             "attributed_users": len(users),
-            "limits": ["Search Console : agrégats par page sur 28 jours, décalage ~2 jours ; une page sans ligne n'a pas eu d'impression enregistrée.",
-                       "Inscriptions : attribution « premier contact » (page d'entrée / UTM enregistrés dans le navigateur à la première visite, transmis à l'inscription) — depuis la mise en place uniquement ; pas de suivi inter-appareils.",
-                       "Annonces : les URL finales portent utm_campaign=<slug de l'article> ; newsletters : utm_campaign=<id newsletter>."]}
+            "limits": ["Search Console: agregados por página em 28 dias, atraso de ~2 dias; uma página sem linha não teve impressões registadas.",
+                       "Registos: atribuição «primeiro contacto» (página de entrada / UTM guardados no navegador na primeira visita, transmitidos no registo) — apenas desde a implementação; sem seguimento entre dispositivos.",
+                       "Anúncios: os URL finais têm utm_campaign=<slug do artigo>; newsletters: utm_campaign=<id da newsletter>."]}
 
 
 # ---------- push vers un autre déploiement (production / .pt) ----------
@@ -759,26 +759,26 @@ async def push_content(content_id: str, target_url: str = Body(..., embed=True),
     """Envoie l'article publié ici vers l'inbox d'un autre déploiement (même GROWTH_PUBLISH_TOKEN des deux côtés)."""
     c, p = await _load(content_id)
     if c["status"] != "published":
-        raise HTTPException(400, "Publiez d'abord l'article ici")
+        raise HTTPException(400, "Publique primeiro o artigo aqui")
     token = env("GROWTH_PUBLISH_TOKEN")
     if not token:
-        raise HTTPException(409, "GROWTH_PUBLISH_TOKEN manquant sur ce déploiement")
+        raise HTTPException(409, "GROWTH_PUBLISH_TOKEN em falta nesta implementação")
     target = target_url.rstrip("/")
     allowed = {u.rstrip("/") for u in (env("GROWTH_PUSH_TARGETS") or "https://construpilot.fr,https://www.construpilot.fr,https://construpilot.pt,https://www.construpilot.pt").split(",") if u.strip()}
     if env("GROWTH_PT_SITE_URL"):
         allowed.add(env("GROWTH_PT_SITE_URL").rstrip("/"))
     if target not in allowed:
-        raise HTTPException(422, f"Cible non autorisée — cibles admises : {', '.join(sorted(allowed))} (variable GROWTH_PUSH_TARGETS)")
+        raise HTTPException(422, f"Destino não autorizado — destinos admitidos: {', '.join(sorted(allowed))} (variable GROWTH_PUSH_TARGETS)")
     payload = ct.article_payload({**p, "site_url": target}, c)
     async with httpx.AsyncClient(timeout=30) as client:
         try:
             r = await client.post(f"{target}/api/growth/publish-inbox", json=payload, headers={"Authorization": f"Bearer {token}"})
         except Exception as e:
-            raise HTTPException(502, f"Cible injoignable : {type(e).__name__}")
+            raise HTTPException(502, f'Destino inacessível: {type(e).__name__}')
     if r.status_code == 401:
-        raise HTTPException(409, "La cible refuse le jeton : définir la même valeur GROWTH_PUBLISH_TOKEN dans Publish → Secrets puis redéployer")
+        raise HTTPException(409, "O destino recusa o token: definir o mesmo valor GROWTH_PUBLISH_TOKEN em Publish → Secrets e voltar a implementar")
     if r.status_code >= 300:
-        raise HTTPException(502, f"Cible : HTTP {r.status_code} {r.text[:120]}")
+        raise HTTPException(502, f'Destino: HTTP {r.status_code} {r.text[:120]}')
     res = {"target": target, "url": r.json().get("url"), "pushed_at": now_iso(), "pushed_by": user["user_id"]}
     await db.growth_contents.update_one({"content_id": content_id}, {"$push": {"pushes": res}})
     return res
@@ -844,7 +844,7 @@ async def autofix_run(project_id: str, user=Depends(editor)) -> dict:
     p = await get_project(project_id)
     audit = await db.growth_audits.find_one({"project_id": project_id, "status": {"$in": ["completed", "stopped"]}}, {"_id": 0}, sort=[("finished_at", -1)])
     if not audit:
-        raise HTTPException(409, "Aucun audit terminé : lancez d'abord un audit.")
+        raise HTTPException(409, "Nenhuma auditoria concluída: lance primeiro uma auditoria.")
     return await autofix.run(p, audit, trigger="manual")
 
 
@@ -877,7 +877,7 @@ class OverrideIn(BaseModel):
 async def set_seo_override(override_id: str, body: OverrideIn, user=Depends(editor)) -> dict:
     o = await db.growth_seo_overrides.find_one({"override_id": override_id}, {"_id": 0})
     if not o:
-        raise HTTPException(404, "Surcharge introuvable")
+        raise HTTPException(404, "Substituição não encontrada")
     sets = {"status": body.status, "decided_at": now_iso(), "decided_by": user["user_id"]}
     if body.title.strip():
         sets["title"] = body.title.strip()[:60]
@@ -917,7 +917,7 @@ async def autopilot_run(project_id: str, resume_only: bool = Body(False, embed=T
     from growth import autopilot as ap
     await get_project(project_id)
     if await db.growth_autopilot_runs.find_one({"project_id": project_id, "status": "running"}):
-        raise HTTPException(409, "Un cycle auto-pilote est déjà en cours")
+        raise HTTPException(409, "Já está em curso um ciclo de piloto automático")
     asyncio.create_task(ap.run(project_id, "manual", resume_only=resume_only))
     return {"ok": True, "started": True}
 
@@ -929,7 +929,7 @@ async def research_content(content_id: str, user=Depends(editor)) -> dict:
     try:
         research = await find_sources(p, c)
     except Exception as e:
-        raise HTTPException(502, f"Recherche de sources impossible : {type(e).__name__}: {e}")
+        raise HTTPException(502, f'Pesquisa de fontes impossível: {type(e).__name__}: {e}')
     await db.growth_contents.update_one({"content_id": content_id}, {"$set": {"research": research, "updated_at": now_iso()}})
     return research
 
@@ -940,7 +940,7 @@ async def auto_content(content_id: str, user=Depends(editor)) -> dict:
     from growth import autopilot as ap
     c, p = await _load(content_id)
     if c["status"] in ("published", "archived"):
-        raise HTTPException(400, "Contenu déjà publié ou archivé")
+        raise HTTPException(400, "Conteúdo já publicado ou arquivado")
     await db.growth_contents.update_one({"content_id": content_id}, {"$set": {"status": "idea", "autopilot_log": []}})
     asyncio.create_task(ap.run_pipeline(p, {**c, "status": "idea"}))
     return {"ok": True, "started": True}
@@ -959,11 +959,11 @@ async def make_ads(content_id: str, user=Depends(editor)) -> dict:
     from growth import marketing as mk
     c, p = await _load(content_id)
     if not c.get("published_url"):
-        raise HTTPException(400, "Publiez l'article avant de générer ses annonces")
+        raise HTTPException(400, "Publique o artigo antes de gerar os anúncios")
     try:
         ad = await mk.generate_ads(p, c)
     except Exception as e:
-        raise HTTPException(502, f"Génération des annonces impossible : {e}")
+        raise HTTPException(502, f'Geração dos anúncios impossível: {e}')
     ad["created_by"] = user["user_id"]
     await db.growth_ads.insert_one(dict(ad))
     return ad
@@ -979,7 +979,7 @@ async def edit_ad(ad_id: str, body: AdIn, user=Depends(editor)) -> dict:
     from growth import marketing as mk
     ad = await db.growth_ads.find_one({"ad_id": ad_id}, {"_id": 0})
     if not ad:
-        raise HTTPException(404, "Annonce introuvable")
+        raise HTTPException(404, "Anúncio não encontrado")
     sets = {"updated_at": now_iso()}
     if body.platforms is not None:
         sets["platforms"] = mk.normalize_ads(body.platforms); sets["missing"] = mk.ads_complete(sets["platforms"])
@@ -994,7 +994,7 @@ async def export_ad(ad_id: str, platform: Literal["google", "meta"] = Query("goo
     from growth import marketing as mk
     ad = await db.growth_ads.find_one({"ad_id": ad_id}, {"_id": 0})
     if not ad:
-        raise HTTPException(404, "Annonce introuvable")
+        raise HTTPException(404, "Anúncio não encontrado")
     p = await get_project(ad["project_id"])
     text = (mk.google_csv if platform == "google" else mk.meta_csv)(ad, f"ConstruPilot Growth {p['key'].upper()}")
     return Response(content=text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{platform}-{ad_id}.csv"'})
@@ -1006,17 +1006,17 @@ async def publish_ad(ad_id: str, platform: Literal["google", "meta"] = Body(...,
     from growth import ads_connectors as cx
     ad = await db.growth_ads.find_one({"ad_id": ad_id}, {"_id": 0})
     if not ad:
-        raise HTTPException(404, "Annonce introuvable")
+        raise HTTPException(404, "Anúncio não encontrado")
     if ad["status"] not in ("approved", "published"):
-        raise HTTPException(400, "Approuvez l'annonce avant publication")
+        raise HTTPException(400, "Aprove o anúncio antes da publicação")
     if any(pub.get("platform") == platform and not pub.get("validate_only") for pub in ad.get("publications") or []):
-        raise HTTPException(409, f"Déjà publiée sur {platform} (voir le lien de gestion)")
+        raise HTTPException(409, f'Já publicado em {platform} (ver a ligação de gestão)')
     p = await get_project(ad["project_id"])
     st = (await cx.status(p["project_id"]))[platform]
     if not st["configured"]:
-        raise HTTPException(409, f"Connecteur {platform} non configuré — manque : {', '.join(st['missing'])}. En attendant, utilisez l'export CSV.")
+        raise HTTPException(409, f"Conector {platform} não configurado — falta: {', '.join(st['missing'])}. Entretanto, utilize a exportação CSV.")
     if not 1 <= daily_budget_eur <= 500:
-        raise HTTPException(422, "Budget quotidien entre 1 et 500 €")
+        raise HTTPException(422, "Orçamento diário entre 1 e 500 €")
     try:
         res = await (cx.publish_google(p, ad, daily_budget_eur, validate_only) if platform == "google" else cx.publish_meta(p, ad, daily_budget_eur))
     except cx.ConnectorError as e:
@@ -1059,11 +1059,11 @@ async def make_newsletter(project_id: str, content_ids: list[str] = Body([], emb
         q["content_id"] = {"$in": content_ids}
     contents = await db.growth_contents.find(q, {"_id": 0}).sort("published_at", -1).to_list(5)
     if not contents:
-        raise HTTPException(400, "Aucun article publié à présenter")
+        raise HTTPException(400, "Nenhum artigo publicado a apresentar")
     try:
         nl = await mk.generate_newsletter(p, contents)
     except Exception as e:
-        raise HTTPException(502, f"Génération de la newsletter impossible : {e}")
+        raise HTTPException(502, f'Geração da newsletter impossível: {e}')
     nl["created_by"] = user["user_id"]
     await db.growth_newsletters.insert_one(dict(nl))
     return nl
@@ -1084,9 +1084,9 @@ class NewsletterIn(BaseModel):
 async def edit_newsletter(newsletter_id: str, body: NewsletterIn, user=Depends(editor)) -> dict:
     nl = await db.growth_newsletters.find_one({"newsletter_id": newsletter_id}, {"_id": 0})
     if not nl:
-        raise HTTPException(404, "Newsletter introuvable")
+        raise HTTPException(404, "Newsletter não encontrada")
     if nl["status"] == "sent":
-        raise HTTPException(400, "Newsletter déjà envoyée")
+        raise HTTPException(400, "Newsletter já enviada")
     sets = {k: v for k, v in body.model_dump().items() if v is not None}
     if "subject" in sets:
         sets["subject"] = sets["subject"][:60]
@@ -1100,7 +1100,7 @@ async def preview_newsletter(newsletter_id: str, user=Depends(reader)):
     from growth import marketing as mk
     nl = await db.growth_newsletters.find_one({"newsletter_id": newsletter_id}, {"_id": 0})
     if not nl:
-        raise HTTPException(404, "Newsletter introuvable")
+        raise HTTPException(404, "Newsletter não encontrada")
     return mk.newsletter_html(nl, "#")
 
 
@@ -1109,22 +1109,22 @@ async def send_newsletter(newsletter_id: str, test: bool = Body(False, embed=Tru
     from growth import marketing as mk
     nl = await db.growth_newsletters.find_one({"newsletter_id": newsletter_id}, {"_id": 0})
     if not nl:
-        raise HTTPException(404, "Newsletter introuvable")
+        raise HTTPException(404, "Newsletter não encontrada")
     if test:
         me = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "email": 1})
         return await mk.send_newsletter(nl, user["user_id"], test_to=me["email"])
     if user["growth_role"] != "admin":
-        raise HTTPException(403, "L'envoi aux abonnés requiert le rôle admin")
+        raise HTTPException(403, "O envio aos subscritores requer a função admin")
     if nl["status"] != "approved":
-        raise HTTPException(400, "Approuvez la newsletter avant l'envoi")
+        raise HTTPException(400, "Aprove a newsletter antes do envio")
     lock = await db.growth_newsletters.update_one({"newsletter_id": newsletter_id, "status": "approved"}, {"$set": {"status": "sending"}})
     if not lock.modified_count:
-        raise HTTPException(409, "Envoi déjà en cours")
+        raise HTTPException(409, "Envio já em curso")
     try:
         res = await mk.send_newsletter(nl, user["user_id"])
     except Exception as e:  # noqa: BLE001
         await db.growth_newsletters.update_one({"newsletter_id": newsletter_id}, {"$set": {"status": "approved", "send_error": f"{type(e).__name__}: {e}"[:300]}})
-        raise HTTPException(502, f"Envoi interrompu ({type(e).__name__}) — la newsletter reste approuvée, relancez l'envoi")
+        raise HTTPException(502, f'Envio interrompido ({type(e).__name__}) — a newsletter continua aprovada, relance o envio')
     await db.growth_newsletters.update_one({"newsletter_id": newsletter_id}, {"$set": {"status": "sent", "sent_at": now_iso(), "result": res}})
     return res
 
@@ -1148,18 +1148,10 @@ async def assistant(project_id: str = Body(..., embed=True), question: str = Bod
                        "projet": {k: p.get(k) for k in ("name", "market", "language")}, "dernier_audit": proj.get("last_audit") and {k: proj["last_audit"].get(k) for k in ("pages_crawled", "issues_count", "summary", "finished_at")},
                        "metriques_campagne": {k: proj.get("last_campaign", {}).get(k) for k in ("mention_rate", "citation_rate", "share_of_mentions", "coverage")} if proj.get("last_campaign") else None,
                        "tests": tests, "problemes_ouverts": issues, "actions_ouvertes": actions, "search_console": proj.get("gsc") and proj["gsc"].get("totals")}, ensure_ascii=False, default=str)[:60000]
-    system = ("Tu es l'assistant du module ConstruPilot Growth (SEO et visibilité IA). Tu réponds en français, de façon concise et structurée. "
-              "Tu distingues explicitement OBSERVATIONS (issues des données fournies, avec les chiffres et dénominateurs) et HYPOTHÈSES. Tu ne fabriques aucune donnée absente : si une information manque, dis « données indisponibles ». "
-              "Tu ne présentes jamais une variation comme la preuve d'un effet d'une action. Termine par une section « Action proposée » applicable (tâche, preuve, indicateur). "
-              "Un AUTO-PILOTE existe : chaque nuit il clôture les problèmes disparus au ré-audit, CORRIGE AUTOMATIQUEMENT les titres/descriptions, les canonicals et les redirections 404 "
-              "(appliqués à chaud, statut « correction appliquée » jusqu'à confirmation par le ré-audit), et rédige des articles jusqu'à la relecture. "
-              "Le champ `corrections_automatiques` liste ce qui a été corrigé et ce qui reste manuel avec sa raison. Ne redemande jamais une correction déjà appliquée ; "
-              "pour les problèmes manuels (H1, rendu, performance, hébergement), explique précisément ce qu'il faut changer dans le code ou l'hébergement. "
-              "Si un problème réapparaît malgré une correction appliquée, dis que la version déployée du site n'inclut probablement pas encore la correction. "
-              f"Rôle de l'utilisateur : {user['growth_role']} — tu ne publies pas d'article toi-même.")
+    system = (f"És o assistente do módulo ConstruPilot Growth (SEO e visibilidade IA). Respondes em português europeu, de forma concisa e estruturada. Distingues explicitamente OBSERVAÇÕES (resultantes dos dados fornecidos, com os números e denominadores) e HIPÓTESES. Não fabricas nenhum dado ausente: se faltar uma informação, diz «dados indisponíveis». Nunca apresentas uma variação como prova de efeito de uma ação. Termina com uma secção «Ação proposta» aplicável (tarefa, prova, indicador). Existe um PILOTO AUTOMÁTICO: todas as noites fecha os problemas desaparecidos na nova auditoria, CORRIGE AUTOMATICAMENTE os títulos/descrições, as canonicals e os redirecionamentos 404 (aplicados em tempo real, estado «correção aplicada» até confirmação pela nova auditoria), e redige artigos até à revisão. O campo `corrections_automatiques` lista o que foi corrigido e o que continua manual com a sua razão. Nunca voltes a pedir uma correção já aplicada; para os problemas manuais (H1, renderização, desempenho, alojamento), explica precisamente o que é preciso mudar no código ou no alojamento. Se um problema reaparecer apesar de uma correção aplicada, diz que a versão implementada do site provavelmente ainda não inclui a correção. Função do utilizador: {user['growth_role']} — não publicas artigos tu próprio.")
     try:
-        answer = await ct._llm(system, f"Données du projet (JSON) :\n{data}\n\nQuestion : {question}", project_id, "assistant")
+        answer = await ct._llm(system, f'Dados do projeto (JSON):\n{data}\n\nQuestion : {question}', project_id, "assistant")
     except Exception as e:
-        raise HTTPException(502, f"Assistant indisponible : {type(e).__name__}")
+        raise HTTPException(502, f'Assistente indisponível: {type(e).__name__}')
     await db.growth_assistant_log.insert_one({"project_id": project_id, "user_id": user["user_id"], "question": question, "answer": answer, "at": now_iso()})
     return {"answer": answer, "grounded_on": {"tests": len(tests), "issues": len(issues), "actions": len(actions), "has_audit": bool(proj.get("last_audit")), "has_campaign": bool(campaign)}}

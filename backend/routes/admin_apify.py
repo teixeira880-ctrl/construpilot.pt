@@ -61,9 +61,9 @@ class PresetBody(BaseModel):
 async def save_preset(key: str, body: PresetBody, admin=Depends(admin_user)) -> dict:
     """Enregistre un override de preset (hashtags, ville, catégories, URLs…) sans toucher au code."""
     if key not in apify.PRESETS:
-        raise HTTPException(404, "Preset inconnu")
+        raise HTTPException(404, "Preset desconhecido")
     if not ACTOR_RE.match(body.actor_id):
-        raise HTTPException(400, "Identifiant d'Actor invalide")
+        raise HTTPException(400, "Identificador de Actor inválido")
     await db.apify_presets.update_one(
         {"key": key},
         {"$set": {"key": key, "actor_id": body.actor_id, "input": body.input,
@@ -93,7 +93,7 @@ class RunBody(BaseModel):
 async def run(body: RunBody, admin=Depends(admin_user)) -> dict:
     """Démarre un run d'Actor Apify et enregistre un job interrogeable."""
     if not ACTOR_RE.match(body.actor_id):
-        raise HTTPException(400, "Identifiant d'Actor invalide")
+        raise HTTPException(400, "Identificador de Actor inválido")
     try:
         started = await apify.start_run(body.actor_id, body.input)
     except RuntimeError as e:
@@ -124,7 +124,7 @@ async def job_status(job_id: str) -> dict:
     """Interroge l'état du run ; à la réussite, récupère/persiste les items une fois."""
     job = await db.apify_jobs.find_one({"job_id": job_id}, {"_id": 0})
     if not job:
-        raise HTTPException(404, "Job introuvable")
+        raise HTTPException(404, "Tarefa não encontrada")
     if job["status"] not in apify.TERMINAL:
         try:
             run_info = await apify.get_run(job["run_id"])

@@ -65,10 +65,10 @@ def _with_default_prices(beton_price_m3: float, acier_price_kg: float,
 
 # Presets intégrés proposés par type de chantier
 _BETON_BUILTIN_PRESETS = [
-    {"name": "Maison", "builtin": True, "wall_height": 2.5, "dalle_ep": 0.16,
+    {"name": "Moradia", "builtin": True, "wall_height": 2.5, "dalle_ep": 0.16,
      "voile_ep": 0.20, "poutre_l": 0.20, "poutre_h": 0.40, "acier_price_kg": 0.0, "beton_price_m3": 0.0,
      "acier_ratios": {"semelles": 40, "poteaux": 110, "poutres": 120, "dalles": 80, "voiles": 55}},
-    {"name": "Immeuble", "builtin": True, "wall_height": 2.7, "dalle_ep": 0.20,
+    {"name": "Prédio", "builtin": True, "wall_height": 2.7, "dalle_ep": 0.20,
      "voile_ep": 0.20, "poutre_l": 0.25, "poutre_h": 0.50, "acier_price_kg": 0.0, "beton_price_m3": 0.0,
      "acier_ratios": {"semelles": 45, "poteaux": 140, "poutres": 150, "dalles": 90, "voiles": 70}},
 ]
@@ -169,9 +169,9 @@ class BetonPresetIn(BaseModel):
 async def save_beton_preset(body: BetonPresetIn, user=Depends(current_user)) -> dict:
     name = (body.name or "").strip()[:40]
     if not name:
-        raise HTTPException(400, "Nom du réglage requis")
+        raise HTTPException(400, "Nome da predefinição necessário")
     if name.lower() in ("maison", "immeuble"):
-        raise HTTPException(400, "Ce nom est réservé — choisissez-en un autre")
+        raise HTTPException(400, "Este nome está reservado — escolha outro")
     ar = {k: float(body.acier_ratios.get(k, ACIER_RATIOS[k])) for k in ACIER_RATIOS}
     payload = {"name": name, "wall_height": body.wall_height, "dalle_ep": body.dalle_ep,
                "voile_ep": body.voile_ep, "poutre_l": body.poutre_l, "poutre_h": body.poutre_h,
@@ -200,13 +200,13 @@ async def analyze_plan(plan_id: str, page_index: int = 0, user=Depends(current_u
         {"_id": 0, "pages": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     img = pages[page_index].get("image_png_b64")
     if not img:
-        raise HTTPException(500, "Image manquante")
+        raise HTTPException(500, "Imagem em falta")
     _b = await _resolve_branding(user["user_id"]) or {}
     analysis = await analyze_plan_image(img, "pt" if (_b.get("country") or "").upper() == "PT" else "pt")
     await db.plans_takeoff.update_one(
@@ -257,21 +257,21 @@ async def calibrate_from_cotes(plan_id: str, body: PageIn, user=Depends(current_
         {"_id": 0, "pages.width_px": 1, "pages.height_px": 1, "ai_analysis": 1, "rooms": 1},
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if body.page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     ai = p.get("ai_analysis") or {}
     if not ai or ai.get("error"):
-        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+        raise HTTPException(400, "Lance primeiro a Análise IA da planta")
     if ai.get("page_index") not in (None, body.page_index):
-        raise HTTPException(400, "L'Analyse IA porte sur une autre page — relancez-la sur cette page")
+        raise HTTPException(400, "A Análise IA refere-se a outra página — relance-a nesta página")
     page = pages[body.page_index]
     calib = T.calibration_from_dimension_lines(
         ai.get("dimension_lines") or [],
         page.get("width_px") or 0, page.get("height_px") or 0)
     if not calib:
-        raise HTTPException(422, "Aucune cote exploitable sur le plan (valeur + position requises)")
+        raise HTTPException(422, "Nenhuma cota utilizável na planta (valor + posição necessários)")
     payload = {
         "pixels_per_meter": calib["pixels_per_meter"],
         "meters_per_pixel": calib["meters_per_pixel"],
@@ -307,16 +307,16 @@ async def reconcile_surfaces(plan_id: str, body: ReconcileIn, user=Depends(curre
         {"_id": 0, "calibrations": 1, "ai_analysis": 1, "rooms": 1},
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     calib = (p.get("calibrations") or {}).get(str(body.page_index))
     if not calib:
-        raise HTTPException(400, "Page non calibrée")
+        raise HTTPException(400, "Página não calibrada")
     ai = p.get("ai_analysis") or {}
     if not ai or ai.get("error"):
-        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+        raise HTTPException(400, "Lance primeiro a Análise IA da planta")
     page_rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == body.page_index]
     if not page_rooms:
-        raise HTTPException(400, "Aucune pièce mesurée sur cette page")
+        raise HTTPException(400, "Nenhuma divisão medida nesta página")
     result = T.reconcile_written_surfaces(page_rooms, ai.get("rooms") or [],
                                           calib["pixels_per_meter"])
     if not body.apply or not result.get("can_reconcile"):
@@ -348,10 +348,10 @@ async def apply_ai_texts(plan_id: str, body: PageIn, user=Depends(current_user))
          "ai_analysis": 1, "rooms": 1, "calibrations": 1},
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ai = p.get("ai_analysis") or {}
     if not ai or ai.get("error"):
-        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+        raise HTTPException(400, "Lance primeiro a Análise IA da planta")
 
     summary: dict = {"renamed": [], "materials_set": [], "heights_updated": [],
                      "calibration_set": False, "surface_flags": []}
@@ -453,14 +453,14 @@ async def detect_walls_route(plan_id: str, page_index: int = 0,
         {"_id": 0, "pages": 1, "ai_analysis": 1},
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     page = pages[page_index]
     img = page.get("image_png_b64")
     if not img:
-        raise HTTPException(500, "Image manquante")
+        raise HTTPException(500, "Imagem em falta")
     dim_zones = _ai_dim_zones(p.get("ai_analysis"), page_index, page)
     text_zones = [t for t in (page.get("text_blocks") or [])
                   if all(k in t for k in ("x", "y", "w", "h"))]
@@ -469,7 +469,7 @@ async def detect_walls_route(plan_id: str, page_index: int = 0,
                                orthogonal_only=orthogonal_only)
     except Exception as e:
         logger.exception("wall detection failed")
-        raise HTTPException(500, f"Détection murs impossible : {e}")
+        raise HTTPException(500, f'Deteção de paredes impossível: {e}')
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {f"cv_walls.{page_index}": {**result, "detected_at": _now()},
@@ -502,14 +502,14 @@ async def detect_structure_route(plan_id: str, page_index: int = 0,
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     page = pages[page_index]
     img = page.get("image_png_b64")
     if not img:
-        raise HTTPException(500, "Image manquante")
+        raise HTTPException(500, "Imagem em falta")
     w, h = _page_dims(page)
     _force = {"gros_oeuvre": "coffrage", "immeuble": "coffrage", "coffrage": "coffrage",
               "maison": "habitation", "habitation": "habitation"}.get((plan_kind or "").lower())
@@ -542,7 +542,7 @@ async def save_structure_route(plan_id: str, page_index: int, body: StructureIn,
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     _assign_column_refs(body.columns or [])
     _assign_beam_refs(body.beams or [])
     payload = {
@@ -719,7 +719,7 @@ def _compute_descriptif(structure: dict, ppm: float | None, rooms: list,
             vol = round(spanm * bw * h_count, 3)
             beton_poutres += vol
             beams_table.append({"ref": b.get("ref", ""), "portee_m": spanm, "volume_m3": vol,
-                                "type": "bande noyée" if emb else "poutre",
+                                "type": "viga embebida" if emb else "poutre",
                                 "hauteur_comptee_m": round(h_count, 3)})
         beton_poutres = round(beton_poutres, 2)
         # Dalles : épaisseur par dalle si annotée (thickness_cm), sinon dalle_ep global
@@ -898,11 +898,9 @@ async def _ai_pick(pending: list[tuple[dict, list[tuple[float, dict]]]]) -> dict
         payload.append({"i": i, "ligne": ln.get("designation"), "unite": ln.get("unit"),
                         "candidats": [{"c": j, "designation": it["designation"], "unite": it.get("unit")}
                                       for j, (_, it) in enumerate(cands)]})
-    system = ("Tu es un économiste de la construction. Pour chaque ligne de devis, choisis l'ouvrage de la "
-              "bibliothèque de prix qui correspond à la MÊME prestation (même nature de travaux et unité compatible). "
-              "Si aucun candidat n'est équivalent, réponds -1. Ne choisis jamais un ouvrage d'un autre corps d'état.")
-    prompt = ("Lignes et candidats :\n" + json.dumps(payload, ensure_ascii=False)
-              + '\n\nRetourne UNIQUEMENT ce JSON : {"choix": [{"i": 0, "c": 2}, ...]} (c = -1 si aucun).')
+    system = ("És um medidor-orçamentista. Para cada linha de orçamento, escolhe o trabalho da biblioteca de preços que corresponde ao MESMO serviço (mesma natureza de trabalhos e unidade compatível). Se nenhum candidato for equivalente, responde -1. Nunca escolhas um trabalho de outra especialidade.")
+    prompt = ("Linhas e candidatos:\n" + json.dumps(payload, ensure_ascii=False)
+              + "\n\nDevolve APENAS este JSON: {\"choix\": [{\"i\": 0, \"c\": 2}, ...]} (c = -1 se nenhum).")
     data = _json(await _complete(system, prompt, feature="library_match"), {"choix": []})
     out = {}
     for ch in data.get("choix") or []:
@@ -1013,8 +1011,7 @@ async def _apply_library_prices(user_id: str, lines: list[dict],
                 ln["price_suggestion"] = {"designation": it.get("designation", ""),
                                           "unit": it.get("unit"), "unit_price_ht": it.get("unit_price_ht"),
                                           "source": it["_src"]}
-                ln["price_review_reason"] = (f"Unité différente ({ln.get('unit')} → {it.get('unit')}) : "
-                                             "saisir la quantité dans la bonne unité.")
+                ln["price_review_reason"] = (f"Unidade diferente ({ln.get('unit')} → {it.get('unit')}): introduzir a quantidade na unidade correta.")
                 continue
             _apply(ln, it, it["_src"])
             matched += 1
@@ -1038,65 +1035,65 @@ def _beton_line_items(d: dict, plancher: dict | None = None) -> list[dict]:
     lines = []
     _default_pu = {"bn": 38.0, "reservations": 45.0, "huisseries": 90.0}
 
-    def add(desig, qty, unit, elem=None, cat="Gros œuvre — béton"):
+    def add(desig, qty, unit, elem=None, cat="Estrutura — betão"):
         if qty and qty > 0:
             ln = {"designation": desig, "unit": unit, "qty": round(qty, 2),
                   "unit_price_ht": _default_pu.get(elem, 0), "vat_rate": 23, "category": cat}
             if elem:
                 ln["elem"] = elem
             lines.append(ln)
-    add(f"Béton — semelles / fondations ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³", elem="semelles")
-    add(f"Béton de propreté (sous semelles, ép. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
-    add(f"Béton — poteaux ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³", elem="poteaux")
-    add(f"Béton — poutres / linteaux ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³", elem="poutres")
+    add(f"Betão — sapatas / fundações ({d.get('semelles', 0)} u)", d.get("beton_semelles_m3"), "m³", elem="semelles")
+    add(f"Betão de limpeza (sob sapatas, esp. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm)", d.get("beton_proprete_m3"), "m³", elem="proprete")
+    add(f"Betão — pilares ({d.get('poteaux', 0)} u)", d.get("beton_poteaux_m3"), "m³", elem="poteaux")
+    add(f"Betão — vigas / padieiras ({d.get('poutres_ml', 0)} ml)", d.get("beton_poutres_m3"), "m³", elem="poutres")
     if plancher:
         # Plancher chiffré au m² (prix all-in : béton + aciers + main d'œuvre du plancher)
         cm = round((d.get("beton_dalle_ep_m") or 0.20) * 100)
-        add(f"Plancher béton — {plancher.get('label', 'dalle pleine BA')} ({d.get('planchers_m2', 0)} m² · ép. {cm} cm)",
+        add(f"Laje de betão — {plancher.get('label', 'laje maciça de betão armado')} ({d.get('planchers_m2', 0)} m² · ép. {cm} cm)",
             d.get("planchers_m2"), "m²", elem="dalles")
     else:
-        add(f"Béton — dalles / planchers ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
-    add(f"Béton — voiles / murs porteurs ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³", elem="voiles")
-    add(f"Bandes noyées / poutres noyées ({d.get('bandes_noyees_ml', 0)} ml)", d.get("bandes_noyees_ml"), "ml", elem="bn")
-    add(f"Réservations (traçage + coffrage) — {d.get('reservations', 0)} u", d.get("reservations"), "u", elem="reservations")
-    add(f"Huisseries — pré-cadres / réservations de baies ({d.get('huisseries', 0)} u)", d.get("huisseries"), "u", elem="huisseries")
+        add(f"Betão — lajes / pavimentos ({d.get('planchers_m2', 0)} m²)", d.get("beton_dalles_m3"), "m³", elem="dalles")
+    add(f"Betão — paredes de betão / paredes resistentes ({d.get('murs_porteurs_ml', 0)} ml)", d.get("beton_voiles_m3"), "m³", elem="voiles")
+    add(f"Vigas embebidas / bandas embebidas ({d.get('bandes_noyees_ml', 0)} ml)", d.get("bandes_noyees_ml"), "ml", elem="bn")
+    add(f"Reservas (marcação + cofragem) — {d.get('reservations', 0)} u", d.get("reservations"), "u", elem="reservations")
+    add(f"Aros — pré-aros / reservas de vãos ({d.get('huisseries', 0)} u)", d.get("huisseries"), "u", elem="huisseries")
     _ratio_moy = _ratio_label(d)
     _acier_kg = d.get("acier_total_kg")
     if plancher:
         # Les aciers du plancher sont inclus dans le prix au m² → on les retire de la ligne aciers
         _acier_kg = round((_acier_kg or 0) - (d.get("acier_dalles_kg") or 0), 2)
-    add(f"Aciers HA (ferraillage — env. {_ratio_moy} kg/m³)", _acier_kg, "kg")
+    add(f'Armaduras A500 (armaduras — aprox. {_ratio_moy} kg/m³)', _acier_kg, "kg")
     return lines
 
 
 def _descriptif_line_items(d: dict) -> list[dict]:
     lines = []
 
-    def add(desig, qty, unit, cat="Depuis analyse plan"):
+    def add(desig, qty, unit, cat="A partir da análise da planta"):
         if qty and qty > 0:
             lines.append({"designation": desig, "unit": unit, "qty": round(qty, 2),
                           "unit_price_ht": 0, "vat_rate": 6, "category": cat})
-    add("Plancher / sol (surface au sol)", d.get("planchers_m2"), "m²")
-    add("Murs porteurs (maçonnerie)", d.get("murs_porteurs_ml"), "ml")
-    add("Cloisons", d.get("cloisons_ml"), "ml")
-    add(f"Murs — enduit/peinture (h={d.get('wall_height_m')} m)", d.get("murs_surface_m2"), "m²")
-    add("Fournitures et pose — Portes", d.get("portes"), "u")
-    add("Fournitures et pose — Fenêtres", d.get("fenetres"), "u")
-    add("Fournitures et pose — Baies vitrées", d.get("baies"), "u")
-    add("Réservations (traçage + coffrage)", d.get("reservations"), "u")
+    add("Pavimento / piso (área de piso)", d.get("planchers_m2"), "m²")
+    add("Paredes resistentes (alvenaria)", d.get("murs_porteurs_ml"), "ml")
+    add("Divisórias", d.get("cloisons_ml"), "ml")
+    add(f"Paredes — reboco/pintura (h={d.get('wall_height_m')} m)", d.get("murs_surface_m2"), "m²")
+    add("Fornecimento e aplicação — Portas", d.get("portes"), "u")
+    add("Fornecimento e aplicação — Janelas", d.get("fenetres"), "u")
+    add("Fornecimento e aplicação — Vãos envidraçados", d.get("baies"), "u")
+    add("Negativos (traçado + cofragem)", d.get("reservations"), "u")
     # Béton : UNE ligne par élément (m³). Les anciennes lignes « Poteaux (u) », « Poutres (ml) »,
     # « Semelles (u) » + « Béton coulé total (m³) » faisaient payer deux fois les mêmes ouvrages une
     # fois chiffrées depuis la bibliothèque. Les voiles sont exclus : les murs porteurs sont déjà
     # comptés en maçonnerie ci-dessus.
-    for desig, key in (("Béton — semelles / fondations", "beton_semelles_m3"),
-                       ("Béton — poteaux", "beton_poteaux_m3"),
-                       ("Béton — poutres (retombées)", "beton_poutres_m3"),
-                       ("Béton — dalles / planchers", "beton_dalles_m3")):
+    for desig, key in (("Betão — sapatas / fundações", "beton_semelles_m3"),
+                       ("Betão — pilares", "beton_poteaux_m3"),
+                       ("Betão — vigas (salientes)", "beton_poutres_m3"),
+                       ("Betão — lajes / pavimentos", "beton_dalles_m3")):
         add(desig, d.get(key), "m³")
-    add("Bandes noyées / poutres noyées", d.get("bandes_noyees_ml"), "ml")
+    add("Vigas embebidas / bandas embebidas", d.get("bandes_noyees_ml"), "ml")
     acier = round(sum(float(d.get(k) or 0) for k in ("acier_semelles_kg", "acier_poteaux_kg",
                                                       "acier_poutres_kg", "acier_dalles_kg")), 1)
-    add(f"Aciers HA (fer à béton armé — env. {_ratio_label(d)} kg/m³)", acier, "kg")
+    add(f'Armaduras A500 (varão para betão armado — aprox. {_ratio_label(d)} kg/m³)', acier, "kg")
     return lines
 
 
@@ -1123,7 +1120,7 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages.image_png_b64": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ppm = _page_ppm(p, page_index)
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
@@ -1162,7 +1159,7 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "structure": 1, "calibrations": 1, "rooms": 1, "filename": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ppm = _page_ppm(p, page_index)
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
@@ -1186,9 +1183,9 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Métré béton"
-    sheet_header(ws, ["Poste", "Détail", "Volume (m³)", "Ratio acier (kg/m³)", "Aciers (kg)",
-                      "Prix béton (€/m³)", "Coût béton (€)", "Coût aciers (€)", "Coût total (€)"],
+    ws.title = "Medição de betão"
+    sheet_header(ws, ["Artigo", "Detalhe", "Volume (m³)", "Rácio de aço (kg/m³)", "Aço (kg)",
+                      "Preço do betão (€/m³)", "Custo do betão (€)", "Custo das armaduras (€)", "Custo total (€)"],
                  [26, 38, 12, 15, 12, 15, 14, 14, 14])
     r = d.get("acier_ratios") or {}
     # Prix : repli sur valeurs marché si non renseignés
@@ -1214,34 +1211,34 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
         tot_ca += ca
         ws.append([label, detail, vol, r.get(elem if elem != "proprete" else "semelles") if elem != "proprete" else "",
                    acier_kg, prix, cb, ca, round(cb + ca, 2)])
-    poste_row("Semelles / fondations", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3"),
+    poste_row("Sapatas / fundações", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3"),
               "semelles", d.get("acier_semelles_kg"))
-    poste_row("Béton de propreté", f"sous semelles · ép. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm", d.get("beton_proprete_m3"),
+    poste_row("Betão de limpeza", f"sob sapatas · esp. {round((d.get('beton_proprete_ep_m') or 0.05) * 100)} cm", d.get("beton_proprete_m3"),
               "proprete", 0)
-    poste_row("Poteaux", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3"),
+    poste_row("Pilares", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3"),
               "poteaux", d.get("acier_poteaux_kg"))
-    poste_row("Poutres / linteaux",
+    poste_row("Vigas / padieiras",
               f"{d.get('poutres_ml', 0)} ml · section {d.get('beton_poutre_section', '')}",
               d.get("beton_poutres_m3"), "poutres", d.get("acier_poutres_kg"))
-    poste_row("Dalles / planchers", f"{d.get('planchers_m2', 0)} m² · ép. {d.get('beton_dalle_ep_m', 0)} m",
+    poste_row("Lajes / pavimentos", f"{d.get('planchers_m2', 0)} m² · ép. {d.get('beton_dalle_ep_m', 0)} m",
               d.get("beton_dalles_m3"), "dalles", d.get("acier_dalles_kg"))
-    poste_row("Voiles (murs porteurs)",
+    poste_row("Paredes de betão (paredes resistentes)",
               f"{d.get('murs_porteurs_ml', 0)} ml · ép. {d.get('beton_voile_ep_m', 0)} m · h {d.get('wall_height_m', 0)} m",
               d.get("beton_voiles_m3"), "voiles", d.get("acier_voiles_kg"))
     ws.append([])
     beton_avec_proprete = round((d.get("beton_total_m3", 0) or 0) + (d.get("beton_proprete_m3", 0) or 0), 2)
-    ws.append(["TOTAL BÉTON", "", beton_avec_proprete, "", d.get("acier_total_kg", 0),
+    ws.append(["TOTAL BETÃO", "", beton_avec_proprete, "", d.get("acier_total_kg", 0),
                "", round(tot_cb, 2), round(tot_ca, 2), round(tot_cb + tot_ca, 2)])
     for cell in ws[ws.max_row]:
         cell.font = bold
 
-    ws2 = wb.create_sheet("Poteaux")
-    sheet_header(ws2, ["Repère", "Section", "Hauteur (m)", "Volume (m³)"], [12, 18, 13, 14])
+    ws2 = wb.create_sheet("Pilares")
+    sheet_header(ws2, ["Referência", "Secção", "Altura (m)", "Volume (m³)"], [12, 18, 13, 14])
     for c in d.get("poteaux_table") or []:
         ws2.append([c.get("ref"), c.get("section"), c.get("hauteur_m"), c.get("volume_m3")])
 
-    ws3 = wb.create_sheet("Poutres")
-    sheet_header(ws3, ["Repère", "Portée (m)", "Volume (m³)"], [12, 14, 14])
+    ws3 = wb.create_sheet("Vigas")
+    sheet_header(ws3, ["Referência", "Vão (m)", "Volume (m³)"], [12, 14, 14])
     for b in d.get("beams_table") or []:
         ws3.append([b.get("ref"), b.get("portee_m"), b.get("volume_m3")])
 
@@ -1278,7 +1275,7 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "structure": 1, "calibrations": 1, "rooms": 1, "filename": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     branding = await _resolve_branding(user["user_id"])
     ppm = _page_ppm(p, page_index)
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
@@ -1295,21 +1292,20 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
     story: list = []
     _story_header_branding(story, branding, S)
     story += [
-        Paragraph("MÉTRÉ BÉTON — SYNTHÈSE", S["kicker"]),
-        Paragraph(p.get("filename") or "Plan", S["h1"]),
-        Paragraph(f"Hauteur murs {d.get('wall_height_m')} m · ep. dalle {d.get('beton_dalle_ep_m')} m · "
-                  f"ep. voile {d.get('beton_voile_ep_m')} m · poutre {d.get('beton_poutre_section')}", S["muted"]),
+        Paragraph("MEDIÇÃO DE BETÃO — SÍNTESE", S["kicker"]),
+        Paragraph(p.get("filename") or "Planta", S["h1"]),
+        Paragraph(f"Altura paredes {d.get('wall_height_m')} m · esp. laje {d.get('beton_dalle_ep_m')} m · ep. voile {d.get('beton_voile_ep_m')} m · viga {d.get('beton_poutre_section')}", S["muted"]),
         Spacer(1, 10),
     ]
     if not d.get("beton_total_m3"):
-        story.append(Paragraph("Plan non calibre ou sans structure detectee - quantites indisponibles.", S["body"]))
+        story.append(Paragraph("Planta não calibrada ou sem estrutura detetada - quantidades indisponíveis.", S["body"]))
     r = d.get("acier_ratios") or {}
-    rows = [["Poste", "Detail", "Volume (m3)", "Ratio (kg/m3)", "Aciers (kg)"],
-            ["Poteaux", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3", 0), r.get("poteaux", ""), d.get("acier_poteaux_kg", 0)],
-            ["Poutres / linteaux", f"{d.get('poutres_ml', 0)} ml", d.get("beton_poutres_m3", 0), r.get("poutres", ""), d.get("acier_poutres_kg", 0)],
-            ["Dalles / planchers", f"{d.get('planchers_m2', 0)} m2", d.get("beton_dalles_m3", 0), r.get("dalles", ""), d.get("acier_dalles_kg", 0)],
-            ["Voiles (murs porteurs)", f"{d.get('murs_porteurs_ml', 0)} ml", d.get("beton_voiles_m3", 0), r.get("voiles", ""), d.get("acier_voiles_kg", 0)],
-            ["Semelles / fondations", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3", 0), r.get("semelles", ""), d.get("acier_semelles_kg", 0)],
+    rows = [["Artigo", "Detail", "Volume (m3)", "Ratio (kg/m3)", "Aço (kg)"],
+            ["Pilares", f"{d.get('poteaux', 0)} u", d.get("beton_poteaux_m3", 0), r.get("poteaux", ""), d.get("acier_poteaux_kg", 0)],
+            ["Vigas / padieiras", f"{d.get('poutres_ml', 0)} ml", d.get("beton_poutres_m3", 0), r.get("poutres", ""), d.get("acier_poutres_kg", 0)],
+            ["Lajes / pavimentos", f"{d.get('planchers_m2', 0)} m2", d.get("beton_dalles_m3", 0), r.get("dalles", ""), d.get("acier_dalles_kg", 0)],
+            ["Paredes de betão (paredes resistentes)", f"{d.get('murs_porteurs_ml', 0)} ml", d.get("beton_voiles_m3", 0), r.get("voiles", ""), d.get("acier_voiles_kg", 0)],
+            ["Sapatas / fundações", f"{d.get('semelles', 0)} u", d.get("beton_semelles_m3", 0), r.get("semelles", ""), d.get("acier_semelles_kg", 0)],
             ["TOTAL", "", d.get("beton_total_m3", 0), "", d.get("acier_total_kg", 0)]]
     t = _table([[str(c) for c in row] for row in rows],
                [46 * mm, 30 * mm, 26 * mm, 26 * mm, 26 * mm],
@@ -1335,12 +1331,12 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
         matiere = cost_beton + cost_acier
         sous_total = matiere + cost_labor
         pv = sous_total * (1 + (margin_pct or 0) / 100)
-        crows = [["Chiffrage estime", "Montant"],
+        crows = [["Orçamentação estimada", "Montante"],
                  [f"Beton ({bt} m3 x {beton_price_m3:.0f} EUR/m3)", f"{cost_beton:,.0f} EUR".replace(",", " ")],
-                 [f"Aciers ({at} kg x {acier_price_kg:.2f} EUR/kg)", f"{cost_acier:,.0f} EUR".replace(",", " ")],
+                 [f'Armaduras ({at} kg x {acier_price_kg:.2f} EUR/kg)', f"{cost_acier:,.0f} EUR".replace(",", " ")],
                  ["Cout matiere", f"{matiere:,.0f} EUR".replace(",", " ")],
                  [f"Main d'oeuvre ({bt} m3 x {labor_price_m3:.0f} EUR/m3)", f"{cost_labor:,.0f} EUR".replace(",", " ")],
-                 [f"Prix de vente estime (marge {margin_pct:.0f}%)", f"{pv:,.0f} EUR".replace(",", " ")]]
+                 [f'Preço de venda estimado (margem {margin_pct:.0f}%)', f"{pv:,.0f} EUR".replace(",", " ")]]
         story += [_table([[str(c) for c in row] for row in crows], [110 * mm, 44 * mm],
                          style_extras=[("BACKGROUND", (0, 0), (-1, 0), DARK),
                                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -1351,15 +1347,15 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
                                        ("ALIGN", (1, 0), (1, -1), "RIGHT")]), Spacer(1, 14)]
 
     if d.get("poteaux_table"):
-        story.append(Paragraph("Tableau des poteaux", S["h2"]))
-        prows = [["Repere", "Section", "Hauteur (m)", "Volume (m3)"]]
+        story.append(Paragraph("Quadro de pilares", S["h2"]))
+        prows = [["Repere", "Secção", "Altura (m)", "Volume (m3)"]]
         prows += [[c.get("ref"), c.get("section"), c.get("hauteur_m"), c.get("volume_m3")] for c in d["poteaux_table"]]
         story += [_table([[str(c) for c in row] for row in prows], [30 * mm, 40 * mm, 34 * mm, 34 * mm],
                          style_extras=[("BACKGROUND", (0, 0), (-1, 0), ORANGE),
                                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                                        ("GRID", (0, 0), (-1, -1), 0.4, LIGHT_GREY)]), Spacer(1, 12)]
     if d.get("beams_table"):
-        story.append(Paragraph("Tableau des poutres", S["h2"]))
+        story.append(Paragraph("Quadro de vigas", S["h2"]))
         brows = [["Repere", "Portee (m)", "Volume (m3)"]]
         brows += [[b.get("ref"), b.get("portee_m"), b.get("volume_m3")] for b in d["beams_table"]]
         story += [_table([[str(c) for c in row] for row in brows], [40 * mm, 48 * mm, 48 * mm],
@@ -1390,11 +1386,11 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
         {"_id": 0, "filename": 1, "project_name": 1, "measurements": 1,
          "pages.image_png_b64": 1, "pages.width_px": 1, "pages.height_px": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     branding = await _resolve_branding(user["user_id"])
     measures = p.get("measurements") or []
     pages = p.get("pages") or []
-    project = p.get("project_name") or p.get("filename") or "Plan"
+    project = p.get("project_name") or p.get("filename") or "Planta"
 
     def _render_overlay(page, page_measures):
         """Image du plan avec surfaces/murs coloriés (filtre translucide + traits)."""
@@ -1463,13 +1459,13 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
     story: list = []
     _story_header_branding(story, branding, S)
     story += [
-        Paragraph("RELEVÉ DES COTES", S["kicker"]),
+        Paragraph("LEVANTAMENTO DAS COTAS", S["kicker"]),
         Paragraph(str(project), S["h1"]),
-        Paragraph(f"{len(measures)} cote(s) mémorisée(s)", S["muted"]),
+        Paragraph(f'{len(measures)} cota(s) memorizada(s)', S["muted"]),
         Spacer(1, 10),
     ]
     if not measures:
-        story.append(Paragraph("Aucune cote mémorisée sur ce plan.", S["body"]))
+        story.append(Paragraph("Nenhuma cota memorizada nesta planta.", S["body"]))
     else:
         # Plan(s) colorié(s) : une image par page ayant des cotes
         by_page: dict = {}
@@ -1491,23 +1487,23 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
 
         # Tableau des cotes, trié par famille (libellé)
         smeasures = sorted(measures, key=lambda x: (x.get("label") or "\uffff").lower())
-        rows = [["", "#", "Désignation", "Type", "Valeur"]]
+        rows = [["", "#", "Designação", "Type", "Valor"]]
         color_styles = []
         detail_rows = []  # indices des lignes de détail d'ouverture (style atténué)
         fam: dict = {}
         tot_dist = tot_area = tot_perim = 0.0
         for i, m in enumerate(smeasures, 1):
             kind = m.get("kind")
-            label = m.get("label") or "(sans nom)"
+            label = m.get("label") or "(sem nome)"
             f = fam.setdefault(label, {"dist": 0.0, "area": 0.0, "perim": 0.0, "n": 0})
             f["n"] += 1
             if kind == "distance":
                 v = float(m.get("value_m") or m.get("length_m") or 0)
-                val, ktxt = f"{v} m", "Distance"
+                val, ktxt = f"{v} m", "Distância"
                 tot_dist += v; f["dist"] += v
             elif kind == "polyline":
                 v = float(m.get("length_m") or 0)
-                val, ktxt = f"{v} m", "Périmètre/ligne"
+                val, ktxt = f"{v} m", "Perímetro/linha"
                 tot_dist += v; f["dist"] += v
             elif kind == "cumulative":
                 v = float(m.get("value_m") or m.get("length_m") or 0)
@@ -1515,19 +1511,19 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
                 nop = len(m.get("openings") or [])
                 extra = f" − {nop} ouv." if nop else ""
                 val = f"{v} m"
-                ktxt = f"Mur cumulé ({nseg} tronçon{'s' if nseg > 1 else ''}{extra})"
+                ktxt = f"Parede acumulada ({nseg} tronçon{('s' if nseg > 1 else '')}{extra})"
                 tot_dist += v; f["dist"] += v
             elif kind == "polygon":
                 a = float(m.get("area_m2") or 0)
                 pr = float(m.get("perimeter_m") or 0)
-                val, ktxt = f"{a} m² · {pr} m", "Surface"
+                val, ktxt = f"{a} m² · {pr} m", "Superfície"
                 tot_area += a; tot_perim += pr; f["area"] += a; f["perim"] += pr
             elif kind == "cumulative_area":
                 a = float(m.get("area_m2") or 0)
                 pr = float(m.get("perimeter_m") or 0)
                 npz = len(m.get("polygons") or [])
                 val = f"{a} m²"
-                ktxt = f"Surface cumulée ({npz} zone{'s' if npz > 1 else ''})"
+                ktxt = f"Área acumulada ({npz} zone{('s' if npz > 1 else '')})"
                 tot_area += a; tot_perim += pr; f["area"] += a; f["perim"] += pr
             else:
                 val, ktxt = "—", (kind or "—")
@@ -1551,13 +1547,13 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
                 if wh:
                     base_len = float(gross if gross is not None else (m.get("value_m") or m.get("length_m") or 0))
                     detail_rows.append(len(rows))
-                    rows.append(["", "", f"     mur brut ({round(base_len, 2)} m × {wh} m)", "",
+                    rows.append(["", "", f'     parede bruta ({round(base_len, 2)} m × {wh} m)', "",
                                  f"{round(base_len * float(wh), 2)} m²"])
                 for op in ops:
                     w = float(op.get("width_m") or 0)
                     cnt = int(op.get("count") or 1)
                     h = op.get("height_m")
-                    oplabel = op.get("label") or "Ouverture"
+                    oplabel = op.get("label") or "Vão"
                     dims = f"{w:g} m" + (f" × {float(h):g} m" if h else "") + (f" × {cnt}" if cnt > 1 else "")
                     txt = f"      - {oplabel} ({dims})"
                     detail_rows.append(len(rows))
@@ -1565,7 +1561,7 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
                     rows.append(["", "", txt, "déduite", val])
                 if wh and net_area is not None:
                     detail_rows.append(len(rows))
-                    rows.append(["", "", "     mur net (surface, ouvertures déduites)", "",
+                    rows.append(["", "", "     parede líquida (área, aberturas deduzidas)", "",
                                  f"{round(float(net_area), 2)} m²"])
         detail_styles = []
         for r in detail_rows:
@@ -1582,14 +1578,14 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
             Spacer(1, 12),
         ]
         # Sous-totaux par famille
-        frows = [["Famille", "Cotes", "Longueur", "Surface"]]
+        frows = [["Família", "Cotas", "Comprimento", "Superfície"]]
         for label in sorted(fam.keys()):
             f = fam[label]
             frows.append([label, str(f["n"]),
                           f"{round(f['dist'], 2)} m" if f["dist"] else "—",
                           f"{round(f['area'], 2)} m²" if f["area"] else "—"])
         story += [
-            Paragraph("Sous-totaux par famille", S["kicker"]),
+            Paragraph("Subtotais por família", S["kicker"]),
             _table([[str(c) for c in r] for r in frows], [90 * mm, 18 * mm, 33 * mm, 33 * mm],
                    style_extras=[("BACKGROUND", (0, 0), (-1, 0), DARK),
                                  ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -1597,10 +1593,10 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
                                  ("ALIGN", (1, 0), (-1, -1), "RIGHT")]),
             Spacer(1, 12),
         ]
-        srows = [["Récapitulatif général", "Total"],
-                 ["Longueurs cumulées", f"{round(tot_dist, 3)} m"],
-                 ["Surfaces cumulées", f"{round(tot_area, 3)} m²"],
-                 ["Périmètres cumulés", f"{round(tot_perim, 3)} m"]]
+        srows = [["Resumo geral", "Total"],
+                 ["Comprimentos acumulados", f"{round(tot_dist, 3)} m"],
+                 ["Áreas acumuladas", f"{round(tot_area, 3)} m²"],
+                 ["Perímetros acumulados", f"{round(tot_perim, 3)} m"]]
         story += [
             _table([[str(c) for c in r] for r in srows], [110 * mm, 44 * mm],
                    style_extras=[("BACKGROUND", (0, 0), (-1, 0), ORANGE),
@@ -1628,19 +1624,19 @@ async def ai_refine_structure(plan_id: str, page_index: int, body: AiRefineIn,
                               user=Depends(current_user)) -> dict:
     """Assistant IA : applique une consigne en langage naturel pour corriger la détection."""
     if not (body.message or "").strip():
-        raise HTTPException(400, "Consigne vide")
+        raise HTTPException(400, "Instrução vazia")
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "pages": 1, "structure": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     page = pages[page_index]
     img = page.get("image_png_b64")
     if not img:
-        raise HTTPException(500, "Image manquante")
+        raise HTTPException(500, "Imagem em falta")
     w, h = _page_dims(page)
     current = (p.get("structure") or {}).get(str(page_index)) or {}
     result = await refine_structure(img, w, h, body.message, current, body.history)
@@ -1648,7 +1644,7 @@ async def ai_refine_structure(plan_id: str, page_index: int, body: AiRefineIn,
     has_content = bool(result.get("walls") or result.get("columns") or result.get("beams")
                        or result.get("openings") or result.get("footings") or result.get("floors"))
     if result.get("error") and not has_content:
-        return {"ok": False, "reply": reply or "L'IA n'a pas pu appliquer la consigne.",
+        return {"ok": False, "reply": reply or "A IA não conseguiu aplicar a instrução.",
                 "error": result.get("error"), "structure": current}
     _assign_column_refs(result.get("columns") or [])
     _assign_beam_refs(result.get("beams") or [])
@@ -1666,7 +1662,7 @@ async def detect_structure_all(plan_id: str, user=Depends(current_user)) -> dict
     import secrets
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "page_count": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     job_id = "pjob_" + secrets.token_hex(6)
     await db.plan_upload_jobs.insert_one({"job_id": job_id, "user_id": user["user_id"], "kind": "detect_structure_all", "plan_id": plan_id, "status": "processing",
                                           "progress": 0, "total": p.get("page_count") or 0, "created_at": _now(), "updated_at": _now()})
@@ -1682,7 +1678,7 @@ async def _detect_structure_all_job(job_id: str, plan_id: str, user_id: str) -> 
         for idx, page in enumerate(pages):
             img = page.get("image_png_b64")
             if not img:
-                results.append({"page_index": idx, "error": "image manquante"})
+                results.append({"page_index": idx, "error": "imagem em falta"})
                 continue
             w, h = _page_dims(page)
             res = await detect_structure_tiled(img, w, h)
@@ -1709,13 +1705,13 @@ async def annotated_plan_pdf(plan_id: str, page_index: int, wall_height: float =
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     if not (structure.get("walls") or structure.get("openings")):
-        raise HTTPException(400, "Lancez d'abord « Analyser le plan ».")
+        raise HTTPException(400, "Lance primeiro «Analisar a planta».")
     ppm = _page_ppm(p, page_index)
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     descriptif = _compute_descriptif(structure, ppm, rooms, wall_height)
@@ -1763,10 +1759,10 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages.image_png_b64": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ppm = _page_ppm(p, page_index)
     if not ppm:
-        raise HTTPException(400, "Calibrez d'abord le plan avant de générer le devis.")
+        raise HTTPException(400, "Calibre primeiro a planta antes de gerar o orçamento.")
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
@@ -1780,13 +1776,13 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
         if _pt == "auto":
             # Gros œuvre : immeuble = dalle pleine BA (défaut) ; maison = poutrelles-hourdis.
             _pt = "poutrelles_hourdis" if (structure.get("plan_kind") == "maison") else "dalle_pleine"
-        _label = "dalle pleine BA" if _pt == "dalle_pleine" else "poutrelles-hourdis"
+        _label = "laje maciça de betão armado" if _pt == "dalle_pleine" else "poutrelles-hourdis"
         plancher_opt = {"label": _label,
                         "price_m2": (float(plancher_price_m2) if (plancher_price_m2 and plancher_price_m2 > 0)
                                      else _plancher_price_m2_bareme(dalle_ep))}
     lines = _beton_line_items(descriptif, plancher=plancher_opt) if beton_only else _descriptif_line_items(descriptif)
     if not lines:
-        raise HTTPException(400, "Aucune quantité à chiffrer — analysez le plan d'abord.")
+        raise HTTPException(400, "Nenhuma quantidade a orçamentar — analise primeiro a planta.")
     # Prix indicatifs de repli si l'utilisateur n'a rien configuré → chiffrage automatique
     _margins_set = any(m is not None for m in (margin_beton, margin_acier, margin_labor))
     beton_price_m3, acier_price_kg, labor_price_m3, margin_pct = _with_default_prices(
@@ -1826,10 +1822,10 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     if plancher_opt:
         beton_total = round(beton_total - (descriptif.get("beton_dalles_m3") or 0), 2)
     if labor_price_m3 and labor_price_m3 > 0 and beton_total > 0:
-        lines.append({"designation": "Main d'œuvre béton (coffrage, coulage, ferraillage)",
+        lines.append({"designation": "Mão de obra de betão (cofragem, betonagem, armaduras)",
                       "unit": "m³", "qty": round(beton_total, 2),
                       "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 23,
-                      "category": "Depuis analyse plan"})
+                      "category": "A partir da análise da planta"})
         priced += 1
     # Marge commerciale par poste (béton / aciers / main d'œuvre) — repli sur la marge globale
     m_beton = margin_beton if margin_beton is not None else margin_pct
@@ -1853,7 +1849,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"], "doc_type": "quote", "number": None,
-        "title": f"Devis — {p.get('filename') or 'plan'}",
+        "title": f"Orçamento — {p.get('filename') or 'plan'}",
         "client_id": client_id, "client": await _client_snapshot(client_id, user),
         "status": "draft", "lines": lines, "notes": "",
         "payment_terms": "", "deposit_pct": 0,
@@ -1876,18 +1872,18 @@ async def update_wall_type(plan_id: str, page_index: int, wall_id: str,
                            body: WallTypeIn, user=Depends(current_user)) -> dict:
     """Reclasse manuellement un mur détecté (porteur / cloison / doublage)."""
     if body.wall_type not in ("porteur", "cloison", "doublage"):
-        raise HTTPException(400, "wall_type invalide (porteur|cloison|doublage)")
+        raise HTTPException(400, "wall_type inválido (porteur|cloison|doublage)")
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, f"cv_walls.{page_index}.segments": 1},
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     segs = ((p.get("cv_walls") or {}).get(str(page_index))
             or (p.get("cv_walls") or {}).get(page_index) or {}).get("segments") or []
     idx = next((i for i, s in enumerate(segs) if s.get("wall_id") == wall_id), -1)
     if idx < 0:
-        raise HTTPException(404, "Mur introuvable")
+        raise HTTPException(404, "Parede não encontrada")
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"$set": {f"cv_walls.{page_index}.segments.{idx}.wall_type": body.wall_type,
@@ -1915,7 +1911,7 @@ async def _load_plan_for_ai(plan_id: str, user_id: str, page_index: int):
         {"plan_id": plan_id, "user_id": user_id},
         {"_id": 0, "rooms": 1, "cv_walls": 1, "calibrations": 1, "measurements": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index", 0) == page_index]
     cv = (p.get("cv_walls") or {}).get(str(page_index)) or (p.get("cv_walls") or {}).get(page_index) or {}
     walls = cv.get("segments") or []
@@ -1937,9 +1933,9 @@ def _build_manual_measurement(prm: dict, page_index: int) -> tuple[dict, str]:
         try:
             area = round(float(prm.get("area_m2")), 3)
         except (TypeError, ValueError):
-            raise HTTPException(422, "Surface (m²) invalide")
+            raise HTTPException(422, "Área (m²) inválida")
         if area <= 0 or area > 100000:
-            raise HTTPException(422, "Surface hors bornes (0–100000 m²)")
+            raise HTTPException(422, "Área fora dos limites (0–100000 m²)")
         rec.update({"kind": "manual_area", "area_m2": area})
         return rec, f"{area:.2f} m²"
     if mtype == "rampant":
@@ -1947,15 +1943,15 @@ def _build_manual_measurement(prm: dict, page_index: int) -> tuple[dict, str]:
             proj = float(prm.get("projected_area_m2"))
             slope = float(prm.get("slope_pct") or 0)
         except (TypeError, ValueError):
-            raise HTTPException(422, "Surface au sol (m²) ou pente (%) invalide")
+            raise HTTPException(422, "Área de piso (m²) ou inclinação (%) inválida")
         if proj <= 0 or proj > 100000:
-            raise HTTPException(422, "Surface au sol hors bornes")
+            raise HTTPException(422, "Área de piso fora dos limites")
         if slope < 0 or slope > 300:
-            raise HTTPException(422, "Pente hors bornes (0–300 %)")
+            raise HTTPException(422, "Inclinação fora dos limites (0–300 %)")
         factor = math.sqrt(1 + (slope / 100.0) ** 2)
         real = round(proj * factor, 3)
         if not label:
-            label = f"Sous-plafond rampant {slope:.0f}%"
+            label = f'Teto inclinado {slope:.0f}%'
         rec.update({"kind": "manual_area", "area_m2": real, "label": label[:80],
                     "projected_area_m2": round(proj, 3), "slope_pct": slope,
                     "slope_factor": round(factor, 4)})
@@ -1964,9 +1960,9 @@ def _build_manual_measurement(prm: dict, page_index: int) -> tuple[dict, str]:
         try:
             ln = round(float(prm.get("length_m")), 3)
         except (TypeError, ValueError):
-            raise HTTPException(422, "Linéaire (ml) invalide")
+            raise HTTPException(422, "Linear (ml) inválido")
         if ln <= 0 or ln > 100000:
-            raise HTTPException(422, "Linéaire hors bornes")
+            raise HTTPException(422, "Linear fora dos limites")
         rec.update({"kind": "manual_linear", "value_m": ln, "length_m": ln, "gross_m": ln})
         wh = prm.get("wall_height_m")
         if wh not in (None, ""):
@@ -1978,7 +1974,7 @@ def _build_manual_measurement(prm: dict, page_index: int) -> tuple[dict, str]:
                 rec["wall_height_m"] = h
                 rec.update(_recompute_linear_sets(rec))
         return rec, f"{ln:.2f} ml"
-    raise HTTPException(422, "Type de mesure inconnu (surface / linear / rampant)")
+    raise HTTPException(422, "Tipo de medição desconhecido (surface / linear / rampant)")
 
 
 @router.post("/{plan_id}/ai-command")
@@ -1992,8 +1988,8 @@ async def ai_command_preview(plan_id: str, body: AiCommandIn,
         q = (action.get("params") or {}).get("query") or body.command
         res = await ai_engine.web_answer(q)
         return {"action": "answer",
-                "summary": action.get("summary") or "Réponse (recherche web)",
-                "answer": res.get("answer") or res.get("error") or "Aucune réponse trouvée.",
+                "summary": action.get("summary") or "Resposta (pesquisa web)",
+                "answer": res.get("answer") or res.get("error") or "Nenhuma resposta encontrada.",
                 "sources": res.get("sources") or [],
                 "price_suggestion": res.get("price_suggestion"),
                 "page_index": body.page_index}
@@ -2017,10 +2013,10 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "rename_room":
         room = _find_room(prm.get("room_id"))
         if not room:
-            raise HTTPException(404, "Pièce introuvable")
+            raise HTTPException(404, "Divisão não encontrada")
         new_name = (prm.get("new_name") or "").strip()[:60]
         if not new_name:
-            raise HTTPException(422, "Nom invalide")
+            raise HTTPException(422, "Nome inválido")
         room["name"] = new_name
         await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}})
         return {"ok": True, "applied": "rename_room", "room_id": room["room_id"], "name": new_name}
@@ -2028,7 +2024,7 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "delete_room":
         room = _find_room(prm.get("room_id"))
         if not room:
-            raise HTTPException(404, "Pièce introuvable")
+            raise HTTPException(404, "Divisão não encontrada")
         rooms = [r for r in rooms if r.get("room_id") != prm.get("room_id")]
         await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {"rooms": rooms, "updated_at": _now()}})
         return {"ok": True, "applied": "delete_room", "room_id": prm.get("room_id")}
@@ -2036,13 +2032,13 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "set_room_surface":
         room = _find_room(prm.get("room_id"))
         if not room:
-            raise HTTPException(404, "Pièce introuvable")
+            raise HTTPException(404, "Divisão não encontrada")
         try:
             surf = round(float(prm.get("surface_m2")), 2)
         except (TypeError, ValueError):
-            raise HTTPException(422, "Surface invalide")
+            raise HTTPException(422, "Área inválida")
         if surf <= 0 or surf > 100000:
-            raise HTTPException(422, "Surface hors bornes")
+            raise HTTPException(422, "Área fora dos limites")
         room["surface_m2"] = surf
         room["surface_written_m2"] = surf
         room["surface_delta_pct"] = None
@@ -2053,13 +2049,13 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "set_room_height":
         room = _find_room(prm.get("room_id"))
         if not room:
-            raise HTTPException(404, "Pièce introuvable")
+            raise HTTPException(404, "Divisão não encontrada")
         try:
             h = float(prm.get("height_m"))
         except (TypeError, ValueError):
-            raise HTTPException(422, "Hauteur invalide")
+            raise HTTPException(422, "Altura inválida")
         if h <= 0 or h > 20:
-            raise HTTPException(422, "Hauteur hors bornes")
+            raise HTTPException(422, "Altura fora dos limites")
         room["ceiling_height_m"] = h
         calib = (p.get("calibrations") or {}).get(str(room.get("page_index", 0)))
         _recompute_room(room, (calib or {}).get("pixels_per_meter") or 0)
@@ -2069,12 +2065,12 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "reclassify_wall":
         new_type = prm.get("new_type")
         if new_type not in ("porteur", "cloison", "doublage"):
-            raise HTTPException(422, "Type de mur invalide")
+            raise HTTPException(422, "Tipo de parede inválido")
         wid = prm.get("wall_id")
         segs = ((p.get("cv_walls") or {}).get(str(pi)) or (p.get("cv_walls") or {}).get(pi) or {}).get("segments") or []
         idx = next((i for i, s in enumerate(segs) if (s.get("wall_id") or s.get("id")) == wid), -1)
         if idx < 0:
-            raise HTTPException(404, "Mur introuvable")
+            raise HTTPException(404, "Parede não encontrada")
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id},
             {"$set": {f"cv_walls.{pi}.segments.{idx}.wall_type": new_type,
@@ -2084,7 +2080,7 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "add_note":
         text = (prm.get("text") or "").strip()[:200]
         if not text:
-            raise HTTPException(422, "Texte de note vide")
+            raise HTTPException(422, "Texto da nota vazio")
         note = {"id": "note_" + secrets.token_hex(4), "text": text,
                 "x": int(prm.get("x") or 60), "y": int(prm.get("y") or 60)}
         await db.plans_takeoff.update_one(
@@ -2099,10 +2095,10 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "rename_measurement":
         mid = prm.get("measurement_id")
         if not _find_meas(mid):
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         new_label = (prm.get("new_label") or "").strip()[:80]
         if not new_label:
-            raise HTTPException(422, "Libellé invalide")
+            raise HTTPException(422, "Designação inválida")
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"], "measurements.measurement_id": mid},
             {"$set": {"measurements.$.label": new_label, "updated_at": _now()}})
@@ -2111,7 +2107,7 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "delete_measurement":
         mid = prm.get("measurement_id")
         if not _find_meas(mid):
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"]},
             {"$pull": {"measurements": {"measurement_id": mid}}, "$set": {"updated_at": _now()}})
@@ -2121,13 +2117,13 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         mid = prm.get("measurement_id")
         m = _find_meas(mid)
         if not m:
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         try:
             h = float(prm.get("wall_height_m"))
         except (TypeError, ValueError):
-            raise HTTPException(422, "Hauteur invalide")
+            raise HTTPException(422, "Altura inválida")
         if h < 0 or h > 20:
-            raise HTTPException(422, "Hauteur hors bornes (0–20 m)")
+            raise HTTPException(422, "Altura fora dos limites (0–20 m)")
         m["gross_m"] = round(_measure_gross_m(m), 3)
         m["wall_height_m"] = h or 0
         sets = _recompute_linear_sets(m)
@@ -2140,9 +2136,9 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         mid = prm.get("measurement_id")
         poste = (prm.get("poste") or "").strip()
         if not _find_meas(mid):
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         if poste not in corps_etat.POSTES:
-            raise HTTPException(422, f"Poste inconnu : {poste}")
+            raise HTTPException(422, f'Artigo desconhecido: {poste}')
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"], "measurements.measurement_id": mid},
             {"$set": {"measurements.$.poste": poste, "updated_at": _now()}})
@@ -2152,9 +2148,9 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         try:
             h = float(prm.get("wall_height_m"))
         except (TypeError, ValueError):
-            raise HTTPException(422, "Hauteur invalide")
+            raise HTTPException(422, "Altura inválida")
         if h < 0 or h > 20:
-            raise HTTPException(422, "Hauteur hors bornes (0–20 m)")
+            raise HTTPException(422, "Altura fora dos limites (0–20 m)")
         kw = (prm.get("filter") or "").strip().lower()
         facade_kw = ("façade", "facade", "extérieur", "exterieur", "ext ", "mur ext", "périphérique", "peripherique")
         is_facade = kw in ("__facade__",) or any(f.strip() == kw for f in facade_kw)
@@ -2190,9 +2186,9 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "create_measurements_bulk":
         items = prm.get("items")
         if not isinstance(items, list) or not items:
-            raise HTTPException(422, "Aucune mesure à créer")
+            raise HTTPException(422, "Nenhuma medição a criar")
         if len(items) > 50:
-            raise HTTPException(422, "Trop de mesures (max 50)")
+            raise HTTPException(422, "Demasiadas medições (máx. 50)")
         recs, created = [], []
         for it in items:
             if not isinstance(it, dict):
@@ -2201,7 +2197,7 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
             recs.append(rec)
             created.append({"measurement_id": rec["measurement_id"], "label": rec.get("label"), "value": human})
         if not recs:
-            raise HTTPException(422, "Aucune mesure valide à créer")
+            raise HTTPException(422, "Nenhuma medição válida a criar")
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"]},
             {"$push": {"measurements": {"$each": recs}}, "$set": {"updated_at": _now()}})
@@ -2212,13 +2208,13 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         mid = prm.get("measurement_id")
         m = _find_meas(mid)
         if not m:
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         try:
             surf = round(float(prm.get("surface_m2")), 3)
         except (TypeError, ValueError):
-            raise HTTPException(422, "Surface (m²) invalide")
+            raise HTTPException(422, "Área (m²) inválida")
         if surf <= 0 or surf > 100000:
-            raise HTTPException(422, "Surface hors bornes (0–100000 m²)")
+            raise HTTPException(422, "Área fora dos limites (0–100000 m²)")
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"], "measurements.measurement_id": mid},
             {"$set": {"measurements.$.area_m2": surf, "measurements.$.surface_source": "manual",
@@ -2229,21 +2225,21 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         mid = prm.get("measurement_id")
         m = _find_meas(mid)
         if not m:
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         cur = m.get("area_m2")
         if cur is None:
             cur = m.get("wall_area_net_m2")
         if cur is None:
-            raise HTTPException(422, "Cette cote n'a pas de surface à ajuster")
+            raise HTTPException(422, "Esta cota não tem área a ajustar")
         try:
             delta = round(float(prm.get("delta_m2")), 3)
         except (TypeError, ValueError):
-            raise HTTPException(422, "Variation (m²) invalide")
+            raise HTTPException(422, "Variação (m²) inválida")
         new_surf = round(float(cur) + delta, 3)
         if new_surf <= 0:
-            raise HTTPException(422, f"Surface résultante invalide ({new_surf:.2f} m²)")
+            raise HTTPException(422, f'Área resultante inválida ({new_surf:.2f} m²)')
         if new_surf > 100000:
-            raise HTTPException(422, "Surface hors bornes")
+            raise HTTPException(422, "Área fora dos limites")
         log = {"delta_m2": delta, "from_m2": round(float(cur), 3), "to_m2": new_surf, "at": _now()}
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"], "measurements.measurement_id": mid},
@@ -2257,30 +2253,30 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         mid = prm.get("measurement_id")
         m = _find_meas(mid)
         if not m:
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         cur = m.get("area_m2")
         if cur is None:
             cur = m.get("wall_area_net_m2")
         if cur is None:
-            raise HTTPException(422, "Cette cote n'a pas de surface à ajuster")
+            raise HTTPException(422, "Esta cota não tem área a ajustar")
         raw = prm.get("areas")
         if not isinstance(raw, list) or not raw:
-            raise HTTPException(422, "Aucune trémie à déduire")
+            raise HTTPException(422, "Nenhuma abertura em laje a deduzir")
         if len(raw) > 100:
-            raise HTTPException(422, "Trop de déductions (max 100)")
+            raise HTTPException(422, "Demasiadas deduções (máx. 100)")
         areas = []
         for a in raw:
             try:
                 v = float(a)
             except (TypeError, ValueError):
-                raise HTTPException(422, "Surface de trémie invalide")
+                raise HTTPException(422, "Área de abertura em laje inválida")
             if v <= 0 or v > 100000:
-                raise HTTPException(422, "Surface de trémie hors bornes")
+                raise HTTPException(422, "Área de abertura em laje fora dos limites")
             areas.append(round(v, 3))
         total = round(sum(areas), 3)
         new_surf = round(float(cur) - total, 3)
         if new_surf <= 0:
-            raise HTTPException(422, f"Surface résultante invalide ({new_surf:.2f} m²)")
+            raise HTTPException(422, f'Área resultante inválida ({new_surf:.2f} m²)')
         log = {"deltas_m2": areas, "total_m2": total, "from_m2": round(float(cur), 3),
                "to_m2": new_surf, "at": _now()}
         await db.plans_takeoff.update_one(
@@ -2296,13 +2292,13 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         mid = prm.get("measurement_id")
         m = _find_meas(mid)
         if not m:
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         try:
             ln = round(float(prm.get("length_m")), 3)
         except (TypeError, ValueError):
-            raise HTTPException(422, "Linéaire (ml) invalide")
+            raise HTTPException(422, "Linear (ml) inválido")
         if ln <= 0 or ln > 100000:
-            raise HTTPException(422, "Linéaire hors bornes")
+            raise HTTPException(422, "Linear fora dos limites")
         m["gross_m"] = ln
         sets = _recompute_linear_sets(m) if m.get("wall_height_m") else {
             "gross_m": ln, "value_m": ln, "length_m": ln}
@@ -2315,10 +2311,10 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
         mid = prm.get("measurement_id")
         src = _find_meas(mid)
         if not src:
-            raise HTTPException(404, "Mesure introuvable")
+            raise HTTPException(404, "Medição não encontrada")
         dup = copy.deepcopy(src)
         dup["measurement_id"] = f"mes_{secrets.token_hex(6)}"
-        dup["label"] = ((src.get("label") or "Mesure") + " (copie)")[:80]
+        dup["label"] = ((src.get("label") or "Medição") + " (copie)")[:80]
         dup["created_at"] = _now()
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -2330,7 +2326,7 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
     if action == "restore_measurement":
         meas = prm.get("measurement")
         if not isinstance(meas, dict) or not meas.get("measurement_id"):
-            raise HTTPException(422, "Mesure à restaurer invalide")
+            raise HTTPException(422, "Medição a restaurar inválida")
         # évite un doublon si déjà présente
         await db.plans_takeoff.update_one(
             {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -2388,7 +2384,7 @@ async def ai_command_apply(plan_id: str, body: AiApplyIn,
             count += 1
         return {"ok": True, "applied": "assign_all_postes", "assigned": count}
 
-    raise HTTPException(400, f"Action non supportée : {action}")
+    raise HTTPException(400, f'Ação não suportada: {action}')
 
 
 @router.get("/{plan_id}/walls-summary")
@@ -2403,7 +2399,7 @@ async def walls_summary(plan_id: str, ppm: float | None = Query(None, gt=0),
         {"_id": 0, "cv_walls": 1, "calibrations": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     cv_walls = p.get("cv_walls") or {}
     calibs = p.get("calibrations") or {}
     scales = []
@@ -2442,18 +2438,18 @@ async def detect_all_rooms_route(plan_id: str, page_index: int = 0, user=Depends
         {"_id": 0, "pages": 1, "calibrations": 1},
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     img = pages[page_index].get("image_png_b64")
     if not img:
-        raise HTTPException(500, "Image manquante")
+        raise HTTPException(500, "Imagem em falta")
     try:
         result = detect_all_rooms(img)
     except Exception as e:
         logger.exception("detect_all_rooms failed")
-        raise HTTPException(500, f"Détection impossible : {e}")
+        raise HTTPException(500, f'Deteção impossível: {e}')
 
     calib = (p.get("calibrations") or {}).get(str(page_index))
     if calib:
@@ -2473,20 +2469,20 @@ async def room_autofill(plan_id: str, body: RoomAutofillIn, user=Depends(current
         {"_id": 0, "pages": 1, "calibrations": 1},
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if body.page_index < 0 or body.page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     img = pages[body.page_index].get("image_png_b64")
     if not img:
-        raise HTTPException(500, "Image manquante")
+        raise HTTPException(500, "Imagem em falta")
     try:
         cv_res = flood_fill_room(img, body.seed_x, body.seed_y, body.tolerance)
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:
         logger.exception("flood fill failed")
-        raise HTTPException(500, f"Détection contour impossible : {e}")
+        raise HTTPException(500, f'Deteção de contorno impossível: {e}')
 
     calib = (p.get("calibrations") or {}).get(str(body.page_index))
     if calib and len(cv_res["points"]) >= 3:
@@ -2518,28 +2514,28 @@ async def measure(plan_id: str, body: MeasureIn, user=Depends(current_user)):
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "calibrations": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     calib = (p.get("calibrations") or {}).get(str(body.page_index))
     if not calib:
-        raise HTTPException(400, "Page non calibrée")
+        raise HTTPException(400, "Página não calibrada")
     ppm = calib["pixels_per_meter"]
 
     if body.kind == "distance":
         if len(body.points) != 2:
-            raise HTTPException(422, "distance = exactement 2 points")
+            raise HTTPException(422, "distância = exatamente 2 pontos")
         dist = round(G.distance_m(body.points[0], body.points[1], ppm), 3)
         result = {"kind": "distance", "value_m": dist, "length_m": dist}
     elif body.kind == "cumulative":
         segs = [s for s in (body.segments or []) if len(s) >= 2]
         if not segs:
-            raise HTTPException(422, "cumulative requiert au moins 1 tronçon (2 points)")
+            raise HTTPException(422, "cumulative requer pelo menos 1 troço (2 pontos)")
         total = round(sum(G.polyline_length_m(s, ppm) for s in segs), 3)
         result = {"kind": "cumulative", "value_m": total, "length_m": total,
                   "segments": [[list(pt) for pt in s] for s in segs]}
     elif body.kind == "cumulative_area":
         polys = [pp for pp in (body.polygons or []) if len(pp) >= 3]
         if not polys:
-            raise HTTPException(422, "cumulative_area requiert au moins 1 zone (3 points)")
+            raise HTTPException(422, "cumulative_area requer pelo menos 1 zona (3 pontos)")
         area = round(sum(G.polygon_area_m2(pp, ppm) for pp in polys), 3)
         perim = round(sum(G.polygon_perimeter_m(pp, ppm) for pp in polys), 3)
         result = {"kind": "cumulative_area", "area_m2": area, "perimeter_m": perim,
@@ -2549,7 +2545,7 @@ async def measure(plan_id: str, body: MeasureIn, user=Depends(current_user)):
                   "length_m": round(G.polyline_length_m(body.points, ppm), 3)}
     else:
         if len(body.points) < 3:
-            raise HTTPException(422, "polygon >= 3 points")
+            raise HTTPException(422, "polígono >= 3 pontos")
         result = {"kind": "polygon",
                   "area_m2": round(G.polygon_area_m2(body.points, ppm), 3),
                   "perimeter_m": round(G.polygon_perimeter_m(body.points, ppm), 3)}
@@ -2602,10 +2598,10 @@ def _estimate_poste(poste: str, qty: float, params: dict, custom: list | None) -
         return corps_etat.estimate(poste, qty, params)
     cp = next((c for c in (custom or []) if c.get("key") == poste), None)
     if not cp:
-        raise ValueError(f"Poste inconnu: {poste}")
+        raise ValueError(f'Artigo desconhecido: {poste}')
     q = round(float(qty or 0), 3)
     if q <= 0:
-        raise ValueError("Quantité invalide")
+        raise ValueError("Quantidade inválida")
     pu = float(cp.get("pu") or 0)
     ht = round(q * pu, 2)
     margin = float(params.get("margin_pct", 0) or 0)
@@ -2616,7 +2612,7 @@ def _estimate_poste(poste: str, qty: float, params: dict, custom: list | None) -
     return {"poste": poste, "label": cp.get("label", poste), "unit": unit,
             "family": cp.get("family", "area"), "color": cp.get("color", "#64748b"),
             "quantity": q, "custom": True,
-            "lines": [{"designation": cp.get("label", poste), "detail": "Prix unitaire artisan (fourniture + pose)",
+            "lines": [{"designation": cp.get("label", poste), "detail": "Preço unitário do empreiteiro (fornecimento + aplicação)",
                        "unit": unit, "qty": q, "pu": round(pu, 2), "total": ht}],
             "totals": {"ht": ht, "margin_pct": margin, "ht_with_margin": ht_m,
                        "tva_rate": tva_rate, "tva": tva, "ttc": round(ht_m + tva, 2)},
@@ -2747,14 +2743,14 @@ async def corps_etat_room_preset(body: RoomPresetIn, user=Depends(current_user))
 
     plan = []  # (key label, poste, qty, extra params)
     if inc.get("sol") and body.area_m2 > 0:
-        plan.append(("Sol", sol_poste, body.area_m2, {}))
+        plan.append(("Pavimento", sol_poste, body.area_m2, {}))
     if inc.get("plinthes") and perim_net > 0:
-        plan.append(("Plinthes", "plinthes", perim_net, {}))
+        plan.append(("Rodapés", "plinthes", perim_net, {}))
     if inc.get("peinture_murs") and perim_net > 0 and height > 0:
-        plan.append(("Peinture murs", "peinture", round(perim_net * height, 3), {"couches": max(1, int(body.couches or 2))}))
+        plan.append(("Pintura de paredes", "peinture", round(perim_net * height, 3), {"couches": max(1, int(body.couches or 2))}))
     if inc.get("plafond") and body.area_m2 > 0:
         extra = {"couches": max(1, int(body.couches or 2))} if plafond_poste == "peinture" else {}
-        plan.append(("Plafond", plafond_poste, body.area_m2, extra))
+        plan.append(("Teto", plafond_poste, body.area_m2, extra))
 
     items, grand_ht, grand_ttc = [], 0.0, 0.0
     for slot, poste, qty, extra in plan:
@@ -2807,7 +2803,7 @@ async def corps_etat_save_ouvrage(body: OuvrageIn, user=Depends(current_user)) -
     par toute l'équipe."""
     from engines import corps_etat
     if body.poste not in corps_etat.POSTES:
-        raise HTTPException(422, f"Poste inconnu: {body.poste}")
+        raise HTTPException(422, f'Artigo desconhecido: {body.poste}')
     org_id = user.get("organization_id")
     shared = bool(body.shared and org_id)
     ov = {
@@ -2932,7 +2928,7 @@ async def create_plan_group(body: PlanGroupIn, user=Depends(current_user)) -> di
         found = await db.plans_takeoff.count_documents(
             {"plan_id": {"$in": plan_ids}, "user_id": user["user_id"]})
         if found != len(set(plan_ids)):
-            raise HTTPException(422, "Un ou plusieurs plans sont introuvables pour ce compte")
+            raise HTTPException(422, "Uma ou várias plantas não foram encontradas para esta conta")
     g = {
         "group_id": "grp_" + secrets.token_hex(6),
         "user_id": user["user_id"],
@@ -2957,7 +2953,7 @@ async def create_plan_group(body: PlanGroupIn, user=Depends(current_user)) -> di
 async def get_plan_group(group_id: str, margin_pct: float = Query(0.0), user=Depends(current_user)) -> dict:
     g = await db.plan_groups.find_one({"group_id": group_id, "user_id": user["user_id"]}, {"_id": 0})
     if not g:
-        raise HTTPException(404, "Projet multi-niveaux introuvable")
+        raise HTTPException(404, "Projeto com vários níveis não encontrado")
     return await _group_payload(g, user, with_consolidation=True, margin=margin_pct)
 
 
@@ -2968,7 +2964,7 @@ async def update_plan_group(group_id: str, body: PlanGroupIn, user=Depends(curre
     res = await db.plan_groups.update_one(
         {"group_id": group_id, "user_id": user["user_id"]}, {"$set": upd})
     if not res.matched_count:
-        raise HTTPException(404, "Projet multi-niveaux introuvable")
+        raise HTTPException(404, "Projeto com vários níveis não encontrado")
     return {"ok": True}
 
 
@@ -2987,13 +2983,13 @@ async def plan_group_to_quote(group_id: str, body: dict | None = None, user=Depe
     from engines.plan_quote_scope import unique_levels, group_coverage, positive_quantity
     g = await db.plan_groups.find_one({"group_id": group_id, "user_id": user["user_id"]}, {"_id": 0})
     if not g:
-        raise HTTPException(404, "Projet multi-niveaux introuvable")
+        raise HTTPException(404, "Projeto com vários níveis não encontrado")
     try:
         margin = float((body or {}).get("margin_pct") or 0)
     except (TypeError, ValueError):
-        raise HTTPException(422, "Marge invalide") from None
+        raise HTTPException(422, "Margem inválida") from None
     if not 0 <= margin <= 1000:
-        raise HTTPException(422, "La marge doit être comprise entre 0 et 1 000 %")
+        raise HTTPException(422, "A margem deve estar entre 0 e 1 000 %")
     prefs = await _load_ce_prefs(user)
     plan_ids = [lv["plan_id"] for lv in (g.get("levels") or [])]
     plans = await db.plans_takeoff.find(
@@ -3007,7 +3003,7 @@ async def plan_group_to_quote(group_id: str, body: dict | None = None, user=Depe
         pd = by_id.get(lv["plan_id"])
         if not pd:
             continue
-        cat = lv.get("level_label") or "Niveau"
+        cat = lv.get("level_label") or "Piso"
         for m in (pd.get("measurements") or []):
             poste = m.get("poste")
             q = positive_quantity(m, _measure_chiffrage_qty)
@@ -3026,12 +3022,12 @@ async def plan_group_to_quote(group_id: str, body: dict | None = None, user=Depe
                 is_area = m.get("wall_area_net_m2") is not None or m.get("area_m2") is not None
                 unit = "m2" if is_area else "ml"
                 lines.append(DocLine(kind="line", line_kind="ouvrage",
-                                     designation=(m.get("label") or ("Surface" if is_area else "Linéaire")),
-                                     description=f"{cat} · à chiffrer",
+                                     designation=(m.get("label") or ("Superfície" if is_area else "Linear")),
+                                     description=f'{cat} · a orçamentar',
                                      unit=("u" if m.get("kind") == "count" else unit), qty=round(q, 2), unit_price_ht=0.0, price_missing=True, category=cat))
     if not lines:
-        raise HTTPException(422, "Aucune mesure dans ce projet — tracez des cotes sur les plans d'abord")
-    doc = DocIn(doc_type="quote", title=f"Devis partiel — {g['name']}"[:160],
+        raise HTTPException(422, "Nenhuma medição neste projeto — trace primeiro cotas nas plantas")
+    doc = DocIn(doc_type="quote", title=f"Orçamento parcial — {g['name']}"[:160],
                 chantier_id=g.get("chantier_id"), lines=lines, status="draft",
                 notes="\n".join(coverage["warnings"]))
     created = await create_document(doc, user)
@@ -3090,7 +3086,7 @@ async def plan_group_cover_info(group_id: str, user=Depends(current_user)) -> di
     """Infos pour la page de garde : référence auto + client pré-rempli (chantier)."""
     g = await db.plan_groups.find_one({"group_id": group_id, "user_id": user["user_id"]}, {"_id": 0})
     if not g:
-        raise HTTPException(404, "Projet multi-niveaux introuvable")
+        raise HTTPException(404, "Projeto com vários níveis não encontrado")
     return {"reference": _group_reference(group_id),
             "client": await _group_cover_client(g, user)}
 
@@ -3114,7 +3110,7 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
 
     g = await db.plan_groups.find_one({"group_id": group_id, "user_id": user["user_id"]}, {"_id": 0})
     if not g:
-        raise HTTPException(404, "Projet multi-niveaux introuvable")
+        raise HTTPException(404, "Projeto com vários níveis não encontrado")
     payload = await _group_payload(g, user, with_consolidation=True, margin=margin_pct)
 
     # Page de garde : branding « Identité pro » + client (override UI ou chantier)
@@ -3136,12 +3132,12 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
     cover_ttc = None
     story += build_cover_story(
         branding,
-        {"name": f"Relevé partiel — {g['name']}", "levels_count": len(levels), "total_ttc": cover_ttc},
+        {"name": f"Levantamento parcial — {g['name']}", "levels_count": len(levels), "total_ttc": cover_ttc},
         client, _group_reference(group_id), st)
     if metre_only:
-        story.append(Paragraph("MÉTRÉ PROJET MULTI-NIVEAUX (SANS PRIX)", st["kicker"]))
+        story.append(Paragraph("MEDIÇÃO DE PROJETO COM VÁRIOS NÍVEIS (SEM PREÇOS)", st["kicker"]))
     else:
-        story.append(Paragraph("RAPPORT DE PROJET MULTI-NIVEAUX", st["kicker"]))
+        story.append(Paragraph("RELATÓRIO DE PROJETO COM VÁRIOS NÍVEIS", st["kicker"]))
     story.append(Paragraph(f"<b>{g['name']}</b>", st["h1"]))
     sub = f"{len(payload.get('levels') or [])} niveau(x)"
     if not metre_only:
@@ -3152,7 +3148,7 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
     story.append(Spacer(1, 8 * mm))
 
     if metre_only:
-        rows = [["Niveau", "Plan", "Surface (m²)", "Linéaire (ml)", "Mesures"]]
+        rows = [["Piso", "Planta", "Superfície (m²)", "Linear (ml)", "Medições"]]
         for lv in (payload.get("levels") or []):
             c = lv.get("consolidated") or {}
             me = c.get("metre") or {}
@@ -3163,11 +3159,11 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
                 str(me.get("measures", 0)),
             ])
         tot = payload.get("totals") or {}
-        rows.append(["SOUS-TOTAL", "", f"{tot.get('area_m2', 0):.2f}",
+        rows.append(["SUBTOTAL", "", f"{tot.get('area_m2', 0):.2f}",
                      f"{tot.get('length_ml', 0):.2f}", ""])
         tbl = Table(rows, colWidths=[30 * mm, 56 * mm, 32 * mm, 32 * mm, 26 * mm])
     else:
-        rows = [["Niveau", "Plan", "Surface (m²)", "Linéaire (ml)", "Mesures", "HT (€)", "TTC (€)"]]
+        rows = [["Piso", "Planta", "Superfície (m²)", "Linear (ml)", "Medições", "HT (€)", "c/ IVA (€)"]]
         for lv in (payload.get("levels") or []):
             c = lv.get("consolidated") or {}
             me = c.get("metre") or {}
@@ -3182,7 +3178,7 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
             ])
         tot = payload.get("totals") or {}
         has_priced = any((lv.get("consolidated") or {}).get("chiffrage", {}).get("priced_measures") for lv in levels)
-        rows.append(["SOUS-TOTAL", "", f"{tot.get('area_m2', 0):.2f}", f"{tot.get('length_ml', 0):.2f}",
+        rows.append(["SUBTOTAL", "", f"{tot.get('area_m2', 0):.2f}", f"{tot.get('length_ml', 0):.2f}",
                      "", f"{tot.get('ht_with_margin', 0):.2f}" if has_priced else "N/C",
                      f"{tot.get('ttc', 0):.2f}" if has_priced else "N/C"])
         tbl = Table(rows, colWidths=[26 * mm, 40 * mm, 22 * mm, 22 * mm, 18 * mm, 24 * mm, 24 * mm])
@@ -3213,19 +3209,19 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
         pd = detail_by_id.get(lv.get("plan_id"))
         if not pd:
             continue
-        story.append(Paragraph(f"DÉTAIL DES COTES — {lv.get('level_label') or 'Niveau'}", st["kicker"]))
+        story.append(Paragraph(f"DETALHE DAS COTAS — {lv.get('level_label') or 'Piso'}", st["kicker"]))
         thumb = await _ensure_level_thumb(lv.get("plan_id"), user["user_id"])
         sub = _detail_cotes_flowables(pd.get("measurements") or [], st, thumb_b64=thumb)
         if sub:
             story += sub
         else:
-            story.append(Paragraph("Aucune cote détaillée sur ce niveau.", st["muted"]))
+            story.append(Paragraph("Nenhuma cota detalhada neste nível.", st["muted"]))
         story.append(Spacer(1, 4 * mm))
 
     if metre_only:
-        story.append(Paragraph("Métré déterministe — ConstruPilot. Relevé de quantités (surfaces, linéaires) sans prix.", st["muted"]))
+        story.append(Paragraph("Medição determinística — ConstruPilot. Levantamento de quantidades (áreas, lineares) sem preços.", st["muted"]))
     else:
-        story.append(Paragraph("Métré et chiffrage déterministes — ConstruPilot. Document non contractuel.", st["muted"]))
+        story.append(Paragraph("Medição e orçamentação determinísticas — ConstruPilot. Documento não contratual.", st["muted"]))
     wm = make_logo_watermark((branding or {}).get("logo_b64"))
     if wm:
         docp.build(story, onFirstPage=wm, onLaterPages=wm)
@@ -3243,7 +3239,7 @@ def _plan_metre_only(pd: dict) -> dict:
     area = length = 0.0
     items = []
     for m in (pd.get("measurements") or []):
-        lbl = m.get("label") or m.get("kind") or "Mesure"
+        lbl = m.get("label") or m.get("kind") or "Medição"
         if m.get("area_m2") is not None:
             v = float(m.get("area_m2") or 0); area += v
             items.append((lbl, v, "m²"))
@@ -3275,7 +3271,7 @@ async def metre_multi_pdf(body: MetreMultiIn, user=Depends(current_user)):
     import secrets
 
     if len(body.plan_ids) < 1:
-        raise HTTPException(400, "Sélectionnez au moins 1 plan")
+        raise HTTPException(400, "Selecione pelo menos 1 planta")
     plans = await db.plans_takeoff.find(
         {"plan_id": {"$in": body.plan_ids}, "user_id": user["user_id"]},
         {"_id": 0, "plan_id": 1, "filename": 1, "measurements": 1}).to_list(200)
@@ -3289,29 +3285,29 @@ async def metre_multi_pdf(body: MetreMultiIn, user=Depends(current_user)):
         rows_data.append((pd.get("filename") or pid, me))
         tot_area += me["area_m2"]; tot_len += me["length_ml"]; tot_meas += me["measures"]
     if not rows_data:
-        raise HTTPException(400, "Aucun plan trouvé")
+        raise HTTPException(400, "Nenhuma planta encontrada")
 
     branding = await _resolve_branding(user["user_id"])
     buf = BytesIO()
     docp = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
                              topMargin=16 * mm, bottomMargin=16 * mm)
     st = _styles()
-    name = (body.project_name or "Métré groupé").strip() or "Métré groupé"
+    name = (body.project_name or "Medição agrupada").strip() or "Medição agrupada"
     reference = f"METRE-{secrets.token_hex(3).upper()}"
     story = build_cover_story(
         branding,
         {"name": name, "levels_count": len(rows_data), "total_ttc": None},
         {}, reference, st)
-    story.append(Paragraph("MÉTRÉ GROUPÉ MULTI-PLANS (SANS PRIX)", st["kicker"]))
+    story.append(Paragraph("MEDIÇÃO AGRUPADA DE VÁRIAS PLANTAS (SEM PREÇOS)", st["kicker"]))
     story.append(Paragraph(f"<b>{name}</b>", st["h1"]))
-    story.append(Paragraph(f"{len(rows_data)} plan(s) · cotes déjà calculées", st["muted"]))
+    story.append(Paragraph(f'{len(rows_data)} planta(s) · cotas já calculadas', st["muted"]))
     story.append(Spacer(1, 8 * mm))
 
     # Tableau récapitulatif projet
-    rows = [["Plan", "Surface (m²)", "Linéaire (ml)", "Mesures"]]
+    rows = [["Planta", "Superfície (m²)", "Linear (ml)", "Medições"]]
     for fn, me in rows_data:
         rows.append([fn[:46], f"{me['area_m2']:.2f}", f"{me['length_ml']:.2f}", str(me["measures"])])
-    rows.append(["TOTAL PROJET", f"{round(tot_area, 2):.2f}", f"{round(tot_len, 2):.2f}", str(tot_meas)])
+    rows.append(["TOTAL DO PROJETO", f"{round(tot_area, 2):.2f}", f"{round(tot_len, 2):.2f}", str(tot_meas)])
     tbl = Table(rows, colWidths=[78 * mm, 34 * mm, 34 * mm, 28 * mm])
     recap_style = [
         ("BACKGROUND", (0, 0), (-1, 0), DARK),
@@ -3331,14 +3327,14 @@ async def metre_multi_pdf(body: MetreMultiIn, user=Depends(current_user)):
 
     # Détail pièce par pièce (ligne à ligne) sous chaque plan
     for fn, me in rows_data:
-        story.append(Paragraph(f"Détail — {fn}", st["h2"]))
+        story.append(Paragraph(f'Detalhe — {fn}', st["h2"]))
         if not me["items"]:
-            story.append(Paragraph("Aucune mesure sur ce plan.", st["muted"]))
+            story.append(Paragraph("Nenhuma medição nesta planta.", st["muted"]))
             continue
-        drows = [["Désignation", "Quantité", "Unité"]]
+        drows = [["Designação", "Quantidade", "Un."]]
         for lbl, qty, unit in me["items"]:
             drows.append([str(lbl)[:60], f"{qty:.2f}", unit])
-        drows.append([f"Sous-total {fn[:30]}",
+        drows.append([f'Subtotal {fn[:30]}',
                       f"{me['area_m2']:.2f} m² · {me['length_ml']:.2f} ml", ""])
         dt = Table(drows, colWidths=[104 * mm, 44 * mm, 22 * mm])
         dt.setStyle(TableStyle([
@@ -3357,7 +3353,7 @@ async def metre_multi_pdf(body: MetreMultiIn, user=Depends(current_user)):
 
     story.append(Spacer(1, 6 * mm))
     story.append(Paragraph(
-        "Métré déterministe — ConstruPilot. Relevé de quantités (surfaces, linéaires) sans prix.",
+        "Medição determinística — ConstruPilot. Levantamento de quantidades (áreas, lineares) sem preços.",
         st["muted"]))
     wm = make_logo_watermark((branding or {}).get("logo_b64"))
     if wm:
@@ -3367,7 +3363,7 @@ async def metre_multi_pdf(body: MetreMultiIn, user=Depends(current_user)):
     pdf = buf.getvalue(); buf.close()
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition":
-                             f'attachment; filename="metre_groupe_{secrets.token_hex(3)}.pdf"'})
+                             f'attachment; filename="medicao_agrupada_{secrets.token_hex(3)}.pdf"'})
 
 
 # --------------------------------------------------------------------------
@@ -3403,7 +3399,7 @@ async def create_metre_version(body: dict, user=Depends(current_user)) -> dict:
     pd = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "measurements": 1, "filename": 1})
     if not pd:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     prefs = await _load_ce_prefs(user)
     v = {"version_id": "mv_" + secrets.token_hex(6), "user_id": user["user_id"], "plan_id": plan_id,
          "label": (str((body or {}).get("label") or "").strip()[:60]) or _now()[:16].replace("T", " "),
@@ -3420,7 +3416,7 @@ async def compare_metre_versions(a: str = Query(...), b: str = Query(...), user=
     va = await db.metre_versions.find_one({"version_id": a, "user_id": user["user_id"]}, {"_id": 0, "user_id": 0})
     vb = await db.metre_versions.find_one({"version_id": b, "user_id": user["user_id"]}, {"_id": 0, "user_id": 0})
     if not va or not vb:
-        raise HTTPException(404, "Version introuvable")
+        raise HTTPException(404, "Versão não encontrada")
     sa, sb = va["summary"], vb["summary"]
     postes = sorted(set(sa["by_poste"]) | set(sb["by_poste"]))
     by_poste = []
@@ -3489,7 +3485,7 @@ async def corps_etat_estimate_page(plan_id: str, body: CePageIn,
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "measurements": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     prefs = await _load_ce_prefs(user)
     ms = p.get("measurements") or []
     if body.page_index is not None:
@@ -3520,7 +3516,7 @@ async def delete_measurement(plan_id: str, measurement_id: str,
         {"$pull": {"measurements": {"measurement_id": measurement_id}},
          "$set": {"updated_at": _now()}})
     if res.matched_count == 0:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return {"ok": True}
 
 
@@ -3546,7 +3542,7 @@ async def rename_measurement(plan_id: str, measurement_id: str,
          "measurements.measurement_id": measurement_id},
         {"$set": sets})
     if res.matched_count == 0:
-        raise HTTPException(404, "Mesure introuvable")
+        raise HTTPException(404, "Medição não encontrada")
     return {"ok": True}
 
 
@@ -3588,7 +3584,7 @@ async def corps_etat_suggest_postes(plan_id: str, body: CePageIn, user=Depends(c
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "measurements": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ms = p.get("measurements") or []
     if body.page_index is not None:
         ms = [m for m in ms if m.get("page_index") == body.page_index]
@@ -3599,7 +3595,7 @@ async def corps_etat_suggest_postes(plan_id: str, body: CePageIn, user=Depends(c
             continue
         fam = "length" if m.get("kind") in ("distance", "cumulative", "polyline") and m.get("wall_area_net_m2") is None else "area"
         rows.append({"measurement_id": m.get("measurement_id"),
-                     "label": m.get("label") or ("Surface" if fam == "area" else "Linéaire"),
+                     "label": m.get("label") or ("Superfície" if fam == "area" else "Linear"),
                      "qty": round(q, 2), "family": fam,
                      "current_poste": m.get("poste"),
                      "suggested_poste": m.get("poste") or _suggest_poste(m)})
@@ -3639,7 +3635,7 @@ async def clear_measurements(plan_id: str, page_index: int = 0,
         {"$pull": {"measurements": {"page_index": page_index}},
          "$set": {"updated_at": _now()}})
     if res.matched_count == 0:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return {"ok": True}
 
 
@@ -3691,13 +3687,13 @@ def _measure_is_facade(m: dict, bbox) -> bool:
 
 
 # Classement d'une cote par famille d'ouvrage (poste en priorité, sinon libellé).
-_FAMILY_ORDER = ["Murs", "Cloisons", "Sols / Planchers", "Plafonds", "Autres"]
+_FAMILY_ORDER = ["Paredes", "Divisórias", "Pavimentos", "Tetos", "Autres"]
 _POSTE_FAMILY = {
-    "peinture": "Murs", "enduit": "Murs", "isolation": "Murs",
-    "cloison": "Cloisons", "doublage": "Cloisons", "placo": "Cloisons", "faience": "Cloisons",
-    "parquet": "Sols / Planchers", "carrelage": "Sols / Planchers", "chape": "Sols / Planchers",
-    "ragreage": "Sols / Planchers", "etancheite": "Sols / Planchers", "chauffage_sol": "Sols / Planchers",
-    "plafond": "Plafonds",
+    "peinture": "Paredes", "enduit": "Paredes", "isolation": "Paredes",
+    "cloison": "Divisórias", "doublage": "Divisórias", "placo": "Divisórias", "faience": "Divisórias",
+    "parquet": "Pavimentos", "carrelage": "Pavimentos", "chape": "Pavimentos",
+    "ragreage": "Pavimentos", "etancheite": "Pavimentos", "chauffage_sol": "Pavimentos",
+    "plafond": "Tetos",
 }
 
 
@@ -3708,13 +3704,13 @@ def _measure_family(m: dict) -> str:
             return fam
     lbl = (m.get("label") or m.get("kind") or "").lower()
     if any(k in lbl for k in ["cloison", "placo", "doublage", "séparation", "separation"]):
-        return "Cloisons"
+        return "Divisórias"
     if "plafond" in lbl:
-        return "Plafonds"
+        return "Tetos"
     if any(k in lbl for k in ["sol", "plancher", "dalle", "carrelage", "parquet", "chape", "carreau"]):
-        return "Sols / Planchers"
+        return "Pavimentos"
     if any(k in lbl for k in ["mur", "façade", "facade", "parpaing"]):
-        return "Murs"
+        return "Paredes"
     return "Autres"
 
 
@@ -3742,23 +3738,23 @@ def _measure_detail_rows(m: dict):
     """(rows, surface_m2, linear_ml) pour une cote, ou None si rien à afficher."""
     wh = m.get("wall_height_m")
     gross = m.get("gross_m")
-    rows = [["Désignation", "Détail", "Valeur"]]
+    rows = [["Designação", "Detalhe", "Valor"]]
     surface = linear = 0.0
     if m.get("wall_area_gross_m2") is not None:
-        rows.append(["Mur brut", f"{float(gross or 0):.2f} m × {float(wh or 0):.2f} m", f"{m['wall_area_gross_m2']:.2f} m²"])
+        rows.append(["Parede bruta", f"{float(gross or 0):.2f} m × {float(wh or 0):.2f} m", f"{m['wall_area_gross_m2']:.2f} m²"])
         for o in (m.get("openings") or []):
             w = float(o.get("width_m") or 0); h = float(o.get("height_m") or 0); c = int(o.get("count", 1))
             if h > 0:
                 rows.append([f"− Ouverture{(' ×' + str(c)) if c > 1 else ''}", f"{w:.2f} m × {h:.2f} m", f"− {w * h * c:.2f} m²"])
         net = float(m.get("wall_area_net_m2", 0) or 0)
         ln = float(m.get("length_m") or 0)
-        rows.append(["Mur net (ouvertures déduites)", "", f"{net:.2f} m²"])
-        rows.append(["Linéaire net", "", f"{ln:.2f} ml"])
+        rows.append(["Parede líquida (aberturas deduzidas)", "", f"{net:.2f} m²"])
+        rows.append(["Linear líquido", "", f"{ln:.2f} ml"])
         surface = net; linear = ln
     elif m.get("area_m2") is not None:
-        a = float(m["area_m2"]); rows.append(["Surface", "", f"{a:.2f} m²"]); surface = a
+        a = float(m["area_m2"]); rows.append(["Superfície", "", f"{a:.2f} m²"]); surface = a
     elif m.get("length_m") is not None or gross is not None:
-        ln = float(m.get("length_m") or gross or 0); rows.append(["Linéaire", "", f"{ln:.2f} ml"]); linear = ln
+        ln = float(m.get("length_m") or gross or 0); rows.append(["Linear", "", f"{ln:.2f} ml"]); linear = ln
     else:
         return None
     return rows, surface, linear
@@ -3804,14 +3800,14 @@ def _detail_cotes_flowables(measures, st, thumb_b64=None):
         flow.append(Paragraph(fam, st["h2"]))
         fam_surface = fam_linear = 0.0
         for m, (rows, surf, lin) in groups[fam]:
-            label = m.get("label") or m.get("kind") or "Mesure"
+            label = m.get("label") or m.get("kind") or "Medição"
             flow.append(Paragraph(f"<b>{label}</b>", st["body"]))
             t = Table(rows, colWidths=[72 * mm, 52 * mm, 34 * mm])
             t.setStyle(meas_style)
             flow.append(t)
             flow.append(Spacer(1, 2 * mm))
             fam_surface += surf; fam_linear += lin
-        fam_row = [[f"Sous-total {fam}", f"{fam_surface:.2f} m²", f"{fam_linear:.2f} ml"]]
+        fam_row = [[f'Subtotal {fam}', f"{fam_surface:.2f} m²", f"{fam_linear:.2f} ml"]]
         ft = Table(fam_row, colWidths=[90 * mm, 34 * mm, 34 * mm])
         ft.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), FAMBG),
@@ -3823,7 +3819,7 @@ def _detail_cotes_flowables(measures, st, thumb_b64=None):
         flow.append(Spacer(1, 4 * mm))
         lvl_surface += fam_surface; lvl_linear += fam_linear
 
-    lvl_row = [["SOUS-TOTAL NIVEAU", f"{lvl_surface:.2f} m²", f"{lvl_linear:.2f} ml"]]
+    lvl_row = [["SUBTOTAL DO NÍVEL", f"{lvl_surface:.2f} m²", f"{lvl_linear:.2f} ml"]]
     lt = Table(lvl_row, colWidths=[90 * mm, 34 * mm, 34 * mm])
     lt.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), ACC), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -3882,13 +3878,13 @@ async def _find_linear_measure(plan_id: str, measurement_id: str, user_id: str):
         {"plan_id": plan_id, "user_id": user_id},
         {"_id": 0, "calibrations": 1, "measurements": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     m = next((x for x in (p.get("measurements") or [])
               if x.get("measurement_id") == measurement_id), None)
     if not m:
-        raise HTTPException(404, "Mesure introuvable")
+        raise HTTPException(404, "Medição não encontrada")
     if m.get("kind") not in ("distance", "cumulative", "polyline", "manual_linear"):
-        raise HTTPException(422, "La déduction d'ouverture s'applique aux cotes linéaires (mur, distance)")
+        raise HTTPException(422, "A dedução de abertura aplica-se às cotas lineares (parede, distância)")
     return p, m
 
 
@@ -3900,16 +3896,16 @@ async def deduct_opening(plan_id: str, measurement_id: str,
     if body.points and len(body.points) == 2:
         calib = (p.get("calibrations") or {}).get(str(m.get("page_index", 0)))
         if not calib:
-            raise HTTPException(400, "Page non calibrée")
+            raise HTTPException(400, "Página não calibrada")
         w = round(G.distance_m(body.points[0], body.points[1], calib["pixels_per_meter"]), 3)
         drawn = [list(body.points[0]), list(body.points[1])]
     elif body.width_m:
         w = round(float(body.width_m), 3)
         drawn = None
     else:
-        raise HTTPException(422, "Dessinez la fenêtre (2 points) ou saisissez une largeur")
+        raise HTTPException(422, "Desenhe a janela (2 pontos) ou introduza uma largura")
     if not (w > 0):
-        raise HTTPException(422, "Largeur d'ouverture invalide")
+        raise HTTPException(422, "Largura de abertura inválida")
     cnt = int(body.count or 1)
     opening = {"opening_id": "op_" + secrets.token_hex(4), "width_m": w, "count": cnt,
                "height_m": (round(float(body.height_m), 3) if body.height_m else None),
@@ -3923,7 +3919,7 @@ async def deduct_opening(plan_id: str, measurement_id: str,
          "measurements.measurement_id": measurement_id},
         {"$set": {**{f"measurements.$.{k}": v for k, v in sets.items()}, "updated_at": _now()}})
     if res.matched_count == 0:
-        raise HTTPException(404, "Mesure introuvable")
+        raise HTTPException(404, "Medição não encontrada")
     return {"ok": True, "value_m": sets["value_m"], "gross_m": sets["gross_m"],
             "deducted_m": round(sets["gross_m"] - sets["value_m"], 3), "opening": opening,
             "wall_area_gross_m2": sets.get("wall_area_gross_m2"),
@@ -3958,7 +3954,7 @@ async def update_opening(plan_id: str, measurement_id: str, opening_id: str,
             found = True
             break
     if not found:
-        raise HTTPException(404, "Ouverture introuvable")
+        raise HTTPException(404, "Abertura não encontrada")
     m["openings"] = openings
     sets = _recompute_linear_sets(m)
     await _persist_linear(plan_id, user["user_id"], measurement_id, sets)
@@ -4015,7 +4011,7 @@ async def set_wall_height_bulk(plan_id: str, body: BulkWallHeightIn,
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "measurements": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     linear_kinds = ("distance", "cumulative", "polyline", "manual_linear")
     count = 0
     for m in (p.get("measurements") or []):
@@ -4049,14 +4045,14 @@ async def merge_measurements(plan_id: str, body: MergeMeasuresIn,
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "measurements": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ms = p.get("measurements") or []
     by_id = {m.get("measurement_id"): m for m in ms}
     chosen = [by_id[i] for i in dict.fromkeys(body.measurement_ids) if i in by_id]
     if len(chosen) < 2:
-        raise HTTPException(422, "Sélectionnez au moins 2 cotes existantes à fusionner")
+        raise HTTPException(422, "Selecione pelo menos 2 cotas existentes a fundir")
     if len({m.get("page_index", 0) for m in chosen}) != 1:
-        raise HTTPException(422, "Les cotes à fusionner doivent appartenir à la même page")
+        raise HTTPException(422, "As cotas a fundir devem pertencer à mesma página")
     kinds = {m.get("kind") for m in chosen}
     linear = {"distance", "cumulative", "polyline"}
     area = {"polygon", "cumulative_area"}
@@ -4089,7 +4085,7 @@ async def merge_measurements(plan_id: str, body: MergeMeasuresIn,
                   "area_m2": round(sum(float(m.get("area_m2") or 0) for m in chosen), 3),
                   "perimeter_m": round(sum(float(m.get("perimeter_m") or 0) for m in chosen), 3)}
     else:
-        raise HTTPException(422, "Ne mélangez pas des longueurs (murs) et des surfaces dans une fusion")
+        raise HTTPException(422, "Não misture comprimentos (paredes) e áreas numa fusão")
 
     merged["updated_at"] = _now()
     remaining = [m for m in ms if m.get("measurement_id") not in set(body.measurement_ids)]
@@ -4108,16 +4104,16 @@ async def _plan_and_polygon_measure(plan_id: str, measurement_id: str, user_id: 
         {"plan_id": plan_id, "user_id": user_id},
         {"_id": 0, "calibrations": 1, "rooms": 1, "measurements": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     m = next((x for x in (p.get("measurements") or [])
               if x.get("measurement_id") == measurement_id), None)
     if not m:
-        raise HTTPException(404, "Mesure introuvable")
+        raise HTTPException(404, "Medição não encontrada")
     if m.get("kind") != "polygon" or len(m.get("points") or []) < 3:
-        raise HTTPException(422, "Seule une mesure de surface (polygone) est convertible")
+        raise HTTPException(422, "Apenas uma medição de área (polígono) é convertível")
     calib = (p.get("calibrations") or {}).get(str(m.get("page_index", 0)))
     if not calib:
-        raise HTTPException(400, "Page non calibrée")
+        raise HTTPException(400, "Página não calibrada")
     return p, m, calib
 
 
@@ -4130,7 +4126,7 @@ async def measurement_to_room(plan_id: str, measurement_id: str,
     room = {
         "room_id": "room_" + secrets.token_hex(4),
         "page_index": m.get("page_index", 0),
-        "name": (m.get("label") or f"Pièce {len(rooms) + 1:02d}").strip()[:60],
+        "name": (m.get("label") or f'Divisão {len(rooms) + 1:02d}').strip()[:60],
         "points": [list(pt) for pt in m["points"]],
         "openings": [],
         "ceiling_height_m": 2.5,
@@ -4165,10 +4161,10 @@ async def measurement_deduct(plan_id: str, measurement_id: str,
          and G.point_in_polygon(cx, cy, r["points"])),
         None)
     if not target:
-        raise HTTPException(400, "Dessinez la surface à l'intérieur d'une pièce à déduire")
+        raise HTTPException(400, "Desenhe a área a deduzir no interior de uma divisão")
     deduction = {
         "deduction_id": "ded_" + secrets.token_hex(4),
-        "label": m.get("label") or "Déduction",
+        "label": m.get("label") or "Dedução",
         "area_m2": float(m.get("area_m2") or 0),
         "points": [list(pt) for pt in pts],
     }
@@ -4193,16 +4189,16 @@ async def delete_deduction(plan_id: str, room_id: str, deduction_id: str,
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "rooms": 1, "calibrations": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     room = next((r for r in rooms if r.get("room_id") == room_id), None)
     if not room:
-        raise HTTPException(404, "Pièce introuvable")
+        raise HTTPException(404, "Divisão não encontrada")
     before = len(room.get("deductions") or [])
     room["deductions"] = [d for d in room.get("deductions") or []
                           if d.get("deduction_id") != deduction_id]
     if len(room["deductions"]) == before:
-        raise HTTPException(404, "Déduction introuvable")
+        raise HTTPException(404, "Dedução não encontrada")
     calib = (p.get("calibrations") or {}).get(str(room.get("page_index", 0)))
     _recompute_room(room, (calib or {}).get("pixels_per_meter") or 0)
     await db.plans_takeoff.update_one(
@@ -4238,11 +4234,11 @@ async def add_opening(plan_id: str, room_id: str, body: OpeningIn, user=Depends(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "rooms": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     room = next((r for r in rooms if r["room_id"] == room_id), None)
     if not room:
-        raise HTTPException(404, "Pièce introuvable")
+        raise HTTPException(404, "Divisão não encontrada")
     opening = {"opening_id": "op_" + secrets.token_hex(4),
                "kind": body.kind.lower().strip() or "fenetre",
                "width_m": body.width_m, "height_m": body.height_m,
@@ -4272,11 +4268,11 @@ async def delete_opening(plan_id: str, room_id: str, opening_id: str,
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "rooms": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     room = next((r for r in rooms if r["room_id"] == room_id), None)
     if not room:
-        raise HTTPException(404, "Pièce introuvable")
+        raise HTTPException(404, "Divisão não encontrada")
     new_openings = [o for o in (room.get("openings") or []) if o.get("opening_id") != opening_id]
     net = G.subtract_openings(room["wall_area_gross_m2"], new_openings)
     room["openings"] = net["openings"]
@@ -4294,10 +4290,10 @@ async def upsert_room(plan_id: str, body: RoomIn, user=Depends(current_user)):
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "calibrations": 1, "rooms": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     calib = (p.get("calibrations") or {}).get(str(body.page_index))
     if not calib:
-        raise HTTPException(400, "Page non calibrée")
+        raise HTTPException(400, "Página não calibrada")
 
     m = G.room_measurements(body.points, calib["pixels_per_meter"],
                              body.ceiling_height_m or 2.5)
@@ -4340,7 +4336,7 @@ async def delete_room(plan_id: str, room_id: str, user=Depends(current_user)) ->
         {"$pull": {"rooms": {"room_id": room_id}}, "$set": {"updated_at": _now()}}
     )
     if res.matched_count == 0:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     await _snapshot(plan_id, user["user_id"], "room_delete", {"room_id": room_id})
     return {"ok": True}
 
@@ -4361,20 +4357,20 @@ async def update_room(plan_id: str, room_id: str, body: RoomUpdateIn,
     """
     # Validation d'abord (contrat iter58 : 422 avant 404)
     if body.name is None and body.height_m is None and body.preset_id is None:
-        raise HTTPException(422, "Aucun champ à mettre à jour")
+        raise HTTPException(422, "Nenhum campo a atualizar")
     if body.name is not None and not body.name.strip():
-        raise HTTPException(422, "Nom invalide")
+        raise HTTPException(422, "Nome inválido")
     if body.height_m is not None and (body.height_m <= 0 or body.height_m > 20):
-        raise HTTPException(422, "Hauteur invalide")
+        raise HTTPException(422, "Altura inválida")
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "rooms": 1, "calibrations": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     room = next((r for r in rooms if r.get("room_id") == room_id), None)
     if not room:
-        raise HTTPException(404, "Pièce introuvable")
+        raise HTTPException(404, "Divisão não encontrada")
     updated = []
     if body.name is not None:
         room["name"] = body.name.strip()[:60]
@@ -4446,10 +4442,10 @@ async def estimate_room(plan_id: str, room_id: str, body: RoomEstimateIn,
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "rooms": 1}
     )
     if not plan:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     room = next((r for r in plan.get("rooms", []) if r.get("room_id") == room_id), None)
     if not room:
-        raise HTTPException(404, "Pièce introuvable")
+        raise HTTPException(404, "Divisão não encontrada")
 
     length, width, height = _room_dimensions_for_estimator(room, body.override_height_m)
     surface = float(room.get("surface_m2") or (length * width))
@@ -4505,14 +4501,14 @@ async def estimate_room(plan_id: str, room_id: str, body: RoomEstimateIn,
         out["trades"]["plinths"] = {
             "inputs": {"perimeter_m": perimeter, "doors": body.doors},
             "results": [
-                {"label": "Périmètre net", "value": round(plinth_length, 2), "unit": "m"},
-                {"label": "Plinthes (+10% chutes)", "value": round(with_margin, 2), "unit": "ml"},
+                {"label": "Perímetro líquido", "value": round(plinth_length, 2), "unit": "m"},
+                {"label": "Rodapés (+10% desperdício)", "value": round(with_margin, 2), "unit": "ml"},
             ],
             "materials": [
                 {"name": "Plinthe MDF blanche 2.4m", "quantity": max(1, int(with_margin / 2.4) + 1),
                  "unit": "u", "search": "plinthe mdf blanche 2.4m"},
-                {"name": "Colle plinthe cartouche", "quantity": max(1, int(with_margin / 8) + 1),
-                 "unit": "u", "search": "colle plinthes cartouche"},
+                {"name": "Cola de rodapé em cartucho", "quantity": max(1, int(with_margin / 8) + 1),
+                 "unit": "u", "search": "cola de rodapés cartucho"},
             ],
             "estimated_budget": round(with_margin * 3.5 + max(1, int(with_margin / 8) + 1) * 6.5, 2),
         }
@@ -4612,9 +4608,9 @@ async def compare_plans(body: CompareIn, user=Depends(current_user)) -> dict:
         {"_id": 0, "rooms": 1, "filename": 1, "cv_walls": 1}
     )
     if not before or not after:
-        raise HTTPException(404, "Un des deux plans est introuvable")
+        raise HTTPException(404, "Uma das duas plantas não foi encontrada")
     if body.before_plan_id == body.after_plan_id:
-        raise HTTPException(400, "Sélectionnez deux plans différents")
+        raise HTTPException(400, "Selecione duas plantas diferentes")
 
     rooms_b = before.get("rooms") or []
     rooms_a = after.get("rooms") or []
@@ -4646,7 +4642,7 @@ async def compare_snapshots(plan_id: str, body: SnapshotCompareIn,
                              user=Depends(current_user)) -> dict:
     """Compare 2 snapshots d'historique du MÊME plan (avant/après édition)."""
     if body.before_snapshot_id == body.after_snapshot_id:
-        raise HTTPException(400, "Sélectionnez deux snapshots différents.")
+        raise HTTPException(400, "Selecione dois snapshots diferentes.")
     sb = await db.plans_takeoff_history.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"],
          "snapshot_id": body.before_snapshot_id}, {"_id": 0}
@@ -4656,7 +4652,7 @@ async def compare_snapshots(plan_id: str, body: SnapshotCompareIn,
          "snapshot_id": body.after_snapshot_id}, {"_id": 0}
     )
     if not sb or not sa:
-        raise HTTPException(404, "Un des deux snapshots est introuvable.")
+        raise HTTPException(404, "Um dos dois snapshots não foi encontrado.")
 
     diff = _diff_rooms(sb.get("rooms") or [], sa.get("rooms") or [], body.surface_tolerance_pct)
     return {
@@ -4691,7 +4687,7 @@ def _aggregate_levels(rooms: list[dict], pages: list[dict]) -> list[dict]:
         key = f"{info['index'] if info['index'] is not None else 'none'}"
         bucket = by_level.setdefault(key, {
             "level_index": info["index"],
-            "level_label": info["label"] or "Sans niveau",
+            "level_label": info["label"] or "Sem nível",
             "rooms": [], "totals": {"floor_m2": 0, "ceiling_m2": 0,
                                      "walls_gross_m2": 0, "walls_net_m2": 0,
                                      "perimeter_m": 0}})
@@ -4724,7 +4720,7 @@ async def takeoff(plan_id: str, user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "rooms": 1, "filename": 1, "pages": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     pages = p.get("pages") or []
     return {
@@ -4751,11 +4747,11 @@ async def compute_materials(plan_id: str, body: MaterialsIn, user=Depends(curren
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "rooms": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = [r for r in (p.get("rooms") or [])
              if not body.room_ids or r["room_id"] in body.room_ids]
     if not rooms:
-        raise HTTPException(400, "Aucune pièce sélectionnée")
+        raise HTTPException(400, "Nenhuma divisão selecionada")
 
     floor = sum(r.get("surface_m2", 0) for r in rooms)
     ceiling = sum(r.get("ceiling_area_m2", 0) for r in rooms)
@@ -4786,7 +4782,7 @@ async def list_history(plan_id: str, user=Depends(current_user)) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "plan_id": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     snaps = await db.plans_takeoff_history.find(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "user_id": 0}
@@ -4801,13 +4797,13 @@ async def restore_snapshot(plan_id: str, snapshot_id: str, user=Depends(current_
         {"_id": 0}
     )
     if not snap:
-        raise HTTPException(404, "Snapshot introuvable")
+        raise HTTPException(404, "Snapshot não encontrado")
     await _snapshot(plan_id, user["user_id"], "before_restore",
                     {"restored_from": snapshot_id})
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0, "pages": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     updates = {"rooms": snap.get("rooms") or [],
                "calibrations": snap.get("calibrations") or {},
                "updated_at": _now()}
@@ -4836,6 +4832,6 @@ async def label_snapshot(plan_id: str, snapshot_id: str, body: SnapshotLabelIn,
         {"$set": {"label": label}}
     )
     if res.matched_count == 0:
-        raise HTTPException(404, "Snapshot introuvable")
+        raise HTTPException(404, "Snapshot não encontrado")
     return {"ok": True, "snapshot_id": snapshot_id, "label": label}
 

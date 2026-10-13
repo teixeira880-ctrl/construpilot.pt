@@ -61,7 +61,7 @@ def _elevation(d, geom, ox, oy, w, h):
     d.add(Line(x + pier * sc, base - 8, opx + (a + L + a) * sc, base - 8, strokeColor=_DK, strokeWidth=0.5))
     d.add(String(cx, base - 18, f"L = {L:g} m", fontSize=8, fillColor=_DK, textAnchor="middle"))
     d.add(String(opx + a * sc / 2, lint_y - 10, f"a={a:g}", fontSize=6, fillColor=_MUT, textAnchor="middle"))
-    d.add(String(ox + 10, oy + h - 8, "Élévation (schéma)", fontSize=7.5, fillColor=_MUT))
+    d.add(String(ox + 10, oy + h - 8, "Alçado (esquema)", fontSize=7.5, fillColor=_MUT))
 
 
 def _isection(d, cx, base, bf, hh, n):
@@ -83,7 +83,7 @@ def _section(d, geom, ox, oy, w, h):
     steel, rc = geom.get("steel"), geom.get("rc")
     cx = ox + w / 2.0
     base = oy + 30
-    d.add(String(ox + 6, oy + h - 8, "Coupe (schéma)", fontSize=7.5, fillColor=_MUT))
+    d.add(String(ox + 6, oy + h - 8, "Corte (esquema)", fontSize=7.5, fillColor=_MUT))
     if mat == "steel" and steel and steel.get("status") == "ok":
         hh = min(h - 55, 70)
         bf = min(w * 0.22, 26)

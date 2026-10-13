@@ -112,16 +112,16 @@ async def referrals_lookup(code: str) -> dict:
     (for the "Invité par Marc" welcome message) or 404 if the code is bogus."""
     code = code.upper().strip()
     if not code or len(code) > 32:
-        raise HTTPException(400, "Code invalide")
+        raise HTTPException(400, "Código inválido")
     referrer = await db.users.find_one(
         {"referral_code": code},
         {"_id": 0, "user_id": 1, "name": 1},
     )
     if not referrer:
-        raise HTTPException(404, "Code de parrainage inconnu")
+        raise HTTPException(404, "Código de recomendação desconhecido")
     return {
         "code": code,
-        "referrer_name": (referrer.get("name") or "").split()[0] or "un ami",
+        "referrer_name": (referrer.get("name") or "").split()[0] or "um amigo",
     }
 
 

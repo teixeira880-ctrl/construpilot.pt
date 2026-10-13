@@ -316,7 +316,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                             {new Date(h.saved_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                           </td>
                           <td className="p-1.5 text-muted-foreground">
-                            {h.source === "análise" ? "Análise IA" : "Recálculo"}
+                            {h.source === "analyse" ? "Análise IA" : "Recálculo"}
                             {h.custom_pricing ? " · preço personalizado" : ""}
                           </td>
                           <td className="p-1.5 text-right num">{num(h.beton_m3, 2)} m³</td>

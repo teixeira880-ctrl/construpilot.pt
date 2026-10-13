@@ -109,15 +109,14 @@ def assign_wall_zones(wall_bodies: list[Polygon], traces: list[dict], sheet_data
             vol_conf += v
         else:
             vol_clar += v
-        key = tr["name"] if sd else "sans coupe (hauteur dominante)"
+        key = tr["name"] if sd else "sem corte (altura dominante)"
         zones[key] += v
         rows.append({"wall_index": i, "thickness_cm": round(t * 100), "plan_area_m2": round(w.area, 3), "coupe": tr["name"] if sd else None, "distance_m": round(dist, 2) if dist is not None else None,
                      "h_m": round(h, 3), "base_level_m": sd["base_used_m"] if sd else None, "volume_m3": round(v, 3), "state": state})
     return {"walls_in_extent": inside, "walls_missing_height": inside - len(rows),
             "rows": rows, "volume_by_coupe_m3": {k: round(v, 2) for k, v in zones.most_common()},
             "volume_confirmed_m3": round(vol_conf, 2), "volume_to_clarify_m3": round(vol_clar, 2), "volume_total_m3": round(vol_conf + vol_clar, 2),
-            "note": f"Hauteur de chaque corps de mur = AI plancher haut − niveau de base imprimé sur la coupe la plus proche (≤ {ZONE_REACH_M:g} m) ; "
-                    "sans coupe à portée, hauteur dominante (à éclaircir)."}
+            "note": f'Altura de cada corpo de parede = AI do pavimento superior − nível de base impresso no corte mais próximo (≤ {ZONE_REACH_M:g} m); sem corte ao alcance, altura dominante (a esclarecer).'}
 
 
 def clip_elements(geometry: dict, extent: Polygon | None) -> dict:

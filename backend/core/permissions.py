@@ -31,7 +31,7 @@ def permissions_for(user: dict) -> dict:
 
 def require_feature(user: dict, feature: str) -> None:
     if permissions_for(user).get(feature) is not True:
-        raise HTTPException(403, "Votre rôle ne permet pas cet accès.")
+        raise HTTPException(403, "A sua função não permite este acesso.")
 
 
 def feature_dependency(feature: str):

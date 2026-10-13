@@ -54,17 +54,16 @@ class StairInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    floor_height_mm: float = Field(..., gt=0, le=8000, description="Hauteur sol fini à sol fini (mm)")
-    available_length_mm: float = Field(..., gt=0, le=30000, description="Reculement disponible (mm)")
+    floor_height_mm: float = Field(..., gt=0, le=8000, description="Altura de pavimento acabado a pavimento acabado (mm)")
+    available_length_mm: float = Field(..., gt=0, le=30000, description="Desenvolvimento disponível (mm)")
     available_width_mm: float = Field(..., gt=0, le=30000)
-    stair_width_mm: float = Field(..., gt=0, le=5000, description="Largeur d'escalier souhaitée (mm)")
+    stair_width_mm: float = Field(..., gt=0, le=5000, description="Largura de escada pretendida (mm)")
     stairwell_length_mm: Optional[float] = Field(default=None, gt=0, le=30000)
     stairwell_width_mm: Optional[float] = Field(default=None, gt=0, le=30000)
     stairwell_offset_mm: Optional[float] = Field(
         default=None,
         description=(
-            "Distance horizontale du nez de la 1ère marche au bord proche de la trémie côté montée. "
-            "Si None, on suppose la trémie collée en haut de l'escalier."
+            "Distância horizontal do focinho do 1.º degrau ao bordo próximo da abertura do lado da subida. Se None, assume-se a abertura encostada ao topo da escada."
         ),
     )
     slab_thickness_mm: float = Field(default=200, gt=0, le=1000)
@@ -72,7 +71,7 @@ class StairInput(BaseModel):
         default=None,
         gt=0,
         le=8000,
-        description="Hauteur du sol bas à la sous-face de la dalle haute (mm)",
+        description="Altura do pavimento inferior à face inferior da laje superior (mm)",
     )
     tread_thickness_mm: float = 30
     has_risers: bool = True
@@ -104,10 +103,10 @@ class QuarterTurnBottomInput(StairInput):
     def _check_num_winders(cls, v):
         if isinstance(v, str):
             if v != "auto":
-                raise ValueError("num_winders doit être un int ou 'auto'")
+                raise ValueError("num_winders deve ser um int ou \'auto\'")
             return v
         if not (2 <= v <= 9):
-            raise ValueError("num_winders doit être entre 2 et 9")
+            raise ValueError("num_winders deve estar entre 2 e 9")
         return v
 
 

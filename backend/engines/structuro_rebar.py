@@ -55,9 +55,9 @@ class Section(Strict):
     @model_validator(mode="after")
     def geometry(self):
         if self.d_mm >= self.h_mm:
-            raise ValueError("La hauteur utile d doit être inférieure à h")
+            raise ValueError("A altura útil d deve ser inferior a h")
         if self.kind == "slab_strip" and self.b_mm != 1000:
-            raise ValueError("Une bande de dalle est calculée sur exactement 1 m")
+            raise ValueError("Uma faixa de laje é calculada sobre exatamente 1 m")
         return self
 
 
@@ -86,7 +86,7 @@ class Footing(Strict):
     @model_validator(mode="after")
     def geometry(self):
         if self.wall_width_m >= self.width_m or self.d_m >= self.h_m:
-            raise ValueError("Géométrie de semelle incohérente")
+            raise ValueError("Geometria de sapata incoerente")
         return self
 
 
@@ -109,7 +109,7 @@ class Schedule(Strict):
     @model_validator(mode="after")
     def unique_marks(self):
         if len({b.mark for b in self.bars}) != len(self.bars):
-            raise ValueError("Repère d'armature dupliqué dans la nomenclature")
+            raise ValueError("Referência de armadura duplicada no mapa")
         return self
 
 
@@ -132,17 +132,17 @@ class ReinforcementStudy(Strict):
     def ids(self):
         for rows in (self.sections, self.footings, self.schedules):
             if len({r.id for r in rows}) != len(rows):
-                raise ValueError("Repère dupliqué")
+                raise ValueError("Referência duplicada")
         return self
 
 
 UNRESOLVED = [
-    "Combinaisons, enveloppes et modèle porteur global à justifier séparément.",
-    "ELS : fissuration et flèche différée non vérifiées par ce module.",
-    "Ancrages, recouvrements, arrêts de barres, congestion et enrobages non dimensionnés.",
-    "Poteaux, interaction N-M, second ordre, voiles, torsion et poinçonnement non dimensionnés.",
-    "Stabilité, vent, séisme, feu, soutènements et phases provisoires à justifier.",
-    "Qualification indépendante du moteur et validation de l'ingénieur structure requises avant EXE.",
+    "Combinações, envolventes e modelo resistente global a justificar separadamente.",
+    "ELS: fendilhação e flecha diferida não verificadas por este módulo.",
+    "Amarrações, sobreposições, dispensas de varões, congestionamento e recobrimentos não dimensionados.",
+    "Pilares, interação N-M, segunda ordem, paredes de betão, torção e punçoamento não dimensionados.",
+    "Estabilidade, vento, sismo, fogo, contenções e fases provisórias a justificar.",
+    "Qualificação independente do motor e validação do engenheiro de estruturas necessárias antes da execução.",
 ]
 
 
@@ -150,7 +150,7 @@ def section_design(s: Section) -> dict:
     result = {"id": s.id, "case": s.case, "status": "partial", "execution_ready": False,
               "source": s.source, "issues": [], "checks": {}}
     if s.ned_kn != 0 or s.torsion_knm != 0:
-        return {**result, "status": "out_of_scope", "issues": ["Effort normal ou torsion : flexion simple inapplicable."]}
+        return {**result, "status": "out_of_scope", "issues": ["Esforço normal ou torção: flexão simples inaplicável."]}
     m = s.materials
     b, d = s.b_mm, s.d_mm
     fcd, fyd = m.alpha_cc*m.fck_mpa/m.gamma_c, m.fyk_mpa/m.gamma_s
@@ -160,7 +160,7 @@ def section_design(s: Section) -> dict:
     result.update(fcd_mpa=fcd, fyd_mpa=fyd, mu=mu, mu_limit=mu_limit,
                   tension_face="top" if s.med_knm < 0 else "bottom")
     if mu > mu_limit:
-        return {**result, "status": "out_of_scope", "issues": ["x/d > 0,45 : section doublement armée ou autre modèle requis."]}
+        return {**result, "status": "out_of_scope", "issues": ["x/d > 0,45: secção duplamente armada ou outro modelo necessário."]}
     # Stable root of M=0.8*b*x*fcd*(d-0.4*x).
     x = (2*mu/(.8*(1+math.sqrt(1-2*mu))))*d
     z = d-.4*x
@@ -185,9 +185,9 @@ def section_design(s: Section) -> dict:
         if s.kind == "slab_strip":
             result["checks"]["shear_without_links"] = s.ved_kn <= vrdc
             if s.ved_kn > vrdc:
-                result["issues"].append("Bande de dalle : résistance sans armatures de cisaillement dépassée.")
+                result["issues"].append("Faixa de laje: resistência sem armaduras de esforço transverso excedida.")
     else:
-        result["issues"].append("Aciers disposés manquants : VRd,c et section réellement armée non vérifiés.")
+        result["issues"].append("Armaduras dispostas em falta: VRd,c e secção realmente armada não verificados.")
     if s.kind == "beam":
         zs = min(.9*d, z)
         nu = .6*(1-m.fck_mpa/250)
@@ -198,7 +198,7 @@ def section_design(s: Section) -> dict:
                       vrdmax_kn=vmax, stirrup_spacing_max_mm=.75*d,
                       shift_length_mm=.5*zs*s.cot_theta)
         result["checks"]["strut_crushing"] = s.ved_kn <= vmax
-        result["issues"].append("Asw/s calculé ; branches, espacement transversal et décalage des aciers longitudinaux à détailler.")
+        result["issues"].append("Asw/s calculado; ramos, espaçamento transversal e translação das armaduras longitudinais a pormenorizar.")
     if any(v is False for v in result["checks"].values()):
         result["status"] = "fails_check"
     result["formulas"] = ["fcd=alpha_cc*fck/gamma_c; fyd=fyk/gamma_s",
@@ -211,7 +211,7 @@ def footing_check(s: Footing) -> dict:
     out = {"id": s.id, "source": s.source, "status": "partial", "execution_ready": False,
            "issues": [], "checks": {}}
     if not s.centred_level_base or s.horizontal_kn_m != 0 or s.moment_knm_m != 0:
-        return {**out, "status": "out_of_scope", "issues": ["Charge excentrée, inclinée ou base non horizontale : modèle de semelle centrée inapplicable."]}
+        return {**out, "status": "out_of_scope", "issues": ["Carga excêntrica, inclinada ou base não horizontal: modelo de sapata centrada inaplicável."]}
     checks = {"width": s.width_m >= s.min_width_m}
     pressures = {}
     for key, n, limit in [("ELS_caracteristique", s.n_els_characteristic_kn_m, s.q_els_limit_kpa),
@@ -227,12 +227,12 @@ def footing_check(s: Footing) -> dict:
     force = pressures["ELU_fondamental"]["q_kpa"]*x*x/(2*z)
     out.update(pressures=pressures, checks=checks, tie_force_kn_m=force,
                as_tie_only_mm2_m=force*1000/(s.fyk_mpa/s.gamma_s), z_m=z,
-               pressure_basis="Pression brute conservée, sans déduction favorable du poids propre.",
+               pressure_basis="Pressão bruta mantida, sem dedução favorável do peso próprio.",
                formula="x=B/2-0.35*a; z=0.9*d; Fs,max=q*x²/(2*z); As=Fs/fyd")
-    out["issues"] += ["Aciers de tirant dus aux efforts seulement : minima constructifs, cisaillement, compression des bielles et ancrage non vérifiés.",
-                       "Les charges sont celles du rapport, pas une nouvelle descente de charges."]
+    out["issues"] += ["Armaduras de tirante devidas apenas aos esforços: mínimos construtivos, esforço transverso, compressão das bielas e amarração não verificados.",
+                       "As cargas são as do relatório, não uma nova descida de cargas."]
     if not s.report_conditions_confirmed:
-        out["issues"].append("Horizon d'assise, profondeur, voisinage et hypothèses du G2 à confirmer ; comparaison de pressions conditionnelle.")
+        out["issues"].append("Horizonte de fundação, profundidade, vizinhança e hipóteses do estudo geotécnico a confirmar; comparação de pressões condicional.")
     if any(v is False for v in checks.values()):
         out["status"] = "fails_check"
     return out
@@ -250,7 +250,7 @@ def schedule_quantities(s: Schedule) -> dict:
     return {"id": s.id, "basis": s.basis, "source": s.source, "bars": bars,
             "total_kg": total, "source_total_kg": s.source_total_kg,
             "delta_kg": total-s.source_total_kg if s.source_total_kg is not None else None,
-            "note": "Longueurs développées saisies, crochets inclus si présents dans la source. Hors chutes. Aucun nouveau façonnage généré."}
+            "note": "Comprimentos desenvolvidos introduzidos, ganchos incluídos se presentes na origem. Sem desperdícios. Nenhuma nova moldagem gerada."}
 
 
 def calculate_reinforcement(study: ReinforcementStudy | None) -> dict | None:

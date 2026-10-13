@@ -16,7 +16,7 @@ from engines.structuro_check import DISCLAIMER, util_status
 from engines import structuro_profiles as profiles
 
 VERSION = "ec3-member-0.2.0"
-SOURCE = "EN 1993-1-1 §6.2 (section), §6.3.2 (déversement) & §6.3.3 méthode 2 Annexe B (N+M) — méthodologie publique, AN FR — à vérifier"
+SOURCE = "NP EN 1993-1-1 §6.2 (secção), §6.3.2 (encurvadura lateral) e §6.3.3 método 2 Anexo B (N+M) — metodologia pública, Anexo Nacional português — a verificar"
 
 GRADES = profiles.GRADES
 PROFILE_DATA = profiles.PROFILE_DATA
@@ -26,13 +26,13 @@ COL_CURVES = CURVES
 ES_MPA = 210000.0
 GS_MPA = 81000.0
 C1_PRESETS = [{"label": "Moment uniforme", "value": 1.0},
-              {"label": "Charge répartie (appuis simples)", "value": 1.12},
-              {"label": "Charge ponctuelle centrée", "value": 1.35}]
+              {"label": "Carga distribuída (apoios simples)", "value": 1.12},
+              {"label": "Carga pontual centrada", "value": 1.35}]
 # Facteurs de moment uniforme équivalent Cmy/CmLT (Annexe B, Table B.3) — presets usuels, éditables.
 CM_PRESETS = [{"label": "Moment uniforme (ψ=1)", "value": 1.0},
-              {"label": "Moment linéaire ψ=0", "value": 0.6},
-              {"label": "Charge répartie (M mi-travée)", "value": 0.95},
-              {"label": "Charge ponctuelle centrée", "value": 0.9}]
+              {"label": "Momento linear ψ=0", "value": 0.6},
+              {"label": "Carga distribuída (M a meio vão)", "value": 0.95},
+              {"label": "Carga pontual centrada", "value": 0.9}]
 
 
 def mcr_elastic(iz_cm4: float, it_cm4: float, iw_cm6: float, L_m: float, c1: float = 1.0) -> float:
@@ -77,8 +77,7 @@ def verify_column(ned_kn: float, med_knm: float = 0.0, *, A_cm2: float, iy_cm4: 
     Nb_min = min(Nb_y, Nb_z)
     warnings = []
     if section_class == 4:
-        warnings.append("Section de classe 4 : propriétés efficaces (voilement local) non calculées "
-                        "— résistance surestimée, à vérifier.")
+        warnings.append("Secção de classe 4: propriedades efetivas (encurvadura local) não calculadas — resistência sobrestimada, a verificar.")
     out = {"version": VERSION, "ned_kn": round(ned_kn, 2), "npl_rd_kn": round(Npl_kn, 2),
            "ncr_kn": round(min(Ncr_y, Ncr_z), 2), "section_class": section_class,
            "lambda_bar": round(max(lam_y, lam_z), 3), "lambda_y": round(lam_y, 3), "lambda_z": round(lam_z, 3),
@@ -87,7 +86,7 @@ def verify_column(ned_kn: float, med_knm: float = 0.0, *, A_cm2: float, iy_cm4: 
            "lcr_y_m": round(lcr_y_m, 3), "lcr_z_m": round(lcr_z_m, 3), "lcr_m": round(lcr_y_m, 3),
            "curve_y": curve_y, "curve_z": curve_z, "curve": curve_z, "mc_rd_knm": round(Mc_knm, 2),
            "buckling": {"utilisation": util_status(ned_kn / Nb_min if Nb_min > 0 else None),
-                        "formula": "Nb,Rd=χ·A·fy/γM1 (min des axes y,z) ; λ̄=√(A·fy/Ncr) ; Ncr=π²·E·I/Lcr²"},
+                        "formula": "Nb,Rd=χ·A·fy/γM1 (mín. dos eixos y,z) ; λ̄=√(A·fy/Ncr) ; Ncr=π²·E·I/Lcr²"},
            "source": SOURCE, "execution_ready": False, "warnings": warnings}
     if med_knm and med_knm > 0:
         n = ned_kn / Npl_kn if Npl_kn > 0 else 0.0
@@ -102,8 +101,7 @@ def verify_column(ned_kn: float, med_knm: float = 0.0, *, A_cm2: float, iy_cm4: 
             chi_lt, mcr = 1.0, None
         elif mono or iw_cm6 <= 0:
             chi_lt, mcr = 1.0, None
-            warnings.append("Profilé en U / section mono-symétrique : Mcr non calculé automatiquement "
-                            "(χLT=1 supposé) — prévoir un maintien latéral ou fournir Mcr.")
+            warnings.append("Perfil em U / secção monossimétrica: Mcr não calculado automaticamente (χLT=1 suposto) — prever um travamento lateral ou fornecer Mcr.")
         else:
             mcr = mcr_elastic(iz_cm4, it_cm4, iw_cm6, lcr_z_m, 1.0)
             lam_lt = math.sqrt(W * fy_mpa / (mcr * 1e6)) if mcr > 0 else 0.0
@@ -129,7 +127,7 @@ def verify_column(ned_kn: float, med_knm: float = 0.0, *, A_cm2: float, iy_cm4: 
                               "kyy": round(kyy, 3), "kzy": round(kzy, 3), "cmy": cmy, "cm_lt": cm_lt,
                               "chi_lt": round(chi_lt, 3), "mcr_knm": round(mcr, 2) if mcr else None,
                               "mlt_rd_knm": round(MLT, 2), "lateral_restraint": lateral_restraint,
-                              "method": "EN 1993-1-1 §6.3.3 méthode 2 (Annexe B)",
+                              "method": "NP EN 1993-1-1 §6.3.3 método 2 (Anexo B)",
                               "formula": "(6.61) N/(χy·NRk/γM1)+kyy·My/(χLT·MyRk/γM1) ; "
                                          "(6.62) N/(χz·NRk/γM1)+kzy·My/(χLT·MyRk/γM1) ≤ 1"}
     return out
@@ -142,7 +140,7 @@ def catalog() -> dict:
             "cm_presets": CM_PRESETS,
             "defaults": {"gamma_m0": 1.0, "gamma_m1": 1.0, "section_class": None, "buckling_curve": "a",
                          "c1": 1.0, "k_buckling": 1.0, "cmy": 0.9, "cm_lt": 0.9, "lateral_restraint": False},
-            "note": "Propriétés EN 10365 vérifiées ; classe de section automatique (Table 5.2). " + DISCLAIMER}
+            "note": "Propriedades EN 10365 verificadas; classe de secção automática (Quadro 5.2). " + DISCLAIMER}
 
 
 def verify(med_knm: float, ved_kn: float = 0.0, *, wpl_y_cm3: float, wel_y_cm3: float,
@@ -155,7 +153,7 @@ def verify(med_knm: float, ved_kn: float = 0.0, *, wpl_y_cm3: float, wel_y_cm3: 
     Vpl = Av * fy_mpa / math.sqrt(3) / gamma_m0 / 1000.0
     warn = []
     if section_class == 4:
-        warn.append("Section de classe 4 : propriétés efficaces non calculées (voilement local) — à vérifier.")
+        warn.append("Secção de classe 4: propriedades efetivas não calculadas (encurvadura local) — a verificar.")
     mv = False
     mc_eff = Mc
     if Vpl > 0 and ved_kn > 0.5 * Vpl:
@@ -165,11 +163,9 @@ def verify(med_knm: float, ved_kn: float = 0.0, *, wpl_y_cm3: float, wel_y_cm3: 
             wpl_eff = max(W_mm3 - rho * aw * aw / (4 * tw_mm), 0.0)
             mc_eff = wpl_eff * fy_mpa / gamma_m0 / 1e6
             mv = True
-            warn.append(f"V_Ed > 0,5·V_pl,Rd : interaction M-V appliquée (ρ={round(rho, 3)}) ; "
-                        f"M_c,Rd réduit de {round(Mc, 1)} à {round(mc_eff, 1)} kN·m (EN 1993-1-1 §6.2.8).")
+            warn.append(f'V_Ed > 0,5·V_pl,Rd : interação M-V aplicada (ρ={round(rho, 3)}) ; M_c,Rd reduzido em {round(Mc, 1)} à {round(mc_eff, 1)} kN·m (EN 1993-1-1 §6.2.8).')
         else:
-            warn.append("V_Ed > 0,5·V_pl,Rd : interaction M-V à considérer (réduction non calculée : "
-                        "fournir tw, h, tf et une section de classe 1/2).")
+            warn.append("V_Ed > 0,5·V_pl,Rd : interação M-V a considerar (redução não calculada: fornecer tw, h, tf e uma secção de classe 1/2).")
 
     if mcr_knm and mcr_knm > 0:
         lam = math.sqrt(W_mm3 * fy_mpa / (mcr_knm * 1e6))
@@ -180,10 +176,10 @@ def verify(med_knm: float, ved_kn: float = 0.0, *, wpl_y_cm3: float, wel_y_cm3: 
         ltb = {"lambda_lt": round(lam, 3), "chi_lt": round(chi, 3), "mb_rd_knm": round(Mb, 2),
                "mcr_knm": round(mcr_knm, 2),
                "utilisation": util_status(med_knm / Mb if Mb > 0 else None),
-               "formula": "λ̄LT=√(Wy·fy/Mcr) ; χLT (courbe EN 1993-1-1 §6.3.2.2) ; Mb,Rd=χLT·Wy·fy/γM1"}
+               "formula": "λ̄LT=√(Wy·fy/Mcr) ; χLT (curva NP EN 1993-1-1 §6.3.2.2) ; Mb,Rd=χLT·Wy·fy/γM1"}
     else:
         ltb = {"utilisation": util_status(None),
-               "note": "Déversement non calculé : fournir la portée (Mcr auto) ou Mcr, ou prévoir un maintien latéral."}
+               "note": "Encurvadura lateral não calculada: fornecer o vão (Mcr automático) ou Mcr, ou prever um travamento lateral."}
 
     return {"version": VERSION,
             "section": {"W_cm3": round(W_mm3 / 1000, 1), "fy_mpa": fy_mpa, "section_class": section_class},
@@ -225,10 +221,10 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
         v = (ee.get("uls") or {}).get("shear_kn")
         if not m:
             rows.append({"id": rid, "status": "no_envelope",
-                         "message": "Générez d'abord les combinaisons EN 1990 (moment dimensionnant manquant)."})
+                         "message": "Gere primeiro as combinações NP EN 1990 (momento condicionante em falta)."})
             continue
         if not prof:
-            rows.append({"id": rid, "status": "missing_section", "message": "Profil inconnu."})
+            rows.append({"id": rid, "status": "missing_section", "message": "Perfil desconhecido."})
             continue
         plan_L = el.get("length_m")
         override = spans.get(rid)
@@ -238,12 +234,12 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
         if manual_mcr:
             mcr, mcr_source = manual_mcr, "manuel"
         elif mono:
-            mcr, mcr_source = None, "profilé en U — Mcr non auto (section mono-symétrique)"
+            mcr, mcr_source = None, "perfil em U — Mcr não automático (secção monossimétrica)"
         elif L:
             mcr = round(mcr_elastic(prof["Iz"], prof["It"], prof["Iw"], float(L), c1), 2)
-            mcr_source = "auto (plan)" if span_source == "plan" else "auto (saisi)"
+            mcr_source = "auto (plan)" if span_source == "plan" else "automático (introduzido)"
         else:
-            mcr, mcr_source = None, "portée manquante"
+            mcr, mcr_source = None, "vão em falta"
         res = verify(m["value"], (v or {}).get("value", 0.0), wpl_y_cm3=prof["Wpl"], wel_y_cm3=prof["Wel"],
                      av_cm2=prof["Av"], fy_mpa=fy, section_class=sc_bend,
                      gamma_m0=float(opts.get("gamma_m0", 1.0)), gamma_m1=float(opts.get("gamma_m1", 1.0)),
@@ -272,14 +268,14 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
             n = (ee.get("uls") or {}).get("axial_kn")
             if not n:
                 col_rows.append({"id": rid, "status": "no_envelope",
-                                 "message": "Générez d'abord les combinaisons EN 1990 (effort normal manquant)."})
+                                 "message": "Gere primeiro as combinações NP EN 1990 (esforço normal em falta)."})
                 continue
             h = el.get("height_m")
             lcr = lcr_opt if lcr_opt else (k_buck * h if h else None)
             lcr_source = "manuel" if lcr_opt else ("plan (K×h)" if h else "manquant")
             if not lcr:
                 col_rows.append({"id": rid, "status": "need_length",
-                                 "message": "Hauteur du poteau absente du plan : saisir Lcr."})
+                                 "message": "Altura do pilar ausente da planta: introduzir Lcr."})
                 continue
             res = verify_column(n["value"], med_col, A_cm2=prof["A"], iy_cm4=prof["Iy"], iz_cm4=prof["Iz"],
                                 it_cm4=prof["It"], iw_cm6=prof["Iw"], wpl_y_cm3=prof["Wpl"], wel_y_cm3=prof["Wel"],

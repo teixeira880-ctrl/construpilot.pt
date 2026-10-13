@@ -17,32 +17,16 @@ def _frontend_url() -> str:
 
 
 def _welcome_html(name: str, email: str = "") -> str:
-    hello = f"Bonjour {name}," if name else "Bonjour,"
+    hello = f'Olá {name},' if name else "Bom dia,"
     from urllib.parse import quote
     signup = f"{_frontend_url()}/inscription?email={quote(email)}" if email else f"{_frontend_url()}/inscription"
-    return f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-<table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">
-<tr><td style="background:#3f7d54;padding:24px 32px;color:#fff;font-size:20px;font-weight:800;">ConstruPilot</td></tr>
-<tr><td style="padding:32px;color:#1a1d20;font-size:15px;line-height:1.6;">
-<p>{hello}</p>
-<p>Merci pour votre demande de travaux sur <strong>ConstruPilot</strong> ! Nous l'avons bien reçue.</p>
-<p><strong>Pour suivre votre demande, obtenir votre estimation détaillée et recevoir vos devis, créez votre compte gratuit</strong> — cela prend moins d'une minute.</p>
-<p style="text-align:center;margin:32px 0;">
-<a href="{signup}" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Créer mon compte gratuit</a>
-</p>
-<p style="color:#78716c;font-size:13px;">Votre compte vous permet de&nbsp;: suivre l'avancement de votre demande, comparer les prix, et échanger avec un professionnel.</p>
-<p style="color:#78716c;font-size:13px;">Une question ? Répondez simplement à cet e-mail.</p>
-<p style="color:#78716c;font-size:13px;">— L'équipe ConstruPilot</p>
-</td></tr>
-<tr><td style="background:#fafaf9;padding:16px 32px;color:#a8a29e;font-size:11px;">ConstruPilot — Estimez. Comparez. Construisez. · Brevet FR261104</td></tr>
-</table></td></tr></table></body></html>"""
+    return f'<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">\n<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">\n<table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">\n<tr><td style="background:#3f7d54;padding:24px 32px;color:#fff;font-size:20px;font-weight:800;">ConstruPilot</td></tr>\n<tr><td style="padding:32px;color:#1a1d20;font-size:15px;line-height:1.6;">\n<p>{hello}</p>\n<p>Obrigado pelo seu pedido de obras no <strong>ConstruPilot</strong>! Recebemo-lo com sucesso.</p>\n<p><strong>Para acompanhar o seu pedido, obter a sua estimativa detalhada e receber os seus orçamentos, crie a sua conta gratuita</strong> — demora menos de um minuto.</p>\n<p style="text-align:center;margin:32px 0;">\n<a href="{signup}" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Criar a minha conta gratuita</a>\n</p>\n<p style="color:#78716c;font-size:13px;">A sua conta permite-lhe: acompanhar o andamento do seu pedido, comparar preços e falar com um profissional.</p>\n<p style="color:#78716c;font-size:13px;">Tem alguma pergunta? Basta responder a este e-mail.</p>\n<p style="color:#78716c;font-size:13px;">— A equipa ConstruPilot</p>\n</td></tr>\n<tr><td style="background:#fafaf9;padding:16px 32px;color:#a8a29e;font-size:11px;">ConstruPilot — Estime. Compare. Construa. · Patente FR261104</td></tr>\n</table></td></tr></table></body></html>'
 
 
 async def _send_welcome(email: str, name: str) -> None:
     try:
         from engines.emailer import send_email
-        await send_email(email, "Votre demande ConstruPilot — créez votre compte pour la suivre",
+        await send_email(email, "O seu pedido ConstruPilot — crie a sua conta para o acompanhar",
                          _welcome_html(name, email))
     except Exception:
         pass
@@ -53,7 +37,7 @@ async def send_account_invite(email: str, name: str = "") -> None:
     from engines.emailer import send_email
     await send_email(
         email,
-        "Créez votre compte ConstruPilot pour profiter pleinement du logiciel",
+        "Crie a sua conta ConstruPilot para tirar todo o partido do software",
         _welcome_html(name, email))
 
 
@@ -114,51 +98,50 @@ async def _bridge_process(lead: dict) -> None:
 
 
 async def _notify_new_lead_admins(lead: dict) -> None:
-    name = lead.get("name") or lead.get("email") or "un client"
+    name = lead.get("name") or lead.get("email") or "um cliente"
     admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1, "email": 1}).to_list(20)
     for a in admins:
         try:
             await db.notifications.insert_one({
                 "notif_id": "n_" + uuid.uuid4().hex[:10],
                 "user_id": a["user_id"], "type": "new_lead", "lead_id": lead.get("lead_id"),
-                "message": f"Nouvelle demande de travaux : {name}",
+                "message": f'Novo pedido de obras: {name}',
                 "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
         except Exception:
             pass
     try:
         from engines.emailer import send_email, wrap_html
-        rows = [("Client", lead.get("name") or "—"), ("E-mail", lead.get("email") or "—"),
-                ("Téléphone", lead.get("phone") or "—"), ("Adresse", lead.get("address") or "—"),
-                ("Demande", lead.get("description") or "—")]
+        rows = [("Cliente", lead.get("name") or "—"), ("E-mail", lead.get("email") or "—"),
+                ("Telefone", lead.get("phone") or "—"), ("Morada", lead.get("address") or "—"),
+                ("Pedido", lead.get("description") or "—")]
         body_html = "".join(f'<p style="margin:0 0 8px 0"><b>{k} :</b> {v}</p>' for k, v in rows)
-        html = wrap_html("Nouvelle demande de travaux",
-                         f"<p>Une nouvelle demande vient d'arriver sur ConstruPilot :</p>{body_html}",
-                         cta_url=f"{_frontend_url()}/admin", cta_label="Voir dans l'admin")
+        html = wrap_html("Novo pedido de obras",
+                         f'<p>Acaba de chegar um novo pedido ao ConstruPilot:</p>{body_html}',
+                         cta_url=f"{_frontend_url()}/admin", cta_label="Ver no admin")
         for a in admins:
             if a.get("email"):
-                await send_email(a["email"], "Nouvelle demande de travaux — ConstruPilot", html)
+                await send_email(a["email"], "Novo pedido de obras — ConstruPilot", html)
     except Exception:
         pass
 
 
 async def _notify_lead_pro(pro: dict, lead: dict) -> None:
-    name = lead.get("name") or lead.get("email") or "un client"
+    name = lead.get("name") or lead.get("email") or "um cliente"
     try:
         await db.notifications.insert_one({
             "notif_id": "n_" + uuid.uuid4().hex[:10],
             "user_id": pro["user_id"], "type": "lead_assigned", "lead_id": lead.get("lead_id"),
-            "message": f"Nouvelle demande de travaux à prendre en charge : {name}",
+            "message": f'Novo pedido de obras a tratar: {name}',
             "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
     except Exception:
         pass
     try:
         from engines.emailer import send_email, wrap_html
-        html = wrap_html("Une demande vous a été assignée",
-                         f"<p>Bonjour,</p><p>Une demande de travaux ({name}) vous a été assignée. "
-                         f"Retrouvez-la dans votre espace « Mes demandes ».</p>",
-                         cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Voir mes demandes")
+        html = wrap_html("Foi-lhe atribuído um pedido",
+                         f'<p>Olá,</p><p>Foi-lhe atribuído um pedido de obras ({name}). Encontre-o na sua área «Os meus pedidos».</p>',
+                         cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Ver os meus pedidos")
         if pro.get("email"):
-            await send_email(pro["email"], "Une demande de travaux vous a été assignée — ConstruPilot", html)
+            await send_email(pro["email"], "Foi-lhe atribuído um pedido de obras — ConstruPilot", html)
     except Exception:
         pass
 
@@ -270,13 +253,9 @@ async def run_signup_followups() -> int:
         if await db.pro_documents.count_documents({"user_id": u["user_id"]}) > 0:
             await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"welcome_followup": True}})
             continue
-        html = (f"<p>Bonjour {u.get('name') or ''},</p>"
-                "<p>Vous avez rejoint <b>ConstruPilot</b> il y a quelques jours 🙂</p>"
-                "<p>Créez votre premier devis en 2 minutes — c'est <b>100% gratuit pendant le lancement</b>. "
-                "Nos calculateurs, prix matériaux et rendu 3D vous attendent !</p>"
-                "<p>À très vite,<br/>L'équipe ConstruPilot</p>")
+        html = (f"<p>Olá {u.get('name') or ''},</p><p>Juntou-se ao <b>ConstruPilot</b> há alguns dias 🙂</p><p>Crie o seu primeiro orçamento em 2 minutos — é <b>100% gratuito durante o lançamento</b>. As nossas calculadoras, preços de materiais e renderização 3D estão à sua espera!</p><p>Até breve,<br/>A equipa ConstruPilot</p>")
         try:
-            await emailer.send_email(u["email"], "Votre premier devis vous attend sur ConstruPilot", html)
+            await emailer.send_email(u["email"], "O seu primeiro orçamento espera por si no ConstruPilot", html)
             await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"welcome_followup": True}})
             sent += 1
         except Exception:
@@ -309,7 +288,7 @@ class HandlingIn(BaseModel):
 
 
 async def _notify_admins_handling(lead: dict, pro_name: str, status: str) -> None:
-    label = {"acceptee": "a pris en charge", "refusee": "a refusé", "en_cours": "traite"}[status]
+    label = {"acceptee": "aceitou", "refusee": "recusou", "en_cours": "traite"}[status]
     client = lead.get("name") or lead.get("email") or "client"
     admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1}).to_list(20)
     for a in admins:
@@ -317,7 +296,7 @@ async def _notify_admins_handling(lead: dict, pro_name: str, status: str) -> Non
             await db.notifications.insert_one({
                 "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": a["user_id"],
                 "type": "lead_handling", "lead_id": lead.get("lead_id"),
-                "message": f"{pro_name} {label} la demande de {client}.",
+                "message": f'{pro_name} {label} o pedido de {client}.',
                 "created_at": datetime.now(timezone.utc).isoformat(), "read": False})
         except Exception:
             pass
@@ -328,20 +307,20 @@ async def update_handling(lead_id: str, body: HandlingIn, user=Depends(current_u
     """Le pro assigné ou candidat prend en charge / refuse la demande."""
     from fastapi import HTTPException
     if body.handling_status not in {"acceptee", "refusee", "en_cours"}:
-        raise HTTPException(400, "Statut invalide")
+        raise HTTPException(400, "Estado inválido")
     uid = user["user_id"]
     me = {"user_id": uid, "name": user.get("name"), "email": user.get("email")}
     pro_name = user.get("name") or user.get("email")
     lead = await db.leads.find_one(
         {"lead_id": lead_id, "$or": [{"assigned_to": uid}, {"candidates": uid}]}, {"_id": 0})
     if not lead:
-        raise HTTPException(404, "Demande introuvable ou non proposée")
+        raise HTTPException(404, "Pedido não encontrado ou não proposto")
     now = datetime.now(timezone.utc).isoformat()
     reassigned_to = None
 
     if body.handling_status == "acceptee":
         if lead.get("assigned_to") and lead["assigned_to"] != uid:
-            raise HTTPException(409, "Cette demande a déjà été prise par un autre professionnel")
+            raise HTTPException(409, "Este pedido já foi aceite por outro profissional")
         await db.leads.update_one({"lead_id": lead_id}, {"$set": {
             "assigned_to": uid, "assigned_to_name": pro_name, "assigned_at": now,
             "handling_status": "acceptee", "handling_updated_at": now, "candidates": []}})
@@ -354,7 +333,7 @@ async def update_handling(lead_id: str, body: HandlingIn, user=Depends(current_u
                 await db.notifications.insert_one({
                     "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": oid,
                     "type": "lead_taken", "lead_id": lead_id,
-                    "message": f"La demande de {lead.get('name') or 'client'} a été prise par un autre pro.",
+                    "message": f"O pedido de {lead.get('name') or 'client'} foi aceite por outro profissional.",
                     "created_at": now, "read": False})
             except Exception:
                 pass
@@ -401,13 +380,13 @@ async def run_assignment_reminders() -> int:
     admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1, "email": 1}).to_list(20)
     for lead in leads:
         pro = await db.users.find_one({"user_id": lead["assigned_to"]}, {"_id": 0, "user_id": 1, "email": 1, "name": 1})
-        client = lead.get("name") or lead.get("email") or "un client"
+        client = lead.get("name") or lead.get("email") or "um cliente"
         if pro:
             try:
                 await db.notifications.insert_one({
                     "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": pro["user_id"],
                     "type": "lead_reminder", "lead_id": lead.get("lead_id"),
-                    "message": f"Rappel : la demande de {client} attend votre réponse.",
+                    "message": f'Lembrete: o pedido de {client} aguarda a sua resposta.',
                     "created_at": now.isoformat(), "read": False})
             except Exception:
                 pass
@@ -416,17 +395,17 @@ async def run_assignment_reminders() -> int:
                 await db.notifications.insert_one({
                     "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": a["user_id"],
                     "type": "lead_reminder_admin", "lead_id": lead.get("lead_id"),
-                    "message": f"Sans réponse >24 h : {(pro or {}).get('name') or 'un pro'} n'a pas traité la demande de {client}.",
+                    "message": f"Sem resposta >24 h: {(pro or {}).get('name') or 'um profissional'} não tratou o pedido de {client}.",
                     "created_at": now.isoformat(), "read": False})
             except Exception:
                 pass
         try:
             from engines.emailer import send_email, wrap_html
             if pro and pro.get("email"):
-                html = wrap_html("Une demande attend votre réponse",
-                                 f"<p>La demande de <b>{client}</b> vous est assignée depuis plus de 24 h et attend votre réponse.</p>",
-                                 cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Voir mes demandes")
-                await send_email(pro["email"], "Rappel : une demande attend votre réponse — ConstruPilot", html)
+                html = wrap_html("Um pedido aguarda a sua resposta",
+                                 f'<p>O pedido de <b>{client}</b> está-lhe atribuído há mais de 24 h e aguarda a sua resposta.</p>',
+                                 cta_url=f"{_frontend_url()}/mes-demandes", cta_label="Ver os meus pedidos")
+                await send_email(pro["email"], "Lembrete: um pedido aguarda a sua resposta — ConstruPilot", html)
         except Exception:
             pass
         await db.leads.update_one({"lead_id": lead["lead_id"]}, {"$set": {"response_reminded_at": now.isoformat()}})
@@ -444,25 +423,8 @@ async def mark_mine_viewed(user=Depends(current_user)) -> dict:
 
 
 def _j2_reminder_html(name: str) -> str:
-    hello = f"Bonjour {name}," if name else "Bonjour,"
-    return f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-<table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">
-<tr><td style="background:#3f7d54;padding:24px 32px;color:#fff;font-size:20px;font-weight:800;">ConstruPilot</td></tr>
-<tr><td style="padding:32px;color:#1a1d20;font-size:15px;line-height:1.6;">
-<p>{hello}</p>
-<p>Vous avez commencé une estimation de travaux sur <strong>ConstruPilot</strong> il y a quelques jours,
-mais il semble que vous ne l'ayez pas terminée.</p>
-<p>Bonne nouvelle : il ne vous reste que quelques secondes pour obtenir une estimation détaillée,
-poste par poste — <strong>gratuitement et sans engagement</strong>.</p>
-<p style="text-align:center;margin:32px 0;">
-<a href="https://construpilot.pt/smart-project" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Terminer mon estimation</a>
-</p>
-<p style="color:#78716c;font-size:13px;">Une question ? Répondez simplement à cet e-mail, nous sommes là pour vous aider.</p>
-<p style="color:#78716c;font-size:13px;">— L'équipe ConstruPilot</p>
-</td></tr>
-<tr><td style="background:#fafaf9;padding:16px 32px;color:#a8a29e;font-size:11px;">ConstruPilot — Estimez. Comparez. Construisez. · Brevet FR261104</td></tr>
-</table></td></tr></table></body></html>"""
+    hello = f'Olá {name},' if name else "Bom dia,"
+    return f'<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f5f4;padding:24px;">\n<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">\n<table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4;">\n<tr><td style="background:#3f7d54;padding:24px 32px;color:#fff;font-size:20px;font-weight:800;">ConstruPilot</td></tr>\n<tr><td style="padding:32px;color:#1a1d20;font-size:15px;line-height:1.6;">\n<p>{hello}</p>\n<p>Começou uma estimativa de obras no <strong>ConstruPilot</strong> há alguns dias,\nmas parece que não a concluiu.</p>\n<p>Boas notícias: faltam apenas alguns segundos para obter uma estimativa detalhada,\nartigo a artigo — <strong>gratuitamente e sem compromisso</strong>.</p>\n<p style="text-align:center;margin:32px 0;">\n<a href="https://construpilot.pt/smart-project" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Concluir a minha estimativa</a>\n</p>\n<p style="color:#78716c;font-size:13px;">Tem alguma pergunta? Basta responder a este e-mail, estamos aqui para ajudar.</p>\n<p style="color:#78716c;font-size:13px;">— A equipa ConstruPilot</p>\n</td></tr>\n<tr><td style="background:#fafaf9;padding:16px 32px;color:#a8a29e;font-size:11px;">ConstruPilot — Estime. Compare. Construa. · Patente FR261104</td></tr>\n</table></td></tr></table></body></html>'
 
 
 async def run_prospect_reminders() -> int:
@@ -490,7 +452,7 @@ async def run_prospect_reminders() -> int:
             continue
         try:
             await send_email(lead["email"],
-                             "Il ne vous reste qu'un clic — terminez votre estimation ConstruPilot",
+                             "Falta só um clique — conclua a sua estimativa ConstruPilot",
                              _j2_reminder_html(lead.get("name") or ""))
             sent += 1
         except Exception:

@@ -58,23 +58,22 @@ async def _pc_owner_id(plan_id: str, user: dict, write: bool = False) -> str:
     write=True : refuse les collègues si le propriétaire est en lecture seule."""
     p = await db.plans_takeoff.find_one({"plan_id": plan_id}, {"_id": 0, "user_id": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     owner_id = p["user_id"]
     if owner_id == user["user_id"]:
         return owner_id
     org = user.get("organization_id")
     if not org:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     owner = await db.users.find_one({"user_id": owner_id},
                                     {"_id": 0, "organization_id": 1})
     if not owner or owner.get("organization_id") != org:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     settings = await _load_pc_settings(owner_id)
     if settings.get("team_share") is False:
-        raise HTTPException(403, "Partage équipe désactivé par le propriétaire de l'étude")
+        raise HTTPException(403, "Partilha de equipa desativada pelo proprietário do estudo")
     if write and settings.get("team_can_edit") is not True:
-        raise HTTPException(403, "Lecture seule — le propriétaire n'autorise pas "
-                                 "la modification de ses études par l'équipe")
+        raise HTTPException(403, "Só de leitura — o proprietário não autoriza a modificação dos seus estudos pela equipa")
     return owner_id
 
 
@@ -93,7 +92,7 @@ async def _team_members(owner_id: str) -> list[dict]:
 
 
 class PcStudyIn(BaseModel):
-    request: str = Field("Gros œuvre avec infrastructure, enduits et maçonnerie de clôture ; hors charpente-couverture et second œuvre", max_length=2000)
+    request: str = Field("Estrutura com infraestrutura, rebocos e alvenaria de vedação; exclui cobertura e acabamentos", max_length=2000)
     request_id: str | None = Field(None, max_length=80)
     pages: list[int] | None = None
     wall_height_m: float | None = None
@@ -122,7 +121,7 @@ async def run_pc_study(plan_id: str, body: PcStudyIn, user=Depends(current_user)
     from engines.study_dossier_jobs import enqueue_study
     legacy = ("wall_height_m", "levels", "perimeter_m", "refends_m", "surface_m2")
     if any(getattr(body, key) is not None for key in legacy):
-        raise HTTPException(422, "Lancez l’étude puis corrigez ses mesures sourcées dans le panneau de contrôle.")
+        raise HTTPException(422, "Lance o estudo e depois corrija as suas medições fundamentadas no painel de controlo.")
     return await enqueue_study(plan_id, body.model_dump(), user)
 
 
@@ -236,7 +235,7 @@ async def list_pc_situations(plan_id: str, user=Depends(current_user)) -> dict:
     await _pc_owner_id(plan_id, user)
     p = await db.plans_takeoff.find_one({"plan_id": plan_id}, _SIT_PROJ)
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return {"situations": p.get("pc_situations") or [],
             "billing": _billing_summary(p)}
 
@@ -249,22 +248,21 @@ async def create_pc_situation(plan_id: str, body: PcSituationIn,
     await _pc_owner_id(plan_id, user, write=True)
     p = await db.plans_takeoff.find_one({"plan_id": plan_id}, _SIT_PROJ)
     if not p or not p.get("pc_study"):
-        raise HTTPException(400, "Aucune étude PC — lancez d'abord l'analyse")
+        raise HTTPException(400, "Nenhum estudo de projeto — lance primeiro a análise")
     bs = _billing_summary(p)
     if bs["total_ttc"] <= 0:
-        raise HTTPException(400, "Total du marché invalide")
+        raise HTTPException(400, "Total da empreitada inválido")
     if body.solde:
         amount = bs["remaining_to_invoice"]
         pct_cumul = 100.0
     else:
         if not body.pct_cumul:
-            raise HTTPException(422, "Indiquez l'avancement cumulé (%) ou facturez le solde")
+            raise HTTPException(422, "Indique a execução acumulada (%) ou fature o saldo")
         target = round(bs["total_ttc"] * body.pct_cumul / 100.0, 2)
         amount = round(target - bs["invoiced"], 2)
         pct_cumul = float(body.pct_cumul)
     if amount < 1:
-        raise HTTPException(400, f"Rien à facturer : {bs['invoiced']} € déjà facturés "
-                                 f"sur {bs['total_ttc']} € TTC — augmentez l'avancement")
+        raise HTTPException(400, f"Nada a faturar: {bs['invoiced']} € já faturados sobre {bs['total_ttc']} € c/ IVA — aumente a execução")
     sit_no = len(p.get("pc_situations") or []) + 1
     invoice_no = await _next_invoice_no(p["user_id"], kind="situation", prefix="SIT")
     sit = {"sit_id": f"sit_{secrets.token_hex(5)}", "sit_no": sit_no,
@@ -286,7 +284,7 @@ async def create_pc_situation(plan_id: str, body: PcSituationIn,
             from engines.emailer import send_email_with_pdf, wrap_html
             branding = await _resolve_branding(p["user_id"])
             company = (branding or {}).get("company_name") or "ConstruPilot"
-            filename = p.get("filename") or "permis de construire"
+            filename = p.get("filename") or "projeto de licenciamento"
             pdf = build_situation_invoice_pdf(p, branding, {
                 **sit, "total_ttc": bs["total_ttc"],
                 "already_invoiced": bs["invoiced"],
@@ -294,20 +292,14 @@ async def create_pc_situation(plan_id: str, body: PcSituationIn,
                 "client_email": entry.get("to_email")})
             frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
             link = f"{frontend}/etude/{entry['sign_token']}" if frontend else None
-            label = "de solde" if sit["is_final"] else f"de situation n° {sit_no}"
+            label = "de saldo" if sit["is_final"] else f'de auto de medição n.º {sit_no}'
             await send_email_with_pdf(
                 entry["to_email"],
-                f"Facture {label} {invoice_no} — {amount} € · {filename}",
+                f'Fatura {label} {invoice_no} — {amount} € · {filename}',
                 wrap_html(
-                    f"Facture {label} — {invoice_no}",
-                    f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
-                    f"<p>Les travaux du chantier « {_html.escape(filename)} » avancent"
-                    f"{'' if sit['is_final'] else f' ({pct_cumul:g} % réalisés)'} : "
-                    f"vous trouverez en pièce jointe la facture {label} de "
-                    f"<b>{amount} € TTC</b>.</p>"
-                    "<p>Vous pouvez la régler en ligne par carte bancaire en un clic "
-                    f"depuis votre espace chantier.<br/>{_html.escape(company)}</p>",
-                    cta_url=link, cta_label="Régler en ligne par carte"),
+                    f'Fatura {label} — {invoice_no}',
+                    f"<p>Olá {_html.escape(entry.get('accepted_by') or '')},</p><p>As obras da obra «{_html.escape(filename)} » avancent{('' if sit['is_final'] else f' ({pct_cumul:g} % executados)')}: segue em anexo a fatura {label} de <b>{amount} € c/ IVA</b>.</p><p>Pode pagá-la online por cartão bancário com um clique a partir da sua área de obra.<br/>{_html.escape(company)}</p>",
+                    cta_url=link, cta_label="Pagar online por cartão"),
                 pdf, filename=f"facture-{invoice_no}.pdf")
             emailed = True
         except Exception as e:
@@ -322,13 +314,12 @@ async def create_pc_situation(plan_id: str, body: PcSituationIn,
 def _order_context(p: dict, level_index: int, prices: dict) -> tuple[dict, list[dict], str]:
     lb = (p["pc_study"].get("levels_breakdown") or [])
     if not (0 <= level_index < len(lb)):
-        raise HTTPException(400, "Niveau inconnu — relancez l'analyse ou le recalcul")
+        raise HTTPException(400, "Nível desconhecido — relance a análise ou o recálculo")
     level = lb[level_index]
     items = build_purchase_order_items(level, prices)
     if not items:
         raise HTTPException(400,
-                            "Aucun matériau à commander sur ce niveau — recalculez "
-                            "l'étude pour régénérer les données")
+                            "Nenhum material a encomendar neste nível — recalcule o estudo para regenerar os dados")
     ref = f"BC-{p['plan_id'][-6:].upper()}-N{level_index}-{_now()[:10].replace('-', '')}"
     return level, items, ref
 
@@ -380,26 +371,18 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
         notes_html = ("<p><b>Notes :</b><br/>"
                       f"{_html.escape(body.notes.strip()).replace(chr(10), '<br/>')}</p>")
     html_body = (
-        f"<p>Bonjour{' ' + _html.escape(body.supplier_name) if body.supplier_name else ''},</p>"
-        f"<p>Veuillez trouver ci-joint notre <b>bon de commande {ref}</b> pour la phase "
-        f"« {_html.escape(lvl['name'])} » de notre chantier "
-        f"« {_html.escape(p.get('filename') or 'construction')} » — "
-        f"{len(items)} articles, total indicatif <b>{total} € HT</b>.</p>"
-        f"{notes_html}"
-        "<p>Merci de nous confirmer vos tarifs, disponibilités et délais de livraison "
-        f"en répondant à cet email ({_html.escape(user.get('email') or '')}).<br/>"
-        f"{_html.escape(company)}</p>")
+        f"<p>Olá{(' ' + _html.escape(body.supplier_name) if body.supplier_name else '')},</p><p>Segue em anexo a nossa <b>nota de encomenda {ref}</b> para a fase «{_html.escape(lvl['name'])}» da nossa obra «{_html.escape(p.get('filename') or 'construction')} » — {len(items)} artigos, total indicativo <b>{total} € HT</b>.</p>{notes_html}<p>Agradecemos que nos confirme os seus preços, disponibilidades e prazos de entrega respondendo a este email ({_html.escape(user.get('email') or '')}).<br/>{_html.escape(company)}</p>")
     try:
         await deliver_email(
-            p["user_id"], body.supplier_email, f"Bon de commande {ref} · {company}",
-            wrap_html(f"Bon de commande {ref}", html_body),
+            p["user_id"], body.supplier_email, f'Nota de encomenda {ref} · {company}',
+            wrap_html(f'Nota de encomenda {ref}', html_body),
             pdf_bytes=pdf, filename=f"{ref}.pdf",
             reply_to=(user.get("email") or (branding or {}).get("company_email")),
             from_name=company)
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
-        raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+        raise HTTPException(502, "Envio do email impossível — tente mais tarde")
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$push": {"sent_reports": {"$each": [{
@@ -416,9 +399,9 @@ async def _plan_and_study(plan_id: str, user: dict, write: bool = False) -> dict
         {"plan_id": plan_id},
         {"_id": 0, "filename": 1, "pc_study": 1, "user_id": 1, "updated_at": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     if not p.get("pc_study"):
-        raise HTTPException(400, "Aucune étude PC — lancez d'abord l'analyse")
+        raise HTTPException(400, "Nenhum estudo de projeto — lance primeiro a análise")
     return p
 
 
@@ -451,7 +434,7 @@ async def export_pc_pdf(plan_id: str, start: str | None = None,
         for a in selected:
             index = a.get("page", 0)-1
             if 0 <= index < len(pages) and pages[index].get("image_png_b64"):
-                images.append((f"Page {index+1} - {a.get('kind')} (pièce source, sans validation automatique)", base64.b64decode(pages[index]["image_png_b64"])))
+                images.append((f"Página {index + 1} - {a.get('kind')} (peça de origem, sem validação automática)", base64.b64decode(pages[index]["image_png_b64"])))
         pdf = await asyncio.to_thread(build_dossier_pdf, p, p["pc_study"], branding, images)
     else:
         pdf = await asyncio.to_thread(build_pc_pdf, p, p["pc_study"], branding, start_date=_valid_date(start))
@@ -489,42 +472,32 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
     p = await _plan_and_study(plan_id, user, write=True)
     study = p["pc_study"]
     if study.get("schema_version") == "construction-dossier-1":
-        raise HTTPException(409, "Cette étude estimative s’exporte en PDF. Créez un devis commercial contrôlé avant envoi pour signature.")
+        raise HTTPException(409, "Este estudo estimativo exporta-se em PDF. Crie um orçamento comercial controlado antes de o enviar para assinatura.")
     branding = await _resolve_branding(p["user_id"])
     start = _valid_date(body.start_date)
     pdf = build_pc_pdf(p, study, branding, start_date=start)
 
     t = study.get("totals") or {}
     pl = study.get("planning") or {}
-    filename = p.get("filename") or "permis de construire"
+    filename = p.get("filename") or "projeto de licenciamento"
     perso = _html.escape(body.message.strip()).replace("\n", "<br/>")
     intro = f"<p>{perso}</p>" if perso else ""
-    recap = (f"<p><b>{t.get('beton_m3', 0)} m³</b> de béton · "
-             f"<b>{t.get('acier_kg', 0)} kg</b> d'aciers · "
-             f"<b>{t.get('briques_u', 0)}</b> briques isobrique — "
-             f"Total <b>{t.get('ttc', 0)} € TTC</b>.</p>")
+    recap = (f"<p><b>{t.get('beton_m3', 0)} m³</b> de betão · <b>{t.get('acier_kg', 0)} kg</b> de armaduras · <b>{t.get('briques_u', 0)}</b> tijolos térmicos — Total <b>{t.get('ttc', 0)} € c/ IVA</b>.</p>")
     if pl.get("total_days"):
-        recap += (f"<p>Durée de chantier estimée : <b>{pl['total_days']} jours</b> "
-                  f"({pl['total_weeks']} semaines), équipe de {pl['crew_size']}.</p>")
+        recap += (f"<p>Duração estimada da obra: <b>{pl['total_days']} jours</b> ({pl['total_weeks']} semanas), equipa de {pl['crew_size']}.</p>")
     if start and pl.get("phases"):
         sched = schedule_with_dates(pl, start)
         d0, d1 = sched[0]["work_start"], sched[-1]["cure_end"]
-        recap += (f"<p>Démarrage prévu le <b>{d0[8:10]}/{d0[5:7]}/{d0[0:4]}</b> — "
-                  f"fin de chantier estimée le <b>{d1[8:10]}/{d1[5:7]}/{d1[0:4]}</b>.</p>")
+        recap += (f'<p>Início previsto em <b>{d0[8:10]}/{d0[5:7]}/{d0[0:4]}</b> — fim de obra estimado em <b>{d1[8:10]}/{d1[5:7]}/{d1[0:4]}</b>.</p>')
     html_body = (
         intro +
-        "<p>Veuillez trouver ci-joint l'<b>étude gros œuvre</b> établie à partir du "
-        f"permis de construire « {_html.escape(filename)} » : quantités de béton, "
-        "aciers, briques et devis détaillé par corps d'état.</p>" + recap)
+        f'<p>Segue em anexo o <b>estudo de estrutura e alvenarias</b> elaborado a partir do projeto de licenciamento «{_html.escape(filename)}»: quantidades de betão, armaduras, tijolos e orçamento detalhado por especialidade.</p>' + recap)
     track_id = "pct_" + secrets.token_hex(6)
     sign_token = "pcs_" + secrets.token_hex(8)
     frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
     if frontend:
         html_body += (
-            f'<p style="margin:18px 0"><a href="{frontend}/etude/{sign_token}" '
-            'style="background:#FF5A00;color:#ffffff;padding:11px 24px;'
-            'border-radius:4px;text-decoration:none;font-weight:bold">'
-            "Consulter et accepter l'étude en ligne</a></p>")
+            f'<p style="margin:18px 0"><a href="{frontend}/etude/{sign_token}" style="background:#FF5A00;color:#ffffff;padding:11px 24px;border-radius:4px;text-decoration:none;font-weight:bold">Consultar e aceitar o estudo online</a></p>')
     backend_public = os.getenv("PUBLIC_BACKEND_URL") or os.getenv("FRONTEND_URL") or ""
     if backend_public:
         html_body += (f'<img src="{backend_public}/api/pc/track/{track_id}" '
@@ -533,19 +506,19 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
     company = b.get("company_name") or user.get("name") or "ConstruPilot"
     company_email = b.get("company_email")
     html = wrap_company_html(
-        "Étude gros œuvre — Permis de construire", html_body,
+        "Estudo de estrutura e alvenarias — Projeto de licenciamento", html_body,
         company_name=company, logo_b64=b.get("logo_b64"),
         contact_line=b.get("contact_line"), siret=b.get("siret"),
         vat=b.get("vat"), company_email=company_email)
     try:
         await deliver_email(
-            p["user_id"], body.to_email, f"Étude gros œuvre — {filename}",
+            p["user_id"], body.to_email, f'Estudo de estrutura — {filename}',
             html, pdf_bytes=pdf, filename=f"etude-pc-{plan_id}.pdf",
             reply_to=company_email, from_name=company)
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
-        raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+        raise HTTPException(502, "Envio do email impossível — tente mais tarde")
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$push": {"sent_reports": {"$each": [{
@@ -651,29 +624,24 @@ async def _notify_study_opened(track_id: str) -> None:
         return
     u = await db.users.find_one({"user_id": p["user_id"]},
                                 {"_id": 0, "email": 1, "name": 1})
-    filename = p.get("filename") or "permis de construire"
-    client = entry.get("to_email") or "votre client"
+    filename = p.get("filename") or "projeto de licenciamento"
+    client = entry.get("to_email") or "o seu cliente"
     if mode in ("email", "both") and u and u.get("email"):
         html = wrap_html(
-            "Votre étude vient d'être ouverte",
-            f"<p>Bonjour {_html.escape(u.get('name') or '')},</p>"
-            f"<p>Bonne nouvelle : <b>{_html.escape(client)}</b> vient d'ouvrir "
-            f"l'étude gros œuvre du chantier « {_html.escape(filename)} ».</p>"
-            "<p>C'est le bon moment pour le rappeler.</p>")
+            "O seu estudo acaba de ser aberto",
+            f"<p>Olá {_html.escape(u.get('name') or '')},</p><p>Boas notícias: <b>{_html.escape(client)}</b> acaba de abrir o estudo de estrutura e alvenarias da obra «{_html.escape(filename)}».</p><p>É o momento certo para lhe ligar.</p>")
         await send_email(u["email"],
-                         f"👀 {client} a ouvert votre étude · {filename}", html)
+                         f'👀 {client} abriu o seu estudo · {filename}', html)
     if mode in ("sms", "both") and settings.get("notify_phone"):
         from engines.alerting import _send_sms
         _send_sms(settings["notify_phone"],
-                  f"ConstruPilot : {client} vient d'ouvrir votre étude gros œuvre "
-                  f"({filename}). Rappelez-le pendant qu'il est dessus !")
+                  f'ConstruPilot : {client} acaba de abrir o seu estudo de estrutura e alvenarias ({filename}). Ligue-lhe enquanto o está a ver!')
     for m in await _team_members(p["user_id"]):
         try:
             await send_email(
-                m["email"], f"👀 Étude ouverte (équipe) · {filename}",
-                wrap_html("Étude ouverte — équipe",
-                          f"<p><b>{_html.escape(client)}</b> vient d'ouvrir l'étude "
-                          f"« {_html.escape(filename)} » d'un membre de votre équipe.</p>"))
+                m["email"], f'👀 Estudo aberto (equipa) · {filename}',
+                wrap_html("Estudo aberto — equipa",
+                          f'<p><b>{_html.escape(client)}</b> acaba de abrir o estudo «{_html.escape(filename)}» de um membro da sua equipa.</p>'))
         except Exception as e:
             logger.warning(f"pc open team notify fail: {e}")
 
@@ -708,23 +676,16 @@ async def _send_pc_reminder(p: dict, s: dict) -> None:
     company = (branding or {}).get("company_name") or "ConstruPilot"
     pdf = build_pc_pdf(p, p["pc_study"], branding)
     t = (p["pc_study"].get("totals") or {})
-    filename = p.get("filename") or "permis de construire"
+    filename = p.get("filename") or "projeto de licenciamento"
     html_body = (
-        "<p>Bonjour,</p>"
-        f"<p>Petit rappel : l'<b>étude gros œuvre</b> de votre projet "
-        f"« {_html.escape(filename)} » vous attend. Vous la trouverez de nouveau "
-        "en pièce jointe de cet email.</p>"
-        f"<p><b>{t.get('beton_m3', 0)} m³</b> de béton · "
-        f"<b>{t.get('acier_kg', 0)} kg</b> d'aciers — "
-        f"Total <b>{t.get('ttc', 0)} € TTC</b>.</p>"
-        f"<p>N'hésitez pas à répondre à cet email pour toute question.<br/>{_html.escape(company)}</p>")
+        f"<p>Olá,</p><p>Pequeno lembrete: o <b>estudo de estrutura e alvenarias</b> do seu projeto «{_html.escape(filename)}» está à sua espera. Encontra-o novamente em anexo a este email.</p><p><b>{t.get('beton_m3', 0)} m³</b> de betão · <b>{t.get('acier_kg', 0)} kg</b> de armaduras — Total <b>{t.get('ttc', 0)} € c/ IVA</b>.</p><p>Não hesite em responder a este email para qualquer questão.<br/>{_html.escape(company)}</p>")
     backend_public = os.getenv("PUBLIC_BACKEND_URL") or os.getenv("FRONTEND_URL") or ""
     if backend_public and s.get("track_id"):
         html_body += (f'<img src="{backend_public}/api/pc/track/{s["track_id"]}" '
                       'width="1" height="1" alt="" style="display:block" />')
     await send_email_with_pdf(
-        s["to_email"], f"Rappel — Étude gros œuvre · {filename}",
-        wrap_html("Rappel — Étude gros œuvre", html_body),
+        s["to_email"], f'Lembrete — Estudo de estrutura e alvenarias · {filename}',
+        wrap_html("Lembrete — Estudo de estrutura e alvenarias", html_body),
         pdf, filename=f"etude-pc-{p['plan_id']}.pdf")
 
 
@@ -734,22 +695,16 @@ async def _send_deposit_reminder(p: dict, s: dict, pct: float, amount: float) ->
 
     branding = await _resolve_branding(p["user_id"])
     company = (branding or {}).get("company_name") or "ConstruPilot"
-    filename = p.get("filename") or "permis de construire"
+    filename = p.get("filename") or "projeto de licenciamento"
     frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
     link = f"{frontend}/etude/{s['sign_token']}" if frontend else None
     await send_email(
         s["to_email"],
-        f"Rappel — acompte de {amount} € à régler · {filename}",
+        f'Lembrete — adiantamento de {amount} € a pagar · {filename}',
         wrap_html(
-            "Votre chantier n'attend plus que l'acompte",
-            f"<p>Bonjour {_html.escape(s.get('accepted_by') or '')},</p>"
-            f"<p>Vous avez accepté l'étude gros œuvre du chantier "
-            f"« {_html.escape(filename)} » — il ne reste que l'acompte de "
-            f"<b>{pct:g} %</b>, soit <b>{amount} €</b>, à régler par carte "
-            "bancaire pour lancer les travaux.</p>"
-            f"<p>Le paiement est sécurisé (Stripe) et votre facture d'acompte "
-            f"vous sera envoyée automatiquement.<br/>{_html.escape(company)}</p>",
-            cta_url=link, cta_label="Régler l'acompte en ligne"))
+            "A sua obra só aguarda o adiantamento",
+            f"<p>Olá {_html.escape(s.get('accepted_by') or '')},</p><p>Aceitou o estudo de estrutura e alvenarias da obra «{_html.escape(filename)}» — falta apenas o adiantamento de <b>{pct:g} %</b>, ou seja <b>{amount} €</b>, a pagar por cartão bancário para lançar as obras.</p><p>O pagamento é seguro (Stripe) e a sua fatura de adiantamento ser-lhe-á enviada automaticamente.<br/>{_html.escape(company)}</p>",
+            cta_url=link, cta_label="Pagar o adiantamento online"))
 
 
 async def _run_pc_reminders() -> dict:
@@ -849,7 +804,7 @@ async def trigger_pc_reminders(user=Depends(admin_user)) -> dict:
 async def pc_weather(city: str, user=Depends(current_user)) -> dict:
     from engines.pc_weather import get_forecast
     if not city.strip():
-        raise HTTPException(422, "Ville requise")
+        raise HTTPException(422, "Localidade necessária")
     return await get_forecast(city.strip()[:60])
 
 
@@ -875,7 +830,7 @@ async def record_po_response(plan_id: str, body: PoResponseIn,
                   "sent_reports.$.response_notes": body.notes,
                   "sent_reports.$.response_at": _now()}})
     if not r.matched_count:
-        raise HTTPException(404, "Bon de commande introuvable")
+        raise HTTPException(404, "Nota de encomenda não encontrada")
     return {"ok": True, "ref": body.ref, "status": body.status}
 
 
@@ -889,11 +844,11 @@ async def get_pc_sign(token: str) -> dict:
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "pc_study": 1,
          "pc_situations": 1, "sent_reports.$": 1})
     if not p or not p.get("pc_study"):
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     entry = (p.get("sent_reports") or [{}])[0]
     study = p["pc_study"]
     if study.get("schema_version") == "construction-dossier-1":
-        raise HTTPException(409, "Cette étude estimative s’exporte en PDF. Créez un devis commercial contrôlé avant envoi pour signature.")
+        raise HTTPException(409, "Este estudo estimativo exporta-se em PDF. Crie um orçamento comercial controlado antes de o enviar para assinatura.")
     branding = await _resolve_branding(p["user_id"])
     t = study.get("totals") or {}
     settings = await _load_pc_settings(p["user_id"])
@@ -949,14 +904,14 @@ async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
         {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "sent_reports.$": 1})
     if not p:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     entry = (p.get("sent_reports") or [{}])[0]
     if entry.get("accepted"):
         return {"ok": True, "already": True, "accepted_at": entry.get("accepted_at")}
     now = _now()
     sig = (body.signature_data or "").strip()
     if sig and not sig.startswith("data:image/"):
-        raise HTTPException(422, "Signature invalide")
+        raise HTTPException(422, "Assinatura inválida")
     upd = {"sent_reports.$.accepted": True,
            "sent_reports.$.accepted_at": now,
            "sent_reports.$.accepted_by": body.name.strip(),
@@ -971,23 +926,19 @@ async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
         from engines.emailer import send_email, wrap_html
         u = await db.users.find_one({"user_id": p["user_id"]},
                                     {"_id": 0, "email": 1})
-        filename = p.get("filename") or "permis de construire"
+        filename = p.get("filename") or "projeto de licenciamento"
         if u and u.get("email"):
             await send_email(
                 u["email"],
-                f"✅ Étude acceptée par {body.name.strip()} · {filename}",
-                wrap_html("Étude acceptée !",
-                          f"<p><b>{_html.escape(body.name.strip())}</b> vient d'accepter "
-                          f"l'étude gros œuvre du chantier « {_html.escape(filename)} ». "
-                          "Vous pouvez lancer les commandes matériaux.</p>"))
+                f'✅ Estudo aceite por {body.name.strip()} · {filename}',
+                wrap_html("Estudo aceite!",
+                          f'<p><b>{_html.escape(body.name.strip())}</b> acaba de aceitar o estudo de estrutura e alvenarias da obra «{_html.escape(filename)}». Pode lançar as encomendas de materiais.</p>'))
         for m in await _team_members(p["user_id"]):
             await send_email(
                 m["email"],
-                f"✅ Étude acceptée (équipe) · {filename}",
-                wrap_html("Étude acceptée — équipe",
-                          f"<p><b>{_html.escape(body.name.strip())}</b> vient d'accepter "
-                          f"l'étude « {_html.escape(filename)} » d'un membre de votre "
-                          "équipe. Retrouvez-la dans le tableau de bord PC.</p>"))
+                f'✅ Estudo aceite (equipa) · {filename}',
+                wrap_html("Estudo aceite — equipa",
+                          f'<p><b>{_html.escape(body.name.strip())}</b> acaba de aceitar o estudo «{_html.escape(filename)}» de um membro da sua equipa. Encontre-o no painel de projetos.</p>'))
     except Exception as e:
         logger.warning(f"pc accept notify fail {token}: {e}")
     return {"ok": True, "accepted_at": now}
@@ -1007,7 +958,7 @@ async def _checkout_flood_guard(token: str) -> None:
         {"sign_token": token, "payment_status": "pending",
          "created_at": {"$gte": since}})
     if n >= 10:
-        raise HTTPException(429, "Trop de tentatives de paiement — réessayez plus tard")
+        raise HTTPException(429, "Demasiadas tentativas de pagamento — tente mais tarde")
 
 
 @pc_router.post("/sign/{token}/deposit/checkout")
@@ -1019,29 +970,29 @@ async def pc_deposit_checkout(token: str, body: PcDepositCheckoutIn) -> dict:
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1,
          "pc_study.totals": 1, "sent_reports.$": 1})
     if not p or not p.get("pc_study"):
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     entry = (p.get("sent_reports") or [{}])[0]
     if not entry.get("accepted"):
-        raise HTTPException(400, "Acceptez d'abord l'étude avant de verser l'acompte")
+        raise HTTPException(400, "Aceite primeiro o estudo antes de pagar o adiantamento")
     if entry.get("deposit_paid"):
-        raise HTTPException(400, "L'acompte a déjà été réglé — merci !")
+        raise HTTPException(400, "O adiantamento já foi pago — obrigado!")
     await _checkout_flood_guard(token)
     settings = await _load_pc_settings(p["user_id"])
     pct = settings.get("deposit_pct")
     pct = DEFAULT_DEPOSIT_PCT if pct is None else float(pct)
     if pct <= 0:
-        raise HTTPException(400, "Le paiement d'acompte en ligne est désactivé")
+        raise HTTPException(400, "O pagamento do adiantamento online está desativado")
     ttc = float((p["pc_study"].get("totals") or {}).get("ttc") or 0)
     amount_cents = int(round(ttc * pct))  # € TTC × pct % → centimes
     if amount_cents < 100:
-        raise HTTPException(400, "Montant d'acompte invalide")
+        raise HTTPException(400, "Montante de adiantamento inválido")
     origin = body.origin_url.rstrip("/")
     filename = (p.get("filename") or "étude gros œuvre")[:80]
     try:
         session = stripe.checkout.Session.create(
             line_items=[{"price_data": {
                 "currency": "eur",
-                "product_data": {"name": f"Acompte {pct:g} % — {filename}"},
+                "product_data": {"name": f'Adiantamento {pct:g} % — {filename}'},
                 "unit_amount": amount_cents}, "quantity": 1}],
             mode="payment",
             success_url=f"{origin}/etude/{token}?session_id={{CHECKOUT_SESSION_ID}}",
@@ -1050,7 +1001,7 @@ async def pc_deposit_checkout(token: str, body: PcDepositCheckoutIn) -> dict:
                       "plan_id": p["plan_id"]})
     except Exception:
         logger.exception("stripe pc deposit checkout")
-        raise HTTPException(502, "Paiement indisponible — réessayez plus tard")
+        raise HTTPException(502, "Pagamento indisponível — tente novamente mais tarde")
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": p["user_id"], "plan_id": p["plan_id"],
         "sign_token": token, "type": "pc_deposit", "amount_cents": amount_cents,
@@ -1086,7 +1037,7 @@ async def _apply_pc_deposit(rec: dict) -> None:
             return
         entry = next((s for s in p.get("sent_reports") or []
                       if s.get("sign_token") == token), {})
-        filename = p.get("filename") or "permis de construire"
+        filename = p.get("filename") or "projeto de licenciamento"
 
         # Facture d'acompte acquittée
         invoice_no = await _next_invoice_no(p["user_id"])
@@ -1113,25 +1064,16 @@ async def _apply_pc_deposit(rec: dict) -> None:
             company = (branding or {}).get("company_name") or "ConstruPilot"
             await send_email_with_pdf(
                 entry["to_email"],
-                f"Votre facture d'acompte {invoice_no} · {filename}",
-                wrap_html("Facture d'acompte — merci !",
-                          f"<p>Bonjour {_html.escape(entry.get('accepted_by') or '')},</p>"
-                          f"<p>Nous avons bien reçu votre acompte de <b>{amount} €</b> "
-                          f"pour le chantier « {_html.escape(filename)} ». "
-                          f"Votre facture d'acompte <b>{invoice_no}</b> est en pièce "
-                          "jointe.</p>"
-                          f"<p>À très vite pour le lancement des travaux !<br/>"
-                          f"{_html.escape(company)}</p>"),
+                f'A sua fatura de adiantamento {invoice_no} · {filename}',
+                wrap_html("Fatura de adiantamento — obrigado!",
+                          f"<p>Olá {_html.escape(entry.get('accepted_by') or '')},</p><p>Recebemos o seu adiantamento de <b>{amount} €</b> para a obra «{_html.escape(filename)}». A sua fatura de adiantamento <b>{invoice_no}</b> segue em anexo.</p><p>Até breve para o arranque das obras!<br/>{_html.escape(company)}</p>"),
                 pdf, filename=f"facture-acompte-{invoice_no}.pdf")
 
         # Notification pro + équipe (facture jointe si dispo)
         html = wrap_html(
-            "Acompte encaissé",
-            f"<p>Bonne nouvelle : un acompte de <b>{amount} €</b> vient d'être réglé "
-            f"par carte pour l'étude « {_html.escape(filename)} ». "
-            f"Facture <b>{invoice_no}</b> envoyée au client — "
-            "vous pouvez lancer le chantier !</p>")
-        subject = f"💶 Acompte de {amount} € reçu · {filename}"
+            "Adiantamento recebido",
+            f'<p>Boas notícias: um adiantamento de <b>{amount} €</b> acaba de ser pago por cartão para o estudo «{_html.escape(filename)}». Fatura <b>{invoice_no}</b> enviada ao cliente — pode lançar a obra!</p>')
+        subject = f'💶 Adiantamento de {amount} € recebido · {filename}'
         u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1})
         if u and u.get("email"):
             if pdf:
@@ -1140,7 +1082,7 @@ async def _apply_pc_deposit(rec: dict) -> None:
             else:
                 await send_email(u["email"], subject, html)
         for m in await _team_members(p["user_id"]):
-            await send_email(m["email"], f"💶 Acompte reçu (équipe) · {filename}", html)
+            await send_email(m["email"], f'💶 Adiantamento recebido (equipa) · {filename}', html)
     except Exception as e:
         logger.warning(f"pc deposit notify fail {token}: {e}")
 
@@ -1153,10 +1095,10 @@ async def pc_deposit_invoice(token: str):
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1,
          "pc_study.totals": 1, "sent_reports.$": 1})
     if not p:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     entry = (p.get("sent_reports") or [{}])[0]
     if not entry.get("deposit_paid") or not entry.get("deposit_invoice_no"):
-        raise HTTPException(400, "Aucun acompte réglé pour cette étude")
+        raise HTTPException(400, "Nenhum adiantamento pago para este estudo")
     settings = await _load_pc_settings(p["user_id"])
     pct = settings.get("deposit_pct")
     pct = DEFAULT_DEPOSIT_PCT if pct is None else float(pct)
@@ -1172,8 +1114,7 @@ async def pc_deposit_invoice(token: str):
     return Response(
         content=pdf, media_type="application/pdf",
         headers={"Content-Disposition":
-                 f'attachment; filename="facture-acompte-'
-                 f'{entry["deposit_invoice_no"]}.pdf"'})
+                 f'''attachment; filename="fatura-adiantamento-{entry['deposit_invoice_no']}.pdf"'''})
 
 
 @pc_router.get("/deposit/status/{session_id}")
@@ -1182,7 +1123,7 @@ async def pc_deposit_status(session_id: str) -> dict:
     q = {"session_id": session_id, "type": {"$in": ["pc_deposit", "pc_situation"]}}
     rec = await db.payment_transactions.find_one(q, {"_id": 0})
     if not rec:
-        raise HTTPException(404, "Session inconnue")
+        raise HTTPException(404, "Sessão desconhecida")
     if rec.get("payment_status") != "paid":
         import stripe
         try:
@@ -1221,20 +1162,20 @@ async def pc_situation_checkout(token: str, sit_id: str,
         {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "pc_situations": 1})
     if not p:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     sit = next((s for s in p.get("pc_situations") or []
                 if s.get("sit_id") == sit_id), None)
     if not sit:
-        raise HTTPException(404, "Situation introuvable")
+        raise HTTPException(404, "Auto de medição não encontrado")
     if sit.get("paid"):
-        raise HTTPException(400, "Cette facture a déjà été réglée — merci !")
+        raise HTTPException(400, "Esta fatura já foi paga — obrigado!")
     await _checkout_flood_guard(token)
     amount_cents = int(round(float(sit["amount"]) * 100))
     if amount_cents < 100:
-        raise HTTPException(400, "Montant invalide")
+        raise HTTPException(400, "Montante inválido")
     origin = body.origin_url.rstrip("/")
     filename = (p.get("filename") or "étude gros œuvre")[:80]
-    label = "Solde" if sit.get("is_final") else f"Situation n° {sit['sit_no']}"
+    label = "Saldo" if sit.get("is_final") else f"Auto de medição n.º {sit['sit_no']}"
     try:
         session = stripe.checkout.Session.create(
             line_items=[{"price_data": {
@@ -1248,7 +1189,7 @@ async def pc_situation_checkout(token: str, sit_id: str,
                       "sign_token": token, "plan_id": p["plan_id"]})
     except Exception:
         logger.exception("stripe pc situation checkout")
-        raise HTTPException(502, "Paiement indisponible — réessayez plus tard")
+        raise HTTPException(502, "Pagamento indisponível — tente novamente mais tarde")
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": p["user_id"], "plan_id": p["plan_id"],
         "sign_token": token, "sit_id": sit_id, "type": "pc_situation",
@@ -1279,9 +1220,9 @@ async def _apply_pc_situation(rec: dict) -> None:
             return
         sit = next(s for s in p["pc_situations"] if s["sit_id"] == sit_id)
         bs = _billing_summary(p)
-        filename = p.get("filename") or "permis de construire"
+        filename = p.get("filename") or "projeto de licenciamento"
         amount = sit["amount"]
-        label = "du solde" if sit.get("is_final") else f"de la situation n° {sit['sit_no']}"
+        label = "do saldo" if sit.get("is_final") else f"do auto de medição n.º {sit['sit_no']}"
         entry = next((s for s in reversed(p.get("sent_reports") or [])
                       if s.get("kind") == "pc_study" and s.get("sign_token")), None)
         branding = await _resolve_branding(p["user_id"])
@@ -1299,27 +1240,22 @@ async def _apply_pc_situation(rec: dict) -> None:
             company = (branding or {}).get("company_name") or "ConstruPilot"
             await send_email_with_pdf(
                 entry["to_email"],
-                f"Reçu — facture {sit['invoice_no']} acquittée · {filename}",
-                wrap_html("Paiement reçu — merci !",
-                          f"<p>Nous avons bien reçu votre règlement {label} : "
-                          f"<b>{amount} €</b> pour le chantier "
-                          f"« {_html.escape(filename)} ». La facture acquittée est "
-                          f"en pièce jointe.</p><p>{_html.escape(company)}</p>"),
+                f"Recibo — fatura {sit['invoice_no']} liquidada · {filename}",
+                wrap_html("Pagamento recebido — obrigado!",
+                          f'<p>Recebemos o seu pagamento {label} : <b>{amount} €</b> para a obra «{_html.escape(filename)}». A fatura liquidada segue em anexo.</p><p>{_html.escape(company)}</p>'),
                 pdf, filename=f"facture-{sit['invoice_no']}.pdf")
-        solde_txt = (" Le marché est intégralement soldé 🎉"
+        solde_txt = (" A empreitada está integralmente liquidada 🎉"
                      if bs["remaining_to_pay"] <= 0.01 else
-                     f" Reste à encaisser : {bs['remaining_to_pay']} € TTC.")
+                     f" Falta receber: {bs['remaining_to_pay']} € TTC.")
         html = wrap_html(
-            "Paiement de situation reçu",
-            f"<p>Le règlement {label} (<b>{amount} €</b>, facture "
-            f"{sit['invoice_no']}) vient d'être reçu par carte pour l'étude "
-            f"« {_html.escape(filename)} ».{solde_txt}</p>")
-        subject = f"💶 {amount} € reçus ({sit['invoice_no']}) · {filename}"
+            "Pagamento de auto de medição recebido",
+            f"<p>O pagamento {label} (<b>{amount} €</b>, fatura {sit['invoice_no']}) acaba de ser recebido por cartão para o estudo «{_html.escape(filename)} ».{solde_txt}</p>")
+        subject = f"💶 {amount} € recebidos ({sit['invoice_no']}) · {filename}"
         u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1})
         if u and u.get("email"):
             await send_email(u["email"], subject, html)
         for m in await _team_members(p["user_id"]):
-            await send_email(m["email"], f"💶 Situation réglée (équipe) · {filename}", html)
+            await send_email(m["email"], f'💶 Auto de medição pago (equipa) · {filename}', html)
     except Exception as e:
         logger.warning(f"pc situation notify fail {sit_id}: {e}")
 
@@ -1332,11 +1268,11 @@ async def pc_situation_invoice(token: str, sit_id: str):
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "pc_study.totals": 1,
          "pc_situations": 1, "sent_reports": 1})
     if not p:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     sit = next((s for s in p.get("pc_situations") or []
                 if s.get("sit_id") == sit_id), None)
     if not sit:
-        raise HTTPException(404, "Situation introuvable")
+        raise HTTPException(404, "Auto de medição não encontrado")
     bs = _billing_summary(p)
     entry = next((s for s in reversed(p.get("sent_reports") or [])
                   if s.get("kind") == "pc_study" and s.get("sign_token")), None)
@@ -1350,7 +1286,7 @@ async def pc_situation_invoice(token: str, sit_id: str):
     return Response(
         content=pdf, media_type="application/pdf",
         headers={"Content-Disposition":
-                 f'attachment; filename="facture-{sit["invoice_no"]}.pdf"'})
+                 f'''attachment; filename="fatura-{sit['invoice_no']}.pdf"'''})
 
 
 # ---- Tableau de bord des études PC ----------------------------------------
@@ -1458,25 +1394,13 @@ async def _send_weekly_pc_report_email(u: dict, rows: list[dict]) -> None:
            "Ouvrir le tableau de bord PC</a></p>") if frontend else ""
     name = _html.escape(u.get("name") or "")
     html = wrap_html(
-        "Rapport hebdo — Études PC",
-        f"<p>Bonjour {name},</p>"
-        f"<p>Le point du lundi sur vos <b>{len(rows)} études PC</b> :</p>"
-        f"<ul><li><b>{len(accepted)}</b> acceptée(s)</li>"
-        f"<li><b>{len(opened)}</b> ouverte(s) par le client mais pas encore "
-        "signée(s) — à rappeler</li>"
-        f"<li><b>{len(to_chase)}</b> envoyée(s) sans réponse — à relancer</li>"
-        f"<li>Pipeline total : <b>{_eur(pipeline)} TTC</b>"
-        + (f" · acomptes encaissés : <b>{_eur(deposits)}</b>" if deposits else "")
-        + "</li></ul>"
-        '<table style="width:100%;border-collapse:collapse;font-size:13px">'
-        '<tr><th style="text-align:left;padding:6px">Chantier</th>'
-        '<th style="text-align:left;padding:6px">Statut</th>'
-        '<th style="text-align:right;padding:6px">TTC</th>'
-        '<th style="text-align:left;padding:6px">Client</th></tr>'
-        f"{trs}</table>{cta}")
+        "Relatório semanal — Estudos de projeto",
+        f'<p>Olá {name},</p><p>O ponto de segunda-feira sobre os seus <b>{len(rows)} estudos de projeto</b>:</p><ul><li><b>{len(accepted)}</b> aceite(s)</li><li><b>{len(opened)}</b> aberto(s) pelo cliente mas ainda não assinado(s) — a contactar</li><li><b>{len(to_chase)}</b> enviado(s) sem resposta — a relançar</li><li>Pipeline total: <b>{_eur(pipeline)} c/ IVA</b>'
+        + (f' · adiantamentos recebidos: <b>{_eur(deposits)}</b>' if deposits else "")
+        + f'</li></ul><table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th style="text-align:left;padding:6px">Obra</th><th style="text-align:left;padding:6px">Estado</th><th style="text-align:right;padding:6px">c/ IVA</th><th style="text-align:left;padding:6px">Cliente</th></tr>{trs}</table>{cta}')
     await send_email(
         u["email"],
-        f"📊 Rapport hebdo PC — {len(rows)} études, {len(to_chase)} à relancer",
+        f'📊 Relatório semanal de projetos — {len(rows)} études, {len(to_chase)} a relançar',
         html)
 
 
@@ -1520,13 +1444,13 @@ async def send_my_weekly_report(user=Depends(current_user)) -> dict:
         {"user_id": user["user_id"], "pc_study": {"$exists": True}},
         _DASH_PROJ).to_list(200)
     if not plans:
-        raise HTTPException(400, "Aucune étude PC à résumer")
+        raise HTTPException(400, "Nenhum estudo de projeto a resumir")
     if not user.get("email"):
-        raise HTTPException(400, "Aucun email sur votre compte")
+        raise HTTPException(400, "Nenhum email na sua conta")
     try:
         await _send_weekly_pc_report_email(user, [_study_row(p) for p in plans])
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
-        raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+        raise HTTPException(502, "Envio do email impossível — tente mais tarde")
     return {"ok": True, "studies": len(plans), "sent_to": user["email"]}

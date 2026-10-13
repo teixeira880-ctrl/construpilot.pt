@@ -136,7 +136,7 @@ async def _resolve_price(lookup: str):
     await ensure_stripe_catalog()
     prices = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
     if not prices:
-        raise RuntimeError(f"Prix Stripe introuvable pour {lookup}")
+        raise RuntimeError(f'Preço Stripe não encontrado para {lookup}')
     return prices[0]
 
 
@@ -226,9 +226,9 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
     Refactor iter53 : orchestration only — logique déléguée à des helpers.
     """
     if not stripe.api_key:
-        raise RuntimeError("Stripe non configuré")
+        raise RuntimeError("Stripe não configurado")
     if not plan.get("lookup_key"):
-        raise ValueError(f"Plan {plan.get('plan_id')} sans lookup_key")
+        raise ValueError(f"Planta {plan.get('plan_id')} sem lookup_key")
 
     price = await _resolve_price(plan["lookup_key"])
     customer_id = await get_or_create_customer(user)
@@ -253,10 +253,10 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
 async def sync_status(session_id: str) -> dict:
     """Récupère le statut d'une Checkout Session. Idempotent."""
     if not stripe.api_key:
-        raise RuntimeError("Stripe non configuré")
+        raise RuntimeError("Stripe não configurado")
     rec = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if not rec:
-        raise ValueError("Session inconnue")
+        raise ValueError("Sessão desconhecida")
     if rec.get("payment_status") == "paid":
         return rec
     try:
@@ -423,7 +423,7 @@ async def _send_pro_welcome(user_id: str, plan: dict, payment_rec: dict, user: d
             customer_name=user.get("name") or "", plan_name=plan.get("name") or "Pro",
             amount_ttc=amount, dashboard_url=f"{origin.rstrip('/')}/dashboard")
         await send_email_with_pdf(
-            user["email"], f"Bienvenue en Pro · {plan.get('name') or 'ConstruPilot'}",
+            user["email"], f"Bem-vindo ao Pro · {plan.get('name') or 'ConstruPilot'}",
             html, pdf, filename=f"{rno}.pdf")
         await db.entitlements.update_one(
             {"user_id": user_id, "plan_id": plan["plan_id"]},
@@ -547,8 +547,7 @@ async def require_pro_business(user: dict) -> None:
     if tier != "pro_business":
         raise HTTPException(
             402,
-            "Cette fonctionnalité (Plan 2D takeoff + rendu 3D) est réservée au plan "
-            "Pro Business. Passez sur le plan Pro Business pour débloquer.",
+            "Esta funcionalidade (medição em planta 2D + render 3D) está reservada ao plano Pro Business. Passe para o plano Pro Business para a desbloquear.",
         )
 
 
@@ -598,15 +597,14 @@ async def require_3d_access(user: dict, kind: str) -> str:
     from fastapi import HTTPException
     acc = await resolve_3d_access(user, kind)
     if acc["mode"] == "denied":
-        labels = {"render": "un rendu 3D", "video": "une vidéo 3D",
-                  "mockup": "la maquette 3D interactive"}
+        labels = {"render": "um render 3D", "video": "um vídeo 3D",
+                  "mockup": "a maqueta 3D interativa"}
         price = acc["price_cents"] / 100
         raise HTTPException(402, detail={
             "error": "credit_required", "kind": kind,
             "price_cents": acc["price_cents"], "price_eur": price,
             "credit_plan_id": acc["credit_plan_id"],
-            "message": f"Pour générer {labels.get(kind, 'cette création 3D')}, "
-                       f"achetez un crédit ({price:.0f} €).",
+            "message": f"Para gerar {labels.get(kind, 'cette création 3D')}, compre um crédito ({price:.0f} €).",
         })
     return acc["mode"]
 

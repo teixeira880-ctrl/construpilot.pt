@@ -61,7 +61,7 @@ class NumberedCanvas(Canvas):
 def build_dossier_pdf(plan, study, branding=None, source_images=None):
     fonts()
     branding = branding or {}
-    title = (study.get("project") or {}).get("title") or plan.get("filename") or "Étude de construction"
+    title = (study.get("project") or {}).get("title") or plan.get("filename") or "Estudo de construção"
     address = (study.get("project") or {}).get("address") or ""
     ref = str(plan.get("plan_id") or "DOSSIER")[-32:]
     date = str(study.get("generated_at") or "")[:10]
@@ -93,80 +93,80 @@ def build_dossier_pdf(plan, study, branding=None, source_images=None):
         return para(value, "title")
     buf = BytesIO()
     pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=48, rightMargin=48, topMargin=69, bottomMargin=60,
-                            title=f"Devis estimatif gros œuvre - {title}", author=branding.get("company_name") or "ConstruPilot")
+                            title=f'Orçamento estimativo de estrutura e alvenarias - {title}', author=branding.get("company_name") or "ConstruPilot")
     totals = study["totals"]
-    story = [heading("Devis estimatif gros œuvre"), para(title + (" | " + address if address else ""), "small"),
-             para(f"Fourniture et pose - {sum(len(l['lines']) for l in study['lots'])} postes. {study.get('scope') or 'Gros œuvre'}."),
-             para("Estimation à partir des pièces du chantier. Les quantités, leurs formules et les provisions sont détaillées. Prix et choix constructifs restent à confirmer.")]
-    budget = Table([[para("BUDGET PARTIEL HT" if totals.get("partial") else "BUDGET ESTIMATIF HT", "white")],
+    story = [heading("Orçamento estimativo de estrutura e alvenarias"), para(title + (" | " + address if address else ""), "small"),
+             para(f"Fornecimento e aplicação - {sum((len(l['lines']) for l in study['lots']))} postes. {study.get('scope') or 'Obra grossa'}."),
+             para("Estimativa a partir das peças da obra. As quantidades, as suas fórmulas e as provisões estão detalhadas. Preços e opções construtivas ficam por confirmar.")]
+    budget = Table([[para("ORÇAMENTO PARCIAL S/ IVA" if totals.get("partial") else "ORÇAMENTO ESTIMATIVO S/ IVA", "white")],
                     [para(fmt(totals["ht"], True), "money")],
                     [para(f"{fmt(totals['ttc'], True)} TTC | TVA {fmt(totals.get('tva_rate')*100) if totals.get('tva_rate') is not None else 'N/C'} %", "white")]], colWidths=[WIDTH])
     budget.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), COPPER), ("LEFTPADDING", (0, 0), (-1, -1), 17),
                                 ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)]))
-    story += [budget, Spacer(1, 18), table(["Poste", "Montant HT"], [[l["lot"]+(" (partiel)" if l.get("partial") else ""),fmt(l["total_ht"], True)] for l in study["lots"]], [WIDTH-129,129], (1,))]
-    story += [para("Lecture du budget", "h2"), para("M : mesure contrôlée par l’utilisateur ; H : hypothèse ou mesure extraite à contrôler ; P : provision ; N/C : non chiffré.", "small")]
+    story += [budget, Spacer(1, 18), table(["Artigo", "Montante s/ IVA"], [[l["lot"]+(" (parcial)" if l.get("partial") else ""),fmt(l["total_ht"], True)] for l in study["lots"]], [WIDTH-129,129], (1,))]
+    story += [para("Leitura do orçamento", "h2"), para("M: medição controlada pelo utilizador; H: hipótese ou medição extraída a controlar; P: provisão; N/C: sem preço.", "small")]
     for variant in study.get("variants", []):
-        story += [para(f"{variant['label']} : déduction de {fmt(variant['deduction_ht'], True)} HT ; budget résultant {fmt(variant['total_ht'], True)} HT. {variant.get('note') or ''}", "small")]
-    story += [para("Document budgétaire non contractuel. Les réserves et exclusions font partie intégrante de cette estimation.", "small"), PageBreak(), heading("Devis / ouvrages détaillés")]
+        story += [para(f"{variant['label']}: dedução de {fmt(variant['deduction_ht'], True)} s/ IVA; orçamento resultante {fmt(variant['total_ht'], True)} HT. {variant.get('note') or ''}", "small")]
+    story += [para("Documento orçamental não contratual. As reservas e exclusões fazem parte integrante desta estimativa.", "small"), PageBreak(), heading("Orçamento / trabalhos detalhados")]
     data = []
     for count, r in enumerate([r for lot in study['lots'] for r in lot['lines']], 1):
         data.append([str(count).zfill(2), r['designation'], para(fmt(r['qty'])+"<br/><font color='#925535'>"+text(r['quantity_status'])+"</font>", "cell", True), r['unit'], fmt(r['unit_price']), fmt(r['total'])])
-    story.append(table(["N°", "Désignation", "Qté", "U", "PU HT €", "Total HT €"], data, [30,WIDTH-285,54,35,76,90], (4,5)))
-    story += [Spacer(1, 14), table(["Récapitulatif", "Montant"], [["Total HT"+(" partiel" if totals.get("partial") else ""),fmt(totals['ht'], True)],["TVA",fmt(totals['tva'], True)],["Total TTC estimatif",fmt(totals['ttc'], True)]],[WIDTH-150,150],(1,)),
-              PageBreak(), heading("Métrés / calculs et sources")]
+    story.append(table(["N.º", "Designação", "Qtd.", "U", "PU HT €", "Total s/ IVA €"], data, [30,WIDTH-285,54,35,76,90], (4,5)))
+    story += [Spacer(1, 14), table(["Resumo", "Montante"], [["Total s/ IVA"+(" partiel" if totals.get("partial") else ""),fmt(totals['ht'], True)],["IVA",fmt(totals['tva'], True)],["Total c/ IVA estimativo",fmt(totals['ttc'], True)]],[WIDTH-150,150],(1,)),
+              PageBreak(), heading("Medições / cálculos e fontes")]
     geometry = [r for r in study["items"] if r["included"] and r["unit"] not in ("ft", "ens.", "u", "1") and (r["sources"] or r.get("error"))]
-    story.append(para("Chaque formule utilise les repères de mesures ci-dessous. Les forfaits restent des provisions, distinctes des quantités géométriques.", "small"))
-    story.append(table(["Ouvrage / repères de calcul", "Quantité", "Statut"],
+    story.append(para("Cada fórmula utiliza as referências de medição abaixo. Os valores globais continuam a ser provisões, distintas das quantidades geométricas.", "small"))
+    story.append(table(["Trabalho / referências de cálculo", "Quantidade", "Estado"],
         [[para(text(r['designation'])+"<br/><font size='7' color='#6E6359'>"+text(r['expression'])+"</font>"+("<br/>"+text(r['error']) if r.get('error') else ''), "cell", True),
           fmt(r['qty'])+" "+r['unit'],r['quantity_status']] for r in geometry], [WIDTH-133,87,46]))
     evidence = {p['id']:p for r in geometry for p in r['sources'] if not p.get('expression')}
-    story += [para("Registre des mesures / sources", "h2"), table(["Repère / mesure", "Valeur", "Source / hypothèse"],
+    story += [para("Registo das medições / fontes", "h2"), table(["Referência / medição", "Valor", "Fonte / hipótese"],
         [[p['id']+" / "+p['label'], fmt(p['value'])+" "+p['unit'],
-          "; ".join(f"p. {x['page']} : {x['text']}" for x in p['sources']) or p.get('note') or "Valeur saisie / à confirmer"]
+          "; ".join(f"p. {x['page']} : {x['text']}" for x in p['sources']) or p.get('note') or "Valor introduzido / a confirmar"]
          for p in evidence.values()], [150,70,WIDTH-220])]
     derived = {p['id']:p for r in geometry for p in r['sources'] if p.get('expression')}
     if derived:
-        story += [para("Mesures dérivées", "h2"), table(["Repère", "Formule", "Valeur"],
+        story += [para("Medições derivadas", "h2"), table(["Referência", "Plano", "Valor"],
             [[p['id'],p['expression'],fmt(p['value'])+" "+p['unit']] for p in derived.values()], [115,WIDTH-195,80])]
     if source_images:
-        story += [PageBreak(), heading("Pièces de référence")]
+        story += [PageBreak(), heading("Peças de referência")]
         for label, png in source_images:
             from PIL import Image as PILImage
             with PILImage.open(BytesIO(png)) as im:
                 width, height = im.size
             ratio = min(WIDTH/width, 440/height)
             story.append(KeepTogether([para(label,"h2"),Image(BytesIO(png), width=width*ratio,height=height*ratio),Spacer(1,12)]))
-    story += [PageBreak(), heading("Prestations et conventions")]
+    story += [PageBreak(), heading("Serviços e convenções")]
     for lot in study['lots']:
         story.append(para(lot['lot'], 'h2'))
         for r in lot['lines']:
-            story.append(para("<b>"+text(r['id'])+" · "+text(r['designation'])+"</b> : "+text(r.get('detail') or 'Périmètre à confirmer.'), 'small', True))
-    story += [PageBreak(), heading("Hypothèses et points à confirmer")]
-    for name, values in (("Hypothèses de chantier", study.get("assumptions", [])),
-                         ("Contrôles et informations manquantes", study.get("warnings", [])),
-                         ("Contrôles de calcul", [f"{r['item_id']} : {r['message']}" for r in study.get("controls", [])])):
+            story.append(para("<b>"+text(r['id'])+" · "+text(r['designation'])+"</b> : "+text(r.get('detail') or "Âmbito a confirmar."), 'small', True))
+    story += [PageBreak(), heading("Hipóteses e pontos a confirmar")]
+    for name, values in (("Hipóteses de obra", study.get("assumptions", [])),
+                         ("Controlos e informações em falta", study.get("warnings", [])),
+                         ("Controlos de cálculo", [f"{r['item_id']} : {r['message']}" for r in study.get("controls", [])])):
         if values:
             story.append(para(name, "h2"))
             story.extend(para("• "+str(v), "body") for v in values)
-    story += [para("Structure et exécution", "h2"),para("Un PC ne dimensionne pas les fondations, les soutènements ni les armatures. Les hypothèses de matériau et de système constructif servent au budget ; elles doivent être réconciliées avec les études d’exécution. Une quantité manquante ne vaut jamais zéro.")]
-    story += [PageBreak(), heading("Prix, périmètre et traçabilité"),para("Base des prix", "h2"),
-              para("Prix de vente fourniture et pose. Le barème budgétaire n’est pas un tarif fournisseur ni une offre d’entreprise. Aucune marge n’est ajoutée automatiquement ; les coûts de revient et la marge ne sont pas déterminés par cette étude."),
-              para("Origine des prix", "h2"),
-              table(["Origine", "Postes"], [[label, ", ".join(str(i+1).zfill(2) for i,r in enumerate([x for x in study['items'] if x['included']]) if r['price_source']==key)]
-                  for key,label in [("prix_utilisateur","Prix saisis"),("estimation_budgetaire","Barème budgétaire à confirmer"),("non_chiffre","Prix non fournis")]
+    story += [para("Estrutura e execução", "h2"),para("Um projeto de licenciamento não dimensiona as fundações, as contenções nem as armaduras. As hipóteses de material e de sistema construtivo servem o orçamento; devem ser conciliadas com os projetos de execução. Uma quantidade em falta nunca vale zero.")]
+    story += [PageBreak(), heading("Preços, âmbito e rastreabilidade"),para("Base dos preços", "h2"),
+              para("Preços de venda com fornecimento e aplicação. A tabela orçamental não é uma tabela de fornecedor nem uma proposta de empresa. Nenhuma margem é acrescentada automaticamente; os custos de produção e a margem não são determinados por este estudo."),
+              para("Origem dos preços", "h2"),
+              table(["Origem", "Artigos"], [[label, ", ".join(str(i+1).zfill(2) for i,r in enumerate([x for x in study['items'] if x['included']]) if r['price_source']==key)]
+                  for key,label in [("prix_utilisateur","Preços introduzidos"),("estimation_budgetaire","Tabela orçamental a confirmar"),("non_chiffre","Preços não fornecidos")]
                   if any(r['price_source']==key for r in study['items'] if r['included'])],[185,WIDTH-185]),
-              para("Hors périmètre", "h2")]
+              para("Fora do âmbito", "h2")]
     story.extend(para("• "+str(x)) for x in study.get("exclusions", []))
     coverage = study.get("coverage") or {}
-    story += [para("Sources et vérification", "h2"),para(f"Source : {(study.get('source') or {}).get('filename') or plan.get('filename') or 'dossier'}. Pages lues : {', '.join(map(str,coverage.get('analyzed_pages', []))) or 'saisie documentée'}. Pages en échec : {', '.join(map(str,coverage.get('failed_pages', []))) or 'aucune déclarée'}. Pages hors sélection : {', '.join(map(str,coverage.get('omitted_pages', []))) or 'aucune' }.","small"),
-              para(f"Calcul {study.get('schema_version')} ; barème {study.get('catalog_version')}. Révision {study.get('revision','')[:16]}. Les totaux sont recalculés à partir des lignes, avec arrondi monétaire. L’interprétation complète du plan n’est pas certifiée par le contrôle arithmétique.","small"),
-              para("Avant engagement : confirmer les données manquantes, les systèmes constructifs, le sol, le voisinage et les prix avec les intervenants. Délais, assurances et conditions commerciales restent à définir.","small")]
+    story += [para("Fontes e verificação", "h2"),para(f"Fonte: {(study.get('source') or {}).get('filename') or plan.get('filename') or 'dossier'}. Páginas lidas: {', '.join(map(str, coverage.get('analyzed_pages', []))) or 'introdução documentada'}. Páginas com falha: {', '.join(map(str, coverage.get('failed_pages', []))) or 'nenhuma declarada'}. Páginas fora da seleção: {', '.join(map(str, coverage.get('omitted_pages', []))) or 'aucune'}.","small"),
+              para(f"Cálculo {study.get('schema_version')} ; tabela {study.get('catalog_version')}. Révision {study.get('revision', '')[:16]}. Os totais são recalculados a partir das linhas, com arredondamento monetário. A interpretação completa da planta não é certificada pelo controlo aritmético.","small"),
+              para("Antes de qualquer compromisso: confirmar os dados em falta, os sistemas construtivos, o terreno, a vizinhança e os preços com os intervenientes. Prazos, seguros e condições comerciais ficam por definir.","small")]
     def on_page(c, doc):
         c.saveState();c.setFillColor(CREAM);c.rect(0,0,A4[0],A4[1],fill=1,stroke=0)
         c.setFillColor(COPPER);c.rect(0,A4[1]-8,A4[0],8,fill=1,stroke=0)
         c.setFont("DossierBold",10);c.drawString(48,A4[1]-42,(branding.get("company_name") or "CONSTRUPILOT")[:55])
         c.setStrokeColor(LINE);c.line(48,43,A4[0]-48,43);c.setFont("Dossier",7.2);c.setFillColor(MUTED)
-        c.drawString(48,29,f"{ref} | Estimation à valider | {date}");c.restoreState()
+        c.drawString(48,29,f'{ref} | Estimativa a validar | {date}');c.restoreState()
     pdf.build(story,onFirstPage=on_page,onLaterPages=on_page,canvasmaker=NumberedCanvas)
     return buf.getvalue()
 
@@ -178,24 +178,24 @@ def build_dossier_docx(plan, study, branding=None):
     doc=Document()
     doc.styles['Normal'].font.name='DejaVu Sans'
     doc.styles['Normal'].font.size=Pt(10)
-    doc.add_heading('Devis estimatif gros œuvre',0)
+    doc.add_heading("Orçamento estimativo de estrutura e alvenarias",0)
     doc.add_paragraph((study.get('project') or {}).get('title') or plan.get('filename') or '')
     for lot in study['lots']:
         doc.add_heading(lot['lot'],1)
         table=doc.add_table(rows=1, cols=6)
-        for c,v in zip(table.rows[0].cells,['Désignation','Qté','U','Statut','PU HT','Total HT']): c.text=v
+        for c,v in zip(table.rows[0].cells,["Designação","Qtd.",'U',"Estado","PU s/ IVA","Total s/ IVA"]): c.text=v
         for r in lot['lines']:
             for c,v in zip(table.add_row().cells,[r['designation'],fmt(r['qty']),r['unit'],r['quantity_status'],fmt(r['unit_price']),fmt(r['total'])]): c.text=v
-    for key,label in [('ht','HT'),('tva','TVA'),('ttc','TTC')]:doc.add_paragraph(f"{label} : {fmt(study['totals'][key],True)}")
-    doc.add_heading('Métrés et sources',1)
+    for key,label in [('ht','HT'),('tva',"IVA"),('ttc',"c/ IVA")]:doc.add_paragraph(f"{label} : {fmt(study['totals'][key],True)}")
+    doc.add_heading("Medições e fontes",1)
     for r in study['items']:
         doc.add_heading(r['designation'],2)
         doc.add_paragraph(f"{r['expression']} = {fmt(r['qty'])} {r['unit']} [{r['quantity_status']}]")
         doc.add_paragraph(r.get('detail') or '')
         for p in r['sources']:doc.add_paragraph(f"{p['label']} : {fmt(p['value'])} {p['unit']} ; "+'; '.join(f"p. {x['page']} {x['text']}" for x in p['sources'])+" "+p.get('note',''))
-    for title,key in [('Hypothèses','assumptions'),('Points à confirmer','warnings'),('Exclusions','exclusions')]:
+    for title,key in [("Hipóteses",'assumptions'),("Pontos a confirmar",'warnings'),("Exclusões",'exclusions')]:
         doc.add_heading(title,1)
         for x in study.get(key,[]):doc.add_paragraph(str(x))
-    doc.add_paragraph('Prix budgétaires ou saisis par l’utilisateur. Estimation non contractuelle ; études d’exécution et prix entreprise à confirmer.')
+    doc.add_paragraph("Preços orçamentais ou introduzidos pelo utilizador. Estimativa não contratual; projetos de execução e preços de empresa a confirmar.")
     for name in ['Title','Heading 1','Heading 2']:doc.styles[name].font.color.rgb=RGBColor.from_string('925535')
     out=BytesIO();doc.save(out);return out.getvalue()

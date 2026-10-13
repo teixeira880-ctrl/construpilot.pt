@@ -40,7 +40,7 @@ def _strip_photos(lines: list[dict]) -> list[dict]:
 async def create_template(body: TemplateIn, user=Depends(current_user)) -> dict:
     name = (body.name or "").strip()
     if not name:
-        raise HTTPException(status_code=400, detail="Nom du modèle requis")
+        raise HTTPException(status_code=400, detail="Nome do modelo obrigatório")
     rec = {
         "template_id": f"tpl_{uuid.uuid4().hex[:12]}",
         "user_id": user["user_id"],
@@ -67,7 +67,7 @@ async def list_templates(user=Depends(current_user)) -> list[dict]:
 async def get_template(template_id: str, user=Depends(current_user)) -> dict:
     rec = await db.devis_templates.find_one({"template_id": template_id, "user_id": user["user_id"]}, {"_id": 0})
     if not rec:
-        raise HTTPException(status_code=404, detail="Modèle introuvable")
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
     return rec
 
 
@@ -75,5 +75,5 @@ async def get_template(template_id: str, user=Depends(current_user)) -> dict:
 async def delete_template(template_id: str, user=Depends(current_user)) -> dict:
     res = await db.devis_templates.delete_one({"template_id": template_id, "user_id": user["user_id"]})
     if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Modèle introuvable")
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
     return {"ok": True}

@@ -47,6 +47,6 @@ async def run_scheduled() -> dict:
 
 async def recover_interrupted() -> dict:
     """Called at startup: tasks lost with the previous process are flagged so the UI can offer « Reprendre »."""
-    a = await db.growth_audits.update_many({"status": {"$in": ["running", "queued"]}}, {"$set": {"status": "interrupted", "finished_at": now_iso(), "note": "Interrompu par un redémarrage du serveur — relancer l'audit."}})
-    c = await db.growth_campaigns.update_many({"status": "running"}, {"$set": {"status": "interrupted", "note": "Interrompue par un redémarrage du serveur — « Reprendre » poursuit sans refaire les tests déjà exécutés."}})
+    a = await db.growth_audits.update_many({"status": {"$in": ["running", "queued"]}}, {"$set": {"status": "interrupted", "finished_at": now_iso(), "note": "Interrompido por um reinício do servidor — relance a auditoria."}})
+    c = await db.growth_campaigns.update_many({"status": "running"}, {"$set": {"status": "interrupted", "note": "Interrompida por um reinício do servidor — «Retomar» continua sem refazer os testes já executados."}})
     return {"audits": a.modified_count, "campaigns": c.modified_count}

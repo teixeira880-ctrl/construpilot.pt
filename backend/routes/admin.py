@@ -136,11 +136,11 @@ async def drill_metric(metric: str) -> dict:
         }
 
     CONTACT_COLS = [
-        {"key": "user_name", "label": "Nom"},
+        {"key": "user_name", "label": "Nome"},
         {"key": "user_email", "label": "E-mail"},
-        {"key": "user_phone", "label": "Téléphone"},
-        {"key": "user_company", "label": "Société"},
-        {"key": "user_plan", "label": "Plan"},
+        {"key": "user_phone", "label": "Telefone"},
+        {"key": "user_company", "label": "Sociedade"},
+        {"key": "user_plan", "label": "Planta"},
     ]
 
     if metric == "users":
@@ -155,12 +155,12 @@ async def drill_metric(metric: str) -> dict:
                  "last_seen": seen.get(u["user_id"]) or "",
                  "created_at": u.get("created_at")} for u in users]
         rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
-        return {"title": "Utilisateurs", "description": "Tous les comptes inscrits — cible publicitaire directe.",
-                "conditions": ["Collection `users`, sans filtre de date : total cumulé depuis l'ouverture", "Tous rôles (particulier, pro, membre d'équipe, admin) et tous plans, comptes non vérifiés compris", "Les comptes supprimés ne sont plus comptés", "Chaque ligne = un compte (jamais de doublon par e-mail : l'e-mail est unique)"],
-                "columns": CONTACT_COLS + [{"key": "role", "label": "Rôle"},
-                                           {"key": "city", "label": "Ville"},
-                                           {"key": "last_seen", "label": "Dernière activité"},
-                                           {"key": "created_at", "label": "Inscrit le"}],
+        return {"title": "Utilizadores", "description": "Todas as contas registadas — público-alvo publicitário direto.",
+                "conditions": ["Coleção `users`, sem filtro de data: total acumulado desde a abertura", "Todas as funções (particular, profissional, membro de equipa, admin) e todos os planos, contas não verificadas incluídas", "As contas eliminadas deixam de ser contadas", "Cada linha = uma conta (nunca duplicada por e-mail: o e-mail é único)"],
+                "columns": CONTACT_COLS + [{"key": "role", "label": "Função"},
+                                           {"key": "city", "label": "Cidade"},
+                                           {"key": "last_seen", "label": "Última atividade"},
+                                           {"key": "created_at", "label": "Registado em"}],
                 "rows": rows}
 
     if metric in ("projects", "estimated_volume"):
@@ -169,22 +169,22 @@ async def drill_metric(metric: str) -> dict:
         for p in projs:
             val = round(((p.get("estimation") or {}).get("total_avg") or 0), 2)
             rows.append({**_contact(p.get("user_id")),
-                         "project": p.get("name") or "Projet",
+                         "project": p.get("name") or "Projeto",
                          "project_type": p.get("project_type") or "—",
                          "city": p.get("city") or p.get("region") or "—",
                          "value_eur": val,
                          "created_at": p.get("created_at")})
         rows.sort(key=lambda r: r["value_eur"] if metric == "estimated_volume" else (r.get("created_at") or ""),
                   reverse=True)
-        title = "Volume estimé (par projet)" if metric == "estimated_volume" else "Projets"
+        title = "Volume estimado (por projeto)" if metric == "estimated_volume" else "Projetos"
         return {"title": title,
-                "description": "Projets et leurs porteurs — potentiel de dépense et coordonnées.",
-                "conditions": ["Collection `projects` (estimateur particulier / projets intelligents), sans filtre de date", "Un projet = une estimation enregistrée par un compte ; les brouillons non sauvegardés ne comptent pas"] + (["Volume = somme de `estimation.total_avg` (moyenne basse/haute) de tous les projets, TTC estimé, jamais des devis réels signés", "Un projet sans estimation compte 0 €"] if metric == "estimated_volume" else ["Trié du plus récent au plus ancien"]),
-                "columns": [{"key": "project", "label": "Projet"},
+                "description": "Projetos e respetivos promotores — potencial de despesa e contactos.",
+                "conditions": ["Coleção `projects` (estimador particular / projetos inteligentes), sem filtro de data", "Um projeto = uma estimativa guardada por uma conta; os rascunhos não guardados não contam"] + (["Volume = soma de `estimation.total_avg` (média baixa/alta) de todos os projetos, c/ IVA estimado, nunca orçamentos reais assinados", "Um projeto sem estimativa conta 0 €"] if metric == "estimated_volume" else ["Ordenado do mais recente para o mais antigo"]),
+                "columns": [{"key": "project", "label": "Projeto"},
                             {"key": "project_type", "label": "Type"},
-                            {"key": "city", "label": "Ville"},
-                            {"key": "value_eur", "label": "Valeur estimée (€)"}] + CONTACT_COLS
-                + [{"key": "created_at", "label": "Créé le"}],
+                            {"key": "city", "label": "Cidade"},
+                            {"key": "value_eur", "label": "Valor estimado (€)"}] + CONTACT_COLS
+                + [{"key": "created_at", "label": "Criado em"}],
                 "rows": rows}
 
     if metric == "leads":
@@ -194,14 +194,14 @@ async def drill_metric(metric: str) -> dict:
                  "budget": l.get("budget") or "—", "status": l.get("status") or "nouveau",
                  "description": (l.get("description") or "")[:160],
                  "created_at": l.get("created_at")} for l in leads]
-        return {"title": "Demandes de devis",
-                "description": "Prospects ayant demandé un devis — cible publicitaire chaude.",
-                "conditions": ["Collection `leads`, sans filtre de date : toutes les demandes reçues depuis l'ouverture", "Sources : formulaire de contact, page entreprise des pros, estimation avec coordonnées, import", "Les demandes traitées / refusées restent comptées (elles ont bien été reçues)", "Affichage limité aux 2 000 plus récentes"],
-                "columns": [{"key": "name", "label": "Nom"}, {"key": "email", "label": "E-mail"},
-                            {"key": "phone", "label": "Téléphone"}, {"key": "address", "label": "Adresse"},
-                            {"key": "budget", "label": "Budget"}, {"key": "status", "label": "Statut"},
-                            {"key": "description", "label": "Besoin"},
-                            {"key": "created_at", "label": "Reçu le"}],
+        return {"title": "Pedidos de orçamento",
+                "description": "Potenciais clientes que pediram um orçamento — público-alvo publicitário quente.",
+                "conditions": ["Coleção `leads`, sem filtro de data: todos os pedidos recebidos desde a abertura", "Fontes: formulário de contacto, página de empresa dos profissionais, estimativa com contactos, importação", "Os pedidos tratados / recusados continuam a ser contados (foram de facto recebidos)", "Apresentação limitada aos 2 000 mais recentes"],
+                "columns": [{"key": "name", "label": "Nome"}, {"key": "email", "label": "E-mail"},
+                            {"key": "phone", "label": "Telefone"}, {"key": "address", "label": "Morada"},
+                            {"key": "budget", "label": "Orçamento"}, {"key": "status", "label": "Estado"},
+                            {"key": "description", "label": "Necessidade"},
+                            {"key": "created_at", "label": "Recebido em"}],
                 "rows": rows}
 
     if metric == "quote_analyses":
@@ -212,12 +212,12 @@ async def drill_metric(metric: str) -> dict:
                  "company_analysed": q.get("company") or "—",
                  "project": pmap.get(q.get("project_id")) or "—",
                  "created_at": q.get("created_at")} for q in qs]
-        return {"title": "Devis analysés",
-                "description": "Utilisateurs ayant analysé un devis — fort intérêt produit.",
-                "conditions": ["Collection `quote_analyses` : devis PDF/photo scannés par l'outil « Scanner un devis », sans filtre de date", "Ce ne sont PAS les devis créés dans l'éditeur (voir onglet Demandes → Devis envoyés)", "Une analyse = une ligne, même utilisateur possible plusieurs fois"],
-                "columns": [{"key": "company_analysed", "label": "Entreprise analysée"},
-                            {"key": "project", "label": "Projet"}] + CONTACT_COLS
-                + [{"key": "created_at", "label": "Analysé le"}],
+        return {"title": "Orçamentos analisados",
+                "description": "Utilizadores que analisaram um orçamento — forte interesse no produto.",
+                "conditions": ["Coleção `quote_analyses`: orçamentos PDF/foto digitalizados pela ferramenta «Analisar um orçamento», sem filtro de data", "NÃO são os orçamentos criados no editor (ver separador Pedidos → Orçamentos enviados)", "Uma análise = uma linha, o mesmo utilizador pode aparecer várias vezes"],
+                "columns": [{"key": "company_analysed", "label": "Empresa analisada"},
+                            {"key": "project", "label": "Projeto"}] + CONTACT_COLS
+                + [{"key": "created_at", "label": "Analisado em"}],
                 "rows": rows}
 
     if metric in ("total_revenue", "transactions"):
@@ -228,13 +228,13 @@ async def drill_metric(metric: str) -> dict:
                  "amount_eur": round((t.get("amount_cents") or 0) / 100, 2),
                  "status": t.get("payment_status") or t.get("status") or "—",
                  "created_at": t.get("created_at")} for t in txs]
-        title = "Revenu total (paiements)" if metric == "total_revenue" else "Transactions"
-        return {"title": title, "description": "Clients payants — cible de rétention et d'upsell.",
-                "conditions": ["Collection `payment_transactions` (Stripe)"] + (["Filtre : payment_status = paid uniquement ; montants en euros, remboursements non déduits"] if metric == "total_revenue" else ["Toutes transactions, y compris en attente / échouées (voir colonne statut)"]),
-                "columns": CONTACT_COLS + [{"key": "plan_bought", "label": "Plan acheté"},
-                                           {"key": "amount_eur", "label": "Montant (€)"},
-                                           {"key": "status", "label": "Statut"},
-                                           {"key": "created_at", "label": "Date"}],
+        title = "Receita total (pagamentos)" if metric == "total_revenue" else "Transactions"
+        return {"title": title, "description": "Clientes pagantes — público-alvo de retenção e upsell.",
+                "conditions": ["Collection `payment_transactions` (Stripe)"] + (["Filtro: apenas payment_status = paid; montantes em euros, reembolsos não deduzidos"] if metric == "total_revenue" else ["Todas as transações, incluindo pendentes / falhadas (ver coluna estado)"]),
+                "columns": CONTACT_COLS + [{"key": "plan_bought", "label": "Plano comprado"},
+                                           {"key": "amount_eur", "label": "Montante (€)"},
+                                           {"key": "status", "label": "Estado"},
+                                           {"key": "created_at", "label": "Data"}],
                 "rows": rows}
 
     if metric in ("active_subscriptions", "active_project_pass"):
@@ -247,18 +247,18 @@ async def drill_metric(metric: str) -> dict:
         rows = [{**_contact(e.get("user_id")),
                  "plan_code": e.get("plan_code") or e.get("plan_id") or "—",
                  "granted_at": e.get("granted_at")} for e in ents]
-        title = "Abonnements actifs" if kind == "subscription" else "Project Pass actifs"
-        return {"title": title, "description": "Clients avec un accès actif — cible d'upsell prioritaire.",
-                "conditions": ["Collection `entitlements` : status = active" + (" et kind = subscription" if kind == "subscription" else " et kind = one_time, non expiré (expires_at absent ou futur)"), "Un accès offert manuellement par l'admin compte comme actif", "Un utilisateur avec plusieurs accès apparaît plusieurs fois"],
-                "columns": CONTACT_COLS + [{"key": "plan_code", "label": "Offre"},
-                                           {"key": "granted_at", "label": "Depuis"}],
+        title = "Subscrições ativas" if kind == "subscription" else "Project Pass ativos"
+        return {"title": title, "description": "Clientes com acesso ativo — público-alvo prioritário de upsell.",
+                "conditions": ["Collection `entitlements` : status = active" + (" e kind = subscription" if kind == "subscription" else " e kind = one_time, não expirado (expires_at ausente ou futuro)"), "Um acesso oferecido manualmente pelo admin conta como ativo", "Um utilizador com vários acessos aparece várias vezes"],
+                "columns": CONTACT_COLS + [{"key": "plan_code", "label": "Oferta"},
+                                           {"key": "granted_at", "label": "Desde"}],
                 "rows": rows}
 
-    raise HTTPException(404, "Indicateur inconnu")
+    raise HTTPException(404, "Indicador desconhecido")
 
 
 def _win_label(hours: int) -> str:
-    return {24: "24 dernières heures", 168: "7 derniers jours", 720: "30 derniers jours"}.get(hours, f"{hours} dernières heures")
+    return {24: "Últimas 24 horas", 168: "Últimos 7 dias", 720: "Últimos 30 dias"}.get(hours, f'{hours} últimas horas')
 
 
 @router.get("/drill-inbox/{metric}")
@@ -276,15 +276,15 @@ async def drill_inbox(metric: str, hours: int = 168) -> dict:
 
     if metric == "new_leads":
         rows = await db.leads.find({"created_at": {"$gte": since}}, {"_id": 0}).sort("created_at", -1).to_list(50)
-        return {**base, "title": f"Nouveaux leads — {win}",
-                "description": "Toute demande de travaux enregistrée dans la collection `leads` sur la période, quelle que soit sa source.",
-                "conditions": [f"Fenêtre : created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})",
-                               "Sources incluses : formulaire de contact du site, page entreprise (`company_page`), estimation avec coordonnées, import",
-                               "Un lead « handled / refusé » reste compté (il a bien été reçu sur la période)",
-                               "Affichage limité aux 50 plus récents"],
-                "columns": [{"key": "created_at", "label": "Reçu le"}, {"key": "name", "label": "Nom"}, {"key": "email", "label": "E-mail"},
-                            {"key": "phone", "label": "Téléphone"}, {"key": "source", "label": "Source"}, {"key": "department", "label": "Dépt"},
-                            {"key": "status", "label": "Statut"}, {"key": "assigned", "label": "Pro assigné"}, {"key": "description", "label": "Besoin"}],
+        return {**base, "title": f'Novos leads — {win}',
+                "description": "Qualquer pedido de obras registado na coleção `leads` no período, qualquer que seja a sua origem.",
+                "conditions": [f"Janela: created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})",
+                               "Origens incluídas: formulário de contacto do site, página de empresa (`company_page`), estimativa com contactos, importação",
+                               "Um lead «tratado / recusado» continua a ser contado (foi de facto recebido no período)",
+                               "Apresentação limitada aos 50 mais recentes"],
+                "columns": [{"key": "created_at", "label": "Recebido em"}, {"key": "name", "label": "Nome"}, {"key": "email", "label": "E-mail"},
+                            {"key": "phone", "label": "Telefone"}, {"key": "source", "label": "Fonte"}, {"key": "department", "label": "Dep."},
+                            {"key": "status", "label": "Estado"}, {"key": "assigned", "label": "Profissional atribuído"}, {"key": "description", "label": "Necessidade"}],
                 "rows": [{"created_at": l.get("created_at"), "name": l.get("name") or "—", "email": l.get("email") or "—", "phone": l.get("phone") or "—",
                           "source": l.get("source") or "site", "department": l.get("department") or "—",
                           "status": l.get("handling_status") or l.get("status") or "nouveau", "assigned": pro(l.get("assigned_to")) if l.get("assigned_to") else "—",
@@ -293,14 +293,14 @@ async def drill_inbox(metric: str, hours: int = 168) -> dict:
     if metric == "new_users":
         rows = await db.users.find({"created_at": {"$gte": since}}, {"_id": 0, "email": 1, "name": 1, "role": 1, "plan": 1, "created_at": 1,
                                                                         "brand_company_name": 1, "company": 1, "city": 1, "brand_city": 1, "email_verified": 1}).sort("created_at", -1).to_list(50)
-        return {**base, "title": f"Nouveaux comptes — {win}",
-                "description": "Comptes créés sur la période (inscription e-mail, Google ou invitation d'équipe), tous rôles et plans confondus.",
-                "conditions": [f"Fenêtre : users.created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})",
-                               "Rôles inclus : particulier, pro, membre d'équipe, admin — comptes non vérifiés compris",
-                               "Les comptes supprimés n'apparaissent plus", "Affichage limité aux 50 plus récents"],
-                "columns": [{"key": "created_at", "label": "Créé le"}, {"key": "name", "label": "Nom"}, {"key": "email", "label": "E-mail"},
-                            {"key": "role", "label": "Rôle"}, {"key": "plan", "label": "Plan"}, {"key": "company", "label": "Société"},
-                            {"key": "city", "label": "Ville"}, {"key": "verified", "label": "E-mail vérifié"}],
+        return {**base, "title": f'Novas contas — {win}',
+                "description": "Contas criadas no período (registo por e-mail, Google ou convite de equipa), todas as funções e planos.",
+                "conditions": [f"Janela: users.created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})",
+                               "Funções incluídas: particular, profissional, membro de equipa, admin — contas não verificadas incluídas",
+                               "As contas eliminadas deixam de aparecer", "Apresentação limitada aos 50 mais recentes"],
+                "columns": [{"key": "created_at", "label": "Criado em"}, {"key": "name", "label": "Nome"}, {"key": "email", "label": "E-mail"},
+                            {"key": "role", "label": "Função"}, {"key": "plan", "label": "Planta"}, {"key": "company", "label": "Sociedade"},
+                            {"key": "city", "label": "Cidade"}, {"key": "verified", "label": "E-mail verificado"}],
                 "rows": [{"created_at": u.get("created_at"), "name": u.get("name") or "—", "email": u.get("email"), "role": u.get("role") or "user",
                           "plan": u.get("plan") or "free", "company": u.get("brand_company_name") or u.get("company") or "—",
                           "city": u.get("brand_city") or u.get("city") or "—", "verified": "oui" if u.get("email_verified") else "non"} for u in rows]}
@@ -311,42 +311,42 @@ async def drill_inbox(metric: str, hours: int = 168) -> dict:
             sends = [s for s in sends if s.get("signed")]
         if metric == "quotes_opened":
             sends = [s for s in sends if s.get("opened_at") and not s.get("signed")]
-        titles = {"quotes_sent": "Devis envoyés", "quotes_signed": "Devis signés", "quotes_opened": "Devis ouverts (non signés)"}
-        extra = {"quotes_sent": "Tout envoi de devis par e-mail depuis l'éditeur (journal `quote_sends`).",
-                 "quotes_signed": "Envois dont le client a signé électroniquement (champ `signed` = vrai) — la signature doit porter sur un envoi fait dans la fenêtre.",
-                 "quotes_opened": "Envois dont le lien a été ouvert par le client (`opened_at` renseigné) mais pas encore signés."}[metric]
+        titles = {"quotes_sent": "Orçamentos enviados", "quotes_signed": "Orçamentos assinados", "quotes_opened": "Orçamentos abertos (não assinados)"}
+        extra = {"quotes_sent": "Qualquer envio de orçamento por e-mail a partir do editor (registo `quote_sends`).",
+                 "quotes_signed": "Envios cujo cliente assinou eletronicamente (campo `signed` = verdadeiro) — a assinatura deve referir-se a um envio feito na janela.",
+                 "quotes_opened": "Envios cuja ligação foi aberta pelo cliente (`opened_at` preenchido) mas ainda não assinados."}[metric]
         return {**base, "title": f"{titles[metric]} — {win}", "description": extra,
-                "conditions": [f"Fenêtre : quote_sends.sent_at ≥ {since[:16].replace('T', ' ')} UTC ({win}) — c'est la date d'ENVOI qui compte, pas celle de signature",
-                               "Un devis créé mais jamais envoyé par e-mail n'est pas compté ici (voir la collection des documents pros)",
-                               "Un même devis envoyé deux fois compte deux envois", "Affichage limité aux 50 plus récents"],
-                "columns": [{"key": "sent_at", "label": "Envoyé le"}, {"key": "pro", "label": "Pro (compte)"}, {"key": "client_name", "label": "Client"},
-                            {"key": "client_email", "label": "E-mail client"}, {"key": "total_ttc", "label": "TTC"}, {"key": "state", "label": "État"},
-                            {"key": "email_status", "label": "E-mail"}, {"key": "opened_at", "label": "Ouvert le"}, {"key": "signed_at", "label": "Signé le"}],
+                "conditions": [f"Janela: quote_sends.sent_at ≥ {since[:16].replace('T', ' ')} UTC ({win}) — conta a data de ENVIO, não a de assinatura",
+                               "Um orçamento criado mas nunca enviado por e-mail não é contado aqui (ver a coleção dos documentos profissionais)",
+                               "Um mesmo orçamento enviado duas vezes conta como dois envios", "Apresentação limitada aos 50 mais recentes"],
+                "columns": [{"key": "sent_at", "label": "Enviado em"}, {"key": "pro", "label": "Profissional (conta)"}, {"key": "client_name", "label": "Cliente"},
+                            {"key": "client_email", "label": "E-mail cliente"}, {"key": "total_ttc", "label": "c/ IVA"}, {"key": "state", "label": "Estado"},
+                            {"key": "email_status", "label": "E-mail"}, {"key": "opened_at", "label": "Aberto a"}, {"key": "signed_at", "label": "Assinado a"}],
                 "rows": [{"sent_at": s.get("sent_at"), "pro": pro(s.get("user_id")), "email_status": s.get("email_status") or "en file", "client_name": s.get("client_name") or "—", "client_email": s.get("client_email") or "—",
                           "total_ttc": f"{(s.get('total_ttc') or 0):,.2f} €".replace(",", " "), "state": "signé" if s.get("signed") else "ouvert" if s.get("opened_at") else "envoyé",
                           "opened_at": s.get("opened_at") or "—", "signed_at": s.get("signed_at") or "—"} for s in sends]}
 
     if metric == "client_errors":
         errs = await db.client_errors.find({"created_at": {"$gte": since_dt}}, {"_id": 0}).sort("created_at", -1).to_list(30)
-        return {**base, "title": f"Erreurs côté client — {win}",
-                "description": "Erreurs JavaScript remontées automatiquement par le navigateur des utilisateurs (collection `client_errors`).",
-                "conditions": [f"Fenêtre : created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})", "Purge automatique après 30 jours (index TTL)", "Affichage limité aux 30 plus récentes"],
-                "columns": [{"key": "created_at", "label": "Date"}, {"key": "message", "label": "Message"}, {"key": "url", "label": "Page"}, {"key": "user", "label": "Utilisateur"}],
+        return {**base, "title": f'Erros do lado do cliente — {win}',
+                "description": "Erros JavaScript reportados automaticamente pelo navegador dos utilizadores (coleção `client_errors`).",
+                "conditions": [f"Janela: created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})", "Limpeza automática após 30 dias (índice TTL)", "Apresentação limitada aos 30 mais recentes"],
+                "columns": [{"key": "created_at", "label": "Data"}, {"key": "message", "label": "Mensagem"}, {"key": "url", "label": "Página"}, {"key": "user", "label": "Utilizador"}],
                 "rows": [{"created_at": e["created_at"].isoformat() if hasattr(e.get("created_at"), "isoformat") else e.get("created_at_iso"),
                           "message": (e.get("message") or "")[:200], "url": e.get("url") or "—", "user": pro(e.get("user_id")) if e.get("user_id") else "anonyme"} for e in errs]}
 
     if metric == "deck_downloads":
         rows = await db.deck_downloads.find({"created_at": {"$gte": since}}, {"_id": 0}).sort("created_at", -1).to_list(50)
-        return {**base, "title": f"Deck investisseurs — {win}",
-                "description": "Personnes ayant rempli le formulaire de la page Investisseurs pour télécharger le pitch deck (collection `deck_downloads`).",
-                "conditions": [f"Fenêtre : created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})",
-                               "Chaque téléchargement est une ligne : la même personne peut apparaître plusieurs fois", "Affichage limité aux 50 plus récents"],
-                "columns": [{"key": "created_at", "label": "Date"}, {"key": "name", "label": "Nom"}, {"key": "email", "label": "E-mail"}, {"key": "fund", "label": "Fonds / société"},
-                            {"key": "note", "label": "Message"}, {"key": "referer", "label": "Provenance"}],
+        return {**base, "title": f'Apresentação para investidores — {win}',
+                "description": "Pessoas que preencheram o formulário da página Investidores para descarregar o pitch deck (coleção `deck_downloads`).",
+                "conditions": [f"Janela: created_at ≥ {since[:16].replace('T', ' ')} UTC ({win})",
+                               "Cada descarga é uma linha: a mesma pessoa pode aparecer várias vezes", "Apresentação limitada aos 50 mais recentes"],
+                "columns": [{"key": "created_at", "label": "Data"}, {"key": "name", "label": "Nome"}, {"key": "email", "label": "E-mail"}, {"key": "fund", "label": "Fundo / sociedade"},
+                            {"key": "note", "label": "Mensagem"}, {"key": "referer", "label": "Provenance"}],
                 "rows": [{"created_at": d.get("created_at"), "name": d.get("name") or "—", "email": d.get("email") or "—", "fund": d.get("fund") or "—",
                           "note": (d.get("note") or "")[:160], "referer": d.get("referer") or "—"} for d in rows]}
 
-    raise HTTPException(404, "Indicateur inconnu")
+    raise HTTPException(404, "Indicador desconhecido")
 
 
 
@@ -372,7 +372,7 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
             emails.append(e)
     emails = emails[:200]
     if not emails:
-        raise HTTPException(400, "Aucun destinataire valide")
+        raise HTTPException(400, "Nenhum destinatário válido")
     subject = (body.subject or "").strip()[:200] or "ConstruPilot"
     msg_html = (body.message or "").strip()
     if not msg_html:
@@ -468,7 +468,7 @@ async def welcome_email_test(body: WelcomeTestBody, admin=Depends(admin_user)) -
     from engines.welcome_marketing import welcome_marketing_html, SUBJECT
     recipients = _parse_recipients(body.to)
     if not recipients:
-        raise HTTPException(400, "Aucune adresse e-mail valide")
+        raise HTTPException(400, "Nenhum endereço de e-mail válido")
     cta = f"{os.getenv('FRONTEND_URL', 'https://construpilot.pt')}/?utm_source=email&utm_medium=welcome&utm_campaign=onboarding"
     html = welcome_marketing_html((body.name or "").strip() or None, cta,
                                   unsubscribe_url=f"{os.getenv('FRONTEND_URL', '')}/desinscription")
@@ -509,7 +509,7 @@ async def prospect_email_test(body: ProspectTestBody, admin=Depends(admin_user))
     """Envoie l'e-mail prospect à une ou plusieurs adresses via Resend."""
     recipients = _parse_recipients(body.to)
     if not recipients:
-        raise HTTPException(400, "Aucune adresse e-mail valide")
+        raise HTTPException(400, "Nenhum endereço de e-mail válido")
     audience = "pro" if (body.audience or "").strip().lower() == "pro" else "particulier"
     subject, html = _prospect_render(audience, body.name)
     actor = (admin or {}).get("email") or (admin or {}).get("user_id")
@@ -549,7 +549,7 @@ async def preview_upsell(audience: str = "pro", step: str = "j3", admin=Depends(
         cta_url = f"{os.getenv('FRONTEND_URL', '')}/tarifs"
     html = wrap_html(subject, body, cta_url=cta_url, cta_label=cta,
                      unsubscribe_url=build_unsubscribe_url(admin["user_id"]))
-    await send_email(admin["email"], f"[APERÇU] {subject}", html)
+    await send_email(admin["email"], f'[PRÉ-VISUALIZAÇÃO] {subject}', html)
     return {"ok": True, "to": admin["email"], "subject": subject}
 
 
@@ -638,7 +638,7 @@ class UserIn(BaseModel):
 async def update_user(user_id: str, body: UserIn):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if "account_type" in updates and updates["account_type"] not in ("particulier", "pro", "pro_business"):
-        raise HTTPException(400, "Type de compte invalide")
+        raise HTTPException(400, "Tipo de conta inválido")
     if "two_fa_email" in updates:
         updates["two_fa_email"] = updates["two_fa_email"].strip().lower() or None
     await db.users.update_one({"user_id": user_id}, {"$set": updates})
@@ -653,11 +653,11 @@ async def delete_user(user_id: str, admin=Depends(admin_user)) -> dict:
     """Supprime DÉFINITIVEMENT un compte et purge toutes ses données (irréversible)."""
     target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not target:
-        raise HTTPException(404, "Utilisateur introuvable")
+        raise HTTPException(404, "Utilizador não encontrado")
     if target.get("role") == "admin":
-        raise HTTPException(403, "Impossible de supprimer un compte administrateur")
+        raise HTTPException(403, "Impossível eliminar uma conta de administrador")
     if user_id == admin["user_id"]:
-        raise HTTPException(403, "Vous ne pouvez pas supprimer votre propre compte")
+        raise HTTPException(403, "Não pode eliminar a sua própria conta")
     purged = await purge_user_data(user_id)
     await db.users.delete_one({"user_id": user_id})
     return {"ok": True, "deleted_user": user_id,
@@ -704,13 +704,13 @@ class LeadStatusIn(BaseModel):
 
 async def _notify_assigned_pro(pro: dict, lead: dict) -> None:
     """Notifie le pro qu'une demande de travaux lui a été assignée (cloche + e-mail)."""
-    name = lead.get("name") or lead.get("email") or "un client"
+    name = lead.get("name") or lead.get("email") or "um cliente"
     try:
         await db.notifications.insert_one({
             "notif_id": "n_" + secrets.token_hex(5),
             "user_id": pro["user_id"], "type": "lead_assigned",
             "lead_id": lead.get("lead_id"),
-            "message": f"Nouvelle demande de travaux à prendre en charge : {name}",
+            "message": f'Novo pedido de obras a tratar: {name}',
             "created_at": datetime.now(timezone.utc).isoformat(), "read": False,
         })
     except Exception:
@@ -718,19 +718,18 @@ async def _notify_assigned_pro(pro: dict, lead: dict) -> None:
     try:
         from engines.emailer import send_email, wrap_html
         rows = [
-            ("Client", lead.get("name") or "—"),
+            ("Cliente", lead.get("name") or "—"),
             ("E-mail", lead.get("email") or "—"),
-            ("Téléphone", lead.get("phone") or "—"),
-            ("Adresse", lead.get("address") or "—"),
-            ("Disponibilité", lead.get("availability") or "—"),
-            ("Budget", f"{lead.get('budget')} €" if lead.get("budget") else "—"),
-            ("Demande", lead.get("description") or "—"),
+            ("Telefone", lead.get("phone") or "—"),
+            ("Morada", lead.get("address") or "—"),
+            ("Disponibilidade", lead.get("availability") or "—"),
+            ("Orçamento", f"{lead.get('budget')} €" if lead.get("budget") else "—"),
+            ("Pedido", lead.get("description") or "—"),
         ]
         body = "".join(f'<p style="margin:0 0 8px 0"><b>{k} :</b> {v}</p>' for k, v in rows)
-        html = wrap_html("Nouvelle demande de travaux à prendre en charge",
-                         f"<p>Bonjour,</p><p>Une demande de travaux vous a été assignée :</p>{body}"
-                         f"<p>Contactez le client pour la prendre en charge.</p>")
-        await send_email(pro["email"], "Une demande de travaux vous a été assignée — ConstruPilot", html)
+        html = wrap_html("Novo pedido de obras a tratar",
+                         f'<p>Olá,</p><p>Foi-lhe atribuído um pedido de obras:</p>{body}<p>Contacte o cliente para o tratar.</p>')
+        await send_email(pro["email"], "Foi-lhe atribuído um pedido de obras — ConstruPilot", html)
     except Exception:
         pass
 
@@ -740,14 +739,14 @@ async def invite_lead(lead_id: str) -> dict:
     """Envoie au lead un e-mail l'incitant à créer un compte."""
     lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     if not lead:
-        raise HTTPException(404, "Demande introuvable")
+        raise HTTPException(404, "Pedido não encontrado")
     if not lead.get("email"):
-        raise HTTPException(400, "Cette demande n'a pas d'adresse e-mail")
+        raise HTTPException(400, "Este pedido não tem endereço de e-mail")
     from routes.leads import send_account_invite
     try:
         await send_account_invite(lead["email"], lead.get("name") or "")
     except Exception as e:
-        raise HTTPException(502, f"Envoi impossible : {e}")
+        raise HTTPException(502, f'Envio impossível: {e}')
     await db.leads.update_one({"lead_id": lead_id},
                               {"$set": {"invited_at": datetime.now(timezone.utc).isoformat()}})
     return {"ok": True, "email": lead["email"]}
@@ -757,7 +756,7 @@ async def invite_lead(lead_id: str) -> dict:
 async def update_lead(lead_id: str, body: LeadStatusIn):
     lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     if not lead:
-        raise HTTPException(404, "Demande introuvable")
+        raise HTTPException(404, "Pedido não encontrado")
     upd = {}
     if body.status is not None:
         upd["status"] = body.status
@@ -772,7 +771,7 @@ async def update_lead(lead_id: str, body: LeadStatusIn):
                 {"user_id": body.assigned_to},
                 {"_id": 0, "user_id": 1, "email": 1, "name": 1})
             if not pro:
-                raise HTTPException(404, "Professionnel introuvable")
+                raise HTTPException(404, "Profissional não encontrado")
             upd["assigned_to"] = pro["user_id"]
             upd["assigned_to_name"] = pro.get("name") or pro.get("email")
             upd["assigned_at"] = datetime.now(timezone.utc).isoformat()
@@ -943,7 +942,7 @@ async def get_ai_model() -> dict:
         "openai_key": llm_keys.status(),
         "options": [
             {"tier": k, "label": v["label"], "desc": v["desc"], "model": v["model"], "provider": v["provider"],
-             "key_source": "Clé OpenAI de l'entreprise" if v["provider"] == "openai" else "Clé LLM universelle Emergent",
+             "key_source": "Chave OpenAI da empresa" if v["provider"] == "openai" else "Chave LLM universal Emergent",
              "quality": v.get("quality"), "speed": v.get("speed"), "cost": v.get("cost")}
             for k, v in ai.AI_TEXT_MODELS.items()
         ],
@@ -955,7 +954,7 @@ async def set_ai_model(body: AiModelIn) -> dict:
     from fastapi import HTTPException
     from engines import ai
     if body.tier not in ai.AI_TEXT_MODELS:
-        raise HTTPException(400, f"tier inconnu: {body.tier}")
+        raise HTTPException(400, f'nível desconhecido: {body.tier}')
     tier = await ai.set_text_tier(body.tier)
     return {"current": tier}
 
@@ -982,7 +981,7 @@ async def disable_openai_key() -> dict:
     """Bascule manuelle sur la clé Emergent (ex. pour économiser le crédit OpenAI)."""
     from engines import llm_keys
     if llm_keys.openai_direct_active():
-        await llm_keys.disable_openai("Désactivation manuelle par l'administrateur", alert=False)
+        await llm_keys.disable_openai("Desativação manual pelo administrador", alert=False)
     return llm_keys.status()
 
 
@@ -1002,11 +1001,10 @@ async def get_gemini_backend() -> dict:
         "key_present": gemini_native.native_available(),
         "models": {"pro": gemini_native.NATIVE_PRO, "flash": gemini_native.NATIVE_FLASH},
         "options": [
-            {"backend": "emergent", "label": "Clé LLM universelle Emergent",
-             "desc": "Gemini via la clé Emergent (aucune facturation Google)"},
-            {"backend": "native", "label": "SDK Google natif (gemini latest)",
-             "desc": "Appels directs Google avec votre clé — facturation Google. "
-                     "gemini-2.5 étant déprécié (2026), on utilise les alias stables pro/flash latest."},
+            {"backend": "emergent", "label": "Chave LLM universal Emergent",
+             "desc": "Gemini via chave Emergent (sem faturação Google)"},
+            {"backend": "native", "label": "SDK Google nativo (gemini latest)",
+             "desc": "Chamadas diretas à Google com a sua chave — faturação Google. Como o gemini-2.5 está descontinuado (2026), usam-se os aliases estáveis pro/flash latest."},
         ],
     }
 
@@ -1016,10 +1014,9 @@ async def set_gemini_backend(body: GeminiBackendIn) -> dict:
     from fastapi import HTTPException
     from engines import ai, gemini_native
     if body.backend not in ("emergent", "native"):
-        raise HTTPException(400, f"backend inconnu: {body.backend}")
+        raise HTTPException(400, f'backend desconhecido: {body.backend}')
     if body.backend == "native" and not gemini_native.native_available():
-        raise HTTPException(409, "Clé Google absente (GOOGLE_GEMINI_API_KEY). "
-                                 "Ajoutez-la au backend avant d'activer le mode natif.")
+        raise HTTPException(409, "Chave Google ausente (GOOGLE_GEMINI_API_KEY). Acrescente-a ao backend antes de ativar o modo nativo.")
     backend = await ai.set_gemini_backend(body.backend)
     return {"current": backend}
 
@@ -1035,12 +1032,12 @@ async def test_gemini_native_key() -> dict:
 # Libellés lisibles des fonctionnalités IA
 _AI_FEATURE_LABELS = {
     "smart_project": "Estimation Smart Project",
-    "photo_analyse": "Analyse photo",
-    "quote_scan": "Scanner de devis",
-    "quote_compare": "Comparaison de devis",
-    "project_advice": "Conseils projet",
+    "photo_analyse": "Análise de fotografia",
+    "quote_scan": "Scanner de orçamentos",
+    "quote_compare": "Comparação de orçamentos",
+    "project_advice": "Conselhos de projeto",
     "coach": "Coach IA",
-    "misc": "Autre",
+    "misc": "Outro",
 }
 
 

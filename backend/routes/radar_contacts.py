@@ -13,7 +13,7 @@ from engines.radar_filters import ClientType
 from routes.radar import _get_permits, get_opportunity
 
 router = APIRouter(prefix="/radar/opportunities", tags=["radar-contacts"])
-BUSINESS_TYPES = {"ENTREPRISE", "PROMOTEUR", "SCI", "BAILLEUR", "COLLECTIVITE"}
+BUSINESS_TYPES = {"ENTREPRISE", "PROMOTOR", "SCI", "SENHORIO", "COLLECTIVITE"}
 
 
 class ContactFields(BaseModel):
@@ -76,7 +76,7 @@ class QualificationIn(BaseModel):
 async def qualify_contact(opp_id: str, body: QualificationIn, user=Depends(current_user)):
     await editable_permit(opp_id, user)
     if len(body.source_note.strip()) < 3:
-        raise HTTPException(422, "Indiquez l’origine de cette qualification.")
+        raise HTTPException(422, "Indique a origem desta qualificação.")
     await db.radar_qualifications.update_one({"_id": f'{user["user_id"]}:{opp_id}'}, {"$set": {
         "user_id": user["user_id"], "opp_id": opp_id, "category": body.category,
         "source_note": body.source_note.strip(), "kind": "user_confirmed",
@@ -94,12 +94,12 @@ async def remove_qualification(opp_id: str, user=Depends(current_user)):
 
 async def editable_permit(opp_id, user):
     if user.get("account_type") != "pro" and user.get("role") != "admin":
-        raise HTTPException(403, "Contacts réservés à l'espace professionnel.")
+        raise HTTPException(403, "Contactos reservados à área profissional.")
     permit = next((p for p in await _get_permits() if p["id"] == opp_id), None)
     if not permit:
-        raise HTTPException(404, "Opportunité introuvable")
+        raise HTTPException(404, "Oportunidade não encontrada")
     if permit.get("is_demo"):
-        raise HTTPException(409, "Fiche fictive : importez un permis réel avant de renseigner un contact.")
+        raise HTTPException(409, "Ficha fictícia: importe uma licença real antes de preencher um contacto.")
     return permit
 
 
@@ -117,7 +117,7 @@ async def manual_contact(opp_id: str, body: ManualContactIn, user=Depends(curren
     await editable_permit(opp_id, user)
     contact = body.contact.model_dump()
     if not any(contact.values()) or len(body.source_note.strip()) < 3:
-        raise HTTPException(422, "Renseignez au moins une coordonnée et son origine.")
+        raise HTTPException(422, "Preencha pelo menos um contacto e a sua origem.")
     return await save_contact(opp_id, user, contact, {
         "kind": "manual", "label": body.source_note.strip(),
         "source_url": str(body.source_url) if body.source_url else None})
@@ -134,13 +134,13 @@ async def delete_contact(opp_id: str, user=Depends(current_user)):
 async def search_contact(opp_id: str, body: SearchIn, user=Depends(current_user)):
     permit = await editable_permit(opp_id, user)
     if permit.get("mo") not in BUSINESS_TYPES:
-        raise HTTPException(403, "Recherche réservée aux entreprises, jamais aux particuliers.")
+        raise HTTPException(403, "Pesquisa reservada a empresas, nunca a particulares.")
     query = body.query.strip()
     if len(query) < 2:
-        raise HTTPException(422, "Indiquez la raison sociale ou le SIREN connu de l'entreprise.")
+        raise HTTPException(422, "Indique a denominação social ou o NIPC conhecido da empresa.")
     now = datetime.now(timezone.utc)
     if await db.radar_contact_searches.count_documents({"user_id": user["user_id"], "created_at": {"$gt": now - timedelta(minutes=1)}}) >= 10:
-        raise HTTPException(429, "Trop de recherches. Réessayez dans une minute.")
+        raise HTTPException(429, "Demasiadas pesquisas. Tente novamente dentro de um minuto.")
     await db.radar_contact_searches.create_index("expires_at", expireAfterSeconds=0)
     search_id = secrets.token_urlsafe(18)
     expires = now + timedelta(minutes=15)
@@ -155,14 +155,14 @@ async def search_contact(opp_id: str, body: SearchIn, user=Depends(current_user)
 async def confirm_contact(opp_id: str, body: ConfirmIn, user=Depends(current_user)):
     permit = await editable_permit(opp_id, user)
     if permit.get("mo") not in BUSINESS_TYPES:
-        raise HTTPException(403, "Recherche réservée aux entreprises.")
+        raise HTTPException(403, "Pesquisa reservada a empresas.")
     result = await db.radar_contact_searches.find_one({"search_id": body.search_id,
         "user_id": user["user_id"], "opp_id": opp_id,
         "expires_at": {"$gt": datetime.now(timezone.utc)}}, {"_id": 0})
     candidate = next((c for c in (result or {}).get("candidates", []) if c["siren"] == body.siren), None)
     if not candidate:
-        raise HTTPException(404, "Proposition introuvable ou expirée. Relancez la recherche.")
+        raise HTTPException(404, "Proposta não encontrada ou expirada. Relance a pesquisa.")
     contact = {key: candidate.get(key, "") for key in ContactFields.model_fields}
     return await save_contact(opp_id, user, contact, {"kind": "registry",
-        "label": "Annuaire des Entreprises · correspondance confirmée par vous",
+        "label": "Registo de empresas · correspondência confirmada por si",
         "source_url": candidate["source_url"], "retrieved_at": result["created_at"].isoformat()})

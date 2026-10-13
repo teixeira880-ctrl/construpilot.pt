@@ -23,8 +23,8 @@ from engines.pdf_takeoff import DARK, GREY, LIGHT_GREY, ORANGE, _story_header_br
 from engines.plan_cotes_pdf import COL, _e, _fit_image, _font, _tbl
 
 LVL_HEX = {"VERT": "#16a34a", "BLEU": "#2563eb", "JAUNE": "#ca8a04", "ORANGE": "#ea580c", "ROUGE": "#dc2626"}
-LVL_LABEL = {"VERT": "Cohérent", "BLEU": "Information", "JAUNE": "À vérifier",
-             "ORANGE": "Incohérence", "ROUGE": "Incohérence majeure"}
+LVL_LABEL = {"VERT": "Coerente", "BLEU": "Informação", "JAUNE": "A verificar",
+             "ORANGE": "Incoerência", "ROUGE": "Incoerência grave"}
 LVL_RGB = {"VERT": COL["ok"], "BLEU": (37, 99, 235), "JAUNE": (202, 138, 4), "ORANGE": COL["warn"], "ROUGE": COL["ko"]}
 _STATUS_LVL = {"ok": "VERT", "warn": "JAUNE", "ko": "ORANGE", "nd": "BLEU", "ignored": "BLEU"}
 _W = A4[0] - 28 * mm
@@ -34,7 +34,7 @@ def _m(v) -> str:
     try:
         return f"{float(v):.2f} m".replace(".", ",")
     except (TypeError, ValueError):
-        return "NON INDIQUÉ"
+        return "NÃO INDICADO"
 
 
 def _cm(v_m) -> str:
@@ -75,14 +75,14 @@ def build_controls(report: dict, geo: dict | None) -> list[dict]:
         idx = f.get("cote_plan_index")
         expl = next((x.get("texte") for x in geo.get("explications") or [] if x.get("fermeture_index") == i), "")
         hyps = [h for h in geo.get("hypotheses_fermeture") or [] if h.get("fermeture_index") == i]
-        add("fermeture", f"Fermeture chaîne {f.get('direction', '')} — {_m(f.get('cote_plan_m'))}", f.get("cote_plan_m"),
+        add("fermeture", f"Fecho da cadeia {f.get('direction', '')} — {_m(f.get('cote_plan_m'))}", f.get("cote_plan_m"),
             f.get("cote_calculee_m"), f.get("erreur_m"), _lvl_from_status(f.get("statut"), f.get("erreur_m")),
             [idx] if isinstance(idx, int) else [], chaine=f.get("chaine") or "", explication=expl, hypotheses=hyps)
     for a in geo.get("anomalies") or []:
         if a.get("niveau") == "VERT":
             continue
         ecart = (a.get("ecart_mm") or 0) / 1000 if a.get("ecart_mm") is not None else None
-        add("anomalie", a.get("localisation") or "Anomalie", a.get("donnee_plan"), a.get("resultat"), ecart,
+        add("anomalie", a.get("localisation") or "Anomalia", a.get("donnee_plan"), a.get("resultat"), ecart,
             a.get("niveau") or "JAUNE", a.get("cotes_index") or [], formule=a.get("formule") or "",
             calcul=a.get("calcul") or "", explication=a.get("explication") or "", hypotheses_txt=a.get("hypotheses") or [],
             action=a.get("action") or "", confiance=a.get("confiance") or "MOYEN",
@@ -90,18 +90,18 @@ def build_controls(report: dict, geo: dict | None) -> list[dict]:
             adversarial=(a.get("adversarial") or {}).get("verdict"), adv_attaque=(a.get("adversarial") or {}).get("attaque"))
     for c in report.get("chains") or []:
         lvl = _STATUS_LVL.get(c["status"], "JAUNE")
-        add("chaine", f"Chaîne de cotes → cote #{c['total_index']} ({_m(c['total_m'])})", c["total_m"], c["sum_m"], c["delta_m"],
+        add("chaine", f"Cadeia de cotas → cota #{c['total_index']} ({_m(c['total_m'])})", c["total_m"], c["sum_m"], c["delta_m"],
             lvl, [c["total_index"], *c["part_indexes"]],
             chaine=" + ".join(f"{v:.2f}".replace(".", ",") for v in c["parts_m"]))
     for f in report.get("facades") or []:  # façades opposées mesurées sur les cotes exactes (déterministe, prioritaire)
-        add("facade", f"Façades opposées — cote #{f['a_index']} ({_m(f['a_m'])}, {f['a_side']}) ↔ cote #{f['b_index']} ({_m(f['b_m'])}, {f['b_side']})",
+        add("facade", f"Fachadas opostas — cota #{f['a_index']} ({_m(f['a_m'])}, {f['a_side']}) ↔ cote #{f['b_index']} ({_m(f['b_m'])}, {f['b_side']})",
             f["a_m"], f["b_m"], f["delta_m"], f.get("niveau") or _STATUS_LVL.get(f["status"], "JAUNE"), [f["a_index"], f["b_index"]],
-            causes=["Références de cotation différentes (faces / axes)", "Décrochement ou géométrie non rectangulaire voulue",
-                    "Erreur de dessin ou de cotation"] if f["status"] != "ok" else [])
+            causes=["Referências de cotagem diferentes (faces / eixos)", "Recuo ou geometria não retangular intencional",
+                    "Erro de desenho ou de cotagem"] if f["status"] != "ok" else [])
     for f in geo.get("facades") or []:
         if report.get("facades"):
             break
-        add("facade", f"Façades opposées — {f.get('nom', '')}", f.get("longueur_plan_m"), f.get("longueur_opposee_m"),
+        add("facade", f"Fachadas opostas — {f.get('nom', '')}", f.get("longueur_plan_m"), f.get("longueur_opposee_m"),
             f.get("ecart_m"), _lvl_from_status(f.get("statut"), f.get("ecart_m")), [],
             causes=f.get("causes_possibles") or [])
     return ctrls
@@ -159,9 +159,9 @@ def _cards(counts: dict, S):
                         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, 0), 20),
                         ("FONTSIZE", (0, 1), (-1, 1), 7.5), ("TEXTCOLOR", (0, 0), (-1, -1), colors.white),
                         ("TOPPADDING", (0, 0), (-1, 0), 8), ("BOTTOMPADDING", (0, 1), (-1, 1), 8)]
-    labels = [("total", "Contrôles réalisés", "#0A0D14"), ("VERT", "Éléments cohérents", LVL_HEX["VERT"]),
-              ("JAUNE", "Points à vérifier", LVL_HEX["JAUNE"]), ("ORANGE", "Incohérences", LVL_HEX["ORANGE"]),
-              ("ROUGE", "Incohérences majeures", LVL_HEX["ROUGE"])]
+    labels = [("total", "Controlos realizados", "#0A0D14"), ("VERT", "Elementos coerentes", LVL_HEX["VERT"]),
+              ("JAUNE", "Pontos a verificar", LVL_HEX["JAUNE"]), ("ORANGE", "Incoerências", LVL_HEX["ORANGE"]),
+              ("ROUGE", "Incoerências graves", LVL_HEX["ROUGE"])]
     for i, (k, lab, hexc) in enumerate(labels):
         cells.append((str(counts.get(k, 0)), tr(lab)))
         style.append(("BACKGROUND", (i, 0), (i, 1), colors.HexColor(hexc)))
@@ -177,8 +177,7 @@ def _equation(chaine: str, calc, plan, ecart_m, lvl, S):
     lines.append("<font face='Courier'>────────</font>")
     lines.append(f"<font face='Courier'><b>= {_e(_m(calc))}</b></font>")
     body = "<br/>".join(lines)
-    txt = (f"{body}<br/><br/>Cote indiquée sur le plan : <b>{_e(_m(plan))}</b> · Valeur recalculée : <b>{_e(_m(calc))}</b>"
-           f"<br/>ÉCART : <b>{_e(_cm(ecart_m))}</b> · STATUT : <font color='{LVL_HEX[lvl]}'><b>{LVL_LABEL[lvl]}</b></font>")
+    txt = (f"{body}<br/><br/>Cota indicada na planta: <b>{_e(_m(plan))}</b> · Valor recalculado: <b>{_e(_m(calc))}</b><br/>DIFERENÇA: <b>{_e(_cm(ecart_m))}</b> · ESTADO: <font color='{LVL_HEX[lvl]}'><b>{LVL_LABEL[lvl]}</b></font>")
     t = Table([[Paragraph(txt, S["body"])]], colWidths=[_W - 4 * mm])
     t.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor(LVL_HEX[lvl])),
                            ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GREY), ("LEFTPADDING", (0, 0), (-1, -1), 8),
@@ -195,33 +194,31 @@ def _fiche(c: dict, zoom: bytes | None, S):
         block.append(_equation(c["chaine"], c["calc"], c["plan"], c["ecart_m"], lvl, S))
     else:
         block.append(Paragraph(
-            f"Donnée du plan : <b>{_e(c.get('plan') or 'NON INDIQUÉ')}</b> · Valeur recalculée : <b>{_e(c.get('calc') or '—')}</b>"
-            f" · Écart : <b>{_e(_cm(c['ecart_m']))}</b>" + (f"<br/>Formule : <font face='Courier'>{_e(c['formule'])}</font>" if c.get("formule") else ""), S["body"]))
+            f"Dado da planta: <b>{_e(c.get('plan') or 'NÃO INDICADO')}</b> · Valor recalculado: <b>{_e(c.get('calc') or '—')}</b> · Diferença: <b>{_e(_cm(c['ecart_m']))}</b>" + (f"<br/>Fórmula: <font face='Courier'>{_e(c['formule'])}</font>" if c.get("formule") else ""), S["body"]))
     if c.get("calcul"):
-        block.append(Paragraph(f"<b>Calcul ConstruPilot :</b> {_e(c['calcul'])}", S["muted"]))
+        block.append(Paragraph(f"<b>Cálculo ConstruPilot:</b> {_e(c['calcul'])}", S["muted"]))
     if c.get("explication"):
         block.append(Paragraph(f"<b>Explication :</b> {_e(c['explication'])}", S["body"]))
     for h in c.get("hypotheses") or []:
         block.append(Paragraph(
-            f"<b>HYPOTHÈSE {_e(h.get('hypothese', ''))}</b> — {_e(h.get('dimension', ''))} devrait être <b>{_e(_m(h.get('valeur_theorique_m')))}</b>"
-            f" au lieu de {_e(_m(h.get('au_lieu_de_m')))} · <font face='Courier'>{_e(h.get('calcul', ''))}</font>", S["muted"]))
+            f"<b>HIPÓTESE {_e(h.get('hypothese', ''))}</b> — {_e(h.get('dimension', ''))} deveria ser <b>{_e(_m(h.get('valeur_theorique_m')))}</b> em vez de {_e(_m(h.get('au_lieu_de_m')))} · <font face='Courier'>{_e(h.get('calcul', ''))}</font>", S["muted"]))
     if c.get("hypotheses"):
-        block.append(Paragraph("<i>Hypothèses mathématiques permettant la fermeture de la chaîne — le plan n'est pas modifié.</i>", S["muted"]))
+        block.append(Paragraph("<i>Hipóteses matemáticas que permitem o fecho da cadeia — a planta não é alterada.</i>", S["muted"]))
     if c.get("hypotheses_txt"):
-        block.append(Paragraph("<b>Hypothèses possibles :</b> " + _e(" · ".join(c["hypotheses_txt"])), S["muted"]))
+        block.append(Paragraph("<b>Hipóteses possíveis:</b> " + _e(" · ".join(c["hypotheses_txt"])), S["muted"]))
     if c.get("causes"):
-        block.append(Paragraph("<b>Causes possibles :</b> " + _e(" ; ".join(map(str, c["causes"]))), S["muted"]))
+        block.append(Paragraph("<b>Causas possíveis:</b> " + _e(" ; ".join(map(str, c["causes"]))), S["muted"]))
     if c.get("action"):
-        block.append(Paragraph(f"<b>Action recommandée :</b> {_e(c['action'])}", S["muted"]))
-    meta = f"Confiance : {_e(c.get('confiance') or 'ÉLEVÉ')}"
+        block.append(Paragraph(f"<b>Ação recomendada:</b> {_e(c['action'])}", S["muted"]))
+    meta = f"Confiança: {_e(c.get('confiance') or 'ÉLEVÉ')}"
     if c.get("verification"):
-        meta += f" · Recalcul indépendant (passage 2) : {_e(c['verification'])}"
+        meta += f" · Recálculo independente (passagem 2): {_e(c['verification'])}"
     if c.get("adversarial"):
-        meta += f" · Contrôle adversarial : <b>{_e(c['adversarial'])}</b>"
+        meta += f" · Controlo adversarial: <b>{_e(c['adversarial'])}</b>"
         if c.get("adv_attaque"):
             meta += f" ({_e(c['adv_attaque'])})"
     if c.get("cotes"):
-        meta += " · Cotes concernées : " + ", ".join(f"#{i}" for i in c["cotes"])
+        meta += " · Cotas em causa: " + ", ".join(f"#{i}" for i in c["cotes"])
     block.append(Paragraph(meta, S["muted"]))
     block.append(Spacer(1, 5 * mm))
     return KeepTogether(block)
@@ -249,109 +246,99 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=14 * mm,
-                            bottomMargin=16 * mm, title=f"Rapport de contrôle du plan {rid}", author="ConstruPilot")
+                            bottomMargin=16 * mm, title=f'Relatório de controlo da planta {rid}', author="ConstruPilot")
     story: list = []
 
     # PAGE 1 — couverture + résumé
     story += cover_story(plan, page_index, report, branding, PDF_LANG.get(), S, _W)
     story += [_scope_box(disclaimer(plan, page_index, report, branding, PDF_LANG.get()), S, _W), PageBreak()]
-    story.append(Paragraph("Analyse automatique de cohérence du plan — contrôle géométrique et dimensionnel", S["h2"]))
+    story.append(Paragraph("Análise automática de coerência da planta — controlo geométrico e dimensional", S["h2"]))
     story.append(Spacer(1, 4 * mm))
-    rows = [["Projet", doc_info.get("projet") or "NON INDIQUÉ"], ["Localisation", doc_info.get("localisation") or "NON INDIQUÉ"],
-            ["Document analysé", f"{plan.get('filename') or 'plan'} — page {page_index + 1}"],
-            ["Type de plan", doc_info.get("type_plan") or doc_info.get("discipline") or "NON INDIQUÉ"],
-            ["Date du plan", doc_info.get("date") or "NON INDIQUÉ"], ["Révision", doc_info.get("revision") or "NON INDIQUÉ"],
-            ["Échelle", doc_info.get("echelle") or (report.get("reading") or {}).get("scale_text") or "NON INDIQUÉ"],
-            ["Date de l'analyse", now.strftime("%d/%m/%Y %H:%M UTC")], ["Identifiant du rapport", rid]]
+    rows = [["Projeto", doc_info.get("projet") or "NÃO INDICADO"], ["Localização", doc_info.get("localisation") or "NÃO INDICADO"],
+            ["Documento analisado", f"{plan.get('filename') or 'plan'} — page {page_index + 1}"],
+            ["Tipo de planta", doc_info.get("type_plan") or doc_info.get("discipline") or "NÃO INDICADO"],
+            ["Data da planta", doc_info.get("date") or "NÃO INDICADO"], ["Revisão", doc_info.get("revision") or "NÃO INDICADO"],
+            ["Escala", doc_info.get("echelle") or (report.get("reading") or {}).get("scale_text") or "NÃO INDICADO"],
+            ["Data da análise", now.strftime("%d/%m/%Y %H:%M UTC")], ["Identificador do relatório", rid]]
     t = Table([[Paragraph(f"<b>{_e(k)}</b>", S["body"]), Paragraph(_e(tr(v)), S["body"])] for k, v in rows], colWidths=[50 * mm, _W - 50 * mm])
     t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
-    story += [t, Spacer(1, 5 * mm), Paragraph("Objet du rapport", S["h2"])]
+    story += [t, Spacer(1, 5 * mm), Paragraph("Objeto do relatório", S["h2"])]
     story.append(Paragraph(
-        f"Contrôle automatique de cohérence géométrique et dimensionnelle du plan « {_e(plan.get('filename') or 'plan')} » "
-        f"(page {page_index + 1}) : lecture des cotes inscrites, recalcul indépendant des chaînes et des grandes cotes, "
-        "comparaison des façades opposées, contrôle des alignements et identification des points à clarifier avant "
-        "utilisation des dimensions pour l'implantation ou l'exécution.", S["body"]))
+        f"Controlo automático de coerência geométrica e dimensional da planta «{_e(plan.get('filename') or 'plan')} » (page {page_index + 1}): leitura das cotas inscritas, recálculo independente das cadeias e das grandes cotas, comparação das fachadas opostas, controlo dos alinhamentos e identificação dos pontos a esclarecer antes da utilização das dimensões para a implantação ou a execução.", S["body"]))
     murs = geo.get("murs") or {}
     hyp = []
     if murs.get("epaisseurs_m"):
-        hyp.append("épaisseur(s) de murs prise(s) en compte : " + ", ".join(_m(v) for v in murs["epaisseurs_m"]) + " (LUE / DÉDUIT)")
-    hyp.append("référence de cotation : " + (murs.get("reference_cotation") or "non déterminable avec certitude — HYPOTHÈSE : cotes entre faces"))
-    hyp.append(f"tolérance de détection : ±{report['tolerance']['pct']} % ou ±{report['tolerance']['cm']} cm ; seuils mm ConstruPilot pour les niveaux")
+        hyp.append("espessura(s) de paredes tida(s) em conta: " + ", ".join(_m(v) for v in murs["epaisseurs_m"]) + " (LIDA / DEDUZIDA)")
+    hyp.append("referência de cotagem: " + (murs.get("reference_cotation") or "não determinável com certeza — HIPÓTESE: cotas entre faces"))
+    hyp.append(f"tolerância de deteção: ±{report['tolerance']['pct']} % ou ±{report['tolerance']['cm']} cm; limiares mm ConstruPilot para os níveis")
     cal = report.get("calibration") or {}
-    hyp.append("échelle : " + (f"{cal.get('pixels_per_meter', 0):.0f} px/m ({cal.get('method', '—')})")
-               + (f" — échelle effective du PDF 1/{cal['effective_scale_denominator']:g}"
-                  + (f" alors que le cartouche indique 1/{cal['scale_denominator']} (PDF réduit à l'impression)"
+    hyp.append("escala: " + (f"{cal.get('pixels_per_meter', 0):.0f} px/m ({cal.get('method', '—')})")
+               + (f" — escala efetiva do PDF 1/{cal['effective_scale_denominator']:g}"
+                  + (f" quando a legenda indica 1/{cal['scale_denominator']} (PDF reduzido na impressão)"
                      if cal.get("scale_denominator") and abs(cal["effective_scale_denominator"] - cal["scale_denominator"]) > 0.5 else "")
                   if cal.get("effective_scale_denominator") else ""))
     cross = (report.get("reading") or {}).get("cross") or {}
     if cross:
-        hyp.append(f"source des cotes : extraction vectorielle du PDF ({cross.get('vector', 0)} cotes mesurées au millimètre entre "
-                   f"lignes d'attache) croisée avec la lecture IA ({cross.get('confirmed', 0)} confirmées, "
-                   f"{cross.get('ai_only', 0)} lues par l'IA seule et non vérifiées"
-                   + (f", {len(cross['divergences'])} divergence(s) de lecture tranchée(s) par le texte vectoriel" if cross.get("divergences") else "") + ")")
-    story.append(Paragraph("Hypothèses retenues", S["h2"]))
+        hyp.append(f"fonte das cotas: extração vetorial do PDF ({cross.get('vector', 0)} cotas medidas ao milímetro entre linhas de chamada) cruzada com a leitura IA ({cross.get('confirmed', 0)} confirmées, {cross.get('ai_only', 0)} lidas apenas pela IA e não verificadas"
+                   + (f", {len(cross['divergences'])} divergência(s) de leitura decidida(s) pelo texto vetorial" if cross.get("divergences") else "") + ")")
+    story.append(Paragraph("Hipóteses consideradas", S["h2"]))
     for line in hyp:
         story.append(Paragraph(f"• {_e(line)}", S["muted"]))
     if report.get("abstention"):
-        story.append(Paragraph(f"<b>Abstention ConstruPilot :</b> {_e(report['abstention'])} "
-                               f"{len(nd_items)} cote(s) classée(s) NON DÉTERMINÉ.", S["body"]))
-    story += [Spacer(1, 4 * mm), Paragraph("Résumé du contrôle", S["h2"]), _cards(counts, S), Spacer(1, 6 * mm)]
+        story.append(Paragraph(f"<b>Abstention ConstruPilot :</b> {_e(report['abstention'])} {len(nd_items)} cota(s) classificada(s) NÃO DETERMINADO.", S["body"]))
+    story += [Spacer(1, 4 * mm), Paragraph("Resumo do controlo", S["h2"]), _cards(counts, S), Spacer(1, 6 * mm)]
     story.append(Paragraph(
-        "Ce rapport est produit par le contrôle ConstruPilot : chaque cote est relue, mesurée à l'échelle et confrontée aux autres "
-        "données du plan par recalcul indépendant. Les valeurs recalculées et les hypothèses sont toujours distinguées des valeurs "
-        "inscrites. Ce document n'est pas une étude d'exécution : les points signalés sont des points nécessitant vérification.", S["muted"]))
+        "Este relatório é produzido pelo controlo ConstruPilot: cada cota é relida, medida à escala e confrontada com os outros dados da planta por recálculo independente. Os valores recalculados e as hipóteses são sempre distinguidos dos valores inscritos. Este documento não é um estudo de execução: os pontos assinalados são pontos que necessitam de verificação.", S["muted"]))
 
     # PAGE 2 — résumé exécutif + données extraites
     story.append(PageBreak())
-    story.append(Paragraph("RÉSUMÉ EXÉCUTIF", S["kicker"]))
-    story.append(Paragraph("Résultat global", S["h1"]))
+    story.append(Paragraph("RESUMO EXECUTIVO", S["kicker"]))
+    story.append(Paragraph("Resultado global", S["h1"]))
     for lv in ("VERT", "JAUNE", "ORANGE", "ROUGE"):
         if counts.get(lv):
             story.append(Paragraph(f"<font color='{LVL_HEX[lv]}'>■</font> <b>{counts[lv]}</b> {LVL_LABEL[lv].lower()}(s)", S["body"]))
     main = next((c for lv in ("ROUGE", "ORANGE", "JAUNE") for c in ctrls if c["niveau"] == lv), None)
     if main:
         story.append(Spacer(1, 3 * mm))
-        story.append(Paragraph("Principale incohérence", S["h2"]))
-        pv = _m(main["plan"]) if isinstance(main.get("plan"), (int, float)) else (main.get("plan") or "NON INDIQUÉ")
+        story.append(Paragraph("Principal incoerência", S["h2"]))
+        pv = _m(main["plan"]) if isinstance(main.get("plan"), (int, float)) else (main.get("plan") or "NÃO INDICADO")
         cv = _m(main["calc"]) if isinstance(main.get("calc"), (int, float)) else (main.get("calc") or "—")
         story.append(Paragraph(
-            f"<b>{main['id']} · {_e(main['titre'])}</b><br/>Valeur indiquée : <b>{_e(pv)}</b>"
-            f" · Valeur recalculée : <b>{_e(cv)}</b>"
-            f" · Écart : <b>{_e(_cm(main['ecart_m']))}</b><br/>{_e(main.get('explication') or main.get('calcul') or '')}", S["body"]))
+            f"<b>{main['id']} · {_e(main['titre'])}</b><br/>Valor indicado: <b>{_e(pv)}</b> · Valor recalculado: <b>{_e(cv)}</b> · Diferença: <b>{_e(_cm(main['ecart_m']))}</b><br/>{_e(main.get('explication') or main.get('calcul') or '')}", S["body"]))
     if geo.get("synthese"):
         story.append(Paragraph(_e(geo["synthese"]), S["muted"]))
     story.append(Spacer(1, 5 * mm))
-    story.append(Paragraph("Données extraites du plan", S["h2"]))
-    data_rows = [["Élément", "Valeur", "Type", "Source", "Confiance"]]
+    story.append(Paragraph("Dados extraídos da planta", S["h2"]))
+    data_rows = [["Elemento", "Valor", "Type", "Fonte", "Confiança"]]
     for dx in (geo.get("donnees_extraites") or [])[:40]:
         data_rows.append([Paragraph(_e(dx.get("element")), S["muted"]), _m(dx.get("valeur_m")), _e(dx.get("type") or "—"),
-                          _e(dx.get("source") or "LUE"), _e(dx.get("confiance") or "—")])
+                          _e(dx.get("source") or "LIDA"), _e(dx.get("confiance") or "—")])
     if len(data_rows) == 1:
         for it in (report.get("items") or [])[:40]:
             data_rows.append([Paragraph(_e(it.get("location") or f"Cote #{it['index']}"), S["muted"]), _m(it["indicated_m"]),
                               {"h": "horizontale", "v": "verticale"}.get(it["orientation"], "oblique"),
-                              "VALEUR CALCULÉE" if it.get("edited") else "LUE SUR PLAN", f"{int(it['confidence'] * 100)} %"])
+                              "VALOR CALCULADO" if it.get("edited") else "LIDA NA PLANTA", f"{int(it['confidence'] * 100)} %"])
     story.append(_tbl(data_rows, [70 * mm, 28 * mm, 30 * mm, 30 * mm, 24 * mm], S))
-    story.append(Paragraph("Légende des sources : LUE SUR PLAN · FOURNIE PAR L'UTILISATEUR (cote corrigée) · VALEUR CALCULÉE · HYPOTHÈSE.", S["muted"]))
+    story.append(Paragraph("Legenda das fontes: LIDA NA PLANTA · FORNECIDA PELO UTILIZADOR (cota corrigida) · VALOR CALCULADO · HIPÓTESE.", S["muted"]))
 
     # PAGE 3 — grandes cotes (fermetures) ; PAGE 4 — chaînes intérieures
     story.append(PageBreak())
-    story.append(Paragraph("CONTRÔLE DES GRANDES COTES", S["kicker"]))
-    story.append(Paragraph("Fermeture des chaînes sur les cotes générales", S["h1"]))
+    story.append(Paragraph("CONTROLO DAS GRANDES COTAS", S["kicker"]))
+    story.append(Paragraph("Fecho das cadeias nas cotas gerais", S["h1"]))
     ferms = [c for c in ctrls if c["kind"] == "fermeture"]
     if not ferms:
-        story.append(Paragraph("Aucune chaîne générale n'a pu être reconstruite à partir des cotes lisibles (NON INDIQUÉ).", S["muted"]))
+        story.append(Paragraph("Nenhuma cadeia geral pôde ser reconstruída a partir das cotas legíveis (NÃO INDICADO).", S["muted"]))
     for c in ferms:
         story.append(_fiche(c, None, S))
     story.append(PageBreak())
-    story.append(Paragraph("CONTRÔLE DÉTAILLÉ DES CHAÎNES", S["kicker"]))
-    story.append(Paragraph("Cotes partielles ↔ cotes totales (mesure ConstruPilot)", S["h1"]))
+    story.append(Paragraph("CONTROLO DETALHADO DAS CADEIAS", S["kicker"]))
+    story.append(Paragraph("Cotas parciais ↔ cotas totais (medição ConstruPilot)", S["h1"]))
     chains = [c for c in ctrls if c["kind"] == "chaine"]
     if not chains:
-        story.append(Paragraph("Aucune chaîne partielle contiguë détectée sur cette page.", S["muted"]))
+        story.append(Paragraph("Nenhuma cadeia parcial contígua detetada nesta página.", S["muted"]))
     for c in chains:
         story.append(_fiche(c, None, S))
-    rows = [["#", "Localisation", "Cote inscrite", "Mesure", "Écart", "Niveau"]]
+    rows = [["#", "Localização", "Cota inscrita", "Medição", "Desvio", "Piso"]]
     statuses = []
     for it in sorted(report["items"], key=lambda x: -abs(x["delta_cm"])):
         if it.get("ignored"):
@@ -360,34 +347,31 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
         if it["status"] == "nd":
             lv = "BLEU"
         rows.append([str(it["index"]), Paragraph(_e(it.get("location") or "—"), S["muted"]), _m(it["indicated_m"]),
-                     _m(it["measured_m"]), f"{it['delta_cm']:+.1f} cm", "NON DÉTERMINÉ" if it["status"] == "nd" else LVL_LABEL[lv]])
+                     _m(it["measured_m"]), f"{it['delta_cm']:+.1f} cm", "NÃO DETERMINADO" if it["status"] == "nd" else LVL_LABEL[lv]])
         statuses.append({"VERT": "ok", "BLEU": "ok", "JAUNE": "warn", "ORANGE": "ko", "ROUGE": "ko"}[lv])
-    story.append(Paragraph("Toutes les cotes contrôlées (cote inscrite vs mesure à l'échelle)", S["h2"]))
+    story.append(Paragraph("Todas as cotas controladas (cota inscrita vs medição à escala)", S["h2"]))
     story.append(_tbl(rows, [10 * mm, 70 * mm, 26 * mm, 26 * mm, 22 * mm, 28 * mm], S, status_col=5, statuses=statuses))
 
     # PAGE 5 — façades & alignements
     story.append(PageBreak())
-    story.append(Paragraph("CONTRÔLE DES FAÇADES ET ALIGNEMENTS", S["kicker"]))
-    story.append(Paragraph("Façades opposées", S["h1"]))
+    story.append(Paragraph("CONTROLO DAS FACHADAS E ALINHAMENTOS", S["kicker"]))
+    story.append(Paragraph("Fachadas opostas", S["h1"]))
     fac = geo.get("facades") or []
     if fac:
-        rows = [["Façades opposées", "Cote A", "Cote B", "Écart", "Statut"]]
+        rows = [["Fachadas opostas", "Cote A", "Cote B", "Desvio", "Estado"]]
         for f in fac:
             rows.append([Paragraph(_e(f.get("nom")), S["muted"]), _m(f.get("longueur_plan_m")), _m(f.get("longueur_opposee_m")),
                          _cm(f.get("ecart_m")), LVL_LABEL[_lvl_from_status(f.get("statut"), f.get("ecart_m"))]])
         story.append(_tbl(rows, [70 * mm, 26 * mm, 26 * mm, 24 * mm, 36 * mm], S))
     else:
-        story.append(Paragraph("Façades opposées : NON INDIQUÉ — les cotes lisibles ne permettent pas la comparaison.", S["muted"]))
+        story.append(Paragraph("Fachadas opostas: NÃO INDICADO — as cotas legíveis não permitem a comparação.", S["muted"]))
     story.append(Paragraph(
-        "Des façades opposées parallèles et cotées selon les mêmes références devraient présenter des dimensions compatibles. "
-        "Un écart peut provenir d'un décrochement volontaire, d'une géométrie non rectangulaire, de références de cotation "
-        "différentes (axes d'un côté, faces de l'autre), d'une erreur de dessin ou de cotation. Le plan seul ne permet pas de "
-        "déterminer automatiquement laquelle de ces hypothèses est correcte.", S["muted"]))
+        "Fachadas opostas paralelas e cotadas segundo as mesmas referências deveriam apresentar dimensões compatíveis. Uma diferença pode provir de um recuo intencional, de uma geometria não retangular, de referências de cotagem diferentes (eixos de um lado, faces do outro), de um erro de desenho ou de cotagem. A planta por si só não permite determinar automaticamente qual destas hipóteses é a correta.", S["muted"]))
     story.append(Spacer(1, 4 * mm))
-    story.append(Paragraph("Alignements", S["h1"]))
+    story.append(Paragraph("Alinhamentos", S["h1"]))
     als = geo.get("alignements") or []
     if not als:
-        story.append(Paragraph("Alignement apparent à vérifier — précision insuffisante pour une mesure fiable.", S["muted"]))
+        story.append(Paragraph("Alinhamento aparente a verificar — precisão insuficiente para uma medição fiável.", S["muted"]))
     for a in als:
         segs = " ; ".join(f"{s.get('segment', '')} : {s.get('statut', '')}" + (f" ({s.get('decalage_mm')} mm)" if s.get("decalage_mm") else "")
                           for s in (a.get("segments") or []) if isinstance(s, dict))
@@ -396,8 +380,8 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
     # PAGE 6 — plan annoté (omis en rapport court)
     if not court:
         story.append(PageBreak())
-        story.append(Paragraph("PLAN ANNOTÉ CONSTRUPILOT", S["kicker"]))
-        story.append(Paragraph("Marqueurs CP-xx : vert conforme · jaune à vérifier · orange incohérence · rouge incohérence majeure", S["muted"]))
+        story.append(Paragraph("PLANTA ANOTADA CONSTRUPILOT", S["kicker"]))
+        story.append(Paragraph("Marcadores CP-xx: verde conforme · amarelo a verificar · laranja incoerência · vermelho incoerência grave", S["muted"]))
         story.append(_fit_image(marked_png, _W, A4[1] - 70 * mm))
         story.append(Paragraph(" · ".join(f"{c['id']} → {c['titre']}" for c in ctrls if c["cotes"])[:1500], S["muted"]))
 
@@ -405,15 +389,15 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
     fiches = [c for c in ctrls if c["kind"] in ("anomalie", "facade")]
     if fiches:
         story.append(PageBreak())
-        story.append(Paragraph("FICHES DÉTAILLÉES", S["kicker"]))
-        story.append(Paragraph("Points nécessitant vérification", S["h1"]))
+        story.append(Paragraph("FICHAS DETALHADAS", S["kicker"]))
+        story.append(Paragraph("Pontos que necessitam de verificação", S["h1"]))
         for c in fiches:
             story.append(_fiche(c, None if court else zooms.get(c["id"]), S))
 
     # Tableau général
     story.append(PageBreak())
-    story.append(Paragraph("TABLEAU GÉNÉRAL DES CONTRÔLES", S["kicker"]))
-    rows = [["ID", "Contrôle", "Plan", "Calcul", "Écart", "Statut"]]
+    story.append(Paragraph("QUADRO GERAL DOS CONTROLOS", S["kicker"]))
+    rows = [["ID", "Controlo", "Planta", "Cálculo", "Desvio", "Estado"]]
     statuses = []
     for c in ctrls:
         pv = _m(c["plan"]) if isinstance(c["plan"], (int, float)) else _e(c["plan"] or "—")
@@ -424,39 +408,31 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
 
     # Dernière page — checklist + conclusion
     story.append(PageBreak())
-    story.append(Paragraph("POINTS À CLARIFIER AVANT EXÉCUTION", S["kicker"]))
+    story.append(Paragraph("PONTOS A ESCLARECER ANTES DA EXECUÇÃO", S["kicker"]))
     checklist = list(geo.get("checklist") or [])
     checklist += [f"Confirmer la cote #{it['index']} ({_m(it['indicated_m'])}) : mesure {_m(it['measured_m'])}"
                   for it in report["items"] if it["status"] == "ko" and not it.get("ignored")][:8]
-    checklist += ["Confirmer les références de cotation face/axe", "Comparer avec le plan architectural / structure",
-                  "Vérifier la correspondance murs / fondations"]
+    checklist += ["Confirmar as referências de cotagem face/eixo", "Comparar com a planta de arquitetura / estrutura",
+                  "Verificar a correspondência paredes / fundações"]
     for line in dict.fromkeys(checklist):
         story.append(Paragraph(f"☐  {_e(line)}", S["body"]))
     story.append(Spacer(1, 6 * mm))
-    story.append(Paragraph("Conclusion", S["h1"]))
+    story.append(Paragraph("Conclusão", S["h1"]))
     concl = geo.get("conclusion") or (
-        f"Le contrôle géométrique a porté sur {report['summary']['total']} cotes et {len(ctrls)} contrôles. "
-        f"{counts['ORANGE'] + counts['ROUGE']} incohérence(s) détectée(s) et {counts['JAUNE']} point(s) à clarifier "
-        "nécessitent une clarification des références de cotation et de la géométrie définitive avant utilisation des "
-        "dimensions concernées pour l'implantation.")
+        f"O controlo geométrico incidiu sobre {report['summary']['total']} cotas e {len(ctrls)} contrôles. {counts['ORANGE'] + counts['ROUGE']} incoerência(s) detetada(s) e {counts['JAUNE']} ponto(s) a esclarecer exigem um esclarecimento das referências de cotagem e da geometria definitiva antes da utilização das dimensões em causa para a implantação.")
     story.append(Paragraph(_e(concl), S["body"]))
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(
-        "Traçabilité : chaque résultat est reproductible à partir des valeurs sources, de la formule et de l'écart indiqués. "
-        "Seuils de détection ConstruPilot : 0–2 mm négligeable · 2–10 mm faible · 10–30 mm à vérifier · 30–100 mm anomalie "
-        "importante · > 100 mm anomalie majeure — ce ne sont pas des tolérances réglementaires d'exécution.", S["muted"]))
+        "Rastreabilidade: cada resultado é reproduzível a partir dos valores de origem, da fórmula e da diferença indicados. Limiares de deteção ConstruPilot: 0–2 mm desprezável · 2–10 mm baixo · 10–30 mm a verificar · 30–100 mm anomalia importante · > 100 mm anomalia grave — não são tolerâncias regulamentares de execução.", S["muted"]))
     story.append(Spacer(1, 3 * mm))
     story.append(Paragraph(
-        "Périmètre : cette analyse est limitée au document fourni (page indiquée), à ses cotes lisibles et à l'échelle "
-        "déclarée ou calibrée. Elle ne constitue ni une étude d'exécution ni une validation structurelle : les valeurs "
-        "recalculées et les hypothèses de fermeture sont des aides à la vérification, jamais des cotes de remplacement. "
-        "Les points signalés doivent être confirmés avec l'auteur du plan.", S["muted"]))
+        "Âmbito: esta análise está limitada ao documento fornecido (página indicada), às suas cotas legíveis e à escala declarada ou calibrada. Não constitui nem um estudo de execução nem uma validação estrutural: os valores recalculados e as hipóteses de fecho são auxiliares de verificação, nunca cotas de substituição. Os pontos assinalados devem ser confirmados com o autor da planta.", S["muted"]))
 
     def _footer(canvas, d):
         canvas.saveState()
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(GREY)
-        canvas.drawRightString(A4[0] - 14 * mm, 9 * mm, tr(f"ConstruPilot · Rapport de contrôle du plan · {rid} · page {d.page}"))
+        canvas.drawRightString(A4[0] - 14 * mm, 9 * mm, tr(f'ConstruPilot · Relatório de controlo da planta · {rid} · page {d.page}'))
         canvas.setFillColor(ORANGE)
         canvas.rect(14 * mm, 9 * mm, 18 * mm, 1.2, fill=1, stroke=0)
         canvas.restoreState()

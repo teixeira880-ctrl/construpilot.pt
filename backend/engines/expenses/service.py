@@ -26,7 +26,7 @@ async def rows_for(month, include_test=False):
         query["is_test"] = {"$ne": True}
     raw = await db.api_expense_events.find(query, {"_id": 0}).sort("occurred_at", -1).to_list(MAX_ROWS + 1)
     if len(raw) > MAX_ROWS:
-        raise HTTPException(413, "Période trop volumineuse pour un rapport complet. Aucun total partiel n'est affiché.")
+        raise HTTPException(413, "Período demasiado volumoso para um relatório completo. Nenhum total parcial é apresentado.")
     rates = await db.api_expense_rates.find({"disabled": {"$ne": True}}, {"_id": 0}).to_list(2000)
     statements = [r for r in raw if r.get("scope") == "monthly_total"]
     return [EventOut(**render_event(r, rates, statements)).model_dump() for r in raw]
@@ -70,9 +70,9 @@ async def overview(month, include_test=False, **filters):
 
 async def validate_attribution(body):
     if body.user_id and not await db.users.find_one({"user_id": body.user_id}, {"_id": 0, "user_id": 1}):
-        raise HTTPException(422, "Utilisateur introuvable")
+        raise HTTPException(422, "Utilizador não encontrado")
     if body.company_id and not await db.organizations.find_one({"org_id": body.company_id}, {"_id": 0, "org_id": 1}):
-        raise HTTPException(422, "Entreprise introuvable")
+        raise HTTPException(422, "Empresa não encontrada")
 
 
 async def create_manual(body: ExpenseInput, admin_id):
@@ -93,7 +93,7 @@ async def create_manual(body: ExpenseInput, admin_id):
     try:
         await db.api_expense_events.insert_one({"_id": entry_id, **document})
     except DuplicateKeyError:
-        raise HTTPException(409, "Cette référence ou ce total mensuel existe déjà. Corrigez l'écriture existante.") from None
+        raise HTTPException(409, "Esta referência ou este total mensal já existe. Corrija o registo existente.") from None
     await audit(admin_id, "create_manual", entry_id)
     return EventOut(**render_event(document, [], []))
 
@@ -101,7 +101,7 @@ async def create_manual(body: ExpenseInput, admin_id):
 async def confirm_entry(entry_id, body, admin_id):
     current = await db.api_expense_events.find_one({"_id": entry_id, "voided": {"$ne": True}}, {"_id": 0})
     if not current:
-        raise HTTPException(404, "Écriture introuvable")
+        raise HTTPException(404, "Registo não encontrado")
     checked = ExpenseInput(provider=current["provider"], source_ref=body.source_ref, amount=body.amount, currency=body.currency,
         occurred_on=current["occurred_at"].date(), settled_eur=body.settled_eur, settlement_ref=body.settlement_ref, confirmed_charge=True)
     confirmation = {"source_ref": checked.source_ref.strip(), "amount_micros": micros(checked.amount), "currency": checked.currency,
@@ -110,7 +110,7 @@ async def confirm_entry(entry_id, body, admin_id):
     result = await db.api_expense_events.update_one({"_id": entry_id, "version": body.version, "voided": {"$ne": True}},
         {"$set": {"confirmation": confirmation}, "$inc": {"version": 1}})
     if not result.modified_count:
-        raise HTTPException(409, "Écriture modifiée entre-temps. Actualisez avant de confirmer.")
+        raise HTTPException(409, "Registo alterado entretanto. Atualize antes de confirmar.")
     await audit(admin_id, "confirm", entry_id, current.get("confirmation"))
     return {"ok": True, "entry_id": entry_id}
 
@@ -120,6 +120,6 @@ async def void_entry(entry_id, version, admin_id):
     result = await db.api_expense_events.update_one({"_id": entry_id, "version": version, "voided": {"$ne": True}},
         {"$set": {"voided": True, "voided_by": admin_id, "voided_at": now()}, "$inc": {"version": 1}})
     if not result.modified_count:
-        raise HTTPException(409, "Écriture absente ou modifiée entre-temps.")
+        raise HTTPException(409, "Registo ausente ou alterado entretanto.")
     await audit(admin_id, "void", entry_id)
     return {"ok": True}

@@ -28,32 +28,29 @@ DEFAULT_THRESHOLD_PCT = 20.0
 # Prix de référence embarqués dans les moteurs déterministes (engines/calculators.py).
 # Chaque entrée : code, libellé, prix moteur, unité, requête de marché (France).
 REFERENCE_PRICES: list[dict] = [
-    {"code": "paint_wall_l", "label": "Peinture murale mate (par litre)", "engine_price": 6.50,
-     "unit": "L", "query": "prix moyen peinture murale acrylique mate blanche au litre France"},
-    {"code": "tile_sqm", "label": "Carrelage grès cérame 60x60 (fourniture)", "engine_price": 28.00,
-     "unit": "m²", "query": "prix moyen carrelage grès cérame 60x60 au m² fourniture France"},
-    {"code": "concrete_m3", "label": "Béton prêt à l'emploi livré (toupie)", "engine_price": 135.00,
-     "unit": "m³", "query": "prix moyen béton prêt à l'emploi livré toupie au m3 France"},
-    {"code": "insulation_sqm", "label": "Laine de verre isolation (fourniture)", "engine_price": 12.00,
-     "unit": "m²", "query": "prix moyen laine de verre isolation combles au m² fourniture France"},
-    {"code": "drywall_plate", "label": "Plaque de plâtre BA13 250x120 (l'unité)", "engine_price": 7.50,
-     "unit": "plaque", "query": "prix moyen plaque de plâtre BA13 250x120 l'unité France"},
-    {"code": "block_parpaing", "label": "Parpaing creux 20x20x50 (l'unité)", "engine_price": 1.20,
-     "unit": "u", "query": "prix moyen parpaing creux 20x20x50 à l'unité France"},
-    {"code": "block_brique", "label": "Brique de construction terre cuite (l'unité)", "engine_price": 0.85,
-     "unit": "u", "query": "prix moyen brique de construction terre cuite à l'unité France"},
-    {"code": "cement_35kg", "label": "Ciment 35 kg (le sac)", "engine_price": 6.00,
-     "unit": "sac 35 kg", "query": "prix moyen sac de ciment 35 kg France"},
-    {"code": "mortar_glue_25kg", "label": "Mortier-colle joint mince 25 kg (le sac)", "engine_price": 15.00,
-     "unit": "sac 25 kg", "query": "prix moyen mortier-colle carrelage sac 25 kg France"},
-    {"code": "render_25kg", "label": "Enduit de façade monocouche 25 kg (le sac)", "engine_price": 12.00,
-     "unit": "sac 25 kg", "query": "prix moyen enduit de façade monocouche sac 25 kg France"},
+    {"code": "paint_wall_l", "label": "Tinta de parede mate (por litro)", "engine_price": 6.50,
+     "unit": "L", "query": "preço médio tinta plástica mate branca interior ao litro Portugal"},
+    {"code": "tile_sqm", "label": "Mosaico de grés porcelânico 60x60 (fornecimento)", "engine_price": 28.00,
+     "unit": "m²", "query": "preço médio mosaico grés porcelânico 60x60 ao m² fornecimento Portugal"},
+    {"code": "concrete_m3", "label": "Betão pronto entregue (autobetoneira)", "engine_price": 135.00,
+     "unit": "m³", "query": "preço médio betão pronto entregue autobetoneira ao m3 Portugal"},
+    {"code": "insulation_sqm", "label": "Lã de vidro para isolamento (fornecimento)", "engine_price": 12.00,
+     "unit": "m²", "query": "preço médio lã de vidro isolamento sótão ao m² fornecimento Portugal"},
+    {"code": "drywall_plate", "label": "Placa de gesso cartonado 13 mm 250x120 (unidade)", "engine_price": 7.50,
+     "unit": "plaque", "query": "preço médio placa de gesso cartonado 13 mm 250x120 unidade Portugal"},
+    {"code": "block_parpaing", "label": "Bloco de betão 20x20x50 (unidade)", "engine_price": 1.20,
+     "unit": "u", "query": "preço médio bloco de betão 20x20x50 unidade Portugal"},
+    {"code": "block_brique", "label": "Tijolo cerâmico de construção (unidade)", "engine_price": 0.85,
+     "unit": "u", "query": "preço médio tijolo cerâmico 30x20x11 unidade Portugal"},
+    {"code": "cement_35kg", "label": "Cimento 35 kg (saco)", "engine_price": 6.00,
+     "unit": "sac 35 kg", "query": "preço médio saco de cimento 35 kg Portugal"},
+    {"code": "mortar_glue_25kg", "label": "Cimento-cola junta fina 25 kg (saco)", "engine_price": 15.00,
+     "unit": "sac 25 kg", "query": "preço médio cimento-cola azulejo saco 25 kg Portugal"},
+    {"code": "render_25kg", "label": "Reboco de fachada monocamada 25 kg (saco)", "engine_price": 12.00,
+     "unit": "sac 25 kg", "query": "preço médio reboco monocamada fachada saco 25 kg Portugal"},
 ]
 
-_SYSTEM = ("Tu es un acheteur BTP français. On te demande le PRIX MOYEN de détail actuel en France "
-           "(TTC, grandes surfaces de bricolage et négoces de matériaux) pour un article et une unité précis. "
-           "Donne un seul prix moyen représentatif. Si tu n'as pas de source fiable, mets price_eur à null. "
-           "N'invente JAMAIS de valeur.")
+_SYSTEM = ("És um comprador de construção português. Pedem-te o PREÇO MÉDIO de retalho atual em Portugal (com IVA, grandes superfícies de bricolage e armazéns de materiais como Leroy Merlin, Maxmat, Bricomarché, AKI) para um artigo e uma unidade precisos. Dá um único preço médio representativo. Se não tiveres uma fonte fiável, põe price_eur a null. NUNCA inventes um valor.")
 
 
 def _now() -> str:
@@ -93,10 +90,8 @@ def _parse_answer(text: str) -> dict:
 
 
 async def _audit_one(item: dict, threshold: float) -> dict:
-    instructions = (_SYSTEM + " Réponds UNIQUEMENT en JSON : "
-                    '{"price_eur": <nombre ou null>, "low_eur": <nombre ou null>, '
-                    '"high_eur": <nombre ou null>, "note": "<courte précision>"}')
-    question = f"Prix moyen actuel en France pour : {item['query']}. Unité attendue : {item['unit']}."
+    instructions = (_SYSTEM + " Responde APENAS em JSON: {\"price_eur\": <número ou null>, \"low_eur\": <número ou null>, \"high_eur\": <número ou null>, \"note\": \"<precisão curta>\"}")
+    question = f"Preço médio atual em Portugal para: {item['query']}. Unidade esperada: {item['unit']}."
     out = {
         "code": item["code"], "label": item["label"], "unit": item["unit"],
         "engine_price": item["engine_price"], "market_price": None, "low": None, "high": None,
@@ -108,7 +103,7 @@ async def _audit_one(item: dict, threshold: float) -> dict:
                              max_output_tokens=400)
     except Exception as exc:  # noqa: BLE001
         log.warning("calc_auditor pplx failed for %s (%s)", item["code"], type(exc).__name__)
-        out["note"] = "Recherche de marché indisponible."
+        out["note"] = "Pesquisa de mercado indisponível."
         return out
     parsed = _parse_answer(res.get("text") or "")
     out["cost_usd"] = float(res.get("cost_usd") or 0.0)
@@ -180,11 +175,11 @@ async def apply_override(code: str, applied_by: str | None = None) -> dict:
     """Confirme un écart : le prix de marché de la dernière audit devient le prix de référence du auditeur."""
     ref = next((r for r in REFERENCE_PRICES if r["code"] == code), None)
     if not ref:
-        raise ValueError("code inconnu")
+        raise ValueError("código desconhecido")
     audit = await db.calc_audits.find_one({"status": "done"}, {"_id": 0}, sort=[("started_at", -1)])
     item = next((i for i in (audit or {}).get("items", []) if i["code"] == code), None)
     if not item or not item.get("market_price"):
-        raise ValueError("aucun prix de marché à confirmer pour cet article")
+        raise ValueError("nenhum preço de mercado a confirmar para este artigo")
     doc = {
         "code": code, "price": float(item["market_price"]), "unit": ref["unit"],
         "default_price": ref["engine_price"], "market_low": item.get("low"), "market_high": item.get("high"),
@@ -207,11 +202,11 @@ async def list_overrides() -> list[dict]:
 async def run_audit(triggered_by: str = "admin", threshold: float = DEFAULT_THRESHOLD_PCT) -> dict:
     """Crée et exécute une audit complète (bloquant). Respecte le plafond de coûts."""
     if not pplx.configured():
-        return {"status": "skipped", "reason": "Perplexity non configuré (PERPLEXITY_API_KEY)."}
+        return {"status": "skipped", "reason": "Perplexity não configurado (PERPLEXITY_API_KEY)."}
     try:
         st = await cap.status()
         if st.get("state") in ("exceeded", "frozen"):
-            return {"status": "skipped", "reason": st.get("blocking_reason") or "plafond de coûts atteint"}
+            return {"status": "skipped", "reason": st.get("blocking_reason") or "teto de custos atingido"}
     except Exception:  # noqa: BLE001
         pass
     audit_id = await _create_run(triggered_by, threshold)

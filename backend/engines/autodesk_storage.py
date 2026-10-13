@@ -26,14 +26,14 @@ async def ensure_bucket():
         if response.status_code == 409:
             response = await request("GET", f"{bucket_url()}/details")
     if response.json().get("policyKey") != "transient":
-        raise AutodeskError("bucket_policy", "Le stockage Autodesk doit être privé et temporaire.", fallback_safe=True)
+        raise AutodeskError("bucket_policy", "O armazenamento Autodesk deve ser privado e temporário.", fallback_safe=True)
 
 
 async def signed_upload(key):
     response = await request("GET", f"{object_url(key)}/signeds3upload", params={"parts": 1, "minutesExpiration": 60})
     data = response.json()
     if len(data.get("urls", [])) != 1 or not data.get("uploadKey"):
-        raise AutodeskError("upload_contract", "Préparation du stockage Autodesk impossible.", fallback_safe=True)
+        raise AutodeskError("upload_contract", "Preparação do armazenamento Autodesk impossível.", fallback_safe=True)
     return data
 
 
@@ -48,7 +48,7 @@ async def download_url(key):
     response = await request("GET", f"{object_url(key)}/signeds3download", params={"minutesExpiration": 60})
     data = response.json()
     if data.get("status") != "complete" or not data.get("url"):
-        raise AutodeskError("output_incomplete", "Le fichier Autodesk n'est pas entièrement enregistré.")
+        raise AutodeskError("output_incomplete", "O ficheiro Autodesk não está totalmente guardado.")
     return data["url"]
 
 

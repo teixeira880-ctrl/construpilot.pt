@@ -26,21 +26,21 @@ async def today(user=Depends(current_user)) -> dict:
             {"user_id": uid, "doc_type": "quote", "status": "sent", "updated_at": {"$lt": _iso_days_ago(7)}},
             {"_id": 0, "doc_id": 1, "title": 1, "number": 1, "totals.ttc": 1, "updated_at": 1}).sort("updated_at", 1).to_list(5)
         for q in quotes_to_follow:
-            items.append({"kind": "quote_followup", "label": f"Relancer le devis {q.get('number') or ''} — {q.get('title') or 'sans titre'}".strip(),
+            items.append({"kind": "quote_followup", "label": f"Relançar o orçamento {q.get('number') or ''} — {q.get('title') or 'sem título'}".strip(),
                           "url": f"/devis-editeur/{q['doc_id']}", "amount": (q.get("totals") or {}).get("ttc"), "since": q.get("updated_at")})
         overdue = await db.pro_documents.find(
             {"user_id": uid, "doc_type": "invoice", "status": {"$in": ["issued", "sent", "partial"]}, "due_date": {"$ne": None, "$lt": now.isoformat()}},
             {"_id": 0, "doc_id": 1, "title": 1, "number": 1, "totals.remaining": 1, "totals.ttc": 1, "due_date": 1}).sort("due_date", 1).to_list(5)
         for inv in overdue:
-            items.append({"kind": "invoice_overdue", "label": f"Facture {inv.get('number') or ''} en retard — {inv.get('title') or ''}".strip(),
+            items.append({"kind": "invoice_overdue", "label": f"Fatura {inv.get('number') or ''} en retard — {inv.get('title') or ''}".strip(),
                           "url": f"/devis-editeur/{inv['doc_id']}", "amount": (inv.get("totals") or {}).get("remaining") or (inv.get("totals") or {}).get("ttc"), "since": inv.get("due_date")})
         vat_unset = await db.pro_documents.count_documents({"user_id": uid, "status": "draft", "totals.vat_unset_lines": {"$gt": 0}})
         if vat_unset:
-            items.append({"kind": "vat_to_confirm", "label": f"{vat_unset} brouillon{'s' if vat_unset > 1 else ''} avec des lignes sans TVA choisie", "url": "/devis?filtre=brouillons"})
+            items.append({"kind": "vat_to_confirm", "label": f"{vat_unset} brouillon{('s' if vat_unset > 1 else '')} com linhas sem IVA escolhido", "url": "/devis?filtre=brouillons"})
         review_jobs = await db.plans_pro_jobs.find({"user_id": uid, "status": {"$in": ["needs_review", "partial"]}, "reviewed": {"$ne": True}},
                                                    {"_id": 0, "job_id": 1, "filename": 1, "status": 1}).sort("created_at", -1).to_list(5)
         for j in review_jobs:
-            items.append({"kind": "plan_review", "label": f"Vérifier l'analyse du plan « {j.get('filename')} » ({'désaccords' if j['status'] == 'needs_review' else 'résultat partiel'})",
+            items.append({"kind": "plan_review", "label": f"Verificar a análise da planta «{j.get('filename')} » ({('désaccords' if j['status'] == 'needs_review' else 'resultado parcial')})",
                           "url": "/plans-pro"})
 
     tomorrow = date.today() + timedelta(days=1)
@@ -49,7 +49,7 @@ async def today(user=Depends(current_user)) -> dict:
             for e in st.get(section) or []:
                 if e.get("status") != "superseded" and e.get("deadline") and parse_deadline(e["deadline"], date.today()) in (date.today(), tomorrow):
                     when = "aujourd'hui" if parse_deadline(e["deadline"], date.today()) == date.today() else "demain"
-                    items.append({"kind": "deadline", "label": f"Échéance {when} : {e.get('statement', '')[:90]}" + (f" (resp. {e['owner']})" if e.get("owner") else ""),
+                    items.append({"kind": "deadline", "label": f"Vencimento {when} : {e.get('statement', '')[:90]}" + (f" (resp. {e['owner']})" if e.get("owner") else ""),
                                   "url": f"/assistant?conversation={st['conversation_id']}"})
 
     running = await db.btp_problems.count_documents({"user_id": uid, "status": "running"}) + await db.plans_pro_jobs.count_documents(
@@ -66,17 +66,17 @@ async def today(user=Depends(current_user)) -> dict:
         items.sort(key=lambda i: priority.get(i["kind"], 9))
         next_action = items[0]
     elif is_pro and not branding.get("brand_company_name"):
-        next_action = {"kind": "setup", "label": "Renseignez l'identité de votre entreprise (logo, coordonnées, pays TVA) : elle habille tous vos devis", "url": "/ma-page"}
+        next_action = {"kind": "setup", "label": "Preencha a identidade da sua empresa (logótipo, contactos, país de IVA): é usada em todos os seus orçamentos", "url": "/ma-page"}
     elif is_pro and counts["clients"] == 0:
-        next_action = {"kind": "setup", "label": "Ajoutez votre premier client pour préparer un devis sans ressaisie", "url": "/clients"}
+        next_action = {"kind": "setup", "label": "Acrescente o seu primeiro cliente para preparar um orçamento sem nova introdução de dados", "url": "/clients"}
     elif is_pro and counts["quotes"] == 0:
-        next_action = {"kind": "setup", "label": "Créez votre premier devis (dictée, photo, plan ou bibliothèque)", "url": "/devis-editeur"}
+        next_action = {"kind": "setup", "label": "Crie o seu primeiro orçamento (ditado, fotografia, planta ou biblioteca)", "url": "/devis-editeur"}
     elif is_pro and not branding.get("public_published"):
-        next_action = {"kind": "setup", "label": "Publiez votre page entreprise pour que vos clients découvrent vos réalisations", "url": "/ma-page"}
+        next_action = {"kind": "setup", "label": "Publique a sua página de empresa para que os seus clientes descubram os seus trabalhos", "url": "/ma-page"}
     elif not is_pro and counts["projects"] == 0:
-        next_action = {"kind": "setup", "label": "Décrivez votre projet de travaux pour obtenir une estimation", "url": "/estimation"}
+        next_action = {"kind": "setup", "label": "Descreva o seu projeto de obras para obter uma estimativa", "url": "/estimation"}
     else:
-        next_action = {"kind": "clear", "label": "Rien d'urgent aujourd'hui — reprenez un dossier ou demandez à l'assistant", "url": "/assistant"}
+        next_action = {"kind": "clear", "label": "Nada urgente hoje — retome um processo ou pergunte ao assistente", "url": "/assistant"}
 
     return {"date": date.today().isoformat(), "next_action": next_action, "items": items[:12], "running_analyses": running, "counts": counts,
             "empty_account": all(v == 0 for v in counts.values())}

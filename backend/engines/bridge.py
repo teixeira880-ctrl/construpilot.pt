@@ -108,9 +108,9 @@ async def upsert_artisans_from_items(items: list[dict], source: str = "apify") -
 # ---------------------------------------------------------------- e-mail artisan
 
 _TRADE_MAP = {
-    "salle de bain": "rénovation de salle de bain", "sdb": "rénovation de salle de bain",
-    "cuisine": "rénovation de cuisine", "toiture": "travaux de toiture", "couverture": "travaux de toiture",
-    "maçon": "maçonnerie", "maconnerie": "maçonnerie", "façade": "ravalement de façade",
+    "salle de bain": "remodelação de casa de banho", "sdb": "remodelação de casa de banho",
+    "cuisine": "remodelação de cozinha", "toiture": "obras de cobertura", "couverture": "obras de cobertura",
+    "maçon": "maçonnerie", "maconnerie": "maçonnerie", "façade": "reabilitação de fachada",
     "isolation": "isolation", "électricit": "électricité", "plomberie": "plomberie",
     "peinture": "peinture", "carrelage": "carrelage", "menuiserie": "menuiserie",
     "extension": "extension", "rénovation": "rénovation", "renovation": "rénovation",
@@ -132,47 +132,19 @@ def _work_type(lead: dict, snap: dict) -> str:
 
 
 def _outreach_subject(work_type: str, city: str) -> str:
-    return f"Un chantier de {work_type} à {city} pour vous (Sans commission)"
+    return f'Uma obra de {work_type} à {city} para si (sem comissão)'
 
 
 def _outreach_html(artisan_name: str, city: str, work_type: str, budget: int | None,
                    founder_name: str, founder_phone: str, site_url: str, unsub_url: str) -> str:
-    hello = f"Bonjour {artisan_name}," if artisan_name else "Bonjour,"
-    montant = f"{budget:,.0f} €".replace(",", " ") if budget else "non précisé"
+    hello = f'Olá {artisan_name},' if artisan_name else "Bom dia,"
+    montant = f"{budget:,.0f} €".replace(",", " ") if budget else "não indicado"
     signup = f"{site_url or _frontend()}/inscription?utm_source=email&utm_medium=bridge&utm_campaign=lead_match"
     site = site_url or _frontend()
-    phone_line = (f'ou appelez-moi au <b>{founder_phone}</b> ' if founder_phone else "")
-    signer = founder_name or "L'équipe ConstruPilot"
+    phone_line = (f'ou ligue-me para o <b>{founder_phone}</b> ' if founder_phone else "")
+    signer = founder_name or "A equipa ConstruPilot"
     p = 'style="margin:0 0 14px"'
-    return f"""<!doctype html><html><body style="margin:0;background:#f5f5f7;font-family:Arial,Helvetica,sans-serif;color:#1a1d20">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 0"><tr><td align="center">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-<tr><td style="padding:22px 28px 10px;border-bottom:3px solid #FF5A00">
-  <div style="font-size:20px;font-weight:800">ConstruPilot</div></td></tr>
-<tr><td style="padding:26px 28px;font-size:15px;line-height:1.65;color:#1a1d20">
-  <p {p}>{hello}</p>
-  <p {p}>Un particulier situé à <b>{city}</b> vient d'utiliser notre plateforme pour estimer des
-  travaux de <b>{work_type}</b>. Le budget estimé est d'environ <b>{montant}</b>.</p>
-  <p {p}>Comme nous lançons notre réseau dans votre secteur, je cherche un artisan fiable pour lui
-  transférer ce contact. <b>Je ne prends aucune commission sur le chantier.</b></p>
-  <p {p}>La seule condition ?</p>
-  <p {p}>Créer un compte gratuit sur notre logiciel <a href="{signup}" style="color:#FF5A00;font-weight:bold">ConstruPilot</a>
-  et utiliser notre outil pour envoyer votre devis final à ce client. Cela vous prendra 10 minutes et vous
-  permettra de tester notre système (qui fait le métré automatique sur plan et génère des devis conformes Factur-X).</p>
-  <p {p}>Est-ce que ce type de chantier vous intéresse en ce moment ?</p>
-  <p {p}>Si oui, répondez simplement à cet e-mail {phone_line}pour que je vous transfère les coordonnées
-  du client et vous montre comment envoyer le devis.</p>
-  <p style="margin:22px 0 2px">À très vite,</p>
-  <p style="margin:0;font-weight:bold">{signer}</p>
-  <p style="margin:0;color:#64748B;font-size:13px">Fondateur, ConstruPilot</p>
-  <p style="margin:2px 0 0"><a href="{site}" style="color:#FF5A00;font-size:13px">{site.replace('https://', '').replace('http://', '')}</a></p>
-</td></tr>
-<tr><td style="padding:14px 28px;background:#fafafa;color:#94A3B8;font-size:11px;line-height:1.5">
-  ConstruPilot — plateforme d'estimation et de mise en relation BTP · Brevet FR261104.
-  Vous recevez cet e-mail car votre établissement est référencé publiquement dans votre secteur.
-  <a href="{unsub_url}" style="color:#94A3B8">Se désinscrire</a>.
-</td></tr>
-</table></td></tr></table></body></html>"""
+    return f'''<!doctype html><html><body style="margin:0;background:#f5f5f7;font-family:Arial,Helvetica,sans-serif;color:#1a1d20">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 0"><tr><td align="center">\n<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">\n<tr><td style="padding:22px 28px 10px;border-bottom:3px solid #FF5A00">\n  <div style="font-size:20px;font-weight:800">ConstruPilot</div></td></tr>\n<tr><td style="padding:26px 28px;font-size:15px;line-height:1.65;color:#1a1d20">\n  <p {p}>{hello}</p>\n  <p {p}>Um particular situado em <b>{city}</b> acabou de utilizar a nossa plataforma para estimar\n  obras de <b>{work_type}</b>. O orçamento estimado é de cerca de <b>{montant}</b>.</p>\n  <p {p}>Como estamos a lançar a nossa rede na sua zona, procuro um profissional fiável para lhe\n  transferir este contacto. <b>Não cobro nenhuma comissão sobre a obra.</b></p>\n  <p {p}>A única condição?</p>\n  <p {p}>Criar uma conta gratuita no nosso software <a href="{signup}" style="color:#FF5A00;font-weight:bold">ConstruPilot</a>\n  e utilizar a nossa ferramenta para enviar o seu orçamento final a este cliente. Demora 10 minutos e permite-lhe\n  testar o nosso sistema (que faz a medição automática em planta e gera orçamentos conformes).</p>\n  <p {p}>Este tipo de obra interessa-lhe neste momento?</p>\n  <p {p}>Se sim, responda simplesmente a este e-mail {phone_line}para que lhe transfira os contactos\n  do cliente e lhe mostre como enviar o orçamento.</p>\n  <p style="margin:22px 0 2px">Até breve,</p>\n  <p style="margin:0;font-weight:bold">{signer}</p>\n  <p style="margin:0;color:#64748B;font-size:13px">Fundador, ConstruPilot</p>\n  <p style="margin:2px 0 0"><a href="{site}" style="color:#FF5A00;font-size:13px">{site.replace('https://', '').replace('http://', '')}</a></p>\n</td></tr>\n<tr><td style="padding:14px 28px;background:#fafafa;color:#94A3B8;font-size:11px;line-height:1.5">\n  ConstruPilot — plataforma de estimativa e contacto entre clientes e profissionais da construção · Patente FR261104.\n  Recebe este e-mail porque o seu estabelecimento está referenciado publicamente na sua zona.\n  <a href="{unsub_url}" style="color:#94A3B8">Cancelar a subscrição</a>.\n</td></tr>\n</table></td></tr></table></body></html>'''
 
 
 # ---------------------------------------------------------------- agent
@@ -213,7 +185,7 @@ async def process_lead_bridge(lead: dict) -> dict:
         "$or": [{"last_contacted_at": None}, {"last_contacted_at": {"$lt": cutoff}}],
     }, {"_id": 0}).limit(st["max_per_lead"] * 3).to_list(st["max_per_lead"] * 3)
 
-    city_label = snap.get("city") or lead.get("city") or (f"votre secteur ({dept})")
+    city_label = snap.get("city") or lead.get("city") or (f'a sua zona ({dept})')
     work_type = _work_type(lead, snap)
     subject = _outreach_subject(work_type, city_label)
     sent = 0

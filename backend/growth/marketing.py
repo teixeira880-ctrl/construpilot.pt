@@ -41,27 +41,17 @@ def normalize_ads(data: dict) -> dict:
 def ads_complete(ads: dict) -> list[str]:
     """RSA Google exige ≥ 3 titres et ≥ 2 descriptions ; Meta ≥ 1 texte et 1 titre."""
     missing = []
-    if len(ads["google"]["headlines"]) < 3: missing.append("Google : moins de 3 titres valides")
-    if len(ads["google"]["descriptions"]) < 2: missing.append("Google : moins de 2 descriptions valides")
-    if not ads["meta"]["primary_texts"] or not ads["meta"]["headlines"]: missing.append("Meta : texte principal ou titre manquant")
+    if len(ads["google"]["headlines"]) < 3: missing.append("Google: menos de 3 títulos válidos")
+    if len(ads["google"]["descriptions"]) < 2: missing.append("Google: menos de 2 descrições válidas")
+    if not ads["meta"]["primary_texts"] or not ads["meta"]["headlines"]: missing.append("Meta: texto principal ou título em falta")
     return missing
 
 
 async def generate_ads(project: dict, content: dict) -> dict:
-    lang = "français de France" if project["key"] == "fr" else "portugais du Portugal"
-    system = "Tu es un concepteur-rédacteur publicitaire B2B rigoureux (secteur bâtiment). JSON strict uniquement, aucune promesse non démontrable, aucun superlatif, aucun chiffre inventé."
+    lang = "francês de França" if project["key"] == "fr" else "português de Portugal"
+    system = "És um copywriter publicitário B2B rigoroso (setor da construção). Apenas JSON estrito, nenhuma promessa não demonstrável, nenhum superlativo, nenhum número inventado."
     facts = await ct._brand_context(project["project_id"])
-    prompt = f"""Article publié : « {content.get('title')} » — {content.get('description')}
-URL : {content.get('published_url')}
-Extrait : {(content.get('body_markdown') or '')[:1800]}
-Faits CONFIRMÉS sur ConstruPilot (seuls arguments produit autorisés) :
-{facts}
-Rédige en {lang} des annonces qui envoient vers cet article (angle : réponse utile puis découverte de ConstruPilot).
-Contraintes STRICTES de longueur (compte les caractères) :
-- google.headlines : 15 titres ≤ 30 caractères, variés (question, bénéfice, chiffre générique, appel à l'action), google.descriptions : 4 descriptions ≤ 90 caractères, google.keywords : 12 mots-clés d'intention (expressions de 2 à 5 mots), google.path1/path2 ≤ 15 caractères ascii.
-- meta.primary_texts : 3 textes ≤ 125 caractères, meta.headlines : 3 titres ≤ 40, meta.descriptions : 2 ≤ 30, meta.cta parmi LEARN_MORE, SIGN_UP, DOWNLOAD, GET_QUOTE.
-- linkedin.intros : 2 accroches ≤ 150, linkedin.headlines : 2 titres ≤ 70.
-Réponds en JSON : {{"google": {{"headlines": [], "descriptions": [], "keywords": [], "path1": "", "path2": ""}}, "meta": {{"primary_texts": [], "headlines": [], "descriptions": [], "cta": ""}}, "linkedin": {{"intros": [], "headlines": []}}}}"""
+    prompt = f"""Artigo publicado: «{content.get('title')} » — {content.get('description')}\nURL : {content.get('published_url')}\nExtrait : {(content.get('body_markdown') or '')[:1800]}\nFactos CONFIRMADOS sobre o ConstruPilot (únicos argumentos de produto autorizados):\n{facts}\nRedige em {lang} anúncios que encaminhem para este artigo (ângulo: resposta útil e depois descoberta do ConstruPilot).\nRestrições ESTRITAS de comprimento (conta os caracteres):\n- google.headlines: 15 títulos ≤ 30 caracteres, variados (pergunta, benefício, número genérico, apelo à ação), google.descriptions: 4 descrições ≤ 90 caracteres, google.keywords: 12 palavras-chave de intenção (expressões de 2 a 5 palavras), google.path1/path2 ≤ 15 caracteres ascii.\n- meta.primary_texts: 3 textos ≤ 125 caracteres, meta.headlines: 3 títulos ≤ 40, meta.descriptions: 2 ≤ 30, meta.cta entre LEARN_MORE, SIGN_UP, DOWNLOAD, GET_QUOTE.\n- linkedin.intros: 2 frases de abertura ≤ 150, linkedin.headlines: 2 títulos ≤ 70.\nResponde em JSON: {{"google": {{"headlines": [], "descriptions": [], "keywords": [], "path1": "", "path2": ""}}, "meta": {{"primary_texts": [], "headlines": [], "descriptions": [], "cta": ""}}, "linkedin": {{"intros": [], "headlines": []}}}}"""
     data = ct._json(await ct._llm(system, prompt, project["project_id"], "ads_copy"))
     if "error" in data:
         raise ValueError(data["error"])
@@ -75,7 +65,7 @@ def google_csv(ad: dict, campaign: str) -> str:
     """Format d'import Google Ads Editor (annonce responsive sur le Réseau de Recherche + mots-clés)."""
     g = ad["platforms"]["google"]
     buf = io.StringIO(); w = csv.writer(buf)
-    head = ["Campaign", "Ad Group", "Final URL", "Path 1", "Path 2"] + [f"Headline {i}" for i in range(1, 16)] + [f"Description {i}" for i in range(1, 5)]
+    head = ["Campaign", "Ad Group", "Final URL", "Path 1", "Path 2"] + [f"Headline {i}" for i in range(1, 16)] + [f'Descrição {i}' for i in range(1, 5)]
     w.writerow(head)
     row = [campaign, ad["title"][:60], ad["final_url"], g.get("path1", ""), g.get("path2", "")] + g["headlines"] + [""] * (15 - len(g["headlines"])) + g["descriptions"] + [""] * (4 - len(g["descriptions"]))
     w.writerow(row)
@@ -99,13 +89,11 @@ def meta_csv(ad: dict, campaign: str) -> str:
 
 async def generate_newsletter(project: dict, contents: list[dict]) -> dict:
     lang_key = project["key"]
-    lang = "français de France" if lang_key == "fr" else "portugais du Portugal"
+    lang = "francês de França" if lang_key == "fr" else "português de Portugal"
     facts = await ct._brand_context(project["project_id"])
     items = [{"title": c.get("title"), "description": c.get("description"), "url": c.get("published_url")} for c in contents]
-    system = "Tu es responsable éditorial d'une newsletter B2B bâtiment. JSON strict uniquement, ton sobre et utile, aucun superlatif ni promesse non démontrable."
-    prompt = f"""Prépare la newsletter en {lang} présentant ces articles : {items}
-Faits CONFIRMÉS sur ConstruPilot (seul contenu produit autorisé) : {facts}
-Réponds en JSON : {{"subject": str (≤ 60 car., commence par une majuscule, sans emoji ni majuscules criardes), "preheader": str (≤ 90), "intro": str (2 phrases), "items": [{{"url": str, "title": str, "blurb": str (≤ 200 car.)}}], "cta_label": str (≤ 30), "cta_url": str (une page du site {project['site_url']}), "outro": str (1 phrase)}}"""
+    system = "És responsável editorial de uma newsletter B2B de construção. Apenas JSON estrito, tom sóbrio e útil, nenhum superlativo nem promessa não demonstrável."
+    prompt = f"""Prepara a newsletter em {lang} apresentando estes artigos: {items}\nFactos CONFIRMADOS sobre o ConstruPilot (único conteúdo de produto autorizado): {facts}\nResponde em JSON: {{"subject": str (≤ 60 car., começa por maiúscula, sem emoji nem maiúsculas berrantes), "preheader": str (≤ 90), "intro": str (2 frases), "items": [{{"url": str, "title": str, "blurb": str (≤ 200 car.)}}], "cta_label": str (≤ 30), "cta_url": str (uma página do site {project['site_url']}), "outro": str (1 phrase)}}"""
     data = ct._json(await ct._llm(system, prompt, project["project_id"], "newsletter"))
     if "error" in data:
         raise ValueError(data["error"])
@@ -114,7 +102,7 @@ Réponds en JSON : {{"subject": str (≤ 60 car., commence par une majuscule, sa
     if not str(data.get("cta_url") or "").startswith(project["site_url"]):
         data["cta_url"] = project["site_url"]
     return {"newsletter_id": new_id("nl"), "project_id": project["project_id"], "lang": lang_key, "subject": (data.get("subject") or "ConstruPilot")[:60], "preheader": (data.get("preheader") or "")[:90],
-            "intro": data.get("intro") or "", "items": data["items"], "cta_label": (data.get("cta_label") or "Découvrir")[:30], "cta_url": data["cta_url"], "outro": data.get("outro") or "",
+            "intro": data.get("intro") or "", "items": data["items"], "cta_label": (data.get("cta_label") or "Descobrir")[:30], "cta_url": data["cta_url"], "outro": data.get("outro") or "",
             "content_ids": [c["content_id"] for c in contents], "status": "proposed", "created_at": now_iso(), "created_by": "autopilot"}
 
 

@@ -16,8 +16,7 @@ def _recognize_dxf(data: bytes) -> dict:
         doc = ezdxf.read(io.StringIO(data.decode("utf-8", "ignore")))
     except Exception as e:
         return {"kind": "dxf", "objects_detected": False,
-                "note": f"DXF illisible automatiquement ({str(e)[:80]}). Fichier stocké ; "
-                        "saisie manuelle de la géométrie requise.", "summary": {}}
+                "note": f'DXF ilegível automaticamente ({str(e)[:80]}). Ficheiro guardado; introdução manual da geometria necessária.', "summary": {}}
     msp = doc.modelspace()
     counts: dict[str, int] = {}
     for e in msp:
@@ -32,8 +31,7 @@ def _recognize_dxf(data: bytes) -> dict:
         "kind": "dxf",
         "objects_detected": True,
         "verified": False,
-        "note": "Inventaire brut des entités DXF (reconnaissance NON vérifiée). "
-                "Confirmez les calques porteurs et l'échelle sur une cote connue avant tout usage.",
+        "note": "Inventário bruto das entidades DXF (reconhecimento NÃO verificado). Confirme as camadas resistentes e a escala numa cota conhecida antes de qualquer uso.",
         "summary": {
             "entities_total": sum(counts.values()),
             "by_type": counts,
@@ -50,16 +48,12 @@ def recognize(data: bytes, filename: str) -> dict:
         return _recognize_dxf(data)
     if ext == "pdf":
         return {"kind": "pdf", "objects_detected": False,
-                "note": "PDF stocké pour référence. La reconnaissance d'objets vectoriels n'est "
-                        "pas disponible sur PDF dans cette version — calez l'échelle sur une cote "
-                        "connue et renseignez la géométrie via le questionnaire.", "summary": {}}
+                "note": "PDF guardado para referência. O reconhecimento de objetos vetoriais não está disponível em PDF nesta versão — acerte a escala numa cota conhecida e preencha a geometria através do questionário.", "summary": {}}
     if ext in ("png", "jpg", "jpeg", "webp"):
         return {"kind": "image", "objects_detected": False,
-                "note": "Image stockée pour référence. Un agrandissement ou une photo ne constitue "
-                        "pas une mesure fiable : renseignez les cotes depuis un relevé.", "summary": {}}
+                "note": "Imagem guardada para referência. Uma ampliação ou fotografia não constitui uma medição fiável: preencha as cotas a partir de um levantamento.", "summary": {}}
     if ext in ("dwg", "ifc"):
         return {"kind": ext, "objects_detected": False,
-                "note": f"Format {ext.upper()} : connecteur non qualifié dans cette version. "
-                        "Fichier stocké pour référence.", "summary": {}}
+                "note": f'Formato {ext.upper()}: conector não qualificado nesta versão. Ficheiro guardado para referência.', "summary": {}}
     return {"kind": ext or "bin", "objects_detected": False,
-            "note": "Format non reconnu automatiquement. Fichier stocké.", "summary": {}}
+            "note": "Formato não reconhecido automaticamente. Ficheiro guardado.", "summary": {}}

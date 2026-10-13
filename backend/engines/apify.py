@@ -18,7 +18,7 @@ TERMINAL = {"SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"}
 def token() -> str:
     t = os.environ.get("APIFY_API_TOKEN")
     if not t:
-        raise RuntimeError("APIFY_API_TOKEN manquant : ajoutez-le dans backend/.env")
+        raise RuntimeError("APIFY_API_TOKEN em falta: adicione-o em backend/.env")
     return t
 
 
@@ -58,11 +58,11 @@ async def get_dataset_items(dataset_id: str, limit: int = 100) -> list[dict]:
 
 def _raise_for(r: httpx.Response, actor_id: str = "") -> None:
     if r.status_code in (401, 403):
-        raise ValueError("Token Apify invalide ou permissions insuffisantes")
+        raise ValueError("Token Apify inválido ou permissões insuficientes")
     if r.status_code == 404:
-        raise ValueError(f"Actor introuvable ou inaccessible{f' : {actor_id}' if actor_id else ''}")
+        raise ValueError(f"Actor não encontrado ou inacessível{(f' : {actor_id}' if actor_id else '')}")
     if r.status_code == 429:
-        raise ValueError("Limite de débit Apify atteinte — réessayez plus tard")
+        raise ValueError("Limite de débito Apify atingido — tente novamente mais tarde")
     if r.is_error:
         try:
             msg = r.json().get("error", {}).get("message", r.text[:300])
@@ -93,14 +93,14 @@ def extract_emails(items: list[dict]) -> list[dict]:
 # Cas d'usage ConstruPilot → Actor + gabarit d'input (points de départ, éditables).
 PRESETS = {
     "leads": {
-        "label": "Captation de leads / prospects",
+        "label": "Captação de leads / potenciais clientes",
         "actor_id": "compass/crawler-google-places",
-        "description": "Entreprises BTP, artisans ou prospects via Google Maps (Nice & alentours).",
+        "description": "Empresas de construção, profissionais ou potenciais clientes via Google Maps (Lisboa e arredores).",
         "input": {
             "searchStringsArray": [
-                "rénovation", "rénovation générale", "maçon", "maçonnerie générale",
-                "entreprise générale", "entreprise BTP",
-                "entreprise construction de maisons individuelles",
+                "rénovation", "remodelação geral", "maçon", "alvenaria geral",
+                "empreiteiro geral", "entreprise BTP",
+                "empresa de construção de moradias",
                 "peintre", "plaquiste", "électricien",
             ],
             "locationQuery": "Nice, France",
@@ -110,9 +110,9 @@ PRESETS = {
         },
     },
     "editais": {
-        "label": "Appels d'offres (BOAMP · dép. 06)",
+        "label": "Concursos públicos (Base.gov · Lisboa)",
         "actor_id": "apify/website-content-crawler",
-        "description": "Avis de marchés publics BOAMP : rénovation / travaux bâtiment, Alpes-Maritimes (06).",
+        "description": "Anúncios de contratos públicos: reabilitação / obras de construção, distrito de Lisboa.",
         "input": {
             "startUrls": [{"url": "https://www.boamp.fr/pages/recherche/?q=r%C3%A9novation%20travaux%20b%C3%A2timent%2006"}],
             "maxCrawlPages": 10,
@@ -120,9 +120,9 @@ PRESETS = {
         },
     },
     "social": {
-        "label": "Veille réseaux sociaux (TikTok)",
+        "label": "Vigilância de redes sociais (TikTok)",
         "actor_id": "clockworks/free-tiktok-scraper",
-        "description": "Veille TikTok fiable : hashtags métiers (#rénovation, #maçonnerie…) ou profils concurrents (ajoutez \"profiles\": [\"pseudo\"]). NB : Instagram et Facebook bloquent le scraping public via Apify ; TikTok fonctionne.",
+        "description": "Vigilância TikTok fiável: hashtags profissionais (#remodelação, #construção…) ou perfis concorrentes (adicione \"profiles\": [\"pseudónimo\"]). NB: o Instagram e o Facebook bloqueiam o scraping público via Apify; o TikTok funciona.",
         "input": {
             "hashtags": ["rénovation", "maçonnerie", "plaquiste", "chantier"],
             "resultsPerPage": 20,

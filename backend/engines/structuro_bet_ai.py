@@ -27,46 +27,19 @@ _MAX_PDF_PAGES = 8
 IMAGE_MIMES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
 
 _SYSTEM = (
-    "Tu es un assistant de CONTRÔLE DE DOSSIER pour un bureau d'études structure (BTP). "
-    "Tu LIS des plans et des notes de calcul en français et tu rapportes UNIQUEMENT ce qui "
-    "est écrit. Interdits absolus : n'invente jamais une cote, une charge, une section, une "
-    "résistance ni une conclusion ; ne recalcule rien ; ne décide jamais quelle valeur est "
-    "correcte. Si quelque chose est illisible ou absent, mets-le dans les incertitudes. "
-    "Réponds STRICTEMENT en JSON valide, sans texte autour."
+    "És um assistente de CONTROLO DE PROCESSOS para um gabinete de projeto de estruturas (construção). LÊS plantas e memórias de cálculo e relatas APENAS o que está escrito. Proibições absolutas: nunca inventes uma cota, uma carga, uma secção, uma resistência nem uma conclusão; não recalcules nada; nunca decidas qual valor está correto. Se algo estiver ilegível ou ausente, põe-no nas incertezas. Responde ESTRITAMENTE em JSON válido, sem texto à volta."
 )
 
 _EXTRACT_PROMPT = (
-    "Lis ce document de dossier BET (toutes les pages/images fournies) et renvoie CE JSON exact :\n"
-    '{"resume":"<2 phrases max, factuel>",'
-    '"indice_detecte":"<indice/révision lu au cartouche, ex: B ou null>",'
-    '"cotes":[{"libelle":"","valeur":"","unite":"","localisation":""}],'
-    '"charges":[{"libelle":"","valeur":"","unite":""}],'
-    '"materiaux":[{"libelle":"","caracteristique":""}],'
-    '"hypotheses":[""],'
-    '"references":[""],'
-    '"incertitudes":[""]}\n'
-    "Chaque valeur doit être littéralement présente. Préserve exactement unités, signes et "
-    "décimales. N'ajoute aucune donnée non écrite. Listes vides si rien trouvé."
+    "Lê este documento do processo de engenharia (todas as páginas/imagens fornecidas) e devolve ESTE JSON exato:\n{\"resume\":\"<2 phrases max, factuel>\",\"indice_detecte\":\"<indice/révision lu au cartouche, ex: B ou null>\",\"cotes\":[{\"libelle\":\"\",\"valeur\":\"\",\"unite\":\"\",\"localisation\":\"\"}],\"charges\":[{\"libelle\":\"\",\"valeur\":\"\",\"unite\":\"\"}],\"materiaux\":[{\"libelle\":\"\",\"caracteristique\":\"\"}],\"hypotheses\":[\"\"],\"references\":[\"\"],\"incertitudes\":[\"\"]}\nCada valor deve estar literalmente presente. Preserva exatamente unidades, sinais e casas decimais. Não acrescentes nenhum dado não escrito. Listas vazias se nada for encontrado. O resumo em português europeu."
 )
 
 _COMPARE_PROMPT = (
-    "Compare le DOCUMENT A (ancienne version) et le DOCUMENT B (nouvelle version) d'un même "
-    "élément de dossier. Renvoie CE JSON exact :\n"
-    '{"ajouts":[""],"suppressions":[""],'
-    '"modifications":[{"sujet":"","avant":"","apres":""}],'
-    '"conflits_a_verifier":[{"sujet":"","detail":""}]}\n'
-    "Compare cotes, charges, matériaux, hypothèses et repères. Ne tranche jamais quelle "
-    "valeur est correcte : signale les conflits. Listes vides si aucune différence.\n\n"
-    "DOCUMENT A:\n{a}\n\nDOCUMENT B:\n{b}"
+    "Compara o DOCUMENTO A (versão antiga) e o DOCUMENTO B (versão nova) de um mesmo elemento do processo. Devolve ESTE JSON exato:\n{\"ajouts\":[\"\"],\"suppressions\":[\"\"],\"modifications\":[{\"sujet\":\"\",\"avant\":\"\",\"apres\":\"\"}],\"conflits_a_verifier\":[{\"sujet\":\"\",\"detail\":\"\"}]}\nCompara cotas, cargas, materiais, hipóteses e marcas. Nunca decidas qual valor está correto: assinala os conflitos. Listas vazias se não houver nenhuma diferença. Textos em português europeu.\n\nDOCUMENT A:\n{a}\n\nDOCUMENT B:\n{b}"
 )
 
 _INCO_PROMPT = (
-    "Voici les faits extraits de plusieurs documents d'UN MÊME dossier BET. Repère les "
-    "INCOHÉRENCES : une même grandeur (cote, charge, matériau, hypothèse) citée différemment "
-    "selon les documents. Renvoie CE JSON exact :\n"
-    '{"incoherences":[{"sujet":"","valeurs":[{"document":"","valeur":""}],"note":""}]}\n'
-    "Ne recalcule rien, ne tranche pas : rapporte seulement les écarts à faire vérifier. "
-    "Liste vide si tout concorde.\n\nDOCUMENTS:\n{docs}"
+    "Eis os factos extraídos de vários documentos de UM MESMO processo de engenharia. Identifica as INCOERÊNCIAS: uma mesma grandeza (cota, carga, material, hipótese) citada de forma diferente consoante os documentos. Devolve ESTE JSON exato:\n{\"incoherences\":[{\"sujet\":\"\",\"valeurs\":[{\"document\":\"\",\"valeur\":\"\"}],\"note\":\"\"}]}\nNão recalcules nada, não decidas: relata apenas as diferenças a verificar. Lista vazia se tudo concordar. Textos em português europeu.\n\nDOCUMENTS:\n{docs}"
 )
 
 
@@ -145,25 +118,25 @@ async def extract_document(data: bytes, mime: str, filename: str) -> dict:
     """Extrait les faits écrits d'un PDF ou d'une image. Jamais d'invention."""
     mime = (mime or "").lower()
     if not os.environ.get("EMERGENT_LLM_KEY"):
-        return _skipped("Clé IA absente.")
+        return _skipped("Chave IA ausente.")
     if not is_analyzable(mime):
-        return _skipped("Format non lisible par l'IA (plan vectoriel DWG/IFC).")
+        return _skipped("Formato ilegível pela IA (planta vetorial DWG/IFC).")
     try:
         from emergentintegrations.llm.chat import UserMessage, ImageContent
         images: list[bytes] = []
         if mime == "application/pdf":
             images = await _run(_pdf_to_images, data)
             if not images:
-                return _skipped("PDF illisible ou vide.")
+                return _skipped("PDF ilegível ou vazio.")
         else:
             if len(data) > _MAX_IMG_BYTES:
-                return _skipped("Image trop volumineuse pour l'analyse (max 10 Mo).")
+                return _skipped("Imagem demasiado volumosa para a análise (máx. 10 MB).")
             images = [data]
         contents = [ImageContent(image_base64=base64.b64encode(im).decode("ascii")) for im in images[:_MAX_PDF_PAGES]]
         resp = await _chat().send_message(UserMessage(text=_EXTRACT_PROMPT, file_contents=contents))
         parsed = _extract_json(resp if isinstance(resp, str) else str(resp))
         if not parsed:
-            return {**_skipped("L'IA n'a pas renvoyé de données exploitables."), "source_engine": "fallback"}
+            return {**_skipped("A IA não devolveu dados utilizáveis."), "source_engine": "fallback"}
         parsed.setdefault("resume", "")
         parsed.setdefault("indice_detecte", None)
         for k in ("cotes", "charges", "materiaux", "hypotheses", "references", "incertitudes"):
@@ -172,7 +145,7 @@ async def extract_document(data: bytes, mime: str, filename: str) -> dict:
         parsed["source_engine"] = "claude"
         return parsed
     except Exception as e:  # noqa: BLE001
-        return {**_skipped(f"Lecture IA indisponible : {str(e)[:120]}"), "source_engine": "error"}
+        return {**_skipped(f'Leitura IA indisponível: {str(e)[:120]}'), "source_engine": "error"}
 
 
 async def _run(fn, *args):
@@ -182,7 +155,7 @@ async def _run(fn, *args):
 
 def _compact(extraction: dict) -> str:
     if not extraction:
-        return "(aucune donnée)"
+        return "(nenhum dado)"
     keep = {k: extraction.get(k) for k in
             ("resume", "indice_detecte", "cotes", "charges", "materiaux", "hypotheses")}
     return json.dumps(keep, ensure_ascii=False)[:6000]
@@ -207,33 +180,20 @@ async def compare_documents(ext_a: dict, ext_b: dict) -> dict:
 
 
 _META_PROMPT = (
-    "Voici les MÉTADONNÉES d'un fichier CAO/BIM (DWG/IFC) traduit par Autodesk : calques, "
-    "catégories/classes d'objets, clés de propriétés et un échantillon d'objets avec leurs "
-    "propriétés. Rapporte UNIQUEMENT les faits présents dans ces métadonnées. Renvoie CE JSON exact :\n"
-    '{"resume":"<2 phrases max, factuel>",'
-    '"indice_detecte":null,'
-    '"cotes":[{"libelle":"","valeur":"","unite":"","localisation":""}],'
-    '"charges":[{"libelle":"","valeur":"","unite":""}],'
-    '"materiaux":[{"libelle":"","caracteristique":""}],'
-    '"hypotheses":[""],'
-    '"references":[""],'
-    '"incertitudes":[""]}\n'
-    "N'invente aucune dimension ni charge absente des métadonnées. Pour un DWG, les entités "
-    "par calque ne sont PAS des éléments identifiés : mets ces limites dans les incertitudes. "
-    "Pour un IFC, exploite les propriétés/quantités présentes (dimensions, matériaux).\n\nMÉTADONNÉES:\n{meta}"
+    "Eis os METADADOS de um ficheiro CAD/BIM (DWG/IFC) traduzido pela Autodesk: camadas, categorias/classes de objetos, chaves de propriedades e uma amostra de objetos com as suas propriedades. Relata APENAS os factos presentes nestes metadados. Devolve ESTE JSON exato:\n{\"resume\":\"<2 phrases max, factuel>\",\"indice_detecte\":null,\"cotes\":[{\"libelle\":\"\",\"valeur\":\"\",\"unite\":\"\",\"localisation\":\"\"}],\"charges\":[{\"libelle\":\"\",\"valeur\":\"\",\"unite\":\"\"}],\"materiaux\":[{\"libelle\":\"\",\"caracteristique\":\"\"}],\"hypotheses\":[\"\"],\"references\":[\"\"],\"incertitudes\":[\"\"]}\nNão inventes nenhuma dimensão nem carga ausente dos metadados. Para um DWG, as entidades por camada NÃO são elementos identificados: põe esses limites nas incertezas. Para um IFC, explora as propriedades/quantidades presentes (dimensões, materiais). Textos em português europeu.\n\nMÉTADONNÉES:\n{meta}"
 )
 
 
 async def extract_from_metadata(meta_summary: str) -> dict:
     """Transforme des métadonnées Autodesk (DWG/IFC) en faits BET, sans invention."""
     if not os.environ.get("EMERGENT_LLM_KEY"):
-        return _skipped("Clé IA absente.")
+        return _skipped("Chave IA ausente.")
     try:
         from emergentintegrations.llm.chat import UserMessage
         resp = await _chat().send_message(UserMessage(text=_META_PROMPT.format(meta=(meta_summary or "")[:12000])))
         parsed = _extract_json(resp if isinstance(resp, str) else str(resp))
         if not parsed:
-            return {**_skipped("Métadonnées non exploitables par l'IA."), "source_engine": "fallback"}
+            return {**_skipped("Metadados não utilizáveis pela IA."), "source_engine": "fallback"}
         parsed.setdefault("resume", "")
         parsed.setdefault("indice_detecte", None)
         for k in ("cotes", "charges", "materiaux", "hypotheses", "references", "incertitudes"):
@@ -242,7 +202,7 @@ async def extract_from_metadata(meta_summary: str) -> dict:
         parsed["source_engine"] = "autodesk"
         return parsed
     except Exception as e:  # noqa: BLE001
-        return {**_skipped(f"Lecture métadonnées indisponible : {str(e)[:120]}"), "source_engine": "error"}
+        return {**_skipped(f'Leitura de metadados indisponível: {str(e)[:120]}'), "source_engine": "error"}
 
 
 async def find_inconsistencies(docs: list[dict]) -> dict:

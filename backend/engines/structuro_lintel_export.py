@@ -98,13 +98,13 @@ def lintel_figure_dim(lint: dict, width: float = 720, height: float = 300) -> Dr
     _hdim(d, opx, opx + a * sc, base - 10, f"a={int(round(a * 1000))}")
     _hdim(d, opx + (a + L) * sc, opx + (2 * a + L) * sc, base - 10, f"a={int(round(a * 1000))}")
     _vdim(d, base, lint_y, x0 - 14, f"H={int(round(op_h / sc * 1000))}≈")
-    d.add(String(ox + 50, height - 16, "ÉLÉVATION (schéma coté, mm)", fontSize=8, fillColor=_DK))
+    d.add(String(ox + 50, height - 16, "ALÇADO (esquema cotado, mm)", fontSize=8, fillColor=_DK))
 
     # ---- coupe (moitié droite) ----
     sx = width * 0.62
     scx = sx + (width - sx) / 2.0
     sbase = 90.0
-    d.add(String(sx + 10, height - 16, "COUPE (schéma coté, mm)", fontSize=8, fillColor=_DK))
+    d.add(String(sx + 10, height - 16, "CORTE (esquema cotado, mm)", fontSize=8, fillColor=_DK))
     mat = geom.get("recommended")
     steel, rc = geom.get("steel"), geom.get("rc")
     if mat == "steel" and steel and steel.get("status") == "ok":
@@ -148,7 +148,7 @@ def lintel_figure_dim(lint: dict, width: float = 720, height: float = 300) -> Dr
             d.add(String(scx, sbase - 26, f"ancrage {int(det.get('straight_mm', 0))} mm · crochet {int(det.get('hook_mm', 0))} mm",
                          fontSize=7, fillColor=_MUT, textAnchor="middle"))
     else:
-        d.add(String(scx, sbase + 40, "Section non résolue", fontSize=8, fillColor=_MUT, textAnchor="middle"))
+        d.add(String(scx, sbase + 40, "Secção não resolvida", fontSize=8, fillColor=_MUT, textAnchor="middle"))
     return d
 
 
@@ -164,44 +164,35 @@ def build_lintel_pdf(lint: dict, name: str, revision: int) -> bytes:
     reco = lint.get("recommendation") or {}
     br = lint.get("bearing") or {}
     story = [Paragraph("ConstruPilot | Plan coté de linteau (reprise d'ouverture)", ss["Title"]),
-             p(f"{name} · révision {revision} · moteur {lint.get('version', '')}"),
-             Paragraph("PLAN NON EXÉCUTOIRE — SCHÉMA COTÉ INDICATIF — À VISER PAR L'INGÉNIEUR / BUREAU DE CONTRÔLE", ss["Heading2"]),
-             p(f"Portée libre L = {lint.get('clear_span_m')} m · modèle de charge « {lint.get('load_model')} » · "
-               f"M_Ed {act.get('m_ed_knm')} kN·m · V_Ed {act.get('v_ed_kn')} kN · {act.get('combination', '')}"),
+             p(f"{name} · revisão {revision} · moteur {lint.get('version', '')}"),
+             Paragraph("PLANTA NÃO EXECUTÓRIA — ESQUEMA COTADO INDICATIVO — A VISAR PELO ENGENHEIRO / ENTIDADE DE CONTROLO", ss["Heading2"]),
+             p(f"Vão livre L = {lint.get('clear_span_m')} m · modelo de carga «{lint.get('load_model')} » · M_Ed {act.get('m_ed_knm')} kN·m · V_Ed {act.get('v_ed_kn')} kN · {act.get('combination', '')}"),
              Spacer(1, 6), lintel_figure_dim(lint, width=760, height=300), Spacer(1, 8)]
     if reco:
-        story.append(p(f"Solution retenue (la plus économique) : "
-                       f"{'Acier EN 1993' if reco.get('material') == 'steel' else 'Béton armé EN 1992'} — "
-                       f"{reco.get('label')} ({reco.get('cost_eur')} €)."))
+        story.append(p(f"Solução adotada (a mais económica): {('Aço NP EN 1993' if reco.get('material') == 'steel' else 'Betão armado NP EN 1992')} — {reco.get('label')} ({reco.get('cost_eur')} €)."))
     if st.get("status") == "ok":
-        line = (f"Acier : {st.get('label')} ({st.get('grade')}) · M_Rd {st.get('mrd_knm')} kN·m · "
-                f"V_Rd {st.get('vrd_kn')} kN · flèche {st.get('defl_char_mm')}/{st.get('defl_char_limit_mm')} mm.")
+        line = (f"Aço: {st.get('label')} ({st.get('grade')}) · M_Rd {st.get('mrd_knm')} kN·m · V_Rd {st.get('vrd_kn')} kN · flecha {st.get('defl_char_mm')}/{st.get('defl_char_limit_mm')} mm.")
         if st.get("ltb"):
             lt = st["ltb"]
-            line += (f" Déversement vérifié : Mcr {lt.get('mcr_knm')} kN·m · λ̄LT {lt.get('lambda_lt')} · "
-                     f"χLT {lt.get('chi_lt')} · Mb,Rd {lt.get('mb_rd_knm')} kN·m (courbe {lt.get('curve')}, C1={lt.get('c1')}).")
+            line += (f" Encurvadura lateral verificada: Mcr {lt.get('mcr_knm')} kN·m · λ̄LT {lt.get('lambda_lt')} · χLT {lt.get('chi_lt')} · Mb,Rd {lt.get('mb_rd_knm')} kN·m (curva {lt.get('curve')}, C1={lt.get('c1')}).")
         else:
-            line += " Déversement non vérifié (maintien latéral supposé, χLT=1)."
+            line += " Encurvadura lateral não verificada (travamento lateral assumido, χLT=1)."
         bp = st.get("bearing_plate")
         if bp:
-            line += f" Platine {bp.get('length_mm')}×{bp.get('width_mm')}×{bp.get('thickness_mm')} mm."
+            line += f" Platina {bp.get('length_mm')}×{bp.get('width_mm')}×{bp.get('thickness_mm')} mm."
         story.append(p(line))
     if rc.get("status") == "ok":
         det = (rc.get("detailing") or {}).get("anchorage") or {}
-        story.append(p(f"Béton armé : {rc.get('label')} · As {rc.get('as_required_cm2')} cm² · "
-                       f"Asw/s {rc.get('asw_required_cm2_m')} cm²/m · ancrage {det.get('straight_mm', '—')} mm "
-                       f"(crochet {det.get('hook_mm', '—')} mm, Ø{rc.get('bar_mm')})."))
-    story.append(p(f"Appui sur maçonnerie : réaction ELU {br.get('reaction_kn')} kN · pression {br.get('sigma_kpa')} "
-                   f"≤ {br.get('allow_kpa')} kPa → {'OK' if br.get('status') == 'ok' else 'À REVOIR'} · "
-                   f"about adopté {br.get('adopted_length_m')} m (requis ≥ {br.get('required_length_m')} m)."))
+        story.append(p(f"Betão armado: {rc.get('label')} · As {rc.get('as_required_cm2')} cm² · Asw/s {rc.get('asw_required_cm2_m')} cm²/m · amarração {det.get('straight_mm', '—')} mm (crochet {det.get('hook_mm', '—')} mm, Ø{rc.get('bar_mm')})."))
+    story.append(p(f"Apoio na alvenaria: reação ELU {br.get('reaction_kn')} kN · pression {br.get('sigma_kpa')} ≤ {br.get('allow_kpa')} kPa → {('OK' if br.get('status') == 'ok' else 'A REVER')} · entrega adotada {br.get('adopted_length_m')} m (necessária ≥ {br.get('required_length_m')} m)."))
     story += [Spacer(1, 6), p(lint.get("note", ""))]
 
     def footer(canvas, docu):
         canvas.saveState()
         canvas.setFont("Helvetica-Bold", 8)
         canvas.setFillColor(colors.HexColor("#9d3e26"))
-        canvas.drawString(35, 20, "PLAN DE LINTEAU NON EXÉCUTOIRE - SCHÉMA COTÉ INDICATIF - À VÉRIFIER PAR L'INGÉNIEUR")
-        canvas.drawRightString(806, 20, f"Rév. {revision} | {docu.page}")
+        canvas.drawString(35, 20, "PLANTA DE PADIEIRA NÃO EXECUTÓRIA - ESQUEMA COTADO INDICATIVO - A VERIFICAR PELO ENGENHEIRO")
+        canvas.drawRightString(806, 20, f'Rev. {revision} | {docu.page}')
         canvas.restoreState()
 
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
@@ -237,8 +228,8 @@ def build_lintel_dxf(lint: dict, name: str = "linteau") -> bytes:
     doc = ezdxf.new("R2010", setup=True)
     doc.units = ezdxf.units.MM
     msp = doc.modelspace()
-    for lyr, col in (("MACONNERIE", 8), ("OUVERTURE", 5), ("LINTEAU", 1), ("ACIER", 1),
-                     ("ARMATURES", 1), ("COTES", 3), ("TEXTE", 7)):
+    for lyr, col in (("MACONNERIE", 8), ("ABERTURA", 5), ("PADIEIRA", 1), ("AÇO", 1),
+                     ("ARMADURAS", 1), ("COTES", 3), ("TEXTO", 7)):
         if lyr not in doc.layers:
             doc.layers.add(lyr, color=col)
 
@@ -257,10 +248,10 @@ def build_lintel_dxf(lint: dict, name: str = "linteau") -> bytes:
     xr = x0 + pier + L + 2 * a
     _hatch_dxf(msp, xr, base, pier, op_h, "MACONNERIE")
     opx = x0 + pier
-    _rect(msp, opx, base, L + 2 * a, op_h, "OUVERTURE")
-    _rect(msp, opx, base + op_h, L + 2 * a, 200.0, "LINTEAU")
-    msp.add_text(f"LINTEAU — {geom.get('recommended', '').upper() or 'À DÉFINIR'}",
-                 dxfattribs={"layer": "TEXTE", "height": 120}).set_placement((opx + 60, base + op_h + 260))
+    _rect(msp, opx, base, L + 2 * a, op_h, "ABERTURA")
+    _rect(msp, opx, base + op_h, L + 2 * a, 200.0, "PADIEIRA")
+    msp.add_text(f"PADIEIRA — {geom.get('recommended', '').upper() or 'A DEFINIR'}",
+                 dxfattribs={"layer": "TEXTO", "height": 120}).set_placement((opx + 60, base + op_h + 260))
     dim((opx + a, base), (opx + a + L, base), 350)              # portée L
     dim((opx, base), (opx + a, base), 650)                      # about gauche
     dim((opx + a + L, base), (opx + 2 * a + L, base), 650)      # about droite
@@ -270,7 +261,7 @@ def build_lintel_dxf(lint: dict, name: str = "linteau") -> bytes:
     sx = xr + pier + 1200.0
     mat = geom.get("recommended")
     steel, rc = geom.get("steel"), geom.get("rc")
-    msp.add_text("COUPE", dxfattribs={"layer": "TEXTE", "height": 120}).set_placement((sx, op_h + 100))
+    msp.add_text("COUPE", dxfattribs={"layer": "TEXTO", "height": 120}).set_placement((sx, op_h + 100))
     if mat == "steel" and steel and steel.get("status") == "ok":
         from engines import structuro_profiles as profiles
         pd = profiles.PROFILE_DATA.get(steel.get("profile"), {})
@@ -279,26 +270,26 @@ def build_lintel_dxf(lint: dict, name: str = "linteau") -> bytes:
         n = int(steel.get("count", 1))
         for i in range(n):
             bx = sx + i * (bmm + 150)
-            _rect(msp, bx, 0, bmm, tf, "ACIER")                        # semelle inf
-            _rect(msp, bx, hmm - tf, bmm, tf, "ACIER")                 # semelle sup
-            _rect(msp, bx + bmm / 2 - tw / 2, tf, tw, hmm - 2 * tf, "ACIER")  # âme
+            _rect(msp, bx, 0, bmm, tf, "AÇO")                        # semelle inf
+            _rect(msp, bx, hmm - tf, bmm, tf, "AÇO")                 # semelle sup
+            _rect(msp, bx + bmm / 2 - tw / 2, tf, tw, hmm - 2 * tf, "AÇO")  # âme
         dim((sx, 0), (sx, hmm), 350, vertical=True)
         dim((sx, 0), (sx + bmm, 0), 350)
-        msp.add_text(steel.get("label", ""), dxfattribs={"layer": "TEXTE", "height": 90}).set_placement((sx, -500))
+        msp.add_text(steel.get("label", ""), dxfattribs={"layer": "TEXTO", "height": 90}).set_placement((sx, -500))
     elif rc and rc.get("status") == "ok":
         b, hmm = float(rc.get("b_mm", 200)), float(rc.get("h_mm", 300))
         cover = 40.0
-        _rect(msp, sx, 0, b, hmm, "ACIER")
-        _rect(msp, sx + cover, 0 + cover, b - 2 * cover, hmm - 2 * cover, "ARMATURES")  # cadre
+        _rect(msp, sx, 0, b, hmm, "AÇO")
+        _rect(msp, sx + cover, 0 + cover, b - 2 * cover, hmm - 2 * cover, "ARMADURAS")  # cadre
         for k in range(3):
             cxk = sx + cover + 20 + k * (b - 2 * cover - 40) / 2.0
-            msp.add_circle((cxk, cover + 30), float(rc.get("bar_mm", 12)) / 2.0, dxfattribs={"layer": "ARMATURES"})
+            msp.add_circle((cxk, cover + 30), float(rc.get("bar_mm", 12)) / 2.0, dxfattribs={"layer": "ARMADURAS"})
         dim((sx, 0), (sx, hmm), 350, vertical=True)
         dim((sx, 0), (sx + b, 0), 350)
-        msp.add_text(rc.get("label", ""), dxfattribs={"layer": "TEXTE", "height": 90}).set_placement((sx, -500))
+        msp.add_text(rc.get("label", ""), dxfattribs={"layer": "TEXTO", "height": 90}).set_placement((sx, -500))
 
-    msp.add_text(f"{name} — Rev. — NON EXECUTOIRE, A VERIFIER PAR L'INGENIEUR",
-                 dxfattribs={"layer": "TEXTE", "height": 110}).set_placement((0, -900))
+    msp.add_text(f'{name} — Rev. — NÃO EXECUTÓRIO, A VERIFICAR PELO ENGENHEIRO',
+                 dxfattribs={"layer": "TEXTO", "height": 110}).set_placement((0, -900))
 
     stream = io.StringIO()
     doc.write(stream)

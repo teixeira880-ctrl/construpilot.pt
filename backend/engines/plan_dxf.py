@@ -77,7 +77,7 @@ def _render_preview_hq(doc, bounds):
     Frontend(RenderContext(doc), backend, config=config).draw_layout(doc.modelspace())
     render_box = backend.player().bbox()
     if not render_box.has_data:
-        raise ValueError("Le DXF ne contient aucun objet visible exploitable")
+        raise ValueError("O DXF não contém nenhum objeto visível utilizável")
     if bounds and render_box.has_data:
         from ezdxf.math import BoundingBox2d
         focus = BoundingBox2d([(bounds[0], bounds[1]), (bounds[2], bounds[3])])
@@ -348,7 +348,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
             doc,auditor=recover_readfile(path)
             diagnostics.append({"code":"DXF_RECOVERED","fixes":len(auditor.fixes),"errors":len(auditor.errors)})
     except Exception as exc:
-        raise ValueError(f"DXF invalide ({type(exc).__name__})") from None
+        raise ValueError(f'DXF inválido ({type(exc).__name__})') from None
     finally: os.unlink(path)
     units=resolve_units(doc,unit_override)
     unit_to_m=units["unit_to_m"]
@@ -368,12 +368,12 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
             text=entity.plain_text() if kind=="MTEXT" else str(entity.dxf.get("text", ""))
             x,y=to_px(pos.x,pos.y)
             text_blocks.append({"text":text,"x":x,"y":y,"w":0,"h":0,"layer":entity.dxf.layer})
-    if len(vectors)>1500000:raise ValueError("Trop de primitives CAO : isoler une zone du plan")
+    if len(vectors)>1500000:raise ValueError("Demasiadas primitivas CAD: isolar uma zona da planta")
     dims=_extract_dimensions(doc.modelspace(),to_px,unit_to_m,diagnostics)
     if len(vectors)>150000:
         # Plan dense (BET) : cotes natives et inventaire conservés, analyse automatique des murs non tentée (pas de classification hasardeuse).
         from engines.plan_walls import INCOMPLETE_MSG
-        walls={"walls":[],"validation":{"complete":False,"failed_checks":[f"plan dense ({len(vectors)} primitives) : analyse des murs non tentée"],"message":INCOMPLETE_MSG}}
+        walls={"walls":[],"validation":{"complete":False,"failed_checks":[f'plan dense ({len(vectors)} primitivas): análise das paredes não tentada'],"message":INCOMPLETE_MSG}}
     else:
         walls=analyze_walls(vectors,[{**d,"index":i+1} for i,d in enumerate(dims)],text_blocks,ratio/unit_to_m,1,
                             page_size_px=(mapping["width"],mapping["height"]))
@@ -381,7 +381,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
     cad["units"]=units
     if diagnostics:
         walls["validation"]["complete"]=False
-        walls["validation"]["failed_checks"].append("import CAO avec réserves : consulter les diagnostics")
+        walls["validation"]["failed_checks"].append("importação CAD com reservas: consultar os diagnósticos")
         from engines.plan_walls import INCOMPLETE_MSG
         walls["validation"]["message"]=INCOMPLETE_MSG
     from engines.dxf_takeoff import extract_structural_metre
@@ -424,7 +424,5 @@ def process_dwg(data: bytes, filename: str = "plan.dwg") -> dict:
     Retourne une erreur explicite avec instructions utilisateur.
     """
     raise ValueError(
-        "Format DWG non supporté nativement — convertissez d'abord en DXF "
-        "avec AutoCAD (Enregistrer sous → DXF), LibreCAD, ou un convertisseur en ligne "
-        "(ex: https://cloudconvert.com/dwg-to-dxf), puis réimportez le fichier."
+        "Formato DWG não suportado nativamente — converta primeiro em DXF com o AutoCAD (Guardar como → DXF), o LibreCAD ou um conversor online (ex.: https://cloudconvert.com/dwg-to-dxf) e volte a importar o ficheiro."
     )

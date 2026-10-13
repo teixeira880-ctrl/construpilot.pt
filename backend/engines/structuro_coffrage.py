@@ -80,7 +80,7 @@ class Sheet:
         c.setFillColor(WARN)
         c.setFont("Helvetica-Bold", 8)
         c.drawCentredString(PAGE_W / 2, by + 4,
-                            "PRÉ-DIMENSIONNEMENT AUTO-PILOTE — NON EXÉCUTOIRE — À VÉRIFIER PAR L'INGÉNIEUR / BUREAU DE CONTRÔLE")
+                            "PRÉ-DIMENSIONAMENTO PILOTO AUTOMÁTICO — NÃO EXECUTÓRIO — A VERIFICAR PELO ENGENHEIRO / FISCALIZAÇÃO")
         # cartouche bas
         self._cartouche(code, feuille, echelle)
         # zones utiles
@@ -108,29 +108,29 @@ class Sheet:
         c.drawString(xA + 10, y - 42, ctx.get("sub2", ""))
         c.setFillColor(WARN)
         c.setFont("Helvetica", 7.5)
-        c.drawString(xB + 10, y - 16, "Aucune validation BET / géotechnique / visa EXE")
+        c.drawString(xB + 10, y - 16, "Nenhuma validação de gabinete de projeto / geotecnia / visto de execução")
         c.setFillColor(MUT)
         c.setFont("Helvetica", 7.5)
         c.drawString(xB + 10, y - 30, ctx.get("date", ""))
-        c.drawString(xB + 10, y - 42, f"Indice {ctx.get('rev', 1)} | Auto-pilote ConstruPilot")
+        c.drawString(xB + 10, y - 42, f"Índice {ctx.get('rev', 1)} | Auto-pilote ConstruPilot")
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 8)
-        c.drawString(xC + 10, y - 16, f"A3 paysage | Échelle {echelle}")
+        c.drawString(xC + 10, y - 16, f'A3 horizontal | Escala {echelle}')
         c.setFont("Helvetica", 7.5)
         c.setFillColor(MUT)
-        c.drawString(xC + 10, y - 30, "Cotes en m ; sections en cm ; aciers en mm")
-        c.drawString(xC + 10, y - 42, "Imprimer à 100 % - ne pas mesurer sur écran")
+        c.drawString(xC + 10, y - 30, "Cotas em m ; secções em cm ; aços em mm")
+        c.drawString(xC + 10, y - 42, "Imprimir a 100 % - não medir no ecrã")
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 7.5)
         c.drawCentredString((xD + PAGE_W - PAD) / 2, y - 16, "CONCEPTION")
         c.setFillColor(WARN)
-        c.drawCentredString((xD + PAGE_W - PAD) / 2, y - 28, "NON VALIDÉE")
+        c.drawCentredString((xD + PAGE_W - PAD) / 2, y - 28, "NÃO VALIDADA")
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 20)
         c.drawCentredString((xD + PAGE_W - PAD) / 2, y - 55, code)
         c.setFont("Helvetica", 7)
         c.setFillColor(MUT)
-        c.drawCentredString((xD + PAGE_W - PAD) / 2, PAD + 8, f"Feuille {feuille}")
+        c.drawCentredString((xD + PAGE_W - PAD) / 2, PAD + 8, f'Folha {feuille}')
 
     # ---- notes column ----
     def notes(self, blocks):
@@ -320,8 +320,8 @@ def _scale_bar(c, s):
 
 # ----------------------------------------------------------------- plan de coffrage ----
 def _coffrage_sheet(c, ctx, level, els, marks, code, feuille, foundation=False):
-    title = ("Plan de fondations" if foundation else "Plan de coffrage") + f" — {level}"
-    sub = "Dessin vectoriel coté / repères communs aux feuilles de ferraillage"
+    title = ("Planta de fundações" if foundation else "Planta de cofragem") + f" — {level}"
+    sub = "Desenho vetorial cotado / marcas comuns às folhas de armaduras"
     sh = Sheet(c, ctx, title, sub, code, feuille, "1:50")
     s = _mk_scale(els, sh.area)
     if not s:
@@ -406,18 +406,18 @@ def _coffrage_sheet(c, ctx, level, els, marks, code, feuille, foundation=False):
     # notes
     nb = []
     reps = sorted({marks.get(e["id"]) for e in els if marks.get(e["id"])})
-    nb.append(("Repères", ", ".join(reps) if reps else "—"))
+    nb.append(("Marcas", ", ".join(reps) if reps else "—"))
     kinds = {e["kind"] for e in els}
     if "wall" in kinds:
-        nb.append(("Voiles / murs porteurs", f"Épaisseur {int(round((next(e for e in els if e['kind']=='wall').get('width_m') or 0.2)*100))} cm. Chaînages et linteaux à détailler par l'ingénieur."))
+        nb.append(("Paredes resistentes", f"Espessura {int(round((next((e for e in els if e['kind'] == 'wall')).get('width_m') or 0.2) * 100))} cm. Lintéis e padieiras a detalhar pelo engenheiro."))
     if "column" in kinds:
-        nb.append(("Poteaux", "Sections carrées sur files ; voir feuille de ferraillage F-POT."))
+        nb.append(("Pilares", "Secções quadradas nos alinhamentos; ver folha de armaduras F-POT."))
     if "beam" in kinds:
-        nb.append(("Poutres", "Retombées sous dalle ; ferraillage feuille F-PTR."))
+        nb.append(("Vigas", "Alturas abaixo da laje; armaduras na folha F-PTR."))
     if foundation:
-        nb.append(("Fondations", "Semelles dimensionnées sur la contrainte admissible G2 (voir note de calcul)."))
-    nb.append(("Dalle", f"Épaisseur {int(round((slabs[0].get('height_m') or 0.2)*100)) if slabs else '—'} cm ; nappes sur feuille de ferraillage dalles."))
-    nb.append(("Statut", "Pré-dimensionnement automatique. Cotes lues/estimées à vérifier sur plan d'architecte."))
+        nb.append(("Fondations", "Sapatas dimensionadas com base na tensão admissível do estudo geotécnico (ver memória de cálculo)."))
+    nb.append(("Laje", f"Espessura {(int(round((slabs[0].get('height_m') or 0.2) * 100)) if slabs else '—')} cm ; malhas na folha de armaduras de lajes."))
+    nb.append(("Estado", "Pré-dimensionamento automático. Cotas lidas/estimadas a verificar na planta de arquitetura."))
     sh.notes(nb)
 
 
@@ -479,14 +479,14 @@ def _stirrup_elevation(c, x, y, w, h, zones, caption):
 
 
 def _ferr_semelles_sheet(c, ctx, footings, code, feuille):
-    sh = Sheet(c, ctx, "Semelles — ferraillage et coupes types",
-               "Coupes BA, aciers filants et chaînage — longueurs à l'axe", code, feuille, "1:20")
+    sh = Sheet(c, ctx, "Sapatas — armaduras e cortes tipo",
+               "Cortes BA, aços contínuos e lintel — comprimentos ao eixo", code, feuille, "1:20")
     x0, y0, x1, y1 = sh.area
     reps = {}
     if footings and not any(f.get("dim_m") for f in footings):
         # Sol non confirmé : aucune semelle dimensionnée → aucune coupe inventée.
         c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 10)
-        c.drawString(x0 + 10, y1 - 20, "Fondations non dimensionnées : contrainte de sol G2 à confirmer.")
+        c.drawString(x0 + 10, y1 - 20, "Fundações não dimensionadas: tensão de solo (estudo geotécnico) a confirmar.")
         return
     for f in footings:
         if not f.get("dim_m"):
@@ -503,25 +503,25 @@ def _ferr_semelles_sheet(c, ctx, footings, code, feuille):
         cx = bx + i * 320
         cy = y1 - 120
         c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
-        c.drawString(cx, y1 - 20, f"{'SF (filante)' if typ=='filante' else 'S (isolée)'} — {f.get('id','')}")
+        c.drawString(cx, y1 - 20, f"{('SF (contínua)' if typ == 'filante' else 'S (isolada)')} — {f.get('id', '')}")
         sect = f"{dim:.2f} × 0.40 m" if typ == 'filante' else f"{dim:.2f} × {dim:.2f} × 0.40 m"
         _rebar_section(c, cx, cy, w, h, n, 3, f"S0{i+1}", sect, annots=[
             ("Nappe inf. HA12 e150", REBAR),
-            ("Chaînage 2 HA12", STIR),
-            ("Enrobage c = 50 mm", MUT),
+            ("Lintel 2 Ø12", STIR),
+            ("Recobrimento c = 50 mm", MUT),
             (f"N_ELU = {f.get('n_elu_kn','—')} kN", INK),
         ])
     sh.notes([
-        ("Aciers", "Nappe inférieure croisée HA12 e150 (semelle isolée) ou filants HA12 + chaînage (filante). Aciers de peau et attentes de poteaux/murs à ajouter."),
-        ("Enrobage", "c,nom = 50 mm (classe XC2, fissuration). À confirmer selon exposition et béton de propreté."),
-        ("Ancrages", "Longueurs d'ancrage lbd : voir feuille des ancrages/recouvrements."),
-        ("Limites", "Portance, tassement, poinçonnement et moment de la semelle à valider par l'ingénieur à partir de la G2 réelle."),
+        ("Aços", "Malha inferior cruzada Ø12 a cada 150 (sapata isolada) ou varões contínuos Ø12 + lintel (contínua). Armaduras de pele e esperas de pilares/paredes a acrescentar."),
+        ("Recobrimento", "c,nom = 50 mm (classe XC2, fendilhação). A confirmar segundo a exposição e o betão de limpeza (NP EN 206 / LNEC E 464)."),
+        ("Amarrações", "Comprimentos de amarração lbd: ver folha das amarrações/emendas."),
+        ("Limites", "Capacidade resistente, assentamento, punçoamento e momento da sapata a validar pelo engenheiro a partir do estudo geotécnico real."),
     ])
 
 
 def _ferr_lineaires_sheet(c, ctx, columns, walls, code, feuille):
-    sh = Sheet(c, ctx, "Poteaux & voiles — ferraillage",
-               "Coupes BA et zones de cadres — familles gouvernantes par niveau", code, feuille, "1:10 / 1:25")
+    sh = Sheet(c, ctx, "Pilares e paredes resistentes — armaduras",
+               "Cortes BA e zonas de estribos — famílias condicionantes por piso", code, feuille, "1:10 / 1:25")
     x0, y0, x1, y1 = sh.area
     gc = max(columns, key=lambda z: z.get("n_ed_kn", 0)) if columns else None
     gw = max(walls, key=lambda z: z.get("n_ed_kn", 0)) if walls else None
@@ -536,8 +536,8 @@ def _ferr_lineaires_sheet(c, ctx, columns, walls, code, feuille):
         _rebar_section(c, x0 + 10, y1 - 130, 90, 90, nb, nb, "POT",
                        f"{int(round(gc['b_m']*100))}×{int(round(gc['h_m']*100))} cm", annots=[
                            (f"{gc.get('long_bars','')}", REBAR),
-                           (f"Cadres {gc.get('ties','')}", STIR),
-                           ("Enrobage c = 30 mm", MUT),
+                           (f"Estribos {gc.get('ties', '')}", STIR),
+                           ("Recobrimento c = 30 mm", MUT),
                        ])
     if gw:
         c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 10)
@@ -553,25 +553,25 @@ def _ferr_lineaires_sheet(c, ctx, columns, walls, code, feuille):
         c.drawString(x0 + 10, y1 - 228, f"Vert. {gw.get('as_vert_cm2')} cm² + horiz. {gw.get('as_horiz_cm2')} cm² (2 faces)")
     # table all levels
     c.setFillColor(INK); c.setFont("Helvetica-Bold", 8.5)
-    c.drawString(x0 + 10, y0 + 170, "Familles par niveau")
-    rows = [["Niveau", "Élément", "Section", "N_Ed (kN)", "Aciers / statut"]]
+    c.drawString(x0 + 10, y0 + 170, "Famílias por piso")
+    rows = [["Piso", "Elemento", "Secção", "N_Ed (kN)", "Aços / estado"]]
     for cc in columns:
         rows.append([cc.get("level"), f"POT {cc.get('id','')}", f"{int(round(cc['b_m']*100))}×{int(round(cc['h_m']*100))}",
-                     cc.get("n_ed_kn"), f"{cc.get('long_bars')} / {'OK' if cc.get('status')=='ok' else 'à revoir'}"])
+                     cc.get("n_ed_kn"), f"{cc.get('long_bars')} / {('OK' if cc.get('status') == 'ok' else 'a rever')}"])
     for ww in walls:
         rows.append([ww.get("level"), f"VOI {ww.get('id','')}", f"ép.{int(round(ww['thickness_m']*100))}×{ww.get('length_m')}",
                      ww.get("n_ed_kn"), f"V {ww.get('as_vert_cm2')} / H {ww.get('as_horiz_cm2')} cm²"])
     _grid_table(c, x0 + 10, y0 + 162, rows, [70, 95, 90, 70, 180])
     sh.notes([
-        ("Poteaux", "Aciers longitudinaux As,min = max(0,10·N/fyd ; 0,002·Ac), cadres Ø≥6 espacés ≤ min(20Ølong ; côté ; 400). Flambement et moments N-M non vérifiés."),
-        ("Voiles", "Aciers minimaux §9.6, répartis deux faces. Chaînages de rive et linteaux au-dessus des baies à détailler."),
-        ("Nœuds", "Recouvrements, attentes et continuités à concevoir (voir feuille des ancrages)."),
+        ("Pilares", "Aços longitudinais As,min = max(0,10·N/fyd ; 0,002·Ac), estribos Ø≥6 espaçados ≤ min(20Ølong ; lado ; 400). Encurvadura e momentos N-M não verificados."),
+        ("Paredes", "Aços mínimos §9.6, distribuídos nas duas faces. Lintéis de bordo e padieiras sobre os vãos a detalhar."),
+        ("Nós", "Emendas, esperas e continuidades a conceber (ver folha das amarrações)."),
     ])
 
 
 def _ferr_poutres_sheet(c, ctx, beams, code, feuille):
-    sh = Sheet(c, ctx, "Poutres — ferraillage",
-               "Coupe BA + élévation des zones de cadres — poutre gouvernante par niveau", code, feuille, "1:10 / 1:25")
+    sh = Sheet(c, ctx, "Vigas — armaduras",
+               "Corte BA + alçado das zonas de estribos — viga condicionante por piso", code, feuille, "1:10 / 1:25")
     x0, y0, x1, y1 = sh.area
     gb = max(beams, key=lambda z: z.get("as_req_cm2", 0)) if beams else None
     if gb:
@@ -582,21 +582,21 @@ def _ferr_poutres_sheet(c, ctx, beams, code, feuille):
                        f"{int(round(gb['b_m']*100))}×{int(round(gb['h_m']*100))} cm", annots=[
                            (f"{min(n_bot,6)} HA16 inf.", REBAR),
                            ("2 HA12 sup.", STIR),
-                           ("Cadres Ø8", MUT),
+                           ("Estribos Ø8", MUT),
                        ])
         span = 4.0
         zones = [(span * 0.25, 0.10), (span * 0.5, 0.15), (span * 0.25, 0.10)]
         _stirrup_elevation(c, x0 + 160, y1 - 110, 420, 56, zones,
-                           f"Élévation d'armature — cadres Ø8, As,w/s ≈ {gb.get('asw_s_req_cm2_m','—')} cm²/m")
-    rows = [["Niveau", "Poutre", "b×h (cm)", "M_Ed (kN·m)", "V_Ed (kN)", "As req (cm²)", "Asw/s (cm²/m)"]]
+                           f"Alçado de armadura — estribos Ø8, As,w/s ≈ {gb.get('asw_s_req_cm2_m', '—')} cm²/m")
+    rows = [["Piso", "Poutre", "b×h (cm)", "M_Ed (kN·m)", "V_Ed (kN)", "As req (cm²)", "Asw/s (cm²/m)"]]
     for b in beams:
         rows.append([b.get("level"), f"PTR {b.get('id','')}", f"{int(round(b['b_m']*100))}×{int(round(b['h_m']*100))}",
                      b.get("med_knm"), b.get("ved_kn"), b.get("as_req_cm2"), b.get("asw_s_req_cm2_m")])
     _grid_table(c, x0 + 10, y0 + 190, rows, [60, 80, 70, 85, 70, 80, 90])
     sh.notes([
-        ("Flexion", "As calculé en section rectangulaire simple (EN 1992-1-1 §6.1). Aciers supérieurs sur appuis forfaitaires."),
-        ("Effort tranchant", "Cadres verticaux (treillis, cot θ=2,5). Densifiés aux appuis."),
-        ("Non vérifié", "Torsion, continuité, redistribution et flèche à valider par l'ingénieur."),
+        ("Flexão", "As calculado em secção retangular simples (NP EN 1992-1-1 §6.1). Aços superiores nos apoios por valor fixo."),
+        ("Esforço transverso", "Estribos verticais (treliça, cot θ=2,5). Densificados nos apoios."),
+        ("Não verificado", "Torção, continuidade, redistribuição e flecha a validar pelo engenheiro."),
     ])
 
 
@@ -605,8 +605,8 @@ def _dalle_sheet(c, ctx, level, els, code, feuille):
     slabs = [e for e in els if e.get("kind") == "slab"]
     if not slabs:
         return False
-    sh = Sheet(c, ctx, f"Dalle {level} — nappes et repérage",
-               "Nappe inférieure X/Y et chapeaux de rive (disposition d'exemple)", code, feuille, "1:50")
+    sh = Sheet(c, ctx, f'Laje {level} — malhas e marcação',
+               "Malha inferior X/Y e armaduras superiores de bordo (disposição de exemplo)", code, feuille, "1:50")
     s = _mk_scale(slabs, sh.area)
     sx = min(e["x_m"] for e in slabs); sy = min(e["y_m"] for e in slabs)
     ex = max(e["x_m"] + e["length_m"] for e in slabs); ey = max(e["y_m"] + e["width_m"] for e in slabs)
@@ -633,10 +633,10 @@ def _dalle_sheet(c, ctx, level, els, code, feuille):
     _dim_chain(c, s, [sy, ey], vertical=True)
     _scale_bar(c, s)
     sh.notes([
-        ("Section courante", f"Dalle pleine {th} cm ; nappe inférieure croisée HA12/HA10. Section comparée au calcul de descente de charges."),
-        ("Chapeaux", "Chapeaux de rive HA12 e150 sur bandes ~1,5 m (disposition d'exemple, hors calcul de moments d'appui)."),
-        ("Trémies", "Renforts au pourtour des trémies à ajouter par l'ingénieur."),
-        ("Enrobage", "c = 20 mm (intérieur). Recouvrements et arrêts de barres à détailler."),
+        ("Section courante", f'Laje maciça {th} cm ; malha inferior cruzada Ø12/Ø10. Secção comparada com o cálculo da descida de cargas.'),
+        ("Chapeaux", "Armaduras superiores de bordo Ø12 a cada 150 em faixas de ~1,5 m (disposição de exemplo, fora do cálculo de momentos de apoio)."),
+        ("Aberturas", "Reforços em volta das aberturas a acrescentar pelo engenheiro."),
+        ("Recobrimento", "c = 20 mm (interior). Emendas e interrupções de varões a detalhar."),
     ])
     return True
 
@@ -647,7 +647,7 @@ def _lbd_table(fck=25, fyk=500, eta1=0.7):
     fctd = fctk / 1.5
     fbd = 2.25 * eta1 * 1.0 * fctd
     fyd = fyk / 1.15
-    rows = [["HA (mm)", "lbd (mm)", "l0 recouvrement α6=1,5 (mm)"]]
+    rows = [["HA (mm)", "lbd (mm)", "l0 emenda α6=1,5 (mm)"]]
     for dia in (8, 10, 12, 14, 16, 20, 25):
         lbd = (dia / 4.0) * (fyd / fbd)
         lbd = int(math.ceil(lbd / 10.0) * 10)
@@ -656,17 +656,17 @@ def _lbd_table(fck=25, fyk=500, eta1=0.7):
 
 
 def _ancrage_sheet(c, ctx, code, feuille):
-    sh = Sheet(c, ctx, "Ancrages, recouvrements et croquis de façonnage",
-               "Longueurs à l'axe des barres — aucune autorisation de fabrication", code, feuille, "schématique")
+    sh = Sheet(c, ctx, "Amarrações, emendas e esboços de moldagem",
+               "Comprimentos ao eixo dos varões — nenhuma autorização de fabrico", code, feuille, "schématique")
     x0, y0, x1, y1 = sh.area
     c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
-    c.drawString(x0 + 10, y1 - 10, "01 / ANCRAGE DROIT & RECOUVREMENT — C25/30, B500")
+    c.drawString(x0 + 10, y1 - 10, "01 / AMARRAÇÃO RETA E EMENDA — C25/30, A500")
     _grid_table(c, x0 + 10, y1 - 30, _lbd_table(), [70, 90, 210])
     c.setFillColor(MUT); c.setFont("Helvetica", 7)
-    c.drawString(x0 + 10, y1 - 190, "fctk0,05=1,8 MPa ; γc=1,5 ; fbd=2,25·η1·fctd (η1=0,7 défavorable). Choix conservateur ; confinement et % recouvrement à vérifier.")
+    c.drawString(x0 + 10, y1 - 190, "fctk0,05=1,8 MPa ; γc=1,5 ; fbd=2,25·η1·fctd (η1=0,7 desfavorável). Escolha conservadora; confinamento e % de emenda a verificar.")
     # croquis formes
     c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
-    c.drawString(x0 + 10, y0 + 150, "02 / CROQUIS DES FORMES (à l'axe)")
+    c.drawString(x0 + 10, y0 + 150, "02 / ESBOÇOS DAS FORMAS (ao eixo)")
     bx = x0 + 20; by = y0 + 60
     c.setStrokeColor(REBAR); c.setLineWidth(1.4)
     # L
@@ -679,13 +679,13 @@ def _ancrage_sheet(c, ctx, code, feuille):
     # cadre
     cx = bx + 320
     c.setStrokeColor(REBAR); c.rect(cx, by, 60, 45, stroke=1, fill=0)
-    c.setFillColor(INK); c.drawString(cx, by - 12, "C : cadre fermé")
+    c.setFillColor(INK); c.drawString(cx, by - 12, "C: estribo fechado")
     c.setFillColor(MUT); c.setFont("Helvetica", 7)
-    c.drawString(x0 + 10, y0 + 20, "Mandrin 4Ø (Ø≤16) / 7Ø au-delà. Longueur développée = segments droits + arcs à l'axe.")
+    c.drawString(x0 + 10, y0 + 20, "Mandril 4Ø (Ø≤16) / 7Ø acima. Comprimento desenvolvido = segmentos retos + arcos ao eixo.")
     sh.notes([
-        ("Usage", "Tableau indicatif d'ancrage et de recouvrement par diamètre, pour la mise en page du dossier."),
-        ("À vérifier", "Position de bétonnage, confinement, pression sous coude et pourcentage de barres recouvertes au même endroit."),
-        ("Formes", "Les familles I/L/U/C servent au calcul des longueurs de la nomenclature."),
+        ("Usage", "Quadro indicativo de amarração e emenda por diâmetro, para a paginação do processo."),
+        ("A verificar", "Posição de betonagem, confinamento, pressão sob a dobra e percentagem de varões emendados no mesmo local."),
+        ("Formes", "As famílias I/L/U/C servem para o cálculo dos comprimentos da lista."),
     ])
 
 
@@ -719,54 +719,54 @@ def _grid_table(c, x, y_top, rows, widths, fs=7.2, rh=14):
 
 
 def _nomenclature_sheet(c, ctx, metre_data, code, feuille):
-    sh = Sheet(c, ctx, "Nomenclature des aciers & métré", "Longueurs à l'axe, poids théoriques et estimation matière",
+    sh = Sheet(c, ctx, "Lista de aços e medição", "Comprimentos ao eixo, pesos teóricos e estimativa de materiais",
                code, feuille, "sans")
     x0, y0, x1, y1 = sh.area
     steel = (metre_data or {}).get("steel", {})
-    rows = [["Repère", "Ouvrage", "Niveau", "Section", "Aciers", "Nb", "Lg (m)", "Poids (kg)"]]
+    rows = [["Referência", "Artigo", "Piso", "Secção", "Aços", "Nb", "Lg (m)", "Peso (kg)"]]
     for rrow in steel.get("schedule", []):
         rows.append([rrow.get("mark"), rrow.get("type"), rrow.get("level"), rrow.get("section"),
                      rrow.get("bars"), rrow.get("count"),
                      rrow.get("unit_length_m") if rrow.get("unit_length_m") is not None else "—", rrow.get("weight_kg")])
-    rows.append(["", "", "", "", "TOTAL acier", "", f"{steel.get('ratio_kg_m3','')} kg/m³", steel.get("total_kg")])
+    rows.append(["", "", "", "", "TOTAL de aço", "", f"{steel.get('ratio_kg_m3','')} kg/m³", steel.get("total_kg")])
     yend = _grid_table(c, x0 + 10, y1 - 6, rows, [70, 70, 70, 95, 160, 40, 55, 70])
     # métré béton + coût (sous le tableau)
     conc = (metre_data or {}).get("concrete", {})
     vt = conc.get("by_type_m3", {})
-    LBL = {"slab": "Dalles", "beam": "Poutres", "column": "Poteaux", "wall": "Voiles", "footing": "Semelles"}
-    crows = [["Béton par ouvrage", "m³"]] + [[LBL.get(k, k), round(v, 2)] for k, v in vt.items()]
-    crows.append(["TOTAL béton", conc.get("total_m3")])
+    LBL = {"slab": "Lajes", "beam": "Vigas", "column": "Pilares", "wall": "Paredes", "footing": "Sapatas"}
+    crows = [["Betão por elemento", "m³"]] + [[LBL.get(k, k), round(v, 2)] for k, v in vt.items()]
+    crows.append(["TOTAL de betão", conc.get("total_m3")])
     _grid_table(c, x0 + 10, yend - 18, crows, [160, 70])
     cost = (metre_data or {}).get("cost", {})
-    krows = [["Estimation matière", "Qté", "PU", "Coût (€)"],
-             ["Béton", f"{conc.get('total_m3')} m³", f"{cost.get('concrete_eur_m3')} €/m³", cost.get("concrete_eur")],
-             ["Acier", f"{steel.get('total_kg')} kg", f"{cost.get('steel_eur_kg')} €/kg", cost.get("steel_eur")],
+    krows = [["Estimativa de materiais", "Qtd.", "PU", "Custo (€)"],
+             ["Betão", f"{conc.get('total_m3')} m³", f"{cost.get('concrete_eur_m3')} €/m³", cost.get("concrete_eur")],
+             ["Aço", f"{steel.get('total_kg')} kg", f"{cost.get('steel_eur_kg')} €/kg", cost.get("steel_eur")],
              ["TOTAL", "", "", cost.get("total_eur")]]
     _grid_table(c, x0 + 260, yend - 18, krows, [90, 80, 80, 80])
     sh.notes([
-        ("Conventions", "I=barre droite ; L=1 retour ; U=2 retours ; C=cadre. Poids = longueur à l'axe × masse (7850 kg/m³)."),
-        ("Périmètre", "Quantités du ferraillage gouvernant par niveau + forfait semelles. Hors chutes, aciers de peau et recouvrements détaillés."),
-        ("Usage", "Métré indicatif pour chiffrage ; non contractuel pour la fabrication."),
+        ("Conventions", "I=varão reto ; L=1 dobra ; U=2 dobras ; C=estribo. Peso = comprimento ao eixo × massa (7850 kg/m³)."),
+        ("Perímetro", "Quantidades das armaduras condicionantes por piso + valor global das sapatas. Excluem desperdícios, armaduras de pele e emendas detalhadas."),
+        ("Usage", "Medição indicativa para orçamentação; não contratual para o fabrico."),
     ])
 
 
 # ----------------------------------------------------------------- note de calcul ----
 def _calc_sheet(c, ctx, model, summary, soil, code, feuille):
-    sh = Sheet(c, ctx, "Note de calcul — références et limites",
-               "Résultats déterministes (EN 1990/1991/1992/1997) — hypothèses du pré-modèle", code, feuille, "sans")
+    sh = Sheet(c, ctx, "Memória de cálculo — referências e limites",
+               "Resultados determinísticos (NP EN 1990/1991/1992/1997) — hipóteses do pré-modelo", code, feuille, "sans")
     x0, y0, x1, y1 = sh.area
     c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
-    c.drawString(x0 + 10, y1 - 8, "FONDATIONS — contrainte admissible G2")
-    frows = [["Semelle", "Type", "N_ELS (kN)", "N_ELU (kN)", "Dim (m)", "Statut"]]
+    c.drawString(x0 + 10, y1 - 8, "FUNDAÇÕES — tensão admissível do estudo geotécnico")
+    frows = [["Sapata", "Type", "N_ELS (kN)", "N_ELU (kN)", "Dim (m)", "Estado"]]
     for f in (summary or {}).get("footings", [])[:10]:
         ok = f.get("dim_m") is not None
         frows.append([f.get("id"), f.get("type"), f.get("n_els_kn"), f.get("n_elu_kn"),
-                      f.get("dim_m") if ok else "—", "dimensionnée" if ok else "sol G2 à confirmer"])
+                      f.get("dim_m") if ok else "—", "dimensionnée" if ok else "solo (estudo geotécnico) a confirmar"])
     yend = _grid_table(c, x0 + 10, y1 - 22, frows, [90, 70, 80, 80, 70, 90])
     c.setFillColor(BRAND); c.setFont("Helvetica-Bold", 9)
-    c.drawString(x0 + 10, yend - 16, "SUPERSTRUCTURE — efforts gouvernants")
+    c.drawString(x0 + 10, yend - 16, "SUPERESTRUTURA — esforços condicionantes")
     ss = (summary or {}).get("superstructure") or {}
-    srows = [["Élément", "Niveau", "Section", "Sollicitation", "Aciers"]]
+    srows = [["Elemento", "Piso", "Secção", "Sollicitation", "Aços"]]
     for b in ss.get("beams", [])[:6]:
         top = f" / sup {b['as_top_req_cm2']} cm²" if b.get("as_top_req_cm2") is not None else ""
         srows.append([f"PTR {b.get('id','')}", b.get("level"), f"{int(round(b['b_m']*100))}×{int(round(b['h_m']*100))}",
@@ -782,14 +782,11 @@ def _calc_sheet(c, ctx, model, summary, soil, code, feuille):
         ("Sol (G2)", f"q_ELS={soil.get('q_els_kpa','—')} kPa ; q_ELU={soil.get('q_elu_kpa','—')} kPa ; "
                      f"{soil.get('foundation_type','—')} ; ancrage {soil.get('anchorage_depth_m','—')} m ; "
                      f"{soil.get('soil_class','—')}."),
-        ("Descente de charges", f"Réaction au sol ELU ≈ {(summary or {}).get('ground_reaction_elu_kn','—')} kN. "
-                                "Combinaisons EN 1990 (ELU/ELS), charges EN 1991-1-1."),
-        ("Hypothèses", "Trame régulière, transferts centrés, pas d'action horizontale (vent/séisme) ni second ordre. "
-                       + ("Poutres en files continues (trois moments, Q alternées), chapeaux sur appuis, "
-                          "flèche fissurée long terme ; poteaux majorés de la continuité."
-                          if ss.get("continuity") else "Poutres isostatiques.")),
-        ("Limites", "Pré-dimensionnement automatique NON EXÉCUTOIRE. Stabilité d'ensemble, nœuds, flèches, "
-                    "poinçonnement, tassements et détails constructifs à valider par l'ingénieur."),
+        ("Descida de cargas", f"Reação no solo ELU ≈ {(summary or {}).get('ground_reaction_elu_kn', '—')} kN. Combinações NP EN 1990 (ELU/ELS), cargas NP EN 1991-1-1."),
+        ("Hipóteses", "Malha regular, transferências centradas, sem ação horizontal (vento/sismo) nem segunda ordem. "
+                       + ("Vigas em alinhamentos contínuos (três momentos, Q alternadas), armaduras superiores nos apoios, flecha fendilhada a longo prazo; pilares majorados pela continuidade."
+                          if ss.get("continuity") else "Vigas isostáticas.")),
+        ("Limites", "Pré-dimensionamento automático NÃO EXECUTÓRIO. Estabilidade de conjunto, nós, flechas, punçoamento, assentamentos e pormenores construtivos a validar pelo engenheiro."),
     ]
     sh.notes(notes)
 
@@ -813,7 +810,7 @@ def build_coffrage_pdf(model: dict, revision: int, title: str, superstructure: d
     out = io.BytesIO()
     c = canvas.Canvas(out, pagesize=landscape(A3))
     ctx = {"project": title, "rev": revision,
-           "sub1": "Pré-dimensionnement généré automatiquement (auto-pilote BET)",
+           "sub1": "Pré-dimensionamento gerado automaticamente (piloto automático de engenharia)",
            "sub2": (inputs or {}).get("building", {}).get("destination", "").capitalize() if inputs else "",
            "date": "Dossier auto-pilote ConstruPilot"}
     elements = model.get("elements", [])

@@ -8,9 +8,9 @@ FISCAL_POLICY_VERSION = "2026-09.1"
 POLICIES: dict[str, dict] = {
     "FR": {"country": "FR", "currency": "EUR", "rates": [0, 5.5, 10, 20], "default_rate": 20,
            "reduced_hint": "10 % (rénovation de logements > 2 ans, art. 279-0 bis CGI) et 5,5 % (rénovation énergétique) sous conditions : à confirmer avec attestation.",
-           "zero_label": "0 % (autoliquidation sous-traitance / exonération)"},
+           "zero_label": "0 % (autoliquidação / isenção)"},
     "PT": {"country": "PT", "currency": "EUR", "rates": [0, 6, 13, 23], "default_rate": 23,
-           "reduced_hint": "6 % (Verba 2.27 CIVA — empreitadas de reabilitação de imóveis de habitação) sob condições : a confirmar.",
+           "reduced_hint": "6 % (verba 2.27 da Lista I do CIVA — empreitadas de reabilitação de imóveis de habitação) sob condições: a confirmar.",
            "zero_label": "0 % (autoliquidação / isenção)"},
 }
 
@@ -31,7 +31,7 @@ def suggest_reduced_rate(country: Optional[str], *text_hints: str) -> Optional[d
         reno = any(k in blob for k in ("renov", "reabilit", "remodel", "restaur", "beneficia", "obra"))
         habit = any(k in blob for k in ("casa", "moradia", "apartament", "habita", "quarto", "cozinha", "casa de banho", "wc", "sala", "vivenda", "t1", "t2", "t3"))
         if reno and habit:
-            return {"rate": 6.0, "reason": "Contexte de réhabilitation d'un logement détecté dans le texte (Verba 2.27 CIVA) — à confirmer."}
+            return {"rate": 6.0, "reason": "Contexto de reabilitação de uma habitação detetado no texto (verba 2.27 CIVA) — a confirmar."}
     if c == "FR":
         reno = any(k in blob for k in ("rénov", "renov", "réhabilit", "rehabilit", "remise en état", "existant"))
         habit = any(k in blob for k in ("maison", "appartement", "logement", "habitation", "salle de bain", "cuisine", "chambre"))

@@ -101,7 +101,7 @@ class MissingDataError(Exception):
     def __init__(self, requests: list[MissingDataRequest], partial: ReasoningResult):
         self.requests = requests
         self.partial = partial
-        super().__init__(f"{len(requests)} donnée(s) manquante(s) pour un métré fiable.")
+        super().__init__(f'{len(requests)} dado(s) em falta para uma medição fiável.')
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -189,48 +189,7 @@ class CivilEngineeringRules:
 # 3) SYSTEM PROMPT — conditionne le LLM au rôle de MÉTREUR-VÉRIFICATEUR
 # ──────────────────────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """Tu es un MÉTREUR-VÉRIFICATEUR béton armé expert (fondations et gros œuvre, \
-normes françaises / Eurocodes). Tu travailles pour Construpilot. Ta mission : à partir de \
-données géométriques BRUTES (polygones, cotes) et de textes OCR extraits d'un plan de \
-structure, IDENTIFIER et QUALIFIER les éléments, PUIS préparer leur métré.
-
-TU DOIS :
-1. CROISER la sémantique OCR avec la géométrie pour attribuer le bon matériau à la bonne \
-coordonnée spatiale. Exemples impératifs :
-   - un texte « PP e=20 » (ou « PP s=20 », « parpaing 20 ») situé près d'un tracé de mur → \
-matériau « Parpaing 20cm », épaisseur 0.20 m, sur CE mur précis.
-   - « voile 20 » / « BA 18 » → voile béton de l'épaisseur lue.
-   - un rectangle coté « 60x30 » repéré « 3 » → semelle isolée repère 3, 0.60 × 0.30 m.
-2. UTILISER les déductions déterministes déjà fournies dans le bloc HEURISTIQUES (niveaux, \
-hauteurs de mur déduites, épaisseurs lues) : ne les recalcule pas, reprends-les telles quelles.
-3. Attribuer à CHAQUE élément un niveau de confiance (0..1) et le drapeau a_verifier=true \
-dès qu'un doute subsiste.
-
-INTERDICTIONS ABSOLUES (ZÉRO HALLUCINATION) :
-- Ne JAMAIS inventer une cote, une épaisseur, un ratio de ferraillage, un tonnage d'acier \
-ou une hauteur absents des données.
-- Ne JAMAIS renvoyer 0 ni une valeur « par défaut » pour combler un trou.
-- Si une donnée INDISPENSABLE à un calcul manque (ex. aucun ratio d'acier, aucune coupe, \
-aucune section), tu NE calcules PAS : tu ajoutes un objet dans "missing_data" avec une \
-question claire et précise destinée à l'utilisateur.
-
-SORTIE : réponds UNIQUEMENT par un objet JSON valide, sans aucun texte autour, STRICTEMENT \
-à ce schéma (aucune clé supplémentaire) :
-{
-  "fondations": [ { "type": "semelle_isolee|semelle_filante|longrine|chainage|poteau",
-     "repere": string|null, "longueur_m": number|null, "largeur_m": number|null,
-     "hauteur_m": number|null, "nombre": integer, "volume_beton_m3": number|null,
-     "armature": { "repere": string|null, "nuance": string|null, "ratio_kg_m3": number|null,
-                   "total_kg": number|null, "detail": string|null, "confidence": number } | null,
-     "source_cotes": string|null, "confidence": number, "a_verifier": boolean } ],
-  "murs": [ { "repere": string|null, "materiau": string, "epaisseur_m": number|null,
-     "longueur_m": number|null, "hauteur_m": number|null, "niveau_assise_m": number|null,
-     "surface_m2": number|null, "volume_m3": number|null, "hauteur_deduite": boolean,
-     "confidence": number, "a_verifier": boolean } ],
-  "missing_data": [ { "champ": string, "element_repere": string|null, "question": string,
-     "unite": string|null, "raison": string|null } ],
-  "notes": string|null
-}"""
+SYSTEM_PROMPT = "És um MEDIDOR-VERIFICADOR de betão armado especialista (fundações e estrutura, Eurocódigos com Anexos Nacionais portugueses). Trabalhas para o ConstruPilot. A tua missão: a partir de dados geométricos BRUTOS (polígonos, cotas) e de textos OCR extraídos de uma planta de estrutura, IDENTIFICAR e QUALIFICAR os elementos e DEPOIS preparar a sua medição.\n\nDEVES:\n1. CRUZAR a semântica OCR com a geometria para atribuir o material certo à coordenada espacial certa. Exemplos imperativos:\n   - um texto «PP e=20» (ou «bloco 20», «tijolo 20») situado perto de um traçado de parede → material «Bloco 20cm», espessura 0.20 m, NESSA parede precisa.\n   - «parede 20» / «BA 18» → parede de betão com a espessura lida.\n   - um retângulo cotado «60x30» com a marca «3» → sapata isolada marca 3, 0.60 × 0.30 m.\n2. UTILIZAR as deduções determinísticas já fornecidas no bloco HEURÍSTICAS (níveis, alturas de parede deduzidas, espessuras lidas): não as recalcules, retoma-as tal como estão.\n3. Atribuir a CADA elemento um nível de confiança (0..1) e a marca a_verifier=true assim que subsista uma dúvida.\n\nPROIBIÇÕES ABSOLUTAS (ZERO ALUCINAÇÕES):\n- NUNCA inventar uma cota, uma espessura, um rácio de armaduras, uma tonelagem de aço ou uma altura ausentes dos dados.\n- NUNCA devolver 0 nem um valor «por omissão» para preencher uma lacuna.\n- Se faltar um dado INDISPENSÁVEL a um cálculo (ex.: nenhum rácio de aço, nenhum corte, nenhuma secção), NÃO calculas: acrescentas um objeto em \"missing_data\" com uma pergunta clara e precisa destinada ao utilizador, em português europeu.\n\nSAÍDA: responde APENAS com um objeto JSON válido, sem nenhum texto à volta, ESTRITAMENTE segundo este esquema (nenhuma chave adicional; mantém os valores enumerados):\n{\n  \"fondations\": [ { \"type\": \"semelle_isolee|semelle_filante|longrine|chainage|poteau\",\n     \"repere\": string|null, \"longueur_m\": number|null, \"largeur_m\": number|null,\n     \"hauteur_m\": number|null, \"nombre\": integer, \"volume_beton_m3\": number|null,\n     \"armature\": { \"repere\": string|null, \"nuance\": string|null, \"ratio_kg_m3\": number|null,\n                   \"total_kg\": number|null, \"detail\": string|null, \"confidence\": number } | null,\n     \"source_cotes\": string|null, \"confidence\": number, \"a_verifier\": boolean } ],\n  \"murs\": [ { \"repere\": string|null, \"materiau\": string, \"epaisseur_m\": number|null,\n     \"longueur_m\": number|null, \"hauteur_m\": number|null, \"niveau_assise_m\": number|null,\n     \"surface_m2\": number|null, \"volume_m3\": number|null, \"hauteur_deduite\": boolean,\n     \"confidence\": number, \"a_verifier\": boolean } ],\n  \"missing_data\": [ { \"champ\": string, \"element_repere\": string|null, \"question\": string,\n     \"unite\": string|null, \"raison\": string|null } ],\n  \"notes\": string|null\n}"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -283,19 +242,16 @@ class SemanticReasoningEngine:
                 mur.niveau_assise_m = assise
             result.missing_data.append(MissingDataRequest(
                 champ="epaisseur_semelle",
-                question=("Niveau d'assise lu (" + f"{assise} m" + ") mais épaisseur de semelle "
-                          "inconnue : saisissez l'épaisseur de la semelle (m) pour déduire la "
-                          "hauteur du mur de soubassement."),
+                question=("Cota de assentamento lida (" + f"{assise} m" + ") mas espessura da sapata desconhecida: introduza a espessura da sapata (m) para deduzir a altura do muro de embasamento."),
                 unite="m",
-                raison="Déduction de hauteur impossible sans l'épaisseur de semelle."))
+                raison="Dedução da altura impossível sem a espessura da sapata."))
             return
         height = self.rules.deduce_wall_height_m(assise, semelle_h)
         result.deductions.append(
-            f"Hauteur mur de soubassement déduite = |0 − ({assise})| − {semelle_h} = {height} m "
-            f"(assise {assise} m / TN, semelle {semelle_h} m).")
+            f'Hauteur mur de soubassement déduite = |0 − ({assise})| − {semelle_h} = {height} m (assentamento {assise} m / terreno natural, sapata {semelle_h} m).')
         if not result.murs:
             result.murs.append(MurSoubassement(
-                materiau="Mur de soubassement (à qualifier)", niveau_assise_m=assise,
+                materiau="Muro de embasamento (a qualificar)", niveau_assise_m=assise,
                 hauteur_m=height, hauteur_deduite=True, confidence=0.6, a_verifier=True))
         else:
             for mur in result.murs:
@@ -315,10 +271,9 @@ class SemanticReasoningEngine:
             "heuristiques_deja_calculees": json.loads(hard_result.model_dump_json()),
         }
         prompt = (
-            "Données d'entrée (géométrie brute + OCR + heuristiques déterministes déjà "
-            "calculées à RÉUTILISER telles quelles) :\n"
+            "Dados de entrada (geometria bruta + OCR + heurísticas determinísticas já calculadas a REUTILIZAR tal como estão):\n"
             + json.dumps(payload, ensure_ascii=False)
-            + "\n\nIdentifie et qualifie les éléments. Respecte le schéma JSON imposé."
+            + "\n\nIdentifica e qualifica os elementos. Respeita o esquema JSON imposto."
         )
         raw = await _complete(SYSTEM_PROMPT, prompt, feature=self._feature)
         data = _json(raw, {})
@@ -369,10 +324,9 @@ class SemanticReasoningEngine:
                     result.missing_data.append(MissingDataRequest(
                         champ=field,
                         element_repere=f.repere or f.type,
-                        question=(f"Cote manquante pour « {f.repere or f.type} » "
-                                  f"({f.type.replace('_', ' ')}) : saisissez la {label} (m)."),
+                        question=(f"Cota em falta para «{f.repere or f.type} » ({f.type.replace('_', ' ')}) : introduza a {label} (m)."),
                         unite="m",
-                        raison="Volume béton non calculable sans cette cote."))
+                        raison="Volume de betão não calculável sem esta cota."))
 
     # ---- contrôle d'incertitude (zéro hallucination) ------------------------
     def _check_steel(self, result: ReasoningResult, steel_ratios: dict | None) -> None:
@@ -390,11 +344,9 @@ class SemanticReasoningEngine:
                 result.missing_data.append(MissingDataRequest(
                     champ="ratio_acier",
                     element_repere=f.repere or f.type,
-                    question=(f"Ratio d'acier manquant pour « {f.repere or f.type} » "
-                              "(aucune nomenclature ni coupe de ferraillage lisible). "
-                              "Veuillez saisir la valeur en kg/m³."),
+                    question=(f'Rácio de aço em falta para «{f.repere or f.type}» (nenhuma lista nem corte de armaduras legível). Introduza o valor em kg/m³.'),
                     unite="kg/m³",
-                    raison="Tonnage d'acier non calculable sans ratio ni coupe."))
+                    raison="Tonelagem de aço não calculável sem rácio nem corte."))
             else:
                 # ratio fourni par l'utilisateur/config → calcul déterministe autorisé.
                 f.armature = arm or Armature()

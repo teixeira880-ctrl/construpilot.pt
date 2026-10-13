@@ -52,11 +52,11 @@ def _date102(iso: str | None) -> str:
 
 def _buyer_name(client: dict) -> str:
     if not client:
-        return "Client"
+        return "Cliente"
     name = (client.get("name")
             or client.get("company")
             or f"{client.get('first_name', '')} {client.get('last_name', '')}".strip())
-    return name or "Client"
+    return name or "Cliente"
 
 
 def _real_lines(doc: dict) -> list[dict]:
@@ -79,7 +79,7 @@ def build_facturx_xml(doc: dict, branding: dict | None) -> bytes:
     totals = doc.get("totals") or {}
     client = doc.get("client") or {}
 
-    number = escape(str(doc.get("number") or doc.get("doc_id") or "FACTURE"))
+    number = escape(str(doc.get("number") or doc.get("doc_id") or "FATURA"))
     type_code = "381" if doc.get("doc_type") == "credit_note" else "380"
     issue = _date102(doc.get("issue_date"))
     due = _date102(doc.get("due_date"))
@@ -114,7 +114,7 @@ def build_facturx_xml(doc: dict, branding: dict | None) -> bytes:
         line_total += line_ht
         basis_by_rate[rate] = round(basis_by_rate.get(rate, 0.0) + line_ht, 2)
         tax_by_rate[rate] = round(tax_by_rate.get(rate, 0.0) + line_ht * rate / 100, 2)
-        name = escape((ln.get("designation") or ln.get("title") or "Prestation").strip()[:400]) or "Prestation"
+        name = escape((ln.get("designation") or ln.get("title") or "Prestação").strip()[:400]) or "Prestação"
         uc = _unit_code(ln.get("unit"))
         cat = _vat_category(rate)
         line_xml_parts.append(f"""    <ram:IncludedSupplyChainTradeLineItem>
@@ -251,7 +251,7 @@ def _minimum_xml(doc: dict, branding: dict | None) -> bytes:
     due = _d(float(totals.get("ttc") or 0) - float(doc.get("paid") or 0))
     seller = escape(branding.get("company_name") or "ConstruPilot")
     buyer = escape(_buyer_name(doc.get("client") or {}))
-    number = escape(str(doc.get("number") or doc.get("doc_id") or "FACTURE"))
+    number = escape(str(doc.get("number") or doc.get("doc_id") or "FATURA"))
     issue = _date102(doc.get("issue_date"))
     siret = escape(str(branding.get("siret") or "").replace(" ", ""))
     legal = (f'<ram:SpecifiedLegalOrganization><ram:ID schemeID="0002">{siret}'

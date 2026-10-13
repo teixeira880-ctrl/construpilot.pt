@@ -7,11 +7,11 @@ from engines.calculators import CALCULATORS
 def run_validated(key: str, params: dict, *, require_inputs: bool = False) -> dict:
     cfg = CALCULATORS.get(key)
     if not cfg:
-        raise ValueError("Calculateur inconnu")
+        raise ValueError("Calculadora desconhecida")
     if not isinstance(params, dict):
-        raise ValueError("Paramètres invalides")
+        raise ValueError("Parâmetros inválidos")
     if set(params) - {field["name"] for field in cfg["fields"]}:
-        raise ValueError("Champ inconnu pour ce calculateur ; vérifiez les paramètres et unités")
+        raise ValueError("Campo desconhecido para esta calculadora; verifique os parâmetros e unidades")
     args, defaults = {}, []
     integers = {"doors", "windows", "coats", "tiles_per_box"}
     positive = {"tile_length", "tile_width", "tiles_per_box", "plate_length", "plate_width", "coats"}
@@ -22,46 +22,46 @@ def run_validated(key: str, params: dict, *, require_inputs: bool = False) -> di
             if field.get("default") is None:
                 continue
             if require_inputs:
-                raise ValueError(f"Précisez {field['label']} ; aucune dimension par défaut n'est utilisée par l'agent.")
+                raise ValueError(f"Indique {field['label']} ; nenhuma dimensão por omissão é utilizada pelo agente.")
             value = field["default"]
             defaults.append(name)
         if field["type"] == "number":
             if isinstance(value, bool):
-                raise ValueError(f"{field['label']} : nombre attendu")
+                raise ValueError(f"{field['label']} : número esperado")
             try:
                 value = float(value)
             except (TypeError, ValueError):
-                raise ValueError(f"{field['label']} : nombre attendu") from None
+                raise ValueError(f"{field['label']} : número esperado") from None
             if not math.isfinite(value) or value < 0 or value > 1_000_000:
-                raise ValueError(f"{field['label']} : valeur positive finie requise (maximum 1 000 000)")
+                raise ValueError(f"{field['label']} : valor positivo finito obrigatório (máximo 1 000 000)")
             if name in positive and value <= 0:
-                raise ValueError(f"{field['label']} doit être supérieur à zéro")
+                raise ValueError(f"{field['label']} deve ser superior a zero")
             if name in integers:
                 if not value.is_integer():
-                    raise ValueError(f"{field['label']} : nombre entier requis")
+                    raise ValueError(f"{field['label']} : número inteiro obrigatório")
                 value = int(value)
             if name == "pitch_deg" and value >= 89:
-                raise ValueError("La pente doit être comprise entre 0 et 89 degrés exclus")
+                raise ValueError("A inclinação deve estar entre 0 e 89 graus exclusive")
         elif field["type"] == "boolean":
             if type(value) is bool:
                 pass
             elif value in ("true", "false"):
                 value = value == "true"
             else:
-                raise ValueError(f"{field['label']} : vrai ou faux attendu")
+                raise ValueError(f"{field['label']} : verdadeiro ou falso esperado")
         elif field["type"] == "select" and value not in field.get("options", []):
-            raise ValueError(f"{field['label']} : option inconnue")
+            raise ValueError(f"{field['label']} : opção desconhecida")
         args[name] = value
     if key == "roof_facade" and args.get("openings_m2", 0) > args.get("wall_perimeter_m", 0) * args.get("wall_height_m", 0):
-        raise ValueError("La surface des ouvertures dépasse celle de la façade")
+        raise ValueError("A área dos vãos ultrapassa a da fachada")
     try:
         result = cfg["fn"](**args)
     except (TypeError, ValueError, ZeroDivisionError, OverflowError):
-        raise ValueError("Données incompatibles avec ce calcul ; vérifiez les dimensions et les unités") from None
+        raise ValueError("Dados incompatíveis com este cálculo; verifique as dimensões e as unidades") from None
 
     def finite(value):
         if isinstance(value, float) and not math.isfinite(value):
-            raise ValueError("Le calcul a produit une valeur non finie")
+            raise ValueError("O cálculo produziu um valor não finito")
         if isinstance(value, dict):
             for child in value.values():
                 finite(child)

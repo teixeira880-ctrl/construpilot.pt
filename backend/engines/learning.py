@@ -121,12 +121,8 @@ async def learning_block(feature: str | None = None) -> str:
 
 def _format_block(rows: list[dict]) -> str:
     parts = [
-        "\n\n=== EXEMPLES DE RÉFÉRENCE ConstruPilot (validés par un expert métier CM Rénov) ===",
-        "Inspire-toi FORTEMENT du style, de la structure, du vocabulaire et du niveau de détail "
-        "de ces exemples pour construire ta réponse (rédaction d'un devis, analyse d'un problème, "
-        "méthode). Ils montrent le standard de qualité attendu. "
-        "N'invente JAMAIS de prix ni de quantité à partir de ces exemples : les chiffres définitifs "
-        "viennent toujours du moteur de calcul / de la bibliothèque de prix.",
+        "\n\n=== EXEMPLOS DE REFERÊNCIA ConstruPilot (validados por um especialista da construção) ===",
+        "Inspira-te FORTEMENTE no estilo, na estrutura, no vocabulário e no nível de detalhe destes exemplos para construir a tua resposta (redação de um orçamento, análise de um problema, método), em português europeu. Mostram o padrão de qualidade esperado. NUNCA inventes preços nem quantidades a partir destes exemplos: os números definitivos vêm sempre do motor de cálculo / da biblioteca de preços.",
     ]
     for i, r in enumerate(rows, 1):
         title = str(r.get("title") or "").strip()[:120]
@@ -134,10 +130,10 @@ def _format_block(rows: list[dict]) -> str:
         content = str(r.get("content") or "").strip()[:_CONTENT_MAX]
         block = [f"\n— Exemple {i}" + (f" : {title}" if title else "")]
         if ctx:
-            block.append(f"Situation / demande : {ctx}")
-        block.append("Réponse / méthode de référence :\n" + content)
+            block.append(f'Situação / pedido: {ctx}')
+        block.append("Resposta / método de referência:\n" + content)
         parts.append("\n".join(block))
-    return "\n".join(parts) + "\n=== FIN DES EXEMPLES DE RÉFÉRENCE ===\n"
+    return "\n".join(parts) + "\n=== FIM DOS EXEMPLOS DE REFERÊNCIA ===\n"
 
 
 async def list_examples() -> list[dict]:
@@ -212,11 +208,11 @@ def extract_file_text(data: bytes, filename: str) -> str:
             doc.close()
             return text[:8000]
         except Exception as exc:  # noqa: BLE001
-            raise ValueError("PDF illisible") from exc
+            raise ValueError("PDF ilegível") from exc
     if ext in ("xlsx", "xls", "csv", "docx", "txt"):
         from engines.office_text import extract_office_text
         return extract_office_text(data, ext)[:8000]
-    raise ValueError(f"Format .{ext or '?'} non pris en charge (PDF, Excel, CSV, Word, TXT)")
+    raise ValueError(f"Format .{ext or '?'} não suportado (PDF, Excel, CSV, Word, TXT)")
 
 
 
@@ -264,8 +260,8 @@ async def create_from_document(doc: dict, created_by: str | None) -> tuple[dict 
         client = (c.get("name") or "").strip()
     ex = await create_example(
         {"scope": "devis",
-         "title": (doc.get("title") or doc.get("number") or "Devis signé")[:120],
-         "context": f"Devis signé{(' — client ' + client) if client else ''}.",
+         "title": (doc.get("title") or doc.get("number") or "Orçamento assinado")[:120],
+         "context": f"Orçamento assinado{(' — cliente ' + client if client else '')}.",
          "content": content, "approved": True},
         created_by)
     await db[COLLECTION].update_one({"id": ex["id"]}, {"$set": {"source_doc_id": doc_id}})

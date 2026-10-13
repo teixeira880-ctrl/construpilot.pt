@@ -49,7 +49,7 @@ async def update_supplier(supplier_id: str, body: SupplierIn, user=Depends(curre
         {"supplier_id": supplier_id, "user_id": user["user_id"]},
         {"$set": {**body.model_dump(), "updated_at": _now()}})
     if not r.matched_count:
-        raise HTTPException(404, "Fournisseur introuvable")
+        raise HTTPException(404, "Fornecedor não encontrado")
     return {"ok": True}
 
 
@@ -57,5 +57,5 @@ async def update_supplier(supplier_id: str, body: SupplierIn, user=Depends(curre
 async def delete_supplier(supplier_id: str, user=Depends(current_user)) -> dict:
     r = await db.suppliers.delete_one({"supplier_id": supplier_id, "user_id": user["user_id"]})
     if not r.deleted_count:
-        raise HTTPException(404, "Fournisseur introuvable")
+        raise HTTPException(404, "Fornecedor não encontrado")
     return {"deleted": 1}

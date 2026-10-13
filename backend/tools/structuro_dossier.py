@@ -20,12 +20,12 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     source=parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--demo',action='store_true');source.add_argument('--auto-demo',action='store_true');source.add_argument('--input',type=Path)
-    parser.add_argument('--automate',action='store_true',help='Recalculer les choix automatiques avant génération')
+    parser.add_argument('--automate',action='store_true',help="Recalcular as escolhas automáticas antes da geração")
     parser.add_argument('--revision',type=int,default=1)
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
-    if args.revision<1:parser.error('La révision doit être positive')
-    if args.output.exists() and any(args.output.iterdir()):parser.error('Choisissez un dossier de sortie vide pour conserver les anciennes révisions')
+    if args.revision<1:parser.error("A revisão deve ser positiva")
+    if args.output.exists() and any(args.output.iterdir()):parser.error("Escolha uma pasta de saída vazia para conservar as revisões anteriores")
     model=automation_example() if args.auto_demo else drawing_example() if args.demo else Model.model_validate_json(args.input.read_text(encoding='utf-8'))
     report=None
     if args.auto_demo or args.automate or model.automation_settings:
@@ -37,9 +37,9 @@ def main():
     if report:
         (args.output/'automatisation.json').write_text(json.dumps(report,indent=2,ensure_ascii=False),encoding='utf-8')
         if report['status']=='blocked':
-            print('Automatisation bloquée : consultez automatisation.json');return 2
+            print("Automatização bloqueada: consulte automatisation.json");return 2
     if not data['can_export']:
-        print('Génération bloquée : consultez controles.json');return 2
+        print("Geração bloqueada: consulte controles.json");return 2
     (args.output/'plans_A3.pdf').write_bytes(build_drawing_pdf(model,args.revision,data))
     (args.output/'nomenclature.csv').write_bytes(build_schedule_csv(data))
     if report:
@@ -47,7 +47,7 @@ def main():
         from engines.structuro_calc_exports import build_pdf
         (args.output/'note_automatisation.pdf').write_bytes(build_automation_pdf(model,report,args.revision))
         (args.output/'note_gravitaire.pdf').write_bytes(build_pdf(model,args.revision))
-    print(f"{len(data['sheets'])} planches A3 générées dans {args.output.resolve()} - dossier non exécutoire")
+    print(f"{len(data['sheets'])} folhas A3 geradas em {args.output.resolve()} - processo não executório")
     return 0
 
 

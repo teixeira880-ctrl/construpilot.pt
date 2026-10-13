@@ -336,18 +336,14 @@ def disclaimer(plan: dict, page_index: int, report: dict, branding: dict | None,
                 "dimensionamento nem os cálculos de estrutura elaborados pelo gabinete de projeto de estruturas (BET): assinala "
                 "unicamente as incoerências de esquadria e de cotagem verificadas na planta fornecida, para que sejam confirmadas "
                 "com o autor da planta antes da execução.")
-    who = f" réalisé par <b>{company}</b>" if company else ""
-    return (f"<b>Portée de ce document.</b> Ce document constitue un contrôle de cohérence du plan « {fname} » "
-            f"({scope}, page {page_index + 1}){who} avec <b>ConstruPilot.fr</b>. Il ne remet en aucun cas en cause le "
-            "dimensionnement ni les calculs de structure établis par le bureau d'études techniques (BET) : il relève uniquement "
-            "les incohérences d'équerrage et de cotation constatées sur le plan fourni, afin qu'elles soient confirmées avec "
-            "l'auteur du plan avant exécution.")
+    who = f' realizado por <b>{company}</b>' if company else ""
+    return (f'<b>Alcance deste documento.</b> Este documento constitui um controlo de coerência da planta «{fname} » ({scope}, page {page_index + 1}){who} com o <b>ConstruPilot.pt</b>. Não põe de forma alguma em causa o dimensionamento nem os cálculos de estrutura estabelecidos pelo gabinete de projeto: regista apenas as incoerências de esquadria e de cotagem constatadas na planta fornecida, para que sejam confirmadas com o autor da planta antes da execução.')
 
 
 COVER = {
-    "fr": {"kicker": "CONTRÔLE DE COHÉRENCE DES COTATIONS", "title1": "RAPPORT DE CONTRÔLE", "title2": "DES COTES ET DE L'ÉQUERRAGE",
-           "asker": "Entreprise demandeuse", "with": "Analyse réalisée à l'aide de ConstruPilot.fr", "project": "Projet",
-           "doc": "Document examiné", "scale": "échelle", "page": "page", "date": "Date de l'analyse"},
+    "fr": {"kicker": "CONTROLO DE COERÊNCIA DAS COTAS", "title1": "RELATÓRIO DE CONTROLO", "title2": "DAS COTAS E DA ESQUADRIA",
+           "asker": "Empresa requerente", "with": "Análise realizada com o apoio de ConstruPilot.fr", "project": "Projeto",
+           "doc": "Documento examinado", "scale": "échelle", "page": "page", "date": "Data da análise"},
     "pt": {"kicker": "CONTROLO DE COERÊNCIA DAS COTAS", "title1": "RELATÓRIO DE CONTROLO", "title2": "DAS COTAS E DA ESQUADRIA",
            "asker": "Empresa requerente", "with": "Análise realizada com o apoio de ConstruPilot.fr", "project": "Projeto",
            "doc": "Documento examinado", "scale": "escala", "page": "página", "date": "Data da análise"},
