@@ -46,7 +46,7 @@ export default function LandingPro() {
       jsonLd={{"@context":"https://schema.org","@type":"SoftwareApplication",name:"ConstruPilot Pro",applicationCategory:"BusinessApplication",operatingSystem:"Web",offers:[{"@type":"Offer",name:"Pro Artisan",price:"149",priceCurrency:"EUR"},{"@type":"Offer",name:"Pro Business",price:"249",priceCurrency:"EUR"}]}} />
     <section className="landing-hero landing-section" data-testid="pro-hero">
       <div className="landing-hero-copy"><p className="landing-eyebrow"><span className="pt-flag-dot" aria-hidden="true" />FEITO PARA OS PROFISSIONAIS DA CONSTRUÇÃO EM PORTUGAL</p>
-        <h1>O seu know-how.<br /><em>O resto, simplificado.</em></h1>
+        <h1>A evolução da construção<br /><em>começa aqui</em></h1>
         <p className="landing-hero-description">Da primeira planta ao acompanhamento da obra, encontre as suas medições, orçamentos e documentos num espaço de trabalho pensado para o terreno.</p>
         <div className="landing-hero-actions"><Link to="/inscription" className="landing-button" data-testid="pro-hero-primary-cta">Experimentar o ConstruPilot <ArrowRight size={18} /></Link><button type="button" className="landing-button landing-button-outline" onClick={showDemo} data-testid="pro-hero-secondary-cta"><Play size={16} />Ver a demonstração</button></div>
         <p className="landing-hero-note">Experiência de 7 dias · Cartão obrigatório · Sem fidelização após a experiência</p>
