@@ -9,17 +9,19 @@ logger = logging.getLogger("provisioned_accounts")
 ACCOUNTS = [
     {"email": "construtoradavi15@gmail.com", "name": "Construtora Davi", "company_name": "Construtora Davi",
      "temp_password": "Davi1234", "account_type": "pro_business", "plan_id": "pro_business_yearly",
-     "valid_days": 90},  # 3 meses a contar da criação do acesso
+     "valid_days": 90},  # 3 meses a contar da criação do acesso (must_change_password=True por omissão)
     # Contas E2E (teste automatizado em produção, validade 2 dias)
+    # Particular: só criar se não existir — já foi registada em prod via /api/auth/register
     {"email": "teste.particular+e2e@construpilot.pt", "name": "Teste Particular E2E",
      "temp_password": "TesteE2E!2026", "account_type": "particulier", "plan_id": None,
-     "valid_days": 2, "e2e": True},
+     "valid_days": 2, "e2e": True, "create_only_if_missing": True,
+     "must_change_password": False},
     {"email": "teste.pro+e2e@construpilot.pt", "name": "Teste Pro E2E", "company_name": "Teste Pro E2E",
      "temp_password": "TesteE2E!2026", "account_type": "pro", "plan_id": "pro_monthly",
-     "valid_days": 2, "e2e": True},
+     "valid_days": 2, "e2e": True, "must_change_password": False},
     {"email": "teste.business+e2e@construpilot.pt", "name": "Teste Business E2E", "company_name": "Teste Business E2E",
      "temp_password": "TesteE2E!2026", "account_type": "pro_business", "plan_id": "pro_business_monthly",
-     "valid_days": 2, "e2e": True},
+     "valid_days": 2, "e2e": True, "must_change_password": False},
 ]
 
 
@@ -42,18 +44,23 @@ async def provision_accounts(db, hash_password, new_user_id) -> None:
                         "password_hash": hash_password(acc["temp_password"]),
                         "auth_provider": "password", "picture": None,
                         "user_id": new_user_id(),
-                        "must_change_password": not acc.get("e2e", False),
+                        "must_change_password": acc.get("must_change_password", True),
                         "email_verified": True, "two_fa_enabled": False,
                         "provisioned_by_admin": True, "created_at": now}
                 await db.users.insert_one(dict(user))
                 logger.info("Conta cliente criada pelo administrador: %s", email)
+            elif acc.get("create_only_if_missing"):
+                # Conta já existe (p.ex. registo público em prod): não sobrescrever nada
+                logger.info("Conta E2E preservada (já existe): %s", email)
+                if not acc.get("plan_id"):
+                    continue
             elif acc.get("e2e"):
                 # Contas E2E: repor sempre palavra-passe, account_type e email_verified (idempotente)
                 await db.users.update_one(
                     {"user_id": user["user_id"]},
                     {"$set": {"account_type": acc["account_type"],
                               "email_verified": True,
-                              "must_change_password": False,
+                              "must_change_password": acc.get("must_change_password", False),
                               "active": True,
                               "password_hash": hash_password(acc["temp_password"])}},
                 )
