@@ -245,7 +245,7 @@ def build_demo(study: dict) -> dict:
         {"id": new_id("f"), "text": "Construção de cerca de 1850", "source": "declaration"},
         {"id": new_id("f"), "text": "Dois pisos sobre cave", "source": "declaration"},
         {"id": new_id("f"), "text": "Paredes de pedra ~50 cm", "source": "declaration"},
-        {"id": new_id("f"), "text": "Planchers bois", "source": "declaration"},
+        {"id": new_id("f"), "text": "Pavimentos em madeira", "source": "declaration"},
         {"id": new_id("f"), "text": "Abertura ~2,40 m sala/cozinha no R/C", "source": "declaration"},
     ]
     study["levels"] = [

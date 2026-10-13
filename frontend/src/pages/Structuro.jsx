@@ -18,12 +18,32 @@ import {
 const VERIF_STYLE = {
   bloquee: { label: "Bloqueada (dados em falta)", cls: "bg-red-500/15 text-red-600", Icon: ShieldAlert },
   en_attente_moteur: { label: "A aguardar o motor (indisponível)", cls: "bg-amber-500/15 text-amber-700", Icon: Lock },
-  hors_domaine: { label: "Hors domaine", cls: "bg-slate-500/15 text-slate-600", Icon: FileWarning },
+  hors_domaine: { label: "Fora do âmbito", cls: "bg-slate-500/15 text-slate-600", Icon: FileWarning },
   non_calculee: { label: "Não calculada", cls: "bg-slate-500/15 text-slate-600", Icon: HelpCircle },
   perimee: { label: "Desatualizada", cls: "bg-orange-500/15 text-orange-600", Icon: AlertTriangle },
 };
+const ELEMENT_LABEL = {
+  mur_porteur: "Parede resistente", poutre: "Viga", poteau: "Pilar", plancher: "Pavimento / laje", appui: "Apoio",
+  fondation_semelle: "Sapata / fundação", linteau: "Padieira", chevetre: "Viga de cabeceira", ouverture: "Abertura", etai: "Escoramento",
+};
+const LIFECYCLE_LABEL = {
+  brouillon: "rascunho", donnees_a_confirmer: "dados a confirmar", calcule: "calculado", a_revoir: "a rever", approuve: "aprovado",
+};
+const SOURCE_LABEL = {
+  mesure: "medição", document: "documento", essai: "ensaio", observation: "observação", declaration: "declaração", inconnu: "desconhecido",
+};
+const MISSING_LABEL = {
+  "charges.exploitation": "sobrecargas de utilização", "charges.permanentes": "cargas permanentes", "charges.sur_appuis": "cargas nos apoios",
+  "etai.charges_reprises": "cargas no escoramento", "etai.hauteur": "altura do escoramento", "etai.materiel": "material de escoramento",
+  "fondation.geometrie": "geometria da fundação", "fondation.niveau_assise": "cota de assentamento", "geometrie.niveaux": "pisos (geometria)",
+  "mur.epaisseur": "espessura da parede", "mur.materiau_resistance": "material/resistência da parede", "niveau_inferieur.capacite": "capacidade do piso inferior",
+  "ouverture.charges_reprises": "cargas sobre a abertura", "ouverture.portee": "vão da abertura", "ouverture.position": "posição da abertura",
+  "plancher.entraxe": "afastamento das vigas do pavimento", "plancher.etat_abouts": "estado dos apoios do pavimento", "plancher.portee": "vão do pavimento",
+  "plancher.section": "secção das vigas do pavimento", "plancher.sens_porteur": "direção resistente do pavimento", "poutre.appuis": "apoios da viga",
+  "poutre.maintien_lateral": "travamento lateral da viga", "sol.portance": "capacidade resistente do solo",
+};
 const LEVEL_LABEL = {
-  exploration: "Exploration", preliminaire: "Estudo preliminar", calculee: "Estudo calculado",
+  exploration: "Exploração", preliminaire: "Estudo preliminar", calculee: "Estudo calculado",
 };
 
 export default function Structuro() {
@@ -127,7 +147,7 @@ export default function Structuro() {
               <button className="text-left flex-1" onClick={() => open(s.study_id)}>
                 <div className="font-medium">{s.title}</div>
                 <div className="text-xs text-muted-foreground">
-                  rev. {s.revision} · {LEVEL_LABEL[s.output_level] || s.output_level} · {s.lifecycle}
+                  rev. {s.revision} · {LEVEL_LABEL[s.output_level] || s.output_level} · {LIFECYCLE_LABEL[s.lifecycle] || s.lifecycle}
                 </div>
               </button>
               <Button size="icon" variant="ghost" onClick={() => removeStudy(s.study_id)}
@@ -318,7 +338,7 @@ function StudyDetail({ study, setStudy, onBack }) {
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant="outline">Revisão {s.revision}</Badge>
           <Badge variant="outline">Piso: {LEVEL_LABEL[s.output_level] || s.output_level}</Badge>
-          <Badge variant="outline">Cycle : {s.lifecycle}</Badge>
+          <Badge variant="outline">Ciclo: {LIFECYCLE_LABEL[s.lifecycle] || s.lifecycle}</Badge>
           {s.ai_engine && <Badge variant="outline">Lecture IA : {s.ai_engine}</Badge>}
         </div>
       </header>
@@ -364,7 +384,7 @@ function StudyDetail({ study, setStudy, onBack }) {
           {(s.facts || []).map((f) => (
             <li key={f.id} className="flex items-start gap-2" data-testid={`structuro-fact-${f.id}`}>
               <span className="text-muted-foreground">•</span>{f.text}
-              <Badge variant="outline" className="text-[10px]">{f.source}</Badge>
+              <Badge variant="outline" className="text-[10px]">{SOURCE_LABEL[f.source] || f.source}</Badge>
             </li>
           ))}
           {(!s.facts || s.facts.length === 0) && <li className="text-muted-foreground">Nenhum facto extraído.</li>}
@@ -392,7 +412,7 @@ function StudyDetail({ study, setStudy, onBack }) {
                     data-testid={`structuro-level-elev-${lv.id}`} />
                   <span className="text-[11px] text-muted-foreground">m</span>
                   {lv.elevation_m?.source && lv.elevation_m.source !== "inconnu" && (
-                    <Badge variant="outline" className="text-[10px]">{lv.elevation_m.source}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{SOURCE_LABEL[lv.elevation_m.source] || lv.elevation_m.source}</Badge>
                   )}
                 </div>
                 <Button size="icon" variant="ghost" className="h-7 w-7 ml-auto" onClick={() => deleteLevel(lv)} data-testid={`structuro-level-delete-${lv.id}`}>
@@ -427,12 +447,12 @@ function StudyDetail({ study, setStudy, onBack }) {
                 <select className="h-8 text-xs border border-border rounded-sm px-2" value={el.type}
                   onChange={(e) => patchElement(el, { type: e.target.value })}
                   data-testid={`structuro-element-type-${el.id}`}>
-                  {elementTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {elementTypes.map((t) => <option key={t} value={t}>{ELEMENT_LABEL[t] || t}</option>)}
                 </select>
                 <Input className="h-8 flex-1 min-w-[140px] text-xs" defaultValue={el.label || ""} placeholder="designação"
                   onBlur={(e) => { if (e.target.value !== (el.label || "")) patchElement(el, { label: e.target.value }); }}
                   data-testid={`structuro-element-label-${el.id}`} />
-                <Input className="h-8 w-32 text-xs" defaultValue={el.level || ""} placeholder="niveau"
+                <Input className="h-8 w-32 text-xs" defaultValue={el.level || ""} placeholder="piso"
                   onBlur={(e) => { if (e.target.value !== (el.level || "")) patchElement(el, { level: e.target.value }); }}
                   data-testid={`structuro-element-level-${el.id}`} />
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteElement(el)} data-testid={`structuro-element-delete-${el.id}`}>
@@ -445,13 +465,13 @@ function StudyDetail({ study, setStudy, onBack }) {
           <div className="flex flex-wrap items-end gap-2">
             <select className="h-8 text-xs border border-border rounded-sm px-2" value={newEl.type}
               onChange={(e) => setNewEl((p) => ({ ...p, type: e.target.value }))} data-testid="structuro-newel-type">
-              {elementTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+              {elementTypes.map((t) => <option key={t} value={t}>{ELEMENT_LABEL[t] || t}</option>)}
             </select>
             <Input className="h-8 w-16 text-xs" placeholder="ref." value={newEl.ref}
               onChange={(e) => setNewEl((p) => ({ ...p, ref: e.target.value }))} data-testid="structuro-newel-ref" />
             <Input className="h-8 w-48 text-xs" placeholder="designação" value={newEl.label}
               onChange={(e) => setNewEl((p) => ({ ...p, label: e.target.value }))} data-testid="structuro-newel-label" />
-            <Input className="h-8 w-28 text-xs" placeholder="niveau" value={newEl.level}
+            <Input className="h-8 w-28 text-xs" placeholder="piso" value={newEl.level}
               onChange={(e) => setNewEl((p) => ({ ...p, level: e.target.value }))} data-testid="structuro-newel-level" />
             <Button size="sm" className="h-8 gap-1" onClick={addElement} data-testid="structuro-newel-add">
               <Plus className="h-4 w-4" /> Adicionar um elemento
@@ -476,7 +496,7 @@ function StudyDetail({ study, setStudy, onBack }) {
                   </span>
                 </div>
                 {v.missing_inputs?.length > 0 && (
-                  <div className="text-[11px] text-red-600 mt-1">Manque : {v.missing_inputs.join(", ")}</div>
+                  <div className="text-[11px] text-red-600 mt-1">Em falta: {v.missing_inputs.map((k) => MISSING_LABEL[k] || k).join(", ")}</div>
                 )}
               </div>
             );
@@ -553,7 +573,7 @@ function StudyDetail({ study, setStudy, onBack }) {
                 </button>
                 <div className="flex items-center gap-1">
                   <Badge variant="outline" className="text-[10px]">{p.kind}</Badge>
-                  <Input className="h-6 w-28 text-[11px]" defaultValue={p.level || ""} placeholder="niveau"
+                  <Input className="h-6 w-28 text-[11px]" defaultValue={p.level || ""} placeholder="piso"
                     onBlur={(e) => { if (e.target.value !== (p.level || "")) setPlanLevel(p, e.target.value); }}
                     data-testid={`structuro-plan-level-${p.id}`} />
                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deletePlan(p)} data-testid={`structuro-plan-delete-${p.id}`}>
