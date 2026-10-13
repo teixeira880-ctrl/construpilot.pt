@@ -7,66 +7,66 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-const APPS = ["ConstruPilot Chantier", "ConstruPilot Collaborateur", "ConstruPilot Particuliers"];
+const APPS = ["ConstruPilot Obra", "ConstruPilot Collaborateur", "ConstruPilot Particuliers"];
 const CONTACT_EMAIL = "contact@construpilot.fr";
 const UPDATED = { fr: "Juin 2026", en: "June 2026" };
 
 const T = {
   fr: {
     over: "Applications mobiles & web",
-    title: "Supprimer mon compte ConstruPilot",
-    updated: (d) => `Dernière mise à jour : ${d}`,
-    banner: "Suppression définitive · Aucune donnée vendue · Hébergement UE",
-    intro: `Cette page explique comment demander la suppression de votre compte et de vos données pour les applications ${APPS.join(", ")} et le service web ConstruPilot (éditeur : ConstruPilot).`,
-    s1: "1. Supprimer votre compte depuis l'application",
+    title: "Eliminar a minha conta ConstruPilot",
+    updated: (d) => `Última atualização:${d}`,
+    banner: "Eliminação definitiva · Nenhum dado vendido · Alojamento na UE",
+    intro: `Esta página explica como pedir a eliminação da sua conta e dos seus dados nas aplicações${APPS.join(", ")}e no serviço web ConstruPilot (editor: ConstruPilot).`,
+    s1: "1. Eliminar a sua conta a partir da aplicação",
     s1b: [
-      "Connectez-vous à votre compte (application mobile ou site web).",
-      "Ouvrez « Mon compte » (menu profil) → section « Supprimer mon compte ».",
-      "Saisissez votre mot de passe puis tapez SUPPRIMER pour confirmer.",
-      "La suppression est immédiate et définitive : aucune période d'attente, aucun rappel commercial.",
+      "Inicie sessão na sua conta (aplicação móvel ou site).",
+      "Abra «A minha conta» (menu de perfil) → secção «Eliminar a minha conta».",
+      "Introduza a sua palavra-passe e escreva ELIMINAR para confirmar.",
+      "A eliminação é imediata e definitiva: nenhum período de espera, nenhum contacto comercial.",
     ],
-    s1link: "Ouvrir la page Mon compte",
-    s2: "2. Vous n'avez plus accès à votre compte ?",
-    s2p: "Envoyez-nous une demande avec l'adresse e-mail du compte concerné. Nous vérifions votre identité puis supprimons le compte sous 30 jours maximum (généralement sous 72 h ouvrées). Vous recevez une confirmation par e-mail.",
-    s3: "3. Données supprimées",
+    s1link: "Abrir a página A minha conta",
+    s2: "2. Já não tem acesso à sua conta?",
+    s2p: "Envie-nos um pedido com o endereço de e-mail da conta em causa. Verificamos a sua identidade e depois eliminamos a conta no prazo máximo de 30 dias (geralmente em 72 h úteis). Recebe uma confirmação por e-mail.",
+    s3: "3. Dados eliminados",
     s3b: [
-      "Compte et profil : nom, e-mail, téléphone, mot de passe, photo, préférences, sessions et appareils.",
-      "Contenus professionnels : chantiers, devis, plans, métrés, photos de chantier, documents importés, messages et fils de discussion.",
-      "Contacts : clients, sous-traitants, fournisseurs et collaborateurs invités par vous.",
-      "Historique d'usage : notifications, recherches, journaux d'activité, crédits et statistiques liés au compte.",
+      "Conta e perfil: nome, e-mail, telefone, palavra-passe, fotografia, preferências, sessões e dispositivos.",
+      "Conteúdos profissionais: obras, orçamentos, plantas, medições, fotografias de obra, documentos importados, mensagens e conversas.",
+      "Contactos: clientes, subempreiteiros, fornecedores e colaboradores convidados por si.",
+      "Histórico de utilização: notificações, pesquisas, registos de atividade, créditos e estatísticas ligados à conta.",
     ],
-    s4: "4. Données conservées (obligations légales)",
+    s4: "4. Dados conservados (obrigações legais)",
     s4b: [
-      "Factures émises et pièces comptables : conservées 10 ans (article L.123-22 du Code de commerce) hors de votre espace, sans accès marketing.",
-      "Preuves de facturation d'abonnement conservées par notre prestataire de paiement (Stripe) selon ses obligations légales.",
-      "Journaux techniques de sécurité anonymisés : 12 mois maximum.",
-      "Sauvegardes chiffrées : purgées par rotation sous 30 jours.",
+      "Faturas emitidas e documentos contabilísticos: conservados 10 anos (artigo 52.º do Código do IVA) fora do seu espaço, sem acesso para marketing.",
+      "Comprovativos de faturação da subscrição conservados pelo nosso prestador de pagamentos (Stripe) de acordo com as suas obrigações legais.",
+      "Registos técnicos de segurança anonimizados: 12 meses no máximo.",
+      "Cópias de segurança cifradas: purgadas por rotação em 30 dias.",
     ],
-    s5: "5. Conséquences de la suppression",
-    s5p: "La suppression met fin à votre abonnement en cours et n'ouvre pas droit à remboursement des périodes déjà réglées. Vos collaborateurs et clients perdent l'accès aux espaces partagés que vous aviez créés. L'opération est irréversible : exportez vos devis, factures et documents avant de confirmer.",
-    s6: "6. Nous contacter",
-    s6p: "Pour toute question relative à vos données personnelles (accès, rectification, portabilité, suppression) :",
-    form: "Demande de suppression de compte",
-    fname: "Nom et prénom",
-    femail: "E-mail du compte à supprimer",
-    fmsg: "Précisions (facultatif)",
-    fmsgph: "Ex. nom de l'entreprise, dernière connexion, application utilisée…",
-    send: "Envoyer ma demande de suppression",
-    sent: "Demande envoyée. Vous recevez un accusé de réception par e-mail ; la suppression est traitée sous 30 jours maximum.",
-    err: "Envoi impossible. Écrivez-nous directement à " + CONTACT_EMAIL,
-    required: "Indiquez votre nom et l'e-mail du compte.",
-    dataTitle: "Demander la suppression de mes données",
-    dataIntro: `Cette page permet à tout utilisateur des applications ${APPS.join(", ")} et du service web ConstruPilot de demander la suppression de ses données personnelles, avec ou sans suppression du compte.`,
-    dataChoice: "Que souhaitez-vous supprimer ?",
-    dataOptA: "Tout mon compte et toutes mes données",
-    dataOptB: "Seulement certaines données (photos, chantier, contacts, historique…) en gardant mon compte",
-    dataWhich: "Données à supprimer",
-    dataWhichPh: "Ex. photos du chantier « Villa Dupont », mes contacts clients, l'historique de l'assistant IA…",
-    dataForm: "Demande de suppression de données",
-    dataSend: "Envoyer ma demande de suppression de données",
-    dataDelay: "Nous répondons sous 30 jours maximum (généralement 72 h ouvrées), conformément au RGPD (article 17 — droit à l'effacement).",
-    dataLink: "Vous voulez seulement supprimer certaines données, sans fermer votre compte ?",
-    accountLink: "Vous voulez supprimer tout votre compte ?",
+    s5: "5. Consequências da eliminação",
+    s5p: "A eliminação põe termo à sua subscrição em curso e não dá direito a reembolso dos períodos já pagos. Os seus colaboradores e clientes perdem o acesso aos espaços partilhados que tinha criado. A operação é irreversível: exporte os seus orçamentos, faturas e documentos antes de confirmar.",
+    s6: "6. Contacte-nos",
+    s6p: "Para qualquer questão relativa aos seus dados pessoais (acesso, retificação, portabilidade, eliminação):",
+    form: "Pedido de eliminação de conta",
+    fname: "Nome e apelido",
+    femail: "E-mail da conta a eliminar",
+    fmsg: "Precisões (opcional)",
+    fmsgph: "Ex.: nome da empresa, último acesso, aplicação utilizada…",
+    send: "Enviar o meu pedido de eliminação",
+    sent: "Pedido enviado. Recebe um aviso de receção por e-mail; a eliminação é tratada no prazo máximo de 30 dias.",
+    err: "Envio impossível. Escreva-nos diretamente para" + CONTACT_EMAIL,
+    required: "Indique o seu nome e o e-mail da conta.",
+    dataTitle: "Pedir a eliminação dos meus dados",
+    dataIntro: `Esta página permite a qualquer utilizador das aplicações${APPS.join(", ")}e do serviço web ConstruPilot pedir a eliminação dos seus dados pessoais, com ou sem eliminação da conta.`,
+    dataChoice: "O que pretende eliminar?",
+    dataOptA: "Toda a minha conta e todos os meus dados",
+    dataOptB: "Apenas alguns dados (fotografias, obra, contactos, histórico…) mantendo a minha conta",
+    dataWhich: "Dados a eliminar",
+    dataWhichPh: "Ex.: fotografias da obra «Moradia Silva», os meus contactos de clientes, o histórico do assistente IA…",
+    dataForm: "Pedido de eliminação de dados",
+    dataSend: "Enviar o meu pedido de eliminação de dados",
+    dataDelay: "Respondemos no prazo máximo de 30 dias (geralmente 72 h úteis), em conformidade com o RGPD (artigo 17.º — direito ao apagamento).",
+    dataLink: "Pretende apenas eliminar alguns dados, sem fechar a sua conta?",
+    accountLink: "Pretende eliminar toda a sua conta?",
   },
   en: {
     over: "Mobile & web apps",
@@ -157,7 +157,7 @@ export default function DeleteAccountPage() {
   useEffect(() => {
     document.documentElement.lang = lang;
     const titles = {
-      fr: dataMode ? "Supprimer mes données — ConstruPilot" : "Supprimer mon compte — ConstruPilot",
+      fr: dataMode ? "Eliminar os meus dados — ConstruPilot" : "Eliminar a minha conta — ConstruPilot",
       en: dataMode ? "Delete my data — ConstruPilot" : "Delete my account — ConstruPilot",
     };
     document.title = titles[lang];
@@ -190,7 +190,7 @@ export default function DeleteAccountPage() {
   return (
     <div className="max-w-3xl mx-auto px-6 py-14" data-testid="page-delete-account">
       <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors mb-6" data-testid="delete-account-back-link">
-        <ArrowLeft className="h-4 w-4" /> {lang === "fr" ? "Retour à l'accueil" : "Back to home"}
+        <ArrowLeft className="h-4 w-4" /> {lang === "fr" ? "Voltar ao início" : "Back to home"}
       </Link>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -203,7 +203,7 @@ export default function DeleteAccountPage() {
         </div>
         <div className="flex rounded-full border border-border overflow-hidden text-sm">
           <button type="button" onClick={() => setLang("fr")} data-testid="delete-account-lang-fr"
-            className={`px-4 py-1.5 transition-colors ${lang === "fr" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>Français</button>
+            className={`px-4 py-1.5 transition-colors ${lang === "fr" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>Francês</button>
           <button type="button" onClick={() => setLang("en")} data-testid="delete-account-lang-en"
             className={`px-4 py-1.5 transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>English</button>
         </div>
@@ -295,7 +295,7 @@ export default function DeleteAccountPage() {
           {t.s6p}{" "}
           <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`} data-testid="delete-account-mailto">{CONTACT_EMAIL}</a>
           {" · "}
-          <Link className="text-primary underline" to="/privacy">{lang === "fr" ? "Politique de confidentialité" : "Privacy Policy"}</Link>
+          <Link className="text-primary underline" to="/privacy">{lang === "fr" ? "Política de privacidade" : "Privacy Policy"}</Link>
           {" · "}
           <Link className="text-primary underline" to="/aide">{lang === "fr" ? "Assistance" : "Support"}</Link>
         </p>

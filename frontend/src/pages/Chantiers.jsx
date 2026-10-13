@@ -31,29 +31,29 @@ export default function Chantiers() {
     <div className="grid gap-6 workspace-collection" data-testid="chantiers-page">
       <header className="workspace-page-heading">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight flex items-center gap-2"><HardHat className="h-6 w-6 text-primary" /> Dossiers chantier</h1>
-          <p className="text-sm text-muted-foreground mt-1">Un dossier par affaire : client, plans, métrés, devis, factures et photos réunis — sans ressaisie.</p>
+          <h1 className="font-display text-2xl font-bold tracking-tight flex items-center gap-2"><HardHat className="h-6 w-6 text-primary" /> Dossiers de obra</h1>
+          <p className="text-sm text-muted-foreground mt-1">Um processo por obra: cliente, plantas, medições, orçamentos, faturas e fotografias reunidos — sem reintrodução.</p>
         </div>
-        <Button className="gap-2" onClick={() => setOpen(true)} data-testid="chantiers-new-btn"><Plus className="h-4 w-4" /> Nouveau chantier</Button>
+        <Button className="gap-2" onClick={() => setOpen(true)} data-testid="chantiers-new-btn"><Plus className="h-4 w-4" /> Nova obra</Button>
       </header>
 
       <div className="workspace-collection-toolbar">
-        <div className="workspace-search-field flex-1 min-w-56"><Search size={17} aria-hidden="true" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un chantier, un client, une ville…" aria-label="Rechercher" data-testid="chantiers-search" /></div>
+        <div className="workspace-search-field flex-1 min-w-56"><Search size={17} aria-hidden="true" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar uma obra, um cliente, uma cidade…" aria-label="Pesquisar" data-testid="chantiers-search" /></div>
         <div className="workspace-status-filters" role="group" aria-label="Filtrer par statut">
-          {[["", "Tous"], ...Object.entries(CHANTIER_STATUS)].map(([v, l]) => (
+          {[["", "Todos"], ...Object.entries(CHANTIER_STATUS)].map(([v, l]) => (
             <button key={v} type="button" aria-pressed={status === v} onClick={() => setStatus(v)} data-testid={`chantiers-filter-${v || "all"}`}
               className={`px-3 h-9 rounded-md border text-sm transition-colors ${status === v ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}>{l}</button>
           ))}
         </div>
       </div>
 
-      {state === "error" && <div className="surface p-6 text-sm" data-testid="chantiers-error">Impossible de charger vos chantiers. <button className="text-primary underline" onClick={load}>Réessayer</button></div>}
+      {state === "error" && <div className="surface p-6 text-sm" data-testid="chantiers-error">Impossível carregar as suas obras. <button className="text-primary underline" onClick={load}>Tentar novamente</button></div>}
       {state === "ready" && items.length === 0 && (
         <div className="surface p-10 text-center" data-testid="chantiers-empty">
           <HardHat className="h-10 w-10 mx-auto text-primary/60" />
-          <h2 className="font-semibold mt-3">Aucun dossier chantier{q || status ? " pour ce filtre" : ""}</h2>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Créez votre premier dossier : vous retrouverez ensuite le client pré-rempli dans le devis, l'éditeur de plans, l'analyse Pro et le solveur.</p>
-          {!q && !status && <Button className="mt-4 gap-2" onClick={() => setOpen(true)} data-testid="chantiers-empty-new"><Plus className="h-4 w-4" /> Créer un chantier</Button>}
+          <h2 className="font-semibold mt-3">Nenhum processo de obra{q || status ? "para este filtro" : ""}</h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Crie o seu primeiro processo: depois encontrará o cliente pré-preenchido no orçamento, no editor de plantas, na análise Pro e no solucionador.</p>
+          {!q && !status && <Button className="mt-4 gap-2" onClick={() => setOpen(true)} data-testid="chantiers-empty-new"><Plus className="h-4 w-4" /> Criar uma obra</Button>}
         </div>
       )}
       {state === "ready" && items.length > 0 && (
@@ -63,10 +63,10 @@ export default function Chantiers() {
               <div className="h-10 w-10 rounded-sm bg-primary/10 text-primary grid place-items-center shrink-0"><HardHat className="h-5 w-5" /></div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold truncate">{c.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{[c.client_name, [c.address, c.postal_code, c.city].filter(Boolean).join(" ")].filter(Boolean).join(" · ") || "Client à renseigner"}</p>
+                <p className="text-xs text-muted-foreground truncate">{[c.client_name, [c.address, c.postal_code, c.city].filter(Boolean).join(" ")].filter(Boolean).join(" · ") || "Cliente a indicar"}</p>
               </div>
               <div className="workspace-site-counts">
-                <Count icon={FileText} n={c.counts.documents} title="Devis et factures" label="docs" />
+                <Count icon={FileText} n={c.counts.documents} title="Orçamentos e faturas" label="docs" />
                 <Count icon={Ruler} n={c.counts.plans} title="Plans" label="plans" />
                 {c.counts.plans_pro > 0 && <Count icon={Layers} n={c.counts.plans_pro} title="Analyses Pro" label="analyses" />}
                 {c.counts.diagnostics > 0 && <Count icon={Wrench} n={c.counts.diagnostics} title="Diagnostics" label="diagnostics" />}

@@ -67,7 +67,7 @@ export default function WorkerApp() {
       else { await api.post("/hr/clock-out", body); toast.success(t("hr.w_out_done")); }
       setSelfie(null); setGps(null); setGpsState("idle");
       refresh();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
     finally { setBusy(false); }
   };
 
@@ -77,7 +77,7 @@ export default function WorkerApp() {
     try {
       await api.post("/hr/site-notes", { project_id: openTs?.project_id || projectId || null, type: "question", message: doubt });
       toast.success(t("hr.w_doubt_sent")); setDoubt(""); refresh();
-    } catch { toast.error("Erreur"); }
+    } catch { toast.error("Erro"); }
     finally { setBusy(false); }
   };
 
@@ -94,7 +94,7 @@ export default function WorkerApp() {
     try {
       await api.post("/hr/site-photos", { project_id: openTs?.project_id || projectId || null, photo, caption });
       toast.success(t("hr.w_photo_sent")); setPhoto(null); setCaption("");
-    } catch { toast.error("Erreur"); }
+    } catch { toast.error("Erro"); }
     finally { setBusy(false); }
   };
 

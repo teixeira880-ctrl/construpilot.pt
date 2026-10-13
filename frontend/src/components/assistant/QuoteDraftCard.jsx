@@ -21,7 +21,7 @@ export const QuoteDraftCard = ({ result }) => {
     {saved && d.estimated_lines > 0 && <Link to="/bibliotheque" data-testid={id("learned-cta")}
       className="flex items-center gap-2 rounded-sm border border-amber-400/60 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 hover:border-amber-500 transition-colors">
       <Sparkles size={14} className="shrink-0" />
-      <span>{d.estimated_lines} prix moyen{d.estimated_lines > 1 ? "s" : ""} marché appris — validez-les pour fiabiliser vos prochains devis</span>
+      <span>{d.estimated_lines} preço médio{d.estimated_lines > 1 ? "s" : ""} de mercado aprendidos — valide-os para tornar os próximos orçamentos mais fiáveis</span>
       <ArrowRight size={14} className="shrink-0 ml-auto" />
     </Link>}
     {saved && <div className="flex flex-wrap gap-2"><Button asChild size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis-editeur/${result.doc_id}`} data-testid={id("open")}><FilePenLine size={15} />{text("edit")}</Link></Button><Button asChild variant="outline" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis?highlight=${result.doc_id}`} data-testid={id("tracking")}><ArrowRight size={15} />{text("tracking")}</Link></Button></div>}

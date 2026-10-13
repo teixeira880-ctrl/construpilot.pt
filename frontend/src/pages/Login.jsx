@@ -49,11 +49,11 @@ export default function Login() {
         const isPro = acct === "pro" || acct === "pro_business";
         if (isPro) {
           if (!form.siret || form.siret.replace(/[ .\-]/g, "").length !== 14) {
-            toast.error("SIRET requis (14 chiffres) pour un compte pro");
+            toast.error("SIRET obrigatório (14 dígitos) para uma conta profissional");
             setBusy(false); return;
           }
           if (!form.kbis || !form.decennale) {
-            toast.error("K-bis et attestation décennale obligatoires pour un compte pro");
+            toast.error("K-bis e atestado decenal obrigatórios para uma conta pro");
             setBusy(false); return;
           }
         }
@@ -67,13 +67,13 @@ export default function Login() {
           fd.append("siret", form.siret);
           try {
             await api.post("/auth/kyc/submit", fd, { headers: { "Content-Type": "multipart/form-data" } });
-            toast.success("Documents envoyés — validation sous 24-48h");
+            toast.success("Documentos enviados — validação em 24-48h");
           } catch {
-            toast.warning("Compte créé, mais l'envoi des documents a échoué. Renvoyez-les depuis votre compte.");
+            toast.warning("Conta criada, mas o envio dos documentos falhou. Reenvie-os a partir da sua conta.");
           }
         }
         if (ref) {
-          toast.success(`Code parrainage ${ref.toUpperCase()} appliqué — bienvenue !`);
+          toast.success(`Code parrainage ${ref.toUpperCase()}aplicado — bem-vindo!`);
           sessionStorage.removeItem("construpilot_ref");
         }
         // Envoi de la demande de travaux mise en attente avant l'inscription
@@ -113,7 +113,7 @@ export default function Login() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="relative hidden lg:block grain">
-        <img src={IMAGES.dashboard_banner} alt="Plans de chantier" className="absolute inset-0 h-full w-full object-cover opacity-50" />
+        <img src={IMAGES.dashboard_banner} alt="Plantas de obra" className="absolute inset-0 h-full w-full object-cover opacity-50" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20" />
         <div className="relative h-full p-12 flex flex-col justify-between">
           <Link to="/" className="flex items-center gap-2 w-fit">
@@ -252,7 +252,7 @@ export default function Login() {
               <form onSubmit={submit("register")} className="grid gap-4 mt-6">
                 {/* Type de compte */}
                 <div className="grid gap-2">
-                  <Label>Type de compte</Label>
+                  <Label>Tipo de conta</Label>
                   <div className="grid grid-cols-3 gap-2" data-testid="register-account-type">
                     {[
                       { v: "particulier", label: "Particulier" },
@@ -295,19 +295,19 @@ export default function Login() {
                              data-testid="register-siret-input" className="rounded-sm h-10" />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">Extrait K-bis (PDF, JPG ou PNG)</Label>
+                      <Label className="text-xs">Certidão comercial (PDF, JPG ou PNG)</Label>
                       <input required type="file" accept=".pdf,image/jpeg,image/png"
                              onChange={(e) => setForm({ ...form, kbis: e.target.files?.[0] || null })}
                              data-testid="register-kbis-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">Attestation d'assurance décennale (PDF, JPG ou PNG)</Label>
+                      <Label className="text-xs">Certificado de seguro decenal (PDF, JPG ou PNG)</Label>
                       <input required type="file" accept=".pdf,image/jpeg,image/png"
                              onChange={(e) => setForm({ ...form, decennale: e.target.files?.[0] || null })}
                              data-testid="register-decennale-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      Votre compte sera actif immédiatement et validé par notre équipe sous 24-48h.
+                      A sua conta ficará ativa imediatamente e será validada pela nossa equipa em 24-48h.
                     </p>
                   </div>
                 )}

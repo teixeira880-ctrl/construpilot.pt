@@ -17,8 +17,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuoteCopy } from "@/components/assistant/quoteCopy";
 
-const MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
-  "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const MONTHS_FR = ["janvier", "fevereiro", "mars", "avril", "mai", "juin",
+  "juillet", "agosto", "septembre", "octobre", "novembre", "dezembro"];
 
 export default function QuoteTracking() {
   const { user } = useAuth();
@@ -58,16 +58,16 @@ export default function QuoteTracking() {
     setAutoRemind(next.enabled); setRemindDelay(next.delay_days); setRemindMax(next.max_reminders);
     try {
       await api.post("/quotes/reminders/settings", next);
-      toast.success("Relances mises à jour");
-    } catch { toast.error("Impossible de modifier le réglage"); }
+      toast.success("Reenvios atualizados");
+    } catch { toast.error("Impossível modificar a configuração"); }
   };
   const toggleAutoRemind = (val) => saveRemind({ enabled: val });
 
   const QUOTE_STATUS = {
     draft: { label: "Brouillon", cls: "border-border text-muted-foreground" },
-    sent: { label: "Envoyé", cls: "border-sky-500/60 text-sky-600" },
-    signed: { label: "Signé", cls: "border-primary/60 text-primary bg-primary/5" },
-    refused: { label: "Refusé", cls: "border-red-500/60 text-red-600" },
+    sent: { label: "Enviado", cls: "border-sky-500/60 text-sky-600" },
+    signed: { label: "Assinado", cls: "border-primary/60 text-primary bg-primary/5" },
+    refused: { label: "Recusado", cls: "border-red-500/60 text-red-600" },
   };
   const [autoDeposit, setAutoDeposit] = useState(false);
   const [depositPct, setDepositPct] = useState(30);
@@ -82,19 +82,19 @@ export default function QuoteTracking() {
       const { data } = await api.put("/documents/settings/auto-deposit", next);
       setAutoDeposit(data.enabled); setDepositPct(data.pct);
       toast.success(data.enabled
-        ? `Acompte ${data.pct} % créé automatiquement à chaque signature`
-        : "Acompte automatique désactivé");
-    } catch { toast.error("Réglage impossible"); }
+        ? `Acompte ${data.pct}% criado automaticamente em cada assinatura`
+        : "Adiantamento automático desativado");
+    } catch { toast.error("Definição impossível"); }
   };
   const toggleAutoDeposit = (v) => saveDeposit({ enabled: v });
 
   const signOnSite = async (doc) => {
     try {
       const { data } = await api.get(`/documents/${doc.doc_id}/sign-link`);
-      if (data.already_signed) { toast.message("Ce devis est déjà signé"); return; }
+      if (data.already_signed) { toast.message("Este orçamento já está assinado"); return; }
       window.open(data.path, "_blank", "noopener");
-      toast.success("Page de signature ouverte — passez l'écran au client");
-    } catch { toast.error("Impossible d'ouvrir la signature"); }
+      toast.success("Página de assinatura aberta — passe o ecrã ao cliente");
+    } catch { toast.error("Impossível abrir a assinatura"); }
   };
 
   const changeStatus = async (doc, status) => {
@@ -102,40 +102,40 @@ export default function QuoteTracking() {
       await api.patch(`/documents/${doc.doc_id}/status`, { status });
       setQuotes((qs) => qs.map((x) => x.doc_id === doc.doc_id ? { ...x, status } : x));
       toast.success(`Statut : ${QUOTE_STATUS[status]?.label || status}`);
-    } catch { toast.error("Changement de statut impossible"); }
+    } catch { toast.error("Alteração de estado impossível"); }
   };
   const deleteQuote = async (doc) => {
     const signed = doc.status === "signed";
     if (signed) {
-      const typed = window.prompt(`Ce devis est SIGNÉ (${doc.number || doc.doc_id}). Sa suppression a une portée contractuelle.\nPour confirmer, tapez exactement : SUPPRIMER`);
-      if (typed !== "SUPPRIMER") { toast.message("Suppression annulée — le devis signé est conservé"); return; }
+      const typed = window.prompt(`Este orçamento está ASSINADO (${doc.number || doc.doc_id}). A sua eliminação tem alcance contratual.\nPara confirmar, escreva exatamente: ELIMINAR`);
+      if (typed !== "ELIMINAR") { toast.message("Eliminação anulada — o orçamento assinado é conservado"); return; }
     } else if (!(await confirm({
-      title: "Mettre ce devis à la corbeille ?",
-      description: `Le devis ${doc.number || ""} sera récupérable 30 jours depuis la Corbeille.`,
-      confirmLabel: "Mettre à la corbeille",
+      title: "Mover este orçamento para o lixo?",
+      description: `O orçamento${doc.number || ""}será recuperável durante 30 dias a partir do Lixo.`,
+      confirmLabel: "Mover para o lixo",
     }))) return;
     try {
       await api.delete(`/documents/${doc.doc_id}${signed ? "?confirm_signed=true" : ""}`);
       setQuotes((qs) => qs.filter((x) => x.doc_id !== doc.doc_id));
-      toast.success("Devis mis à la corbeille — récupérable 30 jours", { action: { label: "Corbeille", onClick: () => navigate("/corbeille") } });
-    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
+      toast.success("Orçamento movido para o lixo — recuperável durante 30 dias", { action: { label: "Corbeille", onClick: () => navigate("/corbeille") } });
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível eliminar"); }
   };
   const facturer = async (doc) => {
-    if (doc.status !== "signed") { toast.error("Le devis doit être signé avant d'être facturé"); return; }
+    if (doc.status !== "signed") { toast.error("O orçamento deve ser assinado antes de ser faturado"); return; }
     try {
       const { data } = await api.post(`/documents/${doc.doc_id}/to-invoice`, { mode: "total", pct: 100 });
-      toast.success("Facture créée ✅");
+      toast.success("Fatura criada ✅");
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Facturation impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Faturação impossível"); }
   };
 
   const facturerAcompte = async (doc) => {
-    if (doc.status !== "signed") { toast.error("Le devis doit être signé avant de facturer un acompte"); return; }
+    if (doc.status !== "signed") { toast.error("O orçamento deve ser assinado antes de faturar um sinal"); return; }
     try {
       const { data } = await api.post(`/documents/${doc.doc_id}/deposit-invoice`, { pct: 30 });
-      toast.success("Facture d'acompte 30% créée — vérifiez et envoyez ✅");
+      toast.success("Fatura de sinal 30% criada — verifique e envie ✅");
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Facturation d'acompte impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Faturação do adiantamento impossível"); }
   };
 
   const [billQuote, setBillQuote] = useState(null);
@@ -144,7 +144,7 @@ export default function QuoteTracking() {
   const [sitDepMode, setSitDepMode] = useState("prorata");
   const [sitDepManual, setSitDepManual] = useState(0);
   const openBilling = async (doc) => {
-    if (doc.status !== "signed") { toast.error("Le devis doit être signé"); return; }
+    if (doc.status !== "signed") { toast.error("O orçamento deve ser assinado"); return; }
     setBillQuote(doc); setRecap(null); setSitPct(50); setSitDepMode("prorata"); setSitDepManual(0);
     try { const { data } = await api.get(`/documents/${doc.doc_id}/billing-recap`); setRecap(data); } catch { /* */ }
   };
@@ -153,29 +153,29 @@ export default function QuoteTracking() {
       const { data } = await api.post(`/documents/${billQuote.doc_id}/situation-invoice`, {
         pct: Number(sitPct), deposit_mode: sitDepMode, deposit_amount_ht: Number(sitDepManual) || 0,
       });
-      toast.success("Facture de situation créée — vérifiez et envoyez ✅");
+      toast.success("Fatura de auto de medição criada — verifique e envie ✅");
       setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Situation impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Auto de medição impossível"); }
   };
   const makeBalance = async () => {
     try {
       const { data } = await api.post(`/documents/${billQuote.doc_id}/balance-invoice`);
-      toast.success("Facture de solde créée — vérifiez et envoyez ✅");
+      toast.success("Fatura de saldo criada — verifique e envie ✅");
       setBillQuote(null); navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Solde impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Fatura final impossível"); }
   };
 
   const retrySend = async (send) => {
-    if (!send.doc_id) { toast.error("Devis introuvable pour la relance"); return; }
+    if (!send.doc_id) { toast.error("Orçamento não encontrado para a reativação"); return; }
     setRetrying(send.log_id);
     try {
       await api.post(`/documents/${send.doc_id}/send`, {
         client_email: send.client_email, client_name: send.client_name || "",
       });
-      toast.success("Nouvel envoi lancé ✅");
+      toast.success("Novo envio lançado ✅");
       await load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally { setRetrying(null); }
   };
   const now = new Date();
@@ -193,7 +193,7 @@ export default function QuoteTracking() {
         (data.sends || []).filter((s) => s.worksite_status === "completed" || s.review_requested)
           .map((s) => s.log_id));
       setCompleted(done);
-    } catch { toast.error("Impossible de charger les devis"); }
+    } catch { toast.error("Impossível carregar os orçamentos"); }
     finally { setLoading(false); }
     try {
       const { data } = await api.get("/documents?doc_type=quote");
@@ -211,14 +211,14 @@ export default function QuoteTracking() {
   useEffect(() => { if (user) load(); }, [user]);
 
   const makeExample = async (send) => {
-    if (!send.doc_id) { toast.error("Devis introuvable"); return; }
+    if (!send.doc_id) { toast.error("Orçamento não encontrado"); return; }
     setExBusy(send.log_id);
     try {
       const { data } = await api.post(`/admin/learning/from-document/${send.doc_id}`);
       setExampleDocs((s) => new Set(s).add(send.doc_id));
-      toast.success(data.already ? "Ce devis est déjà un exemple IA." : "Devis gagnant ajouté aux exemples IA — l'assistant s'en inspirera.");
+      toast.success(data.already ? "Este orçamento já é um exemplo IA." : "Orçamento ganho adicionado aos exemplos IA — o assistente vai inspirar-se nele.");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Ajout impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível adicionar");
     } finally { setExBusy(null); }
   };
 
@@ -231,9 +231,9 @@ export default function QuoteTracking() {
       a.download = "construpilot-clients-devis.csv";
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export CSV téléchargé");
+      toast.success("Export CSV transferido");
     } catch {
-      toast.error("Export impossible");
+      toast.error("Impossível exportar");
     }
   };
 
@@ -247,15 +247,15 @@ export default function QuoteTracking() {
       a.download = `recap-comptable-${recapY}-${String(recapM).padStart(2, "0")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Rapport PDF téléchargé");
+      toast.success("Relatório PDF descarregado");
     } catch {
-      toast.error("Génération impossible");
+      toast.error("Impossível gerar");
     }
   };
 
   const copySignLink = async (send) => {
     const raw = window.prompt(
-      "Acompte demandé à la signature (% du TTC) — laissez 30 par défaut, ou 0 pour désactiver :",
+      "Sinal pedido à assinatura (% do c/ IVA) — deixe 30 por defeito, ou 0 para desativar:",
       "30");
     if (raw === null) return; // annulé
     const pct = Math.max(0, Math.min(100, parseFloat(raw) || 0));
@@ -268,10 +268,10 @@ export default function QuoteTracking() {
         : `${window.location.origin}${data.url}`;
       await navigator.clipboard.writeText(fullUrl);
       toast.success(pct > 0
-        ? `Lien copié — acompte ${pct}% à la signature`
-        : "Lien de signature copié (sans acompte)");
+        ? `Ligação copiada — sinal${pct}% na assinatura`
+        : "Link de assinatura copiado (sem sinal)");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Génération impossible");
+      toast.error(e?.response?.data?.detail || "Impossível gerar");
     }
   };
 
@@ -279,9 +279,9 @@ export default function QuoteTracking() {
     try {
       await api.post(`/reviews/request/${send.log_id}`);
       setCompleted((prev) => new Set(prev).add(send.log_id));
-      toast.success("Chantier terminé — demande d'avis envoyée au client 🎉");
+      toast.success("Obra terminada — pedido de avaliação enviado ao cliente 🎉");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Action impossible");
+      toast.error(e?.response?.data?.detail || "Ação impossível");
     }
   };
 
@@ -296,17 +296,17 @@ export default function QuoteTracking() {
       const { data } = await api.post(`/quotes/sends/${send.log_id}/to-invoice`,
         { vat_rate: Number(invoiceVat) });
       toast.success(data.already
-        ? "Facture déjà créée — ouverture de l'éditeur"
-        : `Facture ${data.number || ""} créée depuis le devis 🎉`);
+        ? "Fatura já criada — abertura do editor"
+        : `Fatura${data.number || ""}criada a partir do orçamento 🎉`);
       setInvoiceSend(null);
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Conversion impossible");
+      toast.error(e?.response?.data?.detail || "Conversão impossível");
     } finally { setInvoicing(null); }
   };
 
   if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
-  if (loading) return <div className="surface p-10 text-center">Chargement…</div>;
+  if (loading) return <div className="surface p-10 text-center">A carregar…</div>;
 
   const notOpened = sends.filter(s => !s.opened && !s.signed);
   const opened = sends.filter(s => s.opened && !s.signed);
@@ -317,7 +317,7 @@ export default function QuoteTracking() {
     const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
     if (d === 0) return "aujourd'hui";
     if (d === 1) return "hier";
-    return `il y a ${d} j`;
+    return `há${d} j`;
   };
 
   const Card = ({ send, colour, showComplete }) => {
@@ -337,11 +337,11 @@ export default function QuoteTracking() {
         <p className="num font-extrabold text-primary text-lg">{fmtEur(send.total_ttc)}</p>
         {send.email_status === "failed" && (
           <div className="flex items-center gap-2 pt-1" data-testid={`send-failed-${send.log_id}`}>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-red-500/15 text-red-600">Échec d'envoi</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-red-500/15 text-red-600">Falha de envio</span>
             <button onClick={() => retrySend(send)} disabled={retrying === send.log_id}
                     data-testid={`retry-send-${send.log_id}`}
                     className="text-[10px] px-2 py-0.5 rounded-sm border border-red-500/40 text-red-600 font-semibold">
-              {retrying === send.log_id ? "Envoi…" : "Réessayer"}
+              {retrying === send.log_id ? "Envoi…" : "Tentar novamente"}
             </button>
           </div>
         )}
@@ -349,9 +349,9 @@ export default function QuoteTracking() {
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-amber-500/15 text-amber-600" data-testid={`send-queued-${send.log_id}`}>Envoi en cours…</span>
         )}
         <p className="text-[10px] num text-muted-foreground">
-          Envoyé {daysSince(send.created_at)}
+          Enviado {daysSince(send.created_at)}
           {send.opened && send.opened_at && ` · ouvert ${daysSince(send.opened_at)}`}
-          {send.signed && send.signed_at && ` · signé ${daysSince(send.signed_at)}`}
+          {send.signed && send.signed_at && `· assinado${daysSince(send.signed_at)}`}
           {send.open_count > 1 && ` (${send.open_count} ouvertures)`}
         </p>
         <div className="flex gap-1 pt-1 flex-wrap">
@@ -374,7 +374,7 @@ export default function QuoteTracking() {
           <button onClick={() => navigate(`/devis-editeur/${send.invoice_doc_id}`)}
                   data-testid={`open-invoice-${send.log_id}`}
                   className="w-full inline-flex items-center justify-center gap-1 rounded-sm border border-primary/40 text-primary text-[11px] h-7 mt-1 hover:bg-primary hover:text-primary-foreground transition-colors">
-            <Receipt className="h-3 w-3" /> Voir la facture
+            <Receipt className="h-3 w-3" /> Ver a fatura
           </button>
         ) : (
           <Button size="sm" variant="outline"
@@ -383,24 +383,24 @@ export default function QuoteTracking() {
                   onClick={() => { setInvoiceVat("10"); setInvoiceSend(send); }}
                   data-testid={`convert-invoice-${send.log_id}`}>
             <Receipt className="h-3 w-3" />
-            {invoicing === send.log_id ? "Conversion…" : "Convertir en facture"}
+            {invoicing === send.log_id ? "Conversion…" : "Converter em fatura"}
           </Button>
         )}
         {isAdmin && send.signed && send.doc_id && (
           exampleDocs.has(send.doc_id) ? (
             <div className="w-full inline-flex items-center justify-center gap-1 rounded-sm bg-primary/10 text-primary text-[11px] h-7 mt-1 font-semibold"
                  data-testid={`ai-example-done-${send.log_id}`}>
-              <GraduationCap className="h-3 w-3" /> Exemple IA enregistré
+              <GraduationCap className="h-3 w-3" /> Exemplo IA guardado
             </div>
           ) : (
             <Button size="sm" variant="outline"
                     disabled={exBusy === send.log_id}
                     className="w-full rounded-sm gap-1 text-[11px] h-7 mt-1 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
                     onClick={() => makeExample(send)}
-                    title="Transformer ce devis gagnant en exemple d'apprentissage pour l'IA"
+                    title="Transformar este orçamento ganho num exemplo de aprendizagem para a IA"
                     data-testid={`ai-example-${send.log_id}`}>
               <GraduationCap className="h-3 w-3" />
-              {exBusy === send.log_id ? "Ajout…" : "En faire un exemple IA"}
+              {exBusy === send.log_id ? "Ajout…" : "Fazer dele um exemplo IA"}
             </Button>
           )
         )}
@@ -409,14 +409,14 @@ export default function QuoteTracking() {
             <Badge variant="outline"
                    className="rounded-sm border-primary/50 text-primary text-[10px] gap-1 mt-1"
                    data-testid={`worksite-done-${send.log_id}`}>
-              <Star className="h-3 w-3" /> Avis demandé
+              <Star className="h-3 w-3" /> Avaliação solicitada
             </Badge>
           ) : (
             <Button size="sm" variant="outline"
                     className="w-full rounded-sm gap-1 text-[11px] h-7 mt-1 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
                     onClick={() => markCompleted(send)}
                     data-testid={`worksite-complete-${send.log_id}`}>
-              <CheckCircle2 className="h-3 w-3" /> Chantier terminé → demander un avis
+              <CheckCircle2 className="h-3 w-3" /> Obra terminada → pedir uma avaliação
             </Button>
           )
         )}
@@ -430,22 +430,22 @@ export default function QuoteTracking() {
         <SectionTitle over={quoteText("tracking")} title={quoteText("title")} />
         <Link to="/devis-editeur" data-testid="create-quote-link">
           <Button className="rounded-sm gap-2" data-testid="create-quote-btn">
-            <FileText className="h-4 w-4" /> Créer un devis
+            <FileText className="h-4 w-4" /> Criar um orçamento
           </Button>
         </Link>
         <Button asChild variant="outline" className="gap-2"><Link to="/assistant?intent=quote" data-testid="tracking-create-with-assistant"><Sparkles size={16} />{quoteText("create")}</Link></Button>
-        <ImportDocumentsDialog triggerLabel="Importer des PDF" onImported={load} />
+        <ImportDocumentsDialog triggerLabel="Importar PDFs" onImported={load} />
         <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground border border-border rounded-sm px-3 py-2 max-w-full min-w-0"
-               data-testid="auto-remind-toggle" title="Relance automatique par e-mail des devis envoyés non signés">
+               data-testid="auto-remind-toggle" title="Relançamento automático por e-mail dos orçamentos enviados não assinados">
           <Switch checked={autoRemind} onCheckedChange={toggleAutoRemind} data-testid="auto-remind-switch" />
           Relances auto
           {autoRemind && (
             <span className="flex flex-wrap items-center gap-1 ml-1 min-w-0">
               <select value={remindDelay} onChange={(e) => saveRemind({ delay_days: Number(e.target.value) })}
                       className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs" data-testid="remind-delay-select">
-                <option value={3}>tous les 3 j</option>
-                <option value={5}>tous les 5 j</option>
-                <option value={7}>tous les 7 j</option>
+                <option value={3}>a cada 3 d</option>
+                <option value={5}>a cada 5 d</option>
+                <option value={7}>a cada 7 d</option>
               </select>
               <select value={remindMax} onChange={(e) => saveRemind({ max_reminders: Number(e.target.value) })}
                       className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs" data-testid="remind-max-select">
@@ -458,9 +458,9 @@ export default function QuoteTracking() {
         </label>
         <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground border border-border rounded-sm px-3 py-2 max-w-full min-w-0"
                data-testid="auto-deposit-toggle"
-               title="Crée la facture d'acompte en brouillon dès que le client signe">
+               title="Cria a fatura de adiantamento em rascunho assim que o cliente assina">
           <Switch checked={autoDeposit} onCheckedChange={toggleAutoDeposit} data-testid="auto-deposit-switch" />
-          Acompte auto à la signature
+          Adiantamento automático na assinatura
           {autoDeposit && (
             <select value={depositPct} onChange={(e) => saveDeposit({ pct: Number(e.target.value) })}
                     className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs"
@@ -481,10 +481,10 @@ export default function QuoteTracking() {
           <span className="text-xs text-muted-foreground num" data-testid="saved-quotes-count">{quotes.length}</span>
         </div>
         {quotesError && <p role="alert" data-testid="saved-quotes-error" className="text-sm text-red-600 mb-4">{quoteText("loadError")} <button onClick={load} className="underline" data-testid="saved-quotes-retry">{quoteText("retry")}</button></p>}
-        {quotesLoading && <RefreshCw className="animate-spin h-4 w-4 my-3" aria-label="Chargement" data-testid="saved-quotes-loading" />}
+        {quotesLoading && <RefreshCw className="animate-spin h-4 w-4 my-3" aria-label="A carregar" data-testid="saved-quotes-loading" />}
         {!quotesLoading && !quotesError && quotes.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Aucun devis enregistré. Vos devis apparaîtront ici après « Enregistrer ».
+            Nenhum orçamento registado. Os seus orçamentos aparecerão aqui após « Guardar ».
           </p>
         ) : (
           <div className="grid gap-2">
@@ -522,33 +522,33 @@ export default function QuoteTracking() {
                             data-testid={`quote-status-select-${d.doc_id}`}
                             className="rounded-sm border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary h-9 flex-1 sm:flex-none min-w-[6.5rem]">
                       <option value="draft">Brouillon</option>
-                      <option value="sent">Envoyé</option>
-                      <option value="signed">Signé</option>
-                      <option value="refused">Refusé</option>
+                      <option value="sent">Enviado</option>
+                      <option value="signed">Assinado</option>
+                      <option value="refused">Recusado</option>
                     </select>
                     <Button size="sm" className="rounded-sm gap-1 h-9 flex-1 sm:flex-none min-w-[8rem] justify-center"
                             disabled={d.status === "signed"} onClick={() => signOnSite(d)}
-                            title={d.status === "signed" ? "Devis déjà signé" : "Faire signer le client sur cet appareil"}
+                            title={d.status === "signed" ? "Orçamento já assinado" : "Fazer o cliente assinar neste dispositivo"}
                             data-testid={`quote-sign-onsite-${d.doc_id}`}>
-                      <PenLine className="h-3.5 w-3.5" /> Faire signer
+                      <PenLine className="h-3.5 w-3.5" /> Mandar assinar
                     </Button>
                     <Button size="sm" variant="outline" className="rounded-sm gap-1 h-9 flex-1 sm:flex-none min-w-[7rem] justify-center"
                             disabled={d.status !== "signed"} onClick={() => facturer(d)}
-                            title={d.status !== "signed" ? "Le devis doit être signé" : "Transformer en facture"}
+                            title={d.status !== "signed" ? "O orçamento deve ser assinado" : "Transformar em fatura"}
                             data-testid={`quote-invoice-${d.doc_id}`}>
                       <Receipt className="h-3.5 w-3.5" /> Facturer
                     </Button>
                     <Button size="sm" variant="outline" className="rounded-sm gap-1 h-9 flex-1 sm:flex-none min-w-[7rem] justify-center"
                             disabled={d.status !== "signed"} onClick={() => facturerAcompte(d)}
-                            title={d.status !== "signed" ? "Le devis doit être signé" : "Facture d'acompte 30%"}
+                            title={d.status !== "signed" ? "O orçamento deve ser assinado" : "Fatura de sinal 30%"}
                             data-testid={`quote-deposit-${d.doc_id}`}>
                       <Receipt className="h-3.5 w-3.5" /> Acompte 30%
                     </Button>
                     <Button size="sm" variant="outline" className="rounded-sm gap-1 h-9 flex-1 sm:flex-none min-w-[9rem] justify-center"
                             disabled={d.status !== "signed"} onClick={() => openBilling(d)}
-                            title={d.status !== "signed" ? "Le devis doit être signé" : "Décompte, situation, solde"}
+                            title={d.status !== "signed" ? "O orçamento deve ser assinado" : "Descontos, auto de medição, saldo"}
                             data-testid={`quote-billing-${d.doc_id}`}>
-                      <Receipt className="h-3.5 w-3.5" /> Décompte / Situation
+                      <Receipt className="h-3.5 w-3.5" /> Auto / Situação
                     </Button>
                     <Button size="sm" variant="ghost" className="rounded-sm h-9 w-9 p-0 text-muted-foreground hover:text-red-600 shrink-0 ml-auto"
                             onClick={() => deleteQuote(d)} data-testid={`quote-delete-${d.doc_id}`}>
@@ -567,7 +567,7 @@ export default function QuoteTracking() {
         <div className="surface p-4" data-testid="kpi-sent">
           <div className="flex items-center gap-2 mb-1">
             <Send className="h-4 w-4 text-muted-foreground" />
-            <p className="overline">Envoyés</p>
+            <p className="overline">Enviados</p>
           </div>
           <p className="num font-display text-3xl font-extrabold">{stats.sent || 0}</p>
         </div>
@@ -584,7 +584,7 @@ export default function QuoteTracking() {
         <div className="surface p-4" data-testid="kpi-signed">
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 className="h-4 w-4 text-primary" />
-            <p className="overline">Signés</p>
+            <p className="overline">Assinados</p>
           </div>
           <p className="num font-display text-3xl font-extrabold text-primary">{stats.signed || 0}</p>
           <p className="text-[10px] text-muted-foreground num">
@@ -597,7 +597,7 @@ export default function QuoteTracking() {
             <p className="overline">Pipeline</p>
           </div>
           <p className="num font-display text-3xl font-extrabold">{fmtEur(stats.total_ttc_pipeline)}</p>
-          <p className="text-[10px] text-muted-foreground">à conclure</p>
+          <p className="text-[10px] text-muted-foreground">a concluir</p>
         </div>
       </div>
 
@@ -606,7 +606,7 @@ export default function QuoteTracking() {
         <div>
           <p className="overline">Export comptable</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Rapport mensuel PDF prêt à envoyer à votre comptable, ou export CSV brut.
+            Relatório mensal PDF pronto a enviar ao seu contabilista, ou exportação CSV bruta.
           </p>
         </div>
         <div className="flex items-end gap-2 ml-auto flex-wrap">
@@ -621,7 +621,7 @@ export default function QuoteTracking() {
             </select>
           </div>
           <div className="flex flex-col">
-            <label className="text-[10px] text-muted-foreground mb-1">Année</label>
+            <label className="text-[10px] text-muted-foreground mb-1">Ano</label>
             <select value={recapY} onChange={(e) => setRecapY(Number(e.target.value))}
                     data-testid="recap-year-select"
                     className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary">
@@ -643,7 +643,7 @@ export default function QuoteTracking() {
 
       <div className="flex justify-between items-center">
         <p className="text-xs text-muted-foreground">
-          {sends.length} devis · dernière mise à jour {new Date().toLocaleTimeString("fr-FR")}
+          {sends.length} orçamento · última atualização {new Date().toLocaleTimeString("fr-FR")}
         </p>
         <Button size="sm" variant="outline" onClick={load} data-testid="quote-tracking-refresh"
                 className="rounded-sm gap-1">
@@ -655,10 +655,9 @@ export default function QuoteTracking() {
       {sends.length === 0 ? (
         <div className="surface p-10 text-center space-y-3">
           <Mail className="h-10 w-10 mx-auto text-muted-foreground" />
-          <p className="font-display font-bold">Aucun devis envoyé pour l'instant</p>
+          <p className="font-display font-bold">Nenhum orçamento enviado por agora</p>
           <p className="text-sm text-muted-foreground">
-            Ouvrez un plan métré, cliquez sur <b>Devis PDF → Envoyer au client</b>,
-            et suivez tout ici en temps réel.
+            Abra um plano de medições, clique em <b>Orçamento PDF → Enviar ao cliente</b>, e acompanhe tudo aqui em tempo real.
           </p>
         </div>
       ) : (
@@ -667,12 +666,12 @@ export default function QuoteTracking() {
           <div className="space-y-3" data-testid="col-not-opened">
             <div className="flex items-center gap-2 border-b-2 border-muted-foreground/40 pb-2">
               <Send className="h-4 w-4 text-muted-foreground" />
-              <p className="font-display font-bold text-sm">Non ouverts</p>
+              <p className="font-display font-bold text-sm">Não abertos</p>
               <Badge variant="outline" className="ml-auto rounded-sm">{notOpened.length}</Badge>
             </div>
             {notOpened.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Tous vos devis ont été ouverts 🎉
+                Todos os seus orçamentos foram abertos 🎉
               </p>
             )}
             {notOpened.map(s => <Card key={s.log_id} send={s}
@@ -683,14 +682,14 @@ export default function QuoteTracking() {
           <div className="space-y-3" data-testid="col-opened">
             <div className="flex items-center gap-2 border-b-2 border-emerald-500/60 pb-2">
               <Eye className="h-4 w-4 text-emerald-500" />
-              <p className="font-display font-bold text-sm">Ouverts (à relancer)</p>
+              <p className="font-display font-bold text-sm">Abertos (a relembrar)</p>
               <Badge variant="outline" className="ml-auto rounded-sm border-emerald-500/60 text-emerald-500">
                 {opened.length}
               </Badge>
             </div>
             {opened.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Aucun devis lu sans signature.
+                Nenhum orçamento lido sem assinatura.
               </p>
             )}
             {opened.map(s => <Card key={s.log_id} send={s}
@@ -701,14 +700,14 @@ export default function QuoteTracking() {
           <div className="space-y-3" data-testid="col-signed">
             <div className="flex items-center gap-2 border-b-2 border-primary pb-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <p className="font-display font-bold text-sm">Signés</p>
+              <p className="font-display font-bold text-sm">Assinados</p>
               <Badge className="ml-auto rounded-sm bg-primary text-primary-foreground">
                 {signed.length}
               </Badge>
             </div>
             {signed.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">
-                Aucune signature pour l'instant.
+                Nenhuma assinatura por enquanto.
               </p>
             )}
             {signed.map(s => <Card key={s.log_id} send={s} showComplete
@@ -720,16 +719,15 @@ export default function QuoteTracking() {
       <Dialog open={!!invoiceSend} onOpenChange={(o) => !o && setInvoiceSend(null)}>
         <DialogContent className="max-w-sm" data-testid="invoice-vat-dialog">
           <DialogHeader>
-            <DialogTitle>Convertir en facture</DialogTitle>
+            <DialogTitle>Converter em fatura</DialogTitle>
             <DialogDescription>
-              Choisissez le taux de TVA à appliquer. Le montant TTC du devis est conservé
-              ({fmtEur(invoiceSend?.total_ttc)}).
+              Escolha a taxa de IVA a aplicar. O montante c/ IVA do orçamento é mantido ({fmtEur(invoiceSend?.total_ttc)}).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
-            <label className="text-xs text-muted-foreground">Taux de TVA</label>
+            <label className="text-xs text-muted-foreground">Taxa de IVA</label>
             <div className="grid grid-cols-3 gap-2">
-              {[["5.5", "5,5 % — 1ère nécessité"], ["10", "10 % — Rénovation"], ["20", "20 % — Neuf"]].map(([v, lbl]) => (
+              {[["5.5", "5,5 % — 1.ª necessidade"], ["10", "10 % — Renovação"], ["20", "20 % — Neuf"]].map(([v, lbl]) => (
                 <button key={v} onClick={() => setInvoiceVat(v)}
                   data-testid={`vat-opt-${v}`}
                   className={`rounded-sm border px-2 py-3 text-center transition-colors ${
@@ -743,10 +741,10 @@ export default function QuoteTracking() {
           </div>
           <DialogFooter>
             <Button variant="ghost" className="rounded-sm" onClick={() => setInvoiceSend(null)}
-                    data-testid="invoice-vat-cancel">Annuler</Button>
+                    data-testid="invoice-vat-cancel">Cancelar</Button>
             <Button className="rounded-sm gap-2" onClick={convertToInvoice}
                     disabled={!!invoicing} data-testid="invoice-vat-confirm">
-              <Receipt className="h-4 w-4" /> Créer la facture
+              <Receipt className="h-4 w-4" /> Criar a fatura
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -755,62 +753,62 @@ export default function QuoteTracking() {
       <Dialog open={!!billQuote} onOpenChange={(o) => !o && setBillQuote(null)}>
         <DialogContent className="max-w-lg" data-testid="billing-modal">
           <DialogHeader>
-            <DialogTitle>Décompte général — {billQuote?.number || billQuote?.title}</DialogTitle>
-            <DialogDescription>Facturez au prorata (situation) ou le solde. Les acomptes déjà facturés sont pris en compte.</DialogDescription>
+            <DialogTitle>Resumo geral — {billQuote?.number || billQuote?.title}</DialogTitle>
+            <DialogDescription>Fature proporcionalmente (auto de medição) ou o saldo. Os sinais já faturados são tidos em conta.</DialogDescription>
           </DialogHeader>
           {recap ? (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="surface p-2 rounded-sm"><p className="num font-bold">{eur(recap.quote.ttc)}</p><p className="text-[11px] text-muted-foreground">Devis TTC</p></div>
-                <div className="surface p-2 rounded-sm"><p className="num font-bold text-emerald-500">{eur(recap.billed_ttc)}</p><p className="text-[11px] text-muted-foreground">Déjà facturé</p></div>
-                <div className="surface p-2 rounded-sm"><p className="num font-bold text-primary">{eur(recap.remaining_ttc)}</p><p className="text-[11px] text-muted-foreground">Reste à facturer</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold">{eur(recap.quote.ttc)}</p><p className="text-[11px] text-muted-foreground">Orçamento c/ IVA</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold text-emerald-500">{eur(recap.billed_ttc)}</p><p className="text-[11px] text-muted-foreground">Já faturado</p></div>
+                <div className="surface p-2 rounded-sm"><p className="num font-bold text-primary">{eur(recap.remaining_ttc)}</p><p className="text-[11px] text-muted-foreground">Por faturar</p></div>
               </div>
-              <div className="text-xs text-muted-foreground">Avancement facturé : {recap.progress_pct}%</div>
+              <div className="text-xs text-muted-foreground">Progresso faturado: {recap.progress_pct}%</div>
               {recap.invoices.length > 0 && (
                 <div className="border border-border rounded-sm divide-y divide-border max-h-32 overflow-auto" data-testid="billing-recap-list">
                   {recap.invoices.map((i) => (
                     <div key={i.doc_id} className="flex justify-between px-3 py-1.5 text-xs">
-                      <span>{i.number || "—"} · {{ deposit: "Acompte", situation: "Situation", balance: "Solde" }[i.source] || "Facture"}</span>
+                      <span>{i.number || "—"} · {{ deposit: "Acompte", situation: "Situation", balance: "Solde" }[i.source] || "Fatura"}</span>
                       <span className="num">{eur(i.ttc)}</span>
                     </div>
                   ))}
                 </div>
               )}
               <div className="rounded-sm border border-border p-3 space-y-2">
-                <p className="font-semibold text-xs uppercase tracking-wide">Nouvelle facture de situation</p>
+                <p className="font-semibold text-xs uppercase tracking-wide">Novo auto de medição</p>
                 <div className="flex items-end gap-3">
                   <label className="w-24 text-xs">Avancement %
                     <input type="number" min="1" max="100" value={sitPct} onChange={(e) => setSitPct(e.target.value)}
                            className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-pct" />
                   </label>
-                  <label className="flex-1 text-xs">Acompte déjà versé
+                  <label className="flex-1 text-xs">Adiantamento já pago
                     <select value={sitDepMode} onChange={(e) => setSitDepMode(e.target.value)}
                             className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-deposit-mode">
-                      <option value="prorata">Déduire au prorata</option>
-                      <option value="full">Déduire en totalité</option>
-                      <option value="manual">Montant manuel</option>
-                      <option value="none">Ne pas déduire</option>
+                      <option value="prorata">Deduzir proporcionalmente</option>
+                      <option value="full">Deduzir na totalidade</option>
+                      <option value="manual">Montante manual</option>
+                      <option value="none">Não deduzir</option>
                     </select>
                   </label>
                   {sitDepMode === "manual" && (
-                    <label className="w-24 text-xs">Montant HT
+                    <label className="w-24 text-xs">Montante s/ IVA
                       <input type="number" min="0" value={sitDepManual} onChange={(e) => setSitDepManual(e.target.value)}
                              className="mt-1 w-full h-9 rounded-sm border border-border bg-background px-2" data-testid="billing-sit-deposit-manual" />
                     </label>
                   )}
-                  <Button size="sm" className="h-9" onClick={makeSituation} data-testid="billing-make-situation">Créer situation</Button>
+                  <Button size="sm" className="h-9" onClick={makeSituation} data-testid="billing-make-situation">Criar auto de medição</Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground" data-testid="billing-deposit-info">
                   {recap.deposit?.available_ht > 0
-                    ? `Acompte encaissé ${eur(recap.deposit.paid_ttc)} TTC · disponible à déduire ${eur(recap.deposit.available_ht)} HT`
-                    : "Aucun acompte encaissé à déduire (seul l'acompte réellement payé est déductible)."}
+                    ? `Adiantamento recebido${eur(recap.deposit.paid_ttc)}c/ IVA · disponível para deduzir${eur(recap.deposit.available_ht)} HT`
+                    : "Nenhum adiantamento recebido a deduzir (só o adiantamento efetivamente pago é dedutível)."}
                 </p>
               </div>
             </div>
-          ) : <p className="text-sm text-muted-foreground py-6 text-center">Chargement du décompte…</p>}
+          ) : <p className="text-sm text-muted-foreground py-6 text-center">Carregamento da contabilização…</p>}
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setBillQuote(null)}>Fermer</Button>
-            <Button onClick={makeBalance} data-testid="billing-make-balance">Facturer le solde</Button>
+            <Button variant="outline" onClick={() => setBillQuote(null)}>Fechar</Button>
+            <Button onClick={makeBalance} data-testid="billing-make-balance">Faturar o saldo</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

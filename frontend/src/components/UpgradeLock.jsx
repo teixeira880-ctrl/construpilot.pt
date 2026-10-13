@@ -8,7 +8,7 @@ export const UpgradeLock = ({ title, requiredLevel, benefit, iconSize = 14, clas
   <HoverCard openDelay={120} closeDelay={80}>
     <HoverCardTrigger asChild>
       <span className={`workspace-lock-icon inline-flex items-center ${className}`} data-testid="upgrade-lock"
-        aria-label={`Fonction ${LEVEL_LABELS[requiredLevel] || "payante"} — verrouillée`}>
+        aria-label={`Fonction ${LEVEL_LABELS[requiredLevel] || "payante"}— bloqueada`}>
         <Lock size={iconSize} aria-hidden="true" />
       </span>
     </HoverCardTrigger>
@@ -22,7 +22,7 @@ export const UpgradeLock = ({ title, requiredLevel, benefit, iconSize = 14, clas
       <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{benefit}</p>
       <Link to="/tarifs" data-testid="upgrade-lock-cta"
         className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90">
-        <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Débloquer
+        <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Desbloquear
       </Link>
     </HoverCardContent>
   </HoverCard>

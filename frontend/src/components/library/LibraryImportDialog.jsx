@@ -18,7 +18,7 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
   const reset = () => { setFiles([]); setRows(null); setCategory(""); };
 
   const analyse = async () => {
-    if (!files.length) { toast.error("Choisissez au moins un PDF"); return; }
+    if (!files.length) { toast.error("Escolha pelo menos um PDF"); return; }
     setBusy(true);
     try {
       const fd = new FormData();
@@ -26,28 +26,28 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
       const { data } = await api.post("/library/import-pdf/preview", fd, { timeout: 180000 });
       const flat = [];
       (data.items || []).forEach((it) => {
-        if (!it.ok) { toast.error(`${it.file} : ${it.error || "lecture impossible"}`); return; }
+        if (!it.ok) { toast.error(`${it.file} : ${it.error || "leitura impossível"}`); return; }
         it.lines.forEach((l) => flat.push({ ...l, file: it.file, checked: true }));
       });
-      if (!flat.length) toast.error("Aucun ouvrage avec prix trouvé dans ces documents");
+      if (!flat.length) toast.error("Nenhum trabalho com preço encontrado nestes documentos");
       setRows(flat);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Analyse impossible");
+      toast.error(e?.response?.data?.detail || "Análise impossível");
     } finally { setBusy(false); }
   };
 
   const confirm = async () => {
     const chosen = (rows || []).filter((r) => r.checked);
-    if (!chosen.length) { toast.error("Sélectionnez au moins une ligne"); return; }
+    if (!chosen.length) { toast.error("Selecione pelo menos uma linha"); return; }
     setBusy(true);
     try {
       const { data } = await api.post("/library/import-pdf/confirm", {
         category, lines: chosen.map(({ checked, file, existing_price, ...l }) => l),
       });
-      toast.success(`${data.created} ouvrage(s) ajouté(s), ${data.updated} mis à jour`);
+      toast.success(`${data.created}artigo(s) adicionado(s),${data.updated}atualizado(s)`);
       onDone?.(); reset(); onClose();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível importar");
     } finally { setBusy(false); }
   };
 
@@ -58,10 +58,10 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
       <DialogContent className="max-w-3xl" data-testid="library-import-dialog">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><FileUp className="h-5 w-5 text-primary" /> Reprendre mes anciens devis</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><FileUp className="h-5 w-5 text-primary" /> Retomar os meus orçamentos antigos</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground -mt-2">
-          Déposez vos anciens devis en PDF (Tolteck, Obat, Batappli, Excel/Word exportés…). L'IA en extrait vos ouvrages, unités et prix pour reconstruire votre bibliothèque — vous ne repartez pas de zéro.
+          Carregue os seus orçamentos antigos em PDF (Tolteck, Obat, Batappli, Excel/Word exportados…). A IA extrai os seus artigos, unidades e preços para reconstruir a sua biblioteca — não começa do zero.
         </p>
 
         {!rows && (
@@ -69,13 +69,13 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
             <div className="border-2 border-dashed border-border rounded-md p-6 text-center cursor-pointer hover:border-primary transition-colors"
                  onClick={() => inputRef.current?.click()} data-testid="library-import-dropzone">
               <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm">{files.length ? `${files.length} fichier(s) sélectionné(s)` : "Cliquez pour choisir vos PDF (jusqu'à 20)"}</p>
+              <p className="text-sm">{files.length ? `${files.length}ficheiro(s) selecionado(s)` : "Clique para escolher os seus PDF (até 20)"}</p>
               {files.length > 0 && <p className="text-[11px] text-muted-foreground mt-1 truncate">{files.map((f) => f.name).join(" · ")}</p>}
               <input ref={inputRef} type="file" accept="application/pdf" multiple className="hidden"
                      onChange={(e) => setFiles(Array.from(e.target.files || []).slice(0, 20))} data-testid="library-import-input" />
             </div>
             <Button onClick={analyse} disabled={busy || !files.length} className="rounded-sm gap-2 w-full" data-testid="library-import-analyse">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />} {busy ? "Lecture IA en cours…" : "Analyser mes devis"}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />} {busy ? "Lecture IA en cours…" : "Analisar os meus orçamentos"}
             </Button>
           </div>
         )}
@@ -88,15 +88,15 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
                        data-testid="library-import-check-all" className="h-4 w-4 accent-emerald-600" />
                 {rows.filter((r) => r.checked).length} / {rows.length} lignes retenues
               </label>
-              <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Lot / catégorie (optionnel, sinon titre du devis)"
+              <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Especialidade / categoria (opcional, senão título do orçamento)"
                      className="h-8 text-xs max-w-xs" data-testid="library-import-category" />
             </div>
             <div className="max-h-[50vh] overflow-y-auto border border-border rounded-md">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-background">
                   <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="p-2 w-8" /><th className="p-2">Désignation</th><th className="p-2 w-16">Unité</th>
-                    <th className="p-2 w-24 text-right">PU HT</th><th className="p-2 w-24 text-right">Coût revient</th><th className="p-2 w-28">Actuel</th>
+                    <th className="p-2 w-8" /><th className="p-2">Designação</th><th className="p-2 w-16">Un.</th>
+                    <th className="p-2 w-24 text-right">PU HT</th><th className="p-2 w-24 text-right">Custo produção</th><th className="p-2 w-28">Actuel</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -108,7 +108,7 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
                       <td className="p-1"><Input type="number" step="0.01" value={r.unit_price_ht} onChange={(e) => setRow(i, { unit_price_ht: e.target.value })} className="h-7 text-xs num text-right" data-testid={`library-import-price-${i}`} /></td>
                       <td className="p-1"><Input type="number" step="0.01" value={r.cost_price_ht ?? ""} placeholder="—" onChange={(e) => setRow(i, { cost_price_ht: e.target.value })} className="h-7 text-xs num text-right" /></td>
                       <td className="p-2 text-muted-foreground">
-                        {r.existing_price != null ? <span className="flex items-center gap-1 text-amber-600">màj {eur(r.existing_price)}</span> : <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3 w-3" /> nouveau</span>}
+                        {r.existing_price != null ? <span className="flex items-center gap-1 text-amber-600">atual. {eur(r.existing_price)}</span> : <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3 w-3" /> nouveau</span>}
                       </td>
                     </tr>
                   ))}
@@ -118,7 +118,7 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
             <DialogFooter>
               <Button variant="ghost" onClick={reset} className="rounded-sm" data-testid="library-import-back">Autres fichiers</Button>
               <Button onClick={confirm} disabled={busy} className="rounded-sm gap-2" data-testid="library-import-confirm">
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Ajouter à ma bibliothèque
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Adicionar à minha biblioteca
               </Button>
             </DialogFooter>
           </div>

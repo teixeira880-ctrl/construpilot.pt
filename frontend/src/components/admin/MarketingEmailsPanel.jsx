@@ -8,8 +8,8 @@ import { toast } from "sonner";
 const EMAILS = [
   {
     key: "welcome",
-    title: "Bienvenue (nouveaux inscrits)",
-    desc: "Envoyé automatiquement J+1 après l'inscription. Présentation produit + essai gratuit.",
+    title: "Boas-vindas (novos inscritos)",
+    desc: "Enviado automaticamente D+1 após a inscrição. Apresentação do produto + experiência gratuita.",
     previewUrl: () => `${API}/admin/welcome-email/preview`,
     sendPath: "/admin/welcome-email/test",
     sendBody: (to) => ({ to }),
@@ -17,7 +17,7 @@ const EMAILS = [
   {
     key: "prospect-particulier",
     title: "Prospect — Particulier",
-    desc: "Pour les leads ayant demandé une estimation. Angle : estimation, prix justes, trouver un pro.",
+    desc: "Para os leads que pediram uma estimativa. Ângulo: estimativa, preços justos, encontrar um profissional.",
     previewUrl: () => `${API}/admin/prospect-email/preview?audience=particulier`,
     sendPath: "/admin/prospect-email/test",
     sendBody: (to) => ({ to, audience: "particulier" }),
@@ -25,7 +25,7 @@ const EMAILS = [
   {
     key: "prospect-pro",
     title: "Prospect — Professionnel",
-    desc: "Pour les artisans / BET non clients. Angle : métré, devis déterministes, StructuroPilot, Factur-X.",
+    desc: "Para profissionais / gabinetes de projeto não clientes. Ângulo: medições, orçamentos determinísticos, StructuroPilot, faturação eletrónica.",
     previewUrl: () => `${API}/admin/prospect-email/preview?audience=pro`,
     sendPath: "/admin/prospect-email/test",
     sendBody: (to) => ({ to, audience: "pro" }),
@@ -46,17 +46,17 @@ function EmailCard({ cfg }) {
 
   const send = async () => {
     if (count === 0) {
-      toast.error("Entrez au moins une adresse e-mail valide");
+      toast.error("Introduza pelo menos um endereço de e-mail válido");
       return;
     }
-    if (!window.confirm(`Envoyer « ${cfg.title} » à ${count} destinataire(s) maintenant ?`)) return;
+    if (!window.confirm(`Enviar «${cfg.title}» para${count} destinataire(s) maintenant ?`)) return;
     setBusy(true);
     try {
       const { data } = await api.post(cfg.sendPath, cfg.sendBody(to));
-      toast.success(`${data.sent} envoyé(s)${data.failed ? ` · ${data.failed} échec(s)` : ""} sur ${data.recipients}`);
+      toast.success(`${data.sent}enviado(s)${data.failed ? ` · ${data.failed}falha(s)` : ""} sur ${data.recipients}`);
       setTo("");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally {
       setBusy(false);
     }
@@ -69,7 +69,7 @@ function EmailCard({ cfg }) {
         <p className="text-xs text-muted-foreground mt-0.5">{cfg.desc}</p>
       </div>
       <Textarea
-        placeholder="Plusieurs adresses — séparées par une virgule, un point-virgule ou un retour à la ligne&#10;ex : jean@exemple.fr, marie@exemple.fr"
+        placeholder="Vários endereços — separados por vírgula, ponto e vírgula ou mudança de linha&#10;ex.: joao@exemplo.pt, maria@exemplo.pt"
         value={to}
         onChange={(e) => setTo(e.target.value)}
         rows={2}
@@ -78,7 +78,7 @@ function EmailCard({ cfg }) {
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground" data-testid={`admin-marketing-count-${cfg.key}`}>
-          {count > 0 ? `${count} destinataire(s) valide(s)` : "Aucune adresse valide"}
+          {count > 0 ? `${count} destinataire(s) valide(s)` : "Nenhum endereço válido"}
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -86,14 +86,14 @@ function EmailCard({ cfg }) {
             onClick={() => window.open(cfg.previewUrl(), "_blank", "noopener")}
             data-testid={`admin-marketing-preview-${cfg.key}`}
           >
-            <Eye className="h-4 w-4" /> Aperçu
+            <Eye className="h-4 w-4" /> Pré-visualização
           </Button>
           <Button
             variant="default" size="sm" className="rounded-sm gap-2"
             onClick={send} disabled={busy || count === 0}
             data-testid={`admin-marketing-send-${cfg.key}`}
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Envoyer
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar
           </Button>
         </div>
       </div>
@@ -109,8 +109,7 @@ export default function MarketingEmailsPanel() {
         <div>
           <h3 className="font-display font-bold text-lg">Emails publicitaires</h3>
           <p className="text-sm text-muted-foreground">
-            Modèles prêts à l'envoi : bienvenue (auto J+1) et prospects. Prévisualisez dans un
-            nouvel onglet, saisissez une ou plusieurs adresses, puis envoyez directement.
+            Modelos prontos a enviar: boas-vindas (auto D+1) e potenciais clientes. Pré-visualize num novo separador, introduza um ou vários endereços e envie diretamente.
           </p>
         </div>
       </div>

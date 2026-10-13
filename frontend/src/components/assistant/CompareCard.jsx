@@ -11,14 +11,14 @@ async function dlComparePdf(id) {
 
 const STATUS = {
   identical: ["Identique", "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"],
-  different_quantity: ["Quantité ≠", "bg-amber-500/15 text-amber-700 dark:text-amber-400"],
-  different_price: ["Prix ≠", "bg-orange-500/15 text-orange-700 dark:text-orange-400"],
-  different_scope: ["Périmètre ≠", "bg-sky-500/15 text-sky-700 dark:text-sky-400"],
+  different_quantity: ["Quantidade ≠", "bg-amber-500/15 text-amber-700 dark:text-amber-400"],
+  different_price: ["Preço ≠", "bg-orange-500/15 text-orange-700 dark:text-orange-400"],
+  different_scope: ["Âmbito ≠", "bg-sky-500/15 text-sky-700 dark:text-sky-400"],
   only_a: ["Seulement A", "bg-muted text-muted-foreground"], only_b: ["Seulement B", "bg-muted text-muted-foreground"],
-  to_confirm: ["À confirmer", "bg-violet-500/15 text-violet-700 dark:text-violet-400"],
+  to_confirm: ["A confirmar", "bg-violet-500/15 text-violet-700 dark:text-violet-400"],
 };
 const IMP = { high: "border-l-red-500", medium: "border-l-amber-500", low: "border-l-slate-300" };
-const KIND = { observed: "observé", calculated: "calculé", deduced: "déduit", to_confirm: "à confirmer" };
+const KIND = { observed: "observado", calculated: "calculado", deduced: "deduzido", to_confirm: "a confirmar" };
 const n = (v) => (v === null || v === undefined ? "—" : eur2(v));
 const q = (v, u) => (v === null || v === undefined ? "—" : `${v} ${u || ""}`.trim());
 
@@ -44,7 +44,7 @@ export function CompareCard({ r }) {
       {c.line_matches.length > 0 && (
         <div className="overflow-x-auto rounded-sm border bg-background">
           <table className="w-full text-[11px]" data-testid="compare-table">
-            <thead className="bg-muted/40 text-[10px] uppercase"><tr><th className="px-2 py-1 text-left">Poste</th><th className="px-2 py-1 text-right">Qté A / B</th><th className="px-2 py-1 text-right">PU A / B</th><th className="px-2 py-1 text-right">Total A / B</th><th className="px-2 py-1 text-right">Écart</th><th className="px-2 py-1">Statut</th></tr></thead>
+            <thead className="bg-muted/40 text-[10px] uppercase"><tr><th className="px-2 py-1 text-left">Poste</th><th className="px-2 py-1 text-right">Qtd A / B</th><th className="px-2 py-1 text-right">PU A / B</th><th className="px-2 py-1 text-right">Total A / B</th><th className="px-2 py-1 text-right">Desvio</th><th className="px-2 py-1">Statut</th></tr></thead>
             <tbody>
               {rows.map((l, i) => {
                 const [lbl, cls] = STATUS[l.status] || [l.status, ""];
@@ -61,22 +61,22 @@ export function CompareCard({ r }) {
               })}
             </tbody>
           </table>
-          {c.line_matches.length > 6 && <button className="w-full text-[11px] py-1 underline flex items-center justify-center gap-1" onClick={() => setAll(!all)} data-testid="compare-toggle-rows">{all ? <><ChevronUp className="h-3 w-3" /> Réduire</> : <><ChevronDown className="h-3 w-3" /> Voir les {c.line_matches.length} postes</>}</button>}
+          {c.line_matches.length > 6 && <button className="w-full text-[11px] py-1 underline flex items-center justify-center gap-1" onClick={() => setAll(!all)} data-testid="compare-toggle-rows">{all ? <><ChevronUp className="h-3 w-3" /> Reduzir</> : <><ChevronDown className="h-3 w-3" /> Ver os {c.line_matches.length} postes</>}</button>}
         </div>
       )}
       <div className="grid sm:grid-cols-2 gap-2">
-        {c.only_in_a.length > 0 && <div data-testid="compare-only-a"><b>Uniquement dans A :</b><ul className="list-disc ml-4">{c.only_in_a.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
-        {c.only_in_b.length > 0 && <div data-testid="compare-only-b"><b>Uniquement dans B :</b><ul className="list-disc ml-4">{c.only_in_b.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+        {c.only_in_a.length > 0 && <div data-testid="compare-only-a"><b>Apenas em A:</b><ul className="list-disc ml-4">{c.only_in_a.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+        {c.only_in_b.length > 0 && <div data-testid="compare-only-b"><b>Apenas em B:</b><ul className="list-disc ml-4">{c.only_in_b.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
       </div>
       {c.differences.length > 0 && (
         <div className="grid gap-1" data-testid="compare-differences">
-          <b>Différences notables</b>
+          <b>Diferenças notáveis</b>
           {c.differences.map((d, i) => <div key={i} className={`border-l-2 pl-2 ${IMP[d.importance] || ""}`}><b>{d.topic}</b> <span className="text-muted-foreground">({KIND[d.kind] || d.kind})</span> — {d.detail}</div>)}
         </div>
       )}
-      {c.questions_to_ask.length > 0 && <div data-testid="compare-questions"><b>Questions à poser :</b><ul className="list-disc ml-4">{c.questions_to_ask.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+      {c.questions_to_ask.length > 0 && <div data-testid="compare-questions"><b>Perguntas a colocar:</b><ul className="list-disc ml-4">{c.questions_to_ask.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
       {c.caveats.length > 0 && <p className="italic text-muted-foreground border-l-2 border-slate-300 pl-2">{c.caveats.join(" ")}</p>}
-      {r.comparison_id && <button className="inline-flex items-center gap-1 self-start px-2 py-1 rounded-sm border bg-background hover:bg-muted transition-colors" onClick={() => dlComparePdf(r.comparison_id)} data-testid="compare-pdf-btn"><FileDown className="h-3 w-3" /> Télécharger la comparaison en PDF</button>}
+      {r.comparison_id && <button className="inline-flex items-center gap-1 self-start px-2 py-1 rounded-sm border bg-background hover:bg-muted transition-colors" onClick={() => dlComparePdf(r.comparison_id)} data-testid="compare-pdf-btn"><FileDown className="h-3 w-3" /> Descarregar a comparação em PDF</button>}
     </div>
   );
 }

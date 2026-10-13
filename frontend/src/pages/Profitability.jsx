@@ -10,17 +10,17 @@ import { useI18n } from "@/context/I18nContext";
 
 const L = {
   fr: {
-    kinds: [["achat", "Achat matériaux"], ["main_oeuvre", "Main-d'œuvre"], ["sous_traitance", "Sous-traitance"], ["location", "Location matériel"], ["commande", "Bon de commande fournisseur"], ["autre", "Autre"]],
-    noDate: "Sans date", sold: "Vendu HT", quotedCost: "Coût devis", plannedMargin: "marge prévue", realBuy: "Achats réels", realMargin: "Marge réelle",
-    reopen: "Rouvrir le chantier", finish: "Marquer terminé", label: "Libellé", labelPh: "Ex. Carrelage Point P", amount: "Montant HT (€)", type: "Type",
-    order: "Bon de commande", date: "Date", add: "Ajouter", loading: "Chargement…", labelReq: "Libellé et montant requis", added: "Dépense ajoutée",
-    addErr: "Ajout impossible", delErr: "Suppression impossible", updErr: "Mise à jour impossible", markedDone: "Chantier marqué terminé", reopened: "Chantier rouvert", loadErr: "Chargement impossible",
-    over: "Pilotage", title: "Rapport de rentabilité", sub: "Marge réelle par chantier et par mois : prix vendu vs coût prévu au devis vs achats réels (dépenses saisies, bons de commande).",
-    includeOpen: "Inclure les chantiers en cours (devis signés non terminés)", quotesLink: "Suivi des devis →", kJobs: "Chantiers", kRev: "Chiffre d'affaires HT", kMargin: "Marge réelle HT", kRate: "Taux de marge",
-    byMonth: "Par mois", monthlyEmpty: "Aucun chantier terminé pour l'instant : marquez un devis signé comme « terminé » ci-dessous (ou cochez « inclure les chantiers en cours »).",
-    hMonth: "Mois", hJobs: "Chantiers", hRev: "CA HT", hQuoted: "Coût devis", hReal: "Coût réel", hMargin: "Marge", hRate: "Taux", byJob: "Par chantier",
-    jobsEmpty: (o) => `Aucun devis signé${o ? "" : " terminé"}. Les chantiers apparaissent dès qu'un devis est signé.`, draft: "Brouillon", noClient: "Sans client", done: "terminé", open: "en cours",
-    soldHt: "vendu HT", quotedCostS: "coût devis", realBuyS: "achats réels", marginS: "marge", real: "réelle", planned: "prévue", reportErr: "Rapport indisponible",
+    kinds: [["achat", "Outro"], ["main_oeuvre", "Outro"], ["sous_traitance", "Sous-traitance"], ["location", "Outro"], ["commande", "Outro"], ["autre", "Autre"]],
+    noDate: "Sem data", sold: "Vendu HT", quotedCost: "Custo orçam.", plannedMargin: "margem prevista", realBuy: "Compras reais", realMargin: "Margem real",
+    reopen: "Reabrir a obra", finish: "Marcar concluída", label: "Descrição", labelPh: "Ex. Carrelage Point P", amount: "Montante s/ IVA (€)", type: "Type",
+    order: "Nota de encomenda", date: "Date", add: "Adicionar", loading: "A carregar…", labelReq: "Descrição e montante obrigatórios", added: "Despesa adicionada",
+    addErr: "Não foi possível adicionar", delErr: "Não foi possível eliminar", updErr: "Não foi possível atualizar", markedDone: "Obra marcada como concluída", reopened: "Obra reaberta", loadErr: "Não foi possível carregar",
+    over: "Pilotage", title: "Relatório de rentabilidade", sub: "Margem real por obra e por mês: preço vendido vs custo previsto no orçamento vs compras reais (despesas registadas, notas de encomenda).",
+    includeOpen: "Incluir obras em curso (orçamentos assinados não concluídos)", quotesLink: "Acompanhamento de orçamentos →", kJobs: "Chantiers", kRev: "Chiffre d'affaires HT", kMargin: "Margem real s/ IVA", kRate: "Taxa de margem",
+    byMonth: "Par mois", monthlyEmpty: "Ainda não há obras concluídas: marque um orçamento assinado como « concluído » abaixo (ou selecione « incluir obras em curso »).",
+    hMonth: "Mois", hJobs: "Chantiers", hRev: "CA HT", hQuoted: "Custo orçam.", hReal: "Custo real", hMargin: "Marge", hRate: "Taux", byJob: "Por obra",
+    jobsEmpty: (o) => `. As obras aparecem assim que um orçamento é assinado.${o ? "" : ". As obras aparecem assim que um orçamento é assinado."}. Les chantiers apparaissent dès qu'un devis est signé.`, draft: "Brouillon", noClient: "Sem cliente", done: "concluída", open: "en cours",
+    soldHt: "vendu HT", quotedCostS: "custo orçamento", realBuyS: "compras reais", marginS: "marge", real: "real", planned: "prevista", reportErr: "Rapport indisponible",
   },
   pt: {
     kinds: [["achat", "Compra de materiais"], ["main_oeuvre", "Mão de obra"], ["sous_traitance", "Subempreitada"], ["location", "Aluguer de equipamento"], ["commande", "Nota de encomenda fornecedor"], ["autre", "Outro"]],

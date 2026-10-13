@@ -10,12 +10,12 @@ export function GanttChart({ tasks = [], project, selected, onSelect }) {
     for (let i = 0; i <= total; i += step) out.push(i);
     return out;
   }, [total]);
-  if (!tasks.length) return <p className="text-sm text-muted-foreground p-4">Aucune tâche.</p>;
+  if (!tasks.length) return <p className="text-sm text-muted-foreground p-4">Nenhuma tarefa.</p>;
   return (
     <div className="overflow-x-auto" data-testid="gantt-chart">
       <div className="min-w-[760px]">
         <div className="flex text-[10px] text-muted-foreground border-b border-border pb-1 mb-1">
-          <div className="w-56 shrink-0 ps-1">Début {fr(project?.start_date)} → fin {fr(project?.end_date)}</div>
+          <div className="w-56 shrink-0 ps-1">Início {fr(project?.start_date)} → fin {fr(project?.end_date)}</div>
           <div className="flex-1 relative h-4 me-24">
             {ticks.map((i) => (
               <span key={i} className="absolute -translate-x-1/2" style={{ left: `${(i / total) * 100}%` }}>J{i}</span>
@@ -49,8 +49,8 @@ export function GanttChart({ tasks = [], project, selected, onSelect }) {
         })}
         <div className="flex gap-4 text-[10px] text-muted-foreground mt-2 ps-1">
           <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-primary inline-block" /> chemin critique</span>
-          <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-slate-300 inline-block" /> avec marge</span>
-          <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-sky-600/80 inline-block" /> réel (saisi)</span>
+          <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-slate-300 inline-block" /> com margem</span>
+          <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-sky-600/80 inline-block" /> real (introduzido)</span>
           <span className="flex items-center gap-1"><i className="h-2 w-4 rounded-sm bg-emerald-400/70 inline-block" /> avancement</span>
         </div>
       </div>

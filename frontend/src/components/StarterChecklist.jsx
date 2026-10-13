@@ -11,15 +11,15 @@ export function StarterChecklist({ status, isPro = true }) {
   const s = status;
 
   const items = isPro ? [
-    { done: s.client, title: "Ajoutez un client", desc: "Une fiche client réutilisée dans tous vos devis, factures et chantiers.", to: "/clients", cta: "Ajouter" },
-    { done: s.chantier, title: "Créez un dossier chantier", desc: "Client, plans, devis et photos réunis — plus de ressaisie d'un outil à l'autre.", to: "/chantiers", cta: "Créer" },
-    { done: s.plan, title: "Mesurez un plan", desc: "Importez un PDF, DXF ou DWG et laissez l'IA calculer les surfaces.", to: "/plan", cta: "Mesurer" },
-    { done: s.quote, title: "Créez un devis", desc: "Votre premier devis prêt à envoyer, avec la TVA de votre pays.", to: "/devis-editeur", cta: "Créer" },
-    { done: s.page_published, title: "Publiez votre page entreprise", desc: "Une page publique avec vos réalisations et un formulaire de demande de devis.", to: "/ma-page", cta: "Publier" },
+    { done: s.client, title: "Adicione um cliente", desc: "Uma ficha de cliente reutilizada em todos os seus orçamentos, faturas e obras.", to: "/clients", cta: "Adicionar" },
+    { done: s.chantier, title: "Crie um processo de obra", desc: "Cliente, plantas, orçamentos e fotografias reunidos — acabou-se a reintrodução de uma ferramenta para outra.", to: "/chantiers", cta: "Criar" },
+    { done: s.plan, title: "Meça uma planta", desc: "Importe um PDF, DXF ou DWG e deixe a IA calcular as áreas.", to: "/plan", cta: "Mesurer" },
+    { done: s.quote, title: "Crie um orçamento", desc: "O seu primeiro orçamento pronto a enviar, com o IVA do seu país.", to: "/devis-editeur", cta: "Criar" },
+    { done: s.page_published, title: "Publique a página da sua empresa", desc: "Uma página pública com as suas obras realizadas e um formulário de pedido de orçamento.", to: "/ma-page", cta: "Publier" },
   ] : [
-    { done: s.project, title: "Estimez vos travaux", desc: "Décrivez votre projet et obtenez une estimation détaillée en 30 s.", to: "/estimation", cta: "Estimer" },
-    { done: false, title: "Comparez les prix matériaux", desc: "Consultez les prix du marché pour budgéter vos travaux.", to: "/prix", cta: "Voir les prix" },
-    { done: false, title: "Utilisez les calculateurs", desc: "Surfaces, volumes et quantités en quelques secondes.", to: "/calculateurs", cta: "Calculer" },
+    { done: s.project, title: "Estime os seus trabalhos", desc: "Descreva o seu projeto e obtenha uma estimativa detalhada em 30 s.", to: "/estimation", cta: "Estimer" },
+    { done: false, title: "Compare os preços materiais", desc: "Consulte os preços de mercado para orçamentar os seus trabalhos.", to: "/prix", cta: "Ver os preços" },
+    { done: false, title: "Utilize as calculadoras", desc: "Superfícies, volumes e quantidades em poucos segundos.", to: "/calculateurs", cta: "Calculer" },
   ];
 
   const doneCount = items.filter((i) => i.done).length;
@@ -33,7 +33,7 @@ export function StarterChecklist({ status, isPro = true }) {
           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Rocket className="h-5 w-5 text-primary" /></div>
           <div>
             <h3 className="font-bold" data-testid="starter-checklist-progress">Prise en main — {doneCount}/{items.length}</h3>
-            <p className="text-xs text-muted-foreground">Des étapes réelles, cochées automatiquement dès qu'elles sont faites.</p>
+            <p className="text-xs text-muted-foreground">Etapas reais, marcadas automaticamente assim que são feitas.</p>
           </div>
         </div>
         <button onClick={close} data-testid="checklist-dismiss" className="text-muted-foreground hover:text-foreground" title="Masquer"><X className="h-4 w-4" /></button>

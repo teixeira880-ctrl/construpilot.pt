@@ -324,8 +324,8 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
     return (
       <div className="rounded-sm border border-border bg-secondary/30 p-6 text-center text-sm text-muted-foreground" data-testid="interactive3d-fallback">
         <Move3d className="h-6 w-6 mx-auto mb-2 opacity-60" />
-        La vue 3D n'est pas disponible sur cet appareil ou ce navigateur (WebGL indisponible).
-        <div className="mt-1 text-xs">Le métré et les résultats restent accessibles normalement.</div>
+        A vista 3D não está disponível neste dispositivo ou navegador (WebGL indisponível).
+        <div className="mt-1 text-xs">As medições e os resultados permanecem acessíveis normalmente.</div>
       </div>
     );
   }

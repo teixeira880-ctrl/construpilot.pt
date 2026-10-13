@@ -10,7 +10,7 @@ import { useI18n } from "@/context/I18nContext";
 export default function PushToggle({ variant = "outline", size = "sm", testId = "push-toggle-btn" }) {
   const { lang } = useI18n();
   const copy = {
-    fr: ["Notifications activées", "Push bloqué", "Activer les notifications", "Notifications push désactivées", "Notifications push activées", "Échec de l'activation"],
+    fr: ["Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar"],
     pt: ["Notificações ativadas", "Notificações bloqueadas", "Ativar notificações", "Notificações desativadas", "Notificações ativadas", "Não foi possível ativar"],
     en: ["Notifications enabled", "Notifications blocked", "Enable notifications", "Push notifications disabled", "Push notifications enabled", "Activation failed"],
   };

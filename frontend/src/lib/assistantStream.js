@@ -30,7 +30,7 @@ export async function streamAssistant(payload, { signal, onEvent }) {
       if (done) break;
     }
     if (buf.trim()) dispatch(buf);
-    if (!completed) throw new Error("Connexion interrompue avant la fin de la réponse. Relancez votre demande.");
+    if (!completed) throw new Error("Ligação interrompida antes do fim da resposta. Volte a enviar o seu pedido.");
   } finally {
     await reader.cancel().catch(() => {});
     reader.releaseLock();

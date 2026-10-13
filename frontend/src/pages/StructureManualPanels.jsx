@@ -8,14 +8,14 @@ const sel = "border rounded-md p-2 bg-background text-sm w-full";
 const toNum = v => (v === "" || v === null || v === undefined ? null : Number(v));
 const clampFck = v => Math.min(50, Math.max(12, Number(v) || 25));
 const fctmOf = v => Number((0.3 * Math.pow(clampFck(v), 2 / 3)).toFixed(3));
-const DEF_SRC = "Saisie manuelle — à vérifier par l'ingénieur";
+const DEF_SRC = "Introdução manual — a verificar pelo engenheiro";
 const cm2 = v => (v == null ? "—" : (Number(v) / 100).toFixed(2));
 
 const defaultMat = ec2opts => ({
   fck_mpa: clampFck(ec2opts?.fck), fyk_mpa: Math.min(600, Math.max(400, Number(ec2opts?.fyk) || 500)),
   fctm_mpa: fctmOf(ec2opts?.fck), gamma_c: Number(ec2opts?.gamma_c) || 1.5,
   gamma_s: Number(ec2opts?.gamma_s) || 1.15, alpha_cc: Number(ec2opts?.alpha_cc) || 1.0,
-  source: "Matériaux usuels AN FR — à vérifier",
+  source: "Materiais usuais do Anexo Nacional português — a verificar",
 });
 
 function Num({ label, value, onChange, testid, disabled }) {
@@ -27,7 +27,7 @@ function Txt({ label, value, onChange, testid }) {
 const Status = ({ s }) => {
   const ok = ["partial", "pass", "listed_checks_only"].includes(s);
   const bad = ["fails_check", "out_of_scope", "conflict", "conflicts", "incomplete", "has_unresolved_checks", "blocked"].includes(s);
-  const map = { partial: "Calculé", pass: "Conforme (saisi)", conflict: "Conflit", conflicts: "Conflits", incomplete: "À compléter", fails_check: "Contrôle non satisfait", out_of_scope: "Hors domaine", listed_checks_only: "Contrôles listés", has_unresolved_checks: "Contrôles à revoir", blocked: "Bloqué" };
+  const map = { partial: "Calculado", pass: "Conforme (saisi)", conflict: "Conflit", conflicts: "Conflits", incomplete: "A completar", fails_check: "Controlo não satisfeito", out_of_scope: "Hors domaine", listed_checks_only: "Controlos listados", has_unresolved_checks: "Controlos a rever", blocked: "Bloqueado" };
   return <span className={bad ? "text-red-700 font-semibold" : ok ? "text-emerald-700" : "text-muted-foreground"}>{map[s] || s}</span>;
 };
 
@@ -56,16 +56,16 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
     }));
   };
 
-  const dirtyHint = dirty && <p className="text-xs text-amber-800" role="status">Modifications non enregistrées — cliquez « Enregistrer et recalculer » pour mettre à jour les résultats.</p>;
+  const dirtyHint = dirty && <p className="text-xs text-amber-800" role="status">Alterações não guardadas — clique em «Guardar e recalcular» para atualizar os resultados.</p>;
   const MaterialsEditor = ({ testPrefix }) => <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border rounded-lg p-3">
-    <p className="col-span-2 md:col-span-4 text-xs font-medium text-muted-foreground">Matériaux béton/acier (appliqués à toutes les sections)</p>
+    <p className="col-span-2 md:col-span-4 text-xs font-medium text-muted-foreground">Materiais betão/aço (aplicados a todas as secções)</p>
     <Num label="fck (MPa)" value={mat.fck_mpa} onChange={v => applyMat({ ...mat, fck_mpa: v, fctm_mpa: fctmOf(v) })} testid={`${testPrefix}-fck`} />
     <Num label="fyk (MPa)" value={mat.fyk_mpa} onChange={v => applyMat({ ...mat, fyk_mpa: v })} />
     <Num label="fctm (MPa)" value={mat.fctm_mpa} onChange={v => applyMat({ ...mat, fctm_mpa: v })} />
     <Num label="αcc" value={mat.alpha_cc} onChange={v => applyMat({ ...mat, alpha_cc: v })} />
     <Num label="γc" value={mat.gamma_c} onChange={v => applyMat({ ...mat, gamma_c: v })} />
     <Num label="γs" value={mat.gamma_s} onChange={v => applyMat({ ...mat, gamma_s: v })} />
-    <Txt label="Source matériaux" value={mat.source} onChange={v => applyMat({ ...mat, source: v })} />
+    <Txt label="Fonte dos materiais" value={mat.source} onChange={v => applyMat({ ...mat, source: v })} />
   </div>;
 
   // ---------- Reinforcement (ferraillage manuel / relevé) ----------
@@ -95,7 +95,7 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
   const ar = model?.architecture;
   const enableArch = () => setModel(m => ({ ...m, architecture: { clearances: [], fit_bands: [], unresolved: [] } }));
   const setArch = patch => setModel(m => ({ ...m, architecture: { ...m.architecture, ...patch } }));
-  const clearanceFromBeam = e => ({ id: `C_${e.id}`.slice(0, 60), element_id: e.id, label: `Hauteur libre sous ${e.id}`, pc_clearance_m: 2.5, integrated_depth_m: 0, additional_loss_m: 0, minimum_clearance_m: 2.1, source: DEF_SRC, criterion_source: DEF_SRC });
+  const clearanceFromBeam = e => ({ id: `C_${e.id}`.slice(0, 60), element_id: e.id, label: `Altura livre sob${e.id}`, pc_clearance_m: 2.5, integrated_depth_m: 0, additional_loss_m: 0, minimum_clearance_m: 2.1, source: DEF_SRC, criterion_source: DEF_SRC });
   const prefillClearances = () => setArch({ clearances: beams.map(clearanceFromBeam) });
   const editArr = (key, i, patch) => setModel(m => ({ ...m, architecture: { ...m.architecture, [key]: m.architecture[key].map((r, j) => j === i ? { ...r, ...patch } : r) } }));
   const removeArr = (key, i) => setModel(m => ({ ...m, architecture: { ...m.architecture, [key]: m.architecture[key].filter((_, j) => j !== i) } }));
@@ -121,30 +121,30 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
   return <>
     <Card className="p-5 space-y-3" data-testid="reinforcement-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">Ferraillage manuel EN 1992 (sections indépendantes)</h2>
-        <Button size="sm" onClick={save} disabled={busy} data-testid="manual-save-reinf"><Calculator className="h-4 w-4 mr-2" />Enregistrer et recalculer</Button>
+        <h2 className="font-semibold">Armaduras manuais NP EN 1992 (secções independentes)</h2>
+        <Button size="sm" onClick={save} disabled={busy} data-testid="manual-save-reinf"><Calculator className="h-4 w-4 mr-2" />Guardar e recalcular</Button>
       </div>
-      <p className="text-sm text-muted-foreground">Vérifie l'acier nécessaire sur des sections à efforts <b>saisis à la main</b> (M, V indépendants), indépendamment de la descente de charges. Pré-remplissage automatique possible depuis l'enveloppe EN 1990, avec édition libre. Rapport <b>indicatif</b>, à valider par l'ingénieur.</p>
-      {!rf ? <Button variant="outline" onClick={enableReinf} data-testid="reinf-enable"><Plus className="h-4 w-4 mr-1" />Activer le ferraillage manuel</Button> : <>
+      <p className="text-sm text-muted-foreground">Verifica o aço necessário em secções com esforços <b>introduzidos à mão</b> (M, V independentes), independentemente da descida de cargas. Pré-preenchimento automático possível a partir da envolvente NP EN 1990, com edição livre. Relatório <b>indicatif</b>, a validar pelo engenheiro.</p>
+      {!rf ? <Button variant="outline" onClick={enableReinf} data-testid="reinf-enable"><Plus className="h-4 w-4 mr-1" />Ativar as armaduras manuais</Button> : <>
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <label className="flex items-center gap-2">Nature du dossier
+          <label className="flex items-center gap-2">Natureza do processo
             <select className={sel + " max-w-xs"} value={rf.basis} onChange={e => setReinf({ basis: e.target.value })} data-testid="reinf-basis">
               <option value="design_draft">Avant-projet (design_draft)</option>
-              <option value="source_replay">Relevé de source (source_replay)</option>
+              <option value="source_replay">Registo da fonte (source_replay)</option>
             </select>
           </label>
         </div>
         <MaterialsEditor testPrefix="reinf-mat" />
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={prefillSections} disabled={!beams.length} data-testid="reinf-prefill"><Plus className="h-4 w-4 mr-1" />Pré-remplir depuis les poutres (enveloppe)</Button>
-          <Button variant="outline" size="sm" onClick={addSection} data-testid="reinf-add"><Plus className="h-4 w-4 mr-1" />Ajouter une section</Button>
+          <Button variant="outline" size="sm" onClick={prefillSections} disabled={!beams.length} data-testid="reinf-prefill"><Plus className="h-4 w-4 mr-1" />Pré-preencher a partir das vigas (envolvente)</Button>
+          <Button variant="outline" size="sm" onClick={addSection} data-testid="reinf-add"><Plus className="h-4 w-4 mr-1" />Adicionar uma secção</Button>
         </div>
         <div className="space-y-3">{(rf.sections || []).map((s, i) => { const res = reinfResults[s.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`reinf-section-${i}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <Input aria-label={`Repère section ${i + 1}`} className="max-w-[9rem]" value={s.id} onChange={e => editSection(i, { id: e.target.value })} />
-            <select aria-label={`Type section ${i + 1}`} className={sel + " max-w-[10rem]"} value={s.kind} onChange={e => editSection(i, { kind: e.target.value })}><option value="beam">Poutre</option><option value="slab_strip">Bande de dalle (1 m)</option></select>
+            <Input aria-label={`Marca da secção${i + 1}`} className="max-w-[9rem]" value={s.id} onChange={e => editSection(i, { id: e.target.value })} />
+            <select aria-label={`Type section ${i + 1}`} className={sel + " max-w-[10rem]"} value={s.kind} onChange={e => editSection(i, { kind: e.target.value })}><option value="beam">Viga</option><option value="slab_strip">Faixa de laje (1 m)</option></select>
             {res && <span className="text-xs">→ <Status s={res.status} />{res.as_required_mm2 != null ? ` · As,req ${cm2(res.as_required_mm2)} cm²` : ""}</span>}
-            <Button variant="ghost" size="sm" aria-label={`Supprimer section ${i + 1}`} onClick={() => removeSection(i)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" aria-label={`Eliminar secção${i + 1}`} onClick={() => removeSection(i)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Num label="b (mm)" value={s.b_mm} onChange={v => editSection(i, { b_mm: v })} disabled={s.kind === "slab_strip"} />
@@ -153,56 +153,56 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
             <Num label="cot θ (1–2,5)" value={s.cot_theta} onChange={v => editSection(i, { cot_theta: v })} />
             <Num label="M Ed (kN·m)" value={s.med_knm} onChange={v => editSection(i, { med_knm: v })} testid={`reinf-med-${i}`} />
             <Num label="V Ed (kN)" value={s.ved_kn} onChange={v => editSection(i, { ved_kn: v })} />
-            <Num label="As disposé (mm², option.)" value={s.as_provided_mm2} onChange={v => editSection(i, { as_provided_mm2: v })} />
+            <Num label="As colocado (mm², opcional)" value={s.as_provided_mm2} onChange={v => editSection(i, { as_provided_mm2: v })} />
             <Txt label="Cas / combinaison" value={s.case} onChange={v => editSection(i, { case: v })} />
           </div>
           <Txt label="Source / justification" value={s.source} onChange={v => editSection(i, { source: v })} />
           {res && res.issues?.length > 0 && <ul className="list-disc ml-5 text-[11px] text-amber-700">{res.issues.map((x, k) => <li key={k}>{x}</li>)}</ul>}
         </div>; })}</div>
         {dirtyHint}
-        {result.reinforcement && <p className="text-[11px] text-muted-foreground" data-testid="reinf-results">{result.reinforcement.sections?.length || 0} section(s) calculée(s) · ELS fissuration/flèche, ancrages et dispositions constructives non vérifiés — à valider.</p>}
+        {result.reinforcement && <p className="text-[11px] text-muted-foreground" data-testid="reinf-results">{result.reinforcement.sections?.length || 0} secção(ões) calculada(s) · ELS fendilhação/flecha, amarrações e disposições construtivas não verificadas — a validar.</p>}
       </>}
     </Card>
 
     <Card className="p-5 space-y-3" data-testid="architecture-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">Contrôles architecturaux PC (gabarits &amp; hauteurs libres)</h2>
-        <Button size="sm" onClick={save} disabled={busy} data-testid="manual-save-arch"><Calculator className="h-4 w-4 mr-2" />Enregistrer et recalculer</Button>
+        <h2 className="font-semibold">Controlos de arquitetura do projeto de licenciamento (gabaritos &amp; alturas livres)</h2>
+        <Button size="sm" onClick={save} disabled={busy} data-testid="manual-save-arch"><Calculator className="h-4 w-4 mr-2" />Guardar e recalcular</Button>
       </div>
-      <p className="text-sm text-muted-foreground">Vérifie des contraintes <b>explicitement saisies</b> du PC (hauteur libre sous poutre, débords dans une bande). Aucune détection automatique ni validation du PC. Pré-remplissage proposé, éditable. Rapport <b>indicatif</b>.</p>
-      {!ar ? <Button variant="outline" onClick={enableArch} data-testid="arch-enable"><Plus className="h-4 w-4 mr-1" />Activer les contrôles architecturaux</Button> : <>
-        {result.architectural_compatibility && <p className="text-xs">État global : <Status s={result.architectural_compatibility.status} /></p>}
+      <p className="text-sm text-muted-foreground">Verifica restrições <b>explicitement saisies</b> do projeto de licenciamento (altura livre sob viga, saliências numa faixa). Nenhuma deteção automática nem validação do projeto. Pré-preenchimento proposto, editável. Relatório <b>indicatif</b>.</p>
+      {!ar ? <Button variant="outline" onClick={enableArch} data-testid="arch-enable"><Plus className="h-4 w-4 mr-1" />Ativar os controlos de arquitetura</Button> : <>
+        {result.architectural_compatibility && <p className="text-xs">Estado global: <Status s={result.architectural_compatibility.status} /></p>}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={prefillClearances} disabled={!beams.length} data-testid="arch-prefill"><Plus className="h-4 w-4 mr-1" />Pré-remplir les hauteurs libres (poutres)</Button>
-          <Button variant="outline" size="sm" onClick={addFitBand} data-testid="arch-add-fitband"><Plus className="h-4 w-4 mr-1" />Ajouter un gabarit</Button>
+          <Button variant="outline" size="sm" onClick={prefillClearances} disabled={!beams.length} data-testid="arch-prefill"><Plus className="h-4 w-4 mr-1" />Pré-preencher as alturas livres (vigas)</Button>
+          <Button variant="outline" size="sm" onClick={addFitBand} data-testid="arch-add-fitband"><Plus className="h-4 w-4 mr-1" />Adicionar um gabarito</Button>
         </div>
         <div className="space-y-3"><h3 className="text-sm font-medium">Hauteurs libres</h3>{(ar.clearances || []).map((c, i) => { const res = archChecks[c.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`arch-clearance-${i}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <Input aria-label={`Repère hauteur ${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("clearances", i, { id: e.target.value })} />
-            <select aria-label={`Élément hauteur ${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("clearances", i, { element_id: e.target.value })}><option value="">Poutre…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
+            <Input aria-label={`Marca da altura${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("clearances", i, { id: e.target.value })} />
+            <select aria-label={`Elemento da altura${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("clearances", i, { element_id: e.target.value })}><option value="">Viga…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
             {res && <span className="text-xs">→ <Status s={res.status} />{res.margin_m != null ? ` · marge ${(res.margin_m * 100).toFixed(1)} cm` : ""}</span>}
-            <Button variant="ghost" size="sm" aria-label={`Supprimer hauteur ${i + 1}`} onClick={() => removeArr("clearances", i)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" aria-label={`Eliminar altura${i + 1}`} onClick={() => removeArr("clearances", i)}><Trash2 className="h-4 w-4" /></Button>
           </div>
-          <Txt label="Libellé" value={c.label} onChange={v => editArr("clearances", i, { label: v })} />
+          <Txt label="Descrição" value={c.label} onChange={v => editArr("clearances", i, { label: v })} />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Num label="Hauteur PC brute (m)" value={c.pc_clearance_m} onChange={v => editArr("clearances", i, { pc_clearance_m: v })} />
-            <Num label="Profondeur intégrée (m)" value={c.integrated_depth_m} onChange={v => editArr("clearances", i, { integrated_depth_m: v })} />
-            <Num label="Perte complémentaire (m)" value={c.additional_loss_m} onChange={v => editArr("clearances", i, { additional_loss_m: v })} />
-            <Num label="Hauteur libre mini (m)" value={c.minimum_clearance_m} onChange={v => editArr("clearances", i, { minimum_clearance_m: v })} />
+            <Num label="Altura bruta do projeto (m)" value={c.pc_clearance_m} onChange={v => editArr("clearances", i, { pc_clearance_m: v })} />
+            <Num label="Profundidade integrada (m)" value={c.integrated_depth_m} onChange={v => editArr("clearances", i, { integrated_depth_m: v })} />
+            <Num label="Perda complementar (m)" value={c.additional_loss_m} onChange={v => editArr("clearances", i, { additional_loss_m: v })} />
+            <Num label="Altura livre mínima (m)" value={c.minimum_clearance_m} onChange={v => editArr("clearances", i, { minimum_clearance_m: v })} />
           </div>
-          <div className="grid md:grid-cols-2 gap-3"><Txt label="Source cote" value={c.source} onChange={v => editArr("clearances", i, { source: v })} /><Txt label="Source du critère" value={c.criterion_source} onChange={v => editArr("clearances", i, { criterion_source: v })} /></div>
+          <div className="grid md:grid-cols-2 gap-3"><Txt label="Source cote" value={c.source} onChange={v => editArr("clearances", i, { source: v })} /><Txt label="Fonte do critério" value={c.criterion_source} onChange={v => editArr("clearances", i, { criterion_source: v })} /></div>
           {res?.summary && <p className="text-[11px] text-muted-foreground">{res.summary}</p>}
         </div>; })}</div>
         {(ar.fit_bands || []).length > 0 && <div className="space-y-3"><h3 className="text-sm font-medium">Gabarits (bandes disponibles)</h3>{(ar.fit_bands || []).map((c, i) => { const res = archChecks[c.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`arch-fitband-${i}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <Input aria-label={`Repère gabarit ${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("fit_bands", i, { id: e.target.value })} />
-            <select aria-label={`Élément gabarit ${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("fit_bands", i, { element_id: e.target.value })}><option value="">Élément…</option>{(model.elements || []).map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
-            <select aria-label={`Mode gabarit ${i + 1}`} className={sel + " max-w-[11rem]"} value={c.mode} onChange={e => editArr("fit_bands", i, { mode: e.target.value })}><option value="beam_width">Largeur de poutre</option><option value="column_footprint">Empreinte de poteau</option></select>
+            <Input aria-label={`Marca do gabarito${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("fit_bands", i, { id: e.target.value })} />
+            <select aria-label={`Elemento do gabarito${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("fit_bands", i, { element_id: e.target.value })}><option value="">Elemento…</option>{(model.elements || []).map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
+            <select aria-label={`Mode gabarit ${i + 1}`} className={sel + " max-w-[11rem]"} value={c.mode} onChange={e => editArr("fit_bands", i, { mode: e.target.value })}><option value="beam_width">Largura da viga</option><option value="column_footprint">Implantação do pilar</option></select>
             <select aria-label={`Axe gabarit ${i + 1}`} className={sel + " max-w-[6rem]"} value={c.axis} onChange={e => editArr("fit_bands", i, { axis: e.target.value })}><option value="x">Axe X</option><option value="y">Axe Y</option></select>
             {res && <span className="text-xs">→ <Status s={res.status} /></span>}
-            <Button variant="ghost" size="sm" aria-label={`Supprimer gabarit ${i + 1}`} onClick={() => removeArr("fit_bands", i)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" aria-label={`Eliminar gabarito${i + 1}`} onClick={() => removeArr("fit_bands", i)}><Trash2 className="h-4 w-4" /></Button>
           </div>
-          <Txt label="Libellé" value={c.label} onChange={v => editArr("fit_bands", i, { label: v })} />
+          <Txt label="Descrição" value={c.label} onChange={v => editArr("fit_bands", i, { label: v })} />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Num label="Bande mini (m)" value={c.minimum_m} onChange={v => editArr("fit_bands", i, { minimum_m: v })} />
             <Num label="Bande maxi (m)" value={c.maximum_m} onChange={v => editArr("fit_bands", i, { maximum_m: v })} />
@@ -217,36 +217,36 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
 
     <Card className="p-5 space-y-3" data-testid="linked-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">Aciers liés aux efforts réels (EN 1992 · enveloppe)</h2>
-        <Button size="sm" onClick={save} disabled={busy} data-testid="manual-save-linked"><Calculator className="h-4 w-4 mr-2" />Enregistrer et recalculer</Button>
+        <h2 className="font-semibold">Aços ligados aos esforços reais (NP EN 1992 · envolvente)</h2>
+        <Button size="sm" onClick={save} disabled={busy} data-testid="manual-save-linked"><Calculator className="h-4 w-4 mr-2" />Guardar e recalcular</Button>
       </div>
-      <p className="text-sm text-muted-foreground">Vérifie des aciers <b>saisis</b> contre les efforts <b>calculés par la descente de charges</b> (chaque combinaison vérifiée séparément, aucune enveloppe inventée). Pré-remplissage depuis les poutres et les aciers de la chaîne automatique. Rapport <b>indicatif</b>, à valider.</p>
-      {!combos.length && <p className="text-sm text-amber-800" data-testid="linked-no-combos">Générez d'abord les combinaisons Eurocode EN 1990 pour lier des sections aux efforts.</p>}
+      <p className="text-sm text-muted-foreground">Verifica aços <b>saisis</b> contra os esforços <b>calculados pela descida de cargas</b> (cada combinação verificada separadamente, nenhuma envolvente inventada). Pré-preenchimento a partir das vigas e dos aços da cadeia automática. Relatório <b>indicatif</b>, a validar.</p>
+      {!combos.length && <p className="text-sm text-amber-800" data-testid="linked-no-combos">Gere primeiro as combinações Eurocódigo NP EN 1990 para ligar secções aos esforços.</p>}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={prefillLinks} disabled={!beams.length || !combos.length} data-testid="linked-prefill"><Plus className="h-4 w-4 mr-1" />Pré-remplir depuis les poutres</Button>
-        <Button variant="outline" size="sm" onClick={addLink} disabled={!beams.length || !combos.length} data-testid="linked-add"><Plus className="h-4 w-4 mr-1" />Ajouter une section liée</Button>
+        <Button variant="outline" size="sm" onClick={prefillLinks} disabled={!beams.length || !combos.length} data-testid="linked-prefill"><Plus className="h-4 w-4 mr-1" />Pré-preencher a partir das vigas</Button>
+        <Button variant="outline" size="sm" onClick={addLink} disabled={!beams.length || !combos.length} data-testid="linked-add"><Plus className="h-4 w-4 mr-1" />Adicionar uma secção ligada</Button>
       </div>
       {links.length > 0 && <MaterialsEditor testPrefix="linked-mat" />}
       <div className="space-y-3">{links.map((l, i) => { const res = linkResults[l.id]; return <div key={i} className="border rounded-lg p-3 space-y-3" data-testid={`linked-section-${i}`}>
         <div className="flex flex-wrap items-center gap-2">
-          <Input aria-label={`Repère lié ${i + 1}`} className="max-w-[8rem]" value={l.id} onChange={e => editLink(i, { id: e.target.value })} />
-          <select aria-label={`Poutre liée ${i + 1}`} className={sel + " max-w-[9rem]"} value={l.element_id} onChange={e => editLink(i, { element_id: e.target.value })}><option value="">Poutre…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
-          <select aria-label={`Type lié ${i + 1}`} className={sel + " max-w-[10rem]"} value={l.kind} onChange={e => editLink(i, { kind: e.target.value })}><option value="beam">Poutre</option><option value="slab_strip">Bande de dalle</option></select>
+          <Input aria-label={`Marca ligada${i + 1}`} className="max-w-[8rem]" value={l.id} onChange={e => editLink(i, { id: e.target.value })} />
+          <select aria-label={`Viga ligada${i + 1}`} className={sel + " max-w-[9rem]"} value={l.element_id} onChange={e => editLink(i, { element_id: e.target.value })}><option value="">Viga…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
+          <select aria-label={`Tipo ligado${i + 1}`} className={sel + " max-w-[10rem]"} value={l.kind} onChange={e => editLink(i, { kind: e.target.value })}><option value="beam">Viga</option><option value="slab_strip">Faixa de laje</option></select>
           {res && <span className="text-xs">→ <Status s={res.status} />{res.as_required_envelope_mm2 != null ? ` · As,req ${cm2(res.as_required_envelope_mm2)} cm²` : ""}</span>}
-          <Button variant="ghost" size="sm" aria-label={`Supprimer lié ${i + 1}`} onClick={() => removeLink(i)}><Trash2 className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" aria-label={`Eliminar ligado${i + 1}`} onClick={() => removeLink(i)}><Trash2 className="h-4 w-4" /></Button>
         </div>
         <div>
-          <p className="text-xs font-medium mb-1">Combinaisons vérifiées</p>
+          <p className="text-xs font-medium mb-1">Combinações verificadas</p>
           <div className="flex flex-wrap gap-3">{combos.map(c => <label key={c.id} className="flex items-center gap-1 text-xs"><input type="checkbox" checked={l.case_ids.includes(c.id)} onChange={e => toggleCase(i, c.id, e.target.checked, l.case_ids)} data-testid={`linked-case-${i}-${c.id}`} />{c.id}</label>)}</div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Num label="Centre aciers / face tendue (mm)" value={l.tension_centroid_from_face_mm} onChange={v => editLink(i, { tension_centroid_from_face_mm: v })} />
-          <Num label="As disposé (mm², option.)" value={l.as_provided_mm2} onChange={v => editLink(i, { as_provided_mm2: v })} testid={`linked-asprov-${i}`} />
+          <Num label="As colocado (mm², opcional)" value={l.as_provided_mm2} onChange={v => editLink(i, { as_provided_mm2: v })} testid={`linked-asprov-${i}`} />
           <Num label="cot θ (1–2,5)" value={l.cot_theta} onChange={v => editLink(i, { cot_theta: v })} />
-          {l.kind === "slab_strip" && <label className="flex items-end gap-2 text-xs"><input type="checkbox" checked={!!l.uniform_across_width} onChange={e => editLink(i, { uniform_across_width: e.target.checked })} />Répartition uniforme dans la largeur</label>}
+          {l.kind === "slab_strip" && <label className="flex items-end gap-2 text-xs"><input type="checkbox" checked={!!l.uniform_across_width} onChange={e => editLink(i, { uniform_across_width: e.target.checked })} />Distribuição uniforme na largura</label>}
         </div>
         <Txt label="Source / justification" value={l.source} onChange={v => editLink(i, { source: v })} />
-        {res && res.governing_flexure_case && <p className="text-[11px] text-muted-foreground">Cas dimensionnant : {res.governing_flexure_case} · portée {res.span_m} m · {res.force_basis}</p>}
+        {res && res.governing_flexure_case && <p className="text-[11px] text-muted-foreground">Cas dimensionnant : {res.governing_flexure_case} · vão {res.span_m} m · {res.force_basis}</p>}
       </div>; })}</div>
       {result.linked_reinforcement?.unresolved && links.length > 0 && <p className="text-[11px] text-muted-foreground" data-testid="linked-results">{result.linked_reinforcement.scope}</p>}
       {dirtyHint}

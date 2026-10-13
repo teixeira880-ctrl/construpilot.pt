@@ -22,7 +22,7 @@ const DISTRICTS = [
 
 const FEATURES = [
   { icon: Calculator, title: "Estimativa detalhada", text: "Descreva a sua obra e a IA calcula lotes, materiais, mão de obra e totais indicativos — sem ser especialista." },
-  { icon: ShieldCheck, title: "Verifique orçamentos", text: "O scanner deteta preços inflacionados ou lotes em falta nos orçamentos dos seus profissionais." },
+  { icon: ShieldCheck, title: "Verifique orçamentos", text: "O scanner deteta preços inflacionados ou capítulos em falta nos orçamentos dos seus profissionais." },
   { icon: ReceiptText, title: "IVA de Portugal", text: "23% de taxa normal e 6% (Verba 2.27) na reabilitação de habitação elegível — aplicado automaticamente." },
   { icon: FileCheck2, title: "Faturas com NIF", text: "Orçamentos e faturas com o seu NIF e Alvará, prontos para clientes em Portugal." },
   { icon: Users, title: "Encontre profissionais", text: "Publique o seu pedido de obras e receba propostas de profissionais verificados do seu distrito." },
@@ -52,8 +52,7 @@ export default function LandingPortugal() {
           Estime as suas obras. <span className="text-primary">Sem surpresas.</span>
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">
-          O ConstruPilot ajuda particulares e profissionais em Portugal a estimar o custo de obras,
-          verificar orçamentos, calcular materiais e emitir orçamentos e faturas com IVA e NIF — em minutos.
+          O ConstruPilot ajuda particulares e profissionais em Portugal a estimar o custo de obras, verificar orçamentos, calcular materiais e emitir orçamentos e faturas com IVA e NIF — em minutos.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link to="/estimation">

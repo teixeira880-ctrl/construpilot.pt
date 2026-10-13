@@ -88,16 +88,16 @@ export default function ApifyPanel() {
           setBusy(false);
           if (data.status === "SUCCEEDED") {
             setItems(data.items || []);
-            toast.success(`${data.count} résultat(s)${data.persisted ? " · enregistrés" : ""}`);
+            toast.success(`${data.count}resultado(s)${data.persisted ? "· guardados" : ""}`);
           } else {
-            toast.error(`Run terminé : ${data.status}`);
+            toast.error(`Execução concluída:${data.status}`);
           }
           loadHistory();
         }
       } catch (e) {
         clearInterval(pollRef.current);
         setBusy(false);
-        toast.error(e?.response?.data?.detail || "Erreur de suivi du run");
+        toast.error(e?.response?.data?.detail || "Erro de acompanhamento da execução");
       }
     }, POLL_MS);
   };
@@ -105,15 +105,15 @@ export default function ApifyPanel() {
   const savePreset = async () => {
     let parsed;
     try { parsed = JSON.parse(inputJson || "{}"); }
-    catch { toast.error("JSON d'entrée invalide"); return; }
-    if (!actorId.trim()) { toast.error("Indiquez l'ID de l'Actor Apify"); return; }
+    catch { toast.error("JSON de entrada inválido"); return; }
+    if (!actorId.trim()) { toast.error("Indique o ID do Actor Apify"); return; }
     setBusy(true);
     try {
       const { data } = await api.put(`/admin/apify/presets/${useCase}`, { actor_id: actorId.trim(), input: parsed });
       setPresets(data.presets || {});
-      toast.success("Preset enregistré — réutilisé pour les prochains runs.");
+      toast.success("Predefinição guardada — reutilizada nas próximas execuções.");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Enregistrement impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     } finally { setBusy(false); }
   };
 
@@ -124,28 +124,28 @@ export default function ApifyPanel() {
       setPresets(data.presets || {});
       const p = (data.presets || {})[useCase];
       if (p) { setActorId(p.actor_id); setInputJson(JSON.stringify(p.input, null, 2)); }
-      toast.success("Preset réinitialisé.");
+      toast.success("Predefinição reinicializada.");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Réinitialisation impossible");
+      toast.error(e?.response?.data?.detail || "Reinício impossível");
     } finally { setBusy(false); }
   };
 
   const runScraper = async () => {
     let parsed;
     try { parsed = JSON.parse(inputJson || "{}"); }
-    catch { toast.error("JSON d'entrée invalide"); return; }
-    if (!actorId.trim()) { toast.error("Indiquez l'ID de l'Actor Apify"); return; }
+    catch { toast.error("JSON de entrada inválido"); return; }
+    if (!actorId.trim()) { toast.error("Indique o ID do Actor Apify"); return; }
     setBusy(true); setItems([]); setStatus("RUNNING");
     try {
       const { data } = await api.post("/admin/apify/run", {
         actor_id: actorId.trim(), input: parsed, use_case: useCase,
         max_items: Number(maxItems) || 50, persist, emails_only: emailsOnly,
       });
-      toast.success(`Run démarré (${data.run_id})`);
+      toast.success(`Execução iniciada (${data.run_id})`);
       poll(data.job_id);
     } catch (e) {
       setBusy(false); setStatus("");
-      toast.error(e?.response?.data?.detail || "Démarrage impossible");
+      toast.error(e?.response?.data?.detail || "Arranque impossível");
     }
   };
 
@@ -165,8 +165,7 @@ export default function ApifyPanel() {
       <div>
         <h3 className="font-display font-bold text-lg">Apify — Scraping & automatisations</h3>
         <p className="text-sm text-muted-foreground">
-          Lancez des Actors Apify pour capter des leads, collecter des appels d'offres ou
-          surveiller les prix. Le token reste côté serveur.
+          Lance Actors Apify para captar leads, recolher concursos públicos ou vigiar os preços. O token fica do lado do servidor.
         </p>
       </div>
 
@@ -174,8 +173,7 @@ export default function ApifyPanel() {
         <div className="surface rounded-sm p-4 flex items-start gap-2 border border-amber-500/40 bg-amber-500/10"
              data-testid="apify-not-configured">
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-          <p className="text-sm">Le token <code>APIFY_API_TOKEN</code> n'est pas encore configuré dans le backend.
-            Ajoutez-le pour activer les runs.</p>
+          <p className="text-sm">O token <code>APIFY_API_TOKEN</code> ainda não está configurado no backend. Adicione-o para ativar as execuções.</p>
         </div>
       )}
 
@@ -192,13 +190,13 @@ export default function ApifyPanel() {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">ID de l'Actor Apify</Label>
+            <Label className="text-xs">ID do Actor Apify</Label>
             <Input value={actorId} onChange={(e) => setActorId(e.target.value)}
                    placeholder="apify/google-maps-scraper" className="rounded-sm h-9 text-sm"
                    data-testid="apify-actor-id" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Nombre max. de résultats</Label>
+            <Label className="text-xs">Número máx. de resultados</Label>
             <Input type="number" min={1} max={1000} value={maxItems}
                    onChange={(e) => setMaxItems(e.target.value)} className="rounded-sm h-9 text-sm"
                    data-testid="apify-max-items" />
@@ -206,7 +204,7 @@ export default function ApifyPanel() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Paramètres d'entrée (JSON — propre à l'Actor)</Label>
+          <Label className="text-xs">Parâmetros de entrada (JSON — próprio do Actor)</Label>
           <Textarea value={inputJson} onChange={(e) => setInputJson(e.target.value)} rows={6}
                     className="rounded-sm text-xs font-mono resize-y" data-testid="apify-input-json" />
         </div>
@@ -219,7 +217,7 @@ export default function ApifyPanel() {
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={persist} onCheckedChange={setPersist} data-testid="apify-persist-switch" />
-              <Label className="text-sm flex items-center gap-1"><Database className="h-4 w-4" /> Enregistrer dans la base</Label>
+              <Label className="text-sm flex items-center gap-1"><Database className="h-4 w-4" /> Guardar na base</Label>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -228,12 +226,12 @@ export default function ApifyPanel() {
                       data-testid="apify-export-csv"><Download className="h-4 w-4" /> CSV</Button>
             )}
             <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={savePreset}
-                    disabled={busy || !useCase} data-testid="apify-save-preset-btn" title="Enregistrer hashtags / ville / catégories pour ce cas d'usage">
-              <Save className="h-4 w-4" /> Enregistrer
+                    disabled={busy || !useCase} data-testid="apify-save-preset-btn" title="Guardar hashtags / cidade / categorias para este caso de uso">
+              <Save className="h-4 w-4" /> Guardar
             </Button>
             {presets[useCase]?.customized && (
               <Button variant="ghost" size="sm" className="rounded-sm gap-2" onClick={resetPreset}
-                      disabled={busy} data-testid="apify-reset-preset-btn"><RotateCcw className="h-4 w-4" /> Défaut</Button>
+                      disabled={busy} data-testid="apify-reset-preset-btn"><RotateCcw className="h-4 w-4" /> Por omissão</Button>
             )}
             <Button variant="default" size="sm" className="rounded-sm gap-2" onClick={runScraper}
                     disabled={busy || !configured} data-testid="apify-run-btn">
@@ -246,18 +244,18 @@ export default function ApifyPanel() {
 
       {items.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground" data-testid="apify-results-count">{items.length} résultat(s)</p>
+          <p className="text-sm text-muted-foreground" data-testid="apify-results-count">{items.length} resultado(s)</p>
           <ResultsTable items={items} />
         </div>
       )}
 
       <div className="flex items-center justify-between pt-2">
-        <h4 className="font-semibold">Historique des runs</h4>
+        <h4 className="font-semibold">Histórico das execuções</h4>
         <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={loadHistory}
                 data-testid="apify-history-refresh"><RefreshCw className="h-4 w-4" /> Actualiser</Button>
       </div>
       {history.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Aucun run pour le moment.</p>
+        <p className="text-sm text-muted-foreground">Nenhuma execução por agora.</p>
       ) : (
         <div className="grid gap-2" data-testid="apify-history">
           {history.map((j) => (
@@ -266,7 +264,7 @@ export default function ApifyPanel() {
               <span className="font-mono text-xs text-muted-foreground">{j.actor_id}</span>
               {j.use_case && <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{j.use_case}</span>}
               <span className={`text-xs font-semibold ${j.status === "SUCCEEDED" ? "text-emerald-600" : j.status === "FAILED" ? "text-red-600" : "text-amber-600"}`}>{j.status}</span>
-              <span className="text-xs text-muted-foreground">{j.count} item(s){j.persist ? " · enregistrés" : ""}</span>
+              <span className="text-xs text-muted-foreground">{j.count} item(s){j.persist ? "· guardados" : ""}</span>
               <span className="text-xs text-muted-foreground ml-auto">{j.created_at ? new Date(j.created_at).toLocaleString("fr-FR") : ""}</span>
             </div>
           ))}

@@ -12,30 +12,30 @@ import { FeatureClips } from "@/components/FeatureClips";
 import HelpChatbot from "@/components/HelpChatbot";
 
 const PARTICULIER = [
-  { icon: Calculator, title: "Estimateur de travaux", desc: "Chiffrage instantané matériaux + main d'œuvre, par type de projet." },
-  { icon: Sparkles, title: "Smart Project", desc: "Décrivez « rénover salle de bain 8 m² » → lots, matériaux et budget générés par l'IA." },
-  { icon: Camera, title: "Analyse de photo", desc: "Envoyez une photo d'une pièce ou d'un défaut, l'IA propose des pistes." },
-  { icon: FileText, title: "Scanner de devis", desc: "Importez un devis PDF : l'IA l'explique et vérifie les montants." },
-  { icon: Ruler, title: "Calculateurs", desc: "Surfaces, volumes, quantités (peinture, carrelage, béton…)." },
-  { icon: Search, title: "Recherche de prix", desc: "Ordres de grandeur de prix matériaux et prestations." },
-  { icon: MessageSquare, title: "Coach IA travaux", desc: "Un assistant qui répond à vos questions chantier, en français." },
-  { icon: CalendarRange, title: "Planning des phases", desc: "Visualisez l'ordre des étapes de votre chantier." },
-  { icon: ShieldCheck, title: "Sécurité d'abord", desc: "Gaz, électricité, murs porteurs : l'app oriente toujours vers un pro." },
+  { icon: Calculator, title: "Estimador de obras", desc: "Orçamentação instantânea materiais + mão de obra, por tipo de projeto." },
+  { icon: Sparkles, title: "Smart Project", desc: "Descreva «renovar casa de banho 8 m²» → especialidades, materiais e orçamento gerados pela IA." },
+  { icon: Camera, title: "Análise de fotografia", desc: "Envie uma foto de uma divisão ou de um defeito, a IA propõe pistas." },
+  { icon: FileText, title: "Scanner de orçamentos", desc: "Importe um orçamento PDF: a IA explica-o e verifica os montantes." },
+  { icon: Ruler, title: "Calculateurs", desc: "Superfícies, volumes, quantidades (pintura, azulejo, betão…)." },
+  { icon: Search, title: "Pesquisa de preços", desc: "Ordens de grandeza de preços de materiais e prestações." },
+  { icon: MessageSquare, title: "Coach IA travaux", desc: "Um assistente que responde às suas questões de obra, em português." },
+  { icon: CalendarRange, title: "Planeamento das fases", desc: "Visualize a ordem das etapas da sua obra." },
+  { icon: ShieldCheck, title: "Segurança em primeiro lugar", desc: "Gás, eletricidade, paredes estruturais: a app orienta sempre para um profissional." },
 ];
 
 const PRO = [
-  { icon: Cuboid, title: "Analyse de plans DWG/DXF/PDF", desc: "Rendu fidèle (cotes, textes) et métré exact : murs, planchers, escaliers, poutres, poteaux." },
-  { icon: Building2, title: "Métré béton & structure", desc: "Quantités béton et devis détaillé par corps d'état, marges et acompte." },
-  { icon: HardHat, title: "Ferraillage / Acier", desc: "Extraction des barres HA et treillis → bordereau et quantités commandables." },
-  { icon: Droplets, title: "Étanchéité", desc: "Toiture-terrasse : bordereau par couche → rouleaux, bidons, panneaux." },
-  { icon: Layers, title: "Toiture", desc: "Tuiles/ardoises/bac acier, écran, liteaux, faîtage, noues, gouttières." },
-  { icon: Waves, title: "VRD / Réseaux", desc: "EP, EU, AEP, télécom, gaz + métré des tranchées (déblai, sable, remblai, réfection)." },
-  { icon: Boxes, title: "Bibliothèque de prix DPGF", desc: "Importez votre Excel/BPU pour surcharger les prix de l'IA." },
-  { icon: Truck, title: "Approvisionnement & fournisseurs", desc: "Chiffrage, surlignage sur le plan, export CSV et bon de commande par e-mail." },
-  { icon: FileSignature, title: "Devis signables en ligne", desc: "Vos clients acceptent et signent le devis à distance." },
-  { icon: CreditCard, title: "Acompte Stripe", desc: "Encaissez 30 % d'acompte à la signature du devis." },
-  { icon: Users, title: "Équipe & portail Pro", desc: "Collaborateurs, rôles, portail dédié et gestion de projets." },
-  { icon: Smartphone, title: "Application mobile (PWA)", desc: "Installez ConstruPilot sur mobile pour le chantier." },
+  { icon: Cuboid, title: "Análise de plantas DWG/DXF/PDF", desc: "Renderização fiel (cotas, textos) e medições exatas: paredes, pavimentos, escadas, vigas, pilares." },
+  { icon: Building2, title: "Medições betão & estrutura", desc: "Quantidades betão e orçamento detalhado por especialidade, margens e sinal." },
+  { icon: HardHat, title: "Ferragem / Aço", desc: "Extração das varões HA e malha → relação e quantidades encomendáveis." },
+  { icon: Droplets, title: "Impermeabilização", desc: "Cobertura plana: mapa por camada → rolos, bidões, painéis." },
+  { icon: Layers, title: "Cobertura", desc: "Telhas/ardósias/chapa, tela, ripas, cumeeira, rincões, caleiras." },
+  { icon: Waves, title: "VRD / Redes", desc: "EP, EU, AEP, telecom, gás + medições das valas (escavação, areia, aterro, reposição)." },
+  { icon: Boxes, title: "Biblioteca de preços DPGF", desc: "Importe o seu Excel/BPU para sobrepor os preços da IA." },
+  { icon: Truck, title: "Approvisionnement & fournisseurs", desc: "Orçamentação, marcação na planta, exportação CSV e nota de encomenda por e-mail." },
+  { icon: FileSignature, title: "Orçamentos assináveis online", desc: "Os seus clientes aceitam e assinam o orçamento à distância." },
+  { icon: CreditCard, title: "Acompte Stripe", desc: "Cobre 30 % de sinal à assinatura do orçamento." },
+  { icon: Users, title: "Equipa & portal Pro", desc: "Colaboradores, funções, portal dedicado e gestão de projetos." },
+  { icon: Smartphone, title: "Application mobile (PWA)", desc: "Instale ConstruPilot no telemóvel para a obra." },
 ];
 
 const Card = ({ icon: Icon, title, desc, tid }) => (
@@ -51,20 +51,20 @@ const Card = ({ icon: Icon, title, desc, tid }) => (
 export default function Features() {
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Fonctionnalités" description="Toutes les fonctionnalités ConstruPilot pour particuliers et professionnels du bâtiment : estimation IA, analyse de plans DWG, métré, devis, approvisionnement." canonical="/fonctionnalites" />
+      <SEO title="Funcionalidades" description="Todas as funcionalidades ConstruPilot para particulares e profissionais da construção: estimativa IA, análise de plantas DWG, medições, orçamento, aprovisionamento." canonical="/fonctionnalites" />
       <Nav />
 
       <section className="max-w-6xl mx-auto px-4 pt-16 pb-10 text-center">
-        <span className="overline text-primary">Fonctionnalités</span>
+        <span className="overline text-primary">Funcionalidades</span>
         <h1 className="mt-3 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-          Tout ConstruPilot, <span className="text-primary">en un coup d'œil</span>
+          Todo o ConstruPilot, <span className="text-primary">num relance</span>
         </h1>
         <p className="mt-5 text-base text-muted-foreground max-w-2xl mx-auto">
-          Des outils simples pour les particuliers, une suite technique puissante pour les pros du bâtiment. Estimation, plans, métré, devis et approvisionnement — propulsés par l'IA.
+          Ferramentas simples para particulares, uma suite técnica poderosa para profissionais da construção. Estimativa, plantas, medições, orçamentos e aprovisionamento — impulsionados por IA.
         </p>
         <div className="mt-8 flex flex-wrap gap-3 justify-center">
           <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-start">Commencer gratuitement <ArrowRight className="h-4 w-4" /></Button></Link>
-          <Link to="/tarifs"><Button variant="outline" className="rounded-sm h-11" data-testid="features-cta-pricing">Voir les tarifs</Button></Link>
+          <Link to="/tarifs"><Button variant="outline" className="rounded-sm h-11" data-testid="features-cta-pricing">Ver as tarifas</Button></Link>
         </div>
       </section>
 
@@ -73,7 +73,7 @@ export default function Features() {
       <section className="max-w-6xl mx-auto px-4 py-10">
         <div className="flex items-center gap-3 mb-6">
           <HomeIcon className="h-6 w-6 text-primary" />
-          <h2 className="font-display text-2xl font-bold">Pour les particuliers</h2>
+          <h2 className="font-display text-2xl font-bold">Para particulares</h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="features-particulier">
           {PARTICULIER.map((f, i) => <Card key={i} {...f} tid={`feature-part-${i}`} />)}
@@ -83,10 +83,10 @@ export default function Features() {
       <section className="max-w-6xl mx-auto px-4 py-10">
         <div className="flex items-center gap-3 mb-2">
           <HardHat className="h-6 w-6 text-primary" />
-          <h2 className="font-display text-2xl font-bold">Pour les professionnels</h2>
+          <h2 className="font-display text-2xl font-bold">Para profissionais</h2>
           <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Offre Pro</span>
         </div>
-        <p className="text-sm text-muted-foreground mb-6">Métré exact depuis vos plans, approvisionnement chantier et devis professionnels.</p>
+        <p className="text-sm text-muted-foreground mb-6">Medições exatas a partir das suas plantas, abastecimento da obra e orçamentos profissionais.</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="features-pro">
           {PRO.map((f, i) => <Card key={i} {...f} tid={`feature-pro-${i}`} />)}
         </div>
@@ -94,8 +94,8 @@ export default function Features() {
 
       <section className="max-w-6xl mx-auto px-4 py-10" data-testid="features-downloads">
         <div className="surface p-6 rounded-xl">
-          <h2 className="font-display text-xl font-bold flex items-center gap-2"><Download className="h-5 w-5 text-primary" /> Toutes les fonctionnalités en PDF et PowerPoint</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Brochure commerciale (1 offre par page) et catalogue exhaustif — Particuliers, Premium, Pro, Pro Business, Blog & SEO, Radar Chantiers, API. En français.</p>
+          <h2 className="font-display text-xl font-bold flex items-center gap-2"><Download className="h-5 w-5 text-primary" /> Todas as funcionalidades em PDF e PowerPoint</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Brochura comercial (1 oferta por página) e catálogo exaustivo — Particulares, Premium, Pro, Pro Business, Blog & SEO, Radar Chantiers, API. Em francês.</p>
           <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               ["Brochure (PDF)", "/docs/ConstruPilot_Brochure_Fonctionnalites.pdf", "features-dl-brochure-pdf"],
@@ -111,10 +111,10 @@ export default function Features() {
           </div>
           <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="features-videos">
             {[
-              ["Vidéo démo courte 16:9 (2 min)", "/docs/ConstruPilot_Demo_Courte_16x9.mp4", "features-video-short-169"],
-              ["Vidéo démo courte 9:16 (réels)", "/docs/ConstruPilot_Demo_Courte_9x16.mp4", "features-video-short-916"],
-              ["Vidéo démo complète 16:9 (4 min)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
-              ["Vidéo démo complète 9:16", "/docs/ConstruPilot_Demo_Complete_9x16.mp4", "features-video-full-916"],
+              ["Vídeo demonstração curto 16:9 (2 min)", "/docs/ConstruPilot_Demo_Courte_16x9.mp4", "features-video-short-169"],
+              ["Vídeo demonstração curto 9:16 (reels)", "/docs/ConstruPilot_Demo_Courte_9x16.mp4", "features-video-short-916"],
+              ["Vídeo demonstração completo 16:9 (4 min)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
+              ["Vídeo demonstração completa 9:16", "/docs/ConstruPilot_Demo_Complete_9x16.mp4", "features-video-full-916"],
               ["Vídeo demo curta PT 16:9", "/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4", "features-video-pt-short-169"],
               ["Vídeo demo curta PT 9:16", "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4", "features-video-pt-short-916"],
               ["Vídeo demo completa PT 16:9", "/docs/ConstruPilot_Demo_Completa_PT_16x9.mp4", "features-video-pt-full-169"],
@@ -131,13 +131,13 @@ export default function Features() {
       <section className="max-w-4xl mx-auto px-4 py-14 text-center">
         <div className="surface p-8 rounded-xl">
           <PenTool className="h-8 w-8 text-primary mx-auto" />
-          <h2 className="mt-4 font-display text-2xl font-bold">Prêt à estimer votre premier chantier ?</h2>
-          <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">Créez un compte en 30 secondes, ou testez avec un compte démo. Aucune carte bancaire requise pour commencer.</p>
+          <h2 className="mt-4 font-display text-2xl font-bold">Pronto para estimar a sua primeira obra?</h2>
+          <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">Crie uma conta em 30 segundos, ou teste com uma conta demo. Nenhum cartão bancário necessário para começar.</p>
           <div className="mt-6 flex flex-wrap gap-3 justify-center">
-            <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-bottom">Créer mon compte <ArrowRight className="h-4 w-4" /></Button></Link>
+            <Link to="/login"><Button className="rounded-sm gap-2 h-11" data-testid="features-cta-bottom">Criar a minha conta <ArrowRight className="h-4 w-4" /></Button></Link>
           </div>
           <div className="mt-6 flex flex-wrap gap-4 justify-center text-xs text-muted-foreground">
-            {["Sans engagement", "Comptes démo disponibles", "Support en français"].map((t, i) => (
+            {["Sem compromisso", "Contas de demonstração disponíveis", "Suporte em português"].map((t, i) => (
               <span key={i} className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />{t}</span>
             ))}
           </div>

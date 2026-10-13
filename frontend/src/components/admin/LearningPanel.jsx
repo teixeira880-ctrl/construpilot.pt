@@ -15,11 +15,11 @@ import {
 import { toast } from "sonner";
 
 const SCOPE_LABELS = {
-  global: "Tous les modules (global)",
-  devis: "Devis / chiffrage",
-  analyse: "Analyse de problèmes",
+  global: "Todos os módulos (global)",
+  devis: "Orçamento / orçamentação",
+  analyse: "Análise de problemas",
   coach: "Coach IA",
-  plan: "Plans / métré",
+  plan: "Plantas / medições",
 };
 
 const EMPTY = { scope: "global", title: "", context: "", content: "", approved: true };
@@ -59,7 +59,7 @@ export default function LearningPanel() {
     setLoading(true);
     api.get("/admin/learning")
       .then(({ data }) => { setExamples(data.examples || []); setScopes(data.scopes || scopes); })
-      .catch(() => toast.error("Chargement impossible"))
+      .catch(() => toast.error("Não foi possível carregar"))
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -73,20 +73,20 @@ export default function LearningPanel() {
   };
 
   const save = async () => {
-    if (!form.content.trim()) { toast.error("Le contenu de l'exemple est obligatoire"); return; }
+    if (!form.content.trim()) { toast.error("O conteúdo do exemplo é obrigatório"); return; }
     setBusy(true);
     try {
       if (editId) {
         await api.put(`/admin/learning/${editId}`, form);
-        toast.success("Exemple mis à jour — appliqué aux prochaines générations IA.");
+        toast.success("Exemplo atualizado — aplicado às próximas gerações IA.");
       } else {
         await api.post("/admin/learning", form);
-        toast.success("Exemple ajouté — l'IA s'en inspirera désormais.");
+        toast.success("Exemplo adicionado — a IA vai inspirar-se nele a partir de agora.");
       }
       resetForm();
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Enregistrement impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     } finally { setBusy(false); }
   };
 
@@ -94,23 +94,23 @@ export default function LearningPanel() {
     try {
       await api.put(`/admin/learning/${ex.id}`, { approved: !ex.approved });
       setExamples((xs) => xs.map((x) => x.id === ex.id ? { ...x, approved: !ex.approved } : x));
-    } catch { toast.error("Mise à jour impossible"); }
+    } catch { toast.error("Não foi possível atualizar"); }
   };
 
   const remove = async (ex) => {
-    if (!window.confirm("Supprimer cet exemple de référence ?")) return;
+    if (!window.confirm("Eliminar este exemplo de referência?")) return;
     try {
       await api.delete(`/admin/learning/${ex.id}`);
       setExamples((xs) => xs.filter((x) => x.id !== ex.id));
       if (editId === ex.id) resetForm();
-      toast.success("Exemple supprimé");
-    } catch { toast.error("Suppression impossible"); }
+      toast.success("Exemplo eliminado");
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   // Import en lot (colle plusieurs exemples séparés par une ligne ---)
   const runBulkPaste = async () => {
     const blocks = bulkText.split(/\n-{3,}\n/).map((b) => b.trim()).filter(Boolean);
-    if (!blocks.length) { toast.error("Collez au moins un exemple (séparés par une ligne « --- »)."); return; }
+    if (!blocks.length) { toast.error("Cole pelo menos um exemplo (separados por uma linha «---»)."); return; }
     const items = blocks.map((b) => {
       const nl = b.indexOf("\n");
       const first = (nl === -1 ? b : b.slice(0, nl)).trim();
@@ -120,11 +120,11 @@ export default function LearningPanel() {
     setBulkBusy(true);
     try {
       const { data } = await api.post("/admin/learning/bulk", { scope: bulkScope, approved: true, items });
-      toast.success(`${data.created} exemple(s) importé(s).`);
+      toast.success(`${data.created}exemplo(s) importado(s).`);
       setBulkText("");
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível importar");
     } finally { setBulkBusy(false); }
   };
 
@@ -140,12 +140,12 @@ export default function LearningPanel() {
         await api.post(`/admin/learning/import-file?scope=${bulkScope}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
         ok += 1;
       } catch (e) {
-        toast.error(`${f.name} : ${e?.response?.data?.detail || "import impossible"}`);
+        toast.error(`${f.name} : ${e?.response?.data?.detail || "importação impossível"}`);
       }
     }
     setBulkBusy(false);
     if (fileRef.current) fileRef.current.value = "";
-    if (ok) { toast.success(`${ok} fichier(s) importé(s) comme exemple(s).`); load(); }
+    if (ok) { toast.success(`${ok}ficheiro(s) importado(s) como exemplo(s).`); load(); }
   };
 
   const loadPreview = async (scope) => {
@@ -154,7 +154,7 @@ export default function LearningPanel() {
     try {
       const { data } = await api.get(`/admin/learning/preview?scope=${scope}`);
       setPreviewText(data.empty ? "" : data.preview);
-    } catch { toast.error("Aperçu impossible"); }
+    } catch { toast.error("Pré-visualização impossível"); }
     finally { setPreviewBusy(false); }
   };
 
@@ -165,12 +165,9 @@ export default function LearningPanel() {
       <div className="flex items-start gap-3">
         <GraduationCap className="h-6 w-6 text-primary mt-0.5" />
         <div className="flex-1">
-          <h3 className="font-display font-bold text-lg">Apprentissage IA — exemples de référence</h3>
+          <h3 className="font-display font-bold text-lg">Aprendizagem IA — exemplos de referência</h3>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            Ajoutez des exemples validés (devis réussis, analyses de problèmes, consignes de méthode).
-            Les exemples <b>approuvés</b> sont injectés comme références dans tous les modules IA
-            (devis, analyses, coach, plans) pour que l'assistant produise au même niveau de qualité.
-            Les prix et quantités restent calculés par le moteur déterministe.
+            Adicione exemplos validados (orçamentos bem-sucedidos, análises de problemas, instruções de método). Os exemplos <b>aprovados</b> são injetados como referências em todos os módulos IA (orçamentos, análises, coach, plantas) para que o assistente produza com o mesmo nível de qualidade. Os preços e as quantidades continuam calculados pelo motor determinístico.
           </p>
         </div>
         <Button variant="outline" size="sm" className="rounded-sm gap-2 shrink-0" onClick={() => setShowImport((v) => !v)} data-testid="learning-toggle-import">
@@ -183,23 +180,23 @@ export default function LearningPanel() {
         <div className="surface rounded-md p-5 space-y-4 border border-primary/30" data-testid="learning-import">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5 w-full sm:w-72">
-              <Label className="text-xs">Module des exemples importés</Label>
+              <Label className="text-xs">Módulo dos exemplos importados</Label>
               <ScopeSelect value={bulkScope} onChange={setBulkScope} scopes={scopes} testid="learning-bulk-scope" />
             </div>
             <div className="flex-1" />
             <input ref={fileRef} type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.docx,.txt" className="hidden" onChange={runFileImport} data-testid="learning-file-input" />
             <Button variant="outline" size="sm" className="rounded-sm gap-2" disabled={bulkBusy} onClick={() => fileRef.current?.click()} data-testid="learning-file-btn">
-              {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />} Importer des fichiers (PDF, Excel…)
+              {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />} Importar ficheiros (PDF, Excel…)
             </Button>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Coller plusieurs exemples — séparez chaque exemple par une ligne « --- »</Label>
+            <Label className="text-xs">Colar vários exemplos — separe cada exemplo por uma linha «---»</Label>
             <Textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={8}
-                      placeholder={"Devis exemple 1…\n---\nDevis exemple 2…\n---\nAnalyse exemple 3…"}
+                      placeholder={"Orçamento exemplo 1… --- Orçamento exemplo 2… --- Análise exemplo 3…"}
                       className="rounded-sm text-sm font-mono resize-y" data-testid="learning-bulk-text" />
             <div className="flex justify-end">
               <Button variant="default" size="sm" className="rounded-sm gap-2" disabled={bulkBusy} onClick={runBulkPaste} data-testid="learning-bulk-save">
-                {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importer le texte collé
+                {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Importar o texto colado
               </Button>
             </div>
           </div>
@@ -209,45 +206,45 @@ export default function LearningPanel() {
       {/* Formulaire ajout / édition */}
       <div className="surface rounded-md p-5 space-y-4" data-testid="learning-form">
         <div className="flex items-center justify-between">
-          <h4 className="font-semibold text-sm">{editId ? "Modifier l'exemple" : "Nouvel exemple"}</h4>
+          <h4 className="font-semibold text-sm">{editId ? "Editar o exemplo" : "Nouvel exemple"}</h4>
           {editId && (
             <Button variant="ghost" size="sm" className="rounded-sm gap-1" onClick={resetForm} data-testid="learning-cancel-edit">
-              <X className="h-4 w-4" /> Annuler
+              <X className="h-4 w-4" /> Cancelar
             </Button>
           )}
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Module concerné</Label>
+            <Label className="text-xs">Módulo em causa</Label>
             <ScopeSelect value={form.scope} onChange={(v) => setForm({ ...form, scope: v })} scopes={scopes} testid="learning-scope-select" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Titre (court)</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                   placeholder="Ex. Devis rénovation salle de bain 6 m²" className="rounded-sm h-9 text-sm"
+                   placeholder="Ex.: Orçamento remodelação casa de banho 6 m²" className="rounded-sm h-9 text-sm"
                    data-testid="learning-title-input" />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Situation / demande (optionnel — le contexte de départ)</Label>
+          <Label className="text-xs">Situação / pedido (opcional — o contexto de partida)</Label>
           <Textarea value={form.context} onChange={(e) => setForm({ ...form, context: e.target.value })} rows={3}
-                    placeholder="Ex. Le client décrit : « rénover ma salle de bain, remplacer baignoire par douche italienne »…"
+                    placeholder="Ex.: O cliente descreve: «remodelar a minha casa de banho, substituir a banheira por um duche de nível»…"
                     className="rounded-sm text-sm resize-y" data-testid="learning-context-input" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Réponse / méthode de référence (ce que l'IA doit reproduire comme qualité)</Label>
+          <Label className="text-xs">Resposta / método de referência (o que a IA deve reproduzir em qualidade)</Label>
           <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={8}
-                    placeholder="Collez ici un devis exemplaire, une analyse détaillée, ou vos consignes de style/méthode…"
+                    placeholder="Cole aqui um orçamento exemplar, uma análise detalhada ou as suas instruções de estilo/método…"
                     className="rounded-sm text-sm resize-y" data-testid="learning-content-input" />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Switch checked={form.approved} onCheckedChange={(v) => setForm({ ...form, approved: v })} data-testid="learning-approved-switch" />
-            <Label className="text-sm">Approuvé (utilisé par l'IA)</Label>
+            <Label className="text-sm">Aprovado (utilizado pela IA)</Label>
           </div>
           <Button variant="default" size="sm" className="rounded-sm gap-2" onClick={save} disabled={busy} data-testid="learning-save-btn">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : (editId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />)}
-            {editId ? "Enregistrer" : "Ajouter"}
+            {editId ? "Guardar" : "Adicionar"}
           </Button>
         </div>
       </div>
@@ -256,7 +253,7 @@ export default function LearningPanel() {
       <div className="surface rounded-md p-5 space-y-3" data-testid="learning-preview">
         <div className="flex flex-wrap items-center gap-3">
           <Eye className="h-4 w-4 text-primary" />
-          <h4 className="font-semibold text-sm">Aperçu — ce que l'IA reçoit</h4>
+          <h4 className="font-semibold text-sm">Pré-visualização — o que a IA recebe</h4>
           <div className="w-56"><ScopeSelect value={previewScope} onChange={loadPreview} scopes={scopes} testid="learning-preview-scope" /></div>
           <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => loadPreview(previewScope)} disabled={previewBusy} data-testid="learning-preview-btn">
             {previewBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Afficher
@@ -264,7 +261,7 @@ export default function LearningPanel() {
         </div>
         {previewText !== null && (
           previewText === "" ? (
-            <p className="text-sm text-muted-foreground" data-testid="learning-preview-empty">Aucun exemple approuvé pour cette portée — l'IA n'ajoute rien.</p>
+            <p className="text-sm text-muted-foreground" data-testid="learning-preview-empty">Nenhum exemplo aprovado para este âmbito — a IA não acrescenta nada.</p>
           ) : (
             <pre className="text-xs bg-muted/50 rounded-sm p-3 overflow-x-auto whitespace-pre-wrap max-h-80" data-testid="learning-preview-text">{previewText}</pre>
           )
@@ -276,33 +273,33 @@ export default function LearningPanel() {
         <h4 className="font-semibold text-sm">Exemples ({examples.length})</h4>
       </div>
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> A carregar…</div>
       ) : examples.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Aucun exemple pour le moment. Ajoutez-en pour entraîner l'IA.</p>
+        <p className="text-sm text-muted-foreground">Nenhum exemplo por agora. Adicione alguns para treinar a IA.</p>
       ) : (
         <div className="grid gap-2" data-testid="learning-list">
           {examples.map((ex) => (
             <div key={ex.id} className="surface rounded-sm p-3 flex flex-col gap-2" data-testid={`learning-item-${ex.id}`}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{SCOPE_LABELS[ex.scope] || ex.scope}</span>
-                <span className="font-medium text-sm">{ex.title || "(sans titre)"}</span>
+                <span className="font-medium text-sm">{ex.title || "(sem título)"}</span>
                 <span className={`text-[11px] px-2 py-0.5 rounded-full ${ex.approved ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
-                  {ex.approved ? "Approuvé" : "Brouillon"}
+                  {ex.approved ? "Aprovado" : "Brouillon"}
                 </span>
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1" title="Nombre de générations IA ayant utilisé cet exemple" data-testid={`learning-usage-${ex.id}`}>
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1" title="Número de gerações IA que utilizaram este exemplo" data-testid={`learning-usage-${ex.id}`}>
                   <BarChart3 className="h-3 w-3" /> {ex.used_count || 0} usage(s){ex.last_used_at ? ` · dernier ${fmtDate(ex.last_used_at)}` : ""}
                 </span>
                 <div className="flex items-center gap-1 ml-auto">
                   <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm" onClick={() => toggleApproved(ex)}
-                          title={ex.approved ? "Désactiver" : "Approuver"} data-testid={`learning-toggle-${ex.id}`}>
+                          title={ex.approved ? "Desativar" : "Approuver"} data-testid={`learning-toggle-${ex.id}`}>
                     <Check className={`h-4 w-4 ${ex.approved ? "text-emerald-600" : "text-muted-foreground"}`} />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm" onClick={() => startEdit(ex)}
-                          title="Modifier" data-testid={`learning-edit-${ex.id}`}>
+                          title="Editar" data-testid={`learning-edit-${ex.id}`}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm text-red-600" onClick={() => remove(ex)}
-                          title="Supprimer" data-testid={`learning-delete-${ex.id}`}>
+                          title="Eliminar" data-testid={`learning-delete-${ex.id}`}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

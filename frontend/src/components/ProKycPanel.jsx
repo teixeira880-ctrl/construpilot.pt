@@ -9,7 +9,7 @@ const STATUS_STYLE = {
   verified: "bg-emerald-500/15 text-emerald-600",
   rejected: "bg-red-500/15 text-red-600",
 };
-const STATUS_LABEL = { pending: "En attente", verified: "Validé", rejected: "Refusé" };
+const STATUS_LABEL = { pending: "En attente", verified: "Validado", rejected: "Recusado" };
 
 export default function ProKycPanel() {
   const [rows, setRows] = useState([]);
@@ -40,17 +40,17 @@ export default function ProKycPanel() {
   const review = async (userId, approve) => {
     let reason = null;
     if (!approve) {
-      reason = window.prompt("Motif du refus (visible par l'utilisateur) :", "Documents illisibles ou non conformes");
+      reason = window.prompt("Motivo da recusa (visível pelo utilizador):", "Documentos ilegíveis ou não conformes");
       if (reason === null) return;
     }
     setBusy(`${userId}-review`);
     try {
       await api.post("/auth/admin/kyc-pros/review", { user_id: userId, approve, reason });
-      toast.success(approve ? "Compte pro validé" : "Compte pro refusé");
+      toast.success(approve ? "Conta profissional validada" : "Conta profissional recusada");
       setRows((prev) => prev.filter((r) => r.user_id !== userId || filter === ""));
       if (filter === "") load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Action impossible");
+      toast.error(e?.response?.data?.detail || "Ação impossível");
     } finally { setBusy(""); }
   };
 
@@ -58,10 +58,10 @@ export default function ProKycPanel() {
     <div className="space-y-4" data-testid="pro-kyc-panel">
       <div className="flex items-center gap-2">
         <BadgeCheck className="h-5 w-5 text-primary" />
-        <h2 className="font-bold text-lg">Validation des comptes Pro</h2>
+        <h2 className="font-bold text-lg">Validação das contas Pro</h2>
       </div>
       <div className="flex gap-2">
-        {[["pending", "En attente"], ["verified", "Validés"], ["rejected", "Refusés"], ["", "Tous"]].map(([v, l]) => (
+        {[["pending", "En attente"], ["verified", "Validados"], ["rejected", "Recusados"], ["", "Todos"]].map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)}
                   data-testid={`kyc-filter-${v || "all"}`}
                   className={`text-xs px-3 py-1.5 rounded-sm border ${filter === v ? "bg-primary text-white border-primary" : "border-border"}`}>
@@ -71,9 +71,9 @@ export default function ProKycPanel() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground py-6 text-center">Chargement…</p>
+        <p className="text-sm text-muted-foreground py-6 text-center">A carregar…</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-6 text-center" data-testid="kyc-empty">Aucun compte dans cette catégorie.</p>
+        <p className="text-sm text-muted-foreground py-6 text-center" data-testid="kyc-empty">Nenhuma conta nesta categoria.</p>
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
@@ -110,7 +110,7 @@ export default function ProKycPanel() {
                         onClick={() => viewDoc(r.user_id, "decennale")}
                         data-testid={`kyc-view-decennale-${r.user_id}`}>
                   {busy === `${r.user_id}-decennale` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
-                  Décennale {r.has_decennale ? "" : "(manquant)"}
+                  Decenal {r.has_decennale ? "" : "(manquant)"}
                 </Button>
                 {r.kyc_status !== "verified" && (
                   <Button size="sm" className="rounded-sm gap-1 h-8 bg-emerald-600 hover:bg-emerald-700 text-white"

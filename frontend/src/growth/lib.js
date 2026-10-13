@@ -9,7 +9,7 @@ export const useApi = (path, deps = []) => {
     if (!path) return;
     setLoading(true);
     try { const r = await api.get(path); setData(r.data); setError(null); }
-    catch (e) { setError(e?.response?.data?.detail || "Chargement impossible"); }
+    catch (e) { setError(e?.response?.data?.detail || "Não foi possível carregar"); }
     finally { setLoading(false); }
   }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { reload(); }, [reload, ...deps]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -18,10 +18,10 @@ export const useApi = (path, deps = []) => {
 
 export const usd = (v) => (v == null ? "—" : `${Number(v).toFixed(4)} $`);
 export const dt = (v) => (v ? new Date(v).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
-export const err = (e, fallback = "Action impossible") => {
+export const err = (e, fallback = "Ação impossível") => {
   const d = e?.response?.data?.detail;
   return typeof d === "string" ? d : d?.message || fallback;
 };
 export const SEV = { haute: "bg-red-500/15 text-red-700 dark:text-red-300", moyenne: "bg-amber-500/15 text-amber-700 dark:text-amber-300", basse: "bg-muted text-muted-foreground" };
-export const STATUS_FR = { queued: "en attente", running: "en cours", completed: "terminé", stopped: "arrêté", failed: "échec", interrupted: "interrompu", estimated: "estimée", budget_reached: "plafond atteint",
-  idea: "idée", brief: "brief", draft: "brouillon", review: "à relire", approved: "approuvé", scheduled: "programmé", published: "publié", archived: "archivé", todo: "à faire", doing: "en cours", done: "fait", fixing: "correction appliquée", fixed: "corrigé", ignored: "ignoré", open: "ouvert" };
+export const STATUS_FR = { queued: "en attente", running: "en cours", completed: "concluída", stopped: "parado", failed: "falha", interrupted: "interrompu", estimated: "estimada", budget_reached: "plafond atteint",
+  idea: "ideia", brief: "brief", draft: "brouillon", review: "a rever", approved: "aprovado", scheduled: "agendado", published: "publicado", archived: "arquivado", todo: "a fazer", doing: "en cours", done: "fait", fixing: "correção aplicada", fixed: "corrigido", ignored: "ignorado", open: "ouvert" };

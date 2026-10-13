@@ -27,11 +27,11 @@ const buildMessage = ({ project, estimation, link }) => {
   const surface = project?.surface || estimation?.surface;
   const parts = [
     `📐 *Estimation ConstruPilot — ${project?.name || "Projet"}*`,
-    surface ? `Surface : ${surface} m²` : null,
-    total ? `Budget estimé : *${eur(total)}*${min && max ? ` (${eur(min)} – ${eur(max)})` : ""}` : null,
+    surface ? `Área:${surface} m²` : null,
+    total ? `Orçamento estimado: *${eur(total)}*${min && max ? ` (${eur(min)} – ${eur(max)})` : ""}` : null,
     estimation?.finish_level_name ? `Finition : ${estimation.finish_level_name}` : null,
     "",
-    link ? `Voir le détail 👉 ${link}` : null,
+    link ? `Ver o detalhe 👉${link}` : null,
     "",
     "— ConstruPilot",
   ].filter(Boolean);
@@ -39,7 +39,7 @@ const buildMessage = ({ project, estimation, link }) => {
 };
 
 const EXPIRY_OPTIONS = [
-  { value: "never", label: "Sans expiration", days: null },
+  { value: "never", label: "Sem expiração", days: null },
   { value: "1", label: "24 heures", days: 1 },
   { value: "7", label: "7 jours", days: 7 },
   { value: "30", label: "30 jours", days: 30 },
@@ -79,7 +79,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
 
   const generateLink = async () => {
     if (!projectId) {
-      toast.info("Enregistrez d'abord le projet pour un lien public");
+      toast.info("Guarde primeiro o projeto para uma ligação pública");
       return;
     }
     setBusy(true);
@@ -92,9 +92,9 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
       setMessage("");
       const { data: s } = await api.get(`/projects/${projectId}/share/stats`);
       setStats(s);
-      toast.success("Lien de partage prêt");
+      toast.success("Link de partilha pronto");
     } catch {
-      toast.error("Impossible de générer le lien");
+      toast.error("Impossível gerar o link");
     } finally {
       setBusy(false);
     }
@@ -108,7 +108,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
       setLink("");
       setExpiresAt(null);
       setStats(null);
-      toast.success("Lien révoqué");
+      toast.success("Link revogado");
     } finally { setBusy(false); }
   };
 
@@ -130,27 +130,27 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
   };
 
   const sendSmsTwilio = async () => {
-    if (!projectId) return toast.info("Enregistrez d'abord le projet");
+    if (!projectId) return toast.info("Guarde primeiro o projeto");
     const p = cleanPhone(phone);
-    if (!p.startsWith("+")) return toast.error("Numéro requis au format international (+33…)");
+    if (!p.startsWith("+")) return toast.error("Número obrigatório em formato internacional (+33…)");
     setBusy(true);
     try {
       const { data } = await api.post(`/projects/${projectId}/share/sms`,
         { to: p, message: displayMsg });
-      toast.success(`SMS envoyé (${data.status})`);
+      toast.success(`SMS enviado (${data.status})`);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Envoi impossible");
+      toast.error(err?.response?.data?.detail || "Envio impossível");
     } finally { setBusy(false); }
   };
 
   const copyMsg = async () => {
-    try { await navigator.clipboard.writeText(displayMsg); toast.success("Message copié"); }
-    catch { toast.error("Copie impossible"); }
+    try { await navigator.clipboard.writeText(displayMsg); toast.success("Mensagem copiada"); }
+    catch { toast.error("Cópia impossível"); }
   };
   const copyLink = async () => {
     if (!link) return;
-    try { await navigator.clipboard.writeText(link); toast.success("Lien copié"); }
-    catch { toast.error("Copie impossible"); }
+    try { await navigator.clipboard.writeText(link); toast.success("Link copiado"); }
+    catch { toast.error("Cópia impossível"); }
   };
 
   return (
@@ -167,13 +167,13 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
       </DialogTrigger>
       <DialogContent className="rounded-sm max-w-lg max-h-[90vh] overflow-y-auto" data-testid="whatsapp-share-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display">Envoyer l'estimation à un client</DialogTitle>
-          <DialogDescription>WhatsApp ou SMS — avec lien lecture seule et analytics d'ouverture.</DialogDescription>
+          <DialogTitle className="font-display">Enviar a estimativa a um cliente</DialogTitle>
+          <DialogDescription>WhatsApp ou SMS — com ligação de leitura apenas e analytics de abertura.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 mt-2">
           <div className="grid gap-2">
-            <Label htmlFor="wa-phone">Numéro du client (optionnel pour WhatsApp)</Label>
+            <Label htmlFor="wa-phone">Número do cliente (opcional para WhatsApp)</Label>
             <Input
               id="wa-phone" value={phone} onChange={(e) => setPhone(e.target.value)}
               placeholder="+33 6 12 34 56 78"
@@ -202,12 +202,12 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
                         <Copy className="h-3 w-3" /> Copier
                       </Button>
                       <Button size="sm" variant="ghost" onClick={revokeLink} disabled={busy} className="rounded-sm gap-1 text-xs h-8 text-destructive">
-                        Révoquer
+                        Revogar
                       </Button>
                     </>
                   ) : (
                     <Button size="sm" onClick={generateLink} disabled={busy} data-testid="whatsapp-generate-link" className="rounded-sm gap-1 text-xs h-8">
-                      <LinkIcon className="h-3 w-3" /> {busy ? "…" : "Générer"}
+                      <LinkIcon className="h-3 w-3" /> {busy ? "…" : "Gerar"}
                     </Button>
                   )}
                 </div>
@@ -228,12 +228,12 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
                   )}
                   {stats?.last_open_at && (
                     <Badge variant="outline" className="rounded-sm gap-1 num text-xs">
-                      Dernière : {new Date(stats.last_open_at).toLocaleString("fr-FR")}
+                      Última: {new Date(stats.last_open_at).toLocaleString("fr-FR")}
                     </Badge>
                   )}
                   {expiresAt && (
                     <Badge variant="outline" className="rounded-sm gap-1 num text-xs border-amber-500/50 text-amber-500">
-                      <Clock className="h-3 w-3" /> Expire le {new Date(expiresAt).toLocaleDateString("fr-FR")}
+                      <Clock className="h-3 w-3" /> Expira a {new Date(expiresAt).toLocaleDateString("fr-FR")}
                     </Badge>
                   )}
                 </div>
@@ -250,7 +250,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
             />
             <div className="flex justify-end">
               <Button size="sm" variant="ghost" onClick={copyMsg} className="rounded-sm gap-1 text-xs h-7">
-                <Copy className="h-3 w-3" /> Copier le message
+                <Copy className="h-3 w-3" /> Copiar a mensagem
               </Button>
             </div>
           </div>
@@ -274,17 +274,17 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
           <TabsContent value="sms" className="mt-3 grid gap-2">
             <Button onClick={sendSmsNative} data-testid="sms-native-btn"
                     variant="outline" className="w-full rounded-sm gap-2">
-              <Smartphone className="h-4 w-4" /> Ouvrir l'app SMS du téléphone
+              <Smartphone className="h-4 w-4" /> Abrir app SMS do telefone
             </Button>
             <Button onClick={sendSmsTwilio} disabled={!smsCfg.twilio_enabled || busy}
                     data-testid="sms-twilio-btn"
                     className="w-full rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <Send className="h-4 w-4" />
-              {smsCfg.twilio_enabled ? "Envoyer via Twilio (serveur)" : "Twilio non configuré"}
+              {smsCfg.twilio_enabled ? "Enviar via Twilio (servidor)" : "Twilio não configurado"}
             </Button>
             {!smsCfg.twilio_enabled && (
               <p className="text-xs text-muted-foreground text-center">
-                Ajoutez <span className="font-mono">TWILIO_AUTH_TOKEN</span> et <span className="font-mono">TWILIO_FROM_NUMBER</span> dans <span className="font-mono">.env</span> pour activer l'envoi serveur.
+                Ajoutez <span className="font-mono">TWILIO_AUTH_TOKEN</span> et <span className="font-mono">TWILIO_FROM_NUMBER</span> dans <span className="font-mono">.env</span> para ativar o envio por servidor.
               </p>
             )}
           </TabsContent>

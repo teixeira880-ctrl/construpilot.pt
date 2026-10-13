@@ -19,15 +19,15 @@ export function PricingPrefsCard() {
   const save = async () => {
     const v = Number(margin);
     if (margin !== "" && (!Number.isFinite(v) || v < 0 || v > 90)) {
-      return toast.error("Entrez une marge entre 0 et 90 %.");
+      return toast.error("Introduza uma margem entre 0 e 90 %.");
     }
     setBusy(true);
     try {
       await api.put("/users/me/preferences", { target_margin_pct: margin === "" ? 0 : v });
       await checkAuth();
-      toast.success("Marge par défaut enregistrée");
+      toast.success("Margem por omissão guardada");
     } catch {
-      toast.error("Enregistrement impossible");
+      toast.error("Não foi possível guardar");
     } finally {
       setBusy(false);
     }
@@ -38,8 +38,8 @@ export function PricingPrefsCard() {
       <div className="flex items-center gap-2">
         <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center"><Percent className="h-4 w-4 text-primary" /></div>
         <div>
-          <p className="font-display font-semibold">Marge par défaut</p>
-          <p className="text-xs text-muted-foreground">Pré-remplie à chaque chiffrage dans l'Éditeur de plans.</p>
+          <p className="font-display font-semibold">Margem por omissão</p>
+          <p className="text-xs text-muted-foreground">Pré-preenchida em cada orçamentação no Editor de plantas.</p>
         </div>
       </div>
       <div className="flex items-end gap-2">
@@ -50,7 +50,7 @@ export function PricingPrefsCard() {
                  className="rounded-sm num mt-1" data-testid="default-margin-input" />
         </div>
         <Button onClick={save} disabled={busy} className="rounded-sm gap-2" data-testid="default-margin-save">
-          <Save className="h-4 w-4" /> Enregistrer
+          <Save className="h-4 w-4" /> Guardar
         </Button>
       </div>
     </div>

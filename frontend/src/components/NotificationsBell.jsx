@@ -101,14 +101,14 @@ export function NotificationsBell() {
           {unread > 0 && (
             <button onClick={markAll} className="text-[10px] text-primary hover:underline"
                     data-testid="notif-mark-all">
-              Tout marquer lu
+              Marcar tudo como lido
             </button>
           )}
         </div>
         <div className="max-h-96 overflow-y-auto" data-testid="notif-list">
           {items.length === 0 ? (
             <p className="text-xs text-muted-foreground p-6 text-center">
-              Aucune notification pour l'instant.
+              Nenhuma notificação por enquanto.
             </p>
           ) : items.map((n, i) => (
             <button key={`${n.notif_id || n.id || "n"}-${i}`}
@@ -131,7 +131,7 @@ export function NotificationsBell() {
             <Link to="/devis" onClick={() => setOpen(false)}
                   data-testid="notif-see-all"
                   className="block text-center text-[11px] text-primary hover:underline py-1">
-              Voir tous les devis envoyés →
+              Ver todos os orçamentos enviados →
             </Link>
           </div>
         )}

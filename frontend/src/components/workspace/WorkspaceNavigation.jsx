@@ -48,7 +48,7 @@ export default function WorkspaceNavigation() {
   const isPro = isProfessional(user);
   const active = activeWorkspaceLink(location.pathname, links);
   const label = (item) => item.ui ? ui(item.ui) : translatedToolLabel(item, lang, t);
-  const deckLabel = { pt: "Apresentação", en: "Presentation", fr: "Présentation" }[lang] || "Présentation";
+  const deckLabel = { pt: "Apresentação", en: "Presentation", fr: "Apresentação" }[lang] || "Apresentação";
   const groups = WORKSPACE_GROUPS.filter(g => g !== "favorites");
   const favorites = Array.isArray(user?.nav_favorites) ? user.nav_favorites : [];
   const favoriteLinks = favorites.map(to => links.find(l => l.to === to)).filter(Boolean);

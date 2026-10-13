@@ -21,7 +21,7 @@ export const LandingInstallBanner = () => {
         <Smartphone className="h-4 w-4 text-primary shrink-0" />
         <span className="flex-1 min-w-0 truncate text-foreground/80">
           {pt ? <>Instale a app <b className="text-foreground">ConstruPilot</b> no seu telemóvel — orçamentos e obras num toque.</>
-              : <>Installez l'app <b className="text-foreground">ConstruPilot</b> sur votre téléphone — devis &amp; chantier en un tap.</>}
+              : <>Installez l'app <b className="text-foreground">ConstruPilot</b> no seu telemóvel — orçamento &amp; obra num toque.</>}
         </span>
 
         {ios ? (
@@ -46,7 +46,7 @@ export const LandingInstallBanner = () => {
 
         <button
           onClick={dismiss}
-          aria-label={pt ? "Fechar" : "Fermer"}
+          aria-label={pt ? "Fechar" : "Fechar"}
           data-testid="landing-install-dismiss"
           className="shrink-0 text-foreground/40 hover:text-foreground transition-colors"
         >
@@ -58,10 +58,10 @@ export const LandingInstallBanner = () => {
         <div className="mx-auto max-w-[1500px] px-4 pb-2 text-xs text-foreground/70 flex flex-wrap gap-x-4 gap-y-1"
              data-testid="landing-install-ios-guide">
           <span className="inline-flex items-center gap-1">
-            1. {pt ? "Toque em" : "Touchez"} <Share className="h-3.5 w-3.5" /> <b>{pt ? "Partilhar" : "Partager"}</b> {pt ? "no Safari" : "dans Safari"}
+            1. {pt ? "Toque em" : "Touchez"} <Share className="h-3.5 w-3.5" /> <b>{pt ? "Partilhar" : "Partager"}</b> {pt ? "no Safari" : "no Safari"}
           </span>
           <span className="inline-flex items-center gap-1">
-            2. {pt ? "Escolha" : "Choisissez"} <PlusSquare className="h-3.5 w-3.5" /> <b>{pt ? "Adicionar ao ecrã principal" : "Sur l'écran d'accueil"}</b>
+            2. {pt ? "Escolha" : "Choisissez"} <PlusSquare className="h-3.5 w-3.5" /> <b>{pt ? "Adicionar ao ecrã principal" : "No ecrã inicial"}</b>
           </span>
         </div>
       )}

@@ -33,7 +33,7 @@ export function MessageList({ messages, mine, fileUrl, emptyText, testId = "mess
 }
 
 /** Zone de saisie : texte + dictée + pièces jointes (photos/PDF, 5 max). `send(formData)` envoie ; `dictate(formData)` = client STT optionnel. */
-export function MessageComposer({ send, dictate, placeholder = "Votre message…", testId = "composer" }) {
+export function MessageComposer({ send, dictate, placeholder = "A sua mensagem…", testId = "composer" }) {
   const [body, setBody] = useState("");
   const [files, setFiles] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,7 @@ export function MessageComposer({ send, dictate, placeholder = "Votre message…
     files.forEach((f) => fd.append("files", f));
     setBusy(true);
     try { await send(fd); setBody(""); setFiles([]); }
-    catch (err) { toast.error(err?.response?.data?.detail || "Envoi impossible"); }
+    catch (err) { toast.error(err?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
   };
   return (
@@ -58,13 +58,13 @@ export function MessageComposer({ send, dictate, placeholder = "Votre message…
           <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple className="hidden" onChange={(e) => { setFiles((l) => [...l, ...Array.from(e.target.files)].slice(0, 5)); e.target.value = ""; }} data-testid={`${testId}-file-input`} />
         </label>
         <DictateButton testId={`${testId}-dictate`} request={dictate} onText={(t) => setBody((b) => [b, t].filter(Boolean).join(" "))} />
-        <Button type="submit" size="sm" disabled={busy || (!body.trim() && files.length === 0)} className="ms-auto gap-1 h-8" data-testid={`${testId}-send`}><Send className="h-3.5 w-3.5" /> {busy ? "Envoi…" : "Envoyer"}</Button>
+        <Button type="submit" size="sm" disabled={busy || (!body.trim() && files.length === 0)} className="ms-auto gap-1 h-8" data-testid={`${testId}-send`}><Send className="h-3.5 w-3.5" /> {busy ? "Envoi…" : "Enviar"}</Button>
       </div>
     </form>
   );
 }
 
-const CHANNELS = [["client", "Client"], ["subcontractors", "Sous-traitants"]];
+const CHANNELS = [["client", "Cliente"], ["subcontractors", "Sous-traitants"]];
 
 /** Panneau pro : messagerie par canal sur la fiche chantier, rafraîchie toutes les 10 s. */
 export function ChantierMessagesPanel({ chantierId, api, initialChannel = "client", unread = {} }) {
@@ -83,8 +83,8 @@ export function ChantierMessagesPanel({ chantierId, api, initialChannel = "clien
         </div>
       </div>
       <MessageList messages={messages} mine={(m) => m.author_type === "pro"} fileUrl={fileUrl}
-        emptyText={channel === "client" ? "Aucun message avec le client. Seuls les invités « client » avec le droit Messages voient ce canal." : "Aucun message avec les sous-traitants. Le client ne voit jamais ce canal."} />
-      <MessageComposer testId="pro-composer" placeholder={channel === "client" ? "Écrire au client…" : "Écrire aux sous-traitants…"}
+        emptyText={channel === "client" ? "Nenhuma mensagem com o cliente. Só os convidados «cliente» com a permissão Mensagens veem este canal." : "Nenhuma mensagem com os subempreiteiros. O cliente nunca vê este canal."} />
+      <MessageComposer testId="pro-composer" placeholder={channel === "client" ? "Escrever ao cliente…" : "Escrever aos subempreiteiros…"}
         send={async (fd) => { fd.append("channel", channel); await api.post(`/chantiers/${chantierId}/messages`, fd); await load(); }} />
     </section>
   );

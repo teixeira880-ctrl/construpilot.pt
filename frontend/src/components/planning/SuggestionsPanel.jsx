@@ -14,11 +14,11 @@ export function SuggestionsPanel({ suggestions = [], onApplyCapacity, onHighligh
     <section className="surface" data-testid="planning-suggestions">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <Lightbulb className="h-4 w-4 text-primary" />
-        <p className="font-display font-bold text-sm">Propositions de réorganisation</p>
-        <span className="text-[11px] text-muted-foreground">gains mesurés en rejouant le planning — aucune estimation IA</span>
+        <p className="font-display font-bold text-sm">Propostas de reorganização</p>
+        <span className="text-[11px] text-muted-foreground">ganhos medidos ao repetir o planeamento — nenhuma estimativa IA</span>
       </div>
       <div className="p-3 grid gap-2">
-        {suggestions.length === 0 && <p className="text-sm text-muted-foreground px-1">Rien à signaler : planning cohérent.</p>}
+        {suggestions.length === 0 && <p className="text-sm text-muted-foreground px-1">Nada a assinalar: planeamento coerente.</p>}
         {suggestions.map((s, i) => {
           const { cls, Icon } = STYLE[s.severity] || STYLE.info;
           return (
@@ -30,13 +30,13 @@ export function SuggestionsPanel({ suggestions = [], onApplyCapacity, onHighligh
                 <div className="flex flex-wrap gap-2 mt-2">
                   {s.task_ids?.length > 0 && (
                     <button type="button" className="underline opacity-80 hover:opacity-100" onClick={() => onHighlight?.(s.task_ids[0])}>
-                      Voir la tâche {s.task_ids.join(", ")}
+                      Ver a tarefa {s.task_ids.join(", ")}
                     </button>
                   )}
                   {s.action?.type === "capacity" && (
                     <Button size="sm" variant="outline" className="h-6 rounded-sm text-[11px] bg-white" onClick={() => onApplyCapacity(s.action.resource, s.action.value)}
                             data-testid={`suggestion-apply-${i}`}>
-                      Passer à {s.action.value} équipes « {s.action.resource} »
+                      Passar a {s.action.value} equipas « {s.action.resource} »
                     </Button>
                   )}
                 </div>

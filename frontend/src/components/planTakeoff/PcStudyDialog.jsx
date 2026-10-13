@@ -15,11 +15,11 @@ import { PcSituations } from "@/components/planTakeoff/PcSituations";
 import { api, eur, num } from "@/lib/api";
 
 const RULES_LABELS = [
-  "Semelles filantes 60 × 30 cm (périmètre + refends porteurs)",
-  "Dalle / plancher ép. 15 cm",
-  "Murs brique isobrique ép. 20 cm",
-  "Escalier béton armé",
-  "Aciers : semelles 15 kg/ml (3+3 HA10 + cadres HA6) · dalle 14 kg/m² (ST25C) · escalier 100 kg/m³",
+  "Sapatas corridas 60 × 30 cm (perímetro + paredes resistentes)",
+  "Laje / pavimento esp. 15 cm",
+  "Paredes tijolo isotérmico esp. 20 cm",
+  "Escada betão armado",
+  "Aço: sapatas 15 kg/ml (3+3 HA10 + estribos HA6) · laje 14 kg/m² (ST25C) · escada 100 kg/m³",
 ];
 
 function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, onDownloadXlsx, planId, onSent, onCompareSuppliers, sentReports = [], ordersReports = [], onRecompute }) {
@@ -38,15 +38,14 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="pc-study-dialog">
         <DialogHeader>
-          <DialogTitle>Étude Permis de Construire — Gros Œuvre</DialogTitle>
+          <DialogTitle>Estudo Licença de Construção — Estrutura</DialogTitle>
           <DialogDescription>
-            L'IA lit le PC (texte + plans), comprend ce qui est demandé, puis calcule
-            béton (m³), aciers (kg) et devis détaillé selon vos règles fixes.
+            A IA lê a LC (texto + plantas), compreende o que é pedido, depois calcula betão (m³), aços (kg) e orçamento detalhado segundo as suas regras fixas.
           </DialogDescription>
         </DialogHeader>
 
         <div className="rounded-sm border border-border bg-muted/40 p-3 text-xs space-y-1">
-          <p className="font-semibold">Règles appliquées :</p>
+          <p className="font-semibold">Regras aplicadas:</p>
           {RULES_LABELS.map((r) => <p key={r} className="text-muted-foreground">• {r}</p>)}
         </div>
 
@@ -54,11 +53,11 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
           <Button onClick={onRun} disabled={busy} data-testid="pc-study-run-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600">
             <Sparkles className={`h-4 w-4 ${busy ? "animate-pulse" : ""}`} />
-            {busy ? "Analyse du PC en cours… (peut prendre 1-2 min)" : study ? "Relancer l'analyse" : "Lancer l'analyse du PC"}
+            {busy ? "Análise do alvará em curso… (pode demorar 1-2 min)" : study ? "Relancer l'analyse" : "Lançar a análise da licença de construção"}
           </Button>
           <Button variant="outline" onClick={() => setSettingsOpen(true)} data-testid="pc-settings-open-btn"
                   className="rounded-sm gap-2">
-            <Settings2 className="h-4 w-4" /> Réglages prix & équipe
+            <Settings2 className="h-4 w-4" /> Definições de preços e equipa
           </Button>
           {study && (
             <>
@@ -76,7 +75,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
               </Button>
               <Button variant="outline" onClick={() => setSendOpen(true)} data-testid="pc-study-send-btn"
                       className="rounded-sm gap-2 border-primary/60 text-primary hover:bg-primary hover:text-white">
-                <Mail className="h-4 w-4" /> Envoyer au client
+                <Mail className="h-4 w-4" /> Enviar ao cliente
               </Button>
             </>
           )}
@@ -91,14 +90,12 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
             {(!study.demandes || study.demandes.length === 0) && (
               <div className="rounded-sm border border-sky-500/40 bg-sky-500/10 p-2 text-xs text-muted-foreground"
                    data-testid="pc-study-fallback-note">
-                L'IA n'a pas pu lire de texte exploitable sur ce document — les quantités
-                ci-dessous sont déduites de la géométrie du plan et de valeurs estimées
-                (voir la source de chaque hypothèse).
+                A IA não conseguiu ler texto aproveitável neste documento — as quantidades abaixo são deduzidas da geometria da planta e de valores estimados (ver a fonte de cada hipótese).
               </div>
             )}
             {study.demandes?.length > 0 && (
               <section>
-                <h3 className="text-sm font-semibold mb-1">Ce que demande le permis
+                <h3 className="text-sm font-semibold mb-1">O que pede a licença
                   <Badge variant="outline" className="ml-2 text-[10px] rounded-sm">
                     confiance IA {Math.round((study.confidence || 0) * 100)} %
                   </Badge>
@@ -110,13 +107,13 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
             )}
 
             <section>
-              <h3 className="text-sm font-semibold mb-1">Hypothèses retenues</h3>
+              <h3 className="text-sm font-semibold mb-1">Hipóteses adotadas</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 {[
                   ["Niveaux", study.inputs?.levels, study.input_sources?.levels],
-                  ["Surface", `${num(study.inputs?.surface_m2, 1)} m²`, study.input_sources?.surface_m2],
-                  ["Hauteur murs", `${num(study.inputs?.wall_height_m, 2)} m`, study.input_sources?.wall_height_m],
-                  ["Périmètre", `${num(study.inputs?.perimeter_m, 1)} m`, study.input_sources?.perimeter_m],
+                  ["Superfície", `${num(study.inputs?.surface_m2, 1)} m²`, study.input_sources?.surface_m2],
+                  ["Altura paredes", `${num(study.inputs?.wall_height_m, 2)} m`, study.input_sources?.wall_height_m],
+                  ["Perímetro", `${num(study.inputs?.perimeter_m, 1)} m`, study.input_sources?.perimeter_m],
                   ["Refends", `${num(study.inputs?.refends_m, 1)} m`, study.input_sources?.refends_m],
                   ["Ouvertures", `${study.inputs?.openings_count} u · ${num(study.inputs?.openings_area_m2, 1)} m²`, ""],
                   ["Escaliers", study.inputs?.stairs_count, ""],
@@ -135,11 +132,11 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
-                      <th className="p-1.5">Désignation</th><th className="p-1.5">U</th>
-                      <th className="p-1.5 text-right">Qté</th>
+                      <th className="p-1.5">Designação</th><th className="p-1.5">U</th>
+                      <th className="p-1.5 text-right">Qtd.</th>
                       <th className="p-1.5 text-right">PU mat.</th>
                       <th className="p-1.5 text-right">PU MO</th>
-                      <th className="p-1.5 text-right">Total HT</th>
+                      <th className="p-1.5 text-right">Total s/ IVA</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -163,21 +160,21 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
 
             <section className="rounded-sm border-2 border-primary/40 p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm"
                      data-testid="pc-study-totals">
-              <div><p className="text-[10px] text-muted-foreground">Béton total</p>
+              <div><p className="text-[10px] text-muted-foreground">Betão total</p>
                 <p className="font-bold num">{num(study.totals?.beton_m3)} m³</p></div>
-              <div><p className="text-[10px] text-muted-foreground">Aciers total</p>
+              <div><p className="text-[10px] text-muted-foreground">Aços total</p>
                 <p className="font-bold num">{num(study.totals?.acier_kg)} kg</p></div>
               <div><p className="text-[10px] text-muted-foreground">Briques isobrique</p>
                 <p className="font-bold num">{study.totals?.briques_u} u</p></div>
-              <div><p className="text-[10px] text-muted-foreground">Coût de revient HT</p>
+              <div><p className="text-[10px] text-muted-foreground">Custo de produção s/ IVA</p>
                 <p className="font-bold num" data-testid="pc-study-cout-ht">{eur(study.totals?.cout_ht ?? study.totals?.ht)}</p></div>
               <div><p className="text-[10px] text-muted-foreground">Marge pro ({num(study.totals?.marge_pct ?? 0)} %)</p>
                 <p className="font-bold num text-emerald-600" data-testid="pc-study-marge">{eur(study.totals?.marge_eur ?? 0)}</p></div>
-              <div><p className="text-[10px] text-muted-foreground">Prix de vente HT</p>
+              <div><p className="text-[10px] text-muted-foreground">Preço de venda s/ IVA</p>
                 <p className="font-bold num">{eur(study.totals?.ht)}</p></div>
               <div><p className="text-[10px] text-muted-foreground">TVA 20 %</p>
                 <p className="font-bold num">{eur(study.totals?.tva)}</p></div>
-              <div><p className="text-[10px] text-muted-foreground">PRIX DE VENTE TTC</p>
+              <div><p className="text-[10px] text-muted-foreground">PREÇO DE VENDA C/ IVA</p>
                 <p className="font-bold num text-primary" data-testid="pc-study-total-ttc">{eur(study.totals?.ttc)}</p></div>
             </section>
 
@@ -185,24 +182,24 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                     data-testid="pc-study-compare-btn"
                     className="rounded-sm gap-2 w-full border-sky-500/60 text-sky-600 hover:bg-sky-500 hover:text-white">
               <ShoppingCart className="h-4 w-4" />
-              Comparer les prix fournisseurs (briques, aciers, treillis, béton)
+              Comparar os preços fornecedores (tijolos, aços, malha, betão)
             </Button>
 
             {study.levels_breakdown?.length > 0 && (
               <section data-testid="pc-levels-breakdown">
                 <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-                  <Layers className="h-4 w-4 text-primary" /> Quantités par niveau — pour phaser vos commandes
+                  <Layers className="h-4 w-4 text-primary" /> Quantidades por nível — para faseamento das suas encomendas
                 </h3>
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
                       <th className="p-1.5">Niveau</th>
-                      <th className="p-1.5 text-right">Béton</th>
+                      <th className="p-1.5 text-right">Betão</th>
                       <th className="p-1.5 text-right">Aciers</th>
                       <th className="p-1.5 text-right">Briques</th>
-                      <th className="p-1.5 text-right">Murs</th>
-                      <th className="p-1.5 text-right">Total HT</th>
-                      <th className="p-1.5 text-right">Négoce</th>
+                      <th className="p-1.5 text-right">Paredes</th>
+                      <th className="p-1.5 text-right">Total s/ IVA</th>
+                      <th className="p-1.5 text-right">Comércio</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -226,7 +223,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                         <td className="p-1.5 text-right">
                           <button onClick={() => setOrderLevel(i)}
                                   className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-orange-600 transition underline underline-offset-2"
-                                  title="Générer le bon de commande matériaux de ce niveau"
+                                  title="Gerar a nota de encomenda de materiais deste nível"
                                   data-testid={`pc-level-${i}-order-btn`}>
                             <PackageOpen className="h-3 w-3" /> Commander
                           </button>
@@ -236,8 +233,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                   </tbody>
                 </table>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Cliquez sur un niveau pour voir le détail des lignes. « Commander » génère
-                  le bon de commande matériaux prêt à envoyer à votre négoce.
+                  Clique num nível para ver o detalhe das linhas. «Encomendar» gera a nota de encomenda de materiais pronta a enviar ao seu fornecedor.
                 </p>
                 <PcOrderDialog open={orderLevel !== null} onClose={() => setOrderLevel(null)}
                                planId={planId} levelIndex={orderLevel ?? 0}
@@ -248,9 +244,9 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
             {study.planning?.phases?.length > 0 && (
               <section data-testid="pc-study-planning">
                 <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-                  <CalendarRange className="h-4 w-4 text-primary" /> Planning de chantier — gros œuvre
+                  <CalendarRange className="h-4 w-4 text-primary" /> Planeamento de obra — estrutura
                   {study.custom_pricing && (
-                    <Badge variant="outline" className="text-[10px] rounded-sm">prix personnalisés</Badge>
+                    <Badge variant="outline" className="text-[10px] rounded-sm">preços personalizados</Badge>
                   )}
                 </h3>
                 <PcGantt planning={study.planning} start={ganttStart} onStartChange={setGanttStart} />
@@ -259,9 +255,9 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                   <thead>
                     <tr className="bg-muted text-left">
                       <th className="p-1.5">Phase</th>
-                      <th className="p-1.5 text-center">Jours ouvrés</th>
-                      <th className="p-1.5 text-center">Séchage</th>
-                      <th className="p-1.5 text-center">Début</th>
+                      <th className="p-1.5 text-center">Dias úteis</th>
+                      <th className="p-1.5 text-center">Secagem</th>
+                      <th className="p-1.5 text-center">Início</th>
                       <th className="p-1.5 text-center">Fin</th>
                     </tr>
                   </thead>
@@ -270,7 +266,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                       <tr key={i} className="border-t border-border" data-testid={`pc-planning-phase-${i}`}>
                         <td className="p-1.5">
                           <p className="font-medium">{ph.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{ph.hours} h d'équipe</p>
+                          <p className="text-[10px] text-muted-foreground">{ph.hours} h de equipa</p>
                         </td>
                         <td className="p-1.5 text-center num">{ph.work_days}</td>
                         <td className="p-1.5 text-center num">{ph.cure_days ? `+${ph.cure_days} j` : "—"}</td>
@@ -281,9 +277,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                   </tbody>
                 </table>
                 <p className="text-[11px] text-muted-foreground mt-1" data-testid="pc-planning-summary">
-                  Équipe de {study.planning.crew_size} compagnons — {study.planning.total_work_days} jours
-                  ouvrés + {study.planning.total_cure_days} jours de séchage béton,
-                  soit ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semaines)</b> de chantier.
+                  Equipa de {study.planning.crew_size} compagnons — {study.planning.total_work_days} dias úteis + {study.planning.total_cure_days} dias de secagem betão, ou seja ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semaines)</b> de obra.
                 </p>
                 <PcProgress key={planId} planId={planId} planning={study.planning}
                             progress={study.progress} />
@@ -299,16 +293,16 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
             {history.length > 0 && (
               <section data-testid="pc-history-list">
                 <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-                  <History className="h-4 w-4 text-primary" /> Historique des versions
+                  <History className="h-4 w-4 text-primary" /> Histórico das versões
                 </h3>
                 <table className="w-full text-xs border border-border">
                   <thead>
                     <tr className="bg-muted text-left">
                       <th className="p-1.5">Date</th>
                       <th className="p-1.5">Origine</th>
-                      <th className="p-1.5 text-right">Béton</th>
+                      <th className="p-1.5 text-right">Betão</th>
                       <th className="p-1.5 text-right">Aciers</th>
-                      <th className="p-1.5 text-right">Total TTC</th>
+                      <th className="p-1.5 text-right">Total c/ IVA</th>
                       <th className="p-1.5 text-right">Δ vs version actuelle</th>
                     </tr>
                   </thead>
@@ -323,7 +317,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                           </td>
                           <td className="p-1.5 text-muted-foreground">
                             {h.source === "analyse" ? "Analyse IA" : "Recalcul"}
-                            {h.custom_pricing ? " · prix perso" : ""}
+                            {h.custom_pricing ? "· preço personalizado" : ""}
                           </td>
                           <td className="p-1.5 text-right num">{num(h.beton_m3, 2)} m³</td>
                           <td className="p-1.5 text-right num">{num(h.acier_kg)} kg</td>
@@ -353,7 +347,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
 
             {sentReports.length > 0 && (
               <section data-testid="pc-sent-list">
-                <h3 className="text-sm font-semibold mb-1">Envois au client</h3>
+                <h3 className="text-sm font-semibold mb-1">Envios ao cliente</h3>
                 <div className="space-y-1">
                   {sentReports.slice(-5).reverse().map((s, i) => (
                     <div key={i} className="flex items-center justify-between gap-2 text-xs border border-border rounded-sm px-2 py-1.5"
@@ -368,26 +362,26 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                           <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 hover:bg-emerald-500/15"
                                  data-testid={`pc-sent-${i}-status`}>
                             <MailCheck className="h-3 w-3" />
-                            Ouvert le {new Date(s.opened_at).toLocaleDateString("fr-FR")}
+                            Aberto a {new Date(s.opened_at).toLocaleDateString("fr-FR")}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-muted-foreground"
                                  data-testid={`pc-sent-${i}-status`}>
-                            <MailX className="h-3 w-3" /> Non ouvert
+                            <MailX className="h-3 w-3" /> Não aberto
                           </Badge>
                         )}
                         {s.accepted && (
                           <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/20 text-emerald-700 border border-emerald-500/50 hover:bg-emerald-500/20"
                                  data-testid={`pc-sent-${i}-accepted`}>
                             <CheckCircle2 className="h-3 w-3" />
-                            Acceptée le {new Date(s.accepted_at).toLocaleDateString("fr-FR")} par {s.accepted_by}
+                            Aceite a {new Date(s.accepted_at).toLocaleDateString("fr-FR")} par {s.accepted_by}
                           </Badge>
                         )}
                         {s.reminder_sent && (
                           <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-amber-600 border-amber-500/40"
                                  data-testid={`pc-sent-${i}-reminder`}>
                             <BellRing className="h-3 w-3" />
-                            Relancé le {new Date(s.reminder_at).toLocaleDateString("fr-FR")}
+                            Relançado a {new Date(s.reminder_at).toLocaleDateString("fr-FR")}
                           </Badge>
                         )}
                       </span>

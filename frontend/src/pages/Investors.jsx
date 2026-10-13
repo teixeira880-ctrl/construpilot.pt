@@ -72,73 +72,71 @@ export default function Investors() {
         <div className="mx-auto max-w-[1200px] px-6 lg:px-10 py-24 lg:py-32 text-center relative">
           <span className="overline">Dossier investisseurs · 2026</span>
           <h1 className="mt-5 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-            L'IA qui transforme un plan<br className="hidden sm:block" /> en devis chiffré, en secondes.
+            A IA que transforma uma planta<br className="hidden sm:block" /> em orçamento, em segundos.
           </h1>
           <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-            ConstruPilot digitalise tout le cycle du BTP : analyse IA des plans, métré béton & aciers,
-            maquette 3D et devis automatique — dans une seule plateforme.
+            ConstruPilot digitaliza todo o ciclo da construção: análise IA das plantas, medições betão & aço, maqueta 3D e orçamento automático — numa única plataforma.
           </p>
           <div className="mt-9 flex flex-wrap gap-3 justify-center">
             <Button asChild size="lg" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-contact">
-              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-5 w-5" /> Parler à l'équipe</a>
+              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-5 w-5" /> Falar com a equipa</a>
             </Button>
             <Button asChild size="lg" variant="outline" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-demo">
-              <Link to="/">Voir la démo <ArrowRight className="h-5 w-5" /></Link>
+              <Link to="/">Ver a demonstração <ArrowRight className="h-5 w-5" /></Link>
             </Button>
             <Button size="lg" variant="ghost" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-download"
                     onClick={() => openDeck()}>
-              <Download className="h-5 w-5" /> Télécharger le pitch deck (PDF)
+              <Download className="h-5 w-5" /> Descarregar o pitch deck (PDF)
             </Button>
           </div>
         </div>
       </section>
 
       {/* 01 PROBLÈME */}
-      <Slide n={1} kicker="Le problème" dark
-             title="Chiffrer un chantier reste lent, manuel et source d'erreurs.">
+      <Slide n={1} kicker="O problema" dark
+             title="Orçamentar uma obra continua lento, manual e fonte de erros.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Card icon={FileText} title="Des heures perdues" text="Un métré manuel depuis un plan prend des heures et retarde l'envoi des devis." />
-          <Card icon={Target} title="Marges qui fuient" text="Erreurs de quantités, oublis de postes, prix non à jour : la rentabilité s'érode." />
-          <Card icon={Building2} title="Outils cloisonnés" text="Métré, devis, 3D, facturation et chantier vivent dans des logiciels séparés." />
+          <Card icon={FileText} title="Horas perdidas" text="Uma medição manual a partir de uma planta demora horas e atrasa o envio dos orçamentos." />
+          <Card icon={Target} title="Margens que escapam" text="Erros de quantidades, artigos esquecidos, preços desatualizados: a rentabilidade desgasta-se." />
+          <Card icon={Building2} title="Ferramentas compartimentadas" text="Medição, orçamento, 3D, faturação e obra vivem em softwares separados." />
         </div>
       </Slide>
 
       {/* 02 SOLUTION */}
-      <Slide n={2} kicker="La solution"
-             title="Une plateforme unique, du plan au devis signé — propulsée par l'IA.">
+      <Slide n={2} kicker="A solução"
+             title="Uma plataforma única, da planta ao orçamento assinado — impulsionada por IA.">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <Card icon={ScanLine} title="Analyse IA du plan" text="Détection murs, poteaux, poutres, semelles + métré béton & aciers automatiques." />
-          <Card icon={FileText} title="Devis instantané" text="Depuis un plan, une description ou une vidéo. Chiffrage auto via la bibliothèque de prix." />
-          <Card icon={Cuboid} title="Maquette 3D" text="Visualisation des volumes détectés, export PNG joint au devis client." />
-          <Card icon={Bot} title="Assistant IA" text="Correction du plan en langage naturel, marge & prix de vente estimés." />
+          <Card icon={ScanLine} title="Análise IA da planta" text="Deteção de paredes, pilares, vigas, sapatas + medição de betão e aços automáticas." />
+          <Card icon={FileText} title="Orçamento instantâneo" text="A partir de uma planta, de uma descrição ou de um vídeo. Orçamentação automática através da biblioteca de preços." />
+          <Card icon={Cuboid} title="Maquette 3D" text="Visualização dos volumes detetados, exportação PNG anexada ao orçamento do cliente." />
+          <Card icon={Bot} title="Assistant IA" text="Correção da planta em linguagem natural, margem e preço de venda estimados." />
         </div>
       </Slide>
 
       {/* 03 MARCHÉ */}
-      <Slide n={3} kicker="Le marché" dark
-             title="Un secteur immense, encore peu digitalisé.">
+      <Slide n={3} kicker="O mercado" dark
+             title="Um setor enorme, ainda pouco digitalizado.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Stat v="+500 Md€" l="marché du BTP en France (par an)" />
-          <Stat v="~600 000" l="entreprises du bâtiment en France" />
-          <Stat v="< 30%" l="équipées d'un vrai outil de chiffrage" />
+          <Stat v="+500 Md€" l="mercado da construção em Portugal (por ano)" />
+          <Stat v="~600 000" l="empresas de construção em Portugal" />
+          <Stat v="< 30%" l="equipadas com uma verdadeira ferramenta de orçamentação" />
         </div>
         <p className="mt-6 text-sm text-muted-foreground max-w-3xl">
-          Tendances porteuses 2026 : obligation de facture électronique, pénurie de main-d'œuvre
-          (besoin de productivité) et adoption rapide de l'IA. Cible : artisans, PME du BTP et bureaux d'études.
+          Tendências promissoras 2026: obrigatoriedade de fatura eletrónica, escassez de mão de obra (necessidade de produtividade) e adoção rápida da IA. Alvo: artesãos, PME da construção e gabinetes de projeto.
         </p>
       </Slide>
 
       {/* 04 DIFFÉRENCIATION */}
-      <Slide n={4} kicker="Notre avantage"
-             title="Le seul outil qui relie IA de plan, métré béton, 3D et devis.">
+      <Slide n={4} kicker="A nossa vantagem"
+             title="A única ferramenta que liga IA de planta, medições de betão, 3D e orçamento.">
         <ul className="grid sm:grid-cols-2 gap-4 max-w-3xl">
           {[
-            "IA de plan → métré béton + aciers (unique bout-en-bout)",
-            "Devis depuis une vidéo (voix + photos) — inédit sur le marché",
-            "Maquette 3D générée automatiquement depuis le métré",
-            "ERP intégré : factures, situations, RH, suivi de chantier",
+            "IA de planta → medições betão + aços (único ponta a ponta)",
+            "Orçamento a partir de vídeo (voz + fotos) — inédito no mercado",
+            "Maquete 3D gerada automaticamente a partir das medições",
+            "ERP integrado: faturas, autos de medição, RH, acompanhamento de obra",
             "Multilingue (7 langues) + Landing B2C particuliers",
-            "Conformité facture électronique (Factur-X) déjà en place",
+            "Conformidade fatura eletrónica (Factur-X) já implementada",
           ].map((t) => (
             <li key={t} className="flex items-start gap-3 text-sm">
               <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" /><span>{t}</span>
@@ -148,45 +146,45 @@ export default function Investors() {
       </Slide>
 
       {/* 05 MODÈLE ÉCONOMIQUE */}
-      <Slide n={5} kicker="Modèle économique" dark
-             title="SaaS par abonnement, revenus récurrents et scalables.">
+      <Slide n={5} kicker="Modelo económico" dark
+             title="SaaS por subscrição, receitas recorrentes e escaláveis.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Card icon={TrendingUp} title="Abonnement SaaS" text="Formules mensuelles par utilisateur (artisan → PME), montée en gamme par modules." />
-          <Card icon={PieChart} title="Options à la valeur" text="Crédits IA, module Entreprise (RBAC/RH/chantier), génération de documents." />
-          <Card icon={Globe2} title="Expansion" text="Marché francophone puis Europe du Sud (déjà multilingue), et B2C particuliers." />
+          <Card icon={TrendingUp} title="Abonnement SaaS" text="Planos mensais por utilizador (profissional → PME), subida de gama por módulos." />
+          <Card icon={PieChart} title="Opções ao valor" text="Créditos IA, módulo Empresa (RBAC/RH/obra), geração de documentos." />
+          <Card icon={Globe2} title="Expansion" text="Mercado lusófono e depois Europa do Sul (já multilingue), e B2C particulares." />
         </div>
       </Slide>
 
       {/* 06 POURQUOI MAINTENANT */}
       <Slide n={6} kicker="Pourquoi maintenant"
-             title="Le bon produit, au bon moment.">
+             title="O produto certo, no momento certo.">
         <div className="grid sm:grid-cols-3 gap-5">
-          <Card icon={Rocket} title="IA mature" text="Les modèles de vision permettent enfin de lire des plans de façon fiable." />
-          <Card icon={ShieldCheck} title="Réglementation" text="La facture électronique pousse tout le secteur à s'équiper en 2026-2027." />
-          <Card icon={TrendingUp} title="Produit déjà avancé" text="Plateforme complète et fonctionnelle, prête à passer à l'échelle." />
+          <Card icon={Rocket} title="IA mature" text="Os modelos de visão permitem finalmente ler plantas de forma fiável." />
+          <Card icon={ShieldCheck} title="Regulamentação" text="A faturação eletrónica leva todo o setor a equipar-se em 2026-2027." />
+          <Card icon={TrendingUp} title="Produto já avançado" text="Plataforma completa e funcional, pronta a crescer." />
         </div>
       </Slide>
 
       {/* 07 L'ASK */}
       <section className="border-b border-border bg-gradient-to-br from-primary/15 via-card to-secondary">
         <div className="mx-auto max-w-[1200px] px-6 lg:px-10 py-24 text-center">
-          <span className="overline">L'opportunité</span>
+          <span className="overline">A oportunidade</span>
           <h2 className="mt-5 font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
-            Nous levons pour accélérer.
+            Estamos a angariar fundos para acelerar.
           </h2>
           <div className="mt-10 grid sm:grid-cols-3 gap-5 max-w-3xl mx-auto text-left">
-            <Card icon={Rocket} title="Produit & IA" text="Renforcer la détection (IFC/BIM), la 3D et l'automatisation du chiffrage." />
-            <Card icon={TrendingUp} title="Go-to-market" text="Acquisition artisans/PME, partenariats fournisseurs & fédérations BTP." />
-            <Card icon={Building2} title="Équipe" text="Recrutements produit, IA et commercial pour passer à l'échelle." />
+            <Card icon={Rocket} title="Produit & IA" text="Reforçar a deteção (IFC/BIM), o 3D e a automatização da orçamentação." />
+            <Card icon={TrendingUp} title="Go-to-market" text="Aquisição de profissionais/PME, parcerias com fornecedores e associações do setor." />
+            <Card icon={Building2} title="Equipa" text="Recrutamentos de produto, IA e comercial para crescer." />
           </div>
           <div className="mt-10 flex flex-wrap gap-3 justify-center">
             <Button asChild size="lg" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-final">
               <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot&body=Bonjour, je souhaite en savoir plus sur l'opportunité d'investissement dans ConstruPilot.`}>
-                <Mail className="h-5 w-5" /> Demander le dossier complet
+                <Mail className="h-5 w-5" /> Solicitar o dossiê completo
               </a>
             </Button>
             <Button asChild size="lg" variant="outline" className="rounded-full h-13 px-8 gap-2" data-testid="deck-explore-product">
-              <Link to="/">Explorer le produit <ArrowRight className="h-5 w-5" /></Link>
+              <Link to="/">Explorar o produto <ArrowRight className="h-5 w-5" /></Link>
             </Button>
           </div>
           <p className="mt-6 text-xs text-muted-foreground">Contact : {CONTACT}</p>
@@ -194,7 +192,7 @@ export default function Investors() {
       </section>
 
       <footer className="mx-auto max-w-[1200px] px-6 lg:px-10 py-10 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} ConstruPilot — Document confidentiel destiné aux investisseurs.
+        © {new Date().getFullYear()} ConstruPilot — Documento confidencial destinado aos investidores.
       </footer>
     </div>
   );

@@ -14,10 +14,10 @@ import { api } from "@/lib/api";
 const TRADE_META = {
   paint:      { icon: Palette,    label: "Peinture",  color: "#eab308" },
   floor_tile: { icon: Grid3x3,    label: "Carrelage", color: "#f97316" },
-  drywall:    { icon: Layers,     label: "Plâtrerie", color: "#22c55e" },
+  drywall:    { icon: Layers,     label: "Pladurista", color: "#22c55e" },
   insulation: { icon: Package,    label: "Isolation", color: "#a855f7" },
   plinths:    { icon: Ruler,      label: "Plinthes",  color: "#3b82f6" },
-  masonry:    { icon: Blocks,     label: "Maçonnerie", color: "#78716c" },
+  masonry:    { icon: Blocks,     label: "Alvenaria", color: "#78716c" },
 };
 
 export default function RoomEstimateDialog({ open, estimate, planId, busy, onRecompute, onClose, onAddToQuote }) {
@@ -62,11 +62,11 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
           <div>
             <div className="flex items-center gap-2">
               <Calculator className="h-5 w-5 text-primary" />
-              <p className="font-display font-bold">Devis pièce — {room.name || "Pièce"}</p>
+              <p className="font-display font-bold">Orçamento da divisão — {room.name || "Divisão"}</p>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {room.length_m} × {room.width_m} × {room.height_m} m
-              · {room.surface_m2?.toFixed?.(1)} m² sol · périmètre {room.perimeter_m?.toFixed?.(1)} m
+              · {room.surface_m2?.toFixed?.(1)} m² piso · perímetro {room.perimeter_m?.toFixed?.(1)} m
             </p>
           </div>
           <Button size="icon" variant="ghost" onClick={onClose}
@@ -79,11 +79,11 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
           <div className="surface p-4 rounded-md" data-testid="masonry-control">
             <div className="flex items-center gap-2 mb-3">
               <Blocks className="h-4 w-4" style={{ color: "#78716c" }} />
-              <p className="font-display font-bold text-sm">Maçonnerie (murs parpaing / brique)</p>
+              <p className="font-display font-bold text-sm">Alvenaria (paredes bloco / tijolo)</p>
             </div>
             <div className="flex flex-wrap items-end gap-3">
               <label className="text-xs">
-                <span className="block text-muted-foreground mb-1">Matériau</span>
+                <span className="block text-muted-foreground mb-1">Material</span>
                 <select value={material} onChange={(e) => { setMaterial(e.target.value); setBond(""); setBlock(""); }}
                   data-testid="masonry-material"
                   className="h-9 rounded-md border border-border bg-background text-sm px-2">
@@ -93,7 +93,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
               </label>
               {blocks.length > 0 && (
                 <label className="text-xs">
-                  <span className="block text-muted-foreground mb-1">Dimension du bloc</span>
+                  <span className="block text-muted-foreground mb-1">Dimensão do bloco</span>
                   <select value={block || blocks[0].key} onChange={(e) => setBlock(e.target.value)}
                     data-testid="masonry-block"
                     className="h-9 rounded-md border border-border bg-background text-sm px-2">
@@ -110,24 +110,23 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
                     data-testid="masonry-bond"
                     className="h-9 rounded-md border border-border bg-background text-sm px-2">
                     <option value="colle">Mortier-colle (joint mince)</option>
-                    <option value="mousse">Mousse polyuréthane</option>
+                    <option value="mousse">Espuma poliuretano</option>
                   </select>
                 </label>
               )}
               <label className="flex items-center gap-2 text-xs h-9 cursor-pointer select-none">
                 <input type="checkbox" checked={render} onChange={(e) => setRender(e.target.checked)}
                   data-testid="masonry-render" className="h-4 w-4 accent-orange-500" />
-                Enduit de façade (gobetis + corps d'enduit)
+                Reboco de fachada (chapisco + emboço)
               </label>
               <Button size="sm" onClick={recompute} disabled={busy}
                 data-testid="masonry-include-btn" className="rounded-sm gap-2">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Blocks className="h-4 w-4" />}
-                {hasMasonry ? "Recalculer la maçonnerie" : "Inclure la maçonnerie"}
+                {hasMasonry ? "Recalcular a alvenaria" : "Incluir a alvenaria"}
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground mt-2" data-testid="masonry-ratios-hint">
-              Parpaing : ~{fmt(ratios.cement_kg_per_m2 ?? 7)} kg de ciment et {fmt(ratios.sand_m3_per_m2 ?? 0.03, 3)} m³ de sable par m² de mur.
-              Brique : mortier-colle (~{fmt(ratios.glue_kg_per_m2 ?? 5)} kg/m²) ou mousse PU (~1 pour {fmt(ratios.foam_m2_per_can ?? 8)} m²).
+              Parpaing : ~{fmt(ratios.cement_kg_per_m2 ?? 7)} kg de cimento e {fmt(ratios.sand_m3_per_m2 ?? 0.03, 3)} m³ de areia por m² de parede. Tijolo : argamassa-cola (~{fmt(ratios.glue_kg_per_m2 ?? 5)} kg/m²) ou espuma PU (~1 para {fmt(ratios.foam_m2_per_can ?? 8)} m²).
               {" "}Enduit : gobetis {fmt(ratios.gobetis_kg_per_m2 ?? 5)} kg/m² + corps d'enduit {fmt(ratios.render_kg_per_m2 ?? 25)} kg/m². Pertes {fmt(ratios.loss_pct ?? 5)} %.
             </p>
           </div>
@@ -149,7 +148,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="overline text-[10px] mb-2">Résultats</p>
+                    <p className="overline text-[10px] mb-2">Resultados</p>
                     <ul className="text-xs space-y-1">
                       {(r.results || []).map((row, i) => (
                         <li key={i} className="flex justify-between border-b border-border/40 py-0.5">
@@ -162,7 +161,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
                     </ul>
                   </div>
                   <div>
-                    <p className="overline text-[10px] mb-2">Matériaux</p>
+                    <p className="overline text-[10px] mb-2">Materiais</p>
                     <ul className="text-xs space-y-1">
                       {(r.materials || []).map((m, i) => (
                         <li key={i} className="flex justify-between border-b border-border/40 py-0.5">
@@ -182,7 +181,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
 
         <div className="px-6 py-4 border-t border-border bg-gradient-to-r from-orange-500/10 to-transparent flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">Budget total estimé</p>
+            <p className="text-xs text-muted-foreground">Orçamento total estimado</p>
             <p className="font-display font-bold text-2xl num text-primary" data-testid="room-estimate-total">
               {(estimate.total_budget ?? 0).toFixed(2)} €
             </p>
@@ -195,11 +194,11 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
                 data-testid="room-estimate-add-to-quote"
                 className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white"
               >
-                <Calculator className="h-4 w-4" /> Ajouter au devis
+                <Calculator className="h-4 w-4" /> Adicionar ao orçamento
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={onClose} className="rounded-sm">
-              Fermer
+              Fechar
             </Button>
           </div>
         </div>

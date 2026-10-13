@@ -20,7 +20,7 @@ export const InstallPrompt = () => {
     >
       <button
         onClick={dismiss}
-        aria-label="Fermer"
+        aria-label="Fechar"
         data-testid="pwa-install-dismiss"
         className="absolute right-3 top-3 text-white/40 hover:text-white transition-colors"
       >
@@ -32,7 +32,7 @@ export const InstallPrompt = () => {
         <div className="min-w-0">
           <div className="text-sm font-semibold text-white">Installer ConstruPilot</div>
           <p className="text-xs text-white/60 mt-0.5">
-            Ajoutez l'app à votre écran d'accueil : accès en un tap sur le chantier, plein écran, même hors-ligne.
+            Adicione a app ao seu ecrã inicial: acesso num toque à obra, ecrã completo, mesmo offline.
           </p>
         </div>
       </div>
@@ -41,11 +41,11 @@ export const InstallPrompt = () => {
         <div className="mt-3 text-xs text-white/70 space-y-1.5" data-testid="pwa-ios-guide">
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-white/10 shrink-0">1</span>
-            Touchez <Share className="inline h-3.5 w-3.5 mx-0.5" /> <b>Partager</b> dans Safari
+            Touchez <Share className="inline h-3.5 w-3.5 mx-0.5" /> <b>Partager</b> no Safari
           </div>
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-white/10 shrink-0">2</span>
-            Choisissez <PlusSquare className="inline h-3.5 w-3.5 mx-0.5" /> <b>Sur l'écran d'accueil</b>
+            Choisissez <PlusSquare className="inline h-3.5 w-3.5 mx-0.5" /> <b>No ecrã inicial</b>
           </div>
         </div>
       ) : (

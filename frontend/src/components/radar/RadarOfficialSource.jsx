@@ -17,7 +17,7 @@ export const RadarOfficialSource = ({ sync, onRefresh }) => {
   const refresh = async () => {
     setBusy(true); setError("");
     try { await api.post("/radar/sync", { departments: departments.map((d) => d.department) }); await onRefresh(); }
-    catch { setError("Actualisation indisponible. Les dernières données valides sont conservées."); }
+    catch { setError("Atualização indisponível. Os últimos dados válidos são conservados."); }
     finally { setBusy(false); }
   };
   if (!sync) return null;
@@ -25,26 +25,26 @@ export const RadarOfficialSource = ({ sync, onRefresh }) => {
     <div className="flex items-start justify-between flex-wrap gap-3">
       <div>
         <p className="font-semibold text-sm" data-testid="radar-data-mode">Permis officiels · SDES / SITADEL</p>
-        <p className="text-xs text-muted-foreground mt-1" data-testid="radar-source-window">Autorisations du {formatDate(sync.window_start)} au {formatDate(sync.window_end)} · autorisés ou commencés, hors annulés et terminés</p>
+        <p className="text-xs text-muted-foreground mt-1" data-testid="radar-source-window">Licenças de {formatDate(sync.window_start)} au {formatDate(sync.window_end)} · licenciadas ou iniciadas, excluindo anuladas e concluídas</p>
       </div>
       <Button variant="outline" size="sm" disabled={busy || running || !departments.length} onClick={refresh} className="gap-1" data-testid="radar-official-refresh">
         {busy || running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Actualiser
       </Button>
     </div>
-    {editions.length > 0 && <p className="text-xs" data-testid="radar-source-publication">Publication {editions.join(", ")} · diffusée le {formatDate(published)} · données disponibles jusqu'au {formatDate(coverage)} · collecte le {formatDate(collected)}</p>}
-    {running && <p role="status" className="text-xs flex items-center gap-2" data-testid="radar-sync-running"><Loader2 className="h-3 w-3 animate-spin shrink-0" />Chargement depuis la source officielle en cours…</p>}
+    {editions.length > 0 && <p className="text-xs" data-testid="radar-source-publication">Publication {editions.join(", ")} · divulgada em {formatDate(published)} · dados disponíveis até {formatDate(coverage)} · recolha em {formatDate(collected)}</p>}
+    {running && <p role="status" className="text-xs flex items-center gap-2" data-testid="radar-sync-running"><Loader2 className="h-3 w-3 animate-spin shrink-0" />A carregar os dados da fonte oficial…</p>}
     <div className="flex flex-wrap gap-x-4 gap-y-1">
       {departments.map((d) => <p key={d.department} className={`text-xs ${d.status === "error" ? "text-red-700" : "text-muted-foreground"}`} data-testid={`radar-source-department-${d.department}`}>
-        {d.department} : {d.status === "running" ? "chargement…" : d.status === "error" ? "source indisponible" : d.status === "not_loaded" ? "non chargé" : `${d.count} permis`}
+        {d.department} : {d.status === "running" ? "a carregar…" : d.status === "error" ? "source indisponible" : d.status === "not_loaded" ? "não carregado" : `${d.count} permis`}
       </p>)}
     </div>
-    {departments.filter((d) => d.status === "error").map((d) => <p role="alert" key={d.department} className="text-xs text-red-700 flex gap-1" data-testid={`radar-sync-error-${d.department}`}><AlertTriangle className="h-3.5 w-3.5 shrink-0" />{d.department} : {d.error} {d.last_success_at ? "Dernière collecte conservée." : "Aucun permis disponible pour ce département."}</p>)}
+    {departments.filter((d) => d.status === "error").map((d) => <p role="alert" key={d.department} className="text-xs text-red-700 flex gap-1" data-testid={`radar-sync-error-${d.department}`}><AlertTriangle className="h-3.5 w-3.5 shrink-0" />{d.department} : {d.error} {d.last_success_at ? "Última recolha conservada." : "Nenhuma licença disponível para este distrito."}</p>)}
     {error && <p role="alert" className="text-xs text-red-700" data-testid="radar-sync-request-error">{error}</p>}
-    {sync.radius_scope && <p className="text-xs text-muted-foreground" data-testid="radar-radius-coverage">Le rayon s'applique aux départements déjà chargés, affichés ci-dessus.</p>}
+    {sync.radius_scope && <p className="text-xs text-muted-foreground" data-testid="radar-radius-coverage">O raio aplica-se aos distritos já carregados, apresentados acima.</p>}
     <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-      <p data-testid="radar-map-precision">Points de carte et distances approximatifs : centres des communes, pas positions exactes des terrains.</p>
+      <p data-testid="radar-map-precision">Pontos no mapa e distâncias aproximados: centros dos municípios, não as localizações exatas dos terrenos.</p>
       <a href={sync.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline text-primary" data-testid="radar-official-source-link">Source SDES <ExternalLink className="h-3 w-3" /></a>
     </div>
-    <p className="text-xs text-muted-foreground" data-testid="radar-estimate-disclaimer">Les montants et scores sont des estimations ConstruPilot, pas des données officielles du SDES.</p>
+    <p className="text-xs text-muted-foreground" data-testid="radar-estimate-disclaimer">Os montantes e as pontuações são estimativas ConstruPilot, não dados oficiais.</p>
   </section>;
 };

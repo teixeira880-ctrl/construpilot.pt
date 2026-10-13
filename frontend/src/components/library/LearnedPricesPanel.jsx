@@ -31,9 +31,9 @@ export default function LearnedPricesPanel({ onValidated }) {
       const body = override != null && override !== "" ? { unit_price_ht: parseFloat(override) } : {};
       await api.post(`/library/${it.item_id}/validate`, body);
       setItems((xs) => xs.filter((x) => x.item_id !== it.item_id));
-      toast.success(`« ${it.designation} » validé — prix ferme`);
+      toast.success(`« ${it.designation}» validado — preço firme`);
       onValidated?.();
-    } catch { toast.error("Validation impossible"); }
+    } catch { toast.error("Validação impossível"); }
     finally { setBusy(""); }
   };
 
@@ -46,15 +46,14 @@ export default function LearnedPricesPanel({ onValidated }) {
               className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
         <span className="flex items-center gap-2 font-display font-bold text-sm">
           <Sparkles className="h-4 w-4 text-amber-500" />
-          {items.length} prix moyen{items.length > 1 ? "s" : ""} marché appris — à valider
+          {items.length} preço médio{items.length > 1 ? "s" : ""} de mercado aprendidos — a validar
         </span>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
       {open && (
         <div className="border-t border-border divide-y divide-border" data-testid="learned-list">
           <p className="px-4 py-2 text-xs text-muted-foreground">
-            Ces prix ont été estimés automatiquement (web/marché) lors de vos devis. Validez-les pour qu'ils
-            deviennent vos tarifs fermes et fiabilisent vos prochains chiffrages.
+            Estes preços foram estimados automaticamente (web/mercado) nos seus orçamentos. Valide-os para que se tornem os seus preços firmes e tornem as próximas orçamentações mais fiáveis.
           </p>
           {items.map((it) => (
             <div key={it.item_id} className="flex flex-wrap items-center gap-2 px-4 py-3"
@@ -62,7 +61,7 @@ export default function LearnedPricesPanel({ onValidated }) {
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm truncate">{it.designation}</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {it.category || "—"} · {it.unit} · estimé
+                  {it.category || "—"} · {it.unit} · estimado
                 </p>
               </div>
               <div className="flex items-center gap-1">

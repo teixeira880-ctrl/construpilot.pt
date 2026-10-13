@@ -42,9 +42,9 @@ export default function AiModelTab() {
     try {
       const { data: st } = await api.post(`/admin/ai-openai-key/${action}`);
       setData((d) => ({ ...d, openai_key: st }));
-      toast.success(action === "reactivate" ? "Clé OpenAI réactivée — test de connexion réussi" : "Bascule sur la clé Emergent effectuée");
+      toast.success(action === "reactivate" ? "Chave OpenAI reativada — teste de ligação bem-sucedido" : "Mudança para a chave Emergent efetuada");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Opération impossible");
+      toast.error(e?.response?.data?.detail || "Operação impossível");
     } finally {
       setKeyBusy("");
     }
@@ -74,9 +74,9 @@ export default function AiModelTab() {
         alert_email: alertEmail.trim(),
       });
       setBudget(res);
-      toast.success("Budget IA enregistré");
+      toast.success("Orçamento IA guardado");
     } catch {
-      toast.error("Enregistrement du budget impossible");
+      toast.error("Impossível guardar orçamento");
     } finally {
       setSavingBudget(false);
     }
@@ -88,9 +88,9 @@ export default function AiModelTab() {
     try {
       const { data: res } = await api.put("/admin/ai-model", { tier });
       setData((d) => ({ ...d, current: res.current }));
-      toast.success("Modèle IA mis à jour");
+      toast.success("Modelo IA atualizado");
     } catch {
-      toast.error("Échec de la mise à jour du modèle");
+      toast.error("Falha na atualização do modelo");
     } finally {
       setSaving("");
     }
@@ -102,9 +102,9 @@ export default function AiModelTab() {
     try {
       const { data: res } = await api.put("/admin/ai-gemini-backend", { backend });
       setGemini((g) => ({ ...g, current: res.current }));
-      toast.success(backend === "native" ? "L'Assistant BTP bascule sur le SDK Google natif" : "L'Assistant BTP bascule sur la clé Emergent");
+      toast.success(backend === "native" ? "O Assistente Construção passa para o SDK Google nativo" : "O Assistente Construção passa para a chave Emergent");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Bascule impossible");
+      toast.error(e?.response?.data?.detail || "Mudança impossível");
     } finally {
       setGeminiBusy("");
     }
@@ -114,10 +114,10 @@ export default function AiModelTab() {
     setGeminiBusy("test");
     try {
       const { data: res } = await api.post("/admin/ai-gemini-backend/test");
-      if (res.ok) toast.success("Clé Google valide — connexion réussie");
-      else toast.error(`Clé Google : ${res.status}`);
+      if (res.ok) toast.success("Chave Google válida — ligação bem-sucedida");
+      else toast.error(`Chave Google:${res.status}`);
     } catch {
-      toast.error("Test de la clé impossible");
+      toast.error("Teste da chave impossível");
     } finally {
       setGeminiBusy("");
     }
@@ -129,9 +129,8 @@ export default function AiModelTab() {
 
   return (
     <div className="max-w-3xl space-y-8" data-testid="admin-ai-section">
-      <SectionTitle over="Intelligence artificielle" title="Sélecteur de modèle IA">
-        Choisissez le modèle utilisé pour la génération de texte (estimation Smart Project,
-        coach IA, analyses). L'analyse d'images utilise toujours un modèle vision dédié.
+      <SectionTitle over="Intelligence artificielle" title="Seletor de modelo IA">
+        Escolha o modelo utilizado para a geração de texto (estimativa Smart Project, coach IA, análises). A análise de imagens utiliza sempre um modelo visão dedicado.
       </SectionTitle>
 
       {k?.configured && (
@@ -142,30 +141,30 @@ export default function AiModelTab() {
           <div className="flex-1 text-sm">
             <p className="font-semibold flex items-center gap-2">
               <KeyRound className="h-4 w-4" />
-              Clé OpenAI de l'entreprise :{" "}
+              Chave OpenAI da empresa:{" "}
               <span data-testid="admin-openai-key-state" className={k.active ? "text-primary" : "text-amber-700"}>
-                {k.active ? "active" : "désactivée — repli sur la clé Emergent"}
+                {k.active ? "active" : "desativada — recurso à chave Emergent"}
               </span>
             </p>
             {!k.active && (
               <p className="text-xs text-amber-800 mt-1" data-testid="admin-openai-key-reason">
-                Depuis le {k.since ? new Date(k.since).toLocaleString("fr-FR") : "—"} · motif : {k.reason || "—"}.
+                Desde {k.since ? new Date(k.since).toLocaleString("fr-FR") : "—"} · motif : {k.reason || "—"}.
                 Rechargez le crédit sur platform.openai.com puis réactivez ; un test de connexion est effectué.
               </p>
             )}
             {k.active && (
               <p className="text-xs text-muted-foreground mt-1">
-                En cas de crédit épuisé, la bascule sur la clé universelle Emergent est automatique et vous êtes prévenu par e-mail.
+                Em caso de crédito esgotado, a mudança para a chave universal Emergent é automática e é avisado por e-mail.
               </p>
             )}
           </div>
           {k.active ? (
             <Button variant="outline" size="sm" onClick={() => toggleKey("disable")} disabled={!!keyBusy} data-testid="admin-openai-key-disable-btn">
-              {keyBusy === "disable" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Basculer sur Emergent"}
+              {keyBusy === "disable" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mudar para Emergent"}
             </Button>
           ) : (
             <Button size="sm" onClick={() => toggleKey("reactivate")} disabled={!!keyBusy} data-testid="admin-openai-key-reactivate-btn">
-              {keyBusy === "reactivate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Réactiver la clé OpenAI</>}
+              {keyBusy === "reactivate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Reativar a chave OpenAI</>}
             </Button>
           )}
         </div>
@@ -196,9 +195,9 @@ export default function AiModelTab() {
               <p className="font-display font-extrabold tracking-tight mt-3">{o.label}</p>
               <p className="text-xs text-muted-foreground mt-1">{o.desc}</p>
               <div className="mt-4 space-y-1.5">
-                <Rating icon={Sparkles} label="Qualité" value={o.quality || 1} />
+                <Rating icon={Sparkles} label="Qualidade" value={o.quality || 1} />
                 <Rating icon={Gauge} label="Vitesse" value={o.speed || 1} />
-                <Rating icon={Coins} label="Coût relatif" value={o.cost || 1} />
+                <Rating icon={Coins} label="Custo relativo" value={o.cost || 1} />
               </div>
               <p className="text-[11px] text-muted-foreground/70 mt-3 font-mono">{o.model}</p>
             </button>
@@ -207,16 +206,15 @@ export default function AiModelTab() {
       </div>
 
       <p className="text-xs text-muted-foreground" data-testid="admin-ai-current">
-        Modèle actif : <strong>{data.options.find((o) => o.tier === data.current)?.label}</strong>.
+        Modelo ativo: <strong>{data.options.find((o) => o.tier === data.current)?.label}</strong>.
         La modification est immédiate pour toutes les prochaines requêtes IA.
       </p>
 
       {/* --- Backend Gemini : Emergent vs Google natif --- */}
       {gemini && (
         <div className="space-y-4" data-testid="admin-gemini-backend">
-          <SectionTitle over="Vision & plans" title="Moteur IA Assistant BTP (plans, métré)">
-            Choisissez comment sont exécutés les appels du moteur IA Assistant BTP : via la clé universelle Emergent,
-            ou directement sur Google avec votre propre clé (facturation Google, alias gemini pro/flash latest).
+          <SectionTitle over="Vision & plans" title="Motor IA Assistente Construção (plantas, medições)">
+            Escolha como são executadas as chamadas do motor IA Assistente Construção: através da chave universal Emergent, ou diretamente na Google com a sua própria chave (faturação Google, alias gemini pro/flash latest).
           </SectionTitle>
           <div className="grid sm:grid-cols-2 gap-4" data-testid="admin-gemini-options">
             {gemini.options.map((o) => {
@@ -251,7 +249,7 @@ export default function AiModelTab() {
                   )}
                   {disabled && (
                     <p className="text-[11px] mt-2 text-amber-700" data-testid="admin-gemini-key-missing">
-                      Clé Google absente — ajoutez GOOGLE_GEMINI_API_KEY au backend.
+                      Chave Google ausente — adicione GOOGLE_GEMINI_API_KEY ao backend.
                     </p>
                   )}
                 </button>
@@ -262,10 +260,10 @@ export default function AiModelTab() {
             <Button variant="outline" size="sm" onClick={testGeminiKey} disabled={!gemini.key_present || !!geminiBusy}
                     className="rounded-sm gap-2" data-testid="admin-gemini-test-btn">
               {geminiBusy === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Tester la clé Google
+              Testar a chave Google
             </Button>
             <span className="text-xs text-muted-foreground" data-testid="admin-gemini-key-state">
-              Clé Google : {gemini.key_present ? "présente" : "absente"}
+              Chave Google: {gemini.key_present ? "presente" : "absente"}
             </span>
           </div>
         </div>
@@ -273,21 +271,20 @@ export default function AiModelTab() {
 
       {/* --- Suivi des coûts / usage IA --- */}
       <div className="space-y-4" data-testid="admin-ai-usage">
-        <SectionTitle over="Consommation" title="Suivi des appels IA">
-          Nombre d'appels au modèle par fonctionnalité et par modèle. Total :{" "}
+        <SectionTitle over="Consommation" title="Acompanhamento das chamadas IA">
+          Número de chamadas ao modelo por funcionalidade e por modelo. Total:{" "}
           <strong data-testid="admin-ai-usage-total">{num(usage?.total_calls || 0)}</strong> appels.
         </SectionTitle>
 
         {(!usage || usage.total_calls === 0) ? (
           <p className="text-sm text-muted-foreground" data-testid="admin-ai-usage-empty">
-            Aucun appel IA enregistré pour l'instant. Les compteurs se rempliront dès la prochaine
-            estimation, analyse ou conversation avec le coach.
+            Nenhuma chamada IA registada por agora. Os contadores preencherão na próxima estimativa, análise ou conversa com o coach.
           </p>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             <div className="surface p-4 rounded-sm" data-testid="admin-ai-by-feature">
               <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-3">
-                Par fonctionnalité
+                Por funcionalidade
               </p>
               <div className="space-y-2">
                 {usage.by_feature.map((f) => (
@@ -300,7 +297,7 @@ export default function AiModelTab() {
             </div>
             <div className="surface p-4 rounded-sm" data-testid="admin-ai-by-model">
               <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-3">
-                Par modèle
+                Por modelo
               </p>
               <div className="space-y-2">
                 {usage.by_model.map((m) => (
@@ -336,17 +333,17 @@ export default function AiModelTab() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground" data-testid="admin-ai-daily-empty">
-            Pas encore d'appels IA sur les 30 derniers jours.
+            Ainda sem chamadas IA nos últimos 30 dias.
           </p>
         )}
       </div>
 
       {/* --- Alerte budget IA --- */}
       <div className="space-y-4" data-testid="admin-ai-budget">
-        <SectionTitle over="Maîtrise des coûts" title="Alerte budget IA">
-          Recevez un email lorsque le nombre d'appels IA du mois dépasse un seuil.
+        <SectionTitle over="Controlo de custos" title="Alerte budget IA">
+          Receba um email quando o número de chamadas IA do mês ultrapassar um limite.
           {budget && (
-            <> Ce mois-ci : <strong data-testid="admin-ai-budget-month">{num(budget.month_calls)}</strong> appels
+            <> Este mês: <strong data-testid="admin-ai-budget-month">{num(budget.month_calls)}</strong> appels
             {budget.threshold ? <> / {num(budget.threshold)} (seuil)</> : null}.</>
           )}
         </SectionTitle>
@@ -362,12 +359,12 @@ export default function AiModelTab() {
                    placeholder="admin@construpilot.fr" className="rounded-sm mt-1" data-testid="admin-ai-budget-email" />
           </div>
           <Button onClick={saveBudget} disabled={savingBudget} className="rounded-sm gap-2" data-testid="admin-ai-budget-save">
-            {savingBudget ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />} Enregistrer
+            {savingBudget ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />} Guardar
           </Button>
         </div>
         {budget?.alert_sent_this_month && (
           <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="admin-ai-budget-alerted">
-            ⚠️ Une alerte a déjà été envoyée ce mois-ci (seuil dépassé).
+            ⚠️ Um alerta já foi enviado este mês (limite ultrapassado).
           </p>
         )}
       </div>

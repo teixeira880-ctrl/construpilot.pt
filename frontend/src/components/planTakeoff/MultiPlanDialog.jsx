@@ -52,22 +52,22 @@ export function MultiPlanDialog({
         <DialogHeader>
           <DialogTitle>Projet multi-plans</DialogTitle>
           <DialogDescription>
-            Combinez plusieurs plans (gros œuvre, étages maison, extensions…) en un seul document.
-            <br /><b>Métré groupé</b> = uniquement les cotes calculées (m² / ml), sans prix ni TVA.
-            <br /><b>Devis</b> = métré + chiffrage (TVA par ligne : 20 % gros œuvre, 10 % maison, 0 % sous-traitance).
+            Combine várias plantas (estrutura, pisos da moradia, ampliações…) num único documento.
+            <br /><b>Medição agrupada</b> = apenas as cotas calculadas (m² / ml), sem preço nem IVA.
+            <br /><b>Orçamento</b> = medição + orçamentação (IVA por linha: 23 % estrutura, 6 % reabilitação de habitação, 0 % subempreitada — autoliquidação).
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1">
-            <Label className="text-xs">Nom du projet (optionnel)</Label>
+            <Label className="text-xs">Nome do projeto (opcional)</Label>
             <Input value={multiProjectName} onChange={(e) => setMultiProjectName(e.target.value)}
-                   placeholder="Ex : Résidence Les Tilleuls — RDC + R+1"
+                   placeholder="Ex: Residência Les Tilleuls — R/C + R+1"
                    maxLength={160}
                    data-testid="multi-project-name" className="rounded-sm h-10" />
           </div>
           {multiSelected.length > 1 && (
             <div>
-              <p className="overline mb-2">Ordre d'export (glisser pour réordonner)</p>
+              <p className="overline mb-2">Ordem de exportação (arrastar para reordenar)</p>
               <div className="grid gap-1" data-testid="multi-order-list">
                 {multiSelected.map((pid, i) => (
                   <div key={pid} draggable
@@ -86,23 +86,23 @@ export function MultiPlanDialog({
             </div>
           )}
           <div>
-            <p className="overline mb-2">Plans à inclure ({multiSelected.length} sélectionné{multiSelected.length > 1 ? "s" : ""})</p>
+            <p className="overline mb-2">Plantas a incluir ({multiSelected.length} selecionado{multiSelected.length > 1 ? "s" : ""})</p>
             {allPlans.length > 6 && (
               <Input value={query} onChange={(e) => setQuery(e.target.value)}
-                     placeholder="Rechercher un plan…" data-testid="multi-plans-search"
+                     placeholder="Pesquisar uma planta…" data-testid="multi-plans-search"
                      className="rounded-sm h-9 mb-2 text-sm" />
             )}
             <div className="grid gap-1 max-h-72 overflow-y-auto border border-border rounded-sm p-2"
                  data-testid="multi-plans-list">
               {allPlans.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
-                  Aucun plan disponible. Uploadez au moins 2 plans depuis la page /plan.
+                  Nenhum plano disponível. Carregue pelo menos 2 planos a partir da página /plan.
                 </p>
               ) : visiblePlans.map((p) => {
                 const on = multiSelected.includes(p.plan_id);
                 const sub = subcontractSel.includes(p.plan_id);
                 const isGros = !!p.structural_metre;
-                const kindLbl = isGros ? "🏢 Gros œuvre" : (p.rooms?.length ? "🏠 Maison" : "Plan");
+                const kindLbl = isGros ? "🏢 Estrutura" : (p.rooms?.length ? "🏠 Maison" : "Plan");
                 const linkedCount = (p.ferraillage_plan_ids || []).length;
                 return (
                   <div key={p.plan_id}
@@ -119,8 +119,8 @@ export function MultiPlanDialog({
                           {p.plan_id === plan?.plan_id && <span className="text-primary ml-1 text-[10px]">(en cours)</span>}
                         </p>
                         <p className="text-[10px] text-muted-foreground num">
-                          {kindLbl} · {p.rooms?.length || 0} pièces · {(p.rooms?.reduce((s, r) => s + (r.surface_m2 || 0), 0) || 0).toFixed(1)} m²
-                          {linkedCount > 0 && <span className="text-primary ml-1">· {linkedCount} ferraillage lié{linkedCount > 1 ? "s" : ""}</span>}
+                          {kindLbl} · {p.rooms?.length || 0} divisões · {(p.rooms?.reduce((s, r) => s + (r.surface_m2 || 0), 0) || 0).toFixed(1)} m²
+                          {linkedCount > 0 && <span className="text-primary ml-1">· {linkedCount} armadura associada{linkedCount > 1 ? "s" : ""}</span>}
                         </p>
                       </div>
                     </label>
@@ -147,7 +147,7 @@ export function MultiPlanDialog({
                       <div className="mx-2 mb-2 ml-8 border border-primary/30 rounded-sm p-2 grid gap-1 bg-secondary/40"
                            data-testid={`ferraillage-picker-${p.plan_id}`}>
                         <p className="text-[10px] text-muted-foreground mb-1">
-                          Cochez les plans de ferraillage à chiffrer avec ce coffrage :
+                          Assinale os planos de armação a orçamentar com esta cofragem:
                         </p>
                         {allPlans.filter((q) => q.plan_id !== p.plan_id).map((q) => {
                           const linked = (p.ferraillage_plan_ids || []).includes(q.plan_id);
@@ -177,28 +177,28 @@ export function MultiPlanDialog({
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-sm">
-            Annuler
+            Cancelar
           </Button>
           <Button variant="outline" onClick={downloadMultiMetre}
                   disabled={multiBusy || multiSelected.length === 0}
                   data-testid="multi-metre-download-btn"
                   className="rounded-sm gap-2 border-primary/50 text-primary hover:bg-primary hover:text-white">
             <FileDown className="h-4 w-4" />
-            {multiBusy ? "Génération…" : "Métré groupé (sans prix)"}
+            {multiBusy ? "Geração…" : "Medição agrupada (sem preços)"}
           </Button>
           <Button variant="outline" onClick={downloadMultiQuote}
                   disabled={multiBusy || multiSelected.length === 0}
                   data-testid="multi-quote-download-btn"
                   className="rounded-sm gap-2">
             <FileDown className="h-4 w-4" />
-            {multiBusy ? "Génération…" : "Devis PDF groupé"}
+            {multiBusy ? "Geração…" : "Orçamento PDF agrupado"}
           </Button>
           <Button onClick={createConsolidatedQuote}
                   disabled={consolidatedBusy || multiSelected.length === 0}
                   data-testid="multi-consolidated-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <FileText className="h-4 w-4" />
-            {consolidatedBusy ? "Création…" : `Devis consolidé (${multiSelected.length})`}
+            {consolidatedBusy ? "A criar…" : `Orçamento consolidado (${multiSelected.length})`}
           </Button>
         </DialogFooter>
       </DialogContent>

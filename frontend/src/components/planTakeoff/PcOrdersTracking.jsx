@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { api, eur, num } from "@/lib/api";
 
-const STATUS_LABELS = { en_attente: "En attente", recu: "Devis reçu", retenu: "Retenu ✓" };
+const STATUS_LABELS = { en_attente: "En attente", recu: "Orçamento recebido", retenu: "Retenu ✓" };
 
 export default function PcOrdersTracking({ planId, orders, onSaved }) {
   const [edits, setEdits] = useState({});
@@ -22,9 +22,9 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
         quoted_ht: Number.isFinite(quoted) ? quoted : null,
         notes: e.notes ?? o.response_notes ?? "",
       });
-      toast.success(`Réponse enregistrée — ${o.ref}`);
+      toast.success(`Resposta registada —${o.ref}`);
       onSaved?.();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Enregistrement impossible"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Não foi possível guardar"); }
   };
 
   const quotedVals = orders.map((o) => {
@@ -37,15 +37,15 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
   return (
     <section data-testid="pc-orders-tracking">
       <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-        <PackageCheck className="h-4 w-4 text-primary" /> Bons de commande — réponses négoces
+        <PackageCheck className="h-4 w-4 text-primary" /> Notas de encomenda — respostas armazenistas
       </h3>
       <table className="w-full text-xs border border-border">
         <thead>
           <tr className="bg-muted text-left">
-            <th className="p-1.5">Réf / Négoce</th>
+            <th className="p-1.5">Ref. / Fornecedor</th>
             <th className="p-1.5">Phase</th>
             <th className="p-1.5 text-right">Indicatif HT</th>
-            <th className="p-1.5 text-right">Devis reçu €</th>
+            <th className="p-1.5 text-right">Orçamento recebido €</th>
             <th className="p-1.5">Statut</th>
             <th className="p-1.5"></th>
           </tr>
@@ -74,7 +74,7 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
                            className="rounded-sm h-7 w-28 text-right num text-xs" />
                     {delta !== null && (
                       <span className={`text-[10px] num ${delta > 0 ? "text-red-500" : "text-emerald-600"}`}>
-                        {delta > 0 ? "+" : ""}{num(delta, 1)} % vs étude
+                        {delta > 0 ? "+" : ""}{num(delta, 1)} % vs estudo
                       </span>
                     )}
                     {isBest && (
@@ -99,7 +99,7 @@ export default function PcOrdersTracking({ planId, orders, onSaved }) {
                   <button onClick={() => save(o)}
                           className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-orange-600 underline underline-offset-2"
                           data-testid={`pc-order-${i}-save-btn`}>
-                    <Save className="h-3 w-3" /> Enregistrer
+                    <Save className="h-3 w-3" /> Guardar
                   </button>
                 </td>
               </tr>

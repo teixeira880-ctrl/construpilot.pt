@@ -4,8 +4,8 @@ import { useLocation } from "react-router-dom";
 const BASE = "https://construpilot.fr";
 const PT_BASE = "https://construpilot.pt";
 const SUFFIX = " · ConstruPilot";
-const DEFAULT_TITLE = "ConstruPilot — Devis travaux IA & estimation rénovation";
-const DEFAULT_DESC = "Devis chiffrés, estimation rénovation, comparateur de prix matériaux et analyse de plans : l'assistant IA du BTP pour artisans et particuliers.";
+const DEFAULT_TITLE = "ConstruPilot — Orçamentos de obras com IA e estimativa de remodelação";
+const DEFAULT_DESC = "Orçamentos detalhados, estimativa de remodelação, comparador de preços de materiais e análise de plantas: o assistente IA da construção para profissionais e particulares.";
 
 let overridesPromise = null;
 const loadOverrides = () => {

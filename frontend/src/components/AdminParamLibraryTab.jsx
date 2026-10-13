@@ -61,15 +61,15 @@ export default function AdminParamLibraryTab() {
       const fd = new FormData(); fd.append("file", file);
       const { data } = await api.post("/admin/param-library/import", fd,
         { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`${data.ouvrages} ouvrages · ${data.lines} lignes importés`);
+      toast.success(`${data.ouvrages} ouvrages · ${data.lines}linhas importadas`);
       await load(q); await loadTables();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Import impossible"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || "Não foi possível importar"); }
     finally { setUploading(false); }
   };
 
   const clearAll = async () => {
-    if (!window.confirm("Vider toute la bibliothèque paramétrique ?")) return;
-    await api.delete("/admin/param-library"); toast.success("Vidée"); await load();
+    if (!window.confirm("Limpar toda a biblioteca paramétrica?")) return;
+    await api.delete("/admin/param-library"); toast.success("Limpa"); await load();
   };
 
   const openDetail = async (base_code, lvl = level, rg = region, mg = margin) => {
@@ -77,29 +77,29 @@ export default function AdminParamLibraryTab() {
       const { data } = await api.get(`/admin/param-library/ouvrages/${base_code}`,
         { params: { level: lvl, region: rg, margin_pct: mg } });
       setDetail(data);
-    } catch { toast.error("Calcul impossible"); }
+    } catch { toast.error("Cálculo impossível"); }
   };
   useEffect(() => { if (detail) openDetail(detail.base_code, level, region, margin); /* eslint-disable-next-line */ }, [level, region, margin]);
 
   const saveRates = async () => {
     await api.put("/admin/param-library/labor-rates", rates.map((r) => ({
       metier: r.metier, low: Number(r.low), mid: Number(r.mid), high: Number(r.high) })));
-    toast.success("Taux horaires enregistrés");
+    toast.success("Taxas horárias guardadas");
   };
   const saveCoefs = async () => {
     await api.put("/admin/param-library/regional-coefs", coefs.map((c) => ({
       region: c.region, label: c.label, coef: Number(c.coef) })));
-    toast.success("Coefficients enregistrés");
+    toast.success("Coeficientes guardados");
   };
   const saveMaterial = async (m) => {
     await api.put(`/admin/param-library/materials/${m.mat_id}`, { name: m.name, unit: m.unit, price: Number(m.price) });
-    toast.success("Matériau mis à jour");
+    toast.success("Material atualizado");
   };
   const genMissing = async () => {
     setGenBusy(true);
     try {
       const { data } = await api.post("/admin/param-library/materials/generate-missing");
-      toast.success(`${data.added} matériau(x) manquant(s) ajouté(s) — à compléter`);
+      toast.success(`${data.added}material(is) em falta adicionado(s) — a completar`);
       await loadTables();
     } finally { setGenBusy(false); }
   };
@@ -107,7 +107,7 @@ export default function AdminParamLibraryTab() {
     setGenBusy(true);
     try {
       const { data } = await api.post("/admin/param-library/materials/prefill");
-      toast.success(`${data.updated} prix pré-remplis (estimation) — à ajuster`);
+      toast.success(`${data.updated}preços pré-preenchidos (estimativa) — a ajustar`);
       await loadTables();
     } finally { setGenBusy(false); }
   };
@@ -117,12 +117,12 @@ export default function AdminParamLibraryTab() {
     const fd = new FormData(); fd.append("file", file);
     const { data } = await api.post("/admin/param-library/materials/import", fd,
       { headers: { "Content-Type": "multipart/form-data" } });
-    toast.success(`${data.processed} prix importés`);
+    toast.success(`${data.processed}preços importados`);
     await loadTables();
   };
   const exportMats = async () => {
     const { data } = await api.get("/admin/param-library/materials");
-    const rows = [["Nom", "Unite", "Prix"], ...(data.materials || []).map((m) => [m.name, m.unit, m.price])];
+    const rows = [["Nom", "Unite", "Preço"], ...(data.materials || []).map((m) => [m.name, m.unit, m.price])];
     const csv = rows.map((r) => r.join(";")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a"); a.href = url; a.download = "prix-materiaux-construpilot.csv"; a.click();
@@ -134,12 +134,11 @@ export default function AdminParamLibraryTab() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-bold flex items-center gap-2">
-            <Boxes className="h-5 w-5 text-primary" /> Bibliothèque paramétrique (ouvrages composés)
+            <Boxes className="h-5 w-5 text-primary" /> Biblioteca paramétrica (trabalhos compostos)
           </h3>
           <p className="text-sm text-muted-foreground max-w-2xl mt-1">
-            Ouvrages composés avec formules de quantité, main d'œuvre et % pertes. L'IA calcule le
-            <b> déboursé sec → coût de revient → prix de vente</b> selon la gamme, la région et la marge.
-            L'import <b>remplace</b> la bibliothèque existante.
+            Trabalhos compostos com fórmulas de quantidade, mão de obra e % perdas. A IA calcula o
+            <b> custo seco → custo total → preço de venda</b> segundo a gama, a região e a margem. A importação <b>remplace</b> a biblioteca existente.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -169,17 +168,17 @@ export default function AdminParamLibraryTab() {
         <div className="relative max-w-sm">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load(q)}
-                 placeholder="Rechercher un ouvrage / famille / métier…" className="rounded-sm pl-9" data-testid="param-search" />
+                 placeholder="Pesquisar um artigo / família / especialidade…" className="rounded-sm pl-9" data-testid="param-search" />
         </div>
         <div className="border border-border rounded-sm overflow-hidden max-h-[420px] overflow-y-auto">
           <Table data-testid="param-ouvrages-table">
             <TableHeader><TableRow className="bg-secondary/60 hover:bg-secondary/60">
-              <TableHead>Code</TableHead><TableHead>Famille</TableHead><TableHead>Métier</TableHead>
+              <TableHead>Code</TableHead><TableHead>Famille</TableHead><TableHead>Especialidade</TableHead>
               <TableHead className="text-center">Lignes</TableHead><TableHead className="text-right">Calcul</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {busy ? <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
-                : ouvrages.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucun ouvrage. Importez le fichier.</TableCell></TableRow>
+                : ouvrages.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum trabalho. Importe o ficheiro.</TableCell></TableRow>
                 : ouvrages.map((o) => (
                   <TableRow key={o.base_code} className="cursor-pointer" onClick={() => openDetail(o.base_code)}>
                     <TableCell className="text-xs font-mono">{o.base_code}</TableCell>
@@ -199,7 +198,7 @@ export default function AdminParamLibraryTab() {
         <div className="border border-border rounded-sm p-4 space-y-3" data-testid="param-rates">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> Taux horaires 2026 (€/h HT)</h4>
-            <Button size="sm" onClick={saveRates} className="rounded-sm gap-1 h-8" data-testid="param-rates-save"><Save className="h-3.5 w-3.5" /> Enregistrer</Button>
+            <Button size="sm" onClick={saveRates} className="rounded-sm gap-1 h-8" data-testid="param-rates-save"><Save className="h-3.5 w-3.5" /> Guardar</Button>
           </div>
           <div className="max-h-64 overflow-y-auto space-y-1">
             {rates.map((r, i) => (
@@ -217,8 +216,8 @@ export default function AdminParamLibraryTab() {
 
         <div className="border border-border rounded-sm p-4 space-y-3" data-testid="param-coefs">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Coefficients régionaux</h4>
-            <Button size="sm" onClick={saveCoefs} className="rounded-sm gap-1 h-8" data-testid="param-coefs-save"><Save className="h-3.5 w-3.5" /> Enregistrer</Button>
+            <h4 className="font-semibold flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Coeficientes regionais</h4>
+            <Button size="sm" onClick={saveCoefs} className="rounded-sm gap-1 h-8" data-testid="param-coefs-save"><Save className="h-3.5 w-3.5" /> Guardar</Button>
           </div>
           <div className="space-y-1">
             {coefs.map((c, i) => (
@@ -235,13 +234,13 @@ export default function AdminParamLibraryTab() {
       {/* Prix matériaux */}
       <div className="border border-border rounded-sm p-4 space-y-3" data-testid="param-materials">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" /> Prix matériaux (éditables)</h4>
+          <h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" /> Preço materiais (editáveis)</h4>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={genMissing} disabled={genBusy} className="rounded-sm gap-1 h-8" data-testid="param-mat-generate">
-              {genBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Générer les manquants
+              {genBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Gerar os em falta
             </Button>
             <Button size="sm" variant="outline" onClick={prefillMats} disabled={genBusy} className="rounded-sm gap-1 h-8" data-testid="param-mat-prefill">
-              <Calculator className="h-3.5 w-3.5" /> Pré-remplir les prix (estimation)
+              <Calculator className="h-3.5 w-3.5" /> Pré-preencher os preços (estimativa)
             </Button>
             <input ref={matFileRef} type="file" accept=".csv" className="hidden" onChange={importMats} data-testid="param-mat-import-input" />
             <Button size="sm" variant="outline" onClick={() => matFileRef.current?.click()} className="rounded-sm gap-1 h-8" data-testid="param-mat-import">
@@ -255,7 +254,7 @@ export default function AdminParamLibraryTab() {
         <div className="relative max-w-xs">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={matQ} onChange={async (e) => { setMatQ(e.target.value); const { data } = await api.get("/admin/param-library/materials", { params: { q: e.target.value } }); setMaterials(data.materials || []); }}
-                 placeholder="Rechercher un matériau…" className="rounded-sm pl-9" data-testid="param-mat-search" />
+                 placeholder="Pesquisar um material…" className="rounded-sm pl-9" data-testid="param-mat-search" />
         </div>
         <div className="max-h-72 overflow-y-auto grid sm:grid-cols-2 gap-2">
           {materials.map((m, i) => (
@@ -283,7 +282,7 @@ export default function AdminParamLibraryTab() {
               <div className="flex flex-wrap gap-3 items-center text-xs">
                 <div className="flex gap-1">Gamme :{LEVELS.map((l) => (
                   <button key={l} onClick={() => setLevel(l)} className={`rounded-sm px-2 py-1 border capitalize ${level === l ? "border-primary bg-primary text-white" : "border-input"}`}>{l}</button>))}</div>
-                <div className="flex gap-1">Région :
+                <div className="flex gap-1">Região:
                   <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded-sm border border-input bg-background px-2 py-1">
                     {coefs.map((c) => <option key={c.region} value={c.region}>{c.label || c.region} (×{c.coef})</option>)}
                   </select></div>
@@ -292,22 +291,22 @@ export default function AdminParamLibraryTab() {
               </div>
               <div className="border border-border rounded-sm overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead><tr className="bg-secondary/60 text-left"><th className="p-2">Composant</th><th className="p-2 text-right">Qté</th><th className="p-2 text-right">PU</th><th className="p-2 text-right">Coût</th></tr></thead>
+                  <thead><tr className="bg-secondary/60 text-left"><th className="p-2">Composant</th><th className="p-2 text-right">Qtd.</th><th className="p-2 text-right">PU</th><th className="p-2 text-right">Custo</th></tr></thead>
                   <tbody>{detail.lignes.map((l, i) => (
                     <tr key={i} className="border-t border-border/60">
-                      <td className="p-2">{l.composant} {!l.matched && <span className="text-[10px] text-amber-600">(prix à définir)</span>}</td>
+                      <td className="p-2">{l.composant} {!l.matched && <span className="text-[10px] text-amber-600">(preço a definir)</span>}</td>
                       <td className="p-2 text-right num">{l.quantite} {l.unite}</td>
                       <td className="p-2 text-right num">{eur(l.prix_unitaire)}</td>
                       <td className="p-2 text-right num">{eur(l.cout)}</td>
                     </tr>))}
-                    <tr className="border-t border-border"><td className="p-2 text-muted-foreground" colSpan={3}>Main d'œuvre ({detail.metier}) — {detail.labor_hours} h × {eur(detail.labor_rate)}</td><td className="p-2 text-right num">{eur(detail.labor_cost)}</td></tr>
+                    <tr className="border-t border-border"><td className="p-2 text-muted-foreground" colSpan={3}>Mão de obra ({detail.metier}) — {detail.labor_hours} h × {eur(detail.labor_rate)}</td><td className="p-2 text-right num">{eur(detail.labor_cost)}</td></tr>
                   </tbody>
                 </table>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-sm border border-border p-3"><p className="text-[11px] uppercase text-muted-foreground">Déboursé sec</p><p className="text-lg font-semibold num">{eur(detail.debourse_sec)}</p></div>
-                <div className="rounded-sm border border-border p-3"><p className="text-[11px] uppercase text-muted-foreground">Coût revient (×{detail.coef})</p><p className="text-lg font-semibold num">{eur(detail.prix_revient)}</p></div>
-                <div className="rounded-sm border border-primary bg-primary/5 p-3"><p className="text-[11px] uppercase text-primary">Prix de vente</p><p className="text-lg font-bold num text-primary">{eur(detail.prix_vente)}</p></div>
+                <div className="rounded-sm border border-border p-3"><p className="text-[11px] uppercase text-muted-foreground">Custo direto</p><p className="text-lg font-semibold num">{eur(detail.debourse_sec)}</p></div>
+                <div className="rounded-sm border border-border p-3"><p className="text-[11px] uppercase text-muted-foreground">Custo de produção (×{detail.coef})</p><p className="text-lg font-semibold num">{eur(detail.prix_revient)}</p></div>
+                <div className="rounded-sm border border-primary bg-primary/5 p-3"><p className="text-[11px] uppercase text-primary">Preço de venda</p><p className="text-lg font-bold num text-primary">{eur(detail.prix_vente)}</p></div>
               </div>
             </>
           )}

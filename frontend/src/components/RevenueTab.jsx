@@ -52,9 +52,9 @@ export default function RevenueTab() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="overline">Revenue Cockpit</p>
-          <h2 className="font-display text-2xl font-bold tracking-tight">Croissance & rentabilité</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">Crescimento & rentabilidade</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Généré le {new Date(kpis.generated_at).toLocaleString("fr-FR")}
+            Gerado a {new Date(kpis.generated_at).toLocaleString("fr-FR")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -82,21 +82,21 @@ export default function RevenueTab() {
         <KPICard label="ARPU" value={eur(kpis.arpu_eur)} testId="kpi-arpu"
                  sub="Revenu moyen par utilisateur" icon={Users} />
         <KPICard label="LTV" value={eur(kpis.ltv_eur)} testId="kpi-ltv"
-                 sub={`churn assumé ${num((kpis.assumed_monthly_churn || 0) * 100, 1)} %/mois`}
+                 sub={`churn assumido${num((kpis.assumed_monthly_churn || 0) * 100, 1)} %/mois`}
                  icon={Wallet} />
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <KPICard label="CAC" value={kpis.cac_eur ? eur(kpis.cac_eur) : "— à saisir"}
-                 sub="Renseignez vos dépenses d'acquisition dans .env"
+        <KPICard label="CAC" value={kpis.cac_eur ? eur(kpis.cac_eur) : "— a introduzir"}
+                 sub="Indique as suas despesas de aquisição no .env"
                  testId="kpi-cac" icon={CreditCard} />
         <KPICard label="Trials en cours" value={num(kpis.trialing_subs)} testId="kpi-trialing" icon={Clock} />
-        <KPICard label="Revenu ce mois" value={eur(kpis.revenue_this_month_eur)}
+        <KPICard label="Receita este mês" value={eur(kpis.revenue_this_month_eur)}
                  sub={`${kpis.new_paying_this_month} nouveaux payants`}
                  testId="kpi-revenue-month" icon={Wallet} />
         <KPICard label="LTV / CAC"
                  value={kpis.cac_eur ? num(kpis.ltv_eur / kpis.cac_eur, 1) + "×" : "—"}
-                 sub={kpis.cac_eur && (kpis.ltv_eur / kpis.cac_eur >= 3 ? "Sain ✅" : "À surveiller")}
+                 sub={kpis.cac_eur && (kpis.ltv_eur / kpis.cac_eur >= 3 ? "Sain ✅" : "A vigiar")}
                  testId="kpi-ltv-cac" icon={TrendingUp} />
       </div>
 
@@ -137,7 +137,7 @@ export default function RevenueTab() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Aucun abonnement payant pour l'instant.</p>
+          <p className="text-sm text-muted-foreground">Nenhuma subscrição paga por agora.</p>
         )}
       </div>
 
@@ -149,9 +149,9 @@ export default function RevenueTab() {
         </div>
         <div className="grid sm:grid-cols-4 gap-4">
           <Stat label="Signups" value={num(funnel.signups)} testId="funnel-signups" />
-          <Stat label="Trials démarrés" value={num(funnel.trials_started)}
+          <Stat label="Trials iniciados" value={num(funnel.trials_started)}
                 sub={`${funnel.signup_to_trial_pct} % conv.`} testId="funnel-trials" />
-          <Stat label="Paiements confirmés" value={num(funnel.paid_transactions)}
+          <Stat label="Pagamentos confirmados" value={num(funnel.paid_transactions)}
                 sub={`${funnel.trial_to_paid_pct} % conv.`} accent testId="funnel-paid" />
           <Stat label="Leads ConstruPilot" value={num(funnel.leads)} testId="funnel-leads" />
         </div>

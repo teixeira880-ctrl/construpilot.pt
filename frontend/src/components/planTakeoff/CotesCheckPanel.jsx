@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import GeometryReport, { StudiesPanel } from "@/components/planTakeoff/GeometryReport";
 import { runCotesJob } from "@/lib/cotesJobs";
 
-const LABEL = { ok: "OK", warn: "À vérifier", ko: "Incohérence", ignored: "Ignorée", nd: "Non déterminé" };
+const LABEL = { ok: "OK", warn: "A verificar", ko: "Incoerência", ignored: "Ignorada", nd: "Não determinado" };
 const CLS = {
   ok: "bg-emerald-100 text-emerald-800 border-emerald-300",
   warn: "bg-orange-100 text-orange-800 border-orange-300",
@@ -28,7 +28,7 @@ async function authedBlob(path) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Erreur serveur");
+    throw new Error(err.detail || "Erro do servidor");
   }
   return res.blob();
 }
@@ -38,12 +38,12 @@ function Summary({ s }) {
     <div className="flex flex-wrap items-center gap-1.5" data-testid="cotes-summary">
       <Badge className={`rounded-sm border ${CLS[s.verdict]}`} data-testid="cotes-verdict">{LABEL[s.verdict]}</Badge>
       <span className="text-[11px] text-muted-foreground">
-        {s.total} cotes · {s.ok} OK · {s.warn} à vérifier · <b className="text-red-700">{s.ko} incohérence(s)</b>
-        {s.ignored > 0 && ` · ${s.ignored} ignorée(s)`}
-        {s.chains_total > 0 && ` · ${s.chains_total} chaîne(s) (${s.chains_ko} KO)`}
-        {s.facades_total > 0 && ` · ${s.facades_total} façade(s) opposée(s) (${s.facades_ko} KO)`}
-        {s.elements_total > 0 && ` · ${s.elements_total} élément(s) (${s.elements_ko} KO)`}
-        {(s.anchors_ko > 0 || s.anchors_warn > 0) && ` · ${s.anchors_ko + s.anchors_warn} cote(s) non rattachée(s)`} · écart max {s.max_delta_cm} cm
+        {s.total} cotes · {s.ok} OK · {s.warn} a verificar · <b className="text-red-700">{s.ko} incoerência(s)</b>
+        {s.ignored > 0 && ` · ${s.ignored}ignorada(s)`}
+        {s.chains_total > 0 && ` · ${s.chains_total}cadeia(s) (${s.chains_ko} KO)`}
+        {s.facades_total > 0 && ` · ${s.facades_total}fachada(s) oposta(s) (${s.facades_ko} KO)`}
+        {s.elements_total > 0 && ` · ${s.elements_total}elemento(s) (${s.elements_ko} KO)`}
+        {(s.anchors_ko > 0 || s.anchors_warn > 0) && ` · ${s.anchors_ko + s.anchors_warn}cota(s) não associada(s)`} · diferença máx. {s.max_delta_cm} cm
       </span>
       {s.conclusion && (
         <p className={`w-full text-[11px] px-1.5 py-1 rounded-sm border ${CLS[s.verdict]}`} data-testid="cotes-conclusion">
@@ -58,14 +58,14 @@ function Facades({ facades }) {
   if (!facades?.length) return null;
   return (
     <div className="grid gap-1" data-testid="cotes-facades">
-      <p className="text-[11px] font-medium">Façades opposées (dimensions générales)</p>
+      <p className="text-[11px] font-medium">Fachadas opostas (dimensões gerais)</p>
       {facades.map((f, i) => (
         <div key={i} className={`text-[11px] px-1.5 py-1 rounded-sm border ${CLS[f.status]}`} data-testid={`cotes-facade-${i}`}>
-          #{f.a_index} {f.a_m.toFixed(2)} m ({f.a_side}) ↔ #{f.b_index} {f.b_m.toFixed(2)} m ({f.b_side}) : écart {f.delta_cm > 0 ? "+" : ""}{f.delta_cm} cm — {f.niveau}
-          {f.status === "ko" && " · emprise non confirmée rectangulaire, à faire préciser (cote unique / diagonale / plan d'axes)"}
+          #{f.a_index} {f.a_m.toFixed(2)} m ({f.a_side}) ↔ #{f.b_index} {f.b_m.toFixed(2)} m ({f.b_side}) : diferença {f.delta_cm > 0 ? "+" : ""}{f.delta_cm} cm — {f.niveau}
+          {f.status === "ko" && "· implantação não confirmada como retangular, a esclarecer (cota única / diagonal / planta de eixos)"}
           {f.diag && (
             <div className="mt-0.5 font-mono" data-testid={`cotes-facade-diag-${i}`}>
-              Équerrage : diagonales ≈ {f.diag.d1_m.toFixed(2)} m / {f.diag.d2_m.toFixed(2)} m → différence ≈ {Math.abs(f.diag.diff_cm)} cm · angle dévié ≈ {f.diag.angle_deg}° (L {f.diag.L_m.toFixed(2)} × W {f.diag.W_m.toFixed(2)} m, décalage {f.diag.offset_cm} cm)
+              Esquadria: diagonais ≈ {f.diag.d1_m.toFixed(2)} m / {f.diag.d2_m.toFixed(2)} m → diferença ≈ {Math.abs(f.diag.diff_cm)} cm · desvio angular ≈ {f.diag.angle_deg}° (L {f.diag.L_m.toFixed(2)} × W {f.diag.W_m.toFixed(2)} m, desfasamento {f.diag.offset_cm} cm)
             </div>
           )}
         </div>
@@ -89,7 +89,7 @@ function Row({ it, selected, onFocus, onEdit, onToggleIgnore, busy }) {
     <tr className={`border-t whitespace-nowrap cursor-pointer ${selected ? "bg-amber-100 text-slate-900" : "hover:bg-muted/60"} ${it.ignored ? "opacity-50" : ""}`}
         data-testid={`cotes-row-${it.index}`} onClick={() => onFocus(it)}>
       <td className="px-1 num">{it.index}<sup className="text-[8px] text-muted-foreground ml-0.5" title={SRC_TITLE[it.source] || ""}>{SRC[it.source] || ""}</sup></td>
-      <td className="px-1 truncate max-w-[110px]" title={`${it.location || ""}${it.edited ? ` (corrigée, lu ${it.original_m})` : ""}`}>
+      <td className="px-1 truncate max-w-[110px]" title={`${it.location || ""}${it.edited ? `(corrigida, lida${it.original_m})` : ""}`}>
         {it.location || "—"}{it.edited && <span className="text-amber-700"> ✎</span>}
       </td>
       <td className="px-1 text-right num" onClick={(e) => { if (editing) e.stopPropagation(); }}>
@@ -111,10 +111,10 @@ function Row({ it, selected, onFocus, onEdit, onToggleIgnore, busy }) {
       <td className="px-1" onClick={(e) => e.stopPropagation()}>
         <span className="inline-flex gap-1">
           <button disabled={busy || it.ignored} onClick={() => { setVal(it.indicated_m); setEditing(true); }}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30" title="Corriger la cote lue"
+                  className="text-muted-foreground hover:text-foreground disabled:opacity-30" title="Corrigir a cota lida"
                   data-testid={`cotes-edit-btn-${it.index}`}><Pencil className="h-3 w-3" /></button>
           <button disabled={busy} onClick={() => onToggleIgnore(it)} className="text-muted-foreground hover:text-foreground"
-                  title={it.ignored ? "Réintégrer la cote" : "Ignorer la cote"} data-testid={`cotes-ignore-btn-${it.index}`}>
+                  title={it.ignored ? "Reintegrar a cota" : "Ignorar a cota"} data-testid={`cotes-ignore-btn-${it.index}`}>
             {it.ignored ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
           </button>
         </span>
@@ -135,18 +135,18 @@ function Reading({ r, calib }) {
       <div>
         <b>Lecture {r.source === "dxf" ? "DXF exacte" : "vectorielle PDF + IA (hybride)"}</b>
         {r.source === "pdf_vector+ai" && cross && (
-          <> : {cross.vector} cote(s) mesurées au mm dans le PDF · {cross.confirmed} confirmée(s) par l'IA
-            {cross.ai_only > 0 && ` · ${cross.ai_only} lue(s) par l'IA seule (non vérifiées, jamais KO)`}</>
+          <> : {cross.vector} cota(s) medidas ao mm no PDF · {cross.confirmed} confirmada(s) pela IA
+            {cross.ai_only > 0 && ` · ${cross.ai_only}lida(s) só pela IA (não verificadas, nunca KO)`}</>
         )}
-        {eff && <> · échelle effective 1/{eff}{calib?.scale_denominator && Math.abs(eff - calib.scale_denominator) > 0.5 ? ` (déclarée 1/${calib.scale_denominator} — PDF réduit)` : ""}</>}
+        {eff && <> · escala efetiva 1/{eff}{calib?.scale_denominator && Math.abs(eff - calib.scale_denominator) > 0.5 ? `(declarada 1/${calib.scale_denominator}— PDF reduzido)` : ""}</>}
       </div>
       {cross?.divergences?.length > 0 && (
         <div data-testid="cotes-divergences">
-          <b>Divergence(s) de lecture</b> (le texte vectoriel fait foi) :{" "}
+          <b>Divergência(s) de leitura</b> (o texto vetorial prevalece):{" "}
           {cross.divergences.map((d, i) => `« ${d.vector_text} » lu « ${d.ai_text} » par l'IA`).join(" ; ")}
         </div>
       )}
-      {r.vector?.partial_vectors && <div>⚠ Vecteurs partiels (plan importé avant la lecture vectorielle) — réimportez le PDF pour une couverture complète.</div>}
+      {r.vector?.partial_vectors && <div>⚠ Vetores parciais (planta importada antes da leitura vetorial) — volte a importar o PDF para uma cobertura completa.</div>}
     </div>
   );
 }
@@ -157,11 +157,11 @@ function Elements({ elements }) {
   const n = { ok: elements.length - bad.length, ko: bad.filter((e) => e.status === "ko").length, warn: bad.filter((e) => e.status === "warn").length };
   return (
     <div className="grid gap-1" data-testid="cotes-elements">
-      <p className="text-[11px] font-medium">Éléments dessinés (semelles, poutres, murs étiquetés) : largeur dessinée vs étiquette — {elements.length} contrôlé(s) · {n.ok} OK · {n.warn} à vérifier · {n.ko} KO</p>
-      {bad.length === 0 && <div className={`text-[11px] px-1.5 py-1 rounded-sm border ${CLS.ok}`}>Toutes les largeurs dessinées correspondent aux étiquettes (≤ 10 mm).</div>}
+      <p className="text-[11px] font-medium">Elementos desenhados (sapatas, vigas, paredes etiquetadas): largura desenhada vs etiqueta — {elements.length} controlado(s) · {n.ok} OK · {n.warn} a verificar · {n.ko} KO</p>
+      {bad.length === 0 && <div className={`text-[11px] px-1.5 py-1 rounded-sm border ${CLS.ok}`}>Todas as larguras desenhadas correspondem às etiquetas (≤ 10 mm).</div>}
       {bad.map((e, i) => (
         <div key={i} className={`text-[11px] px-1.5 py-1 rounded-sm border ${CLS[e.status]}`} data-testid={`cotes-element-${i}`}>
-          « {e.label} » : dessiné {(e.measured_w_m * 100).toFixed(1)} cm pour {e.w_cm} cm annoncés ({e.delta_mm > 0 ? "+" : ""}{Math.round(e.delta_mm)} mm) — {e.niveau}
+          « {e.label} » : desenhado {(e.measured_w_m * 100).toFixed(1)} cm para {e.w_cm} cm anunciados ({e.delta_mm > 0 ? "+" : ""}{Math.round(e.delta_mm)} mm) — {e.niveau}
         </div>
       ))}
     </div>
@@ -173,10 +173,10 @@ function Anchors({ items }) {
   if (!bad.length) return null;
   return (
     <div className="grid gap-1" data-testid="cotes-anchors">
-      <p className="text-[11px] font-medium">Cotes probablement erronées : extrémités non alignées sur une face ou un axe de mur dessiné (projection perpendiculaire &gt; 10 mm)</p>
+      <p className="text-[11px] font-medium">Cotas provavelmente erradas: extremidades não alinhadas com uma face ou um eixo de parede desenhado (projeção perpendicular &gt; 10 mm)</p>
       {bad.map((it) => (
         <div key={it.index} className={`text-[11px] px-1.5 py-1 rounded-sm border ${CLS[it.anchor_status]}`}>
-          #{it.index} {it.indicated_m.toFixed(2)} m : extrémités à {it.anchor_mm.map((a) => (a == null ? "—" : `${Math.round(a)} mm`)).join(" / ")} du trait le plus proche
+          #{it.index} {it.indicated_m.toFixed(2)} m : extremidades a {it.anchor_mm.map((a) => (a == null ? "—" : `${Math.round(a)} mm`)).join(" / ")} do traço mais próximo
         </div>
       ))}
     </div>
@@ -188,8 +188,8 @@ function AutoSpans({ spans }) {
   if (!spans?.length) return null;
   return (
     <div className="grid gap-1" data-testid="cotes-auto-spans">
-      <p className="text-[11px] font-medium">Mesures automatiques — {spans.length} distance(s) dessinée(s) sans cote sur le plan
-        <button className="underline ml-2" onClick={() => setOpen(!open)} data-testid="cotes-auto-spans-toggle">{open ? "Réduire" : "Afficher"}</button></p>
+      <p className="text-[11px] font-medium">Mesures automatiques — {spans.length} distância(s) desenhada(s) sem cota na planta
+        <button className="underline ml-2" onClick={() => setOpen(!open)} data-testid="cotes-auto-spans-toggle">{open ? "Reduzir" : "Afficher"}</button></p>
       {open && (
         <div className="text-[11px] grid grid-cols-2 sm:grid-cols-3 gap-1">
           {spans.map((sp) => (
@@ -207,7 +207,7 @@ function Chains({ chains }) {
   if (!chains?.length) return null;
   return (
     <div className="grid gap-1" data-testid="cotes-chains">
-      <p className="text-[11px] font-medium">Chaînes de cotes</p>
+      <p className="text-[11px] font-medium">Cadeias de cotas</p>
       {chains.map((c, i) => (
         <div key={i} className={`text-[11px] px-1.5 py-1 rounded-sm border ${CLS[c.status]}`}>
           #{c.total_index} = {c.total_m.toFixed(2)} m ↔ {c.part_indexes.map((p, j) => `#${p} ${c.parts_m[j].toFixed(2)}`).join(" + ")}
@@ -229,38 +229,38 @@ function SendDialog({ open, onClose, plan, pageIndex, report, onSent }) {
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/cotes/send`,
         { page_index: pageIndex, to_email: email, message, copy_me: copyMe });
-      toast.success(`Rapport envoyé à ${data.sent_to}${data.copy_sent ? " (copie reçue)" : ""}`, { duration: 7000 });
+      toast.success(`Relatório enviado a${data.sent_to}${data.copy_sent ? "(cópia recebida)" : ""}`, { duration: 7000 });
       onSent?.();
       onClose();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
   };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="rounded-sm sm:max-w-md" data-testid="cotes-send-dialog">
         <DialogHeader>
-          <DialogTitle>Envoyer le rapport de contrôle des cotes</DialogTitle>
+          <DialogTitle>Enviar o relatório de controlo das cotas</DialogTitle>
           <DialogDescription>
-            Le PDF (synthèse, toutes les cotes, chaînes et plan annoté) est joint à l'e-mail.
-            {report && ` Verdict actuel : ${LABEL[report.summary.verdict]} — ${report.summary.ko} incohérence(s).`}
+            O PDF (síntese, todas as cotas, cadeias e planta anotada) segue em anexo no e-mail.
+            {report && ` Verdict actuel : ${LABEL[report.summary.verdict]} — ${report.summary.ko}incoerência(s).`}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <Label className="text-xs">Destinataire (architecte, client, bureau d'études)</Label>
+          <Label className="text-xs">Destinatário (arquiteto, cliente, gabinete de projeto)</Label>
           <Input type="email" placeholder="architecte@exemple.fr" value={email} onChange={(e) => setEmail(e.target.value)}
                  className="rounded-sm" data-testid="cotes-send-email" />
           <Label className="text-xs">Message (optionnel)</Label>
           <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="rounded-sm text-sm"
-                    placeholder="Bonjour, veuillez trouver ci-joint le contrôle des cotes du plan…" data-testid="cotes-send-message" />
+                    placeholder="Bom dia, junto envio o controlo das cotas da planta…" data-testid="cotes-send-message" />
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={copyMe} onChange={(e) => setCopyMe(e.target.checked)} data-testid="cotes-send-copy" />
-            M'envoyer une copie
+            Enviar-me uma cópia
           </label>
         </div>
         <DialogFooter>
-          <Button variant="outline" className="rounded-sm" onClick={onClose} disabled={busy}>Annuler</Button>
+          <Button variant="outline" className="rounded-sm" onClick={onClose} disabled={busy}>Cancelar</Button>
           <Button className="rounded-sm gap-2" onClick={send} disabled={busy} data-testid="cotes-send-submit">
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />} Envoyer
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />} Enviar
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -308,22 +308,22 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       setOverlay(null);
       if (okMsg) toast.success(okMsg(data), { duration: 6000 });
       await refreshPlan?.();
-    } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Opération impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || e?.message || "Operação impossível"); }
     finally { setBusy(false); }
   };
 
   const run = () => apply(
     () => runCotesJob(`/takeoffs/${plan.plan_id}/cotes/check`, { page_index: pageIndex, tol_pct: Number(tolPct) || 2, tol_cm: Number(tolCm) || 0 }),
-    (d) => `${d.summary.total} cotes contrôlées — ${d.summary.ko} incohérence(s)` + (d.auto_calibrated ? " · échelle calibrée automatiquement" : ""));
+    (d) => `${d.summary.total}cotas controladas —${d.summary.ko}incoerência(s)` + (d.auto_calibrated ? "· escala calibrada automaticamente" : ""));
   const recompute = () => apply(
     () => api.post(`/takeoffs/${plan.plan_id}/cotes/recompute`, { page_index: pageIndex, tol_pct: Number(tolPct) || 2, tol_cm: Number(tolCm) || 0 }),
-    (d) => `Recalculé avec ±${d.tolerance.pct} % / ${d.tolerance.cm} cm — ${d.summary.ko} incohérence(s)`);
+    (d) => `Recalculado com ±${d.tolerance.pct} % / ${d.tolerance.cm} cm — ${d.summary.ko}incoerência(s)`);
   const editItem = (index, indicated_m) => apply(
     () => api.patch(`/takeoffs/${plan.plan_id}/cotes/items/${index}`, { page_index: pageIndex, indicated_m }),
-    () => `Cote #${index} corrigée et rapport recalculé`);
+    () => `Cote #${index}corrigida e relatório recalculado`);
   const toggleIgnore = (it) => apply(
     () => api.patch(`/takeoffs/${plan.plan_id}/cotes/items/${it.index}`, { page_index: pageIndex, ignored: !it.ignored }),
-    () => (it.ignored ? `Cote #${it.index} réintégrée` : `Cote #${it.index} ignorée`));
+    () => (it.ignored ? `Cote #${it.index}reintegrada` : `Cote #${it.index}ignorada`));
 
   const showOverlay = async () => {
     try {
@@ -339,7 +339,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       a.href = URL.createObjectURL(blob);
       a.download = `controle-cotes-p${pageIndex + 1}.pdf`;
       a.click();
-      toast.success("Rapport PDF téléchargé");
+      toast.success("Relatório PDF descarregado");
     } catch (e) { toast.error(e.message); }
   };
 
@@ -350,7 +350,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       a.href = URL.createObjectURL(blob);
       a.download = `rapport-controle-plan-p${pageIndex + 1}.pdf`;
       a.click();
-      toast.success("Rapport de contrôle du plan téléchargé");
+      toast.success("Relatório de controlo da planta transferido");
     } catch (e) { toast.error(e.message); }
   };
 
@@ -358,13 +358,12 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
 
   return (
     <div className="border border-primary/30 bg-primary/5 p-2 rounded-sm grid gap-2" data-testid="cotes-check-panel">
-      <p className="overline text-primary">Contrôle des cotes</p>
+      <p className="overline text-primary">Controlo das cotas</p>
       <p className="text-[11px] text-muted-foreground">
-        Relit toutes les cotes du plan, mesure chaque trait à l'échelle et signale les incohérences
-        (cote indiquée ≠ mesure, chaînes de cotes qui ne totalisent pas). Cliquez une ligne pour zoomer sur la cote.
+        Relê todas as cotas da planta, mede cada traço à escala e assinala as incoerências (cota indicada ≠ medição, cadeias de cotas que não somam). Clique numa linha para ampliar a cota.
       </p>
       <div className="flex items-center gap-2 text-[11px]">
-        <span>Tolérance</span>
+        <span>Tolerância</span>
         <Input type="number" step="0.5" min="0.1" value={tolPct} onChange={(e) => setTolPct(e.target.value)}
                className="h-7 w-16 rounded-sm num" data-testid="cotes-tol-pct" /> %
         <span>ou</span>
@@ -374,11 +373,11 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       <div className="flex gap-2">
         <Button size="sm" className="flex-1 justify-start gap-2 rounded-sm" disabled={busy} onClick={run} data-testid="cotes-check-btn">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}
-          {busy ? "Lecture et mesure des cotes…" : report ? "Relancer (relecture IA)" : "Contrôler les cotes"}
+          {busy ? "A ler e medir as cotas…" : report ? "Relancer (relecture IA)" : "Controlar as cotas"}
         </Button>
         {tolChanged && (
           <Button size="sm" variant="outline" className="gap-1 rounded-sm" disabled={busy} onClick={recompute}
-                  title="Recalculer avec la nouvelle tolérance, sans relire le plan" data-testid="cotes-recompute-btn">
+                  title="Recalcular com a nova tolerância, sem reler a planta" data-testid="cotes-recompute-btn">
             <RefreshCw className="h-3.5 w-3.5" /> Recalculer
           </Button>
         )}
@@ -389,15 +388,15 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
           <Reading r={report.reading} calib={report.calibration} />
           {report.abstention && (
             <p className="text-[11px] border border-slate-400 bg-slate-100 text-slate-700 rounded-sm px-1.5 py-1" data-testid="cotes-abstention">
-              <b>Abstention ConstruPilot :</b> {report.abstention} ({report.summary.nd} cote(s) non déterminée(s))
+              <b>Abstention ConstruPilot :</b> {report.abstention} ({report.summary.nd} cota(s) não determinada(s))
             </p>
           )}
           <div className="max-h-64 overflow-auto border rounded-sm" data-testid="cotes-table">
             <table className="w-full text-[11px]">
               <thead className="bg-muted sticky top-0">
                 <tr><th className="px-1 text-left">#</th><th className="px-1 text-left">Localisation</th>
-                  <th className="px-1 text-right">Cote (m)</th><th className="px-1 text-right">Mesuré (m)</th>
-                  <th className="px-1 text-right">Écart (cm)</th><th className="px-1"></th><th className="px-1"></th></tr>
+                  <th className="px-1 text-right">Cote (m)</th><th className="px-1 text-right">Medido (m)</th>
+                  <th className="px-1 text-right">Diferença (cm)</th><th className="px-1"></th><th className="px-1"></th></tr>
               </thead>
               <tbody>
                 {sorted.map((it) => (
@@ -414,7 +413,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
           <Chains chains={report.chains} />
           {report.surfaces?.matches?.length > 0 && (
             <p className="text-[11px] text-muted-foreground" data-testid="cotes-surfaces">
-              Surfaces écrites : {report.surfaces.matches.length} pièce(s) comparée(s), écart médian {report.surfaces.deviation_pct} %.
+              Áreas escritas: {report.surfaces.matches.length} divisão(ões) comparada(s), diferença mediana {report.surfaces.deviation_pct} %.
             </p>
           )}
           <GeometryReport plan={plan} pageIndex={pageIndex} geo={report.geometry}
@@ -423,16 +422,16 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
           <StudiesPanel plan={plan} pageIndex={pageIndex} study={currentStudy} onUpdated={(data) => { setStudy(data); refreshPlan?.(); }} />
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={showOverlay} data-testid="cotes-overlay-btn">
-              <ImageIcon className="h-3.5 w-3.5" /> Plan annoté
+              <ImageIcon className="h-3.5 w-3.5" /> Planta anotada
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={downloadPdf} data-testid="cotes-pdf-btn">
               <FileDown className="h-3.5 w-3.5" /> PDF
             </Button>
-            <Button size="sm" className="flex-1 gap-2 rounded-sm" onClick={downloadRapport} title="Rapport de contrôle du plan ConstruPilot (couverture, résumé, calculs, plan annoté CP-xx, fiches, checklist)" data-testid="cotes-rapport-btn">
+            <Button size="sm" className="flex-1 gap-2 rounded-sm" onClick={downloadRapport} title="Relatório de controlo da planta ConstruPilot (capa, resumo, cálculos, planta anotada CP-xx, fichas, checklist)" data-testid="cotes-rapport-btn">
               <FileText className="h-3.5 w-3.5" /> Rapport
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={() => setSendOpen(true)} data-testid="cotes-send-btn">
-              <Mail className="h-3.5 w-3.5" /> Envoyer
+              <Mail className="h-3.5 w-3.5" /> Enviar
             </Button>
           </div>
           {report.last_sent && (
@@ -444,7 +443,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
                       report={report} onSent={() => refreshPlan?.()} />
           {overlay && (
             <a href={overlay} target="_blank" rel="noreferrer" data-testid="cotes-overlay-link">
-              <img src={overlay} alt="Plan annoté — cotes mesurées" className="w-full border rounded-sm" data-testid="cotes-overlay-img" />
+              <img src={overlay} alt="Planta anotada — cotas medidas" className="w-full border rounded-sm" data-testid="cotes-overlay-img" />
             </a>
           )}
         </div>

@@ -7,17 +7,17 @@ import { Button } from "@/components/ui/button";
 import { api, eur, num } from "@/lib/api";
 
 const STATUS_STYLE = {
-  "soldée": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
-  "acompte versé": "bg-violet-500/15 text-violet-600 border-violet-500/40",
-  "acceptée": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
+  "saldada": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
+  "sinal pago": "bg-violet-500/15 text-violet-600 border-violet-500/40",
+  "aceite": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
   "ouverte": "bg-sky-500/15 text-sky-600 border-sky-500/40",
-  "relancée": "bg-amber-500/15 text-amber-600 border-amber-500/40",
-  "envoyée": "bg-primary/10 text-primary border-primary/40",
-  "générée": "bg-muted text-muted-foreground border-border",
+  "relançada": "bg-amber-500/15 text-amber-600 border-amber-500/40",
+  "enviada": "bg-primary/10 text-primary border-primary/40",
+  "gerada": "bg-muted text-muted-foreground border-border",
 };
 const STATUS_ICON = {
-  "soldée": BadgeCheck, "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
-  "relancée": BellRing, "envoyée": Send, "générée": FileStack,
+  "saldada": BadgeCheck, "sinal pago": CreditCard, "aceite": CheckCircle2, "ouverte": Eye,
+  "relançada": BellRing, "enviada": Send, "gerada": FileStack,
 };
 
 export default function PcDashboard() {
@@ -35,14 +35,14 @@ export default function PcDashboard() {
     setReportBusy(true);
     try {
       const { data } = await api.post("/pc/weekly-report/send-me");
-      toast.success(`Rapport envoyé à ${data.sent_to} (${data.studies} études)`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+      toast.success(`Relatório enviado a${data.sent_to} (${data.studies}estudos)`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setReportBusy(false); }
   };
 
   const list = studies || [];
   const totalTtc = list.reduce((s, x) => s + (x.ttc || 0), 0);
-  const accepted = list.filter((x) => ["acceptée", "acompte versé", "soldée"].includes(x.status)).length;
+  const accepted = list.filter((x) => ["aceite", "sinal pago", "saldada"].includes(x.status)).length;
   const deposits = list.reduce((s, x) => s + (x.deposit_amount || 0), 0);
 
   return (
@@ -50,26 +50,26 @@ export default function PcDashboard() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="overline flex items-center gap-2 text-primary">
-            <HardHat className="h-4 w-4" /> Études Permis de Construire
+            <HardHat className="h-4 w-4" /> Estudos Licença de Construção
           </p>
-          <h1 className="font-display text-3xl font-extrabold" title="Permis de construire">
-            Tableau de bord PC <span className="text-muted-foreground font-normal text-lg">— Permis de construire</span>
+          <h1 className="font-display text-3xl font-extrabold" title="Licença de construção">
+            Painel de controlo PC <span className="text-muted-foreground font-normal text-lg">— Licença de construção</span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Toutes les études gros œuvre de votre équipe et leur statut client, au même endroit.
+            Todos os estudos de estrutura da sua equipa e o seu estado cliente, no mesmo lugar.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={sendReportNow} disabled={reportBusy}
                 className="rounded-sm gap-2" data-testid="pc-dash-weekly-report-btn">
           <Mail className="h-3.5 w-3.5" />
-          {reportBusy ? "Envoi…" : "M'envoyer le rapport hebdo"}
+          {reportBusy ? "Envoi…" : "Enviar-me o relatório semanal"}
         </Button>
       </header>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[["Études", list.length], ["Montant cumulé TTC", eur(totalTtc)],
-          ["Acceptées", `${accepted} / ${list.length}`],
-          ["Acomptes encaissés", eur(deposits)]].map(([k, v]) => (
+        {[["Estudos", list.length], ["Montante acumulado c/ IVA", eur(totalTtc)],
+          ["Aceites", `${accepted} / ${list.length}`],
+          ["Adiantamentos recebidos", eur(deposits)]].map(([k, v]) => (
           <div key={k} className="surface p-4">
             <p className="text-[10px] text-muted-foreground">{k}</p>
             <p className="font-display text-xl font-extrabold num">{v}</p>
@@ -78,12 +78,12 @@ export default function PcDashboard() {
       </div>
 
       {studies === null ? (
-        <p className="text-muted-foreground animate-pulse">Chargement…</p>
+        <p className="text-muted-foreground animate-pulse">A carregar…</p>
       ) : list.length === 0 ? (
         <div className="surface p-8 text-center space-y-2" data-testid="pc-dashboard-empty">
           <FileSearch className="h-8 w-8 mx-auto text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Aucune étude PC pour l'instant — ouvrez un plan et cliquez « Étude PC ».
+            Nenhum estudo PC por enquanto — abra um plano e clique «Estudo PC».
           </p>
           <Button onClick={() => nav("/plan")} className="rounded-sm" data-testid="pc-dashboard-goto-plan">
             Ouvrir Mesurer
@@ -93,10 +93,10 @@ export default function PcDashboard() {
         <table className="w-full text-sm border border-border">
           <thead>
             <tr className="bg-muted text-left text-xs">
-              <th className="p-2">Chantier</th>
-              <th className="p-2">Générée le</th>
-              <th className="p-2 text-right">Béton</th>
-              <th className="p-2 text-right">Total TTC</th>
+              <th className="p-2">Obra</th>
+              <th className="p-2">Gerada a</th>
+              <th className="p-2 text-right">Betão</th>
+              <th className="p-2 text-right">Total c/ IVA</th>
               <th className="p-2">Statut</th>
               <th className="p-2 text-right">Envois / BC</th>
               <th className="p-2"></th>
@@ -113,7 +113,7 @@ export default function PcDashboard() {
                     {s.owner_name && (
                       <p className="text-[10px] text-sky-600 flex items-center gap-1 truncate"
                          data-testid={`pc-dash-row-${i}-owner`}>
-                        <Users className="h-3 w-3" /> Étude de {s.owner_name}
+                        <Users className="h-3 w-3" /> Estudo de {s.owner_name}
                       </p>
                     )}
                     {s.last_sent_to && (

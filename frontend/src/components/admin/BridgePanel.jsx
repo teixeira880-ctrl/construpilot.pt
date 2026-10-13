@@ -34,9 +34,9 @@ export default function BridgePanel() {
     try {
       const { data } = await api.post("/admin/bridge/settings", patch);
       setForm({ ...data });
-      toast.success("Réglages enregistrés");
+      toast.success("Definições guardadas");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Échec");
+      toast.error(e?.response?.data?.detail || "Falha");
     } finally { setSaving(false); }
   };
 
@@ -44,30 +44,29 @@ export default function BridgePanel() {
     setRunning(true);
     try {
       const { data } = await api.post("/admin/bridge/run-batch");
-      toast.success(`${data.emails_sent ?? 0} e-mail(s) envoyé(s) · ${data.leads ?? 0} lead(s)`);
+      toast.success(`${data.emails_sent ?? 0}e-mail(s) enviado(s) ·${data.leads ?? 0} lead(s)`);
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Échec du lot");
+      toast.error(e?.response?.data?.detail || "Falha do lote");
     } finally { setRunning(false); }
   };
 
-  if (!data) return <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>;
+  if (!data) return <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> A carregar…</div>;
 
   return (
     <div className="space-y-5" data-testid="admin-bridge-panel">
       <div>
         <h3 className="font-display font-bold text-lg">Agent Ponte B2B ↔ B2C</h3>
         <p className="text-sm text-muted-foreground">
-          Croise chaque demande de particulier avec la base d'artisans (Apify) du même département
-          et envoie automatiquement une invitation ciblée. Temps réel + lot quotidien.
+          Cruza cada pedido de particular com a base de profissionais (Apify) do mesmo distrito e envia automaticamente um convite direcionado. Tempo real + lote diário.
         </p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat icon={Building2} label="Artisans (base)" value={data.artisans_active} testid="bridge-stat-artisans" />
         <Stat icon={Mail} label="Invitations (7 j)" value={data.outreach_last_7d} testid="bridge-stat-7d" />
-        <Stat icon={Mail} label="Invitations (total)" value={data.outreach_total} testid="bridge-stat-total" />
-        <Stat icon={Users} label="Leads traités" value={data.leads_processed} testid="bridge-stat-leads" />
+        <Stat icon={Mail} label="Convites (total)" value={data.outreach_total} testid="bridge-stat-total" />
+        <Stat icon={Users} label="Leads tratados" value={data.leads_processed} testid="bridge-stat-leads" />
       </div>
 
       <div className="surface rounded-md p-5 space-y-4">
@@ -79,7 +78,7 @@ export default function BridgePanel() {
           </div>
           <Button variant="default" size="sm" className="rounded-sm gap-2" onClick={runBatch}
                   disabled={running} data-testid="bridge-run-batch">
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Lancer le lot maintenant
+            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Lançar o lote agora
           </Button>
         </div>
 
@@ -110,7 +109,7 @@ export default function BridgePanel() {
 
         <div className="grid sm:grid-cols-3 gap-4 pt-2 border-t border-border">
           <div className="space-y-1.5">
-            <Label className="text-xs">Nom du fondateur (signature)</Label>
+            <Label className="text-xs">Nome do fundador (assinatura)</Label>
             <Input value={form.founder_name}
                    onChange={(e) => setForm({ ...form, founder_name: e.target.value })}
                    onBlur={() => save({ founder_name: form.founder_name })}
@@ -118,7 +117,7 @@ export default function BridgePanel() {
                    data-testid="bridge-founder-name" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Téléphone (dans l'e-mail)</Label>
+            <Label className="text-xs">Telefone (no e-mail)</Label>
             <Input value={form.founder_phone}
                    onChange={(e) => setForm({ ...form, founder_phone: e.target.value })}
                    onBlur={() => save({ founder_phone: form.founder_phone })}
@@ -137,7 +136,7 @@ export default function BridgePanel() {
       </div>
 
       <div className="flex items-center justify-between">
-        <h4 className="font-semibold">Artisans par département</h4>
+        <h4 className="font-semibold">Profissionais por distrito</h4>
         <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={load}
                 data-testid="bridge-refresh"><RefreshCw className="h-4 w-4" /> Actualiser</Button>
       </div>
@@ -145,13 +144,13 @@ export default function BridgePanel() {
         <div className="flex flex-wrap gap-2" data-testid="bridge-by-dept">
           {data.artisans_by_department.map((d) => (
             <span key={d.department} className="text-sm px-3 py-1 rounded-full bg-muted" data-testid={`bridge-dept-${d.department}`}>
-              Dép. {d.department} · <b>{d.count}</b>
+              Dist. {d.department} · <b>{d.count}</b>
             </span>
           ))}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Base vide. Lancez le preset « Leads » dans l'onglet Apify (avec contacts) pour l'alimenter.
+          Base vazia. Lance a predefinição «Leads» no separador Apify (com contactos) para a alimentar.
         </p>
       )}
     </div>

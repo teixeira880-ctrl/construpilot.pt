@@ -26,15 +26,15 @@ import { useI18n } from "@/context/I18nContext";
 import { OfferNotice, useOffer, offerSentence } from "@/components/OfferNotice";
 
 const EXAMPLE =
-  "Je veux rénover une maison de 150 m², refaire les murs, plafonds, électricité, plomberie, deux salles de bain et remplacer les fenêtres.";
+  "Quero renovar uma casa de 150 m², refazer as paredes, tetos, eletricidade, canalizações, duas casas de banho e substituir as janelas.";
 
 // Data for Interactive3D hero demo — plan de maison réaliste (5 pièces + ouvertures)
 const HERO_ROOMS = [
   { name: "Cuisine", polygon_px: [[0,0],[320,0],[320,260],[0,260]], centroid_px: [160,130],
     openings: [{ kind: "fenetre", width_m: 1.2 }, { kind: "porte", width_m: 0.8 }] },
-  { name: "Séjour", polygon_px: [[0,260],[480,260],[480,600],[0,600]], centroid_px: [240,430],
+  { name: "Sala de estar", polygon_px: [[0,260],[480,260],[480,600],[0,600]], centroid_px: [240,430],
     openings: [{ kind: "baie", width_m: 2.4 }, { kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.9 }] },
-  { name: "Entrée", polygon_px: [[320,0],[480,0],[480,260],[320,260]], centroid_px: [400,130],
+  { name: "Entrada", polygon_px: [[320,0],[480,0],[480,260],[320,260]], centroid_px: [400,130],
     openings: [{ kind: "porte", width_m: 1.0 }, { kind: "porte", width_m: 0.8 }] },
   { name: "Chambre 1", polygon_px: [[480,0],[800,0],[800,300],[480,300]], centroid_px: [640,150],
     openings: [{ kind: "fenetre", width_m: 1.4 }, { kind: "porte", width_m: 0.8 }] },
@@ -55,39 +55,39 @@ const HERO_WALLS = [
 ];
 
 const STEPS = [
-  { icon: MessageSquare, title: "Je décris mon projet", text: "En une phrase, comme à un artisan." },
-  { icon: Sparkles, title: "ConstruPilot comprend", text: "Lots, surfaces, niveau de finition, risques." },
-  { icon: Calculator, title: "Le moteur calcule", text: "Quantités et prix déterministes, vérifiables." },
-  { icon: Search, title: "Je trouve les meilleurs prix", text: "Comparaison multi-fournisseurs et panier optimisé." },
-  { icon: Wrench, title: "Je sais quoi faire moi-même", text: "Guides pas à pas et niveaux de difficulté." },
-  { icon: Hammer, title: "J'appelle un pro si besoin", text: "Mise en relation avec un professionnel vérifié." },
+  { icon: MessageSquare, title: "Descrevo o meu projeto", text: "Numa frase, como a um profissional." },
+  { icon: Sparkles, title: "ConstruPilot comprend", text: "Especialidades, superfícies, nível de acabamento, riscos." },
+  { icon: Calculator, title: "O motor calcula", text: "Quantidades e preços determinísticos, verificáveis." },
+  { icon: Search, title: "Encontro os melhores preços", text: "Comparação multi-fornecedores e cesto otimizado." },
+  { icon: Wrench, title: "Sei o que fazer eu próprio", text: "Guias passo a passo e níveis de dificuldade." },
+  { icon: Hammer, title: "Chamo um profissional se necessário", text: "Contacto com um profissional verificado." },
 ];
 
 const FEATURES = [
-  { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculateurs pros", dKey: "landing.feat.calc_d", text: "Peinture, carrelage, placo, béton, isolation : quantités exactes avec marges.", to: "/calculateurs", span: "md:col-span-4" },
-  { icon: Search, tKey: "landing.feat.price_t", title: "Comparateur de prix", dKey: "landing.feat.price_d", text: "Prix relevés chez les enseignes du BTP, avec date du relevé, historique de vos recherches et alertes.", to: "/prix", span: "md:col-span-4" },
-  { icon: Cuboid, tKey: "landing.feat.threed_t", title: "Génération 3D", dKey: "landing.feat.threed_d", text: "Visualisez votre projet en trois dimensions à partir d'un simple plan 2D.", to: "/plan", span: "md:col-span-8 lg:col-span-4" },
-  { icon: Wrench, tKey: "landing.feat.diy_t", title: "Mode « je le fais moi-même »", dKey: "landing.feat.diy_d", text: "Matériaux calculés + guide professionnel étape par étape.", to: "/diy", span: "md:col-span-4 lg:col-span-4" },
-  { icon: Camera, tKey: "landing.feat.photo_t", title: "Estimation par photo", dKey: "landing.feat.photo_d", text: "L'IA identifie la pièce, son état et les travaux probables.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
-  { icon: FileText, tKey: "landing.feat.scan_t", title: "Scanner de devis", dKey: "landing.feat.scan_d", text: "Prix bas, correct, élevé : l'IA analyse et compare vos devis.", to: "/scanner-devis", span: "md:col-span-4 lg:col-span-4" },
+  { icon: Calculator, tKey: "landing.feat.calc_t", title: "Calculateurs pros", dKey: "landing.feat.calc_d", text: "Pintura, azulejos, pladur, betão, isolamento: quantidades exatas com margens.", to: "/calculateurs", span: "md:col-span-4" },
+  { icon: Search, tKey: "landing.feat.price_t", title: "Comparador de preços", dKey: "landing.feat.price_d", text: "Preços recolhidos nas lojas de materiais de construção, com data da recolha, histórico das suas pesquisas e alertas.", to: "/prix", span: "md:col-span-4" },
+  { icon: Cuboid, tKey: "landing.feat.threed_t", title: "Geração 3D", dKey: "landing.feat.threed_d", text: "Visualize o seu projeto em três dimensões a partir de uma simples planta 2D.", to: "/plan", span: "md:col-span-8 lg:col-span-4" },
+  { icon: Wrench, tKey: "landing.feat.diy_t", title: "Modo «faço eu mesmo»", dKey: "landing.feat.diy_d", text: "Materiais calculados + guia profissional passo a passo.", to: "/diy", span: "md:col-span-4 lg:col-span-4" },
+  { icon: Camera, tKey: "landing.feat.photo_t", title: "Estimation par photo", dKey: "landing.feat.photo_d", text: "A IA identifica a divisão, o seu estado e as obras prováveis.", to: "/photo", span: "md:col-span-4 lg:col-span-4" },
+  { icon: FileText, tKey: "landing.feat.scan_t", title: "Scanner de orçamentos", dKey: "landing.feat.scan_d", text: "Preço baixo, correto, alto: a IA analisa e compara os seus orçamentos.", to: "/scanner-devis", span: "md:col-span-4 lg:col-span-4" },
 ];
 
 const AUDIENCES = [
-  { icon: HardHat, key: "landing.for_pro", title: "Artisans BTP", textKey: "landing.for_pro_text", text: "Générez vos devis client avec attestation TVA 10 %, signature électronique et suivi d'ouverture." },
-  { icon: HomeIcon, key: "landing.for_particulier", title: "Particuliers", textKey: "landing.for_particulier_text", text: "Estimez votre rénovation avant de contacter un pro. Comparez les devis reçus." },
-  { icon: Building2, key: "landing.aud.arch_t", title: "Architectes", textKey: "landing.aud.arch_d", text: "Métré 2D auto depuis vos plans PDF/DXF, chiffrage instantané par lot, rendu 3D pour vos clients." },
-  { icon: Store, key: "landing.aud.merch_t", title: "Marchands", textKey: "landing.aud.merch_d", text: "Vos prix, comparés en temps réel. Générez la liste de courses depuis un plan." },
-  { icon: GraduationCap, key: "landing.aud.school_t", title: "Écoles BTP", textKey: "landing.aud.school_d", text: "Un terrain de jeu pédagogique : IA, calculateurs et guides métier accessibles gratuitement." },
-  { icon: Factory, key: "landing.aud.dev_t", title: "Promoteurs", textKey: "landing.aud.dev_d", text: "Chiffrage rapide pour vos offres. Devis multi-plans consolidé, tour vidéo 3D à joindre." },
+  { icon: HardHat, key: "landing.for_pro", title: "Artisans BTP", textKey: "landing.for_pro_text", text: "Gere os seus orçamentos para clientes com declaração para IVA a 6 %, assinatura eletrónica e acompanhamento de abertura." },
+  { icon: HomeIcon, key: "landing.for_particulier", title: "Particuliers", textKey: "landing.for_particulier_text", text: "Estime a sua renovação antes de contactar um profissional. Compare os orçamentos recebidos." },
+  { icon: Building2, key: "landing.aud.arch_t", title: "Architectes", textKey: "landing.aud.arch_d", text: "Medição 2D automática a partir das suas plantas PDF/DXF, orçamento instantâneo por lote, render 3D para os seus clientes." },
+  { icon: Store, key: "landing.aud.merch_t", title: "Marchands", textKey: "landing.aud.merch_d", text: "Os seus preços, comparados em tempo real. Gere a lista de compras a partir de uma planta." },
+  { icon: GraduationCap, key: "landing.aud.school_t", title: "Escolas de construção", textKey: "landing.aud.school_d", text: "Um campo de treino pedagógico: IA, calculadoras e guias de ofício gratuitos." },
+  { icon: Factory, key: "landing.aud.dev_t", title: "Promoteurs", textKey: "landing.aud.dev_d", text: "Orçamento rápido para as suas propostas. Orçamento multiplanta consolidado, tour de vídeo 3D para anexar." },
 ];
 
 const FAQ = [
-  { qKey: "landing.faq.q1", q: "Combien coûte une rénovation complète au m² en 2026 ?", aKey: "landing.faq.a1", a: "En rénovation lourde en France, comptez 900 à 1 800 €/m² selon la région et la gamme. Ces fourchettes sont indicatives : ConstruPilot calcule une estimation détaillée à partir de vos surfaces et de votre niveau de finition." },
-  { qKey: "landing.faq.q2", q: "ConstruPilot est-il gratuit ?", aKey: "landing.faq.a2", a: "Il existe une offre gratuite (2 projets, 3 estimations par mois). Côté particulier, Premium est à 19 €/mois. Côté artisan, l'offre Pro démarre à 149 €/mois et Pro Business à 249 €/mois, avec 7 jours d'essai." },
-  { qKey: "landing.faq.q3", q: "Comment fonctionne le métré 2D automatique ?", aKey: "landing.faq.a3", a: "Uploadez votre plan (PDF, PNG, DXF). Notre moteur détecte automatiquement les murs, les portes et calcule les surfaces." },
-  { qKey: "landing.faq.q4", q: "Puis-je générer un devis avec attestation TVA à 10 % ?", aKey: "landing.faq.a4", a: "Oui. ConstruPilot génère l'attestation requise pour la rénovation de logement de plus de 2 ans. Le client la signe en ligne." },
-  { qKey: "landing.faq.q5", q: "Vos prix matériaux sont-ils à jour ?", aKey: "landing.faq.a5", a: "Les prix sont relevés en direct sur les sites publics des enseignes au moment de votre recherche, avec la date du relevé affichée. Si aucun prix public n'est trouvé, une fourchette indicative est affichée et signalée comme telle." },
-  { qKey: "landing.faq.q6", q: "L'IA remplace-t-elle un artisan ?", aKey: "landing.faq.a6", a: "Non. Elle fournit une estimation instantanée. Pour un chantier complexe, un professionnel reste indispensable." },
+  { qKey: "landing.faq.q1", q: "Quanto custa uma renovação completa por m² em 2026?", aKey: "landing.faq.a1", a: "Numa remodelação profunda em Portugal, conte com 700 a 1 500 €/m² consoante a região e a gama. Estes intervalos são indicativos: o ConstruPilot calcula uma estimativa detalhada a partir das suas áreas e do seu nível de acabamento." },
+  { qKey: "landing.faq.q2", q: "O ConstruPilot é gratuito?", aKey: "landing.faq.a2", a: "Existe uma oferta gratuita (2 projetos, 3 estimativas por mês). Para particulares, o Premium custa 19 €/mês. Para profissionais, a oferta Pro começa em 149 €/mês e a Pro Business em 249 €/mês, com 7 dias de experiência." },
+  { qKey: "landing.faq.q3", q: "Como funciona a medição 2D automática?", aKey: "landing.faq.a3", a: "Carregue a sua planta (PDF, PNG, DXF). O nosso motor deteta automaticamente as paredes, as portas e calcula as áreas." },
+  { qKey: "landing.faq.q4", q: "Posso gerar um orçamento com certificado de IVA a 10%?", aKey: "landing.faq.a4", a: "Sim. O ConstruPilot gera o certificado exigido para a renovação de habitações com mais de 2 anos. O cliente assina-o online." },
+  { qKey: "landing.faq.q5", q: "Os vossos preços de materiais estão atualizados?", aKey: "landing.faq.a5", a: "Os preços são recolhidos em direto nos sites públicos das lojas no momento da sua pesquisa, com a data da recolha apresentada. Se não for encontrado nenhum preço público, é apresentado um intervalo indicativo, assinalado como tal." },
+  { qKey: "landing.faq.q6", q: "A IA substitui um profissional?", aKey: "landing.faq.a6", a: "Não. Fornece uma estimativa instantânea. Para uma obra complexa, um profissional continua indispensável." },
 ];
 
 const containerVariants = {
@@ -103,21 +103,21 @@ const itemVariants = {
 // Contenu dynamique du hero selon l'audience (particulier / pro)
 const HERO_CONTENT = {
   particulier: {
-    badgeKey: "landing.hero.badge_part", badge: "Pour les particuliers",
-    h1aKey: "landing.hero.h1a_part", h1a: "Estimez le coût de",
-    h1bKey: "landing.hero.h1b_part", h1b: "vos travaux, poste par poste.",
+    badgeKey: "landing.hero.badge_part", badge: "Para particulares",
+    h1aKey: "landing.hero.h1a_part", h1a: "Estime o custo da",
+    h1bKey: "landing.hero.h1b_part", h1b: "sua obra, lote por lote.",
     subKey: "landing.hero.sub_part",
-    sub: "Décrivez votre projet de rénovation. ConstruPilot calcule une estimation détaillée, poste par poste — avant même de contacter un artisan.",
-    ctaKey: "landing.hero.cta_part", cta: "Estimer mes travaux",
+    sub: "Descreva o seu projeto de remodelação. O ConstruPilot calcula uma estimativa detalhada, artigo a artigo — antes mesmo de contactar um profissional.",
+    ctaKey: "landing.hero.cta_part", cta: "Estimar a minha obra",
     dest: "/smart-project",
   },
   pro: {
-    badgeKey: "landing.hero.badge_pro", badge: "Pour les pros du BTP",
-    h1aKey: "landing.hero.h1a_pro", h1a: "Chiffrez et éditez",
-    h1bKey: "landing.hero.h1b_pro", h1b: "vos devis en un éclair.",
+    badgeKey: "landing.hero.badge_pro", badge: "Para profissionais da construção",
+    h1aKey: "landing.hero.h1a_pro", h1a: "Orce e edite",
+    h1bKey: "landing.hero.h1b_pro", h1b: "os seus orçamentos num instante.",
     subKey: "landing.hero.sub_pro",
-    sub: "Décrivez le chantier. ConstruPilot génère l'estimation, les quantités, les prix fournisseurs exacts et le devis client PDF avec plan 3D interactif.",
-    ctaKey: "landing.hero.cta_pro", cta: "Générer mon devis",
+    sub: "Descreva a obra. O ConstruPilot gera a estimativa, as quantidades, os preços exatos de fornecedores e o orçamento PDF com planta 3D interativa.",
+    ctaKey: "landing.hero.cta_pro", cta: "Gerar o meu orçamento",
     dest: "/estimation",
   },
 };
@@ -195,8 +195,8 @@ export default function Landing() {
     <>
       <SEO
         title={null}
-        description="ConstruPilot : l'assistant IA du BTP. Chiffrez un devis, comparez les prix matériaux, calculez vos quantités et éditez vos devis clients PDF avec plan 3D interactif."
-        keywords="devis travaux, estimation rénovation, calculateur matériaux, comparateur prix BTP, logiciel devis artisan, plan 2D 3D, prix rénovation maison"
+        description="ConstruPilot: o assistente IA da construção. Orçamente, compare preços de materiais, calcule as suas quantidades e emita orçamentos em PDF com planta 3D interativa."
+        keywords="orçamento obras, estimativa remodelação, calculadora materiais, comparador preços construção, software orçamentos profissional, planta 2D 3D, preço remodelação casa"
         canonical="/"
         jsonLd={{
           "@context": "https://schema.org",
@@ -218,7 +218,7 @@ export default function Landing() {
           <Sparkles className="h-4 w-4" />
           {t("landing.promo")}
           <Link to="/tarifs" className="underline underline-offset-2 hover:opacity-80 font-normal">
-            {t("landing.promo_terms", "Voir les tarifs applicables ensuite")}
+            {t("landing.promo_terms", "Ver os planos aplicáveis depois")}
           </Link>
           <Link to="/inscription" className="underline underline-offset-2 hover:opacity-80">{t("landing.promo_cta")}</Link>
         </div>
@@ -249,7 +249,7 @@ export default function Landing() {
                   onClick={() => setAudience("particulier")}
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${audience === "particulier" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <User className="h-4 w-4" /> {t("landing.hero.seg_part", "Je suis un particulier")}
+                  <User className="h-4 w-4" /> {t("landing.hero.seg_part", "Sou um particular")}
                 </button>
                 <button
                   role="tab"
@@ -258,7 +258,7 @@ export default function Landing() {
                   onClick={() => setAudience("pro")}
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${audience === "pro" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <HardHat className="h-4 w-4" /> {t("landing.hero.seg_pro", "Je suis un pro")}
+                  <HardHat className="h-4 w-4" /> {t("landing.hero.seg_pro", "Sou um profissional")}
                 </button>
               </div>
 
@@ -290,7 +290,7 @@ export default function Landing() {
                     data-testid="hero-ai-input"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder={t("landing.hero.placeholder", `Décrivez votre projet — ex : « ${EXAMPLE} »`)}
+                    placeholder={t("landing.hero.placeholder", `Descreva o seu projeto — ex.: «${EXAMPLE} »`)}
                     rows={3}
                     className="resize-none border-0 bg-transparent text-base focus-visible:ring-0 rounded-lg"
                   />
@@ -301,7 +301,7 @@ export default function Landing() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t("landing.hero.email_ph", "Votre e-mail (pour recevoir votre estimation)")}
+                      placeholder={t("landing.hero.email_ph", "O seu email (para receber o orçamento)")}
                       className="ps-9 border-0 bg-background/60 rounded-lg h-11 focus-visible:ring-1 focus-visible:ring-primary/40"
                     />
                   </div>
@@ -322,7 +322,7 @@ export default function Landing() {
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                  {t("landing.hero.reassurance", "Gratuit et sans engagement — résultat en 30 secondes.")}
+                  {t("landing.hero.reassurance", "Gratuito e sem compromisso — resultado em 30 segundos.")}
                 </p>
                 {audience === "pro" && (
                   <button
@@ -330,7 +330,7 @@ export default function Landing() {
                     data-testid="hero-pro-offer-link"
                     className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4"
                   >
-                    Découvrir l'offre Pro (essai 7 jours) <ArrowRight className="h-4 w-4" />
+                    Descobrir a oferta Pro (experiência de 7 dias) <ArrowRight className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -344,7 +344,7 @@ export default function Landing() {
                   ))}
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-foreground">{t("landing.hero.trust_title", "Conçu pour les pros du BTP")}</span>
+                  <span className="font-bold text-foreground">{t("landing.hero.trust_title", "Concebido para os profissionais da construção")}</span>
                   <span className="text-xs">{t("landing.hero.trust_subtitle", "Artisans, PME & architectes")}</span>
                 </div>
               </div>
@@ -361,7 +361,7 @@ export default function Landing() {
                <div className="relative h-full w-full rounded-2xl border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden bg-card/50 backdrop-blur-sm p-4">
                   <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-1 pointer-events-none">
                      <span className="text-[10px] uppercase font-bold tracking-widest text-primary">{t("landing.hero.live_view", "Vue en direct")}</span>
-                     <span className="text-sm font-semibold">{t("landing.hero.plan3d", "Génération Plan 3D")}</span>
+                     <span className="text-sm font-semibold">{t("landing.hero.plan3d", "Geração de planta 3D")}</span>
                   </div>
                   {/* Reuse the existing Interactive3D component with mock data */}
                   <div className="h-full w-full overflow-hidden rounded-xl bg-background/50">
@@ -395,17 +395,17 @@ export default function Landing() {
               <p className="overline">{t("landing.video.overline", "En 1 minute")}</p>
               <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
                 {t("landing.video.title_a", "Voyez comment ConstruPilot")}<br className="hidden md:block" />
-                <span className="text-primary italic">{t("landing.video.title_b", "lit vos plans")}</span>
+                <span className="text-primary italic">{t("landing.video.title_b", "lê os seus projetos")}</span>
               </h2>
               <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
-                {t("landing.video.subtitle", "Importez un plan (PDF ou DWG), calibrez l'échelle en 2 clics, puis laissez l'IA détecter les pièces, murs, poteaux, poutres et calculer le métré et l'estimation — automatiquement.")}
+                {t("landing.video.subtitle", "Importe uma planta (PDF ou DWG), calibre a escala em 2 cliques, depois deixe a IA detetar as divisões, paredes, pilares, vigas e calcular as medições e a estimativa — automaticamente.")}
               </p>
               <ul className="mt-8 space-y-3">
                 {[
-                  t("landing.video.step1", "Import du plan PDF / DWG — tout est préservé (cotes, cartouche)"),
-                  t("landing.video.step2", "Calibrage de l'échelle en 2 clics"),
-                  t("landing.video.step3", "Analyse automatique : pièces, murs, poteaux, poutres, escaliers"),
-                  t("landing.video.step4", "Métré chiffré (béton, coffrage, aciers) et devis en 1 clic"),
+                  t("landing.video.step1", "Importação da planta PDF / DWG — tudo é preservado (cotas, legenda)"),
+                  t("landing.video.step2", "Calibragem da escala em 2 cliques"),
+                  t("landing.video.step3", "Análise automática: divisões, paredes, pilares, vigas, escadas"),
+                  t("landing.video.step4", "Medições quantificadas (betão, cofragem, aços) e orçamento em 1 clique"),
                 ].map((s, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-foreground" data-testid={`video-step-${i}`}>
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">{i + 1}</span>
@@ -449,11 +449,11 @@ export default function Landing() {
                   <button
                     onClick={toggleVideoSound}
                     data-testid="video-sound-toggle"
-                    aria-label={videoMuted ? t("landing.master_video.unmute", "Activer le son") : "Couper le son"}
+                    aria-label={videoMuted ? t("landing.master_video.unmute", "Ativar o som") : "Cortar o som"}
                     className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
                   >
                     {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    {videoMuted ? t("landing.master_video.unmute", "Activer le son") : t("landing.master_video.sound", "Son")}
+                    {videoMuted ? t("landing.master_video.unmute", "Ativar o som") : t("landing.master_video.sound", "Son")}
                   </button>
                 </div>
               </div>
@@ -477,8 +477,8 @@ export default function Landing() {
         <div className="max-w-2xl">
           <p className="overline">{t("landing.feat.overline", "L'arsenal complet")}</p>
           <h2 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            {t("landing.feat.title_a", "Des outils de professionnel,")} <br className="hidden md:block" />
-            <span className="text-muted-foreground">{t("landing.feat.title_b", "repensés pour l'efficacité.")}</span>
+            {t("landing.feat.title_a", "Ferramentas de profissional,")} <br className="hidden md:block" />
+            <span className="text-muted-foreground">{t("landing.feat.title_b", "repensadas para a eficiência.")}</span>
           </h2>
         </div>
 
@@ -522,11 +522,11 @@ export default function Landing() {
             <div className="max-w-xl">
               <p className="overline">{t("landing.cat.overline", "Catalogue travaux")}</p>
               <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-                {t("landing.cat.title", "Démarrez sur de bonnes bases")}
+                {t("landing.cat.title", "Comece com o pé direito")}
               </h2>
             </div>
             <Button variant="outline" onClick={() => navigate('/smart-project')} className="rounded-full">
-              {t("landing.cat.all_btn", "Voir tous les modèles")} <ArrowRight className="ml-2 h-4 w-4" />
+              {t("landing.cat.all_btn", "Ver todos os modelos")} <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
 
@@ -579,14 +579,14 @@ export default function Landing() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border mb-6">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-foreground">{t("landing.cmp.badge", "Prise de décision")}</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-foreground">{t("landing.cmp.badge", "Tomada de decisão")}</span>
               </div>
               <h2 className="font-display text-3xl lg:text-4xl font-bold tracking-tight">
-                {t("landing.cmp.title_a", "Faire vous-même ou")} <br className="hidden sm:block" />{t("landing.cmp.title_b", "engager un pro ?")}
+                {t("landing.cmp.title_a", "Fazer você mesmo ou")} <br className="hidden sm:block" />{t("landing.cmp.title_b", "contratar um profissional?")}
               </h2>
               <p className="mt-6 text-base text-muted-foreground leading-relaxed">
-                {t("landing.cmp.desc_1", "ConstruPilot compare en temps réel le coût matériel pur et le coût avec main-d'œuvre. Évaluez le temps nécessaire, la complexité et les risques. ")}
-                <strong className="text-foreground">{t("landing.cmp.desc_strong", "Le système vous alerte automatiquement")}</strong>{t("landing.cmp.desc_2", " quand un professionnel qualifié est indispensable (structure, électricité, amiante).")}
+                {t("landing.cmp.desc_1", "O ConstruPilot compara em tempo real o custo de material puro e o custo com mão de obra. Avalie o tempo necessário, a complexidade e os riscos. ")}
+                <strong className="text-foreground">{t("landing.cmp.desc_strong", "O sistema avisa-o automaticamente")}</strong>{t("landing.cmp.desc_2", " quando um profissional qualificado é indispensável (estrutura, eletricidade, amianto).")}
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link to="/diy">
@@ -596,7 +596,7 @@ export default function Landing() {
                 </Link>
                 <Link to="/estimation">
                   <Button variant="secondary" className="rounded-full px-8">
-                    <PenTool className="mr-2 h-4 w-4" /> {t("landing.cmp.pro_btn", "Devis Artisan")}
+                    <PenTool className="mr-2 h-4 w-4" /> {t("landing.cmp.pro_btn", "Orçamento profissional")}
                   </Button>
                 </Link>
               </div>
@@ -605,24 +605,24 @@ export default function Landing() {
             {/* Visual Data Comparison */}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="p-6 border border-border rounded-2xl bg-background/50 backdrop-blur-sm flex flex-col justify-center">
-                <p className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-4">{t("landing.cmp.artisan_cost", "Coût Artisan")}</p>
+                <p className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-4">{t("landing.cmp.artisan_cost", "Custo profissional")}</p>
                 <p className="num text-3xl font-extrabold text-foreground">{eur(10500)}</p>
-                <p className="text-sm text-muted-foreground mt-2">{t("landing.cmp.artisan_sub", "Main d'œuvre incluse, garantie décennale.")}</p>
+                <p className="text-sm text-muted-foreground mt-2">{t("landing.cmp.artisan_sub", "Mão de obra incluída, garantia decenal.")}</p>
               </div>
               
               <div className="p-6 border border-primary/30 rounded-2xl bg-primary/5 backdrop-blur-sm flex flex-col justify-center shadow-inner relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
-                <p className="text-xs uppercase font-bold tracking-wider text-primary mb-4">{t("landing.cmp.diy_cost", "Coût DIY (Matériaux purs)")}</p>
+                <p className="text-xs uppercase font-bold tracking-wider text-primary mb-4">{t("landing.cmp.diy_cost", "Custo DIY (só materiais)")}</p>
                 <p className="num text-3xl font-extrabold text-primary">{eur(5800)}</p>
                 <div className="mt-4 inline-flex items-center text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-md w-fit">
-                  <TrendingDown className="h-3 w-3 mr-1" /> {t("landing.cmp.savings", "Économie")} {eur(4700)}
+                  <TrendingDown className="h-3 w-3 mr-1" /> {t("landing.cmp.savings", "Poupança")} {eur(4700)}
                 </div>
               </div>
               
               <div className="sm:col-span-2 p-5 border border-border rounded-2xl bg-background/50 flex items-start gap-4">
                 <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">{t("landing.cmp.ai_label", "Analyse IA (SDB 8 m²) :")}</strong> {t("landing.cmp.ai_text", "Peinture et finitions réalisables par un débutant. Plomberie et tableau électrique à confier à un professionnel RGE.")}
+                  <strong className="text-foreground">{t("landing.cmp.ai_label", "Analyse IA (SDB 8 m²) :")}</strong> {t("landing.cmp.ai_text", "Pintura e acabamentos possíveis por um iniciante. Canalização e quadro elétrico a confiar a um profissional certificado.")}
                 </p>
               </div>
             </div>
@@ -633,9 +633,9 @@ export default function Landing() {
       {/* ── AUDIENCES / POUR QUI ───────────────────────────── */}
       <section className="mx-auto max-w-[1500px] px-6 lg:px-10 pb-24 lg:pb-32">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <p className="overline">{t("landing.aud.overline", "Pour qui ?")}</p>
+          <p className="overline">{t("landing.aud.overline", "Para quem?")}</p>
           <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-            {t("landing.aud.title", "Un écosystème connecté pour tous les acteurs du BTP")}
+            {t("landing.aud.title", "Um ecossistema conectado para todos os agentes da construção")}
           </h2>
         </div>
         
@@ -668,9 +668,9 @@ export default function Landing() {
       <section className="border-t border-border bg-background" id="faq">
         <div className="mx-auto max-w-[1000px] px-6 lg:px-10 py-24 lg:py-32">
           <div className="text-center mb-16">
-            <p className="overline">{t("landing.faq.overline", "Questions fréquentes")}</p>
+            <p className="overline">{t("landing.faq.overline", "Perguntas frequentes")}</p>
             <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-              {t("landing.faq.title", "Tout ce que vous devez savoir")}
+              {t("landing.faq.title", "Tudo o que precisa de saber")}
             </h2>
           </div>
           
@@ -723,7 +723,7 @@ export default function Landing() {
             className="flex-1 rounded-xl h-12 gap-2 text-base font-semibold"
             data-testid="mobile-sticky-cta-btn"
           >
-            <Sparkles className="h-4 w-4" /> {t("landing.sticky.cta", "Estimer mon projet")}
+            <Sparkles className="h-4 w-4" /> {t("landing.sticky.cta", "Estimar o meu projeto")}
           </Button>
         </div>
       </div>

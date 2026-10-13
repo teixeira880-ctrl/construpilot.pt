@@ -19,7 +19,7 @@ export default function VoiceNoteButton({ onText, size = "sm", className = "", l
   };
 
   const start = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) { toast.error("Micro non disponible sur cet appareil"); return; }
+    if (!navigator.mediaDevices?.getUserMedia) { toast.error("Microfone não disponível neste dispositivo"); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
@@ -36,9 +36,9 @@ export default function VoiceNoteButton({ onText, size = "sm", className = "", l
           fd.append("file", blob, "note-vocale.webm");
           const { data } = await api.post("/documents/video-transcribe", fd, { timeout: 120000 });
           if (data.transcript?.trim()) { onText?.(data.transcript.trim()); toast.success("Note vocale transcrite"); }
-          else toast.error("Aucune parole détectée");
+          else toast.error("Nenhuma fala detetada");
         } catch (e) {
-          toast.error(e?.response?.data?.detail || "Transcription impossible");
+          toast.error(e?.response?.data?.detail || "Transcrição impossível");
         } finally { setBusy(false); }
       };
       recRef.current = rec;
@@ -50,7 +50,7 @@ export default function VoiceNoteButton({ onText, size = "sm", className = "", l
       }), 1000);
       setRecording(true);
     } catch {
-      toast.error("Accès au micro refusé");
+      toast.error("Acesso ao microfone recusado");
     }
   };
 
@@ -58,7 +58,7 @@ export default function VoiceNoteButton({ onText, size = "sm", className = "", l
     <Button type="button" size={size} variant={recording ? "destructive" : "outline"}
             onClick={recording ? stop : start} disabled={busy}
             className={`rounded-sm gap-2 ${className}`} data-testid="voice-note-btn"
-            title="Dictez votre chantier : l'IA transcrit votre note vocale">
+            title="Dite a sua obra: a IA transcreve a sua nota de voz">
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
       {busy ? "Transcription…" : recording ? `Stop · ${secs}s` : label}
     </Button>

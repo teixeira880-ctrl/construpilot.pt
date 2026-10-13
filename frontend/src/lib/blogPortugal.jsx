@@ -96,8 +96,7 @@ export const ARTICLE_BODIES_PT = {
       <p>
         O custo de uma renovação em Portugal em 2026 depende sobretudo do distrito, do estado do
         imóvel e do nível de acabamento. Em reabilitação, as faixas de mercado situam-se
-        tipicamente entre <strong>500 e 1 100 €/m²</strong>, podendo ultrapassar esse valor em
-        acabamentos de gama alta ou em zonas de forte procura.
+        tipicamente entre <strong>500 e 1 100 €/m²</strong>, podendo ultrapassar esse valor em acabamentos de gama alta ou em zonas de forte procura.
       </p>
       <H2>Faixas indicativas por distrito (reabilitação, €/m², sem IVA)</H2>
       <ul className="list-disc pl-5 space-y-1">
@@ -132,8 +131,7 @@ export const ARTICLE_BODIES_PT = {
       </p>
       <H2>Quando se aplica a taxa de 6%?</H2>
       <p>
-        A taxa reduzida aplica-se, em termos gerais, às empreitadas de beneficiação, remodelação,
-        renovação, restauro, reparação ou conservação de imóveis (ou partes) afetos à
+        A taxa reduzida aplica-se, em termos gerais, às empreitadas de beneficiação, remodelação, renovação, restauro, reparação ou conservação de imóveis (ou partes) afetos à
         <strong> habitação</strong>, com exceção dos materiais que representem parte significativa
         do valor quando faturados isoladamente. Confirme sempre o enquadramento com o seu
         contabilista.
@@ -173,8 +171,7 @@ export const ARTICLE_BODIES_PT = {
         correto e, opcionalmente, um render 3D antes/depois. O cliente pode assinar online.
       </p>
       <p className="mt-4">
-        <strong>Resultado:</strong> menos tempo administrativo, orçamentos mais profissionais e
-        clientes com mais confiança.
+        <strong>Resultado:</strong> menos tempo administrativo, orçamentos mais profissionais e clientes com mais confiança.
       </p>
     </>
   ),
@@ -182,8 +179,7 @@ export const ARTICLE_BODIES_PT = {
     <>
       <p>
         Antes de começar uma obra em Portugal, é essencial saber que autorização é necessária. O
-        Regime Jurídico da Urbanização e Edificação (<strong>RJUE</strong>) prevê três situações
-        principais: obras isentas de controlo prévio, comunicação prévia e licença camarária.
+        Regime Jurídico da Urbanização e Edificação (<strong>RJUE</strong>) prevê três situações principais: obras isentas de controlo prévio, comunicação prévia e licença camarária.
       </p>
       <H2>Obras isentas de licença</H2>
       <p>
@@ -201,8 +197,7 @@ export const ARTICLE_BODIES_PT = {
       <H2>Licença de obras (controlo prévio)</H2>
       <p>
         Necessária para construção nova, ampliações relevantes ou alterações de uso. Exige projeto de
-        arquitetura e especialidades, aprovado pela câmara, e termina com a <strong>autorização de
-        utilização</strong>.
+        arquitetura e especialidades, aprovado pela câmara, e termina com a <strong>autorização de utilização</strong>.
       </p>
       <H2>E o orçamento?</H2>
       <p>
@@ -217,8 +212,7 @@ export const ARTICLE_BODIES_PT = {
   "orcamento-casa-de-banho-portugal": (
     <>
       <p>
-        A casa de banho é, por m², um dos espaços mais caros de remodelar. Em Portugal, em 2026, uma
-        remodelação completa situa-se tipicamente entre <strong>3 000 € e 9 000 €</strong>, consoante
+        A casa de banho é, por m², um dos espaços mais caros de remodelar. Em Portugal, em 2026, uma remodelação completa situa-se tipicamente entre <strong>3 000 € e 9 000 €</strong>, consoante
         a área, a qualidade dos materiais e o distrito.
       </p>
       <H2>Principais lotes</H2>
@@ -232,8 +226,7 @@ export const ARTICLE_BODIES_PT = {
       </ul>
       <H2>Onde poupar (sem perder qualidade)</H2>
       <p>
-        Mantenha a localização das redes (mudar tudo de sítio encarece), escolha azulejo de formato
-        standard e concentre o orçamento nas peças que usa todos os dias (torneiras, base de duche).
+        Mantenha a localização das redes (mudar tudo de sítio encarece), escolha azulejo de formato standard e concentre o orçamento nas peças que usa todos os dias (torneiras, base de duche).
       </p>
       <H2>IVA a 6%</H2>
       <p>
@@ -246,8 +239,7 @@ export const ARTICLE_BODIES_PT = {
   "eficiencia-energetica-certificado-portugal": (
     <>
       <p>
-        Melhorar a eficiência energética reduz as faturas e valoriza o imóvel. O <strong>certificado
-        energético</strong> (obrigatório para vender ou arrendar) classifica a casa de A+ a F e
+        Melhorar a eficiência energética reduz as faturas e valoriza o imóvel. O <strong>certificado energético</strong> (obrigatório para vender ou arrendar) classifica a casa de A+ a F e
         indica medidas de melhoria.
       </p>
       <H2>Medidas com maior impacto</H2>

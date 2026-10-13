@@ -39,22 +39,22 @@ export const PitchDeckPreview = ({ onDownload }) => {
         </div>
         {error ? (
           <div role="alert" data-testid="pitch-deck-load-error" className="py-10 text-center space-y-4">
-            <p>La présentation n’a pas pu être chargée.</p>
-            <Button variant="outline" data-testid="pitch-deck-retry" onClick={() => setAttempt((v) => v + 1)}><RotateCcw className="h-4 w-4 mr-2" />Réessayer</Button>
+            <p>Não foi possível carregar a apresentação.</p>
+            <Button variant="outline" data-testid="pitch-deck-retry" onClick={() => setAttempt((v) => v + 1)}><RotateCcw className="h-4 w-4 mr-2" />Tentar novamente</Button>
           </div>
         ) : !info ? (
-          <div role="status" data-testid="pitch-deck-loading" className="aspect-video grid place-items-center"><Loader2 className="animate-spin" aria-label="Chargement" /></div>
+          <div role="status" data-testid="pitch-deck-loading" className="aspect-video grid place-items-center"><Loader2 className="animate-spin" aria-label="A carregar" /></div>
         ) : (
           <>
             <div className="relative aspect-video bg-secondary/20 border border-border">
-              {imageState === "loading" && <div role="status" data-testid="pitch-deck-slide-loading" className="absolute inset-0 grid place-items-center pointer-events-none"><Loader2 className="animate-spin" aria-label="Chargement" /></div>}
+              {imageState === "loading" && <div role="status" data-testid="pitch-deck-slide-loading" className="absolute inset-0 grid place-items-center pointer-events-none"><Loader2 className="animate-spin" aria-label="A carregar" /></div>}
               {imageState === "error" ? (
                 <div role="alert" data-testid="pitch-deck-image-error" className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-sm text-center">
                   <p>Diapositive indisponible.</p>
-                  <Button variant="outline" size="sm" data-testid="pitch-deck-image-retry" onClick={() => { setImageState("loading"); setAttempt((v) => v + 1); }}>Réessayer</Button>
+                  <Button variant="outline" size="sm" data-testid="pitch-deck-image-retry" onClick={() => { setImageState("loading"); setAttempt((v) => v + 1); }}>Tentar novamente</Button>
                 </div>
               ) : (
-                <a href={imageUrl} target="_blank" rel="noopener noreferrer" title="Agrandir la diapositive" data-testid="pitch-deck-enlarge" className="block h-full w-full">
+                <a href={imageUrl} target="_blank" rel="noopener noreferrer" title="Ampliar o diapositivo" data-testid="pitch-deck-enlarge" className="block h-full w-full">
                   <img key={imageUrl} src={imageUrl} alt={`ConstruPilot — diapositive ${page} sur ${info.page_count}`} width={info.width} height={info.height}
                     data-testid="pitch-deck-slide-image" onLoad={() => setImageState("loaded")} onError={() => setImageState("error")}
                     className="h-full w-full object-contain" />
@@ -62,8 +62,8 @@ export const PitchDeckPreview = ({ onDownload }) => {
               )}
             </div>
             <div className="flex flex-wrap justify-center items-center gap-3 mt-4">
-              <Button size="icon" variant="outline" title="Diapositive précédente" aria-label="Diapositive précédente" data-testid="pitch-deck-prev" disabled={page === 1} onClick={() => changePage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-              <select aria-label="Choisir une diapositive" data-testid="pitch-deck-slide-select" value={page} onChange={(e) => changePage(Number(e.target.value))} className="h-10 max-w-full rounded-md border border-input bg-background px-3 text-sm">
+              <Button size="icon" variant="outline" title="Diapositivo anterior" aria-label="Diapositivo anterior" data-testid="pitch-deck-prev" disabled={page === 1} onClick={() => changePage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+              <select aria-label="Escolher um diapositivo" data-testid="pitch-deck-slide-select" value={page} onChange={(e) => changePage(Number(e.target.value))} className="h-10 max-w-full rounded-md border border-input bg-background px-3 text-sm">
                 {Array.from({ length: info.page_count }, (_, i) => <option key={i + 1} value={i + 1}>{`Diapositive ${i + 1} / ${info.page_count}`}</option>)}
               </select>
               <Button size="icon" variant="outline" title="Diapositive suivante" aria-label="Diapositive suivante" data-testid="pitch-deck-next" disabled={page === info.page_count} onClick={() => changePage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>

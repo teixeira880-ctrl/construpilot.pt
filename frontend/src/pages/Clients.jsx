@@ -79,16 +79,16 @@ export default function Clients() {
 
   const remove = async (c) => {
     if (!(await confirm({
-      title: "Supprimer ce client ?",
-      description: `${name(c)} sera supprimé. Impossible s'il a des devis/factures liés.`,
-      confirmLabel: "Supprimer",
+      title: "Eliminar este cliente?",
+      description: `${name(c)}será eliminado. Impossível se tiver orçamentos/faturas associados.`,
+      confirmLabel: "Eliminar",
     }))) return;
     try { await api.delete(`/clients/${c.client_id}`); toast.success(t("crm.deleted")); load(q); }
     catch (e) { toast.error(e?.response?.data?.detail || t("crm.delete_fail")); }
   };
 
   const name = (c) =>
-    [c.first_name, c.last_name].filter(Boolean).join(" ") || c.company || c.email || "Client";
+    [c.first_name, c.last_name].filter(Boolean).join(" ") || c.company || c.email || "Cliente";
 
   if (!user) return <div className="surface p-10 text-center">{t("crm.login")}</div>;
 
@@ -177,7 +177,7 @@ export default function Clients() {
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" variant="ghost" className="rounded-sm text-destructive"
-                        aria-label={`${t("common.delete", "Supprimer")} : ${name(c)}`} onClick={() => remove(c)} data-testid={`client-delete-${c.client_id}`}>
+                        aria-label={`${t("common.delete", "Eliminar")} : ${name(c)}`} onClick={() => remove(c)} data-testid={`client-delete-${c.client_id}`}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

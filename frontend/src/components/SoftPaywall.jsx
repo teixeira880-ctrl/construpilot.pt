@@ -12,28 +12,28 @@ import { useBilling } from "@/context/BillingContext";
  */
 const MESSAGES = {
   savings: {
-    title: "Débloquez l'analyse d'économies complète",
-    body: "Voyez chaque euro potentiellement économisé sur votre projet : matériaux, alternatives, DIY, fournisseurs.",
+    title: "Desbloqueie a análise de poupanças completa",
+    body: "Veja cada euro potencialmente poupado no seu projeto: materiais, alternativas, DIY, fornecedores.",
   },
   price_search: {
-    title: "Comparez tous les fournisseurs et optimisez votre panier",
-    body: "10 fournisseurs, historique des prix, alertes automatiques, panier optimisé.",
+    title: "Compare todos os fornecedores e otimize o seu cesto",
+    body: "10 fornecedores, histórico de preços, alertas automáticos, carrinho otimizado.",
   },
   diy: {
-    title: "Découvrez toutes les tâches à réaliser vous-même",
-    body: "Guides pas-à-pas, matériel requis, gains estimés, conseils sécurité — pour chaque lot.",
+    title: "Descubra todas as tarefas a realizar você mesmo",
+    body: "Guias passo-a-passo, material necessário, ganhos estimados, conselhos de segurança — para cada especialidade.",
   },
   quote: {
-    title: "Analyse illimitée de vos devis",
-    body: "L'IA compare vos devis à la base de prix ConstruPilot et détecte les surcoûts.",
+    title: "Análise ilimitada dos seus orçamentos",
+    body: "A IA compara os seus orçamentos à base de preços ConstruPilot e deteta os sobrecustos.",
   },
   pdf: {
     title: "Export PDF professionnel",
-    body: "Devis signable, logo entreprise, ventilation par lot, planning inclus.",
+    body: "Orçamento assinável, logótipo empresa, ventilação por lote, planeamento incluído.",
   },
   default: {
-    title: "Fonctionnalité premium",
-    body: "Débloquez toutes les fonctionnalités avec Premium ou un Project Pass unique.",
+    title: "Funcionalidade premium",
+    body: "Desbloqueie todas as funcionalidades com Premium ou um Project Pass único.",
   },
 };
 
@@ -50,7 +50,7 @@ export const SoftPaywall = ({ context = "default", compact = false }) => {
         <p className="text-sm">{msg.title}</p>
         <Link to={`/tarifs?from=${encodeURIComponent(loc.pathname)}`} className="ml-auto">
           <Button size="sm" className="rounded-sm gap-1 hover:bg-orange-600 hover:text-white">
-            Débloquer <ArrowRight className="h-3 w-3" />
+            Desbloquear <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
       </div>

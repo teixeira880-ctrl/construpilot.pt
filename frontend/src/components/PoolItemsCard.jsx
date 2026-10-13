@@ -7,9 +7,9 @@ import { api } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 
 const L = {
-  fr: { title: "Ouvrages piscine proposés (bibliothèque ConstruPilot)", geo: (g) => `Bassin ≈ ${g.length} × ${g.width} m · profondeur ${g.depth} m · ${g.perim} ml de margelles · ${g.walls} m² de parois · fouille ${g.excav_m3} m³`,
-        create: (n) => `Créer le devis (${n} lignes)`, created: "Devis piscine créé", err: "Création du devis impossible", quoteTitle: (g) => `Piscine ${g.length} × ${g.width} m`,
-        h: ["Ouvrage", "Qté", "Unité", "PU HT", "Total HT"], total: "Total bordereau HT", note: "Quantités calculées pour un bassin rectangulaire 2:1 à partir de la surface saisie — ajustez-les dans l'éditeur de devis." },
+  fr: { title: "Trabalhos de piscina propostos (biblioteca ConstruPilot)", geo: (g) => `Bassin ≈ ${g.length} × ${g.width} m · profondeur ${g.depth} m · ${g.perim} m³${g.walls} m³${g.excav_m3} m³`,
+        create: (n) => ` linhas)${n} lignes)`, created: "Orçamento de piscina criado", err: "Não foi possível criar o orçamento", quoteTitle: (g) => `Piscine ${g.length} × ${g.width} m`,
+        h: ["Ouvrage", "Qtd.", "Un.", "PU HT", "Total s/ IVA"], total: "Total do mapa s/ IVA", note: "Quantidades calculadas para um tanque retangular 2:1 a partir da área indicada — ajuste-as no editor de orçamentos." },
   pt: { title: "Trabalhos de piscina propostos (biblioteca ConstruPilot)", geo: (g) => `Tanque ≈ ${g.length} × ${g.width} m · profundidade ${g.depth} m · ${g.perim} ml de bordadura · ${g.walls} m² de paredes · escavação ${g.excav_m3} m³`,
         create: (n) => `Criar o orçamento (${n} linhas)`, created: "Orçamento de piscina criado", err: "Não foi possível criar o orçamento", quoteTitle: (g) => `Piscina ${g.length} × ${g.width} m`,
         h: ["Trabalho", "Qtd", "Unid.", "PU s/IVA", "Total s/IVA"], total: "Total do mapa s/ IVA", note: "Quantidades calculadas para um tanque retangular 2:1 a partir da área indicada — ajuste-as no editor de orçamentos." },

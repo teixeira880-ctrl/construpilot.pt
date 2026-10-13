@@ -15,18 +15,18 @@ const ICONS = { FileText, ReceiptText, Ruler, ScanLine, GitCompare, ShieldCheck 
 const STATUS = {
   queued: { label: "En file", cls: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
   running: { label: "En cours", cls: "bg-blue-500/15 text-blue-600 border-blue-500/30", icon: Loader2, spin: true },
-  done: { label: "Terminé", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: CheckCircle2 },
-  error: { label: "Échec", cls: "bg-destructive/15 text-destructive border-destructive/30", icon: AlertTriangle },
-  proposed: { label: "Proposé", cls: "bg-muted text-muted-foreground border-border", icon: Clock },
+  done: { label: "Terminado", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: CheckCircle2 },
+  error: { label: "Falha", cls: "bg-destructive/15 text-destructive border-destructive/30", icon: AlertTriangle },
+  proposed: { label: "Proposto", cls: "bg-muted text-muted-foreground border-border", icon: Clock },
 };
 
 const resultSummary = (r) => {
   const x = r.result || {};
   if (x.kind === "summary") return `${x.total_measures} mesure(s) · ${x.total_openings} ouverture(s)`;
-  if (x.kind === "detect") return `${x.total_walls} mur(s) · ${x.total_openings} ouverture(s) — étalonnage requis`;
-  if (x.kind === "pdf") return `${x.levels} niveau(x) · dossier PDF prêt`;
-  if (x.kind === "quote") return "Devis consolidé créé";
-  if (x.kind === "compare") return "Comparaison de plans prête";
+  if (x.kind === "detect") return `${x.total_walls}parede(s) ·${x.total_openings}vão(s) — calibração necessária`;
+  if (x.kind === "pdf") return `${x.levels}nível(is) · processo PDF pronto`;
+  if (x.kind === "quote") return "Orçamento consolidado criado";
+  if (x.kind === "compare") return "Comparação de plantas pronta";
   return "";
 };
 
@@ -67,13 +67,13 @@ function AgentsHubContent() {
   const setLevel = (pid, level) => setBox((b) => ({ ...b, run: { ...b.run, plan_status: b.run.plan_status.map((s) => s.plan_id === pid ? { ...s, level } : s) } }));
 
   const propose = async () => {
-    if (box.meta.needs_plans && !box.selected.length) return toast.error("Sélectionnez au moins un plan");
-    if (box.agent === "compare" && box.selected.length !== 2) return toast.error("Sélectionnez exactement 2 plans (avant / après)");
+    if (box.meta.needs_plans && !box.selected.length) return toast.error("Selecione pelo menos uma planta");
+    if (box.agent === "compare" && box.selected.length !== 2) return toast.error("Selecione exatamente 2 plantas (antes / depois)");
     setBox((b) => ({ ...b, loading: true }));
     try {
       const { data } = await api.post("/agents/plan", { agent: box.agent, plan_ids: box.selected, prompt: box.prompt, chantier_id: chantierId || undefined });
       setBox((b) => ({ ...b, step: "review", loading: false, run: data.run, params: { ...b.params, margin_pct: data.defaults?.margin_pct || 0 } }));
-    } catch (e) { setBox((b) => ({ ...b, loading: false })); toast.error(e?.response?.data?.detail || "Proposition impossible"); }
+    } catch (e) { setBox((b) => ({ ...b, loading: false })); toast.error(e?.response?.data?.detail || "Proposta impossível"); }
   };
 
   const launch = async () => {
@@ -86,10 +86,10 @@ function AgentsHubContent() {
         runId = rev.run.run_id;
       }
       await api.post(`/agents/${runId}/launch`, box.params);
-      toast.success("Agent lancé en arrière-plan", { description: "Vous pouvez changer de page — vous serez notifié à la fin." });
+      toast.success("Agente lançado em segundo plano", { description: "Pode mudar de página — será notificado no fim." });
       setBox(null);
       loadRuns();
-    } catch (e) { setBox((b) => ({ ...b, loading: false })); toast.error(e?.response?.data?.detail || "Lancement impossible"); }
+    } catch (e) { setBox((b) => ({ ...b, loading: false })); toast.error(e?.response?.data?.detail || "Lançamento impossível"); }
   };
 
   const download = async (r) => {
@@ -100,21 +100,21 @@ function AgentsHubContent() {
       const a = document.createElement("a"); a.href = url;
       a.download = r.result.kind === "quote" ? "devis.pdf" : "dossier.pdf";
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    } catch { toast.error("Téléchargement impossible"); }
+    } catch { toast.error("Transferência impossível"); }
   };
 
   const feedback = async (r, rating) => {
     try { await api.post(`/agents/${r.run_id}/feedback`, { rating });
-      toast.success(rating === "ok" ? "Votre avis est enregistré" : "Résultat signalé comme à corriger");
-    } catch { toast.error("Envoi impossible"); }
+      toast.success(rating === "ok" ? "A sua opinião foi registada" : "Resultado assinalado como a corrigir");
+    } catch { toast.error("Envio impossível"); }
   };
 
   const cancel = async run => {
     try {
       await api.post(`/agents/${run.run_id}/cancel`);
-      toast.info("Arrêt demandé. Les corrections déjà effectuées restent consultables.");
+      toast.info("Paragem pedida. As correções já efetuadas continuam consultáveis.");
       loadRuns();
-    } catch (error) { toast.error(error?.response?.data?.detail || "Arrêt impossible"); }
+    } catch (error) { toast.error(error?.response?.data?.detail || "Paragem impossível"); }
   };
 
   const withPlans = (box?.meta?.needs_plans) ?? true;
@@ -123,17 +123,15 @@ function AgentsHubContent() {
   return (
     <div className="mx-auto max-w-5xl px-5 py-8" data-testid="agents-hub">
       <header className="mb-6">
-        {chantierId && <Button variant="ghost" className="mb-3" onClick={() => nav(`/chantiers/${encodeURIComponent(chantierId)}`)}><ArrowLeft size={16} /> Retour au dossier · contrôle limité à ce chantier</Button>}
+        {chantierId && <Button variant="ghost" className="mb-3" onClick={() => nav(`/chantiers/${encodeURIComponent(chantierId)}`)}><ArrowLeft size={16} /> Voltar ao processo · controlo limitado a esta obra</Button>}
         <p className="text-xs uppercase tracking-widest text-primary font-semibold flex items-center gap-2">
           <Bot className="h-4 w-4" /> Agents IA
         </p>
-        <h1 className="font-display text-3xl lg:text-4xl font-extrabold mt-1">Votre pilote de projet</h1>
+        <h1 className="font-display text-3xl lg:text-4xl font-extrabold mt-1">O seu piloto de projeto</h1>
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-          Vérifiez vos données, repérez les incohérences et corrigez les valeurs recalculables.
-          Votre pilote travaille <strong>en arrière-plan</strong>, même quand vous changez de page.
-          Chaque résultat précise ce qui a été contrôlé et ce qui reste à confirmer.
+          Verifique os seus dados, identifique as incoerências e corrija os valores recalculáveis. O seu piloto trabalha <strong>em segundo plano</strong>, mesmo quando muda de página. Cada resultado precisa o que foi controlado e o que falta confirmar.
         </p>
-        <Button variant="outline" className="mt-4" onClick={() => nav(`/assistant?intent=supervise${chantierId ? `&chantier=${encodeURIComponent(chantierId)}` : ""}`)}>Décrire ma demande à l’assistant</Button>
+        <Button variant="outline" className="mt-4" onClick={() => nav(`/assistant?intent=supervise${chantierId ? `&chantier=${encodeURIComponent(chantierId)}` : ""}`)}>Descrever o meu pedido ao assistente</Button>
       </header>
 
       {!box && (
@@ -156,14 +154,14 @@ function AgentsHubContent() {
           </div>
 
           <section className="mt-10" data-testid="agent-runs-section">
-            {loadError && <p role="alert" className="text-sm text-destructive mb-3">Impossible de charger les tâches. Actualisez pour réessayer.</p>}
+            {loadError && <p role="alert" className="text-sm text-destructive mb-3">Impossível carregar as tarefas. Atualize para tentar novamente.</p>}
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display text-xl font-bold">Exécutions récentes</h2>
+              <h2 className="font-display text-xl font-bold">Execuções recentes</h2>
               <Button size="sm" variant="ghost" onClick={loadRuns} data-testid="agent-runs-refresh">Actualiser</Button>
             </div>
             {runs.length === 0 ? (
               <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">
-                Aucune exécution pour l'instant. Choisissez un agent ci-dessus.
+                Nenhuma execução por agora. Escolha um agente acima.
               </p>
             ) : (
               <div className="space-y-2" data-testid="agent-runs-list">
@@ -193,16 +191,16 @@ function AgentsHubContent() {
                           )}
                           {r.result?.needs_calibration && r.result?.edit_plan_id && (
                             <Button size="sm" variant="outline" onClick={() => nav("/plan")} data-testid={`agent-cal-${r.run_id}`}>
-                              <Ruler className="h-3.5 w-3.5 mr-1" /> Étalonner
+                              <Ruler className="h-3.5 w-3.5 mr-1" /> Calibrar
                             </Button>
                           )}
-                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Bon résultat" onClick={() => feedback(r, "ok")} data-testid={`agent-fb-ok-${r.run_id}`}><ThumbsUp className="h-3.5 w-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" title="À corriger" onClick={() => feedback(r, "error")} data-testid={`agent-fb-no-${r.run_id}`}><ThumbsDown className="h-3.5 w-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Bom resultado" onClick={() => feedback(r, "ok")} data-testid={`agent-fb-ok-${r.run_id}`}><ThumbsUp className="h-3.5 w-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="A corrigir" onClick={() => feedback(r, "error")} data-testid={`agent-fb-no-${r.run_id}`}><ThumbsDown className="h-3.5 w-3.5" /></Button>
                         </div>
                       )}
-                      {r.status === "error" && <span className="text-xs text-destructive max-w-full truncate">{r.error || "Échec"}</span>}
-                      {(r.status === "queued" || r.status === "running") && <span className="text-xs text-muted-foreground">Travail en arrière-plan…</span>}
-                      {(r.status === "queued" || r.status === "running") && <Button size="sm" variant="ghost" disabled={r.cancel_requested} onClick={() => cancel(r)} data-testid={`agent-cancel-${r.run_id}`}>{r.cancel_requested ? "Arrêt demandé" : "Arrêter"}</Button>}
+                      {r.status === "error" && <span className="text-xs text-destructive max-w-full truncate">{r.error || "Falha"}</span>}
+                      {(r.status === "queued" || r.status === "running") && <span className="text-xs text-muted-foreground">A trabalhar em segundo plano…</span>}
+                      {(r.status === "queued" || r.status === "running") && <Button size="sm" variant="ghost" disabled={r.cancel_requested} onClick={() => cancel(r)} data-testid={`agent-cancel-${r.run_id}`}>{r.cancel_requested ? "Paragem pedida" : "Parar"}</Button>}
                       <SupervisorResult run={r} />
                     </div>
                   );
@@ -216,7 +214,7 @@ function AgentsHubContent() {
       {box && (
         <div className="rounded-xl border border-border bg-card p-5" data-testid="agent-flow">
           <button type="button" onClick={() => setBox(null)} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-4" data-testid="agent-flow-back">
-            <ArrowLeft className="h-4 w-4" /> Retour aux agents
+            <ArrowLeft className="h-4 w-4" /> Voltar aos agentes
           </button>
           <h2 className="font-display text-2xl font-bold">{box.meta?.name}</h2>
           <p className="text-sm text-muted-foreground mb-5">{box.meta?.desc}</p>
@@ -226,11 +224,11 @@ function AgentsHubContent() {
               {withPlans && (
                 <div>
                   <p className="text-sm font-semibold mb-2">
-                    {box.agent === "compare" ? "Sélectionnez 2 plans (avant / après)" : "Sélectionnez les plans"}
+                    {box.agent === "compare" ? "Selecione 2 plantas (antes / depois)" : "Selecione as plantas"}
                   </p>
                   {plans.length === 0 ? (
                     <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-5">
-                      Aucun plan importé. Ajoutez des plans dans <button className="text-primary underline" onClick={() => nav("/plan")}>Plans &amp; métré</button>.
+                      Nenhuma planta importada. Adicione plantas em <button className="text-primary underline" onClick={() => nav("/plan")}>Plantas &amp; medições</button>.
                     </p>
                   ) : (
                     <div className="max-h-72 overflow-y-auto rounded-lg border border-border divide-y divide-border" data-testid="agent-plan-list">
@@ -252,16 +250,16 @@ function AgentsHubContent() {
                 </div>
               )}
               {box.agent === "supervise" ? <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3" data-testid="supervisor-mode">
-                <p className="text-sm">Le contrôle porte sur les plans et devis accessibles de votre compte, jusqu’à 200 de chaque type. Pour cibler un dossier précis, décrivez votre demande à l’assistant.</p>
-                <label className="flex items-start gap-3 text-sm"><input type="radio" name="supervisor-mode" checked={box.params.mode === "repair"} onChange={() => setParam("mode", "repair")} className="mt-1" /><span><strong>Contrôler et corriger automatiquement</strong><br />Recalcul des valeurs dérivées, historique et option d’annulation.</span></label>
-                <label className="flex items-start gap-3 text-sm"><input type="radio" name="supervisor-mode" checked={box.params.mode === "audit"} onChange={() => setParam("mode", "audit")} className="mt-1" /><span><strong>Contrôler seulement</strong><br />Voir les écarts avant de modifier les données.</span></label>
+                <p className="text-sm">O controlo incide sobre as plantas e orçamentos acessíveis da sua conta, até 200 de cada tipo. Para visar um processo preciso, descreva o seu pedido ao assistente.</p>
+                <label className="flex items-start gap-3 text-sm"><input type="radio" name="supervisor-mode" checked={box.params.mode === "repair"} onChange={() => setParam("mode", "repair")} className="mt-1" /><span><strong>Controlar e corrigir automaticamente</strong><br />Recálculo dos valores derivados, histórico e opção de anulação.</span></label>
+                <label className="flex items-start gap-3 text-sm"><input type="radio" name="supervisor-mode" checked={box.params.mode === "audit"} onChange={() => setParam("mode", "audit")} className="mt-1" /><span><strong>Apenas controlar</strong><br />Ver as diferenças antes de alterar os dados.</span></label>
               </div> : <div>
                 <p className="text-sm font-semibold mb-1.5">Instruction (facultatif)</p>
                 <Textarea rows={2} value={box.prompt} onChange={(e) => setBox((b) => ({ ...b, prompt: e.target.value }))}
-                  placeholder="Ex : regrouper par étage, nommer le projet « Villa Durand »…" data-testid="agent-prompt" />
+                  placeholder="Ex.: agrupar por piso, chamar ao projeto «Moradia Duarte»…" data-testid="agent-prompt" />
               </div>}
               <Button onClick={propose} disabled={box.loading} data-testid="agent-propose-btn" className="gap-2">
-                {box.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Proposer le plan d'action
+                {box.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Propor o plano de ação
               </Button>
             </div>
           )}
@@ -269,7 +267,7 @@ function AgentsHubContent() {
           {box.step === "review" && box.run && (
             <div className="space-y-5">
               <div>
-                <p className="text-sm font-semibold mb-2">Plan d'action proposé</p>
+                <p className="text-sm font-semibold mb-2">Plano de ação proposto</p>
                 <ol className="space-y-2" data-testid="agent-steps">
                   {(box.run.steps || []).map((s) => (
                     <li key={s.key} className="rounded-lg border border-border p-3">
@@ -309,19 +307,19 @@ function AgentsHubContent() {
                     <Input type="number" value={box.params.margin_pct} onChange={(e) => setParam("margin_pct", parseFloat(e.target.value) || 0)} data-testid="agent-margin" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold mb-1">Nom du projet</p>
+                    <p className="text-xs font-semibold mb-1">Nome do projeto</p>
                     <Input value={box.params.project_name} onChange={(e) => setParam("project_name", e.target.value)} placeholder="Ex : Villa Durand" data-testid="agent-project-name" />
                   </div>
-                  <div><p className="text-xs font-semibold mb-1">Client</p><Input value={box.params.client_name} onChange={(e) => setParam("client_name", e.target.value)} placeholder="Nom du client" data-testid="agent-client-name" /></div>
-                  <div><p className="text-xs font-semibold mb-1">E-mail client</p><Input value={box.params.client_email} onChange={(e) => setParam("client_email", e.target.value)} placeholder="client@email.fr" data-testid="agent-client-email" /></div>
+                  <div><p className="text-xs font-semibold mb-1">Cliente</p><Input value={box.params.client_name} onChange={(e) => setParam("client_name", e.target.value)} placeholder="Nome do cliente" data-testid="agent-client-name" /></div>
+                  <div><p className="text-xs font-semibold mb-1">E-mail cliente</p><Input value={box.params.client_email} onChange={(e) => setParam("client_email", e.target.value)} placeholder="client@email.fr" data-testid="agent-client-email" /></div>
                 </div>
               )}
 
               <div className="flex items-center gap-2">
                 <Button onClick={launch} disabled={box.loading} data-testid="agent-launch-btn" className="gap-2">
-                  {box.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />} Lancer en arrière-plan
+                  {box.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />} Lançar em segundo plano
                 </Button>
-                <Button variant="ghost" onClick={() => setBox((b) => ({ ...b, step: "pick" }))} data-testid="agent-back-pick">Modifier la sélection</Button>
+                <Button variant="ghost" onClick={() => setBox((b) => ({ ...b, step: "pick" }))} data-testid="agent-back-pick">Alterar a seleção</Button>
               </div>
             </div>
           )}

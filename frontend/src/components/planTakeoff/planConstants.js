@@ -9,13 +9,13 @@ export const TOOLS = {
 };
 
 export const TOOL_LABELS = {
-  select: "Sélection",
+  select: "Seleção",
   calibrate: "Calibrer",
   distance: "Distance",
-  polyline: "Périmètre",
-  surface: "Surface",
-  room: "Pièce",
-  autoroom: "Auto-pièce",
+  polyline: "Perímetro",
+  surface: "Superfície",
+  room: "Divisão",
+  autoroom: "Auto-divisão",
   opening: "Ouverture",
   counter: "Compteur",
   note: "Note",
@@ -24,12 +24,12 @@ export const TOOL_LABELS = {
 };
 
 export const CALIB_METHOD_LABELS = {
-  auto_pdf_scale: "échelle PDF",
+  auto_pdf_scale: "escala do PDF",
   two_points: "2 points",
   known_dimension: "cote connue",
   auto_cotes: "auto (cotes IA)",
-  reconcile_surfaces: "recalé (surfaces écrites)",
-  ai_scale_text: "échelle écrite",
+  reconcile_surfaces: "reajustada (áreas escritas)",
+  ai_scale_text: "escala escrita",
 };
 
 export const COUNTER_COLORS = [

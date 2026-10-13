@@ -22,59 +22,59 @@ const RANK = { particulier_gratuit: 0, particulier_payant: 1, pro: 2, business: 
 const LEVEL_LABELS = { particulier_payant: "Particulier Payant", pro: "Pro", business: "Business" };
 
 const NAV_MAIN = [
-  { to: "/dashboard", label: "Tableau de bord", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
-  { to: "/devis-editeur", label: "Nouveau devis", key: "nav.newquote", icon: FileText, auth: true, min: "pro" },
+  { to: "/dashboard", label: "Painel", key: "nav.dashboard", icon: LayoutDashboard, auth: true },
+  { to: "/devis-editeur", label: "Novo orçamento", key: "nav.newquote", icon: FileText, auth: true, min: "pro" },
   { to: "/assistant", label: "Assistant BTP", key: "nav.assistant", icon: AssistantIcon, auth: true, min: "particulier_payant" },
   { to: "/estimation", label: "Estimateur", key: "nav.estimator", icon: Hammer },
   { to: "/calculateurs", label: "Calculateurs", key: "nav.calculators", icon: Calculator },
-  { to: "/prix", label: "Prix matériaux", key: "nav.prices", icon: Search },
+  { to: "/prix", label: "Preços de materiais", key: "nav.prices", icon: Search },
   { to: "/blog", label: "Blog", key: "nav.blog", icon: FileSearch },
 ];
 
 const NAV_PRO = [
   { to: "/entreprise", label: "Espace Entreprise", key: "nav.company", icon: Building2, perm: "entreprise", min: "business" },
-  { to: "/ma-page", label: "Ma page & mes documents", key: "nav.myPage", icon: Globe, auth: true, min: "pro" },
-  { to: "/devis", label: "Suivi devis", key: "nav.tracking", icon: LineChart, perm: "devis", min: "pro" },
+  { to: "/ma-page", label: "A minha página & documentos", key: "nav.myPage", icon: Globe, auth: true, min: "pro" },
+  { to: "/devis", label: "Acompanhamento de orçamentos", key: "nav.tracking", icon: LineChart, perm: "devis", min: "pro" },
   { to: "/factures", label: "Factures", key: "nav.invoices", icon: FileText, perm: "factures", min: "pro" },
-  { to: "/situations", label: "Situations de travaux", key: "nav.situations", icon: Layers, perm: "situations", min: "business" },
-  { to: "/dpgf", label: "DPGF architecte → devis", key: "nav.dpgf", icon: FileSpreadsheet, perm: "devis", badge: "Nouveau", min: "pro" },
-  { to: "/suivi-chantier", label: "Suivi de chantier", key: "nav.site", icon: HardHat, perm: "chantier", min: "pro" },
-  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, badge: "Nouveau", min: "pro" },
-  { to: "/controle-cotes", label: "Analyser cotes des plans", key: "nav.cotes", icon: Ruler, auth: true, badge: "Nouveau", min: "pro" },
-  { to: "/radar", label: "Radar Chantiers", key: "nav.radar", icon: Radar, auth: true, badge: "Nouveau", min: "pro" },
+  { to: "/situations", label: "Autos de medição", key: "nav.situations", icon: Layers, perm: "situations", min: "business" },
+  { to: "/dpgf", label: "Mapa de quantidades do arquiteto → orçamento", key: "nav.dpgf", icon: FileSpreadsheet, perm: "devis", badge: "Novo", min: "pro" },
+  { to: "/suivi-chantier", label: "Acompanhamento de obra", key: "nav.site", icon: HardHat, perm: "chantier", min: "pro" },
+  { to: "/appro", label: "Analyse technique & Appro IA", key: "nav.appro", icon: Truck, auth: true, badge: "Novo", min: "pro" },
+  { to: "/controle-cotes", label: "Analisar cotas das plantas", key: "nav.cotes", icon: Ruler, auth: true, badge: "Novo", min: "pro" },
+  { to: "/radar", label: "Radar Chantiers", key: "nav.radar", icon: Radar, auth: true, badge: "Novo", min: "pro" },
   { to: "/rh", label: "RH — Pointage", key: "hr.nav", icon: Users, perm: "rh", min: "business" },
   { to: "/clients", label: "Clients", key: "nav.clients", icon: Contact, min: "pro" },
-  { to: "/mon-catalogue", label: "Catalogue prix", key: "nav.catalog", icon: Tag, perm: "catalogue", min: "pro" },
-  { to: "/bibliotheque", label: "Bibliothèque", key: "nav.library", icon: Library, min: "pro" },
-  { to: "/equipe", label: "Équipe", key: "nav.team", icon: Users, min: "business" },
-  { to: "/etudes-pc", label: "Études PC", key: "nav.studies", icon: FileSearch, hint: "Permis de construire", min: "pro" },
-  { to: "/plans-pro", label: "Analyse de plan Pro", key: "nav.plansPro", icon: Layers, auth: true, min: "pro" },
+  { to: "/mon-catalogue", label: "Catálogo de preços", key: "nav.catalog", icon: Tag, perm: "catalogue", min: "pro" },
+  { to: "/bibliotheque", label: "Biblioteca", key: "nav.library", icon: Library, min: "pro" },
+  { to: "/equipe", label: "Equipa", key: "nav.team", icon: Users, min: "business" },
+  { to: "/etudes-pc", label: "Estudos de licença", key: "nav.studies", icon: FileSearch, hint: "Licença de construção", min: "pro" },
+  { to: "/plans-pro", label: "Análise de planta Pro", key: "nav.plansPro", icon: Layers, auth: true, min: "pro" },
 ];
 
 const NAV_DISCOVER = [
-  { to: "/fonctionnalites", label: "Fonctionnalités", key: "nav.features", icon: Sparkles },
+  { to: "/fonctionnalites", label: "Funcionalidades", key: "nav.features", icon: Sparkles },
   { to: "/coach", label: "Coach IA", key: "nav.coach", icon: MessageSquare },
-  { to: "/rendu-ia", label: "Rendu IA (avant/après)", key: "nav.render", icon: Wand2, auth: true, min: "particulier_payant" },
-  { to: "/mesure-photo", label: "Mesurer sur photo", key: "nav.photomeasure", icon: Ruler, auth: true, min: "particulier_payant" },
-  { to: "/plan", label: "Éditeur de plans", key: "nav.plan2d", icon: Ruler, auth: true, min: "pro" },
-  { to: "/btp-solver", label: "Résoudre un problème", key: "nav.solver", icon: Wrench, auth: true },
-  { to: "/mes-demandes", label: "Mes demandes", key: "nav.myleads", icon: Inbox, auth: true },
+  { to: "/rendu-ia", label: "Renderização IA (antes/depois)", key: "nav.render", icon: Wand2, auth: true, min: "particulier_payant" },
+  { to: "/mesure-photo", label: "Medir em fotografia", key: "nav.photomeasure", icon: Ruler, auth: true, min: "particulier_payant" },
+  { to: "/plan", label: "Editor de plantas", key: "nav.plan2d", icon: Ruler, auth: true, min: "pro" },
+  { to: "/btp-solver", label: "Resolver um problema", key: "nav.solver", icon: Wrench, auth: true },
+  { to: "/mes-demandes", label: "Os meus pedidos", key: "nav.myleads", icon: Inbox, auth: true },
   { to: "/photo", label: "Analyse photo", key: "nav.photo", icon: Camera },
-  { to: "/scanner-devis", label: "Scanner de devis", key: "nav.scanner", icon: FileSearch },
-  { to: "/diy", label: "Je le fais moi-même", key: "nav.diy", icon: Wrench },
+  { to: "/scanner-devis", label: "Scanner de orçamentos", key: "nav.scanner", icon: FileSearch },
+  { to: "/diy", label: "Faço eu mesmo", key: "nav.diy", icon: Wrench },
   { to: "/comparatif", label: "Comparatif", key: "nav.compare", icon: Tag },
-  { to: "/marketplace", label: "Trouver un pro", key: "nav.marketplace", icon: Wrench },
-  { to: "/docs", label: "API & Développeurs", key: "nav.docs", icon: FileSearch, min: "business" },
+  { to: "/marketplace", label: "Encontrar um profissional", key: "nav.marketplace", icon: Wrench },
+  { to: "/docs", label: "API e Programadores", key: "nav.docs", icon: FileSearch, min: "business" },
 ];
 
 const ACCOUNT_LINKS = [
   { to: "/tarifs", label: "Tarifs & abonnement", key: "nav.pricing", icon: Sparkles },
-  { to: "/aide", label: "Aide & assistance", key: "nav.help", icon: LifeBuoy },
+  { to: "/aide", label: "Ajuda e assistência", key: "nav.help", icon: LifeBuoy },
   { to: "/investisseurs", label: "Investisseurs", key: "nav.investors", icon: Handshake },
   { to: "/mes-avis", label: "Avis clients", key: "nav.reviews", icon: MessageSquare },
   { to: "/inviter", label: "Parrainer", key: "nav.referral", icon: Sparkles },
-  { to: "/preferences", label: "Mémoire et préférences", key: "nav.preferences", icon: Brain, auth: true },
-  { to: "/compte", label: "Mon compte", key: "nav.account", icon: KeyRound },
+  { to: "/preferences", label: "Memória e preferências", key: "nav.preferences", icon: Brain, auth: true },
+  { to: "/compte", label: "A minha conta", key: "nav.account", icon: KeyRound },
 ];
 
 const ALL_LINKS = [...NAV_MAIN, ...NAV_PRO, ...NAV_DISCOVER, ...ACCOUNT_LINKS];
@@ -127,7 +127,7 @@ export const Nav = () => {
   const mainItems = annotate(NAV_MAIN);
   const proItems = annotate(NAV_PRO);
   const discoverItems = annotate(NAV_DISCOVER);
-  const lockHint = (l) => `Fonction ${LEVEL_LABELS[l.min] || ""} — cliquez pour débloquer`;
+  const lockHint = (l) => `Fonction ${LEVEL_LABELS[l.min] || ""}— clique para desbloquear`;
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
@@ -179,7 +179,7 @@ export const Nav = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button data-testid="nav-more-btn" className={pill(groupActive(NAV_DISCOVER)) + " shrink-0"}>
-                <Sparkles className="h-4 w-4" /> {t("nav.discover", "Découvrir")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                <Sparkles className="h-4 w-4" /> {t("nav.discover", "Descobrir")} <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="rounded-xl w-60 p-1.5 shadow-xl" data-testid="nav-more-menu">
@@ -211,7 +211,7 @@ export const Nav = () => {
           <button
             onClick={toggleTheme}
             data-testid="theme-toggle"
-            aria-label="Changer de thème"
+            aria-label="Mudar de tema"
             className="h-9 w-9 grid place-items-center rounded-sm border border-border hover:border-primary transition-colors"
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -306,7 +306,7 @@ export const Footer = () => (
             className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
             data-testid="footer-help-link"
           >
-            Aide & assistance
+            Ajuda e assistência
           </Link>
           <Link
             to="/portugal"
@@ -323,7 +323,7 @@ export const Footer = () => (
             Investisseurs
           </Link>
           <span className="text-[11px] text-muted-foreground">
-            Estimations indicatives — ne constituent pas un devis contractuel.
+            Estimativas indicativas — não constituem um orçamento contratual.
           </span>
         </div>
       </div>
@@ -331,14 +331,14 @@ export const Footer = () => (
     <div className="border-t border-border">
       <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-4 text-center" data-testid="footer-legal">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-2 text-[11px]">
-          <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Mentions légales</a>
-          <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Politique de confidentialité</a>
-          <a href="/suppression-compte" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-compte">Supprimer mon compte</a>
-          <a href="/suppression-donnees" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-donnees">Supprimer mes données</a>
+          <a href="/mentions-legales" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-mentions">Informação legal</a>
+          <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Política de privacidade</a>
+          <a href="/suppression-compte" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-compte">Eliminar a minha conta</a>
+          <a href="/suppression-donnees" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-donnees">Eliminar os meus dados</a>
           <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">CGU / CGV</a>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          © {new Date().getFullYear()} ConstruPilot — Tous droits réservés · Brevet n° FR2611044
+          © {new Date().getFullYear()} ConstruPilot — Todos os direitos reservados · Patente n.º FR2611044
         </p>
       </div>
     </div>

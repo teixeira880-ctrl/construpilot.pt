@@ -57,7 +57,7 @@ export class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.hasError) return this.props.children;
 
-    const msg = this.state.error?.message || "Une erreur inattendue est survenue.";
+    const msg = this.state.error?.message || "Ocorreu um erro inesperado.";
 
     return (
       <div
@@ -71,11 +71,10 @@ export class ErrorBoundary extends React.Component {
           <div>
             <p className="overline text-destructive">Oups</p>
             <h1 className="font-display text-2xl font-bold mt-2">
-              Une erreur s'est produite
+              Ocorreu um erro
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Nous avons rencontré un problème d'affichage. Essayez de recharger
-              la page — vos données sont en sécurité.
+              Encontrámos um problema de visualização. Tente recarregar a página — os seus dados estão seguros.
             </p>
           </div>
           <p className="text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-sm font-mono break-words">

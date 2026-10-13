@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const GROUPS = [
-  ["work_types", "Type de travaux", Hammer],
-  ["building_types", "Type de bâtiment", Building2],
-  ["client_types", "Maître d’ouvrage / contact", Users],
+  ["work_types", "Tipo de obras", Hammer],
+  ["building_types", "Tipo de edifício", Building2],
+  ["client_types", "Dono de obra / contacto", Users],
 ];
 const EMPTY = { work_types: [], building_types: [], client_types: [] };
 const signature = (value) => JSON.stringify(GROUPS.map(([key]) => [...(value?.[key] || [])].sort()));
@@ -43,10 +43,10 @@ export const RadarProjectFilters = ({ value, options, facets, busy, onApply, cou
         </PopoverContent>
       </Popover>)}
       <Button size="sm" className="h-10 gap-2" disabled={busy || !changed} onClick={() => onApply(draft)} data-testid="radar-filters-apply">
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Appliquer et mémoriser
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Aplicar e guardar
       </Button>
-      <Button size="sm" variant="ghost" className="h-10 gap-2" disabled={busy || !anySelected} onClick={() => { setDraft(EMPTY); onApply(EMPTY); }} data-testid="radar-filters-reset"><RotateCcw className="h-4 w-4" />Réinitialiser</Button>
+      <Button size="sm" variant="ghost" className="h-10 gap-2" disabled={busy || !anySelected} onClick={() => { setDraft(EMPTY); onApply(EMPTY); }} data-testid="radar-filters-reset"><RotateCcw className="h-4 w-4" />Reiniciar</Button>
     </div>
-    <p role="status" className="text-xs text-muted-foreground" data-testid="radar-filters-status">{changed ? "Sélection non appliquée" : typeof count === "number" ? `${count} permis correspondant${count > 1 ? "s" : ""}` : "Chargement des permis…"}</p>
+    <p role="status" className="text-xs text-muted-foreground" data-testid="radar-filters-status">{changed ? "Seleção não aplicada" : typeof count === "number" ? `${count} permis correspondant${count > 1 ? "s" : ""}` : "A carregar as licenças…"}</p>
   </section>;
 };

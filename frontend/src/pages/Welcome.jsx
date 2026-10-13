@@ -8,27 +8,27 @@ import { OfferNotice } from "@/components/OfferNotice";
 const STEPS = [
   {
     icon: Rocket,
-    title: "Bienvenue sur ConstruPilot 🎉",
-    text: "Votre compte est actif. Que vous soyez particulier ou professionnel, voici comment démarrer en quelques étapes.",
+    title: "Bem-vindo ao ConstruPilot 🎉",
+    text: "A sua conta está ativa. Seja particular ou profissional, eis como começar em poucos passos.",
     offer: true,
   },
   {
     icon: Hammer,
-    title: "1. Estimez le coût de vos travaux",
-    text: "Particulier ou pro : décrivez votre projet en langage naturel (« rénover une maison de 90 m² ») et obtenez une estimation détaillée, poste par poste, instantanément.",
-    cta: { label: "Estimer mes travaux", to: "/estimation" },
+    title: "1. Estime o custo dos seus trabalhos",
+    text: "Particular ou profissional: descreva o seu projeto em linguagem natural («renovar uma casa de 90 m²») e obtenha uma estimativa detalhada, item por item, instantaneamente.",
+    cta: { label: "Estimar a minha obra", to: "/estimation" },
   },
   {
     icon: Ruler,
-    title: "2. Mesurez un plan et chiffrez",
-    text: "Importez un plan (PDF, photo ou DWG), laissez l'IA détecter les pièces et les surfaces, puis obtenez le métré automatiquement.",
-    cta: { label: "Éditeur de plans", to: "/plan" },
+    title: "2. Meça uma planta e orçamente",
+    text: "Importe uma planta (PDF, foto ou DWG), deixe a IA detetar as divisões e as superfícies, depois obtenha as medições automaticamente.",
+    cta: { label: "Editor de plantas", to: "/plan" },
   },
   {
     icon: FileText,
-    title: "3. Créez et envoyez un devis pro",
-    text: "Pour les professionnels : générez un devis à votre charte, ajoutez un client, appliquez vos prix et envoyez-le par email — le tout depuis un seul endroit.",
-    cta: { label: "Créer un devis", to: "/devis-editeur" },
+    title: "3. Crie e envie um orçamento profissional",
+    text: "Para os profissionais: gere um orçamento com a sua imagem, adicione um cliente, aplique os seus preços e envie-o por email — tudo a partir de um único local.",
+    cta: { label: "Criar um orçamento", to: "/devis-editeur" },
   },
 ];
 
@@ -77,18 +77,18 @@ export default function Welcome() {
             onClick={() => (step === 0 ? nav("/dashboard") : setStep((v) => v - 1))}
             className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
             data-testid="welcome-back">
-            {step === 0 ? "Passer" : (<><ArrowLeft className="h-3 w-3" /> Précédent</>)}
+            {step === 0 ? "Passer" : (<><ArrowLeft className="h-3 w-3" /> Anterior</>)}
           </button>
 
           {last ? (
             <Button className="rounded-lg gap-2 hover:bg-orange-600 hover:text-white"
                     onClick={() => nav("/dashboard")} data-testid="welcome-finish">
-              <CheckCircle2 className="h-4 w-4" /> Aller au tableau de bord
+              <CheckCircle2 className="h-4 w-4" /> Ir para o painel de controlo
             </Button>
           ) : (
             <Button className="rounded-lg gap-2 hover:bg-orange-600 hover:text-white"
                     onClick={() => setStep((v) => v + 1)} data-testid="welcome-next">
-              Suivant <ArrowRight className="h-4 w-4" />
+              Seguinte <ArrowRight className="h-4 w-4" />
             </Button>
           )}
         </div>

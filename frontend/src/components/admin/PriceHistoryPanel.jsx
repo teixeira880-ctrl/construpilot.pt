@@ -13,16 +13,16 @@ export const PriceHistoryPanel = ({ refreshKey }) => {
   return (
     <div className="rounded-sm border border-border/60 bg-secondary/20" data-testid="price-history-panel">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium" data-testid="price-history-toggle">
-        <History className="h-4 w-4 text-primary" /> Historique des prix — {rows.length} variation{rows.length > 1 ? "s" : ""} enregistrée{rows.length > 1 ? "s" : ""}
+        <History className="h-4 w-4 text-primary" /> Histórico de preços — {rows.length} variation{rows.length > 1 ? "s" : ""} registada{rows.length > 1 ? "s" : ""}
         <span className="ml-auto">{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
       </button>
       {open && (rows.length === 0 ? (
-        <p className="px-3 pb-3 text-xs text-muted-foreground" data-testid="price-history-empty">Aucune variation pour l'instant : l'historique se remplit à chaque import Excel avec « actualiser les prix ».</p>
+        <p className="px-3 pb-3 text-xs text-muted-foreground" data-testid="price-history-empty">Nenhuma variação por agora: o histórico é preenchido em cada importação Excel com «atualizar os preços».</p>
       ) : (
         <div className="max-h-80 overflow-auto">
           <table className="w-full text-xs" data-testid="price-history-table">
             <thead className="sticky top-0 bg-background text-[10px] uppercase tracking-wide text-muted-foreground">
-              <tr><th className="text-left px-3 py-1.5">Date</th><th className="text-left px-2 py-1.5">Ouvrage</th><th className="text-right px-2 py-1.5">Médian avant</th><th className="text-right px-2 py-1.5">Médian après</th><th className="text-right px-3 py-1.5">Δ</th><th className="text-left px-2 py-1.5">Fichier</th></tr>
+              <tr><th className="text-left px-3 py-1.5">Date</th><th className="text-left px-2 py-1.5">Ouvrage</th><th className="text-right px-2 py-1.5">Mediana antes</th><th className="text-right px-2 py-1.5">Mediana depois</th><th className="text-right px-3 py-1.5">Δ</th><th className="text-left px-2 py-1.5">Fichier</th></tr>
             </thead>
             <tbody>
               {rows.map((r) => (

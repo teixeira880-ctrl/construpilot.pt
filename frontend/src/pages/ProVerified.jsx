@@ -49,8 +49,8 @@ export default function ProVerified() {
       <div className="min-h-[60vh] grid place-items-center text-center px-4" data-testid="pv-error">
         <div>
           <p className="text-lg font-semibold">Profil introuvable</p>
-          <p className="text-sm text-muted-foreground mt-1">Ce lien de vérification n'est plus valide.</p>
-          <Link to="/"><Button variant="outline" className="mt-4">Retour à l'accueil</Button></Link>
+          <p className="text-sm text-muted-foreground mt-1">Este link de verificação já não é válido.</p>
+          <Link to="/"><Button variant="outline" className="mt-4">Voltar ao início</Button></Link>
         </div>
       </div>
     );
@@ -71,10 +71,10 @@ export default function ProVerified() {
         {data.verified ? (
           <div className="mt-3 inline-flex items-center gap-2 bg-primary/10 text-primary font-semibold text-sm px-4 py-1.5 rounded-full"
                data-testid="pv-verified-chip">
-            <BadgeCheck className="h-4 w-4" /> Pro vérifié par ConstruPilot
+            <BadgeCheck className="h-4 w-4" /> Pro verificado por ConstruPilot
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">Vérification en cours</p>
+          <p className="mt-3 text-sm text-muted-foreground">Verificação em curso</p>
         )}
         {data.city && (
           <p className="mt-3 text-sm text-muted-foreground flex items-center justify-center gap-1">
@@ -83,8 +83,7 @@ export default function ProVerified() {
         )}
         {data.verified && (
           <p className="text-xs text-muted-foreground mt-4 max-w-md mx-auto">
-            L'identité (SIRET), l'extrait K-bis et l'assurance décennale de cette entreprise ont été
-            contrôlés par ConstruPilot.
+            A identidade (NIPC), a certidão permanente e o seguro decenal desta empresa foram verificados por ConstruPilot.
           </p>
         )}
       </Card>
@@ -92,7 +91,7 @@ export default function ProVerified() {
       {/* Identité vérifiée */}
       {(data.siret || (data.certifications && data.certifications.length > 0)) && (
         <Card className="p-6 space-y-3" data-testid="pv-identity">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Éléments vérifiés</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Elementos verificados</h2>
           {data.siret && (
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> SIRET</span>
@@ -122,7 +121,7 @@ export default function ProVerified() {
           )}
         </div>
         {reviews.count === 0 ? (
-          <p className="text-sm text-muted-foreground">Pas encore d'avis publié.</p>
+          <p className="text-sm text-muted-foreground">Ainda sem avaliações publicadas.</p>
         ) : reviews.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">{reviews.count} avis recueilli(s).</p>
         ) : (
@@ -131,7 +130,7 @@ export default function ProVerified() {
               <div key={i} className="border border-border rounded-md p-3" data-testid={`pv-review-${i}`}>
                 <div className="flex items-center gap-2 mb-1">
                   <Stars value={r.rating} />
-                  <span className="text-xs font-semibold">{r.author_name || "Client"}</span>
+                  <span className="text-xs font-semibold">{r.author_name || "Cliente"}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">{r.comment}</p>
               </div>
@@ -142,13 +141,13 @@ export default function ProVerified() {
 
       {/* CTA */}
       <Card className="p-6 text-center bg-primary/5">
-        <p className="text-sm font-semibold">Vous êtes artisan ou entreprise du BTP ?</p>
+        <p className="text-sm font-semibold">É artesão ou empresa de construção?</p>
         <p className="text-xs text-muted-foreground mt-1 mb-3">
-          Faites vérifier votre entreprise et rassurez vos clients dès le devis.
+          Faça verificar a sua empresa e tranquilize os seus clientes logo no orçamento.
         </p>
         <Link to="/inscription">
           <Button className="gap-2" data-testid="pv-cta">
-            Devenir Pro vérifié <ArrowRight className="h-4 w-4" />
+            Tornar-se Pro verificado <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
       </Card>

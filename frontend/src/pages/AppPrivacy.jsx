@@ -7,7 +7,7 @@ const UPDATED_FR = "Juin 2026";
 const UPDATED_EN = "June 2026";
 
 const APPS = [
-  "ConstruPilot Chantier",
+  "ConstruPilot Obra",
   "ConstruPilot Collaborateur",
   "ConstruPilot Particuliers",
 ];
@@ -15,27 +15,27 @@ const APPS = [
 const PERMISSIONS = [
   {
     key: "camera",
-    fr: ["Appareil photo", "Prendre des photos de chantier, scanner des devis et documents. Les photos sont envoyées à nos serveurs uniquement lorsque vous les rattachez à un chantier ou un document."],
+    fr: ["Appareil photo", "Tirar fotografias de obra, digitalizar orçamentos e documentos. As fotografias só são enviadas para os nossos servidores quando as associa a uma obra ou a um documento."],
     en: ["Camera", "Take site photos, scan quotes and documents. Photos are uploaded to our servers only when you attach them to a project or a document."],
   },
   {
     key: "microphone",
-    fr: ["Microphone", "Dictée vocale (devis, réserves, messages). L'extrait audio est transmis à notre prestataire de transcription (OpenAI Whisper) puis supprimé ; seul le texte transcrit est conservé."],
+    fr: ["Microphone", "Ditado por voz (orçamentos, reservas, mensagens). O excerto áudio é transmitido ao nosso prestador de transcrição (OpenAI Whisper) e depois eliminado; só o texto transcrito é conservado."],
     en: ["Microphone", "Voice dictation (quotes, punch-list items, messages). The audio clip is sent to our transcription provider (OpenAI Whisper) then deleted; only the transcribed text is stored."],
   },
   {
     key: "photos",
-    fr: ["Photos / Fichiers", "Importer des plans, PDF et images depuis votre appareil. Aucun accès en arrière-plan à votre galerie."],
+    fr: ["Photos / Fichiers", "Importar plantas, PDF e imagens a partir do seu dispositivo. Nenhum acesso em segundo plano à sua galeria."],
     en: ["Photos / Files", "Import plans, PDFs and images from your device. No background access to your gallery."],
   },
   {
     key: "location",
-    fr: ["Localisation (optionnelle)", "Uniquement si vous activez le pointage géolocalisé ou la recherche de chantiers proches. Jamais de suivi en arrière-plan."],
+    fr: ["Localisation (optionnelle)", "Apenas se ativar o registo de presença geolocalizado ou a pesquisa de obras próximas. Nunca há seguimento em segundo plano."],
     en: ["Location (optional)", "Only if you enable geo-stamped time tracking or nearby-project search. Never tracked in the background."],
   },
   {
     key: "notifications",
-    fr: ["Notifications", "Alertes sur vos devis, messages client et rappels de chantier. Désactivables à tout moment."],
+    fr: ["Notifications", "Alertas sobre os seus orçamentos, mensagens de clientes e lembretes de obra. Desativáveis a qualquer momento."],
     en: ["Notifications", "Alerts about your quotes, client messages and project reminders. Can be disabled at any time."],
   },
 ];
@@ -50,13 +50,11 @@ const Section = ({ title, children }) => (
 const FrenchPolicy = () => (
   <div data-testid="app-privacy-fr">
     <p>
-      La présente politique de confidentialité s'applique aux applications mobiles{" "}
-      <strong>{APPS.join(", ")}</strong> (iOS et Android) ainsi qu'au service web ConstruPilot,
-      édités par ConstruPilot. Elle est établie conformément au Règlement Général sur la
-      Protection des Données (RGPD) et aux exigences de l'App Store d'Apple et de Google Play.
+      A presente política de privacidade aplica-se às aplicações móveis{" "}
+      <strong>{APPS.join(", ")}</strong> (iOS e Android), bem como ao serviço web ConstruPilot, editados pela ConstruPilot. É estabelecida em conformidade com o Regulamento Geral sobre a Proteção de Dados (RGPD), a Lei n.º 58/2019 e os requisitos da App Store da Apple e do Google Play.
     </p>
 
-    <Section title="1. Responsable du traitement">
+    <Section title="1. Responsável pelo tratamento">
       <p>
         ConstruPilot — contact :{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
@@ -64,22 +62,21 @@ const FrenchPolicy = () => (
       </p>
     </Section>
 
-    <Section title="2. Données que nous collectons">
+    <Section title="2. Dados que recolhemos">
       <ul className="list-disc pl-5 space-y-1">
-        <li><strong>Identité et contact</strong> : nom, e-mail, téléphone (facultatif).</li>
-        <li><strong>Compte et authentification</strong> : mot de passe chiffré, jeton de session.</li>
-        <li><strong>Données professionnelles</strong> : raison sociale, SIRET, TVA, logo, coordonnées bancaires de facturation si renseignées.</li>
-        <li><strong>Contenus que vous créez</strong> : devis, factures, chantiers, photos, plans, notes vocales, messages échangés avec vos clients.</li>
-        <li><strong>Données techniques</strong> : type d'appareil, version de l'app, journaux d'erreurs, adresse IP.</li>
-        <li><strong>Paiement</strong> : traité exclusivement par Stripe. Nous ne stockons aucun numéro de carte.</li>
+        <li><strong>Identidade e contacto</strong> : nome, e-mail, telefone (opcional).</li>
+        <li><strong>Conta e autenticação</strong> : palavra-passe cifrada, token de sessão.</li>
+        <li><strong>Dados profissionais</strong> : denominação social, NIF/NIPC, IVA, logótipo, dados bancários de faturação se indicados.</li>
+        <li><strong>Conteúdos que cria</strong> : orçamentos, faturas, obras, fotografias, plantas, notas de voz, mensagens trocadas com os seus clientes.</li>
+        <li><strong>Dados técnicos</strong> : tipo de dispositivo, versão da app, registos de erros, endereço IP.</li>
+        <li><strong>Paiement</strong> : tratado exclusivamente pela Stripe. Não guardamos nenhum número de cartão.</li>
       </ul>
       <p>
-        Nous ne collectons aucune donnée sensible (santé, origine, opinions) et n'utilisons
-        aucun traceur publicitaire tiers. Aucune donnée n'est vendue.
+        Não recolhemos nenhum dado sensível (saúde, origem, opiniões) e não utilizamos nenhum rastreador publicitário de terceiros. Nenhum dado é vendido.
       </p>
     </Section>
 
-    <Section title="3. Autorisations demandées par l'application">
+    <Section title="3. Autorizações pedidas pela aplicação">
       <div className="space-y-3">
         {PERMISSIONS.map((p) => (
           <div key={p.key} className="rounded-lg border border-border p-3">
@@ -89,50 +86,40 @@ const FrenchPolicy = () => (
         ))}
       </div>
       <p className="text-sm">
-        Chaque autorisation est demandée au moment de l'usage et peut être refusée ou révoquée
-        dans les réglages de votre téléphone, sans bloquer les autres fonctions de l'app.
+        Cada autorização é pedida no momento da utilização e pode ser recusada ou revogada nas definições do seu telemóvel, sem bloquear as outras funções da app.
       </p>
     </Section>
 
-    <Section title="4. Finalités et bases légales">
+    <Section title="4. Finalidades e fundamentos jurídicos">
       <p>
-        Exécution du contrat (fourniture du service, gestion du compte et de l'abonnement),
-        obligations légales (facturation, comptabilité), intérêt légitime (sécurité,
-        prévention de la fraude, amélioration du service) et consentement pour les
-        fonctionnalités optionnelles (localisation, notifications).
+        Execução do contrato (prestação do serviço, gestão da conta e da subscrição), obrigações legais (faturação, contabilidade), interesse legítimo (segurança, prevenção da fraude, melhoria do serviço) e consentimento para as funcionalidades opcionais (localização, notificações).
       </p>
     </Section>
 
     <Section title="5. Intelligence artificielle">
       <p>
-        Certaines fonctions (Assistant BTP, estimation, transcription vocale, analyse de photos)
-        envoient le contenu strictement nécessaire à nos prestataires d'IA (OpenAI, Anthropic,
-        Google). Ces contenus ne sont pas utilisés pour entraîner leurs modèles. Les résultats
-        produits par l'IA sont indicatifs et ne constituent pas un engagement contractuel.
+        Algumas funções (Assistente Construção, estimativa, transcrição de voz, análise de fotografias) enviam o conteúdo estritamente necessário aos nossos prestadores de IA (OpenAI, Anthropic, Google). Estes conteúdos não são utilizados para treinar os seus modelos. Os resultados produzidos pela IA são indicativos e não constituem um compromisso contratual.
       </p>
     </Section>
 
     <Section title="6. Sous-traitants">
       <ul className="list-disc pl-5 space-y-1">
-        <li>Hébergement et stockage de fichiers : infrastructure cloud Emergent (UE).</li>
+        <li>Alojamento e armazenamento de ficheiros: infraestrutura cloud Emergent (UE).</li>
         <li>Paiement : Stripe.</li>
-        <li>IA et transcription : OpenAI, Anthropic, Google.</li>
-        <li>E-mails transactionnels : notre prestataire d'envoi.</li>
+        <li>IA e transcrição: OpenAI, Anthropic, Google.</li>
+        <li>E-mails transacionais: o nosso prestador de envio.</li>
       </ul>
     </Section>
 
-    <Section title="7. Durée de conservation">
+    <Section title="7. Prazo de conservação">
       <p>
-        Les données de compte sont conservées pendant toute la durée de la relation
-        contractuelle. Après suppression du compte, elles sont effacées sous 30 jours, à
-        l'exception des pièces comptables (factures) conservées 10 ans conformément à la loi.
+        Os dados da conta são conservados durante toda a relação contratual. Após a eliminação da conta, são apagados no prazo de 30 dias, com exceção das peças contabilísticas (faturas), conservadas 10 anos nos termos da lei.
       </p>
     </Section>
 
-    <Section title="8. Suppression du compte et des données">
+    <Section title="8. Eliminação da conta e dos dados">
       <p>
-        Vous pouvez supprimer votre compte directement dans l'application (Mon compte →
-        Supprimer mon compte) ou en écrivant à{" "}
+        Pode eliminar a sua conta diretamente na aplicação (A minha conta → Eliminar a minha conta) ou escrevendo para{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}?subject=Suppression%20de%20compte`}>{CONTACT_EMAIL}</a>.
         La suppression entraîne l'effacement de vos chantiers, documents, photos et messages.
         Procédure détaillée :{" "}
@@ -140,9 +127,9 @@ const FrenchPolicy = () => (
       </p>
     </Section>
 
-    <Section title="9. Vos droits">
+    <Section title="9. Os seus direitos">
       <p>
-        Accès, rectification, effacement, portabilité, limitation et opposition. Exercez-les à{" "}
+        Acesso, retificação, apagamento, portabilidade, limitação e oposição. Exerça-os através de{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
         Vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).
       </p>
@@ -150,26 +137,21 @@ const FrenchPolicy = () => (
 
     <Section title="10. Enfants">
       <p>
-        Les applications ConstruPilot sont destinées aux adultes et aux professionnels. Elles ne
-        s'adressent pas aux enfants de moins de 16 ans et nous ne collectons pas sciemment leurs
-        données.
+        As aplicações ConstruPilot destinam-se a adultos e profissionais. Não se dirigem a crianças com menos de 16 anos e não recolhemos conscientemente os seus dados.
       </p>
     </Section>
 
-    <Section title="11. Sécurité">
+    <Section title="11. Segurança">
       <p>
-        Chiffrement des échanges (HTTPS/TLS), mots de passe hachés, cookies de session HttpOnly,
-        cloisonnement strict des données entre entreprises et accès invités limités aux seuls
-        éléments explicitement partagés par le professionnel.
+        Cifragem das comunicações (HTTPS/TLS), palavras-passe com hash, cookies de sessão HttpOnly, separação estrita dos dados entre empresas e acessos de convidados limitados apenas aos elementos explicitamente partilhados pelo profissional.
       </p>
     </Section>
 
     <Section title="12. Modifications">
       <p>
-        Toute modification de cette politique sera publiée sur cette page avec une nouvelle date
-        de mise à jour. Pour toute question :{" "}
+        Qualquer alteração desta política será publicada nesta página com uma nova data de atualização. Para qualquer questão:{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>{" "}
-        · Assistance : <Link className="text-primary underline" to="/aide">page d'aide</Link>.
+        · Assistance : <Link className="text-primary underline" to="/aide">página de ajuda</Link>.
       </p>
     </Section>
   </div>
@@ -293,8 +275,7 @@ const EnglishPolicy = () => (
 
     <Section title="12. Changes">
       <p>
-        Any change to this policy will be published on this page with a new update date.
-        Questions:{" "}
+        Any change to this policy will be published on this page with a new update date. Questions:{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>{" "}
         · Support: <Link className="text-primary underline" to="/aide">help page</Link>.
       </p>
@@ -313,7 +294,7 @@ export default function AppPrivacy() {
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors mb-6"
         data-testid="app-privacy-back-link"
       >
-        <ArrowLeft className="h-4 w-4" /> {lang === "fr" ? "Retour à l'accueil" : "Back to home"}
+        <ArrowLeft className="h-4 w-4" /> {lang === "fr" ? "Voltar ao início" : "Back to home"}
       </Link>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -323,11 +304,11 @@ export default function AppPrivacy() {
             {lang === "fr" ? "Applications mobiles & web" : "Mobile & web apps"}
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground mt-2">
-            {lang === "fr" ? "Politique de confidentialité" : "Privacy Policy"}
+            {lang === "fr" ? "Política de privacidade" : "Privacy Policy"}
           </h1>
           <p className="text-xs text-muted-foreground mt-2">
             {lang === "fr"
-              ? `Dernière mise à jour : ${UPDATED_FR}`
+              ? `Última atualização:${UPDATED_FR}`
               : `Last updated: ${UPDATED_EN}`}
           </p>
         </div>
@@ -339,7 +320,7 @@ export default function AppPrivacy() {
             data-testid="app-privacy-lang-fr"
             className={`px-4 py-1.5 transition-colors ${lang === "fr" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
           >
-            Français
+            Francês
           </button>
           <button
             type="button"
@@ -355,7 +336,7 @@ export default function AppPrivacy() {
       <div className="mt-6 flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
         <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
         {lang === "fr"
-          ? "Aucune donnée vendue · Aucun traceur publicitaire · Hébergement UE"
+          ? "Nenhum dado vendido · Nenhum rastreador publicitário · Alojamento na UE"
           : "No data sold · No ad trackers · EU hosting"}
       </div>
 

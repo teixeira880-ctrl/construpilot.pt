@@ -22,13 +22,13 @@ export function ChantierContextBar({ chantier, chantierId }) {
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm" data-testid="chantier-context-bar">
       <HardHat className="h-4 w-4 text-primary shrink-0" />
       <span className="min-w-0">
-        <span className="text-muted-foreground">Dossier chantier : </span>
-        <strong data-testid="chantier-context-name">{chantier?.name || "chargement…"}</strong>
+        <span className="text-muted-foreground">Processo de obra: </span>
+        <strong data-testid="chantier-context-name">{chantier?.name || "a carregar…"}</strong>
         {chantier?.client_name && <span className="text-muted-foreground"> · <User className="inline h-3.5 w-3.5 -mt-0.5" /> {chantier.client_name}</span>}
       </span>
-      <span className="text-xs text-muted-foreground hidden sm:inline">Le résultat sera rattaché automatiquement au dossier.</span>
+      <span className="text-xs text-muted-foreground hidden sm:inline">O resultado será associado automaticamente ao processo.</span>
       <Link to={`/chantiers/${chantierId}`} className="ms-auto inline-flex items-center gap-1 text-primary text-xs font-semibold hover:underline" data-testid="chantier-context-back">
-        <ArrowLeft className="h-3 w-3" /> Revenir au dossier
+        <ArrowLeft className="h-3 w-3" /> Voltar ao processo
       </Link>
     </div>
   );

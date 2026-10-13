@@ -5,8 +5,8 @@ import { api } from "@/lib/api";
 
 const VERDICT = {
   ok: { label: "Conforme", cls: "text-emerald-700 bg-emerald-500/10 border-emerald-500/30" },
-  warn: { label: "À vérifier", cls: "text-orange-700 bg-orange-500/10 border-orange-500/30" },
-  ko: { label: "Incohérences", cls: "text-red-700 bg-red-500/10 border-red-500/30" },
+  warn: { label: "A verificar", cls: "text-orange-700 bg-orange-500/10 border-orange-500/30" },
+  ko: { label: "Incoerências", cls: "text-red-700 bg-red-500/10 border-red-500/30" },
 };
 
 export const CotesTile = () => {
@@ -23,25 +23,25 @@ export const CotesTile = () => {
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Ruler className="h-4 w-4 text-sky-600" />
-            <span className="font-display font-bold text-lg">Analyser cotes des plans</span>
-            <span className="text-[10px] font-bold uppercase bg-sky-500/10 text-sky-700 px-2 py-0.5 rounded-full">Nouveau</span>
+            <span className="font-display font-bold text-lg">Analisar cotas das plantas</span>
+            <span className="text-[10px] font-bold uppercase bg-sky-500/10 text-sky-700 px-2 py-0.5 rounded-full">Novo</span>
           </div>
           {last ? (
             <p className="text-sm text-muted-foreground mt-1" data-testid="cotes-tile-last">
-              Dernier contrôle : <b className="text-foreground">{last.filename || last.plan_id}</b>
+              Último controlo: <b className="text-foreground">{last.filename || last.plan_id}</b>
               {last.pages_checked > 1 ? ` (${last.pages_checked} pages)` : ""} ·{" "}
-              {last.summary?.total} cotes · <b className="text-red-700">{last.summary?.ko} incohérence(s)</b> ·{" "}
+              {last.summary?.total} cotes · <b className="text-red-700">{last.summary?.ko} incoerência(s)</b> ·{" "}
               {new Date(last.checked_at).toLocaleDateString("fr-FR")}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground mt-1">
-              Relecture de toutes les cotes d'un plan, mesure à l'échelle, incohérences et chaînes de cotes signalées — rapport PDF et plan annoté.
+              Revisão de todas as cotas de uma planta, medição à escala, incoerências e cadeias de cotas assinaladas — relatório PDF e planta anotada.
             </p>
           )}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1">
           {v && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${v.cls}`} data-testid="cotes-tile-verdict">{v.label}</span>}
-          <span className="text-sky-700 font-bold">{last ? "Voir →" : "Ouvrir →"}</span>
+          <span className="text-sky-700 font-bold">{last ? "Ver →" : "Ouvrir →"}</span>
         </div>
       </div>
     </Link>

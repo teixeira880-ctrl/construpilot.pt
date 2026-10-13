@@ -20,9 +20,9 @@ import { api, eur } from "@/lib/api";
 import { toast } from "sonner";
 
 const STATUS_CFG = {
-  received: { label: "Reçue", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-  accepted: { label: "Acceptée", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-  refused: { label: "Refusée", cls: "bg-red-500/15 text-red-600 dark:text-red-400" },
+  received: { label: "Recebida", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+  accepted: { label: "Aceite", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+  refused: { label: "Recusada", cls: "bg-red-500/15 text-red-600 dark:text-red-400" },
 };
 
 const StatusPill = ({ s }) => {
@@ -95,28 +95,28 @@ export default function EInvoicing() {
     setBusy(true);
     try {
       await api.post("/einvoicing/connect", { siret, platform });
-      toast.success("Plateforme connectée (mode simulé)");
+      toast.success("Plataforma ligada (modo simulado)");
       await loadAll();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Connexion impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Ligação impossível"); }
     finally { setBusy(false); }
   };
   const disconnect = async () => {
     setBusy(true);
     try {
       await api.post("/einvoicing/disconnect");
-      toast.success("Plateforme déconnectée");
+      toast.success("Plataforma desconectada");
       setInbox([]);
       await loadStatus();
-    } catch { toast.error("Déconnexion impossible"); }
+    } catch { toast.error("Impossível terminar sessão"); }
     finally { setBusy(false); }
   };
   const simulate = async () => {
     setSimBusy(true);
     try {
       const { data } = await api.post("/einvoicing/inbox/simulate");
-      toast.success(`Nouvelle facture reçue · ${data.invoice.supplier}`);
+      toast.success(`Nova fatura recebida ·${data.invoice.supplier}`);
       await loadInbox();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Simulation impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Simulação impossível"); }
     finally { setSimBusy(false); }
   };
   const submitDecision = async () => {
@@ -128,13 +128,13 @@ export default function EInvoicing() {
         project_id: decideOn.decision === "accepted" && decisionProject ? decisionProject : null,
       });
       if (data?.expense) {
-        toast.success(`Facture acceptée · dépense de ${eur(data.expense.amount)} ajoutée au chantier ${data.expense.project_name}`);
+        toast.success(`Fatura aceite · despesa de${eur(data.expense.amount)}adicionada à obra${data.expense.project_name}`);
       } else {
-        toast.success(decideOn.decision === "accepted" ? "Facture acceptée (transmise à l'administration — simulé)" : "Facture refusée (transmise à l'administration — simulé)");
+        toast.success(decideOn.decision === "accepted" ? "Fatura aceite (transmitida à administração — simulado)" : "Fatura recusada (transmitida à administração — simulado)");
       }
       setDecideOn(null); setReason(""); setDecisionProject("");
       await loadInbox();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Décision impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Decisão impossível"); }
     finally { setDecideBusy(false); }
   };
   const submitExpense = async () => {
@@ -142,24 +142,24 @@ export default function EInvoicing() {
     setExpenseBusy(true);
     try {
       const { data } = await api.post(`/einvoicing/inbox/${expenseOn.inv_id}/expense`, { project_id: expenseProject });
-      toast.success(`Dépense de ${eur(data.expense.amount)} ajoutée au chantier ${data.expense.project_name}`);
+      toast.success(`Despesa de${eur(data.expense.amount)}adicionada à obra${data.expense.project_name}`);
       setExpenseOn(null); setExpenseProject("");
       await loadInbox();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Action impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Ação impossível"); }
     finally { setExpenseBusy(false); }
   };
   const removeExpense = async (inv) => {
     try {
       await api.post(`/einvoicing/inbox/${inv.inv_id}/expense/remove`);
-      toast.success("Dépense retirée du chantier");
+      toast.success("Despesa retirada da obra");
       await loadInbox();
-    } catch { toast.error("Action impossible"); }
+    } catch { toast.error("Ação impossível"); }
   };
   const openMonthly = async () => {
     try {
       const { data } = await api.post("/einvoicing/reports/monthly/preview");
       setMonthly(data); setMonthlyOpen(true);
-    } catch { toast.error("Aperçu indisponible"); }
+    } catch { toast.error("Pré-visualização indisponível"); }
   };
 
   const openReconcile = (inv) => {
@@ -181,28 +181,28 @@ export default function EInvoicing() {
         expected_ht: reconExpected === "" ? null : Number(reconExpected),
       });
       if (data?.alert?.overspend) {
-        toast.warning(`Surcoût détecté : +${data.alert.gap_pct}% au-dessus du bon de commande (seuil ${data.alert.threshold_pct}%). Vous avez été alerté par e-mail.`);
+        toast.warning(`Sobrecusto detetado: +${data.alert.gap_pct}% acima da nota de encomenda (limiar${data.alert.threshold_pct}%). Foi alertado por e-mail.`);
       } else {
-        toast.success("Facture rapprochée du bon de commande");
+        toast.success("Fatura conciliada com a encomenda");
       }
       setReconOn(null); setReconOrderId(""); setReconExpected("");
       await loadInbox();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Rapprochement impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Comparação impossível"); }
     finally { setReconBusy(false); }
   };
   const removeReconcile = async (inv) => {
     try {
       await api.post(`/einvoicing/inbox/${inv.inv_id}/unreconcile`);
-      toast.success("Rapprochement retiré");
+      toast.success("Correspondência removida");
       await loadInbox();
-    } catch { toast.error("Action impossible"); }
+    } catch { toast.error("Ação impossível"); }
   };
   const saveThreshold = async () => {
     setSavingThreshold(true);
     try {
       await api.post("/einvoicing/settings", { overspend_threshold_pct: Number(threshold) });
-      toast.success(`Seuil d'alerte surcoût réglé à ${threshold}%`);
-    } catch { toast.error("Enregistrement impossible"); }
+      toast.success(`Limiar de alerta de sobrecusto definido em${threshold}%`);
+    } catch { toast.error("Não foi possível guardar"); }
     finally { setSavingThreshold(false); }
   };
 
@@ -212,30 +212,30 @@ export default function EInvoicing() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10" data-testid="einvoicing-page">
       <button onClick={() => nav("/factures")} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors mb-4" data-testid="einv-back-btn">
-        <ArrowLeft className="h-4 w-4" /> Retour aux factures
+        <ArrowLeft className="h-4 w-4" /> Voltar às faturas
       </button>
 
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-        <SectionTitle over="Réseau national · PDP" title="Facturation électronique" />
+        <SectionTitle over="Rede nacional · PDP" title="Faturação eletrónica" />
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[11px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400" data-testid="einv-mock-badge">
-          <Info className="h-3.5 w-3.5" /> Mode simulé (démo)
+          <Info className="h-3.5 w-3.5" /> Modo simulado (demo)
         </span>
       </div>
 
       <div className="surface rounded-sm p-4 mb-6 flex items-start gap-3 border-amber-500/20 bg-amber-500/[0.04]" data-testid="einv-info-banner">
         <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
-          À partir de 2026, les entreprises reçoivent leurs factures fournisseurs via une <b className="text-foreground">Plateforme Agréée (PDP)</b> raccordée au réseau national. Cet espace simule ce raccordement (réception, acceptation/refus, transmission du statut à l'administration). Aucune connexion réelle n'est établie — prêt à brancher l'API PDP (Iopole n°0018) dès que disponible.
+          A partir de 2026, as empresas recebem as suas faturas de fornecedores através de uma <b className="text-foreground">Plataforma Homologada (PDP)</b> ligada à rede nacional. Este espaço simula essa ligação (receção, aceitação/recusa, transmissão do estado à administração). Nenhuma ligação real é estabelecida — pronto a ligar a API do fornecedor de faturação eletrónica assim que disponível.
         </p>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Chargement…</div>
+        <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> A carregar…</div>
       ) : !status?.connected ? (
         <div className="surface rounded-sm p-8 max-w-lg mx-auto" data-testid="einv-connect-card">
           <div className="h-12 w-12 rounded-xl bg-primary/10 grid place-items-center mb-4"><Network className="h-6 w-6 text-primary" /></div>
-          <h2 className="font-display text-xl font-bold">Raccorder ma plateforme</h2>
-          <p className="text-sm text-muted-foreground mt-2 mb-5">Renseignez le SIRET de votre entreprise et la plateforme agréée qui vous représente.</p>
+          <h2 className="font-display text-xl font-bold">Conectar a minha plataforma</h2>
+          <p className="text-sm text-muted-foreground mt-2 mb-5">Indique o NIPC da sua empresa e a plataforma aprovada que a representa.</p>
           <div className="space-y-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground">SIRET (14 chiffres)</label>
@@ -246,7 +246,7 @@ export default function EInvoicing() {
               <Input value={platform} onChange={(e) => setPlatform(e.target.value)} placeholder="Iopole" className="rounded-sm mt-1" data-testid="einv-platform-input" />
             </div>
             <Button className="rounded-sm gap-2 w-full" disabled={busy || siret.replace(/\D/g, "").length !== 14} onClick={connect} data-testid="einv-connect-btn">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />} Connecter (simulé)
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />} Conectar (simulado)
             </Button>
           </div>
         </div>
@@ -255,12 +255,12 @@ export default function EInvoicing() {
           <div className="surface rounded-sm p-4 mb-6 flex flex-wrap items-center gap-4" data-testid="einv-connected-bar">
             <div className="h-10 w-10 rounded-lg bg-emerald-500/10 grid place-items-center"><ShieldCheck className="h-5 w-5 text-emerald-500" /></div>
             <div>
-              <p className="font-semibold text-sm flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /> Raccordé à <b>{status.platform}</b></p>
+              <p className="font-semibold text-sm flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /> Conectado a <b>{status.platform}</b></p>
               <p className="text-xs text-muted-foreground num">SIRET {status.siret}</p>
             </div>
             <div className="flex items-center gap-2 sm:ml-4" data-testid="einv-threshold-control">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <label className="text-xs text-muted-foreground">Alerte surcoût &gt;</label>
+              <label className="text-xs text-muted-foreground">Alerta de sobrecusto &gt;</label>
               <Input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)} className="rounded-sm h-8 w-16 num text-center" data-testid="einv-threshold-input" />
               <span className="text-xs text-muted-foreground">%</span>
               <Button size="sm" variant="outline" className="rounded-sm h-8" disabled={savingThreshold} onClick={saveThreshold} data-testid="einv-threshold-save">
@@ -269,30 +269,30 @@ export default function EInvoicing() {
             </div>
             <div className="ml-auto flex gap-2">
               <Button size="sm" variant="outline" className="rounded-sm gap-1.5" onClick={openMonthly} data-testid="einv-monthly-btn">
-                <CalendarClock className="h-4 w-4" /> Résumé du mois
+                <CalendarClock className="h-4 w-4" /> Resumo do mês
               </Button>
               <Button variant="outline" size="sm" className="rounded-sm gap-1.5" disabled={simBusy} onClick={simulate} data-testid="einv-simulate-btn">
-                {simBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Simuler une réception
+                {simBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Simular uma receção
               </Button>
               <Button variant="ghost" size="sm" className="rounded-sm gap-1.5 text-muted-foreground" disabled={busy} onClick={disconnect} data-testid="einv-disconnect-btn">
-                <Unplug className="h-4 w-4" /> Déconnecter
+                <Unplug className="h-4 w-4" /> Desligar
               </Button>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold">{inbox.length}</p><p className="text-xs text-muted-foreground mt-1">Factures reçues</p></div>
-            <div className="surface p-4 rounded-sm border-blue-500/20"><p className="num text-2xl font-extrabold text-blue-600 dark:text-blue-400">{pending.length}</p><p className="text-xs text-muted-foreground mt-1">À traiter</p></div>
-            <div className="surface p-4 rounded-sm border-emerald-500/20"><p className="num text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{treated.length}</p><p className="text-xs text-muted-foreground mt-1">Traitées</p></div>
+            <div className="surface p-4 rounded-sm"><p className="num text-2xl font-extrabold">{inbox.length}</p><p className="text-xs text-muted-foreground mt-1">Faturas recebidas</p></div>
+            <div className="surface p-4 rounded-sm border-blue-500/20"><p className="num text-2xl font-extrabold text-blue-600 dark:text-blue-400">{pending.length}</p><p className="text-xs text-muted-foreground mt-1">A tratar</p></div>
+            <div className="surface p-4 rounded-sm border-emerald-500/20"><p className="num text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{treated.length}</p><p className="text-xs text-muted-foreground mt-1">Tratadas</p></div>
           </div>
 
-          <div className="flex items-center gap-2 mb-3"><Inbox className="h-4 w-4 text-primary" /><h3 className="font-display font-bold">Boîte de réception fournisseurs</h3></div>
+          <div className="flex items-center gap-2 mb-3"><Inbox className="h-4 w-4 text-primary" /><h3 className="font-display font-bold">Caixa de receção fornecedores</h3></div>
 
           {inbox.length === 0 ? (
             <div className="surface rounded-sm p-12 text-center" data-testid="einv-empty">
               <FileText className="h-10 w-10 mx-auto text-muted-foreground/50" />
-              <p className="mt-4 font-semibold">Aucune facture reçue</p>
-              <p className="text-sm text-muted-foreground mt-1">Cliquez sur « Simuler une réception » pour recevoir une facture de démonstration.</p>
+              <p className="mt-4 font-semibold">Nenhuma fatura recebida</p>
+              <p className="text-sm text-muted-foreground mt-1">Clique em «Simular uma receção» para receber uma fatura de demonstração.</p>
             </div>
           ) : (
             <div className="grid gap-3" data-testid="einv-inbox-list">
@@ -302,9 +302,9 @@ export default function EInvoicing() {
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="font-display font-semibold">{inv.supplier}</p>
-                      <p className="text-xs text-muted-foreground num">N° {inv.number} · SIRET {inv.supplier_siret} · émise le {inv.issued_at}</p>
+                      <p className="text-xs text-muted-foreground num">N° {inv.number} · SIRET {inv.supplier_siret} · emitido a {inv.issued_at}</p>
                       {inv.status === "refused" && inv.reason && (
-                        <p className="text-xs text-red-500 mt-1">Motif de refus : {inv.reason}</p>
+                        <p className="text-xs text-red-500 mt-1">Motivo de recusa: {inv.reason}</p>
                       )}
                     </div>
                     <StatusPill s={inv.status} />
@@ -324,11 +324,11 @@ export default function EInvoicing() {
                         </>
                       )}
                       <Button size="sm" variant="ghost" className="rounded-sm gap-1.5" onClick={() => openReconcile(inv)} data-testid={`einv-reconcile-btn-${inv.inv_id}`}>
-                        <GitCompareArrows className="h-4 w-4" /> {inv.reconciliation ? "Écart" : "Rapprocher"}
+                        <GitCompareArrows className="h-4 w-4" /> {inv.reconciliation ? "Desvio" : "Rapprocher"}
                       </Button>
                       {inv.status === "accepted" && !inv.expense && (
                         <Button size="sm" variant="ghost" className="rounded-sm gap-1.5 text-primary" onClick={() => { setExpenseOn(inv); setExpenseProject(""); }} data-testid={`einv-expense-btn-${inv.inv_id}`}>
-                          <HardHat className="h-4 w-4" /> Chantier
+                          <HardHat className="h-4 w-4" /> Obra
                         </Button>
                       )}
                     </div>
@@ -337,7 +337,7 @@ export default function EInvoicing() {
                     <div className="mt-3 rounded-sm p-3 flex flex-wrap items-center gap-3 text-sm border border-primary/30 bg-primary/5" data-testid={`einv-expense-${inv.inv_id}`}>
                       <Wallet className="h-4 w-4 text-primary shrink-0" />
                       <span className="text-muted-foreground">
-                        Dépense de <b className="num text-foreground">{eur(inv.expense.amount)}</b> HT imputée au chantier <b className="text-foreground">{inv.expense.project_name}</b>
+                        Despesa de <b className="num text-foreground">{eur(inv.expense.amount)}</b> s/ IVA imputada à obra <b className="text-foreground">{inv.expense.project_name}</b>
                       </span>
                       <Button size="sm" variant="ghost" className="rounded-sm h-7 gap-1 ml-auto text-muted-foreground" onClick={() => removeExpense(inv)} data-testid={`einv-remove-expense-${inv.inv_id}`}>
                         <Unlink className="h-3.5 w-3.5" /> Retirer
@@ -350,16 +350,16 @@ export default function EInvoicing() {
                         ? <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
                         : <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
                       <span className="text-muted-foreground">
-                        Commande <b className="text-foreground">{inv.reconciliation.order_type || "matériaux"}</b> · prévu <b className="num text-foreground">{eur(inv.reconciliation.expected_ht)}</b> HT · facturé <b className="num text-foreground">{eur(inv.reconciliation.invoice_ht)}</b> HT
+                        Commande <b className="text-foreground">{inv.reconciliation.order_type || "materiais"}</b> · previsto <b className="num text-foreground">{eur(inv.reconciliation.expected_ht)}</b> s/ IVA · faturado <b className="num text-foreground">{eur(inv.reconciliation.invoice_ht)}</b> HT
                       </span>
                       <span className={`num font-bold ${inv.reconciliation.gap_flag === "over" ? "text-red-600 dark:text-red-400" : inv.reconciliation.gap_flag === "under" ? "text-blue-600 dark:text-blue-400" : "text-emerald-600 dark:text-emerald-400"}`} data-testid={`einv-recon-gap-${inv.inv_id}`}>
                         {inv.reconciliation.gap_ht > 0 ? "+" : ""}{eur(inv.reconciliation.gap_ht)} ({inv.reconciliation.gap_pct > 0 ? "+" : ""}{inv.reconciliation.gap_pct}%)
                       </span>
                       <span className="text-[11px] uppercase font-semibold tracking-wide">
-                        {inv.reconciliation.gap_flag === "ok" ? "Conforme" : inv.reconciliation.gap_flag === "over" ? "Surcoût" : "Économie"}
+                        {inv.reconciliation.gap_flag === "ok" ? "Conforme" : inv.reconciliation.gap_flag === "over" ? "Sobrecusto" : "Poupança"}
                       </span>
                       <Button size="sm" variant="ghost" className="rounded-sm h-7 gap-1 ml-auto text-muted-foreground" onClick={() => removeReconcile(inv)} data-testid={`einv-unreconcile-${inv.inv_id}`}>
-                        <Unlink className="h-3.5 w-3.5" /> Délier
+                        <Unlink className="h-3.5 w-3.5" /> Desassociar
                       </Button>
                     </div>
                   )}
@@ -373,7 +373,7 @@ export default function EInvoicing() {
       <Dialog open={!!decideOn} onOpenChange={(o) => { if (!o) setDecideOn(null); }}>
         <DialogContent className="max-w-md" data-testid="einv-decision-dialog">
           <DialogHeader>
-            <DialogTitle>{decideOn?.decision === "accepted" ? "Accepter la facture" : "Refuser la facture"}</DialogTitle>
+            <DialogTitle>{decideOn?.decision === "accepted" ? "Aceitar a fatura" : "Recusar a fatura"}</DialogTitle>
           </DialogHeader>
           {decideOn && (
             <div className="space-y-3">
@@ -381,35 +381,35 @@ export default function EInvoicing() {
                 {decideOn.inv.supplier} · {decideOn.inv.number} · <b className="text-foreground">{eur(decideOn.inv.amount_ttc)}</b> TTC
               </p>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">{decideOn.decision === "refused" ? "Motif du refus (obligatoire)" : "Commentaire (facultatif)"}</label>
-                <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-sm mt-1" placeholder={decideOn.decision === "refused" ? "Ex : quantités non conformes au bon de livraison" : ""} data-testid="einv-reason-input" />
+                <label className="text-xs font-semibold text-muted-foreground">{decideOn.decision === "refused" ? "Motivo da recusa (obrigatório)" : "Commentaire (facultatif)"}</label>
+                <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="rounded-sm mt-1" placeholder={decideOn.decision === "refused" ? "Ex.: quantidades não conformes à guia de entrega" : ""} data-testid="einv-reason-input" />
               </div>
               {decideOn.decision === "accepted" && (
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><HardHat className="h-3.5 w-3.5" /> Imputer sur un chantier (dépense auto)</label>
+                  <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><HardHat className="h-3.5 w-3.5" /> Imputar numa obra (despesa auto)</label>
                   <Select value={decisionProject} onValueChange={setDecisionProject}>
-                    <SelectTrigger className="rounded-sm mt-1" data-testid="einv-decision-project-select"><SelectValue placeholder="Aucun (facultatif)…" /></SelectTrigger>
+                    <SelectTrigger className="rounded-sm mt-1" data-testid="einv-decision-project-select"><SelectValue placeholder="Nenhum (facultativo)…" /></SelectTrigger>
                     <SelectContent>
-                      {projects.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Aucun chantier</div>}
+                      {projects.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma obra</div>}
                       {projects.map((p) => (
                         <SelectItem key={p.project_id} value={p.project_id} data-testid={`einv-decision-project-${p.project_id}`}>{p.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">Le montant HT sera ajouté aux dépenses du chantier pour suivre votre marge en temps réel.</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">O montante s/ IVA será adicionado às despesas da obra para acompanhar a sua margem em tempo real.</p>
                 </div>
               )}
-              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5"><Info className="h-3.5 w-3.5 mt-px shrink-0" /> Le statut sera transmis à l'administration via la plateforme (simulé).</p>
+              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5"><Info className="h-3.5 w-3.5 mt-px shrink-0" /> O estado será transmitido à administração através da plataforma (simulado).</p>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" className="rounded-sm" onClick={() => setDecideOn(null)} data-testid="einv-decision-cancel">Annuler</Button>
+            <Button variant="ghost" className="rounded-sm" onClick={() => setDecideOn(null)} data-testid="einv-decision-cancel">Cancelar</Button>
             <Button
               className={`rounded-sm gap-2 ${decideOn?.decision === "refused" ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
               disabled={decideBusy || (decideOn?.decision === "refused" && !reason.trim())}
               onClick={submitDecision} data-testid="einv-decision-confirm">
               {decideBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : (decideOn?.decision === "refused" ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />)}
-              {decideOn?.decision === "refused" ? "Confirmer le refus" : "Confirmer l'acceptation"}
+              {decideOn?.decision === "refused" ? "Confirmar a recusa" : "Confirmer l'acceptation"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -418,19 +418,19 @@ export default function EInvoicing() {
       <Dialog open={!!reconOn} onOpenChange={(o) => { if (!o) setReconOn(null); }}>
         <DialogContent className="max-w-md" data-testid="einv-reconcile-dialog">
           <DialogHeader>
-            <DialogTitle>Rapprocher de mon bon de commande</DialogTitle>
+            <DialogTitle>Aproximar da minha guia de encomenda</DialogTitle>
           </DialogHeader>
           {reconOn && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Facture {reconOn.supplier} · {reconOn.number} · <b className="text-foreground num">{eur(reconOn.amount_ht)}</b> HT
+                Fatura {reconOn.supplier} · {reconOn.number} · <b className="text-foreground num">{eur(reconOn.amount_ht)}</b> HT
               </p>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Bon de commande matériaux</label>
+                <label className="text-xs font-semibold text-muted-foreground">Nota de encomenda materiais</label>
                 <Select value={reconOrderId} onValueChange={onPickOrder}>
-                  <SelectTrigger className="rounded-sm mt-1" data-testid="einv-recon-order-select"><SelectValue placeholder="Sélectionner une commande…" /></SelectTrigger>
+                  <SelectTrigger className="rounded-sm mt-1" data-testid="einv-recon-order-select"><SelectValue placeholder="Selecionar uma encomenda…" /></SelectTrigger>
                   <SelectContent>
-                    {orders.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Aucun bon de commande</div>}
+                    {orders.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma nota de encomenda</div>}
                     {orders.map((o) => (
                       <SelectItem key={o.order_id} value={o.order_id} data-testid={`einv-recon-order-${o.order_id}`}>
                         {(o.type || "Commande")} · {o.item_count} ligne(s){o.est_ht > 0 ? ` · ~${eur(o.est_ht)} HT` : ""}
@@ -440,14 +440,14 @@ export default function EInvoicing() {
                 </Select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Montant commande estimé HT (€)</label>
+                <label className="text-xs font-semibold text-muted-foreground">Montante encomenda estimado s/ IVA (€)</label>
                 <Input type="number" value={reconExpected} onChange={(e) => setReconExpected(e.target.value)} placeholder="Ex : 1200" className="rounded-sm mt-1 num" data-testid="einv-recon-expected-input" />
-                <p className="text-[11px] text-muted-foreground mt-1">Pré-rempli depuis la commande si des prix unitaires sont connus, sinon saisissez le montant attendu.</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Pré-preenchido desde a encomenda se os preços unitários são conhecidos, caso contrário insira o montante esperado.</p>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" className="rounded-sm" onClick={() => setReconOn(null)} data-testid="einv-recon-cancel">Annuler</Button>
+            <Button variant="ghost" className="rounded-sm" onClick={() => setReconOn(null)} data-testid="einv-recon-cancel">Cancelar</Button>
             <Button className="rounded-sm gap-2" disabled={reconBusy || !reconOrderId} onClick={submitReconcile} data-testid="einv-recon-confirm">
               {reconBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitCompareArrows className="h-4 w-4" />} Rapprocher
             </Button>
@@ -458,7 +458,7 @@ export default function EInvoicing() {
       <Dialog open={!!expenseOn} onOpenChange={(o) => { if (!o) setExpenseOn(null); }}>
         <DialogContent className="max-w-md" data-testid="einv-expense-dialog">
           <DialogHeader>
-            <DialogTitle>Imputer la facture sur un chantier</DialogTitle>
+            <DialogTitle>Imputar a fatura a uma obra</DialogTitle>
           </DialogHeader>
           {expenseOn && (
             <div className="space-y-3">
@@ -466,24 +466,24 @@ export default function EInvoicing() {
                 {expenseOn.supplier} · {expenseOn.number} · <b className="text-foreground num">{eur(expenseOn.amount_ht)}</b> HT
               </p>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Chantier</label>
+                <label className="text-xs font-semibold text-muted-foreground">Obra</label>
                 <Select value={expenseProject} onValueChange={setExpenseProject}>
-                  <SelectTrigger className="rounded-sm mt-1" data-testid="einv-expense-project-select"><SelectValue placeholder="Sélectionner un chantier…" /></SelectTrigger>
+                  <SelectTrigger className="rounded-sm mt-1" data-testid="einv-expense-project-select"><SelectValue placeholder="Selecionar uma obra…" /></SelectTrigger>
                   <SelectContent>
-                    {projects.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Aucun chantier</div>}
+                    {projects.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma obra</div>}
                     {projects.map((p) => (
                       <SelectItem key={p.project_id} value={p.project_id} data-testid={`einv-expense-project-${p.project_id}`}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">Le montant HT sera ajouté aux dépenses du chantier (suivi de marge).</p>
+                <p className="text-[11px] text-muted-foreground mt-1">O montante s/ IVA será adicionado às despesas da obra (acompanhamento de margem).</p>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" className="rounded-sm" onClick={() => setExpenseOn(null)} data-testid="einv-expense-cancel">Annuler</Button>
+            <Button variant="ghost" className="rounded-sm" onClick={() => setExpenseOn(null)} data-testid="einv-expense-cancel">Cancelar</Button>
             <Button className="rounded-sm gap-2" disabled={expenseBusy || !expenseProject} onClick={submitExpense} data-testid="einv-expense-confirm">
-              {expenseBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />} Ajouter la dépense
+              {expenseBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />} Adicionar a despesa
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -492,23 +492,23 @@ export default function EInvoicing() {
       <Dialog open={monthlyOpen} onOpenChange={setMonthlyOpen}>
         <DialogContent className="max-w-md" data-testid="einv-monthly-dialog">
           <DialogHeader>
-            <DialogTitle>Résumé fournisseurs — {monthly?.month || ""}</DialogTitle>
+            <DialogTitle>Resumo fornecedores — {monthly?.month || ""}</DialogTitle>
           </DialogHeader>
           {monthly && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-sm p-4 border border-red-500/30 bg-red-500/5">
                   <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400"><TrendingUp className="h-4 w-4" /><span className="num text-xl font-extrabold" data-testid="einv-monthly-overspend">+{eur(monthly.overspend_total)}</span></div>
-                  <p className="text-xs text-muted-foreground mt-1">Surcoûts détectés ({monthly.over_count})</p>
+                  <p className="text-xs text-muted-foreground mt-1">Sobrecustos detetados ({monthly.over_count})</p>
                 </div>
                 <div className="rounded-sm p-4 border border-emerald-500/30 bg-emerald-500/5">
                   <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400"><TrendingDown className="h-4 w-4" /><span className="num text-xl font-extrabold" data-testid="einv-monthly-savings">{eur(monthly.savings_total)}</span></div>
-                  <p className="text-xs text-muted-foreground mt-1">Économies réalisées ({monthly.under_count})</p>
+                  <p className="text-xs text-muted-foreground mt-1">Poupanças realizadas ({monthly.under_count})</p>
                 </div>
               </div>
               {monthly.over_items?.length > 0 ? (
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Principaux surcoûts</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Principais custos adicionais</p>
                   {monthly.over_items.map((i, k) => (
                     <div key={k} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground truncate">{i.supplier} · {i.number}</span>
@@ -517,13 +517,13 @@ export default function EInvoicing() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-emerald-600 dark:text-emerald-400">Aucun surcoût ce mois-ci 🎉</p>
+                <p className="text-sm text-emerald-600 dark:text-emerald-400">Nenhum custo adicional este mês 🎉</p>
               )}
-              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5"><Info className="h-3.5 w-3.5 mt-px shrink-0" /> Ce résumé vous est envoyé automatiquement par e-mail le 1er de chaque mois.</p>
+              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5"><Info className="h-3.5 w-3.5 mt-px shrink-0" /> Este resumo é-lhe enviado automaticamente por e-mail no dia 1 de cada mês.</p>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" className="rounded-sm" onClick={() => setMonthlyOpen(false)} data-testid="einv-monthly-close">Fermer</Button>
+            <Button variant="outline" className="rounded-sm" onClick={() => setMonthlyOpen(false)} data-testid="einv-monthly-close">Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

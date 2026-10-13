@@ -76,7 +76,7 @@ export async function uploadProjectPhoto(userId, projectId, file, fields = {}) {
     const { data } = await api.post(url, fd, { headers: { "Content-Type": "multipart/form-data" } });
     return { data, queued: false };
   }
-  await queueAdd({ userId, kind: "upload", url, entity: projectId, file, fileName: file.name || "photo.jpg", fields, label: "Photo chantier" });
+  await queueAdd({ userId, kind: "upload", url, entity: projectId, file, fileName: file.name || "photo.jpg", fields, label: "Fotografia da obra" });
   if (typeof window !== "undefined") window.dispatchEvent(new Event("construpilot-offline-queued"));
   return { data: null, queued: true };
 }

@@ -17,7 +17,7 @@ const dynToCard = (a) => ({
 const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "Blog",
-  "name": "Blog ConstruPilot — Devis travaux, rénovation & BTP",
+  "name": "Blog ConstruPilot — Orçamentos de obras, renovação e construção",
   "url": "https://construpilot.fr/blog",
   "blogPost": BLOG_ARTICLES.map((a) => ({
     "@type": "BlogPosting",
@@ -47,24 +47,24 @@ export default function Blog() {
         title="Blog"
         description={isPT
           ? "Guias e atualidades da construção por ConstruPilot: custo de renovação 2026 por distrito, IVA das obras (6%/23%), como estimar uma obra em minutos."
-          : "Guides, astuces et actualités BTP par ConstruPilot : coût rénovation 2026, TVA à 10 %, métré 2D, comparateur de prix matériaux, devis client, plans 3D."}
+          : "Guias, dicas e atualidades da construção por ConstruPilot: custo renovação 2026, IVA a 10%, medições 2D, comparador de preços materiais, orçamento cliente, plantas 3D."}
         keywords={isPT
           ? "blog construção Portugal, custo renovação, IVA obras 6, estimar obra, orçamento obras"
-          : "blog BTP, coût rénovation, TVA 10 pourcent, métré 2D, devis travaux, prix matériaux"}
+          : "blog construção, custo renovação, IVA 10 porcento, medições 2D, orçamento obras, preço materiais"}
         canonical="/blog"
         jsonLd={JSON_LD}
       />
       <section className="border-b border-border">
         <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16 lg:py-20">
-          <p className="overline">{isPT ? "O jornal" : "Le journal"}</p>
+          <p className="overline">{isPT ? "O jornal" : "O jornal"}</p>
           <h1 className="mt-3 font-display text-4xl lg:text-5xl font-extrabold tracking-tighter">
             {isPT ? <>Guias & atualidades <span className="text-primary">Construção 2026</span></>
-                  : <>Guides & actualités <span className="text-primary">BTP 2026</span></>}
+                  : <>Guias & atualidades <span className="text-primary">BTP 2026</span></>}
           </h1>
           <p className="mt-4 text-sm md:text-base text-muted-foreground max-w-2xl">
             {isPT
               ? "Preços de obras, IVA na reabilitação, métodos e orçamentos: o jornal do ConstruPilot com respostas concretas para o mercado português."
-              : "Prix travaux, méthodes de métré, fiscalité rénovation, comparatifs matériaux : le journal de ConstruPilot vous donne les réponses concrètes du terrain, actualisées chaque semaine."}
+              : "Preços de obras, métodos de medições, fiscalidade de renovação, comparativos de materiais: o jornal de ConstruPilot dá-lhe as respostas concretas do terreno, atualizadas todas as semanas."}
           </p>
         </div>
       </section>

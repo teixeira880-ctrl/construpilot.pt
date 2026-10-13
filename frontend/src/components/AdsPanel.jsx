@@ -20,7 +20,7 @@ export default function AdsPanel() {
   const [channels, setChannels] = useState([]);
   const [utm, setUtm] = useState({ source: "instagram", campaign: "lancement" });
   const utmLink = `https://construpilot.fr/?utm_source=${utm.source}&utm_medium=social&utm_campaign=${encodeURIComponent(utm.campaign || "lancement")}`;
-  const copyUtm = () => { navigator.clipboard.writeText(utmLink); toast.success("Lien copié — collez-le dans votre pub"); };
+  const copyUtm = () => { navigator.clipboard.writeText(utmLink); toast.success("Link copiado — cole-o no seu anúncio"); };
   const [filters, setFilters] = useState({ platforms: [], months: [] });
   const [fPlatform, setFPlatform] = useState("");
   const [fMonth, setFMonth] = useState("");
@@ -67,27 +67,27 @@ export default function AdsPanel() {
     try {
       if (editingId) {
         await api.put(`/ads/campaigns/${editingId}`, payload);
-        toast.success("Campagne modifiée");
+        toast.success("Campanha modificada");
       } else {
         await api.post("/ads/campaigns", payload);
-        toast.success("Campagne ajoutée");
+        toast.success("Campanha adicionada");
       }
       setOpen(false); setForm(EMPTY); setEditingId(null); load();
-    } catch { toast.error("Erreur"); } finally { setSaving(false); }
+    } catch { toast.error("Erro"); } finally { setSaving(false); }
   };
   const del = async () => {
     if (!toDelete) return;
-    await api.delete(`/ads/campaigns/${toDelete.campaign_id}`); toast.success("Supprimée"); setToDelete(null); load();
+    await api.delete(`/ads/campaigns/${toDelete.campaign_id}`); toast.success("Eliminada"); setToDelete(null); load();
   };
 
   return (
     <div className="grid gap-6" data-testid="ads-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle over="Marketing" title="Publicité & acquisition">
-          Suivez vos campagnes publicitaires : dépenses, leads générés, coût par lead et ROI.
+        <SectionTitle over="Marketing" title="Publicidade & aquisição">
+          Acompanhe as suas campanhas publicitárias: despesas, leads gerados, custo por lead e ROI.
         </SectionTitle>
         <Button onClick={openNew} className="rounded-sm gap-2" data-testid="ads-new-btn">
-          <Plus className="h-4 w-4" /> Nouvelle campagne
+          <Plus className="h-4 w-4" /> Nova campanha
         </Button>
       </div>
 
@@ -95,36 +95,36 @@ export default function AdsPanel() {
         <span className="text-xs text-muted-foreground">Filtrer :</span>
         <select value={fPlatform} onChange={(e) => setFPlatform(e.target.value)} data-testid="ads-filter-platform"
           className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm">
-          <option value="">Toutes plateformes</option>
+          <option value="">Todas as plataformas</option>
           {filters.platforms.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
         <select value={fMonth} onChange={(e) => setFMonth(e.target.value)} data-testid="ads-filter-month"
           className="rounded-sm border border-border bg-background px-2 py-1.5 text-sm">
-          <option value="">Toute la période</option>
+          <option value="">Todo o período</option>
           {filters.months.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
         {(fPlatform || fMonth) && (
           <button onClick={() => { setFPlatform(""); setFMonth(""); }} data-testid="ads-filter-reset"
-            className="text-xs text-primary hover:underline">Réinitialiser</button>
+            className="text-xs text-primary hover:underline">Reiniciar</button>
         )}
       </div>
 
       {sum && (
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3" data-testid="ads-kpis">
-          <Stat label="Dépense totale" value={eur(sum.total_spend)} />
+          <Stat label="Despesa total" value={eur(sum.total_spend)} />
           <Stat label="Budget" value={eur(sum.total_budget)} />
           <Stat label="Leads (saisis)" value={num(sum.total_leads)} />
-          <Stat label="Leads réels (CRM)" value={num(sum.total_real_leads || 0)} accent />
-          <Stat label="CPL réel" value={sum.real_cpl != null ? eur(sum.real_cpl) : (sum.cpl != null ? eur(sum.cpl) : "—")} />
+          <Stat label="Leads reais (CRM)" value={num(sum.total_real_leads || 0)} accent />
+          <Stat label="CPL real" value={sum.real_cpl != null ? eur(sum.real_cpl) : (sum.cpl != null ? eur(sum.cpl) : "—")} />
           <Stat label="ROAS" value={sum.roas != null ? `${sum.roas}×` : "—"} accent />
         </div>
       )}
 
       <div className="surface p-5 rounded-sm" data-testid="ads-utm-generator">
-        <p className="text-sm font-display font-semibold mb-3">Générateur de lien publicitaire (UTM)</p>
+        <p className="text-sm font-display font-semibold mb-3">Gerador de link publicitário (UTM)</p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1">
-            <label className="text-xs text-muted-foreground">Réseau</label>
+            <label className="text-xs text-muted-foreground">Rede</label>
             <select value={utm.source} onChange={(e) => setUtm({ ...utm, source: e.target.value })}
               className="rounded-sm h-9 border border-input bg-background px-2 text-sm" data-testid="utm-source">
               <option value="instagram">Instagram</option>
@@ -134,11 +134,11 @@ export default function AdsPanel() {
             </select>
           </div>
           <div className="grid gap-1 flex-1 min-w-[160px]">
-            <label className="text-xs text-muted-foreground">Nom de campagne</label>
+            <label className="text-xs text-muted-foreground">Nome de campanha</label>
             <input value={utm.campaign} onChange={(e) => setUtm({ ...utm, campaign: e.target.value })}
               className="rounded-sm h-9 border border-input bg-background px-2 text-sm w-full" data-testid="utm-campaign" placeholder="lancement" />
           </div>
-          <Button size="sm" className="rounded-sm gap-2" onClick={copyUtm} data-testid="utm-copy"><Copy className="h-4 w-4" /> Copier le lien</Button>
+          <Button size="sm" className="rounded-sm gap-2" onClick={copyUtm} data-testid="utm-copy"><Copy className="h-4 w-4" /> Copiar o link</Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground break-all num" data-testid="utm-preview">{utmLink}</p>
       </div>
@@ -164,7 +164,7 @@ export default function AdsPanel() {
         <div className="surface p-5 rounded-sm" data-testid="ads-chart">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="h-4 w-4 text-primary" />
-            <p className="text-sm font-display font-semibold">Dépenses vs leads par plateforme</p>
+            <p className="text-sm font-display font-semibold">Despesas vs leads por plataforma</p>
           </div>
           <div style={{ width: "100%", height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -176,7 +176,7 @@ export default function AdsPanel() {
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} allowDecimals={false} width={32} />
                 <Tooltip
                   contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 4, fontSize: 12 }}
-                  formatter={(value, name) => name === "Dépense (€)" ? [eur(value), name] : [num(value), name]} />
+                  formatter={(value, name) => name === "Despesa (€)" ? [eur(value), name] : [num(value), name]} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar yAxisId="left" dataKey="spend" name="Dépense (€)" fill="var(--primary)" radius={[3, 3, 0, 0]} maxBarSize={40} />
                 <Bar yAxisId="right" dataKey="leads" name="Leads" fill="#f59e0b" radius={[3, 3, 0, 0]} maxBarSize={40} />
@@ -189,7 +189,7 @@ export default function AdsPanel() {
       {rows.length === 0 ? (
         <div className="surface p-10 text-center space-y-2" data-testid="ads-empty">
           <Megaphone className="h-8 w-8 mx-auto text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Aucune campagne. Ajoutez votre première campagne publicitaire.</p>
+          <p className="text-sm text-muted-foreground">Nenhuma campanha. Adicione a sua primeira campanha publicitária.</p>
         </div>
       ) : (
         <div className="grid gap-2" data-testid="ads-list">
@@ -204,12 +204,12 @@ export default function AdsPanel() {
                     {c.lead_source ? <span className="ml-1 text-primary normal-case">· CRM: {c.lead_source}</span> : null}
                   </p>
                 </div>
-                <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Dépense</span><br /><span className="num font-bold">{eur(c.spend)}</span></div>
+                <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Despesa</span><br /><span className="num font-bold">{eur(c.spend)}</span></div>
                 <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Leads</span><br /><span className="num font-bold">{num(c.leads)}</span></div>
                 {c.lead_source ? (
-                  <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Leads réels</span><br /><span className="num font-bold text-emerald-500">{num(c.real_leads || 0)}</span></div>
+                  <div className="text-right text-sm"><span className="text-muted-foreground text-xs">Leads reais</span><br /><span className="num font-bold text-emerald-500">{num(c.real_leads || 0)}</span></div>
                 ) : null}
-                <div className="text-right text-sm"><span className="text-muted-foreground text-xs">CPL {c.lead_source ? "réel" : ""}</span><br /><span className="num font-bold text-primary">{(c.lead_source && c.real_cpl != null) ? eur(c.real_cpl) : (cpl != null ? eur(cpl) : "—")}</span></div>
+                <div className="text-right text-sm"><span className="text-muted-foreground text-xs">CPL {c.lead_source ? "real" : ""}</span><br /><span className="num font-bold text-primary">{(c.lead_source && c.real_cpl != null) ? eur(c.real_cpl) : (cpl != null ? eur(cpl) : "—")}</span></div>
                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(c)} data-testid={`ads-edit-${c.campaign_id}`}><Pencil className="h-4 w-4" /></Button>
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => setToDelete(c)} data-testid={`ads-del-${c.campaign_id}`}><Trash2 className="h-4 w-4" /></Button>
               </div>
@@ -220,8 +220,8 @@ export default function AdsPanel() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editingId ? "Modifier la campagne" : "Nouvelle campagne"}</DialogTitle>
-            <DialogDescription>Renseignez la dépense et les leads pour calculer le coût par lead.</DialogDescription>
+          <DialogHeader><DialogTitle>{editingId ? "Modificar a campanha" : "Nova campanha"}</DialogTitle>
+            <DialogDescription>Indique a despesa e os leads para calcular o custo por lead.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <div><Label>Nom</Label><Input value={form.name} onChange={set("name")} className="rounded-sm mt-1" data-testid="ads-name" /></div>
@@ -233,9 +233,9 @@ export default function AdsPanel() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Budget (€)</Label><Input type="number" value={form.budget} onChange={set("budget")} className="rounded-sm mt-1 num" data-testid="ads-budget" /></div>
-              <div><Label>Dépense (€)</Label><Input type="number" value={form.spend} onChange={set("spend")} className="rounded-sm mt-1 num" data-testid="ads-spend" /></div>
+              <div><Label>Despesa (€)</Label><Input type="number" value={form.spend} onChange={set("spend")} className="rounded-sm mt-1 num" data-testid="ads-spend" /></div>
               <div><Label>Leads</Label><Input type="number" value={form.leads} onChange={set("leads")} className="rounded-sm mt-1 num" data-testid="ads-leads" /></div>
-              <div><Label>CA attribué (€)</Label><Input type="number" value={form.revenue} onChange={set("revenue")} className="rounded-sm mt-1 num" data-testid="ads-revenue" /></div>
+              <div><Label>Volume de negócios atribuído (€)</Label><Input type="number" value={form.revenue} onChange={set("revenue")} className="rounded-sm mt-1 num" data-testid="ads-revenue" /></div>
             </div>
             <div>
               <Label>Source CRM (attribution auto)</Label>
@@ -246,14 +246,14 @@ export default function AdsPanel() {
                 {sources.map((s) => <option key={s} value={s} />)}
               </datalist>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Reliez cette campagne au champ « source » de vos leads CRM pour calculer automatiquement le vrai coût par lead.
+                Ligue esta campanha ao campo «origem» dos seus leads CRM para calcular automaticamente o custo real por lead.
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)} className="rounded-sm">Annuler</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)} className="rounded-sm">Cancelar</Button>
             <Button onClick={save} disabled={saving} className="rounded-sm gap-2" data-testid="ads-save">
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />} Enregistrer</Button>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />} Guardar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -261,14 +261,14 @@ export default function AdsPanel() {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent data-testid="ads-delete-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer la campagne&nbsp;?</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar a campanha&nbsp;?</AlertDialogTitle>
             <AlertDialogDescription>
-              « {toDelete?.name} » sera définitivement supprimée. Cette action est irréversible.
+              « {toDelete?.name} » será definitivamente eliminada. Esta ação é irreversível.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-sm" data-testid="ads-delete-cancel">Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={del} className="rounded-sm bg-red-600 hover:bg-red-700" data-testid="ads-delete-confirm">Supprimer</AlertDialogAction>
+            <AlertDialogCancel className="rounded-sm" data-testid="ads-delete-cancel">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={del} className="rounded-sm bg-red-600 hover:bg-red-700" data-testid="ads-delete-confirm">Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

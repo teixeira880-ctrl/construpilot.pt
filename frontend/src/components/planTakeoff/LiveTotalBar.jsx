@@ -66,7 +66,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
       setTotals(totalsMap);
       setMaterialsByRoom(materialsMap);
       const total = Object.values(totalsMap).reduce((a, b) => a + b, 0);
-      toast.success(`Coût total : ${eur(total)} (${Object.keys(totalsMap).length} pièces)`);
+      toast.success(`Custo total:${eur(total)} (${Object.keys(totalsMap).length}divisões)`);
     } finally {
       setComputing(false);
     }
@@ -86,7 +86,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
     // Agrège tous les matériaux et navigue vers /prix pré-loadé
     const allMaterials = [];
     Object.values(materialsByRoom).forEach((list) => list.forEach((m) => allMaterials.push(m)));
-    if (allMaterials.length === 0) return toast.error("Estimez au moins une pièce d'abord");
+    if (allMaterials.length === 0) return toast.error("Estime pelo menos uma divisão primeiro");
     sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
       items: allMaterials,
       source: "plan_total",
@@ -94,7 +94,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
       total_avg: total,
       ts: Date.now(),
     }));
-    toast.success(`Recherche prix sur ${allMaterials.length} matériaux…`);
+    toast.success(`Pesquisa de preços em${allMaterials.length}materiais…`);
     window.location.href = "/prix?from=plan-total";
   };
 
@@ -124,8 +124,8 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
             {hasEstimates
-              ? `Coût total plan (${nEstimated}/${rooms.length} pièces)`
-              : "Estimez toutes les pièces"}
+              ? `Custo total da planta (${nEstimated}/${rooms.length}divisões)`
+              : "Estime todas as divisões"}
           </span>
           {hasEstimates && (
             <span className="font-display font-bold text-sm num" data-testid="live-total-value">
@@ -140,7 +140,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
           disabled={computing}
           data-testid="live-total-compute-btn"
           className="h-7 gap-1.5 rounded-full text-xs"
-          title="Recalculer toutes les pièces"
+          title="Recalcular todas as divisões"
         >
           {computing ? (
             <RefreshCw className="h-3 w-3 animate-spin" />
@@ -156,9 +156,9 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
             onClick={compareBestPrices}
             data-testid="live-total-compare-prices"
             className="h-7 gap-1 rounded-full text-xs text-primary hover:bg-primary/10"
-            title="Voir les meilleurs prix chez tous les fournisseurs"
+            title="Ver os melhores preços em todos os fornecedores"
           >
-            <Trophy className="h-3 w-3" /> Voir vainqueur prix
+            <Trophy className="h-3 w-3" /> Ver vencedor preço
           </Button>
         )}
         {hasEstimates && onOpenEstimate && (
@@ -171,9 +171,9 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
             }}
             data-testid="live-total-open-biggest"
             className="h-7 gap-1 rounded-full text-xs"
-            title="Voir la pièce la plus coûteuse"
+            title="Ver a divisão mais dispendiosa"
           >
-            <ArrowUp className="h-3 w-3" /> Détails
+            <ArrowUp className="h-3 w-3" /> Detalhes
           </Button>
         )}
       </div>

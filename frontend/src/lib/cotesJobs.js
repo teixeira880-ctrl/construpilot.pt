@@ -12,9 +12,9 @@ export async function runCotesJob(path, body, { maxMs = 600000, onTick } = {}) {
     const { data: j } = await api.get(`/takeoffs/cotes-jobs/${data.job_id}`);
     onTick?.(Math.round((Date.now() - t0) / 1000));
     if (j.status === "done") return j.result;
-    if (j.status === "error") throw new Error(j.error || "Traitement impossible");
+    if (j.status === "error") throw new Error(j.error || "Tratamento impossível");
   }
-  throw new Error("Délai dépassé — réessayez");
+  throw new Error("Prazo ultrapassado — tente novamente");
 }
 
 export async function pollCotesJob(jobId, { timeoutMs = 600000 } = {}) {
@@ -23,7 +23,7 @@ export async function pollCotesJob(jobId, { timeoutMs = 600000 } = {}) {
     await sleep(4000);
     const { data: j } = await api.get(`/takeoffs/cotes-jobs/${jobId}`);
     if (j.status === "done") return j.result;
-    if (j.status === "error") throw new Error(j.error || "Traitement impossible");
+    if (j.status === "error") throw new Error(j.error || "Tratamento impossível");
   }
-  throw new Error("Délai dépassé");
+  throw new Error("Prazo ultrapassado");
 }

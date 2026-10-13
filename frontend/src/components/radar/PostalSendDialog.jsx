@@ -19,7 +19,7 @@ import { BrandingDialog } from "@/components/BrandingDialog";
 const MODES = [
   { v: "normal", label: "Lettre simple" },
   { v: "suivi", label: "Lettre suivie" },
-  { v: "lrar", label: "Recommandé (LRAR)" },
+  { v: "lrar", label: "Registado (LRAR)" },
 ];
 
 export default function PostalSendDialog({ open, onClose, campaign, opp }) {
@@ -53,7 +53,7 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
     setSends([]);
     api.get(`/radar/prospection/${campaign.token}/postal`).then(({ data }) => {
       if (active) { setSends(data.sends || []); setHistoryLoaded(true); }
-    }).catch(() => { if (active) setHistoryError("Impossible de vérifier l'historique. Actualisez le suivi avant l'envoi."); });
+    }).catch(() => { if (active) setHistoryError("Impossível verificar o histórico. Atualize o acompanhamento antes do envio."); });
     return () => { active = false; };
   }, [open, campaign?.token, opp]);
 
@@ -63,7 +63,7 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
   const send = async () => {
     if (submitting.current || busy || locked || !valid || !consent || !historyLoaded || !price) return;
     if (!form.nom.trim() || !form.adresse1.trim() || !form.cp.trim() || !form.ville.trim()) {
-      toast.error("Nom, adresse, code postal et ville sont requis"); return;
+      toast.error("Nome, morada, código postal e cidade são obrigatórios"); return;
     }
     submitting.current = true; setBusy(true); setSendError("");
     const payload = { recipient: form, mode, address_source: edited ? "manual" : destination, quote_id: price.quote_id, confirmed: true };
@@ -79,8 +79,8 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
       const { data } = await api.post(`/radar/prospection/${campaign.token}/postal`, payload, { timeout: 55000 });
       setSends((s) => [data, ...s]);
       setApprovedQuote(null);
-      if (data.status === "submitted") { setLocked(true); toast.success(`Courrier accepté par Merci Facteur (n° ${data.envoi_id})`); }
-      else { setLocked(true); setSendError(data.error_message || "Envoi à vérifier avant toute nouvelle tentative."); }
+      if (data.status === "submitted") { setLocked(true); toast.success(`Carta aceite pela Merci Facteur (n.º${data.envoi_id})`); }
+      else { setLocked(true); setSendError(data.error_message || "Envio a verificar antes de qualquer nova tentativa."); }
     } catch (e) {
       setSendError(postalError(e)); setApprovedQuote(null);
       // A gateway failure does not establish whether postage was accepted; never auto-resend.
@@ -104,7 +104,7 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
     <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent className="z-[121] w-[calc(100%-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto" overlayClassName="z-[120]" data-testid="postal-dialog">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 pr-4" data-testid="postal-dialog-title"><Truck className="h-5 w-5 shrink-0 text-primary" /> Envoyer par la poste</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 pr-4" data-testid="postal-dialog-title"><Truck className="h-5 w-5 shrink-0 text-primary" /> Enviar pelo correio</DialogTitle>
         </DialogHeader>
         <DialogDescription className="text-xs -mt-2" data-testid="postal-billing-notice">{ui(offerState.offer?.phase === "paid" ? "packHint" : "costCovered")}</DialogDescription>
         <p className="text-xs border-l-2 border-primary pl-3" data-testid="postal-real-delivery-notice">{ui(offerState.offer?.next_kind === "checkout" ? "paidNotice" : "liveNotice")}</p>
@@ -114,11 +114,11 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
         <div className="grid grid-cols-2 gap-2 text-xs">
           <label className="col-span-2">Destinataire *
             <Input value={form.nom} onChange={set("nom")} className="h-9 mt-1" data-testid="postal-nom" /></label>
-          <label className="col-span-2">Société (optionnel)
+          <label className="col-span-2">Empresa (opcional)
             <Input value={form.societe} onChange={set("societe")} className="h-9 mt-1" data-testid="postal-societe" /></label>
           <label className="col-span-2">Adresse *
-            <Input value={form.adresse1} onChange={set("adresse1")} placeholder="N° et voie" className="h-9 mt-1" data-testid="postal-adresse1" /></label>
-          <label className="col-span-2">Complément
+            <Input value={form.adresse1} onChange={set("adresse1")} placeholder="N.º e via" className="h-9 mt-1" data-testid="postal-adresse1" /></label>
+          <label className="col-span-2">Complemento
             <Input value={form.adresse2} onChange={set("adresse2")} className="h-9 mt-1" data-testid="postal-adresse2" /></label>
           <label>Code postal *
             <Input value={form.cp} onChange={set("cp")} className="h-9 mt-1 num" data-testid="postal-cp" /></label>
@@ -140,7 +140,7 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
         {user?.role === "admin" && errorCode === "INVALID_TOKEN_FOR_IP" && <Link to="/admin?tab=postal" onClick={onClose} className="text-xs underline text-primary" data-testid="postal-admin-diagnostics-link">{ui("diagnosis")}</Link>}
         {sendError && <p role="alert" className="text-xs text-red-700" data-testid="postal-send-error">{sendError}</p>}
         {historyError && <p role="alert" className="text-xs text-red-700" data-testid="postal-history-error">{historyError}</p>}
-        {(historyError || locked) && <Button size="sm" variant="outline" disabled={busy} onClick={refresh} data-testid="postal-history-retry">Vérifier le suivi</Button>}
+        {(historyError || locked) && <Button size="sm" variant="outline" disabled={busy} onClick={refresh} data-testid="postal-history-retry">Verificar o seguimento</Button>}
         <Button onClick={send} disabled={busy || locked || !valid || !consent || !historyLoaded} className="rounded-sm gap-2 w-full" data-testid="postal-send-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : kind === "checkout" ? <CreditCard className="h-4 w-4" /> : <Send className="h-4 w-4" />} {ui({ credit: "sendCredit", checkout: "sendPaid" }[kind] || "send")}
         </Button>

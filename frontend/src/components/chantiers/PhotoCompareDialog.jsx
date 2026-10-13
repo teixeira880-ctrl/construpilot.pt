@@ -17,14 +17,14 @@ export function PhotoCompareDialog({ open, onOpenChange, photos = [] }) {
     if (!after) return setAfter(path);
     setAfter(path);
   };
-  const roleOf = (path) => (before === path ? "Avant" : after === path ? "Après" : null);
+  const roleOf = (path) => (before === path ? "Avant" : after === path ? "Após" : null);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setBefore(null); setAfter(null); } }}>
       <DialogContent className="max-w-3xl" data-testid="photo-compare-dialog">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><GitCompareArrows className="h-4 w-4 text-primary" /> Comparateur avant / après</DialogTitle>
-          <DialogDescription>Sélectionnez une photo « Avant » puis une photo « Après », puis glissez le curseur.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><GitCompareArrows className="h-4 w-4 text-primary" /> Comparador antes / depois</DialogTitle>
+          <DialogDescription>Selecione uma fotografia «Antes» e depois uma fotografia «Depois», e arraste o cursor.</DialogDescription>
         </DialogHeader>
 
         {before && after ? (
@@ -32,12 +32,12 @@ export function PhotoCompareDialog({ open, onOpenChange, photos = [] }) {
             <BeforeAfterSlider before={url(before)} after={url(after)} />
             <button type="button" onClick={() => { setBefore(null); setAfter(null); }}
                     className="text-xs text-primary underline" data-testid="photo-compare-reset">
-              Choisir d'autres photos
+              Escolher outras fotografias
             </button>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {!before ? "Cliquez sur la photo prise en début de chantier (Avant)." : "Cliquez maintenant sur la photo finale (Après)."}
+            {!before ? "Clique na fotografia tirada no início da obra (Antes)." : "Clique agora na fotografia final (Depois)."}
           </p>
         )}
 

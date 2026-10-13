@@ -3,8 +3,8 @@ import { CalendarRange, CheckCircle2, Clock, Circle, AlertTriangle } from "lucid
 
 const fr = (d) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : "—");
 const ST = {
-  termine: ["Terminé", CheckCircle2, "text-emerald-600"], en_cours: ["En cours", Clock, "text-sky-600"],
-  a_venir: ["À venir", Circle, "text-slate-400"], en_retard: ["À confirmer", AlertTriangle, "text-amber-600"],
+  termine: ["Terminado", CheckCircle2, "text-emerald-600"], en_cours: ["En cours", Clock, "text-sky-600"],
+  a_venir: ["Brevemente", Circle, "text-slate-400"], en_retard: ["A confirmar", AlertTriangle, "text-amber-600"],
 };
 
 /** Planning (lecture seule) de l'Espace Client : Gantt simplifié + prochaines étapes. */
@@ -21,21 +21,21 @@ export function PortalPlanning({ portalApi, chantierRef, accent }) {
     <section className="rounded-2xl border bg-white p-5" data-testid="portal-planning">
       <div className="flex flex-wrap items-center gap-2">
         <CalendarRange className="h-5 w-5" style={{ color: accent }} />
-        <h2 className="font-semibold">Planning des travaux</h2>
-        <span className="text-xs text-slate-500">du {fr(project.start_date)} au <b data-testid="portal-planning-end">{fr(project.end_date)}</b> · {project.duration_workdays} jours ouvrés · situation au {fr(project.as_of)}</span>
+        <h2 className="font-semibold">Planeamento das obras</h2>
+        <span className="text-xs text-slate-500">du {fr(project.start_date)} au <b data-testid="portal-planning-end">{fr(project.end_date)}</b> · {project.duration_workdays} dias úteis · situação em {fr(project.as_of)}</span>
       </div>
 
       {(current.length > 0 || upcoming.length > 0) && (
         <div className="mt-4 grid sm:grid-cols-2 gap-3" data-testid="portal-planning-next">
           <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">En ce moment</p>
-            {current.length === 0 ? <p className="text-sm text-slate-500 mt-1">Aucune intervention en cours.</p> : current.map((t) => (
-              <p key={t.id} className="text-sm mt-1"><b>{t.name}</b> <span className="text-slate-500">· {t.lot} · jusqu'au {fr(t.end_date)} · {t.progress}%</span></p>))}
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Neste momento</p>
+            {current.length === 0 ? <p className="text-sm text-slate-500 mt-1">Nenhuma intervenção em curso.</p> : current.map((t) => (
+              <p key={t.id} className="text-sm mt-1"><b>{t.name}</b> <span className="text-slate-500">· {t.lot} · até {fr(t.end_date)} · {t.progress}%</span></p>))}
           </div>
           <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">Prochaines étapes</p>
-            {upcoming.length === 0 ? <p className="text-sm text-slate-500 mt-1">Toutes les étapes sont engagées.</p> : upcoming.map((t) => (
-              <p key={t.id} className="text-sm mt-1"><b>{t.name}</b> <span className="text-slate-500">· à partir du {fr(t.start_date)}</span></p>))}
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Próximas etapas</p>
+            {upcoming.length === 0 ? <p className="text-sm text-slate-500 mt-1">Todas as etapas estão iniciadas.</p> : upcoming.map((t) => (
+              <p key={t.id} className="text-sm mt-1"><b>{t.name}</b> <span className="text-slate-500">· a partir de {fr(t.start_date)}</span></p>))}
           </div>
         </div>
       )}
@@ -58,7 +58,7 @@ export function PortalPlanning({ portalApi, chantierRef, accent }) {
           );
         })}
       </ol>
-      {todayIdx && <p className="text-[11px] text-slate-500 mt-2">Les dates sont prévisionnelles et recalculées par l'entreprise au fil de l'avancement.</p>}
+      {todayIdx && <p className="text-[11px] text-slate-500 mt-2">As datas são previsionais e recalculadas pela empresa ao longo do avanço.</p>}
     </section>
   );
 }

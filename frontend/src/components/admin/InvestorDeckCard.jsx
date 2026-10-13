@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const LANGS = [
-  { code: "fr", label: "Français" },
+  { code: "fr", label: "Francês" },
   { code: "en", label: "English" },
   { code: "pt", label: "Português" },
 ];
@@ -31,7 +31,7 @@ export default function InvestorDeckCard() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Génération impossible");
+      toast.error("Impossível gerar");
     } finally {
       setBusy("");
     }
@@ -57,29 +57,25 @@ export default function InvestorDeckCard() {
   return (
     <div className="surface p-5 space-y-4" data-testid="investor-deck-card">
       <p className="overline flex items-center gap-2 text-primary">
-        <Presentation className="h-4 w-4" /> Présentations investisseur et client
+        <Presentation className="h-4 w-4" /> Apresentações para investidores e clientes
       </p>
       <p className="text-sm text-muted-foreground">
-        Deck investisseur avec les <b>chiffres réels</b> lus en base à l'instant du téléchargement
-        (comptes existants hors tests, actifs 30 jours, abonnements payants, inscriptions mesurées,
-        taux d'activation), l'analyse du marché français, les applications Android et iOS et le plan
-        d'exploitation de <b>500 000 € sur 24 mois</b>. Une valeur non mesurable s'affiche
+        Deck para investidores com os <b>números reais</b> lidos na base no momento da transferência (contas existentes fora de testes, ativas 30 dias, subscrições pagas, inscrições medidas, taxa de ativação), a análise do mercado português, as aplicações Android e iOS e o plano de exploração de <b>500 000 € em 24 meses</b>. Une valeur non mesurable s'affiche
         « non mesurable ». Le PowerPoint intègre les captures d'écran réelles du produit.
       </p>
       <div className="space-y-2.5">
         <p className="text-xs font-medium text-foreground">Investisseur (confidentiel)</p>
         <Row kind="investor" ext="pdf" icon={FileText} title="PDF" />
         <Row kind="investor" ext="pptx" icon={Presentation} title="PowerPoint" />
-        <p className="text-xs font-medium text-foreground pt-2">Client (commercial)</p>
+        <p className="text-xs font-medium text-foreground pt-2">Cliente (comercial)</p>
         <Input value={prospect} onChange={(e) => setProspect(e.target.value)} maxLength={80}
-          placeholder="Nom du prospect (facultatif) — page de garde personnalisée et datée"
+          placeholder="Nome do potencial cliente (opcional) — página de rosto personalizada e datada"
           className="rounded-sm h-9 text-sm" data-testid="deck-client-prospect-input" />
         <Row kind="client" ext="pdf" icon={FileText} title="PDF" />
         <Row kind="client" ext="pptx" icon={Presentation} title="PowerPoint" />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Documents non publiés sur le site : le deck investisseur n'est générable que par un
-        administrateur.
+        Documentos não publicados no site: o deck para investidores só pode ser gerado por um administrador.
       </p>
     </div>
   );

@@ -9,11 +9,11 @@ import { toast } from "sonner";
 import { SolverCharts } from "@/components/btpSolver/SolverCharts";
 
 const DOMAIN_LABELS = {
-  fissures: "Fissures", humidite: "Humidité", thermique: "Thermique",
-  structure: "Structure", sinistre: "Sinistre", reception: "Réception",
+  fissures: "Fissures", humidite: "Humidade", thermique: "Thermique",
+  structure: "Structure", sinistre: "Sinistre", reception: "Receção",
   autre: "Autre",
 };
-const URGENCY_LABELS = { informative: "Informative", planned: "Planifiée", urgent: "Urgente", immediate: "Immédiate" };
+const URGENCY_LABELS = { informative: "Informative", planned: "Planeada", urgent: "Urgente", immediate: "Imediata" };
 const URGENCY_STYLES = {
   informative: "bg-slate-500/15 text-slate-600 border-slate-500/30",
   planned: "bg-blue-500/15 text-blue-600 border-blue-500/30",
@@ -43,12 +43,12 @@ export default function BtpSolver() {
     setQuoting(true);
     try {
       const { data } = await api.post(`/btp-solver/${result.problem_id}/to-quote`, { solution_id: solutionId || null });
-      toast.success(`Brouillon de devis créé (${data.lines} ligne${data.lines > 1 ? "s" : ""}, ${Math.round(data.total_ht || 0)} € HT)`, {
+      toast.success(`Rascunho de orçamento criado (${data.lines} ligne${data.lines > 1 ? "s" : ""}, ${Math.round(data.total_ht || 0)} € HT)`, {
         action: { label: "Ouvrir", onClick: () => navigate(data.url) },
       });
       navigate(data.url);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Création du devis impossible");
+      toast.error(err?.response?.data?.detail || "Não foi possível criar o orçamento");
     } finally {
       setQuoting(false);
     }
@@ -66,7 +66,7 @@ export default function BtpSolver() {
         const { data } = await api.post("/btp-solver/photos", fd, { headers: { "Content-Type": "multipart/form-data" } });
         setPhotos((p) => [...p, { ...data, name: f.name, preview: URL.createObjectURL(f) }]);
       } catch (err) {
-        toast.error(err?.response?.data?.detail || `Photo « ${f.name} » refusée`);
+        toast.error(err?.response?.data?.detail || `Photo « ${f.name}» recusada`);
       }
     }
     setUploadingPhoto(false);
@@ -105,9 +105,9 @@ export default function BtpSolver() {
         const { data } = await api.get(`/btp-solver/${id}`);
         failures = 0;
         if (data.status === "done") { setResult(data); setLoading(false); loadHistory(); return; }
-        if (data.status === "error") { setLoading(false); toast.error(data.error || "Analyse impossible pour le moment"); return; }
+        if (data.status === "error") { setLoading(false); toast.error(data.error || "Análise impossível de momento"); return; }
       } catch (err) {
-        if (err?.response?.status === 404 || err?.response?.status === 401) { setLoading(false); toast.error("Diagnostic introuvable ou session expirée"); return; }
+        if (err?.response?.status === 404 || err?.response?.status === 401) { setLoading(false); toast.error("Diagnóstico não encontrado ou sessão expirada"); return; }
         failures += 1;
         if (failures >= 3) { setNetIssue(id); return; }
       }
@@ -119,7 +119,7 @@ export default function BtpSolver() {
   const submit = async (e) => {
     e.preventDefault();
     if (description.trim().length < 10) {
-      toast.error("Décrivez le problème (10 caractères minimum)");
+      toast.error("Descreva o problema (mínimo 10 caracteres)");
       return;
     }
     setLoading(true);
@@ -140,9 +140,9 @@ export default function BtpSolver() {
       startPolling(data.problem_id);
     } catch (err) {
       const msg = err?.response?.status === 429
-        ? "Limite atteinte : 10 diagnostics par heure. Réessayez plus tard."
-        : err?.response?.data?.detail || "Analyse impossible pour le moment";
-      toast.error(typeof msg === "string" ? msg : "Analyse impossible pour le moment");
+        ? "Limite atingido: 10 diagnósticos por hora. Tente novamente mais tarde."
+        : err?.response?.data?.detail || "Análise impossível de momento";
+      toast.error(typeof msg === "string" ? msg : "Análise impossível de momento");
       setLoading(false);
     }
   };
@@ -151,38 +151,38 @@ export default function BtpSolver() {
     <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6" data-testid="btp-solver-page">
       <ChantierContextBar chantierId={chantierId} chantier={chantier} />
       <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-semibold">Résoudre un problème BTP</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold">Resolver um problema de construção</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Diagnostic provisionnel + solutions chiffrées + références DTU / NF, en quelques secondes.
+          Diagnóstico provisório + soluções orçamentadas + referências normativas (NP/EN, LNEC), em segundos.
         </p>
       </header>
 
       <form onSubmit={submit} data-testid="btp-solver-form" className="grid gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 md:p-6 bg-white dark:bg-slate-900/40">
         <label className="grid gap-1">
-          <span className="text-sm font-medium">Décrivez précisément le problème *</span>
+          <span className="text-sm font-medium">Descreva com precisão o problema *</span>
           <textarea
             data-testid="solver-description-input"
             className="min-h-[110px] rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-3 text-sm"
-            placeholder="Ex : fissure horizontale de 3 mm au 1er étage d'une maison en parpaings de 1985, apparue après l'été…"
+            placeholder="Ex.: fissura horizontal de 3 mm no 1.º andar de uma moradia em blocos de betão de 1985, surgida depois do verão…"
             value={description} onChange={(e) => setDescription(e.target.value)}
             maxLength={4000}
           />
         </label>
         <div className="grid md:grid-cols-3 gap-3">
           <label className="grid gap-1 text-sm">
-            <span>Région</span>
+            <span>Região</span>
             <input data-testid="solver-region-input" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Île-de-France" value={region} onChange={(e) => setRegion(e.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            <span>Type de bâtiment</span>
+            <span>Tipo de edifício</span>
             <input className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Maison individuelle" value={typeBat} onChange={(e) => setTypeBat(e.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            <span>Surface (m²)</span>
+            <span>Superfície (m²)</span>
             <input type="number" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={surface} onChange={(e) => setSurface(e.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            <span>Âge (années)</span>
+            <span>Idade (anos)</span>
             <input type="number" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={age} onChange={(e) => setAge(e.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
@@ -194,9 +194,9 @@ export default function BtpSolver() {
             <select className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={urgence} onChange={(e) => setUrgence(e.target.value)}>
               <option value="">—</option>
               <option value="informative">Informative</option>
-              <option value="planned">Planifiée</option>
+              <option value="planned">Planeada</option>
               <option value="urgent">Urgente</option>
-              <option value="immediate">Immédiate</option>
+              <option value="immediate">Imediata</option>
             </select>
           </label>
         </div>
@@ -205,13 +205,13 @@ export default function BtpSolver() {
                  onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
           <button type="button" data-testid="solver-add-photo-btn" disabled={loading || uploadingPhoto || photos.length >= 3} onClick={() => photoRef.current?.click()}
                   className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-sm hover:border-emerald-500/60 disabled:opacity-50">
-            {uploadingPhoto ? "Envoi de la photo…" : `Joindre une photo du désordre (${photos.length}/3)`}
+            {uploadingPhoto ? "A enviar a fotografia…" : `Anexar uma fotografia da patologia (${photos.length}/3)`}
           </button>
-          <span className="text-xs text-slate-500">JPG, PNG ou WEBP · 8 Mo max · l'IA vision lit les photos pour affiner le diagnostic</span>
+          <span className="text-xs text-slate-500">JPG, PNG ou WEBP · 8 MB máx. · a IA de visão lê as fotografias para afinar o diagnóstico</span>
           {photos.map((p) => (
             <span key={p.photo_id} className="relative inline-block" data-testid={`solver-photo-${p.photo_id}`}>
               <img src={p.preview} alt={p.name} className="h-16 w-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
-              <button type="button" aria-label="Retirer la photo" data-testid={`solver-photo-remove-${p.photo_id}`}
+              <button type="button" aria-label="Remover a fotografia" data-testid={`solver-photo-remove-${p.photo_id}`}
                       onClick={() => setPhotos((ps) => ps.filter((x) => x.photo_id !== p.photo_id))}
                       className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-slate-800 text-white text-xs leading-5 text-center">×</button>
             </span>
@@ -226,11 +226,11 @@ export default function BtpSolver() {
 
       {loading && (
         <div data-testid="solver-loading" className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-sm text-slate-500">
-          Le solveur interroge les sources techniques (Légifrance, CSTB, AFNOR) puis structure la réponse. Ceci peut prendre 1 à 2 minutes ; vous pouvez rester sur cette page.
+          O solucionador consulta as fontes técnicas (Diário da República, LNEC, IPQ) e depois estrutura a resposta. Pode demorar 1 a 2 minutos; pode ficar nesta página.
           {netIssue && (
             <div className="mt-2 flex items-center gap-3 text-amber-700" data-testid="solver-net-issue">
-              Connexion perdue : l'analyse continue côté serveur, mais son suivi est interrompu.
-              <button type="button" className="underline" onClick={() => startPolling(netIssue)} data-testid="solver-resume-btn">Reprendre le suivi</button>
+              Ligação perdida: a análise continua do lado do servidor, mas o seu acompanhamento foi interrompido.
+              <button type="button" className="underline" onClick={() => startPolling(netIssue)} data-testid="solver-resume-btn">Retomar o acompanhamento</button>
             </div>
           )}
         </div>
@@ -250,24 +250,24 @@ export default function BtpSolver() {
               <a href={`${process.env.REACT_APP_BACKEND_URL}/api/btp-solver/${result.problem_id}/report.pdf`} target="_blank" rel="noreferrer"
                  data-testid="solver-pdf-btn"
                  className="ml-auto inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
-                Télécharger le diagnostic PDF
+                Transferir o diagnóstico em PDF
               </a>
               {isPro && (
                 <button type="button" data-testid="solver-to-quote-btn" disabled={quoting} onClick={() => toQuote()}
                         className="inline-flex items-center px-3 py-1.5 rounded-lg border border-emerald-600 text-emerald-700 dark:text-emerald-400 text-xs font-medium hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-60">
-                  {quoting ? "Création du devis…" : "Créer un brouillon de devis"}
+                  {quoting ? "A criar o orçamento…" : "Criar um rascunho de orçamento"}
                 </button>
               )}
             </div>
             <p className="text-base leading-relaxed">{result.summary}</p>
             {result.photo_ids?.length > 0 && (
               <div className="flex flex-wrap gap-2" data-testid="solver-result-photos">
-                {result.photo_ids.map((id) => <img key={id} src={photoUrl(id)} alt="Photo du désordre" className="h-24 w-24 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />)}
+                {result.photo_ids.map((id) => <img key={id} src={photoUrl(id)} alt="Fotografia da patologia" className="h-24 w-24 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />)}
               </div>
             )}
             {result.photo_analysis && (
               <details className="text-sm" data-testid="solver-photo-analysis">
-                <summary className="cursor-pointer font-medium">Lecture des photos par l'IA vision</summary>
+                <summary className="cursor-pointer font-medium">Leitura das fotografias pela IA de visão</summary>
                 <p className="mt-2 whitespace-pre-wrap text-slate-600 dark:text-slate-400">{result.photo_analysis}</p>
               </details>
             )}
@@ -297,7 +297,7 @@ export default function BtpSolver() {
 
           {result.solutions?.length > 0 && (
             <div data-testid="solver-solutions">
-              <h2 className="text-lg font-semibold mb-3">Solutions proposées</h2>
+              <h2 className="text-lg font-semibold mb-3">Soluções propostas</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 {result.solutions.map((s) => (
                   <article key={s.id} className={`rounded-xl border p-4 space-y-2 ${
@@ -306,11 +306,11 @@ export default function BtpSolver() {
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="font-semibold">{s.label}</h3>
                       <div className="flex items-center gap-2">
-                        {s.recommended && <span className="text-xs px-2 py-0.5 rounded bg-emerald-600 text-white">Recommandé</span>}
+                        {s.recommended && <span className="text-xs px-2 py-0.5 rounded bg-emerald-600 text-white">Recomendado</span>}
                         {isPro && (
                           <button type="button" data-testid={`solver-solution-quote-${s.id}`} disabled={quoting} onClick={() => toQuote(s.id)}
                                   className="text-xs px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:border-emerald-500 disabled:opacity-60">
-                            → Devis
+                            → Orçamento
                           </button>
                         )}
                       </div>
@@ -318,17 +318,17 @@ export default function BtpSolver() {
                     <p className="text-sm text-slate-600 dark:text-slate-400">{s.description}</p>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {s.cost_min_eur != null && (
-                        <div><span className="text-slate-500">Coût :</span> {Math.round(s.cost_min_eur)}–{Math.round(s.cost_max_eur || s.cost_min_eur)} € HT</div>
+                        <div><span className="text-slate-500">Custo:</span> {Math.round(s.cost_min_eur)}–{Math.round(s.cost_max_eur || s.cost_min_eur)} € HT</div>
                       )}
                       {s.duration_days_min != null && (
-                        <div><span className="text-slate-500">Durée :</span> {s.duration_days_min}–{s.duration_days_max || s.duration_days_min} j</div>
+                        <div><span className="text-slate-500">Duração:</span> {s.duration_days_min}–{s.duration_days_max || s.duration_days_min} j</div>
                       )}
                       <div><span className="text-slate-500">Risque :</span> {s.risk}</div>
                       {s.warranty_years && <div><span className="text-slate-500">Garantie :</span> {s.warranty_years} ans</div>}
                     </div>
                     {s.steps?.length > 0 && (
                       <details className="text-sm">
-                        <summary className="cursor-pointer text-slate-500">Étapes ({s.steps.length})</summary>
+                        <summary className="cursor-pointer text-slate-500">Etapas ({s.steps.length})</summary>
                         <ol className="list-decimal list-inside mt-2 space-y-1">
                           {s.steps.map((st, i) => <li key={i}>{st.text}</li>)}
                         </ol>
@@ -349,7 +349,7 @@ export default function BtpSolver() {
 
           {result.references?.length > 0 && (
             <div data-testid="solver-references">
-              <h2 className="text-lg font-semibold mb-3">Références</h2>
+              <h2 className="text-lg font-semibold mb-3">Referências</h2>
               <ul className="text-sm space-y-1">
                 {result.references.map((r, i) => (
                   <li key={i}>
@@ -366,7 +366,7 @@ export default function BtpSolver() {
 
       {history.length > 0 && (
         <section data-testid="solver-history" className="space-y-2">
-          <h2 className="text-lg font-semibold">Mes diagnostics récents</h2>
+          <h2 className="text-lg font-semibold">Os meus diagnósticos recentes</h2>
           <ul className="grid md:grid-cols-2 gap-2">
             {history.map((h) => (
               <li key={h.problem_id}>
@@ -374,7 +374,7 @@ export default function BtpSolver() {
                         className="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 p-3 text-sm hover:border-emerald-500/50">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium truncate">{DOMAIN_LABELS[h.domain] || h.domain || "Diagnostic"}</span>
-                    <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("fr-FR") : h.status === "error" ? "Erreur" : "En cours…"}</span>
+                    <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("fr-FR") : h.status === "error" ? "Erro" : "En cours…"}</span>
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 mt-1">{h.summary || h.description}</p>
                 </button>

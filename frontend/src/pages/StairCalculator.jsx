@@ -17,11 +17,11 @@ import {
 } from "lucide-react";
 
 const STAIR_TYPES = [
-  { key: "straight", label: "Escalier droit", api: "straight" },
+  { key: "straight", label: "Escada reta", api: "straight" },
   { key: "quarter_turn_bottom", label: "Quart tournant bas", api: "quarter-turn-bottom" },
   { key: "quarter_turn_top", label: "Quart tournant haut", api: "quarter-turn-top" },
   { key: "half_turn", label: "Demi-tournant", api: "half-turn" },
-  { key: "helicoidal", label: "Hélicoïdal (colimaçon)", api: "helicoidal" },
+  { key: "helicoidal", label: "Helicoidal (caracol)", api: "helicoidal" },
 ];
 const TYPE_LABEL = Object.fromEntries(STAIR_TYPES.map((t) => [t.key, t.label]));
 
@@ -73,21 +73,21 @@ function AlertRow({ a }) {
 function ResultDetail({ r }) {
   if (!r) return null;
   const rows = [
-    ["Nombre de marches (hauteurs)", r.num_steps],
-    ["Nombre de girons", r.num_treads],
-    ["Hauteur de marche", mm(r.riser_height_mm)],
-    ["Giron (ligne de foulée)", mm(r.tread_depth_mm)],
+    ["Número de degraus (espelhos)", r.num_steps],
+    ["Número de cobertores", r.num_treads],
+    ["Altura do espelho", mm(r.riser_height_mm)],
+    ["Cobertor (linha de passagem)", mm(r.tread_depth_mm)],
     ["Blondel (2h + g)", `${Math.round(r.blondel_value_mm)} mm`],
     ["Pente", `${r.slope_deg?.toFixed(1)}°`],
     ["Reculement (emmarchement)", mm(r.stair_run_mm)],
-    ["Longueur développée", mm(r.stair_length_mm)],
-    ["Échappée (headroom)", mm(r.headroom_mm)],
+    ["Comprimento desenvolvido", mm(r.stair_length_mm)],
+    ["Pé-direito livre (headroom)", mm(r.headroom_mm)],
   ];
   return (
     <div className="space-y-3" data-testid="stair-result-detail">
       <div className="flex items-center gap-2">
         <Badge variant={r.is_buildable ? "default" : "destructive"} data-testid="stair-buildable-badge">
-          {r.is_buildable ? "Réalisable" : "Non réalisable"}
+          {r.is_buildable ? "Exequível" : "Não exequível"}
         </Badge>
         <span className="text-xs text-muted-foreground">{TYPE_LABEL[r.stair_type] || r.stair_type}</span>
       </div>
@@ -112,7 +112,7 @@ export default function StairCalculator() {
   const nav = useNavigate();
   const [stairType, setStairType] = useState("straight");
   const [form, setForm] = useState(DEFAULT_FORM);
-  const [projectName, setProjectName] = useState("Escalier sans nom");
+  const [projectName, setProjectName] = useState("Escada sem nome");
   const [projectId, setProjectId] = useState(null);
   const [projects, setProjects] = useState([]);
   const [showProjects, setShowProjects] = useState(false);
@@ -188,10 +188,10 @@ export default function StairCalculator() {
       const { data } = await api.post(`/stairs/calculate/${t.api}`, buildPayload(stairType));
       setResult(data);
       setTab("calc");
-      if (data.is_buildable) toast.success("Escalier calculé — réalisable");
-      else toast.warning("Escalier calculé — non réalisable en l'état (voir alertes)");
+      if (data.is_buildable) toast.success("Escada calculada — exequível");
+      else toast.warning("Escada calculada — não exequível tal como está (ver alertas)");
     } catch (e) {
-      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Calcul impossible");
+      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Cálculo impossível");
     }
     setLoading("");
   };
@@ -213,10 +213,10 @@ export default function StairCalculator() {
       const { data } = await api.post("/stairs/optimize", p);
       setOptimizeResult(data);
       setTab("optimize");
-      if (!data.solutions?.length) toast.warning("Aucune solution réalisable — élargissez les contraintes");
-      else toast.success(`${data.solutions.length} solution(s) proposée(s)`);
+      if (!data.solutions?.length) toast.warning("Nenhuma solução exequível — alargue as restrições");
+      else toast.success(`${data.solutions.length}solução(ões) proposta(s)`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Optimisation impossible");
+      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Otimização impossível");
     }
     setLoading("");
   };
@@ -226,27 +226,27 @@ export default function StairCalculator() {
     setResult(sol.result);
     setConcrete(null);
     setTab("calc");
-    setProjectName((prev) => (!prev || prev === "Escalier sans nom")
-      ? `Escalier ${TYPE_LABEL[sol.type] || sol.type}` : prev);
-    toast.success(`Solution ${TYPE_LABEL[sol.type] || sol.type} chargée`);
+    setProjectName((prev) => (!prev || prev === "Escada sem nome")
+      ? `Escada${TYPE_LABEL[sol.type] || sol.type}` : prev);
+    toast.success(`Solution ${TYPE_LABEL[sol.type] || sol.type}carregada`);
   };
 
   const doConcrete = async () => {
-    if (!result) return toast.error("Calculez d'abord un escalier");
+    if (!result) return toast.error("Calcule primeiro uma escada");
     setLoading("concrete");
     try {
       const { data } = await api.post("/stairs/concrete/analyze", { stair_result: result, stair_type: result.stair_type });
       setConcrete(data);
       setTab("concrete");
-      toast.success("Analyse béton armé prête (DTU 21)");
+      toast.success("Análise de betão armado pronta (NP EN 1992)");
     } catch (e) {
-      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Analyse béton impossible");
+      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Análise do betão impossível");
     }
     setLoading("");
   };
 
   const createQuote = async () => {
-    if (!result) return toast.error("Calculez d'abord un escalier");
+    if (!result) return toast.error("Calcule primeiro uma escada");
     setLoading("quote");
     try {
       const { data } = await api.post("/stairs/to-quote", {
@@ -255,16 +255,16 @@ export default function StairCalculator() {
         concrete_analysis: concrete,
         detailed_steel: detailedSteel,
       });
-      toast.success("Devis créé — complétez les prix unitaires");
+      toast.success("Orçamento criado — complete os preços unitários");
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Création du devis impossible");
+      toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Não foi possível criar o orçamento");
     }
     setLoading("");
   };
 
   const downloadPdf = async () => {
-    if (!result) return toast.error("Calculez d'abord un escalier");
+    if (!result) return toast.error("Calcule primeiro uma escada");
     setLoading("pdf");
     try {
       const res = await api.post("/stairs/dossier/generate", {
@@ -278,24 +278,24 @@ export default function StairCalculator() {
       const safe = (projectName || "escalier").replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 60) || "escalier";
       a.href = url; a.download = `${safe}.pdf`; document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      toast.success("Dossier PDF téléchargé");
-    } catch { toast.error("Génération du PDF impossible"); }
+      toast.success("Processo PDF transferido");
+    } catch { toast.error("Geração do PDF impossível"); }
     setLoading("");
   };
 
   const saveProject = async () => {
-    const body = { name: projectName || "Escalier sans nom", stair_type: stairType, input: form, result, concrete_analysis: concrete };
+    const body = { name: projectName || "Escada sem nome", stair_type: stairType, input: form, result, concrete_analysis: concrete };
     try {
       if (projectId) {
         await api.put(`/stairs/projects/${projectId}`, body);
-        toast.success("Projet enregistré");
+        toast.success("Projeto guardado");
       } else {
         const { data } = await api.post("/stairs/projects", body);
         setProjectId(data.project.project_id);
-        toast.success("Projet créé");
+        toast.success("Projeto criado");
       }
       loadProjects();
-    } catch { toast.error("Enregistrement impossible"); }
+    } catch { toast.error("Não foi possível guardar"); }
   };
 
   const openProject = async (p) => {
@@ -309,17 +309,17 @@ export default function StairCalculator() {
       setConcrete(data.concrete_analysis || null);
       setShowProjects(false);
       toast.success(`Projet « ${data.name} » ouvert`);
-    } catch { toast.error("Ouverture impossible"); }
+    } catch { toast.error("Abertura impossível"); }
   };
 
   const deleteProject = async (id, e) => {
     e.stopPropagation();
-    try { await api.delete(`/stairs/projects/${id}`); if (id === projectId) newProject(); loadProjects(); toast.success("Projet supprimé"); }
-    catch { toast.error("Suppression impossible"); }
+    try { await api.delete(`/stairs/projects/${id}`); if (id === projectId) newProject(); loadProjects(); toast.success("Projeto eliminado"); }
+    catch { toast.error("Não foi possível eliminar"); }
   };
 
   const newProject = () => {
-    setProjectId(null); setProjectName("Escalier sans nom"); setStairType("straight");
+    setProjectId(null); setProjectName("Escada sem nome"); setStairType("straight");
     setForm(DEFAULT_FORM); setResult(null); setConcrete(null); setOptimizeResult(null); setShowProjects(false);
   };
 
@@ -332,7 +332,7 @@ export default function StairCalculator() {
       const { data } = await api.post("/stairs/assistant/chat", { message: msg, conversation_id: convId });
       setConvId(data.conversation_id);
       setChat((c) => [...c, { role: "assistant", content: data.reply_text }]);
-    } catch { setChat((c) => [...c, { role: "assistant", content: "Désolé, l'assistant est indisponible pour le moment." }]); }
+    } catch { setChat((c) => [...c, { role: "assistant", content: "Lamentamos, o assistente está indisponível de momento." }]); }
     setChatLoading(false);
   };
 
@@ -348,14 +348,14 @@ export default function StairCalculator() {
           </div>
           <div className="min-w-0">
             <h1 className="text-xl font-bold leading-tight">Calcul d'escaliers</h1>
-            <p className="text-xs text-muted-foreground">Moteur déterministe · DTU 36.3 / DTU 21 · béton armé</p>
+            <p className="text-xs text-muted-foreground">Motor determinístico · RGEU / DL 163/2006 / NP EN 1992 · betão armado</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Input value={projectName} onChange={(e) => setProjectName(e.target.value)}
-                 data-testid="stair-project-name" className="h-9 w-56" placeholder="Nom du projet (repris dans le PDF)" />
+                 data-testid="stair-project-name" className="h-9 w-56" placeholder="Nome do projeto (retomado no PDF)" />
           <Button size="sm" variant="outline" onClick={saveProject} data-testid="stair-save-project" className="rounded-sm gap-1">
-            <Save className="h-4 w-4" /> Enregistrer
+            <Save className="h-4 w-4" /> Guardar
           </Button>
           <div className="relative">
             <Button size="sm" variant="outline" onClick={() => setShowProjects((s) => !s)} data-testid="stair-projects-toggle" className="rounded-sm gap-1">
@@ -364,9 +364,9 @@ export default function StairCalculator() {
             {showProjects && (
               <div className="absolute right-0 mt-1 w-72 max-h-80 overflow-auto rounded-md border border-border bg-background shadow-lg z-50 p-1" data-testid="stair-projects-list">
                 <button onClick={newProject} className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-muted flex items-center gap-2">
-                  <Plus className="h-4 w-4" /> Nouveau projet
+                  <Plus className="h-4 w-4" /> Novo projeto
                 </button>
-                {projects.length === 0 && <p className="px-3 py-2 text-xs text-muted-foreground">Aucun projet enregistré.</p>}
+                {projects.length === 0 && <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum projeto guardado.</p>}
                 {projects.map((p) => (
                   <div key={p.project_id} onClick={() => openProject(p)}
                        className="group flex items-center justify-between px-3 py-2 text-sm rounded-sm hover:bg-muted cursor-pointer"
@@ -391,7 +391,7 @@ export default function StairCalculator() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-1">
-              <Label className="text-xs">Type d'escalier</Label>
+              <Label className="text-xs">Tipo de escada</Label>
               <Select value={stairType} onValueChange={(v) => { setStairType(v); }}>
                 <SelectTrigger className="h-9" data-testid="stair-type-select"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -401,20 +401,20 @@ export default function StairCalculator() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Hauteur à monter (mm)" k="floor_height_mm" form={form} set={set} testid="floor-height" />
+              <Field label="Altura a vencer (mm)" k="floor_height_mm" form={form} set={set} testid="floor-height" />
               {stairType !== "helicoidal" && <Field label="Reculement dispo (mm)" k="available_length_mm" form={form} set={set} testid="avail-length" />}
-              {stairType !== "helicoidal" && <Field label="Largeur dispo (mm)" k="available_width_mm" form={form} set={set} testid="avail-width" />}
-              {stairType !== "helicoidal" && <Field label="Largeur escalier (mm)" k="stair_width_mm" form={form} set={set} testid="stair-width" />}
-              <Field label="Épaisseur dalle (mm)" k="slab_thickness_mm" form={form} set={set} testid="slab-thickness" />
-              <Field label="Hauteur sous dalle (mm)" k="ceiling_height_mm" form={form} set={set} placeholder="auto" testid="ceiling-height" />
+              {stairType !== "helicoidal" && <Field label="Largura disponível (mm)" k="available_width_mm" form={form} set={set} testid="avail-width" />}
+              {stairType !== "helicoidal" && <Field label="Largura da escada (mm)" k="stair_width_mm" form={form} set={set} testid="stair-width" />}
+              <Field label="Espessura da laje (mm)" k="slab_thickness_mm" form={form} set={set} testid="slab-thickness" />
+              <Field label="Altura sob a laje (mm)" k="ceiling_height_mm" form={form} set={set} placeholder="auto" testid="ceiling-height" />
             </div>
 
             {stairType === "helicoidal" && (
               <div className="grid grid-cols-2 gap-2 rounded-md border border-dashed border-border p-2">
-                <Field label="Rayon intérieur (mm)" k="inner_radius_mm" form={form} set={set} testid="inner-radius" />
-                <Field label="Rayon extérieur (mm)" k="outer_radius_mm" form={form} set={set} testid="outer-radius" />
-                <Field label="Angle balayé (°)" k="sweep_angle_deg" form={form} set={set} testid="sweep-angle" />
-                <Field label="Ligne de foulée (mm)" k="walkline_offset_mm" form={form} set={set} testid="walkline" />
+                <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} testid="inner-radius" />
+                <Field label="Raio exterior (mm)" k="outer_radius_mm" form={form} set={set} testid="outer-radius" />
+                <Field label="Ângulo varrido (°)" k="sweep_angle_deg" form={form} set={set} testid="sweep-angle" />
+                <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} testid="walkline" />
               </div>
             )}
 
@@ -425,25 +425,25 @@ export default function StairCalculator() {
                   <Select value={form.balancing} onValueChange={(v) => set("balancing", v)}>
                     <SelectTrigger className="h-9" data-testid="stair-balancing-select"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="balanced">Marches balancées</SelectItem>
-                      <SelectItem value="straight">Avec palier</SelectItem>
+                      <SelectItem value="balanced">Degraus compensados</SelectItem>
+                      <SelectItem value="straight">Com patamar</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {form.balancing === "balanced" ? (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="grid gap-1">
-                      <Label className="text-xs">Nb marches balancées</Label>
+                      <Label className="text-xs">N.º de degraus compensados</Label>
                       <Input value={form.num_winders} onChange={(e) => set("num_winders", e.target.value)}
                              placeholder="auto" data-testid="stair-num-winders" className="h-9" />
                     </div>
-                    <Field label="Ligne de foulée (mm)" k="walkline_offset_mm" form={form} set={set} testid="turn-walkline" />
-                    <Field label="Rayon intérieur (mm)" k="inner_radius_mm" form={form} set={set} testid="turn-inner-radius" />
+                    <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} testid="turn-walkline" />
+                    <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} testid="turn-inner-radius" />
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    <Field label="Longueur palier (mm)" k="landing_length_mm" form={form} set={set} testid="landing-length" />
-                    <Field label="Largeur palier (mm)" k="landing_width_mm" form={form} set={set} testid="landing-width" />
+                    <Field label="Comprimento do patamar (mm)" k="landing_length_mm" form={form} set={set} testid="landing-length" />
+                    <Field label="Largura do patamar (mm)" k="landing_width_mm" form={form} set={set} testid="landing-width" />
                     <Field label="Marches avant palier" k="steps_before_landing" form={form} set={set} testid="steps-before" />
                   </div>
                 )}
@@ -452,7 +452,7 @@ export default function StairCalculator() {
 
             <div className="flex items-center gap-4 text-sm">
               <label className="flex items-center gap-2" data-testid="stair-has-risers">
-                <input type="checkbox" checked={form.has_risers} onChange={(e) => set("has_risers", e.target.checked)} /> Avec contremarches
+                <input type="checkbox" checked={form.has_risers} onChange={(e) => set("has_risers", e.target.checked)} /> Com espelhos
               </label>
               {stairType !== "helicoidal" && (
                 <div className="flex items-center gap-2">
@@ -484,10 +484,10 @@ export default function StairCalculator() {
           <CardContent className="pt-5">
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="mb-4">
-                <TabsTrigger value="calc" data-testid="tab-calc">Résultat</TabsTrigger>
+                <TabsTrigger value="calc" data-testid="tab-calc">Resultado</TabsTrigger>
                 <TabsTrigger value="view3d" data-testid="tab-view3d">Vue 3D</TabsTrigger>
                 <TabsTrigger value="optimize" data-testid="tab-optimize">Optimiseur</TabsTrigger>
-                <TabsTrigger value="concrete" data-testid="tab-concrete">Béton armé</TabsTrigger>
+                <TabsTrigger value="concrete" data-testid="tab-concrete">Betão armado</TabsTrigger>
                 <TabsTrigger value="assistant" data-testid="tab-assistant">Assistant IA</TabsTrigger>
               </TabsList>
 
@@ -497,22 +497,22 @@ export default function StairCalculator() {
                     <ResultDetail r={result} />
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="outline" onClick={doConcrete} disabled={!!loading} data-testid="stair-concrete-btn" className="rounded-sm gap-2">
-                        {loading === "concrete" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />} Analyse béton armé
+                        {loading === "concrete" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />} Análise de betão armado
                       </Button>
                       <Button size="sm" onClick={downloadPdf} disabled={!!loading} data-testid="stair-pdf-btn" className="rounded-sm gap-2">
                         {loading === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Dossier PDF
                       </Button>
                       <Button size="sm" variant="outline" onClick={createQuote} disabled={!!loading} data-testid="stair-quote-btn" className="rounded-sm gap-2">
-                        {loading === "quote" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Créer un devis
+                        {loading === "quote" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Criar um orçamento
                       </Button>
                     </div>
                     <label className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stair-detailed-steel">
                       <input type="checkbox" checked={detailedSteel} onChange={(e) => setDetailedSteel(e.target.checked)} />
-                      Ferraillage détaillé dans le devis (une ligne par repère : Ø, longueur, poids)
+                      Armaduras detalhadas no orçamento (uma linha por marca: Ø, comprimento, peso)
                     </label>
                   </div>
                 ) : (
-                  <EmptyState text="Renseignez les contraintes puis cliquez sur « Calculer » ou « Optimiser »." />
+                  <EmptyState text="Indique as restrições e depois clique em «Calcular» ou «Otimizar»." />
                 )}
               </TabsContent>
 
@@ -520,7 +520,7 @@ export default function StairCalculator() {
                 {result ? (
                   <Stair3D result={result} stairWidthMm={n(form.stair_width_mm) || 1000} />
                 ) : (
-                  <EmptyState text="Calculez un escalier pour afficher l'aperçu 3D interactif." />
+                  <EmptyState text="Calcule uma escada para apresentar a pré-visualização 3D interativa." />
                 )}
               </TabsContent>
 
@@ -547,17 +547,17 @@ export default function StairCalculator() {
                         <div className="mt-2 flex flex-wrap gap-3 text-[11px]">
                           <ScorePill label="Confort" v={s.scores.confort} />
                           <ScorePill label="Encombrement" v={s.scores.encombrement} />
-                          <ScorePill label="Faisabilité" v={s.scores.faisabilite} />
-                          <ScorePill label="Esthétique" v={s.scores.esthetique} />
+                          <ScorePill label="Exequibilidade" v={s.scores.faisabilite} />
+                          <ScorePill label="Estética" v={s.scores.esthetique} />
                         </div>
                         <Button size="sm" variant="outline" onClick={() => applySolution(s)} data-testid={`use-solution-${s.rank}`} className="mt-2 rounded-sm h-7 text-xs">
-                          Utiliser cette solution
+                          Utilizar esta solução
                         </Button>
                       </div>
-                    )) : <EmptyState text="Aucune solution réalisable avec ces contraintes." />}
+                    )) : <EmptyState text="Nenhuma solução exequível com estas restrições." />}
                     {optimizeResult.excluded?.length > 0 && (
                       <details className="text-xs text-muted-foreground">
-                        <summary className="cursor-pointer">{optimizeResult.excluded.length} variante(s) écartée(s)</summary>
+                        <summary className="cursor-pointer">{optimizeResult.excluded.length} variante(s) afastada(s)</summary>
                         <ul className="mt-1 space-y-0.5 pl-4 list-disc">
                           {optimizeResult.excluded.map((x, i) => <li key={i}>{TYPE_LABEL[x.type] || x.type} ({x.variant}) — {x.reason}</li>)}
                         </ul>
@@ -565,20 +565,20 @@ export default function StairCalculator() {
                     )}
                   </div>
                 ) : (
-                  <EmptyState text="Lancez « Optimiser » pour comparer plusieurs solutions triées par pertinence." />
+                  <EmptyState text="Lance «Otimizar» para comparar várias soluções ordenadas por pertinência." />
                 )}
               </TabsContent>
 
               <TabsContent value="concrete">
                 {concrete ? (
                   <div className="space-y-4" data-testid="stair-concrete-result">
-                    <Section title="Métré / quantités">
+                    <Section title="Medição / quantidades">
                       <KeyVals obj={concrete.quantities} unitHint />
                     </Section>
                     <Section title="Charges (kN/m²)">
                       <KeyVals obj={concrete.load_breakdown_kN_m2} />
                     </Section>
-                    <Section title="Pré-dimensionnement paillasse">
+                    <Section title="Pré-dimensionamento do lanço">
                       <KeyVals obj={concrete.paillasse} />
                     </Section>
                     <Section title="Ferraillage indicatif">
@@ -608,7 +608,7 @@ export default function StairCalculator() {
                     )}
                   </div>
                 ) : (
-                  <EmptyState text="Calculez un escalier puis lancez l'analyse béton armé (DTU 21)." />
+                  <EmptyState text="Calcule uma escada e depois lance a análise de betão armado (NP EN 1992)." />
                 )}
               </TabsContent>
 
@@ -618,7 +618,7 @@ export default function StairCalculator() {
                     {chat.length === 0 && (
                       <div className="text-sm text-muted-foreground flex items-start gap-2 rounded-md border border-dashed border-border p-3">
                         <Bot className="h-4 w-4 mt-0.5" />
-                        <span>Posez une question : « Calcule un escalier droit pour 2,80 m, reculement 3,5 m » ou « Quelle épaisseur de paillasse pour cet escalier ? ». L'assistant utilise le moteur déterministe.</span>
+                        <span>Faça uma pergunta: «Calcula uma escada reta para 2,80 m, desenvolvimento 3,5 m» ou «Que espessura de lanço para esta escada?». O assistente utiliza o motor determinístico.</span>
                       </div>
                     )}
                     {chat.map((m, i) => (
@@ -634,7 +634,7 @@ export default function StairCalculator() {
                   <div className="flex gap-2 pt-3 border-t border-border mt-3">
                     <Textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)}
                               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
-                              placeholder="Votre question…" data-testid="stair-chat-input" className="min-h-[44px] max-h-24 resize-none" />
+                              placeholder="A sua pergunta…" data-testid="stair-chat-input" className="min-h-[44px] max-h-24 resize-none" />
                     <Button onClick={sendChat} disabled={chatLoading || !chatInput.trim()} data-testid="stair-chat-send" className="rounded-sm self-end gap-1">
                       <Send className="h-4 w-4" />
                     </Button>

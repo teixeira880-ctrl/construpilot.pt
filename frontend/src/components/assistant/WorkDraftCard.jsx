@@ -26,7 +26,7 @@ export function WorkDraftCard({ initial }) {
     setLoading(true);
     api.get(`/assistant/work-drafts/${initial.draft_id}`).then(r => {
       if (active && !dirtyRef.current && (r.data.revision || 0) >= (draftRef.current.revision || 0)) install(r.data);
-    }).catch(() => { if (active) setError("La version enregistrée est indisponible. Réessayez avant de modifier ce brouillon."); })
+    }).catch(() => { if (active) setError("A versão guardada está indisponível. Tente novamente antes de alterar este rascunho."); })
       .finally(() => { if (active) setLoading(false); });
     const receive = (event) => {
       const next = event.detail;
@@ -39,7 +39,7 @@ export function WorkDraftCard({ initial }) {
   const reload = async () => {
     setLoading(true);
     try { const r = await api.get(`/assistant/work-drafts/${initial.draft_id}`); install(r.data); }
-    catch { setError("Chargement impossible. Votre texte reste dans l'éditeur."); }
+    catch { setError("Carregamento impossível. O seu texto continua no editor."); }
     finally { setLoading(false); }
   };
   const save = async () => {
@@ -55,10 +55,10 @@ export function WorkDraftCard({ initial }) {
     try {
       if (action === "copy") {
         await navigator.clipboard.writeText(`${draftRef.current.title}\n\n${draftRef.current.body}`);
-        toast.success("Texte de l'éditeur copié"); return;
+        toast.success("Texto do editor copiado"); return;
       }
       const d = dirtyRef.current ? await save() : draftRef.current;
-      if (action === "save") toast.success("Brouillon enregistré");
+      if (action === "save") toast.success("Rascunho guardado");
       else if (action === "mail") window.location.href = `mailto:${encodeURIComponent(d.recipient)}?subject=${encodeURIComponent(d.title)}&body=${encodeURIComponent(d.body)}`;
       else {
         const r = await api.get(`/assistant/work-drafts/${d.draft_id}/export?format=${action}`, { responseType: "blob" });
@@ -68,7 +68,7 @@ export function WorkDraftCard({ initial }) {
       }
     } catch (e) {
       if (e?.response?.status === 409) setConflict(true);
-      toast.error(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Action impossible ; votre texte reste dans l'éditeur.");
+      toast.error(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Ação impossível; o seu texto continua no editor.");
     } finally { setSaving(false); }
   };
   const history = async () => {
@@ -76,25 +76,25 @@ export function WorkDraftCard({ initial }) {
     catch { toast.error("Historique indisponible"); }
   };
   return <div className="grid grid-cols-1 gap-2 mt-2 text-sm min-w-0" data-testid={testId("editor")} data-draft-id={initial.draft_id}>
-    <div className="text-xs text-muted-foreground" data-testid={testId("version")}>Brouillon · Version {draft.revision || 0}{dirty ? " · modifications non enregistrées" : ""}{loading ? " · chargement…" : ""}</div>
+    <div className="text-xs text-muted-foreground" data-testid={testId("version")}>Brouillon · Version {draft.revision || 0}{dirty ? "· alterações não guardadas" : ""}{loading ? "· a carregar…" : ""}</div>
     {(conflict || error) && <div role="alert" className="border border-amber-500 rounded-sm p-2 text-xs" data-testid={testId("conflict")}>
-      {error || "Une version plus récente existe. Votre texte reste ici ; vous pouvez le copier avant de charger la version actuelle."}
-      <button className="underline ml-2" disabled={loading || saving} onClick={reload} data-testid={testId("reload")}>Charger la version actuelle</button>
+      {error || "Existe uma versão mais recente. O seu texto fica aqui; pode copiá-lo antes de carregar a versão atual."}
+      <button className="underline ml-2" disabled={loading || saving} onClick={reload} data-testid={testId("reload")}>Carregar a versão atual</button>
     </div>}
     <fieldset disabled={loading || saving || !!error} className="grid gap-2 disabled:opacity-60">
       <label>Titre / objet<input className="w-full border rounded-sm px-2 py-1 bg-background" maxLength={200} value={draft.title} onChange={e => modify({ title: e.target.value })} data-testid={testId("title")} /></label>
-      {draft.kind === "email" && <label>Destinataire<input className="w-full border rounded-sm px-2 py-1 bg-background" placeholder="Adresse à compléter" value={draft.recipient} onChange={e => modify({ recipient: e.target.value })} data-testid={testId("recipient")} /></label>}
-      <textarea aria-label="Texte du brouillon" rows={10} className="w-full border rounded-sm px-2 py-2 bg-background" value={draft.body} onChange={e => modify({ body: e.target.value })} data-testid={testId("body")} />
+      {draft.kind === "email" && <label>Destinataire<input className="w-full border rounded-sm px-2 py-1 bg-background" placeholder="Morada a completar" value={draft.recipient} onChange={e => modify({ recipient: e.target.value })} data-testid={testId("recipient")} /></label>}
+      <textarea aria-label="Texto do rascunho" rows={10} className="w-full border rounded-sm px-2 py-2 bg-background" value={draft.body} onChange={e => modify({ body: e.target.value })} data-testid={testId("body")} />
     </fieldset>
     <div className="flex flex-wrap gap-2 text-xs">
-      {[["save", "Enregistrer"], ["copy", "Copier ce texte"], ["txt", "Télécharger le texte"], ...(draft.kind === "email" ? [["eml", "Télécharger le mail"], ["mail", "Ouvrir ma messagerie"]] : [])].map(([action, label]) => <button key={action} disabled={saving || (action !== "copy" && (loading || !!error || conflict))} className="border rounded-sm px-2 py-1 bg-background disabled:opacity-50" onClick={() => act(action)} data-testid={testId(action)}>{label}</button>)}
+      {[["save", "Guardar"], ["copy", "Copiar este texto"], ["txt", "Transferir o texto"], ...(draft.kind === "email" ? [["eml", "Transferir o e-mail"], ["mail", "Abrir o meu e-mail"]] : [])].map(([action, label]) => <button key={action} disabled={saving || (action !== "copy" && (loading || !!error || conflict))} className="border rounded-sm px-2 py-1 bg-background disabled:opacity-50" onClick={() => act(action)} data-testid={testId(action)}>{label}</button>)}
       <button className="underline" disabled={loading || saving} onClick={history} data-testid={testId("history")}>Historique</button>
     </div>
     {versions && <div className="border rounded-sm p-2 text-xs grid gap-2">
-      <p>Les 10 versions précédentes sont conservées. Reprendre une version la place dans l'éditeur avant enregistrement.</p>
-      {!versions.length && <p>Aucune version précédente.</p>}
-      {versions.map(v => <button key={v.revision} className="text-left underline" disabled={saving || loading} onClick={() => modify({ kind: v.kind, title: v.title, recipient: v.recipient, body: v.body })} data-testid={testId(`restore-${v.revision}`)}>Reprendre la version {v.revision} — {v.title}</button>)}
+      <p>As 10 versões anteriores são conservadas. Retomar uma versão coloca-a no editor antes de guardar.</p>
+      {!versions.length && <p>Nenhuma versão anterior.</p>}
+      {versions.map(v => <button key={v.revision} className="text-left underline" disabled={saving || loading} onClick={() => modify({ kind: v.kind, title: v.title, recipient: v.recipient, body: v.body })} data-testid={testId(`restore-${v.revision}`)}>Retomar a versão {v.revision} — {v.title}</button>)}
     </div>}
-    <p className="text-xs text-muted-foreground">Brouillon modifiable. L'envoi se fait dans votre messagerie.</p>
+    <p className="text-xs text-muted-foreground">Rascunho editável. O envio é feito no seu e-mail.</p>
   </div>;
 }

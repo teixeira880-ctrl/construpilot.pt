@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 const TABS = [
-  { id: "rooms", label: "Pièces", icon: Square },
+  { id: "rooms", label: "Divisões", icon: Square },
   { id: "openings", label: "Ouvertures", icon: DoorOpen },
   { id: "counters", label: "Compteurs", icon: Hash },
   { id: "notes", label: "Notes", icon: StickyNote },
@@ -157,7 +157,7 @@ export default function ObjectPanel({
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background sticky top-0 z-10">
         <div>
           <p className="font-display font-bold text-sm">Objets ({totalObjects})</p>
-          <p className="text-[10px] text-muted-foreground">Volet Objets — édition inline</p>
+          <p className="text-[10px] text-muted-foreground">Painel Objetos — edição inline</p>
         </div>
         <Button size="icon" variant="ghost" onClick={onClose} data-testid="object-panel-close" className="h-7 w-7 relative z-20">
           <X className="h-4 w-4" />
@@ -191,7 +191,7 @@ export default function ObjectPanel({
       <div className="flex-1 overflow-y-auto py-1">
         {tab === "rooms" && (
           <>
-            {rooms.length === 0 && <EmptyState label="Aucune pièce" />}
+            {rooms.length === 0 && <EmptyState label="Nenhuma divisão" />}
             {rooms.map((r) => {
               const attachedPreset = presets.find((p) => p.preset_id === r.preset_id);
               return (
@@ -213,18 +213,18 @@ export default function ObjectPanel({
                     <Row
                       icon={Square}
                       testId={`object-row-room-${r.room_id}`}
-                      primary={r.name || "Pièce"}
+                      primary={r.name || "Divisão"}
                       secondary={
                         attachedPreset
-                          ? `Modèle : ${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
-                          : `${r.perimeter_m || 0} m linéaires · ${r.ceiling_height_m || r.height_m || 2.5} m HSP`
+                          ? `Modelo:${attachedPreset.name} · ${r.surface_m2 ?? 0} m²`
+                          : `${r.perimeter_m || 0}m lineares ·${r.ceiling_height_m || r.height_m || 2.5} m HSP`
                       }
                       badge={`${r.surface_m2 ?? 0} m²`}
                       badgeColor={attachedPreset ? attachedPreset.color : "#f97316"}
                       onFocus={() => onFocusObject?.({ kind: "room", data: r })}
                       onExtra={onEstimateRoom ? () => onEstimateRoom(r.room_id) : null}
                       extraIcon={Calculator}
-                      extraLabel="Générer devis pièce"
+                      extraLabel="Gerar orçamento da divisão"
                       onEdit={onRenameRoom ? () => startEdit(r.room_id, r.name) : null}
                       onDelete={onDeleteRoom ? () => onDeleteRoom(r.room_id) : null}
                     />
@@ -239,7 +239,7 @@ export default function ObjectPanel({
                           data-testid={`room-preset-toggle-${r.room_id}`}
                         >
                           <Layers className="h-3 w-3" />
-                          {attachedPreset ? "Changer modèle" : "Attacher un modèle"}
+                          {attachedPreset ? "Alterar modelo" : "Anexar um modelo"}
                         </button>
                         {attachedPreset && (
                           <button
@@ -254,7 +254,7 @@ export default function ObjectPanel({
                           <div className="w-full mt-1 grid gap-1 max-h-40 overflow-y-auto border border-border rounded-sm p-1">
                             {presets.length === 0 && (
                               <p className="text-[10px] text-muted-foreground text-center py-2">
-                                Aucun modèle. Créez-en depuis la toolbar Pièce.
+                                Nenhum modelo. Crie um a partir da toolbar Divisão.
                               </p>
                             )}
                             {presets.map((p) => (
@@ -289,7 +289,7 @@ export default function ObjectPanel({
 
         {tab === "openings" && (
           <>
-            {counts.openings === 0 && <EmptyState label="Aucune ouverture" />}
+            {counts.openings === 0 && <EmptyState label="Nenhuma abertura" />}
             {rooms.flatMap((r) => (r.openings || []).map((o, idx) => (
               <Row
                 key={`${r.room_id}-op-${idx}`}
@@ -307,7 +307,7 @@ export default function ObjectPanel({
 
         {tab === "counters" && (
           <>
-            {counts.counters === 0 && <EmptyState label="Aucun compteur" />}
+            {counts.counters === 0 && <EmptyState label="Nenhum contador" />}
             {(annotations.counters || []).map((c) => (
               <div key={c.id} data-testid={`object-row-counter-${c.id}`}>
                 {editingId === c.id ? (
@@ -341,7 +341,7 @@ export default function ObjectPanel({
 
         {tab === "notes" && (
           <>
-            {counts.notes === 0 && <EmptyState label="Aucune note" />}
+            {counts.notes === 0 && <EmptyState label="Nenhuma nota" />}
             {(annotations.notes || []).map((n) => (
               <div key={n.id} data-testid={`object-row-note-${n.id}`}>
                 {editingId === n.id ? (
@@ -374,7 +374,7 @@ export default function ObjectPanel({
 
         {tab === "angles" && (
           <>
-            {counts.angles === 0 && <EmptyState label="Aucun angle mesuré" />}
+            {counts.angles === 0 && <EmptyState label="Nenhum ângulo medido" />}
             {(annotations.angles || []).map((a) => {
               const rise = (Math.tan((a.degrees * Math.PI) / 180) * 12).toFixed(1);
               return (
@@ -396,14 +396,14 @@ export default function ObjectPanel({
 
         {tab === "pitched" && (
           <>
-            {counts.pitched === 0 && <EmptyState label="Aucune toiture pentée" />}
+            {counts.pitched === 0 && <EmptyState label="Nenhuma cobertura inclinada" />}
             {(annotations.pitched_surfaces || []).map((s) => (
               <Row
                 key={s.id}
                 icon={MountainSnow}
                 testId={`object-row-pitched-${s.id}`}
-                primary={s.label || `Toiture ${s.pitch_degrees}°`}
-                secondary={`Projeté ${s.projected_area_m2} m² → Réel ${s.real_area_m2} m²`}
+                primary={s.label || `Cobertura${s.pitch_degrees}°`}
+                secondary={`Projetado${s.projected_area_m2}m² → Real${s.real_area_m2} m²`}
                 badge={`${s.real_area_m2} m²`}
                 badgeColor="#3b82f6"
                 onFocus={() => onFocusObject?.({ kind: "pitched", data: s })}
@@ -415,12 +415,12 @@ export default function ObjectPanel({
 
         {tab === "measures" && (
           <>
-            {measurements.length === 0 && <EmptyState label="Aucune mesure ad-hoc" />}
+            {measurements.length === 0 && <EmptyState label="Nenhuma medida ad-hoc" />}
             {measurements.length > 0 && onExportCotesPdf && (
               <div className="px-3 pb-1">
                 <Button size="sm" onClick={onExportCotesPdf} data-testid="export-cotes-pdf-btn"
                         className="w-full rounded-sm gap-2">
-                  <FileText className="h-3 w-3" /> PDF des cotes (nom du projet)
+                  <FileText className="h-3 w-3" /> PDF das cotas (nome do projeto)
                 </Button>
               </div>
             )}
@@ -430,7 +430,7 @@ export default function ObjectPanel({
                         onClick={onClearMeasures}
                         data-testid="clear-measures-btn"
                         className="w-full rounded-sm gap-2 text-destructive hover:text-destructive">
-                  <Trash2 className="h-3 w-3" /> Tout effacer ({measurements.length})
+                  <Trash2 className="h-3 w-3" /> Apagar tudo ({measurements.length})
                 </Button>
               </div>
             )}
@@ -439,7 +439,7 @@ export default function ObjectPanel({
                 <Button size="sm" variant="outline" onClick={onReportAllWallAreas}
                         data-testid="report-all-wall-areas-btn"
                         className="w-full rounded-sm gap-2">
-                  <ArrowRight className="h-3 w-3" /> Reporter les surfaces de murs au devis (m²)
+                  <ArrowRight className="h-3 w-3" /> Transferir as áreas de paredes para o orçamento (m²)
                 </Button>
               </div>
             )}
@@ -449,14 +449,14 @@ export default function ObjectPanel({
                   <Button size="sm" onClick={onChiffrerPage}
                           data-testid="chiffrer-page-btn"
                           className="flex-1 rounded-sm gap-1 text-[11px]">
-                    € Chiffrer toute la page
+                    € Orçamentar a página inteira
                   </Button>
                 )}
                 {onOpenPriceLib && (
                   <Button size="sm" variant="outline" onClick={onOpenPriceLib}
                           data-testid="open-price-lib-btn"
-                          className="rounded-sm gap-1 text-[11px]" title="Bibliothèque de prix & ratios">
-                    Mes prix
+                          className="rounded-sm gap-1 text-[11px]" title="Biblioteca de preços e rácios">
+                    Os meus preços
                   </Button>
                 )}
               </div>
@@ -466,15 +466,15 @@ export default function ObjectPanel({
                 <Button size="sm" variant="secondary" onClick={onOpenRoomPreset}
                         data-testid="open-room-preset-btn"
                         className="w-full rounded-sm gap-2 text-[11px]"
-                        title="Chiffrer en un clic un ensemble type de pièce">
-                  ⚡ Preset pièce (sol + plinthes + peinture + plafond)
+                        title="Orçamentar num clique um conjunto tipo de divisão">
+                  ⚡ Predefinição de divisão (pavimento + rodapés + pintura + teto)
                 </Button>
               </div>
             )}
             {onMergeMeasures && (
               <div className="px-3 pb-2">
                 <div className="rounded-sm border border-dashed border-border p-2 text-[11px] text-muted-foreground">
-                  Cochez plusieurs cotes ci-dessous pour les <b>joindre en une seule</b> (la 1re cochée = cible, calcul automatique).
+                  Assinale várias cotas abaixo para as <b>juntar numa só</b> (a 1.ª assinalada = alvo, cálculo automático).
                   {mergeSel.length >= 2 && (
                     <Button size="sm" onClick={() => { onMergeMeasures(mergeSel); setMergeSel([]); }}
                             data-testid="merge-measures-btn"
@@ -483,7 +483,7 @@ export default function ObjectPanel({
                     </Button>
                   )}
                   {mergeSel.length === 1 && (
-                    <p className="mt-1 text-[10px]">1 cote sélectionnée — cochez-en au moins une autre.</p>
+                    <p className="mt-1 text-[10px]">1 cota selecionada — assinale pelo menos mais uma.</p>
                   )}
                 </div>
               </div>
@@ -493,7 +493,7 @@ export default function ObjectPanel({
                 <div key={m.measurement_id} className="px-3 py-2 flex items-center gap-2">
                   <Input value={editValue} onChange={(e) => setEditValue(e.target.value)}
                          autoFocus className="h-7 text-xs"
-                         placeholder="ex. murs parpaing, murs en brique…"
+                         placeholder="ex. paredes bloco, paredes tijolo…"
                          onKeyDown={(e) => {
                            if (e.key === "Enter") commitEdit((v) => onRenameMeasure?.(m.measurement_id, v));
                            if (e.key === "Escape") { setEditingId(null); setEditValue(""); }
@@ -511,14 +511,14 @@ export default function ObjectPanel({
                 || kind === "manual_linear" || m.length_m != null || m.value_m != null);
               const nOpen = (m.openings || []).length;
               const dedTxt = nOpen ? ` · −${nOpen} ouv.` : "";
-              const primary = m.label || (kind === "distance" ? "Distance" : kind === "polygon" ? "Surface" : kind === "cumulative" ? "Mur cumulé" : kind === "cumulative_area" ? "Surface cumulée" : kind === "manual_area" ? "Surface" : kind === "manual_linear" ? "Linéaire" : isArea ? "Surface" : "Mesure");
+              const primary = m.label || (kind === "distance" ? "Distance" : kind === "polygon" ? "Superfície" : kind === "cumulative" ? "Parede acumulada" : kind === "cumulative_area" ? "Área acumulada" : kind === "manual_area" ? "Superfície" : kind === "manual_linear" ? "Linear" : isArea ? "Superfície" : "Mesure");
               const kindTxt = kind === "distance" ? "Distance"
-                : kind === "polygon" ? "Surface"
-                : kind === "cumulative" ? `Mur · ${(m.segments || []).length} tronçon(s)${dedTxt}`
-                : kind === "cumulative_area" ? `Surface · ${(m.polygons || []).length} zone(s)`
-                : kind === "manual_area" ? (m.slope_pct ? `Surface · rampant ${m.slope_pct}%` : "Surface")
-                : kind === "manual_linear" ? "Linéaire"
-                : isArea ? "Surface" : isLinear ? "Linéaire" : "Périmètre";
+                : kind === "polygon" ? "Superfície"
+                : kind === "cumulative" ? `Parede ·${(m.segments || []).length}troço(s)${dedTxt}`
+                : kind === "cumulative_area" ? `Área ·${(m.polygons || []).length} zone(s)`
+                : kind === "manual_area" ? (m.slope_pct ? `Área · vertente${m.slope_pct}%` : "Superfície")
+                : kind === "manual_linear" ? "Linear"
+                : isArea ? "Superfície" : isLinear ? "Linear" : "Perímetro";
               const badge = isArea ? `${(m.area_m2 ?? m.wall_area_net_m2 ?? 0).toFixed(2)} m²` : `${(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
               const canEditArea = isArea && onSetMeasureSurface;
               const canEditLinear = isLinear && onSetMeasureLength;
@@ -527,7 +527,7 @@ export default function ObjectPanel({
                 <span className="inline-flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                   <input type="number" step="0.01" min="0" key={numVal} defaultValue={numVal.toFixed(2)}
                     data-testid={`object-row-measure-${idx}-value`}
-                    title="Modifier directement la quantité"
+                    title="Alterar diretamente a quantidade"
                     className="h-6 w-16 rounded border border-border bg-background px-1 text-[11px] text-right num"
                     onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
                     onBlur={(e) => {
@@ -548,13 +548,13 @@ export default function ObjectPanel({
                 {onMergeMeasures && (isLinear || isArea) && (
                   <input type="checkbox" checked={mergeSel.includes(m.measurement_id)}
                          onChange={() => toggleMergeSel(m.measurement_id)}
-                         title="Sélectionner pour fusionner"
+                         title="Selecionar para fundir"
                          data-testid={`object-row-measure-${idx}-merge`}
                          className="ml-3 h-4 w-4 shrink-0 cursor-pointer" />
                 )}
                 <input type="color" value={m.color || "#0d9488"}
                        onChange={(e) => onColorMeasure?.(m.measurement_id, e.target.value)}
-                       title="Couleur du filtre (plancher, murs…)"
+                       title="Cor do filtro (pavimento, paredes…)"
                        data-testid={`object-row-measure-${idx}-color`}
                        className="ml-3 h-6 w-6 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0" />
                 <div className="min-w-0 flex-1">
@@ -563,21 +563,21 @@ export default function ObjectPanel({
                     className="flex-1 min-w-0"
                     testId={`object-row-measure-${idx}`}
                     primary={primary}
-                    secondary={`${kindTxt}${areaTxt} · créée ${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
+                    secondary={`${kindTxt}${areaTxt}· criada${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
                     badge={badgeNode}
                     badgeColor={m.color || "#0d9488"}
                     onFocus={() => onFocusObject?.({ kind: "measure", data: m })}
                     onExtra={kind === "polygon" && onConvertMeasure ? () => onConvertMeasure(m.measurement_id) : ((isLinear || kind === "cumulative_area") && onReportToDevis ? () => onReportToDevis(m) : null)}
                     extraIcon={kind === "polygon" ? Home : ArrowRight}
-                    extraLabel={kind === "polygon" ? "Convertir en pièce (murs + estimation)" : "Envoyer au devis (ligne d'ouvrage)"}
+                    extraLabel={kind === "polygon" ? "Converter em divisão (paredes + estimativa)" : "Enviar para o orçamento (linha de artigo)"}
                     onExtra2={kind === "polygon" && onDeductMeasure ? () => onDeductMeasure(m.measurement_id) : (isLinear && onDeductOpening ? () => onDeductOpening(m) : null)}
                     extra2Icon={kind === "polygon" ? Scissors : DoorOpen}
-                    extra2Label={kind === "polygon" ? "Déduire de la pièce contenante (trémie, escalier…)" : "Déduire une ouverture (fenêtre/porte)"}
+                    extra2Label={kind === "polygon" ? "Deduzir da divisão que a contém (abertura, escada…)" : "Deduzir um vão (janela/porta)"}
                     onEdit={onRenameMeasure ? () => startEdit(m.measurement_id, m.label || "") : null}
                     onDelete={onDeleteMeasure ? () => onDeleteMeasure(m.measurement_id) : null}
                     trailing={onChiffrer && (isArea || isLinear) ? (
                       <button type="button" onClick={(e) => { e.stopPropagation(); onChiffrer(m); }}
-                              title="Chiffrer ce poste (composition + estimation)"
+                              title="Orçamentar este artigo (composição + estimativa)"
                               data-testid={`object-row-measure-${idx}-chiffrer`}
                               className="shrink-0 rounded-sm border border-primary/40 px-1.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10">
                         € Chiffrer
@@ -588,7 +588,7 @@ export default function ObjectPanel({
               </div>
               {onSetWallHeight && isLinear && (
                 <div className="ml-9 -mt-1 mb-1 flex items-center gap-2 text-[11px] text-muted-foreground" data-testid={`object-row-measure-${idx}-height-row`}>
-                  <span>Hauteur mur :</span>
+                  <span>Altura da parede:</span>
                   <input type="number" step="0.05" min="0" defaultValue={m.wall_height_m || ""}
                          placeholder="2.50"
                          data-testid={`object-row-measure-${idx}-height`}
@@ -619,7 +619,7 @@ function EmptyState({ label }) {
   return (
     <div className="text-center py-10 text-xs text-muted-foreground">
       <p>{label}</p>
-      <p className="text-[10px] mt-1 opacity-70">Utilisez les outils pour en créer.</p>
+      <p className="text-[10px] mt-1 opacity-70">Utilize as ferramentas para criar.</p>
     </div>
   );
 }

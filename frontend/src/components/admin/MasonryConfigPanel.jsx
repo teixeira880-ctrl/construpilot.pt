@@ -12,7 +12,7 @@ const RATIOS = [
   { key: "glue_kg_per_m2", label: "Mortier-colle joint mince", unit: "kg / m²", step: 0.5 },
   { key: "foam_m2_per_can", label: "Mousse PU — rendement", unit: "m² / cartouche", step: 0.5 },
   { key: "gobetis_kg_per_m2", label: "Gobetis d'accroche", unit: "kg / m²", step: 0.5 },
-  { key: "render_kg_per_m2", label: "Corps d'enduit de façade", unit: "kg / m²", step: 0.5 },
+  { key: "render_kg_per_m2", label: "Corpo de reboco de fachada", unit: "kg / m²", step: 0.5 },
 ];
 
 const EMPTY_BLOCK = { key: "", label: "", material: "parpaing", blocks_per_m2: 10, price: 1, search: "" };
@@ -22,7 +22,7 @@ export default function MasonryConfigPanel() {
   const [saving, setSaving] = useState(false);
 
   const load = () => api.get("/estimation/masonry-config").then(({ data }) => setCfg(data))
-    .catch(() => toast.error("Config maçonnerie indisponible"));
+    .catch(() => toast.error("Configuração de alvenaria indisponível"));
   useEffect(() => { load(); }, []);
 
   const setRatio = (k, v) => setCfg((c) => ({ ...c, ratios: { ...c.ratios, [k]: v } }));
@@ -34,7 +34,7 @@ export default function MasonryConfigPanel() {
 
   const save = async () => {
     const bad = cfg.blocks.find((b) => !b.label.trim() || !(Number(b.blocks_per_m2) > 0));
-    if (bad) { toast.error("Chaque bloc doit avoir un libellé et un nombre de blocs/m² > 0"); return; }
+    if (bad) { toast.error("Cada bloco deve ter uma designação e um número de blocos/m² > 0"); return; }
     setSaving(true);
     try {
       const body = {
@@ -47,42 +47,42 @@ export default function MasonryConfigPanel() {
       };
       const { data } = await api.put("/estimation/masonry-config", body);
       setCfg(data);
-      toast.success("Ratios maçonnerie enregistrés");
+      toast.success("Rácios de alvenaria guardados");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Enregistrement impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     } finally { setSaving(false); }
   };
 
   const reset = async () => {
-    if (!window.confirm("Revenir aux ratios et blocs par défaut ?")) return;
+    if (!window.confirm("Voltar aos rácios e blocos predefinidos?")) return;
     try {
       const { data } = await api.post("/estimation/masonry-config/reset");
       setCfg(data);
-      toast.success("Valeurs par défaut restaurées");
-    } catch { toast.error("Réinitialisation impossible"); }
+      toast.success("Valores predefinidos restaurados");
+    } catch { toast.error("Reinício impossível"); }
   };
 
-  if (!cfg) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>;
+  if (!cfg) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> A carregar…</div>;
 
   return (
     <div className="space-y-6" data-testid="admin-masonry-panel">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="font-display font-bold text-lg flex items-center gap-2"><Blocks className="h-5 w-5 text-primary" /> Maçonnerie — ratios & blocs</h3>
-          <p className="text-sm text-muted-foreground">Ces valeurs pilotent les calculs de parpaing / brique, liants et enduit de façade dans le devis pièce et le panier matériaux.</p>
+          <h3 className="font-display font-bold text-lg flex items-center gap-2"><Blocks className="h-5 w-5 text-primary" /> Alvenaria — rácios e blocos</h3>
+          <p className="text-sm text-muted-foreground">Estes valores controlam os cálculos de bloco / tijolo, ligantes e reboco de fachada no orçamento por divisão e no cesto de materiais.</p>
         </div>
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={reset} data-testid="admin-masonry-reset">
-            <RotateCcw className="h-4 w-4" /> Défauts
+            <RotateCcw className="h-4 w-4" /> Defeitos
           </Button>
           <Button size="sm" className="rounded-sm gap-2" onClick={save} disabled={saving} data-testid="admin-masonry-save">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar
           </Button>
         </div>
       </div>
 
       <div className="surface p-5 rounded-md">
-        <p className="overline text-[10px] mb-3">Ratios par m² de mur</p>
+        <p className="overline text-[10px] mb-3">Rácios por m² de parede</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {RATIOS.map((r) => (
             <label key={r.key} className="text-xs">
@@ -97,20 +97,20 @@ export default function MasonryConfigPanel() {
 
       <div className="surface p-5 rounded-md">
         <div className="flex items-center justify-between mb-3">
-          <p className="overline text-[10px]">Blocs disponibles (dimensions proposées à l'utilisateur)</p>
+          <p className="overline text-[10px]">Blocos disponíveis (dimensões propostas ao utilizador)</p>
           <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={addBlock} data-testid="admin-masonry-add-block">
-            <Plus className="h-4 w-4" /> Ajouter un bloc
+            <Plus className="h-4 w-4" /> Adicionar um bloco
           </Button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
-                <th className="py-2 pr-3 font-medium">Libellé</th>
-                <th className="py-2 pr-3 font-medium">Matériau</th>
+                <th className="py-2 pr-3 font-medium">Descrição</th>
+                <th className="py-2 pr-3 font-medium">Material</th>
                 <th className="py-2 pr-3 font-medium">Blocs / m²</th>
-                <th className="py-2 pr-3 font-medium">Prix unit. (€)</th>
-                <th className="py-2 pr-3 font-medium">Recherche fournisseur</th>
+                <th className="py-2 pr-3 font-medium">Preço unit. (€)</th>
+                <th className="py-2 pr-3 font-medium">Pesquisa de fornecedor</th>
                 <th className="py-2" />
               </tr>
             </thead>
@@ -151,7 +151,7 @@ export default function MasonryConfigPanel() {
           </table>
         </div>
         <p className="text-[10px] text-muted-foreground mt-3">
-          Repères : parpaing/brique creuse 20×20×50 ≈ 10 blocs/m² · brique rouge 22×10,5×6 ≈ 48/m² · brique monomur 50×20×30 ≈ 16/m².
+          Referências: bloco furado 20×20×50 ≈ 10 blocos/m² · tijolo vermelho 22×10,5×6 ≈ 48/m² · tijolo monomuro 50×20×30 ≈ 16/m².
         </p>
       </div>
     </div>

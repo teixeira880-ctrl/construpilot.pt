@@ -14,14 +14,14 @@ import {
 
 const KIND_LABEL = { bet: "Note BET", plan: "Plan", cctp: "CCTP", autre: "Autre" };
 const ENGINE = {
-  claude: { label: "Analysé", cls: "bg-emerald-500/15 text-emerald-600" },
-  skipped: { label: "Non lisible (DWG/IFC)", cls: "bg-slate-500/15 text-slate-600" },
-  error: { label: "Échec lecture", cls: "bg-red-500/15 text-red-600" },
+  claude: { label: "Analisado", cls: "bg-emerald-500/15 text-emerald-600" },
+  skipped: { label: "Ilegível (DWG/IFC)", cls: "bg-slate-500/15 text-slate-600" },
+  error: { label: "Falha de leitura", cls: "bg-red-500/15 text-red-600" },
   fallback: { label: "Partiel", cls: "bg-amber-500/15 text-amber-700" },
 };
 
 const DISCLAIMER =
-  "Contrôle en lecture seule : StructuroPilot ne calcule rien et ne décide pas quelle valeur est correcte. Il rapporte ce qui est écrit et signale les écarts à faire vérifier par un ingénieur. Jamais « bon pour exécution ».";
+  "Controlo só de leitura: o StructuroPilot não calcula nada e não decide que valor está correto. Relata o que está escrito e assinala as diferenças a verificar por um engenheiro. Nunca «apto para execução».";
 
 function EngineBadge({ e }) {
   const cfg = ENGINE[e] || { label: "En attente", cls: "bg-slate-500/15 text-slate-600" };
@@ -41,7 +41,7 @@ export default function BetDossier() {
   const loadList = useCallback(async () => {
     setLoading(true);
     try { const { data } = await api.get("/structuro/bet/studies"); setList(data.studies || []); }
-    catch { toast.error("Chargement impossible."); }
+    catch { toast.error("Carregamento impossível."); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { loadList(); }, [loadList]);
@@ -58,15 +58,15 @@ export default function BetDossier() {
     try {
       const { data } = await api.post("/structuro/bet/studies", { title: title.trim() });
       setTitle(""); await loadList(); setCurrent(data);
-      toast.success("Dossier créé.");
-    } catch { toast.error("Création impossible."); }
+      toast.success("Processo criado.");
+    } catch { toast.error("Criação impossível."); }
     finally { setBusy(false); }
   };
 
   const deleteDossier = async (id) => {
-    if (!window.confirm("Supprimer ce dossier et ses documents ?")) return;
-    try { await api.delete(`/structuro/bet/studies/${id}`); setCurrent(null); await loadList(); toast.success("Dossier supprimé."); }
-    catch { toast.error("Suppression impossible."); }
+    if (!window.confirm("Eliminar este processo e os seus documentos?")) return;
+    try { await api.delete(`/structuro/bet/studies/${id}`); setCurrent(null); await loadList(); toast.success("Processo eliminado."); }
+    catch { toast.error("Eliminação impossível."); }
   };
 
   const liveDocs = (current?.documents || []).filter((d) => !d.is_deleted);
@@ -80,53 +80,53 @@ export default function BetDossier() {
       const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/documents`, fd,
         { headers: { "Content-Type": "multipart/form-data" }, timeout: 120000 });
       setCurrent(data);
-      toast.success("Document importé et lu.");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Import impossible."); }
+      toast.success("Documento importado e lido.");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Importação impossível."); }
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
   const reanalyze = async (docId) => {
     setBusy(true);
     try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/documents/${docId}/reanalyze`); setCurrent(data); toast.success("Relu."); }
-    catch { toast.error("Relecture impossible."); }
+    catch { toast.error("Releitura impossível."); }
     finally { setBusy(false); }
   };
 
   const analyzeAutodesk = async (docId, filename) => {
-    if (!window.confirm(`Lancer la lecture Autodesk de « ${filename} » ?\n\nLa traduction DWG/IFC via Autodesk consomme du crédit (mise en cache ensuite par fichier).`)) return;
+    if (!window.confirm(`Lançar a leitura Autodesk de «${filename}»?\n\nA tradução DWG/IFC via Autodesk consome crédito (depois fica em cache por ficheiro).`)) return;
     setBusy(true);
-    toast.info("Traduction Autodesk en cours… cela peut prendre jusqu'à 1 min.");
-    try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/documents/${docId}/analyze-autodesk`, {}, { timeout: 180000 }); setCurrent(data); toast.success("Lecture Autodesk terminée."); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Lecture Autodesk impossible."); }
+    toast.info("Tradução Autodesk em curso… pode demorar até 1 min.");
+    try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/documents/${docId}/analyze-autodesk`, {}, { timeout: 180000 }); setCurrent(data); toast.success("Leitura Autodesk concluída."); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Leitura Autodesk impossível."); }
     finally { setBusy(false); }
   };
 
   const saveResponsable = async () => {
     setBusy(true);
-    try { const { data } = await api.patch(`/structuro/bet/studies/${current.dossier_id}`, { responsable: resp }); setCurrent(data); toast.success("Responsable enregistré."); }
-    catch { toast.error("Enregistrement impossible."); }
+    try { const { data } = await api.patch(`/structuro/bet/studies/${current.dossier_id}`, { responsable: resp }); setCurrent(data); toast.success("Responsável guardado."); }
+    catch { toast.error("Gravação impossível."); }
     finally { setBusy(false); }
   };
 
   const deleteDoc = async (docId) => {
     setBusy(true);
     try { const { data } = await api.delete(`/structuro/bet/studies/${current.dossier_id}/documents/${docId}`); setCurrent(data); setCmp({ a: "", b: "" }); }
-    catch { toast.error("Suppression impossible."); }
+    catch { toast.error("Eliminação impossível."); }
     finally { setBusy(false); }
   };
 
   const runCompare = async () => {
-    if (!cmp.a || !cmp.b || cmp.a === cmp.b) { toast.error("Choisissez deux documents différents."); return; }
+    if (!cmp.a || !cmp.b || cmp.a === cmp.b) { toast.error("Escolha dois documentos diferentes."); return; }
     setBusy(true);
-    try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/compare`, { doc_a: cmp.a, doc_b: cmp.b }); setCurrent(data); toast.success("Comparaison effectuée."); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Comparaison impossible."); }
+    try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/compare`, { doc_a: cmp.a, doc_b: cmp.b }); setCurrent(data); toast.success("Comparação efetuada."); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Comparação impossível."); }
     finally { setBusy(false); }
   };
 
   const runInconsistencies = async () => {
     setBusy(true);
-    try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/inconsistencies`); setCurrent(data); toast.success("Analyse terminée."); }
-    catch { toast.error("Analyse impossible."); }
+    try { const { data } = await api.post(`/structuro/bet/studies/${current.dossier_id}/inconsistencies`); setCurrent(data); toast.success("Análise concluída."); }
+    catch { toast.error("Análise impossível."); }
     finally { setBusy(false); }
   };
 
@@ -138,26 +138,26 @@ export default function BetDossier() {
       <div className="max-w-5xl mx-auto space-y-6" data-testid="bet-list-page">
         <header className="space-y-2">
           <div className="flex items-center gap-2 text-primary"><FileSearch className="h-5 w-5" /><span className="overline">StructuroPilot</span></div>
-          <h1 className="font-display text-2xl font-bold">Analyse de dossier BET</h1>
+          <h1 className="font-display text-2xl font-bold">Análise de processo de engenharia</h1>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Importez plans et notes de calcul d'un bureau d'études en <strong>lecture seule</strong>. L'IA lit les PDF et images,
+            Importe plantas e memórias de cálculo de um gabinete de projeto em <strong>lecture seule</strong>. L'IA lit les PDF et images,
             compare les versions (indice A → B) et signale les incohérences. Rapport de contrôle PDF à la clé.
           </p>
         </header>
 
         <Card className="p-4 flex flex-col sm:flex-row gap-3 sm:items-end" data-testid="bet-create-card">
           <div className="flex-1">
-            <label className="text-xs font-semibold text-muted-foreground">Nouveau dossier</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. Maison Dupont — ouverture mur porteur"
+            <label className="text-xs font-semibold text-muted-foreground">Novo processo</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Moradia Silva — abertura em parede resistente"
               data-testid="bet-title-input" onKeyDown={(e) => e.key === "Enter" && createDossier()} />
           </div>
           <Button onClick={createDossier} disabled={busy} data-testid="bet-create-btn" className="gap-2">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Créer
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Criar
           </Button>
         </Card>
 
-        {loading ? <div className="flex items-center gap-2 text-muted-foreground p-6"><Loader2 className="h-4 w-4 animate-spin" />Chargement…</div>
-          : list.length === 0 ? <Card className="p-10 text-center text-sm text-muted-foreground" data-testid="bet-empty">Aucun dossier pour l'instant.</Card>
+        {loading ? <div className="flex items-center gap-2 text-muted-foreground p-6"><Loader2 className="h-4 w-4 animate-spin" />A carregar…</div>
+          : list.length === 0 ? <Card className="p-10 text-center text-sm text-muted-foreground" data-testid="bet-empty">Nenhum processo por agora.</Card>
           : <div className="grid sm:grid-cols-2 gap-3" data-testid="bet-dossier-grid">
               {list.map((d) => (
                 <Card key={d.dossier_id} className="p-4 flex items-center gap-3 hover:border-primary/50 transition-colors" data-testid={`bet-dossier-${d.dossier_id}`}>
@@ -186,12 +186,12 @@ export default function BetDossier() {
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <div className="flex items-center gap-1.5">
-            <Input value={resp} onChange={(e) => setResp(e.target.value)} placeholder="Responsable du contrôle"
+            <Input value={resp} onChange={(e) => setResp(e.target.value)} placeholder="Responsável pelo controlo"
               className="h-9 w-48" data-testid="bet-responsable-input" />
             <Button variant="ghost" size="sm" onClick={saveResponsable} disabled={busy || resp === (current.responsable || "")} data-testid="bet-responsable-save">OK</Button>
           </div>
           <Button asChild variant="outline" className="gap-2" data-testid="bet-report-btn">
-            <a href={`${API}/structuro/bet/studies/${current.dossier_id}/report.pdf`} target="_blank" rel="noopener noreferrer"><FileDown className="h-4 w-4" /> Rapport de contrôle</a>
+            <a href={`${API}/structuro/bet/studies/${current.dossier_id}/report.pdf`} target="_blank" rel="noopener noreferrer"><FileDown className="h-4 w-4" /> Relatório de controlo</a>
           </Button>
         </div>
       </div>
@@ -214,7 +214,7 @@ export default function BetDossier() {
             </Button>
           </div>
         </div>
-        {liveDocs.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center" data-testid="bet-docs-empty">Importez des PDF (notes) ou images (plans). DWG/IFC acceptés (stockés, lecture géométrique non disponible).</p>
+        {liveDocs.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center" data-testid="bet-docs-empty">Importe PDF (memórias) ou imagens (plantas). DWG/IFC aceites (guardados, leitura geométrica indisponível).</p>
           : <div className="space-y-2">
               {liveDocs.map((d) => {
                 const ext = (d.extraction || {});
@@ -243,7 +243,7 @@ export default function BetDossier() {
                         <a href={`${API}/structuro/bet/studies/${current.dossier_id}/documents/${d.id}/file`} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /></a>
                       </Button>
                       {!isCad && <Button variant="ghost" size="icon" title="Relire" onClick={() => reanalyze(d.id)} disabled={busy} data-testid={`bet-doc-reanalyze-${d.id}`}><RefreshCw className="h-4 w-4" /></Button>}
-                      <Button variant="ghost" size="icon" title="Supprimer" onClick={() => deleteDoc(d.id)} disabled={busy} data-testid={`bet-doc-delete-${d.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" title="Eliminar" onClick={() => deleteDoc(d.id)} disabled={busy} data-testid={`bet-doc-delete-${d.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                     {ext.resume && <p className="text-xs text-muted-foreground mt-2 pl-12">{ext.resume}</p>}
                     {(ext.cotes?.length > 0 || ext.charges?.length > 0) && (
@@ -265,14 +265,14 @@ export default function BetDossier() {
           <div className="flex-1">
             <label className="text-xs text-muted-foreground">Version A (ancienne)</label>
             <Select value={cmp.a} onValueChange={(v) => setCmp((s) => ({ ...s, a: v }))}>
-              <SelectTrigger data-testid="bet-compare-a"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+              <SelectTrigger data-testid="bet-compare-a"><SelectValue placeholder="Escolher…" /></SelectTrigger>
               <SelectContent>{liveDocs.map((d) => <SelectItem key={d.id} value={d.id}>{d.original_filename}{d.index ? ` (${d.index})` : ""}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="flex-1">
-            <label className="text-xs text-muted-foreground">Version B (nouvelle)</label>
+            <label className="text-xs text-muted-foreground">Versão B (nova)</label>
             <Select value={cmp.b} onValueChange={(v) => setCmp((s) => ({ ...s, b: v }))}>
-              <SelectTrigger data-testid="bet-compare-b"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+              <SelectTrigger data-testid="bet-compare-b"><SelectValue placeholder="Escolher…" /></SelectTrigger>
               <SelectContent>{liveDocs.map((d) => <SelectItem key={d.id} value={d.id}>{d.original_filename}{d.index ? ` (${d.index})` : ""}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -284,7 +284,7 @@ export default function BetDossier() {
           return (
             <div key={c.comp_id} className="rounded-lg border border-border p-3 text-sm" data-testid={`bet-comparison-${c.comp_id}`}>
               <p className="font-medium text-xs text-muted-foreground mb-2">{nameOf(c.doc_a)} → {nameOf(c.doc_b)}</p>
-              {total === 0 ? <p className="text-xs text-emerald-600">Aucune différence détectée.</p> : <ul className="space-y-1 text-xs">
+              {total === 0 ? <p className="text-xs text-emerald-600">Nenhuma diferença detetada.</p> : <ul className="space-y-1 text-xs">
                 {(r.modifications || []).map((m, i) => <li key={`m${i}`}>✏️ <strong>{m.sujet}</strong> : « {m.avant} » → « {m.apres} »</li>)}
                 {(r.ajouts || []).map((a, i) => <li key={`a${i}`} className="text-emerald-600">＋ {a}</li>)}
                 {(r.suppressions || []).map((s, i) => <li key={`s${i}`} className="text-red-600">－ {s}</li>)}
@@ -298,11 +298,11 @@ export default function BetDossier() {
       {/* Inconsistencies */}
       <Card className="p-4 space-y-3" data-testid="bet-inconsistencies-card">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" /> Incohérences entre documents</h2>
+          <h2 className="font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" /> Incoerências entre documentos</h2>
           <Button variant="outline" onClick={runInconsistencies} disabled={busy} className="gap-2" data-testid="bet-inconsistencies-btn">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSearch className="h-4 w-4" />} Analyser</Button>
         </div>
-        {!current.inconsistencies ? <p className="text-xs text-muted-foreground">Lancez l'analyse après avoir importé au moins deux documents lisibles.</p>
-          : inco.length === 0 ? <p className="text-xs text-emerald-600" data-testid="bet-inco-none">Aucune incohérence signalée.</p>
+        {!current.inconsistencies ? <p className="text-xs text-muted-foreground">Lance a análise depois de importar pelo menos dois documentos legíveis.</p>
+          : inco.length === 0 ? <p className="text-xs text-emerald-600" data-testid="bet-inco-none">Nenhuma incoerência assinalada.</p>
           : <div className="space-y-2">{inco.map((it, i) => (
               <div key={i} className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm" data-testid={`bet-inco-${i}`}>
                 <p className="font-medium text-amber-700">{it.sujet}</p>

@@ -49,9 +49,9 @@ export default function Dashboard() {
   const LEVEL_LABELS = { particulier_payant: "Particulier Payant", pro: "Pro", business: "Business" };
   const lockedUpsell = [
     { to: "/assistant", icon: AssistantIcon, title: "Assistant BTP", desc: "Chat, courriers & comptes-rendus IA", min: "particulier_payant" },
-    { to: "/devis-editeur", icon: FileText, title: "Devis & factures", desc: "Créez des devis et factures pro", min: "pro" },
+    { to: "/devis-editeur", icon: FileText, title: "Orçamentos e faturas", desc: "Crie orçamentos e faturas profissionais", min: "pro" },
     { to: "/clients", icon: Users, title: "Clients", desc: "Fiches clients & historique", min: "pro" },
-    { to: "/chantiers", icon: HardHat, title: "Dossiers chantier", desc: "Plans, photos et suivi par affaire", min: "pro" },
+    { to: "/chantiers", icon: HardHat, title: "Dossiers de obra", desc: "Plantas, fotografias e acompanhamento por obra", min: "pro" },
   ].filter((f) => RANK[level] < RANK[f.min]);
   const ui = useWorkspaceCopy();
   const experience = useExperienceCopy();
@@ -138,7 +138,7 @@ export default function Dashboard() {
         {[
           canAssistant
             ? { to: "/assistant", icon: AssistantIcon, title: experience("assistantShort"), desc: ui("askDesc"), testid: "quick-assistant" }
-            : { to: "/btp-solver", icon: Wrench, title: "Résoudre un problème", desc: "Posez votre question travaux", testid: "quick-solver" },
+            : { to: "/btp-solver", icon: Wrench, title: "Resolver um problema", desc: "Faça a sua pergunta sobre obras", testid: "quick-solver" },
           isPro ? { to: "/plan", icon: Ruler, title: experience("planShort"), desc: ui("planDesc"), testid: "quick-plan" } : { to: "/estimation", icon: FileText, title: ui("estimate"), desc: ui("estimateDesc"), testid: "quick-estimate" },
           isPro ? { to: "/chantiers", icon: HardHat, title: ui("chantiers"), desc: experience("sitesDesc"), testid: "quick-chantiers" } : { to: "/calculateurs", icon: Wrench, title: ui("calculators"), desc: ui("personalMore"), testid: "quick-calculators" },
           isPro && can("devis") ? { to: "/devis-editeur", icon: FileText, title: experience("quoteShort"), desc: ui("quoteDesc"), testid: "quick-new-quote" } : { to: "/prix", icon: Search, title: ui("prices"), desc: ui("pricesDesc"), testid: "quick-prices" },
@@ -298,12 +298,12 @@ export default function Dashboard() {
       {lockedUpsell.length > 0 && (
         <div className="dashboard-upsell" data-testid="dashboard-upsell">
           <div className="dashboard-upsell-head">
-            <div><strong><Sparkles size={16} className="text-primary" /> {t("dash.unlock_title", "Débloquez plus avec un abonnement")}</strong><small>{t("dash.unlock_desc", "Ces fonctions sont incluses dans les offres payantes.")}</small></div>
-            <Button asChild size="sm" className="rounded-sm"><Link to="/tarifs" data-testid="dashboard-upsell-cta">{t("dash.see_plans", "Voir les offres")}</Link></Button>
+            <div><strong><Sparkles size={16} className="text-primary" /> {t("dash.unlock_title", "Desbloqueie mais com uma subscrição")}</strong><small>{t("dash.unlock_desc", "Estas funções estão incluídas nas ofertas pagas.")}</small></div>
+            <Button asChild size="sm" className="rounded-sm"><Link to="/tarifs" data-testid="dashboard-upsell-cta">{t("dash.see_plans", "Ver as ofertas")}</Link></Button>
           </div>
           <div className="dashboard-upsell-grid">
             {lockedUpsell.map((f) => (
-              <Link key={f.to} to="/tarifs" className="dashboard-upsell-tile" data-testid={`dashboard-locked-${f.to.slice(1)}`} data-locked="true" title={`Fonction ${LEVEL_LABELS[f.min]} — cliquez pour débloquer`}>
+              <Link key={f.to} to="/tarifs" className="dashboard-upsell-tile" data-testid={`dashboard-locked-${f.to.slice(1)}`} data-locked="true" title={`Fonction ${LEVEL_LABELS[f.min]}— clique para desbloquear`}>
                 <span className="dashboard-upsell-icon"><f.icon size={19} /></span>
                 <span className="flex-1 min-w-0"><strong>{f.title}</strong><small>{f.desc}</small></span>
                 <span className="dashboard-upsell-badge" onClick={(e) => e.preventDefault()}>
@@ -326,9 +326,9 @@ export default function Dashboard() {
           </div>
           {isPro && <>{can("factures") && <RevenueChart />}<CotesTile />
             <Link to="/appro" data-testid="appro-link" className="surface p-5 flex gap-3 items-center"><HardHat size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.appro", "Analyse technique & Appro IA")}</span><ArrowRight size={17} className="ms-auto" /></Link>
-            {can("factures") && <Link to="/rentabilite" data-testid="profitability-link" className="surface p-5 flex gap-3 items-center"><TrendingUp size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.profitability", "Rapport de rentabilité")}</span><ArrowRight size={17} className="ms-auto" /></Link>}
+            {can("factures") && <Link to="/rentabilite" data-testid="profitability-link" className="surface p-5 flex gap-3 items-center"><TrendingUp size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.profitability", "Relatório de rentabilidade")}</span><ArrowRight size={17} className="ms-auto" /></Link>}
             {can("catalogue") && <PriceLibrary />}
-            {can("devis") && <Link to="/dpgf" data-testid="dpgf-link" className="surface p-5 flex gap-3 items-center"><FileSpreadsheet size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.dpgf", "DPGF architecte → devis")}</span><ArrowRight size={17} className="ms-auto" /></Link>}
+            {can("devis") && <Link to="/dpgf" data-testid="dpgf-link" className="surface p-5 flex gap-3 items-center"><FileSpreadsheet size={20} className="text-primary" /><span className="text-sm font-semibold">{t("nav.dpgf", "Mapa de quantidades do arquiteto → orçamento")}</span><ArrowRight size={17} className="ms-auto" /></Link>}
           </>}
         </div>}
       </details>

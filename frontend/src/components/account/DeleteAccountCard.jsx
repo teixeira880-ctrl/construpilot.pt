@@ -17,50 +17,48 @@ export const DeleteAccountCard = () => {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (confirm.trim().toUpperCase() !== "SUPPRIMER") {
-      return toast.error("Tapez SUPPRIMER pour confirmer");
+    if (confirm.trim().toUpperCase() !== "ELIMINAR") {
+      return toast.error("Escreva ELIMINAR para confirmar");
     }
     setBusy(true);
     try {
       await api.delete("/auth/account", {
         data: { password: hasPassword ? password : null, confirm: confirm.trim() },
       });
-      toast.success("Compte supprimé. Vos données ont été effacées.");
+      toast.success("Conta eliminada. Os seus dados foram apagados.");
       window.location.href = "/";
     } catch (err) {
       const d = err?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Suppression impossible");
+      toast.error(typeof d === "string" ? d : "Não foi possível eliminar");
     } finally { setBusy(false); }
   };
 
   return (
     <div className="surface p-5 space-y-3 border border-destructive/40" data-testid="delete-account-card">
       <p className="font-semibold flex items-center gap-2 text-destructive">
-        <Trash2 className="h-4 w-4" /> Supprimer mon compte
+        <Trash2 className="h-4 w-4" /> Eliminar a minha conta
       </p>
       <p className="text-xs text-muted-foreground">
-        Suppression définitive et immédiate de votre compte, vos chantiers, devis, documents,
-        photos et messages. Seules les pièces comptables légalement obligatoires sont
-        conservées de façon anonymisée. Cette action est irréversible.
+        Eliminação definitiva e imediata da sua conta, obras, orçamentos, documentos, fotografias e mensagens. Só as peças contabilísticas legalmente obrigatórias são conservadas de forma anonimizada. Esta ação é irreversível.
       </p>
 
       {!open ? (
         <Button type="button" variant="outline" onClick={() => setOpen(true)}
                 className="rounded-sm w-full gap-2 border-destructive/50 text-destructive hover:bg-destructive/10"
                 data-testid="delete-account-open">
-          <Trash2 className="h-4 w-4" /> Je veux supprimer mon compte
+          <Trash2 className="h-4 w-4" /> Quero eliminar a minha conta
         </Button>
       ) : (
         <form onSubmit={submit} className="space-y-3" data-testid="delete-account-form">
           <div className="flex items-start gap-2 rounded-sm bg-destructive/10 p-3">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <p className="text-xs text-destructive">
-              Toutes vos données seront effacées. Aucune restauration possible.
+              Todos os seus dados serão apagados. Nenhum restauro possível.
             </p>
           </div>
           {hasPassword && (
             <div className="grid gap-1.5">
-              <Label htmlFor="del-pw" className="text-xs">Votre mot de passe</Label>
+              <Label htmlFor="del-pw" className="text-xs">A sua palavra-passe</Label>
               <Input id="del-pw" type="password" value={password} required
                      onChange={(e) => setPassword(e.target.value)}
                      data-testid="delete-account-password" className="rounded-sm" />
@@ -68,20 +66,20 @@ export const DeleteAccountCard = () => {
           )}
           <div className="grid gap-1.5">
             <Label htmlFor="del-confirm" className="text-xs">
-              Tapez <strong>SUPPRIMER</strong> pour confirmer
+              Tapez <strong>ELIMINAR</strong> para confirmar
             </Label>
-            <Input id="del-confirm" value={confirm} required placeholder="SUPPRIMER"
+            <Input id="del-confirm" value={confirm} required placeholder="ELIMINAR"
                    onChange={(e) => setConfirm(e.target.value)}
                    data-testid="delete-account-confirm" className="rounded-sm" />
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}
                     className="rounded-sm flex-1" data-testid="delete-account-cancel">
-              Annuler
+              Cancelar
             </Button>
             <Button type="submit" disabled={busy} variant="destructive"
                     className="rounded-sm flex-1 gap-2" data-testid="delete-account-submit">
-              <Trash2 className="h-4 w-4" /> {busy ? "…" : "Supprimer définitivement"}
+              <Trash2 className="h-4 w-4" /> {busy ? "…" : "Eliminar definitivamente"}
             </Button>
           </div>
         </form>

@@ -286,7 +286,7 @@ export default function PlanCanvas({
           ctx.beginPath(); ctx.moveTo(x + nx * tick, y + ny * tick); ctx.lineTo(x - nx * tick, y - ny * tick); ctx.stroke();
         });
         const label = c.status === "ok" && eff !== "ok"
-          ? `#${c.index} ${Number(c.indicated_m).toFixed(2)} ${c.facade_status ? "FAÇADE" : "CHAÎNE"} ${eff === "ko" ? "KO" : "?"}`
+          ? `#${c.index} ${Number(c.indicated_m).toFixed(2)} ${c.facade_status ? "FACHADA" : "CHAÎNE"} ${eff === "ko" ? "KO" : "?"}`
           : c.status === "ok"
           ? `#${c.index} ${Number(c.measured_m).toFixed(2)}`
           : `#${c.index} ${Number(c.indicated_m).toFixed(2)}→${Number(c.measured_m).toFixed(2)} (${c.delta_cm > 0 ? "+" : ""}${Math.round(c.delta_cm)} cm)`;
@@ -396,7 +396,7 @@ export default function PlanCanvas({
         ctx.font = `bold ${11 / zoom}px system-ui`;
         ctx.fillStyle = deltaBad ? "#b45309" : "#15803d";
         ctx.fillText(
-          `écrit ${r.surface_written_m2} m² (${delta > 0 ? "+" : ""}${delta}%)`,
+          `escrito${r.surface_written_m2} m² (${delta > 0 ? "+" : ""}${delta}%)`,
           cx, cy + 32 / zoom
         );
       }
@@ -499,7 +499,7 @@ export default function PlanCanvas({
       const val = fillPoly
         ? `${Number(m.area_m2 ?? 0).toFixed(2)} m²`
         : `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
-      const suffix = isCumul ? ` (${segs.length} tronçons)` : isCumulArea ? ` (${segs.length} zones)` : "";
+      const suffix = isCumul ? ` (${segs.length}troços)` : isCumulArea ? ` (${segs.length} zones)` : "";
       const label = (m.label ? `${m.label} · ${val}` : val) + suffix;
       ctx.font = `bold ${12 / zoom}px system-ui`;
       const w = ctx.measureText(label).width + 8 / zoom;
@@ -830,11 +830,11 @@ export default function PlanCanvas({
       ctx.fillStyle = "rgba(34, 197, 94, 0.9)";
       ctx.fillRect(lx + 10, ly + 9, 12, 12);
       ctx.fillStyle = "#e5e7eb";
-      ctx.fillText("Conforme (écart ≤ 5 %)", lx + 28, ly + 15);
+      ctx.fillText("Conforme (desvio ≤ 5 %)", lx + 28, ly + 15);
       ctx.fillStyle = "rgba(245, 158, 11, 0.95)";
       ctx.fillRect(lx + 10, ly + 27, 12, 12);
       ctx.fillStyle = "#e5e7eb";
-      ctx.fillText("Écart mesuré ↔ écrit > 5 %", lx + 28, ly + 33);
+      ctx.fillText("Diferença medido ↔ escrito > 5 %", lx + 28, ly + 33);
       ctx.textBaseline = "alphabetic";
       ctx.restore();
     }

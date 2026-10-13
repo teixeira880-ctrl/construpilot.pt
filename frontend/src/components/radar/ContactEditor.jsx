@@ -4,10 +4,10 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const FIELDS = [["nom", "Nom / raison sociale"], ["societe", "Société"], ["adresse1", "Adresse postale"],
-  ["adresse2", "Complément"], ["cp", "Code postal"], ["ville", "Ville"], ["siren", "SIREN"],
-  ["siret", "SIRET"], ["email", "E-mail"], ["telephone", "Téléphone"]];
-export const contactError = (e) => typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Vérifiez les coordonnées et leur origine.";
+const FIELDS = [["nom", "Nom / raison sociale"], ["societe", "Sociedade"], ["adresse1", "Adresse postale"],
+  ["adresse2", "Complemento"], ["cp", "Code postal"], ["ville", "Ville"], ["siren", "SIREN"],
+  ["siret", "SIRET"], ["email", "E-mail"], ["telephone", "Telefone"]];
+export const contactError = (e) => typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Verifique os contactos e a sua origem.";
 
 export const ContactEditor = ({ opp, onSaved, onCancel }) => {
   const [form, setForm] = useState(() => Object.fromEntries(FIELDS.map(([key]) => [key, String(opp.promoteur?.[key] || "")])));
@@ -34,23 +34,23 @@ export const ContactEditor = ({ opp, onSaved, onCancel }) => {
           onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
       </label>)}
     </div>
-    <label className="block text-xs">Origine des coordonnées *
+    <label className="block text-xs">Origem dos dados de contacto *
       <Input className="mt-1" value={note} onChange={(e) => setNote(e.target.value)} required minLength={3} maxLength={240}
-        placeholder="Ex. coordonnées transmises par le client" data-testid="radar-contact-source-note" />
+        placeholder="Ex.: contactos transmitidos pelo cliente" data-testid="radar-contact-source-note" />
     </label>
     <label className="block text-xs">Lien source (facultatif)
       <Input className="mt-1" type="url" value={url} onChange={(e) => setUrl(e.target.value)} data-testid="radar-contact-source-url" />
     </label>
     <label className="flex items-start gap-2 text-xs">
       <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} required className="mt-0.5 shrink-0" data-testid="radar-contact-consent" />
-      Je confirme disposer légitimement de ces coordonnées pour ce projet.
+      Confirmo dispor legitimamente destes dados de contacto para este projeto.
     </label>
     {error && <p role="alert" className="text-xs text-red-600" data-testid="radar-contact-error">{error}</p>}
     <div className="flex flex-wrap gap-2">
       <Button type="submit" size="sm" disabled={!confirmed || note.trim().length < 3 || busy} className="gap-1" data-testid="radar-contact-save">
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar
       </Button>
-      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onCancel} data-testid="radar-contact-cancel">Annuler</Button>
+      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onCancel} data-testid="radar-contact-cancel">Cancelar</Button>
     </div>
   </form>;
 };

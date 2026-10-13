@@ -45,13 +45,13 @@ export const OnboardingTour = ({ forceOpen = false, onClose }) => {
   const s = STEPS[step];
   const Icon = s.icon;
   const ch = (typeof window !== "undefined" ? (sessionStorage.getItem("construpilot_utm_source") || "") : "").toLowerCase();
-  const chMsg = ch.includes("linkedin") ? "Bienvenue depuis LinkedIn 👋"
-    : ch.includes("instagram") ? "Bienvenue depuis Instagram 👋"
-    : ch.includes("facebook") ? "Bienvenue depuis Facebook 👋" : "";
+  const chMsg = ch.includes("linkedin") ? "Bem-vindo(a) do LinkedIn 👋"
+    : ch.includes("instagram") ? "Bem-vindo(a) do Instagram 👋"
+    : ch.includes("facebook") ? "Bem-vindo(a) do Facebook 👋" : "";
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm grid place-items-center p-4" data-testid="onboarding-overlay">
       <div className="surface p-8 max-w-lg w-full grid gap-6 relative animate-rise" data-testid="onboarding-tour">
-        <button onClick={skip} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-sm hover:bg-secondary" aria-label="Fermer" data-testid="onboarding-skip">
+        <button onClick={skip} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-sm hover:bg-secondary" aria-label="Fechar" data-testid="onboarding-skip">
           <X className="h-4 w-4" />
         </button>
         {step === 0 && chMsg && (

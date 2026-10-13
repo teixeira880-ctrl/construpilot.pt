@@ -19,7 +19,7 @@ export default function PublicEstimation() {
     const base = process.env.REACT_APP_BACKEND_URL;
     axios.get(`${base}/api/public/estimation/${token}`)
       .then(({ data }) => setData(data))
-      .catch(() => setErr("Ce lien est invalide ou a été révoqué."));
+      .catch(() => setErr("Este link é inválido ou foi revogado."));
   }, [token]);
 
   if (err) {
@@ -30,7 +30,7 @@ export default function PublicEstimation() {
           <h1 className="font-display text-2xl font-bold mt-3">{err}</h1>
           <Link to="/" className="mt-6 inline-flex">
             <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              Découvrir ConstruPilot <ArrowRight className="h-4 w-4" />
+              Descobrir ConstruPilot <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
@@ -62,7 +62,7 @@ export default function PublicEstimation() {
           </Link>
           <Link to="/" data-testid="public-cta-signup">
             <Button size="sm" variant="outline" className="rounded-sm gap-2">
-              <Sparkles className="h-4 w-4" /> Faire ma propre estimation
+              <Sparkles className="h-4 w-4" /> Fazer a minha própria estimativa
             </Button>
           </Link>
         </div>
@@ -70,7 +70,7 @@ export default function PublicEstimation() {
 
       <main className="mx-auto max-w-[1100px] px-5 py-10 grid gap-10">
         <div>
-          <p className="overline">Estimation partagée</p>
+          <p className="overline">Estimativa partilhada</p>
           <h1 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight" data-testid="public-project-title">
             {project.name}
           </h1>
@@ -87,7 +87,7 @@ export default function PublicEstimation() {
             <p className="num mt-2 text-2xl font-bold">{eur(estimation.total_min)}</p>
           </div>
           <div className="surface p-6 border-primary" data-testid="public-total-avg">
-            <p className="overline">Budget estimé</p>
+            <p className="overline">Orçamento estimado</p>
             <p className="num mt-2 text-3xl font-extrabold text-primary">{eur(estimation.total_avg)}</p>
           </div>
           <div className="surface p-6">
@@ -98,7 +98,7 @@ export default function PublicEstimation() {
 
         {lots.length > 0 && (
           <div className="surface p-6">
-            <p className="overline mb-6">Détail par lot</p>
+            <p className="overline mb-6">Detalhe por especialidade</p>
             <div className="grid md:grid-cols-2 gap-3" data-testid="public-lots">
               {lots.map((l) => (
                 <div key={l.key} className="flex items-center justify-between border-b border-border pb-3">
@@ -117,22 +117,22 @@ export default function PublicEstimation() {
         )}
 
         <div className="surface p-8 text-center">
-          <p className="overline">Vous voulez la même chose ?</p>
+          <p className="overline">Quer o mesmo?</p>
           <h2 className="font-display text-2xl font-bold mt-3">
-            Créez votre estimation en 3 minutes avec ConstruPilot
+            Crie a sua estimativa em 3 minutos com ConstruPilot
           </h2>
           <p className="mt-2 text-sm text-muted-foreground max-w-lg mx-auto">
-            Prix réels, calculateurs matériaux, PDF de devis, chantier photo — gratuit pour commencer.
+            Preços reais, calculadores materiais, PDF de orçamento, obra foto — gratuito para começar.
           </p>
           <Link to="/" className="mt-6 inline-flex" data-testid="public-cta-bottom">
             <Button size="lg" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <Sparkles className="h-4 w-4" /> Estimer mon projet
+              <Sparkles className="h-4 w-4" /> Estimar o meu projeto
             </Button>
           </Link>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Estimation générée avec ConstruPilot — les prix sont indicatifs et dépendent des conditions locales.
+          Estimativa gerada com ConstruPilot — os preços são indicativos e dependem das condições locais.
         </p>
       </main>
     </div>

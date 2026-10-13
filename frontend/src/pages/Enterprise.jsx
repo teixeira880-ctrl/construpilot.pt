@@ -24,8 +24,8 @@ export default function Enterprise() {
     try {
       await api.post("/enterprise/contact", form);
       setOk(true);
-      toast.success("Merci — notre équipe vous recontacte sous 48 h");
-    } catch (err) { toast.error(err?.response?.data?.detail || "Envoi impossible"); }
+      toast.success("Obrigado — a nossa equipa contacta-o em 48 h");
+    } catch (err) { toast.error(err?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
   };
 
@@ -33,9 +33,9 @@ export default function Enterprise() {
     return (
       <div className="max-w-lg mx-auto surface p-10 text-center mt-10" data-testid="enterprise-success">
         <ShieldCheck className="h-12 w-12 mx-auto text-emerald-500" />
-        <p className="font-display text-3xl font-extrabold mt-4">Demande reçue</p>
+        <p className="font-display text-3xl font-extrabold mt-4">Pedido recebido</p>
         <p className="text-sm text-muted-foreground mt-2">
-          Notre équipe vous contactera sous 48 h ouvrées avec une proposition détaillée.
+          A nossa equipa contactá-lo-á em 48 h úteis com uma proposta detalhada.
         </p>
       </div>
     );
@@ -43,16 +43,15 @@ export default function Enterprise() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle as="h1" over="ConstruPilot Enterprise" title="Parlez à notre équipe pour votre organisation">
-        SSO, SLA, API dédiée, intégrations sur mesure, reporting avancé.
-        Pour les promoteurs, distributeurs, assureurs et réseaux d'artisans.
+      <SectionTitle as="h1" over="ConstruPilot Enterprise" title="Fale com a nossa equipa para a sua organização">
+        SSO, SLA, API dedicada, integrações à medida, reporting avançado. Para promotores, distribuidores, seguradoras e redes de artífices.
       </SectionTitle>
 
       <div className="grid md:grid-cols-3 gap-4">
         {[
-          { icon: Building2, title: "Grands comptes", desc: "Promoteurs, assureurs, franchisés, groupes immobiliers." },
-          { icon: Server, title: "SSO & API dédiée", desc: "Authentification centralisée, endpoints privés, sandbox." },
-          { icon: Zap, title: "Engagement de service", desc: "Niveau de disponibilité, support prioritaire et interlocuteur dédié définis au contrat." },
+          { icon: Building2, title: "Grands comptes", desc: "Promotores, seguradoras, franquias, grupos imobiliários." },
+          { icon: Server, title: "SSO & API dedicada", desc: "Autenticação centralizada, endpoints privados, sandbox." },
+          { icon: Zap, title: "Compromisso de serviço", desc: "Nível de disponibilidade, suporte prioritário e interlocutor dedicado definidos no contrato." },
         ].map((f, i) => (
           <div key={i} className="surface p-6 grid gap-3">
             <span className="h-10 w-10 grid place-items-center rounded-sm bg-primary/15 text-primary">
@@ -71,7 +70,7 @@ export default function Enterprise() {
             <Input required value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} data-testid="ent-company" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>Vos nom & prénom *</Label>
+            <Label>O seu nome & apelido *</Label>
             <Input required value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} data-testid="ent-name" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
@@ -79,7 +78,7 @@ export default function Enterprise() {
             <Input type="email" required value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} data-testid="ent-email" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>Téléphone</Label>
+            <Label>Telefone</Label>
             <Input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} data-testid="ent-phone" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
@@ -87,26 +86,26 @@ export default function Enterprise() {
             <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Direction, CTO, achats…" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>Taille de l'entreprise</Label>
+            <Label>Dimensão da empresa</Label>
             <Select value={form.company_size} onValueChange={(v) => setForm({ ...form, company_size: v })}>
               <SelectTrigger className="rounded-sm h-11" data-testid="ent-size"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="< 50">Moins de 50</SelectItem>
-                <SelectItem value="50-200">50 à 200</SelectItem>
-                <SelectItem value="200-1000">200 à 1 000</SelectItem>
-                <SelectItem value="> 1000">Plus de 1 000</SelectItem>
+                <SelectItem value="< 50">Menos de 50</SelectItem>
+                <SelectItem value="50-200">50 a 200</SelectItem>
+                <SelectItem value="200-1000">200 a 1 000</SelectItem>
+                <SelectItem value="> 1000">Mais de 1 000</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         <div className="grid gap-2">
-          <Label>Décrivez votre cas d'usage *</Label>
+          <Label>Descreva o seu caso de uso *</Label>
           <Textarea rows={4} required value={form.use_case} onChange={(e) => setForm({ ...form, use_case: e.target.value })} data-testid="ent-usecase" className="rounded-sm"
-                    placeholder="Ex : nous souhaitons intégrer un simulateur de rénovation sur notre parc immobilier de 12 000 logements pour piloter les rénovations énergétiques…" />
+                    placeholder="Ex: desejamos integrar um simulador de renovação no nosso parque imobiliário de 12 000 habitações para pilotar as renovações energéticas…" />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label>Volume mensuel estimé</Label>
+            <Label>Volume mensal estimado</Label>
             <Input value={form.volume_estimate} onChange={(e) => setForm({ ...form, volume_estimate: e.target.value })} placeholder="Ex : 5 000 estimations / mois" className="rounded-sm h-11" />
           </div>
           <div className="flex flex-col gap-2 pt-6">
@@ -116,21 +115,20 @@ export default function Enterprise() {
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.sla_required} onChange={(e) => setForm({ ...form, sla_required: e.target.checked })} data-testid="ent-sla" />
-              SLA 99,9 % avec pénalités
+              SLA 99,9 % com penalizações
             </label>
           </div>
         </div>
         <div className="grid gap-2">
-          <Label>Message complémentaire</Label>
+          <Label>Mensagem complementar</Label>
           <Textarea rows={3} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="rounded-sm" />
         </div>
         <Button type="submit" disabled={busy} data-testid="ent-submit" className="rounded-sm gap-2 justify-self-start hover:bg-orange-600 hover:text-white">
-          <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Envoyer ma demande"}
+          <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Enviar o meu pedido"}
           <ArrowRight className="h-4 w-4" />
         </Button>
         <p className="text-xs text-muted-foreground">
-          <Users className="inline h-3 w-3 mr-1" /> Vos données ne sont utilisées que pour vous
-          recontacter — jamais partagées.
+          <Users className="inline h-3 w-3 mr-1" /> Os seus dados são utilizados apenas para o recontactar — nunca partilhados.
         </p>
       </form>
     </div>

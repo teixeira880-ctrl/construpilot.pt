@@ -3,9 +3,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import "./PlanWorkspace.css";
 
 const MODES = {
-  complete: { label: "Analyse complète · cette page", description: "Structure, pièces, métrés et estimation. Vérifiez ensuite les contours et les hypothèses." },
-  reading: { label: "Lecture des cotes et pièces · cette page", description: "Repérage des textes, pièces et ouvertures, possible avant calibration. Aucun métré validé à cette étape." },
-  structure_all: { label: "Structure · toutes les pages", description: "Détection des murs, poteaux, poutres et dalles sur le document. Les pièces et le chiffrage restent à traiter par page." },
+  complete: { label: "Análise completa · esta página", description: "Estrutura, divisões, medições e estimativa. Verifique depois os contornos e as hipóteses." },
+  reading: { label: "Leitura das cotas e divisões · esta página", description: "Identificação dos textos, divisões e vãos, possível antes da calibração. Nenhuma medição validada nesta etapa." },
+  structure_all: { label: "Estrutura · todas as páginas", description: "Deteção das paredes, pilares, vigas e lajes no documento. As divisões e a orçamentação continuam a ser tratadas por página." },
 };
 
 function ActionMenu({ label, icon: Icon, actions, disabled }) {
@@ -32,16 +32,16 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
   const selectedMode = MODES[mode] || MODES.complete;
   const stage = busy ? 1 : !calibration ? 0 : hasRecap ? 2 : 1;
   const steps = [
-    { title: "Échelle", detail: calibration ? "Calibration enregistrée" : "Dimension de référence", icon: Ruler, run: onCalibrate },
-    { title: "Analyse", detail: "Lecture & quantités", icon: Sparkles, run: () => document.getElementById("plan-analysis-mode")?.focus() },
-    { title: "Contrôle", detail: "Cotes & hypothèses", icon: ClipboardCheck, run: onReview },
-    { title: "Chiffrage", detail: "Prix & devis", icon: FileText, run: onEstimate },
+    { title: "Escala", detail: calibration ? "Calibração guardada" : "Dimensão de referência", icon: Ruler, run: onCalibrate },
+    { title: "Analyse", detail: "Leitura e quantidades", icon: Sparkles, run: () => document.getElementById("plan-analysis-mode")?.focus() },
+    { title: "Controlo", detail: "Cotas e hipóteses", icon: ClipboardCheck, run: onReview },
+    { title: "Chiffrage", detail: "Preços e orçamento", icon: FileText, run: onEstimate },
   ];
   return <header className="plan-workflow-header" data-testid="plan-workflow-header">
     <div className="plan-workflow-heading">
       <div className="min-w-0">
-        <p className="plan-eyebrow">ESPACE DE TRAVAIL · CONSTRUPILOT</p>
-        <h1>Plans & métrés<span className="plan-title-dot" aria-hidden="true">.</span></h1>
+        <p className="plan-eyebrow">ESPAÇO DE TRABALHO · CONSTRUPILOT</p>
+        <h1>Plantas e medições<span className="plan-title-dot" aria-hidden="true">.</span></h1>
         <p className="plan-document-name" data-testid="plan-filename" title={filename}>{filename}</p>
       </div>
       <div className="plan-document-tools">
@@ -51,7 +51,7 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
         <ActionMenu label="Outils" icon={Settings2} actions={studyActions} disabled={busy} />
       </div>
     </div>
-    <nav className="plan-workflow-steps" aria-label="Étapes du métré">
+    <nav className="plan-workflow-steps" aria-label="Etapas da medição">
       {steps.map((step, index) => <button type="button" key={step.title} onClick={step.run} disabled={busy}
         aria-current={index === stage ? "step" : undefined} className="plan-workflow-step">
         <span className="plan-step-number">{String(index + 1).padStart(2, "0")}</span>
@@ -63,13 +63,13 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
       <div className="plan-analysis-context">
         <span className="plan-page-chip">Page {pageIndex + 1} / {pageCount}</span>
         <span className={calibration ? "plan-scale-status" : "plan-scale-status is-pending"} data-testid="calib-badge">
-          <span aria-hidden="true" />{calibration ? "Échelle renseignée" : "Échelle à renseigner"}
+          <span aria-hidden="true" />{calibration ? "Escala indicada" : "Escala a indicar"}
         </span>
       </div>
       <div className="plan-analysis-fields">
-        <label>Type de plan
+        <label>Tipo de planta
           <select value={planKind} onChange={(e) => onPlanKindChange(e.target.value)} disabled={busy || mode !== "complete"} data-testid="analyze-kind-toggle">
-            <option value="auto">Détection automatique</option><option value="gros_oeuvre">Gros œuvre</option><option value="maison">Maison</option>
+            <option value="auto">Deteção automática</option><option value="gros_oeuvre">Obra grossa</option><option value="maison">Maison</option>
           </select>
         </label>
         <label className="plan-mode-field">Analyse
@@ -79,12 +79,12 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
         </label>
         <button type="button" className="plan-primary-action" onClick={onAnalyze} disabled={busy} data-testid="plan-analyze-btn">
           {busy ? <Loader2 size={17} className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles size={17} aria-hidden="true" />}
-          {busy ? "Analyse en cours…" : "Analyser le plan"}
+          {busy ? "Analyse en cours…" : "Analisar a planta"}
           {!busy && <ArrowRight size={16} aria-hidden="true" />}
         </button>
       </div>
       <p id="plan-analysis-description" className="plan-analysis-description">{selectedMode.description}</p>
-      {busy && <p className="plan-analysis-progress" role="status" aria-live="polite">{progress || "Préparation de l’analyse…"}</p>}
+      {busy && <p className="plan-analysis-progress" role="status" aria-live="polite">{progress || "A preparar a análise…"}</p>}
     </div>
   </header>;
 }
@@ -92,25 +92,25 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
 export function PlanAnalysisResults({ recap, onClose, onReview, onQuote }) {
   const amount = recap.estimation_globale_eur ?? recap.estimation_beton_eur;
   const warnings = recap.warnings || [];
-  return <section className="plan-analysis-results" data-testid="analysis-recap" aria-label="Résultats de l’analyse">
+  return <section className="plan-analysis-results" data-testid="analysis-recap" aria-label="Resultados da análise">
     <div className="plan-results-heading">
-      <div><p className="plan-eyebrow">RÉSULTATS · CETTE PAGE</p><h2>Votre métré prend forme</h2></div>
-      <span className="plan-review-badge">{warnings.length ? "Analyse partielle" : "À vérifier sur le plan"}</span>
+      <div><p className="plan-eyebrow">RESULTADOS · ESTA PÁGINA</p><h2>A sua medição ganha forma</h2></div>
+      <span className="plan-review-badge">{warnings.length ? "Analyse partielle" : "A verificar na planta"}</span>
       <button type="button" onClick={onClose} className="plan-text-button" data-testid="recap-close">Masquer</button>
     </div>
     <div className="plan-results-grid">
-      <div data-testid="recap-surface"><span>Surface des pièces métrées</span><strong>{recap.surface_pieces_m2 == null ? "À mesurer" : `${recap.surface_pieces_m2.toLocaleString("fr-FR")} m²`}</strong><small data-testid="recap-rooms">{recap.rooms} pièce{recap.rooms > 1 ? "s" : ""} · contours à contrôler</small></div>
-      <div data-testid="recap-beton"><span>Béton estimé</span><strong>{recap.beton_m3 == null ? "Indisponible" : `${recap.beton_m3.toLocaleString("fr-FR")} m³`}</strong><small>Épaisseurs et hauteurs à confirmer</small></div>
-      <div data-testid="recap-estimation"><span>Budget indicatif</span><strong>{amount == null ? "Indisponible" : `${amount.toLocaleString("fr-FR")} €`}</strong><small>{recap.estimation_globale_eur != null ? "Rénovation · plan complet (moyenne)" : "Gros œuvre · cette page"}</small></div>
+      <div data-testid="recap-surface"><span>Área das divisões medidas</span><strong>{recap.surface_pieces_m2 == null ? "A medir" : `${recap.surface_pieces_m2.toLocaleString("fr-FR")} m²`}</strong><small data-testid="recap-rooms">{recap.rooms} divisão{recap.rooms > 1 ? "s" : ""} · contornos a controlar</small></div>
+      <div data-testid="recap-beton"><span>Betão estimado</span><strong>{recap.beton_m3 == null ? "Indisponible" : `${recap.beton_m3.toLocaleString("fr-FR")} m³`}</strong><small>Espessuras e alturas a confirmar</small></div>
+      <div data-testid="recap-estimation"><span>Budget indicatif</span><strong>{amount == null ? "Indisponible" : `${amount.toLocaleString("fr-FR")} €`}</strong><small>{recap.estimation_globale_eur != null ? "Remodelação · planta completa (média)" : "Estrutura · esta página"}</small></div>
     </div>
     <div className="plan-results-footnotes">
-      <p data-testid="recap-structure">Structure repérée : {recap.walls} murs · {recap.columns} poteaux · {recap.beams} poutres · {recap.floors} dalles</p>
-      <p data-testid="recap-acier">Acier estimé par ratios : {recap.acier_kg == null ? "indisponible" : `${recap.acier_kg.toLocaleString("fr-FR")} kg`}</p>
+      <p data-testid="recap-structure">Estrutura identificada: {recap.walls} paredes · {recap.columns} poteaux · {recap.beams} poutres · {recap.floors} dalles</p>
+      <p data-testid="recap-acier">Aço estimado por rácios: {recap.acier_kg == null ? "indisponible" : `${recap.acier_kg.toLocaleString("fr-FR")} kg`}</p>
     </div>
-    {!!warnings.length && <div className="plan-results-warnings" role="status"><strong>Points à reprendre</strong><ul>{warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></div>}
+    {!!warnings.length && <div className="plan-results-warnings" role="status"><strong>Pontos a retomar</strong><ul>{warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></div>}
     <div className="plan-results-actions">
-      <button type="button" onClick={onReview} className="plan-primary-action" data-testid="recap-see-rooms"><ClipboardCheck size={16} aria-hidden="true" /> Contrôler les résultats</button>
-      <button type="button" onClick={onQuote} className="plan-menu-button" data-testid="recap-to-quote">Préparer le devis <ArrowRight size={16} aria-hidden="true" /></button>
+      <button type="button" onClick={onReview} className="plan-primary-action" data-testid="recap-see-rooms"><ClipboardCheck size={16} aria-hidden="true" /> Controlar os resultados</button>
+      <button type="button" onClick={onQuote} className="plan-menu-button" data-testid="recap-to-quote">Preparar o orçamento <ArrowRight size={16} aria-hidden="true" /></button>
     </div>
   </section>;
 }

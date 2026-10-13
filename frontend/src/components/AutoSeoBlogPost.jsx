@@ -140,9 +140,9 @@ export default function AutoSeoBlogPost({ slug }) {
 
         <div className="mt-12 surface p-6 grid md:grid-cols-[1fr_auto] gap-4 items-center border-primary/40">
           <div>
-            <p className="font-display font-bold text-lg">Prêt à chiffrer votre chantier ?</p>
+            <p className="font-display font-bold text-lg">Pronto para orçamentar a sua obra?</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Décrivez votre projet — ConstruPilot vous rend un devis chiffré en 30 secondes, gratuit.
+              Descreva o seu projeto — ConstruPilot devolve-lhe um orçamento calculado em 30 segundos, gratuito.
             </p>
           </div>
           <Link to="/smart-project">
@@ -153,7 +153,7 @@ export default function AutoSeoBlogPost({ slug }) {
         </div>
 
         <nav className="mt-8 flex flex-wrap gap-2 text-xs" data-testid="blog-internal-links" aria-label="Outils ConstruPilot">
-          {[["/estimation", "Estimateur de travaux"], ["/calculateurs", "Calculateurs BTP"], ["/prix", "Prix matériaux"], ["/metre", "Métré IA pour les pros"]].map(([to, l]) => (
+          {[["/estimation", "Estimador de obras"], ["/calculateurs", "Calculateurs BTP"], ["/prix", "Preços de materiais"], ["/metre", "Medições IA para os profissionais"]].map(([to, l]) => (
             <Link key={to} to={to} className="px-3 py-1.5 rounded-full border border-border hover:border-primary hover:text-primary transition-colors">{l}</Link>
           ))}
         </nav>
@@ -162,7 +162,7 @@ export default function AutoSeoBlogPost({ slug }) {
 
         {related.length > 0 && (
           <section className="mt-12" data-testid="blog-related">
-            <p className="overline text-[10px] mb-3">À lire aussi</p>
+            <p className="overline text-[10px] mb-3">Ler também</p>
             <div className="grid sm:grid-cols-3 gap-4">
               {related.map((r) => (
                 <Link key={r.slug} to={`/blog/${r.slug}`} className="surface overflow-hidden group hover:-translate-y-0.5 transition-transform" data-testid={`blog-related-${r.slug}`}>

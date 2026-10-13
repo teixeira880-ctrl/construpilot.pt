@@ -11,9 +11,9 @@ import {
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
 const AUDIENCES = [{ k: "particuliers", label: "Particuliers" }, { k: "pros", label: "Pros / artisans" }];
-const FORMATS = [{ k: "flyer", label: "Flyer A4" }, { k: "social", label: "Réseaux (carré)" }, { k: "ad_banner", label: "Bannière pub" }];
-const EMAIL_TYPES = [{ k: "promo", label: "Promo" }, { k: "newsletter", label: "Newsletter" }, { k: "nurture", label: "Séquence (3)" }];
-const EMAIL_TYPE_LABEL = { promo: "Promotionnel", newsletter: "Newsletter", nurture: "Séquence nurture" };
+const FORMATS = [{ k: "flyer", label: "Flyer A4" }, { k: "social", label: "Redes (quadrado)" }, { k: "ad_banner", label: "Banner publicitário" }];
+const EMAIL_TYPES = [{ k: "promo", label: "Promo" }, { k: "newsletter", label: "Newsletter" }, { k: "nurture", label: "Sequência (3)" }];
+const EMAIL_TYPE_LABEL = { promo: "Promotionnel", newsletter: "Newsletter", nurture: "Sequência nurture" };
 const STATUS_CLS = {
   draft: "bg-amber-500/15 text-amber-600 border-amber-500/30",
   published: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
@@ -37,7 +37,7 @@ const Badge = ({ s }) => (
 );
 
 const copyText = (txt) => {
-  try { navigator.clipboard.writeText(txt); toast.success("Copié"); } catch { /* */ }
+  try { navigator.clipboard.writeText(txt); toast.success("Copiado"); } catch { /* */ }
 };
 
 export default function CeoAgentPanel() {
@@ -64,87 +64,87 @@ export default function CeoAgentPanel() {
   const genBlog = async (override) => {
     const payload = override || { topic: blog.topic, audience: blog.audience,
       keywords: blog.keywords ? blog.keywords.split(",").map((s) => s.trim()).filter(Boolean) : [], with_image: blog.with_image };
-    if (!payload.topic || payload.topic.length < 3) return toast.error("Indiquez un sujet");
+    if (!payload.topic || payload.topic.length < 3) return toast.error("Indique um assunto");
     setBlog((b) => ({ ...b, loading: true }));
     try {
       const { data } = await api.post("/ceo/blog/draft", payload);
-      toast.success("Brouillon d'article généré", { description: data.warnings?.length ? data.warnings.join(" ") : "Prêt à relire et publier." });
+      toast.success("Rascunho de artigo gerado", { description: data.warnings?.length ? data.warnings.join(" ") : "Pronto a rever e publicar." });
       if (!override) setBlog((b) => ({ ...b, topic: "", keywords: "" }));
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Génération impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível gerar"); }
     finally { setBlog((b) => ({ ...b, loading: false })); }
   };
 
   const genCreative = async () => {
-    if (!creative.brief || creative.brief.length < 3) return toast.error("Décrivez le visuel souhaité");
+    if (!creative.brief || creative.brief.length < 3) return toast.error("Descreva o visual pretendido");
     setCreative((c) => ({ ...c, loading: true }));
     try {
       await api.post("/ceo/creative", { brief: creative.brief, format: creative.format, audience: creative.audience });
-      toast.success("Visuel généré", { description: "À relire et approuver ci-dessous." });
+      toast.success("Visual gerado", { description: "A rever e aprovar abaixo." });
       setCreative((c) => ({ ...c, brief: "" }));
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Génération impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível gerar"); }
     finally { setCreative((c) => ({ ...c, loading: false })); }
   };
 
   const genEmail = async () => {
-    if (!email.topic || email.topic.length < 3) return toast.error("Indiquez le sujet de la campagne");
+    if (!email.topic || email.topic.length < 3) return toast.error("Indique o assunto da campanha");
     setEmail((s) => ({ ...s, loading: true }));
     try {
       await api.post("/ceo/email/draft", { topic: email.topic, email_type: email.email_type, audience: email.audience });
-      toast.success("Brouillon d'e-mail généré", { description: "À relire et approuver ci-dessous." });
+      toast.success("Rascunho de e-mail gerado", { description: "A rever e aprovar abaixo." });
       setEmail((s) => ({ ...s, topic: "" }));
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Génération impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível gerar"); }
     finally { setEmail((s) => ({ ...s, loading: false })); }
   };
 
   const genAd = async () => {
-    if (!ad.brief || ad.brief.length < 3) return toast.error("Décrivez l'annonce souhaitée");
+    if (!ad.brief || ad.brief.length < 3) return toast.error("Descreva o anúncio pretendido");
     setAd((s) => ({ ...s, loading: true }));
     try {
       await api.post("/ceo/ad/draft", { brief: ad.brief, audience: ad.audience });
-      toast.success("Textes d'annonces générés", { description: "À relire et approuver ci-dessous." });
+      toast.success("Textos de anúncios gerados", { description: "A rever e aprovar abaixo." });
       setAd((s) => ({ ...s, brief: "" }));
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Génération impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível gerar"); }
     finally { setAd((s) => ({ ...s, loading: false })); }
   };
 
   const genVideo = async () => {
-    if (!video.brief || video.brief.length < 3) return toast.error("Décrivez la vidéo souhaitée");
+    if (!video.brief || video.brief.length < 3) return toast.error("Descreva o vídeo pretendido");
     setVideo((s) => ({ ...s, loading: true }));
     try {
       await api.post("/ceo/video/draft", { brief: video.brief, audience: video.audience, duration: video.duration });
-      toast.success("Roteiro trilingue généré", { description: "Storyboard (4 images) en cours de génération…" });
+      toast.success("Guião trilingue gerado", { description: "Storyboard (4 imagens) a ser gerado…" });
       setVideo((s) => ({ ...s, brief: "" }));
       load(); setTimeout(load, 8000); setTimeout(load, 18000);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Génération impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Impossível gerar"); }
     finally { setVideo((s) => ({ ...s, loading: false })); }
   };
 
   const sendTest = async (id) => {
     setBusy(id);
-    try { const { data } = await api.post(`/ceo/email/${id}/test`, {}); toast.success("E-mail de test envoyé", { description: `À ${data.to}` }); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Envoi du test impossible"); }
+    try { const { data } = await api.post(`/ceo/email/${id}/test`, {}); toast.success("E-mail de teste enviado", { description: `À ${data.to}` }); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Envio do teste impossível"); }
     finally { setBusy(""); }
   };
 
   const sendCampaign = async (id) => {
-    if (!window.confirm("Envoyer cette campagne à tous les abonnés newsletter actifs ?")) return;
+    if (!window.confirm("Enviar esta campanha a todos os subscritores ativos da newsletter?")) return;
     setBusy(id);
     try {
       const { data } = await api.post(`/ceo/email/${id}/send`);
-      toast.success("Envoi lancé", { description: `${data.total} destinataire(s) — suivi ci-dessous.` });
+      toast.success("Envio lançado", { description: `${data.total} destinataire(s) — suivi ci-dessous.` });
       load(); setTimeout(load, 4000); setTimeout(load, 10000);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(""); }
   };
 
   const act = async (url, okMsg) => {
     setBusy(url);
     try { await api.post(url); toast.success(okMsg); load(); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Action impossible"); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Ação impossível"); }
     finally { setBusy(""); }
   };
 
@@ -174,19 +174,18 @@ export default function CeoAgentPanel() {
         <div>
           <h2 className="font-display text-2xl font-bold">Agent CEO — Marketing</h2>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            L'agent rédige des <strong>brouillons</strong> (articles de blog SEO, visuels, flyers, e-mails et annonces) à partir d'un simple sujet.
-            Mode supervisé : rien n'est publié tant que vous n'avez pas validé.
+            O agente redige <strong>brouillons</strong> (artigos de blogue SEO, visuais, folhetos, e-mails e anúncios) a partir de um simples assunto. Modo supervisionado: nada é publicado enquanto não validar.
           </p>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Génération d'images soumise au plafond de coûts (500 €).</p>
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Geração de imagens sujeita ao teto de custos (500 €).</p>
         </div>
       </div>
 
       {/* Générateurs */}
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="rounded-xl border border-border bg-card p-5" data-testid="ceo-blog-generator">
-          <h3 className="font-semibold flex items-center gap-2 mb-3"><FileText className="h-4 w-4 text-primary" /> Article de blog</h3>
-          <Input value={blog.topic} onChange={(e) => setBlog((b) => ({ ...b, topic: e.target.value }))} placeholder="Sujet — ex : Rénover une salle de bain de 6 m²" className="mb-2" data-testid="ceo-blog-topic" />
-          <Input value={blog.keywords} onChange={(e) => setBlog((b) => ({ ...b, keywords: e.target.value }))} placeholder="Mots-clés (séparés par des virgules)" className="mb-3" data-testid="ceo-blog-keywords" />
+          <h3 className="font-semibold flex items-center gap-2 mb-3"><FileText className="h-4 w-4 text-primary" /> Artigo de blogue</h3>
+          <Input value={blog.topic} onChange={(e) => setBlog((b) => ({ ...b, topic: e.target.value }))} placeholder="Assunto — ex.: Remodelar uma casa de banho de 6 m²" className="mb-2" data-testid="ceo-blog-topic" />
+          <Input value={blog.keywords} onChange={(e) => setBlog((b) => ({ ...b, keywords: e.target.value }))} placeholder="Palavras-chave (separadas por vírgulas)" className="mb-3" data-testid="ceo-blog-keywords" />
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <Seg value={blog.audience} onChange={(k) => setBlog((b) => ({ ...b, audience: k }))} options={AUDIENCES} testid="ceo-blog-audience" />
             <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
@@ -194,63 +193,63 @@ export default function CeoAgentPanel() {
             </label>
           </div>
           <Button onClick={() => genBlog()} disabled={blog.loading} className="mt-4 gap-2" data-testid="ceo-blog-generate">
-            {blog.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Générer le brouillon
+            {blog.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Gerar o rascunho
           </Button>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5" data-testid="ceo-creative-generator">
           <h3 className="font-semibold flex items-center gap-2 mb-3"><ImageIcon className="h-4 w-4 text-primary" /> Visuel / Flyer</h3>
-          <Textarea rows={2} value={creative.brief} onChange={(e) => setCreative((c) => ({ ...c, brief: e.target.value }))} placeholder="Brief — ex : Promo estimation gratuite de travaux, ton rassurant" className="mb-3" data-testid="ceo-creative-brief" />
+          <Textarea rows={2} value={creative.brief} onChange={(e) => setCreative((c) => ({ ...c, brief: e.target.value }))} placeholder="Brief — ex.: Promoção estimativa de obras gratuita, tom tranquilizador" className="mb-3" data-testid="ceo-creative-brief" />
           <div className="flex items-center gap-3 flex-wrap">
             <Seg value={creative.format} onChange={(k) => setCreative((c) => ({ ...c, format: k }))} options={FORMATS} testid="ceo-creative-format" />
             <Seg value={creative.audience} onChange={(k) => setCreative((c) => ({ ...c, audience: k }))} options={AUDIENCES} testid="ceo-creative-audience" />
           </div>
           <Button onClick={genCreative} disabled={creative.loading} className="mt-4 gap-2" data-testid="ceo-creative-generate">
-            {creative.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Générer le visuel
+            {creative.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Gerar o visual
           </Button>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5" data-testid="ceo-email-generator">
           <h3 className="font-semibold flex items-center gap-2 mb-3"><Mail className="h-4 w-4 text-primary" /> Campagne e-mail</h3>
-          <Input value={email.topic} onChange={(e) => setEmail((s) => ({ ...s, topic: e.target.value }))} placeholder="Sujet — ex : Lancer l'estimation gratuite de travaux" className="mb-3" data-testid="ceo-email-topic" />
+          <Input value={email.topic} onChange={(e) => setEmail((s) => ({ ...s, topic: e.target.value }))} placeholder="Assunto — ex.: Lançar a estimativa de obras gratuita" className="mb-3" data-testid="ceo-email-topic" />
           <div className="flex items-center gap-3 flex-wrap">
             <Seg value={email.email_type} onChange={(k) => setEmail((s) => ({ ...s, email_type: k }))} options={EMAIL_TYPES} testid="ceo-email-type" />
             <Seg value={email.audience} onChange={(k) => setEmail((s) => ({ ...s, audience: k }))} options={AUDIENCES} testid="ceo-email-audience" />
           </div>
           <Button onClick={genEmail} disabled={email.loading} className="mt-4 gap-2" data-testid="ceo-email-generate">
-            {email.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Générer les e-mails
+            {email.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Gerar os e-mails
           </Button>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5" data-testid="ceo-ad-generator">
           <h3 className="font-semibold flex items-center gap-2 mb-3"><Megaphone className="h-4 w-4 text-primary" /> Textes d'annonces</h3>
-          <Textarea rows={2} value={ad.brief} onChange={(e) => setAd((s) => ({ ...s, brief: e.target.value }))} placeholder="Brief — ex : Devis BTP chiffrés en 30 s, cible artisans" className="mb-3" data-testid="ceo-ad-brief" />
+          <Textarea rows={2} value={ad.brief} onChange={(e) => setAd((s) => ({ ...s, brief: e.target.value }))} placeholder="Brief — ex.: Orçamentos de construção em 30 s, público profissionais" className="mb-3" data-testid="ceo-ad-brief" />
           <div className="flex items-center gap-3 flex-wrap">
             <Seg value={ad.audience} onChange={(k) => setAd((s) => ({ ...s, audience: k }))} options={AUDIENCES} testid="ceo-ad-audience" />
             <span className="text-[11px] text-muted-foreground">Google · Meta · LinkedIn</span>
           </div>
           <Button onClick={genAd} disabled={ad.loading} className="mt-4 gap-2" data-testid="ceo-ad-generate">
-            {ad.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Générer les annonces
+            {ad.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Gerar os anúncios
           </Button>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5" data-testid="ceo-video-generator">
-          <h3 className="font-semibold flex items-center gap-2 mb-3"><Video className="h-4 w-4 text-primary" /> Roteiro vidéo (FR/PT/EN)</h3>
-          <Textarea rows={2} value={video.brief} onChange={(e) => setVideo((s) => ({ ...s, brief: e.target.value }))} placeholder="Brief — ex : Pub 30s : estimez vos travaux gratuitement en 30 secondes" className="mb-3" data-testid="ceo-video-brief" />
+          <h3 className="font-semibold flex items-center gap-2 mb-3"><Video className="h-4 w-4 text-primary" /> Guião de vídeo (PT/FR/EN)</h3>
+          <Textarea rows={2} value={video.brief} onChange={(e) => setVideo((s) => ({ ...s, brief: e.target.value }))} placeholder="Brief — ex.: Anúncio 30s: estime as suas obras gratuitamente em 30 segundos" className="mb-3" data-testid="ceo-video-brief" />
           <div className="flex items-center gap-3 flex-wrap">
             <Seg value={video.audience} onChange={(k) => setVideo((s) => ({ ...s, audience: k }))} options={AUDIENCES} testid="ceo-video-audience" />
             <Seg value={video.duration} onChange={(k) => setVideo((s) => ({ ...s, duration: k }))} options={[{ k: 15, label: "15s" }, { k: 30, label: "30s" }, { k: 45, label: "45s" }, { k: 60, label: "60s" }]} testid="ceo-video-duration" />
             <span className="text-[11px] text-muted-foreground">+ 4 storyboards</span>
           </div>
           <Button onClick={genVideo} disabled={video.loading} className="mt-4 gap-2" data-testid="ceo-video-generate">
-            {video.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />} Générer le roteiro
+            {video.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />} Gerar o guião
           </Button>
         </div>
       </div>
 
       {/* Calendrier éditorial */}
       <div>
-        <h3 className="font-semibold flex items-center gap-2 mb-3"><CalendarDays className="h-4 w-4 text-primary" /> Calendrier éditorial</h3>
+        <h3 className="font-semibold flex items-center gap-2 mb-3"><CalendarDays className="h-4 w-4 text-primary" /> Calendário editorial</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="ceo-calendar">
           {calendar.map((s, i) => (
             <div key={i} className="rounded-lg border border-border bg-card p-3">
@@ -259,7 +258,7 @@ export default function CeoAgentPanel() {
               <Button size="sm" variant="outline" className="mt-2 gap-1" disabled={blog.loading}
                 onClick={() => genBlog({ topic: s.title, audience: s.audience, keywords: s.keywords, with_image: true })}
                 data-testid={`ceo-calendar-gen-${i}`}>
-                <Sparkles className="h-3.5 w-3.5" /> Générer le brouillon
+                <Sparkles className="h-3.5 w-3.5" /> Gerar o rascunho
               </Button>
             </div>
           ))}
@@ -268,9 +267,9 @@ export default function CeoAgentPanel() {
 
       {/* Brouillons blog à valider */}
       <div>
-        <h3 className="font-semibold mb-3">Articles — brouillons &amp; publiés</h3>
+        <h3 className="font-semibold mb-3">Artigos — rascunhos &amp; publicados</h3>
         {drafts.blog.length === 0 ? (
-          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Aucun article pour l'instant.</p>
+          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Nenhum artigo por agora.</p>
         ) : (
           <div className="space-y-2" data-testid="ceo-blog-list">
             {drafts.blog.map((a) => (
@@ -282,12 +281,12 @@ export default function CeoAgentPanel() {
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setPreview(a)} data-testid={`ceo-blog-preview-${a.autoseo_id}`}><Eye className="h-3.5 w-3.5 mr-1" /> Relire</Button>
                 {a.status !== "published" && (
-                  <Button size="sm" onClick={() => act(`/ceo/blog/${a.autoseo_id}/publish`, "Article publié sur le blog")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-publish-${a.autoseo_id}`}>
+                  <Button size="sm" onClick={() => act(`/ceo/blog/${a.autoseo_id}/publish`, "Artigo publicado no blogue")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-publish-${a.autoseo_id}`}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Publier
                   </Button>
                 )}
                 {a.status !== "rejected" && (
-                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/blog/${a.autoseo_id}/reject`, "Brouillon rejeté")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-reject-${a.autoseo_id}`}>
+                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/blog/${a.autoseo_id}/reject`, "Rascunho rejeitado")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-reject-${a.autoseo_id}`}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}
@@ -301,7 +300,7 @@ export default function CeoAgentPanel() {
       <div>
         <h3 className="font-semibold mb-3 flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Campagnes e-mail — brouillons</h3>
         {drafts.emails.length === 0 ? (
-          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Aucune campagne e-mail pour l'instant.</p>
+          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Nenhuma campanha de e-mail por agora.</p>
         ) : (
           <div className="space-y-2" data-testid="ceo-email-list">
             {drafts.emails.map((a) => (
@@ -316,13 +315,13 @@ export default function CeoAgentPanel() {
                   {a.send_status && (
                     <p className="text-[11px] mt-0.5 font-medium text-emerald-600" data-testid={`ceo-email-sendstatus-${a.copy_id}`}>
                       {a.send_status === "sending" ? `Envoi en cours… ${a.send_count || 0}/${a.send_total || 0}`
-                        : `Envoyé à ${a.send_count || 0} abonné(s)${a.send_failed ? ` · ${a.send_failed} échec(s)` : ""}`}
+                        : `Enviado a${a.send_count || 0}subscritor(es)${a.send_failed ? ` · ${a.send_failed}falha(s)` : ""}`}
                     </p>
                   )}
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setCopyPreview(a)} data-testid={`ceo-email-preview-${a.copy_id}`}><Eye className="h-3.5 w-3.5 mr-1" /> Relire</Button>
                 {a.status !== "approved" && (
-                  <Button size="sm" onClick={() => act(`/ceo/copy/${a.copy_id}/publish`, "E-mail approuvé")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-email-approve-${a.copy_id}`}>
+                  <Button size="sm" onClick={() => act(`/ceo/copy/${a.copy_id}/publish`, "E-mail aprovado")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-email-approve-${a.copy_id}`}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Approuver
                   </Button>
                 )}
@@ -333,12 +332,12 @@ export default function CeoAgentPanel() {
                     </Button>
                     <Button size="sm" onClick={() => sendCampaign(a.copy_id)} disabled={busy.includes(a.copy_id) || a.send_status === "sending"} data-testid={`ceo-email-send-${a.copy_id}`}>
                       {a.send_status === "sending" ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
-                      {a.send_status === "sent" ? "Renvoyer" : "Envoyer"}
+                      {a.send_status === "sent" ? "Renvoyer" : "Enviar"}
                     </Button>
                   </>
                 )}
                 {a.status !== "rejected" && (
-                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/copy/${a.copy_id}/reject`, "Brouillon rejeté")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-email-reject-${a.copy_id}`}>
+                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/copy/${a.copy_id}/reject`, "Rascunho rejeitado")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-email-reject-${a.copy_id}`}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}
@@ -352,7 +351,7 @@ export default function CeoAgentPanel() {
       <div>
         <h3 className="font-semibold mb-3 flex items-center gap-2"><Megaphone className="h-4 w-4 text-primary" /> Annonces — brouillons</h3>
         {drafts.ads.length === 0 ? (
-          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Aucune annonce pour l'instant.</p>
+          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Nenhum anúncio por agora.</p>
         ) : (
           <div className="space-y-2" data-testid="ceo-ad-list">
             {drafts.ads.map((a) => (
@@ -367,12 +366,12 @@ export default function CeoAgentPanel() {
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setCopyPreview(a)} data-testid={`ceo-ad-preview-${a.copy_id}`}><Eye className="h-3.5 w-3.5 mr-1" /> Relire</Button>
                 {a.status !== "approved" && (
-                  <Button size="sm" onClick={() => act(`/ceo/copy/${a.copy_id}/publish`, "Annonce approuvée")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-ad-approve-${a.copy_id}`}>
+                  <Button size="sm" onClick={() => act(`/ceo/copy/${a.copy_id}/publish`, "Anúncio aprovado")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-ad-approve-${a.copy_id}`}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Approuver
                   </Button>
                 )}
                 {a.status !== "rejected" && (
-                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/copy/${a.copy_id}/reject`, "Brouillon rejeté")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-ad-reject-${a.copy_id}`}>
+                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/copy/${a.copy_id}/reject`, "Rascunho rejeitado")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-ad-reject-${a.copy_id}`}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}
@@ -384,9 +383,9 @@ export default function CeoAgentPanel() {
 
       {/* Roteiros vidéo à valider */}
       <div>
-        <h3 className="font-semibold mb-3 flex items-center gap-2"><Video className="h-4 w-4 text-primary" /> Roteiros vidéo — brouillons</h3>
+        <h3 className="font-semibold mb-3 flex items-center gap-2"><Video className="h-4 w-4 text-primary" /> Guiões de vídeo — rascunhos</h3>
         {drafts.videos.length === 0 ? (
-          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Aucun roteiro vidéo pour l'instant.</p>
+          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Nenhum guião de vídeo por agora.</p>
         ) : (
           <div className="space-y-2" data-testid="ceo-video-list">
             {drafts.videos.map((a) => {
@@ -399,18 +398,18 @@ export default function CeoAgentPanel() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-sm truncate">{a.campaign_name}</p>
                         <Badge s={a.status} />
-                        <span className="text-[10px] uppercase text-muted-foreground">{a.payload?.duration_seconds || "?"}s · {(a.payload?.scenes || []).length} scènes · {a.audience}</span>
+                        <span className="text-[10px] uppercase text-muted-foreground">{a.payload?.duration_seconds || "?"}s · {(a.payload?.scenes || []).length} cenas · {a.audience}</span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{a.brief} · storyboard {ready}/{sb.length || 4}</p>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => setCopyPreview(a)} data-testid={`ceo-video-preview-${a.copy_id}`}><Eye className="h-3.5 w-3.5 mr-1" /> Relire</Button>
                     {a.status !== "approved" && (
-                      <Button size="sm" onClick={() => act(`/ceo/copy/${a.copy_id}/publish`, "Roteiro approuvé")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-video-approve-${a.copy_id}`}>
+                      <Button size="sm" onClick={() => act(`/ceo/copy/${a.copy_id}/publish`, "Guião aprovado")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-video-approve-${a.copy_id}`}>
                         <Check className="h-3.5 w-3.5 mr-1" /> Approuver
                       </Button>
                     )}
                     {a.status !== "rejected" && (
-                      <Button size="sm" variant="outline" onClick={() => act(`/ceo/copy/${a.copy_id}/reject`, "Brouillon rejeté")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-video-reject-${a.copy_id}`}>
+                      <Button size="sm" variant="outline" onClick={() => act(`/ceo/copy/${a.copy_id}/reject`, "Rascunho rejeitado")} disabled={busy.includes(a.copy_id)} data-testid={`ceo-video-reject-${a.copy_id}`}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     )}
@@ -433,7 +432,7 @@ export default function CeoAgentPanel() {
       <div>
         <h3 className="font-semibold mb-3">Visuels &amp; flyers</h3>
         {drafts.assets.length === 0 ? (
-          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Aucun visuel pour l'instant.</p>
+          <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center">Nenhum visual por agora.</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="ceo-assets-list">
             {drafts.assets.map((a) => (
@@ -443,8 +442,8 @@ export default function CeoAgentPanel() {
                   <div className="flex items-center gap-2 mb-1"><span className="text-[10px] uppercase text-muted-foreground">{a.format}</span><Badge s={a.status} /></div>
                   <p className="text-xs text-muted-foreground line-clamp-2">{a.brief}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    {a.status !== "approved" && <Button size="sm" onClick={() => act(`/ceo/creative/${a.asset_id}/publish`, "Visuel approuvé")} disabled={busy.includes(a.asset_id)} data-testid={`ceo-asset-approve-${a.asset_id}`}><Check className="h-3.5 w-3.5 mr-1" /> Approuver</Button>}
-                    {a.status !== "rejected" && <Button size="sm" variant="outline" onClick={() => act(`/ceo/creative/${a.asset_id}/reject`, "Visuel rejeté")} disabled={busy.includes(a.asset_id)} data-testid={`ceo-asset-reject-${a.asset_id}`}><X className="h-3.5 w-3.5" /></Button>}
+                    {a.status !== "approved" && <Button size="sm" onClick={() => act(`/ceo/creative/${a.asset_id}/publish`, "Visual aprovado")} disabled={busy.includes(a.asset_id)} data-testid={`ceo-asset-approve-${a.asset_id}`}><Check className="h-3.5 w-3.5 mr-1" /> Approuver</Button>}
+                    {a.status !== "rejected" && <Button size="sm" variant="outline" onClick={() => act(`/ceo/creative/${a.asset_id}/reject`, "Visual rejeitado")} disabled={busy.includes(a.asset_id)} data-testid={`ceo-asset-reject-${a.asset_id}`}><X className="h-3.5 w-3.5" /></Button>}
                   </div>
                 </div>
               </div>
@@ -488,7 +487,7 @@ export default function CeoAgentPanel() {
                           <span><strong>Objet {String.fromCharCode(65 + j)} :</strong> {sub}</span>
                         </p>
                       ))}
-                      {em.preheader && <p className="text-xs text-muted-foreground">Pré-header : {em.preheader}</p>}
+                      {em.preheader && <p className="text-xs text-muted-foreground">Pré-cabeçalho: {em.preheader}</p>}
                     </div>
                     <div className="prose prose-sm max-w-none border-t border-border pt-3" dangerouslySetInnerHTML={{ __html: em.body_html || "" }} />
                     {em.cta_label && <p className="mt-3"><span className="inline-block rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">{em.cta_label}</span></p>}
@@ -521,7 +520,7 @@ export default function CeoAgentPanel() {
                   {(copyPreview.payload?.scenes || []).map((sc, i) => (
                     <div key={i} className="rounded-lg border border-border p-3">
                       <p className="text-xs font-bold uppercase tracking-wide text-primary mb-1">
-                        Scène {sc.n || i + 1} {sc.t_start != null ? `· ${sc.t_start}-${sc.t_end}s` : ""}
+                        Cena {sc.n || i + 1} {sc.t_start != null ? `· ${sc.t_start}-${sc.t_end}s` : ""}
                       </p>
                       <p className="text-xs text-muted-foreground mb-2"><strong>Visuel :</strong> {sc.visual}</p>
                       <div className="grid sm:grid-cols-3 gap-2 text-sm">
@@ -529,7 +528,7 @@ export default function CeoAgentPanel() {
                         <p><span className="text-[10px] font-bold uppercase text-muted-foreground block">🇵🇹 PT</span>{sc.pt}</p>
                         <p><span className="text-[10px] font-bold uppercase text-muted-foreground block">🇬🇧 EN</span>{sc.en}</p>
                       </div>
-                      {sc.on_screen && <p className="text-xs mt-2"><strong>Texte à l'écran :</strong> {sc.on_screen}</p>}
+                      {sc.on_screen && <p className="text-xs mt-2"><strong>Texto no ecrã:</strong> {sc.on_screen}</p>}
                     </div>
                   ))}
                 </div>

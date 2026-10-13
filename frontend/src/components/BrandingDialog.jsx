@@ -95,11 +95,11 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
         bank_details: bankDetails,
         certifications: Object.entries(certSel).map(([code, number]) => ({ code, number })),
       });
-      toast.success("Identité pro enregistrée");
+      toast.success("Identidade profissional guardada");
       setOpen(false);
       onSaved?.();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Sauvegarde impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     } finally { setBusy(false); }
   };
 
@@ -110,38 +110,38 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" data-testid="branding-open-btn" className="rounded-sm gap-2">
-            <Building2 className="h-4 w-4" /> Identité pro
+            <Building2 className="h-4 w-4" /> Identidade profissional
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className={`rounded-sm max-w-lg max-h-[88vh] overflow-y-auto ${contentClassName}`} overlayClassName={overlayClassName} data-testid="branding-dialog">
         <DialogHeader>
-          <DialogTitle>Identité pro & certifications</DialogTitle>
+          <DialogTitle>Identidade profissional & certificações</DialogTitle>
           <DialogDescription>
             {source === "organization"
-              ? <>Identité partagée avec l'équipe <b>{orgName}</b>. {canEdit
-                  ? "Vos modifications s'appliquent à tous les membres."
-                  : "Seul un admin ou le propriétaire peut modifier ces informations."}</>
-              : "Logo, coordonnées et certifications — affichés en tête de chaque PDF (métré, devis, factures)."}
+              ? <>Identidade partilhada com a equipa <b>{orgName}</b>. {canEdit
+                  ? "As suas modificações aplicam-se a todos os membros."
+                  : "Apenas um admin ou o proprietário pode modificar estas informações."}</>
+              : "Logótipo, contactos e certificações — exibidos no cabeçalho de cada PDF (medições, orçamento, faturas)."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Nom de la société</Label>
+            <Label>Nome da sociedade</Label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)}
                    placeholder="Ex : BTP Construction SAS" disabled={!canEdit}
                    data-testid="branding-company-input"
                    className="rounded-sm h-11" maxLength={120} />
           </div>
           <div className="grid gap-2">
-            <Label>E-mail officiel de l'entreprise</Label>
+            <Label>E-mail oficial da empresa</Label>
             <Input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)}
-                   placeholder="Ex : contact@votre-entreprise.fr" disabled={!canEdit}
+                   placeholder="Ex: contacto@a-sua-empresa.pt" disabled={!canEdit}
                    data-testid="branding-company-email-input"
                    className="rounded-sm h-11" maxLength={120} />
             <p className="text-xs text-muted-foreground">
-              Utilisé comme adresse de réponse (reply-to) : quand un client répond à un devis/facture, sa réponse arrive dans cette boîte.
+              Usado como endereço de resposta (reply-to): quando um cliente responde a um orçamento/fatura, a sua resposta chega a esta caixa.
             </p>
           </div>
           <div className="grid gap-2">
@@ -193,7 +193,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
                          data-testid="branding-vat-input" className="rounded-sm h-11 num" maxLength={20} />
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">Requis pour des factures électroniques Factur-X 100 % conformes.</p>
+              <p className="text-[11px] text-muted-foreground">Obrigatório para faturas eletrónicas Factur-X 100% conformes.</p>
             </>
           )}
 
@@ -228,7 +228,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           <div className="grid gap-2">
             <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-primary" /> Zones d'intervention</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
-              Villes ou départements couverts, séparés par des virgules. Sert à vous attribuer automatiquement les demandes de votre secteur.
+              Cidades ou distritos abrangidos, separados por vírgulas. Serve para lhe atribuir automaticamente os pedidos da sua área.
             </p>
             <Input value={serviceZones} onChange={(e) => setServiceZones(e.target.value)}
                    placeholder="Paris, Lyon, Rhône, 69, Villeurbanne" disabled={!canEdit}
@@ -237,9 +237,9 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
 
 
           <div className="grid gap-2">
-            <Label className="flex items-center gap-1"><Landmark className="h-3.5 w-3.5 text-primary" /> Coordonnées bancaires (RIB)</Label>
+            <Label className="flex items-center gap-1"><Landmark className="h-3.5 w-3.5 text-primary" /> Coordenadas bancárias (NIB)</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
-              IBAN, BIC et banque. Affichés uniquement sur vos factures pour faciliter le paiement.
+              IBAN, BIC e banco. Exibidos apenas nas suas faturas para facilitar o pagamento.
             </p>
             <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)}
                       placeholder={"IBAN : FR76 3000 4000 0512 3456 7890 143\nBIC : BNPAFRPPXXX\nBanque : BNP Paribas"}
@@ -252,7 +252,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           <div className="grid gap-2">
             <Label className="flex items-center gap-1"><Award className="h-3.5 w-3.5 text-primary" /> Certifications</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
-              Sélectionnez vos qualifications et renseignez votre n° de certificat (optionnel).
+              Selecione as suas qualificações e indique o seu n.º de certificado (opcional).
             </p>
             <div className="grid gap-2" data-testid="branding-certs">
               {CERTS.map(([code, label]) => {
@@ -267,7 +267,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
                     {on && (
                       <Input value={certSel[code]} disabled={!canEdit}
                              onChange={(e) => setCertSel((s) => ({ ...s, [code]: e.target.value }))}
-                             placeholder="N° de certificat (optionnel)"
+                             placeholder="N° de certificado (opcional)"
                              className="rounded-sm h-8 text-xs flex-1" data-testid={`cert-number-${code}`} />
                     )}
                   </div>
@@ -277,14 +277,14 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           </div>
 
           <div className="grid gap-2">
-            <Label>Message d'accompagnement par défaut (e-mails devis/factures)</Label>
+            <Label>Mensagem de acompanhamento predefinida (e-mails orçamento/faturas)</Label>
             <Textarea value={defaultEmailMsg} onChange={(e) => setDefaultEmailMsg(e.target.value)}
-                      placeholder={"Bonjour {client},\n\nVeuillez trouver ci-joint votre devis n° {numero}...\n\nCordialement,\n{entreprise}"}
+                      placeholder={"Olá {client}, Junto enviamos o seu orçamento n.º {numero}... Com os melhores cumprimentos, {entreprise}"}
                       disabled={!canEdit}
                       data-testid="branding-default-msg-input"
                       className="rounded-sm text-sm" rows={5} maxLength={1500} />
             <p className="text-[11px] text-muted-foreground">
-              Réutilisé automatiquement à chaque envoi. Variables : <b>{"{client}"}</b>, <b>{"{entreprise}"}</b>, <b>{"{numero}"}</b>. Laissez vide pour le message type automatique.
+              Reutilizado automaticamente em cada envio. Variáveis: <b>{"{client}"}</b>, <b>{"{entreprise}"}</b>, <b>{"{numero}"}</b>. Laissez vide pour le message type automatique.
             </p>
           </div>
 
@@ -304,23 +304,23 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
             ) : canEdit ? (
               <label className="border border-dashed border-border rounded-sm p-4 text-center cursor-pointer hover:border-primary">
                 <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
-                <p className="text-xs text-muted-foreground mt-1">Cliquez pour importer un logo</p>
+                <p className="text-xs text-muted-foreground mt-1">Clique para importar um logótipo</p>
                 <input type="file" accept="image/png,image/jpeg" onChange={onLogoChange}
                        data-testid="branding-logo-input" className="sr-only" />
               </label>
             ) : (
-              <p className="text-xs text-muted-foreground">Aucun logo défini.</p>
+              <p className="text-xs text-muted-foreground">Nenhum logótipo definido.</p>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} className="rounded-sm">
-            {canEdit ? "Annuler" : "Fermer"}
+            {canEdit ? "Cancelar" : "Fechar"}
           </Button>
           {canEdit && (
             <Button onClick={save} disabled={busy} data-testid="branding-save-btn"
                     className="rounded-sm gap-2">
-              <Save className="h-4 w-4" /> Enregistrer
+              <Save className="h-4 w-4" /> Guardar
             </Button>
           )}
         </DialogFooter>

@@ -43,25 +43,24 @@ export default function SupplierPortal() {
     setBusy(true);
     try {
       await api.post("/suppliers/claim", claim);
-      toast.success("Réclamation envoyée — validation sous 48 h");
+      toast.success("Reclamação enviada — validação em 48 h");
       load();
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
     finally { setBusy(false); }
   };
 
   if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
-  if (!data) return <div className="surface p-10 text-center">Chargement…</div>;
+  if (!data) return <div className="surface p-10 text-center">A carregar…</div>;
 
   if (!data.verified) {
     return (
       <div className="grid gap-8">
-        <SectionTitle over="Espace Fournisseurs" title="Réclamez votre enseigne sur ConstruPilot">
-          Suivez vos clics, redirections, GMV et commissions issues du comparateur.
-          Débloquez aussi les placements sponsorisés (à venir).
+        <SectionTitle over="Espace Fournisseurs" title="Reclame a sua empresa no ConstruPilot">
+          Acompanhe os seus cliques, redirecionamentos, GMV e comissões provenientes do comparador. Desbloqueie também os anúncios patrocinados (brevemente).
         </SectionTitle>
         <form onSubmit={submitClaim} className="surface p-6 grid gap-4 max-w-lg" data-testid="supplier-claim-form">
           <div className="grid gap-2">
-            <Label>Enseigne à réclamer *</Label>
+            <Label>Insígnia a reclamar *</Label>
             <Select value={claim.supplier_key} onValueChange={(v) => setClaim({ ...claim, supplier_key: v })}>
               <SelectTrigger className="rounded-sm h-11" data-testid="supplier-claim-key"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -70,7 +69,7 @@ export default function SupplierPortal() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>Contact (nom prénom) *</Label>
+            <Label>Contacto (nome apelido) *</Label>
             <Input required value={claim.contact_name} onChange={(e) => setClaim({ ...claim, contact_name: e.target.value })} data-testid="supplier-claim-name" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
@@ -78,7 +77,7 @@ export default function SupplierPortal() {
             <Input type="email" required value={claim.contact_email} onChange={(e) => setClaim({ ...claim, contact_email: e.target.value })} data-testid="supplier-claim-email" className="rounded-sm h-11" />
           </div>
           <Button type="submit" disabled={busy} data-testid="supplier-claim-submit" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-            <Send className="h-4 w-4" /> Envoyer la réclamation
+            <Send className="h-4 w-4" /> Enviar a reclamação
           </Button>
         </form>
       </div>
@@ -91,7 +90,7 @@ export default function SupplierPortal() {
         <div className="flex items-center gap-3">
           <Store className="h-6 w-6 text-primary" />
           <div>
-            <p className="overline">Tableau de bord fournisseur</p>
+            <p className="overline">Painel de controlo fornecedor</p>
             <h1 className="font-display text-3xl font-extrabold tracking-tighter">{SUPPLIERS.find((s) => s.key === data.supplier_key)?.label || data.supplier_key}</h1>
           </div>
           <Badge variant="outline" className="rounded-sm border-emerald-500/40 text-emerald-500" data-testid="supplier-verified">Verified</Badge>
@@ -115,7 +114,7 @@ export default function SupplierPortal() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="surface p-6" data-testid="supplier-top-products">
-          <p className="overline mb-4">Top produits cliqués</p>
+          <p className="overline mb-4">Top produtos clicados</p>
           {data.top_products?.length ? (
             <Table>
               <TableHeader><TableRow>
@@ -131,7 +130,7 @@ export default function SupplierPortal() {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-sm text-muted-foreground">Aucun clic sur la période sélectionnée.</p>
+            <p className="text-sm text-muted-foreground">Nenhum clique no período selecionado.</p>
           )}
         </div>
         <div className="surface p-6" data-testid="supplier-top-queries">
@@ -146,7 +145,7 @@ export default function SupplierPortal() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Aucune recherche indexée.</p>
+            <p className="text-sm text-muted-foreground">Nenhuma pesquisa indexada.</p>
           )}
         </div>
       </div>

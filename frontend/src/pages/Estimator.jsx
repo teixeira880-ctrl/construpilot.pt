@@ -27,8 +27,8 @@ import { useBilling } from "@/context/BillingContext";
 import { useI18n } from "@/context/I18nContext";
 
 const CONDITION_LABEL = {
-  neuf: "Neuf", bon: "Bon état", moyen: "État moyen", vetuste: "Vétuste",
-  a_renover_totalement: "À rénover totalement",
+  neuf: "Neuf", bon: "Bom estado", moyen: "Estado médio", vetuste: "Degradado",
+  a_renover_totalement: "A renovar totalmente",
 };
 
 export default function Estimator() {
@@ -116,7 +116,7 @@ export default function Estimator() {
         project: { name: `Estimation ${form.city || ""}`.trim() || "Votre projet", city: form.city, description: form.description },
         estimation,
       });
-      toast.success(`Votre estimation détaillée vient de vous être envoyée par e-mail à ${to} ✉️`);
+      toast.success(`A sua estimativa detalhada acaba de lhe ser enviada por e-mail para${to} ✉️`);
     } catch { /* envoi silencieux, non bloquant */ }
   };
 
@@ -161,7 +161,7 @@ export default function Estimator() {
 
   const findSupplierPrices = async () => {
     const lots = (est?.lots || []).filter((l) => (l.material_cost || 0) > 0 && (l.quantity || 0) > 0);
-    if (!lots.length) { toast.error("Aucun poste matériaux à chiffrer"); return; }
+    if (!lots.length) { toast.error("Nenhum item de materiais a orçamentar"); return; }
     setBusyOptim(true);
     try {
       const coefficient = Number(localStorage.getItem("construpilot_dept_coef") || 1) || 1;
@@ -170,7 +170,7 @@ export default function Estimator() {
         items: lots.map((l) => ({ query: l.name, quantity: Math.ceil(l.quantity), name: l.name })),
       });
       setOptim(data);
-    } catch { toast.error("Recherche de prix impossible"); }
+    } catch { toast.error("Pesquisa de preços impossível"); }
     finally { setBusyOptim(false); }
   };
 
@@ -180,7 +180,7 @@ export default function Estimator() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Estimateur travaux gratuit" description="Estimation gratuite de vos travaux de rénovation en 30 secondes. Prix par lot, TVA 10 %, durée estimée. Basé sur les prix France 2026." keywords="estimateur travaux gratuit, estimation rénovation en ligne, coût travaux, calcul devis, prix chantier" canonical="/estimation" />
+      <SEO title="Estimateur travaux gratuit" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA 10 %, duração estimada. Baseado nos preços França 2026." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
       <SectionTitle as="h1" over={t("est.over")} title={t("est.title")}>
         {t("est.subtitle")}
       </SectionTitle>
@@ -346,8 +346,8 @@ export default function Estimator() {
             <Button variant="outline" onClick={downloadPdf} disabled={busy} data-testid="download-pdf-btn" className="rounded-sm gap-2">
               <Download className="h-4 w-4" /> {t("est.download_pdf")}
             </Button>
-            <EmailPdfDialog project={{ name: name || "Mon projet", city: form.city, description: form.description }} estimation={est} />
-            <WhatsAppShare project={{ name: name || "Mon projet", city: form.city, surface: Number(form.surface) }} estimation={est} />
+            <EmailPdfDialog project={{ name: name || "O meu projeto", city: form.city, description: form.description }} estimation={est} />
+            <WhatsAppShare project={{ name: name || "O meu projeto", city: form.city, surface: Number(form.surface) }} estimation={est} />
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           {est.default_vat_rate != null && (
@@ -373,7 +373,7 @@ export default function Estimator() {
             <Button variant="outline" onClick={findSupplierPrices} disabled={busyOptim}
                     data-testid="est-find-prices-btn" className="rounded-sm gap-2 w-fit">
               {busyOptim ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Trouver les meilleurs prix fournisseurs
+              Encontrar os melhores preços fornecedores
             </Button>
             <SupplierOptimization optim={optim} />
           </div>

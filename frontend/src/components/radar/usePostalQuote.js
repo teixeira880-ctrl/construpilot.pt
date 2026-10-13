@@ -5,8 +5,8 @@ export const postalError = (error) => {
   const detail = error?.response?.data?.detail;
   if (typeof detail === "string") return detail;
   if (detail?.message) return detail.message;
-  if (Array.isArray(detail)) return "Vérifiez les coordonnées et confirmez le tarif avant l'envoi.";
-  return "Le service postal ne répond pas. Vérifiez le suivi avant toute nouvelle tentative d'envoi.";
+  if (Array.isArray(detail)) return "Verifique os contactos e confirme o preço antes do envio.";
+  return "O serviço postal não responde. Verifique o acompanhamento antes de qualquer nova tentativa de envio.";
 };
 
 export const usePostalQuote = ({ open, token, form, mode, addressSource, valid }) => {
@@ -35,6 +35,6 @@ export const usePostalQuote = ({ open, token, form, mode, addressSource, valid }
   const expired = current?.data && Date.parse(current.data.expires_at) <= clock;
   return { price: !expired ? current?.data : null,
     errorCode: current?.errorCode,
-    error: expired ? "Ce tarif a expiré. Actualisez-le avant de confirmer." : current?.error,
+    error: expired ? "Este preço expirou. Atualize-o antes de confirmar." : current?.error,
     loading: open && valid && !current, refresh: () => setRetry((value) => value + 1) };
 };

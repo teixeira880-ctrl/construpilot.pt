@@ -27,14 +27,14 @@ export function SoroBlog() {
       <div className="mx-auto max-w-[1500px] px-6 lg:px-10 py-24 lg:py-32">
         <div className="flex items-end justify-between gap-6 flex-wrap mb-12">
           <div>
-            <p className="overline">Le blog ConstruPilot</p>
+            <p className="overline">O blogue ConstruPilot</p>
             <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-              Conseils, métré &amp; actualités du bâtiment
+              Conselhos, medições &amp; notícias da construção
             </h2>
           </div>
           <Link to="/blog">
             <Button variant="outline" className="rounded-lg gap-2" data-testid="blog-see-all">
-              Voir tous les articles <ArrowRight className="h-4 w-4" />
+              Ver todos os artigos <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>

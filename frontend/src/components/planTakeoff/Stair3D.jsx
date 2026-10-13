@@ -125,7 +125,7 @@ export default function Stair3D({ result, stairWidthMm = 1000 }) {
     <div className="rounded-lg border border-border overflow-hidden" data-testid="stair-3d">
       <div ref={mountRef} className="w-full" style={{ height: 360 }} />
       <p className="text-[11px] text-muted-foreground px-3 py-2 border-t border-border">
-        Aperçu 3D indicatif — faites glisser pour tourner, molette pour zoomer.
+        Pré-visualização 3D indicativa — arraste para rodar, roda do rato para fazer zoom.
       </p>
     </div>
   );

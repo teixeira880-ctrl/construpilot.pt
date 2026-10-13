@@ -76,8 +76,8 @@ export default function Assistant() {
   const [pickFile, setPickFile] = useState(null);
   const [prefs, setPrefs] = useState([]);
   const [text, setText] = useState(() => searchParams.get("resumeQuote")
-    ? `Reprends le devis existant (doc_id: ${searchParams.get("resumeQuote")}) : relis-le avec read_quote_draft puis applique les modifications suivantes — `
-    : searchParams.get("intent") === "supervise" ? "Vérifie les données de mon dossier, relève les incohérences et corrige automatiquement les valeurs recalculables. Ma demande : " : searchParams.get("intent") === "quote" ? quoteText("quotePrompt") : searchParams.get("intent") === "research" ? "Recherche documentaire technique (avec sources vérifiables) — pays du chantier : FR. Question : " : "");
+    ? `Retoma o orçamento existente (doc_id:${searchParams.get("resumeQuote")}): relê-o com read_quote_draft e depois aplica as seguintes alterações —`
+    : searchParams.get("intent") === "supervise" ? "Verifica os dados do meu processo, identifica as incoerências e corrige automaticamente os valores recalculáveis. O meu pedido:" : searchParams.get("intent") === "quote" ? quoteText("quotePrompt") : searchParams.get("intent") === "research" ? "Pesquisa documental técnica (com fontes verificáveis) — país da obra: PT. Pergunta:" : "");
   const [busy, setBusy] = useState(false);
   const [rec, setRec] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -96,7 +96,7 @@ export default function Assistant() {
         let target = list.find((c) => c.chantier_id === chantierParam);
         if (!target) target = (await api.post("/assistant/conversations", { chantier_id: chantierParam })).data;
         if (active) setSearchParams({ conversation: target.conversation_id, chantier: chantierParam }, { replace: true });
-      } catch { if (active) toast.error("Dossier chantier inaccessible"); }
+      } catch { if (active) toast.error("Processo de obra inacessível"); }
     })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -183,11 +183,11 @@ export default function Assistant() {
   const nameOf = (id) => plans.find((p) => p.plan_id === id)?.filename || docs.find((d) => d.doc_id === id)?.filename || id;
   const removeConv = async (c) => {
     const pt = lang === "pt";
-    const ok = await confirm({ title: pt ? "Mover esta conversa para a reciclagem?" : "Mettre cette conversation à la corbeille ?", description: pt ? `« ${c.title} » ficará recuperável durante 30 dias.` : `« ${c.title} » restera récupérable 30 jours dans la corbeille.`, confirmLabel: pt ? "Mover" : "Mettre à la corbeille" });
+    const ok = await confirm({ title: pt ? "Mover esta conversa para a reciclagem?" : "Mover esta conversa para o lixo?", description: pt ? `« ${c.title} » ficará recuperável durante 30 dias.` : `« ${c.title}» continuará recuperável durante 30 dias no lixo.`, confirmLabel: pt ? "Mover" : "Mover para o lixo" });
     if (!ok) return;
     try {
       await api.delete(`/assistant/conversations/${c.conversation_id}`);
-      toast.success(pt ? "Conversa movida para a reciclagem" : "Conversation mise à la corbeille — récupérable 30 jours", { action: { label: pt ? "Reciclagem" : "Corbeille", onClick: () => window.location.assign("/corbeille") } });
+      toast.success(pt ? "Conversa movida para a reciclagem" : "Conversa movida para o lixo — recuperável durante 30 dias", { action: { label: pt ? "Reciclagem" : "Corbeille", onClick: () => window.location.assign("/corbeille") } });
       if (conv?.conversation_id === c.conversation_id) { activeConversation.current = null; setConv(null); setActivePlans([]); setActiveDocs([]); setPending([]); setSearchParams({}, { replace: true }); }
       loadConvs();
     } catch (e) { toast.error(e?.response?.data?.detail || ui("chatError")); }
@@ -285,7 +285,7 @@ export default function Assistant() {
       {historyError && <p role="alert" data-testid={`assistant-history-error-${scope}`}>{ui("historyError")} <button type="button" className="underline" onClick={loadConvs} data-testid={`assistant-history-retry-${scope}`}>{ui("retry")}</button></p>}
       {!historyError && !matchingConvs.length && <p data-testid={`assistant-history-empty-${scope}`}>{ui(historyQuery ? "noHistoryMatch" : "noHistory")}</p>}
       {matchingConvs.map(c => <div key={c.conversation_id} className="assistant-history-row"><button disabled={locked || !!pickFile || !!cadFile} onClick={() => open(c.conversation_id)} aria-current={conv?.conversation_id === c.conversation_id ? "true" : undefined} title={c.title} data-conversation-id={c.conversation_id} data-testid={`assistant-conv-${scope}-${c.conversation_id}`}><MessageSquare size={14} aria-hidden="true" /><span>{c.title}</span></button>
-        <button type="button" className="assistant-history-delete" disabled={locked} aria-label={lang === "pt" ? "Mover para a reciclagem" : "Mettre à la corbeille"} title={lang === "pt" ? "Mover para a reciclagem" : "Mettre à la corbeille"} onClick={() => removeConv(c)} data-testid={`assistant-conv-delete-${scope}-${c.conversation_id}`}><Trash2 size={14} /></button></div>)}
+        <button type="button" className="assistant-history-delete" disabled={locked} aria-label={lang === "pt" ? "Mover para a reciclagem" : "Mover para o lixo"} title={lang === "pt" ? "Mover para a reciclagem" : "Mover para o lixo"} onClick={() => removeConv(c)} data-testid={`assistant-conv-delete-${scope}-${c.conversation_id}`}><Trash2 size={14} /></button></div>)}
     </div>
     <Link to="/preferences" className="text-xs flex items-center gap-2 border-t pt-3 min-h-11" data-testid={`assistant-prefs-link-${scope}`}><Brain size={16} className="text-primary shrink-0" /><span>{ui("preferences")}</span><span className="ms-auto text-muted-foreground" data-testid={`assistant-prefs-count-${scope}`}>{activePrefs.length}</span></Link>
   </div>;
@@ -300,10 +300,10 @@ export default function Assistant() {
     "Write a site report with observed facts, decisions, actions, owners and known dates. My notes: ",
     "Help me solve this site problem. Check the documents and suggest the next actions: ",
   ] : [
-    "Prépare une réponse professionnelle à ce mail. Destinataire et objectif : \nMail reçu : ",
-    "Analyse les murs intérieurs mur à mur du plan joint. Identifie les faces, vérifie les cotes et indique ce qui reste à confirmer. Périmètre : ",
-    "Rédige un compte rendu avec faits constatés, décisions, actions, responsables et dates connues. Mes notes : ",
-    "Aide-moi à résoudre ce problème de chantier. Vérifie les pièces, explique les causes possibles et propose les prochaines actions : ",
+    "Prepara uma resposta profissional a este e-mail. Destinatário e objetivo: E-mail recebido:",
+    "Analisa as paredes interiores parede a parede da planta anexa. Identifica as faces, verifica as cotas e indica o que falta confirmar. Âmbito:",
+    "Redige uma ata com os factos constatados, decisões, ações, responsáveis e datas conhecidas. As minhas notas:",
+    "Ajuda-me a resolver este problema de obra. Verifica as peças, explica as causas possíveis e propõe as próximas ações:",
   ];
   const removeContext = (id, kind) => {
     if (kind === "plan") setActivePlans(a => a.filter(x => x !== id)); else setActiveDocs(a => a.filter(x => x !== id));

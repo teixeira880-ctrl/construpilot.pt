@@ -14,11 +14,11 @@ export default function CompanyPublic() {
 
   useEffect(() => {
     axios.get(`${BASE}/api/public/company/${slug}`).then(({ data }) => { setData(data); document.title = `${data.company_name} — ConstruPilot`; })
-      .catch((e) => setError(e?.response?.status === 404 ? "Cette page n'existe pas ou n'est pas publiée." : "Page indisponible pour le moment."));
+      .catch((e) => setError(e?.response?.status === 404 ? "Esta página não existe ou não está publicada." : "Página indisponível de momento."));
   }, [slug]);
 
   if (error) return <div className="min-h-screen grid place-items-center p-8 text-center text-slate-600" data-testid="company-public-error">{error}</div>;
-  if (!data) return <div className="min-h-screen grid place-items-center text-slate-500">Chargement…</div>;
+  if (!data) return <div className="min-h-screen grid place-items-center text-slate-500">A carregar…</div>;
   const accent = data.accent_color || "#0F766E";
   const reviews = data.reviews?.items || data.reviews?.reviews || [];
 
@@ -36,7 +36,7 @@ export default function CompanyPublic() {
           </div>
           <div className="flex flex-col gap-2">
             {data.phone && <a href={`tel:${data.phone}`} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-white font-medium" style={{ background: accent }} data-testid="company-public-call"><Phone className="h-4 w-4" /> {data.phone}</a>}
-            <a href="#demande-devis" className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border font-medium" style={{ borderColor: accent, color: accent }} data-testid="company-public-quote"><Mail className="h-4 w-4" /> Demander un devis</a>
+            <a href="#demande-devis" className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border font-medium" style={{ borderColor: accent, color: accent }} data-testid="company-public-quote"><Mail className="h-4 w-4" /> Pedir um orçamento</a>
           </div>
         </div>
       </header>
@@ -51,11 +51,11 @@ export default function CompanyPublic() {
 
         {data.photos.length > 0 && (
           <section data-testid="company-public-gallery">
-            <h2 className="text-lg font-semibold mb-4">Chantiers réalisés</h2>
+            <h2 className="text-lg font-semibold mb-4">Obras realizadas</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {data.photos.map((p) => (
                 <figure key={p.photo_id} className="rounded-xl overflow-hidden border cursor-pointer group" onClick={() => setOpen(p)} data-testid={`company-public-photo-${p.photo_id}`}>
-                  <img src={`${BASE}/api/public/company/${slug}/photo/${p.photo_id}`} alt={p.title || "Chantier réalisé"} loading="lazy" className="w-full h-52 object-cover group-hover:scale-[1.02] transition-transform duration-200" />
+                  <img src={`${BASE}/api/public/company/${slug}/photo/${p.photo_id}`} alt={p.title || "Obra realizada"} loading="lazy" className="w-full h-52 object-cover group-hover:scale-[1.02] transition-transform duration-200" />
                   {(p.title || p.description) && <figcaption className="p-3"><div className="font-medium">{p.title}</div>{p.description && <p className="text-sm text-slate-600 line-clamp-2">{p.description}</p>}</figcaption>}
                 </figure>
               ))}
@@ -75,7 +75,7 @@ export default function CompanyPublic() {
                 <blockquote key={i} className="rounded-xl border p-4 text-sm">
                   <div className="flex gap-0.5 mb-2">{Array.from({ length: Math.round(r.rating || r.stars || 5) }).map((_, j) => <Star key={j} className="h-4 w-4 fill-current" style={{ color: accent }} />)}</div>
                   <p className="text-slate-700">{r.comment || r.text}</p>
-                  <footer className="text-xs text-slate-500 mt-2">{r.author || r.client_name || "Client"}</footer>
+                  <footer className="text-xs text-slate-500 mt-2">{r.author || r.client_name || "Cliente"}</footer>
                 </blockquote>
               ))}
             </div>
@@ -85,7 +85,7 @@ export default function CompanyPublic() {
 
       <footer className="border-t py-6 text-center text-xs text-slate-500">
         {data.footer_text && <p className="whitespace-pre-wrap max-w-3xl mx-auto px-4 mb-2">{data.footer_text}</p>}
-        Page entreprise propulsée par <a href="/" className="underline">ConstruPilot</a>
+        Página de empresa com tecnologia <a href="/" className="underline">ConstruPilot</a>
       </footer>
 
       {open && (

@@ -29,7 +29,7 @@ export default function Marketplace() {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.description) {
-      return toast.error("Nom, email et description sont requis");
+      return toast.error("Nome, email e descrição são obrigatórios");
     }
     setBusy(true);
     try {
@@ -41,27 +41,25 @@ export default function Marketplace() {
       };
       const { data } = await api.post("/marketplace/leads", payload);
       setPreview(data);
-      toast.success("Demande envoyée — score qualité : " + data.score + "/100");
+      toast.success("Pedido enviado — pontuação de qualidade:" + data.score + "/100");
       setForm({ name: user?.name || "", email: user?.email || "", phone: "", address: "",
                 budget: "", surface: "", delay_days: "", description: "", trade: "" });
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Impossible d'envoyer la demande");
+      toast.error(err?.response?.data?.detail || "Impossível enviar o pedido");
     } finally { setBusy(false); }
   };
 
   return (
     <div className="grid gap-10">
-      <SectionTitle as="h1" over="Marketplace ConstruPilot" title="Trouvez un professionnel vérifié pour vos travaux">
-        Décrivez votre projet — nous le transmettons à des artisans ConstruPilot Verified de votre
-        région. Vous recevez les propositions directement dans votre boîte mail.
+      <SectionTitle as="h1" over="Marketplace ConstruPilot" title="Encontre um profissional verificado para os seus trabalhos">
+        Descreva o seu projeto — transmitimo-lo a artesãos ConstruPilot Verified da sua região. Recebe as propostas diretamente na sua caixa de correio.
       </SectionTitle>
 
       {!flags.marketplace_enabled && (
         <div className="surface p-4 flex items-center gap-3 bg-amber-500/5 border-amber-500/40" data-testid="marketplace-beta-banner">
           <Sparkles className="h-4 w-4 text-amber-500" />
           <p className="text-sm">
-            <b>Bêta</b> — le réseau ConstruPilot Pro est en cours d'ouverture. Votre demande sera traitée
-            manuellement pendant la phase de lancement.
+            <b>Beta</b> — a rede ConstruPilot Pro está em fase de abertura. O seu pedido será tratado manualmente durante a fase de lançamento.
           </p>
         </div>
       )}
@@ -80,12 +78,12 @@ export default function Marketplace() {
                      className="rounded-sm h-11" required data-testid="ld-email" />
             </div>
             <div className="grid gap-2">
-              <Label>Téléphone</Label>
+              <Label>Telefone</Label>
               <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
                      className="rounded-sm h-11" data-testid="ld-phone" />
             </div>
             <div className="grid gap-2">
-              <Label>Adresse chantier</Label>
+              <Label>Morada da obra</Label>
               <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
                      className="rounded-sm h-11" placeholder="Rue, code postal, ville" data-testid="ld-address" />
             </div>
@@ -95,42 +93,42 @@ export default function Marketplace() {
                      className="rounded-sm h-11 num" data-testid="ld-budget" />
             </div>
             <div className="grid gap-2">
-              <Label>Surface m²</Label>
+              <Label>Superfície m²</Label>
               <Input type="number" value={form.surface} onChange={(e) => setForm({ ...form, surface: e.target.value })}
                      className="rounded-sm h-11 num" data-testid="ld-surface" />
             </div>
             <div className="grid gap-2">
-              <Label>Démarrage souhaité (jours)</Label>
+              <Label>Início desejado (dias)</Label>
               <Input type="number" value={form.delay_days} onChange={(e) => setForm({ ...form, delay_days: e.target.value })}
                      className="rounded-sm h-11 num" placeholder="ex : 60" data-testid="ld-delay" />
             </div>
             <div className="grid gap-2">
-              <Label>Métier principal</Label>
+              <Label>Especialidade principal</Label>
               <Input value={form.trade} onChange={(e) => setForm({ ...form, trade: e.target.value })}
-                     className="rounded-sm h-11" placeholder="Plomberie, électricité…" data-testid="ld-trade" />
+                     className="rounded-sm h-11" placeholder="Canalizações, eletricidade…" data-testid="ld-trade" />
             </div>
           </div>
           <div className="grid gap-2">
-            <Label>Décrivez votre projet *</Label>
+            <Label>Descreva o seu projeto *</Label>
             <Textarea rows={4} value={form.description}
                       onChange={(e) => setForm({ ...form, description: e.target.value })}
                       required data-testid="ld-description" className="rounded-sm"
-                      placeholder="Ex : rénovation complète appartement 65m² à Paris 11e — cuisine ouverte, salle de bain, peinture, sols. Démarrage souhaité en avril." />
+                      placeholder="Ex: renovação completa apartamento 65m² em Paris 11º — cozinha aberta, casa de banho, pintura, pavimentos. Início desejado em abril." />
           </div>
           <Button type="submit" disabled={busy} data-testid="ld-submit"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-            <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Envoyer la demande"}
+            <Send className="h-4 w-4" /> {busy ? "Envoi…" : "Enviar o pedido"}
           </Button>
         </form>
 
         <div className="surface p-6 grid gap-4">
           <div className="flex items-center gap-2">
             <Handshake className="h-4 w-4 text-primary" />
-            <p className="overline">Professionnels vérifiés</p>
+            <p className="overline">Profissionais verificados</p>
           </div>
           <p className="num text-3xl font-extrabold" data-testid="marketplace-pro-count">{pros.length}</p>
           <p className="text-xs text-muted-foreground">
-            Artisans ConstruPilot Verified — identité, SIREN, assurance et avis vérifiés.
+            Artesãos ConstruPilot Verified — identidade, NIPC, seguro e avaliações verificados.
           </p>
           <ul className="grid gap-3 mt-2">
             {pros.slice(0, 5).map((p) => (
@@ -151,7 +149,7 @@ export default function Marketplace() {
             ))}
             {pros.length === 0 && (
               <p className="text-xs text-muted-foreground" data-testid="marketplace-pros-empty">
-                Le réseau se construit — soyez parmi les premiers à publier une demande.
+                A rede constrói-se — seja dos primeiros a publicar um pedido.
               </p>
             )}
           </ul>
@@ -162,12 +160,12 @@ export default function Marketplace() {
         <div className="surface p-6" data-testid="marketplace-preview">
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 text-primary" />
-            <p className="overline">Votre demande — score qualité</p>
+            <p className="overline">O seu pedido — pontuação qualidade</p>
           </div>
           <p className="num font-display text-4xl font-extrabold mt-2">{preview.score}/100</p>
-          <p className="text-sm text-muted-foreground mt-1">Évaluation : {preview.rating} · Catégorie : {preview.tier}</p>
+          <p className="text-sm text-muted-foreground mt-1">Avaliação: {preview.rating} · Categoria: {preview.tier}</p>
           <p className="text-xs text-muted-foreground mt-3">
-            Les professionnels reçoivent une notification lorsque leur zone/métier correspond à votre projet.
+            Os profissionais recebem uma notificação quando a sua zona/especialidade corresponde ao seu projeto.
           </p>
         </div>
       )}

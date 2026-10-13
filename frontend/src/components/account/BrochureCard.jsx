@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const LANGS = [
-  { code: "fr", label: "Français" },
+  { code: "fr", label: "Francês" },
   { code: "en", label: "English" },
   { code: "pt", label: "Português" },
 ];
@@ -39,12 +39,10 @@ export const BrochureCard = () => {
         <FileText className="h-4 w-4" /> Plaquette commerciale
       </p>
       <p className="text-sm text-muted-foreground">
-        Présentation à votre en-tête (logo, nom, coordonnées) : à envoyer à vos clients ou à
-        imprimer pour vos rendez-vous. Indiquez le nom du client pour une page de garde
-        personnalisée et datée.
+        Apresentação com o seu cabeçalho (logótipo, nome, contactos): para enviar aos seus clientes ou imprimir para as suas reuniões. Indique o nome do cliente para uma página de rosto personalizada e datada.
       </p>
       <Input value={prospect} onChange={(e) => setProspect(e.target.value)} maxLength={80}
-        placeholder="Nom du client (facultatif) — ex. Mairie de Houilles"
+        placeholder="Nome do cliente (opcional) — ex.: Câmara Municipal de Sintra"
         className="rounded-sm h-10" data-testid="brochure-prospect-input" />
       <div className="space-y-2">
         {[["pdf", FileText, "PDF"], ["pptx", Presentation, "PowerPoint"]].map(([ext, Icon, title]) => (
@@ -65,7 +63,7 @@ export const BrochureCard = () => {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Complétez votre logo et vos coordonnées dans « Ma page & mes documents » pour les voir apparaître.
+        Complete o seu logótipo e os seus contactos em «A minha página e os meus documentos» para que apareçam.
       </p>
     </div>
   );

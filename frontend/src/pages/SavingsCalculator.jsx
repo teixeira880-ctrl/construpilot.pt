@@ -32,7 +32,7 @@ export default function SavingsCalculator() {
   const pdfUrl = `${BACKEND}/api/roi/pdf?ca=${Number(ca) || 0}&salaire_brut=${Number(brut) || 0}&charges_pct=${Number(charges) || 0}&frais_generes=${Number(frais) || 0}`;
 
   const sendLead = async () => {
-    if (!lead.email) return toast.error("Indiquez votre e-mail");
+    if (!lead.email) return toast.error("Indique o seu e-mail");
     setLead((l) => ({ ...l, loading: true }));
     try {
       await api.post("/roi/lead", {
@@ -40,10 +40,10 @@ export default function SavingsCalculator() {
         ca_annual: Number(ca) || 0, estimated_monthly: Math.round(r.total),
       });
       setLead((l) => ({ ...l, sent: true, loading: false }));
-      toast.success("Merci ! Un conseiller vous recontacte très vite.");
+      toast.success("Obrigado! Um consultor volta a contactá-lo muito em breve.");
     } catch (e) {
       setLead((l) => ({ ...l, loading: false }));
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     }
   };
 
@@ -70,56 +70,54 @@ export default function SavingsCalculator() {
     <div className="mx-auto max-w-6xl px-5 py-10" data-testid="savings-calculator">
       <header className="max-w-3xl">
         <p className="text-xs uppercase tracking-widest text-primary font-semibold flex items-center gap-2">
-          <Calculator className="h-4 w-4" /> Calculateur d'économies
+          <Calculator className="h-4 w-4" /> Calculadora de poupanças
         </p>
         <h1 className="font-display text-4xl sm:text-5xl font-extrabold mt-2 leading-tight">
-          Combien ConstruPilot fait <span className="text-primary">économiser</span> à votre entreprise ?
+          Quanto faz o ConstruPilot <span className="text-primary">poupar</span> à sua empresa?
         </h1>
         <p className="mt-3 text-base text-muted-foreground">
-          On additionne deux leviers : <strong>(A)</strong> les pertes évitées (matériaux, marge, litiges) en % du CA,
-          et <strong>(B)</strong> le personnel et le temps que l'IA automatise (métré, devis, calculs, chiffrage, admin) —
-          en coût employeur réel, charges patronales (URSSAF) comprises.
+          Somamos duas alavancas: <strong>(A)</strong> as perdas evitadas (materiais, margem, litígios) em % do volume de negócios, e <strong>(B)</strong> o pessoal e o tempo que a IA automatiza (medição, orçamentos, cálculos, orçamentação, administração) — em custo real para o empregador, encargos sociais (Segurança Social) incluídos.
         </p>
       </header>
 
       <div className="mt-8 grid lg:grid-cols-5 gap-6">
         {/* Entrées */}
         <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 h-fit">
-          <h2 className="font-display text-lg font-bold mb-4">Vos chiffres</h2>
+          <h2 className="font-display text-lg font-bold mb-4">Os seus números</h2>
           <div className="space-y-4">
             <NumField id="input-ca" label="Chiffre d'affaires annuel" val={ca} set={setCa} suffix="€/an" step={10000} />
             <div className="h-px bg-border my-1" />
-            <p className="text-xs font-semibold text-foreground">Coût d'un profil études / devis / métré</p>
+            <p className="text-xs font-semibold text-foreground">Custo de um perfil de estudos / orçamentos / medições</p>
             <NumField id="input-brut" label="Salaire brut mensuel" val={brut} set={setBrut} suffix="€" step={100} />
             <NumField id="input-charges" label="Charges patronales (URSSAF…)" val={charges} set={setCharges} suffix="%" />
-            <NumField id="input-frais" label="Frais générés (poste, logiciels, mutuelle…)" val={frais} set={setFrais} suffix="€" step={50} />
+            <NumField id="input-frais" label="Custos gerados (posto, software, seguros…)" val={frais} set={setFrais} suffix="€" step={50} />
             <div className="rounded-lg bg-secondary/50 p-3 text-sm">
               <div className="flex items-center justify-between"><span className="text-muted-foreground">Salaire brut</span><span className="num">{eur(brut)}</span></div>
               <div className="flex items-center justify-between"><span className="text-muted-foreground">+ Charges {charges || 0}%</span><span className="num">+ {eur(r.charges_eur)}</span></div>
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">+ Frais générés</span><span className="num">+ {eur(frais)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">+ Custos gerados</span><span className="num">+ {eur(frais)}</span></div>
               <div className="flex items-center justify-between font-bold text-primary mt-1 pt-1 border-t border-border">
-                <span>= Coût employeur / mois</span><span className="num">{eur(r.loaded)}</span>
+                <span>= Custo para o empregador / mês</span><span className="num">{eur(r.loaded)}</span>
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Part automatisée : {r.fte.toFixed(2).replace(".", ",")} ETP (selon la taille)</p>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Parte automatizada: {r.fte.toFixed(2).replace(".", ",")} ETI (segundo a dimensão)</p>
           </div>
         </div>
 
         {/* Résultats */}
         <div className="lg:col-span-3">
           <div className="grid sm:grid-cols-3 gap-3">
-            <Stat icon={TrendingDown} label="A · Pertes évitées (2% du CA)" value={eur(r.A)} sub={`${eur(r.Alow)} – ${eur(r.Ahigh)}/mois`} />
-            <Stat icon={Users} label="B · Personnel automatisé" value={eur(r.B)} sub={`${r.fte.toFixed(2).replace(".", ",")} ETP × ${eur(r.loaded)}`} />
-            <Stat icon={Calculator} label="TOTAL estimé / mois" value={eur(r.total)} sub={`${eur(r.totalLow)} – ${eur(r.totalHigh)}`} accent />
+            <Stat icon={TrendingDown} label="A · Perdas evitadas (2% do volume de negócios)" value={eur(r.A)} sub={`${eur(r.Alow)} – ${eur(r.Ahigh)}/mois`} />
+            <Stat icon={Users} label="B · Pessoal automatizado" value={eur(r.B)} sub={`${r.fte.toFixed(2).replace(".", ",")} ETP × ${eur(r.loaded)}`} />
+            <Stat icon={Calculator} label="TOTAL estimado / mês" value={eur(r.total)} sub={`${eur(r.totalLow)} – ${eur(r.totalHigh)}`} accent />
           </div>
 
           <div className="mt-4 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-transparent p-6">
-            <p className="text-sm text-muted-foreground">Économie estimée sur un an</p>
+            <p className="text-sm text-muted-foreground">Poupança estimada num ano</p>
             <p className="font-display text-4xl sm:text-5xl font-extrabold text-primary mt-1" data-testid="result-total">{eur(r.total * 12)}</p>
-            <p className="text-sm text-muted-foreground mt-1">soit environ <strong>{eur(r.total)}/mois</strong> (scénario typique)</p>
+            <p className="text-sm text-muted-foreground mt-1">soit environ <strong>{eur(r.total)}/mois</strong> (cenário típico)</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <a href={pdfUrl} target="_blank" rel="noreferrer" data-testid="download-pdf-btn">
-                <Button size="lg" className="rounded-full gap-2 font-bold"><Download className="h-5 w-5" /> Télécharger le PDF</Button>
+                <Button size="lg" className="rounded-full gap-2 font-bold"><Download className="h-5 w-5" /> Descarregar o PDF</Button>
               </a>
             </div>
           </div>
@@ -129,29 +127,27 @@ export default function SavingsCalculator() {
             {lead.sent ? (
               <div className="flex items-center gap-3 text-emerald-600">
                 <CheckCircle2 className="h-6 w-6" />
-                <p className="font-semibold">Merci ! Votre analyse personnalisée arrive — un conseiller vous recontacte sous peu.</p>
+                <p className="font-semibold">Obrigado! A sua análise personalizada está a caminho — um consultor volta a contactá-lo em breve.</p>
               </div>
             ) : (
               <>
-                <h3 className="font-display text-lg font-bold flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Recevoir mon analyse & être recontacté</h3>
-                <p className="text-sm text-muted-foreground mt-1">Laissez vos coordonnées : on vous envoie le détail et on répond à vos questions.</p>
+                <h3 className="font-display text-lg font-bold flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Receber a minha análise e ser contactado</h3>
+                <p className="text-sm text-muted-foreground mt-1">Deixe os seus contactos: enviamos-lhe o detalhe e respondemos às suas perguntas.</p>
                 <div className="mt-3 grid sm:grid-cols-3 gap-3">
                   <Input type="email" placeholder="E-mail professionnel*" value={lead.email} onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))} data-testid="lead-email" />
                   <Input placeholder="Entreprise" value={lead.company} onChange={(e) => setLead((l) => ({ ...l, company: e.target.value }))} data-testid="lead-company" />
-                  <Input placeholder="Téléphone" value={lead.phone} onChange={(e) => setLead((l) => ({ ...l, phone: e.target.value }))} data-testid="lead-phone" />
+                  <Input placeholder="Telefone" value={lead.phone} onChange={(e) => setLead((l) => ({ ...l, phone: e.target.value }))} data-testid="lead-phone" />
                 </div>
                 <input type="text" tabIndex={-1} autoComplete="off" value={lead.website} onChange={(e) => setLead((l) => ({ ...l, website: e.target.value }))} className="hidden" aria-hidden />
                 <Button onClick={sendLead} disabled={lead.loading} className="mt-3 rounded-full gap-2" data-testid="lead-send-btn">
-                  {lead.loading ? "Envoi…" : <>Envoyer <ArrowRight className="h-4 w-4" /></>}
+                  {lead.loading ? "Envoi…" : <>Enviar <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               </>
             )}
           </div>
 
           <p className="mt-4 text-xs text-muted-foreground">
-            ⚠ Modèle d'estimation avec hypothèses explicites (ajustables ci-dessus), pas une garantie. Le résultat dépend
-            du volume de devis, de la part des matériaux dans le CA et de l'adhésion des équipes. ConstruPilot — des
-            chiffres issus de moteurs déterministes, jamais inventés.
+            ⚠ Modelo de estimativa com hipóteses explícitas (ajustáveis acima), não uma garantia. O resultado depende do volume de orçamentos, do peso dos materiais no volume de negócios e da adesão das equipas. ConstruPilot — números provenientes de motores determinísticos, nunca inventados.
           </p>
         </div>
       </div>

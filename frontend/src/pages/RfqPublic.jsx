@@ -28,7 +28,7 @@ export default function RfqPublic() {
         setName(d.recipient?.name || "");
         if (d.responded_at) setDone(true);
       })
-      .catch((e) => setError(e?.response?.data?.detail || "Lien invalide ou expiré"));
+      .catch((e) => setError(e?.response?.data?.detail || "Ligação inválida ou expirada"));
   }, [token]);
 
   const total = (data?.lines || []).reduce(
@@ -37,14 +37,14 @@ export default function RfqPublic() {
   const submit = async () => {
     const clean = Object.fromEntries(Object.entries(prices)
       .filter(([, v]) => Number(v) > 0).map(([k, v]) => [k, Number(v)]));
-    if (!Object.keys(clean).length) { toast.error("Saisissez au moins un prix unitaire"); return; }
+    if (!Object.keys(clean).length) { toast.error("Introduza pelo menos um preço unitário"); return; }
     setBusy(true);
     try {
       await axios.post(`${API}/public/rfq/${token}`, { prices: clean, note, contact_name: name });
       setDone(true);
       toast.success("Offre transmise");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally { setBusy(false); }
   };
 
@@ -55,11 +55,11 @@ export default function RfqPublic() {
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-5 py-10" data-testid="rfq-public-page">
         <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-          <HardHat className="h-3.5 w-3.5" /> Demande de prix
+          <HardHat className="h-3.5 w-3.5" /> Pedido de preço
         </div>
         <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">{data.lot}</h1>
         <p className="text-sm text-muted-foreground mt-2">
-          {data.company} vous consulte · réponse souhaitée avant le <b>{data.due_date}</b>
+          {data.company} consulta-o · resposta pretendida até <b>{data.due_date}</b>
         </p>
         {data.message && (
           <p className="mt-3 rounded-sm border border-border bg-muted/40 p-3 text-sm" data-testid="rfq-message">{data.message}</p>
@@ -70,7 +70,7 @@ export default function RfqPublic() {
             <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
             <div className="text-sm">
               <p className="font-semibold">Offre transmise — {eur(total)} HT</p>
-              <p className="text-muted-foreground mt-1">{data.company} a reçu vos prix. Merci.</p>
+              <p className="text-muted-foreground mt-1">{data.company} recebeu os seus preços. Obrigado.</p>
             </div>
           </div>
         ) : (
@@ -78,9 +78,9 @@ export default function RfqPublic() {
             <div className="mt-6 rounded-sm border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-secondary/40">
-                  <tr><th className="text-left p-2">Prestation</th><th className="p-2">Qté</th>
-                    <th className="p-2">U.</th><th className="p-2 text-right">Votre PU HT</th>
-                    <th className="p-2 text-right">Total HT</th></tr>
+                  <tr><th className="text-left p-2">Prestation</th><th className="p-2">Qtd.</th>
+                    <th className="p-2">U.</th><th className="p-2 text-right">O seu PU s/ IVA</th>
+                    <th className="p-2 text-right">Total s/ IVA</th></tr>
                 </thead>
                 <tbody>
                   {data.lines.map((l) => (
@@ -104,24 +104,24 @@ export default function RfqPublic() {
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-1.5 text-xs text-muted-foreground">Votre nom / entreprise
+              <label className="grid gap-1.5 text-xs text-muted-foreground">O seu nome / empresa
                 <Input value={name} onChange={(e) => setName(e.target.value)} className="rounded-sm h-10"
                   data-testid="rfq-name" />
               </label>
               <div className="text-right self-end">
-                <p className="text-xs text-muted-foreground">Total de votre offre</p>
+                <p className="text-xs text-muted-foreground">Total da sua proposta</p>
                 <p className="num text-2xl font-extrabold text-primary" data-testid="rfq-total">{eur(total)}</p>
               </div>
             </div>
-            <label className="grid gap-1.5 text-xs text-muted-foreground mt-3">Remarques (délais, variantes, exclusions)
+            <label className="grid gap-1.5 text-xs text-muted-foreground mt-3">Observações (prazos, variantes, exclusões)
               <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="rounded-sm"
                 data-testid="rfq-note" />
             </label>
             <Button onClick={submit} disabled={busy} className="rounded-sm gap-2 mt-4" data-testid="rfq-submit">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Envoyer mon offre
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar a minha proposta
             </Button>
             <p className="text-[11px] text-muted-foreground mt-2">
-              Aucun compte nécessaire. Vos prix ne sont visibles que par {data.company}.
+              Nenhuma conta necessária. Os seus preços só são visíveis por {data.company}.
             </p>
           </>
         )}

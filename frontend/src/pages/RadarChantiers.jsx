@@ -109,9 +109,9 @@ export default function RadarChantiers() {
       { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(mapObj.current);
     mapObj.current.on("click", (e) => {
       if (!pickRef.current) return;
-      setDraftBase({ lat: +e.latlng.lat.toFixed(5), lon: +e.latlng.lng.toFixed(5), label: "Zone personnalisée" });
+      setDraftBase({ lat: +e.latlng.lat.toFixed(5), lon: +e.latlng.lng.toFixed(5), label: "Zona personalizada" });
       setPickZone(false);
-      toast.success("Zone repositionnée — pensez à enregistrer");
+      toast.success("Zona reposicionada — não se esqueça de guardar");
     });
     setTimeout(() => mapObj.current?.invalidateSize(), 200);
   }, [data]);
@@ -124,7 +124,7 @@ export default function RadarChantiers() {
     layer.current = L.layerGroup().addTo(mapObj.current);
     const base = draftBase || data.base;
     L.circleMarker([base.lat, base.lon], { radius: 8, color: "#2563eb", fillColor: "#2563eb", fillOpacity: 1 })
-      .bindPopup("Votre entreprise").addTo(layer.current);
+      .bindPopup("A sua empresa").addTo(layer.current);
     const points = data.map_points || [];
     points.forEach((o) => {
       const popup = document.createElement("div");
@@ -158,7 +158,7 @@ export default function RadarChantiers() {
       const { data: r } = await api.post(`/radar/opportunities/${id}/favorite`);
       if (sel && sel.id === id) setSel({ ...sel, is_favorite: r.is_favorite });
       load(km);
-    } catch { toast.error("Action impossible"); }
+    } catch { toast.error("Ação impossível"); }
   };
 
   const toggleMetier = (key) =>
@@ -174,9 +174,9 @@ export default function RadarChantiers() {
       setProfile(p); setDraftMetiers(p.metiers || []); setDraftBase(p.base);
       if (mapObj.current && p.base) mapObj.current.setView([p.base.lat, p.base.lon], 11);
       setShowSettings(false); setPickZone(false);
-      toast.success("Profil Radar enregistré");
+      toast.success("Perfil Radar guardado");
       load(km);
-    } catch { toast.error("Enregistrement impossible"); }
+    } catch { toast.error("Não foi possível guardar"); }
     finally { setSavingProfile(false); }
   };
 
@@ -187,8 +187,8 @@ export default function RadarChantiers() {
       setProfile(p); setKm(p.km); setZone({ mode: p.zone_mode, departments: p.departments });
       setPageNumber(1);
       setSel(null); setPostalOpen(false); setCampaign(null);
-      toast.success("Zone de recherche mémorisée");
-    } catch { toast.error("Impossible de mémoriser cette zone"); }
+      toast.success("Zona de pesquisa guardada");
+    } catch { toast.error("Impossível memorizar esta zona"); }
     finally { setZoneBusy(false); }
   };
 
@@ -198,11 +198,11 @@ export default function RadarChantiers() {
       const { data: p } = await api.put("/radar/profile", { filters: next });
       setProfile(p); setFilters(p.filters); setPageNumber(1);
       setSel(null); setPostalOpen(false); setCampaign(null);
-    } catch { toast.error("Impossible de mémoriser les filtres"); }
+    } catch { toast.error("Impossível memorizar os filtros"); }
     finally { setFiltersBusy(false); }
   };
 
-  const categoryLabel = (group, value) => profile?.filter_options?.[group]?.find((item) => item.value === value)?.label || "Non identifié";
+  const categoryLabel = (group, value) => profile?.filter_options?.[group]?.find((item) => item.value === value)?.label || "Não identificado";
 
   const generateLetter = async () => {
     if (!sel) return;
@@ -211,7 +211,7 @@ export default function RadarChantiers() {
       const { data: c } = await api.post(`/radar/opportunities/${sel.id}/prospection`, { message: letterMsg });
       setCampaign(c);
       if (showCampaigns) loadCampaigns();
-    } catch { toast.error("Génération impossible"); }
+    } catch { toast.error("Impossível gerar"); }
     finally { setGenLoading(false); }
   };
 
@@ -220,14 +220,14 @@ export default function RadarChantiers() {
     setAiLoading(true);
     try {
       const { data } = await api.post(`/radar/opportunities/${sel.id}/prospection/ai`, { tone: aiTone, length: aiLength });
-      if (data.message) { setLetterMsg(data.message); toast.success("Texte rédigé par l'IA"); }
-    } catch { toast.error("Rédaction IA indisponible"); }
+      if (data.message) { setLetterMsg(data.message); toast.success("Texto redigido pela IA"); }
+    } catch { toast.error("Redação IA indisponível"); }
     finally { setAiLoading(false); }
   };
 
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(campaign.public_url); setCopied(true); setTimeout(() => setCopied(false), 1500); }
-    catch { toast.error("Copie impossible"); }
+    catch { toast.error("Cópia impossível"); }
   };
 
   const downloadLetter = () => {
@@ -245,21 +245,18 @@ export default function RadarChantiers() {
         </span>
         <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Radar Chantiers</h1>
         <p className="text-base text-muted-foreground">
-          Le Radar repère les permis de construire publiés autour de votre entreprise et estime leur
-          potentiel de chantier. Il a besoin de votre zone d'activité et de vos métiers : créez un compte
-          professionnel pour l'utiliser.
+          O Radar identifica as licenças de construção publicadas à volta da sua empresa e estima o seu potencial de obra. Precisa da sua zona de atividade e das suas especialidades: crie uma conta profissional para o utilizar.
         </p>
         <div className="flex flex-wrap gap-3 justify-center mt-2">
           <Button asChild className="rounded-sm" data-testid="radar-guest-signup">
-            <Link to="/inscription">Créer mon compte pro</Link>
+            <Link to="/inscription">Criar a minha conta profissional</Link>
           </Button>
           <Button asChild variant="outline" className="rounded-sm" data-testid="radar-guest-login">
-            <Link to="/login">J'ai déjà un compte</Link>
+            <Link to="/login">Já tenho uma conta</Link>
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Données issues des permis de construire publiés par les administrations. Le potentiel affiché
-          est une estimation, pas un engagement de chantier.
+          Dados provenientes das licenças de construção publicadas pelas administrações. O potencial apresentado é uma estimativa, não um compromisso de obra.
         </p>
       </div>
     );
@@ -271,13 +268,13 @@ export default function RadarChantiers() {
         <span className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10"><Radar className="h-5 w-5 text-primary" /></span>
         <div className="flex-1">
           <h1 className="font-display text-2xl font-extrabold tracking-tight">Radar Chantiers</h1>
-          <p className="text-xs text-muted-foreground">Détecte les futurs chantiers autour de votre entreprise et estime leur potentiel.</p>
+          <p className="text-xs text-muted-foreground">Deteta as futuras obras em redor da sua empresa e estima o seu potencial.</p>
         </div>
         <Button variant="outline" size="sm" className="rounded-sm gap-1" onClick={() => { const n = !showCampaigns; setShowCampaigns(n); if (n) loadCampaigns(); }} data-testid="radar-campaigns-btn">
           <BarChart3 className="h-4 w-4" /> Suivi
         </Button>
         <Button variant="outline" size="sm" className="rounded-sm gap-1" onClick={() => setShowSettings((s) => !s)} data-testid="radar-settings-btn">
-          <Settings className="h-4 w-4" /> Réglages
+          <Settings className="h-4 w-4" /> Definições
         </Button>
       </div>
 
@@ -286,16 +283,16 @@ export default function RadarChantiers() {
       {showCampaigns && (
         <div className="surface rounded-xl p-4 my-4" data-testid="radar-campaigns">
           <div className="flex items-center gap-4 mb-3 text-sm">
-            <span className="font-bold">Suivi des campagnes</span>
+            <span className="font-bold">Acompanhamento das campanhas</span>
             {campaigns && (
               <span className="text-muted-foreground flex items-center gap-3">
                 <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {campaigns.total_opens} ouvertures</span>
-                <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {campaigns.total_leads} réponses</span>
+                <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {campaigns.total_leads} respostas</span>
               </span>
             )}
           </div>
-          {!campaigns && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>}
-          {campaigns && campaigns.count === 0 && <p className="text-sm text-muted-foreground">Aucune campagne encore. Générez un courrier de prospection depuis une opportunité.</p>}
+          {!campaigns && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> A carregar…</div>}
+          {campaigns && campaigns.count === 0 && <p className="text-sm text-muted-foreground">Nenhuma campanha ainda. Gere uma carta de prospeção a partir de uma oportunidade.</p>}
           {campaigns && campaigns.count > 0 && (
             <div className="grid gap-2">
               {campaigns.campaigns.map((c) => (
@@ -306,7 +303,7 @@ export default function RadarChantiers() {
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
                     <span className="inline-flex items-center gap-1 text-muted-foreground" title="Ouvertures / scans QR"><Eye className="h-3.5 w-3.5" /> {c.open_count}</span>
-                    <span className="inline-flex items-center gap-1 font-bold text-primary" title="Prospects captés"><Users className="h-3.5 w-3.5" /> {c.lead_count}</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-primary" title="Potenciais clientes captados"><Users className="h-3.5 w-3.5" /> {c.lead_count}</span>
                   </div>
                 </div>
               ))}
@@ -319,7 +316,7 @@ export default function RadarChantiers() {
       {showSettings && profile && (
         <div className="surface rounded-xl p-4 my-4 grid gap-4" data-testid="radar-settings">
           <div>
-            <div className="text-xs font-bold uppercase text-muted-foreground mb-2">Vos métiers (adéquation & estimation)</div>
+            <div className="text-xs font-bold uppercase text-muted-foreground mb-2">As suas especialidades (adequação & estimativa)</div>
             <div className="flex flex-wrap gap-1.5">
               {profile.metier_options.map((m) => (
                 <button key={m.key} onClick={() => toggleMetier(m.key)} data-testid={`radar-metier-${m.key}`}
@@ -330,18 +327,18 @@ export default function RadarChantiers() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-bold uppercase text-muted-foreground mb-2">Votre zone (base)</div>
+            <div className="text-xs font-bold uppercase text-muted-foreground mb-2">A sua zona (base)</div>
             <div className="flex items-center gap-2 flex-wrap text-sm">
               <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />
                 {(draftBase || profile.base).label || "—"} · {(draftBase || profile.base).lat}, {(draftBase || profile.base).lon}</span>
               <Button variant={pickZone ? "default" : "outline"} size="sm" className="rounded-sm gap-1" onClick={() => { setShowSettings(true); setPickZone((p) => !p); }} data-testid="radar-pick-zone">
-                <Crosshair className="h-3.5 w-3.5" /> {pickZone ? "Cliquez sur la carte…" : "Repositionner sur la carte"}
+                <Crosshair className="h-3.5 w-3.5" /> {pickZone ? "Clique no mapa…" : "Reposicionar no mapa"}
               </Button>
             </div>
           </div>
           <div className="flex justify-end">
             <Button size="sm" className="rounded-sm gap-1" onClick={saveProfile} disabled={savingProfile} data-testid="radar-save-profile">
-              {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Enregistrer
+              {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Guardar
             </Button>
           </div>
         </div>
@@ -349,7 +346,7 @@ export default function RadarChantiers() {
 
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">
-          {[["Opportunités", stats.detected], ["Fortes (≥85)", stats.strong], ["Potentiel (votre lot)", eur(stats.potential_ttc)], ["Favoris", stats.favorites]].map(([l, v], i) => (
+          {[["Oportunidades", stats.detected], ["Fortes (≥85)", stats.strong], ["Potencial (o seu lote)", eur(stats.potential_ttc)], ["Favoris", stats.favorites]].map(([l, v], i) => (
             <div key={i} className="surface rounded-xl p-3 min-w-0" data-testid={`radar-kpi-${i}`}>
               <div className="text-lg font-extrabold text-primary break-words" title={String(v)}>{i === 2 ? <><span className="sm:hidden">{new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }).format(stats.potential_ttc)}</span><span className="hidden sm:inline">{v}</span></> : v}</div>
               <div className="text-[11px] text-muted-foreground">{l}</div>
@@ -362,13 +359,13 @@ export default function RadarChantiers() {
         onApply={saveZone} onRadius={(r) => saveZone({ ...zone, mode: "radius" }, r)} />}
 
       {filters && <RadarProjectFilters value={filters} options={profile?.filter_options || {}} facets={data?.facets} busy={filtersBusy} onApply={saveFilters} count={loading ? undefined : data?.count} />}
-      {loadError && <div role="alert" className="flex flex-wrap gap-3 items-center py-4 text-sm" data-testid="radar-load-error">Impossible de charger les résultats.<Button variant="outline" size="sm" onClick={() => load(km)} data-testid="radar-load-retry">Réessayer</Button></div>}
+      {loadError && <div role="alert" className="flex flex-wrap gap-3 items-center py-4 text-sm" data-testid="radar-load-error">Impossível carregar os resultados.<Button variant="outline" size="sm" onClick={() => load(km)} data-testid="radar-load-retry">Tentar novamente</Button></div>}
 
       <div className="grid lg:grid-cols-2 gap-5">
         <div className={`rounded-xl overflow-hidden border border-border h-[360px] lg:h-[560px] relative z-0 ${loading ? "opacity-50 pointer-events-none" : ""}`} aria-busy={loading} ref={mapRef} data-testid="radar-map" />
 
         <div className="grid gap-3 max-h-[560px] overflow-auto pr-1 min-w-0" data-testid="radar-list">
-          {loading && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>}
+          {loading && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> A carregar…</div>}
           {!loading && data?.opportunities.map((o) => (
             <button key={o.id} onClick={() => openDetail(o.id)} data-testid={`radar-opp-${o.id}`}
               className="surface rounded-xl p-4 text-left hover:border-primary transition-colors min-w-0 max-w-full">
@@ -382,27 +379,27 @@ export default function RadarChantiers() {
                   <div className="font-bold text-sm mt-0.5">{o.batiment}</div>
                   <p className="text-xs text-primary mt-1 break-words" data-testid={`radar-categories-${o.id}`}>{(o.classification?.building_types || []).map((value) => categoryLabel("building_types", value)).join(" · ")} · {categoryLabel("client_types", o.classification?.client_type)}</p>
                   <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1" data-testid={`radar-location-${o.id}`}>
-                    <MapPin className="h-3 w-3 shrink-0" /> {o.commune} · {o.distance_km == null ? "Position non localisée" : `≈ ${o.distance_km} km`} · {o.surf_created ? `${o.surf_created} m²` : "Surface non exploitable"}
+                    <MapPin className="h-3 w-3 shrink-0" /> {o.commune} · {o.distance_km == null ? "Posição não localizada" : `≈ ${o.distance_km} km`} · {o.surf_created ? `${o.surf_created} m²` : "Área não utilizável"}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-extrabold text-white" style={{ background: scoreColor(o.score) }} title="Score indicatif ConstruPilot" data-testid={`radar-score-${o.id}`}>
                     <Flame className="h-3 w-3" /> {o.score}
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-1">Votre lot</div>
-                  <div className="text-xs font-bold" data-testid={`radar-estimate-${o.id}`}>{o.my_lot_high ? `${eur(o.my_lot_low)}–${eur(o.my_lot_high)}` : "Non estimé"}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1">A sua especialidade</div>
+                  <div className="text-xs font-bold" data-testid={`radar-estimate-${o.id}`}>{o.my_lot_high ? `${eur(o.my_lot_low)}–${eur(o.my_lot_high)}` : "Não estimado"}</div>
                 </div>
               </div>
             </button>
           ))}
-          {!loading && data?.count === 0 && <p className="text-sm text-muted-foreground" data-testid="radar-empty-zone">{syncRunning ? "Récupération des permis officiels en cours…" : data?.unfiltered_count > 0 ? "Aucun permis ne correspond à ces filtres dans la zone sélectionnée." : "Aucun permis officiel disponible dans cette zone et cette période. Aucun exemple fictif ne sera affiché."}</p>}
+          {!loading && data?.count === 0 && <p className="text-sm text-muted-foreground" data-testid="radar-empty-zone">{syncRunning ? "A obter as licenças oficiais…" : data?.unfiltered_count > 0 ? "Nenhuma licença corresponde a estes filtros na zona selecionada." : "Nenhuma licença oficial disponível nesta zona e período. Não serão apresentados exemplos fictícios."}</p>}
         </div>
       </div>
 
-      {data && data.count > 0 && <nav className="flex flex-wrap items-center justify-end gap-3 mt-4" aria-label="Pages des permis" data-testid="radar-pagination">
-        <Button size="sm" variant="outline" disabled={loading || pageNumber <= 1} onClick={() => setPageNumber((p) => p - 1)} data-testid="radar-page-previous">Précédent</Button>
+      {data && data.count > 0 && <nav className="flex flex-wrap items-center justify-end gap-3 mt-4" aria-label="Páginas das licenças" data-testid="radar-pagination">
+        <Button size="sm" variant="outline" disabled={loading || pageNumber <= 1} onClick={() => setPageNumber((p) => p - 1)} data-testid="radar-page-previous">Anterior</Button>
         <span className="text-xs" data-testid="radar-page-number">Page {pageNumber} / {Math.max(1, Math.ceil(data.count / data.page_size))} · {data.count} permis</span>
-        <Button size="sm" variant="outline" disabled={loading || pageNumber * data.page_size >= data.count} onClick={() => setPageNumber((p) => p + 1)} data-testid="radar-page-next">Suivant</Button>
+        <Button size="sm" variant="outline" disabled={loading || pageNumber * data.page_size >= data.count} onClick={() => setPageNumber((p) => p + 1)} data-testid="radar-page-next">Seguinte</Button>
       </nav>}
 
       {sel && typeof sel === "object" && (
@@ -416,96 +413,96 @@ export default function RadarChantiers() {
               <span className="rounded-full px-2.5 py-1 text-sm font-extrabold text-white" style={{ background: scoreColor(sel.score) }} title="Score indicatif ConstruPilot" data-testid="radar-detail-score">{sel.score}/100</span>
               <span className="text-[11px] rounded-full px-2 py-0.5 border border-border" data-testid="radar-detail-client-type">{categoryLabel("client_types", sel.classification?.client_type)}</span>
               <span data-testid="radar-contact-status" className={`text-[11px] rounded-full px-2 py-0.5 ${sel.contact_status === "green" ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
-                {sel.is_demo ? "FICHE FICTIVE" : sel.contact_status === "green" ? "Coordonnées complètes · à vérifier" : "Contact à compléter / vérifier"}
+                {sel.is_demo ? "FICHE FICTIVE" : sel.contact_status === "green" ? "Dados completos · por verificar" : "Contacto por completar / verificar"}
               </span>
             </div>
             <h2 className="font-display text-xl font-bold mt-3">{sel.batiment}</h2>
-            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1" data-testid="radar-detail-location"><MapPin className="h-4 w-4 shrink-0" /> {sel.commune} ({sel.cp}) · {sel.distance_km == null ? "Non localisé" : `≈ ${sel.distance_km} km · centre communal`}</p>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1" data-testid="radar-detail-location"><MapPin className="h-4 w-4 shrink-0" /> {sel.commune} ({sel.cp}) · {sel.distance_km == null ? "Não localizado" : `≈ ${sel.distance_km} km · centre communal`}</p>
             <p className="text-sm mt-2 break-words" data-testid="radar-real-site-address">Terrain : {[sel.adresse, sel.adresse_complement, sel.cp, sel.commune].filter(Boolean).join(", ")}</p>
-            {Object.keys(sel.source_text_corrections || {}).length > 0 && <p className="text-xs text-muted-foreground" data-testid="radar-address-encoding-note">Encodage du texte SDES normalisé · original conservé dans la source.</p>}
+            {Object.keys(sel.source_text_corrections || {}).length > 0 && <p className="text-xs text-muted-foreground" data-testid="radar-address-encoding-note">Codificação do texto normalizada · original conservado na fonte.</p>}
             <RadarQualification key={`qualification-${sel.id}`} opp={sel} options={profile?.filter_options?.client_types || []} onUpdated={(o) => { setSel(o); load(km); }} />
             <RadarContactPanel key={sel.id} opp={sel} onUpdated={(o) => { setSel(o); load(km); }} />
             <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
-              {[["Type", sel.type], ["Nature", sel.nature], ["Surface publiée", sel.surf_created ? `${sel.surf_created} m²` : "Non exploitable"], ["Logements", sel.logements], ["Autorisation", sel.date_auth || "Non communiquée"], ["N°", sel.num], ["Statut SDES", sel.statut]].map(([l, v], i) => (
+              {[["Type", sel.type], ["Nature", sel.nature], ["Área publicada", sel.surf_created ? `${sel.surf_created} m²` : "Não utilizável"], ["Logements", sel.logements], ["Autorisation", sel.date_auth || "Não comunicada"], ["N°", sel.num], ["Statut SDES", sel.statut]].map(([l, v], i) => (
                 <div key={i} className="surface rounded-md p-2 min-w-0" data-testid={`radar-permit-field-${i}`}><div className="text-[10px] uppercase text-muted-foreground">{l}</div><div className="font-semibold break-words">{v}</div></div>
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-2" data-testid="radar-surface-basis">{sel.surface_basis}</p>
             <div className="surface rounded-xl p-3 mt-4">
-              <div className="flex items-center gap-2 text-sm font-bold"><TrendingUp className="h-4 w-4 text-primary" /> Estimation préliminaire</div>
-              <div className="text-xs text-muted-foreground mt-1" data-testid="radar-project-estimate">Projet total : <b>{sel.estimate_high ? `${eur(sel.estimate_low)}–${eur(sel.estimate_high)}` : "Non estimé — surface non exploitable"}</b></div>
-              <div className="text-xs mt-1" data-testid="radar-personal-estimate">Votre marché potentiel : <b className="text-primary">{sel.my_lot_high ? `${eur(sel.my_lot_low)}–${eur(sel.my_lot_high)}` : "Non estimé"}</b></div>
+              <div className="flex items-center gap-2 text-sm font-bold"><TrendingUp className="h-4 w-4 text-primary" /> Estimativa preliminar</div>
+              <div className="text-xs text-muted-foreground mt-1" data-testid="radar-project-estimate">Projeto total: <b>{sel.estimate_high ? `${eur(sel.estimate_low)}–${eur(sel.estimate_high)}` : "Não estimado — área não utilizável"}</b></div>
+              <div className="text-xs mt-1" data-testid="radar-personal-estimate">O seu mercado potencial: <b className="text-primary">{sel.my_lot_high ? `${eur(sel.my_lot_low)}–${eur(sel.my_lot_high)}` : "Não estimado"}</b></div>
               <div className="mt-3 grid gap-1">
                 {sel.lots.map((l) => (
                   <div key={l.metier} className="flex justify-between text-xs"><span>{l.label}</span><span className="text-muted-foreground">{eur(l.low)}–{eur(l.high)}</span></div>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">Estimation indicative basée sur les données publiques disponibles — à confirmer.</p>
+              <p className="text-[10px] text-muted-foreground mt-2">Estimativa indicativa baseada nos dados públicos disponíveis — a confirmar.</p>
             </div>
 
             <div className="mt-4">
-              <label className="text-xs font-bold uppercase text-muted-foreground">Texte du courrier (personnalisable)</label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Texto da carta (personalizável)</label>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap" data-testid="radar-ai-controls">
                 <select value={aiTone} onChange={(e) => setAiTone(e.target.value)} data-testid="radar-ai-tone"
                   className="h-8 rounded-md border border-border bg-background text-xs px-2">
-                  <option value="formel">Ton : formel</option>
-                  <option value="chaleureux">Ton : chaleureux</option>
-                  <option value="direct">Ton : direct</option>
-                  <option value="commercial">Ton : commercial</option>
+                  <option value="formel">Tom: formal</option>
+                  <option value="chaleureux">Tom: caloroso</option>
+                  <option value="direct">Tom: direto</option>
+                  <option value="commercial">Tom: comercial</option>
                 </select>
                 <select value={aiLength} onChange={(e) => setAiLength(e.target.value)} data-testid="radar-ai-length"
                   className="h-8 rounded-md border border-border bg-background text-xs px-2">
-                  <option value="court">Longueur : court</option>
-                  <option value="moyen">Longueur : moyen</option>
-                  <option value="long">Longueur : long</option>
+                  <option value="court">Comprimento: curto</option>
+                  <option value="moyen">Comprimento: médio</option>
+                  <option value="long">Comprimento: longo</option>
                 </select>
                 <Button variant="outline" size="sm" className="rounded-sm gap-1 h-8" onClick={writeWithAI} disabled={aiLoading || sel.is_demo} data-testid="radar-ai-write">
-                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Rédiger avec l'IA
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Redigir com a IA
                 </Button>
               </div>
               <Textarea value={letterMsg} onChange={(e) => setLetterMsg(e.target.value)} rows={6}
                 className="mt-2 text-sm" data-testid="radar-letter-message"
-                placeholder="Rédigez le texte de votre courrier de prospection…" />
-              <p className="text-[10px] text-muted-foreground mt-1">Ce texte apparaîtra dans le courrier PDF. Vous pouvez l'adapter puis (re)générer.</p>
+                placeholder="Redija o texto da sua carta de prospeção…" />
+              <p className="text-[10px] text-muted-foreground mt-1">Este texto aparecerá no correio PDF. Pode adaptá-lo e depois (re)gerar.</p>
             </div>
 
             <div className="flex flex-wrap gap-2 mt-3">
               <Button variant="outline" className="rounded-sm gap-1 flex-1" onClick={() => toggleFav(sel.id)} data-testid="radar-detail-fav">
-                <Star className={`h-4 w-4 ${sel.is_favorite ? "fill-primary text-primary" : ""}`} /> {sel.is_favorite ? "Favori" : "Ajouter aux favoris"}
+                <Star className={`h-4 w-4 ${sel.is_favorite ? "fill-primary text-primary" : ""}`} /> {sel.is_favorite ? "Favori" : "Adicionar aos favoritos"}
               </Button>
               <Button className="rounded-sm gap-1 flex-1 whitespace-normal h-auto min-h-9" onClick={generateLetter} disabled={genLoading || sel.is_demo} data-testid="radar-generate-letter">
-                {genLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {campaign ? "Regénérer" : "Générer le courrier"}
+                {genLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {campaign ? "Regenerar" : "Gerar a carta"}
               </Button>
             </div>
 
             {campaign && (
               <div className="surface rounded-xl p-4 mt-4" data-testid="radar-campaign">
-                <div className="text-sm font-bold mb-2">Courrier + QR prêts</div>
+                <div className="text-sm font-bold mb-2">Carta + QR prontos</div>
                 <div className="flex gap-4 items-center">
                   <img src={campaign.qr_b64} alt="QR" className="h-28 w-28 rounded-md bg-white p-1 border border-border" data-testid="radar-campaign-qr" />
                   <div className="text-xs flex-1 break-all">
-                    <div className="text-muted-foreground mb-1">Lien de la landing (dans le QR) :</div>
+                    <div className="text-muted-foreground mb-1">Link da landing (no QR):</div>
                     <div className="font-mono">{campaign.public_url}</div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <Button variant="outline" size="sm" className="rounded-sm gap-1 flex-1" onClick={copyLink} data-testid="radar-campaign-copy">
-                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copié" : "Copier le lien"}
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copiado" : "Copiar o link"}
                   </Button>
                   <Button size="sm" className="rounded-sm gap-1 flex-1" onClick={downloadLetter} data-testid="radar-campaign-download">
-                    <Download className="h-3.5 w-3.5" /> Télécharger le courrier
+                    <Download className="h-3.5 w-3.5" /> Descarregar a carta
                   </Button>
                 </div>
                 <Button size="sm" variant="outline" className="rounded-sm gap-1 w-full mt-2 border-primary/40 text-primary" onClick={() => setPostalOpen(true)} data-testid="radar-campaign-postal">
-                  <Truck className="h-3.5 w-3.5" /> Envoyer par la poste (Merci Facteur)
+                  <Truck className="h-3.5 w-3.5" /> Enviar por correio (Merci Facteur)
                 </Button>
                 <PostalSendDialog open={postalOpen} onClose={() => setPostalOpen(false)} campaign={campaign} opp={sel} />
-                <p className="text-[10px] text-muted-foreground mt-2">Imprimez et postez le courrier, ou laissez Merci Facteur le faire. Le prospect qui scanne le QR ou ouvre le lien peut demander une estimation — sa demande arrive dans « Mes demandes ».</p>
+                <p className="text-[10px] text-muted-foreground mt-2">Imprima e envie a correspondência, ou deixe o Merci Facteur fazê-lo. O potencial cliente que digitaliza o QR ou abre o link pode pedir uma estimativa — o seu pedido chega a «Os meus pedidos».</p>
               </div>
             )}
 
             <p className="text-xs text-muted-foreground mt-3" data-testid="radar-permit-source">Source : {sel.source?.name} · publication {sel.source?.millesime}</p>
-            {sel.source?.record_url && <a href={sel.source.record_url} target="_blank" rel="noopener noreferrer" className="inline-block text-xs text-primary underline mt-1" data-testid="radar-record-source-link">Voir le permis dans la source officielle</a>}
+            {sel.source?.record_url && <a href={sel.source.record_url} target="_blank" rel="noopener noreferrer" className="inline-block text-xs text-primary underline mt-1" data-testid="radar-record-source-link">Ver a licença na fonte oficial</a>}
           </div>
         </div>
       )}

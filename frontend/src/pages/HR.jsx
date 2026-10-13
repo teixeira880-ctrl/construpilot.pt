@@ -96,19 +96,19 @@ function WorkersTab({ t }) {
       toast.success(t("hr.worker_created"));
       setOpen(false); setForm({ name: "", email: "", password: "", poste: "", hourly_rate: "" });
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || t("hr.save_fail") || "Erreur"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || t("hr.save_fail") || "Erro"); }
     finally { setSaving(false); }
   };
   const resetPwd = async (w) => {
     const pwd = window.prompt(t("hr.new_pwd"));
     if (!pwd) return;
     try { await api.post(`/hr/workers/${w.worker_id}/reset-password`, { password: pwd }); toast.success(t("hr.pwd_reset")); }
-    catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
   const deactivate = async (w) => {
     if (!window.confirm(`${t("hr.deactivate")} ${w.name} ?`)) return;
     try { await api.delete(`/hr/workers/${w.worker_id}`); toast.success(t("hr.worker_deactivated")); load(); }
-    catch { toast.error("Erreur"); }
+    catch { toast.error("Erro"); }
   };
 
   return (
@@ -175,7 +175,7 @@ function TimesheetsTab({ t }) {
       await api.post(`/hr/timesheets/${id}/validate`, { status });
       toast.success(status === "validated" ? t("hr.validated_toast") : t("hr.rejected_toast"));
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Erreur"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
   if (rows.length === 0) return <div className="surface p-10 text-center text-muted-foreground" data-testid="hr-timesheets-empty">{t("hr.no_timesheets")}</div>;
   return (
@@ -224,7 +224,7 @@ function NotesTab({ t }) {
     const reply = replies[id];
     if (!reply?.trim()) return;
     try { await api.post(`/hr/site-notes/${id}/reply`, { reply }); toast.success(t("hr.replied")); load(); }
-    catch { toast.error("Erreur"); }
+    catch { toast.error("Erro"); }
   };
   return (
     <div className="grid gap-6 max-w-3xl">
@@ -285,7 +285,7 @@ function DashboardTab({ t }) {
       const a = document.createElement("a");
       a.href = url; a.download = `paie.${fmt}`; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Export impossible"); }
+    } catch { toast.error("Impossível exportar"); }
   };
   if (!data) return null;
   return (
@@ -338,7 +338,7 @@ function GeofenceManager({ t }) {
           lat: pos.coords.latitude, lng: pos.coords.longitude, radius: 300,
         });
         toast.success(t("hr.geofence_saved")); load();
-      } catch { toast.error("Erreur"); }
+      } catch { toast.error("Erro"); }
     }, () => toast.error(t("hr.w_gps_off")), { enableHighAccuracy: true, timeout: 10000 });
   };
   return (

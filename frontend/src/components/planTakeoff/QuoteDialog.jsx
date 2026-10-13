@@ -39,11 +39,10 @@ export function QuoteDialog({
       <DialogContent className="rounded-sm max-w-md" data-testid="quote-dialog">
         <DialogHeader>
           <DialogTitle>
-            {quoteMode === "send" ? "Envoyer le devis par email" : "Générer un devis PDF"}
+            {quoteMode === "send" ? "Enviar o orçamento por email" : "Gerar um orçamento PDF"}
           </DialogTitle>
           <DialogDescription>
-            Le devis reprend automatiquement les surfaces mesurées et applique la main
-            d'œuvre & les prix matériaux moyens France 2026.
+            O orçamento retoma automaticamente as áreas medidas e aplica a mão de obra & os preços de materiais médios França 2026.
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-2 border-b border-border pb-2">
@@ -51,19 +50,19 @@ export function QuoteDialog({
                   onClick={() => setQuoteMode("download")}
                   data-testid="quote-mode-download"
                   className={`rounded-sm gap-1 ${quoteMode === "download" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
-            <FileDown className="h-3 w-3" /> Télécharger
+            <FileDown className="h-3 w-3" /> Descarregar
           </Button>
           <Button size="sm" variant={quoteMode === "send" ? "default" : "ghost"}
                   onClick={() => setQuoteMode("send")}
                   data-testid="quote-mode-send"
                   className={`rounded-sm gap-1 ${quoteMode === "send" ? "bg-primary text-white hover:bg-orange-600" : ""}`}>
-            Envoyer au client
+            Enviar ao cliente
           </Button>
         </div>
 
         {templates.length > 0 && (
           <div className="border border-border rounded-sm p-3 bg-secondary/30" data-testid="templates-picker">
-            <p className="overline mb-2">Modèles de devis</p>
+            <p className="overline mb-2">Modelos de orçamento</p>
             <div className="flex flex-wrap gap-1">
               {templates.map(t => (
                 <div key={t.template_id}
@@ -91,20 +90,20 @@ export function QuoteDialog({
         )}
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Gamme de finition</Label>
+            <Label>Gama de acabamento</Label>
             <Select value={quoteFinish} onValueChange={setQuoteFinish}>
               <SelectTrigger data-testid="quote-finish-select" className="rounded-sm h-11">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="eco">Éco (petit budget)</SelectItem>
-                <SelectItem value="std">Standard (recommandé)</SelectItem>
-                <SelectItem value="premium">Premium (haut de gamme)</SelectItem>
+                <SelectItem value="eco">Eco (orçamento reduzido)</SelectItem>
+                <SelectItem value="std">Standard (recomendado)</SelectItem>
+                <SelectItem value="premium">Premium (topo de gama)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>Matériau du sol</Label>
+            <Label>Material do pavimento</Label>
             <Select value={quoteFloor} onValueChange={setQuoteFloor}>
               <SelectTrigger data-testid="quote-floor-select" className="rounded-sm h-11">
                 <SelectValue />
@@ -121,36 +120,36 @@ export function QuoteDialog({
               <div className="grid gap-2">
                 <Label>Objet email (optionnel)</Label>
                 <Input value={quoteSubject} onChange={(e) => setQuoteSubject(e.target.value)}
-                       placeholder="Ex : Votre devis pour la rénovation appartement Paris 11"
+                       placeholder="Ex: O seu orçamento para a renovação apartamento Paris 11"
                        maxLength={180}
                        data-testid="quote-subject-input" className="rounded-sm h-11" />
                 <p className="text-[10px] text-muted-foreground">
-                  Vide → « Devis · {`{société}`} ». Personnalisez pour un rendu plus pro.
+                  Vazio → « Orçamento · {`{société}`} ». Personalize para um resultado mais profissional.
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label>Introduction personnalisée (optionnel)</Label>
+                <Label>Introdução personalizada (opcional)</Label>
                 <textarea value={quoteIntro} onChange={(e) => setQuoteIntro(e.target.value)}
-                       placeholder="Suite à notre échange téléphonique, voici notre proposition détaillée pour..."
+                       placeholder="Na sequência da nossa conversa telefónica, segue a nossa proposta detalhada para..."
                        rows={2} maxLength={500}
                        data-testid="quote-intro-input"
                        className="rounded-sm text-sm p-2 border border-border bg-background" />
               </div>
               <div className="grid gap-2">
-                <Label>Email du client *</Label>
+                <Label>Email do cliente *</Label>
                 <Input value={quoteClientEmail} onChange={(e) => setQuoteClientEmail(e.target.value)}
                        placeholder="client@exemple.fr" type="email"
                        data-testid="quote-client-email" className="rounded-sm h-11" />
               </div>
               <div className="grid gap-2">
-                <Label>Nom du client (optionnel)</Label>
+                <Label>Nome do cliente (opcional)</Label>
                 <Input value={quoteClientName} onChange={(e) => setQuoteClientName(e.target.value)}
                        placeholder="M. Dupont"
                        data-testid="quote-client-name" className="rounded-sm h-11" />
               </div>
               <div className="grid gap-2">
                 <Label>
-                  Adresse du client{quoteIncludeTva && <span className="text-primary"> *</span>}
+                  Morada do cliente{quoteIncludeTva && <span className="text-primary"> *</span>}
                 </Label>
                 <textarea value={quoteClientAddress} onChange={(e) => setQuoteClientAddress(e.target.value)}
                        placeholder="12 rue de la Paix — 75002 Paris"
@@ -159,9 +158,9 @@ export function QuoteDialog({
                        className="rounded-sm text-sm p-2 border border-border bg-background" />
               </div>
               <div className="grid gap-2">
-                <Label>Message complémentaire (optionnel)</Label>
+                <Label>Mensagem complementar (opcional)</Label>
                 <textarea value={quoteMessage} onChange={(e) => setQuoteMessage(e.target.value)}
-                       placeholder="Nous restons disponibles pour toute question..."
+                       placeholder="Ficamos disponíveis para qualquer questão..."
                        rows={2} maxLength={500}
                        data-testid="quote-message"
                        className="rounded-sm text-sm p-2 border border-border bg-background" />
@@ -173,10 +172,9 @@ export function QuoteDialog({
                        data-testid="quote-tva-checkbox"
                        className="accent-primary h-4 w-4 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-xs font-bold">Joindre l'attestation TVA à taux réduit (10 %)</p>
+                  <p className="text-xs font-bold">Anexar a declaração de IVA a taxa reduzida (6 %)</p>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Requise pour bénéficier du taux 10 % en rénovation logement &gt; 2 ans
-                    (art. 279-0 bis CGI). Le client la signe et vous la retourne avant facturation.
+                    Necessária para beneficiar da taxa de 6 % nas empreitadas de reabilitação de habitação (verba 2.27 da Lista I do CIVA). O cliente assina-a e devolve-lha antes da faturação.
                   </p>
                 </div>
               </label>
@@ -191,23 +189,23 @@ export function QuoteDialog({
                          className="accent-primary h-4 w-4 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-xs font-bold">
-                      🎬 Joindre le tour vidéo 3D ({(latestVideo.size_bytes / 1024 / 1024).toFixed(1)} Mo)
+                      🎬 Anexar o tour vídeo 3D ({(latestVideo.size_bytes / 1024 / 1024).toFixed(1)} Mo)
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1">
                       {latestVideo.duration_s}s · Styles : {(latestVideo.styles || []).join(", ") || "—"}
-                      {latestVideo.has_watermark && " · avec filigrane"}
-                      {latestVideo.has_audio && " · avec musique"}
+                      {latestVideo.has_watermark && "· com marca de água"}
+                      {latestVideo.has_audio && "· com música"}
                     </p>
                   </div>
                 </label>
               )}
               <p className="text-[11px] text-muted-foreground border border-border p-2 rounded-sm">
-                Une copie sera envoyée à votre adresse pour trace. L'envoi est loggé dans l'historique.
+                Uma cópia será enviada para o seu endereço para registo. O envio fica registado no histórico.
               </p>
 
               {quoteSends.length > 0 && (
                 <div className="border border-border rounded-sm p-3" data-testid="sends-history">
-                  <p className="overline mb-2">Historique des envois ({quoteSends.length})</p>
+                  <p className="overline mb-2">Histórico de envios ({quoteSends.length})</p>
                   <div className="grid gap-1 max-h-40 overflow-y-auto">
                     {quoteSends.map(s => (
                       <div key={s.log_id}
@@ -222,7 +220,7 @@ export function QuoteDialog({
                         <div className="flex gap-1 shrink-0">
                           {s.signed && (
                             <span className="bg-primary text-white px-1.5 py-0.5 rounded-sm text-[9px]"
-                                  data-testid={`sign-badge-${s.log_id}`}>Signé</span>
+                                  data-testid={`sign-badge-${s.log_id}`}>Assinado</span>
                           )}
                           {!s.signed && s.opened && (
                             <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-1.5 py-0.5 rounded-sm text-[9px]"
@@ -247,17 +245,17 @@ export function QuoteDialog({
           )}
 
           <div className="border border-dashed border-border rounded-sm p-3">
-            <p className="overline mb-2">Enregistrer comme modèle</p>
+            <p className="overline mb-2">Guardar como modelo</p>
             <div className="flex gap-2 items-center">
               <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)}
-                     placeholder="Ex : Rénovation T3 standard"
+                     placeholder="Ex: Renovação T3 standard"
                      maxLength={80}
                      data-testid="template-name-input"
                      className="rounded-sm h-9 text-xs" />
               <Button size="sm" onClick={saveTemplate} disabled={!templateName.trim()}
                       data-testid="template-save-btn"
                       className="rounded-sm hover:bg-orange-600 hover:text-white">
-                Enregistrer
+                Guardar
               </Button>
             </div>
             <label className="flex items-center gap-1 text-[10px] mt-2 cursor-pointer text-muted-foreground">
@@ -265,30 +263,29 @@ export function QuoteDialog({
                      onChange={(e) => setTemplateShared(e.target.checked)}
                      data-testid="template-shared-checkbox"
                      className="accent-primary h-3 w-3" />
-              Partager avec toute mon équipe (organisation)
+              Partilhar com toda a minha equipa (organização)
             </label>
           </div>
 
           <p className="text-xs text-muted-foreground border border-border p-3 rounded-sm bg-secondary/30">
-            Inclus par défaut : placo/plâtre, peinture, sol, plinthes. TVA à 10 %
-            (rénovation logement &gt; 2 ans).
+            Incluído por omissão: pladur/estuque, pintura, pavimento, rodapés. IVA a 6 % (reabilitação de habitação, verba 2.27 CIVA).
           </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-sm">
-            Annuler
+            Cancelar
           </Button>
           {quoteMode === "download" ? (
             <Button onClick={downloadQuotePdf} disabled={quoteBusy} data-testid="quote-download-btn"
                     className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               <FileDown className="h-4 w-4" />
-              {quoteBusy ? "Génération…" : "Télécharger"}
+              {quoteBusy ? "Geração…" : "Descarregar"}
             </Button>
           ) : (
             <Button onClick={sendQuotePdf} disabled={quoteBusy || !quoteClientEmail}
                     data-testid="quote-send-btn"
                     className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              {quoteBusy ? "Envoi…" : "Envoyer au client"}
+              {quoteBusy ? "Envoi…" : "Enviar ao cliente"}
             </Button>
           )}
         </DialogFooter>

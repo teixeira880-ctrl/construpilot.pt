@@ -25,7 +25,7 @@ import { SavingsCard } from "@/components/SavingsCard";
 import { Stat } from "@/components/Bits";
 
 const NEXT = { todo: "doing", doing: "done", done: "todo" };
-const LABEL = { todo: "⏳ À faire", doing: "🔄 En cours", done: "✅ Terminé" };
+const LABEL = { todo: "⏳ A fazer", doing: "🔄 En cours", done: "✅ Terminado" };
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -63,17 +63,17 @@ export default function ProjectDetail() {
     try {
       const { project, queued } = await patchProject(user?.user_id, id, { progress }, `Progression ${key}`);
       if (project) setP(project);
-      if (queued) toast.info("Modification enregistrée hors connexion.");
-    } catch { toast.error("Mise à jour impossible."); }
+      if (queued) toast.info("Alteração guardada offline.");
+    } catch { toast.error("Atualização impossível."); }
   };
 
   const saveNotes = async () => {
     setBusy("notes");
     try {
-      const { project, queued } = await patchProject(user?.user_id, id, { notes }, "Notes de chantier");
+      const { project, queued } = await patchProject(user?.user_id, id, { notes }, "Notas de obra");
       if (project) setP(project);
-      toast[queued ? "info" : "success"](queued ? "Notes enregistrées hors connexion." : "Notes enregistrées.");
-    } catch { toast.error("Enregistrement impossible."); }
+      toast[queued ? "info" : "success"](queued ? "Notas guardadas offline." : "Notas guardadas.");
+    } catch { toast.error("Gravação impossível."); }
     finally { setBusy(""); }
   };
 
@@ -82,8 +82,8 @@ export default function ProjectDetail() {
     try {
       const { data } = await api.post(`/projects/${id}/advice`);
       setP({ ...p, advice: data.advice });
-      toast.success("Conseils IA générés");
-    } catch { toast.error("Génération impossible"); }
+      toast.success("Conselhos IA gerados");
+    } catch { toast.error("Impossível gerar"); }
     finally { setBusy(""); }
   };
 
@@ -93,8 +93,8 @@ export default function ProjectDetail() {
       const { data } = await api.post("/estimation/materials", { lots: p.estimation.lots });
       setMaterials(data.items);
       await api.patch(`/projects/${id}`, { materials: data.items });
-      toast.success(`${data.items.length} lignes de matériaux générées`);
-    } catch { toast.error("Génération impossible"); }
+      toast.success(`${data.items.length}linhas de materiais geradas`);
+    } catch { toast.error("Impossível gerar"); }
     finally { setBusy(""); }
   };
 
@@ -105,7 +105,7 @@ export default function ProjectDetail() {
         items: materials.map((m) => ({ query: m.search, quantity: Math.ceil(m.quantity), name: m.name })),
       });
       setOptim(data);
-    } catch { toast.error("Optimisation impossible"); }
+    } catch { toast.error("Otimização impossível"); }
     finally { setBusy(""); }
   };
 
@@ -116,7 +116,7 @@ export default function ProjectDetail() {
     });
     setBudget(data);
     setExp({ label: "", amount: "" });
-    toast.success("Dépense ajoutée");
+    toast.success("Despesa adicionada");
   };
 
   const downloadPdf = async () => {
@@ -129,7 +129,7 @@ export default function ProjectDetail() {
       a.download = `Estimation-ConstruPilot-${p.name}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("PDF généré");
+      toast.success("PDF gerado");
     } catch { toast.error("PDF indisponible"); }
     finally { setBusy(""); }
   };
@@ -146,7 +146,7 @@ export default function ProjectDetail() {
         </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={downloadPdf} disabled={busy === "pdf"} data-testid="download-pdf-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Download className="h-4 w-4" /> {busy === "pdf" ? "Génération…" : "Télécharger le PDF"}
+            <Download className="h-4 w-4" /> {busy === "pdf" ? "Geração…" : "Descarregar o PDF"}
           </Button>
           <EmailPdfDialog project={{ name: p.name, city: p.city, description: p.description }} estimation={p.estimation} advice={p.advice || ""} />
           <WhatsAppShare project={{ name: p.name, city: p.city, surface: p.surface }} estimation={p.estimation} projectId={p.project_id} />
@@ -158,10 +158,10 @@ export default function ProjectDetail() {
         <div className="grid gap-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
             <Stat label="Budget initial" value={eur(budget.initial)} testId="budget-initial" />
-            <Stat label="Dépensé" value={eur(budget.spent)} testId="budget-spent" />
+            <Stat label="Gasto" value={eur(budget.spent)} testId="budget-spent" />
             <Stat label="Restant" value={eur(budget.remaining)} testId="budget-remaining" accent />
-            <Stat label="Prévision finale" value={eur(budget.forecast)} testId="budget-forecast" />
-            <Stat label="Dépassement probable" value={eur(budget.overrun)} sub={`${budget.progress_pct} % réalisé`} testId="budget-overrun" />
+            <Stat label="Previsão final" value={eur(budget.forecast)} testId="budget-forecast" />
+            <Stat label="Ultrapassagem provável" value={eur(budget.overrun)} sub={`${budget.progress_pct}% realizado`} testId="budget-overrun" />
           </div>
           <div className="surface p-6">
             <div className="flex items-center gap-4">
@@ -177,10 +177,10 @@ export default function ProjectDetail() {
               </p>
             )}
             <div className="mt-6 flex flex-wrap gap-3 items-end">
-              <Input placeholder="Libellé de la dépense" value={exp.label} onChange={(e) => setExp({ ...exp, label: e.target.value })} data-testid="expense-label-input" className="rounded-sm max-w-xs" />
-              <Input type="number" placeholder="Montant €" value={exp.amount} onChange={(e) => setExp({ ...exp, amount: e.target.value })} data-testid="expense-amount-input" className="rounded-sm max-w-[140px] num" />
+              <Input placeholder="Designação da despesa" value={exp.label} onChange={(e) => setExp({ ...exp, label: e.target.value })} data-testid="expense-label-input" className="rounded-sm max-w-xs" />
+              <Input type="number" placeholder="Montante €" value={exp.amount} onChange={(e) => setExp({ ...exp, amount: e.target.value })} data-testid="expense-amount-input" className="rounded-sm max-w-[140px] num" />
               <Button onClick={addExpense} variant="outline" data-testid="add-expense-btn" className="rounded-sm gap-2">
-                <Plus className="h-4 w-4" /> Ajouter
+                <Plus className="h-4 w-4" /> Adicionar
               </Button>
             </div>
             {budget.expenses?.length > 0 && (
@@ -205,9 +205,9 @@ export default function ProjectDetail() {
         <TabsList className="rounded-sm flex-wrap h-auto">
           <TabsTrigger value="works" className="rounded-sm" data-testid="pd-tab-works">Travaux & progression</TabsTrigger>
           <TabsTrigger value="estimation" className="rounded-sm" data-testid="pd-tab-estimation">Estimation</TabsTrigger>
-          <TabsTrigger value="materials" className="rounded-sm" data-testid="pd-tab-materials">Matériaux & panier</TabsTrigger>
-          <TabsTrigger value="photos" className="rounded-sm" data-testid="pd-tab-photos">Photos avant/après</TabsTrigger>
-          <TabsTrigger value="timeline" className="rounded-sm" data-testid="pd-tab-timeline">Chantier timeline</TabsTrigger>
+          <TabsTrigger value="materials" className="rounded-sm" data-testid="pd-tab-materials">Materiais e cesto</TabsTrigger>
+          <TabsTrigger value="photos" className="rounded-sm" data-testid="pd-tab-photos">Fotos antes/depois</TabsTrigger>
+          <TabsTrigger value="timeline" className="rounded-sm" data-testid="pd-tab-timeline">Cronologia da obra</TabsTrigger>
           <TabsTrigger value="advice" className="rounded-sm" data-testid="pd-tab-advice">Conseils IA</TabsTrigger>
         </TabsList>
 
@@ -229,13 +229,13 @@ export default function ProjectDetail() {
           </div>
           <div className="surface p-5 mt-5" data-testid="chantier-notes-card">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-display font-semibold">Notes de chantier</h3>
-              {offline && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" data-testid="chantier-notes-offline"><CloudOff className="h-3.5 w-3.5" /> hors connexion</span>}
+              <h3 className="font-display font-semibold">Notas de obra</h3>
+              {offline && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" data-testid="chantier-notes-offline"><CloudOff className="h-3.5 w-3.5" /> offline</span>}
             </div>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Observations, relevés, points à vérifier sur le chantier…"
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Observações, levantamentos, pontos a verificar na obra…"
               className="mt-3" data-testid="chantier-notes-input" />
             <Button onClick={saveNotes} disabled={busy === "notes" || notes === (p.notes || "")} className="mt-3 gap-2" data-testid="chantier-notes-save">
-              <Save className="h-4 w-4" /> {busy === "notes" ? "Enregistrement…" : "Enregistrer les notes"}
+              <Save className="h-4 w-4" /> {busy === "notes" ? "Enregistrement…" : "Guardar as notas"}
             </Button>
           </div>
         </TabsContent>
@@ -247,12 +247,12 @@ export default function ProjectDetail() {
         <TabsContent value="materials" className="mt-6 grid gap-6">
           <div className="flex flex-wrap gap-3">
             <Button onClick={buildMaterials} disabled={busy === "materials"} data-testid="build-materials-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <Package className="h-4 w-4" /> {busy === "materials" ? "Calcul…" : "Générer ma liste d'achats"}
+              <Package className="h-4 w-4" /> {busy === "materials" ? "Calcul…" : "Gerar a minha lista de compras"}
             </Button>
             {materials.length > 0 && (
               <Button variant="outline" onClick={optimize} disabled={busy === "optimize"} data-testid="optimize-cart-btn" className="rounded-sm gap-2">
                 {busy === "optimize" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                Optimiser mes achats
+                Otimizar as minhas compras
               </Button>
             )}
           </div>
@@ -262,10 +262,10 @@ export default function ProjectDetail() {
               <Table data-testid="materials-table">
                 <TableHeader>
                   <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                    <TableHead>Matériau</TableHead>
-                    <TableHead className="text-right">Quantité</TableHead>
-                    <TableHead>Unité</TableHead>
-                    <TableHead>Recherche fournisseur</TableHead>
+                    <TableHead>Material</TableHead>
+                    <TableHead className="text-right">Quantidade</TableHead>
+                    <TableHead>Un.</TableHead>
+                    <TableHead>Pesquisa de fornecedor</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -286,15 +286,15 @@ export default function ProjectDetail() {
             <div className="grid gap-4" data-testid="optimization-result">
               <div className="grid sm:grid-cols-3 gap-4">
                 <div className="surface p-6">
-                  <p className="overline text-muted-foreground">Tout chez {optim.best_single?.supplier}</p>
+                  <p className="overline text-muted-foreground">Tudo em {optim.best_single?.supplier}</p>
                   <p className="num mt-3 text-2xl font-bold">{eur(optim.best_single?.total)}</p>
                 </div>
                 <div className="surface p-6 border-primary">
-                  <p className="overline">Chez {optim.multi_supplier.suppliers_count} fournisseurs</p>
+                  <p className="overline">Em {optim.multi_supplier.suppliers_count} fournisseurs</p>
                   <p className="num mt-3 text-2xl font-bold text-primary">{eur(optim.multi_supplier.total)}</p>
                 </div>
                 <div className="surface p-6">
-                  <p className="overline text-muted-foreground">Économie</p>
+                  <p className="overline text-muted-foreground">Poupança</p>
                   <p className="num mt-3 text-2xl font-bold text-emerald-500">{eur(optim.savings)}</p>
                   <p className="num mt-1 text-xs text-muted-foreground">soit {optim.savings_pct} %</p>
                 </div>
@@ -304,9 +304,9 @@ export default function ProjectDetail() {
                   <TableHeader>
                     <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                       <TableHead>Produit</TableHead>
-                      <TableHead className="text-right">Qté</TableHead>
-                      <TableHead>Meilleur fournisseur</TableHead>
-                      <TableHead className="text-right">Prix unitaire</TableHead>
+                      <TableHead className="text-right">Qtd.</TableHead>
+                      <TableHead>Melhor fornecedor</TableHead>
+                      <TableHead className="text-right">Preço unitário</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead>Stock</TableHead>
                     </TableRow>
@@ -326,8 +326,7 @@ export default function ProjectDetail() {
                 </Table>
               </div>
               <p className="text-xs text-muted-foreground">
-                Source : connecteur de démonstration (mode {optim.mode}) — frais de livraison et minimums de
-                commande inclus. Vérifié le {new Date(optim.checked_at).toLocaleString("fr-FR")}.
+                Fonte: conector de demonstração (modo {optim.mode}) — custos de entrega e mínimos de encomenda incluídos. Verificado a {new Date(optim.checked_at).toLocaleString("fr-FR")}.
               </p>
             </div>
           )}
@@ -344,7 +343,7 @@ export default function ProjectDetail() {
         <TabsContent value="advice" className="mt-6">
           <div className="surface p-8">
             <Button onClick={genAdvice} disabled={busy === "advice"} data-testid="generate-advice-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <Sparkles className="h-4 w-4" /> {busy === "advice" ? "Génération…" : "Générer les conseils ConstruPilot"}
+              <Sparkles className="h-4 w-4" /> {busy === "advice" ? "Geração…" : "Gerar os conselhos ConstruPilot"}
             </Button>
             {p.advice && (
               <div className="mt-8 grid gap-3 text-sm" data-testid="advice-content">

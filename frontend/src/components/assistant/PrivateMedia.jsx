@@ -38,7 +38,7 @@ export const PrivateImage = ({ path, title, testId, small = false }) => {
     </button>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent data-testid={`${id}-dialog`} className="max-w-4xl max-h-[90vh]">
       <DialogTitle className="text-base break-words pr-8">{title}</DialogTitle>{url && <img src={url} alt={title} className="w-full max-h-[70vh] object-contain" data-testid={`${id}-full-image`} />}
-      <div className="flex justify-end"><Button size="sm" onClick={() => setOpen(false)} data-testid={`${id}-close`}><X size={15} /> Fermer et revenir au chat</Button></div>
+      <div className="flex justify-end"><Button size="sm" onClick={() => setOpen(false)} data-testid={`${id}-close`}><X size={15} /> Fechar e voltar ao chat</Button></div>
     </DialogContent></Dialog>
   </>;
 };

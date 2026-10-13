@@ -91,7 +91,7 @@ export default function BlogPost() {
             {new Date(article.published).toLocaleDateString("fr-FR", { day:"numeric", month:"long", year:"numeric" })}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" /> {article.readingMinutes} {isPT ? "min de leitura" : "min de lecture"}
+            <Clock className="h-3 w-3" /> {article.readingMinutes} {isPT ? "min de leitura" : "min de leitura"}
           </span>
         </div>
 
@@ -105,9 +105,9 @@ export default function BlogPost() {
         {/* CTA in-article */}
         <div className="mt-12 surface p-6 grid md:grid-cols-[1fr_auto] gap-4 items-center border-primary/40">
           <div>
-            <p className="font-display font-bold text-lg">Prêt à chiffrer votre chantier ?</p>
+            <p className="font-display font-bold text-lg">Pronto para orçamentar a sua obra?</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Décrivez votre projet — ConstruPilot vous rend un devis chiffré en 30 secondes, gratuit.
+              Descreva o seu projeto — ConstruPilot devolve-lhe um orçamento calculado em 30 segundos, gratuito.
             </p>
           </div>
           <Link to="/smart-project">
@@ -123,7 +123,7 @@ export default function BlogPost() {
             <Link to={`/blog/${prev.slug}`}
                   data-testid="blog-prev-link"
                   className="surface p-4 hover:border-primary transition-colors group">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">← {isPT ? "Anterior" : "Précédent"}</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">← {isPT ? "Anterior" : "Anterior"}</span>
               <p className="mt-1 font-display font-semibold group-hover:text-primary transition-colors">
                 {prev.title}
               </p>
@@ -133,7 +133,7 @@ export default function BlogPost() {
             <Link to={`/blog/${next.slug}`}
                   data-testid="blog-next-link"
                   className="surface p-4 hover:border-primary transition-colors group text-right">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{isPT ? "Seguinte" : "Suivant"} →</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{isPT ? "Seguinte" : "Seguinte"} →</span>
               <p className="mt-1 font-display font-semibold group-hover:text-primary transition-colors">
                 {next.title}
               </p>

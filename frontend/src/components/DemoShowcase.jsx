@@ -40,13 +40,13 @@ export const DemoShowcase = () => {
     <section className="max-w-6xl mx-auto px-5 w-full py-14" data-testid="demo-showcase">
       <div className="text-center mb-8">
         <p className="text-xs uppercase tracking-widest text-primary font-semibold flex items-center justify-center gap-2">
-          <Film className="h-4 w-4" /> Visite guidée
+          <Film className="h-4 w-4" /> Visita guiada
         </p>
         <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight mt-2">
-          Découvrez ConstruPilot en vidéo
+          Descubra o ConstruPilot em vídeo
         </h2>
         <p className="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">
-          Une démonstration narrée de toutes les fonctions — cliquez un chapitre pour y accéder directement.
+          Uma demonstração narrada de todas as funções — clique num capítulo para lá aceder diretamente.
         </p>
       </div>
 
@@ -70,7 +70,7 @@ export const DemoShowcase = () => {
             data-testid="demo-sound-toggle"
             className="absolute top-3 left-3 inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground text-xs font-semibold px-3.5 py-2 shadow-lg hover:scale-105 transition-transform"
           >
-            {muted ? <><Volume2 className="h-4 w-4" /> Activer le son</> : <><VolumeX className="h-4 w-4" /> Couper le son</>}
+            {muted ? <><Volume2 className="h-4 w-4" /> Ativar o som</> : <><VolumeX className="h-4 w-4" /> Cortar o som</>}
           </button>
         </div>
 
@@ -79,7 +79,7 @@ export const DemoShowcase = () => {
             <p className="text-sm font-semibold">Chapitres</p>
             <a href={data.video} download data-testid="demo-download"
                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
-              <Download className="h-3.5 w-3.5" /> Télécharger (MP4)
+              <Download className="h-3.5 w-3.5" /> Transferir (MP4)
             </a>
           </div>
           <div className="grid gap-1.5 max-h-[430px] overflow-auto pr-1">

@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { usePostalCopy } from "./postalCopy";
 
 const STAGES = ["accepted", "printed", "posted", "delivered"];
-const MODE_LABELS = { normal: "Lettre simple", suivi: "Lettre suivie", lrar: "Recommandé (LRAR)" };
-const STATUS_LABELS = { submitting: "Vérification requise — demande en cours", unknown: "Résultat à vérifier — ne pas renvoyer", rejected: "Refusé · non envoyé" };
+const MODE_LABELS = { normal: "Lettre simple", suivi: "Lettre suivie", lrar: "Registado (LRAR)" };
+const STATUS_LABELS = { submitting: "Verificação necessária — pedido em curso", unknown: "Resultado por verificar — não reenviar", rejected: "Recusado · não enviado" };
 
 export const PostalTimeline = ({ send }) => {
   const ui = usePostalCopy();
@@ -50,7 +50,7 @@ export const PostalTrackingPanel = () => {
   useEffect(() => { load(); }, [load]);
   const refresh = async () => {
     setBusy(true);
-    try { const { data } = await api.post("/radar/postal/tracking/refresh", {}, { timeout: 60000 }); if (data.errors) toast.warning("Suivi partiellement actualisé"); await load(); }
+    try { const { data } = await api.post("/radar/postal/tracking/refresh", {}, { timeout: 60000 }); if (data.errors) toast.warning("Acompanhamento parcialmente atualizado"); await load(); }
     catch { toast.error("Suivi indisponible"); } finally { setBusy(false); }
   };
   return <div className="mt-4 border-t border-border pt-3" data-testid="postal-tracking-panel">

@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Gauge, Loader2, Play, RefreshCw, ExternalLink, ShieldCheck, TrendingUp, TrendingDown } from "lucide-react";
 
 const STATUS = {
-  ok: { cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", label: "Cohérent" },
-  warning: { cls: "bg-destructive/15 text-destructive border-destructive/30", label: "Écart" },
-  undetermined: { cls: "bg-muted text-muted-foreground border-border", label: "Indéterminé" },
+  ok: { cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", label: "Coerente" },
+  warning: { cls: "bg-destructive/15 text-destructive border-destructive/30", label: "Desvio" },
+  undetermined: { cls: "bg-muted text-muted-foreground border-border", label: "Indeterminado" },
 };
 
 const fmt = (n) => (n === null || n === undefined ? "—" : `${Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
@@ -46,11 +46,11 @@ export default function CalcAuditorPanel() {
     setRunning(true);
     try {
       const { data } = await api.post("/admin/calc-audit/run");
-      toast.success(data.already ? "Audit déjà en cours" : "Audit lancé", { description: "Comparaison des prix de référence au marché (Perplexity)." });
+      toast.success(data.already ? "Auditoria já em curso" : "Auditoria lançada", { description: "Comparação dos preços de referência com o mercado (Perplexity)." });
       load();
     } catch (e) {
       setRunning(false);
-      toast.error(e?.response?.data?.detail || "Lancement impossible");
+      toast.error(e?.response?.data?.detail || "Lançamento impossível");
     }
   };
 
@@ -62,14 +62,14 @@ export default function CalcAuditorPanel() {
       <div className="flex items-start gap-3">
         <span className="h-11 w-11 rounded-lg bg-primary/10 grid place-items-center shrink-0"><Gauge className="h-6 w-6 text-primary" /></span>
         <div className="flex-1">
-          <h2 className="font-display text-2xl font-bold">Auditeur de cohérence des calculs</h2>
+          <h2 className="font-display text-2xl font-bold">Auditor de coerência dos cálculos</h2>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Compare les <strong>prix de référence</strong> des moteurs déterministes au prix de <strong>marché actuel</strong> (France, via recherche web Perplexity avec sources) et signale les écarts supérieurs à ±{threshold} %.
+            Compara os <strong>preços de referência</strong> dos motores determinísticos com o preço de <strong>mercado atual</strong> (Portugal, via pesquisa web Perplexity com fontes) e assinala as diferenças superiores a ±{threshold} %.
           </p>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Zéro hallucination : les prix de marché proviennent du web (citations). Les quantités des moteurs restent déterministes.</p>
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Zero alucinações: os preços de mercado vêm da web (citações). As quantidades dos motores continuam determinísticas.</p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="icon" onClick={load} title="Rafraîchir" data-testid="calc-auditor-refresh"><RefreshCw className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={load} title="Atualizar" data-testid="calc-auditor-refresh"><RefreshCw className="h-4 w-4" /></Button>
           <Button onClick={runNow} disabled={running || !configured} className="gap-2" data-testid="calc-auditor-run">
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {running ? "Audit en cours…" : "Lancer l'audit"}
           </Button>
@@ -78,7 +78,7 @@ export default function CalcAuditorPanel() {
 
       {!configured && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700" data-testid="calc-auditor-unconfigured">
-          Perplexity n'est pas configuré (PERPLEXITY_API_KEY). L'audit ne peut pas récupérer les prix de marché.
+          O Perplexity não está configurado (PERPLEXITY_API_KEY). A auditoria não consegue obter os preços de mercado.
         </div>
       )}
 
@@ -86,10 +86,10 @@ export default function CalcAuditorPanel() {
       {audit && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="calc-auditor-summary">
           {[
-            { k: "total", label: "Articles audités", val: sum.total ?? items.length },
-            { k: "ok", label: "Cohérents", val: sum.ok ?? 0, cls: "text-emerald-600" },
-            { k: "warning", label: "Écarts signalés", val: sum.warning ?? 0, cls: "text-destructive" },
-            { k: "undetermined", label: "Indéterminés", val: sum.undetermined ?? 0, cls: "text-muted-foreground" },
+            { k: "total", label: "Artigos auditados", val: sum.total ?? items.length },
+            { k: "ok", label: "Coerentes", val: sum.ok ?? 0, cls: "text-emerald-600" },
+            { k: "warning", label: "Diferenças assinaladas", val: sum.warning ?? 0, cls: "text-destructive" },
+            { k: "undetermined", label: "Indeterminados", val: sum.undetermined ?? 0, cls: "text-muted-foreground" },
           ].map((c) => (
             <div key={c.k} className="rounded-lg border border-border bg-card p-4">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{c.label}</p>
@@ -101,18 +101,18 @@ export default function CalcAuditorPanel() {
 
       {audit && (
         <p className="text-xs text-muted-foreground">
-          Dernière audit : {audit.started_at ? new Date(audit.started_at).toLocaleString("fr-FR") : "—"}
-          {audit.triggered_by ? ` · déclenchée par ${audit.triggered_by === "scheduler" ? "le planificateur (quotidien)" : "l'administrateur"}` : ""}
+          Última auditoria: {audit.started_at ? new Date(audit.started_at).toLocaleString("fr-FR") : "—"}
+          {audit.triggered_by ? `· desencadeada por${audit.triggered_by === "scheduler" ? "o agendador (diário)" : "l'administrateur"}` : ""}
           {audit.status === "running" ? " · en cours…" : ""}
         </p>
       )}
 
       {/* Tableau des résultats */}
       {loading ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
+        <p className="text-sm text-muted-foreground">A carregar…</p>
       ) : !audit ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground" data-testid="calc-auditor-empty">
-          Aucune audit pour l'instant. Cliquez sur « Lancer l'audit » (ou attendez l'exécution automatique quotidienne).
+          Nenhuma auditoria por agora. Clique em «Lançar a auditoria» (ou aguarde a execução automática diária).
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border" data-testid="calc-auditor-table">
@@ -120,11 +120,11 @@ export default function CalcAuditorPanel() {
             <thead className="bg-secondary/60">
               <tr className="text-left">
                 <th className="p-3 font-semibold">Article</th>
-                <th className="p-3 font-semibold">Unité</th>
-                <th className="p-3 font-semibold text-right">Prix moteur</th>
-                <th className="p-3 font-semibold text-right">Prix marché</th>
-                <th className="p-3 font-semibold text-right">Écart</th>
-                <th className="p-3 font-semibold">État</th>
+                <th className="p-3 font-semibold">Un.</th>
+                <th className="p-3 font-semibold text-right">Preço do motor</th>
+                <th className="p-3 font-semibold text-right">Preço de mercado</th>
+                <th className="p-3 font-semibold text-right">Desvio</th>
+                <th className="p-3 font-semibold">Estado</th>
                 <th className="p-3 font-semibold">Sources</th>
               </tr>
             </thead>

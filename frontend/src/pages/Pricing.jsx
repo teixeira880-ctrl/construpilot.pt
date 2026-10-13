@@ -135,7 +135,7 @@ export default function Pricing() {
         origin_url: window.location.origin,
         promo_code: promo || undefined,
       });
-      if (data.promo_rejected) toast.info("Code promo réservé aux premiers abonnements — paiement au tarif normal.");
+      if (data.promo_rejected) toast.info("Código promocional reservado às primeiras subscrições — pagamento à tarifa normal.");
       window.location.href = data.url;
     } catch (err) {
       toast.error(err?.response?.data?.detail || t("pricing.checkout_fail"));
@@ -146,9 +146,9 @@ export default function Pricing() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Tarifs et abonnements ConstruPilot"
-        description="Offre gratuite pour démarrer, Premium pour les particuliers, Pro et Pro Business pour les artisans : détail des fonctions incluses dans chaque plan, sans engagement."
-        keywords="prix logiciel devis, tarif construpilot, abonnement artisan, logiciel BTP gratuit, prix outil estimation travaux"
+        title="Preços e subscrições ConstruPilot"
+        description="Oferta gratuita para começar, Premium para particulares, Pro e Pro Business para profissionais: detalhe das funções incluídas em cada plano, sem fidelização."
+        keywords="preço software orçamentos, preço construpilot, subscrição profissional, software construção gratuito, preço ferramenta estimativa obras"
         canonical="/tarifs"
       />
       <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
@@ -157,8 +157,8 @@ export default function Pricing() {
       <OfferNotice lang={lang} className="max-w-2xl mx-auto -mt-4" />
       {promo && (
         <div className="surface border-primary/40 rounded-md p-4 text-center max-w-xl mx-auto -mt-4" data-testid="pricing-promo-banner">
-          <p className="text-sm">Votre code promo <b className="num tracking-wider text-primary">{promo}</b> sera appliqué automatiquement au paiement.</p>
-          <p className="text-xs text-muted-foreground mt-1">Choisissez votre plan ci-dessous : la réduction apparaît directement sur la page de paiement sécurisée.</p>
+          <p className="text-sm">O seu código promocional <b className="num tracking-wider text-primary">{promo}</b> será aplicado automaticamente ao pagamento.</p>
+          <p className="text-xs text-muted-foreground mt-1">Escolha o seu plano abaixo: a redução aparece diretamente na página de pagamento seguro.</p>
         </div>
       )}
 
@@ -184,11 +184,11 @@ export default function Pricing() {
       {audience === "pro" && (
         <div className="surface p-5 rounded-sm border-primary/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-3xl mx-auto" data-testid="pricing-pro-offer-banner">
           <div>
-            <p className="font-display font-bold">Vous êtes un pro du BTP ?</p>
-            <p className="text-sm text-muted-foreground">Découvrez le détail de l'offre Pro, l'essai de 7 jours et les conditions de facturation.</p>
+            <p className="font-display font-bold">É profissional da construção?</p>
+            <p className="text-sm text-muted-foreground">Descubra o detalhe da oferta Pro, a experiência de 7 dias e as condições de faturação.</p>
           </div>
           <Button className="rounded-sm gap-2 shrink-0" data-testid="pricing-see-pro-offer" onClick={() => navigate("/pro")}>
-            Voir l'offre Pro <ArrowRight className="h-4 w-4" />
+            Ver a oferta Pro <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       )}
@@ -197,11 +197,9 @@ export default function Pricing() {
         <div className="surface p-6 md:p-8 rounded-sm border-primary/30 flex flex-col md:flex-row md:items-center gap-6" data-testid="invoicing-addon-banner">
           <div className="flex-1">
             <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Option</p>
-            <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Facturation & facturation électronique (Factur-X)</h3>
+            <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Faturação & faturação eletrónica (Factur-X)</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              Créez des factures, convertissez vos devis en 1 clic, suivez les paiements et générez des
-              factures électroniques conformes Factur-X. <strong>Inclus gratuitement dans Pro Business</strong>,
-              ou en option pour les abonnés Premium et Pro.
+              Crie faturas, converta os seus orçamentos em 1 clique, acompanhe os pagamentos e gere faturas eletrónicas conformes Factur-X. <strong>Incluído gratuitamente no Pro Business</strong>, ou em opção para os assinantes Premium e Pro.
             </p>
           </div>
           <div className="text-center md:text-right shrink-0">

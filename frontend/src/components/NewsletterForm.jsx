@@ -20,9 +20,9 @@ export default function NewsletterForm({ source = "blog", compact = false }) {
     try {
       const { data } = await api.post("/newsletter/subscribe", { email: email.trim(), lang: isPT ? "pt" : "fr", source });
       setDone(true);
-      toast.success(data.already ? (isPT ? "Já está subscrito" : "Vous êtes déjà abonné(e)") : (isPT ? "Subscrição confirmada" : "Inscription confirmée — à bientôt !"));
+      toast.success(data.already ? (isPT ? "Já está subscrito" : "Já tem subscrição") : (isPT ? "Subscrição confirmada" : "Inscrição confirmada — até breve!"));
     } catch (err) {
-      toast.error(err?.response?.data?.detail || (isPT ? "Erro na subscrição" : "Inscription impossible"));
+      toast.error(err?.response?.data?.detail || (isPT ? "Erro na subscrição" : "Inscrição impossível"));
     } finally { setBusy(false); }
   };
 
@@ -31,12 +31,12 @@ export default function NewsletterForm({ source = "blog", compact = false }) {
       <div className="flex items-start gap-3">
         <span className="h-9 w-9 rounded-full bg-primary/15 grid place-items-center shrink-0"><Mail className="h-4 w-4 text-primary" /></span>
         <div className="flex-1">
-          <p className="font-display font-bold">{isPT ? "Receba os novos guias por email" : "Recevez les nouveaux guides par email"}</p>
+          <p className="font-display font-bold">{isPT ? "Receba os novos guias por email" : "Receba os novos guias por e-mail"}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {isPT ? "Preços, métodos, IVA, orçamentos — um email por artigo, sem spam." : "Prix travaux, méthodes, TVA, devis — un email par nouvel article, zéro spam."}
+            {isPT ? "Preços, métodos, IVA, orçamentos — um email por artigo, sem spam." : "Preços de obras, métodos, IVA, orçamentos — um e-mail por novo artigo, zero spam."}
           </p>
           {done ? (
-            <p className="mt-3 text-sm text-emerald-600 flex items-center gap-1" data-testid="newsletter-done"><Check className="h-4 w-4" /> {isPT ? "Obrigado! Verifique a sua caixa de entrada." : "Merci ! Vérifiez votre boîte de réception."}</p>
+            <p className="mt-3 text-sm text-emerald-600 flex items-center gap-1" data-testid="newsletter-done"><Check className="h-4 w-4" /> {isPT ? "Obrigado! Verifique a sua caixa de entrada." : "Obrigado! Verifique a sua caixa de entrada."}</p>
           ) : (
             <form onSubmit={submit} className="mt-3 flex gap-2 flex-wrap">
               <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@entreprise.fr"

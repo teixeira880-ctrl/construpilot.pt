@@ -36,9 +36,9 @@ export function AgentsRunning() {
           const history = await api.get("/agents/runs");
           if (stopped) return;
           const completed = (history.data.runs || []).filter(run => finished.includes(run.run_id));
-          const options = { description: "Consultez les résultats et les points à vérifier.", action: { label: "Ouvrir", onClick: () => navigate("/agents") } };
-          if (completed.some(run => run.status === "error")) toast.error("Une tâche a été interrompue", options);
-          else if (completed.some(run => run.status === "done")) toast.success("Le contrôle est terminé", options);
+          const options = { description: "Consulte os resultados e os pontos a verificar.", action: { label: "Ouvrir", onClick: () => navigate("/agents") } };
+          if (completed.some(run => run.status === "error")) toast.error("Uma tarefa foi interrompida", options);
+          else if (completed.some(run => run.status === "done")) toast.success("O controlo está concluído", options);
         }
         prev.current = ids;
         setActive(rows);

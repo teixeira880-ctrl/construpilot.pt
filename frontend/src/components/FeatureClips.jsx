@@ -8,7 +8,7 @@ const RichText = ({ text }) =>
     i % 2 === 1 ? <strong key={i} className="text-foreground font-semibold">{part}</strong> : <span key={i}>{part}</span>
   );
 
-export const FeatureClips = ({ title = "Chaque fonction en vidéo", subtitle = "De courtes démos réelles, narrées, avec une explication détaillée de chaque outil.", keys = null }) => {
+export const FeatureClips = ({ title = "Cada função em vídeo", subtitle = "Demos curtas e reais, narradas, com uma explicação detalhada de cada ferramenta.", keys = null }) => {
   const [features, setFeatures] = useState([]);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export const FeatureClips = ({ title = "Chaque fonction en vidéo", subtitle = "
                 data-testid={`feature-clip-cta-${f.key}`}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all self-start"
               >
-                Ouvrir la fonction <ArrowRight className="h-4 w-4" />
+                Abrir a função <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </article>

@@ -49,11 +49,11 @@ export async function uploadPlan(formData, { onStatus } = {}) {
     onStatus?.(j, Math.round((Date.now() - started) / 1000));
     if (j.status === "done") return j.plan;
     if (j.status === "error") {
-      const e = new Error(typeof j.detail === "string" ? j.detail : "Import impossible");
+      const e = new Error(typeof j.detail === "string" ? j.detail : "Não foi possível importar");
       e.response = { status: j.status_code || 500, data: { detail: j.detail } };
       throw e;
     }
-    if (Date.now() - started > 15 * 60 * 1000) throw new Error("Import trop long — réessayez avec un fichier plus léger");
+    if (Date.now() - started > 15 * 60 * 1000) throw new Error("Importação demasiado longa — tente novamente com um ficheiro mais leve");
   }
 }
 
@@ -65,7 +65,7 @@ export async function waitPlanJob(jobId, { onProgress, timeoutMs = 20 * 60 * 100
     const { data: j } = await api.get(`/takeoffs/upload-jobs/${jobId}`);
     onProgress?.(j);
     if (j.status === "done") return j.result;
-    if (j.status === "error") { const e = new Error(j.detail || "Tâche échouée"); e.response = { status: j.status_code || 500, data: { detail: j.detail } }; throw e; }
-    if (Date.now() - started > timeoutMs) throw new Error("Analyse trop longue — réessayez");
+    if (j.status === "error") { const e = new Error(j.detail || "Tarefa falhada"); e.response = { status: j.status_code || 500, data: { detail: j.detail } }; throw e; }
+    if (Date.now() - started > timeoutMs) throw new Error("Análise demasiado longa — tente novamente");
   }
 }

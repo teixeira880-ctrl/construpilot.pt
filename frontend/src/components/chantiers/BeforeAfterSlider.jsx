@@ -30,8 +30,8 @@ export function BeforeAfterSlider({ before, after, height = 380 }) {
       data-testid="before-after-slider"
     >
       {/* Après (fond) */}
-      <img src={after} alt="Après" className="absolute inset-0 h-full w-full object-contain" draggable={false} />
-      <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white">Après</span>
+      <img src={after} alt="Após" className="absolute inset-0 h-full w-full object-contain" draggable={false} />
+      <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white">Após</span>
 
       {/* Avant (clip à gauche du curseur) */}
       <div className="absolute inset-0 overflow-hidden" style={{ width: `${pos}%` }}>

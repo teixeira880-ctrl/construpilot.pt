@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-const TYPE_LBL = { acier: "Ferraillage", etancheite: "Étanchéité", toiture: "Toiture", vrd: "VRD", mixte: "Mixte" };
+const TYPE_LBL = { acier: "Ferraillage", etancheite: "Impermeabilização", toiture: "Cobertura", vrd: "VRD", mixte: "Mixte" };
 const STATUS = { brouillon: "bg-muted text-muted-foreground", envoyé: "bg-amber-500/15 text-amber-600", confirmé: "bg-emerald-500/15 text-emerald-600" };
 
 export default function OrdersTab({ suppliers = [] }) {
@@ -28,16 +28,16 @@ export default function OrdersTab({ suppliers = [] }) {
   const toggle = (id, on) => setSelected((prev) => (on ? [...prev, id] : prev.filter((x) => x !== id)));
 
   const merge = async () => {
-    if (selected.length < 2) return toast.error("Sélectionnez au moins 2 commandes");
+    if (selected.length < 2) return toast.error("Selecione pelo menos 2 encomendas");
     setBusy(true);
     try {
       const { data } = await api.post("/pro/appro/orders/merge", {
         order_ids: selected, project: project.trim(), supplier_id: supplierId || null,
       });
-      toast.success(`Commande fusionnée — ${data.item_count} lignes (${data.merged_count} bons)`);
+      toast.success(`Encomenda fundida —${data.item_count} lignes (${data.merged_count} bons)`);
       setSelected([]); setProject(""); load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Fusion impossible");
+      toast.error(e?.response?.data?.detail || "Fusão impossível");
     } finally { setBusy(false); }
   };
 
@@ -45,16 +45,16 @@ export default function OrdersTab({ suppliers = [] }) {
     try {
       await api.patch(`/pro/appro/orders/${id}/status`, { status });
       setOrders((prev) => prev.map((o) => (o.order_id === id ? { ...o, status } : o)));
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
 
   const del = async (id) => {
-    if (!window.confirm("Supprimer ce bon de commande ?")) return;
+    if (!window.confirm("Eliminar esta nota de encomenda?")) return;
     try {
       await api.delete(`/pro/appro/orders/${id}`);
       setOrders((prev) => prev.filter((o) => o.order_id !== id));
       setSelected((prev) => prev.filter((x) => x !== id));
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
 
   return (
@@ -62,16 +62,16 @@ export default function OrdersTab({ suppliers = [] }) {
       {/* Barre de fusion */}
       <div className="surface p-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
         <div>
-          <label className="text-xs text-muted-foreground">Nom du projet (commande fusionnée)</label>
+          <label className="text-xs text-muted-foreground">Nome do projeto (encomenda fundida)</label>
           <Input value={project} onChange={(e) => setProject(e.target.value)}
-                 placeholder="Ex : Résidence Les Tilleuls" className="h-9 mt-1" data-testid="merge-project-name" />
+                 placeholder="Ex: Residência Les Tilleuls" className="h-9 mt-1" data-testid="merge-project-name" />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Fournisseur (optionnel)</label>
+          <label className="text-xs text-muted-foreground">Fornecedor (opcional)</label>
           <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}
                   data-testid="merge-supplier-select"
                   className="mt-1 h-9 rounded-sm border border-border bg-background px-3 text-sm w-full sm:w-56">
-            <option value="">— Auto / aucun —</option>
+            <option value="">— Auto / nenhum —</option>
             {suppliers.map((s) => <option key={s.supplier_id} value={s.supplier_id}>{s.name}</option>)}
           </select>
         </div>
@@ -84,12 +84,12 @@ export default function OrdersTab({ suppliers = [] }) {
 
       {/* Liste des commandes */}
       <div className="surface p-4">
-        <h3 className="font-bold mb-3 flex items-center gap-2"><PackageCheck className="h-4 w-4 text-primary" /> Bons de commande ({orders.length})</h3>
+        <h3 className="font-bold mb-3 flex items-center gap-2"><PackageCheck className="h-4 w-4 text-primary" /> Ordens de compra ({orders.length})</h3>
         {loading ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Chargement…</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">A carregar…</p>
         ) : orders.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
-            Aucun bon de commande. Créez-en depuis les onglets Ferraillage / Étanchéité / Toiture / VRD.
+            Nenhuma nota de encomenda. Crie a partir dos separadores Ferragem / Impermeabilização / Cobertura / VRD.
           </p>
         ) : (
           <div className="space-y-2">
@@ -128,8 +128,8 @@ export default function OrdersTab({ suppliers = [] }) {
                           data-testid={`order-status-${o.order_id}`}
                           className={`text-[11px] font-bold rounded-full px-2 py-1 border-0 cursor-pointer ${STATUS[o.status] || STATUS.brouillon}`}>
                     <option value="brouillon">Brouillon</option>
-                    <option value="envoyé">Envoyée</option>
-                    <option value="confirmé">Confirmée</option>
+                    <option value="enviado">Enviada</option>
+                    <option value="confirmado">Confirmada</option>
                   </select>
                   <button onClick={() => del(o.order_id)} data-testid={`order-delete-${o.order_id}`}>
                     <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />

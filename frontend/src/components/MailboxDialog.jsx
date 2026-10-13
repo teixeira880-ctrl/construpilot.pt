@@ -58,7 +58,7 @@ export function MailboxDialog({ trigger }) {
 
   const save = async () => {
     if (!email || (!password && !configured)) {
-      toast.error("E-mail et mot de passe d'application requis");
+      toast.error("E-mail e palavra-passe de aplicação obrigatórios");
       return;
     }
     setBusy(true);
@@ -70,9 +70,9 @@ export function MailboxDialog({ trigger }) {
       setConfigured(!!data.configured);
       setVerified(!!data.verified);
       setPassword("");
-      toast.success("Boîte e-mail connectée et vérifiée ✅");
+      toast.success("Caixa de e-mail ligada e verificada ✅");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Connexion impossible");
+      toast.error(e?.response?.data?.detail || "Ligação impossível");
     } finally { setBusy(false); }
   };
 
@@ -80,9 +80,9 @@ export function MailboxDialog({ trigger }) {
     setTesting(true);
     try {
       const { data } = await api.post("/users/me/mailbox/test");
-      toast.success(`E-mail de test envoyé à ${data.sent_to} — vérifiez « Envoyés »`);
+      toast.success(`E-mail de teste enviado para${data.sent_to}— verifique «Enviados»`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Test échoué");
+      toast.error(e?.response?.data?.detail || "Teste falhado");
     } finally { setTesting(false); }
   };
 
@@ -91,9 +91,9 @@ export function MailboxDialog({ trigger }) {
     try {
       await api.delete("/users/me/mailbox");
       setConfigured(false); setVerified(false); setEmail(""); setPassword("");
-      toast.success("Boîte e-mail déconnectée");
+      toast.success("Caixa de e-mail desligada");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Déconnexion impossible");
+      toast.error(e?.response?.data?.detail || "Impossível terminar sessão");
     } finally { setBusy(false); }
   };
 
@@ -102,29 +102,28 @@ export function MailboxDialog({ trigger }) {
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" data-testid="mailbox-open-btn" className="rounded-sm gap-2">
-            <Mailbox className="h-4 w-4" /> Boîte e-mail
+            <Mailbox className="h-4 w-4" /> Caixa e-mail
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="rounded-sm max-w-lg max-h-[88vh] overflow-y-auto" data-testid="mailbox-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Mailbox className="h-5 w-5 text-primary" /> Connecter ma boîte e-mail
+            <Mailbox className="h-5 w-5 text-primary" /> Conectar a minha caixa de e-mail
             {verified && (
               <Badge className="bg-emerald-600 hover:bg-emerald-600 gap-1" data-testid="mailbox-verified-badge">
-                <CheckCircle2 className="h-3 w-3" /> Connectée
+                <CheckCircle2 className="h-3 w-3" /> Ligada
               </Badge>
             )}
           </DialogTitle>
           <DialogDescription>
-            Vos devis et factures partiront depuis votre propre boîte et une copie apparaîtra
-            automatiquement dans votre dossier <b>« Envoyés »</b> (comme Obat).
+            Os seus orçamentos e faturas partirão da sua própria caixa e uma cópia aparecerá automaticamente na sua pasta <b>« Enviados »</b> (comme Obat).
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Fournisseur</Label>
+            <Label>Fornecedor</Label>
             <div className="flex flex-wrap gap-2" data-testid="mailbox-providers">
               {Object.entries(PRESETS).map(([key, p]) => (
                 <button key={key} type="button" onClick={() => applyPreset(key)}
@@ -140,8 +139,7 @@ export function MailboxDialog({ trigger }) {
 
           {provider === "gmail" && (
             <div className="rounded-sm border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
-              Gmail exige un <b>mot de passe d'application</b> (pas votre mot de passe habituel).
-              Activez d'abord la validation en 2 étapes, puis créez-en un ici :{" "}
+              Gmail exige um <b>palavra-passe de aplicação</b> (não a sua palavra-passe habitual). Ative primeiro a validação em 2 passos, depois crie uma aqui:{" "}
               <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer"
                  className="text-primary inline-flex items-center gap-1 underline" data-testid="mailbox-gmail-help">
                 myaccount.google.com/apppasswords <ExternalLink className="h-3 w-3" />
@@ -172,16 +170,16 @@ export function MailboxDialog({ trigger }) {
           </div>
 
           <div className="grid gap-2">
-            <Label>Mot de passe d'application</Label>
+            <Label>Palavra-passe de aplicação</Label>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                   placeholder={configured ? "•••••••••• (inchangé)" : "Collez le mot de passe d'application"}
+                   placeholder={configured ? "•••••••••• (inalterado)" : "Cole a palavra-passe da aplicação"}
                    data-testid="mailbox-password-input" className="rounded-sm h-11" autoComplete="off" />
           </div>
 
           <div className="grid gap-2">
-            <Label>Nom d'expéditeur affiché (optionnel)</Label>
+            <Label>Nome de remetente exibido (opcional)</Label>
             <Input value={fromName} onChange={(e) => setFromName(e.target.value)}
-                   placeholder="Ex : CM Rénovation"
+                   placeholder="Ex: CM Renovação"
                    data-testid="mailbox-fromname-input" className="rounded-sm h-11" maxLength={80} />
           </div>
 
@@ -191,19 +189,19 @@ export function MailboxDialog({ trigger }) {
                 <Button variant="outline" onClick={sendTest} disabled={testing}
                         className="rounded-sm gap-2" data-testid="mailbox-test-btn">
                   {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  Envoyer un test
+                  Enviar um teste
                 </Button>
               )}
               {configured && (
                 <Button variant="ghost" onClick={disconnect} disabled={busy}
                         className="rounded-sm gap-2 text-destructive" data-testid="mailbox-disconnect-btn">
-                  <Unplug className="h-4 w-4" /> Déconnecter
+                  <Unplug className="h-4 w-4" /> Desligar
                 </Button>
               )}
             </div>
             <Button onClick={save} disabled={busy} className="rounded-sm gap-2 bg-primary" data-testid="mailbox-save-btn">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {configured ? "Mettre à jour" : "Connecter"}
+              {configured ? "Atualizar" : "Connecter"}
             </Button>
           </div>
         </div>

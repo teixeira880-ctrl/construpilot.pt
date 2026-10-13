@@ -28,10 +28,10 @@ export const PriceLibrary = () => {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/pro/price-library/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`${data.imported} prix importés — ${data.total} au total dans votre bibliothèque`);
+      toast.success(`${data.imported}preços importados —${data.total}no total na sua biblioteca`);
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Import impossible (.xlsx ou .pdf attendu)");
+      toast.error(e?.response?.data?.detail || "Importação impossível (.xlsx ou .pdf esperado)");
     } finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
@@ -39,28 +39,28 @@ export const PriceLibrary = () => {
     try {
       await api.delete(`/pro/price-library/${id}`);
       setItems((prev) => prev.filter((x) => x.item_id !== id));
-    } catch { toast.error("Suppression impossible"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   const clearAll = async () => {
-    if (!window.confirm("Vider toute la bibliothèque de prix ?")) return;
+    if (!window.confirm("Limpar toda a biblioteca de preços?")) return;
     try {
       await api.delete("/pro/price-library");
       setItems([]);
-      toast.success("Bibliothèque vidée");
-    } catch { toast.error("Action impossible"); }
+      toast.success("Biblioteca esvaziada");
+    } catch { toast.error("Ação impossível"); }
   };
 
   return (
     <div className="surface p-6" data-testid="price-library">
       <div className="flex items-center gap-2 mb-1">
         <BookMarked className="h-5 w-5 text-primary" />
-        <h3 className="font-display font-bold text-lg">Ma bibliothèque de prix</h3>
+        <h3 className="font-display font-bold text-lg">A minha biblioteca de preços</h3>
         <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro Business</span>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Importez <span className="text-foreground">votre propre bordereau de prix</span> (Excel ou PDF). ConstruPilot l'utilise
-        <span className="text-foreground"> en priorité</span> pour chiffrer vos DPGF — l'IA ne complète que les lignes non trouvées.
+        Importez <span className="text-foreground">a sua própria tabela de preços</span> (Excel ou PDF). O ConstruPilot utiliza-o
+        <span className="text-foreground"> em prioridade</span> para orçamentar os seus mapas — a IA só completa as linhas não encontradas.
       </p>
 
       <input ref={fileRef} type="file" accept=".xlsx,.pdf" hidden data-testid="library-file-input"
@@ -72,26 +72,26 @@ export const PriceLibrary = () => {
         </Button>
         {items.length > 0 && (
           <Button variant="outline" onClick={clearAll} className="gap-2 rounded-sm text-destructive" data-testid="library-clear-btn">
-            <Trash2 className="h-4 w-4" /> Tout vider
+            <Trash2 className="h-4 w-4" /> Esvaziar tudo
           </Button>
         )}
       </div>
 
       {!loading && items.length === 0 && (
         <p className="mt-4 text-sm text-muted-foreground inline-flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4" /> Aucun prix pour l'instant. Importez votre premier bordereau.
+          <FileSpreadsheet className="h-4 w-4" /> Nenhum preço por enquanto. Importe o seu primeiro mapa de trabalhos.
         </p>
       )}
 
       {items.length > 0 && (
         <div className="mt-4" data-testid="library-list">
-          <div className="text-sm mb-2">Prix enregistrés : <b>{items.length}</b></div>
+          <div className="text-sm mb-2">Preços registados: <b>{items.length}</b></div>
           <div className="max-h-72 overflow-auto rounded-sm border border-border">
             <table className="w-full text-xs">
               <thead className="bg-secondary/40 sticky top-0">
                 <tr>
-                  <th className="text-left p-2">Désignation</th>
-                  <th className="p-2">Unité</th>
+                  <th className="text-left p-2">Designação</th>
+                  <th className="p-2">Un.</th>
                   <th className="p-2 text-right">PU HT</th>
                   <th className="p-2"></th>
                 </tr>

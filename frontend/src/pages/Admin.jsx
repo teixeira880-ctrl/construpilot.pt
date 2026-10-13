@@ -73,10 +73,10 @@ export default function Admin() {
         first_name: first, last_name: last || first || "Client",
         email: l.email || "", phone: l.phone || "", address: l.address || "", notes,
       });
-      toast.success("Client créé depuis la demande — ouverture de l'éditeur de devis");
+      toast.success("Cliente criado a partir do pedido — abertura do editor de orçamentos");
       navigate(`/devis-editeur?client=${data.client_id}`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Création impossible");
+      toast.error(e?.response?.data?.detail || "Criação impossível");
     }
   };
   const [suppliers, setSuppliers] = useState({ builtin: [], custom: [] });
@@ -84,16 +84,16 @@ export default function Admin() {
 
   const deleteUser = async (u) => {
     if (!(await confirm({
-      title: "Supprimer définitivement ce compte ?",
-      description: `Le compte ${u.email} et TOUTES ses données (projets, devis, factures, demandes, abonnements) seront supprimés définitivement. Cette action est irréversible.`,
-      confirmLabel: "Supprimer définitivement",
+      title: "Eliminar definitivamente esta conta?",
+      description: `A conta${u.email}e TODOS os seus dados (projetos, orçamentos, faturas, pedidos, subscrições) serão eliminados definitivamente. Esta ação é irreversível.`,
+      confirmLabel: "Eliminar definitivamente",
       destructive: true,
     }))) return;
     try {
       const { data } = await api.delete(`/admin/users/${u.user_id}`);
-      toast.success(`Compte ${u.email} supprimé · ${data.purged_total} enregistrement(s) purgé(s)`);
+      toast.success(`Conta${u.email}eliminada ·${data.purged_total}registo(s) purgado(s)`);
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Suppression impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível eliminar"); }
   };
 
   const load = () => {
@@ -114,7 +114,7 @@ export default function Admin() {
     await api.put(`/admin/prices/${key}`, Object.fromEntries(
       Object.entries(body).map(([k, v]) => [k, Number(v)])
     ));
-    toast.success("Prix de référence mis à jour");
+    toast.success("Preço de referência atualizado");
     setEdits({ ...edits, [key]: undefined });
     load();
   };
@@ -126,11 +126,11 @@ export default function Admin() {
   };
 
   const addSupplier = async () => {
-    if (!newSup.key || !newSup.name || !newSup.domain) return toast.error("Clé, nom et domaine requis");
+    if (!newSup.key || !newSup.name || !newSup.domain) return toast.error("Chave, nome e domínio obrigatórios");
     await api.post("/admin/suppliers", {
       ...newSup, shipping: Number(newSup.shipping), free_from: Number(newSup.free_from),
     });
-    toast.success("Fournisseur ajouté");
+    toast.success("Fornecedor adicionado");
     setNewSup({ key: "", name: "", domain: "", shipping: 30, free_from: 300 });
     load();
   };
@@ -148,12 +148,12 @@ export default function Admin() {
           onClick={async () => {
             try {
               const { data } = await api.post("/admin/demo-unlock");
-              toast.success(`Mode démo activé — ${data.tier} · toutes les options débloquées`);
+              toast.success(`Modo de demonstração ativado —${data.tier}· todas as opções desbloqueadas`);
               setTimeout(() => window.location.reload(), 900);
-            } catch { toast.error("Activation du mode démo impossible"); }
+            } catch { toast.error("Ativação do modo demonstração impossível"); }
           }}
           className="shrink-0 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 text-sm font-semibold transition-colors">
-          🎬 Mode démo — tout débloquer
+          🎬 Modo demo — desbloquear tudo
           <span className="block text-[11px] font-normal text-muted-foreground">Stripe test · carte 4242 4242 4242 4242</span>
         </button>
       </div>
@@ -179,7 +179,7 @@ export default function Admin() {
           <TabsTrigger value="searches" className="rounded-sm" data-testid="admin-tab-searches">{t("admin.t_searches")}</TabsTrigger>
           <TabsTrigger value="promos" className="rounded-sm" data-testid="admin-tab-promos">{t("admin.t_promos")}</TabsTrigger>
           <TabsTrigger value="kyc" className="rounded-sm" data-testid="admin-tab-kyc">{t("admin.t_kyc")}</TabsTrigger>
-          <TabsTrigger value="proskyc" className="rounded-sm" data-testid="admin-tab-proskyc">Pros à valider</TabsTrigger>
+          <TabsTrigger value="proskyc" className="rounded-sm" data-testid="admin-tab-proskyc">Pros a validar</TabsTrigger>
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">{t("admin.t_affiliate")}</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
@@ -188,16 +188,16 @@ export default function Admin() {
           <TabsTrigger value="despesas" className="rounded-sm" data-testid="admin-tab-despesas">{expenseText("title")}</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
           <TabsTrigger value="evolution" className="rounded-sm" data-testid="admin-tab-evolution">AI Evolution Lab</TabsTrigger>
-          <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Bibliothèque</TabsTrigger>
-          <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Ouvrages composés</TabsTrigger>
-          <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicité</TabsTrigger>
+          <TabsTrigger value="sharedlib" className="rounded-sm" data-testid="admin-tab-sharedlib">Biblioteca</TabsTrigger>
+          <TabsTrigger value="paramlib" className="rounded-sm" data-testid="admin-tab-paramlib">Trabalhos compostos</TabsTrigger>
+          <TabsTrigger value="ads" className="rounded-sm" data-testid="admin-tab-ads">Publicidade</TabsTrigger>
           <TabsTrigger value="campaigns" className="rounded-sm" data-testid="admin-tab-campaigns">Campagnes e-mail</TabsTrigger>
           <TabsTrigger value="apify" className="rounded-sm" data-testid="admin-tab-apify">Apify</TabsTrigger>
           <TabsTrigger value="learning" className="rounded-sm" data-testid="admin-tab-learning">Apprentissage IA</TabsTrigger>
           <TabsTrigger value="bridge" className="rounded-sm" data-testid="admin-tab-bridge">Agent Ponte</TabsTrigger>
           <TabsTrigger value="radar" className="rounded-sm" data-testid="admin-tab-radar">Radar / SITADEL</TabsTrigger>
           <TabsTrigger value="postal" className="rounded-sm" data-testid="admin-tab-postal">Postal</TabsTrigger>
-          <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Maçonnerie</TabsTrigger>
+          <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Alvenaria</TabsTrigger>
           <TabsTrigger value="seoblog" className="rounded-sm" data-testid="admin-tab-seoblog">SEO / Blog</TabsTrigger>
           <TabsTrigger value="ceo" className="rounded-sm" data-testid="admin-tab-ceo">Agent CEO</TabsTrigger>
           <TabsTrigger value="calcaudit" className="rounded-sm" data-testid="admin-tab-calcaudit">Auditeur calculs</TabsTrigger>
@@ -279,8 +279,8 @@ export default function Admin() {
 
         <TabsContent value="account" className="mt-6">
           <div className="max-w-lg space-y-6" data-testid="admin-account-section">
-            <SectionTitle over="Administrateur" title="Mon compte">
-              Gérez vos informations de profil et votre mot de passe.
+            <SectionTitle over="Administrateur" title="A minha conta">
+              Gira as suas informações de perfil e a sua palavra-passe.
             </SectionTitle>
             <ProfileForm />
             <TwoFaCard />
@@ -295,8 +295,8 @@ export default function Admin() {
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Lot</TableHead>
-                  <TableHead>Unité</TableHead>
-                  <TableHead className="w-28">Éco</TableHead>
+                  <TableHead>Un.</TableHead>
+                  <TableHead className="w-28">Eco</TableHead>
                   <TableHead className="w-28">Standard</TableHead>
                   <TableHead className="w-28">Premium</TableHead>
                   <TableHead className="w-28">M.O. / u</TableHead>
@@ -307,7 +307,7 @@ export default function Admin() {
               <TableBody>
                 {prices.map((p) => (
                   <TableRow key={p.key} className="even:bg-muted/30" data-testid={`admin-price-row-${p.key}`}>
-                    <TableCell className="font-medium">{p.name} {p.overridden && <Badge variant="outline" className="ml-2 rounded-sm text-xs">modifié</Badge>}</TableCell>
+                    <TableCell className="font-medium">{p.name} {p.overridden && <Badge variant="outline" className="ml-2 rounded-sm text-xs">modificado</Badge>}</TableCell>
                     <TableCell className="text-muted-foreground">{p.unit}</TableCell>
                     {["mat_eco", "mat_std", "mat_premium", "labour", "hours"].map((f) => (
                       <TableCell key={f}>
@@ -352,25 +352,25 @@ export default function Admin() {
 
         <TabsContent value="suppliers" className="mt-6 grid gap-6">
           <div className="surface p-6 grid sm:grid-cols-5 gap-3 items-end" data-testid="admin-add-supplier">
-            {[["key", "Clé"], ["name", "Nom"], ["domain", "Domaine"], ["shipping", "Livraison €"], ["free_from", "Franco €"]].map(([k, label]) => (
+            {[["key", "Chave"], ["name", "Nom"], ["domain", "Domaine"], ["shipping", "Livraison €"], ["free_from", "Franco €"]].map(([k, label]) => (
               <div key={k} className="grid gap-2">
                 <Label className="text-xs">{label}</Label>
                 <Input value={newSup[k]} onChange={(e) => setNewSup({ ...newSup, [k]: e.target.value })} data-testid={`supplier-${k}-input`} className="rounded-sm h-10" />
               </div>
             ))}
             <Button onClick={addSupplier} data-testid="add-supplier-btn" className="rounded-sm gap-2 sm:col-span-5 w-fit hover:bg-orange-600 hover:text-white">
-              <Plus className="h-4 w-4" /> Ajouter le fournisseur
+              <Plus className="h-4 w-4" /> Adicionar o fornecedor
             </Button>
           </div>
           <div className="surface overflow-x-auto">
             <Table data-testid="admin-suppliers-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Fournisseur</TableHead>
+                  <TableHead>Fornecedor</TableHead>
                   <TableHead>Domaine</TableHead>
                   <TableHead className="text-right">Livraison</TableHead>
                   <TableHead className="text-right">Franco</TableHead>
-                  <TableHead className="text-right">Délai</TableHead>
+                  <TableHead className="text-right">Prazo</TableHead>
                   <TableHead>Type</TableHead>
                 </TableRow>
               </TableHeader>
@@ -384,7 +384,7 @@ export default function Admin() {
                     <TableCell className="num text-right">{s.delivery_days || 4} j</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="rounded-sm">
-                        {suppliers.custom.some((c) => c.key === s.key) ? "personnalisé" : "intégré"}
+                        {suppliers.custom.some((c) => c.key === s.key) ? "personalizado" : "integrado"}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -401,8 +401,8 @@ export default function Admin() {
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Nom</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Type de compte</TableHead>
-                  <TableHead>Rôle</TableHead>
+                  <TableHead>Tipo de conta</TableHead>
+                  <TableHead>Função</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Auth</TableHead>
                   <TableHead>2FA</TableHead>
@@ -418,7 +418,7 @@ export default function Admin() {
                       <div className="flex flex-col gap-1">
                         <Select
                           value={u.account_type || "particulier"}
-                          onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { account_type: v }); toast.success("Type de compte mis à jour"); load(); }}
+                          onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { account_type: v }); toast.success("Tipo de conta atualizado"); load(); }}
                         >
                           <SelectTrigger className="rounded-sm h-9 w-36" data-testid={`admin-accttype-${u.user_id}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -435,7 +435,7 @@ export default function Admin() {
                     <TableCell>
                       <Select
                         value={u.role}
-                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { role: v }); toast.success("Rôle mis à jour"); load(); }}
+                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { role: v }); toast.success("Função atualizada"); load(); }}
                       >
                         <SelectTrigger className="rounded-sm h-9 w-32" data-testid={`admin-role-${u.user_id}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -447,7 +447,7 @@ export default function Admin() {
                     <TableCell>
                       <Select
                         value={u.plan || "free"}
-                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { plan: v }); toast.success("Plan mis à jour"); load(); }}
+                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { plan: v }); toast.success("Planta atualizada"); load(); }}
                       >
                         <SelectTrigger className="rounded-sm h-9 w-32" data-testid={`admin-plan-${u.user_id}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -466,11 +466,11 @@ export default function Admin() {
                             data-testid={`admin-disable-2fa-${u.user_id}`}
                             onClick={async () => {
                               await api.put(`/admin/users/${u.user_id}`, { two_fa_enabled: false });
-                              toast.success("2FA désactivée pour " + u.email);
+                              toast.success("2FA desativada para " + u.email);
                               load();
                             }}
                           >
-                            Désactiver 2FA
+                            Desativar 2FA
                           </Button>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
@@ -482,13 +482,13 @@ export default function Admin() {
                           data-testid={`admin-set-2fa-email-${u.user_id}`}
                           onClick={async () => {
                             const val = window.prompt(
-                              "E-mail de réception des codes 2FA pour " + u.email +
-                              "\n(laisser vide = e-mail du compte)", u.two_fa_email || "");
+                              "Email de receção dos códigos 2FA para " + u.email +
+                              "(deixar vazio = e-mail da conta)", u.two_fa_email || "");
                             if (val === null) return;
                             const { data } = await api.put(`/admin/users/${u.user_id}`, { two_fa_email: val });
                             toast.success(data.two_fa_email
-                              ? "Codes 2FA envoyés à " + data.two_fa_email
-                              : "E-mail 2FA réinitialisé");
+                              ? "Códigos 2FA enviados para" + data.two_fa_email
+                              : "E-mail 2FA reiniciado");
                             load();
                           }}
                         >
@@ -506,7 +506,7 @@ export default function Admin() {
                           data-testid={`admin-delete-user-${u.user_id}`}
                           onClick={() => deleteUser(u)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Supprimer
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
                         </Button>
                       )}
                     </TableCell>
@@ -524,10 +524,10 @@ export default function Admin() {
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                   <TableHead>Projet</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Surface</TableHead>
+                  <TableHead className="text-right">Superfície</TableHead>
                   <TableHead className="text-right">Budget</TableHead>
                   <TableHead>Ville</TableHead>
-                  <TableHead>Créé le</TableHead>
+                  <TableHead>Criado em</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -557,7 +557,7 @@ export default function Admin() {
                 { label: "Particuliers", value: leadStats.particulier, accent: true },
                 { label: "Pros", value: leadStats.pro, accent: true },
                 { label: "Nouveaux", value: leadStats.nouveau, accent: false },
-                { label: "Gagnés", value: leadStats.gagne, accent: false },
+                { label: "Ganhos", value: leadStats.gagne, accent: false },
               ].map((s) => (
                 <div key={s.label}
                      className={`surface p-4 rounded-sm ${s.accent ? "border-primary/30" : ""}`}
@@ -571,12 +571,12 @@ export default function Admin() {
           {leadStats && (
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6" data-testid="admin-lead-assign-stats">
               {[
-                { label: "Nouveaux (non assignés)", value: leadStats.nouveaux ?? leadStats.nouveau, cls: "text-foreground" },
-                { label: "Assignés", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
+                { label: "Novos (não atribuídos)", value: leadStats.nouveaux ?? leadStats.nouveau, cls: "text-foreground" },
+                { label: "Atribuídos", value: leadStats.assignes ?? 0, cls: "text-blue-500" },
                 { label: "En attente pro", value: leadStats.en_attente ?? 0, cls: "text-amber-500" },
                 { label: "Pris en charge", value: leadStats.pris_en_charge ?? 0, cls: "text-emerald-500" },
-                { label: "Refusés", value: leadStats.refuses ?? 0, cls: "text-red-500" },
-                { label: "Taux de conversion", value: `${leadStats.conversion ?? 0}%`, cls: "text-primary" },
+                { label: "Recusados", value: leadStats.refuses ?? 0, cls: "text-red-500" },
+                { label: "Taxa de conversão", value: `${leadStats.conversion ?? 0}%`, cls: "text-primary" },
               ].map((s) => (
                 <div key={s.label} className="surface p-4 rounded-sm" data-testid={`admin-lead-assign-stat-${s.label}`}>
                   <p className={`num text-2xl font-extrabold ${s.cls}`}>{s.value}</p>
@@ -586,9 +586,9 @@ export default function Admin() {
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="admin-leads-filter">
-            {[["all", "Tous"], ["nouveau", "Nouveaux"], ["contacté", "Contactés"],
-              ["devis envoyé", "Devis envoyé"], ["gagné", "Gagnés"], ["perdu", "Perdus"],
-              ["j2", "Relancés J+2"]].map(([v, lbl]) => (
+            {[["all", "Todos"], ["nouveau", "Nouveaux"], ["contactado", "Contactados"],
+              ["orçamento enviado", "Orçamento enviado"], ["ganho", "Ganhos"], ["perdu", "Perdus"],
+              ["j2", "Reenviados D+2"]].map(([v, lbl]) => (
               <button key={v} onClick={() => setLeadFilter(v)} data-testid={`admin-leads-filter-${v}`}
                 className={`px-3 py-1.5 rounded-sm text-xs font-semibold border transition-colors ${leadFilter === v ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/40"}`}>
                 {lbl}
@@ -600,7 +600,7 @@ export default function Admin() {
               const shown = leads.filter((l) =>
                 leadFilter === "all" ? true : leadFilter === "j2" ? l.j2_reminded : l.status === leadFilter);
               return (<>
-                {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Aucune demande.</p>}
+                {shown.length === 0 && <p className="surface p-10 text-center text-sm text-muted-foreground">Nenhum pedido.</p>}
                 {shown.map((l, index) => (
               <div key={l.lead_id || l.id || `legacy-lead-${index}`} className="surface p-6 grid gap-3">
                 <div className="flex flex-wrap items-center gap-4">
@@ -617,23 +617,23 @@ export default function Admin() {
                   {l.j2_reminded && (
                     <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
                           data-testid={`admin-lead-j2-${l.lead_id}`} title={l.j2_reminded_at || ""}>
-                      ✉ Relancé J+2
+                      ✉ Relançado D+2
                     </span>
                   )}
                   {l.assigned_to_name && (
                     <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
                           data-testid={`admin-lead-assigned-${l.lead_id}`}>
-                      ✔ Assignée à {l.assigned_to_name}
+                      ✔ Atribuída a {l.assigned_to_name}
                     </span>
                   )}
                   {l.budget ? <p className="num ml-auto text-lg font-bold text-primary">{eur(l.budget)}</p> : <span className="ml-auto" />}
                   <Select
                     value={l.status}
-                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { status: v }); toast.success("Statut mis à jour"); load(); }}
+                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { status: v }); toast.success("Estado atualizado"); load(); }}
                   >
                     <SelectTrigger className="rounded-sm h-9 w-40" data-testid={`admin-lead-status-${l.lead_id}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["nouveau", "contacté", "visite planifiée", "devis envoyé", "gagné", "perdu"].map((s) => (
+                      {["nouveau", "contactado", "visita planeada", "orçamento enviado", "ganho", "perdu"].map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
@@ -652,7 +652,7 @@ export default function Admin() {
                     <p className="font-semibold uppercase tracking-wide text-[10px]">Historique d'attribution</p>
                     {l.assignment_log.slice(-6).map((e, i) => (
                       <p key={i}>
-                        {{ proposee: "→ Proposée à", acceptee: "✔ Acceptée par", refusee: "✕ Refusée par", assignee_manuelle: "→ Assignée à", en_cours: "… En cours par" }[e.action] || e.action}{" "}
+                        {{ proposee: "→ Proposta a", acceptee: "✔ Aceite por", refusee: "✕ Recusada por", assignee_manuelle: "→ Atribuída a", en_cours: "… En cours par" }[e.action] || e.action}{" "}
                         <span className="font-medium">{e.user_name || "—"}</span>
                         {" · "}{new Date(e.at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </p>
@@ -662,13 +662,13 @@ export default function Admin() {
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border mt-1">
                   <Select
                     value={l.assigned_to || "none"}
-                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { assigned_to: v === "none" ? "" : v }); toast.success(v === "none" ? "Assignation retirée" : "Demande assignée — le pro est notifié"); load(); }}
+                    onValueChange={async (v) => { await api.put(`/admin/leads/${l.lead_id}`, { assigned_to: v === "none" ? "" : v }); toast.success(v === "none" ? "Atribuição removida" : "Pedido atribuído — o profissional é notificado"); load(); }}
                   >
                     <SelectTrigger className="rounded-sm h-8 w-48" data-testid={`admin-lead-assign-${l.lead_id}`}>
-                      <SelectValue placeholder="Assigner à un pro" />
+                      <SelectValue placeholder="Atribuir a um profissional" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">— Non assignée —</SelectItem>
+                      <SelectItem value="none">— Não atribuída —</SelectItem>
                       {users.filter((u) => u.role !== "worker" && u.account_type !== "particulier").map((u) => (
                         <SelectItem key={u.user_id} value={u.user_id}>{u.name || u.email}</SelectItem>
                       ))}
@@ -676,14 +676,14 @@ export default function Admin() {
                   </Select>
                   <Button size="sm" className="rounded-sm gap-2 h-8" onClick={() => createQuoteForLead(l)}
                           data-testid={`admin-lead-create-quote-${l.lead_id}`}>
-                    <Plus className="h-3.5 w-3.5" /> Créer un devis
+                    <Plus className="h-3.5 w-3.5" /> Criar um orçamento
                   </Button>
                   {l.email && (
                     <>
-                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Invitation envoyée à ${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); } }}
+                      <button onClick={async () => { try { await api.post(`/admin/leads/${l.lead_id}/invite`); toast.success(`Convite enviado para${l.email}`); load(); } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); } }}
                               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
                               data-testid={`admin-lead-invite-send-${l.lead_id}`}>
-                        <Mail className="h-3.5 w-3.5" /> Inviter à créer un compte{l.invited_at ? " ✓" : ""}
+                        <Mail className="h-3.5 w-3.5" /> Convidar a criar uma conta{l.invited_at ? " ✓" : ""}
                       </button>
                       <a href={`mailto:${l.email}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"
                          data-testid={`admin-lead-email-${l.lead_id}`}>
@@ -692,7 +692,7 @@ export default function Admin() {
                       <a href={`${window.location.origin}/inscription?email=${encodeURIComponent(l.email)}`} target="_blank" rel="noreferrer"
                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-sm border border-border text-xs font-semibold hover:border-primary/40"
                          data-testid={`admin-lead-invite-${l.lead_id}`}>
-                        <Plus className="h-3.5 w-3.5" /> Lien création de compte
+                        <Plus className="h-3.5 w-3.5" /> Ligação criação de conta
                       </a>
                     </>
                   )}
@@ -712,9 +712,9 @@ export default function Admin() {
 
         <TabsContent value="searches" className="mt-6">
           <div className="surface p-6">
-            <p className="overline">Produits les plus recherchés</p>
+            <p className="overline">Produtos mais procurados</p>
             <div className="mt-5 grid gap-2" data-testid="admin-top-searches">
-              {stats.top_searches.length === 0 && <p className="text-sm text-muted-foreground">Aucune recherche enregistrée.</p>}
+              {stats.top_searches.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma pesquisa guardada.</p>}
               {stats.top_searches.map((s) => (
                 <div key={s.query} className="flex items-center justify-between border-b border-border pb-2 text-sm">
                   <span>{s.query}</span>
@@ -771,7 +771,7 @@ function PromoCodesPanel() {
 
   const create = async () => {
     if (!form.code || (!form.percent_off && !form.amount_off_cents)) {
-      return toast.error("Code + réduction (% ou €) requis");
+      return toast.error("Código + desconto (% ou €) obrigatório");
     }
     setBusy(true);
     try {
@@ -784,11 +784,11 @@ function PromoCodesPanel() {
         max_redemptions: form.max_redemptions ? Number(form.max_redemptions) : null,
       };
       await api.post("/admin/promo-codes", payload);
-      toast.success("Code créé sur Stripe et activé");
+      toast.success("Código criado no Stripe e ativado");
       setForm({ code: "", percent_off: "", amount_off_cents: "", max_redemptions: "", duration: "once", name: "" });
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Création impossible");
+      toast.error(err?.response?.data?.detail || "Criação impossível");
     } finally { setBusy(false); }
   };
 
@@ -796,24 +796,24 @@ function PromoCodesPanel() {
     try {
       await api.patch(`/admin/promo-codes/${c.code}?active=${active}`);
       load();
-    } catch { toast.error("Impossible"); }
+    } catch { toast.error("Impossível"); }
   };
 
   return (
     <div className="grid gap-6">
       <div className="surface p-6 grid gap-4" data-testid="promo-form">
-        <p className="overline">Créer un code promo</p>
+        <p className="overline">Criar um código promocional</p>
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="grid gap-1.5">
             <Label className="text-xs">Code (ex: LANCEMENT10)</Label>
             <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="rounded-sm h-10 uppercase" data-testid="promo-code-input" />
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-xs">Réduction %</Label>
+            <Label className="text-xs">Desconto %</Label>
             <Input type="number" value={form.percent_off} onChange={(e) => setForm({ ...form, percent_off: e.target.value, amount_off_cents: "" })} className="rounded-sm h-10 num" data-testid="promo-percent-input" />
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-xs">Ou montant € fixe</Label>
+            <Label className="text-xs">Ou montante € fixo</Label>
             <Input type="number" step="0.01" value={form.amount_off_cents} onChange={(e) => setForm({ ...form, amount_off_cents: e.target.value, percent_off: "" })} className="rounded-sm h-10 num" data-testid="promo-amount-input" />
           </div>
           <div className="grid gap-1.5">
@@ -821,12 +821,12 @@ function PromoCodesPanel() {
             <Input type="number" value={form.max_redemptions} onChange={(e) => setForm({ ...form, max_redemptions: e.target.value })} className="rounded-sm h-10 num" data-testid="promo-max-input" />
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-xs">Récurrence</Label>
+            <Label className="text-xs">Recorrência</Label>
             <Select value={form.duration} onValueChange={(v) => setForm({ ...form, duration: v })}>
               <SelectTrigger className="rounded-sm h-10" data-testid="promo-duration"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="once">1 fois (premier paiement)</SelectItem>
-                <SelectItem value="forever">Chaque paiement</SelectItem>
+                <SelectItem value="forever">Cada pagamento</SelectItem>
                 <SelectItem value="repeating">3 mois (repeating)</SelectItem>
               </SelectContent>
             </Select>
@@ -837,7 +837,7 @@ function PromoCodesPanel() {
           </div>
         </div>
         <Button onClick={create} disabled={busy} data-testid="promo-create-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-          <Plus className="h-4 w-4" /> Créer le code
+          <Plus className="h-4 w-4" /> Criar o código
         </Button>
       </div>
 
@@ -845,7 +845,7 @@ function PromoCodesPanel() {
         <p className="overline mb-4">Codes actifs ({codes.length})</p>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Code</TableHead><TableHead>Réduction</TableHead><TableHead>Utilisations max</TableHead>
+            <TableHead>Code</TableHead><TableHead>Desconto</TableHead><TableHead>Utilisations max</TableHead>
             <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody data-testid="promo-list">
@@ -856,21 +856,21 @@ function PromoCodesPanel() {
                   {c.percent_off ? `${c.percent_off} %`
                    : c.amount_off_cents ? `${(c.amount_off_cents / 100).toFixed(2)} €` : "—"}
                 </TableCell>
-                <TableCell className="num">{c.max_redemptions || "illimité"}</TableCell>
+                <TableCell className="num">{c.max_redemptions || "ilimitado"}</TableCell>
                 <TableCell>
                   <Badge variant={c.active ? "default" : "outline"} className="rounded-sm">
-                    {c.active ? "Actif" : "Désactivé"}
+                    {c.active ? "Actif" : "Desativado"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant="outline" onClick={() => toggle(c, !c.active)} className="rounded-sm">
-                    {c.active ? "Désactiver" : "Activer"}
+                    {c.active ? "Desativar" : "Activer"}
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
             {codes.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">Aucun code promo</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">Nenhum código promocional</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -899,8 +899,8 @@ function PlansRevenuePanel() {
     setBusy(true);
     try {
       await api.put("/admin/feature-flags", flags);
-      toast.success("Flags sauvegardés");
-    } catch { toast.error("Impossible"); }
+      toast.success("Flags guardados");
+    } catch { toast.error("Impossível"); }
     finally { setBusy(false); }
   };
 
@@ -908,9 +908,9 @@ function PlansRevenuePanel() {
     setBusy(true);
     try {
       await api.post("/admin/plans/sync-stripe");
-      toast.success("Catalogue Stripe synchronisé");
+      toast.success("Catálogo Stripe sincronizado");
       load();
-    } catch { toast.error("Sync Stripe impossible"); }
+    } catch { toast.error("Sincronização Stripe impossível"); }
     finally { setBusy(false); }
   };
 
@@ -946,7 +946,7 @@ function PlansRevenuePanel() {
             <Select value={flags.paywall_mode || "soft"} onValueChange={(v) => setFlags({ ...flags, paywall_mode: v })}>
               <SelectTrigger className="rounded-sm h-9 mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="soft">Soft (recommandé)</SelectItem>
+                <SelectItem value="soft">Soft (recomendado)</SelectItem>
                 <SelectItem value="hard">Hard (bloquant)</SelectItem>
               </SelectContent>
             </Select>
@@ -954,7 +954,7 @@ function PlansRevenuePanel() {
         </div>
         <div className="flex gap-3">
           <Button onClick={saveFlags} disabled={busy} data-testid="save-flags-btn" className="rounded-sm hover:bg-orange-600 hover:text-white gap-2">
-            <Save className="h-4 w-4" /> Sauvegarder les flags
+            <Save className="h-4 w-4" /> Guardar as flags
           </Button>
           <Button variant="outline" onClick={syncStripe} disabled={busy} data-testid="sync-stripe-btn" className="rounded-sm gap-2">
             <RefreshCw className="h-4 w-4" /> Synchroniser Stripe
@@ -963,11 +963,11 @@ function PlansRevenuePanel() {
       </div>
 
       <div className="surface p-6" data-testid="admin-plans-table">
-        <p className="overline mb-4">Plans configurés ({plans.length})</p>
+        <p className="overline mb-4">Plantas configuradas ({plans.length})</p>
         <Table>
           <TableHeader><TableRow>
             <TableHead>Nom</TableHead><TableHead>Code</TableHead><TableHead>Public</TableHead>
-            <TableHead>Prix</TableHead><TableHead>Type</TableHead><TableHead>Stripe Price ID</TableHead>
+            <TableHead>Preço</TableHead><TableHead>Type</TableHead><TableHead>Stripe Price ID</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {plans.map((p) => (
@@ -996,7 +996,7 @@ function KycPanel() {
   useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (user_id, approve, reason) => {
     try { await api.post("/admin/kyc/review", { user_id, approve, reason: reason || null }); load(); }
-    catch { toast.error("Impossible"); }
+    catch { toast.error("Impossível"); }
   };
   return (
     <div className="grid gap-4">
@@ -1004,14 +1004,14 @@ function KycPanel() {
         {["pending", "verified", "rejected", ""].map((s) => (
           <button key={s || "all"} onClick={() => setFilter(s)}
                   className={`px-3 py-2 text-xs rounded-sm border ${filter === s ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"}`}>
-            {s || "Tous"}
+            {s || "Todos"}
           </button>
         ))}
       </div>
       <div className="surface p-6" data-testid="kyc-list">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Entreprise</TableHead><TableHead>SIREN</TableHead><TableHead>Métiers</TableHead>
+            <TableHead>Entreprise</TableHead><TableHead>SIREN</TableHead><TableHead>Especialidades</TableHead>
             <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
@@ -1029,13 +1029,13 @@ function KycPanel() {
                   {!r.verified && (
                     <>
                       <Button size="sm" onClick={() => act(r.user_id, true)} data-testid={`kyc-approve-${r.user_id}`} className="rounded-sm hover:bg-orange-600 hover:text-white">Valider</Button>
-                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motif du refus ?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
+                      <Button size="sm" variant="outline" onClick={() => { const reason = prompt("Motivo da recusa?"); if (reason) act(r.user_id, false, reason); }} data-testid={`kyc-reject-${r.user_id}`} className="rounded-sm">Refuser</Button>
                     </>
                   )}
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">Aucun dossier</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">Nenhuma pasta</TableCell></TableRow>}
           </TableBody>
         </Table>
       </div>
@@ -1055,7 +1055,7 @@ function InboxPanel() {
     setLoading(true);
     api.get(`/admin/inbox?hours=${hours}`)
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Chargement impossible"))
+      .catch(() => toast.error("Não foi possível carregar"))
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [hours]);
@@ -1066,12 +1066,12 @@ function InboxPanel() {
   useEffect(() => { loadPendingReviews(); }, []);
 
   const approveReview = async (id) => {
-    try { await api.post(`/reviews/site/${id}/approve`); toast.success("Avis publié"); loadPendingReviews(); }
-    catch { toast.error("Action impossible"); }
+    try { await api.post(`/reviews/site/${id}/approve`); toast.success("Avaliação publicada"); loadPendingReviews(); }
+    catch { toast.error("Ação impossível"); }
   };
   const deleteReview = async (id) => {
-    try { await api.delete(`/reviews/site/${id}`); toast.success("Avis supprimé"); loadPendingReviews(); }
-    catch { toast.error("Action impossible"); }
+    try { await api.delete(`/reviews/site/${id}`); toast.success("Avaliação eliminada"); loadPendingReviews(); }
+    catch { toast.error("Ação impossível"); }
   };
 
   const exportDeckCsv = async () => {
@@ -1081,27 +1081,27 @@ function InboxPanel() {
       const a = document.createElement("a");
       a.href = url; a.download = "leads-investisseurs.csv"; a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export CSV téléchargé");
+      toast.success("Export CSV transferido");
     } catch {
-      toast.error("Export impossible");
+      toast.error("Impossível exportar");
     }
   };
 
   return (
     <div className="grid gap-6" data-testid="admin-inbox-panel">
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Stat label={t("admin.k_new_leads")} value={num(data?.counts?.new_leads || 0)} accent={data?.counts?.new_leads > 0} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("new_leads")} testId="inbox-stat-new_leads" />
-        <Stat label={t("admin.k_new_users")} value={num(data?.counts?.new_users || 0)} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("new_users")} testId="inbox-stat-new_users" />
-        <Stat label={t("admin.k_quotes_sent")} value={num(data?.counts?.quotes_sent || 0)} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("quotes_sent")} testId="inbox-stat-quotes_sent" />
-        <Stat label={t("admin.k_quotes_signed")} value={num(data?.counts?.quotes_signed || 0)} accent sub="Cliquer : qui et pourquoi" onClick={() => setDrill("quotes_signed")} testId="inbox-stat-quotes_signed" />
-        <Stat label={t("admin.k_quotes_opened")} value={num(data?.counts?.quotes_opened || 0)} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("quotes_opened")} testId="inbox-stat-quotes_opened" />
-        <Stat label={t("admin.k_client_errors")} value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} sub="Cliquer : détail" onClick={() => setDrill("client_errors")} testId="inbox-stat-client_errors" />
-        <Stat label="Deck investisseurs" value={num(data?.counts?.deck_downloads || 0)} accent={data?.counts?.deck_downloads > 0} sub="Cliquer : qui et pourquoi" onClick={() => setDrill("deck_downloads")} testId="inbox-stat-deck_downloads" />
+        <Stat label={t("admin.k_new_leads")} value={num(data?.counts?.new_leads || 0)} accent={data?.counts?.new_leads > 0} sub="Clicar: quem e porquê" onClick={() => setDrill("new_leads")} testId="inbox-stat-new_leads" />
+        <Stat label={t("admin.k_new_users")} value={num(data?.counts?.new_users || 0)} sub="Clicar: quem e porquê" onClick={() => setDrill("new_users")} testId="inbox-stat-new_users" />
+        <Stat label={t("admin.k_quotes_sent")} value={num(data?.counts?.quotes_sent || 0)} sub="Clicar: quem e porquê" onClick={() => setDrill("quotes_sent")} testId="inbox-stat-quotes_sent" />
+        <Stat label={t("admin.k_quotes_signed")} value={num(data?.counts?.quotes_signed || 0)} accent sub="Clicar: quem e porquê" onClick={() => setDrill("quotes_signed")} testId="inbox-stat-quotes_signed" />
+        <Stat label={t("admin.k_quotes_opened")} value={num(data?.counts?.quotes_opened || 0)} sub="Clicar: quem e porquê" onClick={() => setDrill("quotes_opened")} testId="inbox-stat-quotes_opened" />
+        <Stat label={t("admin.k_client_errors")} value={num(data?.counts?.client_errors || 0)} accent={data?.counts?.client_errors > 0} sub="Clicar: detalhe" onClick={() => setDrill("client_errors")} testId="inbox-stat-client_errors" />
+        <Stat label="Deck investisseurs" value={num(data?.counts?.deck_downloads || 0)} accent={data?.counts?.deck_downloads > 0} sub="Clicar: quem e porquê" onClick={() => setDrill("deck_downloads")} testId="inbox-stat-deck_downloads" />
       </div>
       <AdminDrillDialog metric={drill} inbox hours={hours} onClose={() => setDrill(null)} />
 
       <div className="surface p-4 flex gap-2 items-center flex-wrap">
-        <span className="text-xs text-muted-foreground mr-2">Fenêtre :</span>
+        <span className="text-xs text-muted-foreground mr-2">Janela:</span>
         {[24, 168, 720].map((h) => (
           <Button
             key={h}
@@ -1119,21 +1119,21 @@ function InboxPanel() {
                 data-testid="inbox-refresh-btn">Actualiser</Button>
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+      {loading && <p className="text-sm text-muted-foreground">A carregar…</p>}
 
       {data && (
         <>
-          <InboxSection title="Leads reçus" items={data.leads || []} empty="Aucun lead sur la période.">
+          <InboxSection title="Leads recebidos" items={data.leads || []} empty="Nenhum lead no período.">
             {(l) => <LeadRow lead={l} onUpdated={load} />}
           </InboxSection>
 
-          <InboxSection title="Nouveaux comptes" items={data.new_users || []} empty="Aucun nouvel utilisateur.">
+          <InboxSection title="Nouveaux comptes" items={data.new_users || []} empty="Nenhum novo utilizador.">
             {(u) => (
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold truncate">{u.name || u.email}</p>
                   <p className="text-muted-foreground truncate">
-                    {u.email} · rôle <b>{u.role || "user"}</b> · plan {u.plan || "free"}
+                    {u.email} · função <b>{u.role || "user"}</b> · plan {u.plan || "free"}
                   </p>
                 </div>
                 <span className="text-[10px] text-muted-foreground ml-2">
@@ -1143,7 +1143,7 @@ function InboxPanel() {
             )}
           </InboxSection>
 
-          <InboxSection title="Devis récents (activité pros)" items={data.recent_sends || []} empty="Aucun devis envoyé sur la période.">
+          <InboxSection title="Orçamentos recentes (atividade profissionais)" items={data.recent_sends || []} empty="Nenhum orçamento enviado no período.">
             {(s) => (
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 flex-1">
@@ -1156,7 +1156,7 @@ function InboxPanel() {
                   ${s.signed ? "bg-green-500/15 text-green-600 border-green-500/40"
                              : s.opened_at ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
                                             : "bg-secondary text-muted-foreground border-border"}`}>
-                  {s.signed ? "signé" : s.opened_at ? "ouvert" : "envoyé"}
+                  {s.signed ? "assinado" : s.opened_at ? "ouvert" : "enviado"}
                 </span>
               </div>
             )}
@@ -1165,7 +1165,7 @@ function InboxPanel() {
           <div className="surface p-5" data-testid="pending-reviews-section">
             <p className="overline mb-3">Avis clients en attente ({pendingReviews.length})</p>
             {pendingReviews.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucun avis à modérer.</p>
+              <p className="text-xs text-muted-foreground">Nenhuma avaliação a moderar.</p>
             ) : (
               <div className="grid gap-2">
                 {pendingReviews.map((r) => (
@@ -1186,7 +1186,7 @@ function InboxPanel() {
             )}
           </div>
 
-          <InboxSection title="Téléchargements pitch deck (VC)" items={data.deck_downloads || []} empty="Aucun téléchargement du pitch deck sur la période."
+          <InboxSection title="Descargas pitch deck (VC)" items={data.deck_downloads || []} empty="Nenhuma descarga do pitch deck no período."
             action={
               <Button size="sm" variant="outline" className="rounded-sm gap-2 h-8"
                       data-testid="deck-export-csv-btn" onClick={exportDeckCsv}>
@@ -1211,7 +1211,7 @@ function InboxPanel() {
             )}
           </InboxSection>
 
-          <InboxSection title="Erreurs client (extrait)" items={(data.recent_errors || []).slice(0, 10)} empty="Aucune erreur sur la période.">
+          <InboxSection title="Erros cliente (extrato)" items={(data.recent_errors || []).slice(0, 10)} empty="Nenhum erro no período.">
             {(e) => (
               <div className="text-xs">
                 <p className="font-mono font-semibold break-all">{e.message}</p>
@@ -1263,11 +1263,11 @@ function LeadRow({ lead, onUpdated }) {
       setStatus(next);
       toast.success(`Statut : ${next}`);
       if (onUpdated) onUpdated();
-    } catch { toast.error("Mise à jour impossible"); }
+    } catch { toast.error("Não foi possível atualizar"); }
     setBusy(false);
   };
 
-  const isDone = ["handled", "won", "lost", "traité"].includes(status);
+  const isDone = ["handled", "won", "lost", "processado"].includes(status);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 text-xs items-center"
          data-testid={`lead-row-${lead.lead_id}`}>
@@ -1311,7 +1311,7 @@ function LeadRow({ lead, onUpdated }) {
             )}`}
             data-testid={`lead-email-${lead.lead_id}`}
             className="rounded-sm border border-border p-1.5 hover:bg-primary hover:text-white hover:border-primary transition"
-            title={`Écrire à ${lead.email}`}
+            title={`Escrever a${lead.email}`}
           >
             <Mail className="h-3.5 w-3.5" />
           </a>
@@ -1334,7 +1334,7 @@ function LeadRow({ lead, onUpdated }) {
               data-testid={`lead-handled-${lead.lead_id}`}
               className="rounded-sm h-7 text-[10px]"
             >
-              <CheckCircle2 className="h-3 w-3 mr-1" /> Traité
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Tratado
             </Button>
           </>
         ) : (
@@ -1365,7 +1365,7 @@ function ClientErrorsPanel() {
     setLoading(true);
     api.get(`/errors/admin/list?hours=${hours}&limit=200`)
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Chargement impossible"))
+      .catch(() => toast.error("Não foi possível carregar"))
       .finally(() => setLoading(false));
     api.get(`/errors/admin/trend?days=14`).then(({ data }) => setTrend(data)).catch(() => {});
   };
@@ -1383,7 +1383,7 @@ function ClientErrorsPanel() {
         </div>
       </div>
       <div className="surface p-4 flex gap-2 items-center">
-        <span className="text-xs text-muted-foreground mr-2">Fenêtre :</span>
+        <span className="text-xs text-muted-foreground mr-2">Janela:</span>
         {[1, 24, 168, 720].map((h) => (
           <Button
             key={h}
@@ -1404,8 +1404,8 @@ function ClientErrorsPanel() {
       {trend && trend.series && (
         <div className="surface p-4" data-testid="errors-trend-graph">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-bold text-sm">Évolution des erreurs client (14 jours)</h4>
-            <span className="text-xs text-muted-foreground">{num(trend.total)} au total</span>
+            <h4 className="font-bold text-sm">Evolução dos erros cliente (14 dias)</h4>
+            <span className="text-xs text-muted-foreground">{num(trend.total)} no total</span>
           </div>
           <div className="flex items-end gap-1 h-24">
             {(() => { const mx = Math.max(1, ...trend.series.map((d) => d.count)); return trend.series.map((d, i) => (
@@ -1419,19 +1419,19 @@ function ClientErrorsPanel() {
             <span>{trend.series[0]?.day?.slice(5)}</span>
             <span>{trend.series[trend.series.length - 1]?.day?.slice(5)}</span>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">Utile pour vérifier la baisse après un correctif (ex. WebGL).</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Útil para verificar a redução após uma correção (ex. WebGL).</p>
         </div>
       )}
 
-      {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+      {loading && <p className="text-sm text-muted-foreground">A carregar…</p>}
 
       {!loading && data && (
         <>
           <div className="surface p-6">
-            <p className="overline mb-4">Top 10 des messages (regroupés)</p>
+            <p className="overline mb-4">Top 10 de mensagens (agrupadas)</p>
             {(data.top_messages || []).length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                Aucune erreur sur la période — tout va bien.
+                Nenhum erro no período — tudo bem.
               </p>
             ) : (
               <Table>
@@ -1439,7 +1439,7 @@ function ClientErrorsPanel() {
                   <TableHead>Message</TableHead>
                   <TableHead className="w-24 text-right">Occurrences</TableHead>
                   <TableHead className="w-24 text-right">Utilisateurs</TableHead>
-                  <TableHead className="w-40">Dernière fois</TableHead>
+                  <TableHead className="w-40">Última vez</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {data.top_messages.map((t, i) => (
@@ -1458,9 +1458,9 @@ function ClientErrorsPanel() {
           </div>
 
           <div className="surface p-6">
-            <p className="overline mb-4">Événements bruts ({data.items?.length || 0})</p>
+            <p className="overline mb-4">Eventos brutos ({data.items?.length || 0})</p>
             {(data.items || []).length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Rien à afficher.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">Nada a apresentar.</p>
             ) : (
               <div className="grid gap-2">
                 {data.items.map((it, i) => (
@@ -1512,7 +1512,7 @@ function AffiliatePanel() {
   useEffect(() => { load(); }, []);
   const toggle = async (cfg, enabled) => {
     try { await api.post("/admin/affiliate/configs", { ...cfg, affiliate_enabled: enabled }); load(); }
-    catch { toast.error("Impossible"); }
+    catch { toast.error("Impossível"); }
   };
   return (
     <div className="grid gap-6" data-testid="affiliate-panel">
@@ -1528,7 +1528,7 @@ function AffiliatePanel() {
         <p className="overline mb-4">Configurations partenaires</p>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Fournisseur</TableHead><TableHead>Réseau</TableHead>
+            <TableHead>Fornecedor</TableHead><TableHead>Rede</TableHead>
             <TableHead>Commission</TableHead><TableHead>Cookie</TableHead>
             <TableHead>Actif</TableHead>
           </TableRow></TableHeader>

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 /** Affiche « non mesurable » plutôt qu'un zéro inventé. */
 const Value = ({ v, suffix = "" }) =>
   v === null || v === undefined ? (
-    <span className="text-sm font-normal text-amber-500">non mesurable</span>
+    <span className="text-sm font-normal text-amber-500">não mensurável</span>
   ) : (
     <span className="num">{typeof v === "number" ? v.toLocaleString("fr-FR") : v}{suffix}</span>
   );
@@ -48,7 +48,7 @@ export default function JourneyPanel() {
   useEffect(() => { load(); }, [load]);
 
   if (!data) {
-    return <p className="text-sm text-muted-foreground" data-testid="journey-loading">Chargement des chiffres réels…</p>;
+    return <p className="text-sm text-muted-foreground" data-testid="journey-loading">A carregar os números reais…</p>;
   }
 
   const a = data.accounts, act = data.activity, j = data.journey;
@@ -57,12 +57,11 @@ export default function JourneyPanel() {
     <div className="grid gap-8" data-testid="journey-panel">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-0">
-          <h2 className="font-display text-xl font-extrabold">Comptes réels & parcours</h2>
+          <h2 className="font-display text-xl font-extrabold">Contas reais e percurso</h2>
           <p className="text-xs text-muted-foreground">
-            Fenêtre : {data.window_days} jours · Généré le {new Date(data.generated_at).toLocaleString("fr-FR")} ·
-            Instrumentation démarrée : {data.instrumentation_started_at
+            Janela: {data.window_days} dias · Gerado em {new Date(data.generated_at).toLocaleString("fr-FR")} · Instrumentação iniciada: {data.instrumentation_started_at
               ? new Date(data.instrumentation_started_at).toLocaleString("fr-FR")
-              : "aucun événement enregistré pour l'instant"}
+              : "nenhum evento registado por agora"}
           </p>
         </div>
         {[7, 30, 90].map((d) => (
@@ -77,54 +76,53 @@ export default function JourneyPanel() {
 
       <Block icon={Users} title="Comptes" testId="journey-accounts">
         <Metric label="Comptes existants" value={a.existing_excluding_tests}
-                note="hors comptes de test et adresses internes" testId="journey-existing" />
-        <Metric label="Dont pros" value={a.pros} testId="journey-pros" />
-        <Metric label="Dont particuliers" value={a.particuliers} testId="journey-particuliers" />
-        <Metric label="Comptes de test / internes" value={a.test_or_internal}
-                note={`${a.admins} admin(s) · exclus du total ci-dessus`} testId="journey-tests" />
+                note="excluindo contas de teste e endereços internos" testId="journey-existing" />
+        <Metric label="Dos quais profissionais" value={a.pros} testId="journey-pros" />
+        <Metric label="Dos quais particulares" value={a.particuliers} testId="journey-particuliers" />
+        <Metric label="Contas de teste / internas" value={a.test_or_internal}
+                note={`${a.admins}admin(s) · excluídos do total acima`} testId="journey-tests" />
         <Metric label="Entreprises (SIRET distinct)" value={a.companies_with_siret}
-                note="déclaratif, saisi par l'utilisateur" testId="journey-companies" />
+                note="declarativo, introduzido pelo utilizador" testId="journey-companies" />
         <Metric label="Organisations" value={a.organizations} testId="journey-orgs" />
-        <Metric label="Comptes supprimés" value={a.deleted_since_tracking}
-                note="depuis la mise en place du suivi" testId="journey-deleted" />
+        <Metric label="Contas eliminadas" value={a.deleted_since_tracking}
+                note="desde a implementação do acompanhamento" testId="journey-deleted" />
         <Metric label="Lignes brutes en base" value={a.all_rows_in_db} testId="journey-raw" />
       </Block>
 
-      <Block icon={Activity} title="Activité et clients payants" testId="journey-activity">
-        <Metric label={`Actifs sur ${data.window_days} j`} value={act.active_users_window}
+      <Block icon={Activity} title="Atividade e clientes pagantes" testId="journey-activity">
+        <Metric label={`Ativos em${data.window_days} j`} value={act.active_users_window}
                 note={act.active_definition} testId="journey-active" />
-        <Metric label="Déjà connectés au moins une fois" value={act.ever_connected}
-                note="comptes existants ayant ouvert une session" testId="journey-ever" />
+        <Metric label="Já ligados pelo menos uma vez" value={act.ever_connected}
+                note="contas existentes que iniciaram sessão" testId="journey-ever" />
         <Metric label="Clients payants" value={act.paying_customers}
                 note={act.paying_note} testId="journey-paying" />
-        <Metric label="Sessions non rattachables" value={act.session_holders_not_countable}
-                note="sessions de comptes supprimés ou de tests : exclues des actifs"
+        <Metric label="Sessões não associáveis" value={act.session_holders_not_countable}
+                note="sessões de contas eliminadas ou de testes: excluídas dos ativos"
                 testId="journey-orphans" />
       </Block>
 
-      <Block icon={Route} title="Parcours instrumenté" testId="journey-funnel">
-        <Metric label="Inscriptions (fenêtre)" value={j.signups_window}
+      <Block icon={Route} title="Percurso instrumentado" testId="journey-funnel">
+        <Metric label="Inscrições (janela)" value={j.signups_window}
                 note={data.instrumentation_started_at
-                  ? "inscriptions enregistrées par l'instrumentation sur la fenêtre"
-                  : "l'instrumentation vient d'être activée : ce compteur démarre à la prochaine inscription"}
+                  ? "inscrições registadas pela instrumentação na janela"
+                  : "a instrumentação acabou de ser ativada: este contador começa na próxima inscrição"}
                 testId="journey-signups" />
-        <Metric label="Première valeur atteinte" value={j.first_value_window}
+        <Metric label="Primeiro valor atingido" value={j.first_value_window}
                 note={j.first_value_definition} testId="journey-firstvalue" />
         <Metric label="Taux d'activation" value={j.activation_rate_pct} suffix=" %"
-                note="première valeur / inscriptions de la fenêtre" testId="journey-activation" />
-        <Metric label="Comptes antérieurs au suivi" value={j.accounts_before_instrumentation}
-                note="provenance non résolue : ces comptes existaient avant l'instrumentation"
+                note="primeiro valor / inscrições da janela" testId="journey-activation" />
+        <Metric label="Contas anteriores ao acompanhamento" value={j.accounts_before_instrumentation}
+                note="proveniência não resolvida: estas contas existiam antes da instrumentação"
                 testId="journey-before" />
       </Block>
 
-      <Block icon={Building2} title="Provenance des inscriptions" testId="journey-acquisition">
+      <Block icon={Building2} title="Proveniência das inscrições" testId="journey-acquisition">
         {data.acquisition.length === 0 ? (
           <div className="surface rounded-md p-4 sm:col-span-2 lg:col-span-4 flex items-start gap-2"
                data-testid="journey-acquisition-empty">
             <HelpCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-sm text-muted-foreground">
-              Aucune inscription enregistrée par l'instrumentation sur cette fenêtre. Les inscriptions
-              antérieures n'ont pas de provenance rattachée : elles resteront comptées séparément.
+              Nenhuma inscrição registada pela instrumentação nesta janela. As inscrições anteriores não têm proveniência associada: continuarão a ser contadas separadamente.
             </p>
           </div>
         ) : data.acquisition.map((c) => (
@@ -134,11 +132,11 @@ export default function JourneyPanel() {
 
       <section className="grid gap-3" data-testid="journey-events">
         <p className="font-semibold flex items-center gap-2 text-sm">
-          <CreditCard className="h-4 w-4 text-primary" /> Derniers événements enregistrés
+          <CreditCard className="h-4 w-4 text-primary" /> Últimos eventos registados
         </p>
         {events.length === 0 ? (
           <p className="text-sm text-muted-foreground" data-testid="journey-events-empty">
-            Aucun événement pour l'instant. Ils apparaîtront dès la prochaine inscription ou estimation.
+            Nenhum evento por agora. Aparecerão na próxima inscrição ou estimativa.
           </p>
         ) : (
           <div className="surface rounded-md overflow-x-auto">
@@ -146,9 +144,9 @@ export default function JourneyPanel() {
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="px-4 py-2.5">Date</th>
-                  <th className="px-4 py-2.5">Événement</th>
+                  <th className="px-4 py-2.5">Evento</th>
                   <th className="px-4 py-2.5">Canal</th>
-                  <th className="px-4 py-2.5">Détails</th>
+                  <th className="px-4 py-2.5">Detalhes</th>
                 </tr>
               </thead>
               <tbody>

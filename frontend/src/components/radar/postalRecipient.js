@@ -7,7 +7,7 @@ export const postalRecipient = (opp, destination = defaultPostalDestination(opp)
   const terrain = destination === "terrain";
   // Switch the entire address, never combine a contact street with the site's town.
   return {
-    nom: text(promoteur?.nom) || "À l’attention du maître d’ouvrage",
+    nom: text(promoteur?.nom) || "À atenção do dono de obra",
     societe: text(promoteur?.societe),
     adresse1: text(terrain ? opp?.adresse : promoteur?.adresse1),
     adresse2: text(terrain ? opp?.adresse_complement : promoteur?.adresse2),

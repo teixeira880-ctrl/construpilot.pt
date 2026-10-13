@@ -53,13 +53,13 @@ const newEntry = (kind, vat = null) => {
 
 // Inséreur inline : options de blocs à insérer sous chaque ligne du devis.
 const BLOCK_OPTIONS = [
-  { id: "fourniture", label: "Fourniture", desc: "Matériaux et équipements", Icon: Package, badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" },
-  { id: "main_oeuvre", label: "Main d'œuvre", desc: "Temps de travail et prestations", Icon: UserCheck, badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30" },
-  { id: "ouvrage", label: "Ouvrage", desc: "Assemblage de sous-éléments", Icon: Layers, badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30" },
-  { id: "section", label: "Section", desc: "Titre de lot principal", Icon: FolderPlus, badge: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 border-slate-700 dark:border-slate-300" },
-  { id: "subsection", label: "Sous-section", desc: "Sous-titre et sous-total", Icon: Folder, badge: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600" },
-  { id: "text", label: "Texte libre", desc: "Note, description ou remarque", Icon: FileText, badge: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30" },
-  { id: "pagebreak", label: "Saut de page", desc: "Séparateur d'impression PDF", Icon: Scissors, badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30" },
+  { id: "fourniture", label: "Fourniture", desc: "Materiais e equipamentos", Icon: Package, badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" },
+  { id: "main_oeuvre", label: "Mão de obra", desc: "Tempo de trabalho e prestações", Icon: UserCheck, badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30" },
+  { id: "ouvrage", label: "Ouvrage", desc: "Montagem de subelementos", Icon: Layers, badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30" },
+  { id: "section", label: "Section", desc: "Título de capítulo principal", Icon: FolderPlus, badge: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 border-slate-700 dark:border-slate-300" },
+  { id: "subsection", label: "Sous-section", desc: "Subtítulo e subtotal", Icon: Folder, badge: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600" },
+  { id: "text", label: "Texte libre", desc: "Nota, descrição ou observação", Icon: FileText, badge: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30" },
+  { id: "pagebreak", label: "Quebra de página", desc: "Separador de impressão PDF", Icon: Scissors, badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30" },
 ];
 
 function LinePhotos({ slug, photos, onChange, size = 56, onZoom }) {
@@ -79,10 +79,10 @@ function LinePhotos({ slug, photos, onChange, size = 56, onZoom }) {
         const fd = new FormData(); fd.append("file", f);
         const { data } = await api.post("/document-photos", fd);
         added.push({ photo_id: data.photo_id, storage_path: data.storage_path });
-      } catch { toast.error("Échec de l'envoi de la photo"); }
+      } catch { toast.error("Falha no envio da fotografia"); }
     }
     setBusy(false);
-    if (added.length) { onChange([...list, ...added]); toast.success(added.length > 1 ? `${added.length} photos ajoutées` : "Photo ajoutée"); }
+    if (added.length) { onChange([...list, ...added]); toast.success(added.length > 1 ? `${added.length}fotografias adicionadas` : "Fotografia adicionada"); }
   };
   const remove = async (pid) => {
     onChange(list.filter((p) => p.photo_id !== pid));
@@ -93,11 +93,11 @@ function LinePhotos({ slug, photos, onChange, size = 56, onZoom }) {
     <div className="flex items-center gap-2 flex-wrap" data-testid={`line-photos-${slug}`}>
       {list.map((p) => (
         <div key={p.photo_id} style={dim} className="relative group/ph rounded-sm overflow-hidden border border-border bg-muted">
-          <img src={`${API}/document-photos/${p.photo_id}/raw`} alt="Photo de la ligne" loading="lazy"
+          <img src={`${API}/document-photos/${p.photo_id}/raw`} alt="Fotografia da linha" loading="lazy"
                onClick={() => onZoom?.(`${API}/document-photos/${p.photo_id}/raw`)}
                className="h-full w-full object-cover cursor-zoom-in" data-testid={`line-photo-img-${slug}-${p.photo_id}`} />
           <button type="button" onClick={() => remove(p.photo_id)} data-testid={`line-photo-del-${slug}-${p.photo_id}`}
-            title="Supprimer la photo"
+            title="Eliminar a fotografia"
             className="absolute top-0.5 right-0.5 grid h-4 w-4 place-items-center rounded-full bg-black/60 text-white opacity-0 group-hover/ph:opacity-100 transition-opacity">
             <X className="h-3 w-3" />
           </button>
@@ -124,11 +124,11 @@ function InlineInserter({ index, onInsert }) {
         <PopoverTrigger asChild>
           <button type="button" data-testid={`inline-insert-btn-${index}`}
             className={`relative z-10 inline-flex items-center gap-1 rounded-full border border-primary/40 bg-card px-3 py-1 text-xs font-semibold text-primary shadow-sm transition-[opacity,background-color,color] hover:bg-primary hover:text-white ${open ? "opacity-100" : "opacity-0 group-hover/ins:opacity-100 focus-visible:opacity-100"}`}>
-            <Plus className="h-3.5 w-3.5" /> Ajouter ici
+            <Plus className="h-3.5 w-3.5" /> Adicionar aqui
           </button>
         </PopoverTrigger>
         <PopoverContent align="center" sideOffset={6} className="w-72 p-1.5" data-testid={`inline-insert-menu-${index}`}>
-          <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Insérer un bloc</p>
+          <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Inserir um bloco</p>
           <div className="grid gap-0.5">
             {BLOCK_OPTIONS.map((o) => (
               <button key={o.id} type="button" onClick={() => { onInsert(o.id, index + 1); setOpen(false); }}
@@ -272,7 +272,7 @@ export default function QuoteEditor() {
       const remembered = lots.length - selected.size;
       setCctpPreview({ data, lots, selected: selected.size ? selected : new Set(lots), remembered });
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Lecture du CCTP impossible");
+      toast.error(e?.response?.data?.detail || "Leitura do caderno de encargos impossível");
     } finally { setCctpBusy(false); }
   };
   const applyCctp = (data, selected, lots = null) => {
@@ -286,7 +286,7 @@ export default function QuoteEditor() {
       setNotes((n) => (n?.trim() ? `${n.trim()}\n\nPrescriptions CCTP :\n${presc}` : `Prescriptions CCTP :\n${presc}`));
     }
     const imposed = keep.filter((l) => l.imposed_materials?.length).length;
-    toast.success(`${newLines.length} ouvrage(s) importés du CCTP${data.ocr ? " (OCR)" : ""} · ${imposed} avec matériaux imposés · ${selected.size} lot(s)`);
+    toast.success(`${newLines.length}artigo(s) importado(s) do caderno de encargos${data.ocr ? " (OCR)" : ""} · ${imposed}com materiais impostos ·${selected.size} lot(s)`);
     setCctpPreview(null);
   };
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -324,7 +324,7 @@ export default function QuoteEditor() {
             unit: l.unit || "u",
             qty: Number(l.quantity) || 1,
             unit_price_ht: Number(l.unit_price) || 0,
-            category: "Lu depuis photo",
+            category: "Lido a partir de foto",
           }));
           return [...cleaned, ...mapped];
         });
@@ -537,7 +537,7 @@ export default function QuoteEditor() {
   const knownLots = useMemo(() => {
     const s = new Set();
     lines.forEach((l) => { const c = (l.category || "").trim(); if (c) s.add(c); });
-    ["Gros œuvre", "Toiture", "Plomberie", "Électricité", "Peinture", "Menuiserie",
+    ["Obra grossa", "Cobertura", "Plomberie", "Eletricidade", "Peinture", "Menuiserie",
      "Carrelage", "Isolation", "Sol", "Placo", "VRD"].forEach((c) => s.add(c));
     return [...s];
   }, [lines]);
@@ -546,7 +546,7 @@ export default function QuoteEditor() {
   const [libraryMode, setLibraryMode] = useState(() => user?.price_library_mode || "shared_first");
   const saveLibraryMode = async (m) => {
     setLibraryMode(m);
-    try { await api.put("/users/me/preferences", { price_library_mode: m }); toast.success(isPT ? "Preferência guardada" : "Préférence enregistrée"); } catch { toast.error(isPT ? "Erro ao guardar" : "Enregistrement impossible"); }
+    try { await api.put("/users/me/preferences", { price_library_mode: m }); toast.success(isPT ? "Preferência guardada" : "Preferência guardada"); } catch { toast.error(isPT ? "Erro ao guardar" : "Não foi possível guardar"); }
   };
   const [lotMargins, setLotMargins] = useState(() => user?.target_margins_by_lot || {});
   const [showLotMargins, setShowLotMargins] = useState(false);
@@ -566,12 +566,12 @@ export default function QuoteEditor() {
   };
   const applyTargetMargin = () => {
     const targets = lines.filter((l) => (Number(l.cost_price_ht) || 0) > 0 && !(Number(l.unit_price_ht) > 0) && marginFor(l.category) > 0);
-    if (!targets.length) { toast.error(targetMargin || Object.keys(lotMargins).length ? "Aucune ligne avec coût et sans prix" : "Définissez d'abord une marge cible"); return; }
+    if (!targets.length) { toast.error(targetMargin || Object.keys(lotMargins).length ? "Nenhuma linha com custo e sem preço" : "Defina primeiro uma margem alvo"); return; }
     setLines((ls) => ls.map((l) => {
       const c = Number(l.cost_price_ht) || 0, m = marginFor(l.category);
       return c > 0 && !(Number(l.unit_price_ht) > 0) && m > 0 ? { ...l, unit_price_ht: priceFromCost(c, m) } : l;
     }));
-    toast.success(`${targets.length} prix de vente calculé(s) (marge cible globale ou par lot)`);
+    toast.success(`${targets.length}preço(s) de venda calculado(s) (margem alvo global ou por capítulo)`);
   };
   const setLine = (i, k, v) => setLines((ls) => ls.map((l, idx) => {
     if (idx !== i) return l;
@@ -639,42 +639,42 @@ export default function QuoteEditor() {
 
   const loadTemplates = async () => {
     try { const { data } = await api.get("/quote-templates"); setTemplates(data || []); }
-    catch { toast.error("Chargement des modèles impossible"); }
+    catch { toast.error("Carregamento dos modelos impossível"); }
   };
   const openTemplates = () => { setTplName(title || ""); setTplOpen(true); loadTemplates(); };
   const saveTemplate = async () => {
     const name = (tplName || "").trim();
-    if (!name) { toast.error("Nom du modèle requis"); return; }
+    if (!name) { toast.error("Nome do modelo obrigatório"); return; }
     setTplBusy(true);
     try {
       const p = payload();
       const tlines = (p.lines || []).map((l) => ({ ...l, photos: [], components: Array.isArray(l.components) ? l.components.map((c) => ({ ...c, photos: [] })) : [] }));
       await api.post("/quote-templates", { name, doc_type: docType, title, notes, deposit_pct: Number(depositPct) || 0, validity_days: Number(validityDays) || 0, lines: tlines });
-      toast.success("Modèle enregistré");
+      toast.success("Modelo guardado");
       setTplName("");
       loadTemplates();
-    } catch { toast.error("Enregistrement du modèle impossible"); }
+    } catch { toast.error("Gravação do modelo impossível"); }
     finally { setTplBusy(false); }
   };
   const applyTemplate = (tpl) => {
     const hasContent = lines.some((l) => (l.designation || "").trim() || (l.title || "").trim());
-    if (hasContent && !window.confirm("Remplacer le contenu actuel du devis par ce modèle ?")) return;
+    if (hasContent && !window.confirm("Substituir o conteúdo atual do orçamento por este modelo?")) return;
     if (tpl.title) setTitle(tpl.title);
     if (tpl.notes) setNotes(tpl.notes);
     if (tpl.deposit_pct != null) setDepositPct(tpl.deposit_pct);
     if (tpl.validity_days != null) setValidityDays(tpl.validity_days);
     setLines(ensureBlocks((tpl.lines || []).map((l) => ({ ...blankLine(), ...l, photos: [], _saveToLib: false }))));
     setTplOpen(false);
-    toast.success("Modèle appliqué");
+    toast.success("Modelo aplicado");
   };
   const deleteTemplate = async (id) => {
-    try { await api.delete(`/quote-templates/${id}`); setTemplates((ts) => ts.filter((t) => t.template_id !== id)); toast.success("Modèle supprimé"); }
-    catch { toast.error("Suppression impossible"); }
+    try { await api.delete(`/quote-templates/${id}`); setTemplates((ts) => ts.filter((t) => t.template_id !== id)); toast.success("Modelo eliminado"); }
+    catch { toast.error("Não foi possível eliminar"); }
   };
   const [aiExampleBusy, setAiExampleBusy] = useState(false);
   const saveAsAiExample = async () => {
     const rows = lines.filter((l) => (!l.kind || l.kind === "line") && ((l.designation || "").trim() || Number(l.unit_price_ht) > 0));
-    if (!rows.length) { toast.error("Ajoutez au moins une ligne avant d'en faire un exemple."); return; }
+    if (!rows.length) { toast.error("Adicione pelo menos uma linha antes de o transformar num exemplo."); return; }
     const txt = rows.map((l) => {
       const d = (l.designation || "").trim();
       const desc = (l.description || "").trim();
@@ -686,14 +686,14 @@ export default function QuoteEditor() {
     try {
       await api.post("/admin/learning", {
         scope: "devis",
-        title: (title || "Devis").slice(0, 120),
+        title: (title || "Orçamento").slice(0, 120),
         context: notes ? notes.slice(0, 1000) : "",
         content: txt.slice(0, 8000),
         approved: true,
       });
-      toast.success("Devis enregistré comme exemple — l'IA s'en inspirera.");
+      toast.success("Orçamento guardado como exemplo — a IA vai inspirar-se nele.");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Enregistrement impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     } finally { setAiExampleBusy(false); }
   };
 
@@ -807,7 +807,7 @@ export default function QuoteEditor() {
       }
       else ({ data: d } = await api.post("/documents", payload()));
       if (d.revision_created) {
-        toast.info(d.message || "Nouvelle révision brouillon créée — l'original signé est conservé.", { duration: 9000 });
+        toast.info(d.message || "Nova revisão em rascunho criada — o original assinado é conservado.", { duration: 9000 });
         applyDoc(d);
         nav(`/devis-editeur/${d.doc_id}`, { replace: true });
         setSaveState("saved");
@@ -825,7 +825,7 @@ export default function QuoteEditor() {
         toast.error(e.response.data.detail, { duration: 10000 });
       } else if (e.response?.status === 409) {
         setVersionConflict(true);
-        toast.error(lang === "pt" ? "O documento foi alterado. Reveja a versão guardada." : lang === "en" ? "The document changed. Review the saved version." : "Le document a changé. Relisez la version enregistrée.");
+        toast.error(lang === "pt" ? "O documento foi alterado. Reveja a versão guardada." : lang === "en" ? "The document changed. Review the saved version." : "O documento mudou. Releia a versão guardada.");
       } else toast.error(e?.response?.data?.detail || t("crm.save_fail"));
     }
     finally { setSaving(false); }
@@ -1053,7 +1053,7 @@ export default function QuoteEditor() {
       const a = document.createElement("a");
       a.href = url; a.download = internal ? `devis-INTERNE.pdf` : `devis.pdf`; a.click();
       URL.revokeObjectURL(url);
-      toast.success(internal ? "Version interne (coûts & marges) téléchargée" : t("crm.pdf_ok"));
+      toast.success(internal ? "Versão interna (custos & margens) descarregada" : t("crm.pdf_ok"));
     } catch { toast.error(t("crm.pdf_fail")); }
   };
 
@@ -1120,9 +1120,9 @@ export default function QuoteEditor() {
   const openSend = async () => {
     const targetPct = targetMargin || 0;
     if (totals.marginPct != null && targetPct > 0 && totals.marginPct < targetPct) {
-      const ok = window.confirm(`⚠️ Marge faible : ${totals.marginPct.toFixed(1)} % sur ce devis, sous votre cible de ${targetPct} %${lossLines ? ` (${lossLines} ouvrage${lossLines > 1 ? "s" : ""} à perte)` : ""}.\n\nEnvoyer quand même ?`);
+      const ok = window.confirm(`⚠️ Marge faible : ${totals.marginPct.toFixed(1)}% neste orçamento, abaixo do seu objetivo de${targetPct} %${lossLines ? ` (${lossLines} ouvrage${lossLines > 1 ? "s" : ""}com prejuízo)` : ""}.\n\nEnvoyer quand même ?`);
       if (!ok) return;
-    } else if (lossLines > 0 && !window.confirm(`⚠️ ${lossLines} ouvrage${lossLines > 1 ? "s" : ""} chiffré${lossLines > 1 ? "s" : ""} à perte dans ce devis.\n\nEnvoyer quand même ?`)) {
+    } else if (lossLines > 0 && !window.confirm(`⚠️ ${lossLines} ouvrage${lossLines > 1 ? "s" : ""}orçamentado${lossLines > 1 ? "s" : ""}com prejuízo neste orçamento.\n\nEnviar mesmo assim?`)) {
       return;
     }
     const c = clients.find((x) => x.client_id === clientId);
@@ -1186,7 +1186,7 @@ export default function QuoteEditor() {
             const { data: st } = await api.get(`/documents/send-status/${data.log_id}`);
             if (st.email_status === "sent") break;
             if (st.email_status === "failed") {
-              toast.error((isPT ? "E-mail NÃO entregue ao cliente : " : "E-mail NON remis au client : ") + (st.error || ""), { duration: 15000 });
+              toast.error((isPT ? "E-mail NÃO entregue ao cliente : " : "E-mail NÃO entregue ao cliente:") + (st.error || ""), { duration: 15000 });
               break;
             }
           } catch { break; }
@@ -1203,7 +1203,7 @@ export default function QuoteEditor() {
   const filteredLib = library.filter((i) =>
     !pickerQ.trim() || (i.designation + " " + i.category).toLowerCase().includes(pickerQ.toLowerCase()));
 
-  const _docLabel = { quote: "DEVIS", invoice: "FACTURE", credit_note: "AVOIR" }[docType] || "DEVIS";
+  const _docLabel = { quote: "ORÇAMENTO", invoice: "FATURA", credit_note: "NOTA DE CRÉDITO" }[docType] || "ORÇAMENTO";
   const _clientObj = clients.find((c) => c.client_id === clientId);
   const _clientName = _clientObj
     ? ([_clientObj.first_name, _clientObj.last_name].filter(Boolean).join(" ") || _clientObj.company || _clientObj.email)
@@ -1215,14 +1215,14 @@ export default function QuoteEditor() {
     <div className="xl:sticky xl:top-4">
       <div className="flex justify-end mb-2 print:hidden">
         <Button type="button" size="sm" variant="outline" onClick={() => window.print()} className="rounded-sm gap-2" data-testid="preview-print-btn">
-          <Printer className="h-4 w-4" /> Imprimer l'aperçu
+          <Printer className="h-4 w-4" /> Imprimir a pré-visualização
         </Button>
       </div>
     <div id="quote-print-root" className="quote-paper rounded-sm border border-border bg-white text-[#1a1f2b] shadow-sm overflow-hidden" data-testid="quote-preview">
       <div className="bg-[#0f172a] text-white px-6 py-5 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-lg font-bold tracking-tight">{_docLabel} {number || ""}</p>
-          <p className="text-xs opacity-80 mt-0.5 truncate">{title || "Sans titre"}</p>
+          <p className="text-xs opacity-80 mt-0.5 truncate">{title || "Sem título"}</p>
         </div>
         <div className="text-right text-[11px] opacity-80 shrink-0">
           <p className="font-semibold">{user?.company_name || user?.company || user?.name || ""}</p>
@@ -1230,7 +1230,7 @@ export default function QuoteEditor() {
         </div>
       </div>
       <div className="px-6 py-3 border-b border-border text-xs flex flex-wrap gap-x-6 gap-y-1">
-        <span><span className="font-semibold text-muted-foreground">Client : </span>{_clientName || "—"}</span>
+        <span><span className="font-semibold text-muted-foreground">Cliente: </span>{_clientName || "—"}</span>
         {projectAddress ? <span><span className="font-semibold text-muted-foreground">Adresse : </span>{projectAddress}</span> : null}
       </div>
       <div className="px-4 py-3 overflow-x-auto">
@@ -1238,12 +1238,12 @@ export default function QuoteEditor() {
           <thead>
             <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-b border-border">
               <th className="text-left py-1.5 pl-1 w-8">N°</th>
-              <th className="text-left py-1.5">Désignation</th>
-              <th className="text-right py-1.5 w-12">Qté</th>
-              <th className="text-left py-1.5 w-12 pl-2">Unité</th>
+              <th className="text-left py-1.5">Designação</th>
+              <th className="text-right py-1.5 w-12">Qtd.</th>
+              <th className="text-left py-1.5 w-12 pl-2">Un.</th>
               <th className="text-right py-1.5 w-20">PU HT</th>
               <th className="text-right py-1.5 w-14">Rem.</th>
-              <th className="text-right py-1.5 w-24 pr-1">Total HT</th>
+              <th className="text-right py-1.5 w-24 pr-1">Total s/ IVA</th>
             </tr>
           </thead>
           <tbody>
@@ -1266,7 +1266,7 @@ export default function QuoteEditor() {
                 <tr key={i}><td /><td className="py-1 italic text-muted-foreground whitespace-pre-line" colSpan={6}>{l.text || ""}</td></tr>
               );
               if (l.kind === "pagebreak") return (
-                <tr key={i}><td colSpan={7} className="py-1"><div className="border-t border-dashed border-border text-[9px] text-center text-muted-foreground pt-0.5">— saut de page —</div></td></tr>
+                <tr key={i}><td colSpan={7} className="py-1"><div className="border-t border-dashed border-border text-[9px] text-center text-muted-foreground pt-0.5">— quebra de página —</div></td></tr>
               );
               const q = Number(l.qty) || 0, pu = Number(l.unit_price_ht) || 0, disc = Number(l.discount_pct) || 0;
               const lh = q * pu * (1 - disc / 100);
@@ -1275,7 +1275,7 @@ export default function QuoteEditor() {
                 <tr key={i} className="border-t border-border/50 align-top" data-testid={`preview-line-${i}`}>
                   <td className="py-1.5 pl-1 num text-muted-foreground">{num}</td>
                   <td className="py-1.5">
-                    <div className="font-semibold">{l.designation || <span className="text-muted-foreground italic font-normal">(sans désignation)</span>}</div>
+                    <div className="font-semibold">{l.designation || <span className="text-muted-foreground italic font-normal">(sem designação)</span>}</div>
                     {l.description ? <div className="text-[11px] text-muted-foreground whitespace-pre-line">{l.description}</div> : null}
                     {photos.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5" data-testid={`preview-photos-${i}`}>
@@ -1300,9 +1300,9 @@ export default function QuoteEditor() {
       </div>
       <div className="px-6 py-4 border-t border-border flex justify-end">
         <div className="w-64 text-xs grid gap-1">
-          <div className="flex justify-between"><span className="text-muted-foreground">Total HT</span><span className="num font-semibold">{eur(totals.ht)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Total s/ IVA</span><span className="num font-semibold">{eur(totals.ht)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">TVA</span><span className="num">{eur(totals.tvaTotal)}</span></div>
-          <div className="flex justify-between text-sm border-t border-border pt-1 mt-0.5"><span className="font-bold">Total TTC</span><span className="num font-bold text-primary">{eur(totals.ttc)}</span></div>
+          <div className="flex justify-between text-sm border-t border-border pt-1 mt-0.5"><span className="font-bold">Total c/ IVA</span><span className="num font-bold text-primary">{eur(totals.ttc)}</span></div>
           {Number(depositPct) > 0 && (
             <div className="flex justify-between text-[11px] text-muted-foreground"><span>Acompte ({depositPct} %)</span><span className="num">{eur(totals.dep)}</span></div>
           )}
@@ -1335,9 +1335,9 @@ export default function QuoteEditor() {
             {docType === "quote" && docId && (
               <button onClick={() => nav(`/assistant?intent=quote&resumeQuote=${docId}`)}
                       className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
-                      title="Reprendre ce devis avec l'Assistant BTP"
+                      title="Retomar este orçamento com o Assistente Construção"
                       data-testid="editor-back-to-assistant">
-                <Sparkles className="h-3 w-3" /> Retour à l'assistant
+                <Sparkles className="h-3 w-3" /> Voltar ao assistente
               </button>
             )}
           </div>
@@ -1381,8 +1381,8 @@ export default function QuoteEditor() {
           </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => document.getElementById("qe-cctp-input").click()}
                   disabled={cctpBusy}
-                  title="Lire un CCTP : ouvrages et matériaux imposés ajoutés au devis" data-testid="editor-cctp-btn">
-            {cctpBusy ? <Loader2 className="animate-spin" /> : <FileText />} {cctpBusy ? "Lecture du CCTP…" : "Lire un CCTP"}
+                  title="Ler um CCTP: trabalhos e materiais impostos adicionados ao orçamento" data-testid="editor-cctp-btn">
+            {cctpBusy ? <Loader2 className="animate-spin" /> : <FileText />} {cctpBusy ? "Leitura do CCTP…" : "Ler um caderno de encargos"}
           </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => document.getElementById("qe-video-input").click()}
                   disabled={videoBusy} data-testid="editor-video-gallery-btn">
@@ -1401,24 +1401,24 @@ export default function QuoteEditor() {
             {videoBusy ? <Loader2 className="animate-spin" /> : <Mic />} {t("crm.ed_dictate")}
           </DropdownMenuItem>
             </QuoteEditorMenu>
-            <QuoteEditorMenu label="Plus" icon={MoreHorizontal} testId="editor-more-menu">
+            <QuoteEditorMenu label="Mais" icon={MoreHorizontal} testId="editor-more-menu">
             <DropdownMenuItem onSelect={openTemplates} disabled={saving} data-testid="editor-templates-btn">
-            <LayoutTemplate /> Modèles
+            <LayoutTemplate /> Modelos
           </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => downloadPdf(true)}
-                  title="PDF avec coûts de revient et marges par lot — réservé à l'entreprise" data-testid="editor-pdf-internal-btn">
+                  title="PDF com custos de produção e margens por lote — reservado à empresa" data-testid="editor-pdf-internal-btn">
             <Download /> PDF interne (marges)
           </DropdownMenuItem>
               {docType === "quote" && docId && (
             <DropdownMenuItem onSelect={() => nav(`/assistant?intent=quote&resumeQuote=${docId}`)}
-                    title="Reprendre ce devis avec l'Assistant BTP (chiffrage, ajout de lignes, corrections)"
+                    title="Retomar este orçamento com o Assistente Construção (orçamentação, adição de linhas, correções)"
                     data-testid="editor-resume-assistant-btn">
-              <Sparkles /> Continuer avec l'assistant
+              <Sparkles /> Continuar com o assistente
             </DropdownMenuItem>
               )}
               {user?.role === "admin" && (
             <DropdownMenuItem onSelect={saveAsAiExample} disabled={aiExampleBusy}
-                    title="Enregistrer ce devis comme exemple de référence pour l'IA (apprentissage global)"
+                    title="Guardar este orçamento como exemplo de referência para a IA (aprendizagem global)"
                     data-testid="editor-ai-example-btn">
               {aiExampleBusy ? <Loader2 className="animate-spin" /> : <GraduationCap />} Exemple IA
             </DropdownMenuItem>
@@ -1426,8 +1426,8 @@ export default function QuoteEditor() {
             </QuoteEditorMenu>
             {docType === "quote" && (
             <Button variant="outline" onClick={() => setCheckOpen(true)} className="rounded-sm gap-2 border-primary/40 text-primary"
-                    title="Contrôler le devis avant envoi" data-testid="editor-check-btn">
-              <ShieldCheck className="h-4 w-4" /> Vérifier
+                    title="Controlar o orçamento antes do envio" data-testid="editor-check-btn">
+              <ShieldCheck className="h-4 w-4" /> Verificar
             </Button>
             )}
             <Button variant="outline" onClick={() => downloadPdf(false)} className="rounded-sm gap-2" data-testid="editor-pdf-btn">
@@ -1441,14 +1441,14 @@ export default function QuoteEditor() {
           </Button>
           </div>
           <span className={`text-xs self-center ${saveState === "error" ? "text-red-500" : "text-muted-foreground"}`} data-testid="editor-save-state" aria-live="polite">
-            {saveState === "saving" ? "Enregistrement…" : saveState === "saved" ? "Enregistré" : saveState === "error" ? "Échec — réessayer" : saveState === "dirty" ? "Modifications non enregistrées" : ""}
+            {saveState === "saving" ? "Enregistrement…" : saveState === "saved" ? "Guardado" : saveState === "error" ? "Falha — tentar novamente" : saveState === "dirty" ? "Alterações não guardadas" : ""}
           </span>
         </div>
       </div>
 
       <div className="quote-overview">
-      <div className="quote-view-switch" role="group" aria-label="Affichage du document" data-testid="editor-view-toggle">
-        {[["editor", "Éditeur", Pencil], ["split", "Côte à côte", Columns2], ["preview", "Aperçu", Eye]].map(([m, label, Ic]) => (
+      <div className="quote-view-switch" role="group" aria-label="Apresentação do documento" data-testid="editor-view-toggle">
+        {[["editor", "Editor", Pencil], ["split", "Lado a lado", Columns2], ["preview", "Pré-visualização", Eye]].map(([m, label, Ic]) => (
           <button key={m} type="button" onClick={() => setViewMode(m)} aria-pressed={viewMode === m} data-testid={`editor-view-${m}`}
             className={`inline-flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-semibold transition-colors ${viewMode === m ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
             <Ic className="h-3.5 w-3.5" /> {label}
@@ -1456,32 +1456,32 @@ export default function QuoteEditor() {
         ))}
       </div>
 
-        <div className="quote-overview-totals" aria-label="Récapitulatif du document">
+        <div className="quote-overview-totals" aria-label="Resumo do documento">
           <span>{totals.coverage.total} ligne{totals.coverage.total > 1 ? "s" : ""}</span>
-          <span>Total HT <strong>{eur(totals.ht)}</strong></span>
-          <span className="quote-overview-grandtotal">{totals.vatUnset > 0 ? "TTC à compléter" : "Total TTC"} <strong>{eur(totals.ttc)}</strong></span>
+          <span>Total s/ IVA <strong>{eur(totals.ht)}</strong></span>
+          <span className="quote-overview-grandtotal">{totals.vatUnset > 0 ? "c/ IVA a completar" : "Total c/ IVA"} <strong>{eur(totals.ttc)}</strong></span>
         </div>
       </div>
 
       <Dialog open={tplOpen} onOpenChange={setTplOpen}>
         <DialogContent className="max-w-lg" data-testid="templates-dialog">
-          <DialogHeader><DialogTitle>Modèles de devis</DialogTitle>
-            <DialogDescription>Enregistrez le devis actuel comme modèle ou appliquez un modèle existant.</DialogDescription>
+          <DialogHeader><DialogTitle>Modelos de orçamento</DialogTitle>
+            <DialogDescription>Guarde o orçamento atual como modelo ou aplique um modelo existente.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-sm border border-border p-3 bg-muted/30">
-              <p className="text-xs font-semibold mb-2">Enregistrer le devis actuel comme modèle</p>
+              <p className="text-xs font-semibold mb-2">Guardar o orçamento atual como modelo</p>
               <div className="flex gap-2">
-                <Input value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="Nom du modèle (ex : Rénovation SDB)" className="rounded-sm h-9 text-sm" data-testid="template-name-input" />
+                <Input value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="Nome do modelo (ex.: Remodelação WC)" className="rounded-sm h-9 text-sm" data-testid="template-name-input" />
                 <Button onClick={saveTemplate} disabled={tplBusy || !tplName.trim()} className="rounded-sm gap-2 shrink-0" data-testid="template-save-btn">
-                  {tplBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer
+                  {tplBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar
                 </Button>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold mb-2 text-muted-foreground">Mes modèles ({templates.length})</p>
+              <p className="text-xs font-semibold mb-2 text-muted-foreground">Os meus modelos ({templates.length})</p>
               {templates.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center" data-testid="templates-empty">Aucun modèle pour l'instant.</p>
+                <p className="text-sm text-muted-foreground py-4 text-center" data-testid="templates-empty">Nenhum modelo por agora.</p>
               ) : (
                 <div className="grid gap-1.5 max-h-72 overflow-y-auto" data-testid="templates-list">
                   {templates.map((tpl) => (
@@ -1515,7 +1515,7 @@ export default function QuoteEditor() {
                 <p className="text-xs font-semibold text-muted-foreground">{t("crm.ed_preview_before")}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {pdfPreviewUrl ? (
-                    <iframe title="Aperçu PDF" src={pdfPreviewUrl} data-testid="send-preview-pdf"
+                    <iframe title="Pré-visualização PDF" src={pdfPreviewUrl} data-testid="send-preview-pdf"
                             className="w-full h-40 rounded-sm border border-border bg-white" />
                   ) : (
                     <div className="w-full h-40 rounded-sm border border-border grid place-items-center text-[10px] text-muted-foreground">PDF…</div>
@@ -1538,7 +1538,7 @@ export default function QuoteEditor() {
               <Label htmlFor="send-email">{t("crm.ed_client_email_req")}</Label>
               <Input id="send-email" type="text" value={sendEmail} onChange={(e) => setSendEmail(e.target.value)}
                      placeholder="client@email.com, associe@email.com" data-testid="send-quote-email" />
-              <p className="text-[11px] text-muted-foreground mt-1">Plusieurs destinataires possibles — séparez les adresses par une virgule.</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Vários destinatários possíveis — separe os endereços por vírgula.</p>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="send-msg">{t("crm.ed_msg_optional")}</Label>
@@ -1555,7 +1555,7 @@ export default function QuoteEditor() {
               </Button>
               {emailPreviewHtml && (
                 <div className="rounded-sm border border-border overflow-hidden" data-testid="send-email-preview">
-                  <iframe title="Aperçu e-mail" srcDoc={emailPreviewHtml}
+                  <iframe title="Pré-visualização e-mail" srcDoc={emailPreviewHtml}
                           className="w-full h-72 bg-white" />
                 </div>
               )}
@@ -1614,24 +1614,24 @@ export default function QuoteEditor() {
       {frozenInfo && !frozenInfo.draft && (
         <div className="rounded-sm border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm flex flex-wrap items-center gap-2" data-testid="editor-frozen-banner">
           <Lock className="h-4 w-4 text-amber-600" />
-          <span className="font-medium">{frozenInfo.doc_type === "quote" ? "Devis signé — contenu figé." : "Document émis — contenu figé."}</span>
+          <span className="font-medium">{frozenInfo.doc_type === "quote" ? "Orçamento assinado — conteúdo bloqueado." : "Documento emitido — conteúdo bloqueado."}</span>
           <span className="text-muted-foreground">
             {frozenInfo.doc_type === "quote"
-              ? "Toute modification des lignes, du client ou des conditions créera une nouvelle révision brouillon (à faire re-signer) ; cette version reste consultable."
-              : "Une correction passe par un avoir : le contenu de ce document ne peut plus changer."}
+              ? "Qualquer alteração das linhas, do cliente ou das condições criará uma nova revisão em rascunho (a voltar a assinar); esta versão continua consultável."
+              : "Uma correção é feita através de uma nota de crédito: o conteúdo deste documento já não pode mudar."}
             {frozenInfo.hash ? ` Empreinte ${String(frozenInfo.hash).slice(0, 10)}…` : ""}
           </span>
           {frozenInfo.superseded_by && (
             <Button size="sm" variant="outline" className="rounded-sm h-7 text-xs" onClick={() => nav(`/devis-editeur/${frozenInfo.superseded_by}`)} data-testid="editor-open-revision-btn">
-              Ouvrir la révision en cours
+              Abrir a revisão em curso
             </Button>
           )}
         </div>
       )}
       {frozenInfo?.draft && (
         <div className="rounded-sm border border-border bg-muted/40 px-3 py-2 text-xs flex flex-wrap items-center gap-2" data-testid="editor-revision-banner">
-          <span>Révision {frozenInfo.revision} (brouillon, non signée) du document</span>
-          <button type="button" className="underline" onClick={() => nav(`/devis-editeur/${frozenInfo.revision_of}`)} data-testid="editor-open-original-btn">version signée d'origine</button>
+          <span>Revisão {frozenInfo.revision} (rascunho, não assinada) do documento</span>
+          <button type="button" className="underline" onClick={() => nav(`/devis-editeur/${frozenInfo.revision_of}`)} data-testid="editor-open-original-btn">versão assinada original</button>
         </div>
       )}
 
@@ -1768,11 +1768,11 @@ export default function QuoteEditor() {
 
         <div className="quote-add-toolbar" data-testid="editor-add-toolbar">
           <Button size="sm" variant="outline" className="rounded-sm gap-1 h-8 text-primary border-primary/40" onClick={() => addBlock("fourniture")} data-testid="editor-add-fourniture">
-            <Plus className="h-3.5 w-3.5" /> Ajouter une ligne
+            <Plus className="h-3.5 w-3.5" /> Adicionar uma linha
           </Button>
-          <QuoteEditorMenu label="Sections et autres lignes" icon={Layers} testId="editor-block-menu">
+          <QuoteEditorMenu label="Secções e outras linhas" icon={Layers} testId="editor-block-menu">
           <DropdownMenuItem onSelect={() => addBlock("main_oeuvre")} data-testid="editor-add-mainoeuvre">
-            <Plus /> Main d'œuvre
+            <Plus /> Mão de obra
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => addBlock("ouvrage")} data-testid="editor-add-ouvrage">
             <Plus /> Ouvrage
@@ -1788,16 +1788,16 @@ export default function QuoteEditor() {
             <FileText /> Texte
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => addBlock("pagebreak")} data-testid="editor-add-pagebreak">
-            Saut de page
+            Quebra de página
           </DropdownMenuItem>
 
           </QuoteEditorMenu>
         </div>
         <details className="quote-settings" data-testid="editor-pricing-settings">
-          <summary><span>Réglages de chiffrage</span><small>TVA, prix automatiques et marges</small><ChevronDown size={15} aria-hidden="true" /></summary>
+          <summary><span>Definições de orçamentação</span><small>IVA, preços automáticos e margens</small><ChevronDown size={15} aria-hidden="true" /></summary>
           <div className="quote-settings-content">
             <div className="flex flex-wrap items-center gap-1 mr-1 min-w-0 max-w-full" data-testid="bulk-vat-control">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold whitespace-nowrap">{isPT ? "IVA todas as linhas" : "TVA toutes lignes"}</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold whitespace-nowrap">{isPT ? "IVA todas as linhas" : "IVA todas as linhas"}</span>
               <select
                 value=""
                 onChange={(e) => { if (e.target.value !== "") setAllVat(Number(e.target.value)); }}
@@ -1810,14 +1810,14 @@ export default function QuoteEditor() {
             <OuvrageComposeDialog onAdd={(line) => setLines((ls) => [...ls, { ...blankLine(), ...line, line_kind: "ouvrage", _saveToLib: false }])} />
         <div className="flex items-center gap-2 flex-wrap rounded-sm border border-border/60 bg-secondary/30 px-3 py-2 text-xs" data-testid="editor-library-mode">
           <Library className="h-3.5 w-3.5 text-primary" />
-          <span className="font-medium">{isPT ? "Preços automáticos" : "Prix automatiques"}</span>
+          <span className="font-medium">{isPT ? "Preços automáticos" : "Preços automáticos"}</span>
           <select value={libraryMode} onChange={(e) => saveLibraryMode(e.target.value)}
                   className="h-8 min-w-0 w-full sm:w-auto max-w-full rounded-sm border border-input bg-background px-2 text-xs" data-testid="editor-library-mode-select">
             <option value="shared_first">{isPT ? "ConstruPilot → empresa" : "ConstruPilot → entreprise"}</option>
             <option value="company_first">{isPT ? "Empresa → ConstruPilot" : "Entreprise → ConstruPilot"}</option>
             <option value="company_only">{isPT ? "Só empresa" : "Entreprise uniquement"}</option>
           </select>
-          <span className="text-muted-foreground">{isPT ? "— usado para orçamentos por voz, foto, vídeo, planta e CCTP." : "— utilisé pour les devis par dictée, photo, vidéo, plan et CCTP."}</span>
+          <span className="text-muted-foreground">{isPT ? "— usado para orçamentos por voz, foto, vídeo, planta e CCTP." : "— utilizado para orçamentos por ditado, foto, vídeo, projeto e caderno de encargos."}</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap rounded-sm border border-border/60 bg-secondary/30 px-3 py-2 text-xs" data-testid="editor-target-margin">
@@ -1826,12 +1826,12 @@ export default function QuoteEditor() {
           <Input type="number" min="0" max="90" step="1" value={targetMargin || ""} placeholder="ex. 30"
                  onChange={(e) => setTargetMargin(Number(e.target.value) || 0)} onBlur={(e) => saveTargetMargin(e.target.value)}
                  className="rounded-sm h-7 w-20 num text-right" data-testid="editor-target-margin-input" />
-          <span className="text-muted-foreground">% — le prix de vente se calcule automatiquement depuis le coût de revient quand une ligne n'a pas de prix.</span>
+          <span className="text-muted-foreground">% — o preço de venda calcula-se automaticamente a partir do custo quando uma linha não tem preço.</span>
           <Button size="sm" variant="ghost" className="h-7 rounded-sm gap-1 ml-auto" onClick={() => setShowLotMargins((s) => !s)} data-testid="editor-lot-margins-toggle">
             <Layers className="h-3.5 w-3.5" /> Par lot {Object.keys(lotMargins).length ? `(${Object.keys(lotMargins).length})` : ""}
           </Button>
           <Button size="sm" variant="ghost" className="h-auto min-h-7 max-w-full whitespace-normal text-left py-1 rounded-sm gap-1 text-primary" onClick={applyTargetMargin} data-testid="editor-apply-target-margin">
-            <TrendingUp className="h-3.5 w-3.5" /> Appliquer aux lignes sans prix
+            <TrendingUp className="h-3.5 w-3.5" /> Aplicar às linhas sem preço
           </Button>
           {showLotMargins && (
             <div className="w-full grid sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-2 border-t border-border/50" data-testid="editor-lot-margins">
@@ -1846,11 +1846,11 @@ export default function QuoteEditor() {
                 </label>
               ))}
               <label className="flex items-center gap-2">
-                <Input list="qe-lots" placeholder="Ajouter un lot…" className="rounded-sm h-7 flex-1"
+                <Input list="qe-lots" placeholder="Adicionar uma especialidade…" className="rounded-sm h-7 flex-1"
                        onKeyDown={(e) => { if (e.key === "Enter" && e.currentTarget.value.trim()) { const c = e.currentTarget.value.trim(); setLotMargins((m) => ({ ...m, [c]: m[c] ?? (targetMargin || 30) })); e.currentTarget.value = ""; } }}
                        data-testid="editor-lot-margin-add" />
               </label>
-              <p className="text-[10px] text-muted-foreground sm:col-span-2 lg:col-span-3">Laissez vide pour utiliser la marge globale. Le lot d'une ligne se déduit du champ « Lot ».</p>
+              <p className="text-[10px] text-muted-foreground sm:col-span-2 lg:col-span-3">Deixe vazio para utilizar a margem global. A especialidade de uma linha deduz-se do campo «Especialidade».</p>
             </div>
           )}
         </div>
@@ -1858,8 +1858,8 @@ export default function QuoteEditor() {
         {fiscal?.known && fiscal.reduced_hint && (
           <div className="flex items-start gap-2 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2 text-xs" data-testid="fiscal-policy-hint">
             <div className="flex-1">
-              <b>Régime TVA de l'entreprise : {fiscal.country} — taux normal {fiscal.default_rate} %.</b> {fiscal.reduced_hint}
-              {lines.some((l) => l.vat_suggestion) && <span className="block mt-1">Suggestion issue du texte : {lines.find((l) => l.vat_suggestion).vat_suggestion} % — {lines.find((l) => l.vat_suggestion).vat_suggestion_reason}</span>}
+              <b>Regime de IVA da empresa: {fiscal.country} — taux normal {fiscal.default_rate} %.</b> {fiscal.reduced_hint}
+              {lines.some((l) => l.vat_suggestion) && <span className="block mt-1">Sugestão a partir do texto: {lines.find((l) => l.vat_suggestion).vat_suggestion} % — {lines.find((l) => l.vat_suggestion).vat_suggestion_reason}</span>}
             </div>
             {lines.some((l) => l.vat_suggestion) && (
               <Button size="sm" variant="outline" onClick={() => setAllVat(lines.find((l) => l.vat_suggestion).vat_suggestion)}
@@ -1874,25 +1874,25 @@ export default function QuoteEditor() {
         </details>
 
         {lotOrder.length >= 2 && (
-          <details className="quote-settings" data-testid="editor-lot-reorder"><summary>Organiser les lots<ChevronDown size={15} aria-hidden="true" /></summary><div className="quote-settings-content">
+          <details className="quote-settings" data-testid="editor-lot-reorder"><summary>Organizar os capítulos<ChevronDown size={15} aria-hidden="true" /></summary><div className="quote-settings-content">
             <div className="flex items-center gap-2 flex-wrap">
               <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="font-medium mr-1">Ordre des lots</span>
+              <span className="font-medium mr-1">Ordem dos capítulos</span>
               {lotOrder.map((cat, k) => (
                 <span key={cat} className="inline-flex items-center gap-1 rounded-sm border border-border bg-background pl-2 pr-1 py-0.5" data-testid={`editor-lot-chip-${cat}`}>
                   <span className="truncate max-w-[140px]">{cat}</span>
                   <button type="button" onClick={() => moveLot(cat, -1)} disabled={k === 0}
-                          title="Monter le lot" className="text-muted-foreground hover:text-primary disabled:opacity-30" data-testid={`editor-lot-up-${cat}`}>
+                          title="Subir o capítulo" className="text-muted-foreground hover:text-primary disabled:opacity-30" data-testid={`editor-lot-up-${cat}`}>
                     <ChevronUp className="h-3.5 w-3.5" />
                   </button>
                   <button type="button" onClick={() => moveLot(cat, 1)} disabled={k === lotOrder.length - 1}
-                          title="Descendre le lot" className="text-muted-foreground hover:text-primary disabled:opacity-30" data-testid={`editor-lot-down-${cat}`}>
+                          title="Descer o capítulo" className="text-muted-foreground hover:text-primary disabled:opacity-30" data-testid={`editor-lot-down-${cat}`}>
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </span>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">Déplacer un lot regroupe et réordonne toutes ses lignes d'un coup. Glissez une ligne par sa poignée pour l'ordre fin.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Mover um capítulo agrupa e reordena todas as suas linhas de uma vez. Arraste uma linha pela pega para a ordem fina.</p>
           </div></details>
         )}
 
@@ -1908,15 +1908,15 @@ export default function QuoteEditor() {
             <div className="flex items-center gap-0.5 shrink-0">
               <span draggable onDragStart={(e) => { dragIdxRef.current = i; setDragIdx(i); e.dataTransfer.effectAllowed = "move"; }}
                     onDragEnd={() => { dragIdxRef.current = null; setDragIdx(null); setDragOverIdx(null); }}
-                    title="Glisser pour réordonner" className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary touch-none px-0.5"
+                    title="Arrastar para reordenar" className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary touch-none px-0.5"
                     data-testid={`editor-line-drag-${i}`}><GripVertical className="h-4 w-4" /></span>
               <div className="flex flex-col">
                 <button type="button" onClick={() => moveLine(i, -1)} disabled={i === 0} title="Monter"
-                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Monter la ligne ${i + 1}`} data-testid={`editor-line-up-${i}`}><ChevronUp className="h-3.5 w-3.5" /></button>
+                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Subir a linha${i + 1}`} data-testid={`editor-line-up-${i}`}><ChevronUp className="h-3.5 w-3.5" /></button>
                 <button type="button" onClick={() => moveLine(i, 1)} disabled={i === lines.length - 1} title="Descendre"
-                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Descendre la ligne ${i + 1}`} data-testid={`editor-line-down-${i}`}><ChevronDown className="h-3.5 w-3.5" /></button>
+                        className="h-4 flex items-center text-muted-foreground hover:text-primary disabled:opacity-30" aria-label={`Descer a linha${i + 1}`} data-testid={`editor-line-down-${i}`}><ChevronDown className="h-3.5 w-3.5" /></button>
               </div>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => delLine(i)} aria-label={`Supprimer la ligne ${i + 1}`} data-testid={`editor-line-del-${i}`}><Trash2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => delLine(i)} aria-label={`Eliminar a linha${i + 1}`} data-testid={`editor-line-del-${i}`}><Trash2 className="h-4 w-4" /></Button>
             </div>
           );
           const wrap = (el) => (<Fragment key={i}>{el}<InlineInserter index={i} onInsert={insertBlock} /></Fragment>);
@@ -1927,11 +1927,11 @@ export default function QuoteEditor() {
               <div key={i} {...dragProps} className={`quote-section-row flex items-center gap-2 rounded-sm px-3 py-2 transition-colors ${isSec ? "bg-primary/10 border border-primary/30" : "bg-secondary/40 ml-4"} ${dragCls}`} data-testid={`editor-line-${i}`}>
                 <span className="num text-sm font-bold text-primary w-12 shrink-0">{num}</span>
                 <Input value={l.title || ""} onChange={(e) => setLine(i, "title", e.target.value)}
-                       placeholder={isSec ? "Titre de la section (ex : Gros œuvre)" : "Titre de la sous-section"}
+                       placeholder={isSec ? "Título da secção (ex.: Estrutura)" : "Título da subsecção"}
                        className={`rounded-sm border-0 bg-transparent focus-visible:ring-1 ${isSec ? "text-base font-bold" : "text-sm font-semibold"}`}
                        data-testid={`editor-section-title-${i}`} />
                 {isSec && sectionSubtotals[i] > 0 && (
-                  <span className="num text-sm font-bold text-primary shrink-0" data-testid={`editor-section-subtotal-${i}`}>Sous-total : {eur(sectionSubtotals[i])}</span>
+                  <span className="num text-sm font-bold text-primary shrink-0" data-testid={`editor-section-subtotal-${i}`}>Subtotal: {eur(sectionSubtotals[i])}</span>
                 )}
                 <Actions />
               </div>
@@ -1941,7 +1941,7 @@ export default function QuoteEditor() {
             return wrap(
               <div key={i} {...dragProps} className={`flex items-start gap-2 rounded-sm px-3 py-2 border border-dashed border-border ${dragCls}`} data-testid={`editor-line-${i}`}>
                 <FileText className="h-4 w-4 text-muted-foreground mt-2 shrink-0" />
-                <textarea value={l.text || ""} onChange={(e) => setLine(i, "text", e.target.value)} rows={2} placeholder="Texte libre (paragraphe affiché dans le devis)…"
+                <textarea value={l.text || ""} onChange={(e) => setLine(i, "text", e.target.value)} rows={2} placeholder="Texto livre (parágrafo apresentado no orçamento)…"
                           className="rounded-sm text-sm w-full bg-background border border-input px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary" data-testid={`editor-text-${i}`} />
                 <div className="pt-1"><Actions /></div>
               </div>
@@ -1951,14 +1951,14 @@ export default function QuoteEditor() {
             return wrap(
               <div key={i} {...dragProps} className={`flex items-center gap-2 py-1 ${dragCls}`} data-testid={`editor-line-${i}`}>
                 <div className="flex-1 border-t-2 border-dashed border-border" />
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Saut de page</span>
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Quebra de página</span>
                 <div className="flex-1 border-t-2 border-dashed border-border" />
                 <Actions />
               </div>
             );
           }
 
-          const KIND_LABEL = { fourniture: "Fourniture", main_oeuvre: "Main d'œuvre", ouvrage: "Ouvrage" };
+          const KIND_LABEL = { fourniture: "Fourniture", main_oeuvre: "Mão de obra", ouvrage: "Ouvrage" };
           const lineHt = (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0) * (1 - (Number(l.discount_pct) || 0) / 100);
           return wrap(
           <div key={i} {...dragProps}
@@ -1967,9 +1967,9 @@ export default function QuoteEditor() {
             <div className="quote-line-heading">
               <span className="num text-xs font-bold text-muted-foreground w-12 shrink-0" data-testid={`editor-line-num-${i}`}>{num}</span>
               <select value={l.line_kind || "fourniture"} onChange={(e) => setLine(i, "line_kind", e.target.value)}
-                      className="rounded-sm border border-border bg-background px-1.5 h-6 text-[11px] font-medium" aria-label={`Type de la ligne ${i + 1}`} data-testid={`editor-line-kind-${i}`}>
+                      className="rounded-sm border border-border bg-background px-1.5 h-6 text-[11px] font-medium" aria-label={`Tipo de linha${i + 1}`} data-testid={`editor-line-kind-${i}`}>
                 <option value="fourniture">Fourniture</option>
-                <option value="main_oeuvre">Main d'œuvre</option>
+                <option value="main_oeuvre">Mão de obra</option>
                 <option value="ouvrage">Ouvrage</option>
               </select>
               {l.line_kind === "ouvrage" && (
@@ -2007,11 +2007,11 @@ export default function QuoteEditor() {
             <label className="quote-field"><span>{t("crm.col_vat")}</span>
             <select value={l.vat_rate ?? ""} onChange={(e) => { const v = e.target.value === "" ? null : Number(e.target.value); setLines((ls) => ls.map((x, j) => (j === i ? { ...x, vat_rate: v, vat_assumed: false, vat_confirmed: v != null } : x))); }}
                     className={`rounded-sm border bg-background px-2 h-9 text-sm min-w-0 xl:col-span-1 ${l.vat_rate == null ? "border-amber-500 text-amber-600" : "border-border"}`} data-testid={`editor-line-vat-${i}`}
-                    title={l.vat_suggestion ? `Suggestion : ${l.vat_suggestion} % — ${l.vat_suggestion_reason || "à confirmer"}` : undefined}>
+                    title={l.vat_suggestion ? `Suggestion : ${l.vat_suggestion} % — ${l.vat_suggestion_reason || "a confirmar"}` : undefined}>
               <option value="">TVA ?</option>
               {[...new Set([...vatRates, ...(l.vat_rate != null ? [Number(l.vat_rate)] : [])])].sort((a, b) => a - b).map((r) => <option key={r} value={r}>{r === 0 ? "0 %" : `${r}%`}</option>)}
             </select></label>
-            <div className="quote-field quote-field-total"><span>Total HT</span>
+            <div className="quote-field quote-field-total"><span>Total s/ IVA</span>
             <span className="xl:col-span-1 text-right num text-sm font-bold break-words min-w-0" data-testid={`editor-line-total-${i}`}>
               {eur(lineHt)}
             </span>
@@ -2019,7 +2019,7 @@ export default function QuoteEditor() {
             </div>
             {l.line_kind === "ouvrage" && l._open && (
               <div className="ml-4 rounded-sm border border-primary/20 bg-primary/5 p-2 grid gap-1.5" data-testid={`editor-ouvrage-panel-${i}`}>
-                <p className="text-[11px] font-semibold text-muted-foreground">Composants de l'ouvrage — le prix unitaire = somme des composants</p>
+                <p className="text-[11px] font-semibold text-muted-foreground">Componentes do artigo — o preço unitário = soma dos componentes</p>
                 {(l.components || []).map((c, ci) => (
                   <div key={ci} className={`grid gap-1 rounded-sm transition-colors ${compDragOver === `${i}-${ci}` ? "bg-primary/10 ring-1 ring-primary/40" : ""}`}
                        data-testid={`ouvrage-comp-${i}-${ci}`}
@@ -2033,18 +2033,18 @@ export default function QuoteEditor() {
                       <option value="main_oeuvre">M.O.</option>
                     </select>
                     <Input value={c.designation} onChange={(e) => setComponents(i, (l.components || []).map((x, j) => (j === ci ? { ...x, designation: e.target.value } : x)))}
-                           placeholder="Désignation composant" className="col-span-3 rounded-sm h-8 text-xs" data-testid={`ouvrage-comp-desig-${i}-${ci}`} />
+                           placeholder="Designação do componente" className="col-span-3 rounded-sm h-8 text-xs" data-testid={`ouvrage-comp-desig-${i}-${ci}`} />
                     <Input type="number" step="0.01" value={c.qty} onChange={(e) => setComponents(i, (l.components || []).map((x, j) => (j === ci ? { ...x, qty: e.target.value } : x)))}
-                           className="col-span-1 rounded-sm h-8 text-xs num text-right" title="Qté" />
+                           className="col-span-1 rounded-sm h-8 text-xs num text-right" title="Qtd." />
                     <Input value={c.unit} onChange={(e) => setComponents(i, (l.components || []).map((x, j) => (j === ci ? { ...x, unit: e.target.value } : x)))}
-                           className="col-span-1 rounded-sm h-8 text-xs" title="Unité" />
+                           className="col-span-1 rounded-sm h-8 text-xs" title="Un." />
                     <Input type="number" step="0.01" value={c.unit_price_ht} onChange={(e) => setComponents(i, (l.components || []).map((x, j) => (j === ci ? { ...x, unit_price_ht: e.target.value } : x)))}
                            className="col-span-2 rounded-sm h-8 text-xs num text-right" title="PU HT" data-testid={`ouvrage-comp-pu-${i}-${ci}`} />
                     <div className="col-span-3 flex items-center justify-end gap-0.5">
                       <span draggable
                             onDragStart={(e) => { compDragRef.current = { line: i, comp: ci }; e.dataTransfer.effectAllowed = "move"; }}
                             onDragEnd={() => { compDragRef.current = null; setCompDragOver(null); }}
-                            title="Glisser pour déplacer" className="cursor-grab text-muted-foreground hover:text-foreground p-0.5" data-testid={`ouvrage-comp-drag-${i}-${ci}`}><GripVertical className="h-3.5 w-3.5" /></span>
+                            title="Arrastar para mover" className="cursor-grab text-muted-foreground hover:text-foreground p-0.5" data-testid={`ouvrage-comp-drag-${i}-${ci}`}><GripVertical className="h-3.5 w-3.5" /></span>
                       <button type="button" title="Monter" disabled={ci === 0}
                               onClick={() => { const a = [...(l.components || [])]; [a[ci - 1], a[ci]] = [a[ci], a[ci - 1]]; setComponents(i, a); }}
                               className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none p-0.5" data-testid={`ouvrage-comp-up-${i}-${ci}`}><ChevronUp className="h-3.5 w-3.5" /></button>
@@ -2052,9 +2052,9 @@ export default function QuoteEditor() {
                               onClick={() => { const a = [...(l.components || [])]; [a[ci + 1], a[ci]] = [a[ci], a[ci + 1]]; setComponents(i, a); }}
                               className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none p-0.5" data-testid={`ouvrage-comp-down-${i}-${ci}`}><ChevronDown className="h-3.5 w-3.5" /></button>
                       <button type="button" title="Dupliquer"
-                              onClick={() => { const a = [...(l.components || [])]; a.splice(ci + 1, 0, { ...c, photos: [...(c.photos || [])] }); setComponents(i, a); toast.success("Composant dupliqué"); }}
+                              onClick={() => { const a = [...(l.components || [])]; a.splice(ci + 1, 0, { ...c, photos: [...(c.photos || [])] }); setComponents(i, a); toast.success("Componente duplicado"); }}
                               className="text-primary hover:text-primary/70 p-0.5" data-testid={`ouvrage-comp-dup-${i}-${ci}`}><Copy className="h-3.5 w-3.5" /></button>
-                      <button type="button" title="Supprimer" onClick={() => setComponents(i, (l.components || []).filter((_, j) => j !== ci))}
+                      <button type="button" title="Eliminar" onClick={() => setComponents(i, (l.components || []).filter((_, j) => j !== ci))}
                               className="text-destructive hover:text-destructive/70 p-0.5" data-testid={`ouvrage-comp-del-${i}-${ci}`}><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                     </div>
@@ -2067,7 +2067,7 @@ export default function QuoteEditor() {
                 ))}
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="outline" className="h-7 rounded-sm gap-1 text-xs" onClick={() => addComponent(i, "fourniture")} data-testid={`ouvrage-add-fourniture-${i}`}><Plus className="h-3 w-3" /> Fourniture</Button>
-                  <Button size="sm" variant="outline" className="h-7 rounded-sm gap-1 text-xs" onClick={() => addComponent(i, "main_oeuvre")} data-testid={`ouvrage-add-mo-${i}`}><Plus className="h-3 w-3" /> Main d'œuvre</Button>
+                  <Button size="sm" variant="outline" className="h-7 rounded-sm gap-1 text-xs" onClick={() => addComponent(i, "main_oeuvre")} data-testid={`ouvrage-add-mo-${i}`}><Plus className="h-3 w-3" /> Mão de obra</Button>
                   <span className="ms-auto text-xs font-bold num" data-testid={`ouvrage-sum-${i}`}>PU = {eur(Number(l.unit_price_ht) || 0)}</span>
                 </div>
               </div>
@@ -2075,9 +2075,9 @@ export default function QuoteEditor() {
             <QuoteLineProvenance line={l} index={i} />
             {l.description && <p className="quote-line-description">{l.description}</p>}
             <details className="quote-line-details">
-              <summary>Description, photos et coûts <ChevronDown size={14} aria-hidden="true" /></summary>
+              <summary>Descrição, fotografias e custos <ChevronDown size={14} aria-hidden="true" /></summary>
               <div className="quote-line-details-content">
-            <label className="quote-field"><span>Description détaillée</span>
+            <label className="quote-field"><span>Descrição detalhada</span>
             <textarea value={l.description || ""} onChange={(e) => setLine(i, "description", e.target.value)}
                    placeholder={t("crm.ed_desc_ph")}
                    rows={2}
@@ -2088,21 +2088,21 @@ export default function QuoteEditor() {
             </div>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[11px] text-muted-foreground">Coût de revient HT</span>
+                <span className="text-[11px] text-muted-foreground">Custo de produção s/ IVA</span>
                 <Input type="number" step="0.01" min="0" value={l.cost_price_ht ?? 0}
                        onChange={(e) => setLine(i, "cost_price_ht", e.target.value)}
                        className="rounded-sm h-7 text-xs w-24 num text-right" placeholder="MO + fournitures"
                        data-testid={`editor-line-cost-${i}`} />
                 {!(Number(l.cost_price_ht) > 0) && (
-                  <label className="flex items-center gap-1 text-[11px] text-muted-foreground" title="Cochez si cette ligne n'a réellement aucun coût de revient (sinon la marge globale reste « coûts incomplets »)">
+                  <label className="flex items-center gap-1 text-[11px] text-muted-foreground" title="Assinale se esta linha não tem realmente nenhum custo de produção (caso contrário a margem global continua «custos incompletos»)">
                     <input type="checkbox" checked={!!l.cost_confirmed_zero} onChange={(e) => setLine(i, "cost_confirmed_zero", e.target.checked)} data-testid={`editor-line-cost-zero-${i}`} />
-                    coût nul confirmé
+                    custo nulo confirmado
                   </label>
                 )}
                 {(() => { const m = lineMargin(l); return m ? (
                   <Badge variant="outline" data-testid={`editor-line-margin-${i}`}
                          className={`rounded-sm text-[10px] num h-6 ${m.loss ? "border-red-500 text-red-500 bg-red-500/10" : m.pct < 15 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}>
-                    {m.loss ? <><AlertTriangle className="h-3 w-3 mr-1" /> À perte</> : `marge ${m.pct.toFixed(0)} %`}
+                    {m.loss ? <><AlertTriangle className="h-3 w-3 mr-1" /> Com prejuízo</> : `marge ${m.pct.toFixed(0)} %`}
                   </Badge>
                 ) : null; })()}
               </div>
@@ -2124,9 +2124,9 @@ export default function QuoteEditor() {
         <Dialog open={!!cctpPreview} onOpenChange={(o) => !o && setCctpPreview(null)}>
           <DialogContent className="max-w-lg" data-testid="cctp-lots-dialog">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Ce CCTP couvre plusieurs lots</DialogTitle>
-              <DialogDescription>Cochez uniquement les lots que vous chiffrez. Les autres ne seront pas importés dans le devis.
-                {cctpPreview?.remembered > 0 && <span className="block mt-1 text-primary" data-testid="cctp-lots-remembered">Présélection basée sur vos imports précédents ({cctpPreview.remembered} lot{cctpPreview.remembered > 1 ? "s" : ""} décoché{cctpPreview.remembered > 1 ? "s" : ""} automatiquement).</span>}
+              <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Este caderno de encargos cobre várias especialidades</DialogTitle>
+              <DialogDescription>Assinale apenas as especialidades que orçamenta. As outras não serão importadas no orçamento.
+                {cctpPreview?.remembered > 0 && <span className="block mt-1 text-primary" data-testid="cctp-lots-remembered">Pré-seleção baseada nas suas importações anteriores ({cctpPreview.remembered} lot{cctpPreview.remembered > 1 ? "s" : ""} desmarcado{cctpPreview.remembered > 1 ? "s" : ""} automatiquement).</span>}
               </DialogDescription>
             </DialogHeader>
             {cctpPreview && (
@@ -2147,8 +2147,8 @@ export default function QuoteEditor() {
                 </div>
                 <div className="flex items-center justify-between gap-2 pt-2">
                   <div className="flex gap-2 text-xs">
-                    <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set(p.lots) }))}>Tout</button>
-                    <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set() }))}>Aucun</button>
+                    <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set(p.lots) }))}>Tudo</button>
+                    <button type="button" className="underline text-muted-foreground" onClick={() => setCctpPreview((p) => ({ ...p, selected: new Set() }))}>Nenhum</button>
                   </div>
                   <Button onClick={() => applyCctp(cctpPreview.data, cctpPreview.selected, cctpPreview.lots)} disabled={!cctpPreview.selected.size} className="rounded-sm gap-2" data-testid="cctp-lots-confirm">
                     <Plus className="h-4 w-4" /> Importer {cctpPreview.selected.size} lot{cctpPreview.selected.size > 1 ? "s" : ""}
@@ -2168,26 +2168,26 @@ export default function QuoteEditor() {
       {docType === "quote" && (
         <div className="grid md:grid-cols-2 gap-4" data-testid="editor-quote-extras">
           <div className="surface p-4 grid gap-3 content-start">
-            <Label className="flex items-center gap-2 text-sm font-semibold"><MapPin className="h-4 w-4" /> Chantier & validité</Label>
+            <Label className="flex items-center gap-2 text-sm font-semibold"><MapPin className="h-4 w-4" /> Obra e validade</Label>
             <div>
-              <Label className="text-xs text-muted-foreground">Adresse du chantier</Label>
+              <Label className="text-xs text-muted-foreground">Morada da obra</Label>
               <Input value={projectAddress} onChange={(e) => setProjectAddress(e.target.value)} disabled={isFrozen}
-                     placeholder="Reprise du chantier lié si renseigné" className="rounded-sm mt-1" data-testid="editor-project-address" />
+                     placeholder="Retomado da obra associada se indicado" className="rounded-sm mt-1" data-testid="editor-project-address" />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-muted-foreground">Durée des travaux</Label>
+                <Label className="text-xs text-muted-foreground">Duração das obras</Label>
                 <Input value={projectDuration} onChange={(e) => setProjectDuration(e.target.value)} disabled={isFrozen}
                        placeholder="ex. 3 semaines" className="rounded-sm mt-1" data-testid="editor-project-duration" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Démarrage</Label>
+                <Label className="text-xs text-muted-foreground">Arranque</Label>
                 <Input value={projectStart} onChange={(e) => setProjectStart(e.target.value)} disabled={isFrozen}
-                       placeholder="ex. À convenir" className="rounded-sm mt-1" data-testid="editor-project-start" />
+                       placeholder="ex.: A combinar" className="rounded-sm mt-1" data-testid="editor-project-start" />
               </div>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Validité du devis</Label>
+              <Label className="text-xs text-muted-foreground">Validade do orçamento</Label>
               <div className="quote-validity-controls flex flex-wrap gap-1 mt-1">
                 <Button type="button" size="sm" variant={validityDays > 0 ? "default" : "outline"} disabled={isFrozen}
                         className="rounded-sm h-8 text-xs" onClick={() => setValidityDays(validityDays > 0 ? validityDays : 30)}
@@ -2199,7 +2199,7 @@ export default function QuoteEditor() {
                   <div className="flex items-center gap-1 text-sm">
                     <Input type="number" min="1" max="365" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} disabled={isFrozen}
                            className="rounded-sm num h-8 w-16" data-testid="editor-validity-days" />
-                    <span className="text-xs text-muted-foreground">jours après émission</span>
+                    <span className="text-xs text-muted-foreground">dias após a emissão</span>
                   </div>
                 ) : (
                   <Input type="date" value={validUntil ? validUntil.slice(0, 10) : ""} onChange={(e) => setValidUntil(e.target.value)} disabled={isFrozen}
@@ -2211,15 +2211,15 @@ export default function QuoteEditor() {
 
           <div className="surface p-4 grid gap-2 content-start">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <Label className="flex items-center gap-2 text-sm font-semibold"><CalendarClock className="h-4 w-4" /> Échéancier de règlement</Label>
+              <Label className="flex items-center gap-2 text-sm font-semibold"><CalendarClock className="h-4 w-4" /> Plano de pagamentos</Label>
               <Button type="button" size="sm" variant="outline" className="rounded-sm h-7 text-[11px]" disabled={isFrozen}
-                      onClick={() => setSchedule([{ label: "À la commande", pct: 30 }, { label: "En cours de travaux", pct: 40 }, { label: "À la réception", pct: 30 }])}
-                      data-testid="editor-schedule-preset">Préréglage 30/40/30</Button>
+                      onClick={() => setSchedule([{ label: "Na adjudicação", pct: 30 }, { label: "Durante a obra", pct: 40 }, { label: "Na receção", pct: 30 }])}
+                      data-testid="editor-schedule-preset">Predefinição 30/40/30</Button>
             </div>
-            {(schedule || []).length === 0 && <p className="text-xs text-muted-foreground">Aucune échéance. Ajoutez-en ou appliquez le préréglage 30/40/30.</p>}
+            {(schedule || []).length === 0 && <p className="text-xs text-muted-foreground">Nenhuma prestação. Adicione algumas ou aplique a predefinição 30/40/30.</p>}
             {(schedule || []).map((s, i) => (
               <div key={i} className="flex items-center gap-2" data-testid={`editor-schedule-row-${i}`}>
-                <Input value={s.label} disabled={isFrozen} placeholder="Libellé (ex. À la réception)"
+                <Input value={s.label} disabled={isFrozen} placeholder="Designação (ex.: Na receção)"
                        onChange={(e) => setSchedule((p) => p.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
                        className="rounded-sm flex-1 h-8 text-sm" data-testid={`editor-schedule-label-${i}`} />
                 <Input type="number" min="0" max="100" value={s.pct} disabled={isFrozen}
@@ -2232,10 +2232,10 @@ export default function QuoteEditor() {
             ))}
             <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
               <Button type="button" size="sm" variant="ghost" className="rounded-sm h-7 text-xs gap-1 px-2" disabled={isFrozen}
-                      onClick={() => setSchedule((p) => [...(p || []), { label: "", pct: 0 }])} data-testid="editor-schedule-add"><Plus className="h-3.5 w-3.5" /> Ajouter une échéance</Button>
+                      onClick={() => setSchedule((p) => [...(p || []), { label: "", pct: 0 }])} data-testid="editor-schedule-add"><Plus className="h-3.5 w-3.5" /> Adicionar uma prestação</Button>
               {(schedule || []).length > 0 && (
                 <span className={`text-xs num font-semibold ${scheduleSum === 100 ? "text-emerald-600" : "text-amber-600"}`} data-testid="editor-schedule-sum">
-                  Total : {scheduleSum}%{scheduleSum !== 100 ? " (doit faire 100 %)" : ""}
+                  Total: {scheduleSum}%{scheduleSum !== 100 ? "(deve somar 100 %)" : ""}
                 </span>
               )}
             </div>
@@ -2271,7 +2271,7 @@ export default function QuoteEditor() {
                     {marginPct != null && (
                       <span data-testid={`editor-lot-margin-${cat}`}
                             className={`num text-[10px] px-1.5 rounded-sm ${loss > 0 || marginPct < 0 ? "bg-red-500/10 text-red-500" : marginPct < 15 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
-                        {loss > 0 ? `${loss} à perte · ` : ""}marge {marginPct.toFixed(0)} %
+                        {loss > 0 ? `${loss}com prejuízo ·` : ""}marge {marginPct.toFixed(0)} %
                       </span>
                     )}
                     <span className="num font-semibold">{eur(ht)}</span>
@@ -2282,25 +2282,25 @@ export default function QuoteEditor() {
           )}
           {totals.vatUnset > 0 && (
             <p className="rounded-sm px-3 py-2 mb-1 text-xs bg-amber-500/10 border border-amber-500/40 text-amber-700" data-testid="editor-vat-unset-alert">
-              {totals.vatUnset} ligne{totals.vatUnset > 1 ? "s" : ""} sans taux de TVA choisi — le TTC est calculé sans TVA sur ces lignes.
-              {fiscal?.known ? ` Taux normal ${fiscal.country} : ${fiscal.default_rate} %.` : " Renseignez le pays de l'entreprise dans votre profil pour obtenir les taux proposés."}
+              {totals.vatUnset} ligne{totals.vatUnset > 1 ? "s" : ""} sem taxa de IVA escolhida — o total c/ IVA é calculado sem IVA nestas linhas.
+              {fiscal?.known ? ` Taux normal ${fiscal.country} : ${fiscal.default_rate} %.` : "Indique o país da empresa no seu perfil para obter as taxas propostas."}
             </p>
           )}
           {totals.margin == null && totals.coverage.known > 0 && (
             <div className="rounded-sm px-3 py-2 mb-1 text-xs bg-amber-500/10 border border-amber-500/40" data-testid="editor-margin-incomplete">
-              <div className="flex justify-between font-bold"><span>Coûts incomplets</span><span>{totals.coverage.known}/{totals.coverage.total} lignes renseignées</span></div>
-              <div className="flex justify-between text-muted-foreground"><span>Marge sur les lignes couvertes ({eur(totals.coverage.coveredHt)} HT)</span><span className="num">{eur(totals.partialMargin)}</span></div>
-              <p className="mt-1 text-muted-foreground">La marge globale n'est pas affichée tant qu'un coût manque : saisissez-le ou cochez « coût nul confirmé ».</p>
+              <div className="flex justify-between font-bold"><span>Custos incompletos</span><span>{totals.coverage.known}/{totals.coverage.total} linhas preenchidas</span></div>
+              <div className="flex justify-between text-muted-foreground"><span>Margem nas linhas cobertas ({eur(totals.coverage.coveredHt)} HT)</span><span className="num">{eur(totals.partialMargin)}</span></div>
+              <p className="mt-1 text-muted-foreground">A margem global não é apresentada enquanto faltar um custo: introduza-o ou assinale «custo nulo confirmado».</p>
             </div>
           )}
           {totals.margin != null && (
             <div className={`rounded-sm px-3 py-2 mb-1 text-xs ${lossLines > 0 ? "bg-red-500/10 border border-red-500/40" : "bg-emerald-500/10 border border-emerald-500/30"}`} data-testid="editor-margin-block">
-              <div className="flex justify-between"><span className="text-muted-foreground">Coût de revient</span><span className="num">{eur(totals.cost)}</span></div>
-              <div className="flex justify-between font-bold"><span>Marge prévisionnelle</span>
+              <div className="flex justify-between"><span className="text-muted-foreground">Custo de produção</span><span className="num">{eur(totals.cost)}</span></div>
+              <div className="flex justify-between font-bold"><span>Margem previsional</span>
                 <span className="num" data-testid="editor-margin-total">{eur(totals.margin)} · {totals.marginPct.toFixed(1)} %</span></div>
               {lossLines > 0 && (
                 <p className="flex items-center gap-1 text-red-500 mt-1" data-testid="editor-loss-alert">
-                  <AlertTriangle className="h-3.5 w-3.5" /> {lossLines} ouvrage{lossLines > 1 ? "s" : ""} chiffré{lossLines > 1 ? "s" : ""} à perte
+                  <AlertTriangle className="h-3.5 w-3.5" /> {lossLines} ouvrage{lossLines > 1 ? "s" : ""} orçamentado{lossLines > 1 ? "s" : ""} com prejuízo
                 </p>
               )}
             </div>

@@ -39,33 +39,33 @@ export const DeckDownloadDialog = ({ open, onOpenChange, format }) => {
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent data-testid="deck-download-dialog">
         <DialogHeader>
-          <DialogTitle data-testid="deck-download-title">Recevoir le pitch deck</DialogTitle>
+          <DialogTitle data-testid="deck-download-title">Receber o pitch deck</DialogTitle>
           <DialogDescription data-testid="deck-download-description">{label} — ConstruPilot</DialogDescription>
         </DialogHeader>
         {ready ? (
           <div className="grid gap-4">
-            <p role="status" data-testid="deck-download-ready">Votre fichier est prêt.</p>
+            <p role="status" data-testid="deck-download-ready">O seu ficheiro está pronto.</p>
             <Button asChild className="gap-2" data-testid="deck-download-file-link">
-              <a href={url} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" />Télécharger le {label}</a>
+              <a href={url} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" />Transferir o {label}</a>
             </Button>
-            <Button variant="outline" data-testid="deck-download-close" onClick={() => changeOpen(false)}>Fermer</Button>
+            <Button variant="outline" data-testid="deck-download-close" onClick={() => changeOpen(false)}>Fechar</Button>
           </div>
         ) : (
           <form onSubmit={submit} className="grid gap-4" data-testid="deck-download-form">
             <div className="grid gap-1.5">
               <Label htmlFor="deck-name">Nom</Label>
-              <Input id="deck-name" value={form.name} onChange={set("name")} placeholder="Votre nom" data-testid="deck-form-name" />
+              <Input id="deck-name" value={form.name} onChange={set("name")} placeholder="O seu nome" data-testid="deck-form-name" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="deck-email">E-mail *</Label>
               <Input id="deck-email" type="email" required value={form.email} onChange={set("email")} placeholder="vous@fonds.com" data-testid="deck-form-email" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="deck-fund">Fonds / société</Label>
+              <Label htmlFor="deck-fund">Fundo / sociedade</Label>
               <Input id="deck-fund" value={form.fund} onChange={set("fund")} placeholder="Ex : Urban Ventures" data-testid="deck-form-fund" />
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={busy} className="rounded-full gap-2" data-testid="deck-form-submit"><Download className="h-4 w-4" />{busy ? "…" : `Télécharger le ${label}`}</Button>
+              <Button type="submit" disabled={busy} className="rounded-full gap-2" data-testid="deck-form-submit"><Download className="h-4 w-4" />{busy ? "…" : `Transferir o${label}`}</Button>
             </DialogFooter>
           </form>
         )}
