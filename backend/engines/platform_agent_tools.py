@@ -2,7 +2,7 @@
 from engines.assistant_workspace import function
 
 S = {"type": "string"}
-IDS = {"type": "array", "items": S, "maxItems": 50, "uniqueItems": True}
+IDS = {"type": "array", "items": S, "maxItems": 50}
 PLATFORM_TOOLS = [
     function("list_platform_resources", "Encontrar as plantas e orçamentos da conta atual. Devolve os identificadores reais; nenhum acesso às outras contas. Ler os totais de cobertura e afinar a pesquisa se estiver truncada.",
              {"query": S, "kind": {"type": "string", "enum": ["all", "plans", "quotes"]}}),
