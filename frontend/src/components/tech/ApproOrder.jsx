@@ -171,7 +171,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
           <div className="space-y-3 text-sm">
             <div>
               <label className="text-xs text-muted-foreground">Destinatário (fornecedor)</label>
-              <Input value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="email@fournisseur.fr" className="h-9" data-testid="appro-email-to" />
+              <Input value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="email@fornecedor.pt" className="h-9" data-testid="appro-email-to" />
             </div>
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={ccSelf} onChange={(e) => setCcSelf(e.target.checked)} data-testid="appro-email-cc" />

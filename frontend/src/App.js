@@ -258,6 +258,10 @@ function AppRouter() {
       <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />
       <Route path="/devis-travaux-:city" element={<Shell><LocalLanding /></Shell>} />
       {CITY_LIST.map((c) => (
+        <Route key={`pt-${c.slug}`} path={`/orcamento-obras-${c.slug}`}
+               element={<Shell><LocalLanding /></Shell>} />
+      ))}
+      {CITY_LIST.map((c) => (
         <Route key={c.slug} path={`/devis-travaux-${c.slug}`}
                element={<Shell><LocalLanding /></Shell>} />
       ))}

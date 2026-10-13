@@ -285,6 +285,7 @@ export const Nav = () => {
 
 export const Footer = () => (
   <footer className="border-t border-border mt-24">
+    <div className="azulejo-band" aria-hidden="true" />
     <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 flex flex-col md:flex-row gap-4 items-center justify-between">
       <p className="font-display font-bold tracking-tight">
         Constru<span className="text-primary">Pilot</span>

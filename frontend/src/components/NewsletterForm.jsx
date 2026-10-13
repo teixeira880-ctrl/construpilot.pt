@@ -39,7 +39,7 @@ export default function NewsletterForm({ source = "blog", compact = false }) {
             <p className="mt-3 text-sm text-emerald-600 flex items-center gap-1" data-testid="newsletter-done"><Check className="h-4 w-4" /> {isPT ? "Obrigado! Verifique a sua caixa de entrada." : "Obrigado! Verifique a sua caixa de entrada."}</p>
           ) : (
             <form onSubmit={submit} className="mt-3 flex gap-2 flex-wrap">
-              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@entreprise.fr"
+              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@empresa.pt"
                      className="h-10 flex-1 min-w-[200px] rounded-sm" data-testid="newsletter-email" />
               <Button type="submit" disabled={busy} className="rounded-sm gap-2 h-10" data-testid="newsletter-submit">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {isPT ? "Subscrever" : "Subscrever"}

@@ -53,7 +53,7 @@ export function LandingPricing({ plans, pro = false }) {
       <div className="landing-price-name"><h3>{p.name}</h3>{p.popular && <span>{pro ? "Para as equipas" : "Para o seu projeto"}</span>}</div><p>{p.desc}</p>
       <div className="landing-price"><strong>{p.price}</strong><span>{p.period}</span></div>
       <ul>{p.features.map(f => <li key={f}><span aria-hidden="true">✓</span>{f}</li>)}</ul>
-      <Link to="/inscription" className={`landing-button${p.popular ? "" : " landing-button-outline"}`} data-testid={p.tid}>{pro ? "Essayer pendant 7 jours" : p.popular ? "Descobrir o Passe" : "Começar gratuitamente"}<ArrowRight size={17} /></Link>
+      <Link to="/inscription" className={`landing-button${p.popular ? "" : " landing-button-outline"}`} data-testid={p.tid}>{pro ? "Experimentar durante 7 dias" : p.popular ? "Descobrir o Passe" : "Começar gratuitamente"}<ArrowRight size={17} /></Link>
     </article>)}</div>
     <Link to="/tarifs" className="landing-text-link">Consultar o detalhe das ofertas <ArrowRight size={16} /></Link>
   </section>;

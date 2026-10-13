@@ -7,7 +7,7 @@ import { getCity, CITY_LIST } from "@/lib/cities";
 export default function LocalLanding() {
   const location = useLocation();
   // Derive slug from URL: /devis-travaux-{slug}
-  const slug = location.pathname.replace(/^\/devis-travaux-/, "").split("/")[0];
+  const slug = location.pathname.replace(/^\/(devis-travaux|orcamento-obras)-/, "").split("/")[0];
   const c = getCity(slug);
   if (!c) return <Navigate to="/" replace />;
 
@@ -17,7 +17,7 @@ export default function LocalLanding() {
     "@type": "ProfessionalService",
     "name": `ConstruPilot ${c.name}`,
     "description": `Estimativa de obras, orçamento detalhado e comparador de preços de materiais para todas as obras de remodelação e construção em ${c.name} (${c.department}).`,
-    "url": `https://construpilot.pt/devis-travaux-${c.slug}`,
+    "url": `https://construpilot.pt/orcamento-obras-${c.slug}`,
     "areaServed": {
       "@type": "City",
       "name": c.name,
@@ -42,8 +42,8 @@ export default function LocalLanding() {
       <SEO
         title={`Orçamento de obras ${c.name} — Estimativa de remodelação`}
         description={`Estime as suas obras em ${c.name} com o ConstruPilot. Ordem de grandeza de remodelação ${c.name} : ${c.priceRange} €/m² consoante a gama. Estimativa detalhada, preços de materiais e orçamento em PDF.`}
-        keywords={`orçamento obras ${c.name}, preço remodelação ${c.name}, artisan ${c.name}, orçamento remodelação ${c.department}, custo obras ${c.name}, ${c.region} BTP`}
-        canonical={`/devis-travaux-${c.slug}`}
+        keywords={`orçamento obras ${c.name}, preço remodelação ${c.name}, empreiteiro ${c.name}, orçamento remodelação ${c.department}, custo obras ${c.name}, ${c.region} construção`}
+        canonical={`/orcamento-obras-${c.slug}`}
         image={c.heroImage}
         jsonLd={jsonLd}
       />
@@ -88,7 +88,7 @@ export default function LocalLanding() {
           <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("pt-PT")} €`}
                 label="Renovação padrão / m²" />
           <Stat icon={Users} value={`~${c.artisans.toLocaleString("pt-PT")}`}
-                label={`Profissionais da construção em ${c.region} (estimation)`} />
+                label={`Profissionais da construção em ${c.region} (estimativa)`} />
           <Stat icon={Building2} value={c.surface} label={`Superfície ${c.name}`} />
           <Stat icon={Zap} value="PDF" label="Orçamento detalhado para transferir" />
         </div>
@@ -150,7 +150,7 @@ export default function LocalLanding() {
             <p className="font-bold">Outras cidades cobertas:</p>
             <div className="flex flex-wrap gap-1">
               {CITY_LIST.filter((x) => x.slug !== c.slug).map((x) => (
-                <Link key={x.slug} to={`/devis-travaux-${x.slug}`}
+                <Link key={x.slug} to={`/orcamento-obras-${x.slug}`}
                       className="text-primary hover:underline"
                       data-testid={`local-link-${x.slug}`}>
                   {x.name}

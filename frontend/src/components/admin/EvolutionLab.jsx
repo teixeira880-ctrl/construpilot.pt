@@ -168,7 +168,7 @@ export default function EvolutionLab() {
           <div className="flex-1 min-w-[220px]">
             <label className="text-xs text-muted-foreground">E-mail destinatário do relatório</label>
             <Input type="email" value={cfg.nightly_email || ""} onChange={(e) => setCfg({ ...cfg, nightly_email: e.target.value })}
-              onBlur={(e) => e.target.value && save({ nightly_email: e.target.value })} placeholder="vous@exemple.fr" className="h-8" data-testid="evo-nightly-email" />
+              onBlur={(e) => e.target.value && save({ nightly_email: e.target.value })} placeholder="voce@exemplo.pt" className="h-8" data-testid="evo-nightly-email" />
           </div>
           <Button variant="outline" onClick={sendReport} disabled={busy} className="gap-2 rounded-sm" data-testid="evo-send-report-btn">
             <Mail className="h-4 w-4" />Enviar o relatório agora
@@ -191,7 +191,7 @@ export default function EvolutionLab() {
               onBlur={(e) => save({ alert_threshold: Math.min(100, Math.max(0, +e.target.value || 90)) })} className="h-8 w-28" data-testid="evo-alert-threshold" /></div>
           <div className="flex-1 min-w-[200px]"><label className="text-xs text-muted-foreground">E-mail de alerta (senão o do relatório)</label>
             <Input type="email" value={cfg.alert_email || ""} onChange={(e) => setCfg({ ...cfg, alert_email: e.target.value })}
-              onBlur={(e) => e.target.value && save({ alert_email: e.target.value })} placeholder="alerte@exemple.fr" className="h-8" data-testid="evo-alert-email" /></div>
+              onBlur={(e) => e.target.value && save({ alert_email: e.target.value })} placeholder="alerta@exemplo.pt" className="h-8" data-testid="evo-alert-email" /></div>
         </div>
       </div>
 

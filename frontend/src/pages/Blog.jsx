@@ -19,7 +19,7 @@ const JSON_LD = {
   "@type": "Blog",
   "name": "Blog ConstruPilot — Orçamentos de obras, renovação e construção",
   "url": "https://construpilot.pt/blog",
-  "blogPost": BLOG_ARTICLES.map((a) => ({
+  "blogPost": BLOG_ARTICLES_PT.map((a) => ({
     "@type": "BlogPosting",
     "headline": a.title,
     "url": `https://construpilot.pt/blog/${a.slug}`,

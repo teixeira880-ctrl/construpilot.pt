@@ -1306,7 +1306,7 @@ function LeadRow({ lead, onUpdated }) {
         {lead.email && (
           <a
             href={`mailto:${lead.email}?subject=${encodeURIComponent(
-              `Re : votre demande ConstruPilot${lead.description ? " · " + lead.description.slice(0, 40) : ""}`
+              `Re: o seu pedido ConstruPilot${lead.description ? " · " + lead.description.slice(0, 40) : ""}`
             )}`}
             data-testid={`lead-email-${lead.lead_id}`}
             className="rounded-sm border border-border p-1.5 hover:bg-primary hover:text-white hover:border-primary transition"
