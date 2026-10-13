@@ -709,6 +709,16 @@ async def seed():
     scheduler.add_job(ceo_daily.publish_due,
                       "interval", minutes=15, id="ceo_daily_publish_due",
                       max_instances=1, coalesce=True)
+    # Redes sociais: partilha automática dos novos artigos (se ligada no painel)
+    from engines import social_publish
+    scheduler.add_job(social_publish.run_auto_share,
+                      "interval", minutes=30, id="social_auto_share",
+                      max_instances=1, coalesce=True)
+    # Google Ads: piloto automático dentro do teto mensal (07:30 e 15:30 Lisboa)
+    from growth import ads_autopilot
+    scheduler.add_job(ads_autopilot.run,
+                      CronTrigger(hour="7,15", minute=30, timezone="Europe/Lisbon"),
+                      id="ads_autopilot", max_instances=1, coalesce=True)
     # Résumé mensuel des surcoûts/économies fournisseurs — le 1er de chaque mois à 07:00 UTC
     scheduler.add_job(einvoicing_routes.run_monthly_overspend_reports,
                       CronTrigger(day=1, hour=7, minute=0),

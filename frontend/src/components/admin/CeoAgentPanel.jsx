@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import CeoChannelsPanel from "@/components/admin/CeoChannelsPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -248,6 +249,8 @@ export default function CeoAgentPanel() {
         </div>
       )}
 
+      <CeoChannelsPanel />
+
       {/* Générateurs */}
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="rounded-xl border border-border bg-card p-5" data-testid="ceo-blog-generator">
@@ -353,6 +356,11 @@ export default function CeoAgentPanel() {
                 {a.status !== "published" && (
                   <Button size="sm" onClick={() => act(`/ceo/blog/${a.autoseo_id}/publish`, "Artigo publicado no blogue")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-publish-${a.autoseo_id}`}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Publicar
+                  </Button>
+                )}
+                {a.status === "published" && (
+                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/social/share/${a.autoseo_id}`, "Partilhado nas redes sociais")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-share-${a.autoseo_id}`}>
+                    Partilhar
                   </Button>
                 )}
                 {a.status !== "rejected" && (
