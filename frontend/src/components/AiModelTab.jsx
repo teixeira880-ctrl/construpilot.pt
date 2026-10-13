@@ -354,7 +354,7 @@ export default function AiModelTab() {
           <div>
             <Label>Email de alerta (opcional)</Label>
             <Input type="email" value={alertEmail} onChange={(e) => setAlertEmail(e.target.value)}
-                   placeholder="admin@construpilot.pt" className="rounded-sm mt-1" data-testid="admin-ai-budget-email" />
+                   placeholder="admin@construpilot.fr" className="rounded-sm mt-1" data-testid="admin-ai-budget-email" />
           </div>
           <Button onClick={saveBudget} disabled={savingBudget} className="rounded-sm gap-2" data-testid="admin-ai-budget-save">
             {savingBudget ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />} Guardar

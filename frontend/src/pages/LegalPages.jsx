@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-const CONTACT_EMAIL = "contact@construpilot.pt";
+const CONTACT_EMAIL = "contact@construpilot.fr";
 const EDITOR = "ConstruPilot";
 
 const LegalLayout = ({ title, updated, testid, children }) => (

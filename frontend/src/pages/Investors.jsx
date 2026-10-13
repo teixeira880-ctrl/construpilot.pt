@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DeckDownloadDialog } from "@/components/investors/DeckDownloadDialog";
 import { PitchDeckPreview } from "@/components/investors/PitchDeckPreview";
 
-const CONTACT = "info@construpilot.pt";
+const CONTACT = "info@construpilot.fr";
 
 const Slide = ({ n, kicker, title, children, dark }) => (
   <section data-testid={`deck-slide-${n}`}

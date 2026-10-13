@@ -294,11 +294,11 @@ export const Footer = () => (
       </p>
       <div className="flex flex-col md:items-end gap-1">
         <a
-          href="mailto:info@construpilot.pt"
+          href="mailto:info@construpilot.fr"
           className="text-xs text-primary hover:underline"
           data-testid="footer-contact-email"
         >
-          info@construpilot.pt
+          info@construpilot.fr
         </a>
         <div className="flex items-center gap-3">
           <Link
