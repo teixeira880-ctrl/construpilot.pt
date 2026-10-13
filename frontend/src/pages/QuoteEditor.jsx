@@ -1576,7 +1576,7 @@ export default function QuoteEditor() {
                   {sendFiles.map((f, i) => (
                     <li key={i} className="flex items-center justify-between gap-2 text-xs surface px-2.5 py-1.5 rounded-sm"
                         data-testid={`send-attachment-item-${i}`}>
-                      <span className="truncate">{f.name} · {(f.size / 1024).toFixed(0)} Ko</span>
+                      <span className="truncate">{f.name} · {(f.size / 1024).toFixed(0)} KB</span>
                       <button type="button" onClick={() => removeSendFile(i)}
                               className="text-muted-foreground hover:text-destructive shrink-0"
                               data-testid={`send-attachment-remove-${i}`}><X className="h-3.5 w-3.5" /></button>
@@ -2360,7 +2360,7 @@ export default function QuoteEditor() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-sm border border-border p-3">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><FileVideo className="h-3 w-3" /> {t("crm.ed_size")}</p>
-              <p className="text-lg font-semibold" data-testid="video-review-size">{reviewInfo.sizeMB.toFixed(1)} Mo</p>
+              <p className="text-lg font-semibold" data-testid="video-review-size">{reviewInfo.sizeMB.toFixed(1)} MB</p>
             </div>
             <div className="rounded-sm border border-border p-3">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {t("crm.ed_duration")}</p>

@@ -45,7 +45,7 @@ async def _store_uploads(files: list[UploadFile], folder: str) -> list[dict]:
             raise HTTPException(415, f'Formato não aceite ({f.filename}): fotografias JPG/PNG/WEBP ou PDF')
         data = await f.read(MAX_FILE_BYTES + 1)
         if len(data) > MAX_FILE_BYTES:
-            raise HTTPException(413, f'Ficheiro demasiado volumoso ({f.filename}) : 8 Mo max')
+            raise HTTPException(413, f'Ficheiro demasiado volumoso ({f.filename}) : 8 MB max')
         if not data:
             continue
         path = f"{storage.APP_NAME}/portal/{folder}/{uuid.uuid4().hex}.{ext}"

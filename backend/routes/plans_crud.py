@@ -136,7 +136,7 @@ async def upload_plan(
     immédiate puis traitement en tâche de fond (le proxy coupe à 120 s) et 202 {job_id} à suivre sur /upload-jobs/{job_id}."""
     data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
-        raise HTTPException(413, f'Ficheiro demasiado volumoso (>{MAX_UPLOAD_MB} Mo)')
+        raise HTTPException(413, f'Ficheiro demasiado volumoso (>{MAX_UPLOAD_MB} MB)')
     if not data: raise HTTPException(422, "Ficheiro vazio")
     if project_id and not await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 1}):
         raise HTTPException(403, "Obra inacessível para esta conta")

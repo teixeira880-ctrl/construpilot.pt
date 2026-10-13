@@ -24,7 +24,7 @@ VISION_SYSTEM = (
 
 async def store_photo(user_id: str, data: bytes) -> dict:
     if len(data) > MAX_PHOTO_MB * 1024 * 1024:
-        raise HTTPException(413, f'Fotografia demasiado grande (> {MAX_PHOTO_MB} Mo)')
+        raise HTTPException(413, f'Fotografia demasiado grande (> {MAX_PHOTO_MB} MB)')
     data, mime = await asyncio.to_thread(normalize_attachment, data)
     if mime == "application/pdf":
         raise HTTPException(415, "Anexe uma fotografia JPG, PNG ou WEBP")

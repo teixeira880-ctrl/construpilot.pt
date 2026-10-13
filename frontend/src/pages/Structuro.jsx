@@ -562,7 +562,7 @@ function StudyDetail({ study, setStudy, onBack }) {
                 </div>
               </div>
               <div className="text-[10px] text-muted-foreground mt-1">
-                {(p.size / 1024).toFixed(0)} Ko · {p.recognition?.kind?.toUpperCase()}
+                {(p.size / 1024).toFixed(0)} KB · {p.recognition?.kind?.toUpperCase()}
                 {p.recognition?.objects_detected && p.recognition?.summary?.entities_total != null
                   ? ` · ${p.recognition.summary.entities_total} entidades, ${p.recognition.summary.layers_count} calques` : ""}
                 {p.scale_note ? ` · ${p.scale_note}` : ""}
