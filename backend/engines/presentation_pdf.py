@@ -79,7 +79,7 @@ S = {
     "brandl": ParagraphStyle("brl", fontName="Sans", fontSize=8, leading=10.5, textColor=GREY),
 }
 
-SITE = "construpilot.fr"
+SITE = "construpilot.pt"
 CONTACT = "info@construpilot.pt"
 PATENT = "FR2611044"
 # Source unique de l'offre (miroir de GET /api/offer)
