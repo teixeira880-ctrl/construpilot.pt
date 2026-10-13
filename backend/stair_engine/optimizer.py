@@ -208,6 +208,19 @@ def compute_optimize(inp: OptimizeInput) -> OptimizeResult:
             )
             excluded.append(OptimizeExcluded(type=type_name, variant=variant, reason=reason))
             continue
+        # Garde-fou sécurité : une variante hors des limites d'usage n'est jamais proposée
+        tread = r.tread_depth_mm or 0
+        unsafe = []
+        if r.slope_deg and r.slope_deg > 42:
+            unsafe.append(f"inclinação {r.slope_deg:.1f}° > 42°")
+        if r.blondel_value_mm and not (560 <= r.blondel_value_mm <= 700):
+            unsafe.append(f"Blondel {r.blondel_value_mm:.0f} mm fora de 560–700 mm")
+        if 0 < tread < 220:
+            unsafe.append(f"cobertor na linha de passagem {tread:.0f} mm < 220 mm")
+        if unsafe:
+            excluded.append(OptimizeExcluded(type=type_name, variant=variant,
+                                             reason="Inadequada para uso corrente: " + "; ".join(unsafe)))
+            continue
 
         conf = _score_confort(r)
         enc = _score_encombrement(r, inp)
