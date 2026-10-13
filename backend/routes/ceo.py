@@ -149,6 +149,84 @@ async def publish_today() -> dict:
     return {"published": res.modified_count}
 
 
+# ============================== Redes sociais ==============================
+@router.get("/social")
+async def ceo_social_get(user=Depends(admin_user)):
+    from engines import social_publish as sp
+    posts = await db.social_posts.find({}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    return {"status": sp.status(), "settings": await sp.get_settings(), "posts": posts}
+
+
+class SocialSettingsIn(BaseModel):
+    auto_share: bool | None = None
+    networks: list[str] | None = None
+    max_per_day: int | None = Field(default=None, ge=0, le=20)
+
+
+@router.put("/social/settings")
+async def ceo_social_put(payload: SocialSettingsIn, user=Depends(admin_user)):
+    from engines import social_publish as sp
+    patch = {k: v for k, v in payload.model_dump().items() if v is not None}
+    return await sp.save_settings(patch)
+
+
+@router.post("/social/share/{article_id}")
+async def ceo_social_share(article_id: str, user=Depends(admin_user)):
+    from engines import social_publish as sp
+    art = await db.autoseo_articles.find_one({"autoseo_id": article_id, "status": "published"}, {"_id": 0})
+    if not art:
+        raise HTTPException(404, "Artigo não encontrado ou não publicado")
+    return {"results": await sp.share_article(art)}
+
+
+# ============================== Google Ads ==============================
+@router.get("/ads")
+async def ceo_ads_get(user=Depends(admin_user)):
+    from growth import ads_autopilot as ap
+    return await ap.overview()
+
+
+class AdsSettingsIn(BaseModel):
+    enabled: bool | None = None
+    monthly_cap_eur: float | None = Field(default=None, ge=0, le=100000)
+    max_daily_increase_pct: int | None = Field(default=None, ge=0, le=50)
+    pause_cost_no_conv_eur: float | None = Field(default=None, ge=5, le=10000)
+    min_daily_budget_eur: float | None = Field(default=None, ge=1, le=1000)
+    activate_growth_campaigns: bool | None = None
+
+
+@router.put("/ads/settings")
+async def ceo_ads_put(payload: AdsSettingsIn, user=Depends(admin_user)):
+    from growth import ads_autopilot as ap
+    patch = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if patch.get("enabled") is True:
+        cur = await ap.get_settings()
+        cap = patch.get("monthly_cap_eur", cur.get("monthly_cap_eur", 0))
+        if not cap or float(cap) <= 0:
+            raise HTTPException(400, "Defina primeiro o teto mensal (€) antes de ligar o piloto automático.")
+    return await ap.save_settings(patch)
+
+
+@router.post("/ads/run")
+async def ceo_ads_run(user=Depends(admin_user)):
+    from growth import ads_autopilot as ap
+    from growth.ads_connectors import ConnectorError
+    try:
+        return await ap.run(trigger="manual")
+    except ConnectorError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/ads/stop")
+async def ceo_ads_stop(user=Depends(admin_user)):
+    from growth import ads_autopilot as ap
+    from growth.ads_connectors import ConnectorError
+    try:
+        return await ap.kill_switch(actor=str(user.get("user_id") or user.get("id") or "admin"))
+    except ConnectorError as e:
+        raise HTTPException(400, str(e))
+
+
 class CreativeIn(BaseModel):
     brief: str = Field(min_length=3)
     format: str = "flyer"

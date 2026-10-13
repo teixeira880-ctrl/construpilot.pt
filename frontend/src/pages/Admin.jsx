@@ -202,7 +202,7 @@ export default function Admin() {
           {postalEnabled && <TabsTrigger value="postal" className="rounded-sm" data-testid="admin-tab-postal">Postal</TabsTrigger>}
           <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Alvenaria</TabsTrigger>
           <TabsTrigger value="seoblog" className="rounded-sm" data-testid="admin-tab-seoblog">SEO / Blog</TabsTrigger>
-          <TabsTrigger value="ceo" className="rounded-sm" data-testid="admin-tab-ceo">Agent CEO</TabsTrigger>
+          <TabsTrigger value="ceo" className="rounded-sm" data-testid="admin-tab-ceo">Agente CEO</TabsTrigger>
           <TabsTrigger value="calcaudit" className="rounded-sm" data-testid="admin-tab-calcaudit">Auditor de cálculos</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>

@@ -143,14 +143,14 @@ async def publish_meta(project: dict, ad: dict, daily_budget_eur: float = 10.0) 
     async with httpx.AsyncClient(timeout=40) as client:
         camp = await _meta_post(client, f"act_{acct}/campaigns", {"name": name, "objective": "OUTCOME_TRAFFIC", "status": "PAUSED", "special_ad_categories": []})
         out["campaign_id"] = camp["id"]
-        adset = await _meta_post(client, f"act_{acct}/adsets", {"name": f"{name} — {country}", "campaign_id": camp["id"], "daily_budget": round(daily_budget_eur * 100), "billing_event": "IMPRESSÕES",
+        adset = await _meta_post(client, f"act_{acct}/adsets", {"name": f"{name} — {country}", "campaign_id": camp["id"], "daily_budget": round(daily_budget_eur * 100), "billing_event": "IMPRESSIONS",
                                                                  "optimization_goal": "LINK_CLICKS", "status": "PAUSED", "targeting": {"geo_locations": {"countries": [country]}}})
         out["adset_id"] = adset["id"]
         creative = await _meta_post(client, f"act_{acct}/adcreatives", {"name": f'{name} — criativo', "object_story_spec": {"page_id": env("META_PAGE_ID"), "link_data": {
             "message": m["primary_texts"][0], "link": ad["final_url"], "name": m["headlines"][0], "description": (m["descriptions"] or [""])[0],
             "call_to_action": {"type": m.get("cta") or "LEARN_MORE", "value": {"link": ad["final_url"]}}}}})
         out["creative_id"] = creative["id"]
-        adr = await _meta_post(client, f"act_{acct}/ads", {"name": f"{name} — annonce", "adset_id": adset["id"], "creative": {"creative_id": creative["id"]}, "status": "PAUSED"})
+        adr = await _meta_post(client, f"act_{acct}/ads", {"name": f"{name} — anúncio", "adset_id": adset["id"], "creative": {"creative_id": creative["id"]}, "status": "PAUSED"})
         out["ad_id"] = adr["id"]
     out["manage_url"] = f"https://adsmanager.facebook.com/adsmanager/manage/campaigns?act={acct}"
     return out

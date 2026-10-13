@@ -4,9 +4,10 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import CeoChannelsPanel from "@/components/admin/CeoChannelsPanel";
 import {
   Bot, FileText, ImageIcon, CalendarDays, Loader2, Check, X, Eye, Sparkles, ShieldCheck,
-  Mail, Megaphone, Copy, Send, Video, Clapperboard,
+  Mail, Megaphone, Copy, Send, Video, Clapperboard, Share2,
 } from "lucide-react";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
@@ -270,6 +271,9 @@ export default function CeoAgentPanel() {
         </div>
       )}
 
+      {/* Canais: redes sociais + Google Ads piloto automático */}
+      <CeoChannelsPanel />
+
       {/* Générateurs */}
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="rounded-xl border border-border bg-card p-5" data-testid="ceo-blog-generator">
@@ -373,6 +377,11 @@ export default function CeoAgentPanel() {
                 {a.status !== "published" && (
                   <Button size="sm" onClick={() => act(`/ceo/blog/${a.autoseo_id}/publish`, "Artigo publicado no blogue")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-publish-${a.autoseo_id}`}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Publicar
+                  </Button>
+                )}
+                {a.status === "published" && (
+                  <Button size="sm" variant="outline" onClick={() => act(`/ceo/social/share/${a.autoseo_id}`, "Partilhado nas redes sociais")} disabled={busy.includes(a.autoseo_id)} data-testid={`ceo-blog-share-${a.autoseo_id}`}>
+                    <Share2 className="h-3.5 w-3.5 mr-1" /> Partilhar
                   </Button>
                 )}
                 {a.status !== "rejected" && (
