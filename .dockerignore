@@ -1,0 +1,9 @@
+_mobile_src/
+mobile/
+**/node_modules/
+**/.git/
+**/__pycache__/
+**/*.pyc
+.ruff_cache/
+test_reports/
+/tmp/
