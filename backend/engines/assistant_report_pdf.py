@@ -97,7 +97,7 @@ def _calc_rows(calculations: list[dict], S, crops: list | None = None):
 
 
 def build_conversation_report(*, conv: dict, calculations: list[dict], solutions: list[dict], sources: list[dict], plans: list[dict],
-                              branding: dict | None, lang: str = "fr", scope: str | None = None, crop_provider=None) -> bytes:
+                              branding: dict | None, lang: str = "pt", scope: str | None = None, crop_provider=None) -> bytes:
     S = _styles_blue()
     company = (branding or {}).get("company_name") or ""
     buf = io.BytesIO()

@@ -64,7 +64,7 @@ async def _merge_import(content: bytes, filename: str, update_prices: bool = Fal
         rows = []
     if not rows:
         try:
-            rows = [dict(r, lang="fr", country="FR") for r in parse_shared_library(content, filename)["rows"]]
+            rows = [dict(r, lang="pt", country="PT") for r in parse_shared_library(content, filename)["rows"]]
         except ValueError as e:
             raise HTTPException(400, str(e))
     if not rows:
@@ -222,7 +222,7 @@ async def list_shared(q: str = "", category: str = "", limit: int = 500,
 async def get_shared_items_for_level(level: str, lang: str | None = None) -> list[dict]:
     """Retourne [{designation, unit, unit_price_ht, vat_rate, cost_price_ht}] au niveau demandé.
 
-    `lang="pt"` → entrées PT uniquement (repli FR si aucune) ; `lang="fr"` → hors PT."""
+    `lang="pt"` → entrées PT uniquement (repli FR si aucune) ; `lang="pt"` → hors PT."""
     field = _LEVEL_FIELD.get(level, "price_mid")
     suffix = {"price_low": "low", "price_mid": "mid", "price_high": "high"}[field]
     pt_q = {"$or": [{"lang": "pt"}, {"country": "PT"}]}

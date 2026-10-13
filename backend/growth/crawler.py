@@ -16,7 +16,7 @@ from core.db import db
 from growth.common import new_id, now_iso
 
 logger = logging.getLogger(__name__)
-UA = "ConstruPilotGrowthBot/1.0 (+https://construpilot.fr) audit interne"
+UA = "ConstruPilotGrowthBot/1.0 (+https://construpilot.pt) audit interne"
 # Le HTML analysé est celui servi aux robots d'indexation (pré-rendu Cloudflare) : même vue que Google.
 FETCH_UA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) ConstruPilotGrowthBot/1.0"
 MAX_BYTES = 2_000_000

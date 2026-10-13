@@ -80,7 +80,7 @@ def _section(sec: dict, t: dict, S) -> KeepTogether:
 
 
 def build_narrative_report(plan: dict, page_index: int, report: dict, image_b64: str, branding: dict | None,
-                           lang: str = "fr") -> bytes:
+                           lang: str = "pt") -> bytes:
     return build_narrative_report_multi(plan, [(page_index, report, image_b64)], branding, lang)
 
 
@@ -122,7 +122,7 @@ def _page_story(plan: dict, page_index: int, report: dict, image_b64: str, t: di
     return story
 
 
-def build_narrative_report_multi(plan: dict, bundle: list[tuple], branding: dict | None, lang: str = "fr") -> bytes:
+def build_narrative_report_multi(plan: dict, bundle: list[tuple], branding: dict | None, lang: str = "pt") -> bytes:
     """Rapport narratif d'une ou plusieurs pages : une couverture, puis un chapitre par page (sections numérotées),
     chaque chapitre terminé par son plan annoté."""
     t = L.get(lang, L["fr"])

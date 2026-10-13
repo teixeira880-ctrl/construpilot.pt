@@ -147,7 +147,7 @@ async def run_welcome_marketing_emails(limit: int = 500) -> dict:
     }, {"_id": 0, "user_id": 1, "email": 1, "name": 1}).limit(limit).to_list(limit)
 
     sent = failed = skipped = 0
-    front = (os.environ.get("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+    front = (os.environ.get("FRONTEND_URL") or "https://construpilot.pt").rstrip("/")
     cta = f"{front}/?utm_source=email&utm_medium=welcome&utm_campaign=onboarding"
     for u in users:
         email = (u.get("email") or "").lower()

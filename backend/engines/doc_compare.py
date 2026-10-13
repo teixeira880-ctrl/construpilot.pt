@@ -59,7 +59,7 @@ en signalant observé / calculé / déduit / à confirmer. Jamais d'invention : 
 
 
 async def compare_documents(*, user_id: str, project_id: str | None, doc_a: dict, doc_b: dict, focus: str, individual: bool,
-                            lang: str = "fr") -> dict:
+                            lang: str = "pt") -> dict:
     """doc = {label, filename, pdf_bytes|image_b64|text, extra_json}. Renvoie le JSON strict + métadonnées."""
     client = _client()
     uploaded: list[str] = []
@@ -79,7 +79,7 @@ async def compare_documents(*, user_id: str, project_id: str | None, doc_a: dict
                 content.append({"type": "input_text", "text": f"Données ConstruPilot (calculs exacts) du document {tag} :\n"
                                                               f"{json.dumps(d['extra_json'], ensure_ascii=False)[:20000]}"})
         tpl = PROMPT_INDIVIDUAL if individual else PROMPT_PRO
-        r = await _respond(client, MODEL_COMPARE, "high", tpl.format(lang="pt-PT" if lang == "pt" else "fr", focus=focus or "comparaison complète"),
+        r = await _respond(client, MODEL_COMPARE, "high", tpl.format(lang="pt-PT" if lang == "pt" else "pt", focus=focus or "comparaison complète"),
                            content, COMPARE_SCHEMA, "document_comparison")
         await _log_usage(user_id, project_id, "assistant_compare", MODEL_COMPARE, r.usage, None)
         data = json.loads(r.output_text)

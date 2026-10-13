@@ -229,7 +229,7 @@ MANDATORY_NOTICE_PT = ("Esta estimativa constitui uma indicação orçamental es
                        "de materiais, das restrições técnicas e das propostas das empresas consultadas.")
 
 
-def build_estimate(args: dict, lang: str = "fr") -> dict:
+def build_estimate(args: dict, lang: str = "pt") -> dict:
     """Validation serveur : amplitude ≥ 30 % (40-50 % / 50 %+ selon l'incertitude), source de prix identifiée, mention obligatoire."""
     if not (args.get("price_source") or "").strip():
         return {"ok": False, "error": "Source des prix non identifiée : estimation refusée"}
@@ -525,7 +525,7 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         return result
     if name == "search_technical_docs":
         from btp_ai.research import search_technical_docs
-        res = await search_technical_docs(args["question"][:1500], args.get("country") or "FR", uid, conv.get("project_id"))
+        res = await search_technical_docs(args["question"][:1500], args.get("country") or "PT", uid, conv.get("project_id"))
         if not res.get("ok"):
             return {"error": res.get("error"), "status": "échoué"}
         return {"status": "exécuté", "answer": res["answer"], "sources": [{k: s.get(k) for k in ("url", "title", "date")} for s in res["sources"][:12]], "provider": res["provider"], "model": res["model"], "cost_usd": res["cost_usd"], "note": res["verified_note"]}
@@ -820,11 +820,11 @@ async def public_estimate(token: str) -> dict:
 
 
 @public_router.get("/{token}/pdf")
-async def public_estimate_pdf(token: str, lang: str = "fr"):
+async def public_estimate_pdf(token: str, lang: str = "pt"):
     rec = await db.assistant_estimates.find_one({"share_token": token}, {"_id": 0})
     if not rec:
         raise HTTPException(404, "Estimation introuvable")
-    return _estimate_pdf_response(rec, "pt" if lang == "pt" else "fr")
+    return _estimate_pdf_response(rec, "pt" if lang == "pt" else "pt")
 
 
 @router.post("/conversations")
@@ -1202,7 +1202,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "fr", context="Voir les données jointes au message utilisateur.", prefs="Voir les préférences jointes.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + PROTOCOL + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPour un chiffrage complet de permis/plans, utilise start_construction_study puis read_construction_study. Reprends ses totaux calculés et son PDF, avec les hypothèses, pages absentes et provisions ; ne reconstruis pas un devis parallèle à partir de montants inventés. Ne confonds pas travail lancé et étude terminée."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Voir les données jointes au message utilisateur.", prefs="Voir les préférences jointes.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + PROTOCOL + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPour un chiffrage complet de permis/plans, utilise start_construction_study puis read_construction_study. Reprends ses totaux calculés et son PDF, avec les hypothèses, pages absentes et provisions ; ne reconstruis pas un devis parallèle à partir de montants inventés. Ne confonds pas travail lancé et étude terminée."
     if account_type(user) != "individual":
         instructions += QUOTE_INSTRUCTIONS
         instructions += ("\n\nAGENTS MÉTIER (run_construpilot_agent) : quand l'utilisateur demande un traitement de bout en bout sur ses plans "

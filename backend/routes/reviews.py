@@ -28,7 +28,7 @@ def _now() -> str:
 
 
 def _frontend_url() -> str:
-    return (os.getenv("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+    return (os.getenv("FRONTEND_URL") or "https://construpilot.pt").rstrip("/")
 
 
 async def get_reviews_for_user(user_id: str, limit: int = 3) -> dict:

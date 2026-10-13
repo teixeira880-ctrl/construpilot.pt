@@ -24,7 +24,7 @@ from core.security import current_user
 
 router = APIRouter(prefix="/referrals", tags=["referrals"])
 
-BASE_URL = "https://construpilot.fr"
+BASE_URL = "https://construpilot.pt"
 BONUS_DAYS_PER_REFERRAL = 30
 MAX_BONUS_DAYS = 360  # 12 months cap
 

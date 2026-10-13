@@ -669,10 +669,10 @@ def _save(prs) -> bytes:
     return buf.getvalue()
 
 
-def build_client_pptx(lang: str = "fr", branding: dict | None = None,
+def build_client_pptx(lang: str = "pt", branding: dict | None = None,
                       prospect: str | None = None) -> bytes:
     t = CLIENT.get(lang) or CLIENT["fr"]
-    lang = lang if lang in CLIENT else "fr"
+    lang = lang if lang in CLIENT else "pt"
     prs = _new()
     if branding or prospect:
         _branded_cover(prs, lang, t["cover"], branding, prospect)
@@ -692,7 +692,7 @@ def _fmt(value, nomeasure: str, suffix: str = "") -> str:
     return f"{value:,}".replace(",", " ") + suffix
 
 
-def build_investor_pptx(lang: str = "fr", metrics: dict | None = None,
+def build_investor_pptx(lang: str = "pt", metrics: dict | None = None,
                         docs_count: int | None = None) -> bytes:
     t = INV.get(lang) or INV["fr"]
     prs = _new()

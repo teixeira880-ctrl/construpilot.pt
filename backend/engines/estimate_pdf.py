@@ -38,8 +38,8 @@ def _bullets(items, S):
     return [Paragraph(f"• {_e(str(x))}", S["body"]) for x in (items or [])] or [Paragraph("—", S["muted"])]
 
 
-def build_estimate_pdf(est: dict, ref: str, lang: str = "fr") -> bytes:
-    L = T["pt" if lang == "pt" else "fr"]
+def build_estimate_pdf(est: dict, ref: str, lang: str = "pt") -> bytes:
+    L = T["pt" if lang == "pt" else "pt"]
     S = _styles()
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=16 * mm,

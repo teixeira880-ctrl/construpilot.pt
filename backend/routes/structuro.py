@@ -37,7 +37,7 @@ async def _save(study: dict) -> dict:
 
 class CreateIn(BaseModel):
     title: str | None = None
-    country: str | None = "FR"
+    country: str | None = "PT"
     description: str = Field(default="", max_length=8000)
 
 

@@ -111,7 +111,7 @@ _HYPO_UNIT = {"ITE": 160.0, "MENUISERIES": 650.0}  # €/m² murs ITE, €/menui
 # ---------------------------------------------------------------------------
 class RenoProjectIn(BaseModel):
     title: str = Field(default="", max_length=160)
-    country: str = Field(default="FR", max_length=4)
+    country: str = Field(default="PT", max_length=4)
     bien_type: str = Field(default="maison", max_length=20)
 
 
@@ -187,7 +187,7 @@ async def create_project(body: RenoProjectIn, user=Depends(current_user)) -> dic
     doc = {
         "project_id": pid, "user_id": user["user_id"],
         "title": (body.title or "Projet de rénovation").strip()[:160],
-        "country": (body.country or "FR").upper()[:4],
+        "country": (body.country or "PT").upper()[:4],
         "project_type": "renovation_existant",
         "status": "collecte",
         "inputs": {"bien.type": _evidence(body.bien_type, status="déclaré")},

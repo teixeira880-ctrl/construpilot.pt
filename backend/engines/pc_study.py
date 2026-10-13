@@ -67,7 +67,7 @@ PC_UNIT_PRICES = {
     "protection_securite": {"mat": 1500.0, "mo": 900.0},  # forfait — garde-corps, filets, signalisation, PPSPS
 }
 
-TVA_RATE = 0.20  # construction neuve
+TVA_RATE = 0.23  # construção nova — taxa normal de IVA (Portugal continental)
 
 # ---- Planning de chantier ---------------------------------------------
 CREW_SIZE = 3

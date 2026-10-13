@@ -100,9 +100,8 @@ PDF_LABELS = {
 
 
 def pdf_labels(lang: str | None) -> dict:
-    lg = (lang or "fr").lower()[:2]
-    if lg not in SUPPORTED:
-        lg = "fr"
+    lg = "pt"  # construpilot.pt: documentos sempre em português europeu
+    del lang
     base = dict(PDF_LABELS["fr"])
     base.update(PDF_LABELS.get(lg, {}))
     return base

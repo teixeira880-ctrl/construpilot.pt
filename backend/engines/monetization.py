@@ -418,7 +418,7 @@ async def _send_pro_welcome(user_id: str, plan: dict, payment_rec: dict, user: d
             customer_name=user.get("name") or "", customer_email=user["email"],
             paid_at=now.strftime("%d/%m/%Y"),
             stripe_ref=payment_rec.get("stripe_payment_intent_id") or payment_rec.get("session_id"))
-        origin = payment_rec.get("origin_url") or os.environ.get("APP_ORIGIN") or "https://construpilot.fr"
+        origin = payment_rec.get("origin_url") or os.environ.get("APP_ORIGIN") or "https://construpilot.pt"
         html = welcome_email_html(
             customer_name=user.get("name") or "", plan_name=plan.get("name") or "Pro",
             amount_ttc=amount, dashboard_url=f"{origin.rstrip('/')}/dashboard")

@@ -118,7 +118,7 @@ async def log_client_error(body: ClientErrorIn, request: Request) -> dict:
                    if body.stack else "")
                 + "<p style='color:#64748B;font-size:12px;margin-top:16px'>"
                 "Prochaine alerte identique dans 15 min max (dédup).</p>",
-                cta_url="https://construpilot.fr/admin",
+                cta_url="https://construpilot.pt/admin",
                 cta_label="Voir le dashboard Erreurs",
             )
             await emailer.send_email(_ADMIN_ALERT_EMAIL,

@@ -43,7 +43,7 @@ def _q(v, u):
     return "—" if v is None else f"{v:g} {u or ''}".strip()
 
 
-def build_comparison_pdf(rec: dict, branding: dict | None, lang: str = "fr") -> bytes:
+def build_comparison_pdf(rec: dict, branding: dict | None, lang: str = "pt") -> bytes:
     pt = lang == "pt"
     L = (lambda fr, p: p if pt else fr)
     c = rec["result"]
@@ -95,7 +95,7 @@ def build_comparison_pdf(rec: dict, branding: dict | None, lang: str = "fr") -> 
     return buf.getvalue()
 
 
-def build_inconsistencies_pdf(plan: dict, page_index: int, report: dict, branding: dict | None, lang: str = "fr") -> bytes:
+def build_inconsistencies_pdf(plan: dict, page_index: int, report: dict, branding: dict | None, lang: str = "pt") -> bytes:
     """Une page : chaînes périphériques, comparaisons et incohérences chiffrées — à transmettre à l'architecte / BET."""
     pt = lang == "pt"
     L = (lambda fr, p: p if pt else fr)

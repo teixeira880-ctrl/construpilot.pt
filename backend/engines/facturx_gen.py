@@ -89,7 +89,7 @@ def build_facturx_xml(doc: dict, branding: dict | None) -> bytes:
     seller_line = escape(str(branding.get("address") or ""))
     seller_cp = escape(str(branding.get("postal_code") or ""))
     seller_city = escape(str(branding.get("city") or ""))
-    seller_country = escape(str(branding.get("country") or "FR").upper()[:2] or "FR")
+    seller_country = escape(str(branding.get("country") or "PT").upper()[:2] or "PT")
     seller_vat = escape(str(branding.get("vat") or branding.get("tva_intra") or "").replace(" ", ""))
     seller_siret = escape(str(branding.get("siret") or "").replace(" ", ""))
 
@@ -97,7 +97,7 @@ def build_facturx_xml(doc: dict, branding: dict | None) -> bytes:
     buyer_line = escape(str(client.get("address") or ""))
     buyer_cp = escape(str(client.get("postal_code") or ""))
     buyer_city = escape(str(client.get("city") or ""))
-    buyer_country = escape(str(client.get("country") or "FR").upper()[:2] or "FR")
+    buyer_country = escape(str(client.get("country") or "PT").upper()[:2] or "PT")
 
     # --- Lignes + bases/taxes par taux (déterministe) ---
     lines = _real_lines(doc)

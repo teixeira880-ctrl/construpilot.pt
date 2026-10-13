@@ -109,12 +109,12 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
         sit_lines.append({"idx": i, "designation": bl.get("designation", ""),
                           "contract_ht": contract_ht, "prev_pct": pv, "cumul_pct": cum,
                           "delta_pct": delta, "situation_ht": sit_ht,
-                          "vat_rate": bl.get("vat_rate", 10), "unit": bl.get("unit", "u")})
+                          "vat_rate": bl.get("vat_rate", 6), "unit": bl.get("unit", "u")})
         if sit_ht > 0:
             inv_lines.append({
                 "designation": f"{bl.get('designation', '')} — avancement {delta:g}% (cumul {cum:g}%)",
                 "unit": "u", "qty": 1, "unit_price_ht": sit_ht,
-                "vat_rate": bl.get("vat_rate", 10), "category": f"Situation n°{seq}"})
+                "vat_rate": bl.get("vat_rate", 6), "category": f"Situation n°{seq}"})
 
     if not inv_lines:
         raise HTTPException(400, "Aucun avancement à facturer (delta nul sur toutes les lignes)")

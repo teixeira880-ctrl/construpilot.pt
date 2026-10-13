@@ -132,7 +132,7 @@ def logo_url_for(user_id: str | None, branding: dict | None) -> str | None:
 
 
 COMPANY_ADDRESS = "ConstruPilot · France"  # override via env in prod
-COMPANY_WEBSITE = "https://construpilot.fr"
+COMPANY_WEBSITE = "https://construpilot.pt"
 
 
 def _footer(unsubscribe_url: str | None = None) -> str:

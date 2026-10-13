@@ -29,7 +29,7 @@ router = APIRouter(tags=["autoseo"])
 logger = logging.getLogger(__name__)
 
 WEBHOOK_TOKEN = os.environ.get("AUTOSEO_WEBHOOK_TOKEN")
-SITE_URL = "https://construpilot.fr"  # domaine canonical (identique au reste du code)
+SITE_URL = "https://construpilot.pt"  # domaine canonical (identique au reste du code)
 
 _EXT_BY_CTYPE = {
     "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",

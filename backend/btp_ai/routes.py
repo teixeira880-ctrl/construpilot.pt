@@ -115,7 +115,7 @@ async def quote_draft(plan_id: str, client_name: str = Body("", embed=True), inc
 
 class ResearchIn(BaseModel):
     question: str = Field(min_length=8, max_length=1500)
-    country: Literal["FR", "PT"] = "FR"
+    country: Literal["FR", "PT"] = "PT"
     project_id: str | None = None
     preset: Literal["fast", "low", "medium", "high"] = "medium"
 

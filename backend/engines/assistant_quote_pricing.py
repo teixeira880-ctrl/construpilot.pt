@@ -30,7 +30,7 @@ async def price_sources(user):
     sources = [("company_library", company)]
     if mode != "company_only" and await _is_pro_business(user):
         level = await resolve_price_level(user["user_id"])
-        lang = "pt" if profile.get("lang") == "pt" or profile.get("brand_country") == "PT" else "fr"
+        lang = "pt" if profile.get("lang") == "pt" or profile.get("brand_country") == "PT" else "pt"
         shared = await get_shared_items_for_level(level, lang=lang)
         sources.append((f"shared_library_{level}", shared))
     if mode == "shared_first":
@@ -66,7 +66,7 @@ def find_price(designation, unit, sources):
 async def build_lines(body, user, previous=None):
     from routes.plans_common import _resolve_branding
     branding = await _resolve_branding(user["user_id"])
-    default_vat = 23 if str((branding or {}).get("country") or "").upper() == "PT" else 20
+    default_vat = 20 if str((branding or {}).get("country") or "").upper() == "FR" else 23
     sources = await price_sources(user) if any(l.price_origin == "library" for l in body.lines) else []
     old_lines = {(r.get("line_id") or f"legacy:{i}"): r for i, r in enumerate((previous or {}).get("lines", []))}
     seen = set()

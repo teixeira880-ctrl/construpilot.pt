@@ -103,7 +103,7 @@ class Combination(StrictModel):
 
 class Model(StrictModel):
     title: str = Field(default="Étude de structure", max_length=160)
-    country: Literal["FR", "PT"] = "FR"
+    country: Literal["FR", "PT"] = "PT"
     actions: list[Action] = Field(default_factory=list, max_length=8)
     self_weight_action: IDENT | None = None
     elements: list[Element] = Field(default_factory=list, max_length=200)

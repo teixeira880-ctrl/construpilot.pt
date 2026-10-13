@@ -428,7 +428,7 @@ def _build_tva_attachment(quote: dict, body: SendQuoteIn, company: str,
         work_description=work_desc,
         company_name=company,
         company_address=contact or "",
-        branding=branding, tva_rate=quote.get("tva_rate", 0.10),
+        branding=branding, tva_rate=quote.get("tva_rate", 0.06),
     )
     return {
         "filename": f"attestation-tva-{quote['plan_id']}.pdf",
@@ -503,7 +503,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
                  f'width="1" height="1" alt="" style="display:block" />'
                  if backend_public else "")
     portal_token = build_client_portal_token(body.client_email or "")
-    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr').rstrip('/')}"
+    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.pt').rstrip('/')}"
                   f"/mes-devis?token={portal_token}")
 
     inner = _build_send_quote_html(
@@ -605,7 +605,7 @@ async def list_quote_sends(plan_id: str, user=Depends(current_user)) -> dict:
 class TakeoffEstimateIn(BaseModel):
     project_type: str = "renovation_complete"
     finish_level: str = "standard"
-    country: str = "FR"
+    country: str = "PT"
     region: str | None = "idf"
     building_type: str = "maison"
     condition: str = "bon"
@@ -703,7 +703,7 @@ async def _send_single_reminder(c: dict) -> None:
     token = await _ensure_signature_token(c)
     sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{token}"
     portal_token = build_client_portal_token(c.get("client_email") or "")
-    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr').rstrip('/')}"
+    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.pt').rstrip('/')}"
                   f"/mes-devis?token={portal_token}")
     inner = _build_reminder_html(hello=hello, ttc=c.get("total_ttc", 0),
                                   sign_url=sign_url, portal_url=portal_url,
@@ -928,7 +928,7 @@ async def export_multi_quote_pdf(body: MultiQuoteIn, user=Depends(current_user))
         "subtotal_material": _sum("subtotal_material"),
         "subtotal_labour": _sum("subtotal_labour"),
         "subtotal_ht": _sum("subtotal_ht"),
-        "tva_rate": 0.10,
+        "tva_rate": 0.06,
         "tva": _sum("tva"),
         "total_ttc": _sum("total_ttc"),
         "finish": body.finish, "floor_material": body.floor_material,
@@ -1036,7 +1036,7 @@ async def list_all_quote_sends(user=Depends(current_user)) -> dict:
 
 
 class SendToInvoiceIn(BaseModel):
-    vat_rate: float = 10.0     # 5.5 | 10 | 20
+    vat_rate: float = 6.0     # 6 | 13 | 23 (Portugal continental)
 
 
 @quote_router.post("/sends/{log_id}/to-invoice")
@@ -1052,9 +1052,10 @@ async def send_to_invoice(log_id: str, body: SendToInvoiceIn | None = None,
     if send.get("invoice_doc_id"):
         return {"doc_id": send["invoice_doc_id"], "already": True}
 
-    vat_rate = float(body.vat_rate) if body else 10.0
-    if vat_rate not in (5.5, 10.0, 20.0):
-        vat_rate = 10.0
+    from core.market import ALLOWED_VAT, REHAB_VAT
+    vat_rate = float(body.vat_rate) if body else REHAB_VAT
+    if vat_rate not in ALLOWED_VAT:
+        vat_rate = REHAB_VAT
     ttc = float(send.get("total_ttc") or 0)
     ht = round(ttc / (1 + vat_rate / 100), 2) if ttc else 0.0
     label = send.get("plan_filename") or send.get("work_address") \
@@ -1329,7 +1330,7 @@ def _build_pro_signature_email(pro_name: str, signer: str, ttc: float,
         f"<p>Client : <em>{client_email}</em><br/>"
         f"Date : {_now()[:10]}</p>"
         f"<p style='margin-top:24px'>"
-        f"<a href='https://construpilot.fr/devis' "
+        f"<a href='https://construpilot.pt/devis' "
         f"style='background:hsl(24,96%,55%);color:white;padding:12px 24px;"
         f"text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>"
         f"Voir le devis signé</a></p>"
@@ -1538,7 +1539,7 @@ async def _apply_quote_deposit(rec: dict) -> None:
                     f"<p>Bonjour {pro.get('name') or ''},</p>"
                     f"<p>Un acompte de <strong>{amount} €</strong> vient d'être réglé en ligne "
                     f"sur un devis signé.</p>"
-                    f"<p style='margin-top:24px'><a href='https://construpilot.fr/devis' "
+                    f"<p style='margin-top:24px'><a href='https://construpilot.pt/devis' "
                     f"style='background:hsl(24,96%,55%);color:white;padding:12px 24px;"
                     f"text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>"
                     f"Voir le suivi des devis</a></p></div></div>")

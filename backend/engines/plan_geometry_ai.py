@@ -32,7 +32,7 @@ def level_for_mm(delta_mm: float) -> str:
     return "ROUGE"
 
 
-async def _call(image_b64: str, prompt: str, lang: str = "fr") -> dict:
+async def _call(image_b64: str, prompt: str, lang: str = "pt") -> dict:
     from emergentintegrations.llm.chat import ImageContent, UserMessage
 
     from engines.expenses.metering import MeteredChat as LlmChat
@@ -89,7 +89,7 @@ def _clean_anomalies(items: list, start: int = 1) -> list[dict]:
     return out
 
 
-async def analyze_geometry(image_b64: str, report: dict, w: int, h: int, lang: str = "fr") -> dict:
+async def analyze_geometry(image_b64: str, report: dict, w: int, h: int, lang: str = "pt") -> dict:
     """Double lecture : passage 1 (lecture + reconstruction) puis passage 2 (recalcul indépendant)."""
     cal = report.get("calibration") or {}
     p1 = await _call(image_b64, PASS1_FORMAT.format(
@@ -252,7 +252,7 @@ def _clean_sections(sections) -> list[dict]:
     return out
 
 
-async def write_narrative(image_b64: str, report: dict, geo: dict, lang: str = "fr") -> dict:
+async def write_narrative(image_b64: str, report: dict, geo: dict, lang: str = "pt") -> dict:
     """Passage 4 : rédaction du rapport narratif (une section par grande cote) à partir des données validées."""
     data = _narrative_data(report, geo)
     p4 = await _call(image_b64, PASS4_NARRATIVE.format(

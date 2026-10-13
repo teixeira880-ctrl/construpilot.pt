@@ -410,7 +410,7 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
 async def welcome_email_preview(name: str = "", admin=Depends(admin_user)):
     """Aperçu HTML de l'e-mail publicitaire de bienvenue (nouveaux utilisateurs)."""
     from engines.welcome_marketing import welcome_marketing_html
-    cta = f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr')}/?utm_source=email&utm_medium=welcome&utm_campaign=onboarding"
+    cta = f"{os.getenv('FRONTEND_URL', 'https://construpilot.pt')}/?utm_source=email&utm_medium=welcome&utm_campaign=onboarding"
     html = welcome_marketing_html(name.strip() or None, cta,
                                   unsubscribe_url=f"{os.getenv('FRONTEND_URL', '')}/desinscription")
     return HTMLResponse(html)
@@ -469,7 +469,7 @@ async def welcome_email_test(body: WelcomeTestBody, admin=Depends(admin_user)) -
     recipients = _parse_recipients(body.to)
     if not recipients:
         raise HTTPException(400, "Aucune adresse e-mail valide")
-    cta = f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr')}/?utm_source=email&utm_medium=welcome&utm_campaign=onboarding"
+    cta = f"{os.getenv('FRONTEND_URL', 'https://construpilot.pt')}/?utm_source=email&utm_medium=welcome&utm_campaign=onboarding"
     html = welcome_marketing_html((body.name or "").strip() or None, cta,
                                   unsubscribe_url=f"{os.getenv('FRONTEND_URL', '')}/desinscription")
     actor = (admin or {}).get("email") or (admin or {}).get("user_id")
@@ -480,7 +480,7 @@ def _prospect_render(audience: str, name: str):
     """(subject, html) pour l'e-mail prospect selon l'audience: 'particulier' | 'pro'."""
     from engines.prospect_marketing import (prospect_particulier_html, prospect_pro_html,
                                             PART_SUBJECT, PRO_SUBJECT)
-    front = os.getenv("FRONTEND_URL", "https://construpilot.fr")
+    front = os.getenv("FRONTEND_URL", "https://construpilot.pt")
     unsub = f"{os.getenv('FRONTEND_URL', '')}/desinscription"
     first = (name or "").strip() or None
     if audience == "pro":

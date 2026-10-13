@@ -45,7 +45,7 @@ def _fmt(v, unit=""):
 
 
 def build_studies_report(plan: dict, page_index: int, study: dict, report: dict, image_b64: str | None,
-                         branding: dict | None, lang: str = "fr") -> bytes:
+                         branding: dict | None, lang: str = "pt") -> bytes:
     S = _styles()
     a = study.get("analysis") or {}
     ver = study.get("verification") or {}
@@ -62,7 +62,7 @@ def build_studies_report(plan: dict, page_index: int, study: dict, report: dict,
     story += cover_story(plan, page_index, report, branding, lang, S, _W,
                          subtitle=L("ANALYSE OPENAI GPT-6 ASTRA — ", "ANÁLISE OPENAI GPT-6 ASTRA — ") + _e(str(title_doc)).upper()[:70])
     company = (branding or {}).get("company_name") or "—"
-    mention = MENTION["pt" if pt else "fr"].format(plan=f"« {title_doc} »" + (f" ({meta.get('level')})" if meta.get("level") else ""), company=company)
+    mention = MENTION["pt" if pt else "pt"].format(plan=f"« {title_doc} »" + (f" ({meta.get('level')})" if meta.get("level") else ""), company=company)
     story += [_scope_box(f"<b>{L('Objet du document', 'Objeto do documento')}.</b> {_e(mention)}", S, _W)]
     badge = (L("VÉRIFIÉ — seconde passe sans anomalie bloquante", "VERIFICADO — segunda passagem sem anomalia bloqueante") if study.get("verified")
              else L("NON VÉRIFIÉ — contrôles incomplets ou points bloquants", "NÃO VERIFICADO — controlos incompletos ou pontos bloqueantes"))

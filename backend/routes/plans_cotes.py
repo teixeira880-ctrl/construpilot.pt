@@ -499,7 +499,7 @@ class GeometryIn(BaseModel):
 
 
 def _lang_of(branding: dict | None) -> str:
-    return "pt" if ((branding or {}).get("country") or "").upper() == "PT" else "fr"
+    return "pt" if ((branding or {}).get("country") or "").upper() == "PT" else "pt"
 
 
 async def _report_lang(user_id: str) -> str:

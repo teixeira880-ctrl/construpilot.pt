@@ -9,7 +9,7 @@ import contextvars
 
 from reportlab.platypus import Paragraph as _RLParagraph
 
-LANG: contextvars.ContextVar[str] = contextvars.ContextVar("plan_pdf_lang", default="fr")
+LANG: contextvars.ContextVar[str] = contextvars.ContextVar("plan_pdf_lang", default="pt")
 
 FR_PT: dict[str, str] = {
     "nu int. droit": "face int. direita", "nu int. gauche": "face int. esquerda",
@@ -310,7 +310,7 @@ class Paragraph(_RLParagraph):
         super().__init__(tr(text), style, *args, **kwargs)
 
 
-def plan_scope_label(plan: dict, page_index: int, report: dict, lang: str = "fr") -> str:
+def plan_scope_label(plan: dict, page_index: int, report: dict, lang: str = "pt") -> str:
     """« fondations », « RDC », « R+1 »… : cartouche IA (type_plan / niveau) sinon niveau détecté à l'import."""
     doc = ((report.get("geometry") or {}).get("document") or {})
     parts = [str(doc.get(k)).strip() for k in ("type_plan", "niveau") if doc.get(k) and str(doc.get(k)).upper() not in ("NON INDIQUÉ", "NON LISIBLE", "NÃO INDICADO")]
@@ -325,7 +325,7 @@ def plan_scope_label(plan: dict, page_index: int, report: dict, lang: str = "fr"
     return " — ".join(parts) or ("planta" if lang == "pt" else "plan")
 
 
-def disclaimer(plan: dict, page_index: int, report: dict, branding: dict | None, lang: str = "fr") -> str:
+def disclaimer(plan: dict, page_index: int, report: dict, branding: dict | None, lang: str = "pt") -> str:
     company = (branding or {}).get("company_name")
     fname = plan.get("filename") or ("planta" if lang == "pt" else "plan")
     scope = plan_scope_label(plan, page_index, report, lang)

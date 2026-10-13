@@ -764,7 +764,7 @@ async def push_content(content_id: str, target_url: str = Body(..., embed=True),
     if not token:
         raise HTTPException(409, "GROWTH_PUBLISH_TOKEN manquant sur ce déploiement")
     target = target_url.rstrip("/")
-    allowed = {u.rstrip("/") for u in (env("GROWTH_PUSH_TARGETS") or "https://construpilot.fr,https://www.construpilot.fr,https://construpilot.pt").split(",") if u.strip()}
+    allowed = {u.rstrip("/") for u in (env("GROWTH_PUSH_TARGETS") or "https://construpilot.fr,https://www.construpilot.fr,https://construpilot.pt,https://www.construpilot.pt").split(",") if u.strip()}
     if env("GROWTH_PT_SITE_URL"):
         allowed.add(env("GROWTH_PT_SITE_URL").rstrip("/"))
     if target not in allowed:

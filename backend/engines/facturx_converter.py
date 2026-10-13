@@ -100,7 +100,7 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
             "street": branding.get("address") or "1 rue de la Construction",
             "city": branding.get("city") or "Paris",
             "postal_code": branding.get("postal_code") or "75001",
-            "country": (branding.get("country") or "FR")[:2].upper(),
+            "country": (branding.get("country") or "PT")[:2].upper(),
         },
     }
     if _digits(branding.get("siret")):
@@ -114,7 +114,7 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
             "street": client.get("address") or "-",
             "city": client.get("city") or "-",
             "postal_code": client.get("postal_code") or "-",
-            "country": "FR",
+            "country": "PT",
         },
     }
 

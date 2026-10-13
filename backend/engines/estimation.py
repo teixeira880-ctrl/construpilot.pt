@@ -54,7 +54,7 @@ class PricingRequest:
     project_type: str
     surface: float
     finish: str = "standard"
-    country: str = "FR"
+    country: str = "PT"
     region: str | None = None
     building_type: str = "maison"
     condition: str = "bon"
@@ -82,9 +82,9 @@ def estimate_from_request(req: PricingRequest) -> dict:
 
 def region_coef(country: str, region: str | None) -> float:
     for r in REGIONS:
-        if r["country"] == (country or "FR").upper() and r["region"] == region:
+        if r["country"] == (country or "PT").upper() and r["region"] == region:
             return r["coef"]
-    return 1.0 if (country or "FR").upper() == "FR" else 0.68
+    return 1.0 if (country or "PT").upper() == "FR" else 0.68
 
 
 def pt_default_vat_rate(country: str, project_type: str | None = None,
@@ -189,7 +189,7 @@ def _financials(lots: list[dict], surface: float, rc: float) -> dict:
             "total_avg": round(subtotal + contingency, 2)}
 
 
-def estimate(project_type: str, surface: float, finish: str = "standard", country: str = "FR",
+def estimate(project_type: str, surface: float, finish: str = "standard", country: str = "PT",
              region: str | None = None, building_type: str = "maison", condition: str = "bon",
              construction_year: int | None = None, lot_keys: list[str] | None = None,
              ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M,

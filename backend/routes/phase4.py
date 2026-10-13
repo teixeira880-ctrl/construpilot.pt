@@ -61,8 +61,8 @@ class PublicEstimateIn(BaseModel):
     project_type: str
     surface: float
     finish_level: str = "standard"
-    country: str = "FR"
-    region: str = "Île-de-France"
+    country: str = "PT"
+    region: str = "Lisboa"
     building_type: str = "maison"
     condition: str = "bon"
 

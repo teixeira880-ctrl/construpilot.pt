@@ -436,7 +436,7 @@ DEFAULTS = {
     "col_w_m": 0.20, "col_h_m": 0.20,
     "slab_thickness_m": 0.20,
     "margin_pct": 12.0,
-    "tva_rate": 0.20,
+    "tva_rate": 0.23,
     "include_second_oeuvre": True,
     # Gros œuvre immeuble : aucune cloison, tous les murs sont des voiles béton
     "partitions_as_concrete": True,

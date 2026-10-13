@@ -115,7 +115,7 @@ def build_study_note(study: dict) -> bytes:
     story.append(Spacer(1, 10 * mm))
     story.append(_section_table(ss, [
         ("Référence affaire", study.get("study_id", "")),
-        ("Pays", study.get("country", "FR")),
+        ("Pays", study.get("country", "PT")),
         ("Révision", str(study.get("revision", 1))),
         ("Niveau de sortie", study.get("output_level", "exploration")),
         ("Date d'édition", today),

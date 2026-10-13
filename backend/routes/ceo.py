@@ -36,7 +36,7 @@ from engines.expenses.context import bind
 log = logging.getLogger("ceo")
 router = APIRouter(prefix="/ceo", tags=["ceo"], dependencies=[Depends(admin_user)])
 
-SITE_URL = "https://construpilot.fr"
+SITE_URL = "https://construpilot.pt"
 
 
 def _frontend() -> str:

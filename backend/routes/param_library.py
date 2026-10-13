@@ -388,6 +388,6 @@ async def ouvrage_to_quote_line(body: QuoteLineIn, user=Depends(current_user)) -
         unit_price = r["prix_vente"]
     return {"line": {
         "designation": r["famille"], "description": f"Ouvrage composé {r['base_code']} · {r['metier']}",
-        "unit": unit, "qty": qty, "unit_price_ht": unit_price, "vat_rate": 10,
+        "unit": unit, "qty": qty, "unit_price_ht": unit_price, "vat_rate": 6,
         "category": r.get("famille", "Ouvrage composé")},
         "detail": r}

@@ -226,7 +226,7 @@ def plan_model() -> tuple[str, str]:
     return (provider or "openai"), (model or "gpt-5.5")
 
 
-async def _call_gpt_vision(image_b64_png: str, api_key: str, prompt: str | None = None, lang: str = "fr") -> str:
+async def _call_gpt_vision(image_b64_png: str, api_key: str, prompt: str | None = None, lang: str = "pt") -> str:
     """Send the plan image to the configured vision model and return raw text."""
     from emergentintegrations.llm.chat import ImageContent, UserMessage
 
@@ -269,7 +269,7 @@ Règles : une entrée par cote lue ; pour une cote horizontale y1 == y2, pour un
 sois le plus précis possible sur les extrémités (elles servent à mesurer le trait) ; n'invente aucune valeur."""
 
 
-async def read_dimension_lines(image_b64_png: str, lang: str = "fr") -> dict:
+async def read_dimension_lines(image_b64_png: str, lang: str = "pt") -> dict:
     """Lecture dédiée de toutes les cotes du plan (valeur + position du trait)."""
     api_key = studies_key(plan_model()[0])
     if not api_key:
@@ -349,7 +349,7 @@ def _normalize_analysis(data: dict) -> dict:
     return data
 
 
-async def analyze_plan_image(image_b64_png: str, lang: str = "fr") -> dict:
+async def analyze_plan_image(image_b64_png: str, lang: str = "pt") -> dict:
     """Send a PNG plan image to GPT-Vision and return the parsed gros-œuvre JSON.
 
     Always returns a dict — errors are surfaced via the `error` key.

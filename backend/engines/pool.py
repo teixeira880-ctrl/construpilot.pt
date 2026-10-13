@@ -71,7 +71,7 @@ def pool_lines(project_type: str, surface_m2: float, library: list[dict], depth_
                       "unit_price_ht": float(it["unit_price_ht"]),
                       "cost_price_ht": float(it.get("cost_price_ht") or 0),
                       "total_ht": round(qty * float(it["unit_price_ht"]), 2),
-                      "vat_rate": 20.0, "category": "Piscine"})
+                      "vat_rate": 23.0, "category": "Piscine"})
     return {"geometry": geo, "lines": lines, "total_ht": round(sum(l["total_ht"] for l in lines), 2)}
 
 

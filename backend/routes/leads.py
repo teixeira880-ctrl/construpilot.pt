@@ -13,7 +13,7 @@ router = APIRouter(prefix="/leads", tags=["leads"])
 
 
 def _frontend_url() -> str:
-    return (os.getenv("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+    return (os.getenv("FRONTEND_URL") or "https://construpilot.pt").rstrip("/")
 
 
 def _welcome_html(name: str, email: str = "") -> str:
@@ -456,7 +456,7 @@ mais il semble que vous ne l'ayez pas terminée.</p>
 <p>Bonne nouvelle : il ne vous reste que quelques secondes pour obtenir une estimation détaillée,
 poste par poste — <strong>gratuitement et sans engagement</strong>.</p>
 <p style="text-align:center;margin:32px 0;">
-<a href="https://construpilot.fr/smart-project" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Terminer mon estimation</a>
+<a href="https://construpilot.pt/smart-project" style="background:#3f7d54;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block;">Terminer mon estimation</a>
 </p>
 <p style="color:#78716c;font-size:13px;">Une question ? Répondez simplement à cet e-mail, nous sommes là pour vous aider.</p>
 <p style="color:#78716c;font-size:13px;">— L'équipe ConstruPilot</p>

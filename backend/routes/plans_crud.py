@@ -252,7 +252,7 @@ async def structural_metre_to_quote(plan_id: str, body: StructuralEstimateIn,
     from engines.dxf_takeoff import cost_structural
     estimate = cost_structural(metre, body.dict())
     margin = float(estimate["params"].get("margin_pct", 0)) / 100.0
-    vat_rate = round(float(estimate["totals"].get("tva_rate", 0.20)) * 100.0, 2)
+    vat_rate = round(float(estimate["totals"].get("tva_rate", 0.23)) * 100.0, 2)
 
     lines: list[dict] = []
     for lot in estimate.get("lots", []):

@@ -145,7 +145,7 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
         ["Briques isobrique", _fmt(t.get("briques_u"), "u", 0),
          "Semelles filantes", _fmt(t.get("semelles_ml"), "ml")],
         ["Total HT", _fmt(t.get("ht"), "€"),
-         f"TVA {round(float(t.get('tva_rate') or 0.2) * 100)} %", _fmt(t.get("tva"), "€")],
+         f"TVA {round(float(t.get('tva_rate') or 0.23) * 100)} %", _fmt(t.get("tva"), "€")],
         ["TOTAL TTC", _fmt(t.get("ttc"), "€"), "", ""],
     ], [45 * mm, 42 * mm, 45 * mm, 42 * mm],
         [("BACKGROUND", (0, 0), (-1, -1), LIGHT_GREY),
@@ -269,7 +269,7 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None,
     recap.style = "Light Grid Accent 1"
     data = [("Béton total", _fmt(t.get("beton_m3"), "m³")),
             ("Aciers total", _fmt(t.get("acier_kg"), "kg", 0)),
-            (f"Total HT / TVA {round(float(t.get('tva_rate') or 0.2) * 100)} %",
+            (f"Total HT / TVA {round(float(t.get('tva_rate') or 0.23) * 100)} %",
              f"{_fmt(t.get('ht'), '€')} / {_fmt(t.get('tva'), '€')}"),
             ("TOTAL TTC", _fmt(t.get("ttc"), "€"))]
     for r_idx, (k, v) in enumerate(data):

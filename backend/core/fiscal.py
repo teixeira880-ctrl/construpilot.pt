@@ -16,7 +16,7 @@ POLICIES: dict[str, dict] = {
 
 
 def policy_for(country: Optional[str]) -> dict:
-    c = (country or "").upper().strip()
+    c = (country or "PT").upper().strip()  # construpilot.pt: Portugal por omissão
     if c in POLICIES:
         return {**POLICIES[c], "known": True, "version": FISCAL_POLICY_VERSION}
     return {"country": c or None, "currency": "EUR", "rates": sorted({r for p in POLICIES.values() for r in p["rates"]}),

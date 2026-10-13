@@ -33,7 +33,7 @@ def make_token(user_id: str) -> str:
 
 
 def build_unsubscribe_url(user_id: str) -> str:
-    base = os.environ.get("PUBLIC_APP_URL") or "https://construpilot.fr"
+    base = os.environ.get("PUBLIC_APP_URL") or "https://construpilot.pt"
     return f"{base.rstrip('/')}/api/emails/unsubscribe/{make_token(user_id)}"
 
 
@@ -56,7 +56,7 @@ ConstruPilot</div>
 <h1 style="font-size:20px;margin:24px 0 12px">{title}</h1>
 <div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>
 <div style="margin-top:32px">
-<a href="https://construpilot.fr" style="background:{BRAND};color:#fff;text-decoration:none;
+<a href="https://construpilot.pt" style="background:{BRAND};color:#fff;text-decoration:none;
 padding:12px 24px;border-radius:4px;font-size:14px;font-weight:600;display:inline-block">
 Retour à ConstruPilot</a></div></div></body></html>"""
 

@@ -31,7 +31,7 @@ def _client_name(c: dict) -> str:
     return " ".join(x for x in [c.get("first_name"), c.get("last_name")] if x) or "Client"
 
 
-def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "fr") -> bytes:
+def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> bytes:
     P = _palette(branding)
     L = pdf_labels(lang)
     S = _doc_styles(_styles(), P, "bandeau")

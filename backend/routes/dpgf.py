@@ -142,7 +142,7 @@ async def _email_done(user_id: str, label: str, priced: int, line_count: int,
     if not u.get("email") or u.get("dpgf_email_notify") is False:
         return
     from engines import emailer
-    base = (os.environ.get("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+    base = (os.environ.get("FRONTEND_URL") or "https://construpilot.pt").rstrip("/")
     total = f"{total_ht:,.0f}".replace(",", " ")
     greeting = f" {u['name']}" if u.get("name") else ""
     html = emailer.wrap_html(

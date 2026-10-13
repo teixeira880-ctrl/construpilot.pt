@@ -144,8 +144,9 @@ EMAILS: dict[str, dict[str, str]] = {
 
 
 def norm_lang(lang: str | None) -> str:
-    lang = (lang or "fr").lower()[:2]
-    return lang if lang in SUPPORTED else "fr"
+    # construpilot.pt: e-mails sempre em português europeu, qualquer que seja a língua guardada.
+    del lang
+    return "pt"
 
 
 def T(lang: str | None, key: str, **kw) -> str:

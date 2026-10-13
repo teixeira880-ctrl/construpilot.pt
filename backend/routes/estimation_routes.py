@@ -20,7 +20,7 @@ class EstimateIn(BaseModel):
     project_type: str = "renovation_complete"
     surface: float = 100
     finish_level: str = "standard"
-    country: str = "FR"
+    country: str = "PT"
     region: str | None = None
     city: str | None = None
     building_type: str = "maison"
@@ -111,7 +111,7 @@ async def _attach_pool_items(est: dict, body: EstimateIn, user) -> None:
     if not (PROJECT_TYPES_BY_KEY.get(body.project_type) or {}).get("pool"):
         return
     level = {"eco": "bas", "standard": "moyen", "premium": "haut"}.get(body.finish_level, "moyen")
-    lang = "pt" if (body.country or "FR").upper() == "PT" else "fr"
+    lang = "pt" if (body.country or "PT").upper() == "PT" else "pt"
     items = await get_shared_items_for_level(level, lang=lang)
     data = pool_lines(body.project_type, body.surface, items)
     if est.get("pricing_audience") == "particulier":
@@ -137,7 +137,7 @@ async def analyse(body: DescribeIn, user=Depends(optional_user)) -> dict:
     ai_levels = analysis.get("levels") or None
     est = estimation.estimate(
         analysis["project_type"], analysis["surface"], analysis["finish_level"],
-        "FR", None, analysis["building_type"], analysis["condition"], None,
+        "PT", None, analysis["building_type"], analysis["condition"], None,
         analysis.get("lots") or None, ceiling_h, ai_levels)
     est["planning"] = estimation.planning(est["lots"])
     est["diy_vs_pro"] = estimation.diy_vs_pro(est)

@@ -274,7 +274,7 @@ async def run_signup_followups():
             )
             html = emailer.wrap_html(
                 "Besoin d'un coup de main pour démarrer ?", body_html,
-                cta_url="https://construpilot.fr/estimation",
+                cta_url="https://construpilot.pt/estimation",
                 cta_label="Estimer mes travaux",
             )
             await emailer.send_email(
@@ -566,7 +566,7 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
                 "<p>Bonne continuation avec ConstruPilot !</p>"
             )
             html = emailer.wrap_html("Votre compte Pro est validé ✅", body_html,
-                                     cta_url="https://construpilot.fr/dashboard",
+                                     cta_url="https://construpilot.pt/dashboard",
                                      cta_label="Accéder à mon espace")
             subject = "Votre compte Pro ConstruPilot est validé ✅"
         else:
@@ -580,7 +580,7 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
                 "Notre équipe reste à votre disposition.</p>"
             )
             html = emailer.wrap_html("Validation de votre compte Pro", body_html,
-                                     cta_url="https://construpilot.fr/compte",
+                                     cta_url="https://construpilot.pt/compte",
                                      cta_label="Renvoyer mes documents")
             subject = "Votre compte Pro ConstruPilot — action requise"
         await emailer.send_email(u["email"], subject, html)

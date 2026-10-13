@@ -338,7 +338,7 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
     subtotal_mat = round(sum(li["material_total"] for li in line_items), 2)
     subtotal_lab = round(sum(li["labour_total"] for li in line_items), 2)
     subtotal = round(subtotal_mat + subtotal_lab, 2)
-    tva_rate = 0.10
+    tva_rate = 0.06  # reabilitação de habitação (verba 2.27 CIVA)
     tva = round(subtotal * tva_rate, 2)
     ttc = round(subtotal + tva, 2)
 

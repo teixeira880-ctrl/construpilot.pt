@@ -15,7 +15,7 @@ def _key() -> str:
     return os.environ["EMERGENT_LLM_KEY"]
 
 
-async def transcribe(data: bytes, filename: str = "audio.webm", language: str = "fr") -> str:
+async def transcribe(data: bytes, filename: str = "audio.webm", language: str = "pt") -> str:
     buf = io.BytesIO(data)
     buf.name = filename if "." in filename else "audio.webm"
     r = await OpenAISpeechToText(api_key=_key()).transcribe(buf, model=STT_MODEL, language=language, response_format="json")

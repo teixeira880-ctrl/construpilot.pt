@@ -1012,7 +1012,7 @@ async def cctp_lines_from_text(text: str, lot_filter: str = "",
                 "description": desc, "unit": unit if unit in units else "u",
                 "qty": float(qty) if isinstance(qty, (int, float)) and qty > 0 else 1.0,
                 "qty_from_cctp": isinstance(qty, (int, float)) and qty > 0,
-                "unit_price_ht": 0, "vat_rate": 10,
+                "unit_price_ht": 0, "vat_rate": 6,
                 "category": str(l.get("category") or "").strip()[:80],
                 "imposed_materials": mats,
             })
@@ -1052,7 +1052,7 @@ async def quote_lines_from_text(transcript: str, images: list[str] | None = None
         '{ "title": "titre court du devis", '
         '"lines": [ { "designation": "libellé court de la prestation", '
         '"description": "détail des prestations incluses (2 à 4 lignes séparées par des retours à la ligne)", '
-        '"unit": "u|m²|ml|m³|forfait|ens|h|j", "qty": nombre, "vat_rate": 10 } ] }\n'
+        '"unit": "u|m²|ml|m³|forfait|ens|h|j", "qty": nombre, "vat_rate": 6 } ] }\n'
         "Estime des quantités plausibles si elles ne sont pas données. N'invente pas de prix. "
         + ("3 à 20 lignes maximum" if library_hints else "3 à 12 lignes maximum") + ", en français."
     )

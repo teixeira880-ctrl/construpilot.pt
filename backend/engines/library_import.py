@@ -252,8 +252,8 @@ def parse_constructpilot_gammes(content: bytes) -> list[dict]:
             unit = str(gi(r, "unité") or "u").strip()
             key = (cat.lower(), desig.lower(), unit.lower())
             it = items.setdefault(key, {
-                "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 10.0,
-                "code": str(gi(r, "code") or "")[:24].rsplit("-", 1)[0], "lang": "fr", "country": "FR",
+                "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 6.0,
+                "code": str(gi(r, "code") or "")[:24].rsplit("-", 1)[0], "lang": "pt", "country": "PT",
                 "source": str(gi(r, "source") or "")[:120] or None, "ref_date": str(gi(r, "date prix") or "")[:40] or None,
                 "hours_mid": None})
             gamme = str(gi(r, "gamme") or "").lower()
@@ -276,8 +276,8 @@ def parse_constructpilot_gammes(content: bytes) -> list[dict]:
             key = (cat.lower(), desig.lower(), unit.lower())
             mid = _f(gi(r, "prix moyen"))
             items[key] = {
-                "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 10.0,
-                "code": str(gi(r, "code") or "")[:24], "lang": "fr", "country": "FR",
+                "category": cat[:80], "designation": desig[:220], "unit": unit[:16], "vat_rate": 6.0,
+                "code": str(gi(r, "code") or "")[:24], "lang": "pt", "country": "PT",
                 "price_low": _f(gi(r, "prix bas")) or mid, "price_mid": mid, "price_high": _f(gi(r, "prix haut")) or mid,
                 "mat_mid": _f(gi(r, "matériaux")), "labor_mid": _f(gi(r, "main-d'œuvre")),
                 "source": "ConstruPilot FR 2026 – Piscines", "ref_date": "2026-09"}

@@ -397,7 +397,7 @@ CLIENT = {
     },
 }
 
-def build_client_pdf(lang: str = "fr", branding: dict | None = None,
+def build_client_pdf(lang: str = "pt", branding: dict | None = None,
                      prospect: str | None = None) -> bytes:
     _ensure_fonts()
     t = CLIENT.get(lang) or CLIENT["fr"]
@@ -696,7 +696,7 @@ def _fmt(value, nomeasure: str, suffix: str = "") -> str:
     return f"{value:,}".replace(",", " ") + suffix
 
 
-def build_investor_pdf(lang: str = "fr", metrics: dict | None = None,
+def build_investor_pdf(lang: str = "pt", metrics: dict | None = None,
                        budget: dict | None = None, docs_count: int | None = None) -> bytes:
     _ensure_fonts()
     t = INV.get(lang) or INV["fr"]

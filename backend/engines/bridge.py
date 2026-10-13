@@ -23,7 +23,7 @@ def _now() -> datetime:
 
 
 def _frontend() -> str:
-    return (os.getenv("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+    return (os.getenv("FRONTEND_URL") or "https://construpilot.pt").rstrip("/")
 
 
 def _dept(postal_code: str | None) -> str | None:

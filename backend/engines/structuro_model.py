@@ -117,7 +117,7 @@ def new_study(user_id: str, title: str, country: str, description: str) -> dict:
         "study_id": new_id("struct"),
         "user_id": user_id,
         "title": (title or "Étude structurelle").strip()[:160],
-        "country": (country or "FR").upper()[:4],
+        "country": (country or "PT").upper()[:4],
         "description": (description or "").strip()[:8000],
         "revision": 1,
         "lifecycle": "brouillon",       # brouillon→donnees_a_confirmer→calcule→a_revoir→approuve

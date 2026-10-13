@@ -223,7 +223,7 @@ def estimate(poste: str, quantity: float, params: dict | None = None) -> dict:
     ht = round(sum(l["total"] for l in lines), 2)
     margin_pct = float(params.get("margin_pct", 0) or 0)
     ht_marge = round(ht * (1 + margin_pct / 100.0), 2)
-    tva_rate = float(params.get("tva_rate", 0.20) or 0.20)
+    tva_rate = float(params.get("tva_rate", 0.23) or 0.23)
     tva = round(ht_marge * tva_rate, 2)
     meta = POSTES[poste]
     return {

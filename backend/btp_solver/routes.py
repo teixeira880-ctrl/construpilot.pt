@@ -80,7 +80,7 @@ async def to_quote(problem_id: str, body: ToQuoteIn, user=Depends(pro_required))
     for i, st in enumerate(steps or [{"text": sol["label"], "materials": []}]):
         price = round(mid / n, 2) if i < n - 1 else round(mid - round(mid / n, 2) * (n - 1), 2)
         lines.append(DocLine(designation=(st.get("text") or sol["label"])[:160], description=", ".join(st.get("materials") or [])[:400],
-                             unit="forfait", qty=1, unit_price_ht=max(price, 0), vat_rate=10, category=DOMAIN_LABELS.get(doc.get("domain"), "Travaux"),
+                             unit="forfait", qty=1, unit_price_ht=max(price, 0), vat_rate=6, category=DOMAIN_LABELS.get(doc.get("domain"), "Travaux"),
                              price_source="btp_solver_estimate"))
     notes = (f"Brouillon généré depuis le diagnostic ConstruPilot {problem_id} — solution « {sol['label']} ».\n"
              f"Chiffrage provisionnel (fourchette {sol.get('cost_min_eur') or '—'} € à {sol.get('cost_max_eur') or '—'} € HT, milieu retenu) à ajuster après visite technique. "

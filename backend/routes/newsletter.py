@@ -14,7 +14,7 @@ from core.security import admin_user
 
 router = APIRouter(prefix="/newsletter", tags=["newsletter"])
 logger = logging.getLogger(__name__)
-SITE_URL = "https://construpilot.fr"
+SITE_URL = "https://construpilot.pt"
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$")
 
 
@@ -28,7 +28,7 @@ def _frontend() -> str:
 
 class SubscribeIn(BaseModel):
     email: str
-    lang: str = "fr"
+    lang: str = "pt"
     source: str = ""
 
 
@@ -43,7 +43,7 @@ async def subscribe(body: SubscribeIn, request: Request):
     if recent >= 10:
         raise HTTPException(429, "Trop de tentatives, réessayez dans quelques minutes")
     await db.rate_limits.insert_one({"key": f"nl:{ip}", "at": datetime.now(timezone.utc)})
-    lang = "pt" if body.lang == "pt" else "fr"
+    lang = "pt" if body.lang == "pt" else "pt"
     existing = await db.newsletter_subscribers.find_one({"email": email}, {"_id": 0})
     if existing and not existing.get("unsubscribed_at"):
         return {"ok": True, "already": True}
@@ -93,7 +93,7 @@ async def notify_new_article(article: dict) -> int:
     slug = article.get("slug")
     if not slug or await db.newsletter_sends.find_one({"slug": slug}):
         return 0
-    lang = "pt" if (article.get("language_code") or "fr").startswith("pt") else "fr"
+    lang = "pt" if (article.get("language_code") or "fr").startswith("pt") else "pt"
     subs = await db.newsletter_subscribers.find(
         {"unsubscribed_at": None, "lang": lang}, {"_id": 0, "email": 1, "token": 1}).to_list(10000)
     if not subs:

@@ -14,7 +14,7 @@ PAID_PLANS = ("premium_monthly", "premium_yearly", "pro_monthly", "pro_yearly",
 
 
 def _front() -> str:
-    return (os.environ.get("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+    return (os.environ.get("FRONTEND_URL") or "https://construpilot.pt").rstrip("/")
 
 
 def _template(user: dict) -> tuple[str, str, str]:

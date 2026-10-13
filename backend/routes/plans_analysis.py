@@ -208,7 +208,7 @@ async def analyze_plan(plan_id: str, page_index: int = 0, user=Depends(current_u
     if not img:
         raise HTTPException(500, "Image manquante")
     _b = await _resolve_branding(user["user_id"]) or {}
-    analysis = await analyze_plan_image(img, "pt" if (_b.get("country") or "").upper() == "PT" else "fr")
+    analysis = await analyze_plan_image(img, "pt" if (_b.get("country") or "").upper() == "PT" else "pt")
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id},
         {"$set": {"ai_analysis": {**analysis, "page_index": page_index,
@@ -926,7 +926,7 @@ async def library_hints_for_user(user_id: str) -> list[str]:
     shared: list[dict] = []
     if mode != "company_only":
         try:
-            shared = await get_shared_items_for_level(await resolve_price_level(user_id), lang="pt" if is_pt else "fr")
+            shared = await get_shared_items_for_level(await resolve_price_level(user_id), lang="pt" if is_pt else "pt")
         except Exception:  # noqa: BLE001
             shared = []
     ordered = (company + shared) if mode == "company_first" else (shared + company)
@@ -961,7 +961,7 @@ async def _apply_library_prices(user_id: str, lines: list[dict],
     if mode != "company_only":
         try:
             level = await resolve_price_level(user_id, level_override)
-            shared = await get_shared_items_for_level(level, lang="pt" if is_pt else "fr")
+            shared = await get_shared_items_for_level(level, lang="pt" if is_pt else "pt")
         except Exception as e:  # noqa: BLE001
             logger.warning("Bibliothèque partagée indisponible (%s): %s", user_id, e)
 
@@ -1041,7 +1041,7 @@ def _beton_line_items(d: dict, plancher: dict | None = None) -> list[dict]:
     def add(desig, qty, unit, elem=None, cat="Gros œuvre — béton"):
         if qty and qty > 0:
             ln = {"designation": desig, "unit": unit, "qty": round(qty, 2),
-                  "unit_price_ht": _default_pu.get(elem, 0), "vat_rate": 20, "category": cat}
+                  "unit_price_ht": _default_pu.get(elem, 0), "vat_rate": 23, "category": cat}
             if elem:
                 ln["elem"] = elem
             lines.append(ln)
@@ -1075,7 +1075,7 @@ def _descriptif_line_items(d: dict) -> list[dict]:
     def add(desig, qty, unit, cat="Depuis analyse plan"):
         if qty and qty > 0:
             lines.append({"designation": desig, "unit": unit, "qty": round(qty, 2),
-                          "unit_price_ht": 0, "vat_rate": 10, "category": cat})
+                          "unit_price_ht": 0, "vat_rate": 6, "category": cat})
     add("Plancher / sol (surface au sol)", d.get("planchers_m2"), "m²")
     add("Murs porteurs (maçonnerie)", d.get("murs_porteurs_ml"), "ml")
     add("Cloisons", d.get("cloisons_ml"), "ml")
@@ -1828,7 +1828,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     if labor_price_m3 and labor_price_m3 > 0 and beton_total > 0:
         lines.append({"designation": "Main d'œuvre béton (coffrage, coulage, ferraillage)",
                       "unit": "m³", "qty": round(beton_total, 2),
-                      "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 20,
+                      "unit_price_ht": round(float(labor_price_m3), 2), "vat_rate": 23,
                       "category": "Depuis analyse plan"})
         priced += 1
     # Marge commerciale par poste (béton / aciers / main d'œuvre) — repli sur la marge globale
@@ -2610,7 +2610,7 @@ def _estimate_poste(poste: str, qty: float, params: dict, custom: list | None) -
     ht = round(q * pu, 2)
     margin = float(params.get("margin_pct", 0) or 0)
     ht_m = round(ht * (1 + margin / 100.0), 2)
-    tva_rate = float(params.get("tva_rate", 0.20) or 0.20)
+    tva_rate = float(params.get("tva_rate", 0.23) or 0.23)
     tva = round(ht_m * tva_rate, 2)
     unit = cp.get("unit", "m2")
     return {"poste": poste, "label": cp.get("label", poste), "unit": unit,

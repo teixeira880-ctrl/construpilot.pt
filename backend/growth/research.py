@@ -21,7 +21,7 @@ TRUSTED = {
     "pt": ["portaldasfinancas.gov.pt", "dre.pt", "diariodarepublica.pt", "impic.pt", "ine.pt", "portaldahabitacao.pt", "iapmei.pt", "gov.pt", "seg-social.pt",
            "dgeg.gov.pt", "adene.pt", "ordemengenheiros.pt", "oasrs.org", "aiccopn.pt", "lnec.pt", "act.gov.pt"],
 }
-UA = "Mozilla/5.0 (compatible; ConstruPilotGrowthBot/1.0; +https://construpilot.fr) verification de sources"
+UA = "Mozilla/5.0 (compatible; ConstruPilotGrowthBot/1.0; +https://construpilot.pt) verification de sources"
 DATE_RX = re.compile(r"(20[12]\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])")
 
 

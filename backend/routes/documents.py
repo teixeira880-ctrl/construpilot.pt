@@ -233,7 +233,7 @@ async def _doc_lang(doc: dict, branding: dict | None) -> str:
     """Langue des PDF : celle du document, sinon PT si l'entreprise est au Portugal, sinon FR."""
     if doc.get("lang") in ("fr", "pt"):
         return doc["lang"]
-    return "pt" if ((branding or {}).get("country") or "").upper() == "PT" else "fr"
+    return "pt" if ((branding or {}).get("country") or "").upper() == "PT" else "pt"
 
 
 async def apply_fiscal_policy(user: dict, lines: list, *text_hints: str) -> dict:
@@ -1119,7 +1119,7 @@ async def document_from_plan(plan_id: str, client_id: str | None = None,
             "unit": li.get("unit") or "u",
             "qty": round(qty, 2),
             "unit_price_ht": pu,
-            "vat_rate": 10,
+            "vat_rate": 6,
             "category": "Depuis plan IA",
         })
     await _apply_pt_vat(user, lines, quote.get("filename") or "")
@@ -1154,7 +1154,7 @@ _CONCRETE_LABELS = {"slab": "Dalles", "beam": "Poutres", "column": "Poteaux", "w
 
 @router.post("/from-autopilot/{dossier_id}")
 async def document_from_autopilot(dossier_id: str, client_id: str | None = None,
-                                  margin_pct: float = 12.0, vat_rate: float = 20.0,
+                                  margin_pct: float = 12.0, vat_rate: float = 23.0,
                                   user=Depends(current_user)) -> dict:
     """Crée un devis brouillon « Gros œuvre » depuis le métré de l'auto-pilote BET (lignes modifiables)."""
     d = await db.bet_dossiers.find_one(
@@ -1381,7 +1381,7 @@ _WHISPER_PROMPT_PT = ("Orçamento de obras : demolição, pladur, divisórias, r
                       "isolamento, caixilharia, cobertura, alvenaria, betão, metros quadrados, metros lineares.")
 
 
-async def _transcribe_video_bytes(raw: bytes, lang: str = "fr") -> str:
+async def _transcribe_video_bytes(raw: bytes, lang: str = "pt") -> str:
     """Extrait l'audio d'une vidéo (ffmpeg) et le transcrit (Whisper, vocabulaire BTP)."""
     import os
     import shutil
@@ -1409,7 +1409,7 @@ async def _transcribe_video_bytes(raw: bytes, lang: str = "fr") -> str:
         stt = OpenAISpeechToText(api_key=os.environ["EMERGENT_LLM_KEY"])
         with open(audio, "rb") as af:
             resp = await stt.transcribe(file=af, model="whisper-1", response_format="text",
-                                        language="pt" if lang == "pt" else "fr",
+                                        language="pt" if lang == "pt" else "pt",
                                         prompt=_WHISPER_PROMPT_PT if lang == "pt" else _WHISPER_PROMPT_FR)
         transcript = resp if isinstance(resp, str) else (getattr(resp, "text", "") or "")
     except HTTPException:
@@ -1459,7 +1459,7 @@ async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
 async def video_transcribe(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
     """Transcrit une vidéo en texte (à relire/corriger avant génération du devis)."""
     raw = await file.read()
-    transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "fr")
+    transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "pt")
     return {"transcript": transcript}
 
 
@@ -1484,7 +1484,7 @@ async def document_from_video(file: UploadFile = File(...), client_id: str | Non
                               user=Depends(current_user)) -> dict:
     """Crée un devis directement à partir d'une vidéo (transcription + lignes IA chiffrées)."""
     raw = await file.read()
-    transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "fr")
+    transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "pt")
     doc = await _quote_doc_from_text(user, transcript, client_id, source="video")
     doc["transcript"] = transcript
     return doc
