@@ -17,7 +17,7 @@ import { useI18n } from "@/context/I18nContext";
 import { ChantierFormDialog } from "@/components/chantiers/ChantierFormDialog";
 import { HardHat } from "lucide-react";
 
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const STATUS_KEY = {
   draft: "crm.st_e_draft", sent: "crm.st_e_sent", signed: "crm.st_e_signed", refused: "crm.st_e_refused",
   partial: "crm.st_partial", paid: "crm.st_paid", issued: "crm.st_issued",

@@ -29,7 +29,7 @@ export const ProjectSiteTracking = ({ projectId, acceptedQuote }) => {
       {data.reports.slice(0, 5).map((r) => (
         <div key={r.report_id} className="rounded-sm bg-secondary/20 p-3 grid gap-2" data-testid={`project-site-report-${r.report_id}`}>
           <div className="flex items-center gap-2 text-sm"><ClipboardList className="h-4 w-4 text-primary" /><span className="font-medium">{r.title || "Relatório de visita"}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{new Date(r.created_at).toLocaleDateString("fr-FR")}</span></div>
+            <span className="text-xs text-muted-foreground ml-auto">{new Date(r.created_at).toLocaleDateString("pt-PT")}</span></div>
           {r.notes && <p className="text-sm text-muted-foreground whitespace-pre-line">{r.notes}</p>}
           {r.lots?.length > 0 && <div className="flex flex-wrap gap-1.5">{r.lots.map((l, i) => <span key={i} className="text-[11px] rounded-full bg-primary/10 text-primary px-2 py-0.5">{l.name} {l.progress != null ? `${l.progress} %` : ""}</span>)}</div>}
           {r.photos?.length > 0 && (

@@ -23,7 +23,7 @@ export const MeetingReportDialog = ({ open, onClose, conversationId, meeting, st
     if (payload.some((p) => p.outcome === "decided" && !p.decision_taken)) return toast.error("Indique a decisão tomada para cada ponto decidido");
     setBusy(true);
     try {
-      const { data } = await api.post(`/assistant/conversations/${conversationId}/meeting-report`, { meeting: meeting || "réunion", attendees: attendees || null, remarks: remarks || null, items: payload });
+      const { data } = await api.post(`/assistant/conversations/${conversationId}/meeting-report`, { meeting: meeting || "reunião", attendees: attendees || null, remarks: remarks || null, items: payload });
       toast.success(`Ata criada: ${data.counts.decided} decidido(s), ${data.counts.postponed} adiado(s)`);
       onDone?.(); onClose();
       view(data.artifact.download, data.artifact.filename, data.artifact.title);

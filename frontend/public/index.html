@@ -1,26 +1,26 @@
 <!doctype html>
-<html lang="fr">
+<html lang="pt-PT">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/construpilot-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0A0D14" />
 
-    <!-- Primary SEO (valeurs statiques pour les robots sans JavaScript ; surchargées côté React) -->
-    <title>ConstruPilot — Devis travaux IA & estimation rénovation</title>
-    <meta name="description" content="Assistant IA du BTP : chiffrez vos devis, estimez une rénovation, comparez les prix matériaux et transformez vos plans en quantités. Offre gratuite pour démarrer." />
+    <!-- SEO principal (valores estáticos para robôs sem JavaScript; substituídos pelo React) -->
+    <title>ConstruPilot — Orçamentos de obras com IA e estimativa de remodelação</title>
+    <meta name="description" content="Assistente IA da construção: orçamente as suas obras, estime uma remodelação, compare preços de materiais e transforme as suas plantas em quantidades. IVA português (6 %, 13 %, 23 %). Grátis para começar." />
     <meta name="author" content="ConstruPilot" />
     <meta name="googlebot" content="index, follow" />
 
     <!-- Open Graph -->
     <meta property="og:site_name" content="ConstruPilot" />
-    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale" content="pt_PT" />
     <meta property="og:locale:alternate" content="en_US" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="ConstruPilot — Assistant IA pour vos travaux" />
-    <meta property="og:title" content="ConstruPilot — Devis travaux IA & estimation rénovation" />
-    <meta property="og:description" content="Assistant IA du BTP : devis, estimation rénovation, prix matériaux et métré sur plan. Offre gratuite pour démarrer." />
+    <meta property="og:image:alt" content="ConstruPilot — Assistente IA para as suas obras" />
+    <meta property="og:title" content="ConstruPilot — Orçamentos de obras com IA e estimativa de remodelação" />
+    <meta property="og:description" content="Assistente IA da construção: orçamentos, estimativa de remodelação, preços de materiais e medições em planta. Grátis para começar." />
 
     <!-- Twitter Card -->
 
@@ -44,18 +44,18 @@
       "@type": "Organization",
       "name": "ConstruPilot",
       "alternateName": "CMRENOV Travaux AI",
-      "url": "https://construpilot.fr",
-      "logo": "https://construpilot.fr/logo512.png",
-      "description": "Assistant IA pour l'estimation, la comparaison de prix matériaux et la génération de devis dans le BTP.",
+      "url": "https://construpilot.pt",
+      "logo": "https://construpilot.pt/logo512.png",
+      "description": "Assistente IA para a estimativa, a comparação de preços de materiais e a geração de orçamentos na construção.",
       "foundingDate": "2026",
       "areaServed": {
         "@type": "Country",
-        "name": "France"
+        "name": "Portugal"
       },
       "contactPoint": {
         "@type": "ContactPoint",
         "contactType": "customer support",
-        "availableLanguage": ["French", "English"]
+        "availableLanguage": ["Portuguese", "English"]
       },
       "sameAs": []
     }
@@ -70,25 +70,25 @@
       "applicationCategory": "BusinessApplication",
       "applicationSubCategory": "Construction Estimating Software",
       "operatingSystem": "Web",
-      "url": "https://construpilot.fr",
-      "description": "Logiciel de devis travaux et d'estimation rénovation en ligne. Métré 2D automatique, rendu 3D IA, comparateur prix matériaux.",
+      "url": "https://construpilot.pt",
+      "description": "Software de orçamentos de obras e estimativa de remodelação online. Medição 2D automática, render 3D com IA, comparador de preços de materiais, cálculo estrutural (Eurocódigos com Anexos Nacionais portugueses).",
       "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "EUR",
-        "description": "Version gratuite disponible"
+        "description": "Versão gratuita disponível"
       },
       "featureList": [
-        "Estimation IA détaillée par lot",
-        "Calculateurs matériaux (peinture, carrelage, placo, béton, isolation)",
-        "Comparateur de prix matériaux (relevé en direct chez les enseignes)",
-        "Métré 2D automatique (détection murs OpenCV)",
-        "Rendu 3D IA (isométrique, photoréaliste, intérieur)",
-        "Tour vidéo 3D avec filigrane et musique",
-        "Génération devis PDF avec attestation TVA 10 %",
-        "Signature électronique client",
-        "Suivi ouverture / rappels automatiques",
-        "Coach IA travaux"
+        "Estimativa IA detalhada por capítulo",
+        "Calculadoras de materiais (tinta, azulejo, pladur, betão, isolamento)",
+        "Comparador de preços de materiais (recolha em direto nas lojas)",
+        "Medição 2D automática (deteção de paredes OpenCV)",
+        "Render 3D com IA (isométrico, fotorrealista, interior)",
+        "Cálculo de escadas e estruturas (NP EN 1990/1992/1997)",
+        "Orçamentos PDF com IVA português (6 % reabilitação, 23 % taxa normal)",
+        "Assinatura eletrónica do cliente",
+        "Acompanhamento de abertura / lembretes automáticos",
+        "Coach IA de obras"
       ]
     }
     </script>
@@ -98,12 +98,12 @@
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      "url": "https://construpilot.fr",
+      "url": "https://construpilot.pt",
       "name": "ConstruPilot",
-      "inLanguage": "fr-FR",
+      "inLanguage": "pt-PT",
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "https://construpilot.fr/prix?q={search_term_string}",
+        "target": "https://construpilot.pt/prix?q={search_term_string}",
         "query-input": "required name=search_term_string"
       }
     }
@@ -111,7 +111,7 @@
   </head>
   <body>
     <div id="root">
-      <!-- Écran de chargement neutre affiché avant l'hydratation React (évite tout flash de contenu brut). -->
+      <!-- Ecrã de carregamento neutro apresentado antes da hidratação React. -->
       <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#ffffff;font-family:'Outfit',system-ui,sans-serif">
         <img src="%PUBLIC_URL%/construpilot-icon.png" alt="ConstruPilot" width="56" height="56" style="border-radius:12px" />
         <div style="width:34px;height:34px;border:3px solid #FFE0CF;border-top-color:#FF5A00;border-radius:50%;animation:cp-spin .8s linear infinite"></div>
@@ -121,7 +121,7 @@
     <noscript>
       ConstruPilot — l'assistant IA du BTP : devis travaux, estimation rénovation, métré automatique
       depuis vos plans DWG/DXF/PDF, comparateur de prix matériaux et édition de devis clients.
-      Rendez-vous sur https://construpilot.fr pour créer un devis gratuit. (Activez JavaScript pour
+      Rendez-vous sur https://construpilot.pt pour créer un devis gratuit. (Activez JavaScript pour
       l'expérience interactive complète.)
     </noscript>
   </body>

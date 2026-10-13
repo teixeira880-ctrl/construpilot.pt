@@ -24,7 +24,7 @@ try {
     localStorage.setItem("cp_first_touch", JSON.stringify({ landing_path: window.location.pathname, referrer: document.referrer || "", utm_source: q.get("utm_source") || "", utm_medium: q.get("utm_medium") || "", utm_campaign: q.get("utm_campaign") || "", qr: q.get("qr") || q.get("lot") || "", ref: q.get("ref") || "", first_seen: new Date().toISOString() }));
   }
 } catch { /* noop */ }
-// Force non-www (construpilot.fr) : aligne avec le canonical/sitemap ET garantit que
+// Force non-www (construpilot.pt) : aligne avec le canonical/sitemap ET garantit que
 // les appels API restent same-origin (évite les blocages CORS www -> non-www).
 if (typeof window !== "undefined" && window.location.hostname.startsWith("www.")) {
   const target = new URL(window.location.href);

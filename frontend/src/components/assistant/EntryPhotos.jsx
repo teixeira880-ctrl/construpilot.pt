@@ -26,7 +26,7 @@ export const EntryPhotos = ({ conversationId, entry, onChange }) => {
     try { await api.delete(`/assistant/conversations/${conversationId}/state/${entry.entry_id}/photos/${p.doc_id}`); onChange?.(); }
     catch { toast.error("Remoção impossível"); }
   };
-  const fmt = (d) => d ? new Date(d).toLocaleDateString("fr-FR") : "data desconhecida";
+  const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-PT") : "data desconhecida";
   const group = (ph) => photos.filter((p) => p.phase === ph);
   return <div className="mt-1 grid gap-1" data-testid={`entry-photos-${entry.entry_id}`}>
     {photos.length > 0 && <div className="grid grid-cols-2 gap-2">

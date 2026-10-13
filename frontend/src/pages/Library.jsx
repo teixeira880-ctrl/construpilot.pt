@@ -20,12 +20,12 @@ import LibraryDuplicatesDialog from "@/components/library/LibraryDuplicatesDialo
 import LearnedPricesPanel from "@/components/library/LearnedPricesPanel";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
-const VAT_RATES = [10, 20, 5.5];
+const VAT_RATES = [6, 13, 23]; // Portugal continental (CIVA)
 const EMPTY = {
   type: "ouvrage", category: "", designation: "", unit: "m²",
-  unit_price_ht: "", cost_price_ht: "", vat_rate: 10, notes: "",
+  unit_price_ht: "", cost_price_ht: "", vat_rate: 23, notes: "",
 };
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
 export default function Library() {
   const { user } = useAuth();
@@ -77,7 +77,7 @@ export default function Library() {
         type: form.type, category: form.category, designation: form.designation,
         unit: form.unit, unit_price_ht: parseFloat(form.unit_price_ht) || 0,
         cost_price_ht: parseFloat(form.cost_price_ht) || 0,
-        vat_rate: (form.vat_rate === "" || form.vat_rate == null) ? 10 : parseFloat(form.vat_rate), notes: form.notes,
+        vat_rate: (form.vat_rate === "" || form.vat_rate == null) ? 23 : parseFloat(form.vat_rate), notes: form.notes,
       };
       if (editing) await api.put(`/library/${editing}`, payload);
       else await api.post("/library", payload);

@@ -26,7 +26,7 @@ export function AuditPanel({ projectId, canEdit }) {
   const stop = async () => { try { await api.post(`/growth/audits/${selected}/stop`); toast.success("Paragem pedida"); } catch (e) { toast.error(err(e)); } };
   const setIssue = async (i, status) => { try { await api.put(`/growth/issues/${i.issue_id}`, { status }); setDetail({ ...detail, issues: detail.issues.map((x) => x.issue_id === i.issue_id ? { ...x, status } : x) }); } catch (e) { toast.error(err(e)); } };
   const toAction = async (i) => {
-    try { await api.post(`/growth/projects/${projectId}/actions`, { title: `Corriger « ${i.kind} » — ${i.url}`, problem: i.consequence, evidence: i.evidence, url: i.url, impact: { haute: "fort", moyenne: "moyen", basse: "faible" }[i.severity], effort: i.effort, kpi: `Problème « ${i.kind} » absent au prochain audit`, source: "audit", source_ref: i.issue_id }); toast.success("Ação criada no plano de ação"); }
+    try { await api.post(`/growth/projects/${projectId}/actions`, { title: `Corrigir « ${i.kind} » — ${i.url}`, problem: i.consequence, evidence: i.evidence, url: i.url, impact: { haute: "fort", moyenne: "moyen", basse: "faible" }[i.severity], effort: i.effort, kpi: `Problema « ${i.kind} » ausente na próxima auditoria`, source: "audit", source_ref: i.issue_id }); toast.success("Ação criada no plano de ação"); }
     catch (e) { toast.error(err(e)); }
   };
   if (error) return <ErrorBox error={error} onRetry={reload} />;

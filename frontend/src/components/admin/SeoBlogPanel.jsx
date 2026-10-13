@@ -64,7 +64,7 @@ export default function SeoBlogPanel() {
           <p className="font-bold text-2xl num mt-1" data-testid="admin-newsletter-active">{nl ? nl.active : "…"}</p>
           {nl?.recent_sends?.[0] && <p className="text-[11px] text-muted-foreground truncate">Último envio: {nl.recent_sends[0].title} ({nl.recent_sends[0].sent})</p>}</div>
         <div className="surface p-4 rounded-md"><p className="overline text-[10px]">Última sincronização</p>
-          <p className="text-sm mt-1" data-testid="admin-blg-last-sync">{st.last_sync?.at ? new Date(st.last_sync.at).toLocaleString("fr-FR") : "jamais"}</p>
+          <p className="text-sm mt-1" data-testid="admin-blg-last-sync">{st.last_sync?.at ? new Date(st.last_sync.at).toLocaleString("pt-PT") : "jamais"}</p>
           {st.last_sync && <p className="text-[11px] text-muted-foreground">+{st.last_sync.created} · {st.last_sync.skipped} existentes · {st.last_sync.errors} erreurs</p>}</div>
       </div>
 
@@ -86,7 +86,7 @@ export default function SeoBlogPanel() {
               {a.hero_image_url && <img src={a.hero_image_url} alt="" className="h-10 w-16 object-cover rounded-sm shrink-0" />}
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{a.title}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{a.seed_keyword} · {a.published_at ? new Date(a.published_at).toLocaleDateString("fr-FR") : ""}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{a.seed_keyword} · {a.published_at ? new Date(a.published_at).toLocaleDateString("pt-PT") : ""}</p>
               </div>
               <Badge variant="outline" className="rounded-sm text-[10px] uppercase">{a.language_code}</Badge>
               <a href={`/blog/${a.slug}`} target="_blank" rel="noreferrer" className="text-primary" data-testid={`admin-blg-open-${a.slug}`}><ExternalLink className="h-4 w-4" /></a>

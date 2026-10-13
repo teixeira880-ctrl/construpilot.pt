@@ -43,7 +43,7 @@ export default function AutoSeoBlogPost({ slug }) {
   const a = state.article;
   const published = a.published_at || a.created_at;
 
-  const heroAbs = a.hero_image_url?.startsWith("/") ? `https://construpilot.fr${a.hero_image_url}` : a.hero_image_url;
+  const heroAbs = a.hero_image_url?.startsWith("/") ? `https://construpilot.pt${a.hero_image_url}` : a.hero_image_url;
   const jsonLd = [{
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -57,9 +57,9 @@ export default function AutoSeoBlogPost({ slug }) {
     "publisher": {
       "@type": "Organization",
       "name": "ConstruPilot",
-      "logo": { "@type": "ImageObject", "url": "https://construpilot.fr/logo512.png" },
+      "logo": { "@type": "ImageObject", "url": "https://construpilot.pt/logo512.png" },
     },
-    "mainEntityOfPage": `https://construpilot.fr/blog/${a.slug}`,
+    "mainEntityOfPage": `https://construpilot.pt/blog/${a.slug}`,
     "keywords": Array.isArray(a.keywords) ? a.keywords.join(", ") : a.meta_keywords,
   }];
 
@@ -79,9 +79,9 @@ export default function AutoSeoBlogPost({ slug }) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.fr/" },
-      { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.fr/blog" },
-      { "@type": "ListItem", "position": 3, "name": a.title, "item": `https://construpilot.fr/blog/${a.slug}` },
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.pt/" },
+      { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.pt/blog" },
+      { "@type": "ListItem", "position": 3, "name": a.title, "item": `https://construpilot.pt/blog/${a.slug}` },
     ],
   });
 
@@ -117,7 +117,7 @@ export default function AutoSeoBlogPost({ slug }) {
           <div className="mt-5 flex items-center gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {new Date(published).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+              {new Date(published).toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" })}
             </span>
           </div>
         )}

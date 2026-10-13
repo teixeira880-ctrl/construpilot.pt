@@ -132,7 +132,7 @@ export default function Dashboard() {
       {guideOpen && <OnboardingTour forceOpen onClose={() => setGuideOpen(false)} />}
       <header className="dashboard-heading">
         <div><p className="dashboard-greeting">{experience("hello")}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p><h1>{experience("overview")}</h1><p>{experience("intro")}</p></div>
-        <div className="dashboard-heading-actions"><span className="dashboard-date">{new Date().toLocaleDateString({pt:"pt-PT",en:"en-GB"}[lang] || "fr-FR", {weekday:"long",day:"numeric",month:"long"})}</span><Button asChild><Link to={isPro && can("devis") ? "/devis-editeur" : "/estimation"} data-testid="dashboard-primary-create"><Plus size={17} />{experience(isPro && can("devis") ? "quoteShort" : "estimateShort")}</Link></Button></div>
+        <div className="dashboard-heading-actions"><span className="dashboard-date">{new Date().toLocaleDateString({pt:"pt-PT",en:"en-GB"}[lang] || "pt-PT", {weekday:"long",day:"numeric",month:"long"})}</span><Button asChild><Link to={isPro && can("devis") ? "/devis-editeur" : "/estimation"} data-testid="dashboard-primary-create"><Plus size={17} />{experience(isPro && can("devis") ? "quoteShort" : "estimateShort")}</Link></Button></div>
       </header>
       <div className="dashboard-quick-actions" data-testid="dash-quick-actions">
         {[

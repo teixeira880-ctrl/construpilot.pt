@@ -119,7 +119,7 @@ export function NotificationsBell() {
               <div className="min-w-0 flex-1">
                 <p className={`${n.read ? "" : "font-bold"} truncate`}>{n.message}</p>
                 <p className="text-[10px] text-muted-foreground num">
-                  {new Date(n.created_at).toLocaleString("fr-FR")}
+                  {new Date(n.created_at).toLocaleString("pt-PT")}
                 </p>
               </div>
               {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />}

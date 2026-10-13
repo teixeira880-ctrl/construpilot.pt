@@ -86,7 +86,7 @@ export function PortalIssues({ portalApi, chantierRef, canReport }) {
               <IssueHeader issue={i} labels={data.labels} />
               {i.description && <p className="text-sm text-slate-700 whitespace-pre-wrap">{i.description}</p>}
               <IssuePhotos photos={i.photos} fileUrl={fileUrl} testId={`portal-issue-photos-${i.issue_id}`} />
-              {i.assignee || i.target_date ? <p className="text-xs text-slate-500">{[i.assignee && `Assumido por ${i.assignee}`, i.target_date && `data prevista ${new Date(i.target_date).toLocaleDateString("fr-FR")}`].filter(Boolean).join(" · ")}</p> : null}
+              {i.assignee || i.target_date ? <p className="text-xs text-slate-500">{[i.assignee && `Assumido por ${i.assignee}`, i.target_date && `data prevista ${new Date(i.target_date).toLocaleDateString("pt-PT")}`].filter(Boolean).join(" · ")}</p> : null}
               {i.pro_response && <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm" data-testid={`portal-issue-response-${i.issue_id}`}><p className="text-[11px] uppercase tracking-wide text-emerald-800">Resposta da empresa</p><p className="whitespace-pre-wrap">{i.pro_response}</p></div>}
               {i.status === "resolved" && i.client_confirmed == null && (
                 <div className="flex flex-wrap gap-2 items-center text-sm" data-testid={`portal-issue-confirm-${i.issue_id}`}><span>A empresa indica que está resolvido. Confirma?</span>

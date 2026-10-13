@@ -317,7 +317,7 @@ export default function PcSignPage() {
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"
                             data-testid={`pc-client-situation-${s.sit_no}-paid`}>
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Paga a {new Date(s.paid_at).toLocaleDateString("fr-FR")}
+                        Paga a {new Date(s.paid_at).toLocaleDateString("pt-PT")}
                       </span>
                     ) : (
                       <Button size="sm" onClick={() => paySituation(s.sit_id)}

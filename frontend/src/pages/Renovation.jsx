@@ -87,7 +87,7 @@ export default function Renovation() {
   const createProject = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post("/renovation/projects", { title: "Nouveau projet de rénovation", bien_type: "maison" });
+      const { data } = await api.post("/renovation/projects", { title: "Novo projeto de reabilitação", bien_type: "maison" });
       setProjects((p) => [{ ...data }, ...p]);
       await openProject(data.project_id);
       toast.success("Projeto criado");
@@ -132,7 +132,7 @@ export default function Renovation() {
     if (!SR) { toast.error("Ditado não suportado por este navegador"); return; }
     if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
     const rec = new SR();
-    rec.lang = "fr-FR"; rec.continuous = true; rec.interimResults = false;
+    rec.lang = "pt-PT"; rec.continuous = true; rec.interimResults = false;
     rec.onresult = (e) => {
       let t = "";
       for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript + " ";
@@ -287,7 +287,7 @@ export default function Renovation() {
             <Card key={p.project_id} className="p-3 flex items-center justify-between hover:border-emerald-400 transition" data-testid={`reno-project-${p.project_id}`}>
               <button className="text-left flex-1" onClick={() => openProject(p.project_id)}>
                 <p className="font-medium text-sm">{p.title}</p>
-                <p className="text-[11px] text-muted-foreground">Estado: {p.status} · maj {new Date(p.updated_at).toLocaleDateString("fr-FR")}</p>
+                <p className="text-[11px] text-muted-foreground">Estado: {p.status} · maj {new Date(p.updated_at).toLocaleDateString("pt-PT")}</p>
               </button>
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" onClick={() => openProject(p.project_id)} className="h-8 gap-1 text-xs">Abrir <ArrowRight className="h-3 w-3" /></Button>

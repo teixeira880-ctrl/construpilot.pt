@@ -17,7 +17,7 @@ export const useApi = (path, deps = []) => {
 };
 
 export const usd = (v) => (v == null ? "—" : `${Number(v).toFixed(4)} $`);
-export const dt = (v) => (v ? new Date(v).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
+export const dt = (v) => (v ? new Date(v).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" }) : "—");
 export const err = (e, fallback = "Ação impossível") => {
   const d = e?.response?.data?.detail;
   return typeof d === "string" ? d : d?.message || fallback;

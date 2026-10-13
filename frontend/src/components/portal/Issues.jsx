@@ -8,7 +8,7 @@ import { DictateButton } from "@/components/voice/VoiceButtons";
 
 const URG = { low: ["Faible", "bg-muted text-muted-foreground"], normal: ["Normal", "bg-amber-500/10 text-amber-700 border-amber-500/30"], high: ["Urgent", "bg-red-500/10 text-red-700 border-red-500/30"] };
 const ST = { new: "bg-red-500/10 text-red-700 border-red-500/30", in_progress: "bg-amber-500/10 text-amber-700 border-amber-500/30", scheduled: "bg-blue-500/10 text-blue-700 border-blue-500/30", resolved: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30", closed: "bg-muted text-muted-foreground" };
-const date = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR") : "");
+const date = (iso) => (iso ? new Date(iso).toLocaleDateString("pt-PT") : "");
 
 export function IssueHeader({ issue, labels }) {
   const [ul, ucls] = URG[issue.urgency] || URG.normal;

@@ -6,7 +6,7 @@ import { pollCotesJob } from "@/lib/cotesJobs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const fmt = (d) => new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const fmt = (d) => new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export function ReportIssueButton({ plan, pageIndex, target, onReported }) {
   const [open, setOpen] = useState(false);
@@ -53,7 +53,7 @@ export function VersionHistory({ plan, pageIndex, refreshKey, onChanged }) {
     finally { setBusy(null); }
   };
   useEffect(() => { if (open) api.get(`/takeoffs/${plan.plan_id}/cotes/versions?page_index=${pageIndex}`).then((r) => setData(r.data)).catch(() => setData({ versions: [], issues: [] })); }, [open, plan?.plan_id, pageIndex, refreshKey]);
-  const resolve = async (id) => { await api.patch(`/takeoffs/${plan.plan_id}/cotes/issues/${id}`, { resolution: "Corrigé après recalcul" }); toast.success("Ocorrência encerrada"); setData(null); setOpen(false); setTimeout(() => setOpen(true), 50); };
+  const resolve = async (id) => { await api.patch(`/takeoffs/${plan.plan_id}/cotes/issues/${id}`, { resolution: "Corrigido após recálculo" }); toast.success("Ocorrência encerrada"); setData(null); setOpen(false); setTimeout(() => setOpen(true), 50); };
   return (
     <details className="text-xs border rounded-sm p-3 bg-card" open={open} onToggle={(e) => setOpen(e.target.open)} data-testid="version-history">
       <summary className="cursor-pointer font-medium flex items-center gap-1"><History className="h-3.5 w-3.5" /> Histórico de versões e comunicações</summary>

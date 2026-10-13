@@ -1522,18 +1522,12 @@ const STORAGE_KEY = "construpilot_lang";
 const SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"];
 const RTL_LANGS = ["ar"];
 
+// construpilot.pt : site 100 % em português europeu (mercado português).
+export const SITE_LANG = "pt";
+
 function detectLang() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored && SUPPORTED.includes(stored)) return stored;
-  // Détection par DOMAINE uniquement :
-  //  - construpilot.pt (et tout .pt) → ouvre en PT-PT
-  //  - construpilot.fr et tout le reste → FR par défaut (comportement inchangé)
-  // L'utilisateur peut toujours changer de langue manuellement (mémorisé ensuite).
-  try {
-    const host = (window.location.hostname || "").toLowerCase();
-    if (host.endsWith(".pt")) return "pt";
-  } catch { /* SSR / navigateur restreint */ }
-  return "fr";
+  try { localStorage.setItem(STORAGE_KEY, SITE_LANG); } catch { /* armazenamento indisponível */ }
+  return SITE_LANG;
 }
 
 export function I18nProvider({ children }) {
@@ -1544,7 +1538,9 @@ export function I18nProvider({ children }) {
     document.documentElement.dir = RTL_LANGS.includes(l) ? "rtl" : "ltr";
   };
 
-  const setLang = (l) => {
+  const setLang = (requested) => {
+    const l = SITE_LANG; // a língua do site é fixa (PT-PT) — o pedido é ignorado
+    void requested;
     setLangState(l);
     localStorage.setItem(STORAGE_KEY, l);
     applyDir(l);
@@ -1557,7 +1553,7 @@ export function I18nProvider({ children }) {
   useEffect(() => { applyDir(lang); }, [lang]);
 
   const t = (key, fallback = "") =>
-    TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.fr[key] ?? fallback ?? key;
+    TRANSLATIONS.pt?.[key] ?? TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.fr[key] ?? fallback ?? key;
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
@@ -1574,8 +1570,9 @@ export function useI18n() {
 
 export function LangToggle({ testId = "lang-toggle" }) {
   const { lang, setLang } = useI18n();
+  if (SITE_LANG) return null; // site monolingue PT-PT: seletor de língua oculto
   const LANGS = [
-    { code: "fr", label: "FR", full: "Português" },
+    { code: "fr", label: "FR", full: "Français" },
     { code: "en", label: "EN", full: "English" },
     { code: "es", label: "ES", full: "Español" },
     { code: "pt", label: "PT", full: "Português" },
@@ -1607,6 +1604,7 @@ export function LangToggle({ testId = "lang-toggle" }) {
 
 export function MarketToggle() {
   const { lang, setLang } = useI18n();
+  if (SITE_LANG) return null; // mercado único: Portugal
   const MARKETS = [
     { code: "fr", flag: "🇫🇷", label: "FR" },
     { code: "pt", flag: "🇵🇹", label: "PT" },

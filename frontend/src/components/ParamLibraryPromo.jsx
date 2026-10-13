@@ -45,7 +45,7 @@ export function ParamLibraryPromo() {
             <h2 className="mt-6 text-4xl sm:text-5xl font-black leading-[1.05] tracking-tight">
               {pt
                 ? <>Uma biblioteca de <span className="text-primary">191&nbsp;trabalhos compostos</span>, orçamentados ao real.</>
-                : <>Uma biblioteca de <span className="text-primary" data-testid="library-count">{libCount ? `${libCount.toLocaleString("fr-FR")}\u00a0artigos orçamentados` : "191 artigos compostos"}</span>, {libCount ? "preço baixo, médio e alto, Portugal 2026." : "calculados ao real."}</>}
+                : <>Uma biblioteca de <span className="text-primary" data-testid="library-count">{libCount ? `${libCount.toLocaleString("pt-PT")}\u00a0artigos orçamentados` : "191 artigos compostos"}</span>, {libCount ? "preço baixo, médio e alto, Portugal 2026." : "calculados ao real."}</>}
             </h2>
             <p className="mt-6 text-lg text-white/70 max-w-xl leading-relaxed">
               {pt

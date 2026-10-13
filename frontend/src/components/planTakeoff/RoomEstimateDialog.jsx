@@ -45,7 +45,7 @@ export default function RoomEstimateDialog({ open, estimate, planId, busy, onRec
     masonryBond: bond || (material === "brique" ? "colle" : "mortier"),
     masonryBlock: block || blocks[0]?.key || null, masonryRender: render,
   });
-  const fmt = (v, d = 0) => (v == null ? "—" : Number(v).toLocaleString("fr-FR", { maximumFractionDigits: d }));
+  const fmt = (v, d = 0) => (v == null ? "—" : Number(v).toLocaleString("pt-PT", { maximumFractionDigits: d }));
 
   return (
     <div

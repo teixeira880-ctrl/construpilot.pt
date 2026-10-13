@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ShieldCheck, Smartphone } from "lucide-react";
 
-const CONTACT_EMAIL = "contact@construpilot.fr";
+const CONTACT_EMAIL = "contact@construpilot.pt";
 const UPDATED_FR = "Juin 2026";
 const UPDATED_EN = "June 2026";
 
@@ -120,7 +120,7 @@ const FrenchPolicy = () => (
       <p>
         Pode eliminar a sua conta diretamente na aplicação (A minha conta → Eliminar a minha conta) ou escrevendo para{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}?subject=Suppression%20de%20compte`}>{CONTACT_EMAIL}</a>. A eliminação implica o apagamento das suas obras, documentos, fotografias e mensagens. Procedimento detalhado:{" "}
-        <Link className="text-primary underline" to="/suppression-compte" data-testid="privacy-delete-link">construpilot.fr/suppression-compte</Link>.
+        <Link className="text-primary underline" to="/suppression-compte" data-testid="privacy-delete-link">construpilot.pt/suppression-compte</Link>.
       </p>
     </Section>
 
@@ -236,7 +236,7 @@ const EnglishPolicy = () => (
         You can delete your account directly in the app (My account → Delete my account) or by
         writing to{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}?subject=Account%20deletion`}>{CONTACT_EMAIL}</a>. Deletion erases your projects, documents, photos and messages. Full procedure:{" "}
-        <Link className="text-primary underline" to="/delete-account" data-testid="privacy-delete-link-en">construpilot.fr/delete-account</Link>.
+        <Link className="text-primary underline" to="/delete-account" data-testid="privacy-delete-link-en">construpilot.pt/delete-account</Link>.
       </p>
     </Section>
 
@@ -274,7 +274,7 @@ const EnglishPolicy = () => (
 
 export default function AppPrivacy() {
   const [lang, setLang] = useState("fr");
-  useEffect(() => { document.documentElement.lang = lang === "en" ? "en" : "fr"; }, [lang]);
+  useEffect(() => { document.documentElement.lang = lang === "en" ? "en" : "pt-PT"; }, [lang]);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-14" data-testid="page-app-privacy">

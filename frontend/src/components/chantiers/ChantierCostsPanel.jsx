@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { CostForecast, PurchaseDeliveries } from "./CostForecast";
 import { toast } from "sonner";
 
-const eur = (n) => (n == null ? "—" : (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €");
+const eur = (n) => (n == null ? "—" : (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €");
 
 export function ChantierCostsPanel({ chantierId }) {
   const [data, setData] = useState(null);

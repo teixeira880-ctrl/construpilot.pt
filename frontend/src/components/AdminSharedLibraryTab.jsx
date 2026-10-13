@@ -95,7 +95,7 @@ export default function AdminSharedLibraryTab() {
           )}
           {meta.imported_at && (
             <span className="text-[11px] text-muted-foreground">
-              Atual. {new Date(meta.imported_at).toLocaleString("fr-FR")} · {meta.last_file}
+              Atual. {new Date(meta.imported_at).toLocaleString("pt-PT")} · {meta.last_file}
             </span>
           )}
         </div>

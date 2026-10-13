@@ -539,7 +539,7 @@ export default function Admin() {
                     <TableCell className="num text-right font-semibold">{eur(p.budget)}</TableCell>
                     <TableCell>{p.city || "—"}</TableCell>
                     <TableCell className="num text-xs text-muted-foreground">
-                      {new Date(p.created_at).toLocaleDateString("fr-FR")}
+                      {new Date(p.created_at).toLocaleDateString("pt-PT")}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -653,7 +653,7 @@ export default function Admin() {
                       <p key={i}>
                         {{ proposee: "→ Proposta a", acceptee: "✔ Aceite por", refusee: "✕ Recusada por", assignee_manuelle: "→ Atribuída a", en_cours: "… Em curso por" }[e.action] || e.action}{" "}
                         <span className="font-medium">{e.user_name || "—"}</span>
-                        {" · "}{new Date(e.at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        {" · "}{new Date(e.at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     ))}
                   </div>
@@ -1148,7 +1148,7 @@ function InboxPanel() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold truncate">→ {s.client_email}</p>
                   <p className="text-muted-foreground truncate">
-                    {s.client_name || "—"} · <span className="num">{(s.total_ttc || 0).toLocaleString("fr-FR")} €</span>
+                    {s.client_name || "—"} · <span className="num">{(s.total_ttc || 0).toLocaleString("pt-PT")} €</span>
                   </p>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-sm border ml-2 whitespace-nowrap

@@ -54,7 +54,7 @@ export default function RevenueTab() {
           <p className="overline">Revenue Cockpit</p>
           <h2 className="font-display text-2xl font-bold tracking-tight">Crescimento & rentabilidade</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Gerado a {new Date(kpis.generated_at).toLocaleString("fr-FR")}
+            Gerado a {new Date(kpis.generated_at).toLocaleString("pt-PT")}
           </p>
         </div>
         <div className="flex gap-2">

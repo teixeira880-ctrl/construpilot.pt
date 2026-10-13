@@ -339,7 +339,7 @@ export default function Team() {
                 </div>
                 <p className="text-xs text-muted-foreground num">
                   {m.email}
-                  {m.joined_org_at && ` · aderiu em ${new Date(m.joined_org_at).toLocaleDateString("fr-FR")}`}
+                  {m.joined_org_at && ` · aderiu em ${new Date(m.joined_org_at).toLocaleDateString("pt-PT")}`}
                 </p>
               </div>
               {isAdmin && m.org_role !== "owner" && m.user_id !== user.user_id && (

@@ -25,7 +25,7 @@ function BarComparison({ chart }) {
                     <div className="absolute inset-y-0 left-0 rounded transition-all"
                          style={{ width: `${w}%`, backgroundColor: colors[j % colors.length] }} />
                     <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
-                      {Math.round(v).toLocaleString("fr-FR")} {unit || ""}
+                      {Math.round(v).toLocaleString("pt-PT")} {unit || ""}
                     </div>
                   </div>
                 );

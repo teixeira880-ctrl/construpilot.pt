@@ -52,7 +52,7 @@ const copy = {
 };
 export function useExpenseCopy() {
   const { lang } = useI18n();
-  const locale = lang === "pt" ? "pt-PT" : lang === "en" ? "en-GB" : "fr-FR";
+  const locale = lang === "pt" ? "pt-PT" : lang === "en" ? "en-GB" : "pt-PT";
   const text = (key) => copy[lang]?.[key] || copy.fr[key] || key;
   const money = (value, currency = "EUR") => value == null ? text("unavailable") : new Intl.NumberFormat(locale, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(Number(value));
   return { text, money, locale };

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { api } from "@/lib/api";
 
 const SRC = { starter: "Catálogo", devis: "Orçamento", dpgf: "DPGF", import_devis: "Importações", manual: "Introdução" };
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
 export default function LibraryDuplicatesDialog({ open, onClose, onDone }) {
   const [loading, setLoading] = useState(false);

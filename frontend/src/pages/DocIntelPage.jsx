@@ -19,7 +19,7 @@ const FLAG_FR = {
 };
 const flagLabel = (f) => FLAG_FR[f] || (f.startsWith("formula_result_missing") ? "Fórmula sem resultado" : f);
 const STATUS_FR = { ok: "ok", empty: "vide", absent: "absente", illegible: "illisible" };
-const num = (v) => (v === null || v === undefined ? "—" : Number(v).toLocaleString("fr-FR", { maximumFractionDigits: 2 }));
+const num = (v) => (v === null || v === undefined ? "—" : Number(v).toLocaleString("pt-PT", { maximumFractionDigits: 2 }));
 
 function Cell({ parsed }) {
   if (!parsed) return <span className="text-muted-foreground">—</span>;
@@ -36,7 +36,7 @@ export default function DocIntelPage() {
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [vat, setVat] = useState("20");
+  const [vat, setVat] = useState("23");
   const fileRef = useRef(null);
   const cctpRef = useRef(null);
   const [reconciling, setReconciling] = useState(false);
@@ -145,7 +145,7 @@ export default function DocIntelPage() {
     try {
       await api.post("/doc-intel/corrections", {
         signature: a.signature, resolution: "ignored", scope: "entreprise",
-        kind: "exception", justification: "Vérifié et accepté depuis le rapprochement",
+        kind: "exception", justification: "Verificado e aceite a partir da comparação",
         import_id: current.import_id,
       });
       const rec = current.reconciliation;

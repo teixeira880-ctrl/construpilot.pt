@@ -10,7 +10,7 @@ const STATUS = {
   undetermined: { cls: "bg-muted text-muted-foreground border-border", label: "Indeterminado" },
 };
 
-const fmt = (n) => (n === null || n === undefined ? "—" : `${Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
+const fmt = (n) => (n === null || n === undefined ? "—" : `${Number(n).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
 
 export default function CalcAuditorPanel() {
   const [audit, setAudit] = useState(null);
@@ -101,7 +101,7 @@ export default function CalcAuditorPanel() {
 
       {audit && (
         <p className="text-xs text-muted-foreground">
-          Última auditoria: {audit.started_at ? new Date(audit.started_at).toLocaleString("fr-FR") : "—"}
+          Última auditoria: {audit.started_at ? new Date(audit.started_at).toLocaleString("pt-PT") : "—"}
           {audit.triggered_by ? ` · desencadeada por ${audit.triggered_by === "scheduler" ? "o agendador (diário)" : "o administrador"}` : ""}
           {audit.status === "running" ? " · en cours…" : ""}
         </p>

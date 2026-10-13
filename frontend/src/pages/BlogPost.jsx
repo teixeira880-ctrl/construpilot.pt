@@ -38,19 +38,19 @@ export default function BlogPost() {
           "name": "ConstruPilot",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://construpilot.fr/logo512.png",
+            "url": "https://construpilot.pt/logo512.png",
           },
         },
-        "mainEntityOfPage": `https://construpilot.fr/blog/${slug}`,
+        "mainEntityOfPage": `https://construpilot.pt/blog/${slug}`,
         "articleSection": article.category,
         "keywords": article.keywords,
       },
       {
         "@type": "BreadcrumbList",
         "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.fr/" },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.fr/blog" },
-          { "@type": "ListItem", "position": 3, "name": article.title, "item": `https://construpilot.fr/blog/${slug}` },
+          { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.pt/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.pt/blog" },
+          { "@type": "ListItem", "position": 3, "name": article.title, "item": `https://construpilot.pt/blog/${slug}` },
         ],
       },
     ],
@@ -88,7 +88,7 @@ export default function BlogPost() {
         <div className="mt-5 flex items-center gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {new Date(article.published).toLocaleDateString("fr-FR", { day:"numeric", month:"long", year:"numeric" })}
+            {new Date(article.published).toLocaleDateString("pt-PT", { day:"numeric", month:"long", year:"numeric" })}
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3 w-3" /> {article.readingMinutes} {isPT ? "min de leitura" : "min de leitura"}

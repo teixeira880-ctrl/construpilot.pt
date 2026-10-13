@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR") + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT") + " €";
 const scoreColor = (s) => (s >= 85 ? "#ef4444" : s >= 65 ? "#f59e0b" : "#16a34a");
 
 function b64ToBlob(dataUrl) {
@@ -348,7 +348,7 @@ export default function RadarChantiers() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">
           {[["Oportunidades", stats.detected], ["Fortes (≥85)", stats.strong], ["Potencial (o seu lote)", eur(stats.potential_ttc)], ["Favoritos", stats.favorites]].map(([l, v], i) => (
             <div key={i} className="surface rounded-xl p-3 min-w-0" data-testid={`radar-kpi-${i}`}>
-              <div className="text-lg font-extrabold text-primary break-words" title={String(v)}>{i === 2 ? <><span className="sm:hidden">{new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }).format(stats.potential_ttc)}</span><span className="hidden sm:inline">{v}</span></> : v}</div>
+              <div className="text-lg font-extrabold text-primary break-words" title={String(v)}>{i === 2 ? <><span className="sm:hidden">{new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }).format(stats.potential_ttc)}</span><span className="hidden sm:inline">{v}</span></> : v}</div>
               <div className="text-[11px] text-muted-foreground">{l}</div>
             </div>
           ))}

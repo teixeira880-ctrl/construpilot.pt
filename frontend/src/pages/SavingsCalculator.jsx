@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
-const eur = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
+const eur = (n) => new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
 const fteFor = (ca) => (ca < 300000 ? 0.4 : ca < 750000 ? 0.75 : ca < 1500000 ? 1.25 : ca < 3000000 ? 2.0 : 2.5);
 
 export default function SavingsCalculator() {

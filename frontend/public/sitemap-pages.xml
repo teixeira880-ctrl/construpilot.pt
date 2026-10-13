@@ -3,228 +3,227 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 
   <url>
-    <loc>https://construpilot.fr/</loc>
+    <loc>https://construpilot.pt/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://construpilot.fr/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.fr/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/" />
   </url>
 
   <url>
-    <loc>https://construpilot.fr/metre</loc>
+    <loc>https://construpilot.pt/metre</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/smart-project</loc>
+    <loc>https://construpilot.pt/smart-project</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/estimation</loc>
+    <loc>https://construpilot.pt/estimation</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/prix</loc>
+    <loc>https://construpilot.pt/prix</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/calculateurs</loc>
+    <loc>https://construpilot.pt/calculateurs</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/diy</loc>
+    <loc>https://construpilot.pt/diy</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/photo</loc>
+    <loc>https://construpilot.pt/photo</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/scanner-devis</loc>
+    <loc>https://construpilot.pt/scanner-devis</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/coach</loc>
+    <loc>https://construpilot.pt/coach</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/tarifs</loc>
+    <loc>https://construpilot.pt/tarifs</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog</loc>
+    <loc>https://construpilot.pt/blog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/cout-extension-maison-2026</loc>
+    <loc>https://construpilot.pt/blog/cout-extension-maison-2026</loc>
     <lastmod>2026-06-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/estimer-chantier-5-min</loc>
+    <loc>https://construpilot.pt/blog/estimer-chantier-5-min</loc>
     <lastmod>2026-06-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/cout-renovation-2026</loc>
+    <loc>https://construpilot.pt/blog/cout-renovation-2026</loc>
     <lastmod>2026-02-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/devis-tva-10-mode-emploi</loc>
+    <loc>https://construpilot.pt/blog/devis-tva-10-mode-emploi</loc>
     <lastmod>2026-02-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/guide-metre-2d</loc>
+    <loc>https://construpilot.pt/blog/guide-metre-2d</loc>
     <lastmod>2026-02-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/abattre-mur-porteur-reglementation</loc>
+    <loc>https://construpilot.pt/blog/abattre-mur-porteur-reglementation</loc>
     <lastmod>2026-02-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/permis-construire-2026</loc>
+    <loc>https://construpilot.pt/blog/permis-construire-2026</loc>
     <lastmod>2026-02-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/re2020-renovation-guide</loc>
+    <loc>https://construpilot.pt/blog/re2020-renovation-guide</loc>
     <lastmod>2026-02-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/chauffage-re2020-quel-choix</loc>
+    <loc>https://construpilot.pt/blog/chauffage-re2020-quel-choix</loc>
     <lastmod>2026-02-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/prime-cee-2026-guide</loc>
+    <loc>https://construpilot.pt/blog/prime-cee-2026-guide</loc>
     <lastmod>2026-02-18</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/blog/dpe-obligatoire-2026</loc>
+    <loc>https://construpilot.pt/blog/dpe-obligatoire-2026</loc>
     <lastmod>2026-02-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-paris</loc>
+    <loc>https://construpilot.pt/devis-travaux-paris</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-lyon</loc>
+    <loc>https://construpilot.pt/devis-travaux-lyon</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-marseille</loc>
+    <loc>https://construpilot.pt/devis-travaux-marseille</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-toulouse</loc>
+    <loc>https://construpilot.pt/devis-travaux-toulouse</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-bordeaux</loc>
+    <loc>https://construpilot.pt/devis-travaux-bordeaux</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-nantes</loc>
+    <loc>https://construpilot.pt/devis-travaux-nantes</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-nice</loc>
+    <loc>https://construpilot.pt/devis-travaux-nice</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-strasbourg</loc>
+    <loc>https://construpilot.pt/devis-travaux-strasbourg</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-rennes</loc>
+    <loc>https://construpilot.pt/devis-travaux-rennes</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://construpilot.fr/devis-travaux-montpellier</loc>
+    <loc>https://construpilot.pt/devis-travaux-montpellier</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://construpilot.fr/suppression-compte</loc>
+    <loc>https://construpilot.pt/suppression-compte</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://construpilot.fr/suppression-compte" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.fr/delete-account" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://construpilot.pt/suppression-compte" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.pt/delete-account" />
   </url>
   <url>
-    <loc>https://construpilot.fr/suppression-donnees</loc>
+    <loc>https://construpilot.pt/suppression-donnees</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://construpilot.fr/suppression-donnees" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.fr/data-deletion" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://construpilot.pt/suppression-donnees" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.pt/data-deletion" />
   </url>
 
 </urlset>

@@ -20,7 +20,7 @@ const LOTS = [
 ];
 const TOTAL = LOTS.reduce((a, l) => a + l[1], 0);
 const MARGE = Math.round(LOTS.reduce((a, l) => a + l[1] * l[2] / 100, 0));
-const eur = (n) => n.toLocaleString("fr-FR") + " €";
+const eur = (n) => n.toLocaleString("pt-PT") + " €";
 
 const FAQ = [
   ["ConstruPilot está adaptado às empresas gerais de renovação?",
@@ -62,7 +62,7 @@ function Counter({ to, suffix = "" }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [to]);
-  return <span className="num">{v.toLocaleString("fr-FR")}{suffix}</span>;
+  return <span className="num">{v.toLocaleString("pt-PT")}{suffix}</span>;
 }
 
 export default function LandingMetre() {

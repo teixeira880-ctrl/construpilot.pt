@@ -64,7 +64,7 @@ export default function OrdersTab({ suppliers = [] }) {
         <div>
           <label className="text-xs text-muted-foreground">Nome do projeto (encomenda fundida)</label>
           <Input value={project} onChange={(e) => setProject(e.target.value)}
-                 placeholder="Ex: Residência Les Tilleuls" className="h-9 mt-1" data-testid="merge-project-name" />
+                 placeholder="Ex.: Residência Os Pinheiros" className="h-9 mt-1" data-testid="merge-project-name" />
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Fornecedor (opcional)</label>

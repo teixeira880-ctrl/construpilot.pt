@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DictateButton } from "@/components/voice/VoiceButtons";
 
-const fmt = (iso) => { const d = new Date(iso); return `${d.toLocaleDateString("fr-FR")} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`; };
+const fmt = (iso) => { const d = new Date(iso); return `${d.toLocaleDateString("pt-PT")} ${d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}`; };
 
 /** Fil de messages partagé pro / portail. `mine(m)` dit si le message est de l'utilisateur courant ; `fileUrl(path)` construit l'URL d'une pièce jointe. */
 export function MessageList({ messages, mine, fileUrl, emptyText, testId = "message-list" }) {

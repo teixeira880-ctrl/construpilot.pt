@@ -802,7 +802,7 @@ export default function PlanTakeoff() {
     setPageLoading(true);
     api.get(`/takeoffs/${plan.plan_id}/page/${pageIndex}`).then(({ data }) => {
       if (cancelled || currentPageKeyRef.current !== pageKey) return;
-      if (!data || typeof data !== "object") throw new Error("Réponse de page invalide");
+      if (!data || typeof data !== "object") throw new Error("Resposta de página inválida");
       hydrateAnnotations(planRef.current?.annotations?.[String(pageIndex)]);
       setPageData(data); setLoadedPageKey(pageKey);
     }).catch((error) => {
@@ -1905,7 +1905,7 @@ export default function PlanTakeoff() {
       if (known.has(key)) { skipped++; continue; }
       try {
         await api.post(`/takeoffs/${plan.plan_id}/rooms`, {
-          page_index: pageIndex, name: contour.name || `Pièce détectée ${imported + 1}`,
+          page_index: pageIndex, name: contour.name || `Divisão detetada ${imported + 1}`,
           points: contour.points, ceiling_height_m: planDefaults.ceiling_h_m ?? 2.5,
           floor_thickness_m: planDefaults.floor_thickness_m ?? 0.15,
         });
@@ -2213,7 +2213,7 @@ export default function PlanTakeoff() {
       await api.post(`/takeoffs/corps-etat/custom`, {
         label, unit, pu: ps.amount, color: "#0ea5e9",
       });
-      toast.success(`Artigo personalizado criado: ${label} à ${ps.amount.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €/${unit === "m2" ? "m²" : unit}. Disponível na orçamentação.`);
+      toast.success(`Artigo personalizado criado: ${label} à ${ps.amount.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} €/${unit === "m2" ? "m²" : unit}. Disponível na orçamentação.`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Criação do artigo impossível");
     } finally { setAiCmdBusy(false); }
@@ -2224,7 +2224,7 @@ export default function PlanTakeoff() {
     try {
       if (!window.speechSynthesis) return;
       const u = new window.SpeechSynthesisUtterance(text);
-      u.lang = "fr-FR"; u.rate = 1;
+      u.lang = "pt-PT"; u.rate = 1;
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
     } catch { /* non supporté */ }
@@ -2245,8 +2245,8 @@ export default function PlanTakeoff() {
       if (action === "estimate_page") {
         const ttc = Number(data?.totals?.ttc || 0);
         const ht = Number(data?.totals?.ht_with_margin || 0);
-        const msg = `Estimativa da página: ${ht.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} euros sem IVA, ou seja ${ttc.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} euros com IVA.`;
-        toast.success(`Total da página: ${ht.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € HT · ${ttc.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € c/ IVA`);
+        const msg = `Estimativa da página: ${ht.toLocaleString("pt-PT", { maximumFractionDigits: 0 })} euros sem IVA, ou seja ${ttc.toLocaleString("pt-PT", { maximumFractionDigits: 0 })} euros com IVA.`;
+        toast.success(`Total da página: ${ht.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} € HT · ${ttc.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} € c/ IVA`);
         aiSpeak(msg);
         turnResult = `Página orçamentada: ${ht.toFixed(0)} € HT`;
       } else {
@@ -2306,7 +2306,7 @@ export default function PlanTakeoff() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast.error("O ditado por voz não é suportado por este navegador (experimente o Chrome)."); return; }
     const rec = new SR();
-    rec.lang = "fr-FR"; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.lang = "pt-PT"; rec.interimResults = false; rec.maxAlternatives = 1;
     rec.onstart = () => setAiListening(true);
     rec.onerror = () => { setAiListening(false); toast.error("Microfone indisponível ou permissão recusada."); };
     rec.onend = () => setAiListening(false);
@@ -2486,7 +2486,7 @@ export default function PlanTakeoff() {
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       const ttc = data.totals?.ttc || 0;
-      toast.success(`Orçamento estimado transferido — ${ttc.toLocaleString("fr-FR")} € c/ IVA · ${data.priced_lines || 0} artigo(s) orçamentado(s)`, { duration: 6000 });
+      toast.success(`Orçamento estimado transferido — ${ttc.toLocaleString("pt-PT")} € c/ IVA · ${data.priced_lines || 0} artigo(s) orçamentado(s)`, { duration: 6000 });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Estimativa impossível");
     } finally { setQuoteBusy(false); }
@@ -2925,7 +2925,7 @@ export default function PlanTakeoff() {
         if (quoteIncludeTva) extras.push("declaração de IVA");
         if (quoteAttachVideo && latestVideo) extras.push("tour vídeo 3D");
         const extra = extras.length ? " + " + extras.join(" + ") + " joint(s)" : "";
-        toast.success(`Orçamento enviado a ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("fr-FR")} € c/ IVA)`);
+        toast.success(`Orçamento enviado a ${quoteClientEmail}${extra} (${data.total_ttc?.toLocaleString("pt-PT")} € c/ IVA)`);
         setQuoteDialog(false);
         setQuoteClientEmail(""); setQuoteClientName(""); setQuoteMessage("");
         setQuoteSubject(""); setQuoteIntro(""); setQuoteClientAddress("");
@@ -2950,7 +2950,7 @@ export default function PlanTakeoff() {
       setEstimateResult(data);
       // Si rénovation → coche automatiquement TVA
       if (data.is_renovation) setQuoteIncludeTva(true);
-      toast.success(`Estimativa gerada: ${data.surface_m2} m² · ${data.estimation?.total_avg?.toLocaleString("fr-FR")} €`);
+      toast.success(`Estimativa gerada: ${data.surface_m2} m² · ${data.estimation?.total_avg?.toLocaleString("pt-PT")} €`);
       return data;
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Estimativa impossível");
@@ -3887,7 +3887,7 @@ export default function PlanTakeoff() {
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {p.page_count || 1} page{p.page_count > 1 ? "s" : ""}
                     {p.created_at && (
-                      <span> · {new Date(p.created_at).toLocaleDateString("fr-FR")}</span>
+                      <span> · {new Date(p.created_at).toLocaleDateString("pt-PT")}</span>
                     )}
                   </p>
                 </button>
@@ -4182,7 +4182,7 @@ export default function PlanTakeoff() {
                       <span className="font-medium">{(AGENT_CATALOG.find((a) => a.key === r.agent) || {}).name || r.agent}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === "done" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>{r.status === "done" ? "Executado" : "Proposto"}</span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">{new Date(r.created_at).toLocaleString("fr-FR")}{r.result?.totals ? ` · Total c/ IVA ${(r.result.totals.ttc || 0).toLocaleString("fr-FR")} €` : ""}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">{new Date(r.created_at).toLocaleString("pt-PT")}{r.result?.totals ? ` · Total c/ IVA ${(r.result.totals.ttc || 0).toLocaleString("pt-PT")} €` : ""}</p>
                     {r.feedback?.rating && <p className="text-[11px] mt-1">{r.feedback.rating === "ok" ? "✓ Validado por si" : "✎ Correção guardada"}{r.feedback.note ? ` — « ${r.feedback.note} »` : ""}</p>}
                   </div>
                 ))}
@@ -4289,7 +4289,7 @@ export default function PlanTakeoff() {
               <div className="space-y-3">
                 <div className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-800" data-testid="agent-result">
                   <p className="font-semibold">✓ Agente concluído</p>
-                  {agentBox.result.kind === "pdf" && <p className="text-[12px] mt-1">Processo gerado · {agentBox.result.levels} piso(s) · Total c/ IVA {(agentBox.result.totals?.ttc || 0).toLocaleString("fr-FR")} €</p>}
+                  {agentBox.result.kind === "pdf" && <p className="text-[12px] mt-1">Processo gerado · {agentBox.result.levels} piso(s) · Total c/ IVA {(agentBox.result.totals?.ttc || 0).toLocaleString("pt-PT")} €</p>}
                   {agentBox.result.kind === "quote" && <p className="text-[12px] mt-1">Orçamento consolidado criado — editável no editor.</p>}
                   {agentBox.result.kind === "summary" && <p className="text-[12px] mt-1">{agentBox.result.total_measures} medições · {agentBox.result.total_openings} vãos em {agentBox.result.plans?.length} plan(s).</p>}
                   {agentBox.result.kind === "detect" && <p className="text-[12px] mt-1">{agentBox.result.total_walls} paredes · {agentBox.result.total_openings} vãos detetados. <b>Calibração necessária</b> : abra a planta e introduza uma cota conhecida antes de qualquer medição.</p>}
@@ -4442,7 +4442,7 @@ export default function PlanTakeoff() {
                         <p className="font-display font-bold text-sm truncate">{p.filename || "Plano sem nome"}</p>
                         <p className="text-[11px] text-muted-foreground mt-1">
                           {(p.page_count || 1)} page{(p.page_count || 1) > 1 ? "s" : ""} · {p.rooms_count || 0} divisão{(p.rooms_count || 0) > 1 ? "s" : ""}
-                          {p.created_at && <span> · {new Date(p.created_at).toLocaleDateString("fr-FR")}</span>}
+                          {p.created_at && <span> · {new Date(p.created_at).toLocaleDateString("pt-PT")}</span>}
                           {plan?.plan_id === p.plan_id && <span className="text-primary"> · aberto</span>}
                         </p>
                       </div>
@@ -4961,7 +4961,7 @@ export default function PlanTakeoff() {
                   {aiCmdProposal.price_suggestion && aiCmdProposal.price_suggestion.amount > 0 && (
                     <div className="border-t border-border pt-1.5 flex items-center justify-between gap-2">
                       <span className="text-[11px] text-muted-foreground">
-                        Preço detetado: <b className="text-foreground">{aiCmdProposal.price_suggestion.amount.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €/{aiCmdProposal.price_suggestion.unit === "m2" ? "m²" : aiCmdProposal.price_suggestion.unit}</b>
+                        Preço detetado: <b className="text-foreground">{aiCmdProposal.price_suggestion.amount.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} €/{aiCmdProposal.price_suggestion.unit === "m2" ? "m²" : aiCmdProposal.price_suggestion.unit}</b>
                       </span>
                       <Button size="sm" onClick={() => aiInjectPrice(aiCmdProposal.price_suggestion)}
                               disabled={aiCmdBusy}
@@ -5921,7 +5921,7 @@ export default function PlanTakeoff() {
                       <>
                         <span className="text-muted-foreground font-semibold">Custo material (betão + aços)</span>
                         <span className="num text-right font-semibold text-emerald-700" data-testid="descriptif-cout-matiere">
-                          {Math.round((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg).toLocaleString("fr-FR")} €
+                          {Math.round((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg).toLocaleString("pt-PT")} €
                         </span>
                       </>
                     )}
@@ -5929,7 +5929,7 @@ export default function PlanTakeoff() {
                       <>
                         <span className="text-muted-foreground font-semibold">Preço de venda estimado{marginPct > 0 ? ` (marge ${marginPct}%)` : ""}</span>
                         <span className="num text-right font-bold text-primary" data-testid="descriptif-prix-vente">
-                          {Math.round((((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg) + (descriptif.beton_total_m3 || 0) * laborPriceM3) * (1 + marginPct / 100)).toLocaleString("fr-FR")} €
+                          {Math.round((((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg) + (descriptif.beton_total_m3 || 0) * laborPriceM3) * (1 + marginPct / 100)).toLocaleString("pt-PT")} €
                         </span>
                       </>
                     )}
@@ -6414,8 +6414,8 @@ export default function PlanTakeoff() {
                               <span className="truncate">✉ {s.to_email}</span>
                               <span className="flex items-center gap-1.5 shrink-0">
                                 <span className="num">
-                                  {new Date(s.sent_at).toLocaleDateString("fr-FR")}{" "}
-                                  {new Date(s.sent_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                                  {new Date(s.sent_at).toLocaleDateString("pt-PT")}{" "}
+                                  {new Date(s.sent_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                                 </span>
                                 <button onClick={() => resendReport(s)} disabled={sendingEcarts}
                                         className="text-primary hover:text-orange-600 disabled:opacity-40 transition"
@@ -6685,7 +6685,7 @@ export default function PlanTakeoff() {
                             )}
                             <p className="num text-muted-foreground text-[10px]">
                               {s.label && <span className="capitalize">{s.action.replace(/_/g, " ")} · </span>}
-                              {new Date(s.created_at).toLocaleString("fr-FR")} · {s.rooms?.length || 0} divisões
+                              {new Date(s.created_at).toLocaleString("pt-PT")} · {s.rooms?.length || 0} divisões
                             </p>
                             {diff.summary && (
                               <p className="text-[10px] mt-1 text-primary" data-testid={`history-diff-${s.snapshot_id}`}>
@@ -7351,7 +7351,7 @@ export default function PlanTakeoff() {
                     <td className="px-2 py-1">Custo de materiais</td>
                     {compareData.map((c) => (
                       <td key={c.name} className="px-2 py-1 num text-right text-emerald-700">
-                        {Math.round((c.d?.beton_total_m3 || 0) * (c.beton_price_m3 || betonPriceM3) + (c.d?.acier_total_kg || 0) * (c.acier_price_kg || acierPriceKg)).toLocaleString("fr-FR")} €
+                        {Math.round((c.d?.beton_total_m3 || 0) * (c.beton_price_m3 || betonPriceM3) + (c.d?.acier_total_kg || 0) * (c.acier_price_kg || acierPriceKg)).toLocaleString("pt-PT")} €
                       </td>
                     ))}
                   </tr>
@@ -7363,7 +7363,7 @@ export default function PlanTakeoff() {
                       const bp = c.beton_price_m3 || betonPriceM3, ap = c.acier_price_kg || acierPriceKg;
                       const lp = c.labor_price_m3 || laborPriceM3, mg = c.margin_pct || marginPct;
                       const pv = (((c.d?.beton_total_m3 || 0) * bp + (c.d?.acier_total_kg || 0) * ap) + (c.d?.beton_total_m3 || 0) * lp) * (1 + mg / 100);
-                      return <td key={c.name} className="px-2 py-1 num text-right text-primary">{Math.round(pv).toLocaleString("fr-FR")} €</td>;
+                      return <td key={c.name} className="px-2 py-1 num text-right text-primary">{Math.round(pv).toLocaleString("pt-PT")} €</td>;
                     })}
                   </tr>
                 )}

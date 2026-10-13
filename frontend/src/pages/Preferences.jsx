@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const SCOPE = { user: "Eu", project: "Obra", company: "Empresa" };
 const SOURCE = { automatic_style: "Hábito automático", style_proposal: "Hábito proposto", assistant_proposal: "Proposta a validar", assistant: "Assistente (com acordo)", manual: "Introdução manual" };
-const fmt = (d) => (d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
+const fmt = (d) => (d ? new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
 
 function PrefRow({ p, onChange }) {
   const [edit, setEdit] = useState(false);

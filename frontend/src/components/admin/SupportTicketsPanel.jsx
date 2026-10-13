@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 
 const ST = { new: ["Novo", "bg-red-500/10 text-red-700 border-red-500/30"], in_progress: ["Em curso", "bg-amber-500/10 text-amber-700 border-amber-500/30"], answered: ["Respondido", "bg-blue-500/10 text-blue-700 border-blue-500/30"], closed: ["Encerrado", "bg-muted text-muted-foreground"] };
-const fmt = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (iso) => (iso ? new Date(iso).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" }) : "—");
 const hrs = (h) => (h == null ? "—" : h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${h} h` : `${Math.round(h / 24)} j`);
 
 function Stat({ label, value, testId }) {

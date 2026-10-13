@@ -326,7 +326,7 @@ export default function ProjectDetail() {
                 </Table>
               </div>
               <p className="text-xs text-muted-foreground">
-                Fonte: conector de demonstração (modo {optim.mode}) — custos de entrega e mínimos de encomenda incluídos. Verificado a {new Date(optim.checked_at).toLocaleString("fr-FR")}.
+                Fonte: conector de demonstração (modo {optim.mode}) — custos de entrega e mínimos de encomenda incluídos. Verificado a {new Date(optim.checked_at).toLocaleString("pt-PT")}.
               </p>
             </div>
           )}

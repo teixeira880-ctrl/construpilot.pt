@@ -129,7 +129,7 @@ export default function BridgePanel() {
             <Input value={form.site_url}
                    onChange={(e) => setForm({ ...form, site_url: e.target.value })}
                    onBlur={() => save({ site_url: form.site_url })}
-                   placeholder="https://construpilot.fr" className="rounded-sm h-9 text-sm"
+                   placeholder="https://construpilot.pt" className="rounded-sm h-9 text-sm"
                    data-testid="bridge-site-url" />
           </div>
         </div>

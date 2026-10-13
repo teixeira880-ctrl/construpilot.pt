@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const APPS = ["ConstruPilot Obra", "ConstruPilot Colaborador", "ConstruPilot Particulares"];
-const CONTACT_EMAIL = "contact@construpilot.fr";
+const CONTACT_EMAIL = "contact@construpilot.pt";
 const UPDATED = { fr: "Juin 2026", en: "June 2026" };
 
 const T = {
@@ -172,12 +172,12 @@ export default function DeleteAccountPage() {
       await api.post("/help/contact", {
         name: form.name.trim(),
         email: form.email.trim(),
-        subject: partial ? "Demande de suppression de données (RGPD)"
-                         : "Demande de suppression de compte (RGPD)",
+        subject: partial ? "Pedido de eliminação de dados (RGPD)"
+                         : "Pedido de eliminação de conta (RGPD)",
         message: (partial
-          ? `Demande de suppression de données pour le compte ${form.email.trim()} (compte conservé).\nDonnées visées : ${form.which.trim() || "non précisé"}.`
-          : `Demande de suppression définitive du compte ${form.email.trim()}.`)
-          + `\n\n${form.message.trim() || "Aucune précision."}`,
+          ? `Pedido de eliminação de dados para a conta ${form.email.trim()} (conta mantida).\nDados visados: ${form.which.trim() || "non précisé"}.`
+          : `Pedido de eliminação definitiva da conta ${form.email.trim()}.`)
+          + `\n\n${form.message.trim() || "Sem precisões."}`,
         website: form.website,
       });
       setDone(true);
@@ -281,8 +281,8 @@ export default function DeleteAccountPage() {
                          : (lang === "fr" ? "/suppression-donnees" : "/data-deletion")}
             data-testid="delete-account-cross-link">
             {dataMode
-              ? (lang === "fr" ? "construpilot.fr/suppression-compte" : "construpilot.fr/delete-account")
-              : (lang === "fr" ? "construpilot.fr/suppression-donnees" : "construpilot.fr/data-deletion")}
+              ? (lang === "fr" ? "construpilot.pt/suppression-compte" : "construpilot.pt/delete-account")
+              : (lang === "fr" ? "construpilot.pt/suppression-donnees" : "construpilot.pt/data-deletion")}
           </Link>
         </p>
       </Section>

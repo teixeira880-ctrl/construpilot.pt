@@ -25,7 +25,7 @@ function SnapshotBar({ isAdmin }) {
     <DatabaseBackup className="h-4 w-4 text-primary shrink-0" />
     <span className="flex-1 min-w-[220px]">
       Cópia de segurança diária dos orçamentos e faturas (linhas incluídas, {st.retention_days} j) —
-      {st.last_run ? <> última: <strong data-testid="trash-snapshot-last">{new Date(st.last_run).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</strong> · {st.documents} document(s)</> : <strong data-testid="trash-snapshot-last"> ainda nenhuma (todas as noites às 03:00 UTC)</strong>}
+      {st.last_run ? <> última: <strong data-testid="trash-snapshot-last">{new Date(st.last_run).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}</strong> · {st.documents} document(s)</> : <strong data-testid="trash-snapshot-last"> ainda nenhuma (todas as noites às 03:00 UTC)</strong>}
     </span>
     {isAdmin && <Button size="sm" variant="outline" onClick={run} disabled={busy} data-testid="trash-snapshot-run">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <DatabaseBackup className="h-4 w-4" />} Guardar agora</Button>}
   </div>;
@@ -98,7 +98,7 @@ export default function Trash() {
               {i.status && <span className={`ml-2 rounded-sm px-1 text-xs ${i.status === "signed" ? "bg-emerald-500/15" : "bg-muted"}`}>{STATUS[i.status] || i.status}</span>}
               {i.message_count > 0 && <span className="ml-2 text-xs text-muted-foreground">{i.message_count} message(s)</span>}
             </div>
-            <div className="text-xs text-muted-foreground">Eliminado em {new Date(i.deleted_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })} · encore {days(i)} j{days(i) <= data.alert_days_before_purge && <span className="ml-1 text-amber-600 font-medium" data-testid={`trash-soon-${i.item_id}`}>· effacement imminent</span>}</div>
+            <div className="text-xs text-muted-foreground">Eliminado em {new Date(i.deleted_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })} · encore {days(i)} j{days(i) <= data.alert_days_before_purge && <span className="ml-1 text-amber-600 font-medium" data-testid={`trash-soon-${i.item_id}`}>· effacement imminent</span>}</div>
           </div>
           <Button size="sm" onClick={() => restore(i)} disabled={busy === i.item_id} data-testid={`trash-restore-${i.item_id}`}>{busy === i.item_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArchiveRestore className="h-4 w-4" />} Restaurar</Button>
           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => purge(i)} data-testid={`trash-purge-${i.item_id}`}><Trash2 className="h-4 w-4" /></Button>

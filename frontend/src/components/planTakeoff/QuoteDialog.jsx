@@ -144,7 +144,7 @@ export function QuoteDialog({
               <div className="grid gap-2">
                 <Label>Nome do cliente (opcional)</Label>
                 <Input value={quoteClientName} onChange={(e) => setQuoteClientName(e.target.value)}
-                       placeholder="Sr. Dupont"
+                       placeholder="Sr. Silva"
                        data-testid="quote-client-name" className="rounded-sm h-11" />
               </div>
               <div className="grid gap-2">
@@ -152,7 +152,7 @@ export function QuoteDialog({
                   Morada do cliente{quoteIncludeTva && <span className="text-primary"> *</span>}
                 </Label>
                 <textarea value={quoteClientAddress} onChange={(e) => setQuoteClientAddress(e.target.value)}
-                       placeholder="12 rue de la Paix — 75002 Paris"
+                       placeholder="Rua Augusta, 12 — 1100-053 Lisboa"
                        rows={2} maxLength={200}
                        data-testid="quote-client-address"
                        className="rounded-sm text-sm p-2 border border-border bg-background" />
@@ -214,7 +214,7 @@ export function QuoteDialog({
                         <div className="min-w-0">
                           <p className="font-bold truncate">{s.client_name || s.client_email}</p>
                           <p className="num text-muted-foreground">
-                            {new Date(s.created_at).toLocaleDateString("fr-FR")} · {s.total_ttc?.toLocaleString("fr-FR")} € c/ IVA
+                            {new Date(s.created_at).toLocaleDateString("pt-PT")} · {s.total_ttc?.toLocaleString("pt-PT")} € c/ IVA
                           </p>
                         </div>
                         <div className="flex gap-1 shrink-0">

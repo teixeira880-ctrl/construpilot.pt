@@ -18,7 +18,7 @@ export const TodayBlock = () => {
   if (!data.next_action) return null;
   const items = data.items || [];
   const Icon = ICONS[data.next_action.kind] || ArrowRight;
-  const locale = { pt: "pt-PT", en: "en-GB" }[lang] || "fr-FR";
+  const locale = { pt: "pt-PT", en: "en-GB" }[lang] || "pt-PT";
   const money = n => Number(n || 0).toLocaleString(locale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
   return <section className="dashboard-today" data-testid="today-block">
     <div className="dashboard-today-heading"><h2><span className="dashboard-status-dot" />{copy("today")}</h2>

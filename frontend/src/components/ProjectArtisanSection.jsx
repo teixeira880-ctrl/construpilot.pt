@@ -63,7 +63,7 @@ export const ProjectArtisanSection = ({ project, onChange }) => {
                 <FileText className="h-4 w-4 text-primary shrink-0" />
                 <div className="min-w-0">
                   <div className="font-medium truncate">{q.number ? `Orçamento ${q.number}` : "Orçamento"} — {q.title}</div>
-                  <div className="text-xs text-muted-foreground">{q.lines_count} linhas · {q.issue_date ? new Date(q.issue_date).toLocaleDateString("fr-FR") : ""}</div>
+                  <div className="text-xs text-muted-foreground">{q.lines_count} linhas · {q.issue_date ? new Date(q.issue_date).toLocaleDateString("pt-PT") : ""}</div>
                 </div>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cls}`} data-testid={`project-quote-status-${q.doc_id}`}>{label}</span>
                 <div className="ml-auto flex items-center gap-2">

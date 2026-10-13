@@ -563,7 +563,7 @@ export default function ObjectPanel({
                     className="flex-1 min-w-0"
                     testId={`object-row-measure-${idx}`}
                     primary={primary}
-                    secondary={`${kindTxt}${areaTxt} · criada ${new Date(m.created_at || Date.now()).toLocaleTimeString("fr-FR")}`}
+                    secondary={`${kindTxt}${areaTxt} · criada ${new Date(m.created_at || Date.now()).toLocaleTimeString("pt-PT")}`}
                     badge={badgeNode}
                     badgeColor={m.color || "#0d9488"}
                     onFocus={() => onFocusObject?.({ kind: "measure", data: m })}

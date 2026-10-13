@@ -37,7 +37,7 @@ const L = {
   },
 };
 
-const eur = (n) => `${Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`;
+const eur = (n) => `${Number(n || 0).toLocaleString("pt-PT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`;
 const pct = (p) => (p == null ? "—" : `${p} %`);
 const MONTH = (m, T, loc) => (m && m !== "—" ? new Date(`${m}-01T00:00:00`).toLocaleDateString(loc, { month: "long", year: "numeric" }) : T.noDate);
 
@@ -147,7 +147,7 @@ const CostsPanel = ({ docId, onChange, T }) => {
 export default function Profitability() {
   const { lang } = useI18n();
   const T = L[lang === "pt" ? "pt" : "fr"];
-  const loc = lang === "pt" ? "pt-PT" : "fr-FR";
+  const loc = lang === "pt" ? "pt-PT" : "pt-PT";
   const [report, setReport] = useState(null);
   const [includeOpen, setIncludeOpen] = useState(false);
   const [open, setOpen] = useState(null);

@@ -115,7 +115,7 @@ export default function WorkerApp() {
       <main className="max-w-md mx-auto p-4 grid gap-5">
         {openTs && (
           <div className="surface p-4 rounded-sm border-primary/40 bg-primary/5" data-testid="worker-open-ts">
-            <p className="text-sm font-semibold text-primary">{t("hr.w_in_progress")} {new Date(openTs.clock_in).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
+            <p className="text-sm font-semibold text-primary">{t("hr.w_in_progress")} {new Date(openTs.clock_in).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</p>
             <p className="text-xs text-muted-foreground">{openTs.project_name}</p>
           </div>
         )}
@@ -199,7 +199,7 @@ export default function WorkerApp() {
           <p className="text-sm font-semibold flex items-center gap-1.5"><Clock className="h-4 w-4" /> {t("hr.w_my_hours")}</p>
           {mine.slice(0, 8).map((r) => (
             <div key={r.entry_id} className="flex justify-between text-xs py-1 border-t border-border first:border-0" data-testid={`worker-ts-${r.entry_id}`}>
-              <span>{new Date(r.clock_in).toLocaleDateString("fr-FR")} · {r.project_name}</span>
+              <span>{new Date(r.clock_in).toLocaleDateString("pt-PT")} · {r.project_name}</span>
               <span className="num font-bold">{r.hours != null ? `${r.hours} h` : t("hr.st_open")}</span>
             </div>
           ))}

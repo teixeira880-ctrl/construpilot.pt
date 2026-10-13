@@ -19,7 +19,7 @@ export default function AdsPanel() {
   const [sources, setSources] = useState([]);
   const [channels, setChannels] = useState([]);
   const [utm, setUtm] = useState({ source: "instagram", campaign: "lancement" });
-  const utmLink = `https://construpilot.fr/?utm_source=${utm.source}&utm_medium=social&utm_campaign=${encodeURIComponent(utm.campaign || "lancement")}`;
+  const utmLink = `https://construpilot.pt/?utm_source=${utm.source}&utm_medium=social&utm_campaign=${encodeURIComponent(utm.campaign || "lancement")}`;
   const copyUtm = () => { navigator.clipboard.writeText(utmLink); toast.success("Link copiado — cole-o no seu anúncio"); };
   const [filters, setFilters] = useState({ platforms: [], months: [] });
   const [fPlatform, setFPlatform] = useState("");

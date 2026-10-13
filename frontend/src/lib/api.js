@@ -9,15 +9,15 @@ export const API = `${BACKEND_URL}/api`;
 export const api = axios.create({ baseURL: API, withCredentials: true });
 
 export const eur = (v) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
+  new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
     .format(Number(v || 0));
 
 export const eur2 = (v) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 2 })
+  new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", minimumFractionDigits: 2 })
     .format(Number(v || 0));
 
 export const num = (v, d = 0) =>
-  new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(Number(v || 0));
+  new Intl.NumberFormat("pt-PT", { maximumFractionDigits: d }).format(Number(v || 0));
 
 export const DIFF_STYLE = {
   easy: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",

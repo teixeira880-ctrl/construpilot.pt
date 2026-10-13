@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
 
 export default function RfqPublic() {
   const { token } = useParams();

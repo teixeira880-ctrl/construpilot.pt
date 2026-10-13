@@ -312,8 +312,8 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                       return (
                         <tr key={i} className="border-t border-border" data-testid={`pc-history-${i}`}>
                           <td className="p-1.5 num">
-                            {new Date(h.saved_at).toLocaleDateString("fr-FR")}{" "}
-                            {new Date(h.saved_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(h.saved_at).toLocaleDateString("pt-PT")}{" "}
+                            {new Date(h.saved_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                           </td>
                           <td className="p-1.5 text-muted-foreground">
                             {h.source === "análise" ? "Análise IA" : "Recálculo"}
@@ -355,14 +355,14 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                       <span className="truncate">✉ {s.to_email}</span>
                       <span className="flex items-center gap-2 shrink-0">
                         <span className="num text-muted-foreground">
-                          {new Date(s.sent_at).toLocaleDateString("fr-FR")}{" "}
-                          {new Date(s.sent_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(s.sent_at).toLocaleDateString("pt-PT")}{" "}
+                          {new Date(s.sent_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         {s.opened ? (
                           <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 hover:bg-emerald-500/15"
                                  data-testid={`pc-sent-${i}-status`}>
                             <MailCheck className="h-3 w-3" />
-                            Aberto a {new Date(s.opened_at).toLocaleDateString("fr-FR")}
+                            Aberto a {new Date(s.opened_at).toLocaleDateString("pt-PT")}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-muted-foreground"
@@ -374,14 +374,14 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                           <Badge className="rounded-sm gap-1 text-[10px] bg-emerald-500/20 text-emerald-700 border border-emerald-500/50 hover:bg-emerald-500/20"
                                  data-testid={`pc-sent-${i}-accepted`}>
                             <CheckCircle2 className="h-3 w-3" />
-                            Aceite a {new Date(s.accepted_at).toLocaleDateString("fr-FR")} par {s.accepted_by}
+                            Aceite a {new Date(s.accepted_at).toLocaleDateString("pt-PT")} par {s.accepted_by}
                           </Badge>
                         )}
                         {s.reminder_sent && (
                           <Badge variant="outline" className="rounded-sm gap-1 text-[10px] text-amber-600 border-amber-500/40"
                                  data-testid={`pc-sent-${i}-reminder`}>
                             <BellRing className="h-3 w-3" />
-                            Relançado a {new Date(s.reminder_at).toLocaleDateString("fr-FR")}
+                            Relançado a {new Date(s.reminder_at).toLocaleDateString("pt-PT")}
                           </Badge>
                         )}
                       </span>

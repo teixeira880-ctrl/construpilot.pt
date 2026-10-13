@@ -17,7 +17,7 @@ export default function LocalLanding() {
     "@type": "ProfessionalService",
     "name": `ConstruPilot ${c.name}`,
     "description": `Estimativa de obras, orçamento detalhado e comparador de preços de materiais para todas as obras de remodelação e construção em ${c.name} (${c.department}).`,
-    "url": `https://construpilot.fr/devis-travaux-${c.slug}`,
+    "url": `https://construpilot.pt/devis-travaux-${c.slug}`,
     "areaServed": {
       "@type": "City",
       "name": c.name,
@@ -85,9 +85,9 @@ export default function LocalLanding() {
       {/* Stats */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("fr-FR")} €`}
+          <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("pt-PT")} €`}
                 label="Renovação padrão / m²" />
-          <Stat icon={Users} value={`~${c.artisans.toLocaleString("fr-FR")}`}
+          <Stat icon={Users} value={`~${c.artisans.toLocaleString("pt-PT")}`}
                 label={`Profissionais da construção em ${c.region} (estimation)`} />
           <Stat icon={Building2} value={c.surface} label={`Superfície ${c.name}`} />
           <Stat icon={Zap} value="PDF" label="Orçamento detalhado para transferir" />
@@ -103,7 +103,7 @@ export default function LocalLanding() {
           </h2>
           <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
             O mercado da renovação em <strong>{c.name}</strong> é particularmente dinâmico. O preço médio de uma renovação standard estabelece-se em torno de{" "}
-            <strong>{c.priceStandard.toLocaleString("fr-FR")} €/m²</strong>, num intervalo de{" "}
+            <strong>{c.priceStandard.toLocaleString("pt-PT")} €/m²</strong>, num intervalo de{" "}
             <strong>{c.priceRange} €/m²</strong> segundo a gama (eco / standard / premium). Uma obra tipo na região, por exemplo <em>{c.typicalProject}</em>, orçamenta-se em média entre <strong>{c.typicalPrice}</strong>.
           </p>
 

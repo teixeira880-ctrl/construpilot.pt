@@ -158,7 +158,7 @@ export default function LearningPanel() {
     finally { setPreviewBusy(false); }
   };
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "2-digit" }) : "—";
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "2-digit" }) : "—";
 
   return (
     <div className="space-y-5" data-testid="admin-learning-panel">

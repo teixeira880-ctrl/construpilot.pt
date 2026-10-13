@@ -203,7 +203,7 @@ export function Render3dDialog({
                             data-testid={`render-3d-history-${r.render_id}`}
                             className="text-[10px] px-2 py-1 border border-border rounded-sm
                                        hover:bg-primary/10 hover:border-primary">
-                      {r.style} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
+                      {r.style} · {new Date(r.created_at).toLocaleDateString("pt-PT")}
                     </button>
                   ))}
                 </div>
@@ -284,7 +284,7 @@ export function Render3dDialog({
                             data-testid={`render-video-history-${v.video_id}`}
                             className="text-[10px] px-2 py-1 border border-border rounded-sm
                                        hover:bg-primary/10 hover:border-primary">
-                      {new Date(v.created_at).toLocaleDateString("fr-FR")} · {v.duration_s}s
+                      {new Date(v.created_at).toLocaleDateString("pt-PT")} · {v.duration_s}s
                     </button>
                   ))}
                 </div>

@@ -229,7 +229,7 @@ export default function PriceSearch() {
               {data.mode === "demo" ? "Dados de demonstração" : "Pesquisa web em tempo real"}
             </Badge>
             <span className="num text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" /> Verificado a {new Date(data.checked_at).toLocaleString("fr-FR")}
+              <Clock className="h-3 w-3" /> Verificado a {new Date(data.checked_at).toLocaleString("pt-PT")}
             </span>
           </div>
 
@@ -270,7 +270,7 @@ export default function PriceSearch() {
                       {r.product}
                       {r.checked_at && (
                         <span className="ml-2 text-[10px] text-muted-foreground align-middle"
-                              title={`Verificado a ${new Date(r.checked_at).toLocaleString("fr-FR")}`}
+                              title={`Verificado a ${new Date(r.checked_at).toLocaleString("pt-PT")}`}
                               data-testid={`price-freshness-${r.supplier_key}`}>
                           · {relativeAge(r.checked_at)}
                         </span>

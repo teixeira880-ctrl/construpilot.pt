@@ -30,7 +30,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("FR");
+  const [country, setCountry] = useState("PT");
   const [logoB64, setLogoB64] = useState("");
   const [defaultEmailMsg, setDefaultEmailMsg] = useState("");
   const [serviceZones, setServiceZones] = useState("");
@@ -54,7 +54,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
       setAddress(data.address || "");
       setCity(data.city || "");
       setPostalCode(data.postal_code || "");
-      setCountry(data.country || "FR");
+      setCountry(data.country || "PT");
       setLogoB64(data.logo_b64 || "");
       setDefaultEmailMsg(data.default_email_message || "");
       setServiceZones((data.service_zones || []).join(", "));
@@ -147,7 +147,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           <div className="grid gap-2">
             <Label>Linha de contacto</Label>
             <Textarea value={contactLine} onChange={(e) => setContactLine(e.target.value)}
-                      placeholder="12 rue de la Paix · 75002 Paris · 01 23 45 67 89 · contact@…"
+                      placeholder="Rua Augusta, 12 · 1100-053 Lisboa · 213 456 789 · contacto@…"
                       disabled={!canEdit}
                       data-testid="branding-contact-input"
                       className="rounded-sm text-sm" rows={2} maxLength={200} />
@@ -200,14 +200,14 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
           <div className="grid gap-2">
             <Label>Morada (rua)</Label>
             <Input value={address} onChange={(e) => setAddress(e.target.value)}
-                   placeholder="12 rue de la Paix" disabled={!canEdit}
+                   placeholder="Rua Augusta, 12" disabled={!canEdit}
                    data-testid="branding-address-input" className="rounded-sm h-11" maxLength={160} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-2">
               <Label>Código postal</Label>
               <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)}
-                     placeholder="75002" disabled={!canEdit}
+                     placeholder="1100-053" disabled={!canEdit}
                      data-testid="branding-postal-input" className="rounded-sm h-11 num" maxLength={12} />
             </div>
             <div className="grid gap-2">
@@ -219,7 +219,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
             <div className="grid gap-2">
               <Label>País</Label>
               <Input value={country} onChange={(e) => setCountry(e.target.value.toUpperCase())}
-                     placeholder="FR" disabled={!canEdit}
+                     placeholder="PT" disabled={!canEdit}
                      data-testid="branding-country-input" className="rounded-sm h-11 num" maxLength={2} />
             </div>
           </div>
@@ -231,7 +231,7 @@ export function BrandingDialog({ trigger, onSaved, contentClassName = "", overla
               Cidades ou distritos abrangidos, separados por vírgulas. Serve para lhe atribuir automaticamente os pedidos da sua área.
             </p>
             <Input value={serviceZones} onChange={(e) => setServiceZones(e.target.value)}
-                   placeholder="Paris, Lyon, Rhône, 69, Villeurbanne" disabled={!canEdit}
+                   placeholder="Lisboa, Sintra, Cascais, Setúbal, Porto" disabled={!canEdit}
                    data-testid="branding-zones-input" className="rounded-sm h-11" maxLength={600} />
           </div>
 

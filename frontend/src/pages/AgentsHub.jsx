@@ -174,7 +174,7 @@ function AgentsHubContent() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-sm truncate">{r.agent_name}</p>
-                        <p className="text-[11px] text-muted-foreground num">{new Date(r.created_at).toLocaleString("fr-FR")}</p>
+                        <p className="text-[11px] text-muted-foreground num">{new Date(r.created_at).toLocaleString("pt-PT")}</p>
                       </div>
                       {r.status === "done" && (
                         <div className="flex items-center gap-2 flex-wrap">

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { History, ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "@/lib/api";
 
-const eur = (n) => (n == null ? "—" : `${Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
+const eur = (n) => (n == null ? "—" : `${Number(n).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
 
 export const PriceHistoryPanel = ({ refreshKey }) => {
   const [rows, setRows] = useState([]);
@@ -27,7 +27,7 @@ export const PriceHistoryPanel = ({ refreshKey }) => {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.hist_id} className="border-t border-border/40" data-testid={`price-history-row-${r.hist_id}`}>
-                  <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">{new Date(r.at).toLocaleDateString("fr-FR")}</td>
+                  <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">{new Date(r.at).toLocaleDateString("pt-PT")}</td>
                   <td className="px-2 py-1.5">{r.designation} <span className="text-muted-foreground">({r.unit})</span></td>
                   <td className="px-2 py-1.5 text-right num">{eur(r.old?.price_mid)}</td>
                   <td className="px-2 py-1.5 text-right num font-medium">{eur(r.new?.price_mid)}</td>

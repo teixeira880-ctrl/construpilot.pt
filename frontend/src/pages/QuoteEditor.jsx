@@ -33,12 +33,12 @@ import { QuoteCheckPanel } from "@/components/quote/QuoteCheckPanel";
 import { DictateButton } from "@/components/voice/VoiceButtons";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
-const VAT_RATES = [0, 5.5, 10, 20];
+const VAT_RATES = [0, 6, 13, 23]; // Portugal continental (CIVA)
 const VAT_RATES_PT = [0, 6, 13, 23];
 const STATUSES = [
   ["draft", "crm.st_e_draft"], ["sent", "crm.st_e_sent"], ["signed", "crm.st_e_signed"], ["refused", "crm.st_e_refused"],
 ];
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const contentStamp = d => JSON.stringify([d.doc_type, d.client_id, d.lead_id, d.title, d.lines, d.notes, d.payment_terms, d.deposit_pct, d.status, d.signed || false]);
 const blankLine = (vat = null, line_kind = "fourniture") => ({
   kind: "line", line_kind, designation: "", description: "", unit: "u", qty: 1, unit_price_ht: 0, discount_pct: 0,
@@ -1226,7 +1226,7 @@ export default function QuoteEditor() {
         </div>
         <div className="text-right text-[11px] opacity-80 shrink-0">
           <p className="font-semibold">{user?.company_name || user?.company || user?.name || ""}</p>
-          <p>{new Date().toLocaleDateString("fr-FR")}</p>
+          <p>{new Date().toLocaleDateString("pt-PT")}</p>
         </div>
       </div>
       <div className="px-6 py-3 border-b border-border text-xs flex flex-wrap gap-x-6 gap-y-1">
@@ -1594,7 +1594,7 @@ export default function QuoteEditor() {
                   <option value="">{t("crm.ed_none")}</option>
                   {doneRenders.map((r) => (
                     <option key={r.render_id} value={r.render_id}>
-                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Renderização") + " · " + new Date(r.created_at).toLocaleDateString("fr-FR")}
+                      {(r.kind === "video" ? "🎬 " : "🖼️ ") + (r.prompt ? r.prompt.slice(0, 40) : "Renderização") + " · " + new Date(r.created_at).toLocaleDateString("pt-PT")}
                     </option>
                   ))}
                 </select>
@@ -1714,7 +1714,7 @@ export default function QuoteEditor() {
             <div>
               <Label>{t("crm.address")}</Label>
               <Input value={nc.address} onChange={(e) => setNc({ ...nc, address: e.target.value })}
-                     className="rounded-sm mt-1" data-testid="nc-address" placeholder="12 rue des Travaux, 75000 Paris" />
+                     className="rounded-sm mt-1" data-testid="nc-address" placeholder="Rua das Obras, 12, 1000-001 Lisboa" />
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="outline" onClick={() => setNewClientOpen(false)} className="rounded-sm" data-testid="nc-cancel">

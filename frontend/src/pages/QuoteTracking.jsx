@@ -287,7 +287,7 @@ export default function QuoteTracking() {
 
   const [invoicing, setInvoicing] = useState(null);
   const [invoiceSend, setInvoiceSend] = useState(null);
-  const [invoiceVat, setInvoiceVat] = useState("10");
+  const [invoiceVat, setInvoiceVat] = useState("6");
   const convertToInvoice = async () => {
     if (!invoiceSend) return;
     const send = invoiceSend;
@@ -312,7 +312,7 @@ export default function QuoteTracking() {
   const opened = sends.filter(s => s.opened && !s.signed);
   const signed = sends.filter(s => s.signed);
 
-  const fmtEur = (n) => (n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 0 }) + " €";
+  const fmtEur = (n) => (n || 0).toLocaleString("pt-PT", { minimumFractionDigits: 0 }) + " €";
   const daysSince = (iso) => {
     const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
     if (d === 0) return "hoje";
@@ -511,7 +511,7 @@ export default function QuoteTracking() {
                     </button>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="num text-sm font-bold text-primary whitespace-nowrap" data-testid={`quote-total-${d.doc_id}`}>
-                        {Number(d.totals?.ttc ?? d.total_ttc ?? 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        {Number(d.totals?.ttc ?? d.total_ttc ?? 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                       </span>
                       <Badge variant="outline" className={`rounded-sm ${st.cls}`}
                              data-testid={`quote-status-badge-${d.doc_id}`}>{st.label}</Badge>
@@ -643,7 +643,7 @@ export default function QuoteTracking() {
 
       <div className="flex justify-between items-center">
         <p className="text-xs text-muted-foreground">
-          {sends.length} orçamento · última atualização {new Date().toLocaleTimeString("fr-FR")}
+          {sends.length} orçamento · última atualização {new Date().toLocaleTimeString("pt-PT")}
         </p>
         <Button size="sm" variant="outline" onClick={load} data-testid="quote-tracking-refresh"
                 className="rounded-sm gap-1">
@@ -727,7 +727,7 @@ export default function QuoteTracking() {
           <div className="grid gap-2">
             <label className="text-xs text-muted-foreground">Taxa de IVA</label>
             <div className="grid grid-cols-3 gap-2">
-              {[["5.5", "5,5 % — 1.ª necessidade"], ["10", "10 % — Renovação"], ["20", "20 % — Novo"]].map(([v, lbl]) => (
+              {[["6", "6 % — Reabilitação de habitação (verba 2.27 CIVA)"], ["13", "13 % — Taxa intermédia"], ["23", "23 % — Taxa normal"]].map(([v, lbl]) => (
                 <button key={v} onClick={() => setInvoiceVat(v)}
                   data-testid={`vat-opt-${v}`}
                   className={`rounded-sm border px-2 py-3 text-center transition-colors ${

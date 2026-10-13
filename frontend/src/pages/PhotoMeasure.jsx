@@ -51,9 +51,9 @@ export default function PhotoMeasure() {
     const lines = measures.map((m, i) => (
       m.type === "distance"
         ? { designation: `Medição em fotografia — comprimento ${i + 1}`, unit: "ml",
-            qty: Number((m.value / 1000).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
+            qty: Number((m.value / 1000).toFixed(2)) || 0, unit_price_ht: 0, category: "Medição em fotografia" }
         : { designation: `Medição em fotografia — área ${i + 1}`, unit: "m²",
-            qty: Number((m.value / 1e6).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
+            qty: Number((m.value / 1e6).toFixed(2)) || 0, unit_price_ht: 0, category: "Medição em fotografia" }
     ));
     sessionStorage.setItem("construpilot_pending_ouvrages", JSON.stringify(lines));
     toast.success(`${lines.length} medição(ões) enviada(s) para o orçamento`);

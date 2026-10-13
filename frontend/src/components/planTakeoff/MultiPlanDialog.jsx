@@ -61,7 +61,7 @@ export function MultiPlanDialog({
           <div className="grid gap-1">
             <Label className="text-xs">Nome do projeto (opcional)</Label>
             <Input value={multiProjectName} onChange={(e) => setMultiProjectName(e.target.value)}
-                   placeholder="Ex: Residência Les Tilleuls — R/C + R+1"
+                   placeholder="Ex.: Residência Os Pinheiros — R/C + 1.º andar"
                    maxLength={160}
                    data-testid="multi-project-name" className="rounded-sm h-10" />
           </div>

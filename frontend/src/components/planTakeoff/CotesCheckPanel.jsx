@@ -436,7 +436,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
           </div>
           {report.last_sent && (
             <p className="text-[11px] text-muted-foreground" data-testid="cotes-last-sent">
-              Último envio: {report.last_sent.to_email} · {new Date(report.last_sent.sent_at).toLocaleString("fr-FR")}
+              Último envio: {report.last_sent.to_email} · {new Date(report.last_sent.sent_at).toLocaleString("pt-PT")}
             </p>
           )}
           <SendDialog open={sendOpen} onClose={() => setSendOpen(false)} plan={plan} pageIndex={pageIndex}

@@ -18,11 +18,11 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "Blog",
   "name": "Blog ConstruPilot — Orçamentos de obras, renovação e construção",
-  "url": "https://construpilot.fr/blog",
+  "url": "https://construpilot.pt/blog",
   "blogPost": BLOG_ARTICLES.map((a) => ({
     "@type": "BlogPosting",
     "headline": a.title,
-    "url": `https://construpilot.fr/blog/${a.slug}`,
+    "url": `https://construpilot.pt/blog/${a.slug}`,
     "datePublished": a.published,
     "dateModified": a.updated,
     "image": a.cover,

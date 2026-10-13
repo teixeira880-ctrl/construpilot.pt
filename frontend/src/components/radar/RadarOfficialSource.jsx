@@ -3,7 +3,7 @@ import { ExternalLink, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
-const formatDate = (value) => value ? new Date(value).toLocaleDateString("fr-FR") : "—";
+const formatDate = (value) => value ? new Date(value).toLocaleDateString("pt-PT") : "—";
 export const RadarOfficialSource = ({ sync, onRefresh }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

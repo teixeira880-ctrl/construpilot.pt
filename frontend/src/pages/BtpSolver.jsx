@@ -374,7 +374,7 @@ export default function BtpSolver() {
                         className="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 p-3 text-sm hover:border-emerald-500/50">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium truncate">{DOMAIN_LABELS[h.domain] || h.domain || "Diagnóstico"}</span>
-                    <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("fr-FR") : h.status === "error" ? "Erro" : "En cours…"}</span>
+                    <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("pt-PT") : h.status === "error" ? "Erro" : "En cours…"}</span>
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 mt-1">{h.summary || h.description}</p>
                 </button>

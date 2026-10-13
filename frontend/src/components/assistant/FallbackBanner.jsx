@@ -7,7 +7,7 @@ export const FallbackBanner = ({ refreshKey }) => {
   const [rt, setRt] = useState(null);
   useEffect(() => { api.get("/assistant/runtime").then(({ data }) => setRt(data)).catch(() => setRt(null)); }, [refreshKey]);
   if (!rt?.openai_degraded) return null;
-  const until = rt.openai_degraded.until ? new Date(rt.openai_degraded.until).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+  const until = rt.openai_degraded.until ? new Date(rt.openai_degraded.until).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : null;
   return <div className="mx-3 mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs" role="status" data-testid="fallback-banner">
     <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-600" />
     <div>

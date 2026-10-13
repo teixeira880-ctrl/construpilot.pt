@@ -35,7 +35,7 @@ const iconFor = (ev) => {
 const formatDate = (iso) => {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleString("fr-FR", {
+    return new Date(iso).toLocaleString("pt-PT", {
       day: "2-digit", month: "short", year: "numeric",
       hour: "2-digit", minute: "2-digit",
     });

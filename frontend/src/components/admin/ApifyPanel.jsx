@@ -265,7 +265,7 @@ export default function ApifyPanel() {
               {j.use_case && <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{j.use_case}</span>}
               <span className={`text-xs font-semibold ${j.status === "SUCCEEDED" ? "text-emerald-600" : j.status === "FAILED" ? "text-red-600" : "text-amber-600"}`}>{j.status}</span>
               <span className="text-xs text-muted-foreground">{j.count} item(s){j.persist ? " · guardados" : ""}</span>
-              <span className="text-xs text-muted-foreground ml-auto">{j.created_at ? new Date(j.created_at).toLocaleString("fr-FR") : ""}</span>
+              <span className="text-xs text-muted-foreground ml-auto">{j.created_at ? new Date(j.created_at).toLocaleString("pt-PT") : ""}</span>
             </div>
           ))}
         </div>

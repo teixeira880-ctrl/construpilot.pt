@@ -11,7 +11,7 @@ const LEVELS = [
   { key: "moyen", label: "Médio", desc: "standard" },
   { key: "haut", label: "Alto", desc: "premium" },
 ];
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { maximumFractionDigits: 0 }) + " €";
 
 /** Catalogue partagé ConstruPilot (lecture seule) + choix de la gamme de prix.
  *  Visible pour les entreprises Pro Business. */

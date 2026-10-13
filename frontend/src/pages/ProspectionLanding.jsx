@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MapPin, ShieldCheck, CheckCircle2, Building2, Ruler } from "lucide-react";
 import { toast } from "sonner";
 
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR") + " €";
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT") + " €";
 
 export default function ProspectionLanding() {
   const { token } = useParams();

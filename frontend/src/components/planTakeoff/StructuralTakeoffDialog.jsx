@@ -21,7 +21,7 @@ const FIELDS = [
   ["margin_pct", "Margem (%)", 12, 1],
 ];
 
-const eur = (n) => (n ?? 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " €";
+const eur = (n) => (n ?? 0).toLocaleString("pt-PT", { maximumFractionDigits: 0 }) + " €";
 
 export default function StructuralTakeoffDialog({ open, onClose, planId }) {
   const navigate = useNavigate();

@@ -3,7 +3,7 @@ import { FileText, FileCheck2, Download, Check, X, Loader2, PenLine } from "luci
 import { toast } from "sonner";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 
 const STATUS = {
   sent: ["Enviado", "bg-sky-100 text-sky-700"],

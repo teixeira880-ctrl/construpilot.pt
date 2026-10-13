@@ -6,7 +6,7 @@ import { Loader2, Trash2, FileText, Users, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ConfirmProvider";
 
-const eur = (n) => Math.round(Number(n) || 0).toLocaleString("fr-FR") + " €";
+const eur = (n) => Math.round(Number(n) || 0).toLocaleString("pt-PT") + " €";
 
 export default function DataManagementPanel() {
   const [clients, setClients] = useState([]);

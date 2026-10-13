@@ -99,13 +99,13 @@ export function PlanAnalysisResults({ recap, onClose, onReview, onQuote }) {
       <button type="button" onClick={onClose} className="plan-text-button" data-testid="recap-close">Ocultar</button>
     </div>
     <div className="plan-results-grid">
-      <div data-testid="recap-surface"><span>Área das divisões medidas</span><strong>{recap.surface_pieces_m2 == null ? "A medir" : `${recap.surface_pieces_m2.toLocaleString("fr-FR")} m²`}</strong><small data-testid="recap-rooms">{recap.rooms} divisão{recap.rooms > 1 ? "s" : ""} · contornos a controlar</small></div>
-      <div data-testid="recap-beton"><span>Betão estimado</span><strong>{recap.beton_m3 == null ? "Indisponível" : `${recap.beton_m3.toLocaleString("fr-FR")} m³`}</strong><small>Espessuras e alturas a confirmar</small></div>
-      <div data-testid="recap-estimation"><span>Orçamento indicativo</span><strong>{amount == null ? "Indisponível" : `${amount.toLocaleString("fr-FR")} €`}</strong><small>{recap.estimation_globale_eur != null ? "Remodelação · planta completa (média)" : "Estrutura · esta página"}</small></div>
+      <div data-testid="recap-surface"><span>Área das divisões medidas</span><strong>{recap.surface_pieces_m2 == null ? "A medir" : `${recap.surface_pieces_m2.toLocaleString("pt-PT")} m²`}</strong><small data-testid="recap-rooms">{recap.rooms} divisão{recap.rooms > 1 ? "s" : ""} · contornos a controlar</small></div>
+      <div data-testid="recap-beton"><span>Betão estimado</span><strong>{recap.beton_m3 == null ? "Indisponível" : `${recap.beton_m3.toLocaleString("pt-PT")} m³`}</strong><small>Espessuras e alturas a confirmar</small></div>
+      <div data-testid="recap-estimation"><span>Orçamento indicativo</span><strong>{amount == null ? "Indisponível" : `${amount.toLocaleString("pt-PT")} €`}</strong><small>{recap.estimation_globale_eur != null ? "Remodelação · planta completa (média)" : "Estrutura · esta página"}</small></div>
     </div>
     <div className="plan-results-footnotes">
       <p data-testid="recap-structure">Estrutura identificada: {recap.walls} paredes · {recap.columns} pilares · {recap.beams} vigas · {recap.floors} dalles</p>
-      <p data-testid="recap-acier">Aço estimado por rácios: {recap.acier_kg == null ? "indisponível" : `${recap.acier_kg.toLocaleString("fr-FR")} kg`}</p>
+      <p data-testid="recap-acier">Aço estimado por rácios: {recap.acier_kg == null ? "indisponível" : `${recap.acier_kg.toLocaleString("pt-PT")} kg`}</p>
     </div>
     {!!warnings.length && <div className="plan-results-warnings" role="status"><strong>Pontos a retomar</strong><ul>{warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></div>}
     <div className="plan-results-actions">

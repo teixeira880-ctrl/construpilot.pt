@@ -8,7 +8,7 @@ const Value = ({ v, suffix = "" }) =>
   v === null || v === undefined ? (
     <span className="text-sm font-normal text-amber-500">não mensurável</span>
   ) : (
-    <span className="num">{typeof v === "number" ? v.toLocaleString("fr-FR") : v}{suffix}</span>
+    <span className="num">{typeof v === "number" ? v.toLocaleString("pt-PT") : v}{suffix}</span>
   );
 
 const Metric = ({ label, value, suffix, note, testId }) => (
@@ -59,8 +59,8 @@ export default function JourneyPanel() {
         <div className="flex-1 min-w-0">
           <h2 className="font-display text-xl font-extrabold">Contas reais e percurso</h2>
           <p className="text-xs text-muted-foreground">
-            Janela: {data.window_days} dias · Gerado em {new Date(data.generated_at).toLocaleString("fr-FR")} · Instrumentação iniciada: {data.instrumentation_started_at
-              ? new Date(data.instrumentation_started_at).toLocaleString("fr-FR")
+            Janela: {data.window_days} dias · Gerado em {new Date(data.generated_at).toLocaleString("pt-PT")} · Instrumentação iniciada: {data.instrumentation_started_at
+              ? new Date(data.instrumentation_started_at).toLocaleString("pt-PT")
               : "nenhum evento registado por agora"}
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function JourneyPanel() {
               <tbody>
                 {events.map((e, i) => (
                   <tr key={i} className="border-b border-border/40" data-testid={`journey-event-${i}`}>
-                    <td className="px-4 py-2 whitespace-nowrap">{new Date(e.occurred_at).toLocaleString("fr-FR")}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{new Date(e.occurred_at).toLocaleString("pt-PT")}</td>
                     <td className="px-4 py-2 font-semibold">{e.event}</td>
                     <td className="px-4 py-2">{e.channel}</td>
                     <td className="px-4 py-2 text-xs text-muted-foreground">

@@ -47,7 +47,7 @@ export default function Estimator() {
 
   const [form, setForm] = useState({
     project_type: params.get("type") || "renovation_complete",
-    country: "FR", region: "Île-de-France", city: "",
+    country: "PT", region: "Lisboa", city: "",
     surface: Number(params.get("surface")) || 100,
     building_type: "maison", construction_year: 1990, condition: "bon",
     finish_level: "standard", description: "", lots: [],
@@ -207,10 +207,9 @@ export default function Estimator() {
                 <div className="grid sm:grid-cols-2 gap-6">
                   <div className="grid gap-2">
                     <Label>{t("est.country")}</Label>
-                    <Select value={form.country} onValueChange={(v) => { set("country", v); set("region", v === "FR" ? "Île-de-France" : "Lisboa"); }}>
+                    <Select value={form.country} onValueChange={(v) => { set("country", v); set("region", "Lisboa"); }}>
                       <SelectTrigger className="rounded-sm h-11" data-testid="select-country"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="FR">França</SelectItem>
                         <SelectItem value="PT">Portugal</SelectItem>
                       </SelectContent>
                     </Select>

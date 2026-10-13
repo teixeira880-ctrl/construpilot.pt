@@ -15,7 +15,7 @@ const L = {
         h: ["Trabalho", "Qtd", "Unid.", "PU s/IVA", "Total s/IVA"], total: "Total do mapa s/ IVA", note: "Quantidades calculadas para um tanque retangular 2:1 a partir da área indicada — ajuste-as no editor de orçamentos." },
 };
 
-const eur = (n) => `${Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+const eur = (n) => `${Number(n || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 
 export const PoolItemsCard = ({ pool, isPro, title }) => {
   const nav = useNavigate();
@@ -30,7 +30,7 @@ export const PoolItemsCard = ({ pool, isPro, title }) => {
     try {
       const lines = pool.lines.map((l) => ({
         designation: l.designation, description: "", unit: l.unit, qty: l.qty,
-        unit_price_ht: l.unit_price_ht, cost_price_ht: l.cost_price_ht || 0, vat_rate: l.vat_rate || 20, category: "Piscine",
+        unit_price_ht: l.unit_price_ht, cost_price_ht: l.cost_price_ht || 0, vat_rate: l.vat_rate || 23, category: "Piscine",
       }));
       const { data } = await api.post("/documents", { doc_type: "quote", title: title || T.quoteTitle(g), lines });
       toast.success(T.created);

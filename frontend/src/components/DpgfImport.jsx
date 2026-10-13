@@ -15,7 +15,7 @@ import {
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-const eur = (n) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const VATS = [10, 20, 5.5];
 
 const STEP_LABEL = {

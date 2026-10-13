@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-const BASE = "https://construpilot.fr";
+const BASE = "https://construpilot.pt";
 const PT_BASE = "https://construpilot.pt";
 const SUFFIX = " · ConstruPilot";
 const DEFAULT_TITLE = "ConstruPilot — Orçamentos de obras com IA e estimativa de remodelação";
@@ -73,7 +73,7 @@ export function HeadTags({ routeDefaults }) {
       {cfg.keywords && <meta name="keywords" content={cfg.keywords} />}
       <link rel="canonical" href={url} />
       <meta name="robots" content={cfg.noindex ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1"} />
-      <link rel="alternate" hrefLang={lang === "pt" ? "pt-PT" : "fr-FR"} href={url} />
+      <link rel="alternate" hrefLang={lang === "pt" ? "pt-PT" : "pt-PT"} href={url} />
       {cfg.ptPath && <link rel="alternate" hrefLang="pt-PT" href={`${PT_BASE}${cfg.ptPath}`} />}
       <link rel="alternate" hrefLang="x-default" href={url} />
       <meta property="og:type" content={cfg.type || "website"} />

@@ -109,7 +109,7 @@ export const ProjectStatePanel = ({ conversationId, refreshKey }) => {
       {emails.length > 0 && <div className="pt-1 border-t border-border/40" data-testid="project-state-emails">
         <b>Envios ({emails.length})</b>
         <ul>{emails.map((l) => <li key={l.at} className="flex flex-wrap items-center gap-x-2 py-0.5 text-[11px]" data-testid={`state-email-log-${l.at}`}>
-          <span className="text-muted-foreground">{new Date(l.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</span>
+          <span className="text-muted-foreground">{new Date(l.at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}</span>
           <span>{(l.to || []).join(", ")}{l.failed?.length ? ` · falha: ${l.failed.map((f) => f.to).join(", ")}` : ""}</span>
           <span className="text-muted-foreground">{(l.documents || []).map((d) => d.replace(".pdf", "")).join(" + ")}</span>
           <button type="button" className="underline flex items-center gap-1" disabled={resending === l.at} onClick={() => resend(l)} data-testid="state-email-resend"><RotateCw size={10} className={resending === l.at ? "animate-spin" : ""} /> Reenviar</button>
