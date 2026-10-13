@@ -17,10 +17,10 @@ def materials_optimization(est: dict) -> dict:
     amount = round(materials * pct, 2)
     return {
         "key": "materials_optimization",
-        "label": "Optimisation matériaux",
-        "description": "Achats groupés multi-lots, négociation, remises pro sur volumes.",
+        "label": "Otimização de materiais",
+        "description": "Compras agrupadas multicapítulo, negociação, descontos profissionais em volume.",
         "amount": amount,
-        "basis": f"{pct*100:.0f} % sur {materials:.0f} € de matériaux",
+        "basis": f'{pct * 100:.0f} % sobre {materials:.0f} € de materiais',
         "confidence": "élevée" if materials > 5000 else "moyenne",
     }
 
@@ -32,10 +32,10 @@ def supplier_optimization(est: dict) -> dict:
     amount = round(materials * pct, 2)
     return {
         "key": "supplier_optimization",
-        "label": "Optimisation fournisseurs",
-        "description": "Prix les plus bas identifiés parmi 10 enseignes (vs moyenne marché).",
+        "label": "Otimização de fornecedores",
+        "description": "Preços mais baixos identificados entre 10 lojas (vs média de mercado).",
         "amount": amount,
-        "basis": f"{pct*100:.0f} % sur {materials:.0f} € via comparateur Tavily",
+        "basis": f'{pct * 100:.0f} % sobre {materials:.0f} € via comparador Tavily',
         "confidence": "élevée",
     }
 
@@ -52,12 +52,12 @@ def diy_savings(est: dict) -> dict:
             tasks.append(lot["name"])
     return {
         "key": "diy_savings",
-        "label": "Travaux réalisables soi-même",
+        "label": "Trabalhos que pode fazer sozinho",
         "description": (f"En prenant en charge {len(tasks)} lot(s) DIY : "
                         + (", ".join(tasks[:4]) + ("…" if len(tasks) > 4 else "") if tasks
-                           else "aucun lot DIY dans ce projet")),
+                           else "nenhum capítulo de bricolage neste projeto")),
         "amount": round(saved, 2),
-        "basis": f"{len(tasks)} lot(s) faciles/moyens · {round(hours)} h de travail",
+        "basis": f'{len(tasks)} capítulo(s) fáceis/médios · {round(hours)} h de trabalho',
         "confidence": "moyenne",
         "tasks": tasks,
     }
@@ -67,9 +67,9 @@ def alternative_materials(est: dict) -> dict:
     """Passage à une finition éco sur les lots secondaires (non structurels)."""
     finish = _finish_key(est)
     if finish == "eco":
-        return {"key": "alternative_materials", "label": "Alternatives matériaux",
-                "description": "Vous avez déjà choisi la finition la plus économique.",
-                "amount": 0.0, "basis": "finition éco déjà appliquée",
+        return {"key": "alternative_materials", "label": "Alternativas de materiais",
+                "description": "Já escolheu o acabamento mais económico.",
+                "amount": 0.0, "basis": "acabamento económico já aplicado",
                 "confidence": "élevée"}
     saved = 0.0
     switched = []
@@ -86,13 +86,12 @@ def alternative_materials(est: dict) -> dict:
                 switched.append(lot["name"])
     return {
         "key": "alternative_materials",
-        "label": "Alternatives matériaux",
-        "description": (f"Choix de matériaux équivalents à prix plus bas sur "
-                        f"{len(switched)} lot(s) : "
+        "label": "Alternativas de materiais",
+        "description": (f'Escolha de materiais equivalentes a preço mais baixo em {len(switched)} lot(s) : '
                         + (", ".join(switched[:4]) + ("…" if len(switched) > 4 else "")
-                           if switched else "aucun lot éligible")),
+                           if switched else "nenhum capítulo elegível")),
         "amount": round(saved, 2),
-        "basis": f"delta prix std → éco sur {len(switched)} lot(s)",
+        "basis": f'delta de preço standard → económico em {len(switched)} lot(s)',
         "confidence": "moyenne",
         "lots": switched,
     }
@@ -118,7 +117,7 @@ def compute(est: dict) -> dict:
         "pct_of_project": pct_of_project,
         "project_pass_price": project_pass_price,
         "roi_multiplier": roi_multiplier,
-        "message": (f"ConstruPilot a identifié {total:,.0f} €".replace(",", " ")
-                    + " d'économies potentielles sur votre projet"
-                    + (f", soit {roi_multiplier}× le prix du Project Pass." if roi_multiplier else ".")),
+        "message": (f'O ConstruPilot identificou {total:,.0f} €'.replace(",", " ")
+                    + " de poupanças potenciais no seu projeto"
+                    + (f', soit {roi_multiplier}× o preço do Project Pass.' if roi_multiplier else ".")),
     }

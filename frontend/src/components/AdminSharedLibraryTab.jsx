@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { api } from "@/lib/api";
+import { PriceHistoryPanel } from "@/components/admin/PriceHistoryPanel";
 
 export default function AdminSharedLibraryTab() {
   const [items, setItems] = useState([]);
@@ -32,26 +33,30 @@ export default function AdminSharedLibraryTab() {
 
   useEffect(() => { load(); }, []);
 
+  const modeRef = useRef("replace");
   const onImport = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const merge = modeRef.current === "merge" || modeRef.current === "merge_prices";
+    const updPrices = modeRef.current === "merge_prices";
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post("/admin/shared-library/import", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const { data } = await api.post(`/admin/shared-library/import${merge ? `?merge=true${updPrices ? "&update_prices=true" : ""}` : ""}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
       });
-      toast.success(`${data.imported} trabalhos importados (colunas: ${data.columns_detected.length})`);
+      if (merge) toast.success(`Fusion FR : ${data.added} adicionado(s)${updPrices ? `, ${data.updated_prices} preços atualizados` : ""}, ${data.kept_existing} mantidos · total ${data.total}`);
+      else toast.success(`${data.imported} artigos importados (colunas: ${data.columns_detected.length})`);
       await load(q);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Importação impossível");
+      toast.error(err?.response?.data?.detail || "Não foi possível importar");
     } finally { setUploading(false); }
   };
 
   const clearAll = async () => {
-    if (!window.confirm("Apagar TODA a biblioteca partilhada?")) return;
+    if (!window.confirm("Eliminar TODA a biblioteca partilhada?")) return;
     await api.delete("/admin/shared-library");
     toast.success("Biblioteca partilhada esvaziada");
     await load();
@@ -62,7 +67,7 @@ export default function AdminSharedLibraryTab() {
     const blob = new Blob([data], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "modelo-biblioteca-construpilot.csv"; a.click();
+    a.href = url; a.download = "modele-bibliotheque-construpilot.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -74,16 +79,14 @@ export default function AdminSharedLibraryTab() {
             <Library className="h-5 w-5 text-primary" /> Biblioteca partilhada (Pro Business)
           </h3>
           <p className="text-sm text-muted-foreground max-w-2xl mt-1">
-            Importa uma biblioteca de trabalhos (CSV ou Excel) com preços <b>baixo / mediano / alto</b>.
-            Fica acessível automaticamente a todas as empresas <b>Pro Business</b>, e
-            a IA usa-a para orçamentar os pedidos consoante a gama de preços escolhida.
-            <br />A importação <b>substitui totalmente</b> a biblioteca existente.
+            Importe uma biblioteca de trabalhos (CSV ou Excel) com preços <b>baixo / médio / alto</b>. É acessível automaticamente por todas as empresas <b>Pro Business</b>, e a IA utiliza-a para orçamentar segundo a gama de preços escolhida.
+            <br />A importação <b>substitui inteiramente</b> a biblioteca existente.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {total > 0 ? (
             <Badge className="bg-emerald-600 hover:bg-emerald-600 gap-1" data-testid="shared-lib-count">
-              <CheckCircle2 className="h-3 w-3" /> {total} trabalhos
+              <CheckCircle2 className="h-3 w-3" /> {total} ouvrages
             </Badge>
           ) : (
             <Badge variant="outline" className="gap-1 text-amber-600 border-amber-400">
@@ -92,7 +95,7 @@ export default function AdminSharedLibraryTab() {
           )}
           {meta.imported_at && (
             <span className="text-[11px] text-muted-foreground">
-              Atualizado a {new Date(meta.imported_at).toLocaleString("pt-PT")} · {meta.last_file}
+              Atual. {new Date(meta.imported_at).toLocaleString("pt-PT")} · {meta.last_file}
             </span>
           )}
         </div>
@@ -101,10 +104,29 @@ export default function AdminSharedLibraryTab() {
       <div className="flex flex-wrap gap-2">
         <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xlsm" className="hidden"
                onChange={onImport} data-testid="shared-lib-file-input" />
-        <Button onClick={() => fileRef.current?.click()} disabled={uploading}
+        <Button onClick={() => { modeRef.current = "replace"; fileRef.current?.click(); }} disabled={uploading}
                 className="rounded-sm gap-2 bg-primary" data-testid="shared-lib-import-btn">
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           Importar (substituir) CSV / Excel
+        </Button>
+        <Button variant="outline" onClick={() => { modeRef.current = "merge"; fileRef.current?.click(); }} disabled={uploading}
+                className="rounded-sm gap-2 border-primary/40 text-primary" title="Conserva o existente, adiciona apenas os artigos em falta (FR apenas, a biblioteca PT não é afetada)"
+                data-testid="shared-lib-merge-btn">
+          <Upload className="h-4 w-4" /> Fundir (adicionar os em falta, PT)
+        </Button>
+        <Button variant="outline" onClick={() => { modeRef.current = "merge_prices"; fileRef.current?.click(); }} disabled={uploading}
+                className="rounded-sm gap-2 border-amber-500/50 text-amber-600" title="Adiciona os em falta E atualiza os preços dos trabalhos FR já presentes (os trabalhos ausentes do ficheiro são conservados, PT intacta)"
+                data-testid="shared-lib-merge-prices-btn">
+          <Upload className="h-4 w-4" /> Fundir + atualizar os preços
+        </Button>
+        <Button variant="outline" onClick={async () => {
+                  try {
+                    const res = await api.get("/admin/shared-library/export.xlsx", { responseType: "blob" });
+                    const url = URL.createObjectURL(res.data); const a = document.createElement("a");
+                    a.href = url; a.download = "ConstruPilot_FR_Bibliotheque_export.xlsx"; a.click(); URL.revokeObjectURL(url);
+                  } catch { toast.error("Impossível exportar"); }
+                }} className="rounded-sm gap-2" data-testid="shared-lib-export-btn">
+          <Download className="h-4 w-4" /> Exportar a biblioteca FR (Excel)
         </Button>
         <Button variant="outline" onClick={downloadTemplate} className="rounded-sm gap-2"
                 data-testid="shared-lib-template-btn">
@@ -118,11 +140,13 @@ export default function AdminSharedLibraryTab() {
         )}
       </div>
 
+      <PriceHistoryPanel refreshKey={total} />
+
       <div className="relative max-w-sm">
         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)}
                onKeyDown={(e) => e.key === "Enter" && load(q)}
-               placeholder="Procurar trabalho / categoria…" className="rounded-sm pl-9"
+               placeholder="Pesquisar um artigo / categoria…" className="rounded-sm pl-9"
                data-testid="shared-lib-search" />
       </div>
 
@@ -132,9 +156,9 @@ export default function AdminSharedLibraryTab() {
             <TableRow className="bg-secondary/60 hover:bg-secondary/60">
               <TableHead>Categoria</TableHead>
               <TableHead>Designação</TableHead>
-              <TableHead>Unidade</TableHead>
+              <TableHead>Un.</TableHead>
               <TableHead className="text-right">Baixo €</TableHead>
-              <TableHead className="text-right">Médio €</TableHead>
+              <TableHead className="text-right">Mediano €</TableHead>
               <TableHead className="text-right">Alto €</TableHead>
               <TableHead className="text-right">IVA</TableHead>
             </TableRow>
@@ -145,7 +169,7 @@ export default function AdminSharedLibraryTab() {
                 <Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
             ) : items.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                Sem trabalhos. Importa um ficheiro para começar.</TableCell></TableRow>
+                Nenhum trabalho. Importe um ficheiro para começar.</TableCell></TableRow>
             ) : items.map((it) => (
               <TableRow key={it.item_id}>
                 <TableCell className="text-xs text-muted-foreground">{it.category}</TableCell>
@@ -161,7 +185,7 @@ export default function AdminSharedLibraryTab() {
         </Table>
       </div>
       {total > items.length && (
-        <p className="text-xs text-muted-foreground">A mostrar os primeiros {items.length} de {total}. Use a pesquisa.</p>
+        <p className="text-xs text-muted-foreground">Visualização dos {items.length} primeiros de {total}. Utilize a pesquisa.</p>
       )}
     </div>
   );

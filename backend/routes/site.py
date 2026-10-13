@@ -12,9 +12,10 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user
+from core.permissions import feature_dependency
 from engines import storage, emailer
 
-router = APIRouter(prefix="/site", tags=["site"])
+router = APIRouter(prefix="/site", tags=["site"], dependencies=[Depends(feature_dependency("chantier"))])
 
 
 async def _store_photos(photos: list[str], folder: str, uid: str) -> list[str]:
@@ -32,7 +33,7 @@ async def _store_photos(photos: list[str], folder: str, uid: str) -> list[str]:
         except Exception:
             continue
         if len(raw) > 8 * 1024 * 1024:
-            raise HTTPException(413, "Photo trop volumineuse (max 8 Mo)")
+            raise HTTPException(413, "Fotografia demasiado volumosa (máx. 8 MB)")
         path = f"{storage.APP_NAME}/site/{uid}/{folder}/{uuid.uuid4().hex}.{ext}"
         ct = storage.MIME.get(ext, "image/jpeg")
         res = await asyncio.to_thread(storage.put_object, path, raw, ct)
@@ -41,10 +42,16 @@ async def _store_photos(photos: list[str], folder: str, uid: str) -> list[str]:
 
 
 @router.get("/file")
-async def serve_file(path: str):
+async def serve_file(path: str, user=Depends(current_user)):
+    query = {"user_id": user["user_id"], "photos": path}
+    owned = await db.site_reports.find_one(query, {"_id": 0, "report_id": 1})
+    if not owned:
+        owned = await db.site_reserves.find_one(query, {"_id": 0, "reserve_id": 1})
+    if not owned:
+        raise HTTPException(404, "Imagem não encontrada")
     data, ct = await asyncio.to_thread(storage.get_object, path)
     return StreamingResponse(io.BytesIO(data), media_type=ct,
-                             headers={"Cache-Control": "public, max-age=86400"})
+                             headers={"Cache-Control": "private, no-store"})
 
 
 def _now():
@@ -58,6 +65,8 @@ def _uid(user):
 # ── Comptes-rendus de visite ──
 class ReportIn(BaseModel):
     project: str
+    doc_id: str | None = None
+    chantier_id: str | None = None
     title: str = ""
     notes: str = ""
     lots: list[dict] = []      # [{name, progress}]
@@ -91,6 +100,8 @@ async def delete_report(report_id: str, user=Depends(current_user)):
 # ── Réserves ──
 class ReserveIn(BaseModel):
     project: str
+    doc_id: str | None = None
+    chantier_id: str | None = None
     lot: str = ""
     description: str
     company: str = ""
@@ -138,6 +149,7 @@ async def delete_reserve(reserve_id: str, user=Depends(current_user)):
 # ── Checklist d'avancement ──
 class ChecklistIn(BaseModel):
     project: str
+    doc_id: str | None = None
     label: str
     lot: str = ""
 
@@ -205,23 +217,23 @@ async def report_pdf(project: str, user=Depends(current_user)):
     body = ParagraphStyle("b", parent=st["Normal"], fontSize=9.5, leading=13)
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=16*mm, bottomMargin=14*mm)
-    flow = [Paragraph("Compte-rendu de chantier", h1),
-            Paragraph(f"{project} — {datetime.now(timezone.utc).strftime('%d/%m/%Y')} · Avancement global : {pct}%", sub)]
-    flow.append(Paragraph("Comptes-rendus de visite", sec))
+    flow = [Paragraph("Ata de obra", h1),
+            Paragraph(f"{project} — {datetime.now(timezone.utc).strftime('%d/%m/%Y')} · Andamento global: {pct}%", sub)]
+    flow.append(Paragraph("Atas de visita", sec))
     if reports:
         for r in reports:
-            flow.append(Paragraph(f"<b>{r.get('title') or 'Visite'}</b> — {r.get('created_at','')[:10]}", body))
+            flow.append(Paragraph(f"<b>{r.get('title') or 'Visita'}</b> — {r.get('created_at', '')[:10]}", body))
             if r.get("notes"):
                 flow.append(Paragraph(r["notes"].replace("\n", "<br/>"), body))
             flow.append(Spacer(1, 4))
     else:
-        flow.append(Paragraph("Aucun compte-rendu.", body))
-    flow.append(Paragraph(f"Réserves ({sum(1 for x in reserves if x.get('status')!='lifted')} en cours / {len(reserves)})", sec))
+        flow.append(Paragraph("Nenhuma ata.", body))
+    flow.append(Paragraph(f"Reservas ({sum((1 for x in reserves if x.get('status') != 'lifted'))} en cours / {len(reserves)})", sec))
     if reserves:
-        rows = [["Lot", "Description", "Entreprise", "Statut"]]
+        rows = [["Lote", "Descrição", "Empresa", "Estado"]]
         for r in reserves:
             rows.append([r.get("lot", ""), r.get("description", ""), r.get("company", ""),
-                         "Levée" if r.get("status") == "lifted" else "En cours"])
+                         "Levantamento" if r.get("status") == "lifted" else "Em curso"])
         t = Table(rows, colWidths=[28*mm, 78*mm, 38*mm, 30*mm])
         t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), DARK), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
                                ("FONTSIZE", (0,0), (-1,-1), 8.5), ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
@@ -230,18 +242,18 @@ async def report_pdf(project: str, user=Depends(current_user)):
                                ("VALIGN", (0,0), (-1,-1), "TOP")]))
         flow.append(t)
     else:
-        flow.append(Paragraph("Aucune réserve.", body))
+        flow.append(Paragraph("Nenhuma reserva.", body))
     if checklist:
-        flow.append(Paragraph(f"Checklist d'avancement — {pct}%", sec))
+        flow.append(Paragraph(f'Checklist de andamento — {pct}%', sec))
         for c in checklist:
             mark = "[x]" if c.get("done") else "[ ]"
             flow.append(Paragraph(f"{mark} {c.get('label','')}" + (f" · {c.get('lot')}" if c.get("lot") else ""), body))
     flow.append(Spacer(1, 14))
-    flow.append(Paragraph("Généré par ConstruPilot · construpilot.fr", ParagraphStyle("f", parent=st["Normal"], textColor=GREY, fontSize=8)))
+    flow.append(Paragraph("Gerado pelo ConstruPilot · construpilot.pt", ParagraphStyle("f", parent=st["Normal"], textColor=GREY, fontSize=8)))
     doc.build(flow)
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/pdf",
-                             headers={"Content-Disposition": f'attachment; filename="chantier-{project[:30]}.pdf"'})
+                             headers={"Content-Disposition": f'attachment; filename="obra-{project[:30]}.pdf"'})
 
 
 @router.post("/reserves/remind")
@@ -258,11 +270,9 @@ async def remind_companies(project: str, user=Depends(current_user)):
     sent, skipped = 0, len(reserves)
     for email, grp in by_email.items():
         lis = "".join(f"<li>{r.get('lot','')} — {r.get('description','')}</li>" for r in grp["items"])
-        html = (f"<p>Olá {grp['company'] or ''},</p>"
-                f"<p>Réserves à lever sur le chantier <b>{project}</b> :</p><ul>{lis}</ul>"
-                f"<p>Merci de planifier leur reprise au plus vite.</p><p>— {user.get('name') or 'ConstruPilot'}</p>")
+        html = (f"<p>Olá {grp['company'] or ''},</p><p>Reservas a levantar na obra <b>{project}</b> :</p><ul>{lis}</ul><p>Agradecemos que planeie a sua correção o mais rapidamente possível.</p><p>— {user.get('name') or 'ConstruPilot'}</p>")
         try:
-            await emailer.send_email(email, f"Réserves à lever — {project}", html)
+            await emailer.send_email(email, f'Reservas a levantar — {project}', html)
             sent += 1
             skipped -= len(grp["items"])
         except Exception:

@@ -46,15 +46,15 @@ export default function Team() {
   useEffect(() => { if (user) refresh(); }, [user]);
 
   if (!user) {
-    return <div className="surface p-10 text-center">Connectez-vous pour gérer votre équipe.</div>;
+    return <div className="surface p-10 text-center">Ligue-se para gerir a sua equipa.</div>;
   }
 
   const create = async () => {
-    if (newName.trim().length < 2) return toast.error("Nom trop court");
+    if (newName.trim().length < 2) return toast.error("Nome demasiado curto");
     setBusy(true);
     try {
       await api.post("/organizations", { name: newName.trim() });
-      toast.success("Organisation créée");
+      toast.success("Organização criada");
       setOpenCreate(false); setNewName("");
       await refresh();
     } catch (e) {
@@ -63,11 +63,11 @@ export default function Team() {
   };
 
   const join = async () => {
-    if (joinCode.trim().length < 4) return toast.error("Code invalide");
+    if (joinCode.trim().length < 4) return toast.error("Código inválido");
     setBusy(true);
     try {
       await api.post("/organizations/join", { code: joinCode.trim().toUpperCase() });
-      toast.success("Équipe rejointe");
+      toast.success("Equipa aderida");
       setOpenJoin(false); setJoinCode("");
       await refresh();
     } catch (e) {
@@ -76,10 +76,10 @@ export default function Team() {
   };
 
   const leave = async () => {
-    if (!window.confirm("Quitter cette organisation ? Vous perdrez l'accès au branding partagé.")) return;
+    if (!window.confirm("Sair desta organização? Perderá o acesso ao branding partilhado.")) return;
     try {
       await api.post("/organizations/leave");
-      toast.success("Vous avez quitté l'équipe");
+      toast.success("Saiu da equipa");
       await refresh();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Impossível sair");
@@ -87,24 +87,24 @@ export default function Team() {
   };
 
   const removeMember = async (uid, name) => {
-    if (!window.confirm(`Retirer ${name || uid} de l'équipe ?`)) return;
+    if (!window.confirm(`Remover ${name || uid} da equipa?`)) return;
     try {
       await api.delete(`/organizations/members/${uid}`);
-      toast.success("Membre retiré");
+      toast.success("Membro removido");
       await refresh();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Eliminação impossível");
+      toast.error(e?.response?.data?.detail || "Não foi possível eliminar");
     }
   };
 
   const transferOwnership = async (uid, name) => {
     if (!window.confirm(
-      `Transférer la propriété de l'équipe à ${name || uid} ?\n\n` +
-      `Passará a ser administrador. Esta ação só é reversível se o novo proprietário lhe voltar a transferir a propriedade.`
+      `Transferir a propriedade da equipa para ${name || uid} ?\n\n` +
+      `Passará a admin. Esta ação só é reversível se o novo proprietário lhe voltar a transferir a propriedade.`
     )) return;
     try {
       await api.post("/organizations/transfer-ownership", { new_owner_user_id: uid });
-      toast.success(`Propriété transférée à ${name}`);
+      toast.success(`Propriedade transferida para ${name}`);
       await refresh();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Transferência impossível");
@@ -112,14 +112,14 @@ export default function Team() {
   };
 
   const invite = async () => {
-    if (!/@/.test(inviteEmail)) return toast.error("Email invalide");
+    if (!/@/.test(inviteEmail)) return toast.error("E-mail inválido");
     setBusy(true);
     try {
       const { data } = await api.post("/organizations/invite",
         { email: inviteEmail.trim(), role: inviteRole });
       toast.success(data.email_status === "sent"
         ? `Convite enviado para ${inviteEmail}`
-        : `Code communiqué : partagez-le manuellement`);
+        : `Código comunicado: partilhe-o manualmente`);
       setOpenInvite(false); setInviteEmail("");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Convite impossível");
@@ -131,19 +131,18 @@ export default function Team() {
     try {
       await navigator.clipboard.writeText(state.org_code);
       setCopied(true); setTimeout(() => setCopied(false), 1500);
-      toast.success("Code copié");
+      toast.success("Código copiado");
     } catch { toast.error("Cópia impossível"); }
   };
 
-  if (loading) return <div className="surface p-10 text-center">Chargement…</div>;
+  if (loading) return <div className="surface p-10 text-center">A carregar…</div>;
 
   // Not in an org → create or join
   if (!state?.in_org) {
     return (
       <div className="grid gap-10">
-        <SectionTitle over="ConstruPilot Équipe" title="Partagez votre identité pro entre collègues">
-          Créez une organisation et invitez vos collaborateurs : ils utiliseront le même logo,
-          les mêmes coordonnées et la même charte sur tous les PDF, sans reconfigurer.
+        <SectionTitle over="ConstruPilot Equipa" title="Partilhe a sua identidade profissional entre colegas">
+          Crie uma organização e convide os seus colaboradores: eles utilizarão o mesmo logótipo, os mesmos contactos e a mesma identidade em todos os PDF, sem reconfigurar.
         </SectionTitle>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -152,36 +151,36 @@ export default function Team() {
               <div className="h-10 w-10 grid place-items-center bg-primary/10 rounded-sm">
                 <Building2 className="h-5 w-5 text-primary" />
               </div>
-              <p className="font-display text-xl font-bold">Créer une organisation</p>
+              <p className="font-display text-xl font-bold">Criar uma organização</p>
             </div>
             <p className="text-sm text-muted-foreground">
-              Vous devenez propriétaire. Votre branding actuel est repris automatiquement.
+              Torna-se proprietário. A sua imagem atual é retomada automaticamente.
             </p>
             <Dialog open={openCreate} onOpenChange={setOpenCreate}>
               <DialogTrigger asChild>
                 <Button data-testid="team-create-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                  <Building2 className="h-4 w-4" /> Créer mon équipe
+                  <Building2 className="h-4 w-4" /> Criar a minha equipa
                 </Button>
               </DialogTrigger>
               <DialogContent className="rounded-sm">
                 <DialogHeader>
-                  <DialogTitle>Nouvelle organisation</DialogTitle>
-                  <DialogDescription>Le nom qui apparaîtra pour vos membres.</DialogDescription>
+                  <DialogTitle>Nova organização</DialogTitle>
+                  <DialogDescription>O nome que aparecerá para os seus membros.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-2">
-                  <Label>Nom de l'organisation</Label>
+                  <Label>Nome da organização</Label>
                   <Input value={newName} onChange={(e) => setNewName(e.target.value)}
                     maxLength={120} placeholder="BTP Construction SAS"
                     data-testid="team-create-name" className="rounded-sm h-11" />
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setOpenCreate(false)} className="rounded-sm">
-                    Annuler
+                    Cancelar
                   </Button>
                   <Button onClick={create} disabled={busy} data-testid="team-create-confirm"
                     className="rounded-sm hover:bg-orange-600 hover:text-white">
-                    Créer
+                    Criar
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -193,35 +192,35 @@ export default function Team() {
               <div className="h-10 w-10 grid place-items-center bg-primary/10 rounded-sm">
                 <UserPlus className="h-5 w-5 text-primary" />
               </div>
-              <p className="font-display text-xl font-bold">Rejoindre une équipe</p>
+              <p className="font-display text-xl font-bold">Juntar-se a uma equipa</p>
             </div>
             <p className="text-sm text-muted-foreground">
-              Saisissez le code d'invitation reçu par email ou communiqué par votre collègue.
+              Insira o código de convite recebido por email ou comunicado pelo seu colega.
             </p>
             <Dialog open={openJoin} onOpenChange={setOpenJoin}>
               <DialogTrigger asChild>
                 <Button variant="outline" data-testid="team-join-btn" className="rounded-sm gap-2">
-                  <UserPlus className="h-4 w-4" /> Saisir le code
+                  <UserPlus className="h-4 w-4" /> Inserir o código
                 </Button>
               </DialogTrigger>
               <DialogContent className="rounded-sm">
                 <DialogHeader>
-                  <DialogTitle>Rejoindre une organisation</DialogTitle>
-                  <DialogDescription>Format : 4 lettres - 4 chiffres (ex : ABCD-1234).</DialogDescription>
+                  <DialogTitle>Aderir a uma organização</DialogTitle>
+                  <DialogDescription>Formato: 4 letras - 4 algarismos (ex.: ABCD-1234).</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-2">
-                  <Label>Code d'invitation</Label>
+                  <Label>Código de convite</Label>
                   <Input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                     maxLength={16} placeholder="ABCD-1234"
                     data-testid="team-join-code" className="rounded-sm h-11 num tracking-widest" />
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setOpenJoin(false)} className="rounded-sm">
-                    Annuler
+                    Cancelar
                   </Button>
                   <Button onClick={join} disabled={busy} data-testid="team-join-confirm"
                     className="rounded-sm hover:bg-orange-600 hover:text-white">
-                    Rejoindre
+                    Aderir
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -236,15 +235,15 @@ export default function Team() {
   const isAdmin = state.role === "owner" || state.role === "admin";
   return (
     <div className="grid gap-10">
-      <SectionTitle over={`Organisation · ${state.role}`} title={state.name}>
-        Votre équipe utilise une identité visuelle commune sur tous les exports PDF.
+      <SectionTitle over={`Organização · ${state.role}`} title={state.name}>
+        A sua equipa utiliza uma identidade visual comum em todas as exportações PDF.
       </SectionTitle>
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="surface p-6 grid gap-3" data-testid="team-code-card">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <p className="overline">Code d'invitation</p>
+            <p className="overline">Código de convite</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge className="rounded-sm bg-primary text-primary-foreground num tracking-widest text-lg py-2 px-4"
@@ -257,14 +256,14 @@ export default function Team() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Partagez ce code à vos collègues, ou envoyez-leur une invitation email.
+            Partilhe este código com os seus colegas, ou envie-lhes um convite por email.
           </p>
         </div>
 
         <div className="surface p-6 grid gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            <p className="overline">Membres</p>
+            <p className="overline">Membros</p>
           </div>
           <p className="num font-display text-3xl font-extrabold" data-testid="team-member-count">
             {state.member_count}
@@ -274,7 +273,7 @@ export default function Team() {
         <div className="surface p-6 grid gap-3">
           <div className="flex items-center gap-2">
             <Crown className="h-5 w-5 text-primary" />
-            <p className="overline">Votre rôle</p>
+            <p className="overline">A sua função</p>
           </div>
           <p className="font-display text-2xl font-bold capitalize">{state.role}</p>
           <div className="flex gap-2">
@@ -283,29 +282,29 @@ export default function Team() {
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="team-invite-btn"
                           className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-                    <Mail className="h-3 w-3" /> Inviter
+                    <Mail className="h-3 w-3" /> Convidar
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-sm">
                   <DialogHeader>
-                    <DialogTitle>Inviter un collègue</DialogTitle>
+                    <DialogTitle>Convidar um colega</DialogTitle>
                     <DialogDescription>
-                      L'convite ser-lhe-á enviado por e-mail com o código de'équipe.
+                      O convite será enviado por email com o código da equipa.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-2">
                     <Label>Email</Label>
                     <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
-                           placeholder="colega@empresa.pt" data-testid="team-invite-email"
+                           placeholder="collegue@entreprise.fr" data-testid="team-invite-email"
                            className="rounded-sm h-11" />
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setOpenInvite(false)} className="rounded-sm">
-                      Annuler
+                      Cancelar
                     </Button>
                     <Button onClick={invite} disabled={busy} data-testid="team-invite-send"
                             className="rounded-sm hover:bg-orange-600 hover:text-white">
-                      Envoyer l'invitation
+                      Enviar o convite
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -313,14 +312,14 @@ export default function Team() {
             )}
             <Button size="sm" variant="outline" onClick={leave} data-testid="team-leave-btn"
                     className="rounded-sm gap-2 text-destructive">
-              <LogOut className="h-3 w-3" /> Quitter
+              <LogOut className="h-3 w-3" /> Sair
             </Button>
           </div>
         </div>
       </div>
 
       <div className="surface p-6" data-testid="team-members-list">
-        <p className="overline mb-4">Membres de l'équipe</p>
+        <p className="overline mb-4">Membros da equipa</p>
         <div className="grid gap-2">
           {state.members?.map((m) => (
             <div key={m.user_id}
@@ -340,7 +339,7 @@ export default function Team() {
                 </div>
                 <p className="text-xs text-muted-foreground num">
                   {m.email}
-                  {m.joined_org_at && ` · rejoint le ${new Date(m.joined_org_at).toLocaleDateString("pt-PT")}`}
+                  {m.joined_org_at && ` · aderiu em ${new Date(m.joined_org_at).toLocaleDateString("pt-PT")}`}
                 </p>
               </div>
               {isAdmin && m.org_role !== "owner" && m.user_id !== user.user_id && (
@@ -350,13 +349,13 @@ export default function Team() {
                             onClick={() => transferOwnership(m.user_id, m.name || m.email)}
                             data-testid={`team-transfer-${m.user_id}`}
                             className="rounded-sm gap-1 text-primary">
-                      <ArrowRightLeft className="h-3 w-3" /> Transférer
+                      <ArrowRightLeft className="h-3 w-3" /> Transferir
                     </Button>
                   )}
                   <Button size="sm" variant="ghost" onClick={() => removeMember(m.user_id, m.name)}
                           data-testid={`team-remove-${m.user_id}`}
                           className="rounded-sm gap-1 text-destructive">
-                    <Trash2 className="h-3 w-3" /> Retirer
+                    <Trash2 className="h-3 w-3" /> Remover
                   </Button>
                 </div>
               )}

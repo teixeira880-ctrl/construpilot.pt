@@ -48,7 +48,7 @@ export default function SharedLibraryPanel() {
     try {
       await api.put("/shared-library/level", { level: lvl });
       toast.success(`Gama de preços: ${lvl}`);
-    } catch { toast.error("Não foi possível guardar a gama"); }
+    } catch { toast.error("Impossível guardar a gama"); }
   };
 
   const priceForLevel = (it) =>
@@ -59,7 +59,7 @@ export default function SharedLibraryPanel() {
       <div className="rounded-sm border border-border bg-muted/30 p-4 flex items-center gap-3" data-testid="shared-lib-locked">
         <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
         <p className="text-sm text-muted-foreground">
-          A <b>biblioteca partilhada ConstruPilot</b> (trabalhos com preços baixo/médio/alto) é reservada ao plano <b>Pro Business</b>.
+          La <b>biblioteca partilhada ConstruPilot</b> (trabalhos com preço baixo/médio/alto) está reservada ao plano <b>Pro Business</b>.
         </p>
       </div>
     );
@@ -101,7 +101,7 @@ export default function SharedLibraryPanel() {
           <div className="relative max-w-sm">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)}
-                   placeholder="Procurar trabalho…" className="rounded-sm pl-9"
+                   placeholder="Pesquisar um artigo…" className="rounded-sm pl-9"
                    data-testid="shared-lib-panel-search" />
           </div>
           {loading ? (
@@ -109,7 +109,7 @@ export default function SharedLibraryPanel() {
           ) : (
             <div className="max-h-80 overflow-y-auto divide-y divide-border/60">
               {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Sem trabalhos.</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">Nenhum trabalho.</p>
               ) : items.map((it) => (
                 <div key={it.item_id} className="flex items-center justify-between py-2 gap-3">
                   <div className="min-w-0">
@@ -125,7 +125,7 @@ export default function SharedLibraryPanel() {
             </div>
           )}
           {total > items.length && (
-            <p className="text-xs text-muted-foreground">A mostrar {items.length} / {total}. Refine com a pesquisa.</p>
+            <p className="text-xs text-muted-foreground">Visualização de {items.length} / {total}. Refine com a pesquisa.</p>
           )}
         </div>
       )}

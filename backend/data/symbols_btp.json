@@ -1,0 +1,815 @@
+{
+ "version": "2.0 (septembre 2026)",
+ "source": "ConstruPilot_Bibliotheque_symboles_plans_BTP",
+ "priority_of_sources": [
+  "Légende du plan",
+  "Cartouche et type de plan",
+  "Repères et annotations",
+  "Géométrie vectorielle",
+  "Convention générale"
+ ],
+ "expected_output": [
+  "classe candidate",
+  "coordonnées",
+  "texte associé",
+  "source",
+  "alternatives",
+  "confiance",
+  "statut"
+ ],
+ "safety_rule": "Ne jamais déduire une dimension, un matériau ou une fonction sur la seule ressemblance graphique. La légende du plan fourni reste toujours prioritaire.",
+ "items": [
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Mur porteur",
+   "convention": "Deux traits parallèles épais, souvent pochés",
+   "confusable_with": "Cloison ou voile béton"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Cloison légère",
+   "convention": "Deux traits fins rapprochés",
+   "confusable_with": "Mur maçonné mince"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Mur existant",
+   "convention": "Trait/pochage selon légende de phase",
+   "confusable_with": "Mur projeté"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Mur à démolir",
+   "convention": "Mur barré ou trait discontinu, couleur de phase",
+   "confusable_with": "Mur existant"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Mur projeté",
+   "convention": "Trait fort ou couleur de phase",
+   "confusable_with": "Mur existant"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Porte battante",
+   "convention": "Vantail et arc de rotation",
+   "confusable_with": "Fenêtre ou baie"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Porte double",
+   "convention": "Deux vantaux et deux arcs",
+   "confusable_with": "Double baie"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Porte coulissante",
+   "convention": "Vantail parallèle au mur avec flèche",
+   "confusable_with": "Châssis fixe"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Fenêtre",
+   "convention": "Interruption du mur avec traits de dormant",
+   "confusable_with": "Porte-fenêtre"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Baie vitrée",
+   "convention": "Large ouverture vitrée, plusieurs vantaux",
+   "confusable_with": "Fenêtre composée"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Porte-fenêtre",
+   "convention": "Ouverture vitrée descendant au sol",
+   "confusable_with": "Baie ou porte"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Trémie",
+   "convention": "Contour d’ouverture, diagonales ou croix",
+   "confusable_with": "Réservation"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Escalier montant",
+   "convention": "Marches parallèles et flèche de montée",
+   "confusable_with": "Rampe"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Rampe",
+   "convention": "Contour incliné, flèche et pente",
+   "confusable_with": "Escalier"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Axe de trame",
+   "convention": "Trait mixte fin avec bulle repérée",
+   "confusable_with": "Ligne de cote"
+  },
+  {
+   "category": "Architecture & ouvertures",
+   "name": "Trait de coupe",
+   "convention": "Trait renforcé, flèches et repère",
+   "confusable_with": "Axe"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Ligne de cote",
+   "convention": "Trait fin, attaches, extrémités et valeur",
+   "confusable_with": "Ligne d’objet"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Cote de niveau",
+   "convention": "Triangle/flèche avec altitude",
+   "confusable_with": "Cote linéaire"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Niveau fini",
+   "convention": "Repère altimétrique associé à FINI",
+   "confusable_with": "Niveau brut"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Niveau brut",
+   "convention": "Repère altimétrique associé à BRUT",
+   "confusable_with": "Niveau fini"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Pente",
+   "convention": "Flèche avec pourcentage ou rapport",
+   "confusable_with": "Sens d’écoulement"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Repère de local",
+   "convention": "Nom/numéro au centre d’une zone",
+   "confusable_with": "Note libre"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Repère de détail",
+   "convention": "Cercle repéré renvoyant à un détail",
+   "confusable_with": "Bulle d’axe"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Repère de façade",
+   "convention": "Flèche/cercle orienté vers une façade",
+   "confusable_with": "Repère de coupe"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Nord",
+   "convention": "Flèche orientée avec lettre N",
+   "confusable_with": "Flèche de circulation"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Révision",
+   "convention": "Nuage entourant une modification",
+   "confusable_with": "Limite de zone"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Limite de propriété",
+   "convention": "Trait spécifique suivant légende cadastrale",
+   "confusable_with": "Limite de bâtiment"
+  },
+  {
+   "category": "Cotations, niveaux & repères",
+   "name": "Trait caché",
+   "convention": "Pointillés réguliers",
+   "confusable_with": "Élément à démolir"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Poteau béton",
+   "convention": "Carré/rectangle plein ou hachuré",
+   "confusable_with": "Réservation"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Voile béton",
+   "convention": "Deux faces épaisses avec pochage béton",
+   "confusable_with": "Mur porteur maçonné"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Poutre",
+   "convention": "Rectangle/axe repéré avec section",
+   "confusable_with": "Mur ou linteau"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Linteau",
+   "convention": "Élément horizontal au-dessus d’une baie",
+   "confusable_with": "Poutre"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Dalle béton",
+   "convention": "Contour ou hachure avec épaisseur/niveau",
+   "confusable_with": "Chape"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Dalle portée",
+   "convention": "Dalle avec sens de portée",
+   "confusable_with": "Dallage sur terre-plein"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Dallage",
+   "convention": "Couche béton en contact avec support",
+   "confusable_with": "Dalle portée"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Semelle isolée",
+   "convention": "Rectangle sous poteau, souvent axé",
+   "confusable_with": "Massif béton"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Semelle filante",
+   "convention": "Bande continue sous mur",
+   "confusable_with": "Longrine"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Longrine",
+   "convention": "Poutre de fondation reliant des appuis",
+   "confusable_with": "Semelle filante"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Radier",
+   "convention": "Grande emprise continue de fondation",
+   "confusable_with": "Dallage"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Pieu",
+   "convention": "Cercle plein/repéré en fondation",
+   "confusable_with": "Poteau"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Armatures principales",
+   "convention": "Barres continues avec diamètre/espacement",
+   "confusable_with": "Traits de construction"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Étriers",
+   "convention": "Cadres répétés autour des barres",
+   "confusable_with": "Hachure"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Treillis soudé",
+   "convention": "Quadrillage repéré STxx",
+   "confusable_with": "Carrelage"
+  },
+  {
+   "category": "Béton armé & structure",
+   "name": "Joint de dilatation",
+   "convention": "Double trait interrompant l’ouvrage",
+   "confusable_with": "Fissure"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Parpaing",
+   "convention": "Appareil rectangulaire ou hachure dédiée",
+   "confusable_with": "Brique"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Brique",
+   "convention": "Petits rectangles décalés",
+   "confusable_with": "Parpaing"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Béton cellulaire",
+   "convention": "Blocs légers selon légende",
+   "confusable_with": "Brique creuse"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Pierre",
+   "convention": "Motif irrégulier de moellons",
+   "confusable_with": "Gravier"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Doublage intérieur",
+   "convention": "Fine contre-paroi côté intérieur",
+   "confusable_with": "Cloison"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Isolation thermique",
+   "convention": "Ligne ondulée/zigzag dans une épaisseur",
+   "confusable_with": "Étanchéité"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Isolation rigide",
+   "convention": "Trame régulière en panneaux",
+   "confusable_with": "Doublage"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Enduit",
+   "convention": "Couche mince sur support",
+   "confusable_with": "Peinture"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Chape",
+   "convention": "Couche horizontale mince sur dalle",
+   "confusable_with": "Dalle"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Carrelage",
+   "convention": "Quadrillage régulier de finition",
+   "confusable_with": "Treillis soudé"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Faux plafond",
+   "convention": "Trait suspendu sous plafond avec niveau",
+   "confusable_with": "Plafond structurel"
+  },
+  {
+   "category": "Maçonnerie, isolation & finitions",
+   "name": "Joint de fractionnement",
+   "convention": "Interruption fine localisée dans chape/dallage",
+   "confusable_with": "Joint de dilatation"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Faîtage",
+   "convention": "Ligne haute d’intersection de deux pans",
+   "confusable_with": "Arêtier"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Égout de toiture",
+   "convention": "Bord bas recevant les eaux",
+   "confusable_with": "Rive"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Rive",
+   "convention": "Bord latéral d’un pan",
+   "confusable_with": "Égout"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Arêtier",
+   "convention": "Ligne saillante oblique entre deux pans",
+   "confusable_with": "Noue"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Noue",
+   "convention": "Ligne rentrante collectant les eaux",
+   "confusable_with": "Arêtier"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Sens de pente toiture",
+   "convention": "Flèche du haut vers le bas avec pente",
+   "confusable_with": "Sens d’écoulement EP"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Chevron",
+   "convention": "Éléments parallèles dans le sens de pente",
+   "confusable_with": "Liteau"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Panne",
+   "convention": "Élément horizontal porteur de charpente",
+   "confusable_with": "Faîtage"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Ferme",
+   "convention": "Assemblage triangulé porteur",
+   "confusable_with": "Pignon"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Velux / fenêtre de toit",
+   "convention": "Rectangle intégré au pan de toiture",
+   "confusable_with": "Trémie"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Chéneau",
+   "convention": "Canal collecteur intégré",
+   "confusable_with": "Gouttière"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Gouttière",
+   "convention": "Profil en rive basse",
+   "confusable_with": "Chéneau"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Descente EP",
+   "convention": "Conduite verticale repérée EP",
+   "confusable_with": "Colonne EU"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Étanchéité bicouche",
+   "convention": "Deux couches fines continues relevées",
+   "confusable_with": "Isolation"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Relevé d’étanchéité",
+   "convention": "Membrane remontant sur un relevé vertical",
+   "confusable_with": "Solin"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Solin",
+   "convention": "Pièce de raccord étanche mur/toiture",
+   "confusable_with": "Relevé"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Évacuation toiture-terrasse",
+   "convention": "Naissance/avaloir avec pentes convergentes",
+   "confusable_with": "Siphon de sol"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Trop-plein",
+   "convention": "Sortie de sécurité en acrotère",
+   "confusable_with": "Gargouille EP"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Acrotère",
+   "convention": "Relevé périphérique de toiture-terrasse",
+   "confusable_with": "Garde-corps"
+  },
+  {
+   "category": "Toiture, charpente & étanchéité",
+   "name": "Pare-vapeur",
+   "convention": "Couche continue côté chaud, repérée PV",
+   "confusable_with": "Membrane étanche"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "COLD",
+   "convention": "Eau froide EF Canalisation repérée EF",
+   "confusable_with": "ECS"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "HOT",
+   "convention": "Eau chaude ECS Canalisation repérée ECS",
+   "confusable_with": "Bouclage ECS"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "RETURN",
+   "convention": "Bouclage ECS Retour repéré B/ECS ou BECS",
+   "confusable_with": "ECS aller"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "WASTE",
+   "convention": "Eaux usées EU Canalisation gravitaire repérée EU",
+   "confusable_with": "EP ou EV"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "SOIL",
+   "convention": "Eaux vannes EV Canalisation WC repérée EV",
+   "confusable_with": "EU"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "RAIN",
+   "convention": "Eaux pluviales EP Canalisation repérée EP",
+   "confusable_with": "EU"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "VENT",
+   "convention": "Ventilation primaire Prolongement de chute jusqu’en toiture",
+   "confusable_with": "VMC"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Robinet d’arrêt",
+   "convention": "Symbole de vanne sur conduite",
+   "confusable_with": "Clapet"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Clapet anti-retour",
+   "convention": "Triangle/flèche contrôlant le sens",
+   "confusable_with": "Vanne"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Compteur d’eau",
+   "convention": "Cercle/boîte repéré compteur",
+   "confusable_with": "Débitmètre"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Siphon de sol",
+   "convention": "Carré/cercle avec grille",
+   "confusable_with": "Avaloir EP"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Lavabo",
+   "convention": "Appareil ovale avec robinet",
+   "confusable_with": "Évier"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Évier",
+   "convention": "Cuve rectangulaire avec bonde",
+   "confusable_with": "Lavabo"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "WC",
+   "convention": "Cuvette et réservoir en vue de dessus",
+   "confusable_with": "Bidet"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Douche",
+   "convention": "Receveur avec bonde et parois",
+   "confusable_with": "Siphon de sol"
+  },
+  {
+   "category": "Plomberie, sanitaires & réseaux",
+   "name": "Baignoire",
+   "convention": "Grand rectangle arrondi avec vidage",
+   "confusable_with": "Receveur de douche"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "Point lumineux plafond",
+   "convention": "Cercle avec croix",
+   "confusable_with": "Boîte de dérivation"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "Applique murale",
+   "convention": "Demi-cercle au contact d’un mur",
+   "confusable_with": "Point lumineux"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "SWI",
+   "convention": "Interrupteur simple Repère I/S avec liaison de commande",
+   "confusable_with": "Prise"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "TWO",
+   "convention": "Va-et-vient Interrupteur repéré VV",
+   "confusable_with": "Interrupteur simple"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "SOC",
+   "convention": "Prise 2P+T Cercle repéré prise/PC",
+   "confusable_with": "Prise RJ45"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "DED",
+   "convention": "Prise spécialisée Prise avec usage ou calibre",
+   "confusable_with": "Prise standard"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "CAB",
+   "convention": "Sortie de câble Cercle/repère SC",
+   "confusable_with": "Point lumineux"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "PANEL",
+   "convention": "Tableau électrique Rectangle repéré TD/TGBT",
+   "confusable_with": "Coffret communication"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "JUN",
+   "convention": "Boîte de dérivation Carré/cercle avec repère BD",
+   "confusable_with": "Luminaire"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "RJ4",
+   "convention": "RJ45 Prise repérée RJ45/data",
+   "confusable_with": "Prise électrique"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "TV",
+   "convention": "Télévision Prise repérée TV",
+   "confusable_with": "RJ45"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "Détecteur de fumée",
+   "convention": "Cercle repéré DAAF/DF",
+   "confusable_with": "Détecteur de présence"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "Détecteur de mouvement",
+   "convention": "Cône ou arcs de couverture",
+   "confusable_with": "Caméra"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "BAES",
+   "convention": "Bloc secours BAES Rectangle repéré BAES avec orientation",
+   "confusable_with": "Luminaire"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "ALA",
+   "convention": "Alarme incendie Déclencheur/sirène repéré",
+   "confusable_with": "Interphone"
+  },
+  {
+   "category": "Électricité, courants faibles & sécurité",
+   "name": "Terre",
+   "convention": "Barres horizontales décroissantes",
+   "confusable_with": "Paratonnerre"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "RADIAT",
+   "convention": "Radiateur Rectangle strié contre un mur",
+   "confusable_with": "Convecteur"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "Plancher chauffant",
+   "convention": "Serpentin régulier dans une zone",
+   "confusable_with": "Canalisation"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "BOILER",
+   "convention": "Chaudière Boîte technique repérée chaudière",
+   "confusable_with": "Ballon ECS"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "HEATPU",
+   "convention": "Pompe à chaleur Unités intérieure/extérieure repérées PAC",
+   "confusable_with": "Groupe froid"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "AC_IN",
+   "convention": "Unité intérieure climatisation Boîtier mural avec soufflage",
+   "confusable_with": "Bouche de ventilation"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "AC_OUT",
+   "convention": "Unité extérieure Caisson avec ventilateur",
+   "confusable_with": "Extracteur"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "Bouche de soufflage",
+   "convention": "Grille avec flèches sortantes",
+   "confusable_with": "Bouche de reprise"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "Bouche de reprise",
+   "convention": "Grille avec flèches entrantes",
+   "confusable_with": "Soufflage"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "Bouche extraction VMC",
+   "convention": "Cercle/grille repéré extraction",
+   "confusable_with": "Diffuseur"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "Gaine circulaire",
+   "convention": "Deux lignes parallèles ou cercle en coupe",
+   "confusable_with": "Canalisation"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "DUCT_R",
+   "convention": "Gaine rectangulaire Double trait avec dimensions LxH",
+   "confusable_with": "Poutre"
+  },
+  {
+   "category": "Chauffage, ventilation & climatisation",
+   "name": "FIRE_D",
+   "convention": "Clapet coupe-feu Repère CCF sur gaine",
+   "confusable_with": "Registre"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Regard",
+   "convention": "Carré/cercle repéré avec tampon",
+   "confusable_with": "Avaloir"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Regard de branchement",
+   "convention": "Petit regard en limite de réseau",
+   "confusable_with": "Boîte électrique"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Avaloir",
+   "convention": "Grille collectant les eaux de surface",
+   "confusable_with": "Siphon"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Caniveau",
+   "convention": "Ligne double avec grille et pente",
+   "confusable_with": "Bordure"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "BURIED",
+   "convention": "Réseau enterré Ligne codifiée avec nature et diamètre",
+   "confusable_with": "Limite parcellaire"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "SLEEVE",
+   "convention": "Fourreau Conduit de réservation coloré/repéré",
+   "confusable_with": "Canalisation active"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "DRAIN",
+   "convention": "Drain périphérique Conduit perforé autour du bâtiment",
+   "confusable_with": "Réseau EP"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Fosse toutes eaux",
+   "convention": "Cuve enterrée repérée",
+   "confusable_with": "Réservoir EP"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Bassin de rétention",
+   "convention": "Emprise/cuve avec volume",
+   "confusable_with": "Fosse"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Courbe de niveau",
+   "convention": "Ligne topographique avec altitude",
+   "confusable_with": "Limite de propriété"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Talus",
+   "convention": "Hachures orientées haut/bas de pente",
+   "confusable_with": "Escalier extérieur"
+  },
+  {
+   "category": "VRD, assainissement & extérieur",
+   "name": "Borne altimétrique",
+   "convention": "Point fixe avec altitude",
+   "confusable_with": "Point topographique"
+  }
+ ]
+}

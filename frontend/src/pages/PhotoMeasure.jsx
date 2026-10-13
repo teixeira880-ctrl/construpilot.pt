@@ -50,10 +50,10 @@ export default function PhotoMeasure() {
     if (!measures.length) return;
     const lines = measures.map((m, i) => (
       m.type === "distance"
-        ? { designation: `Mesure photo — longueur ${i + 1}`, unit: "ml",
-            qty: Number((m.value / 1000).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
-        : { designation: `Mesure photo — surface ${i + 1}`, unit: "m²",
-            qty: Number((m.value / 1e6).toFixed(2)) || 0, unit_price_ht: 0, category: "Mesure photo" }
+        ? { designation: `Medição em fotografia — comprimento ${i + 1}`, unit: "ml",
+            qty: Number((m.value / 1000).toFixed(2)) || 0, unit_price_ht: 0, category: "Medição em fotografia" }
+        : { designation: `Medição em fotografia — área ${i + 1}`, unit: "m²",
+            qty: Number((m.value / 1e6).toFixed(2)) || 0, unit_price_ht: 0, category: "Medição em fotografia" }
     ));
     sessionStorage.setItem("construpilot_pending_ouvrages", JSON.stringify(lines));
     toast.success(`${lines.length} medição(ões) enviada(s) para o orçamento`);
@@ -61,7 +61,7 @@ export default function PhotoMeasure() {
   };
 
   const loadFile = (file) => {
-    if (!file || !file.type.startsWith("image/")) { toast.error("Choisissez une image (photo)"); return; }
+    if (!file || !file.type.startsWith("image/")) { toast.error("Escolha uma imagem (foto)"); return; }
     const url = URL.createObjectURL(file);
     const im = new Image();
     im.onload = () => {
@@ -72,7 +72,7 @@ export default function PhotoMeasure() {
       setMeasures([]);
       setMode("calibrate");
     };
-    im.onerror = () => toast.error("Image illisible");
+    im.onerror = () => toast.error("Imagem ilegível");
     im.src = url;
   };
 
@@ -91,20 +91,20 @@ export default function PhotoMeasure() {
       setPending(next);
       if (next.length === 2) {
         const px = dist(next[0], next[1]);
-        if (px < 4) { toast.error("Trait trop court — recommencez sur le bord de la feuille"); setPending([]); return; }
+        if (px < 4) { toast.error("Traço demasiado curto — recomece na borda da folha"); setPending([]); return; }
         const scale = A4[a4Edge] / px;
         setMmPerPx(scale);
         setPending([]);
         setMode("distance");
-        toast.success("Échelle calibrée — vous pouvez mesurer");
+        toast.success("Escala calibrada — pode medir");
       }
       return;
     }
-    if (!mmPerPx) { toast.error("Calibra primeiro com a folha A4"); return; }
+    if (!mmPerPx) { toast.error("Calibre primeiro com a folha A4"); return; }
     if (mode === "distance") {
       const next = [...pending, p];
       if (next.length === 2) {
-        if (dist(next[0], next[1]) < 4) { toast.error("Trait trop court — cliquez 2 points distincts"); setPending([]); return; }
+        if (dist(next[0], next[1]) < 4) { toast.error("Traço demasiado curto — clique em 2 pontos distintos"); setPending([]); return; }
         const mm = dist(next[0], next[1]) * mmPerPx;
         setMeasures((m) => [...m, { type: "distance", pts: next, value: mm }]);
         setPending([]);
@@ -119,7 +119,7 @@ export default function PhotoMeasure() {
   };
 
   const closePolygon = () => {
-    if (pending.length < 3) { toast.error("Cliquez au moins 3 points pour une surface"); return; }
+    if (pending.length < 3) { toast.error("Clique pelo menos 3 pontos para uma superfície"); return; }
     const area = polyArea(pending) * mmPerPx * mmPerPx;
     setMeasures((m) => [...m, { type: "area", pts: pending, value: area }]);
     setPending([]);
@@ -133,11 +133,10 @@ export default function PhotoMeasure() {
     <div className="max-w-5xl mx-auto p-4 space-y-4" data-testid="photo-measure-page">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Ruler className="h-6 w-6 text-primary" /> Mesurer sur photo
+          <Ruler className="h-6 w-6 text-primary" /> Medir em fotografia
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Posez une feuille <b>A4</b> (21 × 29,7 cm) dans le plan à mesurer (mur ou sol), prenez la photo,
-          puis calibrez l'échelle sur un bord de la feuille. Vous pourrez ensuite mesurer distances et surfaces.
+          Coloque uma folha <b>A4</b> (21 × 29,7 cm) na planta a medir (parede ou chão), tire a foto e calibre a escala numa margem da folha. Poderá depois medir distâncias e superfícies.
         </p>
       </div>
 
@@ -147,18 +146,18 @@ export default function PhotoMeasure() {
                data-testid="pm-gallery-input" />
         <Button variant="outline" className="gap-2" onClick={() => document.getElementById("pm-gallery").click()}
                 data-testid="pm-gallery-btn">
-          <Images className="h-4 w-4" /> Galerie
+          <Images className="h-4 w-4" /> Galeria
         </Button>
         <input type="file" accept="image/*" capture="environment" className="hidden" id="pm-cam"
                onChange={(e) => { loadFile(e.target.files?.[0]); e.target.value = ""; }}
                data-testid="pm-cam-input" />
         <Button variant="outline" className="gap-2" onClick={() => document.getElementById("pm-cam").click()}
                 data-testid="pm-cam-btn">
-          <Camera className="h-4 w-4" /> Prendre une photo
+          <Camera className="h-4 w-4" /> Tirar uma foto
         </Button>
         {imgSrc && (
           <Button variant="ghost" className="gap-2 text-muted-foreground" onClick={resetAll} data-testid="pm-reset-btn">
-            <RotateCcw className="h-4 w-4" /> Réinitialiser
+            <RotateCcw className="h-4 w-4" /> Reiniciar
           </Button>
         )}
       </div>
@@ -169,40 +168,40 @@ export default function PhotoMeasure() {
           <div className="flex flex-wrap items-center gap-2">
             {mode === "calibrate" && (
               <>
-                <span className="text-sm font-semibold">1. Calibrer sur le bord :</span>
+                <span className="text-sm font-semibold">1. Calibrar na borda:</span>
                 <div className="flex rounded-md overflow-hidden border border-border">
                   <button onClick={() => setA4Edge("long")}
                           className={`px-3 py-1.5 text-sm ${a4Edge === "long" ? "bg-primary text-primary-foreground" : "bg-background"}`}
-                          data-testid="pm-edge-long">Grand côté 29,7 cm</button>
+                          data-testid="pm-edge-long">Lado maior 29,7 cm</button>
                   <button onClick={() => setA4Edge("short")}
                           className={`px-3 py-1.5 text-sm ${a4Edge === "short" ? "bg-primary text-primary-foreground" : "bg-background"}`}
-                          data-testid="pm-edge-short">Petit côté 21 cm</button>
+                          data-testid="pm-edge-short">Lado pequeno 21 cm</button>
                 </div>
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Info className="h-3.5 w-3.5" /> Cliquez les 2 coins de ce bord sur la feuille.
+                  <Info className="h-3.5 w-3.5" /> Clique nos 2 cantos deste limite na folha.
                 </span>
               </>
             )}
             {mmPerPx && (
               <>
                 <span className="flex items-center gap-1 text-sm text-primary font-semibold" data-testid="pm-calibrated">
-                  <CheckCircle2 className="h-4 w-4" /> Calibré
+                  <CheckCircle2 className="h-4 w-4" /> Calibrado
                 </span>
                 <div className="flex rounded-md overflow-hidden border border-border ml-2">
                   <button onClick={() => { setMode("distance"); setPending([]); }}
                           className={`px-3 py-1.5 text-sm flex items-center gap-1 ${mode === "distance" ? "bg-primary text-primary-foreground" : "bg-background"}`}
-                          data-testid="pm-mode-distance"><Move className="h-3.5 w-3.5" /> Distance</button>
+                          data-testid="pm-mode-distance"><Move className="h-3.5 w-3.5" /> Distância</button>
                   <button onClick={() => { setMode("area"); setPending([]); }}
                           className={`px-3 py-1.5 text-sm flex items-center gap-1 ${mode === "area" ? "bg-primary text-primary-foreground" : "bg-background"}`}
-                          data-testid="pm-mode-area"><Square className="h-3.5 w-3.5" /> Surface</button>
+                          data-testid="pm-mode-area"><Square className="h-3.5 w-3.5" /> Superfície</button>
                 </div>
                 <button onClick={() => { setMode("calibrate"); setPending([]); setMmPerPx(null); }}
                         className="text-xs text-muted-foreground underline ml-1" data-testid="pm-recalibrate">
-                  Recalibrer
+                  Recalibrar
                 </button>
                 {mode === "area" && (
                   <Button size="sm" className="ml-1" onClick={closePolygon} data-testid="pm-close-polygon">
-                    Terminar a área
+                    Terminar a superfície
                   </Button>
                 )}
               </>
@@ -211,7 +210,7 @@ export default function PhotoMeasure() {
 
           {/* Image + overlay SVG */}
           <div className="relative w-full select-none" style={{ touchAction: "none" }}>
-            <img src={imgSrc} alt="photo à mesurer" className="w-full h-auto rounded-md block" draggable={false} />
+            <img src={imgSrc} alt="foto a medir" className="w-full h-auto rounded-md block" draggable={false} />
             <svg ref={svgRef} viewBox={`0 0 ${dims.w} ${dims.h}`}
                  onClick={onSvgClick}
                  className="absolute inset-0 w-full h-full cursor-crosshair"
@@ -261,7 +260,7 @@ export default function PhotoMeasure() {
             </svg>
           </div>
 
-          {/* Resultados */}
+          {/* Résultats */}
           {measures.length > 0 && (
             <div className="space-y-1" data-testid="pm-results">
               <div className="flex items-center justify-between">
@@ -275,7 +274,7 @@ export default function PhotoMeasure() {
                      data-testid={`pm-result-${i}`}>
                   <span className="flex items-center gap-2">
                     {m.type === "distance" ? <Move className="h-3.5 w-3.5 text-primary" /> : <Square className="h-3.5 w-3.5 text-primary" />}
-                    {m.type === "distance" ? "Distance" : "Surface"}
+                    {m.type === "distance" ? "Distância" : "Superfície"}
                   </span>
                   <span className="font-semibold">{m.type === "distance" ? fmtLen(m.value) : fmtArea(m.value)}</span>
                   <button onClick={() => setMeasures((arr) => arr.filter((_, j) => j !== i))}
@@ -291,27 +290,27 @@ export default function PhotoMeasure() {
 
       {!imgSrc && (
         <Card className="p-8 text-center" data-testid="pm-empty-guide">
-          <p className="text-sm font-semibold mb-4">Comment bien préparer votre photo</p>
+          <p className="text-sm font-semibold mb-4">Como preparar bem a sua foto</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
             {/* Repère visuel A4 (proportions 210 × 297) */}
             <div className="relative">
               <div className="mx-auto border-2 border-dashed border-primary rounded-md bg-primary/5 flex items-center justify-center"
                    style={{ width: 105, height: 148 }} data-testid="pm-a4-frame">
                 <span className="text-[11px] font-semibold text-primary text-center leading-tight">
-                  Feuille A4<br />21 × 29,7 cm
+                  Folha A4<br />21 × 29,7 cm
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2">Posez-la à plat dans le plan à mesurer</p>
+              <p className="text-[11px] text-muted-foreground mt-2">Coloque-a plana na planta a medir</p>
             </div>
             <ol className="text-left text-sm text-muted-foreground space-y-2 max-w-xs list-decimal list-inside">
-              <li>Placez une feuille <b>A4</b> sur le mur ou le sol à mesurer.</li>
-              <li>Prenez la photo <b>bien en face</b>, sans angle, feuille entièrement visible.</li>
-              <li>Calibra a escala clicando nos 2 cantos de uma extremidade da folha.</li>
-              <li>Mesurez ensuite distances et surfaces.</li>
+              <li>Coloque uma folha <b>A4</b> na parede ou no chão a medir.</li>
+              <li>Tire a foto <b>bem de frente</b>, sem ângulo, folha totalmente visível.</li>
+              <li>Calibre a escala clicando nos 2 cantos de um limite da folha.</li>
+              <li>Meça depois distâncias e superfícies.</li>
             </ol>
           </div>
           <p className="text-xs text-muted-foreground mt-6 flex items-center justify-center gap-1">
-            <Info className="h-3.5 w-3.5" /> Plus la feuille est prise de face, plus la mesure est précise.
+            <Info className="h-3.5 w-3.5" /> Quanto mais frontal a folha, mais precisa a medição.
           </p>
         </Card>
       )}

@@ -10,7 +10,7 @@ export const useConfirm = () => useContext(ConfirmContext);
 
 const DEFAULTS = {
   title: "Confirmar a ação",
-  description: "Cette action est irréversible.",
+  description: "Esta ação é irreversível.",
   confirmLabel: "Confirmar",
   cancelLabel: "Cancelar",
   destructive: true,

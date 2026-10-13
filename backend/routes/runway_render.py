@@ -58,7 +58,7 @@ def _client():
         from runwayml import AsyncRunwayML
         secret = os.environ.get("RUNWAYML_API_SECRET")
         if not secret:
-            raise HTTPException(status_code=503, detail="Rendu IA indisponible (clé Runway manquante)")
+            raise HTTPException(status_code=503, detail="Renderização IA indisponível (chave Runway em falta)")
         _runway = AsyncRunwayML(api_key=secret)
     return _runway
 
@@ -113,15 +113,15 @@ async def _poll_and_store(render_id: str, task_id: str):
             if status == "SUCCEEDED":
                 break
             if status in {"FAILED", "CANCELLED"}:
-                raise RuntimeError(getattr(task, "failure", None) or "Échec de la génération Runway")
+                raise RuntimeError(getattr(task, "failure", None) or "Falha na geração Runway")
             if asyncio.get_running_loop().time() >= deadline:
-                raise RuntimeError("Délai de génération dépassé")
+                raise RuntimeError("Prazo de geração excedido")
             await asyncio.sleep(delay)
             delay = min(delay * 1.4, 15)
 
         outputs = getattr(task, "output", None) or []
         if not outputs:
-            raise RuntimeError("Aucun résultat renvoyé par Runway")
+            raise RuntimeError("Nenhum resultado devolvido pela Runway")
         url = outputs[0]
 
         async with httpx.AsyncClient(timeout=180, follow_redirects=True) as hc:
@@ -160,42 +160,42 @@ async def generate(file: UploadFile = File(None),
                    photo_id: str = Form(""),
                    user=Depends(pro_required)):
     if kind not in {"image", "video"}:
-        raise HTTPException(status_code=400, detail="Type invalide (image|video)")
+        raise HTTPException(status_code=400, detail="Tipo inválido (image|video)")
     if ratio not in ALLOWED_RATIOS:
-        raise HTTPException(status_code=400, detail="Format invalide")
+        raise HTTPException(status_code=400, detail="Formato inválido")
     duration = 5 if kind == "image" else max(2, min(10, int(duration or 5)))
 
     # Quota mensuel (les admins sont illimités)
     q = await _quota_status(user)
     if not q["unlimited"] and q["remaining"] <= 0:
         raise HTTPException(status_code=403,
-                            detail=f"Quota mensuel de rendus IA atteint ({q['limit']}/mois). Réessayez le mois prochain.")
+                            detail=f"Quota mensal de renderizações IA atingida ({q['limit']}/mois). Réessayez le mois prochain.")
 
     # Source : photo d'un projet existant OU fichier importé
     if project_id and photo_id:
         proj = await db.projects.find_one(
             {"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0, "photos": 1})
         if not proj:
-            raise HTTPException(status_code=404, detail="Projet introuvable")
+            raise HTTPException(status_code=404, detail="Projeto não encontrado")
         photo = next((p for p in (proj.get("photos") or []) if p.get("photo_id") == photo_id), None)
         if not photo or not photo.get("storage_path"):
-            raise HTTPException(status_code=404, detail="Photo introuvable dans le projet")
+            raise HTTPException(status_code=404, detail="Fotografia não encontrada no projeto")
         try:
             data, _ = await asyncio.to_thread(storage.get_object, photo["storage_path"])
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"Lecture de la photo impossible: {e}")
+            raise HTTPException(status_code=502, detail=f'Leitura da fotografia impossível: {e}')
     else:
         if file is None:
-            raise HTTPException(status_code=400, detail="Importez une photo ou choisissez-en une dans un projet")
+            raise HTTPException(status_code=400, detail="Importe uma fotografia ou escolha uma num projeto")
         data = await file.read()
     if not data:
-        raise HTTPException(status_code=400, detail="Fichier vide")
+        raise HTTPException(status_code=400, detail="Ficheiro vazio")
     if len(data) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Image trop lourde (max 12 Mo)")
+        raise HTTPException(status_code=413, detail="Imagem demasiado pesada (máx. 12 MB)")
     try:
         jpeg = await asyncio.to_thread(_downscale_to_jpeg, data)
     except Exception:
-        raise HTTPException(status_code=400, detail="Image illisible")
+        raise HTTPException(status_code=400, detail="Imagem ilegível")
 
     render_id = f"rw_{uuid.uuid4().hex[:12]}"
     # stocke l'image d'entrée (« avant ») pour l'historique
@@ -208,8 +208,7 @@ async def generate(file: UploadFile = File(None),
     data_uri = "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")
     clean_prompt = (prompt or "").strip()[:1000]
     base_prompt = clean_prompt or (
-        "Rendu photoréaliste du chantier une fois les travaux terminés : "
-        "finitions propres, matériaux réalistes, même angle de prise de vue et même architecture"
+        "Renderização fotorrealista da obra depois de concluídos os trabalhos: acabamentos limpos, materiais realistas, mesmo ângulo de captação e mesma arquitetura"
     )
 
     client = _client()
@@ -225,7 +224,7 @@ async def generate(file: UploadFile = File(None),
         else:
             created = await client.text_to_image.create(
                 model="gen4_image",
-                prompt_text="Utilise @AvantChantier comme référence exacte du chantier existant. " + base_prompt,
+                prompt_text="Utiliza @AvantChantier como referência exata da obra existente. " + base_prompt,
                 reference_images=[{"uri": data_uri, "tag": "AvantChantier"}],
                 ratio=ratio,
             )
@@ -233,12 +232,12 @@ async def generate(file: UploadFile = File(None),
         raise
     except Exception as e:
         logger.error("Soumission Runway échouée: %s", e)
-        raise HTTPException(status_code=502, detail=f"Runway a refusé la demande: {str(e)[:200]}")
+        raise HTTPException(status_code=502, detail=f'A Runway recusou o pedido: {str(e)[:200]}')
 
     task_id = getattr(created, "id", None)
     doc = {
-        "render_id": render_id, "user_id": user["user_id"], "task_id": task_id,
-        "kind": kind, "prompt": clean_prompt, "ratio": ratio,
+        "render_id": render_id, "user_id": user["user_id"], "company_id": user.get("organization_id"), "task_id": task_id,
+        "kind": kind, "model": "gen4_turbo" if kind == "video" else "gen4_image", "prompt": clean_prompt, "ratio": ratio,
         "duration": duration if kind == "video" else None,
         "status": "processing", "input_path": input_path,
         "output_path": None, "content_type": None, "error": None,
@@ -268,7 +267,7 @@ async def list_renders(user=Depends(current_user)) -> dict:
 async def get_render(render_id: str, user=Depends(current_user)) -> dict:
     d = await db.runway_renders.find_one({"render_id": render_id, "user_id": user["user_id"]}, {"_id": 0})
     if not d:
-        raise HTTPException(status_code=404, detail="Rendu introuvable")
+        raise HTTPException(status_code=404, detail="Renderização não encontrada")
     return _public_doc(d)
 
 
@@ -276,14 +275,14 @@ async def get_render(render_id: str, user=Depends(current_user)) -> dict:
 async def get_render_file(render_id: str, which: str = "output", user=Depends(current_user)):
     d = await db.runway_renders.find_one({"render_id": render_id, "user_id": user["user_id"]}, {"_id": 0})
     if not d:
-        raise HTTPException(status_code=404, detail="Rendu introuvable")
+        raise HTTPException(status_code=404, detail="Renderização não encontrada")
     path = d.get("input_path") if which == "input" else d.get("output_path")
     if not path:
-        raise HTTPException(status_code=404, detail="Fichier indisponible")
+        raise HTTPException(status_code=404, detail="Ficheiro indisponível")
     try:
         content, ctype = await asyncio.to_thread(storage.get_object, path)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Lecture impossible: {e}")
+        raise HTTPException(status_code=502, detail=f'Leitura impossível: {e}')
     return Response(content=content,
                     media_type=(d.get("content_type") if which == "output" else "image/jpeg") or ctype,
                     headers={"Cache-Control": "private, max-age=3600"})
@@ -293,7 +292,7 @@ async def get_render_file(render_id: str, which: str = "output", user=Depends(cu
 async def delete_render(render_id: str, user=Depends(current_user)) -> dict:
     res = await db.runway_renders.delete_one({"render_id": render_id, "user_id": user["user_id"]})
     if not res.deleted_count:
-        raise HTTPException(status_code=404, detail="Rendu introuvable")
+        raise HTTPException(status_code=404, detail="Renderização não encontrada")
     return {"ok": True}
 
 
@@ -301,9 +300,9 @@ async def delete_render(render_id: str, user=Depends(current_user)) -> dict:
 async def share_render(render_id: str, user=Depends(current_user)) -> dict:
     d = await db.runway_renders.find_one({"render_id": render_id, "user_id": user["user_id"]}, {"_id": 0})
     if not d:
-        raise HTTPException(status_code=404, detail="Rendu introuvable")
+        raise HTTPException(status_code=404, detail="Renderização não encontrada")
     if d.get("status") != "done":
-        raise HTTPException(status_code=400, detail="Le rendu n'est pas encore prêt")
+        raise HTTPException(status_code=400, detail="A renderização ainda não está pronta")
     token = d.get("share_token") or secrets.token_urlsafe(16)
     await db.runway_renders.update_one({"render_id": render_id},
                                        {"$set": {"share_token": token}})
@@ -317,7 +316,7 @@ async def unshare_render(render_id: str, user=Depends(current_user)) -> dict:
         {"render_id": render_id, "user_id": user["user_id"]},
         {"$unset": {"share_token": ""}})
     if not res.matched_count:
-        raise HTTPException(status_code=404, detail="Rendu introuvable")
+        raise HTTPException(status_code=404, detail="Renderização não encontrada")
     return {"ok": True}
 
 
@@ -326,7 +325,7 @@ async def unshare_render(render_id: str, user=Depends(current_user)) -> dict:
 async def public_render(token: str) -> dict:
     d = await db.runway_renders.find_one({"share_token": token, "status": "done"}, {"_id": 0})
     if not d:
-        raise HTTPException(status_code=404, detail="Lien invalide ou expiré")
+        raise HTTPException(status_code=404, detail="Ligação inválida ou expirada")
     return {
         "kind": d["kind"],
         "prompt": d.get("prompt") or "",
@@ -340,14 +339,14 @@ async def public_render(token: str) -> dict:
 async def public_render_file(token: str, which: str = "output"):
     d = await db.runway_renders.find_one({"share_token": token, "status": "done"}, {"_id": 0})
     if not d:
-        raise HTTPException(status_code=404, detail="Lien invalide ou expiré")
+        raise HTTPException(status_code=404, detail="Ligação inválida ou expirada")
     path = d.get("input_path") if which == "input" else d.get("output_path")
     if not path:
-        raise HTTPException(status_code=404, detail="Fichier indisponible")
+        raise HTTPException(status_code=404, detail="Ficheiro indisponível")
     try:
         content, ctype = await asyncio.to_thread(storage.get_object, path)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Lecture impossible: {e}")
+        raise HTTPException(status_code=502, detail=f'Leitura impossível: {e}')
     return Response(content=content,
                     media_type=(d.get("content_type") if which == "output" else "image/jpeg") or ctype,
                     headers={"Cache-Control": "public, max-age=3600"})

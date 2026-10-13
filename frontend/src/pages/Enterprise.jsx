@@ -24,8 +24,8 @@ export default function Enterprise() {
     try {
       await api.post("/enterprise/contact", form);
       setOk(true);
-      toast.success("Merci — notre équipe vous recontacte sous 48 h");
-    } catch (err) { toast.error(err?.response?.data?.detail || "Impossível enviar"); }
+      toast.success("Obrigado — a nossa equipa contacta-o em 48 h");
+    } catch (err) { toast.error(err?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
   };
 
@@ -33,9 +33,9 @@ export default function Enterprise() {
     return (
       <div className="max-w-lg mx-auto surface p-10 text-center mt-10" data-testid="enterprise-success">
         <ShieldCheck className="h-12 w-12 mx-auto text-emerald-500" />
-        <p className="font-display text-3xl font-extrabold mt-4">Demande reçue</p>
+        <p className="font-display text-3xl font-extrabold mt-4">Pedido recebido</p>
         <p className="text-sm text-muted-foreground mt-2">
-          Notre équipe vous contactera sous 48 h ouvrées avec une proposition détaillée.
+          A nossa equipa contactá-lo-á em 48 h úteis com uma proposta detalhada.
         </p>
       </div>
     );
@@ -43,16 +43,15 @@ export default function Enterprise() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="ConstruPilot Enterprise" title="Fale com a nossa equipa para a sua organização">
-        SSO, SLA, API dedicada, integrações à medida, reporting avançado.
-        Para promotores, distribuidores, seguradoras e redes de profissionais.
+      <SectionTitle as="h1" over="ConstruPilot Enterprise" title="Fale com a nossa equipa para a sua organização">
+        SSO, SLA, API dedicada, integrações à medida, reporting avançado. Para promotores, distribuidores, seguradoras e redes de artífices.
       </SectionTitle>
 
       <div className="grid md:grid-cols-3 gap-4">
         {[
-          { icon: Building2, title: "Grandes contas", desc: "Promotores, seguradoras, franquiados, grupos imobiliários." },
+          { icon: Building2, title: "Grandes contas", desc: "Promotores, seguradoras, franquias, grupos imobiliários." },
           { icon: Server, title: "SSO & API dedicada", desc: "Autenticação centralizada, endpoints privados, sandbox." },
-          { icon: Zap, title: "SLA garantido", desc: "99,9 % de disponibilidade, suporte prioritário, gestor de conta." },
+          { icon: Zap, title: "Compromisso de serviço", desc: "Nível de disponibilidade, suporte prioritário e interlocutor dedicado definidos no contrato." },
         ].map((f, i) => (
           <div key={i} className="surface p-6 grid gap-3">
             <span className="h-10 w-10 grid place-items-center rounded-sm bg-primary/15 text-primary">
@@ -71,11 +70,11 @@ export default function Enterprise() {
             <Input required value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} data-testid="ent-company" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>O seu nome e apelido *</Label>
+            <Label>O seu nome & apelido *</Label>
             <Input required value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} data-testid="ent-name" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
-            <Label>E-mail profissional *</Label>
+            <Label>Email profissional *</Label>
             <Input type="email" required value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} data-testid="ent-email" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
@@ -84,7 +83,7 @@ export default function Enterprise() {
           </div>
           <div className="grid gap-2">
             <Label>Função</Label>
-            <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Direcção, CTO, compras…" className="rounded-sm h-11" />
+            <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Direção, CTO, compras…" className="rounded-sm h-11" />
           </div>
           <div className="grid gap-2">
             <Label>Dimensão da empresa</Label>
@@ -102,7 +101,7 @@ export default function Enterprise() {
         <div className="grid gap-2">
           <Label>Descreva o seu caso de uso *</Label>
           <Textarea rows={4} required value={form.use_case} onChange={(e) => setForm({ ...form, use_case: e.target.value })} data-testid="ent-usecase" className="rounded-sm"
-                    placeholder="Ex: pretendemos integrar um simulador de remodelação no nosso parque imobiliário de 12 000 habitações para pilotar as remodelações energéticas…" />
+                    placeholder="Ex: desejamos integrar um simulador de renovação no nosso parque imobiliário de 12 000 habitações para pilotar as renovações energéticas…" />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="grid gap-2">
@@ -112,7 +111,7 @@ export default function Enterprise() {
           <div className="flex flex-col gap-2 pt-6">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.sso_required} onChange={(e) => setForm({ ...form, sso_required: e.target.checked })} data-testid="ent-sso" />
-              SSO requerido (SAML / OIDC)
+              SSO obrigatório (SAML / OIDC)
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.sla_required} onChange={(e) => setForm({ ...form, sla_required: e.target.checked })} data-testid="ent-sla" />
@@ -129,8 +128,7 @@ export default function Enterprise() {
           <ArrowRight className="h-4 w-4" />
         </Button>
         <p className="text-xs text-muted-foreground">
-          <Users className="inline h-3 w-3 mr-1" /> Os seus dados são usados apenas para o
-          contactar — nunca partilhados.
+          <Users className="inline h-3 w-3 mr-1" /> Os seus dados são utilizados apenas para o recontactar — nunca partilhados.
         </p>
       </form>
     </div>

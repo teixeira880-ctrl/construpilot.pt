@@ -8,8 +8,7 @@ import { toast } from "sonner";
 
 const PlanCard = ({ plan, highlight, busy, onSelect }) => {
   const price = (plan.amount_cents || 0) / 100;
-  // PT-PT: /ano, /mês
-  const per = plan.interval === "year" ? "ano" : plan.interval === "month" ? "mês" : null;
+  const per = plan.interval === "year" ? "an" : plan.interval === "month" ? "mois" : null;
   return (
     <Card className={`p-6 flex flex-col text-left relative ${highlight ? "border-primary ring-1 ring-primary/30" : ""}`} data-testid={`upsell-plan-${plan.plan_id}`}>
       {highlight && (
@@ -79,12 +78,12 @@ export default function ProUpsell() {
           <Lock className="h-8 w-8 text-primary" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold">
-          {analyse ? "Desbloqueie a análise de orçamentos" : "Passe para conta Pro"}
+          {analyse ? "Desbloqueie a análise de orçamentos" : "Mude para conta Pro"}
         </h1>
         <p className="text-muted-foreground mt-3">
           {analyse
-            ? "A análise de orçamentos (comparação de preços linha a linha) está incluída nas nossas subscrições. Escolha um plano para desbloquear esta função e muito mais."
-            : "Orçamentos, facturas, obras, empresa & RH… Subscreva um plano Pro para desbloquear tudo. Acesso imediato após o pagamento."}
+            ? "A análise de orçamentos (comparação de preços linha por linha) está incluída nas nossas subscrições. Escolha um plano para desbloquear esta função e muito mais."
+            : "Orçamentos, faturas, obras, empresa & RH… Subscreva um plano Pro para desbloquear tudo. Acesso imediato após pagamento."}
         </p>
       </div>
 
@@ -124,10 +123,10 @@ export default function ProUpsell() {
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center mt-10">
         <Button variant="ghost" onClick={() => nav("/tarifs")} data-testid="pro-upsell-see-all" className="gap-2">
-          Ver todos os planos <ArrowRight className="h-4 w-4" />
+          Ver todas as tarifas <ArrowRight className="h-4 w-4" />
         </Button>
         <Button variant="outline" onClick={() => nav("/dashboard")} data-testid="pro-upsell-back">
-          Voltar ao painel
+          Voltar ao painel de controlo
         </Button>
       </div>
     </div>

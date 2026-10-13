@@ -1,0 +1,237 @@
+{
+  "video": "/demo/construpilot-demo.mp4",
+  "total_duration": 398.2,
+  "chapters": [
+    {
+      "key": "home",
+      "title": "Bienvenue sur ConstruPilot",
+      "start": 0.0,
+      "narration": "Bienvenue sur ConstruPilot, la plateforme tout-en-un de chiffrage et de gestion pour les professionnels du bâtiment. Suivez la visite : chaque fonction est montrée en action.",
+      "image": null
+    },
+    {
+      "key": "estimation",
+      "title": "Estimateur",
+      "start": 13.89,
+      "narration": "L'estimateur génère un chiffrage détaillé de votre projet, poste par poste, à partir d'une simple description en langage courant.",
+      "image": null
+    },
+    {
+      "key": "metre",
+      "title": "Métré sur plan",
+      "start": 25.99,
+      "narration": "Le métré sur plan est le cœur de ConstruPilot. Importez un plan réel et nommez-le. Calibrez-le en indiquant une seule distance connue : toutes vos mesures deviennent alors précises au centimètre. Tracez une surface pour obtenir instantanément les mètres carrés. Tracez un périmètre pour vos linéaires de plinthes ou de cloisons. Tracez une distance pour un métré linéaire simple. Dessinez enfin une pièce, puis déduisez automatiquement portes et fenêtres de vos surfaces. Aucun calcul manuel, aucune erreur possible.",
+      "image": null
+    },
+    {
+      "key": "plans_pro",
+      "title": "Analyse de plan Pro",
+      "start": 72.12,
+      "narration": "L'analyse de plan Pro détecte automatiquement les pièces, les murs et les surfaces pour accélérer encore votre métré.",
+      "image": null
+    },
+    {
+      "key": "controle",
+      "title": "Contrôle des cotes",
+      "start": 82.68,
+      "narration": "Le contrôle des cotes compare vos mesures aux cotes écrites du plan et signale la moindre incohérence.",
+      "image": null
+    },
+    {
+      "key": "escaliers",
+      "title": "Calcul d'escaliers",
+      "start": 92.62,
+      "narration": "Le module escaliers calcule votre ouvrage béton, contrôle les normes, propose une vue en trois dimensions interactive et un dossier PDF entièrement coté.",
+      "image": null
+    },
+    {
+      "key": "calculateurs",
+      "title": "Calculateurs de matériaux",
+      "start": 106.22,
+      "narration": "Les calculateurs donnent les quantités exactes de matériaux, marges et pertes de pose comprises.",
+      "image": null
+    },
+    {
+      "key": "prix",
+      "title": "Prix matériaux",
+      "start": 117.28,
+      "narration": "La base de prix matériaux vous tient informé des tarifs à jour du marché.",
+      "image": null
+    },
+    {
+      "key": "devis",
+      "title": "Suivi des devis",
+      "start": 126.2,
+      "narration": "Le suivi des devis centralise toutes vos propositions commerciales et leur statut, du brouillon à la signature.",
+      "image": null
+    },
+    {
+      "key": "devis_editeur",
+      "title": "Éditeur de devis",
+      "start": 137.1,
+      "narration": "L'éditeur de devis compose votre proposition ligne par ligne. Ajoutez des fournitures, de la main d'œuvre et des ouvrages complets, avec leurs quantités et leurs prix unitaires. La TVA, les sous-totaux et le total sont recalculés en temps réel, sans la moindre erreur de calcul. En un clic, générez un devis PDF professionnel prêt à envoyer à votre client.",
+      "image": null
+    },
+    {
+      "key": "factures",
+      "title": "Factures",
+      "start": 166.7,
+      "narration": "La facturation transforme n'importe quel devis signé en facture conforme, en un seul clic. Acomptes, situations de travaux et factures définitives restent reliés à votre chantier, avec une numérotation continue et le format Factur-X.",
+      "image": null
+    },
+    {
+      "key": "situations",
+      "title": "Situations de travaux",
+      "start": 187.19,
+      "narration": "Les situations de travaux gèrent l'avancement et les acomptes de vos chantiers, mois après mois.",
+      "image": null
+    },
+    {
+      "key": "clients",
+      "title": "Clients",
+      "start": 197.29,
+      "narration": "L'espace clients regroupe tous vos contacts et l'historique de chaque relation.",
+      "image": null
+    },
+    {
+      "key": "chantiers",
+      "title": "Dossiers chantier",
+      "start": 205.49,
+      "narration": "Les dossiers chantier réunissent plans, devis et documents de chaque projet au même endroit.",
+      "image": null
+    },
+    {
+      "key": "suivi",
+      "title": "Suivi de chantier",
+      "start": 215.1,
+      "narration": "Le suivi de chantier pilote l'avancement au quotidien, tâche par tâche.",
+      "image": null
+    },
+    {
+      "key": "dpgf",
+      "title": "DPGF vers devis",
+      "start": 222.99,
+      "narration": "Le module DPGF transforme le cadre de l'architecte en un devis directement chiffrable.",
+      "image": null
+    },
+    {
+      "key": "analyse_docs",
+      "title": "Analyse de documents",
+      "start": 231.71,
+      "narration": "L'analyse de documents lit vos DPGF et CCTP pour en extraire automatiquement les éléments chiffrables.",
+      "image": null
+    },
+    {
+      "key": "scanner",
+      "title": "Scanner de devis",
+      "start": 242.19,
+      "narration": "Le scanner numérise un devis papier et le rend immédiatement exploitable.",
+      "image": null
+    },
+    {
+      "key": "appro",
+      "title": "Analyse technique et appro",
+      "start": 251.32,
+      "narration": "L'analyse technique et l'approvisionnement optimisent vos commandes de matériaux et anticipent les besoins.",
+      "image": null
+    },
+    {
+      "key": "etudes_pc",
+      "title": "Études permis de construire",
+      "start": 261.08,
+      "narration": "Le module études prépare et assemble les pièces de votre permis de construire.",
+      "image": null
+    },
+    {
+      "key": "mesure_photo",
+      "title": "Mesurer sur photo",
+      "start": 269.71,
+      "narration": "Mesurez directement sur une simple photo prise sur le chantier.",
+      "image": null
+    },
+    {
+      "key": "rendu_ia",
+      "title": "Rendu IA avant-après",
+      "start": 277.1,
+      "narration": "Le rendu par intelligence artificielle illustre vos travaux, avant et après.",
+      "image": null
+    },
+    {
+      "key": "multiniveaux",
+      "title": "Projets multi-niveaux",
+      "start": 286.09,
+      "narration": "Regroupez fondations, rez-de-chaussée et étages en un projet multi-niveaux, avec métré et devis consolidés.",
+      "image": null
+    },
+    {
+      "key": "bibliotheque",
+      "title": "Bibliothèque d'ouvrages",
+      "start": 297.2,
+      "narration": "La bibliothèque mémorise vos compositions d'ouvrages, réutilisables sur tous vos chantiers.",
+      "image": null
+    },
+    {
+      "key": "catalogue",
+      "title": "Catalogue de prix",
+      "start": 307.0,
+      "narration": "Le catalogue de prix personnalise vos tarifs et vos ratios d'entreprise.",
+      "image": null
+    },
+    {
+      "key": "equipe",
+      "title": "Équipe",
+      "start": 315.02,
+      "narration": "La gestion d'équipe partage l'accès et les données entre tous vos collaborateurs.",
+      "image": null
+    },
+    {
+      "key": "rh",
+      "title": "RH et pointage",
+      "start": 324.18,
+      "narration": "Le module ressources humaines gère le pointage et les heures de vos équipes.",
+      "image": null
+    },
+    {
+      "key": "entreprise",
+      "title": "Espace entreprise",
+      "start": 332.59,
+      "narration": "L'espace entreprise centralise l'identité et les paramètres de votre société.",
+      "image": null
+    },
+    {
+      "key": "ma_page",
+      "title": "Ma page publique",
+      "start": 340.88,
+      "narration": "Votre page publique met en avant votre entreprise et vos réalisations auprès de vos prospects.",
+      "image": null
+    },
+    {
+      "key": "radar",
+      "title": "Radar chantiers",
+      "start": 350.29,
+      "narration": "Le radar chantiers vous alerte des opportunités d'affaires près de chez vous.",
+      "image": null
+    },
+    {
+      "key": "assistant",
+      "title": "Assistant BTP",
+      "start": 358.51,
+      "narration": "L'assistant intelligent répond à vos questions et vous guide dans toute l'application.",
+      "image": null
+    },
+    {
+      "key": "pro",
+      "title": "L'offre Pro",
+      "start": 366.62,
+      "narration": "Passez à l'offre Pro : sept jours d'essai, puis un abonnement clair et sans engagement.",
+      "image": null
+    },
+    {
+      "key": "dashboard",
+      "title": "Tableau de bord",
+      "start": 375.73,
+      "narration": "Enfin, votre tableau de bord réunit toute votre activité. ConstruPilot vous fait gagner du temps, du premier chiffrage à la facturation finale.",
+      "image": null
+    }
+  ]
+}

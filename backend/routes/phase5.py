@@ -98,7 +98,7 @@ async def supplier_dashboard(days: int = 30, user=Depends(current_user)) -> dict
     if not sup and user.get("role") == "admin":
         sup = "leroymerlin"  # fallback admin
     if not sup:
-        return {"verified": False, "message": "Réclamez votre fournisseur via /suppliers/claim"}
+        return {"verified": False, "message": "Reivindique o seu fornecedor através de /suppliers/claim"}
     from datetime import timedelta
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     evs = await db.affiliate_events.find(
@@ -133,7 +133,7 @@ async def verify_supplier_claim(claim_id: str, admin=Depends(admin_user)) -> dic
         {"user_id": claim_id} if "@" not in claim_id else {"contact_email": claim_id},
         {"$set": {"verified": True, "status": "verified", "verified_at": _now()}})
     if r.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Réclamation introuvable")
+        raise HTTPException(status_code=404, detail="Reivindicação não encontrada")
     return {"ok": True}
 
 
@@ -170,12 +170,8 @@ async def enterprise_contact(body: EnterpriseLeadIn) -> dict:
     try:
         from engines import emailer
         html = emailer.wrap_html(
-            "Nouveau contact Enterprise",
-            f"""<p><b>{doc['company_name']}</b> — {doc.get('company_size') or ''}</p>
-<p>Contact : {doc['contact_name']} ({doc['contact_email']})</p>
-<p><b>Use case :</b> {doc['use_case']}</p>
-<p><b>Score interne :</b> {doc['score']}/100</p>
-<p>Message : {doc.get('message') or '—'}</p>""")
+            "Novo contacto Enterprise",
+            f"<p><b>{doc['company_name']}</b> — {doc.get('company_size') or ''}</p>\n<p>Contact : {doc['contact_name']} ({doc['contact_email']})</p>\n<p><b>Use case :</b> {doc['use_case']}</p>\n<p><b>Pontuação interna:</b> {doc['score']}/100</p>\n<p>Message : {doc.get('message') or '—'}</p>")
         import os
         to = os.environ.get("ENTERPRISE_ALERT_EMAIL") or "onboarding@resend.dev"
         await emailer.send_email(to, f"[Enterprise] {doc['company_name']}", html)
@@ -183,7 +179,7 @@ async def enterprise_contact(body: EnterpriseLeadIn) -> dict:
         import logging
         logging.getLogger(__name__).warning(f"Enterprise notify email failed: {e}")
     return {"ok": True, "lead_id": doc["lead_id"], "message":
-            "Merci — notre équipe vous recontacte sous 48 heures ouvrées."}
+            "Obrigado — a nossa equipa volta a contactá-lo em 48 horas úteis."}
 
 
 def _score_enterprise(doc: dict) -> int:

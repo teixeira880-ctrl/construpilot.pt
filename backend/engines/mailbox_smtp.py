@@ -47,7 +47,7 @@ def _build_message(cfg: dict, to: str, subject: str, html: str,
     if reply_to:
         msg["Reply-To"] = reply_to
     msg["Subject"] = subject
-    msg.set_content("Votre client de messagerie ne supporte pas le HTML.")
+    msg.set_content("O seu cliente de e-mail não suporta HTML.")
     msg.add_alternative(html, subtype="html")
     for att in attachments or []:
         ctype = att.get("content_type", "application/octet-stream")

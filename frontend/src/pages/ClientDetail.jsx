@@ -14,6 +14,8 @@ import {
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
+import { ChantierFormDialog } from "@/components/chantiers/ChantierFormDialog";
+import { HardHat } from "lucide-react";
 
 const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 const STATUS_KEY = {
@@ -31,6 +33,7 @@ export default function ClientDetail() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [client, setClient] = useState(null);
+  const [chantierOpen, setChantierOpen] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -109,7 +112,7 @@ export default function ClientDetail() {
         <p className="text-sm font-medium truncate">{d.title || d.number || "—"}</p>
         <p className="text-[11px] text-muted-foreground num">
           {d.number || "brouillon"} · {(d.created_at || "").slice(0, 10)}
-          {d.doc_type === "invoice" && d.paid > 0 && ` · payé ${eur(d.paid)}`}
+          {d.doc_type === "invoice" && d.paid > 0 && ` · pago ${eur(d.paid)}`}
         </p>
       </div>
       <St s={d.status} />
@@ -160,10 +163,14 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" className="rounded-sm gap-2" onClick={() => setChantierOpen(true)} data-testid="clientdetail-new-chantier">
+            <HardHat className="h-4 w-4" /> Nova obra
+          </Button>
           <Button className="rounded-sm gap-2" onClick={() => nav(`/devis-editeur?client=${clientId}`)} data-testid="clientdetail-new-quote">
             <Plus className="h-4 w-4" /> {t("crm.new_quote")}
           </Button>
         </div>
+        <ChantierFormDialog open={chantierOpen} onOpenChange={setChantierOpen} clientId={clientId} onSaved={(c) => nav(`/chantiers/${c.chantier_id}`)} />
       </div>
 
       {/* KPIs */}
@@ -283,7 +290,7 @@ export default function ClientDetail() {
               <Label>{t("crm.method")}</Label>
               <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} data-testid="payment-method"
                       className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-                {[["virement", "crm.m_virement"], ["chèque", "crm.m_cheque"], ["espèces", "crm.m_especes"], ["carte", "crm.m_carte"], ["autre", "crm.m_autre"]].map(([m, key]) => <option key={m} value={m}>{t(key)}</option>)}
+                {[["virement", "crm.m_virement"], ["cheque", "crm.m_cheque"], ["numerário", "crm.m_especes"], ["carte", "crm.m_carte"], ["autre", "crm.m_autre"]].map(([m, key]) => <option key={m} value={m}>{t(key)}</option>)}
               </select>
             </div>
           </div>

@@ -56,7 +56,7 @@ def _eval_node(node, variables: dict):
     if isinstance(node, ast.Constant):
         if isinstance(node.value, (int, float)):
             return node.value
-        raise ValueError("literal non numérique")
+        raise ValueError("literal não numérico")
     if isinstance(node, ast.Name):
         return float(variables.get(node.id, 0) or 0)
     if isinstance(node, ast.BinOp) and type(node.op) in _AST_BINOPS:
@@ -64,7 +64,7 @@ def _eval_node(node, variables: dict):
                                           _eval_node(node.right, variables))
     if isinstance(node, ast.UnaryOp) and type(node.op) in _AST_UNARY:
         return _AST_UNARY[type(node.op)](_eval_node(node.operand, variables))
-    raise ValueError("expression non autorisée")
+    raise ValueError("expressão não autorizada")
 
 
 def eval_formula(expr: str, variables: dict) -> float | None:
@@ -145,7 +145,7 @@ def parse_param_library(content: bytes, filename: str) -> dict:
 
     parsed = [x for x in (_row_to_line(r) for r in lines_raw) if x]
     if not parsed:
-        raise ValueError("Aucune ligne de recette détectée (colonne 'base_code' introuvable).")
+        raise ValueError("Nenhuma linha de receita detetada (coluna \'base_code\' não encontrada).")
     ouvrages = {}
     for ln in parsed:
         o = ouvrages.setdefault(ln["base_code"], {
@@ -162,23 +162,23 @@ def parse_param_library(content: bytes, filename: str) -> dict:
 # ---------------- Valeurs par défaut (éditables ensuite dans l'admin) ----------------
 
 DEFAULT_LABOR_RATES = [
-    {"metier": "Maçon", "low": 35, "mid": 52, "high": 70},
+    {"metier": "Pedreiro", "low": 35, "mid": 52, "high": 70},
     {"metier": "Couvreur", "low": 40, "mid": 52, "high": 65},
-    {"metier": "Étancheur", "low": 40, "mid": 52, "high": 65},
+    {"metier": "Impermeabilizador", "low": 40, "mid": 52, "high": 65},
     {"metier": "Menuisier", "low": 40, "mid": 50, "high": 60},
     {"metier": "Plaquiste", "low": 35, "mid": 45, "high": 55},
     {"metier": "Carreleur", "low": 38, "mid": 48, "high": 60},
-    {"metier": "Peintre", "low": 32, "mid": 42, "high": 55},
+    {"metier": "Pintor", "low": 32, "mid": 42, "high": 55},
     {"metier": "Plombier", "low": 40, "mid": 55, "high": 70},
-    {"metier": "Électricien", "low": 35, "mid": 55, "high": 75},
+    {"metier": "Eletricista", "low": 35, "mid": 55, "high": 75},
     {"metier": "Chauffagiste", "low": 45, "mid": 58, "high": 75},
-    {"metier": "Ouvrier BTP", "low": 30, "mid": 38, "high": 48},
-    {"metier": "Façadier", "low": 38, "mid": 48, "high": 62},
+    {"metier": "Trabalhador da construção", "low": 30, "mid": 38, "high": 48},
+    {"metier": "Fachadista", "low": 38, "mid": 48, "high": 62},
 ]
 
 DEFAULT_REGIONAL_COEFS = [
     {"region": "idf", "label": "Île-de-France", "coef": 1.15},
-    {"region": "grandes_villes", "label": "Grandes villes", "coef": 1.08},
+    {"region": "grandes_villes", "label": "Grandes cidades", "coef": 1.08},
     {"region": "standard", "label": "Standard / national", "coef": 1.00},
     {"region": "rural", "label": "Rural", "coef": 0.95},
 ]
@@ -197,28 +197,28 @@ DEFAULT_VARIABLES = {
 DEFAULT_MATERIALS = [
     {"name": "Betão C25/30", "unit": "m³", "price": 145},
     {"name": "Betão de limpeza", "unit": "m³", "price": 120},
-    {"name": "Armadura sapata contínua tipo S35", "unit": "ml", "price": 9},
-    {"name": "Aço HA (armaduras)", "unit": "kg", "price": 1.6},
-    {"name": "Arame de amarrar", "unit": "kg", "price": 3.5},
-    {"name": "Calços de betão", "unit": "u", "price": 0.3},
+    {"name": "Armadura de sapata contínua tipo S35", "unit": "ml", "price": 9},
+    {"name": "Aço A500 (armaduras)", "unit": "kg", "price": 1.6},
+    {"name": "Arame de atar", "unit": "kg", "price": 3.5},
+    {"name": "Espaçadores de betão", "unit": "u", "price": 0.3},
     {"name": "Bloco de betão 20 cm", "unit": "u", "price": 1.6},
     {"name": "Argamassa / cola", "unit": "kg", "price": 0.4},
-    {"name": "Placa de gesso cartonado BA13", "unit": "u", "price": 6.5},
-    {"name": "Perfil / montante estrutura", "unit": "ml", "price": 2.2},
+    {"name": "Placa de gesso cartonado 13 mm", "unit": "u", "price": 6.5},
+    {"name": "Calha / montante da estrutura", "unit": "ml", "price": 2.2},
     {"name": "Lã de vidro", "unit": "m²", "price": 9},
-    {"name": "Reboco / fita", "unit": "kg", "price": 1.2},
-    {"name": "Telha", "unit": "u", "price": 1.1},
-    {"name": "Ripa", "unit": "ml", "price": 1.4},
-    {"name": "Vigota", "unit": "ml", "price": 3.5},
-    {"name": "Sub-telha", "unit": "m²", "price": 3},
-    {"name": "Membrana EPDM", "unit": "m²", "price": 18},
+    {"name": "Massa / fita", "unit": "kg", "price": 1.2},
+    {"name": "Tuile", "unit": "u", "price": 1.1},
+    {"name": "Liteau", "unit": "ml", "price": 1.4},
+    {"name": "Chevron", "unit": "ml", "price": 3.5},
+    {"name": "Subtelha", "unit": "m²", "price": 3},
+    {"name": "Membrane EPDM", "unit": "m²", "price": 18},
     {"name": "Janela PVC vidro duplo", "unit": "u", "price": 320},
-    {"name": "Grés porcelânico", "unit": "m²", "price": 32},
-    {"name": "Soalho flutuante", "unit": "m²", "price": 25},
+    {"name": "Mosaico de grés porcelânico", "unit": "m²", "price": 32},
+    {"name": "Parquet flottant", "unit": "m²", "price": 25},
     {"name": "Tinta acrílica", "unit": "L", "price": 6.5},
     {"name": "Cabo elétrico", "unit": "ml", "price": 1.2},
     {"name": "Ponto elétrico (aparelhagem)", "unit": "u", "price": 18},
-    {"name": "Tubo PER / cobre", "unit": "ml", "price": 4.5},
-    {"name": "Grelha VMC", "unit": "u", "price": 22},
+    {"name": "Tube PER / cuivre", "unit": "ml", "price": 4.5},
+    {"name": "Bouche VMC", "unit": "u", "price": 22},
     {"name": "Reboco de fachada", "unit": "m²", "price": 12},
 ]

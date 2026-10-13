@@ -69,7 +69,7 @@ class RunIn(BaseModel):
 async def run(body: RunIn) -> dict:
     cfg = await _config()
     if not cfg["enabled"]:
-        raise HTTPException(409, "Evolution Lab désactivé — activez-le d'abord dans la configuration.")
+        raise HTTPException(409, "Evolution Lab desativado — ative-o primeiro na configuração.")
     size = body.size or cfg["batch_size"]
     level = body.level or cfg["level"]
     if cfg.get("max_evolution_mode"):
@@ -102,11 +102,11 @@ class PromoteIn(BaseModel):
 @router.post("/promote")
 async def promote(body: PromoteIn) -> dict:
     if body.model_key not in evolution.EVO_AI_MODELS:
-        raise HTTPException(422, "Modèle inconnu")
+        raise HTTPException(422, "Modelo desconhecido")
     await db.app_settings.update_one({"_id": "evolution"},
                                      {"$set": {"active_ai_model": body.model_key}}, upsert=True)
     return {"ok": True, "active_ai_model": body.model_key,
-            "note": "Le chatbot d'aide et les tests IA utilisent désormais ce modèle."}
+            "note": "O chatbot de ajuda e os testes IA passam a utilizar este modelo."}
 
 
 async def _run_nightly_arena(cfg: dict, level: int, to: str | None) -> None:
@@ -130,16 +130,12 @@ async def _run_nightly_arena(cfg: dict, level: int, to: str | None) -> None:
         "active_accuracy": base_acc, "active_latency": base_lat, "faster_equal": better})
     if better and to:
         from engines.emailer import send_email, wrap_company_html
-        rows = "".join(f"<li><b>{b['model']}</b> — précision {round((b['accuracy'] or 0)*100)}% · "
-                       f"{b['latency']}s (actuel {active} : {round(base_acc*100)}% · {base_lat}s)</li>"
+        rows = "".join(f"<li><b>{b['model']}</b> — precisão {round((b['accuracy'] or 0) * 100)}% · {b['latency']}s (atual {active} : {round(base_acc * 100)}% · {base_lat}s)</li>"
                        for b in better)
-        body = (f"<h2>🏁 Arène nocturne — modèle plus rapide détecté</h2>"
-                f"<p>Un ou plusieurs modèles égalent la précision de <b>{active}</b> "
-                f"tout en étant plus rapides :</p><ul>{rows}</ul>"
-                f"<p>Promouvez-les depuis l'onglet AI Evolution Lab pour réduire coûts/latence.</p>")
-        html = wrap_company_html("Arène nocturne ConstruPilot", body, company_name="ConstruPilot")
+        body = (f'<h2>🏁 Arena noturna — modelo mais rápido detetado</h2><p>Um ou vários modelos igualam a precisão de <b>{active}</b> sendo mais rápidos:</p><ul>{rows}</ul><p>Promova-os no separador AI Evolution Lab para reduzir custos/latência.</p>')
+        html = wrap_company_html("Arena noturna ConstruPilot", body, company_name="ConstruPilot")
         try:
-            await send_email(to, "[ConstruPilot] 🏁 Un modèle IA plus rapide égale l'actuel", html)
+            await send_email(to, "[ConstruPilot] 🏁 Um modelo IA mais rápido iguala o atual", html)
         except Exception:  # noqa: BLE001
             pass
 
@@ -156,17 +152,12 @@ async def _maybe_alert(cfg: dict, result: dict) -> None:
     if not to:
         return
     from engines.emailer import send_email, wrap_company_html
-    body = (f"<h2 style='color:#dc2626'>⚠️ Alerte régression — AI Evolution Lab</h2>"
-            f"<p>Le Fitness Score est tombé à <b>{result['fitness_score']}</b> / 100 "
-            f"(seuil d'alerte : {threshold}).</p>"
-            f"<p>Génération #{result.get('generation')} · {result['size']} tests · "
-            f"réussite {round(result['pass_rate']*100)}%.</p>"
-            f"<h3>Principaux clusters d'échecs</h3><ul>"
+    body = (f"<h2 style='color:#dc2626'>⚠️ Alerta de regressão — AI Evolution Lab</h2><p>O Fitness Score desceu para <b>{result['fitness_score']}</b> / 100 (limite de alerta: {threshold}).</p><p>Geração #{result.get('generation')} · {result['size']} testes · sucesso {round(result['pass_rate'] * 100)}%.</p><h3>Principais clusters de falhas</h3><ul>"
             + "".join(f"<li>{c['cluster']} — <b>{c['count']}</b></li>"
                       for c in result.get("failure_clusters", [])[:8]) + "</ul>")
-    html = wrap_company_html("Alerte régression ConstruPilot", body, company_name="ConstruPilot")
+    html = wrap_company_html("Alerta de regressão ConstruPilot", body, company_name="ConstruPilot")
     try:
-        await send_email(to, f"[ConstruPilot] ⚠️ Alerte régression — Fitness {result['fitness_score']}/100", html)
+        await send_email(to, f"[ConstruPilot] ⚠️ Alerta de regressão — Fitness {result['fitness_score']}/100", html)
     except Exception:  # noqa: BLE001
         pass
 
@@ -263,18 +254,11 @@ async def _send_report_email(to: str, run: dict, new_clusters: list) -> None:
     rows = "".join(f"<tr><td style='padding:4px 8px'>{k}</td>"
                    f"<td style='padding:4px 8px;text-align:right'><b>{round(v*100)}%</b></td></tr>"
                    for k, v in acc.items())
-    ai_line = (f"<p>Tests IA : <b>{run.get('ai_passed')}/{run.get('ai_calls')}</b> "
-               f"(précision {round((run.get('ai_accuracy') or 0)*100)}%)</p>"
+    ai_line = (f"<p>Testes IA: <b>{run.get('ai_passed')}/{run.get('ai_calls')}</b> (precisão {round((run.get('ai_accuracy') or 0) * 100)}%)</p>"
                if run.get("ai_calls") else "")
     clusters_html = ("<ul>" + "".join(f"<li>{c['cluster']} — <b>{c['count']}</b></li>"
-                                      for c in new_clusters[:10]) + "</ul>") if new_clusters else "<p>Aucun nouveau cluster d'échec 🎉</p>"
-    body = (f"<h2>Rapport nocturne — AI Evolution Lab</h2>"
-            f"<p>Génération <b>#{run['generation']}</b> · {run['size']} tests · niveau {run['level']}</p>"
-            f"<p style='font-size:20px'>Fitness Score : <b style='color:#FF5A00'>{run['fitness_score']}</b> / 100</p>"
-            f"<p>Taux de réussite : <b>{round(run['pass_rate']*100)}%</b> ({run['passed']}/{run['size']})</p>"
-            f"{ai_line}"
-            f"<h3>Précision par catégorie</h3><table>{rows}</table>"
-            f"<h3>Nouveaux clusters d'échecs</h3>{clusters_html}")
+                                      for c in new_clusters[:10]) + "</ul>") if new_clusters else "<p>Nenhum novo cluster de falhas 🎉</p>"
+    body = (f"<h2>Relatório noturno — AI Evolution Lab</h2><p>Geração <b>#{run['generation']}</b> · {run['size']} testes · nível {run['level']}</p><p style='font-size:20px'>Fitness Score : <b style='color:#FF5A00'>{run['fitness_score']}</b> / 100</p><p>Taxa de sucesso: <b>{round(run['pass_rate'] * 100)}%</b> ({run['passed']}/{run['size']})</p>{ai_line}<h3>Precisão por categoria</h3><table>{rows}</table><h3>Novos clusters de falhas</h3>{clusters_html}")
     html = wrap_company_html("Rapport nocturne AI Evolution Lab", body, company_name="ConstruPilot")
     try:
         await send_email(to, f"[ConstruPilot] Rapport nocturne — Fitness {run['fitness_score']}/100", html)
@@ -288,7 +272,7 @@ async def send_report_now(user=Depends(admin_user)) -> dict:
     to = cfg.get("nightly_email") or user.get("email")
     last = await db.evolution_runs.find_one({}, {"_id": 0}, sort=[("created_at", -1)])
     if not last:
-        raise HTTPException(409, "Aucun lot exécuté — lancez d'abord un lot.")
+        raise HTTPException(409, "Nenhum lote executado — lance primeiro um lote.")
     await _send_report_email(to, last, last.get("failure_clusters", []))
     return {"ok": True, "sent_to": to}
 

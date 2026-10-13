@@ -29,7 +29,7 @@ async def _resolve_logo_b64(user_id: str) -> str | None:
 async def company_logo(user_id: str):
     b64 = await _resolve_logo_b64(user_id)
     if not b64:
-        raise HTTPException(404, "Aucun logo")
+        raise HTTPException(404, "Nenhum logótipo")
     ctype, data = "image/png", b64
     if data.startswith("data:"):
         head, _, payload = data.partition(",")
@@ -39,6 +39,6 @@ async def company_logo(user_id: str):
     try:
         raw = base64.b64decode(data)
     except Exception:
-        raise HTTPException(404, "Logo invalide")
+        raise HTTPException(404, "Logótipo inválido")
     return Response(content=raw, media_type=ctype,
                     headers={"Cache-Control": "public, max-age=3600"})

@@ -136,7 +136,7 @@ async def _resolve_price(lookup: str):
     await ensure_stripe_catalog()
     prices = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
     if not prices:
-        raise RuntimeError(f"Prix Stripe introuvable pour {lookup}")
+        raise RuntimeError(f'Preço Stripe não encontrado para {lookup}')
     return prices[0]
 
 
@@ -226,9 +226,9 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
     Refactor iter53 : orchestration only — logique déléguée à des helpers.
     """
     if not stripe.api_key:
-        raise RuntimeError("Stripe non configuré")
+        raise RuntimeError("Stripe não configurado")
     if not plan.get("lookup_key"):
-        raise ValueError(f"Plan {plan.get('plan_id')} sans lookup_key")
+        raise ValueError(f"Planta {plan.get('plan_id')} sem lookup_key")
 
     price = await _resolve_price(plan["lookup_key"])
     customer_id = await get_or_create_customer(user)
@@ -253,17 +253,17 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
 async def sync_status(session_id: str) -> dict:
     """Récupère le statut d'une Checkout Session. Idempotent."""
     if not stripe.api_key:
-        raise RuntimeError("Stripe non configuré")
+        raise RuntimeError("Stripe não configurado")
     rec = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if not rec:
-        raise ValueError("Session inconnue")
+        raise ValueError("Sessão desconhecida")
     if rec.get("payment_status") == "paid":
         return rec
     try:
         s = stripe.checkout.Session.retrieve(session_id)
     except Exception:
         return rec
-    if s.payment_status == "paid" or s.status == "complete":
+    if s.payment_status in ("paid", "no_payment_required"):
         await _mark_paid(session_id, s)
     return await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
 
@@ -298,6 +298,10 @@ async def _apply_pro_credit_topup(rec: dict) -> None:
 
 
 async def _mark_paid(session_id: str, s) -> None:
+    # Completing Checkout does not settle delayed payment methods. Free trials
+    # and zero-total orders explicitly report no_payment_required.
+    if s.get("payment_status") not in ("paid", "no_payment_required"):
+        return
     upd = await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
         {"$set": {"status": "completed", "payment_status": "paid",
@@ -325,6 +329,14 @@ async def _mark_paid(session_id: str, s) -> None:
 
     if rec.get("type") == "pro_credit_topup":
         await _apply_pro_credit_topup(rec)
+        return
+
+    if rec.get("type") in ("postal_letter", "postal_credits"):
+        from engines import postal_billing
+        if rec["type"] == "postal_letter":
+            await postal_billing.apply_letter_payment(rec)
+        else:
+            await postal_billing.apply_credits_payment(rec)
         return
 
     plan = await db.plans.find_one({"plan_id": rec["plan_id"]}, {"_id": 0})
@@ -406,12 +418,12 @@ async def _send_pro_welcome(user_id: str, plan: dict, payment_rec: dict, user: d
             customer_name=user.get("name") or "", customer_email=user["email"],
             paid_at=now.strftime("%d/%m/%Y"),
             stripe_ref=payment_rec.get("stripe_payment_intent_id") or payment_rec.get("session_id"))
-        origin = payment_rec.get("origin_url") or os.environ.get("APP_ORIGIN") or "https://construpilot.fr"
+        origin = payment_rec.get("origin_url") or os.environ.get("APP_ORIGIN") or "https://construpilot.pt"
         html = welcome_email_html(
             customer_name=user.get("name") or "", plan_name=plan.get("name") or "Pro",
             amount_ttc=amount, dashboard_url=f"{origin.rstrip('/')}/dashboard")
         await send_email_with_pdf(
-            user["email"], f"Bem-vindo(a) ao Pro · {plan.get('name') or 'ConstruPilot'}",
+            user["email"], f"Bem-vindo ao Pro · {plan.get('name') or 'ConstruPilot'}",
             html, pdf, filename=f"{rno}.pdf")
         await db.entitlements.update_one(
             {"user_id": user_id, "plan_id": plan["plan_id"]},
@@ -535,8 +547,7 @@ async def require_pro_business(user: dict) -> None:
     if tier != "pro_business":
         raise HTTPException(
             402,
-            "Cette fonctionnalité (Plan 2D takeoff + rendu 3D) est réservée au plan "
-            "Pro Business. Passez sur le plan Pro Business pour débloquer.",
+            "Esta funcionalidade (medição em planta 2D + render 3D) está reservada ao plano Pro Business. Passe para o plano Pro Business para a desbloquear.",
         )
 
 
@@ -586,15 +597,14 @@ async def require_3d_access(user: dict, kind: str) -> str:
     from fastapi import HTTPException
     acc = await resolve_3d_access(user, kind)
     if acc["mode"] == "denied":
-        labels = {"render": "un rendu 3D", "video": "une vidéo 3D",
-                  "mockup": "la maquette 3D interactive"}
+        labels = {"render": "um render 3D", "video": "um vídeo 3D",
+                  "mockup": "a maqueta 3D interativa"}
         price = acc["price_cents"] / 100
         raise HTTPException(402, detail={
             "error": "credit_required", "kind": kind,
             "price_cents": acc["price_cents"], "price_eur": price,
             "credit_plan_id": acc["credit_plan_id"],
-            "message": f"Pour générer {labels.get(kind, 'cette création 3D')}, "
-                       f"achetez un crédit ({price:.0f} €).",
+            "message": f"Para gerar {labels.get(kind, 'cette création 3D')}, compre um crédito ({price:.0f} €).",
         })
     return acc["mode"]
 
@@ -631,3 +641,4 @@ async def credits_3d_summary(user: dict) -> dict:
             "free_render_remaining": free_remaining,
             "credits": {k: int(credits.get(k, 0) or 0) for k in CREDIT_KINDS},
             "prices_cents": prices, "credit_plans": plans}
+

@@ -3,32 +3,13 @@
 Usage:
     await send_email(to, subject, html)
     await send_email_with_pdf(to, subject, html, pdf_bytes, filename)
-
-Guard contra remetentes `.local` ou domínios inválidos:
-    - Em `ENV=production` levanta `ForbiddenSenderError` ANTES de chamar Resend.
-    - Default sender: `info@construpilot.pt` (via `mail_sender_config.get_sender`).
-
-Tracking fiel do estado Resend:
-    - Resposta API 2xx com `id` → `accepted` (não `delivered`).
-    - Exceção da API → `failed` + mensagem.
-    - Transição para `delivered`/`bounced`/`complained` só via webhook ou
-      polling a `GET /emails/{id}`.
 """
 import os
 import base64
 import asyncio
 import logging
-from datetime import datetime, timezone
 
 import resend
-
-from engines.mail_sender_config import (
-    ForbiddenSenderError,
-    Market,
-    assert_valid_sender,
-    format_from_header,
-    get_sender,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -40,100 +21,29 @@ def _configure():
     return bool(key)
 
 
-def _from(from_name: str | None = None) -> str:
-    """Devolve o header `From:` validado contra domínios proibidos.
-
-    Mantido por compatibilidade com código legado; novas chamadas devem
-    usar `format_from_header(get_sender(...))`.
-    """
-    override = {"name": from_name} if from_name else None
-    sender = get_sender(Market.PT, override=override)
-    return format_from_header(sender)
-
-
-async def _log_email_event(
-    *,
-    to: str,
-    subject: str,
-    sender_from: str,
-    reply_to: str | None,
-    status: str,
-    resend_id: str | None = None,
-    error: str | None = None,
-    campaign_id: str | None = None,
-    extra: dict | None = None,
-) -> None:
-    """Guarda evento em `email_logs` (idempotente por `resend_id`).
-
-    Nunca levanta exceção — falhas de log são silenciosas (apenas warning).
-    """
-    try:
-        from core.db import db  # import tardio para evitar ciclo
-        doc = {
-            "to": to,
-            "subject": subject[:200],
-            "from": sender_from,
-            "reply_to": reply_to,
-            "status": status,
-            "last_event": None,
-            "resend_id": resend_id,
-            "campaign_id": campaign_id,
-            "errors": [error] if error else [],
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        }
-        if extra:
-            doc["extra"] = extra
-        if resend_id:
-            await db.email_logs.update_one(
-                {"resend_id": resend_id},
-                {"$setOnInsert": doc},
-                upsert=True,
-            )
-        else:
-            await db.email_logs.insert_one(doc)
-    except Exception as log_err:
-        logger.warning("email_logs insert falhou: %s", log_err)
+def _from(from_name: str | None = None):
+    addr = os.environ.get("SENDER_EMAIL")
+    if not addr:
+        raise RuntimeError("SENDER_EMAIL em falta: configure um endereço de um domínio verificado na Resend")
+    if from_name:
+        clean = from_name.replace('"', "").replace("<", "").replace(">", "").strip()[:80]
+        if clean:
+            return f"{clean} <{addr}>"
+    return addr
 
 
 async def send_email(to: str, subject: str, html: str,
-                     reply_to: str | None = None, from_name: str | None = None,
-                     campaign_id: str | None = None) -> dict:
+                     reply_to: str | None = None, from_name: str | None = None) -> dict:
     if not _configure():
         raise RuntimeError("RESEND_API_KEY em falta")
-
-    # Guard — pode levantar ForbiddenSenderError em produção
-    sender = get_sender(Market.PT, override={"name": from_name} if from_name else None)
-    reply_final = reply_to or sender["reply_to"]
+    params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html}
     if reply_to:
-        assert_valid_sender(reply_to)
-
-    from_header = format_from_header(sender)
-    params = {"from": from_header, "to": [to], "subject": subject, "html": html}
-    if reply_final:
-        params["reply_to"] = reply_final
+        params["reply_to"] = reply_to
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
-        rid = (resp or {}).get("id")
-        logger.info("Email sent to=%s subject=%r id=%s",
-                    to, (subject[:60] + "…") if len(subject) > 60 else subject, rid)
-        # Resend aceitou → `accepted` (não `delivered`!)
-        await _log_email_event(
-            to=to, subject=subject, sender_from=sender["from"],
-            reply_to=reply_final, status="accepted" if rid else "queued",
-            resend_id=rid, campaign_id=campaign_id,
-        )
-        return {"ok": True, "id": rid, "status": "accepted" if rid else "queued"}
-    except ForbiddenSenderError:
-        # Já logado dentro do guard — propaga
-        raise
+        return {"ok": True, "id": resp.get("id")}
     except Exception as e:
-        logger.error("Email send failed to=%s: %s", to, e)
-        await _log_email_event(
-            to=to, subject=subject, sender_from=sender["from"],
-            reply_to=reply_final, status="failed",
-            error=str(e)[:500], campaign_id=campaign_id,
-        )
+        logger.error(f"Email send failed: {e}")
         raise
 
 
@@ -142,18 +52,13 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
                               cc: str | None = None,
                               extra_attachments: list[dict] | None = None,
                               reply_to: str | None = None,
-                              from_name: str | None = None,
-                              campaign_id: str | None = None) -> dict:
-    """Envoie un email avec un PDF principal + éventuellement d'autres pièces jointes."""
+                              from_name: str | None = None) -> dict:
+    """Envoie un email avec un PDF principal + éventuellement d'autres pièces jointes.
+
+    extra_attachments : liste de dicts {filename, content (bytes)}.
+    """
     if not _configure():
         raise RuntimeError("RESEND_API_KEY em falta")
-
-    # Guard
-    sender = get_sender(Market.PT, override={"name": from_name} if from_name else None)
-    reply_final = reply_to or sender["reply_to"]
-    if reply_to:
-        assert_valid_sender(reply_to)
-
     attachments = [{
         "filename": filename,
         "content": base64.b64encode(pdf_bytes).decode("utf-8"),
@@ -165,33 +70,51 @@ async def send_email_with_pdf(to: str, subject: str, html: str,
             "content": base64.b64encode(att["content"]).decode("utf-8"),
             "content_type": att.get("content_type", "application/pdf"),
         })
-    params = {"from": format_from_header(sender), "to": [to], "subject": subject,
-              "html": html, "attachments": attachments}
-    if cc:
-        params["cc"] = [cc]
-    if reply_final:
-        params["reply_to"] = reply_final
+    params = {"from": _from(from_name), "to": [to], "subject": subject, "html": html,
+              "attachments": attachments}
+    if reply_to:
+        params["reply_to"] = reply_to
+    await unsuppress(to)
     try:
         resp = await asyncio.to_thread(resend.Emails.send, params)
-        rid = (resp or {}).get("id")
-        await _log_email_event(
-            to=to, subject=subject, sender_from=sender["from"],
-            reply_to=reply_final, status="accepted" if rid else "queued",
-            resend_id=rid, campaign_id=campaign_id,
-            extra={"has_pdf": True, "filename": filename},
-        )
-        return {"ok": True, "id": rid, "status": "accepted" if rid else "queued"}
-    except ForbiddenSenderError:
-        raise
     except Exception as e:
         logger.error(f"Email+PDF send failed: {e}")
-        await _log_email_event(
-            to=to, subject=subject, sender_from=sender["from"],
-            reply_to=reply_final, status="failed",
-            error=str(e)[:500], campaign_id=campaign_id,
-            extra={"has_pdf": True, "filename": filename},
-        )
         raise
+    # Copie au pro envoyée SÉPARÉMENT : une adresse pro en liste de suppression (rebond) ne doit jamais
+    # bloquer la remise au client (Resend supprime tout le message si un destinataire cc est supprimé).
+    if cc and cc.lower() != (to or "").lower():
+        try:
+            await asyncio.to_thread(resend.Emails.send, {**params, "to": [cc], "subject": f"[Copie] {subject}"})
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Copie pro non envoyée ({cc}): {e}")
+    return {"ok": True, "id": resp.get("id")}
+
+
+async def unsuppress(email: str) -> bool:
+    """Retire l'adresse de la liste de suppression Resend (rebond antérieur) pour permettre la remise."""
+    if not email or not _configure():
+        return False
+    try:
+        res = await asyncio.to_thread(resend.Suppressions.list, {"limit": 100})
+        ids = [s["id"] for s in (res.get("data") or []) if (s.get("email") or "").lower() == email.lower()]
+        if ids:
+            await asyncio.to_thread(resend.Suppressions.remove, {"ids": ids})
+            logger.info(f"Suppression Resend levée pour {email}")
+            return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"unsuppress({email}) impossible: {e}")
+    return False
+
+
+async def email_last_event(email_id: str) -> str | None:
+    """Dernier événement Resend (delivered / bounced / suppressed / …) pour un e-mail envoyé."""
+    if not email_id or not _configure():
+        return None
+    try:
+        e = await asyncio.to_thread(resend.Emails.get, email_id)
+        return e.get("last_event")
+    except Exception:  # noqa: BLE001
+        return None
 
 
 BRAND = "#FF5A00"
@@ -209,7 +132,7 @@ def logo_url_for(user_id: str | None, branding: dict | None) -> str | None:
 
 
 COMPANY_ADDRESS = "ConstruPilot · France"  # override via env in prod
-COMPANY_WEBSITE = "https://construpilot.fr"
+COMPANY_WEBSITE = "https://construpilot.pt"
 
 
 def _footer(unsubscribe_url: str | None = None) -> str:
@@ -218,10 +141,7 @@ def _footer(unsubscribe_url: str | None = None) -> str:
     unsub_row = ""
     if unsubscribe_url:
         unsub_row = (
-            f'<tr><td style="padding:8px 24px 20px;background:#f8fafc;text-align:center">'
-            f'<a href="{unsubscribe_url}" style="color:#94A3B8;font-size:11px;'
-            f'text-decoration:underline">Se désinscrire des emails marketing</a>'
-            f'</td></tr>'
+            f'<tr><td style="padding:8px 24px 20px;background:#f8fafc;text-align:center"><a href="{unsubscribe_url}" style="color:#94A3B8;font-size:11px;text-decoration:underline">Cancelar a subscrição dos e-mails de marketing</a></td></tr>'
         )
     # SVG logo inline (small brand mark)
     logo_svg = (
@@ -262,25 +182,7 @@ def wrap_html(title: str, body: str, cta_url: str | None = None, cta_label: str 
                f'style="background:{BRAND};color:#fff;text-decoration:none;padding:12px 20px;'
                f'font-family:Arial,sans-serif;font-size:14px;font-weight:bold;border-radius:4px;'
                f'display:inline-block">{cta_label}</a></td></tr>')
-    return f"""<!doctype html>
-<html><body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">
-<tr><td align="center">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0"
-       style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
-<tr><td style="padding:24px;border-bottom:2px solid {BRAND}">
-  <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px">
-    ConstruPilot
-  </div>
-  <div style="color:#64748B;font-size:12px;margin-top:4px">Estimez, Comparez, Construisez.</div>
-</td></tr>
-<tr><td style="padding:28px">
-  <h1 style="font-size:20px;margin:0 0 16px 0">{title}</h1>
-  <div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>
-  {cta}
-</td></tr>
-{_footer(unsubscribe_url)}
-</table></td></tr></table></body></html>"""
+    return f'<!doctype html>\n<html><body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">\n<tr><td align="center">\n<table role="presentation" width="560" cellpadding="0" cellspacing="0"\n       style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">\n<tr><td style="padding:24px;border-bottom:2px solid {BRAND}">\n  <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px">\n    ConstruPilot\n  </div>\n  <div style="color:#64748B;font-size:12px;margin-top:4px">Estime, Compare, Construa.</div>\n</td></tr>\n<tr><td style="padding:28px">\n  <h1 style="font-size:20px;margin:0 0 16px 0">{title}</h1>\n  <div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>\n  {cta}\n</td></tr>\n{_footer(unsubscribe_url)}\n</table></td></tr></table></body></html>'
 
 
 
@@ -308,14 +210,11 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
         header = (f'<img src="{src}" alt="{company_name}" '
                   f'style="max-height:76px;max-width:260px;display:block;margin:0 auto"/>')
     else:
-        header = (f'<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;'
-                  f'text-align:center;color:#0A0D14">{company_name or "Devis"}</div>')
+        header = (f"""<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;text-align:center;color:#0A0D14">{company_name or 'Orçamento'}</div>""")
 
     badge = ""
     if verified:
-        chip = ('<span style="display:inline-block;background:#E8F3ED;color:#3F7D54;'
-                'font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;'
-                'border:1px solid #C4E1D0">&#10004; Pro vérifié par ConstruPilot</span>')
+        chip = ("<span style=\"display:inline-block;background:#E8F3ED;color:#3F7D54;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid #C4E1D0\">&#10004; Profissional verificado pelo ConstruPilot</span>")
         if verify_url:
             chip = (f'<a href="{verify_url}" style="text-decoration:none" '
                     f'target="_blank" rel="noopener">{chip}</a>')
@@ -328,9 +227,9 @@ def wrap_company_html(title: str, body: str, *, company_name: str = "",
     if nif:
         _id_parts.append(f"NIF {nif}")
     if not nif and siret:
-        _id_parts.append(f"SIRET {siret}")
+        _id_parts.append(f'Estabelecimento {siret}')
     if vat:
-        _id_parts.append(f"{'IVA' if nif else 'TVA'} {vat}")
+        _id_parts.append(f"{('IVA' if nif else 'IVA')} {vat}")
     if alvara:
         _id_parts.append(f"Alvará {alvara}")
     ids = " · ".join(_id_parts)

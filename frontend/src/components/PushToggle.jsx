@@ -4,13 +4,19 @@ import { Button } from "@/components/ui/button";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useI18n } from "@/context/I18nContext";
 
-/** Botão compacto de ativação das notificações push (página Dashboard).
- *  - Esconde automaticamente o botão se o browser não suportar Push.
- *  - Toast + testids para o testing agent. */
-export default function PushToggle({ variant = "outline", size = "sm" }) {
+/** Bouton compact d'activation des notifications push (page Dashboard).
+ *  - Cache automatiquement le bouton si le navigateur ne supporte pas Push.
+ *  - Toast + testids pour le testing agent. */
+export default function PushToggle({ variant = "outline", size = "sm", testId = "push-toggle-btn" }) {
+  const { lang } = useI18n();
+  const copy = {
+    fr: ["Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar", "Não foi possível ativar"],
+    pt: ["Notificações ativadas", "Notificações bloqueadas", "Ativar notificações", "Notificações desativadas", "Notificações ativadas", "Não foi possível ativar"],
+    en: ["Notifications enabled", "Notifications blocked", "Enable notifications", "Push notifications disabled", "Push notifications enabled", "Activation failed"],
+  };
+  const ui = copy[lang] || copy.fr;
   const { supported, permission, subscribed, busy, subscribe, unsubscribe } =
     usePushNotifications();
-  const { t } = useI18n();
 
   if (!supported) return null;
 
@@ -18,21 +24,21 @@ export default function PushToggle({ variant = "outline", size = "sm" }) {
     try {
       if (subscribed) {
         await unsubscribe();
-        toast.success(t("push.toast_off"));
+        toast.success(ui[3]);
       } else {
         await subscribe();
-        toast.success(t("push.toast_on"));
+        toast.success(ui[4]);
       }
     } catch (err) {
-      toast.error(err?.message || t("push.toast_error"));
+      toast.error(err?.message || ui[5]);
     }
   };
 
   const label = subscribed
-    ? t("push.enabled")
+    ? ui[0]
     : permission === "denied"
-    ? t("push.blocked")
-    : t("push.enable");
+    ? ui[1]
+    : ui[2];
 
   const Icon = subscribed ? BellRing : permission === "denied" ? BellOff : Bell;
 
@@ -42,10 +48,8 @@ export default function PushToggle({ variant = "outline", size = "sm" }) {
       disabled={busy || permission === "denied"}
       variant={variant}
       size={size}
-      data-testid="push-toggle-btn"
+      data-testid={testId}
       data-subscribed={subscribed ? "1" : "0"}
-      aria-label={label}
-      title={label}
       className="rounded-sm gap-2"
     >
       <Icon className="h-4 w-4" /> {label}

@@ -11,7 +11,7 @@ export const SignupCounter = () => {
     const id = setInterval(fetchCount, 15000);
     return () => { alive = false; clearInterval(id); };
   }, []);
-  return null; // Contador oculto (sem menção ao número de inscritos)
+  return null; // Compteur masqué (pas de mention du nombre d'inscrits)
   // eslint-disable-next-line no-unreachable
   if (count === null) return null;
   return (
@@ -21,7 +21,7 @@ export const SignupCounter = () => {
         <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
       </span>
       <Users className="h-3.5 w-3.5 text-primary" />
-      <b className="text-foreground num">{count.toLocaleString("pt-PT")}</b> professionnels du BTP ont déjà rejoint ConstruPilot
+      <b className="text-foreground num">{count.toLocaleString("pt-PT")}</b> profissionais da construção já aderiram ao ConstruPilot
     </div>
   );
 };

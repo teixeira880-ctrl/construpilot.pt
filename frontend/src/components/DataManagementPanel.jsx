@@ -30,7 +30,7 @@ export default function DataManagementPanel() {
 
   const delClient = async (cl) => {
     if (!(await confirm({
-      title: "Eliminar ce client ?",
+      title: "Eliminar este cliente?",
       description: `${cl.company || cl.name || "Este cliente"} será eliminado. Impossível se tiver orçamentos/faturas associados.`,
       confirmLabel: "Eliminar",
     }))) return;
@@ -38,7 +38,7 @@ export default function DataManagementPanel() {
       await api.delete(`/clients/${cl.client_id}`);
       setClients((xs) => xs.filter((x) => x.client_id !== cl.client_id));
       toast.success("Cliente eliminado");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Eliminação impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível eliminar"); }
   };
   const delQuote = async (q) => {
     if (!(await confirm({
@@ -50,7 +50,7 @@ export default function DataManagementPanel() {
       await api.delete(`/documents/${q.doc_id}`);
       setQuotes((xs) => xs.filter((x) => x.doc_id !== q.doc_id));
       toast.success("Orçamento eliminado");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Eliminação impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível eliminar"); }
   };
 
   return (
@@ -58,20 +58,20 @@ export default function DataManagementPanel() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="overline">Gestão de dados</p>
-          <p className="text-sm text-muted-foreground mt-1">Elimine os orçamentos e clientes registados.</p>
+          <p className="text-sm text-muted-foreground mt-1">Elimine os orçamentos e clientes guardados.</p>
         </div>
       </div>
       {loading ? (
         <div className="h-24 grid place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Orçamento */}
+          {/* Devis */}
           <div>
             <p className="text-sm font-semibold flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4 text-primary" /> Orçamento ({quotes.length})
+              <FileText className="h-4 w-4 text-primary" /> Orçamentos ({quotes.length})
             </p>
             <div className="space-y-1 max-h-64 overflow-auto">
-              {quotes.length === 0 && <p className="text-xs text-muted-foreground">Nenhum devis.</p>}
+              {quotes.length === 0 && <p className="text-xs text-muted-foreground">Nenhum orçamento.</p>}
               {quotes.map((q) => (
                 <div key={q.doc_id} className="flex items-center gap-2 border border-border rounded-sm px-2 py-1.5"
                      data-testid={`mgmt-quote-${q.doc_id}`}>
@@ -85,7 +85,7 @@ export default function DataManagementPanel() {
               ))}
             </div>
           </div>
-          {/* Clientes */}
+          {/* Clients */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold flex items-center gap-2">
@@ -96,7 +96,7 @@ export default function DataManagementPanel() {
               </button>
             </div>
             <div className="space-y-1 max-h-64 overflow-auto">
-              {clients.length === 0 && <p className="text-xs text-muted-foreground">Nenhum client.</p>}
+              {clients.length === 0 && <p className="text-xs text-muted-foreground">Nenhum cliente.</p>}
               {clients.map((c) => (
                 <div key={c.client_id} className="flex items-center gap-2 border border-border rounded-sm px-2 py-1.5"
                      data-testid={`mgmt-client-${c.client_id}`}>

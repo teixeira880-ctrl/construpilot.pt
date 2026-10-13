@@ -1,74 +1,41 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FileText, Plus, Calculator, User } from "lucide-react";
+import { useExperienceCopy } from "@/components/workspace/experienceCopy";
+import { Link, useLocation } from "react-router-dom";
+import { LayoutDashboard, FileText, Calculator, Grid2X2, Plus, HardHat, Search } from "lucide-react";
+import { AssistantIcon } from "@/components/workspace/navigation";
 import { useAuth } from "@/context/AuthContext";
-
-// Routes plein écran / publiques où la barre d'onglets ne doit pas apparaître
-const HIDDEN_PREFIXES = ["/pointage", "/sign/", "/e/", "/etude/", "/avis/", "/fiche/", "/login", "/inscription"];
-
-const TABS = [
-  { to: "/dashboard", label: "Início", icon: LayoutDashboard },
-  { to: "/devis", label: "Orçamentos", icon: FileText },
-  { to: "/devis-editeur", label: "Novo", icon: Plus, primary: true },
-  { to: "/calculateurs", label: "Cálculos", icon: Calculator },
-  { to: "/compte", label: "Conta", icon: User },
-];
-
+import { useBilling } from "@/context/BillingContext";
+import { usePermissions } from "@/context/PermissionContext";
+import { meetsLevel, routeMatches, OPEN_WORKSPACE_MENU } from "@/components/workspace/navigation";
+import { useWorkspaceCopy } from "@/components/workspace/copy";
+const HIDDEN_PREFIXES = ["/pointage", "/sign/", "/e/", "/etude/", "/avis/", "/fiche/", "/login", "/inscription", "/reinitialiser", "/rendu/", "/estimation-partagee/", "/prospection/"];
+const HIDDEN_PAGES = ["/", "/particuliers", "/metre", "/investisseurs", "/fonctionnalites"];
 export const MobileTabBar = () => {
   const { user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  if (!user) return null;
-  if (HIDDEN_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
-
-  const isActive = (to) =>
-    to === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(to);
-
-  return (
-    <nav
-      className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-white/10
-                 bg-[#0A0D14]/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
-      data-testid="mobile-tab-bar"
-    >
-      <div className="grid grid-cols-5 h-16">
-        {TABS.map((tab) => {
-          const active = isActive(tab.to);
-          const Icon = tab.icon;
-          if (tab.primary) {
-            return (
-              <button
-                key={tab.to}
-                onClick={() => navigate(tab.to)}
-                data-testid={`tab-${tab.label.toLowerCase()}`}
-                className="flex flex-col items-center justify-center"
-                aria-label={tab.label}
-              >
-                <span className="-mt-6 grid h-14 w-14 place-items-center rounded-full bg-[#FF5A00]
-                                 text-white shadow-lg shadow-orange-900/40 ring-4 ring-[#0A0D14]
-                                 active:scale-95 transition-transform">
-                  <Icon className="h-6 w-6" strokeWidth={2.5} />
-                </span>
-                <span className="text-[10px] mt-0.5 text-white/70">{tab.label}</span>
-              </button>
-            );
-          }
-          return (
-            <button
-              key={tab.to}
-              onClick={() => navigate(tab.to)}
-              data-testid={`tab-${tab.label.toLowerCase()}`}
-              className="flex flex-col items-center justify-center gap-1 transition-colors"
-              aria-label={tab.label}
-            >
-              <Icon className={`h-5 w-5 ${active ? "text-[#FF5A00]" : "text-white/55"}`}
-                    strokeWidth={active ? 2.5 : 2} />
-              <span className={`text-[10px] ${active ? "text-[#FF5A00] font-semibold" : "text-white/55"}`}>
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
+  const { tier } = useBilling();
+  const { can } = usePermissions();
+  const { pathname } = useLocation();
+  const ui = useWorkspaceCopy();
+  const experience = useExperienceCopy();
+  if (!user || HIDDEN_PAGES.includes(pathname) || HIDDEN_PREFIXES.some(p => pathname.startsWith(p))) return null;
+  const pro = meetsLevel(user, tier, "pro");
+  const canAssistant = meetsLevel(user, tier, "particulier_payant");
+  const quotes = pro && can("devis");
+  const tabs = pro ? [
+    { to: "/dashboard", label: ui("home"), icon: LayoutDashboard, test: "accueil" },
+    { to: "/chantiers", label: ui("chantiers"), icon: HardHat, test: "chantiers" },
+    { to: quotes ? "/devis" : "/plan", label: ui(quotes ? "quotes" : "plan"), icon: quotes ? FileText : Plus, test: quotes ? "devis" : "plan" },
+    { to: "/assistant", label: experience("assistantShort"), icon: AssistantIcon, test: "assistant" },
+  ] : [
+    { to: "/dashboard", label: ui("home"), icon: LayoutDashboard, test: "accueil" },
+    { to: "/calculateurs", label: ui("calculators"), icon: Calculator, test: "calculs" },
+    canAssistant
+      ? { to: "/assistant", label: experience("assistantShort"), icon: AssistantIcon, test: "assistant" }
+      : { to: "/prix", label: ui("prices"), icon: Search, test: "prix" },
+    { to: "/estimation", label: ui("new"), icon: Plus, test: "novo" },
+  ];
+  return <nav className="workspace-mobile-tabs" data-testid="mobile-tab-bar" aria-label={ui("menu")}>
+    {tabs.map(({ to, label, icon: Icon, test }) => <Link key={to} to={to} aria-current={(routeMatches(pathname, to) || (to === "/devis" && routeMatches(pathname, "/devis-editeur"))) ? "page" : undefined} data-testid={`tab-${test}`}><span><Icon size={21} aria-hidden="true" /></span><span>{label}</span></Link>)}
+    <button type="button" aria-haspopup="dialog" onClick={() => window.dispatchEvent(new Event(OPEN_WORKSPACE_MENU))} data-testid="tab-menu"><span><Grid2X2 size={21} aria-hidden="true" /></span><span>{ui("menu")}</span></button>
+  </nav>;
 };
+

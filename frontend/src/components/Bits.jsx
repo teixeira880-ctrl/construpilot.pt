@@ -17,6 +17,8 @@ export const Stat = ({ label, value, sub, testId, accent, onClick, badge }) => (
     data-testid={testId}
     onClick={onClick}
     role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onKeyDown={onClick ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(event); } } : undefined}
   >
     {badge != null && (
       <span data-testid={`${testId}-badge`}

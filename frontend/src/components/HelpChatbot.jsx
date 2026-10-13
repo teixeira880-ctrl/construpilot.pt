@@ -16,6 +16,7 @@ export default function HelpChatbot() {
   const endRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, open]);
+  useEffect(() => { const h = () => setOpen(true); window.addEventListener("cp:open-help", h); return () => window.removeEventListener("cp:open-help", h); }, []);
 
   const send = async (text) => {
     const msg = (text ?? input).trim();

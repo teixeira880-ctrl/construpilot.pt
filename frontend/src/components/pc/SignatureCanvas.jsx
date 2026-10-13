@@ -57,7 +57,7 @@ export const SignatureCanvas = ({ onChange }) => {
   return (
     <div className="space-y-1.5">
       <p className="text-xs text-muted-foreground">
-        Dessinez votre signature ci-dessous (doigt ou souris) — facultatif :
+        Desenhe a sua assinatura abaixo (dedo ou rato) — facultativo:
       </p>
       <canvas
         ref={ref} width={560} height={150}
@@ -69,7 +69,7 @@ export const SignatureCanvas = ({ onChange }) => {
       {hasInk.current && (
         <Button type="button" variant="ghost" size="sm" onClick={clear}
                 className="h-7 text-xs gap-1.5 rounded-sm" data-testid="pc-signature-clear-btn">
-          <Eraser className="h-3 w-3" /> Effacer la signature
+          <Eraser className="h-3 w-3" /> Apagar a assinatura
         </Button>
       )}
     </div>

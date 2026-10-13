@@ -14,7 +14,7 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://construpilot-recon.preview.emergentagent.com").rstrip("/")
 
-ADMIN_PT = {"email": "info@construpilot.pt", "password": "uFuBb6Q5h1QUxCmc"}
+ADMIN_PT = {"email": "info@construpilot.pt", "password": "Ruquinha2020."}
 ADMIN_FR = {"email": "admin@construpilot.io", "password": "VJAiUOI90Ss2brVH"}
 
 

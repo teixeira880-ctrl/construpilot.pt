@@ -7,6 +7,7 @@ import { ARTICLE_BODIES } from "@/lib/blogBodies";
 import { BLOG_ARTICLES_PT, getArticlePT, ARTICLE_BODIES_PT } from "@/lib/blogPortugal";
 import { useI18n } from "@/context/I18nContext";
 import AutoSeoBlogPost from "@/components/AutoSeoBlogPost";
+import NewsletterForm from "@/components/NewsletterForm";
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -37,19 +38,19 @@ export default function BlogPost() {
           "name": "ConstruPilot",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://construpilot.fr/logo512.png",
+            "url": "https://construpilot.pt/logo512.png",
           },
         },
-        "mainEntityOfPage": `https://construpilot.fr/blog/${slug}`,
+        "mainEntityOfPage": `https://construpilot.pt/blog/${slug}`,
         "articleSection": article.category,
         "keywords": article.keywords,
       },
       {
         "@type": "BreadcrumbList",
         "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.fr/" },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.fr/blog" },
-          { "@type": "ListItem", "position": 3, "name": article.title, "item": `https://construpilot.fr/blog/${slug}` },
+          { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://construpilot.pt/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://construpilot.pt/blog" },
+          { "@type": "ListItem", "position": 3, "name": article.title, "item": `https://construpilot.pt/blog/${slug}` },
         ],
       },
     ],
@@ -68,7 +69,7 @@ export default function BlogPost() {
       />
 
       <article className="mx-auto max-w-3xl px-5 lg:px-8 py-12 lg:py-16">
-        <nav aria-label="Fil d'Ariane" className="mb-6" data-testid="breadcrumb">
+        <nav aria-label="Caminho de navegação" className="mb-6" data-testid="breadcrumb">
           <ol className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <li><Link to="/" className="hover:text-primary" data-testid="breadcrumb-home">{isPT ? "Início" : "Início"}</Link></li>
             <li aria-hidden="true" className="opacity-50">/</li>
@@ -90,7 +91,7 @@ export default function BlogPost() {
             {new Date(article.published).toLocaleDateString("pt-PT", { day:"numeric", month:"long", year:"numeric" })}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" /> {article.readingMinutes} {isPT ? "min de leitura" : "min de lecture"}
+            <Clock className="h-3 w-3" /> {article.readingMinutes} {isPT ? "min de leitura" : "min de leitura"}
           </span>
         </div>
 
@@ -104,20 +105,20 @@ export default function BlogPost() {
         {/* CTA in-article */}
         <div className="mt-12 surface p-6 grid md:grid-cols-[1fr_auto] gap-4 items-center border-primary/40">
           <div>
-            <p className="font-display font-bold text-lg">Prêt à chiffrer votre chantier ?</p>
+            <p className="font-display font-bold text-lg">Pronto para orçamentar a sua obra?</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Décrivez votre projet — ConstruPilot vous rend un devis chiffré en 30 secondes, gratuit.
+              Descreva o seu projeto — ConstruPilot devolve-lhe um orçamento calculado em 30 segundos, gratuito.
             </p>
           </div>
           <Link to="/smart-project">
             <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white" data-testid="blog-cta-smart">
-              Essayer maintenant <ArrowRight className="h-4 w-4" />
+              Experimentar agora <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
 
         {/* Prev / Next */}
-        <nav className="mt-12 grid md:grid-cols-2 gap-3" aria-label="Autres articles">
+        <nav className="mt-12 grid md:grid-cols-2 gap-3" aria-label="Outros artigos">
           {prev ? (
             <Link to={`/blog/${prev.slug}`}
                   data-testid="blog-prev-link"
@@ -139,6 +140,7 @@ export default function BlogPost() {
             </Link>
           )}
         </nav>
+        <div className="mt-10"><NewsletterForm source={`article:${slug}`} /></div>
       </article>
     </>
   );

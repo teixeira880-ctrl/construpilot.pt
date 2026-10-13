@@ -52,9 +52,9 @@ export default function RevenueTab() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="overline">Revenue Cockpit</p>
-          <h2 className="font-display text-2xl font-bold tracking-tight">Croissance & rentabilité</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">Crescimento & rentabilidade</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Généré le {new Date(kpis.generated_at).toLocaleString("pt-PT")}
+            Gerado a {new Date(kpis.generated_at).toLocaleString("pt-PT")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -76,35 +76,35 @@ export default function RevenueTab() {
       {/* KPIs monétaires */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
         <KPICard label="MRR" value={eur(kpis.mrr_eur)} testId="kpi-mrr"
-                 sub={`${kpis.paying_subs} abo. payant${kpis.paying_subs > 1 ? "s" : ""}`}
+                 sub={`${kpis.paying_subs} subscr. paga${kpis.paying_subs > 1 ? "s" : ""}`}
                  accent icon={Zap} />
         <KPICard label="ARR" value={eur(kpis.arr_eur)} testId="kpi-arr" icon={TrendingUp} />
         <KPICard label="ARPU" value={eur(kpis.arpu_eur)} testId="kpi-arpu"
-                 sub="Revenu moyen par utilisateur" icon={Users} />
+                 sub="Receita média por utilizador" icon={Users} />
         <KPICard label="LTV" value={eur(kpis.ltv_eur)} testId="kpi-ltv"
-                 sub={`churn assumé ${num((kpis.assumed_monthly_churn || 0) * 100, 1)} %/mois`}
+                 sub={`churn assumido ${num((kpis.assumed_monthly_churn || 0) * 100, 1)} %/mês`}
                  icon={Wallet} />
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <KPICard label="CAC" value={kpis.cac_eur ? eur(kpis.cac_eur) : "— à saisir"}
-                 sub="Renseignez vos dépenses d'acquisition dans .env"
+        <KPICard label="CAC" value={kpis.cac_eur ? eur(kpis.cac_eur) : "— a introduzir"}
+                 sub="Indique as suas despesas de aquisição no .env"
                  testId="kpi-cac" icon={CreditCard} />
-        <KPICard label="Trials en cours" value={num(kpis.trialing_subs)} testId="kpi-trialing" icon={Clock} />
-        <KPICard label="Revenu ce mois" value={eur(kpis.revenue_this_month_eur)}
-                 sub={`${kpis.new_paying_this_month} nouveaux payants`}
+        <KPICard label="Trials em curso" value={num(kpis.trialing_subs)} testId="kpi-trialing" icon={Clock} />
+        <KPICard label="Receita este mês" value={eur(kpis.revenue_this_month_eur)}
+                 sub={`${kpis.new_paying_this_month} novos pagantes`}
                  testId="kpi-revenue-month" icon={Wallet} />
         <KPICard label="LTV / CAC"
                  value={kpis.cac_eur ? num(kpis.ltv_eur / kpis.cac_eur, 1) + "×" : "—"}
-                 sub={kpis.cac_eur && (kpis.ltv_eur / kpis.cac_eur >= 3 ? "Sain ✅" : "À surveiller")}
+                 sub={kpis.cac_eur && (kpis.ltv_eur / kpis.cac_eur >= 3 ? "Saudável ✅" : "A vigiar")}
                  testId="kpi-ltv-cac" icon={TrendingUp} />
       </div>
 
       {/* Time series */}
       <div className="surface p-6">
         <div className="flex items-center justify-between mb-6">
-          <p className="overline">Revenu quotidien</p>
-          <Badge variant="outline" className="rounded-sm num">{days} derniers jours</Badge>
+          <p className="overline">Receita diária</p>
+          <Badge variant="outline" className="rounded-sm num">{days} últimos dias</Badge>
         </div>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={series} margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
@@ -114,7 +114,7 @@ export default function RevenueTab() {
             <Tooltip
               contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 0, fontSize: 12 }}
               labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-              formatter={(v, k) => k === "revenue_eur" ? [eur(v), "Revenu"] : [v, "Paiements"]}
+              formatter={(v, k) => k === "revenue_eur" ? [eur(v), "Receita"] : [v, "Pagamentos"]}
             />
             <Line type="monotone" dataKey="revenue_eur" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
           </LineChart>
@@ -123,35 +123,35 @@ export default function RevenueTab() {
 
       {/* Per-plan MRR breakdown */}
       <div className="surface p-6" data-testid="mrr-per-plan">
-        <p className="overline mb-4">MRR par plan</p>
+        <p className="overline mb-4">MRR por plano</p>
         {kpis.per_plan?.length ? (
           <div className="grid gap-2">
             {kpis.per_plan.map((p) => (
               <div key={p.plan_id} className="flex items-center justify-between border-b border-border pb-2">
                 <div>
                   <p className="font-medium text-sm">{p.name || p.plan_id}</p>
-                  <p className="num text-xs text-muted-foreground">{p.count} abo · {p.plan_id}</p>
+                  <p className="num text-xs text-muted-foreground">{p.count} subscr. · {p.plan_id}</p>
                 </div>
                 <p className="num font-bold text-primary">{eur(p.mrr)}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Aucun abonnement payant pour l'instant.</p>
+          <p className="text-sm text-muted-foreground">Nenhuma subscrição paga por agora.</p>
         )}
       </div>
 
       {/* Funnel 30 jours */}
       <div className="surface p-6" data-testid="funnel-30d">
         <div className="flex items-center gap-2 mb-4">
-          <p className="overline">Funnel 30 derniers jours</p>
+          <p className="overline">Funil últimos 30 dias</p>
           <Info className="h-3 w-3 text-muted-foreground" />
         </div>
         <div className="grid sm:grid-cols-4 gap-4">
-          <Stat label="Signups" value={num(funnel.signups)} testId="funnel-signups" />
-          <Stat label="Trials démarrés" value={num(funnel.trials_started)}
+          <Stat label="Registos" value={num(funnel.signups)} testId="funnel-signups" />
+          <Stat label="Trials iniciados" value={num(funnel.trials_started)}
                 sub={`${funnel.signup_to_trial_pct} % conv.`} testId="funnel-trials" />
-          <Stat label="Paiements confirmés" value={num(funnel.paid_transactions)}
+          <Stat label="Pagamentos confirmados" value={num(funnel.paid_transactions)}
                 sub={`${funnel.trial_to_paid_pct} % conv.`} accent testId="funnel-paid" />
           <Stat label="Leads ConstruPilot" value={num(funnel.leads)} testId="funnel-leads" />
         </div>

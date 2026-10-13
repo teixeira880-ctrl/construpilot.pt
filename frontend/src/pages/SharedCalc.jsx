@@ -29,7 +29,7 @@ export default function SharedCalc() {
       a.href = url; a.download = "fiche-calcul-construpilot.pdf";
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Descarga impossível"); }
+    } catch { toast.error("Transferência impossível"); }
     finally { setBusyPdf(false); }
   };
 
@@ -39,7 +39,7 @@ export default function SharedCalc() {
         <div>
           <p className="font-display text-2xl font-bold">Ficha não encontrada</p>
           <p className="text-muted-foreground mt-2">Este link pode ter expirado.</p>
-          <Link to="/" className="text-primary mt-4 inline-block">Ir para o ConstruPilot →</Link>
+          <Link to="/" className="text-primary mt-4 inline-block">Ir para ConstruPilot →</Link>
         </div>
       </div>
     );
@@ -65,7 +65,7 @@ export default function SharedCalc() {
           <h1 className="font-display text-3xl font-bold mt-2">{data.name}</h1>
           {data.contractor ? (
             <p className="text-sm text-muted-foreground mt-2 inline-flex items-center gap-2">
-              <HardHat className="h-4 w-4 text-primary" /> Preparada por {data.contractor}
+              <HardHat className="h-4 w-4 text-primary" /> Preparado por {data.contractor}
             </p>
           ) : null}
           <div className="mt-5">
@@ -78,7 +78,7 @@ export default function SharedCalc() {
 
         {data.inputs?.length > 0 && (
           <section>
-            <p className="overline mb-3">Parâmetros</p>
+            <p className="overline mb-3">Definições</p>
             <div className="grid sm:grid-cols-2 gap-2">
               {data.inputs.map((i, k) => (
                 <div key={k} className="flex justify-between border border-border rounded-sm px-4 py-2.5 text-sm">
@@ -133,14 +133,14 @@ export default function SharedCalc() {
           </section>
         ) : (
           <section>
-            <p className="overline mb-3">Lista de compras — materiais</p>
+            <p className="overline mb-3">Lista de compras materiais</p>
             <div className="border border-border rounded-sm overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-secondary/60">
                   <tr>
                     <th className="text-left px-4 py-2.5">Material</th>
                     <th className="text-right px-4 py-2.5">Quantidade</th>
-                    <th className="text-left px-4 py-2.5">Unidade</th>
+                    <th className="text-left px-4 py-2.5">Un.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -154,18 +154,18 @@ export default function SharedCalc() {
                 </tbody>
               </table>
             </div>
-            <p className="num mt-4 text-right">Orçamento de materiais estimado: <span className="text-primary font-bold text-lg">{eur(data.estimated_budget)}</span></p>
+            <p className="num mt-4 text-right">Orçamento materiais estimado: <span className="text-primary font-bold text-lg">{eur(data.estimated_budget)}</span></p>
           </section>
         )}
 
         <p className="text-xs text-muted-foreground border-t border-border pt-6">
-          Estimativa indicativa, com margens de segurança incluídas. As quantidades podem variar consoante a execução.
+          Estimativa indicativa, margens de segurança incluídas. As quantidades podem variar conforme a execução.
         </p>
 
-        <Link to="/calculadoras" className="surface p-5 rounded-md flex items-center justify-between group hover:border-primary/50 transition-colors" data-testid="shared-cta">
+        <Link to="/calculateurs" className="surface p-5 rounded-md flex items-center justify-between group hover:border-primary/50 transition-colors" data-testid="shared-cta">
           <div>
             <p className="font-display font-semibold">Estime o seu projeto gratuitamente</p>
-            <p className="text-sm text-muted-foreground">Calculadoras de materiais, orçamentos e preços — com o ConstruPilot.</p>
+            <p className="text-sm text-muted-foreground">Calculadoras de materiais, orçamentos e preços — com ConstruPilot.</p>
           </div>
           <ArrowRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform" />
         </Link>

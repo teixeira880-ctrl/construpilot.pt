@@ -29,7 +29,7 @@ router = APIRouter(tags=["autoseo"])
 logger = logging.getLogger(__name__)
 
 WEBHOOK_TOKEN = os.environ.get("AUTOSEO_WEBHOOK_TOKEN")
-SITE_URL = "https://construpilot.fr"  # domaine canonical (identique au reste du code)
+SITE_URL = "https://construpilot.pt"  # domaine canonical (identique au reste du code)
 
 _EXT_BY_CTYPE = {
     "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
@@ -66,7 +66,7 @@ async def autoseo_webhook(
 ):
     # 1) Bearer token — comparaison stricte, à temps constant
     if not WEBHOOK_TOKEN:
-        raise HTTPException(status_code=503, detail="Webhook non configuré (AUTOSEO_WEBHOOK_TOKEN)")
+        raise HTTPException(status_code=503, detail="Webhook não configurado (AUTOSEO_WEBHOOK_TOKEN)")
     expected = f"Bearer {WEBHOOK_TOKEN}"
     if not authorization or not hmac.compare_digest(authorization.strip(), expected):
         raise HTTPException(status_code=401, detail="Invalid or missing authorization token")
@@ -171,11 +171,14 @@ async def get_autoseo_article(slug: str):
 
 
 @router.get("/blog/media/{article_id}/{kind}")
-async def autoseo_media(article_id: int, kind: str):
+async def autoseo_media(article_id: str, kind: str):
     if kind not in ("hero", "infographic"):
         raise HTTPException(status_code=404, detail="Unknown media kind")
     field = "hero_image_storage" if kind == "hero" else "infographic_image_storage"
-    doc = await db.autoseo_articles.find_one({"autoseo_id": article_id}, {"_id": 0, field: 1})
+    ids: list = [article_id]
+    if article_id.isdigit():
+        ids.append(int(article_id))
+    doc = await db.autoseo_articles.find_one({"autoseo_id": {"$in": ids}}, {"_id": 0, field: 1})
     path = doc and doc.get(field)
     if not path:
         raise HTTPException(status_code=404, detail="Media not found")
@@ -188,3 +191,34 @@ async def autoseo_media(article_id: int, kind: str):
         io.BytesIO(data), media_type=ctype,
         headers={"Cache-Control": "public, max-age=86400"},
     )
+
+
+@router.get("/blog/sitemap.xml")
+async def blog_sitemap():
+    """Sitemap des articles dynamiques (AutoSEO + BabyLoveGrowth), référencé par /sitemap.xml (index)."""
+    from fastapi.responses import Response
+    from xml.sax.saxutils import escape
+    docs = await db.autoseo_articles.find(
+        {"status": "published"}, {"_id": 0, "slug": 1, "updated_at": 1, "published_at": 1,
+                                  "hero_image_url": 1, "title": 1}
+    ).sort("published_at", -1).to_list(5000)
+    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+             'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">']
+    for d in docs:
+        mod = (d.get("updated_at") or d.get("published_at") or "")[:10]
+        img = d.get("hero_image_url") or ""
+        if img.startswith("/"):
+            img = SITE_URL + img
+        parts.append("<url>")
+        parts.append(f"<loc>{SITE_URL}/blog/{escape(d['slug'])}</loc>")
+        if mod:
+            parts.append(f"<lastmod>{mod}</lastmod>")
+        parts.append("<changefreq>monthly</changefreq><priority>0.7</priority>")
+        if img:
+            parts.append(f"<image:image><image:loc>{escape(img)}</image:loc>"
+                         f"<image:title>{escape(d.get('title') or '')}</image:title></image:image>")
+        parts.append("</url>")
+    parts.append("</urlset>")
+    return Response("".join(parts), media_type="application/xml",
+                    headers={"Cache-Control": "public, max-age=3600"})

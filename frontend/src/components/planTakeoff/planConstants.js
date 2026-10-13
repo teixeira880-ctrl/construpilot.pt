@@ -13,22 +13,22 @@ export const TOOL_LABELS = {
   calibrate: "Calibrar",
   distance: "Distância",
   polyline: "Perímetro",
-  surface: "Área",
-  room: "Compartimento",
-  autoroom: "Auto-compartimento",
-  opening: "Abertura",
+  surface: "Superfície",
+  room: "Divisão",
+  autoroom: "Auto-divisão",
+  opening: "Vão",
   counter: "Contador",
   note: "Nota",
   angle: "Ângulo",
-  pitch: "Inclinação cobertura",
+  pitch: "Inclinação da cobertura",
 };
 
 export const CALIB_METHOD_LABELS = {
-  auto_pdf_scale: "escala PDF",
+  auto_pdf_scale: "escala do PDF",
   two_points: "2 pontos",
   known_dimension: "cota conhecida",
-  auto_cotes: "auto (cotas IA)",
-  reconcile_surfaces: "reajustado (áreas escritas)",
+  auto_cotes: "auto (cotes IA)",
+  reconcile_surfaces: "reajustada (áreas escritas)",
   ai_scale_text: "escala escrita",
 };
 

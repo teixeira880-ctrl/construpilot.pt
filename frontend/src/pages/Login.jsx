@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { Hammer, ArrowLeft, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,11 @@ export default function Login() {
   const { login, register, verify2fa, user } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const refCodeFromUrl = params.get("ref") || "";
   const [busy, setBusy] = useState(false);
-  const [tfa, setTfa] = useState(null);
+  const [tfa, setTfa] = useState(() => location.state?.twoFactor || null);
   const [tfaCode, setTfaCode] = useState("");
   const [form, setForm] = useState({ name: "", email: params.get("email") || "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -47,12 +48,12 @@ export default function Login() {
         const acct = form.account_type || "particulier";
         const isPro = acct === "pro" || acct === "pro_business";
         if (isPro) {
-          if (!form.siret || form.siret.replace(/[ .\-]/g, "").length !== 14) {
-            toast.error("SIRET obrigatório (14 dígitos) para uma conta profissional");
+          if (!form.siret || form.siret.replace(/[ .\-]/g, "").replace(/^PT/i, "").length !== 9) {
+            toast.error("NIF/NIPC obrigatório (9 dígitos) para uma conta profissional");
             setBusy(false); return;
           }
           if (!form.kbis || !form.decennale) {
-            toast.error("K-bis et attestation décennale obligatoires pour un compte pro");
+            toast.error("K-bis e atestado decenal obrigatórios para uma conta pro");
             setBusy(false); return;
           }
         }
@@ -66,7 +67,7 @@ export default function Login() {
           fd.append("siret", form.siret);
           try {
             await api.post("/auth/kyc/submit", fd, { headers: { "Content-Type": "multipart/form-data" } });
-            toast.success("Documents envoyés — validation sous 24-48h");
+            toast.success("Documentos enviados — validação em 24-48h");
           } catch {
             toast.warning("Conta criada, mas o envio dos documentos falhou. Reenvie-os a partir da sua conta.");
           }
@@ -251,10 +252,10 @@ export default function Login() {
               <form onSubmit={submit("register")} className="grid gap-4 mt-6">
                 {/* Type de compte */}
                 <div className="grid gap-2">
-                  <Label>Type de compte</Label>
+                  <Label>Tipo de conta</Label>
                   <div className="grid grid-cols-3 gap-2" data-testid="register-account-type">
                     {[
-                      { v: "particulier", label: "Particulier" },
+                      { v: "particulier", label: "Particular" },
                       { v: "pro", label: "Pro" },
                       { v: "pro_business", label: "Pro Business" },
                     ].map((o) => (
@@ -286,21 +287,21 @@ export default function Login() {
                 {/* Documents pro obligatoires */}
                 {(form.account_type === "pro" || form.account_type === "pro_business") && (
                   <div className="grid gap-3 rounded-sm border border-primary/30 bg-primary/5 p-3" data-testid="pro-documents-block">
-                    <p className="text-xs font-semibold text-primary">Justificatifs professionnels obligatoires</p>
+                    <p className="text-xs font-semibold text-primary">Comprovativos profissionais obrigatórios</p>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">N° SIRET (14 chiffres)</Label>
+                      <Label className="text-xs">NIF / NIPC (9 dígitos)</Label>
                       <Input required value={form.siret} onChange={set("siret")} inputMode="numeric"
-                             maxLength={17} placeholder="123 456 789 00012"
+                             maxLength={14} placeholder="501 234 567"
                              data-testid="register-siret-input" className="rounded-sm h-10" />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">Extrait K-bis (PDF, JPG ou PNG)</Label>
+                      <Label className="text-xs">Certidão comercial (PDF, JPG ou PNG)</Label>
                       <input required type="file" accept=".pdf,image/jpeg,image/png"
                              onChange={(e) => setForm({ ...form, kbis: e.target.files?.[0] || null })}
                              data-testid="register-kbis-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label className="text-xs">Attestation d'assurance décennale (PDF, JPG ou PNG)</Label>
+                      <Label className="text-xs">Certificado de seguro decenal (PDF, JPG ou PNG)</Label>
                       <input required type="file" accept=".pdf,image/jpeg,image/png"
                              onChange={(e) => setForm({ ...form, decennale: e.target.files?.[0] || null })}
                              data-testid="register-decennale-input" className="text-xs file:mr-3 file:rounded-sm file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs" />
@@ -330,3 +331,4 @@ export default function Login() {
     </div>
   );
 }
+

@@ -48,13 +48,13 @@ export default function PresetPicker({
     try {
       const { data } = await api.post("/tool-presets/seed-defaults");
       if (data.created > 0) {
-        toast.success(`${data.created} modèles d'usine ajoutés`);
+        toast.success(`${data.created} modelos de fábrica adicionados`);
         await load();
       } else {
-        toast.info(`Vous avez déjà ${data.already_had} modèles`);
+        toast.info(`Já tem ${data.already_had} modelos`);
       }
     } catch (e) {
-      toast.error("Impossível importar");
+      toast.error("Não foi possível importar");
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function PresetPicker({
         params: currentSelection?.params || {},
       };
       await api.post("/tool-presets", body);
-      toast.success(`Modèle « ${newName.trim()} » sauvegardé`);
+      toast.success(`Modelo « ${newName.trim()} » guardado`);
       setNewName(""); setNewPrice(""); setCreating(false);
       await load();
     } catch {
@@ -88,7 +88,7 @@ export default function PresetPicker({
       toast.success("Modelo eliminado");
       await load();
     } catch {
-      toast.error("Eliminação impossível");
+      toast.error("Não foi possível eliminar");
     }
   };
 
@@ -109,7 +109,7 @@ export default function PresetPicker({
         className="rounded-sm gap-1.5 h-8 text-xs"
       >
         <Layers className="h-3 w-3" />
-        {compact ? "" : "Modèle"}
+        {compact ? "" : "Modelo"}
         <ChevronDown className="h-3 w-3 opacity-60" />
       </Button>
       {open && (
@@ -119,13 +119,13 @@ export default function PresetPicker({
         >
           <div className="px-3 py-2 border-b border-border flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
-              Modèles {kinds.length ? `(${kinds.join(", ")})` : "réutilisables"}
+              Modelos {kinds.length ? `(${kinds.join(", ")})` : "reutilizáveis"}
             </p>
             {presets.length === 0 && (
               <Button size="sm" variant="ghost" onClick={seedDefaults}
                       disabled={loading} className="h-6 text-[10px] gap-1"
                       data-testid={`${testIdPrefix}-seed-defaults`}>
-                <Sparkles className="h-3 w-3" /> Modèles d'usine
+                <Sparkles className="h-3 w-3" /> Modelos de fábrica
               </Button>
             )}
           </div>
@@ -142,7 +142,7 @@ export default function PresetPicker({
                 key={p.preset_id}
                 data-testid={`${testIdPrefix}-item-${p.preset_id}`}
                 className="flex items-center gap-2 px-3 py-2 hover:bg-muted/40 cursor-pointer group"
-                onClick={() => { onApply?.(p); setOpen(false); toast.success(`Modèle « ${p.name} » appliqué`); }}
+                onClick={() => { onApply?.(p); setOpen(false); toast.success(`Modelo « ${p.name} » aplicado`); }}
               >
                 <div className="h-3 w-3 rounded-sm shrink-0" style={{ background: p.color }} />
                 <div className="min-w-0 flex-1">
@@ -164,17 +164,17 @@ export default function PresetPicker({
             {creating ? (
               <div className="space-y-2">
                 <Input value={newName} onChange={(e) => setNewName(e.target.value)}
-                       placeholder="Nom du modèle" className="h-8 text-xs"
+                       placeholder="Nome do modelo" className="h-8 text-xs"
                        autoFocus
                        data-testid={`${testIdPrefix}-new-name`}
                        onKeyDown={(e) => { if (e.key === "Enter") create(); if (e.key === "Escape") setCreating(false); }} />
                 <div className="flex gap-2">
                   <Input value={newPrice} onChange={(e) => setNewPrice(e.target.value)}
-                         placeholder="Prix €/unité" type="number" className="h-8 text-xs num"
+                         placeholder="Preço €/unidade" type="number" className="h-8 text-xs num"
                          data-testid={`${testIdPrefix}-new-price`} />
                   <Button size="sm" onClick={create} className="h-8 text-xs shrink-0"
                           data-testid={`${testIdPrefix}-new-save`}>
-                    Enregistrer
+                    Guardar
                   </Button>
                 </div>
               </div>
@@ -182,7 +182,7 @@ export default function PresetPicker({
               <Button size="sm" variant="ghost" onClick={() => setCreating(true)}
                       className="w-full justify-start gap-2 h-8 text-xs"
                       data-testid={`${testIdPrefix}-new-btn`}>
-                <Plus className="h-3 w-3" /> Créer un nouveau modèle
+                <Plus className="h-3 w-3" /> Criar um novo modelo
               </Button>
             )}
           </div>

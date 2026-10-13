@@ -13,15 +13,15 @@ import { useI18n } from "@/context/I18nContext";
 
 const BADGES_FR = [
   { icon: ShieldCheck, label: "Conforme Factur-X", sub: "Fatura eletrónica 2026" },
-  { icon: CreditCard, label: "Paiements sécurisés", sub: "Propulsé par Stripe" },
-  { icon: Globe, label: "Hébergé en Europe", sub: "Conforme RGPD" },
-  { icon: Sparkles, label: "IA dernière génération", sub: "Gemini · Claude · Whisper" },
+  { icon: CreditCard, label: "Pagamentos seguros", sub: "Propulsado por Stripe" },
+  { icon: Globe, label: "Alojado na Europa", sub: "Conforme RGPD" },
+  { icon: Sparkles, label: "IA de última geração", sub: "Assistente Construção · Visão · Voz" },
 ];
 const BADGES_PT = [
   { icon: ShieldCheck, label: "Faturação conforme", sub: "e-Fatura / IVA 2026" },
   { icon: CreditCard, label: "Pagamentos seguros", sub: "Powered by Stripe" },
   { icon: Globe, label: "Alojado na Europa", sub: "Conforme RGPD" },
-  { icon: Sparkles, label: "IA de última geração", sub: "Gemini · Claude · Whisper" },
+  { icon: Sparkles, label: "IA de última geração", sub: "Assistente BTP · Vision · Voz" },
 ];
 
 const ReviewDialog = ({ open, onOpenChange }) => {
@@ -34,13 +34,13 @@ const ReviewDialog = ({ open, onOpenChange }) => {
   const submit = async (e) => {
     e.preventDefault();
     if (form.name.length < 2 || form.comment.length < 5) {
-      toast.error(pt ? "Indique o seu nome e um comentário." : "Merci d'indiquer votre nom et un commentaire.");
+      toast.error(pt ? "Indique o seu nome e um comentário." : "Por favor indique o seu nome e um comentário.");
       return;
     }
     setBusy(true);
     try {
       await api.post("/reviews/site", form);
-      toast.success(pt ? "Obrigado! A sua avaliação será publicada após validação." : "Merci ! Votre avis sera publié après validation.");
+      toast.success(pt ? "Obrigado! A sua avaliação será publicada após validação." : "Obrigado! A sua avaliação será publicada após validação.");
       onOpenChange(false);
       setForm({ name: "", role: "", rating: 5, comment: "" });
     } catch {
@@ -54,12 +54,12 @@ const ReviewDialog = ({ open, onOpenChange }) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-testid="review-dialog">
         <DialogHeader>
-          <DialogTitle>{pt ? "Deixar uma avaliação" : "Laisser un avis"}</DialogTitle>
-          <DialogDescription>{pt ? "Partilhe a sua experiência com o ConstruPilot." : "Partagez votre expérience avec ConstruPilot."}</DialogDescription>
+          <DialogTitle>{pt ? "Deixar uma avaliação" : "Deixar uma opinião"}</DialogTitle>
+          <DialogDescription>{pt ? "Partilhe a sua experiência com o ConstruPilot." : "Partilhe a sua experiência com ConstruPilot."}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
-            <Label>{pt ? "A sua nota" : "Votre note"}</Label>
+            <Label>{pt ? "A sua nota" : "A sua nota"}</Label>
             <div className="flex gap-1" data-testid="review-stars">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} type="button" onClick={() => setForm((f) => ({ ...f, rating: n }))}
@@ -70,21 +70,21 @@ const ReviewDialog = ({ open, onOpenChange }) => {
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="rv-name">{pt ? "Nome *" : "Nom *"}</Label>
-            <Input id="rv-name" value={form.name} onChange={set("name")} placeholder={pt ? "O seu nome" : "Votre nom"} data-testid="review-name" />
+            <Label htmlFor="rv-name">{pt ? "Nome *" : "Nome *"}</Label>
+            <Input id="rv-name" value={form.name} onChange={set("name")} placeholder={pt ? "O seu nome" : "O seu nome"} data-testid="review-name" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="rv-role">{pt ? "Profissão / cidade" : "Métier / ville"}</Label>
-            <Input id="rv-role" value={form.role} onChange={set("role")} placeholder={pt ? "Ex.: Empreiteiro, Lisboa" : "Ex : Artisan peintre, Lyon"} data-testid="review-role" />
+            <Label htmlFor="rv-role">{pt ? "Profissão / cidade" : "Profissão / cidade"}</Label>
+            <Input id="rv-role" value={form.role} onChange={set("role")} placeholder={pt ? "Ex.: Empreiteiro, Lisboa" : "Ex: Artesão pintor, Lisboa"} data-testid="review-role" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="rv-comment">{pt ? "A sua avaliação *" : "Votre avis *"}</Label>
+            <Label htmlFor="rv-comment">{pt ? "A sua avaliação *" : "A sua opinião *"}</Label>
             <Textarea id="rv-comment" value={form.comment} onChange={set("comment")} rows={4}
-                      placeholder={pt ? "O que o ConstruPilot lhe trouxe…" : "Ce que ConstruPilot vous a apporté…"} data-testid="review-comment" />
+                      placeholder={pt ? "O que o ConstruPilot lhe trouxe…" : "O que ConstruPilot lhe trouxe…"} data-testid="review-comment" />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={busy} className="rounded-full" data-testid="review-submit">
-              {busy ? (pt ? "A enviar…" : "A enviar…") : (pt ? "Publicar a minha avaliação" : "Publier mon avis")}
+              {busy ? (pt ? "A enviar…" : "A enviar…") : (pt ? "Publicar a minha avaliação" : "Publicar a minha avaliação")}
             </Button>
           </DialogFooter>
         </form>
@@ -126,10 +126,10 @@ export function TrustSection() {
         {/* Avis clients */}
         <div className="grid gap-4">
           <div className="flex items-center justify-between">
-            <p className="overline">{pt ? "Usam o ConstruPilot" : "Ils utilisent ConstruPilot"}</p>
+            <p className="overline">{pt ? "Usam o ConstruPilot" : "Eles utilizam ConstruPilot"}</p>
             <Button size="sm" variant="outline" className="rounded-full gap-2"
                     onClick={() => setOpen(true)} data-testid="leave-review-btn">
-              <MessageSquarePlus className="h-4 w-4" /> {pt ? "Deixar uma avaliação" : "Laisser un avis"}
+              <MessageSquarePlus className="h-4 w-4" /> {pt ? "Deixar uma avaliação" : "Deixar uma opinião"}
             </Button>
           </div>
           <div className="grid md:grid-cols-3 gap-4" data-testid="testimonials">
@@ -139,12 +139,12 @@ export function TrustSection() {
                   {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
                 </div>
                 <p className="text-sm text-muted-foreground max-w-md">
-                  {pt ? "Seja o primeiro a partilhar a sua experiência — a sua avaliação aparecerá aqui." : "Soyez le premier à partager votre expérience — votre avis apparaîtra ici."}
+                  {pt ? "Seja o primeiro a partilhar a sua experiência — a sua avaliação aparecerá aqui." : "Seja o primeiro a partilhar a sua experiência — a sua avaliação aparecerá aqui."}
                 </p>
               </div>
             ) : reviews.map((r) => (
               <blockquote key={r.review_id} data-testid={`testimonial-${r.review_id}`} className="surface p-5 grid gap-3">
-                <div className="flex gap-0.5 text-primary" aria-label={`Note : ${r.rating} sur 5`}>
+                <div className="flex gap-0.5 text-primary" aria-label={`Note : ${r.rating} de 5`}>
                   {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-current" />)}
                 </div>
                 <p className="text-sm leading-relaxed">« {r.comment} »</p>

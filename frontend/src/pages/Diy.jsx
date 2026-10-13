@@ -75,12 +75,12 @@ export default function Diy() {
           <Alert className={`rounded-md ${guide.pro_recommended ? "border-red-500/50 bg-red-500/5" : "border-amber-500/40 bg-amber-500/5"}`} data-testid="guide-safety">
             <ShieldAlert className={`h-5 w-5 ${guide.pro_recommended ? "text-red-500" : "text-amber-500"}`} />
             <AlertTitle className="font-display">
-              {guide.pro_recommended ? "Intervenção de profissional fortemente recomendada" : "Segurança"}
+              {guide.pro_recommended ? "Intervenção de um profissional fortemente recomendada" : "Segurança"}
             </AlertTitle>
             <AlertDescription>
               <ul className="mt-2 grid gap-1 text-sm">{guide.safety.map((s, i) => <li key={i}>• {s}</li>)}</ul>
               {guide.pro_recommended && (
-                <div className="mt-4"><LeadDialog label="Pedir intervenção ConstruPilot" /></div>
+                <div className="mt-4"><LeadDialog label="Solicitar uma intervenção ConstruPilot" /></div>
               )}
             </AlertDescription>
           </Alert>
@@ -99,8 +99,8 @@ export default function Diy() {
                 <TableHeader>
                   <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                     <TableHead>Material</TableHead>
-                    <TableHead className="text-right">Quantidade (com margem)</TableHead>
-                    <TableHead>Unidade</TableHead>
+                    <TableHead className="text-right">Quantidade (margem incluída)</TableHead>
+                    <TableHead>Un.</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -116,20 +116,20 @@ export default function Diy() {
             </div>
             {guide.calculation && (
               <p className="num text-sm">
-                Orçamento de materiais estimado: <span className="text-primary font-bold">{eur(guide.calculation.estimated_budget)}</span>
+                Orçamento materiais estimado: <span className="text-primary font-bold">{eur(guide.calculation.estimated_budget)}</span>
               </p>
             )}
             {optim && (
               <div className="surface p-6 grid sm:grid-cols-3 gap-4" data-testid="diy-optimization">
                 <div>
-                  <p className="overline text-muted-foreground">Um só fornecedor</p>
+                  <p className="overline text-muted-foreground">Um único fornecedor</p>
                   <p className="num mt-2 text-xl font-bold">{eur(optim.best_single?.total)}</p>
                   <p className="text-xs text-muted-foreground">{optim.best_single?.supplier}</p>
                 </div>
                 <div>
                   <p className="overline">Multi-fornecedores</p>
                   <p className="num mt-2 text-xl font-bold text-primary">{eur(optim.multi_supplier.total)}</p>
-                  <p className="num text-xs text-muted-foreground">{optim.multi_supplier.suppliers_count} lojas</p>
+                  <p className="num text-xs text-muted-foreground">{optim.multi_supplier.suppliers_count} magasins</p>
                 </div>
                 <div>
                   <p className="overline text-muted-foreground">Poupança</p>
@@ -155,7 +155,7 @@ export default function Diy() {
                   <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
                     {s.tips && (
                       <div className="p-3 rounded-sm border border-emerald-500/30 bg-emerald-500/5">
-                        <p className="overline text-emerald-600 dark:text-emerald-400">Dica ConstruPilot</p>
+                        <p className="overline text-emerald-600 dark:text-emerald-400">Conselho ConstruPilot</p>
                         <p className="mt-1 text-muted-foreground">{s.tips}</p>
                       </div>
                     )}
@@ -183,10 +183,9 @@ export default function Diy() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Guia DIY para obras — Faço eu mesmo" description="Quer fazer as obras por si? O ConstruPilot calcula os materiais exatos e dá-lhe o guia passo a passo para pintar, assentar azulejo, isolar, etc." keywords="DIY obras, guia bricolage, fazer obras por si, assentar azulejo por si, pintar por si" canonical="/diy" />
-      <SectionTitle as="h1" over="DIY — Faço eu mesmo os trabalhos" title="Materiais calculados, guia de profissional">
-        Escolha um trabalho: o ConstruPilot calcula as quantidades (com margens), detalha cada passo,
-        as dicas, os erros a evitar e avisa-o quando é necessário um profissional.
+      <SEO title="Guia DIY obras — Faço-o eu mesmo" description="Quer fazer as obras você mesmo? ConstruPilot calcula-lhe os materiais exatos e dá-lhe o guia passo a passo para pintar, colocar azulejos, isolar, etc." keywords="bricolage obras, guia faça você mesmo, fazer as obras sozinho, assentar azulejo sozinho, pintar sozinho" canonical="/diy" />
+      <SectionTitle as="h1" over="DIY — Eu realizo os trabalhos sozinho" title="Materiais calculados, guia de profissional">
+        Escolha um trabalho: ConstruPilot calcula as quantidades (margens incluídas), detalha cada etapa, os conselhos, os erros a evitar e alerta quando um profissional é necessário.
       </SectionTitle>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 stagger" data-testid="diy-tasks-grid">
@@ -201,7 +200,7 @@ export default function Diy() {
             </div>
             <h3 className="mt-5 font-display text-lg font-semibold">{t.name}</h3>
             <p className="num mt-2 text-xs text-muted-foreground">
-              {t.steps_count} passos · {t.duration}
+              {t.steps_count} etapas · {t.duration}
             </p>
             {t.calculator && (
               <p className="mt-3 text-xs text-primary flex items-center gap-1">

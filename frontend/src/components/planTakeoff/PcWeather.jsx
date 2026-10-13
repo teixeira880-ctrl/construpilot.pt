@@ -31,8 +31,8 @@ export default function PcWeather({ planning, start }) {
       if (d.error) return toast.error(d.error);
       localStorage.setItem("construpilot_site_city", city.trim());
       setData(d);
-      toast.success(`Météo chargée — ${d.city}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Météo indisponible"); }
+      toast.success(`Meteorologia carregada — ${d.city}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Meteorologia indisponível"); }
     finally { setBusy(false); }
   };
 
@@ -52,9 +52,9 @@ export default function PcWeather({ planning, start }) {
                className="rounded-sm h-8 text-xs w-56" />
         <Button variant="outline" size="sm" onClick={load} disabled={busy}
                 data-testid="pc-weather-load-btn" className="rounded-sm gap-1.5 h-8 text-xs">
-          <CloudSun className="h-3.5 w-3.5" /> {busy ? "…" : "Meteo betonagem"}
+          <CloudSun className="h-3.5 w-3.5" /> {busy ? "…" : "Meteorologia betonagem"}
         </Button>
-        {data && <span className="text-[10px] text-muted-foreground">{data.city} · previsão 16 dias</span>}
+        {data && <span className="text-[10px] text-muted-foreground">{data.city} · previsões 16 d</span>}
       </div>
       {data && (
         <div className="grid sm:grid-cols-2 gap-2" data-testid="pc-weather-days">
@@ -80,11 +80,11 @@ export default function PcWeather({ planning, start }) {
                       <Droplets className="inline h-3 w-3 ml-1 mr-0.5 text-sky-500" />{w.precip ?? 0} mm
                     </p>
                   ) : (
-                    <p className="text-muted-foreground">Previsão indisponível (&gt; 16 dias)</p>
+                    <p className="text-muted-foreground">Previsão indisponível (&gt; 16 d)</p>
                   )}
                   {frost && (
                     <p className="text-red-500 font-semibold flex items-center gap-1">
-                      <ThermometerSnowflake className="h-3 w-3" /> Geada — betonagem desaconselhada
+                      <ThermometerSnowflake className="h-3 w-3" /> Gelo — betonagem desaconselhada
                     </p>
                   )}
                   {!frost && rain && (

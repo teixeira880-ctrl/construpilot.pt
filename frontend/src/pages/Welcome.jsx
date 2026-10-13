@@ -3,29 +3,31 @@ import { useNavigate } from "react-router-dom";
 import { Hammer, Ruler, FileText, ArrowRight, ArrowLeft, CheckCircle2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { OfferNotice } from "@/components/OfferNotice";
 
 const STEPS = [
   {
     icon: Rocket,
-    title: "Bem-vindo(a) ao ConstruPilot 🎉",
-    text: "A tua conta está ativa — e 100% gratuita durante a fase de lançamento. Sejas particular ou profissional, veja como começar em poucos passos.",
+    title: "Bem-vindo ao ConstruPilot 🎉",
+    text: "A sua conta está ativa. Seja particular ou profissional, eis como começar em poucos passos.",
+    offer: true,
   },
   {
     icon: Hammer,
-    title: "1. Estima o custo da tua obra",
-    text: "Particular ou profissional: descreve o teu projeto em linguagem natural («renovar uma casa de 90 m²») e obtém uma estimativa detalhada, rubrica a rubrica, ao instante.",
+    title: "1. Estime o custo dos seus trabalhos",
+    text: "Particular ou profissional: descreva o seu projeto em linguagem natural («renovar uma casa de 90 m²») e obtenha uma estimativa detalhada, item por item, instantaneamente.",
     cta: { label: "Estimar a minha obra", to: "/estimation" },
   },
   {
     icon: Ruler,
-    title: "2. Mede uma planta e orçamenta",
-    text: "Importa uma planta (PDF, foto ou DWG), deixa a IA detetar os compartimentos e as áreas, e obtém a medição automaticamente.",
-    cta: { label: "Medir uma planta", to: "/plan" },
+    title: "2. Meça uma planta e orçamente",
+    text: "Importe uma planta (PDF, foto ou DWG), deixe a IA detetar as divisões e as superfícies, depois obtenha as medições automaticamente.",
+    cta: { label: "Editor de plantas", to: "/plan" },
   },
   {
     icon: FileText,
-    title: "3. Cria e envia um orçamento profissional",
-    text: "Para profissionais: gera um orçamento com a tua imagem, adiciona um cliente, aplica os teus preços e envia por email — tudo num único sítio.",
+    title: "3. Crie e envie um orçamento profissional",
+    text: "Para os profissionais: gere um orçamento com a sua imagem, adicione um cliente, aplique os seus preços e envie-o por email — tudo a partir de um único local.",
     cta: { label: "Criar um orçamento", to: "/devis-editeur" },
   },
 ];
@@ -58,9 +60,10 @@ export default function Welcome() {
         </div>
 
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight" data-testid="welcome-title">
-          {step === 0 && user?.name ? `Bem-vindo(a), ${user.name.split(" ")[0]} 🎉` : s.title}
+          {step === 0 && user?.name ? `Bem-vindo, ${user.name.split(" ")[0]} 🎉` : s.title}
         </h1>
         <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{s.text}</p>
+        {s.offer && <OfferNotice className="mt-4 text-left" />}
 
         {s.cta && (
           <Button variant="outline" className="mt-6 rounded-lg gap-2"
@@ -74,13 +77,13 @@ export default function Welcome() {
             onClick={() => (step === 0 ? nav("/dashboard") : setStep((v) => v - 1))}
             className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
             data-testid="welcome-back">
-            {step === 0 ? "Ignorar" : (<><ArrowLeft className="h-3 w-3" /> Anterior</>)}
+            {step === 0 ? "Passar" : (<><ArrowLeft className="h-3 w-3" /> Anterior</>)}
           </button>
 
           {last ? (
             <Button className="rounded-lg gap-2 hover:bg-orange-600 hover:text-white"
                     onClick={() => nav("/dashboard")} data-testid="welcome-finish">
-              <CheckCircle2 className="h-4 w-4" /> Ir para o painel
+              <CheckCircle2 className="h-4 w-4" /> Ir para o painel de controlo
             </Button>
           ) : (
             <Button className="rounded-lg gap-2 hover:bg-orange-600 hover:text-white"

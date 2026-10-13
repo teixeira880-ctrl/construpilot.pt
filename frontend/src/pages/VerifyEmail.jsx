@@ -21,19 +21,19 @@ export default function VerifyEmail() {
       <Card className="p-8 text-center max-w-md w-full">
         {state === "loading" && (
           <><Loader2 className="h-10 w-10 mx-auto animate-spin text-primary mb-4" />
-            <p className="text-sm text-muted-foreground">Confirmation de votre e-mail…</p></>
+            <p className="text-sm text-muted-foreground">Confirmação do seu e-mail…</p></>
         )}
         {state === "ok" && (
           <div data-testid="verify-email-success">
             <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 grid place-items-center mb-4">
               <CheckCircle2 className="h-9 w-9 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold">E-mail confirmé ✅</h1>
+            <h1 className="text-2xl font-bold">E-mail confirmado ✅</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Merci ! Votre adresse est vérifiée. Vous pouvez profiter de ConstruPilot.
+              Obrigado! O seu endereço está verificado. Pode usufruir do ConstruPilot.
             </p>
             <Button className="mt-6" onClick={() => nav("/dashboard")} data-testid="verify-email-cta">
-              Accéder à mon tableau de bord
+              Aceder ao meu painel de controlo
             </Button>
           </div>
         )}
@@ -42,12 +42,12 @@ export default function VerifyEmail() {
             <div className="mx-auto h-16 w-16 rounded-full bg-red-500/10 grid place-items-center mb-4">
               <XCircle className="h-9 w-9 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold">Lien invalide</h1>
+            <h1 className="text-2xl font-bold">Ligação inválida</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Ce lien de confirmation n'est plus valide ou a déjà été utilisé.
+              Este link de confirmação já não é válido ou já foi utilizado.
             </p>
             <Button variant="outline" className="mt-6" onClick={() => nav("/dashboard")}>
-              Retour au tableau de bord
+              Voltar ao painel de controlo
             </Button>
           </div>
         )}

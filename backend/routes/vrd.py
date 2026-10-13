@@ -20,7 +20,7 @@ def _now():
 async def _plan(plan_id, uid):
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": uid}, {"_id": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return p
 
 
@@ -36,7 +36,7 @@ async def analyze(plan_id: str, user=Depends(current_user)) -> dict:
     p = await _plan(plan_id, user["user_id"])
     images = [pg["image_png_b64"] for pg in (p.get("pages") or []) if pg.get("image_png_b64")][:4]
     if not images:
-        raise HTTPException(422, "Aucune image de plan")
+        raise HTTPException(422, "Nenhuma imagem de planta")
     d = await ai.analyze_vrd(images)
     nets = d.get("networks") or []
     comp = vrd.compute(nets)
@@ -53,7 +53,7 @@ async def analyze(plan_id: str, user=Depends(current_user)) -> dict:
 async def get_analysis(plan_id: str, user=Depends(current_user)) -> dict:
     d = await db.vrd_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
     if not d:
-        raise HTTPException(404, "Aucune analyse VRD")
+        raise HTTPException(404, "Nenhuma análise de redes exteriores")
     return d
 
 
@@ -75,7 +75,7 @@ class Recompute(BaseModel):
 async def recompute(plan_id: str, body: Recompute, user=Depends(current_user)) -> dict:
     d = await db.vrd_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
     if not d:
-        raise HTTPException(404, "Analyse introuvable")
+        raise HTTPException(404, "Análise não encontrada")
     nets = [n.model_dump() for n in body.networks]
     comp = vrd.compute(nets, {"loss_pct": body.loss_pct})
     await db.vrd_analyses.update_one(
@@ -93,7 +93,7 @@ class OrderIn(BaseModel):
 async def create_order(plan_id: str, body: OrderIn, user=Depends(current_user)) -> dict:
     d = await db.vrd_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0})
     if not d:
-        raise HTTPException(404, "Analyse VRD introuvable")
+        raise HTTPException(404, "Análise de redes exteriores não encontrada")
     items = (d.get("compute") or {}).get("items") or []
     supplier = await db.suppliers.find_one(
         {"supplier_id": body.supplier_id, "user_id": user["user_id"]}, {"_id": 0}) \

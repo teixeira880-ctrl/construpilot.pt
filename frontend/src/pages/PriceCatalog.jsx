@@ -17,7 +17,7 @@ export default function PriceCatalog() {
   const [importing, setImporting] = useState(false);
   const [q, setQ] = useState("");
   const [depts, setDepts] = useState([]);
-  const [deptCode, setDeptCode] = useState(() => localStorage.getItem("construpilot_dept_code") || "AUTRE");
+  const [deptCode, setDeptCode] = useState(() => localStorage.getItem("construpilot_dept_code") || "OUTRO");
   const fileRef = useRef(null);
 
   const load = () => api.get("/prices/catalog").then(({ data }) => setRows(data));
@@ -69,7 +69,7 @@ export default function PriceCatalog() {
       toast.success(`${data.imported} preços importados${data.skipped ? ` · ${data.skipped} ignorados` : ""}`);
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Importação impossível");
+      toast.error(err?.response?.data?.detail || "Não foi possível importar");
     } finally { setImporting(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
@@ -77,9 +77,9 @@ export default function PriceCatalog() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8" data-testid="price-catalog-page">
-      <SectionTitle overline="Comparador 100% fiável" title="O meu catálogo de preços" />
+      <SectionTitle overline="Comparador 100 % fiável" title="O meu catálogo de preços" />
       <p className="text-muted-foreground -mt-4 max-w-2xl text-sm">
-        Introduz os teus preços reais de fornecedores (ou importa um ficheiro do teu distribuidor). O comparador e os orçamentos usam automaticamente estes preços quando o nome do material coincidir.
+        Introduza os seus preços reais de fornecedores (ou importe um ficheiro do seu armazém). O comparador e os orçamentos utilizarão automaticamente estes preços quando o nome do material corresponder.
       </p>
 
       <div className="surface p-5 rounded-md flex flex-wrap items-center gap-4" data-testid="dept-coef">
@@ -97,10 +97,10 @@ export default function PriceCatalog() {
       </div>
 
       <div className="surface p-5 rounded-md grid gap-3 md:grid-cols-6 items-end" data-testid="catalog-form">
-        <div className="md:col-span-2"><Label>Material *</Label><Input value={form.name} onChange={set("name")} placeholder="Placa Pladur 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
+        <div className="md:col-span-2"><Label>Material *</Label><Input value={form.name} onChange={set("name")} placeholder="Placa BA13 250×120" className="rounded-sm mt-1" data-testid="catalog-name" /></div>
         <div><Label>Preço (€) *</Label><Input type="number" value={form.price} onChange={set("price")} className="rounded-sm mt-1 num" data-testid="catalog-price" /></div>
-        <div><Label>Unidade</Label><Input value={form.unit} onChange={set("unit")} placeholder="u / m² / ml" className="rounded-sm mt-1" data-testid="catalog-unit" /></div>
-        <div><Label>Fornecedor</Label><Input value={form.supplier} onChange={set("supplier")} placeholder="Leroy Merlin…" className="rounded-sm mt-1" data-testid="catalog-supplier" /></div>
+        <div><Label>Un.</Label><Input value={form.unit} onChange={set("unit")} placeholder="u / m² / ml" className="rounded-sm mt-1" data-testid="catalog-unit" /></div>
+        <div><Label>Fornecedor</Label><Input value={form.supplier} onChange={set("supplier")} placeholder="Point P…" className="rounded-sm mt-1" data-testid="catalog-supplier" /></div>
         <Button onClick={save} disabled={saving} className="rounded-sm gap-2" data-testid="catalog-save">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
         </Button>
@@ -125,7 +125,7 @@ export default function PriceCatalog() {
       {rows.length === 0 ? (
         <div className="surface p-10 text-center rounded-md" data-testid="catalog-empty">
           <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">Sem preços de momento. Adiciona um ou importa o teu ficheiro de tarifas.</p>
+          <p className="text-muted-foreground">Nenhum preço por enquanto. Adicione um ou importe o seu ficheiro de tarifas.</p>
           <p className="text-xs text-muted-foreground mt-2">Colunas aceites: nome, preço, unidade, fornecedor, categoria.</p>
         </div>
       ) : (
@@ -137,7 +137,7 @@ export default function PriceCatalog() {
                 <TableHead>Categoria</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead className="text-right">Preço</TableHead>
-                <TableHead className="text-right">Unidade</TableHead>
+                <TableHead className="text-right">Un.</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>

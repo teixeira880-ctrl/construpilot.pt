@@ -36,7 +36,7 @@ export default function PhotoAnalyse() {
   };
 
   const analyse = async () => {
-    if (!b64) return toast.error("Importe uma fotografia");
+    if (!b64) return toast.error("Importe uma foto");
     setBusy(true);
     try {
       const { data } = await api.post("/vision/photo", { image_base64: b64, note });
@@ -52,7 +52,7 @@ export default function PhotoAnalyse() {
 
   const recompute = async () => {
     const area = Number(dims.length_m) * Number(dims.width_m);
-    if (!area) return toast.error("Preencha comprimento e largura");
+    if (!area) return toast.error("Indique comprimento e largura");
     setBusy(true);
     try {
       const room = (result.analysis.room_type || "").toLowerCase();
@@ -70,10 +70,9 @@ export default function PhotoAnalyse() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Análise foto de obra por IA" description="Fotografe a sua divisão: a IA ConstruPilot identifica o estado, os trabalhos necessários e orça a renovação em 30 segundos. Gratuito." keywords="análise foto obras, estimativa por foto, IA renovação foto, obra foto estimativa" canonical="/photo" />
-      <SectionTitle as="h1" over="Estimativa por IA a partir de fotografias" title="Fotografe, a IA identifica os trabalhos">
-        Paredes, pavimentos, tetos, vãos, sanitários, estado geral: a IA propõe os trabalhos prováveis.
-        As medidas são aproximadas — confirme-as antes de qualquer cálculo definitivo.
+      <SEO title="Análise fotografia obra IA" description="Tire uma foto da sua divisão: a IA ConstruPilot identifica o estado, os trabalhos necessários e orçamenta a renovação em 30 segundos. Gratuito." keywords="análise de fotografias de obras, estimativa por fotografia, IA remodelação fotografia, estimativa de obra por fotografia" canonical="/photo" />
+      <SectionTitle as="h1" over="Estimativa por IA a partir de fotos" title="Fotografe, a IA identifica os trabalhos">
+        Paredes, pavimentos, tetos, aberturas, sanitários, estado geral: a IA propõe os trabalhos prováveis. As medições são aproximadas — confirme-as antes de qualquer cálculo definitivo.
       </SectionTitle>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -99,10 +98,10 @@ export default function PhotoAnalyse() {
           </div>
           <div className="grid gap-2">
             <Label>Precisão (opcional)</Label>
-            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: a divisão mede cerca de 8 m²" data-testid="photo-note-input" className="rounded-sm" />
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex: a divisão mede cerca de 8 m²" data-testid="photo-note-input" className="rounded-sm" />
           </div>
           <Button onClick={analyse} disabled={busy || !b64} data-testid="analyse-photo-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Sparkles className="h-4 w-4" /> {busy ? "A analisar…" : "Analisar foto"}
+            <Sparkles className="h-4 w-4" /> {busy ? "Análise em curso…" : "Analisar a foto"}
           </Button>
         </div>
 

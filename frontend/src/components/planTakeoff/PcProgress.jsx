@@ -15,9 +15,9 @@ export const PcProgress = ({ planId, planning, progress }) => {
     setDone(next);
     try {
       await api.post(`/takeoffs/${planId}/pc-study/progress`, { done: [...next] });
-      toast.success("Avancement mis à jour — visible par votre client");
+      toast.success("Progresso atualizado — visível pelo seu cliente");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Impossível guardar");
+      toast.error(e?.response?.data?.detail || "Não foi possível guardar");
       setDone(done);
     }
   };
@@ -27,7 +27,7 @@ export const PcProgress = ({ planId, planning, progress }) => {
          data-testid="pc-progress-section">
       <p className="text-xs font-semibold flex items-center gap-1.5">
         <Hammer className="h-3.5 w-3.5 text-primary" />
-        Avancement chantier — {pct} % (visible par le client sur sa page)
+        Progresso da obra — {pct} % (visível pelo cliente na sua página)
       </p>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
         <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />

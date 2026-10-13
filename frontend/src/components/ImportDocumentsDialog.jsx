@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Upload, FileUp, Loader2, CheckCircle2, XCircle, FileText, Trash2, ArrowLeft } from "lucide-react";
 
 const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-const STATUS_LABELS = { draft: "Brouillon", sent: "Enviado", signed: "Accepté", refused: "Refusé", paid: "Payé" };
+const STATUS_LABELS = { draft: "Rascunho", sent: "Enviado", signed: "Aceite", refused: "Recusado", paid: "Pago" };
 const lineTtc = (l) => (Number(l.qty) || 0) * (Number(l.unit_price_ht) || 0) * (1 + (Number(l.vat_rate) || 0) / 100);
 const itemTtc = (it) => (it.lines || []).reduce((s, l) => s + lineTtc(l), 0);
 
@@ -21,7 +21,7 @@ const itemTtc = (it) => (it.lines || []).reduce((s, l) => s + lineTtc(l), 0);
  * Import de devis/factures PDF d'autres logiciels, avec aperçu éditable.
  * Props : triggerLabel, triggerVariant, onImported (callback après import).
  */
-export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", triggerVariant = "outline", onImported }) {
+export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerVariant = "outline", onImported }) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState("idle"); // idle | preview | results
   const [busy, setBusy] = useState(false);
@@ -36,9 +36,9 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
 
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList || []).filter((f) => f && f.name.toLowerCase().endsWith(".pdf"));
-    if (!files.length) { toast.error("Sélectionnez un ou plusieurs fichiers PDF"); return; }
+    if (!files.length) { toast.error("Selecione um ou vários ficheiros PDF"); return; }
     setBusy(true);
-    const tid = toast.loading(files.length > 1 ? `Lecture de ${files.length} PDF…` : "Lecture du PDF…");
+    const tid = toast.loading(files.length > 1 ? `A ler ${files.length} PDF…` : "Leitura do PDF…");
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f));
@@ -46,7 +46,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
       setItems((data.items || []).map((it) => ({ ...it, client: it.client || {}, lines: it.lines || [] })));
       setPhase("preview");
       const okc = (data.items || []).filter((i) => i.ok).length;
-      toast.success(`${okc} documento(s) legível(eis) — verifique antes de validar`, { id: tid });
+      toast.success(`${okc} documento(s) legível(is) — verifique antes de validar`, { id: tid });
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Leitura impossível", { id: tid });
     } finally { setBusy(false); }
@@ -64,7 +64,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
     const payload = items.filter((it) => it.ok && (it.lines || []).length > 0);
     if (!payload.length) { toast.error("Nenhum documento válido para importar"); return; }
     setBusy(true);
-    const tid = toast.loading("Création des documents…");
+    const tid = toast.loading("Criação dos documentos…");
     try {
       const { data } = await api.post("/documents/import-pdf/confirm", { status, items: payload });
       setResults(data);
@@ -72,7 +72,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
       if (data.imported > 0) { toast.success(`${data.imported}/${data.total} documento(s) criado(s)`, { id: tid }); setDidImport(true); }
       else toast.error("Nenhum documento criado", { id: tid });
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Impossível importar", { id: tid });
+      toast.error(e?.response?.data?.detail || "Não foi possível importar", { id: tid });
     } finally { setBusy(false); }
   };
 
@@ -93,10 +93,9 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
         onPointerDownOutside={(e) => { if (busy || phase !== "idle") e.preventDefault(); }}
         onInteractOutside={(e) => { if (busy || phase !== "idle") e.preventDefault(); }}>
         <DialogHeader>
-          <DialogTitle>Importer des devis / factures PDF</DialogTitle>
+          <DialogTitle>Importar orçamentos / faturas PDF</DialogTitle>
           <DialogDescription>
-            Reprenez vos documents faits sur un autre logiciel. ConstruPilot lit chaque PDF, crée le
-            client et convertit les lignes ; vous vérifiez l'aperçu avant de valider.
+            Retome os documentos feitos noutro software. O ConstruPilot lê cada PDF, cria o cliente e converte as linhas; verifica a pré-visualização antes de validar.
           </DialogDescription>
         </DialogHeader>
 
@@ -112,11 +111,11 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="rounded-sm h-9" data-testid="import-docs-status"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="draft">Brouillon</SelectItem>
-                  <SelectItem value="sent">Envoyé</SelectItem>
-                  <SelectItem value="accepted">Accepté / signé</SelectItem>
-                  <SelectItem value="refused">Refusé</SelectItem>
-                  <SelectItem value="paid">Payé (facture)</SelectItem>
+                  <SelectItem value="draft">Rascunho</SelectItem>
+                  <SelectItem value="sent">Enviado</SelectItem>
+                  <SelectItem value="accepted">Aceite / assinado</SelectItem>
+                  <SelectItem value="refused">Recusado</SelectItem>
+                  <SelectItem value="paid">Pago (fatura)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -125,9 +124,9 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
               data-testid="import-docs-dropzone">
               {busy ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Upload className="h-8 w-8 text-primary" />}
               <span className="text-sm font-semibold text-foreground">
-                {busy ? "Lecture des PDF en cours…" : "Clique para escolher os seus PDF"}
+                {busy ? "Leitura dos PDF em curso…" : "Clique para escolher os seus PDF"}
               </span>
-              <span className="text-xs">Plusieurs fichiers acceptés · devis, factures, avoirs</span>
+              <span className="text-xs">Vários ficheiros aceites · orçamentos, faturas, notas de crédito</span>
             </button>
           </div>
         )}
@@ -156,24 +155,24 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                       <SelectTrigger className="h-8 rounded-sm text-xs" data-testid={`import-preview-type-${i}`}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="quote">Orçamento</SelectItem>
-                        <SelectItem value="invoice">Facture</SelectItem>
-                        <SelectItem value="credit_note">Avoir</SelectItem>
+                        <SelectItem value="invoice">Fatura</SelectItem>
+                        <SelectItem value="credit_note">Nota de crédito</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input value={it.number || ""} onChange={(e) => setItem(i, { number: e.target.value })}
-                           placeholder="N° document" className="h-8 rounded-sm text-xs" data-testid={`import-preview-number-${i}`} />
+                           placeholder="N.º documento" className="h-8 rounded-sm text-xs" data-testid={`import-preview-number-${i}`} />
                     <Input value={it.client?.company || ""} onChange={(e) => setClient(i, { company: e.target.value })}
-                           placeholder="Société client" className="h-8 rounded-sm text-xs" data-testid={`import-preview-company-${i}`} />
+                           placeholder="Empresa cliente" className="h-8 rounded-sm text-xs" data-testid={`import-preview-company-${i}`} />
                     <Input value={it.client?.email || ""} onChange={(e) => setClient(i, { email: e.target.value })}
-                           placeholder="E-mail client" className="h-8 rounded-sm text-xs" data-testid={`import-preview-email-${i}`} />
+                           placeholder="E-mail cliente" className="h-8 rounded-sm text-xs" data-testid={`import-preview-email-${i}`} />
                   </div>
                   <div className="space-y-1">
                     {(it.lines || []).map((l, li) => (
                       <div key={li} className="flex items-center gap-1.5" data-testid={`import-preview-line-${i}-${li}`}>
                         <Input value={l.designation || ""} onChange={(e) => setLine(i, li, { designation: e.target.value })}
-                               placeholder="Désignation" className="h-7 rounded-sm text-xs flex-1" />
+                               placeholder="Designação" className="h-7 rounded-sm text-xs flex-1" />
                         <Input type="number" value={l.qty ?? 0} onChange={(e) => setLine(i, li, { qty: e.target.value })}
-                               className="h-7 rounded-sm text-xs w-16" title="Qté" />
+                               className="h-7 rounded-sm text-xs w-16" title="Qtd." />
                         <Input type="number" value={l.unit_price_ht ?? 0} onChange={(e) => setLine(i, li, { unit_price_ht: e.target.value })}
                                className="h-7 rounded-sm text-xs w-20" title="PU HT" />
                         <button onClick={() => removeLine(i, li)} className="text-muted-foreground hover:text-red-600 shrink-0"
@@ -182,25 +181,25 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                     ))}
                   </div>
                   <p className="text-xs text-right text-muted-foreground">
-                    {(it.lines || []).length} ligne(s) · Total TTC ≈ <b className="text-foreground">{eur(itemTtc(it))}</b>
+                    {(it.lines || []).length} linha(s) · Total c/ IVA ≈ <b className="text-foreground">{eur(itemTtc(it))}</b>
                   </p>
                 </div>
               );
             })}
             {okItems.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-6">Aucun document lisible dans ces PDF.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhum documento legível nestes PDF.</p>
             )}
           </div>
         )}
         {phase === "preview" && (
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="gap-2" onClick={reset} data-testid="import-preview-back">
-              <ArrowLeft className="h-4 w-4" /> Retour
+              <ArrowLeft className="h-4 w-4" /> Voltar
             </Button>
             <Button className="flex-1 gap-2" disabled={busy || okItems.length === 0} onClick={confirmImport}
                     data-testid="import-preview-confirm">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Valider et créer ({okItems.length})
+              Validar e criar ({okItems.length})
             </Button>
           </div>
         )}
@@ -208,7 +207,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
         {/* PHASE 3 — résultats */}
         {phase === "results" && results && (
           <div className="space-y-2 max-h-80 overflow-auto" data-testid="import-docs-results">
-            <p className="text-sm font-semibold">{results.imported}/{results.total} document(s) créé(s)</p>
+            <p className="text-sm font-semibold">{results.imported}/{results.total} documento(s) criado(s)</p>
             {(results.results || []).map((r, i) => (
               <div key={i} className="flex items-center gap-2 text-sm border border-border rounded-sm px-3 py-2"
                    data-testid={`import-docs-result-${i}`}>
@@ -217,8 +216,8 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
                   <p className="truncate font-medium">{r.file}</p>
                   {r.ok ? (
                     <p className="text-xs text-muted-foreground">
-                      {r.doc_type === "invoice" ? "Fatura" : r.doc_type === "credit_note" ? "Avoir" : "Orçamento"}
-                      {r.number ? ` n° ${r.number}` : ""} · {r.lines} ligne(s) · {eur(r.ttc)}
+                      {r.doc_type === "invoice" ? "Fatura" : r.doc_type === "credit_note" ? "Nota de crédito" : "Orçamento"}
+                      {r.number ? ` n° ${r.number}` : ""} · {r.lines} linha(s) · {eur(r.ttc)}
                       {r.status ? ` · ${STATUS_LABELS[r.status] || r.status}` : ""}
                     </p>
                   ) : <p className="text-xs text-destructive">{r.error}</p>}
@@ -233,8 +232,8 @@ export function ImportDocumentsDialog({ triggerLabel = "Importer des PDF", trigg
               </div>
             ))}
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={reset} data-testid="import-docs-again">Importer d'autres PDF</Button>
-              <Button className="flex-1" onClick={() => setOpen(false)} data-testid="import-docs-done">Terminé</Button>
+              <Button variant="outline" className="flex-1" onClick={reset} data-testid="import-docs-again">Importar outros PDF</Button>
+              <Button className="flex-1" onClick={() => setOpen(false)} data-testid="import-docs-done">Terminado</Button>
             </div>
           </div>
         )}

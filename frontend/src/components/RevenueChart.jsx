@@ -22,7 +22,7 @@ export const RevenueChart = ({ compact = false }) => {
     return (
       <div className="surface p-6 text-sm text-muted-foreground animate-pulse"
            data-testid="revenue-chart-loading">
-        Volume de negócio assinado — a carregar…
+        Carregamento do volume de negócios…
       </div>
     );
   }
@@ -35,10 +35,10 @@ export const RevenueChart = ({ compact = false }) => {
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
           <p className="overline flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" /> Volume de negócio assinado
+            <TrendingUp className="h-4 w-4 text-primary" /> Volume de negócios assinado
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {data.signed_count || 0} orçamento{(data.signed_count || 0) === 1 ? "" : "s"} assinado{(data.signed_count || 0) === 1 ? "" : "s"} · últimos 12 meses
+            {data.signed_count || 0} orçamentos assinados · últimos 12 meses
           </p>
         </div>
         <p className="num font-display text-2xl font-extrabold text-primary"
@@ -51,8 +51,8 @@ export const RevenueChart = ({ compact = false }) => {
         <div className="h-[210px] grid place-items-center text-center text-sm text-muted-foreground"
              data-testid="revenue-chart-empty">
           <span>
-            Ainda sem orçamentos assinados.<br />
-            Votre CA mensuel s'affichera ici dès la première signature.
+            Nenhum orçamento assinado por agora.<br />
+            O seu volume de negócios mensal será apresentado aqui após a primeira assinatura.
           </span>
         </div>
       ) : (
@@ -65,7 +65,7 @@ export const RevenueChart = ({ compact = false }) => {
                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false}
                    tickLine={false} width={44} />
             <Tooltip cursor={{ fill: "hsl(var(--primary))", fillOpacity: 0.08 }}
-                     formatter={(v) => [eur0(v), "Vol. negócio assinado"]}
+                     formatter={(v) => [eur0(v), "Receita assinada"]}
                      contentStyle={{ background: "hsl(var(--background))",
                                      border: "1px solid hsl(var(--primary))",
                                      borderRadius: 6, fontSize: 12 }}

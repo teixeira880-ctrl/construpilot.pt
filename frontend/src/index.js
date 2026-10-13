@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HelmetProvider } from "react-helmet-async";
+import { SeoProvider } from "@/components/SEO";
 import "@/index.css";
 import App from "@/App";
 
@@ -17,7 +17,14 @@ if (typeof window !== "undefined") {
   }, true);
 }
 
-// Force non-www (construpilot.fr) : aligne avec le canonical/sitemap ET garantit que
+// Premier contact (attribution des inscriptions : page d'entrée, referrer, UTM) — conservé jusqu'à l'inscription
+try {
+  if (!localStorage.getItem("cp_first_touch")) {
+    const q = new URLSearchParams(window.location.search);
+    localStorage.setItem("cp_first_touch", JSON.stringify({ landing_path: window.location.pathname, referrer: document.referrer || "", utm_source: q.get("utm_source") || "", utm_medium: q.get("utm_medium") || "", utm_campaign: q.get("utm_campaign") || "", qr: q.get("qr") || q.get("lot") || "", ref: q.get("ref") || "", first_seen: new Date().toISOString() }));
+  }
+} catch { /* noop */ }
+// Force non-www (construpilot.pt) : aligne avec le canonical/sitemap ET garantit que
 // les appels API restent same-origin (évite les blocages CORS www -> non-www).
 if (typeof window !== "undefined" && window.location.hostname.startsWith("www.")) {
   const target = new URL(window.location.href);
@@ -37,44 +44,26 @@ const queryClient = new QueryClient({
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <HelmetProvider>
+    <SeoProvider>
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>
-    </HelmetProvider>
+    </SeoProvider>
   </React.StrictMode>,
 );
 
-// PWA : registo do service worker (necessário para push notifications
-// + força reload quando o SW nova versão (v5+) toma controlo, para
-// eliminar bundles main.*.js antigos em cache que ainda executam
-// código legacy — ex. loops `/api/me?country=PT` do deploy anterior).
+// PWA : enregistrement du service worker (requis pour les push notifications)
 if ("serviceWorker" in navigator) {
-  // Listener de mensagens do SW: quando o SW novo activa e envia
-  // SW_UPDATED, forçamos reload (guard sessionStorage evita loop).
-  navigator.serviceWorker.addEventListener("message", (ev) => {
-    if (ev?.data?.type !== "SW_UPDATED") return;
-    try {
-      if (sessionStorage.getItem("sw_reloaded") === "1") return;
-      sessionStorage.setItem("sw_reloaded", "1");
-    } catch { /* storage indisponível */ }
-    window.location.reload();
-  });
-
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then((reg) => {
-      // Força verificação de nova versão a cada load
+      // Force la vérification d'une nouvelle version à chaque chargement
       reg.update();
     }).catch(() => {});
-    // Quando um novo SW toma o controlo (controllerchange), recarrega 1×
+    // Quand un nouveau SW prend le contrôle, recharge une fois pour afficher la dernière version
     let refreshed = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (refreshed) return;
       refreshed = true;
-      try {
-        if (sessionStorage.getItem("sw_reloaded") === "1") return;
-        sessionStorage.setItem("sw_reloaded", "1");
-      } catch { /* storage indisponível */ }
       window.location.reload();
     });
   });

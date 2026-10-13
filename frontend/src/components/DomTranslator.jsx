@@ -5,7 +5,7 @@ import PT from "@/i18n/pt_auto.json";
 // Traduction automatique FR → PT-PT des libellés non couverts par t() : remplace les nœuds texte
 // (et placeholder/title/aria-label) dont le contenu correspond exactement au dictionnaire pt_auto.json.
 const ATTRS = ["placeholder", "title", "aria-label", "alt"];
-const SKIP = new Set(["SCRIPT", "STYLE", "TEXTAREA", "CODE", "PRE", "NOSCRIPT"]);
+const SKIP = new Set(["SCRIPT", "STYLE", "TEXTAREA", "CÓDIGO", "PRE", "NOSCRIPT"]);
 const norm = (s) => s.replace(/\s+/g, " ").trim();
 
 const lookup = (raw) => {

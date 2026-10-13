@@ -28,7 +28,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.to) return toast.error("Adresse email requise");
+    if (!form.to) return toast.error("E-mail necessário");
     setBusy(true);
     try {
       await api.post("/estimation/pdf/email", {
@@ -39,7 +39,7 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
       toast.success(`Orçamento enviado a ${form.to}`);
       setOpen(false);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Impossível enviar");
+      toast.error(err?.response?.data?.detail || "Envio impossível");
     } finally {
       setBusy(false);
     }
@@ -50,20 +50,20 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" data-testid="email-pdf-btn" className="rounded-sm gap-2">
-            <Mail className="h-4 w-4" /> Envoyer par email
+            <Mail className="h-4 w-4" /> Enviar por email
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="rounded-sm sm:max-w-lg" data-testid="email-pdf-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Envoyer le devis par email</DialogTitle>
+          <DialogTitle className="font-display text-2xl">Enviar o orçamento por email</DialogTitle>
           <DialogDescription>
-            Nous préparons un PDF détaillé et l'envoyons directement au destinataire.
+            Preparamos um PDF detalhado e enviamo-lo diretamente ao destinatário.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Adresse email du destinataire</Label>
+            <Label>Endereço de email do destinatário</Label>
             <Input
               type="email" required value={form.to}
               onChange={(e) => setForm({ ...form, to: e.target.value })}
@@ -73,20 +73,20 @@ export const EmailPdfDialog = ({ project, estimation, advice = "", trigger }) =>
             />
           </div>
           <div className="grid gap-2">
-            <Label>Message (optionnel)</Label>
+            <Label>Mensagem (opcional)</Label>
             <Textarea
               rows={4} value={form.message}
               onChange={(e) => setForm({ ...form, message: e.target.value })}
               data-testid="email-pdf-message"
-              placeholder="Olá, segue em anexo a estimativa detalhada dos seus trabalhos..."
+              placeholder="Olá, aqui está a estimativa detalhada dos seus trabalhos..."
               className="rounded-sm"
             />
           </div>
           <div className="text-xs text-muted-foreground">
-            Depuis <b>onboarding@resend.dev</b> · le destinataire reçoit le PDF en pièce jointe.
+            Desde <b>onboarding@resend.dev</b> · o destinatário recebe o PDF em anexo.
           </div>
           <Button type="submit" disabled={busy} data-testid="email-pdf-send" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar o orçamento"}
+            <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Enviar orçamento"}
           </Button>
         </form>
       </DialogContent>

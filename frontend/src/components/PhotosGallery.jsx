@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Trash2, Upload, ImageIcon, GitCompareArrows } from "lucide-react";
+import { Camera, Trash2, Upload, ImageIcon, GitCompareArrows, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +11,10 @@ import {
 } from "@/components/ui/select";
 import { api, API } from "@/lib/api";
 import { compressImage } from "@/lib/imageCompress";
+import { useAuth } from "@/context/AuthContext";
+import { uploadProjectPhoto } from "@/lib/offlineProjects";
 
-const KIND_LABEL = { before: "Antes", after: "Depois", progress: "Obra em curso" };
+const KIND_LABEL = { before: "Antes", after: "Após", progress: "Obra" };
 const KIND_STYLE = {
   before: "border-slate-500/40 text-slate-600 dark:text-slate-300",
   after: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
@@ -84,22 +86,22 @@ const CompareSlider = ({ projectId, before, after }) => {
         className="relative aspect-[16/10] select-none cursor-col-resize bg-secondary/40"
       >
         {afterSrc && (
-          <img src={afterSrc} alt="Après"
+          <img src={afterSrc} alt="Após"
                className="absolute inset-0 w-full h-full object-cover" draggable={false} />
         )}
         {beforeSrc && (
           <div className="absolute inset-0 overflow-hidden"
                style={{ width: `${pos}%` }}>
-            <img src={beforeSrc} alt="Avant" draggable={false}
+            <img src={beforeSrc} alt="Antes" draggable={false}
                  className="absolute inset-0 h-full object-cover"
                  style={{ width: wrapRef.current?.offsetWidth || "auto", maxWidth: "none" }} />
           </div>
         )}
         <div className="absolute top-3 left-3 px-2 py-1 text-[10px] uppercase tracking-wider bg-black/60 text-white rounded-sm">
-          Avant
+          Antes
         </div>
         <div className="absolute top-3 right-3 px-2 py-1 text-[10px] uppercase tracking-wider bg-primary text-primary-foreground rounded-sm">
-          Après
+          Após
         </div>
         <div
           className="absolute top-0 bottom-0 w-[3px] bg-primary shadow-[0_0_16px_rgba(255,90,0,0.6)] pointer-events-none"
@@ -116,7 +118,7 @@ const CompareSlider = ({ projectId, before, after }) => {
           onChange={(e) => setPos(Number(e.target.value))}
           data-testid="compare-slider-range"
           className="absolute inset-0 w-full h-full opacity-0 cursor-col-resize"
-          aria-label="Comparer avant/après"
+          aria-label="Comparar antes/depois"
         />
       </div>
     </div>
@@ -124,45 +126,51 @@ const CompareSlider = ({ projectId, before, after }) => {
 };
 
 export const PhotosGallery = ({ projectId, lots = [] }) => {
+  const { user } = useAuth();
   const [photos, setPhotos] = useState([]);
   const [kind, setKind] = useState("before");
   const [lot, setLot] = useState("");
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pairLot, setPairLot] = useState("");
+  const [pendingPhotos, setPendingPhotos] = useState([]);
   const inputRef = useRef(null);
 
   const load = async () => {
     try {
       const { data } = await api.get(`/projects/${projectId}/photos`);
       setPhotos(data.photos || []);
-    } catch { /* ignore */ }
+    } catch { /* ignore (offline) */ }
   };
   useEffect(() => { load(); }, [projectId]);
+  useEffect(() => {
+    const onSynced = () => { setPendingPhotos([]); load(); };
+    window.addEventListener("construpilot-offline-synced", onSynced);
+    return () => window.removeEventListener("construpilot-offline-synced", onSynced);
+    /* eslint-disable-next-line */
+  }, [projectId]);
 
   const upload = async (rawFile) => {
     if (!rawFile) return;
     if (rawFile.size > 25 * 1024 * 1024) {
-      toast.error("Fichier trop lourd (max 25 Mo avant compression)");
+      toast.error("Ficheiro demasiado pesado (máx. 25 MB antes da compressão)");
       return;
     }
     setUploading(true);
     try {
       const file = await compressImage(rawFile);
       const gain = rawFile.size > file.size
-        ? ` (compressée : ${Math.round((1 - file.size / rawFile.size) * 100)} %)`
+        ? ` (comprimida: ${Math.round((1 - file.size / rawFile.size) * 100)} %)`
         : "";
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("kind", kind);
-      if (lot) fd.append("lot", lot);
-      if (caption) fd.append("caption", caption);
-      await api.post(`/projects/${projectId}/photos`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { queued } = await uploadProjectPhoto(user?.user_id, projectId, file, { kind, lot, caption });
       setCaption("");
-      toast.success(`Photo ajoutée${gain}`);
-      load();
+      if (queued) {
+        setPendingPhotos((p) => [...p, { tmp: `tmp_${Date.now()}`, url: URL.createObjectURL(file), kind, lot, caption }]);
+        toast.info("Fotografia guardada offline — será enviada quando a rede voltar.");
+      } else {
+        toast.success(`Fotografia adicionada${gain}`);
+        load();
+      }
     } catch {
       toast.error("Carregamento impossível");
     } finally {
@@ -176,7 +184,7 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
     try {
       await api.delete(`/projects/${projectId}/photos/${photo.photo_id}`);
       setPhotos((p) => p.filter((x) => x.photo_id !== photo.photo_id));
-    } catch { toast.error("Eliminação impossível"); }
+    } catch { toast.error("Não foi possível eliminar"); }
   };
 
   const lotOptions = useMemo(() => {
@@ -207,31 +215,31 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
       <div className="surface p-6 grid gap-4">
         <div className="flex items-center gap-2">
           <Camera className="h-4 w-4 text-primary" />
-          <p className="overline">Ajouter des photos</p>
+          <p className="overline">Adicionar fotos</p>
         </div>
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="grid gap-2">
-            <Label>Type</Label>
+            <Label>Tipo</Label>
             <Select value={kind} onValueChange={setKind}>
               <SelectTrigger className="rounded-sm h-10" data-testid="photo-kind"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="before">Avant</SelectItem>
-                <SelectItem value="after">Après</SelectItem>
-                <SelectItem value="progress">Obra em curso</SelectItem>
+                <SelectItem value="before">Antes</SelectItem>
+                <SelectItem value="after">Após</SelectItem>
+                <SelectItem value="progress">Obra (em curso)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>Lot (optionnel)</Label>
+            <Label>Especialidade (opcional)</Label>
             <Input list="photo-lots" value={lot} onChange={(e) => setLot(e.target.value)}
-                   data-testid="photo-lot" placeholder="ex : Salle de bain"
+                   data-testid="photo-lot" placeholder="ex: Casa de banho"
                    className="rounded-sm h-10" />
             <datalist id="photo-lots">
               {lotOptions.map((n) => <option key={n} value={n} />)}
             </datalist>
           </div>
           <div className="grid gap-2">
-            <Label>Légende (optionnelle)</Label>
+            <Label>Legenda (opcional)</Label>
             <Input value={caption} onChange={(e) => setCaption(e.target.value)}
                    data-testid="photo-caption" className="rounded-sm h-10" />
           </div>
@@ -245,24 +253,36 @@ export const PhotosGallery = ({ projectId, lots = [] }) => {
             <Upload className="h-4 w-4" /> {uploading ? "A enviar…" : "Escolher uma foto"}
           </Button>
           <p className="text-xs text-muted-foreground self-center">
-            JPG, PNG, WEBP · compressé automatiquement (~150 Ko) · associez un lot pour comparer avant/après
+            JPG, PNG, WEBP · comprimido automaticamente (~150 KB) · associe um lote para comparar antes/depois
           </p>
         </div>
       </div>
 
       <Tabs defaultValue="gallery">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="gallery" className="rounded-sm" data-testid="photos-tab-gallery">Galerie</TabsTrigger>
+          <TabsTrigger value="gallery" className="rounded-sm" data-testid="photos-tab-gallery">Galeria</TabsTrigger>
           <TabsTrigger value="compare" className="rounded-sm" data-testid="photos-tab-compare"
                        disabled={pairLots.length === 0}>
-            Comparer avant/après {pairLots.length ? `(${pairLots.length})` : ""}
+            Comparar antes/depois {pairLots.length ? `(${pairLots.length})` : ""}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="gallery" className="mt-6">
-          {photos.length === 0 ? (
+          {pendingPhotos.length > 0 && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" data-testid="photos-pending-grid">
+              {pendingPhotos.map((pp) => (
+                <div key={pp.tmp} className="relative rounded-lg overflow-hidden border border-dashed border-amber-500/60" data-testid="photo-pending">
+                  <img src={pp.url} alt="" className="w-full h-44 object-cover opacity-80" />
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-amber-500 text-white">
+                    <CloudOff className="h-3 w-3" /> Em espera
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {photos.length === 0 && pendingPhotos.length === 0 ? (
             <div className="surface p-10 text-center text-muted-foreground text-sm" data-testid="photos-empty">
-              Aucune photo pour l'instant. Ajoutez des photos « Avant » puis « Après » pour construire un comparatif de votre chantier.
+              Nenhuma foto por enquanto. Adicione fotos «Antes» e depois «Depois» para construir um comparativo da sua obra.
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="photos-grid">

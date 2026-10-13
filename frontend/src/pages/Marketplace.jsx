@@ -51,17 +51,15 @@ export default function Marketplace() {
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Marketplace ConstruPilot" title="Encontre um profissional verificado para a sua obra">
-        Descreva o seu projecto — enviamo-lo a profissionais ConstruPilot Verified da sua
-        região. Receberá as propostas directamente na sua caixa de correio.
+      <SectionTitle as="h1" over="Marketplace ConstruPilot" title="Encontre um profissional verificado para os seus trabalhos">
+        Descreva o seu projeto — transmitimo-lo a artesãos ConstruPilot Verified da sua região. Recebe as propostas diretamente na sua caixa de correio.
       </SectionTitle>
 
       {!flags.marketplace_enabled && (
         <div className="surface p-4 flex items-center gap-3 bg-amber-500/5 border-amber-500/40" data-testid="marketplace-beta-banner">
           <Sparkles className="h-4 w-4 text-amber-500" />
           <p className="text-sm">
-            <b>Beta</b> — a rede ConstruPilot Pro está em fase de abertura. O seu pedido será tratado
-            manualmente durante a fase de lançamento.
+            <b>Beta</b> — a rede ConstruPilot Pro está em fase de abertura. O seu pedido será tratado manualmente durante a fase de lançamento.
           </p>
         </div>
       )}
@@ -75,7 +73,7 @@ export default function Marketplace() {
                      className="rounded-sm h-11" required data-testid="ld-name" />
             </div>
             <div className="grid gap-2">
-              <Label>E-mail *</Label>
+              <Label>Email *</Label>
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                      className="rounded-sm h-11" required data-testid="ld-email" />
             </div>
@@ -95,27 +93,27 @@ export default function Marketplace() {
                      className="rounded-sm h-11 num" data-testid="ld-budget" />
             </div>
             <div className="grid gap-2">
-              <Label>Área m²</Label>
+              <Label>Superfície m²</Label>
               <Input type="number" value={form.surface} onChange={(e) => setForm({ ...form, surface: e.target.value })}
                      className="rounded-sm h-11 num" data-testid="ld-surface" />
             </div>
             <div className="grid gap-2">
-              <Label>Início pretendido (dias)</Label>
+              <Label>Início desejado (dias)</Label>
               <Input type="number" value={form.delay_days} onChange={(e) => setForm({ ...form, delay_days: e.target.value })}
-                     className="rounded-sm h-11 num" placeholder="ex: 60" data-testid="ld-delay" />
+                     className="rounded-sm h-11 num" placeholder="ex : 60" data-testid="ld-delay" />
             </div>
             <div className="grid gap-2">
               <Label>Especialidade principal</Label>
               <Input value={form.trade} onChange={(e) => setForm({ ...form, trade: e.target.value })}
-                     className="rounded-sm h-11" placeholder="Canalização, electricidade…" data-testid="ld-trade" />
+                     className="rounded-sm h-11" placeholder="Canalizações, eletricidade…" data-testid="ld-trade" />
             </div>
           </div>
           <div className="grid gap-2">
-            <Label>Descreva o seu projecto *</Label>
+            <Label>Descreva o seu projeto *</Label>
             <Textarea rows={4} value={form.description}
                       onChange={(e) => setForm({ ...form, description: e.target.value })}
                       required data-testid="ld-description" className="rounded-sm"
-                      placeholder="Ex: remodelação completa de apartamento 65 m² em Lisboa — cozinha aberta, casa de banho, pintura, pavimentos. Início pretendido em Abril." />
+                      placeholder="Ex: renovação completa apartamento 65m² em Paris 11º — cozinha aberta, casa de banho, pintura, pavimentos. Início desejado em abril." />
           </div>
           <Button type="submit" disabled={busy} data-testid="ld-submit"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
@@ -130,7 +128,7 @@ export default function Marketplace() {
           </div>
           <p className="num text-3xl font-extrabold" data-testid="marketplace-pro-count">{pros.length}</p>
           <p className="text-xs text-muted-foreground">
-            Profissionais ConstruPilot Verified — identidade, NIF, seguro e avaliações verificadas.
+            Artesãos ConstruPilot Verified — identidade, NIPC, seguro e avaliações verificados.
           </p>
           <ul className="grid gap-3 mt-2">
             {pros.slice(0, 5).map((p) => (
@@ -151,7 +149,7 @@ export default function Marketplace() {
             ))}
             {pros.length === 0 && (
               <p className="text-xs text-muted-foreground" data-testid="marketplace-pros-empty">
-                A rede está em construção — seja dos primeiros a publicar um pedido.
+                A rede constrói-se — seja dos primeiros a publicar um pedido.
               </p>
             )}
           </ul>
@@ -162,12 +160,12 @@ export default function Marketplace() {
         <div className="surface p-6" data-testid="marketplace-preview">
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 text-primary" />
-            <p className="overline">O seu pedido — pontuação de qualidade</p>
+            <p className="overline">O seu pedido — pontuação qualidade</p>
           </div>
           <p className="num font-display text-4xl font-extrabold mt-2">{preview.score}/100</p>
           <p className="text-sm text-muted-foreground mt-1">Avaliação: {preview.rating} · Categoria: {preview.tier}</p>
           <p className="text-xs text-muted-foreground mt-3">
-            Os profissionais recebem uma notificação quando a sua zona/especialidade corresponde ao seu projecto.
+            Os profissionais recebem uma notificação quando a sua zona/especialidade corresponde ao seu projeto.
           </p>
         </div>
       )}

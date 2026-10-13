@@ -12,15 +12,15 @@ import { useBilling } from "@/context/BillingContext";
  */
 const MESSAGES = {
   savings: {
-    title: "Desbloqueie a análise completa de poupanças",
+    title: "Desbloqueie a análise de poupanças completa",
     body: "Veja cada euro potencialmente poupado no seu projeto: materiais, alternativas, DIY, fornecedores.",
   },
   price_search: {
-    title: "Compare todos os fornecedores e optimize o seu cesto",
-    body: "10 fournisseurs, historique des prix, alertes automatiques, panier optimisé.",
+    title: "Compare todos os fornecedores e otimize o seu cesto",
+    body: "10 fornecedores, histórico de preços, alertas automáticos, carrinho otimizado.",
   },
   diy: {
-    title: "Descubra todas as tarefas que pode fazer sozinho",
+    title: "Descubra todas as tarefas a realizar você mesmo",
     body: "Guias passo-a-passo, material necessário, ganhos estimados, conselhos de segurança — para cada especialidade.",
   },
   quote: {
@@ -28,12 +28,12 @@ const MESSAGES = {
     body: "A IA compara os seus orçamentos à base de preços ConstruPilot e deteta os sobrecustos.",
   },
   pdf: {
-    title: "Export PDF professionnel",
-    body: "Orçamento assinável, logótipo da empresa, discriminação por lote, planeamento incluído.",
+    title: "Exportar PDF profissional",
+    body: "Orçamento assinável, logótipo empresa, ventilação por lote, planeamento incluído.",
   },
   default: {
     title: "Funcionalidade premium",
-    body: "Débloquez toutes les fonctionnalités avec Premium ou un Project Pass unique.",
+    body: "Desbloqueie todas as funcionalidades com Premium ou um Project Pass único.",
   },
 };
 
@@ -50,7 +50,7 @@ export const SoftPaywall = ({ context = "default", compact = false }) => {
         <p className="text-sm">{msg.title}</p>
         <Link to={`/tarifs?from=${encodeURIComponent(loc.pathname)}`} className="ml-auto">
           <Button size="sm" className="rounded-sm gap-1 hover:bg-orange-600 hover:text-white">
-            Débloquer <ArrowRight className="h-3 w-3" />
+            Desbloquear <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
       </div>
@@ -75,10 +75,10 @@ export const SoftPaywall = ({ context = "default", compact = false }) => {
         <Link to={`/tarifs?from=${encodeURIComponent(loc.pathname)}`}>
           <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white" data-testid={`${testid}-cta`}>
             <Sparkles className="h-4 w-4" />
-            Essayer Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} jours offerts` : ""}
+            Experimentar Premium {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} dias oferecidos` : ""}
           </Button>
         </Link>
-        <Link to="/planos">
+        <Link to="/tarifs">
           <Button variant="outline" className="rounded-sm">
             Ou Project Pass — 19,90 €
           </Button>

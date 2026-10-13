@@ -69,13 +69,12 @@ export class ErrorBoundary extends React.Component {
             <AlertTriangle className="h-7 w-7 text-destructive" />
           </div>
           <div>
-            <p className="overline text-destructive">Oups</p>
+            <p className="overline text-destructive">Ups</p>
             <h1 className="font-display text-2xl font-bold mt-2">
-              Une erreur s'est produite
+              Ocorreu um erro
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Nous avons rencontré un problème d'affichage. Essayez de recharger
-              la page — vos données sont en sécurité.
+              Encontrámos um problema de visualização. Tente recarregar a página — os seus dados estão seguros.
             </p>
           </div>
           <p className="text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-sm font-mono break-words">
@@ -87,14 +86,14 @@ export class ErrorBoundary extends React.Component {
               data-testid="error-boundary-reload-btn"
               className="rounded-sm bg-primary text-white text-sm font-semibold h-10 flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
             >
-              <RefreshCw className="h-4 w-4" /> Recharger
+              <RefreshCw className="h-4 w-4" /> Recarregar
             </button>
             <button
               onClick={this.handleGoHome}
               data-testid="error-boundary-home-btn"
               className="rounded-sm border border-border text-sm font-semibold h-10 flex items-center justify-center gap-2 hover:bg-secondary transition-colors"
             >
-              <Home className="h-4 w-4" /> Accueil
+              <Home className="h-4 w-4" /> Início
             </button>
           </div>
         </div>

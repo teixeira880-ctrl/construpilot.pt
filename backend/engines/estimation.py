@@ -54,7 +54,7 @@ class PricingRequest:
     project_type: str
     surface: float
     finish: str = "standard"
-    country: str = "FR"
+    country: str = "PT"
     region: str | None = None
     building_type: str = "maison"
     condition: str = "bon"
@@ -82,9 +82,9 @@ def estimate_from_request(req: PricingRequest) -> dict:
 
 def region_coef(country: str, region: str | None) -> float:
     for r in REGIONS:
-        if r["country"] == (country or "FR").upper() and r["region"] == region:
+        if r["country"] == (country or "PT").upper() and r["region"] == region:
             return r["coef"]
-    return 1.0 if (country or "FR").upper() == "FR" else 0.68
+    return 1.0 if (country or "PT").upper() == "FR" else 0.68
 
 
 def pt_default_vat_rate(country: str, project_type: str | None = None,
@@ -189,11 +189,11 @@ def _financials(lots: list[dict], surface: float, rc: float) -> dict:
             "total_avg": round(subtotal + contingency, 2)}
 
 
-def estimate(project_type: str, surface: float, finish: str = "standard", country: str = "FR",
+def estimate(project_type: str, surface: float, finish: str = "standard", country: str = "PT",
              region: str | None = None, building_type: str = "maison", condition: str = "bon",
              construction_year: int | None = None, lot_keys: list[str] | None = None,
              ceiling_height_m: float = DEFAULT_CEILING_HEIGHT_M,
-             levels: list[dict] | None = None) -> dict:
+             levels: list[dict] | None = None, _with_model: bool = True) -> dict:
     """Moteur d'estimation. Si `levels` est fourni ([{label, surface_m2, ceiling_height_m}]),
     la hauteur retenue pour les lots muraux est la moyenne pondérée par surface,
     permettant de bien chiffrer les bâtiments à HSP mixtes (RDC 2.60 + R+1 2.20 + combles 1.80).
@@ -246,10 +246,11 @@ def estimate(project_type: str, surface: float, finish: str = "standard", countr
         "price_per_sqm": round(total_avg / surface, 2) if surface else 0,
         "total_hours": fin["hours"],
         "duration_weeks": max(1, math.ceil(fin["hours"] / 70)),
-        "price_model": _price_model(PricingRequest(
+        "price_model": (_price_model(PricingRequest(
             project_type=project_type, surface=surface, country=country, region=region,
             building_type=building_type, condition=condition,
-            construction_year=construction_year, lot_keys=lot_keys)),
+            construction_year=construction_year, lot_keys=lot_keys,
+            ceiling_height_m=ceiling_height_m, levels=levels)) if _with_model else None),
     }
 
 
@@ -277,28 +278,20 @@ def apply_client_markup(obj, factor: float = PARTICULIER_MARKUP):
 
 
 def _price_model(req: PricingRequest) -> dict:
-    """Totaux eco/standard/premium pour un même projet (fourchette de finitions)."""
+    """Totaux eco/standard/premium pour un même projet (fourchette de finitions).
+
+    Calculés avec EXACTEMENT le même moteur que l'estimation (mêmes lots, hauteur sous plafond,
+    frais annexes et aléas) : le total « standard » du modèle est égal au total moyen affiché.
+    L'ancienne formule simplifiée (×1,145, matériaux × coef. région, sans hauteur ni lots ajoutés)
+    donnait un « standard » différent du total moyen."""
     out = {}
     for lvl in ("eco", "standard", "premium"):
-        tpl = PROJECT_TYPES_BY_KEY.get(req.project_type) or PROJECT_TYPES_BY_KEY["renovation_complete"]
-        finish_cfg = FINISH_BY_KEY[lvl]
-        rc = region_coef(req.country, req.region)
-        coef = (rc * CONDITION_COEF.get(req.condition, 1.0)
-                * BUILDING_COEF.get(req.building_type, 1.0) * year_coef(req.construction_year))
-        sel = (tpl["lots"] if not req.lot_keys
-               else {k: v for k, v in tpl["lots"].items() if k in req.lot_keys})
-        labour_only = bool(tpl.get("labour_only"))
-        tot = 0.0
-        for key, factor in sel.items():
-            lot = LOTS_BY_KEY.get(key)
-            if not lot:
-                continue
-            qty = req.surface * factor
-            mat = 0.0 if labour_only else _mat_price(lot, lvl)
-            tot += qty * (mat * rc + lot["labour"] * coef * finish_cfg["coef"] ** 0.4)
-        tot *= 1.145
-        out[lvl] = {"total": round(tot, 2),
-                    "per_sqm": round(tot / req.surface, 2) if req.surface else 0}
+        r = estimate(project_type=req.project_type, surface=req.surface, finish=lvl,
+                     country=req.country, region=req.region, building_type=req.building_type,
+                     condition=req.condition, construction_year=req.construction_year,
+                     lot_keys=req.lot_keys, ceiling_height_m=req.ceiling_height_m,
+                     levels=req.levels, _with_model=False)
+        out[lvl] = {"total": r["total_avg"], "per_sqm": r["price_per_sqm"]}
     return out
 
 
@@ -346,9 +339,9 @@ def diy_vs_pro(est: dict) -> dict:
         "pro_tasks": pro_only,
         "risk": risk,
         "conclusion": (
-            f"Vous pouvez réaliser vous-même : {', '.join(diy_ok) if diy_ok else 'aucun lot'}. "
-            + (f"Nous recommandons de confier à un professionnel : {', '.join(pro_only)}."
-               if pro_only else "Aucun lot ne nécessite obligatoirement un professionnel.")
+            f"Pode realizar sozinho: {(', '.join(diy_ok) if diy_ok else 'nenhum capítulo')}. "
+            + (f"Recomendamos confiar a um profissional: {', '.join(pro_only)}."
+               if pro_only else "Nenhuma especialidade requer obrigatoriamente um profissional.")
         ),
     }
 
@@ -364,6 +357,6 @@ def safety_check(text: str, lot_keys: list[str] | None = None) -> list[dict]:
             lot = LOTS_BY_KEY.get(key)
             if lot:
                 alerts.append({"trigger": lot["name"],
-                               "message": f"{lot['name']} : intervention d'un professionnel fortement recommandée.",
+                               "message": f"{lot['name']} : intervenção de um profissional fortemente recomendada.",
                                "level": "pro_recommended"})
     return alerts

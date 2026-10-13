@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Building2, Lock, ArrowRight, Users, UserPlus, Trash2, FileText, Layers,
@@ -27,11 +27,11 @@ import { usePermissions } from "@/context/PermissionContext";
 import { toast } from "sonner";
 
 const QUICK = [
-  { key: "orçamentos", to: "/devis", label: "Orçamentos & seguimento", icon: FileText },
-  { key: "faturas", to: "/factures", label: "Faturas", icon: FileText },
-  { key: "situations", to: "/situations", label: "Situações de obra", icon: Layers },
-  { key: "obra", to: "/suivi-chantier", label: "Seguimento de obra", icon: ClipboardList },
-  { key: "rh", to: "/rh", label: "RH & Registo de ponto", icon: HardHat },
+  { key: "devis", to: "/devis", label: "Orçamentos & acompanhamento", icon: FileText },
+  { key: "factures", to: "/factures", label: "Faturas", icon: FileText },
+  { key: "situations", to: "/situations", label: "Autos de medição", icon: Layers },
+  { key: "chantier", to: "/suivi-chantier", label: "Acompanhamento de obra", icon: ClipboardList },
+  { key: "rh", to: "/rh", label: "RH & Ponto", icon: HardHat },
   { key: "catalogue", to: "/mon-catalogue", label: "Catálogo de preços", icon: Tag },
 ];
 
@@ -42,10 +42,8 @@ const Kpi = ({ icon: Icon, label, value, accent }) => (
   </div>
 );
 
-export default function Empresa() {
+export default function Entreprise() {
   const nav = useNavigate();
-  const [searchParams] = useSearchParams();
-  const openMailboxOnLoad = searchParams.get("open") === "mailbox";
   const { user } = useAuth();
   const { tier, active: sub } = useBilling();
   const { can, role, role_label, refresh: refreshPerms } = usePermissions();
@@ -76,7 +74,7 @@ export default function Empresa() {
       const url = URL.createObjectURL(new Blob([data], { type: "text/csv" }));
       const a = document.createElement("a"); a.href = url; a.download = "journal-activite.csv"; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Exportação impossível"); }
+    } catch { toast.error("Impossível exportar"); }
   };
   const exportJournalPdf = async () => {
     try {
@@ -85,16 +83,16 @@ export default function Empresa() {
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
       const a = document.createElement("a"); a.href = url; a.download = "journal-activite.pdf"; a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Export PDF impossível"); }
+    } catch { toast.error("Impossível exportar PDF"); }
   };
   useEffect(() => { if (isProBusiness) load(); /* eslint-disable-next-line */ }, [isProBusiness, isManager]);
 
   const createEmp = async () => {
-    if (!emp.name || !emp.email || emp.password.length < 6) return toast.error("Nom, e-mail et palavra-passe (6+) obrigatório");
+    if (!emp.name || !emp.email || emp.password.length < 6) return toast.error("Nome, e-mail e palavra-passe (6+) obrigatórios");
     setBusy(true);
     try {
       await api.post("/company/employees", emp);
-      toast.success("Colaborador criado — palavra-passe provisória a comunicar");
+      toast.success("Funcionário criado — palavra-passe provisória a comunicar");
       setEmp({ name: "", email: "", password: "", role: "member" });
       setOpenEmp(false); load();
     } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
@@ -105,11 +103,11 @@ export default function Empresa() {
     catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
   const toggleActive = async (m) => {
-    try { await api.put(`/company/members/${m.user_id}`, { active: !m.active }); toast.success(m.active ? "Acesso desactivado" : "Acesso reactivado"); load(); }
+    try { await api.put(`/company/members/${m.user_id}`, { active: !m.active }); toast.success(m.active ? "Acesso desativado" : "Acesso reativado"); load(); }
     catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
   const removeMember = async (uid) => {
-    try { await api.delete(`/company/members/${uid}`); toast.success("Colaborador removido"); load(); }
+    try { await api.delete(`/company/members/${uid}`); toast.success("Funcionário removido"); load(); }
     catch (e) { toast.error(e?.response?.data?.detail || "Erro"); }
   };
 
@@ -118,8 +116,8 @@ export default function Empresa() {
       <div className="max-w-2xl mx-auto px-6 py-24 text-center" data-testid="entreprise-locked">
         <div className="h-14 w-14 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-5"><Lock className="h-7 w-7 text-primary" /></div>
         <h1 className="font-display text-3xl font-bold">Espaço Empresa</h1>
-        <p className="text-muted-foreground mt-3">Faça a gestão de toda a sua empresa, das suas equipas e dos seus acessos — reservado ao <b>pack Empresa</b>.</p>
-        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-upgrade-btn">Passer au pack Empresa <ArrowRight className="h-4 w-4" /></Button>
+        <p className="text-muted-foreground mt-3">Pilote toda a sua empresa, as suas equipas e os seus acessos — reservado ao <b>pack Business</b>.</p>
+        <Button className="rounded-sm mt-6 gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-upgrade-btn">Passar ao pack Business <ArrowRight className="h-4 w-4" /></Button>
       </div>
     );
   }
@@ -130,32 +128,32 @@ export default function Empresa() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8" data-testid="entreprise-page">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <SectionTitle over="Pack Empresa" title="Espaço Empresa">
-          O painel central da sua empresa: atividade, equipa, acessos e módulos de negócio.
+        <SectionTitle over="Pack Business" title="Espaço Empresa">
+          O painel central da sua empresa: atividade, equipa, acessos e módulos profissionais.
         </SectionTitle>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="rounded-sm gap-1"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> {role_label || "Proprietário"}</Badge>
           <ImportDocumentsDialog triggerLabel="Importar orçamentos/faturas PDF" onImported={load} />
           <BrandingDialog />
-          <MailboxDialog defaultOpen={openMailboxOnLoad} />
+          <MailboxDialog />
         </div>
       </div>
 
       {isManager && k && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="entreprise-kpis">
-          <Kpi icon={Wallet} label="Faturação c/ IVA" value={eur(k.ca_ttc)} accent />
-          <Kpi icon={TrendingUp} label="Por receber" value={eur(k.encours)} />
+          <Kpi icon={Wallet} label="Volume de negócios faturado c/ IVA" value={eur(k.ca_ttc)} accent />
+          <Kpi icon={TrendingUp} label="Em curso a cobrar" value={eur(k.encours)} />
           <Kpi icon={ShieldCheck} label="Faturas conformes" value={`${k.invoices_conformes}/${k.invoices}`} />
-          <Kpi icon={Layers} label="Situations" value={k.situations} />
+          <Kpi icon={Layers} label="Autos de medição" value={k.situations} />
           <Kpi icon={FileText} label="Orçamento" value={k.quotes} />
           <Kpi icon={ClipboardList} label="Obras" value={k.chantiers} />
           <Kpi icon={XCircle} label="Reservas em curso" value={k.open_reserves} />
-          <Kpi icon={Users} label="Equipa" value={`${k.members} (${k.workers} trabalhadores)`} />
+          <Kpi icon={Users} label="Equipa" value={`${k.members} (${k.workers} ouvriers)`} />
         </div>
       )}
 
       <div>
-        <p className="overline mb-3">Modules</p>
+        <p className="overline mb-3">Módulos</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3" data-testid="entreprise-modules">
           {QUICK.filter((q) => can(q.key)).map((q) => (
             <motion.button key={q.key} whileHover={{ y: -3 }} onClick={() => nav(q.to)} data-testid={`module-${q.key}`}
@@ -174,16 +172,16 @@ export default function Empresa() {
             <p className="overline flex items-center gap-2"><Users className="h-4 w-4" /> Equipa & acessos</p>
             <Dialog open={openEmp} onOpenChange={setOpenEmp}>
               <DialogTrigger asChild>
-                <Button size="sm" className="rounded-sm gap-2" data-testid="add-employee-btn"><UserPlus className="h-4 w-4" /> Adicionar colaborador</Button>
+                <Button size="sm" className="rounded-sm gap-2" data-testid="add-employee-btn"><UserPlus className="h-4 w-4" /> Adicionar um funcionário</Button>
               </DialogTrigger>
               <DialogContent className="max-w-md" data-testid="employee-dialog">
                 <DialogHeader><DialogTitle>Novo colaborador</DialogTitle></DialogHeader>
                 <div className="grid gap-3 mt-1">
-                  <div className="grid gap-1.5"><Label>Nom</Label>
+                  <div className="grid gap-1.5"><Label>Nome</Label>
                     <Input value={emp.name} onChange={(e) => setEmp({ ...emp, name: e.target.value })} className="rounded-sm" data-testid="emp-name" /></div>
                   <div className="grid gap-1.5"><Label>E-mail</Label>
                     <Input type="email" value={emp.email} onChange={(e) => setEmp({ ...emp, email: e.target.value })} className="rounded-sm" data-testid="emp-email" /></div>
-                  <div className="grid gap-1.5"><Label>Palavra-passe provisoire</Label>
+                  <div className="grid gap-1.5"><Label>Palavra-passe provisória</Label>
                     <Input value={emp.password} onChange={(e) => setEmp({ ...emp, password: e.target.value })} className="rounded-sm" placeholder="6 caracteres mín." data-testid="emp-password" /></div>
                   <div className="grid gap-1.5"><Label>Função</Label>
                     <Select value={emp.role} onValueChange={(v) => setEmp({ ...emp, role: v })}>
@@ -206,7 +204,7 @@ export default function Empresa() {
                   {m.role === "owner" ? <Crown className="h-4 w-4 text-primary" /> : <Users className="h-4 w-4 text-primary" />}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-semibold">{m.name || m.email} {m.is_self && <span className="text-xs text-muted-foreground">(vous)</span>}</p>
+                  <p className="font-semibold">{m.name || m.email} {m.is_self && <span className="text-xs text-muted-foreground">(você)</span>}</p>
                   <p className="text-xs text-muted-foreground">{m.email}</p>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
@@ -230,7 +228,7 @@ export default function Empresa() {
             ))}
             {(!data?.members || data.members.length === 0) && (
               <div className="surface rounded-md p-8 text-center text-sm text-muted-foreground">
-                Sem colaboradores. Crie uma organização em <button className="text-primary underline" onClick={() => nav("/equipe")}>Equipa</button>, depois adicione os seus colaboradores.
+                Nenhum funcionário por enquanto. Crie uma organização a partir de <button className="text-primary underline" onClick={() => nav("/equipe")}>Equipa</button>, depois adicione os seus colaboradores.
               </div>
             )}
           </div>
@@ -254,7 +252,7 @@ export default function Empresa() {
             </div>
           </div>
           <div className="surface rounded-md divide-y divide-border/60">
-            {activity.length === 0 && <p className="px-4 py-6 text-sm text-muted-foreground text-center">Sem atividade para este filtro.</p>}
+            {activity.length === 0 && <p className="px-4 py-6 text-sm text-muted-foreground text-center">Nenhuma atividade para este filtro.</p>}
             {activity.slice(0, 30).map((a) => (
               <div key={a.log_id} className="flex items-center gap-3 px-4 py-3" data-testid={`activity-${a.log_id}`}>
                 <div className="h-8 w-8 rounded-full bg-primary/10 grid place-items-center shrink-0">
@@ -277,7 +275,7 @@ export default function Empresa() {
 
       <div className="surface rounded-md p-5 flex flex-wrap items-center justify-between gap-4" data-testid="entreprise-subscription">
         <div>
-          <p className="overline">Abonnement</p>
+          <p className="overline">Subscrição</p>
           <p className="font-display font-semibold mt-1 capitalize">{(tier || "free").replace("_", " ")}{typeof sub?.plan === "string" ? ` · ${sub.plan}` : ""}</p>
         </div>
         <Button variant="outline" className="rounded-sm gap-2" onClick={() => nav("/tarifs")} data-testid="entreprise-manage-sub"><Wallet className="h-4 w-4" /> Gerir a subscrição</Button>

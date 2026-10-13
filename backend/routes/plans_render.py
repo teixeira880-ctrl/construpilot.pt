@@ -28,18 +28,19 @@ class Render3DIn(BaseModel):
 
 
 _STYLE_PROMPTS = {
-    "photoreal": "photorealistic 3D architectural render, natural daylight, "
-                  "realistic materials (wood floor, painted walls, ceramic tiles), "
-                  "shallow depth of field, high detail",
-    "isometric": "clean isometric 3D architectural rendering, 45° angle, no "
-                  "perspective distortion, soft ambient lighting, colored floors "
-                  "per room type, blueprint aesthetic",
-    "axonometric": "axonometric cutaway 3D render showing walls in section, "
-                    "colored floor tiles per room, precise architectural style, "
-                    "white walls, cool ambient lighting",
-    "interior": "photorealistic interior view of the largest living room in this "
+    "photoreal": "photorealistic 3D DOLLHOUSE render (roof removed) seen from a high "
+                  "35° bird's-eye angle, every wall extruded vertically with real "
+                  "thickness, realistic materials (wood floor, painted walls, ceramic "
+                  "tiles), natural daylight, soft shadows, clear depth and perspective",
+    "isometric": "clean ISOMETRIC 3D dollhouse rendering (roof removed), ~35° bird's-eye "
+                  "angle, walls extruded vertically with visible thickness, colored floors "
+                  "per room type, soft ambient occlusion shadows, architectural model look",
+    "axonometric": "axonometric 3D CUTAWAY render showing extruded walls in section, "
+                    "colored floor tiles per room, white walls with real height, cool "
+                    "ambient lighting, strong sense of volume and depth",
+    "interior": "photorealistic interior 3D view of the largest living room in this "
                  "floor plan, modern French residential style, warm daylight through "
-                 "windows, natural materials",
+                 "windows, natural materials, real perspective",
 }
 
 
@@ -88,19 +89,27 @@ def _ai_context_hint(ai: dict) -> str:
     if floors.get("floor_type"):
         bits.append(f"Floor structure: {floors['floor_type']} "
                     f"(slab {floors.get('slab_thickness_m', 0.2)}m thick)")
-    return ("\nDetailed gros-œuvre context (respect exactly): " + " · ".join(bits)) if bits else ""
+    return ("\nDetailed structural (gros-œuvre) context (respect exactly): " + " · ".join(bits)) if bits else ""
 
 
 def _build_render_prompt(style: str, include_furniture: bool, rooms: list[dict],
                          ai_analysis: dict, extra_prompt: str | None) -> str:
     style_prompt = _STYLE_PROMPTS.get(style, _STYLE_PROMPTS["photoreal"])
-    furniture = "with realistic furniture" if include_furniture else "empty, no furniture"
+    furniture = "Add simple realistic furniture per room." if include_furniture else "Leave rooms empty (no furniture)."
     extra = f"\nAdditional instructions: {extra_prompt}" if extra_prompt else ""
     return (
-        f"Convert this 2D architectural floor plan into a {style_prompt}, "
-        f"{furniture}. Preserve the room layout, walls, doors, windows and "
-        f"staircases EXACTLY as shown — do not invent structure. Do NOT return "
-        f"a 2D plan — generate a full 3D visualization."
+        f"Transform this 2D architectural floor plan into a {style_prompt}.\n"
+        f"CRITICAL — the output MUST be clearly THREE-DIMENSIONAL with depth, height, "
+        f"perspective and shadows. Extrude every wall vertically to a realistic ~2.7 m "
+        f"ceiling height with visible thickness; add floor slabs. Show it as a dollhouse / "
+        f"cutaway (roof removed) viewed from above at an angle. NEVER output a flat "
+        f"top-down 2D line drawing — if the result looks like the original plan, it is wrong.\n"
+        f"IGNORE and DO NOT reproduce any of these 2D-drawing elements: dimension lines and "
+        f"measurement numbers, text labels and room-area annotations (m²), hatching/filling "
+        f"patterns, the north arrow, the title block, surrounding site/garden/tree drawings, "
+        f"and any red/pink/colored annotation lines. Reproduce ONLY the building itself "
+        f"(walls, doors, windows, stairs) as real 3D geometry — preserve the room layout and "
+        f"wall positions EXACTLY, do not invent or remove rooms. {furniture}"
         f"{_room_context_hint(rooms)}{_ai_context_hint(ai_analysis or {})}{extra}"
     )
 
@@ -110,16 +119,18 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
                              ai_analysis: dict | None = None,
                              extra_prompt: str | None = None) -> tuple[str, str, str]:
     """Core Gemini Nano Banana call — returns (b64_out, mime, prompt_used)."""
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    from emergentintegrations.llm.chat import ImageContent, UserMessage
+
+    from engines.expenses.metering import MeteredChat as LlmChat
 
     api_key = os.getenv("EMERGENT_LLM_KEY")
     if not api_key:
-        raise HTTPException(500, "EMERGENT_LLM_KEY manquant")
+        raise HTTPException(500, "EMERGENT_LLM_KEY em falta")
 
     prompt = _build_render_prompt(style, include_furniture, rooms,
                                     ai_analysis or {}, extra_prompt)
     try:
-        chat = (LlmChat(api_key=api_key,
+        chat = (LlmChat(api_key=api_key, expense_feature="plan_3d_image",
                         session_id=f"render3d_{plan_id}_{page_index}_{style}",
                         system_message="You are an architectural visualization AI.")
                 .with_model("gemini", "gemini-2.5-flash-image"))
@@ -128,11 +139,11 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
         _text_out, images = await chat.send_message_multimodal_response(message)
     except Exception as e:
         logger.error(f"_gemini_render_3d LLM error: {type(e).__name__} {e}")
-        raise HTTPException(502, f"Génération 3D échouée : {type(e).__name__}") from e
+        raise HTTPException(502, f'Geração 3D falhada: {type(e).__name__}') from e
 
     if not images:
         raise HTTPException(502,
-            "Le modèle n'a pas renvoyé d'image (essayez un autre style).")
+            "O modelo não devolveu nenhuma imagem (experimente outro estilo).")
     return images[0].get("data"), images[0].get("mime_type", "image/png"), prompt
 
 
@@ -145,13 +156,13 @@ async def render_3d(plan_id: str, body: Render3DIn, user=Depends(current_user)) 
         {"_id": 0, "pages": 1, "filename": 1, "rooms": 1, "ai_analysis": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if body.page_index < 0 or body.page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     img_b64 = pages[body.page_index].get("image_png_b64")
     if not img_b64:
-        raise HTTPException(500, "Image du plan manquante")
+        raise HTTPException(500, "Imagem da planta em falta")
 
     generated_b64, mime, prompt = await _gemini_render_3d(
         plan_id=plan_id, page_index=body.page_index, page_img_b64=img_b64,
@@ -191,7 +202,7 @@ async def list_renders_3d(plan_id: str, user=Depends(current_user)) -> dict:
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     renders = await (db.plan_renders_3d
                      .find({"plan_id": plan_id}, {"_id": 0, "image_b64": 0, "prompt": 0})
                      .sort("created_at", 1).to_list(20))
@@ -210,11 +221,11 @@ async def get_render_3d(plan_id: str, render_id: str, user=Depends(current_user)
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     r = await db.plan_renders_3d.find_one(
         {"plan_id": plan_id, "render_id": render_id}, {"_id": 0})
     if not r:
-        raise HTTPException(404, "Rendu 3D introuvable")
+        raise HTTPException(404, "Renderização 3D não encontrada")
     return {"render_id": render_id, "style": r.get("style"),
             "mime_type": r.get("mime_type", "image/png"),
             "image_b64": r.get("image_b64"),
@@ -234,12 +245,12 @@ class RenderVideoIn(BaseModel):
 
 def _validate_video_styles(styles: list[str]) -> None:
     if not styles or len(styles) < 2:
-        raise HTTPException(400, "Au moins 2 styles requis pour un tour vidéo")
+        raise HTTPException(400, "São necessários pelo menos 2 estilos para um vídeo de visita")
     if len(styles) > 6:
-        raise HTTPException(400, "6 styles max par vidéo")
+        raise HTTPException(400, "Máx. 6 estilos por vídeo")
     unknown = [s for s in styles if s not in _STYLE_PROMPTS]
     if unknown:
-        raise HTTPException(400, f"Style(s) inconnu(s) : {', '.join(unknown)}")
+        raise HTTPException(400, f"Estilo(s) desconhecido(s): {', '.join(unknown)}")
 
 
 async def _load_watermark_bytes(user_id: str) -> bytes | None:
@@ -270,13 +281,13 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
         {"_id": 0, "pages": 1, "rooms": 1, "ai_analysis": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
     if body.page_index < 0 or body.page_index >= len(pages):
-        raise HTTPException(404, "Page inconnue")
+        raise HTTPException(404, "Página desconhecida")
     img_b64 = pages[body.page_index].get("image_png_b64")
     if not img_b64:
-        raise HTTPException(500, "Image du plan manquante")
+        raise HTTPException(500, "Imagem da planta em falta")
     rooms = p.get("rooms") or []
     ai_analysis = p.get("ai_analysis") or {}
 
@@ -298,7 +309,7 @@ async def render_video_tour(plan_id: str, body: RenderVideoIn, user=Depends(curr
         )
     except Exception as e:
         logger.error(f"video_tour build failed: {type(e).__name__} {e}")
-        raise HTTPException(502, f"Assemblage vidéo échoué : {type(e).__name__}") from e
+        raise HTTPException(502, f'Montagem de vídeo falhada: {type(e).__name__}') from e
 
     doc = {
         "video_id": meta["video_id"],
@@ -326,7 +337,7 @@ async def unlock_interactive_3d(plan_id: str, user=Depends(current_user)) -> dic
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     if (user or {}).get("role") == "admin":
         return {"ok": True, "mode": "unlimited"}
     tier = await user_tier(user["user_id"])
@@ -366,9 +377,9 @@ async def get_video_3d_mp4(plan_id: str, video_id: str, user=Depends(current_use
         {"_id": 0, "filename": 1},
     )
     if not doc:
-        raise HTTPException(404, "Vidéo introuvable")
+        raise HTTPException(404, "Vídeo não encontrado")
     path = get_video_path(video_id)
     if not path:
-        raise HTTPException(404, "Fichier vidéo manquant sur le disque")
+        raise HTTPException(404, "Ficheiro de vídeo em falta no disco")
     return FileResponse(str(path), media_type="video/mp4",
                         filename=f"tour-3d-{plan_id}.mp4")

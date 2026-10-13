@@ -2,17 +2,15 @@ import csv
 import io
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from core.db import db
 from core.security import admin_user
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, Response
+from engines.pdf_pitch import DECK_MANIFEST, deck_asset_response
+from fastapi import APIRouter, Depends, Path, Request
+from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr
 
 router = APIRouter(prefix="/investors", tags=["investors"])
-
-PITCH_DECK_PATH = Path("/app/frontend/public/pitch-deck.pdf")
 
 
 class DeckRequestIn(BaseModel):
@@ -22,7 +20,13 @@ class DeckRequestIn(BaseModel):
     note: str = ""
 
 
-@router.post("/deck-request")
+class DeckRequestOut(BaseModel):
+    ok: bool
+    download_url: str
+    powerpoint_url: str
+
+
+@router.post("/deck-request", response_model=DeckRequestOut)
 async def deck_request(body: DeckRequestIn, request: Request):
     """Journalise une demande de pitch deck (lead investisseur) puis renvoie l'URL du PDF."""
     doc = {
@@ -38,7 +42,11 @@ async def deck_request(body: DeckRequestIn, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.deck_downloads.insert_one(doc)
-    return {"ok": True, "download_url": "/api/investors/pitch-deck.pdf"}
+    return DeckRequestOut(
+        ok=True,
+        download_url="/api/investors/pitch-deck.pdf",
+        powerpoint_url="/api/investors/pitch-deck.pptx",
+    )
 
 
 @router.get("/deck-requests.csv", dependencies=[Depends(admin_user)])
@@ -47,7 +55,7 @@ async def deck_requests_csv():
     rows = await db.deck_downloads.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)
     buf = io.StringIO()
     wr = csv.writer(buf, delimiter=";")
-    wr.writerow(["Date", "Nom", "E-mail", "Fonds / société", "Note", "IP", "Referer"])
+    wr.writerow(["Data", "Nome", "E-mail", "Fundo / sociedade", "Nota", "IP", "Referer"])
     for r in rows:
         wr.writerow([
             (r.get("created_at") or "")[:19].replace("T", " "),
@@ -56,17 +64,37 @@ async def deck_requests_csv():
         ])
     data = buf.getvalue().encode("utf-8-sig")
     return Response(content=data, media_type="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=leads-investisseurs.csv"})
+                    headers={"Content-Disposition": "attachment; filename=leads-investidores.csv"})
 
 
-@router.get("/pitch-deck.pdf")
+@router.api_route("/pitch-deck.pdf", methods=["GET", "HEAD"])
 async def pitch_deck_pdf():
-    """PDF público do pitch deck de investidores (versão final PT-PT fornecida
-    pelo utilizador, servida diretamente de /app/frontend/public/pitch-deck.pdf)."""
-    if not PITCH_DECK_PATH.exists():
-        raise HTTPException(status_code=404, detail="Pitch deck não disponível.")
-    return FileResponse(
-        path=str(PITCH_DECK_PATH),
-        media_type="application/pdf",
-        headers={"Content-Disposition": 'inline; filename="ConstruPilot-Pitch-Deck.pdf"'},
+    """PDF fidèle du PowerPoint fourni, conservant l'URL publique existante."""
+    return deck_asset_response("ConstruPilot_PitchDeck.pdf", "application/pdf")
+
+
+@router.api_route("/pitch-deck.pptx", methods=["GET", "HEAD"])
+async def pitch_deck_powerpoint():
+    return deck_asset_response(
+        "ConstruPilot_PitchDeck.pptx",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        inline=False,
     )
+
+
+class DeckInfo(BaseModel):
+    source_filename: str
+    source_sha256: str
+    page_count: int
+    width: int
+    height: int
+
+
+@router.get("/pitch-deck", response_model=DeckInfo)
+async def pitch_deck_info():
+    return DeckInfo(**{key: DECK_MANIFEST[key] for key in DeckInfo.model_fields})
+
+
+@router.api_route("/pitch-deck/slides/{page}.webp", methods=["GET", "HEAD"])
+async def pitch_deck_slide(page: int = Path(ge=1, le=DECK_MANIFEST["page_count"])):
+    return deck_asset_response(f"slides/{page}.webp", "image/webp")

@@ -53,32 +53,28 @@ async def build_digest(user: dict) -> dict:
 
 def _fmt_digest_html(digest: dict) -> str:
     body = f"<p>Olá {digest.get('user_name') or ''},</p>"
-    body += "<p>Votre récap hebdomadaire ConstruPilot :</p>"
+    body += "<p>O seu resumo semanal ConstruPilot:</p>"
     w = digest.get("watched") or []
     if w:
-        body += "<h3 style='margin-top:24px'>📉 Matériaux surveillés</h3><ul>"
+        body += "<h3 style=\'margin-top:24px\'>📉 Materiais acompanhados</h3><ul>"
         for x in w:
-            arrow = "✅ Sous le prix cible" if x["triggered"] else "⏳ Au-dessus"
-            body += (f"<li><b>{x['query']}</b> — meilleur : "
-                     f"<span style='color:#FF5A00;font-weight:bold'>{x['current']:.2f} €</span>"
-                     f" chez {x['supplier']} (cible {x['target']:.2f} €) — {arrow}</li>")
+            arrow = "✅ Abaixo do preço alvo" if x["triggered"] else "⏳ Acima"
+            body += (f"<li><b>{x['query']}</b> — melhor: <span style='color:#FF5A00;font-weight:bold'>{x['current']:.2f} €</span> em {x['supplier']} (cible {x['target']:.2f} €) — {arrow}</li>")
         body += "</ul>"
     else:
-        body += "<p style='color:#64748B;font-size:13px'>Aucune alerte prix active — créez-en depuis la page Prix pour être notifié.</p>"
+        body += "<p style=\'color:#64748B;font-size:13px\'>Nenhum alerta de preço ativo — crie alertas na página Preços para ser notificado.</p>"
 
     s = digest.get("savings") or []
     if s:
-        body += "<h3 style='margin-top:24px'>💰 Économies identifiées sur vos projets</h3><ul>"
+        body += "<h3 style=\'margin-top:24px\'>💰 Poupanças identificadas nos seus projetos</h3><ul>"
         for x in s:
-            body += (f"<li><b>{x['name']}</b> : jusqu'à "
-                     f"<span style='color:#FF5A00;font-weight:bold'>{x['total']:,.0f} €</span>"
-                     f" d'économies (ROI ~{x['roi']}× le Project Pass)</li>")
+            body += (f"<li><b>{x['name']}</b> : até <span style='color:#FF5A00;font-weight:bold'>{x['total']:,.0f} €</span> de poupança (ROI ~{x['roi']}× o Project Pass)</li>")
         body += "</ul>"
     body = body.replace(",", " ")
     frontend = os.environ.get("FRONTEND_URL", "")
-    return emailer.wrap_html("Votre récap hebdo ConstruPilot", body,
+    return emailer.wrap_html("O seu resumo semanal ConstruPilot", body,
                              cta_url=f"{frontend}/dashboard" if frontend else None,
-                             cta_label="Ouvrir mon tableau de bord")
+                             cta_label="Abrir o meu painel")
 
 
 async def send_weekly_digests() -> int:
@@ -92,7 +88,7 @@ async def send_weekly_digests() -> int:
             if not digest["watched"] and not digest["savings"]:
                 continue
             await emailer.send_email(u["email"],
-                                     "Votre récap hebdo ConstruPilot",
+                                     "O seu resumo semanal ConstruPilot",
                                      _fmt_digest_html(digest))
             sent += 1
         except Exception as e:

@@ -18,37 +18,11 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-# Regex pour repérer les échelles courantes dans le texte du plan
-SCALE_PATTERNS = [
-    re.compile(r"1\s*[:/]\s*(\d{2,4})"),
-    re.compile(r"éch(?:elle)?\s*[:.]?\s*1\s*[:/]\s*(\d{2,4})", re.IGNORECASE),
-    re.compile(r"scale\s*[:.]?\s*1\s*[:/]\s*(\d{2,4})", re.IGNORECASE),
-]
-
-# Détection de niveaux (RDC, R+1, R+2, sous-sol, combles) dans le texte d'une page
-LEVEL_PATTERNS = [
-    (re.compile(r"\bsous[\s-]?sol\b|\bcave\b|\bs[\s-]?sol\b", re.IGNORECASE), -1, "Sous-sol"),
-    (re.compile(r"\brdc\b|\brez[\s-]?de[\s-]?chauss[éeè]e?\b", re.IGNORECASE), 0, "RDC"),
-    (re.compile(r"\br\s*\+\s*(\d)\b|\b(\d)[eè]?[re]?\s*[eé]tage\b", re.IGNORECASE), None, None),
-    (re.compile(r"\bcombles?\b|\bgrenier\b", re.IGNORECASE), 99, "Combles"),
-]
-
-
 def _detect_level_from_text(text: str) -> tuple[int, str] | None:
     """Renvoie (level_index, level_label) trouvé dans le texte de la page."""
-    if not text:
-        return None
-    for rx, lvl, label in LEVEL_PATTERNS:
-        m = rx.search(text)
-        if m:
-            if lvl is not None:
-                return (lvl, label)
-            # Cas R+X ou X étage
-            for g in m.groups():
-                if g and g.isdigit():
-                    n = int(g)
-                    return (n, f"R+{n}" if n > 0 else "RDC")
-    return None
+    from engines.plan_page_context import level_candidates
+    levels = level_candidates(text)
+    return (levels[0]["level_index"], levels[0]["level_label"]) if len(levels) == 1 else None
 
 # Regex pour repérer des cotes (dimensions en m ou cm) — sans les extraire, juste pour comptage
 DIM_PATTERN = re.compile(r"\b\d{1,3}[.,]\d{1,2}\s*(?:m|cm|mm)\b", re.IGNORECASE)
@@ -56,14 +30,9 @@ DIM_PATTERN = re.compile(r"\b\d{1,3}[.,]\d{1,2}\s*(?:m|cm|mm)\b", re.IGNORECASE)
 
 def _detect_scale_from_text(text: str) -> int | None:
     """Cherche une échelle 1:X dans le texte extrait — retourne X ou None."""
-    for rx in SCALE_PATTERNS:
-        m = rx.search(text)
-        if m:
-            try:
-                return int(m.group(1))
-            except ValueError:
-                continue
-    return None
+    from engines.plan_page_context import scale_denominators
+    scales = scale_denominators(text)
+    return scales[0] if len(scales) == 1 else None
 
 
 def _pil_to_png_bytes(img: Image.Image, max_side: int = 2400) -> bytes:
@@ -110,7 +79,7 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
     """Extrait pages + vecteurs + textes + rendu PNG d'un PDF."""
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     pages_out = []
-    detected_scale = None
+    document_scales = set()
     # Résolution d'aperçu adaptée au nombre de pages (préserver la lisibilité des cotes
     # sur les plans 1 page, sans dépasser la limite BSON 16 Mo sur les PDF multi-pages).
     n_pages = doc.page_count
@@ -123,68 +92,45 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
 
         # --- Extraction texte ---
         text = page.get_text("text") or ""
-        if not detected_scale:
-            detected_scale = _detect_scale_from_text(text)
+        from engines.plan_page_context import scale_denominators
+        document_scales.update(scale_denominators(text))
 
         # --- Extraction vectorielle (lignes / rectangles / dessins) ---
         vectors = []
         try:
-            drawings = page.get_drawings()
-            for d in drawings:
-                for item in d.get("items", []):
-                    op = item[0]
-                    if op == "l":  # line
-                        p1, p2 = item[1], item[2]
-                        vectors.append({"type": "line",
-                                        "p1": [p1.x, p1.y], "p2": [p2.x, p2.y]})
-                    elif op == "re":  # rectangle
-                        r = item[1]
-                        vectors.append({"type": "rect",
-                                        "x": r.x0, "y": r.y0,
-                                        "w": r.width, "h": r.height})
+            from engines.plan_vector_pdf import pdf_lines
+            vectors = pdf_lines(page)
         except Exception as e:
             logger.warning(f"vector extract failed p{i}: {e}")
 
         # --- Textes localisés (pour OCR-like sans OCR) ---
         text_blocks = []
         try:
-            for t in page.get_text("dict").get("blocks", []):
-                if t.get("type") != 0:  # text block
-                    continue
-                for line in t.get("lines", []):
-                    for span in line.get("spans", []):
-                        s = (span.get("text") or "").strip()
-                        if not s:
-                            continue
-                        bbox = span.get("bbox", [0, 0, 0, 0])
-                        text_blocks.append({
-                            "text": s,
-                            "x": bbox[0], "y": bbox[1],
-                            "w": bbox[2] - bbox[0], "h": bbox[3] - bbox[1],
-                        })
+            from engines.plan_vector_pdf import pdf_text_blocks
+            text_blocks = pdf_text_blocks(page)
         except Exception as e:
             logger.warning(f"text extract failed p{i}: {e}")
 
+        # Import and refresh must share the same scale/view safeguards.
+        from engines.plan_refresh import extract_pdf_page
+        geometry = extract_pdf_page(page, render_dpi * ratio / 72, vectors=vectors, text_blocks=text_blocks)
         pages_out.append({
+            **geometry,
             "index": i,
             "width_px": fw,
             "height_px": fh,
             "dpi": round(render_dpi * ratio, 2),
             "image_png_b64": img_b64,
             "img_mime": img_mime,
-            "vectors": vectors[:2500],   # cap pour éviter payloads énormes (limite BSON 16 Mo)
-            "text_blocks": text_blocks[:2000],
             "dimensions_count": len(DIM_PATTERN.findall(text)),
             "raw_text_length": len(text),
-            "level_index": (_detect_level_from_text(text) or (None, None))[0],
-            "level_label": (_detect_level_from_text(text) or (None, None))[1],
         })
     doc.close()
     return {
         "kind": "pdf",
         "page_count": len(pages_out),
         "pages": pages_out,
-        "detected_scale_denominator": detected_scale,
+        "detected_scale_denominator": next(iter(document_scales)) if len(document_scales) == 1 else None,
     }
 
 
@@ -217,7 +163,7 @@ def process_image(image_bytes: bytes, mime: str) -> dict:
     }
 
 
-def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False) -> dict:
+def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False, cad_unit: str | None = None) -> dict:
     """Point d'entrée : dispatch vers PDF / DXF / image selon le mime type.
     Si `deskew` est True et que c'est une image, tente une correction de perspective.
     """
@@ -226,7 +172,7 @@ def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False) 
         return process_pdf(data)
     if lower.endswith(".dxf") or mime in ("application/dxf", "image/vnd.dxf"):
         from engines.plan_dxf import process_dxf  # lazy import
-        return process_dxf(data, filename)
+        return process_dxf(data, filename, unit_override=cad_unit)
     if lower.endswith(".dwg") or mime in ("application/acad", "image/vnd.dwg"):
         from engines.plan_dxf import process_dwg
         return process_dwg(data, filename)  # raises helpful ValueError
@@ -243,7 +189,7 @@ def process_upload(data: bytes, filename: str, mime: str, deskew: bool = False) 
             except Exception:
                 pass  # si deskew échoue, on continue avec l'image originale
         return process_image(data, mime or "image/png")
-    raise ValueError(f"Format non supporté : {mime or filename}")
+    raise ValueError(f'Formato não suportado: {mime or filename}')
 
 
 # ============ Auto échelle en pixels/mètre (méthode A) ============

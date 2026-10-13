@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
+import { OfferNotice } from "@/components/OfferNotice";
 
 const ICON = {
   FREE: Sparkles, PROJECT_PASS: Zap,
@@ -102,6 +103,11 @@ export default function Pricing() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const promo = useMemo(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("promo")?.trim().slice(0, 40) || "";
+    if (fromUrl) sessionStorage.setItem("cp_promo", fromUrl);
+    return fromUrl || sessionStorage.getItem("cp_promo") || "";
+  }, []);
   const [plans, setPlans] = useState([]);
   const [flags, setFlags] = useState({});
   const [audience, setAudience] = useState("particulier");
@@ -127,7 +133,9 @@ export default function Pricing() {
       const { data } = await api.post("/billing/checkout", {
         plan_id: plan.plan_id,
         origin_url: window.location.origin,
+        promo_code: promo || undefined,
       });
+      if (data.promo_rejected) toast.info("Código promocional reservado às primeiras subscrições — pagamento à tarifa normal.");
       window.location.href = data.url;
     } catch (err) {
       toast.error(err?.response?.data?.detail || t("pricing.checkout_fail"));
@@ -138,14 +146,21 @@ export default function Pricing() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Preços — Grátis para particulares, Pro desde 99 €/mês"
-        description="Estimativa, calculadoras, comparador de preços e Coach IA para particulares. Orçamentos PDF ilimitados, IVA PT auto, render 3D, assinatura cliente, CRM e faturação para profissionais. Pro desde 99 €/mês, sem compromisso."
-        keywords="preço software orçamentos, tarifário construpilot, assinatura profissional, software construção civil gratuito, preço ferramenta estimativa de obras"
-        canonical="/planos"
+        title="Preços e subscrições ConstruPilot"
+        description="Oferta gratuita para começar, Premium para particulares, Pro e Pro Business para profissionais: detalhe das funções incluídas em cada plano, sem fidelização."
+        keywords="preço software orçamentos, preço construpilot, subscrição profissional, software construção gratuito, preço ferramenta estimativa obras"
+        canonical="/tarifs"
       />
       <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
         {t("pricing.subtitle")}
       </SectionTitle>
+      <OfferNotice lang={lang} className="max-w-2xl mx-auto -mt-4" />
+      {promo && (
+        <div className="surface border-primary/40 rounded-md p-4 text-center max-w-xl mx-auto -mt-4" data-testid="pricing-promo-banner">
+          <p className="text-sm">O seu código promocional <b className="num tracking-wider text-primary">{promo}</b> será aplicado automaticamente ao pagamento.</p>
+          <p className="text-xs text-muted-foreground mt-1">Escolha o seu plano abaixo: a redução aparece diretamente na página de pagamento seguro.</p>
+        </div>
+      )}
 
       <Tabs value={audience} onValueChange={setAudience}>
         <TabsList className="rounded-sm mx-auto">
@@ -167,22 +182,32 @@ export default function Pricing() {
       </Tabs>
 
       {audience === "pro" && (
+        <div className="surface p-5 rounded-sm border-primary/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-3xl mx-auto" data-testid="pricing-pro-offer-banner">
+          <div>
+            <p className="font-display font-bold">É profissional da construção?</p>
+            <p className="text-sm text-muted-foreground">Descubra o detalhe da oferta Pro, a experiência de 7 dias e as condições de faturação.</p>
+          </div>
+          <Button className="rounded-sm gap-2 shrink-0" data-testid="pricing-see-pro-offer" onClick={() => navigate("/pro")}>
+            Ver a oferta Pro <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {audience === "pro" && (
         <div className="surface p-6 md:p-8 rounded-sm border-primary/30 flex flex-col md:flex-row md:items-center gap-6" data-testid="invoicing-addon-banner">
           <div className="flex-1">
             <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Opção</p>
-            <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Faturação & faturação eletrónica</h3>
+            <h3 className="font-display text-xl font-extrabold tracking-tight mt-1">Faturação & faturação eletrónica (Factur-X)</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              Emita faturas, converta orçamentos em 1 clique, acompanhe pagamentos e gere faturas
-              eletrónicas conformes com a AT. <strong>Incluído gratuitamente no Pro Business</strong>,
-              ou como opção para quem subscreve Premium ou Pro.
+              Crie faturas, converta os seus orçamentos em 1 clique, acompanhe os pagamentos e gere faturas eletrónicas conformes Factur-X. <strong>Incluído gratuitamente no Pro Business</strong>, ou em opção para os assinantes Premium e Pro.
             </p>
           </div>
           <div className="text-center md:text-right shrink-0">
-            <p className="num text-3xl font-extrabold text-primary">5 €<span className="text-sm text-muted-foreground font-normal">/mês</span></p>
+            <p className="num text-3xl font-extrabold text-primary">5 €<span className="text-sm text-muted-foreground font-normal">/mois</span></p>
             <Button className="rounded-sm mt-3 w-full md:w-auto" data-testid="pricing-invoicing-addon-cta"
               disabled={busy === "invoicing_addon_monthly"}
               onClick={() => subscribe({ plan_id: "invoicing_addon_monthly" })}>
-              {busy === "invoicing_addon_monthly" ? t("pricing.redirecting") : "Ativar opção"}
+              {busy === "invoicing_addon_monthly" ? t("pricing.redirecting") : "Ativar a opção"}
             </Button>
           </div>
         </div>

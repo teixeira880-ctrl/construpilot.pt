@@ -29,7 +29,7 @@ const COMPARE_CONFIG = {
     ],
     label: (v) => `${v.plate_length}×${v.plate_width} cm`,
     metric: { title: "Placas necessárias", match: /plaque/i },
-    caption: "Estrutura, parafusos e massa incluídos. O formato mais barato está destacado.",
+    caption: "Estrutura, parafusos e reboco incluídos. O formato mais barato está realçado.",
   },
   tile: {
     variants: [
@@ -40,8 +40,8 @@ const COMPARE_CONFIG = {
       { tile_length: 90, tile_width: 90 },
     ],
     label: (v) => `${v.tile_length}×${v.tile_width} cm`,
-    metric: { title: "Azulejos", match: /carreau|azulejo/i },
-    caption: "Perdas de assentamento incluídas conforme o tipo selecionado. O formato mais barato está destacado.",
+    metric: { title: "Azulejos", match: /carreau/i },
+    caption: "Perdas de aplicação incluídas conforme o tipo de aplicação selecionado. O formato mais barato está realçado.",
   },
 };
 
@@ -53,12 +53,12 @@ export default function Calculators() {
   const gate = () => {
     if (isPremium) return true;
     if (!user) {
-      toast.info("Créez un compte et passez Premium pour débloquer cette fonction");
+      toast.info("Crie uma conta e passe para Premium para desbloquear esta função");
       navigate("/login");
       return false;
     }
     toast.info("Função Premium — passe para uma oferta paga para a utilizar 🔒");
-    navigate("/planos");
+    navigate("/tarifs");
     return false;
   };
   const [calcs, setCalcs] = useState([]);
@@ -159,7 +159,7 @@ export default function Calculators() {
       name: active.name,
       materials: result.materials.map((m) => ({ name: m.name, quantity: m.quantity, unit: m.unit })),
     }]);
-    toast.success(`«${active.name}» adicionado à seleção`);
+    toast.success(`« ${active.name} » adicionado à seleção`);
   };
 
   const buildGroupedQuote = async () => {
@@ -172,7 +172,7 @@ export default function Calculators() {
         unit_price_ht: 0, vat_rate: 10, category: entry.name,
       })));
       const { data } = await api.post("/documents", {
-        doc_type: "quote", title: `Orçamento — ${cart.map((e) => e.name).join(" + ")}`, lines,
+        doc_type: "quote", title: `Devis — ${cart.map((e) => e.name).join(" + ")}`, lines,
       });
       toast.success("Orçamento agrupado criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
@@ -225,7 +225,7 @@ export default function Calculators() {
         unit_price_ht: 0, vat_rate: 10, category: active.name,
       }));
       const { data } = await api.post("/documents", {
-        doc_type: "quote", title: `Orçamento — ${active.name}`, lines,
+        doc_type: "quote", title: `Devis — ${active.name}`, lines,
       });
       toast.success("Orçamento criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
@@ -250,8 +250,8 @@ export default function Calculators() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Calculadoras de materiais de construção" description="Calcule as quantidades exactas de tinta, azulejos, Pladur, betão e isolamento para as suas obras. Margens de segurança incluídas. Gera a lista de compras de materiais." keywords="calculadora tinta, calculadora azulejos, calculadora pladur, calculadora betão, calculadora isolamento, quantidade materiais" canonical="/calculateurs" />
-      <SectionTitle as="h1" over="Calculadora de materiais" title="Quantidades exactas, margens incluídas">
+      <SEO title="Calculadoras materiais construção" description="Calcule as quantidades exatas de tinta, azulejo, pladur, betão e isolamento para as suas obras. Margens de segurança incluídas. Gera a lista de compras de materiais." keywords="calculadora de tinta, calculadora de azulejo, calculadora de pladur, calculadora de betão, calculadora de isolamento, quantidade de materiais" canonical="/calculateurs" />
+      <SectionTitle as="h1" over="Calculadora de materiais" title="As quantidades exatas, margens incluídas">
         Cálculos determinísticos e verificáveis: superfícies, volumes, perdas de aplicação e embalagens.
       </SectionTitle>
 
@@ -272,7 +272,7 @@ export default function Calculators() {
         <div className="surface p-5 rounded-md border-primary/40" data-testid="calc-cart">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="overline flex items-center gap-2"><ShoppingCart className="h-3.5 w-3.5" /> Ma sélection ({cart.length} {cart.length > 1 ? "calculs" : "calcul"})</p>
+              <p className="overline flex items-center gap-2"><ShoppingCart className="h-3.5 w-3.5" /> A minha seleção ({cart.length} {cart.length > 1 ? "calculs" : "calcul"})</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {cart.map((e, i) => (
                   <span key={e.id} className="inline-flex items-center gap-1.5 text-sm bg-muted/50 border border-border rounded-full pl-3 pr-1.5 py-1" data-testid={`calc-cart-item-${i}`}>
@@ -286,9 +286,9 @@ export default function Calculators() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" className="rounded-sm text-muted-foreground" onClick={() => setCart([])} data-testid="calc-cart-clear">Vider</Button>
+              <Button variant="ghost" className="rounded-sm text-muted-foreground" onClick={() => setCart([])} data-testid="calc-cart-clear">Esvaziar</Button>
               <Button className="rounded-sm gap-2" disabled={addingQuote} onClick={buildGroupedQuote} data-testid="calc-cart-quote-btn">
-                {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Créer le devis groupé
+                {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Criar o orçamento agrupado
               </Button>
             </div>
           </div>
@@ -304,11 +304,7 @@ export default function Calculators() {
                 <Select value={String(params[f.name] ?? "")} onValueChange={(v) => setParams({ ...params, [f.name]: v })}>
                   <SelectTrigger className="rounded-sm h-11" data-testid={`calc-field-${f.name}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {f.options.map((o) => (
-                      <SelectItem key={o} value={o}>
-                        {f.option_labels?.[o] || o.replace(/_/g, " ")}
-                      </SelectItem>
-                    ))}
+                    {f.options.map((o) => <SelectItem key={o} value={o}>{o.replace(/_/g, " ")}</SelectItem>)}
                   </SelectContent>
                 </Select>
               ) : f.type === "boolean" ? (
@@ -333,7 +329,7 @@ export default function Calculators() {
         <div className="lg:col-span-2 grid gap-6">
           {!result && (
             <div className="surface p-12 text-center text-sm text-muted-foreground" data-testid="calculator-empty">
-              Preencha as dimensões e lance o cálculo.
+              Indique as dimensões e depois lance o cálculo.
             </div>
           )}
           {result && (
@@ -349,16 +345,16 @@ export default function Calculators() {
                   ))}
                 </div>
                 <p className="num mt-6 text-sm">
-                  Orçamento de materiais estimado: <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
+                  Orçamento materiais estimado: <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
                   {!isPremium && (
-                    <button onClick={() => navigate("/planos")} data-testid="calc-premium-banner"
+                    <button onClick={() => navigate("/tarifs")} data-testid="calc-premium-banner"
                       className="w-full mb-1 flex items-center gap-2 text-sm bg-primary/10 border border-primary/30 text-primary rounded-sm px-4 py-2.5 hover:bg-primary/15 transition-colors">
                       <Lock className="h-4 w-4" />
-                      <span>Exportação PDF, orçamento e partilha são <b>Premium</b> — desbloqueie-os.</span>
-                      <span className="ml-auto font-semibold underline">Passar a Premium →</span>
+                      <span>Exportar PDF, orçamento e partilha estão <b>Premium</b> — desbloqueie-os.</span>
+                      <span className="ml-auto font-semibold underline">Passar Premium →</span>
                     </button>
                   )}
                   <Button onClick={exportPdf} disabled={busyPdf} variant="outline" className="rounded-sm gap-2" data-testid="calc-export-pdf-btn">
@@ -372,11 +368,11 @@ export default function Calculators() {
                     <ListPlus className="h-4 w-4" /> Adicionar à seleção
                   </Button>
                   <Button onClick={shareSheet} disabled={sharing} variant="outline" className="rounded-sm gap-2" data-testid="calc-share-btn">
-                    {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Partilhar ficha
+                    {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Partilhar a ficha
                   </Button>
                   {COMPARE_CONFIG[active.key] && (
                     <Button onClick={compareFormats} disabled={busy} variant="outline" className="rounded-sm gap-2" data-testid="calc-compare-btn">
-                      <Columns3 className="h-4 w-4" /> Comparar formatos
+                      <Columns3 className="h-4 w-4" /> Comparar os formatos
                     </Button>
                   )}
                 </div>
@@ -402,7 +398,7 @@ export default function Calculators() {
                         const isBest = (c.budget || Infinity) === best;
                         return (
                           <TableRow key={i} className={isBest ? "bg-primary/10" : "even:bg-muted/30"}>
-                            <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ mais barato</span>}</TableCell>
+                            <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ o mais barato</span>}</TableCell>
                             <TableCell className="num text-right">{num(c.metric, 0)}</TableCell>
                             <TableCell className="num text-right font-semibold text-primary">{eur(c.budget)}</TableCell>
                           </TableRow>
@@ -419,7 +415,7 @@ export default function Calculators() {
                     <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                       <TableHead>Material a comprar</TableHead>
                       <TableHead className="text-right">Quantidade</TableHead>
-                      <TableHead>Unidade</TableHead>
+                      <TableHead>Un.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -479,8 +475,7 @@ export default function Calculators() {
                     </Table>
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <ShoppingCart className="h-3 w-3" /> Modo {optim.mode} — preços de demonstração, ligue as
-                    APIs de fornecedores para obter preços reais.
+                    <ShoppingCart className="h-3 w-3" /> Modo {optim.mode} — preço de demonstração, ligue as API de fornecedores para preços reais.
                   </p>
                 </div>
               )}
@@ -492,8 +487,8 @@ export default function Calculators() {
       <Dialog open={!!shareUrl} onOpenChange={(o) => !o && setShareUrl(null)}>
         <DialogContent className="max-w-md" data-testid="calc-share-dialog">
           <DialogHeader>
-            <DialogTitle>Partilhar ficha de cálculo</DialogTitle>
-            <DialogDescription>Envie este link ao seu cliente por SMS ou e-mail. Poderá consultar a ficha sem conta.</DialogDescription>
+            <DialogTitle>Partilhar a ficha de cálculo</DialogTitle>
+            <DialogDescription>Envie esta ligação ao seu cliente por SMS ou e-mail. Ele poderá consultar a ficha sem conta.</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
             <Input readOnly value={shareUrl || ""} className="rounded-sm num text-xs" data-testid="calc-share-url" />
@@ -507,15 +502,15 @@ export default function Calculators() {
               <img src={`${process.env.REACT_APP_BACKEND_URL}/api/qr?data=${encodeURIComponent(shareUrl)}`}
                    alt="Código QR da ficha" width="150" height="150"
                    className="rounded-md bg-white p-2 border border-border" />
-              <p className="text-xs text-muted-foreground">Aponte para abrir a ficha em obra</p>
+              <p className="text-xs text-muted-foreground">Digitalize para abrir a ficha na obra</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 mt-1">
-            <a href={`sms:?&body=${encodeURIComponent(`A sua ficha de cálculo ConstruPilot: ${shareUrl}`)}`}
+            <a href={`sms:?&body=${encodeURIComponent(`Votre fiche de calcul ConstruPilot : ${shareUrl}`)}`}
                data-testid="calc-share-sms">
               <Button variant="outline" className="w-full rounded-sm gap-2"><MessageSquare className="h-4 w-4" /> SMS</Button>
             </a>
-            <a href={`mailto:?subject=${encodeURIComponent("A sua ficha de cálculo — ConstruPilot")}&body=${encodeURIComponent(`Olá,\n\nSegue a sua ficha de cálculo detalhada: ${shareUrl}\n\nCumprimentos.`)}`}
+            <a href={`mailto:?subject=${encodeURIComponent("Votre fiche de calcul — ConstruPilot")}&body=${encodeURIComponent(`Bonjour,\n\nVoici votre fiche de calcul détaillée : ${shareUrl}\n\nCordialement.`)}`}
                data-testid="calc-share-email">
               <Button variant="outline" className="w-full rounded-sm gap-2"><Mail className="h-4 w-4" /> E-mail</Button>
             </a>

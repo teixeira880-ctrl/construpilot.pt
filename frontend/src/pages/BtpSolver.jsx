@@ -1,583 +1,388 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip,
-  Legend, ResponsiveContainer,
-} from "recharts";
-import { toast } from "sonner";
-
+// Page « Résoudre un problème BTP » — diagnostic + solutions + graphiques provisionnels.
+// Utilise l'API POST /api/btp-solver/solve.
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Wrench, AlertTriangle, FileText, BookOpen, Rocket, Globe, Link2, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { SolverCharts } from "@/components/btpSolver/SolverCharts";
 
-const WEB_MODES = [
-  { value: "auto", label: "Auto", title: "Decido automaticamente" },
-  { value: "always", label: "Sempre", title: "Pesquisa sempre na internet" },
-  { value: "never", label: "Nunca", title: "Não pesquisa na internet" },
-];
-
-const URGENCY_LABEL = {
-  informative: { label: "Informativo", color: "bg-slate-500" },
-  planned: { label: "Planeável", color: "bg-emerald-500" },
-  urgent: { label: "Urgente", color: "bg-amber-500" },
-  immediate: { label: "Imediato", color: "bg-rose-600" },
+const DOMAIN_LABELS = {
+  fissures: "Fissuras", humidite: "Humidade", thermique: "Térmica",
+  structure: "Estrutura", sinistre: "Sinistre", reception: "Receção",
+  autre: "Outro",
 };
-const RISK_LABEL = {
-  low: { label: "Baixo", color: "bg-emerald-500" },
-  medium: { label: "Médio", color: "bg-amber-500" },
-  high: { label: "Alto", color: "bg-rose-500" },
-  critical: { label: "Crítico", color: "bg-rose-700" },
-};
-const CONFIDENCE_LABEL = { low: "Baixa", medium: "Média", high: "Alta" };
-const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
-
-const toRechartsBar = (chart) => {
-  const data = (chart.x_labels || []).map((lbl, i) => {
-    const row = { name: lbl };
-    (chart.series || []).forEach((s) => { row[s.name] = Number(s.data?.[i] ?? 0); });
-    return row;
-  });
-  return { data, series: chart.series.map((s) => s.name) };
-};
-
-const toRechartsPie = (chart) => {
-  const serie = (chart.series || [])[0];
-  return (chart.x_labels || []).map((lbl, i) => ({
-    name: lbl, value: Number(serie?.data?.[i] ?? 0),
-  }));
+const URGENCY_LABELS = { informative: "Informativa", planned: "Planeada", urgent: "Urgente", immediate: "Imediata" };
+const URGENCY_STYLES = {
+  informative: "bg-slate-500/15 text-slate-600 border-slate-500/30",
+  planned: "bg-blue-500/15 text-blue-600 border-blue-500/30",
+  urgent: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  immediate: "bg-red-500/15 text-red-700 border-red-500/40",
 };
 
 export default function BtpSolver() {
+  const [params] = useSearchParams();
+  const { chantierId, chantier } = useChantierContext();
+  const [description, setDescription] = useState("");
+  const [region, setRegion] = useState("");
+  const [typeBat, setTypeBat] = useState("");
+  const [surface, setSurface] = useState("");
+  const [age, setAge] = useState("");
+  const [budget, setBudget] = useState("");
+  const [urgence, setUrgence] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [quoting, setQuoting] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isFree = user?.account_type === "particulier" && user?.role !== "admin";
-  const [form, setForm] = useState({
-    description: "",
-    tipo_edificio: "",
-    region: "",
-    idade_anos: "",
-    orcamento_max_eur: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [webMode, setWebMode] = useState("auto");
-  const [rateInfo, setRateInfo] = useState(null);
+  const isPro = user?.account_type !== "particulier" || user?.role === "admin";
 
-  const loadHistory = async () => {
+  const toQuote = async (solutionId) => {
+    setQuoting(true);
     try {
-      const r = await api.get("/btp-solver/history?limit=10");
-      setHistory(r.data?.items || []);
-    } catch (e) {
-      // silencioso: histórico é bónus
+      const { data } = await api.post(`/btp-solver/${result.problem_id}/to-quote`, { solution_id: solutionId || null });
+      toast.success(`Rascunho de orçamento criado (${data.lines} ligne${data.lines > 1 ? "s" : ""}, ${Math.round(data.total_ht || 0)} € HT)`, {
+        action: { label: "Abrir", onClick: () => navigate(data.url) },
+      });
+      navigate(data.url);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Não foi possível criar o orçamento");
+    } finally {
+      setQuoting(false);
     }
   };
+  const photoRef = useRef(null);
 
-  useEffect(() => { if (user) loadHistory(); }, [user]);
+  const addPhotos = async (files) => {
+    const list = Array.from(files || []).slice(0, 3 - photos.length);
+    if (!list.length) return toast.error("3 photos maximum");
+    setUploadingPhoto(true);
+    for (const f of list) {
+      const fd = new FormData();
+      fd.append("file", f);
+      try {
+        const { data } = await api.post("/btp-solver/photos", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        setPhotos((p) => [...p, { ...data, name: f.name, preview: URL.createObjectURL(f) }]);
+      } catch (err) {
+        toast.error(err?.response?.data?.detail || `Photo « ${f.name} » recusada`);
+      }
+    }
+    setUploadingPhoto(false);
+  };
+  const photoUrl = (id) => `${process.env.REACT_APP_BACKEND_URL}/api/btp-solver/photos/${id}`;
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const pollRef = useRef(null);
 
-  const onSubmit = async (e) => {
+  const loadHistory = () => api.get("/btp-solver/history?limit=8").then(({ data }) => setHistory(data.items || [])).catch(() => {});
+
+  useEffect(() => {
+    loadHistory();
+    const id = params.get("id");
+    if (id) openProblem(id);
+    return () => clearTimeout(pollRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openProblem = async (id) => {
+    try {
+      const { data } = await api.get(`/btp-solver/${id}`);
+      if (data.status === "running") { setLoading(true); startPolling(id); return; }
+      setResult(data);
+    } catch { toast.error("Diagnóstico não encontrado"); }
+  };
+
+  // A10 — polling sans chevauchement ; perte réseau ≠ échec de l'analyse
+  const [netIssue, setNetIssue] = useState(null);
+  const startPolling = (id) => {
+    clearTimeout(pollRef.current);
+    setNetIssue(null);
+    let failures = 0;
+    const tick = async () => {
+      try {
+        const { data } = await api.get(`/btp-solver/${id}`);
+        failures = 0;
+        if (data.status === "done") { setResult(data); setLoading(false); loadHistory(); return; }
+        if (data.status === "error") { setLoading(false); toast.error(data.error || "Análise impossível de momento"); return; }
+      } catch (err) {
+        if (err?.response?.status === 404 || err?.response?.status === 401) { setLoading(false); toast.error("Diagnóstico não encontrado ou sessão expirada"); return; }
+        failures += 1;
+        if (failures >= 3) { setNetIssue(id); return; }
+      }
+      pollRef.current = setTimeout(tick, 3000);
+    };
+    pollRef.current = setTimeout(tick, 2000);
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
-    if ((form.description || "").trim().length < 10) {
-      toast.error("Descreva o problema com pelo menos 10 caracteres.");
+    if (description.trim().length < 10) {
+      toast.error("Descreva o problema (mínimo 10 caracteres)");
       return;
     }
     setLoading(true);
     setResult(null);
     try {
-      const payload = {
-        description: form.description.trim(),
-        tipo_edificio: form.tipo_edificio || undefined,
-        region: form.region || undefined,
-        idade_anos: form.idade_anos ? Number(form.idade_anos) : undefined,
-        orcamento_max_eur: form.orcamento_max_eur ? Number(form.orcamento_max_eur) : undefined,
-      };
-      if (webMode === "always") payload.use_web_search = true;
-      else if (webMode === "never") payload.use_web_search = false;
-      const r = await api.post("/btp-solver/solve", payload);
-      setResult(r.data);
-      if (r.data?.rate_limit) setRateInfo(r.data.rate_limit);
-      if (r.data?.web_search_fallback) {
-        toast.message("Limite de pesquisas web atingido — resposta sem fontes atuais.", {
-          duration: 5000,
-        });
-      }
-      toast.success("Análise concluída.");
-      loadHistory();
+      const { data } = await api.post("/btp-solver/solve", {
+        description,
+        region: region || null,
+        type_batiment: typeBat || null,
+        surface_m2: surface ? Number(surface) : null,
+        age_annees: age ? Number(age) : null,
+        urgence_ressentie: urgence || null,
+        budget_max_eur: budget ? Number(budget) : null,
+        photo_ids: photos.map((p) => p.photo_id),
+        chantier_id: chantierId || null,
+      });
+      setPhotos([]);
+      startPolling(data.problem_id);
     } catch (err) {
-      const status = err?.response?.status;
-      const body = err?.response?.data;
-      if (status === 429) {
-        const msg = body?.message || "Atingiu o limite de pedidos.";
-        const upgradeUrl = body?.upgrade_url || "/pricing";
-        const isFreeUser = body?.current_plan === "free";
-        toast.error(msg, {
-          duration: 7000,
-          action: isFreeUser ? { label: "Upgrade", onClick: () => navigate(upgradeUrl) } : undefined,
-        });
-      } else {
-        const msg = body?.detail || err?.message || "Erro desconhecido";
-        toast.error(`Análise falhou: ${msg}`);
-      }
-    } finally {
+      const msg = err?.response?.status === 429
+        ? "Limite atingido: 10 diagnósticos por hora. Tente novamente mais tarde."
+        : err?.response?.data?.detail || "Análise impossível de momento";
+      toast.error(typeof msg === "string" ? msg : "Análise impossível de momento");
       setLoading(false);
     }
   };
 
-  const loadFromHistory = async (problemId) => {
-    try {
-      const r = await api.get(`/btp-solver/${problemId}`);
-      setResult(r.data);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch {
-      toast.error("Não foi possível carregar a análise.");
-    }
-  };
-
   return (
-    <div className="min-h-screen px-4 py-8 lg:px-8" data-testid="btp-solver-page">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6">
-          <div className="flex items-center gap-4">
-            <img
-              src="/assistente-obras-logo.png"
-              alt="Assistente de Obras · ConstruPilot"
-              className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 object-contain"
-              data-testid="btp-solver-logo"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-            <div>
-              <h1
-                className="text-2xl sm:text-3xl font-bold tracking-tight sr-only"
-                data-testid="btp-solver-title"
-              >
-                Assistente de Obras
-              </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
-                Descreva uma patologia ou dúvida técnica de obra — o Assistente de Obras
-                devolve um diagnóstico detalhado com causas prováveis, soluções orçamentadas
-                e normativa portuguesa aplicável (RGEU, REH, RSCIE, Eurocódigos).
-              </p>
-            </div>
-          </div>
-        </header>
+    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6" data-testid="btp-solver-page">
+      <ChantierContextBar chantierId={chantierId} chantier={chantier} />
+      <header className="space-y-1">
+        <h1 className="text-2xl md:text-3xl font-semibold">Resolver um problema de construção</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Diagnóstico provisório + soluções orçamentadas + referências normativas (NP/EN, LNEC), em segundos.
+        </p>
+      </header>
 
-        {isFree && (
-          <div
-            data-testid="btp-solver-free-banner"
-            className="mb-6 flex items-center justify-between gap-3 rounded-sm border border-primary/30 bg-primary/5 px-4 py-3 text-sm"
-          >
-            <div className="flex items-center gap-2.5">
-              <Rocket className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-muted-foreground">
-                Está no plano <strong className="text-foreground">Grátis</strong> · 10 análises/h.
-                Faça upgrade para <strong>Pro (99 €/mês)</strong> e tenha 40 análises/h.
+      <form onSubmit={submit} data-testid="btp-solver-form" className="grid gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 md:p-6 bg-white dark:bg-slate-900/40">
+        <label className="grid gap-1">
+          <span className="text-sm font-medium">Descreva com precisão o problema *</span>
+          <textarea
+            data-testid="solver-description-input"
+            className="min-h-[110px] rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-3 text-sm"
+            placeholder="Ex.: fissura horizontal de 3 mm no 1.º andar de uma moradia em blocos de betão de 1985, surgida depois do verão…"
+            value={description} onChange={(e) => setDescription(e.target.value)}
+            maxLength={4000}
+          />
+        </label>
+        <div className="grid md:grid-cols-3 gap-3">
+          <label className="grid gap-1 text-sm">
+            <span>Região</span>
+            <input data-testid="solver-region-input" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Île-de-France" value={region} onChange={(e) => setRegion(e.target.value)} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>Tipo de edifício</span>
+            <input className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Moradia unifamiliar" value={typeBat} onChange={(e) => setTypeBat(e.target.value)} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>Superfície (m²)</span>
+            <input type="number" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={surface} onChange={(e) => setSurface(e.target.value)} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>Idade (anos)</span>
+            <input type="number" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={age} onChange={(e) => setAge(e.target.value)} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>Budget max (€)</span>
+            <input type="number" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={budget} onChange={(e) => setBudget(e.target.value)} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>Urgência sentida</span>
+            <select className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" value={urgence} onChange={(e) => setUrgence(e.target.value)}>
+              <option value="">—</option>
+              <option value="informative">Informativa</option>
+              <option value="planned">Planeada</option>
+              <option value="urgent">Urgente</option>
+              <option value="immediate">Imediata</option>
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-3" data-testid="solver-photos">
+          <input ref={photoRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" data-testid="solver-photo-input"
+                 onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
+          <button type="button" data-testid="solver-add-photo-btn" disabled={loading || uploadingPhoto || photos.length >= 3} onClick={() => photoRef.current?.click()}
+                  className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-sm hover:border-emerald-500/60 disabled:opacity-50">
+            {uploadingPhoto ? "A enviar a fotografia…" : `Anexar uma fotografia da patologia (${photos.length}/3)`}
+          </button>
+          <span className="text-xs text-slate-500">JPG, PNG ou WEBP · 8 MB máx. · a IA de visão lê as fotografias para afinar o diagnóstico</span>
+          {photos.map((p) => (
+            <span key={p.photo_id} className="relative inline-block" data-testid={`solver-photo-${p.photo_id}`}>
+              <img src={p.preview} alt={p.name} className="h-16 w-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+              <button type="button" aria-label="Remover a fotografia" data-testid={`solver-photo-remove-${p.photo_id}`}
+                      onClick={() => setPhotos((ps) => ps.filter((x) => x.photo_id !== p.photo_id))}
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-slate-800 text-white text-xs leading-5 text-center">×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <button type="submit" data-testid="solver-submit-btn" disabled={loading} className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-60">
+            {loading ? "Análise em curso…" : "Analisar"}
+          </button>
+        </div>
+      </form>
+
+      {loading && (
+        <div data-testid="solver-loading" className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-sm text-slate-500">
+          O solucionador consulta as fontes técnicas (Diário da República, LNEC, IPQ) e depois estrutura a resposta. Pode demorar 1 a 2 minutos; pode ficar nesta página.
+          {netIssue && (
+            <div className="mt-2 flex items-center gap-3 text-amber-700" data-testid="solver-net-issue">
+              Ligação perdida: a análise continua do lado do servidor, mas o seu acompanhamento foi interrompido.
+              <button type="button" className="underline" onClick={() => startPolling(netIssue)} data-testid="solver-resume-btn">Retomar o acompanhamento</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {result && (
+        <section className="space-y-6" data-testid="solver-result">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 md:p-6 bg-slate-50/60 dark:bg-slate-900/40 space-y-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span data-testid="solver-domain" className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                {DOMAIN_LABELS[result.domain] || result.domain}
               </span>
+              <span data-testid="solver-urgency" className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${URGENCY_STYLES[result.urgency] || ""}`}>
+                {URGENCY_LABELS[result.urgency] || result.urgency}
+              </span>
+              <span className="text-xs text-slate-500">ID : {result.problem_id}</span>
+              <a href={`${process.env.REACT_APP_BACKEND_URL}/api/btp-solver/${result.problem_id}/report.pdf`} target="_blank" rel="noreferrer"
+                 data-testid="solver-pdf-btn"
+                 className="ml-auto inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
+                Transferir o diagnóstico em PDF
+              </a>
+              {isPro && (
+                <button type="button" data-testid="solver-to-quote-btn" disabled={quoting} onClick={() => toQuote()}
+                        className="inline-flex items-center px-3 py-1.5 rounded-lg border border-emerald-600 text-emerald-700 dark:text-emerald-400 text-xs font-medium hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-60">
+                  {quoting ? "A criar o orçamento…" : "Criar um rascunho de orçamento"}
+                </button>
+              )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/pricing")}
-              data-testid="btp-solver-upgrade-btn"
-              className="rounded-sm shrink-0 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
-            >
-              Ver planos
-            </Button>
+            <p className="text-base leading-relaxed">{result.summary}</p>
+            {result.photo_ids?.length > 0 && (
+              <div className="flex flex-wrap gap-2" data-testid="solver-result-photos">
+                {result.photo_ids.map((id) => <img key={id} src={photoUrl(id)} alt="Fotografia da patologia" className="h-24 w-24 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />)}
+              </div>
+            )}
+            {result.photo_analysis && (
+              <details className="text-sm" data-testid="solver-photo-analysis">
+                <summary className="cursor-pointer font-medium">Leitura das fotografias pela IA de visão</summary>
+                <p className="mt-2 whitespace-pre-wrap text-slate-600 dark:text-slate-400">{result.photo_analysis}</p>
+              </details>
+            )}
+            <p className="text-xs text-slate-500 italic">{result.disclaimer}</p>
           </div>
-        )}
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          {/* Coluna principal */}
-          <div className="space-y-6">
-            {/* Formulário */}
-            <Card data-testid="btp-solver-form-card">
-              <CardHeader>
-                <CardTitle>Descrever o problema</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={onSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="description">Descrição *</Label>
-                    <Textarea id="description" rows={5} placeholder="Ex.: Fissura diagonal numa parede exterior de alvenaria dupla, moradia dos anos 80, aparece há 2 meses, mais visível depois de chover."
-                      value={form.description}
-                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                      maxLength={4000}
-                      data-testid="btp-solver-description-input"
-                    />
-                    <p className="mt-1 text-xs text-slate-500">{form.description.length}/4000</p>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <Label htmlFor="tipo_edificio">Tipo de edifício</Label>
-                      <Input id="tipo_edificio" placeholder="Moradia · Prédio · Comercial"
-                        value={form.tipo_edificio}
-                        onChange={(e) => setForm((f) => ({ ...f, tipo_edificio: e.target.value }))}
-                        data-testid="btp-solver-tipo-input"
-                      />
+          {result.causes?.length > 0 && (
+            <div data-testid="solver-causes">
+              <h2 className="text-lg font-semibold mb-3">Causas prováveis</h2>
+              <ul className="space-y-2">
+                {result.causes.map((c, i) => (
+                  <li key={i} className="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{c.label}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded border ${
+                        c.confidence === "high" ? "text-emerald-700 border-emerald-500/30 bg-emerald-500/10" :
+                        c.confidence === "medium" ? "text-amber-700 border-amber-500/30 bg-amber-500/10" :
+                        "text-slate-600 border-slate-400/30 bg-slate-400/10"
+                      }`}>{c.confidence}</span>
                     </div>
-                    <div>
-                      <Label htmlFor="region">Região</Label>
-                      <Input id="region" placeholder="Lisboa · Porto · Braga …"
-                        value={form.region}
-                        onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
-                        data-testid="btp-solver-region-input"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="idade">Idade do edificado (anos)</Label>
-                      <Input id="idade" type="number" min="0" max="500"
-                        value={form.idade_anos}
-                        onChange={(e) => setForm((f) => ({ ...f, idade_anos: e.target.value }))}
-                        data-testid="btp-solver-idade-input"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="orcamento">Orçamento máx. (€)</Label>
-                      <Input id="orcamento" type="number" min="0"
-                        value={form.orcamento_max_eur}
-                        onChange={(e) => setForm((f) => ({ ...f, orcamento_max_eur: e.target.value }))}
-                        data-testid="btp-solver-orcamento-input"
-                      />
-                    </div>
-                  </div>
-                  <Button type="submit" disabled={loading} className="w-full sm:w-auto"
-                    data-testid="btp-solver-submit-btn">
-                    {loading
-                      ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />A analisar — pode demorar até 40 s …</>)
-                      : (<><Wrench className="mr-2 h-4 w-4" />Diagnosticar</>)}
-                  </Button>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{c.explanation}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-                  {/* Toggle web search + indicador de uso */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60"
-                       data-testid="btp-controls-bar">
-                    <div className="flex items-center gap-2" data-testid="btp-web-search-toggle">
-                      <Globe className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
-                      <span className="text-xs text-muted-foreground">Pesquisar na Internet:</span>
-                      <div className="flex items-center rounded-sm border border-border overflow-hidden">
-                        {WEB_MODES.map((m) => (
-                          <button
-                            key={m.value}
-                            type="button"
-                            title={m.title}
-                            data-testid={`btp-web-mode-${m.value}`}
-                            onClick={() => setWebMode(m.value)}
-                            className={`px-3 py-1 text-xs transition-colors ${
-                              webMode === m.value
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-background text-muted-foreground hover:bg-secondary"
-                            }`}
-                          >
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {rateInfo && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground"
-                           data-testid="btp-rate-indicator">
-                        <Zap className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-                        <span>
-                          <span className="font-semibold text-foreground">{rateInfo.web_remaining}</span>
-                          /{rateInfo.web_limit} pesquisas web · plano{" "}
-                          <strong className="capitalize">{rateInfo.plan}</strong>
-                        </span>
-                        {rateInfo.plan === "free" && (
-                          <button
-                            type="button"
-                            onClick={() => navigate("/pricing")}
-                            data-testid="btp-rate-upgrade-link"
-                            className="text-primary hover:underline"
-                          >
-                            → Pro 99 €/mês
+          {result.solutions?.length > 0 && (
+            <div data-testid="solver-solutions">
+              <h2 className="text-lg font-semibold mb-3">Soluções propostas</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {result.solutions.map((s) => (
+                  <article key={s.id} className={`rounded-xl border p-4 space-y-2 ${
+                    s.recommended ? "border-emerald-500/50 bg-emerald-50/40 dark:bg-emerald-900/10" : "border-slate-200 dark:border-slate-800"
+                  }`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold">{s.label}</h3>
+                      <div className="flex items-center gap-2">
+                        {s.recommended && <span className="text-xs px-2 py-0.5 rounded bg-emerald-600 text-white">Recomendado</span>}
+                        {isPro && (
+                          <button type="button" data-testid={`solver-solution-quote-${s.id}`} disabled={quoting} onClick={() => toQuote(s.id)}
+                                  className="text-xs px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:border-emerald-500 disabled:opacity-60">
+                            → Orçamento
                           </button>
                         )}
                       </div>
-                    )}
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Resultado */}
-            {result && (
-              <div className="space-y-4" data-testid="btp-solver-result">
-                {/* Cabeçalho resumo + urgência */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <CardTitle>Diagnóstico</CardTitle>
-                      <Badge className={`${(URGENCY_LABEL[result.urgency] || URGENCY_LABEL.planned).color} text-white`}
-                        data-testid="btp-solver-urgency-badge">
-                        Urgência: {(URGENCY_LABEL[result.urgency] || URGENCY_LABEL.planned).label}
-                      </Badge>
-                      <Badge variant="outline">{result.domain}</Badge>
-                      {result.model_used && <Badge variant="secondary" className="text-xs">{result.model_used}</Badge>}
-                      {result.web_enriched && (
-                        <Badge
-                          data-testid="btp-web-badge"
-                          className="text-xs inline-flex items-center gap-1 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/15"
-                        >
-                          <Globe className="h-3 w-3" aria-hidden="true" />
-                          {(result.references || []).filter(r => r.kind === "web").length || result.references?.length || 0} fontes web
-                        </Badge>
-                      )}
-                      {result.web_search_fallback && (
-                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/40">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Sem fontes atuais
-                        </Badge>
-                      )}
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{result.summary}</p>
-                  </CardContent>
-                </Card>
-
-                {/* Causas */}
-                {result.causes?.length > 0 && (
-                  <Card data-testid="btp-solver-causes-card">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-amber-500" />
-                        Causas prováveis ({result.causes.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-3">
-                        {result.causes.map((c, i) => (
-                          <li key={i} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="font-medium">{c.label}</div>
-                              <Badge variant="outline">Confiança: {CONFIDENCE_LABEL[c.confidence] || c.confidence}</Badge>
-                            </div>
-                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{c.explanation}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Soluções */}
-                {result.solutions?.length > 0 && (
-                  <Card data-testid="btp-solver-solutions-card">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Wrench className="h-5 w-5 text-emerald-500" />
-                        Soluções ({result.solutions.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {result.solutions.map((s) => (
-                        <div key={s.id} className={`rounded-lg border p-4 ${s.recommended ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10" : "border-slate-200 dark:border-slate-700"}`}>
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2 font-semibold">
-                                {s.label}
-                                {s.recommended && <Badge className="bg-emerald-600 text-white">Recomendada</Badge>}
-                              </div>
-                              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{s.description}</p>
-                            </div>
-                            <div className="text-right text-sm">
-                              {s.cost_min_eur != null && (
-                                <div className="font-mono text-base font-semibold">
-                                  {s.cost_min_eur}–{s.cost_max_eur ?? s.cost_min_eur} €
-                                </div>
-                              )}
-                              <div className="text-xs text-slate-500">
-                                {s.duration_days_min != null && (<>{s.duration_days_min}–{s.duration_days_max ?? s.duration_days_min} dias · </>)}
-                                <Badge className={`${(RISK_LABEL[s.risk] || RISK_LABEL.medium).color} text-white`}>
-                                  Risco: {(RISK_LABEL[s.risk] || RISK_LABEL.medium).label}
-                                </Badge>
-                                {s.warranty_years != null && <span className="ml-1">· Garantia {s.warranty_years}a</span>}
-                              </div>
-                            </div>
-                          </div>
-                          {s.steps?.length > 0 && (
-                            <ol className="mt-3 space-y-1 text-sm">
-                              {s.steps.map((st, i) => (
-                                <li key={i} className="flex gap-2">
-                                  <span className="font-mono text-slate-500">{st.order ?? i + 1}.</span>
-                                  <span>{st.text}
-                                    {st.materials?.length > 0 && (
-                                      <span className="ml-1 text-xs text-slate-500">· {st.materials.join(", ")}</span>
-                                    )}
-                                    {st.biblioteca_pt_ref && (
-                                      <Badge variant="outline" className="ml-2 text-xs">BPT: {st.biblioteca_pt_ref}</Badge>
-                                    )}
-                                  </span>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                          {s.references?.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                              {s.references.map((ref, i) => (
-                                <a key={i} href={ref.url || "#"} target="_blank" rel="noreferrer"
-                                  className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                  <BookOpen className="h-3 w-3" />
-                                  {ref.kind.toUpperCase()} · {ref.code}
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Gráficos */}
-                {result.charts?.length > 0 && (
-                  <Card data-testid="btp-solver-charts-card">
-                    <CardHeader>
-                      <CardTitle>Gráficos comparativos</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 lg:grid-cols-2">
-                      {result.charts.map((chart) => (
-                        <div key={chart.id}>
-                          <h4 className="mb-2 text-sm font-semibold">{chart.title}</h4>
-                          <ResponsiveContainer width="100%" height={240}>
-                            {chart.type === "pie" ? (
-                              <PieChart>
-                                <Pie data={toRechartsPie(chart)} dataKey="value" nameKey="name"
-                                  outerRadius={80} label={(e) => `${e.name}`}>
-                                  {toRechartsPie(chart).map((_, i) => (
-                                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                                  ))}
-                                </Pie>
-                                <Tooltip />
-                              </PieChart>
-                            ) : (
-                              <BarChart data={toRechartsBar(chart).data}>
-                                <XAxis dataKey="name" fontSize={11} />
-                                <YAxis fontSize={11} />
-                                <Tooltip />
-                                <Legend />
-                                {toRechartsBar(chart).series.map((s, i) => (
-                                  <Bar key={s} dataKey={s} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                                ))}
-                              </BarChart>
-                            )}
-                          </ResponsiveContainer>
-                          {chart.caption && (
-                            <p className="mt-1 text-xs text-slate-500">{chart.caption}</p>
-                          )}
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Plano de ação */}
-                {result.action_plan?.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-blue-500" />
-                        Plano de ação ({result.action_plan.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ol className="space-y-2 text-sm">
-                        {result.action_plan.map((p, i) => (
-                          <li key={i} className="flex gap-2">
-                            <span className="font-mono text-slate-500">{p.order ?? i + 1}.</span>
-                            <span>{p.text}
-                              {p.duration_hours != null && (
-                                <span className="ml-2 text-xs text-slate-500">({p.duration_hours} h)</span>
-                              )}
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Referências globais */}
-                {result.references?.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <BookOpen className="h-4 w-4" />
-                        Referências e fontes
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2 text-xs" data-testid="btp-references">
-                        {result.references.map((ref, i) => {
-                          const isWeb = ref.kind === "web";
-                          const Icon = isWeb ? Link2 : BookOpen;
-                          return (
-                            <a key={i} href={ref.url || "#"} target="_blank" rel="noreferrer"
-                              data-testid={`btp-ref-${i}`}
-                              className={`inline-flex items-center gap-1 rounded px-2 py-1 border ${
-                                isWeb
-                                  ? "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
-                                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                              }`}>
-                              <Icon className="h-3 w-3" />
-                              <span className="font-medium">{(ref.kind || "").toUpperCase()}</span>
-                              <span>· {ref.code}</span>
-                              {ref.title && <span className="opacity-80">· {ref.title}</span>}
-                            </a>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-                  {result.disclaimer}
-                </p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{s.description}</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {s.cost_min_eur != null && (
+                        <div><span className="text-slate-500">Custo:</span> {Math.round(s.cost_min_eur)}–{Math.round(s.cost_max_eur || s.cost_min_eur)} € HT</div>
+                      )}
+                      {s.duration_days_min != null && (
+                        <div><span className="text-slate-500">Duração:</span> {s.duration_days_min}–{s.duration_days_max || s.duration_days_min} j</div>
+                      )}
+                      <div><span className="text-slate-500">Risque :</span> {s.risk}</div>
+                      {s.warranty_years && <div><span className="text-slate-500">Garantia:</span> {s.warranty_years} ans</div>}
+                    </div>
+                    {s.steps?.length > 0 && (
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-slate-500">Etapas ({s.steps.length})</summary>
+                        <ol className="list-decimal list-inside mt-2 space-y-1">
+                          {s.steps.map((st, i) => <li key={i}>{st.text}</li>)}
+                        </ol>
+                      </details>
+                    )}
+                  </article>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Histórico lateral */}
-          <aside className="space-y-3">
-            <Card data-testid="btp-solver-history-card">
-              <CardHeader>
-                <CardTitle className="text-base">Histórico</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {history.length === 0 ? (
-                  <p className="text-sm text-slate-500">Ainda não existem análises.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {history.map((h) => (
-                      <li key={h.problem_id}>
-                        <button
-                          onClick={() => loadFromHistory(h.problem_id)}
-                          className="w-full rounded border border-slate-200 bg-white p-2 text-left text-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
-                          data-testid={`btp-solver-history-item-${h.problem_id}`}
-                        >
-                          <div className="font-medium">{h.domain || "—"} · {h.urgency || "—"}</div>
-                          <div className="truncate text-xs text-slate-500">{h.summary || h.description}</div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {(h.generated_at_iso || "").slice(0, 16).replace("T", " ")}
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-            <p className="text-xs text-slate-500">
-              Precisa de orçamentar uma solução? <Link to="/quote-editor" className="underline">Vai para o Editor de orçamentos</Link>.
-            </p>
-          </aside>
-        </div>
-      </div>
+          {result.charts?.length > 0 && (
+            <div data-testid="solver-charts">
+              <h2 className="text-lg font-semibold mb-3">Comparativos visuais</h2>
+              <SolverCharts charts={result.charts} />
+            </div>
+          )}
+
+          {result.references?.length > 0 && (
+            <div data-testid="solver-references">
+              <h2 className="text-lg font-semibold mb-3">Referências</h2>
+              <ul className="text-sm space-y-1">
+                {result.references.map((r, i) => (
+                  <li key={i}>
+                    <span className="text-xs uppercase text-slate-500 mr-2">{r.kind}</span>
+                    {r.url ? <a href={r.url} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline">{r.code}</a> : <span>{r.code}</span>}
+                    {r.title && <span className="text-slate-500"> — {r.title}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      {history.length > 0 && (
+        <section data-testid="solver-history" className="space-y-2">
+          <h2 className="text-lg font-semibold">Os meus diagnósticos recentes</h2>
+          <ul className="grid md:grid-cols-2 gap-2">
+            {history.map((h) => (
+              <li key={h.problem_id}>
+                <button type="button" data-testid={`solver-history-${h.problem_id}`} onClick={() => openProblem(h.problem_id)}
+                        className="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 p-3 text-sm hover:border-emerald-500/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium truncate">{DOMAIN_LABELS[h.domain] || h.domain || "Diagnóstico"}</span>
+                    <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("pt-PT") : h.status === "error" ? "Erro" : "En cours…"}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-2 mt-1">{h.summary || h.description}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

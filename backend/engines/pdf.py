@@ -42,7 +42,7 @@ def _styles() -> dict:
 def _esti_header(story: list, S: dict) -> None:
     """Brand header : ConstruPilot title + tagline row."""
     header = Table([[Paragraph("<b>ConstruPilot</b>", S["h1"]),
-                     Paragraph("Votre expert travaux,<br/>de l'idée au chantier.", S["small"])]],
+                     Paragraph("O seu especialista em obras,<br/>da ideia à obra.", S["small"])]],
                     colWidths=[100 * mm, 74 * mm])
     header.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -57,18 +57,18 @@ def _esti_project_meta(story: list, project: dict, estimation: dict,
                         user: dict | None, S: dict) -> None:
     """Project metadata : type, surface, finish, location, client…"""
     story.append(Paragraph(
-        f"Estimation de travaux — {project.get('name', 'Projet')}", S["h2"]))
+        f"Estimativa de obras — {project.get('name', 'Projeto')}", S["h2"]))
     meta = [
-        ["Type de projet", estimation.get('project_type_name', '-')],
-        ["Surface", f"{estimation.get('surface', 0)} m²"],
-        ["Niveau de finition", estimation.get('finish_level_name', '-')],
-        ["Localisation",
+        ["Tipo de projeto", estimation.get('project_type_name', '-')],
+        ["Superfície", f"{estimation.get('surface', 0)} m²"],
+        ["Nível de acabamento", estimation.get('finish_level_name', '-')],
+        ["Localização",
          f"{project.get('city') or '-'} ({estimation.get('region') or estimation.get('country')})"],
-        ["Type de bâtiment", (estimation.get('building_type') or '-').capitalize()],
-        ["Date", datetime.now(timezone.utc).strftime('%d/%m/%Y')],
+        ["Tipo de edifício", (estimation.get('building_type') or '-').capitalize()],
+        ["Data", datetime.now(timezone.utc).strftime('%d/%m/%Y')],
     ]
     if user:
-        meta.append(["Client", f"{user.get('name', '')} — {user.get('email', '')}"])
+        meta.append(["Cliente", f"{user.get('name', '')} — {user.get('email', '')}"])
     t = Table(meta, colWidths=[45 * mm, 129 * mm])
     t.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 9),
@@ -83,14 +83,14 @@ def _esti_description(story: list, project: dict, S: dict) -> None:
     """Free-text project description."""
     if not project.get('description'):
         return
-    story += [Paragraph("Description des travaux", S["h2"]),
+    story += [Paragraph("Descrição dos trabalhos", S["h2"]),
               Paragraph(project['description'], S["body"])]
 
 
 def _esti_totals(story: list, estimation: dict, S: dict) -> None:
     """Min / avg / max headline totals."""
-    story.append(Paragraph("Synthèse budgétaire", S["h2"]))
-    tot = Table([["Prix minimum", "Prix moyen", "Prix maximum"],
+    story.append(Paragraph("Síntese orçamental", S["h2"]))
+    tot = Table([["Preço mínimo", "Preço médio", "Preço máximo"],
                  [_money(estimation['total_min']), _money(estimation['total_avg']),
                   _money(estimation['total_max'])]], colWidths=[58 * mm] * 3)
     tot.setStyle(TableStyle([
@@ -130,12 +130,12 @@ def _esti_totals(story: list, estimation: dict, S: dict) -> None:
 def _esti_breakdown(story: list, estimation: dict) -> None:
     """Cost breakdown : materials / labour / rentals / waste / contingency / €/m²."""
     b = estimation['breakdown']
-    br = Table([["Matériaux", _money(b['materials'])],
-                ["Main-d'œuvre", _money(b['labour'])],
-                ["Location de matériel", _money(b['equipment_rental'])],
-                ["Déchets / évacuation", _money(b['waste_disposal'])],
-                [f"Marge imprévus ({int(b['contingency_rate'] * 100)} %)", _money(b['contingency'])],
-                ["Prix moyen au m²", f"{estimation['price_per_sqm']:.2f} €/m²"]],
+    br = Table([["Materiais", _money(b['materials'])],
+                ["Outro", _money(b['labour'])],
+                ["Aluguer de equipamento", _money(b['equipment_rental'])],
+                ["Resíduos / evacuação", _money(b['waste_disposal'])],
+                [f"Margem para imprevistos ({int(b['contingency_rate'] * 100)} %)", _money(b['contingency'])],
+                ["Preço médio por m²", f"{estimation['price_per_sqm']:.2f} €/m²"]],
                colWidths=[110 * mm, 64 * mm])
     br.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 9),
@@ -150,8 +150,8 @@ def _esti_breakdown(story: list, estimation: dict) -> None:
 
 def _esti_lots(story: list, estimation: dict, S: dict) -> None:
     """Per-lot detail table (8 columns)."""
-    story.append(Paragraph("Détail par lot", S["h2"]))
-    rows = [["Lot", "Qté", "Unité", "Matériaux", "M.O.", "€/u", "Total", "Difficulté"]]
+    story.append(Paragraph("Detalhe por especialidade", S["h2"]))
+    rows = [["Lote", "Qtd.", "Un.", "Materiais", "M.O.", "€/u", "Total", "Dificuldade"]]
     for lot in estimation['lots']:
         rows.append([
             lot['name'], f"{lot['quantity']:g}", lot['unit'],
@@ -179,8 +179,8 @@ def _esti_planning(story: list, planning: list, estimation: dict, S: dict) -> No
     """Optional per-week planning table + total duration line."""
     if not planning:
         return
-    story.append(Paragraph("Planning estimatif", S["h2"]))
-    prows = [["Semaine", "Lot", "Durée"]]
+    story.append(Paragraph("Planeamento estimativo", S["h2"]))
+    prows = [["Semana", "Lote", "Duração"]]
     for p in planning:
         week_range = f"S{p['start_week']}"
         if p['end_week'] != p['start_week']:
@@ -197,15 +197,14 @@ def _esti_planning(story: list, planning: list, estimation: dict, S: dict) -> No
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     story += [pt, Paragraph(
-        f"Durée totale estimée : {estimation['duration_weeks']} semaines "
-        f"({estimation['total_hours']:g} heures de main-d'œuvre).", S["small"])]
+        f"Duração total estimada: {estimation['duration_weeks']} semaines ({estimation['total_hours']:g} horas de mão de obra).", S["small"])]
 
 
 def _esti_advice(story: list, advice: str, S: dict) -> None:
     """Optional AI-generated recommendations block."""
     if not advice:
         return
-    story.append(Paragraph("Recommandations ConstruPilot", S["h2"]))
+    story.append(Paragraph("Recomendações ConstruPilot", S["h2"]))
     for line in advice.split("\n"):
         line = line.strip().lstrip("-•*").strip()
         if line:
@@ -215,9 +214,7 @@ def _esti_advice(story: list, advice: str, S: dict) -> None:
 def _esti_footer(story: list, S: dict) -> None:
     """Standard legal footer."""
     story += [Spacer(1, 12), Paragraph(
-        "Document généré automatiquement par ConstruPilot. Estimation indicative fondée sur des prix "
-        "de référence régionaux, ne constituant pas un devis contractuel. Pour une proposition ferme, "
-        "demandez une intervention ConstruPilot depuis l'application.", S["small"])]
+        "Documento gerado automaticamente pelo ConstruPilot. Estimativa indicativa baseada em preços de referência regionais, que não constitui um orçamento contratual. Para uma proposta firme, peça uma intervenção ConstruPilot a partir da aplicação.", S["small"])]
 
 
 def build_estimation_pdf(project: dict, estimation: dict, planning: list, advice: str = "",

@@ -7,9 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
 
 /**
- * Tour de produto com 4 passos, mostrado apenas uma vez por utilizador (flag localStorage).
- * Ativa-se automaticamente em /dashboard se nenhuma das flags estiver presente
- * (onboarding_completed no user, onboarding_skipped=1, ou construpilot_onboarded_v1).
+ * Tour produit 4 étapes, affiché une seule fois par user (localStorage flag).
+ * Se déclenche automatiquement sur /dashboard si le flag est absent.
  */
 const STEPS = [
   { icon: Sparkles, color: "text-primary", k: "s1", to: "/smart-project" },
@@ -19,30 +18,22 @@ const STEPS = [
 ];
 
 const KEY = "construpilot_onboarded_v1";
-const SKIP_KEY = "onboarding_skipped";
 
-export const OnboardingTour = () => {
+export const OnboardingTour = ({ forceOpen = false, onClose }) => {
   const { user } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(forceOpen);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     if (!user) return;
-    // Não mostrar se: onboarding concluído no backend, flag de skip explícita, ou já visto (legacy key).
-    if (user.onboarding_completed) return;
-    if (localStorage.getItem(SKIP_KEY) === "1") return;
-    if (localStorage.getItem(KEY)) return;
-    const tid = setTimeout(() => setOpen(true), 700);
-    return () => clearTimeout(tid);
-  }, [user]);
+    const done = localStorage.getItem(KEY);
+    // uniquement sur le tableau de bord : ne jamais interrompre une page de travail (assistant, plans…)
+    if (!forceOpen && !done && window.location.pathname === "/dashboard") { const timer = setTimeout(() => setOpen(true), 700); return () => clearTimeout(timer); }
+  }, [user, forceOpen]);
 
-  const close = () => {
-    localStorage.setItem(KEY, new Date().toISOString());
-    localStorage.setItem(SKIP_KEY, "1");
-    setOpen(false);
-  };
+  const close = () => { localStorage.setItem(KEY, new Date().toISOString()); setOpen(false); onClose?.(); };
   const next = () => {
     if (step === STEPS.length - 1) close();
     else setStep((s) => s + 1);
@@ -54,9 +45,9 @@ export const OnboardingTour = () => {
   const s = STEPS[step];
   const Icon = s.icon;
   const ch = (typeof window !== "undefined" ? (sessionStorage.getItem("construpilot_utm_source") || "") : "").toLowerCase();
-  const chMsg = ch.includes("linkedin") ? "Bem-vindo(a) via LinkedIn 👋"
-    : ch.includes("instagram") ? "Bem-vindo(a) via Instagram 👋"
-    : ch.includes("facebook") ? "Bem-vindo(a) via Facebook 👋" : "";
+  const chMsg = ch.includes("linkedin") ? "Bem-vindo(a) do LinkedIn 👋"
+    : ch.includes("instagram") ? "Bem-vindo(a) do Instagram 👋"
+    : ch.includes("facebook") ? "Bem-vindo(a) do Facebook 👋" : "";
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm grid place-items-center p-4" data-testid="onboarding-overlay">
       <div className="surface p-8 max-w-lg w-full grid gap-6 relative animate-rise" data-testid="onboarding-tour">
@@ -65,7 +56,7 @@ export const OnboardingTour = () => {
         </button>
         {step === 0 && chMsg && (
           <div className="rounded-sm bg-primary/10 border border-primary/20 px-4 py-2.5 text-sm text-primary font-semibold flex items-center gap-2" data-testid="onboarding-channel">
-            <Sparkles className="h-4 w-4" /> {chMsg} — aproveite o acesso <b>100% gratuito</b> durante o lançamento 🎉
+            <Sparkles className="h-4 w-4" /> {chMsg}
           </div>
         )}
         <div className="flex items-center gap-2 justify-center">

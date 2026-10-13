@@ -4,13 +4,13 @@ import math
 
 # Couvertures : nombre d'unités/m² de rampant + conditionnement + pertes indicatives
 MATERIALS = {
-    "tuiles_terre_cuite": {"label": "Tuiles terre cuite", "per_m2": 10.5, "pack": "tuile",
+    "tuiles_terre_cuite": {"label": "Telhas cerâmicas", "per_m2": 10.5, "pack": "tuile",
                            "pack_label": "tuile", "loss": 8.0},
-    "tuiles_beton": {"label": "Tuiles béton", "per_m2": 10.0, "pack": "tuile",
+    "tuiles_beton": {"label": "Telhas de betão", "per_m2": 10.0, "pack": "tuile",
                      "pack_label": "tuile", "loss": 8.0},
-    "ardoises": {"label": "Ardoises", "per_m2": 23.0, "pack": "ardoise",
+    "ardoises": {"label": "Ardósias", "per_m2": 23.0, "pack": "ardoise",
                  "pack_label": "ardoise", "loss": 10.0},
-    "bac_acier": {"label": "Bac acier / couverture sèche", "per_m2": 1.0, "pack": "m²",
+    "bac_acier": {"label": "Painel sandwich / cobertura seca", "per_m2": 1.0, "pack": "m²",
                   "pack_label": "m²", "loss": 10.0, "is_area": True},
 }
 
@@ -73,20 +73,20 @@ def compute(surface_projetee_m2: float, pente_pct: float, material: str,
 
     # 2. Écran sous-toiture HPV
     ecran = round(s_ramp * (1 + p["ecran_recouvrement_pct"] / 100.0), 1)
-    add("Écran sous-toiture HPV", "m²", ecran, "rouleau",
+    add("Subtelha respirável", "m²", ecran, "rouleau",
         math.ceil(ecran / p["ecran_roll_m2"]) if ecran else 0, "couverture")
 
     # 3. Liteaux / voliges
     liteau_ml = round(s_ramp / p["liteau_entraxe_m"], 1) if p["liteau_entraxe_m"] else 0
-    add(f"Liteaux (entraxe {p['liteau_entraxe_m']*100:g} cm)", "ml", liteau_ml, "liteau",
+    add(f"Ripas (afastamento {p['liteau_entraxe_m'] * 100:g} cm)", "ml", liteau_ml, "liteau",
         math.ceil(liteau_ml * loss / p["liteau_length_m"]) if liteau_ml else 0, "couverture")
 
     # 4. Faîtage + arêtiers (tuiles faîtières)
     faite_ml = faitage + aretiers
     if faite_ml:
-        add("Faîtage + arêtiers — tuiles faîtières", "ml", faite_ml, "faîtière",
+        add("Cumeeira + rincões — telhas de cumeeira", "ml", faite_ml, "faîtière",
             math.ceil(faite_ml * p["faitiere_per_ml"]), "faitage")
-        add("Closoir ventilé de faîtage/arêtier", "ml", faite_ml, "ml",
+        add("Remate ventilado de cumeeira/rincão", "ml", faite_ml, "ml",
             math.ceil(faite_ml * loss), "faitage")
 
     # 5. Noues (zinguerie)
@@ -95,12 +95,12 @@ def compute(surface_projetee_m2: float, pente_pct: float, material: str,
 
     # 6. Rives
     if rives:
-        add("Rives (tuiles/bardelis de rive)", "ml", rives, "ml", math.ceil(rives * loss), "rives")
+        add("Empenas (telhas/remates de empena)", "ml", rives, "ml", math.ceil(rives * loss), "rives")
 
     # 7. Égout — gouttières + closoir peigne
     if egout:
-        add("Gouttière (égout)", "ml", egout, "ml", math.ceil(egout * loss), "egout")
-        add("Peigne / grille anti-volatile d'égout", "ml", egout, "ml", math.ceil(egout * loss), "egout")
+        add("Caleira (beirado)", "ml", egout, "ml", math.ceil(egout * loss), "egout")
+        add("Pente / grelha anti-aves de beirado", "ml", egout, "ml", math.ceil(egout * loss), "egout")
 
     return {"material": material, "material_label": mat["label"],
             "surface_projetee_m2": round(s_proj, 1), "surface_rampante_m2": s_ramp,

@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from core.db import db
+from engines.plan_quantities import recompute_room, recalibrate_measurement
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,7 @@ def _plan_summary(p: dict) -> dict:
         "plan_id": p["plan_id"],
         "filename": p.get("filename"),
         "kind": p.get("kind"),
+        "cad_import": p.get("cad_import"),
         "page_count": p.get("page_count"),
         "detected_scale_denominator": p.get("detected_scale_denominator"),
         "calibrations": p.get("calibrations", {}),
@@ -98,6 +100,11 @@ def _plan_summary(p: dict) -> dict:
         "pc_study": p.get("pc_study"),
         "structural_metre": p.get("structural_metre"),
         "structural_estimate": p.get("structural_estimate"),
+        "cotes_checks": p.get("cotes_checks", {}),
+        "studies": {k: {"verified": v.get("verified"), "incomplete_message": v.get("incomplete_message"), "created_at": v.get("created_at"),
+                        "interior": ({kk: v["interior"].get(kk) for kk in ("complete", "reasons", "message")} | {"ai": {"summary": (v["interior"].get("ai") or {}).get("summary")}})
+                        if v.get("interior") else None}
+                    for k, v in (p.get("studies") or {}).items()},
         "created_at": p.get("created_at"),
         "updated_at": p.get("updated_at"),
     }
@@ -109,7 +116,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
     """Récupère branding : prefer org branding si user en fait partie.
     Ajoute toujours la photo de profil uploadée (data URL) si présente."""
     u = await db.users.find_one({"user_id": user_id},
-                                 {"_id": 0, "organization_id": 1, "picture": 1,
+                                 {"_id": 0, "organization_id": 1, "picture": 1, "company": 1, "name": 1,
                                   "brand_company_name": 1, "brand_contact_line": 1,
                                   "brand_company_email": 1,
                                   "brand_siret": 1, "brand_vat": 1,
@@ -135,8 +142,9 @@ async def _resolve_branding(user_id: str) -> dict | None:
                                                  "brand_postal": 1, "brand_country": 1,
                                                  "brand_certifications": 1})
         if org and any(org.get(k) for k in ("brand_company_name", "brand_contact_line",
-                                              "brand_logo_b64", "brand_certifications")):
-            return {"company_name": org.get("brand_company_name"),
+                                              "brand_logo_b64", "brand_certifications",
+                                              "brand_address", "brand_city", "brand_postal")):
+            return {"company_name": org.get("brand_company_name") or u.get("brand_company_name") or u.get("company") or u.get("name"),
                     "contact_line": org.get("brand_contact_line"),
                     "company_email": org.get("brand_company_email"),
                     "logo_b64": org.get("brand_logo_b64"),
@@ -154,8 +162,9 @@ async def _resolve_branding(user_id: str) -> dict | None:
                     "verified": verified,
                     "profile_photo_b64": photo}
     if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64",
-                              "brand_certifications", "brand_default_email_message")):
-        return {"company_name": u.get("brand_company_name"),
+                              "brand_certifications", "brand_default_email_message",
+                              "brand_address", "brand_city", "brand_postal")):
+        return {"company_name": u.get("brand_company_name") or u.get("company") or u.get("name"),
                 "contact_line": u.get("brand_contact_line"),
                 "company_email": u.get("brand_company_email"),
                 "logo_b64": u.get("brand_logo_b64"),
@@ -287,10 +296,10 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
         {"_id": 0, "pages.image_png_b64": 0}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     if not rooms:
-        raise HTTPException(400, "Aucune pièce mesurée sur ce plan.")
+        raise HTTPException(400, "Nenhuma divisão medida nesta planta.")
 
     total_floor = sum(r.get("surface_m2", 0) for r in rooms)
     total_ceiling = sum(r.get("ceiling_area_m2", 0) for r in rooms)
@@ -304,13 +313,13 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
     if include_placo:
         placo = LOTS_BY_KEY.get("placo")
         if placo:
-            _add_quote_line(line_items, "Plâtrerie / Placo (murs + plafonds)",
+            _add_quote_line(line_items, "Gesso cartonado / Pladur (paredes + tetos)",
                              total_walls_net + total_ceiling, "m²",
                              placo.get(mat_key, 17), placo.get("labour", 26))
     if include_paint:
         peint = LOTS_BY_KEY.get("peinture")
         if peint:
-            _add_quote_line(line_items, "Peinture (murs + plafonds)",
+            _add_quote_line(line_items, "Pintura (paredes + tetos)",
                              total_walls_net + total_ceiling, "m²",
                              peint.get(mat_key, 8), peint.get("labour", 16))
     if include_floor:
@@ -323,13 +332,13 @@ async def _build_quote_and_pdf(plan_id: str, user_id: str, finish: str,
         door_count = sum(len([o for o in r.get("openings", [])
                               if (o.get("kind") or o.get("type") or "").lower().startswith("port")])
                          for r in rooms)
-        _add_quote_line(line_items, "Plinthes (ml)",
+        _add_quote_line(line_items, "Rodapés (ml)",
                          total_perim - 1.8 * door_count, "ml", 5.0, 6.0)
 
     subtotal_mat = round(sum(li["material_total"] for li in line_items), 2)
     subtotal_lab = round(sum(li["labour_total"] for li in line_items), 2)
     subtotal = round(subtotal_mat + subtotal_lab, 2)
-    tva_rate = 0.10
+    tva_rate = 0.06  # reabilitação de habitação (verba 2.27 CIVA)
     tva = round(subtotal * tva_rate, 2)
     ttc = round(subtotal + tva, 2)
 
@@ -413,3 +422,51 @@ def build_client_portal_token(email: str) -> str:
     import base64
     email_b64 = base64.urlsafe_b64encode(email.lower().encode()).decode()
     return f"{email_b64}.{_sign(email.lower())}"
+
+
+
+async def _apply_new_calibration(plan_id: str, user_id: str,
+                                 page_index: int, payload: dict) -> int:
+    """Save one page's scale and derived quantities together, rejecting stale edits."""
+    import copy
+    import math
+    ppm = payload["pixels_per_meter"]
+    if not math.isfinite(ppm) or ppm <= 0:
+        raise HTTPException(422, "Escala inválida")
+    p = await db.plans_takeoff.find_one(
+        {"plan_id": plan_id, "user_id": user_id},
+        {"_id": 0, "rooms": 1, "measurements": 1, "calibrations": 1, "cotes_checks": 1,
+         "page_count": 1, "pages.index": 1, "updated_at": 1})
+    if not p:
+        raise HTTPException(404, "Planta não encontrada")
+    if page_index < 0 or page_index >= (p.get("page_count") or len(p.get("pages") or [])):
+        raise HTTPException(404, "Página desconhecida")
+    rooms = copy.deepcopy(p.get("rooms") or [])
+    measurements = copy.deepcopy(p.get("measurements") or [])
+    updated = 0
+    for room in rooms:
+        if room.get("page_index", 0) == page_index and len(room.get("points") or []) >= 3:
+            recompute_room(room, ppm)
+            updated += 1
+    for measurement in measurements:
+        if measurement.get("page_index", 0) == page_index:
+            recalibrate_measurement(measurement, ppm)
+    sets = {f"calibrations.{page_index}": payload, "rooms": rooms,
+            "measurements": measurements, "updated_at": _now()}
+    report = copy.deepcopy((p.get("cotes_checks") or {}).get(str(page_index)))
+    if report:
+        # Retain corrected/ignored dimensions. Refresh their derived report on
+        # the next read and invalidate analyses still running on its old revision.
+        report.update(calibration=payload, calibration_stale=True, revision=secrets.token_hex(16))
+        report.pop("geometry", None)
+        report.pop("summary", None)
+        report["interior"] = {"validation": {"complete": False}}
+        sets[f"cotes_checks.{page_index}"] = report
+    result = await db.plans_takeoff.update_one(
+        {"plan_id": plan_id, "user_id": user_id, "updated_at": p.get("updated_at"),
+         "rooms": p.get("rooms"), "measurements": p.get("measurements"),
+         "calibrations": p.get("calibrations"), "cotes_checks": p.get("cotes_checks")},
+        {"$set": sets, "$unset": {f"studies.{page_index}": ""}})
+    if result.matched_count != 1:
+        raise HTTPException(409, "Planta modificada durante a calibração — recarregue e tente novamente")
+    return updated

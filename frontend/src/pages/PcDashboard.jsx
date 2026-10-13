@@ -7,31 +7,21 @@ import { Button } from "@/components/ui/button";
 import { api, eur, num } from "@/lib/api";
 
 const STATUS_STYLE = {
-  "paga": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
-  "sinal pago": "bg-violet-500/15 text-violet-600 border-violet-500/40",
-  "aceite": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
-  "aberta": "bg-sky-500/15 text-sky-600 border-sky-500/40",
-  "reenviada": "bg-amber-500/15 text-amber-600 border-amber-500/40",
-  "enviada": "bg-primary/10 text-primary border-primary/40",
-  "gerada": "bg-muted text-muted-foreground border-border",
-  // fallback keys em FR (compat com backend antigo)
   "soldée": "bg-emerald-600/20 text-emerald-700 border-emerald-600/50",
   "acompte versé": "bg-violet-500/15 text-violet-600 border-violet-500/40",
   "acceptée": "bg-emerald-500/15 text-emerald-600 border-emerald-500/40",
   "ouverte": "bg-sky-500/15 text-sky-600 border-sky-500/40",
   "relancée": "bg-amber-500/15 text-amber-600 border-amber-500/40",
-  "enviada": "bg-primary/10 text-primary border-primary/40",
+  "envoyée": "bg-primary/10 text-primary border-primary/40",
   "générée": "bg-muted text-muted-foreground border-border",
 };
-const STATUS_ICON = {
-  "paga": BadgeCheck, "sinal pago": CreditCard, "aceite": CheckCircle2, "aberta": Eye,
-  "reenviada": BellRing, "enviada": Send, "gerada": FileStack,
-  "soldée": BadgeCheck, "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
-  "relancée": BellRing, "enviada": Send, "générée": FileStack,
-};
 const STATUS_LABEL = {
-  "soldée": "paga", "acompte versé": "sinal pago", "acceptée": "aceite",
-  "ouverte": "aberta", "relancée": "reenviada", "enviada": "enviada", "générée": "gerada",
+  "soldée": "liquidada", "acompte versé": "adiantamento pago", "acceptée": "aceite", "ouverte": "aberta",
+  "relancée": "relançada", "envoyée": "enviada", "générée": "gerada",
+};
+const STATUS_ICON = {
+  "soldée": BadgeCheck, "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
+  "relancée": BellRing, "envoyée": Send, "générée": FileStack,
 };
 
 export default function PcDashboard() {
@@ -56,7 +46,7 @@ export default function PcDashboard() {
 
   const list = studies || [];
   const totalTtc = list.reduce((s, x) => s + (x.ttc || 0), 0);
-  const accepted = list.filter((x) => ["acceptée", "acompte versé", "soldée", "aceite", "sinal pago", "paga"].includes(x.status)).length;
+  const accepted = list.filter((x) => ["acceptée", "acompte versé", "soldée"].includes(x.status)).length;
   const deposits = list.reduce((s, x) => s + (x.deposit_amount || 0), 0);
 
   return (
@@ -67,10 +57,10 @@ export default function PcDashboard() {
             <HardHat className="h-4 w-4" /> Estudos Licença de Construção
           </p>
           <h1 className="font-display text-3xl font-extrabold" title="Licença de construção">
-            Painel LC <span className="text-muted-foreground font-normal text-lg">— Licença de construção</span>
+            Painel de controlo PC <span className="text-muted-foreground font-normal text-lg">— Licença de construção</span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Todos os estudos de estrutura da tua equipa e o estado do cliente, no mesmo sítio.
+            Todos os estudos de estrutura da sua equipa e o seu estado cliente, no mesmo lugar.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={sendReportNow} disabled={reportBusy}
@@ -83,7 +73,7 @@ export default function PcDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[["Estudos", list.length], ["Montante acumulado c/ IVA", eur(totalTtc)],
           ["Aceites", `${accepted} / ${list.length}`],
-          ["Sinais recebidos", eur(deposits)]].map(([k, v]) => (
+          ["Adiantamentos recebidos", eur(deposits)]].map(([k, v]) => (
           <div key={k} className="surface p-4">
             <p className="text-[10px] text-muted-foreground">{k}</p>
             <p className="font-display text-xl font-extrabold num">{v}</p>
@@ -97,7 +87,7 @@ export default function PcDashboard() {
         <div className="surface p-8 text-center space-y-2" data-testid="pc-dashboard-empty">
           <FileSearch className="h-8 w-8 mx-auto text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Sem estudos LC de momento — abre uma planta e clica «Estudo LC».
+            Nenhum estudo PC por enquanto — abra um plano e clique «Estudo PC».
           </p>
           <Button onClick={() => nav("/plan")} className="rounded-sm" data-testid="pc-dashboard-goto-plan">
             Abrir Medir
@@ -108,18 +98,17 @@ export default function PcDashboard() {
           <thead>
             <tr className="bg-muted text-left text-xs">
               <th className="p-2">Obra</th>
-              <th className="p-2">Gerada em</th>
+              <th className="p-2">Gerada a</th>
               <th className="p-2 text-right">Betão</th>
               <th className="p-2 text-right">Total c/ IVA</th>
               <th className="p-2">Estado</th>
-              <th className="p-2 text-right">Envios / NE</th>
+              <th className="p-2 text-right">Envios / BC</th>
               <th className="p-2"></th>
             </tr>
           </thead>
           <tbody>
             {list.map((s, i) => {
               const Icon = STATUS_ICON[s.status] || FileStack;
-              const statusLabel = STATUS_LABEL[s.status] || s.status;
               return (
                 <tr key={s.plan_id} className="border-t border-border hover:bg-muted/30 transition-colors"
                     data-testid={`pc-dash-row-${i}`}>
@@ -141,7 +130,7 @@ export default function PcDashboard() {
                   <td className="p-2">
                     <Badge className={`rounded-sm gap-1 text-[10px] border hover:bg-transparent ${STATUS_STYLE[s.status]}`}
                            data-testid={`pc-dash-row-${i}-status`}>
-                      <Icon className="h-3 w-3" /> {statusLabel}
+                      <Icon className="h-3 w-3" /> {STATUS_LABEL[s.status] || s.status}
                     </Badge>
                   </td>
                   <td className="p-2 text-right num text-xs">{s.sends} / {s.orders}</td>

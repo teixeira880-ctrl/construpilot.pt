@@ -1,0 +1,60 @@
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { ArrowRight, Menu, X, LogIn, Waves } from "lucide-react";
+import { AudienceSwitch } from "@/components/AudienceSwitch";
+import { Footer } from "@/components/Nav";
+import { WorkspaceBackdrop, useWorkspaceMotion } from "@/components/workspace/WorkspaceBackdrop";
+import "@/styles/workspace-ambient.css";
+import "@/styles/landing-premium.css";
+
+export function scrollToLanding(id, focus = false) {
+  const target = document.getElementById(id);
+  if (!target) return;
+  target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  if (focus) target.querySelector("textarea")?.focus({ preventScroll: true });
+}
+
+export function LandingLayout({ audience, children }) {
+  const pro = audience === "pro";
+  const prefix = pro ? "pro" : "part";
+  const motion = useWorkspaceMotion();
+  const [menu, setMenu] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => { setMenu(false); window.scrollTo(0, 0); }, [pathname]);
+  const sections = [{ id: "landing-tools", label: "As ferramentas" }, { id: "landing-how", label: "Como funciona" }, { id: "landing-pricing", label: "As ofertas" }];
+  return <div className={`landing-premium landing-${audience}`}>
+    <WorkspaceBackdrop paused={motion.paused || motion.reduced} />
+    <a className="landing-skip" href="#landing-main">Ir para o conteúdo</a>
+    <header className="landing-header" onKeyDown={e => { if (e.key === "Escape") { setMenu(false); document.getElementById("landing-menu-button")?.focus(); } }}>
+      <div className="landing-header-inner">
+        <Link to={pro ? "/" : "/particuliers"} className="landing-brand" aria-label="ConstruPilot, início" data-testid={`${prefix}-logo`}><img src="/construpilot-icon.png" alt="" width="34" height="34" /><span>Constru<span>Pilot</span></span></Link>
+        <div className="landing-audience"><AudienceSwitch active={audience} tone="light" /></div>
+        <nav className="landing-desktop-links" aria-label="Apresentação">{sections.map(s => <a key={s.id} href={`#${s.id}`}>{s.label}</a>)}</nav>
+        <Link to="/login" className="landing-login" data-testid={`${prefix}-nav-login`} aria-label="Entrar"><LogIn size={18} aria-hidden="true" /><span>Iniciar sessão</span></Link>
+        {pro ? <Link to="/inscription" className="landing-button landing-header-cta" data-testid="pro-nav-cta">Experimentar <ArrowRight size={15} /></Link> : <button type="button" className="landing-button landing-header-cta" data-testid="part-nav-cta" onClick={() => scrollToLanding("landing-estimator", true)}>Estimar <ArrowRight size={15} /></button>}
+        <button type="button" id="landing-menu-button" className="landing-menu-button" aria-expanded={menu} aria-controls="landing-mobile-menu" aria-label={menu ? "Fechar o menu" : "Abrir o menu"} onClick={() => setMenu(!menu)} data-testid="landing-menu-toggle">{menu ? <X size={21} /> : <Menu size={21} />}</button>
+      </div>
+      {menu && <nav className="landing-mobile-menu" id="landing-mobile-menu" aria-label="Apresentação em telemóvel">{sections.map(s => <a key={s.id} href={`#${s.id}`} onClick={() => setMenu(false)}>{s.label}<ArrowRight size={16} /></a>)}<Link to="/inscription" onClick={() => setMenu(false)}>Criar a minha conta<ArrowRight size={16} /></Link></nav>}
+    </header>
+    <main id="landing-main" tabIndex={-1}>{children}</main>
+    <div className="landing-motion-row"><button type="button" disabled={motion.reduced} aria-pressed={!motion.paused && !motion.reduced} onClick={motion.toggle} data-testid="landing-motion-toggle"><Waves size={17} />Fundo animado<span>{motion.reduced ? "Reduzido no dispositivo" : motion.paused ? "En pause" : "Ativo"}</span></button></div>
+    <Footer />
+  </div>;
+}
+
+export function LandingHeading({ eyebrow, title, children }) {
+  return <div className="landing-section-heading"><p className="landing-eyebrow">{eyebrow}</p><h2>{title}</h2>{children && <p>{children}</p>}</div>;
+}
+
+export function LandingPricing({ plans, pro = false }) {
+  return <section className="landing-section landing-pricing" id="landing-pricing" data-testid={pro ? "pro-pricing" : "particuliers-pricing"}>
+    <LandingHeading eyebrow="Ao seu ritmo" title={pro ? "Uma oferta para a sua forma de trabalhar." : "Comece de forma simples. Vá mais longe."}>{pro ? "Experiência de 7 dias, depois subscrição sem fidelização. Cartão obrigatório; nenhum débito antes do fim da experiência." : "Descubra as primeiras ferramentas gratuitamente e depois escolha o acompanhamento que lhe convém."}</LandingHeading>
+    <div className="landing-price-grid">{plans.map(p => <article key={p.name} className={`landing-price-card${p.popular ? " is-featured" : ""}`}>
+      <div className="landing-price-name"><h3>{p.name}</h3>{p.popular && <span>{pro ? "Para as equipas" : "Para o seu projeto"}</span>}</div><p>{p.desc}</p>
+      <div className="landing-price"><strong>{p.price}</strong><span>{p.period}</span></div>
+      <ul>{p.features.map(f => <li key={f}><span aria-hidden="true">✓</span>{f}</li>)}</ul>
+      <Link to="/inscription" className={`landing-button${p.popular ? "" : " landing-button-outline"}`} data-testid={p.tid}>{pro ? "Experimentar durante 7 dias" : p.popular ? "Descobrir o Passe" : "Começar gratuitamente"}<ArrowRight size={17} /></Link>
+    </article>)}</div>
+    <Link to="/tarifs" className="landing-text-link">Consultar o detalhe das ofertas <ArrowRight size={16} /></Link>
+  </section>;
+}

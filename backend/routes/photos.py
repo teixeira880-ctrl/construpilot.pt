@@ -18,7 +18,7 @@ async def _get_owned(project_id: str, user: dict) -> None:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "project_id": 1})
     if not p:
-        raise HTTPException(status_code=404, detail="Projet introuvable")
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
 
 
 def _now():
@@ -34,12 +34,12 @@ async def upload_photo(project_id: str,
                        user=Depends(current_user)):
     await _get_owned(project_id, user)
     if kind not in ALLOWED_KIND:
-        raise HTTPException(status_code=400, detail="Type invalide (before|after|progress)")
+        raise HTTPException(status_code=400, detail="Tipo inválido (before|after|progress)")
     data = await file.read()
     if not data:
-        raise HTTPException(status_code=400, detail="Fichier vide")
+        raise HTTPException(status_code=400, detail="Ficheiro vazio")
     if len(data) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Fichier trop lourd (max 10 Mo)")
+        raise HTTPException(status_code=413, detail="Ficheiro demasiado pesado (máx. 10 MB)")
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "jpg").lower()
     ext = ext if ext in {"jpg", "jpeg", "png", "webp", "heic", "heif"} else "jpg"
     path = f"{storage.APP_NAME}/projects/{project_id}/photos/{uuid.uuid4().hex}.{ext}"
@@ -47,7 +47,7 @@ async def upload_photo(project_id: str,
     try:
         result = storage.put_object(path, data, ctype)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Upload impossible: {e}")
+        raise HTTPException(status_code=502, detail=f'Carregamento impossível: {e}')
     photo = {
         "photo_id": f"ph_{uuid.uuid4().hex[:10]}",
         "storage_path": result.get("path") or path,
@@ -70,7 +70,7 @@ async def list_photos(project_id: str, user=Depends(current_user)) -> dict:
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "photos": 1})
     if not p:
-        raise HTTPException(status_code=404, detail="Projet introuvable")
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return {"photos": p.get("photos", [])}
 
 
@@ -79,14 +79,14 @@ async def download_photo(project_id: str, photo_id: str, user=Depends(current_us
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "photos": 1})
     if not p:
-        raise HTTPException(status_code=404, detail="Projet introuvable")
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
     photo = next((ph for ph in p.get("photos", []) if ph.get("photo_id") == photo_id), None)
     if not photo:
-        raise HTTPException(status_code=404, detail="Photo introuvable")
+        raise HTTPException(status_code=404, detail="Fotografia não encontrada")
     try:
         data, ctype = storage.get_object(photo["storage_path"])
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Lecture impossible: {e}")
+        raise HTTPException(status_code=502, detail=f'Leitura impossível: {e}')
     return Response(content=data,
                     media_type=photo.get("content_type") or ctype,
                     headers={"Cache-Control": "private, max-age=3600"})
@@ -97,9 +97,9 @@ async def delete_photo(project_id: str, photo_id: str, user=Depends(current_user
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "photos": 1})
     if not p:
-        raise HTTPException(status_code=404, detail="Projet introuvable")
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
     if not any(ph.get("photo_id") == photo_id for ph in p.get("photos", [])):
-        raise HTTPException(status_code=404, detail="Photo introuvable")
+        raise HTTPException(status_code=404, detail="Fotografia não encontrada")
     await db.projects.update_one({"project_id": project_id},
                                  {"$pull": {"photos": {"photo_id": photo_id}},
                                   "$set": {"updated_at": _now()}})

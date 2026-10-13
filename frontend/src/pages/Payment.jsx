@@ -32,8 +32,8 @@ export function PaymentSuccess() {
         setRec(data);
         if (data.payment_status === "paid") {
           setStatus("ok");
-          refresh?.();  // actualiza o tier em toda a aplicação (desbloqueia as opções)
-          checkAuth?.();  // actualiza account_type (particular → pro) após upgrade
+          refresh?.();  // met à jour le tier dans toute l'app (débloque les options)
+          checkAuth?.();  // rafraîchit account_type (particulier -> pro) après upgrade
           return;
         }
         if (tries++ < 15) setTimeout(poll, 2000);
@@ -51,7 +51,7 @@ export function PaymentSuccess() {
       {status === "checking" && (
         <>
           <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
-          <p className="font-display text-2xl font-bold">A confirmar o pagamento…</p>
+          <p className="font-display text-2xl font-bold">Confirmação do pagamento…</p>
           <p className="text-sm text-muted-foreground">Não feche esta janela.</p>
         </>
       )}
@@ -59,17 +59,16 @@ export function PaymentSuccess() {
         <>
           <CheckCircle2 className="h-14 w-14 mx-auto text-emerald-500" />
           <div>
-            <p className="font-display text-2xl font-bold" data-testid="ps-plan-activated">🎉 {planName} activado</p>
+            <p className="font-display text-2xl font-bold" data-testid="ps-plan-activated">🎉 {planName} ativado</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              A sua {rec?.mode === "subscription" ? "subscrição" : "compra"} está confirmada.
-              Todas as funcionalidades do seu plano estão agora desbloqueadas na sua conta.
+              O seu {rec?.mode === "subscription" ? "abonnement" : "achat"} está confirmado. Todas as funcionalidades da sua fórmula estão agora desbloqueadas na sua conta.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">
             <Button onClick={() => navigate("/dashboard")} data-testid="ps-cta-dashboard" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               Ir para o painel de controlo <ArrowRight className="h-4 w-4" />
             </Button>
-            <Link to="/estimativa"><Button variant="outline" className="rounded-sm">Criar um projecto</Button></Link>
+            <Link to="/estimateur"><Button variant="outline" className="rounded-sm">Criar um projeto</Button></Link>
           </div>
         </>
       )}
@@ -78,7 +77,7 @@ export function PaymentSuccess() {
           <Loader2 className="h-10 w-10 mx-auto text-amber-500" />
           <p className="font-display text-xl font-bold">Pagamento em processamento</p>
           <p className="text-sm text-muted-foreground">
-            O seu banco está a processar o pagamento. Receberá um e-mail assim que estiver confirmado.
+            O seu banco processa o pagamento. Receberá um email assim que for confirmado.
           </p>
         </>
       )}
@@ -86,7 +85,7 @@ export function PaymentSuccess() {
         <>
           <XCircle className="h-14 w-14 mx-auto text-red-500" />
           <p className="font-display text-xl font-bold">Sessão não encontrada</p>
-          <Link to="/planos"><Button variant="outline" className="rounded-sm">Voltar aos planos</Button></Link>
+          <Link to="/tarifs"><Button variant="outline" className="rounded-sm">Voltar aos preços</Button></Link>
         </>
       )}
     </div>
@@ -98,10 +97,10 @@ export function PaymentCancel() {
     <div className="max-w-lg mx-auto surface p-8 mt-16 grid gap-4 text-center" data-testid="payment-cancel-page">
       <XCircle className="h-14 w-14 mx-auto text-muted-foreground" />
       <p className="font-display text-2xl font-bold">Pagamento cancelado</p>
-      <p className="text-sm text-muted-foreground">Nenhum valor foi cobrado. Pode retomar a qualquer momento.</p>
+      <p className="text-sm text-muted-foreground">Nenhum montante foi debitado. Pode retomar a qualquer momento.</p>
       <div className="flex justify-center gap-3">
-        <Link to="/planos"><Button className="rounded-sm hover:bg-orange-600 hover:text-white">Rever os planos</Button></Link>
-        <Link to="/"><Button variant="outline" className="rounded-sm">Voltar à página inicial</Button></Link>
+        <Link to="/tarifs"><Button className="rounded-sm hover:bg-orange-600 hover:text-white">Rever as fórmulas</Button></Link>
+        <Link to="/"><Button variant="outline" className="rounded-sm">Voltar ao início</Button></Link>
       </div>
     </div>
   );

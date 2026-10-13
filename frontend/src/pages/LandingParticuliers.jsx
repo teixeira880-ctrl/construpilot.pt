@@ -1,241 +1,77 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import {
-  ArrowRight, Sparkles, Clock, ShieldCheck, Wallet, Camera, CheckCircle2,
-  Home as HomeIcon, Star, Mail, User,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Nav, Footer } from "@/components/Nav";
+import { ArrowRight, Sparkles, Camera, FileSearch, Wrench, Calculator, MessageSquare, Check, Play, ChevronDown } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { SignupCounter } from "@/components/SignupCounter";
+import { FeatureClips } from "@/components/FeatureClips";
+import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
+import { LandingLayout, LandingHeading, LandingPricing, scrollToLanding } from "@/components/landing/LandingLayout";
 
-const IMG = {
-  hero: "https://static.prod-images.emergentagent.com/jobs/24c1027c-3500-4369-9271-1f0502b94a6a/images/e26af67e137308e88ada544517a3765a5a64e9780e77f0271b542ce4c9a2b065.jpeg",
-  avantApres: "https://static.prod-images.emergentagent.com/jobs/24c1027c-3500-4369-9271-1f0502b94a6a/images/da8d51f6072f524c806535c806f718ec00c2d6f9b749b447637eaf9feb126729.jpeg",
-  couple: "https://static.prod-images.emergentagent.com/jobs/24c1027c-3500-4369-9271-1f0502b94a6a/images/67832e234a33611ab2d1f47a5438bff370514f9f4bf9ecb83cc337f96ba24644.jpeg",
-};
-
-const EXAMPLE = "Quero renovar o meu apartamento de 60 m²: refazer as pinturas, mudar o pavimento, renovar a casa de banho e a cozinha.";
-
-const STEPS = [
-  { icon: Camera, title: "Descreva o seu projecto", text: "Numa frase ou com uma foto da sua planta — é só isso." },
-  { icon: Sparkles, title: "A IA orça tudo", text: "Estimativa detalhada rubrica a rubrica em 30 segundos." },
-  { icon: Wallet, title: "Compare e defina o orçamento", text: "Preços dos materiais, intervalos realistas, nenhuma surpresa." },
+const EXAMPLE = "Remodelar uma casa de banho de 8 m² com um duche de nível, azulejo e um móvel de lavatório.";
+const CHIPS = ["Remodelação de casa de banho 8 m²", "Isolamento do sótão 60 m²", "Pintura T3 70 m²", "Cozinha equipada"];
+const TOOLS = [
+  { icon: Sparkles, tag: "Preparar", title: "Um projeto, passo a passo", desc: "Organize os trabalhos, os materiais e as etapas da sua remodelação.", to: "/smart-project" },
+  { icon: FileSearch, tag: "Compreender", title: "Um olhar sobre os seus orçamentos", desc: "Compare os artigos e identifique os pontos a esclarecer com o seu profissional.", to: "/scanner-devis" },
+  { icon: Camera, tag: "Explorar", title: "A sua divisão em imagens", desc: "Utilize uma fotografia para dar contexto e preparar as suas perguntas.", to: "/photo" },
+  { icon: Wrench, tag: "Escolher", title: "Fazer sozinho ou delegar", desc: "Compare as opções consoante o seu orçamento, as suas competências e a obra.", to: "/diy" },
+  { icon: Calculator, tag: "Calcular", title: "As quantidades certas", desc: "Estime as necessidades de tinta, azulejo ou isolamento a partir das suas medidas.", to: "/calculateurs" },
+  { icon: MessageSquare, tag: "Ser acompanhado", title: "As suas perguntas sobre obras", desc: "Prepare as suas conversas e encontre explicações ao longo do projeto.", to: "/coach" },
 ];
-
-const PERKS = [
-  { icon: Clock, title: "30 segundos", text: "Uma estimativa instantânea, sem marcações nem esperas." },
-  { icon: Wallet, title: "100 % gratuito", text: "Estime o seu orçamento de obra sem compromisso." },
-  { icon: ShieldCheck, title: "Preços reais do mercado", text: "Baseado nas tarifas actuais de materiais e mão de obra." },
-  { icon: HomeIcon, title: "Pensado para si", text: "Sem jargão: valores claros para o seu projecto." },
+const PLANS = [
+  { name: "Grátis", price: "0 €", period: "vitalício", popular: false, tid: "plan-particulier-free-cta",
+    desc: "Para explorar e fazer uma primeira estimativa.",
+    features: ["3 estimativas expresso / mês", "Calculadoras de áreas e volumes", "Guia de preços médios por região"] },
+  { name: "Passe Tranquilidade", price: "19 €", period: "/mois sans engagement", popular: true, tid: "plan-particulier-pass-cta",
+    desc: "Acompanhamento completo durante todas as suas obras.",
+    features: ["Estimativas e Smart Projects ilimitados", "Scanner de orçamentos ilimitado", "Análise de fotografias e deteção de riscos", "Coach IA travaux 24/7", "Contacto prioritário com profissionais"] },
 ];
-
-const TESTIS = [];
 
 export default function LandingParticuliers() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [description, setDescription] = useState("");
-
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    ["utm_source", "utm_medium", "utm_campaign"].forEach((k) => {
-      const v = sp.get(k);
-      if (v) sessionStorage.setItem(`construpilot_${k}`, v);
-    });
-  }, []);
-
-  const launch = () => {
-    const text = description.trim() || EXAMPLE;
-    sessionStorage.setItem("estimator_prefill", JSON.stringify({ description: text, _raw: text }));
-    const mail = email.trim();
-    if (mail) sessionStorage.setItem("construpilot_lead_email", mail);
-    if (name.trim()) sessionStorage.setItem("construpilot_lead_name", name.trim());
-    const leadPayload = {
-      name: name.trim(), email: mail, description: text,
-      source: sessionStorage.getItem("construpilot_utm_source") || "landing-particuliers",
-      utm_source: sessionStorage.getItem("construpilot_utm_source") || "",
-      utm_medium: sessionStorage.getItem("construpilot_utm_medium") || "",
-      utm_campaign: sessionStorage.getItem("construpilot_utm_campaign") || "",
-    };
-    const isLoggedIn = !!localStorage.getItem("construpilot_token");
-    if (isLoggedIn) {
-      if (mail && mail.includes("@")) api.post("/leads", leadPayload).catch(() => {});
-      navigate("/estimation");
-      return;
-    }
-    sessionStorage.setItem("construpilot_pending_lead", JSON.stringify(leadPayload));
-    navigate(`/inscription?email=${encodeURIComponent(mail)}&signup=1`);
+  const { user, loading } = useAuth();
+  const [name,setName]=useState("");const [email,setEmail]=useState("");const [description,setDescription]=useState("");
+  const [error,setError]=useState("");const [videosOpen,setVideosOpen]=useState(false);
+  useEffect(()=>{try{const sp=new URLSearchParams(window.location.search);["utm_source","utm_medium","utm_campaign"].forEach(k=>{const v=sp.get(k);if(v)sessionStorage.setItem(`construpilot_${k}`,v);});}catch{}},[]);
+  const launch = e => {
+    e.preventDefault();if(loading)return;setError("");
+    const text=description.trim()||EXAMPLE,mail=email.trim();let leadPayload;
+    try {
+      sessionStorage.setItem("estimator_prefill",JSON.stringify({description:text,_raw:text}));
+      if(mail)sessionStorage.setItem("construpilot_lead_email",mail);
+      if(name.trim())sessionStorage.setItem("construpilot_lead_name",name.trim());
+      leadPayload={name:name.trim(),email:mail,description:text,source:sessionStorage.getItem("construpilot_utm_source")||"landing-particuliers",utm_source:sessionStorage.getItem("construpilot_utm_source")||"",utm_medium:sessionStorage.getItem("construpilot_utm_medium")||"",utm_campaign:sessionStorage.getItem("construpilot_utm_campaign")||""};
+      if(!user)sessionStorage.setItem("construpilot_pending_lead",JSON.stringify(leadPayload));
+    } catch { setError("O seu navegador não conseguiu guardar o projeto. Autorize o armazenamento para este site e tente novamente.");return; }
+    if(user){if(mail)api.post("/leads",leadPayload).catch(()=>{});navigate("/estimation");}
+    else navigate(`/inscription?email=${encodeURIComponent(mail)}&signup=1`);
   };
-
-  return (
-    <>
-      <SEO
-        title="Estime o seu orçamento de obra em 30 segundos — ConstruPilot"
-        description="Vai renovar a sua casa ou apartamento? Obtenha uma estimativa de orçamento de obra gratuita e instantânea com IA. Preços reais, rubrica a rubrica, sem compromisso."
-        keywords="estimativa de obra gratuita, orçamento renovação casa, preços renovação apartamento, cálculo custo obra, orçamento renovação particular"
-        canonical="/particuliers"
-      />
-      <Nav />
-
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-border" data-testid="particuliers-hero">
-        <div className="absolute inset-0">
-          <img src={IMG.hero} alt="Interior renovado luminoso" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/92 to-background/40" />
-        </div>
-        <div className="relative mx-auto max-w-6xl px-5 py-20 lg:py-28 grid lg:grid-cols-2 gap-10 items-center">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-bold text-primary mb-5" data-testid="particuliers-badge">
-              <Sparkles className="h-3.5 w-3.5" /> Especial particulares · 100 % gratuito
-            </span>
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight">
-              O seu orçamento de obra,<br />
-              <span className="text-primary">estimado em 30 segundos.</span>
-            </h1>
-            <p className="mt-5 text-base md:text-lg text-muted-foreground max-w-lg">
-              Casa, apartamento, cozinha, casa de banho… Descreva o seu projecto e a nossa IA entrega uma estimativa detalhada rubrica a rubrica. Sem marcações, sem compromisso.
-            </p>
-
-            <div className="mt-7 surface p-4 rounded-xl max-w-lg space-y-3" data-testid="particuliers-form">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="O seu nome próprio"
-                         className="pl-9 rounded-sm" data-testid="particuliers-name" />
-                </div>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="O seu e-mail"
-                         className="pl-9 rounded-sm" data-testid="particuliers-email" />
-                </div>
-              </div>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-                        placeholder={EXAMPLE} className="rounded-sm text-sm" data-testid="particuliers-description" />
-              <Button onClick={launch} size="lg" className="w-full rounded-sm gap-2 text-base font-bold" data-testid="particuliers-cta">
-                Estimar o meu projecto gratuitamente <ArrowRight className="h-5 w-5" />
-              </Button>
-              <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-primary" /> Gratuito · Sem cartão bancário · Resultado imediato
-              </p>
-            </div>
-            <div className="mt-4"><SignupCounter /></div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ANTES / DEPOIS */}
-      <section className="mx-auto max-w-6xl px-5 py-16 lg:py-20 grid lg:grid-cols-2 gap-10 items-center">
-        <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-          <img src={IMG.avantApres} alt="Antes e depois de uma renovação" className="rounded-xl w-full shadow-lg" data-testid="particuliers-avant-apres" />
-        </motion.div>
-        <div>
-          <p className="overline text-primary">Do sonho ao orçamento</p>
-          <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">Sabe mesmo quanto vai custar o seu projecto?</h2>
-          <p className="mt-4 text-base text-muted-foreground">
-            Antes de avançar, tenha uma visão clara e realista do seu orçamento. O ConstruPilot analisa a sua descrição e entrega uma estimativa detalhada — como faria um profissional, mas em poucos segundos.
-          </p>
-          <ul className="mt-6 space-y-3">
-            {["Estimativa rubrica a rubrica (pintura, pavimento, canalização…)", "Intervalo de preços baixo / médio / alto", "Preços dos materiais actualizados", "Exportável para comparar os orçamentos de profissionais"].map((t) => (
-              <li key={t} className="flex items-start gap-2 text-sm">
-                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* COMO FUNCIONA */}
-      <section className="bg-muted/40 border-y border-border py-16 lg:py-20" data-testid="particuliers-steps">
-        <div className="mx-auto max-w-6xl px-5">
-          <div className="text-center max-w-2xl mx-auto">
-            <p className="overline text-primary">Simples como bom dia</p>
-            <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">3 passos, zero complicações</h2>
-          </div>
-          <div className="mt-10 grid md:grid-cols-3 gap-6">
-            {STEPS.map((s, i) => (
-              <motion.div key={s.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                          className="surface p-6 rounded-xl">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 grid place-items-center mb-4">
-                  <s.icon className="h-6 w-6 text-primary" />
-                </div>
-                <div className="text-xs font-bold text-primary mb-1">Passo {i + 1}</div>
-                <h3 className="font-display text-lg font-bold">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{s.text}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* PORQUÊ */}
-      <section className="mx-auto max-w-6xl px-5 py-16 lg:py-20">
-        <div className="grid lg:grid-cols-2 gap-10 items-center">
-          <img src={IMG.couple} alt="Casal a preparar a sua renovação" className="rounded-xl w-full shadow-lg order-2 lg:order-1" />
-          <div className="order-1 lg:order-2">
-            <p className="overline text-primary">Porquê o ConstruPilot</p>
-            <h2 className="font-display text-3xl lg:text-4xl font-extrabold mt-2">Retome o controlo do seu orçamento de obra</h2>
-            <div className="mt-6 grid sm:grid-cols-2 gap-4">
-              {PERKS.map((p) => (
-                <div key={p.title} className="flex gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center shrink-0">
-                    <p.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm">{p.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{p.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TESTEMUNHOS */}
-      <section className="bg-muted/40 border-y border-border py-16">
-        <div className="mx-auto max-w-6xl px-5">
-          <div className="grid md:grid-cols-3 gap-6">
-            {TESTIS.length === 0 ? (
-              <div className="md:col-span-3 surface p-8 rounded-xl grid place-items-center text-center gap-2" data-testid="particuliers-testis-empty">
-                <div className="flex gap-0.5 text-primary/40">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
-                </div>
-                <p className="text-sm text-muted-foreground">Os comentários dos nossos utilizadores aparecerão aqui em breve.</p>
-              </div>
-            ) : TESTIS.map((t) => (
-              <div key={t.name} className="surface p-6 rounded-xl">
-                <div className="flex gap-0.5 mb-3">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-primary text-primary" />)}
-                </div>
-                <p className="text-sm italic">« {t.text} »</p>
-                <p className="mt-3 text-xs font-bold text-muted-foreground">{t.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA FINAL */}
-      <section className="mx-auto max-w-4xl px-5 py-20 text-center">
-        <h2 className="font-display text-3xl lg:text-5xl font-extrabold">Pronto para conhecer o seu orçamento?</h2>
-        <p className="mt-4 text-base md:text-lg text-muted-foreground">É gratuito, imediato e sem compromisso.</p>
-        <Button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} size="lg"
-                className="mt-7 rounded-sm gap-2 text-base font-bold px-8" data-testid="particuliers-cta-final">
-          Estimar o meu projecto <ArrowRight className="h-5 w-5" />
-        </Button>
-        <p className="mt-6 text-sm text-muted-foreground">
-          É um profissional da construção? <Link to="/" className="text-primary font-semibold underline">Descobrir a oferta Pro</Link>
-        </p>
-      </section>
-
-      <Footer />
-    </>
-  );
+  return <LandingLayout audience="particulier">
+    <SEO title="ConstruPilot — Prepare o seu projeto de remodelação" description="Estime o orçamento das suas obras, compreenda os seus orçamentos e prepare as etapas da sua remodelação com o ConstruPilot para particulares." canonical="/particuliers" keywords="estimativa obras, orçamento remodelação, comparar orçamentos"
+      jsonLd={{"@context":"https://schema.org","@type":"WebApplication",name:"ConstruPilot para particulares",applicationCategory:"UtilitiesApplication",operatingSystem:"Web",offers:[{"@type":"Offer",name:"Grátis",price:"0",priceCurrency:"EUR"},{"@type":"Offer",name:"Passe Tranquilidade",price:"19",priceCurrency:"EUR"}]}} />
+    <section className="landing-hero landing-section" data-testid="particuliers-hero">
+      <div className="landing-hero-copy"><p className="landing-eyebrow"><span />PARA A SUA CASA, O SEU APARTAMENTO</p><h1>Os seus desejos ganham forma.<br /><em>O seu projeto também.</em></h1>
+        <p className="landing-hero-description">Um orçamento a preparar, uma proposta a compreender, obras a organizar. Avance com referências claras, do primeiro desejo às próximas etapas.</p>
+        <div className="landing-hero-actions"><button type="button" className="landing-button" onClick={()=>scrollToLanding("landing-estimator",true)}>Preparar o meu projeto <ArrowRight size={18} /></button><Link to="/scanner-devis" className="landing-text-link" data-testid="particuliers-hero-secondary-cta">Já tenho um orçamento <ArrowRight size={17} /></Link></div>
+        <div className="landing-hero-proof"><span><Check size={15} />Grátis para começar</span><span><Check size={15} />Sem cartão bancário</span></div>
+        <p className="landing-hero-note">Uma estimativa dá uma ordem de grandeza. O seu profissional confirma os trabalhos e o preço final.</p>
+      </div>
+      <form className="landing-estimator" id="landing-estimator" data-testid="particuliers-form" onSubmit={launch}>
+        <div className="landing-form-heading"><span className="landing-feature-icon"><Sparkles size={23} /></span><span><small>O SEU PONTO DE PARTIDA</small><h2>E se falássemos das suas obras?</h2></span></div>
+        <label htmlFor="landing-description">Descreva o seu projeto</label><textarea id="landing-description" rows={4} value={description} onChange={e=>setDescription(e.target.value)} placeholder={EXAMPLE} data-testid="particuliers-description" />
+        <div className="landing-project-chips" aria-label="Exemplos de projetos">{CHIPS.map((c,i)=><button type="button" key={c} onClick={()=>setDescription(c)} aria-pressed={description===c} data-testid={`part-chip-${c.slice(0,6)}`}>{["Casa de banho","Isolamento","Pintura","Cozinha"][i]}</button>)}</div>
+        <div className="landing-contact-fields"><div><label htmlFor="landing-name">Nome <span>(opcional)</span></label><input id="landing-name" autoComplete="given-name" value={name} onChange={e=>setName(e.target.value)} placeholder="O seu primeiro nome" data-testid="particuliers-name" /></div><div><label htmlFor="landing-email">E-mail <span>(opcional)</span></label><input id="landing-email" autoComplete="email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="vous@exemple.fr" data-testid="particuliers-email" /></div></div>
+        {error&&<p role="alert" className="landing-form-error">{error}</p>}
+        <button type="submit" className="landing-button" disabled={loading} data-testid="particuliers-hero-primary-cta">{loading?"A carregar…":"Estimar o meu projeto"}<ArrowRight size={18} /></button><p className="landing-form-note">{user?"O seu projeto espera por si no estimador.":"Crie depois a sua conta para encontrar o seu projeto."}</p>
+      </form>
+    </section>
+    <div className="landing-ribbon"><span>A sua ideia.</span><strong>Referências para avançar.</strong><span>Um projeto à sua medida.</span></div>
+    <section className="landing-section" id="landing-how" data-testid="particuliers-steps"><LandingHeading eyebrow="Simples, desde o início" title="Uma pergunta de cada vez. Um projeto mais claro." />
+      <div className="landing-steps">{[{title:"Conte-nos o seu projeto",desc:"A divisão, a área e o que pretende mudar.",icon:MessageSquare},{title:"Explore o seu orçamento",desc:"Uma estimativa para comparar os artigos e as suas prioridades.",icon:Calculator},{title:"Prepare o que se segue",desc:"As suas perguntas ao profissional, os seus orçamentos e as próximas etapas.",icon:FileSearch}].map((s,i)=><article key={s.title}><div><span>0{i+1}</span><s.icon size={23} /></div><h3>{s.title}</h3><p>{s.desc}</p></article>)}</div>
+    </section>
+    <section className="landing-section" id="landing-tools" data-testid="particuliers-tools"><LandingHeading eyebrow="Em cada etapa, a ferramenta certa" title="Menos perguntas em aberto.">Compreender, comparar, calcular: encontre as ferramentas úteis no mesmo lugar.</LandingHeading><div className="landing-feature-grid landing-feature-grid-home">{TOOLS.map(t=><Link key={t.to} to={t.to} className="landing-feature-card" data-testid={`particulier-tool-${t.to.slice(1)}`}><span className="landing-feature-icon"><t.icon size={23} /></span><small>{t.tag}</small><h3>{t.title}</h3><p>{t.desc}</p><span className="landing-card-link">Descobrir <ArrowRight size={17} /></span></Link>)}</div></section>
+    <section className="landing-section landing-video-section" id="landing-demo"><details open={videosOpen} onToggle={e=>setVideosOpen(e.currentTarget.open)} data-testid="landing-videos"><summary><span><small>EM POUCAS IMAGENS</small><strong>Descubra o que pode fazer.</strong></span><span className="landing-video-play"><Play size={21} /></span></summary>{videosOpen&&<FeatureClips title="As suas ferramentas, em vídeo" subtitle="Descubra a estimativa e as calculadoras em situação real." keys={["estimation","calculateurs"]} />}</details></section>
+    <LandingPricing plans={PLANS} />
+    <section className="landing-section landing-faq"><LandingHeading eyebrow="Bom saber" title="Referências, desde o início." />{[{q:"A estimativa substitui um orçamento de um profissional?",a:"Não. Permite preparar um orçamento a partir das informações dadas. O estado real da habitação, os materiais escolhidos e a visita de um profissional podem fazer variar o montante."},{q:"Posso começar sem conhecer todas as dimensões?",a:"Descreva o que sabe e indique as informações em falta. Poderá completar o projeto à medida que avança."},{q:"Posso utilizar o ConstruPilot no meu telemóvel?",a:"Sim, a partir do seu navegador: prepare o seu projeto, consulte as ferramentas e encontre as suas informações."}].map(f=><details key={f.q}><summary>{f.q}<ChevronDown size={18} /></summary><p>{f.a}</p></details>)}</section>
+    <section className="landing-section"><div className="landing-final"><p className="landing-eyebrow">UM PROJETO À SUA MEDIDA</p><h2>A próxima etapa?<br />Falemos da sua.</h2><button type="button" className="landing-button landing-button-ivory" onClick={()=>scrollToLanding("landing-estimator",true)} data-testid="particuliers-cta-final">Preparar as minhas obras <ArrowRight size={18} /></button><Link to="/" className="landing-audience-link" onClick={()=>{try{localStorage.setItem("construpilot_audience","pro");}catch{}}}>É profissional da construção? Descubra o espaço Pro.</Link></div></section>
+  </LandingLayout>;
 }

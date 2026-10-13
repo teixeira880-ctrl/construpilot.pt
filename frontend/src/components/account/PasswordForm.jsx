@@ -44,13 +44,12 @@ export const PasswordForm = () => {
       </p>
       {!hasPassword && (
         <p className="text-xs text-muted-foreground" data-testid="set-password-hint">
-          Votre compte est connecté via Google. Définissez un mot de passe pour pouvoir
-          aussi vous connecter par email — aucun « ancien mot de passe » n'est requis.
+          A sua conta está ligada via Google. Defina uma palavra-passe para poder também iniciar sessão por email — nenhuma «palavra-passe antiga» é necessária.
         </p>
       )}
       {hasPassword && (
         <div className="grid gap-1.5">
-          <Label htmlFor="cur-pw" className="text-xs">Mot de passe actuel</Label>
+          <Label htmlFor="cur-pw" className="text-xs">Palavra-passe atual</Label>
           <Input id="cur-pw" type="password" value={current} required
                  onChange={(e) => setCurrent(e.target.value)}
                  data-testid="current-password-input" className="rounded-sm" />
@@ -58,14 +57,14 @@ export const PasswordForm = () => {
       )}
       <div className="grid gap-1.5">
         <Label htmlFor="new-pw" className="text-xs">
-          {hasPassword ? "Nova palavra-passe" : "Palavra-passe"} (mínimo 8 caracteres)
+          {hasPassword ? "Nova palavra-passe" : "Palavra-passe"} (8 caracteres mín.)
         </Label>
         <Input id="new-pw" type="password" value={next} required minLength={8}
                onChange={(e) => setNext(e.target.value)}
                data-testid="new-password-input" className="rounded-sm" />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="conf-pw" className="text-xs">Confirmer le mot de passe</Label>
+        <Label htmlFor="conf-pw" className="text-xs">Confirmar a palavra-passe</Label>
         <Input id="conf-pw" type="password" value={confirm} required
                onChange={(e) => setConfirm(e.target.value)}
                data-testid="confirm-password-input" className="rounded-sm" />
@@ -73,10 +72,10 @@ export const PasswordForm = () => {
       <Button type="submit" disabled={busy} className="rounded-sm w-full gap-2"
               data-testid="change-password-submit">
         <ShieldCheck className="h-4 w-4" />
-        {busy ? "…" : (hasPassword ? "Mettre à jour le mot de passe" : "Définir le mot de passe")}
+        {busy ? "…" : (hasPassword ? "Atualizar a palavra-passe" : "Definir a palavra-passe")}
       </Button>
       <p className="text-[10px] text-muted-foreground">
-        Par sécurité, toutes vos autres sessions seront déconnectées.
+        Por segurança, todas as suas outras sessões serão desligadas.
       </p>
     </form>
   );

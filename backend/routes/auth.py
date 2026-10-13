@@ -1,17 +1,19 @@
 import uuid
 import asyncio
+from typing import Literal
 import hashlib
-import logging
 import secrets
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Response, Request, Depends, UploadFile, File, Form
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 import httpx
 
 from core.db import db
 from core.security import (hash_password, verify_password, make_jwt, new_user_id,
                           current_user, optional_user, admin_user)
+from core.rate_limit import limiter
+from core.account_purge import purge_user_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -24,11 +26,32 @@ class RegisterIn(BaseModel):
     lang: str | None = None
     account_type: str | None = "particulier"
     siret: str | None = None
+    attribution: dict | None = None
+
+
+def _valid_nif(value: str) -> bool:
+    """NIF/NIPC português: 9 dígitos, dígito de controlo módulo 11."""
+    import re
+    s = re.sub(r"[ .\-]", "", value or "")
+    if s.upper().startswith("PT"):
+        s = s[2:]
+    if not re.fullmatch(r"\d{9}", s):
+        return False
+    if s[0] not in "1235689" and s[:2] not in ("45", "70", "71", "72", "74", "75", "77", "79", "90", "91", "98", "99"):
+        return False
+    total = sum(int(ch) * (9 - i) for i, ch in enumerate(s[:8]))
+    check = 11 - total % 11
+    if check >= 10:
+        check = 0
+    return check == int(s[8])
 
 
 def _valid_siret(value: str) -> bool:
+    """Aceita o NIF/NIPC português (construpilot.pt) e, por compatibilidade, o SIRET francês."""
     import re
     s = re.sub(r"[ .\-]", "", value or "")
+    if _valid_nif(s):
+        return True
     if not re.fullmatch(r"\d{14}", s):
         return False
     total = 0
@@ -51,11 +74,9 @@ def _public(u: dict) -> dict:
     out = {k: u.get(k) for k in ("user_id", "email", "name", "picture", "role", "plan",
                                   "phone", "auth_provider", "must_change_password",
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
-                                  "lang", "language", "country", "timezone", "created_at",
-                                  "account_type", "kyc_status", "siret")}
-    if not out.get("timezone"):
-        # Default por país : PT -> Europe/Lisbon, FR -> Europe/Paris.
-        out["timezone"] = "Europe/Lisbon" if (out.get("country") or "").upper() == "PT" else "Europe/Paris"
+                                  "lang", "created_at", "account_type", "kyc_status",
+                                  "siret", "target_margin_pct", "target_margins_by_lot",
+                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode", "theme", "nav_favorites")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
     return out
@@ -64,7 +85,7 @@ def _public(u: dict) -> dict:
 async def _verify_email_token(token: str) -> dict:
     u = await db.users.find_one({"email_verify_token": token}, {"_id": 0, "user_id": 1, "email_verified": 1})
     if not u:
-        raise HTTPException(status_code=404, detail="Lien de confirmation invalide ou expiré")
+        raise HTTPException(status_code=404, detail="Ligação de confirmação inválida ou expirada")
     if not u.get("email_verified"):
         await db.users.update_one({"user_id": u["user_id"]},
                                   {"$set": {"email_verified": True},
@@ -106,7 +127,7 @@ async def _check_lockout(identifier: str) -> None:
         until = until.replace(tzinfo=timezone.utc)
     if until and until > datetime.now(timezone.utc):
         raise HTTPException(status_code=429,
-                            detail="Trop de tentatives — réessayez dans 15 minutes")
+                            detail="Demasiadas tentativas — tente novamente dentro de 15 minutos")
     await db.login_attempts.delete_one({"identifier": identifier})
 
 
@@ -120,12 +141,13 @@ async def _record_failed_login(identifier: str) -> None:
 
 
 @router.post("/register")
-async def register(body: RegisterIn, response: Response) -> dict:
+@limiter.limit("5/minute")
+async def register(body: RegisterIn, request: Request, response: Response) -> dict:
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
-        raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
+        raise HTTPException(status_code=400, detail="Já existe uma conta com este email")
     if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Mot de passe : 6 caractères minimum")
+        raise HTTPException(status_code=400, detail="Palavra-passe: mínimo 6 caracteres")
     account_type = body.account_type if body.account_type in ("particulier", "pro", "pro_business") else "particulier"
     is_pro = account_type in ("pro", "pro_business")
     siret = None
@@ -133,7 +155,7 @@ async def register(body: RegisterIn, response: Response) -> dict:
         import re
         siret = re.sub(r"[ .\-]", "", body.siret or "")
         if not _valid_siret(siret):
-            raise HTTPException(status_code=400, detail="SIRET invalide (14 chiffres requis)")
+            raise HTTPException(status_code=400, detail="NIF/NIPC inválido (9 dígitos necessários)")
     from engines.email_i18n import norm_lang
     user = {
         "user_id": new_user_id(), "email": email, "name": body.name,
@@ -149,23 +171,25 @@ async def register(body: RegisterIn, response: Response) -> dict:
         "email_verify_token": uuid.uuid4().hex,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    if body.attribution:
+        user["attribution"] = {k: str(body.attribution.get(k) or "")[:300] for k in ("landing_path", "referrer", "utm_source", "utm_medium", "utm_campaign", "qr", "ref", "first_seen")}
     await db.users.insert_one(user)
-    # E-mail de boas-vindas (best-effort, nunca bloqueia o registo)
+    # Instrumentation du parcours (jamais bloquante) : inscription + provenance
+    try:
+        from engines.journey import record_event
+        attr = user.get("attribution") or {}
+        await record_event("signup_completed", user_id=user["user_id"], source={
+            **attr, "ref": user.get("referred_by") or "",
+        }, props={"account_type": user.get("account_type") or "", "lang": user.get("lang") or ""})
+    except Exception:  # noqa: BLE001
+        pass
+    # E-mail de bienvenue (best-effort, ne bloque jamais l'inscription)
     try:
         import os
         from engines import emailer
         verify_url = f"{os.getenv('FRONTEND_URL', '')}/verifier-email/{user['email_verify_token']}"
-        first_name = body.name.split(' ')[0] if body.name else ''
         body_html = (
-            f"<p>Olá {first_name},</p>"
-            "<p>Bem-vindo(a) ao <b>ConstruPilot</b>! Por favor, <b>confirme o seu endereço de e-mail</b> "
-            "clicando no botão abaixo para ativar todas as funcionalidades.</p>"
-            "<p>Para começar:</p>"
-            "<ul style='margin:0 0 8px 18px;padding:0'>"
-            "<li><b>Particular</b>: estime o custo das suas obras e compare preços</li>"
-            "<li><b>Profissional</b>: meça uma planta e gere um orçamento para o cliente</li>"
-            "</ul>"
-            "<p>Até breve,<br/>A equipa ConstruPilot</p>"
+            f"<p>Olá {(body.name.split(' ')[0] if body.name else '')},</p><p>Bem-vindo ao <b>ConstruPilot</b>! Agradecemos que <b>confirme o seu endereço de e-mail</b> clicando no botão abaixo para ativar todas as funcionalidades.</p><p>Para começar bem:</p><ul style='margin:0 0 8px 18px;padding:0'><li><b>Particular</b>: estime o custo das suas obras e compare preços</li><li><b>Profissional</b>: meça uma planta e gere um orçamento para o cliente</li></ul><table role='presentation' style='margin:14px 0;border-collapse:collapse'><tr><td style='padding-right:12px;vertical-align:middle'><img src='{os.getenv('FRONTEND_URL', '')}/assistant-btp-icon.png' width='56' height='56' alt='Assistant BTP' style='display:block'/></td><td style='vertical-align:middle;font-size:14px'><b>Assistant BTP</b> — votre assistant d'œuvres IA : devis, lecture de plans, réglementation et comptes rendus, en langage naturel.</td></tr></table><p>À très vite,<br/>L'équipe ConstruPilot</p>"
         )
         html = emailer.wrap_html(
             "Confirme o seu e-mail — ConstruPilot 🎉", body_html,
@@ -174,8 +198,7 @@ async def register(body: RegisterIn, response: Response) -> dict:
         )
         await emailer.send_email(email, "Confirme o seu e-mail — ConstruPilot", html)
     except Exception:
-        logging.getLogger("auth.register").exception(
-            "register welcome email failed for %s", email)
+        pass
     # Credit the referrer (silent no-op if code invalid) — routed via referrals module
     if body.referred_by_code:
         from routes.referrals import credit_referrer
@@ -198,7 +221,7 @@ async def resend_verification(user=Depends(current_user)) -> dict:
                                  {"_id": 0, "email": 1, "name": 1, "email_verified": 1,
                                   "email_verify_token": 1})
     if not u:
-        raise HTTPException(404, "Utilisateur introuvable")
+        raise HTTPException(404, "Utilizador não encontrado")
     if u.get("email_verified"):
         return {"ok": True, "already_verified": True}
     token = u.get("email_verify_token") or uuid.uuid4().hex
@@ -214,8 +237,7 @@ async def resend_verification(user=Depends(current_user)) -> dict:
             cta_url=verify_url, cta_label="Confirmar o meu e-mail")
         await emailer.send_email(u["email"], "Confirme o seu e-mail — ConstruPilot", html)
     except Exception:
-        logging.getLogger("auth.resend_verification").exception(
-            "resend-verification email failed for %s", u.get("email"))
+        pass
     return {"ok": True, "sent": True}
 
 
@@ -248,28 +270,21 @@ async def run_signup_followups():
         try:
             first = (u.get("name") or "").split(" ")[0]
             body_html = (
-                f"<p>Olá {first},</p>"
-                "<p>Vous avez créé votre compte ConstruPilot il y a quelques jours, "
-                "mais vous n'avez pas encore commencé. On est là pour vous aider !</p>"
-                "<p>En quelques minutes, vous pouvez :</p>"
-                "<ul style='margin:0 0 8px 18px;padding:0'>"
-                "<li><b>Particulier</b> : estimez le coût de vos travaux et comparez les prix</li>"
-                "<li><b>Professionnel</b> : mesurez un plan et générez un devis client</li>"
-                "</ul>"
-                "<p>Tout est <b>gratuit pendant la phase de lancement</b>. À vous de jouer !</p>"
+                f"<p>Olá {first},</p><p>Criou a sua conta ConstruPilot há alguns dias, mas ainda não começou. Estamos aqui para ajudar!</p><p>Em poucos minutos, pode:</p><ul style='margin:0 0 8px 18px;padding:0'><li><b>Particular</b>: estimar o custo das suas obras e comparar preços</li><li><b>Profissional</b>: medir uma planta e gerar um orçamento para o cliente</li></ul><p>Tudo é <b>gratuito durante a fase de lançamento</b>. É a sua vez!</p>"
             )
             html = emailer.wrap_html(
-                "Besoin d'un coup de main pour démarrer ?", body_html,
-                cta_url="https://construpilot.fr/estimation",
-                cta_label="Estimer mes travaux",
+                "Precisa de ajuda para começar?", body_html,
+                cta_url="https://construpilot.pt/estimation",
+                cta_label="Estimar a minha obra",
             )
             await emailer.send_email(
-                u["email"], "Prêt à estimer votre projet ? On vous aide ⚡", html)
+                u["email"], "Pronto para estimar o seu projeto? Nós ajudamos ⚡", html)
         except Exception:
             pass
 
 
 @router.post("/login")
+@limiter.limit("10/minute")
 async def login(body: LoginIn, request: Request, response: Response) -> dict:
     email = body.email.lower()
     identifier = f"{_client_ip(request)}:{email}"
@@ -279,6 +294,8 @@ async def login(body: LoginIn, request: Request, response: Response) -> dict:
         await _record_failed_login(identifier)
         raise HTTPException(status_code=401, detail="Email ou palavra-passe incorretos")
     await db.login_attempts.delete_one({"identifier": identifier})
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Conta desativada")
     if user.get("role") == "admin" and user.get("two_fa_enabled"):
         return await _start_2fa(user)
     await _register_device(user, request)
@@ -307,15 +324,17 @@ async def change_password(body: ChangePasswordIn, request: Request,
     if has_password:
         if not body.current_password or not verify_password(
                 body.current_password, full["password_hash"]):
-            raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+            raise HTTPException(status_code=401, detail="Palavra-passe atual incorreta")
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400,
-                            detail="Mot de passe : 8 caractères minimum")
+                            detail="Palavra-passe: 8 caracteres mínimo")
     await db.users.update_one(
         {"user_id": user["user_id"]},
         {"$set": {"password_hash": hash_password(body.new_password),
                   "must_change_password": False,
-                  "password_changed_at": datetime.now(timezone.utc).isoformat()}})
+                  "password_changed_at": datetime.now(timezone.utc).isoformat()},
+         "$inc": {"token_version": 1}})
+    await db.two_fa_codes.delete_many({"user_id": user["user_id"]})
     # Révoque toutes les autres sessions (garde la session courante)
     current = request.cookies.get("session_token")
     if not current:
@@ -344,7 +363,7 @@ async def update_profile(body: ProfileIn, user=Depends(current_user)) -> dict:
     if body.name is not None:
         name = body.name.strip()
         if not 2 <= len(name) <= 80:
-            raise HTTPException(status_code=400, detail="Nom : entre 2 et 80 caractères")
+            raise HTTPException(status_code=400, detail="Nome: entre 2 e 80 caracteres")
         updates["name"] = name
     if body.phone is not None:
         updates["phone"] = body.phone.strip()[:20] or None
@@ -354,20 +373,20 @@ async def update_profile(body: ProfileIn, user=Depends(current_user)) -> dict:
     if body.two_fa_email is not None:
         val = body.two_fa_email.strip().lower()
         if val and ("@" not in val or "." not in val.split("@")[-1]):
-            raise HTTPException(status_code=400, detail="E-mail de réception 2FA invalide")
+            raise HTTPException(status_code=400, detail="E-mail de receção 2FA inválido")
         updates["two_fa_email"] = val or None
     if body.email is not None and body.email.lower() != user["email"]:
         full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
         if full.get("auth_provider") == "google":
             raise HTTPException(status_code=400,
-                                detail="Compte Google — l'email ne peut pas être modifié")
+                                detail="Conta Google — o email não pode ser alterado")
         if not body.current_password or not verify_password(
                 body.current_password, full.get("password_hash") or ""):
             raise HTTPException(status_code=401,
-                                detail="Mot de passe actuel requis pour changer l'email")
+                                detail="Palavra-passe atual obrigatória para alterar o email")
         new_email = body.email.lower()
         if await db.users.find_one({"email": new_email}):
-            raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
+            raise HTTPException(status_code=400, detail="Já existe uma conta com este email")
         updates["email"] = new_email
     if not updates:
         return {"user": _public(user)}
@@ -390,6 +409,29 @@ async def set_language(body: LanguageIn, user=Depends(current_user)) -> dict:
     return {"lang": lang}
 
 
+class ThemeIn(BaseModel):
+    theme: Literal["light", "dark"]
+
+
+class NavFavoritesIn(BaseModel):
+    favorites: list[str] = Field(default_factory=list, max_length=30)
+
+
+@router.put("/nav-favorites")
+async def set_nav_favorites(body: NavFavoritesIn, user=Depends(current_user)) -> dict:
+    """Favoris du menu (chemins d'outils), synchronisés entre appareils."""
+    favs = list(dict.fromkeys(f for f in body.favorites if isinstance(f, str) and f.startswith("/") and len(f) <= 80))
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"nav_favorites": favs}})
+    return {"nav_favorites": favs}
+
+
+@router.put("/theme")
+async def set_theme(body: ThemeIn, user=Depends(current_user)) -> dict:
+    """Mémorise le thème jour/nuit sur le compte (retrouvé sur tous les appareils)."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"theme": body.theme}})
+    return {"theme": body.theme}
+
+
 class PhotoIn(BaseModel):
     image_b64: str
 
@@ -403,13 +445,13 @@ async def upload_profile_photo(body: PhotoIn, user=Depends(current_user)) -> dic
     try:
         data = base64.b64decode(body.image_b64.split(",")[-1])
     except Exception:
-        raise HTTPException(status_code=400, detail="Image invalide")
+        raise HTTPException(status_code=400, detail="Imagem inválida")
     if len(data) > 5_000_000:
-        raise HTTPException(status_code=400, detail="Image trop lourde (5 Mo max)")
+        raise HTTPException(status_code=400, detail="Imagem demasiado pesada (máx. 5 MB)")
     try:
         img = Image.open(BytesIO(data)).convert("RGB")
     except Exception:
-        raise HTTPException(status_code=400, detail="Format d'image non reconnu")
+        raise HTTPException(status_code=400, detail="Formato de imagem não reconhecido")
     img.thumbnail((256, 256))
     out = BytesIO()
     img.save(out, format="JPEG", quality=85)
@@ -436,12 +478,12 @@ _KYC_EXT = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png"}
 async def _store_kyc_file(user_id: str, kind: str, up: UploadFile) -> dict:
     ct = (up.content_type or "").lower()
     if ct not in _KYC_MAGIC:
-        raise HTTPException(415, "Type de document non supporté (PDF, JPEG ou PNG)")
+        raise HTTPException(415, "Tipo de documento não suportado (PDF, JPEG ou PNG)")
     data = await up.read(10 * 1024 * 1024 + 1)
     if not data or len(data) > 10 * 1024 * 1024:
-        raise HTTPException(413, "Document vide ou trop volumineux (10 Mo max)")
+        raise HTTPException(413, "Documento vazio ou demasiado volumoso (máx. 10 MB)")
     if not data.startswith(_KYC_MAGIC[ct]):
-        raise HTTPException(415, "Le contenu ne correspond pas au type de fichier")
+        raise HTTPException(415, "O conteúdo não corresponde ao tipo de ficheiro")
     from engines import storage
     path = f"private/kyc/{user_id}/{kind}/{uuid.uuid4().hex}.{_KYC_EXT[ct]}"
     storage.put_object(path, data, ct)
@@ -468,7 +510,7 @@ async def submit_kyc_documents(
         import re
         s = re.sub(r"[ .\-]", "", siret)
         if _valid_siret(s):
-            upd["siret"] = s
+            upd["siret"] = s[2:] if s.upper().startswith("PT") else s
     if (await db.users.find_one({"user_id": user["user_id"]}, {"account_type": 1})).get("account_type") not in ("pro", "pro_business"):
         upd["account_type"] = "pro"
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
@@ -505,10 +547,10 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
     upd = {"kyc_status": "verified" if body.approve else "rejected",
            "kyc_reviewed_by": admin["user_id"],
            "kyc_reviewed_at": datetime.now(timezone.utc).isoformat(),
-           "kyc_rejection_reason": None if body.approve else (body.reason or "Documents non conformes")}
+           "kyc_rejection_reason": None if body.approve else (body.reason or "Documentos não conformes")}
     r = await db.users.update_one({"user_id": body.user_id}, {"$set": upd})
     if not r.matched_count:
-        raise HTTPException(404, "Compte introuvable")
+        raise HTTPException(404, "Conta não encontrada")
     # Email de décision au pro (best-effort)
     try:
         u = await db.users.find_one({"user_id": body.user_id}, {"_id": 0, "email": 1, "name": 1})
@@ -516,46 +558,35 @@ async def review_kyc_pro(body: KycProReview, admin=Depends(admin_user)) -> dict:
         first = (u.get("name") or "").split(" ")[0]
         if body.approve:
             body_html = (
-                f"<p>Olá {first},</p>"
-                "<p>Bonne nouvelle : votre compte professionnel ConstruPilot vient d'être "
-                "<b>validé</b> ✅.</p>"
-                "<p>Vos justificatifs (K-bis, assurance décennale) sont conformes. "
-                "Vous bénéficiez désormais du badge <b>« Pro vérifié »</b> sur votre profil et vos devis.</p>"
-                "<p>Bonne continuation avec ConstruPilot !</p>"
+                f'<p>Olá {first},</p><p>Boas notícias: a sua conta profissional ConstruPilot acaba de ser <b>validada</b> ✅.</p><p>Os seus comprovativos (certidão permanente, alvará/certificado IMPIC e seguro) estão conformes. Passa a beneficiar do selo <b>«Profissional verificado»</b> no seu perfil e nos seus orçamentos.</p><p>Bom trabalho com o ConstruPilot!</p>'
             )
-            html = emailer.wrap_html("Votre compte Pro est validé ✅", body_html,
-                                     cta_url="https://construpilot.fr/dashboard",
-                                     cta_label="Accéder à mon espace")
-            subject = "Votre compte Pro ConstruPilot est validé ✅"
+            html = emailer.wrap_html("A sua conta Pro está validada ✅", body_html,
+                                     cta_url="https://construpilot.pt/dashboard",
+                                     cta_label="Aceder à minha área")
+            subject = "A sua conta Pro ConstruPilot está validada ✅"
         else:
             reason = upd["kyc_rejection_reason"]
             body_html = (
-                f"<p>Olá {first},</p>"
-                "<p>Après vérification, nous ne pouvons pas valider votre compte professionnel "
-                "pour le moment.</p>"
-                f"<p><b>Motif :</b> {reason}</p>"
-                "<p>Vous pouvez renvoyer des documents conformes depuis votre espace. "
-                "Notre équipe reste à votre disposition.</p>"
+                f'<p>Olá {first},</p><p>Após verificação, não podemos validar a sua conta profissional por agora.</p><p><b>Motivo:</b> {reason}</p><p>Pode reenviar documentos conformes a partir da sua área. A nossa equipa continua ao seu dispor.</p>'
             )
-            html = emailer.wrap_html("Validation de votre compte Pro", body_html,
-                                     cta_url="https://construpilot.fr/compte",
-                                     cta_label="Renvoyer mes documents")
-            subject = "Votre compte Pro ConstruPilot — action requise"
+            html = emailer.wrap_html("Validação da sua conta Pro", body_html,
+                                     cta_url="https://construpilot.pt/compte",
+                                     cta_label="Reenviar os meus documentos")
+            subject = "A sua conta Pro ConstruPilot — ação necessária"
         await emailer.send_email(u["email"], subject, html)
     except Exception:
-        logging.getLogger("auth.kyc").exception(
-            "KYC status email failed for %s", u.get("email"))
+        pass
     return {"ok": True, "kyc_status": upd["kyc_status"]}
 
 
 @router.get("/admin/kyc-pros/{user_id}/doc/{kind}")
 async def get_kyc_doc(user_id: str, kind: str, admin=Depends(admin_user)):
     if kind not in ("kbis", "decennale"):
-        raise HTTPException(404, "Document inconnu")
+        raise HTTPException(404, "Documento desconhecido")
     u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "kyc_documents": 1})
     meta = ((u or {}).get("kyc_documents") or {}).get(kind)
     if not meta:
-        raise HTTPException(404, "Document introuvable")
+        raise HTTPException(404, "Documento não encontrado")
     from engines import storage
     content, ct = storage.get_object(meta["path"])
     return Response(content, media_type=meta.get("content_type") or ct,
@@ -574,7 +605,8 @@ class ResetIn(BaseModel):
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotIn, request: Request) -> dict:
+@limiter.limit("3/minute")
+async def forgot_password(body: ForgotIn, request: Request, response: Response) -> dict:
     """Envoie un lien de réinitialisation (réponse identique que le compte existe
     ou non — anti-énumération). Max 3 demandes/heure par email."""
     import os
@@ -616,35 +648,41 @@ async def forgot_password(body: ForgotIn, request: Request) -> dict:
         from engines.emailer import send_email
         try:
             await send_email(email, subject, html)
-        except Exception as e:
-            # Não bloqueia a resposta (anti-enumeração), mas regista para diagnóstico.
-            import logging
-            logging.getLogger("auth.forgot_password").error(
-                f"forgot-password Resend failed for {email}: {type(e).__name__}: {e}"
-            )
+        except Exception:
+            pass
     asyncio.create_task(_send())
     return {"ok": True}
 
 
 @router.post("/reset-password")
-async def reset_password(body: ResetIn) -> dict:
+@limiter.limit("5/minute")
+async def reset_password(body: ResetIn, request: Request, response: Response) -> dict:
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail="Nova palavra-passe: mínimo 8 caracteres")
     th = hashlib.sha256(body.token.encode()).hexdigest()
     rec = await db.password_reset_tokens.find_one({"token_hash": th, "used": False})
     if not rec:
-        raise HTTPException(status_code=400, detail="Lien invalide ou déjà utilisé")
+        raise HTTPException(status_code=400, detail="Ligação inválida ou já utilizada")
     exp = rec["expires_at"]
     if exp.tzinfo is None:
         exp = exp.replace(tzinfo=timezone.utc)
     if exp < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Lien expiré — refaites une demande")
+        raise HTTPException(status_code=400, detail="Ligação expirada — faça um novo pedido")
+    password_hash = hash_password(body.new_password)
+    consumed = await db.password_reset_tokens.update_one(
+        {"_id": rec["_id"], "used": False, "expires_at": {"$gt": datetime.now(timezone.utc)}},
+        {"$set": {"used": True}})
+    if consumed.modified_count != 1:
+        raise HTTPException(status_code=400, detail="Ligação inválida ou já utilizada")
     await db.users.update_one(
         {"user_id": rec["user_id"]},
-        {"$set": {"password_hash": hash_password(body.new_password),
+        {"$set": {"password_hash": password_hash,
                   "must_change_password": False,
-                  "password_changed_at": datetime.now(timezone.utc).isoformat()}})
-    await db.password_reset_tokens.update_one({"_id": rec["_id"]}, {"$set": {"used": True}})
+                  "password_changed_at": datetime.now(timezone.utc).isoformat()},
+         "$inc": {"token_version": 1}})
+    await db.two_fa_codes.delete_many({"user_id": rec["user_id"]})
+    await db.password_reset_tokens.update_many(
+        {"user_id": rec["user_id"], "used": False}, {"$set": {"used": True}})
     await db.user_sessions.delete_many({"user_id": rec["user_id"]})
     return {"ok": True}
 
@@ -668,25 +706,15 @@ async def _register_device(user: dict, request: Request) -> None:
     if user.get("role") != "admin":
         return
     html = (
-        f"<p>Olá {user.get('name') or ''},</p>"
-        f"<p>Foi detetada uma sessão iniciada na tua conta <b>administrador ConstruPilot</b> "
-        f"a partir de um novo dispositivo:</p>"
-        f"<ul><li><b>Endereço IP</b>: {ip}</li>"
-        f"<li><b>Dispositivo / browser</b>: {ua}</li>"
-        f"<li><b>Data</b>: {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}</li></ul>"
-        f"<p style='font-size:12px;color:#666'>Se foste tu, não é necessária qualquer ação. "
-        f"Caso contrário, altera imediatamente a palavra-passe a partir da página A minha conta.</p>"
+        f"<p>Olá {user.get('name') or ''},</p><p>Acabou de ocorrer um início de sessão na sua conta <b>administrador ConstruPilot</b> a partir de um novo dispositivo:</p><ul><li><b>Endereço IP</b>: {ip}</li><li><b>Dispositivo / navegador</b>: {ua}</li><li><b>Date</b> : {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}</li></ul><p style='font-size:12px;color:#666'>Se foi o próprio, não é necessária nenhuma ação. Caso contrário, altere imediatamente a sua palavra-passe na página A minha conta.</p>"
     )
 
     async def _send():
         from engines.emailer import send_email
         try:
-            await send_email(user["email"], "Novo início de sessão admin — ConstruPilot", html)
-        except Exception as e:
-            import logging
-            logging.getLogger("auth.admin_login_alert").error(
-                f"admin login alert email failed for {user.get('email')}: {type(e).__name__}: {e}"
-            )
+            await send_email(user["email"], "Novo início de sessão de admin — ConstruPilot", html)
+        except Exception:
+            pass
     asyncio.create_task(_send())
 
 
@@ -716,8 +744,7 @@ async def _send_2fa_email(user: dict, code: str) -> None:
             recipient = user.get("two_fa_email") or user["email"]
             await send_email(recipient, T(lang, "twofa.subject", code=code), html)
         except Exception:
-            logging.getLogger("auth.2fa").exception(
-                "2FA code email failed for user=%s", user.get("user_id"))
+            pass
     asyncio.create_task(_send())
 
 
@@ -734,7 +761,7 @@ async def _start_2fa(user: dict) -> dict:
     recipient = user.get("two_fa_email") or user["email"]
     masked = _mask_email(recipient)
     return {"two_fa_required": True, "pending_token": pending,
-            "message": f"Code de vérification envoyé à {masked}"}
+            "message": f'Código de verificação enviado para {masked}'}
 
 
 class TwoFaVerifyIn(BaseModel):
@@ -743,27 +770,34 @@ class TwoFaVerifyIn(BaseModel):
 
 
 @router.post("/verify-2fa")
+@limiter.limit("10/minute")
 async def verify_2fa(body: TwoFaVerifyIn, request: Request, response: Response) -> dict:
     rec = await db.two_fa_codes.find_one({"pending_token": body.pending_token})
     if not rec:
         raise HTTPException(status_code=401,
-                            detail="Session de vérification expirée — reconnectez-vous")
+                            detail="Sessão de verificação expirada — inicie sessão novamente")
     exp = rec["expires_at"]
     if exp.tzinfo is None:
         exp = exp.replace(tzinfo=timezone.utc)
     if exp < datetime.now(timezone.utc):
         await db.two_fa_codes.delete_one({"_id": rec["_id"]})
-        raise HTTPException(status_code=401, detail="Code expiré — reconnectez-vous")
+        raise HTTPException(status_code=401, detail="Código expirado — inicie sessão novamente")
     if rec.get("attempts", 0) >= 5:
         await db.two_fa_codes.delete_one({"_id": rec["_id"]})
-        raise HTTPException(status_code=429, detail="Trop d'essais — reconnectez-vous")
+        raise HTTPException(status_code=429, detail="Demasiadas tentativas — inicie sessão novamente")
     if hashlib.sha256(body.code.strip().encode()).hexdigest() != rec["code_hash"]:
         await db.two_fa_codes.update_one({"_id": rec["_id"]}, {"$inc": {"attempts": 1}})
-        raise HTTPException(status_code=401, detail="Code incorrect")
-    await db.two_fa_codes.delete_one({"_id": rec["_id"]})
+        raise HTTPException(status_code=401, detail="Código incorreto")
+    consumed = await db.two_fa_codes.delete_one(
+        {"_id": rec["_id"], "code_hash": rec["code_hash"],
+         "attempts": {"$lt": 5}, "expires_at": {"$gt": datetime.now(timezone.utc)}})
+    if consumed.deleted_count != 1:
+        raise HTTPException(status_code=401, detail="Código expirado ou já utilizado")
     user = await db.users.find_one({"user_id": rec["user_id"]}, {"_id": 0})
     if not user:
-        raise HTTPException(status_code=401, detail="Compte introuvable")
+        raise HTTPException(status_code=401, detail="Conta não encontrada")
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Conta desativada")
     await _register_device(user, request)
     token = await _set_session(response, user["user_id"])
     return {"user": _public(user),
@@ -780,9 +814,9 @@ async def resend_2fa(body: TwoFaResendIn) -> dict:
     rec = await db.two_fa_codes.find_one({"pending_token": body.pending_token})
     if not rec:
         raise HTTPException(status_code=401,
-                            detail="Session de vérification expirée — reconnectez-vous")
+                            detail="Sessão de verificação expirada — inicie sessão novamente")
     if rec.get("resends", 0) >= 3:
-        raise HTTPException(status_code=429, detail="Limite de renvois atteinte — reconnectez-vous")
+        raise HTTPException(status_code=429, detail="Limite de reenvios atingido — inicie sessão novamente")
     code = f"{secrets.randbelow(900000) + 100000}"
     await db.two_fa_codes.update_one(
         {"_id": rec["_id"]},
@@ -803,13 +837,13 @@ class TwoFaToggleIn(BaseModel):
 @router.put("/2fa")
 async def toggle_2fa(body: TwoFaToggleIn, user=Depends(current_user)) -> dict:
     if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+        raise HTTPException(status_code=403, detail="Reservado aos administradores")
     if not body.enabled:
         full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
         if not body.current_password or not verify_password(
                 body.current_password, full.get("password_hash") or ""):
             raise HTTPException(status_code=401,
-                                detail="Mot de passe actuel requis pour désactiver la double authentification")
+                                detail="Palavra-passe atual necessária para desativar a autenticação de dois fatores")
     await db.users.update_one({"user_id": user["user_id"]},
                               {"$set": {"two_fa_enabled": body.enabled}})
     fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
@@ -851,13 +885,13 @@ async def logout_other_devices(response: Response, user=Depends(current_user)) -
 async def google_session(request: Request, response: Response) -> dict:
     session_id = request.headers.get("X-Session-ID") or (await request.json()).get("session_id")
     if not session_id:
-        raise HTTPException(status_code=400, detail="session_id manquant")
+        raise HTTPException(status_code=400, detail="session_id em falta")
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.get(
             "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
             headers={"X-Session-ID": session_id})
     if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="Session Google invalide")
+        raise HTTPException(status_code=401, detail="Sessão Google inválida")
     data = r.json()
     email = (data.get("email") or "").lower()
     user = await db.users.find_one({"email": email}, {"_id": 0})
@@ -865,6 +899,7 @@ async def google_session(request: Request, response: Response) -> dict:
         user = {
             "user_id": new_user_id(), "email": email, "name": data.get("name") or email,
             "picture": data.get("picture"), "role": "user", "plan": "free",
+            "account_type": "particulier",
             "auth_provider": "google", "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.users.insert_one(user)
@@ -872,7 +907,11 @@ async def google_session(request: Request, response: Response) -> dict:
         await db.users.update_one({"user_id": user["user_id"]},
                                   {"$set": {"picture": data.get("picture") or user.get("picture"),
                                             "name": data.get("name") or user.get("name")}})
-    token = await _set_session(response, user["user_id"], data.get("session_token"))
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Conta desativada")
+    if user.get("role") == "admin" and user.get("two_fa_enabled"):
+        return await _start_2fa(user)
+    token = await _set_session(response, user["user_id"])
     await _register_device(user, request)
     return {"user": _public(user), "session_token": token}
 
@@ -889,3 +928,34 @@ async def logout(request: Request, response: Response, user=Depends(optional_use
         await db.user_sessions.delete_many({"session_token": token})
     response.delete_cookie("session_token", path="/", secure=True, samesite="lax")
     return {"ok": True}
+
+
+
+class DeleteAccountIn(BaseModel):
+    password: str | None = None
+    confirm: str
+
+
+@router.delete("/account")
+@limiter.limit("5/hour")
+async def delete_my_account(body: DeleteAccountIn, request: Request, response: Response,
+                            user=Depends(current_user)) -> dict:
+    """Auto-suppression définitive du compte et de toutes ses données (RGPD / Google Play)."""
+    if (body.confirm or "").strip().upper() not in ("ELIMINAR", "SUPPRIMER"):
+        raise HTTPException(400, "Escreva ELIMINAR para confirmar")
+    if user.get("role") == "admin":
+        raise HTTPException(403, "Uma conta de administrador não pode ser eliminada aqui")
+    full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if full and full.get("password_hash"):
+        if not body.password or not verify_password(body.password, full["password_hash"]):
+            raise HTTPException(400, "Palavra-passe incorreta")
+    purged = await purge_user_data(user["user_id"])
+    await db.users.delete_one({"user_id": user["user_id"]})
+    await db.deleted_accounts.insert_one({
+        "email_hash": hashlib.sha256((full or {}).get("email", "").encode()).hexdigest(),
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "purged_total": sum(purged.values()),
+    })
+    response.delete_cookie("session_token", path="/", secure=True, samesite="lax")
+    return {"ok": True, "purged_total": sum(purged.values())}
+

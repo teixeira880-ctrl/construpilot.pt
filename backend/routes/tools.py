@@ -25,27 +25,16 @@ class CalcIn(BaseModel):
 async def run_calculator(key: str, body: CalcIn):
     cfg = calculators.CALCULATORS.get(key)
     if not cfg:
-        raise HTTPException(status_code=404, detail="Calculateur inconnu")
-    allowed = {f["name"] for f in cfg["fields"]}
-    args = {}
-    for f in cfg["fields"]:
-        v = body.params.get(f["name"], f.get("default"))
-        if v is None or v == "":
-            continue
-        if f["type"] == "number":
-            try:
-                v = float(v)
-            except (TypeError, ValueError):
-                continue
-        if f["type"] == "boolean":
-            v = bool(v)
-        args[f["name"]] = v
-    args = {k: v for k, v in args.items() if k in allowed}
-    return cfg["fn"](**args)
+        raise HTTPException(status_code=404, detail="Calculadora desconhecida")
+    from engines.calculator_validation import run_validated
+    try:
+        return run_validated(key, body.params)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
 
 
 class CalcPdfIn(BaseModel):
-    name: str = "Calcul matériaux"
+    name: str = "Cálculo de materiais"
     inputs: list[dict] = []
     results: list[dict] = []
     materials: list[dict] = []
@@ -76,11 +65,11 @@ async def calculator_pdf(body: CalcPdfIn):
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
-                            topMargin=16 * mm, bottomMargin=14 * mm, title="Fiche de calcul")
-    flow = [Paragraph("ConstruPilot — Fiche de calcul", h1), Paragraph(body.name, sub)]
+                            topMargin=16 * mm, bottomMargin=14 * mm, title="Ficha de cálculo")
+    flow = [Paragraph("ConstruPilot — Ficha de cálculo", h1), Paragraph(body.name, sub)]
 
     if body.inputs:
-        flow.append(Paragraph("Paramètres", sec))
+        flow.append(Paragraph("Definições", sec))
         rows = [[str(i.get("label", "")), str(i.get("value", ""))] for i in body.inputs]
         t = Table(rows, colWidths=[90 * mm, 84 * mm])
         t.setStyle(TableStyle([
@@ -93,8 +82,8 @@ async def calculator_pdf(body: CalcPdfIn):
         flow.append(t)
 
     if body.results:
-        flow.append(Paragraph("Résultats", sec))
-        rows = [["Poste", "Quantité", "Unité"]]
+        flow.append(Paragraph("Resultados", sec))
+        rows = [["Artigo", "Quantidade", "Un."]]
         for r in body.results:
             rows.append([str(r.get("label", "")), str(r.get("value", "")), str(r.get("unit", ""))])
         t = Table(rows, colWidths=[104 * mm, 40 * mm, 30 * mm])
@@ -109,8 +98,8 @@ async def calculator_pdf(body: CalcPdfIn):
         flow.append(t)
 
     if body.materials:
-        flow.append(Paragraph("Liste de courses matériaux", sec))
-        rows = [["Matériau", "Quantité", "Unité"]]
+        flow.append(Paragraph("Lista de compras materiais", sec))
+        rows = [["Material", "Quantidade", "Un."]]
         for m in body.materials:
             rows.append([str(m.get("name", "")), str(m.get("quantity", "")), str(m.get("unit", ""))])
         t = Table(rows, colWidths=[104 * mm, 40 * mm, 30 * mm])
@@ -126,8 +115,8 @@ async def calculator_pdf(body: CalcPdfIn):
 
     flow.append(Spacer(1, 10))
     if body.priced_lines:
-        flow.append(Paragraph("Devis matériaux — prix fournisseurs", sec))
-        rows = [["Produit", "Qté", "Fournisseur", "PU", "Total"]]
+        flow.append(Paragraph("Orçamento de materiais — preços fornecedores", sec))
+        rows = [["Produto", "Qtd.", "Fornecedor", "PU", "Total"]]
         for l in body.priced_lines:
             rows.append([str(l.get("name", "")), str(l.get("quantity", "")),
                          str(l.get("supplier", "")),
@@ -145,26 +134,25 @@ async def calculator_pdf(body: CalcPdfIn):
         flow.append(t)
         flow.append(Spacer(1, 8))
         flow.append(Paragraph(
-            f"Total devis matériaux (prix fournisseurs) : <b>{(body.priced_total or 0):,.2f} €</b>".replace(",", " "),
+            f'Total do orçamento de materiais (preços de fornecedores): <b>{body.priced_total or 0:,.2f} €</b>'.replace(",", " "),
             ParagraphStyle("bud2", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
     else:
-        flow.append(Paragraph(f"Budget matériaux estimé : <b>{body.estimated_budget:,.0f} €</b>".replace(",", " "),
+        flow.append(Paragraph(f'Orçamento de materiais estimado: <b>{body.estimated_budget:,.0f} €</b>'.replace(",", " "),
                               ParagraphStyle("bud", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
     flow.append(Spacer(1, 16))
     flow.append(Paragraph(
-        "Estimation indicative avec marges de sécurité incluses. Les quantités peuvent varier selon la mise "
-        "en œuvre et les conditions de chantier. Vérifiez avant commande. — Généré par ConstruPilot · construpilot.fr",
+        "Estimativa indicativa com margens de segurança incluídas. As quantidades podem variar consoante a execução e as condições de obra. Verifique antes de encomendar. — Gerado pelo ConstruPilot · construpilot.pt",
         small))
 
     doc.build(flow)
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/pdf",
-                             headers={"Content-Disposition": 'attachment; filename="fiche-calcul-construpilot.pdf"'})
+                             headers={"Content-Disposition": "attachment; filename=\"ficha-calculo-construpilot.pdf\""})
 
 
 
 class ShareCalcIn(BaseModel):
-    name: str = "Calcul matériaux"
+    name: str = "Cálculo de materiais"
     inputs: list[dict] = []
     results: list[dict] = []
     materials: list[dict] = []
@@ -187,7 +175,7 @@ async def share_calculator(body: ShareCalcIn):
 async def get_shared_calculator(share_id: str):
     doc = await db.shared_calcs.find_one({"share_id": share_id}, {"_id": 0})
     if not doc:
-        raise HTTPException(status_code=404, detail="Fiche introuvable")
+        raise HTTPException(status_code=404, detail="Ficha não encontrada")
     return doc
 
 
@@ -217,4 +205,4 @@ async def diy_guide(key: str, body: CalcIn):
     try:
         return diy.build_guide(key, body.params)
     except KeyError:
-        raise HTTPException(status_code=404, detail="Travail inconnu")
+        raise HTTPException(status_code=404, detail="Trabalho desconhecido")

@@ -33,9 +33,9 @@ export const ProfileForm = () => {
           image_b64: canvas.toDataURL("image/jpeg", 0.85),
         });
         setUser(data.user);
-        toast.success("Foto de perfil actualizada");
+        toast.success("Foto de perfil atualizada");
       } catch {
-        toast.error("Envio da foto impossível");
+        toast.error("Impossível enviar a foto");
       }
       URL.revokeObjectURL(img.src);
     };
@@ -49,14 +49,14 @@ export const ProfileForm = () => {
       setUser(data.user);
       toast.success("Foto eliminada");
     } catch {
-      toast.error("Eliminação impossível");
+      toast.error("Não foi possível eliminar");
     }
   };
 
   const save = async (e) => {
     e.preventDefault();
     if (emailChanged && !pwd) {
-      return toast.error("Palavra-passe actual obrigatória para alterar o e-mail");
+      return toast.error("Palavra-passe atual obrigatória para alterar o email");
     }
     setBusy(true);
     try {
@@ -68,10 +68,10 @@ export const ProfileForm = () => {
       const { data } = await api.put("/auth/profile", body);
       setUser(data.user);
       setPwd("");
-      toast.success("Perfil actualizado");
+      toast.success("Perfil atualizado");
     } catch (err) {
       const d = err?.response?.data?.detail;
-      toast.error(typeof d === "string" ? d : "Actualização impossível");
+      toast.error(typeof d === "string" ? d : "Não foi possível atualizar");
     } finally {
       setBusy(false);
     }
@@ -80,7 +80,7 @@ export const ProfileForm = () => {
   return (
     <form onSubmit={save} className="surface p-5 space-y-4" data-testid="profile-form">
       <p className="font-semibold flex items-center gap-2">
-        <UserCog className="h-4 w-4 text-primary" /> Mes informations
+        <UserCog className="h-4 w-4 text-primary" /> As minhas informações
       </p>
       <div className="flex items-center gap-4" data-testid="profile-photo-section">
         {user?.picture ? (
@@ -97,44 +97,44 @@ export const ProfileForm = () => {
                  onChange={onPhoto} data-testid="profile-photo-input" />
           <Button type="button" variant="outline" size="sm" className="rounded-sm gap-2"
                   onClick={() => fileRef.current?.click()} data-testid="profile-photo-upload-btn">
-            <Camera className="h-3.5 w-3.5" /> {user?.picture ? "Alterar foto" : "Adicionar foto"}
+            <Camera className="h-3.5 w-3.5" /> {user?.picture ? "Alterar a foto" : "Adicionar uma foto"}
           </Button>
           {user?.picture && (
             <Button type="button" variant="ghost" size="sm" className="rounded-sm gap-2 text-muted-foreground"
                     onClick={removePhoto} data-testid="profile-photo-remove-btn">
-              <Trash2 className="h-3.5 w-3.5" /> Supprimer
+              <Trash2 className="h-3.5 w-3.5" /> Eliminar
             </Button>
           )}
         </div>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="pf-name" className="text-xs">Nom complet</Label>
+        <Label htmlFor="pf-name" className="text-xs">Nome completo</Label>
         <Input id="pf-name" value={name} required minLength={2} maxLength={80}
                onChange={(e) => setName(e.target.value)}
                data-testid="profile-name-input" className="rounded-sm" />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="pf-phone" className="text-xs">Téléphone</Label>
+        <Label htmlFor="pf-phone" className="text-xs">Telefone</Label>
         <Input id="pf-phone" type="tel" value={phone} maxLength={20}
                placeholder="+33 6 12 34 56 78"
                onChange={(e) => setPhone(e.target.value)}
                data-testid="profile-phone-input" className="rounded-sm" />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="pf-email" className="text-xs">Email de connexion</Label>
+        <Label htmlFor="pf-email" className="text-xs">Email de ligação</Label>
         <Input id="pf-email" type="email" value={email} required disabled={isGoogle}
                onChange={(e) => setEmail(e.target.value)}
                data-testid="profile-email-input" className="rounded-sm" />
         {isGoogle && (
           <p className="text-[10px] text-muted-foreground">
-            Compte connecté via Google — l'email ne peut pas être modifié.
+            Conta ligada via Google — o e-mail não pode ser alterado.
           </p>
         )}
       </div>
       {emailChanged && !isGoogle && (
         <div className="grid gap-1.5">
           <Label htmlFor="pf-pwd" className="text-xs">
-            Mot de passe actuel (requis pour changer l'email)
+            Palavra-passe atual (necessária para alterar o e-mail)
           </Label>
           <Input id="pf-pwd" type="password" value={pwd} required
                  onChange={(e) => setPwd(e.target.value)}

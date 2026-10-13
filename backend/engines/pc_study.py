@@ -21,6 +21,8 @@ import math
 import os
 import re
 from datetime import datetime, timezone
+from engines.llm_keys import studies_key
+from engines.plan_ai import plan_model
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +31,9 @@ RULES = {
     "semelle_width_m": 0.60,
     "semelle_height_m": 0.30,
     "slab_thickness_m": 0.15,
-    "wall_material": "Brique isobrique",
+    "wall_material": "Tijolo térmico",
     "wall_thickness_m": 0.20,
-    "stairs_material": "Béton armé",
+    "stairs_material": "Betão armado",
     "acier_semelle_kg_ml": 15.0,     # 3+3 HA10 filants + cadres HA6
     "acier_dalle_kg_m2": 14.0,       # treillis ST25C + chapeaux
     "acier_escalier_kg_m3": 100.0,
@@ -65,28 +67,28 @@ PC_UNIT_PRICES = {
     "protection_securite": {"mat": 1500.0, "mo": 900.0},  # forfait — garde-corps, filets, signalisation, PPSPS
 }
 
-TVA_RATE = 0.20  # construction neuve
+TVA_RATE = 0.23  # construção nova — taxa normal de IVA (Portugal continental)
 
 # ---- Planning de chantier ---------------------------------------------
 CREW_SIZE = 3
 HOURLY_RATE_EUR = 35.0  # coût horaire MO — convertit les PU MO en heures
 
 PLANNING_PHASES = [
-    ("Instalação de estaleiro — base de vida, vedação, equipamentos, andaimes",
-     ["Instalação de estaleiro", "Equipamentos", "Andaimes", "Proteção coletiva"], 0),
-    ("Movimento de terras — decapagem, valas, aterros", ["Movimento de terras completo"], 0),
-    ("Fundações — betão de limpeza + sapatas contínuas 60×30 + aço",
-     ["limpeza", "Sapatas contínuas", "Aço sapatas", "Execução de fundações"], 7),
-    ("Laje térrea esp. 15 cm + rede electrossoldada",
-     ["Laje térrea", "electrossoldada", "Cofragem de bordos"], 7),
-    ("Elevação — paredes tijolo isobrique + cintas + lintéis",
-     ["isobrique", "Cintas", "Lintéis"], 2),
-    ("Laje de piso — vigotas-abobadilhas + capa de compressão",
+    ("Instalação de estaleiro — instalações sociais, vedação, máquinas, andaime",
+     ["Instalação de estaleiro", "Máquinas", "Andaime", "Protection collective"], 0),
+    ("Movimento de terras — decapagem, abertura de valas, aterros", ["Movimento de terras completo"], 0),
+    ("Fundações — betão de limpeza + sapatas contínuas 60×30 + aços",
+     ["propreté", "Sapatas contínuas", "Aços sapatas", "Execução de fundações"], 7),
+    ("Laje térrea R/C esp. 15 cm + malha",
+     ["Laje térrea R/C", "Malha", "Cofragem de bordas"], 7),
+    ("Alvenarias — paredes de tijolo térmico + lintéis + padieiras",
+     ["tijolo térmico", "Lintéis", "Padieiras"], 2),
+    ("Laje de piso — vigotas e abobadilhas + lâmina de compressão",
      ["Laje de piso"], 7),
-    ("Escada em betão armado", ["Escada betão", "Escada em betão", "Aço escada"], 7),
-    ("Estrutura tradicional", ["Estrutura tradicional"], 0),
-    ("Cobertura em telha", ["Cobertura em telha"], 0),
-    ("Caixilharia exterior — assentamento das janelas", ["Caixilharia exterior"], 0),
+    ("Escada betão armado", ["Escada de betão", "Aços escada"], 7),
+    ("Carpintaria tradicional", ["Carpintaria tradicional"], 0),
+    ("Cobertura de telhas", ["Cobertura de telhas"], 0),
+    ("Caixilharia exterior — aplicação das janelas", ["Caixilharia exterior"], 0),
 ]
 
 
@@ -115,58 +117,21 @@ def compute_planning(lots: list[dict], crew_size: int = CREW_SIZE,
             "total_days": cursor - 1,
             "total_weeks": round((cursor - 1) / 5, 1)}
 
-PC_PROMPT = """Tu es un **économiste de la construction expert en Permis de Construire (PC) français**
-avec 25 ans d'expérience. Tu analyses UNE page d'un dossier de permis de construire
-(plan de masse, plan de niveau, façade, coupe, notice descriptive, CERFA…).
-
-Ta mission : IDENTIFIER le texte, le LIRE, COMPRENDRE ce qui est demandé, et extraire
-toutes les données nécessaires au chiffrage gros œuvre.
-
-Rends STRICTEMENT du JSON (pas de markdown) avec CETTE structure :
-
-{
-  "page_kind": "plan_niveau" | "plan_masse" | "facade" | "coupe" | "notice" | "cerfa" | "autre",
-  "texts_verbatim": ["textes clés lus sur la page, recopiés mot pour mot (max 15)"],
-  "demandes": ["ce que le PC demande, en clair (ex: 'Construction d'une maison individuelle R+1 de 120 m²')"],
-  "project": {
-    "nature_travaux": "construction maison neuve" | "extension" | "surélévation" | null,
-    "surface_plancher_m2": 120.0,
-    "emprise_au_sol_m2": 80.0,
-    "nb_niveaux": 2,
-    "hauteur_totale_m": 6.5,
-    "hauteur_sous_plafond_m": 2.5
-  },
-  "geometry": {
-    "perimeter_ext_m": 38.0,
-    "refends_porteurs_m": 9.0,
-    "ground_floor_area_m2": 80.0,
-    "upper_floors_area_m2": 40.0
-  },
-  "openings": {"count": 12, "total_area_m2": 22.0, "avg_width_m": 1.2},
-  "stairs": {"count": 1, "type": "droit" | "quart-tournant" | null, "steps": 15, "footprint_m2": 4.5},
-  "warnings": ["plan flou", "échelle absente", ...],
-  "confidence": 0.0-1.0
-}
-
-RÈGLES :
-- Lis TOUS les textes visibles (cotes, surfaces écrites, notice, cartouche, CERFA).
-- `demandes` = reformulation claire de ce que le pétitionnaire demande (nature, surface, niveaux).
-- Utilise les cotes écrites pour estimer périmètre et refends (murs porteurs intérieurs).
-- Si une valeur n'est pas déterminable sur CETTE page, mets null (jamais 0 par défaut).
-- Ordres de grandeur réalistes : HSP 2,50 m, niveau courant ~2,70 m brut.
-- Réponds UNIQUEMENT le JSON."""
+PC_PROMPT = "És um **orçamentista da construção especialista em projetos de licenciamento portugueses (RJUE)**\ncom 25 anos de experiência. Analisas UMA página de um processo de licenciamento\n(planta de implantação, planta de piso, alçado, corte, memória descritiva, formulários camarários…).\n\nA tua missão: IDENTIFICAR o texto, LÊ-LO, COMPREENDER o que é pedido e extrair\ntodos os dados necessários à orçamentação da estrutura e alvenarias.\n\nDevolve ESTRITAMENTE JSON (sem markdown) com ESTA estrutura:\n\n{\n  \"page_kind\": \"plan_niveau\" | \"plan_masse\" | \"facade\" | \"coupe\" | \"notice\" | \"cerfa\" | \"autre\",\n  \"texts_verbatim\": [\"textos-chave lidos na página, copiados palavra por palavra (máx. 15)\"],\n  \"demandes\": [\"o que o projeto pede, de forma clara (ex.: \'Construção de uma moradia unifamiliar de 2 pisos com 120 m²\')\"],\n  \"project\": {\n    \"nature_travaux\": \"construction maison neuve\" | \"extension\" | \"surélévation\" | null,\n    \"surface_plancher_m2\": 120.0,\n    \"emprise_au_sol_m2\": 80.0,\n    \"nb_niveaux\": 2,\n    \"hauteur_totale_m\": 6.5,\n    \"hauteur_sous_plafond_m\": 2.5\n  },\n  \"geometry\": {\n    \"perimeter_ext_m\": 38.0,\n    \"refends_porteurs_m\": 9.0,\n    \"ground_floor_area_m2\": 80.0,\n    \"upper_floors_area_m2\": 40.0\n  },\n  \"openings\": {\"count\": 12, \"total_area_m2\": 22.0, \"avg_width_m\": 1.2},\n  \"stairs\": {\"count\": 1, \"type\": \"droit\" | \"quart-tournant\" | null, \"steps\": 15, \"footprint_m2\": 4.5},\n  \"warnings\": [\"planta desfocada\", \"escala ausente\", ...],\n  \"confidence\": 0.0-1.0\n}\n\nREGRAS:\n- Lê TODOS os textos visíveis (cotas, áreas escritas, memória descritiva, legenda, formulários).\n- `demandes` = reformulação clara do que o requerente pede (natureza, área, pisos), em português europeu.\n- Utiliza as cotas escritas para estimar o perímetro e as paredes interiores resistentes.\n- Se um valor não for determinável NESTA página, põe null (nunca 0 por omissão).\n- Ordens de grandeza realistas: pé-direito 2,50 m (mínimo RGEU 2,40 m), piso corrente ~2,70 m bruto.\n- Responde APENAS com o JSON."
 
 
 async def analyze_pc_page(image_b64_png: str) -> dict:
     """Analyse UNE page d'un PC via GPT-Vision. Retourne toujours un dict."""
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    api_key = studies_key(plan_model()[0])
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent", "confidence": 0.0}
     try:
-        from emergentintegrations.llm.chat import ImageContent, LlmChat, UserMessage
-        chat = LlmChat(api_key=api_key, session_id="pc-study",
-                       system_message="Tu réponds toujours en JSON strict, sans markdown.",
-                       ).with_model("openai", "gpt-4o")
+        from emergentintegrations.llm.chat import ImageContent, UserMessage
+
+        from engines.expenses.metering import MeteredChat as LlmChat
+        chat = LlmChat(api_key=api_key, session_id="pc-study", expense_feature="planning_study",
+                       system_message="Respondes sempre em JSON estrito, sem markdown.",
+                       ).with_model(*plan_model())
         msg = UserMessage(text=PC_PROMPT,
                           file_contents=[ImageContent(image_base64=image_b64_png)])
         raw = await chat.send_message(msg)
@@ -252,7 +217,7 @@ def _resolve_inputs(merged: dict, overrides: dict, rooms_surface_m2: float) -> t
     levels = max(1, min(levels, 4))
     surface = res("surface_m2", merged.get("surface_plancher_m2"),
                   rooms_surface_m2 if rooms_surface_m2 > 0 else 100.0,
-                  "mesures plan" if rooms_surface_m2 > 0 else "estimé")
+                  "medições da planta" if rooms_surface_m2 > 0 else "estimé")
     s_rdc = merged.get("ground_floor_area_m2")
     if s_rdc is None:
         s_rdc = merged.get("emprise_au_sol_m2")
@@ -320,9 +285,8 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
     n_up = lv - 1 if i["upper_floors_area_m2"] > 0 else 0
 
     terrassement = [
-        _line("Movimento de terras completo — decapagem, valas, evacuação e aterros",
-              f"área {i['ground_floor_area_m2']} m² — {L_sem} ml de valas 60 × 60 "
-              "sob paredes resistentes (vg)", "vg", 1, "terrassement_complet", P),
+        _line("Movimento de terras completo — decapagem, abertura de valas, remoção e aterros",
+              f"emprise {i['ground_floor_area_m2']} m² — {L_sem} ml de valas 60 × 60 sob paredes resistentes (valor global)", "forfait", 1, "terrassement_complet", P),
     ]
 
     fondations = [
@@ -330,31 +294,30 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
               "C16/20 — largura 60 cm no fundo da vala", "m³",
               L_sem * 0.6 * 0.05, "beton_proprete", P),
         _line("Sapatas contínuas BA 60 × 30 cm",
-              f"C25/30 — {L_sem} ml sob todas as paredes resistentes", "m³",
+              f'C25/30 — {L_sem} ml sob todas as paredes resistentes', "m³",
               L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle", P),
-        _line("Aço sapatas — 3+3 HA10 contínuos + estribos HA6",
+        _line("Aços das sapatas — 3+3 Ø10 contínuos + estribos Ø6",
               f"{R['acier_semelle_kg_ml']} kg/ml × {L_sem} ml", "kg",
               L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
-        _line("Execução de fundações — implantação, cofragem, nivelamento e betonagem",
-              "vg mão de obra + consumíveis", "vg", 1, "fondations_moe", P),
+        _line("Execução das fundações — implantação, cofragem, acerto e betonagem",
+              "valor global mão de obra + consumíveis", "forfait", 1, "fondations_moe", P),
     ]
 
     ground = i["ground_floor_area_m2"]
     planchers = [
-        _line(f"Laje térrea — laje BA esp. {int(R['slab_thickness_m'] * 100)} cm",
+        _line(f"Laje térrea R/C — laje BA esp. {int(R['slab_thickness_m'] * 100)} cm",
               f"C25/30 — {ground} m²", "m³",
               ground * R["slab_thickness_m"], "beton_dalle", P),
-        _line("Rede electrossoldada ST25C + reforços",
+        _line("Malha eletrossoldada AQ38 + armaduras superiores",
               f"{R['acier_dalle_kg_m2']} kg/m² × {ground} m²", "kg",
               ground * R["acier_dalle_kg_m2"], "treillis_dalle", P),
-        _line("Cofragem de bordos de laje", "perímetro laje piso 0", "ml", per, "coffrage_rive", P),
+        _line("Cofragem dos bordos da laje", "perímetro da laje R/C", "ml", per, "coffrage_rive", P),
     ]
     if n_up:
         planchers.append(
-            _line("Laje de piso completa — vigotas-abobadilhas + capa de compressão",
-                  f"{i['upper_floors_area_m2']} m² — escoramento incluído "
-                  f"({n_up} piso(s), vg/piso)",
-                  "vg", n_up, "plancher_etage", P))
+            _line("Laje de piso completa — vigotas e abobadilhas + lâmina de compressão",
+                  f"{i['upper_floors_area_m2']} m² — escoramento incluído ({n_up} piso(s), valor global/piso)",
+                  "forfait", n_up, "plancher_etage", P))
 
     wall_gross = round((per + ref) * h * lv, 2)
     wall_net = round(max(0.0, wall_gross - i["openings_area_m2"]), 2)
@@ -365,19 +328,17 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
     ch_beton = (ch_h + ch_v) * 0.2 * 0.2
     lint_ml = round(i["openings_count"] * (i["avg_opening_width_m"] + 0.40), 2)
     murs = [
-        _line(f"Paredes em tijolo isobrique esp. {int(R['wall_thickness_m'] * 100)} cm",
-              f"{bricks} tijolos (≈ {R['bricks_per_m2']} un/m²) — assentamento com junta fina — "
-              f"{wall_gross} m² brutos − {i['openings_area_m2']} m² de vãos",
+        _line(f"Paredes em tijolo térmico esp. {int(R['wall_thickness_m'] * 100)} cm",
+              f"{bricks} briques (≈ {R['bricks_per_m2']} u/m²) — pose joint mince — {wall_gross} m² brutos − {i['openings_area_m2']} m² de vãos",
               "m²", wall_net, "mur_isobrique", P),
-        _line("Cintas horizontais + travamentos verticais BA 20 × 20",
-              f"{ch_h} ml cintas + {ch_v} ml travamentos ({n_raid} travamentos/piso)", "m³",
+        _line("Lintéis horizontais + pilaretes verticais BA 20 × 20",
+              f"{ch_h} ml CH + {ch_v} ml CV ({n_raid} raidisseurs/niveau)", "m³",
               ch_beton, "chainage_beton", P),
-        _line("Aço cintas — 4 HA10 + estribos HA6",
+        _line("Aços dos lintéis — 4 Ø10 + estribos Ø6",
               f"{R['acier_chainage_kg_ml']} kg/ml × {round(ch_h + ch_v, 1)} ml", "kg",
               (ch_h + ch_v) * R["acier_chainage_kg_ml"], "acier_chainage", P),
-        _line("Lintéis BA sobre vãos",
-              f"{i['openings_count']} vãos (larg. média {i['avg_opening_width_m']} m "
-              "+ 2 × 20 cm de apoios)", "ml", lint_ml, "linteau", P),
+        _line("Padieiras BA sobre vãos",
+              f"{i['openings_count']} vãos (larg. média {i['avg_opening_width_m']} m + 2 × 20 cm de apoio)", "ml", lint_ml, "linteau", P),
     ]
 
     escalier = []
@@ -385,48 +346,46 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
     if i["stairs_count"] > 0:
         vol_esc = round(i["stairs_count"] * _stair_volume(h, stairs_steps), 2)
         escalier = [
-            _line("Escada em betão armado betonada no local",
-                  f"{i['stairs_count']} lanço(s) — laje inclinada 15 cm + degraus 17 × 28, larg. 1,00 m",
+            _line("Escada de betão armado betonada no local",
+                  f"{i['stairs_count']} lanço(s) — lanço 15 cm + degraus 17 × 28, larg. 1,00 m",
                   "m³", vol_esc, "escalier_beton", P),
-            _line("Aço escada",
+            _line("Aços escada",
                   f"{R['acier_escalier_kg_m3']} kg/m³ × {vol_esc} m³", "kg",
                   vol_esc * R["acier_escalier_kg_m3"], "acier_escalier", P),
         ]
 
     toiture = [
-        _line("Estrutura tradicional — madeira maciça montada",
-              f"cobertura sobre área {i['ground_floor_area_m2']} m² (vg)",
-              "vg", 1, "charpente_trad", P),
-        _line("Cobertura em telha — telhas, sub-telha, ripas e cumeeira",
-              "fornecimento + assentamento (vg)", "vg", 1, "couverture_tuiles", P),
+        _line("Estrutura de cobertura tradicional — madeira maciça montada",
+              f"cobertura sobre implantação {i['ground_floor_area_m2']} m² (valor global)",
+              "forfait", 1, "charpente_trad", P),
+        _line("Cobertura em telha — telhas, subtelha, ripas e cumeeira",
+              "fornecimento + aplicação (valor global)", "forfait", 1, "couverture_tuiles", P),
     ]
 
     menuiseries = [
-        _line("Caixilharia exterior — janelas e portas-janela assentes",
-              f"{i['openings_count']} vãos (≈ {i['openings_area_m2']} m² "
-              "de vãos, vg)", "vg", 1, "menuiseries_ext", P),
+        _line("Caixilharia exterior — janelas e portas-janelas aplicadas",
+              f"{i['openings_count']} ouvertures (≈ {i['openings_area_m2']} m² de vãos, valor global)", "forfait", 1, "menuiseries_ext", P),
     ]
 
     chantier = [
-        _line("Instalação de estaleiro — base de vida, vedação, contentor de entulho",
-              "vg duração da obra", "vg", 1, "installation_chantier", P),
-        _line("Equipamentos e máquinas — grua/manipulador telescópico, betoneira, ferramentas",
-              "aluguer durante a estrutura (vg)", "vg", 1, "engins_levage", P),
-        _line("Andaimes perimetrais — aluguer, montagem e desmontagem",
-              f"perímetro {per} m (vg)", "vg", 1, "echafaudage", P),
-        _line("Proteção coletiva e segurança — guarda-corpos perimetrais, redes, "
-              "sinalização e PSS", "vg duração da obra", "vg", 1,
+        _line("Instalação de estaleiro — instalações sociais, vedação, contentor de entulho",
+              "valor global pela duração da obra", "forfait", 1, "installation_chantier", P),
+        _line("Máquinas e equipamentos — grua/manipulador telescópico, betoneira, ferramentas",
+              "aluguer pela duração da estrutura (valor global)", "forfait", 1, "engins_levage", P),
+        _line("Andaime periférico — aluguer, montagem e desmontagem",
+              f'périmètre {per} m (valor global)', "forfait", 1, "echafaudage", P),
+        _line("Proteção coletiva e segurança — guarda-corpos periféricos, redes, sinalização e plano de segurança e saúde", "valor global pela duração da obra", "forfait", 1,
               "protection_securite", P),
     ]
 
     lots = [l for l in [
-        {"lot": "Instalação de estaleiro e equipamentos", "lines": chantier},
-        {"lot": "Movimento de terras", "lines": terrassement},
-        {"lot": "Fundações", "lines": fondations},
-        {"lot": "Lajes / Pavimentos", "lines": planchers},
-        {"lot": "Elevação — paredes tijolo isobrique 20 cm", "lines": murs},
+        {"lot": "Instalação de estaleiro e máquinas", "lines": chantier},
+        {"lot": "Movimentação de terras", "lines": terrassement},
+        {"lot": "Fondations", "lines": fondations},
+        {"lot": "Pavimentos / Lajes", "lines": planchers},
+        {"lot": "Alvenarias — paredes de tijolo térmico 20 cm", "lines": murs},
         {"lot": "Escada de betão", "lines": escalier},
-        {"lot": "Estrutura e Cobertura", "lines": toiture},
+        {"lot": "Estrutura de cobertura e cobertura", "lines": toiture},
         {"lot": "Caixilharia exterior", "lines": menuiseries},
     ] if l["lines"]]
 
@@ -463,104 +422,103 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
                 "ht": round(sum(ln["total"] for ln in lines), 2)}
 
     out = [summarize("Estaleiro, movimento de terras e fundações", [
-        _line("Instalação de estaleiro — base de vida, vedação, contentor",
-              "vg", "vg", 1, "installation_chantier", P),
-        _line("Equipamentos e máquinas — grua/manipulador telescópico, betoneira, ferramentas",
-              "vg", "vg", 1, "engins_levage", P),
-        _line("Andaimes perimetrais — aluguer e montagem",
-              "vg", "vg", 1, "echafaudage", P),
-        _line("Proteção coletiva e segurança — guarda-corpos, redes, sinalização e PSS",
-              "vg", "vg", 1, "protection_securite", P),
-        _line("Movimento de terras completo — decapagem, valas, evacuação e aterros",
-              f"{L_sem} ml de valas 60 × 60", "vg", 1, "terrassement_complet", P),
+        _line("Instalação de estaleiro — instalações sociais, vedação, contentor de resíduos",
+              "forfait", "forfait", 1, "installation_chantier", P),
+        _line("Máquinas e equipamentos — grua/manipulador telescópico, betoneira, ferramentas",
+              "forfait", "forfait", 1, "engins_levage", P),
+        _line("Andaime periférico — aluguer e montagem",
+              "forfait", "forfait", 1, "echafaudage", P),
+        _line("Proteção coletiva e segurança — guarda-corpos, redes, sinalização e plano de segurança e saúde",
+              "forfait", "forfait", 1, "protection_securite", P),
+        _line("Movimento de terras completo — decapagem, valas, remoção e aterros",
+              f'{L_sem} ml de valas 60 × 60', "forfait", 1, "terrassement_complet", P),
         _line("Betão de limpeza esp. 5 cm", "C16/20", "m³",
               L_sem * 0.6 * 0.05, "beton_proprete", P),
         _line("Sapatas contínuas BA 60 × 30 cm", f"{L_sem} ml", "m³",
               L_sem * R["semelle_width_m"] * R["semelle_height_m"], "beton_semelle", P),
-        _line("Aço sapatas (3+3 HA10 + estribos HA6)", f"{R['acier_semelle_kg_ml']} kg/ml",
+        _line("Aços das sapatas (3+3 Ø10 + estribos Ø6)", f"{R['acier_semelle_kg_ml']} kg/ml",
               "kg", L_sem * R["acier_semelle_kg_ml"], "acier_semelle", P),
-        _line("Execução de fundações — implantação, cofragem, betonagem",
-              "vg", "vg", 1, "fondations_moe", P),
+        _line("Execução das fundações — implantação, cofragem, betonagem",
+              "forfait", "forfait", 1, "fondations_moe", P),
     ], 0, 0.0)]
 
     for k in range(lv):
-        name = "Piso 0" if k == 0 else f"Piso {k}"
+        name = "RDC" if k == 0 else f"R+{k}"
         wall_net = round(max(0.0, (per + ref) * h - open_per_lvl), 2)
         briques = math.ceil(wall_net * R["bricks_per_m2"])
         ch_ml = round((per + ref) + n_raid * h, 2)
         if k == 0:
             ground = i["ground_floor_area_m2"]
             lines = [
-                _line(f"Laje térrea — laje BA esp. {int(R['slab_thickness_m'] * 100)} cm",
+                _line(f"Laje térrea R/C — laje BA esp. {int(R['slab_thickness_m'] * 100)} cm",
                       f"{ground} m²", "m³", ground * R["slab_thickness_m"],
                       "beton_dalle", P),
-                _line("Rede electrossoldada ST25C + reforços", f"{R['acier_dalle_kg_m2']} kg/m²",
+                _line("Malha eletrossoldada AQ38 + armaduras superiores", f"{R['acier_dalle_kg_m2']} kg/m²",
                       "kg", ground * R["acier_dalle_kg_m2"], "treillis_dalle", P),
-                _line("Cofragem de bordos de laje", "perímetro piso 0", "ml",
+                _line("Cofragem dos bordos da laje", "perímetro do R/C", "ml",
                       per, "coffrage_rive", P),
             ]
         elif i["upper_floors_area_m2"] > 0:
             lines = [
-                _line("Laje de piso completa — vigotas-abobadilhas + capa de compressão",
-                      f"≈ {round(i['upper_floors_area_m2'] / max(1, lv - 1), 2)} m² "
-                      "— escoramento incluído (vg)", "vg", 1, "plancher_etage", P),
+                _line("Laje de piso completa — vigotas e abobadilhas + lâmina de compressão",
+                      f"≈ {round(i['upper_floors_area_m2'] / max(1, lv - 1), 2)} m² — escoramento incluído (valor global)", "forfait", 1, "plancher_etage", P),
             ]
         else:
             lines = []
         lines += [
-            _line(f"Paredes tijolo isobrique esp. {int(R['wall_thickness_m'] * 100)} cm",
-                  f"{briques} tijolos", "m²", wall_net, "mur_isobrique", P),
-            _line("Cintas + travamentos verticais (BA 20 × 20)", f"{ch_ml} ml", "m³",
+            _line(f"Paredes de tijolo térmico esp. {int(R['wall_thickness_m'] * 100)} cm",
+                  f"{briques} briques", "m²", wall_net, "mur_isobrique", P),
+            _line("Lintéis horizontais + pilaretes (BA 20 × 20)", f"{ch_ml} ml", "m³",
                   ch_ml * 0.2 * 0.2, "chainage_beton", P),
-            _line("Aço cintas (4 HA10 + estribos HA6)",
+            _line("Aços dos lintéis (4 Ø10 + estribos Ø6)",
                   f"{R['acier_chainage_kg_ml']} kg/ml", "kg",
                   ch_ml * R["acier_chainage_kg_ml"], "acier_chainage", P),
         ]
         n_open_lvl = base_open + (1 if k < extra_open else 0)
         if n_open_lvl > 0:
             lines.append(
-                _line("Lintéis BA sobre vãos", f"{n_open_lvl} vãos", "ml",
+                _line("Padieiras BA sobre vãos", f"{n_open_lvl} ouvertures", "ml",
                       n_open_lvl * (i["avg_opening_width_m"] + 0.40), "linteau", P))
         if stairs_left > 0 and k < lv - 1:
             vol = _stair_volume(h, stairs_steps)
             lines += [
-                _line(f"Escada betão {name} → Piso {k + 1}", "laje inclinada 15 + degraus 17×28",
+                _line(f'Escada de betão {name} → R+{k + 1}', "lanço 15 + degraus 17×28",
                       "m³", vol, "escalier_beton", P),
-                _line("Aço escada", f"{R['acier_escalier_kg_m3']} kg/m³", "kg",
+                _line("Aços escada", f"{R['acier_escalier_kg_m3']} kg/m³", "kg",
                       vol * R["acier_escalier_kg_m3"], "acier_escalier", P),
             ]
             stairs_left -= 1
         out.append(summarize(name, lines, briques, wall_net))
 
-    out.append(summarize("Estrutura, cobertura e caixilharia", [
-        _line("Estrutura tradicional — madeira maciça montada", "vg",
-              "vg", 1, "charpente_trad", P),
-        _line("Cobertura em telha — telhas, sub-telha, ripas e cumeeira", "vg",
-              "vg", 1, "couverture_tuiles", P),
-        _line("Caixilharia exterior — janelas e portas-janela assentes",
-              f"{i['openings_count']} vãos", "vg", 1, "menuiseries_ext", P),
+    out.append(summarize("Estrutura de cobertura, cobertura e caixilharia", [
+        _line("Estrutura de cobertura tradicional — madeira maciça montada", "forfait",
+              "forfait", 1, "charpente_trad", P),
+        _line("Cobertura em telha — telhas, subtelha, ripas e cumeeira", "forfait",
+              "forfait", 1, "couverture_tuiles", P),
+        _line("Caixilharia exterior — janelas e portas-janelas aplicadas",
+              f"{i['openings_count']} ouvertures", "forfait", 1, "menuiseries_ext", P),
     ], 0, 0.0))
     return out
 
 
-# ---- Nota de encomenda a fornecedor (por piso) -----------------------------
+# ---- Bon de commande fournisseur (par niveau) -----------------------------
 ORDER_ITEMS = {
     "beton_proprete": ("Betão de limpeza C16/20", "m³"),
     "beton_semelle": ("Betão pronto C25/30 — sapatas", "m³"),
     "beton_dalle": ("Betão pronto C25/30 — laje / pavimento", "m³"),
-    "chainage_beton": ("Betão C25/30 — cintas e travamentos", "m³"),
+    "chainage_beton": ("Betão C25/30 — lintéis e pilaretes", "m³"),
     "escalier_beton": ("Betão C25/30 — escada", "m³"),
-    "acier_semelle": ("Aço HA moldado — sapatas (3+3 HA10 + estribos HA6)", "kg"),
-    "acier_chainage": ("Aço HA moldado — cintas (4 HA10 + estribos HA6)", "kg"),
-    "acier_escalier": ("Aço HA moldado — escada", "kg"),
-    "treillis_dalle": ("Rede electrossoldada ST25C (painéis)", "kg"),
-    "mur_isobrique": ("Tijolos isobrique esp. 20 cm", "u"),
-    "linteau": ("Lintéis / cofragem BA 20 × 20", "ml"),
+    "acier_semelle": ("Aços A500 moldados — sapatas (3+3 Ø10 + estribos Ø6)", "kg"),
+    "acier_chainage": ("Aços A500 moldados — lintéis (4 Ø10 + estribos Ø6)", "kg"),
+    "acier_escalier": ("Aços A500 moldados — escada", "kg"),
+    "treillis_dalle": ("Malha eletrossoldada AQ38 (painéis)", "kg"),
+    "mur_isobrique": ("Tijolos térmicos esp. 20 cm", "u"),
+    "linteau": ("Padieiras / cofragem BA 20 × 20", "ml"),
     "coffrage_rive": ("Tábuas de cofragem de bordos", "ml"),
-    "plancher_etage": ("Laje vigotas-abobadilhas — piso (fornecimento completo)", "vg"),
-    "charpente_trad": ("Estrutura tradicional (fornecimento de madeira)", "vg"),
-    "couverture_tuiles": ("Telhas + sub-telha + ripas (fornecimento)", "vg"),
-    "menuiseries_ext": ("Caixilharia exterior — janelas (fornecimento)", "vg"),
+    "plancher_etage": ("Laje de vigotas e abobadilhas — piso (fornecimento completo)", "forfait"),
+    "charpente_trad": ("Estrutura de cobertura tradicional (fornecimento de madeira)", "forfait"),
+    "couverture_tuiles": ("Telhas + subtelha + ripas (fornecimento)", "forfait"),
+    "menuiseries_ext": ("Caixilharia exterior — janelas (fornecimento)", "forfait"),
 }
 WASTE_FACTOR = 1.05  # +5 % de chutes / pertes
 
@@ -589,7 +547,7 @@ def build_purchase_order_items(level: dict, prices: dict | None = None) -> list[
             items.append({"designation": name, "unit": unit, "qty": qty,
                           "pu_mat": pu, "total": round(qty * pu, 2)})
             colle = _order_round(ln["qty"] * 1.5 * WASTE_FACTOR, "kg")
-            items.append({"designation": "Colle / mortier joint mince", "unit": "kg",
+            items.append({"designation": "Cola / argamassa de junta fina", "unit": "kg",
                           "qty": colle, "pu_mat": 0.85,
                           "total": round(colle * 0.85, 2)})
             continue

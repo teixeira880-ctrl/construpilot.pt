@@ -15,19 +15,19 @@ logger = logging.getLogger("activity")
 
 # action → libellé lisible
 ACTIONS = {
-    "quote.create": "a créé un devis",
-    "quote.update": "a modifié un devis",
-    "invoice.create": "a créé une facture",
-    "invoice.update": "a modifié une facture",
-    "invoice.issue": "a émis une facture",
-    "invoice.convert": "a converti un devis en facture",
-    "document.delete": "a supprimé un document",
-    "situation.create": "a créé une situation de travaux",
-    "employee.create": "a ajouté un employé",
-    "member.update": "a modifié un accès employé",
-    "clock.in": "a pointé son arrivée",
-    "clock.out": "a pointé son départ",
-    "retention.release": "a libéré une retenue de garantie",
+    "quote.create": "criou um orçamento",
+    "quote.update": "alterou um orçamento",
+    "invoice.create": "criou uma fatura",
+    "invoice.update": "alterou uma fatura",
+    "invoice.issue": "emitiu uma fatura",
+    "invoice.convert": "converteu um orçamento em fatura",
+    "document.delete": "eliminou um documento",
+    "situation.create": "criou um auto de medição",
+    "employee.create": "adicionou um colaborador",
+    "member.update": "alterou um acesso de colaborador",
+    "clock.in": "registou a entrada",
+    "clock.out": "registou a saída",
+    "retention.release": "libertou uma retenção de garantia",
 }
 
 
@@ -46,7 +46,7 @@ async def log(user: dict, action: str, entity: str = "", label: str = "", meta: 
             "log_id": "log_" + secrets.token_hex(6),
             "org_id": org_id,
             "actor_id": user["user_id"],
-            "actor_name": u.get("name") or u.get("email") or "Utilisateur",
+            "actor_name": u.get("name") or u.get("email") or "Utilizador",
             "action": action,
             "action_label": ACTIONS.get(action, action),
             "entity": entity,

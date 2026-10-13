@@ -25,7 +25,7 @@ export default function VrdTab({ plans, suppliers }) {
   const label = (k) => catalog.find((c) => c.key === k)?.label || k;
 
   const analyze = async () => {
-    if (!planId) return toast.error("Choisissez un plan");
+    if (!planId) return toast.error("Escolha uma planta");
     setBusy(true); setCmd(null); setHighlight(null);
     try {
       const { data } = await api.post(`/pro/vrd/${planId}/analyze`);
@@ -36,7 +36,7 @@ export default function VrdTab({ plans, suppliers }) {
         prof_m: n.prof_m || catalog.find((c) => c.key === n.key)?.prof || 0.8,
         bbox: n.bbox || null, confidence: n.confidence || 0.9,
       })));
-      toast.success((data.networks || []).length ? "VRD analysé" : "Nenhuma rede detetada — adicione-as manualmente");
+      toast.success((data.networks || []).length ? "VRD analisado" : "Nenhuma rede detetada — adicione-as manualmente");
     } catch (e) { toast.error(e?.response?.data?.detail || "Análise impossível"); }
     finally { setBusy(false); }
   };
@@ -53,11 +53,11 @@ export default function VrdTab({ plans, suppliers }) {
   };
 
   const compute = async () => {
-    if (!nets.length) return toast.error("Ajoutez au moins un réseau");
+    if (!nets.length) return toast.error("Adicione pelo menos uma rede");
     try {
       const { data } = await api.post(`/pro/vrd/${planId}/recompute`, { networks: nets, loss_pct: loss });
       setCmd(data);
-      toast.success("Bordereau VRD recalculé");
+      toast.success("Mapa VRD recalculado");
     } catch (e) { toast.error(e?.response?.data?.detail || "Cálculo impossível"); }
   };
 
@@ -73,31 +73,31 @@ export default function VrdTab({ plans, suppliers }) {
     <div className="space-y-5" data-testid="vrd-tab">
       <div className="surface p-4 flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[220px]">
-          <label className="text-xs text-muted-foreground">Plan VRD / plan de masse</label>
+          <label className="text-xs text-muted-foreground">Planta VRD / planta de implantação</label>
           <select value={planId} onChange={(e) => setPlanId(e.target.value)} data-testid="vrd-plan-select"
             className="w-full mt-1 rounded-sm border border-border bg-background px-3 py-2 text-sm">
-            <option value="">— Choisir un plan —</option>
+            <option value="">— Escolher uma planta —</option>
             {plans.map((p) => <option key={p.plan_id} value={p.plan_id}>{p.filename || p.plan_id}</option>)}
           </select>
         </div>
         <Button onClick={analyze} disabled={busy || !planId} className="gap-2 rounded-sm" data-testid="analyze-vrd-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Analyse IA…" : "Analyser le VRD"}
+          {busy ? "Análise IA…" : "Analisar o VRD"}
         </Button>
       </div>
 
       {ana && (
         <>
           <div className="surface p-4 space-y-3" data-testid="vrd-networks">
-            <h3 className="font-bold flex items-center gap-2"><Waves className="h-4 w-4 text-primary" />Réseaux &amp; tranchées</h3>
+            <h3 className="font-bold flex items-center gap-2"><Waves className="h-4 w-4 text-primary" />Redes &amp; valas</h3>
             {ana.scale_confidence != null && (
-              <p className="text-xs text-muted-foreground">Échelle : {ana.scale_detected || "incertaine"} · confiance {Math.round((ana.scale_confidence || 0) * 100)}%</p>
+              <p className="text-xs text-muted-foreground">Escala: {ana.scale_detected || "incertaine"} · confiança {Math.round((ana.scale_confidence || 0) * 100)}%</p>
             )}
             <div className="overflow-auto rounded-sm border border-border">
               <table className="w-full text-xs">
                 <thead className="bg-secondary/40"><tr>
-                  <th className="text-left p-2">Réseau</th><th className="p-2 text-right">Longueur (ml)</th>
-                  <th className="p-2 text-right">Largeur (m)</th><th className="p-2 text-right">Profondeur (m)</th><th className="p-2"></th>
+                  <th className="text-left p-2">Rede</th><th className="p-2 text-right">Comprimento (ml)</th>
+                  <th className="p-2 text-right">Largura (m)</th><th className="p-2 text-right">Profundidade (m)</th><th className="p-2"></th>
                 </tr></thead>
                 <tbody>
                   {nets.map((n, i) => (
@@ -113,22 +113,22 @@ export default function VrdTab({ plans, suppliers }) {
                       <td className="p-2 text-center"><button onClick={() => removeNet(i)} data-testid={`vrd-net-del-${i}`}><Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" /></button></td>
                     </tr>
                   ))}
-                  {nets.length === 0 && <tr><td colSpan={5} className="p-3 text-center text-muted-foreground">Aucun réseau — ajoutez-en un ci-dessous.</td></tr>}
+                  {nets.length === 0 && <tr><td colSpan={5} className="p-3 text-center text-muted-foreground">Nenhuma rede — adicione uma abaixo.</td></tr>}
                 </tbody>
               </table>
             </div>
             <div className="flex flex-wrap items-end gap-3">
-              <div><label className="text-xs text-muted-foreground">Ajouter un réseau</label>
+              <div><label className="text-xs text-muted-foreground">Adicionar uma rede</label>
                 <select value={addKey} onChange={(e) => setAddKey(e.target.value)} className="mt-1 h-8 rounded-sm border border-border bg-background px-2 text-sm block" data-testid="vrd-add-key">
                   {catalog.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </div>
-              <Button size="sm" variant="outline" onClick={addNet} className="gap-1 rounded-sm" data-testid="vrd-add-net"><Plus className="h-3.5 w-3.5" />Ajouter</Button>
-              <div><label className="text-xs text-muted-foreground">Pertes %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-20" data-testid="vrd-loss" /></div>
-              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="vrd-compute-btn"><Truck className="h-4 w-4" />Recalculer</Button>
+              <Button size="sm" variant="outline" onClick={addNet} className="gap-1 rounded-sm" data-testid="vrd-add-net"><Plus className="h-3.5 w-3.5" />Adicionar</Button>
+              <div><label className="text-xs text-muted-foreground">Perdas %</label><Input type="number" value={loss} onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} className="h-8 w-20" data-testid="vrd-loss" /></div>
+              <Button onClick={compute} className="gap-2 rounded-sm" data-testid="vrd-compute-btn"><Truck className="h-4 w-4" />Recalcular</Button>
             </div>
             {totals && (
-              <p className="text-xs text-muted-foreground">Déblai : <b>{totals.deblai_m3} m³</b> · sable {totals.sable_m3} m³ · remblai {totals.remblai_m3} m³ · réfection {totals.refection_m2} m²</p>
+              <p className="text-xs text-muted-foreground">Escavação: <b>{totals.deblai_m3} m³</b> · sable {totals.sable_m3} m³ · aterro {totals.remblai_m3} m³ · reparação {totals.refection_m2} m²</p>
             )}
           </div>
 
@@ -136,7 +136,7 @@ export default function VrdTab({ plans, suppliers }) {
 
           {items.length > 0 && (
             <div data-testid="vrd-bordereau">
-              <h3 className="font-bold mb-2">Bordereau VRD</h3>
+              <h3 className="font-bold mb-2">Mapa VRD</h3>
               <ApproOrder items={items} suppliers={suppliers} csvName="bon_commande_vrd.csv"
                 createOrder={createOrder} onHighlight={setHighlight} />
             </div>

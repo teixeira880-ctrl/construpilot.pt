@@ -42,18 +42,18 @@ export const SavingsCard = ({ estimation, projectId }) => {
             <PiggyBank className="h-5 w-5" />
           </span>
           <div>
-            <p className="overline">Économies potentielles</p>
+            <p className="overline">Economias potenciais</p>
             <p className="font-display text-3xl font-extrabold tracking-tighter num mt-1" data-testid="savings-total">
               {eur(data.total)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              soit ~{data.pct_of_project} % du budget total du projet
+              ou seja ~{data.pct_of_project} % do orçamento total do projeto
             </p>
           </div>
         </div>
         {data.roi_multiplier > 5 && (
           <Badge className="rounded-sm bg-primary text-primary-foreground uppercase tracking-wider text-[10px]">
-            ROI {data.roi_multiplier}× le Project Pass
+            ROI {data.roi_multiplier}× o Project Pass
           </Badge>
         )}
       </div>
@@ -79,7 +79,7 @@ export const SavingsCard = ({ estimation, projectId }) => {
                 <p className="text-xs text-muted-foreground mt-1">{item.basis}</p>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <Lock className="h-3 w-3" /> Détail débloqué avec Premium ou Project Pass
+                  <Lock className="h-3 w-3" /> Detalhe desbloqueado com Premium ou Project Pass
                 </p>
               )}
               {expanded && showDetails && item.description && (
@@ -96,19 +96,19 @@ export const SavingsCard = ({ estimation, projectId }) => {
         <button onClick={() => setExpanded((v) => !v)}
                 data-testid="savings-toggle-details"
                 className="text-xs text-primary hover:underline inline-flex items-center gap-1 self-start">
-          {expanded ? "Réduire" : "Voir les explications détaillées"}
+          {expanded ? "Reduzir" : "Ver as explicações detalhadas"}
           <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
         </button>
       ) : (
         <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
-          <Link to="/planos">
+          <Link to="/tarifs">
             <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white" data-testid="savings-upgrade-cta">
               <Sparkles className="h-4 w-4" />
-              Débloquer toutes les économies — dès 19,90 €
+              Desbloquear todas as poupanças — Premium 19 €/mês
             </Button>
           </Link>
           <p className="text-xs text-muted-foreground self-center">
-            Investir 19,90 € (Project Pass) peut vous rapporter {eur(data.total)} d'économies.
+            Investir 19,90 € (Project Pass) pode render-lhe {eur(data.total)} de poupança.
           </p>
         </div>
       )}

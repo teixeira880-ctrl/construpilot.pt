@@ -110,7 +110,7 @@ async def update_campaign(campaign_id: str, body: CampaignIn, user=Depends(curre
     r = await db.ad_campaigns.find_one({"campaign_id": campaign_id, "user_id": user["user_id"]},
                                        {"_id": 0, "campaign_id": 1})
     if not r:
-        raise HTTPException(404, "Campagne introuvable")
+        raise HTTPException(404, "Campanha não encontrada")
     await db.ad_campaigns.update_one({"campaign_id": campaign_id}, {"$set": body.model_dump()})
     doc = await db.ad_campaigns.find_one({"campaign_id": campaign_id}, {"_id": 0})
     return _enrich(doc, await _real_leads_count(doc.get("lead_source", "")))

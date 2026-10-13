@@ -4,25 +4,26 @@
 
 @layer base {
     :root {
-        --background: 40 20% 98%;
+        /* Warm light theme: sand background, ivory surfaces, soft beige borders. */
+        --background: 37 38% 94%;
         --foreground: 222 47% 11%;
-        --card: 0 0% 100%;
+        --card: 37 45% 97%;
         --card-foreground: 222 47% 11%;
-        --popover: 0 0% 100%;
+        --popover: 37 45% 97%;
         --popover-foreground: 222 47% 11%;
         /* Calm Olive/Moss Green for primary */
         --primary: 140 25% 42%;
         --primary-foreground: 0 0% 100%;
-        --secondary: 40 15% 93%;
+        --secondary: 35 28% 90%;
         --secondary-foreground: 222 47% 11%;
-        --muted: 40 15% 93%;
+        --muted: 35 28% 90%;
         --muted-foreground: 215 16% 42%;
         --accent: 140 25% 92%;
         --accent-foreground: 140 25% 30%;
         --destructive: 0 84% 60%;
         --destructive-foreground: 0 0% 100%;
-        --border: 40 10% 88%;
-        --input: 40 10% 88%;
+        --border: 34 22% 82%;
+        --input: 34 22% 82%;
         --ring: 140 25% 42%;
         --chart-1: 140 25% 42%;
         --chart-2: 160 84% 39%;
@@ -56,7 +57,7 @@
 
 @layer base {
     * { @apply border-border; }
-    html { -webkit-font-smoothing: antialiased; }
+    html { -webkit-font-smoothing: antialiased; font-size: 16.75px; }
     body {
         @apply bg-background text-foreground font-sans;
         margin: 0;
@@ -99,3 +100,11 @@
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 6px; }
+
+/* Impression de l'aperçu devis uniquement */
+#quote-print-root { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+@media print {
+  body * { visibility: hidden !important; }
+  #quote-print-root, #quote-print-root * { visibility: visible !important; }
+  #quote-print-root { position: absolute !important; left: 0; top: 0; width: 100% !important; box-shadow: none !important; border: none !important; }
+}

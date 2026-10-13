@@ -38,7 +38,7 @@ export default function PlanCompare() {
   }, []);
 
   const runCompare = async () => {
-    if (!beforeId || !afterId) return toast.error("Sélectionnez les 2 plans");
+    if (!beforeId || !afterId) return toast.error("Selecione as 2 plantas");
     setBusy(true);
     try {
       const { data } = await api.post("/takeoffs/compare",
@@ -109,7 +109,7 @@ export default function PlanCompare() {
       if (showRemoved) {
         beforeRooms.forEach(r => {
           if (!afterNames.has(_n(r.name))) {
-            drawRoom(r, "rgba(239,68,68,0.28)", "rgba(220,38,38,0.9)", "SUPPR.");
+            drawRoom(r, "rgba(239,68,68,0.28)", "rgba(220,38,38,0.9)", "ELIM.");
           }
         });
       }
@@ -117,7 +117,7 @@ export default function PlanCompare() {
       if (showAdded) {
         afterRooms.forEach(r => {
           if (!beforeNames.has(_n(r.name))) {
-            drawRoom(r, "rgba(34,197,94,0.28)", "rgba(22,163,74,0.9)", "AJOUT");
+            drawRoom(r, "rgba(34,197,94,0.28)", "rgba(22,163,74,0.9)", "ADICIONAR");
           }
         });
       }
@@ -164,24 +164,23 @@ export default function PlanCompare() {
     <div className="mx-auto max-w-[1200px] px-5 py-8 grid gap-8">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <p className="overline text-primary">ConstruPilot PLAN — Comparateur</p>
+          <p className="overline text-primary">ConstruPilot PLAN — Comparador</p>
           <h1 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-            Comparez le plan existant et le projet
+            Compare a planta existente e o projeto
           </h1>
           <p className="text-sm text-muted-foreground mt-2 max-w-xl">
-            Sélectionnez deux plans : ConstruPilot identifie automatiquement les pièces
-            ajoutées, supprimées ou modifiées, avec le delta de surface.
+            Selecione duas plantas: ConstruPilot identifica automaticamente as divisões adicionadas, eliminadas ou modificadas, com o delta de superfície.
           </p>
         </div>
         <Button variant="outline" onClick={() => nav("/plan")} data-testid="compare-back"
                 className="rounded-sm gap-2">
-          <ArrowLeft className="h-4 w-4" /> Retour au takeoff
+          <ArrowLeft className="h-4 w-4" /> Voltar ao levantamento
         </Button>
       </div>
 
       <div className="grid md:grid-cols-[1fr_auto_1fr_auto] gap-4 items-end surface p-6">
         <div className="grid gap-2">
-          <Label>Plan existant (avant)</Label>
+          <Label>Planta existente (antes)</Label>
           <Select value={beforeId} onValueChange={setBeforeId}>
             <SelectTrigger className="rounded-sm h-11" data-testid="compare-before-select">
               <SelectValue placeholder="Escolher uma planta…" />
@@ -189,7 +188,7 @@ export default function PlanCompare() {
             <SelectContent>
               {plans.map(p => (
                 <SelectItem key={p.plan_id} value={p.plan_id}>
-                  {p.filename} — {p.rooms?.length || 0} pièces
+                  {p.filename} — {p.rooms?.length || 0} divisões
                 </SelectItem>
               ))}
             </SelectContent>
@@ -197,7 +196,7 @@ export default function PlanCompare() {
         </div>
         <GitCompareArrows className="h-6 w-6 text-primary mx-auto mb-3" />
         <div className="grid gap-2">
-          <Label>Plan projet (après)</Label>
+          <Label>Planta projeto (depois)</Label>
           <Select value={afterId} onValueChange={setAfterId}>
             <SelectTrigger className="rounded-sm h-11" data-testid="compare-after-select">
               <SelectValue placeholder="Escolher uma planta…" />
@@ -205,7 +204,7 @@ export default function PlanCompare() {
             <SelectContent>
               {plans.map(p => (
                 <SelectItem key={p.plan_id} value={p.plan_id}>
-                  {p.filename} — {p.rooms?.length || 0} pièces
+                  {p.filename} — {p.rooms?.length || 0} divisões
                 </SelectItem>
               ))}
             </SelectContent>
@@ -214,7 +213,7 @@ export default function PlanCompare() {
         <Button onClick={runCompare} disabled={busy || !beforeId || !afterId}
                 data-testid="compare-run-btn"
                 className="rounded-sm gap-2 h-11 hover:bg-orange-600 hover:text-white">
-          <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Comparer
+          <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Comparar
         </Button>
       </div>
 
@@ -224,38 +223,38 @@ export default function PlanCompare() {
           {afterImage && (
             <div className="surface p-4" data-testid="compare-overlay">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
-                <p className="overline">Superposition visuelle</p>
+                <p className="overline">Sobreposição visual</p>
                 <div className="flex gap-3 text-xs items-center flex-wrap">
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="checkbox" checked={showAdded} onChange={(e) => setShowAdded(e.target.checked)}
                            data-testid="compare-filter-added" className="accent-emerald-500 h-4 w-4" />
                     <Badge variant="outline" className="rounded-sm gap-1 border-emerald-500/50 text-emerald-500">
-                      <Plus className="h-3 w-3" /> Ajouté ({result.added.length})
+                      <Plus className="h-3 w-3" /> Adicionado ({result.added.length})
                     </Badge>
                   </label>
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)}
                            data-testid="compare-filter-removed" className="accent-red-500 h-4 w-4" />
                     <Badge variant="outline" className="rounded-sm gap-1 border-destructive text-destructive">
-                      <Minus className="h-3 w-3" /> Supprimé ({result.removed.length})
+                      <Minus className="h-3 w-3" /> Eliminado ({result.removed.length})
                     </Badge>
                   </label>
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="checkbox" checked={showModified} onChange={(e) => setShowModified(e.target.checked)}
                            data-testid="compare-filter-modified" className="accent-amber-500 h-4 w-4" />
                     <Badge variant="outline" className="rounded-sm gap-1 border-amber-500/50 text-amber-500">
-                      <Edit3 className="h-3 w-3" /> Modifié ({result.modified.length})
+                      <Edit3 className="h-3 w-3" /> Modificado ({result.modified.length})
                     </Badge>
                   </label>
                   <label className="flex items-center gap-1 cursor-pointer text-muted-foreground">
                     <input type="checkbox" checked={hideUnchanged} onChange={(e) => setHideUnchanged(e.target.checked)}
                            data-testid="compare-filter-hide-unchanged" className="accent-primary h-4 w-4" />
-                    Masquer inchangées
+                    Ocultar inalteradas
                   </label>
                   {result.walls && (result.walls.added.length + result.walls.removed.length > 0) && (
                     <>
                       <span className="text-xs text-muted-foreground ml-2 border-l border-border pl-3">
-                        Murs :
+                        Paredes:
                       </span>
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="checkbox" checked={showAddedWalls}
@@ -263,7 +262,7 @@ export default function PlanCompare() {
                                data-testid="compare-filter-walls-added"
                                className="accent-emerald-500 h-4 w-4" />
                         <Badge variant="outline" className="rounded-sm border-emerald-500/50 text-emerald-500">
-                          + Murs ({result.walls.added.length})
+                          + Paredes ({result.walls.added.length})
                         </Badge>
                       </label>
                       <label className="flex items-center gap-1 cursor-pointer">
@@ -272,7 +271,7 @@ export default function PlanCompare() {
                                data-testid="compare-filter-walls-removed"
                                className="accent-red-500 h-4 w-4" />
                         <Badge variant="outline" className="rounded-sm border-destructive text-destructive">
-                          – Murs ({result.walls.removed.length})
+                          – Paredes ({result.walls.removed.length})
                         </Badge>
                       </label>
                     </>
@@ -288,17 +287,17 @@ export default function PlanCompare() {
           {/* Résumé */}
           <div className="grid sm:grid-cols-4 gap-4">
             <div className="surface p-5">
-              <p className="overline">Avant</p>
+              <p className="overline">Antes</p>
               <p className="num mt-2 text-2xl font-bold">{result.before.total_surface_m2} m²</p>
-              <p className="num text-xs text-muted-foreground">{result.before.room_count} pièces</p>
+              <p className="num text-xs text-muted-foreground">{result.before.room_count} divisões</p>
             </div>
             <div className="surface p-5">
-              <p className="overline">Après</p>
+              <p className="overline">Após</p>
               <p className="num mt-2 text-2xl font-bold">{result.after.total_surface_m2} m²</p>
-              <p className="num text-xs text-muted-foreground">{result.after.room_count} pièces</p>
+              <p className="num text-xs text-muted-foreground">{result.after.room_count} divisões</p>
             </div>
             <div className={`surface p-5 border-primary`}>
-              <p className="overline">Delta surface</p>
+              <p className="overline">Delta superfície</p>
               <p className={`num mt-2 text-2xl font-bold ${result.delta_surface_m2 >= 0 ? "text-emerald-500" : "text-destructive"}`}>
                 {result.delta_surface_m2 >= 0 ? "+" : ""}{result.delta_surface_m2} m²
               </p>
@@ -307,7 +306,7 @@ export default function PlanCompare() {
               </p>
             </div>
             <div className="surface p-5">
-              <p className="overline">Impact</p>
+              <p className="overline">Impacto</p>
               <div className="flex flex-wrap gap-1 mt-2">
                 <Badge variant="outline" className="rounded-sm gap-1 text-emerald-500">
                   <Plus className="h-3 w-3" /> {result.added.length}
@@ -321,7 +320,7 @@ export default function PlanCompare() {
               </div>
               {result.walls && (result.walls.before_count + result.walls.after_count > 0) && (
                 <p className="text-[10px] text-muted-foreground mt-2 num" data-testid="walls-summary">
-                  Murs détectés : {result.walls.before_count} → {result.walls.after_count}
+                  Paredes detetadas: {result.walls.before_count} → {result.walls.after_count}
                   {" · "}+{result.walls.added.length} / −{result.walls.removed.length}
                 </p>
               )}
@@ -330,19 +329,19 @@ export default function PlanCompare() {
 
           {/* Détails */}
           <div className="grid lg:grid-cols-3 gap-4">
-            <CategoryPanel title="Pièces ajoutées" icon={Plus} tone="emerald"
+            <CategoryPanel title="Divisões adicionadas" icon={Plus} tone="emerald"
                           items={result.added} type="added" testId="compare-added" />
-            <CategoryPanel title="Pièces supprimées" icon={Minus} tone="rose"
+            <CategoryPanel title="Divisões eliminadas" icon={Minus} tone="rose"
                           items={result.removed} type="removed" testId="compare-removed" />
-            <CategoryPanel title="Pièces modifiées" icon={Edit3} tone="amber"
+            <CategoryPanel title="Divisões modificadas" icon={Edit3} tone="amber"
                           items={result.modified} type="modified" testId="compare-modified" />
           </div>
 
           {result.unchanged.length > 0 && !hideUnchanged && (
             <details className="surface p-5" data-testid="compare-unchanged">
               <summary className="cursor-pointer text-sm font-medium">
-                {result.unchanged.length} pièce{result.unchanged.length > 1 ? "s" : ""} inchangée{result.unchanged.length > 1 ? "s" : ""}
-                <span className="text-muted-foreground text-xs"> (tolérance {result.surface_tolerance_pct}%)</span>
+                {result.unchanged.length} divisão{result.unchanged.length > 1 ? "s" : ""} inalterada{result.unchanged.length > 1 ? "s" : ""}
+                <span className="text-muted-foreground text-xs"> (tolerância {result.surface_tolerance_pct}%)</span>
               </summary>
               <div className="mt-3 grid gap-1 text-xs num">
                 {result.unchanged.map((r, i) => (
@@ -375,7 +374,7 @@ function CategoryPanel({ title, icon: Icon, tone, items, type, testId }) {
         <Badge variant="outline" className="ml-auto rounded-sm num">{items.length}</Badge>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Aucune</p>
+        <p className="text-xs text-muted-foreground">Nenhuma</p>
       ) : (
         <div className="grid gap-2 text-xs">
           {items.map((r, i) => (
@@ -390,7 +389,7 @@ function CategoryPanel({ title, icon: Icon, tone, items, type, testId }) {
                 </div>
               ) : (
                 <p className="num text-muted-foreground">
-                  {r.surface_m2} m² · périmètre {r.perimeter_m} m
+                  {r.surface_m2} m² · perímetro {r.perimeter_m} m
                 </p>
               )}
             </div>

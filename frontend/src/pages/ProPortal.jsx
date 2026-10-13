@@ -51,59 +51,59 @@ const KycForm = ({ onSaved }) => {
   };
   return (
     <form onSubmit={submit} className="surface p-6 grid gap-4" data-testid="kyc-form">
-      <p className="overline">Devenir ConstruPilot Verified</p>
+      <p className="overline">Tornar-se ConstruPilot Verified</p>
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label>SIREN ou SIRET *</Label>
+          <Label>NIPC ou estabelecimento *</Label>
           <Input required value={form.siren} onChange={(e) => setForm({ ...form, siren: e.target.value })}
                  data-testid="kyc-siren" className="rounded-sm h-11 num" />
         </div>
         <div className="grid gap-2">
-          <Label>Raison sociale *</Label>
+          <Label>Denominação social *</Label>
           <Input required value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })}
                  data-testid="kyc-company" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>Assureur RC Pro</Label>
+          <Label>Seguradora RC Pro</Label>
           <Input value={form.rc_pro_insurer} onChange={(e) => setForm({ ...form, rc_pro_insurer: e.target.value })}
                  data-testid="kyc-rcpro-insurer" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>N° police RC Pro</Label>
+          <Label>N.º apólice RC Pro</Label>
           <Input value={form.rc_pro_number} onChange={(e) => setForm({ ...form, rc_pro_number: e.target.value })}
                  data-testid="kyc-rcpro-number" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>Assureur décennale</Label>
+          <Label>Seguradora decenal</Label>
           <Input value={form.decennale_insurer} onChange={(e) => setForm({ ...form, decennale_insurer: e.target.value })}
                  data-testid="kyc-dec-insurer" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>N° police décennale</Label>
+          <Label>N.º apólice decenal</Label>
           <Input value={form.decennale_number} onChange={(e) => setForm({ ...form, decennale_number: e.target.value })}
                  data-testid="kyc-dec-number" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>Métiers (séparés par virgule)</Label>
+          <Label>Profissões (separadas por vírgula)</Label>
           <Input value={form.trades} onChange={(e) => setForm({ ...form, trades: e.target.value })}
-                 placeholder="plomberie, électricité, carrelage" data-testid="kyc-trades" className="rounded-sm h-11" />
+                 placeholder="canalizações, eletricidade, azulejo" data-testid="kyc-trades" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>Zones (départements)</Label>
+          <Label>Zonas (departamentos)</Label>
           <Input value={form.zones} onChange={(e) => setForm({ ...form, zones: e.target.value })}
                  placeholder="75, 92, 93" data-testid="kyc-zones" className="rounded-sm h-11" />
         </div>
         <div className="grid gap-2">
-          <Label>Années d'expérience</Label>
+          <Label>Anos de experiência</Label>
           <Input type="number" value={form.years_experience} onChange={(e) => setForm({ ...form, years_experience: e.target.value })}
                  data-testid="kyc-years" className="rounded-sm h-11 num" />
         </div>
       </div>
       <Button type="submit" disabled={busy} data-testid="kyc-submit" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">
-        <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Soumettre mon dossier"}
+        <Send className="h-4 w-4" /> {busy ? "A enviar…" : "Submeter o meu processo"}
       </Button>
       <p className="text-xs text-muted-foreground">
-        Après vérification (48 h), vous recevez le badge <b>ConstruPilot Verified</b> et accédez aux leads qualifiés.
+        Após verificação (48 h), recebe o distintivo <b>ConstruPilot Verified</b> e aceda aos contactos qualificados.
       </p>
     </form>
   );
@@ -134,20 +134,19 @@ export default function ProPortal() {
     if (!confirm("Confirmar a compra deste contacto?")) return;
     try {
       await api.post("/marketplace/leads/buy", { lead_id: leadId });
-      toast.success("Lead débloqué — les coordonnées sont désormais visibles");
+      toast.success("Lead desbloqueado — as coordenadas estão agora visíveis");
       load();
     } catch (err) { toast.error(err?.response?.data?.detail || "Compra impossível"); }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
-  if (!me) return <div className="surface p-10 text-center">Chargement…</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
+  if (!me) return <div className="surface p-10 text-center">A carregar…</div>;
 
   if (!me.registered) {
     return (
       <div className="grid gap-8">
-        <SectionTitle over="Espace Pro" title="Devenez professionnel ConstruPilot">
-          Recevez chaque semaine des leads qualifiés — score 0/100 — dans vos zones et
-          métiers. Payez à l'unité via vos crédits ConstruPilot Pro.
+        <SectionTitle over="Espaço Pro" title="Torne-se profissional ConstruPilot">
+          Receba todas as semanas potenciais clientes qualificados — pontuação 0/100 — nas suas zonas e especialidades. Pague à unidade através dos seus créditos ConstruPilot Pro.
         </SectionTitle>
         <KycForm onSaved={load} />
       </div>
@@ -162,11 +161,11 @@ export default function ProPortal() {
             <h1 className="font-display text-3xl font-extrabold tracking-tighter">{me.company_name}</h1>
             {me.verified ? (
               <Badge className="rounded-sm bg-emerald-500/15 text-emerald-500 border-emerald-500/40 gap-1" data-testid="pro-verified-badge">
-                <ShieldCheck className="h-3 w-3" /> {me.badge || "Verified"}
+                <ShieldCheck className="h-3 w-3" /> {me.badge || "Verificado"}
               </Badge>
             ) : (
               <Badge variant="outline" className="rounded-sm border-amber-500/40 text-amber-500">
-                {me.status === "pending" ? "Vérification en cours" : "Non vérifié"}
+                {me.status === "pending" ? "Verificação em curso" : "Não verificado"}
               </Badge>
             )}
           </div>
@@ -178,67 +177,67 @@ export default function ProPortal() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-4" data-testid="pro-stats">
-        <Stat icon={Wallet} label="Crédits" value={eur2(me.credits_eur)} accent />
-        <Stat icon={Star} label="Leads achetés" value={me.leads_bought?.length || 0} />
-        <Stat icon={TrendingUp} label="Dépensé (€)" value={eur2((me.total_spent_cents || 0) / 100)} />
+        <Stat icon={Wallet} label="Créditos" value={eur2(me.credits_eur)} accent />
+        <Stat icon={Star} label="Leads comprados" value={me.leads_bought?.length || 0} />
+        <Stat icon={TrendingUp} label="Gasto (€)" value={eur2((me.total_spent_cents || 0) / 100)} />
       </div>
 
       {me.verified && (
         <div className="surface p-6 grid gap-4" data-testid="pro-recharge">
-          <p className="overline">Recharger mes crédits</p>
+          <p className="overline">Recarregar os meus créditos</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {AMOUNTS.map((a) => (
               <button key={a.cents} onClick={() => recharge(a.cents)} disabled={busy}
                       data-testid={`recharge-${a.cents}`}
                       className="border border-border rounded-sm p-4 text-left hover:border-primary transition-colors group">
                 <p className="num font-display text-2xl font-extrabold">{a.label}</p>
-                {a.bonus && <Badge variant="outline" className="rounded-sm text-[10px] text-primary border-primary/40 mt-1">Bonus {a.bonus}</Badge>}
-                <p className="text-xs text-muted-foreground mt-2 group-hover:text-primary">Recharger →</p>
+                {a.bonus && <Badge variant="outline" className="rounded-sm text-[10px] text-primary border-primary/40 mt-1">Bónus {a.bonus}</Badge>}
+                <p className="text-xs text-muted-foreground mt-2 group-hover:text-primary">Recarregar →</p>
               </button>
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Bonus fidélité automatiquement crédité après paiement — jusqu'à +10 %.
+            Bónus fidelidade automaticamente creditado após pagamento — até +10 %.
           </p>
         </div>
       )}
 
       <Tabs defaultValue="available">
         <TabsList className="rounded-sm">
-          <TabsTrigger value="available" className="rounded-sm" data-testid="pro-tab-available">Leads disponibles ({leads.length})</TabsTrigger>
-          <TabsTrigger value="bought" className="rounded-sm" data-testid="pro-tab-bought">Mes leads achetés ({me.leads_bought?.length || 0})</TabsTrigger>
+          <TabsTrigger value="available" className="rounded-sm" data-testid="pro-tab-available">Leads disponíveis ({leads.length})</TabsTrigger>
+          <TabsTrigger value="bought" className="rounded-sm" data-testid="pro-tab-bought">Os meus leads comprados ({me.leads_bought?.length || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="available" className="mt-6">
           {!me.verified ? (
             <div className="surface p-6 border-amber-500/40 bg-amber-500/5">
-              <p className="text-sm">Votre compte est en cours de vérification. Vous accéderez aux leads dès validation.</p>
+              <p className="text-sm">A sua conta está em verificação. Acederá aos contactos após validação.</p>
             </div>
           ) : leads.length === 0 ? (
-            <div className="surface p-10 text-center text-muted-foreground text-sm">Aucun lead disponible pour l'instant.</div>
+            <div className="surface p-10 text-center text-muted-foreground text-sm">Nenhum lead disponível por enquanto.</div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4" data-testid="pro-leads-grid">
               {leads.map((l) => (
                 <div key={l.lead_id} className="surface p-5 grid gap-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-display font-bold">{l.trade || "Travaux"}</p>
-                      <p className="text-xs text-muted-foreground">{(l.address || "").slice(0, 60) || "Adresse en clair après achat"}</p>
+                      <p className="font-display font-bold">{l.trade || "Obras"}</p>
+                      <p className="text-xs text-muted-foreground">{(l.address || "").slice(0, 60) || "Morada visível após a compra"}</p>
                     </div>
                     <Badge className={`rounded-sm ${l.score >= 75 ? "bg-emerald-500/15 text-emerald-500" : l.score >= 55 ? "bg-primary/15 text-primary" : "bg-secondary text-foreground"}`}>
-                      Score {l.score}/100
+                      Pontuação {l.score}/100
                     </Badge>
                   </div>
                   <p className="text-sm line-clamp-3 text-muted-foreground">{(l.description || "").slice(0, 200)}</p>
                   <div className="grid grid-cols-3 gap-2 text-xs">
-                    {l.budget && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Budget</p><p className="num font-semibold">{eur(l.budget)}</p></div>}
-                    {l.surface && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Surface</p><p className="num font-semibold">{l.surface} m²</p></div>}
-                    {l.delay_days && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Délai</p><p className="num font-semibold">{l.delay_days} j</p></div>}
+                    {l.budget && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Orçamento</p><p className="num font-semibold">{eur(l.budget)}</p></div>}
+                    {l.surface && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Superfície</p><p className="num font-semibold">{l.surface} m²</p></div>}
+                    {l.delay_days && <div className="border border-border rounded-sm p-2"><p className="opacity-60">Prazo</p><p className="num font-semibold">{l.delay_days} j</p></div>}
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-border">
                     <p className="num font-display text-xl font-bold">{eur2(l.price_cents / 100)}</p>
                     <Button size="sm" onClick={() => buy(l.lead_id)} data-testid={`buy-lead-${l.lead_id}`} className="rounded-sm gap-1 hover:bg-orange-600 hover:text-white">
-                      Débloquer <ArrowRight className="h-3 w-3" />
+                      Desbloquear <ArrowRight className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
@@ -249,13 +248,13 @@ export default function ProPortal() {
 
         <TabsContent value="bought" className="mt-6">
           {(!me.leads_bought || me.leads_bought.length === 0) ? (
-            <div className="surface p-10 text-center text-muted-foreground text-sm">Aucun lead acheté</div>
+            <div className="surface p-10 text-center text-muted-foreground text-sm">Nenhum lead comprado</div>
           ) : (
             <div className="surface p-6">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Métier</TableHead><TableHead>Client</TableHead><TableHead>Contact</TableHead>
-                  <TableHead>Score</TableHead><TableHead>Prix payé</TableHead>
+                  <TableHead>Especialidade</TableHead><TableHead>Cliente</TableHead><TableHead>Contacto</TableHead>
+                  <TableHead>Pontuação</TableHead><TableHead>Preço pago</TableHead>
                 </TableRow></TableHeader>
                 <TableBody data-testid="pro-bought-table">
                   {me.leads_bought.map((l) => (

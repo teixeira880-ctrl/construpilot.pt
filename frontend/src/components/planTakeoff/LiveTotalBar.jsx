@@ -66,7 +66,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
       setTotals(totalsMap);
       setMaterialsByRoom(materialsMap);
       const total = Object.values(totalsMap).reduce((a, b) => a + b, 0);
-      toast.success(`Coût total : ${eur(total)} (${Object.keys(totalsMap).length} pièces)`);
+      toast.success(`Custo total: ${eur(total)} (${Object.keys(totalsMap).length} divisões)`);
     } finally {
       setComputing(false);
     }
@@ -90,11 +90,11 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
     sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
       items: allMaterials,
       source: "plan_total",
-      project_name: `Plan complet — ${nEstimated} pièces`,
+      project_name: `Planta completa — ${nEstimated} divisões`,
       total_avg: total,
       ts: Date.now(),
     }));
-    toast.success(`A pesquisar preços para ${allMaterials.length} materiais…`);
+    toast.success(`Pesquisa de preços em ${allMaterials.length} materiais…`);
     window.location.href = "/prix?from=plan-total";
   };
 
@@ -124,7 +124,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
             {hasEstimates
-              ? `Coût total plan (${nEstimated}/${rooms.length} pièces)`
+              ? `Custo total da planta (${nEstimated}/${rooms.length} divisões)`
               : "Estime todas as divisões"}
           </span>
           {hasEstimates && (
@@ -147,7 +147,7 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
-          {computing ? "Calcul…" : hasEstimates ? "Actualiser" : "Calculer"}
+          {computing ? "Cálculo…" : hasEstimates ? "Atualizar" : "Calcular"}
         </Button>
         {hasEstimates && (
           <Button
@@ -156,9 +156,9 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
             onClick={compareBestPrices}
             data-testid="live-total-compare-prices"
             className="h-7 gap-1 rounded-full text-xs text-primary hover:bg-primary/10"
-            title="Ver os melhores preços nos fornecedores"
+            title="Ver os melhores preços em todos os fornecedores"
           >
-            <Trophy className="h-3 w-3" /> Voir vainqueur prix
+            <Trophy className="h-3 w-3" /> Ver vencedor preço
           </Button>
         )}
         {hasEstimates && onOpenEstimate && (
@@ -171,9 +171,9 @@ export function LiveTotalBar({ planId, rooms, onOpenEstimate }) {
             }}
             data-testid="live-total-open-biggest"
             className="h-7 gap-1 rounded-full text-xs"
-            title="Ver a divisão mais cara"
+            title="Ver a divisão mais dispendiosa"
           >
-            <ArrowUp className="h-3 w-3" /> Détails
+            <ArrowUp className="h-3 w-3" /> Detalhes
           </Button>
         )}
       </div>

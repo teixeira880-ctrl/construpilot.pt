@@ -12,9 +12,10 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import pro_required
+from core.permissions import feature_dependency
 
 router = APIRouter(prefix="/einvoicing", tags=["einvoicing"],
-                   dependencies=[Depends(pro_required)])
+                   dependencies=[Depends(feature_dependency("factures"))])
 
 
 def _now():
@@ -24,11 +25,11 @@ def _now():
 async def _seed_inbox(uid: str):
     if await db.einvoice_inbox.count_documents({"user_id": uid}) == 0:
         demo = [
-            {"user_id": uid, "inv_id": "einv_demo1", "supplier": "Point.P — Matériaux",
+            {"user_id": uid, "inv_id": "einv_demo1", "supplier": "Maxmat — Materiais de construção",
              "supplier_siret": "54210922700018", "number": "FP-2026-0345",
              "amount_ht": 1240.50, "vat": 248.10, "amount_ttc": 1488.60,
              "issued_at": "2026-06-02", "status": "received", "received_at": _now()},
-            {"user_id": uid, "inv_id": "einv_demo2", "supplier": "Rexel Électricité",
+            {"user_id": uid, "inv_id": "einv_demo2", "supplier": "Rexel Portugal — Material elétrico",
              "supplier_siret": "30947977000012", "number": "2026-8891",
              "amount_ht": 612.00, "vat": 122.40, "amount_ttc": 734.40,
              "issued_at": "2026-06-05", "status": "received", "received_at": _now()},
@@ -68,8 +69,8 @@ class ConnectIn(BaseModel):
 @router.post("/connect")
 async def connect(body: ConnectIn, user=Depends(pro_required)) -> dict:
     siret = "".join(c for c in (body.siret or "") if c.isdigit())
-    if len(siret) != 14:
-        raise HTTPException(400, "SIRET invalide (14 chiffres attendus)")
+    if len(siret) not in (9, 14):
+        raise HTTPException(400, "NIF/NIPC inválido (9 dígitos esperados)")
     await db.einvoice_accounts.update_one(
         {"user_id": user["user_id"]},
         {"$set": {"user_id": user["user_id"], "connected": True, "siret": siret,
@@ -94,9 +95,9 @@ async def inbox(user=Depends(pro_required)) -> dict:
 
 
 _SIM_SUPPLIERS = [
-    ("Cedeo — Sanitaire & Chauffage", "44306184100013"),
-    ("Gedimat Négoce", "39284710500021"),
-    ("Würth France", "70202599700033"),
+    ("Sanitop — Sanitários e aquecimento", "44306184100013"),
+    ("Bricomarché — Materiais", "39284710500021"),
+    ("Würth Portugal", "70202599700033"),
     ("Saint-Gobain Distribution", "54210922700018"),
     ("Frans Bonhomme — Canalisations", "31948792600044"),
 ]
@@ -108,7 +109,7 @@ async def simulate_reception(user=Depends(pro_required)) -> dict:
     import random
     acc = await db.einvoice_accounts.find_one({"user_id": user["user_id"]})
     if not acc or not acc.get("connected"):
-        raise HTTPException(400, "Connectez d'abord une plateforme (PDP)")
+        raise HTTPException(400, "Ligue primeiro uma plataforma de faturação eletrónica")
     supplier, siret = random.choice(_SIM_SUPPLIERS)
     ht = round(random.uniform(150, 4500), 2)
     vat = round(ht * 0.20, 2)
@@ -132,22 +133,22 @@ class DecisionIn(BaseModel):
 @router.post("/inbox/{inv_id}/decision")
 async def decide(inv_id: str, body: DecisionIn, user=Depends(pro_required)) -> dict:
     if body.decision not in ("accepted", "refused"):
-        raise HTTPException(400, "Décision invalide")
+        raise HTTPException(400, "Decisão inválida")
     res = await db.einvoice_inbox.update_one(
         {"user_id": user["user_id"], "inv_id": inv_id},
         {"$set": {"status": body.decision, "reason": body.reason[:300],
                   "decided_at": _now(),
                   # Statut transmis à l'administration (SIMULÉ)
-                  "admin_status": "transmis (simulé)"}})
+                  "admin_status": "transmitida (simulado)"}})
     if not res.matched_count:
-        raise HTTPException(404, "Facture introuvable")
+        raise HTTPException(404, "Fatura não encontrada")
     expense = None
     if body.decision == "accepted" and body.project_id:
         inv = await db.einvoice_inbox.find_one(
             {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
         expense = await _create_einvoice_expense(user, inv, body.project_id)
     return {"ok": True, "status": body.decision,
-            "admin_status": "transmis (simulé)", "expense": expense}
+            "admin_status": "transmitida (simulado)", "expense": expense}
 
 
 # ---------- Dépense chantier automatique depuis une facture acceptée ----------
@@ -157,7 +158,7 @@ async def list_user_projects(user=Depends(pro_required)) -> dict:
     rows = await db.projects.find(
         {"user_id": user["user_id"]}, {"_id": 0, "project_id": 1, "name": 1}) \
         .sort("created_at", -1).to_list(300)
-    return {"projects": [{"project_id": r["project_id"], "name": r.get("name") or "Chantier"}
+    return {"projects": [{"project_id": r["project_id"], "name": r.get("name") or "Obra"}
                          for r in rows]}
 
 
@@ -166,7 +167,7 @@ async def _create_einvoice_expense(user: dict, inv: dict, project_id: str) -> di
     proj = await db.projects.find_one(
         {"project_id": project_id, "user_id": user["user_id"]}, {"_id": 0, "name": 1})
     if not proj:
-        raise HTTPException(404, "Chantier introuvable")
+        raise HTTPException(404, "Obra não encontrada")
     prev = inv.get("expense")
     if prev and prev.get("project_id") and prev.get("expense_id"):
         await db.projects.update_one(
@@ -175,7 +176,7 @@ async def _create_einvoice_expense(user: dict, inv: dict, project_id: str) -> di
     exp_id = f"exp_{uuid4().hex[:8]}"
     amount = round(float(inv.get("amount_ht") or 0), 2)
     exp = {"expense_id": exp_id,
-           "label": f"Facture {inv.get('supplier')} · {inv.get('number')}",
+           "label": f"Fatura {inv.get('supplier')} · {inv.get('number')}",
            "amount": amount, "lot": None, "date": _now(),
            "source": "einvoice", "einvoice_id": inv.get("inv_id")}
     await db.projects.update_one(
@@ -198,9 +199,9 @@ async def link_expense(inv_id: str, body: ExpenseLinkIn, user=Depends(pro_requir
     inv = await db.einvoice_inbox.find_one(
         {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
     if not inv:
-        raise HTTPException(404, "Facture introuvable")
+        raise HTTPException(404, "Fatura não encontrada")
     if inv.get("status") != "accepted":
-        raise HTTPException(400, "Seule une facture acceptée peut être enregistrée en dépense")
+        raise HTTPException(400, "Apenas uma fatura aceite pode ser registada como despesa")
     link = await _create_einvoice_expense(user, inv, body.project_id)
     return {"ok": True, "expense": link}
 
@@ -210,7 +211,7 @@ async def unlink_expense(inv_id: str, user=Depends(pro_required)) -> dict:
     inv = await db.einvoice_inbox.find_one(
         {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
     if not inv:
-        raise HTTPException(404, "Facture introuvable")
+        raise HTTPException(404, "Fatura não encontrada")
     prev = inv.get("expense")
     if prev and prev.get("project_id") and prev.get("expense_id"):
         await db.projects.update_one(
@@ -273,11 +274,11 @@ async def reconcile(inv_id: str, body: ReconcileIn, user=Depends(pro_required)) 
     inv = await db.einvoice_inbox.find_one(
         {"user_id": user["user_id"], "inv_id": inv_id}, {"_id": 0})
     if not inv:
-        raise HTTPException(404, "Facture introuvable")
+        raise HTTPException(404, "Fatura não encontrada")
     order = await db.material_orders.find_one(
         {"user_id": user["user_id"], "order_id": body.order_id}, {"_id": 0})
     if not order:
-        raise HTTPException(404, "Bon de commande introuvable")
+        raise HTTPException(404, "Nota de encomenda não encontrada")
     expected = body.expected_ht if body.expected_ht is not None else _order_est_ht(order)
     expected = round(float(expected or 0), 2)
     gap = _gap(float(inv.get("amount_ht") or 0), expected)
@@ -301,8 +302,7 @@ async def _maybe_overspend_alert(user: dict, inv: dict, recon: dict) -> dict | N
     threshold = acc.get("overspend_threshold_pct", 5)
     if recon.get("gap_pct", 0) < threshold:
         return None
-    msg = (f"Surcoût détecté : la facture {inv.get('supplier')} ({inv.get('number')}) dépasse "
-           f"le bon de commande de {recon['gap_pct']}% (+{recon['gap_ht']:.2f} € HT).")
+    msg = (f"Sobrecusto detetado: a fatura {inv.get('supplier')} ({inv.get('number')}) excede a nota de encomenda de {recon['gap_pct']}% (+{recon['gap_ht']:.2f} € HT).")
     await db.notifications.insert_one({
         "user_id": user["user_id"], "type": "einvoice_overspend",
         "inv_id": inv.get("inv_id"), "order_id": recon.get("order_id"),
@@ -311,15 +311,8 @@ async def _maybe_overspend_alert(user: dict, inv: dict, recon: dict) -> dict | N
     try:
         if user.get("email"):
             from engines.emailer import send_email
-            html = (f'<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">'
-                    f'<h2 style="color:#B91C1C">⚠️ Surcoût fournisseur détecté</h2>'
-                    f'<p>{msg}</p>'
-                    f'<ul><li>Montant prévu (commande) : <b>{recon["expected_ht"]:.2f} € HT</b></li>'
-                    f'<li>Montant facturé : <b>{recon["invoice_ht"]:.2f} € HT</b></li>'
-                    f'<li>Écart : <b style="color:#B91C1C">+{recon["gap_ht"]:.2f} € ({recon["gap_pct"]}%)</b></li></ul>'
-                    f'<p style="color:#64748B;font-size:13px">Seuil d\'alerte configuré : {threshold}%. '
-                    f'Vérifiez la facture avant de l\'accepter.</p></div>')
-            await send_email(user["email"], "⚠️ Surcoût fournisseur détecté · ConstruPilot", html)
+            html = (f"""<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto"><h2 style="color:#B91C1C">⚠️ Sobrecusto de fornecedor detetado</h2><p>{msg}</p><ul><li>Montante previsto (encomenda): <b>{recon['expected_ht']:.2f} € s/ IVA</b></li><li>Montante faturado: <b>{recon['invoice_ht']:.2f} € s/ IVA</b></li><li>Diferença: <b style="color:#B91C1C">+{recon['gap_ht']:.2f} € ({recon['gap_pct']}%)</b></li></ul><p style="color:#64748B;font-size:13px">Limite de alerta configurado: {threshold}%. Verifique a fatura antes de a aceitar.</p></div>""")
+            await send_email(user["email"], "⚠️ Sobrecusto de fornecedor detetado · ConstruPilot", html)
     except Exception:  # noqa: BLE001
         pass
     return {"overspend": True, "gap_pct": recon["gap_pct"], "threshold_pct": threshold}
@@ -331,7 +324,7 @@ async def unreconcile(inv_id: str, user=Depends(pro_required)) -> dict:
         {"user_id": user["user_id"], "inv_id": inv_id},
         {"$unset": {"reconciliation": ""}})
     if not res.matched_count:
-        raise HTTPException(404, "Facture introuvable")
+        raise HTTPException(404, "Fatura não encontrada")
     return {"ok": True}
 
 
@@ -391,27 +384,8 @@ def _monthly_report_html(name: str, label: str, s: dict) -> str:
     rows = "".join(
         f'<tr><td style="padding:6px 0">{i["supplier"]} · {i["number"]}</td>'
         f'<td style="text-align:right;color:#B91C1C;padding:6px 0">+{_eur(i["gap_ht"])} ({i["gap_pct"]}%)</td></tr>'
-        for i in s["over_items"]) or '<tr><td style="color:#059669;padding:6px 0">Aucun surcoût ce mois-ci 🎉</td></tr>'
-    return f"""
-<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A0D14">
-  <div style="text-align:center;padding:20px 0">
-    <div style="font-size:24px;font-weight:800"><span style="color:#FF5A00">Constru</span>Pilot</div>
-  </div>
-  <h2 style="margin:0 0 4px">Résumé fournisseurs — {label}</h2>
-  <p style="color:#64748B;margin:0 0 18px">Olá {name}, voici votre bilan des factures fournisseurs rapprochées.</p>
-  <div style="display:flex;gap:12px;margin-bottom:18px">
-    <div style="flex:1;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px">
-      <div style="font-size:22px;font-weight:800;color:#B91C1C">+{_eur(s['overspend_total'])}</div>
-      <div style="font-size:12px;color:#64748B">Surcoûts détectés ({s['over_count']})</div></div>
-    <div style="flex:1;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:16px">
-      <div style="font-size:22px;font-weight:800;color:#059669">{_eur(s['savings_total'])}</div>
-      <div style="font-size:12px;color:#64748B">Économies réalisées ({s['under_count']})</div></div>
-  </div>
-  <h3 style="font-size:15px;margin:0 0 6px">Principaux surcoûts</h3>
-  <table style="width:100%;border-collapse:collapse;font-size:13px">{rows}</table>
-  <p style="color:#94A3B8;font-size:12px;text-align:center;margin-top:22px">
-    ConstruPilot · Suivez votre marge en temps réel</p>
-</div>"""
+        for i in s["over_items"]) or "<tr><td style=\"color:#059669;padding:6px 0\">Nenhum sobrecusto este mês 🎉</td></tr>"
+    return f"""\n<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0A0D14">\n  <div style="text-align:center;padding:20px 0">\n    <div style="font-size:24px;font-weight:800"><span style="color:#FF5A00">Constru</span>Pilot</div>\n  </div>\n  <h2 style="margin:0 0 4px">Resumo de fornecedores — {label}</h2>\n  <p style="color:#64748B;margin:0 0 18px">Olá {name}, eis o seu balanço das faturas de fornecedores conciliadas.</p>\n  <div style="display:flex;gap:12px;margin-bottom:18px">\n    <div style="flex:1;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px">\n      <div style="font-size:22px;font-weight:800;color:#B91C1C">+{_eur(s['overspend_total'])}</div>\n      <div style="font-size:12px;color:#64748B">Sobrecustos detetados ({s['over_count']})</div></div>\n    <div style="flex:1;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:16px">\n      <div style="font-size:22px;font-weight:800;color:#059669">{_eur(s['savings_total'])}</div>\n      <div style="font-size:12px;color:#64748B">Poupanças realizadas ({s['under_count']})</div></div>\n  </div>\n  <h3 style="font-size:15px;margin:0 0 6px">Principais sobrecustos</h3>\n  <table style="width:100%;border-collapse:collapse;font-size:13px">{rows}</table>\n  <p style="color:#94A3B8;font-size:12px;text-align:center;margin-top:22px">\n    ConstruPilot · Acompanhe a sua margem em tempo real</p>\n</div>"""
 
 
 async def run_monthly_overspend_reports(ref: datetime | None = None) -> dict:
@@ -431,7 +405,7 @@ async def run_monthly_overspend_reports(ref: datetime | None = None) -> dict:
             continue
         try:
             html = _monthly_report_html((u.get("name") or "").split(" ")[0] or "cher pro", label, s)
-            await send_email(u["email"], f"Votre résumé fournisseurs — {label} · ConstruPilot", html)
+            await send_email(u["email"], f'O seu resumo de fornecedores — {label} · ConstruPilot', html)
             sent += 1
         except Exception:  # noqa: BLE001
             continue
