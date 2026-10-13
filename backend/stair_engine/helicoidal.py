@@ -139,6 +139,7 @@ def compute_helicoidal(inp: HelicoidalInput, norms: StairNorms = DTU_36_3_FR) ->
         ))
 
     is_buildable = A.compute_is_buildable(alerts_all)
+    is_geometrically_possible = A.compute_is_geometrically_possible(alerts_all)
 
     slope_deg = math.degrees(math.atan2(inp.floor_height_mm, 2 * math.pi * walkline_radius * inp.sweep_angle_deg / 360))
     if not any(a.code == "SLOPE_TOO_STEEP" for a in alerts_all):
@@ -169,6 +170,7 @@ def compute_helicoidal(inp: HelicoidalInput, norms: StairNorms = DTU_36_3_FR) ->
         treads=treads,
         alerts=alerts_all,
         is_buildable=is_buildable,
+        is_geometrically_possible=is_geometrically_possible,
     )
 
 
@@ -180,4 +182,5 @@ def _dead(msg: str) -> StairResult:
         required_stairwell_mm={}, steps_per_flight=[], treads=[],
         alerts=[Alert(level="red", code="GEOMETRY_INVALID", message_fr=msg)],
         is_buildable=False,
+        is_geometrically_possible=False,
     )

@@ -85,6 +85,11 @@ function ResultDetail({ r }) {
   ];
   return (
     <div className="space-y-3" data-testid="stair-result-detail">
+      {!r.is_buildable && (
+        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm font-medium text-destructive" data-testid="stair-non-conforming-banner">
+          ⚠ Solução não conforme (RGEU / boas práticas)
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <Badge variant={r.is_buildable ? "default" : "destructive"} data-testid="stair-buildable-badge">
           {r.is_buildable ? "Exequível" : "Não exequível"}

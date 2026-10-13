@@ -42,13 +42,25 @@ BLOCKING_CODES: Set[str] = {
 
 
 def is_alert_blocking(alert: Alert) -> bool:
-    """True si l'alerte empêche physiquement la construction."""
+    """True se o alerta impede fisicamente a construção (geometria/segurança)."""
     return alert.level == "red" and alert.code in BLOCKING_CODES
 
 
-def compute_is_buildable(alerts: List[Alert]) -> bool:
-    """is_buildable = aucun blocker géométrique/sécurité."""
+def compute_is_geometrically_possible(alerts: List[Alert]) -> bool:
+    """True enquanto não há bloqueador geométrico (lógica histórica)."""
     return not any(is_alert_blocking(a) for a in alerts)
+
+
+def compute_is_buildable(alerts: List[Alert]) -> bool:
+    """is_buildable = conforme para uso corrente.
+
+    QUALQUER alerta vermelho torna a escada não conforme — não só os
+    `BLOCKING_CODES`. As incompatibilidades regulamentares (inclinação>42°,
+    cobertor<220 mm, Blondel fora de 560–700 mm, etc.) tornam a solução
+    inadequada para habitação, mesmo que seja geometricamente possível
+    construí-la (ver `is_geometrically_possible`).
+    """
+    return not any(a.level == "red" for a in alerts)
 
 
 def check_blondel(blondel_mm: float, norms: StairNorms = DTU_36_3_FR) -> Optional[Alert]:

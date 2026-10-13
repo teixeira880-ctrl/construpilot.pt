@@ -230,6 +230,7 @@ def _compute_half_single(inp: HalfTurnInput, norms: StairNorms) -> StairResult:
                 alerts_all.append(ha)
 
     is_buildable = A.compute_is_buildable(alerts_all)
+    is_geometrically_possible = A.compute_is_geometrically_possible(alerts_all)
 
     oa = A.check_optimal(blondel, slope_deg, norms)
     if oa:
@@ -255,6 +256,7 @@ def _compute_half_single(inp: HalfTurnInput, norms: StairNorms) -> StairResult:
             max(0, n_upper - (1 if inp.balancing == "balanced" else 1)),
         ],
         treads=treads, alerts=alerts_all, is_buildable=is_buildable,
+        is_geometrically_possible=is_geometrically_possible,
     )
 
 
@@ -266,4 +268,5 @@ def _dead(stair_type, code, msg):
         required_stairwell_mm={}, steps_per_flight=[], treads=[],
         alerts=[Alert(level="red", code=code, message_fr=msg)],
         is_buildable=False,
+        is_geometrically_possible=False,
     )

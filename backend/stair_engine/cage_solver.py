@@ -85,6 +85,7 @@ class CageStairResult(BaseModel):
     treads: List[CageTread]
     alerts: List[Alert]
     is_buildable: bool
+    is_geometrically_possible: bool = True
     dtu_compliant: bool
     inputs: CageStairInput
 
@@ -245,6 +246,7 @@ def solve_cage(inp: CageStairInput, norms: StairNorms = DTU_36_3_FR,
                             message_fr=f'Altura livre sob a escada superior {hr:.0f} mm < {norms.headroom_min_mm:.0f} mm.',
                             metric="headroom_mm", value=hr, threshold=norms.headroom_min_mm))
     res.is_buildable = False
+    res.is_geometrically_possible = False
     res.dtu_compliant = False
     return res
 
@@ -342,6 +344,7 @@ def _build(inp, norms, mode, e, g, n1, n, W, L, j, b, y_n, off, cx, r_w, r_i) ->
         if ha:
             alerts.append(ha)
     is_buildable = A.compute_is_buildable(alerts)
+    is_geometrically_possible = A.compute_is_geometrically_possible(alerts)
     dtu = not any(a.level == "red" for a in alerts)
     if mode == "balanced":
         alerts.append(Alert(level="green", code="CAGE_BALANCED",
@@ -353,7 +356,8 @@ def _build(inp, norms, mode, e, g, n1, n, W, L, j, b, y_n, off, cx, r_w, r_i) ->
                            min_inner_giron_mm=round(inner_min, 1),
                            headroom_trémie_mm=round(head_tremie, 1) if e > 0 else -1,
                            treads=treads, alerts=A.summarize(alerts) if hasattr(A, "summarize") else alerts,
-                           is_buildable=is_buildable, dtu_compliant=dtu, inputs=inp)
+                           is_buildable=is_buildable, is_geometrically_possible=is_geometrically_possible,
+                           dtu_compliant=dtu, inputs=inp)
 
 
 # --------------------------------------------------------------------------- escaliers superposés
