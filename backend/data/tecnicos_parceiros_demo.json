@@ -1,0 +1,68 @@
+[
+  {
+    "id": "arq_lisboa_01",
+    "nome": "Rita Costa — Atelier Urbano",
+    "ordem": "OA",
+    "numero": "17284",
+    "especialidade": "arquitetura",
+    "regiao": "Lisboa e Vale do Tejo",
+    "preco_indicativo_eur": 350,
+    "prazo_dias": 7,
+    "email_contacto": "rita.costa@partner.construpilot.pt"
+  },
+  {
+    "id": "eng_lisboa_01",
+    "nome": "Pedro Marques — Engenharia & Projeto, Lda.",
+    "ordem": "OE",
+    "numero": "49123",
+    "especialidade": "engenheiro_estruturas",
+    "regiao": "Lisboa e Vale do Tejo",
+    "preco_indicativo_eur": 420,
+    "prazo_dias": 10,
+    "email_contacto": "pedro.marques@partner.construpilot.pt"
+  },
+  {
+    "id": "arq_porto_01",
+    "nome": "Hugo Teixeira — Arquitetura & Reabilitação",
+    "ordem": "OA",
+    "numero": "22941",
+    "especialidade": "arquitetura",
+    "regiao": "Norte / Porto",
+    "preco_indicativo_eur": 320,
+    "prazo_dias": 7,
+    "email_contacto": "hugo.teixeira@partner.construpilot.pt"
+  },
+  {
+    "id": "eng_porto_01",
+    "nome": "Mariana Antunes — Estruturas & Fundações",
+    "ordem": "OE",
+    "numero": "55788",
+    "especialidade": "engenheiro_estruturas",
+    "regiao": "Norte / Porto",
+    "preco_indicativo_eur": 390,
+    "prazo_dias": 10,
+    "email_contacto": "mariana.antunes@partner.construpilot.pt"
+  },
+  {
+    "id": "arq_coimbra_01",
+    "nome": "João Vieira — Habitare Projetos",
+    "ordem": "OA",
+    "numero": "19003",
+    "especialidade": "arquitetura",
+    "regiao": "Centro",
+    "preco_indicativo_eur": 290,
+    "prazo_dias": 8,
+    "email_contacto": "joao.vieira@partner.construpilot.pt"
+  },
+  {
+    "id": "coord_lisboa_01",
+    "nome": "Sofia Nogueira — Coordenação de projeto",
+    "ordem": "OA",
+    "numero": "18102",
+    "especialidade": "coordenador_projeto",
+    "regiao": "Nacional",
+    "preco_indicativo_eur": 240,
+    "prazo_dias": 5,
+    "email_contacto": "sofia.nogueira@partner.construpilot.pt"
+  }
+]

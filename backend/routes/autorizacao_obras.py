@@ -1,38 +1,40 @@
-"""Rota pública do módulo «Autorização de obras» para particulares.
+"""Rotas do módulo «Autorização de obras» (Lote N1 + N2 + N3 + N4 + endurecimento N5).
 
-Diagnóstico guiado — não altera a base de dados, não consome créditos.
+Separação clara entre:
+  - router         : endpoints públicos (sem auth) — diagnóstico, meta, settings, guia
+                     — e endpoints protegidos (require current_user) para IA e dossier
+  - router_publico : endpoints de assinatura via token (técnico subscritor, sem auth)
+  - router_admin   : endpoints de administração (gate admin_user)
 """
-from __future__ import annotations
-
 import base64
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Body, Depends, Request
+from fastapi.responses import Response
+from pydantic import BaseModel, EmailStr, Field
 
-from engines.autorizacao_obras_pt.rules import (
-    LEI_RJUE,
-    SCENARIOS,
-    diagnosticar,
-)
+from core.rate_limit import limiter
+from core.security import admin_user, current_user, optional_user
+
+from engines.autorizacao_obras_pt.rules import LEI_RJUE, SCENARIOS, diagnosticar
 from engines.autorizacao_obras_pt.dossier import (
+    checklist_pecas,
+    estimativa_e_calendario,
     gerar_dossier,
     gerar_memoria_descritiva,
-    estimativa_e_calendario,
-    checklist_pecas,
 )
 from engines.autorizacao_obras_pt.subscricao import (
-    carregar_tecnicos,
+    ESPECIALIDADES,
+    atualizar_tecnico,
     criar_pedido_subscricao,
-    filtrar_tecnicos,
+    criar_tecnico,
+    eliminar_tecnico,
     ler_pedido_por_token,
+    listar_tecnicos,
     registar_termo_responsabilidade,
 )
 from engines.autorizacao_obras_pt.settings import get_settings, set_settings
 from engines.autorizacao_obras_pt.guia_pepu import gerar_guia_pepu_pdf
-from fastapi import Depends
-from fastapi.responses import Response
-from core.security import admin_user
 
 router = APIRouter(prefix="/particulares/autorizacao", tags=["autorizacao-obras"])
 router_publico = APIRouter(prefix="/publico/autorizacao", tags=["autorizacao-obras-publico"])
@@ -40,9 +42,11 @@ router_admin = APIRouter(prefix="/admin/autorizacao-obras", tags=["autorizacao-o
                           dependencies=[Depends(admin_user)])
 
 
+# ---------------------------------------------------------------- Diagnóstico (público)
+
 class DiagnosticoIn(BaseModel):
-    tipo_obra: str = Field(..., description="anexo|muro|interiores|piscina|ampliacao|moradia_nova|outro")
-    subtipo_muro: Optional[str] = Field(None, description="vedacao|suporte quando tipo_obra=muro")
+    tipo_obra: str
+    subtipo_muro: Optional[str] = None
     area_implantacao_m2: Optional[float] = 0.0
     area_construcao_total_m2: Optional[float] = 0.0
     area_construcao_criada_m2: Optional[float] = 0.0
@@ -67,16 +71,19 @@ class DiagnosticoIn(BaseModel):
 
 
 @router.get("/meta")
-async def meta() -> dict:
-    """Metadados para a UI: lista de cenários cobertos e referência à lei base."""
+@limiter.limit("60/hour")
+async def meta(request: Request, response: Response) -> dict:
     return {"ok": True, "lei_base": LEI_RJUE, "scenarios": SCENARIOS}
 
 
 @router.post("/diagnostico")
-async def diagnostico(body: DiagnosticoIn) -> dict:
+@limiter.limit("30/hour")
+async def diagnostico(request: Request, response: Response, body: DiagnosticoIn) -> dict:
     resultado = diagnosticar(body.model_dump())
     return {"ok": True, **resultado}
 
+
+# ---------------------------------------------------------------- IA / dossier (auth)
 
 class RequerenteIn(BaseModel):
     nome: Optional[str] = ""
@@ -88,7 +95,7 @@ class RequerenteIn(BaseModel):
 
 class PecaIn(BaseModel):
     nome: str
-    bytes_b64: Optional[str] = None  # conteúdo opcional (base64) de peça já carregada
+    bytes_b64: Optional[str] = None
 
 
 class MemoriaPreviewIn(BaseModel):
@@ -105,25 +112,25 @@ class DossierIn(BaseModel):
 
 
 @router.post("/memoria/preview")
-async def memoria_preview(body: MemoriaPreviewIn) -> dict:
-    """Pré-gera a memória descritiva para o utilizador rever antes do PDF final."""
+@limiter.limit("10/hour")
+async def memoria_preview(request: Request, response: Response, body: MemoriaPreviewIn,
+                           user=Depends(current_user)) -> dict:
     texto = await gerar_memoria_descritiva(body.respostas or {}, body.diagnostico or {})
     return {"ok": True, "memoria_texto": texto}
 
 
 @router.post("/checklist")
-async def checklist(body: MemoriaPreviewIn) -> dict:
+@limiter.limit("60/hour")
+async def checklist(request: Request, response: Response, body: MemoriaPreviewIn) -> dict:
     cl = checklist_pecas(body.diagnostico or {}, [])
     return {"ok": True, **cl}
 
 
 @router.post("/dossier/gerar")
-async def dossier_gerar(body: DossierIn) -> dict:
-    """Gera o dossier (PDF único + ZIP). Devolve conteúdo em base64 na resposta.
-
-    Nota: a venda do processo está desativada por flag — este endpoint apenas gera.
-    A ativação da monetização é feita no Lote N4.
-    """
+@limiter.limit("5/hour")
+async def dossier_gerar(request: Request, response: Response, body: DossierIn,
+                         user=Depends(current_user)) -> dict:
+    """Gera o dossier completo. Requer sessão iniciada (consumo de IA + PDF)."""
     pecas = []
     for p in body.pecas:
         if p.bytes_b64:
@@ -135,8 +142,8 @@ async def dossier_gerar(body: DossierIn) -> dict:
             pecas.append({"nome": p.nome, "bytes": b""})
     requerente = body.requerente.model_dump() if body.requerente else None
     out = await gerar_dossier(body.respostas or {}, body.diagnostico or {},
-                              pecas_carregadas=pecas, requerente=requerente,
-                              memoria_override=body.memoria_override)
+                               pecas_carregadas=pecas, requerente=requerente,
+                               memoria_override=body.memoria_override)
     return {
         "ok": True,
         "version": out["version"],
@@ -149,12 +156,41 @@ async def dossier_gerar(body: DossierIn) -> dict:
     }
 
 
-# ---------------------------------------------------------------- Subscrição (Lote N3)
+# ---------------------------------------------------------------- Subscrição
+
+@router.get("/tecnicos")
+@limiter.limit("30/hour")
+async def tecnicos_disponiveis(request: Request, response: Response,
+                                 especialidade: Optional[str] = None,
+                                 regiao: Optional[str] = None) -> dict:
+    lista = await listar_tecnicos(especialidade=especialidade, regiao=regiao)
+    return {"ok": True, "tecnicos": lista, "catalogo_vazio": len(lista) == 0}
+
 
 class PedidoSubscricaoIn(BaseModel):
-    tecnico_id: str
+    tecnico_id: Optional[str] = None
+    requerente_nome: Optional[str] = None
     requerente_email: Optional[str] = None
     dossier: Dict[str, Any] = Field(default_factory=dict)
+    # Técnico indicado pelo próprio requerente (quando o catálogo não cobre a sua região)
+    tecnico_custom: Optional[Dict[str, Any]] = None
+
+
+@router.post("/subscricao/pedir")
+@limiter.limit("20/day")
+async def pedir_subscricao(request: Request, response: Response, body: PedidoSubscricaoIn,
+                            user=Depends(current_user)) -> dict:
+    try:
+        res = await criar_pedido_subscricao(
+            dossier=body.dossier or {},
+            tecnico_id=body.tecnico_id,
+            requerente_nome=body.requerente_nome,
+            requerente_email=body.requerente_email,
+            tecnico_custom=body.tecnico_custom,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+    return {"ok": True, **res}
 
 
 class TermoResponsabilidadeIn(BaseModel):
@@ -166,48 +202,33 @@ class TermoResponsabilidadeIn(BaseModel):
     observacoes: Optional[str] = None
 
 
-@router.get("/tecnicos")
-async def tecnicos_disponiveis(especialidade: Optional[str] = None,
-                                regiao: Optional[str] = None) -> dict:
-    return {"ok": True, "tecnicos": filtrar_tecnicos(especialidade, regiao)}
-
-
-@router.post("/subscricao/pedir")
-async def pedir_subscricao(body: PedidoSubscricaoIn) -> dict:
-    try:
-        res = await criar_pedido_subscricao(body.dossier, body.tecnico_id, body.requerente_email)
-    except ValueError as e:
-        return {"ok": False, "error": str(e)}
-    return {"ok": True, **res}
-
-
-# Rotas públicas (sem autenticação) para o técnico assinar via link seguro
 @router_publico.get("/subscrever/{token}")
-async def ver_pedido_publico(token: str) -> dict:
+@limiter.limit("60/hour")
+async def ver_pedido_publico(request: Request, response: Response, token: str) -> dict:
     doc = await ler_pedido_por_token(token)
     if not doc:
         return {"ok": False, "error": "token_invalido"}
-    # Nunca expor o próprio token na resposta
+    if isinstance(doc, dict) and doc.get("error"):
+        return {"ok": False, **doc}
     doc.pop("signing_token", None)
     return {"ok": True, "pedido": doc}
 
 
 @router_publico.post("/subscrever/{token}/termo")
-async def submeter_termo(token: str, body: TermoResponsabilidadeIn) -> dict:
+@limiter.limit("10/hour")
+async def submeter_termo(request: Request, response: Response, token: str, body: TermoResponsabilidadeIn) -> dict:
     return await registar_termo_responsabilidade(
         token, body.nome, body.ordem, body.numero, body.especialidade,
         body.assinatura_b64, body.observacoes,
     )
 
 
-
-# ---------------------------------------------------------------- Flag + Stripe (Lote N4)
+# ---------------------------------------------------------------- Flag + pagamento (N4)
 
 @router.get("/settings")
-async def ver_settings_publicos() -> dict:
-    """Lê a configuração atual (público — exibida na UI do particular)."""
+@limiter.limit("60/hour")
+async def ver_settings_publicos(request: Request, response: Response) -> dict:
     s = await get_settings()
-    # Expõe só os campos relevantes para o cliente
     return {
         "ok": True,
         "sale_enabled": bool(s.get("sale_enabled")),
@@ -224,8 +245,9 @@ class ComprarIn(BaseModel):
 
 
 @router.post("/comprar")
-async def comprar(body: ComprarIn) -> dict:
-    """Cria uma sessão Stripe Checkout para pagar o processo. Bloqueia se a flag estiver OFF."""
+@limiter.limit("20/hour")
+async def comprar(request: Request, response: Response, body: ComprarIn,
+                   user=Depends(current_user)) -> dict:
     s = await get_settings()
     if not s.get("sale_enabled"):
         return {"ok": False, "error": "sale_disabled",
@@ -250,7 +272,7 @@ async def comprar(body: ComprarIn) -> dict:
             }],
             success_url=body.success_url,
             cancel_url=body.cancel_url,
-            metadata={"product": "autorizacao_obras"},
+            metadata={"product": "autorizacao_obras", "user_id": str(user.get("_id") or user.get("id") or "")},
         )
         return {"ok": True, "checkout_url": session.url, "session_id": session.id}
     except Exception as e:  # noqa: BLE001
@@ -258,14 +280,15 @@ async def comprar(body: ComprarIn) -> dict:
 
 
 @router.get("/guia-pepu.pdf")
-async def descarregar_guia_pepu() -> Response:
-    """Devolve o guia PEPU em PDF (público, sem autenticação)."""
+@limiter.limit("60/hour")
+async def descarregar_guia_pepu(request: Request, response: Response):
     pdf = gerar_guia_pepu_pdf()
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": 'inline; filename="guia-pepu.pdf"'})
 
 
-# ---- Admin ----
+# ---------------------------------------------------------------- Admin: settings + CRUD
+
 class AdminSettingsIn(BaseModel):
     sale_enabled: Optional[bool] = None
     price_eur: Optional[float] = None
@@ -277,13 +300,65 @@ class AdminSettingsIn(BaseModel):
 
 @router_admin.get("/settings")
 async def admin_ler_settings() -> dict:
-    s = await get_settings()
-    return {"ok": True, "settings": s}
+    return {"ok": True, "settings": await get_settings()}
 
 
 @router_admin.put("/settings")
-async def admin_gravar_settings(body: AdminSettingsIn) -> dict:
+async def admin_gravar_settings(body: AdminSettingsIn, admin=Depends(admin_user)) -> dict:
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
-    s = await set_settings(patch, admin_user_id="admin")
-    return {"ok": True, "settings": s}
+    uid = str(admin.get("_id") or admin.get("id") or "admin")
+    return {"ok": True, "settings": await set_settings(patch, admin_user_id=uid)}
 
+
+class TecnicoIn(BaseModel):
+    id: Optional[str] = None
+    nome: str
+    email: EmailStr
+    telefone: Optional[str] = ""
+    ordem: Optional[str] = "OA"
+    numero: Optional[str] = ""
+    especialidade: str = "arquitetura"
+    regiao: Optional[str] = ""
+    preco_indicativo_eur: Optional[float] = 0
+    prazo_dias: Optional[int] = 7
+    ativo: Optional[bool] = True
+
+
+class TecnicoPatchIn(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+    telefone: Optional[str] = None
+    ordem: Optional[str] = None
+    numero: Optional[str] = None
+    especialidade: Optional[str] = None
+    regiao: Optional[str] = None
+    preco_indicativo_eur: Optional[float] = None
+    prazo_dias: Optional[int] = None
+    ativo: Optional[bool] = None
+
+
+@router_admin.get("/tecnicos")
+async def admin_listar_tecnicos() -> dict:
+    lista = await listar_tecnicos(incluir_inativos=True)
+    return {"ok": True, "tecnicos": lista, "especialidades": list(ESPECIALIDADES)}
+
+
+@router_admin.post("/tecnicos")
+async def admin_criar_tecnico(body: TecnicoIn) -> dict:
+    created = await criar_tecnico(body.model_dump())
+    return {"ok": True, "tecnico": created}
+
+
+@router_admin.put("/tecnicos/{tecnico_id}")
+async def admin_atualizar_tecnico(tecnico_id: str, body: TecnicoPatchIn) -> dict:
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    updated = await atualizar_tecnico(tecnico_id, patch)
+    if not updated:
+        return {"ok": False, "error": "nao_encontrado"}
+    return {"ok": True, "tecnico": updated}
+
+
+@router_admin.delete("/tecnicos/{tecnico_id}")
+async def admin_eliminar_tecnico(tecnico_id: str) -> dict:
+    ok = await eliminar_tecnico(tecnico_id)
+    return {"ok": ok, **({} if ok else {"error": "nao_encontrado"})}

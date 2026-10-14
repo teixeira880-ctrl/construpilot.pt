@@ -603,7 +603,8 @@ function DossierBlock({ respostas, diagnostico }) {
                                        regra_aplicada: diagnostico?.regra_aplicada,
                                        titulo_regra: diagnostico?.titulo_regra }}
                             especialidadesSugeridas={diagnostico?.tecnicos_obrigatorios || []}
-                            requerenteEmail={requerente.email} />
+                            requerenteEmail={requerente.email}
+                            requerenteNome={requerente.nome} />
         </Card>
       )}
     </div>
@@ -611,68 +612,133 @@ function DossierBlock({ respostas, diagnostico }) {
 }
 
 
-function SubscreverBloco({ dossier, especialidadesSugeridas, requerenteEmail }) {
+function SubscreverBloco({ dossier, especialidadesSugeridas, requerenteEmail, requerenteNome }) {
   const [tecnicos, setTecnicos] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [catalogoVazio, setCatalogoVazio] = useState(false);
   const [enviado, setEnviado] = useState(null);
   const [filtroEsp, setFiltroEsp] = useState(especialidadesSugeridas?.[0] || "arquitetura");
+  const [loading, setLoading] = useState(false);
+  const [custom, setCustom] = useState({ nome: "", email: "", especialidade: "arquitetura", numero: "" });
+  const [modoCustom, setModoCustom] = useState(false);
 
   useEffect(() => {
     const esp = filtroEsp === "engenheiro_civil_ou_eletrotecnico" ? "engenheiro_civil" : filtroEsp;
     fetch(`${API}/api/particulares/autorizacao/tecnicos?especialidade=${encodeURIComponent(esp)}`)
       .then((r) => r.json())
-      .then((d) => setTecnicos(d.tecnicos || []))
-      .catch(() => setTecnicos([]));
+      .then((d) => { setTecnicos(d.tecnicos || []); setCatalogoVazio(!!d.catalogo_vazio); })
+      .catch(() => { setTecnicos([]); setCatalogoVazio(true); });
   }, [filtroEsp]);
 
-  const pedir = async (tecnico_id) => {
+  const pedir = async (tecnico_id, tecnico_custom) => {
     setLoading(true);
     try {
       const r = await fetch(`${API}/api/particulares/autorizacao/subscricao/pedir`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tecnico_id, requerente_email: requerenteEmail || null, dossier }),
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({
+          tecnico_id: tecnico_id || null,
+          tecnico_custom: tecnico_custom || null,
+          requerente_email: requerenteEmail || null,
+          requerente_nome: requerenteNome || null,
+          dossier,
+        }),
       });
       const d = await r.json();
-      if (d.ok) setEnviado({ tecnico: d.tecnico, token: d.signing_token });
+      if (d.ok) setEnviado(d);
     } finally { setLoading(false); }
   };
 
   if (enviado) {
-    const link = `${window.location.origin}/subscrever/${enviado.token}`;
+    const link = `${window.location.origin}${enviado.link_subscrever || "/subscrever/" + enviado.signing_token}`;
     return (
       <div className="mt-5 p-4 rounded border border-emerald-200 bg-emerald-50/60" data-testid="autorizacao-subscricao-ok">
         <p className="font-medium mb-1">Pedido enviado a {enviado.tecnico.nome}</p>
-        <p className="text-sm text-muted-foreground mb-2">O técnico receberá um link único para rever e subscrever o processo. Pode também partilhá-lo diretamente:</p>
+        <p className="text-sm text-muted-foreground mb-2">
+          {enviado.email_enviado
+            ? "O técnico recebeu o link por e-mail. Pode também partilhá-lo diretamente:"
+            : "O e-mail automático não pôde ser enviado — partilhe este link diretamente com o técnico:"}
+        </p>
         <code className="block text-xs break-all p-2 bg-background border rounded" data-testid="autorizacao-subscricao-link">{link}</code>
+        <p className="text-xs text-muted-foreground mt-2">Link válido durante 30 dias.</p>
       </div>
     );
   }
 
+  const mostrarCustom = catalogoVazio || tecnicos.length === 0 || modoCustom;
+
   return (
     <div className="mt-6 pt-5 border-t" data-testid="autorizacao-subscricao-bloco">
-      <h4 className="font-semibold mb-2">Pedir subscrição a um técnico parceiro</h4>
-      <p className="text-sm text-muted-foreground mb-3">Convide um arquiteto ou engenheiro parceiro para rever o processo e assinar o termo de responsabilidade.</p>
-      <div className="flex items-center gap-2 mb-3">
-        <label className="text-sm">Especialidade:</label>
-        <select value={filtroEsp} onChange={(e) => setFiltroEsp(e.target.value)}
-                className="border rounded h-9 px-2 text-sm bg-background" data-testid="autorizacao-subscricao-esp">
-          <option value="arquitetura">Arquitetura</option>
-          <option value="engenheiro_estruturas">Engenharia de estruturas</option>
-          <option value="coordenador_projeto">Coordenação de projeto</option>
-        </select>
-      </div>
-      <div className="grid gap-2">
-        {tecnicos.length === 0 && <p className="text-sm text-muted-foreground">Sem técnicos parceiros nesta especialidade.</p>}
-        {tecnicos.map((t) => (
-          <div key={t.id} className="flex items-center justify-between p-3 rounded border" data-testid={`autorizacao-tecnico-${t.id}`}>
-            <div className="text-sm">
-              <div className="font-medium">{t.nome}</div>
-              <div className="text-xs text-muted-foreground">{t.ordem} {t.numero} · {t.regiao} · ~{t.prazo_dias} dias · {t.preco_indicativo_eur} €</div>
-            </div>
-            <Button size="sm" onClick={() => pedir(t.id)} disabled={loading} data-testid={`autorizacao-tecnico-pedir-${t.id}`}>Pedir subscrição</Button>
+      <h4 className="font-semibold mb-2">Pedir subscrição a um técnico</h4>
+
+      {catalogoVazio && (
+        <p className="text-sm text-amber-800 bg-amber-50/60 border border-amber-200 rounded p-3 mb-3" data-testid="autorizacao-catalogo-vazio">
+          Ainda não temos técnicos parceiros nesta região. Pode indicar o <strong>seu</strong> arquiteto ou
+          engenheiro para subscrever o processo.
+        </p>
+      )}
+
+      {!catalogoVazio && (
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-sm">Especialidade:</label>
+            <select value={filtroEsp} onChange={(e) => setFiltroEsp(e.target.value)}
+                    className="border rounded h-9 px-2 text-sm bg-background" data-testid="autorizacao-subscricao-esp">
+              <option value="arquitetura">Arquitetura</option>
+              <option value="engenheiro_estruturas">Engenharia de estruturas</option>
+              <option value="engenheiro_civil">Engenharia civil</option>
+              <option value="engenheiro_eletrotecnico">Engenharia eletrotécnica</option>
+              <option value="coordenador_projeto">Coordenação de projeto</option>
+            </select>
           </div>
-        ))}
-      </div>
+          <div className="grid gap-2 mb-3">
+            {tecnicos.map((t) => (
+              <div key={t.id} className="flex items-center justify-between p-3 rounded border" data-testid={`autorizacao-tecnico-${t.id}`}>
+                <div className="text-sm">
+                  <div className="font-medium">{t.nome}</div>
+                  <div className="text-xs text-muted-foreground">{t.ordem} {t.numero} · {t.regiao} · ~{t.prazo_dias || 7} dias · {t.preco_indicativo_eur || 0} €</div>
+                </div>
+                <Button size="sm" onClick={() => pedir(t.id, null)} disabled={loading} data-testid={`autorizacao-tecnico-pedir-${t.id}`}>Pedir</Button>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setModoCustom(!modoCustom)} data-testid="autorizacao-tecnico-custom-toggle">
+            {modoCustom ? "Esconder" : "Indicar o meu próprio técnico"}
+          </Button>
+        </>
+      )}
+
+      {mostrarCustom && (
+        <div className="mt-3 p-3 rounded border bg-muted/30" data-testid="autorizacao-tecnico-custom">
+          <h5 className="font-medium mb-2 text-sm">Indicar o meu arquiteto / engenheiro</h5>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div><Label className="text-xs">Nome*</Label>
+              <Input value={custom.nome} onChange={(e) => setCustom({ ...custom, nome: e.target.value })} data-testid="autorizacao-custom-nome" />
+            </div>
+            <div><Label className="text-xs">E-mail*</Label>
+              <Input type="email" value={custom.email} onChange={(e) => setCustom({ ...custom, email: e.target.value })} data-testid="autorizacao-custom-email" />
+            </div>
+            <div><Label className="text-xs">Especialidade</Label>
+              <select value={custom.especialidade} onChange={(e) => setCustom({ ...custom, especialidade: e.target.value })}
+                      className="w-full border rounded h-10 px-2 bg-background" data-testid="autorizacao-custom-esp">
+                <option value="arquitetura">Arquiteto</option>
+                <option value="engenheiro_estruturas">Engenheiro de estruturas</option>
+                <option value="engenheiro_civil">Engenheiro civil</option>
+                <option value="engenheiro_eletrotecnico">Engenheiro eletrotécnico</option>
+                <option value="engenheiro_mecanico">Engenheiro mecânico</option>
+                <option value="coordenador_projeto">Coordenador de projeto</option>
+              </select>
+            </div>
+            <div><Label className="text-xs">Nº da ordem (opcional)</Label>
+              <Input value={custom.numero} onChange={(e) => setCustom({ ...custom, numero: e.target.value })} data-testid="autorizacao-custom-numero" />
+            </div>
+          </div>
+          <Button size="sm" className="mt-3"
+                  disabled={!custom.nome || !custom.email || !custom.email.includes("@") || loading}
+                  onClick={() => pedir(null, custom)}
+                  data-testid="autorizacao-custom-enviar">
+            Enviar pedido de subscrição
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
