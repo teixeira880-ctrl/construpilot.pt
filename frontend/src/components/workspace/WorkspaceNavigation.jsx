@@ -21,6 +21,7 @@ import { workspaceLinks, isProfessional, activeWorkspaceLink, OPEN_WORKSPACE_MEN
 import { normalizeSearch, useWorkspaceCopy } from "./copy";
 import { translatedToolLabel } from "./translations";
 import { UpgradeLock } from "@/components/UpgradeLock";
+import InstallAppButton from "@/components/InstallAppButton";
 
 export default function WorkspaceNavigation() {
   const { user, logout, setUser } = useAuth();
@@ -149,6 +150,7 @@ export default function WorkspaceNavigation() {
             <DropdownMenuSeparator />
             {links.filter(l => ["/compte", "/preferences", "/planos", "/admin"].includes(l.to)).map(item => <DropdownMenuItem asChild key={item.to}><Link to={item.to} data-testid={`workspace-account-${item.to.slice(1)}`}><item.icon size={16} />{label(item)}</Link></DropdownMenuItem>)}
             <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 workspace-account-install" data-testid="workspace-account-install"><InstallAppButton compact /></div>
             <DropdownMenuItem onSelect={signOut} data-testid="logout-btn"><LogOut size={16} />{ui("logout")}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

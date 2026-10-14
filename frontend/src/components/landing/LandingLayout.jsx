@@ -5,6 +5,7 @@ import { AudienceSwitch } from "@/components/AudienceSwitch";
 import { Footer } from "@/components/Nav";
 import { LangToggle } from "@/context/I18nContext";
 import { WorkspaceBackdrop, useWorkspaceMotion } from "@/components/workspace/WorkspaceBackdrop";
+import InstallAppButton from "@/components/InstallAppButton";
 import "@/styles/workspace-ambient.css";
 import "@/styles/landing-premium.css";
 
@@ -36,10 +37,14 @@ export function LandingLayout({ audience, children }) {
         <div className="landing-lang"><LangToggle testId={`${prefix}-lang-toggle`} /></div>
         <button type="button" id="landing-menu-button" className="landing-menu-button" aria-expanded={menu} aria-controls="landing-mobile-menu" aria-label={menu ? "Fechar o menu" : "Abrir o menu"} onClick={() => setMenu(!menu)} data-testid="landing-menu-toggle">{menu ? <X size={21} /> : <Menu size={21} />}</button>
       </div>
-      {menu && <nav className="landing-mobile-menu" id="landing-mobile-menu" aria-label="Apresentação em telemóvel">{sections.map(s => <a key={s.id} href={`#${s.id}`} onClick={() => setMenu(false)}>{s.label}<ArrowRight size={16} /></a>)}<Link to="/inscription" onClick={() => setMenu(false)}>Criar a minha conta<ArrowRight size={16} /></Link></nav>}
+      {menu && <nav className="landing-mobile-menu" id="landing-mobile-menu" aria-label="Apresentação em telemóvel">{sections.map(s => <a key={s.id} href={`#${s.id}`} onClick={() => setMenu(false)}>{s.label}<ArrowRight size={16} /></a>)}<Link to="/inscription" onClick={() => setMenu(false)}>Criar a minha conta<ArrowRight size={16} /></Link><div className="landing-mobile-install" onClick={() => setMenu(false)}><InstallAppButton compact /></div></nav>}
     </header>
     <main id="landing-main" tabIndex={-1}>{children}</main>
     <div className="landing-motion-row"><button type="button" disabled={motion.reduced} aria-pressed={!motion.paused && !motion.reduced} onClick={motion.toggle} data-testid="landing-motion-toggle"><Waves size={17} />Fundo animado<span>{motion.reduced ? "Reduzido no dispositivo" : motion.paused ? "En pause" : "Ativo"}</span></button></div>
+    <aside className="landing-install-strip" data-testid="landing-install-strip" aria-label="Instalar a aplicação">
+      <p>Instale o ConstruPilot no computador ou telemóvel — acesso direto, sem loja de aplicações.</p>
+      <InstallAppButton />
+    </aside>
     <Footer />
   </div>;
 }
