@@ -1549,14 +1549,17 @@ export function I18nProvider({ children }) {
 
   const setLang = (requested) => {
     const l = UI_LANGS.includes(requested) ? requested : SITE_LANG;
-    setLangState(l);
+    if (l === lang) return;
     try { localStorage.setItem(STORAGE_KEY, l); } catch { /* armazenamento indisponível */ }
-    applyDir(l);
+    document.documentElement.lang = l;
     // Sincronização best-effort com o backend se o utilizador tiver sessão iniciada
     // (emails multilingues). Mantém o endpoint existente — não é criado nada novo.
     if (localStorage.getItem("construpilot_session") === "1") {
       import("@/lib/api").then(({ api }) => api.put("/auth/language", { lang: l }).catch(() => {}));
     }
+    // Recarregar garante estado limpo e re-aplicação do DomTranslator sobre a
+    // árvore inicial do React (sem precisar guardar o texto original de cada nó).
+    try { window.location.reload(); } catch { setLangState(l); }
   };
 
   useEffect(() => { applyDir(lang); }, [lang]);
