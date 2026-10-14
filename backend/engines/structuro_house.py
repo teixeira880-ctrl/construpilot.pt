@@ -268,20 +268,43 @@ def design_lintel(rep: str, clear: float, g_line: float, q_line: float, s_line: 
 
 
 # ------------------------------------------------------------------ escadas
+def _blondel_half_turn(H_mm: float, Lc_mm: float, Wc_mm: float):
+    """Estimativa de escada de meia-volta numa caixa (2 lanços + patamar intermédio), regra de Blondel 2h+g≈630 mm."""
+    from types import SimpleNamespace
+    n = max(2, math.ceil(H_mm / 180.0))
+    h = H_mm / n
+    g = min(300.0, max(250.0, 630.0 - 2 * h))
+    landing = Wc_mm / 2
+    treads = math.ceil(n / 2) - 1
+    alerts = []
+    if treads * g > Lc_mm - landing + 1e-6:
+        alerts.append(SimpleNamespace(level="red", code="CAIXA_CURTA"))
+    if h > 190:
+        alerts.append(SimpleNamespace(level="red", code="ESPELHO_ALTO"))
+    return SimpleNamespace(riser_mm=h, giron_mm=g, blondel_mm=2 * h + g, slope_deg=math.degrees(math.atan(h / g)),
+                           num_risers=n, mode="meia-volta (estimativa Blondel)", is_buildable=not alerts, alerts=alerts)
+
+
 def design_stairs(g: dict, slab_h: float) -> list[dict]:
     st = g.get("stair") or {}
     if not st.get("present"):
         return []
-    from stair_engine.cage_solver import CageStairInput, solve_cage
+    try:
+        from stair_engine.cage_solver import CageStairInput, solve_cage
+    except ImportError:            # instalações sem o solver de caixa → estimativa Blondel (meia-volta)
+        CageStairInput = None
     out = []
     heights = [lv["storey_height_m"] for lv in g["levels"][:-1]]
     if g["basement"]["present"]:
         heights = [g["basement"]["height_m"]] + heights
     for k, fh in enumerate(heights):
         try:
-            r = solve_cage(CageStairInput(floor_height_mm=fh * 1000 + slab_h * 1000, cage_length_mm=st["cage_length_m"] * 1000,
-                                          cage_width_mm=st["cage_width_m"] * 1000, slab_thickness_mm=slab_h * 1000,
-                                          flight_thickness_mm=150))
+            if CageStairInput is None:
+                r = _blondel_half_turn(fh * 1000 + slab_h * 1000, st["cage_length_m"] * 1000, st["cage_width_m"] * 1000)
+            else:
+                r = solve_cage(CageStairInput(floor_height_mm=fh * 1000 + slab_h * 1000, cage_length_mm=st["cage_length_m"] * 1000,
+                                              cage_width_mm=st["cage_width_m"] * 1000, slab_thickness_mm=slab_h * 1000,
+                                              flight_thickness_mm=150))
         except Exception as e:  # noqa: BLE001
             out.append({"lanco": k + 1, "error": str(e)[:200]})
             continue
