@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileText, HardHat, Hammer, Scale, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Download, FileText, HardHat, Hammer, Package, Scale, ShieldAlert, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { SEO } from "@/components/SEO";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -197,6 +198,8 @@ export default function AutorizacaoObras() {
             do processo é do requerente e dos técnicos subscritores. Prazos e exigências podem variar consoante
             o regulamento municipal.
           </p>
+
+          <DossierBlock respostas={state} diagnostico={result} />
         </div>
       </>
     );
@@ -432,3 +435,166 @@ export default function AutorizacaoObras() {
     </>
   );
 }
+
+// --------------------------------------------------------------------------
+// Preparação do processo (Lote N2)
+// --------------------------------------------------------------------------
+
+function _downloadBase64(b64, filename, mime) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const blob = new Blob([arr], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function DossierBlock({ respostas, diagnostico }) {
+  const [open, setOpen] = useState(false);
+  const [requerente, setRequerente] = useState({ nome: "", nif: "", morada: "", telefone: "", email: "" });
+  const [memoriaTexto, setMemoriaTexto] = useState("");
+  const [memoriaLoading, setMemoriaLoading] = useState(false);
+  const [dossier, setDossier] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [checklist, setChecklist] = useState(null);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch(`${API}/api/particulares/autorizacao/checklist`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ respostas, diagnostico }),
+    }).then((r) => r.json()).then((d) => setChecklist(d)).catch(() => {});
+  }, [open, respostas, diagnostico]);
+
+  const previewMemoria = async () => {
+    setMemoriaLoading(true); setErr(null);
+    try {
+      const r = await fetch(`${API}/api/particulares/autorizacao/memoria/preview`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ respostas, diagnostico }),
+      });
+      const d = await r.json();
+      setMemoriaTexto(d.memoria_texto || "");
+    } catch (e) {
+      setErr("Não foi possível gerar a memória.");
+    } finally {
+      setMemoriaLoading(false);
+    }
+  };
+
+  const gerarProcesso = async () => {
+    setGenerating(true); setErr(null);
+    try {
+      const r = await fetch(`${API}/api/particulares/autorizacao/dossier/gerar`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          respostas, diagnostico, requerente,
+          memoria_override: memoriaTexto || undefined,
+          pecas: [],
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      setDossier(d);
+    } catch (e) {
+      setErr("Não foi possível gerar o processo.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <div className="mt-8 pt-6 border-t">
+        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Package size={20} /> Preparar o processo</h3>
+        <p className="text-sm text-muted-foreground mb-3">
+          Gere automaticamente o requerimento, a memória descritiva, a ficha de elementos
+          estatísticos e a estimativa orçamental — tudo num só PDF e num ZIP com os ficheiros separados.
+        </p>
+        <p className="text-xs rounded border border-amber-200 bg-amber-50/60 p-3 mb-4" data-testid="autorizacao-aviso-venda">
+          <strong>Pré-visualização gratuita.</strong> A venda do processo está temporariamente desativada;
+          nesta fase pode gerar o processo sem custos para verificar o resultado.
+        </p>
+        <Button onClick={() => setOpen(true)} data-testid="autorizacao-preparar-processo">Preparar o meu processo</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 pt-6 border-t" data-testid="autorizacao-dossier-bloco">
+      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Package size={20} /> Preparar o processo</h3>
+
+      <Card className="p-4 mb-4">
+        <h4 className="font-medium mb-3">Identificação do requerente</h4>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><Label htmlFor="r-nome">Nome</Label><Input id="r-nome" value={requerente.nome} onChange={(e) => setRequerente({ ...requerente, nome: e.target.value })} data-testid="autorizacao-req-nome" /></div>
+          <div><Label htmlFor="r-nif">NIF</Label><Input id="r-nif" value={requerente.nif} onChange={(e) => setRequerente({ ...requerente, nif: e.target.value })} data-testid="autorizacao-req-nif" /></div>
+          <div className="sm:col-span-2"><Label htmlFor="r-morada">Morada</Label><Input id="r-morada" value={requerente.morada} onChange={(e) => setRequerente({ ...requerente, morada: e.target.value })} data-testid="autorizacao-req-morada" /></div>
+          <div><Label htmlFor="r-tel">Telefone</Label><Input id="r-tel" value={requerente.telefone} onChange={(e) => setRequerente({ ...requerente, telefone: e.target.value })} data-testid="autorizacao-req-tel" /></div>
+          <div><Label htmlFor="r-email">E-mail</Label><Input id="r-email" type="email" value={requerente.email} onChange={(e) => setRequerente({ ...requerente, email: e.target.value })} data-testid="autorizacao-req-email" /></div>
+        </div>
+      </Card>
+
+      <Card className="p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="font-medium">Memória descritiva</h4>
+          <Button variant="outline" size="sm" onClick={previewMemoria} disabled={memoriaLoading} data-testid="autorizacao-memoria-preview">
+            {memoriaLoading ? "A redigir…" : (memoriaTexto ? "Regenerar" : "Pré-visualizar")}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mb-2">A memória é gerada automaticamente a partir das suas respostas. Pode editá-la antes de gerar o PDF final.</p>
+        <Textarea value={memoriaTexto} onChange={(e) => setMemoriaTexto(e.target.value)} rows={8}
+                  placeholder="(Clique em «Pré-visualizar» para gerar o texto)" data-testid="autorizacao-memoria-texto" />
+      </Card>
+
+      {checklist && (
+        <Card className="p-4 mb-4" data-testid="autorizacao-checklist">
+          <h4 className="font-medium mb-2">Checklist de peças ({checklist.carregadas || 0}/{checklist.total})</h4>
+          <ul className="space-y-1 text-sm">
+            {(checklist.pecas || []).map((p, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className={p.carregada ? "text-emerald-600" : "text-muted-foreground"}>
+                  {p.carregada ? "✓" : "•"}
+                </span>
+                <span className={p.carregada ? "" : "text-foreground/80"}>{p.peca}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {err && <p className="text-sm text-rose-700 mb-3" data-testid="autorizacao-dossier-erro">{err}</p>}
+
+      {!dossier ? (
+        <Button onClick={gerarProcesso} disabled={generating} data-testid="autorizacao-dossier-gerar">
+          {generating ? "A gerar…" : "Gerar o processo"}
+        </Button>
+      ) : (
+        <Card className="p-4 border-emerald-200 bg-emerald-50/40" data-testid="autorizacao-dossier-pronto">
+          <h4 className="font-semibold mb-3 flex items-center gap-2 text-emerald-900">
+            <CheckCircle2 size={18} /> Processo pronto
+          </h4>
+          <p className="text-sm mb-3">Inclui: {(dossier.ficheiros || []).join(", ")}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => _downloadBase64(dossier.pdf_unico_b64, "processo-autorizacao.pdf", "application/pdf")}
+                    data-testid="autorizacao-descarga-pdf">
+              <Download size={16} /> PDF único
+            </Button>
+            <Button variant="outline"
+                    onClick={() => _downloadBase64(dossier.zip_b64, "processo-autorizacao.zip", "application/zip")}
+                    data-testid="autorizacao-descarga-zip">
+              <Download size={16} /> ZIP (ficheiros separados)
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            Lembre-se: a submissão oficial é feita exclusivamente através da PEPU ou do balcão único eletrónico do município.
+          </p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
