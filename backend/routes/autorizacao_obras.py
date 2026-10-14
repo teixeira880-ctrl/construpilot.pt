@@ -21,8 +21,16 @@ from engines.autorizacao_obras_pt.dossier import (
     estimativa_e_calendario,
     checklist_pecas,
 )
+from engines.autorizacao_obras_pt.subscricao import (
+    carregar_tecnicos,
+    criar_pedido_subscricao,
+    filtrar_tecnicos,
+    ler_pedido_por_token,
+    registar_termo_responsabilidade,
+)
 
 router = APIRouter(prefix="/particulares/autorizacao", tags=["autorizacao-obras"])
+router_publico = APIRouter(prefix="/publico/autorizacao", tags=["autorizacao-obras-publico"])
 
 
 class DiagnosticoIn(BaseModel):
@@ -132,3 +140,55 @@ async def dossier_gerar(body: DossierIn) -> dict:
         "estimativa": out["estimativa"],
         "ficheiros": out["ficheiros"],
     }
+
+
+# ---------------------------------------------------------------- Subscrição (Lote N3)
+
+class PedidoSubscricaoIn(BaseModel):
+    tecnico_id: str
+    requerente_email: Optional[str] = None
+    dossier: Dict[str, Any] = Field(default_factory=dict)
+
+
+class TermoResponsabilidadeIn(BaseModel):
+    nome: str
+    ordem: str
+    numero: str
+    especialidade: str
+    assinatura_b64: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+@router.get("/tecnicos")
+async def tecnicos_disponiveis(especialidade: Optional[str] = None,
+                                regiao: Optional[str] = None) -> dict:
+    return {"ok": True, "tecnicos": filtrar_tecnicos(especialidade, regiao)}
+
+
+@router.post("/subscricao/pedir")
+async def pedir_subscricao(body: PedidoSubscricaoIn) -> dict:
+    try:
+        res = await criar_pedido_subscricao(body.dossier, body.tecnico_id, body.requerente_email)
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+    return {"ok": True, **res}
+
+
+# Rotas públicas (sem autenticação) para o técnico assinar via link seguro
+@router_publico.get("/subscrever/{token}")
+async def ver_pedido_publico(token: str) -> dict:
+    doc = await ler_pedido_por_token(token)
+    if not doc:
+        return {"ok": False, "error": "token_invalido"}
+    # Nunca expor o próprio token na resposta
+    doc.pop("signing_token", None)
+    return {"ok": True, "pedido": doc}
+
+
+@router_publico.post("/subscrever/{token}/termo")
+async def submeter_termo(token: str, body: TermoResponsabilidadeIn) -> dict:
+    return await registar_termo_responsabilidade(
+        token, body.nome, body.ordem, body.numero, body.especialidade,
+        body.assinatura_b64, body.observacoes,
+    )
+

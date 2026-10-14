@@ -592,8 +592,80 @@ function DossierBlock({ respostas, diagnostico }) {
           <p className="text-xs text-muted-foreground mt-4">
             Lembre-se: a submissão oficial é feita exclusivamente através da PEPU ou do balcão único eletrónico do município.
           </p>
+          <SubscreverBloco dossier={{ dossier_id: dossier.version, procedimento: diagnostico?.procedimento,
+                                       regra_aplicada: diagnostico?.regra_aplicada,
+                                       titulo_regra: diagnostico?.titulo_regra }}
+                            especialidadesSugeridas={diagnostico?.tecnicos_obrigatorios || []}
+                            requerenteEmail={requerente.email} />
         </Card>
       )}
+    </div>
+  );
+}
+
+
+function SubscreverBloco({ dossier, especialidadesSugeridas, requerenteEmail }) {
+  const [tecnicos, setTecnicos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [enviado, setEnviado] = useState(null);
+  const [filtroEsp, setFiltroEsp] = useState(especialidadesSugeridas?.[0] || "arquitetura");
+
+  useEffect(() => {
+    const esp = filtroEsp === "engenheiro_civil_ou_eletrotecnico" ? "engenheiro_civil" : filtroEsp;
+    fetch(`${API}/api/particulares/autorizacao/tecnicos?especialidade=${encodeURIComponent(esp)}`)
+      .then((r) => r.json())
+      .then((d) => setTecnicos(d.tecnicos || []))
+      .catch(() => setTecnicos([]));
+  }, [filtroEsp]);
+
+  const pedir = async (tecnico_id) => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${API}/api/particulares/autorizacao/subscricao/pedir`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tecnico_id, requerente_email: requerenteEmail || null, dossier }),
+      });
+      const d = await r.json();
+      if (d.ok) setEnviado({ tecnico: d.tecnico, token: d.signing_token });
+    } finally { setLoading(false); }
+  };
+
+  if (enviado) {
+    const link = `${window.location.origin}/subscrever/${enviado.token}`;
+    return (
+      <div className="mt-5 p-4 rounded border border-emerald-200 bg-emerald-50/60" data-testid="autorizacao-subscricao-ok">
+        <p className="font-medium mb-1">Pedido enviado a {enviado.tecnico.nome}</p>
+        <p className="text-sm text-muted-foreground mb-2">O técnico receberá um link único para rever e subscrever o processo. Pode também partilhá-lo diretamente:</p>
+        <code className="block text-xs break-all p-2 bg-background border rounded" data-testid="autorizacao-subscricao-link">{link}</code>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 pt-5 border-t" data-testid="autorizacao-subscricao-bloco">
+      <h4 className="font-semibold mb-2">Pedir subscrição a um técnico parceiro</h4>
+      <p className="text-sm text-muted-foreground mb-3">Convide um arquiteto ou engenheiro parceiro para rever o processo e assinar o termo de responsabilidade.</p>
+      <div className="flex items-center gap-2 mb-3">
+        <label className="text-sm">Especialidade:</label>
+        <select value={filtroEsp} onChange={(e) => setFiltroEsp(e.target.value)}
+                className="border rounded h-9 px-2 text-sm bg-background" data-testid="autorizacao-subscricao-esp">
+          <option value="arquitetura">Arquitetura</option>
+          <option value="engenheiro_estruturas">Engenharia de estruturas</option>
+          <option value="coordenador_projeto">Coordenação de projeto</option>
+        </select>
+      </div>
+      <div className="grid gap-2">
+        {tecnicos.length === 0 && <p className="text-sm text-muted-foreground">Sem técnicos parceiros nesta especialidade.</p>}
+        {tecnicos.map((t) => (
+          <div key={t.id} className="flex items-center justify-between p-3 rounded border" data-testid={`autorizacao-tecnico-${t.id}`}>
+            <div className="text-sm">
+              <div className="font-medium">{t.nome}</div>
+              <div className="text-xs text-muted-foreground">{t.ordem} {t.numero} · {t.regiao} · ~{t.prazo_dias} dias · {t.preco_indicativo_eur} €</div>
+            </div>
+            <Button size="sm" onClick={() => pedir(t.id)} disabled={loading} data-testid={`autorizacao-tecnico-pedir-${t.id}`}>Pedir subscrição</Button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
