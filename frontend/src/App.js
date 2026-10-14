@@ -24,6 +24,7 @@ import LandingPro from "@/pages/LandingPro";
 import LandingParticuliers from "@/pages/LandingParticuliers";
 import LandingMetre from "@/pages/LandingMetre";
 import LandingPortugal from "@/pages/LandingPortugal";
+import AutorizacaoObras from "@/pages/AutorizacaoObras";
 import RadarChantiers from "@/pages/RadarChantiers";
 import Investors from "@/pages/Investors";
 import Features from "@/pages/Features";
@@ -238,6 +239,7 @@ function AppRouter() {
       <Route path="/metre" element={<Navigate to="/medicoes" replace />} />
       <Route path="/economies" element={<Shell><SavingsCalculator /></Shell>} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
+      <Route path="/particulares/autorizacao-obras" element={<Shell><AutorizacaoObras /></Shell>} />
       <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
       <Route path="/radar/courrier/retour" element={<Protected><Shell><PostalFeature><PostalPaymentReturn /></PostalFeature></Shell></Protected>} />
       <Route path="/investisseurs" element={<Investors />} />

@@ -52,6 +52,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     help as help_routes,
                     evolution as evolution_routes,
                     einvoicing as einvoicing_routes,
+                    autorizacao_obras as autorizacao_obras_routes,
                     resend_webhook as resend_webhook_routes,
                     branding_public as branding_public_routes,
                     notifications as notifications_routes,
@@ -100,6 +101,7 @@ from plans_pro.routes import router as plans_pro_router  # noqa: E402
 api_router.include_router(plans_pro_router)
 api_router.include_router(ai_routes.router)
 api_router.include_router(leads.router)
+api_router.include_router(autorizacao_obras_routes.router)
 api_router.include_router(admin.router)
 api_router.include_router(ceo_routes.router)
 api_router.include_router(calc_auditor_routes.router)
