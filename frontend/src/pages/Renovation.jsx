@@ -20,6 +20,71 @@ const ASSESS_STYLE = {
   "correto (declarado)": "text-emerald-600 border-emerald-300 bg-emerald-50",
 };
 
+// Rótulos PT-PT para valores de dropdowns (chaves internas mantidas para compatibilidade com o backend).
+const OPTION_LABELS = {
+  "bien.type": { "maison": "Moradia", "appartement": "Apartamento", "immeuble": "Edifício" },
+  "bien.periode_construction": {
+    "avant 1948": "Antes de 1948",
+    "après 2012": "Depois de 2012",
+  },
+  "bien.mitoyennete": {
+    "isolée": "Isolada",
+    "1 mitoyenneté": "1 contígua",
+    "2 mitoyennetés": "2 contíguas",
+  },
+  "murs.isolation": {
+    "aucune": "Nenhum",
+    "inconnue": "Desconhecido",
+  },
+  "toiture.isolation": {
+    "aucune": "Nenhum",
+    "présente": "Presente",
+    "inconnue": "Desconhecido",
+  },
+  "plancher_bas.isolation": {
+    "aucune": "Nenhum",
+    "présente": "Presente",
+    "inconnue": "Desconhecido",
+  },
+  "parois.humidite": { "non": "Não", "oui": "Sim", "inconnu": "Desconhecido" },
+  "menuiseries.vitrage": {
+    "simple": "Simples",
+    "double": "Duplo",
+    "triple": "Triplo",
+    "inconnu": "Desconhecido",
+  },
+  "menuiseries.materiau": {
+    "bois": "Madeira",
+    "alu": "Alumínio",
+    "mixte": "Misto",
+    "inconnu": "Desconhecido",
+  },
+  "chauffage.energie": {
+    "gaz": "Gás",
+    "fioul": "Gasóleo",
+    "électricité": "Eletricidade",
+    "bois": "Lenha",
+    "PAC": "Bomba de calor",
+    "inconnu": "Desconhecido",
+  },
+  "ventilation.type": {
+    "naturelle": "Natural",
+    "VMC simple flux": "VMC fluxo simples",
+    "VMC double flux": "VMC fluxo duplo",
+    "inconnue": "Desconhecido",
+  },
+  "objectifs.priorite": {
+    "économies": "Poupanças",
+    "confort": "Conforto",
+    "carbone": "Carbono",
+  },
+  "objectifs.phasage": {
+    "en une fois": "De uma só vez",
+    "par étapes": "Por etapas",
+  },
+};
+const optionLabel = (path, value) => OPTION_LABELS[path]?.[value] || value;
+
 export default function Renovation() {
   const nav = useNavigate();
   const [projects, setProjects] = useState([]);
@@ -356,9 +421,9 @@ export default function Renovation() {
                 <div className="text-[11px] text-muted-foreground grid sm:grid-cols-2 gap-x-4">
                   <p><b className="text-foreground">Imóvel:</b> {project.ademe_dpe.type_batiment} · {project.ademe_dpe.surface_m2} m² · {project.ademe_dpe.periode_construction}</p>
                   <p><b className="text-foreground">Morada:</b> {project.ademe_dpe.adresse}</p>
-                  <p><b className="text-foreground">Chauffage :</b> {project.ademe_dpe.chauffage_energie} — {project.ademe_dpe.chauffage_desc}</p>
+                  <p><b className="text-foreground">Aquecimento:</b> {project.ademe_dpe.chauffage_energie} — {project.ademe_dpe.chauffage_desc}</p>
                   <p><b className="text-foreground">AQS:</b> {project.ademe_dpe.ecs_generateur || "—"}</p>
-                  <p><b className="text-foreground">Isolamento das paredes:</b> {project.ademe_dpe.isolation?.murs || "—"} · <b className="text-foreground">menuiseries :</b> {project.ademe_dpe.isolation?.menuiseries || "—"}</p>
+                  <p><b className="text-foreground">Isolamento das paredes:</b> {project.ademe_dpe.isolation?.murs || "—"} · <b className="text-foreground">caixilharias:</b> {project.ademe_dpe.isolation?.menuiseries || "—"}</p>
                   <p><b className="text-foreground">DPE n° :</b> <span className="font-mono">{project.ademe_dpe.numero_dpe}</span> ({project.ademe_dpe.date_dpe})</p>
                 </div>
 
@@ -483,7 +548,7 @@ export default function Renovation() {
                                   data-testid={`reno-field-${f.path}`}
                                   className="h-9 flex-1 rounded-sm border border-border bg-background px-2 text-sm disabled:opacity-40">
                             <option value="">—</option>
-                            {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                            {(f.options || []).map((o) => <option key={o} value={o}>{optionLabel(f.path, o)}</option>)}
                           </select>
                         ) : (
                           <Input type={f.type === "number" ? "number" : "text"} value={unknown ? "" : (ev.value ?? "")}
@@ -603,7 +668,7 @@ export default function Renovation() {
                     <p className="font-semibold text-sm capitalize">{s.etape}</p>
                     <p className="text-[11px] text-muted-foreground min-h-[48px]">{s.travaux}</p>
                     <p className="text-lg font-bold">{eur(s.cout_travaux)} <span className="text-[11px] font-normal text-muted-foreground">custo das obras (auditoria)</span></p>
-                    {s.gain_relatif_ep != null && <p className="text-[10px] text-sky-700">Gain conso ≈ {Math.round(Math.abs(s.gain_relatif_ep) * 100)} %</p>}
+                    {s.gain_relatif_ep != null && <p className="text-[10px] text-sky-700">Ganho em consumo ≈ {Math.round(Math.abs(s.gain_relatif_ep) * 100)} %</p>}
                     <p className="text-[10px] text-slate-500 italic">Dados oficiais — não vinculativos.</p>
                     <Button size="sm" disabled={busy} onClick={() => auditToDevis(ai, i)}
                             className="rounded-sm mt-1 gap-1 bg-sky-600 hover:bg-sky-700" data-testid={`reno-audit-card-devis-${ai}-${i}`}>

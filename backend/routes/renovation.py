@@ -59,21 +59,21 @@ QUESTIONNAIRE = [
     {"path": "toiture.isolation", "section": "C — Envolvente", "label": "Isolamento da cobertura / desvão", "unit": "", "type": "enum", "options": ["aucune", "présente", "inconnue"], "importance": "high"},
     {"path": "plancher_bas.isolation", "section": "C — Envolvente", "label": "Isolamento do pavimento inferior", "unit": "", "type": "enum", "options": ["aucune", "présente", "inconnue"], "importance": "high"},
     {"path": "parois.humidite", "section": "C — Envolvente", "label": "Sinais de humidade / infiltração", "unit": "", "type": "enum", "options": ["non", "oui", "inconnu"], "importance": "high"},
-    # D — Menuiseries
-    {"path": "menuiseries.nombre", "section": "D — Menuiseries", "label": "Número de janelas/portas-janelas", "unit": "u", "type": "number", "importance": "high"},
-    {"path": "menuiseries.vitrage", "section": "D — Menuiseries", "label": "Tipo de vidro", "unit": "", "type": "enum", "options": ["simple", "double", "triple", "inconnu"], "importance": "high"},
-    {"path": "menuiseries.materiau", "section": "D — Menuiseries", "label": "Material dos caixilhos", "unit": "", "type": "enum", "options": ["bois", "PVC", "alu", "mixte", "inconnu"], "importance": "med"},
+    # D — Caixilharias
+    {"path": "menuiseries.nombre", "section": "D — Caixilharias", "label": "Número de janelas/portas-janelas", "unit": "u", "type": "number", "importance": "high"},
+    {"path": "menuiseries.vitrage", "section": "D — Caixilharias", "label": "Tipo de vidro", "unit": "", "type": "enum", "options": ["simple", "double", "triple", "inconnu"], "importance": "high"},
+    {"path": "menuiseries.materiau", "section": "D — Caixilharias", "label": "Material dos caixilhos", "unit": "", "type": "enum", "options": ["bois", "PVC", "alu", "mixte", "inconnu"], "importance": "med"},
     # E — Chauffage & ECS
     {"path": "chauffage.energie", "section": "E — Aquecimento / AQS", "label": "Energia de aquecimento", "unit": "", "type": "enum", "options": ["gaz", "fioul", "électricité", "bois", "rede urbana de calor", "PAC", "inconnu"], "importance": "high"},
     {"path": "chauffage.type", "section": "E — Aquecimento / AQS", "label": "Gerador", "unit": "", "type": "text", "importance": "med"},
     {"path": "chauffage.annee", "section": "E — Aquecimento / AQS", "label": "Ano do gerador", "unit": "", "type": "number", "importance": "med"},
-    {"path": "ecs.production", "section": "E — Aquecimento / AQS", "label": "Production eau chaude", "unit": "", "type": "text", "importance": "med"},
-    # F — Ventilation
-    {"path": "ventilation.type", "section": "F — Ventilation", "label": "Ventilation", "unit": "", "type": "enum", "options": ["naturelle", "VMC simple flux", "VMC double flux", "inconnue"], "importance": "high"},
-    # H — Objectifs
-    {"path": "objectifs.budget_eur", "section": "H — Objectifs", "label": "Orçamento de obras previsto", "unit": "€", "type": "number", "importance": "high"},
-    {"path": "objectifs.priorite", "section": "H — Objectifs", "label": "Prioridade", "unit": "", "type": "enum", "options": ["économies", "confort", "carbone", "valor do imóvel"], "importance": "med"},
-    {"path": "objectifs.phasage", "section": "H — Objectifs", "label": "Reabilitação", "unit": "", "type": "enum", "options": ["en une fois", "par étapes"], "importance": "med"},
+    {"path": "ecs.production", "section": "E — Aquecimento / AQS", "label": "Produção de água quente", "unit": "", "type": "text", "importance": "med"},
+    # F — Ventilação
+    {"path": "ventilation.type", "section": "F — Ventilação", "label": "Ventilação", "unit": "", "type": "enum", "options": ["naturelle", "VMC simple flux", "VMC double flux", "inconnue"], "importance": "high"},
+    # H — Objetivos
+    {"path": "objectifs.budget_eur", "section": "H — Objetivos", "label": "Orçamento de obras previsto", "unit": "€", "type": "number", "importance": "high"},
+    {"path": "objectifs.priorite", "section": "H — Objetivos", "label": "Prioridade", "unit": "", "type": "enum", "options": ["économies", "confort", "carbone", "valor do imóvel"], "importance": "med"},
+    {"path": "objectifs.phasage", "section": "H — Objetivos", "label": "Reabilitação", "unit": "", "type": "enum", "options": ["en une fois", "par étapes"], "importance": "med"},
 ]
 _FIELD_BY_PATH = {f["path"]: f for f in QUESTIONNAIRE}
 _VALID_STATUS = {"documenté", "mesuré", "déclaré", "hypothèse", "inconnu", "contradictoire"}
@@ -89,10 +89,10 @@ RENO_CATALOGUE = [
     {"code": "ITE", "lot": "LOTE 02 — Isolamento das paredes pelo exterior", "label": "Isolamento térmico pelo exterior (ETICS / capoto)", "component": "murs", "metre": "surface_murs", "poste": None, "induced": ["Andaime", "Tratamento das pontes térmicas", "Reposição dos peitoris"], "controls": ["Support", "Fixations", "Continuidade", "Fichas técnicas dos produtos"]},
     {"code": "Isolamento pelo interior", "lot": "LOTE 02 — Isolamento das paredes pelo interior", "label": "Isolamento térmico pelo interior", "component": "murs", "metre": "surface_murs", "poste": "placo", "induced": ["Tratamento das ombreiras", "Reposição das redes", "Ponts thermiques"], "controls": ["Risco de condensação", "Continuidade", "Perda de área"]},
     {"code": "ISO_PB", "lot": "LOTE 03 — Isolamento do pavimento inferior", "label": "Isolamento do pavimento térreo", "component": "plancher_bas", "metre": "surface_plancher_bas", "poste": "isolation", "induced": [], "controls": ["Acessibilidade", "Continuidade"]},
-    {"code": "MENUISERIES", "lot": "LOT 04 — Menuiseries", "label": "Substituição da caixilharia exterior", "component": "menuiseries", "metre": "menuiseries", "poste": None, "induced": ["Remoção", "Calfeutrement", "Tableaux", "Protections solaires"], "controls": ["Uw/Sw", "Estanquidade das juntas", "Coordination ventilation"]},
-    {"code": "VMC", "lot": "LOT 05 — Ventilation", "label": "Ventilação mecânica (simples ou de duplo fluxo)", "component": "ventilation", "metre": "forfait", "poste": None, "induced": ["Redes de condutas", "Entradas de ar"], "controls": ["Caudais", "Manutenção", "Renouvellement d'air"]},
+    {"code": "MENUISERIES", "lot": "LOTE 04 — Caixilharias", "label": "Substituição da caixilharia exterior", "component": "menuiseries", "metre": "menuiseries", "poste": None, "induced": ["Remoção", "Calfeutrement", "Tableaux", "Protections solaires"], "controls": ["Uw/Sw", "Estanquidade das juntas", "Coordination ventilation"]},
+    {"code": "VMC", "lot": "LOTE 05 — Ventilação", "label": "Ventilação mecânica (simples ou de duplo fluxo)", "component": "ventilation", "metre": "forfait", "poste": None, "induced": ["Redes de condutas", "Entradas de ar"], "controls": ["Caudais", "Manutenção", "Renouvellement d'air"]},
     {"code": "ETANCH_AIR", "lot": "LOTE 05 — Estanquidade ao ar", "label": "Tratamento da estanquidade ao ar", "component": "enveloppe", "metre": "forfait", "poste": None, "induced": [], "controls": ["Ensaio de permeabilidade ao ar", "Aparelhos de combustão"]},
-    {"code": "CHAUFFAGE_PAC", "lot": "LOT 06 — Chauffage", "label": "Bomba de calor (estudo necessário)", "component": "chauffage", "metre": "forfait", "poste": None, "induced": ["Adaptação dos emissores", "Eletricidade"], "controls": ["Perdas térmicas após obras", "Regimes de temperatura da água", "Acoustique", "Implantation"]},
+    {"code": "CHAUFFAGE_PAC", "lot": "LOTE 06 — Aquecimento", "label": "Bomba de calor (estudo necessário)", "component": "chauffage", "metre": "forfait", "poste": None, "induced": ["Adaptação dos emissores", "Eletricidade"], "controls": ["Perdas térmicas após obras", "Regimes de temperatura da água", "Acoustique", "Implantation"]},
     {"code": "REGULATION", "lot": "LOTE 06 — Regulação", "label": "Regulação / termóstatos programáveis", "component": "chauffage", "metre": "forfait", "poste": None, "induced": [], "controls": ["Zonage", "Programmation"]},
     {"code": "ECS", "lot": "LOTE 07 — Água quente sanitária", "label": "Produção de AQS eficiente (ex. termoacumulador com bomba de calor)", "component": "ecs", "metre": "forfait", "poste": None, "induced": [], "controls": ["Volume", "Emplacement", "Calorifugeage"]},
 ]
@@ -310,14 +310,14 @@ async def analyze_baseline(project_id: str, user=Depends(current_user)) -> dict:
     posts.append({"component": "Pavimento inferior", "assessment": a, "reason": r, "data_needed": ["plancher_bas.isolation"]})
     vit = (_val(inputs, "menuiseries.vitrage") or "").lower()
     if vit in ("simple",):
-        posts.append({"component": "Menuiseries", "assessment": "provavelmente com perdas", "reason": "Vidro simples declarado.", "data_needed": ["menuiseries.vitrage"]})
+        posts.append({"component": "Caixilharias", "assessment": "provavelmente com perdas", "reason": "Vidro simples declarado.", "data_needed": ["menuiseries.vitrage"]})
     elif vit in ("", "inconnu"):
-        posts.append({"component": "Menuiseries", "assessment": "a verificar", "reason": "Tipo de vidro não preenchido.", "data_needed": ["menuiseries.vitrage"]})
+        posts.append({"component": "Caixilharias", "assessment": "a verificar", "reason": "Tipo de vidro não preenchido.", "data_needed": ["menuiseries.vitrage"]})
     else:
-        posts.append({"component": "Menuiseries", "assessment": "correto (declarado)", "reason": f'Vitrage {vit} declarado — Uw a confirmar.', "data_needed": ["menuiseries.vitrage"]})
+        posts.append({"component": "Caixilharias", "assessment": "correto (declarado)", "reason": f'Vidro {vit} declarado — Uw a confirmar.', "data_needed": ["menuiseries.vitrage"]})
     vent = (_val(inputs, "ventilation.type") or "").lower()
-    posts.append({"component": "Ventilation", "assessment": "a verificar" if vent in ("", "inconnue") else "correto (declarado)",
-                  "reason": "Tipo de ventilação não preenchido." if vent in ("", "inconnue") else f"Ventilation {vent} déclarée.",
+    posts.append({"component": "Ventilação", "assessment": "a verificar" if vent in ("", "inconnue") else "correto (declarado)",
+                  "reason": "Tipo de ventilação não preenchido." if vent in ("", "inconnue") else f"Ventilação {vent} declarada.",
                   "data_needed": ["ventilation.type"]})
     energie = (_val(inputs, "chauffage.energie") or "").lower()
     posts.append({"component": "Aquecimento / AQS",
