@@ -95,14 +95,6 @@ export default function LandingMetre() {
             </div>
             <p className="text-xs text-muted-foreground mt-3 flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5" /> Teste gratuito · Sem compromisso · Alojado em França</p>
           </motion.div>
-
-          <motion.figure initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}
-                         className="relative" data-testid="metre-hero-video" hidden>
-            <div className="absolute -inset-4 bg-primary/15 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
-            <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video flex items-center justify-center">
-              <p className="text-xs text-white/80 text-center px-6">Vídeo de demonstração indisponível de momento.</p>
-            </div>
-          </motion.figure>
         </div>
       </section>
 

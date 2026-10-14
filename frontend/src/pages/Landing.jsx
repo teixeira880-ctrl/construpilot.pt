@@ -421,22 +421,6 @@ export default function Landing() {
                 </Link>
               </div>
             </motion.div>
-
-            <motion.div
-              className="flex justify-center lg:justify-end"
-              initial={{ opacity: 0, scale: 0.96 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.7 }}
-            >
-              <div className="relative w-full max-w-[340px]">
-                <div className="absolute -inset-3 bg-primary/20 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
-                {/* Cadre type téléphone pour la vidéo verticale 9:16 */}
-                <div className="relative rounded-[2rem] border-[6px] border-foreground/85 bg-black shadow-2xl overflow-hidden aspect-[9/16] flex items-center justify-center" data-testid="intro-video-placeholder">
-                  <p className="text-xs text-white/80 text-center px-6">Vídeo de demonstração indisponível de momento.</p>
-                </div>
-              </div>
-            </motion.div>
           </div>
         </div>
       </section>

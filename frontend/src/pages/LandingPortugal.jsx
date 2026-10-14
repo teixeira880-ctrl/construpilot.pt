@@ -73,17 +73,6 @@ export default function LandingPortugal() {
         </div>
       </section>
 
-      {/* VÍDEO DEMO PT — oculto enquanto os ficheiros .mp4 não estão disponíveis */}
-      <section className="grid gap-4" data-testid="pt-demo-video" hidden>
-        <div className="max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-primary">Veja em 2 minutos</p>
-          <h2 className="font-display text-base md:text-lg font-bold mt-1">O ConstruPilot em ação — ecrãs reais, narração em português</h2>
-        </div>
-        <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video max-w-4xl flex items-center justify-center">
-          <p className="text-xs text-white/80 text-center px-6">Vídeo de demonstração indisponível de momento.</p>
-        </div>
-      </section>
-
       {/* FEATURES */}
       <section className="grid gap-6">
         <div className="max-w-2xl">

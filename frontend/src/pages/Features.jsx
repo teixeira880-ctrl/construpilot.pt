@@ -109,14 +109,6 @@ export default function Features() {
               </a>
             ))}
           </div>
-          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="features-videos" hidden>
-            {[].map(([label, href, tid]) => (
-              <a key={tid} href={href} target="_blank" rel="noreferrer" data-testid={tid}
-                 className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
-                <PlayCircle className="h-4 w-4 text-primary shrink-0" />{label}
-              </a>
-            ))}
-          </div>
         </div>
       </section>
 
