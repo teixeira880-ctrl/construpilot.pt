@@ -3,6 +3,7 @@
 Route /api/... : fiable sur preview ET en production (le storage est externe).
 Supporte les requêtes Range pour la lecture/seek vidéo.
 """
+import logging
 import re
 
 from fastapi import APIRouter, Request, Response
@@ -11,24 +12,34 @@ from fastapi.concurrency import run_in_threadpool
 from engines import storage
 
 router = APIRouter(prefix="/media", tags=["media"])
+log = logging.getLogger(__name__)
 
 _TIKTOK_PATH = "marketing/construpilot_tiktok_v1.mp4"
 _cache: bytes | None = None
 
 
-async def _load() -> bytes:
+async def _load() -> bytes | None:
     global _cache
     if _cache is None:
-        data, _ = await run_in_threadpool(storage.get_object, _TIKTOK_PATH)
-        _cache = data
+        try:
+            data, _ = await run_in_threadpool(storage.get_object, _TIKTOK_PATH)
+            _cache = data
+        except Exception as exc:  # noqa: BLE001 — storage em falta ou erro externo não deve devolver 500
+            log.warning("media.tiktok: carregamento indisponível (%s)", exc)
+            return None
     return _cache
 
 
 @router.get("/tiktok")
 async def tiktok(request: Request):
     data = await _load()
-    total = len(data)
     ct = "video/mp4"
+    if not data:
+        # Serviço indisponível → responde 200 com corpo vazio para não quebrar o <video> do frontend
+        return Response(b"", media_type=ct, headers={
+            "Content-Length": "0", "Accept-Ranges": "bytes",
+            "X-Media-Configured": "false", "Cache-Control": "no-store"})
+    total = len(data)
     rng = request.headers.get("range")
     if rng:
         m = re.match(r"bytes=(\d+)-(\d*)", rng)

@@ -496,10 +496,10 @@ export default function RadarChantiers() {
                   </Button>
                 </div>
                 <Button size="sm" variant="outline" className="rounded-sm gap-1 w-full mt-2 border-primary/40 text-primary" onClick={() => setPostalOpen(true)} data-testid="radar-campaign-postal" disabled={!postalEnabled}>
-                  <Truck className="h-3.5 w-3.5" /> {postalEnabled ? "Enviar por correio (Merci Facteur)" : "Envio por correio indisponível em Portugal"}
+                  <Truck className="h-3.5 w-3.5" /> {postalEnabled ? "Enviar por correio" : "Envio por correio indisponível em Portugal"}
                 </Button>
                 {postalEnabled && <PostalSendDialog open={postalOpen} onClose={() => setPostalOpen(false)} campaign={campaign} opp={sel} />}
-                <p className="text-[10px] text-muted-foreground mt-2">Imprima e envie a correspondência{postalEnabled ? ", ou deixe o Merci Facteur fazê-lo" : ""}. O potencial cliente que digitaliza o QR ou abre o link pode pedir uma estimativa — o seu pedido chega a «Os meus pedidos».</p>
+                <p className="text-[10px] text-muted-foreground mt-2">Imprima e envie a correspondência{postalEnabled ? "" : ""}. O potencial cliente que digitaliza o QR ou abre o link pode pedir uma estimativa — o seu pedido chega a «Os meus pedidos».</p>
               </div>
             )}
 

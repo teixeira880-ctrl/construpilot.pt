@@ -39,7 +39,7 @@ export default function PostalPaymentReturn() {
     <div className="max-w-lg mx-auto surface p-8 mt-12 grid gap-5 text-center" data-testid="postal-payment-return">
       {state === "checking" && <><Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
         <p className="font-display text-2xl font-bold">Confirmação do pagamento…</p>
-        <p className="text-sm text-muted-foreground">{letter ? "A carta é transmitida à Merci Facteur assim que for confirmada." : "Não feche esta janela."}</p></>}
+        <p className="text-sm text-muted-foreground">{letter ? "Envio postal indisponível em Portugal." : "Não feche esta janela."}</p></>}
       {state === "ok" && <>
         {dispatched || !letter ? <CheckCircle2 className="h-14 w-14 mx-auto text-emerald-500" /> : <Mail className="h-14 w-14 mx-auto text-amber-500" />}
         <p className="font-display text-2xl font-bold" data-testid="postal-payment-title">
@@ -47,7 +47,7 @@ export default function PostalPaymentReturn() {
         </p>
         <p className="text-sm text-muted-foreground" data-testid="postal-payment-detail">
           {!letter && `Pagamento de ${euros(view.amount_cents)} c/ IVA confirmado · saldo: ${view.offer?.credits ?? 0} créditos.`}
-          {letter && dispatched && `A Merci Facteur aceitou a carta (n.º ${view.postal.envoi_id}) · ${euros(view.amount_cents)} c/ IVA.`}
+          {letter && dispatched && `A carta foi aceite (n.º ${view.postal.envoi_id}) · ${euros(view.amount_cents)} c/ IVA.`}
           {letter && !dispatched && (view.fulfillment === "credited"
             ? `Não foi possível transmitir a carta (${view.fulfillment_error?.message || "preço expirado"}). Foi adicionado um crédito de correio à sua empresa: volte a lançar o envio a partir do radar.`
             : view.postal?.error_message || "Resultado a verificar no acompanhamento das cartas.")}

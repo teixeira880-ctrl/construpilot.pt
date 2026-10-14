@@ -79,7 +79,7 @@ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
       const { data } = await api.post(`/radar/prospection/${campaign.token}/postal`, payload, { timeout: 55000 });
       setSends((s) => [data, ...s]);
       setApprovedQuote(null);
-      if (data.status === "submitted") { setLocked(true); toast.success(`Carta aceite pela Merci Facteur (n.º ${data.envoi_id})`); }
+      if (data.status === "submitted") { setLocked(true); toast.success(`Carta aceite (n.º ${data.envoi_id})`); }
       else { setLocked(true); setSendError(data.error_message || "Envio a verificar antes de qualquer nova tentativa."); }
     } catch (e) {
       setSendError(postalError(e)); setApprovedQuote(null);

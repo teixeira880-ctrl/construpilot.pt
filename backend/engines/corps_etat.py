@@ -63,7 +63,7 @@ RATIOS: dict[str, float] = {
 
 # Libellés lisibles pour l'éditeur (prix)
 PRICE_LABELS: dict[str, str] = {
-    "plaque_ba13": "Plaque BA13 (m²)", "plaque_hydro": "Placa hidrófuga (m²)",
+    "plaque_ba13": "Placa de gesso cartonado (m²)", "plaque_hydro": "Placa hidrófuga (m²)",
     "ossature_ml": "Estrutura metálica (ml)", "vis_u": "Parafusos (u)",
     "bande_enduit_m2": "Fita + massa de juntas (m²)", "laine_m2": "Lã mineral (m²)",
     "isolant_pse_m2": "Isolante EPS (m²)", "souscouche_l": "Primário (l)",
