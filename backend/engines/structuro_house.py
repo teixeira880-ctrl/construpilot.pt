@@ -588,7 +588,7 @@ def quantities(g, slabs, descent, footings, lintels, retaining, stairs, ties, ta
     if retaining:
         per = 2 * (L + W)
         v = per * retaining["t_m"] * retaining["H_m"]
-        kg = per * retaining["H_m"] * 0.20 * 2 / 0.20 * KG_M[10] * 4
+        kg = per * retaining["H_m"] * (KG_M[10] / 0.20 + KG_M[8] / 0.20 + 2 * KG_M[8] / 0.20) * 1.1
         rows.append({"element": "Muros de cave", "concrete_m3": round(v, 2), "steel_kg": round(kg, 0)})
         conc += v; steel += kg
     # escadas
