@@ -270,7 +270,7 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
     if name == "draw_section_schema":
         return await create_schema(args, user, conv)
     if name in BET_TOOL_NAMES:
-        return await run_bet_tool(args, user, conv, _allowed_doc)
+        return await run_bet_tool(name, args, user, conv, _allowed_doc)
     if name == "read_generated_file":
         artifact = await owned_artifact(args["artifact_id"], uid, conv["conversation_id"])
         result = {"ok": True, "artifact": public_artifact(artifact), "body": artifact["body"]}
@@ -1390,7 +1390,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
             with suppress(Exception): await client.close()
 
 
-TOOL_STATUS_PT = {"generate_structural_execution_dossier": "Cálculo estrutural e desenho dos planos de cofragem/armaduras (pode demorar 1-3 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
+TOOL_STATUS_PT = {"read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "generate_structural_execution_dossier": "Cálculo estrutural e desenho dos planos de cofragem/armaduras…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
                   "generate_branded_pdf": "Preparação do relatório PDF…", "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "A consultar o orçamento atual…", "update_quote_draft": "A atualizar o rascunho de orçamento…", "add_quote_lines": "A adicionar as linhas ao orçamento…", "find_quote_drafts": "A procurar os seus orçamentos existentes…",
                   "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…",
                   "estimate_budget_range": "Cálculo do intervalo orçamental…", "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…",
@@ -1399,7 +1399,7 @@ TOOL_STATUS_PT = {"generate_structural_execution_dossier": "Cálculo estrutural 
                   "calculate_quantities": "Cálculo das quantidades…", "compare_dimension_values": "Comparação das cotas…",
                   "compute_concrete_volumes": "Cálculo dos volumes de betão por elemento (DXF + cofragem + cortes)…", "update_project_state": "Atualização do estado do dossiê…", "draw_section_schema": "Desenho do esquema de princípio cotado…",
                   "cross_check": "Cruzamento multi-IA (ChatGPT · Gemini Pro · Claude)…"}
-TOOL_STATUS = {"generate_structural_execution_dossier": "Cálculo estrutural e desenho dos planos de cofragem/armaduras (pode demorar 1-3 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
+TOOL_STATUS = {"read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "generate_structural_execution_dossier": "Cálculo estrutural e desenho dos planos de cofragem/armaduras…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
                "read_document": "Leitura das páginas e do desenho…", "calculate": "Verificação do cálculo…", "create_work_draft": "Redação do documento…", "search_own_history": "Pesquisa nas suas conversas…","define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Lançamento da análise aprofundada…",
                "get_plan_results": "Leitura dos resultados da planta…", "generate_branded_pdf": "Preparação do relatório PDF…",
                "run_construpilot_agent": "Agente em curso — agrupamento, medição e orçamentação…",

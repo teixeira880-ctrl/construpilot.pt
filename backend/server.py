@@ -115,6 +115,8 @@ from routes import structuro as structuro_routes  # noqa: E402
 api_router.include_router(structuro_routes.router)
 from routes import structuro_bet as structuro_bet_routes  # noqa: E402
 api_router.include_router(structuro_bet_routes.router)
+from routes import structuro_house as structuro_house_routes  # noqa: E402
+api_router.include_router(structuro_house_routes.router)
 from routes import structuro_plan as structuro_plan_routes  # noqa: E402
 api_router.include_router(structuro_plan_routes.router)
 from routes import structuro_calc as structuro_calc_routes  # noqa: E402
