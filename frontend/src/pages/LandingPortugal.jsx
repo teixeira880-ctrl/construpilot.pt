@@ -73,19 +73,15 @@ export default function LandingPortugal() {
         </div>
       </section>
 
-      {/* VÍDEO DEMO PT */}
-      <section className="grid gap-4" data-testid="pt-demo-video">
+      {/* VÍDEO DEMO PT — oculto enquanto os ficheiros .mp4 não estão disponíveis */}
+      <section className="grid gap-4" data-testid="pt-demo-video" hidden>
         <div className="max-w-2xl">
           <p className="text-xs font-bold uppercase tracking-wider text-primary">Veja em 2 minutos</p>
           <h2 className="font-display text-base md:text-lg font-bold mt-1">O ConstruPilot em ação — ecrãs reais, narração em português</h2>
         </div>
-        <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video max-w-4xl">
-          <video className="h-full w-full object-cover" src="/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4"
-                 controls playsInline preload="metadata" data-testid="pt-demo-video-player" />
+        <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video max-w-4xl flex items-center justify-center">
+          <p className="text-xs text-white/80 text-center px-6">Vídeo de demonstração indisponível de momento.</p>
         </div>
-        <a href="/docs/ConstruPilot_Demo_Completa_PT_16x9.mp4" target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline" data-testid="pt-demo-video-full">
-          Ver a demonstração completa (5 min) →
-        </a>
       </section>
 
       {/* FEATURES */}

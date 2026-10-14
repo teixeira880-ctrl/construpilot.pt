@@ -97,13 +97,11 @@ export default function LandingMetre() {
           </motion.div>
 
           <motion.figure initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}
-                         className="relative" data-testid="metre-hero-video">
+                         className="relative" data-testid="metre-hero-video" hidden>
             <div className="absolute -inset-4 bg-primary/15 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
-            <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video">
-              <video className="h-full w-full object-cover" src="/docs/ConstruPilot_Demo_Courte_16x9.mp4"
-                     autoPlay muted loop controls playsInline preload="metadata" data-testid="metre-video-player" />
+            <div className="relative rounded-2xl border border-border bg-black shadow-2xl overflow-hidden aspect-video flex items-center justify-center">
+              <p className="text-xs text-white/80 text-center px-6">Vídeo de demonstração indisponível de momento.</p>
             </div>
-            <figcaption className="mt-3 text-xs text-muted-foreground text-center">Demonstração em 2 min: estimativa, planta → medições, orçamento, assinatura, aprovisionamento, Radar, rentabilidade.</figcaption>
           </motion.figure>
         </div>
       </section>

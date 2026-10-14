@@ -432,29 +432,8 @@ export default function Landing() {
               <div className="relative w-full max-w-[340px]">
                 <div className="absolute -inset-3 bg-primary/20 blur-3xl rounded-[2.5rem]" aria-hidden="true" />
                 {/* Cadre type téléphone pour la vidéo verticale 9:16 */}
-                <div className="relative rounded-[2rem] border-[6px] border-foreground/85 bg-black shadow-2xl overflow-hidden aspect-[9/16]">
-                  <video
-                    ref={videoRef}
-                    className="h-full w-full object-cover"
-                    src={lang === "pt" ? "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4" : "/docs/ConstruPilot_Demo_Courte_9x16.mp4"}
-                    poster="/docs/demo-poster-9x16.jpg"
-                    autoPlay
-                    muted
-                    loop
-                    controls
-                    playsInline
-                    data-testid="intro-video-player"
-                  />
-                  {/* Bouton activer/couper le son (la vidéo démarre en muet) */}
-                  <button
-                    onClick={toggleVideoSound}
-                    data-testid="video-sound-toggle"
-                    aria-label={videoMuted ? t("landing.master_video.unmute", "Ativar o som") : "Cortar o som"}
-                    className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-primary transition-colors"
-                  >
-                    {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    {videoMuted ? t("landing.master_video.unmute", "Ativar o som") : t("landing.master_video.sound", "Som")}
-                  </button>
+                <div className="relative rounded-[2rem] border-[6px] border-foreground/85 bg-black shadow-2xl overflow-hidden aspect-[9/16] flex items-center justify-center" data-testid="intro-video-placeholder">
+                  <p className="text-xs text-white/80 text-center px-6">Vídeo de demonstração indisponível de momento.</p>
                 </div>
               </div>
             </motion.div>

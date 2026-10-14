@@ -109,16 +109,8 @@ export default function Features() {
               </a>
             ))}
           </div>
-          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="features-videos">
-            {[
-              ["Vídeo demonstração curto 16:9 (2 min)", "/docs/ConstruPilot_Demo_Courte_16x9.mp4", "features-video-short-169"],
-              ["Vídeo demonstração curto 9:16 (reels)", "/docs/ConstruPilot_Demo_Courte_9x16.mp4", "features-video-short-916"],
-              ["Vídeo demonstração completo 16:9 (4 min)", "/docs/ConstruPilot_Demo_Complete_16x9.mp4", "features-video-full-169"],
-              ["Vídeo demonstração completa 9:16", "/docs/ConstruPilot_Demo_Complete_9x16.mp4", "features-video-full-916"],
-              ["Vídeo demo curta PT 16:9", "/docs/ConstruPilot_Demo_Curta_PT_16x9.mp4", "features-video-pt-short-169"],
-              ["Vídeo demo curta PT 9:16", "/docs/ConstruPilot_Demo_Curta_PT_9x16.mp4", "features-video-pt-short-916"],
-              ["Vídeo demo completa PT 16:9", "/docs/ConstruPilot_Demo_Completa_PT_16x9.mp4", "features-video-pt-full-169"],
-            ].map(([label, href, tid]) => (
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="features-videos" hidden>
+            {[].map(([label, href, tid]) => (
               <a key={tid} href={href} target="_blank" rel="noreferrer" data-testid={tid}
                  className="flex items-center gap-2 rounded-sm border border-border px-3 py-2.5 text-sm hover:bg-primary/5 transition-colors">
                 <PlayCircle className="h-4 w-4 text-primary shrink-0" />{label}
