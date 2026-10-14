@@ -28,9 +28,16 @@ from engines.autorizacao_obras_pt.subscricao import (
     ler_pedido_por_token,
     registar_termo_responsabilidade,
 )
+from engines.autorizacao_obras_pt.settings import get_settings, set_settings
+from engines.autorizacao_obras_pt.guia_pepu import gerar_guia_pepu_pdf
+from fastapi import Depends
+from fastapi.responses import Response
+from core.security import admin_user
 
 router = APIRouter(prefix="/particulares/autorizacao", tags=["autorizacao-obras"])
 router_publico = APIRouter(prefix="/publico/autorizacao", tags=["autorizacao-obras-publico"])
+router_admin = APIRouter(prefix="/admin/autorizacao-obras", tags=["autorizacao-obras-admin"],
+                          dependencies=[Depends(admin_user)])
 
 
 class DiagnosticoIn(BaseModel):
@@ -191,4 +198,92 @@ async def submeter_termo(token: str, body: TermoResponsabilidadeIn) -> dict:
         token, body.nome, body.ordem, body.numero, body.especialidade,
         body.assinatura_b64, body.observacoes,
     )
+
+
+
+# ---------------------------------------------------------------- Flag + Stripe (Lote N4)
+
+@router.get("/settings")
+async def ver_settings_publicos() -> dict:
+    """Lê a configuração atual (público — exibida na UI do particular)."""
+    s = await get_settings()
+    # Expõe só os campos relevantes para o cliente
+    return {
+        "ok": True,
+        "sale_enabled": bool(s.get("sale_enabled")),
+        "price_eur": s.get("price_eur", 39),
+        "currency": s.get("currency", "eur"),
+        "included_in_pro": bool(s.get("included_in_pro", True)),
+        "included_in_business": bool(s.get("included_in_business", True)),
+    }
+
+
+class ComprarIn(BaseModel):
+    success_url: str
+    cancel_url: str
+
+
+@router.post("/comprar")
+async def comprar(body: ComprarIn) -> dict:
+    """Cria uma sessão Stripe Checkout para pagar o processo. Bloqueia se a flag estiver OFF."""
+    s = await get_settings()
+    if not s.get("sale_enabled"):
+        return {"ok": False, "error": "sale_disabled",
+                "mensagem": "Venda do processo de autorização de obras temporariamente desativada."}
+    try:
+        import os
+        import stripe  # type: ignore
+        stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY")
+        if not stripe.api_key:
+            return {"ok": False, "error": "stripe_nao_configurado"}
+        price_cents = int(round(float(s.get("price_eur", 39)) * 100))
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": s.get("currency", "eur"),
+                    "product_data": {"name": s.get("stripe_product_name", "Processo de autorização de obras")},
+                    "unit_amount": price_cents,
+                },
+                "quantity": 1,
+            }],
+            success_url=body.success_url,
+            cancel_url=body.cancel_url,
+            metadata={"product": "autorizacao_obras"},
+        )
+        return {"ok": True, "checkout_url": session.url, "session_id": session.id}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": "stripe_erro", "detalhe": str(e)[:200]}
+
+
+@router.get("/guia-pepu.pdf")
+async def descarregar_guia_pepu() -> Response:
+    """Devolve o guia PEPU em PDF (público, sem autenticação)."""
+    pdf = gerar_guia_pepu_pdf()
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": 'inline; filename="guia-pepu.pdf"'})
+
+
+# ---- Admin ----
+class AdminSettingsIn(BaseModel):
+    sale_enabled: Optional[bool] = None
+    price_eur: Optional[float] = None
+    currency: Optional[str] = None
+    included_in_pro: Optional[bool] = None
+    included_in_business: Optional[bool] = None
+    stripe_product_name: Optional[str] = None
+
+
+@router_admin.get("/settings")
+async def admin_ler_settings() -> dict:
+    s = await get_settings()
+    return {"ok": True, "settings": s}
+
+
+@router_admin.put("/settings")
+async def admin_gravar_settings(body: AdminSettingsIn) -> dict:
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    s = await set_settings(patch, admin_user_id="admin")
+    return {"ok": True, "settings": s}
 

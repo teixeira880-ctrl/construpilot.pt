@@ -193,10 +193,17 @@ export default function AutorizacaoObras() {
             </Card>
           )}
 
-          <p className="text-xs text-muted-foreground leading-relaxed mt-6">
+          <p className="text-xs text-muted-foreground leading-relaxed mt-6" data-testid="autorizacao-aviso-legal">
             Esta ferramenta é um apoio à preparação do processo de autorização de obras. A responsabilidade legal
-            do processo é do requerente e dos técnicos subscritores. Prazos e exigências podem variar consoante
-            o regulamento municipal.
+            do processo é do requerente e dos técnicos subscritores. Os prazos indicados são meramente indicativos —
+            confirme com a câmara municipal do seu concelho. A submissão oficial é feita exclusivamente através da
+            PEPU ou do balcão único eletrónico do município.
+          </p>
+          <p className="text-xs mt-2">
+            <a href={`${API}/api/particulares/autorizacao/guia-pepu.pdf`} target="_blank" rel="noopener noreferrer"
+               className="underline text-primary" data-testid="autorizacao-guia-pepu">
+              Descarregar o guia de submissão PEPU (PDF)
+            </a>
           </p>
 
           <DossierBlock respostas={state} diagnostico={result} />

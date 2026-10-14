@@ -33,6 +33,7 @@ import PilotagePanel from "@/components/admin/PilotagePanel";
 import { useExpenseCopy } from "@/components/admin/expenses/copy";
 import SeoBlogPanel from "@/components/admin/SeoBlogPanel";
 import BabyLoveGrowthSettingsPanel from "@/components/admin/BabyLoveGrowthSettingsPanel";
+import AutorizacaoObrasPanel from "@/components/admin/AutorizacaoObrasPanel";
 import CeoAgentPanel from "@/components/admin/CeoAgentPanel";
 import CalcAuditorPanel from "@/components/admin/CalcAuditorPanel";
 import RevenueTab from "@/components/RevenueTab";
@@ -268,6 +269,7 @@ export default function Admin() {
         <TabsContent value="seoblog" className="mt-6">
           <div className="space-y-6">
             <BabyLoveGrowthSettingsPanel />
+            <AutorizacaoObrasPanel />
             <SeoBlogPanel />
           </div>
         </TabsContent>
