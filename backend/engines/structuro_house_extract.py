@@ -2,7 +2,33 @@
 e do estudo geotécnico. Nunca inventa: valores ilegíveis → null + incerteza."""
 from __future__ import annotations
 
+import asyncio
+import io
+import logging
+
 from engines import structuro_autopilot as ap
+
+log = logging.getLogger("structuro.house.extract")
+MAX_SIDE = 1800            # px — plantas A1/A0 a 110 dpi passam de 5000 px e bloqueiam o pedido à IA
+GEOM_TIMEOUT_S = 150
+SOIL_TIMEOUT_S = 150
+
+
+def _shrink(img: bytes) -> bytes:
+    """Reduz a imagem para ≤ MAX_SIDE px no lado maior (PNG). Em caso de erro devolve a original."""
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(img))
+        if max(im.size) <= MAX_SIDE:
+            return img
+        im.thumbnail((MAX_SIDE, MAX_SIDE))
+        if im.mode not in ("RGB", "L"):
+            im = im.convert("RGB")
+        out = io.BytesIO()
+        im.save(out, format="PNG", optimize=True)
+        return out.getvalue()
+    except Exception:  # noqa: BLE001
+        return img
 
 GEOM_PROMPT = (
     "Analisas as peças desenhadas de um PROJETO DE LICENCIAMENTO (plantas de piso, cortes, alçados, implantação) de "
@@ -29,34 +55,50 @@ GEOM_PROMPT = (
     "Escreve as incertezas em português europeu.")
 
 
-async def extract(geom_images: list[bytes], soil_images: list[bytes]) -> dict:
-    geo: dict = {}
-    inc: list[str] = []
+async def _read_geom(images: list[bytes]) -> tuple[dict, list[str]]:
+    if not images:
+        return {}, ["Sem peças desenhadas legíveis — indicar dimensões, pisos e pé-direito."]
     try:
-        g = await ap._ask(GEOM_PROMPT, geom_images) if geom_images else None
-        if isinstance(g, dict):
-            geo = {k: v for k, v in g.items() if k != "incertezas"}
-            inc += [str(x) for x in (g.get("incertezas") or [])]
-        else:
-            inc.append("Geometria não lida nas peças fornecidas — indicar dimensões, pisos e pé-direito.")
+        g = await asyncio.wait_for(ap._ask(GEOM_PROMPT, images), timeout=GEOM_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        log.warning("leitura da geometria: timeout %ss", GEOM_TIMEOUT_S)
+        return {}, [f"Leitura das plantas demorou mais de {GEOM_TIMEOUT_S // 60} min e foi interrompida — "
+                    "indicar dimensões, pisos e pé-direito (ou anexar só as plantas/cortes principais)."]
     except Exception as e:  # noqa: BLE001
-        inc.append(f"Leitura da geometria indisponível: {str(e)[:120]}")
+        return {}, [f"Leitura da geometria indisponível: {str(e)[:120]}"]
+    if not isinstance(g, dict):
+        return {}, ["Geometria não lida nas peças fornecidas — indicar dimensões, pisos e pé-direito."]
+    return {k: v for k, v in g.items() if k != "incertezas"}, [str(x) for x in (g.get("incertezas") or [])]
+
+
+async def _read_soil(images: list[bytes]) -> tuple[dict, list[str]]:
+    if not images:
+        return {}, ["Sem estudo geotécnico: as sapatas não serão dimensionadas."]
+    try:
+        s, s_inc = await asyncio.wait_for(ap._extract_soil_batched(images), timeout=SOIL_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        log.warning("leitura do estudo geotécnico: timeout %ss", SOIL_TIMEOUT_S)
+        return {}, ["Leitura do estudo geotécnico interrompida (demasiado longa) — indicar q_ELS (kPa)."]
+    except Exception as e:  # noqa: BLE001
+        return {}, [f"Leitura do estudo geotécnico indisponível: {str(e)[:120]}"]
+    inc = list(s_inc or [])
     soil = {}
-    try:
-        s, s_inc = await ap._extract_soil_batched(soil_images) if soil_images else (None, [])
-        inc += s_inc or []
-        if s and isinstance(s.get("soil"), dict):
-            raw = s["soil"]
-            soil = {"q_els_kpa": raw.get("q_els_kpa"), "q_elu_kpa": raw.get("q_elu_kpa"),
-                    "phi_deg": raw.get("phi_deg") or 30.0, "gamma_kn_m3": raw.get("gamma_soil_kn_m3") or 20.0,
-                    "foundation_type": raw.get("foundation_type"), "anchorage_depth_m": raw.get("anchorage_depth_m"),
-                    "soil_class": raw.get("soil_class"), "confirmed": raw.get("q_els_kpa") is not None}
-    except Exception as e:  # noqa: BLE001
-        inc.append(f"Leitura do estudo geotécnico indisponível: {str(e)[:120]}")
-    if not soil_images:
-        inc.append("Sem estudo geotécnico: as sapatas não serão dimensionadas.")
-    elif not soil.get("q_els_kpa"):
+    if s and isinstance(s.get("soil"), dict):
+        raw = s["soil"]
+        soil = {"q_els_kpa": raw.get("q_els_kpa"), "q_elu_kpa": raw.get("q_elu_kpa"),
+                "phi_deg": raw.get("phi_deg") or 30.0, "gamma_kn_m3": raw.get("gamma_soil_kn_m3") or 20.0,
+                "foundation_type": raw.get("foundation_type"), "anchorage_depth_m": raw.get("anchorage_depth_m"),
+                "soil_class": raw.get("soil_class"), "confirmed": raw.get("q_els_kpa") is not None}
+    if not soil.get("q_els_kpa"):
         inc.append("Tensão admissível não encontrada no estudo geotécnico — indicar q_ELS (kPa).")
+    return soil, inc
+
+
+async def extract(geom_images: list[bytes], soil_images: list[bytes]) -> dict:
+    """Plantas e geotecnia lidas EM PARALELO, cada uma com timeout; nunca bloqueia mais de ~2,5 min."""
+    geom_images = await asyncio.to_thread(lambda: [_shrink(i) for i in geom_images])
+    soil_images = await asyncio.to_thread(lambda: [_shrink(i) for i in soil_images])
+    (geo, g_inc), (soil, s_inc) = await asyncio.gather(_read_geom(geom_images), _read_soil(soil_images))
     if soil:
         geo["soil"] = soil
-    return {"geometry": geo, "incertezas": inc}
+    return {"geometry": geo, "incertezas": g_inc + s_inc}

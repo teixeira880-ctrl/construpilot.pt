@@ -87,10 +87,13 @@ async def read_geometry(args: dict, user: dict, conv: dict, allowed_doc) -> dict
     gids, sids = args.get("geometry_document_ids") or [], args.get("soil_document_ids") or []
     if not gids:
         return {"ok": False, "error": "Anexe as peças desenhadas do projeto (plantas, cortes, alçados)."}
-    geom, gnames = await _doc_images(gids, uid, dpi=110, per_doc=9, cap=9,
+    geom, gnames = await _doc_images(gids, uid, dpi=90, per_doc=6, cap=8,
                                      keywords=("planta", "corte", "alçado", "implantação", "piso", "cobertura", "escala",
                                                "plan", "coupe", "façade", "niveau", "1/100", "1/50"), allowed_doc=allowed_doc)
-    soil, snames = await _doc_images(sids, uid, dpi=90, per_doc=40, cap=40, keywords=None, allowed_doc=allowed_doc)
+    soil, snames = await _doc_images(sids, uid, dpi=90, per_doc=18, cap=18,
+                                     keywords=("tensão admissível", "tensao admissivel", "capacidade de carga", "q_els", "qels",
+                                               "kpa", "fundações", "fundacoes", "conclus", "recomenda", "sondagem", "spt",
+                                               "contrainte", "portance", "fondation"), allowed_doc=allowed_doc)
     ex = await extract(geom, soil)
     geometry = H.normalize(ex["geometry"])
     gid = "geo_" + uuid.uuid4().hex[:12]
