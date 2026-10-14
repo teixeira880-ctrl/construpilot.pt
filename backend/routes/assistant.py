@@ -1201,13 +1201,24 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         if not read_tool and key in cache:
             result, attachments = cache[key]
         else:
+            from contextlib import suppress as _suppress
             task = asyncio.ensure_future(_exec_tool(name, args, user, conv))
+            deadline = asyncio.get_event_loop().time() + 300  # 5 min por ferramenta
             while not task.done():
                 done, _ = await asyncio.wait({task}, timeout=8)
-                if not done: yield {"type": "status", "text": status_map.get(name, "Processamento do processo…")}
-            result = task.result()
-            attachments = result.pop("_model_attachments", [])
-            if not read_tool: cache[key] = (result, attachments)
+                if not done:
+                    if asyncio.get_event_loop().time() >= deadline:
+                        task.cancel()
+                        with _suppress(asyncio.CancelledError, Exception):
+                            await task
+                        result = {"ok": False, "error": "A ferramenta demorou demasiado tempo (>5 min); tente com menos páginas ou peças mais simples."}
+                        task = None
+                        break
+                    yield {"type": "status", "text": status_map.get(name, "Processamento do processo…")}
+            if task is not None:
+                result = task.result()
+                attachments = result.pop("_model_attachments", [])
+                if not read_tool: cache[key] = (result, attachments)
     except asyncio.CancelledError:
         if task and not task.done():
             task.cancel()
