@@ -16,7 +16,7 @@ const TOOL_LABEL = {
   supervise_platform: "Controlo do processo lançado", get_supervision_result: "Estado do controlo",
   cancel_supervision: "Paragem do controlo pedida",
   list_platform_resources: "Documentos da conta", list_platform_calculators: "Calculadoras disponíveis", run_platform_calculator: "Cálculo de materiais",
-  create_downloadable_file: "Ficheiro criado", read_generated_file: "Ficheiro relido",
+  create_downloadable_file: "Ficheiro criado", read_generated_file: "Ficheiro relido", generate_structural_execution_dossier: "Dossier de execução estrutural",
   inspect_document_region: "Detalhe do documento consultado", read_work_draft: "Rascunho relido", update_work_draft: "Rascunho revisto",
   read_document: "Páginas consultadas", calculate: "Cálculo verificado", create_work_draft: "Rascunho editável", search_own_history: "As suas conversas encontradas",
   define_analysis_scope: "Âmbito de análise", analyze_plan: "Análise aprofundada iniciada", get_plan_results: "Resultados da planta lidos",
