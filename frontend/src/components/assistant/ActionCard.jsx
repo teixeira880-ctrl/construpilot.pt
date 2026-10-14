@@ -27,6 +27,7 @@ const TOOL_LABEL = {
   classify_strokes: "Traços classificados", dedupe_elements: "Elementos sem duplicados", calculate_quantities: "Quantidades calculadas",
   read_rebar_schedule: "Lista de armaduras lida", read_native_dimensions: "Cotas nativas lidas",
   compute_concrete_volumes: "Volumes de betão calculados", update_project_state: "Estado do processo atualizado", draw_section_schema: "Esquema de princípio cotado desenhado",
+  generate_structural_execution_dossier: "Dossier de execução estrutural",
 };
 
 function RebarCard({ r }) {

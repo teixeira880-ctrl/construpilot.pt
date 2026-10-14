@@ -30,6 +30,7 @@ from engines.platform_agent_tools import PLATFORM_TOOLS, PLATFORM_TOOL_NAMES, PL
 from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS, QUOTE_TOOLS
 from engines.assistant_files import FILE_INSTRUCTIONS, FILE_TOOLS, create_file, create_schema, owned_artifact, public_artifact
 from engines.section_schema import SCHEMA_TOOL
+from engines.assistant_bet_tool import BET_TOOLS, BET_TOOL_NAMES, BET_INSTRUCTIONS, run_bet_tool
 from engines.assistant_media import image_content, normalize_attachment
 from engines.office_text import OFFICE_MIME_SET, OFFICE_MIMES, extract_office_text, office_model_parts, office_pages
 from engines.metre.tools import METRE_INSTRUCTIONS, METRE_TOOLS, METRE_TOOL_NAMES, run_metre_tool
@@ -165,7 +166,7 @@ def tools_for(user: dict) -> list:
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL]
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
-    return [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL]
+    return [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS
 
 
 MANDATORY_NOTICE_PT = ("Esta estimativa constitui uma indicação orçamental estabelecida a partir das informações fornecidas e de "
@@ -268,6 +269,8 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         return await create_file(args, user, conv)
     if name == "draw_section_schema":
         return await create_schema(args, user, conv)
+    if name in BET_TOOL_NAMES:
+        return await run_bet_tool(args, user, conv, _allowed_doc)
     if name == "read_generated_file":
         artifact = await owned_artifact(args["artifact_id"], uid, conv["conversation_id"])
         result = {"ok": True, "artifact": public_artifact(artifact), "body": artifact["body"]}
@@ -1144,7 +1147,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + PROTOCOL + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_INSTRUCTIONS if account_type(user) == "professional" else "") + PROTOCOL + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         instructions += QUOTE_INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. PRIMEIRO propõe numa frase o âmbito (plantas em causa, margem, nome do projeto) e PEDE confirmação; só depois chama run_construpilot_agent. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
@@ -1395,6 +1398,7 @@ TOOL_STATUS_PT = {"create_downloadable_file": "Criação do ficheiro…", "read_
                   "compare_technical_options": "Comparação das soluções técnicas…", "check_dimension_chain": "Cálculo da cadeia de cotas…",
                   "calculate_quantities": "Cálculo das quantidades…", "compare_dimension_values": "Comparação das cotas…",
                   "compute_concrete_volumes": "Cálculo dos volumes de betão por elemento (DXF + cofragem + cortes)…", "update_project_state": "Atualização do estado do dossiê…", "draw_section_schema": "Desenho do esquema de princípio cotado…",
+                  "generate_structural_execution_dossier": "Cálculo estrutural e desenho dos planos de cofragem/armaduras (pode demorar 1-3 min)…",
                   "cross_check": "Cruzamento multi-IA (ChatGPT · Gemini Pro · Claude)…"}
 TOOL_STATUS = {"create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
                "read_document": "Leitura das páginas e do desenho…", "calculate": "Verificação do cálculo…", "create_work_draft": "Redação do documento…", "search_own_history": "Pesquisa nas suas conversas…","define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Lançamento da análise aprofundada…",
@@ -1406,6 +1410,7 @@ TOOL_STATUS = {"create_downloadable_file": "Criação do ficheiro…", "read_gen
                "compare_technical_options": "Comparação das soluções técnicas…", "check_dimension_chain": "Cálculo da cadeia de cotas…",
                "calculate_quantities": "Cálculo das quantidades…", "compare_dimension_values": "Comparação das cotas…",
                "compute_concrete_volumes": "Cálculo dos volumes de betão por elemento (DXF + cofragem + cortes)…", "update_project_state": "Atualização do estado do processo…", "draw_section_schema": "Desenho do esquema de princípio cotado…",
+               "generate_structural_execution_dossier": "Cálculo estrutural e desenho dos planos de cofragem/armaduras (pode demorar 1-3 min)…",
                "cross_check": "Croisement multi-IA (ChatGPT · Gemini Pro · Claude)…"}
 
 
