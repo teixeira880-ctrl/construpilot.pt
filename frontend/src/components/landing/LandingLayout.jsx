@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, Menu, X, LogIn, Waves } from "lucide-react";
 import { AudienceSwitch } from "@/components/AudienceSwitch";
 import { Footer } from "@/components/Nav";
+import { LangToggle } from "@/context/I18nContext";
 import { WorkspaceBackdrop, useWorkspaceMotion } from "@/components/workspace/WorkspaceBackdrop";
 import "@/styles/workspace-ambient.css";
 import "@/styles/landing-premium.css";
@@ -32,6 +33,7 @@ export function LandingLayout({ audience, children }) {
         <nav className="landing-desktop-links" aria-label="Apresentação">{sections.map(s => <a key={s.id} href={`#${s.id}`}>{s.label}</a>)}</nav>
         <Link to="/login" className="landing-login" data-testid={`${prefix}-nav-login`} aria-label="Entrar"><LogIn size={18} aria-hidden="true" /><span>Iniciar sessão</span></Link>
         {pro ? <Link to="/inscription" className="landing-button landing-header-cta" data-testid="pro-nav-cta">Experimentar <ArrowRight size={15} /></Link> : <button type="button" className="landing-button landing-header-cta" data-testid="part-nav-cta" onClick={() => scrollToLanding("landing-estimator", true)}>Estimar <ArrowRight size={15} /></button>}
+        <LangToggle testId={`${prefix}-lang-toggle`} />
         <button type="button" id="landing-menu-button" className="landing-menu-button" aria-expanded={menu} aria-controls="landing-mobile-menu" aria-label={menu ? "Fechar o menu" : "Abrir o menu"} onClick={() => setMenu(!menu)} data-testid="landing-menu-toggle">{menu ? <X size={21} /> : <Menu size={21} />}</button>
       </div>
       {menu && <nav className="landing-mobile-menu" id="landing-mobile-menu" aria-label="Apresentação em telemóvel">{sections.map(s => <a key={s.id} href={`#${s.id}`} onClick={() => setMenu(false)}>{s.label}<ArrowRight size={16} /></a>)}<Link to="/inscription" onClick={() => setMenu(false)}>Criar a minha conta<ArrowRight size={16} /></Link></nav>}

@@ -1,11 +1,9 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Calculator, ShieldCheck, ReceiptText, Users, FileCheck2, MapPin, ArrowRight, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
-import { useI18n } from "@/context/I18nContext";
 
 const DISTRICTS = [
   { name: "Lisboa", low: 750, high: 1400 },
@@ -30,9 +28,6 @@ const FEATURES = [
 ];
 
 export default function LandingPortugal() {
-  const { setLang } = useI18n();
-  useEffect(() => { setLang("pt"); /* landing sempre em PT-PT */ /* eslint-disable-next-line */ }, []);
-
   return (
     <div className="grid gap-16 pb-16" data-testid="landing-portugal">
       <SEO

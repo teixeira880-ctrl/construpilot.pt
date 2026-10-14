@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Globe } from "lucide-react";
 import { CRM_TRANSLATIONS } from "@/lib/crmI18n";
 import { ADMIN_TRANSLATIONS } from "@/lib/adminI18n";
 import { HR_TRANSLATIONS, HR_EXTRA } from "@/lib/hrI18n";
@@ -1522,11 +1523,19 @@ const STORAGE_KEY = "construpilot_lang";
 const SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"];
 const RTL_LANGS = ["ar"];
 
-// construpilot.pt : site 100 % em português europeu (mercado português).
+// Idiomas expostos na interface do utilizador (seletor na página inicial).
+// PT é o idioma por defeito; EN e FR são opções adicionais.
+const UI_LANGS = ["pt", "en", "fr"];
+
+// Idioma por defeito do site (mercado: Portugal). Mantido para gating do MarketToggle
+// (mercado único) e como fallback em `detectLang`/`setLang` quando o pedido é inválido.
 export const SITE_LANG = "pt";
 
 function detectLang() {
-  try { localStorage.setItem(STORAGE_KEY, SITE_LANG); } catch { /* armazenamento indisponível */ }
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && UI_LANGS.includes(stored)) return stored;
+  } catch { /* armazenamento indisponível */ }
   return SITE_LANG;
 }
 
@@ -1539,12 +1548,12 @@ export function I18nProvider({ children }) {
   };
 
   const setLang = (requested) => {
-    const l = SITE_LANG; // a língua do site é fixa (PT-PT) — o pedido é ignorado
-    void requested;
+    const l = UI_LANGS.includes(requested) ? requested : SITE_LANG;
     setLangState(l);
-    localStorage.setItem(STORAGE_KEY, l);
+    try { localStorage.setItem(STORAGE_KEY, l); } catch { /* armazenamento indisponível */ }
     applyDir(l);
-    // Sync best-effort vers le backend si l'utilisateur est connecté (emails multilingues).
+    // Sincronização best-effort com o backend se o utilizador tiver sessão iniciada
+    // (emails multilingues). Mantém o endpoint existente — não é criado nada novo.
     if (localStorage.getItem("construpilot_session") === "1") {
       import("@/lib/api").then(({ api }) => api.put("/auth/language", { lang: l }).catch(() => {}));
     }
@@ -1553,7 +1562,7 @@ export function I18nProvider({ children }) {
   useEffect(() => { applyDir(lang); }, [lang]);
 
   const t = (key, fallback = "") =>
-    TRANSLATIONS.pt?.[key] ?? TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.fr[key] ?? fallback ?? key;
+    TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.pt?.[key] ?? fallback ?? key;
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
@@ -1570,34 +1579,128 @@ export function useI18n() {
 
 export function LangToggle({ testId = "lang-toggle" }) {
   const { lang, setLang } = useI18n();
-  if (SITE_LANG) return null; // site monolingue PT-PT: seletor de língua oculto
+  const [open, setOpen] = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+  const itemRefs = useRef([]);
+
   const LANGS = [
-    { code: "fr", label: "FR", full: "Français" },
-    { code: "en", label: "EN", full: "English" },
-    { code: "es", label: "ES", full: "Español" },
-    { code: "pt", label: "PT", full: "Português" },
-    { code: "it", label: "IT", full: "Italiano" },
-    { code: "de", label: "DE", full: "Deutsch" },
-    { code: "ar", label: "AR", full: "العربية" },
+    { code: "pt", code_label: "PT", full: "Português" },
+    { code: "en", code_label: "EN", full: "English" },
+    { code: "fr", code_label: "FR", full: "Français" },
   ];
+  const activeIdx = Math.max(0, LANGS.findIndex((l) => l.code === lang));
+  const current = LANGS[activeIdx] || LANGS[0];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDocClick = (e) => {
+      if (menuRef.current?.contains(e.target) || btnRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      setFocusIdx(activeIdx);
+      requestAnimationFrame(() => itemRefs.current[activeIdx]?.focus());
+    }
+  }, [open, activeIdx]);
+
+  const pick = (code) => {
+    setLang(code);
+    setOpen(false);
+    requestAnimationFrame(() => btnRef.current?.focus());
+  };
+
+  const onBtnKey = (e) => {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+    }
+  };
+
+  const onMenuKey = (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      btnRef.current?.focus();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = (focusIdx + 1) % LANGS.length;
+      setFocusIdx(next);
+      itemRefs.current[next]?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prev = (focusIdx - 1 + LANGS.length) % LANGS.length;
+      setFocusIdx(prev);
+      itemRefs.current[prev]?.focus();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setFocusIdx(0);
+      itemRefs.current[0]?.focus();
+    } else if (e.key === "End") {
+      e.preventDefault();
+      const last = LANGS.length - 1;
+      setFocusIdx(last);
+      itemRefs.current[last]?.focus();
+    } else if (e.key === "Tab") {
+      setOpen(false);
+    }
+  };
+
   return (
     <div className="relative inline-block" data-testid={`${testId}-wrapper`}>
-      <select
-        value={lang}
-        onChange={(e) => setLang(e.target.value)}
+      <button
+        type="button"
+        ref={btnRef}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={onBtnKey}
+        aria-label="Mudar idioma"
+        aria-haspopup="menu"
+        aria-expanded={open}
         data-testid={testId}
-        aria-label="Língua"
-        className="rounded-sm border border-border bg-transparent px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest hover:bg-primary hover:text-white hover:border-primary transition cursor-pointer appearance-none pr-6"
-        style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6' fill='none'%3e%3cpath d='M1 1l3 3 3-3' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 6px center" }}
+        className="inline-flex items-center gap-1.5 h-9 px-2 sm:px-2.5 rounded-sm border border-border bg-transparent text-[11px] font-bold uppercase tracking-widest hover:bg-primary hover:text-white hover:border-primary transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
       >
-        {LANGS.map((l) => (
-          <option key={l.code} value={l.code} className="bg-background text-foreground">
-            {l.label}
-          </option>
-        ))}
-      </select>
+        <Globe className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden sm:inline" data-testid={`${testId}-current`}>{current.code_label}</span>
+      </button>
+      {open && (
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Mudar idioma"
+          onKeyDown={onMenuKey}
+          data-testid={`${testId}-menu`}
+          className="absolute right-0 mt-1 z-50 min-w-[140px] rounded-md border border-border bg-popover text-popover-foreground shadow-lg py-1"
+        >
+          {LANGS.map((l, i) => {
+            const active = l.code === lang;
+            return (
+              <button
+                type="button"
+                key={l.code}
+                ref={(el) => (itemRefs.current[i] = el)}
+                role="menuitem"
+                tabIndex={-1}
+                onClick={() => pick(l.code)}
+                aria-current={active ? "true" : undefined}
+                data-testid={`${testId}-option-${l.code}`}
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground focus:outline-none focus:bg-accent focus:text-accent-foreground ${active ? "font-semibold" : ""}`}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest w-6">{l.code_label}</span>
+                  <span>{l.full}</span>
+                </span>
+                {active && <span aria-hidden="true" className="text-primary">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
