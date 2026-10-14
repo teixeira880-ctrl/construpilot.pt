@@ -1,80 +1,75 @@
-"""Ferramenta do Assistente: dossier de execução estrutural (cofragem + armaduras) a partir
-dos documentos anexados (projeto de licenciamento / plantas + estudo geotécnico).
+"""Ferramentas do Assistente — estudo estrutural de moradia/pequeno edifício a partir dos anexos.
 
-Reutiliza o pipeline determinístico do Autopiloto BET (engines/structuro_autopilot.py):
-leitura IA da geometria e do solo → modelo → descida de cargas → sapatas (só com solo lido) →
-armaduras → medições → PDF A3 de cofragem/armaduras (engines/structuro_coffrage.py).
-O resultado é um PRÉ-DIMENSIONAMENTO a validar por engenheiro — nunca um projeto de execução assinado.
+1) read_building_geometry: lê (IA visão) o projeto de licenciamento + estudo geotécnico anexados e
+   devolve a geometria estruturada + incertezas, guardada com um geometry_id → o assistente MOSTRA-A ao
+   utilizador para validação (ecrã de validação = a conversa).
+2) generate_structural_execution_dossier: com o geometry_id (+ correções do utilizador em JSON) calcula
+   (engines/structuro_house.py) e gera o PDF: nota de cálculo A4 + desenhos A3 (lajes com armaduras,
+   fundações, pormenores: cintas, pilaretes, lintéis, muro de cave, escadas) + medições.
+Resultado = PRÉ-DIMENSIONAMENTO a verificar e assinar por engenheiro civil.
 """
 from __future__ import annotations
 
 import asyncio
 import base64
 import hashlib
+import json
 import logging
+import uuid
 from datetime import datetime, timezone
-
-from fastapi import HTTPException
 
 from core.db import db
 from engines.assistant_workspace import function
 
 log = logging.getLogger("assistant.bet")
 
-N = lambda t: {"type": [t, "null"]}  # noqa: E731
-
 BET_TOOLS = [
     function(
+        "read_building_geometry",
+        "PASSO 1 do estudo estrutural: lê com IA as peças do projeto de licenciamento / plantas cotadas "
+        "(geometry_document_ids) e o estudo geotécnico (soil_document_ids) ANEXADOS e devolve a geometria "
+        "estrutural (dimensões, pisos, pé-direito, paredes resistentes, aberturas, caixa de escada, cave, "
+        "cobertura, tensão do solo) com um geometry_id. Usar quando o utilizador pedir planos de execução, "
+        "cofragem, armaduras/ferragens, betão armado, 'gros œuvre', 'ferraillage' ou um cálculo de estruturas.",
+        {"geometry_document_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+         "soil_document_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 3}}),
+    function(
         "generate_structural_execution_dossier",
-        "Gera o DOSSIER DE EXECUÇÃO ESTRUTURAL pré-dimensionado (planos A3 de cofragem por piso, sapatas, vigas, "
-        "pilares, lajes, mapa de armaduras, amarrações, nota de cálculo resumida e medições de betão/aço) a partir "
-        "dos documentos ANEXADOS: projeto de licenciamento / plantas cotadas (geometry_document_ids) e estudo "
-        "geotécnico (soil_document_ids). Motor determinístico NP EN 1990/1991/1992/1997 (Anexos Nacionais PT). "
-        "Usar SEMPRE que o utilizador pedir planos de execução, cofragem, armaduras/ferragens, betão armado, "
-        "'gros œuvre', 'ferraillage' ou 'faz os cálculos como um gabinete de estruturas'. Os overrides servem "
-        "apenas para valores que o UTILIZADOR indicou explicitamente; caso contrário null.",
-        {
-            "geometry_document_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
-            "soil_document_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 3},
-            "levels": N("integer"),
-            "storey_height_m": N("number"),
-            "bays_x_m": {"type": ["array", "null"], "items": {"type": "number"}, "maxItems": 12},
-            "bays_y_m": {"type": ["array", "null"], "items": {"type": "number"}, "maxItems": 12},
-            "structure": {"type": ["string", "null"], "description": "portique (pilares-vigas) ou voiles (paredes resistentes); null se não indicado"},
-            "destination": {"type": ["string", "null"], "description": "habitacao, escritorios, comercio, estacionamento, industrial ou publico; null se não indicado"},
-            "soil_q_els_kpa": N("number"),
-        }),
+        "PASSO 2: calcula a estrutura (lajes em 2 direções, descida de cargas, alvenaria NP EN 1996-3, sapatas, "
+        "lintéis, cintas/pilaretes, muros de cave, escadas) e gera o PDF do dossier: nota de cálculo A4 + desenhos A3 "
+        "de cofragem/armaduras por laje, fundações e pormenores + medições de betão e aço. geometry_id vem do passo 1. "
+        "corrections_json = JSON (string) só com os valores que o UTILIZADOR corrigiu ou confirmou, nas mesmas chaves "
+        "da geometria (ex.: '{\"outer_L_m\": 11.2, \"levels\": [...], \"soil\": {\"q_els_kpa\": 200, \"confirmed\": true}}'); "
+        "'{}' se nada a corrigir.",
+        {"geometry_id": {"type": "string"}, "corrections_json": {"type": "string", "maxLength": 20000}}),
 ]
-
 BET_TOOL_NAMES = {t["name"] for t in BET_TOOLS}
 
 BET_INSTRUCTIONS = (
-    "\nPLANOS DE EXECUÇÃO / COFRAGEM / ARMADURAS: quando o utilizador pedir planos de execução estrutural, "
-    "cofragem, armaduras (ferragens), 'gros œuvre' ou 'ferraillage' e houver plantas/projeto (e idealmente o "
-    "estudo geotécnico) anexados, NÃO recuses e NÃO te limites a um esquema de princípio: chama "
-    "generate_structural_execution_dossier com os document_id dos anexos (plantas/PC em geometry_document_ids, "
-    "relatório geotécnico em soil_document_ids). Depois apresenta: o ficheiro PDF devolvido, o resumo (pisos, "
-    "malha, elementos, betão m³, aço kg, sapatas), as incertezas de leitura e os avisos. Explica que é um "
-    "pré-dimensionamento automático (Eurocódigos com Anexos Nacionais PT) a verificar e assinar por um "
-    "engenheiro civil antes da obra, e que a ação sísmica (NP EN 1998-1) não está verificada. Se faltar o "
-    "estudo geotécnico, as sapatas não são dimensionadas: diz isso e pede o relatório. Se a leitura da "
-    "geometria tiver falhado, pede as cotas em falta (número de pisos, pé-direito, vãos entre alinhamentos) e "
-    "volta a chamar a ferramenta com esses valores nos overrides.\n")
+    "\nESTUDO ESTRUTURAL / PLANOS DE EXECUÇÃO (cofragem, armaduras, 'gros œuvre', 'ferraillage'): NÃO recuses e NÃO te "
+    "limites a um esquema de princípio. Com o projeto/plantas (e de preferência o estudo geotécnico) anexados:\n"
+    "1) chama read_building_geometry com os document_id (plantas/PC → geometry_document_ids; geotecnia → soil_document_ids);\n"
+    "2) mostra ao utilizador, numa tabela curta, a geometria lida (dimensões, pisos e pé-direito, utilização, paredes "
+    "resistentes interiores, aberturas, escada, cave, cobertura, q_ELS do solo) e as incertezas; pede para confirmar "
+    "ou corrigir — se o utilizador já pediu para avançar sem validação, ou responder «ok/confirmo», segue;\n"
+    "3) chama generate_structural_execution_dossier com o geometry_id e as correções em corrections_json;\n"
+    "4) apresenta o PDF devolvido, o resumo (espessuras de laje, armaduras principais, sapatas, lintéis, betão m³, aço kg) "
+    "e os avisos. Diz sempre que é um pré-dimensionamento automático (Eurocódigos, Anexos Nacionais PT) a verificar e "
+    "assinar por engenheiro civil, e que a ação sísmica (NP EN 1998-1) não está verificada. Sem estudo geotécnico as "
+    "sapatas não são dimensionadas: pede o relatório ou a tensão admissível.\n")
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def _doc_images(doc_ids: list[str], uid: str, *, dpi: int, per_doc: int, cap: int,
-                      keywords: tuple | None, allowed_doc) -> tuple[list[bytes], list[str]]:
+async def _doc_images(doc_ids, uid, *, dpi, per_doc, cap, keywords, allowed_doc):
     from engines import structuro_bet_ai as betai
-    imgs: list[bytes] = []
-    names: list[str] = []
+    imgs, names = [], []
     for did in doc_ids:
         d = await allowed_doc(did, uid)
         raw = base64.b64decode(d.get("data_b64") or "")
-        mime = (d.get("mime") or d.get("content_type") or "").lower()
+        mime = (d.get("mime") or "").lower()
         names.append(d.get("filename") or did)
         if mime == "application/pdf" or raw[:4] == b"%PDF":
             imgs += await asyncio.to_thread(betai.render_doc_images, raw, dpi, per_doc, keywords)
@@ -85,89 +80,83 @@ async def _doc_images(doc_ids: list[str], uid: str, *, dpi: int, per_doc: int, c
     return imgs[:cap], names
 
 
-async def run_bet_tool(args: dict, user: dict, conv: dict, allowed_doc) -> dict:
-    from engines import structuro_autopilot as ap
-    from engines.structuro_coffrage import build_coffrage_pdf
+async def read_geometry(args: dict, user: dict, conv: dict, allowed_doc) -> dict:
+    from engines import structuro_house as H
+    from engines.structuro_house_extract import extract
+    uid = user["user_id"]
+    gids, sids = args.get("geometry_document_ids") or [], args.get("soil_document_ids") or []
+    if not gids:
+        return {"ok": False, "error": "Anexe as peças desenhadas do projeto (plantas, cortes, alçados)."}
+    geom, gnames = await _doc_images(gids, uid, dpi=110, per_doc=9, cap=9,
+                                     keywords=("planta", "corte", "alçado", "implantação", "piso", "cobertura", "escala",
+                                               "plan", "coupe", "façade", "niveau", "1/100", "1/50"), allowed_doc=allowed_doc)
+    soil, snames = await _doc_images(sids, uid, dpi=90, per_doc=40, cap=40, keywords=None, allowed_doc=allowed_doc)
+    ex = await extract(geom, soil)
+    geometry = H.normalize(ex["geometry"])
+    gid = "geo_" + uuid.uuid4().hex[:12]
+    await db.bet_geometries.insert_one({"geometry_id": gid, "user_id": uid, "conversation_id": conv.get("conversation_id"),
+                                        "raw": ex["geometry"], "geometry": geometry, "incertezas": ex["incertezas"],
+                                        "documents": {"geometria": gnames, "solo": snames}, "created_at": _now()})
+    read_keys = set(ex["geometry"].keys())
+    return {"ok": True, "geometry_id": gid, "geometry": geometry,
+            "valores_por_defeito": sorted(k for k in ("outer_L_m", "outer_W_m", "wall_thickness_m", "levels", "roof",
+                                                       "basement", "stair", "soil") if k not in read_keys),
+            "incertezas": ex["incertezas"], "documentos_lidos": {"geometria": gnames, "solo": snames},
+            "proximo_passo": "Mostrar ao utilizador para validação e depois chamar generate_structural_execution_dossier."}
+
+
+async def generate(args: dict, user: dict, conv: dict) -> dict:
+    from engines import structuro_house as H
+    from engines.structuro_house_pdf import build_pdf
     uid, cid = user["user_id"], conv["conversation_id"]
-    geom_ids, soil_ids = args.get("geometry_document_ids") or [], args.get("soil_document_ids") or []
-    if not geom_ids and not soil_ids:
-        return {"ok": False, "error": "Anexe pelo menos o projeto/plantas (e de preferência o estudo geotécnico)."}
-
-    geom, gnames = await _doc_images(geom_ids, uid, dpi=110, per_doc=8, cap=12,
-                                     keywords=("planta", "corte", "alçado", "implantação", "piso", "cobertura",
-                                               "plan", "coupe", "façade", "niveau", "escala", "1/100", "1/50"),
-                                     allowed_doc=allowed_doc)
-    soil, snames = await _doc_images(soil_ids, uid, dpi=90, per_doc=40, cap=40, keywords=None, allowed_doc=allowed_doc)
-    inputs = await ap.extract_inputs(geom, soil)
-
-    # Overrides explícitos do utilizador
-    b = inputs.setdefault("building", {})
-    if args.get("levels"):
-        b["levels"] = int(args["levels"])
-    if args.get("storey_height_m"):
-        b["storey_height_m"] = float(args["storey_height_m"])
-    if args.get("destination"):
-        b["destination"] = args["destination"]
-    if args.get("structure"):
-        inputs.setdefault("system", {})["structure"] = args["structure"]
-    if args.get("bays_x_m"):
-        inputs.setdefault("grid", {})["bays_x_m"] = [float(x) for x in args["bays_x_m"]]
-    if args.get("bays_y_m"):
-        inputs.setdefault("grid", {})["bays_y_m"] = [float(x) for x in args["bays_y_m"]]
-    if args.get("soil_q_els_kpa"):
-        s = inputs.setdefault("soil", {})
-        s["q_els_kpa"] = float(args["soil_q_els_kpa"])
-        s["q_confirmed"] = True
-    inputs = ap.normalize_inputs(inputs)
-
+    rec = await db.bet_geometries.find_one({"geometry_id": args["geometry_id"], "user_id": uid}, {"_id": 0})
+    if not rec:
+        return {"ok": False, "error": "geometry_id desconhecido — chame primeiro read_building_geometry."}
     try:
-        out = await asyncio.to_thread(ap.build_and_compute, inputs)
-    except ValueError as exc:
-        return {"ok": False, "error": f"Modelo não calculável: {exc}", "inputs": inputs}
-    if out["result"].get("status") == "blocked":
-        return {"ok": False, "error": "O pré-modelo não é calculável automaticamente.",
-                "issues": out["result"].get("issues"), "inputs": inputs,
-                "incertitudes": inputs.get("incertitudes")}
-
-    model, summary = out["model"], out["summary"]
-    pdf = await asyncio.to_thread(build_coffrage_pdf, model, 1, model.get("title", "Autopiloto BET"),
-                                  out["superstructure"], out["metre"], out["marks"], summary, out["soil"], inputs)
-    if len(pdf) > 15 * 1024 * 1024:
-        raise HTTPException(413, "Dossier demasiado volumoso.")
-
-    digest = hashlib.sha256((conv.get("_quote_request_id", "") + str(conv.get("_file_call_id", "")) + "bet").encode()).hexdigest()[:28]
+        corr = json.loads(args.get("corrections_json") or "{}") or {}
+        if not isinstance(corr, dict):
+            raise ValueError
+    except ValueError:
+        return {"ok": False, "error": "corrections_json inválido (deve ser um objeto JSON)."}
+    if isinstance(corr.get("soil"), dict) and corr["soil"].get("q_els_kpa") and "confirmed" not in corr["soil"]:
+        corr["soil"]["confirmed"] = True          # valor indicado pelo utilizador
+    geometry = H.merge(rec["geometry"], corr)
+    r = await asyncio.to_thread(H.compute, geometry)
+    project = geometry.get("name") or "Moradia"
+    pdf = await asyncio.to_thread(build_pdf, r, project)
+    await db.bet_geometries.update_one({"geometry_id": args["geometry_id"], "user_id": uid},
+                                       {"$set": {"geometry": r["geometry"], "computed_at": _now()}})
+    digest = hashlib.sha256((str(conv.get("_quote_request_id", "")) + str(conv.get("_file_call_id", "")) + args["geometry_id"]).encode()).hexdigest()[:28]
     ident = "file_" + digest
-    title = f"Dossier de execução estrutural (pré-dimensionamento) — {model.get('title', 'Autopiloto BET')}"
     doc = {"artifact_id": ident, "user_id": uid, "conversation_id": cid, "request_id": conv.get("_quote_request_id"),
-           "title": title, "body": "Dossier A3 de cofragem e armaduras gerado pelo Autopiloto BET.",
-           "filename": "dossier-execucao-estrutural.pdf", "format": "pdf", "mime": "application/pdf", "size": len(pdf),
-           "data_b64": base64.b64encode(pdf).decode(), "source_artifact_ids": [],
-           "created_at": _now(), "illustrative": False, "bet_dossier": True,
-           "download": f"/assistant/artifacts/{ident}/content"}
+           "title": f"Dossier estrutural (pré-dimensionamento) — {project}",
+           "body": "Nota de cálculo A4 + desenhos A3 de cofragem/armaduras, fundações e pormenores.",
+           "filename": "dossier-estrutural.pdf", "format": "pdf", "mime": "application/pdf", "size": len(pdf),
+           "data_b64": base64.b64encode(pdf).decode(), "source_artifact_ids": [], "created_at": _now(),
+           "illustrative": False, "bet_dossier": True, "download": f"/assistant/artifacts/{ident}/content"}
     await db.assistant_artifacts.update_one({"artifact_id": ident, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)
-
-    metre = out.get("metre") or {}
     artifact = {k: v for k, v in doc.items() if k not in ("data_b64", "body", "user_id")}
+    q = r["quantities"]
     return {
         "ok": True, "artifact": artifact,
-        "summary": {
-            "titulo": model.get("title"),
-            "pisos": (inputs.get("building") or {}).get("levels"),
-            "pe_direito_m": (inputs.get("building") or {}).get("storey_height_m"),
-            "sistema": (inputs.get("system") or {}).get("structure"),
-            "vaos_x_m": (inputs.get("grid") or {}).get("bays_x_m"),
-            "vaos_y_m": (inputs.get("grid") or {}).get("bays_y_m"),
-            "elementos": len(model.get("elements") or []),
-            "betao_m3": (metre.get("concrete") or {}).get("total_m3"),
-            "aco_kg_indicativo": (metre.get("steel") or {}).get("total_kg"),
-            "nota_medicao": metre.get("note"),
-            "solo_confirmado": bool(out["soil"].get("q_confirmed")),
-            "sapatas": summary.get("footings"),
+        "resumo": {
+            "lajes": [{"laje": s["name"], "espessura_m": s["h"],
+                       "armaduras": sorted({f"{d['mesh_short']['label']} / {d['mesh_long']['label']}" for d in s["panels"]})}
+                      for s in r["slabs"]],
+            "sapatas": {k: f"b={v['b_m']} h={v['h_m']} {v['transv']}" for k, v in r["footings"].items()} or "não dimensionadas (sem q_ELS confirmado)",
+            "alvenaria": {k: v["choice"] for k, v in r["walls_check"].items()},
+            "lintéis": [f"{li['rep']} {li.get('level')}/{li.get('facade')} vão {li['clear']} m: "
+                        + (f"{li['b']}×{li['h']} {li['bot']} + {li['stirrups']}" if li.get("ok") else "viga a dimensionar") for li in r["lintels"]],
+            "escadas": [f"lanço {s['lanco']}: {s.get('risers')}×{s.get('riser_mm')} mm, cobertor {s.get('giron_mm')} mm, {s.get('main', {}).get('label')}"
+                        for s in r["stairs"] if not s.get("error")],
+            "betao_m3": q["concrete_m3"], "aco_kg": q["steel_kg"], "racio_kg_m3": q["ratio_kg_m3"],
+            "paginas": "nota A4 + " + str(len(r["slabs"]) + 2) + " folhas A3",
         },
-        "documentos_lidos": {"geometria": gnames, "solo": snames},
-        "incertezas_de_leitura": inputs.get("incertitudes") or [],
-        "avisos": (summary.get("warnings") or []) + [
-            "Pré-dimensionamento automático (NP EN 1990/1991/1992/1997, Anexos Nacionais PT) — a verificar e assinar por engenheiro civil antes da execução.",
-            "Ação sísmica (NP EN 1998-1) não verificada.",
-        ],
+        "avisos": r["warnings"],
     }
+
+
+async def run_bet_tool(name: str, args: dict, user: dict, conv: dict, allowed_doc) -> dict:
+    if name == "read_building_geometry":
+        return await read_geometry(args, user, conv, allowed_doc)
+    return await generate(args, user, conv)

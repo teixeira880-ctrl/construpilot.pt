@@ -79,6 +79,7 @@ import Renovation from "@/pages/Renovation";
 import Structuro from "@/pages/Structuro";
 import StructureCalc from "@/pages/StructureCalc";
 import BetDossier from "@/pages/BetDossier";
+import StructuroHouse from "@/pages/StructuroHouse";
 import PlanReader from "@/pages/PlanReader";
 import StairCalculator from "@/pages/StairCalculator";
 import BtpSolver from "@/pages/BtpSolver";
@@ -341,6 +342,7 @@ function AppRouter() {
       <Route path="/structuro" element={<ProRoute><Shell><Structuro /></Shell></ProRoute>} />
       <Route path="/structuro/calcul" element={<ProRoute><Shell><StructureCalc /></Shell></ProRoute>} />
       <Route path="/structuro-bet" element={<ProRoute><Shell><BetDossier /></Shell></ProRoute>} />
+      <Route path="/estudo-moradia" element={<ProRoute><Shell><StructuroHouse /></Shell></ProRoute>} />
       <Route path="/structuro/lecture-plan" element={<ProRoute><Shell><PlanReader /></Shell></ProRoute>} />
       <Route path="/escaliers" element={<ProRoute><Shell><StairCalculator /></Shell></ProRoute>} />
       <Route path="/btp-solver" element={<Protected><Shell><BtpSolver /></Shell></Protected>} />

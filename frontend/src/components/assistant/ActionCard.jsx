@@ -28,6 +28,7 @@ const TOOL_LABEL = {
   read_rebar_schedule: "Lista de armaduras lida", read_native_dimensions: "Cotas nativas lidas",
   compute_concrete_volumes: "Volumes de betão calculados", update_project_state: "Estado do processo atualizado", draw_section_schema: "Esquema de princípio cotado desenhado",
   generate_structural_execution_dossier: "Dossier de execução estrutural",
+  read_building_geometry: "Geometria lida (a validar)",
 };
 
 function RebarCard({ r }) {
