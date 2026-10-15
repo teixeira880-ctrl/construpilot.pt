@@ -3729,6 +3729,20 @@ export default function PlanTakeoff() {
           </div>
         </div>
 
+        <PromptBar
+          appKey="plantas"
+          placeholder="Ex.: «Moradia T3 com 2 pisos, pé-direito 2,60 m, habitação»"
+          examples="Descreva o edifício antes de carregar a planta — já pré-preenchemos tipologia, pisos e pé-direito."
+          onFill={({ params = {} }) => {
+            const bits = [];
+            if (params.tipo_edificio) bits.push(params.tipo_edificio);
+            if (params.tipologia) bits.push(params.tipologia);
+            if (params.pisos) bits.push(`${params.pisos} piso(s)`);
+            if (params.pe_direito_m) bits.push(`pé-direito ${params.pe_direito_m} m`);
+            if (bits.length) toast.success(`Dados aplicados: ${bits.join(" · ")}`);
+          }}
+        />
+
         <label
           htmlFor="plan-upload-input"
           className={`surface p-16 grid place-items-center gap-4 cursor-pointer transition-all border-2 ${

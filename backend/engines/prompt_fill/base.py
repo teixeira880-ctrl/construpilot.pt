@@ -89,7 +89,13 @@ async def run_extractor(
         '"defaults_used": [<chaves cujo valor VEIO dos valores por defeito normativos>], '
         '"notes": [<avisos curtos PT-PT>]}\n'
         "OU, se algo essencial estiver AMBÍGUO ou em FALTA e não houver valor por defeito seguro:\n"
-        '{"ok": false, "clarification_question": "<pergunta curta PT-PT, uma só>"}\n\n'
+        '{"ok": false, "params": {<chaves do schema JÁ EXTRAÍDAS, mesmo que incompletas>}, '
+        '"ai_filled": [<chaves parciais extraídas>], '
+        '"missing_fields": [<chaves que ainda faltam>], '
+        '"clarification_question": "<pergunta curta PT-PT, uma só>"}\n\n'
+        "REGRA IMPORTANTE: mesmo quando devolveres clarification_question, inclui SEMPRE em "
+        "`params` todas as chaves que já conseguiste inferir do prompt do utilizador. "
+        "Nunca omitas o preenchimento parcial — o formulário aplica-o imediatamente.\n\n"
         f"DADOS: {json.dumps(user_payload, ensure_ascii=False)}"
     )
     try:
@@ -107,14 +113,20 @@ async def run_extractor(
         }
     if not isinstance(data, dict) or "ok" not in data:
         return {"ok": False, "error": "Resposta da IA mal formatada."}
-    if data.get("ok") and isinstance(data.get("params"), dict):
+    # Pós-processar `params` SEMPRE que vierem, mesmo com ok=false (preenchimento parcial)
+    if isinstance(data.get("params"), dict) and data["params"]:
         try:
             data["params"] = extractor.post_process(data["params"])
         except Exception as exc:  # noqa: BLE001
-            return {
-                "ok": False,
-                "error": f"Parâmetros inválidos: {str(exc)[:160]}",
-            }
+            # Se o pós-processamento falhar com partial, não deitamos a resposta fora:
+            # devolvemos o envelope com clarification mas sem params inválidos.
+            if data.get("ok"):
+                return {
+                    "ok": False,
+                    "error": f"Parâmetros inválidos: {str(exc)[:160]}",
+                }
+            log.warning("post_process falhou em partial: %s", exc)
+            data.pop("params", None)
     return data
 
 

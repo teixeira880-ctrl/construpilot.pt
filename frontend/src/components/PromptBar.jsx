@@ -85,14 +85,23 @@ export default function PromptBar({
         prompt,
         contexto: context || {},
       });
-      if (data.ok) {
+      // 1) Aplicar preenchimento parcial SEMPRE que houver params, mesmo com ok=false
+      const hasParams =
+        data?.params && typeof data.params === "object" && Object.keys(data.params).length > 0;
+      if (hasParams) {
         onFill?.(data);
-        setValue("");
-      } else if (data.clarification_question) {
+      }
+      // 2) Mostrar banner de clarificação (adicionalmente ao fill parcial)
+      if (data?.clarification_question) {
         setClarify(data.clarification_question);
         onClarify?.(data.clarification_question);
-      } else {
-        toast.error(data.error || "Não foi possível interpretar o pedido.");
+        // mantém o texto no input para o utilizador poder refinar
+      } else if (data?.ok) {
+        // sucesso total: limpar input
+        setValue("");
+      } else if (!hasParams) {
+        // nem params nem clarificação: foi erro real
+        toast.error(data?.error || "Não foi possível interpretar o pedido.");
       }
     } catch (e) {
       const detail = e?.response?.data?.detail;
