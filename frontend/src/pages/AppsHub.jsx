@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import {
-  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer,
+  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera,
 } from "lucide-react";
+import { useState } from "react";
+import CameraCapture from "@/components/CameraCapture";
+import BottomSheet from "@/components/mobile/BottomSheet";
 
 const APPS = [
   {
@@ -49,13 +52,30 @@ const APPS = [
 ];
 
 export default function AppsHub() {
+  const [showCam, setShowCam] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const onFile = (f) => {
+    const url = URL.createObjectURL(f);
+    setPreview({ name: f.name, size: Math.round(f.size / 1024), url });
+    setShowCam(false);
+  };
   return (
     <div className="mx-auto max-w-5xl px-4 py-8" data-testid="apps-hub">
-      <header className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Apps</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Todas as ferramentas ConstruPilot num só sítio.
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Apps</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Todas as ferramentas ConstruPilot num só sítio.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCam(true)}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground font-medium min-h-[44px] md:hidden"
+          data-testid="apps-hub-quick-camera"
+        >
+          <Camera className="h-4 w-4" aria-hidden /> Tirar foto
+        </button>
       </header>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {APPS.map(({ to, icon: Icon, title, desc, testId }) => (
@@ -79,6 +99,19 @@ export default function AppsHub() {
           </Link>
         ))}
       </div>
+      <BottomSheet open={showCam} onClose={() => setShowCam(false)} title="Nova medição por foto" testId="apps-hub-cam-sheet">
+        <p className="text-sm text-muted-foreground mb-3">Tire uma foto ou carregue uma imagem; vamos usá-la para medir uma divisão (brevemente).</p>
+        <CameraCapture onFile={onFile} />
+        {preview && (
+          <div className="mt-4 flex items-center gap-3" data-testid="apps-hub-cam-preview">
+            <img src={preview.url} alt={preview.name} loading="lazy" className="h-16 w-16 object-cover rounded-md border border-border" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{preview.name}</p>
+              <p className="text-xs text-muted-foreground">{preview.size} KB</p>
+            </div>
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }

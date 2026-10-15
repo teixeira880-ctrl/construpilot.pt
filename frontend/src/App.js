@@ -1,5 +1,5 @@
 import { WorkspaceFooter } from "@/components/workspace/WorkspaceFooter";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { DefaultSEO } from "@/seo/DefaultSEO";
 import "@/App.css";
@@ -24,6 +24,8 @@ import LandingPro from "@/pages/LandingPro";
 import LandingParticuliers from "@/pages/LandingParticuliers";
 import LandingMetre from "@/pages/LandingMetre";
 import LandingPortugal from "@/pages/LandingPortugal";
+import { RouteSkeleton } from "@/components/Skeleton";
+import { initTheme } from "@/components/ThemeToggle";
 import AutorizacaoObras from "@/pages/AutorizacaoObras";
 import SubscrevePublic from "@/pages/SubscrevePublic";
 import RadarChantiers from "@/pages/RadarChantiers";
@@ -70,21 +72,22 @@ import ProspectionLanding from "@/pages/ProspectionLanding";
 import PcSignPage from "@/pages/PcSignPage";
 import PcDashboard from "@/pages/PcDashboard";
 import CotesControl from "@/pages/CotesControl";
-import Assistant from "@/pages/Assistant";
 import Preferences from "@/pages/Preferences";
 import SharedEstimate from "@/pages/SharedEstimate";
 import Account from "@/pages/Account";
 import QuoteTracking from "@/pages/QuoteTracking";
 import PublicEstimation from "@/pages/PublicEstimation";
-import PlanTakeoff from "@/pages/PlanTakeoff";
 import Renovation from "@/pages/Renovation";
 import Structuro from "@/pages/Structuro";
 import StructureCalc from "@/pages/StructureCalc";
 import BetDossier from "@/pages/BetDossier";
-import StructuroHouse from "@/pages/StructuroHouse";
 import PlanReader from "@/pages/PlanReader";
 import StairCalculator from "@/pages/StairCalculator";
 import Demo from "@/pages/Demo";
+// Rotas pesadas via lazy loading para code-splitting
+const AssistantLazy = lazy(() => import("@/pages/Assistant"));
+const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
+const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 import AppsHub from "@/pages/AppsHub";
 import BottomTabBar from "@/components/mobile/BottomTabBar";
 import MicFab from "@/components/mobile/MicFab";
@@ -341,18 +344,18 @@ function AppRouter() {
       <Route path="/etude/:token" element={<PcSignPage />} />
       <Route path="/etudes-pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
       <Route path="/controle-cotes" element={<ProRoute><Shell><CotesControl /></Shell></ProRoute>} />
-      <Route path="/assistant" element={<SubscriberRoute><Shell><Assistant /></Shell></SubscriberRoute>} />
+      <Route path="/assistant" element={<SubscriberRoute><Shell><Suspense fallback={<RouteSkeleton />}><AssistantLazy /></Suspense></Shell></SubscriberRoute>} />
       <Route path="/preferences" element={<Protected><Shell><Preferences /></Shell></Protected>} />
       <Route path="/compte" element={<Protected><Shell><Account /></Shell></Protected>} />
       <Route path="/dpgf" element={<ProRoute><Shell><DpgfPage /></Shell></ProRoute>} />
       <Route path="/analyse-documents" element={<ProRoute><Shell><DocIntelPage /></Shell></ProRoute>} />
       <Route path="/pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
-      <Route path="/plan" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
+      <Route path="/plan" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><PlanTakeoffLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/renovation" element={<ProRoute><Shell><Renovation /></Shell></ProRoute>} />
       <Route path="/structuro" element={<ProRoute><Shell><Structuro /></Shell></ProRoute>} />
       <Route path="/structuro/calcul" element={<ProRoute><Shell><StructureCalc /></Shell></ProRoute>} />
       <Route path="/structuro-bet" element={<ProRoute><Shell><BetDossier /></Shell></ProRoute>} />
-      <Route path="/estudo-moradia" element={<ProRoute><Shell><StructuroHouse /></Shell></ProRoute>} />
+      <Route path="/estudo-moradia" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><StructuroHouseLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/structuro/lecture-plan" element={<ProRoute><Shell><PlanReader /></Shell></ProRoute>} />
       <Route path="/escaliers" element={<ProRoute><Shell><StairCalculator /></Shell></ProRoute>} />
       <Route path="/btp-solver" element={<Protected><Shell><BtpSolver /></Shell></Protected>} />
@@ -398,12 +401,8 @@ function AppRouter() {
   );
 }
 
-// Thème : mode jour par défaut ; le mode sombre n'est appliqué que s'il a été choisi explicitement.
-if (localStorage.getItem("construpilot_theme") === "dark") {
-  document.documentElement.classList.add("dark");
-} else {
-  document.documentElement.classList.remove("dark");
-}
+// Tema inicial: Automático (segue prefers-color-scheme) por defeito.
+try { initTheme(); } catch { /* ignorar em SSR */ }
 
 function App() {
   return (

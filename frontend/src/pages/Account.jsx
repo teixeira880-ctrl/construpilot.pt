@@ -10,6 +10,7 @@ import { DevicesList } from "@/components/account/DevicesList";
 import { TwoFaCard } from "@/components/account/TwoFaCard";
 import { DeleteAccountCard } from "@/components/account/DeleteAccountCard";
 import { BrochureCard } from "@/components/account/BrochureCard";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Account() {
   const { user } = useAuth();
@@ -42,6 +43,15 @@ export default function Account() {
 
       <ProfileForm />
       {can("devis") && <PricingPrefsCard />}
+      <section className="surface p-4 border border-border" data-testid="theme-section">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-semibold text-sm">Modo de cor</h2>
+            <p className="text-xs text-muted-foreground">Automático segue o sistema. Claro ou Escuro fixa a preferência.</p>
+          </div>
+          <ThemeToggle />
+        </div>
+      </section>
       <TwoFaCard />
       <PasswordForm />
       <DevicesList />
