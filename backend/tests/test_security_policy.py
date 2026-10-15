@@ -87,6 +87,13 @@ UPLOADFILE_MIGRATION_PENDING = {
     "company_page.py", "doc_intel.py", "shared_library.py",
 }
 
+# Ratchet descendente: a lista NÃO pode crescer e deve diminuir à medida
+# que endpoints UploadFile forem migrados para validate_upload.
+# Para adicionar um ficheiro NOVO, há que o migrar — não há atalho.
+# Para decrementar: migrar um endpoint, removê-lo da set acima, decrementar
+# este max, confirmar os testes verdes.
+UPLOADFILE_MIGRATION_PENDING_MAX = 17  # baseline Z.3 (2026-10-15)
+
 
 def test_upload_file_migration_status():
     """Relatório da cobertura de validate_upload nos routes/*.py."""
@@ -112,6 +119,18 @@ def test_upload_file_migration_status():
         "Novos endpoints UploadFile sem validate_upload detectados:\n"
         + "\n".join(sorted(unknown_pending))
         + "\nMigra para validate_upload ou adiciona a UPLOADFILE_MIGRATION_PENDING."
+    )
+
+
+def test_upload_migration_ratchet_descending():
+    """Ratchet: a whitelist UPLOADFILE_MIGRATION_PENDING não pode crescer.
+    Força migração em vez de permitir degradação silenciosa.
+    """
+    assert len(UPLOADFILE_MIGRATION_PENDING) <= UPLOADFILE_MIGRATION_PENDING_MAX, (
+        f"A whitelist cresceu de {UPLOADFILE_MIGRATION_PENDING_MAX} para "
+        f"{len(UPLOADFILE_MIGRATION_PENDING)}. Migra o novo endpoint para "
+        "validate_upload em vez de adicioná-lo à whitelist. "
+        "Para diminuir a baseline, actualiza UPLOADFILE_MIGRATION_PENDING_MAX."
     )
 
 
