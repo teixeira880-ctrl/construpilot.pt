@@ -19,6 +19,7 @@ import StructuralTakeoffDialog from "@/components/planTakeoff/StructuralTakeoffD
 import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
 import PromptBar from "@/components/PromptBar";
+import PinchZoom from "@/components/mobile/PinchZoom";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
 import { MeasureHelpDialog } from "@/components/planTakeoff/MeasureHelpDialog";
 import CotesCheckPanel from "@/components/planTakeoff/CotesCheckPanel";
@@ -169,6 +170,8 @@ export default function PlanTakeoff() {
   const { user } = useAuth();
   const defaultMargin = Number(user?.target_margin_pct) || null;
   const { tier, has, loading: billingLoading } = useBilling();
+  // S3a — Pré-visualização ampliada de plantas recentes com pinch-to-zoom
+  const [zoomPlan, setZoomPlan] = useState(null);
   const [plan, setPlan] = useState(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageData, setPageData] = useState(null);
@@ -3911,6 +3914,11 @@ export default function PlanTakeoff() {
                   data-testid={`recent-plan-analysis-${p.plan_id}`}>
                   <ClipboardCheck className="h-3.5 w-3.5" />
                 </button>
+                <button type="button" onClick={() => setZoomPlan(p)} title="Pré-visualizar com zoom" aria-label="Ampliar"
+                  className="absolute bottom-2 right-[76px] h-8 w-8 inline-flex items-center justify-center rounded-sm text-muted-foreground opacity-60 group-hover:opacity-100 hover:text-primary hover:bg-primary/10 transition-colors"
+                  data-testid={`recent-plan-zoom-${p.plan_id}`}>
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </button>
                 <button type="button" onClick={() => trashPlan(p)} title="Mover para o lixo" aria-label="Mover para o lixo"
                   className="absolute bottom-2 right-2 h-8 w-8 inline-flex items-center justify-center rounded-sm text-muted-foreground opacity-60 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-colors"
                   data-testid={`recent-plan-delete-${p.plan_id}`}>
@@ -7500,6 +7508,38 @@ export default function PlanTakeoff() {
         consolidatedBusy={consolidatedBusy} createConsolidatedQuote={createConsolidatedQuote}
         linkFerraillage={linkFerraillage}
       />
+
+      {/* S3a — Pré-visualização ampliada de planta recente com pinch-to-zoom */}
+      <Dialog open={!!zoomPlan} onOpenChange={(o) => !o && setZoomPlan(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden" data-testid="plan-zoom-dialog">
+          <DialogHeader className="p-4 pb-2">
+            <DialogTitle className="text-base truncate" data-testid="plan-zoom-dialog-title">
+              {zoomPlan?.filename || "Pré-visualização"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Pinch (mobile) ou duplo-clique (desktop) para ampliar. Arrasta para deslocar.
+            </DialogDescription>
+          </DialogHeader>
+          {zoomPlan && (
+            <PinchZoom
+              className="w-full h-[70vh] bg-muted/40 dark:bg-neutral-900"
+              testId="plan-zoom-viewer"
+              maxScale={5}
+            >
+              <img
+                src={`${String(api.defaults?.baseURL || "/api").replace(/\/$/, "")}/takeoffs/${zoomPlan.plan_id}/thumb`}
+                alt={zoomPlan.filename || "Planta"}
+                className="w-full h-full object-contain select-none pointer-events-none"
+                draggable={false}
+                data-testid="plan-zoom-image"
+              />
+            </PinchZoom>
+          )}
+          <DialogFooter className="p-4 pt-2">
+            <Button variant="outline" onClick={() => setZoomPlan(null)} data-testid="plan-zoom-dialog-close">Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

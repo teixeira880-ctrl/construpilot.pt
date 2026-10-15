@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import PromptBar from "@/components/PromptBar";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { useHaptic } from "@/hooks/useHaptic";
 
 /**
  * Medição Rápida — divisão retangular. Preenchimento manual OU por prompt IA
@@ -18,6 +19,7 @@ import { useSwipeBack } from "@/hooks/useSwipeBack";
  */
 export default function MedicaoRapida() {
   useSwipeBack();
+  const haptic = useHaptic();
   const [form, setForm] = useState({
     divisao: "",
     comprimento_m: "",
@@ -41,6 +43,7 @@ export default function MedicaoRapida() {
     const W = parseFloat(form.largura_m);
     const H = parseFloat(form.pe_direito_m);
     if (!(L > 0 && W > 0 && H > 0)) {
+      haptic.error();
       toast.error("Preencha comprimento, largura e pé-direito.");
       return;
     }
@@ -53,6 +56,7 @@ export default function MedicaoRapida() {
       rodapes_m: +perim.toFixed(2),
       volume_m3: +(area * H).toFixed(2),
     });
+    haptic.success();
     toast.success("Medição calculada.");
   };
 

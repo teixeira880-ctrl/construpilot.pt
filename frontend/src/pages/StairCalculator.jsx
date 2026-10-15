@@ -17,6 +17,7 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useHideWorkspaceTabs } from "@/hooks/useHideWorkspaceTabs";
+import { useHaptic } from "@/hooks/useHaptic";
 import {
   Footprints, Calculator, Sparkles, FileDown, Save, FolderOpen, Plus,
   Trash2, Bot, Send, Loader2, CheckCircle2, AlertTriangle, XCircle, Building2, FileText,
@@ -127,6 +128,7 @@ export default function StairCalculator() {
   // Esconde as tab bars globais em mobile para a nav sticky do wizard não ser
   // sobreposta — padrão do /demo. Reverte automaticamente em desktop e no unmount.
   useHideWorkspaceTabs(isMobile);
+  const haptic = useHaptic();
   const [stairType, setStairType] = useState("straight");
   const [form, setForm] = useState(DEFAULT_FORM);
   const [projectName, setProjectName] = useState("Escada sem nome");
@@ -268,9 +270,15 @@ export default function StairCalculator() {
       // Em mobile, se o utilizador estava num passo anterior do wizard, avança
       // automaticamente para o passo de resultados.
       if (isMobile) setWizardStep(3);
-      if (data.is_buildable) toast.success("Escada calculada — exequível");
-      else toast.warning("Escada calculada — não exequível tal como está (ver alertas)");
+      if (data.is_buildable) {
+        haptic.success();
+        toast.success("Escada calculada — exequível");
+      } else {
+        haptic.warn();
+        toast.warning("Escada calculada — não exequível tal como está (ver alertas)");
+      }
     } catch (e) {
+      haptic.error();
       toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Cálculo impossível");
     }
     setLoading("");
@@ -293,9 +301,15 @@ export default function StairCalculator() {
       const { data } = await api.post("/stairs/optimize", p);
       setOptimizeResult(data);
       setTab("optimize");
-      if (!data.solutions?.length) toast.warning("Nenhuma solução exequível — alargue as restrições");
-      else toast.success(`${data.solutions.length} solução(ões) proposta(s)`);
+      if (!data.solutions?.length) {
+        haptic.warn();
+        toast.warning("Nenhuma solução exequível — alargue as restrições");
+      } else {
+        haptic.success();
+        toast.success(`${data.solutions.length} solução(ões) proposta(s)`);
+      }
     } catch (e) {
+      haptic.error();
       toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Otimização impossível");
     }
     setLoading("");
@@ -318,8 +332,10 @@ export default function StairCalculator() {
       const { data } = await api.post("/stairs/concrete/analyze", { stair_result: result, stair_type: result.stair_type });
       setConcrete(data);
       setTab("concrete");
+      haptic.success();
       toast.success("Análise de betão armado pronta (NP EN 1992)");
     } catch (e) {
+      haptic.error();
       toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Análise do betão impossível");
     }
     setLoading("");
@@ -335,9 +351,11 @@ export default function StairCalculator() {
         concrete_analysis: concrete,
         detailed_steel: detailedSteel,
       });
+      haptic.success();
       toast.success("Orçamento criado — complete os preços unitários");
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
+      haptic.error();
       toast.error(e?.response?.data?.detail?.[0]?.msg || e?.response?.data?.detail || "Não foi possível criar o orçamento");
     }
     setLoading("");
@@ -358,8 +376,9 @@ export default function StairCalculator() {
       const safe = (projectName || "escalier").replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 60) || "escalier";
       a.href = url; a.download = `${safe}.pdf`; document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
+      haptic.success();
       toast.success("Processo PDF transferido");
-    } catch { toast.error("Geração do PDF impossível"); }
+    } catch { haptic.error(); toast.error("Geração do PDF impossível"); }
     setLoading("");
   };
 

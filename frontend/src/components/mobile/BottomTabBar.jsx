@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, LayoutGrid, Sparkles, Hammer, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useHaptic } from "@/hooks/useHaptic";
 
 /**
  * Bottom tab bar global (mobile) para visitantes e páginas públicas.
@@ -39,6 +40,7 @@ const TABS = [
 export default function BottomTabBar() {
   const loc = useLocation();
   const { user } = useAuth();
+  const haptic = useHaptic();
   const hidden =
     HIDE_ON_PATHS.includes(loc.pathname) ||
     HIDE_PREFIXES.some((p) => loc.pathname.startsWith(p));
@@ -60,6 +62,7 @@ export default function BottomTabBar() {
             to={to}
             end={end}
             data-testid={testId}
+            onClick={() => haptic.tap()}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center gap-0.5 text-[10px] touch-target ${
                 highlight

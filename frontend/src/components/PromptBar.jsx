@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Sparkles, Loader2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { useHaptic } from "@/hooks/useHaptic";
 
 /**
  * Barra de prompt IA transversal.
@@ -23,6 +24,7 @@ export default function PromptBar({
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [clarify, setClarify] = useState("");
+  const haptic = useHaptic();
   const [recognitionAvailable, setRecognitionAvailable] = useState(false);
   const recRef = useRef(null);
 
@@ -94,16 +96,20 @@ export default function PromptBar({
       // 2) Mostrar banner de clarificação (adicionalmente ao fill parcial)
       if (data?.clarification_question) {
         setClarify(data.clarification_question);
+        haptic.warn();
         onClarify?.(data.clarification_question);
         // mantém o texto no input para o utilizador poder refinar
       } else if (data?.ok) {
         // sucesso total: limpar input
+        haptic.success();
         setValue("");
       } else if (!hasParams) {
         // nem params nem clarificação: foi erro real
+        haptic.error();
         toast.error(data?.error || "Não foi possível interpretar o pedido.");
       }
     } catch (e) {
+      haptic.error();
       const detail = e?.response?.data?.detail;
       toast.error(
         typeof detail === "string"

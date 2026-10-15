@@ -15,7 +15,7 @@ import {
 const KIND_LABEL = { bet: "Note BET", plan: "Planta", cctp: "CCTP", autre: "Outro" };
 const ENGINE = {
   claude: { label: "Analisado", cls: "bg-emerald-500/15 text-emerald-600" },
-  skipped: { label: "Ilegível (DWG/IFC)", cls: "bg-slate-500/15 text-slate-600" },
+  skipped: { label: "Ilegível (DWG/IFC)", cls: "bg-slate-500/15 text-slate-600 dark:text-slate-300" },
   error: { label: "Falha de leitura", cls: "bg-red-500/15 text-red-600" },
   fallback: { label: "Parcial", cls: "bg-amber-500/15 text-amber-700" },
 };
@@ -24,7 +24,7 @@ const DISCLAIMER =
   "Controlo só de leitura: o StructuroPilot não calcula nada e não decide que valor está correto. Relata o que está escrito e assinala as diferenças a verificar por um engenheiro. Nunca «apto para execução».";
 
 function EngineBadge({ e }) {
-  const cfg = ENGINE[e] || { label: "Em espera", cls: "bg-slate-500/15 text-slate-600" };
+  const cfg = ENGINE[e] || { label: "Em espera", cls: "bg-slate-500/15 text-slate-600 dark:text-slate-300" };
   return <Badge className={`rounded-sm border-0 ${cfg.cls}`} data-testid="doc-engine-badge">{cfg.label}</Badge>;
 }
 

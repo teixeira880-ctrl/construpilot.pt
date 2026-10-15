@@ -66,8 +66,8 @@ function Gauge({ score }) {
         </text>
       </svg>
       <div className="text-sm">
-        <p className="font-semibold text-slate-900">Conforto</p>
-        <p className="text-slate-500">Escala 0-10</p>
+        <p className="font-semibold text-slate-900 dark:text-slate-100">Conforto</p>
+        <p className="text-slate-500 dark:text-slate-400">Escala 0-10</p>
       </div>
     </div>
   );
@@ -175,13 +175,13 @@ export default function StairEngine() {
   const sumr = result?.resumo_verificacoes;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4" data-testid="stair-engine-page">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4" data-testid="stair-engine-page">
       <div className="max-w-7xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Calculador de Escadas
           </h1>
-          <p className="text-base text-slate-600 mt-2 max-w-2xl">
+          <p className="text-base text-slate-600 dark:text-slate-400 mt-2 max-w-2xl">
             Dimensionamento ergonómico (Blondel) + verificações normativas PT
             (RGEU, REH, RSCIE, Eurocódigos, DL 163/2006). Dossier PDF profissional.
           </p>
@@ -320,13 +320,13 @@ export default function StairEngine() {
                         onClick={() => pickHistory(h.plan_id)}
                         className={`w-full text-left p-2 rounded border text-xs ${
                           result?.plan_id === h.plan_id
-                            ? "border-emerald-500 bg-emerald-50"
-                            : "border-slate-200 hover:border-slate-400"
+                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
+                            : "border-slate-200 hover:border-slate-400 dark:border-slate-700 dark:hover:border-slate-500"
                         }`}
                         data-testid={`stair-history-item-${h.plan_id}`}
                       >
                         <div className="font-medium truncate">{h.project_name || "Escada"}</div>
-                        <div className="text-slate-500 flex items-center justify-between">
+                        <div className="text-slate-500 dark:text-slate-400 flex items-center justify-between">
                           <span>{h.dimensoes?.num_degraus} degraus · {USO_LABELS[h.inputs?.uso]}</span>
                           <Badge variant="outline">{h.conforto_score}/10</Badge>
                         </div>

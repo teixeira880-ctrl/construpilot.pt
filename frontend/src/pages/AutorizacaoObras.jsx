@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { SEO } from "@/components/SEO";
 import PromptBar from "@/components/PromptBar";
+import { useHaptic } from "@/hooks/useHaptic";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -81,6 +82,7 @@ export default function AutorizacaoObras() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const haptic = useHaptic();
 
   const TOTAL_STEPS = 7;
 
@@ -102,7 +104,9 @@ export default function AutorizacaoObras() {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       setResult(data);
+      haptic.success();
     } catch (e) {
+      haptic.error();
       setError(e.message || "Erro ao obter diagnóstico");
     } finally {
       setLoading(false);
@@ -488,6 +492,7 @@ function DossierBlock({ respostas, diagnostico }) {
   const [generating, setGenerating] = useState(false);
   const [checklist, setChecklist] = useState(null);
   const [err, setErr] = useState(null);
+  const haptic = useHaptic();
 
   useEffect(() => {
     if (!open) return;
@@ -506,7 +511,9 @@ function DossierBlock({ respostas, diagnostico }) {
       });
       const d = await r.json();
       setMemoriaTexto(d.memoria_texto || "");
+      haptic.success();
     } catch (e) {
+      haptic.error();
       setErr("Não foi possível gerar a memória.");
     } finally {
       setMemoriaLoading(false);
@@ -527,7 +534,9 @@ function DossierBlock({ respostas, diagnostico }) {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
       setDossier(d);
+      haptic.success();
     } catch (e) {
+      haptic.error();
       setErr("Não foi possível gerar o processo.");
     } finally {
       setGenerating(false);

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Download, Calculator, Home, Ruler, Layers, AlertTriangle, FileText, ChevronDown } from "lucide-react";
 import PromptBar from "@/components/PromptBar";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useHaptic } from "@/hooks/useHaptic";
 
 const USE_LABEL = {
   habitacao: "Habitação",
@@ -19,6 +20,7 @@ const USE_LABEL = {
 
 export default function StructuroHouse() {
   const isMobile = useIsMobile();
+  const haptic = useHaptic();
   const [geometry, setGeometry] = useState(null);
   const [results, setResults] = useState(null);
   const [computing, setComputing] = useState(false);
@@ -70,8 +72,10 @@ export default function StructuroHouse() {
     try {
       const { data } = await api.post("/structuro/house/compute", { geometry });
       setResults(data);
+      haptic.success();
       toast.success("Cálculo concluído");
     } catch (e) {
+      haptic.error();
       toast.error(e?.response?.data?.detail || "Falha no cálculo");
     } finally {
       setComputing(false);
@@ -94,8 +98,10 @@ export default function StructuroHouse() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      haptic.success();
       toast.success("Dossier descarregado");
     } catch (e) {
+      haptic.error();
       toast.error("Falha a gerar o PDF");
     } finally {
       setDownloading(false);
