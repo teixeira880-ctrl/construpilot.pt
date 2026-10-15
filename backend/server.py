@@ -69,9 +69,17 @@ from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 
 app = FastAPI(
     title="ConstruPilot API",
-    openapi_url="/api/openapi.json",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    # SEC-W-003 : docs OpenAPI expostos apenas se ENV != "production".
+    # Em produção, /api/openapi.json, /api/docs e /api/redoc devolvem 404.
+    openapi_url=("/api/openapi.json"
+                 if os.environ.get("ENV", "development").lower() != "production"
+                 else None),
+    docs_url=("/api/docs"
+              if os.environ.get("ENV", "development").lower() != "production"
+              else None),
+    redoc_url=("/api/redoc"
+               if os.environ.get("ENV", "development").lower() != "production"
+               else None),
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
@@ -260,6 +268,36 @@ app.add_middleware(CanonicalOriginMiddleware,
                    proxy_origin=os.environ["CORS_PROXY_ORIGIN"],
                    public_origin=os.environ["FRONTEND_URL"].rstrip("/"))
 
+
+# SEC-W-007 : security headers conservadores. Desativáveis em dev via
+# SECURITY_HEADERS=off para evitar quebrar hot-reload / proxies locais.
+if os.environ.get("SECURITY_HEADERS", "on").lower() != "off":
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            # Clickjacking + MIME sniffing + referrer leak
+            response.headers.setdefault("X-Frame-Options", "DENY")
+            response.headers.setdefault("X-Content-Type-Options", "nosniff")
+            response.headers.setdefault(
+                "Referrer-Policy", "strict-origin-when-cross-origin",
+            )
+            # Permissions: desactivar features sensíveis não usadas no backend
+            response.headers.setdefault(
+                "Permissions-Policy",
+                "geolocation=(), microphone=(), camera=(), payment=()",
+            )
+            # HSTS apenas em produção (dev pode usar http em alguns setups)
+            if os.environ.get("ENV", "development").lower() == "production":
+                response.headers.setdefault(
+                    "Strict-Transport-Security",
+                    "max-age=31536000; includeSubDomains",
+                )
+            return response
+
+    app.add_middleware(SecurityHeadersMiddleware)
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -423,11 +461,11 @@ async def seed():
                     {"$set": {"two_fa_enabled": False, "two_fa_seed_reset": True}})
         await _merge_legacy_admin(db, owner_email)
 
-    # Second administrateur : info@construpilot.fr (gestion complète du site).
+    # Second administrateur : info@construpilot.pt (gestão completa do site).
     # Idempotent : promeut le compte existant (même Google) en admin ; le crée
     # avec un mot de passe provisoire s'il n'existe pas ou n'en a pas encore.
     second_admin_email = (os.environ.get("SECOND_ADMIN_EMAIL")
-                          or "info@construpilot.fr").lower().strip()
+                          or "info@construpilot.pt").lower().strip()
     second_admin_pwd = os.environ.get("SECOND_ADMIN_PASSWORD") or "CP-Admin-2026!"
     sa = await db.users.find_one({"email": second_admin_email})
     if not sa:
