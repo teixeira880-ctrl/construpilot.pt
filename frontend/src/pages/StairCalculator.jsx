@@ -16,6 +16,7 @@ import BottomSheet from "@/components/mobile/BottomSheet";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useHideWorkspaceTabs } from "@/hooks/useHideWorkspaceTabs";
 import {
   Footprints, Calculator, Sparkles, FileDown, Save, FolderOpen, Plus,
   Trash2, Bot, Send, Loader2, CheckCircle2, AlertTriangle, XCircle, Building2, FileText,
@@ -123,6 +124,9 @@ export default function StairCalculator() {
   const nav = useNavigate();
   useSwipeBack();
   const isMobile = useIsMobile();
+  // Esconde as tab bars globais em mobile para a nav sticky do wizard não ser
+  // sobreposta — padrão do /demo. Reverte automaticamente em desktop e no unmount.
+  useHideWorkspaceTabs(isMobile);
   const [stairType, setStairType] = useState("straight");
   const [form, setForm] = useState(DEFAULT_FORM);
   const [projectName, setProjectName] = useState("Escada sem nome");
@@ -940,7 +944,7 @@ export default function StairCalculator() {
 
           {/* Botões sticky de navegação (pb-safe) */}
           <div
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2 md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2 md:hidden dark:border-neutral-800 dark:bg-neutral-900/95 [touch-action:manipulation]"
             data-testid="stair-wizard-nav"
           >
             <Button

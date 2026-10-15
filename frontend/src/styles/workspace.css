@@ -64,6 +64,10 @@
 .workspace-directory-settings>span { margin-inline-end:auto; }
 .workspace-directory-settings select { min-height:40px; }
 .workspace-mobile-menu,.workspace-mobile-tabs { display:none; }
+/* Lote S2 — esconde todas as tab bars mobile quando um wizard tem nav sticky própria
+   (evita sobreposição z-index entre `fixed bottom-0 z-40`). Activado por hooks/useHideWorkspaceTabs. */
+body.wizard-hides-tabs .workspace-mobile-tabs,
+body.wizard-hides-tabs [data-testid="bottom-tabs"] { display:none !important; }
 /* Current work precedes specialist modules. */
 .dashboard-workspace { display:grid; gap:26px; min-width:0; }
 .dashboard-heading { display:flex; align-items:start; justify-content:space-between; gap:20px; }
