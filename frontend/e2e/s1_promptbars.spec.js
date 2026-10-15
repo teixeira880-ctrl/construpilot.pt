@@ -17,7 +17,9 @@ async function run() {
 
     // 1) /medicao-rapida — rota pública (Shell sem Protected)
     await page.goto(`${BASE}/medicao-rapida`, { waitUntil: "domcontentloaded", timeout: 15000 });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1500);
+    // Esperar explicitamente pelo elemento (lazy chunk + render após hydration)
+    await page.locator('[data-testid="medicao-rapida"]').waitFor({ state: "visible", timeout: 8000 }).catch(() => {});
     const med = await page.locator('[data-testid="medicao-rapida"]').isVisible().catch(() => false);
     const medPromptBar = await page.locator('[data-testid="medicao-rapida"] [data-testid="prompt-bar"]').count();
     r.checks.push({ name: "medicoes_page_loads", pass: med });
@@ -25,7 +27,7 @@ async function run() {
 
     // 2) /calculadoras — rota pública (Shell)
     await page.goto(`${BASE}/calculadoras`, { waitUntil: "domcontentloaded", timeout: 15000 });
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(1500);
     const calcTabs = await page.locator('[data-testid="calculator-tabs"]').isVisible().catch(() => false);
     const calcLoading = await page.locator('[data-testid="calculators-loading"]').isVisible().catch(() => false);
     const calcBar = await page.locator('[data-testid="prompt-bar"]').count();

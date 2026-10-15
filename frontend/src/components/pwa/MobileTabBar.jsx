@@ -8,7 +8,9 @@ import { usePermissions } from "@/context/PermissionContext";
 import { meetsLevel, routeMatches, OPEN_WORKSPACE_MENU } from "@/components/workspace/navigation";
 import { useWorkspaceCopy } from "@/components/workspace/copy";
 const HIDDEN_PREFIXES = ["/pointage", "/sign/", "/e/", "/etude/", "/avis/", "/fiche/", "/login", "/inscription", "/reinitialiser", "/rendu/", "/estimation-partagee/", "/prospection/"];
-const HIDDEN_PAGES = ["/", "/particulares", "/medicoes", "/investisseurs", "/fonctionnalites"];
+// `/apps` é hub cross-app — autoridade canónica em mobile é a BottomTabBar global,
+// não a MobileTabBar contextual do workspace. Evita a duplicação de tab bars (S2.2).
+const HIDDEN_PAGES = ["/", "/particulares", "/medicoes", "/investisseurs", "/fonctionnalites", "/apps"];
 export const MobileTabBar = () => {
   const { user } = useAuth();
   const { tier } = useBilling();

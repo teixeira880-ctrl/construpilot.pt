@@ -27,24 +27,24 @@ export default function CookieConsent() {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-14 md:bottom-0 z-[100] p-3 sm:p-4"
+      className="fixed inset-x-0 bottom-14 md:bottom-0 z-[100] p-3 sm:p-4 pointer-events-none"
       data-testid="cookie-consent-banner"
       role="dialog"
       aria-label="Consentimento de cookies"
     >
-      <div className="mx-auto max-w-3xl rounded-xl border border-border bg-background/95 backdrop-blur shadow-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="mx-auto max-w-3xl rounded-xl border border-border bg-background/95 backdrop-blur shadow-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 pointer-events-none">
         <div className="flex items-start gap-3 flex-1">
           <div className="h-9 w-9 shrink-0 rounded-lg bg-primary/10 grid place-items-center">
             <Cookie className="h-5 w-5 text-primary" />
           </div>
           <p className="text-sm text-foreground/90 leading-relaxed">
             {t("cookie.text")}{" "}
-            <Link to="/confidentialite" className="text-primary underline underline-offset-2">
+            <Link to="/confidentialite" className="text-primary underline underline-offset-2 pointer-events-auto">
               {t("cookie.policy")}
             </Link>.
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 pointer-events-auto">
           <Button
             variant="outline"
             className="rounded-sm flex-1 sm:flex-none"
