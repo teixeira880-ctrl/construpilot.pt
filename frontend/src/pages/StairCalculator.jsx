@@ -15,9 +15,11 @@ import PromptBar from "@/components/PromptBar";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import {
   Footprints, Calculator, Sparkles, FileDown, Save, FolderOpen, Plus,
   Trash2, Bot, Send, Loader2, CheckCircle2, AlertTriangle, XCircle, Building2, FileText,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 const STAIR_TYPES = [
@@ -120,12 +122,21 @@ function ResultDetail({ r }) {
 export default function StairCalculator() {
   const nav = useNavigate();
   useSwipeBack();
+  const isMobile = useIsMobile();
   const [stairType, setStairType] = useState("straight");
   const [form, setForm] = useState(DEFAULT_FORM);
   const [projectName, setProjectName] = useState("Escada sem nome");
   const [projectId, setProjectId] = useState(null);
   const [projects, setProjects] = useState([]);
   const [showProjects, setShowProjects] = useState(false);
+
+  // Wizard mobile: passo activo (1 = Geometria, 2 = Dimensionamento, 3 = Resultados)
+  const [wizardStep, setWizardStep] = useState(1);
+  const WIZARD_STEPS = [
+    { n: 1, label: "Geometria" },
+    { n: 2, label: "Dimensionamento" },
+    { n: 3, label: "Resultados" },
+  ];
 
   const [result, setResult] = useState(null);
   const [optimizeResult, setOptimizeResult] = useState(null);
@@ -250,6 +261,9 @@ export default function StairCalculator() {
       const { data } = await api.post(`/stairs/calculate/${t.api}`, buildPayload(stairType));
       setResult(data);
       setTab("calc");
+      // Em mobile, se o utilizador estava num passo anterior do wizard, avança
+      // automaticamente para o passo de resultados.
+      if (isMobile) setWizardStep(3);
       if (data.is_buildable) toast.success("Escada calculada — exequível");
       else toast.warning("Escada calculada — não exequível tal como está (ver alertas)");
     } catch (e) {
@@ -498,7 +512,7 @@ export default function StairCalculator() {
         examples="Ex.: «Escada em U, altura 2,70 m, largura 90 cm» · «Caracol com 2,80 m» · «Reta, inverte o sentido»"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5">
+      <div className={isMobile ? "hidden" : "grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5"} data-testid="stair-desktop-layout">
         {/* Input form */}
         <Card className="rounded-lg h-fit">
           <CardHeader className="pb-3">
@@ -760,6 +774,205 @@ export default function StairCalculator() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ───── Wizard mobile (3 passos) ─────
+          Preserva TODOS os cálculos, PromptBar, histórico, PDF, resultados. */}
+      {isMobile && (
+        <div className="block md:hidden pb-[88px]" data-testid="stair-mobile-wizard">
+          {/* Stepper visual */}
+          <div className="flex items-center justify-between gap-2 mb-4" data-testid="stair-wizard-stepper">
+            {WIZARD_STEPS.map((s, idx) => {
+              const active = wizardStep === s.n;
+              const done = wizardStep > s.n;
+              return (
+                <div key={s.n} className="flex items-center gap-2 flex-1" data-testid={`stair-wizard-step-${s.n}`}>
+                  <div
+                    className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold border transition-colors ${
+                      done
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : active
+                        ? "bg-primary/15 text-primary border-primary dark:bg-primary/25"
+                        : "bg-muted text-muted-foreground border-border dark:bg-neutral-800 dark:text-neutral-500 dark:border-neutral-700"
+                    }`}
+                  >
+                    {done ? <CheckCircle2 className="h-4 w-4" /> : s.n}
+                  </div>
+                  <span
+                    className={`text-xs truncate ${
+                      active ? "font-medium text-foreground dark:text-neutral-100" : "text-muted-foreground dark:text-neutral-400"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                  {idx < WIZARD_STEPS.length - 1 && (
+                    <div className={`flex-1 h-px ${done ? "bg-primary" : "bg-border dark:bg-neutral-700"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-xs text-muted-foreground mb-3 dark:text-neutral-400" data-testid="stair-wizard-step-indicator">
+            Passo {wizardStep} de {WIZARD_STEPS.length} · {WIZARD_STEPS[wizardStep - 1].label}
+          </p>
+
+          {/* ── Passo 1 — Geometria ── */}
+          {wizardStep === 1 && (
+            <div className="space-y-3" data-testid="stair-wizard-step-1-content">
+              <div className="grid gap-1">
+                <Label className="text-xs dark:text-neutral-300">Tipo de escada</Label>
+                <Select value={stairType} onValueChange={(v) => setStairType(v)}>
+                  <SelectTrigger className="h-11" data-testid="stair-type-select-mobile"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STAIR_TYPES.map((t) => <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Altura a vencer (mm)" k="floor_height_mm" form={form} set={set} aiFilled={aiFilled} testid="floor-height-m" />
+                {stairType !== "helicoidal" && <Field label="Desenvolvimento disponível (mm)" k="available_length_mm" form={form} set={set} aiFilled={aiFilled} testid="avail-length-m" />}
+                {stairType !== "helicoidal" && <Field label="Largura disponível (mm)" k="available_width_mm" form={form} set={set} aiFilled={aiFilled} testid="avail-width-m" />}
+                {stairType !== "helicoidal" && <Field label="Largura da escada (mm)" k="stair_width_mm" form={form} set={set} aiFilled={aiFilled} testid="stair-width-m" />}
+              </div>
+              {stairType === "helicoidal" && (
+                <div className="grid grid-cols-2 gap-2 rounded-md border border-dashed border-border p-2 dark:border-neutral-700">
+                  <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} aiFilled={aiFilled} testid="inner-radius-m" />
+                  <Field label="Raio exterior (mm)" k="outer_radius_mm" form={form} set={set} aiFilled={aiFilled} testid="outer-radius-m" />
+                  <Field label="Ângulo varrido (°)" k="sweep_angle_deg" form={form} set={set} aiFilled={aiFilled} testid="sweep-angle-m" />
+                  <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} aiFilled={aiFilled} testid="walkline-m" />
+                </div>
+              )}
+              {isTurn && (
+                <div className="space-y-2 rounded-md border border-dashed border-border p-2 dark:border-neutral-700">
+                  <div className="grid gap-1">
+                    <Label className="text-xs dark:text-neutral-300">Modo</Label>
+                    <Select value={form.balancing} onValueChange={(v) => set("balancing", v)}>
+                      <SelectTrigger className="h-11" data-testid="stair-balancing-select-mobile"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="balanced">Degraus compensados</SelectItem>
+                        <SelectItem value="straight">Com patamar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.balancing === "balanced" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="grid gap-1">
+                        <Label className="text-xs dark:text-neutral-300">N.º de degraus compensados</Label>
+                        <Input value={form.num_winders} onChange={(e) => set("num_winders", e.target.value)}
+                               placeholder="auto" data-testid="stair-num-winders-mobile" className="h-11" />
+                      </div>
+                      <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} aiFilled={aiFilled} testid="turn-walkline-m" />
+                      <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} aiFilled={aiFilled} testid="turn-inner-radius-m" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Comprimento do patamar (mm)" k="landing_length_mm" form={form} set={set} aiFilled={aiFilled} testid="landing-length-m" />
+                      <Field label="Largura do patamar (mm)" k="landing_width_mm" form={form} set={set} aiFilled={aiFilled} testid="landing-width-m" />
+                      <Field label="Degraus antes do patamar" k="steps_before_landing" form={form} set={set} aiFilled={aiFilled} testid="steps-before-m" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Passo 2 — Dimensionamento ── */}
+          {wizardStep === 2 && (
+            <div className="space-y-3" data-testid="stair-wizard-step-2-content">
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Espessura da laje (mm)" k="slab_thickness_mm" form={form} set={set} aiFilled={aiFilled} testid="slab-thickness-m" />
+                <Field label="Altura sob a laje (mm)" k="ceiling_height_mm" form={form} set={set} placeholder="auto" testid="ceiling-height-m" />
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <label className="flex items-center gap-2 min-h-[44px] dark:text-neutral-200" data-testid="stair-has-risers-mobile">
+                  <input type="checkbox" checked={form.has_risers} onChange={(e) => set("has_risers", e.target.checked)} /> Com espelhos
+                </label>
+                {stairType !== "helicoidal" && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs dark:text-neutral-300">Direção</Label>
+                    <Select value={form.direction} onValueChange={(v) => set("direction", v)}>
+                      <SelectTrigger className="h-11 w-28" data-testid="stair-direction-mobile"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="right">Direita</SelectItem>
+                        <SelectItem value="left">Esquerda</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground dark:text-neutral-400">
+                Revê a espessura da laje e a direção. Toca em «Calcular» no próximo passo.
+              </p>
+            </div>
+          )}
+
+          {/* ── Passo 3 — Resultados ── */}
+          {wizardStep === 3 && (
+            <div className="space-y-4" data-testid="stair-wizard-step-3-content">
+              <div className="flex gap-2">
+                <Button onClick={doCalculate} disabled={!!loading} data-testid="stair-calculate-btn-mobile" className="flex-1 rounded-sm gap-2 min-h-[44px]">
+                  {loading === "calc" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />} Calcular
+                </Button>
+                <Button onClick={doOptimize} disabled={!!loading} variant="secondary" data-testid="stair-optimize-btn-mobile" className="flex-1 rounded-sm gap-2 min-h-[44px]">
+                  {loading === "optimize" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Otimizar
+                </Button>
+              </div>
+              {result ? (
+                <div className="space-y-4" data-testid="stair-mobile-results">
+                  <ResultDetail r={result} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={doConcrete} disabled={!!loading} data-testid="stair-concrete-btn-mobile" className="rounded-sm gap-2 min-h-[44px]">
+                      {loading === "concrete" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />} Betão armado
+                    </Button>
+                    <Button size="sm" onClick={downloadPdf} disabled={!!loading} data-testid="stair-pdf-btn-mobile" className="rounded-sm gap-2 min-h-[44px]">
+                      {loading === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Dossier PDF
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={createQuote} disabled={!!loading} data-testid="stair-quote-btn-mobile" className="rounded-sm gap-2 min-h-[44px]">
+                      {loading === "quote" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Orçamento
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState text="Toca em «Calcular» para dimensionar a escada." />
+              )}
+            </div>
+          )}
+
+          {/* Botões sticky de navegação (pb-safe) */}
+          <div
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2 md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
+            data-testid="stair-wizard-nav"
+          >
+            <Button
+              variant="outline"
+              onClick={() => setWizardStep((s) => Math.max(1, s - 1))}
+              disabled={wizardStep === 1}
+              data-testid="stair-wizard-prev"
+              className="flex-1 rounded-sm gap-1 min-h-[44px]"
+            >
+              <ChevronLeft className="h-4 w-4" /> Anterior
+            </Button>
+            {wizardStep < WIZARD_STEPS.length ? (
+              <Button
+                onClick={() => setWizardStep((s) => Math.min(WIZARD_STEPS.length, s + 1))}
+                data-testid="stair-wizard-next"
+                className="flex-1 rounded-sm gap-1 min-h-[44px]"
+              >
+                Seguinte <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={doCalculate}
+                disabled={!!loading}
+                data-testid="stair-wizard-submit"
+                className="flex-1 rounded-sm gap-2 min-h-[44px]"
+              >
+                {loading === "calc" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />} Calcular
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

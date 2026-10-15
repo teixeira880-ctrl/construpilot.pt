@@ -3,8 +3,9 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Download, Calculator, Home, Ruler, Layers, AlertTriangle, FileText } from "lucide-react";
+import { Loader2, Download, Calculator, Home, Ruler, Layers, AlertTriangle, FileText, ChevronDown } from "lucide-react";
 import PromptBar from "@/components/PromptBar";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const USE_LABEL = {
   habitacao: "Habitação",
@@ -17,6 +18,7 @@ const USE_LABEL = {
 };
 
 export default function StructuroHouse() {
+  const isMobile = useIsMobile();
   const [geometry, setGeometry] = useState(null);
   const [results, setResults] = useState(null);
   const [computing, setComputing] = useState(false);
@@ -153,10 +155,13 @@ export default function StructuroHouse() {
       )}
 
       {/* Geometria */}
-      <section className="rounded-xl border border-border bg-card p-5 space-y-4">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Ruler className="h-4 w-4 text-primary" /> Geometria
-        </h2>
+      <Collapsible
+        isMobile={isMobile}
+        defaultOpen
+        testId="structuro-section-geometry"
+        icon={<Ruler className="h-4 w-4 text-primary" />}
+        title="Geometria"
+      >
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           <label className="text-sm space-y-1">
             <span className="text-muted-foreground text-xs">Designação</span>
@@ -239,13 +244,15 @@ export default function StructuroHouse() {
             />
           </label>
         </div>
-      </section>
+      </Collapsible>
 
       {/* Pisos */}
-      <section className="rounded-xl border border-border bg-card p-5 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Layers className="h-4 w-4 text-primary" /> Pisos
-        </h2>
+      <Collapsible
+        isMobile={isMobile}
+        testId="structuro-section-floors"
+        icon={<Layers className="h-4 w-4 text-primary" />}
+        title="Pisos"
+      >
         <div className="space-y-2">
           {geometry.levels.map((lv, i) => (
             <div key={i} className="grid gap-2 sm:grid-cols-3">
@@ -276,11 +283,14 @@ export default function StructuroHouse() {
             </div>
           ))}
         </div>
-      </section>
+      </Collapsible>
 
       {/* Cave + solo */}
-      <section className="rounded-xl border border-border bg-card p-5 space-y-3">
-        <h2 className="font-semibold">Cave e solo</h2>
+      <Collapsible
+        isMobile={isMobile}
+        testId="structuro-section-basement"
+        title="Cave e solo"
+      >
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           <label className="text-sm flex items-center gap-2">
             <input
@@ -317,7 +327,7 @@ export default function StructuroHouse() {
             />
           </label>
         </div>
-      </section>
+      </Collapsible>
 
       {/* Ações */}
       <div className="flex flex-wrap gap-3">
@@ -395,3 +405,47 @@ export default function StructuroHouse() {
     </div>
   );
 }
+
+/**
+ * Secção visual: em desktop (>=md), um painel sempre visível com título.
+ * Em mobile (<md), um <details> nativo recolhível com chevron.
+ * Dark mode via `dark:*` classes.
+ */
+function Collapsible({ isMobile, defaultOpen = false, testId, icon, title, children }) {
+  if (!isMobile) {
+    return (
+      <section
+        className="rounded-xl border border-border bg-card p-5 space-y-4 dark:border-neutral-800 dark:bg-neutral-900"
+        data-testid={testId}
+        data-collapsible-state="static"
+      >
+        <h2 className="font-semibold flex items-center gap-2 dark:text-neutral-100">
+          {icon}
+          {title}
+        </h2>
+        {children}
+      </section>
+    );
+  }
+  return (
+    <details
+      className="group rounded-xl border border-border bg-card dark:border-neutral-800 dark:bg-neutral-900"
+      {...(defaultOpen ? { open: true } : {})}
+      data-testid={testId}
+      data-collapsible-state="collapsible"
+    >
+      <summary
+        className="list-none cursor-pointer select-none flex items-center justify-between gap-2 p-5 min-h-[56px]"
+        data-testid={`${testId}-summary`}
+      >
+        <span className="font-semibold flex items-center gap-2 dark:text-neutral-100">
+          {icon}
+          {title}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 dark:text-neutral-400" />
+      </summary>
+      <div className="px-5 pb-5 space-y-4">{children}</div>
+    </details>
+  );
+}
+
