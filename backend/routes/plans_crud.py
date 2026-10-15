@@ -15,6 +15,9 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
+from core.uploads import (
+    validate_upload, ALLOWED_IMAGE, ALLOWED_DOCUMENT, ALLOWED_CAD,
+)
 from engines import geometry as G
 from engines.plan_sources import save_plan_source, save_cad_source, delete_plan_sources, copy_plan_sources, image_plan_pdf
 from engines.plan_processor import process_upload
@@ -134,6 +137,13 @@ async def upload_plan(
 ):
     """Par défaut synchrone (API publique, scripts, tests). Avec l'en-tête `X-Async-Upload: 1` (front) : validation
     immédiate puis traitement en tâche de fond (le proxy coupe à 120 s) et 202 {job_id} à suivre sur /upload-jobs/{job_id}."""
+    lower_name = (file.filename or "").lower()
+    # Permite CAD por extensão quando o navegador envia octet-stream (fallback)
+    allowed_mimes = ALLOWED_IMAGE + ALLOWED_DOCUMENT + ALLOWED_CAD
+    if lower_name.endswith((".dxf", ".dwg", ".ifc")) and not (file.content_type or "").lower().startswith("image/"):
+        # Força branch CAD mesmo com content_type genérico
+        file.content_type = file.content_type or "application/octet-stream"
+    file = await validate_upload(file, allowed_mimes, max_mb=MAX_UPLOAD_MB)
     data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f'Ficheiro demasiado volumoso (>{MAX_UPLOAD_MB} MB)')
@@ -141,7 +151,6 @@ async def upload_plan(
     if project_id and not await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 1}):
         raise HTTPException(403, "Obra inacessível para esta conta")
     mime = (file.content_type or "").lower()
-    lower_name = (file.filename or "").lower()
     if mime and mime not in ALLOWED_MIMES and not lower_name.endswith((".dxf", ".dwg")) and mime != "application/octet-stream":
         raise HTTPException(415, f'Formato não suportado: {mime}')
     if wait or request.headers.get("x-async-upload") != "1":

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user, admin_user
+from core.uploads import validate_upload, ALLOWED_IMPORT, ALLOWED_OFFICE
 from engines.param_import import (
     parse_param_library, eval_formula, DEFAULT_LABOR_RATES, DEFAULT_REGIONAL_COEFS,
     DEFAULT_VARIABLES, DEFAULT_MATERIALS,
@@ -53,6 +54,8 @@ async def _ensure_defaults():
 
 @admin_router.post("/import")
 async def import_param(file: UploadFile = File(...)) -> dict:
+    file = await validate_upload(
+        file, ALLOWED_IMPORT + ALLOWED_OFFICE, max_mb=20)
     content = await file.read()
     if len(content) > 20 * 1024 * 1024:
         raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 20 MB).")
@@ -317,6 +320,7 @@ async def import_materials(file: UploadFile = File(...)) -> dict:
     """Import CSV de prix matériaux (Nom;Unite;Prix) — upsert par nom."""
     import csv as _csv
     import io as _io
+    file = await validate_upload(file, ALLOWED_IMPORT, max_mb=20)
     content = await file.read()
     try:
         text = content.decode("utf-8-sig")

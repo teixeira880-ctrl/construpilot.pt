@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from core.rate_limit import limiter
 from core.security import current_user
+from core.uploads import validate_upload, ALLOWED_AUDIO
 from engines import speech
 from routes.portal import current_participant
 
@@ -30,6 +31,8 @@ async def _read(file: UploadFile) -> bytes:
 
 
 async def _transcribe(file: UploadFile) -> dict:
+    file = await validate_upload(
+        file, ALLOWED_AUDIO, max_mb=MAX_AUDIO // (1024 * 1024))
     data = await _read(file)
     try:
         text = await speech.transcribe(data, file.filename or "audio.webm")

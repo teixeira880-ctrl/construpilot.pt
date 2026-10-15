@@ -12,6 +12,7 @@ from pydantic import BaseModel, EmailStr, Field
 from core.db import db
 from core.rate_limit import limiter
 from core.security import current_user, pro_required
+from core.uploads import validate_upload, ALLOWED_IMAGE
 from engines import storage
 from engines.assistant_media import normalize_attachment
 
@@ -99,6 +100,7 @@ async def add_photo(request: Request, response: Response, file: UploadFile = Fil
     u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "showcase_photos": 1}) or {}
     if len(u.get("showcase_photos") or []) >= MAX_PHOTOS:
         raise HTTPException(409, f'Galeria cheia ({MAX_PHOTOS} photos max)')
+    file = await validate_upload(file, ALLOWED_IMAGE, max_mb=12)
     data = await file.read(12 * 1024 * 1024 + 1)
     if not data:
         raise HTTPException(400, "Photo vide")

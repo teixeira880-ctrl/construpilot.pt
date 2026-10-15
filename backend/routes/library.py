@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
+from core.uploads import validate_upload, ALLOWED_DOCUMENT
 
 router = APIRouter(tags=["library"], prefix="/library")
 
@@ -399,6 +400,7 @@ async def library_import_preview(files: list[UploadFile] = File(...),
     from routes.documents import _extract_pdf_item
     if not files:
         raise HTTPException(400, "Nenhum ficheiro fornecido")
+    files = [await validate_upload(f, ALLOWED_DOCUMENT, max_mb=40) for f in files[:20]]
     existing = await db.library_items.find(
         {"user_id": user["user_id"]}, {"_id": 0, "designation": 1, "unit_price_ht": 1}).to_list(5000)
     known = {(e.get("designation") or "").strip().lower(): e.get("unit_price_ht") for e in existing}

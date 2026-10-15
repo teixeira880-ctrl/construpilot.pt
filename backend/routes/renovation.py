@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
+from core.uploads import validate_upload, ALLOWED_DOCUMENT
 from engines import corps_etat
 from engines import ai as ai_engine
 from engines import aides_reno
@@ -895,6 +896,11 @@ async def import_dpe(project_id: str, file: UploadFile = File(...), user=Depends
     (statut « documenté », provenance = fichier). Une classe DPE lue reste un DOCUMENT importé,
     jamais une simulation recalculée."""
     p = await _get_project(project_id, user["user_id"])
+    file = await validate_upload(
+        file,
+        ALLOWED_DOCUMENT + ["application/xml", "text/xml"],
+        max_mb=25,
+    )
     raw = await file.read()
     if len(raw) > 25 * 1024 * 1024:
         raise HTTPException(413, "Ficheiro demasiado volumoso (máx. 25 MB)")

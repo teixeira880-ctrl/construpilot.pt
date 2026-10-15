@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from core.db import db
+from core.uploads import validate_upload, ALLOWED_DOCUMENT
 from engines.access import require_level
 from engines import plan_structure_reader as reader
 from engines.structuro_plan_pdf import build_structure_report
@@ -63,6 +64,7 @@ async def read_plan(file: UploadFile = File(...), title: str = Form(""),
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "").lower()
     if ext != "pdf":
         raise HTTPException(400, "Forneça um PDF (idealmente vetorial, exportado do CAD).")
+    file = await validate_upload(file, ALLOWED_DOCUMENT, max_mb=25)
     data = await file.read()
     if len(data) > 25 * 1024 * 1024:
         raise HTTPException(400, "PDF demasiado volumoso (máx. 25 MB).")

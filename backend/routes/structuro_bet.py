@@ -17,6 +17,9 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from core.db import db
+from core.uploads import (
+    validate_upload, ALLOWED_IMAGE, ALLOWED_DOCUMENT, ALLOWED_CAD,
+)
 from routes.auth import current_user
 from engines.access import require_level
 from engines import object_storage as obj
@@ -129,6 +132,11 @@ async def upload_document(dossier_id: str, file: UploadFile = File(...),
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "").lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(422, f"Extensão não suportada ({ext}). Formats : {', '.join(sorted(ALLOWED_EXT))}.")
+    file = await validate_upload(
+        file,
+        ALLOWED_DOCUMENT + ALLOWED_IMAGE + ALLOWED_CAD,
+        max_mb=MAX_BYTES // (1024 * 1024),
+    )
     data = await file.read()
     if not data:
         raise HTTPException(422, "Ficheiro vazio.")

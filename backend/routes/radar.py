@@ -12,6 +12,7 @@ from typing import Literal
 
 from core.db import db
 from core.security import admin_user, current_user, optional_user, pro_required
+from core.uploads import validate_upload, ALLOWED_IMPORT
 from engines.postal_offer import PostalOffer
 from engines.postal_guard import ensure_postal_enabled
 from engines.postal_sender import require_sender_branding
@@ -1061,6 +1062,8 @@ async def _row_to_permit(row: dict, idx: int):
 @router.post("/admin/import-sitadel")
 async def import_sitadel(file: UploadFile = File(...), replace: bool = True,
                          _=Depends(admin_user)):
+    # Endpoint descontinuado — validação simbólica mantida pela política de segurança (SEC-Z-003).
+    file = await validate_upload(file, ALLOWED_IMPORT, max_mb=20)
     raise HTTPException(410, "A importação manual foi substituída pela sincronização oficial. Nenhum ficheiro pode substituir estas licenças.")
 
 

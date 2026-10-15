@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, R
 
 from core.db import db
 from core.security import pro_required, current_user
+from core.uploads import validate_upload, ALLOWED_IMAGE
 from engines import storage
 
 logger = logging.getLogger(__name__)
@@ -187,6 +188,8 @@ async def generate(file: UploadFile = File(None),
     else:
         if file is None:
             raise HTTPException(status_code=400, detail="Importe uma fotografia ou escolha uma num projeto")
+        file = await validate_upload(
+            file, ALLOWED_IMAGE, max_mb=MAX_BYTES // (1024 * 1024))
         data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Ficheiro vazio")

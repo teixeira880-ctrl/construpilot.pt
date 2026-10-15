@@ -16,6 +16,9 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
+from core.uploads import (
+    validate_upload, ALLOWED_DOCUMENT, ALLOWED_IMAGE, ALLOWED_IMPORT, ALLOWED_OFFICE,
+)
 from engines import doc_intel, storage, doc_reconcile, gemini_ocr
 from engines.access import require_level
 
@@ -88,6 +91,11 @@ async def import_document(file: UploadFile = File(...),
     is_image = ext in IMAGE_EXTS
     if ext not in ("xlsx", "xlsm", "pdf") and not is_image:
         raise HTTPException(400, "Anexe um ficheiro .xlsx, .pdf ou uma imagem (JPG/PNG/WEBP)")
+    file = await validate_upload(
+        file,
+        ALLOWED_DOCUMENT + ALLOWED_IMAGE + ALLOWED_IMPORT + ALLOWED_OFFICE,
+        max_mb=MAX_BYTES // (1024 * 1024),
+    )
     raw = await file.read()
     if not raw:
         raise HTTPException(400, "Ficheiro vazio")
@@ -245,6 +253,8 @@ async def reconcile(import_id: str,
     if cctp is not None and getattr(cctp, "filename", None):
         if not cctp.filename.lower().endswith(".pdf"):
             raise HTTPException(400, "O caderno de encargos deve ser um PDF")
+        cctp = await validate_upload(
+            cctp, ALLOWED_DOCUMENT, max_mb=MAX_BYTES // (1024 * 1024))
         raw = await cctp.read()
         if len(raw) > MAX_BYTES:
             raise HTTPException(400, "Caderno de encargos demasiado volumoso (máx. 30 MB)")

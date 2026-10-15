@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user, optional_user
+from core.uploads import validate_upload, ALLOWED_IMPORT, ALLOWED_OFFICE
 from engines import price_search, affiliate
 from routes.phase6 import promote as promote_sponsored
 
@@ -142,6 +143,8 @@ async def catalog_delete(catalog_id: str, user=Depends(current_user)):
 @router.post("/catalog/import")
 async def catalog_import(file: UploadFile = File(...), user=Depends(current_user)):
     """Import CSV ou Excel. Colonnes attendues : name/désignation, price/prix, unit/unité, supplier/fournisseur, category/catégorie."""
+    file = await validate_upload(
+        file, ALLOWED_IMPORT + ALLOWED_OFFICE, max_mb=20)
     raw = await file.read()
     fn = (file.filename or "").lower()
     rows: list[dict] = []

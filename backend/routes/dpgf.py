@@ -21,6 +21,9 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
+from core.uploads import (
+    validate_upload, ALLOWED_DOCUMENT, ALLOWED_IMPORT, ALLOWED_OFFICE,
+)
 from engines import ai, dpgf_engine, price_library, storage
 from engines.access import require_level
 from routes.company_library import get_user_library, remember_prices
@@ -360,6 +363,11 @@ async def import_dpgf(
         raise HTTPException(400, "Máximo 10 mapas de quantidades por estudo")
     cctp_uploads = [f for f in ([cctp] if cctp is not None else []) + list(cctp_files or [])
                     if f is not None and getattr(f, "filename", None)][:10]
+
+    uploads = [await validate_upload(
+        up, ALLOWED_IMPORT + ALLOWED_OFFICE, max_mb=50) for up in uploads]
+    cctp_uploads = [await validate_upload(
+        up, ALLOWED_DOCUMENT, max_mb=50) for up in cctp_uploads]
 
     xlsx = [(up.filename, await up.read()) for up in uploads]
     cctp_docs = [(up.filename, await up.read()) for up in cctp_uploads]

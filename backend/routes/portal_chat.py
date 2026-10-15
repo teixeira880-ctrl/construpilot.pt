@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from core.db import db
 from core.rate_limit import limiter
 from core.security import current_user, pro_required
+from core.uploads import validate_upload, ALLOWED_IMAGE, ALLOWED_DOCUMENT
 from engines import storage
 from routes.chantiers import _get as get_chantier_owned
 from routes.portal import _frontend_url, _iso, _now, _require_ref, current_participant
@@ -39,7 +40,10 @@ def channel_for(participant: dict) -> str:
 
 async def _store_uploads(files: list[UploadFile], folder: str) -> list[dict]:
     out = []
-    for f in (files or [])[:MAX_FILES]:
+    files = [await validate_upload(
+        f, ALLOWED_IMAGE + ALLOWED_DOCUMENT, max_mb=MAX_FILE_BYTES // (1024 * 1024)
+    ) for f in (files or [])[:MAX_FILES] if f and getattr(f, "filename", None)]
+    for f in files:
         ext = ALLOWED_CT.get((f.content_type or "").split(";")[0].strip())
         if not ext:
             raise HTTPException(415, f'Formato não aceite ({f.filename}): fotografias JPG/PNG/WEBP ou PDF')

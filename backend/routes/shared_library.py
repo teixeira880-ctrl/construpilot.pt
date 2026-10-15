@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import current_user, admin_user
+from core.uploads import validate_upload, ALLOWED_IMPORT, ALLOWED_OFFICE
 from engines.library_import import parse_shared_library, CSV_TEMPLATE
 
 router = APIRouter(prefix="/shared-library", tags=["shared-library"])
@@ -119,6 +120,11 @@ async def _merge_import(content: bytes, filename: str, update_prices: bool = Fal
 @admin_router.post("/import")
 async def import_library(file: UploadFile = File(...), replace: bool = True, merge: bool = False,
                          update_prices: bool = False) -> dict:
+    file = await validate_upload(
+        file,
+        ALLOWED_IMPORT + ALLOWED_OFFICE + ["application/json"],
+        max_mb=15,
+    )
     content = await file.read()
     if len(content) > 15 * 1024 * 1024:
         raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 15 MB).")

@@ -13,6 +13,9 @@ import asyncio
 import hashlib
 
 from core.db import db
+from core.uploads import (
+    validate_upload, ALLOWED_IMAGE, ALLOWED_DOCUMENT, ALLOWED_CAD,
+)
 from routes.auth import current_user
 from engines import structuro_model as sm
 from engines import structuro_ai
@@ -322,6 +325,11 @@ async def upload_plan(study_id: str, file: UploadFile = File(...),
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "").lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(422, f"Extensão não suportada ({ext}). Formats : {', '.join(sorted(ALLOWED_EXT))}.")
+    file = await validate_upload(
+        file,
+        ALLOWED_DOCUMENT + ALLOWED_IMAGE + ALLOWED_CAD,
+        max_mb=MAX_PLAN_BYTES // (1024 * 1024),
+    )
     data = await file.read()
     if not data:
         raise HTTPException(422, "Ficheiro vazio.")

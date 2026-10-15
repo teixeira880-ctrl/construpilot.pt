@@ -76,23 +76,18 @@ def test_no_hardcoded_secrets():
 
 
 # ─── (b) Todos os UploadFile usam validate_upload ─────────────────────────
-# FOLLOW-UP conhecido: 22 endpoints ainda não migrados (ver Y.2 relatório).
-# Este teste é informativo — grava a lista; não falha o build até Z+1 completar.
-UPLOADFILE_MIGRATION_PENDING = {
-    "documents.py", "structuro.py", "structuro_bet.py", "structuro_plan.py",
-    "dpgf.py", "plans_crud.py", "portal_chat.py", "radar.py", "renovation.py",
-    "runway_render.py", "speech.py", "library.py", "param_library.py",
-    "prices.py",
-    # Detectados pela política Z.3 (verificar e migrar numa iteração dedicada)
-    "company_page.py", "doc_intel.py", "shared_library.py",
-}
+# AJ.1 (2026-02-xx) — migração completa: todos os endpoints UploadFile passaram
+# a chamar validate_upload. A set é mantida vazia para fail-closed: qualquer novo
+# endpoint UploadFile sem validate_upload faz o test_upload_file_migration_status
+# falhar imediatamente (ratchet descendente a zero).
+UPLOADFILE_MIGRATION_PENDING: set[str] = set()
 
 # Ratchet descendente: a lista NÃO pode crescer e deve diminuir à medida
 # que endpoints UploadFile forem migrados para validate_upload.
 # Para adicionar um ficheiro NOVO, há que o migrar — não há atalho.
 # Para decrementar: migrar um endpoint, removê-lo da set acima, decrementar
 # este max, confirmar os testes verdes.
-UPLOADFILE_MIGRATION_PENDING_MAX = 17  # baseline Z.3 (2026-10-15)
+UPLOADFILE_MIGRATION_PENDING_MAX = 0  # AJ.1 (2026-02-xx) — migração completa
 
 
 def test_upload_file_migration_status():

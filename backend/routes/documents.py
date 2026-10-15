@@ -24,6 +24,7 @@ from pymongo import ReturnDocument
 from core.db import db
 from core.fiscal import policy_for, suggest_reduced_rate
 from core.security import current_user, pro_required
+from core.uploads import validate_upload, ALLOWED_DOCUMENT, ALLOWED_AUDIO
 
 logger = logging.getLogger(__name__)
 from core.document_permissions import document_access, document_feature
@@ -890,6 +891,7 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
     chosen = status if status in STATUS_MAP else "sent"
     if not files:
         raise HTTPException(400, "Nenhum ficheiro fornecido")
+    files = [await validate_upload(f, ALLOWED_DOCUMENT, max_mb=40) for f in files[:20]]
     results: list[dict] = []
     max_seq: dict[str, int] = {}
     for f in files[:20]:
@@ -1043,6 +1045,7 @@ async def import_pdf_preview(files: list[UploadFile] = File(...),
     """Étape 1 : extraction IA sans création — renvoie un aperçu éditable."""
     if not files:
         raise HTTPException(400, "Nenhum ficheiro fornecido")
+    files = [await validate_upload(f, ALLOWED_DOCUMENT, max_mb=40) for f in files[:20]]
     items: list[dict] = []
     for f in files[:20]:
         name = f.filename or "document.pdf"
@@ -1438,6 +1441,12 @@ async def _quote_doc_from_text(user: dict, text: str, client_id: str | None,
 @router.post("/video-transcribe")
 async def video_transcribe(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
     """Transcrit une vidéo en texte (à relire/corriger avant génération du devis)."""
+    file = await validate_upload(
+        file,
+        ALLOWED_AUDIO + ["video/mp4", "video/webm", "video/quicktime",
+                         "video/x-matroska", "video/ogg"],
+        max_mb=100,
+    )
     raw = await file.read()
     transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "pt")
     return {"transcript": transcript}
@@ -1463,6 +1472,12 @@ async def document_from_text(body: FromTextIn, user=Depends(current_user)) -> di
 async def document_from_video(file: UploadFile = File(...), client_id: str | None = None,
                               user=Depends(current_user)) -> dict:
     """Crée un devis directement à partir d'une vidéo (transcription + lignes IA chiffrées)."""
+    file = await validate_upload(
+        file,
+        ALLOWED_AUDIO + ["video/mp4", "video/webm", "video/quicktime",
+                         "video/x-matroska", "video/ogg"],
+        max_mb=100,
+    )
     raw = await file.read()
     transcript = await _transcribe_video_bytes(raw, lang=user.get("lang") or "pt")
     doc = await _quote_doc_from_text(user, transcript, client_id, source="video")
@@ -1478,6 +1493,7 @@ async def cctp_extract(file: UploadFile = File(...), lot: str = "", user=Depends
     """
     from engines.ai import cctp_lines_from_text
     from routes.plans_analysis import _apply_library_prices
+    file = await validate_upload(file, ALLOWED_DOCUMENT, max_mb=40)
     raw = await file.read()
     if len(raw) > 40 * 1024 * 1024:
         raise HTTPException(413, "PDF demasiado volumoso (máx. 40 MB)")
