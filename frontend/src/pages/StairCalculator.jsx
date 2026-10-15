@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Stair3D from "@/components/planTakeoff/Stair3D";
+import PromptBar from "@/components/PromptBar";
 import {
   Footprints, Calculator, Sparkles, FileDown, Save, FolderOpen, Plus,
   Trash2, Bot, Send, Loader2, CheckCircle2, AlertTriangle, XCircle, Building2, FileText,
@@ -134,6 +135,58 @@ export default function StairCalculator() {
   const [convId, setConvId] = useState(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [detailedSteel, setDetailedSteel] = useState(true);
+  const [aiFilled, setAiFilled] = useState(() => new Set());
+
+  // Mapeia o schema PT da IA para o estado da calculadora, sem substituir o
+  // trabalho manual (campos vazios no params ficam inalterados).
+  const TYPE_MAP = {
+    reta: "straight",
+    em_L: "quarter_turn_bottom",
+    em_U: "half_turn",
+    com_patamar: "half_turn",
+    balanceada: "quarter_turn_bottom",
+    helicoidal: "helicoidal",
+  };
+  const DIRECTION_MAP = { dextrogiro: "right", levogiro: "left", nao_aplicavel: "right" };
+
+  const applyAiFill = ({ params = {}, ai_filled = [], defaults_used = [], notes = [] }) => {
+    const marked = new Set();
+    const mapKey = {
+      altura_a_vencer_mm: "floor_height_mm",
+      largura_mm: "stair_width_mm",
+      abertura_laje_comprimento_mm: "available_length_mm",
+      abertura_laje_largura_mm: "available_width_mm",
+    };
+    const nextForm = { ...form };
+    const addMark = (schemaKey, formKey) => {
+      if ([...ai_filled, ...defaults_used].includes(schemaKey)) marked.add(formKey);
+    };
+    for (const [schemaKey, formKey] of Object.entries(mapKey)) {
+      if (params[schemaKey] != null) {
+        nextForm[formKey] = String(Math.round(params[schemaKey]));
+        addMark(schemaKey, formKey);
+      }
+    }
+    if (params.sentido_rotacao) {
+      nextForm.direction = DIRECTION_MAP[params.sentido_rotacao] || nextForm.direction;
+      addMark("sentido_rotacao", "direction");
+    }
+    if (params.balanceamento != null) {
+      nextForm.balancing = params.balanceamento ? "balanced" : "with_landing";
+      addMark("balanceamento", "balancing");
+    }
+    if (params.tipo && TYPE_MAP[params.tipo]) {
+      setStairType(TYPE_MAP[params.tipo]);
+      marked.add("stair_type");
+    }
+    setForm(nextForm);
+    setAiFilled(marked);
+    if (notes.length) toast.info(notes.join(" · "));
+    // Dispara cálculo se os essenciais estão presentes
+    if (params.tipo && params.altura_a_vencer_mm) {
+      setTimeout(() => doCalculate(), 60);
+    }
+  };
   const chatEndRef = useRef(null);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -326,6 +379,7 @@ export default function StairCalculator() {
   const newProject = () => {
     setProjectId(null); setProjectName("Escada sem nome"); setStairType("straight");
     setForm(DEFAULT_FORM); setResult(null); setConcrete(null); setOptimizeResult(null); setShowProjects(false);
+    setAiFilled(new Set());
   };
 
   const sendChat = async () => {
@@ -388,6 +442,14 @@ export default function StairCalculator() {
         </div>
       </div>
 
+      <PromptBar
+        appKey="escadas"
+        context={{ tipo: stairType, ...form }}
+        onFill={applyAiFill}
+        placeholder="Descreva a escada (ex.: «Escada em U, 2,70 m, 90 cm»)"
+        examples="Ex.: «Escada em U, altura 2,70 m, largura 90 cm» · «Caracol com 2,80 m» · «Reta, inverte o sentido»"
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5">
         {/* Input form */}
         <Card className="rounded-lg h-fit">
@@ -406,20 +468,20 @@ export default function StairCalculator() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Altura a vencer (mm)" k="floor_height_mm" form={form} set={set} testid="floor-height" />
-              {stairType !== "helicoidal" && <Field label="Desenvolvimento disponível (mm)" k="available_length_mm" form={form} set={set} testid="avail-length" />}
-              {stairType !== "helicoidal" && <Field label="Largura disponível (mm)" k="available_width_mm" form={form} set={set} testid="avail-width" />}
-              {stairType !== "helicoidal" && <Field label="Largura da escada (mm)" k="stair_width_mm" form={form} set={set} testid="stair-width" />}
-              <Field label="Espessura da laje (mm)" k="slab_thickness_mm" form={form} set={set} testid="slab-thickness" />
+              <Field label="Altura a vencer (mm)" k="floor_height_mm" form={form} set={set} aiFilled={aiFilled} testid="floor-height" />
+              {stairType !== "helicoidal" && <Field label="Desenvolvimento disponível (mm)" k="available_length_mm" form={form} set={set} aiFilled={aiFilled} testid="avail-length" />}
+              {stairType !== "helicoidal" && <Field label="Largura disponível (mm)" k="available_width_mm" form={form} set={set} aiFilled={aiFilled} testid="avail-width" />}
+              {stairType !== "helicoidal" && <Field label="Largura da escada (mm)" k="stair_width_mm" form={form} set={set} aiFilled={aiFilled} testid="stair-width" />}
+              <Field label="Espessura da laje (mm)" k="slab_thickness_mm" form={form} set={set} aiFilled={aiFilled} testid="slab-thickness" />
               <Field label="Altura sob a laje (mm)" k="ceiling_height_mm" form={form} set={set} placeholder="auto" testid="ceiling-height" />
             </div>
 
             {stairType === "helicoidal" && (
               <div className="grid grid-cols-2 gap-2 rounded-md border border-dashed border-border p-2">
-                <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} testid="inner-radius" />
-                <Field label="Raio exterior (mm)" k="outer_radius_mm" form={form} set={set} testid="outer-radius" />
-                <Field label="Ângulo varrido (°)" k="sweep_angle_deg" form={form} set={set} testid="sweep-angle" />
-                <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} testid="walkline" />
+                <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} aiFilled={aiFilled} testid="inner-radius" />
+                <Field label="Raio exterior (mm)" k="outer_radius_mm" form={form} set={set} aiFilled={aiFilled} testid="outer-radius" />
+                <Field label="Ângulo varrido (°)" k="sweep_angle_deg" form={form} set={set} aiFilled={aiFilled} testid="sweep-angle" />
+                <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} aiFilled={aiFilled} testid="walkline" />
               </div>
             )}
 
@@ -442,14 +504,14 @@ export default function StairCalculator() {
                       <Input value={form.num_winders} onChange={(e) => set("num_winders", e.target.value)}
                              placeholder="auto" data-testid="stair-num-winders" className="h-9" />
                     </div>
-                    <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} testid="turn-walkline" />
-                    <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} testid="turn-inner-radius" />
+                    <Field label="Linha de passagem (mm)" k="walkline_offset_mm" form={form} set={set} aiFilled={aiFilled} testid="turn-walkline" />
+                    <Field label="Raio interior (mm)" k="inner_radius_mm" form={form} set={set} aiFilled={aiFilled} testid="turn-inner-radius" />
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    <Field label="Comprimento do patamar (mm)" k="landing_length_mm" form={form} set={set} testid="landing-length" />
-                    <Field label="Largura do patamar (mm)" k="landing_width_mm" form={form} set={set} testid="landing-width" />
-                    <Field label="Degraus antes do patamar" k="steps_before_landing" form={form} set={set} testid="steps-before" />
+                    <Field label="Comprimento do patamar (mm)" k="landing_length_mm" form={form} set={set} aiFilled={aiFilled} testid="landing-length" />
+                    <Field label="Largura do patamar (mm)" k="landing_width_mm" form={form} set={set} aiFilled={aiFilled} testid="landing-width" />
+                    <Field label="Degraus antes do patamar" k="steps_before_landing" form={form} set={set} aiFilled={aiFilled} testid="steps-before" />
                   </div>
                 )}
               </div>
@@ -654,12 +716,25 @@ export default function StairCalculator() {
   );
 }
 
-function Field({ label, k, form, set, placeholder, testid }) {
+function Field({ label, k, form, set, placeholder, testid, aiFilled }) {
+  const marked = aiFilled?.has?.(k);
   return (
     <div className="grid gap-1">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs flex items-center gap-1">
+        {label}
+        {marked && (
+          <span
+            title="Preenchido pela IA · pode editar"
+            className="inline-flex items-center gap-0.5 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+            data-testid={`stair-ai-mark-${testid}`}
+          >
+            <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />IA
+          </span>
+        )}
+      </Label>
       <Input type="number" value={form[k]} onChange={(e) => set(k, e.target.value)}
-             placeholder={placeholder} data-testid={`stair-field-${testid}`} className="h-9" />
+             placeholder={placeholder} data-testid={`stair-field-${testid}`}
+             className={`h-9 ${marked ? "ring-2 ring-primary/40" : ""}`} />
     </div>
   );
 }

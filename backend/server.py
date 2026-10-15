@@ -235,6 +235,8 @@ api_router.include_router(runway_render_routes.router)
 api_router.include_router(journey_routes.router)
 from routes import stairs as stairs_routes  # noqa: E402
 api_router.include_router(stairs_routes.router)
+from routes import prompt_fill as prompt_fill_routes  # noqa: E402
+api_router.include_router(prompt_fill_routes.router)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
