@@ -253,17 +253,38 @@ api_router.include_router(prompt_fill_routes.router)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    # SEC-002 : allowlist explicite — jamais '*' avec credentials
-    allow_origins=[o.strip() for o in os.environ["CORS_ORIGINS"].split(",")
-                   if o.strip() and o.strip() != "*"],
-    # Domaines de déploiement Emergent (production et prévisualisations)
-    allow_origin_regex=r"https://[a-z0-9-]+\.(emergent\.host|preview\.emergentagent\.com)",
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# SEC-Y-003 : CORS restrito em produção.
+# - Produção (ENV=production): apenas origens explícitas construpilot.pt.
+# - Dev: lista do .env + regex Emergent (preview URLs dinâmicos).
+_env = os.environ.get("ENV", "development").lower()
+if _env == "production":
+    _cors_origins = [
+        o.strip() for o in (
+            os.environ.get("CORS_ORIGINS_PROD")
+            or "https://construpilot.pt,https://www.construpilot.pt"
+        ).split(",") if o.strip()
+    ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_origins=_cors_origins,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    )
+    logger = logging.getLogger(__name__) if False else logging.getLogger("server")
+    logger.info("CORS restrito a produção: %s", _cors_origins)
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        # SEC-002 : allowlist explicite — jamais '*' avec credentials
+        allow_origins=[o.strip() for o in os.environ["CORS_ORIGINS"].split(",")
+                       if o.strip() and o.strip() != "*"],
+        # Domaines de déploiement Emergent (production et prévisualisations)
+        allow_origin_regex=r"https://[a-z0-9-]+\.(emergent\.host|preview\.emergentagent\.com)",
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 app.add_middleware(CanonicalOriginMiddleware,
                    proxy_origin=os.environ["CORS_PROXY_ORIGIN"],
                    public_origin=os.environ["FRONTEND_URL"].rstrip("/"))
