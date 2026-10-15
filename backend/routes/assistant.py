@@ -648,6 +648,15 @@ def _guess_kind(filename: str, text: str) -> str:
 @router.post("/documents")
 async def upload_doc(file: UploadFile = File(...), kind: str = "", user=Depends(current_user)) -> dict:
     """Document joint à l'assistant (devis, facture, CCTP, photo…) : stocké par compte, texte extrait pour le contexte."""
+    # SEC-X-003 (Y.2): whitelist combinada doc+image+office + max 50 MB preservado.
+    # Validação adicional de extensão/mime mantida abaixo (fallback) por robustez
+    # para o fluxo específico de normalização de attachments.
+    from core.uploads import validate_upload, ALLOWED_DOCUMENT, ALLOWED_IMAGE, ALLOWED_OFFICE
+    file = await validate_upload(
+        file,
+        ALLOWED_DOCUMENT + ALLOWED_IMAGE + ALLOWED_OFFICE + ["application/octet-stream"],
+        max_mb=DOC_MAX_MB,
+    )
     data = await file.read(DOC_MAX_MB * 1024 * 1024 + 1)
     if not data:
         raise HTTPException(422, "Ficheiro vazio")
@@ -1038,6 +1047,9 @@ async def actions_log(user=Depends(current_user)) -> list:
 
 @router.post("/transcribe")
 async def transcribe(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
+    # SEC-X-003 (Y.2): whitelist audio + max 15 MB preservado.
+    from core.uploads import validate_upload, ALLOWED_AUDIO
+    file = await validate_upload(file, ALLOWED_AUDIO, max_mb=15)
     data = await file.read(15 * 1024 * 1024 + 1)
     if len(data) > 15 * 1024 * 1024:
         raise HTTPException(413, "Áudio demasiado volumoso")
@@ -1581,6 +1593,9 @@ async def write_state(conversation_id: str, body: StateEntryIn, user=Depends(cur
 @router.post("/pdf-pages")
 async def pdf_pages(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
     """Pages d'un PDF déjà téléchargé par l'utilisateur, rendues en JPEG pour la visionneuse (mobile inclus). 8 pages max."""
+    # SEC-X-003 (Y.2): PDF only + max 25 MB preservado.
+    from core.uploads import validate_upload, ALLOWED_DOCUMENT
+    file = await validate_upload(file, ALLOWED_DOCUMENT, max_mb=25)
     data = await file.read()
     if len(data) > 25 * 1024 * 1024 or not data.startswith(b"%PDF"):
         raise HTTPException(400, "PDF esperado (máx. 25 MB)")

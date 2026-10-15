@@ -32,6 +32,9 @@ async def upload_photo(project_id: str,
                        lot: str = Form(""),
                        caption: str = Form(""),
                        user=Depends(current_user)):
+    # SEC-X-003 (Y.2): whitelist IMAGE (inclui HEIC/HEIF) + 10 MB preservado.
+    from core.uploads import validate_upload, ALLOWED_IMAGE
+    file = await validate_upload(file, ALLOWED_IMAGE, max_mb=10)
     await _get_owned(project_id, user)
     if kind not in ALLOWED_KIND:
         raise HTTPException(status_code=400, detail="Tipo inválido (before|after|progress)")

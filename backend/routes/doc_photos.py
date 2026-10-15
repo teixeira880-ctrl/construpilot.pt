@@ -27,6 +27,9 @@ def _now() -> str:
 
 @router.post("")
 async def upload_document_photo(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
+    # SEC-X-003 (Y.2): whitelist IMAGE + 12 MB preservado.
+    from core.uploads import validate_upload, ALLOWED_IMAGE
+    file = await validate_upload(file, ALLOWED_IMAGE, max_mb=12)
     raw = await file.read()
     if not raw:
         raise HTTPException(status_code=400, detail="Ficheiro vazio")

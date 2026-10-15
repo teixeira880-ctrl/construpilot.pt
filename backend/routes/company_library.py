@@ -67,6 +67,14 @@ async def remember_prices(user_id: str, items: list[dict], origin: str = "DPGF")
 
 @router.post("/upload")
 async def upload_library(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
+    # SEC-X-003 (Y.2): whitelist XLSX+PDF. Sem limite explícito pré-existente;
+    # usa default 20 MB do core/uploads.
+    from core.uploads import validate_upload, ALLOWED_DOCUMENT, ALLOWED_IMPORT
+    file = await validate_upload(
+        file, ALLOWED_DOCUMENT + ALLOWED_IMPORT + [
+            "application/vnd.ms-excel.sheet.macroenabled.12",
+        ],
+    )
     raw = await file.read()
     name = (file.filename or "").lower()
     try:

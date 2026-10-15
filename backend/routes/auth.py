@@ -476,6 +476,10 @@ _KYC_EXT = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png"}
 
 
 async def _store_kyc_file(user_id: str, kind: str, up: UploadFile) -> dict:
+    # SEC-X-003 (Y.2): sanitização de filename adicional (defense in depth).
+    # Validação forte original mantida: content_type + 10 MB + magic-bytes.
+    from core.uploads import sanitize_filename
+    up.filename = sanitize_filename(up.filename)
     ct = (up.content_type or "").lower()
     if ct not in _KYC_MAGIC:
         raise HTTPException(415, "Tipo de documento não suportado (PDF, JPEG ou PNG)")
@@ -500,6 +504,11 @@ async def submit_kyc_documents(
 ) -> dict:
     """Dépôt des documents pro (K-bis + attestation décennale). Compte actif,
     passe en kyc_status=pending pour validation admin."""
+    # SEC-X-003 (Y.2): pre-filtro central (rejeita .exe etc. antes do helper
+    # fazer a validação forte com magic-bytes). Preserva limite 10 MB.
+    from core.uploads import validate_upload, ALLOWED_DOCUMENT, ALLOWED_IMAGE
+    kbis = await validate_upload(kbis, ALLOWED_DOCUMENT + ALLOWED_IMAGE, max_mb=10)
+    decennale = await validate_upload(decennale, ALLOWED_DOCUMENT + ALLOWED_IMAGE, max_mb=10)
     docs = {
         "kbis": await _store_kyc_file(user["user_id"], "kbis", kbis),
         "decennale": await _store_kyc_file(user["user_id"], "decennale", decennale),

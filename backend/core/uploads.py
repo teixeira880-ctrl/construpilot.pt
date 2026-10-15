@@ -15,7 +15,8 @@ import re
 from pathlib import Path
 from fastapi import HTTPException, UploadFile
 
-ALLOWED_IMAGE = ["image/png", "image/jpeg", "image/webp", "image/gif"]
+ALLOWED_IMAGE = ["image/png", "image/jpeg", "image/webp", "image/gif",
+                 "image/heic", "image/heif"]
 ALLOWED_DOCUMENT = ["application/pdf"]
 ALLOWED_CAD = [
     "application/dxf", "image/vnd.dxf",
@@ -24,6 +25,21 @@ ALLOWED_CAD = [
 ]
 ALLOWED_IMPORT = ["text/csv", "application/vnd.ms-excel",
                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
+ALLOWED_OFFICE = [
+    # Word
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    # Excel (variantes)
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel.sheet.macroenabled.12",
+    # PowerPoint
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    # Texto
+    "text/plain",
+    "text/csv",
+]
 ALLOWED_AUDIO = ["audio/mpeg", "audio/wav", "audio/webm", "audio/ogg", "audio/mp4"]
 
 # Whitelist combinada por defeito (uploads genéricos de documentos pro)
