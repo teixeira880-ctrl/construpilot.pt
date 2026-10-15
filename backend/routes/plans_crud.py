@@ -138,12 +138,18 @@ async def upload_plan(
     """Par défaut synchrone (API publique, scripts, tests). Avec l'en-tête `X-Async-Upload: 1` (front) : validation
     immédiate puis traitement en tâche de fond (le proxy coupe à 120 s) et 202 {job_id} à suivre sur /upload-jobs/{job_id}."""
     lower_name = (file.filename or "").lower()
-    # Permite CAD por extensão quando o navegador envia octet-stream (fallback)
-    allowed_mimes = ALLOWED_IMAGE + ALLOWED_DOCUMENT + ALLOWED_CAD
-    if lower_name.endswith((".dxf", ".dwg", ".ifc")) and not (file.content_type or "").lower().startswith("image/"):
-        # Força branch CAD mesmo com content_type genérico
-        file.content_type = file.content_type or "application/octet-stream"
-    file = await validate_upload(file, allowed_mimes, max_mb=MAX_UPLOAD_MB)
+    # CAD via extensão: browsers enviam DWG/DXF/IFC como octet-stream.
+    # Passamos override_content_type para forçar o branch magic-bytes em validate_upload
+    # sem escrever em file.content_type (read-only em Starlette ≥0.37).
+    override_ct = None
+    if lower_name.endswith((".dxf", ".dwg", ".ifc")):
+        override_ct = "application/octet-stream"
+    file = await validate_upload(
+        file,
+        ALLOWED_IMAGE + ALLOWED_DOCUMENT + ALLOWED_CAD,
+        max_mb=MAX_UPLOAD_MB,
+        override_content_type=override_ct,
+    )
     data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f'Ficheiro demasiado volumoso (>{MAX_UPLOAD_MB} MB)')

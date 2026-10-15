@@ -96,25 +96,30 @@ async def validate_upload(
     file: UploadFile,
     allowed: list[str] | None = None,
     max_mb: int | None = None,
+    override_content_type: str | None = None,
 ) -> UploadFile:
     """Valida content_type, tamanho e sanitiza filename.
 
     - 400 se content_type fora da whitelist.
     - 413 se > max_mb*1024*1024.
     - Mutação defensiva: `file.filename` passa a ser sanitizado.
+    - `override_content_type`: usar quando o browser envia um mime genérico
+      (ex. `application/octet-stream` para CAD) e o routing já determinou o
+      mime real a partir da extensão. NÃO escreve de volta em `file.content_type`
+      (que é read-only em Starlette ≥0.37).
     """
     allowed = allowed if allowed is not None else ALLOWED_ANY_SAFE
     max_mb = max_mb if max_mb is not None else _max_mb()
-    ctype = (file.content_type or "").lower()
-    if ctype not in [a.lower() for a in allowed]:
+    effective_type = (override_content_type or file.content_type or "").lower()
+    if effective_type not in [a.lower() for a in allowed]:
         raise HTTPException(
             status_code=400,
-            detail=f"Tipo de ficheiro não permitido: '{ctype}'. "
+            detail=f"Tipo de ficheiro não permitido: '{effective_type}'. "
                    f"Aceites: {', '.join(allowed)}",
         )
     # SEC-Y-004: se o endpoint aceita CAD e o ficheiro vem com content-type
     # genérico 'application/octet-stream', confirma por magic-bytes.
-    if (ctype == "application/octet-stream"
+    if (effective_type == "application/octet-stream"
             and any(a == "application/octet-stream" for a in ALLOWED_CAD)
             and any(a in ALLOWED_CAD for a in allowed)):
         try:

@@ -143,3 +143,88 @@ def test_all_17_routes_import_validate_upload():
     assert not missing, (
         "Routes sem `validate_upload` após AJ.1:\n" + "\n".join(missing)
     )
+
+
+# ─── AJ.4 — HOTFIX: CAD octet-stream não deve 500 ─────────────────────────
+# Regressão descoberta pós-AJ.1: starlette ≥0.37 torna UploadFile.content_type
+# read-only. Qualquer tentativa de `file.content_type = ...` levanta
+# AttributeError → 500. Fix: parâmetro `override_content_type` em validate_upload.
+
+
+@pytest.mark.asyncio
+async def test_cad_dwg_octet_stream_accepted_via_override():
+    """DWG legítimo (AC1024) enviado como octet-stream com override deve passar."""
+    # DWG R2010 header: "AC1024"
+    data = b"AC1024" + b"\x00" * 100
+    f = _upload(data, "plan.dwg", "application/octet-stream")
+    out = await validate_upload(
+        f, ALLOWED_CAD, max_mb=30,
+        override_content_type="application/octet-stream",
+    )
+    assert out.filename == "plan.dwg"
+
+
+@pytest.mark.asyncio
+async def test_cad_random_octet_stream_rejected_400_not_500():
+    """Random bytes com .cad e octet-stream → 400 (magic-bytes falha), NUNCA 500."""
+    f = _upload(b"\xff" * 1000, "random.cad", "application/octet-stream")
+    with pytest.raises(HTTPException) as exc:
+        await validate_upload(
+            f, ALLOWED_CAD, max_mb=30,
+            override_content_type="application/octet-stream",
+        )
+    assert exc.value.status_code == 400
+    assert "cad não reconhecido" in exc.value.detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_cad_dxf_ascii_octet_stream_accepted():
+    """DXF ASCII (começa com "0\\r\\nSECTION") enviado como octet-stream."""
+    data = b"0\r\nSECTION\r\n2\r\nHEADER\r\n0\r\nENDSEC\r\n"
+    f = _upload(data, "plan.dxf", "application/octet-stream")
+    out = await validate_upload(
+        f, ALLOWED_CAD, max_mb=30,
+        override_content_type="application/octet-stream",
+    )
+    assert out.filename == "plan.dxf"
+
+
+@pytest.mark.asyncio
+async def test_cad_ifc_octet_stream_accepted():
+    """IFC/STEP (header ISO-10303-) enviado como octet-stream."""
+    data = b"ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('IFC4'),'2;1');\n"
+    f = _upload(data, "model.ifc", "application/octet-stream")
+    out = await validate_upload(
+        f, ALLOWED_CAD, max_mb=30,
+        override_content_type="application/octet-stream",
+    )
+    assert out.filename == "model.ifc"
+
+
+@pytest.mark.asyncio
+async def test_validate_upload_does_not_mutate_content_type():
+    """Starlette ≥0.37: `UploadFile.content_type` é property read-only.
+    `validate_upload` NÃO deve escrever de volta no atributo."""
+    data = b"\x89PNG\r\n\x1a\n" + b"\x00" * 10
+    f = _upload(data, "foto.png", "image/png")
+    original_ct = f.content_type
+    await validate_upload(f, ALLOWED_IMAGE, max_mb=12)
+    assert f.content_type == original_ct
+
+
+def test_no_content_type_setter_in_routes():
+    """Previne regressão: nenhum route deve atribuir file.content_type = ..."""
+    import re
+    routes = ROOT / "routes"
+    offenders = []
+    for py in routes.rglob("*.py"):
+        text = py.read_text(encoding="utf-8", errors="ignore")
+        # Procura `file.content_type = ...` ou `<var>.content_type = ...` em routes
+        for m in re.finditer(r"(\w+)\.content_type\s*=\s*(?!=)", text):
+            line = text[:m.start()].count("\n") + 1
+            offenders.append(f"{py.name}:{line}: {m.group()}")
+    assert not offenders, (
+        "Atribuições a `.content_type =` em routes/ (viola AJ.4):\n"
+        + "\n".join(offenders)
+        + "\nUsar `override_content_type` em validate_upload."
+    )
