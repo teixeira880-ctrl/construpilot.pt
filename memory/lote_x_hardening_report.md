@@ -130,9 +130,14 @@ sanitize_filename("file with !@# chars.pdf")  → "file_with____chars.pdf"
 
 ### Aplicação (reference impl)
 
-| Endpoint | Ficheiro:linha | Status |
-|---|---|---|
-| `POST /admin/learning/import-file` | `admin_learning.py:73-78` | ✅ Aplicado |
+| Endpoint | Ficheiro:linha | Status | Limite aplicado |
+|---|---|---|---|
+| `POST /admin/learning/import-file` | `admin_learning.py:73-78` | ✅ Aplicado | `max_mb=15` (preservação de contrato) |
+
+**Padrão de migração para os 8+ endpoints restantes**:
+- Endpoints com limite explícito prévio (como este, 15 MB) → **preservar o limite** para não quebrar contratos existentes.
+- Endpoints sem limite explícito → aplicar o default global de **20 MB** via `core/uploads.py` (`MAX_UPLOAD_MB`).
+- Justificação adicional neste caso: o motor `engines.learning.extract_file_text` extrai texto de exemplos few-shot; ficheiros >15 MB tipicamente são CAD/vídeo não úteis para aprendizagem, logo o limite inferior é funcional (não apenas defensivo).
 
 ### Endpoints não migrados neste commit (FOLLOW-UP técnico)
 
