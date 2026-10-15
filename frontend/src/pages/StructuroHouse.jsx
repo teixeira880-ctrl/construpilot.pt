@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Download, Calculator, Home, Ruler, Layers, AlertTriangle, FileText } from "lucide-react";
+import PromptBar from "@/components/PromptBar";
 
 const USE_LABEL = {
   habitacao: "Habitação",
@@ -123,6 +124,33 @@ export default function StructuroHouse() {
           </p>
         </div>
       </header>
+
+      {geometry && (
+        <PromptBar
+          appKey="moradia"
+          context={{ tipologia: geometry.name, pisos: (geometry.levels || []).length }}
+          placeholder="Ex.: «Moradia T3 com 180 m² em dois pisos, cave»"
+          examples="Ex.: «T3 180 m², 2 pisos» · «T2 lote 400 m², área bruta 90 m²»"
+          onFill={({ params = {} }) => {
+            setGeometry((prev) => {
+              if (!prev) return prev;
+              const next = structuredClone(prev);
+              if (params.tipologia) next.name = params.tipologia;
+              if (params.pe_direito_m != null && Array.isArray(next.levels)) {
+                next.levels = next.levels.map((lv) => ({ ...lv, h_m: Number(params.pe_direito_m) }));
+              }
+              if (params.pisos && Array.isArray(next.levels)) {
+                const want = Math.max(1, Math.min(5, Number(params.pisos)));
+                while (next.levels.length < want) {
+                  next.levels.push({ ...next.levels[next.levels.length - 1] });
+                }
+                if (next.levels.length > want) next.levels = next.levels.slice(0, want);
+              }
+              return next;
+            });
+          }}
+        />
+      )}
 
       {/* Geometria */}
       <section className="rounded-xl border border-border bg-card p-5 space-y-4">

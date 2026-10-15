@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
+import PromptBar from "@/components/PromptBar";
 
 const COMPARE_CONFIG = {
   drywall: {
@@ -246,7 +247,37 @@ export default function Calculators() {
     finally { setBusy(false); }
   };
 
-  if (!active) return <div className="h-40 grid place-items-center"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  // Renderiza SEO + PromptBar + tabs mesmo sem catalog carregado
+  const promptBar = (
+    <PromptBar
+      appKey="calculadoras"
+      placeholder="Ex.: «tinta para 40 m², 2 demãos» · «betão para laje 5×4 com 15 cm»"
+      examples="Diga o cálculo que precisa; abrimos a calculadora certa com os valores sugeridos."
+      onFill={({ params = {} }) => {
+        const map = { betao: "concrete", tinta: "paint", azulejo: "tile", pladur: "drywall", isolamento: "insulation" };
+        const target = map[params.calc_type];
+        const found = target && calcs.find((c) => c.key === target);
+        if (found) {
+          pick(found);
+          toast.success(`Aberta a calculadora: ${found.name}`);
+        } else if (params.calc_type) {
+          toast.info(`Cálculo pedido: ${params.calc_type}. Selecione a calculadora correspondente.`);
+        }
+      }}
+    />
+  );
+
+  if (!active) {
+    return (
+      <div className="grid gap-6" data-testid="calculators-loading">
+        <SectionTitle as="h1" over="Calculadora de materiais" title="As quantidades exatas, margens incluídas">
+          Cálculos determinísticos e verificáveis: superfícies, volumes, perdas de aplicação e embalagens.
+        </SectionTitle>
+        {promptBar}
+        <div className="h-40 grid place-items-center"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-10">
@@ -254,6 +285,8 @@ export default function Calculators() {
       <SectionTitle as="h1" over="Calculadora de materiais" title="As quantidades exatas, margens incluídas">
         Cálculos determinísticos e verificáveis: superfícies, volumes, perdas de aplicação e embalagens.
       </SectionTitle>
+
+      {promptBar}
 
       <div className="flex flex-wrap gap-2" data-testid="calculator-tabs">
         {calcs.map((c) => (

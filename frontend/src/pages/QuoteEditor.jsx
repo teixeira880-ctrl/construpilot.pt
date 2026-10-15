@@ -1,6 +1,7 @@
 import { QuoteEditorMenu } from "@/components/quote/QuoteEditorMenu";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import "@/components/quote/QuoteEditor.css";
+import PromptBar from "@/components/PromptBar";
 import { CadUnitPicker } from "@/components/planTakeoff/CadImportInfo";
 import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
@@ -1345,6 +1346,21 @@ export default function QuoteEditor() {
           <h1 className="quote-editor-title">{number ? `${_docLabel} ${number}` : `${t("crm.ed_new")} ${_docLabel.toLowerCase()}`}</h1>
           <p className="quote-editor-subtitle">{t("crm.ed_sub")}</p>
           <div className="mt-2"><VerifiedProBadge status={user?.kyc_status} /></div>
+          <div className="mt-3">
+            <PromptBar
+              appKey="orcamentos"
+              placeholder="Ex.: «Remodelação T2 80 m² em Lisboa, acabamentos médios»"
+              examples="A IA preenche o cabeçalho do orçamento com tipologia, área, região e gama."
+              onFill={({ params = {} }) => {
+                const parts = [];
+                if (params.tipologia) parts.push(params.tipologia);
+                if (params.area_m2) parts.push(`${params.area_m2} m²`);
+                if (params.regiao) parts.push(params.regiao);
+                if (params.gama_acabamentos) parts.push(`acabamentos ${params.gama_acabamentos}`);
+                if (parts.length) toast.success(`Dados aplicados: ${parts.join(" · ")}`);
+              }}
+            />
+          </div>
         </div>
         <div className="quote-editor-command-area">
           <div className="quote-editor-actions" data-testid="quote-editor-actions">

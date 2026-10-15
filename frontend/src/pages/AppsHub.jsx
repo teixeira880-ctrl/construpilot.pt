@@ -15,6 +15,13 @@ const APPS = [
     testId: "apps-escadas",
   },
   {
+    to: "/medicao-rapida",
+    icon: Ruler,
+    title: "Medição rápida",
+    desc: "Áreas, perímetro e volume de uma divisão — por prompt ou à mão.",
+    testId: "apps-medicao-rapida",
+  },
+  {
     to: "/plan",
     icon: Ruler,
     title: "Medições",

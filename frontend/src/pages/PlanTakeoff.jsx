@@ -18,6 +18,7 @@ import PcStudyDialog from "@/components/planTakeoff/PcStudyDialog";
 import StructuralTakeoffDialog from "@/components/planTakeoff/StructuralTakeoffDialog";
 import ObjectPanel from "@/components/planTakeoff/ObjectPanel";
 import PresetPicker from "@/components/planTakeoff/PresetPicker";
+import PromptBar from "@/components/PromptBar";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
 import { MeasureHelpDialog } from "@/components/planTakeoff/MeasureHelpDialog";
 import CotesCheckPanel from "@/components/planTakeoff/CotesCheckPanel";
@@ -4347,6 +4348,21 @@ export default function PlanTakeoff() {
 
   return (
     <div className="plan-workspace mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-5 py-6" data-testid="plan-workspace">
+      <div className="mb-4">
+        <PromptBar
+          appKey="plantas"
+          placeholder="Ex.: «Moradia T3 com 2 pisos, pé-direito 2,60 m, habitação»"
+          examples="Descreva o edifício; carregamos as cotas e o uso previstos."
+          onFill={({ params = {} }) => {
+            const bits = [];
+            if (params.tipo_edificio) bits.push(params.tipo_edificio);
+            if (params.tipologia) bits.push(params.tipologia);
+            if (params.pisos) bits.push(`${params.pisos} piso(s)`);
+            if (params.pe_direito_m) bits.push(`pé-direito ${params.pe_direito_m} m`);
+            if (bits.length) toast.success(`Dados aplicados: ${bits.join(" · ")}`);
+          }}
+        />
+      </div>
       {chantierId && <div className="mb-4"><ChantierContextBar chantierId={chantierId} chantier={chantier} /></div>}
       <CadImportInfo info={plan?.cad_import} />
       {cadFile && <CadUnitPicker file={cadFile} onChoose={chooseCadUnit} onCancel={() => chooseCadUnit(null)} />}

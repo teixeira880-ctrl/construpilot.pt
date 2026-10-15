@@ -89,6 +89,7 @@ const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 import AppsHub from "@/pages/AppsHub";
+import MedicaoRapida from "@/pages/MedicaoRapida";
 import BottomTabBar from "@/components/mobile/BottomTabBar";
 import MicFab from "@/components/mobile/MicFab";
 import BtpSolver from "@/pages/BtpSolver";
@@ -243,6 +244,7 @@ function AppRouter() {
       <Route path="/" element={<LandingPro />} />
       <Route path="/demo" element={<Demo />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
+      <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />
       <Route path="/particulares" element={<LandingParticuliers />} />
       <Route path="/particuliers" element={<Navigate to="/particulares" replace />} />
       <Route path="/medicoes" element={<LandingMetre />} />
