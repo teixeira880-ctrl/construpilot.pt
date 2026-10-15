@@ -277,20 +277,20 @@ export default function AutorizacaoObras() {
             <div className="space-y-3">
               <div>
                 <Label htmlFor="altura">Altura prevista (m)</Label>
-                <Input id="altura" type="number" step="0.1" min="0" value={state.altura_m || ""}
+                <Input id="altura" type="number" inputMode="decimal" step="0.1" min="0" value={state.altura_m || ""}
                        onChange={(e) => set("altura_m", parseFloat(e.target.value) || 0)}
                        data-testid="autorizacao-altura" />
               </div>
               <div>
                 <Label htmlFor="area-imp">Área de implantação (m²)</Label>
-                <Input id="area-imp" type="number" step="0.1" min="0" value={state.area_implantacao_m2 || ""}
+                <Input id="area-imp" type="number" inputMode="decimal" step="0.1" min="0" value={state.area_implantacao_m2 || ""}
                        onChange={(e) => set("area_implantacao_m2", parseFloat(e.target.value) || 0)}
                        data-testid="autorizacao-area-imp" />
               </div>
               {["ampliacao", "moradia_nova", "piscina"].includes(state.tipo_obra) && (
                 <div>
                   <Label htmlFor="area-ct">Área de construção {state.tipo_obra === "ampliacao" ? "criada" : "total"} (m²)</Label>
-                  <Input id="area-ct" type="number" step="0.1" min="0"
+                  <Input id="area-ct" type="number" inputMode="decimal" step="0.1" min="0"
                          value={(state.tipo_obra === "ampliacao" ? state.area_construcao_criada_m2 : state.area_construcao_total_m2) || ""}
                          onChange={(e) => set(state.tipo_obra === "ampliacao" ? "area_construcao_criada_m2" : "area_construcao_total_m2", parseFloat(e.target.value) || 0)}
                          data-testid="autorizacao-area-ct" />
@@ -299,7 +299,7 @@ export default function AutorizacaoObras() {
               {state.tipo_obra === "piscina" && (
                 <div>
                   <Label htmlFor="area-ed">Área da edificação principal já existente (m²)</Label>
-                  <Input id="area-ed" type="number" step="0.1" min="0" value={state.area_construcao_total_m2 || ""}
+                  <Input id="area-ed" type="number" inputMode="decimal" step="0.1" min="0" value={state.area_construcao_total_m2 || ""}
                          onChange={(e) => set("area_construcao_total_m2", parseFloat(e.target.value) || 0)}
                          data-testid="autorizacao-area-principal" />
                 </div>
@@ -385,19 +385,19 @@ export default function AutorizacaoObras() {
             <div className="space-y-3">
               <div>
                 <Label htmlFor="pdm-h">Altura máxima permitida (m)</Label>
-                <Input id="pdm-h" type="number" step="0.1" min="0" value={state.pdm_altura_max_m ?? ""}
+                <Input id="pdm-h" type="number" inputMode="decimal" step="0.1" min="0" value={state.pdm_altura_max_m ?? ""}
                        onChange={(e) => set("pdm_altura_max_m", e.target.value ? parseFloat(e.target.value) : null)}
                        data-testid="autorizacao-pdm-h" />
               </div>
               <div>
                 <Label htmlFor="pdm-i">Índice de implantação máximo (0-1)</Label>
-                <Input id="pdm-i" type="number" step="0.01" min="0" max="1" value={state.pdm_indice_implantacao ?? ""}
+                <Input id="pdm-i" type="number" inputMode="decimal" step="0.01" min="0" max="1" value={state.pdm_indice_implantacao ?? ""}
                        onChange={(e) => set("pdm_indice_implantacao", e.target.value ? parseFloat(e.target.value) : null)}
                        data-testid="autorizacao-pdm-i" />
               </div>
               <div>
                 <Label htmlFor="pdm-a">Afastamento mínimo às extremas (m)</Label>
-                <Input id="pdm-a" type="number" step="0.1" min="0" value={state.pdm_afastamento_min_m ?? ""}
+                <Input id="pdm-a" type="number" inputMode="decimal" step="0.1" min="0" value={state.pdm_afastamento_min_m ?? ""}
                        onChange={(e) => set("pdm_afastamento_min_m", e.target.value ? parseFloat(e.target.value) : null)}
                        data-testid="autorizacao-pdm-a" />
               </div>

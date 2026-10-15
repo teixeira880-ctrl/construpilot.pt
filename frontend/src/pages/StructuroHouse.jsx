@@ -142,6 +142,7 @@ export default function StructuroHouse() {
             <span className="text-muted-foreground text-xs">Comprimento exterior L (m)</span>
             <Input
               type="number"
+              inputMode="decimal"
               step="0.01"
               value={geometry.outer_L_m}
               onChange={(e) => update("outer_L_m", parseFloat(e.target.value) || 0)}
@@ -151,6 +152,7 @@ export default function StructuroHouse() {
             <span className="text-muted-foreground text-xs">Largura exterior W (m)</span>
             <Input
               type="number"
+              inputMode="decimal"
               step="0.01"
               value={geometry.outer_W_m}
               onChange={(e) => update("outer_W_m", parseFloat(e.target.value) || 0)}
@@ -160,6 +162,7 @@ export default function StructuroHouse() {
             <span className="text-muted-foreground text-xs">Espessura paredes (m)</span>
             <Input
               type="number"
+              inputMode="decimal"
               step="0.01"
               value={geometry.wall_thickness_m}
               onChange={(e) => update("wall_thickness_m", parseFloat(e.target.value) || 0.2)}
@@ -225,6 +228,7 @@ export default function StructuroHouse() {
               />
               <Input
                 type="number"
+              inputMode="decimal"
                 step="0.05"
                 value={lv.storey_height_m}
                 onChange={(e) => updateLevel(i, "storey_height_m", parseFloat(e.target.value) || 2.7)}
@@ -262,6 +266,7 @@ export default function StructuroHouse() {
             <span className="text-muted-foreground text-xs">Altura da cave (m)</span>
             <Input
               type="number"
+              inputMode="decimal"
               step="0.05"
               value={geometry.basement.height_m || 2.5}
               onChange={(e) => update("basement.height_m", parseFloat(e.target.value) || 2.5)}
@@ -272,6 +277,7 @@ export default function StructuroHouse() {
             <span className="text-muted-foreground text-xs">Tensão admissível q_ELS (kPa)</span>
             <Input
               type="number"
+              inputMode="decimal"
               step="10"
               value={geometry.soil.q_els_kpa || ""}
               onChange={(e) => {

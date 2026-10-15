@@ -27,7 +27,7 @@ export default function CookieConsent() {
 
   return (
     <div
-      className="fixed bottom-0 inset-x-0 z-[100] p-3 sm:p-4"
+      className="fixed inset-x-0 bottom-14 md:bottom-0 z-[100] p-3 sm:p-4"
       data-testid="cookie-consent-banner"
       role="dialog"
       aria-label="Consentimento de cookies"

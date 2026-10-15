@@ -108,3 +108,29 @@
   #quote-print-root, #quote-print-root * { visibility: visible !important; }
   #quote-print-root { position: absolute !important; left: 0; top: 0; width: 100% !important; box-shadow: none !important; border: none !important; }
 }
+
+/* ===== Fundações mobile (Lote R3a) ===== */
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pl-safe { padding-left: env(safe-area-inset-left); }
+  .pr-safe { padding-right: env(safe-area-inset-right); }
+  .mt-safe { margin-top: env(safe-area-inset-top); }
+  .mb-safe { margin-bottom: env(safe-area-inset-bottom); }
+  .min-h-screen-safe {
+    min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 100dvh;
+  }
+  .touch-target { min-width: 44px; min-height: 44px; }
+}
+
+/* Anti-highlight nativo + anti-zoom iOS em inputs */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+@media (max-width: 767px) {
+  input, textarea, select {
+    font-size: max(16px, 1rem);
+  }
+}

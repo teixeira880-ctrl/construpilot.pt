@@ -732,7 +732,7 @@ function Field({ label, k, form, set, placeholder, testid, aiFilled }) {
           </span>
         )}
       </Label>
-      <Input type="number" value={form[k]} onChange={(e) => set(k, e.target.value)}
+      <Input type="number" inputMode="decimal" value={form[k]} onChange={(e) => set(k, e.target.value)}
              placeholder={placeholder} data-testid={`stair-field-${testid}`}
              className={`h-9 ${marked ? "ring-2 ring-primary/40" : ""}`} />
     </div>

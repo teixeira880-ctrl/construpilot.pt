@@ -85,6 +85,9 @@ import StructuroHouse from "@/pages/StructuroHouse";
 import PlanReader from "@/pages/PlanReader";
 import StairCalculator from "@/pages/StairCalculator";
 import Demo from "@/pages/Demo";
+import AppsHub from "@/pages/AppsHub";
+import BottomTabBar from "@/components/mobile/BottomTabBar";
+import MicFab from "@/components/mobile/MicFab";
 import BtpSolver from "@/pages/BtpSolver";
 import PlansPro from "@/pages/PlansPro";
 import CompanyPage from "@/pages/CompanyPage";
@@ -236,6 +239,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<LandingPro />} />
       <Route path="/demo" element={<Demo />} />
+      <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
       <Route path="/particulares" element={<LandingParticuliers />} />
       <Route path="/particuliers" element={<Navigate to="/particulares" replace />} />
       <Route path="/medicoes" element={<LandingMetre />} />
@@ -415,6 +419,8 @@ function App() {
                       <OfflineProvider>
                         <AppRouter />
                         <MobileTabBar />
+                        <BottomTabBar />
+                        <MicFab />
                         <InstallPrompt />
                         <CookieConsent />
                         <DomTranslator />
