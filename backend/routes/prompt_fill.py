@@ -15,6 +15,12 @@ from core.security import current_user
 # importa primeiro a base e depois força o registo de cada extractor
 from engines.prompt_fill.base import REGISTRY, run_extractor
 from engines.prompt_fill import stairs as _stairs_registered  # noqa: F401
+from engines.prompt_fill import medicoes as _medicoes_registered  # noqa: F401
+from engines.prompt_fill import orcamentos as _orcamentos_registered  # noqa: F401
+from engines.prompt_fill import plantas as _plantas_registered  # noqa: F401
+from engines.prompt_fill import autorizacao as _autorizacao_registered  # noqa: F401
+from engines.prompt_fill import moradia as _moradia_registered  # noqa: F401
+from engines.prompt_fill import calculadoras as _calculadoras_registered  # noqa: F401
 
 router = APIRouter(prefix="/prompt-fill", tags=["prompt-fill"])
 

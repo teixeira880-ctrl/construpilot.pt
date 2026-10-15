@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { SEO } from "@/components/SEO";
+import PromptBar from "@/components/PromptBar";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -220,6 +221,26 @@ export default function AutorizacaoObras() {
           <ArrowLeft size={16} /> Voltar
         </Link>
         <StepHeader step={step + 1} total={TOTAL_STEPS} title="Diagnóstico de autorização de obras" />
+
+        {step === 0 && (
+          <PromptBar
+            appKey="autorizacao"
+            context={{ ...state }}
+            onFill={({ params = {} }) => {
+              const upd = { ...state };
+              if (params.tipo_obra) upd.tipo_obra = params.tipo_obra;
+              if (params.area_implantacao_m2 != null) upd.area_implantacao_m2 = params.area_implantacao_m2;
+              if (params.area_construcao_total_m2 != null) upd.area_construcao_total_m2 = params.area_construcao_total_m2;
+              if (params.altura_m != null) upd.altura_m = params.altura_m;
+              if (params.confina_via_publica != null) upd.confina_via_publica = !!params.confina_via_publica;
+              if (params.zona_protegida != null) upd.zona_protegida = !!params.zona_protegida;
+              if (params.concelho) upd.concelho = params.concelho;
+              setState(upd);
+            }}
+            placeholder="Descreva a obra (ex.: «Anexo de 8 m² com 2,10 m de altura»)"
+            examples="Ex.: «Anexo 8 m², 2,10 m» · «Muro de 1,80 m» · «Interiores sem alterar fachada»"
+          />
+        )}
 
         {step === 0 && (
           <section data-testid="autorizacao-step-tipo">
