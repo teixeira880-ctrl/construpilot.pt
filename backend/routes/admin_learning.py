@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import admin_user
+from core.uploads import (
+    validate_upload, ALLOWED_DOCUMENT, ALLOWED_IMPORT, ALLOWED_IMAGE,
+)
 from engines import learning
 
 logger = logging.getLogger(__name__)
@@ -70,9 +73,11 @@ async def create_bulk(body: BulkBody, admin=Depends(admin_user)) -> dict:
 async def import_file(file: UploadFile = File(...), scope: str = "devis",
                       admin=Depends(admin_user)) -> dict:
     """Importe un fichier (PDF/Excel/CSV/Word/TXT) → un exemple de référence (texte extrait)."""
+    # SEC-X-003: validação centralizada (content_type + max_size + filename).
+    file = await validate_upload(
+        file, ALLOWED_DOCUMENT + ALLOWED_IMPORT + ALLOWED_IMAGE, max_mb=15,
+    )
     raw = await file.read()
-    if len(raw) > 15 * 1024 * 1024:
-        raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 15 MB).")
     try:
         text = learning.extract_file_text(raw, file.filename or "fichier")
     except ValueError as e:

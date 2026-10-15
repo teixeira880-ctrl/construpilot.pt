@@ -384,11 +384,17 @@ async def seed():
         await recover_interrupted()
     except Exception as e:
         logger.warning(f"growth recover skipped: {e}")
-    try:
-        from core.provisioned_accounts import provision_accounts
-        await provision_accounts(db, hash_password, new_user_id)
-    except Exception as e:
-        logger.warning(f"provisioned accounts skipped: {e}")
+    # SEC-X-002 : contas E2E provisionadas em provisioned_accounts.py (com
+    # passwords em claro no código) só são criadas se SEED_DEMO_DATA=true.
+    # Default: desligado — produção não cria contas de teste.
+    _seed_demo = os.environ.get("SEED_DEMO_DATA", "false").lower() == "true"
+    logger.info("Seed de contas de demonstração %s", "LIGADO" if _seed_demo else "DESLIGADO")
+    if _seed_demo:
+        try:
+            from core.provisioned_accounts import provision_accounts
+            await provision_accounts(db, hash_password, new_user_id)
+        except Exception as e:
+            logger.warning(f"provisioned accounts skipped: {e}")
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
     if os.environ.get("SEED_DEMO_DATA") == "true":
@@ -461,33 +467,35 @@ async def seed():
                     {"$set": {"two_fa_enabled": False, "two_fa_seed_reset": True}})
         await _merge_legacy_admin(db, owner_email)
 
-    # Second administrateur : info@construpilot.pt (gestão completa do site).
-    # Idempotent : promeut le compte existant (même Google) en admin ; le crée
-    # avec un mot de passe provisoire s'il n'existe pas ou n'en a pas encore.
+    # SEC-X-001 : admin secundário fail-closed. Sem SECOND_ADMIN_PASSWORD
+    # definida (ou vazia), a conta NÃO é criada. Elimina fallback hardcoded.
     second_admin_email = (os.environ.get("SECOND_ADMIN_EMAIL")
                           or "info@construpilot.pt").lower().strip()
-    second_admin_pwd = os.environ.get("SECOND_ADMIN_PASSWORD") or "CP-Admin-2026!"
-    sa = await db.users.find_one({"email": second_admin_email})
-    if not sa:
-        await db.users.insert_one({
-            "email": second_admin_email, "name": "Administrador ConstruPilot",
-            "role": "admin", "plan": "premium",
-            "password_hash": hash_password(second_admin_pwd),
-            "auth_provider": "password", "picture": None,
-            "user_id": new_user_id(), "must_change_password": True,
-            "two_fa_enabled": False, "two_fa_seed_reset": True,
-            "created_at": datetime.now(timezone.utc).isoformat()})
-        logger.info("Compte admin secondaire créé : %s", second_admin_email)
+    second_admin_pwd = (os.environ.get("SECOND_ADMIN_PASSWORD") or "").strip()
+    if not second_admin_pwd:
+        logger.info("Admin secundário não provisionado: SECOND_ADMIN_PASSWORD não definida")
     else:
-        upd = {}
-        if sa.get("role") != "admin":
-            upd["role"] = "admin"
-        if not sa.get("password_hash"):
-            upd["password_hash"] = hash_password(second_admin_pwd)
-            upd["must_change_password"] = True
-        if upd:
-            await db.users.update_one({"email": second_admin_email}, {"$set": upd})
-            logger.info("Compte admin secondaire mis à jour : %s", second_admin_email)
+        sa = await db.users.find_one({"email": second_admin_email})
+        if not sa:
+            await db.users.insert_one({
+                "email": second_admin_email, "name": "Administrador ConstruPilot",
+                "role": "admin", "plan": "premium",
+                "password_hash": hash_password(second_admin_pwd),
+                "auth_provider": "password", "picture": None,
+                "user_id": new_user_id(), "must_change_password": True,
+                "two_fa_enabled": False, "two_fa_seed_reset": True,
+                "created_at": datetime.now(timezone.utc).isoformat()})
+            logger.info("Conta admin secundária criada: %s", second_admin_email)
+        else:
+            upd = {}
+            if sa.get("role") != "admin":
+                upd["role"] = "admin"
+            if not sa.get("password_hash"):
+                upd["password_hash"] = hash_password(second_admin_pwd)
+                upd["must_change_password"] = True
+            if upd:
+                await db.users.update_one({"email": second_admin_email}, {"$set": upd})
+                logger.info("Conta admin secundária actualizada: %s", second_admin_email)
 
     # Troisième administrateur : deboradsmelo@gmail.com (accès complet du site).
     # Idempotent : crée le compte s'il n'existe pas, sinon le promeut admin et
