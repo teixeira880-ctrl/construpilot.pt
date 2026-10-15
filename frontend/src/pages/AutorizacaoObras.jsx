@@ -215,7 +215,7 @@ export default function AutorizacaoObras() {
   return (
     <>
       <SEO title="Autorização de obras — diagnóstico guiado — ConstruPilot" />
-      <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 pb-24" data-testid="autorizacao-wizard">
+      <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 pb-40 md:pb-24" data-testid="autorizacao-wizard">
         <Link to="/particulares" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4" data-testid="autorizacao-voltar">
           <ArrowLeft size={16} /> Voltar
         </Link>
@@ -421,19 +421,19 @@ export default function AutorizacaoObras() {
           </section>
         )}
 
-        <div className="flex items-center gap-3 mt-7">
+        <div className="flex items-center gap-3 mt-7 md:static fixed inset-x-0 bottom-14 md:bottom-auto bg-background/95 backdrop-blur md:bg-transparent border-t border-border md:border-0 px-4 md:px-0 py-3 md:py-0 z-30 pb-safe md:pb-0 h-auto" data-testid="autorizacao-actions-bar">
           {step > 0 && (
-            <Button variant="outline" onClick={() => setStep((s) => s - 1)} className="flex-1" data-testid="autorizacao-btn-anterior">
+            <Button variant="outline" onClick={() => setStep((s) => s - 1)} className="flex-1 min-h-[44px]" data-testid="autorizacao-btn-anterior">
               <ArrowLeft size={16} /> Anterior
             </Button>
           )}
           {step < TOTAL_STEPS - 1 && (
-            <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext} className="flex-1" data-testid="autorizacao-btn-seguinte">
+            <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext} className="flex-1 min-h-[44px]" data-testid="autorizacao-btn-seguinte">
               Seguinte <ArrowRight size={16} />
             </Button>
           )}
           {step === TOTAL_STEPS - 1 && (
-            <Button onClick={submit} disabled={loading} className="flex-1" data-testid="autorizacao-btn-diagnosticar">
+            <Button onClick={submit} disabled={loading} className="flex-1 min-h-[44px]" data-testid="autorizacao-btn-diagnosticar">
               {loading ? "A calcular…" : "Obter diagnóstico"}
             </Button>
           )}

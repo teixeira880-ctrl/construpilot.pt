@@ -12,6 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Stair3D from "@/components/planTakeoff/Stair3D";
 import PromptBar from "@/components/PromptBar";
+import BottomSheet from "@/components/mobile/BottomSheet";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
+import { useSwipeBack } from "@/hooks/useSwipeBack";
 import {
   Footprints, Calculator, Sparkles, FileDown, Save, FolderOpen, Plus,
   Trash2, Bot, Send, Loader2, CheckCircle2, AlertTriangle, XCircle, Building2, FileText,
@@ -116,6 +119,7 @@ function ResultDetail({ r }) {
 
 export default function StairCalculator() {
   const nav = useNavigate();
+  useSwipeBack();
   const [stairType, setStairType] = useState("straight");
   const [form, setForm] = useState(DEFAULT_FORM);
   const [projectName, setProjectName] = useState("Escada sem nome");
@@ -421,23 +425,67 @@ export default function StairCalculator() {
               <FolderOpen className="h-4 w-4" /> Projetos
             </Button>
             {showProjects && (
-              <div className="absolute right-0 mt-1 w-72 max-h-80 overflow-auto rounded-md border border-border bg-background shadow-lg z-50 p-1" data-testid="stair-projects-list">
-                <button onClick={newProject} className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-muted flex items-center gap-2">
+              <>
+                {/* Dropdown clássico desktop */}
+                <div className="hidden md:block absolute right-0 mt-1 w-72 max-h-80 overflow-auto rounded-md border border-border bg-background shadow-lg z-50 p-1" data-testid="stair-projects-list">
+                  <button onClick={newProject} className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-muted flex items-center gap-2">
+                    <Plus className="h-4 w-4" /> Novo projeto
+                  </button>
+                  {projects.length === 0 && <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum projeto guardado.</p>}
+                  {projects.map((p) => (
+                    <div key={p.project_id} onClick={() => openProject(p)}
+                         className="group flex items-center justify-between px-3 py-2 text-sm rounded-sm hover:bg-muted cursor-pointer"
+                         data-testid={`stair-project-${p.project_id}`}>
+                      <span className="truncate">{p.name} <span className="text-[10px] text-muted-foreground">· {TYPE_LABEL[p.stair_type] || p.stair_type}</span></span>
+                      <button onClick={(e) => deleteProject(p.project_id, e)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {/* Mobile: BottomSheet com cartões em vez de tabela/dropdown */}
+            <BottomSheet
+              open={showProjects}
+              onClose={() => setShowProjects(false)}
+              title="Projetos de escadas"
+              testId="stair-projects-sheet"
+            >
+              <PullToRefresh onRefresh={loadProjects}>
+                <button
+                  onClick={() => { newProject(); setShowProjects(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-3 mb-2 rounded-lg border border-primary/30 bg-primary/5 text-primary font-medium min-h-[44px]"
+                  data-testid="stair-sheet-new-project"
+                >
                   <Plus className="h-4 w-4" /> Novo projeto
                 </button>
-                {projects.length === 0 && <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum projeto guardado.</p>}
-                {projects.map((p) => (
-                  <div key={p.project_id} onClick={() => openProject(p)}
-                       className="group flex items-center justify-between px-3 py-2 text-sm rounded-sm hover:bg-muted cursor-pointer"
-                       data-testid={`stair-project-${p.project_id}`}>
-                    <span className="truncate">{p.name} <span className="text-[10px] text-muted-foreground">· {TYPE_LABEL[p.stair_type] || p.stair_type}</span></span>
-                    <button onClick={(e) => deleteProject(p.project_id, e)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                {projects.length === 0 && (
+                  <p className="py-6 text-sm text-center text-muted-foreground">Nenhum projeto guardado.</p>
+                )}
+                <ul className="space-y-2" data-testid="stair-projects-cards">
+                  {projects.map((p) => (
+                    <li
+                      key={p.project_id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 min-h-[56px]"
+                      data-testid={`stair-project-card-${p.project_id}`}
+                    >
+                      <button onClick={() => openProject(p)} className="flex-1 text-left min-h-[44px]">
+                        <span className="block font-medium truncate">{p.name}</span>
+                        <span className="block text-xs text-muted-foreground">{TYPE_LABEL[p.stair_type] || p.stair_type}</span>
+                      </button>
+                      <button
+                        onClick={(e) => deleteProject(p.project_id, e)}
+                        aria-label="Eliminar projeto"
+                        className="shrink-0 w-11 h-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 touch-target"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </PullToRefresh>
+            </BottomSheet>
           </div>
         </div>
       </div>
