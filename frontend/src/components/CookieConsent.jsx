@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Cookie } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/context/I18nContext";
@@ -8,6 +8,7 @@ const KEY = "cp_cookie_consent";
 
 export default function CookieConsent() {
   const { t } = useI18n();
+  const { pathname } = useLocation();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -20,7 +21,9 @@ export default function CookieConsent() {
     setShow(false);
   };
 
-  if (!show) return null;
+  // No modo demo (Web Summit) o banner não aparece — a demo é ponto único de
+  // contacto com visitantes e não deve interferir com a interação.
+  if (!show || pathname === "/demo") return null;
 
   return (
     <div

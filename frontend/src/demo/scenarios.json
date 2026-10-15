@@ -1,0 +1,183 @@
+{
+  "scenarios": [
+    {
+      "id": "escada_meio_quarto",
+      "title_pt": "Escada em meio quarto",
+      "title_en": "U-shaped staircase",
+      "title_fr": "Escalier demi-tour",
+      "icon": "Footprints",
+      "app_key": "escadas",
+      "prompt_pt": "Escada em U, 2,70 m de altura, 90 cm de largura",
+      "prompt_en": "U-shaped staircase, 2.70 m high, 90 cm wide",
+      "prompt_fr": "Escalier en U, 2,70 m de haut, 90 cm de large",
+      "elapsed_target_ms": 2100,
+      "ai_response": {
+        "ok": true,
+        "params": {
+          "tipo": "em_U",
+          "altura_a_vencer_mm": 2700,
+          "largura_mm": 900,
+          "espelho_alvo_mm": 169,
+          "cobertor_alvo_mm": 290,
+          "material": "betao_armado"
+        },
+        "ai_filled": ["tipo", "altura_a_vencer_mm", "largura_mm"],
+        "defaults_used": ["espelho_alvo_mm", "cobertor_alvo_mm", "material"],
+        "notes": ["Blondel 2h+g = 628 mm (ótimo). RGEU conforme."]
+      },
+      "output": {
+        "kind": "stairs",
+        "num_degraus": 16,
+        "num_cobertores": 15,
+        "espelho_mm": 169,
+        "cobertor_mm": 290,
+        "inclinacao_graus": 30.2,
+        "blondel_mm": 628,
+        "desenvolvimento_mm": 4350,
+        "conforme": true
+      }
+    },
+    {
+      "id": "medicao_divisao",
+      "title_pt": "Medição de uma divisão",
+      "title_en": "Room take-off",
+      "title_fr": "Métré d'une pièce",
+      "icon": "Ruler",
+      "app_key": "medicoes",
+      "prompt_pt": "Sala de 5,20 por 3,80 metros, com pé-direito de 2,60",
+      "prompt_en": "Living room 5.20 by 3.80 metres, 2.60 m ceiling height",
+      "prompt_fr": "Salon de 5,20 par 3,80 mètres, hauteur sous plafond 2,60",
+      "elapsed_target_ms": 1900,
+      "ai_response": {
+        "ok": true,
+        "params": {
+          "comprimento_m": 5.20,
+          "largura_m": 3.80,
+          "pe_direito_m": 2.60
+        },
+        "ai_filled": ["comprimento_m", "largura_m", "pe_direito_m"],
+        "defaults_used": [],
+        "notes": ["Perímetro = 18,00 m."]
+      },
+      "output": {
+        "kind": "measurements",
+        "items": [
+          {"label": "Paredes", "value": 46.80, "unit": "m²", "detail": "perímetro 18,00 m × 2,60"},
+          {"label": "Teto", "value": 19.76, "unit": "m²", "detail": "5,20 × 3,80"},
+          {"label": "Pavimento", "value": 19.76, "unit": "m²", "detail": "5,20 × 3,80"},
+          {"label": "Rodapés", "value": 18.00, "unit": "m", "detail": "perímetro total"},
+          {"label": "Volume", "value": 51.37, "unit": "m³", "detail": "19,76 × 2,60"}
+        ]
+      }
+    },
+    {
+      "id": "orcamento_remodelacao",
+      "title_pt": "Orçamento de remodelação",
+      "title_en": "Renovation estimate",
+      "title_fr": "Devis de rénovation",
+      "icon": "Receipt",
+      "app_key": "orcamento",
+      "prompt_pt": "Remodelação de T2 em Lisboa com acabamentos médios, 80 m²",
+      "prompt_en": "Two-bedroom flat renovation in Lisbon, mid-range finishes, 80 sqm",
+      "prompt_fr": "Rénovation d'un T2 à Lisbonne, finitions moyennes, 80 m²",
+      "elapsed_target_ms": 2500,
+      "ai_response": {
+        "ok": true,
+        "params": {
+          "tipologia": "T2",
+          "area_util_m2": 80,
+          "gama_acabamentos": "media",
+          "regiao": "Lisboa"
+        },
+        "ai_filled": ["tipologia", "area_util_m2", "gama_acabamentos", "regiao"],
+        "defaults_used": [],
+        "notes": ["Valores indicativos (±15 %) — base ANE 2026."]
+      },
+      "output": {
+        "kind": "budget",
+        "total_eur": 24500,
+        "moeda": "EUR",
+        "lotes": [
+          {"label": "Estrutura e demolições", "value": 3200},
+          {"label": "Revestimentos", "value": 8400},
+          {"label": "Caixilharias", "value": 5100},
+          {"label": "Instalações (eletric./águas)", "value": 4800},
+          {"label": "Pintura e outros", "value": 3000}
+        ]
+      }
+    },
+    {
+      "id": "leitura_planta",
+      "title_pt": "Leitura de uma planta",
+      "title_en": "Floor plan analysis",
+      "title_fr": "Lecture d'un plan",
+      "icon": "LayoutDashboard",
+      "app_key": "plantas",
+      "prompt_pt": "Planta de arquitetura — moradia T3 com dois pisos",
+      "prompt_en": "Architectural plan — three-bedroom two-storey house",
+      "prompt_fr": "Plan d'architecture — maison T3 sur deux niveaux",
+      "elapsed_target_ms": 3200,
+      "ai_response": {
+        "ok": true,
+        "params": {
+          "pisos": 2,
+          "tipologia": "T3"
+        },
+        "ai_filled": ["pisos", "tipologia"],
+        "defaults_used": [],
+        "notes": ["Extração de cotas por visão computacional."]
+      },
+      "output": {
+        "kind": "plan",
+        "piso": "Piso 0",
+        "divisoes": [
+          {"nome": "Sala comum", "area_m2": 28.5, "x_pct": 10, "y_pct": 20, "w_pct": 42, "h_pct": 36},
+          {"nome": "Cozinha", "area_m2": 14.2, "x_pct": 54, "y_pct": 20, "w_pct": 26, "h_pct": 22},
+          {"nome": "Quarto 1", "area_m2": 16.0, "x_pct": 10, "y_pct": 60, "w_pct": 28, "h_pct": 30},
+          {"nome": "Quarto 2", "area_m2": 12.4, "x_pct": 40, "y_pct": 60, "w_pct": 22, "h_pct": 30},
+          {"nome": "WC", "area_m2": 6.5, "x_pct": 64, "y_pct": 60, "w_pct": 16, "h_pct": 20}
+        ],
+        "area_util_total_m2": 77.6
+      }
+    },
+    {
+      "id": "comunicacao_previa",
+      "title_pt": "Comunicação prévia (anexo)",
+      "title_en": "Prior notice (annex)",
+      "title_fr": "Communication préalable (annexe)",
+      "icon": "FileCheck2",
+      "app_key": "comunicacao_previa",
+      "prompt_pt": "Anexo de 8 m², altura 2,10 m, não confina com via pública",
+      "prompt_en": "8 sqm annex, 2.10 m high, no public road frontage",
+      "prompt_fr": "Annexe de 8 m², hauteur 2,10 m, sans accès à la voie publique",
+      "elapsed_target_ms": 2200,
+      "ai_response": {
+        "ok": true,
+        "params": {
+          "tipologia": "anexo",
+          "area_m2": 8,
+          "altura_m": 2.10,
+          "confina_via_publica": false
+        },
+        "ai_filled": ["tipologia", "area_m2", "altura_m", "confina_via_publica"],
+        "defaults_used": [],
+        "notes": ["Verificar PDM aplicável antes de iniciar obra."]
+      },
+      "output": {
+        "kind": "procedure",
+        "procedimento": "ESCASSA_RELEVANCIA_ANEXO",
+        "procedimento_label": "Operação de escassa relevância urbanística",
+        "isento_controlo_previo": true,
+        "fundamento_legal": "DL 555/99, art.º 6.º-A, n.º 1, alínea a)",
+        "fundamento_link": "https://dre.pt/dre/legislacao-consolidada/decreto-lei/1999-34580775",
+        "requisitos": [
+          "Área ≤ 10 m² (ok: 8 m²)",
+          "Altura ≤ 2,20 m (ok: 2,10 m)",
+          "Não confinar com via pública (ok)",
+          "Não implica alteração dos limites do prédio"
+        ],
+        "proximo_passo": "Enviar comunicação prévia à Câmara Municipal (facultativo)."
+      }
+    }
+  ]
+}

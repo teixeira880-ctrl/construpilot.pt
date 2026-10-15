@@ -84,6 +84,7 @@ import BetDossier from "@/pages/BetDossier";
 import StructuroHouse from "@/pages/StructuroHouse";
 import PlanReader from "@/pages/PlanReader";
 import StairCalculator from "@/pages/StairCalculator";
+import Demo from "@/pages/Demo";
 import BtpSolver from "@/pages/BtpSolver";
 import PlansPro from "@/pages/PlansPro";
 import CompanyPage from "@/pages/CompanyPage";
@@ -234,6 +235,7 @@ function AppRouter() {
     <DefaultSEO />
     <Routes>
       <Route path="/" element={<LandingPro />} />
+      <Route path="/demo" element={<Demo />} />
       <Route path="/particulares" element={<LandingParticuliers />} />
       <Route path="/particuliers" element={<Navigate to="/particulares" replace />} />
       <Route path="/medicoes" element={<LandingMetre />} />
