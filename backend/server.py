@@ -12,6 +12,7 @@ load_dotenv(ROOT_DIR / '.env')
 
 from core.db import db, client  # noqa: E402
 from core.cors_origin import CanonicalOriginMiddleware
+from core.environment import is_production, is_relaxed  # noqa: E402
 from engines.expenses.context import ExpenseContextMiddleware
 from routes import admin_expenses
 from routes import admin_apify
@@ -69,17 +70,12 @@ from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 
 app = FastAPI(
     title="ConstruPilot API",
-    # SEC-W-003 : docs OpenAPI expostos apenas se ENV != "production".
+    # SEC-W-003 / SEC-Z-001 : docs OpenAPI expostos apenas se não-produção.
     # Em produção, /api/openapi.json, /api/docs e /api/redoc devolvem 404.
-    openapi_url=("/api/openapi.json"
-                 if os.environ.get("ENV", "development").lower() != "production"
-                 else None),
-    docs_url=("/api/docs"
-              if os.environ.get("ENV", "development").lower() != "production"
-              else None),
-    redoc_url=("/api/redoc"
-               if os.environ.get("ENV", "development").lower() != "production"
-               else None),
+    # Fonte única da verdade sobre ambiente: core.environment.
+    openapi_url=(None if is_production() else "/api/openapi.json"),
+    docs_url=(None if is_production() else "/api/docs"),
+    redoc_url=(None if is_production() else "/api/redoc"),
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
@@ -253,11 +249,10 @@ api_router.include_router(prompt_fill_routes.router)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
-# SEC-Y-003 : CORS restrito em produção.
-# - Produção (ENV=production): apenas origens explícitas construpilot.pt.
-# - Dev: lista do .env + regex Emergent (preview URLs dinâmicos).
-_env = os.environ.get("ENV", "development").lower()
-if _env == "production":
+# SEC-Y-003 / SEC-Z-001 : CORS restrito em produção via core.environment.
+# - Produção: apenas origens explícitas construpilot.pt (override CORS_ORIGINS_PROD).
+# - Dev/preview: lista do .env + regex Emergent (preview URLs dinâmicos).
+if is_production():
     _cors_origins = [
         o.strip() for o in (
             os.environ.get("CORS_ORIGINS_PROD")
@@ -271,8 +266,7 @@ if _env == "production":
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
-    logger = logging.getLogger(__name__) if False else logging.getLogger("server")
-    logger.info("CORS restrito a produção: %s", _cors_origins)
+    logging.getLogger("server").info("CORS restrito a produção: %s", _cors_origins)
 else:
     app.add_middleware(
         CORSMiddleware,
@@ -309,8 +303,8 @@ if os.environ.get("SECURITY_HEADERS", "on").lower() != "off":
                 "Permissions-Policy",
                 "geolocation=(), microphone=(), camera=(), payment=()",
             )
-            # HSTS apenas em produção (dev pode usar http em alguns setups)
-            if os.environ.get("ENV", "development").lower() == "production":
+            # HSTS apenas em produção (via core.environment, fail-closed)
+            if is_production():
                 response.headers.setdefault(
                     "Strict-Transport-Security",
                     "max-age=31536000; includeSubDomains",

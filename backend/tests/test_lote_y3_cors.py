@@ -14,6 +14,10 @@ def _reload_server_with_env(monkeypatch, env_value: str,
     monkeypatch.setenv("ENV", env_value)
     if cors_origins_prod is not None:
         monkeypatch.setenv("CORS_ORIGINS_PROD", cors_origins_prod)
+    # core.environment lê ENV no import — tem de ser recarregado antes de server
+    import core.environment
+    import importlib as _il
+    _il.reload(core.environment)
     for m in [k for k in list(sys.modules) if k == "server" or k.startswith("server.")]:
         sys.modules.pop(m, None)
     import server

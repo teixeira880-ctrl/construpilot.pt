@@ -1,15 +1,21 @@
 import asyncio
+import os
+import sys
 from datetime import datetime, timezone
 
 from core.db import db
 from core.security import hash_password, new_user_id
 
-EMAIL = "deboradsmelo@gmail.com"
-PASSWORD = "Miguel1156."
+EMAIL = os.environ.get("ADMIN_DEBORA_EMAIL", "deboradsmelo@gmail.com")
+# SEC-Z-002: password lida do env, sem fallback hardcoded.
+PASSWORD = os.environ.get("ADMIN_DEBORA_PASSWORD", "")
 NAME = "Debora Smelo"
 
 
 async def main():
+    if not PASSWORD:
+        print("Erro: ADMIN_DEBORA_PASSWORD não definida no ambiente. Abortar.", file=sys.stderr)
+        sys.exit(1)
     email = EMAIL.lower().strip()
     existing = await db.users.find_one({"email": email})
     if existing:
