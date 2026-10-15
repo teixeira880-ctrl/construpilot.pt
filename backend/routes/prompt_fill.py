@@ -3,10 +3,14 @@
 Mantém o funcionamento manual das calculadoras: só preenche campos a partir
 de um prompt livre em português europeu. O endpoint devolve um envelope JSON
 que o frontend aplica ao estado local (nunca força submissão).
-"""
-from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+NOTA: `from __future__ import annotations` foi REMOVIDO porque interfere com
+a inspecção de signature feita por slowapi + FastAPI/Pydantic v2 — levava
+o FastAPI a resolver o body como query param (HTTP 422).
+"""
+from typing import Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from core.rate_limit import limiter
@@ -27,7 +31,7 @@ router = APIRouter(prefix="/prompt-fill", tags=["prompt-fill"])
 
 class PromptIn(BaseModel):
     prompt: str = Field(..., min_length=3, max_length=2000)
-    contexto: dict | None = None
+    contexto: Optional[dict] = None
 
 
 @router.get("/apps")
@@ -43,9 +47,10 @@ async def listar_apps(user=Depends(current_user)):
 @router.post("/{app_key}")
 @limiter.limit("20/hour")
 async def preencher(
+    request: Request,                    # obrigatório como PRIMEIRO parâmetro p/ slowapi
+    response: Response,                  # obrigatório p/ slowapi injectar headers rate-limit
     app_key: str,
-    body: PromptIn,
-    request: Request,  # necessário para slowapi
+    body: PromptIn = Body(...),          # força body JSON (evita regressão para query)
     user=Depends(current_user),
 ):
     ext = REGISTRY.get(app_key)
