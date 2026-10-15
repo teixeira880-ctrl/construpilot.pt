@@ -21,8 +21,39 @@ ALLOWED_DOCUMENT = ["application/pdf"]
 ALLOWED_CAD = [
     "application/dxf", "image/vnd.dxf",
     "application/acad", "application/x-autocad",
-    "application/octet-stream",  # muitos browsers enviam DWG/DXF assim
+    "application/octet-stream",  # DWG/DXF/IFC — valida por magic-bytes
 ]
+
+
+# ─── Magic-bytes para ficheiros CAD (SEC-Y-004) ────────────────────────────
+# DWG: "AC" + 4 chars (versão, ex. "1032" para R2007, "1024" para R2010, etc.).
+# DXF: ASCII começa com "0\r\nSECTION" (ou com comentários "999") OU começa com
+#      binário "AutoCAD Binary DXF".
+# IFC/STEP: "ISO-10303-21;" (ISO 10303 Part 21 / STEP).
+_DWG_VERSIONS = {b"1012", b"1014", b"1015", b"1018", b"1021", b"1024", b"1027",
+                 b"1032", b"1035", b"1040", b"1041"}
+
+def _detect_cad_magic(raw: bytes) -> bool:
+    """Devolve True se os primeiros bytes correspondem a DWG/DXF/IFC conhecidos."""
+    if len(raw) < 8:
+        return False
+    head = raw[:1024]
+    # DWG: começa com "AC" + 4 chars de versão
+    if head[:2] == b"AC" and head[2:6] in _DWG_VERSIONS:
+        return True
+    # DXF binário
+    if head.startswith(b"AutoCAD Binary DXF"):
+        return True
+    # DXF ASCII: começa com "0\r\nSECTION" ou "0\nSECTION" ou comentário "999"
+    stripped = head.lstrip()
+    if stripped.startswith(b"0\r\nSECTION") or stripped.startswith(b"0\nSECTION"):
+        return True
+    if stripped.startswith(b"999"):
+        return True
+    # IFC / STEP (ISO 10303-21 / 10303-28)
+    if head.startswith(b"ISO-10303-"):
+        return True
+    return False
 ALLOWED_IMPORT = ["text/csv", "application/vnd.ms-excel",
                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
 ALLOWED_OFFICE = [
@@ -81,6 +112,22 @@ async def validate_upload(
             detail=f"Tipo de ficheiro não permitido: '{ctype}'. "
                    f"Aceites: {', '.join(allowed)}",
         )
+    # SEC-Y-004: se o endpoint aceita CAD e o ficheiro vem com content-type
+    # genérico 'application/octet-stream', confirma por magic-bytes.
+    if (ctype == "application/octet-stream"
+            and any(a == "application/octet-stream" for a in ALLOWED_CAD)
+            and any(a in ALLOWED_CAD for a in allowed)):
+        try:
+            pos = file.file.tell()
+            head = file.file.read(1024)
+            file.file.seek(pos)
+        except Exception:
+            head = b""
+        if not _detect_cad_magic(head):
+            raise HTTPException(
+                status_code=400,
+                detail="Formato CAD não reconhecido (DWG/DXF/IFC esperado).",
+            )
     # Tamanho: tenta file.size (FastAPI>=0.95), senão lê o stream.
     size = getattr(file, "size", None)
     if size is None:
