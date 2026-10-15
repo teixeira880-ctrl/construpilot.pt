@@ -12,6 +12,12 @@ import { SEO } from "@/components/SEO";
 import PromptBar from "@/components/PromptBar";
 import { useHaptic } from "@/hooks/useHaptic";
 
+// S3.1 — PinchZoom NÃO integrado aqui porque AutorizacaoObras não renderiza
+// visualmente o processo gerado: o step de resultados mostra apenas checklist
+// textual + textarea editável para a memória descritiva + descarga do PDF/ZIP.
+// Sem viewer de imagem/canvas/PDF embebido, pinch-to-zoom não se aplica.
+// Decisão documentada.
+
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const TIPOS = [

@@ -8,6 +8,11 @@ import PromptBar from "@/components/PromptBar";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useHaptic } from "@/hooks/useHaptic";
 
+// S3.1 — PinchZoom NÃO integrado aqui porque StructuroHouse não renderiza
+// visualmente a planta carregada: só extrai parâmetros do form (geometria,
+// pisos, cave) e gera um PDF descarregável. Sem viewer de imagem/canvas,
+// pinch-to-zoom não se aplica. Decisão documentada.
+
 const USE_LABEL = {
   habitacao: "Habitação",
   garagem: "Garagem",

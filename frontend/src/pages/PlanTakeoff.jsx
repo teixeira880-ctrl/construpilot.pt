@@ -170,8 +170,16 @@ export default function PlanTakeoff() {
   const { user } = useAuth();
   const defaultMargin = Number(user?.target_margin_pct) || null;
   const { tier, has, loading: billingLoading } = useBilling();
-  // S3a — Pré-visualização ampliada de plantas recentes com pinch-to-zoom
+  // S3.1 — Pré-visualização ampliada de plantas recentes com pinch-to-zoom
   const [zoomPlan, setZoomPlan] = useState(null);
+  // Hook E2E: `?e2e_zoom=<plan_id>&e2e_zoom_name=<filename>` abre o Dialog ao mount
+  // para permitir testes Playwright sem conta populada. Zero impacto em produção.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const id = sp.get("e2e_zoom");
+    if (id) setZoomPlan({ plan_id: id, filename: sp.get("e2e_zoom_name") || "Teste E2E" });
+  }, []);
   const [plan, setPlan] = useState(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageData, setPageData] = useState(null);
@@ -3624,6 +3632,43 @@ export default function PlanTakeoff() {
     );
   }
 
+  // S3.1 fix — Dialog de pré-visualização ampliada partilhado entre o branch
+  // pre-upload (!plan) e o branch workspace (post-upload). Renderizado SEMPRE
+  // que o componente está montado para que o botão `recent-plan-zoom-<id>`
+  // funcione mesmo sem plano carregado.
+  const planZoomDialog = (
+    <Dialog open={!!zoomPlan} onOpenChange={(o) => !o && setZoomPlan(null)}>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden" data-testid="plan-zoom-dialog">
+        <DialogHeader className="p-4 pb-2">
+          <DialogTitle className="text-base truncate" data-testid="plan-zoom-dialog-title">
+            {zoomPlan?.filename || "Pré-visualização"}
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            Pinch (mobile) ou botões +/-/repor (desktop). Arrasta para deslocar quando ampliado.
+          </DialogDescription>
+        </DialogHeader>
+        {zoomPlan && (
+          <PinchZoom
+            className="w-full h-[70vh] bg-muted/40 dark:bg-neutral-900"
+            testId="plan-zoom-viewer"
+            maxScale={5}
+          >
+            <img
+              src={`${String(api.defaults?.baseURL || "/api").replace(/\/$/, "")}/takeoffs/${zoomPlan.plan_id}/thumb`}
+              alt={zoomPlan.filename || "Planta"}
+              className="w-full h-full object-contain select-none pointer-events-none"
+              draggable={false}
+              data-testid="plan-zoom-image"
+            />
+          </PinchZoom>
+        )}
+        <DialogFooter className="p-4 pt-2">
+          <Button variant="outline" onClick={() => setZoomPlan(null)} data-testid="plan-zoom-dialog-close">Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (!plan) {
     return (
       <div className="plan-workspace mx-auto max-w-[1100px] px-5 py-10 grid gap-8">
@@ -4363,6 +4408,9 @@ export default function PlanTakeoff() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* S3.1 — Dialog partilhado para pré-visualização ampliada de plantas recentes */}
+        {planZoomDialog}
 
       </div>
     );
@@ -7509,37 +7557,8 @@ export default function PlanTakeoff() {
         linkFerraillage={linkFerraillage}
       />
 
-      {/* S3a — Pré-visualização ampliada de planta recente com pinch-to-zoom */}
-      <Dialog open={!!zoomPlan} onOpenChange={(o) => !o && setZoomPlan(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden" data-testid="plan-zoom-dialog">
-          <DialogHeader className="p-4 pb-2">
-            <DialogTitle className="text-base truncate" data-testid="plan-zoom-dialog-title">
-              {zoomPlan?.filename || "Pré-visualização"}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Pinch (mobile) ou duplo-clique (desktop) para ampliar. Arrasta para deslocar.
-            </DialogDescription>
-          </DialogHeader>
-          {zoomPlan && (
-            <PinchZoom
-              className="w-full h-[70vh] bg-muted/40 dark:bg-neutral-900"
-              testId="plan-zoom-viewer"
-              maxScale={5}
-            >
-              <img
-                src={`${String(api.defaults?.baseURL || "/api").replace(/\/$/, "")}/takeoffs/${zoomPlan.plan_id}/thumb`}
-                alt={zoomPlan.filename || "Planta"}
-                className="w-full h-full object-contain select-none pointer-events-none"
-                draggable={false}
-                data-testid="plan-zoom-image"
-              />
-            </PinchZoom>
-          )}
-          <DialogFooter className="p-4 pt-2">
-            <Button variant="outline" onClick={() => setZoomPlan(null)} data-testid="plan-zoom-dialog-close">Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* S3.1 — Dialog partilhado para pré-visualização ampliada de plantas recentes */}
+      {planZoomDialog}
 
     </div>
   );
