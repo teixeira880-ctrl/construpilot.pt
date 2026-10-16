@@ -228,6 +228,74 @@ async def test_ak1_crm_lite_fluxo_completo():
         assert pdoc["payload"]["concelho"] == "Sintra"
         await db[COLLECTION].delete_many(
             {"user_email": {"$regex": f"^ak2_{ak2}"}})
+
+        # ─── AK.4 integração: envio email mock PT + FR + rate-limit + opt-out ───
+        from unittest.mock import AsyncMock, patch
+        from datetime import datetime, timedelta, timezone
+        from engines.activity_crm.email_notifications import maybe_send_state_email
+        ak4_pref = f"ak4ak1_{uuid.uuid4().hex[:6]}_"
+
+        async def _mk_act(email_suffix: str, **overrides):
+            now_iso = datetime.now(timezone.utc).isoformat()
+            doc = {
+                "created_at": now_iso, "updated_at": now_iso,
+                "kind": "contact",
+                "user_email": f"{ak4_pref}{email_suffix}@test.pt",
+                "user_name": overrides.get("user_name", "Cliente"),
+                "user_phone": None, "summary": "Pediu orçamento",
+                "payload": {}, "source_url": None,
+                "attachments": [], "state": "novo", "assigned_to": None,
+                "internal_notes": [], "state_history": [],
+                "is_fr_project": overrides.get("is_fr_project", False),
+                "no_email": overrides.get("no_email", False),
+                "last_email_at": overrides.get("last_email_at"),
+            }
+            res = await db[COLLECTION].insert_one(doc)
+            doc["_id"] = res.inserted_id
+            return doc
+
+        with patch("engines.emailer.send_email",
+                   new=AsyncMock(return_value=None)) as mock_send:
+            # PT em_curso → envia
+            pt = await _mk_act("pt", user_name="João PT")
+            out = await maybe_send_state_email(pt, new_state="em_curso")
+            assert out["sent"] is True
+            assert out["locale"] == "pt"
+            assert "Olá João PT" in mock_send.await_args.args[2]
+
+            # FR respondido → template FR
+            mock_send.reset_mock()
+            fr = await _mk_act("fr", user_name="Jean FR", is_fr_project=True)
+            out = await maybe_send_state_email(
+                fr, new_state="respondido", custom_text="Mur en pierre")
+            assert out["sent"] is True
+            assert out["locale"] == "fr"
+            assert "Bonjour Jean FR" in mock_send.await_args.args[2]
+            assert "répondu" in mock_send.await_args.args[1]
+
+            # Rate-limit (2 min atrás)
+            mock_send.reset_mock()
+            recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
+            rl = await _mk_act("rl", last_email_at=recent)
+            out = await maybe_send_state_email(rl, new_state="em_curso")
+            assert out["sent"] is False
+            assert "rate-limit" in out["reason"]
+            assert mock_send.await_count == 0
+
+            # Opt-out
+            opt = await _mk_act("opt", no_email=True)
+            out = await maybe_send_state_email(opt, new_state="fechado")
+            assert out["sent"] is False
+            assert "opt-out" in out["reason"]
+
+            # Estado 'novo' não notificável
+            nv = await _mk_act("nv")
+            out = await maybe_send_state_email(nv, new_state="novo")
+            assert out["sent"] is False
+            assert "não notificável" in out["reason"]
+
+        await db[COLLECTION].delete_many(
+            {"user_email": {"$regex": f"^{ak4_pref}"}})
     finally:
         await db[COLLECTION].delete_many(PREFIX_FILTER)
         await db.users.delete_many({"email": {"$in": list(emails.values())}})

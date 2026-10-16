@@ -200,14 +200,14 @@ async def patch_activity(
     await db[COLLECTION].update_one({"_id": oid}, update)
     new_doc = await db[COLLECTION].find_one({"_id": oid})
 
-    # Email automático (fail-soft; só se mudou estado e send_email não False)
-    if pushes and patch.send_email is not False and not new_doc.get("no_email"):
+    # Email automático (opt-in explícito via send_email=True)
+    if pushes and patch.send_email is True:
         try:
             from engines.activity_crm.email_notifications import maybe_send_state_email
             await maybe_send_state_email(new_doc, new_state=patch.state,
-                                         force=bool(patch.send_email))
+                                         custom_text=patch.note)
         except Exception:
-            # fail-soft, maybe_send_state_email ainda não implementado em AK.1
+            # fail-soft (não deve propagar)
             pass
 
     return _serialize(new_doc)
