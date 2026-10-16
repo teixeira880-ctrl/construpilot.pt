@@ -47,6 +47,7 @@ import { ProfileForm } from "@/components/account/ProfileForm";
 import { PasswordForm } from "@/components/account/PasswordForm";
 import { DevicesList } from "@/components/account/DevicesList";
 import { TwoFaCard } from "@/components/account/TwoFaCard";
+import PedidosRecentes from "@/pages/admin/PedidosRecentes";
 
 export default function Admin() {
   const { text: expenseText } = useExpenseCopy();
@@ -171,6 +172,25 @@ export default function Admin() {
         <Stat label={t("admin.k_estimated_volume")} value={eur(stats.estimated_volume)} testId="admin-stat-volume" onClick={() => setDrill("estimated_volume")} />
       </div>
       <AdminDrillDialog metric={drill} onClose={() => setDrill(null)} />
+
+      {/* AK.3 — Widget CRM lite: pedidos recentes */}
+      <section data-testid="admin-pedidos-section" className="grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <PedidosRecentes limit={5} />
+        </div>
+        <div className="rounded border p-4 bg-background space-y-2">
+          <h3 className="font-semibold">Acessos rápidos</h3>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <a href="/admin/pedidos" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-all">Todos os pedidos</a>
+            <a href="/admin/contactos" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-contactos">Contactos</a>
+            <a href="/admin/orcamentos" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-orcamentos">Orçamentos</a>
+            <a href="/admin/autorizacoes" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-autorizacoes">Autorizações</a>
+            <a href="/admin/ia" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-ia">Chats IA</a>
+            <a href="/admin/downloads" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-downloads">Downloads</a>
+            <a href="/admin/calculos" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-calculos">Cálculos</a>
+          </div>
+        </div>
+      </section>
 
       <Tabs defaultValue={["radar", "postal", "despesas", "ai", "support", "journey", "budget", "pilotage"].includes(searchParams.get("tab")) ? searchParams.get("tab") : "journey"}>
         <TabsList className="rounded-sm flex-wrap h-auto">

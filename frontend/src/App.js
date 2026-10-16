@@ -45,6 +45,11 @@ import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import AgentsHub from "@/pages/AgentsHub";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
+import PedidosHub from "@/pages/admin/PedidosHub";
+import {
+  PedidosContactos, PedidosOrcamentos, PedidosIA,
+  PedidosAutorizacoes, PedidosDownloads, PedidosCalculos,
+} from "@/pages/admin/PedidosByKind";
 import SavingsCalculator from "@/pages/SavingsCalculator";
 import { ExpenseAdminPanel } from "@/components/admin/ExpenseAdminPanel";
 import NotFound from "@/pages/NotFound";
@@ -380,6 +385,13 @@ function AppRouter() {
       <Route path="/bienvenue" element={<Protected><Shell><Welcome /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
+      <Route path="/admin/pedidos" element={<Protected admin><Shell><PedidosHub /></Shell></Protected>} />
+      <Route path="/admin/contactos" element={<Protected admin><Shell><PedidosContactos /></Shell></Protected>} />
+      <Route path="/admin/orcamentos" element={<Protected admin><Shell><PedidosOrcamentos /></Shell></Protected>} />
+      <Route path="/admin/ia" element={<Protected admin><Shell><PedidosIA /></Shell></Protected>} />
+      <Route path="/admin/autorizacoes" element={<Protected admin><Shell><PedidosAutorizacoes /></Shell></Protected>} />
+      <Route path="/admin/downloads" element={<Protected admin><Shell><PedidosDownloads /></Shell></Protected>} />
+      <Route path="/admin/calculos" element={<Protected admin><Shell><PedidosCalculos /></Shell></Protected>} />
       <Route path="/admin/despesas" element={<Protected admin><Shell><ExpenseAdminPanel standalone /></Shell></Protected>} />
       <Route path="/admin/growth" element={<Protected><Shell><GrowthPage /></Shell></Protected>} />
       <Route path="/analyse/:planId" element={<ProRoute><Shell><PlanAnalysis /></Shell></ProRoute>} />
