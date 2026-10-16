@@ -246,6 +246,8 @@ from routes import stairs as stairs_routes  # noqa: E402
 api_router.include_router(stairs_routes.router)
 from routes import prompt_fill as prompt_fill_routes  # noqa: E402
 api_router.include_router(prompt_fill_routes.router)
+from routes import admin_activity as admin_activity_routes  # noqa: E402
+api_router.include_router(admin_activity_routes.router)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
@@ -399,6 +401,12 @@ async def seed():
         await recover_interrupted()
     except Exception as e:
         logger.warning(f"growth recover skipped: {e}")
+    # AK.1 — índices do CRM lite (idempotente)
+    try:
+        from routes.admin_activity import ensure_indexes as _ak_indexes
+        await _ak_indexes()
+    except Exception as e:
+        logger.warning(f"customer_activity indexes skipped: {e}")
     # SEC-X-002 : contas E2E provisionadas em provisioned_accounts.py (com
     # passwords em claro no código) só são criadas se SEED_DEMO_DATA=true.
     # Default: desligado — produção não cria contas de teste.
