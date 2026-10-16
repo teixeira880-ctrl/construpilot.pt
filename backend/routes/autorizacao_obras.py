@@ -144,6 +144,32 @@ async def dossier_gerar(request: Request, response: Response, body: DossierIn,
     out = await gerar_dossier(body.respostas or {}, body.diagnostico or {},
                                pecas_carregadas=pecas, requerente=requerente,
                                memoria_override=body.memoria_override)
+    # AK.2 — regista no CRM lite (fail-soft)
+    try:
+        from engines.activity_crm.record import record_activity
+        diag = body.diagnostico or {}
+        respostas = body.respostas or {}
+        req_email = (requerente or {}).get("email") or user.get("email") or ""
+        req_nome = (requerente or {}).get("nome") or user.get("name") or ""
+        req_phone = (requerente or {}).get("telefone")
+        tipo_obra = diag.get("tipo_obra") or respostas.get("tipo_obra") or "autorizacao_obras"
+        concelho = respostas.get("concelho") or diag.get("concelho")
+        area = respostas.get("area_m2") or diag.get("area_m2")
+        await record_activity(
+            kind="permit",
+            user_email=req_email,
+            user_name=req_nome,
+            user_phone=req_phone,
+            summary=f"Dossier autorização obras: {tipo_obra}"
+                    + (f" — {concelho}" if concelho else "")[:160],
+            source_url="/api/particulares/autorizacao/dossier/gerar",
+            payload={
+                "tipo_obra": tipo_obra, "concelho": concelho, "area_m2": area,
+                "version": out.get("version"),
+            },
+        )
+    except Exception:
+        pass
     return {
         "ok": True,
         "version": out["version"],

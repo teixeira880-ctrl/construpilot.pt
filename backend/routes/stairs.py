@@ -82,7 +82,22 @@ async def calculate_helicoidal(payload: HelicoidalInput, user=Depends(pro_requir
 @router.post("/optimize", response_model=OptimizeResult)
 async def optimize_stair(payload: OptimizeInput, user=Depends(pro_required)) -> OptimizeResult:
     """Propose N solutions d'escalier triées par pertinence (optimiseur)."""
-    return compute_optimize(payload)
+    result = compute_optimize(payload)
+    # AK.2 — regista cálculo no CRM lite (fail-soft)
+    try:
+        from engines.activity_crm.record import record_activity
+        n_solutions = len(getattr(result, "solutions", []) or [])
+        await record_activity(
+            kind="calculation",
+            user_email=user.get("email") or "",
+            user_name=user.get("name") or "",
+            summary=f"Otimizador escadas — {n_solutions} soluções"[:160],
+            source_url="/api/stairs/optimize",
+            payload={"calc_type": "stair_optimize", "n_solutions": n_solutions},
+        )
+    except Exception:
+        pass
+    return result
 
 
 @router.post("/concrete/analyze", response_model=ConcreteAnalysisResult)

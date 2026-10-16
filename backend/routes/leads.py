@@ -79,6 +79,26 @@ async def create_lead(body: LeadIn, user=Depends(optional_user)):
     doc["department"] = _dept_from_text(body.postal_code, body.address, body.description)
     await db.leads.insert_one(doc)
     doc.pop("_id", None)
+    # AK.2 — regista no CRM lite (fail-soft)
+    try:
+        from engines.activity_crm.record import record_activity
+        await record_activity(
+            kind="contact",
+            user_email=body.email or (user.get("email") if user else "")
+                       or "anonimo@construpilot.local",
+            user_name=body.name or "",
+            user_phone=getattr(body, "phone", None),
+            summary=(body.description or body.name or "Novo pedido de contacto")[:160],
+            source_url="/api/leads",
+            payload={
+                "lead_id": doc["lead_id"],
+                "source": body.source,
+                "postal_code": body.postal_code,
+                "department": doc.get("department"),
+            },
+        )
+    except Exception:
+        pass
     # E-mail de bienvenue automatique pour les leads venant de la page d'accueil
     if body.email and (body.source or "").startswith("landing"):
         asyncio.create_task(_send_welcome(body.email, body.name))

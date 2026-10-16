@@ -774,6 +774,24 @@ async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     from engines import activity
     await activity.log(user, f"{dtype}.create", "document", doc.get("title") or dtype,
                        {"doc_id": doc["doc_id"]})
+    # AK.2 — regista no CRM lite se for orçamento (quote)
+    if dtype == "quote":
+        try:
+            from engines.activity_crm.record import record_activity
+            await record_activity(
+                kind="quote",
+                user_email=user.get("email") or "",
+                user_name=user.get("name") or "",
+                summary=f"Orçamento criado: {doc.get('title') or 'sem título'}"[:160],
+                source_url="/api/documents",
+                payload={
+                    "doc_id": doc["doc_id"],
+                    "total": doc.get("totals", {}).get("total"),
+                    "client_id": doc.get("client_id"),
+                },
+            )
+        except Exception:
+            pass
     try:
         from routes.library import auto_save_from_lines
         await auto_save_from_lines(user["user_id"], doc.get("lines"))
@@ -1730,6 +1748,20 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
     from routes.plans_common import _resolve_branding
     from routes.reviews import get_reviews_for_user
     doc = await _get_owned(doc_id, user)
+    # AK.2 — regista download no CRM lite (fail-soft; antes do processamento pesado)
+    try:
+        from engines.activity_crm.record import record_activity
+        await record_activity(
+            kind="download",
+            user_email=user.get("email") or "",
+            user_name=user.get("name") or "",
+            summary=f"PDF {doc.get('doc_type', 'documento')}: {doc.get('title') or doc_id}"[:160],
+            source_url=f"/api/documents/{doc_id}/pdf",
+            payload={"doc_id": doc_id, "doc_type": doc.get("doc_type"),
+                     "number": doc.get("number")},
+        )
+    except Exception:
+        pass
     # Numérote à la volée si besoin pour que le PDF porte un numéro.
     if not doc.get("number"):
         doc["number"] = await _next_number(user["user_id"], doc["doc_type"])

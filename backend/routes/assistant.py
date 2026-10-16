@@ -1452,6 +1452,28 @@ async def message(body: MsgIn, user=Depends(current_user)) -> dict:
         if ev["type"] == "error":
             raise HTTPException(502, ev["error"])
         if ev["type"] == "done":
+            # AK.2 — regista chat IA no CRM lite (1x por conversa, fail-soft)
+            try:
+                from engines.activity_crm.record import record_activity
+                from core.db import db as _db
+                conv_id = body.conversation_id if hasattr(body, "conversation_id") else None
+                already = None
+                if conv_id:
+                    already = await _db.customer_activity.find_one(
+                        {"kind": "ai_chat", "payload.conversation_id": conv_id},
+                        {"_id": 1},
+                    )
+                if not already:
+                    await record_activity(
+                        kind="ai_chat",
+                        user_email=user.get("email") or "",
+                        user_name=user.get("name") or "",
+                        summary=f"Conversa com assistente IA iniciada"[:160],
+                        source_url="/api/assistant/message",
+                        payload={"conversation_id": conv_id},
+                    )
+            except Exception:
+                pass
             return ev["message"]
     raise HTTPException(502, "Assistente indisponível")
 
