@@ -35,8 +35,12 @@ async def main():
             await page.click('button:has-text("Tout accepter")', timeout=2500)
         except Exception:
             pass
-        await page.fill('input[type="email"]', 'pro@construpilot.fr')
-        await page.fill('input[type="password"]', 'Pro2026!')
+        _email = os.environ.get("DEMO_RECORDER_EMAIL") or "pro@construpilot.fr"
+        _pwd = os.environ.get("DEMO_RECORDER_PASSWORD")
+        if not _pwd:
+            raise SystemExit("DEMO_RECORDER_PASSWORD ausente no ambiente. Abort.")
+        await page.fill('input[type="email"]', _email)
+        await page.fill('input[type="password"]', _pwd)
         await page.click('button:has-text("Se connecter")')
         await page.wait_for_timeout(4000)
         await light(page)

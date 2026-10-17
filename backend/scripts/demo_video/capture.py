@@ -4,7 +4,10 @@ from playwright.async_api import async_playwright
 
 BASE = open("/app/frontend/.env").read().split("REACT_APP_BACKEND_URL=")[1].split("\n")[0].strip()
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/app/backend/scripts/demo_video/work/shots"
-EMAIL, PWD = "pro@construpilot.fr", "Pro2026!"
+EMAIL = os.environ.get("DEMO_RECORDER_EMAIL") or "pro@construpilot.fr"
+PWD = os.environ.get("DEMO_RECORDER_PASSWORD")
+if not PWD:
+    raise SystemExit("DEMO_RECORDER_PASSWORD ausente no ambiente. Abort.")
 
 # (slug, url, actions) — actions = liste de (kind, arg)
 SCENES = [

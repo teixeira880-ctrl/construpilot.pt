@@ -16,7 +16,8 @@ const BACKEND_URL =
   process.env.BACKEND_URL ||
   fs.readFileSync(path.join(__dirname, "..", ".env"), "utf8").match(/REACT_APP_BACKEND_URL=(.+)/)?.[1]?.trim();
 const EMAIL = process.env.E2E_EMAIL || "teste.pro+e2e@construpilot.pt";
-const PASSWORD = process.env.E2E_PASSWORD || "TesteE2E!2026";
+const PASSWORD = process.env.E2E_PASSWORD || process.env.TEST_PRO_PASSWORD;
+if (!PASSWORD) { console.error('E2E_PASSWORD/TEST_PRO_PASSWORD ausentes no ambiente. Abort.'); process.exit(2); }
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
 async function loginInContext(ctx) {

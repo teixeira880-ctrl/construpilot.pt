@@ -420,14 +420,25 @@ async def seed():
             logger.warning(f"provisioned accounts skipped: {e}")
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
+    # Règle sécurité : zéro password en clair dans le code — les 5 passwords
+    # sont lues de l'environnement (une var par compte). Si une var est
+    # absente/vide, ce compte n'est tout simplement pas créé.
     if os.environ.get("SEED_DEMO_DATA") == "true":
-        accounts = (
-            (ADMIN_EMAIL,     "Admin ConstruPilot", "admin", "premium", "Construpilot2026!"),
-            (DEMO_EMAIL,      "Cliente Demo",        "user",  "premium", "Demo2026!"),
-            (CLIENT_EMAIL,    "Ana Particular",  "user",  "free",    "Client2026!"),
-            (PRO_EMAIL,       "Marc BTP (Pro)",     "user",  "premium", "Pro2026!"),
-            (COLLEGUE_EMAIL,  "Joana Colega",     "user",  "free",    "Collegue2026!"),
-        )
+        def _demo_pwd(key: str) -> str | None:
+            v = (os.environ.get(key) or "").strip()
+            return v if v else None
+
+        _seed_specs = [
+            (ADMIN_EMAIL,    "Admin ConstruPilot", "admin", "premium", _demo_pwd("SEED_ADMIN_DEMO_PASSWORD")),
+            (DEMO_EMAIL,     "Cliente Demo",       "user",  "premium", _demo_pwd("SEED_DEMO_PASSWORD")),
+            (CLIENT_EMAIL,   "Ana Particular",     "user",  "free",    _demo_pwd("SEED_CLIENT_DEMO_PASSWORD")),
+            (PRO_EMAIL,      "Marc BTP (Pro)",     "user",  "premium", _demo_pwd("SEED_PRO_DEMO_PASSWORD")),
+            (COLLEGUE_EMAIL, "Joana Colega",       "user",  "free",    _demo_pwd("SEED_COLLEGUE_DEMO_PASSWORD")),
+        ]
+        accounts = tuple((e, n, r, p, pw) for (e, n, r, p, pw) in _seed_specs if pw)
+        _skipped = [e for (e, n, r, p, pw) in _seed_specs if not pw]
+        if _skipped:
+            logger.warning("Seed demo: contas saltadas por falta de password em env: %s", _skipped)
         for email, name, role, plan, pw in accounts:
             existing = await db.users.find_one({"email": email})
             if existing:

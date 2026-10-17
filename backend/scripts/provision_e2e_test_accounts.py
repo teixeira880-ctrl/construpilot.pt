@@ -29,7 +29,7 @@ MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
 
 # SEC-Z-002: password lida do env, sem fallback hardcoded.
-# Em dev/CI, exportar: E2E_TEST_PASSWORD=TesteE2E!2026
+# Em dev/CI, exportar E2E_TEST_PASSWORD (valor nunca escrito em código).
 TEST_PASSWORD = os.environ.get("E2E_TEST_PASSWORD", "")
 VALID_DAYS = 2
 

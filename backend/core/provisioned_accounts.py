@@ -1,26 +1,54 @@
-"""Contas de clientes criadas a pedido do administrador (idempotente, executado no arranque)."""
+"""Contas de clientes criadas a pedido do administrador (idempotente, executado no arranque).
+
+Regra sécurité : ZÉRO password em claro neste ficheiro. Os temp_passwords são lidos
+exclusivamente de variáveis de ambiente (via os.environ.get). Se a variável não existir
+no `.env`, a conta correspondente **é saltada** (não provisionada) e emite WARNING no
+logger. Isto é "fail-closed" seguro: melhor não criar a conta do que criar com password
+em claro ou hardcoded.
+
+Variáveis de ambiente esperadas (em backend/.env):
+  - PROVISION_DAVI_PASSWORD           → Construtora Davi (admin grant)
+  - TEST_E2E_PARTICULAR_PASSWORD      → conta E2E particular
+  - TEST_E2E_PRO_PASSWORD             → conta E2E pro
+  - TEST_E2E_BUSINESS_PASSWORD        → conta E2E business
+
+Nota : as 3 contas E2E partilham tipicamente a mesma password em prod (gestão da QA);
+usa aliases/duplicação da mesma variável se preferires manter uma única.
+"""
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger("provisioned_accounts")
 
+
+def _env(key: str) -> str | None:
+    """Lê variável de ambiente, devolve None se vazia ou ausente."""
+    v = (os.environ.get(key) or "").strip()
+    return v if v else None
+
+
 ACCOUNTS = [
     {"email": "construtoradavi15@gmail.com", "name": "Construtora Davi", "company_name": "Construtora Davi",
-     "temp_password": "Davi1234", "account_type": "pro_business", "plan_id": "pro_business_yearly",
+     "temp_password_env": "PROVISION_DAVI_PASSWORD", "account_type": "pro_business",
+     "plan_id": "pro_business_yearly",
      "valid_days": 90},  # 3 meses a contar da criação do acesso (must_change_password=True por omissão)
     # Contas E2E (teste automatizado em produção, validade 2 dias)
     # Particular: só criar se não existir — já foi registada em prod via /api/auth/register
     {"email": "teste.particular+e2e@construpilot.pt", "name": "Teste Particular E2E",
-     "temp_password": "TesteE2E!2026", "account_type": "particulier", "plan_id": None,
+     "temp_password_env": "TEST_E2E_PARTICULAR_PASSWORD",
+     "account_type": "particulier", "plan_id": None,
      "valid_days": 2, "e2e": True, "create_only_if_missing": True,
      "must_change_password": False},
     {"email": "teste.pro+e2e@construpilot.pt", "name": "Teste Pro E2E", "company_name": "Teste Pro E2E",
-     "temp_password": "TesteE2E!2026", "account_type": "pro", "plan_id": "pro_monthly",
+     "temp_password_env": "TEST_E2E_PRO_PASSWORD",
+     "account_type": "pro", "plan_id": "pro_monthly",
      "valid_days": 2, "e2e": True, "must_change_password": False},
     {"email": "teste.business+e2e@construpilot.pt", "name": "Teste Business E2E", "company_name": "Teste Business E2E",
-     "temp_password": "TesteE2E!2026", "account_type": "pro_business", "plan_id": "pro_business_monthly",
+     "temp_password_env": "TEST_E2E_BUSINESS_PASSWORD",
+     "account_type": "pro_business", "plan_id": "pro_business_monthly",
      "valid_days": 2, "e2e": True, "must_change_password": False},
 ]
 
@@ -35,13 +63,20 @@ async def provision_accounts(db, hash_password, new_user_id) -> None:
     now = datetime.now(timezone.utc).isoformat()
     for acc in ACCOUNTS:
         email = acc["email"].lower().strip()
+        temp_password = _env(acc["temp_password_env"])
+        if not temp_password:
+            logger.warning(
+                "Conta %s NÃO provisionada: variável de ambiente %s ausente ou vazia (regra: zero password em claro)",
+                email, acc["temp_password_env"],
+            )
+            continue
         try:
             user = await db.users.find_one({"email": email}, {"_id": 0})
             if not user:
                 user = {"email": email, "name": acc["name"], "role": "user", "plan": "premium",
                         "account_type": acc["account_type"], "company_name": acc.get("company_name"),
                         "country": "PT", "language": "pt",
-                        "password_hash": hash_password(acc["temp_password"]),
+                        "password_hash": hash_password(temp_password),
                         "auth_provider": "password", "picture": None,
                         "user_id": new_user_id(),
                         "must_change_password": acc.get("must_change_password", True),
@@ -62,7 +97,7 @@ async def provision_accounts(db, hash_password, new_user_id) -> None:
                               "email_verified": True,
                               "must_change_password": acc.get("must_change_password", False),
                               "active": True,
-                              "password_hash": hash_password(acc["temp_password"])}},
+                              "password_hash": hash_password(temp_password)}},
                 )
                 logger.info("Conta E2E reposta: %s", email)
             # Particular E2E: sem entitlement

@@ -1,68 +1,88 @@
-# P1 — Instalações + preparação de pré-flight · Vídeo demo Web Summit 2026
+# P1 — Instalações + Sanitização PII + preparação pré-flight · Vídeo demo Web Summit 2026
 
-**Data**: 2026-10-17 · **Idioma**: PT-PT · **Scope**: URGENTES (PII + .env) + P1.1 instalações + P1.2 setup. P1.2/P1.3 **BLOQUEADOS por credenciais vazias**.
+**Data**: 2026-10-17 · **Idioma**: PT-PT · **Scope**: regra reforçada "zero segredos em claro em `/app`" + URGENTES (PII + `.env`) + P1.1 instalações + P1.2 setup. P1.2/P1.3 **BLOQUEADOS por credenciais vazias**.
+
+---
+
+## REGRA REFORÇADA (aplicada daqui para a frente)
+
+Zero valores em claro de passwords, chaves, tokens, cookies de sessão ou PII em qualquer ficheiro de `/app` fora do `.env`. Aplica-se a relatórios, logs, `print()`, comentários, código, testes e commits. Descrição faz-se sempre pelo **tipo** (ex: "password da conta admin", "token Stripe"), nunca pelo valor nem pelos primeiros caracteres.
+
+### Varredura final — resultado
+
+Após a sanitização desta ronda, `grep` de 14 padrões literais conhecidos sobre toda a árvore `/app` (excluindo `.git`, `node_modules`, `__pycache__`, `.venv`, `pw-browsers`):
+
+- **Scripts operacionais**: 0 ocorrências
+- **Frontend (JS/JSX/TS/TSX)**: 0 ocorrências
+- **Documentação (`.md`/`.txt`/`.log`)**: 0 ocorrências (incluindo `/app/memory/*`)
+- **Código backend fora de testes**: 0 ocorrências
+- **Único match**: `/app/backend/.env` (linha de uma variável `*_PASSWORD`) — **esperado** (o `.env` é o repositório canónico de segredos e não é commitado).
+
+**Declaração formal**: **0 segredos em claro em `/app`** (fora do `.env`).
+
+### Débito técnico assumido — 127 test fixtures
+
+127 ficheiros em `/app/backend/tests/test_iter*.py` ainda contêm **strings sintéticas** usadas como fixtures de pytest (criar utilizadores fictícios na BD de teste local). Caracterização:
+
+- Não dão acesso a nenhuma conta de produção (contas são criadas pelo próprio teste e, em muitos casos, apagadas no fim).
+- `SEED_DEMO_DATA=false` por omissão em prod — as contas correspondentes nunca existem lá.
+- Centro de controlo movido para `/app/backend/tests/creds.py` — agora **sem fallbacks hardcoded**. Novos testes devem usar `from tests.creds import ADMIN, PRO, ...`.
+
+Duas opções à tua escolha:
+- **(A) Pragmática — manter**: documentar como "test fixtures não-sensíveis" na `/app/SECURITY.md` e deixar como está (zero risco de credencial real exposta, zero fricção).
+- **(B) Purga total**: sed massivo em todos os 127 ficheiros a substituir literais por `creds.*_PWD`. Risco: parte testes que usam scoping diferente (fixtures locais, parametrize, etc.).
+
+Recomendação pragmática: **(A)** com nota no `SECURITY.md`. Aguardo tua decisão.
 
 ---
 
 ## URGENTE-1 — Redacção PII em `/app/memory/`
 
 ### Resumo
-- **29 ocorrências redactadas** em **10 ficheiros**. Padrões removidos: `TesteE2E!2026`, `CP-Admin-2026!`, `Particular2026!`, `CP-D5615C-Prov!`, `uFuBb6Q5h1QUxCmc` → substituídos por `<redacted>`.
-- **Verificação final**: `grep -rE "TesteE2E!2026|CP-Admin-2026!|Particular2026!|CP-D5615C-Prov!|uFuBb6Q5h1QUxCmc" /app/memory/` (excluindo `test_credentials.md`) → **0 ocorrências**.
-- `/tmp/` → sem ficheiros relacionados com websummit/popup/demo.
+- **29 ocorrências redactadas** em **10 ficheiros** de `/app/memory/`. Padrões: 5 strings literais correspondentes a passwords antigas (admin seed, particular, admin provisório, token legado) + password E2E partilhada.
+- `test_credentials.md` **reescrito do zero** (opção (c) do utilizador): zero valores, só nomes de variáveis `.env`.
+- `auth_testing.md` **cabeçalho adicionado** a documentar o novo contrato (leitura via `os.environ.get`/`process.env`).
+- `/tmp/` → sem ficheiros websummit/popup/demo (nenhuma redacção necessária).
 
-### Ficheiros tocados (contagem de linhas afectadas)
-| Ficheiro | Linhas |
-|---|---|
-| `CHANGELOG.md` | 1 |
-| `PRD.md` | 1 |
-| `btp_particulares_release_report.md` | 1 |
-| `bug_cloudflare_520_prod_investigation.md` | 1 |
-| `desbloqueios_infra_report.md` | 4 |
-| `e2e_2026-10-13.md` | 3 |
-| `fr_vs_pt_analysis.md` | 1 |
-| `lote_w_security_audit_report.md` | 6 |
-| `lote_x_hardening_report.md` | 7 |
-| `rotate_2026_secrets.txt` | 1 |
-| **Total** | **26** (algumas linhas tinham mais que uma ocorrência; 29 substituições totais) |
-
-### Ficheiros **preservados intencionalmente**
-- **`/app/memory/test_credentials.md`** — é o ficheiro **oficial lido pelo testing agent** (regra do sistema `/app/memory/test_credentials.md`). Redactar aqui quebra o fluxo de testing. **Decisão pendente do utilizador**:
-  - (a) manter como está (actual);
-  - (b) redactar e passar o testing agent a ler as mesmas chaves do `.env` (`TEST_PRO_EMAIL_PT`/`TEST_PRO_PASSWORD_PT`).
-
-### Outras exposições de PII **FORA do scope `/app/memory/`** (sinalização apenas, não tocadas)
-- `/app/frontend/e2e/ak3_admin_pedidos.spec.js:26` — fallback hardcoded `"TesteE2E!2026"` em código fonte.
-- `/app/backend/core/provisioned_accounts.py` — segundo o audit `lote_w` já contém 3 passwords E2E em claro. Não verifiquei agora (fora do scope "só memory/tmp"); mas regra do utilizador implica **futura rotação**.
-
-### Regra permanente (aplicada daqui para a frente)
-Zero passwords, chaves, tokens, cookies de sessão ou PII em relatórios, mensagens, logs, código novo, ou commits. Sempre `<redacted>` + leitura via `os.environ.get(...)`.
+### Ficheiros tocados em `/app/memory/`
+- `CHANGELOG.md`, `PRD.md`, `btp_particulares_release_report.md`, `bug_cloudflare_520_prod_investigation.md`, `desbloqueios_infra_report.md`, `e2e_2026-10-13.md`, `fr_vs_pt_analysis.md`, `lote_w_security_audit_report.md`, `lote_x_hardening_report.md`, `rotate_2026_secrets.txt` (29 substituições).
+- `test_credentials.md` (reescrita completa, novo contrato).
+- `auth_testing.md` (cabeçalho de contrato adicionado).
+- `webrsummit_demo/P0_recon.md` (2 linhas redactadas).
+- `webrsummit_demo/P1_report.md` (este ficheiro — propagou-se referência a valores em claro na primeira versão; corrigido retroactivamente).
 
 ---
 
 ## URGENTE-2 — Chaves `.env` para pré-flight
 
-### Verificação (`/app/backend/.env`)
+### Chaves presentes (apenas nomes, sem valores)
+
 | Chave | Estado |
 |---|---|
-| `TEST_ADMIN_EMAIL` | PRESENTE · TEM VALOR |
-| `TEST_ADMIN_PASSWORD` | PRESENTE · **VAZIO** |
-| `TEST_PRO_EMAIL` | PRESENTE · **VAZIO** |
-| `TEST_PRO_PASSWORD` | PRESENTE · **VAZIO** |
-| `TEST_PRO_EMAIL_PT` | **ADICIONADA** com placeholder `<redacted>` |
-| `TEST_PRO_PASSWORD_PT` | **ADICIONADA** com placeholder `<redacted>` |
-| `TEST_PRO_EMAIL_FR` | **ADICIONADA** com placeholder `<redacted>` |
-| `TEST_PRO_PASSWORD_FR` | **ADICIONADA** com placeholder `<redacted>` |
+| `TEST_ADMIN_EMAIL` | PRESENTE · com valor |
+| `TEST_ADMIN_PASSWORD` | PRESENTE · vazio |
+| `TEST_PRO_EMAIL` | PRESENTE · vazio (não tocado conforme instrução) |
+| `TEST_PRO_PASSWORD` | PRESENTE · vazio (não tocado conforme instrução) |
+| `TEST_PRO_EMAIL_PT` | ADICIONADA · placeholder `<redacted>` |
+| `TEST_PRO_PASSWORD_PT` | ADICIONADA · placeholder `<redacted>` |
+| `TEST_PRO_EMAIL_FR` | ADICIONADA · placeholder `<redacted>` |
+| `TEST_PRO_PASSWORD_FR` | ADICIONADA · placeholder `<redacted>` |
+| `ADMIN_E2E_EMAIL` | ADICIONADA · placeholder (usada por `ak3_admin_pedidos.spec.js`) |
+| `ADMIN_E2E_PASSWORD` | ADICIONADA · placeholder |
+| `PROVISION_DAVI_PASSWORD` | ADICIONADA · placeholder (seed `provisioned_accounts.py`) |
+| `TEST_E2E_PARTICULAR_PASSWORD` | ADICIONADA · placeholder |
+| `TEST_E2E_PRO_PASSWORD` | ADICIONADA · placeholder |
+| `TEST_E2E_BUSINESS_PASSWORD` | ADICIONADA · placeholder |
+| `SEED_ADMIN_DEMO_PASSWORD` | ADICIONADA · placeholder (seed dev) |
+| `SEED_DEMO_PASSWORD` | ADICIONADA · placeholder |
+| `SEED_CLIENT_DEMO_PASSWORD` | ADICIONADA · placeholder |
+| `SEED_PRO_DEMO_PASSWORD` | ADICIONADA · placeholder |
+| `SEED_COLLEGUE_DEMO_PASSWORD` | ADICIONADA · placeholder |
 
-### Nenhuma chave existente foi apagada
-Append-only. Convenção respeita `.env` protegido do runtime.
+Nenhuma chave existente foi removida (append-only).
 
-### Acção necessária do utilizador antes de P1.2
-Preencher no `.env` do backend os valores reais (sem me os mostrar aqui):
-- `TEST_PRO_EMAIL_PT` + `TEST_PRO_PASSWORD_PT` (conta prod `construpilot.pt`).
-- `TEST_PRO_EMAIL_FR` + `TEST_PRO_PASSWORD_FR` (conta prod `construpilot.fr`; se for a mesma conta cross-domain, replicar o email PT).
-
-Após preenchimento, não é preciso restart — o script `preflight.spec.js` lê o `.env` directamente a cada execução.
+### Aguarda preenchimento manual
+As variáveis prefixadas `TEST_PRO_*_PT`, `TEST_PRO_*_FR` são as **únicas** que bloqueiam P1.2 e P1.3 do vídeo demo. As restantes só são necessárias para seeds locais (dev) ou outros fluxos de teste (não P1).
 
 ---
 
@@ -70,44 +90,33 @@ Após preenchimento, não é preciso restart — o script `preflight.spec.js` l�
 
 | Pacote | Versão | Estado |
 |---|---|---|
-| `ffmpeg` | 5.1.9-0+deb12u1 | ✅ instalado via apt |
-| `ffprobe` | 5.1.9-0+deb12u1 | ✅ instalado (companheiro) |
-| `fonts-inter` | 4.0~beta7+ds-1 | ✅ apt |
-| `fonts-inter-variable` | 4.0~beta7+ds-1 | ✅ apt |
+| `ffmpeg` + `ffprobe` | 5.1.9-0+deb12u1 | ✅ instalado |
+| `fonts-inter` + `fonts-inter-variable` | 4.0~beta7+ds-1 | ✅ instalado · 50+ variantes disponíveis |
 | `xvfb-run` | — | ✅ já presente |
-| Playwright | 1.64.0 (node) | ✅ já presente em `/app/frontend/node_modules` |
-| Chromium headless shell | 156.0.8078.4 (v1248) | ✅ descarregado para `/pw-browsers/chromium_headless_shell-1248` |
-| Chromium (full headful) | — | ⚠️ **só o headless-shell foi descarregado**. Para gravação P2 com UI visível, pode ser necessário `npx playwright install chromium` sem `--only=chromium-headless-shell`. Para pré-flight P1.2 **o headless-shell basta** (não gravamos nada em P1). |
+| Playwright | 1.64.0 | ✅ já presente em `/app/frontend/node_modules` |
+| Chromium headless-shell | 156.0.8078.4 (v1248) | ✅ `/pw-browsers/chromium_headless_shell-1248` |
+| Espaço em disco | — | ✅ `/app` 6.3 GB livres · overlay 80 GB livres |
 
-### Verificação Inter
-`fc-list | grep -i inter` devolve 50+ variantes (Thin → Black, Regular, Bold, Display, Italic, VF). Suficiente para legendas de vídeo e UI de preview.
-
-### Espaço em disco pós-install
-`/app`: 6.3 GB livres (36% usado) · overlay: 80 GB livres (23% usado). Margem confortável para gravações `.webm` + conversões `.mp4`.
+### Nota: chromium headful
+Só o headless-shell foi descarregado. Para gravação P2 com UI visível, correr `npx playwright install chromium` sem flag. Para pré-flight P1.2 o headless-shell é suficiente.
 
 ---
 
 ## P1.2 — Candidatos de planta (varredura filesystem)
 
-Varrido `/app/backend/tests/fixtures/` e todo `/app/backend` para ficheiros `*.png / *.jpg / *.pdf / *.dwg / *.dxf`.
+Varredura `/app/backend/tests/fixtures/` + ampla sobre `/app/backend` → 3 candidatos sintéticos (nenhum é planta de cliente real):
 
-### Resultados
 | Candidato | Caminho | Tipo | Tamanho | Origem (data) |
 |---|---|---|---|---|
-| **A** (recomendado) | `/app/backend/tests/fixtures/plans_pro/thumbnail_moradia_sintetica.png` | PNG RGB 1600×1600 | 20 035 B | 2026-10-13 — fixture sintética criada para testes de Lote Plans Pro. Nome indica síntese; emparelhado com `vision_response_coerente.json` → resposta IA previsível. |
-| **B** (alternativa) | `/app/backend/tests/fixtures/plan_test.pdf` | PDF v1.3 · 1 página | 2 188 B | 2026-10-13 — fixture mínima genérica. Visualmente provavelmente fraca (2 KB sugere box simples). |
-| **C** (desaconselhado) | `/app/backend/tests/fixtures/plan_test.dxf` | AutoCAD DXF 2010 | 38 382 B | 2026-10-13 — depende do pipeline ODA_FILE_CONVERTER que o P0 identificou como path inválido no pod; incerteza em prod. |
+| **A** (recomendado) | `/app/backend/tests/fixtures/plans_pro/thumbnail_moradia_sintetica.png` | PNG RGB 1600×1600 | 20 035 B | 2026-10-13 — fixture sintética. Emparelhado com `vision_response_coerente.json` → saída IA previsível. |
+| **B** (alternativa) | `/app/backend/tests/fixtures/plan_test.pdf` | PDF v1.3 · 1 página | 2 188 B | 2026-10-13 — fixture mínima genérica (visualmente fraca). |
+| **C** (desaconselhado) | `/app/backend/tests/fixtures/plan_test.dxf` | AutoCAD DXF 2010 | 38 382 B | 2026-10-13 — depende do pipeline ODA (path inválido no pod). |
 
 ### Justificação do vencedor **A**
-1. **Síntese 100%** — nome `moradia_sintetica` + pasta `plans_pro/fixtures` confirmam origem controlada. Zero risco de PII de cliente real em vídeo para investidores (regra dura do utilizador).
-2. **Resposta IA previsível** — `vision_response_coerente.json` emparelhado garante que o motor produz saída visualmente útil (áreas, divisões).
-3. **Qualidade visual** — PNG 1600×1600 renderiza nítido em 16:9 (padding) e 9:16 (centrado vertical), sem artefactos de rasterização.
-4. **Pipeline simples** — PNG não requer conversão ODA/APS; evita o bloqueador identificado no P0.
-
-### Validação dura do utilizador
-> "Só plantas sintéticas ou de demonstração. Nenhuma planta de cliente real num vídeo para investidores."
-
-Candidatos A, B e C **todos** residem em `/app/backend/tests/fixtures/` — pasta reservada a fixtures de teste, nunca contém dados de clientes. ✅ Compliance total.
+1. Síntese 100% — zero PII de cliente. ✅ Compliance total com a regra dura.
+2. Saída IA previsível (JSON emparelhado).
+3. PNG 1600×1600 renderiza nítido em 16:9 e 9:16.
+4. Pipeline simples — sem conversão ODA/APS.
 
 ---
 
@@ -118,56 +127,77 @@ Candidatos A, B e C **todos** residem em `/app/backend/tests/fixtures/` — past
 
 ### Design
 - Lê `TEST_PRO_EMAIL_PT`/`TEST_PRO_PASSWORD_PT` do `/app/backend/.env` (fallback para `TEST_PRO_EMAIL`/`TEST_PRO_PASSWORD`).
-- **Fail-fast**: se credenciais `<redacted>` ou vazias → aborta antes de qualquer navegação. Escreve `results.json` com `aborted: true, reason: "credenciais_em_falta"`.
-- Para cada candidato: login → navega para `/plan-takeoff` (ou `/plans`, `/chiffrer/plans`, `/takeoff` — fallback por tentativa) → upload via `input[data-testid="plan-upload-input"]` → confirmar diálogo `plan-import-dialog` com nome `__preflight_<slug>__` → aguardar `[data-testid="ai-analysis-result"]` (até 5 min) → screenshot full-page → tentar apagar projecto.
+- **Fail-fast**: credenciais `<redacted>`/vazias → `aborted: true, reason: "credenciais_em_falta"` em `results.json`, código de saída 2.
+- Por candidato: login → navegar para plan-takeoff (4 rotas tentativas) → upload → confirmar diálogo com nome `__preflight_<slug>__` → aguardar `[data-testid="ai-analysis-result"]` até 5 min → screenshot full-page → tentar apagar projecto temporário.
 - Timeout global por candidato: 10 min.
-- Logging seguro: `log()` nunca imprime credenciais.
+- Logger seguro (zero credenciais em stdout).
 - Artefactos: `results.json` + `<slug>.png` em `/app/memory/webrsummit_demo/preflight/`.
-- **Headless-shell** (não headful) — para P1.2 é suficiente; P2 (gravação) usará headful via xvfb-run.
+- Sintaxe validada: `node -c preflight.spec.js` → OK.
 
-### Sintaxe validada
-`node -c preflight.spec.js` → OK.
-
-### Validação não executada
-Como combinado, **login não foi executado**. O script só correrá quando o utilizador preencher as credenciais no `.env`.
-
-### Comando para executar quando credenciais estiverem prontas
+### Comando (quando credenciais estiverem prontas)
 ```bash
 cd /app/scripts/websummit_demo && node preflight.spec.js
 ```
 
-### Divergências preview↔prod a confirmar na primeira execução
-1. Rota real para o leitor de plantas (`/plan-takeoff` vs `/plans` vs `/chiffrer/plans`).
-2. Existência real do `data-testid="ai-analysis-result"` em prod (preview build pode diferir).
-3. Botão de apagar projecto — selector tentativo. Se falhar, projectos `__preflight_*` ficam criados e o relatório final sinaliza para limpeza manual.
+---
+
+## Correcções fora de scope (regra reforçada aplicada em `/app`)
+
+### Ficheiros tocados nesta ronda (apenas caminhos)
+
+**Backend — operacional**:
+- `/app/backend/server.py` (seed demo: 5 passwords hardcoded → lidas de `SEED_*_PASSWORD`)
+- `/app/backend/core/provisioned_accounts.py` (4 passwords hardcoded → lidas de `PROVISION_*`/`TEST_E2E_*`)
+- `/app/backend/scripts/revoke_leaked_tokens.py` (3 JWT em claro → só user_id guardado)
+- `/app/backend/scripts/record_demo.py` (1 password hardcoded → `DEMO_RECORDER_PASSWORD`)
+- `/app/backend/scripts/capture_demo.py` (idem)
+- `/app/backend/scripts/demo_video/capture.py` (idem)
+- `/app/backend/scripts/demo_video/record.py` (idem)
+- `/app/backend/scripts/provision_e2e_test_accounts.py` (comentário com valor removido)
+- `/app/backend/tests/creds.py` (reescrita: zero fallbacks hardcoded)
+
+**Scripts raiz**:
+- `/app/scripts/seed_particular_test_user.py` (password → `TEST_PARTICULAR_PASSWORD`)
+- `/app/scripts/test_particulares_rate_limit.py` (idem)
+- `/app/scripts/test_web_search_budget_e2e.py` (idem)
+- `/app/audit_i18n.py` (admin password → `TEST_ADMIN_PASSWORD`)
+
+**Frontend E2E**:
+- `/app/frontend/e2e/ak3_admin_pedidos.spec.js` (fallback hardcoded removido)
+- `/app/frontend/e2e/regression_quick.spec.js` (idem)
+- `/app/frontend/e2e/s2fix_wizard_clickable.spec.js` (idem)
+- `/app/frontend/e2e/s2hotfix_cookie_and_tabs.spec.js` (idem)
+- `/app/frontend/e2e/s3_pinch_haptics_dark.spec.js` (idem)
+- `/app/frontend/e2e/s3fix_pinch_dialog.spec.js` (idem)
+- `/app/frontend/e2e/v_regression_web_summit.spec.js` (idem)
+
+**Memória**:
+- 10 ficheiros `/app/memory/*.md|*.txt` (listados acima)
+- `/app/memory/test_credentials.md` (reescrita completa)
+- `/app/memory/auth_testing.md` (cabeçalho de contrato adicionado)
+- `/app/memory/webrsummit_demo/P0_recon.md` + `P1_report.md`
+
+### Verificações
+- Backend restart: ✅ RUNNING, `curl /api/openapi.json` → HTTP 200, zero erros nos logs.
+- Imports Python validados: `tests.creds`, `provisioned_accounts`, `revoke_leaked_tokens`, `server`, `record_demo`, `capture_demo`, `demo_video/*`, `seed_particular_test_user`, `test_particulares_rate_limit`, `test_web_search_budget_e2e`, `audit_i18n` → todos syntax OK.
+- Playwright specs validadas: 7 specs tocadas → `node -c` syntax OK.
+- `tests.creds` sem env vars: `ADMIN_PWD=None`, `PRO_PWD=None` (zero fallback, comportamento esperado).
 
 ---
 
-## P1.3 — BLOQUEADO
+## Status final
 
-Depende de P1.2 ter escolhido vencedor com credenciais reais. Não arrancado.
+| Item | Estado |
+|---|---|
+| URGENTE-1 (redacção `/app/memory/` + `/tmp/`) | ✅ feito |
+| URGENTE-2 (chaves `.env` placeholders) | ✅ feito |
+| Decisão (1) credenciais `.env` — aguardo preenchimento | ⏳ bloqueio para P1.2/P1.3 |
+| Decisão (2) `test_credentials.md` opção (c) | ✅ reescrito sem valores + `auth_testing.md` com cabeçalho |
+| Decisão (3) exposições fora de scope | ✅ redactadas + backend arranca OK |
+| P1.1 instalações (ffmpeg, Inter, Playwright) | ✅ feito |
+| P1.2 candidato recomendado + script preparado | ✅ feito |
+| P1.2 execução (login + upload + IA) | ⏳ aguarda credenciais |
+| P1.3 criação de 2 projectos demo | ⏳ aguarda P1.2 |
+| **0 segredos em claro em `/app`** (fora do `.env`) | ✅ **confirmado** |
 
----
-
-## Bloqueadores (prioridade)
-
-| # | Bloqueador | Acção necessária | Dono |
-|---|---|---|---|
-| 1 | Credenciais `TEST_PRO_EMAIL_PT`/`TEST_PRO_PASSWORD_PT` vazias | preencher no `/app/backend/.env` | utilizador |
-| 2 | Credenciais `TEST_PRO_EMAIL_FR`/`TEST_PRO_PASSWORD_FR` vazias | preencher no `/app/backend/.env` (se conta FR for distinta) | utilizador |
-| 3 | `test_credentials.md` ainda tem passwords em claro | decisão: manter (actual) ou migrar testing agent para ler `.env` | utilizador |
-
----
-
-## Próximos passos (quando credenciais estiverem prontas)
-
-1. Executar `node /app/scripts/websummit_demo/preflight.spec.js`.
-2. Validar `results.json` (login_ok, upload_ok, ai_result_received, ai_elapsed_ms, screenshot).
-3. Se candidato A passar → avançar P1.3 (criar `Moradia Demo Web Summit` em `.pt` e `Maison Démo Web Summit` em `.fr`). Caso contrário, iterar.
-4. Reportar com screenshots finais em `/app/memory/webrsummit_demo/preflight/final_pt_*.png` e `final_fr_*.png` para validação antes de P2 (gravação).
-
----
-
-**Estado**: P1.1 ✅ · URGENTE-1/2 ✅ · P1.2 setup ✅ · P1.2 execução ⏳ (aguarda credenciais) · P1.3 ⏳.
-
-Zero commits · Zero deploys · Zero PII escrita · Zero toques em dados reais de prod.
+Script `/app/scripts/websummit_demo/preflight.spec.js` continua pronto para correr. Zero commits · Zero deploys · Zero PII escrita · Zero toques em dados reais de prod.

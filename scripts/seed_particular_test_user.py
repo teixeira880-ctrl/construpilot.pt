@@ -1,7 +1,7 @@
 """Seed/upsert do utilizador particular de teste.
 
-Email:    particular@construpilot.pt
-Password: Particular2026!
+Email:    particular@construpilot.pt (ou TEST_PARTICULAR_EMAIL)
+Password: lida de TEST_PARTICULAR_PASSWORD (nunca em claro no código)
 Account:  particulier
 Plano:    Grátis
 """
@@ -18,8 +18,10 @@ from core.db import db  # noqa: E402
 from core.security import hash_password, new_user_id  # noqa: E402
 
 
-EMAIL = "particular@construpilot.pt"
-PASSWORD = "Particular2026!"
+EMAIL = os.environ.get("TEST_PARTICULAR_EMAIL", "particular@construpilot.pt")
+PASSWORD = (os.environ.get("TEST_PARTICULAR_PASSWORD") or "").strip()
+if not PASSWORD or PASSWORD == "<redacted>":
+    raise SystemExit("TEST_PARTICULAR_PASSWORD ausente/placeholder no ambiente. Abort (zero credenciais em claro).")
 NAME = "Particular Teste"
 
 

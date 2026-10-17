@@ -29,7 +29,8 @@ const FRONTEND_BASE =
   "http://localhost:3000";
 
 const EMAIL = process.env.E2E_EMAIL || "teste.pro+e2e@construpilot.pt";
-const PASSWORD = process.env.E2E_PASSWORD || "TesteE2E!2026";
+const PASSWORD = process.env.E2E_PASSWORD || process.env.TEST_PRO_PASSWORD;
+if (!PASSWORD) { console.error('E2E_PASSWORD/TEST_PRO_PASSWORD ausentes no ambiente. Abort.'); process.exit(2); }
 
 const IPHONE_CFG = {
   ...devices["iPhone 13"],

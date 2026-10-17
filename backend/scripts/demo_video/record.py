@@ -6,7 +6,10 @@ BASE = open("/app/frontend/.env").read().split("REACT_APP_BACKEND_URL=")[1].spli
 LANG = os.environ.get("DEMO_LANG", "fr")
 OUT = sys.argv[1] if len(sys.argv) > 1 else f"/app/backend/scripts/demo_video/work/clips{'_pt' if LANG == 'pt' else ''}"
 ONLY = sys.argv[2].split(",") if len(sys.argv) > 2 else None
-EMAIL, PWD = "pro@construpilot.fr", "Pro2026!"
+EMAIL = os.environ.get("DEMO_RECORDER_EMAIL") or "pro@construpilot.fr"
+PWD = os.environ.get("DEMO_RECORDER_PASSWORD")
+if not PWD:
+    raise SystemExit("DEMO_RECORDER_PASSWORD ausente no ambiente. Abort.")
 CTX = json.loads(os.environ.get("CTX_IDS", "{}"))
 W, H = 1920, 1080
 

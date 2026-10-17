@@ -1,5 +1,9 @@
 # Auth Testing Playbook (Emergent Google OAuth)
 
+> **Contrato de credenciais (actualizado 2026-10-17)**: todas as credenciais de contas reais vivem apenas em `/app/backend/.env`. O documento `/app/memory/test_credentials.md` lista os emails + **nomes de variáveis**, nunca valores. Em qualquer teste (Python/Node/curl), ler via `os.environ.get(...)` / `process.env.*` e abortar com código 2 se a variável estiver vazia ou com placeholder `<redacted>`. Zero fallback hardcoded.
+
+> Para fluxos OAuth Google (mock de sessão), este documento mantém o template Mongo abaixo — os `session_token` gerados aqui são **sintéticos** (via `Date.now()`), não são credenciais reais.
+
 NOTE - Do not be satisfied until you've tested the app completely especially the auth gated pages
 
 ## Step 1: Create Test User & Session

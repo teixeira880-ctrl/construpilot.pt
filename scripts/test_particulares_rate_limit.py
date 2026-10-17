@@ -12,8 +12,10 @@ import urllib.request
 
 
 BASE = os.environ.get("BASE_URL") or "https://construpilot-recon.preview.emergentagent.com"
-FREE_EMAIL = "particular@construpilot.pt"
-FREE_PASS = "Particular2026!"
+FREE_EMAIL = os.environ.get("TEST_PARTICULAR_EMAIL", "particular@construpilot.pt")
+FREE_PASS = (os.environ.get("TEST_PARTICULAR_PASSWORD") or "").strip()
+if not FREE_PASS or FREE_PASS == "<redacted>":
+    raise SystemExit("TEST_PARTICULAR_PASSWORD ausente/placeholder. Abort.")
 
 
 def _common_headers():

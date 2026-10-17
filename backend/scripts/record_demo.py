@@ -1,7 +1,7 @@
 """Étape 2 — Enregistre la vidéo en CALANT chaque page sur la durée exacte de sa
 narration (lue depuis /tmp/narration.json). Chaque section reste visible au moins le
 temps de sa voix off → synchro parfaite. Démonstrations réelles pour métré / devis / factures."""
-import asyncio, json, time
+import asyncio, json, os, time
 from pathlib import Path
 from playwright.async_api import async_playwright
 
@@ -70,8 +70,12 @@ async def main():
         await pg.evaluate("()=>localStorage.setItem('construpilot_theme','light')")
         try: await pg.click('button:has-text("Tout accepter")', timeout=2500)
         except Exception: pass
-        await pg.fill('input[type=email]', 'pro@construpilot.fr')
-        await pg.fill('input[type=password]', 'Pro2026!')
+        _email = os.environ.get("DEMO_RECORDER_EMAIL") or "pro@construpilot.fr"
+        _pwd = os.environ.get("DEMO_RECORDER_PASSWORD")
+        if not _pwd:
+            raise SystemExit("DEMO_RECORDER_PASSWORD ausente no ambiente. Abort (zero credenciais em claro).")
+        await pg.fill('input[type=email]', _email)
+        await pg.fill('input[type=password]', _pwd)
         await pg.click('button:has-text("Se connecter")'); await pg.wait_for_timeout(3500)
         state = await c0.storage_state(); await c0.close()
 

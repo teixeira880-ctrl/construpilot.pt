@@ -9,8 +9,10 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 BASE = "https://construpilot-recon.preview.emergentagent.com"
-EMAIL = "info@construpilot.pt"
-PASSWORD = "uFuBb6Q5h1QUxCmc"
+EMAIL = os.environ.get("TEST_ADMIN_EMAIL") or "info@construpilot.pt"
+PASSWORD = (os.environ.get("TEST_ADMIN_PASSWORD") or "").strip()
+if not PASSWORD or PASSWORD == "<redacted>":
+    raise SystemExit("TEST_ADMIN_PASSWORD ausente/placeholder no ambiente. Abort.")
 OUT_DIR = Path("/app/audit")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

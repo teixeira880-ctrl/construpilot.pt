@@ -20,10 +20,16 @@ const FRONTEND_BASE = process.env.MOBILE_BASE_URL
        .match(/REACT_APP_BACKEND_URL=(.+)/)?.[1]?.trim()?.replace(/\/+$/, "")
   || "http://localhost:3000";
 
-// Credencial admin — reutiliza o seed existente em test_credentials.md
-// Se não existir admin, o teste reporta "login_failed" (não falso-positivo).
-const EMAIL = process.env.ADMIN_E2E_EMAIL || "info@construpilot.pt";
-const PASSWORD = process.env.ADMIN_E2E_PASSWORD || "TesteE2E!2026";
+// Credencial admin — lida APENAS do ambiente. Zero valor por defeito em claro.
+// Em local, define ADMIN_E2E_EMAIL e ADMIN_E2E_PASSWORD (ou TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD).
+// Se não existir, o teste aborta — nunca cair em credencial em claro no código.
+const EMAIL = process.env.ADMIN_E2E_EMAIL || process.env.TEST_ADMIN_EMAIL;
+const PASSWORD = process.env.ADMIN_E2E_PASSWORD || process.env.TEST_ADMIN_PASSWORD;
+
+if (!EMAIL || !PASSWORD) {
+  console.error("ak3_admin_pedidos: credenciais ausentes no ambiente (ADMIN_E2E_EMAIL/PASSWORD ou TEST_ADMIN_EMAIL/PASSWORD). A abortar.");
+  process.exit(2);
+}
 
 const IPHONE_CFG = { ...devices["iPhone 13"], hasTouch: true, isMobile: false };
 const PIXEL_CFG = { ...devices["Pixel 7"], hasTouch: true, isMobile: false };
