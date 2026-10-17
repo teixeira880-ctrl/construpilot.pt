@@ -55,10 +55,10 @@ Inventário completo (grep por padrões `sk_live_|sk_test_|re_|AIza|mongodb://|S
 
 | Ficheiro:linha | Account | Password |
 |---|---|---|
-| `/app/backend/core/provisioned_accounts.py:15-16` | `teste.particular+e2e@construpilot.pt` | `TesteE2E!2026` (literal) |
-| `/app/backend/core/provisioned_accounts.py:19-20` | `teste.pro+e2e@construpilot.pt` | `TesteE2E!2026` (literal) |
-| `/app/backend/core/provisioned_accounts.py:22-23` | `teste.business+e2e@construpilot.pt` | `TesteE2E!2026` (literal) |
-| `/app/backend/server.py:431` | `info@construpilot.pt` (admin secundário) | fallback **`CP-Admin-2026!`** se `SECOND_ADMIN_PASSWORD` env ausente |
+| `/app/backend/core/provisioned_accounts.py:15-16` | `teste.particular+e2e@construpilot.pt` | `<redacted>` (literal) |
+| `/app/backend/core/provisioned_accounts.py:19-20` | `teste.pro+e2e@construpilot.pt` | `<redacted>` (literal) |
+| `/app/backend/core/provisioned_accounts.py:22-23` | `teste.business+e2e@construpilot.pt` | `<redacted>` (literal) |
+| `/app/backend/server.py:431` | `info@construpilot.pt` (admin secundário) | fallback **`<redacted>`** se `SECOND_ADMIN_PASSWORD` env ausente |
 | `/app/memory/test_credentials.md` | 4 contas × passwords em texto claro | documento interno (não indexado) |
 
 ### Mitigação de design em curso
@@ -70,7 +70,7 @@ Inventário completo (grep por padrões `sk_live_|sk_test_|re_|AIza|mongodb://|S
 - `/app/backend/server.py:426-430` typo `info@construpilot.fr` → `info@construpilot.pt`. (Linha 268-272 em comentário também usa `.fr` — está isolado, não propagam para `.env`.)
 
 ### Para o Martinho decidir (3 ações)
-1. **Em produção**: definir `SECOND_ADMIN_PASSWORD` no `.env` para eliminar o fallback `CP-Admin-2026!`.
+1. **Em produção**: definir `SECOND_ADMIN_PASSWORD` no `.env` para eliminar o fallback `<redacted>`.
 2. **Em produção**: trocar imediatamente a password das 3 contas E2E após primeiro login OU remover `provision_accounts` do startup em produção (gating adicional por `ENV`).
 3. `/app/memory/test_credentials.md` **permanece** inalterado (necessário aos subagentes de teste). Avaliar se este ficheiro deve ser movido para fora do versionamento Git (actualmente o `/app/memory` provavelmente não é versionado — a confirmar com a plataforma Emergent).
 
@@ -326,7 +326,7 @@ Ocorrências textuais de `github.com|teixeira880-ctrl|Phase 0|git clone` encontr
 
 1. **CRÍTICA — corrigir `/app/backend/.env` linha 33**: `ENV="SENDER_PT_FROM = info@construpilot.pt"` → `ENV=production` (ou `development`). **Antes do próximo deploy em produção**.
 2. **ALTA — rotar passwords das 3 contas E2E** em produção após primeiro login, ou gating adicional por `ENV==production` em `provision_accounts`.
-3. **ALTA — definir `SECOND_ADMIN_PASSWORD`** no `.env` de produção para eliminar fallback `CP-Admin-2026!`.
+3. **ALTA — definir `SECOND_ADMIN_PASSWORD`** no `.env` de produção para eliminar fallback `<redacted>`.
 4. **MÉDIA — auditoria dedicada de uploads**: whitelist content_type + max_size + sanitização filename em ~10 endpoints.
 5. **MÉDIA — pipeline CI com `pip-audit`/`safety check`** e upgrades de patch dos deps backend.
 6. **BAIXA — decidir destino de `/app/memory/github_recon_report.md` e `github_vs_app_diff.md`** (artefactos Phase 0).

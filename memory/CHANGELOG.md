@@ -559,7 +559,7 @@
 ### 👤 Admin secondaire info@construpilot.fr
 - Seed idempotent dans `server.py::seed()` (hors `SEED_DEMO_DATA`) : crée/​promeut
   `info@construpilot.fr` en `role=admin`. Override via `SECOND_ADMIN_EMAIL` /
-  `SECOND_ADMIN_PASSWORD`. Mot de passe provisoire `CP-Admin-2026!` (`must_change_password`).
+  `SECOND_ADMIN_PASSWORD`. Mot de passe provisoire `<redacted>` (`must_change_password`).
 - Accès complet à `/admin` (Prix, Coeff, Fournisseurs, Utilisateurs, Projets, CRM/Devis,
   Codes promo, KYC, Affiliation, Plans & Revenu, Revenue Cockpit, Demandes, Erreurs client).
 

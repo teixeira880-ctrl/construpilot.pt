@@ -43,7 +43,7 @@ Produção está **saudável agora** e aguenta carga razoável. O Cloudflare 520
 
 ## 2. Credenciais / autenticação produção
 
-Login com credenciais de preview (`info@construpilot.pt` / `uFuBb6Q5h1QUxCmc`) devolve **401 em produção**. Isto significa:
+Login com credenciais de preview (`info@construpilot.pt` / `<redacted>`) devolve **401 em produção**. Isto significa:
 - A base de dados de produção é diferente da de preview (esperado — ambientes isolados)
 - As credenciais do admin em produção não são as mesmas que estão em `/app/memory/test_credentials.md`
 

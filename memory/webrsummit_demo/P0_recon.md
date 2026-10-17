@@ -90,7 +90,7 @@ set-cookie: __emg_vid=...; __emg_sid=...; Secure; SameSite=Lax
 
 Nesta fase P0 recon **não efectuei login nem queries à API** conforme instrução. Documento para P1:
 
-- **Credenciais a usar** (ambiente de prod, autorizadas por escrito pelo utilizador para gravação): `teste.pro+e2e@construpilot.pt` / `TesteE2E!2026` (do `/app/memory/test_credentials.md`).
+- **Credenciais a usar** (ambiente de prod, autorizadas por escrito pelo utilizador para gravação): email `teste.pro+e2e@construpilot.pt` / password `<redacted>` (lida de `.env` via `TEST_PRO_PASSWORD_PT`; nunca escrita em relatórios).
 - **Pergunta pendente para P1 (a responder via `GET /api/projects` logadado)**:
   > "Existe já na conta `teste.pro+e2e` um projecto com nome `Moradia Demo Web Summit` ou `Maison Démo Web Summit`?"
   Se **sim** → reutilizar e verificar que estado está limpo. Se **não** → criar em P1 numa única sessão, usando a planta recomendada em (2).
@@ -227,7 +227,7 @@ Legendas e drawtext calibrados em P3 por segmento.
 2. **Fontes modernas ausentes** (Inter/Roboto/Noto Sans) — Liberation Sans Bold cobre acentos PT/FR; opcional reforço em P1.
 3. **Planta recomendada**: `/app/backend/tests/fixtures/plans_pro/thumbnail_moradia_sintetica.png` (1600×1600 PNG) — fixture controlada com `vision_response_coerente.json` emparelhado, garante leitura IA convincente.
 4. **Prod acessível** em `.pt` + `.fr` via HTTPS directo (HTTP/2 200, cookies `__emg_vid`/`__emg_sid`, sem Cloudflare detectável).
-5. **Credenciais** `teste.pro+e2e@construpilot.pt` / `TesteE2E!2026` (uso em P1).
+5. **Credenciais** email `teste.pro+e2e@construpilot.pt` / password `<redacted>` (lida de `.env`; nunca escrita em relatórios ou logs).
 6. **Estratégia gravação recomendada**: Playwright nativo `video: on` + conversão ffmpeg. Simples, reproduzível, cursor simulado por overlay para melhor controlo visual.
 7. **Export 9:16 recomendado**: padding com fundo `#0F172A` + redimensionamento central + bandas superiores/inferiores para logótipo e legenda grande. Zero cortes do conteúdo.
 8. **Riscos principais**: `ffmpeg` ausente (certo), loader IA imprevisível em prod (alto), PII acidental em header/menus (médio mas alto impacto GDPR).

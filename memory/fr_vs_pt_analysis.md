@@ -168,7 +168,7 @@ PT tem **4 ficheiros**: `__init__.py`, `conftest.py`, `test_c2_wave.py`, `test_c
 `coach_messages, coach_failures, plan_analyses, shared_library_items, projects, users, auth_sessions, library_items, prices_catalog, prices_history, …`.
 
 ### 2.6 Bugfixes aplicados nesta sessão
-- `test_c2_wave.py` password `Ruquinha2020.` → `uFuBb6Q5h1QUxCmc`
+- `test_c2_wave.py` password `Ruquinha2020.` → `<redacted>`
 - `claude_provider.py` suporte Opus 5.5 (`output_config.effort`, auto-retry temperature deprecated)
 - Remoção Aurora: 11 ficheiros, 283 linhas em `admin.py`, hooks em `projects.py`+`server.py`
 - Env limpo (`AURORA_*` removidas) + whitelist actualizada

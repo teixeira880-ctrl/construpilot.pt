@@ -156,7 +156,7 @@ Screenshots:
 
 **Scripts**
 - `scripts/seed_particular_test_user.py` — upsert idempotente do utilizador
-  `particular@construpilot.pt` / `Particular2026!` (account_type=particulier).
+  `particular@construpilot.pt` / `<redacted>` (account_type=particulier).
 - `scripts/test_particulares_rate_limit.py` — E2E que valida 20×200 + 1×429
   com todos os campos PT-PT.
 

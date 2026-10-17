@@ -24,7 +24,7 @@
 | Ficheiro | Linhas afectadas | Mudança |
 |---|---|---|
 | `/app/backend/server.py` | **387-396** (+10/-5) | X.2: `provision_accounts` gated por `SEED_DEMO_DATA`, com log PT-PT |
-| `/app/backend/server.py` | **464-493** (+30/-27) | X.1: admin secundário fail-closed — remove fallback `CP-Admin-2026!`, early-return com log PT-PT se env vazia, comentário SEC-X-001 |
+| `/app/backend/server.py` | **464-493** (+30/-27) | X.1: admin secundário fail-closed — remove fallback `<redacted>`, early-return com log PT-PT se env vazia, comentário SEC-X-001 |
 | `/app/backend/core/uploads.py` | **1-92** (**criado**) | X.3: módulo central com `ALLOWED_IMAGE/DOCUMENT/CAD/IMPORT/AUDIO`, `sanitize_filename`, `validate_upload`, `MAX_UPLOAD_MB` configurável |
 | `/app/backend/routes/admin_learning.py` | **4-10** (+3/-0) | X.3: import `validate_upload` + whitelists |
 | `/app/backend/routes/admin_learning.py` | **73-78** (+4/-3) | X.3: aplica `validate_upload` ao endpoint `/import-file`; remove verificação manual de tamanho |
@@ -37,7 +37,7 @@ Nenhuma edição em `.env` real. GitHub não tocado.
 
 ## X.1 — Admin secundário fail-closed
 
-**Comportamento antes**: `second_admin_pwd = os.environ.get("SECOND_ADMIN_PASSWORD") or "CP-Admin-2026!"` → se `.env` sem a var, criava a conta com password hardcoded.
+**Comportamento antes**: `second_admin_pwd = os.environ.get("SECOND_ADMIN_PASSWORD") or "<redacted>"` → se `.env` sem a var, criava a conta com password hardcoded.
 
 **Comportamento depois** (`server.py:464-493`):
 ```python
@@ -50,12 +50,12 @@ else:
 
 **Verificação live pós-restart**:
 ```
-POST /api/auth/login {email: info@construpilot.pt, password: CP-Admin-2026!}
+POST /api/auth/login {email: info@construpilot.pt, password: <redacted>}
 → {"detail":"Email ou palavra-passe incorretos"}  ✅ (conta não recriada neste boot)
 ```
 
 **Testes passados**:
-- `test_x1_second_admin_no_hardcoded_fallback` — `"CP-Admin-2026!"` não existe no código.
+- `test_x1_second_admin_no_hardcoded_fallback` — `"<redacted>"` não existe no código.
 - `test_x1_second_admin_fail_closed_log_present` — log PT-PT presente.
 
 **Nota importante**: a conta `info@construpilot.pt` pode já existir na BD de execuções anteriores com o hash do password antigo. **A desactivação só se concretiza completamente após eliminação manual pelo Martinho** (ver FOLLOW-UP #1).
@@ -66,7 +66,7 @@ POST /api/auth/login {email: info@construpilot.pt, password: CP-Admin-2026!}
 
 **Investigação prévia** (grep solicitado no briefing):
 ```
-backend/core/provisioned_accounts.py:14  → 3 contas E2E com password `TesteE2E!2026` em claro
+backend/core/provisioned_accounts.py:14  → 3 contas E2E com password `<redacted>` em claro
 backend/server.py:394                     → `if os.environ.get("SEED_DEMO_DATA")=="true"` já existia
                                              mas apenas protegia os 5 ADMIN/DEMO/CLIENT/PRO/COLLEGUE,
                                              NÃO protegia `provision_accounts`.
@@ -176,7 +176,7 @@ pytest tests/test_lote_x_hardening.py -v
 
 Backend reinicia:                              ✅
 Login válido (JWT) continua funcional:         ✅ (teste.pro+e2e → 200)
-Admin secundário com password antiga falha:    ✅ (info@construpilot.pt + CP-Admin-2026! → 401 `Email ou palavra-passe incorretos`)
+Admin secundário com password antiga falha:    ✅ (info@construpilot.pt + <redacted> → 401 `Email ou palavra-passe incorretos`)
 Log "Seed de contas DESLIGADO" presente:       ✅
 ```
 
@@ -184,7 +184,7 @@ Log "Seed de contas DESLIGADO" presente:       ✅
 
 ## FOLLOW-UPs para o Martinho
 
-1. **ALTA** — eliminar manualmente da BD de produção a conta `info@construpilot.pt` **se ela foi criada em boot anterior com password `CP-Admin-2026!`**. O fail-closed só impede novas criações; não apaga a conta pré-existente. Alternativa: definir `SECOND_ADMIN_PASSWORD` em `.env` prod e forçar `must_change_password: True` manualmente.
+1. **ALTA** — eliminar manualmente da BD de produção a conta `info@construpilot.pt` **se ela foi criada em boot anterior com password `<redacted>`**. O fail-closed só impede novas criações; não apaga a conta pré-existente. Alternativa: definir `SECOND_ADMIN_PASSWORD` em `.env` prod e forçar `must_change_password: True` manualmente.
 2. **MÉDIA** — migrar os 8+ endpoints `UploadFile` restantes para `validate_upload` (lista acima). Cada um precisa de regressão dedicada. Em particular o fluxo KYC (`auth.py:478`) é sensível legalmente.
 3. **MÉDIA** — avaliar substituir `application/octet-stream` por detecção magic-bytes para uploads CAD (actualmente aceite por compatibilidade com browsers que não detectam DWG/DXF).
 4. **BAIXA** — adicionar `SEED_DEMO_DATA=true` ao `.env` de dev se o Martinho quiser contas E2E reprovisionadas em cada boot (actualmente **DESLIGADO** por defeito, mas as contas persistem na BD).

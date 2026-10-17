@@ -73,16 +73,16 @@ As credenciais funcionais estavam lá (`info@construpilot.pt` para admin + `part
 Reescrita completa com estrutura clara:
 1. **Topo:** URL preview correcto + aviso explícito de que outros subdomínios `preview.emergentagent.com` NÃO servem este pod.
 2. **Formato de autenticação:** exemplo HTTP concreto com request/response JWT.
-3. **Admin:** `info@construpilot.pt` / `uFuBb6Q5h1QUxCmc` em tabela destacada.
-4. **Particular:** `particular@construpilot.pt` / `Particular2026!` com rate limits aplicáveis.
+3. **Admin:** `info@construpilot.pt` / `<redacted>` em tabela destacada.
+4. **Particular:** `particular@construpilot.pt` / `<redacted>` com rate limits aplicáveis.
 5. **Secção segurança:** `teixeira880@gmail.com` claramente marcado como email de contacto do owner, **não** credencial de teste.
 
 ### Verificação
 ```
-$ curl -X POST .../api/auth/login -d '{"email":"info@construpilot.pt","password":"uFuBb6Q5h1QUxCmc"}'
+$ curl -X POST .../api/auth/login -d '{"email":"info@construpilot.pt","password":"<redacted>"}'
 HTTP 200  → {"user":{"role":"admin","plan":"premium",...}, "token":"eyJ..."}
 
-$ curl -X POST .../api/auth/login -d '{"email":"particular@construpilot.pt","password":"Particular2026!"}'
+$ curl -X POST .../api/auth/login -d '{"email":"particular@construpilot.pt","password":"<redacted>"}'
 HTTP 200  → {"user":{"role":"user","account_type":"particulier",...}, "token":"eyJ..."}
 ```
 
