@@ -10,6 +10,9 @@ Expõe:
           e verifica ownership `user_id == user.id`).
         * `branding_loader` → prioriza `routes.company_page.pdf_customization`
           se existir, senão campos `brand_*` do utilizador em `db.users`.
+        * `_translate_pt_output` → aplica `bet_core.i18n.tr(..., lang="pt")`
+          sobre questions, anomalies, points e step quando `country=="PT"`;
+          zero toque em `engines/bet_core/`.
 
 Zero toque em `engines/bet_core/` (código do fetch mantido imutável).
 """
@@ -26,8 +29,81 @@ from engines.bet_core.assistant_tool import (
     TOOLS as BET_CORE_TOOLS,
     execute as _bet_core_execute,
 )
+from engines.bet_core.i18n import tr as _tr_bet
 
 log = logging.getLogger("assistant.bet_core")
+
+
+# ---------------------------------------------------------------------------
+# Tradução PT dos campos devolvidos ao Assistente (zero toque em bet_core/)
+# ---------------------------------------------------------------------------
+
+# Mapeamento manual para labels que não aparecem no glossário determinístico
+# do bet_core (status + rótulos de pipeline). Last-write-wins intencional.
+_PT_STATUS_LABELS = {
+    "Questions à l'utilisateur": "Questões ao utilizador",
+    "En file d'attente": "Em fila de espera",
+    "Lecture des plans par IA et relevé du modèle bâtiment":
+        "Leitura dos desenhos por IA e levantamento do modelo do edifício",
+    "Calculs, plans, devis et contrôle":
+        "Cálculos, desenhos, orçamento e verificação",
+    "Terminé": "Concluído",
+    "Échec": "Falhou",
+    "à préciser": "a precisar",
+}
+
+
+def _tr_pt(s):
+    """Traduz `s` FR→PT via glossário determinístico do bet_core + overrides."""
+    if not isinstance(s, str) or not s:
+        return s
+    # 1. overrides específicos do boundary (status / step)
+    out = _PT_STATUS_LABELS.get(s, s)
+    if out != s:
+        return out
+    # 2. tradução determinística bet_core (templates + glossário)
+    try:
+        return _tr_bet(s, lang="pt")
+    except Exception:  # noqa: BLE001 — tradução é best-effort
+        return s
+
+
+def _translate_pt_output(result: dict) -> dict:
+    """Aplica tradução PT aos campos humanos devolvidos a um Assistente .pt.
+
+    Só actua se `result.get("country") == "PT"`. Preserva estrutura, chaves,
+    códigos de anomalia e tipos técnicos (números, ids, mimes).
+    """
+    if not isinstance(result, dict) or result.get("country") != "PT":
+        return result
+    out = dict(result)
+    # Textos de estado / passo
+    if "step" in out:
+        out["step"] = _tr_pt(out["step"])
+    # Perguntas (list[str])
+    qs = out.get("questions")
+    if isinstance(qs, list):
+        out["questions"] = [_tr_pt(q) for q in qs]
+    # Pontos de atenção (list[str])
+    pts = out.get("points")
+    if isinstance(pts, list):
+        out["points"] = [_tr_pt(p) for p in pts]
+    # Anomalias (list[dict]): traduz message + fix, mantém code/level
+    an = out.get("anomalies")
+    if isinstance(an, list):
+        new_an = []
+        for a in an:
+            if isinstance(a, dict):
+                b = dict(a)
+                if "message" in b:
+                    b["message"] = _tr_pt(b["message"])
+                if "fix" in b and b["fix"]:
+                    b["fix"] = _tr_pt(b["fix"])
+                new_an.append(b)
+            else:
+                new_an.append(a)
+        out["anomalies"] = new_an
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +220,7 @@ async def run_bet_core_tool(
             "status": "falhou",
         }
     doc_loader = _make_pt_doc_loader(allowed_doc_fn)
-    return await _bet_core_execute(
+    result = await _bet_core_execute(
         name,
         args,
         user,
@@ -153,6 +229,11 @@ async def run_bet_core_tool(
         doc_loader=doc_loader,
         branding_loader=_pt_branding_loader,
     )
+    # Tradução PT dos campos humanos (questions/anomalies/step/points) quando
+    # o estudo é PT. `generate_full_bet_study` devolve só {job_id, status:
+    # "running"} e não precisa; `read_full_bet_study` devolve o job completo
+    # com country lá dentro — é aí que a tradução faz diferença.
+    return _translate_pt_output(result) if isinstance(result, dict) else result
 
 
 __all__ = [
@@ -160,4 +241,6 @@ __all__ = [
     "BET_CORE_TOOL_NAMES",
     "BET_CORE_INSTRUCTIONS",
     "run_bet_core_tool",
+    "_translate_pt_output",
+    "_tr_pt",
 ]

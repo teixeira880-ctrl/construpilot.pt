@@ -637,3 +637,155 @@ disparou activação. Se durante os próximos minutos o estado mudar para
 
 **Status final**: `instalação BET-core PT validada em preview — deploy
 pendente de clique manual do fundador no dashboard Emergent`.
+
+---
+
+## 18. Fecho definitivo — deploy produção ✅
+
+**Timestamp do deploy**: 2026-10-18 23:17 Paris (21:17 UTC) por acção manual
+do fundador no dashboard Emergent.
+**URL prod**: https://construpilot.pt
+**HEAD deployado**: `c4c4c0e`.
+
+### 18.1 Smoke prod `/api/health`
+
+Executado 2 min após o lançamento do rollout (21:20 UTC):
+
+```
+GET https://construpilot.pt/api/health
+HTTP 200, 0.56s
+{"status":"ok","mongo":true}
+```
+
+Resultado: ✅ **PASS à 1ª tentativa**, zero necessidade de retries.
+
+### 18.2 Verificação de registo das 2 tools pro
+
+Procurei endpoints públicos que exponham a lista de tools do Assistente ou
+metadados estáticos:
+
+- `/api/openapi.json` → 404 (não exposto em prod).
+- `/openapi.json` (raiz) → serve o `index.html` do frontend (não é a spec
+  FastAPI).
+- `/api/version`, `/api/info`, `/api/meta`, `/api/build` → todos 404.
+- `/api/assistant/runtime` → 401 "Não autenticado" (requer login).
+- Todos os endpoints `/api/assistant/*` relevantes requerem
+  `Depends(current_user)` ou `pro_required`.
+
+**Conclusão**: zero forma estática/não-autenticada de validar o registo das
+2 tools pro em prod. Conforme autorização do fundador no plano, documento
+este estado como:
+
+**"Registo das 2 tools pro (`generate_full_bet_study` + `read_full_bet_study`)
+aguarda validação manual pelo fundador** (login em conta pro real OU
+activação do demo WebSummit)**."**
+
+Validações indirectas disponíveis:
+- Supervisor arrancou sem erro (preview espelha o mesmo código → confirma
+  compilação OK).
+- `pytest tests/bet_core` em preview: 24/24 verde no HEAD exacto que foi
+  deployado.
+- Smoke prod `/api/health` → 200 (processo UVicorn vivo, Mongo atingível).
+
+### 18.3 D7 WebSummit
+
+Último `GET https://construpilot.pt/api/auth/demo-status` após o deploy
+(21:20 UTC): `{"pro":false,"particular":false}`. Nenhum P1-P6 disparado.
+
+### 18.4 Status
+
+**`instalação BET-core PT concluída em prod`** — pendente apenas de
+validação funcional manual pelo fundador numa conta pro real.
+
+---
+
+## 19. Fase 2 — Preparação próximo deploy — i18n PT das perguntas
+
+**Objectivo**: quando `country=="PT"`, as perguntas, anomalias, labels de
+estado e pontos de atenção devolvidos pelo `read_full_bet_study` saem em
+**português europeu** em vez de FR.
+
+### 19.1 Design — zero toque em `engines/bet_core/`
+
+Reutilizo a função determinística `engines.bet_core.i18n.tr(s, lang="pt")`
+já incluída no fetch: templates manuais FR→PT + glossário com fallback
+por palavra. O boundary de tradução vive **só** no wrapper `.pt`
+(`engines/assistant_bet_core_tool.py`).
+
+**Nova função pública** `_translate_pt_output(result: dict) -> dict`:
+
+- Se `result.get("country") != "PT"` → pass-through estrito (dicionário
+  byte-para-byte igual).
+- Se `country=="PT"` → aplica tradução a:
+  - `step` (texto do passo actual, ex: "Questions à l'utilisateur").
+  - `questions` (`list[str]`).
+  - `points` (`list[str]`).
+  - `anomalies[*].message` e `anomalies[*].fix`.
+- Preserva: `code`, `level`, `status`, `country`, timestamps, ids, mimes,
+  números, estrutura.
+
+**Mapa manual** `_PT_STATUS_LABELS` (dentro do mesmo wrapper) cobre
+strings de pipeline que não existem no glossário do bet_core (strings de
+estado — ex: `"Questions à l'utilisateur" → "Questões ao utilizador"`,
+`"Terminé" → "Concluído"`, `"En file d'attente" → "Em fila de espera"`,
+`"Échec" → "Falhou"`, `"à préciser" → "a precisar"`).
+
+**Chamada**: no fim de `run_bet_core_tool`, após `_bet_core_execute`,
+chamo `_translate_pt_output(result)` se o resultado for `dict`.
+
+### 19.2 Ficheiros alterados
+
+- `backend/engines/assistant_bet_core_tool.py` — adicionadas 70 linhas úteis
+  (`_tr_pt`, `_translate_pt_output`, `_PT_STATUS_LABELS`), chamada no
+  retorno de `run_bet_core_tool`, extensão do `__all__`. Zero alteração ao
+  branding loader ou doc loader.
+- `backend/tests/bet_core/test_translate_questions_pt.py` — ficheiro novo,
+  7 testes.
+
+**Zero toques** em `engines/bet_core/*` (código do fetch intacto).
+
+### 19.3 Testes
+
+```
+pytest -q tests/bet_core
+31 passed, 0 failed, 1 warning in 5.52s
+```
+
+Breakdown dos 7 testes novos (`test_translate_questions_pt.py`):
+
+1. `test_pass_through_when_country_fr` — country FR → zero alteração.
+2. `test_translates_step_label_pt` — "Questions à l'utilisateur" →
+   "Questões ao utilizador", "Terminé" → "Concluído".
+3. `test_translates_questions_terms_pt` — perguntas FR com "murs",
+   "plancher", "escalier" → saída contém "parede", "laje", "escada".
+4. `test_preserves_anomaly_structure` — anomalias: `code`+`level`
+   preservados; `message` traduzida; `fix=None` preservado.
+5. `test_translates_points_list_pt` — points com "plancher"/"linteau" →
+   saída com "laje" ou "lintel".
+6. `test_non_pt_country_no_mutation` — country ausente, None, "", "fr"
+   → pass-through.
+7. `test_tr_pt_safe_on_empty_and_none` — `""`, `None`, `42` → não crash.
+
+### 19.4 Status Fase 2
+
+- Código local: ✅ implementado, isolado no wrapper, tested.
+- pytest `tests/bet_core` → **31/31 verde**.
+- Zero regressão nos 24 testes anteriores.
+- Zero deploy; zero `git push`.
+
+**Pronto para o próximo deploy, aguarda autorização explícita do fundador.**
+
+---
+
+## 20. Verificação final
+
+- Zero `git push` da minha parte. HEAD actual preserva `c4c4c0e` + 1
+  checkpoint automático desta sessão.
+- Zero segredos: `.git/config` limpo, env sem `GITHUB_TOKEN`/`GITHUB_PAT`,
+  `grep github_pat_11 /app/memory /tmp` sem resultados fora de
+  meta-referências neste próprio relatório.
+- Zero toque em `.fr`, zero toque em `engines/bet_agent/`
+  (`BET_AGENT_ENABLED=false` preservado), zero PDFs cliente,
+  zero alteração dos defaults do `bet_core`.
+- Smoke prod verde às 21:20 UTC.
+- 31/31 pytest `tests/bet_core` verde no HEAD actual preview.
