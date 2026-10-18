@@ -56,7 +56,7 @@ class Coll:
 
 class DB:
     def __init__(self):
-        self.assistant_docs, self.assistant_artifacts, self.bet_study_jobs = Coll(), Coll(), Coll()
+        self.assistant_docs, self.assistant_artifacts, self.bet_study_jobs, self.bet_models = Coll(), Coll(), Coll(), Coll()
 
 
 def _llm(responses):
@@ -151,3 +151,25 @@ def test_pipeline_catches_engine_errors(tmp_path, monkeypatch):
     monkeypatch.setattr(structure, "compute", lambda m: (_ for _ in ()).throw(ValueError("boom")))
     res = pipeline.run(copy.deepcopy(CASE), tmp_path, stem="T")
     assert res["status"] == "MODELE_INVALIDE" and any(a["code"] == "CALC-00" for a in res["anomalies"])
+
+
+def test_same_documents_give_same_results_without_rereading():
+    db = DB()
+    pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
+    db.assistant_docs.docs.append({"doc_id": "doc_1", "user_id": "u1", "filename": "PC.pdf", "mime": "application/pdf",
+                                   "data_b64": base64.b64encode(pdf).decode()})
+    llm, calls = _llm([json.dumps(CASE)])
+    user = {"user_id": "u1"}
+    res = []
+    for req in ("r1", "r2"):                         # deux demandes distinctes, mêmes pièces, mêmes hypothèses
+        conv = {"conversation_id": "c1", "_quote_request_id": req}
+        out = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["doc_1"], "hypotheses": "", "country": "FR"},
+                                                 user, conv, db, llm=llm, background=False))
+        res.append(asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db)))
+    assert len(calls) == 1 and res[1]["cached"] is True
+    assert res[0]["devis_ht"] == res[1]["devis_ht"] and res[0]["sheets"] == res[1]["sheets"]
+    # hypothèses différentes (ex. correction de l'utilisateur) → nouveau relevé
+    conv = {"conversation_id": "c1", "_quote_request_id": "r3"}
+    asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["doc_1"], "hypotheses": "murs parpaing 20", "country": "FR"},
+                                       user, conv, db, llm=llm, background=False))
+    assert len(calls) == 2
