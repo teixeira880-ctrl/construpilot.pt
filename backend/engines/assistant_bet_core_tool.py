@@ -19,6 +19,7 @@ Zero toque em `engines/bet_core/` (código do fetch mantido imutável).
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
 from typing import Awaitable, Callable, Optional
 
@@ -176,22 +177,40 @@ def _make_pt_doc_loader(allowed_doc_fn: AllowedDocFn) -> Callable[..., Awaitable
     Reutiliza a verificação de ownership + suporte a chunking do
     `_allowed_doc` do `routes/assistant.py` (mesma lógica que todas as outras
     tools do Assistente, para consistência).
+
+    Deduplica anexos idênticos por sha256 do conteúdo final já concatenado —
+    espelha o default `_load_assistant_docs` do `bet_core` (necessário quando
+    o utilizador anexa o mesmo PDF 2× na conversa; evita cálculos duplicados
+    e inflar o custo LLM).
     """
 
     async def loader(_db, ids: list[str], user_id: str) -> list:
-        out: list = []
+        docs: list = []
         for did in ids:
             d = await allowed_doc_fn(did, user_id, True)
             mime = (d.get("mime") or "").lower()
-            if mime != "application/pdf":
+            name = d.get("filename") or did
+            if mime != "application/pdf" and not name.lower().endswith(".pdf"):
                 raise ValueError(
-                    f"{d.get('filename') or did} não é PDF — apenas PDFs de plantas são lidos pelo estudo BET."
+                    f"{name} não é PDF — apenas PDFs de plantas são lidos pelo estudo BET."
                 )
-            data = d.get("data_b64")
-            if not data:
-                raise ValueError(f"Documento {did} sem dados utilizáveis.")
-            out.append((d.get("filename") or did, base64.b64decode(data)))
-        return out
+            data_b64 = d.get("data_b64")
+            if not data_b64:
+                raise ValueError(f"Documento {name} sem dados utilizáveis.")
+            data = base64.b64decode(data_b64)
+            if not data.startswith(b"%PDF"):
+                raise ValueError(f"{name} não é um PDF legível — reimporte o ficheiro.")
+            docs.append((name, data))
+        seen: set[str] = set()
+        uniq: list = []
+        for name, data in docs:
+            h = hashlib.sha256(data).hexdigest()
+            if h in seen:
+                log.info("bet_core doc_loader: dedup %s (sha256=%s…)", name, h[:12])
+                continue
+            seen.add(h)
+            uniq.append((name, data))
+        return uniq
 
     return loader
 

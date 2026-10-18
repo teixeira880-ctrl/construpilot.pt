@@ -509,3 +509,135 @@ Pytest: `40 passed, 0 failed, 2 warnings in 9.84 s`. Zero regressão.
 **Addendum 3.5 implementado localmente, 40/40 pytest verde, idempotência
 confirmada em preview sob 2 restarts. Pronto para deploy conjunto.
 Aguarda clique manual do fundador.**
+
+---
+
+## 23. Preparação próximo deploy — chunks + dedup
+
+**Data**: 2026-10-18 (preparado em paralelo enquanto o deploy do addendum
+3.5 aguarda o clique do fundador).
+
+### 23.1 Diagnóstico Passo 0
+
+Inspecção do `_make_pt_doc_loader` em
+`backend/engines/assistant_bet_core_tool.py`:
+
+- ✅ **Chunks**: o wrapper delega para `routes/assistant.py::_allowed_doc`
+  (linhas 220-230) que lê `assistant_doc_chunks` por `index`, verifica
+  completude da sequência, concatena base64. Portanto a leitura
+  fragmentada **já funcionava** antes deste fetch — o `.pt` nunca teve o
+  bug do `.fr`.
+- ❌ **Dedup**: ausente no wrapper. Se o utilizador anexa o mesmo PDF 2×
+  (mesmo doc_id OU doc_ids diferentes com conteúdo idêntico), o reader
+  recebe duplicatas e pode fazer trabalho redundante (aumentar custo LLM
+  em plantas reais).
+
+Decisão: `.pt` só precisa **do dedup** — a leitura de chunks mantém o
+caminho `_allowed_doc` que já funciona.
+
+### 23.2 Fetch `3db699d` ✅
+
+- Fetch com token efémero (zero persistência), git config limpo.
+- Preservado: `test_translate_questions_pt.py` (meu i18n, untracked) + o
+  teste `test_demo_showcase_pt.py` + o wrapper + o seed. Backup defensivo
+  em `/tmp/i18n_backup_v2/`.
+- `pytest -q tests/bet_core` → **37 passed** (30 ramo + 7 meus i18n).
+
+Novidade do ramo: `engines/bet_core/assistant_tool.py::_load_assistant_docs`
+default agora inclui dedup por sha256. O `.pt` fornece sempre um
+`doc_loader` custom, portanto este default nunca é usado — mas serve de
+referência para replicar a mesma lógica no wrapper.
+
+### 23.3 Alterações no wrapper
+
+`backend/engines/assistant_bet_core_tool.py`:
+
+- Import de `hashlib`.
+- `_make_pt_doc_loader` ampliado:
+  - Validação `magic bytes %PDF` (também presente no ramo).
+  - Aceita `name.endswith(".pdf")` quando o `mime` está em falta
+    (compat com schemas antigos — paralelo do ramo).
+  - **Dedup final** por `sha256(data)` após a concatenação dos chunks.
+    Mantém a primeira ocorrência na ordem de input, descarta as
+    seguintes. Logs INFO para cada dedup (sha256 primeiros 12 chars).
+
+Preserva: ownership check via `_allowed_doc`, erro claro para PDF
+corrupto, erro claro para mime não-PDF.
+
+### 23.4 Testes novos — `tests/bet_core/test_doc_loader_pt.py`
+
+6 testes:
+
+1. `test_loads_small_inline_pdf` — PDF b64 inline → 1 (name, bytes).
+2. `test_dedup_duplicate_docs` — 3 doc_ids (2 com mesmo conteúdo) → 2
+   únicos.
+3. `test_rejects_non_pdf_mime` — image/jpeg → ValueError "não é PDF".
+4. `test_rejects_corrupt_pdf_without_magic_bytes` — mime pdf mas
+   `b"not a pdf"` → ValueError "PDF legível".
+5. `test_ownership_violation_propagates` — `_allowed_doc` lança
+   PermissionError → sobe tal e qual.
+6. `test_handles_chunked_pdf_via_allowed_doc` — PDF grande já
+   concatenado por `_allowed_doc` passa pelo loader intacto.
+
+### 23.5 Pytest final
+
+```
+pytest -q tests/bet_core tests/test_demo_showcase_pt.py
+47 passed, 0 failed, 2 warnings in 11.39 s
+```
+
+Breakdown: 30 ramo + 7 i18n + 6 doc_loader + 4 showcase = 47. Zero
+regressão.
+
+### 23.6 Smoke e2e com chunks + duplicado ✅
+
+Script `/tmp/bet_chunks_smoke.py` (apagado após execução) exercitou:
+
+- Insert `assistant_docs` com `chunk_count` + 54 chunks de 2 KB em
+  `assistant_doc_chunks` (`doc_arq`).
+- Insert `assistant_docs` inline (`doc_geo`).
+- Insert `assistant_docs` com cópia do conteúdo de `doc_arq` sob outro
+  filename (`doc_dup`).
+- Chama `generate_full_bet_study` com `document_ids = [doc_arq, doc_geo,
+  doc_dup]` e `background=False`.
+- Loader devolve 2 (não 3) → `doc_dup` deduplicado.
+- Como ambos têm `/Subject=construpilot-demo:moradia_pt_demo`, demo
+  bypass activa → zero Claude.
+
+| Métrica | Valor |
+|--|--|
+| Duração | **1.80 s** |
+| Chamadas Claude | **0** |
+| Entregáveis | 3 (pdf + zip + xlsx) ✅ |
+| Review | PRÊT POUR VISA BET ✅ |
+| Blocking | 0 ✅ |
+| HT / TTC | **€61 160,31 / €75 227,18** |
+| Pranchas | 15 |
+| Chunks reconstruídos | 54 → 108 KB (sem erro) |
+| Dedup aplicado | 1 duplicado descartado ✅ |
+| Cleanup | 1 user + 3 docs + 54 chunks + 1 job + 3 artifacts |
+
+Budget utilizado: **€0** (zero chamadas Claude graças ao demo bypass +
+dedup).
+
+### 23.7 Status — AGUARDA PRÓXIMO DEPLOY 🟡
+
+- 47/47 pytest verde no HEAD actual.
+- Smoke e2e verde a 1.80 s com chunks + dedup + bypass.
+- Backend preview arranca limpo após as alterações.
+- **Zero `git push`**, zero toque em `.fr`, zero toque em
+  `engines/bet_agent/`.
+
+Esta frente é independente e empilha-se por cima do addendum 3.5. Deploy
+conjunto único quando o fundador autorizar.
+
+### 23.8 Deploy actual (addendum 3.5) — continua à espera
+
+O deploy prod do commit `eaad908` (addendum 3.5) continua pendente de
+clique manual pelo fundador no dashboard Emergent. **Não interferi com
+isso.** Assim que o fundador enviar "deploy on", interrompo tudo o resto
+e executo os 7 pontos do smoke prod, depois retomo.
+
+Alternativamente: se o fundador quiser consolidar tudo num único deploy
+(addendum 3.5 + chunks + dedup), basta aguardar e o deploy único cobre
+ambas as frentes a partir do HEAD actual + checkpoint deste finish.
