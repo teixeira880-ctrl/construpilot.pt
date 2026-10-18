@@ -40,6 +40,22 @@ def _f(v: float, n: int = 2) -> str:
     return f"{v:.{n}f}".replace(".", ",")
 
 
+def dormer_geometry(m: Model, d: dict) -> dict:
+    """Géométrie d'une lucarne jacobine : front dans le plan de la façade, jouées jusqu'à la rencontre avec le versant."""
+    roof = m.roof
+    sd = m.side(d["side"])
+    at0 = sd["pos"] < m.L / 2
+    run = roof["ridge_x"] if at0 else m.L - roof["ridge_x"]
+    tan_a = (roof["ridge_level"] - roof["eaves_level"]) / max(run, 0.1)
+    w = d["y1"] - d["y0"]
+    he = d.get("front_h", d.get("window_h", 1.10) + 0.25)            # hauteur du front (égout de la lucarne) au-dessus de l'arase
+    hr = d.get("ridge_h", he + w / 2 * math.tan(math.radians(d.get("pitch_deg", 33.7))))
+    de, dr = he / tan_a, hr / tan_a                                     # profondeur des jouées / du faîtage de lucarne
+    return {"id": d["id"], "side": d["side"], "x_face": 0.0 if at0 else m.L, "dir": 1 if at0 else -1, "y0": d["y0"], "y1": d["y1"],
+            "w": round(w, 3), "he": round(he, 3), "hr": round(hr, 3), "de": round(de, 3), "dr": round(dr, 3), "run": run,
+            "tan_a": tan_a, "window_w": d.get("window_w", w - 0.40), "window_h": d.get("window_h", 1.10)}
+
+
 def compute(m: Model, ld: dict) -> dict:
     roof = m.roof
     alpha = math.radians(ld["roof_pitch_deg"])
@@ -70,8 +86,25 @@ def compute(m: Model, ld: dict) -> dict:
     dormers = []
     for d in roof["dormers"]:
         w = d["y1"] - d["y0"]
-        dormers.append({"id": d["id"], "side": d["side"], "width": w, "y0": d["y0"], "y1": d["y1"],
-                        "chevetre": "Chevêtre 2 × 75 × 200 C24 + chevrons de rive doublés de part et d'autre",
+        g = dormer_geometry(m, d)
+        L_up = max(g["run"] - g["dr"], 0.3) / math.cos(alpha)           # rampant au-dessus de la lucarne porté par le chevêtre
+        chev = _section(w + 0.10, gs * L_up / 2, s * L_up * math.cos(alpha) / 2, C24, GAMMA_M_C,
+                        [(150, 200), (150, 225), (150, 250), (180, 250)], limit=300.0)
+        bh = panne["h"] / 1000 if panne else 0.36
+        crossing = [p for p in [{"id": "PF", "x": half}] + [{"id": f"PI{i+1}", "x": x} for i, x in enumerate(sorted(
+            [round(k * spacing_h, 3) for k in range(1, n_inter + 1)] + [round(m.L - k * spacing_h, 3) for k in range(1, n_inter + 1)]))]
+                    if abs(p["x"] - g["x_face"]) < g["dr"]]
+        notes = []
+        for p in crossing:
+            zp = roof["eaves_level"] + abs(p["x"] - g["x_face"]) * g["tan_a"] - 0.20 - bh / 2
+            free = zp - m.levels[-1].floor_top
+            notes.append(f"panne {p['id']} traverse la lucarne (sous-face {_f(zp)}, hauteur libre {_f(free)} m) : "
+                         + ("conservée, habillée" if free >= 1.90 else "à chevêtrer ou à relever — hauteur libre < 1,90 m"))
+        dormers.append({"id": d["id"], "side": d["side"], "width": w, "y0": d["y0"], "y1": d["y1"], "geometry": g,
+                        "chevetre_section": chev, "upper_rafter": round(L_up, 2), "pannes": notes,
+                        "chevetre": (f"Chevêtre haut C24 2 × {chev['b'] // 2} × {chev['h']}, portée {_f(w + 0.10)} : "
+                                     f"M_Ed = {chev['M_Ed']} kN.m, σ = {chev['sigma']} ≤ {chev['f_md']} MPa, flèche {chev['w_fin_mm']} ≤ {chev['w_lim_mm']} mm ; "
+                                     "chevrons de rive doublés de part et d'autre") if chev else "Chevêtre : section à justifier par le charpentier",
                         "frame": f"Lucarne jacobine {w:.2f} m : jambages ossature bois 45 × 145, linteau 75 × 200, toiture 2 pans ; "
                                  f"le front repose sur l'arase de façade (chaînage {_f(roof['eaves_level'])})"})
     mit = any(m.side(g)["type"] == "mitoyen" for g in roof.get("gables", []))
@@ -95,5 +128,5 @@ def compute(m: Model, ld: dict) -> dict:
         "checks": [
             f"Pannes : M_Ed = {panne['M_Ed']} kN.m, σ = {panne['sigma']} MPa ≤ f_m,d = {panne['f_md']} MPa ; flèche finale {panne['w_fin_mm']} mm ≤ L/200 = {panne['w_lim_mm']} mm" if panne else "Pannes : aucune section standard ne passe — revoir",
             f"Chevrons {chevron['label']} : σ = {chevron['sigma']} MPa ≤ {chevron['f_md']} MPa ; flèche {chevron['w_fin_mm']} mm ≤ {chevron['w_lim_mm']} mm" if chevron else "Chevrons : revoir",
-        ],
+        ] + [f"Lucarne {d['id']} : {d['chevetre']}" for d in dormers[:1]] + sorted({n for d in dormers for n in d["pannes"]}),
     }

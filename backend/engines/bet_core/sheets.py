@@ -192,12 +192,33 @@ def _wall_tags(sh: Sheet, m: Model, lid: str):
             sh.text("TEXTE", (m.L * 0.30, pos + m.t_tot + 0.10 if out < 0 else pos - (m.t_tot - m.t_str) - 0.17), txt, size=1.3, color=(0.45, 0.2, 0.15))
 
 
+def _dormers_plan(sh: Sheet, m: Model, lid: str, dims=True):
+    """Lucarnes vues en plan sur le dernier niveau : jouées ossature, faîtage, noues, cotes."""
+    from .timber import dormer_geometry
+    if lid != m.levels[-1].id:
+        return
+    for d in m.roof.get("dormers", []):
+        g = dormer_geometry(m, d)
+        xf, k, y0, y1 = g["x_face"], g["dir"], g["y0"], g["y1"]
+        xe, xr, ym = xf + k * g["de"], xf + k * g["dr"], (y0 + y1) / 2
+        for ya, yb in ((y0, y0 + 0.145), (y1 - 0.145, y1)):
+            sh.rect("CHARPENTE", min(xf, xe), ya, max(xf, xe), yb, lw=0.35, fill=(0.92, 0.80, 0.65))
+        sh.line("CHARPENTE", (xf, ym), (xr, ym), lw=0.25, dash="axis")
+        for ya in (y0, y1):
+            sh.line("CHARPENTE", (xe, ya), (xr, ym), lw=0.25, dash="dashed")
+        sh.text("CHARPENTE", ((xf + xe) / 2, y0 + 0.30), f"{g['id']} lucarne {fmt(g['w'])} — jouées ossature 45×145", size=1.25, anchor="c", bold=True)
+        if dims:
+            sh.chain(sorted([xf, xe, xr]), "x", y0 - 0.22, size=1.25)
+            sh.chain([y0, y1], "y", xr + k * 0.25, size=1.25)
+
+
 def base_plan(sh: Sheet, m: Model, lid: str, rooms=True, dims=True, axes=True, light=False):
     _ext_walls(sh, m, lid, light=light)
     _interior(sh, m, lid)
     _stair(sh, m, lid)
     if rooms:
         _rooms(sh, m, lid, dims=dims)
+    _dormers_plan(sh, m, lid, dims=dims)
     if axes:
         _axes(sh, m)
     if dims:
@@ -432,6 +453,29 @@ def go_floor(m: Model, r: dict, slab: dict, code: str, stacks: list[dict]) -> Sh
 XB = None
 
 
+def _dormer_section(sh: Sheet, m: Model, y: float, f=lambda z: z, dims=True):
+    """Lucarnes coupées par un plan vertical à l'ordonnée y (coupe selon X)."""
+    from .timber import dormer_geometry
+    eav = m.roof["eaves_level"]
+    cut = []
+    for d in m.roof.get("dormers", []):
+        if not d["y0"] <= y <= d["y1"]:
+            continue
+        g = dormer_geometry(m, d)
+        xf, k = g["x_face"], g["dir"]
+        xi = xf + k * 0.145
+        sh.rect("CHARPENTE", min(xf, xi), f(eav), max(xf, xi), f(eav + g["hr"]) , lw=0.35, fill=(0.92, 0.80, 0.65))
+        sh.rect("BAIE", min(xf, xi) - 0.01, f(eav), max(xf, xi) + 0.01, f(eav + g["window_h"]), lw=0.3, fill=(0.85, 0.92, 1.0))
+        sh.line("CHARPENTE", (xf - k * 0.30, f(eav + g["hr"])), (xf + k * g["dr"], f(eav + g["hr"])), lw=0.8)
+        sh.line("CHARPENTE", (xi, f(eav + g["hr"] - 0.25)), (xf + k * (g["dr"] - 0.30), f(eav + g["hr"] - 0.25)), lw=0.2, dash="dashed")
+        sh.text("CHARPENTE", (xf + k * g["dr"] / 2, f(eav + g["hr"]) + 0.10), g["id"], size=1.3, anchor="c", bold=True)
+        if dims:
+            sh.chain([f(eav), f(eav + g["window_h"]), f(eav + g["he"]), f(eav + g["hr"])], "y", xf + k * (g["de"] + 0.15), size=1.2)
+            sh.chain(sorted([xf, xf + k * g["de"], xf + k * g["dr"]]), "x", f(eav + g["hr"]) + 0.35, size=1.2)
+        cut.append(g)
+    return cut
+
+
 def go_sections(m: Model, r: dict, tim: dict) -> Sheet:
     sh = _new("GO-09", "Coupes A-A et B-B cotées", scale=100, origin=(-2.2, -8.0), subtitle="Chaînes verticales : fondations → faîtage")
     L, W = m.L, m.W
@@ -478,8 +522,12 @@ def go_sections(m: Model, r: dict, tim: dict) -> Sheet:
         pts += [eav] + list(extra)
         sh.chain(sorted(set(round(p, 3) for p in pts)), "y", x, size=1.4)
 
-    # ---- A-A : coupe selon X à y = 2,95
-    yA = 2.95
+    # ---- A-A : coupe selon X, passant par les lucarnes s'il y en a (sinon y = 0,40 W)
+    yA = round(m.W * 0.40, 2)
+    dl = m.roof.get("dormers", [])
+    if dl:
+        best = max(((max(a["y0"], b["y0"]), min(a["y1"], b["y1"])) for a in dl for b in dl), key=lambda iv: iv[1] - iv[0])
+        yA = round((best[0] + best[1]) / 2, 2) if best[1] > best[0] else round((dl[0]["y0"] + dl[0]["y1"]) / 2, 2)
     gab = m.roof.get("gables", [])
     ops_l = [o for s in end_sides(m) if _side_geom(m, s)[1] == 0.0 for o in m.openings_on(s) if o.a <= yA <= o.b]
     ops_r = [o for s in end_sides(m) if _side_geom(m, s)[1] > 0.0 for o in m.openings_on(s) if o.a <= yA <= o.b]
@@ -488,7 +536,17 @@ def go_sections(m: Model, r: dict, tim: dict) -> Sheet:
         for o in ops:
             z0 = m.level(o.level).floor_top + o.sill
             sh.rect("BAIE", xw - 0.01, z0, xw + 0.21, z0 + o.height, lw=0.3, fill=(0.85, 0.92, 1.0))
-    sh.poly("CHARPENTE", [(-0.35, eav - 0.35 * math.tan(a)), (m.roof["ridge_x"], rid), (L + 0.35, eav - 0.35 * math.tan(a))], lw=0.8)
+    cut = _dormer_section(sh, m, yA)
+    xl = max([g["dr"] for g in cut if g["dir"] > 0] or [None], key=lambda v: v or -1)
+    xr_ = min([L - g["dr"] for g in cut if g["dir"] < 0] or [None], key=lambda v: v if v is not None else 1e9)
+    tl = math.tan(a)
+    left = (xl, eav + xl * tl) if xl else (-0.35, eav - 0.35 * tl)
+    right = (xr_, eav + (L - xr_) * tl) if xr_ else (L + 0.35, eav - 0.35 * tl)
+    sh.poly("CHARPENTE", [left, (m.roof["ridge_x"], rid), right], lw=0.8)
+    if xl:
+        sh.line("CHARPENTE", (-0.35, eav - 0.35 * tl), (0.0, eav), lw=0.8)
+    if xr_:
+        sh.line("CHARPENTE", (L, eav), (L + 0.35, eav - 0.35 * tl), lw=0.8)
     for p in tim["pannes"]:
         b, h = tim["panne_section"]["b"] / 1000, tim["panne_section"]["h"] / 1000
         sh.rect("CHARPENTE", p["x"] - b / 2, p["z"] - h / 2, p["x"] + b / 2, p["z"] + h / 2, lw=0.3, fill=(0.85, 0.70, 0.50))
@@ -564,15 +622,21 @@ def go_facades(m: Model, r: dict) -> list[Sheet]:
                 if l:
                     sh.rect("ACIER", u0 - 0.20, z + o.height, u0 + o.width + 0.20, z + o.height + l["h"], lw=0.3, fill=(0.95, 0.75, 0.75))
                     sh.text("ACIER", (u0 + o.width / 2, z + o.height + l["h"] + 0.08), l["id"], size=1.3, anchor="c", bold=True)
+            from .timber import dormer_geometry
             for d in m.roof["dormers"]:
                 if d["side"] != side:
                     continue
+                g = dormer_geometry(m, d)
                 u0 = xo + min(_facade_coord(m, side, d["y0"]), _facade_coord(m, side, d["y1"]))
-                wd = d["y1"] - d["y0"]
-                sh.rect("BRIQUE", u0, eav, u0 + wd, eav + 1.35, lw=0.35, fill=(0.99, 0.96, 0.94))
-                sh.poly("CHARPENTE", [(u0 - 0.1, eav + 1.35), (u0 + wd / 2, eav + 1.95), (u0 + wd + 0.1, eav + 1.35)], lw=0.4, closed=True, fill=(0.92, 0.65, 0.62))
-                sh.rect("BAIE", u0 + 0.20, eav, u0 + wd - 0.20, eav + d["window_h"], lw=0.35, fill=(0.85, 0.92, 1.0))
-                sh.text("CHARPENTE", (u0 + wd / 2, eav + 1.45), d["id"], size=1.3, anchor="c")
+                wd, he, hr = g["w"], g["he"], g["hr"]
+                ww = g["window_w"]
+                sh.rect("BRIQUE", u0, eav, u0 + wd, eav + he, lw=0.35, fill=(0.99, 0.96, 0.94))
+                sh.poly("CHARPENTE", [(u0 - 0.1, eav + he), (u0 + wd / 2, eav + hr), (u0 + wd + 0.1, eav + he)], lw=0.4, closed=True, fill=(0.92, 0.65, 0.62))
+                sh.rect("BAIE", u0 + (wd - ww) / 2, eav, u0 + (wd + ww) / 2, eav + g["window_h"], lw=0.35, fill=(0.85, 0.92, 1.0))
+                sh.text("BAIE", (u0 + wd / 2, eav + g["window_h"] / 2), f"{fmt(ww)}×{fmt(g['window_h'])}", size=1.2, anchor="c")
+                sh.text("CHARPENTE", (u0 + wd / 2, eav + he + 0.12), d["id"], size=1.3, anchor="c", bold=True)
+                sh.chain([eav, eav + g["window_h"], eav + he, eav + hr], "y", u0 - 0.15, size=1.15)
+                sh.chain([u0, u0 + (wd - ww) / 2, u0 + (wd + ww) / 2, u0 + wd], "x", eav + hr + 0.25, size=1.15)
             for p in r["lintels"]["posts"]:
                 if p["side"] == side:
                     u0 = xo + min(_facade_coord(m, side, p["y0"]), _facade_coord(m, side, p["y1"]))
@@ -771,9 +835,11 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
         sh.rect("CHARPENTE", x - 0.0375, 0.20, x + 0.0375, W - 0.20, lw=0.3, fill=(0.92, 0.80, 0.65))
     dorm = m.roof["dormers"]
 
+    from .timber import dormer_geometry
+
     def dormer_x(d):
-        xa = 0.0 if _side_geom(m, d["side"])[1] == 0.0 else L - 1.6
-        return xa, xa + 1.6
+        g = dormer_geometry(m, d)
+        return (0.0, g["dr"]) if g["dir"] > 0 else (L - g["dr"], L)
 
     y = 0.30
     ys = []
@@ -794,7 +860,10 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
         xc = xb if xa == 0.0 else xa
         sh.rect("CHARPENTE", xc - 0.04, d["y0"] - 0.04, xc + 0.04, d["y1"] + 0.04, lw=0.4, fill=(0.75, 0.55, 0.30))
         sh.text("CHARPENTE", ((xa + xb) / 2, (d["y0"] + d["y1"]) / 2), d["id"], size=1.8, anchor="c", bold=True)
-        sh.text("CHARPENTE", ((xa + xb) / 2, (d["y0"] + d["y1"]) / 2 - 0.25), "chevêtre 2×75×200", size=1.2, anchor="c")
+        dd = next(x for x in tim["dormers"] if x["id"] == d["id"])
+        cs = dd.get("chevetre_section")
+        sh.text("CHARPENTE", ((xa + xb) / 2, (d["y0"] + d["y1"]) / 2 - 0.25), f"chevêtre 2×{cs['b'] // 2}×{cs['h']}" if cs else "chevêtre", size=1.2, anchor="c")
+        sh.chain([xa, xb], "x", d["y0"] - 0.20, size=1.2)
         sh.chain([d["y0"], d["y1"]], "y", (xa + xb) / 2 - 0.55 if xa == 0.0 else (xa + xb) / 2 + 0.55, size=1.3)
     sh.chain([0.0] + sorted(p["x"] for p in tim["pannes"]) + [L], "x", W + 0.45, size=1.4)
     sh.dim((-0.30, W + 0.85), (L + 0.30, W + 0.85), 0, text=f"{fmt(L + 0.60)} débords compris", size=1.6)
@@ -810,6 +879,12 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
         sh.rect("BRIQUE", xw, f(m.levels[-1].floor_top), xw + m.t_str, f(eav), lw=0.4, fill=BRICK_FILL, hatch="brique")
     sh.line("PLANCHER", (0, f(m.levels[-1].floor_top)), (L, f(m.levels[-1].floor_top)), lw=1.0)
     sh.line("CHARPENTE", (0.2, f(m.roof["ceiling_level"])), (L - 0.2, f(m.roof["ceiling_level"])), lw=0.25, dash="dashed")
+    seen = set()
+    for d in m.roof.get("dormers", []):
+        if d["side"] in seen:
+            continue
+        seen.add(d["side"])
+        _dormer_section(sh, m, (d["y0"] + d["y1"]) / 2, f=f, dims=True)
     for p in tim["pannes"]:
         hh = tim["panne_section"]["h"] / 1000
         sh.rect("CHARPENTE", p["x"] - b / 2, f(p["z"]) - hh / 2, p["x"] + b / 2, f(p["z"]) + hh / 2, lw=0.3, fill=(0.88, 0.72, 0.52))
@@ -825,7 +900,8 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
         f"Pannes GL24h {pn['label']} : portée {fmt(tim['panne_span'])}, M_Ed = {pn['M_Ed']} kN.m, σ = {pn['sigma']} ≤ {pn['f_md']} MPa, flèche {pn['w_fin_mm']} ≤ {pn['w_lim_mm']} mm.",
         f"Chevrons C24 {ch['label']} entraxe 0,60 ({tim['chevron_count']} u) ; sablières 75×200 sur les arases d'égout.",
         "Appuis des pannes : sommiers BA 20×20×40 dans les pignons + étriers ; feutre de désolidarisation côté voisin.",
-        "Lucarnes : chevêtres 2 × 75×200 C24, chevrons de rive doublés, ossature 45×145.",
+        *([f"Lucarnes ({len(tim['dormers'])}) : {tim['dormers'][0]['chevetre']} ; jouées et front ossature 45×145, profondeur jouées {fmt(tim['dormers'][0]['geometry']['de'])}, faîtage {fmt(tim['dormers'][0]['geometry']['dr'])}."]
+          + sorted({n for dd in tim["dormers"] for n in dd["pannes"]}) if tim["dormers"] else []),
         tim["bracing"], tim["covering"], tim["insulation"],
         "Bois traités classe 2, humidité ≤ 18 % ; assemblages et organes à justifier par le charpentier (EN 1995).",
     ]

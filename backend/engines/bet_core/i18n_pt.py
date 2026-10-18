@@ -662,3 +662,18 @@ TEMPLATES.update({
     "• Valeur forfaitaire de pré-dimensionnement (fondations voisines inconnues) — à confirmer en G⟨0⟩ PRO": "• Valor forfetário de pré-dimensionamento (fundações vizinhas desconhecidas) — a confirmar no estudo geotécnico",
     "Semelle la plus chargée (Semelle excentrée sous ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.": "Sapata mais carregada (sapata excêntrica sob ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.",
 })
+
+# Lucarnes (trapeiras) — ajouté avec la géométrie des lucarnes
+GLOSSARY.update({
+    "jouées et front ossature": "ilhargas e frente em estrutura de madeira",
+    "jouées ossature": "ilhargas em estrutura de madeira",
+    "profondeur jouées": "profundidade das ilhargas",
+    "Chevêtre haut": "Travessa de remate superior",
+    "chevrons de rive doublés de part et d'autre": "varas de bordo duplicadas de cada lado",
+    "traverse la lucarne": "atravessa a trapeira",
+    "hauteur libre": "altura livre",
+    "conservée, habillée": "mantida e revestida",
+    "à chevêtrer ou à relever": "a interromper com travessa de remate ou a elevar",
+    "Lucarne": "Trapeira", "lucarne": "trapeira", "Lucarnes": "Trapeiras", "lucarnes": "trapeiras",
+    "flèche": "flecha",
+})
