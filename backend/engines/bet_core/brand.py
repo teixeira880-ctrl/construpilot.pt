@@ -53,6 +53,8 @@ class Brand:
     logo_hex: str | None = None                          # pour openpyxl
     logo_bytes: bytes | None = None
     is_client: bool = False
+    style: str = "fr"                                    # mise en page : « fr » (bandeau) / « pt » (colonne latérale)
+    wm: ImageReader | None = None                        # logo pâli pour le filigrane
 
     @property
     def tint(self):
@@ -68,11 +70,29 @@ class Brand:
         return "%02X%02X%02X" % (round(a.red * 255), round(a.green * 255), round(a.blue * 255))
 
 
-def from_branding(b: dict | None) -> Brand:
+THEMES = {"FR": {"accent": "#14365C", "accent2": "#B87333", "style": "fr"},     # bleu nuit / cuivre, bandeau
+          "PT": {"accent": "#0E4D4A", "accent2": "#C9A227", "style": "pt"}}     # verde-petróleo / dourado, coluna lateral
+
+
+def _faded(png: bytes, alpha: float = 0.07) -> ImageReader | None:
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(png)).convert("RGBA")
+        a = im.getchannel("A").point(lambda v: int(v * alpha))
+        im.putalpha(a)
+        buf = io.BytesIO()
+        im.save(buf, "PNG")
+        return ImageReader(io.BytesIO(buf.getvalue()))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def from_branding(b: dict | None, country: str = "FR") -> Brand:
     """b = branding ConstruPilot de l'entreprise (company_name, contact_line, address, postal, city, siret, vat, nif,
     company_email, phone, accent_color, accent2_color, logo_b64, footer_text)."""
+    th = THEMES.get((country or "FR").upper(), THEMES["FR"])
     if not b or not (b.get("company_name") or b.get("logo_b64")):
-        return Brand()
+        return Brand(accent=_hex(th["accent"], th["accent"]), accent2=_hex(th["accent2"], th["accent2"]), style=th["style"])
     lines = []
     addr = " ".join(x for x in (b.get("address"), b.get("postal") or b.get("postal_code"), b.get("city")) if x)
     for x in (b.get("contact_line"), addr, " · ".join(y for y in (b.get("phone"), b.get("company_email")) if y)):
@@ -82,7 +102,8 @@ def from_branding(b: dict | None) -> Brand:
     if ids:
         lines.append(ids)
     br = Brand(name=b.get("company_name") or "", lines=lines[:4], legal=(b.get("footer_text") or "")[:220],
-               accent=_hex(b.get("accent_color"), "#14365C"), accent2=_hex(b.get("accent2_color"), "#B87333"), is_client=True)
+               accent=_hex(b.get("accent_color"), th["accent"]), accent2=_hex(b.get("accent2_color"), th["accent2"]), is_client=True,
+               style=th["style"])
     if b.get("logo_b64"):
         try:
             raw = base64.b64decode(re.sub(r"^data:image/[a-z+]+;base64,", "", b["logo_b64"]))
@@ -96,6 +117,7 @@ def from_branding(b: dict | None) -> Brand:
             br.logo_bytes = buf.getvalue()
             br.logo = ImageReader(io.BytesIO(br.logo_bytes))
             br.logo_ratio = im.width / max(im.height, 1)
+            br.wm = _faded(br.logo_bytes)
         except Exception:  # noqa: BLE001 — logo illisible : repli sur le nom en toutes lettres
             br.logo = None
     return br
@@ -104,9 +126,29 @@ def from_branding(b: dict | None) -> Brand:
 CURRENT: list[Brand] = [Brand()]
 
 
-def use(b: dict | Brand | None) -> Brand:
-    CURRENT[0] = b if isinstance(b, Brand) else from_branding(b)
+def use(b: dict | Brand | None, country: str = "FR") -> Brand:
+    CURRENT[0] = b if isinstance(b, Brand) else from_branding(b, country)
     return CURRENT[0]
+
+
+def watermark(c, cx: float, cy: float, width: float, br: Brand | None = None):
+    """Filigrane centré (logo pâli ; à défaut, nom de l'entreprise en très clair), comme sur les devis."""
+    br = br or get()
+    c.saveState()
+    if br.wm is not None:
+        h = width / br.logo_ratio
+        c.drawImage(br.wm, cx - width / 2, cy - h / 2, width, h, mask="auto", preserveAspectRatio=True)
+    elif br.is_client and br.name:
+        name = br.name.upper()
+        size = 10
+        while pdfmetrics.stringWidth(name, "TT", size + 2) < width:
+            size += 2
+        c.translate(cx, cy)
+        c.rotate(28)
+        c.setFillColor(_mix(br.accent, 0.955))
+        c.setFont("TT", size)
+        c.drawCentredString(0, -size * 0.35, name)
+    c.restoreState()
 
 
 def get() -> Brand:

@@ -73,12 +73,12 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
     proj = dict(m.raw["project"], date=date)
 
     with _RENDER_LOCK:
-        brand.use(branding)
+        brand.use(branding, country)
         i18n.KEEP_NORMS[0] = lang == "pt" and country != "PT"     # projet français lu en portugais : normes françaises conservées
         try:
             return _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomalies)
         finally:
-            brand.use(None)
+            brand.use(None, "FR")
             i18n.KEEP_NORMS[0] = False
 
 

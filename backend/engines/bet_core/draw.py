@@ -395,6 +395,8 @@ def render_pdf(sheets: list[Sheet], path: str | Path, project: dict, lang: str =
         c = canvas.Canvas(str(path), pagesize=landscape(A3))
         c.setTitle(T(project["name"]))
         for i, sh in enumerate(sheets, 1):
+            W, H = landscape(A3)
+            B.watermark(c, (W - 112 * mm) / 2 + 5 * mm, H / 2, 190 * mm)      # filigrane sous le dessin
             _render_items(c, sh)
             _frame(c, sh, project, i, len(sheets))
             c.showPage()

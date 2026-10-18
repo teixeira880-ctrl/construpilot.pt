@@ -392,8 +392,11 @@ def _T(x):
 
 
 def _cover(c, doc, m, rev, tot, sheets, prof):
+    if _brand.get().style == "pt":
+        return _cover_pt(c, doc, m, rev, tot, sheets, prof)
     from reportlab.pdfbase.pdfmetrics import stringWidth
     br = _brand.get()
+    _brand.watermark(c, A4[0] / 2, 70 * mm, 120 * mm, br)
     W, H = A4
     pr = m.raw["project"]
     ink, grey = colors.Color(0.12, 0.14, 0.17), colors.Color(0.42, 0.45, 0.49)
@@ -531,13 +534,26 @@ def _header_footer(c, doc, m):
     br = _brand.get()
     W, H = A4
     grey = colors.Color(0.45, 0.47, 0.50)
+    _brand.watermark(c, W / 2, H / 2 - 10 * mm, 120 * mm, br)
     c.saveState()
-    _brand.draw_logo(c, 18 * mm, H - 16.5 * mm, 30 * mm, 9 * mm, br)
-    c.setFillColor(grey)
-    c.setFont("DV", 7)
-    c.drawRightString(W - 18 * mm, H - 11 * mm, _T("Note de calcul et revue du dossier"))
-    c.setFont("DVM", 7)
-    c.drawRightString(W - 18 * mm, H - 14.5 * mm, _T(m.raw["project"]["name"])[:90])
+    if br.style == "pt":
+        c.setFillColor(br.accent)
+        c.rect(0, 0, 6 * mm, H, stroke=0, fill=1)
+        c.setFillColor(br.accent2)
+        c.rect(6 * mm, 0, 0.9 * mm, H, stroke=0, fill=1)
+        _brand.draw_logo(c, W - 48 * mm, H - 16.5 * mm, 30 * mm, 9 * mm, br, align="r")
+        c.setFillColor(grey)
+        c.setFont("DV", 7)
+        c.drawString(18 * mm, H - 11 * mm, _T("Note de calcul et revue du dossier"))
+        c.setFont("DVM", 7)
+        c.drawString(18 * mm, H - 14.5 * mm, _T(m.raw["project"]["name"])[:80])
+    else:
+        _brand.draw_logo(c, 18 * mm, H - 16.5 * mm, 30 * mm, 9 * mm, br)
+        c.setFillColor(grey)
+        c.setFont("DV", 7)
+        c.drawRightString(W - 18 * mm, H - 11 * mm, _T("Note de calcul et revue du dossier"))
+        c.setFont("DVM", 7)
+        c.drawRightString(W - 18 * mm, H - 14.5 * mm, _T(m.raw["project"]["name"])[:90])
     c.setStrokeColor(br.accent)
     c.setLineWidth(0.8)
     c.line(18 * mm, H - 18.5 * mm, W - 18 * mm, H - 18.5 * mm)
@@ -552,4 +568,128 @@ def _header_footer(c, doc, m):
     c.setFont("DVB", 7)
     c.setFillColor(br.accent)
     c.drawRightString(W - 18 * mm, 9 * mm, f"{doc.page}")
+    c.restoreState()
+
+
+def _cover_pt(c, doc, m, rev, tot, sheets, prof):
+    """Couverture « PT » : colonne latérale pleine hauteur (identité) + contenu à droite."""
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+    br = _brand.get()
+    W, H = A4
+    pr = m.raw["project"]
+    ink, grey = colors.Color(0.12, 0.14, 0.17), colors.Color(0.42, 0.45, 0.49)
+    col = 68 * mm
+
+    def wrap_(txt, font, size, maxw):
+        out, cur = [], ""
+        for w_ in txt.split():
+            if stringWidth((cur + " " + w_).strip(), font, size) > maxw:
+                out.append(cur)
+                cur = w_
+            else:
+                cur = (cur + " " + w_).strip()
+        return out + [cur]
+    c.saveState()
+    _brand.watermark(c, col + (W - col) / 2, H / 2 - 20 * mm, 105 * mm, br)
+    c.setFillColor(br.accent)
+    c.rect(0, 0, col, H, stroke=0, fill=1)
+    c.setFillColor(br.accent2)
+    c.rect(col, 0, 1.6 * mm, H, stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    c.roundRect(10 * mm, H - 48 * mm, col - 20 * mm, 32 * mm, 2.5 * mm, stroke=0, fill=1)
+    _brand.draw_logo(c, 13 * mm, H - 44 * mm, col - 26 * mm, 24 * mm, br, align="c")
+    c.setFillColor(colors.white)
+    c.setFont("TTS", 12)
+    c.drawString(10 * mm, 62 * mm, (br.name or "ConstruPilot")[:28])
+    c.setFont("DV", 7)
+    yy = 56 * mm
+    for ln in br.lines[:4]:
+        for part in (ln[:44], ln[44:88]):
+            if part:
+                c.drawString(10 * mm, yy, part)
+                yy -= 3.7 * mm
+    c.setFont("DV", 6)
+    cred = _T("Étude réalisée avec ConstruPilot — calculs Eurocodes déterministes, contrôle automatique du dossier.") if br.is_client else "ConstruPilot"
+    for i, ln in enumerate(wrap_(cred, "DV", 6, col - 18 * mm)[:3]):
+        c.drawString(10 * mm, 18 * mm - i * 3 * mm, ln)
+    x0, wr = col + 14 * mm, W - col - 30 * mm
+
+    def wrap(txt, font, size, maxw):
+        out, cur = [], ""
+        for w_ in txt.split():
+            if stringWidth((cur + " " + w_).strip(), font, size) > maxw:
+                out.append(cur)
+                cur = w_
+            else:
+                cur = (cur + " " + w_).strip()
+        return out + [cur]
+    c.setFillColor(br.accent2)
+    c.setFont("DVB", 8)
+    c.drawString(x0, H - 30 * mm, _T("DOSSIER D'ÉTUDE TECHNIQUE").upper())
+    c.setFillColor(br.accent)
+    y = H - 42 * mm
+    for ln in wrap(_T("Structure, gros œuvre, charpente, électricité, plomberie et devis"), "TT", 22, wr)[:4]:
+        c.setFont("TT", 22)
+        c.drawString(x0, y, ln)
+        y -= 9.5 * mm
+    y -= 8 * mm
+    c.setFillColor(br.accent2)
+    c.setFont("DVB", 7.6)
+    c.drawString(x0, y, _T("PROJET").upper())
+    c.setFillColor(ink)
+    y -= 7 * mm
+    for ln in wrap(_T(pr["name"]), "TTS", 14, wr)[:3]:
+        c.setFont("TTS", 14)
+        c.drawString(x0, y, ln)
+        y -= 6 * mm
+    c.setFillColor(grey)
+    c.setFont("DV", 9)
+    c.drawString(x0, y - 1 * mm, _T(pr["address"])[:70])
+    y -= 16 * mm
+    cells = [(_T("Permis / projet"), _T(f"{pr.get('pc_ref', '—')}")), (_T("Étude de sol"), _T(str(pr.get("g2_ref", "—")))),
+             (_T("Indice / date"), f"A · {pr.get('date', '')}"), (_T("Planches"), f"{len(sheets)} (PDF + DXF)"),
+             (_T("Estimation"), f"{tot['ht']:,.0f} € ".replace(",", " ") + _T("HT"))]
+    for k, v in cells:
+        c.setFillColor(grey)
+        c.setFont("DV", 6.8)
+        c.drawString(x0, y, k.upper())
+        c.setFillColor(ink)
+        c.setFont("DVM", 9)
+        c.drawString(x0, y - 4.6 * mm, v[:60])
+        c.setStrokeColor(colors.Color(0.86, 0.87, 0.89))
+        c.setLineWidth(0.4)
+        c.line(x0, y - 7 * mm, x0 + wr, y - 7 * mm)
+        y -= 13 * mm
+    ok = rev["blocking"] == 0
+    c.setFillColor(colors.Color(0.10, 0.48, 0.30) if ok else colors.Color(0.72, 0.12, 0.10))
+    c.roundRect(x0, y - 12 * mm, wr, 16 * mm, 2 * mm, stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    st = _T("STATUT DU DOSSIER : ") + _T(rev["status"])
+    c.setFont("DVB", 9 if stringWidth(st, "DVB", 9) < wr - 8 * mm else 7.6)
+    c.drawString(x0 + 4 * mm, y - 2.5 * mm, st)
+    c.setFont("DV", 6.6)
+    for i, ln in enumerate(wrap(_T("Pré-dimensionnement à faire viser et signer par un ingénieur structure avant exécution."), "DV", 6.6, wr - 8 * mm)[:2]):
+        c.drawString(x0 + 4 * mm, y - 6.5 * mm - i * 3 * mm, ln)
+    y -= 26 * mm
+    c.setFillColor(br.accent)
+    c.setFont("TTS", 11)
+    c.drawString(x0, y, _T("Contenu du dossier"))
+    y -= 6 * mm
+    groups = [(_T("Note de calcul et revue du dossier"), "A4"),
+              (_T("Gros œuvre — plans d'exécution cotés"), "GO"), (_T("Charpente"), "CH"), (_T("Électricité"), "EL"),
+              (_T("Plomberie sanitaire"), "PL"), (_T("Devis et métré (Excel à formules) · plans DXF"), "XLSX")]
+    for k, code in groups:
+        n = sum(1 for x in sheets if x.code.startswith(code)) if code not in ("A4", "XLSX") else 0
+        if code not in ("A4", "XLSX") and not n:
+            continue
+        c.setFillColor(br.accent2)
+        c.circle(x0 + 1 * mm, y + 1 * mm, 0.8 * mm, stroke=0, fill=1)
+        c.setFillColor(ink)
+        c.setFont("DV", 8)
+        c.drawString(x0 + 4 * mm, y, k + (f"  ({n})" if n else ""))
+        y -= 5.6 * mm
+    if br.legal:
+        c.setFillColor(grey)
+        c.setFont("DV", 6)
+        c.drawString(x0, 12 * mm, br.legal[:110])
     c.restoreState()
