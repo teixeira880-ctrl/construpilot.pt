@@ -74,6 +74,16 @@ A500NR, verificação sísmica pelo método das forças laterais EC8, RTIEBT/ITE
    - Juntar `assistant_tool.INSTRUCTIONS` às instruções do sistema (ou a sua tradução PT).
    - Os entregáveis são gravados em `db.assistant_artifacts` (`data_b64`, `mime`, `filename`, `download`
      = `/assistant/artifacts/{id}/content`) : adaptar o campo `download` se a rota de download .pt for outra.
+   - `branding_loader(db, user_id) -> dict` (opcional) : identidade da empresa (company_name, logo_b64, accent_color,
+     contact_line, address, postal_code, city, nif, alvara, footer_text). Por defeito usa `routes.plans_common._resolve_branding`
+     se existir, senão os campos `brand_*` do utilizador. O processo sai com o logótipo e as cores da empresa.
 3. Leitura dos planos : `engines/anthropic_native.py` se existir, senão SDK `anthropic` direto com `ANTHROPIC_API_KEY`
    (`pip install anthropic` se faltar ; modelo `ANTHROPIC_MODEL_OPUS`, por defeito claude-opus-5-5).
 4. Testes : `python -m pytest -q tests/bet_core` (17) e `python -m engines.bet_core.run engines/bet_core/cases/moradia_pt_demo.json /tmp/bet_pt`.
+
+
+## 6. Identité de l'entreprise (logo)
+
+Le dossier (couverture, en-têtes, cartouche de chaque planche, Excel) est édité au nom de l'entreprise de l'utilisateur :
+logo `brand_logo_b64`, nom, coordonnées, SIRET/TVA, couleur `brand_accent_color` (Ma page & mes documents). Sans logo, le nom est
+composé en lettrage. Polices embarquées : Inter + Barlow Semi Condensed (SIL OFL, `fonts/`).

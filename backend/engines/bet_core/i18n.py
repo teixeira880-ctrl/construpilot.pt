@@ -14,6 +14,7 @@ import re
 
 from .i18n_pt import GLOSSARY, NORMS, TEMPLATES
 
+KEEP_NORMS = [False]               # projet français rendu en portugais : garder les normes et aciers français
 NATIVE: set[str] = set()          # chaînes déjà rédigées en PT (ne pas retraduire)
 PROTECTED: list[str] = []         # noms propres du projet (déjà dans la langue cible)
 COLLECT: set[str] | None = None   # mode collecte des gabarits (outil de maintenance)
@@ -71,6 +72,8 @@ def _pre(s: str) -> str:
     s = re.sub(r"\be=(\d{2})(?!\d|[.,]\d)", r"//0,\1", s)
     s = re.sub(r"\be=(\d)(?!\d|[.,]\d)", r"//0,0\1", s)
     s = re.sub(r"\be=(\d+[.,]\d+)", r"afast. \1", s)
+    if KEEP_NORMS[0]:
+        return s
     s = s.replace("B500B", "A500NR")
     for fr, pt in NORMS:
         s = s.replace(fr, pt)

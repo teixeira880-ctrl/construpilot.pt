@@ -6,6 +6,7 @@ Aucun appel IA ici : tout est déterministe.
 from __future__ import annotations
 
 import inspect
+import threading
 import json
 import re
 import unicodedata
@@ -15,7 +16,9 @@ from pathlib import Path
 
 from pypdf import PdfReader, PdfWriter
 
-from . import checks, devis, draw, mep, model, report, sheets, structure, timber
+_RENDER_LOCK = threading.Lock()   # brand / i18n sont des états de rendu globaux : un seul rendu à la fois
+
+from . import brand, checks, devis, draw, i18n, mep, model, report, sheets, structure, timber
 
 
 def _slug(s: str) -> str:
@@ -43,7 +46,9 @@ def validate(raw: dict) -> tuple[model.Model | None, list[dict]]:
         return m, [{"code": "MODEL-01", "level": checks.BLOCK, "message": f"Contrôle impossible : {type(exc).__name__}: {exc}"}]
 
 
-def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = None, stem: str | None = None) -> dict:
+def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = None, stem: str | None = None,
+        branding: dict | None = None) -> dict:
+    """branding = identité de l'entreprise (company_name, logo_b64, accent_color, contact_line, siret…) ; None = ConstruPilot."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     m, anomalies = validate(raw)
@@ -64,8 +69,20 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
     tot = devis.totals(lines)
     anomalies += checks.check_hypotheses(m, r)
     rev = report.review(m, r, tim, e, p, lines, shs, anomalies)
+    m.raw["project"]["date"] = date
     proj = dict(m.raw["project"], date=date)
 
+    with _RENDER_LOCK:
+        brand.use(branding)
+        i18n.KEEP_NORMS[0] = lang == "pt" and country != "PT"     # projet français lu en portugais : normes françaises conservées
+        try:
+            return _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomalies)
+        finally:
+            brand.use(None)
+            i18n.KEEP_NORMS[0] = False
+
+
+def _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomalies):
     names = {"fr": ("Dossier_etude", "Plans_DXF", "Devis_metre"), "pt": ("Processo_estudo", "Desenhos_DXF", "Medicoes_orcamento")}[lang]
     note, plans = out / "_note.pdf", out / "_plans.pdf"
     _call(report.write_note, note, m, r, tim, e, p, tot, rev, shs, lang=lang)

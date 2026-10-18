@@ -169,10 +169,13 @@ def write_xlsx(path, m, r: dict, tim: dict, e: dict, p: dict, lines: list[dict],
 def _build_xlsx(m, r: dict, tim: dict, e: dict, p: dict, lines: list[dict]):
     prof = _profile(m.raw["project"].get("country"))
     vat = lines[0].get("vat", 0.20) if lines else 0.20
+    from . import brand as _brand
+    br = _brand.get()
     wb = Workbook()
     F = "Arial"
-    hdr_fill = PatternFill("solid", fgColor="1F6B45")
-    lot_fill = PatternFill("solid", fgColor="E8F2EC")
+    hdr_fill = PatternFill("solid", fgColor=br.hex)
+    t = br.tint
+    lot_fill = PatternFill("solid", fgColor="%02X%02X%02X" % (round(t.red * 255), round(t.green * 255), round(t.blue * 255)))
     thin = Side(style="thin", color="BBBBBB")
     bord = Border(left=thin, right=thin, top=thin, bottom=thin)
     blue = Font(name=F, color="0000FF", size=10)
@@ -182,8 +185,18 @@ def _build_xlsx(m, r: dict, tim: dict, e: dict, p: dict, lines: list[dict]):
 
     ws = wb.active
     ws.title = "Devis"
-    ws["A1"] = "DEVIS ESTIMATIF — " + m.raw["project"]["name"]
-    ws["A1"].font = Font(name=F, size=14, bold=True, color="1F6B45")
+    ws["A1"] = (br.name + " — " if br.is_client else "") + "DEVIS ESTIMATIF — " + m.raw["project"]["name"]
+    ws["A1"].font = Font(name=F, size=14, bold=True, color=br.hex)
+    if br.logo_bytes:
+        try:
+            import io as _io
+            from openpyxl.drawing.image import Image as _XImg
+            img = _XImg(_io.BytesIO(br.logo_bytes))
+            k = 48 / max(img.height, 1)
+            img.width, img.height = int(img.width * k), int(img.height * k)
+            ws.add_image(img, "G1")
+        except Exception:  # noqa: BLE001 — logo facultatif dans l'Excel
+            pass
     ws["A2"] = m.raw["project"]["address"] + " — quantités issues du dossier d'étude ConstruPilot (pré-dimensionnement)"
     ws["A2"].font = norm
     ws["A3"] = f"Cellules bleues = prix unitaires indicatifs {prof['price_ref']} HT fourni-posé, à remplacer par la bibliothèque de prix de l'entreprise. Toutes les autres cellules sont des formules."

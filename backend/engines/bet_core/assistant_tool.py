@@ -73,7 +73,29 @@ async def _store(db, uid, cid, request_id, kind, path: Path, title):
     return {k: doc[k] for k in ("artifact_id", "title", "filename", "format", "mime", "size", "download")}
 
 
-async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None):
+async def _default_branding(db, uid):
+    """Identité de l'entreprise de l'utilisateur (logo, nom, coordonnées, couleur) via les résolveurs de la plateforme."""
+    b = None
+    try:
+        from routes.plans_common import _resolve_branding
+        b = await _resolve_branding(uid)
+    except Exception:  # noqa: BLE001 — plateforme sans ce résolveur (.pt) : lecture directe
+        u = await db.users.find_one({"user_id": uid}, {"_id": 0, "brand_company_name": 1, "brand_contact_line": 1, "brand_logo_b64": 1,
+                                                     "brand_company_email": 1, "brand_siret": 1, "brand_vat": 1, "brand_nif": 1,
+                                                     "brand_alvara": 1, "brand_address": 1, "brand_city": 1, "brand_postal": 1,
+                                                     "brand_accent_color": 1, "brand_footer_text": 1}) or {}
+        b = {k[6:]: v for k, v in u.items() if k.startswith("brand_")} if u else None
+        if b:
+            b["postal_code"] = b.pop("postal", None)
+    try:
+        from routes.company_page import pdf_customization
+        b = {**(b or {}), **{k: v for k, v in (await pdf_customization(uid)).items() if v}}
+    except Exception:  # noqa: BLE001
+        pass
+    return b
+
+
+async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None):
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
     try:
@@ -85,7 +107,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             return
         await step("Calculs, plans, devis et contrôle", model=rd["model"], pages=rd["pages"])
         with tempfile.TemporaryDirectory() as tmp:
-            res = await asyncio.to_thread(pipeline.run, rd["model"], tmp, None, "pt" if country == "PT" else "fr")
+            res = await asyncio.to_thread(pipeline.run, rd["model"], tmp, None, "pt" if country == "PT" else "fr", None, branding)
             if res["status"] == "MODELE_INVALIDE":
                 await step("Questions à l'utilisateur", status="questions", anomalies=res["anomalies"],
                            questions=[a["message"] for a in res["anomalies"]])
@@ -118,8 +140,10 @@ async def _load_assistant_docs(db, ids, uid):
     return docs
 
 
-async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, background: bool = True, doc_loader=None) -> dict:
-    """doc_loader(db, ids, user_id) -> [(nom, pdf_bytes)] : à fournir si les pièces jointes ne sont pas dans db.assistant_docs (ex. .pt)."""
+async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, background: bool = True, doc_loader=None,
+                  branding_loader=None) -> dict:
+    """doc_loader(db, ids, user_id) -> [(nom, pdf_bytes)] : à fournir si les pièces jointes ne sont pas dans db.assistant_docs (ex. .pt).
+    branding_loader(db, user_id) -> dict : identité de l'entreprise (défaut : résolveurs de la plateforme)."""
     uid, cid = user["user_id"], conv.get("conversation_id")
     if name == "read_full_bet_study":
         job = await db.bet_study_jobs.find_one({"job_id": args["job_id"], "user_id": uid}, {"_id": 0, "model": 0})
@@ -147,7 +171,11 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, b
     await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {
         "job_id": job_id, "user_id": uid, "conversation_id": cid, "document_ids": ids, "country": args["country"],
         "hypotheses": args.get("hypotheses", ""), "status": "running", "step": "En file d'attente", "created_at": _now(), "updated_at": _now()}}, upsert=True)
-    coro = _work(db, job_id, uid, cid, request_id, docs, args.get("hypotheses", ""), args["country"], llm=llm)
+    try:
+        branding = await (branding_loader or _default_branding)(db, uid)
+    except Exception:  # noqa: BLE001 — l'identité est facultative : dossier aux couleurs ConstruPilot
+        branding = None
+    coro = _work(db, job_id, uid, cid, request_id, docs, args.get("hypotheses", ""), args["country"], llm=llm, branding=branding)
     if background:
         task = asyncio.create_task(coro)
         _TASKS.add(task)

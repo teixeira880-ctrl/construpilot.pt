@@ -39,8 +39,7 @@ def T(s):
     out = _tr(str(s), _LANG[0])
     return out[:n] if n else out
 
-pdfmetrics.registerFont(TTFont("DV", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
-pdfmetrics.registerFont(TTFont("DVB", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
+from . import brand as B  # noqa: E402 — enregistre les polices (Inter / Barlow) sous DV, DVB, TT…
 
 LAYERS = {
     "BA": (0.20, 0.20, 0.22), "BRIQUE": (0.75, 0.30, 0.25), "DOUBLAGE": (0.80, 0.80, 0.80), "CLOISON": (0.45, 0.45, 0.45),
@@ -144,7 +143,7 @@ def _render_items(c, sh: Sheet):
     f, k = _xf(sh)
     for it in sh.items:
         kind, layer = it[0], it[1]
-        col = colors.Color(*LAYERS.get(layer, (0, 0, 0)))
+        col = B.get().accent if layer == "TITRE" else colors.Color(*LAYERS.get(layer, (0, 0, 0)))
         c.setStrokeColor(col)
         c.setFillColor(col)
         if kind == "line":
@@ -195,7 +194,7 @@ def _render_items(c, sh: Sheet):
             c.saveState()
             c.translate(*a)
             c.rotate(rot)
-            c.setFont("DVB" if bold else "DV", size * 2.835)
+            c.setFont("TT" if layer == "TITRE" else ("DVB" if bold else "DV"), size * 2.835 * (1.12 if layer == "TITRE" else 1.0))
             s = T(s)
             if anchor == "c":
                 c.drawCentredString(0, 0, s)
@@ -258,72 +257,123 @@ def _render_items(c, sh: Sheet):
 
 def _frame(c, sh: Sheet, project: dict, idx: int, total: int):
     W, H = landscape(A3)
-    c.setStrokeColor(colors.black)
-    c.setLineWidth(0.8)
+    br = B.get()
+    ink = colors.Color(0.13, 0.15, 0.18)
+    grey = colors.Color(0.45, 0.47, 0.50)
     c.setDash([])
+    # cadre : double filet
+    c.setStrokeColor(ink)
+    c.setLineWidth(0.9)
     c.rect(10 * mm, 10 * mm, W - 20 * mm, H - 20 * mm)
-    # cartouche
+    c.setLineWidth(0.25)
+    c.rect(11.6 * mm, 11.6 * mm, W - 23.2 * mm, H - 23.2 * mm)
+    # cartouche (même encombrement que l'ancien : 102 × 62 mm)
     x0, y0, w, h = W - 112 * mm, 10 * mm, 102 * mm, 62 * mm
-    c.setLineWidth(0.5)
-    c.rect(x0, y0, w, h)
-    c.setFillColor(BRAND)
-    c.rect(x0, y0 + h - 9 * mm, w, 9 * mm, stroke=0, fill=1)
     c.setFillColor(colors.white)
-    c.setFont("DVB", 10)
-    c.drawString(x0 + 3 * mm, y0 + h - 6.3 * mm, T("CONSTRUPILOT · BUREAU D'ÉTUDES"))
-    c.setFillColor(colors.black)
-    c.setFont("DVB", 8.6)
-    lines = _wrap(T(sh.title), 58 if _LANG[0] == "fr" else 52)
-    yy = y0 + h - 14 * mm
-    for ln in lines[:2]:
+    c.setLineWidth(0.6)
+    c.rect(x0, y0, w, h, stroke=1, fill=1)
+    # bandeau identité : logo + nom + coordonnées
+    band = 16 * mm
+    c.setFillColor(br.tint2)
+    c.rect(x0, y0 + h - band, w, band, stroke=0, fill=1)
+    B.draw_logo(c, x0 + 3 * mm, y0 + h - band + 2.2 * mm, 34 * mm, band - 4.4 * mm, br)
+    tx = x0 + 40 * mm
+    c.setFillColor(ink)
+    c.setFont("TTS", 8.6)
+    c.drawString(tx, y0 + h - 4.8 * mm, (br.name or "ConstruPilot")[:34])
+    c.setFont("DV", 5.2)
+    c.setFillColor(grey)
+    yy = y0 + h - 7.9 * mm
+    for ln in (br.lines or [T("Bureau d'études intégré")])[:3]:
+        c.drawString(tx, yy, ln[:64])
+        yy -= 2.6 * mm
+    c.setFillColor(br.accent)
+    c.rect(x0, y0 + h - band - 1.1 * mm, w, 1.1 * mm, stroke=0, fill=1)
+    c.setFillColor(br.accent2)
+    c.rect(x0, y0 + h - band - 1.1 * mm, 24 * mm, 1.1 * mm, stroke=0, fill=1)
+    # titre de planche
+    from reportlab.pdfbase.pdfmetrics import stringWidth as _sw
+
+    def fit(txt, font, size, maxw):
+        while size > 3.6 and _sw(txt, font, size) > maxw:
+            size -= 0.2
+        return size
+    tw = w - 6 * mm
+    c.setFillColor(ink)
+    yy = y0 + h - band - 5.6 * mm
+    for ln in _wrap(T(sh.title), 56 if _LANG[0] == "fr" else 52)[:2]:
+        c.setFont("TT", fit(ln, "TT", 9.6, tw))
         c.drawString(x0 + 3 * mm, yy, ln)
-        yy -= 4.3 * mm
-    c.setFont("DV", 6.4)
+        yy -= 3.9 * mm
+    c.setFillColor(grey)
     if sh.subtitle:
-        for ln in _wrap(T(sh.subtitle), 70 if _LANG[0] == "fr" else 64)[:2]:
-            c.drawString(x0 + 3 * mm, yy, ln)
-            yy -= 3.2 * mm
-    c.setFont("DV", 6.4)
-    c.drawString(x0 + 3 * mm, yy, T(project["name"])[:78])
-    c.drawString(x0 + 3 * mm, yy - 3.4 * mm, T(project["address"]))
+        st_ = T(sh.subtitle)
+        c.setFont("DV", fit(st_, "DV", 5.6, tw))
+        c.drawString(x0 + 3 * mm, yy, st_)
+        yy -= 3.0 * mm
     if _LANG[0] == "pt":
-        c.drawString(x0 + 3 * mm, yy - 6.8 * mm, f"Arq. {T(project['pc_ref'])[:40]} · Geot. {T(project['g2_ref'])[:30]}")
+        ref = f"Arq. {T(project['pc_ref'])[:38]} · Geot. {T(project['g2_ref'])[:30]}"
     else:
-        c.drawString(x0 + 3 * mm, yy - 6.8 * mm, f"PC {project['pc_ref']} · G2 {project['g2_ref'][:34]}")
+        ref = f"PC {project['pc_ref']} · G2 {project['g2_ref'][:34]}"
+    for txt, font, size in ((T(project["name"]), "DVM", 5.8), (T(project["address"]), "DV", 5.4), (ref, "DV", 5.4)):
+        if yy < y0 + 20.5 * mm:
+            break
+        c.setFillColor(ink if font == "DVM" else grey)
+        c.setFont(font, fit(txt, font, size, tw))
+        c.drawString(x0 + 3 * mm, yy, txt)
+        yy -= 2.7 * mm
+    # avertissement
+    warn = T("PRÉ-DIMENSIONNEMENT — À VISER ET SIGNER PAR UN") + " " + T("INGÉNIEUR STRUCTURE AVANT EXÉCUTION")
+    c.setFillColor(colors.Color(0.70, 0.12, 0.10))
+    c.setFont("DVB", fit(warn, "DVB", 5.0, tw))
+    c.drawString(x0 + 3 * mm, y0 + 17.4 * mm, warn)
+    # pied : planche / échelle / indice
+    c.setStrokeColor(colors.Color(0.80, 0.81, 0.83))
     c.setLineWidth(0.3)
     c.line(x0, y0 + 16 * mm, x0 + w, y0 + 16 * mm)
-    c.line(x0 + 30 * mm, y0, x0 + 30 * mm, y0 + 16 * mm)
-    c.line(x0 + 62 * mm, y0, x0 + 62 * mm, y0 + 16 * mm)
-    c.setFont("DV", 6)
-    c.drawString(x0 + 2 * mm, y0 + 12.5 * mm, T("Planche"))
-    c.drawString(x0 + 32 * mm, y0 + 12.5 * mm, T("Échelle"))
-    c.drawString(x0 + 64 * mm, y0 + 12.5 * mm, T("Indice / date"))
-    c.setFont("DVB", 12)
-    c.drawString(x0 + 2 * mm, y0 + 4 * mm, sh.code)
-    c.drawString(x0 + 32 * mm, y0 + 4 * mm, f"1:{sh.scale}" if sh.scale and sh.scale < 1000 else "s.e.")
-    c.setFont("DV", 8)
-    c.drawString(x0 + 64 * mm, y0 + 4 * mm, f"A · {project.get('date', '')}  ({idx}/{total})")
-    c.setFillColor(colors.Color(0.75, 0.1, 0.1))
-    c.setFont("DVB", 5.6)
-    c.drawString(x0 + 3 * mm, y0 + 20.5 * mm, T("PRÉ-DIMENSIONNEMENT — À VISER ET SIGNER PAR UN"))
-    c.drawString(x0 + 3 * mm, y0 + 17.8 * mm, T("INGÉNIEUR STRUCTURE AVANT EXÉCUTION"))
+    c.line(x0 + 34 * mm, y0 + 2 * mm, x0 + 34 * mm, y0 + 14 * mm)
+    c.line(x0 + 62 * mm, y0 + 2 * mm, x0 + 62 * mm, y0 + 14 * mm)
+    c.setFillColor(grey)
+    c.setFont("DV", 5.6)
+    c.drawString(x0 + 3 * mm, y0 + 12.4 * mm, T("Planche").upper())
+    c.drawString(x0 + 37 * mm, y0 + 12.4 * mm, T("Échelle").upper())
+    c.drawString(x0 + 65 * mm, y0 + 12.4 * mm, T("Indice / date").upper())
+    c.setFillColor(br.accent)
+    c.setFont("TT", 17)
+    c.drawString(x0 + 3 * mm, y0 + 3.6 * mm, sh.code)
+    c.setFillColor(ink)
+    c.setFont("TT", 13)
+    c.drawString(x0 + 37 * mm, y0 + 4.2 * mm, f"1:{sh.scale}" if sh.scale and sh.scale < 1000 else "s.e.")
+    c.setFont("DVM", 7.2)
+    c.drawString(x0 + 65 * mm, y0 + 7.4 * mm, f"A · {project.get('date', '')}")
+    c.setFont("DV", 5.6)
+    c.setFillColor(grey)
+    c.drawString(x0 + 65 * mm, y0 + 3.8 * mm, f"{idx} / {total}" + ("  ·  " + T("étude ConstruPilot") if br.is_client else ""))
     c.setFillColor(colors.black)
     # notes
     if sh.notes:
-        nx, ny = W - 112 * mm, H - 16 * mm
-        c.setFont("DVB", 8)
-        c.setFillColor(BRAND)
+        nx, ny = W - 112 * mm, H - 17 * mm
+        c.setFillColor(br.accent)
+        c.setFont("TT", 10)
         c.drawString(nx, ny, T("NOTES"))
-        c.setFillColor(colors.black)
-        c.setFont("DV", 6.4)
-        ny -= 4.2 * mm
+        c.setFillColor(br.accent2)
+        c.rect(nx, ny - 2.0 * mm, 12 * mm, 0.7 * mm, stroke=0, fill=1)
+        c.setFillColor(ink)
+        c.setFont("DV", 6.3)
+        ny -= 6.0 * mm
         for n in sh.notes:
-            for ln in _wrap(T(n), 78):
+            first = True
+            for ln in _wrap(T(n), 80):
                 if ny < 78 * mm:
                     break
-                c.drawString(nx, ny, ln)
-                ny -= 3.0 * mm
-            ny -= 0.8 * mm
+                if first:
+                    c.setFillColor(br.accent)
+                    c.circle(nx + 0.8 * mm, ny + 0.75 * mm, 0.55 * mm, stroke=0, fill=1)
+                    c.setFillColor(ink)
+                c.drawString(nx + 2.6 * mm, ny, ln)
+                first = False
+                ny -= 2.9 * mm
+            ny -= 1.0 * mm
 
 
 def _wrap(s: str, n: int) -> list[str]:
