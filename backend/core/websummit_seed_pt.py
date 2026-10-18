@@ -15,9 +15,12 @@ Regras de segurança não-negociáveis:
     - Email NUNCA é alterado após criação.
     - Flag `is_demo=True` + `demo_source="websummit_2026"` para bloquear acções em runtime.
     - Projecto "Moradia Martins" criado 1 vez; dados sintéticos reset diário por tarefa separada.
+    - Documentos BET-core demo + branding fictício "Construções Horizonte, Lda." aplicados a cada
+      startup / reset diário / endpoint admin via `apply_demo_showcase_pt`.
 """
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import secrets
@@ -185,6 +188,15 @@ async def seed_websummit_demo_pt(db, hash_password_fn, verify_password_fn, new_u
             else:
                 summary["project"] = "unchanged"
 
+    # Showcase BET-core: documentos demo + branding fictício nas contas demo.
+    # Idempotente, não duplica, preserva dados pré-existentes.
+    try:
+        showcase_summary = await apply_demo_showcase_pt(db)
+        summary["showcase"] = showcase_summary
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("websummit demo seed: showcase step failed (%s)", exc)
+        summary["showcase"] = f"error: {exc}"
+
     return summary
 
 
@@ -237,8 +249,137 @@ async def reset_websummit_demo_data_pt(db) -> dict:
             {"$set": {"demo_quota_ai_calls_today": 0, "demo_quota_date": today}},
         )
 
+    # Re-aplicar documentos BET-core demo + branding fictício. Idempotente.
+    try:
+        showcase_summary = await apply_demo_showcase_pt(db)
+        reset_summary["showcase"] = showcase_summary
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("websummit demo reset: showcase step failed (%s)", exc)
+        reset_summary["showcase"] = f"error: {exc}"
+
     logger.info("websummit demo: data reset executed")
     return reset_summary
+
+
+# ---------------------------------------------------------------------------
+# Showcase BET-core: documentos + branding fictício "Construções Horizonte, Lda."
+# ---------------------------------------------------------------------------
+
+# Marker usado pelos documentos BET-core demo (filename-based idempotence).
+DEMO_DOCS_MARK = "DEMO"
+DEMO_CASE_ID = "moradia_pt_demo"
+
+
+async def _upsert_demo_doc(db, user_id: str, filename: str, data: bytes) -> str:
+    """Insere ou actualiza um documento BET-core demo em `assistant_docs`.
+
+    Idempotência: match por (user_id, filename). Mantém o `doc_id` existente
+    quando aplicável — apenas o conteúdo e o `updated_at` são refrescados.
+    Formato: `data_b64` inline (schema do `.pt` descoberto em
+    `routes/assistant.py::_allowed_doc`).
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    data_b64 = base64.b64encode(data).decode()
+    existing = await db.assistant_docs.find_one(
+        {"user_id": user_id, "filename": filename},
+        {"_id": 0, "doc_id": 1},
+    )
+    if existing and existing.get("doc_id"):
+        await db.assistant_docs.update_one(
+            {"user_id": user_id, "doc_id": existing["doc_id"]},
+            {"$set": {
+                "data_b64": data_b64,
+                "mime": "application/pdf",
+                "kind": "pdf",
+                "updated_at": now,
+                "is_demo": True,
+                "demo_source": DEMO_SOURCE,
+            }},
+        )
+        return existing["doc_id"]
+    doc_id = "doc_" + secrets.token_hex(8)
+    await db.assistant_docs.insert_one({
+        "doc_id": doc_id,
+        "user_id": user_id,
+        "filename": filename,
+        "mime": "application/pdf",
+        "data_b64": data_b64,
+        "kind": "pdf",
+        "is_demo": True,
+        "demo_source": DEMO_SOURCE,
+        "created_at": now,
+        "updated_at": now,
+    })
+    return doc_id
+
+
+async def apply_demo_showcase_pt(db) -> dict:
+    """Instala documentos BET-core demo e branding "Construções Horizonte, Lda.".
+
+    - Conta demo Pro (plan_id Pro Business): recebe os 2 PDF + branding completo.
+    - Conta demo Particular: recebe só os 2 PDF (sem branding — não é empresa).
+    - Idempotente: executar múltiplas vezes não duplica documentos.
+    - Preserva dados demo pré-existentes (projecto Moradia Martins, etc.).
+    - Fail-closed por conta: se config em falta, salta essa conta.
+    """
+    cfg = _config()
+    summary: dict = {"docs": {}, "branding": {}}
+
+    # Lazy import — evita custo de reportlab/PIL se a função nunca for chamada.
+    try:
+        from engines.bet_core.samples import build_all, demo_branding
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("websummit demo showcase: bet_core samples unavailable (%s)", exc)
+        return {"error": f"samples_unavailable: {exc}"}
+
+    # Build dos PDF uma única vez por chamada (reutilizado entre contas).
+    try:
+        files = build_all(DEMO_CASE_ID)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("websummit demo showcase: build_all failed (%s)", exc)
+        return {"error": f"build_failed: {exc}"}
+
+    for kind, acc in cfg.items():
+        if not acc["password"]:
+            summary["docs"][kind] = "skipped_missing_config"
+            continue
+        user = await db.users.find_one(
+            {"email": acc["email"], "is_demo": True, "demo_source": DEMO_SOURCE},
+            {"user_id": 1},
+        )
+        if not user:
+            summary["docs"][kind] = "skipped_user_absent"
+            continue
+        uid = user["user_id"]
+
+        # (1) Documentos BET-core demo em `assistant_docs` (ambas as contas).
+        inserted_ids = []
+        for filename, data in files.items():
+            doc_id = await _upsert_demo_doc(db, uid, filename, data)
+            inserted_ids.append(doc_id)
+        summary["docs"][kind] = {"count": len(inserted_ids), "doc_ids": inserted_ids}
+
+        # (2) Branding "Construções Horizonte, Lda." — Pro apenas.
+        # A conta particular representa um utilizador final (sem empresa) e deve
+        # ficar com o tema ConstruPilot default: NÃO aplicar branding.
+        if kind == "pro":
+            try:
+                b = demo_branding("PT")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("websummit demo showcase: demo_branding failed (%s)", exc)
+                summary["branding"][kind] = f"skipped_build_error: {exc}"
+                continue
+            brand_fields = {f"brand_{k}": v for k, v in b.items()}
+            await db.users.update_one(
+                {"user_id": uid},
+                {"$set": brand_fields},
+            )
+            summary["branding"][kind] = "applied"
+        else:
+            summary["branding"][kind] = "skipped_not_pro"
+
+    logger.info("websummit demo showcase applied: %s", summary)
+    return summary
 
 
 # ----- Helpers chamados a partir das rotas /auth/demo-login e dos guards -----

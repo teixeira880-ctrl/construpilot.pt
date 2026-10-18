@@ -146,41 +146,87 @@ curl -s -b /tmp/demo_pro_cookies.txt -w "HTTP %{http_code}\n" \
 ## 4. Resultados (preenchidos após restart)
 
 ### 4.1 Mecanismo usado
-_(a preencher: Restart vs Redeploy, duração aproximada)_
+
+O fundador fez a acção manual no dashboard Emergent entre a execução
+anterior desta sessão (`demo-status=false/false` às 22:22 UTC) e a
+verificação de pytest final (`demo-status=true/true` às 22:40 UTC).
+Mecanismo exacto não observado programaticamente — provavelmente
+`Restart`. Duração observada: < 20 min entre inject secrets e activação
+visível.
 
 ### 4.2 Tabela de resultados P1–P6
-_(a preencher)_
+
+| # | Teste | HTTP | Resultado | Status |
+|---|-------|------|-----------|--------|
+| P1 | `GET /api/auth/demo-status` | 200 | `{"pro":true,"particular":true}` | ✅ |
+| P2 | Logs seed summary em prod | n/a | **não observável do pod preview** — a aguardar colagem opcional pelo fundador | ⏸ |
+| P3 | `POST /api/auth/demo-login {"kind":"pro"}` | 200 | Body com `{"token": <JWT opaco>, "user": {…}}`, 3 cookies gravadas (`session_token` incluída). Token NÃO dumpado em logs/relatório. | ✅ |
+| P4 | `GET /api/projects` com cookie demo pro | 200 | **0 projectos retornados** ⚠️ (ver anomalia 4.4-a) | ⚠️ |
+| P5a | `POST /api/plans/00000000-fake/send-quote` | 403 | `{"error":"demo_blocked","action":"send_email"}` | ✅ |
+| P5b | `POST /api/billing/checkout` | 403 | `{"error":"demo_blocked","action":"payment"}` | ✅ |
+| P5c | `POST /api/documents/.../send` | 403 | `{"error":"demo_blocked","action":"send_document"}` | ✅ |
+| P6 | Rate-limit demo-login | n/a | não re-executado (já validado em D4 preview) | — |
 
 ### 4.3 Screenshot
-_(a preencher: caminho + anotação de redacções visuais, se aplicável)_
+
+Guardado em `/app/memory/websummit_demo_pt_fix/demo_entrar_prod_post_seed.png`.
+
+Observação crítica (ver anomalia 4.4-b abaixo): o aviso "Em modo demo
+algumas acções (envio de emails, pagamentos, assinaturas, facturação)
+estão desactivadas. Os dados são sintéticos e repostos diariamente."
+aparece, **mas os 2 CTAs "Entrar como PRO" / "Entrar como Particular"
+não estão renderizados** (área cinza/vazia onde deviam estar).
+
+Zero PII no screenshot (sem email ou nome de utilizador visíveis).
 
 ### 4.4 Anomalias
-_(a preencher)_
+
+**a) P4 — `/api/projects` devolve 0 projectos para a conta demo pro.**
+   - Expectativa: lista contém "Moradia Martins".
+   - Observado: array vazio.
+   - Hipóteses: (1) o endpoint `/api/projects` em prod filtra por critério
+     não cumprido pelo seed (ex: `has_takeoff=true` ou similar); (2) o seed
+     corre OK mas usa collection diferente da que `/api/projects` lê;
+     (3) o `/api/projects` em prod exige um query param que não passei.
+   - Impacto: UI pode mostrar "sem projectos" ao entrar com conta demo.
+   - Severidade: **média**. Não bloqueia a protecção fail-closed (que é
+     o objectivo central do D7). Pode ser investigado em fork separado.
+
+**b) P6/visual — página `/demo/entrar` em prod não renderiza os CTAs.**
+   - Expectativa: 2 botões clicáveis ("Entrar como PRO", "Entrar como
+     Particular").
+   - Observado: aviso textual presente mas área dos botões vazia (fundo
+     bege sem conteúdo).
+   - Backend está OK (`demo-status` true/true, `/demo-login` HTTP 200).
+     Portanto é falha de **frontend prod** — possivelmente cache CDN
+     antigo (código de página renderizado em build anterior que ainda
+     esperava `false/false`) ou race condition no fetch inicial.
+   - Severidade: **alta** se o fundador quiser mostrar o demo ao público
+     via esta URL hoje. Workaround: hard-refresh (Ctrl+Shift+R) OU
+     redeploy frontend (próxima tarefa de deploy prod).
+   - Nota: a chamada backend `demo-login` funciona bypassando o frontend,
+     portanto se o fundador quiser demonstrar a quente, pode fazer login
+     via `/entrar` com as credenciais demo em claro (menos ideal) ou
+     redeployar o frontend prod rapidamente.
 
 ### 4.5 Confirmação final
-_(a preencher: "seed activo em prod, contas provisionadas, envios bloqueados, zero PII exposta")_
+
+**Seed activo em prod, contas provisionadas, acções sensíveis bloqueadas
+em runtime, zero PII exposta. 2 anomalias documentadas (`/api/projects`
+vazio para demo pro; CTAs `/demo/entrar` não renderizados visualmente).
+A infraestrutura fail-closed está totalmente operacional.**
 
 ---
 
 ## 5. Rollback (se activação falhar)
 
-Caso o fundador faça restart e `demo-status` continue `false/false` após 2
-tentativas, ou se o seed falhar com erro nos logs:
-
-1. Verificar nos Secrets que os valores foram efectivamente guardados (às vezes
-   paste perde caracteres finais).
-2. Verificar que as 4 chaves estão escritas **exactamente** como
-   `WEBSUMMIT_DEMO_EMAIL_PT` (case-sensitive, underscore, sem espaço).
-3. Se continuar a falhar, remover temporariamente os 4 segredos → restart →
-   `demo-status` deve voltar a `false/false` sem crashar o backend
-   (fail-closed). O resto da app continua funcional. Depois contactar suporte
-   Emergent.
-
-Zero `git push`, zero toques em `.fr`, zero contas reais usadas.
+(não accionado — activação com sucesso técnico apesar das 2 anomalias
+observadas; nenhuma delas quebra fail-closed).
 
 ---
 
 ## 6. Estado deste documento
 
-**Estado**: ⏳ aguarda **1 acção do fundador** (restart no dashboard Emergent,
-secção 2.1 acima). Agente pausa até confirmação.
+**Estado**: ✅ **ACTIVADO EM PROD** com 2 anomalias documentadas (secção
+4.4). Pendente de decisão do fundador sobre a prioridade de corrigir
+anomalia (b) antes de abrir o demo ao público.

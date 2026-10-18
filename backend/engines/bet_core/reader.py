@@ -154,6 +154,12 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096):
 async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR",
                         llm: LLM | None = None, max_fix: int = 2) -> dict:
     """docs = [(nom, pdf_bytes)]. Retourne {model, anomalies, questions, pages, attempts, ok}."""
+    from . import samples
+    sid = samples.detect(docs)
+    if sid:          # documentos de demonstração pré-configurados : modelo exato do caso, sem IA (imediato, sem custo)
+        raw = samples.demo_model(sid)
+        _, anomalies = pipeline.validate(raw)
+        return {"ok": True, "model": raw, "anomalies": anomalies, "pages": [], "attempts": 0, "questions": [], "demo": sid}
     llm = llm or _default_llm
     pages, by_doc = [], {}
     for name, data in docs:
