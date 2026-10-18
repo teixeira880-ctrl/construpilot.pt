@@ -176,16 +176,35 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
 
 
 async def _load_assistant_docs(db, ids, uid):
-    """Chargeur par défaut (construpilot.fr) : pièces jointes de l'Assistant dans db.assistant_docs."""
+    """Chargeur par défaut : pièces jointes de l'Assistant dans db.assistant_docs (inline `data_b64`, ou découpées en
+    morceaux de 1 Mo dans db.assistant_doc_chunks pour les PDF de plus de 8 Mo — cas des PC et des G2 volumineux)."""
     docs = []
     for did in ids:
-        d = await db.assistant_docs.find_one({"doc_id": did, "user_id": uid}, {"_id": 0, "filename": 1, "mime": 1, "data_b64": 1})
+        d = await db.assistant_docs.find_one({"doc_id": did, "user_id": uid}, {"_id": 0, "filename": 1, "mime": 1, "data_b64": 1, "chunk_count": 1})
         if not d:
             raise PermissionError(f"Document {did} inaccessible pour ce compte")
-        if (d.get("mime") or "") != "application/pdf":
-            raise ValueError(f"{d.get('filename', did)} n'est pas un PDF : seuls les PDF de plans sont lus.")
-        docs.append((d.get("filename") or did, base64.b64decode(d["data_b64"])))
-    return docs
+        name = d.get("filename") or did
+        if (d.get("mime") or "") != "application/pdf" and not name.lower().endswith(".pdf"):
+            raise ValueError(f"{name} n'est pas un PDF : seuls les PDF de plans et d'études de sol sont lus.")
+        if d.get("data_b64"):
+            data = base64.b64decode(d["data_b64"])
+        elif d.get("chunk_count"):
+            chunks = [c async for c in db.assistant_doc_chunks.find({"doc_id": did, "user_id": uid}, {"_id": 0}).sort("index", 1)]
+            if [c.get("index") for c in chunks] != list(range(d["chunk_count"])):
+                raise ValueError(f"{name} est incomplet sur le serveur : réimportez le fichier.")
+            data = b"".join(base64.b64decode(c["data_b64"]) for c in chunks)
+        else:
+            raise ValueError(f"{name} est vide sur le serveur : réimportez le fichier.")
+        if not data.startswith(b"%PDF"):
+            raise ValueError(f"{name} n'est pas un PDF lisible : réimportez-le.")
+        docs.append((name, data))
+    seen, uniq = set(), []                    # même pièce jointe deux fois (doublons dans la conversation) → une seule
+    for name, data in docs:
+        h = hashlib.sha256(data).hexdigest()
+        if h not in seen:
+            seen.add(h)
+            uniq.append((name, data))
+    return uniq
 
 
 async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, background: bool = True, doc_loader=None,
@@ -211,6 +230,9 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, b
         docs = await (doc_loader or _load_assistant_docs)(db, ids, uid)
     except (PermissionError, ValueError) as exc:
         return {"error": str(exc), "status": "échoué"}
+    except Exception as exc:  # noqa: BLE001 — jamais d'erreur muette : on dit quoi faire
+        log.exception("bet study: lecture des pièces jointes impossible")
+        return {"error": f"Lecture des pièces jointes impossible ({type(exc).__name__}) : réimportez le PC et la G2 en PDF.", "status": "échoué"}
     request_id = conv.get("_quote_request_id") or hashlib.sha256(("".join(ids) + _now()).encode()).hexdigest()[:16]
     job_id = "bet_" + hashlib.sha256((uid + request_id + "".join(ids)).encode()).hexdigest()[:20]
     old = await db.bet_study_jobs.find_one({"job_id": job_id, "user_id": uid}, {"_id": 0, "status": 1})

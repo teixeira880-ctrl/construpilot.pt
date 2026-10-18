@@ -42,6 +42,25 @@ class Coll:
                 return out
         return None
 
+    def find(self, q, proj=None):
+        docs = [copy.deepcopy(d) for d in self.docs if self._match(d, q)]
+
+        class Cur:
+            def sort(self, key, direction=1):
+                docs.sort(key=lambda d: d.get(key), reverse=direction < 0)
+                return self
+
+            def __aiter__(self):
+                self._it = iter(docs)
+                return self
+
+            async def __anext__(self):
+                try:
+                    return next(self._it)
+                except StopIteration:
+                    raise StopAsyncIteration
+        return Cur()
+
     async def update_one(self, q, upd, upsert=False):
         for d in self.docs:
             if self._match(d, q):
@@ -57,6 +76,7 @@ class Coll:
 class DB:
     def __init__(self):
         self.assistant_docs, self.assistant_artifacts, self.bet_study_jobs, self.bet_models = Coll(), Coll(), Coll(), Coll()
+        self.assistant_doc_chunks = Coll()
 
 
 def _llm(responses):
@@ -173,3 +193,27 @@ def test_same_documents_give_same_results_without_rereading():
     asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["doc_1"], "hypotheses": "murs parpaing 20", "country": "FR"},
                                        user, conv, db, llm=llm, background=False))
     assert len(calls) == 2
+
+
+def test_large_pdf_stored_in_chunks_is_read():
+    """PC / G2 de plus de 8 Mo : l'Assistant .fr les stocke en morceaux de 1 Mo (assistant_doc_chunks)."""
+    db = DB()
+    pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
+    parts = [pdf[i:i + 1000] for i in range(0, len(pdf), 1000)]
+    db.assistant_docs.docs.append({"doc_id": "big", "user_id": "u1", "filename": "PCMI01.pdf", "mime": "application/pdf", "chunk_count": len(parts)})
+    for i, part in enumerate(parts):
+        db.assistant_doc_chunks.docs.append({"doc_id": "big", "user_id": "u1", "index": i, "data_b64": base64.b64encode(part).decode()})
+    db.assistant_docs.docs.append({"doc_id": "dup", "user_id": "u1", "filename": "PCMI01 (2).pdf", "mime": "application/pdf",
+                                   "data_b64": base64.b64encode(pdf).decode()})
+    docs = asyncio.run(assistant_tool._load_assistant_docs(db, ["big", "dup"], "u1"))
+    assert len(docs) == 1 and docs[0][1] == pdf                     # morceaux recollés, doublon écarté
+    llm, _ = _llm([json.dumps(CASE)])
+    out = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["big", "dup"], "hypotheses": "", "country": "FR"},
+                                             {"user_id": "u1"}, {"conversation_id": "c1"}, db, llm=llm, background=False))
+    assert out["ok"]
+    st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, {"user_id": "u1"}, {}, db))
+    assert st["status"] == "done"
+    db.assistant_doc_chunks.docs.pop()                              # morceau manquant → message clair, pas de plantage
+    bad = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["big"], "hypotheses": "", "country": "FR"},
+                                             {"user_id": "u1"}, {"conversation_id": "c2"}, db, llm=llm, background=False))
+    assert "réimportez" in bad["error"]
