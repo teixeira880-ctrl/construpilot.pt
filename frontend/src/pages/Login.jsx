@@ -11,7 +11,7 @@ import { useI18n, LangToggle } from "@/context/I18nContext";
 import { api, IMAGES } from "@/lib/api";
 
 export default function Login() {
-  const { login, register, verify2fa, user } = useAuth();
+  const { login, demoLogin, register, verify2fa, user } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -21,7 +21,30 @@ export default function Login() {
   const [tfa, setTfa] = useState(() => location.state?.twoFactor || null);
   const [tfaCode, setTfaCode] = useState("");
   const [form, setForm] = useState({ name: "", email: params.get("email") || "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
+  const [demoStatus, setDemoStatus] = useState({ pro: false, particular: false });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  useEffect(() => {
+    // Verifica se o demo Web Summit está disponível (apenas em `.pt` quando segredos configurados).
+    api.get("/auth/demo-status").then(({ data }) => setDemoStatus(data)).catch(() => {});
+  }, []);
+
+  const onDemoClick = async (kind) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await demoLogin(kind);
+      toast.success(t("login.demo_hint") || "Entrámos em modo demo.");
+      navigate("/dashboard");
+    } catch (err) {
+      const msg = err?.response?.data?.detail?.error === "demo_unavailable"
+        ? (t("login.demo_fail") || "Demo indisponível. Tente mais tarde.")
+        : (t("login.demo_fail") || "Demo login falhou.");
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (refCodeFromUrl) sessionStorage.setItem("construpilot_ref", refCodeFromUrl.toUpperCase());
@@ -154,6 +177,34 @@ export default function Login() {
             </svg>
             {t("login.google")}
           </Button>
+
+          {(demoStatus.pro || demoStatus.particular) && (
+            <div className="mt-3 rounded-sm border border-dashed border-primary/40 bg-primary/5 p-3" data-testid="demo-login-block">
+              <p className="text-xs text-muted-foreground mb-2">{t("login.demo_desc") || "Experimente sem criar conta — modo demo com dados fictícios."}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {demoStatus.pro && (
+                  <Button
+                    type="button" variant="outline" disabled={busy}
+                    onClick={() => onDemoClick("pro")}
+                    data-testid="demo-login-pro-btn"
+                    className="rounded-sm h-10 text-xs"
+                  >
+                    {t("login.demo_pro") || "Demo Profissional"}
+                  </Button>
+                )}
+                {demoStatus.particular && (
+                  <Button
+                    type="button" variant="outline" disabled={busy}
+                    onClick={() => onDemoClick("particular")}
+                    data-testid="demo-login-particular-btn"
+                    className="rounded-sm h-10 text-xs"
+                  >
+                    {t("login.demo_particular") || "Demo Particular"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="my-6 flex items-center gap-4">
             <span className="h-px flex-1 bg-border" />

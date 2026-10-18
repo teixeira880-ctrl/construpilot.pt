@@ -89,6 +89,7 @@ import BetDossier from "@/pages/BetDossier";
 import PlanReader from "@/pages/PlanReader";
 import StairCalculator from "@/pages/StairCalculator";
 import Demo from "@/pages/Demo";
+import DemoPage from "@/pages/DemoPage";
 // Rotas pesadas via lazy loading para code-splitting
 const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
@@ -248,6 +249,8 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<LandingPro />} />
       <Route path="/demo" element={<Demo />} />
+      <Route path="/demo/entrar" element={<DemoPage />} />
+      <Route path="/demo-entrar" element={<DemoPage />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
       <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />
       <Route path="/particulares" element={<LandingParticuliers />} />

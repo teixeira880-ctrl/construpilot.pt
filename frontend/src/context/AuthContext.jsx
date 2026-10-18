@@ -50,6 +50,15 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   };
 
+  const demoLogin = async (kind) => {
+    // Login para conta demo Web Summit. Cookie HttpOnly definido pelo backend.
+    // Password NUNCA transita no frontend. Response body contém só o utilizador público.
+    const { data } = await api.post("/auth/demo-login", { kind });
+    setUser(data.user);
+    try { localStorage.setItem("construpilot_session", "1"); } catch {}
+    return data.user;
+  };
+
   const verify2fa = async (pendingToken, code) => {
     const { data } = await api.post("/auth/verify-2fa", {
       pending_token: pendingToken, code,
@@ -79,7 +88,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, verify2fa, register, logout, setUser, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, demoLogin, verify2fa, register, logout, setUser, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

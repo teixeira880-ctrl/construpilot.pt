@@ -210,3 +210,84 @@ hardcoded). Novos testes devem importar daí ou ler directamente do ambiente.
 
 Code review deve rejeitar qualquer PR que introduza nova string literal com
 aparência de credencial em qualquer `.py`/`.js`/`.jsx`/`.ts`/`.tsx` novo.
+
+---
+
+## 13. Modo demo Web Summit (`construpilot.pt`)
+
+Fluxo público para visitantes do stand entrarem na plataforma com 1 clique,
+sem criar conta. Fail-closed: se qualquer segredo em falta → feature invisível,
+nenhuma conta é criada.
+
+### 13.1 Segredos requeridos (Production Secrets)
+
+Todos lidos via `os.environ.get(...)` no backend. Nunca em código, nunca em
+logs, nunca em response bodies.
+
+- `WEBSUMMIT_DEMO_EMAIL_PT`
+- `WEBSUMMIT_DEMO_PASSWORD_PT`
+- `WEBSUMMIT_DEMO_PARTICULAR_EMAIL_PT`
+- `WEBSUMMIT_DEMO_PARTICULAR_PASSWORD_PT`
+
+Se qualquer um estiver ausente, vazio ou com valor literal `<redacted>`, o
+backend regista `websummit demo: skipped (missing config)` (log neutro, sem
+citar o nome da variável em falta) e salta a criação da conta correspondente.
+
+### 13.2 Rotas públicas adicionadas
+
+- `GET  /api/auth/demo-status` — devolve `{"pro": bool, "particular": bool}`.
+  O frontend usa para decidir se mostra o botão.
+- `POST /api/auth/demo-login` — body `{"kind": "pro"|"particular"}`. Rate
+  limit **10 pedidos / minuto / IP** via slowapi. Password nunca sai do
+  backend; sessão é definida via cookie `session_token` HttpOnly SameSite=Lax
+  Secure=true, com `is_demo=True` persistido na BD.
+- `GET  /api/health` + `GET /api/healthz` — ping ao Mongo. Público, para
+  smoke tests pós-deploy. Não divulga versão nem segredos.
+
+### 13.3 Rotas admin adicionadas (admin real only)
+
+- `POST /api/admin/demo/reset` — reset manual on-demand dos dados sintéticos.
+- `GET  /api/admin/demo/status` — diagnóstico de configuração (sem valores).
+
+### 13.4 Guards runtime para contas demo
+
+Middleware `DemoActionsMiddleware` (em `core/demo_middleware.py`) intercepta
+cada request e bloqueia com `403 {"error": "demo_blocked", "action": "<key>"}`
+se:
+
+1. Cookie `session_token` corresponde a `user_sessions.is_demo = True`, OU
+2. `users.is_demo = True` para o `user_id` da sessão,
+
+E o path corresponde a um dos padrões sensíveis: `/payment`, `/charge`,
+`/checkout`, `/stripe/*`, `/documents/*/send`, `/invoice/send`, `/cius-pt`,
+`/ubl`, `/sign`, `/signature-link`, `/sms`, `/share/sms`, `/send-quote`,
+`/send-report`, `/pdf/email`, `/purchase-order/send`, `/ecarts-pdf/send`,
+`/orders/{id}/email`, `/cotes/send`, `/pc-study/send`, `/newsletter`, `/ceo/email`,
+`/auth/profile`, `/auth/change-password`, `/auth/profile-photo`.
+
+### 13.5 Isolamento das contas demo
+
+- `users.is_demo = True`, `users.demo_source = "websummit_2026"`.
+- `role: "user"` (nunca admin, nunca pode ser promovida).
+- Email e password **imutáveis** via UI (bloqueados pelo middleware).
+- Dados sintéticos reset diariamente às **04:00 UTC** via APScheduler cron
+  (job `websummit_demo_reset_daily`). Preserva user, projecto base "Moradia
+  Martins" e entitlement; limpa quotes, takeoffs, photos, documents,
+  assistant_messages, coach_messages, activity_log, notifications,
+  email_logs, stripe_customer_actions.
+- Quota IA: **20 chamadas/dia/conta demo**. Reset diário incluído no cron.
+  Guard em `core.demo_guards.consume_demo_ai_quota` levanta 429 ao exceder.
+
+### 13.6 Testes
+
+- `backend/tests/test_websummit_demo.py` — 15 testes pytest (seed, guards,
+  middleware, quota, reset).
+- `frontend/e2e/websummit_demo.spec.js` — 8 testes Playwright (render,
+  bundle, cookie, rate limit, guards, 503 fail-closed).
+
+Comandos:
+```bash
+cd /app/backend && pytest tests/test_websummit_demo.py -v
+BASE_URL=http://localhost:3000 API_URL=http://localhost:8001 \
+  node /app/frontend/e2e/websummit_demo.spec.js
+```

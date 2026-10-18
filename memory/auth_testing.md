@@ -75,3 +75,84 @@ mongosh --eval "use('<DB_NAME>'); db.users.deleteMany({email: /test\\.user\\./})
 - Échange session : POST /api/auth/session (header X-Session-ID ou body {session_id}) → cookie httpOnly session_token + user fusionné par email (auth_provider: google)
 - current_user : cookie session_token d'abord, puis Bearer (session OU JWT legacy)
 - Logout : POST /api/auth/logout supprime la session DB + le cookie
+
+---
+
+## Web Summit demo (`.pt` only) — como testar sem credenciais reais
+
+Adicionado 2026-10-17. Fluxo público para visitantes do stand entrarem com 1 clique.
+
+### Verificação da configuração (sem credenciais)
+
+```bash
+curl https://construpilot.pt/api/auth/demo-status
+# → {"pro": true, "particular": true}  se segredos configurados
+# → {"pro": false, "particular": false} se segredos em falta (fail-closed)
+```
+
+### Login demo (sem credenciais no cliente)
+
+```bash
+# Pro
+curl -X POST https://construpilot.pt/api/auth/demo-login \
+  -H "Content-Type: application/json" \
+  -d '{"kind":"pro"}' \
+  -c /tmp/cookies.txt
+# Particular
+curl -X POST https://construpilot.pt/api/auth/demo-login \
+  -H "Content-Type: application/json" \
+  -d '{"kind":"particular"}' \
+  -c /tmp/cookies.txt
+```
+
+Response body nunca contém password nem `password_hash`. Validação:
+
+```bash
+curl -s -X POST https://construpilot.pt/api/auth/demo-login \
+  -H "Content-Type: application/json" -d '{"kind":"pro"}' | \
+  grep -ciE "password_hash|password\":"
+# → 0
+```
+
+### Validar bloqueios de modo demo
+
+Após login demo (cookie em `/tmp/cookies.txt`), tentar envio:
+
+```bash
+# Envio de documento → esperado 403
+curl -b /tmp/cookies.txt -X POST \
+  https://construpilot.pt/api/documents/fakeid/send \
+  -H "Content-Type: application/json" -d '{}'
+# → 403 {"error":"demo_blocked","action":"send_document"}
+
+# Change password → esperado 403
+curl -b /tmp/cookies.txt -X POST \
+  https://construpilot.pt/api/auth/change-password \
+  -H "Content-Type: application/json" \
+  -d '{"current_password":"x","new_password":"y"}'
+# → 403 {"error":"demo_blocked","action":"change_password"}
+```
+
+### Rate limit (10 pedidos/minuto/IP)
+
+```bash
+for i in $(seq 1 12); do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+    https://construpilot.pt/api/auth/demo-login \
+    -H "Content-Type: application/json" -d '{"kind":"pro"}'
+done
+# → últimos pedidos devolvem 429
+```
+
+### Checklist completa para testing agent
+
+1. `GET /api/auth/demo-status` → ambos `true` em prod.
+2. `POST /api/auth/demo-login {kind:"pro"}` → 200, cookie HttpOnly, body sem password.
+3. `POST /api/documents/x/send` com cookie demo → 403 `demo_blocked`.
+4. `POST /api/auth/change-password` com cookie demo → 403 `demo_blocked`.
+5. `POST /api/auth/demo-login` 12 vezes seguidas → últimos retornam 429.
+6. `GET /api/auth/me` com cookie demo → 200, `user.is_demo: true`.
+7. UI `/demo/entrar` carrega e mostra 2 CTAs (Pro + Particular).
+8. UI `/login` mostra bloco `demo-login-block` com 2 botões.
+
+**Nunca** usar valores em claro de passwords demo em comandos ou logs do testing agent. Cookie e response são suficientes para validar o fluxo end-to-end.

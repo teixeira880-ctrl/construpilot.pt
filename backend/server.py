@@ -21,7 +21,7 @@ from routes import bridge as bridge_routes
 from routes import media as media_routes
 from routes import presentation
 from routes import brochures
-from core.security import hash_password, new_user_id  # noqa: E402
+from core.security import hash_password, new_user_id, verify_password  # noqa: E402
 from engines import storage, alerting  # noqa: E402
 from routes import (auth as auth_routes, estimation_routes, tools, prices, projects,
                     ai_routes, leads, admin, photos, billing, revenue,
@@ -80,6 +80,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+# Demo guard middleware — bloqueia acções sensíveis para sessões `is_demo=True`.
+from core.demo_middleware import DemoActionsMiddleware  # noqa: E402
+app.add_middleware(DemoActionsMiddleware)
 api_router = APIRouter(prefix="/api")
 
 
@@ -90,6 +93,12 @@ async def root():
 
 
 api_router.include_router(auth_routes.router)
+from routes import auth_demo as auth_demo_routes  # noqa: E402  (Web Summit demo)
+api_router.include_router(auth_demo_routes.router)
+from routes import health as health_routes  # noqa: E402
+api_router.include_router(health_routes.router)
+from routes import admin_demo as admin_demo_routes  # noqa: E402
+api_router.include_router(admin_demo_routes.router)
 from routes import public_config as public_config_routes  # noqa: E402
 api_router.include_router(public_config_routes.router)
 api_router.include_router(estimation_routes.router)
@@ -418,6 +427,18 @@ async def seed():
             await provision_accounts(db, hash_password, new_user_id)
         except Exception as e:
             logger.warning(f"provisioned accounts skipped: {e}")
+
+    # Web Summit demo (PT) — fail-closed: só cria contas se env tiver as passwords.
+    # Corre SEMPRE no startup (não condicional a SEED_DEMO_DATA) porque é a conta
+    # pública usada no stand do evento. Se segredos ausentes, log neutro + skip.
+    try:
+        from core.websummit_seed_pt import seed_websummit_demo_pt
+        _ws_summary = await seed_websummit_demo_pt(
+            db, hash_password, verify_password, new_user_id
+        )
+        logger.info("websummit demo seed summary: %s", _ws_summary)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("websummit demo seed skipped: %s", e)
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
     # Règle sécurité : zéro password en clair dans le code — les 5 passwords
@@ -877,6 +898,16 @@ async def seed():
     await calc_auditor.ensure_indexes()
     scheduler.add_job(calc_auditor.run_scheduled, CronTrigger(hour=5, minute=0),
                       id="calc_auditor_daily", max_instances=1, coalesce=True)
+
+    # Reset diário dos dados sintéticos das contas Web Summit demo (04:00 UTC).
+    async def _websummit_demo_reset_job():
+        try:
+            from core.websummit_seed_pt import reset_websummit_demo_data_pt
+            await reset_websummit_demo_data_pt(db)
+        except Exception as _e:  # noqa: BLE001
+            logger.warning("websummit demo reset job failed: %s", _e)
+    scheduler.add_job(_websummit_demo_reset_job, CronTrigger(hour=4, minute=0),
+                      id="websummit_demo_reset_daily", max_instances=1, coalesce=True)
     scheduler.start()
     app.state.scheduler = scheduler
     logger.info("Scheduler started (daily price alerts @ 08:00 UTC)")
