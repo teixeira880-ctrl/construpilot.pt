@@ -49,3 +49,15 @@ def test_demo_study_is_instant_without_llm():
     assert st["status"] == "done" and st["demo"] == "moradia_pt_demo" and st["blocking"] == 0
     assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx"}
     assert any(a["filename"].startswith("Processo_estudo") for a in db.assistant_artifacts.docs)
+
+
+def test_demo_documents_can_carry_existing_demo_project_identity():
+    pj = {"name": "Moradia Martins", "client": "Família Martins (fictícia)", "address": "Braga — morada fictícia"}
+    files = samples.build_all("moradia_pt_demo", pj)
+    assert set(files) == {"Projeto_arquitetura_Moradia_Martins_DEMO.pdf", "Estudo_geotecnico_Moradia_Martins_DEMO.pdf"}
+    docs = list(files.items())
+    assert samples.detect(docs) == "moradia_pt_demo" and samples.project_of(docs)["name"] == "Moradia Martins"
+    from engines.bet_core import reader
+    rd = asyncio.run(reader.read_building(docs, "", "PT"))
+    assert rd["ok"] and rd["model"]["project"]["name"] == "Moradia Martins"
+    assert rd["model"]["project"]["client"] == "Família Martins (fictícia)"

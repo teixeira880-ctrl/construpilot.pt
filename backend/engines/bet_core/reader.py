@@ -157,7 +157,7 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
     from . import samples
     sid = samples.detect(docs)
     if sid:          # documentos de demonstração pré-configurados : modelo exato do caso, sem IA (imediato, sem custo)
-        raw = samples.demo_model(sid)
+        raw = samples.demo_model(sid, samples.project_of(docs))
         _, anomalies = pipeline.validate(raw)
         return {"ok": True, "model": raw, "anomalies": anomalies, "pages": [], "attempts": 0, "questions": [], "demo": sid}
     llm = llm or _default_llm

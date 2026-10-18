@@ -35,28 +35,37 @@ _PC_SHEETS = [("GO-02", "ARQ-01", "PLANTA DO RÉS-DO-CHÃO"), ("GO-03", "ARQ-02"
               ("GO-06b", "ARQ-05", "ALÇADOS LATERAIS")]
 
 
-def case(case_id: str) -> dict:
-    return json.loads((CASES / f"{case_id}.json").read_text(encoding="utf-8"))
+PROJECT_KEYS = ("name", "address", "client", "architect", "pc_ref")      # identidade do projeto que se pode personalizar
 
 
-def _mark(pdf: bytes, case_id: str, title: str) -> bytes:
+def case(case_id: str, project: dict | None = None) -> dict:
+    """Caso fictício ; `project` substitui a identidade (nome, morada, cliente…) — ex. o projeto demo « Moradia Martins »."""
+    raw = json.loads((CASES / f"{case_id}.json").read_text(encoding="utf-8"))
+    raw["project"].update({k: str(v) for k, v in (project or {}).items() if k in PROJECT_KEYS and v})
+    return raw
+
+
+def _mark(pdf: bytes, case_id: str, title: str, project: dict | None = None) -> bytes:
     r = PdfReader(io.BytesIO(pdf))
     w = PdfWriter()
     for p in r.pages:
         w.add_page(p)
-    w.add_metadata({"/Title": title, "/Subject": MARK + case_id, "/Author": "ConstruPilot — exemplo fictício de demonstração"})
+    meta = {"/Title": title, "/Subject": MARK + case_id, "/Author": "ConstruPilot — exemplo fictício de demonstração"}
+    if project:
+        meta["/Keywords"] = json.dumps({k: v for k, v in project.items() if k in PROJECT_KEYS}, ensure_ascii=False)
+    w.add_metadata(meta)
     buf = io.BytesIO()
     w.write(buf)
     return buf.getvalue()
 
 
-def build_pc(case_id: str) -> bytes:
+def build_pc(case_id: str, project: dict | None = None) -> bytes:
     """Projeto de arquitetura fictício (5 folhas A3) desenhado a partir do modelo do caso."""
     import tempfile
 
     from . import brand, draw, mep, pipeline, sheets, structure, timber
     s = SAMPLES[case_id]
-    raw = case(case_id)
+    raw = case(case_id, project)
     m, _ = pipeline.validate(raw)
     r = structure.compute(m)
     tim = timber.compute(m, r["loads"])
@@ -78,10 +87,10 @@ def build_pc(case_id: str) -> bytes:
                 data = p.read_bytes()
         finally:
             brand.use(None, "FR")
-    return _mark(data, case_id, "Projeto de arquitetura — " + raw["project"]["name"])
+    return _mark(data, case_id, "Projeto de arquitetura — " + raw["project"]["name"], project)
 
 
-def build_g2(case_id: str) -> bytes:
+def build_g2(case_id: str, project: dict | None = None) -> bytes:
     """Relatório geotécnico fictício coerente com o bloco `geotech` do caso."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -90,7 +99,7 @@ def build_g2(case_id: str) -> bytes:
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
 
     from . import brand  # noqa: F401 — regista as fontes DV / DVB / TT
-    raw = case(case_id)
+    raw = case(case_id, project)
     g, pj = raw["geotech"], raw["project"]
     h1 = ParagraphStyle("h1", fontName="TT", fontSize=17, leading=21, spaceAfter=6, textColor=colors.HexColor("#0E4D4A"))
     h2 = ParagraphStyle("h2", fontName="DVB", fontSize=11, leading=14, spaceBefore=10, spaceAfter=4)
@@ -132,7 +141,7 @@ def build_g2(case_id: str) -> bytes:
     buf = io.BytesIO()
     SimpleDocTemplate(buf, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm, topMargin=18 * mm, bottomMargin=18 * mm,
                       title="Estudo geotécnico — " + pj["name"]).build(story)
-    return _mark(buf.getvalue(), case_id, "Estudo geotécnico — " + pj["name"])
+    return _mark(buf.getvalue(), case_id, "Estudo geotécnico — " + pj["name"], project)
 
 
 # empresa fictícia das contas demo (identidade aplicada ao processo, orçamentos, PDF) — nenhum dado real
@@ -175,9 +184,28 @@ def demo_branding(country: str = "PT") -> dict:
     return {**DEMO_COMPANY[country], "logo_b64": "data:image/png;base64," + base64.b64encode(demo_logo_png(country)).decode()}
 
 
-def build_all(case_id: str = "moradia_pt_demo") -> dict[str, bytes]:
+def build_all(case_id: str = "moradia_pt_demo", project: dict | None = None) -> dict[str, bytes]:
+    """project = identidade do projeto demo existente (ex. {"name": "Moradia Martins", "client": "…", "address": "…"}) :
+    os PDF e o processo saem com esse nome ; a geometria e os resultados são os do caso fictício."""
     s = SAMPLES[case_id]
-    return {s["pc"]: build_pc(case_id), s["g2"]: build_g2(case_id)}
+    pc, g2 = s["pc"], s["g2"]
+    if project and project.get("name"):
+        import re
+        slug = re.sub(r"[^A-Za-z0-9]+", "_", __import__("unicodedata").normalize("NFKD", project["name"]).encode("ascii", "ignore").decode()).strip("_")
+        pc, g2 = f"Projeto_arquitetura_{slug}_DEMO.pdf", f"Estudo_geotecnico_{slug}_DEMO.pdf"
+    return {pc: build_pc(case_id, project), g2: build_g2(case_id, project)}
+
+
+def project_of(docs: list[tuple[str, bytes]]) -> dict | None:
+    """Identidade do projeto gravada nos PDF demo (/Keywords), se existir."""
+    for _, data in docs:
+        try:
+            kw = (PdfReader(io.BytesIO(data)).metadata or {}).get("/Keywords")
+            if kw:
+                return json.loads(str(kw))
+        except Exception:  # noqa: BLE001
+            continue
+    return None
 
 
 def detect(docs: list[tuple[str, bytes]]) -> str | None:
@@ -196,8 +224,8 @@ def detect(docs: list[tuple[str, bytes]]) -> str | None:
     return None
 
 
-def demo_model(case_id: str) -> dict:
-    raw = case(case_id)
+def demo_model(case_id: str, project: dict | None = None) -> dict:
+    raw = case(case_id, project)
     raw.setdefault("_questions", [])
     return raw
 
