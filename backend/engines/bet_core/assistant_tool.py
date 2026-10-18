@@ -94,20 +94,30 @@ async def _default_branding(db, uid, user=None):
     try:
         from routes.plans_common import _resolve_branding
         b = await _resolve_branding(uid)
-    except Exception:  # noqa: BLE001 — plateforme sans ce résolveur (.pt) : lecture directe
-        u = await db.users.find_one({"user_id": uid}, {"_id": 0, "brand_company_name": 1, "brand_contact_line": 1, "brand_logo_b64": 1,
-                                                     "brand_company_email": 1, "brand_siret": 1, "brand_vat": 1, "brand_nif": 1,
-                                                     "brand_alvara": 1, "brand_address": 1, "brand_city": 1, "brand_postal": 1,
-                                                     "brand_accent_color": 1, "brand_footer_text": 1}) or {}
-        b = {k[6:]: v for k, v in u.items() if k.startswith("brand_")} if u else None
-        if b:
-            b["postal_code"] = b.pop("postal", None)
+    except Exception:  # noqa: BLE001 — plateforme sans ce résolveur : lecture directe plus bas
+        b = None
+    # Fallback brand_* sur le user doc si _resolve_branding est absent, échoue ou ne trouve rien
+    # (cas .pt sans org, ou user absent de la plateforme principale mais présent dans la collection locale).
+    if not b:
+        try:
+            u = await db.users.find_one({"user_id": uid}, {"_id": 0, "brand_company_name": 1, "brand_contact_line": 1, "brand_logo_b64": 1,
+                                                         "brand_company_email": 1, "brand_siret": 1, "brand_vat": 1, "brand_nif": 1,
+                                                         "brand_alvara": 1, "brand_address": 1, "brand_city": 1, "brand_postal": 1,
+                                                         "brand_accent_color": 1, "brand_footer_text": 1}) or {}
+            if u:
+                b = {k[6:]: v for k, v in u.items() if k.startswith("brand_") and v is not None} or None
+                if b and "postal" in b:
+                    b["postal_code"] = b.pop("postal")
+        except Exception:  # noqa: BLE001
+            b = None
     try:
         from routes.company_page import pdf_customization
-        b = {**(b or {}), **{k: v for k, v in (await pdf_customization(uid)).items() if v}}
+        extra = {k: v for k, v in (await pdf_customization(uid)).items() if v}
+        if extra:
+            b = {**(b or {}), **extra}
     except Exception:  # noqa: BLE001
         pass
-    return b
+    return b or None
 
 
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None):
