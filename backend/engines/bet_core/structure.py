@@ -135,6 +135,8 @@ def floors(m: Model, ld: dict) -> dict:
                     break
             if best:
                 break
+        if best is None:
+            raise ValueError(f"Aucun plancher poutrelles-hourdis ne couvre {L:.2f} m sous {above.name} : prévoir refend, poutre ou dalle BA")
         G = best["G"]
         slabs.append({
             "id": f"PH-{below.id}", "label": f"Plancher haut {below.name} (porte {above.name})",

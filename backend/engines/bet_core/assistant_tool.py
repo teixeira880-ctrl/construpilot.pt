@@ -125,7 +125,8 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             res = await asyncio.to_thread(pipeline.run, rd["model"], tmp, None, "pt" if country == "PT" else "fr", None, branding)
             if res["status"] == "MODELE_INVALIDE":
                 await step("Questions à l'utilisateur", status="questions", anomalies=res["anomalies"],
-                           questions=[a["message"] for a in res["anomalies"]])
+                           questions=rd["questions"] + [f"{a['message']} — {a.get('fix') or 'à préciser'}"
+                                                        for a in res["anomalies"] if a.get("level") == "bloquant"])
                 return
             arts = []
             labels = {"pdf": "Dossier d'étude BET (note de calcul + plans)", "zip": "Plans DXF", "xlsx": "Devis et métré (Excel)"}

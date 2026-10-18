@@ -105,5 +105,28 @@ def check_hypotheses(m: Model, results: dict | None = None) -> list[dict]:
     return out
 
 
+def check_spans(m: Model) -> list[dict]:
+    """Portée des planchers entre murs porteurs : plage couverte par les poutrelles-hourdis (L/h ≤ 27, h ≤ 30 cm)."""
+    out = []
+    try:
+        L = m.span_y_calc
+    except Exception:  # noqa: BLE001
+        return [_a("GEO-40", BLOCK, "Largeur ou épaisseur des murs porteurs illisible : portée des planchers incalculable.",
+                   "Relever envelope.width_y et wall_structural_thickness sur les plans.")]
+    from .structure import HOURDIS, SLENDER_MAX
+    lmax = round(SLENDER_MAX * max(h for _, h, _, _ in HOURDIS), 2)
+    if L > lmax:
+        out.append(_a("GEO-40", BLOCK, f"Portée de plancher {L:.2f} m entre murs porteurs > {lmax:.2f} m (limite poutrelles-hourdis)."
+                      .replace(".", ","),
+                      "Vérifier le sens porteur et les refends sur les plans (mur ou poutre intermédiaire) ; sinon prévoir une dalle BA ou un plancher porté par poutres."))
+    if L < 1.5:
+        out.append(_a("GEO-41", BLOCK, f"Portée de plancher {L:.2f} m invraisemblable pour une maison : relevé à vérifier.".replace(".", ","),
+                      "Vérifier length_x / width_y et l'orientation (Y = côté court, entre murs porteurs)."))
+    if len(m.levels) < 2:
+        out.append(_a("GEO-42", BLOCK, "Un seul niveau relevé : aucun plancher à dimensionner — le document ne semble pas être un PC de maison.",
+                      "Joindre les plans de niveaux (PCMI 02), coupes (PCMI 03) et façades (PCMI 05)."))
+    return out
+
+
 def run_all(m: Model) -> list[dict]:
-    return check_openings(m) + check_levels(m) + check_rooms(m) + check_stair(m)
+    return check_openings(m) + check_levels(m) + check_rooms(m) + check_stair(m) + check_spans(m)

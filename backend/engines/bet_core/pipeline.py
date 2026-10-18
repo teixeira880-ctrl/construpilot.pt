@@ -60,11 +60,17 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
     date = date or _date.today().strftime("%d/%m/%Y")
     stem = stem or _slug((raw.get("project") or {}).get("name", "Projet"))
 
-    r = structure.compute(m)
-    tim = timber.compute(m, r["loads"])
-    e = mep.electrical(m)
-    p = mep.plumbing(m)
-    shs = sheets.all_sheets(m, r, tim, e, p)
+    try:
+        r = structure.compute(m)
+        tim = timber.compute(m, r["loads"])
+        e = mep.electrical(m)
+        p = mep.plumbing(m)
+        shs = sheets.all_sheets(m, r, tim, e, p)
+    except Exception as exc:  # noqa: BLE001 — relevé hors domaine : on rend une question, jamais un dossier faux ni un plantage
+        return {"status": "MODELE_INVALIDE", "blocking": 1, "files": {},
+                "anomalies": anomalies + [{"code": "CALC-00", "level": checks.BLOCK,
+                                           "message": f"Calcul impossible sur ce relevé ({type(exc).__name__}: {str(exc)[:300]})",
+                                           "fix": "Vérifier que les documents sont bien le PC d'une maison (plans de niveaux, coupes, façades) et préciser les murs porteurs."}]}
     lines = devis.build_lines(m, r, tim, e, p)
     tot = devis.totals(lines)
     anomalies += checks.check_hypotheses(m, r)

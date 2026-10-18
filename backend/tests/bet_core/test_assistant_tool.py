@@ -135,3 +135,19 @@ def test_branding_only_for_pro_and_business():
     for at, branded in (("pro", True), ("pro_business", True), ("particulier", False), (None, False)):
         b = asyncio.run(assistant_tool._default_branding(db, "u1", {"user_id": "u1", "account_type": at}))
         assert bool(b and b.get("company_name") == "ACME BTP") is branded, at
+
+
+def test_out_of_domain_model_gives_questions_not_crash(tmp_path):
+    bad = copy.deepcopy(CASE)
+    bad["envelope"]["width_y"] = 14.0            # portée 13,6 m : hors domaine poutrelles-hourdis
+    _, an = pipeline.validate(bad)
+    assert any(a["code"] == "GEO-40" and a["level"] == checks.BLOCK for a in an)
+    res = pipeline.run(bad, tmp_path, stem="T")
+    assert res["status"] == "MODELE_INVALIDE" and not res["files"]
+
+
+def test_pipeline_catches_engine_errors(tmp_path, monkeypatch):
+    from engines.bet_core import structure
+    monkeypatch.setattr(structure, "compute", lambda m: (_ for _ in ()).throw(ValueError("boom")))
+    res = pipeline.run(copy.deepcopy(CASE), tmp_path, stem="T")
+    assert res["status"] == "MODELE_INVALIDE" and any(a["code"] == "CALC-00" for a in res["anomalies"])
