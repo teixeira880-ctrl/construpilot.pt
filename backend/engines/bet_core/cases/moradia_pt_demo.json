@@ -1,0 +1,531 @@
+{
+ "_comment": "Modelo do edifício (BuildingModel) de uma moradia fictícia de demonstração, inspirada numa tipologia corrente do Minho. Todas as cotas, o zonamento sísmico e os dados geotécnicos são ilustrativos e devem ser confirmados no projeto real.",
+ "project": {
+  "name": "Moradia unifamiliar T3 — R/C + 1.º andar (caso fictício de demonstração)",
+  "address": "Braga (concelho ilustrativo) — caso anonimizado",
+  "client": "—",
+  "architect": "Arquiteto (ver projeto de arquitetura)",
+  "pc_ref": "Projeto de arquitetura — licenciamento, rev. A",
+  "g2_ref": "Estudo geotécnico fictício GT-00 (demonstração)",
+  "country": "PT",
+  "altitude_m": 190,
+  "snow_zone": "Z2",
+  "wind_zone": "A",
+  "seismic_zone_type1": "1.6",
+  "seismic_zone_type2": "2.5",
+  "ground_type": "B",
+  "importance_class": "II",
+  "behaviour_factor_q": 1.5,
+  "_seismic_source": "Zonas sísmicas e terreno tipo B admitidos para Braga — a confirmar (Anexo Nacional NP EN 1998-1, Quadro NA.I, e estudo geotécnico)"
+ },
+ "user_hypotheses": {
+  "floor_system": "poutrelles_hourdis",
+  "masonry": "brique_porotherme_20",
+  "_source": "Hipóteses do dono de obra : lajes aligeiradas de vigotas pré-esforçadas, paredes resistentes em tijolo térmico de 20 cm"
+ },
+ "envelope": {
+  "length_x": 11.6,
+  "width_y": 7.6,
+  "wall_total_thickness": 0.35,
+  "wall_structural_thickness": 0.2,
+  "lining_thickness": 0.15,
+  "_source": "Plantas de arquitetura : 11,60 × 7,60, paredes exteriores 35 cm"
+ },
+ "sides": {
+  "lateral_E": {
+   "axis": "y",
+   "pos": 0.0,
+   "type": "facade",
+   "label": "Alçado lateral esquerdo (Nascente)"
+  },
+  "lateral_D": {
+   "axis": "y",
+   "pos": 7.6,
+   "type": "facade",
+   "label": "Alçado lateral direito (Poente)"
+  },
+  "tardoz": {
+   "axis": "x",
+   "pos": 0.0,
+   "type": "facade",
+   "label": "Alçado posterior (Sul)"
+  },
+  "principal": {
+   "axis": "x",
+   "pos": 11.6,
+   "type": "facade",
+   "label": "Alçado principal (Norte)"
+  }
+ },
+ "levels": [
+  {
+   "id": "RC",
+   "name": "Rés-do-chão",
+   "floor_top": 0.0,
+   "slab_thickness": 0.15,
+   "ceiling_height": 2.65,
+   "use": "habitation"
+  },
+  {
+   "id": "A1",
+   "name": "1.º andar",
+   "floor_top": 2.95,
+   "slab_thickness": 0.3,
+   "ceiling_height": 2.6,
+   "use": "habitation"
+  }
+ ],
+ "roof": {
+  "type": "deux_pans",
+  "eaves_level": 5.85,
+  "ridge_level": 9.2,
+  "ceiling_level": 5.55,
+  "ridge_axis": "y",
+  "ridge_x": 5.8,
+  "gables": [
+   "lateral_E",
+   "lateral_D"
+  ],
+  "eaves_sides": [
+   "tardoz",
+   "principal"
+  ],
+  "covering": "tuile_mecanique",
+  "dormers": [],
+  "habitable_attic": false,
+  "_source": "Cortes : beirado 5,85, cumeeira 9,20, desvão não habitável"
+ },
+ "openings": [
+  {
+   "id": "B-RC-P1",
+   "level": "RC",
+   "side": "principal",
+   "from": 0.9,
+   "to": 2.3,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela da cozinha 1,40 × 1,20"
+  },
+  {
+   "id": "B-RC-P2",
+   "level": "RC",
+   "side": "principal",
+   "from": 4.3,
+   "to": 5.3,
+   "sill": 0.0,
+   "height": 2.2,
+   "kind": "porta de entrada 1,00 × 2,20"
+  },
+  {
+   "id": "B-A1-P1",
+   "level": "A1",
+   "side": "principal",
+   "from": 0.9,
+   "to": 2.3,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela 1,40 × 1,20"
+  },
+  {
+   "id": "B-A1-P2",
+   "level": "A1",
+   "side": "principal",
+   "from": 5.3,
+   "to": 6.7,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela 1,40 × 1,20"
+  },
+  {
+   "id": "B-RC-T1",
+   "level": "RC",
+   "side": "tardoz",
+   "from": 1.2,
+   "to": 4.2,
+   "sill": 0.0,
+   "height": 2.2,
+   "kind": "porta envidraçada de correr 3,00 × 2,20"
+  },
+  {
+   "id": "B-RC-T2",
+   "level": "RC",
+   "side": "tardoz",
+   "from": 5.2,
+   "to": 6.6,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela 1,40 × 1,20"
+  },
+  {
+   "id": "B-A1-T1",
+   "level": "A1",
+   "side": "tardoz",
+   "from": 1.2,
+   "to": 2.6,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela 1,40 × 1,20"
+  },
+  {
+   "id": "B-A1-T2",
+   "level": "A1",
+   "side": "tardoz",
+   "from": 5.2,
+   "to": 6.6,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela 1,40 × 1,20"
+  },
+  {
+   "id": "B-RC-E1",
+   "level": "RC",
+   "side": "lateral_E",
+   "from": 2.0,
+   "to": 3.0,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela 1,00 × 1,20"
+  },
+  {
+   "id": "B-A1-E1",
+   "level": "A1",
+   "side": "lateral_E",
+   "from": 2.0,
+   "to": 3.0,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "janela 1,00 × 1,20"
+  },
+  {
+   "id": "B-RC-D1",
+   "level": "RC",
+   "side": "lateral_D",
+   "from": 8.2,
+   "to": 8.8,
+   "sill": 1.3,
+   "height": 0.8,
+   "kind": "janela da IS 0,60 × 0,80"
+  },
+  {
+   "id": "B-A1-D1",
+   "level": "A1",
+   "side": "lateral_D",
+   "from": 8.0,
+   "to": 8.9,
+   "sill": 1.1,
+   "height": 1.0,
+   "kind": "janela da casa de banho 0,90 × 1,00"
+  }
+ ],
+ "stair": {
+  "x0": 5.2,
+  "x1": 7.0,
+  "y0": 4.95,
+  "y1": 7.25,
+  "type": "deux quarts tournants, deux volées de 0,85 + limon central 0,10",
+  "flights": [
+   {
+    "from": "RC",
+    "to": "A1"
+   }
+  ],
+  "cage_walls": [
+   {
+    "x": 5.125,
+    "y0": 4.95,
+    "y1": 7.25,
+    "t": 0.15
+   },
+   {
+    "x": 7.075,
+    "y0": 4.95,
+    "y1": 7.25,
+    "t": 0.15
+   }
+  ]
+ },
+ "interior_walls": {
+  "RC": [
+   {
+    "x0": 5.05,
+    "y0": 0.35,
+    "x1": 5.15,
+    "y1": 4.95,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 5.15,
+    "y0": 3.8,
+    "x1": 11.25,
+    "y1": 3.9,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 7.15,
+    "y0": 5.8,
+    "x1": 11.25,
+    "y1": 5.9,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 7.85,
+    "y0": 5.9,
+    "x1": 7.95,
+    "y1": 7.25,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 9.05,
+    "y0": 5.9,
+    "x1": 9.15,
+    "y1": 7.25,
+    "kind": "cloison 10"
+   }
+  ],
+  "A1": [
+   {
+    "x0": 0.35,
+    "y0": 3.85,
+    "x1": 5.05,
+    "y1": 3.95,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 5.05,
+    "y0": 0.35,
+    "x1": 5.15,
+    "y1": 4.95,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 7.05,
+    "y0": 0.35,
+    "x1": 7.15,
+    "y1": 3.85,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 5.15,
+    "y0": 3.85,
+    "x1": 11.25,
+    "y1": 3.95,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 9.55,
+    "y0": 3.95,
+    "x1": 9.65,
+    "y1": 7.25,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 7.15,
+    "y0": 5.0,
+    "x1": 9.55,
+    "y1": 5.1,
+    "kind": "cloison 10"
+   }
+  ]
+ },
+ "rooms": {
+  "RC": [
+   {
+    "name": "Sala comum",
+    "type": "sejour",
+    "x0": 0.35,
+    "y0": 0.35,
+    "x1": 5.05,
+    "y1": 7.25,
+    "area_pc": 32.43
+   },
+   {
+    "name": "Cozinha",
+    "type": "cuisine",
+    "x0": 5.15,
+    "y0": 0.35,
+    "x1": 11.25,
+    "y1": 3.8,
+    "area_pc": 21.05,
+    "fixtures": [
+     "evier",
+     "lave_vaisselle",
+     "lave_linge"
+    ]
+   },
+   {
+    "name": "Hall de entrada",
+    "type": "entree",
+    "x0": 7.15,
+    "y0": 3.9,
+    "x1": 11.25,
+    "y1": 5.8,
+    "area_pc": 9.89,
+    "parts": [
+     {
+      "x0": 5.15,
+      "y0": 3.9,
+      "x1": 7.15,
+      "y1": 4.95
+     }
+    ]
+   },
+   {
+    "name": "IS social",
+    "type": "wc",
+    "x0": 7.95,
+    "y0": 5.9,
+    "x1": 9.05,
+    "y1": 7.25,
+    "area_pc": 1.49,
+    "fixtures": [
+     "wc",
+     "lave_mains"
+    ]
+   },
+   {
+    "name": "Arrumos / zona técnica",
+    "type": "local_technique",
+    "x0": 9.15,
+    "y0": 5.9,
+    "x1": 11.25,
+    "y1": 7.25,
+    "area_pc": 2.84
+   }
+  ],
+  "A1": [
+   {
+    "name": "Quarto 1",
+    "type": "chambre",
+    "x0": 0.35,
+    "y0": 0.35,
+    "x1": 5.05,
+    "y1": 3.85,
+    "area_pc": 16.45
+   },
+   {
+    "name": "Quarto 2",
+    "type": "chambre",
+    "x0": 0.35,
+    "y0": 3.95,
+    "x1": 5.05,
+    "y1": 7.25,
+    "area_pc": 15.51
+   },
+   {
+    "name": "Roupeiro",
+    "type": "dressing",
+    "x0": 5.15,
+    "y0": 0.35,
+    "x1": 7.05,
+    "y1": 3.85,
+    "area_pc": 6.65
+   },
+   {
+    "name": "Quarto 3",
+    "type": "chambre",
+    "x0": 7.15,
+    "y0": 0.35,
+    "x1": 11.25,
+    "y1": 3.85,
+    "area_pc": 14.35
+   },
+   {
+    "name": "Corredor",
+    "type": "circulation",
+    "x0": 7.15,
+    "y0": 3.95,
+    "x1": 9.55,
+    "y1": 5.0,
+    "area_pc": 4.52,
+    "parts": [
+     {
+      "x0": 5.15,
+      "y0": 3.95,
+      "x1": 7.15,
+      "y1": 4.95
+     }
+    ]
+   },
+   {
+    "name": "Casa de banho",
+    "type": "salle_eau",
+    "x0": 7.15,
+    "y0": 5.1,
+    "x1": 9.55,
+    "y1": 7.25,
+    "area_pc": 5.16,
+    "fixtures": [
+     "wc",
+     "lavabo",
+     "baignoire"
+    ]
+   },
+   {
+    "name": "Escritório",
+    "type": "chambre",
+    "x0": 9.65,
+    "y0": 3.95,
+    "x1": 11.25,
+    "y1": 7.25,
+    "area_pc": 5.28
+   }
+  ]
+ },
+ "mep": {
+  "stacks": [
+   {
+    "id": "CH1",
+    "x": 8.4,
+    "y": 7.05,
+    "serves": "IS social do rés-do-chão, casa de banho do 1.º andar"
+   },
+   {
+    "id": "CH2",
+    "x": 10.95,
+    "y": 0.6,
+    "serves": "cozinha do rés-do-chão"
+   }
+  ],
+  "collector": {
+   "path": [
+    [
+     8.4,
+     7.05
+    ],
+    [
+     11.25,
+     7.05
+    ]
+   ],
+   "exit": "sous dallage jusqu'à la façade principale puis regard de branchement en limite de propriété"
+  },
+  "nourrice": {
+   "x": 10.6,
+   "y": 6.7,
+   "level": "RC",
+   "room": "Arrumos / zona técnica"
+  },
+  "outdoor_tap": {
+   "level": "RC",
+   "room": "Alçado posterior",
+   "x": 0.25,
+   "y": 1.0
+  },
+  "rain": "Gouttières zinc demi-rondes 33 sur les deux égouts, 2 descentes Ø80 par façade ; rejet EP au réseau pluvial public ou infiltration à la parcelle (à confirmer avec la mairie)"
+ },
+ "geotech": {
+  "source": "Estudo geotécnico fictício GT-00 (demonstração)",
+  "bearing_layer": "saibro granítico compacto (granito muito alterado)",
+  "foundation_base_depth_m": 0.8,
+  "anchorage_m": 0.2,
+  "q_els_kpa": 200,
+  "q_elu_kpa": 300,
+  "verified_widths_m": {
+   "filante": 0.5,
+   "isolee": 0.8
+  },
+  "settlement_mm_B060": 8,
+  "water": "nível freático não intersetado até 4 m",
+  "exposure_class_soil": "XC2 admitida"
+ }
+}

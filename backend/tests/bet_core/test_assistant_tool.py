@@ -1,0 +1,126 @@
+"""Outil Assistant « étude BET complète » : lecture IA simulée, correction après contrôle, livrables stockés."""
+import asyncio
+import base64
+import copy
+import io
+import json
+from pathlib import Path
+
+from reportlab.lib.pagesizes import A3, landscape
+from reportlab.pdfgen import canvas
+
+from engines.bet_core import assistant_tool, checks, pipeline, reader
+
+CASE = json.loads((Path(__file__).parents[2] / "engines/bet_core/cases/la_courneuve.json").read_text(encoding="utf-8"))
+
+
+def _pdf(titles):
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=landscape(A3))
+    for t in titles:
+        c.drawString(50, 50, t)
+        c.rect(100, 100, 800, 500)
+        c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+class Coll:
+    def __init__(self):
+        self.docs = []
+
+    def _match(self, d, q):
+        return all(d.get(k) == v for k, v in q.items())
+
+    async def find_one(self, q, proj=None):
+        for d in self.docs:
+            if self._match(d, q):
+                out = copy.deepcopy(d)
+                for k, v in (proj or {}).items():
+                    if v == 0:
+                        out.pop(k, None)
+                return out
+        return None
+
+    async def update_one(self, q, upd, upsert=False):
+        for d in self.docs:
+            if self._match(d, q):
+                d.update(upd.get("$set", {}))
+                return
+        if upsert:
+            d = dict(q)
+            d.update(upd.get("$setOnInsert", {}))
+            d.update(upd.get("$set", {}))
+            self.docs.append(d)
+
+
+class DB:
+    def __init__(self):
+        self.assistant_docs, self.assistant_artifacts, self.bet_study_jobs = Coll(), Coll(), Coll()
+
+
+def _llm(responses):
+    calls = []
+
+    async def llm(system, text, images=None, model=None, max_tokens=0):
+        calls.append({"text": text, "n_images": len(images or [])})
+        return responses[min(len(calls) - 1, len(responses) - 1)]
+    return llm, calls
+
+
+def test_classification_fr_pt():
+    assert reader.classify("PCMI 02.2 PLAN DU REZ-DE-CHAUSSÉE éch 1/100") == "plan"
+    assert reader.classify("COUPE 1") == "coupe"
+    assert reader.classify("FAÇADE RUE") == "facade"
+    assert reader.classify("PLANTA DO RÉS-DO-CHÃO") == "plan"
+    assert reader.classify("ALÇADO NORTE") == "facade"
+    assert reader.classify("Rapport G2 AVP sondages pressiométriques") == "g2"
+
+
+def test_reader_retries_after_blocking_check():
+    bad = copy.deepcopy(CASE)
+    bad["openings"].append(dict(bad["openings"][0], id="DOUBLON"))      # baie comptée deux fois → GEO-04 bloquant
+    _, an = pipeline.validate(bad)
+    assert any(a["level"] == checks.BLOCK for a in an)
+    llm, calls = _llm(["```json\n" + json.dumps(bad) + "\n```", json.dumps(CASE)])
+    pdf = _pdf(["PLAN DU REZ-DE-CHAUSSEE", "COUPE 1", "FACADE RUE"])
+    res = asyncio.run(reader.read_building([("PC.pdf", pdf)], "planchers poutrelles hourdis", "FR", llm=llm))
+    assert res["ok"] and res["attempts"] == 2
+    assert calls[0]["n_images"] == 3 and "ANOMALIES BLOQUANTES" in calls[1]["text"]
+
+
+def test_reader_gives_questions_when_unfixable():
+    bad = copy.deepcopy(CASE)
+    del bad["levels"]
+    llm, _ = _llm([json.dumps(bad)])
+    res = asyncio.run(reader.read_building([("PC.pdf", _pdf(["PLAN DU RDC"]))], "", "FR", llm=llm, max_fix=1))
+    assert not res["ok"] and res["questions"]
+
+
+def test_tool_end_to_end_stores_three_artifacts():
+    db = DB()
+    pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
+    db.assistant_docs.docs.append({"doc_id": "doc_1", "user_id": "u1", "filename": "PC.pdf", "mime": "application/pdf",
+                                   "data_b64": base64.b64encode(pdf).decode()})
+    llm, _ = _llm([json.dumps(CASE)])
+    user, conv = {"user_id": "u1"}, {"conversation_id": "c1", "_quote_request_id": "r1"}
+    out = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["doc_1"], "hypotheses": "", "country": "FR"},
+                                             user, conv, db, llm=llm, background=False))
+    assert out["ok"]
+    st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
+    assert st["status"] == "done", st
+    assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx"}
+    assert st["blocking"] == 0 and len(st["sheets"]) >= 20
+    assert len(db.assistant_artifacts.docs) == 3
+    # un autre utilisateur ne voit ni le job ni les documents
+    other = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, {"user_id": "u2"}, conv, db))
+    assert "error" in other
+    denied = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["doc_1"], "hypotheses": "", "country": "FR"},
+                                                {"user_id": "u2"}, conv, db, llm=llm, background=False))
+    assert "error" in denied
+
+
+def test_tool_specs_are_strict():
+    for t in assistant_tool.TOOLS:
+        assert t["strict"] and t["parameters"]["additionalProperties"] is False
+        assert set(t["parameters"]["required"]) == set(t["parameters"]["properties"])
