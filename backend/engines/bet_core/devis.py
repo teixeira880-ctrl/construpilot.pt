@@ -7,7 +7,6 @@ bibliothèque de prix de l'entreprise (cellules bleues du fichier Excel).
 from __future__ import annotations
 
 from openpyxl import Workbook
-from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 

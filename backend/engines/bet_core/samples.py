@@ -87,7 +87,7 @@ def build_g2(case_id: str) -> bytes:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
 
     from . import brand  # noqa: F401 — regista as fontes DV / DVB / TT
     raw = case(case_id)

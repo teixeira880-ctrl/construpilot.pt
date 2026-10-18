@@ -103,7 +103,7 @@ GLOSSARY = {
     "sous-face": "face inferior", "axes": "eixos", "s.e.": "s/ escala", "voir": "ver", "débords compris": "incluindo beirados",
     "chaînage de semelle": "lintel de fundação", "Face terre": "Face em contacto com o terreno", "face terre": "face do terreno",
     "Tassement": "Assentamento", "Taux": "Taxa", "taux": "taxa", "Taux maxi": "Taxa máxima", "taux maxi": "taxa máxima",
-    "Matériau": "Material", "File": "Alinhamento", "Volée": "Lanço", "Valeur": "Valor", "Origine": "Origem", "Action": "Ação",
+    "Matériau": "Material", "File": "Alinhamento", "Valeur": "Valor", "Origine": "Origem", "Action": "Ação",
     "Combinaisons": "Combinações", "hypothèse": "hipótese", "fabricants": "fabricantes", "fabricant": "fabricante",
     "habitation": "habitação", "annexe": "anexo", "habitation_garage": "habitação + garagem", "Usage": "Utilização",
     "Ouvrage": "Elemento", "Solution retenue": "Solução adotada", "Justification": "Justificação", "Contrôle": "Verificação",
@@ -120,12 +120,12 @@ GLOSSARY = {
     "TVA": "IVA", "Taux de TVA": "Taxa de IVA", "RÉCAPITULATIF PAR LOT": "RESUMO POR CAPÍTULO", "Métré structure": "Medições da estrutura",
     "Linteaux et poteaux": "Lintéis e pilares", "Électricité": "Eletricidade", "électricité": "eletricidade", "ÉLECTRICITÉ": "ELETRICIDADE",
     "Plomberie": "Águas e esgotos", "plomberie": "águas e esgotos", "PLOMBERIE": "ÁGUAS E ESGOTOS",
-    "Terrassement": "Movimento de terras", "Escalier": "Escada", "ft": "vg", "ml": "m", "u": "un",
+    "Terrassement": "Movimento de terras", "ft": "vg", "ml": "m", "u": "un",
     "oui": "sim", "non": "não", "Circuit": "Circuito", "Circuits": "Circuitos", "circuits": "circuitos", "Points": "Pontos",
     "Différentiel": "Diferencial", "différentiels": "diferenciais", "Disjoncteur (A)": "Disjuntor (A)", "Section (mm²)": "Secção (mm²)",
     "Pièce": "Compartimento", "Appareil": "Aparelho", "appareils": "aparelhos", "Alimentation": "Alimentação", "ECS": "AQS",
     "Évacuation": "Esgoto", "Chute": "Tubo de queda", "chutes": "tubos de queda", "Longueur évac. (m)": "Comprimento de esgoto (m)",
-    "Hauteur": "Altura", "Niveau": "Piso",
+    
     # MEP
     "Prises": "Tomadas", "prises": "tomadas", "prise": "tomada", "Éclairage": "Iluminação", "éclairage": "iluminação",
     "Volets roulants": "Estores elétricos", "volets roulants": "estores elétricos",
@@ -140,7 +140,7 @@ GLOSSARY = {
     "EF/ECS": "AF/AQS", "EU/EV": "águas residuais", "multicouche": "multicamada", "n°": "n.º", "pt(s)": "pt(s)", "type": "tipo",
     "rangées": "filas", "tableau": "quadro", "Tableau": "Quadro",
     # divers
-    "Charges": "Ações", "charges": "cargas", "et": "e", "Lot": "Capítulo",
+    "Charges": "Ações", "charges": "cargas", "et": "e", 
 }
 
 
@@ -239,7 +239,7 @@ TEMPLATES = {
     "toiture ⟨0⟩ pans sur pignons": "cobertura de ⟨0⟩ águas sobre empenas",
     "toiture ⟨0⟩ pans, pignons = mitoyens": "cobertura de ⟨0⟩ águas, empenas = paredes meeiras",
     "GTL / tableau": "quadro elétrico (QE)",
-    "Escalier ¼ + ¼ tournant": "Escada de dois lanços com patamares de ¼",
+    
     # notes des planches
     "Contrainte admissible G⟨0⟩ : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.": "Tensão admissível (estudo geotécnico) : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.",
     "Semelle la plus chargée (Semelle filante sous ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.": "Sapata mais carregada (sapata contínua sob ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.",
