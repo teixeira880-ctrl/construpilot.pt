@@ -125,7 +125,7 @@ GLOSSARY = {
     "Différentiel": "Diferencial", "différentiels": "diferenciais", "Disjoncteur (A)": "Disjuntor (A)", "Section (mm²)": "Secção (mm²)",
     "Pièce": "Compartimento", "Appareil": "Aparelho", "appareils": "aparelhos", "Alimentation": "Alimentação", "ECS": "AQS",
     "Évacuation": "Esgoto", "Chute": "Tubo de queda", "chutes": "tubos de queda", "Longueur évac. (m)": "Comprimento de esgoto (m)",
-    
+
     # MEP
     "Prises": "Tomadas", "prises": "tomadas", "prise": "tomada", "Éclairage": "Iluminação", "éclairage": "iluminação",
     "Volets roulants": "Estores elétricos", "volets roulants": "estores elétricos",
@@ -140,7 +140,7 @@ GLOSSARY = {
     "EF/ECS": "AF/AQS", "EU/EV": "águas residuais", "multicouche": "multicamada", "n°": "n.º", "pt(s)": "pt(s)", "type": "tipo",
     "rangées": "filas", "tableau": "quadro", "Tableau": "Quadro",
     # divers
-    "Charges": "Ações", "charges": "cargas", "et": "e", 
+    "Charges": "Ações", "charges": "cargas", "et": "e",
 }
 
 
@@ -239,7 +239,7 @@ TEMPLATES = {
     "toiture ⟨0⟩ pans sur pignons": "cobertura de ⟨0⟩ águas sobre empenas",
     "toiture ⟨0⟩ pans, pignons = mitoyens": "cobertura de ⟨0⟩ águas, empenas = paredes meeiras",
     "GTL / tableau": "quadro elétrico (QE)",
-    
+
     # notes des planches
     "Contrainte admissible G⟨0⟩ : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.": "Tensão admissível (estudo geotécnico) : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.",
     "Semelle la plus chargée (Semelle filante sous ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.": "Sapata mais carregada (sapata contínua sob ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.",
