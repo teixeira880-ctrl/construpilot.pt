@@ -124,3 +124,14 @@ def test_tool_specs_are_strict():
     for t in assistant_tool.TOOLS:
         assert t["strict"] and t["parameters"]["additionalProperties"] is False
         assert set(t["parameters"]["required"]) == set(t["parameters"]["properties"])
+
+
+def test_branding_only_for_pro_and_business():
+    class U:
+        def __init__(self, doc): self.doc = doc
+        async def find_one(self, q, proj=None): return dict(self.doc)
+    db = DB()
+    db.users = U({"brand_company_name": "ACME BTP", "brand_logo_b64": None, "brand_accent_color": "#123456"})
+    for at, branded in (("pro", True), ("pro_business", True), ("particulier", False), (None, False)):
+        b = asyncio.run(assistant_tool._default_branding(db, "u1", {"user_id": "u1", "account_type": at}))
+        assert bool(b and b.get("company_name") == "ACME BTP") is branded, at

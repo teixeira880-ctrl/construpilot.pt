@@ -73,8 +73,23 @@ async def _store(db, uid, cid, request_id, kind, path: Path, title):
     return {k: doc[k] for k in ("artifact_id", "title", "filename", "format", "mime", "size", "download")}
 
 
-async def _default_branding(db, uid):
-    """Identité de l'entreprise de l'utilisateur (logo, nom, coordonnées, couleur) via les résolveurs de la plateforme."""
+BRANDED_LEVELS = {"pro", "business"}      # offres Pro et Pro Business : dossier au logo ORIGINAL de l'entreprise
+
+
+async def _plan_level(user: dict) -> str:
+    try:
+        from engines.access import compute_level
+        return await compute_level(user)
+    except Exception:  # noqa: BLE001 — plateforme sans engines.access (.pt) : type de compte
+        at = user.get("account_type")
+        return "business" if at in ("pro_business", "business") else "pro" if at == "pro" else "particulier_gratuit"
+
+
+async def _default_branding(db, uid, user=None):
+    """Identité de l'entreprise (logo original téléversé, nom, coordonnées, couleur) — réservée aux offres Pro / Pro Business.
+    Pro Business : identité de l'organisation (partagée par l'équipe) ; Pro : identité du compte."""
+    if user is not None and await _plan_level(user) not in BRANDED_LEVELS:
+        return None
     b = None
     try:
         from routes.plans_common import _resolve_branding
@@ -172,7 +187,7 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, b
         "job_id": job_id, "user_id": uid, "conversation_id": cid, "document_ids": ids, "country": args["country"],
         "hypotheses": args.get("hypotheses", ""), "status": "running", "step": "En file d'attente", "created_at": _now(), "updated_at": _now()}}, upsert=True)
     try:
-        branding = await (branding_loader or _default_branding)(db, uid)
+        branding = await branding_loader(db, uid) if branding_loader else await _default_branding(db, uid, user)
     except Exception:  # noqa: BLE001 — l'identité est facultative : dossier aux couleurs ConstruPilot
         branding = None
     coro = _work(db, job_id, uid, cid, request_id, docs, args.get("hypotheses", ""), args["country"], llm=llm, branding=branding)

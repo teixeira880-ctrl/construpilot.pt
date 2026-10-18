@@ -86,4 +86,5 @@ A500NR, verificação sísmica pelo método das forças laterais EC8, RTIEBT/ITE
 
 Le dossier (couverture, en-têtes, cartouche de chaque planche, Excel) est édité au nom de l'entreprise de l'utilisateur :
 logo `brand_logo_b64`, nom, coordonnées, SIRET/TVA, couleur `brand_accent_color` (Ma page & mes documents). Sans logo, le nom est
-composé en lettrage. Polices embarquées : Inter + Barlow Semi Condensed (SIL OFL, `fonts/`).
+composé en lettrage. Réservé aux offres **Pro** (identité du compte) et **Pro Business** (identité de l'organisation,
+partagée par l'équipe) via `engines.access.compute_level` ; les autres comptes reçoivent le dossier aux couleurs ConstruPilot. Polices embarquées : Inter + Barlow Semi Condensed (SIL OFL, `fonts/`).
