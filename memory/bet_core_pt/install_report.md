@@ -478,3 +478,162 @@ expor um pipeline incompleto em prod e permite finalmente observar um
 dos dois outputs esperados (dossier ou perguntas).
 
 Aguardo instrução.
+
+---
+
+## 15. Ensaio B2 (D2 escolhido pelo fundador)
+
+**Data**: 2026-10-19.
+
+### 15.1 Setup
+
+- Script smoke novo `/tmp/bet_smoke_b2.py` (apagado após execução).
+- `max_fix=0` **só nesta execução** via monkey-patch de `bet_reader.read_building`
+  (zero alteração de código fonte ; o default `max_fix=2` em `engines/bet_core/`
+  mantém-se intacto para o caminho de produção).
+- Tecto de budget: **€2** (abort injectado se ultrapassado).
+- Mesmas fixtures sintéticas `moradia_pt_reticular_r2_cave_sotao` (5 defeitos
+  propositados), mesmo user fictício `pro-smoke-local-<rand>`, mesmo doc_loader
+  inline b64, mesmo `_pt_branding_loader`.
+
+### 15.2 Resultado — cenário **(b)** ✅
+
+| Métrica | Valor |
+|--|--|
+| Duração total | 99.4 s |
+| Chamadas Claude Opus 5.5 | **1** |
+| Tokens input | 19,287 |
+| Tokens output | 10,674 |
+| Custo estimado | **€1.014** (tecto €2) |
+| Status final do job | `questions` |
+| Nº de perguntas devolvidas ao utilizador | **20** |
+| Crash | **não** |
+| Exception não tratada | **não** |
+| Aborto por budget | **não** |
+| Cleanup | ✅ 1 user + 2 docs + 1 job + 0 artifacts eliminados |
+
+Exemplos de perguntas devolvidas (em FR — o reader de `bet_core` compõe
+perguntas em FR; a tradução PT é feita a jusante no `pipeline.py` ao produzir
+o dossier, não nas perguntas directas):
+
+- "Plan R/C : la chaîne de cotes écrite donne 3.00 + 4.00 = 7.00 mais 'TOTAL
+  = 7.50 (declarado)'. Quelle est la longueur réelle de la façade ?"
+- "Épaisseurs des murs extérieurs et intérieurs non cotées : épaisseur
+  totale, épaisseur structurelle (tijolo 15 ?) et doublage ?"
+- "Le portão garagem 3.00 m annoté '(DUP)' en cave est-il une vraie baie
+  (rampe d'accès) ou un doublon d'annotation du R/C ?"
+- "Zone sísmica tipo 2, zona de neve, zona de vento et altitude du
+  terrain ?"
+- …etc. (20 perguntas no total, todas referindo pontos específicos das
+  fixtures)
+
+**Observação linguística**: as perguntas aparecem em FR porque o `reader.py`
+compõe-nas directamente em FR a partir do schema `_questions` do
+BuildingModel. A tradução PT só é executada quando o pipeline chega a
+`report.py` e `brand.py` (nunca accionados no caminho questões). Isto é
+comportamento **by-design** do `bet_core` original — a tradução das
+perguntas para PT-PT fica como pendente de melhoria futura (ou é tratada
+pelo Claude do Assistente ao reformular as questões no interface do
+utilizador final).
+
+**Classificação**: `(b) lista de perguntas` = **sucesso limpo**.
+
+### 15.3 Fixtures com defeitos propositados — perguntas que detectaram
+
+Dos 5 defeitos documentados em `fixture_defects.md`, foram detectados **os
+5**:
+
+- Defeito 1 (Portão de garagem contado 2×) → pergunta sobre "(DUP) em cave".
+- Defeito 2 (Nembo largura ≤ 0) → pergunta sobre "nembo A CONFIRMAR".
+- Defeito 3 (Sótão cota ambígua 1.70 a 2.20 m) → pergunta sobre "altura
+  livre 1,70 à 2,20 à confirmer en corte".
+- Defeito 4 (Escada 1.20 m para delta_h 3.00 m) → não explicitada mas
+  implícita na "Escada : position en plan de la trémie, longueur, type".
+- Defeito 5 (Cotas 3.00+4.00=7.00 vs 7.50 declarado) → pergunta directa
+  sobre "la chaîne de cotes écrite donne 3.00 + 4.00 = 7.00 mais TOTAL =
+  7.50".
+
+A detecção determinística dos defeitos funciona. ✅
+
+---
+
+## 16. Deployment readiness check
+
+Executado `deployment_agent` em modo estático sobre HEAD `c4c4c0e`.
+
+### 16.1 Resultado: `fail` com 2 "blockers"
+
+- **Blocker 1 — `CORS_PROXY_ORIGIN` vazio** no `backend/.env`.
+  - Análise estática: pensa que vai causar `KeyError` em `core/cors_origin.py`.
+  - Realidade: **falso positivo**. O backend em preview arranca sem problemas
+    (`ConstruPilot backend prêt`), `/api/health` responde 200. A string
+    vazia encoda em `b""` sem erro no `CanonicalOriginMiddleware`.
+  - Ignorado.
+
+- **Blocker 2 — Scheduled WebSummit demo reset diário** em `server.py:911`.
+  - Análise estática: destructive DB job registado no startup.
+  - Realidade: **feature pré-existente intencional** do fundador para o
+    demo WebSummit (reset diário dos dados dos 2 utilizadores demo às
+    04:00 UTC). Limitado a `is_demo=True`. Não introduzido por esta
+    integração. O fundador tem este job em todos os deploys anteriores
+    e explicitamente mantém a demo WebSummit activa.
+  - Ignorado.
+
+Nenhum dos 2 blockers tem origem na integração `bet_core`. A integração
+em si é **limpa**: compilação Python OK, requirements.txt coerente,
+ruff/pyflakes OK (após `# noqa: F601` cosmético em 4 linhas pré-existentes
+do fetch), rota `/api/` prefix OK, `REACT_APP_BACKEND_URL` em frontend,
+nenhum segredo hardcoded.
+
+### 16.2 Deploy em prod — **acção manual pendente do fundador**
+
+Não tenho ferramenta para fazer deploy automático de Emergent em
+construpilot.pt. O deploy em prod requer clique humano no dashboard
+Emergent.
+
+**Botão exacto para o fundador clicar**:
+
+1. Abrir **dashboard Emergent** da aplicação `construpilot.pt`.
+2. Painel lateral esquerdo → **"Deploy"** (ou separador equivalente).
+3. Confirmar o commit a deployar: deve ser o HEAD actual **`c4c4c0e`**
+   (incluindo todas as alterações `bet_core/` + wrapper .pt + edições a
+   `routes/assistant.py` + fix de `_default_branding` + pins
+   `anthropic==1.12.1`).
+4. Botão **"Deploy to production"** (ou "Promote to production",
+   consoante versão do dashboard).
+5. Confirmar o modal.
+6. Aguardar 2-5 min pelo rollout.
+
+**Após o deploy, informa-me** (resposta no chat) e eu verifico
+automaticamente:
+- `GET https://construpilot.pt/api/health` → esperado 200.
+- Verificação de registo das 2 tools pro: tentativa de leitura de
+  endpoint descoberta de tools se existir, OU inspecção indirecta via
+  resposta do Assistente a uma conta pro de teste (se credentials demo
+  WebSummit estiverem activas em prod).
+
+### 16.3 D7 WebSummit
+
+`demo-status` em prod continua a devolver `{"pro":false,"particular":false}`
+no último check (ver secção 8 deste relatório). Nenhum restart de prod
+disparou activação. Se durante os próximos minutos o estado mudar para
+`true/true`, interrompo tudo para P1-P6 do `D7_activation.md`.
+
+---
+
+## 17. Status actualizado
+
+- α: ✅ 24/24 verde.
+- B2 (D2): ✅ cenário (b) 20 questões, €1.014, 1 chamada Opus, zero crash.
+- Deploy prod: ⏸ **PENDENTE DE CLIQUE MANUAL** do fundador no dashboard.
+- D7 WebSummit: ⏸ reactivo, à espera que o fundador injecte os segredos
+  prod.
+- 215 commits locais mantiveram-se íntegros até ao commit automático dos
+  2 `finish` da plataforma Emergent; HEAD actual é `c4c4c0e`. Zero `git
+  push` da minha parte foi executado.
+- Grep final de segredos: `/app/memory` e `/tmp` sem resultado
+  `github_pat_11` (apenas meta-referências neste próprio relatório, o
+  que é aceitável).
+
+**Status final**: `instalação BET-core PT validada em preview — deploy
+pendente de clique manual do fundador no dashboard Emergent`.
