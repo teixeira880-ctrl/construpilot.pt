@@ -112,12 +112,42 @@ async def _default_branding(db, uid, user=None):
     return b or None
 
 
+def docs_hash(docs, hypotheses, country) -> str:
+    """Empreinte des documents + hypothèses : mêmes pièces → même relevé → mêmes résultats (stabilité d'une étude à l'autre)."""
+    h = hashlib.sha256()
+    for d in sorted(hashlib.sha256(data).hexdigest() for _, data in docs):
+        h.update(d.encode())
+    h.update(" ".join((hypotheses or "").lower().split()).encode())
+    h.update((country or "").encode())
+    return h.hexdigest()
+
+
+async def _cached_model(db, uid, key):
+    try:
+        return await db.bet_models.find_one({"user_id": uid, "docs_hash": key}, {"_id": 0})
+    except Exception:  # noqa: BLE001 — cache facultatif
+        return None
+
+
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None):
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
     try:
-        await step("Lecture des plans par IA et relevé du modèle bâtiment")
-        rd = await reader.read_building(docs, hypotheses, country, llm=llm)
+        key = docs_hash(docs, hypotheses, country)
+        cached = await _cached_model(db, uid, key)
+        if cached and cached.get("model"):
+            await step("Relevé déjà validé pour ces documents : réutilisé (résultats identiques)")
+            rd = {"ok": True, "model": cached["model"], "anomalies": [], "pages": cached.get("pages") or [], "attempts": 0,
+                  "questions": [], "cached": True}
+        else:
+            await step("Lecture des plans par IA et relevé du modèle bâtiment")
+            rd = await reader.read_building(docs, hypotheses, country, llm=llm)
+            if rd["ok"] and not rd.get("demo"):
+                try:
+                    await db.bet_models.update_one({"user_id": uid, "docs_hash": key}, {"$set": {
+                        "user_id": uid, "docs_hash": key, "model": rd["model"], "pages": rd["pages"], "created_at": _now()}}, upsert=True)
+                except Exception:  # noqa: BLE001
+                    log.warning("bet model cache write failed", exc_info=True)
         if not rd["ok"]:
             await step("Questions à l'utilisateur", status="questions", questions=rd["questions"], anomalies=rd["anomalies"],
                        model=rd["model"], pages=rd["pages"])
@@ -139,7 +169,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
         await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"],
                    sheets=res["sheets"], devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"],
                    points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
-                   questions=rd["questions"], demo=rd.get("demo"))
+                   questions=rd["questions"], demo=rd.get("demo"), cached=bool(rd.get("cached")))
     except Exception as exc:  # noqa: BLE001
         log.exception("bet study %s failed", job_id)
         await step("Échec", status="failed", error=f"{type(exc).__name__}: {str(exc)[:500]}")

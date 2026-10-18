@@ -221,3 +221,196 @@ disparado durante esta sessão.
 
 **Implementação local completa, 37/37 pytest verde, ensaio e2e verde,
 pronta para deploy prod. Aguarda clique manual do fundador.**
+
+---
+
+## 21. Fecho conjunto — Moradia Martins utilizável + cache bet_models
+
+**Data**: 2026-10-18. **Commit do ramo**: `bc7cf96`.
+
+### 21.1 Re-fetch `bc7cf96` ✅
+
+- Fetch com token efémero (zero persistência), git config limpo.
+- Preservado: `test_translate_questions_pt.py` (meu, i18n) + wrapper
+  `assistant_bet_core_tool.py` intactos. Teste `test_demo_showcase_pt.py`
+  reescrito para o novo design (ligar à Moradia Martins em vez de criar
+  projecto novo).
+- Backup defensivo em `/tmp/i18n_backup/`.
+
+### 21.2 Índice Mongo `bet_models` ✅
+
+Adicionado ao startup do backend em `server.py:660`:
+```python
+await db.bet_study_jobs.create_index("job_id", unique=True)
+await db.bet_models.create_index(
+    [("user_id", 1), ("docs_hash", 1)],
+    unique=True, name="user_id_1_docs_hash_1",
+)
+```
+Verificação pós-restart: `db.bet_models.index_information()` lista
+`user_id_1_docs_hash_1: unique=True` ✅.
+
+### 21.3 Dados lidos da `Moradia Martins` existente
+
+Collection `db.projects`, 2 registos com `name="Moradia Martins", is_demo=True`:
+- `prj_ea1d22ef5f71` — owner `user_a978ddafc007` (conta histórica
+  pre-existente, email não canónico; não tocado).
+- `prj_15589cc18920` — owner `user_20b255779e3c` (= conta demo pro
+  canónica, com branding `Construções Horizonte, Lda.` aplicado).
+
+Campos preservados: `name`, `description="Moradia unifamiliar T3 em
+Lisboa — dados demo não executivos."`, `location="Lisboa, Portugal"`,
+`work_type="construcao_nova"`, `status="active"`.
+
+**Zero campo `client`** no schema. Só `location="Lisboa, Portugal"` serve
+como morada; `samples.build_all` recebe `project={"name":"Moradia
+Martins", "client": "", "address": "Lisboa, Portugal"}`.
+
+### 21.4 Coerência verificada ✅
+
+A `Moradia Martins` em DB é moradia T3 unifamiliar em Lisboa; o case
+`samples.moradia_pt_demo` é moradia T3 R+1 (coerente). **Zero alerta
+disparado**. Avanço autorizado para 21.5.
+
+### 21.5 Documentos regenerados com identidade `Moradia Martins`
+
+Substituídos os 2 PDFs antigos (`Projeto_arquitetura_Moradia_T3_DEMO.pdf`,
+`Estudo_geotecnico_Moradia_T3_DEMO.pdf`) por:
+
+- `Projeto_arquitetura_Moradia_Martins_DEMO.pdf`
+- `Estudo_geotecnico_Moradia_Martins_DEMO.pdf`
+
+Chamada: `samples.build_all("moradia_pt_demo", project={"name": "Moradia
+Martins", "address": "Lisboa, Portugal", "client": ""})`. Fallback para
+`build_all(case_id)` se o kwarg `project` não for suportado (compat).
+
+**Ligados ao projecto `prj_15589cc18920`**: campo `doc_ids` populado + campo
+`user_id` sincronizado com `owner_user_id` (resolve a anomalia D7-a em
+preview; em prod requer deploy).
+
+Preview showcase summary pós-restart:
+```json
+{
+  "docs": {
+    "pro": {"count": 2, "doc_ids": [...]},
+    "particular": "skipped_no_moradia_martins"
+  },
+  "branding": {"pro": "applied"},
+  "project_link": {
+    "pro": {"project_id": "prj_15589cc18920", "attached": [...], "total_docs": 2},
+    "particular": "skipped_no_project"
+  }
+}
+```
+
+**Nota sobre a conta Particular**: não existe `Moradia Martins` associada à
+conta demo particular (o seed histórico só criava para pro). Em vez de
+criar um projecto novo (contrário à instrução), o showcase faz
+`skipped_no_moradia_martins` para o particular. **Decisão**: o particular
+ainda pode usar os docs demo via Assistente (chat), apenas sem projecto
+"guarda-chuva". Alternativa para ronda futura: criar `Moradia Martins`
+também para o particular (não feito aqui para respeitar a regra "zero
+projecto novo").
+
+### 21.6 Investigação D7-a — causa raiz identificada e resolvida ✅
+
+**Causa raiz**: mismatch de campo entre o seed histórico (grava
+`owner_user_id`) e `routes/projects.py:70` (filtra por `user_id`).
+
+**Fix aplicado**: dentro de `apply_demo_showcase_pt`, no passo (3), o
+projecto Moradia Martins recebe `$set: {user_id: <demo_pro_uid>, doc_ids:
+[...]}` sincronizando o campo. **Zero alteração a `owner_user_id`,
+descrição, orçamentos, histórico ou campos custom**. Idempotente.
+
+Confirmado em preview: `db.projects.find({project_id: "prj_15589cc18920"})`
+agora tem `user_id = user_20b255779e3c`. Em prod, o fix activa-se no
+próximo deploy.
+
+### 21.7 D7-b — CTAs `/demo/entrar`: **falso positivo confirmado** ✅
+
+Playwright com waiting explícito de 10 s em cada selector (texto "Pro"/
+"Experimentar como"/"Entrar como"/"Particular") → **TODOS encontrados
+visíveis no DOM** em `https://construpilot.pt/demo/entrar`. Os screenshots
+headless anteriores não renderizavam estes CTAs por limitações do
+browser headless mas eles existem e são interactivos.
+
+**Anomalia anulada. Zero alteração aplicada.**
+
+### 21.8 Testes finais
+
+```
+pytest -q tests/bet_core tests/test_demo_showcase_pt.py
+40 passed, 2 warnings in 10.05 s
+```
+
+Breakdown: 29 do ramo (`bc7cf96`) + 7 i18n PT + 4 showcase (reescritos
+para ligação à Moradia Martins) = 40.
+
+Novos/actualizados em `test_demo_showcase_pt.py`:
+- `test_showcase_installs_docs_with_moradia_martins_identity`: valida
+  cartucho `Moradia_Martins`, ligação `doc_ids` ao projecto, `user_id`
+  sincronizado, branding só pro.
+- `test_showcase_is_idempotent`: 4 docs totais após 2 runs + 2 doc_ids no
+  projecto sem crescer.
+- `test_showcase_skips_when_moradia_martins_absent`: skip gracioso.
+- `test_showcase_fail_closed_missing_particular_config`: só pro quando
+  particular config em falta.
+
+### 21.9 Smoke local e2e pós-fetch ✅
+
+Script `/tmp/moradia_martins_smoke.py` (apagado após execução):
+
+| Pass | Duração | Chamadas Claude | Status | Entregáveis | HT | TTC | Pranchas |
+|--|--|--|--|--|--|--|--|
+| 1 (sem cache bet_models) | **1.47 s** | **0** ✅ | done | 3 | €61 160,31 | €75 227,18 | 15 |
+| 2 (com cache limpo entre runs) | **1.12 s** | **0** ✅ | done | 3 | €61 160,31 | €75 227,18 | 15 |
+
+Total: 2.93 s, zero Claude.
+
+Review: `PRÊT POUR VISA BET`, blocking=0.
+PDF processo: 391.4 KB (contém logo PNG + 15 pranchas).
+
+Nota técnica: o cache `bet_models` **não é usado** no demo bypass
+(porque `detect()` match → `demo_model(case_id, project)` retorna o
+modelo exacto sem passar pelo reader AI → sem gravação em cache).
+Comportamento correcto. O cache serve para plantas reais (não-demo) em
+chamadas repetidas pelo mesmo utilizador com os mesmos documentos.
+
+### 21.10 Deploy prod — PENDENTE DE CLIQUE MANUAL 🛑
+
+Dashboard Emergent → separador **"Deploy"** → **"Deploy to production"**
+→ confirmar modal. HEAD a deployar: o commit automático do próximo
+`finish` sobre o estado actual local.
+
+Pós-deploy, posso executar automaticamente:
+- `GET /api/health` → 200.
+- `GET /api/auth/demo-status` → `true/true` (preservado).
+- Via sessão demo pro: `GET /api/projects` → **Moradia Martins listado**
+  (anomalia D7-a resolvida).
+- Via sessão demo pro: `GET /api/assistant/docs` → `Projeto_arquitetura_
+  Moradia_Martins_DEMO.pdf` + `Estudo_geotecnico_Moradia_Martins_DEMO.pdf`
+  listados.
+- Playwright `/demo/entrar` com waiting 10s → CTAs encontrados (já
+  confirmado antes do deploy; só re-confirmar).
+
+### 21.11 Verificação final
+
+- Zero `git push` da minha parte.
+- Zero toques em `.fr`, zero toques em `engines/bet_agent/`
+  (`BET_AGENT_ENABLED=false` preservado).
+- Zero segredos em claro: env limpo pós-fetch, `.git/config` limpo,
+  `grep github_pat_11 /app/memory /tmp` sem resultado fora de meta-refs
+  nos relatórios próprios.
+- Zero PDFs cliente real. Fixtures/outputs: só `samples.build_all` com
+  caso sintético marcado `/Subject=construpilot-demo:moradia_pt_demo`.
+- Dados demo pré-existentes da `Moradia Martins` (`description`,
+  `location`, `work_type`, `status`, `owner_user_id`, orçamentos,
+  conversas): **zero toque**. Apenas `doc_ids` e `user_id` foram
+  acrescentados.
+- Scripts smoke apagados após execução.
+- Responde em PT-PT.
+
+### 21.12 Status
+
+**Implementação local completa, 40/40 pytest verde, smoke e2e verde,
+pronta para deploy prod único. Aguarda clique manual do fundador.**

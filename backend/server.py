@@ -658,6 +658,13 @@ async def seed():
     await db.resend_webhook_events.create_index("svix_id", unique=True)
     await db.quote_sends.create_index("email_id")
     await db.library_items.create_index("user_id")
+    # bet_core: cache de releitura por empreinte (documentos + hipóteses + país)
+    await db.bet_study_jobs.create_index("job_id", unique=True)
+    await db.bet_models.create_index(
+        [("user_id", 1), ("docs_hash", 1)],
+        unique=True,
+        name="user_id_1_docs_hash_1",
+    )
     await db.library_items.create_index("item_id")
     await db.pro_documents.create_index("user_id")
     await db.pro_documents.create_index("doc_id")

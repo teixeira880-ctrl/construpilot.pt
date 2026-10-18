@@ -108,3 +108,15 @@ No reset diário das contas demo :
 2. gravar `samples.demo_branding("PT")` como campos `brand_*` (logo em `brand_logo_b64`) das contas demo Pro / Pro Business ;
 3. a conta Particular usa os mesmos documentos nas suas ferramentas (estimativa de orçamento, pedido de orçamentos) ; o estudo
    BET continua reservado às contas profissionais.
+
+## 8. Uma só via de estudo no Assistente / Un seul moteur d'étude dans l'Assistant
+
+Quand l'utilisateur joint un PC (et/ou une G2) et demande une étude structure, des plans d'exécution GO / charpente /
+électricité / plomberie ou un dossier BET, l'Assistant doit appeler **uniquement `generate_full_bet_study`** (puis
+`read_full_bet_study`). Les anciens outils (`etude-structure-maison` / moteur `maison-fr-1.0.0`, `plans-execution-mep` /
+`mep-1.0.0`) relisent les plans à chaque appel : résultats différents d'un essai à l'autre et hypothèses du client ignorées.
+→ les retirer de la liste d'outils proposée au modèle pour les comptes pro, ou les faire déléguer à `generate_full_bet_study`.
+
+Stabilité : le relevé validé est mis en cache dans `db.bet_models` par empreinte (documents + hypothèses + pays). Mêmes
+pièces → même modèle → mêmes plans, métrés et devis. Une correction de l'utilisateur (« murs intérieurs porteurs 20 cm
+parpaing ») passe dans `hypotheses` → nouvelle lecture. Index conseillé : `{user_id: 1, docs_hash: 1}` unique.

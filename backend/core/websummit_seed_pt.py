@@ -314,16 +314,20 @@ async def _upsert_demo_doc(db, user_id: str, filename: str, data: bytes) -> str:
 
 
 async def apply_demo_showcase_pt(db) -> dict:
-    """Instala documentos BET-core demo e branding "Construções Horizonte, Lda.".
+    """Instala documentos BET-core demo com identidade da `Moradia Martins`.
 
-    - Conta demo Pro (plan_id Pro Business): recebe os 2 PDF + branding completo.
-    - Conta demo Particular: recebe só os 2 PDF (sem branding — não é empresa).
-    - Idempotente: executar múltiplas vezes não duplica documentos.
-    - Preserva dados demo pré-existentes (projecto Moradia Martins, etc.).
+    - Conta demo Pro (plan_id Pro Business): recebe os 2 PDF com cartucho
+      "Moradia Martins" + branding "Construções Horizonte, Lda.".
+      Documentos ligados ao projecto `Moradia Martins` existente.
+    - Conta demo Particular: recebe os 2 PDF com cartucho "Moradia Martins".
+      Documentos ligados ao projecto `Moradia Martins` existente (se existir).
+    - Idempotente: executar múltiplas vezes não duplica documentos nem toca
+      no projecto `Moradia Martins`.
+    - Preserva dados demo pré-existentes (orçamentos, histórico, custom fields).
     - Fail-closed por conta: se config em falta, salta essa conta.
     """
     cfg = _config()
-    summary: dict = {"docs": {}, "branding": {}}
+    summary: dict = {"docs": {}, "branding": {}, "project_link": {}}
 
     # Lazy import — evita custo de reportlab/PIL se a função nunca for chamada.
     try:
@@ -331,13 +335,6 @@ async def apply_demo_showcase_pt(db) -> dict:
     except Exception as exc:  # noqa: BLE001
         logger.warning("websummit demo showcase: bet_core samples unavailable (%s)", exc)
         return {"error": f"samples_unavailable: {exc}"}
-
-    # Build dos PDF uma única vez por chamada (reutilizado entre contas).
-    try:
-        files = build_all(DEMO_CASE_ID)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("websummit demo showcase: build_all failed (%s)", exc)
-        return {"error": f"build_failed: {exc}"}
 
     for kind, acc in cfg.items():
         if not acc["password"]:
@@ -352,6 +349,45 @@ async def apply_demo_showcase_pt(db) -> dict:
             continue
         uid = user["user_id"]
 
+        # Ler o projecto `Moradia Martins` existente para extrair a identidade.
+        # Procura por `name == "Moradia Martins"` + match de ownership com
+        # `owner_user_id` OU `user_id` (schema histórico vs actual).
+        project = await db.projects.find_one(
+            {"name": DEMO_PROJECT_NAME,
+             "$or": [{"owner_user_id": uid}, {"user_id": uid}]},
+            {"_id": 0},
+        )
+        if not project:
+            summary["docs"][kind] = "skipped_no_moradia_martins"
+            summary["project_link"][kind] = "skipped_no_project"
+            continue
+
+        project_identity = {
+            "name": project.get("name") or DEMO_PROJECT_NAME,
+            "client": (
+                project.get("client")
+                or project.get("client_name")
+                or (project.get("client_info") or {}).get("name")
+                or ""
+            ),
+            "address": (
+                project.get("address")
+                or project.get("location")
+                or ""
+            ),
+        }
+
+        # Build dos PDF com identidade do projecto (uma vez por conta).
+        try:
+            files = build_all(DEMO_CASE_ID, project=project_identity)
+        except TypeError:
+            # Compat: builds antigos sem o kwarg `project`.
+            files = build_all(DEMO_CASE_ID)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("websummit demo showcase: build_all failed (%s)", exc)
+            summary["docs"][kind] = f"error_build: {exc}"
+            continue
+
         # (1) Documentos BET-core demo em `assistant_docs` (ambas as contas).
         inserted_ids = []
         for filename, data in files.items():
@@ -360,23 +396,42 @@ async def apply_demo_showcase_pt(db) -> dict:
         summary["docs"][kind] = {"count": len(inserted_ids), "doc_ids": inserted_ids}
 
         # (2) Branding "Construções Horizonte, Lda." — Pro apenas.
-        # A conta particular representa um utilizador final (sem empresa) e deve
-        # ficar com o tema ConstruPilot default: NÃO aplicar branding.
         if kind == "pro":
             try:
                 b = demo_branding("PT")
             except Exception as exc:  # noqa: BLE001
                 logger.warning("websummit demo showcase: demo_branding failed (%s)", exc)
                 summary["branding"][kind] = f"skipped_build_error: {exc}"
-                continue
-            brand_fields = {f"brand_{k}": v for k, v in b.items()}
-            await db.users.update_one(
-                {"user_id": uid},
-                {"$set": brand_fields},
-            )
-            summary["branding"][kind] = "applied"
+            else:
+                brand_fields = {f"brand_{k}": v for k, v in b.items()}
+                await db.users.update_one(
+                    {"user_id": uid},
+                    {"$set": brand_fields},
+                )
+                summary["branding"][kind] = "applied"
         else:
             summary["branding"][kind] = "skipped_not_pro"
+
+        # (3) Ligar os 2 documentos ao projecto `Moradia Martins` sem duplicar
+        # nem apagar documentos pré-existentes do projecto. O schema do `.pt`
+        # usa um array `doc_ids` no documento do projecto. Garante também
+        # `user_id = owner_user_id` para que `/api/projects` liste o projecto
+        # (filtro histórico por `user_id`).
+        pid = project.get("project_id")
+        existing_doc_ids = list(project.get("doc_ids") or [])
+        merged = list(dict.fromkeys(existing_doc_ids + inserted_ids))
+        set_fields: dict = {"doc_ids": merged, "updated_at": datetime.now(timezone.utc).isoformat()}
+        if not project.get("user_id"):
+            set_fields["user_id"] = uid
+        await db.projects.update_one(
+            {"project_id": pid},
+            {"$set": set_fields},
+        )
+        summary["project_link"][kind] = {
+            "project_id": pid,
+            "attached": inserted_ids,
+            "total_docs": len(merged),
+        }
 
     logger.info("websummit demo showcase applied: %s", summary)
     return summary
