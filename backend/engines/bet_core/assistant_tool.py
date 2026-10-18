@@ -95,6 +95,8 @@ async def _default_branding(db, uid, user=None):
         from routes.plans_common import _resolve_branding
         b = await _resolve_branding(uid)
     except Exception:  # noqa: BLE001 — plateforme sans ce résolveur (.pt) : lecture directe
+        b = None
+    if not b:
         u = await db.users.find_one({"user_id": uid}, {"_id": 0, "brand_company_name": 1, "brand_contact_line": 1, "brand_logo_b64": 1,
                                                      "brand_company_email": 1, "brand_siret": 1, "brand_vat": 1, "brand_nif": 1,
                                                      "brand_alvara": 1, "brand_address": 1, "brand_city": 1, "brand_postal": 1,
@@ -104,10 +106,10 @@ async def _default_branding(db, uid, user=None):
             b["postal_code"] = b.pop("postal", None)
     try:
         from routes.company_page import pdf_customization
-        b = {**(b or {}), **{k: v for k, v in (await pdf_customization(uid)).items() if v}}
+        b = {**(b or {}), **{k: v for k, v in ((await pdf_customization(uid)) or {}).items() if v}}
     except Exception:  # noqa: BLE001
         pass
-    return b
+    return b or None
 
 
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None):
@@ -137,7 +139,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
         await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"],
                    sheets=res["sheets"], devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"],
                    points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
-                   questions=rd["questions"])
+                   questions=rd["questions"], demo=rd.get("demo"))
     except Exception as exc:  # noqa: BLE001
         log.exception("bet study %s failed", job_id)
         await step("Échec", status="failed", error=f"{type(exc).__name__}: {str(exc)[:500]}")

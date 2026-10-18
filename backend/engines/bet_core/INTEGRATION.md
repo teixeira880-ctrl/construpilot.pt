@@ -88,3 +88,23 @@ Le dossier (couverture, en-têtes, cartouche de chaque planche, Excel) est édit
 logo `brand_logo_b64`, nom, coordonnées, SIRET/TVA, couleur `brand_accent_color` (Ma page & mes documents). Sans logo, le nom est
 composé en lettrage. Réservé aux offres **Pro** (identité du compte) et **Pro Business** (identité de l'organisation,
 partagée par l'équipe) via `engines.access.compute_level` ; les autres comptes reçoivent le dossier aux couleurs ConstruPilot. Polices embarquées : Inter + Barlow Semi Condensed (SIL OFL, `fonts/`).
+
+## 7. Contas demo (Web Summit) — documentos e empresa fictícios pré-configurados
+
+`samples.py` gera um projeto de arquitetura fictício (5 folhas A3 : plantas R/C e 1.º andar, cortes, alçados) e um estudo
+geotécnico fictício, coerentes com `cases/moradia_pt_demo.json`, mais a identidade de uma empresa fictícia
+(« Construções Horizonte, Lda. », logótipo gerado, NIF/alvará fictícios).
+
+```bash
+python -m engines.bet_core.samples /tmp/demo_pt      # 2 PDF + logo_empresa_demo.png + branding_empresa_demo.json
+```
+Os PDF trazem `/Subject = construpilot-demo:moradia_pt_demo`. Se TODOS os documentos de um pedido trazem essa marca,
+`reader.read_building` salta a IA e devolve o modelo exato do caso : estudo completo em segundos, 0 € de API, resultado
+sempre « PRONTO PARA VERIFICAÇÃO » (15 desenhos, 61 160 € s/ IVA). Um documento real misturado → leitura normal por IA.
+
+No reset diário das contas demo :
+1. gravar os 2 PDF em `assistant_docs` (ou na biblioteca de documentos do .pt) das contas demo **Pro**, **Pro Business** e
+   **Particular**, com nomes visíveis « Projeto_arquitetura_Moradia_T3_DEMO.pdf » e « Estudo_geotecnico_Moradia_T3_DEMO.pdf » ;
+2. gravar `samples.demo_branding("PT")` como campos `brand_*` (logo em `brand_logo_b64`) das contas demo Pro / Pro Business ;
+3. a conta Particular usa os mesmos documentos nas suas ferramentas (estimativa de orçamento, pedido de orçamentos) ; o estudo
+   BET continua reservado às contas profissionais.
