@@ -236,6 +236,116 @@ def _check_geo006_wall_in_slab_opening(building: BuildingModel) -> list[Anomaly]
     return out
 
 
+# ---------------------------------------------------------------------------
+# GEO-005 — Áreas por compartimento vs quadro de áreas da arquitectura (±5 %)
+# ---------------------------------------------------------------------------
+
+def check_room_areas_vs_table(
+    building: BuildingModel,
+    tabela_areas: dict[str, float],
+    tolerance_pct: float = 5.0,
+) -> list[Anomaly]:
+    """GEO-005 — compara as áreas lidas em `BuildingModel.rooms` com um
+    quadro de áreas fornecido (ex: extraído da memória descritiva do arquitecto).
+
+    - `tabela_areas` é um dict `{room_name: area_m2}`; chaves normalizadas em
+      lowercase (match case-insensitive).
+    - Tolerância ±5 % por omissão.
+    - Falhas na correspondência (compartimento no modelo mas não na tabela OU
+      vice-versa) → `AVISO`.
+    - Diferenças fora da tolerância → `GRAVE`.
+    """
+    out: list[Anomaly] = []
+    if not tabela_areas:
+        return out
+    table_norm = {k.strip().lower(): v for k, v in tabela_areas.items()}
+    seen_in_table: set[str] = set()
+
+    for room in building.rooms:
+        key = (room.name or "").strip().lower()
+        if key not in table_norm:
+            out.append(Anomaly(
+                severity=AnomalySeverity.AVISO,
+                code="GEO-005",
+                message_pt=(
+                    f"Compartimento '{room.name}' (piso {room.floor_id}) não "
+                    f"consta no quadro de áreas da arquitectura."
+                ),
+                source=AnomalySource(page=room.source.page, bbox=room.source.bbox),
+                remediation="Validar nomes com o quadro de áreas ou pedir actualização.",
+            ))
+            continue
+        seen_in_table.add(key)
+        expected = table_norm[key]
+        if expected <= 0:
+            continue
+        delta_pct = abs(room.area_m2 - expected) / expected * 100.0
+        if delta_pct > tolerance_pct:
+            out.append(Anomaly(
+                severity=AnomalySeverity.GRAVE,
+                code="GEO-005",
+                message_pt=(
+                    f"Compartimento '{room.name}': área lida {room.area_m2:.2f} m² "
+                    f"difere {delta_pct:.1f} % do quadro ({expected:.2f} m²), "
+                    f"acima da tolerância {tolerance_pct:.0f} %."
+                ),
+                source=AnomalySource(page=room.source.page, bbox=room.source.bbox),
+                remediation="Rever leitura das cotas OU confirmar quadro de áreas actualizado.",
+            ))
+
+    # Compartimentos listados no quadro mas não lidos no modelo:
+    for miss_key, miss_val in table_norm.items():
+        if miss_key not in seen_in_table:
+            out.append(Anomaly(
+                severity=AnomalySeverity.AVISO,
+                code="GEO-005",
+                message_pt=(
+                    f"Compartimento '{miss_key}' listado no quadro de áreas "
+                    f"({miss_val:.2f} m²) não foi lido no modelo."
+                ),
+                source=AnomalySource(),
+                remediation="Confirmar se foi omitido ou se existe discrepância de nomes.",
+            ))
+
+    return out
+
+
+# ---------------------------------------------------------------------------
+# GEO-007 — Cotas parciais somam totais (±2 cm)
+# ---------------------------------------------------------------------------
+
+def check_dimension_chain(
+    chain_name: str,
+    partial_m: list[float],
+    total_m: float,
+    page: int | None = None,
+    tolerance_m: float = 0.02,
+) -> list[Anomaly]:
+    """GEO-007 — soma de cotas parciais vs total declarado (±2 cm).
+
+    Função pura para ser invocada pelo reader após extrair uma cadeia de cotas
+    vectoriais do PDF. Não depende do `BuildingModel`.
+    """
+    out: list[Anomaly] = []
+    if not partial_m or total_m <= 0:
+        return out
+    soma = sum(partial_m)
+    delta = abs(soma - total_m)
+    if delta > tolerance_m:
+        out.append(Anomaly(
+            severity=AnomalySeverity.GRAVE,
+            code="GEO-007",
+            message_pt=(
+                f"Cadeia '{chain_name}': soma das cotas parciais = {soma:.3f} m "
+                f"difere do total declarado ({total_m:.3f} m) em "
+                f"{delta * 100:.1f} cm, acima da tolerância ±{tolerance_m * 100:.0f} cm."
+            ),
+            source=AnomalySource(page=page) if page else AnomalySource(),
+            remediation="Confirmar leitura das cotas vectoriais com arquitecto ou re-ler em zoom.",
+        ))
+    return out
+
+
 def run_geometric_checks(building: BuildingModel) -> list[Anomaly]:
     """Pipeline geométrico — executa todas as regras e devolve lista agregada."""
     result: list[Anomaly] = []

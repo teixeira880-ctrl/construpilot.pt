@@ -45,6 +45,7 @@ import PhotoAnalyse from "@/pages/PhotoAnalyse";
 import AgentsHub from "@/pages/AgentsHub";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
+import AdminBetAgent from "@/pages/AdminBetAgent";
 import PedidosHub from "@/pages/admin/PedidosHub";
 import {
   PedidosContactos, PedidosOrcamentos, PedidosIA,
@@ -388,6 +389,7 @@ function AppRouter() {
       <Route path="/bienvenue" element={<Protected><Shell><Welcome /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
+      <Route path="/admin/bet-agent" element={<Protected admin><Shell><AdminBetAgent /></Shell></Protected>} />
       <Route path="/admin/pedidos" element={<Protected admin><Shell><PedidosHub /></Shell></Protected>} />
       <Route path="/admin/contactos" element={<Protected admin><Shell><PedidosContactos /></Shell></Protected>} />
       <Route path="/admin/orcamentos" element={<Protected admin><Shell><PedidosOrcamentos /></Shell></Protected>} />

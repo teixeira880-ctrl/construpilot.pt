@@ -1,0 +1,41 @@
+{
+  "materials": {
+    "slab_type": "aligeirada_vigotas_abobadilhas",
+    "masonry_type": "tijolo_ceramico_furado_15",
+    "concrete_class": "C25/30",
+    "steel_class": "A500 NR",
+    "roof_type": "inclinada_telha_ceramica"
+  },
+  "water_table_depth_m": 4.0,
+  "seismic": {
+    "zone": "1.3",
+    "soil_class": "C",
+    "municipio": "Lisboa"
+  },
+  "room_uses": {
+    "sala": "sala",
+    "cozinha": "cozinha",
+    "wc": "wc",
+    "garagem": "garagem",
+    "quarto_1": "quarto",
+    "quarto_2": "quarto",
+    "sotao": "sotao_habitavel"
+  },
+  "requested_deliverables": [
+    "memoria_descritiva",
+    "planta_fundacoes",
+    "plantas_estrutura_piso",
+    "quadro_pilares",
+    "mapa_armaduras",
+    "cortes_pormenores",
+    "cobertura",
+    "rede_aguas",
+    "rede_esgotos_domesticos",
+    "rede_aguas_pluviais",
+    "ited_simplificado",
+    "verificacao_sismica_np_en_1998_1",
+    "orcamento_ligado_mapa",
+    "minuta_termo_responsabilidade"
+  ],
+  "notes": "Moradia unifamiliar reticulada. Pretende-se tambem analise termica REH (fora de ambito)."
+}

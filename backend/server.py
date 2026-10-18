@@ -99,6 +99,8 @@ from routes import health as health_routes  # noqa: E402
 api_router.include_router(health_routes.router)
 from routes import admin_demo as admin_demo_routes  # noqa: E402
 api_router.include_router(admin_demo_routes.router)
+from routes import admin_bet_agent as admin_bet_agent_routes  # noqa: E402
+api_router.include_router(admin_bet_agent_routes.router)
 from routes import public_config as public_config_routes  # noqa: E402
 api_router.include_router(public_config_routes.router)
 api_router.include_router(estimation_routes.router)
