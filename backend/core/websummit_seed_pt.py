@@ -313,17 +313,63 @@ async def _upsert_demo_doc(db, user_id: str, filename: str, data: bytes) -> str:
     return doc_id
 
 
+async def _ensure_moradia_martins_for(db, user_id: str, kind: str) -> dict | None:
+    """Garante que o projecto `Moradia Martins` existe para `user_id`.
+
+    - Idempotente: se já existir (por `name` + ownership match), devolve-o.
+    - Cria o "esqueleto" com a mesma identidade da versão pro (name,
+      description, location, work_type, status) mas sem copiar orçamentos
+      ou campos pro-only. `user_id` e `owner_user_id` ambos sincronizados
+      para evitar a anomalia D7-a (filtro em `/api/projects`).
+    - `is_demo=True` + `demo_source=DEMO_SOURCE` para o reset diário
+      preservar as contas demo isoladas.
+    - Devolve o doc do projecto (dict) ou `None` em caso de erro.
+    """
+    existing = await db.projects.find_one(
+        {"name": DEMO_PROJECT_NAME,
+         "$or": [{"owner_user_id": user_id}, {"user_id": user_id}]},
+        {"_id": 0},
+    )
+    if existing:
+        # Sincroniza `user_id` se o schema histórico só tinha `owner_user_id`.
+        if not existing.get("user_id"):
+            await db.projects.update_one(
+                {"project_id": existing["project_id"]},
+                {"$set": {"user_id": user_id}},
+            )
+            existing["user_id"] = user_id
+        return existing
+    now = datetime.now(timezone.utc).isoformat()
+    project_id = "prj_" + secrets.token_hex(6)
+    project = {
+        "project_id": project_id,
+        "name": DEMO_PROJECT_NAME,
+        "description": "Moradia unifamiliar T3 em Lisboa — dados demo não executivos.",
+        "owner_user_id": user_id,
+        "user_id": user_id,
+        "status": "active",
+        "location": "Lisboa, Portugal",
+        "work_type": "construcao_nova",
+        "is_demo": True,
+        "demo_source": DEMO_SOURCE,
+        "created_at": now,
+    }
+    await db.projects.insert_one(project)
+    logger.info("websummit demo: project 'Moradia Martins' created for %s account (%s)", kind, user_id)
+    return project
+
+
 async def apply_demo_showcase_pt(db) -> dict:
     """Instala documentos BET-core demo com identidade da `Moradia Martins`.
 
-    - Conta demo Pro (plan_id Pro Business): recebe os 2 PDF com cartucho
-      "Moradia Martins" + branding "Construções Horizonte, Lda.".
-      Documentos ligados ao projecto `Moradia Martins` existente.
-    - Conta demo Particular: recebe os 2 PDF com cartucho "Moradia Martins".
-      Documentos ligados ao projecto `Moradia Martins` existente (se existir).
-    - Idempotente: executar múltiplas vezes não duplica documentos nem toca
-      no projecto `Moradia Martins`.
-    - Preserva dados demo pré-existentes (orçamentos, histórico, custom fields).
+    - Conta demo Pro (plan_id Pro Business): 2 PDF com cartucho "Moradia
+      Martins" + branding "Construções Horizonte, Lda." + ligação ao projecto
+      Moradia Martins pré-existente da conta pro (preservado).
+    - Conta demo Particular: 2 PDF com cartucho "Moradia Martins" + projecto
+      Moradia Martins (esqueleto criado se faltar; idempotente).
+    - Idempotente: executar múltiplas vezes não duplica documentos, projecto
+      nem ligações. Dados existentes da `Moradia Martins` pro são preservados
+      (orçamentos, histórico, custom fields).
     - Fail-closed por conta: se config em falta, salta essa conta.
     """
     cfg = _config()
@@ -349,17 +395,13 @@ async def apply_demo_showcase_pt(db) -> dict:
             continue
         uid = user["user_id"]
 
-        # Ler o projecto `Moradia Martins` existente para extrair a identidade.
-        # Procura por `name == "Moradia Martins"` + match de ownership com
-        # `owner_user_id` OU `user_id` (schema histórico vs actual).
-        project = await db.projects.find_one(
-            {"name": DEMO_PROJECT_NAME,
-             "$or": [{"owner_user_id": uid}, {"user_id": uid}]},
-            {"_id": 0},
-        )
+        # Garantir que `Moradia Martins` existe para esta conta demo.
+        # Pro: já existe desde `seed_websummit_demo_pt` (preservado).
+        # Particular: criado aqui se faltar (3.5 addendum do fundador).
+        project = await _ensure_moradia_martins_for(db, uid, kind)
         if not project:
-            summary["docs"][kind] = "skipped_no_moradia_martins"
-            summary["project_link"][kind] = "skipped_no_project"
+            summary["docs"][kind] = "skipped_project_error"
+            summary["project_link"][kind] = "skipped_project_error"
             continue
 
         project_identity = {

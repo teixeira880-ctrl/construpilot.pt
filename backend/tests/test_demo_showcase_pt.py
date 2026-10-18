@@ -164,20 +164,56 @@ def test_showcase_is_idempotent(env_demo):
     assert second_links_pro == 2, f"idempotência ligações quebrada: {first_links_pro} → {second_links_pro}"
 
 
-def test_showcase_skips_when_moradia_martins_absent(env_demo):
-    """Sem Moradia Martins na conta → skip gracioso, sem erro."""
-    from core.websummit_seed_pt import apply_demo_showcase_pt
+def test_showcase_creates_moradia_martins_for_particular(env_demo):
+    """Addendum 3.5: se Moradia Martins faltar na conta particular, é criada.
+
+    A versão pro (pré-existente, com orçamentos e histórico) é preservada.
+    """
+    from core.websummit_seed_pt import DEMO_PROJECT_NAME, DEMO_SOURCE, apply_demo_showcase_pt
 
     db = _DB()
     _seed_demo_users(db)
-    # NÃO seeded Moradia Martins
+    # pro: Moradia Martins pré-existente com extras (simula orçamentos)
+    _run(db.projects.insert_one({
+        "project_id": "prj_pro_moradia",
+        "name": DEMO_PROJECT_NAME,
+        "description": "Moradia unifamiliar T3 em Lisboa — dados demo não executivos.",
+        "owner_user_id": "u-pro",
+        "status": "active",
+        "location": "Lisboa, Portugal",
+        "work_type": "construcao_nova",
+        "is_demo": True,
+        "demo_source": DEMO_SOURCE,
+        "custom_quotes": ["Q-001", "Q-002"],  # dado pro-only que deve ser preservado
+    }))
+    # particular: SEM projecto Moradia Martins
+    assert not _run(db.projects.find_one({"name": DEMO_PROJECT_NAME, "owner_user_id": "u-part"}))
 
     summary = _run(apply_demo_showcase_pt(db))
-    assert summary["docs"]["pro"] == "skipped_no_moradia_martins"
-    assert summary["docs"]["particular"] == "skipped_no_moradia_martins"
-    assert len(db.assistant_docs.docs) == 0
-    # projects preservado inalterado
-    assert db.projects.docs == []
+    assert "error" not in summary
+
+    # Pro: Moradia Martins preservada + user_id sincronizado + doc_ids ligados
+    pro_proj = _run(db.projects.find_one({"owner_user_id": "u-pro", "name": DEMO_PROJECT_NAME}))
+    assert pro_proj.get("user_id") == "u-pro"
+    assert pro_proj.get("custom_quotes") == ["Q-001", "Q-002"]  # pro-only preservado
+    assert len(pro_proj.get("doc_ids") or []) == 2
+    assert summary["docs"]["pro"]["count"] == 2
+    assert summary["branding"]["pro"] == "applied"
+
+    # Particular: Moradia Martins CRIADA (addendum 3.5) + doc_ids ligados
+    part_proj = _run(db.projects.find_one({"owner_user_id": "u-part", "name": DEMO_PROJECT_NAME}))
+    assert part_proj is not None, "Moradia Martins devia ter sido criada para o particular"
+    assert part_proj.get("user_id") == "u-part"
+    assert part_proj.get("owner_user_id") == "u-part"
+    assert part_proj["name"] == "Moradia Martins"
+    assert part_proj["is_demo"] is True
+    assert part_proj["demo_source"] == DEMO_SOURCE
+    assert part_proj["location"] == "Lisboa, Portugal"
+    assert len(part_proj.get("doc_ids") or []) == 2
+    # Zero dado pro-only no particular
+    assert "custom_quotes" not in part_proj
+    assert "brand_company_name" not in _run(db.users.find_one({"user_id": "u-part"}))
+    assert summary["docs"]["particular"]["count"] == 2
 
 
 def test_showcase_fail_closed_missing_particular_config(env_only_pro):

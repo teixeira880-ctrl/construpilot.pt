@@ -414,3 +414,98 @@ Pós-deploy, posso executar automaticamente:
 
 **Implementação local completa, 40/40 pytest verde, smoke e2e verde,
 pronta para deploy prod único. Aguarda clique manual do fundador.**
+
+---
+
+## 22. Addendum 3.5 — `Moradia Martins` também na conta particular ✅
+
+**Data**: 2026-10-18 (adendo pós-aprovação do fundador).
+
+### 22.1 Nova função `_ensure_moradia_martins_for(db, user_id, kind)`
+
+Em `backend/core/websummit_seed_pt.py`:
+
+- Procura `Moradia Martins` por `name` + ownership match
+  (`owner_user_id` OU `user_id`) para o `user_id` dado.
+- Se existe: sincroniza `user_id` com `owner_user_id` quando em falta (fix
+  D7-a transversal) e devolve o doc. Zero toque a `description`,
+  `location`, `work_type`, `status`, orçamentos ou campos custom.
+- Se não existe: cria **esqueleto mínimo** com `name="Moradia Martins"`,
+  `description="Moradia unifamiliar T3 em Lisboa — dados demo não
+  executivos."`, `location="Lisboa, Portugal"`, `work_type="construcao_
+  nova"`, `status="active"`, `is_demo=True`, `demo_source=DEMO_SOURCE`,
+  `owner_user_id = user_id = <conta demo>`. **Zero dado pro-only
+  copiado** (orçamentos, estudos BET, custom fields).
+
+Chamada antes do loop de documentos em `apply_demo_showcase_pt`. Pro
+continua inalterado (projecto pré-existente). Particular passa a receber
+o esqueleto se faltar.
+
+### 22.2 Resultado em preview pós-restart
+
+```json
+{
+  "docs": {
+    "pro":        {"count": 2, "doc_ids": [...]},
+    "particular": {"count": 2, "doc_ids": [...]}
+  },
+  "branding": {"pro": "applied", "particular": "skipped_not_pro"},
+  "project_link": {
+    "pro":        {"project_id": "prj_15589cc18920", "total_docs": 2},
+    "particular": {"project_id": "prj_4df2e3761dee", "total_docs": 2}
+  }
+}
+```
+
+Query directa `db.projects.find({owner_user_id: <demo_particular_uid>, name: "Moradia Martins"})`:
+- `project_id = prj_4df2e3761dee` (criado agora).
+- `user_id = owner_user_id = user_9dfa1683b206` (ambos sincronizados).
+- `name = "Moradia Martins"`, `location = "Lisboa, Portugal"`,
+  `is_demo = True`, `demo_source = "websummit_2026"`.
+- `doc_ids = ["doc_c90e0cd…", "doc_7e61d…"]` (2 PDFs ligados).
+
+Idempotência confirmada: 2 restarts consecutivos → mesmo `project_id`,
+mesmos `doc_ids`, 2 docs totais (não 4). ✅
+
+### 22.3 Testes
+
+- `test_showcase_creates_moradia_martins_for_particular`: valida criação
+  do esqueleto particular + preservação de dados pro-only (`custom_quotes`)
+  do pro + sincronização `user_id` em ambas as contas + 2 docs em cada.
+
+Pytest: `40 passed, 0 failed, 2 warnings in 9.84 s`. Zero regressão.
+
+### 22.4 HEAD actual para deploy
+
+`018dd457c9ce6317425d09057f4a1c576af0ac66` + commit automático do próximo
+`finish` que vai consolidar este addendum.
+
+### 22.5 Botão para o fundador clicar
+
+**Dashboard Emergent de `construpilot.pt`** → separador lateral **"Deploy"**
+→ confirmar que o commit mais recente (post-finish) está pronto → botão
+**"Deploy to production"** → confirmar modal. Rollout 2-5 min.
+
+### 22.6 Smoke prod a executar após "deploy on"
+
+1. `GET /api/health` → 200 (até 3 tentativas com 60 s).
+2. `GET /api/auth/demo-status` → continua `true/true`.
+3. `POST /api/auth/demo-login {kind:"pro"}` → 200, cookie.
+4. `GET /api/projects` (cookie pro) → **Moradia Martins listado** (anomalia
+   D7-a resolvida).
+5. Via mesma cookie: lista de docs do projecto `prj_<id_pro>` →
+   `Projeto_arquitetura_Moradia_Martins_DEMO.pdf` + `Estudo_geotecnico_
+   Moradia_Martins_DEMO.pdf`.
+6. Opcional: trigger `generate_full_bet_study` em prod via assistente →
+   <5 s (cache + demo bypass).
+7. `POST /api/auth/demo-login {kind:"particular"}` → 200.
+8. `GET /api/projects` (cookie particular) → **Moradia Martins listado**
+   (novo esqueleto do addendum 3.5).
+9. Playwright `/demo/entrar` prod com waiting 10 s em cada selector →
+   CTAs visíveis (já confirmado antes).
+
+### 22.7 Status
+
+**Addendum 3.5 implementado localmente, 40/40 pytest verde, idempotência
+confirmada em preview sob 2 restarts. Pronto para deploy conjunto.
+Aguarda clique manual do fundador.**
