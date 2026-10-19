@@ -91,7 +91,8 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
 
 
 def _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomalies):
-    names = {"fr": ("Dossier_etude", "Plans_DXF", "Devis_metre"), "pt": ("Processo_estudo", "Desenhos_DXF", "Medicoes_orcamento")}[lang]
+    names = {"fr": ("Dossier_etude", "Plans_DXF", "Devis_metre", "Plans_PDF"),
+             "pt": ("Processo_estudo", "Desenhos_DXF", "Medicoes_orcamento", "Desenhos_PDF")}[lang]
     note, plans = out / "_note.pdf", out / "_plans.pdf"
     _call(report.write_note, note, m, r, tim, e, p, tot, rev, shs, lang=lang)
     _call(draw.render_pdf, shs, plans, proj, lang=lang)
@@ -103,7 +104,8 @@ def _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomal
     with open(pdf, "wb") as fh:
         w.write(fh)
     note.unlink()
-    plans.unlink()
+    plans_pdf = out / f"{names[3]}_{stem}.pdf"          # plans seuls, à imprimer / transmettre aux entreprises
+    plans.replace(plans_pdf)
     files = _call(draw.render_dxf, shs, out / "dxf", lang=lang)
     zp = out / f"{names[1]}_{stem}.zip"
     with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
@@ -116,4 +118,4 @@ def _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomal
     return {"status": rev["status"], "blocking": rev["blocking"], "lang": lang, "sheets": [s.code + " " + s.title for s in shs],
             "devis_ht": tot["ht"], "devis_ttc": tot["ttc"], "anomalies": [a for a in anomalies if a.get("level") != checks.BLOCK],
             "review": [i for i in rev["items"] if str(i.get("level", "")).upper() != "OK"][:40],
-            "files": {"pdf": str(pdf), "zip": str(zp), "xlsx": str(xlsx)}}
+            "files": {"pdf": str(pdf), "plans_pdf": str(plans_pdf), "zip": str(zp), "xlsx": str(xlsx)}}

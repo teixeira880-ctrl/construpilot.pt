@@ -117,7 +117,7 @@ def test_reader_gives_questions_when_unfixable():
     assert not res["ok"] and res["questions"]
 
 
-def test_tool_end_to_end_stores_three_artifacts():
+def test_tool_end_to_end_stores_four_artifacts():
     db = DB()
     pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
     db.assistant_docs.docs.append({"doc_id": "doc_1", "user_id": "u1", "filename": "PC.pdf", "mime": "application/pdf",
@@ -130,8 +130,9 @@ def test_tool_end_to_end_stores_three_artifacts():
     st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
     assert st["status"] == "done", st
     assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx"}
+    assert [a["kind"] for a in st["artifacts"]] == ["pdf", "plans_pdf", "xlsx", "zip"]
     assert st["blocking"] == 0 and len(st["sheets"]) >= 20
-    assert len(db.assistant_artifacts.docs) == 3
+    assert len(db.assistant_artifacts.docs) == 4
     # un autre utilisateur ne voit ni le job ni les documents
     other = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, {"user_id": "u2"}, conv, db))
     assert "error" in other

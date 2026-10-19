@@ -1,7 +1,7 @@
 """Outils Assistant : étude BET complète (structure, plans d'exécution cotés, charpente, électricité, plomberie, devis).
 
 generate_full_bet_study  → lance l'étude en tâche de fond (lecture IA des plans + moteurs déterministes).
-read_full_bet_study      → lit l'état, les questions éventuelles et les liens des 3 livrables (PDF, DXF, XLSX).
+read_full_bet_study      → lit l'état, les questions éventuelles et les liens des 4 livrables (dossier PDF, plans PDF, devis XLSX, plans DXF).
 
 Les livrables sont stockés dans db.assistant_artifacts (même format que engines/assistant_files.py) et
 téléchargeables par /assistant/artifacts/{artifact_id}/content.
@@ -47,9 +47,9 @@ INSTRUCTIONS = (
     "(plans d'exécution, coupes, ferraillage, charpente, électricité, plomberie, devis) à partir d'un PC, propose le périmètre "
     "(documents, pays, hypothèses) et attends sa confirmation, puis lance generate_full_bet_study. Suis l'avancement avec "
     "read_full_bet_study. Si l'étude renvoie des QUESTIONS, pose-les telles quelles à l'utilisateur et relance après ses réponses "
-    "(en les ajoutant aux hypothèses). Quand elle est terminée, les 3 livrables (dossier PDF, plans DXF, devis Excel) s'affichent AUTOMATIQUEMENT "
+    "(en les ajoutant aux hypothèses). Quand elle est terminée, les 4 livrables (dossier PDF, plans PDF pour les entreprises, devis Excel, plans DXF) s'affichent AUTOMATIQUEMENT "
     "sous forme de boutons de téléchargement sous ta réponse : n'écris JAMAIS de lien, d'URL ni de chemin (/assistant/…, /agents?run=…) "
-    "dans le texte — dis seulement « les 3 fichiers sont téléchargeables ci-dessous ». Donne le statut du contrôle et les points à valider ; rappelle que le dossier est un pré-dimensionnement à faire viser par un ingénieur structure. "
+    "dans le texte — dis seulement « les 4 fichiers sont téléchargeables ci-dessous ». Donne le statut du contrôle et les points à valider ; rappelle que le dossier est un pré-dimensionnement à faire viser par un ingénieur structure. "
     "Ne recalcule et n'invente aucun chiffre : reprends ceux de l'outil."
 )
 
@@ -62,16 +62,17 @@ def _now():
 
 
 async def _store(db, uid, cid, request_id, kind, path: Path, title):
+    fmt = "pdf" if kind == "plans_pdf" else kind
     data = path.read_bytes()
     if len(data) > MAX_ARTIFACT:
         raise ValueError(f"{path.name} trop volumineux ({len(data)} o)")
     aid = "file_" + hashlib.sha256((request_id + kind + path.name).encode()).hexdigest()[:28]
     doc = {"artifact_id": aid, "user_id": uid, "conversation_id": cid, "request_id": request_id, "title": title, "body": "",
-           "filename": path.name, "format": kind, "mime": MIME[kind], "size": len(data), "data_b64": base64.b64encode(data).decode(),
+           "filename": path.name, "format": fmt, "kind": kind, "mime": MIME[fmt], "size": len(data), "data_b64": base64.b64encode(data).decode(),
            "source_artifact_ids": [], "created_at": _now(), "illustrative": False, "bet_study": True,
            "download": f"/assistant/artifacts/{aid}/content"}
     await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)
-    return {k: doc[k] for k in ("artifact_id", "title", "filename", "format", "mime", "size", "download")}
+    return {k: doc[k] for k in ("artifact_id", "title", "filename", "format", "kind", "mime", "size", "download")}
 
 
 BRANDED_LEVELS = {"pro", "business"}      # offres Pro et Pro Business : dossier au logo ORIGINAL de l'entreprise
@@ -162,10 +163,12 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                                                         for a in res["anomalies"] if a.get("level") == "bloquant"])
                 return
             arts = []
-            labels = {"pdf": "Dossier d'étude BET (note de calcul + plans)", "zip": "Plans DXF", "xlsx": "Devis et métré (Excel)"}
+            labels = {"pdf": "Dossier d'étude BET (note de calcul + plans)", "plans_pdf": "Plans PDF (pour les entreprises)",
+                      "xlsx": "Devis et métré (Excel)", "zip": "Plans DXF (pour logiciel de DAO)"}
             if country == "PT":
-                labels = {"pdf": "Processo de estudo (memória de cálculo + desenhos)", "zip": "Desenhos DXF", "xlsx": "Medições e orçamento (Excel)"}
-            for kind in ("pdf", "zip", "xlsx"):
+                labels = {"pdf": "Processo de estudo (memória de cálculo + desenhos)", "plans_pdf": "Desenhos PDF (para as empresas)",
+                          "xlsx": "Medições e orçamento (Excel)", "zip": "Desenhos DXF (para software CAD)"}
+            for kind in ("pdf", "plans_pdf", "xlsx", "zip"):
                 arts.append(await _store(db, uid, cid, request_id, kind, Path(res["files"][kind]), labels[kind]))
         await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"],
                    sheets=res["sheets"], devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"],
