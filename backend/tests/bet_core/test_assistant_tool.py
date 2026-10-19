@@ -227,3 +227,21 @@ def test_read_is_robust_to_datetimes_and_bad_ids():
     st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": "j1"}, {"user_id": "u1"}, {}, db))
     assert st["status"] == "failed" and "relancez" in st["error"]
     assert "error" in asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": ""}, {"user_id": "u1"}, {}, db))
+
+
+def test_relaunch_after_questions_with_new_hypotheses_runs_again():
+    db = DB()
+    pdf = _pdf(["PLAN DU RDC"])
+    db.assistant_docs.docs.append({"doc_id": "d", "user_id": "u1", "filename": "PC.pdf", "mime": "application/pdf",
+                                   "data_b64": base64.b64encode(pdf).decode()})
+    bad = copy.deepcopy(CASE)
+    del bad["levels"]
+    llm, calls = _llm([json.dumps(bad), json.dumps(bad), json.dumps(bad), json.dumps(CASE)])
+    conv = {"conversation_id": "c1", "_quote_request_id": "r1"}
+    a = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["d"], "hypotheses": "", "country": "FR"},
+                                           {"user_id": "u1"}, conv, db, llm=llm, background=False))
+    assert asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": a["job_id"]}, {"user_id": "u1"}, conv, db))["status"] == "questions"
+    b = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["d", "d"], "hypotheses": "combles habitables, parpaing 20", "country": "FR"},
+                                           {"user_id": "u1"}, conv, db, llm=llm, background=False))
+    assert b["job_id"] != a["job_id"]
+    assert asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": b["job_id"]}, {"user_id": "u1"}, conv, db))["status"] == "done"

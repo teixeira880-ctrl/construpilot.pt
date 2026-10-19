@@ -268,9 +268,12 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, b
         log.exception("bet study: lecture des pièces jointes impossible")
         return {"error": f"Lecture des pièces jointes impossible ({type(exc).__name__}) : réimportez le PC et la G2 en PDF.", "status": "échoué"}
     request_id = conv.get("_quote_request_id") or hashlib.sha256(("".join(ids) + _now()).encode()).hexdigest()[:16]
-    job_id = "bet_" + hashlib.sha256((uid + request_id + "".join(ids)).encode()).hexdigest()[:20]
-    old = await db.bet_study_jobs.find_one({"job_id": job_id, "user_id": uid}, {"_id": 0, "status": 1})
-    if old and old.get("status") in {"running", "done", "questions"}:
+    hyp = " ".join((args.get("hypotheses") or "").lower().split())
+    job_id = "bet_" + hashlib.sha256((uid + request_id + "".join(sorted(set(ids))) + hyp + args["country"]).encode()).hexdigest()[:20]
+    old = await db.bet_study_jobs.find_one({"job_id": job_id, "user_id": uid}, {"_id": 0, "status": 1, "updated_at": 1})
+    if old and old.get("status") == "running" and _age_s(old.get("updated_at")) > STALE_MIN * 60:
+        old = None                                          # tâche tuée par un redémarrage : on relance
+    if old and old.get("status") in {"running", "done"}:     # après des QUESTIONS, une relance (hypothèses complétées) repart
         return {"ok": True, "job_id": job_id, "status": old["status"], "note": "Étude déjà lancée pour cette demande : utilise read_full_bet_study."}
     await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {
         "job_id": job_id, "user_id": uid, "conversation_id": cid, "document_ids": ids, "country": args["country"],
