@@ -12,6 +12,7 @@ from . import brand as _brand
 from . import draw  # noqa: F401  (enregistre les polices)
 from .i18n import protect, tr
 from .profiles import profile
+from . import spec as SPEC
 
 _LANG = ["fr"]
 
@@ -99,7 +100,7 @@ def review(m, r, tim, e, p, devis_lines, sheets, model_anomalies) -> dict:
     hyp = m.raw["user_hypotheses"]
     a("ok" if r["floors"]["system"] == hyp["floor_system"] else "bloquant",
       f"Plancher demandé « poutrelles-hourdis » → calculé : {r['floors']['slabs'][0]['label_system']}")
-    a("ok" if r["masonry"]["material"] == hyp["masonry"] else "bloquant", "Murs demandés « brique Porotherme 20 » → calculés en Porotherme 20 (EN 1996)")
+    a("ok" if r["masonry"]["material"] == hyp["masonry"] else "bloquant", f"Murs demandés « {SPEC.of(m)['brick_name']} » → calculés en {SPEC.of(m)['brick']} (EN 1996)")
     top = m.levels[-1]
     if "omble" in top.name:
         nch = len([x for x in m.rooms(top.id) if x["type"] == "chambre"])
@@ -159,7 +160,26 @@ def write_note(path, m, r, tim, e, p, tot, rev, sheets, lang="fr"):
         _LANG[0] = "fr"
 
 
-HYP_LABEL = {"poutrelles_hourdis": "Planchers poutrelles-hourdis", "brique_porotherme_20": "murs brique Porotherme 20 cm"}
+HYP_LABEL = {"poutrelles_hourdis": "Planchers poutrelles-hourdis", "brique_porotherme_20": "murs brique Porotherme 20 cm",
+             "brique_isobric_20": "murs à partir du RDC en brique Isobric 20 cm", "brique_20": "murs brique 20 cm",
+             "bloc_a_bancher_20": "murs du sous-sol en blocs à bancher 20 cm", "voile_ba_20": "murs du sous-sol en voiles BA 20",
+             "charpente_traditionnelle": "charpente traditionnelle", "XC2": "semelles BA classe XC2"}
+
+
+def _hyp_text(m) -> str:
+    uh = m.raw.get("user_hypotheses", {})
+    out = []
+    for k, v in uh.items():
+        if k.startswith("_"):
+            continue
+        if k == "basement_slab_cm":
+            if m.levels and m.levels[0].floor_top < -1.0:
+                out.append(f"dallage du sous-sol BA {v} cm")
+            continue
+        if k == "basement_wall" and not (m.levels and m.levels[0].floor_top < -1.0):
+            continue
+        out.append(HYP_LABEL.get(str(v), str(v)))
+    return " ; ".join(out)
 
 
 def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
@@ -179,7 +199,7 @@ def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
     s.append(_t([["Document d'entrée", "Référence"],
                  ["Permis de construire", f"{pr['pc_ref']} — {pr['architect']}"],
                  ["Étude géotechnique", pr["g2_ref"]],
-                 ["Hypothèses du client", " ; ".join(HYP_LABEL.get(v, v) for k, v in m.raw.get("user_hypotheses", {}).items() if not k.startswith("_"))],
+                 ["Hypothèses du client", _hyp_text(m)],
                  ["Normes", prof["norms_text"]]],
                 [45, 133]))
     s.append(Spacer(1, 5 * mm))
@@ -206,9 +226,9 @@ def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
             ["Fondations", f"Semelles filantes BA, B = {mit['B']:.2f} m, h = {mit['h']:.2f} m, " + (f"excentrées sous {where}" if where else "centrées sous les murs") + f", arase ≈ {_fmt(zb)}",
              f"σ ELS max {mit['sigma_ELS']} kPa = {mit['ratio_ELS']*100:.0f} % de {r['foundations']['q_els']} kPa (G2)"]]
     if bsmt:
-        rows.append(["Sous-sol", "Voiles BA 20 enterrés + dallage BA 20 sur GNT", f"Poussée K0 + {m.geo['retaining']['neighbour_surcharge_kpa']} kPa mitoyens : {r['basement']['walls'][0]['face_terre']} face terre"])
+        rows.append(["Sous-sol", f"{SPEC.of(m)['bw_buried']} + dallage BA 20 sur GNT", f"Poussée K0 + {m.geo['retaining']['neighbour_surcharge_kpa']} kPa mitoyens : {r['basement']['walls'][0]['face_terre']} face terre"])
     rows += [["Planchers", fl["label_system"], f"Portée {fl['span']} m, L/h = {fl['slenderness']}, M nervure {fl['M_rib']} kN.m"],
-             ["Murs", "Brique Porotherme 20 joint mince + chaînages BA", f"Taux maxi {worst['ratio']*100:.0f} % ({worst['level']} {'mitoyens' if wmit else worst['file']})"],
+             ["Murs", f"Brique {SPEC.of(m)['brick']} joint mince + chaînages BA", f"Taux maxi {worst['ratio']*100:.0f} % ({worst['level']} {'mitoyens' if wmit else worst['file']})"],
              ["Linteaux / poteaux", f"{len(r['lintels']['lintels'])} linteaux BA, {len(r['lintels']['posts'])} poteaux de trumeau",
               f"{gar_lab} : {gar['b']*100:.0f}×{gar['h']*100:.0f}, {gar['bottom']} (M = {gar['M_Ed']} kN.m)" if gar else ""],
              ["Charpente", f"Pannes GL24h {tim['panne_section']['label']} sur pignons, chevrons {tim['chevron_section']['label']}", f"Pente {tim['pitch_deg']}°, flèche pannes {tim['panne_section']['w_fin_mm']} mm"],
@@ -245,7 +265,7 @@ def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
     ld = r["loads"]
     s.append(_t([["Action", "Valeur", "Origine"],
                  ["Béton armé", "25 kN/m³", "EN 1991-1-1"],
-                 ["Mur Porotherme 20 + enduit + doublage", f"{ld['g_wall']} kN/m²", "fabricant / EN 1991-1-1"],
+                 [f"Mur {SPEC.of(m)['brick']} + enduit + doublage", f"{ld['g_wall']} kN/m²", "fabricant / EN 1991-1-1"],
                  ["Finitions planchers (chape, carrelage, plafond)", f"{ld['g_fin']} kN/m²", "hypothèse"],
                  ["Cloisons de distribution", f"{ld['g_clois']} kN/m²", "EN 1991-1-1 §6.3.1.2"],
                  ["Toiture (tuile méca, liteaux, chevrons, isolant, plafond) en rampant", f"{ld['g_roof_slope']} kN/m²", "fabricants"],
@@ -276,7 +296,7 @@ def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
                 [52, 14, 26, 16, 16, 14, 18, 18]))
     s.append(Paragraph(f"Toiture sur chaque pignon : G = {r['descent']['roof_G_per_gable']} kN/m, S = {r['descent']['roof_S_per_gable']} kN/m (pannes portant de pignon à pignon).", SM))
 
-    s.append(H("Maçonnerie porteuse Porotherme 20"))
+    s.append(H(f"Maçonnerie porteuse {SPEC.of(m)['brick']}"))
     s.append(Paragraph(r["masonry"]["method"] + f" f_d = f_k/γ_M = {r['masonry']['brick']['fk']}/{r['masonry']['brick']['gamma_m']} = {r['masonry']['fd_MPa']} MPa. " + r["masonry"]["brick"]["note"], P))
     s.append(_t([["Mur", "Niveau", "h (m)", "h_ef/t", "N_Ed (kN/m)", "Φ", "N_Rd (kN/m)", "Taux"]] +
                 [[c["file"], c["level"], c["h"], c["hef_t"], c["N_Ed"], c["phi"], c["N_Rd"], f"{c['ratio']*100:.0f} %"] for c in r["masonry"]["checks"]],

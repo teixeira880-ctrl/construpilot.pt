@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 
+from . import spec as SPEC
 from .model import Model
 
 # ---------------------------------------------------------------- matériaux
@@ -212,11 +213,11 @@ def descent(m: Model, ld: dict, fl: dict) -> dict:
             base = lv.floor_top
             if base < -1.0:
                 wall = GAMMA_BA * 0.20 * (0.0 - base + 0.20)
-                mat = "voile BA 20"
+                mat = SPEC.of(m)["bw"]
             else:
                 open_area = sum(o.width * o.height for o in m.openings_on(side) if m.level(o.level).floor_top >= base - 1e-6)
                 wall = gw * max((top - base) * length - open_area, 0.0) / length
-                mat = "Porotherme 20"
+                mat = SPEC.of(m)["brick"]
             floors_above = [s for s in fl["slabs"] if s["level_top"] > base + 1e-6]
             if bearing:
                 G = wall + sum(s["R_G_per_m"] + chain for s in floors_above)
@@ -296,7 +297,7 @@ def masonry(m: Model, desc: dict, fl: dict) -> dict:
             out.append({"side": side, "file": r["file"], "level": lv.id, "h": r2(h), "hef_t": r2(hef / t), "N_Ed": r["ELU"],
                         "phi": round(phi, 3), "N_Rd": r2(NRd), "ratio": round(r["ELU"] / NRd, 3), "ok": r["ELU"] <= NRd})
     worst = max(out, key=lambda x: x["ratio"])
-    return {"material": "brique_porotherme_20", "brick": BRICK, "fd_MPa": round(fd / 1000, 2), "checks": out,
+    return {"material": SPEC.of(m)["masonry"], "brick": {**BRICK, "name": SPEC.of(m)["brick_name"]}, "fd_MPa": round(fd / 1000, 2), "checks": out,
             "worst": worst, "ok": all(c["ok"] for c in out),
             "method": "NF EN 1996-1-1 §6.1.2 : N_Rd = Φ · t · f_d ; Φ en tête (1 − 2e_i/t) et à mi-hauteur (annexe G) ; "
                       "h_ef = 0,75 h (mur tenu en tête et en pied par les planchers) ; e_init = h_ef/450 ; "
@@ -366,7 +367,7 @@ def lintels(m: Model, ld: dict, fl: dict) -> dict:
                                   "ok": N <= NRd})
     chain = {
         "horizontal": "Chaînage horizontal BA 0,20 × 0,30 à chaque plancher, sur tous les murs porteurs : 4HA10 + cadres HA6 e=20, recouvrements 50 Ø, angles en équerre HA10.",
-        "vertical": "Chaînages verticaux 0,20 × 0,20 (dans les briques d'angle Porotherme) : 4HA10 + cadres HA6 e=20 aux 4 angles, aux jonctions avec les voiles de cage, et de part et d'autre de chaque baie ≥ 1,80 m ; attentes depuis les voiles ou les semelles.",
+        "vertical": "Chaînages verticaux 0,20 × 0,20 (dans les briques d'angle) : 4HA10 + cadres HA6 e=20 aux 4 angles, aux jonctions avec les voiles de cage, et de part et d'autre de chaque baie ≥ 1,80 m ; attentes depuis les voiles ou les semelles.",
         "rampant": "Chaînage rampant BA 0,20 × 0,20 sur les pignons (4HA10 + cadres HA6 e=20) recevant les sommiers des pannes.",
         "sommiers": "Sommiers BA 0,20 × 0,20 × 0,40 sous chaque appui de panne (2HA10 + 3 cadres HA6).",
     }
@@ -400,7 +401,7 @@ def basement_walls(m: Model) -> dict:
         p_top, p_bot = p(0.10, q), p(H, q)
         M = p_top * span ** 2 / 8 + (p_bot - p_top) * span ** 2 / (9 * math.sqrt(3))
         Mu = 1.35 * M
-        d = 0.20 - COVER["voile_enterre"] - 0.006
+        d = SPEC.of(m)["bw_core"] - COVER["voile_enterre"] - 0.006     # blocs à bancher : noyau béton ≈ 15 cm
         As = Mu / (0.9 * d * FYD * 1000) * 1e4
         As_min = max(0.26 * FCTM / FYK * d * 1e4, 0.0013 * d * 1e4)
         ext = choose_bars(As, As_min, diams=(10, 12))
@@ -408,8 +409,9 @@ def basement_walls(m: Model) -> dict:
                     "M_ser": r2(M), "M_Ed": r2(Mu), "As_req": r2(max(As, As_min)), "face_terre": ext["label"],
                     "face_interieure": "HA8 e=20", "horizontaux": "HA8 e=20 (2 faces)"})
     return {
-        "thickness": 0.20, "walls": out,
-        "method": "Poussée au repos K0 par couche (G2) + surcharge ; voile appuyé en pied sur le dallage et en tête sur le plancher bas du RDC (bi-appuyé).",
+        "thickness": 0.20, "walls": out, "type": SPEC.of(m)["bw_name"],
+        "method": ("Poussée au repos K0 par couche (G2) + surcharge ; mur appuyé en pied sur le dallage et en tête sur le plancher bas du RDC (bi-appuyé)"
+                   + (" ; blocs à bancher : calcul sur le noyau béton armé de 15 cm." if SPEC.of(m)["bw_blocks"] else ".")),
         "execution": [
             "Au droit des mitoyens : terrassement par passes alternées ≤ 2,0 m de large × 1,5 m de haut sous blindage, "
             "butonnage à l'avancement, voile coulé par plots contre le terrain (G2).",
@@ -461,7 +463,7 @@ def foundations(m: Model, desc: dict) -> dict:
                     "longitudinal": "4HA12 (chaînage de semelle)" if excentric else "3HA10",
                     "settlement": f"≈ {geo.get('settlement_mm_B060', '?')} mm (G2, B = {Bmin:.2f} m)" if B <= Bmin + 0.05 else "à recalculer en G2 PRO"})
     return {
-        "type": "Semelles filantes BA C25/30 coulées en pleine fouille sur béton de propreté 5 cm",
+        "type": f"Semelles filantes BA C25/30 {SPEC.of(m)['exposure']} coulées en pleine fouille sur béton de propreté 5 cm",
         "base_depth": geo["foundation_base_depth_m"], "anchorage": geo["anchorage_m"],
         "q_els": q_els, "q_elu": q_elu, "items": out,
         "rules": [
@@ -541,9 +543,16 @@ def quantities(m: Model, fl: dict, lin: dict, fnd: dict, bw: dict, ld: dict | No
     add("Fondations", "Béton de propreté 5 cm", "m²", sum(i["B"] * i["length"] * i["count"] for i in fnd["items"]))
     hb = round(-m.levels[0].floor_top + 0.20, 2)
     if bsmt:
-        vv = 0.20 * hb * (2 * L + 2 * (W - 0.40))
-        add("Sous-sol", "Voiles BA 20 enterrés (périphérie)", "m³", vv, vv * 65)
-        add("Sous-sol", "Coffrage 2 faces des voiles", "m²", 2 * hb * (2 * L + 2 * (W - 0.40)))
+        S = SPEC.of(m)
+        aw = hb * (2 * L + 2 * (W - 0.40))
+        if S["bw_blocks"]:
+            vv = S["bw_core"] * aw
+            add("Sous-sol", "Murs en blocs à bancher 20 enterrés (périphérie), fourniture et pose", "m²", aw)
+            add("Sous-sol", "Remplissage béton C25/30 hydrofugé des blocs à bancher + armatures", "m³", vv, vv * 65)
+        else:
+            vv = 0.20 * aw
+            add("Sous-sol", "Voiles BA 20 enterrés (périphérie)", "m³", vv, vv * 65)
+            add("Sous-sol", "Coffrage 2 faces des voiles", "m²", 2 * aw)
     top, low = m.levels[-1], m.levels[0]
     vc = 0.15 * (top.floor_top + top.hsp - low.floor_top) * (m.stair["y1"] - m.stair["y0"]) * 2
     last_name = "comble" if "omble" in top.name else top.id
@@ -571,9 +580,9 @@ def quantities(m: Model, fl: dict, lin: dict, fnd: dict, bw: dict, ld: dict | No
     gable = len(gables) * (L * (m.roof["ridge_level"] - m.roof["eaves_level"]) / 2)
     mit = has_mitoyen(m)
     first = next(l for l in m.levels if l.floor_top > -1.0)
-    add("Maçonnerie", f"Murs Porotherme 20 joint mince ({'façades + mitoyens' if mit else 'façades'}, {first.id} → égout)", "m²", wall_area)
+    add("Maçonnerie", f"Murs {SPEC.of(m)['brick']} joint mince ({'façades + mitoyens' if mit else 'façades'}, {first.id} → égout)", "m²", wall_area)
     gmit = any(m.side(g)["type"] == "mitoyen" for g in gables)
-    add("Maçonnerie", f"Pignons{' mitoyens' if gmit else ''} Porotherme 20 (triangles égout → faîtage)", "m²", gable)
+    add("Maçonnerie", f"Pignons{' mitoyens' if gmit else ''} {SPEC.of(m)['brick']} (triangles égout → faîtage)", "m²", gable)
     perim = 2 * (L + W)
     n_ch = len([s_ for s_ in fl["slabs"] if s_["level_top"] > 0.01]) + 1
     add("Béton armé", f"Chaînages horizontaux 20 × 30 ({n_ch} niveaux)", "ml", perim * n_ch, perim * n_ch * 4 * MASS[10] * 1.1 + perim * n_ch * 5 * 0.82 * MASS[6])

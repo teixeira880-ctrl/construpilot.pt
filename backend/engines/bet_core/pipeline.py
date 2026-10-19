@@ -37,6 +37,8 @@ def _call(fn, *args, lang="fr"):
 def validate(raw: dict) -> tuple[model.Model | None, list[dict]]:
     """Charge et contrôle le modèle. Retourne (modèle, anomalies) ; modèle None si la structure JSON est inutilisable."""
     try:
+        from . import spec as _spec
+        _spec.apply_defaults(raw)
         m = model.from_dict(raw)
     except Exception as exc:  # noqa: BLE001 — JSON incomplet : on renvoie l'erreur comme anomalie bloquante
         return None, [{"code": "MODEL-00", "level": checks.BLOCK, "message": f"Modèle bâtiment incomplet : {type(exc).__name__}: {exc}"}]

@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 
 from .draw import Sheet, trunc
+from . import spec as SPEC
 from .model import Model
 from .structure import bearing_sides, end_sides, has_basement
 
@@ -187,7 +188,7 @@ def _wall_tags(sh: Sheet, m: Model, lid: str):
     buried = m.level(lid).floor_top < -1.0
     for side in m.raw["sides"]:
         axis, pos, a0, a1, out = _side_geom(m, side)
-        txt = ("voile BA 20" if buried else "Porotherme 20") + f" + doublage {int(round((m.t_tot - m.t_str) * 100))}"
+        txt = (SPEC.of(m)["bw"] if buried else SPEC.of(m)["brick"]) + f" + doublage {int(round((m.t_tot - m.t_str) * 100))}"
         if axis == "y":
             sh.text("TEXTE", (m.L * 0.30, pos + m.t_tot + 0.10 if out < 0 else pos - (m.t_tot - m.t_str) - 0.17), txt, size=1.3, color=(0.45, 0.2, 0.15))
 
@@ -243,7 +244,7 @@ def go_level(m: Model, r: dict, lid: str, code: str, stacks: list[dict]) -> Shee
     lv = m.level(lid)
     buried = lv.floor_top < -1.0
     sh = _new(code, f"Plan d'exécution gros œuvre — {lv.name}",
-              subtitle="Voiles BA 20 enterrés + voiles BA 15 de cage" if buried else "Murs Porotherme 20 joint mince, chaînages, linteaux, poteaux")
+              subtitle=(f"{SPEC.of(m)['bw_buried']} + voiles BA 15 de cage" if buried else f"Murs {SPEC.of(m)['brick']} joint mince, chaînages, linteaux, poteaux"))
     base_plan(sh, m, lid)
     L, W = m.L, m.W
     if not buried:
@@ -277,14 +278,14 @@ def go_level(m: Model, r: dict, lid: str, code: str, stacks: list[dict]) -> Shee
     _reservations(sh, m, lid, stacks)
     notes = []
     if buried:
-        notes = ["Voiles périphériques BA 20 C25/30 hydrofugé : face terre " + r["basement"]["walls"][0]["face_terre"] + ", face intérieure HA8 e=20, horizontaux HA8 e=20 (2 faces).",
+        notes = [SPEC.of(m)["bw_name"] + " : face terre " + r["basement"]["walls"][0]["face_terre"] + ", face intérieure HA8 e=20, horizontaux HA8 e=20 (2 faces).",
                  "Contre les mitoyens : coulage par plots alternés sous blindage et butonnage (G2), voile coulé contre terrain.",
                  "Voiles de cage d'escalier BA 15 continus jusqu'au dernier niveau (portent les chevêtres des trémies).",
                  "Cloisons du sous-sol en blocs 20 non porteurs sur épaississement du dallage.",
                  f"Dallage BA 20 cm sur polyane + GNT 20 cm, dessus fini {lv.floor_top:+.2f}.".replace(".", ",")]
     else:
         ratio = max([c["ratio"] for c in r["masonry"]["checks"] if c["level"] == lid] or [0])
-        notes = [f"Murs porteurs Porotherme 20 joint mince, f_k = {r['masonry']['brick']['fk']} MPa (DoP à confirmer) : taux maxi {ratio*100:.0f} %.",
+        notes = [f"Murs porteurs {SPEC.of(m)['brick']} joint mince, f_k = {r['masonry']['brick']['fk']} MPa (DoP à confirmer) : taux maxi {ratio*100:.0f} %.",
                  "Rouge plein : chaînages verticaux 20×20 4HA10 + cadres HA6 e=20 (angles, cage, tableaux des baies ≥ 1,80 m). Rouge clair : poteaux BA de trumeau.",
                  "Repères L-… : linteaux BA b × h et aciers inférieurs (sup. 2HA10, cadres HA6 e=15 sauf indication). Appuis ≥ 0,20 m.",
                  "Chaînage horizontal 20×30 4HA10 + cadres HA6 e=20 en tête des murs sous chaque plancher.",
@@ -746,7 +747,7 @@ def _detail_d1_basement(sh, m, r, exc, vw, base, Z, zb, z_dal, bar, dot):
     bar((ox + 0.04, top_v - 0.05), (ox + 0.9, top_v - 0.05), lw=0.4)
     sh.text("ACIER", (ox + B + 0.05, base + 0.04), f"transv. {exc['transversal']} (lit inf.)", size=1.8)
     sh.text("ACIER", (ox + B + 0.05, base + 0.18), f"long. {exc['longitudinal']}", size=1.8)
-    sh.text("ACIER", (ox + 0.25, (Z(z_dal) + top_v) / 2 + 0.1), f"voile BA 20 : {vw['face_terre']} face terre", size=1.8)
+    sh.text("ACIER", (ox + 0.25, (Z(z_dal) + top_v) / 2 + 0.1), f"{SPEC.of(m)['bw']} : {vw['face_terre']} face terre", size=1.8)
     sh.text("ACIER", (ox + 0.25, (Z(z_dal) + top_v) / 2 - 0.05), "HA8 e=20 face int. + horiz. HA8 e=20", size=1.8)
     sh.text("ACIER", (ox + 0.25, Z(z_dal) + 0.06), "dallage 20 : ST25C sup. + inf. (tirant)", size=1.8)
     sh.text("ACIER", (ox + 0.25, top_v + 0.05), "plancher + chaînage 4HA10 en tête de voile", size=1.8)
@@ -805,8 +806,8 @@ def _details_rest(sh, m, r, cen, base, bar, dot):
     exc_any = any(i["excentric"] for i in r["foundations"]["items"])
     mit = any(d["type"] == "mitoyen" for d in m.raw["sides"].values())
     sh.notes = [
-        ("Béton C25/30 ; acier B500B ; enrobages : fondations 5 cm, voiles enterrés 3,5 cm, poutres/chaînages 3 cm, dalles 2,5 cm." if bs else
-         "Béton C25/30 ; acier B500B ; enrobages : fondations 5 cm, soubassements 3,5 cm, poutres/chaînages 3 cm, dalles 2,5 cm."),
+        (f"Béton C25/30 (fondations {SPEC.of(m)['exposure']}) ; acier B500B ; enrobages : fondations 5 cm, voiles enterrés 3,5 cm, poutres/chaînages 3 cm, dalles 2,5 cm." if bs else
+         f"Béton C25/30 (fondations {SPEC.of(m)['exposure']}) ; acier B500B ; enrobages : fondations 5 cm, soubassements 3,5 cm, poutres/chaînages 3 cm, dalles 2,5 cm."),
         "Recouvrements 50 Ø ; ancrages des aciers de semelle par retour d'équerre ; façonnage selon NF EN 1992-1-1 §8.",
     ] + (["D1 : l'équilibre de la semelle excentrée est assuré par le dallage armé (pied) et le plancher (tête) : ne pas supprimer ni scier le dallage le long du voile."] if exc_any else []) + \
         (["Voiles contre mitoyens : passes ≤ 2 m sous blindage ; joints de reprise avec bande hydrogonflante."] if bs and mit else []) + [

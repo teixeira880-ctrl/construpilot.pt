@@ -15,7 +15,7 @@ from .profiles import price as _price, profile as _profile
 PRICES = {   # clé : (unité, PU € HT)
     "terr_masse": ("m³", 38.0), "blindage": ("m²", 185.0), "fouille_rigole": ("m³", 48.0), "evac": ("m³", 36.0),
     "semelle": ("m³", 430.0), "proprete": ("m²", 19.0), "voile20": ("m³", 520.0), "coffrage": ("m²", 42.0),
-    "voile15": ("m³", 780.0), "gnt": ("m²", 24.0), "dallage": ("m³", 290.0), "impermea": ("ml", 95.0),
+    "voile15": ("m³", 780.0), "bloc_bancher": ("m²", 64.0), "remplissage": ("m³", 230.0), "gnt": ("m²", 24.0), "dallage": ("m³", 290.0), "impermea": ("ml", 95.0),
     "plancher": ("m²", 98.0), "porotherme": ("m²", 74.0), "pignon": ("m²", 88.0),
     "ch_h": ("ml", 44.0), "ch_v": ("ml", 39.0), "ch_r": ("ml", 48.0), "linteau": ("ml", 125.0), "poteau": ("u", 380.0),
     "escalier": ("u", 3300.0), "enduit": ("m²", 39.0), "inst_chantier": ("ft", 6500.0),
@@ -59,6 +59,8 @@ def build_lines(m, r: dict, tim: dict, e: dict, p: dict) -> list[dict]:
             add(lot, it["item"], "proprete" if "propreté" in it["item"] else "semelle", it["qty"])
         elif it["lot"] in ("Sous-sol", "Dallage"):
             key = ("coffrage" if "Coffrage" in it["item"] else "voile20" if "Voiles" in it["item"] else
+                   "bloc_bancher" if "blocs à bancher" in it["item"] and "Murs" in it["item"] else
+                   "remplissage" if "Remplissage" in it["item"] else
                    "gnt" if "GNT" in it["item"] else "dallage" if "Dallage" in it["item"] else "impermea")
             add(lot, it["item"], key, it["qty"])
     lot = "03 — Gros œuvre en élévation"

@@ -140,6 +140,11 @@ GLOSSARY = {
     "EF/ECS": "AF/AQS", "EU/EV": "águas residuais", "multicouche": "multicamada", "n°": "n.º", "pt(s)": "pt(s)", "type": "tipo",
     "rangées": "filas", "tableau": "quadro", "Tableau": "Quadro",
     # divers
+    "blocs à bancher 20": "blocos de cofragem perdida 20", "Murs en blocs à bancher 20 enterrés": "Paredes enterradas em blocos de cofragem perdida 20",
+    "Murs en blocs à bancher 20 cm remplis de béton C25/30 armé hydrofugé": "Paredes em blocos de cofragem perdida 20 cm cheios com betão C25/30 armado hidrófugo",
+    "Isobric 20": "Isobric 20", "brique 20": "tijolo 20", "murs brique 20 cm": "paredes de tijolo 20 cm",
+    "murs du sous-sol en voiles BA 20": "paredes da cave em betão armado 20", "charpente traditionnelle": "estrutura de cobertura tradicional",
+    "semelles BA classe XC2": "sapatas de betão armado classe XC2",
     "Charges": "Ações", "charges": "cargas", "et": "e",
 }
 
@@ -282,6 +287,8 @@ TEMPLATES = {
     "Rose : linteaux BA (repères et aciers sur les plans de niveau). Rouge : poteaux BA de trumeau.": "Rosa : lintéis de BA (referências e armaduras nas plantas dos pisos). Vermelho : pilares de BA entre vãos.",
     "Lucarnes : front sur l'arase d'égout, chevêtres en charpente (CH-⟨0⟩).": "Trapeiras : frente sobre o frechal, vigas de bordadura na estrutura de madeira (CH-⟨0⟩).",
     "Enduit, menuiseries et teintes : selon PC.": "Reboco, caixilharias e cores : segundo o projeto de arquitetura.",
+    "Béton C⟨0⟩/⟨1⟩ (fondations XC⟨2⟩) ; acier A⟨3⟩NR ; enrobages : fondations ⟨4⟩ cm, soubassements ⟨5⟩ cm, poutres/chaînages ⟨6⟩ cm, dalles ⟨7⟩ cm.": "Betão C⟨0⟩/⟨1⟩ (fundações XC⟨2⟩) ; aço A⟨3⟩NR ; recobrimentos : fundações ⟨4⟩ cm, embasamentos ⟨5⟩ cm, vigas/cintas ⟨6⟩ cm, lajes ⟨7⟩ cm.",
+    "Béton C⟨0⟩/⟨1⟩ (fondations XC⟨2⟩) ; acier A⟨3⟩NR ; enrobages : fondations ⟨4⟩ cm, voiles enterrés ⟨5⟩ cm, poutres/chaînages ⟨6⟩ cm, dalles ⟨7⟩ cm.": "Betão C⟨0⟩/⟨1⟩ (fundações XC⟨2⟩) ; aço A⟨3⟩NR ; recobrimentos : fundações ⟨4⟩ cm, paredes enterradas ⟨5⟩ cm, vigas/cintas ⟨6⟩ cm, lajes ⟨7⟩ cm.",
     "Béton C⟨0⟩/⟨1⟩ ; acier A⟨2⟩NR ; enrobages : fondations ⟨3⟩ cm, soubassements ⟨4⟩ cm, poutres/chaînages ⟨5⟩ cm, dalles ⟨6⟩ cm.": "Betão C⟨0⟩/⟨1⟩ ; aço A⟨2⟩NR ; recobrimentos : fundações ⟨3⟩ cm, embasamentos ⟨4⟩ cm, vigas/cintas ⟨5⟩ cm, lajes ⟨6⟩ cm.",
     "Béton C⟨0⟩/⟨1⟩ ; acier A⟨2⟩NR ; enrobages : fondations ⟨3⟩ cm, voiles enterrés ⟨4⟩ cm, poutres/chaînages ⟨5⟩ cm, dalles ⟨6⟩ cm.": "Betão C⟨0⟩/⟨1⟩ ; aço A⟨2⟩NR ; recobrimentos : fundações ⟨3⟩ cm, paredes enterradas ⟨4⟩ cm, vigas/cintas ⟨5⟩ cm, lajes ⟨6⟩ cm.",
     "Recouvrements ⟨0⟩ Ø ; ancrages des aciers de semelle par retour d'équerre ; façonnage selon NP EN ⟨1⟩-⟨2⟩-⟨3⟩ §⟨4⟩.": "Emendas ⟨0⟩ Ø ; amarração das armaduras das sapatas com dobra a 90° ; dobragem segundo NP EN ⟨1⟩-⟨2⟩-⟨3⟩ §⟨4⟩.",
