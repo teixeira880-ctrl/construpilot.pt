@@ -128,5 +128,48 @@ def check_spans(m: Model) -> list[dict]:
     return out
 
 
+REQUIRED = {"envelope": "l'enveloppe (longueur × largeur hors tout et épaisseur des murs)",
+            "levels": "les niveaux (cotes de plancher et hauteurs sous plafond, sur la coupe)",
+            "roof": "la toiture (type, niveaux d'égout et de faîtage, sur la coupe)",
+            "openings": "les baies (portes et fenêtres, sur les plans et façades)",
+            "stair": "l'escalier (position sur le plan et type, ex. quart tournant)",
+            "rooms": "les pièces de chaque niveau",
+            "interior_walls": "les murs intérieurs porteurs",
+            "geotech": "l'étude de sol G2 (couche porteuse, contrainte admissible, profondeur d'assise)"}
+
+
+def check_references(m: Model) -> list[dict]:
+    """Complétude et cohérence des renvois (une lecture IA peut oublier une section ou citer un niveau inexistant) :
+    sans ce contrôle, les calculs plantent au lieu de poser une question claire."""
+    out, raw = [], m.raw
+    for key, what in REQUIRED.items():
+        if not raw.get(key):
+            fix = ("Joignez l'étude de sol G2 en PDF, ou indiquez dans votre demande la contrainte admissible (ex. 0,20 MPa) et "
+                   "la profondeur d'assise des fondations." if key == "geotech" else f"Vérifiez que le PC joint montre {what}.")
+            out.append(_a(f"REF-{key.upper()}", BLOCK, f"Élément manquant dans le relevé : {what}.", fix))
+    ids = {lv.id for lv in m.levels}
+    refs = []
+    for f in (raw.get("stair") or {}).get("flights") or []:
+        refs += [("escalier", f.get("from")), ("escalier", f.get("to"))]
+    refs += [("baie " + str(o.get("id")), o.get("level")) for o in raw.get("openings") or []]
+    refs += [("pièces", k) for k in (raw.get("rooms") or {})] + [("murs intérieurs", k) for k in (raw.get("interior_walls") or {})]
+    for where, lid in refs:
+        if lid not in ids:
+            out.append(_a("REF-LEVEL", BLOCK, f"{where} : niveau « {lid} » introuvable (niveaux relevés : {', '.join(sorted(ids))}).",
+                          "Relire la coupe : liste des niveaux et cotes de plancher."))
+    return out
+
+
 def run_all(m: Model) -> list[dict]:
-    return check_openings(m) + check_levels(m) + check_rooms(m) + check_stair(m) + check_spans(m)
+    ref = check_references(m)
+    if any(a["level"] == BLOCK for a in ref):
+        return ref                       # inutile (et dangereux) de lancer les autres contrôles sur un relevé incomplet
+    out = list(ref)
+    for chk in (check_openings, check_levels, check_rooms, check_stair, check_spans):
+        try:
+            out += chk(m)
+        except Exception as exc:  # noqa: BLE001 — un contrôle qui plante devient une question, pas une erreur muette
+            out.append(_a("CHK-" + chk.__name__.replace("check_", "").upper(), BLOCK,
+                          f"Contrôle « {chk.__name__.replace('check_', '')} » impossible sur ce relevé ({type(exc).__name__}: {exc}).",
+                          "Relire la planche concernée et compléter le relevé."))
+    return out
