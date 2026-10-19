@@ -47,8 +47,9 @@ INSTRUCTIONS = (
     "(plans d'exécution, coupes, ferraillage, charpente, électricité, plomberie, devis) à partir d'un PC, propose le périmètre "
     "(documents, pays, hypothèses) et attends sa confirmation, puis lance generate_full_bet_study. Suis l'avancement avec "
     "read_full_bet_study. Si l'étude renvoie des QUESTIONS, pose-les telles quelles à l'utilisateur et relance après ses réponses "
-    "(en les ajoutant aux hypothèses). Quand elle est terminée, donne les 3 liens (dossier PDF, plans DXF, devis Excel), le statut "
-    "du contrôle et les points à valider ; rappelle que le dossier est un pré-dimensionnement à faire viser par un ingénieur structure. "
+    "(en les ajoutant aux hypothèses). Quand elle est terminée, les 3 livrables (dossier PDF, plans DXF, devis Excel) s'affichent AUTOMATIQUEMENT "
+    "sous forme de boutons de téléchargement sous ta réponse : n'écris JAMAIS de lien, d'URL ni de chemin (/assistant/…, /agents?run=…) "
+    "dans le texte — dis seulement « les 3 fichiers sont téléchargeables ci-dessous ». Donne le statut du contrôle et les points à valider ; rappelle que le dossier est un pré-dimensionnement à faire viser par un ingénieur structure. "
     "Ne recalcule et n'invente aucun chiffre : reprends ceux de l'outil."
 )
 
