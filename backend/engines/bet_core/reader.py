@@ -21,6 +21,7 @@ LLM = Callable[..., Awaitable[str]]          # async (system, text, images=[b64p
 EXAMPLE = Path(__file__).with_name("cases") / "la_courneuve.json"
 MAX_IMAGES = 14
 MAX_PX = 1568
+MAX_OUT = int(__import__("os").environ.get("BET_MAX_TOKENS", "32000"))   # relevé complet d'un bâtiment R+2 : ~15-25 k jetons
 
 # ------------------------------------------------------------------ classement des pages
 PCMI = {"01": "autre", "02.1": "masse", "02": "plan", "03": "coupe", "04": "notice", "05": "facade"}
@@ -116,13 +117,78 @@ def _example() -> str:
     return json.dumps(ex, ensure_ascii=False)
 
 
+def _close_truncated(t: str) -> str:
+    """Referme un JSON tronqué (réponse coupée par la limite de jetons) : chaîne ouverte, crochets et accolades."""
+    stack, in_str, esc, last_ok = [], False, False, 0
+    for i, ch in enumerate(t):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]" and stack:
+            stack.pop()
+        if not in_str and ch in ",{[":
+            last_ok = i
+    if not stack and not in_str:
+        return t
+    cut = t[:last_ok] if t[last_ok] == "," else t[:last_ok + 1]     # retire l'élément incomplet
+    stack, in_str, esc = [], False, False
+    for ch in cut:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]" and stack:
+            stack.pop()
+    return cut + "".join(reversed(stack))
+
+
 def _extract_json(txt: str) -> dict:
+    """JSON du relevé, tolérant : balises ```json, texte autour, commentaires, virgules finales, guillemets typographiques,
+    réponse tronquée (refermée proprement)."""
     t = (txt or "").strip()
     t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t)
-    a, b = t.find("{"), t.rfind("}")
-    if a < 0 or b < 0:
+    a = t.find("{")
+    if a < 0:
         raise ValueError("réponse sans JSON")
-    return json.loads(t[a:b + 1])
+    b = t.rfind("}")
+    candidates = [t[a:b + 1]] if b > a else []
+    candidates.append(t[a:])
+    for c in candidates:
+        for fix in (lambda x: x,
+                    lambda x: re.sub(r",\s*([}\]])", r"\1", re.sub(r"//[^\n\"]*$|/\*.*?\*/", "", x, flags=re.M | re.S)),
+                    lambda x: re.sub(r",\s*([}\]])", r"\1", x.replace("\u201c", '"').replace("\u201d", '"')),
+                    lambda x: re.sub(r",\s*([}\]])", r"\1", _close_truncated(x))):
+            try:
+                out = json.loads(fix(c))
+                if isinstance(out, dict):
+                    return out
+            except (ValueError, IndexError):
+                continue
+    try:
+        from json_repair import repair_json            # facultatif
+        out = json.loads(repair_json(t[a:]))
+        if isinstance(out, dict):
+            return out
+    except Exception:  # noqa: BLE001
+        pass
+    raise ValueError("JSON du relevé illisible (réponse IA tronquée ou mal formée)")
 
 
 def select_pages(pages: list[dict]) -> list[dict]:
@@ -137,9 +203,9 @@ async def _claude(system, text, images=None, model=None, max_tokens=4096):
         from engines import anthropic_native as AN
     except ImportError:
         AN = None
-    if AN is not None and AN.native_available():
-        return await AN.complete(system, text, images=images, model=model or AN.MODEL_OPUS, max_tokens=max_tokens)
     import os
+    if AN is not None and AN.native_available() and max_tokens <= 16000:
+        return await AN.complete(system, text, images=images, model=model or AN.MODEL_OPUS, max_tokens=max_tokens)
     from anthropic import AsyncAnthropic
     content = [{"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": i}} for i in images or []]
     content.append({"type": "text", "text": text})
@@ -203,20 +269,29 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096):
     log = logging.getLogger(__name__)
     order = [p.strip() for p in os.environ.get("BET_LLM_ORDER", "claude,openai,gemini").split(",") if p.strip() in PROVIDERS]
     timeout = float(os.environ.get("BET_LLM_TIMEOUT", "600"))
-    errors = []
+    errors, first_text = [], None
     for name in order:
         try:
             txt = await asyncio.wait_for(PROVIDERS[name](system, text, images=images, model=model if name == "claude" else None,
                                                          max_tokens=max_tokens), timeout)
-            if txt and "{" in txt:
+            try:
+                _extract_json(txt)
+                valid = True
+            except ValueError:
+                valid = False
+            if valid:
                 LAST_PROVIDER[0] = name
                 if errors:
                     log.warning("bet reader: relevé fait par %s après échec de %s", name, "; ".join(errors))
                 return txt
-            errors.append(f"{name}: réponse vide ou sans JSON")
+            first_text = first_text or txt
+            errors.append(f"{name}: JSON illisible ou absent")
         except Exception as exc:  # noqa: BLE001 — on bascule sur le fournisseur suivant
             errors.append(f"{name}: {type(exc).__name__}: {str(exc)[:160]}")
             log.warning("bet reader: %s indisponible (%s) → fournisseur suivant", name, type(exc).__name__)
+    if first_text:                     # aucun JSON exploitable : on rend la 1re réponse, la boucle de correction la reprend
+        LAST_PROVIDER[0] = order[0] if order else None
+        return first_text
     raise RuntimeError("Aucun fournisseur IA n'a pu lire les plans — " + " | ".join(errors))
 
 
@@ -248,7 +323,7 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
             f"PAYS : {country}\nHYPOTHÈSES DU CLIENT (prioritaires sur les plans pour les matériaux) : {hypotheses or 'aucune'}\n\n"
             f"PLANCHES JOINTES :\n{legend}\n\nÉTUDE DE SOL (texte extrait) :\n{g2 or 'AUCUNE ÉTUDE DE SOL FOURNIE'}\n\n"
             "Produis le BuildingModel JSON de CETTE maison.")
-    txt = await llm(SYSTEM, base, images=images, max_tokens=16000)
+    txt = await llm(SYSTEM, base, images=images, max_tokens=MAX_OUT)
     attempts, raw, anomalies = 1, None, []
     while True:
         try:
@@ -263,7 +338,7 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
                "\n\nLES CONTRÔLES DÉTERMINISTES ONT TROUVÉ CES ANOMALIES BLOQUANTES :\n" +
                "\n".join(f"- {a['code']} : {a['message']} {a.get('fix', '')}" for a in blocking) +
                "\n\nRelis les planches concernées et renvoie le JSON COMPLET corrigé.")
-        txt = await llm(SYSTEM, fix, images=images, max_tokens=16000)
+        txt = await llm(SYSTEM, fix, images=images, max_tokens=MAX_OUT)
         attempts += 1
     blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
     questions = list((raw or {}).get("_questions") or [])

@@ -267,3 +267,11 @@ def test_llm_cascade_falls_back_to_openai_then_gemini(monkeypatch):
         raise AssertionError("doit lever")
     except RuntimeError as exc:
         assert "Aucun fournisseur" in str(exc) and "claude" in str(exc) and "gemini" in str(exc)
+
+
+def test_truncated_or_sloppy_json_is_repaired():
+    full = json.dumps(CASE, ensure_ascii=False)
+    assert reader._extract_json("Voici le relevé :\n```json\n" + full + "\n```")["levels"] == CASE["levels"]
+    cut = reader._extract_json(full[: len(full) // 2])        # réponse coupée par la limite de jetons
+    assert isinstance(cut, dict) and "project" in cut
+    assert reader._extract_json('{"a": [1, 2,], "b": {"c": 3,},}') == {"a": [1, 2], "b": {"c": 3}}
