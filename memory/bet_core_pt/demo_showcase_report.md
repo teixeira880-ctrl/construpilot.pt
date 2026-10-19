@@ -641,3 +641,132 @@ e executo os 7 pontos do smoke prod, depois retomo.
 Alternativamente: se o fundador quiser consolidar tudo num único deploy
 (addendum 3.5 + chunks + dedup), basta aguardar e o deploy único cobre
 ambas as frentes a partir do HEAD actual + checkpoint deste finish.
+
+---
+
+## 24. Preparação próximo deploy — cascata IA + leitura robusta
+
+**Data**: 2026-10-18 (preparado em paralelo enquanto o deploy do addendum
+3.5 + chunks aguarda clique).
+
+### 24.1 Fetch `2b94ddc` ✅
+
+- Fetch com token efémero (zero persistência).
+- Backup defensivo em `/tmp/i18n_backup_v3/`.
+- Preservados: wrapper `assistant_bet_core_tool.py`, meus testes
+  `test_translate_questions_pt.py` + `test_doc_loader_pt.py`,
+  `test_demo_showcase_pt.py`, `websummit_seed_pt.py`.
+- Commit do ramo: `2b94ddc bet_core : cascata IA Claude Opus → OpenAI →
+  Gemini na leitura dos planos (33 testes)`.
+
+### 24.2 Pytest final ✅
+
+```
+pytest -q tests/bet_core
+46 passed, 0 failed, 2 warnings in 10.25 s
+```
+
+Breakdown: 33 ramo + 7 i18n PT + 6 doc_loader PT = 46. Zero regressão.
+
+### 24.3 Chaves API em preview `.env` — sem citar valores
+
+| Variável | Presente | Validação heurística |
+|--|--|--|
+| `ANTHROPIC_API_KEY` | **sim** | prefixo `sk-ant-` confirmado ✅ |
+| `OPENAI_API_KEY` | **sim** | prefixo `sk-` confirmado ✅ |
+| `GOOGLE_GEMINI_API_KEY` | **não** | — |
+| `GEMINI_API_KEY` | **sim** | 53 chars (keys Gemini ~39) |
+| `BET_LLM_ORDER` | **não** | → default do código: `"claude,openai,gemini"` |
+| `BET_LLM_TIMEOUT` | **não** | → default do código: `600 s` |
+| `GEMINI_MODEL` | **sim** | nome do modelo configurado (não é API key) |
+
+**Compatibilidade Gemini**: `engines/bet_core/reader.py:180` lê:
+
+```python
+key = os.environ.get("GOOGLE_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+```
+
+Portanto o nome `GEMINI_API_KEY` já configurado é **aceite** pelo
+provider Gemini. **Zero acção necessária em preview**.
+
+**Para prod**: as mesmas 3 chaves devem estar presentes
+(ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY ou
+GOOGLE_GEMINI_API_KEY). Se qualquer uma faltar em prod, a cascata ainda
+funciona com os 2 primeiros providers (fallback transparente), apenas
+sem o 3.º tier.
+
+### 24.4 Defaults do `INTEGRATION.md` + código
+
+- `BET_LLM_ORDER` default: `"claude,openai,gemini"` (ordem fixa a menos
+  que a var seja definida com valores válidos em `{claude, openai,
+  gemini}` separados por vírgula).
+- `BET_LLM_TIMEOUT` default: `600 s` por tentativa de provider.
+- Modelos:
+  - Claude: lê `ANTHROPIC_MODEL_OPUS` (default do `anthropic_native.py`).
+  - OpenAI: `BET_OPENAI_MODEL` → senão `STUDIES_MODEL_ANALYSIS` →
+    senão default do SDK.
+  - Gemini: `GOOGLE_GEMINI_MODEL_PRO` → default `gemini-pro-latest`.
+
+### 24.5 Diagnóstico wrapper vs cascata ✅
+
+Linha 242 do `assistant_bet_core_tool.py`:
+```python
+result = await _bet_core_execute(
+    name, args, user, conv, db,
+    doc_loader=doc_loader,
+    branding_loader=_pt_branding_loader,
+)
+```
+
+**O wrapper não passa `llm=`** — logo o `bet_core.assistant_tool.execute`
+recebe `llm=None` → `reader.read_building` usa automaticamente
+`_default_llm` do novo commit, que é a cascata `_cascade_llm` com
+sequência `BET_LLM_ORDER`.
+
+**Conclusão**: zero ajuste necessário ao wrapper para activar a cascata.
+Ela entra em acção transparentemente após o deploy.
+
+### 24.6 "Relançar após perguntas = novo estudo" ✅
+
+Mecanismo:
+- `engines/bet_core/assistant_tool.py:272` constrói o `job_id` como
+  `sha256(uid + request_id + sorted_doc_ids + hypotheses + country)[:20]`.
+- `routes/assistant.py:1108` cria um `request_id` novo (`uuid.uuid4().hex`)
+  para cada chamada do Assistente que não passa um explícito.
+- Portanto cada nova tentativa de `generate_full_bet_study` do mesmo
+  utilizador com os mesmos documentos **mas após uma ronda de perguntas**
+  recebe um `request_id` novo → `job_id` novo → nova sessão isolada.
+- `read_full_bet_study` filtra sempre por `(job_id, user_id)` → zero
+  cruzamento entre sessões.
+
+**Validado estruturalmente — zero código a alterar no wrapper.**
+
+### 24.7 Status — pronto para deploy conjunto 🟡
+
+- 46/46 pytest verde.
+- Zero alteração ao wrapper nesta frente — cascata activa pelo próprio
+  bet_core quando `llm=None`.
+- Chaves API já presentes em preview com nome compatível.
+- Zero `git push`, zero toque em `.fr`, zero toque em `engines/bet_agent/`
+  (flag off).
+- Grep `github_pat_11` em `/app/memory` e `/tmp` → só meta-refs nos
+  relatórios próprios.
+
+### 24.8 Observação sobre consolidação do deploy
+
+HEAD actual já cobre:
+- Addendum 3.5 (Moradia Martins no particular + fix D7-a).
+- Chunks + dedup (preparação PDFs reais grandes).
+- Cascata IA (Claude → OpenAI → Gemini).
+- i18n PT das perguntas.
+- Showcase BET-core completo.
+
+**Deploy único** quando o fundador autorizar cobre tudo. Botão igual:
+Dashboard Emergent → **"Deploy to production"**. Zero `git push` da minha
+parte. Smoke prod dos 7+ pontos prontos para executar.
+
+### 24.9 Deploy actual (addendum 3.5) — continua à espera
+
+Não interferi. Assim que o fundador enviar "deploy on", **interrompo
+tudo** e executo os 7 pontos do smoke prod. Depois retomo se houver
+qualquer passo adicional.

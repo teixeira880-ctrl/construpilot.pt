@@ -217,3 +217,53 @@ def test_large_pdf_stored_in_chunks_is_read():
     bad = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["big"], "hypotheses": "", "country": "FR"},
                                              {"user_id": "u1"}, {"conversation_id": "c2"}, db, llm=llm, background=False))
     assert "réimportez" in bad["error"]
+
+
+def test_read_is_robust_to_datetimes_and_bad_ids():
+    from datetime import datetime, timedelta
+    db = DB()
+    db.bet_study_jobs.docs.append({"job_id": "j1", "user_id": "u1", "status": "running",
+                                   "updated_at": datetime.utcnow() - timedelta(hours=2)})      # datetime naïf (pas une chaîne)
+    st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": "j1"}, {"user_id": "u1"}, {}, db))
+    assert st["status"] == "failed" and "relancez" in st["error"]
+    assert "error" in asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": ""}, {"user_id": "u1"}, {}, db))
+
+
+def test_relaunch_after_questions_with_new_hypotheses_runs_again():
+    db = DB()
+    pdf = _pdf(["PLAN DU RDC"])
+    db.assistant_docs.docs.append({"doc_id": "d", "user_id": "u1", "filename": "PC.pdf", "mime": "application/pdf",
+                                   "data_b64": base64.b64encode(pdf).decode()})
+    bad = copy.deepcopy(CASE)
+    del bad["levels"]
+    llm, calls = _llm([json.dumps(bad), json.dumps(bad), json.dumps(bad), json.dumps(CASE)])
+    conv = {"conversation_id": "c1", "_quote_request_id": "r1"}
+    a = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["d"], "hypotheses": "", "country": "FR"},
+                                           {"user_id": "u1"}, conv, db, llm=llm, background=False))
+    assert asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": a["job_id"]}, {"user_id": "u1"}, conv, db))["status"] == "questions"
+    b = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["d", "d"], "hypotheses": "combles habitables, parpaing 20", "country": "FR"},
+                                           {"user_id": "u1"}, conv, db, llm=llm, background=False))
+    assert b["job_id"] != a["job_id"]
+    assert asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": b["job_id"]}, {"user_id": "u1"}, conv, db))["status"] == "done"
+
+
+def test_llm_cascade_falls_back_to_openai_then_gemini(monkeypatch):
+    async def down(*a, **k):
+        raise RuntimeError("credit balance is too low")
+
+    async def no_json(*a, **k):
+        return "Désolé, je ne peux pas."
+
+    async def ok(*a, **k):
+        return json.dumps(CASE)
+    monkeypatch.setattr(reader, "PROVIDERS", {"claude": down, "openai": no_json, "gemini": ok})
+    monkeypatch.setenv("BET_LLM_ORDER", "claude,openai,gemini")
+    pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
+    res = asyncio.run(reader.read_building([("PC.pdf", pdf)], "", "FR"))
+    assert res["ok"] and res["provider"] == "gemini"
+    monkeypatch.setattr(reader, "PROVIDERS", {"claude": down, "openai": down, "gemini": down})
+    try:
+        asyncio.run(reader.read_building([("PC.pdf", pdf)], "", "FR"))
+        raise AssertionError("doit lever")
+    except RuntimeError as exc:
+        assert "Aucun fournisseur" in str(exc) and "claude" in str(exc) and "gemini" in str(exc)

@@ -131,13 +131,13 @@ def select_pages(pages: list[dict]) -> list[dict]:
     return pick[:MAX_IMAGES]
 
 
-async def _default_llm(system, text, images=None, model=None, max_tokens=4096):
+async def _claude(system, text, images=None, model=None, max_tokens=4096):
     """Claude Opus via engines/anthropic_native.py s'il existe (construpilot.fr), sinon SDK anthropic direct (ANTHROPIC_API_KEY)."""
     try:
         from engines import anthropic_native as AN
     except ImportError:
         AN = None
-    if AN is not None:
+    if AN is not None and AN.native_available():
         return await AN.complete(system, text, images=images, model=model or AN.MODEL_OPUS, max_tokens=max_tokens)
     import os
     from anthropic import AsyncAnthropic
@@ -148,6 +148,76 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096):
                                       system=system, messages=[{"role": "user", "content": content}]) as st:
         msg = await st.get_final_message()
     return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text")
+
+
+async def _openai(system, text, images=None, model=None, max_tokens=4096):
+    """OpenAI (API Responses, vision). Clé OPENAI_API_KEY ; modèle BET_OPENAI_MODEL, sinon STUDIES_MODEL_ANALYSIS."""
+    import os
+    from openai import AsyncOpenAI
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        raise RuntimeError("OPENAI_API_KEY absente")
+    mdl = model or os.environ.get("BET_OPENAI_MODEL") or os.environ.get("STUDIES_MODEL_ANALYSIS") or "gpt-5"
+    content = [{"type": "input_image", "image_url": f"data:image/png;base64,{i}"} for i in images or []]
+    content.append({"type": "input_text", "text": text})
+    client = AsyncOpenAI(api_key=key, timeout=900)
+    resp = await client.responses.create(model=mdl, instructions=system, max_output_tokens=max_tokens,
+                                         input=[{"role": "user", "content": content}])
+    return resp.output_text or ""
+
+
+async def _gemini(system, text, images=None, model=None, max_tokens=4096):
+    """Gemini via engines/gemini_native.py (GOOGLE_GEMINI_API_KEY) s'il existe, sinon SDK google-genai direct."""
+    try:
+        from engines import gemini_native as GN
+    except ImportError:
+        GN = None
+    if GN is not None and GN.native_available():
+        return await GN.complete(system, text, images=images, model=model or GN.NATIVE_PRO, want_json=True)
+    import os
+    from google import genai
+    from google.genai import types
+    key = os.environ.get("GOOGLE_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise RuntimeError("GOOGLE_GEMINI_API_KEY absente")
+    parts = [types.Part.from_bytes(data=base64.b64decode(i), mime_type="image/png") for i in images or []]
+    parts.append(types.Part.from_text(text=text))
+    resp = await genai.Client(api_key=key).aio.models.generate_content(
+        model=model or os.environ.get("GOOGLE_GEMINI_MODEL_PRO", "gemini-pro-latest"), contents=parts,
+        config=types.GenerateContentConfig(system_instruction=system, temperature=0.1, max_output_tokens=max_tokens,
+                                           response_mime_type="application/json"))
+    return resp.text or ""
+
+
+PROVIDERS = {"claude": _claude, "openai": _openai, "gemini": _gemini}
+LAST_PROVIDER = [None]          # fournisseur qui a réellement répondu au dernier appel (traçabilité dans le dossier)
+
+
+async def _default_llm(system, text, images=None, model=None, max_tokens=4096):
+    """Cascade de fournisseurs : Claude Opus → OpenAI → Gemini (ordre réglable par BET_LLM_ORDER, ex. « claude,gemini,openai »).
+    On passe au suivant si l'appel échoue (crédit, quota, panne, délai > BET_LLM_TIMEOUT s) ou si la réponse ne contient
+    pas de JSON. Les contrôles déterministes valident ensuite le relevé, quel que soit le fournisseur."""
+    import asyncio
+    import logging
+    import os
+    log = logging.getLogger(__name__)
+    order = [p.strip() for p in os.environ.get("BET_LLM_ORDER", "claude,openai,gemini").split(",") if p.strip() in PROVIDERS]
+    timeout = float(os.environ.get("BET_LLM_TIMEOUT", "600"))
+    errors = []
+    for name in order:
+        try:
+            txt = await asyncio.wait_for(PROVIDERS[name](system, text, images=images, model=model if name == "claude" else None,
+                                                         max_tokens=max_tokens), timeout)
+            if txt and "{" in txt:
+                LAST_PROVIDER[0] = name
+                if errors:
+                    log.warning("bet reader: relevé fait par %s après échec de %s", name, "; ".join(errors))
+                return txt
+            errors.append(f"{name}: réponse vide ou sans JSON")
+        except Exception as exc:  # noqa: BLE001 — on bascule sur le fournisseur suivant
+            errors.append(f"{name}: {type(exc).__name__}: {str(exc)[:160]}")
+            log.warning("bet reader: %s indisponible (%s) → fournisseur suivant", name, type(exc).__name__)
+    raise RuntimeError("Aucun fournisseur IA n'a pu lire les plans — " + " | ".join(errors))
 
 
 # ------------------------------------------------------------------ point d'entrée
@@ -203,4 +273,5 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
         if hypotheses:
             raw.setdefault("user_hypotheses", {})["_source"] = f"demande du client dans l'Assistant : « {hypotheses[:300]} »"
     return {"ok": raw is not None and not blocking, "model": raw, "anomalies": anomalies, "questions": questions,
-            "pages": [{k: p[k] for k in ("doc", "page", "kind")} for p in chosen], "attempts": attempts}
+            "pages": [{k: p[k] for k in ("doc", "page", "kind")} for p in chosen], "attempts": attempts,
+            "provider": LAST_PROVIDER[0] if llm is _default_llm else "custom"}
