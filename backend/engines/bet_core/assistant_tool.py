@@ -169,7 +169,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
         await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"],
                    sheets=res["sheets"], devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"],
                    points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
-                   questions=rd["questions"], demo=rd.get("demo"), cached=bool(rd.get("cached")))
+                   questions=rd["questions"], demo=rd.get("demo"), cached=bool(rd.get("cached")), provider=rd.get("provider"))
     except Exception as exc:  # noqa: BLE001
         log.exception("bet study %s failed", job_id)
         await step("Échec", status="failed", error=f"{type(exc).__name__}: {str(exc)[:500]}")

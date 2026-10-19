@@ -245,3 +245,25 @@ def test_relaunch_after_questions_with_new_hypotheses_runs_again():
                                            {"user_id": "u1"}, conv, db, llm=llm, background=False))
     assert b["job_id"] != a["job_id"]
     assert asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": b["job_id"]}, {"user_id": "u1"}, conv, db))["status"] == "done"
+
+
+def test_llm_cascade_falls_back_to_openai_then_gemini(monkeypatch):
+    async def down(*a, **k):
+        raise RuntimeError("credit balance is too low")
+
+    async def no_json(*a, **k):
+        return "Désolé, je ne peux pas."
+
+    async def ok(*a, **k):
+        return json.dumps(CASE)
+    monkeypatch.setattr(reader, "PROVIDERS", {"claude": down, "openai": no_json, "gemini": ok})
+    monkeypatch.setenv("BET_LLM_ORDER", "claude,openai,gemini")
+    pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
+    res = asyncio.run(reader.read_building([("PC.pdf", pdf)], "", "FR"))
+    assert res["ok"] and res["provider"] == "gemini"
+    monkeypatch.setattr(reader, "PROVIDERS", {"claude": down, "openai": down, "gemini": down})
+    try:
+        asyncio.run(reader.read_building([("PC.pdf", pdf)], "", "FR"))
+        raise AssertionError("doit lever")
+    except RuntimeError as exc:
+        assert "Aucun fournisseur" in str(exc) and "claude" in str(exc) and "gemini" in str(exc)
