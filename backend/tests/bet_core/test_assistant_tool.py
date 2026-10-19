@@ -217,3 +217,13 @@ def test_large_pdf_stored_in_chunks_is_read():
     bad = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["big"], "hypotheses": "", "country": "FR"},
                                              {"user_id": "u1"}, {"conversation_id": "c2"}, db, llm=llm, background=False))
     assert "réimportez" in bad["error"]
+
+
+def test_read_is_robust_to_datetimes_and_bad_ids():
+    from datetime import datetime, timedelta
+    db = DB()
+    db.bet_study_jobs.docs.append({"job_id": "j1", "user_id": "u1", "status": "running",
+                                   "updated_at": datetime.utcnow() - timedelta(hours=2)})      # datetime naïf (pas une chaîne)
+    st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": "j1"}, {"user_id": "u1"}, {}, db))
+    assert st["status"] == "failed" and "relancez" in st["error"]
+    assert "error" in asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": ""}, {"user_id": "u1"}, {}, db))

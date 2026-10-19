@@ -207,22 +207,56 @@ async def _load_assistant_docs(db, ids, uid):
     return uniq
 
 
+def _age_s(ts) -> float:
+    """Âge en secondes d'un horodatage (chaîne ISO ou datetime, avec ou sans fuseau)."""
+    if isinstance(ts, str):
+        ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if not isinstance(ts, datetime):
+        return 0.0
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - ts).total_seconds()
+
+
+def _jsonable(v):
+    if isinstance(v, dict):
+        return {k: _jsonable(x) for k, x in v.items() if k != "_id"}
+    if isinstance(v, (list, tuple)):
+        return [_jsonable(x) for x in v]
+    if isinstance(v, (str, int, float, bool)) or v is None:
+        return v
+    return str(v)                          # datetime, ObjectId… → texte
+
+
+async def _read_job(db, uid, job_id):
+    if not job_id:
+        return {"error": "job_id manquant : relancez generate_full_bet_study.", "status": "échoué"}
+    job = await db.bet_study_jobs.find_one({"job_id": job_id, "user_id": uid}, {"_id": 0, "model": 0, "pages": 0})
+    if not job:
+        return {"error": "Étude introuvable pour ce compte (identifiant inconnu ou étude d'un autre compte)", "status": "échoué"}
+    if job.get("status") == "running" and _age_s(job.get("updated_at") or job.get("created_at")) > STALE_MIN * 60:
+        msg = "interrompue (redémarrage du serveur) : relancez l'étude"
+        await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"status": "failed", "error": msg}})
+        job.update(status="failed", error=msg)
+    out = _jsonable(job)
+    for k in ("points", "questions", "sheets"):
+        if isinstance(out.get(k), list):
+            out[k] = out[k][:40]
+    out.pop("anomalies", None) if out.get("status") == "done" else None
+    return {"ok": True, **out, "note": "Pré-dimensionnement à faire viser par un ingénieur structure avant exécution."}
+
+
 async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, background: bool = True, doc_loader=None,
                   branding_loader=None) -> dict:
     """doc_loader(db, ids, user_id) -> [(nom, pdf_bytes)] : à fournir si les pièces jointes ne sont pas dans db.assistant_docs (ex. .pt).
     branding_loader(db, user_id) -> dict : identité de l'entreprise (défaut : résolveurs de la plateforme)."""
     uid, cid = user["user_id"], conv.get("conversation_id")
     if name == "read_full_bet_study":
-        job = await db.bet_study_jobs.find_one({"job_id": args["job_id"], "user_id": uid}, {"_id": 0, "model": 0})
-        if not job:
-            return {"error": "Étude introuvable pour ce compte", "status": "échoué"}
-        if job.get("status") == "running":
-            age = datetime.now(timezone.utc) - datetime.fromisoformat(job["updated_at"])
-            if age.total_seconds() > STALE_MIN * 60:
-                msg = "interrompue (redémarrage du serveur) : relancez l'étude"
-                await db.bet_study_jobs.update_one({"job_id": job["job_id"]}, {"$set": {"status": "failed", "error": msg}})
-                job.update(status="failed", error=msg)
-        return {"ok": True, **job, "note": "Pré-dimensionnement à faire viser par un ingénieur structure avant exécution."}
+        try:
+            return await _read_job(db, uid, str(args.get("job_id") or ""))
+        except Exception as exc:  # noqa: BLE001 — jamais d'erreur muette
+            log.exception("bet study read failed")
+            return {"error": f"Lecture de l'étude impossible ({type(exc).__name__}) : relancez generate_full_bet_study.", "status": "échoué"}
     ids = [d for d in args.get("document_ids") or [] if d]
     if not ids:
         return {"error": "Joignez le PC (PDF) et précisez les documents à utiliser.", "status": "échoué"}
