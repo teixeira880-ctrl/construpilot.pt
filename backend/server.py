@@ -665,6 +665,9 @@ async def seed():
         unique=True,
         name="user_id_1_docs_hash_1",
     )
+    # Auditoria: índices para listagem/leitura rápida de acções admin.
+    await db.admin_actions.create_index([("timestamp", -1)])
+    await db.admin_actions.create_index([("actor_user_id", 1), ("timestamp", -1)])
     await db.library_items.create_index("item_id")
     await db.pro_documents.create_index("user_id")
     await db.pro_documents.create_index("doc_id")

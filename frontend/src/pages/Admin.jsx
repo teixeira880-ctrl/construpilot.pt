@@ -464,12 +464,27 @@ export default function Admin() {
                     <TableCell>
                       <Select
                         value={u.role}
-                        onValueChange={async (v) => { await api.put(`/admin/users/${u.user_id}`, { role: v }); toast.success("Função atualizada"); load(); }}
+                        onValueChange={async (v) => {
+                          if (v === "admin" && u.role !== "admin") {
+                            const ok = window.confirm(
+                              `Promover ${u.email || u.user_id} a administrador?\n\nEsta acção dá acesso total à plataforma e é registada em admin_actions.\n\nTem a certeza?`
+                            );
+                            if (!ok) { load(); return; }
+                          } else if (v !== "admin" && u.role === "admin") {
+                            const ok = window.confirm(
+                              `Remover permissões admin de ${u.email || u.user_id}?\n\nEsta acção é registada em admin_actions.`
+                            );
+                            if (!ok) { load(); return; }
+                          }
+                          await api.put(`/admin/users/${u.user_id}`, { role: v });
+                          toast.success(v === "admin" ? "Promovido a admin (registado)" : "Função atualizada");
+                          load();
+                        }}
                       >
                         <SelectTrigger className="rounded-sm h-9 w-32" data-testid={`admin-role-${u.user_id}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="user">user</SelectItem>
-                          <SelectItem value="admin">admin</SelectItem>
+                          <SelectItem value="user" data-testid={`admin-role-opt-user-${u.user_id}`}>user</SelectItem>
+                          <SelectItem value="admin" data-testid={`admin-role-opt-admin-${u.user_id}`}>admin</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>

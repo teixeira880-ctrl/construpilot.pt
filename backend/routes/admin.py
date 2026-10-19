@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import os
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -636,14 +636,59 @@ class UserIn(BaseModel):
 
 
 @router.put("/users/{user_id}")
-async def update_user(user_id: str, body: UserIn):
+async def update_user(user_id: str, body: UserIn, request: Request, admin=Depends(admin_user)):
+    before = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not before:
+        raise HTTPException(404, "Utilizador não encontrado")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if "account_type" in updates and updates["account_type"] not in ("particulier", "pro", "pro_business"):
         raise HTTPException(400, "Tipo de conta inválido")
     if "two_fa_email" in updates:
         updates["two_fa_email"] = updates["two_fa_email"].strip().lower() or None
     await db.users.update_one({"user_id": user_id}, {"$set": updates})
+    # Auditoria: regista cada mudança de `role` numa collection dedicada.
+    if "role" in updates and updates["role"] != before.get("role"):
+        await _log_admin_action(
+            actor_user_id=admin["user_id"],
+            target_user_id=user_id,
+            action=f"role_change:{before.get('role') or 'none'}->{updates['role']}",
+            before={"role": before.get("role")},
+            after={"role": updates["role"]},
+            request=request,
+        )
     return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+
+
+async def _log_admin_action(*, actor_user_id: str, target_user_id: str,
+                             action: str, before: dict, after: dict,
+                             request: Request | None = None) -> str:
+    """Grava uma linha em `db.admin_actions`.
+
+    Idempotente por design: cada chamada escreve um documento novo com
+    `action_id` único. Nenhum valor sensível é guardado.
+    """
+    ip = ""
+    if request is not None:
+        ip = (request.headers.get("x-forwarded-for") or request.client.host or "").split(",")[0].strip()
+    action_id = "act_" + secrets.token_hex(8)
+    await db.admin_actions.insert_one({
+        "action_id": action_id,
+        "actor_user_id": actor_user_id,
+        "target_user_id": target_user_id,
+        "action": action,
+        "before": before,
+        "after": after,
+        "ip_address": ip or None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+    return action_id
+
+
+@router.get("/admin-actions")
+async def list_admin_actions(limit: int = 50) -> list:
+    """Lista as últimas acções admin registadas (role_change, …). Admin-only."""
+    cur = db.admin_actions.find({}, {"_id": 0}).sort("timestamp", -1).limit(max(1, min(limit, 200)))
+    return await cur.to_list(limit)
 
 
 # Collections purgées lors de la suppression définitive d'un compte : core/account_purge.py

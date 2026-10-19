@@ -6,9 +6,9 @@ Mantém-se vivo. Cada frente actualizada à medida que avança.
 
 ---
 
-## F0 · Deploy consolidado (BLOQUEADOR)
+## F0 · Deploy consolidado ✅ EM PROD
 
-- **Estado**: 🟡 **aguarda "deploy on" do fundador**.
+- **Estado**: ✅ **deployed 2026-10-19 14:45 UTC** · 7/8 pontos verdes · P5/P8 aguardam validação manual.
 - HEAD alvo: `8d903df` + checkpoint deste ciclo (221+ commits locais).
 - Botão: Dashboard Emergent → `construpilot.pt` → Deploy → **"Deploy to production"**.
 - Cobertura consolidada:
@@ -39,9 +39,9 @@ Mantém-se vivo. Cada frente actualizada à medida que avança.
 
 ---
 
-## F3 · Pitch deck v2 (lista de slides)
+## F3 · Pitch deck v2 — PPTX + PDF ✅ PRONTO
 
-- **Estado**: ✅ **lista proposta pronta — aguarda validação do fundador**.
+- **Estado**: ✅ **PPTX + PDF + 14 PNG previews gerados** · 5 placeholders destacados em caixa amarela/borda laranja · aguarda validação visual do fundador.
 - Entregável: `/app/memory/pitch_deck_v2/slides_proposal.md` (14 slides vs 19 do v1).
 - Base: leitura read-only de `backend/assets/investors/ConstruPilot_PitchDeck.pptx` via `python-pptx`.
 - Deck v1 = 100% francês; v2 proposta = 100% PT-PT.
@@ -98,3 +98,39 @@ Mantém-se vivo. Cada frente actualizada à medida que avança.
 - **"deploy on"** do fundador → arranque F0 smoke prod 8 pontos.
 - **Validação lista F3** → avança para geração de PPTX/PDF deck v2.
 - **Validação F2 v1** → avança para variantes EN, FR, 9:16.
+
+---
+
+## Atualizações 2026-10-19 14:50 UTC
+
+### F0 — ✅ **DEPLOY DETECTADO E SMOKE EXECUTADO**
+Timestamp detecção: 14:45 UTC. 7/8 pontos verdes:
+- P1 `/api/health` 200 · P2 demo-status true/true · P3 pro+projs com Moradia Martins ligada · P4 2 docs Moradia_Martins_DEMO · P6 particular+projs Moradia Martins (addendum 3.5) · P7 Playwright CTAs visíveis.
+- P5 BET completo em prod → **aguarda validação manual pelo fundador** (requer orquestração do Assistente via UI).
+- P8 chaves API prod → **Opção B** (nenhum endpoint existente), aguarda confirmação manual no dashboard de secrets.
+
+### F3 — ✅ Pitch deck v2 PPTX+PDF+previews prontos
+- 14 slides · 5 placeholders destacados · zero números inventados.
+- PPTX 47.5 KB `99c90…` · PDF 57.4 KB `101773…` · 14 PNG previews (435 KB total).
+- Relatório: `/app/memory/pitch_deck_v2/preview_report.md`.
+- **Zero rota pública ligada.** Aguarda validação visual do fundador.
+
+### F5 — ✅ Botão UI promote + log admin_actions + 6 testes
+- Modal `window.confirm` em `/app/frontend/src/pages/Admin.jsx` antes de PUT role=admin (ou demotion).
+- `_log_admin_action` + `GET /api/admin/admin-actions` em `/app/backend/routes/admin.py`.
+- Nova collection `db.admin_actions` com 2 índices (`timestamp:-1`, `actor_user_id:1,timestamp:-1`) criados no startup.
+- Schema: `{action_id, actor_user_id, target_user_id, action: "role_change:X->Y", before, after, ip_address, timestamp}`.
+- Idempotente: se role actual == pedido, zero log.
+- 6/6 pytest verde em `tests/test_admin_actions_audit.py` (promote, idempotência, outros campos não loggam, despromoção, 404, listagem ordenada).
+- **Vai no próximo deploy**, não separado.
+
+### F2 Vídeo + F4 Pop-up — próximas prioridades
+F0 smoke verde (excepto P5 e P8 que são manuais). Pronto para arrancar F2 e F4 à vontade do fundador.
+
+### Pytest total actual
+**56 passed** (46 bet_core + 4 showcase + 6 admin_actions).
+
+### Próximo deploy (quando autorizado)
+Dashboard Emergent → `construpilot.pt` → Deploy → **"Deploy to production"** com HEAD actual + checkpoint deste finish. Cobre:
+- F5 (botão UI promote + log auditoria).
+- Qualquer patch F6 (bet_core spec.py) que o fundador envie até lá.

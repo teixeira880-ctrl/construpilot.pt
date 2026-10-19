@@ -1,0 +1,141 @@
+{
+  "generated_at": "2026-10-19T14:42:37.635324+00:00",
+  "slide_count": 14,
+  "font_family_declared": "Inter",
+  "colors": {
+    "orange": "#F97316",
+    "slate": "#0F172A",
+    "light": "#FAFAF9",
+    "placeholder_bg": "#FEF3C7",
+    "placeholder_border": "#F97316"
+  },
+  "slides": [
+    {
+      "n": 1,
+      "title": "ConstruPilot — Estimar. Comparar. Construir.",
+      "subtitle": "A plataforma SaaS BTP all-in-one · PT · FR",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 2,
+      "title": "O problema",
+      "subtitle": "Orçamentar obra em Portugal e França é lento, opaco e manual.",
+      "has_placeholder": true,
+      "placeholder_hint": "estatística: tempo médio de orçamentação ou % de orçamentos abandonados — fonte INE/BTP"
+    },
+    {
+      "n": 3,
+      "title": "A solução",
+      "subtitle": "ConstruPilot SaaS BTP all-in-one",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 4,
+      "title": "Demo em 60 segundos",
+      "subtitle": "Da planta ao dossier BET em 3 cliques",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 5,
+      "title": "4 ofertas, 1 plataforma",
+      "subtitle": "Preços directos do deck actual",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 6,
+      "title": "Diferenciador 1 — IA de leitura de plantas",
+      "subtitle": "Cascata resiliente",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 7,
+      "title": "Diferenciador 2 — Radar de obras & prospecção",
+      "subtitle": "Alvarás oficiais em tempo real",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 8,
+      "title": "Diferenciador 3 — Processo BET completo",
+      "subtitle": "Único no mercado",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 9,
+      "title": "Mercado",
+      "subtitle": "Portugal + França",
+      "has_placeholder": true,
+      "placeholder_hint": "tamanho TAM/SAM/SOM — fonte INE para PT, Insee para FR + taxa actual de digitalização"
+    },
+    {
+      "n": 10,
+      "title": "Tracção",
+      "subtitle": "Momento actual",
+      "has_placeholder": true,
+      "placeholder_hint": "utilizadores registados, MRR, ARR, nº projectos processados — fonte dashboard Stripe/interno"
+    },
+    {
+      "n": 11,
+      "title": "Modelo de negócio",
+      "subtitle": "Mix recorrente + one-shot",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 12,
+      "title": "Equipa",
+      "subtitle": "Quem construiu isto",
+      "has_placeholder": true,
+      "placeholder_hint": "nomes, backgrounds, fotos, LinkedIn — fonte perfis LinkedIn pessoais"
+    },
+    {
+      "n": 13,
+      "title": "O que estamos a construir",
+      "subtitle": "Roadmap curto",
+      "has_placeholder": false,
+      "placeholder_hint": null
+    },
+    {
+      "n": 14,
+      "title": "Juntem-se a nós",
+      "subtitle": "Web Summit 2026 · Lisboa",
+      "has_placeholder": true,
+      "placeholder_hint": "montante da ronda, use of funds, timeline + nº do stand Web Summit"
+    }
+  ],
+  "data_sources": {
+    "slide_5_prices": "deck v1 (ConstruPilot_PitchDeck.pptx) — extraídos directamente",
+    "slide_11_business_model": "deck v1 + estrutura comercial actual",
+    "slide_13_roadmap": "estado actual do repositório construpilot.pt"
+  },
+  "placeholders_to_resolve": [
+    {
+      "slide": 2,
+      "field": "estatística: tempo médio de orçamentação ou % de orçamentos abandonados — fonte INE/BTP"
+    },
+    {
+      "slide": 9,
+      "field": "tamanho TAM/SAM/SOM — fonte INE para PT, Insee para FR + taxa actual de digitalização"
+    },
+    {
+      "slide": 10,
+      "field": "utilizadores registados, MRR, ARR, nº projectos processados — fonte dashboard Stripe/interno"
+    },
+    {
+      "slide": 12,
+      "field": "nomes, backgrounds, fotos, LinkedIn — fonte perfis LinkedIn pessoais"
+    },
+    {
+      "slide": 14,
+      "field": "montante da ronda, use of funds, timeline + nº do stand Web Summit"
+    }
+  ],
+  "pptx_sha256": "99c90038c509fd55e609ea0bbf2ac7a41f71d33b01ba232bfd5b798385115c83",
+  "pdf_sha256": "101773b95488ef9135ec8aeadd4b2ef3ae3827cd15b52ff8833716eba947edf0"
+}
