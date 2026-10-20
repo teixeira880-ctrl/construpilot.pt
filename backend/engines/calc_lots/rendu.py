@@ -191,7 +191,7 @@ class ParoiGlaser(Flowable):
         cv.drawRightString(x0 - 1.5, ty(pts[0]["T"]) - 2, f"{pts[0]['T']:.1f} °C")
         cv.drawString(x1 + 1.5, ty(pts[-1]["T"]) - 2, f"{pts[-1]['T']:.1f}")
         cv.setFont("CP-Bold", 7); cv.setFillColor(VERT)
-        cv.drawString(x0, ys1 + 1.5 * mm, "INTÉRIEUR"); cv.drawRightString(x1, ys1 + 1.5 * mm, "EXTÉRIEUR")
+        cv.drawString(x0, ys1 + 1.5 * mm, "INTERIOR"); cv.drawRightString(x1, ys1 + 1.5 * mm, "EXTERIOR")
         # ---- Glaser : abscisse = Sd cumulé
         gy0, gy1 = 8 * mm, H - top_h - 2 * mm
         sd_tot = max(self.g["Sd_total"], 1e-6)
@@ -213,6 +213,6 @@ class ParoiGlaser(Flowable):
             if pt["condensation"]:
                 cv.setFillColor(ROUGE); cv.circle(gx(pt["sd"]), gp(pt["p"]), 1.6, stroke=0, fill=1)
         cv.setFont("CP", 6.3); cv.setFillColor(colors.HexColor("#1d1d1d"))
-        cv.drawString(x0 + 2, gy1 - 7, txt("— p vapeur (Pa)    - - psat (Pa)    ● condensation"))
-        cv.drawString(x0, gy0 - 6, txt(f"Sd cumulé 0 → {sd_tot:.1f} m (abscisse proportionnelle à la résistance à la diffusion)"))
+        cv.drawString(x0 + 2, gy1 - 7, txt("— p vapor (Pa)    - - psat (Pa)    ● condensação"))
+        cv.drawString(x0, gy0 - 6, txt(f"Sd acumulado 0 → {sd_tot:.1f} m (abcissa proporcional à resistência à difusão)"))
         cv.drawRightString(x0 - 1.5, gp(self.g["pi"]) - 2, f"{self.g['pi']:.0f}")
