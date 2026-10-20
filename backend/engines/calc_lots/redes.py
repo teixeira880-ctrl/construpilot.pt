@@ -68,7 +68,8 @@ def aguas_pluviais(p: dict) -> dict:
         if A <= 0:
             raise ValueError(f"vertente {k}: área em planta > 0")
         Q = I / 3600 * A * float(v.get("coef_escoamento") or 1.0)
-        i = max(0.005, float(v.get("inclinacao_pct") or 0.5) / 100)
+        inc = float(v["inclinacao_pct"]) if v.get("inclinacao_pct") is not None else 0.5
+        i = max(0.001, inc / 100)
         L = float(v.get("comprimento_caleira_m") or math.sqrt(A) * 1.5)
         n = max(1, math.ceil(L / 20)) if not v.get("tubos_queda") else int(v["tubos_queda"])
         q_tq = Q / n
@@ -88,24 +89,23 @@ def aguas_pluviais(p: dict) -> dict:
         if dtq is None:
             n = math.ceil(Q / _q_tubo_queda(DI_PVC[200]))
             dtq = 200
+            q_tq = Q / n
         dtq = max(dtq, int(v.get("diametro_min") or 75))
         rows.append({"vertente": v.get("nome") or f"vertente {k}", "A": A, "Q": Q, "caleira": cal[0], "cap_caleira": cal[1], "tubos_queda": n, "phi": dtq})
-        ctl.append({"ref": f"{v.get('nome') or f'Vertente {k}'} — caleira", "exigencia": f"Q ≥ {q_tq:.2f} L/s com i ≥ 0,5 %", "valor": f"{cal[0]}: {cal[1]:.2f} L/s (i {i * 100:g} %)",
-                    "ok": float(v.get("inclinacao_pct") or 0.5) >= 0.5})
-        ctl.append({"ref": f"{v.get('nome') or f'Vertente {k}'} — tubos de queda", "exigencia": "Ø ≥ 50 mm, constante, ≥ Ø de saída da caleira", "valor": f"{n} × Ø{dtq} ({q_tq:.2f} L/s cada)", "ok": True})
+        ctl.append({"ref": f"{v.get('nome') or f'Vertente {k}'} — caleira", "exigencia": f"Q ≥ {q_tq:.2f} L/s com i ≥ 0,5 %", "valor": f"{cal[0]}: {cal[1]:.2f} L/s (i {inc:g} %)",
+                    "ok": inc >= 0.5 and cal[1] >= q_tq / (2 if v.get("descarga_central") else 1) - 1e-9})
+        ctl.append({"ref": f"{v.get('nome') or f'Vertente {k}'} — tubos de queda", "exigencia": "Ø ≥ 50 mm, capacidade ≥ caudal por tubo", "valor": f"{n} × Ø{dtq} ({q_tq:.2f} L/s cada)",
+                    "ok": _q_tubo_queda(DI_PVC[dtq]) >= q_tq - 1e-9})
     Qt = sum(r["Q"] for r in rows)
     col = None
     if rows:
-        i_col = max(0.005, float(p.get("inclinacao_coletor_pct") or 1.0) / 100)
-        for d in DIAM_PVC[4:]:
-            Di = DI_PVC[d] / 1000
-            Acs = math.pi * Di * Di / 4
-            if ks * Acs * (Di / 4) ** (2 / 3) * math.sqrt(i_col) * 1000 >= Qt:
-                col = d
-                break
-        col = col or 200
-        ctl.append({"ref": "Coletor predial de águas pluviais", "exigencia": "Ø ≥ 100 mm, inclinação 0,5 a 4 %, secção cheia", "valor": f"Ø{col} a {i_col * 100:g} % para {Qt:.2f} L/s",
-                    "ok": 0.5 <= i_col * 100 <= 4})
+        ic = float(p["inclinacao_coletor_pct"]) if p.get("inclinacao_coletor_pct") is not None else 1.0
+        i_col = max(0.001, ic / 100)
+        cap = lambda d: ks * math.pi * (DI_PVC[d] / 1000) ** 2 / 4 * (DI_PVC[d] / 4000) ** (2 / 3) * math.sqrt(i_col) * 1000
+        col = next((d for d in DIAM_PVC[4:] if cap(d) >= Qt), None)
+        cap_col = cap(col) if col else cap(200)
+        ctl.append({"ref": "Coletor predial de águas pluviais", "exigencia": "Ø ≥ 100 mm, inclinação 0,5 a 4 %, secção cheia", "valor": (f"Ø{col} a {ic:g} % para {Qt:.2f} L/s" if col else f"Ø200 insuficiente ({cap_col:.1f} L/s < {Qt:.2f} L/s): dividir em vários coletores ou aumentar a inclinação"),
+                    "ok": col is not None and 0.5 <= ic <= 4})
     return {"intensidade_mm_h": I, "vertentes": rows, "coletor": col, "caudal_total_l_s": Qt, "controles": ctl, "hipoteses": hyp}
 
 
@@ -131,11 +131,15 @@ def fossa_septica(p: dict) -> dict:
     solo = p.get("solo")
     dest = {}
     if solo:
-        taxa = TAXA_SOLO.get(solo, 0.0)
+        if solo not in TAXA_SOLO:
+            raise ValueError(f"solo desconhecido {solo!r} ({', '.join(TAXA_SOLO)})")
+        taxa = TAXA_SOLO[solo]
         if taxa <= 0:
             dest = {"solucao": "fossa estanque (vazamento periódico) ou filtro de areia drenado", "motivo": "solo pouco permeável"}
         elif p.get("nivel_freatico_m") is not None and float(p["nivel_freatico_m"]) < 2:
             dest = {"solucao": "aterro filtrante", "motivo": "nível freático a menos de 2 m"}
+        elif p.get("nivel_freatico_m") is not None and float(p["nivel_freatico_m"]) < 3:
+            dest = {"solucao": "aterro filtrante ou filtro de areia", "motivo": "nível freático a menos de 3 m (trincheiras desaconselhadas)"}
         else:
             area = q * 1000 / taxa
             larg = 0.6
@@ -157,21 +161,25 @@ def fossa_septica(p: dict) -> dict:
 
 def ventilacao(p: dict) -> dict:
     pd = float(p.get("pe_direito_m") or 2.6)
-    comp = p.get("compartimentos") or []
+    comp = [{**c, "tipo": (c.get("tipo") or "").strip().lower().replace(" ", "_")} for c in (p.get("compartimentos") or [])]
     if not comp:
         raise ValueError("indicar os compartimentos (tipo e área)")
+    if any(not c.get("area_m2") or float(c["area_m2"]) <= 0 for c in comp):
+        raise ValueError("cada compartimento precisa de uma área > 0")
     v_tot = sum(float(c["area_m2"]) * pd for c in comp)
     adm = sum(1.0 * float(c["area_m2"]) * pd for c in comp if c["tipo"] in ("sala", "quarto", "escritorio"))
     ext = sum(4.0 * float(c["area_m2"]) * pd for c in comp if c["tipo"] in ("cozinha", "instalacao_sanitaria", "lavandaria"))
     q_min = 0.5 * v_tot
-    q = max(q_min, ext)
+    q = max(q_min, ext, adm)
     grelhas = []
     for c in comp:
         if c["tipo"] in ("sala", "quarto", "escritorio"):
             qc = max(1.0 * float(c["area_m2"]) * pd, q * float(c["area_m2"]) / max(1e-9, sum(float(x["area_m2"]) for x in comp if x["tipo"] in ("sala", "quarto", "escritorio"))))
             grelhas.append((c.get("nome") or c["tipo"], math.ceil(qc / 25) * 25))
     soma = sum(g for _, g in grelhas)
-    ctl = [{"ref": "Portaria 138-I/2021 — taxa de renovação", "exigencia": "Rph ≥ 0,50 h⁻¹", "valor": f"{q / v_tot:.2f} h⁻¹ ({q:.0f} m³/h para {v_tot:.0f} m³)", "ok": q / v_tot >= 0.5 - 1e-9},
+    rph_proj = float(p["rph_projeto"]) if p.get("rph_projeto") is not None else q / v_tot
+    ctl = [{"ref": "Portaria 138-I/2021 — taxa de renovação", "exigencia": "Rph ≥ 0,50 h⁻¹", "valor": f"{rph_proj:.2f} h⁻¹ ({rph_proj * v_tot:.0f} m³/h para {v_tot:.0f} m³)"
+            + ("" if p.get("rph_projeto") is not None else " — caudal recomendado"), "ok": rph_proj >= 0.5 - 1e-9},
            {"ref": "Admissão de ar (grelhas autorreguláveis NP EN 13141-1)", "exigencia": f"Σ admissão ≥ caudal extraído ({q:.0f} m³/h)", "valor": f"Σ = {soma} m³/h", "ok": soma >= q - 1e-9}]
     return {"volume_m3": v_tot, "caudal_m3h": q, "rph": q / v_tot, "admissao_min_m3h": adm, "extracao_m3h": ext, "grelhas": grelhas, "controles": ctl,
             "hipoteses": ["NP 1037-1: admissão ≈ 1 renovação/h nos compartimentos principais e extração ≈ 4 renovações/h na cozinha e instalações sanitárias (ordem de grandeza)",

@@ -100,6 +100,10 @@ CLASSES = [(0.25, "A+"), (0.50, "A"), (0.75, "B"), (1.00, "B-"), (1.50, "C"), (2
 UMAX = {"parede": (0.50, 0.40, 0.35), "cobertura": (0.40, 0.35, 0.30), "pavimento": (0.40, 0.35, 0.30)}
 UMAX_INT = {"parede": (2.00, 2.00, 1.90), "cobertura": (1.65, 1.30, 1.20), "pavimento": (1.65, 1.30, 1.20)}
 UW_MAX = (2.80, 2.40, 2.20)
+UMAX_ACORES = {"parede": (1.75, 1.60, 1.45), "cobertura": (1.25, 1.00, 0.90), "pavimento": (1.25, 1.00, 0.90)}
+UW_MAX_ACORES = (2.90, 2.60, 2.40)
+UREF_RA = {"parede": (0.70, 0.60, 0.45), "cobertura": (0.45, 0.40, 0.35), "pavimento": (0.45, 0.40, 0.35), "envidracado": (2.80, 2.40, 2.20)}
+UREF_INT_RA = {"parede": (0.90, 0.80, 0.70), "cobertura": (0.70, 0.70, 0.60), "pavimento": (0.70, 0.70, 0.60)}
 UREF = {"parede": (0.50, 0.40, 0.35), "cobertura": (0.40, 0.35, 0.30), "pavimento": (0.40, 0.35, 0.30), "envidracado": (2.80, 2.40, 2.20)}
 UREF_INT = {"parede": (0.80, 0.70, 0.60), "cobertura": (0.60, 0.60, 0.50), "pavimento": (0.60, 0.60, 0.50)}
 BTR = {"exterior": 1.0, "enu": 0.8, "enu_ventilado": 1.0, "adjacente": 0.6, "solo": 1.0}
@@ -114,7 +118,11 @@ U_DEFEITO = {   # existentes sem caracterização (ordens de grandeza por época
 
 
 def clima(concelho: str | None = None, nuts: str | None = None, altitude_m: float | None = None) -> dict:
-    n = nuts if nuts in NUTS else CONCELHOS.get(_norm(concelho or ""))
+    nuts_n = {_norm(k): k for k in NUTS}
+    n = nuts if nuts in NUTS else nuts_n.get(_norm(nuts or "")) or CONCELHOS.get(_norm(concelho or ""))
+    aviso = None
+    if not nuts and _norm(concelho or "") in ("lagoa", "calheta"):
+        aviso = f"concelho homónimo « {concelho} »: considerado {n}; indicar « {concelho} (Açores) » ou a NUTS III se for outro"
     if not n:
         raise ValueError("concelho (ou NUTS III) desconhecido — indique o concelho, p. ex. 'Porto', 'Évora'")
     zr, M, aM, GD, aGD, ti, ati, gsul, tv, atv, isol = NUTS[n]
@@ -124,7 +132,8 @@ def clima(concelho: str | None = None, nuts: str | None = None, altitude_m: floa
     zi = "I1" if GD <= 1300 else "I2" if GD <= 1800 else "I3"
     zv = "V1" if tv <= 20 else "V2" if tv <= 22 else "V3"
     return {"nuts": n, "altitude_m": z, "M": M, "GD": GD, "theta_i": ti + ati * dz, "Gsul": gsul, "theta_v": tv, "Isol": dict(zip(ORIENT, isol)),
-            "zona_i": zi, "zona_v": zv, "ri": int(zi[1]) - 1, "regiao": "acores" if n == "RA Açores" else "continente"}
+            "zona_i": zi, "zona_v": zv, "aviso": aviso, "ri": int(zi[1]) - 1,
+            "regiao": "acores" if n == "RA Açores" else "madeira" if n == "RA Madeira" else "continente"}
 
 
 def _eta(gamma: float, a: float) -> float:
@@ -151,8 +160,10 @@ def _envolvente_tipo(p: dict, hyp: list) -> list:
         U = U_DEFEITO[_epoca(ano)]
     else:   # obra nova / grande renovação : soluções correntes que cumprem a Portaria 138-I (≈ 85 % do Umáx)
         ri = clima(p.get("concelho"), p.get("nuts"), p.get("altitude_m"))["ri"]
-        U = {k: round(0.85 * v[ri], 2) for k, v in UMAX.items()}
-        U["envidracado"] = round(0.85 * UW_MAX[ri], 2)
+        cl = clima(p.get("concelho"), p.get("nuts"), p.get("altitude_m"))
+        um, uw = (UMAX_ACORES, UW_MAX_ACORES) if cl["regiao"] == "acores" else (UMAX, UW_MAX)
+        U = {k: round(0.85 * v[ri], 2) for k, v in um.items()}
+        U["envidracado"] = round(0.85 * uw[ri], 2)
     piso = int(p.get("pisos") or (2 if (tipo == "moradia" and ap > 120) else 1))
     impl = ap / piso
     per = 4 * math.sqrt(impl)
@@ -187,12 +198,18 @@ def calcular(p: dict) -> dict:
     ano = int(p.get("ano_construcao") or (2026 if obra == "nova" else 1980))
     c = clima(p.get("concelho"), p.get("nuts"), p.get("altitude_m"))
     ri = c["ri"]
+    ra = c["regiao"] != "continente"
+    umax_t, uw_max = (UMAX_ACORES, UW_MAX_ACORES) if c["regiao"] == "acores" else (UMAX, UW_MAX)
+    uref_t, uref_int_t = (UREF_RA, UREF_INT_RA) if ra else (UREF, UREF_INT)
+    if c.get("aviso"):
+        hyp.append(c["aviso"])
     env = p.get("envolvente") or _envolvente_tipo(p, hyp)
     inercia = p.get("inercia") or ("media" if tipo == "moradia" or ano < 1990 else "forte")
     a = A_INERCIA[inercia]
     # ---- transmissão
-    Htr = Htr_ref = 0.0
+    Htr = Htr_ref = Htr_opaco = 0.0
     aw_tot = sum(float(e["area_m2"]) for e in env if e["tipo"] == "envidracado")
+    f_ref_vidro = min(1.0, 0.20 * ap / aw_tot) if aw_tot else 1.0      # referência : envidraçados limitados a 20 % de Ap
     ctl = []
     for e in env:
         t = e["tipo"]
@@ -200,22 +217,30 @@ def calcular(p: dict) -> dict:
         fr = e.get("fronteira") or "exterior"
         btr = float(e["btr"]) if e.get("btr") is not None else BTR.get(fr, 1.0)
         U = float(e["U"]) if e.get("U") is not None else U_DEFEITO[_epoca(ano)].get(t, 2.5)
+        if A < 0:
+            raise ValueError(f"área negativa no elemento {t}: reduzir a área envidraçada ou indicar a envolvente")
         Htr += btr * U * A
+        if t not in ("envidracado", "porta"):
+            Htr_opaco += btr * U * A
         # referência
         if t == "envidracado":
-            uref = UREF["envidracado"][ri]
-        elif t in UREF:
-            uref = (UREF_INT if (fr in ("enu", "adjacente") and btr <= 0.7) else UREF)[t][ri]
+            uref = uref_t["envidracado"][ri]
+        elif t in uref_t:
+            uref = (uref_int_t if (fr in ("enu", "adjacente") and btr <= 0.7) else uref_t)[t][ri]
         else:
             uref = U
-        Htr_ref += btr * uref * A
+        if t == "envidracado":
+            A_ref = A * f_ref_vidro
+            Htr_ref += btr * uref * A_ref + btr * uref_t["parede"][ri] * (A - A_ref)
+        else:
+            Htr_ref += btr * uref * A
         # requisitos (obra nova / grande renovação, elementos novos ou renovados)
         if obra != "existente":
             if t == "envidracado":
-                ctl.append({"ref": f"Uw,máx vão envidraçado {e.get('orientacao') or ''} (Portaria 138-I)", "exigencia": f"Uw ≤ {UW_MAX[ri]:.2f}",
-                            "valor": f"{U:.2f}", "ok": U <= UW_MAX[ri] + 1e-9})
-            elif t in UMAX:
-                lim = (UMAX_INT if (fr in ("enu", "adjacente") and btr <= 0.7) else UMAX)[t][ri]
+                ctl.append({"ref": f"Uw,máx vão envidraçado {e.get('orientacao') or ''} (Portaria 138-I)", "exigencia": f"Uw ≤ {uw_max[ri]:.2f}",
+                            "valor": f"{U:.2f}", "ok": U <= uw_max[ri] + 1e-9})
+            elif t in umax_t:
+                lim = (UMAX_INT if (fr in ("enu", "adjacente") and btr <= 0.7) else umax_t)[t][ri]
                 ctl.append({"ref": f"Umáx {t} ({fr}) — Portaria 138-I", "exigencia": f"U ≤ {lim:.2f} W/(m².°C)", "valor": f"{U:.2f}", "ok": U <= lim + 1e-9})
     # pontes térmicas lineares
     if p.get("pontes_termicas_w_c") is not None:
@@ -223,13 +248,14 @@ def calcular(p: dict) -> dict:
     else:
         hp = (0.35 if obra != "existente" else 0.0) * ap      # existentes : majoração de 35 % do U (aplicada abaixo)
         if obra == "existente":
-            Htr *= 1.35 if not p.get("envolvente") else 1.0
+            if not p.get("envolvente"):
+                Htr += 0.35 * Htr_opaco
             hyp.append("existente: pontes térmicas planas e lineares consideradas por majoração de 35 % do U (Despacho 12935-B/2023)" if not p.get("envolvente")
                        else "pontes térmicas lineares não indicadas (desprezadas)")
         else:
             hyp.append("pontes térmicas lineares: Σψ·B ≈ 0,35 W/°C por m² de área útil (soluções correntes com isolamento contínuo)")
     Htr += hp
-    Htr_ref += 0.50 * 4 * math.sqrt(ap) * 1.5 + 0.20 * 4.5 * aw_tot / 1.8      # ψref fachada/pavimentos/cobertura 0,50 + caixilharia 0,20
+    Htr_ref += 0.50 * 4 * math.sqrt(ap) * 1.5 + 0.20 * 4.5 * min(aw_tot, 0.2 * ap) / 1.8      # ψref fachada/pavimentos/cobertura 0,50 + caixilharia 0,20
     # ---- ventilação
     rph = float(p.get("rph") or (0.6 if obra != "existente" else (1.0 if ano < 1990 else 0.7)))
     if not p.get("rph"):
@@ -252,7 +278,7 @@ def calcular(p: dict) -> dict:
         fs = float(e.get("Fs") or 0.9)
         fg = float(e.get("Fg") or 0.65)
         g = float(e.get("g") or 0.75) * 0.9
-        Qsol += c["Gsul"] * XJ.get(o, 0.56) * max(0.27, fs) * float(e["area_m2"]) * fg * g * M
+        Qsol += c["Gsul"] * max(0.27, XJ.get(o, 0.56) * fs) * float(e["area_m2"]) * fg * g * M
     gamma = (Qint + Qsol) / (Qtr + Qve)
     eta_i = _eta(gamma, a)
     Nic = max(0.0, (Qtr + Qve - eta_i * (Qint + Qsol)) / ap)
@@ -273,7 +299,7 @@ def calcular(p: dict) -> dict:
         if e["tipo"] == "envidracado":
             fmv = {"N": 0.9, "NE": 0.6, "NO": 0.6, "E": 0.4, "O": 0.4, "SE": 0.6, "SO": 0.6, "S": 0.7, "H": 0.0}.get(o, 0.6)
             gt = float(e.get("g") or 0.75)
-            g_disp = float(e.get("g_dispositivo") or (0.07 if e.get("estore", True) else gt))
+            g_disp = float(e.get("g_dispositivo") or (0.07 if e.get("estore") is not False else gt))
             gv = fmv * g_disp + (1 - fmv) * gt * 0.85
             Qsol_v += I * float(e.get("Fs_v") or 0.9) * float(e["area_m2"]) * float(e.get("Fg") or 0.65) * gv
         elif e["tipo"] in ("parede", "cobertura") and (e.get("fronteira") or "exterior") == "exterior":
@@ -281,10 +307,14 @@ def calcular(p: dict) -> dict:
     Qg_v = Qint_v + Qsol_v
     Ql_v = Qtr_v + Qve_v
     gv_ = Qg_v / Ql_v if Ql_v > 0 else -1
-    eta_v = _eta(gv_, a) if Ql_v > 0 else 0.0
-    Nvc = max(0.0, (1 - eta_v) * Qg_v / ap)
-    eta_vr = 0.52 + 0.22 * math.log(dth) if dth > 1 else 0.45 if dth > 0 else 0.30
-    Nv = (1 - eta_vr) * (11.712 + 0.086 * c["Isol"]["H"])
+    if Ql_v > 0:
+        eta_v = _eta(gv_, a)
+        Nvc = max(0.0, (1 - eta_v) * Qg_v / ap)
+    else:   # θext,v ≥ 25 °C : a envolvente também ganha calor (η = 1/γ → Nvc = (Qg − Ql)/Ap)
+        eta_v = 0.0
+        Nvc = max(0.0, (Qg_v - Ql_v) / ap)
+    eta_vr = min(0.90, 0.52 + 0.22 * math.log(dth)) if dth > 1 else 0.45 if dth > 0 else 0.30
+    Nv = max(2.0, (1 - eta_vr) * (11.712 + 0.086 * c["Isol"]["H"]))
     # ---- AQS
     tip = int(p.get("tipologia") if p.get("tipologia") is not None else max(1, round(ap / 30)))
     n_oc = OCUPANTES.get(tip, tip)
@@ -323,14 +353,14 @@ def calcular(p: dict) -> dict:
     if obra == "nova":
         lim_i = (0.75, 0.85, 0.90)[ri]
         ctl += [{"ref": "Nic/Ni (Despacho 6476-E, NZEB)", "exigencia": f"≤ {lim_i:.2f}", "valor": f"{Nic / Ni:.2f}", "ok": Nic / Ni <= lim_i + 1e-9},
-                {"ref": "Nvc/Nv", "exigencia": "≤ 1,00", "valor": f"{Nvc / Nv:.2f}" if Nv else "—", "ok": (Nvc <= Nv) if Nv else None},
+                {"ref": "Nvc/Nv", "exigencia": "≤ 1,00", "valor": f"{Nvc / Nv:.2f}", "ok": (Nvc <= Nv) if eta_vr < 0.9 else None},
                 {"ref": "Classe energética mínima (NZEB)", "exigencia": "≥ A (RNt ≤ 0,50)", "valor": f"{classe} (RNt {R:.2f})", "ok": R <= 0.50 + 1e-9},
                 {"ref": "Renovável (RenHab)", "exigencia": "≥ 0,50 da energia primária para AQS", "valor": f"{renhab:.2f}", "ok": renhab >= 0.5 - 1e-9}]
     elif obra == "grande_renovacao":
         lim = None if ano < 1960 else 1.25 if ano <= 1990 else 1.15
         if lim:
             ctl += [{"ref": "Nic/Ni (grande renovação)", "exigencia": f"≤ {lim:.2f}", "valor": f"{Nic / Ni:.2f}", "ok": Nic / Ni <= lim + 1e-9},
-                    {"ref": "Nvc/Nv (grande renovação)", "exigencia": f"≤ {lim:.2f}", "valor": f"{Nvc / Nv:.2f}" if Nv else "—", "ok": (Nvc / Nv <= lim) if Nv else None}]
+                    {"ref": "Nvc/Nv (grande renovação)", "exigencia": f"≤ {lim:.2f}", "valor": f"{Nvc / Nv:.2f}", "ok": (Nvc / Nv <= lim) if eta_vr < 0.9 else None}]
         ctl.append({"ref": "Classe energética mínima (grande renovação)", "exigencia": "≥ C (RNt ≤ 1,50)", "valor": f"{classe} (RNt {R:.2f})", "ok": R <= 1.50 + 1e-9})
     if obra != "existente":
         ctl.append({"ref": "Ventilação (Manual SCE 2023 §9.2.1)", "exigencia": "Rph ≥ 0,50 h⁻¹", "valor": f"{rph:g} h⁻¹", "ok": rph >= 0.5 - 1e-9})
