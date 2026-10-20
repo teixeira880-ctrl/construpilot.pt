@@ -192,14 +192,14 @@ def note(params: dict) -> dict:
     blocs, hyp, sous, out, n = [("p", "Pré-dimensionamento indicativo — não substitui o projeto da especialidade nem o parecer da entidade gestora / regulamento municipal.")], [], [], {}, 1
     def ctl(lst):
         return [{"ref": c["ref"], "exigence": c["exigencia"], "valeur": c["valor"], "ok": c["ok"]} for c in lst]
-    if params.get("aguas_pluviais"):
+    if params.get("aguas_pluviais") is not None:
         r = aguas_pluviais(params["aguas_pluviais"])
         out["aguas_pluviais"] = r
         rows = [[v["vertente"], f(v["A"], 0), f"{v['Q']:.2f}", v["caleira"], f"{v['tubos_queda']} × Ø{v['phi']}"] for v in r["vertentes"]]
         blocs += [("h2", f"{n}. Águas pluviais (DR 23/95)"), ("table", ["Vertente", "m²", "L/s", "Caleira", "Tubos de queda"], rows, [35 * W, 18 * W, 18 * W, 45 * W, 35 * W]),
                   ("controls", ctl(r["controles"]))]
         hyp += r["hipoteses"]; sous.append("águas pluviais"); n += 1
-    if params.get("fossa_septica"):
+    if params.get("fossa_septica") is not None:
         r = fossa_septica(params["fossa_septica"])
         out["fossa_septica"] = r
         g, d = r["geometria"], r["destino"]
@@ -211,7 +211,7 @@ def note(params: dict) -> dict:
             txt += f" Destino final: {d['solucao']} ({d['motivo']})."
         blocs += [("h2", f"{n}. Fossa séptica e destino final"), ("p", txt), ("controls", ctl(r["controles"]))]
         hyp += r["hipoteses"]; sous.append("fossa séptica"); n += 1
-    if params.get("ventilacao"):
+    if params.get("ventilacao") is not None:
         r = ventilacao(params["ventilacao"])
         out["ventilacao"] = r
         blocs += [("h2", f"{n}. Ventilação"), ("p", f"Caudal {r['caudal_m3h']:.0f} m³/h (Rph {r['rph']:.2f} h⁻¹). Grelhas de admissão: " + ", ".join(f"{a} {b} m³/h" for a, b in r["grelhas"]) + "."),

@@ -62,7 +62,10 @@ def _productible(pays: str, cp: str | None) -> tuple[float, str]:
         if k not in PROD_PT:
             return 1500.0, "Portugal (média nacional, código postal não indicado)"
         return float(PROD_PT[k]), REGION_PT[k]
-    from .re2020 import DEPT_ZONE
+    try:
+        from .re2020 import DEPT_ZONE
+    except ImportError:
+        raise ValueError("versão portuguesa: apenas instalações em Portugal (pays = pt)")
     d = climat.departement(cp)
     z = DEPT_ZONE.get(d or "")
     if not z:

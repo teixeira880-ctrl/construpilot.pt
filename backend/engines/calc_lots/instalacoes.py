@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 
 RHO, LAMBDA = 0.023, 0.08e-3
+CALIBRES = [(16, 2.5), (20, 4.0), (32, 6.0), (40, 10.0), (50, 16.0), (63, 16.0)]   # disjuntor A → secção Cu mm² (instalação embebida, indicativo)
 ESCALOES = [3.45, 4.6, 5.75, 6.9, 10.35, 13.8, 17.25, 20.7, 27.6, 34.5, 41.4]
 DIVISOES = {"sala": "Sala", "quarto": "Quarto", "cozinha": "Cozinha", "casa_de_banho": "Casa de banho", "lavandaria": "Lavandaria",
             "corredor": "Corredor / vestíbulo", "escritorio": "Escritório", "arrumos": "Arrecadação / garagem"}
@@ -74,15 +75,20 @@ def eletricidade(p: dict) -> dict:
         add(f"Climatização {i + 1}", 2.5, 16, min(5, n_clim - 5 * i), diff="A")
     if eq.get("bomba_calor_kw"):
         pw = float(eq["bomba_calor_kw"]) * 1000
-        ib = pw / 230
-        cal, s = (16, 2.5) if ib <= 16 else (20, 4.0) if ib <= 20 else (32, 6.0) if ib <= 32 else (40, 10.0)
-        add("Bomba de calor", s, cal, p_w=pw, diff="A")
+        tri_bc = pw / 230 > 32
+        ib = pw / (math.sqrt(3) * 400) if tri_bc else pw / 230
+        cal, s = next(((c, sc) for c, sc in CALIBRES if c >= ib), (None, None))
+        if cal is None:
+            raise ValueError(f"bomba de calor de {pw / 1000:g} kW ({ib:.0f} A) fora do âmbito do pré-dimensionamento (> 63 A)")
+        add("Bomba de calor" + (" trifásica" if tri_bc else ""), s, cal, p_w=pw, diff="A", b=3 if tri_bc else 2)
     if eq.get("carregamento_ve_kw"):
         pw = float(eq["carregamento_ve_kw"]) * 1000
         tri = pw > 7400
         ib = pw / (230 if not tri else math.sqrt(3) * 400)
-        cal = next(c for c in (16, 20, 32, 40) if c >= ib)
-        add("Carregamento de veículo elétrico", {16: 2.5, 20: 4.0, 32: 6.0, 40: 10.0}[cal], cal, p_w=pw, diff="B" if tri else "A", b=3 if tri else 2)
+        cal, s = next(((c, sc) for c, sc in CALIBRES if c >= ib), (None, None))
+        if cal is None:
+            raise ValueError(f"posto de carregamento de {pw / 1000:g} kW ({ib:.0f} A) fora do âmbito do pré-dimensionamento (> 63 A)")
+        add("Carregamento de veículo elétrico", s, cal, p_w=pw, diff="B" if tri else "A", b=3 if tri else 2)
     # potência
     area = sum(float(d.get("area_m2") or 0) for d in div)
     pot = 25 * area + 0.5 * sum(c["p_w"] or 0 for c in circ if c["nome"].startswith(("Placa", "Forno", "Máquina"))) + \

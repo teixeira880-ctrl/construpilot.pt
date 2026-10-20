@@ -61,8 +61,8 @@ def verifier(p: dict) -> dict:
             ok, txt = _rampe_fr(g("pente_rampe_pct"), L)
             ref = "Pente du cheminement / plan incliné"
         if L != -1.0:
-            ctl.append(_c(ref, txt, f"{g('pente_rampe_pct'):g} % sur {L:g} m", ok))
-        L = max(L, 0.0)
+            ctl.append(_c(ref, txt, f"{g('pente_rampe_pct'):g} %" + (f" sur {L:g} m" if L is not None else ""), ok))
+        L = max(L if L is not None else 0.0, 0.0)
         if not pt and g("pente_rampe_pct") >= 4 and L > 10:
             ctl.append(_c("Paliers de repos", "tous les 10 m si pente ≥ 4 % (1,20 × 1,40 m)", "à prévoir", None))
         if pt and g("pente_rampe_pct") > 6:
