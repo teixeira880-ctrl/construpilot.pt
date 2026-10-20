@@ -24,6 +24,7 @@ _AZ = [0, 45, 90, 135, 180]
 _TI = [0, 30, 60, 90]
 _F = [[0.93, 1.00, 0.91, 0.68], [0.93, 0.96, 0.88, 0.66], [0.93, 0.90, 0.78, 0.55], [0.93, 0.75, 0.58, 0.40], [0.93, 0.58, 0.40, 0.28]]   # table usuelle (Hespul / ADEME)
 
+PERFIS_PT = {"absent_journee": "ausente de dia", "mixte": "misto", "present_journee": "presente de dia", "teletravail": "teletrabalho"}
 # Tarifs indicatifs (à mettre à jour) — sources et dates dans TARIFS["source"]
 TARIFS = {
     "fr": {"achat_kwh": 0.2001, "surplus_kwh": {100: 0.011}, "prime_kwc": {}, "cout_kwc": {3: 2300, 6: 2000, 9: 1850, 36: 1500},
@@ -105,7 +106,7 @@ def calculer(p: dict) -> dict:
             mod["surface_m2"] = fourni.get("surface_m2", MODULE_DEFAUT["surface_m2"] * k)
         hyp.append("fiche module incomplète : caractéristiques électriques manquantes déduites d'un module standard")
     if not p.get("module"):
-        hyp.append(f"módulo standard {mod['wc']:g} Wc (Voc {mod['voc']:g} V, Isc {mod['isc']:g} A, Vmp {mod['vmp']:g} V) : substituir pela ficha técnica")
+        hyp.append(f"módulo standard {mod['wc']:g} Wp (Voc {mod['voc']:g} V, Isc {mod['isc']:g} A, Vmp {mod['vmp']:g} V): substituir pela ficha técnica")
     if p.get("puissance_kwc"):
         n_mod = max(1, round(float(p["puissance_kwc"]) * 1000 / mod["wc"]))
     elif p.get("surface_toiture_m2"):
@@ -157,16 +158,16 @@ def calculer(p: dict) -> dict:
     n_ch = max(1, math.ceil(n_mod / n_max))
     mods_par_ch = [n_mod // n_ch + (1 if i < n_mod % n_ch else 0) for i in range(n_ch)]
     ctl = []
-    ctl.append({"ref": "Tensão a frio (RTIEBT secção 712 / IEC 62548)", "exigence": f"n × Voc({t_min:g} °C) ≤ {vmax} V (onduleur)",
+    ctl.append({"ref": "Tensão a frio (RTIEBT secção 712 / IEC 62548)", "exigence": f"n × Voc({t_min:g} °C) ≤ {vmax} V (inversor)",
                 "valeur": f"{max(mods_par_ch)} × {voc_froid:.1f} = {max(mods_par_ch) * voc_froid:.0f} V", "ok": max(mods_par_ch) * voc_froid <= vmax})
     ctl.append({"ref": "Gama MPPT a quente", "exigence": f"n × Vmp(70 °C) ≥ {vmppt_min} V", "valeur": f"{min(mods_par_ch)} × {vmp_chaud:.1f} = {min(mods_par_ch) * vmp_chaud:.0f} V",
                 "ok": min(mods_par_ch) * vmp_chaud >= vmppt_min,
                 "note": "poucos módulos por fileira: agrupar numa só fileira ou usar microinversores" if min(mods_par_ch) * vmp_chaud < vmppt_min else None})
     ch_par_mppt = math.ceil(n_ch / nmppt)
-    ctl.append({"ref": "Corrente por entrada MPPT", "exigence": f"{ch_par_mppt} fileira(s): Σ Imp ≤ {imax} A et Σ Isc ≤ {iscmax} A (ficha do inversor)",
+    ctl.append({"ref": "Corrente por entrada MPPT", "exigence": f"{ch_par_mppt} fileira(s): Σ Imp ≤ {imax} A e Σ Isc ≤ {iscmax} A (ficha do inversor)",
                 "valeur": f"Imp {ch_par_mppt * mod['imp']:.1f} A · Isc {ch_par_mppt * mod['isc']:.1f} A",
                 "ok": ch_par_mppt * mod["imp"] <= imax + 1e-9 and ch_par_mppt * mod["isc"] <= iscmax + 1e-9})
-    ctl.append({"ref": "Rácio DC/AC", "exigence": "0,9 a 1,3", "valeur": f"{kwc:.2f} kWc / {kva:g} kVA = {kwc / kva:.2f}", "ok": 0.9 <= kwc / kva <= 1.3})
+    ctl.append({"ref": "Rácio DC/AC", "exigence": "0,9 a 1,3", "valeur": f"{kwc:.2f} kWp / {kva:g} kVA = {kwc / kva:.2f}", "ok": 0.9 <= kwc / kva <= 1.3})
     # câbles DC (longueur aller par chaîne)
     l_dc = float(p.get("longueur_dc_m") or 20)
     v_ch = min(mods_par_ch) * mod["vmp"]
@@ -190,9 +191,12 @@ def calculer(p: dict) -> dict:
     ctl.append({"ref": "Linha AC inversor → quadro", "exigence": "ΔU ≤ 1 % recomendado, proteção por disjuntor dedicado",
                 "valeur": f"{phase} {i_ac:.1f} A → disjuntor {cal} A, {s_ac[0]:g} mm², ΔU {s_ac[1]:.2f} %", "ok": s_ac[1] <= 1.0 + 1e-9})
     if mono_impose and kwc / kva > 1.3:
-        ctl.append({"ref": "Raccordement monophasé" if pays == "pt" else "Raccordement Enedis monophasé",
-                    "exigence": "onduleur monophasé ≤ 6 kVA : au-delà, raccordement triphasé ou puissance crête réduite",
-                    "valeur": f"{kwc:.1f} kWc pour {kva:g} kVA", "ok": False})
+        if pays == "pt":
+            ctl.append({"ref": "Ligação monofásica", "exigence": "inversor monofásico ≤ 6 kVA: acima, ligação trifásica ou potência de pico reduzida",
+                        "valeur": f"{kwc:.1f} kWp para {kva:g} kVA", "ok": False})
+        else:
+            ctl.append({"ref": "Raccordement Enedis monophasé", "exigence": "onduleur monophasé ≤ 6 kVA : au-delà, raccordement triphasé ou puissance crête réduite",
+                        "valeur": f"{kwc:.1f} kWc pour {kva:g} kVA", "ok": False})
     # charge en toiture
     surf = n_mod * mod["surface_m2"]
     charge = (mod["masse_kg"] / mod["surface_m2"] + 3) * 9.81 / 1000
@@ -208,7 +212,7 @@ def calculer(p: dict) -> dict:
     retour = (cout - prime) / gain_an if gain_an > 0 else None
     gain_25 = sum((auto * achat * 1.02 ** k + surplus * rachat) * (1 - 0.005) ** k for k in range(25)) - (cout - prime) - 1200   # onduleur remplacé une fois
     hyp += [f"produtividade {prod_sp:.0f} kWh/kWp.ano ({lieu}), fator de orientação {f_or:.2f} (azimute {az:g}° / sul, inclinação {inc:g}°), sombreamento {ombrage * 100:.0f} %",
-            f"autoconsumo estimado {scr * 100:.0f} % da produção (perfil {profil}{', bateria %g kWh' % batt if batt else ''})",
+            f"autoconsumo estimado {scr * 100:.0f} % da produção (perfil {PERFIS_PT.get(profil, profil)}{', bateria %g kWh' % batt if batt else ''})",
             f"preço da eletricidade {achat:.4f} €/kWh, excedente {rachat:.4f} €/kWh, custo {cout:.0f} € — {t['source']}",
             f"ganho a 25 anos: eletricidade +2 %/ano, degradação 0,5 %/ano, substituição do inversor 1 200 €",
             t["tva"]]
@@ -240,8 +244,37 @@ def note(p: dict) -> dict:
             ["Cabos", f"DC {r['cable_dc_mm2']} mm² · AC {r['cable_ac_mm2']:g} mm² · disjuntor {r['disjoncteur_ac_a']} A"],
             ["Poupança anual", f"{f(e['gain_annuel'])} €"], ["Custo estimado", f"{f(e['cout'])} €"],
             ["Retorno do investimento", f"{e['retour_ans']:.1f} anos" if e["retour_ans"] else "—"], ["Ganho líquido a 25 anos", f"{f(e['gain_25_ans'])} €"]]
-    blocs = [("p", "Pré-dimensionamento indicativo — a confirmar pelo instalador (estudo de sombreamento, fichas técnicas dos equipamentos, estado da cobertura)."),
+    from . import graficos as G
+    prof = [0.045, 0.055, 0.08, 0.095, 0.11, 0.115, 0.12, 0.11, 0.09, 0.07, 0.055, 0.045]
+    sp = sum(prof)
+    cons_p = [0.11, 0.10, 0.09, 0.08, 0.07, 0.065, 0.065, 0.065, 0.07, 0.08, 0.095, 0.11]
+    sc_ = sum(cons_p)
+    mois = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+    prod_m = [r["production_kwh"] * x / sp for x in prof]
+    auto_m = [min(pm * r["taux_autoconsommation"] * (1.15 if i in (0, 1, 10, 11) else 0.95), pm, r["consommation_kwh"] * c / sc_) for i, (pm, c) in enumerate(zip(prod_m, cons_p))]
+    k_auto = r["autoconsommation_kwh"] / (sum(auto_m) or 1)
+    auto_m = [min(a * k_auto, pm) for a, pm in zip(auto_m, prod_m)]
+    g1 = G.colonnes(mois, [("Autoconsumido", auto_m), ("Injetado na rede", [pm - a for pm, a in zip(prod_m, auto_m)])], "Produção mensal estimada", "kWh", empile=True,
+                    ligne=("Consumo", [r["consommation_kwh"] * c / sc_ for c in cons_p]) if r["consommation_kwh"] else None)
+    inv = e["cout"] - e["prime"]
+    yrs = list(range(0, 26))
+    cum, acc = [], -inv
+    for k in yrs:
+        cum.append(acc)
+        acc += (r["autoconsommation_kwh"] * e["prix_achat"] * 1.02 ** k + r["surplus_kwh"] * e["prix_surplus"]) * (1 - 0.005) ** k - (1200 if k == 11 else 0)
+    marq = [(e["retour_ans"], 0.0, f"retorno {e['retour_ans']:.1f} anos".replace(".", ","))] if e["retour_ans"] and e["retour_ans"] <= 25 else []
+    kp = [{"label": "Potência de pico", "value": f"{r['kwc']:.2f}".replace(".", ","), "unit": "kWp"},
+          {"label": "Produção anual", "value": f"{f(r['production_kwh'])}", "unit": "kWh"},
+          {"label": "Taxa de autoconsumo", "value": f"{r['taux_autoconsommation'] * 100:.0f}", "unit": "%"},
+          {"label": "Retorno do investimento", "value": f"{e['retour_ans']:.1f}".replace(".", ",") if e["retour_ans"] else "—", "unit": "anos"}]
+    blocs = [("kpis", kp), ("p", "Pré-dimensionamento indicativo — a confirmar pelo instalador (estudo de sombreamento, fichas técnicas dos equipamentos, estado da cobertura)."),
              ("h2", "1. Síntese"), ("table", ["Grandeza", "Valor"], rows, [50 * W, 125 * W]),
+             ("chart", g1, "Repartição mensal segundo um perfil de radiação típico; o autoconsumo mensal é indicativo (o total anual é o calculado)."),
+             ("chart", G.cote_a_cote(G.donut([("Autoconsumido", r["autoconsommation_kwh"], G.SERIES[2]), ("Injetado na rede", r["surplus_kwh"], G.SERIES[3])],
+                                             "Destino da produção", f"{f(r['production_kwh'])}", "kWh/ano"),
+                                     G.courbes(yrs, [("Tesouraria acumulada", cum, G.SERIES[2])], "Rentabilidade a 25 anos", "€", w=86 * G.mm, h=52 * G.mm,
+                                               xlab="anos", marques=marq, labels_x=[(v, str(v)) for v in (0, 5, 10, 15, 20, 25)])),
+              "Tesouraria acumulada: investimento inicial, poupança anual (eletricidade +2 %/ano, degradação 0,5 %/ano) e substituição do inversor no 12.º ano."),
              ("h2", "2. Verificações elétricas e estruturais"), ("controls", r["controles"]),
              ("h2", "3. Proteções"), ("hyp", r["protections"])]
     titre = "Pré-dimensionamento fotovoltaico"

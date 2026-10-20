@@ -123,6 +123,8 @@ DISPOSITIVOS = {   # caudal instantâneo (L/s), água quente, descarga (L/min), 
     "lavatorio": (0.10, True, 30, 40), "bide": (0.10, True, 30, 40), "banheira": (0.25, True, 60, 40), "chuveiro": (0.15, True, 30, 40),
     "autoclismo": (0.10, False, 90, 90), "lava_loica": (0.20, True, 30, 50), "maquina_lavar_loica": (0.15, False, 60, 50),
     "maquina_lavar_roupa": (0.20, False, 60, 50), "tanque": (0.20, True, 60, 50), "torneira_exterior": (0.30, False, 0, 0)}
+DISP_PT = {"lavatorio": "Lavatório", "bide": "Bidé", "banheira": "Banheira", "chuveiro": "Chuveiro", "autoclismo": "Autoclismo", "lava_loica": "Lava-loiça",
+           "maquina_lavar_loica": "Máquina de lavar loiça", "maquina_lavar_roupa": "Máquina de lavar roupa", "tanque": "Tanque", "torneira_exterior": "Torneira exterior"}
 TUBOS_PT = [(16, 11.6), (20, 15.0), (25, 19.0), (32, 25.0), (40, 32.0), (50, 40.0)]    # PEX/multicamada : Ø nominal, Ø interior (mm)
 
 
@@ -187,8 +189,10 @@ def canalizacao(p: dict) -> dict:
 
 
 def note(params: dict) -> dict:
+    from . import graficos as G
     from . import notes
     f, W = notes._f, notes.W
+    kp = []
     blocs, hip, out = [("p", "Pré-dimensionamento indicativo — não substitui os projetos de especialidade (eletricidade, ITED, águas e esgotos).")], [], {}
     conv = lambda lst: [{"ref": c["ref"], "exigence": c["exigencia"], "valeur": c["valor"], "ok": c["ok"], "note": c.get("note")} for c in lst]
     n = 1
@@ -199,9 +203,14 @@ def note(params: dict) -> dict:
         blocs += [("h2", f"{n}. Eletricidade (RTIEBT)"),
                   ("table", ["Divisão", "Tomadas", "Pontos de luz"], [[x["divisao"], str(x["tomadas"]), str(x["pontos_luz"])] for x in r["pontos"]], [70 * W, 25 * W, 30 * W]),
                   ("table", ["Circuito", "mm²", "Disjuntor A", "Pontos", "Diferencial", "ΔU %"], rows, [55 * W, 15 * W, 22 * W, 16 * W, 22 * W, 16 * W]),
+                  ("chart", G.jauges([(c["nome"], c["du"] / (3.0 if c["nome"].startswith("Iluminação") else 5.0), f"ΔU {c['du']:.2f} %".replace(".", ","))
+                                      for c in r["circuitos"]], "Queda de tensão por circuito / limite (3 % iluminação, 5 % restantes)")),
                   ("p", f"Potência estimada {f(r['potencia_estimada_w'])} W → contratar {r['potencia_contratada_kva']:g} kVA ({r['alimentacao']})."),
                   ("controls", conv(r["controles"])), ("hyp", r["regras"])]
         hip += r["hipoteses"]; n += 1
+        kp += [{"label": "Potência a contratar", "value": f"{r['potencia_contratada_kva']:g}".replace(".", ","), "unit": "kVA"},
+               {"label": "Circuitos", "value": str(len(r["circuitos"])), "ok": all(c["ok"] is not False for c in r["controles"] if c["ref"].startswith("Queda"))},
+               {"label": "Diferenciais 30 mA", "value": str(r["diferenciais"])}]
     if params.get("canalizacao") is not None:
         r = canalizacao(params["canalizacao"])
         out["canalizacao"] = r
@@ -210,12 +219,19 @@ def note(params: dict) -> dict:
                         f"{r['tubo_aq'] or '—'}, pressão no dispositivo mais desfavorável {r['pressao_kpa']:.0f} kPa. Drenagem: {r['drenagem_qc_l_min']:.0f} L/min, "
                         f"tubo de queda Ø{r['tubo_queda_mm']}, coletor Ø{r['coletor_mm']}."),
                   ("table", ["Dispositivo", "Nº", "L/s", "AQ", "Descarga L/min", "Ramal Ø"],
-                   [[x["dispositivo"], str(x["n"]), f"{x['q']:.2f}", "sim" if x["aq"] else "não", str(x["descarga_l_min"]), str(x["ramal_descarga"] or "—")] for x in r["dispositivos"]],
+                   [[DISP_PT.get(x["dispositivo"], x["dispositivo"]), str(x["n"]), f"{x['q']:.2f}", "sim" if x["aq"] else "não", str(x["descarga_l_min"]), str(x["ramal_descarga"] or "—")] for x in r["dispositivos"]],
                    [45 * W, 12 * W, 15 * W, 12 * W, 28 * W, 18 * W]),
+                  ("chart", G.barres_h([(f"{DISP_PT.get(x['dispositivo'], x['dispositivo'])} × {x['n']}", x["q"] * x["n"]) for x in r["dispositivos"]],
+                                       "Caudais instantâneos acumulados por dispositivo", "L/s", ref=(r["qc_l_s"], f"Qc {r['qc_l_s']:.2f} L/s".replace(".", ",")), dec=2),
+                   "O caudal de cálculo Qc (simultaneidade, Anexo V) dimensiona o ramal geral, abaixo da soma dos caudais instantâneos."
+                   if r["qc_l_s"] < r["qa_l_s"] - 1e-6 else "Até Qa = 0,5 L/s o caudal de cálculo é igual à soma dos caudais instantâneos (Anexo V)."),
                   ("controls", conv(r["controles"])), ("hyp", r["regras"])]
         hip += r["hipoteses"]
+        kp += [{"label": "Caudal de cálculo Qc", "value": f"{r['qc_l_s']:.2f}".replace(".", ","), "unit": "L/s"},
+               {"label": "Ramal geral (água fria)", "value": r["tubo_af"].split(" ")[0]},
+               {"label": "Pressão no dispositivo mais desfavorável", "value": f"{r['pressao_kpa']:.0f}", "unit": "kPa", "ok": r["controles"][1]["ok"]}]
     if not out:
         raise ValueError("indicar eletricidade e/ou canalizacao")
-    titre = "Pré-dimensionamento — instalações (" + ", ".join(out) + ")"
-    pdf, png = notes.pdf(titre, "RTIEBT · DR 23/95", blocs, hip)
+    titre = "Pré-dimensionamento — instalações (" + ", ".join({"eletricidade": "eletricidade", "canalizacao": "canalização"}[k] for k in out) + ")"
+    pdf, png = notes.pdf(titre, "RTIEBT · DR 23/95", [("kpis", kp)] + blocs, hip)
     return {**out, "titre": titre, "pdf": pdf, "png": png}

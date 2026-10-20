@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from reportlab.lib.units import mm
 
+from . import graficos as G
 from . import rendu
 
 W = mm

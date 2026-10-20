@@ -115,14 +115,24 @@ def vent(p: dict) -> dict:
     w_toit_courant = qp * (min(c1_0[2], c1_90[2], t0[2][0], t90[2]) - cpi[0]) / 1000   # zone H, cpe,1
     w_mur_d = qp * (murs[3] - cpi[1]) / 1000
     w_mur_a = qp * (murs[0] - cpi[0]) / 1000
-    ctl.append({"ref": "Soulèvement de la couverture et des fixations (cpe,1, aires ≤ 1 m²)", "exigence": "fixations / poids propre ≥ dépression nette (EN 1991-1-4 §7.2.1)",
-                "valeur": f"{w_toit_min:.2f} kN/m² en rives et angles (bande e/10 = {e / 10:.1f} m), {w_toit_courant:.2f} kN/m² en partie courante ; "
-                          f"structure (cpe,10) {w_struct:.2f} kN/m²", "ok": None,
-                "note": "à comparer au poids propre de la couverture et à la résistance des fixations (DTU série 40, règles NV / fabricant)"})
-    if alpha < 5:
-        hyp.append("pente < 5° : coefficients de toiture-terrasse non traités (valeurs à 5° utilisées)")
-    hyp += [f"vent : {lieu}, catégorie de terrain {cat}, z = {z:g} m, c0 = 1 (pas d'effet de relief), cdir = cseason = 1",
-            f"pression intérieure cpi = +0,2 / −0,3 (bâtiment sans face dominante)"]
+    if pays == "pt":
+        ctl.append({"ref": "Levantamento da cobertura e das fixações (cpe,1, áreas ≤ 1 m²)", "exigence": "fixações / peso próprio ≥ sucção útil (NP EN 1991-1-4 §7.2.1)",
+                    "valeur": f"{w_toit_min:.2f} kN/m² nos bordos e cantos (faixa e/10 = {e / 10:.1f} m), {w_toit_courant:.2f} kN/m² na zona corrente; "
+                              f"estrutura (cpe,10) {w_struct:.2f} kN/m²", "ok": None,
+                    "note": "a comparar com o peso próprio da cobertura e a resistência das fixações (documentação do fabricante)"})
+        if alpha < 5:
+            hyp.append("inclinação < 5°: coeficientes de cobertura em terraço não tratados (valores a 5° utilizados)")
+        hyp += [f"vento: {lieu}, categoria de terreno {cat}, z = {z:g} m, c0 = 1 (sem efeito orográfico), cdir = cseason = 1",
+                "pressão interior cpi = +0,2 / −0,3 (edifício sem fachada dominante)"]
+    else:
+        ctl.append({"ref": "Soulèvement de la couverture et des fixations (cpe,1, aires ≤ 1 m²)", "exigence": "fixations / poids propre ≥ dépression nette (EN 1991-1-4 §7.2.1)",
+                    "valeur": f"{w_toit_min:.2f} kN/m² en rives et angles (bande e/10 = {e / 10:.1f} m), {w_toit_courant:.2f} kN/m² en partie courante ; "
+                              f"structure (cpe,10) {w_struct:.2f} kN/m²", "ok": None,
+                    "note": "à comparer au poids propre de la couverture et à la résistance des fixations (DTU série 40, règles NV / fabricant)"})
+        if alpha < 5:
+            hyp.append("pente < 5° : coefficients de toiture-terrasse non traités (valeurs à 5° utilisées)")
+        hyp += [f"vent : {lieu}, catégorie de terrain {cat}, z = {z:g} m, c0 = 1 (pas d'effet de relief), cdir = cseason = 1",
+                f"pression intérieure cpi = +0,2 / −0,3 (bâtiment sans face dominante)"]
     return {"pays": pays, "vb0": vb0, "qb_pa": qb, "categorie": cat, "z_m": z, "kr": kr, "cr": cr, "Iv": iv, "kl": kl, "qp_pa": qp, "ce": qp / qb,
             "murs_cpe10": dict(zip("ABCDE", murs)), "toiture_cpe10_0": dict(zip("FGHIJ", t0)), "toiture_cpe10_90": dict(zip("FGHI", t90)), "e_m": e,
             "pression_mur_D_kn_m2": w_mur_d, "depression_mur_A_kn_m2": w_mur_a, "depression_toiture_rive_kn_m2": w_toit_min,
@@ -165,7 +175,7 @@ def neige(p: dict) -> dict:
     if pays == "fr" and alpha < 1.7:       # pente < 3 %
         s += 0.2
         hyp.append("toiture de pente < 3 % : majoration de 0,2 kN/m² (AN française)")
-    hyp.append("Ce = Ct = 1 (exposition normale, toiture non chauffante)")
+    hyp.append("Ce = Ct = 1 (exposição normal, cobertura não aquecida)" if pays == "pt" else "Ce = Ct = 1 (exposition normale, toiture non chauffante)")
     return {"pays": pays, "region": reg, "sk_kn_m2": sk, "mu1": mu1, "s_kn_m2": s, "sad_kn_m2": sad, "hypotheses": hyp}
 
 
@@ -181,16 +191,19 @@ def zone_tuile(p: dict) -> int:
 
 def pente_tuiles(p: dict) -> dict:
     typ = p.get("type_tuile") or "emboitement"
+    pt = (p.get("pays") or "pt") == "pt"
+    T = lambda fr, pt_: pt_ if pt else fr
     site = p.get("site") or "normal"
     if site not in ("protege", "normal", "expose"):
         raise ValueError("site : protege, normal ou expose")
     zone = zone_tuile(p)
     if p.get("site") is None:
-        hyp_def = ["site non précisé : « normal » retenu (protégé / exposé à préciser)"]
+        hyp_def = [T("site non précisé : « normal » retenu (protégé / exposé à préciser)", "exposição do local não indicada: « normal » considerada (protegido / exposto a precisar)")]
     else:
         hyp_def = []
     if p.get("altitude_m") is None and p.get("zone_climatique") is None and not p.get("cote_manche_atlantique_nord_20km") and not p.get("cote_atlantique_sud_ou_20_40km"):
-        hyp_def.append("zone climatique non précisée : zone 1 retenue (intérieur, < 200 m) — vérifier altitude et distance à la côte")
+        hyp_def.append(T("zone climatique non précisée : zone 1 retenue (intérieur, < 200 m) — vérifier altitude et distance à la côte",
+                         "zona climática DTU não indicada: zona 1 considerada (interior, < 200 m) — verificar altitude e distância à costa"))
     ecran = bool(p.get("ecran_sous_toiture"))
     L = float(p.get("rampant_m") or 6.0)
     hyp = list(hyp_def)
@@ -201,63 +214,87 @@ def pente_tuiles(p: dict) -> dict:
             raise ValueError("rampant > 12 m : étude particulière (DTU 40.21)")
         i = 0 if L <= 6.5 else 1 if L <= 9.5 else 2
         pmin = (TUILE_4021_ECRAN if ecran else TUILE_4021_SANS)[site][zone][i]
-        ref = "NF DTU 40.21 (tuiles à emboîtement / à glissement à relief)"
-        hyp.append("tableau du DTU 40.21 complété par les règles professionnelles « faible pente » (reproduit par les fabricants) : la pente minimale du modèle (certificat NF) prévaut")
+        ref = T("NF DTU 40.21 (tuiles à emboîtement / à glissement à relief)", "NF DTU 40.21 (telha de encaixe / aba e canudo de encaixe)")
+        hyp.append(T("tableau du DTU 40.21 complété par les règles professionnelles « faible pente » (reproduit par les fabricants) : la pente minimale du modèle (certificat NF) prévaut",
+                     "quadro do DTU 40.21 (regras francesas, reproduzidas pelos fabricantes): prevalece a inclinação mínima do modelo indicada pelo fabricante"))
     elif typ == "canal":
         if L > 12:
             raise ValueError("rampant > 12 m : étude particulière (DTU 40.22)")
         pmin = TUILE_4022[site][zone]
-        ref = "NF DTU 40.22 (tuiles canal, sans écran)"
+        ref = T("NF DTU 40.22 (tuiles canal, sans écran)", "NF DTU 40.22 (telha de canudo, sem subtelha)")
         if ecran:
-            hyp.append("tuiles canal avec écran / sur plaques support : pentes réduites selon l'Avis Technique du système (valeur sans écran conservée)")
+            hyp.append(T("tuiles canal avec écran / sur plaques support : pentes réduites selon l'Avis Technique du système (valeur sans écran conservée)",
+                         "telha de canudo com subtelha / sobre placas de suporte: inclinações reduzidas segundo a aprovação técnica do sistema (mantido o valor sem subtelha)"))
     elif typ == "plate":
         if L > 8:
             raise ValueError("rampant > 8 m en tuiles plates : étude particulière (DTU 40.23)")
         pmin = TUILE_4023["ecran" if ecran else "sans"][site][zone]
-        ref = f"NF DTU 40.23 (tuiles plates, recouvrement ≥ {90 if zone == 3 else 80} mm)"
+        ref = T(f"NF DTU 40.23 (tuiles plates, recouvrement ≥ {90 if zone == 3 else 80} mm)", f"NF DTU 40.23 (telha plana, sobreposição ≥ {90 if zone == 3 else 80} mm)")
     elif typ == "beton":
         pmin = TUILE_4024["ecran" if ecran else "sans"][site]
-        ref = "NF DTU 40.24 (tuiles béton, fiche fabricant, sans modulation par zone)"
+        ref = T("NF DTU 40.24 (tuiles béton, fiche fabricant, sans modulation par zone)", "NF DTU 40.24 (telha de betão, ficha do fabricante, sem modulação por zona)")
     else:
         raise ValueError("type de tuile : emboitement, canal, plate ou beton")
     pente = p.get("pente_pct")
     if pente is None and p.get("pente_deg") is not None:
         pente = math.tan(math.radians(float(p["pente_deg"]))) * 100
-    ctl = [{"ref": ref, "exigence": f"pente ≥ {pmin:g} % (zone {zone}, site {site}, rampant {L:g} m, {'avec' if ecran else 'sans'} écran)",
-            "valeur": f"{float(pente):.0f} %" if pente is not None else "pente non fournie", "ok": (float(pente) >= pmin - 1e-9) if pente is not None else None,
-            "note": ("ajouter un écran sous-toiture homologué ou augmenter la pente" if pente is not None and float(pente) < pmin and not ecran else None)}]
+    site_pt = {"protege": "protegido", "normal": "normal", "expose": "exposto"}[site]
+    ctl = [{"ref": ref, "exigence": T(f"pente ≥ {pmin:g} % (zone {zone}, site {site}, rampant {L:g} m, {'avec' if ecran else 'sans'} écran)",
+                                     f"inclinação ≥ {pmin:g} % (zona {zone}, local {site_pt}, vertente {L:g} m, {'com' if ecran else 'sem'} subtelha)"),
+            "valeur": f"{float(pente):.0f} %" if pente is not None else T("pente non fournie", "inclinação não indicada"), "ok": (float(pente) >= pmin - 1e-9) if pente is not None else None,
+            "note": (T("ajouter un écran sous-toiture homologué ou augmenter la pente", "acrescentar uma subtelha homologada ou aumentar a inclinação")
+                     if pente is not None and float(pente) < pmin and not ecran else None)}]
     return {"type": typ, "zone": zone, "site": site, "ecran": ecran, "pente_min_pct": pmin, "pente_min_deg": math.degrees(math.atan(pmin / 100)),
-            "controles": ctl, "hypotheses": hyp}
+            "pente_projet_pct": float(pente) if pente is not None else None, "controles": ctl, "hypotheses": hyp}
 
 
 def note(params: dict) -> dict:
+    from . import graficos as G
     from . import notes
     W = notes.W
-    blocs, hyp, out, n = [("p", "Valeurs indicatives (Eurocodes et DTU reproduits par des sources secondaires) — vérifier la norme et la documentation du fabricant.")], [], {}, 1
+    blocs, hyp, out, n = [("p", "Valores indicativos (Eurocódigos e Anexos Nacionais reproduzidos por fontes secundárias) — verificar a norma e a documentação do fabricante.")], [], {}, 1
+    kp = []
     if params.get("vent") is not None:
         r = vent(params["vent"])
         out["vent"] = r
         rows = [["qb / qp(z)", f"{r['qb_pa']:.0f} Pa / {r['qp_pa']:.0f} Pa (ce {r['ce']:.2f}, z {r['z_m']:g} m, cat. {r['categorie']})"],
-                ["Murs cpe,10 A/B/C/D/E", " / ".join(f"{v:+.2f}" for v in r["murs_cpe10"].values())],
-                ["Toiture θ=0° F/G/H/I/J (dépression ; pression)", " / ".join(f"{a:+.2f};{b:+.2f}" for a, b in r["toiture_cpe10_0"].values())],
-                ["Toiture θ=90° F/G/H/I", " / ".join(f"{v:+.2f}" for v in r["toiture_cpe10_90"].values())],
-                ["Pression nette mur au vent (D)", f"{r['pression_mur_D_kn_m2']:.2f} kN/m²"],
-                ["Dépression nette toiture rive / courante", f"{r['depression_toiture_rive_kn_m2']:.2f} / {r['depression_toiture_courante_kn_m2']:.2f} kN/m²"]]
-        blocs += [("h2", f"{n}. Vent"), ("table", ["Grandeur", "Valeur"], rows, [70 * W, 105 * W]), ("controls", r["controles"])]
+                ["Paredes cpe,10 A/B/C/D/E", " / ".join(f"{v:+.2f}" for v in r["murs_cpe10"].values())],
+                ["Cobertura θ=0° F/G/H/I/J (sucção; pressão)", " / ".join(f"{a:+.2f};{b:+.2f}" for a, b in r["toiture_cpe10_0"].values())],
+                ["Cobertura θ=90° F/G/H/I", " / ".join(f"{v:+.2f}" for v in r["toiture_cpe10_90"].values())],
+                ["Pressão útil na parede a barlavento (D)", f"{r['pression_mur_D_kn_m2']:.2f} kN/m²"],
+                ["Sucção útil na cobertura: bordos / zona corrente", f"{r['depression_toiture_rive_kn_m2']:.2f} / {r['depression_toiture_courante_kn_m2']:.2f} kN/m²"]]
+        qk = r["qp_pa"] / 1000
+        zones = [(f"Parede {k}", v * qk) for k, v in r["murs_cpe10"].items()] + [(f"Cobertura {k}", a * qk) for k, (a, b) in r["toiture_cpe10_0"].items()]
+        blocs += [("h2", f"{n}. Vento"), ("table", ["Grandeza", "Valor"], rows, [70 * W, 105 * W]),
+                  ("chart", G.barres_signe(zones, "Pressões exteriores por zona (qp × cpe,10, vento θ = 0°)", "kN/m²"),
+                   "Valores negativos = sucção (arrancamento): os bordos e cantos da cobertura (zonas F, G) são os mais solicitados."),
+                  ("controls", r["controles"])]
+        kp += [{"label": "Pressão dinâmica de pico qp", "value": f"{r['qp_pa']:.0f}", "unit": "Pa"},
+               {"label": "Sucção na cobertura (bordos)", "value": f"{r['depression_toiture_rive_kn_m2']:.2f}".replace(".", ","), "unit": "kN/m²"}]
         hyp += r["hypotheses"]; n += 1
     if params.get("neige") is not None:
         r = neige(params["neige"])
         out["neige"] = r
-        blocs += [("h2", f"{n}. Neige"), ("p", f"Région {r['region']} : sk = {r['sk_kn_m2']:.2f} kN/m², μ1 = {r['mu1']:.2f} → s = {r['s_kn_m2']:.2f} kN/m²"
-                                                 + (f" ; neige accidentelle sAd = {r['sad_kn_m2']:.2f} kN/m²" if r.get("sad_kn_m2") else ""))]
+        txt = (f"Zona {r['region']}: sk = {r['sk_kn_m2']:.2f} kN/m², μ1 = {r['mu1']:.2f} → s = {r['s_kn_m2']:.2f} kN/m²"
+               + (f"; neve excecional sAd = {r['sad_kn_m2']:.2f} kN/m²" if r.get("sad_kn_m2") else ""))
+        blocs += [("h2", f"{n}. Neve"), ("p", txt)]
+        if r["sk_kn_m2"] > 0:
+            blocs.append(("chart", G.barres_h([("Neve no solo sk", r["sk_kn_m2"]), ("Neve na cobertura s", r["s_kn_m2"])]
+                                              + ([("Excecional sAd", r["sad_kn_m2"])] if r.get("sad_kn_m2") else []), "Cargas de neve", "kN/m²", couleur=G.SERIES[0])))
+        kp.append({"label": "Neve na cobertura s", "value": f"{r['s_kn_m2']:.2f}".replace(".", ","), "unit": "kN/m²"})
         hyp += r["hypotheses"]; n += 1
     if params.get("tuiles") is not None:
         r = pente_tuiles(params["tuiles"])
         out["tuiles"] = r
-        blocs += [("h2", f"{n}. Pente minimale de couverture"), ("controls", r["controles"])]
+        blocs += [("h2", f"{n}. Inclinação mínima da cobertura (telhas)")]
+        if r.get("pente_projet_pct"):
+            blocs.append(("chart", G.barres_h([("Inclinação mínima (DTU)", r["pente_min_pct"], G.SERIES[1]), ("Inclinação do projeto", r["pente_projet_pct"], G.SERIES[0])],
+                                              "Inclinação do projeto / inclinação mínima", "%", dec=0)))
+        blocs.append(("controls", r["controles"]))
+        kp.append({"label": "Inclinação mínima das telhas", "value": f"{r['pente_min_pct']:g}", "unit": "%", "ok": r["controles"][0]["ok"]})
         hyp += r["hypotheses"]
     if not out:
-        raise ValueError("renseigner au moins : vent, neige ou tuiles")
+        raise ValueError("indicar pelo menos: vent, neige ou tuiles")
     titre = "Nota de cobertura — " + ", ".join({"vent": "vento", "neige": "neve", "tuiles": "telhas (regras francesas DTU)"}[k] for k in ("vent", "neige", "tuiles") if k in out)
-    pdf, png = notes.pdf(titre, "Eurocódigo 1 (vento, neve) — NP EN 1991-1-3/1-4 e Anexos Nacionais", blocs, hyp)
+    pdf, png = notes.pdf(titre, "Eurocódigo 1 (vento, neve) — NP EN 1991-1-3/1-4 e Anexos Nacionais", [("kpis", kp)] + blocs, hyp)
     return {**out, "titre": titre, "pdf": pdf, "png": png}

@@ -152,13 +152,15 @@ def poutre_ba(p: dict) -> dict:
     beton = b * h * L
     ctl = [{"ref": "NP EN 1992-1-1 §6.1 flexão ELU", "exigence": f"As ≥ {fx['as_req_cm2']:.2f} cm² (μ = {fx['mu']:.3f} ≤ μlim {fx['mu_lim']:.3f})",
             "valeur": f"{bars['label']} = {bars['as_cm2']:.2f} cm²", "ok": bars["as_cm2"] >= fx["as_req_cm2"] - 1e-9 and fx["mode"] == "simple",
+            "taux": fx["as_req_cm2"] / bars["as_cm2"] if bars["as_cm2"] else None, "lib": "Flexão (As necessária / As adotada)",
             "note": "armadura de compressão necessária: aumentar h" if fx["mode"] != "simple" else None},
            {"ref": "NP EN 1992-1-1 §6.2 esforço transverso (bielas)", "exigence": f"V_Ed ≤ V_Rd,max ({sh['vrdmax_kn']:.0f} kN)", "valeur": f"V_Ed {ved:.1f} kN",
-            "ok": ved <= sh["vrdmax_kn"], "note": "aumentar a secção (b ou h)" if ved > sh["vrdmax_kn"] else None},
+            "ok": ved <= sh["vrdmax_kn"], "taux": ved / sh["vrdmax_kn"] if sh["vrdmax_kn"] else None, "lib": "Bielas (V_Ed / V_Rd,max)",
+            "note": "aumentar a secção (b ou h)" if ved > sh["vrdmax_kn"] else None},
            {"ref": "NP EN 1992-1-1 §6.2.3 armadura de esforço transverso", "exigence": f"Asw/s ≥ {asw_req:.2f} cm²/m, s ≤ {sh['s_max_m'] * 100:.0f} cm",
             "valeur": f"estribos Ø{phi_e} 2 ramos, s = {s * 100:.0f} cm ({2 * math.pi * phi_e ** 2 / 4 / 100 / s:.2f} cm²/m)",
             "ok": 2 * math.pi * phi_e ** 2 / 4 / 100 / s >= asw_req - 1e-9 and s >= 0.05},
-           {"ref": "NP EN 1992-1-1 §7.4.2 flecha (L/d)", "exigence": f"L/d ≤ {ld_lim:.1f}", "valeur": f"{ld:.1f}", "ok": ld <= ld_lim,
+           {"ref": "NP EN 1992-1-1 §7.4.2 flecha (L/d)", "exigence": f"L/d ≤ {ld_lim:.1f}", "valeur": f"{ld:.1f}", "ok": ld <= ld_lim, "taux": ld / ld_lim if ld_lim else None, "lib": "Flecha (L/d / limite)",
             "note": "calcular a flecha ou aumentar a secção" if ld > ld_lim else None}]
     return {"element": "Viga de betão armado", "sollicitations": {"g": g, "q": q, "pu": pu, "med": med, "ved": ved, "poids_propre": pp},
             "section": f"{b * 100:.0f} × {h * 100:.0f} cm, d = {d * 100:.1f} cm, C{fck:g}, A{fyk:g}", "appuis": appui, "barres": bars,
@@ -198,18 +200,21 @@ def poutre_bois(p: dict) -> dict:
     w_fin = w(g) * (1 + kdef) + w(q) * (1 + psi2 * kdef)
     lim = float(p.get("limite_fleche") or 300)
     ctl = [{"ref": "NP EN 1995-1-1 §6.1.6 flexão", "exigence": "σm,d ≤ kh·fm,d", "valeur": f"{r['bending']['sigma_m_d_mpa']:.1f} / {r['bending']['kh'] * r['bending']['fm_d_mpa']:.1f} MPa",
-            "ok": r["bending"]["sigma_m_d_mpa"] <= r["bending"]["kh"] * r["bending"]["fm_d_mpa"] + 1e-9},
+            "ok": r["bending"]["sigma_m_d_mpa"] <= r["bending"]["kh"] * r["bending"]["fm_d_mpa"] + 1e-9,
+            "taux": r["bending"]["sigma_m_d_mpa"] / (r["bending"]["kh"] * r["bending"]["fm_d_mpa"]), "lib": "Flexão"},
            {"ref": "NP EN 1995-1-1 §6.1.7 corte", "exigence": "τd ≤ fv,d", "valeur": f"{r['shear']['tau_d_mpa']:.2f} / {r['shear']['fv_d_mpa']:.2f} MPa",
-            "ok": r["shear"]["tau_d_mpa"] <= r["shear"]["fv_d_mpa"] + 1e-9},
+            "ok": r["shear"]["tau_d_mpa"] <= r["shear"]["fv_d_mpa"] + 1e-9, "taux": r["shear"]["tau_d_mpa"] / r["shear"]["fv_d_mpa"], "lib": "Corte"},
            {"ref": "NP EN 1995-1-1 §7.2 flecha final", "exigence": f"w_fin ≤ L/{lim:g} = {L * 1000 / lim:.1f} mm", "valeur": f"{w_fin:.1f} mm (kdef {kdef:g})",
-            "ok": w_fin <= L * 1000 / lim + 1e-9}]
+            "ok": w_fin <= L * 1000 / lim + 1e-9, "taux": w_fin / (L * 1000 / lim), "lib": "Flecha final"}]
     ctl.append({"ref": "NP EN 1995-1-1 flexão sob 1,35 G apenas (kmod permanente)", "exigence": "σm,d ≤ kh·fm,d",
                 "valeur": f"{rp['bending']['sigma_m_d_mpa']:.1f} / {rp['bending']['kh'] * rp['bending']['fm_d_mpa']:.1f} MPa (kmod {kmod_p:g})",
-                "ok": rp["bending"]["sigma_m_d_mpa"] <= rp["bending"]["kh"] * rp["bending"]["fm_d_mpa"] + 1e-9})
+                "ok": rp["bending"]["sigma_m_d_mpa"] <= rp["bending"]["kh"] * rp["bending"]["fm_d_mpa"] + 1e-9,
+                "taux": rp["bending"]["sigma_m_d_mpa"] / (rp["bending"]["kh"] * rp["bending"]["fm_d_mpa"]), "lib": "Flexão sob 1,35 G (kmod permanente)"})
     if r["lateral_torsional"].get("kcrit") is not None:
         lt = r["lateral_torsional"]
         ctl.append({"ref": "NP EN 1995-1-1 §6.3.3 bambeamento", "exigence": "σm,d ≤ kcrit·fm,d", "valeur": f"kcrit {lt['kcrit']:.2f}",
-                    "ok": r["bending"]["sigma_m_d_mpa"] <= lt["kcrit"] * r["bending"]["fm_d_mpa"] + 1e-9})
+                    "ok": r["bending"]["sigma_m_d_mpa"] <= lt["kcrit"] * r["bending"]["fm_d_mpa"] + 1e-9,
+                    "taux": r["bending"]["sigma_m_d_mpa"] / (lt["kcrit"] * r["bending"]["fm_d_mpa"]), "lib": "Bambeamento"})
     return {"element": f"Viga de madeira {cl}", "section": f"{b * 1000:.0f} × {h * 1000:.0f} mm, vão {L:g} m", "sollicitations": {"g": g, "q": q, "pu": pu, "med": med, "ved": ved},
             "controles": ctl, "details": r, "quantites": {"bois_m3": b * h * L},
             "hypotheses": [f"viga simplesmente apoiada, kmod {kmod:g} (classe de serviço {sc}, duração da carga: {DUREE_PT.get(duree, duree)}), γM {GAMMA_M[m['kind']]:g}",
@@ -231,7 +236,7 @@ def semelle(p: dict) -> dict:
     if p.get("q_adm_els_kpa"):
         qa = float(p["q_adm_els_kpa"])
         q_els = (G + pp + Q) / (B * Lg)
-        ctl.append({"ref": "Tensão admissível (estudo geotécnico)", "exigence": f"q_ELS ≤ {qa:g} kPa", "valeur": f"{q_els:.0f} kPa", "ok": q_els <= qa + 1e-9})
+        ctl.append({"ref": "Tensão admissível (estudo geotécnico)", "exigence": f"q_ELS ≤ {qa:g} kPa", "valeur": f"{q_els:.0f} kPa", "ok": q_els <= qa + 1e-9, "taux": q_els / qa, "lib": "Tensão no terreno / admissível"})
     else:
         mode = "undrained" if p.get("cu_kpa") else "drained"
         det = bearing(mode, B, Lg if not filante else 50.0, q_ed_kpa=q_ed, d_m=D, gamma_soil=float(p.get("gamma_sol") or 18),
@@ -243,7 +248,8 @@ def semelle(p: dict) -> dict:
             raise ValueError("dados do terreno em falta: " + (", ".join(falta) or "parâmetros geotécnicos")
                              + " — ou indicar q_adm_els_kpa do estudo geotécnico")
         ctl.append({"ref": f"NP EN 1997-1 anexo D capacidade resistente ({'não drenada' if mode == 'undrained' else 'drenada'}, γR;v 1,4)",
-                    "exigence": f"q_Ed ≤ q_Rd = {det['q_Rd_kpa']:.0f} kPa", "valeur": f"{q_ed:.0f} kPa", "ok": q_ed <= det["q_Rd_kpa"] + 1e-9})
+                    "exigence": f"q_Ed ≤ q_Rd = {det['q_Rd_kpa']:.0f} kPa", "valeur": f"{q_ed:.0f} kPa", "ok": q_ed <= det["q_Rd_kpa"] + 1e-9,
+                    "taux": q_ed / det["q_Rd_kpa"] if det["q_Rd_kpa"] else None, "lib": "Capacidade resistente (q_Ed / q_Rd)"})
         hyp.append("carga vertical centrada; assentamentos não calculados (estudo geotécnico indispensável)")
     # armadura transversal pelo método das bielas (sapata contínua / isolada, consola ≥ (B−b)/4)
     bmur = float(p.get("largeur_mur_m") or 0.2)
@@ -278,10 +284,12 @@ def dalle_ba(p: dict) -> dict:
     sh = r.get("shear") or {}
     if sh:
         ctl.append({"ref": "Esforço transverso (sem armadura específica)", "exigence": f"V_Ed ≤ V_Rd,c = {sh.get('vrdc_kn_m', 0):.0f} kN/m", "valeur": f"{sh.get('v_ed_kn_m', 0):.1f} kN/m",
-                    "ok": sh.get("v_ed_kn_m", 0) <= sh.get("vrdc_kn_m", 0)})
+                    "ok": sh.get("v_ed_kn_m", 0) <= sh.get("vrdc_kn_m", 0), "taux": sh.get("v_ed_kn_m", 0) / sh["vrdc_kn_m"] if sh.get("vrdc_kn_m") else None,
+                    "lib": "Esforço transverso"})
     dl = r.get("deflection_ld") or {}
     if "ok" in dl:
         ctl.append({"ref": "Flecha (L/d, EC2 §7.4.2)", "exigence": f"L/d ≤ {dl.get('limit', 0):.1f}", "valeur": f"{dl.get('l_over_d', 0):.1f}", "ok": bool(dl["ok"]),
+                    "taux": dl.get("l_over_d", 0) / dl["limit"] if dl.get("limit") else None, "lib": "Flecha (L/d / limite)",
                     "note": None if dl["ok"] else "espessura insuficiente: aumentar h ou calcular a flecha"})
     return {"element": "Laje de BA armada em duas direções", "section": f"{lx:g} × {ly:g} m, h = {float(p['h_m']) * 100:.0f} cm", "sollicitations": r["loads"],
             "controles": ctl, "details": r, "quantites": {"beton_m3": lx * ly * float(p["h_m"])},
@@ -520,9 +528,11 @@ def poinconnement(p: dict) -> dict:
     nu = 0.6 * (1 - fck / 250)
     vrdmax = 0.4 * nu * fcd
     ctl = [{"ref": "NP EN 1992-1-1 §6.4.5(3) perímetro do pilar u0", "exigence": f"v_Ed,0 ≤ v_Rd,max = {vrdmax:.2f} MPa", "valeur": f"{v0:.2f} MPa", "ok": v0 <= vrdmax,
+            "taux": v0 / vrdmax, "lib": "Bielas no pilar (v_Ed,0 / v_Rd,max)",
             "note": "aumentar a espessura da laje / capitel / aumentar o pilar" if v0 > vrdmax else None},
            {"ref": "NP EN 1992-1-1 §6.4.4 perímetro de controlo u1 (2d)", "exigence": f"v_Ed ≤ v_Rd,c = {vrdc:.3f} MPa (caso contrário, armadura de punçoamento)",
-            "valeur": f"{v_ed:.3f} MPa (β = {beta:g})", "ok": True if v_ed <= vrdc else None}]
+            "valeur": f"{v_ed:.3f} MPa (β = {beta:g})", "ok": True if v_ed <= vrdc else None,
+            "taux": v_ed / vrdc, "lib": "Perímetro u1 (v_Ed / v_Rd,c)"}]
     det = {"u0_m": u0, "u1_m": u1, "v_ed_mpa": v_ed, "v_rdc_mpa": vrdc, "v_rdmax_mpa": vrdmax, "k": k}
     if v_ed > vrdc:
         if v_ed > 1.5 * vrdc * 1.0 + 1e-9 and v_ed > 2 * vrdc:
@@ -570,9 +580,24 @@ def note(params: dict) -> dict:
         blocs.append(("table", ["Grandeza", "Valor"], rows, [60 * notes.W, 50 * notes.W]))
     if r.get("barres"):
         blocs.append(("p", f"Armadura longitudinal: {r['barres']['label']} ({r['barres']['as_cm2']:.2f} cm²) · {r['etriers']}"))
+    tx = [(c.get("lib") or c["ref"], c["taux"], None) for c in r["controles"] if c.get("taux") is not None]
+    if tx:
+        blocs.append(("chart", notes.G.jauges(tx, "Taxa de trabalho das verificações"),
+                      "Taxa = esforço atuante / resistência (ou valor / limite): 100 % = limite atingido."))
     blocs.append(("controls", r["controles"]))
     q = r.get("quantites") or {}
     if q:
         blocs.append(("p", "Quantidades: " + " · ".join(f"{QUANT_PT.get(k, k.replace('_', ' '))} {f(v, 2)}" for k, v in q.items())))
+    kp = [{"label": "Elemento", "value": r["element"].split(" — ")[0][:28]}]
+    if tx:
+        tmax = max(t for _, t, _ in tx)
+        kp.append({"label": "Taxa de trabalho máxima", "value": f"{tmax * 100:.0f}", "unit": "%", "ok": tmax <= 1.0 + 1e-9})
+    if r.get("barres"):
+        kp.append({"label": "Armadura longitudinal", "value": r["barres"]["label"]})
+    if q.get("acier_kg"):
+        kp.append({"label": "Aço", "value": f"{q['acier_kg']:.0f}", "unit": "kg"})
+    elif q.get("beton_m3"):
+        kp.append({"label": "Betão", "value": f(q["beton_m3"], 2), "unit": "m³"})
+    blocs = [("kpis", kp)] + blocs
     pdf, png = notes.pdf(f"Nota de pré-dimensionamento — {r['element']}", r["section"], blocs, r.get("hypotheses"))
     return {**r, "titre": f"Pré-dimensionamento — {r['element']}", "pdf": pdf, "png": png}

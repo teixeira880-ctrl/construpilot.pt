@@ -238,10 +238,11 @@ def calcular(p: dict) -> dict:
         if obra != "existente":
             if t == "envidracado":
                 ctl.append({"ref": f"Uw,máx vão envidraçado {e.get('orientacao') or ''} (Portaria 138-I)", "exigencia": f"Uw ≤ {uw_max[ri]:.2f}",
-                            "valor": f"{U:.2f}", "ok": U <= uw_max[ri] + 1e-9})
+                            "valor": f"{U:.2f}", "ok": U <= uw_max[ri] + 1e-9, "taux": U / uw_max[ri], "lib": f"Uw envidraçado {e.get('orientacao') or ''}".strip()})
             elif t in umax_t:
                 lim = (UMAX_INT if (fr in ("enu", "adjacente") and btr <= 0.7) else umax_t)[t][ri]
-                ctl.append({"ref": f"Umáx {t} ({fr}) — Portaria 138-I", "exigencia": f"U ≤ {lim:.2f} W/(m².°C)", "valor": f"{U:.2f}", "ok": U <= lim + 1e-9})
+                ctl.append({"ref": f"Umáx {t} ({fr}) — Portaria 138-I", "exigencia": f"U ≤ {lim:.2f} W/(m².°C)", "valor": f"{U:.2f}", "ok": U <= lim + 1e-9, "taux": U / lim,
+                            "lib": f"U {t}" + (f" ({fr})" if fr != "exterior" else "")})
     # pontes térmicas lineares
     if p.get("pontes_termicas_w_c") is not None:
         hp = float(p["pontes_termicas_w_c"])
@@ -338,6 +339,8 @@ def calcular(p: dict) -> dict:
     eren = float(p.get("renovavel_kwh") or 0) + (float(sq.get("solar_kwh") or 0))
     Ntc = (Nic / ea * FPU[va] + delta * Nvc / ev * 2.5 + Qa / ap / eq * FPU[vq] + Wvm / ap * 2.5 - eren / ap * (2.5 if p.get("renovavel_tipo") == "fotovoltaico" else 1.0))
     Ntc = max(0.0, Ntc)
+    usos = {"aquecimento": Nic / ea * FPU[va], "arrefecimento": delta * Nvc / ev * 2.5, "aqs": Qa / ap / eq * FPU[vq], "ventilacao": Wvm / ap * 2.5,
+            "renovavel": eren / ap * (2.5 if p.get("renovavel_tipo") == "fotovoltaico" else 1.0)}
     Nt = Ni / ea_ref * FPU[va] + Nv / 3.0 * 2.5 + Qa / ap / eq_ref * FPU[vq]
     R = Ntc / Nt if Nt else 0.0
     # RenHab : renovável para autoconsumo (térmico Fpu 1, fotovoltaico Fpu 2,5) + energia ambiente da bomba de calor de AQS (SPF > 2,5)
@@ -352,22 +355,28 @@ def calcular(p: dict) -> dict:
     # ---- requisitos globais
     if obra == "nova":
         lim_i = (0.75, 0.85, 0.90)[ri]
-        ctl += [{"ref": "Nic/Ni (Despacho 6476-E, NZEB)", "exigencia": f"≤ {lim_i:.2f}", "valor": f"{Nic / Ni:.2f}", "ok": Nic / Ni <= lim_i + 1e-9},
-                {"ref": "Nvc/Nv", "exigencia": "≤ 1,00", "valor": f"{Nvc / Nv:.2f}", "ok": (Nvc <= Nv) if eta_vr < 0.9 else None},
-                {"ref": "Classe energética mínima (NZEB)", "exigencia": "≥ A (RNt ≤ 0,50)", "valor": f"{classe} (RNt {R:.2f})", "ok": R <= 0.50 + 1e-9},
+        ctl += [{"ref": "Nic/Ni (Despacho 6476-E, NZEB)", "exigencia": f"≤ {lim_i:.2f}", "valor": f"{Nic / Ni:.2f}", "ok": Nic / Ni <= lim_i + 1e-9,
+                 "taux": Nic / Ni / lim_i, "lib": "Nic/Ni (aquecimento)"},
+                {"ref": "Nvc/Nv", "exigencia": "≤ 1,00", "valor": f"{Nvc / Nv:.2f}", "ok": (Nvc <= Nv) if eta_vr < 0.9 else None,
+                 "taux": Nvc / Nv, "lib": "Nvc/Nv (arrefecimento)"},
+                {"ref": "Classe energética mínima (NZEB)", "exigencia": "≥ A (RNt ≤ 0,50)", "valor": f"{classe} (RNt {R:.2f})", "ok": R <= 0.50 + 1e-9,
+                 "taux": R / 0.50, "lib": "Ntc/Nt (classe ≥ A)"},
                 {"ref": "Renovável (RenHab)", "exigencia": "≥ 0,50 da energia primária para AQS", "valor": f"{renhab:.2f}", "ok": renhab >= 0.5 - 1e-9}]
     elif obra == "grande_renovacao":
         lim = None if ano < 1960 else 1.25 if ano <= 1990 else 1.15
         if lim:
-            ctl += [{"ref": "Nic/Ni (grande renovação)", "exigencia": f"≤ {lim:.2f}", "valor": f"{Nic / Ni:.2f}", "ok": Nic / Ni <= lim + 1e-9},
-                    {"ref": "Nvc/Nv (grande renovação)", "exigencia": f"≤ {lim:.2f}", "valor": f"{Nvc / Nv:.2f}", "ok": (Nvc / Nv <= lim) if eta_vr < 0.9 else None}]
-        ctl.append({"ref": "Classe energética mínima (grande renovação)", "exigencia": "≥ C (RNt ≤ 1,50)", "valor": f"{classe} (RNt {R:.2f})", "ok": R <= 1.50 + 1e-9})
+            ctl += [{"ref": "Nic/Ni (grande renovação)", "exigencia": f"≤ {lim:.2f}", "valor": f"{Nic / Ni:.2f}", "ok": Nic / Ni <= lim + 1e-9,
+                     "taux": Nic / Ni / lim, "lib": "Nic/Ni (aquecimento)"},
+                    {"ref": "Nvc/Nv (grande renovação)", "exigencia": f"≤ {lim:.2f}", "valor": f"{Nvc / Nv:.2f}", "ok": (Nvc / Nv <= lim) if eta_vr < 0.9 else None,
+                     "taux": Nvc / Nv / lim, "lib": "Nvc/Nv (arrefecimento)"}]
+        ctl.append({"ref": "Classe energética mínima (grande renovação)", "exigencia": "≥ C (RNt ≤ 1,50)", "valor": f"{classe} (RNt {R:.2f})", "ok": R <= 1.50 + 1e-9,
+                    "taux": R / 1.50, "lib": "Ntc/Nt (classe ≥ C)"})
     if obra != "existente":
         ctl.append({"ref": "Ventilação (Manual SCE 2023 §9.2.1)", "exigencia": "Rph ≥ 0,50 h⁻¹", "valor": f"{rph:g} h⁻¹", "ok": rph >= 0.5 - 1e-9})
     return {"clima": c, "area_util": ap, "tipo": tipo, "obra": obra, "inercia": inercia, "Htr": Htr, "Hve": Hve, "Htr_ref": Htr_ref,
             "Qtr": Qtr, "Qve": Qve, "Qint": Qint, "Qsol": Qsol, "eta_i": eta_i, "Nic": Nic, "Ni": Ni, "Nvc": Nvc, "Nv": Nv, "eta_v": eta_v,
             "Qa": Qa, "ocupantes": n_oc, "RenHab": renhab, "Ntc": Ntc, "Nt": Nt, "RNt": R, "classe": classe, "aquecimento": ka, "aqs": kq,
-            "envolvente": env, "controles": ctl, "hipoteses": hyp, "rph": rph}
+            "envolvente": env, "controles": ctl, "hipoteses": hyp, "rph": rph, "ntc_usos": usos}
 
 
 def note(p: dict) -> dict:
@@ -379,13 +388,54 @@ def note(p: dict) -> dict:
             ["Nic / Ni (aquecimento)", f"{r['Nic']:.1f} / {r['Ni']:.1f} kWh/(m².ano)"], ["Nvc / Nv (arrefecimento)", f"{r['Nvc']:.1f} / {r['Nv']:.1f} kWh/(m².ano)"],
             ["Qa (AQS)", f"{f(r['Qa'])} kWh/ano ({r['ocupantes']} ocupantes)"], ["Ntc / Nt (energia primária)", f"{r['Ntc']:.1f} / {r['Nt']:.1f} kWhEP/(m².ano)"],
             ["Htr / Hve", f"{r['Htr']:.1f} / {r['Hve']:.1f} W/°C (Rph {r['rph']:g} h⁻¹)"], ["Sistemas", f"aquecimento {r['aquecimento']} · AQS {r['aqs']}"]]
-    env = [[e["tipo"] + (f" {e.get('orientacao')}" if e.get("orientacao") else ""), f(float(e["area_m2"]), 1), f"{float(e.get('U') or 0):.2f}", e.get("fronteira") or "exterior"]
+    TIPO_PT = {"parede": "Parede", "cobertura": "Cobertura", "pavimento": "Pavimento", "porta": "Porta", "envidracado": "Envidraçado"}
+    env = [[TIPO_PT.get(e["tipo"], e["tipo"]) + (f" {e.get('orientacao')}" if e.get("orientacao") else ""), f(float(e["area_m2"]), 1), f"{float(e.get('U') or 0):.2f}", e.get("fronteira") or "exterior"]
            for e in r["envolvente"]]
-    blocs = [("p", "Pré-certificado INDICATIVO segundo a metodologia do REH — não substitui o certificado energético emitido por Perito Qualificado (SCE / ADENE)."),
+    from . import graficos as G
+    v = lambda x, d=2: f"{x:.{d}f}".replace(".", ",")
+    # escala de classes energéticas (RNt) com a classe do projeto
+    plages, lo = [], None
+    for lim, cl in CLASSES:
+        plages.append((cl, f"≤ {v(lim)}" if lo is None else (f"> {v(lo)}" if lim == math.inf else f"{v(lo + 0.01)} a {v(lim)}")))
+        lo = lim
+    lab = G.etiquette(plages, {r["classe"]: f"Projeto · RNt {v(r['RNt'])}"}, "Classe energética — RNt = Ntc/Nt", couleurs=G.REH_COULEURS)
+    u = r["ntc_usos"]
+    parts = [("Aquecimento", u["aquecimento"]), ("Arrefecimento", u["arrefecimento"]), ("AQS", u["aqs"]), ("Ventilação mecânica", u["ventilacao"])]
+    don = G.donut(parts, "Energia primária por uso (antes de renováveis)", v(sum(p[1] for p in parts), 0), "kWhEP/(m².ano)")
+    graf_cl = ("chart", G.cote_a_cote(lab, don), "Classe = posição de RNt na escala do SCE (Despacho 6476-H/2021)"
+               + (f"; dedução de renováveis {v(u['renovavel'], 1)} kWhEP/(m².ano)." if u["renovavel"] > 0 else "."))
+    import re
+    num = lambda s: (re.findall(r"\d+[.,]\d+", s) or [s])[-1].replace(".", ",")
+    tx = [(x["lib"], x["taux"], f"{num(x['valor'])} / {num(x['exigencia'])}") for x in r["controles"] if x.get("taux") is not None]
+    if tx:
+        graf_j = ("chart", G.jauges(tx, "Indicadores e coeficientes U relativos ao requisito"), "Verde ≤ 90 % do requisito, âmbar entre 90 e 100 %, vermelho acima.")
+    else:
+        graf_j = ("chart", G.jauges([("Nic/Ni (aquecimento)", r["Nic"] / r["Ni"] if r["Ni"] else None, f"{v(r['Nic'], 1)} / {v(r['Ni'], 1)}"),
+                                     ("Nvc/Nv (arrefecimento)", r["Nvc"] / r["Nv"] if r["Nv"] else None, f"{v(r['Nvc'], 1)} / {v(r['Nv'], 1)}"),
+                                     ("Ntc/Nt (energia primária)", r["RNt"], f"{v(r['Ntc'], 1)} / {v(r['Nt'], 1)}")],
+                                    "Necessidades do edifício relativas ao edifício de referência"),
+                  "Edifício existente: sem requisitos mínimos; 100 % = desempenho do edifício de referência REH.")
+    perd = {}
+    for e in r["envolvente"]:
+        fr = e.get("fronteira") or "exterior"
+        btr = float(e["btr"]) if e.get("btr") is not None else BTR.get(fr, 1.0)
+        k = {"parede": "Paredes", "cobertura": "Cobertura", "pavimento": "Pavimento", "envidracado": "Envidraçados", "porta": "Portas"}.get(e["tipo"], e["tipo"].capitalize())
+        perd[k] = perd.get(k, 0.0) + btr * float(e.get("U") or 0) * float(e["area_m2"])
+    pt_ = r["Htr"] - sum(perd.values())
+    if pt_ > 0.05:
+        perd["Pontes térmicas"] = pt_
+    perd["Renovação de ar"] = r["Hve"]
+    graf_p = ("chart", G.barres_h(sorted(perd.items(), key=lambda kv: -kv[1]), "Onde se perde o calor (coeficientes de transferência)", "W/°C", couleur=G.SERIES[1]),
+              "As barras mais longas indicam as intervenções de reabilitação mais eficazes.")
+    kp = [{"label": "Classe energética", "value": r["classe"], "ok": (r["RNt"] <= (0.50 if r["obra"] == "nova" else 1.50) + 1e-9) if r["obra"] != "existente" else "x"},
+          {"label": "Ntc / Nt (RNt)", "value": f"{v(r['Ntc'], 0)} / {v(r['Nt'], 0)}", "unit": f"({v(r['RNt'])})"},
+          {"label": "Nic / Ni (kWh/(m².ano))", "value": f"{v(r['Nic'], 0)} / {v(r['Ni'], 0)}", "ok": next((x["ok"] for x in r["controles"] if x["ref"].startswith("Nic")), "x")},
+          {"label": "Nvc / Nv (kWh/(m².ano))", "value": f"{v(r['Nvc'], 1)} / {v(r['Nv'], 1)}", "ok": next((x["ok"] for x in r["controles"] if x["ref"].startswith("Nvc")), "x")}]
+    blocs = [("kpis", kp), ("p", "Pré-certificado INDICATIVO segundo a metodologia do REH — não substitui o certificado energético emitido por Perito Qualificado (SCE / ADENE)."),
              ("h2", "1. Clima"), ("p", f"{c['nuts']} · altitude {c['altitude_m']:.0f} m · GD {c['GD']:.0f} °C.dia · M {c['M']:.1f} meses · θext,v {c['theta_v']:.1f} °C · "
                                        f"zonas {c['zona_i']} / {c['zona_v']}"),
-             ("h2", "2. Indicadores"), ("table", ["Indicador", "Valor"], rows, [60 * W, 110 * W]),
-             ("h2", "3. Envolvente"), ("table", ["Elemento", "A m²", "U", "Fronteira"], env, [45 * W, 25 * W, 20 * W, 40 * W])]
+             ("h2", "2. Indicadores"), graf_cl, ("table", ["Indicador", "Valor"], rows, [60 * W, 110 * W]), graf_j,
+             ("h2", "3. Envolvente"), ("table", ["Elemento", "A m²", "U", "Fronteira"], env, [45 * W, 25 * W, 20 * W, 40 * W]), graf_p]
     if r["controles"]:
         blocs += [("h2", "4. Requisitos (Portaria 138-I/2021, Despacho 6476-E/2021)"), ("controls", [{"ref": x["ref"], "exigence": x["exigencia"], "valeur": x["valor"], "ok": x["ok"]} for x in r["controles"]])]
     titre = "Pré-certificado energético (REH, indicativo)"

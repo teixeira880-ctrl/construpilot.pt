@@ -237,9 +237,16 @@ def note(params: dict) -> dict:
     titre = f"Isolamento de paredes — {r['sistema_nome']}"
     sous = f"{r['referencia']} · isolante {r['isolante']['ep_mm']:g} mm (λ {r['isolante']['lambda']:g}{' declarado' if r['isolante']['declarado'] else ' por defeito'})"
     rows = [[c["nom"], f"{c['ep_mm']:g}" if c["ep_mm"] else "—", f"{c['R']:.2f}", f"{c['Sd']:.2f}", c["origine"]] for c in r["couches"]]
-    blocks = [("h2", "1. Composição (do interior para o exterior)"),
+    from . import graficos as G
+    kp = [{"label": "U da parede", "value": f"{r['U']:.3f}".replace(".", ","), "unit": "W/(m².°C)", "ok": r["controles"][0]["ok"]},
+          {"label": "Umáx (Portaria 138-I)", "value": f"{r['umax']:g}".replace(".", ","), "unit": "W/(m².°C)"},
+          {"label": "Espessura de isolante", "value": f"{r['isolante']['ep_mm']:g}", "unit": "mm"},
+          {"label": "Condensação (Glaser)", "value": "nula" if not r["glaser"]["condensation"] else "a tratar", "ok": not r["glaser"]["condensation"]}]
+    blocks = [("kpis", kp), ("h2", "1. Composição (do interior para o exterior)"),
               ("table", ["Camada", "esp. (mm)", "R (m².°C/W)", "Sd (m)", "Origem"], rows, [70 * W, 18 * W, 22 * W, 18 * W, 52 * W]),
               ("p", f"R = {r['R_parede']:.2f} m².°C/W; U = {r['U']:.3f} W/(m².°C)" + (f" (inclui buchas ΔU = {r['dU_buchas']:.3f})" if r["dU_buchas"] else "")),
+              ("chart", G.barres_h([(c["nom"], c["R"], G.SERIES[3] if c["role"] == "isolante" else G.SERIES[0]) for c in r["couches"] if c["R"] > 0.005],
+                                   "Contribuição de cada camada para a resistência térmica", "m².°C/W"), "O isolante (a amarelo) assegura o essencial do desempenho."),
               ("h2", "2. Perfil de temperaturas e diagrama de Glaser"), ("figure", rendu.ParoiGlaser(r["couches"], r["glaser"])),
               ("h2", "3. Verificações"), ("controls", [{"ref": c["ref"], "exigence": c["exigencia"], "valeur": c["valor"], "ok": c["ok"], "note": c.get("note")} for c in r["controles"]]), ("h2", "4. Regras de execução"), ("hyp", r["regras"])]
     if r["metre"]:

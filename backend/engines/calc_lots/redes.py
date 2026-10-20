@@ -91,7 +91,8 @@ def aguas_pluviais(p: dict) -> dict:
             dtq = 200
             q_tq = Q / n
         dtq = max(dtq, int(v.get("diametro_min") or 75))
-        rows.append({"vertente": v.get("nome") or f"vertente {k}", "A": A, "Q": Q, "caleira": cal[0], "cap_caleira": cal[1], "tubos_queda": n, "phi": dtq})
+        rows.append({"vertente": v.get("nome") or f"vertente {k}", "A": A, "Q": Q, "caleira": cal[0], "cap_caleira": cal[1], "tubos_queda": n, "phi": dtq,
+                     "ocupacao_caleira": q_tq / (2 if v.get("descarga_central") else 1) / cal[1] if cal[1] else None})
         ctl.append({"ref": f"{v.get('nome') or f'Vertente {k}'} — caleira", "exigencia": f"Q ≥ {q_tq:.2f} L/s com i ≥ 0,5 %", "valor": f"{cal[0]}: {cal[1]:.2f} L/s (i {inc:g} %)",
                     "ok": inc >= 0.5 and cal[1] >= q_tq / (2 if v.get("descarga_central") else 1) - 1e-9})
         ctl.append({"ref": f"{v.get('nome') or f'Vertente {k}'} — tubos de queda", "exigencia": "Ø ≥ 50 mm, capacidade ≥ caudal por tubo", "valor": f"{n} × Ø{dtq} ({q_tq:.2f} L/s cada)",
@@ -190,6 +191,9 @@ def note(params: dict) -> dict:
     from . import notes
     f, W = notes._f, notes.W
     blocs, hyp, sous, out, n = [("p", "Pré-dimensionamento indicativo — não substitui o projeto da especialidade nem o parecer da entidade gestora / regulamento municipal.")], [], [], {}, 1
+    from . import graficos as G
+    kp = []
+
     def ctl(lst):
         return [{"ref": c["ref"], "exigence": c["exigencia"], "valeur": c["valor"], "ok": c["ok"]} for c in lst]
     if params.get("aguas_pluviais") is not None:
@@ -197,7 +201,12 @@ def note(params: dict) -> dict:
         out["aguas_pluviais"] = r
         rows = [[v["vertente"], f(v["A"], 0), f"{v['Q']:.2f}", v["caleira"], f"{v['tubos_queda']} × Ø{v['phi']}"] for v in r["vertentes"]]
         blocs += [("h2", f"{n}. Águas pluviais (DR 23/95)"), ("table", ["Vertente", "m²", "L/s", "Caleira", "Tubos de queda"], rows, [35 * W, 18 * W, 18 * W, 45 * W, 35 * W]),
+                  ("chart", G.jauges([(v["vertente"], v.get("ocupacao_caleira"), f"{v['Q'] / v['tubos_queda']:.2f} / {v['cap_caleira']:.2f} L/s".replace(".", ","))
+                                      for v in r["vertentes"]], "Taxa de ocupação das caleiras (caudal por tubo de queda / capacidade)")),
                   ("controls", ctl(r["controles"]))]
+        kp.append({"label": "Caudal pluvial total", "value": f"{r['caudal_total_l_s']:.2f}".replace(".", ","), "unit": "L/s"})
+        if r.get("coletor"):
+            kp.append({"label": "Coletor predial", "value": f"Ø{r['coletor']}", "unit": "mm", "ok": all(c["ok"] is not False for c in r["controles"])})
         hyp += r["hipoteses"]; sous.append("águas pluviais"); n += 1
     if params.get("fossa_septica") is not None:
         r = fossa_septica(params["fossa_septica"])
@@ -209,16 +218,28 @@ def note(params: dict) -> dict:
             txt += f" Infiltração: {d['comprimento_total_m']:.0f} m de trincheiras ({d['n_trincheiras']} × {d['comprimento_total_m'] / d['n_trincheiras']:.1f} m, largura 0,60 m)."
         elif d:
             txt += f" Destino final: {d['solucao']} ({d['motivo']})."
-        blocs += [("h2", f"{n}. Fossa séptica e destino final"), ("p", txt), ("controls", ctl(r["controles"]))]
+        pc = r["parcelas"]
+        blocs += [("h2", f"{n}. Fossa séptica e destino final"), ("p", txt),
+                  ("chart", G.donut([("Volume líquido (retenção)", pc["liquido"]), ("Lamas digeridas", pc["lamas_digeridas"]), ("Lamas em digestão", pc["lamas_digestao"])],
+                                    "Composição do volume útil da fossa", f"{r['volume_util_m3']:.2f}".replace(".", ","), "m³ úteis", w=120 * W),
+                   "Volume mínimo de 2 m³ quando a soma das parcelas é inferior." if r["volume_util_m3"] > sum(pc.values()) + 1e-6 else None),
+                  ("controls", ctl(r["controles"]))]
+        kp.append({"label": "Fossa séptica (volume útil)", "value": f"{r['volume_util_m3']:.2f}".replace(".", ","), "unit": "m³", "ok": all(c["ok"] is not False for c in r["controles"])})
         hyp += r["hipoteses"]; sous.append("fossa séptica"); n += 1
     if params.get("ventilacao") is not None:
         r = ventilacao(params["ventilacao"])
         out["ventilacao"] = r
+        crit = G.barres_h([("Admissão (principais)", r["admissao_min_m3h"], G.SERIES[2]), ("Extração (húmidos)", r["extracao_m3h"], G.SERIES[0]),
+                           ("Mínimo 0,5 Rph", 0.5 * r["volume_m3"], G.SERIES[1])], "Critérios de caudal", "m³/h", w=86 * W,
+                          ref=(r["caudal_m3h"], f"adotado {r['caudal_m3h']:.0f}"), dec=0)
+        gr = G.barres_h([(a, float(b)) for a, b in r["grelhas"]], "Grelhas de admissão", "m³/h", w=86 * W, couleur=G.SERIES[2], dec=0) if r["grelhas"] else None
         blocs += [("h2", f"{n}. Ventilação"), ("p", f"Caudal {r['caudal_m3h']:.0f} m³/h (Rph {r['rph']:.2f} h⁻¹). Grelhas de admissão: " + ", ".join(f"{a} {b} m³/h" for a, b in r["grelhas"]) + "."),
+                  ("chart", G.cote_a_cote(crit, gr) if gr else crit, "O caudal adotado é o maior dos três critérios; a admissão total deve igualar a extração."),
                   ("controls", ctl(r["controles"]))]
+        kp.append({"label": "Caudal de ventilação", "value": f"{r['caudal_m3h']:.0f}", "unit": "m³/h", "ok": all(c["ok"] is not False for c in r["controles"])})
         hyp += r["hipoteses"]; sous.append("ventilação")
     if not out:
         raise ValueError("indicar pelo menos: aguas_pluviais, fossa_septica ou ventilacao")
     titre = "Pré-dimensionamento — " + ", ".join(sous)
-    pdf, png = notes.pdf(titre, "Águas pluviais · saneamento autónomo · ventilação (Portugal)", blocs, hyp)
+    pdf, png = notes.pdf(titre, "Águas pluviais · saneamento autónomo · ventilação (Portugal)", [("kpis", kp)] + blocs, hyp)
     return {**out, "titre": titre, "pdf": pdf, "png": png}
