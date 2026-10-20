@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.db import db
-from engines import calculators, diy
+from engines import baie_detail, calculators, diy
 
 router = APIRouter(tags=["tools"])
 
@@ -206,3 +206,34 @@ async def diy_guide(key: str, body: CalcIn):
         return diy.build_guide(key, body.params)
     except KeyError:
         raise HTTPException(status_code=404, detail="Trabalho desconhecido")
+
+
+class PormenorIn(BaseModel):
+    params: dict = {}
+
+
+def _pormenor(params: dict) -> dict:
+    params = {**(params or {})}
+    params.setdefault("lang", "pt")
+    try:
+        return baie_detail.render(params)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+
+
+@router.post("/tools/pormenor-caixilharia")
+async def pormenor_caixilharia(body: PormenorIn):
+    """Pormenor de montagem de caixilharia (janela, porta-janela, correr; estore e caixa) — corte vertical + horizontal, sem IA."""
+    import asyncio
+    import base64
+    out = await asyncio.to_thread(_pormenor, body.params)
+    return {"title": out["title"], "subtitle": out["subtitle"], "key_values": out["key_values"], "notes": out["notes"], "params": out["params"],
+            "png_vertical_b64": base64.b64encode(out["png_vertical"]).decode(), "png_horizontal_b64": base64.b64encode(out["png_horizontal"]).decode()}
+
+
+@router.post("/tools/pormenor-caixilharia/pdf")
+async def pormenor_caixilharia_pdf(body: PormenorIn):
+    import asyncio
+    out = await asyncio.to_thread(_pormenor, body.params)
+    return StreamingResponse(io.BytesIO(out["pdf"]), media_type="application/pdf",
+                             headers={"Content-Disposition": 'attachment; filename="pormenor-caixilharia.pdf"'})
