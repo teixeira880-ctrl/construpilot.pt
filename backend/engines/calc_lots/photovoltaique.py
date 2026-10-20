@@ -15,14 +15,14 @@ from . import climat
 
 # ---------------------------------------------------------------------------------------------------------------------------------
 # Productible spécifique (kWh/kWc.an) à orientation optimale, pertes système ≈ 14 % incluses — ordres de grandeur PVGIS
-PROD_FR = {"H1a": 1020, "H1b": 1060, "H1c": 1170, "H2a": 1090, "H2b": 1170, "H2c": 1250, "H2d": 1390, "H3": 1430}
-PROD_PT = {"1": 1560, "2": 1540, "3": 1480, "4": 1430, "5": 1450, "6": 1520, "7": 1620, "8": 1680, "9": 1350}   # 1er chiffre du code postal
+PROD_FR = {"H1a": 1100, "H1b": 1130, "H1c": 1270, "H2a": 1180, "H2b": 1230, "H2c": 1320, "H2d": 1500, "H3": 1540}
+PROD_PT = {"1": 1640, "2": 1600, "3": 1550, "4": 1520, "5": 1540, "6": 1580, "7": 1680, "8": 1720, "9": 1400}   # 1er chiffre du code postal
 REGION_PT = {"1": "Lisboa", "2": "Lisboa / Setúbal / Santarém / Leiria", "3": "Coimbra / Aveiro / Viseu", "4": "Porto / Braga / Viana",
              "5": "Vila Real / Bragança", "6": "Castelo Branco / Guarda", "7": "Évora / Beja / Portalegre", "8": "Faro (Algarve)", "9": "Madeira / Açores"}
 # facteur d'orientation : azimut par rapport au sud (0 = sud, 90 = est/ouest, 180 = nord) × inclinaison (°)
 _AZ = [0, 45, 90, 135, 180]
 _TI = [0, 30, 60, 90]
-_F = [[0.88, 1.00, 0.91, 0.68], [0.88, 0.96, 0.86, 0.65], [0.88, 0.85, 0.71, 0.53], [0.88, 0.72, 0.52, 0.36], [0.88, 0.64, 0.40, 0.24]]
+_F = [[0.93, 1.00, 0.91, 0.68], [0.93, 0.96, 0.88, 0.66], [0.93, 0.90, 0.78, 0.55], [0.93, 0.75, 0.58, 0.40], [0.93, 0.58, 0.40, 0.28]]   # table usuelle (Hespul / ADEME)
 
 # Tarifs indicatifs (à mettre à jour) — sources et dates dans TARIFS["source"]
 TARIFS = {
@@ -92,7 +92,15 @@ def calculer(p: dict) -> dict:
     if pays not in TARIFS:
         raise ValueError("pays : 'fr' ou 'pt'")
     hyp: list[str] = []
-    mod = {**MODULE_DEFAUT, **{k: float(v) for k, v in (p.get("module") or {}).items() if v is not None}}
+    fourni = {k: float(v) for k, v in (p.get("module") or {}).items() if v is not None}
+    mod = {**MODULE_DEFAUT, **fourni}
+    if fourni and set(fourni) < {"wc", "voc", "isc", "vmp", "imp"}:
+        if "wc" in fourni and fourni["wc"] != MODULE_DEFAUT["wc"]:   # mise à l'échelle des caractéristiques électriques
+            k = fourni["wc"] / MODULE_DEFAUT["wc"]
+            for c_ in ("isc", "imp"):
+                mod[c_] = fourni.get(c_, MODULE_DEFAUT[c_] * k)
+            mod["surface_m2"] = fourni.get("surface_m2", MODULE_DEFAUT["surface_m2"] * k)
+        hyp.append("fiche module incomplète : caractéristiques électriques manquantes déduites d'un module standard")
     if not p.get("module"):
         hyp.append(f"módulo standard {mod['wc']:g} Wc (Voc {mod['voc']:g} V, Isc {mod['isc']:g} A, Vmp {mod['vmp']:g} V) : substituir pela ficha técnica")
     if p.get("puissance_kwc"):
@@ -109,6 +117,8 @@ def calculer(p: dict) -> dict:
     az, inc = float(p.get("azimut_sud") or 0), float(p.get("inclinaison") if p.get("inclinaison") is not None else 30)
     f_or = facteur_orientation(az, inc)
     ombrage = float(p.get("ombrage_pct") or 0) / 100
+    if not 0 <= ombrage < 0.95:
+        raise ValueError("ombrage_pct doit être compris entre 0 et 95 %")
     conso = float(p.get("consommation_kwh") or 0)
     profil = p.get("profil") or "mixte"
     batt = float(p.get("batterie_kwh") or 0)
@@ -130,8 +140,9 @@ def calculer(p: dict) -> dict:
     ond = next((o for o in ONDULEURS if o[0] >= kva_cible - 1e-9), ONDULEURS[-1])
     if p.get("raccordement") == "tri" and ond[1] == "mono":
         ond = next(o for o in ONDULEURS if o[1] == "tri")
-    if pays == "fr" and ond[1] == "mono" and ond[0] > 6:
-        ond = next(o for o in ONDULEURS if o[1] == "tri")
+    mono_impose = p.get("raccordement") == "mono"
+    if mono_impose and ond[1] == "tri":
+        ond = max((o for o in ONDULEURS if o[1] == "mono"), key=lambda o: o[0])
     kva, phase, vmax, vmppt_min, vmppt_max, imax, iscmax, nmppt = ond
     voc_froid = mod["voc"] * (1 + mod["beta_voc"] / 100 * (t_min - 25))
     vmp_chaud = mod["vmp"] * (1 + mod["gamma_vmp"] / 100 * (70 - 25))
@@ -175,8 +186,10 @@ def calculer(p: dict) -> dict:
         s_ac = (s, (2 if phase == "mono" else math.sqrt(3)) * RHO_CU * l_ac * i_ac / s / (230 if phase == "mono" else 400) * 100)
     ctl.append({"ref": "Linha AC inversor → quadro", "exigence": "ΔU ≤ 1 % recomendado, proteção por disjuntor dedicado",
                 "valeur": f"{phase} {i_ac:.1f} A → disjuntor {cal} A, {s_ac[0]:g} mm², ΔU {s_ac[1]:.2f} %", "ok": s_ac[1] <= 1.0 + 1e-9})
-    if pays == "fr" and phase == "mono" and kva > 6:
-        ctl.append({"ref": "Raccordement Enedis", "exigence": "monophasé ≤ 6 kVA", "valeur": f"{kva:g} kVA", "ok": False})
+    if mono_impose and kwc / kva > 1.3:
+        ctl.append({"ref": "Raccordement monophasé" if pays == "pt" else "Raccordement Enedis monophasé",
+                    "exigence": "onduleur monophasé ≤ 6 kVA : au-delà, raccordement triphasé ou puissance crête réduite",
+                    "valeur": f"{kwc:.1f} kWc pour {kva:g} kVA", "ok": False})
     # charge en toiture
     surf = n_mod * mod["surface_m2"]
     charge = (mod["masse_kg"] / mod["surface_m2"] + 3) * 9.81 / 1000
