@@ -48,21 +48,29 @@ def verifier(p: dict) -> dict:
         ctl.append(_c("Largeur du cheminement / percurso", f"≥ {lim:.2f} m" + (" (réduction ponctuelle 1,20 m)" if erp else " (0,90 m ponctuellement)" if not pt else " (0,90 m em ≤ 1,50 m)"),
                       f"{g('largeur_cheminement_m'):.2f} m", g("largeur_cheminement_m") >= lim - 1e-9))
     if "pente_rampe_pct" in m:
-        L = float(m.get("longueur_rampe_m") or 0)
-        if pt:
+        L = float(m["longueur_rampe_m"]) if m.get("longueur_rampe_m") is not None else None
+        if L is None and (pt or g("pente_rampe_pct") > 5):
+            ctl.append(_c("Rampe / rampa", "longueur (ou dénivelé) à fournir pour vérifier la pente", f"{g('pente_rampe_pct'):g} %", None))
+            L = -1.0
+        if L == -1.0:
+            pass
+        elif pt:
             ok, txt = _rampe_pt(g("pente_rampe_pct"), L, float(m["desnivel_rampa_m"]) if m.get("desnivel_rampa_m") is not None else None)
             ref = "Rampa (DL 163/2006, 2.5)"
         else:
             ok, txt = _rampe_fr(g("pente_rampe_pct"), L)
             ref = "Pente du cheminement / plan incliné"
-        ctl.append(_c(ref, txt, f"{g('pente_rampe_pct'):g} % sur {L:g} m", ok))
+        if L != -1.0:
+            ctl.append(_c(ref, txt, f"{g('pente_rampe_pct'):g} % sur {L:g} m", ok))
+        L = max(L, 0.0)
         if not pt and g("pente_rampe_pct") >= 4 and L > 10:
             ctl.append(_c("Paliers de repos", "tous les 10 m si pente ≥ 4 % (1,20 × 1,40 m)", "à prévoir", None))
         if pt and g("pente_rampe_pct") > 6:
             ctl.append(_c("Corrimãos da rampa", "duplos (0,70–0,75 m e 0,90–0,95 m) dos dois lados se inclinação > 6 %", "a prever", None))
     if "largeur_rampe_m" in m:
-        ctl.append(_c("Largeur de la rampe", "≥ 1,20 m" + (" (0,90 m se projeção ≤ 5 m)" if pt else ""), f"{g('largeur_rampe_m'):.2f} m",
-                      g("largeur_rampe_m") >= (0.90 if pt and float(m.get("longueur_rampe_m") or 99) <= 5 else 1.20) - 1e-9))
+        lim = 0.90 if pt and float(m.get("longueur_rampe_m") or 99) <= 5 else 1.40 if erp else 1.20
+        ctl.append(_c("Largeur de la rampe", f"≥ {lim:.2f} m" + (" (0,90 m se projeção ≤ 5 m)" if pt else ""), f"{g('largeur_rampe_m'):.2f} m",
+                      g("largeur_rampe_m") >= lim - 1e-9))
     if "devers_pct" in m:
         ctl.append(_c("Dévers / inclinação transversal", "≤ 2 %", f"{g('devers_pct'):g} %", g("devers_pct") <= 2 + 1e-9))
     if "ressaut_cm" in m:
@@ -72,6 +80,8 @@ def verifier(p: dict) -> dict:
                       g("ressaut_cm") <= lim + 1e-9))
         if pt and chanf:
             hyp.append("ressalto chanfrado ≤ 5 cm: secção 4.8 do DL 163/2006 não confirmada no texto")
+    if erp and "porte_entree_utile_m" in m:
+        hyp.append("ERP recevant ≥ 100 personnes : porte de 1,40 m dont un vantail de 0,90 m (0,83 m utile) — non vérifié ici")
     if "porte_entree_utile_m" in m:
         lim = 0.87 if pt else 0.83
         ctl.append(_c("Porte d'entrée — passage utile" if not pt else "Porta de entrada — largura útil", f"≥ {lim:.2f} m" + ("" if pt else " (porte de 0,90 m)"),
@@ -84,13 +94,15 @@ def verifier(p: dict) -> dict:
     if "diametre_rotation_m" in m:
         ctl.append(_c("Aire de rotation / zona de rotação", "Ø ≥ 1,50 m", f"Ø {g('diametre_rotation_m'):.2f} m", g("diametre_rotation_m") >= 1.50 - 1e-9))
     if "circulation_interieure_m" in m:
-        lim = 1.10 if pt else 0.90
-        ctl.append(_c("Circulations intérieures du logement" if not pt else "Corredores da habitação", f"≥ {lim:.2f} m", f"{g('circulation_interieure_m'):.2f} m",
+        lim = 1.10 if pt else 1.40 if erp else 0.90
+        ctl.append(_c("Circulations intérieures" + (" (ERP, 1,20 m ponctuellement)" if erp else " du logement") if not pt else "Corredores da habitação", f"≥ {lim:.2f} m", f"{g('circulation_interieure_m'):.2f} m",
                       g("circulation_interieure_m") >= lim - 1e-9))
     if "escalier_hauteur_marche_cm" in m or "escalier_giron_cm" in m or "escalier_largeur_m" in m:
         hmax = 18 if pt else 16 if erp else 17
-        lmin = 1.20 if (pt or erp) else 1.00
-        if ctx == "fr_maison_individuelle":
+        lmin = (1.20 if m.get("publico") else 1.00) if pt else 1.20 if erp else 1.00
+        if pt and not m.get("publico"):
+            hyp.append("escada de habitação (3.3.5): largura ≥ 1,00 m; edifícios públicos (2.4): ≥ 1,20 m — indicar « publico »")
+        if ctx == "fr_maison_individuelle" or m.get("escalier_interieur_logement"):
             hmax, lmin, gmin = 18, 0.80, 24
         else:
             gmin = 28
@@ -104,17 +116,25 @@ def verifier(p: dict) -> dict:
             hyp.append("escaliers des parties communes (≤ 17 cm, ≥ 28 cm, 1,00 m) : valeurs de l'arrêté de 2015 reprises de notes DDT / CAUE")
     if "stationnement_largeur_m" in m:
         lim = 3.50 if pt else 3.30
+        lg = float(m["stationnement_longueur_m"]) if m.get("stationnement_longueur_m") is not None else None
+        ok = g("stationnement_largeur_m") >= lim - 1e-9 and (lg is None or lg >= 5 - 1e-9)
         ctl.append(_c("Place de stationnement adaptée" if not pt else "Lugar de estacionamento", f"largeur ≥ {lim:.2f} m" + (" (2,50 m + faixa 1,00 m)" if pt else " (2,50 + 0,80 m)") + ", longueur ≥ 5,00 m",
-                      f"{g('stationnement_largeur_m'):.2f} m", g("stationnement_largeur_m") >= lim - 1e-9 and float(m.get("stationnement_longueur_m") or 5) >= 5 - 1e-9))
-    if "nb_places_total" in m:
+                      f"{g('stationnement_largeur_m'):.2f} m" + (f" × {lg:.2f} m" if lg is not None else " (longueur non fournie)"), ok if (lg is not None or not ok) else None))
+    if "nb_places_adaptees" in m and "nb_places_total" not in m:
+        hyp.append("nombre de places adaptées fourni sans nombre total : quota non vérifié")
+    if "nb_places_total" in m and ctx != "fr_maison_individuelle":
         n = int(m["nb_places_total"])
         if pt:
+            if m.get("publico") is None:
+                hyp.append("estacionamento: tabela da habitação (3.2.6) aplicada — indicar « publico » para edifícios abertos ao público (2.8)")
             if m.get("publico"):
                 req = 1 if n <= 10 else 2 if n <= 25 else 3 if n <= 100 else 4 if n <= 500 else 4 + (n - 500 + 99) // 100
             else:     # habitação (3.2.6)
                 req = 0 if n < 13 else 1 if n <= 50 else 2 if n <= 200 else 2 + (n - 200 + 99) // 100
         else:
-            req = -(-n * 2 // 100) if erp else -(-n * 5 // 100)
+            req = (max(10, -(-n * 2 // 100)) if n > 500 else -(-n * 2 // 100)) if erp else -(-n * 5 // 100)
+            if erp and n > 500:
+                hyp.append("ERP > 500 places : nombre fixé par arrêté municipal (minimum 10)")
             if ctx == "fr_logement_collectif":
                 hyp.append("5 % de places adaptées en logement collectif : valeur non confirmée dans le texte de l'arrêté de 2015")
         ok = int(m["nb_places_adaptees"]) >= req if m.get("nb_places_adaptees") is not None else None
@@ -126,16 +146,17 @@ def verifier(p: dict) -> dict:
         ctl.append(_c("Douche — ressaut", "≤ 2 cm", f"{g('douche_seuil_cm'):g} cm", g("douche_seuil_cm") <= 2 + 1e-9))
     if "nb_niveaux_au_dessus_rdc" in m and ctx == "fr_logement_collectif":
         n = int(m["nb_niveaux_au_dessus_rdc"])
-        ctl.append(_c("Ascenseur (loi ELAN)", "obligatoire dès 3 étages au-dessus du rez-de-chaussée", "prévu" if m.get("ascenseur") else "non prévu",
-                      bool(m.get("ascenseur")) or n < 3))
-    if "eclairage_exterieur_lux" in m:
+        asc = m.get("ascenseur")
+        ctl.append(_c("Ascenseur (loi ELAN)", "obligatoire dès 3 étages au-dessus du rez-de-chaussée", "prévu" if asc else ("non prévu" if asc is False else "non précisé"),
+                      True if (n < 3 or asc) else (False if asc is False else None)))
+    if "eclairage_exterieur_lux" in m and not pt:
         ctl.append(_c("Éclairage extérieur / stationnement", "≥ 20 lux", f"{g('eclairage_exterieur_lux'):g} lux", g("eclairage_exterieur_lux") >= 20 - 1e-9))
     if not ctl:
         raise ValueError("aucune mesure reconnue (voir le schéma de l'outil)")
     ref = {"fr_logement_collectif": "arrêté du 24/12/2015 (logements collectifs neufs)", "fr_maison_individuelle": "arrêté du 24/12/2015 (maisons individuelles neuves)",
            "fr_erp": "arrêté du 20/04/2017 (ERP neufs)", "pt": "Decreto-Lei 163/2006 (normas técnicas de acessibilidade)"}[ctx]
     hyp.insert(0, f"référentiel : {ref} — vérification indicative des seules mesures fournies")
-    return {"contexte": ctx, "referentiel": ref, "controles": ctl, "hypotheses": hyp, "conforme": all(c["ok"] is not False for c in ctl)}
+    return {"contexte": ctx, "referentiel": ref, "controles": ctl, "hypotheses": hyp, "conforme": (False if any(c["ok"] is False for c in ctl) else None if any(c["ok"] is None for c in ctl) else True)}
 
 
 def note(p: dict) -> dict:

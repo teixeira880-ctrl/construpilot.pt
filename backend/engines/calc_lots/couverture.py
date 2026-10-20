@@ -26,6 +26,8 @@ TERRAIN_PT = {"I": (0.005, 1.0), "II": (0.05, 3.0), "III": (0.30, 8.0), "IV": (1
 MURS_CPE = {5: (-1.2, -0.8, -0.5, 0.8, -0.7), 1: (-1.2, -0.8, -0.5, 0.8, -0.5), 0.25: (-1.2, -0.8, -0.5, 0.7, -0.3)}
 TOIT_0 = {5: ((-1.7, 0.0), (-1.2, 0.0), (-0.6, 0.0), (-0.6, 0.2), (-0.6, 0.2)), 15: ((-0.9, 0.2), (-0.8, 0.2), (-0.3, 0.2), (-0.4, 0.0), (-1.0, 0.0)),
           30: ((-0.5, 0.7), (-0.5, 0.7), (-0.2, 0.4), (-0.4, 0.0), (-0.5, 0.0)), 45: ((-0.0, 0.7), (-0.0, 0.7), (-0.0, 0.6), (-0.2, 0.0), (-0.3, 0.0))}
+TOIT_0_CPE1 = {5: (-2.5, -2.0, -1.2), 15: (-2.0, -1.5, -0.3), 30: (-1.5, -1.5, -0.2), 45: (-0.0, -0.0, -0.0)}      # F, G, H (aires ≤ 1 m²)
+TOIT_90_CPE1 = {5: (-2.2, -2.0, -1.2), 15: (-2.0, -2.0, -1.2), 30: (-1.5, -2.0, -1.2), 45: (-1.5, -2.0, -1.2)}
 TOIT_90 = {5: (-1.6, -1.3, -0.7, -0.6), 15: (-1.3, -1.3, -0.6, -0.5), 30: (-1.1, -1.4, -0.8, -0.5), 45: (-1.1, -1.4, -0.9, -0.5)}
 NEIGE_FR = {"A1": (0.45, None), "A2": (0.45, 1.00), "B1": (0.55, 1.00), "B2": (0.55, 1.35), "C1": (0.65, None), "C2": (0.65, 1.35), "D": (0.90, 1.80), "E": (1.40, None)}
 NEIGE_PT = {"Z1": 0.30, "Z2": 0.20, "Z3": 0.10}
@@ -78,6 +80,8 @@ def vent(p: dict) -> dict:
             else:
                 raise ValueError("région de vent (1 à 4) ou code postal métropolitain requis")
         reg = int(reg)
+        if reg not in VB0_FR:
+            raise ValueError("région de vent : 1, 2, 3 ou 4")
         vb0 = VB0_FR[reg]
         cat = p.get("categorie_terrain") or "IIIa"
         if cat not in TERRAIN_FR:
@@ -97,17 +101,23 @@ def vent(p: dict) -> dict:
     dprof = float(p.get("profondeur_m") or 8)
     hd = h / dprof
     murs = _interp(MURS_CPE, hd)
-    alpha = float(p.get("pente_deg") or 30)
+    alpha = 30.0 if p.get("pente_deg") is None else float(p["pente_deg"])
     t0 = _interp(TOIT_0, min(45, max(5, alpha)))
     t90 = _interp(TOIT_90, min(45, max(5, alpha)))
     e = min(b, 2 * h)
     cpi = (0.2, -0.3)
-    w_toit_min = qp * (min(min(x[0] for x in t0), min(t90)) - cpi[0]) / 1000      # soulèvement maximal (kN/m²), zone F
-    w_toit_courant = qp * (min(t0[2][0], t90[2]) - cpi[0]) / 1000                  # zone H
+    a_c = min(45, max(5, alpha))
+    c1_0, c1_90 = _interp(TOIT_0_CPE1, a_c), _interp(TOIT_90_CPE1, a_c)
+    cmin10 = min(min(x[0] for x in t0), min(t90))
+    cmin1 = min(min(c1_0), min(c1_90), cmin10)
+    w_struct = qp * (cmin10 - cpi[0]) / 1000                                        # structure (aires ≥ 10 m², cpe,10)
+    w_toit_min = qp * (cmin1 - cpi[0]) / 1000                                       # éléments de couverture et fixations (aires ≤ 1 m², cpe,1)
+    w_toit_courant = qp * (min(c1_0[2], c1_90[2], t0[2][0], t90[2]) - cpi[0]) / 1000   # zone H, cpe,1
     w_mur_d = qp * (murs[3] - cpi[1]) / 1000
     w_mur_a = qp * (murs[0] - cpi[0]) / 1000
-    ctl.append({"ref": "Soulèvement de la couverture (zones de rive F, cpe,10)", "exigence": "fixations / poids propre ≥ dépression nette (EN 1991-1-4 §7.2.5)",
-                "valeur": f"{w_toit_min:.2f} kN/m² en rive (bande e/10 = {e / 10:.1f} m), {w_toit_courant:.2f} kN/m² en partie courante", "ok": None,
+    ctl.append({"ref": "Soulèvement de la couverture et des fixations (cpe,1, aires ≤ 1 m²)", "exigence": "fixations / poids propre ≥ dépression nette (EN 1991-1-4 §7.2.1)",
+                "valeur": f"{w_toit_min:.2f} kN/m² en rives et angles (bande e/10 = {e / 10:.1f} m), {w_toit_courant:.2f} kN/m² en partie courante ; "
+                          f"structure (cpe,10) {w_struct:.2f} kN/m²", "ok": None,
                 "note": "à comparer au poids propre de la couverture et à la résistance des fixations (DTU série 40, règles NV / fabricant)"})
     if alpha < 5:
         hyp.append("pente < 5° : coefficients de toiture-terrasse non traités (valeurs à 5° utilisées)")
@@ -116,13 +126,13 @@ def vent(p: dict) -> dict:
     return {"pays": pays, "vb0": vb0, "qb_pa": qb, "categorie": cat, "z_m": z, "kr": kr, "cr": cr, "Iv": iv, "kl": kl, "qp_pa": qp, "ce": qp / qb,
             "murs_cpe10": dict(zip("ABCDE", murs)), "toiture_cpe10_0": dict(zip("FGHIJ", t0)), "toiture_cpe10_90": dict(zip("FGHI", t90)), "e_m": e,
             "pression_mur_D_kn_m2": w_mur_d, "depression_mur_A_kn_m2": w_mur_a, "depression_toiture_rive_kn_m2": w_toit_min,
-            "depression_toiture_courante_kn_m2": w_toit_courant, "controles": ctl, "hypotheses": hyp}
+            "depression_toiture_courante_kn_m2": w_toit_courant, "depression_toiture_structure_kn_m2": w_struct, "controles": ctl, "hypotheses": hyp}
 
 
 def neige(p: dict) -> dict:
     pays = p.get("pays") or "pt"
     A = float(p.get("altitude_m") or 0)
-    alpha = float(p.get("pente_deg") or 30)
+    alpha = 30.0 if p.get("pente_deg") is None else float(p["pente_deg"])
     hyp = []
     if pays == "pt":
         zona = (p.get("zona_neve") or "Z3").upper()
@@ -155,6 +165,7 @@ def neige(p: dict) -> dict:
     if pays == "fr" and alpha < 1.7:       # pente < 3 %
         s += 0.2
         hyp.append("toiture de pente < 3 % : majoration de 0,2 kN/m² (AN française)")
+    hyp.append("Ce = Ct = 1 (exposition normale, toiture non chauffante)")
     return {"pays": pays, "region": reg, "sk_kn_m2": sk, "mu1": mu1, "s_kn_m2": s, "sad_kn_m2": sad, "hypotheses": hyp}
 
 
@@ -162,7 +173,10 @@ def zone_tuile(p: dict) -> int:
     A = float(p.get("altitude_m") or 0)
     za = 1 if A < 200 else 2 if A < 500 else 3
     zg = 3 if p.get("cote_manche_atlantique_nord_20km") else 2 if p.get("cote_atlantique_sud_ou_20_40km") else 1
-    return max(za, zg, int(p.get("zone_climatique") or 1))
+    zc = int(p.get("zone_climatique") or 1)
+    if zc not in (1, 2, 3):
+        raise ValueError("zone climatique DTU : 1, 2 ou 3")
+    return max(za, zg, zc)
 
 
 def pente_tuiles(p: dict) -> dict:
@@ -171,9 +185,15 @@ def pente_tuiles(p: dict) -> dict:
     if site not in ("protege", "normal", "expose"):
         raise ValueError("site : protege, normal ou expose")
     zone = zone_tuile(p)
+    if p.get("site") is None:
+        hyp_def = ["site non précisé : « normal » retenu (protégé / exposé à préciser)"]
+    else:
+        hyp_def = []
+    if p.get("altitude_m") is None and p.get("zone_climatique") is None and not p.get("cote_manche_atlantique_nord_20km") and not p.get("cote_atlantique_sud_ou_20_40km"):
+        hyp_def.append("zone climatique non précisée : zone 1 retenue (intérieur, < 200 m) — vérifier altitude et distance à la côte")
     ecran = bool(p.get("ecran_sous_toiture"))
     L = float(p.get("rampant_m") or 6.0)
-    hyp = []
+    hyp = list(hyp_def)
     if float(p.get("altitude_m") or 0) > 900:
         raise ValueError("altitude > 900 m : climat de montagne hors DTU (règles « montagne » / étude)")
     if typ == "emboitement":
@@ -184,15 +204,17 @@ def pente_tuiles(p: dict) -> dict:
         ref = "NF DTU 40.21 (tuiles à emboîtement / à glissement à relief)"
         hyp.append("tableau du DTU 40.21 complété par les règles professionnelles « faible pente » (reproduit par les fabricants) : la pente minimale du modèle (certificat NF) prévaut")
     elif typ == "canal":
+        if L > 12:
+            raise ValueError("rampant > 12 m : étude particulière (DTU 40.22)")
         pmin = TUILE_4022[site][zone]
         ref = "NF DTU 40.22 (tuiles canal, sans écran)"
         if ecran:
             hyp.append("tuiles canal avec écran / sur plaques support : pentes réduites selon l'Avis Technique du système (valeur sans écran conservée)")
     elif typ == "plate":
-        pmin = TUILE_4023["ecran" if ecran else "sans"][site][zone]
-        ref = "NF DTU 40.23 (tuiles plates, recouvrement courant)"
         if L > 8:
-            hyp.append("rampant > 8 m en tuiles plates : étude particulière")
+            raise ValueError("rampant > 8 m en tuiles plates : étude particulière (DTU 40.23)")
+        pmin = TUILE_4023["ecran" if ecran else "sans"][site][zone]
+        ref = f"NF DTU 40.23 (tuiles plates, recouvrement ≥ {90 if zone == 3 else 80} mm)"
     elif typ == "beton":
         pmin = TUILE_4024["ecran" if ecran else "sans"][site]
         ref = "NF DTU 40.24 (tuiles béton, fiche fabricant, sans modulation par zone)"
@@ -212,7 +234,7 @@ def note(params: dict) -> dict:
     from . import notes
     W = notes.W
     blocs, hyp, out, n = [("p", "Valeurs indicatives (Eurocodes et DTU reproduits par des sources secondaires) — vérifier la norme et la documentation du fabricant.")], [], {}, 1
-    if params.get("vent"):
+    if params.get("vent") is not None:
         r = vent(params["vent"])
         out["vent"] = r
         rows = [["qb / qp(z)", f"{r['qb_pa']:.0f} Pa / {r['qp_pa']:.0f} Pa (ce {r['ce']:.2f}, z {r['z_m']:g} m, cat. {r['categorie']})"],
@@ -223,13 +245,13 @@ def note(params: dict) -> dict:
                 ["Dépression nette toiture rive / courante", f"{r['depression_toiture_rive_kn_m2']:.2f} / {r['depression_toiture_courante_kn_m2']:.2f} kN/m²"]]
         blocs += [("h2", f"{n}. Vent"), ("table", ["Grandeur", "Valeur"], rows, [70 * W, 105 * W]), ("controls", r["controles"])]
         hyp += r["hypotheses"]; n += 1
-    if params.get("neige"):
+    if params.get("neige") is not None:
         r = neige(params["neige"])
         out["neige"] = r
         blocs += [("h2", f"{n}. Neige"), ("p", f"Région {r['region']} : sk = {r['sk_kn_m2']:.2f} kN/m², μ1 = {r['mu1']:.2f} → s = {r['s_kn_m2']:.2f} kN/m²"
                                                  + (f" ; neige accidentelle sAd = {r['sad_kn_m2']:.2f} kN/m²" if r.get("sad_kn_m2") else ""))]
         hyp += r["hypotheses"]; n += 1
-    if params.get("tuiles"):
+    if params.get("tuiles") is not None:
         r = pente_tuiles(params["tuiles"])
         out["tuiles"] = r
         blocs += [("h2", f"{n}. Pente minimale de couverture"), ("controls", r["controles"])]
