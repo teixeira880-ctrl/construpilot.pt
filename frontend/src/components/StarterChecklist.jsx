@@ -12,46 +12,46 @@ export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = tru
   const items = isPro ? [
     {
       done: projectDone,
-      title: "Estimez vos travaux",
-      desc: "Décrivez un projet et obtenez une estimation détaillée en 30 s.",
+      title: "Estime as suas obras",
+      desc: "Descreva um projeto e obtenha uma estimativa detalhada em 30 s.",
       to: "/estimation",
-      cta: "Estimer",
+      cta: "Estimar",
     },
     {
       done: planDone,
-      title: "Mesurez un plan",
-      desc: "Importez un plan et laissez l'IA calculer les surfaces.",
+      title: "Meça uma planta",
+      desc: "Importe uma planta e deixe a IA calcular as áreas.",
       to: "/plan",
-      cta: "Mesurer",
+      cta: "Medir",
     },
     {
       done: quoteDone,
-      title: "Créez un devis",
-      desc: "Transformez votre estimation en devis prêt à envoyer.",
+      title: "Crie um orçamento",
+      desc: "Transforme a sua estimativa num orçamento pronto a enviar.",
       to: "/devis-editeur",
-      cta: "Créer",
+      cta: "Criar",
     },
   ] : [
     {
       done: projectDone,
-      title: "Estimez vos travaux",
-      desc: "Décrivez votre projet et obtenez une estimation détaillée en 30 s.",
+      title: "Estime as suas obras",
+      desc: "Descreva o seu projeto e obtenha uma estimativa detalhada em 30 s.",
       to: "/estimation",
-      cta: "Estimer",
+      cta: "Estimar",
     },
     {
       done: false,
-      title: "Comparez les prix matériaux",
-      desc: "Consultez les prix du marché pour budgéter vos travaux.",
+      title: "Compare os preços dos materiais",
+      desc: "Consulte os preços de mercado para orçamentar as suas obras.",
       to: "/prix",
-      cta: "Voir les prix",
+      cta: "Ver preços",
     },
     {
       done: false,
-      title: "Utilisez les calculateurs",
-      desc: "Surfaces, volumes et quantités en quelques secondes.",
+      title: "Use as calculadoras",
+      desc: "Áreas, volumes e quantidades em poucos segundos.",
       to: "/calculateurs",
-      cta: "Calculer",
+      cta: "Calcular",
     },
   ];
 
@@ -67,19 +67,19 @@ export function StarterChecklist({ projectDone, planDone, quoteDone, isPro = tru
   };
 
   return (
-    <div className="surface p-6 border-2 border-primary/30" data-testid="starter-checklist">
+    <div className="cp-glass rounded-3xl p-5 sm:p-6 border-2 border-primary/30" data-testid="starter-checklist">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Rocket className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-bold">Prise en main — {doneCount}/{items.length}</h3>
-            <p className="text-xs text-muted-foreground">Quelques étapes pour tirer le meilleur de ConstruPilot.</p>
+            <h3 className="font-bold">Primeiros passos — {doneCount}/{items.length}</h3>
+            <p className="text-xs text-muted-foreground">Alguns passos para tirar o máximo partido do ConstruPilot.</p>
           </div>
         </div>
         <button onClick={close} data-testid="checklist-dismiss"
-                className="text-muted-foreground hover:text-foreground" title="Masquer">
+                className="text-muted-foreground hover:text-foreground" title="Ocultar" aria-label="Ocultar">
           <X className="h-4 w-4" />
         </button>
       </div>

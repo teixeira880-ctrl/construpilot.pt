@@ -4,12 +4,17 @@ import { toast } from "sonner";
 import {
   Plus, FolderOpen, Trash2, FileSearch, Bell, HardHat, Sparkles, TrendingUp,
   FileText, Receipt, ArrowRight, Phone, Mail, MapPin, CalendarClock, Euro, User as UserIcon,
+  Calculator, Lightbulb, PackageCheck,
 } from "lucide-react";
+import { AppTile } from "@/components/workspace/AppTile";
+import { OPEN_TOOL_SEARCH } from "@/components/workspace/WorkspaceNavigation";
+import { AssistantHero, WeekGoal } from "@/components/dashboard/Bento";
+import "@/styles/workspace-tiles.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { api, eur, num, IMAGES } from "@/lib/api";
+import { api, eur, num } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
 import { useI18n } from "@/context/I18nContext";
@@ -29,6 +34,7 @@ export default function Dashboard() {
   const { tier, active, flags } = useBilling();
   const { t } = useI18n();
   const [projects, setProjects] = useState([]);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [quotes, setQuotes] = useState([]);
   const [plans, setPlans] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -44,7 +50,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const load = () => {
-    api.get("/projects").then(({ data }) => setProjects(data)).catch(() => {});
+    api.get("/projects").then(({ data }) => setProjects(data)).catch(() => {}).finally(() => setProjectsLoaded(true));
     api.get("/quotes").then(({ data }) => setQuotes(data)).catch(() => {});
     api.get("/takeoffs").then(({ data }) => setPlans(data?.plans || [])).catch(() => {});
     api.get("/prices/alerts").then(({ data }) => setAlerts(data)).catch(() => {});
@@ -58,11 +64,12 @@ export default function Dashboard() {
     load();
   };
 
+  const projectsReady = projectsLoaded;
   const totalBudget = projects.reduce((s, p) => s + (p.budget || 0), 0);
   const totalSurface = projects.reduce((s, p) => s + (p.surface || 0), 0);
 
   return (
-    <div className="grid gap-10">
+    <div className="grid gap-7 sm:gap-8">
       <OnboardingTour />
       <StarterChecklist
         isPro={isPro}
@@ -70,74 +77,81 @@ export default function Dashboard() {
         planDone={plans.length > 0}
         quoteDone={quotes.length > 0}
       />
-      <div className="relative overflow-hidden rounded-md border border-border grain">
-        <img src={IMAGES.dashboard_banner} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
-        <div className="relative p-8 lg:p-10 flex flex-col lg:flex-row gap-6 lg:items-end justify-between">
-          <div>
-            <p className="overline">{t("dash.over")}</p>
-            <h1 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-              {t("dash.hello")} {user?.name?.split(" ")[0]}
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {tier === "free" ? (
-                <>{t("dash.plan")} <b>{t("dash.free_word")}</b> · {t("dash.free_desc")}</>
-              ) : (
-                <>{t("dash.plan")} <b className="text-primary">{active?.plan?.name || tier}</b> {t("dash.active_desc")}</>
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {tier === "free" && (
-              <Button onClick={() => navigate("/tarifs")} data-testid="upgrade-cta" variant="outline" className="rounded-sm gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground">
-                <TrendingUp className="h-4 w-4" />
-                {t("dash.upgrade")} {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} ${t("dash.days_free")}` : ""}
-              </Button>
+      <header className="flex flex-col lg:flex-row gap-5 lg:items-end justify-between" data-testid="dashboard-heading">
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-muted-foreground first-letter:uppercase" data-testid="dashboard-date">
+            {new Date().toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
+          <h1 className="mt-1 font-display text-[34px] sm:text-[46px] font-bold tracking-[-0.035em] leading-[1.05]" data-testid="dashboard-title">
+            Olá{user?.name ? ` ${user.name.split(" ")[0]}` : ""}, <span className="cp-grad-text">bora lá?</span>
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {tier === "free" ? (
+              <>{t("dash.plan")} <b>{t("dash.free_word")}</b> · {t("dash.free_desc")}</>
+            ) : (
+              <>{t("dash.plan")} <b className="text-primary">{active?.plan?.name || tier}</b> {t("dash.active_desc")}</>
             )}
-            <PushToggle />
-            <Button onClick={() => navigate("/smart-project")} data-testid="new-smart-project-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              <Sparkles className="h-4 w-4" /> Smart Project
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          {tier === "free" && (
+            <Button onClick={() => navigate("/tarifs")} data-testid="upgrade-cta" variant="outline" className="rounded-xl h-11 gap-2 bg-card/70 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground">
+              <TrendingUp className="h-4 w-4" />
+              {t("dash.upgrade")} {flags?.trial_enabled && flags?.trial_days ? `— ${flags.trial_days} ${t("dash.days_free")}` : ""}
             </Button>
-            <Button variant="outline" onClick={() => navigate("/estimation")} data-testid="new-project-btn" className="rounded-sm gap-2">
-              <Plus className="h-4 w-4" /> {t("dash.new_est")}
-            </Button>
-          </div>
+          )}
+          <PushToggle />
+          <Button onClick={() => navigate("/smart-project")} data-testid="new-smart-project-btn" variant="outline" className="rounded-xl h-11 gap-2 bg-card/70">
+            <Sparkles className="h-4 w-4" /> Smart Project
+          </Button>
+          <Button onClick={() => navigate("/estimation")} data-testid="new-project-btn" className="rounded-xl h-11 gap-2">
+            <Plus className="h-4 w-4" /> {t("dash.new_est")}
+          </Button>
+        </div>
+      </header>
+
+      <div className="grid gap-3.5 lg:grid-cols-6" data-testid="dashboard-bento">
+        <AssistantHero />
+        <WeekGoal projects={projects} ready={projectsReady} />
+        <div className="cp-glass cp-lift rounded-3xl p-5 flex flex-col gap-1 lg:col-span-2" data-testid="stat-budget">
+          <p className="text-[13px] font-bold text-muted-foreground">{t("dash.stat_budget")}</p>
+          <p className="num text-[32px] sm:text-[36px] font-bold tracking-tight leading-none mt-1 text-primary break-words">{projectsReady ? eur(totalBudget) : "—"}</p>
+          <p className="text-[12.5px] font-semibold text-muted-foreground mt-auto pt-2">
+            {projectsReady ? `${num(projects.length)} ${projects.length === 1 ? "projeto" : "projetos"} · ${num(totalSurface, 1)} m²` : ""}
+          </p>
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="dash-quick-actions">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5" data-testid="dash-quick-actions">
         {(isPro ? [
-          { to: "/devis-editeur", icon: FileText, title: "Novo orçamento", desc: "Crie um orçamento detalhado em poucos cliques", testid: "quick-new-quote" },
-          { to: "/devis-editeur?type=invoice", icon: Receipt, title: "Nova factura", desc: "Emita uma factura conforme (SAF-T)", testid: "quick-new-invoice" },
-          { to: "/factures", icon: TrendingUp, title: "Acompanhamento facturação", desc: "Recebimentos, dívidas e documentos", testid: "quick-invoicing" },
+          { to: "/devis-editeur", icon: FileText, family: "devis", title: "Novo orçamento", desc: "Crie um orçamento detalhado em poucos cliques", testid: "quick-new-quote" },
+          { to: "/devis-editeur?type=invoice", icon: Receipt, family: "devis", title: "Nova fatura", desc: "Emita uma fatura conforme (SAF-T)", testid: "quick-new-invoice" },
+          { to: "/factures", icon: TrendingUp, family: "projets", title: "Acompanhamento da faturação", desc: "Recebimentos, dívidas e documentos", testid: "quick-invoicing" },
         ] : [
-          { to: "/estimation", icon: FileText, title: "Estimar as minhas obras", desc: "Obtenha uma estimativa detalhada em 30 s", testid: "quick-estimate" },
-          { to: "/prix", icon: TrendingUp, title: "Preços dos materiais", desc: "Consulte os preços de mercado actualizados", testid: "quick-prices" },
-          { to: "/calculateurs", icon: Receipt, title: "Calculadoras", desc: "Superfícies, volumes e quantidades num instante", testid: "quick-calculators" },
+          { to: "/estimation", icon: FileText, family: "devis", title: "Estimar as minhas obras", desc: "Obtenha uma estimativa detalhada em 30 s", testid: "quick-estimate" },
+          { to: "/prix", icon: TrendingUp, family: "devis", title: "Preços dos materiais", desc: "Consulte os preços de mercado atualizados", testid: "quick-prices" },
+          { to: "/calculateurs", icon: Calculator, family: "etudes", title: "Calculadoras", desc: "Áreas, volumes e quantidades num instante", testid: "quick-calculators" },
         ]).map((a) => (
           <button
             key={a.to}
             onClick={() => navigate(a.to)}
             data-testid={a.testid}
-            className="group surface p-5 rounded-md text-left flex items-center gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50"
+            className="group cp-glass cp-lift p-5 rounded-[22px] text-left flex items-center gap-4 min-h-[96px]"
           >
-            <span className="h-11 w-11 grid place-items-center rounded-sm bg-primary/10 text-primary shrink-0">
-              <a.icon className="h-5 w-5" />
-            </span>
+            <AppTile icon={a.icon} family={a.family} size={44} />
             <div className="min-w-0 flex-1">
-              <p className="font-display font-semibold text-sm flex items-center gap-1">
+              <p className="font-display font-semibold text-[15px] flex items-center gap-1">
                 {a.title}
                 <ArrowRight className="h-3.5 w-3.5 opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0" />
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{a.desc}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{a.desc}</p>
             </div>
           </button>
         ))}
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
+      <div className="dash-stats grid grid-cols-3 gap-3 stagger">
         <Stat label={t("dash.stat_projects")} value={num(projects.length)} testId="stat-projects" />
-        <Stat label={t("dash.stat_budget")} value={eur(totalBudget)} testId="stat-budget" accent />
         <Stat label={t("dash.stat_surface")} value={`${num(totalSurface, 1)} m²`} testId="stat-surface" />
         <Stat label={t("dash.stat_leads")} value={num(leads.length)} testId="stat-leads"
               badge={unreadLeads > 0 ? unreadLeads : null}
@@ -148,19 +162,27 @@ export default function Dashboard() {
               }} />
       </div>
 
+      <button type="button" onClick={() => window.dispatchEvent(new Event(OPEN_TOOL_SEARCH))} data-testid="dashboard-tip"
+        className="cp-glass rounded-2xl px-4 py-3 flex items-center gap-3 text-left text-sm min-h-[52px] hover:bg-card/90 transition-colors">
+        <AppTile icon={Lightbulb} family="devis" size={32} />
+        <span className="min-w-0"><b className="font-semibold">Dica rápida:</b> <span className="text-muted-foreground">prima <kbd className="text-[11px] border rounded px-1 py-0.5 bg-background/70">Ctrl K</kbd> para abrir qualquer ferramenta em 2 segundos.</span></span>
+      </button>
+
       <RevenueChart />
 
-      <a href="/appro" data-testid="appro-link" className="block surface p-6 border-2 border-primary/30 hover:border-primary transition-colors">
+      <a href="/appro" data-testid="appro-link" className="block cp-glass cp-lift rounded-3xl p-5 sm:p-6">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <i className="fa-solid fa-helmet-safety text-primary" />
-              <span className="font-display font-bold text-lg">Analyse technique &amp; Approvisionnement IA</span>
-              <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Nouveau</span>
+          <div className="flex items-start gap-4 min-w-0">
+            <AppTile icon={PackageCheck} family="etudes" size={44} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-display font-bold text-lg">Análise técnica e aprovisionamento IA</span>
+                <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Novo</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Importe as suas plantas de armaduras → mapa de aço IA (ml, kg, toneladas) → quantidades a encomendar → notas de encomenda aos fornecedores.</p>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">Importez vos plans de ferraillage → bordereau acier IA (ml, kg, tonnage) → quantités commandables → bons de commande fournisseurs.</p>
           </div>
-          <span className="text-primary font-bold shrink-0">Ouvrir →</span>
+          <span className="text-primary font-bold shrink-0 hidden sm:inline">Abrir →</span>
         </div>
       </a>
 
@@ -303,7 +325,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">{[l.address, l.phone].filter(Boolean).join(" · ")}</p>
                   </div>
                   <p className="num font-bold">{eur(l.budget)}</p>
-                  <Badge variant="outline" className="rounded-sm">{l.status || "nouveau"}</Badge>
+                  <Badge variant="outline" className="rounded-sm">{l.status || "novo"}</Badge>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </button>
               ))}
@@ -316,31 +338,31 @@ export default function Dashboard() {
         <DialogContent className="max-w-lg" data-testid="lead-detail-dialog">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <HardHat className="h-5 w-5 text-primary" /> Demande ConstruPilot
+              <HardHat className="h-5 w-5 text-primary" /> Pedido ConstruPilot
             </DialogTitle>
           </DialogHeader>
           {selectedLead && (
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-base">{selectedLead.name || t("dash.request")}</span>
-                <Badge variant="outline" className="rounded-sm">{selectedLead.status || "nouveau"}</Badge>
+                <Badge variant="outline" className="rounded-sm">{selectedLead.status || "novo"}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Info icon={Euro} label="Budget" value={selectedLead.budget ? eur(selectedLead.budget) : "—"} />
-                <Info icon={MapPin} label="Adresse" value={selectedLead.address || "—"} />
-                <Info icon={CalendarClock} label="Disponibilidade" value={selectedLead.availability || selectedLead.delay_days ? (selectedLead.availability || `${selectedLead.delay_days} j`) : "—"} />
-                <Info icon={UserIcon} label="Métier" value={selectedLead.trade || "—"} />
+                <Info icon={MapPin} label="Morada" value={selectedLead.address || "—"} />
+                <Info icon={CalendarClock} label="Disponibilidade" value={selectedLead.availability || selectedLead.delay_days ? (selectedLead.availability || `${selectedLead.delay_days} d`) : "—"} />
+                <Info icon={UserIcon} label="Profissão" value={selectedLead.trade || "—"} />
               </div>
               {selectedLead.description && (
                 <div>
-                  <p className="overline text-muted-foreground mb-1">Description</p>
+                  <p className="overline text-muted-foreground mb-1">Descrição</p>
                   <p className="whitespace-pre-wrap">{selectedLead.description}</p>
                 </div>
               )}
               <div className="flex flex-wrap gap-2 pt-2 border-t">
                 {selectedLead.phone && (
                   <a href={`tel:${selectedLead.phone}`} data-testid="lead-call-btn">
-                    <Button size="sm" className="gap-2 rounded-sm"><Phone className="h-4 w-4" /> Appeler</Button>
+                    <Button size="sm" className="gap-2 rounded-sm"><Phone className="h-4 w-4" /> Ligar</Button>
                   </a>
                 )}
                 {selectedLead.phone && (
@@ -349,7 +371,7 @@ export default function Dashboard() {
                   </a>
                 )}
                 {selectedLead.email && (
-                  <a href={`mailto:${selectedLead.email}?subject=Votre%20demande%20ConstruPilot`} data-testid="lead-email-btn">
+                  <a href={`mailto:${selectedLead.email}?subject=O%20seu%20pedido%20ConstruPilot`} data-testid="lead-email-btn">
                     <Button size="sm" variant="outline" className="gap-2 rounded-sm"><Mail className="h-4 w-4" /> E-mail</Button>
                   </a>
                 )}

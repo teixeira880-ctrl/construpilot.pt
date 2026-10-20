@@ -1,0 +1,66 @@
+/* Luz cobre sobre marfim quente. Só duas camadas decorativas se movem; o conteúdo fica parado. */
+.workspace {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  --workspace-copper: #984f2d;
+  --workspace-copper-rgb: 168 93 52;
+  --muted-foreground: 128 6% 30%;
+}
+.workspace-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  background: linear-gradient(145deg, #f7f1e7 12%, #f3e6d9 58%, #eee8dc);
+}
+.workspace-halo {
+  position: absolute;
+  width: 110%;
+  height: 110%;
+  pointer-events: none;
+  transform-origin: center;
+  animation: workspace-copper-drift 24s ease-in-out infinite alternate;
+}
+.workspace-halo-copper {
+  top: -25%;
+  right: -25%;
+  background: radial-gradient(ellipse at 60% 35%, #b86c4291 0%, #cf966b6e 22%, #e5b68b38 43%, #e5b68b00 67%);
+}
+.workspace-halo-sage {
+  bottom: -35%;
+  left: -22%;
+  background: radial-gradient(ellipse at 36% 66%, #678e7173 0%, #8b9f7952 24%, #c9b68b2b 43%, #c9b68b00 68%);
+  animation-name: workspace-sage-drift;
+  animation-duration: 30s;
+}
+.workspace-backdrop[data-paused="true"] .workspace-halo { animation-play-state: paused; }
+@keyframes workspace-copper-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-19%, 16%, 0) scale(1.13); }
+}
+@keyframes workspace-sage-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(23%, -13%, 0) scale(1.08); }
+}
+.workspace-header { background: hsl(var(--card) / .78); border-bottom-color: rgb(var(--workspace-copper-rgb) / .22); }
+.workspace-sidebar { background: hsl(var(--card) / .72); border-inline-end-color: rgb(var(--workspace-copper-rgb) / .2); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.workspace-search-trigger { border-color: rgb(var(--workspace-copper-rgb) / .24); }
+.workspace-avatar { color: #854425; background: #eed8c5; box-shadow: 0 0 0 1px #b5795233; }
+.workspace-all-tools { border-color: rgb(var(--workspace-copper-rgb) / .4); }
+.workspace .surface { background: hsl(var(--card) / .86); }
+.workspace-mobile-tabs { background: hsl(var(--card) / .9); border-color: #b5795266; box-shadow: 0 -6px 24px #8b563215; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.dark .workspace { --workspace-copper: #e5b38e; --workspace-copper-rgb: 201 139 96; --muted-foreground: 120 7% 74%; }
+.dark .workspace-backdrop { background: linear-gradient(145deg, #131914, #1e201b 58%, #171d19); }
+.dark .workspace-halo-copper { background: radial-gradient(ellipse at 60% 35%, #ae633d73, #8256394d 25%, #82563900 67%); }
+.dark .workspace-halo-sage { background: radial-gradient(ellipse at 36% 66%, #48806273, #356f4f4d 25%, #356f4f00 68%); }
+.dark .workspace-avatar { background: #4b372b; color: #edc29b; }
+.dark .workspace-mobile-tabs { background: hsl(var(--card) / .88); border-color: rgb(255 255 255 / .08); box-shadow: 0 -6px 24px rgb(0 0 0 / .35); }
+@media (max-width: 767px) {
+  .workspace-halo-copper { width: 150%; height: 95%; top: -20%; right: -45%; }
+  .workspace-halo-sage { width: 150%; height: 95%; bottom: -25%; left: -45%; }
+}
+@media (prefers-reduced-motion: reduce) { .workspace-halo { animation: none !important; } }
+@media (forced-colors: active), print { .workspace-backdrop { display: none !important; } }

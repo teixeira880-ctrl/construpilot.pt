@@ -16,21 +16,21 @@ export default function PushToggle({ variant = "outline", size = "sm" }) {
     try {
       if (subscribed) {
         await unsubscribe();
-        toast.success("Notifications push désactivées");
+        toast.success("Notificações push desativadas");
       } else {
         await subscribe();
-        toast.success("Notifications push activées");
+        toast.success("Notificações push ativadas");
       }
     } catch (err) {
-      toast.error(err?.message || "Échec de l'activation");
+      toast.error(err?.message || "Não foi possível ativar");
     }
   };
 
   const label = subscribed
-    ? "Notifications activées"
+    ? "Notificações ativadas"
     : permission === "denied"
-    ? "Push bloqué"
-    : "Activer les notifications";
+    ? "Notificações bloqueadas"
+    : "Ativar notificações";
 
   const Icon = subscribed ? BellRing : permission === "denied" ? BellOff : Bell;
 

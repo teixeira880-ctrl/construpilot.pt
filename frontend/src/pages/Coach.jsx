@@ -47,6 +47,24 @@ export default function Coach() {
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  // Pedido vindo do Início (cartão Assistente): pré-preenche a caixa; "Ditar" liga o microfone.
+  useEffect(() => {
+    let pending = null; let voice = false;
+    try {
+      pending = sessionStorage.getItem("cp_assistant_prefill");
+      voice = sessionStorage.getItem("cp_assistant_voice") === "1";
+      sessionStorage.removeItem("cp_assistant_prefill");
+      sessionStorage.removeItem("cp_assistant_voice");
+    } catch { /* armazenamento indisponível */ }
+    if (pending) setInput(pending);
+    if (!pending && !voice) return;
+    setTimeout(() => {
+      document.querySelector('[data-testid="chat-input"]')?.focus();
+      if (voice) toggleMic();
+    }, 80);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const send = async (text = input) => {
     const msg = text.trim();
     if (!msg || streaming) return;
@@ -121,7 +139,7 @@ export default function Coach() {
 
   return (
     <div className="grid gap-8">
-      <SEO title="Coach IA travaux" description="Posez vos questions travaux, rénovation, matériaux, TVA, permis à l'IA ConstruPilot. Réponse chiffrée en 30 secondes, à la voix ou au clavier. Gratuit." keywords="coach travaux, chatbot BTP, IA rénovation, aide artisan, questions travaux" canonical="/coach" />
+      <SEO title="Assistente IA de obras" description="Faça as suas perguntas sobre obras, remodelação, materiais, IVA e licenciamento ao Assistente ConstruPilot. Resposta com valores em 30 segundos, por voz ou teclado. Grátis." keywords="assistente obras, chatbot construção, IA remodelação, ajuda empreiteiro, perguntas obras" canonical="/coach" />
       <SectionTitle as="h1" over={t("coach.over")} title={t("coach.title")}>
         {t("coach.subtitle")}
       </SectionTitle>
@@ -178,14 +196,14 @@ export default function Coach() {
           <Button
             variant="outline" onClick={toggleMic} data-testid="mic-btn"
             className={`rounded-sm shrink-0 ${listening ? "border-primary text-primary" : ""}`}
-            aria-label="Assistant vocal"
+            aria-label="Ditar por voz"
           >
             {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
           <Button
             variant="outline" onClick={() => setSpeak(!speak)} data-testid="speak-toggle-btn"
             className={`rounded-sm shrink-0 ${speak ? "border-primary text-primary" : ""}`}
-            aria-label="Réponse vocale"
+            aria-label="Resposta por voz"
           >
             <Volume2 className="h-4 w-4" />
           </Button>

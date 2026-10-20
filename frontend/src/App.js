@@ -10,6 +10,9 @@ import { ConfirmProvider } from "@/components/ConfirmProvider";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import HelpChatbot from "@/components/HelpChatbot";
+import { WorkspaceSidebar } from "@/components/workspace/WorkspaceNavigation";
+import { WorkspaceBackdrop } from "@/components/workspace/WorkspaceBackdrop";
+import Apps from "@/pages/Apps";
 import Landing from "@/pages/Landing";
 import LandingParticuliers from "@/pages/LandingParticuliers";
 import LandingPortugal from "@/pages/LandingPortugal";
@@ -129,14 +132,34 @@ const SubscriberRoute = ({ children }) => {
   return children;
 };
 
-const Shell = ({ children }) => (
-  <>
-    <Nav />
-    <main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main>
-    <Footer />
-    <HelpChatbot />
-  </>
-);
+// Visitante: navegação pública. Autenticado: espaço de trabalho (fundo suave, cabeçalho, barra lateral).
+const Shell = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) {
+    return (
+      <>
+        <Nav />
+        <main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main>
+        <Footer />
+        <HelpChatbot />
+      </>
+    );
+  }
+  return (
+    <div className="workspace min-h-screen" data-testid="workspace-shell">
+      <WorkspaceBackdrop />
+      <Nav />
+      <div className="flex">
+        <WorkspaceSidebar />
+        <div className="flex-1 min-w-0">
+          <main className="mx-auto max-w-[1400px] px-4 sm:px-5 lg:px-8 py-6 sm:py-8 pb-28 md:pb-10">{children}</main>
+          <Footer />
+        </div>
+      </div>
+      <HelpChatbot />
+    </div>
+  );
+};
 
 /** Redirect externo: envia o utilizador para uma URL fora da SPA
  *  (ex.: webmail PTISP em webmail.construpilot.pt). */
@@ -231,6 +254,8 @@ function AppRouter() {
       <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
       <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
       <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
+      <Route path="/apps" element={<Protected><Shell><Apps /></Shell></Protected>} />
+      <Route path="/ferramentas" element={<Navigate to="/apps" replace />} />
       <Route path="/bienvenue" element={<Protected><Shell><Welcome /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
@@ -284,11 +309,15 @@ function AppRouter() {
   );
 }
 
+// Tema claro por omissão; o escuro só se o utilizador o escolheu. Aplicado antes do primeiro render.
+const applySavedTheme = () => {
+  let saved = null;
+  try { saved = localStorage.getItem("construpilot_theme"); } catch { /* armazenamento indisponível */ }
+  document.documentElement.classList.toggle("dark", saved === "dark");
+};
+applySavedTheme();
+
 function App() {
-  useEffect(() => {
-    const saved = localStorage.getItem("construpilot_theme");
-    if (saved !== "light") document.documentElement.classList.add("dark");
-  }, []);
 
   return (
     <div className="App">

@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { MarketToggle, useI18n } from "@/context/I18nContext";
 import { usePermissions } from "@/context/PermissionContext";
+import { WorkspaceHeader, useTheme } from "@/components/workspace/WorkspaceNavigation";
 
 // Nav v2 — menus groupés + relief (fin du débordement header)
 const NAV_MAIN = [
@@ -65,21 +66,21 @@ const ACCOUNT_LINKS = [
 
 const ALL_LINKS = [...NAV_MAIN, ...NAV_PRO, ...NAV_DISCOVER, ...ACCOUNT_LINKS];
 
+// Utilizador autenticado → cabeçalho dos espaços de trabalho (pesquisa Ctrl K, tema, notificações, conta).
+// Visitante → navegação pública.
 export const Nav = () => {
+  const { user } = useAuth();
+  return user ? <WorkspaceHeader /> : <PublicNav />;
+};
+
+const PublicNav = () => {
   const { user, logout } = useAuth();
   const { t } = useI18n();
   const { can } = usePermissions();
   const [open, setOpen] = useState(false);
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const { dark, toggle: toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-
-  const toggleTheme = () => {
-    document.documentElement.classList.toggle("dark");
-    const isDark = document.documentElement.classList.contains("dark");
-    localStorage.setItem("construpilot_theme", isDark ? "dark" : "light");
-    setDark(isDark);
-  };
 
   const pill = (active) =>
     `px-3 py-2 rounded-lg text-sm inline-flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 ${
@@ -92,7 +93,7 @@ export const Nav = () => {
   const discoverItems = NAV_DISCOVER.filter((l) => (!l.auth || user) && (!l.pro || isPro));
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60 shadow-lg shadow-black/5">
+    <header className="sticky top-0 z-50 backdrop-blur-xl bg-card/80 border-b border-border/60 shadow-sm shadow-black/5">
       <div className="mx-auto max-w-[1500px] px-5 lg:px-8 h-16 flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2 shrink-0 group" data-testid="nav-logo">
           <img src="/construpilot-icon.png" alt="ConstruPilot" className="h-9 w-9 rounded-xl object-cover shadow-md shadow-primary/30 transition-transform group-hover:-translate-y-0.5 group-hover:rotate-3" />

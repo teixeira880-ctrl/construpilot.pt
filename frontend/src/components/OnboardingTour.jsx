@@ -44,9 +44,9 @@ export const OnboardingTour = () => {
   const s = STEPS[step];
   const Icon = s.icon;
   const ch = (typeof window !== "undefined" ? (sessionStorage.getItem("construpilot_utm_source") || "") : "").toLowerCase();
-  const chMsg = ch.includes("linkedin") ? "Bienvenue depuis LinkedIn 👋"
-    : ch.includes("instagram") ? "Bienvenue depuis Instagram 👋"
-    : ch.includes("facebook") ? "Bienvenue depuis Facebook 👋" : "";
+  const chMsg = ch.includes("linkedin") ? "Bem-vindo(a) a partir do LinkedIn 👋"
+    : ch.includes("instagram") ? "Bem-vindo(a) a partir do Instagram 👋"
+    : ch.includes("facebook") ? "Bem-vindo(a) a partir do Facebook 👋" : "";
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm grid place-items-center p-4" data-testid="onboarding-overlay">
       <div className="surface p-8 max-w-lg w-full grid gap-6 relative animate-rise" data-testid="onboarding-tour">

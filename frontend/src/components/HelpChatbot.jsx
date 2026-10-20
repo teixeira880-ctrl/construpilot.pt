@@ -37,14 +37,14 @@ export default function HelpChatbot() {
     <>
       {!open && (
         <button onClick={() => setOpen(true)} data-testid="help-chatbot-open"
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 hover:scale-105 transition-transform">
+          className="fixed bottom-24 md:bottom-5 right-4 md:right-5 z-50 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 hover:scale-105 transition-transform">
           <MessageCircle className="h-5 w-5" />
           <span className="text-sm font-semibold hidden sm:inline">{t("help.open")}</span>
         </button>
       )}
 
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 w-[92vw] max-w-[380px] h-[70vh] max-h-[560px] flex flex-col rounded-xl border border-border bg-background shadow-2xl overflow-hidden" data-testid="help-chatbot-panel">
+        <div className="fixed bottom-24 md:bottom-5 right-4 md:right-5 z-50 w-[92vw] max-w-[380px] h-[70vh] max-h-[560px] flex flex-col rounded-xl border border-border bg-background shadow-2xl overflow-hidden" data-testid="help-chatbot-panel">
           <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground">
             <div className="flex items-center gap-2"><Bot className="h-5 w-5" /><span className="font-bold text-sm">{t("help.title")}</span></div>
             <button onClick={() => setOpen(false)} data-testid="help-chatbot-close"><X className="h-5 w-5" /></button>
