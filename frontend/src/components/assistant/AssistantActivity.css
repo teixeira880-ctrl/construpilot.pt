@@ -1,0 +1,4 @@
+/* Leave room for job status, notifications and navigation on narrow phones. */
+@media (max-width: 420px) {
+  .workspace-header:has(.assistant-activity) .workspace-brand > span { display: none; }
+}

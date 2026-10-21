@@ -1,0 +1,30 @@
+{
+ "verified": true,
+ "notes": "Valores lidos confirmados provisoriamente pelo utilizador (15/09/2026) — correções a comunicar no chat; revisão final pendente após leitura do relatório.",
+ "document": {
+  "revision_index": null,
+  "revision_date": null,
+  "declared_scale": null,
+  "document_code": null
+ },
+ "beams": {
+  "elements": 13,
+  "total_steel_kg": 2038.4,
+  "total_concrete_m3": 20.21,
+  "labels": [
+   "T3.8",
+   "T3.9",
+   "T3.10",
+   "T3.11",
+   "T3.13",
+   "Tr3.17",
+   "T3.19",
+   "T3.20",
+   "T3.21",
+   "T3.27",
+   "T3.28",
+   "T3.29",
+   "T3.30"
+  ]
+ }
+}

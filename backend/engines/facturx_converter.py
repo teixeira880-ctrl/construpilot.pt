@@ -19,7 +19,10 @@ BASE_URL = "https://api.facturxapi.com/api/v1"
 
 
 class FacturxConvertError(Exception):
-    pass
+    def __init__(self, message: str, issues: list | None = None, hint: str | None = None):
+        super().__init__(message)
+        self.issues = issues or []
+        self.hint = hint
 
 
 def _digits(v) -> str:
@@ -35,30 +38,47 @@ def _f(v) -> str:
 
 def build_invoice_data(doc: dict, branding: dict | None) -> dict:
     """Construit l'invoice_data EN16931 attendu par facturxapi /convert."""
+    from engines.facturx_gen import _real_lines, _unit_code
     branding = branding or {}
     totals = doc.get("totals") or {}
-    ht = float(totals.get("ht") or 0)
-    tva = float(totals.get("tva") or 0)
-    ttc = float(totals.get("ttc") or 0)
     paid = float(doc.get("paid") or 0)
-    due = round(ttc - paid, 2)
     dtype = "381" if doc.get("doc_type") == "credit_note" else "380"
 
     client = doc.get("client") or {}
     buyer_name = (client.get("company")
                   or " ".join(filter(None, [client.get("first_name"), client.get("last_name")]))
-                  or "Client")
+                  or "Cliente")
 
-    # Bases HT par taux (somme des lignes arrondies) pour la ventilation TVA.
+    # Lignes réelles uniquement (on ignore sections/sous-sections/texte/saut de page)
+    # avec remise appliquée, pour une base de TVA cohérente avec le PDF visuel.
+    real = _real_lines(doc)
     base_by_rate: dict[float, float] = {}
-    for ln in doc.get("lines") or []:
+    line_items = []
+    net_total = 0.0
+    for i, ln in enumerate(real, 1):
+        qty = float(ln.get("qty") or 0)
+        disc = float(ln.get("discount_pct") or 0)
+        net_price = round(float(ln.get("unit_price_ht") or 0) * (1 - disc / 100), 2)
+        line_ht = round(qty * net_price, 2)
         rate = float(ln.get("vat_rate") or 0)
-        line_ht = round((ln.get("qty") or 0) * (ln.get("unit_price_ht") or 0), 2)
         base_by_rate[rate] = round(base_by_rate.get(rate, 0) + line_ht, 2)
+        net_total = round(net_total + line_ht, 2)
+        line_items.append({
+            "number": str(i),
+            "description": (ln.get("designation") or ln.get("title") or "Prestação")[:200] or "Prestação",
+            "quantity": f"{qty:.4f}",
+            "unit": _unit_code(ln.get("unit")),
+            "unit_price": f"{net_price:.2f}",
+            "net_amount": f"{line_ht:.2f}",
+            "vat_rate": f"{rate:.2f}",
+            "vat_category": "S" if rate > 0 else "Z",
+        })
 
     tax_breakdown = []
+    tax_total = 0.0
     for rate, base in sorted(base_by_rate.items()):
         amount = round(base * rate / 100, 2)
+        tax_total = round(tax_total + amount, 2)
         tax_breakdown.append({
             "rate": f"{rate:.2f}",
             "category": "S" if rate > 0 else "Z",
@@ -66,31 +86,21 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
             "amount": f"{amount:.2f}",
         })
     if not tax_breakdown:
-        tax_breakdown.append({"rate": "0.00", "category": "Z", "base": _f(ht), "amount": "0.00"})
+        tax_breakdown.append({"rate": "0.00", "category": "Z", "base": f"{net_total:.2f}", "amount": "0.00"})
 
-    line_items = []
-    for i, ln in enumerate(doc.get("lines") or [], 1):
-        qty = float(ln.get("qty") or 0)
-        pu = float(ln.get("unit_price_ht") or 0)
-        rate = float(ln.get("vat_rate") or 0)
-        line_items.append({
-            "number": str(i),
-            "description": (ln.get("designation") or "Article")[:200],
-            "quantity": f"{qty}",
-            "unit": "C62",
-            "unit_price": f"{pu:.2f}",
-            "net_amount": f"{round(qty * pu, 2):.2f}",
-            "vat_rate": f"{rate:.2f}",
-            "vat_category": "S" if rate > 0 else "Z",
-        })
+    # Totaux dérivés des lignes (cohérence BR-CO EN16931) ; on retombe sur doc.totals si besoin.
+    net = net_total or float(totals.get("ht") or 0)
+    tva = tax_total or float(totals.get("tva") or 0)
+    gross = round(net + tva, 2)
+    due = round(gross - paid, 2)
 
     seller = {
         "name": branding.get("company_name") or "ConstruPilot",
         "address": {
-            "street": branding.get("address") or "1 rue de la Construction",
-            "city": branding.get("city") or "Paris",
+            "street": branding.get("address") or "Rua da Construção, 1",
+            "city": branding.get("city") or "Lisboa",
             "postal_code": branding.get("postal_code") or "75001",
-            "country": (branding.get("country") or "FR")[:2].upper(),
+            "country": (branding.get("country") or "PT")[:2].upper(),
         },
     }
     if _digits(branding.get("siret")):
@@ -104,19 +114,19 @@ def build_invoice_data(doc: dict, branding: dict | None) -> dict:
             "street": client.get("address") or "-",
             "city": client.get("city") or "-",
             "postal_code": client.get("postal_code") or "-",
-            "country": "FR",
+            "country": "PT",
         },
     }
 
     issue_date = str(doc.get("issue_date") or "")[:10] or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return {
-        "invoice_number": str(doc.get("number") or doc.get("doc_id") or "FACTURE"),
+        "invoice_number": str(doc.get("number") or doc.get("doc_id") or "FATURA"),
         "issue_date": issue_date,
         "invoice_type": dtype,
         "currency": "EUR",
         "seller": seller,
         "buyer": buyer,
-        "totals": {"net": _f(ht), "tax": _f(tva), "gross": _f(ttc), "due": _f(due)},
+        "totals": {"net": _f(net), "tax": _f(tva), "gross": _f(gross), "due": _f(due)},
         "tax_breakdown": tax_breakdown,
         "line_items": line_items,
     }
@@ -126,7 +136,7 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
     """Renvoie (pdf_facturx_pdfa3_bytes, rapport_validation). Lève FacturxConvertError."""
     api_key = os.environ.get("FACTURX_API_KEY")
     if not api_key:
-        raise FacturxConvertError("Clé FACTURX_API_KEY absente")
+        raise FacturxConvertError("Chave FACTURX_API_KEY ausente")
     url = f"{BASE_URL}/convert?lang=fr"
     form = {
         "validation_target": "en16931",
@@ -142,9 +152,9 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
         raise FacturxConvertError("Service Factur-X injoignable") from exc
 
     if resp.status_code == 401:
-        raise FacturxConvertError("Clé API Factur-X invalide")
+        raise FacturxConvertError("Chave API de faturação eletrónica inválida")
     if resp.status_code == 429:
-        raise FacturxConvertError("Quota Factur-X dépassé")
+        raise FacturxConvertError("Quota de faturação eletrónica ultrapassada")
     if resp.status_code >= 400:
         detail = ""
         try:
@@ -152,19 +162,30 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
         except Exception:
             detail = resp.text[:200]
         logger.warning("facturxapi /convert %s: %s", resp.status_code, detail)
-        raise FacturxConvertError(f"Conversion refusée (HTTP {resp.status_code})")
+        raise FacturxConvertError(f'Conversão recusada (HTTP {resp.status_code})')
 
     data = resp.json()
     result = data.get("result") or {}
     pdf_b64 = result.get("pdf")
-    if not pdf_b64:
-        raise FacturxConvertError("Aucun PDF Factur-X renvoyé")
     validation = result.get("validation") or {}
+    if not pdf_b64:
+        # Conversion 200 mais refusée (ex. validation EN16931 échouée) → on remonte les motifs.
+        raw_issues = validation.get("issues") or []
+        issues = [{"rule": i.get("ruleId"), "bt": i.get("btCode"), "severity": i.get("severity"),
+                   "message": (i.get("message") or "")[:300]}
+                  for i in raw_issues if i.get("severity") == "error"][:12]
+        hint = None
+        rules = {i.get("rule") for i in issues}
+        if {"BR-CO-26", "BR-S-02", "BR-S-08"} & rules:
+            hint = ("Complete o NIF e/ou o número de IVA da sua empresa (Perfil → Empresa): a norma EN 16931 exige-os para certificar a fatura.")
+        raise FacturxConvertError(
+            f"Fatura não conforme EN 16931 ({validation.get('summary', {}).get('errorCount', '?')} erreur(s))",
+            issues=issues, hint=hint)
     report = {
         "valid": bool(validation.get("valid", data.get("success"))),
         "profile": validation.get("profile") or result.get("targetProfile"),
-        "error_count": 0 if validation.get("valid") else 0,
-        "warning_count": 0,
+        "error_count": (validation.get("summary") or {}).get("errorCount", 0),
+        "warning_count": (validation.get("summary") or {}).get("warningCount", 0),
         "issues": [],
         "source": "convert",
     }

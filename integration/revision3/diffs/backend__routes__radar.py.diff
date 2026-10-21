@@ -1,0 +1,563 @@
+--- current/backend/routes/radar.py
++++ zip/backend/routes/radar.py
+@@ -21,20 +21,16 @@
+     Response,
+     UploadFile,
+ )
+-from pydantic import BaseModel, ConfigDict, EmailStr, Field
++from pydantic import BaseModel, EmailStr
+ 
+ from core.db import db
+ from core.security import admin_user, current_user, optional_user
+-from engines.radar_zones import DEPARTMENTS, department_of, filter_zone, normalize_departments
+-from engines.sitadel_sync import INITIAL_DEPARTMENTS, ensure_sync, sync_status
+-from engines.sitadel_permits import window_start
+-from routes.radar_models import OfficialOpportunity, OfficialOpportunityList
+ 
+ router = APIRouter(prefix="/radar", tags=["radar"])
+ 
+ 
+ def _frontend_url() -> str:
+-    return os.environ["FRONTEND_URL"].rstrip("/")
++    return (os.getenv("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+ 
+ # Base commerciale par défaut (Pontoise, 95) si l'entreprise n'a pas défini de zone
+ DEFAULT_BASE = {"lat": 49.0503, "lon": 2.1010, "label": "Pontoise (95)"}
+@@ -56,6 +52,50 @@
+     "peinture": "Peinture", "carrelage": "Carrelage", "renovation_complete": "Rénovation complète",
+ }
+ 
++# Échantillon réel-plausible de permis (dept 95, Val-d'Oise) — source publique : SITADEL / permis de construire
++PERMITS = [
++    {"id": "CP-2026-95731", "num": "PC 095 500 26 R0071", "type": "Permis de construire", "nature": "neuf",
++     "commune": "Pontoise", "cp": "95000", "dep": "95", "lat": 49.0510, "lon": 2.1020,
++     "batiment": "Maison individuelle R+1", "surf_created": 187, "logements": 1,
++     "date_depot": "2026-05-12", "date_auth": "2026-06-18", "statut": "Autorisé", "mo": "PARTICULIER"},
++    {"id": "CP-2026-95402", "num": "PC 095 127 26 R0033", "type": "Permis de construire", "nature": "neuf",
++     "commune": "Cergy", "cp": "95000", "dep": "95", "lat": 49.0360, "lon": 2.0780,
++     "batiment": "Immeuble collectif R+3", "surf_created": 1240, "logements": 18,
++     "date_depot": "2026-05-28", "date_auth": "2026-06-22", "statut": "Autorisé", "mo": "PROMOTEUR"},
++    {"id": "CP-2026-95588", "num": "DP 095 306 26 R0210", "type": "Déclaration préalable", "nature": "renovation",
++     "commune": "Osny", "cp": "95520", "dep": "95", "lat": 49.0700, "lon": 2.0700,
++     "batiment": "Extension maison", "surf_created": 42, "logements": 1,
++     "date_depot": "2026-06-01", "date_auth": "2026-06-20", "statut": "Autorisé", "mo": "PARTICULIER"},
++    {"id": "CP-2026-95119", "num": "PC 095 018 26 R0009", "type": "Permis de construire", "nature": "neuf",
++     "commune": "Éragny", "cp": "95610", "dep": "95", "lat": 49.0170, "lon": 2.0900,
++     "batiment": "Maison individuelle plain-pied", "surf_created": 132, "logements": 1,
++     "date_depot": "2026-06-05", "date_auth": "2026-06-24", "statut": "Autorisé", "mo": "PARTICULIER"},
++    {"id": "CP-2026-95903", "num": "PC 095 572 26 R0142", "type": "Permis de construire", "nature": "neuf",
++     "commune": "Saint-Ouen-l'Aumône", "cp": "95310", "dep": "95", "lat": 49.0430, "lon": 2.1150,
++     "batiment": "Bâtiment d'activité / logistique", "surf_created": 2100, "logements": 0,
++     "date_depot": "2026-04-20", "date_auth": "2026-06-10", "statut": "Autorisé", "mo": "ENTREPRISE"},
++    {"id": "CP-2026-95260", "num": "PC 095 476 26 R0055", "type": "Permis de construire", "nature": "renovation",
++     "commune": "Pontoise", "cp": "95300", "dep": "95", "lat": 49.0490, "lon": 2.0980,
++     "batiment": "Réhabilitation logements SCI", "surf_created": 380, "logements": 5,
++     "date_depot": "2026-05-15", "date_auth": "2026-06-19", "statut": "Autorisé", "mo": "SCI"},
++    {"id": "CP-2026-95744", "num": "PC 095 252 26 R0088", "type": "Permis de construire", "nature": "neuf",
++     "commune": "Jouy-le-Moutier", "cp": "95280", "dep": "95", "lat": 49.0130, "lon": 2.0380,
++     "batiment": "Maison individuelle R+1", "surf_created": 156, "logements": 1,
++     "date_depot": "2026-06-08", "date_auth": "2026-06-25", "statut": "Autorisé", "mo": "PARTICULIER"},
++    {"id": "CP-2026-95611", "num": "PA 095 500 26 R0004", "type": "Permis d'aménager", "nature": "neuf",
++     "commune": "Vauréal", "cp": "95490", "dep": "95", "lat": 49.0320, "lon": 2.0330,
++     "batiment": "Lotissement 8 lots", "surf_created": 960, "logements": 8,
++     "date_depot": "2026-03-30", "date_auth": "2026-05-30", "statut": "Autorisé", "mo": "COLLECTIVITE"},
++    {"id": "CP-2026-95055", "num": "DP 095 127 26 R0301", "type": "Déclaration préalable", "nature": "renovation",
++     "commune": "Cergy", "cp": "95000", "dep": "95", "lat": 49.0400, "lon": 2.0600,
++     "batiment": "Rénovation énergétique pavillon", "surf_created": 0, "logements": 1,
++     "date_depot": "2026-06-10", "date_auth": "2026-06-26", "statut": "Autorisé", "mo": "PARTICULIER"},
++    {"id": "CP-2026-95820", "num": "PC 095 018 26 R0021", "type": "Permis de construire", "nature": "neuf",
++     "commune": "Pierrelaye", "cp": "95480", "dep": "95", "lat": 49.0180, "lon": 2.1550,
++     "batiment": "Maison individuelle R+1", "surf_created": 204, "logements": 1,
++     "date_depot": "2026-06-12", "date_auth": "2026-06-27", "statut": "Autorisé", "mo": "PARTICULIER"},
++]
++
+ METIER_MAP = {
+     "neuf": ["terrassement", "fondations", "gros_oeuvre", "maconnerie", "charpente",
+              "couverture", "menuiserie", "plomberie", "electricite", "isolation", "carrelage", "peinture"],
+@@ -79,9 +119,7 @@
+ 
+ def _estimate(permit):
+     """Estimation préliminaire par lot (fourchette €), basée sur la surface créée."""
+-    surf = permit.get("surf_created") or 0
+-    if surf <= 0:
+-        return [], 0, 0
++    surf = max(permit.get("surf_created") or 0, 30)
+     lots = []
+     for m in _lots_for(permit):
+         lo, hi = METIER_LOTS[m]
+@@ -94,8 +132,8 @@
+ 
+ def _score(permit, distance_km, company_metiers, my_lot_low):
+     s = 0.0
+-    s += max(0, 30 - (distance_km if distance_km is not None else 30)) / 30 * 30
+-    days = (date.today() - date.fromisoformat(permit["date_auth"])).days if permit.get("date_auth") else 365
++    s += max(0, 30 - distance_km) / 30 * 30          # proximité (30)
++    days = (date.today() - date.fromisoformat(permit["date_auth"])).days
+     s += max(0, 45 - days) / 45 * 20                  # récence (20)
+     surf = permit.get("surf_created") or 0
+     s += min(surf, 300) / 300 * 15                     # ampleur (15)
+@@ -106,50 +144,30 @@
+ 
+ 
+ def _build(permit, base, company_metiers):
+-    dist = _haversine(base["lat"], base["lon"], permit["lat"], permit["lon"]) if permit.get("lat") is not None and permit.get("lon") is not None else None
++    dist = _haversine(base["lat"], base["lon"], permit["lat"], permit["lon"])
+     lots, tlo, thi = _estimate(permit)
+     my = [l for l in lots if l["metier"] in company_metiers] or lots
+     my_low = sum(l["low"] for l in my)
+     my_high = sum(l["high"] for l in my)
+     score = _score(permit, dist, company_metiers, my_low)
+-    return {**permit, "dep": department_of(permit), "promoteur": permit.get("promoteur"), "coordonnees_status": permit.get("coordonnees_status") or ("absent" if not permit.get("promoteur") else "partiel"),
+-            "distance_km": dist, "lots": lots,
++    return {**permit, "distance_km": dist, "lots": lots,
+             "estimate_low": tlo, "estimate_high": thi,
+             "my_lot_low": my_low, "my_lot_high": my_high,
+             "score": score, "metier_labels": METIER_LABELS}
+ 
+ 
+-async def _get_permits(user=None):
+-    """Only successfully published official snapshots. Empty really means empty."""
+-    snapshots = await db.radar_sync.find({"active_run": {"$exists": True}}, {"_id": 0, "active_run": 1}).to_list(None)
+-    permits = await db.radar_permits.find({"ingest_run": {"$in": [s["active_run"] for s in snapshots]},
+-        "source.kind": "sitadel_official", "source.verified": True, "is_demo": False,
+-        "date_auth": {"$gte": window_start(), "$lte": date.today().isoformat()}, "statut_code": {"$in": [2, 5]}}, {"_id": 0}).to_list(None)
+-    for permit in permits:
+-        cj = str((permit.get("promoteur") or {}).get("categorie_juridique") or "")
+-        if permit.get("mo") == "PARTICULIER" and cj.isdigit() and len(cj) == 4 and not cj.startswith("1"):
+-            permit["mo"] = _norm_mo(cj)
+-    if user:
+-        contacts = await db.radar_contacts.find({"user_id": user["user_id"], "opp_id": {"$in": [p["id"] for p in permits]}}, {"_id": 0}).to_list(None)
+-        saved = {c["opp_id"]: c for c in contacts}
+-        for permit in permits:
+-            contact = saved.get(permit["id"])
+-            if contact and not permit["is_demo"]:
+-                permit["promoteur"] = contact["contact"]
+-                permit["contact_provenance"] = contact["provenance"]
+-            pr = permit.get("promoteur") or {}
+-            permit["coordonnees_status"] = "complet" if all(pr.get(k) for k in ("nom", "adresse1", "cp", "ville")) else ("partiel" if any(pr.values()) else "absent")
+-    return permits
++async def _get_permits():
++    """Permis réels importés (db.radar_permits) s'ils existent, sinon échantillon mock."""
++    docs = await db.radar_permits.find({}, {"_id": 0}).to_list(3000)
++    return docs if docs else PERMITS
+ 
+ 
+ async def _profile(user):
+     u = await db.users.find_one({"user_id": user["user_id"]},
+                                 {"_id": 0, "radar_km": 1, "radar_metiers": 1,
+-                                 "radar_favorites": 1, "radar_base": 1, "radar_zone_mode": 1, "radar_departments": 1, "radar_official_setup": 1})
++                                 "radar_favorites": 1, "radar_base": 1})
+     u = u or {}
+     return {"km": u.get("radar_km", 30),
+-            "zone_mode": u.get("radar_zone_mode", "departments") if u.get("radar_official_setup") else "departments",
+-            "departments": u.get("radar_departments", INITIAL_DEPARTMENTS) if u.get("radar_official_setup") else INITIAL_DEPARTMENTS,
+             "metiers": u.get("radar_metiers") or ["gros_oeuvre", "maconnerie", "fondations", "terrassement"],
+             "favorites": u.get("radar_favorites") or [],
+             "base": u.get("radar_base") or DEFAULT_BASE}
+@@ -158,14 +176,11 @@
+ @router.get("/profile")
+ async def get_profile(user=Depends(current_user)):
+     p = await _profile(user)
+-    return {**p, "metier_options": [{"key": k, "label": v} for k, v in METIER_LABELS.items()],
+-            "department_options": [{"code": code, "name": name} for code, name in sorted(DEPARTMENTS.items())]}
++    return {**p, "metier_options": [{"key": k, "label": v} for k, v in METIER_LABELS.items()]}
+ 
+ 
+ class ProfileIn(BaseModel):
+     km: int | None = None
+-    zone_mode: Literal["radius", "departments"] | None = None
+-    departments: list[str] | None = None
+     metiers: list[str] | None = None
+     base: dict | None = None
+ 
+@@ -173,12 +188,6 @@
+ @router.put("/profile")
+ async def put_profile(body: ProfileIn, user=Depends(current_user)):
+     upd = {}
+-    if body.zone_mode is not None:
+-        upd["radar_zone_mode"] = body.zone_mode
+-        upd["radar_official_setup"] = True
+-    if body.departments is not None:
+-        upd["radar_departments"] = normalize_departments(body.departments)
+-        upd["radar_official_setup"] = True
+     if body.km is not None:
+         upd["radar_km"] = max(5, min(200, body.km))
+     if body.metiers is not None:
+@@ -191,20 +200,14 @@
+     return await get_profile(user)
+ 
+ 
+-@router.get("/opportunities", response_model=OfficialOpportunityList)
++@router.get("/opportunities")
+ async def list_opportunities(km: int | None = None, metier: str | None = None, favorites: bool = False,
+-                             zone_mode: Literal["radius", "departments"] | None = None, departments: str | None = None,
+-                             page: int = 1, page_size: int = 50,
+                              user=Depends(current_user)):
+     p = await _profile(user)
+-    if page < 1 or page_size < 1 or page_size > 100:
+-        raise HTTPException(422, "Pagination invalide")
+-    selected = normalize_departments(departments.split(",")) if departments is not None else p["departments"]
+-    sync_deps = selected if (zone_mode or p["zone_mode"]) == "departments" else (p["departments"] or INITIAL_DEPARTMENTS)
+-    await ensure_sync(sync_deps)
+-    permits = await _get_permits(user)
++    radius = km or p["km"]
++    permits = await _get_permits()
+     items = [_build(pm, p["base"], p["metiers"]) for pm in permits]
+-    items, zone = filter_zone(items, p, km, zone_mode, departments)
++    items = [x for x in items if x["distance_km"] <= radius]
+     if metier:
+         items = [x for x in items if metier in x["lots"] or any(l["metier"] == metier for l in x["lots"])]
+     if favorites:
+@@ -212,39 +215,22 @@
+     for x in items:
+         x["is_favorite"] = x["id"] in p["favorites"]
+     items.sort(key=lambda x: x["score"], reverse=True)
+-    points = {}
+-    for item in items:
+-        if item.get("lat") is None or item.get("lon") is None:
+-            continue
+-        key = (item["lat"], item["lon"])
+-        if key not in points:
+-            points[key] = {"lat": item["lat"], "lon": item["lon"], "commune": item.get("map_commune") or f'Commune {item["insee_commune"]}', "id": item["id"], "count": 0, "score": item["score"]}
+-        points[key]["count"] += 1
+-    summary = {"detected": len(items), "strong": sum(x["score"] >= 85 for x in items),
+-               "potential_ttc": sum(x["my_lot_high"] for x in items), "favorites": sum(x["is_favorite"] for x in items)}
+-    visible_sources = sync_deps
+-    if zone["zone_mode"] == "radius":
+-        loaded = await db.radar_sync.find({"active_run": {"$exists": True}}, {"_id": 0, "department": 1}).to_list(None)
+-        visible_sources = sorted(set(sync_deps + [r["department"] for r in loaded]))
+-    source_status = await sync_status(visible_sources)
+-    source_status["radius_scope"] = zone["zone_mode"] == "radius"
+-    return {"base": p["base"], **zone, "count": len(items), "page": page, "page_size": page_size,
+-            "opportunities": items[(page - 1) * page_size:page * page_size], "map_points": list(points.values()),
+-            "stats": summary, "sync": source_status, "data_mode": "official"}
+-
+-
+-@router.get("/opportunities/{opp_id}", response_model=OfficialOpportunity)
++    return {"base": p["base"], "radius_km": radius, "count": len(items), "opportunities": items}
++
++
++@router.get("/opportunities/{opp_id}")
+ async def get_opportunity(opp_id: str, user=Depends(current_user)):
+     p = await _profile(user)
+-    permits = await _get_permits(user)
++    permits = await _get_permits()
+     pm = next((x for x in permits if x["id"] == opp_id), None)
+     if not pm:
+         raise HTTPException(404, "Opportunité introuvable")
+     o = _build(pm, p["base"], p["metiers"])
+     o["is_favorite"] = opp_id in p["favorites"]
+     # RGPD : statut de contact selon le type de maître d'ouvrage
+-    o["contact_status"] = "green" if not pm["is_demo"] and o["coordonnees_status"] == "complet" and pm["mo"] != "PARTICULIER" else "orange"
+-    o["source"] = pm["source"]
++    o["contact_status"] = "green" if pm["mo"] in ("ENTREPRISE", "PROMOTEUR", "SCI", "BAILLEUR", "COLLECTIVITE") else "orange"
++    o["source"] = {"name": "SITADEL / autorisations d'urbanisme", "type": "public",
++                   "imported_at": datetime.now(timezone.utc).isoformat()}
+     company = await _company_name(user["user_id"])
+     o["suggested_message"] = _default_intro_plain(o, company)
+     return o
+@@ -263,10 +249,15 @@
+ 
+ 
+ @router.get("/stats")
+-async def stats(km: int | None = None, zone_mode: Literal["radius", "departments"] | None = None,
+-                departments: str | None = None, user=Depends(current_user)):
+-    data = await list_opportunities(km=km, zone_mode=zone_mode, departments=departments, user=user)
+-    return data["stats"]
++async def stats(user=Depends(current_user)):
++    p = await _profile(user)
++    permits = await _get_permits()
++    items = [_build(pm, p["base"], p["metiers"]) for pm in permits if _haversine(
++        p["base"]["lat"], p["base"]["lon"], pm["lat"], pm["lon"]) <= p["km"]]
++    strong = [x for x in items if x["score"] >= 85]
++    return {"detected": len(items), "strong": len(strong),
++            "potential_ttc": sum(x["my_lot_high"] for x in items),
++            "favorites": len(p["favorites"])}
+ 
+ 
+ 
+@@ -297,7 +288,7 @@
+ 
+ 
+ def _default_intro_plain(opp: dict, company: str) -> str:
+-    surf_txt = f" (surface publiée ≈ {opp.get('surf_created')} m²)" if opp.get("surf_created") else ""
++    surf_txt = f" (surface créée ≈ {opp.get('surf_created')} m²)" if opp.get("surf_created") else ""
+     low, high = opp.get("my_lot_low") or 0, opp.get("my_lot_high") or 0
+     price = ""
+     if high:
+@@ -422,8 +413,6 @@
+     pm = next((x for x in permits if x["id"] == opp_id), None)
+     if not pm:
+         raise HTTPException(404, "Opportunité introuvable")
+-    if pm.get("is_demo"):
+-        raise HTTPException(409, "Prospection désactivée pour les fiches fictives. Importez un permis réel.")
+     p = await _profile(user)
+     opp = _build(pm, p["base"], p["metiers"])
+ 
+@@ -531,8 +520,6 @@
+     pm = next((x for x in permits if x["id"] == rec["opp_id"]), None)
+     if not pm:
+         raise HTTPException(404, "Opportunité introuvable")
+-    if pm.get("is_demo"):
+-        raise HTTPException(409, "Courrier désactivé pour une fiche fictive.")
+     p = await _profile(user)
+     opp = _build(pm, p["base"], p["metiers"])
+     public_url = f"{_frontend_url()}/prospection/{token}"
+@@ -547,36 +534,18 @@
+ # ========= Envoi postal (Merci Facteur) =========
+ 
+ class PostalRecipient(BaseModel):
+-    model_config = ConfigDict(str_strip_whitespace=True)
+-    nom: str = Field(min_length=1, max_length=160)
++    nom: str
+     societe: str = ""
+-    adresse1: str = Field(min_length=1, max_length=200)
++    adresse1: str
+     adresse2: str = ""
+-    cp: str = Field(min_length=1, max_length=12)
+-    ville: str = Field(min_length=1, max_length=100)
++    cp: str
++    ville: str
+     pays: str = "france"
+ 
+ 
+-class PostalQuoteIn(BaseModel):
++class PostalSendIn(BaseModel):
+     recipient: PostalRecipient
+     mode: Literal["normal", "suivi", "lrar"] = "normal"
+-    address_source: Literal["contact", "terrain", "manual"] = "manual"
+-
+-
+-class PostalSendIn(PostalQuoteIn):
+-    quote_id: str = Field(min_length=16, max_length=100)
+-    confirmed: Literal[True]
+-
+-
+-class PostalRecordOut(BaseModel):
+-    model_config = ConfigDict(extra="allow")
+-    postal_id: str
+-    status: str
+-
+-
+-class PostalHistoryOut(BaseModel):
+-    sends: list[PostalRecordOut]
+-    refresh_error: str | None = None
+ 
+ 
+ def _sender_from_branding(b: dict, fallback_name: str) -> dict:
+@@ -595,16 +564,21 @@
+ @router.get("/postal/price")
+ async def postal_price(mode: Literal["normal", "suivi", "lrar"] = "normal", _=Depends(current_user)):
+     from engines import mercifacteur as mf
+-    from engines.postal_delivery import provider_http_error
+     if not mf.configured():
+         raise HTTPException(503, "Envoi postal non configuré")
+     try:
+-        return await mf.postage_price(mode=mode, pages=1)
+-    except mf.PostalProviderError as exc:
+-        raise provider_http_error(exc)
+-
+-
+-async def _postal_context(token, user):
++        res = await mf.postage_price(mode=mode, pages=1)
++    except Exception as e:  # noqa: BLE001
++        raise HTTPException(502, f"Tarif indisponible : {str(e)[:120]}")
++    aff = ((res.get("affranchissement") or {}).get("FRANCE") or {}).get("amount") or 0
++    content_ttc = (res.get("content") or {}).get("totalContentTtc") or 0
++    return {"mode": mode, "postage": float(aff), "content_ttc": float(content_ttc),
++            "total_ttc": round(float(aff) + float(content_ttc), 2)}
++
++
++@router.post("/prospection/{token}/postal")
++async def postal_send(token: str, body: PostalSendIn, user=Depends(current_user)):
++    """Poste physiquement le courrier de prospection via Merci Facteur (facturé au compte)."""
+     from engines import mercifacteur as mf
+     if not mf.configured():
+         raise HTTPException(503, "Envoi postal non configuré")
+@@ -615,57 +589,50 @@
+     pm = next((x for x in permits if x["id"] == rec["opp_id"]), None)
+     if not pm:
+         raise HTTPException(404, "Opportunité introuvable")
+-    if pm.get("is_demo"):
+-        raise HTTPException(409, "Envoi interdit pour une fiche fictive.")
+     p = await _profile(user)
+     opp = _build(pm, p["base"], p["metiers"])
+     public_url = f"{_frontend_url()}/prospection/{token}"
+     branding, u = await _pro_branding_and_user(user["user_id"])
+     if not (branding.get("address") and branding.get("postal_code") and branding.get("city")):
+         raise HTTPException(400, "Renseignez l'adresse de votre entreprise (Mon compte → Marque) : elle sert d'expéditeur.")
+-    return rec, opp, public_url, branding, u
+-
+-
+-@router.post("/prospection/{token}/postal/quote")
+-async def postal_quote(token: str, body: PostalQuoteIn, user=Depends(current_user)):
+-    from engines.postal_delivery import context_digest, create_quote
+-    rec, opp, url, branding, u = await _postal_context(token, user)
+-    pdf = _build_prospection_pdf(branding=branding, opp=opp, public_url=url,
+-        qr_png=_qr_png_bytes(url), custom_message=rec.get("message", ""))
+-    return await create_quote(user_id=user["user_id"], token=token, opp_id=rec["opp_id"],
+-        recipient=body.recipient.model_dump(), mode=body.mode, address_source=body.address_source,
+-        sender=_sender_from_branding(branding, u.get("name", "")), pdf=pdf,
+-        context_hash=context_digest(rec.get("message", ""), branding))
+-
+-
+-@router.post("/prospection/{token}/postal", response_model=PostalRecordOut)
+-async def postal_send(token: str, body: PostalSendIn, user=Depends(current_user)):
+-    from engines.postal_delivery import context_digest, deliver
+-    rec, _, _, branding, _ = await _postal_context(token, user)
+-    return await deliver(user_id=user["user_id"], token=token, quote_id=body.quote_id,
+-        recipient=body.recipient.model_dump(), mode=body.mode,
+-        context_hash=context_digest(rec.get("message", ""), branding))
+-
+-
+-@router.get("/prospection/{token}/postal", response_model=PostalHistoryOut)
++    pdf = _build_prospection_pdf(branding=branding, opp=opp, public_url=public_url,
++                                 qr_png=_qr_png_bytes(public_url), custom_message=rec.get("message", ""))
++    recipient = body.recipient.model_dump()
++    try:
++        res = await mf.send_letter(pdf, sender=_sender_from_branding(branding, u.get("name", "")),
++                                   recipient=recipient, mode=body.mode, filename=f"courrier-{token}")
++    except Exception as e:  # noqa: BLE001
++        raise HTTPException(502, f"Envoi postal refusé : {str(e)[:200]}")
++    envoi = res.get("envoi_id")
++    if isinstance(envoi, list):
++        envoi = envoi[0] if envoi else None
++    doc = {"postal_id": "post_" + secrets.token_hex(5), "token": token, "user_id": user["user_id"],
++           "opp_id": rec["opp_id"], "envoi_id": envoi, "mode": body.mode,
++           "price": res.get("price"), "recipient": recipient, "status": "submitted",
++           "created_at": datetime.now(timezone.utc).isoformat()}
++    await db.radar_postal.insert_one(dict(doc))
++    await db.radar_prospections.update_one({"token": token}, {"$inc": {"postal_count": 1}})
++    return doc
++
++
++@router.get("/prospection/{token}/postal")
+ async def postal_list(token: str, refresh: bool = False, user=Depends(current_user)):
+     from engines import mercifacteur as mf
+     sends = await db.radar_postal.find({"token": token, "user_id": user["user_id"]},
+                                        {"_id": 0}).sort("created_at", -1).to_list(50)
+-    refresh_error = None
+     if refresh and mf.configured():
+         for s in sends:
+             if not s.get("envoi_id"):
+                 continue
+             try:
+                 tr = await mf.tracking(int(s["envoi_id"]))
+-                upd = {"tracking": tr, "provider_status": (tr.get("statutPrintEnvoi") or tr.get("lastState")
+-                                                   or s.get("provider_status") or "En cours de traitement")}
++                upd = {"tracking": tr, "status": (tr.get("statutPrintEnvoi") or tr.get("lastState")
++                                                   or s.get("status") or "submitted")}
+                 s.update(upd)
+                 await db.radar_postal.update_one({"postal_id": s["postal_id"]}, {"$set": upd})
+-            except Exception:
+-                refresh_error = "Le suivi postal n'a pas pu être actualisé. Le dernier statut connu est conservé."
+-    return {"sends": sends, "refresh_error": refresh_error}
++            except Exception:  # noqa: BLE001
++                continue
++    return {"sends": sends}
+ 
+ 
+ 
+@@ -863,12 +830,6 @@
+ 
+ def _norm_mo(v: str) -> str:
+     t = (v or "").strip().lower()
+-    if t.isdigit() and len(t) == 4:
+-        if t.startswith("1"):
+-            return "PARTICULIER"
+-        if t in ("6540", "6541", "6542", "6543", "6544"):
+-            return "SCI"
+-        return "COLLECTIVITE" if t.startswith("7") else "ENTREPRISE"
+     for k, val in _MO_ALIASES.items():
+         if k in t:
+             return val
+@@ -912,19 +873,7 @@
+     dep = _pick(row, "dep", "departement", "dept") or cp[:2]
+     lat = _pick(row, "lat", "latitude")
+     lon = _pick(row, "lon", "lng", "longitude")
+-    adresse = _pick(row, "adresse", "address") or " ".join(x for x in [_pick(row, "adr_num_ter"), _pick(row, "adr_typevoie_ter"),
+-                                                                       _pick(row, "adr_libvoie_ter"), _pick(row, "adr_lieudit_ter")] if x).strip()
+-    cp = cp or _pick(row, "adr_cp_ter")
+-    commune = commune or _pick(row, "adr_localite_ter")
+-    # contact du demandeur / promoteur (colonnes SITADEL *_DEM ou colonnes libres)
+-    dem_nom = _pick(row, "denom_dem", "demandeur_nom", "nom_demandeur", "promoteur", "nom_mo", "raison_sociale")
+-    dem_adr = _pick(row, "demandeur_adresse", "adresse_demandeur") or " ".join(x for x in [_pick(row, "adr_num_dem"), _pick(row, "adr_typevoie_dem"),
+-                                                                                             _pick(row, "adr_libvoie_dem"), _pick(row, "adr_lieudit_dem")] if x).strip()
+-    promoteur = {"nom": dem_nom, "siren": _pick(row, "siren_dem", "siren"), "siret": _pick(row, "siret_dem", "siret"),
+-                 "categorie_juridique": _pick(row, "cj_dem", "cj"), "adresse1": dem_adr,
+-                 "cp": _pick(row, "adr_cp_dem", "demandeur_cp", "cp_demandeur"), "ville": _pick(row, "adr_localite_dem", "demandeur_ville", "ville_demandeur"),
+-                 "email": _pick(row, "email_dem", "demandeur_email", "email"), "telephone": _pick(row, "tel_dem", "demandeur_tel", "telephone")}
+-    promoteur = promoteur if any(promoteur.values()) else None
++    adresse = _pick(row, "adresse", "address")
+     if lat and lon:
+         coords = (float(lat.replace(",", ".")), float(lon.replace(",", ".")))
+     else:
+@@ -939,7 +888,7 @@
+     batiment = _pick(row, "batiment", "libelle", "projet", "description") or typ
+     return {
+         "id": pid, "num": num or pid, "type": typ, "nature": nature,
+-        "commune": commune or "—", "cp": cp or "", "dep": department_of({"dep": dep, "cp": cp}),
++        "commune": commune or "—", "cp": cp or "", "dep": dep or "",
+         "adresse": adresse or "",
+         "lat": round(coords[0], 6), "lon": round(coords[1], 6),
+         "batiment": batiment,
+@@ -948,10 +897,7 @@
+         "date_depot": _norm_date(_pick(row, "date_depot", "date_depot_dau")),
+         "date_auth": _norm_date(_pick(row, "date_auth", "date_autorisation", "date_reelle_autorisation")),
+         "statut": _pick(row, "statut", "etat") or "Autorisé",
+-        "mo": _norm_mo(_pick(row, "mo", "maitre_ouvrage", "moa", "demandeur", "cj_dem")),
+-        "promoteur": promoteur,
+-        "coordonnees_status": "complet" if promoteur and promoteur["nom"] and promoteur["adresse1"] and promoteur["cp"] and promoteur["ville"]
+-        else ("partiel" if promoteur else "absent"),
++        "mo": _norm_mo(_pick(row, "mo", "maitre_ouvrage", "moa", "demandeur")),
+         "imported_at": datetime.now(timezone.utc).isoformat(),
+     }
+ 
+@@ -959,17 +905,41 @@
+ @router.post("/admin/import-sitadel")
+ async def import_sitadel(file: UploadFile = File(...), replace: bool = True,
+                          _=Depends(admin_user)):
+-    raise HTTPException(410, "L'import manuel a été remplacé par la synchronisation officielle SDES. Aucun fichier ne peut remplacer ces permis.")
++    """Importe un fichier SITADEL (CSV) dans db.radar_permits. Géocodage BAN si lat/lon absents.
++    Colonnes reconnues (insensible casse) : commune, cp, dep, lat, lon, adresse, num, type,
++    nature, batiment, surf_created, logements, date_depot, date_auth, statut, mo."""
++    raw = await file.read()
++    try:
++        text = raw.decode("utf-8-sig")
++    except UnicodeDecodeError:
++        text = raw.decode("latin-1")
++    delim = ";" if text.splitlines()[0].count(";") >= text.splitlines()[0].count(",") else ","
++    reader = csv.DictReader(io.StringIO(text), delimiter=delim)
++    inserted, skipped = 0, 0
++    MAX_ROWS = 8000
++    if replace:
++        await db.radar_permits.delete_many({})
++    for i, row in enumerate(reader):
++        if i >= MAX_ROWS:
++            break
++        permit = await _row_to_permit(row, i)
++        if not permit:
++            skipped += 1
++            continue
++        await db.radar_permits.update_one({"id": permit["id"]}, {"$set": permit}, upsert=True)
++        inserted += 1
++    total = await db.radar_permits.count_documents({})
++    return {"ok": True, "inserted": inserted, "skipped": skipped, "total_in_db": total,
++            "source": "db.radar_permits"}
+ 
+ 
+ @router.get("/admin/permits/count")
+ async def permits_count(_=Depends(admin_user)):
+-    n = len(await _get_permits())
+-    loaded = await db.radar_sync.find({}, {"_id": 0, "department": 1}).to_list(None)
+-    departments = sorted(set(INITIAL_DEPARTMENTS + [r["department"] for r in loaded]))
+-    return {"count": n, "using": "SDES · SITADEL officiel", "sync": await sync_status(departments)}
++    n = await db.radar_permits.count_documents({})
++    return {"count": n, "using": "db.radar_permits" if n else "mock (échantillon 95)"}
+ 
+ 
+ @router.delete("/admin/permits")
+ async def clear_permits(_=Depends(admin_user)):
+-    raise HTTPException(409, "La suppression globale des permis officiels est désactivée. Utilisez Actualiser pour obtenir la dernière publication SDES.")
++    res = await db.radar_permits.delete_many({})
++    return {"ok": True, "deleted": res.deleted_count, "using": "mock (échantillon 95)"}

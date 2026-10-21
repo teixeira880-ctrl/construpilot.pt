@@ -10,28 +10,28 @@ import {
 import { api } from "@/lib/api";
 
 const PRICE_LABELS = {
-  installation_chantier: ["Instalação de obra (contentor social, vedação, contentor de resíduos)", "forfait"],
-  engins_levage: ["Engins & machines (grue, bétonnière)", "forfait"],
-  echafaudage: ["Échafaudage (location + montage)", "forfait"],
-  protection_securite: ["Protection collective & sécurité (garde-corps, filets, PPSPS)", "forfait"],
-  terrassement_complet: ["Terrassement complet (fouilles, remblais)", "forfait"],
-  beton_proprete: ["Béton de propreté", "m³"],
-  beton_semelle: ["Béton semelles C25/30", "m³"],
-  acier_semelle: ["Aços semelles", "kg"],
-  fondations_moe: ["Mise en œuvre fondations", "forfait"],
-  beton_dalle: ["Béton dallage RDC", "m³"],
-  treillis_dalle: ["Treillis ST25C", "kg"],
-  coffrage_rive: ["Coffrage de rives", "ml"],
-  plancher_etage: ["Plancher d'étage complet", "forfait/niv."],
-  mur_isobrique: ["Parede brique isobrique 20", "m²"],
-  chainage_beton: ["Béton chaînages", "m³"],
-  acier_chainage: ["Aços chaînages", "kg"],
-  linteau: ["Linteaux BA", "ml"],
-  escalier_beton: ["Béton escalier", "m³"],
-  acier_escalier: ["Aços escalier", "kg"],
-  charpente_trad: ["Charpente traditionnelle", "forfait"],
-  couverture_tuiles: ["Couverture tuiles", "forfait"],
-  menuiseries_ext: ["Menuiseries ext. (fenêtres)", "forfait"],
+  installation_chantier: ["Instalação de estaleiro (base de vida, vedação, contentor)", "forfait"],
+  engins_levage: ["Máquinas & equipamentos (grua, betoneira)", "forfait"],
+  echafaudage: ["Andaime (aluguer + montagem)", "forfait"],
+  protection_securite: ["Proteção coletiva & segurança (guarda-corpos, redes, PPSPS)", "forfait"],
+  terrassement_complet: ["Terraplanagem completa (escavações, aterros)", "forfait"],
+  beton_proprete: ["Betão de limpeza", "m³"],
+  beton_semelle: ["Betão sapatas C25/30", "m³"],
+  acier_semelle: ["Aços sapatas", "kg"],
+  fondations_moe: ["Execução de fundações", "forfait"],
+  beton_dalle: ["Betão laje RDC", "m³"],
+  treillis_dalle: ["Malha ST25C", "kg"],
+  coffrage_rive: ["Cofragem de bordas", "ml"],
+  plancher_etage: ["Pavimento de piso completo", "forfait/niv."],
+  mur_isobrique: ["Parede tijolo isotérmico 20", "m²"],
+  chainage_beton: ["Betão cintas", "m³"],
+  acier_chainage: ["Aços cintas", "kg"],
+  linteau: ["Padieiras BA", "ml"],
+  escalier_beton: ["Betão escada", "m³"],
+  acier_escalier: ["Aços escada", "kg"],
+  charpente_trad: ["Carpintaria tradicional", "forfait"],
+  couverture_tuiles: ["Cobertura de telhas", "forfait"],
+  menuiseries_ext: ["Caixilharias ext. (janelas)", "forfait"],
 };
 
 export default function PcSettingsDialog({ open, onClose, onSaved }) {
@@ -97,10 +97,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         notify_on_open: notifyMode,
         notify_phone: notifyPhone.trim() || null,
       });
-      toast.success("Definições enregistrés");
+      toast.success("Definições guardadas");
       onSaved?.();
       onClose();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Enregistrement impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar"); }
     finally { setBusy(false); }
   };
 
@@ -108,10 +108,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
     setBusy(true);
     try {
       await api.delete("/pc/settings");
-      toast.success("Definições reinicializadas para os valores por omissão");
+      toast.success("Definições reiniciadas para os valores predefinidos");
       onSaved?.();
       onClose();
-    } catch { toast.error("Réinitialisation impossível"); }
+    } catch { toast.error("Reinício impossível"); }
     finally { setBusy(false); }
   };
 
@@ -120,40 +120,39 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
       <DialogContent className="rounded-sm max-w-2xl max-h-[85vh] overflow-y-auto"
                      data-testid="pc-settings-dialog">
         <DialogHeader>
-          <DialogTitle>Definições de l'estudo PC</DialogTitle>
+          <DialogTitle>Definições do estudo de licença</DialogTitle>
           <DialogDescription>
-            Vos prix unitaires (€ HT), la taille d'équipe et le taux horaire sont
-            appliqués à toutes vos prochaines études — et recalculés sur l'estudo en cours.
+            Os seus preços unitários (€ s/ IVA), o tamanho da equipa e a taxa horária são aplicados a todos os seus próximos estudos — e recalculados no estudo em curso.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-crew" className="text-xs">Taille d'équipe (compagnons)</Label>
+            <Label htmlFor="pc-crew" className="text-xs">Dimensão da equipa (operários)</Label>
             <Input id="pc-crew" type="number" min="1" max="12" value={crew}
                    onChange={(e) => setCrew(e.target.value)}
                    data-testid="pc-settings-crew-input" className="rounded-sm num" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-rate" className="text-xs">Taux horaire MO (€/h)</Label>
+            <Label htmlFor="pc-rate" className="text-xs">Taxa horária MO (€/h)</Label>
             <Input id="pc-rate" type="number" min="20" max="150" value={rate}
                    onChange={(e) => setRate(e.target.value)}
                    data-testid="pc-settings-rate-input" className="rounded-sm num" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-margin" className="text-xs">Marge bénéficiaire (%) — prix de vente client</Label>
+            <Label htmlFor="pc-margin" className="text-xs">Margem de lucro (%) — preço de venda ao cliente</Label>
             <Input id="pc-margin" type="number" min="0" max="200" value={margin}
                    onChange={(e) => setMargin(e.target.value)}
                    data-testid="pc-settings-margin-input" className="rounded-sm num" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-deposit" className="text-xs">Sinal en ligne (%) — 0 = désactivé</Label>
+            <Label htmlFor="pc-deposit" className="text-xs">Sinal online (%) — 0 = desativado</Label>
             <Input id="pc-deposit" type="number" min="0" max="100" value={depositPct}
                    onChange={(e) => setDepositPct(e.target.value)}
                    data-testid="pc-settings-deposit-input" className="rounded-sm num" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pc-dep-reminder" className="text-xs">Relance sinal impayé (jours) — 0 = jamais</Label>
+            <Label htmlFor="pc-dep-reminder" className="text-xs">Lembrete de sinal por pagar (dias) — 0 = nunca</Label>
             <Input id="pc-dep-reminder" type="number" min="0" max="30" value={depReminderDays}
                    onChange={(e) => setDepReminderDays(e.target.value)}
                    data-testid="pc-settings-deposit-reminder-input" className="rounded-sm num" />
@@ -161,40 +160,40 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={weeklyReport} onChange={(e) => setWeeklyReport(e.target.checked)}
                    data-testid="pc-settings-weekly-checkbox" className="accent-primary" />
-            Relatório hebdo par email (chaque lundi)
+            Relatório semanal por e-mail (todas as segundas)
           </label>
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={teamShare} onChange={(e) => setTeamShare(e.target.checked)}
                    data-testid="pc-settings-teamshare-checkbox" className="accent-primary" />
-            Partager mes études PC avec mon équipe
+            Partilhar os meus estudos PC com a minha equipa
           </label>
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={teamCanEdit} onChange={(e) => setTeamCanEdit(e.target.checked)}
                    data-testid="pc-settings-teamedit-checkbox" className="accent-primary" />
-            Autoriser l'équipe à modifier mes études (sinon lecture seule)
+            Autorizar a equipa a modificar os meus estudos (senão apenas leitura)
           </label>
           <div className="grid gap-1.5 col-span-2">
             <Label htmlFor="pc-reminder" className="text-xs">
-              Relance auto du client si l'estudo n'est pas ouverte après (jours) — 0 = désactivée
+              Lembrete automático ao cliente se o estudo não for aberto após (dias) — 0 = desativado
             </Label>
             <Input id="pc-reminder" type="number" min="0" max="30" value={reminderDays}
                    onChange={(e) => setReminderDays(e.target.value)}
                    data-testid="pc-settings-reminder-input" className="rounded-sm num w-32" />
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-xs">Me prévenir quand le client ouvre l'estudo</Label>
+            <Label className="text-xs">Avisar-me quando o cliente abrir o estudo</Label>
             <select value={notifyMode} onChange={(e) => setNotifyMode(e.target.value)}
                     data-testid="pc-settings-notify-select"
                     className="h-9 rounded-sm border border-input bg-background px-2 text-sm">
-              <option value="email">Par email</option>
-              <option value="sms">Par SMS</option>
+              <option value="email">Por email</option>
+              <option value="sms">Por SMS</option>
               <option value="both">Email + SMS</option>
-              <option value="off">Ne pas me prévenir</option>
+              <option value="off">Não me avisar</option>
             </select>
           </div>
           {(notifyMode === "sms" || notifyMode === "both") && (
             <div className="grid gap-1.5">
-              <Label htmlFor="pc-notify-phone" className="text-xs">Número pour les SMS (+33…)</Label>
+              <Label htmlFor="pc-notify-phone" className="text-xs">Número para SMS (+33…)</Label>
               <Input id="pc-notify-phone" type="tel" placeholder="+33612345678"
                      value={notifyPhone} onChange={(e) => setNotifyPhone(e.target.value)}
                      data-testid="pc-settings-phone-input" className="rounded-sm num" />
@@ -205,10 +204,10 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         <table className="w-full text-xs border border-border">
           <thead>
             <tr className="bg-muted text-left">
-              <th className="p-1.5">Poste</th>
-              <th className="p-1.5">Unité</th>
-              <th className="p-1.5 text-right">PU matériaux €</th>
-              <th className="p-1.5 text-right">PU main d'œuvre €</th>
+              <th className="p-1.5">Artigo</th>
+              <th className="p-1.5">Un.</th>
+              <th className="p-1.5 text-right">PU materiais €</th>
+              <th className="p-1.5 text-right">PU mão de obra €</th>
             </tr>
           </thead>
           <tbody>
@@ -236,7 +235,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={reset} disabled={busy}
                   className="rounded-sm gap-2 mr-auto" data-testid="pc-settings-reset-btn">
-            <RotateCcw className="h-3.5 w-3.5" /> Reinicializar
+            <RotateCcw className="h-3.5 w-3.5" /> Reiniciar
           </Button>
           <Button variant="outline" onClick={onClose} className="rounded-sm"
                   data-testid="pc-settings-cancel">Cancelar</Button>

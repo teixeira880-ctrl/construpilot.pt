@@ -1,18 +1,30 @@
+import { WorkspaceFooter } from "@/components/workspace/WorkspaceFooter";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import React, { useEffect } from "react";
+import { DefaultSEO } from "@/seo/DefaultSEO";
 import "@/App.css";
+import "@/styles/workspace.css";
+import WorkspaceNavigation from "@/components/workspace/WorkspaceNavigation";
+import { PermissionNotice } from "@/components/workspace/PermissionNotice";
+import { usePermissions } from "@/context/PermissionContext";
+import { routePermission, meetsLevel } from "@/components/workspace/navigation";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BillingProvider, useBilling } from "@/context/BillingContext";
 import { PermissionProvider } from "@/context/PermissionContext";
 import { WhiteLabelProvider } from "@/context/WhiteLabelContext";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
+import { OfflineProvider } from "@/context/OfflineContext";
 import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import HelpChatbot from "@/components/HelpChatbot";
-import Landing from "@/pages/Landing";
+import { StudyRunning } from "@/components/StudyRunning";
+import { AgentsRunning } from "@/components/AgentsRunning";
+import LandingPro from "@/pages/LandingPro";
 import LandingParticuliers from "@/pages/LandingParticuliers";
+import LandingMetre from "@/pages/LandingMetre";
 import LandingPortugal from "@/pages/LandingPortugal";
+import RadarChantiers from "@/pages/RadarChantiers";
 import Investors from "@/pages/Investors";
 import Features from "@/pages/Features";
 import Login from "@/pages/Login";
@@ -26,12 +38,22 @@ import PriceSearch from "@/pages/PriceSearch";
 import Diy from "@/pages/Diy";
 import Coach from "@/pages/Coach";
 import PhotoAnalyse from "@/pages/PhotoAnalyse";
+import AgentsHub from "@/pages/AgentsHub";
 import QuoteScanner from "@/pages/QuoteScanner";
 import Admin from "@/pages/Admin";
+import SavingsCalculator from "@/pages/SavingsCalculator";
+import { ExpenseAdminPanel } from "@/components/admin/ExpenseAdminPanel";
 import NotFound from "@/pages/NotFound";
 import { MentionsLegales, Confidentialite, CGV } from "@/pages/LegalPages";
+import AppPrivacy from "@/pages/AppPrivacy";
+import DeleteAccountPage from "@/pages/DeleteAccountPage";
+import RfqPublic from "@/pages/RfqPublic";
+import DpgfPage from "@/pages/DpgfPage";
+import DocIntelPage from "@/pages/DocIntelPage";
 import Welcome from "@/pages/Welcome";
 import Pricing from "@/pages/Pricing";
+import ProOffer from "@/pages/ProOffer";
+import Help from "@/pages/Help";
 import Referral from "@/pages/Referral";
 import Marketplace from "@/pages/Marketplace";
 import ProPortal from "@/pages/ProPortal";
@@ -42,17 +64,35 @@ import SupplierPortal from "@/pages/SupplierPortal";
 import Invite from "@/pages/Invite";
 import Team from "@/pages/Team";
 import SignQuote from "@/pages/SignQuote";
+import ProspectionLanding from "@/pages/ProspectionLanding";
 import PcSignPage from "@/pages/PcSignPage";
 import PcDashboard from "@/pages/PcDashboard";
+import CotesControl from "@/pages/CotesControl";
+import Assistant from "@/pages/Assistant";
+import Preferences from "@/pages/Preferences";
+import SharedEstimate from "@/pages/SharedEstimate";
 import Account from "@/pages/Account";
 import QuoteTracking from "@/pages/QuoteTracking";
 import PublicEstimation from "@/pages/PublicEstimation";
 import PlanTakeoff from "@/pages/PlanTakeoff";
+import Renovation from "@/pages/Renovation";
+import Structuro from "@/pages/Structuro";
+import StructureCalc from "@/pages/StructureCalc";
+import BetDossier from "@/pages/BetDossier";
+import StructuroHouse from "@/pages/StructuroHouse";
+import PlanReader from "@/pages/PlanReader";
+import StairCalculator from "@/pages/StairCalculator";
+import BtpSolver from "@/pages/BtpSolver";
+import PlansPro from "@/pages/PlansPro";
+import CompanyPage from "@/pages/CompanyPage";
+import CompanyPublic from "@/pages/CompanyPublic";
+import { PortalLogin, PortalAccept, PortalChantier } from "@/pages/Portal";
 import PhotoMeasure from "@/pages/PhotoMeasure";
 import ProVerified from "@/pages/ProVerified";
 import ProUpsell from "@/pages/ProUpsell";
 import VerifyEmail from "@/pages/VerifyEmail";
 import TechAnalysis from "@/pages/TechAnalysis";
+import Profitability from "@/pages/Profitability";
 import PlanCompare from "@/pages/PlanCompare";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
@@ -62,15 +102,21 @@ import ReviewCollect from "@/pages/ReviewCollect";
 import MyReviews from "@/pages/MyReviews";
 import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
+import Chantiers from "@/pages/Chantiers";
+import ChantierDetail from "@/pages/ChantierDetail";
 import Library from "@/pages/Library";
 import QuoteEditor from "@/pages/QuoteEditor";
 import Invoices from "@/pages/Invoices";
+import Trash from "@/pages/Trash";
+import GrowthPage from "@/growth/GrowthPage";
+import PlanAnalysis from "@/pages/PlanAnalysis";
 import EInvoicing from "@/pages/EInvoicing";
 import HR from "@/pages/HR";
 import WorkerApp from "@/pages/WorkerApp";
 import SharedCalc from "@/pages/SharedCalc";
 import PriceCatalog from "@/pages/PriceCatalog";
 import SiteTracking from "@/pages/SiteTracking";
+import Planning from "@/pages/Planning";
 import RenderStudio from "@/pages/RenderStudio";
 import MyLeads from "@/pages/MyLeads";
 import RenderShare from "@/pages/RenderShare";
@@ -79,11 +125,13 @@ import Situations from "@/pages/Situations";
 import Entreprise from "@/pages/Entreprise";
 import { CITY_LIST } from "@/lib/cities";
 import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
+import PostalPaymentReturn from "@/pages/PostalPaymentReturn";
 import { I18nProvider } from "@/context/I18nContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 import CookieConsent from "@/components/CookieConsent";
+import { DomTranslator } from "@/components/DomTranslator";
 
 const Protected = ({ children, admin }) => {
   const { user, loading } = useAuth();
@@ -100,6 +148,9 @@ const Protected = ({ children, admin }) => {
 
 const ProRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const { tier } = useBilling();
+  const permissions = usePermissions();
+  const location = useLocation();
   if (loading)
     return (
       <div className="min-h-[60vh] grid place-items-center">
@@ -107,8 +158,13 @@ const ProRoute = ({ children }) => {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
-  const isPro = user.account_type !== "particulier" || user.role === "admin";
+  const isPro = meetsLevel(user, tier, "pro");
   if (!isPro) return <Navigate to="/passez-pro" replace />;
+  if (user.role === "worker" && location.pathname !== "/pointage") return <Navigate to="/pointage" replace />;
+  const feature = routePermission(location.pathname, location.search);
+  if (permissions.loading || permissions.error || !permissions.active || (feature && !permissions.can(feature))) {
+    return <Shell><PermissionNotice denied /></Shell>;
+  }
   return children;
 };
 
@@ -123,100 +179,146 @@ const SubscriberRoute = ({ children }) => {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
-  const isPro = user.account_type !== "particulier" || user.role === "admin";
-  const subscribed = tier && tier !== "free";
-  if (!isPro && !subscribed) return <Navigate to="/passez-pro?feature=analyse" replace />;
+  const subscribed = meetsLevel(user, tier, "particulier_payant");
+  if (!subscribed) return <Navigate to="/passez-pro?feature=analyse" replace />;
   return children;
 };
 
-const Shell = ({ children }) => (
-  <>
-    <Nav />
-    <main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main>
-    <Footer />
-    <HelpChatbot />
-  </>
-);
+// Accès réservé aux offres « Business » (équipes) — et admin.
+const BusinessRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const { tier } = useBilling();
+  if (loading)
+    return (
+      <div className="min-h-[60vh] grid place-items-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  if (!user) return <Navigate to="/login" replace />;
+  if (!meetsLevel(user, tier, "business")) return <Navigate to="/passez-pro?feature=business" replace />;
+  return children;
+};
 
-/** Redirect externo: envia o utilizador para uma URL fora da SPA
- *  (ex.: webmail PTISP em webmail.construpilot.pt). */
-function ExternalRedirect({ to }) {
-  useEffect(() => { window.location.replace(to); }, [to]);
-  return (
-    <div style={{ padding: "3rem", textAlign: "center", fontFamily: "system-ui" }}>
-      <p style={{ fontSize: 16, color: "#334155" }}>A redirecionar para o webmail…</p>
-      <p style={{ marginTop: 12 }}>
-        <a href={to} style={{ color: "#FF5A00", textDecoration: "underline" }}>
-          Se não fores redirecionado automaticamente, clica aqui
-        </a>
-      </p>
+const Shell = ({ children }) => {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  const assistant = pathname === "/assistant";
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  if (!user) return <><Nav /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main><Footer /><HelpChatbot /></>;
+  return <div className={`workspace${assistant ? " workspace-chat" : ""}`}>
+    <WorkspaceNavigation />
+    <div className="workspace-content">
+      <main key={user.user_id} id="workspace-main" tabIndex={-1} className="workspace-main">{children}</main>
+      {!assistant && <WorkspaceFooter />}
     </div>
-  );
-}
+    {!assistant && <HelpChatbot />}
+    <AgentsRunning />
+    <StudyRunning />
+  </div>;
+};
 
 function AppRouter() {
   const location = useLocation();
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
+    <>
+    <DefaultSEO />
     <Routes>
-      <Route path="/" element={<LandingPortugal />} />
-      <Route path="/fr" element={<Landing />} />
+      <Route path="/" element={<LandingPro />} />
       <Route path="/particuliers" element={<LandingParticuliers />} />
+      <Route path="/metre" element={<LandingMetre />} />
+      <Route path="/economies" element={<Shell><SavingsCalculator /></Shell>} />
       <Route path="/portugal" element={<Shell><LandingPortugal /></Shell>} />
-      <Route path="/investidores" element={<Investors />} />
-      <Route path="/funcionalidades" element={<Features />} />
+      <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
+      <Route path="/radar/courrier/retour" element={<Protected><Shell><PostalPaymentReturn /></Shell></Protected>} />
+      <Route path="/investisseurs" element={<Investors />} />
+      <Route path="/fonctionnalites" element={<Features />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/registo" element={<Login />} />
-      <Route path="/redefinir" element={<ResetPassword />} />
+      <Route path="/inscription" element={<Login />} />
+      <Route path="/reinitialiser" element={<ResetPassword />} />
       <Route path="/smart-project" element={<Shell><SmartProject /></Shell>} />
-      <Route path="/estimativa" element={<Shell><Estimator /></Shell>} />
-      <Route path="/calculadoras" element={<Shell><Calculators /></Shell>} />
-      <Route path="/precos" element={<Shell><PriceSearch /></Shell>} />
+      <Route path="/estimation" element={<Shell><Estimator /></Shell>} />
+      <Route path="/calculateurs" element={<Shell><Calculators /></Shell>} />
+      <Route path="/prix" element={<Shell><PriceSearch /></Shell>} />
       <Route path="/mon-catalogue" element={<ProRoute><Shell><PriceCatalog /></Shell></ProRoute>} />
       <Route path="/appro" element={<ProRoute><Shell><TechAnalysis /></Shell></ProRoute>} />
+      <Route path="/rentabilite" element={<ProRoute><Shell><Profitability /></Shell></ProRoute>} />
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
-      <Route path="/rendu-ia" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
+      <Route path="/planning" element={<ProRoute><Shell><Planning /></Shell></ProRoute>} />
+      <Route path="/agents" element={<Protected><Shell><AgentsHub /></Shell></Protected>} />
+      <Route path="/rendu-ia" element={<SubscriberRoute><Shell><RenderStudio /></Shell></SubscriberRoute>} />
       <Route path="/mes-demandes" element={<ProRoute><Shell><MyLeads /></Shell></ProRoute>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
       <Route path="/coach" element={<Shell><Coach /></Shell>} />
       <Route path="/photo" element={<Shell><PhotoAnalyse /></Shell>} />
       <Route path="/tarifs" element={<Shell><Pricing /></Shell>} />
+      <Route path="/pro" element={<Shell><ProOffer /></Shell>} />
+      <Route path="/aide" element={<Shell><Help /></Shell>} />
       <Route path="/comparatif" element={<Shell><Comparatif /></Shell>} />
       <Route path="/blog" element={<Shell><Blog /></Shell>} />
       <Route path="/blog/:slug" element={<Shell><BlogPost /></Shell>} />
       <Route path="/devis-travaux-:city" element={<Shell><LocalLanding /></Shell>} />
       {CITY_LIST.map((c) => (
+        <Route key={`pt-${c.slug}`} path={`/orcamento-obras-${c.slug}`}
+               element={<Shell><LocalLanding /></Shell>} />
+      ))}
+      {CITY_LIST.map((c) => (
         <Route key={c.slug} path={`/devis-travaux-${c.slug}`}
                element={<Shell><LocalLanding /></Shell>} />
       ))}
       <Route path="/parrainage" element={<Protected><Shell><Referrals /></Shell></Protected>} />
+      <Route path="/parrainage" element={<Protected><Shell><Referral /></Shell></Protected>} />
       <Route path="/inviter" element={<Protected><Shell><Invite /></Shell></Protected>} />
-      <Route path="/equipe" element={<ProRoute><Shell><Team /></Shell></ProRoute>} />
-      <Route path="/devis" element={<Navigate to="/orcamentos" replace />} />
-      <Route path="/factures" element={<Navigate to="/faturas" replace />} />
+      <Route path="/equipe" element={<BusinessRoute><Shell><Team /></Shell></BusinessRoute>} />
+      <Route path="/devis" element={<ProRoute><Shell><QuoteTracking /></Shell></ProRoute>} />
+      <Route path="/factures" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
+      <Route path="/corbeille" element={<ProRoute><Shell><Trash /></Shell></ProRoute>} />
       <Route path="/factures-electroniques" element={<ProRoute><Shell><EInvoicing /></Shell></ProRoute>} />
-      <Route path="/situations" element={<ProRoute><Shell><Situations /></Shell></ProRoute>} />
-      <Route path="/entreprise" element={<Navigate to="/empresa" replace />} />
-      <Route path="/rh" element={<ProRoute><Shell><HR /></Shell></ProRoute>} />
+      <Route path="/situations" element={<BusinessRoute><Shell><Situations /></Shell></BusinessRoute>} />
+      <Route path="/entreprise" element={<BusinessRoute><Shell><Entreprise /></Shell></BusinessRoute>} />
+      <Route path="/rh" element={<BusinessRoute><Shell><HR /></Shell></BusinessRoute>} />
       <Route path="/pointage" element={<ProRoute><WorkerApp /></ProRoute>} />
       <Route path="/mes-avis" element={<ProRoute><Shell><MyReviews /></Shell></ProRoute>} />
       <Route path="/clients" element={<ProRoute><Shell><Clients /></Shell></ProRoute>} />
       <Route path="/clients/:clientId" element={<ProRoute><Shell><ClientDetail /></Shell></ProRoute>} />
+      <Route path="/chantiers" element={<ProRoute><Shell><Chantiers /></Shell></ProRoute>} />
+      <Route path="/chantiers/:chantierId" element={<ProRoute><Shell><ChantierDetail /></Shell></ProRoute>} />
       <Route path="/bibliotheque" element={<ProRoute><Shell><Library /></Shell></ProRoute>} />
       <Route path="/devis-editeur" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
       <Route path="/devis-editeur/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
       <Route path="/scanner-devis" element={<SubscriberRoute><Shell><QuoteScanner /></Shell></SubscriberRoute>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
+      <Route path="/entreprise/:slug" element={<CompanyPublic />} />
+      <Route path="/espace" element={<PortalLogin />} />
+      <Route path="/espace/invitation/:token" element={<PortalAccept />} />
+      <Route path="/espace/:ref" element={<PortalChantier />} />
+      <Route path="/ma-page" element={<ProRoute><Shell><CompanyPage /></Shell></ProRoute>} />
+      <Route path="/estimation-partagee/:token" element={<SharedEstimate />} />
       <Route path="/rendu/:token" element={<RenderShare />} />
       <Route path="/sign/:token" element={<SignQuote />} />
+      <Route path="/prospection/:token" element={<ProspectionLanding />} />
       <Route path="/fiche/:shareId" element={<SharedCalc />} />
       <Route path="/avis/:token" element={<ReviewCollect />} />
       <Route path="/etude/:token" element={<PcSignPage />} />
       <Route path="/etudes-pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
+      <Route path="/controle-cotes" element={<ProRoute><Shell><CotesControl /></Shell></ProRoute>} />
+      <Route path="/assistant" element={<SubscriberRoute><Shell><Assistant /></Shell></SubscriberRoute>} />
+      <Route path="/preferences" element={<Protected><Shell><Preferences /></Shell></Protected>} />
       <Route path="/compte" element={<Protected><Shell><Account /></Shell></Protected>} />
+      <Route path="/dpgf" element={<ProRoute><Shell><DpgfPage /></Shell></ProRoute>} />
+      <Route path="/analyse-documents" element={<ProRoute><Shell><DocIntelPage /></Shell></ProRoute>} />
       <Route path="/pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
       <Route path="/plan" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
-      <Route path="/mesure-photo" element={<ProRoute><Shell><PhotoMeasure /></Shell></ProRoute>} />
+      <Route path="/renovation" element={<ProRoute><Shell><Renovation /></Shell></ProRoute>} />
+      <Route path="/structuro" element={<ProRoute><Shell><Structuro /></Shell></ProRoute>} />
+      <Route path="/structuro/calcul" element={<ProRoute><Shell><StructureCalc /></Shell></ProRoute>} />
+      <Route path="/structuro-bet" element={<ProRoute><Shell><BetDossier /></Shell></ProRoute>} />
+      <Route path="/estudo-moradia" element={<ProRoute><Shell><StructuroHouse /></Shell></ProRoute>} />
+      <Route path="/structuro/lecture-plan" element={<ProRoute><Shell><PlanReader /></Shell></ProRoute>} />
+      <Route path="/escaliers" element={<ProRoute><Shell><StairCalculator /></Shell></ProRoute>} />
+      <Route path="/btp-solver" element={<Protected><Shell><BtpSolver /></Shell></Protected>} />
+      <Route path="/plans-pro" element={<ProRoute><Shell><PlansPro /></Shell></ProRoute>} />
+      <Route path="/mesure-photo" element={<SubscriberRoute><Shell><PhotoMeasure /></Shell></SubscriberRoute>} />
       <Route path="/pro-verifie/:userId" element={<Shell><ProVerified /></Shell>} />
       <Route path="/passez-pro" element={<Protected><Shell><ProUpsell /></Shell></Protected>} />
       <Route path="/verifier-email/:token" element={<Shell><VerifyEmail /></Shell>} />
@@ -224,7 +326,7 @@ function AppRouter() {
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />
       <Route path="/pro/paiement/succes" element={<Protected><Shell><PaymentSuccess /></Shell></Protected>} />
-      <Route path="/developpeurs" element={<ProRoute><Shell><ApiKeys /></Shell></ProRoute>} />
+      <Route path="/developpeurs" element={<BusinessRoute><Shell><ApiKeys /></Shell></BusinessRoute>} />
       <Route path="/docs" element={<Shell><Docs /></Shell>} />
       <Route path="/enterprise" element={<Shell><Enterprise /></Shell>} />
       <Route path="/fournisseur" element={<ProRoute><Shell><SupplierPortal /></Shell></ProRoute>} />
@@ -234,62 +336,34 @@ function AppRouter() {
       <Route path="/bienvenue" element={<Protected><Shell><Welcome /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />
+      <Route path="/admin/despesas" element={<Protected admin><Shell><ExpenseAdminPanel standalone /></Shell></Protected>} />
+      <Route path="/admin/growth" element={<Protected><Shell><GrowthPage /></Shell></Protected>} />
+      <Route path="/analyse/:planId" element={<ProRoute><Shell><PlanAnalysis /></Shell></ProRoute>} />
       <Route path="/mentions-legales" element={<Shell><MentionsLegales /></Shell>} />
       <Route path="/confidentialite" element={<Shell><Confidentialite /></Shell>} />
+      <Route path="/privacy" element={<Shell><AppPrivacy /></Shell>} />
+      <Route path="/app-privacy" element={<Shell><AppPrivacy /></Shell>} />
+      <Route path="/confidentialite-apps" element={<Shell><AppPrivacy /></Shell>} />
+      <Route path="/suppression-compte" element={<Shell><DeleteAccountPage /></Shell>} />      <Route path="/delete-account" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/account-deletion" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/suppression-donnees" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/data-deletion" element={<Shell><DeleteAccountPage /></Shell>} />
+      <Route path="/appel-offres/:token" element={<RfqPublic />} />
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />
-      {/* PTISP webmail — usando URL genérico .ptisp.com porque o subdomínio do cliente
-          (webmail.construpilot.pt) usa cert SSL partilhado que dispara avisos de antivírus
-          (ex.: Kaspersky). Utilizador pode pedir cert Let's Encrypt para
-          webmail.construpilot.pt via painel PTISP. */}
-      <Route path="/webmail" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
-      <Route path="/mail" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
-      <Route path="/roundcube" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
-      <Route path="/rainloop" element={<ExternalRedirect to="https://mail.ptisp.com" />} />
-      {/* Aliases directos para a caixa de correio interna (config SMTP saída) → abrem o modal em /empresa */}
-      <Route path="/caixa-correio" element={<Navigate to="/empresa?open=mailbox" replace />} />
-      <Route path="/caixa-de-correio" element={<Navigate to="/empresa?open=mailbox" replace />} />
-      <Route path="/mailbox" element={<Navigate to="/empresa?open=mailbox" replace />} />
-      {/* Client-side 301-style redirects FR/EN -> PT canonical (SEO signal via _redirects file if host supports it) */}
-      <Route path="/investisseurs" element={<Navigate to="/investidores" replace />} />
-      <Route path="/investors" element={<Navigate to="/investidores" replace />} />
-      <Route path="/calculateurs" element={<Navigate to="/calculadoras" replace />} />
-      <Route path="/calculators" element={<Navigate to="/calculadoras" replace />} />
-      <Route path="/prix" element={<Navigate to="/precos" replace />} />
-      <Route path="/prices" element={<Navigate to="/precos" replace />} />
-      <Route path="/estimation" element={<Navigate to="/estimativa" replace />} />
-      <Route path="/inscription" element={<Navigate to="/registo" replace />} />
-      <Route path="/reinitialiser" element={<Navigate to="/redefinir" replace />} />
-      <Route path="/fonctionnalites" element={<Navigate to="/funcionalidades" replace />} />
-      {/* PT-PT route aliases */}
-      <Route path="/planta" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
-      <Route path="/plans" element={<ProRoute><Shell><PlanTakeoff /></Shell></ProRoute>} />
-      <Route path="/faturas" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
-      <Route path="/invoices" element={<ProRoute><Shell><Invoices /></Shell></ProRoute>} />
-      <Route path="/faturacao-eletronica" element={<ProRoute><Shell><EInvoicing /></Shell></ProRoute>} />
-      <Route path="/e-invoicing" element={<ProRoute><Shell><EInvoicing /></Shell></ProRoute>} />
-      <Route path="/situacoes" element={<ProRoute><Shell><Situations /></Shell></ProRoute>} />
-      <Route path="/empresa" element={<ProRoute><Shell><Entreprise /></Shell></ProRoute>} />
-      <Route path="/render-ia" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
-      <Route path="/render-studio" element={<ProRoute><Shell><RenderStudio /></Shell></ProRoute>} />
-      <Route path="/features" element={<Features />} />
-      <Route path="/conta" element={<Protected><Shell><Account /></Shell></Protected>} />
-      <Route path="/orcamentos" element={<ProRoute><Shell><QuoteTracking /></Shell></ProRoute>} />
-      <Route path="/orcamento-editor" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
-      <Route path="/orcamento-editor/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
-      <Route path="/equipa" element={<ProRoute><Shell><Team /></Shell></ProRoute>} />
-      <Route path="/biblioteca" element={<ProRoute><Shell><Library /></Shell></ProRoute>} />
-      <Route path="/obra" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="*" element={<Shell><NotFound /></Shell>} />
     </Routes>
+    </>
   );
 }
 
-function App() {
-  useEffect(() => {
-    const saved = localStorage.getItem("construpilot_theme");
-    if (saved !== "light") document.documentElement.classList.add("dark");
-  }, []);
+// Thème : mode jour par défaut ; le mode sombre n'est appliqué que s'il a été choisi explicitement.
+if (localStorage.getItem("construpilot_theme") === "dark") {
+  document.documentElement.classList.add("dark");
+} else {
+  document.documentElement.classList.remove("dark");
+}
 
+function App() {
   return (
     <div className="App">
       <ErrorBoundary>
@@ -300,11 +374,14 @@ function App() {
                 <PermissionProvider>
                   <WhiteLabelProvider>
                     <ConfirmProvider>
-                      <AppRouter />
-                      <MobileTabBar />
-                      <InstallPrompt />
-                      <CookieConsent />
-                      <Toaster position="top-right" richColors />
+                      <OfflineProvider>
+                        <AppRouter />
+                        <MobileTabBar />
+                        <InstallPrompt />
+                        <CookieConsent />
+                        <DomTranslator />
+                        <Toaster position="top-right" richColors />
+                      </OfflineProvider>
                     </ConfirmProvider>
                   </WhiteLabelProvider>
                 </PermissionProvider>
@@ -318,3 +395,4 @@ function App() {
 }
 
 export default App;
+

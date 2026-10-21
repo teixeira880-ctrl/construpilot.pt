@@ -19,12 +19,17 @@ export default function AuthCallback() {
         const { data } = await api.post("/auth/session", { session_id: sessionId }, {
           headers: { "X-Session-ID": sessionId },
         });
-        setUser(data.user);
-        if (data.session_token) localStorage.setItem("construpilot_token", data.session_token);
         window.history.replaceState({}, document.title, window.location.pathname);
+        if (data.two_fa_required) {
+          navigate("/login", { replace: true, state: { twoFactor: data } });
+          return;
+        }
+        setUser(data.user);
+        // Auth par cookie httpOnly — le backend a déjà posé session_token.
+        try { localStorage.setItem("construpilot_session", "1"); } catch {}
         navigate("/dashboard", { replace: true, state: { user: data.user } });
       } catch (e) {
-        setError("Connexion Google impossible. Réessayez.");
+        setError("Ligação Google impossível. Tente novamente.");
         setTimeout(() => navigate("/login", { replace: true }), 2000);
       }
     })();
@@ -35,9 +40,10 @@ export default function AuthCallback() {
       <div className="text-center">
         <div className="h-10 w-10 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
         <p className="mt-6 text-sm text-muted-foreground">
-          {error || "Connexion à ConstruPilot…"}
+          {error || "A ligar ao ConstruPilot…"}
         </p>
       </div>
     </div>
   );
 }
+

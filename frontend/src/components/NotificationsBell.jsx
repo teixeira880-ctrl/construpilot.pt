@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Bell, CheckCircle2, Mail, Eye } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Bell, CheckCircle2, Mail, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -12,6 +12,7 @@ const POLL_MS = 30_000;
 
 export function NotificationsBell() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
@@ -52,9 +53,27 @@ export function NotificationsBell() {
 
   if (!user) return null;
 
+  const targetFor = (n) => {
+    if (n.link) return n.link;
+    if (n.url && n.url.startsWith("/")) return n.url;
+    if (n.lead_id) return user?.account_type === "admin" || user?.role === "admin" ? "/admin" : "/mes-demandes";
+    if (n.type === "review_received") return "/mes-avis";
+    if (n.type?.startsWith("postal")) return "/radar";
+    if (n.type === "cost_overrun") return "/rentabilite";
+    if (n.type === "einvoice_overspend") return "/factures-electroniques";
+    if (n.log_id || n.type?.startsWith("quote") || n.type === "reminder_sent") return "/devis";
+    return null;
+  };
+  const openNotif = (n) => {
+    if (!n.read) markRead(n.notif_id);
+    setOpen(false);
+    const to = targetFor(n);
+    if (to) navigate(to);
+  };
   const iconFor = (type) => {
     if (type === "quote_signed") return <CheckCircle2 className="h-3.5 w-3.5 text-primary" />;
     if (type === "quote_opened") return <Eye className="h-3.5 w-3.5 text-emerald-500" />;
+    if (type === "trash_purge") return <Trash2 className="h-3.5 w-3.5 text-amber-500" />;
     return <Mail className="h-3.5 w-3.5 text-muted-foreground" />;
   };
 
@@ -78,22 +97,22 @@ export function NotificationsBell() {
       <DropdownMenuContent align="end" className="w-80 rounded-sm p-0"
                             data-testid="notif-dropdown">
         <div className="flex items-center justify-between border-b border-border p-3">
-          <p className="font-display font-bold text-sm">Notifications</p>
+          <p className="font-display font-bold text-sm">Notificações</p>
           {unread > 0 && (
             <button onClick={markAll} className="text-[10px] text-primary hover:underline"
                     data-testid="notif-mark-all">
-              Tout marquer lu
+              Marcar tudo como lido
             </button>
           )}
         </div>
         <div className="max-h-96 overflow-y-auto" data-testid="notif-list">
           {items.length === 0 ? (
             <p className="text-xs text-muted-foreground p-6 text-center">
-              Aucune notification pour l'instant.
+              Nenhuma notificação por enquanto.
             </p>
-          ) : items.map(n => (
-            <button key={n.notif_id}
-                    onClick={() => { if (!n.read) markRead(n.notif_id); setOpen(false); }}
+          ) : items.map((n, i) => (
+            <button key={`${n.notif_id || n.id || "n"}-${i}`}
+                    onClick={() => openNotif(n)}
                     data-testid={`notif-item-${n.notif_id}`}
                     className={`w-full text-left p-3 border-b border-border text-xs flex gap-2 items-start hover:bg-secondary/40 ${n.read ? "opacity-60" : ""}`}>
               <span className="mt-0.5">{iconFor(n.type)}</span>
@@ -112,7 +131,7 @@ export function NotificationsBell() {
             <Link to="/devis" onClick={() => setOpen(false)}
                   data-testid="notif-see-all"
                   className="block text-center text-[11px] text-primary hover:underline py-1">
-              Voir tous les devis envoyés →
+              Ver todos os orçamentos enviados →
             </Link>
           </div>
         )}

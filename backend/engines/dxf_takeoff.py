@@ -51,57 +51,17 @@ def _line_len(e) -> float:
 
 
 def _lwpoly_len_area(e):
-    """Longueur et aire (si fermée) d'une LWPOLYLINE."""
-    try:
-        pts = [(p[0], p[1]) for p in e.vertices()]
-    except Exception:
-        return 0.0, 0.0
-    if len(pts) < 2:
-        return 0.0, 0.0
-    length = sum(math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
-    closed = bool(getattr(e, "closed", False) or (hasattr(e.dxf, "flags") and e.dxf.flags & 1))
-    area = 0.0
-    if closed and len(pts) >= 3:
-        s = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1]
-                for i in range(len(pts)))
-        area = abs(s) / 2.0
-        length += math.dist(pts[-1], pts[0])
-    return length, area
+    from engines.cad_geometry import polyline_length_area
+    return polyline_length_area(e)
 
 
 def _match(layer: str, keys) -> bool:
     return any(k in layer for k in keys)
 
 
-def _hatch_area(e) -> float:
-    """Aire (unités²) d'une hachure — somme des contours (EdgePath/PolylinePath)."""
-    tot = 0.0
-    try:
-        paths = e.paths
-    except Exception:
-        return 0.0
-    for p in paths:
-        pts = []
-        if hasattr(p, "vertices"):
-            try:
-                pts = [(v[0], v[1]) for v in p.vertices]
-            except Exception:
-                pts = []
-        if not pts and hasattr(p, "edges"):
-            for ed in p.edges:
-                tn = type(ed).__name__
-                try:
-                    if tn == "LineEdge":
-                        pts.append((ed.start[0], ed.start[1]))
-                    elif tn == "ArcEdge":
-                        pts.append((ed.center[0], ed.center[1]))
-                except Exception:
-                    pass
-        if len(pts) >= 3:
-            s = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1]
-                    for i in range(len(pts)))
-            tot += abs(s) / 2.0
-    return tot
+def _hatch_area(e):
+    from engines.cad_geometry import hatch_area
+    return hatch_area(e)
 
 
 def _seg(e):
@@ -274,7 +234,11 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         # Repli : calque structure → voile ; calque archi seul → cloison
         return not (_match(layer, _WALL_ARCH) and not _match(layer, _WALL_STRUCT))
 
-    for e in msp:
+    from engines.cad_geometry import walk_entities
+    def preserve_block(insert, layer):
+        label = (layer + ' ' + insert.dxf.name).lower()
+        return _match(label, _COL + _DOOR + _WIN + _RESA)
+    for e in walk_entities(doc, msp, explode_dimensions=False, preserve_blocks=preserve_block):
         t = e.dxftype()
         L = _layer(e)
         if t == "LINE":
@@ -472,7 +436,7 @@ DEFAULTS = {
     "col_w_m": 0.20, "col_h_m": 0.20,
     "slab_thickness_m": 0.20,
     "margin_pct": 12.0,
-    "tva_rate": 0.20,
+    "tva_rate": 0.23,
     "include_second_oeuvre": True,
     # Gros œuvre immeuble : aucune cloison, tous les murs sont des voiles béton
     "partitions_as_concrete": True,
@@ -580,7 +544,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         wall_m3 = round(wall_area * h_vert, 2)
         wall_ml_eff = (wall_area / tw) if tw > 0 else walls_ml   # linéaire équivalent
         wall_face = round(wall_ml_eff * h_vert, 1)
-        wall_detail = f"emprise {round(wall_area, 1)} m² (épais. lues) × {h_label}"
+        wall_detail = f'emprise {round(wall_area, 1)} m² (espess. lidas) × {h_label}'
     else:
         wall_m3 = round(walls_ml * h_vert * tw, 2)
         wall_face = round(walls_ml * h_vert, 1)
@@ -606,7 +570,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     use_plan_cols = p.get("use_detected_col_sections", True) and col_area > 0
     if use_plan_cols:
         col_m3 = round(col_area * h_vert, 2)
-        col_detail = f"{cols} poteaux (sections lues sur plan) × {h_label}"
+        col_detail = f'{cols} pilares (secções lidas na planta) × {h_label}'
     else:
         col_m3 = round(cols * cw * ch * h_vert, 2)
         col_detail = f"{cols} × {cw}×{ch} m × {h_label}"
@@ -628,54 +592,54 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     struct_lines = []
     if walls_ml or wall_area:
         struct_lines += [
-            _line("Voiles / murs béton — béton C25/30",
+            _line("Paredes resistentes / paredes de betão — betão C25/30",
                   wall_detail, "m³", wall_m3, P["beton_voile"]),
-            _line("Coffrage voiles (2 faces)", f"{wall_face} m² × 2 faces", "m²", wall_cof, P["coffrage_voile"]),
-            _line("Aciers voiles", f"{REBAR['voile']} kg/m³", "kg", wall_ac, P["acier_voile"]),
+            _line("Cofragem de paredes (2 faces)", f"{wall_face} m² × 2 faces", "m²", wall_cof, P["coffrage_voile"]),
+            _line("Aços de paredes", f"{REBAR['voile']} kg/m³", "kg", wall_ac, P["acier_voile"]),
         ]
     if beams_ml or beam_area:
         struct_lines += [
-            _line("Poutres béton — béton C25/30", beam_detail, "m³", beam_m3, P["beton_poutre"]),
-            _line("Coffrage poutres", f"{beams_ml} ml", "m²", beam_cof, P["coffrage_poutre"]),
-            _line("Aciers poutres", f"{REBAR['poutre']} kg/m³", "kg", beam_ac, P["acier_poutre"]),
+            _line("Vigas de betão — betão C25/30", beam_detail, "m³", beam_m3, P["beton_poutre"]),
+            _line("Cofragem de vigas", f"{beams_ml} ml", "m²", beam_cof, P["coffrage_poutre"]),
+            _line("Aços de vigas", f"{REBAR['poutre']} kg/m³", "kg", beam_ac, P["acier_poutre"]),
         ]
     if cols:
         struct_lines += [
-            _line("Poteaux béton — béton C25/30", col_detail, "m³", col_m3, P["beton_poteau"]),
-            _line("Aciers poteaux", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
+            _line("Pilares de betão — betão C25/30", col_detail, "m³", col_m3, P["beton_poteau"]),
+            _line("Aços de pilares", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
         ]
     if slab_m2:
         struct_lines += [
-            _line("Dalle / plancher béton", f"{slab_m2} m² ({slab_source}) × ép. {ts} m", "m³", slab_m3, P["beton_dalle"]),
-            _line("Coffrage + étaiement dalle", f"{slab_m2} m²", "m²", slab_m2, P["coffrage_dalle"]),
-            _line("Aciers dalle", f"{REBAR['dalle']} kg/m³", "kg", slab_ac, P["acier_dalle"]),
+            _line("Laje / pavimento de betão", f"{slab_m2} m² ({slab_source}) × ép. {ts} m", "m³", slab_m3, P["beton_dalle"]),
+            _line("Cofragem + escoramento da laje", f"{slab_m2} m²", "m²", slab_m2, P["coffrage_dalle"]),
+            _line("Aços da laje", f"{REBAR['dalle']} kg/m³", "kg", slab_ac, P["acier_dalle"]),
         ]
     if esc_area or esc_count:
         struct_lines += [
-            _line("Escaliers béton — paillasses & marches",
-                  f"{esc_count} escalier(s) · emprise {round(esc_area,1)} m² × ép. éq. {esc_eq_thk} m", "m³", esc_m3, P["beton_escalier"]),
-            _line("Coffrage escaliers", f"{round(esc_area,1)} m² d'emprise", "m²", esc_cof, P["coffrage_escalier"]),
-            _line("Aciers escaliers", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
+            _line("Escadas de betão — lanços e degraus",
+                  f'{esc_count} escada(s) · implantação {round(esc_area, 1)} m² × ép. éq. {esc_eq_thk} m', "m³", esc_m3, P["beton_escalier"]),
+            _line("Cofragem de escadas", f"{round(esc_area,1)} m² d'emprise", "m²", esc_cof, P["coffrage_escalier"]),
+            _line("Aços de escadas", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
         ]
     if lint_ml:
-        struct_lines.append(_line("Linteaux béton armé", f"{lint_ml} ml", "ml", lint_ml, P["linteau_ml"]))
+        struct_lines.append(_line("Padieiras de betão armado", f"{lint_ml} ml", "ml", lint_ml, P["linteau_ml"]))
     if struct_lines:
-        lots.append({"lot": "Structure béton (métré plan)", "lines": struct_lines})
+        lots.append({"lot": "Estrutura de betão (medição em planta)", "lines": struct_lines})
 
     div = []
     if resa:
-        div.append(_line("Réservations (traçage + coffrage)",
-                         f"{resa} réservations relevées sur plan", "u", resa, P["reservation_u"]))
+        div.append(_line("Negativos (traçado + cofragem)",
+                         f'{resa} negativos registados na planta', "u", resa, P["reservation_u"]))
     if huiss:
-        div.append(_line("Huisseries — pré-cadres / réservations de baies",
+        div.append(_line("Aros — pré-aros / reservas de vãos",
                          f"{op.get('portes',0)} portes + {op.get('fenetres',0)} fenêtres", "u", huiss, P["huisserie_u"]))
     if div:
-        lots.append({"lot": "Réservations & huisseries", "lines": div})
+        lots.append({"lot": "Negativos e aros", "lines": div})
 
-    lots.append({"lot": "Installation & sécurité", "lines": [
-        _line("Installation de chantier — base vie, clôture, benne", "forfait", "forfait", 1, P["installation_chantier"]),
-        _line("Échafaudage périphérique — location, montage & démontage", "forfait", "forfait", 1, P["echafaudage"]),
-        _line("Protection collective & sécurité — garde-corps, filets, PPSPS", "forfait", "forfait", 1, P["protection_securite"]),
+    lots.append({"lot": "Estaleiro e segurança", "lines": [
+        _line("Instalação de estaleiro — instalações sociais, vedação, contentor de resíduos", "forfait", "forfait", 1, P["installation_chantier"]),
+        _line("Andaime periférico — aluguer, montagem e desmontagem", "forfait", "forfait", 1, P["echafaudage"]),
+        _line("Proteção coletiva e segurança — guarda-corpos, redes, plano de segurança e saúde", "forfait", "forfait", 1, P["protection_securite"]),
     ]})
 
     all_lines = [ln for l in lots for ln in l["lines"]]
@@ -691,19 +655,19 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
                 "total_eur": round(eur, 2)}
     by_category = []
     if walls_ml or wall_area:
-        by_category.append(_cat("murs", "Murs / voiles", wall_m3, wall_cof, wall_ac,
+        by_category.append(_cat("murs", "Paredes / paredes resistentes", wall_m3, wall_cof, wall_ac,
                                  wall_m3 * P["beton_voile"] + wall_cof * P["coffrage_voile"] + wall_ac * P["acier_voile"]))
     if slab_m2:
-        by_category.append(_cat("planchers", "Planchers / dalles", slab_m3, slab_m2, slab_ac,
+        by_category.append(_cat("planchers", "Pavimentos / lajes", slab_m3, slab_m2, slab_ac,
                                  slab_m3 * P["beton_dalle"] + slab_m2 * P["coffrage_dalle"] + slab_ac * P["acier_dalle"]))
     if esc_area or esc_count:
-        by_category.append(_cat("escaliers", "Escaliers", esc_m3, esc_cof, esc_ac,
+        by_category.append(_cat("escaliers", "Escadas", esc_m3, esc_cof, esc_ac,
                                  esc_m3 * P["beton_escalier"] + esc_cof * P["coffrage_escalier"] + esc_ac * P["acier_escalier"]))
     if beams_ml or beam_area:
-        by_category.append(_cat("poutres", "Poutres", beam_m3, beam_cof, beam_ac,
+        by_category.append(_cat("poutres", "Vigas", beam_m3, beam_cof, beam_ac,
                                  beam_m3 * P["beton_poutre"] + beam_cof * P["coffrage_poutre"] + beam_ac * P["acier_poutre"]))
     if cols:
-        by_category.append(_cat("poteaux", "Poteaux", col_m3, 0.0, col_ac,
+        by_category.append(_cat("poteaux", "Pilares", col_m3, 0.0, col_ac,
                                  col_m3 * P["beton_poteau"] + col_ac * P["acier_poteau"]))
 
     totals = {

@@ -30,9 +30,9 @@ export const InstallPrompt = () => {
       <div className="flex items-start gap-3">
         <img src="/logo192.png" alt="ConstruPilot" className="h-11 w-11 rounded-xl shrink-0" />
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-white">Installer ConstruPilot</div>
+          <div className="text-sm font-semibold text-white">Instalar ConstruPilot</div>
           <p className="text-xs text-white/60 mt-0.5">
-            Ajoutez l'app à votre écran d'accueil : accès en un tap sur le chantier, plein écran, même hors-ligne.
+            Adicione a app ao seu ecrã inicial: acesso num toque à obra, ecrã completo, mesmo offline.
           </p>
         </div>
       </div>
@@ -41,11 +41,11 @@ export const InstallPrompt = () => {
         <div className="mt-3 text-xs text-white/70 space-y-1.5" data-testid="pwa-ios-guide">
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-white/10 shrink-0">1</span>
-            Touchez <Share className="inline h-3.5 w-3.5 mx-0.5" /> <b>Partager</b> dans Safari
+            Toque <Share className="inline h-3.5 w-3.5 mx-0.5" /> <b>Partilhar</b> no Safari
           </div>
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-white/10 shrink-0">2</span>
-            Choisissez <PlusSquare className="inline h-3.5 w-3.5 mx-0.5" /> <b>Sur l'écran d'accueil</b>
+            Escolha <PlusSquare className="inline h-3.5 w-3.5 mx-0.5" /> <b>No ecrã inicial</b>
           </div>
         </div>
       ) : (
@@ -56,7 +56,7 @@ export const InstallPrompt = () => {
                      bg-[#FF5A00] hover:bg-[#ff6f1f] text-white text-sm font-semibold py-2.5
                      transition-colors active:scale-[0.98]"
         >
-          <Download className="h-4 w-4" /> Installer l'application
+          <Download className="h-4 w-4" /> Instalar a aplicação
         </button>
       )}
     </div>

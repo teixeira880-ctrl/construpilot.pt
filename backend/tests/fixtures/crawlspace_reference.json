@@ -1,0 +1,1078 @@
+{
+  "spec": {
+    "project": {
+      "title": "Maison de référence - vide sanitaire"
+    },
+    "country": "FR",
+    "scope": "Gros œuvre, fourniture et pose",
+    "parameters": [
+      {
+        "id": "murs_union",
+        "label": "murs union",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 21.498833822088045
+      },
+      {
+        "id": "mur_ep",
+        "label": "mur ep",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 0.2
+      },
+      {
+        "id": "vs_h",
+        "label": "vs h",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 0.8
+      },
+      {
+        "id": "emprise",
+        "label": "emprise",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 194.98001336699457
+      },
+      {
+        "id": "tremie",
+        "label": "tremie",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 7.415426407262746
+      },
+      {
+        "id": "central",
+        "label": "central",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 59.80900686119123
+      },
+      {
+        "id": "pente_coeff",
+        "label": "pente coeff",
+        "unit": "1",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1.04
+      },
+      {
+        "id": "h_rdc",
+        "label": "h rdc",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 3
+      },
+      {
+        "id": "h_r1",
+        "label": "h r1",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 2.7
+      },
+      {
+        "id": "refend_absent",
+        "label": "refend absent",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 4.5
+      },
+      {
+        "id": "retour_absent",
+        "label": "retour absent",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 2.5
+      },
+      {
+        "id": "baies_rdc",
+        "label": "baies rdc",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 73.04
+      },
+      {
+        "id": "baies_r1",
+        "label": "baies r1",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 39.5325
+      },
+      {
+        "id": "semelles_union",
+        "label": "semelles union",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 59.033703160756005
+      },
+      {
+        "id": "semelles_h",
+        "label": "semelles h",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 0.3
+      },
+      {
+        "id": "proprete_h",
+        "label": "proprete h",
+        "unit": "m",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 0.05
+      },
+      {
+        "id": "debord_coeff",
+        "label": "debord coeff",
+        "unit": "1",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1.2
+      },
+      {
+        "id": "deblais",
+        "label": "deblais",
+        "unit": "m³",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 120
+      },
+      {
+        "id": "remblai",
+        "label": "remblai",
+        "unit": "m³",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 35
+      },
+      {
+        "id": "foisonnement",
+        "label": "foisonnement",
+        "unit": "1",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1.3
+      },
+      {
+        "id": "longueur_equivalente",
+        "label": "longueur equivalente",
+        "unit": "ml",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "expression": "murs_union/mur_ep"
+      },
+      {
+        "id": "q_01",
+        "label": "Installation, moyens communs et nettoyage",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_02",
+        "label": "Etudes EXE, implantation, coordination",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_03",
+        "label": "Cloture, portail, panneau et constat",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_08",
+        "label": "Armatures de fondations, fourniture et pose",
+        "unit": "kg",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1500
+      },
+      {
+        "id": "q_09",
+        "label": "Coffrages ponctuels de semelles",
+        "unit": "m²",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 20
+      },
+      {
+        "id": "q_10",
+        "label": "Gros beton et adaptations de fond de fouille",
+        "unit": "m³",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 8
+      },
+      {
+        "id": "q_14",
+        "label": "Etancheite exterieure de soubassement",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 46.2
+      },
+      {
+        "id": "q_15",
+        "label": "Protection de l etancheite, profil compris",
+        "unit": "m²",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 46.2
+      },
+      {
+        "id": "q_16",
+        "label": "Ventilation, acces VS et petit retour BC",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_17",
+        "label": "Supports et longrines de terrasse",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_24",
+        "label": "Pignons, releves et chainages rampants",
+        "unit": "m²",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 45
+      },
+      {
+        "id": "q_25",
+        "label": "Plus-value BA des grandes baies",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_26",
+        "label": "Escalier en beton arme et chevetre",
+        "unit": "ens.",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_27",
+        "label": "Pose des coffres fournis par le lot 03",
+        "unit": "u",
+        "status": "hypothesis",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 16
+      },
+      {
+        "id": "q_28",
+        "label": "Appuis, seuils et dressages des tableaux",
+        "unit": "ml",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 35
+      },
+      {
+        "id": "q_29",
+        "label": "Enduit de facade, acces et finitions compris",
+        "unit": "m²",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 290
+      },
+      {
+        "id": "q_30",
+        "label": "Sous-enduit derriere bardage d entree",
+        "unit": "m²",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 15
+      },
+      {
+        "id": "q_31",
+        "label": "Reseaux EU/EV sous batiment",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_32",
+        "label": "Reservations, incorporations et rebouchages",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      },
+      {
+        "id": "q_33",
+        "label": "Controles, reception et DOE",
+        "unit": "ft",
+        "status": "provision",
+        "reviewed": false,
+        "sources": [
+          {
+            "page": 1,
+            "text": "Relevé de référence, valeur à contrôler sur les pièces du chantier."
+          }
+        ],
+        "note": "Donnée du cas de régression ; ne constitue pas une valeur par défaut.",
+        "value": 1
+      }
+    ],
+    "items": [
+      {
+        "id": "01",
+        "physical_key": "ouvrage_01",
+        "designation": "Installation, moyens communs et nettoyage",
+        "group": "A",
+        "unit": "ft",
+        "expression": "q_01",
+        "quantity_status": "P",
+        "note": "Base-vie, manutentions communes et repli. Moyens specifiques integres aux prix de pose; consommations MOA a confirmer.",
+        "included": true,
+        "unit_price": 6500.0
+      },
+      {
+        "id": "02",
+        "physical_key": "ouvrage_02",
+        "designation": "Etudes EXE, implantation, coordination",
+        "group": "A",
+        "unit": "ft",
+        "expression": "q_02",
+        "quantity_status": "P",
+        "note": "Enveloppe etudes entreprise et implantation; etude geotechnique non comprise.",
+        "included": true,
+        "unit_price": 4500.0
+      },
+      {
+        "id": "03",
+        "physical_key": "ouvrage_03",
+        "designation": "Cloture, portail, panneau et constat",
+        "group": "A",
+        "unit": "ft",
+        "expression": "q_03",
+        "quantity_status": "P",
+        "note": "Prestations communes CCTP; implantation exacte non connue.",
+        "included": true,
+        "unit_price": 2500.0
+      },
+      {
+        "id": "04",
+        "physical_key": "ouvrage_04",
+        "designation": "Fouilles des fondations",
+        "group": "B",
+        "unit": "m³",
+        "expression": "deblais",
+        "quantity_status": "P",
+        "note": "Enveloppe de terrassement, sans validation de profondeur. Plateforme generale VRD exclue.",
+        "included": true,
+        "unit_price": 48.0
+      },
+      {
+        "id": "05",
+        "physical_key": "ouvrage_05",
+        "designation": "Evacuation des terres excedentaires",
+        "group": "B",
+        "unit": "m³",
+        "expression": "(deblais-remblai)*foisonnement",
+        "quantity_status": "P",
+        "note": "Volume foisonne (120 - 35 reutilises) x 1,30; terres non polluees et acces standard supposes.",
+        "included": true,
+        "unit_price": 42.0
+      },
+      {
+        "id": "06",
+        "physical_key": "ouvrage_06",
+        "designation": "Beton de proprete, base 5 cm",
+        "group": "B",
+        "unit": "m³",
+        "expression": "semelles_union*debord_coeff*proprete_h",
+        "quantity_status": "H",
+        "note": "59,03 m² de semelles x 1,20 de debord provisoire x 0,05 m.",
+        "included": true,
+        "unit_price": 210.0
+      },
+      {
+        "id": "07",
+        "physical_key": "ouvrage_07",
+        "designation": "Beton des semelles representees",
+        "group": "B",
+        "unit": "m³",
+        "expression": "semelles_union*semelles_h",
+        "quantity_status": "M",
+        "note": "59,0337 m² unis sans intersections doubles x 0,30 m; prix beton livre/mis en oeuvre hors armatures et coffrage.",
+        "included": true,
+        "unit_price": 240.0
+      },
+      {
+        "id": "08",
+        "physical_key": "ouvrage_08",
+        "designation": "Armatures de fondations, fourniture et pose",
+        "group": "B",
+        "unit": "kg",
+        "expression": "q_08",
+        "quantity_status": "P",
+        "note": "Enveloppe budgetaire de 1 500 kg; pas un bordereau de ferraillage. Attentes incluses.",
+        "included": true,
+        "unit_price": 2.85
+      },
+      {
+        "id": "09",
+        "physical_key": "ouvrage_09",
+        "designation": "Coffrages ponctuels de semelles",
+        "group": "B",
+        "unit": "m²",
+        "expression": "q_09",
+        "quantity_status": "P",
+        "note": "Surface de coffrage provisionnelle, uniquement parties non coulees contre terre.",
+        "included": true,
+        "unit_price": 65.0
+      },
+      {
+        "id": "10",
+        "physical_key": "ouvrage_10",
+        "designation": "Gros beton et adaptations de fond de fouille",
+        "group": "B",
+        "unit": "m³",
+        "expression": "q_10",
+        "quantity_status": "P",
+        "note": "Provision de 8 m³; profondeurs et volumes a ajuster selon etude de sol et terrain. Aucun dimensionnement par ratio.",
+        "included": true,
+        "unit_price": 210.0
+      },
+      {
+        "id": "11",
+        "physical_key": "ouvrage_11",
+        "designation": "Remblaiement compacté, terres reutilisees",
+        "group": "B",
+        "unit": "m³",
+        "expression": "remblai",
+        "quantity_status": "P",
+        "note": "35 m³ reutilises, coherents avec le calcul des deblais evacues.",
+        "included": true,
+        "unit_price": 38.0
+      },
+      {
+        "id": "12",
+        "physical_key": "ouvrage_12",
+        "designation": "Soubassement 20 cm, hauteur 80 cm",
+        "group": "C",
+        "unit": "m²",
+        "expression": "longueur_equivalente*vs_h",
+        "quantity_status": "M",
+        "note": "Base CCTP: blocs a bancher remplis, acier et pose compris. Surface brute de reservations et chainages; intersections deduites.",
+        "included": true,
+        "unit_price": 125.0
+      },
+      {
+        "id": "13",
+        "physical_key": "ouvrage_13",
+        "designation": "Arase etanche sur les murs du VS",
+        "group": "C",
+        "unit": "ml",
+        "expression": "longueur_equivalente",
+        "quantity_status": "M",
+        "note": "Longueur equivalente issue de l union des murs; arase distincte des 80 cm de maçonnerie.",
+        "included": true,
+        "unit_price": 16.0
+      },
+      {
+        "id": "14",
+        "physical_key": "ouvrage_14",
+        "designation": "Etancheite exterieure de soubassement",
+        "group": "C",
+        "unit": "m²",
+        "expression": "q_14",
+        "quantity_status": "H",
+        "note": "Perimetre exterieur 57,73 m x 0,80 m, arrondi; hauteur reelle enterree a adapter au terrain fini.",
+        "included": true,
+        "unit_price": 32.0
+      },
+      {
+        "id": "15",
+        "physical_key": "ouvrage_15",
+        "designation": "Protection de l etancheite, profil compris",
+        "group": "C",
+        "unit": "m²",
+        "expression": "q_15",
+        "quantity_status": "H",
+        "note": "Meme surface, nappe de protection et profil haut metallique compris; drainage VRD exclu.",
+        "included": true,
+        "unit_price": 29.0
+      },
+      {
+        "id": "16",
+        "physical_key": "ouvrage_16",
+        "designation": "Ventilation, acces VS et petit retour BC",
+        "group": "C",
+        "unit": "ft",
+        "expression": "q_16",
+        "quantity_status": "P",
+        "note": "Courettes, traversées et trappe a definir; petit retour 18-19 en brique provisionne ici, exclu des blocs PP.",
+        "included": true,
+        "unit_price": 1800.0
+      },
+      {
+        "id": "17",
+        "physical_key": "ouvrage_17",
+        "designation": "Supports et longrines de terrasse",
+        "group": "C",
+        "unit": "ft",
+        "expression": "q_17",
+        "quantity_status": "P",
+        "note": "Provision faute d implantation cotee complete; deck bois exclu.",
+        "included": true,
+        "unit_price": 2500.0
+      },
+      {
+        "id": "18",
+        "physical_key": "ouvrage_18",
+        "designation": "Plancher bas RDC - PH VS, 16+4",
+        "group": "D",
+        "unit": "m²",
+        "expression": "emprise",
+        "quantity_status": "M",
+        "note": "Emprise structurelle brute hors oeuvre, non habitable. Poutrelles, hourdis, compression, nervures, treillis, etaiement et chainages de rive inclus.",
+        "included": true,
+        "unit_price": 145.0
+      },
+      {
+        "id": "19",
+        "physical_key": "ouvrage_19",
+        "designation": "Plancher haut RDC, 16+4, hors tremie",
+        "group": "D",
+        "unit": "m²",
+        "expression": "emprise-tremie",
+        "quantity_status": "H",
+        "note": "Emprise PH VS reprise: 194,9800 - tremie 7,4154 = 187,5646 m². Chevetre compris ligne escalier.",
+        "included": true,
+        "unit_price": 150.0
+      },
+      {
+        "id": "20",
+        "physical_key": "ouvrage_20",
+        "designation": "Plancher haut R+1, bande centrale",
+        "group": "D",
+        "unit": "m²",
+        "expression": "central",
+        "quantity_status": "H",
+        "note": "Bande centrale seule, limitee aux axes transversaux: 59,8090 m². Systeme 16+4, beton et rives inclus.",
+        "included": true,
+        "unit_price": 155.0
+      },
+      {
+        "id": "21",
+        "physical_key": "ouvrage_21",
+        "designation": "Supports structurels inclines de toiture",
+        "group": "D",
+        "unit": "m²",
+        "expression": "(emprise-central)*pente_coeff",
+        "quantity_status": "H",
+        "note": "Projection des ailes 135,1710 m² x 1,04 de developpe provisoire; base hourdis beton. Couverture et etancheite de toiture exclues.",
+        "included": true,
+        "unit_price": 175.0
+      },
+      {
+        "id": "22",
+        "physical_key": "ouvrage_22",
+        "designation": "Murs RDC en brique 20 cm et renforts courants",
+        "group": "E",
+        "unit": "m²",
+        "expression": "(longueur_equivalente-refend_absent)*h_rdc-baies_rdc",
+        "quantity_status": "H",
+        "note": "Hauteur sous plancher brut 3,00 m. Baies deduites; prix composite incluant chainages verticaux, allege et linteaux courants, hors rives deja dans planchers.",
+        "included": true,
+        "unit_price": 110.0
+      },
+      {
+        "id": "23",
+        "physical_key": "ouvrage_23",
+        "designation": "Murs R+1 en brique 20 cm et renforts courants",
+        "group": "E",
+        "unit": "m²",
+        "expression": "(longueur_equivalente-refend_absent-retour_absent)*h_r1-baies_r1",
+        "quantity_status": "H",
+        "note": "Hauteur sous plancher brut 2,70 m; meme convention mixte brique/BA et ouvertures suivant tableau de calcul.",
+        "included": true,
+        "unit_price": 110.0
+      },
+      {
+        "id": "24",
+        "physical_key": "ouvrage_24",
+        "designation": "Pignons, releves et chainages rampants",
+        "group": "E",
+        "unit": "m²",
+        "expression": "q_24",
+        "quantity_status": "P",
+        "note": "Provision de maçonnerie au-dessus des hauteurs brutes; surfaces et rampants non definitifs sans coupes.",
+        "included": true,
+        "unit_price": 115.0
+      },
+      {
+        "id": "25",
+        "physical_key": "ouvrage_25",
+        "designation": "Plus-value BA des grandes baies",
+        "group": "E",
+        "unit": "ft",
+        "expression": "q_25",
+        "quantity_status": "P",
+        "note": "Increment seulement au-dela des linteaux/chainages courants deja compris: garage, baie ouest, entree et poteaux specifiques.",
+        "included": true,
+        "unit_price": 4500.0
+      },
+      {
+        "id": "26",
+        "physical_key": "ouvrage_26",
+        "designation": "Escalier en beton arme et chevetre",
+        "group": "E",
+        "unit": "ens.",
+        "expression": "q_26",
+        "quantity_status": "P",
+        "note": "Un escalier RDC/R+1 selon pieces fournies, coffrage et armatures inclus; adaptation aux hauteurs client a confirmer.",
+        "included": true,
+        "unit_price": 9000.0
+      },
+      {
+        "id": "27",
+        "physical_key": "ouvrage_27",
+        "designation": "Pose des coffres fournis par le lot 03",
+        "group": "F",
+        "unit": "u",
+        "expression": "q_27",
+        "quantity_status": "H",
+        "note": "16 volets recenses au CCTP, correspondance avec les baies a finaliser. Fourniture coffres exclue.",
+        "included": true,
+        "unit_price": 125.0
+      },
+      {
+        "id": "28",
+        "physical_key": "ouvrage_28",
+        "designation": "Appuis, seuils et dressages des tableaux",
+        "group": "F",
+        "unit": "ml",
+        "expression": "q_28",
+        "quantity_status": "P",
+        "note": "Enveloppe proche des 34,46 ml de largeurs de volets, a reconciler avec toutes les baies; bandes de dressage incluses.",
+        "included": true,
+        "unit_price": 115.0
+      },
+      {
+        "id": "29",
+        "physical_key": "ouvrage_29",
+        "designation": "Enduit de facade, acces et finitions compris",
+        "group": "F",
+        "unit": "m²",
+        "expression": "q_29",
+        "quantity_status": "P",
+        "note": "Enveloppe de facade hors bardage, ouvertures deduites approximativement; pas une surface de facade certifiee.",
+        "included": true,
+        "unit_price": 49.0
+      },
+      {
+        "id": "30",
+        "physical_key": "ouvrage_30",
+        "designation": "Sous-enduit derriere bardage d entree",
+        "group": "F",
+        "unit": "m²",
+        "expression": "q_30",
+        "quantity_status": "P",
+        "note": "Provision distincte de la facade courante; bardage bois non compris.",
+        "included": true,
+        "unit_price": 25.0
+      },
+      {
+        "id": "31",
+        "physical_key": "ouvrage_31",
+        "designation": "Reseaux EU/EV sous batiment",
+        "group": "G",
+        "unit": "ft",
+        "expression": "q_31",
+        "quantity_status": "P",
+        "note": "Enveloppe canalisations et accessoires sous emprise, hors raccordements VRD exterieurs; trace et diametres a definir.",
+        "included": true,
+        "unit_price": 4000.0
+      },
+      {
+        "id": "32",
+        "physical_key": "ouvrage_32",
+        "designation": "Reservations, incorporations et rebouchages",
+        "group": "G",
+        "unit": "ft",
+        "expression": "q_32",
+        "quantity_status": "P",
+        "note": "Coordination des passages hors prestations deja incluses aux postes precedents.",
+        "included": true,
+        "unit_price": 1200.0
+      },
+      {
+        "id": "33",
+        "physical_key": "ouvrage_33",
+        "designation": "Controles, reception et DOE",
+        "group": "G",
+        "unit": "ft",
+        "expression": "q_33",
+        "quantity_status": "P",
+        "note": "Enveloppe de fin de lot et documentation entreprise.",
+        "included": true,
+        "unit_price": 900.0
+      }
+    ],
+    "assumptions": [
+      "Données issues d’un relevé assisté puis contrôlé. Ces entrées sont réservées aux tests, sans report automatique sur un autre chantier.",
+      "Les systèmes constructifs et prix provisionnés restent à confirmer par les intervenants."
+    ],
+    "exclusions": [
+      "Charpente, couverture, menuiseries et second œuvre.",
+      "Étude géotechnique et reprises lourdes non définies."
+    ]
+  },
+  "page_count": 2,
+  "settings": {
+    "country": "FR",
+    "vat_rate": 20,
+    "vat_assumed": true
+  },
+  "expected": {
+    "ht": 244182.39,
+    "tva": 48836.48,
+    "ttc": 293018.87,
+    "items": {
+      "01": 1,
+      "02": 1,
+      "03": 1,
+      "04": 120,
+      "05": 110.5,
+      "06": 3.54,
+      "07": 17.71,
+      "08": 1500,
+      "09": 20,
+      "10": 8,
+      "11": 35,
+      "12": 86.0,
+      "13": 107.49,
+      "14": 46.2,
+      "15": 46.2,
+      "16": 1,
+      "17": 1,
+      "18": 194.98,
+      "19": 187.56,
+      "20": 59.81,
+      "21": 140.58,
+      "22": 235.94,
+      "23": 231.8,
+      "24": 45,
+      "25": 1,
+      "26": 1,
+      "27": 16,
+      "28": 35,
+      "29": 290,
+      "30": 15,
+      "31": 1,
+      "32": 1,
+      "33": 1
+    }
+  }
+}

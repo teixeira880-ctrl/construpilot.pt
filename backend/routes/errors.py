@@ -105,21 +105,14 @@ async def log_client_error(body: ClientErrorIn, request: Request) -> dict:
         try:
             from engines import emailer
             html = emailer.wrap_html(
-                "🚨 Erreur client détectée",
-                "<p>Une erreur JavaScript a été remontée par l'ErrorBoundary "
-                "en production.</p>"
-                f"<p><strong>Message :</strong> <code>{body.message[:400]}</code></p>"
-                f"<p><strong>URL :</strong> {body.url or '—'}<br/>"
-                f"<strong>User :</strong> {body.user_id or 'anonyme'}<br/>"
-                f"<strong>IP :</strong> {ip}<br/>"
-                f"<strong>UA :</strong> {(body.user_agent or '—')[:100]}</p>"
+                "🚨 Erro de cliente detetado",
+                f"<p>Foi reportado um erro JavaScript pelo ErrorBoundary em produção.</p><p><strong>Mensagem:</strong> <code>{body.message[:400]}</code></p><p><strong>URL :</strong> {body.url or '—'}<br/><strong>User :</strong> {body.user_id or 'anonyme'}<br/><strong>IP :</strong> {ip}<br/><strong>UA :</strong> {(body.user_agent or '—')[:100]}</p>"
                 + (f"<pre style='background:#f5f5f7;padding:12px;border-radius:4px;"
                    f"font-size:11px;overflow:auto;max-height:240px'>{body.stack[:1500]}</pre>"
                    if body.stack else "")
-                + "<p style='color:#64748B;font-size:12px;margin-top:16px'>"
-                "Prochaine alerte identique dans 15 min max (dédup).</p>",
-                cta_url="https://construpilot.fr/admin",
-                cta_label="Voir le dashboard Erreurs",
+                + "<p style=\'color:#64748B;font-size:12px;margin-top:16px\'>Próximo alerta idêntico dentro de 15 min no máximo (deduplicação).</p>",
+                cta_url="https://construpilot.pt/admin",
+                cta_label="Ver o dashboard de Erros",
             )
             await emailer.send_email(_ADMIN_ALERT_EMAIL,
                                       f"🚨 [ConstruPilot] {body.message[:80]}", html)

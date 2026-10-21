@@ -4,26 +4,32 @@ SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"]
 
 PDF_LABELS = {
     "fr": {
-        "doc_quote": "DEVIS", "doc_invoice": "FACTURE", "doc_credit": "AVOIR", "doc_generic": "DOCUMENT",
-        "addressed_to": "Adressé à", "client": "Client",
-        "lines_title": "Détail des prestations",
-        "c_designation": "Désignation", "c_qty": "Qté", "c_unit": "Unité",
-        "c_pu_ht": "PU HT", "c_vat": "TVA", "c_total_ht": "Total HT", "no_line": "Aucune ligne",
-        "recap": "Récapitulatif", "total_ht": "Total HT", "vat": "TVA {rate} %", "total_ttc": "TOTAL TTC",
-        "deposit_asked": "Acompte demandé ({pct} %)", "remaining": "Reste à régler",
-        "num": "N°", "date": "Date", "due": "Échéance", "notes": "Notes",
-        "agreement": "Bon pour accord (date + signature) :",
-        "footer": "Document émis via ConstruPilot. TVA applicable selon la nature des travaux (10 % rénovation logement +2 ans, 20 % neuf, 5,5 % rénovation énergétique). Conditions de règlement selon mentions ci-dessus.",
+        "doc_quote": "ORÇAMENTO", "doc_invoice": "FATURA", "doc_credit": "NOTA DE CRÉDITO", "doc_generic": "DOCUMENTO",
+        "addressed_to": "Faturar a", "client": "Cliente",
+        "p_client": "CLIENTE", "p_site": "OBRA", "p_validity": "VALIDADE",
+        "p_duration": "Duração", "p_start": "Início", "p_valid_until": "Válido até",
+        "schedule_title": "Plano de pagamento", "schedule_stage": "Vencimento", "schedule_amount": "Montante c/ IVA",
+        "lines_title": "Detalhe dos serviços",
+        "c_designation": "Designação", "c_qty": "Qtd.", "c_unit": "Un.",
+        "c_pu_ht": "PU s/ IVA", "c_vat": "IVA", "c_total_ht": "Total s/ IVA", "no_line": "Sem linhas",
+        "recap": "Resumo", "total_ht": "Total s/ IVA", "vat": "IVA {rate} %", "total_ttc": "TOTAL C/ IVA",
+        "deposit_asked": "Sinal solicitado ({pct} %)", "remaining": "Por pagar",
+        "num": "N.º", "date": "Data", "due": "Vencimento", "notes": "Notas",
+        "agreement": "De acordo (data + assinatura):",
+        "footer": "Documento emitido via ConstruPilot. IVA aplicável consoante a natureza das obras. Condições de pagamento conforme indicado acima.",
     },
     "en": {
-        "doc_quote": "QUOTE", "doc_invoice": "INVOICE", "doc_credit": "CREDIT NOTE", "doc_generic": "DOCUMENT",
-        "addressed_to": "Billed to", "client": "Client",
+        "doc_quote": "QUOTE", "doc_invoice": "INVOICE", "doc_credit": "CREDIT NOTE", "doc_generic": "DOCUMENTO",
+        "addressed_to": "Billed to", "client": "Cliente",
+        "p_client": "CLIENTE", "p_site": "PROJECT", "p_validity": "VALIDITY",
+        "p_duration": "Duration", "p_start": "Start", "p_valid_until": "Valid until",
+        "schedule_title": "Payment schedule", "schedule_stage": "Stage", "schedule_amount": "Amount incl. VAT",
         "lines_title": "Line items",
-        "c_designation": "Description", "c_qty": "Qty", "c_unit": "Unit",
-        "c_pu_ht": "Unit price", "c_vat": "VAT", "c_total_ht": "Total excl.", "no_line": "No line",
+        "c_designation": "Descrição", "c_qty": "Qty", "c_unit": "Unit",
+        "c_pu_ht": "Unit price", "c_vat": "IVA", "c_total_ht": "Total excl.", "no_line": "No line",
         "recap": "Summary", "total_ht": "Total excl. VAT", "vat": "VAT {rate}%", "total_ttc": "TOTAL INCL. VAT",
         "deposit_asked": "Deposit requested ({pct}%)", "remaining": "Balance due",
-        "num": "No.", "date": "Date", "due": "Due date", "notes": "Notes",
+        "num": "No.", "date": "Data", "due": "Due date", "notes": "Notas",
         "agreement": "Approved (date + signature):",
         "footer": "Document issued via ConstruPilot. VAT applicable depending on the nature of the works. Payment terms as stated above.",
     },
@@ -42,12 +48,15 @@ PDF_LABELS = {
     "pt": {
         "doc_quote": "ORÇAMENTO", "doc_invoice": "FATURA", "doc_credit": "NOTA DE CRÉDITO", "doc_generic": "DOCUMENTO",
         "addressed_to": "Faturar a", "client": "Cliente",
+        "p_client": "CLIENTE", "p_site": "OBRA", "p_validity": "VALIDADE",
+        "p_duration": "Duração", "p_start": "Início", "p_valid_until": "Válido até",
+        "schedule_title": "Plano de pagamento", "schedule_stage": "Fase", "schedule_amount": "Montante c/ IVA",
         "lines_title": "Detalhe dos serviços",
         "c_designation": "Designação", "c_qty": "Qtd.", "c_unit": "Un.",
         "c_pu_ht": "PU s/ IVA", "c_vat": "IVA", "c_total_ht": "Total s/ IVA", "no_line": "Sem linhas",
         "recap": "Resumo", "total_ht": "Total s/ IVA", "vat": "IVA {rate} %", "total_ttc": "TOTAL C/ IVA",
         "deposit_asked": "Sinal solicitado ({pct} %)", "remaining": "Por pagar",
-        "num": "N.º", "date": "Data", "due": "Vencimento", "notes": "Notas",
+        "num": "N.º", "date": "Dados", "due": "Vencimento", "notes": "Notas",
         "agreement": "De acordo (data + assinatura):",
         "footer": "Documento emitido via ConstruPilot. IVA aplicável consoante a natureza das obras. Condições de pagamento conforme indicado acima.",
     },
@@ -59,7 +68,7 @@ PDF_LABELS = {
         "c_pu_ht": "PU netto", "c_vat": "IVA", "c_total_ht": "Totale netto", "no_line": "Nessuna riga",
         "recap": "Riepilogo", "total_ht": "Totale netto", "vat": "IVA {rate} %", "total_ttc": "TOTALE IVA INCL.",
         "deposit_asked": "Acconto richiesto ({pct} %)", "remaining": "Saldo dovuto",
-        "num": "N.", "date": "Data", "due": "Scadenza", "notes": "Note",
+        "num": "N.", "date": "Dados", "due": "Scadenza", "notes": "Nota",
         "agreement": "Per accettazione (data + firma):",
         "footer": "Documento emesso tramite ConstruPilot. IVA applicabile secondo la natura dei lavori. Condizioni di pagamento come sopra indicato.",
     },
@@ -91,9 +100,8 @@ PDF_LABELS = {
 
 
 def pdf_labels(lang: str | None) -> dict:
-    lg = (lang or "fr").lower()[:2]
-    if lg not in SUPPORTED:
-        lg = "fr"
+    lg = "pt"  # construpilot.pt: documentos sempre em português europeu
+    del lang
     base = dict(PDF_LABELS["fr"])
     base.update(PDF_LABELS.get(lg, {}))
     return base

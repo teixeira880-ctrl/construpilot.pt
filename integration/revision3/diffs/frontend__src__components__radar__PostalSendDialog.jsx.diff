@@ -1,0 +1,149 @@
+--- current/frontend/src/components/radar/PostalSendDialog.jsx
++++ zip/frontend/src/components/radar/PostalSendDialog.jsx
+@@ -1,13 +1,9 @@
+-import { useEffect, useRef, useState } from "react";
++import { useEffect, useState } from "react";
+ import { Loader2, Send, Mail, Truck, RefreshCw } from "lucide-react";
+ import { api } from "@/lib/api";
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+-import { completePostalAddress, defaultPostalDestination, postalRecipient } from "./postalRecipient";
+-import { PostalDestination } from "./PostalDestination";
+-import { PostalPriceConsent } from "./PostalPriceConsent";
+-import { postalError, usePostalQuote } from "./usePostalQuote";
++import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+ import { toast } from "sonner";
+ 
+ const MODES = [
+@@ -17,76 +13,54 @@
+ ];
+ 
+ export default function PostalSendDialog({ open, onClose, campaign, opp }) {
+-  const [form, setForm] = useState(() => postalRecipient(opp));
+-  const [destination, setDestination] = useState(() => defaultPostalDestination(opp));
+-  const [edited, setEdited] = useState(false);
++  const [form, setForm] = useState({ nom: "Le maître d'ouvrage", societe: "", adresse1: "", adresse2: "", cp: "", ville: "" });
+   const [mode, setMode] = useState("normal");
+-  const [approvedQuote, setApprovedQuote] = useState(null);
+-  const [sendError, setSendError] = useState("");
+-  const [historyLoaded, setHistoryLoaded] = useState(false);
+-  const [historyError, setHistoryError] = useState("");
+-  const [locked, setLocked] = useState(false);
+-  const submitting = useRef(false);
++  const [price, setPrice] = useState(null);
+   const [busy, setBusy] = useState(false);
+   const [sends, setSends] = useState([]);
+-  const valid = completePostalAddress(form) && Boolean(form.nom.trim()) && !opp?.is_demo;
+-  const { price, error, loading, refresh: refreshPrice } = usePostalQuote({ open, token: campaign?.token, form, mode,
+-    addressSource: edited ? "manual" : destination, valid });
+-  const consent = Boolean(price && approvedQuote === price.quote_id);
+ 
+   useEffect(() => {
+-    if (!open || !campaign?.token) return;
+-    let active = true;
+-    setForm(postalRecipient(opp));
+-    setDestination(defaultPostalDestination(opp)); setEdited(false);
+-    setApprovedQuote(null); setSendError(""); setHistoryError(""); setHistoryLoaded(false); setLocked(false);
+-    setSends([]);
+-    api.get(`/radar/prospection/${campaign.token}/postal`).then(({ data }) => {
+-      if (active) { setSends(data.sends || []); setHistoryLoaded(true); }
+-    }).catch(() => { if (active) setHistoryError("Impossible de vérifier l'historique. Actualisez le suivi avant l'envoi."); });
+-    return () => { active = false; };
++    if (!open) return;
++    setForm((f) => ({ ...f, adresse1: opp?.adresse || "", cp: opp?.cp || "", ville: opp?.commune || "" }));
++    api.get(`/radar/prospection/${campaign.token}/postal`).then(({ data }) => setSends(data.sends || [])).catch(() => {});
+   }, [open, campaign?.token, opp]);
+ 
+-  const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setEdited(true); };
+-  const changeDestination = (value) => { setDestination(value); setEdited(false); setForm(postalRecipient(opp, value)); };
++  useEffect(() => {
++    if (!open) return;
++    setPrice(null);
++    api.get(`/radar/postal/price?mode=${mode}`).then(({ data }) => setPrice(data)).catch(() => setPrice(false));
++  }, [open, mode]);
++
++  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+ 
+   const send = async () => {
+-    if (submitting.current || busy || locked || !consent || !historyLoaded || !price) return;
+     if (!form.nom.trim() || !form.adresse1.trim() || !form.cp.trim() || !form.ville.trim()) {
+       toast.error("Nom, adresse, code postal et ville sont requis"); return;
+     }
+-    submitting.current = true; setBusy(true); setSendError("");
++    setBusy(true);
+     try {
+-      const { data } = await api.post(`/radar/prospection/${campaign.token}/postal`, { recipient: form, mode,
+-        address_source: edited ? "manual" : destination, quote_id: price.quote_id, confirmed: true }, { timeout: 55000 });
++      const { data } = await api.post(`/radar/prospection/${campaign.token}/postal`, { recipient: form, mode });
+       setSends((s) => [data, ...s]);
+-      setApprovedQuote(null);
+-      if (data.status === "submitted") { setLocked(true); toast.success(`Courrier accepté par Merci Facteur (n° ${data.envoi_id})`); }
+-      else { setLocked(true); setSendError(data.error_message || "Envoi à vérifier avant toute nouvelle tentative."); }
++      toast.success(`Courrier posté (n° ${data.envoi_id || "—"})`);
+     } catch (e) {
+-      setSendError(postalError(e)); setApprovedQuote(null);
+-      // A gateway failure does not establish whether postage was accepted; never auto-resend.
+-      if (!e.response || e.response.status >= 500 || e.response.status === 409) setLocked(true);
+-    } finally { submitting.current = false; setBusy(false); }
++      toast.error(e?.response?.data?.detail || "Envoi postal impossible");
++    } finally { setBusy(false); }
+   };
+ 
+   const refresh = async () => {
+     try {
+       const { data } = await api.get(`/radar/prospection/${campaign.token}/postal?refresh=true`);
+       setSends(data.sends || []);
+-      setHistoryLoaded(true); setHistoryError(data.refresh_error || "");
+     } catch { toast.error("Suivi indisponible"); }
+   };
+ 
+   return (
+-    <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()}>
+-      <DialogContent className="z-[121] w-[calc(100%-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto" overlayClassName="z-[120]" data-testid="postal-dialog">
++    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
++      <DialogContent className="max-w-lg" data-testid="postal-dialog">
+         <DialogHeader>
+-          <DialogTitle className="flex items-center gap-2 pr-4" data-testid="postal-dialog-title"><Truck className="h-5 w-5 shrink-0 text-primary" /> Envoyer par la poste</DialogTitle>
++          <DialogTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-primary" /> Envoyer par la poste</DialogTitle>
+         </DialogHeader>
+-        <DialogDescription className="text-xs -mt-2" data-testid="postal-billing-notice">Impression et expédition par Merci Facteur. La facturation utilise le compte postal connecté à l'application.</DialogDescription>
+-        <fieldset disabled={busy} className="space-y-3 min-w-0">
+-        <PostalDestination destination={destination} edited={edited} onChange={changeDestination} complete={completePostalAddress(form)} />
++        <p className="text-xs text-muted-foreground -mt-2">Le courrier PDF (avec QR) est imprimé et posté par Merci Facteur. L'envoi est facturé sur votre compte Merci Facteur.</p>
+         <div className="grid grid-cols-2 gap-2 text-xs">
+           <label className="col-span-2">Destinataire *
+             <Input value={form.nom} onChange={set("nom")} className="h-9 mt-1" data-testid="postal-nom" /></label>
+@@ -106,13 +80,13 @@
+               {MODES.map((m) => <option key={m.v} value={m.v}>{m.label}</option>)}
+             </select></label>
+         </div>
+-        </fieldset>
+-        <PostalPriceConsent price={price} error={error} loading={loading} refresh={() => { setApprovedQuote(null); refreshPrice(); }}
+-          checked={consent} onCheck={(checked) => setApprovedQuote(checked ? price?.quote_id : null)} busy={busy || locked} />
+-        {sendError && <p role="alert" className="text-xs text-red-700" data-testid="postal-send-error">{sendError}</p>}
+-        {historyError && <p role="alert" className="text-xs text-red-700" data-testid="postal-history-error">{historyError}</p>}
+-        {(historyError || locked) && <Button size="sm" variant="outline" disabled={busy} onClick={refresh} data-testid="postal-history-retry">Vérifier le suivi</Button>}
+-        <Button onClick={send} disabled={busy || locked || !valid || !consent || !historyLoaded} className="rounded-sm gap-2 w-full" data-testid="postal-send-btn">
++        <div className="flex items-center justify-between text-xs" data-testid="postal-price">
++          <span className="text-muted-foreground">Tarif indicatif (1 page, France)</span>
++          <span className="num font-bold">
++            {price === null ? "…" : price === false ? "n.d." : `${price.total_ttc.toFixed(2)} € TTC`}
++          </span>
++        </div>
++        <Button onClick={send} disabled={busy} className="rounded-sm gap-2 w-full" data-testid="postal-send-btn">
+           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Poster le courrier
+         </Button>
+         {sends.length > 0 && (
+@@ -125,9 +99,9 @@
+             </div>
+             <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+               {sends.map((s) => (
+-                <li key={s.postal_id} className="flex justify-between gap-2 border-b border-border/40 py-1" data-testid={`postal-history-${s.postal_id}`}>
++                <li key={s.postal_id} className="flex justify-between gap-2 border-b border-border/40 py-1">
+                   <span className="truncate">{s.recipient?.nom} · {s.recipient?.ville} · {MODES.find((m) => m.v === s.mode)?.label}</span>
+-                  <span className="text-muted-foreground text-right" data-testid={`postal-status-${s.postal_id}`}>{s.provider_status || ({ submitting: "Vérification requise — demande en cours", unknown: "Résultat à vérifier — ne pas renvoyer", submitted: "Accepté · impression à suivre", rejected: "Refusé · non envoyé" }[s.status]) || s.status}</span>
++                  <span className="text-muted-foreground shrink-0">{s.status || "submitted"}</span>
+                 </li>
+               ))}
+             </ul>

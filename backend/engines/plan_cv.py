@@ -328,18 +328,18 @@ def _snap_seed_to_interior(binary: "np.ndarray", seed_x: int, seed_y: int,
                 if 0 <= nx < w and 0 <= ny < h and binary[ny, nx] == 255:
                     return nx, ny
     raise ValueError(
-        "Le point cliqué est sur un mur / bord — cliquez à l'intérieur de la pièce")
+        "O ponto clicado está numa parede / bordo — clique dentro da divisão")
 
 
 def _extract_largest_contour(zone_mask: "np.ndarray", min_area_px: int):
     """Return (contour, area_px) or raise ValueError if none is large enough."""
     contours, _ = cv2.findContours(zone_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
-        raise ValueError("Aucun contour détecté — cliquez au centre d'une pièce")
+        raise ValueError("Nenhum contorno detetado — clique no centro de uma divisão")
     contour = max(contours, key=cv2.contourArea)
     area_px = float(cv2.contourArea(contour))
     if area_px < min_area_px:
-        raise ValueError("Zone trop petite — cliquez au centre d'une pièce plus grande")
+        raise ValueError("Zona demasiado pequena — clique no centro de uma divisão maior")
     return contour, area_px
 
 
@@ -482,7 +482,7 @@ def _decode_and_resize(png_bytes: bytes, max_side: int = 1200):
     arr = np.frombuffer(png_bytes, dtype=np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
-        raise ValueError("Image invalide")
+        raise ValueError("Imagem inválida")
     h0, w0 = img.shape[:2]
     scale = max(w0, h0) / max_side if max(w0, h0) > max_side else 1.0
     img_small = cv2.resize(img, (int(w0 / scale), int(h0 / scale))) if scale > 1.0 else img
@@ -540,15 +540,15 @@ def deskew_photo(png_bytes: bytes) -> dict:
 
     quad = _find_page_quadrilateral(img_small)
     if quad is None:
-        return _encode_png(img, applied=False, reason="Aucun quadrilatère (feuille) détecté")
+        return _encode_png(img, applied=False, reason="Nenhum quadrilátero (folha) detetado")
 
     quad *= scale
     result = _warp_to_rect(img, quad)
     if result is None:
-        return _encode_png(img, applied=False, reason="Quadrilatère trop petit")
+        return _encode_png(img, applied=False, reason="Quadrilátero demasiado pequeno")
 
     warped, ordered, max_w, max_h = result
-    return _encode_png(warped, applied=True, reason="Perspective corrigée",
+    return _encode_png(warped, applied=True, reason="Perspetiva corrigida",
                        corners=ordered.tolist(),
                        original_size=[w0, h0], new_size=[max_w, max_h])
 
@@ -556,7 +556,7 @@ def deskew_photo(png_bytes: bytes) -> dict:
 def _encode_png(img_bgr: np.ndarray, applied: bool, reason: str, **extra) -> dict:
     ok, buf = cv2.imencode(".png", img_bgr)
     if not ok:
-        raise ValueError("Encodage PNG impossible")
+        raise ValueError("Codificação PNG impossível")
     return {
         "applied": applied,
         "reason": reason,

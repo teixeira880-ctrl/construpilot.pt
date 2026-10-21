@@ -52,7 +52,7 @@ def to_commandable(lines: list[dict], treillis: list[dict], params: dict | None 
         bars = int(-(-ml_corr // bar_len)) if bar_len > 0 else 0  # arrondi supérieur
         kg_corr = round(ml_corr * STEEL_KG_PER_M.get(d["diameter"], 0), 1)
         items.append({
-            "designation": f"Acier {d['diameter']} en barres de {bar_len:g} m",
+            "designation": f"Aço {d['diameter']} em varões de {bar_len:g} m",
             "diameter": d["diameter"], "ml_net": ml_net,
             "ml_commande": round(ml_corr, 1), "loss_pct": round(loss * 100, 1),
             "bar_length_m": bar_len, "bars": bars, "kg": kg_corr, "unit": "barre",
@@ -62,7 +62,7 @@ def to_commandable(lines: list[dict], treillis: list[dict], params: dict | None 
         panels = int(t.get("panels") or 0)
         panels_corr = int(-(-(panels * (1 + loss)) // 1)) if panels else 0
         items.append({
-            "designation": f"Treillis soudé {t.get('ref', '')}".strip(),
+            "designation": f"Malha eletrossoldada {t.get('ref', '')}".strip(),
             "ref": t.get("ref"), "area_m2": t.get("area_m2"),
             "loss_pct": round(loss * 100, 1), "unit": "panneau",
             "qty": panels_corr, "panels": panels_corr,

@@ -30,7 +30,7 @@ export default function MyReviews() {
     api
       .get("/reviews/me")
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Impossible de charger vos avis"));
+      .catch(() => toast.error("Impossível carregar as suas avaliações"));
 
   useEffect(() => {
     if (user) load();
@@ -39,29 +39,28 @@ export default function MyReviews() {
   const togglePublish = async (r) => {
     try {
       await api.patch(`/reviews/${r.review_id}/publish`, { published: !r.published });
-      toast.success(!r.published ? "Avis affiché sur vos devis" : "Avis masqué");
+      toast.success(!r.published ? "Avaliação apresentada nos seus orçamentos" : "Aviso oculto");
       load();
     } catch {
-      toast.error("Action impossible");
+      toast.error("Ação impossível");
     }
   };
 
-  if (!user) return <div className="surface p-10 text-center">Connectez-vous.</div>;
-  if (!data) return <div className="surface p-10 text-center animate-pulse">Chargement…</div>;
+  if (!user) return <div className="surface p-10 text-center">Ligue-se.</div>;
+  if (!data) return <div className="surface p-10 text-center animate-pulse">A carregar…</div>;
 
   const submitted = (data.reviews || []).filter((r) => r.submitted);
   const pending = (data.reviews || []).filter((r) => !r.submitted);
 
   return (
     <div className="grid gap-8">
-      <SectionTitle over="Avis Clients" title="Ce que disent vos clients">
-        Les avis vérifiés — collectés automatiquement à la fin de chaque chantier — sont
-        affichés sur vos futurs devis PDF pour rassurer vos prospects.
+      <SectionTitle over="Avaliações Clientes" title="O que dizem os seus clientes">
+        As avaliações verificadas — recolhidas automaticamente no final de cada obra — são exibidas nos seus futuros orçamentos PDF para tranquilizar os seus potenciais clientes.
       </SectionTitle>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="surface p-5" data-testid="reviews-kpi-average">
-          <p className="overline">Note moyenne</p>
+          <p className="overline">Classificação média</p>
           <div className="flex items-center gap-2 mt-1">
             <p className="num font-display text-3xl font-extrabold text-primary">
               {data.average || 0}
@@ -71,45 +70,44 @@ export default function MyReviews() {
           <div className="mt-1"><Stars n={Math.round(data.average || 0)} /></div>
         </div>
         <div className="surface p-5" data-testid="reviews-kpi-count">
-          <p className="overline">Avis reçus</p>
+          <p className="overline">Avaliações recebidas</p>
           <p className="num font-display text-3xl font-extrabold mt-1">{data.count || 0}</p>
         </div>
         <div className="surface p-5" data-testid="reviews-kpi-pending">
-          <p className="overline">En attente</p>
+          <p className="overline">Em espera</p>
           <p className="num font-display text-3xl font-extrabold mt-1">{data.pending || 0}</p>
-          <p className="text-[10px] text-muted-foreground">demandes envoyées non répondues</p>
+          <p className="text-[10px] text-muted-foreground">pedidos enviados sem resposta</p>
         </div>
       </div>
 
       {submitted.length === 0 && pending.length === 0 && (
         <div className="surface p-10 text-center space-y-3" data-testid="reviews-empty">
           <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground" />
-          <p className="font-display font-bold">Aucun avis pour l'instant</p>
+          <p className="font-display font-bold">Nenhuma avaliação por agora</p>
           <p className="text-sm text-muted-foreground">
-            Dans <b>Suivi Devis</b>, marquez un devis signé comme
-            <b> « Chantier terminé »</b> pour envoyer automatiquement une demande d'avis
-            à votre client.
+            Em <b>Acompanhamento Orçamentos</b>, marque um orçamento assinado como
+            <b> « Obra concluída »</b> para enviar automaticamente um pedido de avaliação ao seu cliente.
           </p>
         </div>
       )}
 
       {submitted.length > 0 && (
         <div className="grid gap-3">
-          <p className="font-display font-bold text-sm">Avis reçus</p>
+          <p className="font-display font-bold text-sm">Avaliações recebidas</p>
           {submitted.map((r) => (
             <div key={r.review_id} className="surface p-5 flex flex-col gap-2"
                  data-testid={`review-item-${r.review_id}`}>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
                   <Stars n={r.rating || 0} />
-                  <span className="font-bold text-sm">{r.author_name || "Client"}</span>
+                  <span className="font-bold text-sm">{r.author_name || "Cliente"}</span>
                   {r.published ? (
                     <Badge variant="outline" className="rounded-sm border-primary/50 text-primary">
-                      Affiché
+                      Apresentado
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="rounded-sm text-muted-foreground">
-                      Masqué
+                      Ocultado
                     </Badge>
                   )}
                 </div>
@@ -117,7 +115,7 @@ export default function MyReviews() {
                         onClick={() => togglePublish(r)}
                         data-testid={`review-toggle-${r.review_id}`}>
                   {r.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  {r.published ? "Masquer" : "Afficher"}
+                  {r.published ? "Ocultar" : "Mostrar"}
                 </Button>
               </div>
               {r.comment && (
@@ -134,7 +132,7 @@ export default function MyReviews() {
       {pending.length > 0 && (
         <div className="grid gap-3">
           <p className="font-display font-bold text-sm text-muted-foreground">
-            Demandes en attente de réponse
+            Pedidos aguardando resposta
           </p>
           {pending.map((r) => (
             <div key={r.review_id}
@@ -143,7 +141,7 @@ export default function MyReviews() {
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">{r.client_name || r.client_email}</span>
               <span className="text-[10px] text-muted-foreground num ml-auto">
-                demandé le {(r.requested_at || "").slice(0, 10)}
+                solicitado a {(r.requested_at || "").slice(0, 10)}
               </span>
             </div>
           ))}

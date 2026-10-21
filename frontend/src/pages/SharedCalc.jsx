@@ -29,7 +29,7 @@ export default function SharedCalc() {
       a.href = url; a.download = "fiche-calcul-construpilot.pdf";
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Téléchargement impossible"); }
+    } catch { toast.error("Transferência impossível"); }
     finally { setBusyPdf(false); }
   };
 
@@ -37,9 +37,9 @@ export default function SharedCalc() {
     return (
       <div className="min-h-screen grid place-items-center bg-background text-center px-6">
         <div>
-          <p className="font-display text-2xl font-bold">Fiche introuvable</p>
-          <p className="text-muted-foreground mt-2">Ce lien a peut-être expiré.</p>
-          <Link to="/" className="text-primary mt-4 inline-block">Aller sur ConstruPilot →</Link>
+          <p className="font-display text-2xl font-bold">Ficha não encontrada</p>
+          <p className="text-muted-foreground mt-2">Este link pode ter expirado.</p>
+          <Link to="/" className="text-primary mt-4 inline-block">Ir para ConstruPilot →</Link>
         </div>
       </div>
     );
@@ -61,24 +61,24 @@ export default function SharedCalc() {
 
       <main className="max-w-3xl mx-auto px-6 py-10 grid gap-8">
         <div>
-          <p className="text-xs uppercase tracking-widest text-primary font-semibold">Fiche de calcul</p>
+          <p className="text-xs uppercase tracking-widest text-primary font-semibold">Ficha de cálculo</p>
           <h1 className="font-display text-3xl font-bold mt-2">{data.name}</h1>
           {data.contractor ? (
             <p className="text-sm text-muted-foreground mt-2 inline-flex items-center gap-2">
-              <HardHat className="h-4 w-4 text-primary" /> Préparé par {data.contractor}
+              <HardHat className="h-4 w-4 text-primary" /> Preparado por {data.contractor}
             </p>
           ) : null}
           <div className="mt-5">
             <button onClick={downloadPdf} disabled={busyPdf} data-testid="shared-pdf-btn"
               className="inline-flex items-center gap-2 rounded-sm border border-primary/40 text-primary px-4 py-2.5 text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors">
-              {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Télécharger en PDF
+              {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Descarregar em PDF
             </button>
           </div>
         </div>
 
         {data.inputs?.length > 0 && (
           <section>
-            <p className="overline mb-3">Paramètres</p>
+            <p className="overline mb-3">Definições</p>
             <div className="grid sm:grid-cols-2 gap-2">
               {data.inputs.map((i, k) => (
                 <div key={k} className="flex justify-between border border-border rounded-sm px-4 py-2.5 text-sm">
@@ -92,7 +92,7 @@ export default function SharedCalc() {
 
         {data.results?.length > 0 && (
           <section>
-            <p className="overline mb-3">Résultats</p>
+            <p className="overline mb-3">Resultados</p>
             <div className="grid sm:grid-cols-2 gap-3" data-testid="shared-results">
               {data.results.map((r, k) => (
                 <div key={k} className="p-4 border border-border rounded-sm">
@@ -106,14 +106,14 @@ export default function SharedCalc() {
 
         {data.priced_lines?.length > 0 ? (
           <section>
-            <p className="overline mb-3">Devis matériaux — prix fournisseurs</p>
+            <p className="overline mb-3">Orçamento de materiais — preços fornecedores</p>
             <div className="border border-border rounded-sm overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-secondary/60">
                   <tr>
-                    <th className="text-left px-4 py-2.5">Produit</th>
-                    <th className="text-right px-4 py-2.5">Qté</th>
-                    <th className="text-left px-4 py-2.5">Fournisseur</th>
+                    <th className="text-left px-4 py-2.5">Produto</th>
+                    <th className="text-right px-4 py-2.5">Qtd.</th>
+                    <th className="text-left px-4 py-2.5">Fornecedor</th>
                     <th className="text-right px-4 py-2.5">Total</th>
                   </tr>
                 </thead>
@@ -129,18 +129,18 @@ export default function SharedCalc() {
                 </tbody>
               </table>
             </div>
-            <p className="num mt-4 text-right">Total : <span className="text-primary font-bold text-lg">{eur(data.priced_total)}</span></p>
+            <p className="num mt-4 text-right">Total: <span className="text-primary font-bold text-lg">{eur(data.priced_total)}</span></p>
           </section>
         ) : (
           <section>
-            <p className="overline mb-3">Liste de courses matériaux</p>
+            <p className="overline mb-3">Lista de compras materiais</p>
             <div className="border border-border rounded-sm overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-secondary/60">
                   <tr>
-                    <th className="text-left px-4 py-2.5">Matériau</th>
-                    <th className="text-right px-4 py-2.5">Quantité</th>
-                    <th className="text-left px-4 py-2.5">Unité</th>
+                    <th className="text-left px-4 py-2.5">Material</th>
+                    <th className="text-right px-4 py-2.5">Quantidade</th>
+                    <th className="text-left px-4 py-2.5">Un.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -154,18 +154,18 @@ export default function SharedCalc() {
                 </tbody>
               </table>
             </div>
-            <p className="num mt-4 text-right">Budget matériaux estimé : <span className="text-primary font-bold text-lg">{eur(data.estimated_budget)}</span></p>
+            <p className="num mt-4 text-right">Orçamento materiais estimado: <span className="text-primary font-bold text-lg">{eur(data.estimated_budget)}</span></p>
           </section>
         )}
 
         <p className="text-xs text-muted-foreground border-t border-border pt-6">
-          Estimation indicative, marges de sécurité incluses. Les quantités peuvent varier selon la mise en œuvre.
+          Estimativa indicativa, margens de segurança incluídas. As quantidades podem variar conforme a execução.
         </p>
 
         <Link to="/calculateurs" className="surface p-5 rounded-md flex items-center justify-between group hover:border-primary/50 transition-colors" data-testid="shared-cta">
           <div>
-            <p className="font-display font-semibold">Estimez votre projet gratuitement</p>
-            <p className="text-sm text-muted-foreground">Calculateurs de matériaux, devis et prix — avec ConstruPilot.</p>
+            <p className="font-display font-semibold">Estime o seu projeto gratuitamente</p>
+            <p className="text-sm text-muted-foreground">Calculadoras de materiais, orçamentos e preços — com ConstruPilot.</p>
           </div>
           <ArrowRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform" />
         </Link>

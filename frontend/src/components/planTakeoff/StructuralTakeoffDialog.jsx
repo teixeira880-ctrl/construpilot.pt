@@ -9,16 +9,16 @@ import { toast } from "sonner";
 import { Ruler, Calculator, Loader2, FileText } from "lucide-react";
 
 const FIELDS = [
-  ["storey_height_m", "Hauteur d'étage (m)", 2.7, 0.05],
-  ["n_levels", "Nombre de niveaux", 1, 1],
-  ["wall_thickness_m", "Épaisseur voiles (m)", 0.2, 0.01],
-  ["slab_area_m2", "Surface dalle / niveau (m²)", "", 1],
-  ["slab_thickness_m", "Épaisseur dalle (m)", 0.2, 0.01],
-  ["beam_w_m", "Poutre largeur (m)", 0.2, 0.01],
-  ["beam_h_m", "Poutre hauteur (m)", 0.5, 0.01],
-  ["col_w_m", "Poteau largeur (m)", 0.2, 0.01],
-  ["col_h_m", "Poteau hauteur (m)", 0.2, 0.01],
-  ["margin_pct", "Marge (%)", 12, 1],
+  ["storey_height_m", "Altura do piso (m)", 2.7, 0.05],
+  ["n_levels", "Número de pisos", 1, 1],
+  ["wall_thickness_m", "Espessura paredes (m)", 0.2, 0.01],
+  ["slab_area_m2", "Superfície laje / piso (m²)", "", 1],
+  ["slab_thickness_m", "Espessura laje (m)", 0.2, 0.01],
+  ["beam_w_m", "Viga largura (m)", 0.2, 0.01],
+  ["beam_h_m", "Viga altura (m)", 0.5, 0.01],
+  ["col_w_m", "Pilar largura (m)", 0.2, 0.01],
+  ["col_h_m", "Pilar altura (m)", 0.2, 0.01],
+  ["margin_pct", "Margem (%)", 12, 1],
 ];
 
 const eur = (n) => (n ?? 0).toLocaleString("pt-PT", { maximumFractionDigits: 0 }) + " €";
@@ -45,7 +45,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
         col_w_m: d.col_size_m ?? p.col_w_m,
         col_h_m: d.col_size_m ?? p.col_h_m,
       }));
-    }).catch(() => toast.error("Métré indisponible"));
+    }).catch(() => toast.error("Medições indisponível"));
   }, [open, planId]);
 
   const buildBody = () => {
@@ -62,9 +62,9 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
       setEstimate(data);
       if (data.metre) setMetre(data.metre);
       const src = data.scale_source === "calibration"
-        ? " (échelle recalée sur votre calibration)" : "";
-      toast.success(`Estimation : ${eur(data.totals?.ttc)} TTC${src}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Estimation impossible"); }
+        ? " (escala recalculada na sua calibração)" : "";
+      toast.success(`Estimation : ${eur(data.totals?.ttc)} c/ IVA${src}`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Estimativa impossível"); }
     finally { setBusy(false); }
   };
 
@@ -73,10 +73,10 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
     try {
       const body = buildBody();
       const { data } = await api.post(`/takeoffs/${planId}/metre-to-quote`, body);
-      toast.success(`Devis créé (${data.line_count} lignes) — ouverture de l'éditeur…`);
+      toast.success(`Orçamento criado (${data.line_count} linhas) — a abrir o editor…`);
       onClose();
       navigate(`/devis-editeur/${data.doc_id}`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Injection en devis impossible"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envio para orçamento impossível"); }
     finally { setInjecting(false); }
   };
 
@@ -90,25 +90,24 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
       <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto" data-testid="structural-takeoff-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Ruler className="h-5 w-5 text-primary" /> Métré structure (DWG/DXF)
+            <Ruler className="h-5 w-5 text-primary" /> Medições estrutura (DWG/DXF)
           </DialogTitle>
         </DialogHeader>
 
         {!metre ? (
           <p className="text-sm text-muted-foreground py-6">
-            Aucun métré par calques pour ce plan. Importez un DWG/DXF de coffrage avec calques nommés
-            (Murs, Poutres, Poteaux, Dalle, réservations…).
+            Nenhumas medições por camadas para este plano. Importe um DWG/DXF de cofragem com camadas nomeadas (Paredes, Vigas, Pilares, Laje, reservas…).
           </p>
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-              {[["Murs béton", `${M.walls_ml} ml`], ["Cloisons (hors béton)", `${M.partitions_ml ?? 0} ml`],
-                ["Poutres", `${M.beams_ml} ml`],
-                ["Poteaux", M.columns_count], ["Linteaux", `${M.linteaux_ml} ml`],
-                ["Planchers (emprise)", `${M.footprint_m2 ?? M.slab_area_m2 ?? 0} m²`],
-                ["Escaliers", M.escaliers_count ?? 0],
-                ["Portes", op.portes], ["Fenêtres", op.fenetres],
-                ["Réservations", res.count]].map(([k, v]) => (
+              {[["Paredes betão", `${M.walls_ml} ml`], ["Divisórias (exceto betão)", `${M.partitions_ml ?? 0} ml`],
+                ["Vigas", `${M.beams_ml} ml`],
+                ["Pilares", M.columns_count], ["Padieiras", `${M.linteaux_ml} ml`],
+                ["Pavimentos (área)", `${M.footprint_m2 ?? M.slab_area_m2 ?? 0} m²`],
+                ["Escadas", M.escaliers_count ?? 0],
+                ["Portas", op.portes], ["Janelas", op.fenetres],
+                ["Reservas", res.count]].map(([k, v]) => (
                 <div key={k} className="rounded-sm border p-2" data-testid={`metre-${k}`}>
                   <div className="text-xs text-muted-foreground">{k}</div>
                   <div className="font-semibold">{v}</div>
@@ -117,7 +116,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
             </div>
             {res.by_type && Object.keys(res.by_type).length > 0 && (
               <div className="text-xs text-muted-foreground">
-                Réservations par type : {Object.entries(res.by_type).map(([k, v]) => `${k} (${v})`).join(" · ")}
+                Reservas por tipo: {Object.entries(res.by_type).map(([k, v]) => `${k} (${v})`).join(" · ")}
                 {(M.ngf_levels || []).length > 0 && <> — NGF : {(M.ngf_levels || []).join(" / ")}</>}
               </div>
             )}
@@ -128,15 +127,15 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                      checked={params.partitions_as_concrete}
                      onChange={(e) => setParams((p) => ({ ...p, partitions_as_concrete: e.target.checked }))} />
               <span>
-                Gros œuvre immeuble — tous les murs sont en béton (compter les cloisons comme voiles)
+                Estrutura edifício — todas as paredes são em betão (contar as divisórias como paredes)
                 {(M.partitions_ml ?? 0) > 0 && (
-                  <span className="text-muted-foreground"> · {M.partitions_ml} ml de murs concernés</span>
+                  <span className="text-muted-foreground"> · {M.partitions_ml} ml de paredes envolvidas</span>
                 )}
               </span>
             </label>
 
             <div className="border-t pt-4">
-              <div className="text-sm font-semibold mb-2">Hypothèses de calcul</div>
+              <div className="text-sm font-semibold mb-2">Hipóteses de cálculo</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {FIELDS.map(([key, label, , step]) => {
                   const d = M.detected || {};
@@ -155,24 +154,23 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
               </div>
               <Button onClick={run} disabled={busy} className="mt-3 gap-2" data-testid="structural-compute-btn">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-                Calculer l'estimation
+                Calcular a estimativa
               </Button>
             </div>
 
             <div className="border-t pt-4">
-              <div className="text-sm font-semibold mb-1">Hauteur par arases (NGF)</div>
+              <div className="text-sm font-semibold mb-1">Altura por cotas (NGF)</div>
               <p className="text-xs text-muted-foreground mb-2">
-                Renseignez l'arase inférieure (AI) et supérieure (AS) : la hauteur des voiles et poteaux =
-                AS − AI. Laissez vide pour utiliser la hauteur d'étage ci-dessus.
+                Indique a cota inferior (AI) e superior (AS): a altura das paredes resistentes e pilares = AS − AI. Deixe vazio para utilizar a altura de piso acima.
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">Arase inférieure AI (m)</Label>
+                  <Label className="text-xs">Fundação inferior AI (m)</Label>
                   <Input type="number" step="0.01" value={params.arase_inf_m} data-testid="param-arase_inf_m"
                          onChange={(e) => setParams((p) => ({ ...p, arase_inf_m: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs">Arase supérieure AS (m)</Label>
+                  <Label className="text-xs">Fundação superior AS (m)</Label>
                   <Input type="number" step="0.01" value={params.arase_sup_m} data-testid="param-arase_sup_m"
                          onChange={(e) => setParams((p) => ({ ...p, arase_sup_m: e.target.value }))} />
                 </div>
@@ -180,10 +178,10 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                   {params.arase_inf_m !== "" && params.arase_sup_m !== ""
                     && Number(params.arase_sup_m) > Number(params.arase_inf_m) ? (
                     <span className="text-xs text-emerald-600 pb-2" data-testid="arase-height">
-                      Hauteur = {(Number(params.arase_sup_m) - Number(params.arase_inf_m)).toFixed(2)} m
+                      Altura = {(Number(params.arase_sup_m) - Number(params.arase_inf_m)).toFixed(2)} m
                     </span>
                   ) : (
-                    <span className="text-xs text-muted-foreground pb-2">Hauteur = étage ({params.storey_height_m} m)</span>
+                    <span className="text-xs text-muted-foreground pb-2">Altura = piso ({params.storey_height_m} m)</span>
                   )}
                 </div>
               </div>
@@ -192,22 +190,22 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
             {t && (
               <div className="border-t pt-4 space-y-3">
                 <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Béton</div><div className="font-semibold">{t.beton_m3} m³</div></div>
-                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Aciers</div><div className="font-semibold">{t.acier_kg} kg</div></div>
-                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Coffrage</div><div className="font-semibold">{t.coffrage_m2} m²</div></div>
+                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Betão</div><div className="font-semibold">{t.beton_m3} m³</div></div>
+                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Aços</div><div className="font-semibold">{t.acier_kg} kg</div></div>
+                  <div className="rounded-sm bg-muted p-2"><div className="text-xs text-muted-foreground">Cofragem</div><div className="font-semibold">{t.coffrage_m2} m²</div></div>
                 </div>
 
                 {estimate.by_category && estimate.by_category.length > 0 && (
                   <div data-testid="category-recap">
-                    <div className="text-sm font-semibold mb-1">Récapitulatif par catégorie</div>
+                    <div className="text-sm font-semibold mb-1">Resumo por categoria</div>
                     <div className="rounded-sm border border-border overflow-hidden">
                       <table className="w-full text-xs">
                         <thead className="bg-secondary/40">
                           <tr>
-                            <th className="text-left p-2">Catégorie</th>
-                            <th className="p-2 text-right">Béton (m³)</th>
-                            <th className="p-2 text-right">Coffrage (m²)</th>
-                            <th className="p-2 text-right">Aciers (kg)</th>
+                            <th className="text-left p-2">Categoria</th>
+                            <th className="p-2 text-right">Betão (m³)</th>
+                            <th className="p-2 text-right">Cofragem (m²)</th>
+                            <th className="p-2 text-right">Aço (kg)</th>
                             <th className="p-2 text-right">€ HT</th>
                           </tr>
                         </thead>
@@ -231,7 +229,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                         </tbody>
                       </table>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">€ HT hors marge & installation/sécurité — voir le détail par lot ci-dessous.</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">€ s/ IVA sem margem & instalação/segurança — ver o detalhe por lote abaixo.</p>
                   </div>
                 )}
                 {estimate.lots.map((lot) => (
@@ -252,14 +250,14 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                 ))}
                 <div className="flex justify-end gap-6 text-sm border-t pt-2" data-testid="structural-totals">
                   <span>HT : <b>{eur(t.ht)}</b></span>
-                  <span>TVA {Math.round(t.tva_rate * 100)}% : {eur(t.tva)}</span>
-                  <span className="text-primary">TTC : <b>{eur(t.ttc)}</b></span>
+                  <span>IVA {Math.round(t.tva_rate * 100)}% : {eur(t.tva)}</span>
+                  <span className="text-primary">c/ IVA: <b>{eur(t.ttc)}</b></span>
                 </div>
                 <div className="flex justify-end pt-1">
                   <Button onClick={inject} disabled={injecting} className="gap-2"
                           data-testid="inject-to-quote-btn">
                     {injecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                    Injecter en devis
+                    Injetar em orçamento
                   </Button>
                 </div>
               </div>

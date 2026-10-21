@@ -5,7 +5,6 @@ Refactor iter53 : extrait de `routes/plans.py`.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import re
@@ -14,6 +13,8 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 from fastapi import Depends, HTTPException
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
@@ -28,7 +29,7 @@ from routes.plans_common import (
 
 logger = logging.getLogger(__name__)
 
-REMINDER_DELAY_DAYS = 5
+REMINDER_DELAY_DAYS = 7
 MAX_REMINDERS = 2
 QUOTE_DEPOSIT_DEFAULT_PCT = 30.0
 
@@ -46,7 +47,7 @@ def _aggregate_export_levels(rooms: list[dict], pages: list[dict]) -> list[dict]
         key = f"{info['index'] if info['index'] is not None else 'none'}"
         bucket = by_level.setdefault(key, {
             "level_index": info["index"],
-            "level_label": info["label"] or "Sans niveau",
+            "level_label": info["label"] or "Sem nível",
             "rooms": [], "totals": {"floor_m2": 0, "walls_net_m2": 0, "perimeter_m": 0}})
         bucket["rooms"].append(r)
         bucket["totals"]["floor_m2"] += r.get("surface_m2", 0)
@@ -85,7 +86,7 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
         {"_id": 0, "pages.image_png_b64": 0}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
 
     rooms = p.get("rooms") or []
     pages = p.get("pages") or []
@@ -141,13 +142,13 @@ async def _ecarts_pdf_for(plan_id: str, user_id: str, page_index: int):
         {"plan_id": plan_id, "user_id": user_id},
         {"_id": 0, "pages.image_png_b64": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     ai = p.get("ai_analysis") or {}
     if not ai or ai.get("error"):
-        raise HTTPException(400, "Lancez d'abord l'Analyse IA du plan")
+        raise HTTPException(400, "Lance primeiro a Análise IA da planta")
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     if not rooms:
-        raise HTTPException(400, "Aucune pièce mesurée sur cette page")
+        raise HTTPException(400, "Nenhuma divisão medida nesta página")
 
     calib = (p.get("calibrations") or {}).get(str(page_index))
     result = T.reconcile_written_surfaces(
@@ -197,24 +198,20 @@ async def send_ecarts_pdf(plan_id: str, body: SendEcartsIn,
     pdf_bytes, meta = await _ecarts_pdf_for(plan_id, user["user_id"], body.page_index)
     perso = _html.escape(body.message.strip()[:2000]).replace("\n", "<br/>")
     intro = f"<p>{perso}</p>" if perso else ""
-    stats = (f"<p><b>{meta['matches']}</b> pièce(s) comparée(s) · "
-             f"<b>{meta['ecarts']}</b> écart(s) &gt; 5 % · "
-             f"{meta['unmatched']} sans surface écrite.</p>")
+    stats = (f"<p><b>{meta['matches']}</b> divisão(ões) comparada(s) · <b>{meta['ecarts']}</b> desvio(s) &gt; 5 % · {meta['unmatched']} sem área escrita.</p>")
     html_body = (
         intro +
-        "<p>Veuillez trouver ci-joint le <b>rapport de contrôle des surfaces</b> du plan "
-        f"« {_html.escape(meta['filename'])} » : comparaison des surfaces mesurées "
-        "numériquement avec les surfaces écrites sur le plan.</p>" + stats)
-    html = wrap_html("Rapport de contrôle des surfaces", html_body)
+        f"<p>Segue em anexo o <b>relatório de controlo das áreas</b> da planta «{_html.escape(meta['filename'])}»: comparação das áreas medidas digitalmente com as áreas escritas na planta.</p>" + stats)
+    html = wrap_html("Relatório de controlo das áreas", html_body)
     try:
         await send_email_with_pdf(
             body.to_email,
-            f"Rapport de contrôle des surfaces — {meta['filename']}",
+            f"Relatório de controlo das áreas — {meta['filename']}",
             html, pdf_bytes, filename=f"rapport-ecarts-{plan_id}.pdf")
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
-        raise HTTPException(502, "Envoi de l'email impossible — réessayez plus tard")
+        raise HTTPException(502, "Envio do email impossível — tente mais tarde")
     # Historique des envois sur la fiche du plan (iter65)
     await db.plans_takeoff.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
@@ -239,7 +236,14 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "filename": 1, "rooms": 1, "measurements": 1, "pc_study": 1})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
+
+    if (p.get("pc_study") or {}).get("schema_version") == "construction-dossier-1":
+        from engines.study_dossier_xlsx import build_dossier_xlsx
+        import asyncio
+        content = await asyncio.to_thread(build_dossier_xlsx, p["pc_study"])
+        return Response(content=content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": f'attachment; filename="etude-{plan_id}.xlsx"'})
 
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor="1F2733")
@@ -256,11 +260,11 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Pièces"
-    sheet_header(ws, ["Pièce", "Page", "Surface nette (m²)", "Surface brute (m²)",
-                      "Déductions (m²)", "Périmètre (m)", "Murs bruts (m²)",
-                      "Murs nets (m²)", "Plafond (m²)", "HSP (m)", "Volume (m³)",
-                      "Matériau sol", "Surface écrite (m²)", "Écart (%)"],
+    ws.title = "Divisões"
+    sheet_header(ws, ["Divisão", "Página", "Área líquida (m²)", "Área bruta (m²)",
+                      "Deduções (m²)", "Perímetro (m)", "Paredes brutas (m²)",
+                      "Paredes líquidas (m²)", "Plafond (m²)", "Pé-direito (m)", "Volume (m³)",
+                      "Material do pavimento", "Área escrita (m²)", "Desvio (%)"],
                  [22, 6, 16, 16, 14, 13, 13, 12, 12, 8, 12, 16, 16, 10])
     rooms = p.get("rooms") or []
     for r in rooms:
@@ -285,17 +289,19 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
         for cell in ws[ws.max_row]:
             cell.font = bold
 
-    ws2 = wb.create_sheet("Mesures")
-    sheet_header(ws2, ["Libellé", "Type", "Page", "Longueur (m)", "Surface (m²)",
-                       "Périmètre (m)", "Créée le"],
+    ws2 = wb.create_sheet("Medições")
+    sheet_header(ws2, ["Descrição", "Type", "Página", "Comprimento (m)", "Superfície (m²)",
+                       "Perímetro (m)", "Criada em"],
                  [28, 12, 6, 13, 13, 13, 18])
-    kind_fr = {"distance": "Distance", "polyline": "Polyligne", "polygon": "Surface"}
+    kind_fr = {"distance": "Distância", "polyline": "Polilinha", "polygon": "Superfície", "cumulative": "Comprimento acumulado",
+               "cumulative_area": "Área acumulada", "manual_area": "Área introduzida",
+               "manual_linear": "Comprimento introduzido"}
     for m in p.get("measurements") or []:
-        is_poly = m.get("kind") == "polygon"
+        is_poly = m.get("kind") in ("polygon", "cumulative_area", "manual_area")
         ws2.append([m.get("label") or "",
                     kind_fr.get(m.get("kind"), m.get("kind") or ""),
                     (m.get("page_index") or 0) + 1,
-                    "" if is_poly else (m.get("value_m") or m.get("length_m") or ""),
+                    "" if is_poly else m.get("value_m", m.get("length_m", "")),
                     m.get("area_m2") if is_poly else "",
                     m.get("perimeter_m") if is_poly else "",
                     str(m.get("created_at") or "")[:16].replace("T", " ")])
@@ -303,9 +309,9 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
     # Étude PC (gros œuvre) — feuille dédiée si l'analyse a été lancée
     study = p.get("pc_study")
     if study:
-        ws3 = wb.create_sheet("Étude PC")
-        sheet_header(ws3, ["Lot", "Désignation", "Détail", "Unité", "Qté",
-                           "PU mat. (€)", "PU MO (€)", "Total HT (€)"],
+        ws3 = wb.create_sheet("Estudo licença de construção")
+        sheet_header(ws3, ["Lote", "Designação", "Detalhe", "Un.", "Qtd.",
+                           "PU mat. (€)", "PU MO (€)", "Total s/ IVA (€)"],
                      [30, 42, 52, 8, 10, 12, 12, 14])
         for lot in study.get("lots") or []:
             for ln in lot.get("lines") or []:
@@ -314,12 +320,12 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
                             ln.get("pu_mo"), ln.get("total")])
         t = study.get("totals") or {}
         ws3.append([])
-        for label, val in [("Béton total (m³)", t.get("beton_m3")),
-                           ("Aciers total (kg)", t.get("acier_kg")),
+        for label, val in [("Betão total (m³)", t.get("beton_m3")),
+                           ("Armaduras total (kg)", t.get("acier_kg")),
                            ("Briques isobrique (u)", t.get("briques_u")),
-                           ("Total HT (€)", t.get("ht")),
+                           ("Total s/ IVA (€)", t.get("ht")),
                            ("TVA (€)", t.get("tva")),
-                           ("TOTAL TTC (€)", t.get("ttc"))]:
+                           ("TOTAL C/ IVA (€)", t.get("ttc"))]:
             ws3.append(["", "", "", "", "", "", label, val])
             ws3.cell(row=ws3.max_row, column=7).font = bold
             ws3.cell(row=ws3.max_row, column=8).font = bold
@@ -349,7 +355,7 @@ async def export_quote_pdf(plan_id: str, finish: str = "std",
         include_paint, include_placo, include_floor, include_skirting)
     return Response(
         content=pdf_bytes, media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="devis-{plan_id}.pdf"'}
+        headers={"Content-Disposition": f'attachment; filename="orcamento-{plan_id}.pdf"'}
     )
 
 
@@ -379,27 +385,7 @@ def _build_send_quote_html(*, hello: str, intro_html: str, custom_html: str,
                           pixel_tag: str) -> str:
     """Assemble the HTML body of the devis email."""
     return (
-        f"<p>{hello}</p>"
-        f"{intro_html}"
-        f"{custom_html}"
-        f"<div style='background:#FF5A00;color:white;padding:16px 22px;border-radius:6px;"
-        f"font-size:18px;font-weight:700;text-align:center;letter-spacing:1px'>"
-        f"Total TTC : {ttc:,.2f} €</div>"
-        f"<p style='margin-top:16px'>Ce document est un devis estimatif indicatif "
-        f"(TVA 10 % rénovation logement &gt; 2 ans). Nous restons à votre disposition "
-        f"pour toute question ou visite technique.</p>"
-        f"<div style='margin-top:24px;padding:16px;background:#f8fafc;border-radius:6px;"
-        f"border-left:3px solid #FF5A00'>"
-        f"<p style='margin:0 0 6px;font-weight:700;font-size:13px'>📁 Votre espace devis</p>"
-        f"<p style='margin:0 0 10px;font-size:12px;color:#64748B'>"
-        f"Retrouvez tous vos devis reçus (celui-ci et les précédents) "
-        f"dans votre espace personnel sécurisé :</p>"
-        f"<a href='{portal_url}' style='color:#FF5A00;font-weight:700;text-decoration:none;font-size:13px'>"
-        f"→ Ouvrir mon espace devis</a>"
-        f"</div>"
-        f"<p style='color:#666;font-size:12px;margin-top:24px'>"
-        f"{company}<br/>{contact}</p>"
-        f"{pixel_tag}"
+        f"<p>{hello}</p>{intro_html}{custom_html}<div style='background:#FF5A00;color:white;padding:16px 22px;border-radius:6px;font-size:18px;font-weight:700;text-align:center;letter-spacing:1px'>Total c/ IVA: {ttc:,.2f} €</div><p style='margin-top:16px'>Este documento é um orçamento estimativo indicativo (IVA à taxa reduzida de 6 % para empreitadas de reabilitação de habitação, quando aplicável). Continuamos ao seu dispor para qualquer questão ou visita técnica.</p><div style='margin-top:24px;padding:16px;background:#f8fafc;border-radius:6px;border-left:3px solid #FF5A00'><p style='margin:0 0 6px;font-weight:700;font-size:13px'>📁 A sua área de orçamentos</p><p style='margin:0 0 10px;font-size:12px;color:#64748B'>Encontre todos os orçamentos recebidos (este e os anteriores) na sua área pessoal segura:</p><a href='{portal_url}' style='color:#FF5A00;font-weight:700;text-decoration:none;font-size:13px'>→ Abrir a minha área de orçamentos</a></div><p style='color:#666;font-size:12px;margin-top:24px'>{company}<br/>{contact}</p>{pixel_tag}"
     )
 
 
@@ -408,7 +394,7 @@ def _build_tva_attachment(quote: dict, body: SendQuoteIn, company: str,
     """Build the TVA attestation PDF attachment payload."""
     from engines.pdf_takeoff import build_tva_attestation_pdf
     work_desc_parts = [li["name"] for li in quote.get("line_items", [])]
-    work_desc = " ; ".join(work_desc_parts) if work_desc_parts else "Travaux de rénovation"
+    work_desc = " ; ".join(work_desc_parts) if work_desc_parts else "Obras de remodelação"
     client_addr = (body.client_address or "").strip()
     work_addr = (body.work_address or client_addr or "").strip()
     tva_pdf = build_tva_attestation_pdf(
@@ -418,7 +404,7 @@ def _build_tva_attachment(quote: dict, body: SendQuoteIn, company: str,
         work_description=work_desc,
         company_name=company,
         company_address=contact or "",
-        branding=branding, tva_rate=quote.get("tva_rate", 0.10),
+        branding=branding, tva_rate=quote.get("tva_rate", 0.06),
     )
     return {
         "filename": f"attestation-tva-{quote['plan_id']}.pdf",
@@ -458,7 +444,7 @@ async def _maybe_attach_latest_video(plan_id: str, user_id: str) -> tuple[dict |
 async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)) -> dict:
     """Envoie le PDF Devis directement au client par email + copie au sender + log."""
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.client_email or ""):
-        raise HTTPException(400, "Email client invalide.")
+        raise HTTPException(400, "Email do cliente inválido.")
 
     quote, pdf_bytes = await _build_quote_and_pdf(
         plan_id, user["user_id"], body.finish, body.floor_material,
@@ -466,7 +452,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
 
     if body.include_tva_attestation and not (body.client_address or "").strip():
         raise HTTPException(400,
-            "Adresse client requise pour joindre l'attestation TVA.")
+            "Morada do cliente necessária para anexar a declaração de IVA.")
 
     branding = await _resolve_branding(user["user_id"]) or {}
     sender_u = await db.users.find_one({"user_id": user["user_id"]},
@@ -476,15 +462,14 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
     contact = branding.get("contact_line") or ""
 
     ttc = quote.get("total_ttc", 0)
-    finish_label = {"eco": "Éco", "std": "Standard", "premium": "Premium"}.get(
+    finish_label = {"eco": "Eco", "std": "Standard", "premium": "Premium"}.get(
         body.finish, "Standard")
 
     from engines.emailer import wrap_company_html
     from routes.plans_common import deliver_email
-    hello = f"Olá {body.client_name}," if body.client_name else "Olá,"
+    hello = f'Olá {body.client_name},' if body.client_name else "Bom dia,"
     intro_html = (f"<p>{body.intro}</p>" if body.intro
-                   else "<p>Veuillez trouver ci-joint votre <b>devis estimatif</b>"
-                        f" ({finish_label}) élaboré depuis votre plan.</p>")
+                   else f'<p>Segue em anexo o seu <b>orçamento estimativo</b> ({finish_label}) elaborado a partir da sua planta.</p>')
     custom_html = f"<p>{body.message}</p>" if body.message else ""
     log_id = QUOTE_SEND_PREFIX + secrets.token_hex(6)
 
@@ -493,7 +478,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
                  f'width="1" height="1" alt="" style="display:block" />'
                  if backend_public else "")
     portal_token = build_client_portal_token(body.client_email or "")
-    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr').rstrip('/')}"
+    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.pt').rstrip('/')}"
                   f"/mes-devis?token={portal_token}")
 
     inner = _build_send_quote_html(
@@ -501,7 +486,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         ttc=ttc, portal_url=portal_url, company=company, contact=contact,
         pixel_tag=pixel_tag,
     )
-    subject = (body.subject or "").strip()[:180] or f"Devis · {company}"
+    subject = (body.subject or "").strip()[:180] or f'Orçamento · {company}'
     from engines.emailer import logo_url_for
     _logo_url = logo_url_for(user["user_id"], branding)
     html = wrap_company_html(subject, inner, company_name=company,
@@ -515,10 +500,10 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         extra_attachments.append(_build_tva_attachment(quote, body, company, contact, branding))
         # Ajoute la mention dans le message
         inner_with_att = inner.replace(
-            "Ce document est un devis estimatif indicatif",
-            "Vous trouverez également jointe l'<b>attestation TVA à taux réduit</b> "
-            "à nous retourner signée avant la facturation. Ce document est un "
-            "devis estimatif indicatif"
+            "Este documento é um orçamento estimativo indicativo",
+            "Segue também em anexo a <b>declaração para aplicação da taxa reduzida de IVA</b> "
+            "a devolver-nos assinada antes da faturação. Este documento é um "
+            "orçamento estimativo indicativo"
         )
         html = wrap_company_html(subject, inner_with_att, company_name=company,
                                  logo_url=_logo_url,
@@ -533,11 +518,11 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         if video_att:
             extra_attachments.append(video_att)
             html = html.replace(
-                "Total TTC :",
+                "Total c/ IVA:",
                 "<p style='margin:0 0 12px;font-size:13px;color:#FF5A00;"
-                "font-weight:700'>🎬 Un tour vidéo 3D de votre projet est "
-                "joint à cet email — regardez-le pour visualiser votre "
-                "chantier avant travaux.</p>Total TTC :",
+                "font-weight:700'>🎬 Segue em anexo a este email uma visita em vídeo 3D "
+                "do seu projeto — veja-a para visualizar a sua "
+                "obra antes dos trabalhos.</p>Total c/ IVA:",
                 1,
             )
 
@@ -595,7 +580,7 @@ async def list_quote_sends(plan_id: str, user=Depends(current_user)) -> dict:
 class TakeoffEstimateIn(BaseModel):
     project_type: str = "renovation_complete"
     finish_level: str = "standard"
-    country: str = "FR"
+    country: str = "PT"
     region: str | None = "idf"
     building_type: str = "maison"
     condition: str = "bon"
@@ -613,14 +598,14 @@ async def estimate_from_takeoff(plan_id: str, body: TakeoffEstimateIn,
         {"_id": 0, "rooms": 1, "filename": 1}
     )
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     rooms = p.get("rooms") or []
     if not rooms:
-        raise HTTPException(400, "Aucune pièce mesurée sur ce plan.")
+        raise HTTPException(400, "Nenhuma divisão medida nesta planta.")
 
     surface = round(sum(r.get("surface_m2", 0) for r in rooms), 2)
     if surface <= 0:
-        raise HTTPException(400, "Surface mesurée invalide.")
+        raise HTTPException(400, "Área medida inválida.")
 
     est = estim_run(
         project_type=body.project_type, surface=surface,
@@ -632,7 +617,7 @@ async def estimate_from_takeoff(plan_id: str, body: TakeoffEstimateIn,
     proj = {
         "project_id": "proj_" + secrets.token_hex(6),
         "user_id": user["user_id"], "plan_id": plan_id,
-        "name": p.get("filename") or "Projet depuis plan",
+        "name": p.get("filename") or "Projeto a partir de planta",
         "source": "plan_takeoff",
         "surface": surface, "room_count": len(rooms),
         "estimation": est,
@@ -652,21 +637,7 @@ async def estimate_from_takeoff(plan_id: str, body: TakeoffEstimateIn,
 def _build_reminder_html(*, hello: str, ttc: float, sign_url: str,
                         portal_url: str, company: str) -> str:
     return (
-        f"<p>{hello}</p>"
-        f"<p>Nous nous permettons un petit rappel : votre devis "
-        f"(<b>{ttc:,.2f} € TTC</b>) est toujours disponible "
-        f"pour votre signature.</p>"
-        f"<p>Il vous suffit d'un clic pour valider :</p>"
-        f"<p style='text-align:center;margin:24px 0'>"
-        f"<a href='{sign_url}' style='background:#FF5A00;color:white;"
-        f"padding:14px 28px;border-radius:6px;text-decoration:none;"
-        f"font-weight:700;font-size:16px'>Signer le devis</a></p>"
-        f"<p style='text-align:center;margin:8px 0 24px'>"
-        f"<a href='{portal_url}' style='color:#64748B;font-size:12px;"
-        f"text-decoration:underline'>Voir tous mes devis dans mon espace</a></p>"
-        f"<p>Nous restons à votre disposition pour toute question ou ajustement.</p>"
-        f"<p style='color:#666;font-size:12px;margin-top:24px'>"
-        f"Cordialement,<br/>{company}</p>"
+        f"<p>{hello}</p><p>Permitimo-nos um pequeno lembrete: o seu orçamento (<b>{ttc:,.2f} € c/ IVA</b>) continua disponível para assinatura.</p><p>Basta um clique para validar:</p><p style='text-align:center;margin:24px 0'><a href='{sign_url}' style='background:#FF5A00;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:16px'>Assinar o orçamento</a></p><p style='text-align:center;margin:8px 0 24px'><a href='{portal_url}' style='color:#64748B;font-size:12px;text-decoration:underline'>Ver todos os meus orçamentos na minha área</a></p><p>Continuamos ao seu dispor para qualquer questão ou ajuste.</p><p style='color:#666;font-size:12px;margin-top:24px'>Com os melhores cumprimentos,<br/>{company}</p>"
     )
 
 
@@ -689,17 +660,17 @@ async def _send_single_reminder(c: dict) -> None:
     branding = await _resolve_branding(c["user_id"]) or {}
     company = branding.get("company_name") or "ConstruPilot"
     company_email = branding.get("company_email")
-    hello = f"Olá {c['client_name']}," if c.get("client_name") else "Olá,"
+    hello = f"Olá {c['client_name']}," if c.get("client_name") else "Bom dia,"
     token = await _ensure_signature_token(c)
     sign_url = f"{os.getenv('FRONTEND_URL', '')}/sign/{token}"
     portal_token = build_client_portal_token(c.get("client_email") or "")
-    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.fr').rstrip('/')}"
+    portal_url = (f"{os.getenv('FRONTEND_URL', 'https://construpilot.pt').rstrip('/')}"
                   f"/mes-devis?token={portal_token}")
     inner = _build_reminder_html(hello=hello, ttc=c.get("total_ttc", 0),
                                   sign_url=sign_url, portal_url=portal_url,
                                   company=company)
-    await deliver_email(c["user_id"], c["client_email"], f"Rappel : votre devis · {company}",
-                        wrap_company_html(f"Rappel devis · {company}", inner,
+    await deliver_email(c["user_id"], c["client_email"], f'Lembrete: o seu orçamento · {company}',
+                        wrap_company_html(f'Lembrete de orçamento · {company}', inner,
                                           company_name=company,
                                           logo_url=logo_url_for(c["user_id"], branding),
                                           logo_b64=branding.get("logo_b64"),
@@ -714,8 +685,7 @@ async def _send_single_reminder(c: dict) -> None:
         "notif_id": "n_" + secrets.token_hex(5),
         "user_id": c["user_id"], "type": "reminder_sent",
         "log_id": c["log_id"],
-        "message": f"Rappel envoyé à {c['client_email']} (devis non signé "
-                   f"depuis {REMINDER_DELAY_DAYS} j).",
+        "message": f"Lembrete enviado para {c['client_email']} (orçamento não assinado há {REMINDER_DELAY_DAYS} j).",
         "created_at": _now(), "read": False,
     })
 
@@ -787,8 +757,8 @@ async def trigger_reminders(user=Depends(admin_user)):
 
 class ReminderSettingsIn(BaseModel):
     enabled: bool
-    delay_days: int | None = None
-    max_reminders: int | None = None
+    delay_days: Literal[3, 5, 7] | None = None
+    max_reminders: Literal[1, 2, 3] | None = None
 
 
 @quote_router.get("/reminders/settings")
@@ -860,9 +830,9 @@ async def list_quote_templates(user=Depends(current_user)) -> dict:
 async def delete_quote_template(template_id: str, user=Depends(current_user)) -> dict:
     tpl = await db.quote_templates.find_one({"template_id": template_id}, {"_id": 0})
     if not tpl:
-        raise HTTPException(404, "Modèle introuvable")
+        raise HTTPException(404, "Modelo não encontrado")
     if tpl.get("user_id") != user["user_id"]:
-        raise HTTPException(403, "Réservé au créateur du modèle")
+        raise HTTPException(403, "Reservado ao criador do modelo")
     await db.quote_templates.delete_one({"template_id": template_id})
     return {"ok": True}
 
@@ -900,7 +870,7 @@ async def export_multi_quote_pdf(body: MultiQuoteIn, user=Depends(current_user))
                 continue
             raise
     if not sub_quotes:
-        raise HTTPException(400, "Aucun plan n'a de pièce mesurée.")
+        raise HTTPException(400, "Nenhuma planta tem divisões medidas.")
 
     def _sum(key: str) -> float:
         return round(sum(q.get(key, 0) for q in sub_quotes), 2)
@@ -918,7 +888,7 @@ async def export_multi_quote_pdf(body: MultiQuoteIn, user=Depends(current_user))
         "subtotal_material": _sum("subtotal_material"),
         "subtotal_labour": _sum("subtotal_labour"),
         "subtotal_ht": _sum("subtotal_ht"),
-        "tva_rate": 0.10,
+        "tva_rate": 0.06,
         "tva": _sum("tva"),
         "total_ttc": _sum("total_ttc"),
         "finish": body.finish, "floor_material": body.floor_material,
@@ -928,7 +898,7 @@ async def export_multi_quote_pdf(body: MultiQuoteIn, user=Depends(current_user))
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
-                 f'attachment; filename="devis-projet-{secrets.token_hex(3)}.pdf"'}
+                 f'attachment; filename="orcamento-projeto-{secrets.token_hex(3)}.pdf"'}
     )
 
 
@@ -955,7 +925,7 @@ async def track_quote_open(log_id: str):
                 "notif_id": "n_" + secrets.token_hex(5),
                 "user_id": log["user_id"],
                 "type": "quote_opened", "log_id": log_id,
-                "message": f"Le client ({log.get('client_email')}) a ouvert votre devis.",
+                "message": f"O cliente ({log.get('client_email')}) abriu o seu orçamento.",
                 "created_at": _now(), "read": False,
             })
         elif log:
@@ -1026,7 +996,7 @@ async def list_all_quote_sends(user=Depends(current_user)) -> dict:
 
 
 class SendToInvoiceIn(BaseModel):
-    vat_rate: float = 10.0     # 5.5 | 10 | 20
+    vat_rate: float = 6.0     # 6 | 13 | 23 (Portugal continental)
 
 
 @quote_router.post("/sends/{log_id}/to-invoice")
@@ -1038,17 +1008,18 @@ async def send_to_invoice(log_id: str, body: SendToInvoiceIn | None = None,
     send = await db.quote_sends.find_one(
         {"log_id": log_id, "user_id": user["user_id"]}, {"_id": 0})
     if not send:
-        raise HTTPException(404, "Devis introuvable")
+        raise HTTPException(404, "Orçamento não encontrado")
     if send.get("invoice_doc_id"):
         return {"doc_id": send["invoice_doc_id"], "already": True}
 
-    vat_rate = float(body.vat_rate) if body else 10.0
-    if vat_rate not in (5.5, 10.0, 20.0):
-        vat_rate = 10.0
+    from core.market import ALLOWED_VAT, REHAB_VAT
+    vat_rate = float(body.vat_rate) if body else REHAB_VAT
+    if vat_rate not in ALLOWED_VAT:
+        vat_rate = REHAB_VAT
     ttc = float(send.get("total_ttc") or 0)
     ht = round(ttc / (1 + vat_rate / 100), 2) if ttc else 0.0
     label = send.get("plan_filename") or send.get("work_address") \
-        or send.get("client_name") or "Travaux de rénovation"
+        or send.get("client_name") or "Obras de remodelação"
     lines = [{"designation": f"Travaux — {label}", "unit": "forfait", "qty": 1,
               "unit_price_ht": ht, "vat_rate": vat_rate, "category": ""}]
     totals = _compute_totals(lines, 0)
@@ -1067,7 +1038,7 @@ async def send_to_invoice(log_id: str, body: SendToInvoiceIn | None = None,
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": user["user_id"], "doc_type": "invoice", "number": number,
-        "title": f"Facture — {label}", "client_id": None, "client": client,
+        "title": f'Fatura — {label}', "client_id": None, "client": client,
         "status": "sent", "lines": lines, "notes": "",
         "payment_terms": "", "deposit_pct": 0, "totals": totals,
         "payments": [], "paid": 0.0, "remaining_due": totals["ttc"],
@@ -1126,7 +1097,7 @@ async def recap_pdf(year: int, month: int, user=Depends(current_user)):
     from fastapi.responses import Response
     from engines.pdf_takeoff import build_accounting_recap_pdf
     if not (1 <= month <= 12):
-        raise HTTPException(400, "Mois invalide")
+        raise HTTPException(400, "Mês inválido")
     prefix = f"{year:04d}-{month:02d}"
     sends = await db.quote_sends.find(
         {"user_id": user["user_id"]}, {"_id": 0, "signature_b64": 0},
@@ -1144,7 +1115,7 @@ async def recap_pdf(year: int, month: int, user=Depends(current_user)):
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
-                 f'attachment; filename="recap-comptable-{prefix}.pdf"'})
+                 f'attachment; filename="resumo-contabilistico-{prefix}.pdf"'})
 
 
 @quote_router.get("/export.csv")
@@ -1155,9 +1126,9 @@ async def export_clients_csv(user=Depends(current_user)):
     from fastapi.responses import Response
     buf = StringIO()
     w = csv.writer(buf, delimiter=";")
-    w.writerow(["Type", "Date d'envoi", "Client", "Email client", "Document",
-                "Montant TTC (EUR)", "Statut", "Signé le", "Acompte payé",
-                "Facture acompte"])
+    w.writerow(["Type", "Date d'envoi", "Cliente", "Email do cliente", "Documento",
+                "Montante c/ IVA (EUR)", "Estado", "Assinado a", "Adiantamento pago",
+                "Fatura de adiantamento"])
     sends = await db.quote_sends.find(
         {"user_id": user["user_id"]}, {"_id": 0, "signature_b64": 0}
     ).sort("created_at", -1).to_list(5000)
@@ -1166,10 +1137,10 @@ async def export_clients_csv(user=Depends(current_user)):
         {"plan_id": {"$in": plan_ids}}, {"_id": 0, "plan_id": 1, "filename": 1}
     ).to_list(2000)} if plan_ids else {}
     for s_ in sends:
-        status = ("Signé" if s_.get("signed")
-                  else "Ouvert" if s_.get("opened")
-                  else "Envoyé")
-        w.writerow(["Devis métré", (s_.get("created_at") or "")[:10],
+        status = ("Assinado" if s_.get("signed")
+                  else "Em aberto" if s_.get("opened")
+                  else "Enviado")
+        w.writerow(["Orçamento medido", (s_.get("created_at") or "")[:10],
                     s_.get("client_name") or "", s_.get("client_email") or "",
                     plans_names.get(s_.get("plan_id")) or s_.get("plan_id") or "",
                     f"{(s_.get('total_ttc') or 0):.2f}".replace(".", ","),
@@ -1182,10 +1153,10 @@ async def export_clients_csv(user=Depends(current_user)):
         for r in p.get("sent_reports") or []:
             if r.get("kind") != "pc_study":
                 continue
-            status = ("Signée" if r.get("accepted")
-                      else "Ouverte" if r.get("opened")
-                      else "Envoyée")
-            w.writerow(["Étude PC", (r.get("sent_at") or "")[:10],
+            status = ("Assinado" if r.get("accepted")
+                      else "Aberto" if r.get("opened")
+                      else "Enviada")
+            w.writerow(["Estudo licença de construção", (r.get("sent_at") or "")[:10],
                         r.get("accepted_by") or "", r.get("to_email") or "",
                         p.get("filename") or p["plan_id"],
                         f"{(r.get('ttc') or 0):.2f}".replace(".", ","),
@@ -1196,7 +1167,7 @@ async def export_clients_csv(user=Depends(current_user)):
     return Response(
         content=csv_bytes, media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition":
-                 'attachment; filename="construpilot-clients-devis.csv"'})
+                 "attachment; filename=\"construpilot-clientes-orcamentos.csv\""})
 
 
 # ============ SIGNATURE CLIENT ============
@@ -1215,7 +1186,7 @@ async def create_signature_link(plan_id: str, log_id: str,
         {"_id": 0}
     )
     if not log:
-        raise HTTPException(404, "Envoi de devis introuvable")
+        raise HTTPException(404, "Envio de orçamento não encontrado")
     token = SIG_TOKEN_PREFIX + secrets.token_urlsafe(18)
     set_fields = {"signature_token": token, "signature_token_created_at": _now()}
     if body and body.deposit_pct is not None:
@@ -1233,14 +1204,14 @@ async def client_portal(token: str) -> dict:
     import hmac
     import base64
     if "." not in token:
-        raise HTTPException(400, "Lien invalide")
+        raise HTTPException(400, "Ligação inválida")
     email_b64, sig = token.rsplit(".", 1)
     try:
         email = base64.urlsafe_b64decode(email_b64.encode()).decode()
     except Exception:
-        raise HTTPException(400, "Lien invalide")
+        raise HTTPException(400, "Ligação inválida")
     if not hmac.compare_digest(sig, _sign(email.lower())):
-        raise HTTPException(400, "Lien invalide ou expiré")
+        raise HTTPException(400, "Ligação inválida ou expirada")
 
     cursor = db.quote_sends.find(
         {"client_email": email.lower()},
@@ -1274,7 +1245,7 @@ async def get_signature_page_data(token: str) -> dict:
          "deposit_amount": 1, "deposit_at": 1}
     )
     if not log:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     branding = await _resolve_branding(log["user_id"]) or {}
     ttc = float(log.get("total_ttc") or 0)
     pct = log.get("deposit_pct")
@@ -1307,125 +1278,11 @@ class SignatureIn(BaseModel):
 
 def _build_pro_signature_email(pro_name: str, signer: str, ttc: float,
                                 client_email: str) -> str:
-    ttc_html = (f" — <strong>{int(ttc):,} € TTC</strong>".replace(",", " ")
+    ttc_html = (f' — <strong>{int(ttc):,} € c/ IVA</strong>'.replace(",", " ")
                 if ttc else "")
     return (
-        f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'>"
-        f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
-        f"<h1 style='margin:0;font-size:22px'>✍️ Devis signé</h1></div>"
-        f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
-        f"<p>Olá {pro_name or ''},</p>"
-        f"<p><strong>{signer}</strong> vient de signer votre devis{ttc_html}.</p>"
-        f"<p>Client : <em>{client_email}</em><br/>"
-        f"Date : {_now()[:10]}</p>"
-        f"<p style='margin-top:24px'>"
-        f"<a href='https://construpilot.fr/devis' "
-        f"style='background:hsl(24,96%,55%);color:white;padding:12px 24px;"
-        f"text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>"
-        f"Voir le devis signé</a></p>"
-        f"<p style='margin-top:32px;color:#888;font-size:12px'>"
-        f"ConstruPilot · Estimez. Comparez. Construisez.</p>"
-        f"</div></div>"
+        f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'><div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'><h1 style='margin:0;font-size:22px'>✍️ Orçamento assinado</h1></div><div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'><p>Olá {pro_name or ''},</p><p><strong>{signer}</strong> acaba de assinar o seu orçamento{ttc_html}.</p><p>Client : <em>{client_email}</em><br/>Date : {_now()[:10]}</p><p style='margin-top:24px'><a href='https://construpilot.pt/devis' style='background:hsl(24,96%,55%);color:white;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>Ver o orçamento assinado</a></p><p style='margin-top:32px;color:#888;font-size:12px'>ConstruPilot · Estime. Compare. Construa.</p></div></div>"
     )
-
-
-async def _send_client_receipt_pt(log: dict, signer: str, signed_at_iso: str) -> None:
-    """Envia o recibo PT-PT ao cliente após assinatura (fire-and-forget).
-
-    Idempotente via campo `receipt_sent_at` em `quote_sends`.
-    """
-    log_id = log.get("log_id")
-    client_email = (log.get("client_email") or "").strip()
-    if not client_email:
-        logger.info(f"Recibo PT skip (no client_email) log_id={log_id}")
-        return
-    existing = await db.quote_sends.find_one(
-        {"log_id": log_id, "receipt_sent_at": {"$exists": True, "$ne": None}},
-        {"_id": 0, "receipt_sent_at": 1},
-    )
-    if existing:
-        logger.info(f"Recibo PT skip (already sent) log_id={log_id}")
-        return
-    try:
-        from engines.quote_receipt import (
-            receipt_email_html_pt, receipt_subject_pt, receipt_filename,
-        )
-        from engines.emailer import send_email_with_pdf, send_email
-        user_id = log["user_id"]
-        branding = await _resolve_branding(user_id)
-        signature_block = {
-            "b64": log.get("signature_b64"),
-            "name": signer,
-            "at": signed_at_iso,
-            "client_email": client_email,
-        }
-        pdf_bytes: bytes
-        quote_number: str | None = None
-        quote_title: str | None = None
-        total_ttc: float = float(log.get("total_ttc") or 0)
-        client_name = (log.get("client_name") or "").strip()
-        if log.get("doc_id"):
-            from engines.pdf_docs import build_document_pdf
-            doc = await db.pro_documents.find_one(
-                {"doc_id": log["doc_id"], "user_id": user_id}, {"_id": 0})
-            if not doc:
-                logger.warning(f"Recibo PT skip (doc missing) doc_id={log.get('doc_id')}")
-                return
-            quote_number = doc.get("numero") or doc.get("number") or doc.get("doc_id")
-            quote_title = doc.get("title") or doc.get("object")
-            if not total_ttc:
-                total_ttc = float(doc.get("total_ttc") or 0)
-            if not client_name:
-                client_name = (doc.get("client_name")
-                               or (doc.get("client") or {}).get("name") or "").strip()
-            try:
-                pdf_bytes = build_document_pdf(doc, branding=branding,
-                                               signature=signature_block, lang="pt")
-            except TypeError:
-                pdf_bytes = build_document_pdf(doc, branding=branding, lang="pt")
-        elif log.get("plan_id"):
-            from engines.pdf_takeoff import build_quote_pdf
-            quote, _pdf = await _build_quote_and_pdf(
-                log["plan_id"], user_id, log.get("finish", "std"),
-                log.get("floor_material", "carrelage"),
-                True, True, True, True,
-            )
-            quote_number = str(log.get("plan_id"))[-8:]
-            quote_title = quote.get("title") if isinstance(quote, dict) else None
-            if not total_ttc:
-                total_ttc = float((quote or {}).get("total_ttc") or 0)
-            pdf_bytes = build_quote_pdf(quote, branding=branding, signature=signature_block)
-        else:
-            logger.warning(f"Recibo PT skip (no doc_id/plan_id) log_id={log_id}")
-            return
-        subject = receipt_subject_pt(quote_number)
-        html = receipt_email_html_pt(
-            client_name=client_name, quote_number=quote_number,
-            quote_title=quote_title, total_ttc=total_ttc,
-            signed_at_iso=signed_at_iso,
-        )
-        max_bytes = 10 * 1024 * 1024
-        if len(pdf_bytes) > max_bytes:
-            logger.info(f"Recibo PT: PDF too large ({len(pdf_bytes)} bytes) — sem anexo")
-            resp = await send_email(
-                client_email, subject,
-                html + "<p style='font-size:12px;color:#94A3B8'>Recibo em anexo "
-                       "omitido (tamanho excessivo). Contacte-nos para envio manual.</p>",
-            )
-        else:
-            filename = receipt_filename(quote_number)
-            resp = await send_email_with_pdf(
-                client_email, subject, html, pdf_bytes, filename=filename)
-        await db.quote_sends.update_one(
-            {"log_id": log_id},
-            {"$set": {"receipt_sent_at": _now(),
-                      "receipt_message_id": (resp or {}).get("id")}},
-        )
-        logger.info(f"Recibo PT enviado log_id={log_id} to={client_email} "
-                    f"resend_id={(resp or {}).get('id')}")
-    except Exception as e:
-        logger.error(f"Recibo PT envio falhou log_id={log_id}: {e}")
-
 
 
 async def _notify_pro_on_signature(log: dict, signer: str, client_email: str) -> None:
@@ -1433,9 +1290,9 @@ async def _notify_pro_on_signature(log: dict, signer: str, client_email: str) ->
     try:
         from routes.phase7 import notify_user
         total = log.get("total_ttc") or 0
-        title = "✍️ Devis signé !"
-        push_body = (f"{signer} vient de signer votre devis"
-                     + (f" ({int(total):,} € TTC)".replace(",", " ") if total else ""))
+        title = "✍️ Orçamento assinado!"
+        push_body = (f'{signer} acaba de assinar o seu orçamento'
+                     + (f' ({int(total):,} € c/ IVA)'.replace(",", " ") if total else ""))
         await notify_user(log["user_id"], title, push_body, "/devis")
     except Exception as e:
         logger.warning(f"Push signature notify failed: {e}")
@@ -1446,9 +1303,45 @@ async def _notify_pro_on_signature(log: dict, signer: str, client_email: str) ->
         if pro and pro.get("email"):
             html = _build_pro_signature_email(pro.get("name") or "", signer,
                                                 log.get("total_ttc", 0), client_email)
-            await emailer.send_email(pro["email"], f"✍️ {signer} a signé votre devis", html)
+            await emailer.send_email(pro["email"], f'✍️ {signer} assinou o seu orçamento', html)
     except Exception as e:
         logger.warning(f"Email signature notify failed: {e}")
+
+
+async def _auto_deposit_after_signature(log: dict) -> dict | None:
+    """Facture d'acompte générée automatiquement si le pro a activé l'option.
+
+    Jamais bloquant : la signature reste enregistrée même si la facturation échoue.
+    """
+    if not log.get("doc_id"):
+        return None
+    owner = await db.users.find_one(
+        {"user_id": log["user_id"]},
+        {"_id": 0, "user_id": 1, "auto_deposit_invoice": 1, "auto_deposit_pct": 1, "role": 1,
+         "email": 1, "name": 1})
+    if not owner or not owner.get("auto_deposit_invoice"):
+        return None
+    quote = await db.pro_documents.find_one({"doc_id": log["doc_id"]},
+                                            {"_id": 0, "deposit_pct": 1, "number": 1})
+    pct = float((quote or {}).get("deposit_pct") or 0) or float(owner.get("auto_deposit_pct") or 30)
+    try:
+        from routes.documents import build_deposit_invoice
+        inv = await build_deposit_invoice(log["doc_id"], owner, pct)
+    except Exception as exc:  # noqa: BLE001 — l'échec est notifié au pro, pas au client
+        logging.getLogger(__name__).warning("auto deposit invoice failed: %s", exc)
+        await db.notifications.insert_one({
+            "notif_id": "n_" + secrets.token_hex(5), "user_id": log["user_id"],
+            "type": "deposit_invoice_failed", "log_id": log.get("log_id"),
+            "message": "Fatura de adiantamento automática impossível após a assinatura — a criar manualmente.",
+            "created_at": _now(), "read": False})
+        return None
+    await db.notifications.insert_one({
+        "notif_id": "n_" + secrets.token_hex(5), "user_id": log["user_id"],
+        "type": "deposit_invoice_created", "log_id": log.get("log_id"),
+        "message": f"Fatura de adiantamento {pct:g}% criada automaticamente ({inv['number']}) — a verificar e enviar.",
+        "created_at": _now(), "read": False})
+    return {"doc_id": inv["doc_id"], "number": inv["number"], "pct": pct,
+            "ttc": inv["totals"]["ttc"]}
 
 
 @quote_router.post("/public/sign/{token}")
@@ -1460,9 +1353,9 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
                                            "plan_id": 1, "doc_id": 1, "client_name": 1,
                                            "total_ttc": 1})
     if not log:
-        raise HTTPException(404, "Lien invalide")
+        raise HTTPException(404, "Ligação inválida")
     if log.get("signed"):
-        raise HTTPException(400, "Ce devis a déjà été signé")
+        raise HTTPException(400, "Este orçamento já foi assinado")
     b64_clean = body.signature_b64.split(",")[-1]
     signer = body.signer_name.strip()[:120]
     client_email = log.get("client_email") or ""
@@ -1478,18 +1371,22 @@ async def submit_signature(token: str, body: SignatureIn) -> dict:
             {"doc_id": log["doc_id"], "user_id": log["user_id"]},
             {"$set": {"status": "signed", "signed": True,
                       "signed_at": _now(), "updated_at": _now()}})
+        try:
+            from routes.documents import _freeze_document
+            owner = await db.users.find_one({"user_id": log["user_id"]}, {"_id": 0})
+            if owner:
+                await _freeze_document(log["doc_id"], owner, reason="client_signature")
+        except Exception as exc:  # noqa: BLE001 — la signature est enregistrée, le gel est journalisé
+            logging.getLogger(__name__).warning("freeze after client signature failed: %s", exc)
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(5),
         "user_id": log["user_id"], "type": "quote_signed", "log_id": log["log_id"],
-        "message": f"{signer} a signé le devis ({client_email}).",
+        "message": f'{signer} assinou o orçamento ({client_email}).',
         "created_at": _now(), "read": False,
     })
     await _notify_pro_on_signature(log, signer, client_email)
-    # Envio do recibo automático PT-PT ao cliente (fire-and-forget, idempotente)
-    signed_at_iso = _now()
-    if os.environ.get("RECEIPT_EMAIL_ENABLED", "true").lower() in ("1", "true", "yes"):
-        asyncio.create_task(_send_client_receipt_pt(log, signer, signed_at_iso))
-    return {"ok": True, "signed_at": signed_at_iso}
+    deposit = await _auto_deposit_after_signature(log)
+    return {"ok": True, "signed_at": _now(), "deposit_invoice": deposit}
 
 
 # ---- Acompte en ligne (Stripe Checkout, page publique de signature) --------
@@ -1504,7 +1401,7 @@ async def _quote_deposit_flood_guard(token: str) -> None:
         {"sign_token": token, "type": "quote_deposit",
          "payment_status": "pending", "created_at": {"$gte": since}})
     if n >= 10:
-        raise HTTPException(429, "Trop de tentatives de paiement — réessayez plus tard")
+        raise HTTPException(429, "Demasiadas tentativas de pagamento — tente mais tarde")
 
 
 @quote_router.post("/public/sign/{token}/deposit/checkout")
@@ -1516,20 +1413,20 @@ async def quote_deposit_checkout(token: str, body: QuoteDepositCheckoutIn) -> di
         {"_id": 0, "log_id": 1, "user_id": 1, "plan_id": 1, "total_ttc": 1,
          "signed": 1, "deposit_pct": 1, "deposit_paid": 1, "client_name": 1})
     if not log:
-        raise HTTPException(404, "Lien invalide ou expiré")
+        raise HTTPException(404, "Ligação inválida ou expirada")
     if not log.get("signed"):
-        raise HTTPException(400, "Signez d'abord le devis avant de verser l'acompte")
+        raise HTTPException(400, "Assine primeiro o orçamento antes de pagar o adiantamento")
     if log.get("deposit_paid"):
-        raise HTTPException(400, "L'acompte a déjà été réglé — merci !")
+        raise HTTPException(400, "O adiantamento já foi pago — obrigado!")
     await _quote_deposit_flood_guard(token)
     pct = log.get("deposit_pct")
     pct = QUOTE_DEPOSIT_DEFAULT_PCT if pct is None else float(pct)
     if pct <= 0:
-        raise HTTPException(400, "Le paiement d'acompte en ligne est désactivé")
+        raise HTTPException(400, "O pagamento do adiantamento online está desativado")
     ttc = float(log.get("total_ttc") or 0)
     amount_cents = int(round(ttc * pct))  # € TTC × pct % → centimes
     if amount_cents < 100:
-        raise HTTPException(400, "Montant d'acompte invalide")
+        raise HTTPException(400, "Montante de adiantamento inválido")
     origin = body.origin_url.rstrip("/")
     branding = await _resolve_branding(log["user_id"]) or {}
     company = (branding.get("company_name") or "ConstruPilot")[:60]
@@ -1537,7 +1434,7 @@ async def quote_deposit_checkout(token: str, body: QuoteDepositCheckoutIn) -> di
         session = stripe.checkout.Session.create(
             line_items=[{"price_data": {
                 "currency": "eur",
-                "product_data": {"name": f"Acompte {pct:g} % — Devis {company}"},
+                "product_data": {"name": f'Adiantamento {pct:g} % — Orçamento {company}'},
                 "unit_amount": amount_cents}, "quantity": 1}],
             mode="payment",
             success_url=f"{origin}/sign/{token}?session_id={{CHECKOUT_SESSION_ID}}",
@@ -1546,7 +1443,7 @@ async def quote_deposit_checkout(token: str, body: QuoteDepositCheckoutIn) -> di
                       "log_id": log["log_id"], "plan_id": log.get("plan_id") or ""})
     except Exception:
         logger.exception("stripe quote deposit checkout")
-        raise HTTPException(502, "Paiement indisponible — réessayez plus tard")
+        raise HTTPException(502, "Pagamento indisponível — tente novamente mais tarde")
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": log["user_id"],
         "plan_id": log.get("plan_id"), "log_id": log["log_id"],
@@ -1570,8 +1467,8 @@ async def _apply_quote_deposit(rec: dict) -> None:
         return
     try:
         from routes.phase7 import notify_user
-        await notify_user(rec["user_id"], "💶 Acompte reçu !",
-                          f"Un acompte de {int(amount):,} € a été réglé sur un devis signé.".replace(",", " "),
+        await notify_user(rec["user_id"], "💶 Adiantamento recebido!",
+                          f'Um adiantamento de {int(amount):,} € foi pago num orçamento assinado.'.replace(",", " "),
                           "/devis")
     except Exception as e:
         logger.warning(f"notify quote deposit failed: {e}")
@@ -1580,18 +1477,8 @@ async def _apply_quote_deposit(rec: dict) -> None:
         pro = await db.users.find_one({"user_id": rec["user_id"]},
                                        {"_id": 0, "email": 1, "name": 1})
         if pro and pro.get("email"):
-            html = (f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'>"
-                    f"<div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'>"
-                    f"<h1 style='margin:0;font-size:22px'>💶 Acompte reçu</h1></div>"
-                    f"<div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'>"
-                    f"<p>Olá {pro.get('name') or ''},</p>"
-                    f"<p>Un acompte de <strong>{amount} €</strong> vient d'être réglé en ligne "
-                    f"sur un devis signé.</p>"
-                    f"<p style='margin-top:24px'><a href='https://construpilot.fr/devis' "
-                    f"style='background:hsl(24,96%,55%);color:white;padding:12px 24px;"
-                    f"text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>"
-                    f"Voir le suivi des devis</a></p></div></div>")
-            await emailer.send_email(pro["email"], "💶 Acompte réglé sur un devis signé", html)
+            html = (f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'><div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'><h1 style='margin:0;font-size:22px'>💶 Adiantamento recebido</h1></div><div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'><p>Olá {pro.get('name') or ''},</p><p>Um adiantamento de <strong>{amount} €</strong> acaba de ser pago online num orçamento assinado.</p><p style='margin-top:24px'><a href='https://construpilot.pt/devis' style='background:hsl(24,96%,55%);color:white;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>Ver o acompanhamento de orçamentos</a></p></div></div>")
+            await emailer.send_email(pro["email"], "💶 Adiantamento pago num orçamento assinado", html)
     except Exception as e:
         logger.warning(f"email quote deposit failed: {e}")
 
@@ -1602,7 +1489,7 @@ async def quote_deposit_status(session_id: str) -> dict:
     q = {"session_id": session_id, "type": "quote_deposit"}
     rec = await db.payment_transactions.find_one(q, {"_id": 0})
     if not rec:
-        raise HTTPException(404, "Session inconnue")
+        raise HTTPException(404, "Sessão desconhecida")
     if rec.get("payment_status") != "paid":
         import stripe
         try:
@@ -1637,7 +1524,7 @@ async def get_signed_quote_pdf(token: str):
     from engines.pdf_takeoff import build_quote_pdf
     log = await db.quote_sends.find_one({"signature_token": token}, {"_id": 0})
     if not log:
-        raise HTTPException(404, "Lien invalide")
+        raise HTTPException(404, "Ligação inválida")
     plan_id = log.get("plan_id")
     user_id = log["user_id"]
     branding = await _resolve_branding(user_id)
@@ -1653,14 +1540,14 @@ async def get_signed_quote_pdf(token: str):
         from engines.pdf_docs import build_document_pdf
         doc = await db.pro_documents.find_one({"doc_id": log["doc_id"], "user_id": user_id}, {"_id": 0})
         if not doc:
-            raise HTTPException(404, "Devis introuvable")
+            raise HTTPException(404, "Orçamento não encontrado")
         try:
             pdf_bytes = build_document_pdf(doc, branding=branding, signature=signature,
                                            lang=(doc.get("lang")))
         except TypeError:
             pdf_bytes = build_document_pdf(doc, branding=branding, lang=(doc.get("lang")))
         return Response(content=pdf_bytes, media_type="application/pdf",
-                        headers={"Content-Disposition": f'attachment; filename="devis-signe-{log["doc_id"]}.pdf"'})
+                        headers={"Content-Disposition": f'''attachment; filename="orcamento-assinado-{log['doc_id']}.pdf"'''})
 
     quote, _pdf = await _build_quote_and_pdf(
         plan_id, user_id, log.get("finish", "std"),
@@ -1671,5 +1558,6 @@ async def get_signed_quote_pdf(token: str):
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
-                 f'attachment; filename="devis-signe-{plan_id}.pdf"'}
+                 f'attachment; filename="orcamento-assinado-{plan_id}.pdf"'}
     )
+

@@ -1,0 +1,40 @@
+--- current/frontend/src/components/planTakeoff/CotesCheckPanel.jsx
++++ zip/frontend/src/components/planTakeoff/CotesCheckPanel.jsx
+@@ -276,11 +276,18 @@
+   const [overlay, setOverlay] = useState(null);
+   const [sendOpen, setSendOpen] = useState(false);
+   const [study, setStudy] = useState(null);
++  const storedRevision = plan?.cotes_checks?.[String(pageIndex)]?.revision;
++  const currentStudy = report?.revision && study?.report_revision === report.revision ? study : null;
+ 
+   useEffect(() => {
+     if (!plan?.plan_id) return;
+-    api.get(`/takeoffs/${plan.plan_id}/studies?page_index=${pageIndex}`).then((r) => setStudy(r.data?.analysis ? r.data : null)).catch(() => setStudy(null));
+-  }, [plan?.plan_id, pageIndex]);
++    let cancelled = false;
++    setStudy(null);
++    api.get(`/takeoffs/${plan.plan_id}/studies?page_index=${pageIndex}`)
++      .then((r) => { if (!cancelled) setStudy(r.data?.analysis ? r.data : null); })
++      .catch(() => { if (!cancelled) setStudy(null); });
++    return () => { cancelled = true; };
++  }, [plan?.plan_id, pageIndex, storedRevision]);
+ 
+   useEffect(() => {
+     const r = plan?.cotes_checks?.[String(pageIndex)] || null;
+@@ -297,6 +304,7 @@
+       const res = await fn();
+       const data = res?.data ?? res;
+       setReport(data);
++      setStudy(null);
+       setOverlay(null);
+       if (okMsg) toast.success(okMsg(data), { duration: 6000 });
+       await refreshPlan?.();
+@@ -412,7 +420,7 @@
+           <GeometryReport plan={plan} pageIndex={pageIndex} geo={report.geometry}
+                           onUpdated={(geo) => { setReport({ ...report, geometry: geo }); refreshPlan?.(); }}
+                           onFocusIndex={(i) => { const it = report.items.find((x) => x.index === i); if (it) onFocusCote?.(it); }} />
+-          <StudiesPanel plan={plan} pageIndex={pageIndex} study={study} onUpdated={setStudy} />
++          <StudiesPanel plan={plan} pageIndex={pageIndex} study={currentStudy} onUpdated={(data) => { setStudy(data); refreshPlan?.(); }} />
+           <div className="flex gap-2">
+             <Button size="sm" variant="outline" className="flex-1 gap-2 rounded-sm" onClick={showOverlay} data-testid="cotes-overlay-btn">
+               <ImageIcon className="h-3.5 w-3.5" /> Plan annoté

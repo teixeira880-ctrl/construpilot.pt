@@ -1,0 +1,35 @@
+--- current/frontend/src/components/assistant/ActionCard.jsx
++++ zip/frontend/src/components/assistant/ActionCard.jsx
+@@ -4,8 +4,11 @@
+ import { eur } from "@/lib/api";
+ import { pollCotesJob } from "@/lib/cotesJobs";
+ import { CompareCard } from "./CompareCard";
++import { WorkDraftCard } from "./WorkDraftCard";
+ 
+ const TOOL_LABEL = {
++  inspect_document_region: "Détail du document consulté", read_work_draft: "Brouillon relu", update_work_draft: "Brouillon révisé",
++  read_document: "Pages consultées", calculate: "Calcul vérifié", create_work_draft: "Brouillon modifiable", search_own_history: "Vos échanges retrouvés",
+   define_analysis_scope: "Périmètre d'analyse", analyze_plan: "Analyse approfondie lancée", get_plan_results: "Résultats du plan lus",
+   generate_branded_pdf: "Rapport PDF", create_quote_draft: "Brouillon de devis", save_user_preference: "Préférence mémorisée",
+   create_project_task: "Tâche créée", estimate_budget_range: "Estimation budgétaire indicative", compare_documents: "Comparaison de documents",
+@@ -60,14 +63,18 @@
+   };
+   return (
+     <div className={`text-[11px] rounded-sm border px-2 py-1.5 ${r.ok === false ? "border-red-300 bg-red-50 dark:bg-red-950/30" : "border-sky-300 bg-sky-50 dark:bg-sky-950/30"}`} data-testid={`assistant-action-${a.tool}`}>
+-      <b>{TOOL_LABEL[a.tool] || a.tool}</b>{r.preview && " · prévisualisation"}{r.error && ` · ${r.error}`}
++      <b>{a.tool === "save_user_preference" && r.preference && !r.preference.active ? "Préférence proposée" : TOOL_LABEL[a.tool] || a.tool}</b>{r.preview && " · prévisualisation"}{r.error && ` · ${r.error}`}
+       {a.tool === "define_analysis_scope" && r.scope && (
+         <div>inclus : {r.scope.include.join(", ") || "—"} · exclus : {r.scope.exclude.join(", ") || "—"} · contrôles : {r.scope.checks.join(", ") || "—"} · sortie : {r.scope.output}</div>
+       )}
+       {a.tool === "create_quote_draft" && r.draft && (
+         <div>{r.draft.lines.length} ligne(s) · HT {r.draft.total_ht} € · TVA {r.draft.vat_rate} % · TTC {r.draft.total_ttc} € — brouillon {r.draft.draft_id}</div>
+       )}
+-      {a.tool === "save_user_preference" && r.preference && <div>[{r.preference.scope}] {r.preference.category} = {r.preference.value}</div>}
++      {a.tool === "save_user_preference" && r.preference && <div>{r.preference.active ? "Active" : "Proposée, inactive"} · [{r.preference.scope}] {r.preference.category} = {r.preference.value} · <a className="underline" href="/preferences">Gérer la mémoire</a></div>}
++      {["create_work_draft", "update_work_draft"].includes(a.tool) && r.draft && <WorkDraftCard initial={r.draft} />}
++      {a.tool === "inspect_document_region" && r.ok && <div>{r.filename} · page {r.page} · zone agrandie<br />{r.note}</div>}
++      {a.tool === "calculate" && r.ok && <div>{r.expression} = {r.result} {r.unit}<br />Origine : {r.source}</div>}
++      {a.tool === "read_document" && r.ok && <div>{r.filename} · pages {r.pages.map(p => p.page).join(", ")} / {r.total_pages}{r.next_page && " · d'autres pages restent disponibles"}</div>}
+       {a.tool === "estimate_budget_range" && r.estimate && <EstimateCard e={r.estimate} r={r} />}
+       {a.tool === "compare_documents" && r.comparison && <CompareCard r={r} />}
+       {r.download && <button className="underline ml-1" onClick={dl} data-testid="assistant-download-btn"><FileDown className="inline h-3 w-3" /> Télécharger</button>}

@@ -61,16 +61,16 @@ def build_annotated_plan_pdf(image_b64: str, structure: dict, descriptif: dict,
     sub = ParagraphStyle("sub", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#64748b"))
     story = []
     company = (branding or {}).get("company_name") or "ConstruPilot"
-    story.append(Paragraph(f"Plan annoté — {company}", h))
-    story.append(Paragraph(f"Fichier : {filename}", sub))
+    story.append(Paragraph(f'Planta anotada — {company}', h))
+    story.append(Paragraph(f'Ficheiro: {filename}', sub))
     story.append(Spacer(1, 6))
 
     # Légende
     legend = Table([[
-        _swatch("#dc2626"), Paragraph("Murs", sub),
-        _swatch("#facc15"), Paragraph("Fenêtres / baies", sub),
-        _swatch("#a855f7"), Paragraph("Portes", sub),
-        _swatch("#632896"), Paragraph("Poutres", sub),
+        _swatch("#dc2626"), Paragraph("Paredes", sub),
+        _swatch("#facc15"), Paragraph("Janelas / envidraçados", sub),
+        _swatch("#a855f7"), Paragraph("Portas", sub),
+        _swatch("#632896"), Paragraph("Vigas", sub),
     ]], colWidths=[8 * mm, 22 * mm, 8 * mm, 34 * mm, 8 * mm, 22 * mm, 8 * mm, 22 * mm])
     legend.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
     story.append(legend)
@@ -86,25 +86,25 @@ def build_annotated_plan_pdf(image_b64: str, structure: dict, descriptif: dict,
 
     # Descriptif chiffré
     if not descriptif.get("calibrated"):
-        story.append(Paragraph("⚠️ Plan non calibré — quantités indisponibles.", sub))
-    story.append(Paragraph("Descriptif du métré", ParagraphStyle(
+        story.append(Paragraph("⚠️ Planta não calibrada — quantidades indisponíveis.", sub))
+    story.append(Paragraph("Descritivo da medição", ParagraphStyle(
         "h2", parent=styles["Heading2"], fontSize=12)))
-    rows = [["Poste", "Quantité", "Unité"]]
+    rows = [["Artigo", "Quantidade", "Un."]]
     d = descriptif
     def r(lbl, val, unit):
         if val:
             rows.append([lbl, f"{val}", unit])
-    r("Plancher / sol", d.get("planchers_m2"), "m²")
-    r("Murs porteurs (maçonnerie)", d.get("murs_porteurs_ml"), "ml")
-    r("Cloisons", d.get("cloisons_ml"), "ml")
-    r(f"Murs — enduit/peinture (h={d.get('wall_height_m')} m)", d.get("murs_surface_m2"), "m²")
-    r("Portes", d.get("portes"), "u")
-    r("Fenêtres", d.get("fenetres"), "u")
-    r("Baies vitrées", d.get("baies"), "u")
-    r("Poutres / linteaux", d.get("poutres_ml"), "ml")
-    r("Poteaux béton", d.get("poteaux"), "u")
-    r("Semelles / fondations", d.get("semelles"), "u")
-    r("Béton total", d.get("beton_total_m3"), "m³")
+    r("Pavimento", d.get("planchers_m2"), "m²")
+    r("Paredes resistentes (alvenaria)", d.get("murs_porteurs_ml"), "ml")
+    r("Divisórias", d.get("cloisons_ml"), "ml")
+    r(f"Paredes — reboco/pintura (h={d.get('wall_height_m')} m)", d.get("murs_surface_m2"), "m²")
+    r("Portas", d.get("portes"), "u")
+    r("Janelas", d.get("fenetres"), "u")
+    r("Envidraçados", d.get("baies"), "u")
+    r("Vigas / padieiras", d.get("poutres_ml"), "ml")
+    r("Pilares de betão", d.get("poteaux"), "u")
+    r("Sapatas / fundações", d.get("semelles"), "u")
+    r("Betão total", d.get("beton_total_m3"), "m³")
     t = Table(rows, colWidths=[110 * mm, 35 * mm, 25 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),

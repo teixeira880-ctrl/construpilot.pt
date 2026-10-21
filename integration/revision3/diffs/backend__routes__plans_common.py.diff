@@ -1,0 +1,10 @@
+--- current/backend/routes/plans_common.py
++++ zip/backend/routes/plans_common.py
+@@ -84,6 +84,7 @@
+         "plan_id": p["plan_id"],
+         "filename": p.get("filename"),
+         "kind": p.get("kind"),
++        "cad_import": p.get("cad_import"),
+         "page_count": p.get("page_count"),
+         "detected_scale_denominator": p.get("detected_scale_denominator"),
+         "calibrations": p.get("calibrations", {}),

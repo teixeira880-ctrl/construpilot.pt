@@ -19,9 +19,9 @@ export default function PlanViewer({ planId, highlight }) {
     <div className="surface p-3" data-testid="plan-viewer">
       <div className="relative inline-block max-w-full leading-none">
         {img ? (
-          <img src={`data:image/png;base64,${img}`} alt="Plan" className="max-w-full rounded-sm border border-border" />
+          <img src={`data:image/png;base64,${img}`} alt="Planta" className="max-w-full rounded-sm border border-border" />
         ) : (
-          <div className="text-sm text-muted-foreground p-8">{loading ? "Chargement de l'aperçu…" : "Aperçu du plan indisponible"}</div>
+          <div className="text-sm text-muted-foreground p-8">{loading ? "Carregamento da pré-visualização…" : "Pré-visualização da planta indisponível"}</div>
         )}
         {img && highlight && Array.isArray(highlight) && (
           <div className="absolute border-2 border-primary bg-primary/25 rounded-sm pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
@@ -37,7 +37,7 @@ export default function PlanViewer({ planId, highlight }) {
       </div>
       {img && (
         <p className="text-xs text-muted-foreground mt-2">
-          {highlight ? "🟧 Élément surligné — cliquez une autre ligne du bordereau pour la localiser." : "Cliquez une ligne du bordereau pour la localiser sur le plan."}
+          {highlight ? "🟧 Elemento realçado — clique noutra linha do mapa para o localizar." : "Clique numa linha das medições para a localizar na planta."}
         </p>
       )}
     </div>

@@ -14,7 +14,7 @@ export default function Referrals() {
   useEffect(() => {
     api.get("/referrals/me")
       .then(({ data }) => setData(data))
-      .catch(() => toast.error("Impossible de charger votre parrainage"))
+      .catch(() => toast.error("Impossível carregar o seu patrocínio"))
       .finally(() => setBusy(false));
   }, []);
 
@@ -22,24 +22,24 @@ export default function Referrals() {
     if (!data?.share_url) return;
     navigator.clipboard.writeText(data.share_url);
     setCopied(true);
-    toast.success("Lien copié !");
+    toast.success("Link copiado!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const shareWhatsapp = () => {
     if (!data?.share_url) return;
-    const text = `Salut ! J'utilise ConstruPilot pour chiffrer mes chantiers en 30 s. Essaie avec mon lien : ${data.share_url}`;
+    const text = `Olá! Uso o ConstruPilot para orçamentar as minhas obras em 30 s. Experimenta com a minha ligação: ${data.share_url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const shareEmail = () => {
     if (!data?.share_url) return;
-    const body = `Bonjour,\n\nJe pense que ConstruPilot pourrait vous intéresser — c'est un assistant IA pour chiffrer des travaux et générer des devis en 30 secondes.\n\nEssayez avec mon lien de parrainage :\n${data.share_url}\n\nÀ bientôt.`;
-    window.location.href = `mailto:?subject=${encodeURIComponent("Découvrez ConstruPilot")}&body=${encodeURIComponent(body)}`;
+    const body = `Olá,\n\nPenso que o ConstruPilot lhe pode interessar — é um assistente IA para orçamentar obras e gerar orçamentos em 30 segundos.\n\nExperimente com a minha ligação de referência:\n${data.share_url}\n\nAté breve.`;
+    window.location.href = `mailto:?subject=${encodeURIComponent("Descubra ConstruPilot")}&body=${encodeURIComponent(body)}`;
   };
 
-  if (busy) return <div className="grid gap-10"><SectionTitle title="Chargement…" /></div>;
-  if (!data) return <div className="grid gap-10"><SectionTitle title="Erreur de chargement" /></div>;
+  if (busy) return <div className="grid gap-10"><SectionTitle title="A carregar…" /></div>;
+  if (!data) return <div className="grid gap-10"><SectionTitle title="Erro de carregamento" /></div>;
 
   const progress = Math.min(100, (data.bonus_days_earned / data.bonus_days_cap) * 100);
   const monthsEarned = Math.floor(data.bonus_days_earned / 30);
@@ -47,17 +47,17 @@ export default function Referrals() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Parrainage — 30 jours Pro offerts par filleul"
-        description="Invitez vos confrères artisans sur ConstruPilot et gagnez 30 jours Pro gratuits pour chaque inscription, jusqu'à 12 mois d'abonnement offert."
-        keywords="parrainage ConstruPilot, invitation ami, filleul, référent, mois Pro offert, programme récompense"
+        title="Recomendação — 30 dias Pro oferecidos por indicado"
+        description="Convide os seus colegas artesãos no ConstruPilot e ganhe 30 dias Pro gratuitos por cada inscrição, até 12 meses de subscrição oferecidos."
+        keywords="referência ConstruPilot, convite amigo, afilhado, referenciador, mês Pro oferecido, programa de recompensas"
         canonical="/parrainage"
       />
-      <SectionTitle as="h1" over="Programme de parrainage"
-        title={`Parrainez vos confrères, gagnez ${data.bonus_days_cap / 30} mois Pro`}>
+      <SectionTitle as="h1" over="Programa de recomendação"
+        title={`Recomende colegas, ganhe ${data.bonus_days_cap / 30} meses Pro`}>
         <span>
-          Pour chaque artisan que vous invitez, nous vous offrons{" "}
-          <b className="text-primary">30 jours Pro gratuits</b> (plafond{" "}
-          {data.bonus_days_cap} jours = {data.bonus_days_cap / 30} mois).
+          Por cada profissional que convida, oferecemos-lhe{" "}
+          <b className="text-primary">30 dias Pro gratuitos</b> (plafond{" "}
+          {data.bonus_days_cap} jours = {data.bonus_days_cap / 30} meses).
         </span>
       </SectionTitle>
 
@@ -68,7 +68,7 @@ export default function Referrals() {
             <Gift className="h-5 w-5" />
           </span>
           <div>
-            <p className="overline">Votre lien de parrainage</p>
+            <p className="overline">A sua ligação de apadrinhamento</p>
             <p className="font-display font-bold text-xl mt-1" data-testid="referral-code">
               {data.code}
             </p>
@@ -84,7 +84,7 @@ export default function Referrals() {
           />
           <Button onClick={copy} data-testid="referral-copy-btn"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white h-11">
-            {copied ? <><Check className="h-4 w-4" /> Copié</> : <><Copy className="h-4 w-4" /> Copier</>}
+            {copied ? <><Check className="h-4 w-4" /> Copiado</> : <><Copy className="h-4 w-4" /> Copiar</>}
           </Button>
         </div>
 
@@ -102,19 +102,19 @@ export default function Referrals() {
 
       {/* Card 2 : Stats */}
       <section className="grid md:grid-cols-3 gap-4" data-testid="referral-stats">
-        <StatBig icon={Users} value={data.total_referrals} label="Filleuls inscrits"
+        <StatBig icon={Users} value={data.total_referrals} label="Afilhados inscritos"
                  testid="referral-stat-count" />
         <StatBig icon={TrendingUp} value={`${data.bonus_days_earned} jours`}
-                 label={`${monthsEarned} mois Pro offert${monthsEarned > 1 ? "s" : ""}`}
+                 label={`${monthsEarned} mês Pro oferecido${monthsEarned > 1 ? "s" : ""}`}
                  testid="referral-stat-days" />
         <StatBig icon={Gift} value={`${data.bonus_days_cap - data.bonus_days_earned} jours`}
-                 label="Restants au plafond" testid="referral-stat-remaining" />
+                 label="Restantes no limite" testid="referral-stat-remaining" />
       </section>
 
       {/* Progress bar */}
       <section className="surface p-6">
         <div className="flex justify-between items-baseline mb-3">
-          <p className="overline">Progression vers 12 mois offerts</p>
+          <p className="overline">Progressão para 12 meses oferecidos</p>
           <p className="num text-primary font-bold">
             {data.bonus_days_earned} / {data.bonus_days_cap} j
           </p>
@@ -129,13 +129,13 @@ export default function Referrals() {
       {/* Recent referrals */}
       {data.recent_referrals?.length > 0 && (
         <section className="surface p-6" data-testid="referral-list">
-          <p className="overline mb-4">Vos filleuls récents</p>
+          <p className="overline mb-4">Os seus apadrinhados recentes</p>
           <div className="grid gap-2">
             {data.recent_referrals.map((r, i) => (
               <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0"
                    data-testid={`referral-row-${i}`}>
                 <div>
-                  <p className="font-bold text-sm">{r.name || "Filleul"}</p>
+                  <p className="font-bold text-sm">{r.name || "Afilhado"}</p>
                   <p className="text-[11px] text-muted-foreground">{r.email_masked}</p>
                 </div>
                 <span className="text-[10px] text-muted-foreground num">
@@ -149,20 +149,20 @@ export default function Referrals() {
 
       {/* How it works */}
       <section className="surface p-6" data-testid="referral-howitworks">
-        <p className="overline mb-4">Comment ça marche</p>
+        <p className="overline mb-4">Como funciona</p>
         <ol className="grid gap-3 text-sm">
           <li className="flex gap-3">
             <span className="h-6 w-6 shrink-0 grid place-items-center bg-primary text-white text-xs font-bold rounded-sm">1</span>
-            Copiez votre lien unique ci-dessus et partagez-le avec vos confrères artisans.
+            Copie o seu link único acima e partilhe-o com os seus colegas artesãos.
           </li>
           <li className="flex gap-3">
             <span className="h-6 w-6 shrink-0 grid place-items-center bg-primary text-white text-xs font-bold rounded-sm">2</span>
-            Chaque personne qui s'inscrit via votre lien vous crédite automatiquement de{" "}
-            <b>+30 jours Pro</b>.
+            Cada pessoa que se inscreve através da sua ligação credita-o automaticamente de{" "}
+            <b>+30 dias Pro</b>.
           </li>
           <li className="flex gap-3">
             <span className="h-6 w-6 shrink-0 grid place-items-center bg-primary text-white text-xs font-bold rounded-sm">3</span>
-            Jusqu'à <b>12 mois d'abonnement Pro offerts</b> (plafond 360 jours).
+            Até <b>12 meses de subscrição Pro oferecidos</b> (limite 360 dias).
           </li>
         </ol>
       </section>

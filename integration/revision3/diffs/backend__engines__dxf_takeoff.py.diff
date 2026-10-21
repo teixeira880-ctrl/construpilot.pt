@@ -1,0 +1,78 @@
+--- current/backend/engines/dxf_takeoff.py
++++ zip/backend/engines/dxf_takeoff.py
+@@ -51,57 +51,17 @@
+ 
+ 
+ def _lwpoly_len_area(e):
+-    """Longueur et aire (si fermée) d'une LWPOLYLINE."""
+-    try:
+-        pts = [(p[0], p[1]) for p in e.vertices()]
+-    except Exception:
+-        return 0.0, 0.0
+-    if len(pts) < 2:
+-        return 0.0, 0.0
+-    length = sum(math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
+-    closed = bool(getattr(e, "closed", False) or (hasattr(e.dxf, "flags") and e.dxf.flags & 1))
+-    area = 0.0
+-    if closed and len(pts) >= 3:
+-        s = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1]
+-                for i in range(len(pts)))
+-        area = abs(s) / 2.0
+-        length += math.dist(pts[-1], pts[0])
+-    return length, area
++    from engines.cad_geometry import polyline_length_area
++    return polyline_length_area(e)
+ 
+ 
+ def _match(layer: str, keys) -> bool:
+     return any(k in layer for k in keys)
+ 
+ 
+-def _hatch_area(e) -> float:
+-    """Aire (unités²) d'une hachure — somme des contours (EdgePath/PolylinePath)."""
+-    tot = 0.0
+-    try:
+-        paths = e.paths
+-    except Exception:
+-        return 0.0
+-    for p in paths:
+-        pts = []
+-        if hasattr(p, "vertices"):
+-            try:
+-                pts = [(v[0], v[1]) for v in p.vertices]
+-            except Exception:
+-                pts = []
+-        if not pts and hasattr(p, "edges"):
+-            for ed in p.edges:
+-                tn = type(ed).__name__
+-                try:
+-                    if tn == "LineEdge":
+-                        pts.append((ed.start[0], ed.start[1]))
+-                    elif tn == "ArcEdge":
+-                        pts.append((ed.center[0], ed.center[1]))
+-                except Exception:
+-                    pass
+-        if len(pts) >= 3:
+-            s = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1]
+-                    for i in range(len(pts)))
+-            tot += abs(s) / 2.0
+-    return tot
++def _hatch_area(e):
++    from engines.cad_geometry import hatch_area
++    return hatch_area(e)
+ 
+ 
+ def _seg(e):
+@@ -274,7 +234,11 @@
+         # Repli : calque structure → voile ; calque archi seul → cloison
+         return not (_match(layer, _WALL_ARCH) and not _match(layer, _WALL_STRUCT))
+ 
+-    for e in msp:
++    from engines.cad_geometry import walk_entities
++    def preserve_block(insert, layer):
++        label = (layer + ' ' + insert.dxf.name).lower()
++        return _match(label, _COL + _DOOR + _WIN + _RESA)
++    for e in walk_entities(doc, msp, explode_dimensions=False, preserve_blocks=preserve_block):
+         t = e.dxftype()
+         L = _layer(e)
+         if t == "LINE":

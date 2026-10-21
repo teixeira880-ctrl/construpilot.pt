@@ -16,7 +16,7 @@ async def get_forecast(city: str) -> dict:
                              params={"name": city, "count": 1, "language": "fr"})
             results = (g.json() or {}).get("results") or []
             if not results:
-                return {"error": f"Ville « {city} » introuvable"}
+                return {"error": f'Ville « {city}» não encontrado'}
             loc = results[0]
             f = await cl.get("https://api.open-meteo.com/v1/forecast", params={
                 "latitude": loc["latitude"], "longitude": loc["longitude"],
@@ -37,4 +37,4 @@ async def get_forecast(city: str) -> dict:
             return {"city": label, "days": days}
     except Exception as e:
         logger.warning(f"weather fetch failed for '{city}': {e}")
-        return {"error": "Service météo indisponible — réessayez plus tard"}
+        return {"error": "Serviço de meteorologia indisponível — tente novamente mais tarde"}

@@ -8,15 +8,15 @@ export const SupplierOptimization = ({ optim }) => {
     <div className="grid gap-4" data-testid="supplier-optimization">
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="surface p-6">
-          <p className="overline text-muted-foreground">Tout chez {optim.best_single?.supplier}</p>
+          <p className="overline text-muted-foreground">Tudo em {optim.best_single?.supplier}</p>
           <p className="num mt-3 text-xl font-bold">{eur(optim.best_single?.total)}</p>
         </div>
         <div className="surface p-6 border-primary">
-          <p className="overline">Multi-fournisseurs</p>
+          <p className="overline">Multi-fornecedores</p>
           <p className="num mt-3 text-xl font-bold text-primary">{eur(optim.multi_supplier?.total)}</p>
         </div>
         <div className="surface p-6">
-          <p className="overline text-muted-foreground">Économie</p>
+          <p className="overline text-muted-foreground">Poupança</p>
           <p className="num mt-3 text-xl font-bold text-emerald-500">{eur(optim.savings)}</p>
         </div>
       </div>
@@ -24,9 +24,9 @@ export const SupplierOptimization = ({ optim }) => {
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-              <TableHead>Poste</TableHead>
-              <TableHead className="text-right">Qté</TableHead>
-              <TableHead>Fournisseur</TableHead>
+              <TableHead>Artigo</TableHead>
+              <TableHead className="text-right">Qtd.</TableHead>
+              <TableHead>Fornecedor</TableHead>
               <TableHead className="text-right">PU</TableHead>
               <TableHead className="text-right">Total</TableHead>
             </TableRow>
@@ -45,8 +45,7 @@ export const SupplierOptimization = ({ optim }) => {
         </Table>
       </div>
       <p className="text-xs text-muted-foreground flex items-center gap-2">
-        <ShoppingCart className="h-3 w-3" /> Mode {optim.mode} — prix de démonstration, branchez les
-        API fournisseurs pour des prix réels.
+        <ShoppingCart className="h-3 w-3" /> Modo {optim.mode} — preço de demonstração, ligue as API de fornecedores para preços reais.
       </p>
     </div>
   );

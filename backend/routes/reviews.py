@@ -28,7 +28,7 @@ def _now() -> str:
 
 
 def _frontend_url() -> str:
-    return (os.getenv("FRONTEND_URL") or "https://construpilot.fr").rstrip("/")
+    return (os.getenv("FRONTEND_URL") or "https://construpilot.pt").rstrip("/")
 
 
 async def get_reviews_for_user(user_id: str, limit: int = 3) -> dict:
@@ -51,12 +51,12 @@ async def pro_verified_public(user_id: str) -> dict:
     u = await db.users.find_one({"user_id": user_id},
                                 {"_id": 0, "kyc_status": 1, "name": 1})
     if not u:
-        raise HTTPException(404, "Profil introuvable")
+        raise HTTPException(404, "Perfil não encontrado")
     branding = await _resolve_branding(user_id) or {}
     reviews = await get_reviews_for_user(user_id, limit=5)
     return {
         "verified": u.get("kyc_status") == "verified",
-        "company_name": branding.get("company_name") or u.get("name") or "Professionnel",
+        "company_name": branding.get("company_name") or u.get("name") or "Profissional",
         "city": branding.get("city"),
         "siret": branding.get("siret"),
         "certifications": branding.get("certifications") or [],
@@ -68,18 +68,14 @@ async def pro_verified_public(user_id: str) -> dict:
 
 async def _send_review_request_email(to: str, client_name: str, company: str, url: str) -> None:
     from engines.emailer import send_email, wrap_html
-    hello = f"Olá {client_name}," if client_name else "Olá,"
+    hello = f'Olá {client_name},' if client_name else "Bom dia,"
     inner = (
-        f"<p>{hello}</p>"
-        f"<p>Votre chantier avec <b>{company}</b> est terminé. Nous espérons que "
-        f"le résultat est à la hauteur de vos attentes&nbsp;!</p>"
-        f"<p>Votre avis compte énormément. Prenez 30 secondes pour noter votre "
-        f"expérience — cela aide {company} à s'améliorer et rassure les futurs clients.</p>"
+        f'<p>{hello}</p><p>A sua obra com <b>{company}</b> está concluída. Esperamos que o resultado esteja à altura das suas expectativas!</p><p>A sua opinião conta imenso. Dedique 30 segundos a avaliar a sua experiência — isso ajuda {company} a melhorar e tranquiliza os futuros clientes.</p>'
     )
-    html = wrap_html(f"Votre avis sur {company}", inner,
-                     cta_url=url, cta_label="Laisser mon avis")
+    html = wrap_html(f'A sua opinião sobre {company}', inner,
+                     cta_url=url, cta_label="Deixar a minha opinião")
     try:
-        await send_email(to, f"Comment s'est passé votre chantier avec {company} ?", html)
+        await send_email(to, f'Como correu a sua obra com {company} ?', html)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Review request email failed: {e}")
 
@@ -92,14 +88,14 @@ async def request_review(log_id: str, user=Depends(current_user)) -> dict:
     send = await db.quote_sends.find_one(
         {"log_id": log_id, "user_id": user["user_id"]}, {"_id": 0})
     if not send:
-        raise HTTPException(404, "Devis introuvable")
+        raise HTTPException(404, "Orçamento não encontrado")
     client_email = send.get("client_email")
     if not client_email:
-        raise HTTPException(400, "Aucun email client sur ce devis")
+        raise HTTPException(400, "Nenhum email de cliente neste orçamento")
 
     existing = await db.reviews.find_one({"log_id": log_id}, {"_id": 0})
     if existing and existing.get("submitted"):
-        raise HTTPException(400, "Ce client a déjà laissé un avis")
+        raise HTTPException(400, "Este cliente já deixou uma opinião")
 
     from routes.plans_common import _resolve_branding
     branding = await _resolve_branding(user["user_id"]) or {}
@@ -145,7 +141,7 @@ async def request_review(log_id: str, user=Depends(current_user)) -> dict:
 async def get_review_meta(token: str) -> dict:
     r = await db.reviews.find_one({"token": token}, {"_id": 0})
     if not r:
-        raise HTTPException(404, "Lien d'avis invalide ou expiré")
+        raise HTTPException(404, "Ligação de avaliação inválida ou expirada")
     return {
         "company_name": r.get("company_name") or "ConstruPilot",
         "client_name": r.get("client_name") or "",
@@ -165,10 +161,10 @@ class ReviewSubmitIn(BaseModel):
 async def submit_review(token: str, body: ReviewSubmitIn) -> dict:
     r = await db.reviews.find_one({"token": token}, {"_id": 0})
     if not r:
-        raise HTTPException(404, "Lien d'avis invalide")
+        raise HTTPException(404, "Ligação de avaliação inválida")
     if r.get("submitted"):
-        raise HTTPException(400, "Avis déjà envoyé — merci !")
-    author = (body.author_name or r.get("client_name") or "Client").strip()[:80]
+        raise HTTPException(400, "Opinião já enviada — obrigado!")
+    author = (body.author_name or r.get("client_name") or "Cliente").strip()[:80]
     await db.reviews.update_one({"token": token}, {"$set": {
         "submitted": True,
         "submitted_at": _now(),
@@ -181,7 +177,7 @@ async def submit_review(token: str, body: ReviewSubmitIn) -> dict:
         "notif_id": "n_" + secrets.token_hex(5),
         "user_id": r["user_id"], "type": "review_received",
         "log_id": r.get("log_id"),
-        "message": f"{author} a laissé un avis {body.rating}/5.",
+        "message": f'{author} deixou uma opinião {body.rating}/5.',
         "created_at": _now(), "read": False,
     })
     return {"ok": True}
@@ -253,7 +249,7 @@ async def pending_site_reviews() -> dict:
 async def approve_site_review(review_id: str) -> dict:
     r = await db.site_reviews.update_one({"review_id": review_id}, {"$set": {"approved": True}})
     if not r.matched_count:
-        raise HTTPException(404, "Avis introuvable")
+        raise HTTPException(404, "Opinião não encontrada")
     return {"ok": True}
 
 
@@ -270,5 +266,5 @@ async def toggle_publish(review_id: str, body: PublishIn,
         {"review_id": review_id, "user_id": user["user_id"]},
         {"$set": {"published": body.published}})
     if not res.matched_count:
-        raise HTTPException(404, "Avis introuvable")
+        raise HTTPException(404, "Opinião não encontrada")
     return {"ok": True}

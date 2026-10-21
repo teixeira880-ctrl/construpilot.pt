@@ -32,19 +32,19 @@ export function usePushNotifications() {
   }, []);
 
   const subscribe = useCallback(async () => {
-    if (!isPushSupported()) throw new Error("Push non supporté");
+    if (!isPushSupported()) throw new Error("Push não suportado");
     setBusy(true);
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
-      if (perm !== "granted") throw new Error("Permission refusée");
+      if (perm !== "granted") throw new Error("Permissão recusada");
 
       let reg = await navigator.serviceWorker.getRegistration("/sw.js");
       if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
 
       const { data: keyRes } = await api.get("/push/public-key");
-      if (!keyRes?.public_key) throw new Error("Clé VAPID manquante");
+      if (!keyRes?.public_key) throw new Error("Chave VAPID em falta");
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,

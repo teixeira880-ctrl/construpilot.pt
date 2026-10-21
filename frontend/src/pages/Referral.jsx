@@ -22,7 +22,7 @@ export default function Referral() {
   if (!user) {
     return (
       <div className="surface p-10 text-center">
-        <p className="font-display text-2xl font-bold mb-2">Connectez-vous pour votre lien de parrainage</p>
+        <p className="font-display text-2xl font-bold mb-2">Ligue-se para a sua ligação de indicação</p>
       </div>
     );
   }
@@ -33,65 +33,63 @@ export default function Referral() {
     try {
       await navigator.clipboard.writeText(val);
       setCopied(true);
-      toast.success(`${label} copié`);
+      toast.success(`${label} copiado`);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("Copie impossible");
+      toast.error("Cópia impossível");
     }
   };
 
   return (
     <div className="grid gap-10">
-      <SectionTitle over="Parrainage ConstruPilot" title="Invitez, gagnez 5 € par filleul">
-        Chaque personne qui s'inscrit avec votre code et réalise un premier paiement vous
-        rapporte <b className="text-primary">5 € de crédit</b>. En échange, votre filleul
-        bénéficie de <b className="text-primary">5 € de réduction</b> sur son premier achat.
+      <SectionTitle over="Recomendação ConstruPilot" title="Convide, ganhe 5 € por indicado">
+        Cada pessoa que se inscreve com o seu código e realiza um primeiro pagamento gera-lhe <b className="text-primary">5 € de crédito</b>. Em troca, o seu apadrinhado beneficia de <b className="text-primary">5 € de desconto</b> na sua primeira compra.
       </SectionTitle>
 
       <div className="grid md:grid-cols-3 gap-6" data-testid="referral-stats">
-        <Stat icon={Gift} label="Votre code" value={data?.code || "…"} suffix="" />
-        <Stat icon={Users} label="Filleuls" value={data?.invited || 0} />
-        <Stat icon={Sparkles} label="Crédit accumulé" value={eur(data?.credit_eur || 0)} />
+        <Stat icon={Gift} label="O seu código" value={data?.code || "…"} suffix="" />
+        <Stat icon={Users} label="Afilhados" value={data?.invited || 0} />
+        <Stat icon={Sparkles} label="Crédito acumulado" value={eur(data?.credit_eur || 0)} />
       </div>
 
       <div className="surface p-6 grid gap-5">
         <div>
-          <p className="overline mb-2">Votre lien à partager</p>
+          <p className="overline mb-2">A sua ligação para partilhar</p>
           <div className="flex flex-wrap gap-2">
             <Input readOnly value={shareUrl} data-testid="referral-share-url" className="rounded-sm font-mono text-xs" />
-            <Button onClick={() => copy(shareUrl, "Lien")} data-testid="referral-copy-link" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+            <Button onClick={() => copy(shareUrl, "Ligação")} data-testid="referral-copy-link" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              Copier
+              Copiar
             </Button>
           </div>
         </div>
         <div>
-          <p className="overline mb-2">Ou partagez directement votre code</p>
+          <p className="overline mb-2">Ou partilhe diretamente o seu código</p>
           <div className="flex items-center gap-3">
             <Badge className="rounded-sm bg-primary text-primary-foreground num text-lg py-2 px-4 tracking-wider" data-testid="referral-code">
               {data?.code || "…"}
             </Badge>
-            <Button variant="outline" size="sm" onClick={() => copy(data?.code || "", "Code")} className="rounded-sm gap-2">
-              <Copy className="h-3 w-3" /> Copier le code
+            <Button variant="outline" size="sm" onClick={() => copy(data?.code || "", "Código")} className="rounded-sm gap-2">
+              <Copy className="h-3 w-3" /> Copiar o código
             </Button>
           </div>
         </div>
       </div>
 
       <div className="surface p-6 grid gap-4">
-        <p className="font-display font-bold text-lg">Comment ça marche</p>
+        <p className="font-display font-bold text-lg">Como funciona</p>
         <ol className="grid gap-3 text-sm">
           <li className="flex gap-3">
             <span className="num h-6 w-6 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">1</span>
-            <span>Partagez votre lien à vos proches en pleine rénovation.</span>
+            <span>Partilhe a sua ligação com amigos em plena renovação.</span>
           </li>
           <li className="flex gap-3">
             <span className="num h-6 w-6 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">2</span>
-            <span>Ils créent leur compte via votre lien et démarrent leur projet.</span>
+            <span>Criam a sua conta através do seu link e iniciam o seu projeto.</span>
           </li>
           <li className="flex gap-3">
             <span className="num h-6 w-6 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">3</span>
-            <span>Dès leur premier paiement (Premium ou Project Pass), ils obtiennent 5 € de réduction et vous recevez 5 € de crédit ConstruPilot.</span>
+            <span>Desde o primeiro pagamento (Premium ou Project Pass), obtêm 5 € de desconto e você recebe 5 € de crédito ConstruPilot.</span>
           </li>
         </ol>
       </div>

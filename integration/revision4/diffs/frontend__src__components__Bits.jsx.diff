@@ -1,0 +1,11 @@
+--- current/frontend/src/components/Bits.jsx
++++ zip4/frontend/src/components/Bits.jsx
+@@ -17,6 +17,8 @@
+     data-testid={testId}
+     onClick={onClick}
+     role={onClick ? "button" : undefined}
++    tabIndex={onClick ? 0 : undefined}
++    onKeyDown={onClick ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(event); } } : undefined}
+   >
+     {badge != null && (
+       <span data-testid={`${testId}-badge`}

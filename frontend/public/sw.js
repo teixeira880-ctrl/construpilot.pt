@@ -1,9 +1,9 @@
 /* ConstruPilot Service Worker
    - HTML / navigation : NETWORK-FIRST (garantit que la dernière version s'affiche toujours)
    - Assets statiques (JS/CSS/img) : cache-first (les bundles sont hashés par le build)
-   - API : network-first, fallback cache
+   - API : réseau uniquement, jamais de cache privé ou de permissions
    IMPORTANT : bumper CACHE à chaque déploiement pour purger l'ancien cache. */
-const CACHE = "construpilot-v4";
+const CACHE = "construpilot-v5-private-api-network-only";
 const APP_SHELL = ["/manifest.json", "/logo192.png", "/logo512.png"];
 
 self.addEventListener("install", (e) => {
@@ -25,6 +25,13 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
+  // Permissions and private data must never fall back to a previous account's
+  // response. The version change also purges API entries stored by older workers.
+  if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+    e.respondWith(fetch(new Request(req, { cache: "no-store" })));
+    return;
+  }
+
   // Ne gérer que les requêtes same-origin
   if (url.origin !== self.location.origin) return;
 
@@ -38,22 +45,6 @@ self.addEventListener("fetch", (e) => {
           return r;
         })
         .catch(() => caches.match(req).then((c) => c || caches.match("/")))
-    );
-    return;
-  }
-
-  // 2) API : network-first, fallback cache
-  if (url.pathname.startsWith("/api/")) {
-    e.respondWith(
-      fetch(req)
-        .then((r) => {
-          if (r.ok) {
-            const clone = r.clone();
-            caches.open(CACHE).then((c) => c.put(req, clone));
-          }
-          return r;
-        })
-        .catch(() => caches.match(req))
     );
     return;
   }

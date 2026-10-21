@@ -1,0 +1,47 @@
+--- current/frontend/src/pages/CotesControl.jsx
++++ zip/frontend/src/pages/CotesControl.jsx
+@@ -1,3 +1,4 @@
++import { CadUnitPicker, CadImportInfo } from "@/components/planTakeoff/CadImportInfo";
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { useNavigate, useSearchParams } from "react-router-dom";
+ import { toast } from "sonner";
+@@ -56,6 +57,7 @@
+ }
+ 
+ export default function CotesControl() {
++  const [cadFile, setCadFile] = useState(null);
+   const navigate = useNavigate();
+   const [params, setParams] = useSearchParams();
+   const [plans, setPlans] = useState([]);
+@@ -88,17 +90,20 @@
+ 
+   const select = (id) => { setPlan(null); setPageIndex(0); setHighlight(null); setParams({ plan: id }); loadPlan(id); };
+ 
+-  const upload = async (file) => {
++  const upload = async (file, cadUnit) => {
++    setCadFile(null);
+     if (!file) return;
+     setUploading(true);
+     try {
+       const fd = new FormData();
+       fd.append("file", file);
++      if (cadUnit) fd.append("cad_unit", cadUnit);
+       const { data } = await api.post("/takeoffs/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+       toast.success(`Plan « ${file.name} » importé — lancez le contrôle des cotes`);
+       await loadPlans();
+       select(data.plan_id);
+-    } catch (e) { toast.error(e?.response?.data?.detail || "Import impossible"); }
++    } catch (e) {
++      if (typeof e?.response?.data?.detail === "string" && e.response.data.detail.includes("CAD_UNIT_REQUIRED")) { setCadFile(file); return; } toast.error(e?.response?.data?.detail || "Import impossible"); }
+     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+   };
+ 
+@@ -136,6 +141,8 @@
+ 
+   return (
+     <div className="max-w-7xl mx-auto px-4 py-6 grid gap-5" data-testid="cotes-control-page">
++      <CadImportInfo info={plan?.cad_import} />
++      {cadFile && <CadUnitPicker file={cadFile} onChoose={unit => upload(cadFile, unit)} onCancel={() => setCadFile(null)} />}
+       <div className="flex flex-wrap items-end justify-between gap-3">
+         <div>
+           <p className="overline text-primary">Analyse de plans</p>

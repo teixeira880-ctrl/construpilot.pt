@@ -2,7 +2,7 @@
   "id": "/",
   "name": "ConstruPilot — Estime, Compare, Construa",
   "short_name": "ConstruPilot",
-  "description": "O assistente de IA para as suas obras: estimativa, orçamento, comparador de preços, calculadoras de materiais.",
+  "description": "O assistente IA das suas obras: estimativa, orçamentos, comparador de preços, calculadoras de materiais.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

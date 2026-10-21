@@ -19,7 +19,7 @@ export default function ClientPortal() {
 
   useEffect(() => {
     if (!token) {
-      setState({ loading: false, error: "Aucun jeton fourni.", data: null });
+      setState({ loading: false, error: "Nenhum token fornecido.", data: null });
       return;
     }
     api
@@ -27,7 +27,7 @@ export default function ClientPortal() {
       .then(({ data }) => setState({ loading: false, error: null, data }))
       .catch((e) => setState({
         loading: false,
-        error: e?.response?.data?.detail || "Lien invalide ou expiré.",
+        error: e?.response?.data?.detail || "Ligação inválida ou expirada.",
         data: null,
       }));
   }, [token]);
@@ -35,7 +35,7 @@ export default function ClientPortal() {
   if (state.loading) {
     return (
       <div className="mx-auto max-w-[900px] px-5 py-20 text-center text-sm text-muted-foreground">
-        Chargement de vos devis…
+        Carregamento dos seus orçamentos…
       </div>
     );
   }
@@ -44,10 +44,10 @@ export default function ClientPortal() {
     return (
       <div className="mx-auto max-w-[700px] px-5 py-20" data-testid="client-portal-error">
         <div className="surface p-10 text-center">
-          <h1 className="font-display text-2xl font-bold">Lien invalide</h1>
+          <h1 className="font-display text-2xl font-bold">Ligação inválida</h1>
           <p className="mt-3 text-sm text-muted-foreground">{state.error}</p>
           <p className="mt-6 text-xs text-muted-foreground">
-            Demandez un nouveau lien à l'artisan qui vous a envoyé le devis.
+            Solicite um novo link ao artesão que lhe enviou o orçamento.
           </p>
         </div>
       </div>
@@ -61,9 +61,9 @@ export default function ClientPortal() {
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-10" data-testid="client-portal">
       <div className="mb-8">
-        <p className="overline text-primary">Mon espace client</p>
+        <p className="overline text-primary">A minha área de cliente</p>
         <h1 className="mt-2 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-          Vos devis reçus
+          Os seus orçamentos recebidos
         </h1>
         <p className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
           <Mail className="h-4 w-4" /> {email}
@@ -71,17 +71,17 @@ export default function ClientPortal() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Kpi label="Devis reçus" value={count} />
-        <Kpi label="Signés" value={signed} accent />
-        <Kpi label="En attente" value={pending} />
-        <Kpi label="Total montant" value={
+        <Kpi label="Orçamentos recebidos" value={count} />
+        <Kpi label="Assinados" value={signed} accent />
+        <Kpi label="Em espera" value={pending} />
+        <Kpi label="Total montante" value={
           `${quotes.reduce((s, q) => s + (q.total_ttc || 0), 0).toLocaleString("pt-PT")} €`
         } small />
       </div>
 
       {quotes.length === 0 && (
         <div className="surface p-16 text-center text-sm text-muted-foreground">
-          Aucun devis reçu pour le moment.
+          Nenhum orçamento recebido por agora.
         </div>
       )}
 
@@ -92,9 +92,9 @@ export default function ClientPortal() {
       </div>
 
       <p className="mt-10 text-[11px] text-muted-foreground text-center">
-        Ce portail est sécurisé — ce lien est unique et personnel à votre adresse email.
+        Este portal é seguro — este link é único e pessoal ao seu endereço de e-mail.
         <br />
-        Envoyé par <b>ConstruPilot</b> pour le compte de vos artisans.
+        Enviado por <b>ConstruPilot</b> por conta dos seus artesãos.
       </p>
     </div>
   );
@@ -117,20 +117,20 @@ function QuoteCard({ q }) {
     try {
       const base = process.env.REACT_APP_BACKEND_URL;
       const res = await fetch(`${base}/api/quotes/public/sign/${q.signature_token}/pdf`);
-      if (!res.ok) throw new Error("PDF error");
+      if (!res.ok) throw new Error("Erro PDF");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = `devis-${q.log_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Téléchargement impossible"); }
+    } catch { toast.error("Transferência impossível"); }
   };
   const status = q.signed ? "signed" : q.opened_at ? "opened" : "sent";
   const STATUS_MAP = {
-    signed: { icon: CheckCircle2, label: "Signé", tone: "bg-green-500/15 text-green-600 border-green-500/40" },
-    opened: { icon: Clock, label: "En attente signature", tone: "bg-amber-500/15 text-amber-600 border-amber-500/40" },
-    sent: { icon: Clock, label: "Non ouvert", tone: "bg-muted text-muted-foreground border-border" },
+    signed: { icon: CheckCircle2, label: "Assinado", tone: "bg-green-500/15 text-green-600 border-green-500/40" },
+    opened: { icon: Clock, label: "Aguardar assinatura", tone: "bg-amber-500/15 text-amber-600 border-amber-500/40" },
+    sent: { icon: Clock, label: "Não aberto", tone: "bg-muted text-muted-foreground border-border" },
   };
   const S = STATUS_MAP[status];
   return (
@@ -139,10 +139,10 @@ function QuoteCard({ q }) {
         <FileText className="h-6 w-6 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold truncate">Devis de <span className="text-primary">{q.pro_name}</span></p>
+        <p className="font-semibold truncate">Orçamento de <span className="text-primary">{q.pro_name}</span></p>
         <p className="text-xs text-muted-foreground">
-          Envoyé le {q.sent_at?.slice(0, 10).split("-").reverse().join("/")}
-          {q.finish ? ` · finition ${q.finish}` : ""}
+          Enviado em {q.sent_at?.slice(0, 10).split("-").reverse().join("/")}
+          {q.finish ? ` · acabamento ${q.finish}` : ""}
           {q.floor_material ? ` · ${q.floor_material}` : ""}
         </p>
       </div>
@@ -150,7 +150,7 @@ function QuoteCard({ q }) {
         <p className="num font-display text-xl font-extrabold">
           {(q.total_ttc || 0).toLocaleString("pt-PT")} €
         </p>
-        <p className="text-[10px] text-muted-foreground">TTC</p>
+        <p className="text-[10px] text-muted-foreground">c/ IVA</p>
       </div>
       <Badge variant="outline" className={`rounded-sm ${S.tone}`}>
         <S.icon className="h-3 w-3 mr-1" /> {S.label}
@@ -166,7 +166,7 @@ function QuoteCard({ q }) {
         {!q.signed && q.signature_token && (
           <Link to={`/devis/signer/${q.signature_token}`} data-testid={`portal-quote-sign-${q.log_id}`}>
             <Button size="sm" className="rounded-sm gap-1">
-              Signer <ExternalLink className="h-3 w-3" />
+              Assinar <ExternalLink className="h-3 w-3" />
             </Button>
           </Link>
         )}

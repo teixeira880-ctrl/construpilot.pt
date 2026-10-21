@@ -1,0 +1,21 @@
+{
+  "backend/server.py": "5fde15ec6bdfb2c6397b99b7ee31ac53299287355a37a805f16ce5b224f9a33c",
+  "backend/routes/admin.py": "65fae4b37c44cd5e80f668a685a75e2a378067debcb02166c8cfc559fd5d8412",
+  "backend/routes/radar.py": "27aaeec9ad02b12bbdc393df124b85455cf0158e9dd6a057ce9f0ad20936ffc1",
+  "backend/engines/mercifacteur.py": "d3ae26d88e617a683562a75c1a884c110e88063a44771558183462085c5e0af1",
+  "backend/engines/ai.py": "b3cc1dc42774e72a682d202f8e1d61b93de9b56619dd42f5106b3b33dfbe2a46",
+  "memory/CHANGELOG.md": "58aaa2acaa61885a69a45aa29904ef8b682fe4f6e3a799887fc6e0141dd93516",
+  "memory/PRD.md": "e50cc5b0589c54e1dc812d4b3b18ceec439d8886a306398784b28d082645dad3",
+  "frontend/src/i18n/pt_auto.json": "30dafdfbfb247932533aca12cfa18e6b96c0cd568b5fc35f93caab819c0a9d69",
+  "frontend/src/pages/RadarChantiers.jsx": "dcd76282cf4ecc97c6ba87818f975507a8bec706753f0efa3dc14ced634d4993",
+  "frontend/src/pages/Admin.jsx": "5cd6985ff0cbe5d2d289757650008349c13aa41a67cea40f125a7d614584933b",
+  "frontend/src/components/Nav.jsx": "4844e79ed7a3881815a7ad8372f92b1d809388a3cd9d8f06abb31ec205a13900",
+  "frontend/src/components/ui/dialog.jsx": "e6066345836c8bd41f78db3868bc7ca2ed6d59202aab638d50370ff088b8d588",
+  "frontend/src/components/radar/PostalSendDialog.jsx": "4972cbafe20374883db161f608a1c8733a001374adecf50d31354acebef56ff0",
+  "frontend/src/components/admin/RadarSitadelPanel.jsx": "a01ec9358f36dfb73af78a8f5f1d2b464c66350aee8aef80ea21b211b11c4b2a",
+  "backend/.env": "3810a7cfb8d5ac2ba16b5f079127043587b67c762ef47d763af219787a882513",
+  "frontend/.env": "3509fd97acdc077a848c2c6f0867687152de41d0ef32e1856737e3289ef2d7f3",
+  "backend/requirements.txt": "1378c16252c1d0ba9d71786e9cddc82ca99f33bcc9d6d68ff4ac8d04e850f57b",
+  "frontend/package.json": "e08d26bf2cb3c4279a288d107a1fdbbd946a5784ff8b51b3e885b0caa5d29ee2",
+  "frontend/yarn.lock": "a81653e6d1e2d2c6b2a98da6d4d56d88b911edc42822a64b2e57d8f916900d5b"
+}

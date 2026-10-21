@@ -81,9 +81,9 @@ async def generate_referee_coupon(user_id: str) -> str | None:
     coupon = stripe.Coupon.create(
         amount_off=REFEREE_DISCOUNT_CENTS, currency="eur",
         duration="once", max_redemptions=1,
-        name="Bienvenue ConstruPilot (parrainage)",
+        name="Bem-vindo ao ConstruPilot (referência)",
         metadata={"referee_id": user_id, "referrer_id": ref["referrer_id"]})
-    code_str = f"BIENVENUE-{secrets.token_hex(3).upper()}"
+    code_str = f'BEMVINDO-{secrets.token_hex(3).upper()}'
     promo = stripe.PromotionCode.create(
         promotion={"type": "coupon", "coupon": coupon.id},
         code=code_str, active=True, max_redemptions=1,

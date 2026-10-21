@@ -9,9 +9,9 @@ function Comparator({ beforeSrc, afterSrc }) {
   return (
     <div className="relative w-full rounded-xl overflow-hidden border border-white/10 select-none" data-testid="render-comparator">
       {/* Après (définit la hauteur) */}
-      <img src={afterSrc} alt="après travaux" className="w-full block pointer-events-none" />
+      <img src={afterSrc} alt="após obra" className="w-full block pointer-events-none" />
       {/* Avant (superposé, rogné à droite) */}
-      <img src={beforeSrc} alt="chantier actuel"
+      <img src={beforeSrc} alt="obra atual"
            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
            style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }} />
       {/* Ligne + poignée */}
@@ -20,10 +20,10 @@ function Comparator({ beforeSrc, afterSrc }) {
           <MoveHorizontal className="h-4 w-4 text-neutral-800" />
         </span>
       </div>
-      <span className="absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded bg-black/60 text-white">Aujourd'hui</span>
-      <span className="absolute top-2 right-2 text-[11px] px-2 py-0.5 rounded bg-primary/80 text-white">Après travaux</span>
+      <span className="absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded bg-black/60 text-white">Hoje</span>
+      <span className="absolute top-2 right-2 text-[11px] px-2 py-0.5 rounded bg-primary/80 text-white">Após trabalhos</span>
       <input type="range" min="0" max="100" value={pos} onChange={(e) => setPos(Number(e.target.value))}
-             aria-label="Comparateur avant après" data-testid="render-comparator-slider"
+             aria-label="Comparador antes depois" data-testid="render-comparator-slider"
              className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize" />
     </div>
   );
@@ -51,7 +51,7 @@ export default function RenderShare() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-2">
           <span className="h-8 w-8 grid place-items-center rounded-lg bg-primary/20"><Wand2 className="h-4 w-4 text-primary" /></span>
           <span className="font-bold tracking-tight">ConstruPilot</span>
-          <span className="ml-auto text-xs text-neutral-400">Rendu IA · Avant / Après</span>
+          <span className="ml-auto text-xs text-neutral-400">Renderização IA · Antes / Depois</span>
         </div>
       </header>
 
@@ -61,25 +61,25 @@ export default function RenderShare() {
         {!loading && error && (
           <div className="py-24 text-center" data-testid="render-share-error">
             <AlertTriangle className="h-8 w-8 mx-auto mb-3 text-amber-400" />
-            <p className="text-neutral-300">Ce lien de partage est invalide ou a été retiré.</p>
+            <p className="text-neutral-300">Este link de partilha é inválido ou foi removido.</p>
           </div>
         )}
 
         {!loading && meta && (
           <div className="space-y-6">
             <div className="text-center">
-              <h1 className="text-2xl sm:text-3xl font-bold">Projet de rénovation — projection</h1>
-              <p className="text-neutral-400 mt-1 text-sm">Visualisation générée par intelligence artificielle</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Projeto de renovação — projeção</h1>
+              <p className="text-neutral-400 mt-1 text-sm">Visualização gerada por inteligência artificial</p>
             </div>
 
             {meta.kind === "video" ? (
               <div className="grid md:grid-cols-2 gap-6">
                 <figure className="space-y-2">
-                  <figcaption className="text-xs uppercase tracking-wide text-neutral-400">Aujourd'hui</figcaption>
-                  <img src={inputSrc} alt="chantier actuel" className="w-full rounded-xl border border-white/10" data-testid="render-share-before" />
+                  <figcaption className="text-xs uppercase tracking-wide text-neutral-400">Hoje</figcaption>
+                  <img src={inputSrc} alt="obra atual" className="w-full rounded-xl border border-white/10" data-testid="render-share-before" />
                 </figure>
                 <figure className="space-y-2">
-                  <figcaption className="text-xs uppercase tracking-wide text-primary">Après travaux</figcaption>
+                  <figcaption className="text-xs uppercase tracking-wide text-primary">Após trabalhos</figcaption>
                   <video src={outputSrc} controls autoPlay loop muted className="w-full rounded-xl border border-primary/30" data-testid="render-share-after" />
                 </figure>
               </div>
@@ -87,11 +87,11 @@ export default function RenderShare() {
               <div className="space-y-2">
                 <Comparator beforeSrc={inputSrc} afterSrc={outputSrc} />
                 <p className="text-center text-xs text-neutral-500 flex items-center justify-center gap-1.5">
-                  <MoveHorizontal className="h-3.5 w-3.5" /> Faites glisser le curseur pour comparer avant / après
+                  <MoveHorizontal className="h-3.5 w-3.5" /> Arraste o cursor para comparar antes / depois
                 </p>
                 {/* balises de test conservées */}
                 <img src={inputSrc} alt="avant" className="hidden" data-testid="render-share-before" />
-                <img src={outputSrc} alt="après" className="hidden" data-testid="render-share-after" />
+                <img src={outputSrc} alt="após" className="hidden" data-testid="render-share-after" />
               </div>
             )}
 
@@ -100,8 +100,7 @@ export default function RenderShare() {
             )}
 
             <p className="text-center text-xs text-neutral-500 max-w-xl mx-auto pt-4 border-t border-white/10">
-              Visualisation indicative générée par IA, sans valeur contractuelle ni technique.
-              Le rendu final peut différer selon les matériaux et contraintes du chantier.
+              Visualização indicativa gerada por IA, sem valor contratual nem técnico. O resultado final pode diferir consoante os materiais e constrangimentos da obra.
             </p>
           </div>
         )}

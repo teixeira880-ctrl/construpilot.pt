@@ -1,0 +1,254 @@
+[
+  {
+    "path": "backend/engines/assistant_workspace.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "0a3f7c95d6969dde564b72e09cc8008533045b93fc18b622c9e27e50b143fc93"
+  },
+  {
+    "path": "backend/engines/cad_geometry.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "40d3137cb28affbde35c0be51f5b219ebc3d8d10192803b4bd3b4fce6e2e00e7"
+  },
+  {
+    "path": "backend/engines/dwg_convert.py",
+    "decision": "safe-base-match",
+    "before_hash": "5fa594561874ea4fe92c774c3d5d7b0225f8fbe2aaf801f5fd3ae454a205be87",
+    "zip_hash": "6bdcb5d7d2bbfa1d5508bbeeb66b642e9b4af41a0f87cfaf752b264b4df43836"
+  },
+  {
+    "path": "backend/engines/dxf_takeoff.py",
+    "decision": "safe-base-match",
+    "before_hash": "40abdb87bc6fb6613d261072f90e1d73bf3e7352f20794977c372a09e6fe8c26",
+    "zip_hash": "198c424e6781b05a4ad5b0895bd3358df22e145413531539aae8a1a2025701d4"
+  },
+  {
+    "path": "backend/engines/openai_studies.py",
+    "decision": "safe-base-match",
+    "before_hash": "50e0ebc5f416559a8b2ff9b17496118eb74142a43a857011fe20bdaa5fb05dcd",
+    "zip_hash": "39f3a82ce534728d3e8d571eb7c078ed38edde861d24f7a5797d96dfa2c41923"
+  },
+  {
+    "path": "backend/engines/plan_cotes_pdf.py",
+    "decision": "safe-base-match",
+    "before_hash": "30e961a1835b232f883860ae99fca400e9f62339142f26781ed44b0edfd349a0",
+    "zip_hash": "65e7d0e4811ee01049ecd6a88cdec958a7e147371b79a97ec0052b6b94ebde26"
+  },
+  {
+    "path": "backend/engines/plan_dxf.py",
+    "decision": "safe-base-match",
+    "before_hash": "42e24871aa79497e1697f70ebdc644d4ad8d365e065514aa235b0cbec2b4a8b2",
+    "zip_hash": "34be80ef75aa97a0feb6e6e5d937b47a7109ba25524ab0d65278176a09976a6d"
+  },
+  {
+    "path": "backend/engines/plan_pdf_i18n.py",
+    "decision": "safe-base-match",
+    "before_hash": "d38d2e1f187ce8ea8444dbdf9591837195b9932f81b3f2fc2094a492f0afaf83",
+    "zip_hash": "8ea03845d96c06c009a4ce63f0de17922559f389befc89393a324b3b293e23d4"
+  },
+  {
+    "path": "backend/engines/plan_processor.py",
+    "decision": "safe-base-match",
+    "before_hash": "cc7a283754815c6f445c6640948d2ab02e8057b6ad6221bca263d649b9280c17",
+    "zip_hash": "f64a378f48fb65a72851e4e2b4c85ab6fc270d733aec6d8343d97f65ab4a692a"
+  },
+  {
+    "path": "backend/engines/plan_refresh.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "cc7782f829098eac9bb531815556d0f5edde746e652524896030e5e73c224a69"
+  },
+  {
+    "path": "backend/engines/plan_sources.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "8f8d7889342c12aa6eb0715961181671d47b93a6cf8a17a14ec78407de30689a"
+  },
+  {
+    "path": "backend/engines/plan_symbols.py",
+    "decision": "safe-base-match",
+    "before_hash": "93885871526a29b7b5f22327a2d909dac0f55507fc4508b3c0694eb056977d0c",
+    "zip_hash": "ed72342370043d08403fddfc46dce64a2ef2d8adc87c722d77232724b4c3881a"
+  },
+  {
+    "path": "backend/engines/plan_vector_pdf.py",
+    "decision": "safe-base-match",
+    "before_hash": "814fe2ab0d642f9b05ea8ca9da80c6473653abe6a88a9c081b1f886589397009",
+    "zip_hash": "ea5b147ac74ff480966d0cbb9bc67691c5f907092a315c65646817879d900fac"
+  },
+  {
+    "path": "backend/engines/plan_walls.py",
+    "decision": "safe-base-match",
+    "before_hash": "69e5dcf2229b2339777e8bdd0867071a6816c6832844d7419f3531b42f7c2bd6",
+    "zip_hash": "b75f005ea7e6428d6ea78c8204b14239f98c23ded1109f89c19917d987587cd9"
+  },
+  {
+    "path": "backend/engines/studies_pdf.py",
+    "decision": "safe-base-match",
+    "before_hash": "4c5ac7ae5c5607e79b132ee80b0f8bb3f268127dae07afd75121e03ed1220d92",
+    "zip_hash": "38a8f34b4aa9427a05be1efe12ff829be260ba811d2d7bc64bb7785ba7769c4c"
+  },
+  {
+    "path": "backend/routes/assistant.py",
+    "decision": "safe-base-match",
+    "before_hash": "ae052fe991fc893fb0c107dc947dd08f8a09cc8b547492c9e846f99bd344b81a",
+    "zip_hash": "9d50a1b6300865fdc18bc4636da383df678d694c120d3e820e107450fb18fe0e"
+  },
+  {
+    "path": "backend/routes/plans_common.py",
+    "decision": "safe-base-match",
+    "before_hash": "7fb23e8a18aae159007aa6f624a9de595aa531d0f7b643f66e7e27dc31b05a68",
+    "zip_hash": "2fec664330779c1c455304bd0d630743ea6f211c57df0f58488d18ef23c8a3bb"
+  },
+  {
+    "path": "backend/routes/plans_cotes.py",
+    "decision": "safe-base-match",
+    "before_hash": "bced322bf932e8bbac8a5694b592c2423f1bb04cf66ee312121f61fa63608284",
+    "zip_hash": "31c651794fe2cac668c8eabff199d2956b59b0b1830081ab4e8d0d53a39920d7"
+  },
+  {
+    "path": "backend/routes/plans_crud.py",
+    "decision": "safe-base-match",
+    "before_hash": "6e4d0b933c97d6fed454d07edc50a456ebb6a9b225ba58251a7c706954fa66da",
+    "zip_hash": "1624a1ba622c8b2cc0da2525b54eb11750dc6feb35fd960afe3c02752ac09214"
+  },
+  {
+    "path": "backend/scripts/setup_assistant_indexes.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "7c7fcab528dda92390aebb1e411c41afa100cefc300ed05615181499efeb0946"
+  },
+  {
+    "path": "backend/tests/test_assistant_revision_regressions.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "309d11ee9d3d5bf178dc07a4c806ab013a07ab4704d70bff4858191e32ea7987"
+  },
+  {
+    "path": "backend/tests/test_assistant_workspace_regressions.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "7eb5f0a40aca85fddd4938e64ac331a4968c579280f3102a563c0137908e02fe"
+  },
+  {
+    "path": "backend/tests/test_cad_regressions.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "247beb88c6e5ea45c0aa53e79400be3c86fd3a18bd9ac5643bb5e6b96ccfc0a8"
+  },
+  {
+    "path": "backend/tests/test_plan_geometry_regressions.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "62869666071984e651990bc69a1309bbe570ac7da4719c93876b51d726b80f5a"
+  },
+  {
+    "path": "backend/tests/test_plan_routes_regressions.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "21dc13cc139699770a6f79cd72d777209c17830902de3ac535e87d4c98bb82b7"
+  },
+  {
+    "path": "backend/tests/test_plan_sources_regressions.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "ebddb6a55bb39a9197b18d2b07f74607bf813d616f732d3d3cdf322cf16eac5b"
+  },
+  {
+    "path": "backend/tests/test_plan_studies_regressions.py",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "960364b9ed8a9b031461958ff5d1a90901114493b9995056b71d70553fbab6f5"
+  },
+  {
+    "path": "frontend/jest.assistant.config.cjs",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "aa44c43530ef3c06bd1b75352a6543797590c835cd6e6c38ca1049bd5e07e6b5"
+  },
+  {
+    "path": "frontend/src/components/assistant/ActionCard.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "62ffabcb0ac67527782fa288fd299052762ecb8f87edd2e9015aab7d4eb08770",
+    "zip_hash": "2363eddd1d721fe3bc2a47b77fa045a948e77c5d689788491754826283e4ed6d"
+  },
+  {
+    "path": "frontend/src/components/assistant/MessageBubble.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "12765a6fbf19a1e6fe0a0624edbdba768d3e720c04ea15388c0eb707d6951776",
+    "zip_hash": "4ab19966d2b64347795d6c7a61ff655de2d2622fa44fcca39912c638092215b0"
+  },
+  {
+    "path": "frontend/src/components/assistant/WorkDraftCard.jsx",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "ff5330d0da7402b61cee8979379c87095eab9fd5e6e509cd4766d1f6aac8069f"
+  },
+  {
+    "path": "frontend/src/components/assistant/__tests__/WorkDraftCard.test.jsx",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "3ec70125a0de822469eee88b01f35a63ddbf7a85e2fe695ec85d06672acbac3f"
+  },
+  {
+    "path": "frontend/src/components/planTakeoff/CadImportInfo.jsx",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "b9299aef15914dcdc2dc1877cb0dcfb8cc2ba582fc749d4a7cdca56573b9d76e"
+  },
+  {
+    "path": "frontend/src/components/planTakeoff/CotesCheckPanel.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "69c0fc05a51501dd6405e244ba9237c320775267cc169334feb37ca8189ead98",
+    "zip_hash": "d27d50bb937c398faccaebad8841825511013038119e8bae8550a843a00de9a9"
+  },
+  {
+    "path": "frontend/src/components/planTakeoff/InteriorPanel.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "2265eb08c07f85fafbe9da58e3357badf915f9ea627211b4203579f88d019e69",
+    "zip_hash": "830e4fe626ded3a2c65a1234e092bd3c6dd66b4b8b1cd09b8850d78a3c1e7807"
+  },
+  {
+    "path": "frontend/src/lib/assistantStream.js",
+    "decision": "safe-base-match",
+    "before_hash": "f97e19f2b088b0e3dfa8d92f1b0c935bb55e7731367d7bf49944d0b55fa53978",
+    "zip_hash": "788a3154f8adcb0f1b822c5e19025d4643a502c4ade69329efe26d1b67048f0c"
+  },
+  {
+    "path": "frontend/src/pages/Assistant.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "7ea0288b208bf1117a83b65f792ae4912ba3476f582b5b44a8df646953cdb277",
+    "zip_hash": "21f91d2940e261359e83b41d4289d9d1dc9989a7481620b9e4e889d98d6055a2"
+  },
+  {
+    "path": "frontend/src/pages/CotesControl.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "6a7254cd4b6d44aa9bf67ab3fc196654381fc73ce2affa0763527cb489a703e5",
+    "zip_hash": "643d3b935399730a7167aa39ccc71643ddb07a7b5bf4a58078bc93f8dcfe9767"
+  },
+  {
+    "path": "frontend/src/pages/PlanTakeoff.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "a2b282ead3ffb62f974104bf895f88e190d0000fadd90ff9c2f4601dddb0c4f6",
+    "zip_hash": "7da45102b3409569f984bc3aaea8a4c8b96893a3f19011a4a4ff2a3811139646"
+  },
+  {
+    "path": "frontend/src/pages/Preferences.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "400d52b12de03a3178ae5d69f6c6b054e000b910f15a9442f0b01811bb914b46",
+    "zip_hash": "5304ceeaf9285191ebea7a7cfb39c063d5d784d7b1b3ab90199c129194a345d6"
+  },
+  {
+    "path": "frontend/src/pages/QuoteEditor.jsx",
+    "decision": "safe-base-match",
+    "before_hash": "4d30445d91ae0c26499f7f85d32ab419bfafd710269af94fc4c89190c5b92a90",
+    "zip_hash": "4918b122559d551ffee6bbc829b2003b612ff05736a1e284256275fed78afe13"
+  },
+  {
+    "path": "frontend/tests/assistant-stream.test.mjs",
+    "decision": "safe-new",
+    "before_hash": null,
+    "zip_hash": "dbeffcbfee00371ffbc7cccf38343eec475c15eb05081fd939498c763a9ca44b"
+  }
+]

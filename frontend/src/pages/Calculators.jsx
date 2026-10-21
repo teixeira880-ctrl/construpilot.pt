@@ -29,7 +29,7 @@ const COMPARE_CONFIG = {
     ],
     label: (v) => `${v.plate_length}×${v.plate_width} cm`,
     metric: { title: "Placas necessárias", match: /plaque/i },
-    caption: "Ossature, vis et enduit inclus. Le format le moins cher est surligné.",
+    caption: "Estrutura, parafusos e reboco incluídos. O formato mais barato está realçado.",
   },
   tile: {
     variants: [
@@ -40,8 +40,8 @@ const COMPARE_CONFIG = {
       { tile_length: 90, tile_width: 90 },
     ],
     label: (v) => `${v.tile_length}×${v.tile_width} cm`,
-    metric: { title: "Carreaux", match: /carreau/i },
-    caption: "Pertes de pose incluses selon le type de pose sélectionné. Le format le moins cher est surligné.",
+    metric: { title: "Azulejos", match: /carreau/i },
+    caption: "Perdas de aplicação incluídas conforme o tipo de aplicação selecionado. O formato mais barato está realçado.",
   },
 };
 
@@ -53,11 +53,11 @@ export default function Calculators() {
   const gate = () => {
     if (isPremium) return true;
     if (!user) {
-      toast.info("Créez un compte et passez Premium pour débloquer cette fonction");
+      toast.info("Crie uma conta e passe para Premium para desbloquear esta função");
       navigate("/login");
       return false;
     }
-    toast.info("Fonction Premium — passez à une offre payante pour l'utiliser 🔒");
+    toast.info("Função Premium — passe para uma oferta paga para a utilizar 🔒");
     navigate("/tarifs");
     return false;
   };
@@ -159,7 +159,7 @@ export default function Calculators() {
       name: active.name,
       materials: result.materials.map((m) => ({ name: m.name, quantity: m.quantity, unit: m.unit })),
     }]);
-    toast.success(`« ${active.name} » ajouté à la sélection`);
+    toast.success(`« ${active.name} » adicionado à seleção`);
   };
 
   const buildGroupedQuote = async () => {
@@ -174,7 +174,7 @@ export default function Calculators() {
       const { data } = await api.post("/documents", {
         doc_type: "quote", title: `Devis — ${cart.map((e) => e.name).join(" + ")}`, lines,
       });
-      toast.success("Devis groupé créé — complétez les prix");
+      toast.success("Orçamento agrupado criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch { toast.error("Não foi possível criar o orçamento"); }
     finally { setAddingQuote(false); }
@@ -207,7 +207,7 @@ export default function Calculators() {
       a.href = url; a.download = `fiche-calcul-${active.key}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch { toast.error("Export PDF impossible"); }
+    } catch { toast.error("Impossível exportar PDF"); }
     finally { setBusyPdf(false); }
   };
 
@@ -227,7 +227,7 @@ export default function Calculators() {
       const { data } = await api.post("/documents", {
         doc_type: "quote", title: `Devis — ${active.name}`, lines,
       });
-      toast.success("Devis créé — complétez les prix");
+      toast.success("Orçamento criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch { toast.error("Não foi possível criar o orçamento"); }
     finally { setAddingQuote(false); }
@@ -250,8 +250,8 @@ export default function Calculators() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Calculadoras de materiais de construção" description="Calcule as quantidades exactas de tinta, azulejos, Pladur, betão e isolamento para as suas obras. Margens de segurança incluídas. Gera a lista de compras de materiais." keywords="calculadora tinta, calculadora azulejos, calculadora pladur, calculadora betão, calculadora isolamento, quantidade materiais" canonical="/calculateurs" />
-      <SectionTitle as="h1" over="Calculadora de materiais" title="Quantidades exactas, margens incluídas">
+      <SEO title="Calculadoras materiais construção" description="Calcule as quantidades exatas de tinta, azulejo, pladur, betão e isolamento para as suas obras. Margens de segurança incluídas. Gera a lista de compras de materiais." keywords="calculadora de tinta, calculadora de azulejo, calculadora de pladur, calculadora de betão, calculadora de isolamento, quantidade de materiais" canonical="/calculateurs" />
+      <SectionTitle as="h1" over="Calculadora de materiais" title="As quantidades exatas, margens incluídas">
         Cálculos determinísticos e verificáveis: superfícies, volumes, perdas de aplicação e embalagens.
       </SectionTitle>
 
@@ -272,7 +272,7 @@ export default function Calculators() {
         <div className="surface p-5 rounded-md border-primary/40" data-testid="calc-cart">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="overline flex items-center gap-2"><ShoppingCart className="h-3.5 w-3.5" /> Ma sélection ({cart.length} {cart.length > 1 ? "calculs" : "calcul"})</p>
+              <p className="overline flex items-center gap-2"><ShoppingCart className="h-3.5 w-3.5" /> A minha seleção ({cart.length} {cart.length > 1 ? "calculs" : "calcul"})</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {cart.map((e, i) => (
                   <span key={e.id} className="inline-flex items-center gap-1.5 text-sm bg-muted/50 border border-border rounded-full pl-3 pr-1.5 py-1" data-testid={`calc-cart-item-${i}`}>
@@ -286,9 +286,9 @@ export default function Calculators() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" className="rounded-sm text-muted-foreground" onClick={() => setCart([])} data-testid="calc-cart-clear">Vider</Button>
+              <Button variant="ghost" className="rounded-sm text-muted-foreground" onClick={() => setCart([])} data-testid="calc-cart-clear">Esvaziar</Button>
               <Button className="rounded-sm gap-2" disabled={addingQuote} onClick={buildGroupedQuote} data-testid="calc-cart-quote-btn">
-                {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Créer le devis groupé
+                {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Criar o orçamento agrupado
               </Button>
             </div>
           </div>
@@ -322,20 +322,20 @@ export default function Calculators() {
             </div>
           ))}
           <Button onClick={run} disabled={busy} data-testid="calculate-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Calculator className="h-4 w-4" /> Calculer
+            <Calculator className="h-4 w-4" /> Calcular
           </Button>
         </div>
 
         <div className="lg:col-span-2 grid gap-6">
           {!result && (
             <div className="surface p-12 text-center text-sm text-muted-foreground" data-testid="calculator-empty">
-              Renseignez les dimensions puis lancez le calcul.
+              Indique as dimensões e depois lance o cálculo.
             </div>
           )}
           {result && (
             <>
               <div className="surface p-6" data-testid="calculator-results">
-                <p className="overline">Résultats</p>
+                <p className="overline">Resultados</p>
                 <div className="mt-5 grid sm:grid-cols-2 gap-3">
                   {result.results.map((r, i) => (
                     <div key={i} className="p-4 border border-border rounded-sm">
@@ -345,7 +345,7 @@ export default function Calculators() {
                   ))}
                 </div>
                 <p className="num mt-6 text-sm">
-                  Budget matériaux estimé : <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
+                  Orçamento materiais estimado: <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
@@ -353,26 +353,26 @@ export default function Calculators() {
                     <button onClick={() => navigate("/tarifs")} data-testid="calc-premium-banner"
                       className="w-full mb-1 flex items-center gap-2 text-sm bg-primary/10 border border-primary/30 text-primary rounded-sm px-4 py-2.5 hover:bg-primary/15 transition-colors">
                       <Lock className="h-4 w-4" />
-                      <span>Export PDF, devis et partage sont <b>Premium</b> — débloquez-les.</span>
-                      <span className="ml-auto font-semibold underline">Passer Premium →</span>
+                      <span>Exportar PDF, orçamento e partilha estão <b>Premium</b> — desbloqueie-os.</span>
+                      <span className="ml-auto font-semibold underline">Passar Premium →</span>
                     </button>
                   )}
                   <Button onClick={exportPdf} disabled={busyPdf} variant="outline" className="rounded-sm gap-2" data-testid="calc-export-pdf-btn">
                     {busyPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : (!isPremium ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />)}
-                    {optim ? "Exporter PDF (avec prix)" : "Exporter en PDF"}
+                    {optim ? "Exportar PDF (com preços)" : "Exportar em PDF"}
                   </Button>
                   <Button onClick={addToQuote} disabled={addingQuote} className="rounded-sm gap-2" data-testid="calc-add-quote-btn">
-                    {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Ajouter au devis
+                    {addingQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Adicionar ao orçamento
                   </Button>
                   <Button onClick={addToSelection} variant="outline" className="rounded-sm gap-2" data-testid="calc-add-selection-btn">
-                    <ListPlus className="h-4 w-4" /> Ajouter à la sélection
+                    <ListPlus className="h-4 w-4" /> Adicionar à seleção
                   </Button>
                   <Button onClick={shareSheet} disabled={sharing} variant="outline" className="rounded-sm gap-2" data-testid="calc-share-btn">
-                    {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Partager la fiche
+                    {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Partilhar a ficha
                   </Button>
                   {COMPARE_CONFIG[active.key] && (
                     <Button onClick={compareFormats} disabled={busy} variant="outline" className="rounded-sm gap-2" data-testid="calc-compare-btn">
-                      <Columns3 className="h-4 w-4" /> Comparer les formats
+                      <Columns3 className="h-4 w-4" /> Comparar os formatos
                     </Button>
                   )}
                 </div>
@@ -381,15 +381,15 @@ export default function Calculators() {
               {compare && (
                 <div className="surface overflow-x-auto" data-testid="calc-compare-table">
                   <div className="px-6 pt-5">
-                    <p className="overline">Comparaison des formats</p>
+                    <p className="overline">Comparação de formatos</p>
                     <p className="text-xs text-muted-foreground mt-1">{compare.cfg.caption}</p>
                   </div>
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                        <TableHead>Format</TableHead>
+                        <TableHead>Formato</TableHead>
                         <TableHead className="text-right">{compare.cfg.metric.title}</TableHead>
-                        <TableHead className="text-right">Budget estimé</TableHead>
+                        <TableHead className="text-right">Orçamento estimado</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -398,7 +398,7 @@ export default function Calculators() {
                         const isBest = (c.budget || Infinity) === best;
                         return (
                           <TableRow key={i} className={isBest ? "bg-primary/10" : "even:bg-muted/30"}>
-                            <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ le moins cher</span>}</TableCell>
+                            <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ o mais barato</span>}</TableCell>
                             <TableCell className="num text-right">{num(c.metric, 0)}</TableCell>
                             <TableCell className="num text-right font-semibold text-primary">{eur(c.budget)}</TableCell>
                           </TableRow>
@@ -413,9 +413,9 @@ export default function Calculators() {
                 <Table data-testid="calculator-materials">
                   <TableHeader>
                     <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                      <TableHead>Matériau à acheter</TableHead>
-                      <TableHead className="text-right">Quantité</TableHead>
-                      <TableHead>Unité</TableHead>
+                      <TableHead>Material a comprar</TableHead>
+                      <TableHead className="text-right">Quantidade</TableHead>
+                      <TableHead>Un.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -431,22 +431,22 @@ export default function Calculators() {
               </div>
 
               <Button variant="outline" onClick={findPrices} disabled={busy} data-testid="find-prices-btn" className="rounded-sm gap-2 w-fit">
-                <Search className="h-4 w-4" /> Trouver les meilleurs prix pour cette liste
+                <Search className="h-4 w-4" /> Encontrar os melhores preços para esta lista
               </Button>
 
               {optim && (
                 <div className="grid gap-4" data-testid="calculator-optimization">
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div className="surface p-6">
-                      <p className="overline text-muted-foreground">Tout chez {optim.best_single?.supplier}</p>
+                      <p className="overline text-muted-foreground">Tudo em {optim.best_single?.supplier}</p>
                       <p className="num mt-3 text-xl font-bold">{eur(optim.best_single?.total)}</p>
                     </div>
                     <div className="surface p-6 border-primary">
-                      <p className="overline">Multi-fournisseurs</p>
+                      <p className="overline">Multi-fornecedores</p>
                       <p className="num mt-3 text-xl font-bold text-primary">{eur(optim.multi_supplier.total)}</p>
                     </div>
                     <div className="surface p-6">
-                      <p className="overline text-muted-foreground">Économie</p>
+                      <p className="overline text-muted-foreground">Poupança</p>
                       <p className="num mt-3 text-xl font-bold text-emerald-500">{eur(optim.savings)}</p>
                     </div>
                   </div>
@@ -454,9 +454,9 @@ export default function Calculators() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                          <TableHead>Produit</TableHead>
-                          <TableHead className="text-right">Qté</TableHead>
-                          <TableHead>Fournisseur</TableHead>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-right">Qtd.</TableHead>
+                          <TableHead>Fornecedor</TableHead>
                           <TableHead className="text-right">PU</TableHead>
                           <TableHead className="text-right">Total</TableHead>
                         </TableRow>
@@ -475,8 +475,7 @@ export default function Calculators() {
                     </Table>
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <ShoppingCart className="h-3 w-3" /> Mode {optim.mode} — prix de démonstration, branchez les
-                    API fournisseurs pour des prix réels.
+                    <ShoppingCart className="h-3 w-3" /> Modo {optim.mode} — preço de demonstração, ligue as API de fornecedores para preços reais.
                   </p>
                 </div>
               )}
@@ -488,22 +487,22 @@ export default function Calculators() {
       <Dialog open={!!shareUrl} onOpenChange={(o) => !o && setShareUrl(null)}>
         <DialogContent className="max-w-md" data-testid="calc-share-dialog">
           <DialogHeader>
-            <DialogTitle>Partager la fiche de calcul</DialogTitle>
-            <DialogDescription>Envoyez ce lien à votre client par SMS ou e-mail. Il pourra consulter la fiche sans compte.</DialogDescription>
+            <DialogTitle>Partilhar a ficha de cálculo</DialogTitle>
+            <DialogDescription>Envie esta ligação ao seu cliente por SMS ou e-mail. Ele poderá consultar a ficha sem conta.</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
             <Input readOnly value={shareUrl || ""} className="rounded-sm num text-xs" data-testid="calc-share-url" />
             <Button variant="outline" className="rounded-sm gap-1 shrink-0" data-testid="calc-share-copy"
-              onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Lien copié"); }}>
-              <Copy className="h-4 w-4" /> Copier
+              onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Link copiado"); }}>
+              <Copy className="h-4 w-4" /> Copiar
             </Button>
           </div>
           {shareUrl && (
             <div className="flex flex-col items-center gap-2 py-2" data-testid="calc-share-qr">
               <img src={`${process.env.REACT_APP_BACKEND_URL}/api/qr?data=${encodeURIComponent(shareUrl)}`}
-                   alt="QR code de la fiche" width="150" height="150"
+                   alt="Código QR da ficha" width="150" height="150"
                    className="rounded-md bg-white p-2 border border-border" />
-              <p className="text-xs text-muted-foreground">Scannez pour ouvrir la fiche sur le chantier</p>
+              <p className="text-xs text-muted-foreground">Digitalize para abrir a ficha na obra</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 mt-1">

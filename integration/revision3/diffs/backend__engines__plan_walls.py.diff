@@ -1,0 +1,287 @@
+--- current/backend/engines/plan_walls.py
++++ zip/backend/engines/plan_walls.py
+@@ -10,12 +10,13 @@
+ from __future__ import annotations
+ 
+ import re
++import math
+ from itertools import count
+ 
+ from engines.plan_vector_pdf import _segments
+ 
+ MIN_WALL_LEN_M = 0.40
+-MIN_T_M, MAX_T_M = 0.05, 0.60
++MIN_T_M, MAX_T_M = 0.05, 0.61  # marge numérique autour de 60 cm ; aucune épaisseur imposée
+ FACE_TOL_M = 0.012       # rattachement d'une extrémité de cote à une face / un axe
+ CONFIRM_TOL_M = 0.010    # accord cote écrite / mesure géométrique
+ _SECTION_RE = re.compile(r"^\d{2,3}\s*[xX×]\s*\d{2,3}$")
+@@ -26,7 +27,12 @@
+ 
+ def merged_lines(vectors: list[dict]) -> tuple[list[tuple], list[tuple]]:
+     """Segments h/v colinéaires fusionnés → (hs [(y, xa, xb)], vs [(x, ya, yb)]) en points PDF."""
+-    hs, vs, _ = _segments(vectors)
++    # Les axes pointillés et les polygones de hachure ne sont pas des faces.
++    # Conserver les contours re/qu, y compris les bandes pleines.
++    def face_candidate(v):
++        return (v.get("cad_role") != "dimension" and not v.get("curve_approximation") and not re.search(r"\[\s*\d", v.get("dashes") or "[] 0")
++                and (v.get("paint_type") != "f" or v.get("type") in ("rect", "quad")))
++    hs, vs, _ = _segments([v for v in vectors if face_candidate(v)])
+ 
+     def merge(segs):
+         segs = sorted(segs)
+@@ -45,15 +51,60 @@
+     return max(0.0, min(b1, b2) - max(a1, a2))
+ 
+ 
++def closed_bands(vectors: list[dict], ppm: float, bbox=None) -> list[dict]:
++    """Bandes rectangulaires fermées réelles du PDF, avant l'appariement de traits.
++
++    C'est une preuve de contour, pas une identification automatique de matériau
++    ou de rôle porteur. Les quadrilatères obliques ne sont pas redressés.
++    """
++    out = []
++    for v in vectors:
++        if v.get("cad_role") == "dimension" or re.search(r"\[\s*\d", v.get("dashes") or "[] 0"):
++            continue
++        if v.get("type") == "rect":
++            x, y, w, h = v["x"], v["y"], v["w"], v["h"]
++        elif v.get("type") == "quad":
++            pts = v["points"]
++            if any(abs(a[0] - b[0]) > .1 and abs(a[1] - b[1]) > .1
++                   for a, b in zip(pts, pts[1:] + pts[:1])):
++                continue
++            x, y = min(p[0] for p in pts), min(p[1] for p in pts)
++            w, h = max(p[0] for p in pts) - x, max(p[1] for p in pts) - y
++        else:
++            continue
++        if not MIN_T_M <= min(w, h) / ppm <= MAX_T_M or max(w, h) / ppm < 1.0:
++            continue
++        if bbox and not (bbox[0] <= x <= bbox[2] and bbox[1] <= y <= bbox[3]):
++            continue
++        vert = h > w
++        lo, hi = (y, y + h) if vert else (x, x + w)
++        p1, p2 = (x, x + w) if vert else (y, y + h)
++        candidate = {"wall_id": None, "orientation": "vertical" if vert else "horizontal",
++                     "pos_1": p1, "pos_2": p2, "lo": lo, "hi": hi,
++                     "face_1_extent": [lo, hi], "face_2_extent": [lo, hi],
++                     "axis_pos": (p1 + p2) / 2, "thickness_m": round((p2 - p1) / ppm, 4),
++                     "source": "closed_contour", "confidence": .8, "ambiguous": False}
++        # Fusion seulement si mêmes faces et emprises contiguës, sans combler une baie.
++        previous = next((b for b in out if b["orientation"] == candidate["orientation"]
++                         and abs(b["pos_1"] - p1) < .1 and abs(b["pos_2"] - p2) < .1
++                         and min(b["hi"], hi) >= max(b["lo"], lo) - .1), None)
++        if previous:
++            previous["lo"], previous["hi"] = min(lo, previous["lo"]), max(hi, previous["hi"])
++            previous["face_1_extent"] = previous["face_2_extent"] = [previous["lo"], previous["hi"]]
++        else:
++            out.append(candidate)
++    return out
++
++
+ def detect_walls(hs: list[tuple], vs: list[tuple], ppm: float, thickness_cotes: list[dict] | None = None,
+                  bbox: tuple | None = None) -> list[dict]:
+     """Paires de traits longs parallèles voisins (5–60 cm) qui se font face → murs. `thickness_cotes` : cotes
+     d'épaisseur écrites (orientation, p1, p2 en pt) qui confirment une paire (source explicit_dimension).
+     Filtres anti-bruit : emprise `bbox` (zone cotée du dessin, exclut cartouche/détails), épaisseurs limitées aux
+-    épaisseurs écrites sur le plan (±10 mm) lorsqu'il en existe, longueur ≥ 1 m pour une paire non confirmée."""
++    plage d'épaisseurs admissibles, longueur ≥ 1 m pour une paire non confirmée.
++    Les cotes d'épaisseur confirment seulement la paire à laquelle elles se rattachent."""
+     walls: list[dict] = []
+     ids = count(1)
+-    allowed = sorted({round(c["value_m"], 2) for c in thickness_cotes or []})
+     for orient, lines in (("vertical", vs), ("horizontal", hs)):
+         longs = sorted(ln for ln in lines if ln[2] - ln[1] >= MIN_WALL_LEN_M * ppm)
+         if bbox:
+@@ -88,8 +139,8 @@
+                 if gap < MIN_T_M * ppm:
+                     continue
+                 t_m = gap / ppm
+-                if allowed and not any(abs(t_m - t) <= 0.010 for t in allowed):
+-                    continue
++                # Une épaisseur cotée est une preuve locale, jamais un filtre
++                # global excluant les autres épaisseurs présentes sur le plan.
+                 ov = _overlap(a1, b1, a2, b2)
+                 if ov < MIN_WALL_LEN_M * ppm or ov < 0.5 * min(b1 - a1, b2 - a2):
+                     continue
+@@ -274,7 +325,9 @@
+         ref, wa, wb = "unresolved", None, None
+         if a and b:
+             wa, wb = a[0], b[0]
+-            crossed = [w for w in walls if w["orientation"] == wall_o and d["p1"][along] + 1 < w["axis_pos"] < d["p2"][along] - 1]
++            crossed = [w for w in walls if w is not wa and w is not wb and w["orientation"] == wall_o
++                       and d["p1"][along] + 1 < w["axis_pos"] < d["p2"][along] - 1
++                       and _overlap(max(wa["lo"], wb["lo"]), min(wa["hi"], wb["hi"]), w["lo"], w["hi"]) > 0]
+             if wa is wb:
+                 ref = "wall_thickness" if {a[1], b[1]} == {"face_1", "face_2"} else "axis_to_face"
+             elif a[1] == "axis" and b[1] == "axis":
+@@ -304,7 +357,7 @@
+ 
+ def _bands(walls: list[dict], orient: str, ppm: float) -> list[dict]:
+     """Bandes libres entre deux murs parallèles voisins qui se font face (espace entre nus intérieurs)."""
+-    par = sorted((w for w in walls if w["orientation"] == orient), key=lambda w: w["pos_1"])
++    par = sorted((w for w in walls if w["orientation"] == orient and not w.get("is_post")), key=lambda w: w["pos_1"])
+     out = []
+     for i, a in enumerate(par):
+         for b in par[i + 1:]:
+@@ -318,10 +371,20 @@
+             both_posts = bool(a.get("is_post") and b.get("is_post"))
+             if both_posts and abs(a["lo"] - b["lo"]) > 0.03 * ppm:
+                 continue  # poteaux d'une même file uniquement
+-            if any(a["pos_2"] < c["axis_pos"] < b["pos_1"] and _overlap(ov_lo, ov_hi, c["lo"], c["hi"]) > 0.5 * (ov_hi - ov_lo)
+-                   and (not both_posts or c.get("is_post")) for c in par if c is not a and c is not b):
+-                continue
+-            out.append({"from": a, "to": b, "lo": ov_lo, "hi": ov_hi})
++            free = [(ov_lo, ov_hi)]
++            for obstacle in par:
++                if obstacle is a or obstacle is b or not a["pos_2"] < obstacle["axis_pos"] < b["pos_1"]:
++                    continue
++                remaining = []
++                for low, high in free:
++                    if _overlap(low, high, obstacle["lo"], obstacle["hi"]) <= 0:
++                        remaining.append((low, high))
++                    else:
++                        if low < obstacle["lo"]: remaining.append((low, obstacle["lo"]))
++                        if high > obstacle["hi"]: remaining.append((obstacle["hi"], high))
++                free = remaining
++            out.extend({"from": a, "to": b, "lo": low, "hi": high}
++                       for low, high in free if high - low >= min_ov)
+     return out
+ 
+ 
+@@ -350,6 +413,8 @@
+                 written = None
+                 for c in cotes:
+                     if c["orientation"] != ("h" if direction == "horizontal" else "v"):
++                        continue
++                    if c["reference_type"] != "inside_face_to_inside_face" or c["from_wall"] != a["wall_id"] or c["to_wall"] != b["wall_id"]:
+                         continue
+                     along = 0 if direction == "horizontal" else 1
+                     if abs(c["p1"][along] - f1) <= FACE_TOL_M * ppm and abs(c["p2"][along] - f2) <= FACE_TOL_M * ppm:
+@@ -380,8 +445,30 @@
+                             "coordinates": {"x1": round(seg[0][0] * px, 2), "y1": round(seg[0][1] * px, 2),
+                                             "x2": round(seg[1][0] * px, 2), "y2": round(seg[1][1] * px, 2)},
+                             "zone": {"lo": round(c_lo * px, 1), "hi": round(c_hi * px, 1)},
++                            "cell_bounds_px": ([round(v * px, 1) for v in
++                                                ((f1, c_lo, f2, c_hi) if direction == "horizontal" else (c_lo, f1, c_hi, f2))]
++                                               if cell else None),
+                             "status": status, "confidence": round(conf, 2)})
+     return out
++
++
++def cell_coverage(measurements: list[dict]) -> dict:
++    cells = {}
++    for m in measurements:
++        if not m.get("cell_bounds_px"):
++            continue
++        key = tuple(m["cell_bounds_px"])
++        cells.setdefault(key, []).append(m)
++    rows = []
++    for i, (bounds, ms) in enumerate(sorted(cells.items()), 1):
++        directions = {m["direction"] for m in ms}
++        rows.append({"cell_id": f"CELL-{i:03d}", "bounds_px": list(bounds),
++                     "measurement_ids": [m["measurement_id"] for m in ms],
++                     "both_directions": directions == {"horizontal", "vertical"},
++                     "confirmed": directions == {"horizontal", "vertical"} and all(m["status"] == "confirmed" for m in ms)})
++    return {"scope": "detected_rectangular_cells", "cells": rows, "detected": len(rows),
++            "with_both_directions": sum(c["both_directions"] for c in rows),
++            "confirmed": sum(c["confirmed"] for c in rows)}
+ 
+ 
+ def closure_equations(walls: list[dict], cotes: list[dict], ppm: float) -> list[dict]:
+@@ -448,18 +535,41 @@
+         fails.append("somme des travées et murs non comparée à la cote extérieure")
+     if meas and all(m["status"] != "confirmed" for m in meas):
+         fails.append("aucune dimension intérieure confirmée par une cote écrite")
++    pending = [m for m in meas if m.get("status") != "confirmed"]
++    if pending:
++        fails.append(f"dimensions intérieures non confirmées ({len(pending)})")
++    for direction in ("horizontal", "vertical"):
++        if not any(m.get("direction") == direction for m in meas):
++            fails.append(f"aucune mesure intérieure {direction}e")
++    coverage = result.get("coverage") or cell_coverage(meas)
++    if not coverage["detected"] or coverage["with_both_directions"] != coverage["detected"]:
++        fails.append("couverture des cellules détectées non établie dans les deux directions")
++    if any(w.get("ambiguous") for w in walls):
++        fails.append("paires de faces ambiguës à confirmer")
++    if any(w.get("ouvrage_class") in ("Poutre", "Semelle filante", "Longrine", "Poteau béton") for w in walls):
++        fails.append("des contours d'ouvrages structurels demandent confirmation avant identification comme murs")
+     return {"complete": not fails, "failed_checks": fails, "message": None if not fails else INCOMPLETE_MSG}
+ 
+ 
+ def analyze_walls(vectors: list[dict], dims_px: list[dict], text_blocks: list[dict], ppm: float, px_per_pt: float,
+                   segments: dict | None = None, page_size_px: tuple | None = None) -> dict:
+     """Pipeline complet géométrie → cotations → rapprochement (sans IA). `segments` = {hs, vs} déjà fusionnés (réanalyse)."""
+-    if not ppm:
++    if not ppm or not math.isfinite(ppm) or ppm <= 0 or not px_per_pt or not math.isfinite(px_per_pt) or px_per_pt <= 0:
+         return {"walls": [], "interior_measurements": [], "closure_equations": [], "cotes": [], "sections_ignored": [],
++                "engine_version": 2, "posts": [], "coverage": cell_coverage([]),
++                "stats": {"walls": 0, "walls_ambiguous": 0, "measurements": 0, "confirmed": 0, "to_confirm": 0, "rows": 0, "rows_closed": 0},
+                 "validation": {"complete": False, "failed_checks": ["échelle inconnue"], "message": INCOMPLETE_MSG}}
+     hs, vs = (segments["hs"], segments["vs"]) if segments else merged_lines(vectors)
+     hs, vs = [tuple(x) for x in hs], [tuple(x) for x in vs]
++    source_hs, source_vs = hs, vs
+     dims = _dims_pt(dims_px, px_per_pt)
++    def object_lines(lines, orientation):
++        along = 0 if orientation == "h" else 1
++        cote_lines = [(d["p1"][1-along], d["p1"][along], d["p2"][along]) for d in dims if d["orientation"] == orientation]
++        return [ln for ln in lines if not any(abs(ln[0] - p) < .2 and _overlap(ln[1], ln[2], lo, hi) > .5 * min(ln[2]-ln[1], hi-lo)
++                                             for p, lo, hi in cote_lines)]
++    # Les longues lignes de cotation périphériques ne sont pas des ouvrages.
++    hs, vs = object_lines(hs, "h"), object_lines(vs, "v")
+     thick = [d for d in dims if d.get("value_m") and MIN_T_M <= d["value_m"] <= MAX_T_M]
+     bbox = None
+     if dims:
+@@ -468,18 +578,30 @@
+         m = 0.5 * ppm
+         bbox = (min(xs) - m, min(ys) - m, max(xs) + m, max(ys) + m)
+     walls = detect_walls(hs, vs, ppm, thick, bbox)
++    contour_vectors = segments.get("contour_vectors", []) if segments else [v for v in vectors if v.get("type") in ("rect", "quad")]
++    contours = closed_bands(contour_vectors, ppm, bbox)
++    # Un axe intérieur ne doit pas découper un contour fermé en faux demi-murs.
++    walls = contours + [w for w in walls if not any(c["orientation"] == w["orientation"]
++                       and _overlap(c["pos_1"], c["pos_2"], w["pos_1"], w["pos_2"]) > .5 * min(c["pos_2"] - c["pos_1"], w["pos_2"] - w["pos_1"])
++                       and _overlap(c["lo"], c["hi"], w["lo"], w["hi"]) > .5 * min(c["hi"] - c["lo"], w["hi"] - w["lo"])
++                       for c in contours)]
++    walls.sort(key=lambda w: (w["orientation"], w["pos_1"], w["lo"]))
++    for idx, w in enumerate(walls, 1): w["wall_id"] = f"M{idx:02d}"
+     posts = detect_posts(hs, vs, ppm, text_blocks or [], px_per_pt)
+     nxt = len(walls) + 1
+     for w in posts:
+         w["wall_id"] = f"M{nxt:02d}"
+         nxt += 1
+-    walls += posts
+-    snap_faces_to_cotes(walls, dims, ppm)
++    # Les faces de poteaux restent des appuis, pas des refends de locaux.
++    # Garder les faces mesurées : les déplacer vers les cotes à vérifier
++    # effaçait artificiellement les écarts allant jusqu'à 3 cm.
+     _intersections(walls, ppm)
+     from engines.plan_symbols import extract_legend, label_walls
+     label_walls([w for w in walls if not w.get("is_post")], text_blocks or [], px_per_pt, ppm)
+-    W = page_size_px or (max([t["x"] + t.get("w", 0) for t in text_blocks or []] or [1]), max([t["y"] + t.get("h", 0) for t in text_blocks or []] or [1]))
+-    legend = extract_legend(text_blocks or [], W[0], W[1])
++    W = (page_size_px[0] / px_per_pt, page_size_px[1] / px_per_pt) if page_size_px else (
++        max([t["x"] + t.get("w", 0) for t in text_blocks or []] or [1]),
++        max([t["y"] + t.get("h", 0) for t in text_blocks or []] or [1]))
++    legend = extract_legend(text_blocks or [], *W)
+     cotes = classify_cotes(dims, walls, ppm)
+     meas = interior_measurements(walls, cotes, ppm, px_per_pt)
+     rows = closure_equations(walls, cotes, ppm)
+@@ -489,12 +611,16 @@
+     result = {"walls": [_wall_json(w, ppm, px_per_pt) for w in walls], "interior_measurements": meas, "closure_equations": rows,
+               "cotes": [{k: v for k, v in c.items() if k not in ("p1", "p2")} for c in cotes],
+               "sections_ignored": sorted(set(sections)), "pt_per_m": round(ppm, 4), "px_per_pt": round(px_per_pt, 5),
++              "posts": [_wall_json(w, ppm, px_per_pt) for w in posts], "engine_version": 2,
+               "peripheral": peripheral, "legend": legend,
+               "stats": {"walls": len(walls), "walls_ambiguous": sum(1 for w in walls if w["ambiguous"]), "measurements": len(meas),
+                         "confirmed": sum(1 for m in meas if m["status"] == "confirmed"),
+                         "to_confirm": sum(1 for m in meas if m["status"] == "to_confirm"), "rows": len(rows),
+                         "rows_closed": sum(1 for r in rows if r["status"] == "closed")}}
+-    result["segments"] = {"hs": [list(map(lambda v: round(v, 3), x)) for x in hs if x[2] - x[1] >= 0.1 * ppm],
+-                          "vs": [list(map(lambda v: round(v, 3), x)) for x in vs if x[2] - x[1] >= 0.1 * ppm]}
++    # Garder les sources en points, avant filtrage par cotes ou calibration :
++    # un recalcul doit pouvoir reproduire une extraction fraîche.
++    result["segments"] = {"contour_vectors": contour_vectors,
++                          "hs": [list(x) for x in source_hs], "vs": [list(x) for x in source_vs]}
++    result["coverage"] = cell_coverage(meas)
+     result["validation"] = validate(result)
+     return result

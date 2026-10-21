@@ -1,0 +1,13 @@
+--- current/backend/engines/dwg_convert.py
++++ zip4/backend/engines/dwg_convert.py
+@@ -14,8 +14,8 @@
+ 
+ logger = logging.getLogger("dwg_convert")
+ 
+-API_BASE = os.environ["CLOUDCONVERT_API_BASE"].rstrip("/")
+-SYNC_BASE = os.environ["CLOUDCONVERT_SYNC_BASE"].rstrip("/")
++API_BASE = "https://api.cloudconvert.com/v2"
++SYNC_BASE = "https://sync.api.cloudconvert.com/v2"
+ 
+ 
+ def is_configured() -> bool:

@@ -3,20 +3,14 @@ import { Link } from "react-router-dom";
 import { Clock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BLOG_ARTICLES } from "@/lib/blogArticles";
-import { BLOG_ARTICLES_PT } from "@/lib/blogPortugal";
-import { useI18n } from "@/context/I18nContext";
 
 const SORO_SRC = "https://app.trysoro.com/api/embed/5160a050-06b9-473f-aa12-4cd9a5150663";
 
 export function SoroBlog() {
   const holder = useRef(null);
-  const { lang } = useI18n();
-  const source = lang === "pt" ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
-  const latest = source.slice(0, 3);
+  const latest = BLOG_ARTICLES.slice(0, 3);
 
   useEffect(() => {
-    // Ne charge le script Soro qu'en contexte non-PT (feed remote FR, indisponible en PT).
-    if (lang === "pt") return;
     // Charge le script Soro une seule fois (compatible SPA React) — silencieux tant qu'il est désactivé
     let script = document.querySelector(`script[data-soro="1"]`);
     if (!script) {
@@ -26,7 +20,7 @@ export function SoroBlog() {
       script.setAttribute("data-soro", "1");
       document.body.appendChild(script);
     }
-  }, [lang]);
+  }, []);
 
   return (
     <section className="border-t border-border bg-secondary/20" id="blog" data-testid="blog-section">
@@ -35,7 +29,7 @@ export function SoroBlog() {
           <div>
             <p className="overline">O blogue ConstruPilot</p>
             <h2 className="mt-4 font-display text-3xl lg:text-4xl font-bold tracking-tight">
-              Conselhos, medições e actualidades da construção
+              Conselhos, medições &amp; notícias da construção
             </h2>
           </div>
           <Link to="/blog">
@@ -77,10 +71,8 @@ export function SoroBlog() {
           ))}
         </div>
 
-        {/* Embed Soro — só carregado em contexto não-PT (conteúdo remoto FR não traduzível). */}
-        {lang !== "pt" && (
-          <div id="soro-blog" ref={holder} data-testid="soro-blog" className="mt-8" />
-        )}
+        {/* Embed Soro — s'affiche automatiquement dès qu'il est activé dans le tableau de bord Soro */}
+        <div id="soro-blog" ref={holder} data-testid="soro-blog" className="mt-8" />
       </div>
     </section>
   );

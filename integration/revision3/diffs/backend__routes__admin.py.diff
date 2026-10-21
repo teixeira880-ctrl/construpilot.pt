@@ -1,0 +1,12 @@
+--- current/backend/routes/admin.py
++++ zip/backend/routes/admin.py
+@@ -755,8 +755,7 @@
+     return {
+         "current": current,
+         "options": [
+-            {"tier": k, "label": v["label"], "desc": v["desc"], "model": v["model"], "provider": v["provider"],
+-             "key_source": "Clé OpenAI de l'entreprise" if v["provider"] == "openai" else "Clé LLM universelle Emergent",
++            {"tier": k, "label": v["label"], "desc": v["desc"], "model": v["model"],
+              "quality": v.get("quality"), "speed": v.get("speed"), "cost": v.get("cost")}
+             for k, v in ai.AI_TEXT_MODELS.items()
+         ],

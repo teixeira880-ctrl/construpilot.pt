@@ -11,8 +11,12 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.get("/auth/me");
       setUser(data);
-    } catch {
-      setUser(null);
+      try { localStorage.setItem("construpilot_session", "1"); } catch {}
+    } catch (error) {
+      if ([401, 403].includes(error.response?.status)) {
+        setUser(null);
+        try { localStorage.removeItem("construpilot_session"); } catch {}
+      }
     } finally {
       setLoading(false);
     }
@@ -24,21 +28,25 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return;
     }
-    // Éviter un 401 bruyant si l'utilisateur n'a jamais été connecté
-    const hasToken = !!localStorage.getItem("construpilot_token");
-    const hasCookie = document.cookie.includes("session_token=");
-    if (!hasToken && !hasCookie) {
-      setLoading(false);
-      return;
-    }
+    // Seul le serveur peut vérifier le cookie httpOnly. Le stockage local peut
+    // être effacé ou bloqué alors que la session est toujours valide.
     checkAuth();
   }, [checkAuth]);
 
+  // Thème mémorisé sur le compte : appliqué dès que l'utilisateur est connu (tous appareils)
+  useEffect(() => {
+    if (!user?.theme) return;
+    document.documentElement.classList.toggle("dark", user.theme === "dark");
+    try { localStorage.setItem("construpilot_theme", user.theme); } catch {}
+    window.dispatchEvent(new Event("construpilot-theme"));
+  }, [user?.theme]);
+
   const login = async (email, password) => {
+    // Auth par cookie httpOnly — le champ `token` éventuellement renvoyé est ignoré.
     const { data } = await api.post("/auth/login", { email, password });
     if (data.two_fa_required) return data;
-    if (data.token) localStorage.setItem("construpilot_token", data.token);
     setUser(data.user);
+    try { localStorage.setItem("construpilot_session", "1"); } catch {}
     return data.user;
   };
 
@@ -46,8 +54,8 @@ export const AuthProvider = ({ children }) => {
     const { data } = await api.post("/auth/verify-2fa", {
       pending_token: pendingToken, code,
     });
-    if (data.token) localStorage.setItem("construpilot_token", data.token);
     setUser(data.user);
+    try { localStorage.setItem("construpilot_session", "1"); } catch {}
     return data.user;
   };
 
@@ -55,9 +63,9 @@ export const AuthProvider = ({ children }) => {
     const payload = { name, email, password, ...extra };
     if (referredByCode) payload.referred_by_code = referredByCode.trim().toUpperCase();
     try { payload.lang = localStorage.getItem("construpilot_lang") || undefined; } catch { /* noop */ }
-    const { data } = await api.post("/auth/register", payload);
-    if (data.token) localStorage.setItem("construpilot_token", data.token);
+    try { const ft = localStorage.getItem("cp_first_touch"); if (ft) payload.attribution = JSON.parse(ft); } catch { /* noop */ }    const { data } = await api.post("/auth/register", payload);
     setUser(data.user);
+    try { localStorage.setItem("construpilot_session", "1"); } catch {}
     return data.user;
   };
 
@@ -65,7 +73,8 @@ export const AuthProvider = ({ children }) => {
     try {
       await api.post("/auth/logout");
     } catch {}
-    localStorage.removeItem("construpilot_token");
+    // Nettoyer un éventuel legacy token qui traînerait de l'ancienne version.
+    try { localStorage.removeItem("construpilot_token"); localStorage.removeItem("construpilot_session"); } catch {}
     setUser(null);
   };
 
@@ -77,3 +86,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+

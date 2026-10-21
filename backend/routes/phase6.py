@@ -81,7 +81,7 @@ async def promote(results: list[dict], query: str) -> list[dict]:
             continue
         chosen = dict(results[idx])
         chosen["sponsored"] = True
-        chosen["sponsored_disclosure"] = "Sponsorisé — placement payé"
+        chosen["sponsored_disclosure"] = "Patrocinado — colocação paga"
         # Déplacer en tête
         rest = results[:idx] + results[idx + 1:]
         return [chosen] + rest

@@ -15,6 +15,10 @@ const STATUS_STYLE = {
   "envoyée": "bg-primary/10 text-primary border-primary/40",
   "générée": "bg-muted text-muted-foreground border-border",
 };
+const STATUS_LABEL = {
+  "soldée": "liquidada", "acompte versé": "adiantamento pago", "acceptée": "aceite", "ouverte": "aberta",
+  "relancée": "relançada", "envoyée": "enviada", "générée": "gerada",
+};
 const STATUS_ICON = {
   "soldée": BadgeCheck, "acompte versé": CreditCard, "acceptée": CheckCircle2, "ouverte": Eye,
   "relancée": BellRing, "envoyée": Send, "générée": FileStack,
@@ -35,8 +39,8 @@ export default function PcDashboard() {
     setReportBusy(true);
     try {
       const { data } = await api.post("/pc/weekly-report/send-me");
-      toast.success(`Rapport envoyé à ${data.sent_to} (${data.studies} études)`);
-    } catch (e) { toast.error(e?.response?.data?.detail || "Envoi impossible"); }
+      toast.success(`Relatório enviado a ${data.sent_to} (${data.studies} estudos)`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setReportBusy(false); }
   };
 
@@ -50,26 +54,26 @@ export default function PcDashboard() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="overline flex items-center gap-2 text-primary">
-            <HardHat className="h-4 w-4" /> Études Permis de Construire
+            <HardHat className="h-4 w-4" /> Estudos Licença de Construção
           </p>
-          <h1 className="font-display text-3xl font-extrabold" title="Permis de construire">
-            Tableau de bord PC <span className="text-muted-foreground font-normal text-lg">— Permis de construire</span>
+          <h1 className="font-display text-3xl font-extrabold" title="Licença de construção">
+            Painel de controlo PC <span className="text-muted-foreground font-normal text-lg">— Licença de construção</span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Toutes les études gros œuvre de votre équipe et leur statut client, au même endroit.
+            Todos os estudos de estrutura da sua equipa e o seu estado cliente, no mesmo lugar.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={sendReportNow} disabled={reportBusy}
                 className="rounded-sm gap-2" data-testid="pc-dash-weekly-report-btn">
           <Mail className="h-3.5 w-3.5" />
-          {reportBusy ? "Envoi…" : "M'envoyer le rapport hebdo"}
+          {reportBusy ? "A enviar…" : "Enviar-me o relatório semanal"}
         </Button>
       </header>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[["Études", list.length], ["Montant cumulé TTC", eur(totalTtc)],
-          ["Acceptées", `${accepted} / ${list.length}`],
-          ["Acomptes encaissés", eur(deposits)]].map(([k, v]) => (
+        {[["Estudos", list.length], ["Montante acumulado c/ IVA", eur(totalTtc)],
+          ["Aceites", `${accepted} / ${list.length}`],
+          ["Adiantamentos recebidos", eur(deposits)]].map(([k, v]) => (
           <div key={k} className="surface p-4">
             <p className="text-[10px] text-muted-foreground">{k}</p>
             <p className="font-display text-xl font-extrabold num">{v}</p>
@@ -78,27 +82,27 @@ export default function PcDashboard() {
       </div>
 
       {studies === null ? (
-        <p className="text-muted-foreground animate-pulse">Chargement…</p>
+        <p className="text-muted-foreground animate-pulse">A carregar…</p>
       ) : list.length === 0 ? (
         <div className="surface p-8 text-center space-y-2" data-testid="pc-dashboard-empty">
           <FileSearch className="h-8 w-8 mx-auto text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Aucune étude PC pour l'instant — ouvrez un plan et cliquez « Étude PC ».
+            Nenhum estudo PC por enquanto — abra um plano e clique «Estudo PC».
           </p>
           <Button onClick={() => nav("/plan")} className="rounded-sm" data-testid="pc-dashboard-goto-plan">
-            Ouvrir Mesurer
+            Abrir Medir
           </Button>
         </div>
       ) : (
         <table className="w-full text-sm border border-border">
           <thead>
             <tr className="bg-muted text-left text-xs">
-              <th className="p-2">Chantier</th>
-              <th className="p-2">Générée le</th>
-              <th className="p-2 text-right">Béton</th>
-              <th className="p-2 text-right">Total TTC</th>
-              <th className="p-2">Statut</th>
-              <th className="p-2 text-right">Envois / BC</th>
+              <th className="p-2">Obra</th>
+              <th className="p-2">Gerada a</th>
+              <th className="p-2 text-right">Betão</th>
+              <th className="p-2 text-right">Total c/ IVA</th>
+              <th className="p-2">Estado</th>
+              <th className="p-2 text-right">Envios / BC</th>
               <th className="p-2"></th>
             </tr>
           </thead>
@@ -113,7 +117,7 @@ export default function PcDashboard() {
                     {s.owner_name && (
                       <p className="text-[10px] text-sky-600 flex items-center gap-1 truncate"
                          data-testid={`pc-dash-row-${i}-owner`}>
-                        <Users className="h-3 w-3" /> Étude de {s.owner_name}
+                        <Users className="h-3 w-3" /> Estudo de {s.owner_name}
                       </p>
                     )}
                     {s.last_sent_to && (
@@ -126,7 +130,7 @@ export default function PcDashboard() {
                   <td className="p-2">
                     <Badge className={`rounded-sm gap-1 text-[10px] border hover:bg-transparent ${STATUS_STYLE[s.status]}`}
                            data-testid={`pc-dash-row-${i}-status`}>
-                      <Icon className="h-3 w-3" /> {s.status}
+                      <Icon className="h-3 w-3" /> {STATUS_LABEL[s.status] || s.status}
                     </Badge>
                   </td>
                   <td className="p-2 text-right num text-xs">{s.sends} / {s.orders}</td>
@@ -134,7 +138,7 @@ export default function PcDashboard() {
                     <Button variant="outline" size="sm" className="rounded-sm h-7 text-xs"
                             onClick={() => nav(`/plan?open=${s.plan_id}`)}
                             data-testid={`pc-dash-row-${i}-open`}>
-                      Ouvrir
+                      Abrir
                     </Button>
                   </td>
                 </tr>

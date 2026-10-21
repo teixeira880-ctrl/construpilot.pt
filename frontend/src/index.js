@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HelmetProvider } from "react-helmet-async";
+import { SeoProvider } from "@/components/SEO";
 import "@/index.css";
 import App from "@/App";
 
@@ -17,7 +17,14 @@ if (typeof window !== "undefined") {
   }, true);
 }
 
-// Force non-www (construpilot.fr) : aligne avec le canonical/sitemap ET garantit que
+// Premier contact (attribution des inscriptions : page d'entrée, referrer, UTM) — conservé jusqu'à l'inscription
+try {
+  if (!localStorage.getItem("cp_first_touch")) {
+    const q = new URLSearchParams(window.location.search);
+    localStorage.setItem("cp_first_touch", JSON.stringify({ landing_path: window.location.pathname, referrer: document.referrer || "", utm_source: q.get("utm_source") || "", utm_medium: q.get("utm_medium") || "", utm_campaign: q.get("utm_campaign") || "", qr: q.get("qr") || q.get("lot") || "", ref: q.get("ref") || "", first_seen: new Date().toISOString() }));
+  }
+} catch { /* noop */ }
+// Force non-www (construpilot.pt) : aligne avec le canonical/sitemap ET garantit que
 // les appels API restent same-origin (évite les blocages CORS www -> non-www).
 if (typeof window !== "undefined" && window.location.hostname.startsWith("www.")) {
   const target = new URL(window.location.href);
@@ -37,11 +44,11 @@ const queryClient = new QueryClient({
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <HelmetProvider>
+    <SeoProvider>
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>
-    </HelmetProvider>
+    </SeoProvider>
   </React.StrictMode>,
 );
 

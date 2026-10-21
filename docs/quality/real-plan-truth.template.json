@@ -1,0 +1,18 @@
+{
+  "verified": false,
+  "verified_by": "",
+  "verified_at": "",
+  "plan_sha256": "",
+  "exhaustive": false,
+  "notes": "Référence indépendante, jamais une copie du résultat du moteur. Pages indexées à partir de 0.",
+  "quantities": [
+    {
+      "quantity_id": "IDENTIFIANT_A_ASSOCIER",
+      "page_index": 0,
+      "unit": "m2",
+      "value": null,
+      "relative_tolerance": 0.02,
+      "absolute_tolerance": 0
+    }
+  ]
+}

@@ -27,7 +27,7 @@ class SavingsIn(BaseModel):
 @router.post("/savings/analyse")
 async def analyse_savings(body: SavingsIn):
     if not body.estimation or not body.estimation.get("lots"):
-        raise HTTPException(status_code=400, detail="Estimation requise")
+        raise HTTPException(status_code=400, detail="Estimativa necessária")
     return savings.compute(body.estimation)
 
 
@@ -36,7 +36,7 @@ async def project_savings(project_id: str, user=Depends(current_user)):
     p = await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]},
                                    {"_id": 0, "estimation": 1})
     if not p:
-        raise HTTPException(status_code=404, detail="Projet introuvable")
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return savings.compute(p["estimation"])
 
 
@@ -57,7 +57,7 @@ class ReferralApplyIn(BaseModel):
 async def apply_referral(body: ReferralApplyIn, user=Depends(current_user)) -> dict:
     ok = await referral.apply_code_at_signup(user["user_id"], body.code)
     if not ok:
-        raise HTTPException(status_code=400, detail="Code invalide ou inutilisable")
+        raise HTTPException(status_code=400, detail="Código inválido ou inutilizável")
     promo = await referral.generate_referee_coupon(user["user_id"])
     return {"ok": True, "referee_code": promo}
 
@@ -83,7 +83,7 @@ async def _flags():
 async def register_pro(body: ProfessionalIn, user=Depends(current_user)) -> dict:
     flags = await _flags()
     if not flags.get("marketplace_enabled"):
-        raise HTTPException(status_code=403, detail="Marketplace bientôt disponible")
+        raise HTTPException(status_code=403, detail="Marketplace brevemente disponível")
     doc = body.model_dump()
     doc.update({"user_id": user["user_id"], "verified": False, "badge": None,
                 "credits_cents": 0,
@@ -91,7 +91,7 @@ async def register_pro(body: ProfessionalIn, user=Depends(current_user)) -> dict
     await db.marketplace_pros.update_one({"user_id": user["user_id"]},
                                          {"$set": doc}, upsert=True)
     return {"ok": True, "verified": False,
-            "message": "Inscription reçue — vérification sous 48h."}
+            "message": "Registo recebido — verificação em 48 h."}
 
 
 @router.get("/marketplace/pros")
@@ -147,7 +147,7 @@ async def list_available_leads(user=Depends(current_user)) -> dict:
     pro = await db.marketplace_pros.find_one({"user_id": user["user_id"], "verified": True},
                                              {"_id": 0})
     if not pro:
-        raise HTTPException(status_code=403, detail="Réservé aux professionnels vérifiés")
+        raise HTTPException(status_code=403, detail="Reservado a profissionais verificados")
     q = {"status": "new"}
     leads = await db.marketplace_leads.find(q, {"_id": 0, "email": 0, "phone": 0}
                                             ).sort("created_at", -1).to_list(50)
@@ -163,13 +163,13 @@ async def buy_lead(body: BuyLeadIn, user=Depends(current_user)) -> dict:
     pro = await db.marketplace_pros.find_one({"user_id": user["user_id"], "verified": True},
                                              {"_id": 0})
     if not pro:
-        raise HTTPException(status_code=403, detail="Réservé aux professionnels vérifiés")
+        raise HTTPException(status_code=403, detail="Reservado a profissionais verificados")
     lead = await db.marketplace_leads.find_one({"lead_id": body.lead_id}, {"_id": 0})
     if not lead or lead.get("status") != "new":
-        raise HTTPException(status_code=404, detail="Lead indisponible")
+        raise HTTPException(status_code=404, detail="Lead indisponível")
     price = lead["price_cents"]
     if pro.get("credits_cents", 0) < price:
-        raise HTTPException(status_code=402, detail="Crédits insuffisants")
+        raise HTTPException(status_code=402, detail="Créditos insuficientes")
     await db.marketplace_pros.update_one({"user_id": user["user_id"]},
                                          {"$inc": {"credits_cents": -price}})
     await db.marketplace_leads.update_one(
@@ -199,7 +199,7 @@ class PromoIn(BaseModel):
 @router.post("/admin/promo-codes")
 async def create_promo(body: PromoIn, user=Depends(admin_user)):
     if not body.percent_off and not body.amount_off_cents:
-        raise HTTPException(status_code=400, detail="percent_off ou amount_off_cents requis")
+        raise HTTPException(status_code=400, detail="percent_off ou amount_off_cents necessário")
     coupon_kwargs = {"duration": body.duration, "name": body.name or body.code}
     if body.percent_off:
         coupon_kwargs["percent_off"] = body.percent_off
@@ -242,7 +242,7 @@ async def list_promo(user=Depends(admin_user)):
 async def toggle_promo(code: str, active: bool, user=Depends(admin_user)) -> dict:
     doc = await db.promo_codes.find_one({"code": code.upper()}, {"_id": 0})
     if not doc:
-        raise HTTPException(status_code=404, detail="Code inconnu")
+        raise HTTPException(status_code=404, detail="Código desconhecido")
     stripe.PromotionCode.modify(doc["stripe_promotion_code_id"], active=active)
     await db.promo_codes.update_one({"code": code.upper()}, {"$set": {"active": active}})
     return {"code": code.upper(), "active": active}

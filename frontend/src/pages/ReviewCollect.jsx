@@ -24,11 +24,11 @@ export default function ReviewCollect() {
         setName(data.client_name || "");
         if (data.submitted) setDone(true);
       })
-      .catch(() => setError("Ce lien d'avis est invalide ou a expiré."));
+      .catch(() => setError("Este link de avaliação é inválido ou expirou."));
   }, [token]);
 
   const submit = async () => {
-    if (!rating) return toast.error("Choisissez une note de 1 à 5 étoiles");
+    if (!rating) return toast.error("Escolha uma nota de 1 a 5 estrelas");
     setBusy(true);
     try {
       await api.post(`/reviews/collect/${token}`, {
@@ -37,9 +37,9 @@ export default function ReviewCollect() {
         author_name: name,
       });
       setDone(true);
-      toast.success("Merci pour votre avis !");
+      toast.success("Obrigado pela sua avaliação!");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Envoi impossible");
+      toast.error(e?.response?.data?.detail || "Envio impossível");
     } finally {
       setBusy(false);
     }
@@ -55,7 +55,7 @@ export default function ReviewCollect() {
             {company.slice(0, 1).toUpperCase()}
           </div>
           <h1 className="mt-4 font-display text-2xl font-bold tracking-tight">
-            Votre avis sur {company}
+            A sua opinião sobre {company}
           </h1>
         </div>
 
@@ -67,16 +67,16 @@ export default function ReviewCollect() {
 
         {!error && !meta && (
           <p className="text-center text-sm text-muted-foreground animate-pulse">
-            Chargement…
+            A carregar…
           </p>
         )}
 
         {!error && done && (
           <div className="text-center space-y-3 py-6" data-testid="review-thanks">
             <CheckCircle2 className="h-12 w-12 mx-auto text-primary" />
-            <p className="font-display text-lg font-bold">Merci pour votre retour !</p>
+            <p className="font-display text-lg font-bold">Obrigado pelo seu comentário!</p>
             <p className="text-sm text-muted-foreground">
-              Votre avis a bien été enregistré. Il aide {company} à progresser.
+              A sua opinião foi registada. Ajuda {company} a progredir.
             </p>
           </div>
         )}
@@ -85,7 +85,7 @@ export default function ReviewCollect() {
           <div className="space-y-5" data-testid="review-form">
             <div>
               <p className="text-sm text-muted-foreground text-center mb-2">
-                Comment s'est passé votre chantier ?
+                Como correu a sua obra?
               </p>
               <div className="flex justify-center gap-1" data-testid="review-stars">
                 {[1, 2, 3, 4, 5].map((n) => (
@@ -97,7 +97,7 @@ export default function ReviewCollect() {
                     onMouseLeave={() => setHover(0)}
                     onClick={() => setRating(n)}
                     className="p-1 transition-transform hover:scale-110"
-                    aria-label={`${n} étoile${n > 1 ? "s" : ""}`}
+                    aria-label={`${n} estrela${n > 1 ? "s" : ""}`}
                   >
                     <Star
                       className="h-9 w-9"
@@ -112,19 +112,19 @@ export default function ReviewCollect() {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground">Votre nom</label>
+              <label className="text-xs text-muted-foreground">O seu nome</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 data-testid="review-name-input"
                 className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                placeholder="Ex : Marie D."
+                placeholder="Ex: Maria D."
               />
             </div>
 
             <div>
               <label className="text-xs text-muted-foreground">
-                Votre commentaire (optionnel)
+                O seu comentário (opcional)
               </label>
               <textarea
                 value={comment}
@@ -132,7 +132,7 @@ export default function ReviewCollect() {
                 data-testid="review-comment-input"
                 rows={4}
                 className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-none"
-                placeholder="Qualité du travail, respect des délais, propreté du chantier…"
+                placeholder="Qualidade do trabalho, cumprimento dos prazos, limpeza da obra…"
               />
             </div>
 
@@ -143,10 +143,10 @@ export default function ReviewCollect() {
               className="w-full rounded-sm gap-2"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              Envoyer mon avis
+              Enviar a minha avaliação
             </Button>
             <p className="text-[11px] text-muted-foreground text-center">
-              Votre avis pourra être affiché sur les futurs devis de {company}.
+              A sua opinião poderá ser exibida nos futuros orçamentos de {company}.
             </p>
           </div>
         )}

@@ -12,7 +12,7 @@ const PlanCard = ({ plan, highlight, busy, onSelect }) => {
   return (
     <Card className={`p-6 flex flex-col text-left relative ${highlight ? "border-primary ring-1 ring-primary/30" : ""}`} data-testid={`upsell-plan-${plan.plan_id}`}>
       {highlight && (
-        <span className="absolute -top-3 left-6 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-primary text-primary-foreground">Recommandé</span>
+        <span className="absolute -top-3 left-6 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-primary text-primary-foreground">Recomendado</span>
       )}
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{plan.tagline}</p>
       <h3 className="font-display text-xl font-bold mt-1">{plan.name}</h3>
@@ -30,7 +30,7 @@ const PlanCard = ({ plan, highlight, busy, onSelect }) => {
       <Button className="rounded-sm gap-2 mt-6 w-full" disabled={busy}
         onClick={() => onSelect(plan)} data-testid={`upsell-checkout-${plan.plan_id}`}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
-        Choisir {plan.name}
+        Escolher {plan.name}
       </Button>
     </Card>
   );
@@ -65,9 +65,9 @@ export default function ProUpsell() {
         plan_id: plan.plan_id, origin_url: window.location.origin,
       });
       if (data?.url) { window.location.href = data.url; return; }
-      toast.error("Impossible de démarrer le paiement");
+      toast.error("Impossível iniciar o pagamento");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Paiement indisponible");
+      toast.error(e?.response?.data?.detail || "Pagamento indisponível");
     } finally { setBusyId(""); }
   };
 
@@ -78,12 +78,12 @@ export default function ProUpsell() {
           <Lock className="h-8 w-8 text-primary" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold">
-          {analyse ? "Débloquez l'analyse de devis" : "Passez en compte Pro"}
+          {analyse ? "Desbloqueie a análise de orçamentos" : "Mude para conta Pro"}
         </h1>
         <p className="text-muted-foreground mt-3">
           {analyse
-            ? "L'analyse de devis (comparaison prix ligne par ligne) est incluse dans nos abonnements. Choisissez un forfait pour débloquer cette fonction et bien plus."
-            : "Devis, factures, chantiers, entreprise & RH… Souscrivez un abonnement Pro pour tout débloquer. Accès immédiat après paiement."}
+            ? "A análise de orçamentos (comparação de preços linha por linha) está incluída nas nossas subscrições. Escolha um plano para desbloquear esta função e muito mais."
+            : "Orçamentos, faturas, obras, empresa & RH… Subscreva um plano Pro para desbloquear tudo. Acesso imediato após pagamento."}
         </p>
       </div>
 
@@ -95,7 +95,7 @@ export default function ProUpsell() {
             <div className="mt-10">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-bold">Pour les particuliers</h2>
+                <h2 className="text-lg font-bold">Para particulares</h2>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 {partPlans.map((p) => (
@@ -109,7 +109,7 @@ export default function ProUpsell() {
             {analyse && (
               <div className="flex items-center gap-2 mb-4">
                 <BadgeCheck className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-bold">Pour les professionnels</h2>
+                <h2 className="text-lg font-bold">Para profissionais</h2>
               </div>
             )}
             <div className="grid sm:grid-cols-2 gap-4">
@@ -123,10 +123,10 @@ export default function ProUpsell() {
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center mt-10">
         <Button variant="ghost" onClick={() => nav("/tarifs")} data-testid="pro-upsell-see-all" className="gap-2">
-          Voir tous les tarifs <ArrowRight className="h-4 w-4" />
+          Ver todas as tarifas <ArrowRight className="h-4 w-4" />
         </Button>
         <Button variant="outline" onClick={() => nav("/dashboard")} data-testid="pro-upsell-back">
-          Retour au tableau de bord
+          Voltar ao painel de controlo
         </Button>
       </div>
     </div>

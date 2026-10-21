@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceNoteButton from "@/components/VoiceNoteButton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -18,6 +19,7 @@ import { WhatsAppShare } from "@/components/WhatsAppShare";
 import { SoftPaywall } from "@/components/SoftPaywall";
 import { SavingsCard } from "@/components/SavingsCard";
 import { SupplierOptimization } from "@/components/SupplierOptimization";
+import { PoolItemsCard } from "@/components/PoolItemsCard";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
@@ -25,8 +27,8 @@ import { useBilling } from "@/context/BillingContext";
 import { useI18n } from "@/context/I18nContext";
 
 const CONDITION_LABEL = {
-  neuf: "Neuf", bon: "Bon état", moyen: "État moyen", vetuste: "Vétuste",
-  a_renover_totalement: "À rénover totalement",
+  neuf: "Novo", bon: "Bom estado", moyen: "Estado médio", vetuste: "Degradado",
+  a_renover_totalement: "A renovar totalmente",
 };
 
 export default function Estimator() {
@@ -45,7 +47,7 @@ export default function Estimator() {
 
   const [form, setForm] = useState({
     project_type: params.get("type") || "renovation_complete",
-    country: "FR", region: "Île-de-France", city: "",
+    country: "PT", region: "Lisboa", city: "",
     surface: Number(params.get("surface")) || 100,
     building_type: "maison", construction_year: 1990, condition: "bon",
     finish_level: "standard", description: "", lots: [],
@@ -111,10 +113,10 @@ export default function Estimator() {
         to,
         client_name: leadName,
         audience: "particulier",
-        project: { name: `Estimation ${form.city || ""}`.trim() || "Votre projet", city: form.city, description: form.description },
+        project: { name: `Estimativa ${form.city || ""}`.trim() || "O seu projeto", city: form.city, description: form.description },
         estimation,
       });
-      toast.success(`Votre estimation détaillée vient de vous être envoyée par e-mail à ${to} ✉️`);
+      toast.success(`A sua estimativa detalhada acaba de lhe ser enviada por e-mail para ${to} ✉️`);
     } catch { /* envoi silencieux, non bloquant */ }
   };
 
@@ -123,7 +125,7 @@ export default function Estimator() {
     setBusy(true);
     try {
       const { data } = await api.post("/projects", {
-        ...form, name: name || "Mon projet", surface: Number(form.surface),
+        ...form, name: name || "O meu projeto", surface: Number(form.surface),
         construction_year: Number(form.construction_year) || null,
         lots: form.lots.length ? form.lots : null, estimation: est,
       });
@@ -140,7 +142,7 @@ export default function Estimator() {
     setBusy(true);
     try {
       const res = await api.post("/estimation/pdf",
-        { project: { name: name || "Mon projet", city: form.city, description: form.description },
+        { project: { name: name || "O meu projeto", city: form.city, description: form.description },
           estimation: est },
         { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
@@ -159,7 +161,7 @@ export default function Estimator() {
 
   const findSupplierPrices = async () => {
     const lots = (est?.lots || []).filter((l) => (l.material_cost || 0) > 0 && (l.quantity || 0) > 0);
-    if (!lots.length) { toast.error("Aucun poste matériaux à chiffrer"); return; }
+    if (!lots.length) { toast.error("Nenhum item de materiais a orçamentar"); return; }
     setBusyOptim(true);
     try {
       const coefficient = Number(localStorage.getItem("construpilot_dept_coef") || 1) || 1;
@@ -168,7 +170,7 @@ export default function Estimator() {
         items: lots.map((l) => ({ query: l.name, quantity: Math.ceil(l.quantity), name: l.name })),
       });
       setOptim(data);
-    } catch { toast.error("Recherche de prix impossible"); }
+    } catch { toast.error("Pesquisa de preços impossível"); }
     finally { setBusyOptim(false); }
   };
 
@@ -178,7 +180,7 @@ export default function Estimator() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Estimateur travaux gratuit" description="Estimation gratuite de vos travaux de rénovation en 30 secondes. Prix par lot, TVA 10 %, durée estimée. Basé sur les prix France 2026." keywords="estimateur travaux gratuit, estimation rénovation en ligne, coût travaux, calcul devis, prix chantier" canonical="/estimation" />
+      <SEO title="Estimador trabalhos gratuito" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA 10 %, duração estimada. Baseado nos preços França 2026." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
       <SectionTitle as="h1" over={t("est.over")} title={t("est.title")}>
         {t("est.subtitle")}
       </SectionTitle>
@@ -205,10 +207,9 @@ export default function Estimator() {
                 <div className="grid sm:grid-cols-2 gap-6">
                   <div className="grid gap-2">
                     <Label>{t("est.country")}</Label>
-                    <Select value={form.country} onValueChange={(v) => { set("country", v); set("region", v === "FR" ? "Île-de-France" : "Lisboa"); }}>
+                    <Select value={form.country} onValueChange={(v) => { set("country", v); set("region", "Lisboa"); }}>
                       <SelectTrigger className="rounded-sm h-11" data-testid="select-country"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="FR">France</SelectItem>
                         <SelectItem value="PT">Portugal</SelectItem>
                       </SelectContent>
                     </Select>
@@ -261,7 +262,10 @@ export default function Estimator() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>{t("est.description")}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("est.description")}</Label>
+                    <VoiceNoteButton size="sm" className="h-7 text-xs" onText={(txt) => set("description", form.description?.trim() ? `${form.description.trim()}\n${txt}` : txt)} />
+                  </div>
                   <Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} data-testid="input-description" className="rounded-sm" />
                 </div>
               </>
@@ -341,8 +345,8 @@ export default function Estimator() {
             <Button variant="outline" onClick={downloadPdf} disabled={busy} data-testid="download-pdf-btn" className="rounded-sm gap-2">
               <Download className="h-4 w-4" /> {t("est.download_pdf")}
             </Button>
-            <EmailPdfDialog project={{ name: name || "Mon projet", city: form.city, description: form.description }} estimation={est} />
-            <WhatsAppShare project={{ name: name || "Mon projet", city: form.city, surface: Number(form.surface) }} estimation={est} />
+            <EmailPdfDialog project={{ name: name || "O meu projeto", city: form.city, description: form.description }} estimation={est} />
+            <WhatsAppShare project={{ name: name || "O meu projeto", city: form.city, surface: Number(form.surface) }} estimation={est} />
             <LeadDialog budget={est.total_avg} description={form.description} />
           </div>
           {est.default_vat_rate != null && (
@@ -360,12 +364,15 @@ export default function Estimator() {
             </div>
           )}
           <EstimationView est={est} />
+          {est.pool_items && (
+            <PoolItemsCard pool={est.pool_items} isPro={est.pricing_audience === "pro"} title={name} />
+          )}
 
           <div className="grid gap-4">
             <Button variant="outline" onClick={findSupplierPrices} disabled={busyOptim}
                     data-testid="est-find-prices-btn" className="rounded-sm gap-2 w-fit">
               {busyOptim ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Trouver les meilleurs prix fournisseurs
+              Encontrar os melhores preços fornecedores
             </Button>
             <SupplierOptimization optim={optim} />
           </div>

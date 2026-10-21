@@ -1,0 +1,1 @@
+"""Operational expense observability. Never authorizes, blocks or charges a service."""

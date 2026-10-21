@@ -1,0 +1,237 @@
+{
+  "video": "/demo/construpilot-demo.mp4",
+  "total_duration": 398.2,
+  "chapters": [
+    {
+      "key": "home",
+      "title": "Bem-vindo ao ConstruPilot",
+      "start": 0.0,
+      "narration": "Bem-vindo ao ConstruPilot, a plataforma tudo-em-um de orçamentação e gestão para os profissionais da construção. Siga a visita: cada função é mostrada em ação.",
+      "image": null
+    },
+    {
+      "key": "estimation",
+      "title": "Estimador",
+      "start": 13.89,
+      "narration": "O estimador gera uma orçamentação detalhada do seu projeto, artigo a artigo, a partir de uma simples descrição em linguagem corrente.",
+      "image": null
+    },
+    {
+      "key": "metre",
+      "title": "Medições em planta",
+      "start": 25.99,
+      "narration": "As medições em planta são o coração do ConstruPilot. Importe uma planta real e dê-lhe um nome. Calibre-a indicando uma única distância conhecida: todas as suas medidas ficam precisas ao centímetro. Trace uma área para obter instantaneamente os metros quadrados. Trace um perímetro para os lineares de rodapés ou divisórias. Trace uma distância para uma medição linear simples. Por fim, desenhe uma divisão e deduza automaticamente portas e janelas das suas áreas. Sem cálculos manuais, sem erros possíveis.",
+      "image": null
+    },
+    {
+      "key": "plans_pro",
+      "title": "Análise de plantas Pro",
+      "start": 72.12,
+      "narration": "A análise de plantas Pro deteta automaticamente as divisões, as paredes e as áreas para acelerar ainda mais as suas medições.",
+      "image": null
+    },
+    {
+      "key": "controle",
+      "title": "Controlo de cotas",
+      "start": 82.68,
+      "narration": "O controlo de cotas compara as suas medidas com as cotas escritas na planta e assinala a mais pequena incoerência.",
+      "image": null
+    },
+    {
+      "key": "escaliers",
+      "title": "Cálculo de escadas",
+      "start": 92.62,
+      "narration": "O módulo de escadas calcula a sua escada em betão, verifica as normas, propõe uma vista tridimensional interativa e um dossier PDF totalmente cotado.",
+      "image": null
+    },
+    {
+      "key": "calculateurs",
+      "title": "Calculadoras de materiais",
+      "start": 106.22,
+      "narration": "As calculadoras dão as quantidades exatas de materiais, com margens e perdas de aplicação incluídas.",
+      "image": null
+    },
+    {
+      "key": "prix",
+      "title": "Preços de materiais",
+      "start": 117.28,
+      "narration": "A base de preços de materiais mantém-no informado sobre os preços atualizados do mercado.",
+      "image": null
+    },
+    {
+      "key": "devis",
+      "title": "Acompanhamento de orçamentos",
+      "start": 126.2,
+      "narration": "O acompanhamento de orçamentos centraliza todas as suas propostas comerciais e o respetivo estado, do rascunho à assinatura.",
+      "image": null
+    },
+    {
+      "key": "devis_editeur",
+      "title": "Editor de orçamentos",
+      "start": 137.1,
+      "narration": "O editor de orçamentos compõe a sua proposta linha a linha. Adicione materiais, mão de obra e trabalhos completos, com as respetivas quantidades e preços unitários. O IVA, os subtotais e o total são recalculados em tempo real, sem qualquer erro de cálculo. Com um clique, gere um orçamento PDF profissional pronto a enviar ao seu cliente.",
+      "image": null
+    },
+    {
+      "key": "factures",
+      "title": "Faturas",
+      "start": 166.7,
+      "narration": "A faturação transforma qualquer orçamento aceite numa fatura conforme, com um só clique. Adiantamentos, autos de medição e faturas finais ficam ligados à sua obra, com numeração sequencial.",
+      "image": null
+    },
+    {
+      "key": "situations",
+      "title": "Autos de medição",
+      "start": 187.19,
+      "narration": "Os autos de medição gerem o avanço e os adiantamentos das suas obras, mês a mês.",
+      "image": null
+    },
+    {
+      "key": "clients",
+      "title": "Clientes",
+      "start": 197.29,
+      "narration": "O espaço de clientes reúne todos os seus contactos e o histórico de cada relação.",
+      "image": null
+    },
+    {
+      "key": "chantiers",
+      "title": "Dossiers de obra",
+      "start": 205.49,
+      "narration": "Os dossiers de obra reúnem plantas, orçamentos e documentos de cada projeto no mesmo sítio.",
+      "image": null
+    },
+    {
+      "key": "suivi",
+      "title": "Acompanhamento de obra",
+      "start": 215.1,
+      "narration": "O acompanhamento de obra gere o avanço no dia a dia, tarefa a tarefa.",
+      "image": null
+    },
+    {
+      "key": "dpgf",
+      "title": "Mapa de quantidades para orçamento",
+      "start": 222.99,
+      "narration": "O módulo de mapa de quantidades transforma o mapa do arquiteto num orçamento diretamente orçamentável.",
+      "image": null
+    },
+    {
+      "key": "analyse_docs",
+      "title": "Análise de documentos",
+      "start": 231.71,
+      "narration": "A análise de documentos lê os seus mapas de quantidades e cadernos de encargos para extrair automaticamente os elementos orçamentáveis.",
+      "image": null
+    },
+    {
+      "key": "scanner",
+      "title": "Scanner de orçamentos",
+      "start": 242.19,
+      "narration": "O scanner digitaliza um orçamento em papel e torna-o imediatamente utilizável.",
+      "image": null
+    },
+    {
+      "key": "appro",
+      "title": "Análise técnica e aprovisionamento",
+      "start": 251.32,
+      "narration": "A análise técnica e o aprovisionamento otimizam as suas encomendas de materiais e antecipam as necessidades.",
+      "image": null
+    },
+    {
+      "key": "etudes_pc",
+      "title": "Estudos de licenciamento",
+      "start": 261.08,
+      "narration": "O módulo de estudos prepara e reúne as peças do seu processo de licenciamento.",
+      "image": null
+    },
+    {
+      "key": "mesure_photo",
+      "title": "Medir em fotografia",
+      "start": 269.71,
+      "narration": "Meça diretamente numa simples fotografia tirada em obra.",
+      "image": null
+    },
+    {
+      "key": "rendu_ia",
+      "title": "Render IA antes/depois",
+      "start": 277.1,
+      "narration": "O render por inteligência artificial ilustra as suas obras, antes e depois.",
+      "image": null
+    },
+    {
+      "key": "multiniveaux",
+      "title": "Projetos multipiso",
+      "start": 286.09,
+      "narration": "Agrupe fundações, rés-do-chão e pisos num projeto multipiso, com medições e orçamento consolidados.",
+      "image": null
+    },
+    {
+      "key": "bibliotheque",
+      "title": "Biblioteca de trabalhos",
+      "start": 297.2,
+      "narration": "A biblioteca memoriza as suas composições de trabalhos, reutilizáveis em todas as obras.",
+      "image": null
+    },
+    {
+      "key": "catalogue",
+      "title": "Catálogo de preços",
+      "start": 307.0,
+      "narration": "O catálogo de preços personaliza os seus preços e rácios de empresa.",
+      "image": null
+    },
+    {
+      "key": "equipe",
+      "title": "Equipa",
+      "start": 315.02,
+      "narration": "A gestão de equipa partilha o acesso e os dados entre todos os seus colaboradores.",
+      "image": null
+    },
+    {
+      "key": "rh",
+      "title": "RH e registo de horas",
+      "start": 324.18,
+      "narration": "O módulo de recursos humanos gere o registo de presenças e as horas das suas equipas.",
+      "image": null
+    },
+    {
+      "key": "entreprise",
+      "title": "Espaço empresa",
+      "start": 332.59,
+      "narration": "O espaço empresa centraliza a identidade e as definições da sua empresa.",
+      "image": null
+    },
+    {
+      "key": "ma_page",
+      "title": "A minha página pública",
+      "start": 340.88,
+      "narration": "A sua página pública destaca a sua empresa e os seus trabalhos junto de potenciais clientes.",
+      "image": null
+    },
+    {
+      "key": "radar",
+      "title": "Radar de obras",
+      "start": 350.29,
+      "narration": "O radar de obras alerta-o para oportunidades de negócio perto de si.",
+      "image": null
+    },
+    {
+      "key": "assistant",
+      "title": "Assistente Construção",
+      "start": 358.51,
+      "narration": "O assistente inteligente responde às suas perguntas e guia-o em toda a aplicação.",
+      "image": null
+    },
+    {
+      "key": "pro",
+      "title": "A oferta Pro",
+      "start": 366.62,
+      "narration": "Mude para a oferta Pro: sete dias de teste e depois uma subscrição clara e sem fidelização.",
+      "image": null
+    },
+    {
+      "key": "dashboard",
+      "title": "Painel",
+      "start": 375.73,
+      "narration": "Por fim, o seu painel reúne toda a sua atividade. O ConstruPilot faz-lhe ganhar tempo, da primeira orçamentação à faturação final.",
+      "image": null
+    }
+  ]
+}

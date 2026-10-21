@@ -1,0 +1,93 @@
+--- current/backend/engines/plan_vector_pdf.py
++++ zip/backend/engines/plan_vector_pdf.py
+@@ -34,22 +34,68 @@
+ 
+ 
+ def pdf_lines(page) -> list[dict]:
+-    """Segments d'un objet page PyMuPDF (points PDF)."""
++    """Primitives PDF en points, y compris rectangles/quadrilatères fermés.
++
++    Conserver le style : un axe pointillé et une hachure de remplissage ne sont
++    pas des faces de mur. Un quadrilatère n'est pas une boîte englobante : ses
++    quatre arêtes réelles sont utilisées, même si le dessin est oblique.
++    """
+     out = []
+-    for d in page.get_drawings():
++    for path_id, d in enumerate(page.get_drawings()):
++        style = {"path_id": path_id, "paint_type": d.get("type"),
++                 "stroke_width_pt": d.get("width"), "dashes": d.get("dashes")}
++        first, last = None, None
+         for item in d.get("items", []):
+             if item[0] == "l":
+                 p1, p2 = item[1], item[2]
+-                out.append({"type": "line", "p1": [p1.x, p1.y], "p2": [p2.x, p2.y]})
++                out.append({**style, "type": "line", "p1": [p1.x, p1.y], "p2": [p2.x, p2.y]})
++                if first is None or (last is not None and abs(last - p1) > .01):
++                    first = p1
++                last = p2
+             elif item[0] == "re":
+                 r = item[1]
+-                out.append({"type": "rect", "x": r.x0, "y": r.y0, "w": r.width, "h": r.height})
++                out.append({**style, "type": "rect", "x": r.x0, "y": r.y0, "w": r.width, "h": r.height})
++            elif item[0] == "qu":
++                q = item[1]
++                out.append({**style, "type": "quad", "points": [[p.x, p.y] for p in (q.ul, q.ur, q.lr, q.ll)]})
++        if (d.get("closePath") and all(item[0] == "l" for item in d.get("items", []))
++                and first is not None and last is not None and abs(first - last) > 0.01):
++            out.append({**style, "type": "line", "p1": [last.x, last.y], "p2": [first.x, first.y]})
++    if page.rotation:
++        import pymupdf
++        matrix = page.rotation_matrix
++        def point(p):
++            q = pymupdf.Point(*p) * matrix
++            return [q.x, q.y]
++        for v in out:
++            if v["type"] == "line":
++                v["p1"], v["p2"] = point(v["p1"]), point(v["p2"])
++            elif v["type"] == "quad":
++                v["points"] = [point(p) for p in v["points"]]
++            elif v["type"] == "rect":
++                r = pymupdf.Rect(v["x"], v["y"], v["x"]+v["w"], v["y"]+v["h"]) * matrix
++                v.update(x=r.x0, y=r.y0, w=r.width, h=r.height)
++    return out
++
++
++def pdf_text_blocks(page) -> list[dict]:
++    """Textes en points dans le même repère affiché que pdf_lines/get_pixmap."""
++    import pymupdf
++    out = []
++    for b in page.get_text("dict").get("blocks", []):
++        if b.get("type") != 0: continue
++        for line in b.get("lines", []):
++            for sp in line.get("spans", []):
++                if not sp.get("text", "").strip(): continue
++                r = pymupdf.Rect(sp["bbox"]) * page.rotation_matrix
++                out.append({"text": sp["text"].strip(), "x": r.x0, "y": r.y0, "w": r.width, "h": r.height})
+     return out
+ 
+ 
+ def _segments(vectors: list[dict]) -> tuple[list[tuple], list[tuple], list[tuple]]:
+     """→ (horizontaux [(y, xa, xb)], verticaux [(x, ya, yb)], courts obliques [(cx, cy, len)])."""
+     hs, vs, ticks = [], [], []
++    expanded = []
+     for v in vectors or []:
+         if v.get("type") == "rect":
+             x, y, w, h = v["x"], v["y"], v["w"], v["h"]
+@@ -57,7 +103,16 @@
+                 vs.append((x + w / 2, y, y + h))
+             elif h < 0.8 and w >= 2:
+                 hs.append((y + h / 2, x, x + w))
+-            continue
++            else:
++                pts = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
++                expanded.extend({"type": "line", "p1": a, "p2": b} for a, b in zip(pts, pts[1:] + pts[:1]))
++            continue
++        if v.get("type") == "quad":
++            pts = v["points"]
++            expanded.extend({"type": "line", "p1": a, "p2": b} for a, b in zip(pts, pts[1:] + pts[:1]))
++        else:
++            expanded.append(v)
++    for v in expanded:
+         if v.get("type") != "line":
+             continue
+         (x1, y1), (x2, y2) = v["p1"], v["p2"]

@@ -1,0 +1,50 @@
+--- current/frontend/src/components/assistant/WorkDraftCard.jsx
++++ zip4/frontend/src/components/assistant/WorkDraftCard.jsx
+@@ -1,10 +1,8 @@
+-import { useEffect, useId, useRef, useState } from "react";
++import { useEffect, useRef, useState } from "react";
+ import { toast } from "sonner";
+ import { api } from "@/lib/api";
+ 
+ export function WorkDraftCard({ initial }) {
+-  const instance = useId().replace(/:/g, "");
+-  const testId = (name) => `work-draft-${name}-${initial.draft_id}-${instance}`;
+   const [draft, setDraft] = useState(initial);
+   const [saving, setSaving] = useState(false);
+   const [loading, setLoading] = useState(true);
+@@ -75,25 +73,25 @@
+     try { const r = await api.get(`/assistant/work-drafts/${draft.draft_id}/versions`); setVersions(r.data.versions); }
+     catch { toast.error("Historique indisponible"); }
+   };
+-  return <div className="grid grid-cols-1 gap-2 mt-2 text-sm min-w-0" data-testid={testId("editor")} data-draft-id={initial.draft_id}>
+-    <div className="text-xs text-muted-foreground" data-testid={testId("version")}>Brouillon · Version {draft.revision || 0}{dirty ? " · modifications non enregistrées" : ""}{loading ? " · chargement…" : ""}</div>
+-    {(conflict || error) && <div role="alert" className="border border-amber-500 rounded-sm p-2 text-xs" data-testid={testId("conflict")}>
++  return <div className="grid gap-2 mt-2 text-sm" data-testid="work-draft-editor">
++    <div className="text-xs text-muted-foreground">Version {draft.revision || 0}{dirty ? " · modifications non enregistrées" : ""}{loading ? " · chargement…" : ""}</div>
++    {(conflict || error) && <div role="alert" className="border border-amber-500 rounded-sm p-2 text-xs">
+       {error || "Une version plus récente existe. Votre texte reste ici ; vous pouvez le copier avant de charger la version actuelle."}
+-      <button className="underline ml-2" disabled={loading || saving} onClick={reload} data-testid={testId("reload")}>Charger la version actuelle</button>
++      <button className="underline ml-2" disabled={loading || saving} onClick={reload}>Charger la version actuelle</button>
+     </div>}
+     <fieldset disabled={loading || saving || !!error} className="grid gap-2 disabled:opacity-60">
+-      <label>Titre / objet<input className="w-full border rounded-sm px-2 py-1 bg-background" maxLength={200} value={draft.title} onChange={e => modify({ title: e.target.value })} data-testid={testId("title")} /></label>
+-      {draft.kind === "email" && <label>Destinataire<input className="w-full border rounded-sm px-2 py-1 bg-background" placeholder="Adresse à compléter" value={draft.recipient} onChange={e => modify({ recipient: e.target.value })} data-testid={testId("recipient")} /></label>}
+-      <textarea aria-label="Texte du brouillon" rows={10} className="w-full border rounded-sm px-2 py-2 bg-background" value={draft.body} onChange={e => modify({ body: e.target.value })} data-testid={testId("body")} />
++      <label>Titre / objet<input className="w-full border rounded-sm px-2 py-1 bg-background" maxLength={200} value={draft.title} onChange={e => modify({ title: e.target.value })} /></label>
++      {draft.kind === "email" && <label>Destinataire<input className="w-full border rounded-sm px-2 py-1 bg-background" placeholder="Adresse à compléter" value={draft.recipient} onChange={e => modify({ recipient: e.target.value })} /></label>}
++      <textarea aria-label="Texte du brouillon" rows={10} className="w-full border rounded-sm px-2 py-2 bg-background" value={draft.body} onChange={e => modify({ body: e.target.value })} />
+     </fieldset>
+     <div className="flex flex-wrap gap-2 text-xs">
+-      {[["save", "Enregistrer"], ["copy", "Copier ce texte"], ["txt", "Télécharger le texte"], ...(draft.kind === "email" ? [["eml", "Télécharger le mail"], ["mail", "Ouvrir ma messagerie"]] : [])].map(([action, label]) => <button key={action} disabled={saving || (action !== "copy" && (loading || !!error || conflict))} className="border rounded-sm px-2 py-1 bg-background disabled:opacity-50" onClick={() => act(action)} data-testid={testId(action)}>{label}</button>)}
+-      <button className="underline" disabled={loading || saving} onClick={history} data-testid={testId("history")}>Historique</button>
++      {[["save", "Enregistrer"], ["copy", "Copier ce texte"], ["txt", "Télécharger le texte"], ...(draft.kind === "email" ? [["eml", "Télécharger le mail"], ["mail", "Ouvrir ma messagerie"]] : [])].map(([action, label]) => <button key={action} disabled={saving || (action !== "copy" && (loading || !!error || conflict))} className="border rounded-sm px-2 py-1 bg-background disabled:opacity-50" onClick={() => act(action)}>{label}</button>)}
++      <button className="underline" disabled={loading || saving} onClick={history}>Historique</button>
+     </div>
+     {versions && <div className="border rounded-sm p-2 text-xs grid gap-2">
+       <p>Les 10 versions précédentes sont conservées. Reprendre une version la place dans l'éditeur avant enregistrement.</p>
+       {!versions.length && <p>Aucune version précédente.</p>}
+-      {versions.map(v => <button key={v.revision} className="text-left underline" disabled={saving || loading} onClick={() => modify({ kind: v.kind, title: v.title, recipient: v.recipient, body: v.body })} data-testid={testId(`restore-${v.revision}`)}>Reprendre la version {v.revision} — {v.title}</button>)}
++      {versions.map(v => <button key={v.revision} className="text-left underline" disabled={saving || loading} onClick={() => modify({ kind: v.kind, title: v.title, recipient: v.recipient, body: v.body })}>Reprendre la version {v.revision} — {v.title}</button>)}
+     </div>}
+     <p className="text-xs text-muted-foreground">Brouillon modifiable. L'envoi se fait dans votre messagerie.</p>
+   </div>;

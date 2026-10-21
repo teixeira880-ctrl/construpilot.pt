@@ -1,0 +1,3 @@
+file '/app/.media/vo_a.mp3'
+file '/app/.media/vo_b.mp3'
+file '/app/.media/vo_c.mp3'

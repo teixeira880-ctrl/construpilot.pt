@@ -50,7 +50,7 @@ def _summarize(data: dict) -> dict:
 async def validate_facturx(pdf_bytes: bytes, filename: str = "facture.pdf") -> dict:
     api_key = os.environ.get("FACTURX_API_KEY")
     if not api_key:
-        raise FacturxValidationError("Clé FACTURX_API_KEY absente")
+        raise FacturxValidationError("Chave FACTURX_API_KEY ausente")
     url = f"{BASE_URL}/validate?validation_target=en16931&lang=fr"
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -61,14 +61,14 @@ async def validate_facturx(pdf_bytes: bytes, filename: str = "facture.pdf") -> d
             )
     except httpx.HTTPError as exc:
         logger.warning("facturxapi network error: %s", exc)
-        raise FacturxValidationError("Service de validation Factur-X injoignable") from exc
+        raise FacturxValidationError("Serviço de validação de faturação eletrónica inacessível") from exc
 
     if resp.status_code == 401:
-        raise FacturxValidationError("Clé API Factur-X invalide")
+        raise FacturxValidationError("Chave API de faturação eletrónica inválida")
     if resp.status_code == 429:
-        raise FacturxValidationError("Quota de validation Factur-X dépassé")
+        raise FacturxValidationError("Quota de validação de faturação eletrónica ultrapassada")
     if resp.status_code >= 400:
         logger.warning("facturxapi %s: %s", resp.status_code, resp.text[:300])
-        raise FacturxValidationError(f"Validation refusée (HTTP {resp.status_code})")
+        raise FacturxValidationError(f'Validação recusada (HTTP {resp.status_code})')
 
     return _summarize(resp.json())

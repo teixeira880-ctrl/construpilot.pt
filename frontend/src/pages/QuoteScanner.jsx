@@ -14,10 +14,10 @@ import { LeadDialog } from "@/components/LeadDialog";
 import { useAuth } from "@/context/AuthContext";
 
 const VERDICT = {
-  bas: { label: "Prix bas", cls: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400" },
-  correct: { label: "Prix correct", cls: "border-sky-500/40 text-sky-600 dark:text-sky-400" },
-  eleve: { label: "Prix élevé", cls: "border-amber-500/40 text-amber-600 dark:text-amber-400" },
-  tres_eleve: { label: "Très élevé", cls: "border-red-500/40 text-red-600 dark:text-red-400" },
+  bas: { label: "Preço baixo", cls: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400" },
+  correct: { label: "Preço correto", cls: "border-sky-500/40 text-sky-600 dark:text-sky-400" },
+  eleve: { label: "Preço elevado", cls: "border-amber-500/40 text-amber-600 dark:text-amber-400" },
+  tres_eleve: { label: "Muito elevado", cls: "border-red-500/40 text-red-600 dark:text-red-400" },
 };
 
 export default function QuoteScanner() {
@@ -45,8 +45,8 @@ export default function QuoteScanner() {
     if (!file) return;
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     const isImg = /image\/(jpeg|png|webp|jpg)/.test(file.type);
-    if (!isPdf && !isImg) return toast.error("Formats acceptés : JPEG, PNG, WEBP ou PDF");
-    if (file.size > 15 * 1024 * 1024) return toast.error("Fichier trop lourd (max 15 Mo)");
+    if (!isPdf && !isImg) return toast.error("Formatos aceites: JPEG, PNG, WEBP ou PDF");
+    if (file.size > 15 * 1024 * 1024) return toast.error("Ficheiro demasiado pesado (máx. 15 MB)");
     const reader = new FileReader();
     reader.onload = () => {
       const b64only = String(reader.result).split(",")[1];
@@ -65,18 +65,18 @@ export default function QuoteScanner() {
     reader.readAsDataURL(file);
   };
 
-  const análise = async () => {
+  const analyse = async () => {
     if (!b64 && !pdfB64 && text.trim().length < 20) {
-      return toast.error("Importe uma foto, un PDF ou collez le texte du devis");
+      return toast.error("Importe uma foto, um PDF ou cole o texto do orçamento");
     }
     setBusy(true);
     try {
-      const { data } = await api.post("/quotes/análise", {
+      const { data } = await api.post("/quotes/analyse", {
         text, image_base64: b64, pdf_base64: pdfB64, company,
       });
       setResult(data);
       loadSaved();
-      toast.success("Orçamento analysé");
+      toast.success("Orçamento analisado");
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Análise impossível");
     } finally {
@@ -85,12 +85,12 @@ export default function QuoteScanner() {
   };
 
   const compare = async () => {
-    if (selected.length < 2) return toast.error("Sélectionnez au moins 2 devis");
+    if (selected.length < 2) return toast.error("Selecione pelo menos 2 orçamentos");
     setBusy(true);
     try {
       const { data } = await api.post("/quotes/compare", { quote_ids: selected });
       setComparison(data);
-    } catch { toast.error("Comparaison impossível"); }
+    } catch { toast.error("Comparação impossível"); }
     finally { setBusy(false); }
   };
 
@@ -99,45 +99,44 @@ export default function QuoteScanner() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Scanner de devis travaux IA" description="Uploadez votre devis PDF : ConstruPilot compare chaque ligne aux prix France 2026 et vous dit si le devis est bas, correct ou trop élevé. Gratuit et sans inscription." keywords="análise devis travaux, vérifier prix devis, comparateur devis, devis trop cher, IA análise devis" canonical="/scanner-devis" />
-      <SectionTitle as="h1" over="Scanner de factures et devis" title="Ce prix est-il correct ?">
-        L'IA lit le devis, extrait les lignes et compare avec la base de prix ConstruPilot :
-        prix bas, correct, élevé ou très élevé, avec les elementos potentiellement oubliés.
+      <SEO title="Digitalizador de orçamentos IA" description="Carregue o seu orçamento PDF: ConstruPilot compara cada linha aos preços França 2026 e indica se o orçamento é baixo, correto ou demasiado elevado. Gratuito e sem registo." keywords="análise orçamento obras, verificar preço orçamento, comparador orçamentos, orçamento demasiado caro, IA análise orçamento" canonical="/scanner-devis" />
+      <SectionTitle as="h1" over="Digitalizador de faturas e orçamentos" title="Este preço está correto?">
+        A IA lê o orçamento, extrai as linhas e compara com a base de preços ConstruPilot: preço baixo, correto, elevado ou muito elevado, com os elementos potencialmente esquecidos.
       </SectionTitle>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="surface p-6 grid gap-5">
           <div className="grid gap-2">
             <Label>Empresa</Label>
-            <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nom de l'entreprise" data-testid="quote-company-input" className="rounded-sm" />
+            <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nome da empresa" data-testid="quote-company-input" className="rounded-sm" />
           </div>
           <div className="grid gap-2">
-            <Label>Photo, PDF ou capture du devis</Label>
+            <Label>Foto, PDF ou captura do orçamento</Label>
             <label htmlFor="quote-file" className="border border-dashed border-border rounded-sm p-6 text-center cursor-pointer hover:border-primary transition-colors" data-testid="quote-dropzone">
               {preview ? (
                 <img src={preview} alt="Orçamento" className="max-h-52 mx-auto object-contain rounded-sm" />
               ) : pdfB64 ? (
                 <div className="flex items-center justify-center gap-3 text-sm">
                   <FileSearch className="h-6 w-6 text-primary" />
-                  <span className="font-medium">{pdfName || "Orçamento.pdf"}</span>
+                  <span className="font-medium">{pdfName || "Devis.pdf"}</span>
                   <Badge variant="outline" className="rounded-sm">PDF</Badge>
                 </div>
               ) : (
                 <>
                   <Upload className="h-6 w-6 mx-auto text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">Importer une image ou un PDF du devis</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">JPEG · PNG · WEBP · PDF · 15 Mo max</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Importar uma imagem ou um PDF do orçamento</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">JPEG · PNG · WEBP · PDF · 15 MB máx</p>
                 </>
               )}
             </label>
             <input id="quote-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" onChange={onFile} className="hidden" data-testid="quote-file-input" />
           </div>
           <div className="grid gap-2">
-            <Label>Ou collez le texte du devis</Label>
-            <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} data-testid="quote-text-input" className="rounded-sm" placeholder="Prestation, quantités, prix unitaires, total…" />
+            <Label>Ou cole o texto do orçamento</Label>
+            <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} data-testid="quote-text-input" className="rounded-sm" placeholder="Prestação, quantidades, preços unitários, total…" />
           </div>
-          <Button onClick={análise} disabled={busy} data-testid="análise-quote-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-            <Sparkles className="h-4 w-4" /> {busy ? "Análise…" : "Analisar ce devis"}
+          <Button onClick={analyse} disabled={busy} data-testid="analyse-quote-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
+            <Sparkles className="h-4 w-4" /> {busy ? "Análise…" : "Analisar este orçamento"}
           </Button>
         </div>
 
@@ -153,7 +152,7 @@ export default function QuoteScanner() {
             <p className="text-sm text-muted-foreground">{a.verdict_label}</p>
             {a.delta_vs_reference_pct !== undefined && a.delta_vs_reference_pct !== null && (
               <p className="num text-sm">
-                Écart vs prix de referência ConstruPilot :{" "}
+                Desvio vs preço de referência ConstruPilot:{" "}
                 <span className={a.delta_vs_reference_pct > 0 ? "text-red-500 font-semibold" : "text-emerald-500 font-semibold"}>
                   {a.delta_vs_reference_pct > 0 ? "+" : ""}{num(a.delta_vs_reference_pct, 1)} %
                 </span>
@@ -164,8 +163,8 @@ export default function QuoteScanner() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                      <TableHead>Prestation</TableHead>
-                      <TableHead className="text-right">Qté</TableHead>
+                      <TableHead>Prestação</TableHead>
+                      <TableHead className="text-right">Qtd.</TableHead>
                       <TableHead className="text-right">PU</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
@@ -183,8 +182,8 @@ export default function QuoteScanner() {
                 </Table>
               </div>
             )}
-            {[["Elementos potentiellement oubliés", a.missing_items], ["Exclusions", a.exclusions],
-              ["Garanties", a.warranties], ["Conseils de négociation", a.negotiation_tips]].map(([label, arr]) =>
+            {[["Elementos potencialmente esquecidos", a.missing_items], ["Exclusões", a.exclusions],
+              ["Garantias", a.warranties], ["Conselhos de negociação", a.negotiation_tips]].map(([label, arr]) =>
               arr?.length > 0 ? (
                 <div key={label}>
                   <p className="overline text-muted-foreground">{label}</p>
@@ -194,7 +193,7 @@ export default function QuoteScanner() {
                 </div>
               ) : null
             )}
-            <LeadDialog label="Comparer avec une proposition ConstruPilot" budget={a.total_ttc || a.total_ht} />
+            <LeadDialog label="Comparar com uma proposta ConstruPilot" budget={a.total_ttc || a.total_ht} />
           </div>
         )}
       </div>
@@ -203,10 +202,10 @@ export default function QuoteScanner() {
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="font-display text-xl font-bold tracking-tight flex items-center gap-2">
-              <Scale className="h-5 w-5 text-primary" /> Comparaison de devis
+              <Scale className="h-5 w-5 text-primary" /> Comparação de orçamentos
             </h2>
             <Button variant="outline" size="sm" onClick={compare} disabled={busy} data-testid="compare-quotes-btn" className="rounded-sm ml-auto">
-              Comparer la sélection ({selected.length})
+              Comparar a seleção ({selected.length})
             </Button>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="saved-quotes">
@@ -231,7 +230,7 @@ export default function QuoteScanner() {
           {comparison && (
             <div className="surface p-6 grid gap-5" data-testid="quote-comparison-result">
               <div>
-                <p className="overline flex items-center gap-2"><Trophy className="h-4 w-4" /> Classement</p>
+                <p className="overline flex items-center gap-2"><Trophy className="h-4 w-4" /> Classificação</p>
                 <div className="mt-4 grid gap-3">
                   {(comparison.ranking || []).map((r, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-4 border-b border-border pb-3">
@@ -246,11 +245,11 @@ export default function QuoteScanner() {
               </div>
               {comparison.best_value && (
                 <p className="text-sm">
-                  <span className="text-muted-foreground">Meilleur relatório qualité/prix : </span>
+                  <span className="text-muted-foreground">Melhor relação qualidade/preço: </span>
                   <span className="font-semibold text-primary">{comparison.best_value}</span>
                 </p>
               )}
-              {[["Différences importantes", comparison.differences], ["Elementos oubliés", comparison.missing_items]]
+              {[["Diferenças importantes", comparison.differences], ["Elementos esquecidos", comparison.missing_items]]
                 .map(([label, arr]) => arr?.length > 0 ? (
                   <div key={label}>
                     <p className="overline text-muted-foreground">{label}</p>
@@ -261,7 +260,7 @@ export default function QuoteScanner() {
                 ) : null)}
               {comparison.recommendation && (
                 <div className="p-4 rounded-sm border border-primary/40 bg-primary/5">
-                  <p className="overline">Recommandation ConstruPilot</p>
+                  <p className="overline">Recomendação ConstruPilot</p>
                   <p className="mt-2 text-sm">{comparison.recommendation}</p>
                 </div>
               )}
@@ -272,7 +271,7 @@ export default function QuoteScanner() {
 
       {!user && (
         <p className="text-xs text-muted-foreground flex items-center gap-2">
-          <FileSearch className="h-4 w-4" /> Connectez-vous pour sauvegarder et comparer plusieurs devis.
+          <FileSearch className="h-4 w-4" /> Ligue-se para guardar e comparar vários orçamentos.
         </p>
       )}
     </div>

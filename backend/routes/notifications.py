@@ -35,9 +35,9 @@ async def mark_read(notif_id: str, user=Depends(current_user)) -> dict:
     try:
         oid = ObjectId(notif_id)
     except Exception:
-        raise HTTPException(400, "Identifiant invalide")
+        raise HTTPException(400, "Identificador inválido")
     res = await db.notifications.update_one(
         {"_id": oid, "user_id": user["user_id"]}, {"$set": {"read": True}})
     if not res.matched_count:
-        raise HTTPException(404, "Notification introuvable")
+        raise HTTPException(404, "Notificação não encontrada")
     return {"ok": True}

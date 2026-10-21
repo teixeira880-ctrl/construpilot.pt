@@ -1,0 +1,329 @@
+--- current/backend/routes/plans_cotes.py
++++ zip/backend/routes/plans_cotes.py
+@@ -31,12 +31,14 @@
+ 
+ 
+ async def _plan_page(plan_id: str, user_id: str, page_index: int, with_image: bool):
+-    proj = {"_id": 0, "plan_id": 1, "filename": 1, "kind": 1, "calibrations": 1, "detected_scale_denominator": 1, "page_count": 1,
++    proj = {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "kind": 1, "calibrations": 1, "detected_scale_denominator": 1, "page_count": 1,
+             "ai_analysis": 1, "rooms": 1, "cotes_checks": 1,
+             "pages.width_px": 1, "pages.height_px": 1, "pages.dxf_dimensions": 1,
+             "pages.dxf_ratio": 1, "pages.unit_to_m": 1, "pages.dpi": 1,
+             "pages.pdf_dimensions": 1, "pages.pdf_vector_scale": 1, "pages.pdf_elements": 1, "pages.pdf_auto_spans": 1,
+-            "pages.vectors": 1, "pages.text_blocks": 1, "pages.walls_analysis": 1}
++            "pages.vectors": 1, "pages.text_blocks": 1, "pages.walls_analysis": 1,
++            "pages.geometry_version": 1, "pages.vectors_truncated": 1,
++            "pages.geometry_coordinate_space": 1, "pages.cad_import": 1}
+     if with_image:
+         proj["pages.image_png_b64"] = 1
+     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user_id}, proj)
+@@ -74,7 +76,7 @@
+             return payload, True
+     if calib:
+         return calib, False
+-    if page.get("dxf_dimensions") and page.get("dxf_ratio") and page.get("unit_to_m"):
++    if page.get("geometry_coordinate_space") == "image_px" and page.get("dxf_ratio") and page.get("unit_to_m"):
+         ppm = float(page["dxf_ratio"]) / float(page["unit_to_m"])
+         payload = {"pixels_per_meter": round(ppm, 4), "meters_per_pixel": round(1 / ppm, 8),
+                    "method": "dxf_units", "confidence": 0.99, "created_at": _now()}
+@@ -107,14 +109,16 @@
+     return base64.b64encode(buf.getvalue()).decode("ascii")
+ 
+ 
+-def _interior_report(page: dict, items: list[dict]) -> dict | None:
++def _interior_report(page: dict, items: list[dict], pixels_per_meter: float | None = None) -> dict:
+     """Murs / mesures intérieures nu-à-nu / fermetures (moteur vectoriel) avec renvoi vers l'index des cotes du rapport."""
+-    wa = page.get("walls_analysis") or {}
+-    if not wa or not wa.get("walls"):
+-        return None
++    from engines.plan_refresh import refresh_interior
++    wa = refresh_interior(page, items, pixels_per_meter)
++    page["walls_analysis"] = wa
+     pdims = page.get("pdf_dimensions") or []
+ 
+     def item_for(idx):
++        if wa.get("cote_index_space") == "report":
++            return idx
+         if not idx or idx > len(pdims):
+             return None
+         d = pdims[idx - 1]
+@@ -131,18 +135,39 @@
+                                           for x in per.get("inconsistencies") or []],
+                "chains": [{**c, "total_item_index": item_for(c.get("total_index") or c.get("reference_index"))} for c in per.get("chains") or []]}
+     return {"walls": wa["walls"], "interior_measurements": meas, "closure_equations": rows, "cotes": cotes, "peripheral": per,
+-            "legend": wa.get("legend"),
++            "legend": wa.get("legend"), "coverage": wa.get("coverage"),
++            "engine_version": wa.get("engine_version"),
+             "sections_ignored": wa.get("sections_ignored") or [], "stats": wa.get("stats"), "validation": wa.get("validation")}
++
++
++async def _ensure_current_geometry(p: dict, page: dict, plan_id: str, page_index: int, user_id: str) -> bool:
++    from engines.plan_refresh import GEOMETRY_VERSION, extract_page_geometry
++    if p.get("kind") != "pdf" or page.get("geometry_version") == GEOMETRY_VERSION:
++        return False
++    import asyncio
++    import base64
++    from engines.plan_sources import load_plan_source
++    src = await load_plan_source(db, plan_id, user_id)
++    if not src:
++        return False  # refresh_interior donnera explicitement un résultat incomplet
++    updated = await asyncio.to_thread(extract_page_geometry, base64.b64decode(src["data_b64"]),
++                                       page_index, float(page.get("dpi") or 72) / 72)
++    page.update(updated)
++    await db.plans_takeoff.update_one({"plan_id": plan_id, "user_id": user_id, "pages.index": page_index},
++                                      {"$set": {**{f"pages.$.{k}": v for k,v in updated.items()}, "updated_at": _now()},
++                                       "$unset": {f"studies.{page_index}": "", f"cotes_checks.{page_index}.geometry": ""}})
++    return True
+ 
+ 
+ async def _run_check(p: dict, page: dict, plan_id: str, page_index: int,
+                      tol_pct: float, tol_cm: float, user_id: str) -> dict:
++    await _ensure_current_geometry(p, page, plan_id, page_index, user_id)
+     w, h = int(page.get("width_px") or 0), int(page.get("height_px") or 0)
+     if not w or not h:
+         raise HTTPException(500, "Dimensions de page manquantes")
+     reading: dict = {}
+     vec: dict | None = None
+-    if page.get("dxf_dimensions"):
++    if p.get("kind") == "dxf" and page.get("dxf_dimensions") is not None:
+         dims = C.dims_from_dxf(page["dxf_dimensions"])
+         reading = {"source": "dxf", "count": len(dims)}
+     else:
+@@ -168,9 +193,14 @@
+         else:
+             dims = adims
+             reading.update({"source": "ai", "count": len(dims)})
+-    if not dims:
++    if not dims and p.get("kind") != "dxf":
+         raise HTTPException(422, "Aucune cote lisible sur cette page")
+     calib, auto = await _ensure_calibration(p, page, plan_id, page_index, dims, w, h, vec)
++    from engines.plan_refresh import carry_user_edits
++    previous = ((p.get("cotes_checks") or {}).get(str(page_index)) or {})
++    unmatched = carry_user_edits(dims, previous.get("items") or [])
++    if unmatched:
++        raise HTTPException(409, f"Corrections conservées dans le rapport précédent : cotes {unmatched} à rapprocher de la nouvelle extraction")
+     report = C.check_dimensions(dims, float(calib["pixels_per_meter"]), tol_pct, tol_cm, w, h,
+                                 elements=page.get("pdf_elements") or [], auto_spans=page.get("pdf_auto_spans") or [])
+     ai_rooms = ((p.get("ai_analysis") or {}).get("rooms") or []) \
+@@ -179,14 +209,15 @@
+     if ai_rooms and page_rooms:
+         report["surfaces"] = T.reconcile_written_surfaces(page_rooms, ai_rooms, float(calib["pixels_per_meter"]))
+     report.update({"page_index": page_index, "calibration": calib, "auto_calibrated": auto,
+-                   "reading": reading, "created_at": _now(), "interior": _interior_report(page, report["items"])})
++                   "reading": reading, "created_at": _now(), "interior": _interior_report(page, report["items"], float(calib["pixels_per_meter"])), "engine_version": 2, "revision": uuid.uuid4().hex})
+     prev_geo = ((p.get("cotes_checks") or {}).get(str(page_index)) or {}).get("geometry")
+     if prev_geo:  # ne jamais perdre les passes IA (2-4) : conservées et marquées à rafraîchir
+         report["geometry"] = {**prev_geo, "stale": True, "stale_since": _now()}
+     open_issues = await db.plan_report_issues.count_documents({"plan_id": plan_id, "page_index": page_index, "status": "open"})
+     report.update({"open_issues": open_issues, "under_review": open_issues > 0})
+     await db.plans_takeoff.update_one(
+-        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{page_index}": report, "updated_at": _now()}})
++        {"plan_id": plan_id, "user_id": user_id},
++        {"$set": {f"cotes_checks.{page_index}": report, "updated_at": _now()}, "$unset": {f"studies.{page_index}": ""}})
+     await _snapshot(plan_id, user_id, "cotes_check", {"page": page_index, **report["summary"]})
+     await _push_version(plan_id, user_id, page_index, report, "check")
+     return report
+@@ -293,8 +324,9 @@
+                     "written_m": mm and mm.get("written_dimension_m"), "status": mm and mm.get("status")}
+         return {"kind": "page", "summary": rep.get("summary"), "interior_complete": ((rep.get("interior") or {}).get("validation") or {}).get("complete")}
+     tb = _target(before)
+-    src = await db.plan_sources.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "data_b64": 1})
+-    if src and src.get("data_b64"):
++    from engines.plan_sources import load_plan_source
++    src = await load_plan_source(db, plan_id, user["user_id"])
++    if src and src.get("data_b64") and p.get("kind") in ("pdf", "dxf"):
+         await cotes_reextract(plan_id, user)
+         p, page = await _plan_page(plan_id, user["user_id"], page_index, True)
+     after_report = await _run_check(p, page, plan_id, page_index, before.get("tol_pct") or 2.0, before.get("tol_cm") or 3.0, user["user_id"])
+@@ -479,7 +511,7 @@
+ 
+     async def run():
+         report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+-        if not report:
++        if not report or report.get("engine_version") != 2 or not report.get("revision"):
+             report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
+         geo = await analyze_geometry(_ai_image(page["image_png_b64"]), report,
+                                      int(page.get("width_px") or 0), int(page.get("height_px") or 0), lang)
+@@ -502,54 +534,57 @@
+ 
+ @router.post("/{plan_id}/cotes/reextract")
+ async def cotes_reextract(plan_id: str, user=Depends(current_user)) -> dict:
+-    """Ré-extraction vectorielle (cotes + éléments) depuis le PDF source conservé — sans réimport."""
++    """Relit la source native ; préserve le repère CAO et les corrections utilisateur."""
++    import asyncio
+     import base64
+-
+-    import pymupdf
+-
+-    from engines.plan_vector_pdf import (
+-        _dims_pt,
+-        extract_auto_spans,
+-        extract_elements,
+-        extract_vector_dimensions,
+-        pdf_lines,
+-    )
+-    src = await db.plan_sources.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "data_b64": 1})
+-    p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages.dpi": 1, "pages.index": 1})
+-    if not p:
+-        raise HTTPException(404, "Plan introuvable")
+-    if not src:
+-        raise HTTPException(409, "PDF source non conservé pour ce plan (importé avant cette version) : réimportez le fichier")
+-    doc = pymupdf.open(stream=base64.b64decode(src["data_b64"]), filetype="pdf")
++    from engines.plan_refresh import extract_page_geometry, carry_user_edits
++    from engines.plan_sources import load_plan_source, load_cad_source
++
++    owner = {"plan_id": plan_id, "user_id": user["user_id"]}
++    p = await db.plans_takeoff.find_one(owner, {"_id": 0})
++    if not p: raise HTTPException(404, "Plan introuvable")
++    if p.get("kind") not in ("pdf", "dxf"):
++        raise HTTPException(422, "Ce plan image doit être relu par l’analyse visuelle, sans extraction vectorielle.")
++    prepared = []
++    if p.get("kind") == "dxf":
++        from engines.plan_dxf import process_dxf
++        from engines.cad_geometry import UNIT_FACTORS
++        filename = p.get("filename") or "plan.dxf"
++        kind = "converted_dxf" if filename.lower().endswith(".dwg") else "original"
++        data = await load_cad_source(db, plan_id, user["user_id"], kind)
++        if not data: raise HTTPException(409, "Source CAO native non conservée : réimportez le DWG/DXF")
++        units = (p.get("cad_import") or {}).get("units") or {}
++        override = units.get("name") if units.get("source") == "user" and units.get("name") in UNIT_FACTORS else None
++        parsed = await asyncio.to_thread(process_dxf, data, filename.rsplit(".", 1)[0]+".dxf", override)
++        updated = parsed["pages"][0]
++        old = p["pages"][0]
++        if old.get("image_png_b64") != updated.get("image_png_b64"):
++            raise HTTPException(409, "Le rendu CAO a évolué : réimportez le dessin pour recaler les mesures. Le plan existant est conservé.")
++        prepared.append((0, updated, C.dims_from_dxf(updated["dxf_dimensions"])))
++    else:
++        src = await load_plan_source(db, plan_id, user["user_id"])
++        if not src: raise HTTPException(409, "PDF source absent : réimportez le fichier")
++        data = base64.b64decode(src["data_b64"])
++        for pg in p["pages"]:
++            if not pg.get("dpi"): continue
++            updated = await asyncio.to_thread(extract_page_geometry, data, pg["index"], float(pg["dpi"])/72)
++            prepared.append((pg["index"], updated, C.dims_from_pdf_vectors(updated["pdf_dimensions"])))
++    # Validate all page associations before publishing any new geometry.
++    for index, updated, dims in prepared:
++        previous = (p.get("cotes_checks") or {}).get(str(index)) or {}
++        unmatched = carry_user_edits(dims, previous.get("items") or [])
++        if unmatched: raise HTTPException(409, f"Corrections conservées : cotes {unmatched} de la page {index+1} à rapprocher avant réextraction")
+     out = []
+-    for pg in p["pages"]:
+-        i = pg["index"]
+-        if i >= doc.page_count or not pg.get("dpi"):
+-            continue
+-        page = doc[i]
+-        tb = []
+-        for b in page.get_text("dict").get("blocks", []):
+-            if b.get("type") != 0:
+-                continue
+-            for ln in b.get("lines", []):
+-                for sp in ln.get("spans", []):
+-                    if sp.get("text", "").strip():
+-                        x0, y0, x1, y1 = sp["bbox"]
+-                        tb.append({"text": sp["text"].strip(), "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0})
+-        px_per_pt = float(pg["dpi"]) / 72
+-        vec = extract_vector_dimensions(pdf_lines(page), tb, px_per_pt)
+-        lines = pdf_lines(page)
+-        elems = extract_elements(lines, tb, px_per_pt, vec.get("pt_per_m")) if vec.get("pt_per_m") else []
+-        spans = extract_auto_spans(lines, px_per_pt, vec["pt_per_m"], _dims_pt(vec["dimensions"], px_per_pt)) if vec.get("pt_per_m") else []
+-        from engines.plan_walls import analyze_walls
+-        walls = analyze_walls(lines, [{**d, "index": k + 1} for k, d in enumerate(vec["dimensions"])], tb, vec.get("pt_per_m"), px_per_pt)
+-        await db.plans_takeoff.update_one(
+-            {"plan_id": plan_id, "pages.index": i},
+-            {"$set": {"pages.$.pdf_dimensions": vec["dimensions"], "pages.$.pdf_elements": elems, "pages.$.pdf_auto_spans": spans,
+-                      "pages.$.pdf_vector_scale": {k: v for k, v in vec.items() if k != "dimensions"}, "pages.$.walls_analysis": walls,
+-                      "updated_at": _now()}})
+-        out.append({"page_index": i, "dimensions": len(vec["dimensions"]), "elements": len(elems), "auto_spans": len(spans),
+-                    "pt_per_m": vec.get("pt_per_m"), "walls": walls.get("stats"), "interior_complete": (walls.get("validation") or {}).get("complete")})
++    for index, updated, dims in prepared:
++        values = {**{f"pages.$.{k}": v for k, v in updated.items()}, "updated_at": _now()}
++        if p.get("kind") == "dxf":
++            values.update(cad_import=parsed["cad_import"], structural_metre=parsed.get("structural_metre"))
++        await db.plans_takeoff.update_one({**owner, "pages.index": index},
++            {"$set": values, "$unset": {f"studies.{index}": "", f"cotes_checks.{index}.engine_version": "", f"cotes_checks.{index}.revision": ""}})
++        walls = updated["walls_analysis"]
++        out.append({"page_index": index, "source": p["kind"], "dimensions": len(dims),
++                    "elements": len(updated.get("pdf_elements") or []), "auto_spans": len(updated.get("pdf_auto_spans") or []),
++                    "walls": walls.get("stats"), "interior_complete": walls["validation"]["complete"]})
+     return {"pages": out}
+ 
+ 
+@@ -563,7 +598,7 @@
+ 
+     async def run():
+         report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+-        if not report:
++        if not report or report.get("engine_version") != 2 or not report.get("revision"):
+             report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
+         geo = report.get("geometry")
+         img = _ai_image(page["image_png_b64"])
+@@ -656,7 +691,8 @@
+     import base64
+     from engines.openai_studies import StudiesError, analyze_plan, check_quota, small_dimension_crops
+     p, page = await _plan_page(plan_id, user["user_id"], body.page_index, with_image=True)
+-    src = await db.plan_sources.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "data_b64": 1, "filename": 1})
++    from engines.plan_sources import load_plan_source
++    src = await load_plan_source(db, plan_id, user["user_id"])
+     if not src:
+         raise HTTPException(409, "PDF original non conservé (plan importé avant cette version) : réimportez le fichier")
+     if (p.get("page_count") or 1) > 20:
+@@ -670,12 +706,16 @@
+ 
+     async def run():
+         report = (p.get("cotes_checks") or {}).get(str(body.page_index))
+-        if not report:
++        if not report or report.get("engine_version") != 2 or not report.get("revision"):
+             report = await _run_check(p, page, plan_id, body.page_index, 2.0, 3.0, user["user_id"])
+         crops = small_dimension_crops(page["image_png_b64"], report.get("items") or [])
+         from engines.openai_studies import zone_crops
+-        walls_result = page.get("walls_analysis") or None
+-        zcrops = zone_crops(base64.b64decode(src["data_b64"]), body.page_index, walls_result, float(page["dpi"]) / 72) if walls_result else []
++        from engines.plan_refresh import refresh_interior
++        walls_result = refresh_interior(page, report.get("items") or [], (report.get("calibration") or {}).get("pixels_per_meter"))
++        crop_geometry = walls_result
++        if walls_result and page.get("geometry_coordinate_space") == "image_px":
++            crop_geometry = {**walls_result, "pt_per_m": walls_result.get("pt_per_m", 0) / (float(page["dpi"]) / 72)}
++        zcrops = zone_crops(base64.b64decode(src["data_b64"]), body.page_index, crop_geometry, float(page["dpi"]) / 72) if walls_result else []
+         req = body.request or ("Contrôle de cohérence des cotes, chaînes de cotes, alignements, épaisseurs de murs et éléments dessinés "
+                                "de la page fournie, sans analyse structurelle.")
+         try:
+@@ -686,7 +726,12 @@
+         except StudiesError as e:
+             raise HTTPException(502, str(e))
+         study["request"] = req
+-        await db.plans_takeoff.update_one({"plan_id": plan_id}, {"$set": {f"studies.{body.page_index}": study, "updated_at": _now()}})
++        study["report_revision"] = report["revision"]
++        saved = await db.plans_takeoff.update_one(
++            {"plan_id": plan_id, "user_id": user["user_id"], f"cotes_checks.{body.page_index}.revision": report["revision"]},
++            {"$set": {f"studies.{body.page_index}": study, "updated_at": _now()}})
++        if not saved.matched_count:
++            raise HTTPException(409, "Les cotes ont changé pendant l'analyse : relancez l'étude sur les valeurs actuelles")
+         await _snapshot(plan_id, user["user_id"], "studies_analyze", {"page": body.page_index, "verified": study["verified"],
+                                                                       "inconsistencies": len(study["analysis"].get("inconsistencies") or [])})
+         return study
+@@ -745,6 +790,7 @@
+ async def _recompute(p: dict, page: dict, plan_id: str, page_index: int, report: dict,
+                      items: list[dict], tol_pct: float, tol_cm: float) -> dict:
+     w, h = int(page.get("width_px") or 0), int(page.get("height_px") or 0)
++    await _ensure_current_geometry(p, page, plan_id, page_index, report.get("user_id") or p.get("user_id", ""))
+     ppm = float((report.get("calibration") or {}).get("pixels_per_meter") or 0)
+     if not ppm:
+         raise HTTPException(400, "Calibration du rapport manquante — relancez le contrôle")
+@@ -755,9 +801,15 @@
+     page_rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
+     if ai_rooms and page_rooms:
+         fresh["surfaces"] = T.reconcile_written_surfaces(page_rooms, ai_rooms, ppm)
+-    new_report = {**report, **fresh, "recomputed_at": _now()}
++    fresh["interior"] = _interior_report(page, fresh["items"], ppm)
++    new_report = {**report, **fresh, "engine_version": 2, "revision": uuid.uuid4().hex, "recomputed_at": _now()}
++    if report.get("geometry"):
++        new_report["geometry"] = {**report["geometry"], "stale": True}
++        if report["geometry"].get("narratif"):
++            new_report["geometry"]["narratif"] = {**report["geometry"]["narratif"], "stale": True}
+     await db.plans_takeoff.update_one(
+-        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{page_index}": new_report, "updated_at": _now()}})
++        {"plan_id": plan_id}, {"$set": {f"cotes_checks.{page_index}": new_report, "updated_at": _now()},
++         "$unset": {f"studies.{page_index}": ""}})
+     return new_report
+ 
+ 

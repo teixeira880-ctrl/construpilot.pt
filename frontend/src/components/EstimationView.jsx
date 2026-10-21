@@ -18,19 +18,19 @@ export const EstimationView = ({ est, projectId }) => {
       <div className="surface p-8 relative overflow-hidden grain">
         <div className="absolute -right-24 -top-24 h-64 w-64 bg-primary/20 blur-3xl rounded-full animate-glow" />
         <div className="relative">
-          <p className="overline">Travaux estimés</p>
+          <p className="overline">Trabalhos estimados</p>
           <p className="num mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight" data-testid="estimation-total">
             {eur(est.total_min)} <span className="text-muted-foreground font-normal">–</span> {eur(est.total_max)}
           </p>
           <p className="mt-3 text-base text-muted-foreground">
-            {est.project_type_name} · {num(est.surface, 1)} m² · finition {est.finish_level_name} ·
+            {est.project_type_name} · {num(est.surface, 1)} m² · acabamento {est.finish_level_name} ·
             <span className="num"> {eur2(est.price_per_sqm)}/m²</span>
           </p>
           <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
-              ["Prix économique", est.price_model?.eco?.total, `${num(est.price_model?.eco?.per_sqm, 0)} €/m²`],
-              ["Prix moyen", est.total_avg, `${num(est.price_per_sqm, 0)} €/m²`],
-              ["Prix premium", est.price_model?.premium?.total, `${num(est.price_model?.premium?.per_sqm, 0)} €/m²`],
+              ["Preço económico", est.price_model?.eco?.total, `${num(est.price_model?.eco?.per_sqm, 0)} €/m²`],
+              ["Preço médio", est.total_avg, `${num(est.price_per_sqm, 0)} €/m²`],
+              ["Preço premium", est.price_model?.premium?.total, `${num(est.price_model?.premium?.per_sqm, 0)} €/m²`],
             ].map(([label, value, sub], i) => (
               <div key={label} className={`p-5 rounded-sm border ${i === 1 ? "border-primary bg-primary/5" : "border-border"}`}>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
@@ -43,23 +43,23 @@ export const EstimationView = ({ est, projectId }) => {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
-        <Stat label="Matériaux" value={eur(b.materials)} testId="stat-materials" />
-        <Stat label="Main-d'œuvre" value={eur(b.labour)} testId="stat-labour" />
-        <Stat label="Location matériel" value={eur(b.equipment_rental)} testId="stat-equipment" />
-        <Stat label="Déchets / évacuation" value={eur(b.waste_disposal)} testId="stat-waste" />
-        <Stat label="Marge imprévus" value={eur(b.contingency)} sub={`${Math.round(b.contingency_rate * 100)} % recommandés`} testId="stat-contingency" accent />
+        <Stat label="Materiais" value={eur(b.materials)} testId="stat-materials" />
+        <Stat label="Outro" value={eur(b.labour)} testId="stat-labour" />
+        <Stat label="Outro" value={eur(b.equipment_rental)} testId="stat-equipment" />
+        <Stat label="Resíduos / evacuação" value={eur(b.waste_disposal)} testId="stat-waste" />
+        <Stat label="Margem imprevistos" value={eur(b.contingency)} sub={`${Math.round(b.contingency_rate * 100)} % recomendados`} testId="stat-contingency" accent />
       </div>
 
       {est.safety_alerts?.length > 0 && (
         <Alert className="rounded-md border-red-500/40 bg-red-500/5" data-testid="safety-alerts">
           <ShieldAlert className="h-5 w-5 text-red-500" />
-          <AlertTitle className="font-display">Intervention d'un professionnel fortement recommandée</AlertTitle>
+          <AlertTitle className="font-display">Intervenção de um profissional fortemente recomendada</AlertTitle>
           <AlertDescription>
             <ul className="mt-2 grid gap-1 text-sm">
               {est.safety_alerts.slice(0, 6).map((a, i) => <li key={i}>• {a.message}</li>)}
             </ul>
             <div className="mt-4">
-              <LeadDialog projectId={projectId} budget={est.total_avg} label="Demander une intervention ConstruPilot" />
+              <LeadDialog projectId={projectId} budget={est.total_avg} label="Solicitar uma intervenção ConstruPilot" />
             </div>
           </AlertDescription>
         </Alert>
@@ -67,9 +67,9 @@ export const EstimationView = ({ est, projectId }) => {
 
       <Tabs defaultValue="lots">
         <TabsList className="rounded-sm flex-wrap h-auto">
-          <TabsTrigger value="lots" className="rounded-sm" data-testid="tab-lots">Prix par lot</TabsTrigger>
-          <TabsTrigger value="planning" className="rounded-sm" data-testid="tab-planning">Planning</TabsTrigger>
-          <TabsTrigger value="diy" className="rounded-sm" data-testid="tab-diy">DIY ou artisan</TabsTrigger>
+          <TabsTrigger value="lots" className="rounded-sm" data-testid="tab-lots">Preço por lote</TabsTrigger>
+          <TabsTrigger value="planning" className="rounded-sm" data-testid="tab-planning">Planeamento</TabsTrigger>
+          <TabsTrigger value="diy" className="rounded-sm" data-testid="tab-diy">DIY ou artesão</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lots" className="mt-6">
@@ -77,15 +77,15 @@ export const EstimationView = ({ est, projectId }) => {
             <Table data-testid="lots-table">
               <TableHeader>
                 <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                  <TableHead>Lot</TableHead>
-                  <TableHead className="text-right">Quantité</TableHead>
-                  <TableHead className="text-right">Matériaux</TableHead>
-                  <TableHead className="text-right">Main-d'œuvre</TableHead>
-                  <TableHead className="text-right">Prix / unité</TableHead>
+                  <TableHead>Lote</TableHead>
+                  <TableHead className="text-right">Quantidade</TableHead>
+                  <TableHead className="text-right">Materiais</TableHead>
+                  <TableHead className="text-right">Outro</TableHead>
+                  <TableHead className="text-right">Preço / unidade</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Temps</TableHead>
-                  <TableHead>Difficulté</TableHead>
-                  <TableHead className="min-w-[200px]">Matériel nécessaire</TableHead>
+                  <TableHead className="text-right">Tempo</TableHead>
+                  <TableHead>Dificuldade</TableHead>
+                  <TableHead className="min-w-[200px]">Equipamento necessário</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -111,8 +111,8 @@ export const EstimationView = ({ est, projectId }) => {
           <div className="surface p-6">
             <p className="text-sm text-muted-foreground mb-6">
               <CalendarDays className="inline h-4 w-4 mr-2 text-primary" />
-              Durée totale estimée : <span className="num font-semibold text-foreground">{est.duration_weeks} semaines</span>
-              {" "}· <span className="num">{num(est.total_hours, 0)} h</span> de main-d'œuvre
+              Duração total estimada: <span className="num font-semibold text-foreground">{est.duration_weeks} semaines</span>
+              {" "}· <span className="num">{num(est.total_hours, 0)} h</span> de mão de obra
             </p>
             <div className="grid gap-3" data-testid="planning-list">
               {(est.planning || []).map((p, i) => (
@@ -133,23 +133,23 @@ export const EstimationView = ({ est, projectId }) => {
           {dp && (
             <div className="grid lg:grid-cols-3 gap-4" data-testid="diy-vs-pro">
               <div className="surface p-6">
-                <p className="overline text-muted-foreground">Par un professionnel</p>
+                <p className="overline text-muted-foreground">Por um profissional</p>
                 <p className="num mt-3 text-2xl font-bold">{eur(dp.pro_total)}</p>
               </div>
               <div className="surface p-6 border-primary">
-                <p className="overline">En le faisant moi-même</p>
+                <p className="overline">Fazendo-o eu mesmo</p>
                 <p className="num mt-3 text-2xl font-bold text-primary">{eur(dp.diy_total)}</p>
-                <p className="num mt-1 text-xs text-muted-foreground"><Clock className="inline h-3 w-3 mr-1" />{num(dp.diy_hours)} h de travail</p>
+                <p className="num mt-1 text-xs text-muted-foreground"><Clock className="inline h-3 w-3 mr-1" />{num(dp.diy_hours)} h de trabalho</p>
               </div>
               <div className="surface p-6">
-                <p className="overline text-muted-foreground">Économie potentielle</p>
+                <p className="overline text-muted-foreground">Economia potencial</p>
                 <p className="num mt-3 text-2xl font-bold text-emerald-500">
                   <TrendingDown className="inline h-5 w-5 mr-1" />{eur(dp.savings)}
                 </p>
-                <p className="num mt-1 text-xs text-muted-foreground">soit {dp.savings_pct} % · risque {dp.risk}</p>
+                <p className="num mt-1 text-xs text-muted-foreground">soit {dp.savings_pct} % · risco {dp.risk}</p>
               </div>
               <div className="lg:col-span-3 surface p-6">
-                <p className="overline">Conclusion ConstruPilot</p>
+                <p className="overline">Conclusão ConstruPilot</p>
                 <p className="mt-3 text-sm">{dp.conclusion}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {dp.diy_tasks.map((t) => (

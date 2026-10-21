@@ -73,7 +73,7 @@ async def enrich_prices(results: list[dict]) -> list[dict]:
             tracking = cfg.get("tracking_template") or ""
             tracking_url = tracking.replace("{url}", quote(r.get("url", ""), safe=""))
             r["is_affiliate"] = True
-            r["affiliate_disclosure"] = "Lien partenaire — ConstruPilot peut recevoir une commission sur cet achat."
+            r["affiliate_disclosure"] = "Ligação de parceiro — o ConstruPilot pode receber uma comissão nesta compra."
             r["tracking_url"] = tracking_url or r.get("url")
         else:
             r["is_affiliate"] = False

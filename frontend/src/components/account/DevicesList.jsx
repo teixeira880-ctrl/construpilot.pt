@@ -31,22 +31,22 @@ export const DevicesList = () => {
   const remove = async (key) => {
     try {
       await api.delete(`/auth/devices/${key}`);
-      toast.success("Appareil retiré de l'historique");
+      toast.success("Dispositivo removido do histórico");
       load();
     } catch {
-      toast.error("Suppression impossible");
+      toast.error("Não foi possível eliminar");
     }
   };
 
   const logoutOthers = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post("/auth/logout-others");
-      if (data.token) localStorage.setItem("construpilot_token", data.token);
-      toast.success("Tous les autres appareils ont été déconnectés");
+      await api.post("/auth/logout-others");
+      // Auth par cookie httpOnly — pas de token côté client.
+      toast.success("Todos os outros dispositivos foram desligados");
       load();
     } catch {
-      toast.error("Opération impossible");
+      toast.error("Operação impossível");
     } finally {
       setBusy(false);
     }
@@ -55,10 +55,10 @@ export const DevicesList = () => {
   return (
     <div className="surface p-5 space-y-4" data-testid="devices-list">
       <p className="font-semibold flex items-center gap-2">
-        <MonitorSmartphone className="h-4 w-4 text-primary" /> Historique des connexions
+        <MonitorSmartphone className="h-4 w-4 text-primary" /> Histórico das ligações
       </p>
       {devices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Aucun appareil enregistré pour l'instant.</p>
+        <p className="text-sm text-muted-foreground">Nenhum dispositivo registado por agora.</p>
       ) : (
         <ul className="space-y-2">
           {devices.map((d) => (
@@ -68,12 +68,12 @@ export const DevicesList = () => {
               <div className="min-w-0 flex-1">
                 <p className="text-sm truncate">{d.user_agent}</p>
                 <p className="text-xs text-muted-foreground">
-                  IP {d.ip} · dernière activité {fmtDate(d.last_seen)}
+                  IP {d.ip} · última atividade {fmtDate(d.last_seen)}
                 </p>
               </div>
               {d.current ? (
                 <Badge className="rounded-sm shrink-0" data-testid="device-current-badge">
-                  Cet appareil
+                  Este dispositivo
                 </Badge>
               ) : (
                 <Button type="button" variant="ghost" size="icon" className="shrink-0"
@@ -89,10 +89,10 @@ export const DevicesList = () => {
       <Button type="button" variant="outline" disabled={busy}
               onClick={logoutOthers} className="rounded-sm w-full gap-2"
               data-testid="logout-others-btn">
-        <LogOut className="h-4 w-4" /> Déconnecter tous les autres appareils
+        <LogOut className="h-4 w-4" /> Desligar todos os outros dispositivos
       </Button>
       <p className="text-[10px] text-muted-foreground">
-        Les sessions et jetons de connexion des autres appareils seront immédiatement invalidés.
+        As sessões e tokens de ligação dos outros dispositivos serão imediatamente invalidados.
       </p>
     </div>
   );

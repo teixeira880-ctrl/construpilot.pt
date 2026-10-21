@@ -78,11 +78,11 @@ export const Timeline = ({ projectId }) => {
   const counts = events.reduce((acc, e) => ({ ...acc, [e.type]: (acc[e.type] || 0) + 1 }), {});
 
   const filters = [
-    { key: "all", label: "Tous", count: events.length },
-    { key: "photo", label: "Photos", count: counts.photo || 0 },
-    { key: "expense", label: "Dépenses", count: counts.expense || 0 },
-    { key: "progress", label: "Avancement", count: counts.progress || 0 },
-    { key: "lead", label: "Demandes", count: counts.lead || 0 },
+    { key: "all", label: "Todos", count: events.length },
+    { key: "photo", label: "Fotografias", count: counts.photo || 0 },
+    { key: "expense", label: "Despesas", count: counts.expense || 0 },
+    { key: "progress", label: "Avanço", count: counts.progress || 0 },
+    { key: "lead", label: "Pedidos", count: counts.lead || 0 },
   ];
 
   return (
@@ -105,7 +105,7 @@ export const Timeline = ({ projectId }) => {
 
       {filtered.length === 0 ? (
         <div className="surface p-10 text-center text-muted-foreground text-sm" data-testid="timeline-empty">
-          Rien à afficher pour ce filtre.
+          Nada a apresentar para este filtro.
         </div>
       ) : (
         <ol className="relative border-l-2 border-border ml-4" data-testid="timeline-list">

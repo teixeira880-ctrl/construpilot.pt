@@ -50,28 +50,117 @@ def paint(*args, **kwargs) -> dict:
                    "doors": p.doors, "windows": p.windows, "coats": p.coats,
                    "include_ceiling": p.include_ceiling},
         "results": [
-            {"label": "Superfície bruta de paredes", "value": round(geom["wall_area"], 2), "unit": "m²"},
-            {"label": "Vãos deduzidos", "value": round(geom["openings"], 2), "unit": "m²"},
-            {"label": "Superfície de tecto", "value": round(geom["ceiling"], 2), "unit": "m²"},
+            {"label": "Superfície paredes bruta", "value": round(geom["wall_area"], 2), "unit": "m²"},
+            {"label": "Superfície de aberturas deduzida", "value": round(geom["openings"], 2), "unit": "m²"},
+            {"label": "Superfície teto", "value": round(geom["ceiling"], 2), "unit": "m²"},
             {"label": "Superfície a pintar", "value": round(geom["net"], 2), "unit": "m²"},
-            {"label": f"Tinta ({p.coats} demãos, +7% margem)",
+            {"label": f'Tinta ({p.coats} demãos, +7% margem)',
              "value": round(litres_margin, 1), "unit": "L"},
             {"label": "Primário", "value": round(primer * 1.07, 1), "unit": "L"},
         ],
         "materials": [
             {"name": "Tinta parede (lata 10 L)", "quantity": _ceil(litres_margin / 10),
-             "unit": "pot 10L", "search": "peinture murale mate blanche 10L"},
-            {"name": "Primário universal (lata 10 L)",
+             "unit": "pot 10L", "search": "tinta plástica mate branca interior 15L"},
+            {"name": "Primário universal (balde 10 L)",
              "quantity": _ceil(primer * 1.07 / 10),
-             "unit": "pot 10L", "search": "sous couche universelle 10L"},
+             "unit": "pot 10L", "search": "primário universal 15L"},
             {"name": "Rolo + manga", "quantity": 2, "unit": "u",
-             "search": "rouleau peinture manchon"},
-            {"name": "Fita de pintor", "quantity": 2, "unit": "u",
-             "search": "ruban masquage peinture"},
-            {"name": "Lona de protecção", "quantity": 1, "unit": "u",
-             "search": "bache protection chantier"},
+             "search": "rolo de pintura com manga"},
+            {"name": "Fita de mascaramento", "quantity": 2, "unit": "u",
+             "search": "fita de pintor"},
+            {"name": "Lona de proteção", "quantity": 1, "unit": "u",
+             "search": "plástico de proteção obra"},
         ],
         "estimated_budget": round(litres_margin * p.price_per_litre + primer * 4.5, 2),
+    }
+
+
+# =============== MASONRY (parpaing / brique) ===============
+
+@dataclass
+class MasonryParams:
+    area: float                        # surface de mur (m²)
+    material: str = "parpaing"         # "parpaing" | "brique"
+    bond: str | None = None            # parpaing: "mortier" | brique: "colle" | "mousse"
+    blocks_per_m2: float = 10.0        # bloc/brique 20x20x50 ≈ 10/m²
+    loss_pct: float = 5.0
+    # Ratios liants (par m² de mur)
+    cement_kg_per_m2: float = 7.0      # ciment (mortier traditionnel)
+    sand_m3_per_m2: float = 0.03       # sable (mortier traditionnel)
+    glue_kg_per_m2: float = 5.0        # mortier-colle joint mince (brique)
+    foam_m2_per_can: float = 8.0       # 1 mousse PU couvre ~8 m²
+    # Bloc choisi (préréglage fournisseur)
+    block_label: str | None = None
+    block_search: str | None = None
+    block_price: float | None = None
+    # Enduit de façade
+    include_render: bool = False
+    render_kg_per_m2: float = 25.0     # corps d'enduit
+    gobetis_kg_per_m2: float = 5.0     # gobetis d'accroche
+
+
+def masonry(*args, **kwargs) -> dict:
+    """Mur en parpaing ou brique + liants (sable/ciment, mortier-colle ou mousse PU),
+    avec option enduit de façade (gobetis + corps d'enduit)."""
+    p = args[0] if args and isinstance(args[0], MasonryParams) else MasonryParams(*args, **kwargs)
+    area = max(0.0, float(p.area))
+    is_brique = (p.material or "").lower().startswith("briq")
+    bond = (p.bond or ("colle" if is_brique else "mortier")).lower()
+    net_blocks = _ceil(area * p.blocks_per_m2 * (1 + p.loss_pct / 100))
+
+    block_name = p.block_label or ("Tijolo" if is_brique else "Bloco de betão 20x20x50")
+    block_search = p.block_search or ("tijolo de parede" if is_brique else "bloco furado 20x20x50")
+    block_price = p.block_price if p.block_price is not None else (0.85 if is_brique else 1.20)
+    results = [
+        {"label": "Superfície de parede", "value": round(area, 2), "unit": "m²"},
+        {"label": block_name, "value": net_blocks, "unit": "u"},
+    ]
+    materials = [
+        {"name": block_name, "quantity": net_blocks, "unit": "u", "search": block_search},
+    ]
+    budget = net_blocks * block_price
+
+    if bond == "mousse":
+        cans = _ceil(area / p.foam_m2_per_can)
+        results.append({"label": "Espuma PU de colagem", "value": cans, "unit": "cartouche"})
+        materials.append({"name": "Espuma poliuretano de colagem", "quantity": cans,
+                          "unit": "cartouche", "search": "espuma poliuretano colagem blocos tijolos"})
+        budget += cans * 7.0
+    elif bond == "colle":
+        glue_bags = _ceil((area * p.glue_kg_per_m2) / 25)
+        results.append({"label": "Argamassa-cola (junta fina)", "value": glue_bags, "unit": "sac 25 kg"})
+        materials.append({"name": "Argamassa-cola junta fina 25 kg", "quantity": glue_bags,
+                          "unit": "sac", "search": "cimento cola junta fina alvenaria 25kg"})
+        budget += glue_bags * 15.0
+    else:  # mortier traditionnel : sable + ciment
+        cement_bags = _ceil((area * p.cement_kg_per_m2) / 35)
+        sand_m3 = round(area * p.sand_m3_per_m2, 2)
+        results.append({"label": "Cimento", "value": cement_bags, "unit": "sac 35 kg"})
+        results.append({"label": "Areia", "value": sand_m3, "unit": "m³"})
+        materials.append({"name": "Cimento 35 kg", "quantity": cement_bags, "unit": "sac",
+                          "search": "cimento 35 kg"})
+        materials.append({"name": "Areia (argamassa)", "quantity": sand_m3, "unit": "m³",
+                          "search": "sable a maconner big bag"})
+        budget += cement_bags * 6.0 + sand_m3 * 40.0
+
+    if p.include_render:
+        gobetis_bags = _ceil((area * p.gobetis_kg_per_m2) / 25)
+        render_bags = _ceil((area * p.render_kg_per_m2) / 25)
+        results.append({"label": "Chapisco de aderência", "value": gobetis_bags, "unit": "sac 25 kg"})
+        results.append({"label": "Reboco de fachada", "value": render_bags, "unit": "sac 25 kg"})
+        materials.append({"name": "Chapisco de aderência 25 kg", "quantity": gobetis_bags,
+                          "unit": "sac", "search": "chapisco aderência 25 kg"})
+        materials.append({"name": "Reboco de fachada (corpo de reboco) 25 kg", "quantity": render_bags,
+                          "unit": "sac", "search": "reboco monocamada fachada 25 kg"})
+        budget += gobetis_bags * 10.0 + render_bags * 12.0
+
+    return {
+        "inputs": {"area": area, "material": "brique" if is_brique else "parpaing",
+                   "bond": bond, "blocks_per_m2": p.blocks_per_m2, "loss_pct": p.loss_pct,
+                   "include_render": bool(p.include_render)},
+        "results": results,
+        "materials": materials,
+        "estimated_budget": round(budget, 2),
     }
 
 
@@ -110,21 +199,26 @@ def tile(*args, **kwargs) -> dict:
             {"label": "Superfície com perdas", "value": round(net_area, 2), "unit": "m²"},
             {"label": "Número de azulejos", "value": tiles, "unit": "u"},
             {"label": "Número de caixas", "value": boxes, "unit": "carton"},
-            {"label": "Cola para azulejos", "value": glue_bags, "unit": "sac 25 kg"},
-            {"label": "Joint", "value": joint_bags, "unit": "sac 5 kg"},
+            {"label": "Cola para azulejo", "value": glue_bags, "unit": "sac 25 kg"},
+            {"label": "Junta", "value": joint_bags, "unit": "sac 5 kg"},
         ],
         "materials": [
-            {"name": f"Azulejos {int(p.tile_length)}x{int(p.tile_width)}",
+            {"name": f'Revestimento cerâmico {int(p.tile_length)}x{int(p.tile_width)}',
              "quantity": round(net_area, 2), "unit": "m²",
              "search": f"carrelage {int(p.tile_length)}x{int(p.tile_width)}"},
-            {"name": "Cola para azulejos 25 kg", "quantity": glue_bags, "unit": "sac",
-             "search": "colle carrelage 25 kg"},
-            {"name": "Betumação juntas 5 kg", "quantity": joint_bags, "unit": "sac",
-             "search": "joint carrelage 5kg"},
+            {"name": "Cola para azulejo 25 kg", "quantity": glue_bags, "unit": "sac",
+             "search": "cimento cola azulejo 25 kg"},
+            {"name": "Junta azulejo 5 kg", "quantity": joint_bags, "unit": "sac",
+             "search": "betume juntas azulejo 5kg"},
             {"name": "Cruzetas", "quantity": _ceil(tiles / 100), "unit": "boîte",
-             "search": f"croisillon carrelage {int(p.joint)}mm"},
+             "search": f'espaçadores azulejo {int(p.joint)}mm'},
             {"name": "Primário de aderência", "quantity": _ceil(p.area / 30),
-             "unit": "bidon", "search": "primaire accrochage carrelage"},
+             "unit": "bidon", "search": "primário aderência azulejo"},
+            {"name": "Manta de dessolidarização", "quantity": round(net_area, 2),
+             "unit": "m²", "search": "membrana dessolidarização azulejo"},
+            {"name": "Perfis de acabamento",
+             "quantity": _ceil((p.area ** 0.5) * 2 / 2.5), "unit": "u",
+             "search": "perfil remate azulejo 2.5m"},
         ],
         "estimated_budget": round(net_area * p.price_per_sqm + glue_bags * 14
                                    + joint_bags * 12, 2),
@@ -151,31 +245,31 @@ def drywall(area: float, plate_type: str = "BA13 standard", plate_length: float 
     mats = [
         {"name": f"Plaque {plate_type} {int(plate_length)}x{int(plate_width)}", "quantity": plates,
          "unit": "plaque", "search": f"plaque platre {plate_type} {int(plate_length)}x{int(plate_width)}"},
-        {"name": "Perfil R48 (barra 3 m)", "quantity": _ceil(rails / 3), "unit": "barre",
-         "search": "rail placo R48 3m"},
-        {"name": "Prumo M48 (barra 3 m)", "quantity": _ceil(studs / 3), "unit": "barre",
-         "search": "montant placo M48 3m"},
-        {"name": "Parafusos TTPC 25mm", "quantity": screw_boxes, "unit": "caixa 500", "search": "vis placo TTPC 25"},
-        {"name": "Fita de junta 150 m", "quantity": _ceil(bands / 150), "unit": "rouleau",
-         "search": "bande a joint placo 150m"},
-        {"name": "Massa de junta 25 kg", "quantity": coating_bags, "unit": "sac", "search": "enduit joint placo 25kg"},
+        {"name": "Calha R48 (barra 3 m)", "quantity": _ceil(rails / 3), "unit": "barre",
+         "search": "calha pladur R48 3m"},
+        {"name": "Montante M48 (barra 3 m)", "quantity": _ceil(studs / 3), "unit": "barre",
+         "search": "montante pladur M48 3m"},
+        {"name": "Parafusos TTPC 25mm", "quantity": screw_boxes, "unit": "caixa 500", "search": "parafuso pladur 25"},
+        {"name": "Fita para juntas 150 m", "quantity": _ceil(bands / 150), "unit": "rouleau",
+         "search": "fita juntas pladur 150m"},
+        {"name": "Massa para juntas 25 kg", "quantity": coating_bags, "unit": "sac", "search": "massa juntas pladur 25kg"},
     ]
     results = [
         {"label": "Superfície com 10% de margem", "value": round(net, 2), "unit": "m²"},
         {"label": "Placas necessárias", "value": plates, "unit": "plaque"},
-        {"label": "Perfis", "value": rails, "unit": "ml"},
-        {"label": "Prumos", "value": studs, "unit": "ml"},
+        {"label": "Calhas", "value": rails, "unit": "ml"},
+        {"label": "Montantes", "value": studs, "unit": "ml"},
         {"label": "Parafusos", "value": screws, "unit": "u"},
-        {"label": "Fita de junta", "value": bands, "unit": "ml"},
-        {"label": "Massa de junta", "value": coating_bags, "unit": "sac 25 kg"},
+        {"label": "Fita para juntas", "value": bands, "unit": "ml"},
+        {"label": "Reboco", "value": coating_bags, "unit": "sac 25 kg"},
     ]
     if structure == "plafond":
-        mats.insert(3, {"name": "Suspensor (pack 100)", "quantity": _ceil(suspentes / 100), "unit": "lot",
-                        "search": "suspente placo lot 100"})
-        mats.insert(4, {"name": "Ómega F530 (barra 3 m)", "quantity": _ceil(fourrures / 3), "unit": "barre",
-                        "search": "fourrure F530 3m"})
-        results.insert(3, {"label": "Suspensores", "value": suspentes, "unit": "u"})
-        results.insert(4, {"label": "Ómegas", "value": fourrures, "unit": "ml"})
+        mats.insert(3, {"name": "Pendural (lote 100)", "quantity": _ceil(suspentes / 100), "unit": "lot",
+                        "search": "tirante pladur conjunto 100"})
+        mats.insert(4, {"name": "Perfil F530 (barra 3 m)", "quantity": _ceil(fourrures / 3), "unit": "barre",
+                        "search": "perfil F530 3m"})
+        results.insert(3, {"label": "Pendurais", "value": suspentes, "unit": "u"})
+        results.insert(4, {"label": "Perfis", "value": fourrures, "unit": "ml"})
     return {
         "inputs": {"area": area, "plate_type": plate_type, "plate_length": plate_length,
                    "plate_width": plate_width, "structure": structure},
@@ -193,22 +287,22 @@ def _concrete_materials_for_mode(mode: str, *, vol_margin: float, cement_kg: flo
                                   bags_35: int, length: float, width: float) -> list[dict]:
     mats: list[dict] = []
     if mode == "sacs":
-        mats.append({"name": "Betão pronto 35 kg", "quantity": bags_35, "unit": "sac",
-                     "search": "beton pret a l'emploi 35 kg"})
+        mats.append({"name": "Betão pronto a usar 35 kg", "quantity": bags_35, "unit": "sac",
+                     "search": "betão pronto saco 35 kg"})
     elif mode == "toupie":
-        mats.append({"name": "Betão entregue (autobetoneira)", "quantity": round(vol_margin, 2), "unit": "m³",
-                     "search": "beton livre toupie m3"})
+        mats.append({"name": "Betão entregue (betoneira)", "quantity": round(vol_margin, 2), "unit": "m³",
+                     "search": "betão pronto autobetoneira m3"})
     else:
         mats += [
             {"name": "Cimento CEM II 35 kg", "quantity": _ceil(cement_kg / 35), "unit": "sac",
-             "search": "ciment 35 kg CEM II"},
+             "search": "cimento 35 kg CEM II"},
             {"name": "Areia 0/4", "quantity": _ceil(sand_kg / 35), "unit": "sac 35 kg",
              "search": "sable 0/4 sac"},
-            {"name": "Godo 4/20", "quantity": _ceil(gravel_kg / 35), "unit": "sac 35 kg",
-             "search": "gravier 4/20 sac"},
+            {"name": "Brita 4/20", "quantity": _ceil(gravel_kg / 35), "unit": "sac 35 kg",
+             "search": "brita 4/20 saco"},
         ]
-    mats.append({"name": "Malha electrossoldada ST25", "quantity": _ceil(length * width / 6),
-                 "unit": "panneau", "search": "treillis soude ST25"})
+    mats.append({"name": "Rede eletrossoldada ST25", "quantity": _ceil(length * width / 6),
+                 "unit": "panneau", "search": "malha eletrossoldada AQ38"})
     return mats
 
 
@@ -229,7 +323,7 @@ def concrete(length: float, width: float, thickness_cm: float, mode: str = "sacs
             {"label": "Sacos de betão 35 kg", "value": bags_35, "unit": "sac"},
             {"label": "Cimento", "value": round(cement_kg), "unit": "kg"},
             {"label": "Areia", "value": round(sand_kg), "unit": "kg"},
-            {"label": "Godo", "value": round(gravel_kg), "unit": "kg"},
+            {"label": "Brita", "value": round(gravel_kg), "unit": "kg"},
             {"label": "Água", "value": round(water_l), "unit": "L"},
         ],
         "materials": _concrete_materials_for_mode(
@@ -262,19 +356,19 @@ def insulation(area: float, material: str = "laine_de_verre", thickness_mm: floa
                    "target_r": target_r},
         "results": [
             {"label": "Lambda do material", "value": lam, "unit": "W/m.K"},
-            {"label": "Espessura escolhida", "value": thickness_mm, "unit": "mm"},
+            {"label": "Espessura adotada", "value": thickness_mm, "unit": "mm"},
             {"label": "Resistência térmica R obtida", "value": r_value, "unit": "m².K/W"},
             {"label": "Superfície com 6% de margem", "value": round(net, 2), "unit": "m²"},
             {"label": "Rolos / pacotes (6 m²)", "value": rolls, "unit": "u"},
-            {"label": "Rolos pára-vapor (75 m² / rolo)", "value": vapor_rolls, "unit": "u"},
+            {"label": "Rolos para-vapor (75 m² / rolo)", "value": vapor_rolls, "unit": "u"},
         ],
         "materials": [
             {"name": f"{material.replace('_', ' ').title()} {thickness_mm} mm", "quantity": round(net, 2),
              "unit": "m²", "search": f"{material.replace('_', ' ')} {thickness_mm} mm"},
-            {"name": "Membrana pára-vapor (rolo 75 m²)", "quantity": vapor_rolls, "unit": "rouleau",
-             "search": "membrane pare vapeur 75m2 rouleau"},
-            {"name": "Adesivo pára-vapor", "quantity": _ceil(net / 40), "unit": "rouleau",
-             "search": "adhesif pare vapeur"},
+            {"name": "Membrana para-vapor (rolo 75 m²)", "quantity": vapor_rolls, "unit": "rouleau",
+             "search": "barreira pára-vapor 75m2 rolo"},
+            {"name": "Adesivo para-vapor", "quantity": _ceil(net / 40), "unit": "rouleau",
+             "search": "fita adesiva pára-vapor"},
         ],
         "estimated_budget": round(net * price_per_sqm * (thickness_mm / 200), 2),
     }
@@ -308,7 +402,7 @@ def _roof_facade_warnings(p: RoofFacadeParams) -> list[str]:
     if p.pitch_deg and p.pitch_deg > 60:
         warnings.append("Inclinação > 60° — verificar o resultado da superfície calculada")
     if not p.pitch_deg and not p.rampant_m:
-        warnings.append("Sem inclinação nem rampante fornecidos — superfície real = superfície projectada")
+        warnings.append("Sem inclinação nem vertente fornecidas — área real = área projetada")
     return warnings
 
 
@@ -318,32 +412,32 @@ def _roof_facade_materials(real_area: float, facade_net: float, projected: float
         # Toiture
         {"name": "Telha / ardósia (cobertura)",
          "quantity": round(real_area * 1.05, 2), "unit": "m²",
-         "search": "tuile terre cuite couverture"},
-        {"name": "Subtelha (rolo 75 m²)",
+         "search": "telha cerâmica cobertura"},
+        {"name": "Tela sob cobertura (rolo 75 m²)",
          "quantity": _ceil(real_area / 75), "unit": "rouleau",
-         "search": "ecran sous toiture HPV 75m2"},
+         "search": "subtelha respirável 75m2"},
         {"name": "Ripas 25×50 (barra 4 m)",
          "quantity": _ceil(real_area * 3 / 4), "unit": "barre",
          "search": "liteau bois 25x50 4m"},
-        {"name": "Isolamento de sótão (lã rocha 240 mm)",
+        {"name": "Isolamento sótão (lã rocha 240 mm)",
          "quantity": round(projected * 1.05, 2), "unit": "m²",
-         "search": "laine de roche 240 mm combles"},
+         "search": "lã de rocha 240 mm sótão"},
         # Façade ITE
-        {"name": f"Painel ETIC {ite_mm} mm (pack 3 m²)",
+        {"name": f'Painel ETICS {ite_mm} mm (paquet 3 m²)',
          "quantity": _ceil(facade_net / 3), "unit": "paquet",
-         "search": f"panneau ite polystyrene {ite_mm}mm"},
-        {"name": "Cola ETIC (saco 25 kg)",
+         "search": f'placa ETICS poliestireno {ite_mm}mm'},
+        {"name": "Cola ETICS (saco 25 kg)",
          "quantity": _ceil(facade_net / 4.5), "unit": "sac",
-         "search": "colle enduit ite sac 25 kg"},
+         "search": "argamassa cola ETICS saco 25 kg"},
         {"name": "Reboco de acabamento (saco 25 kg)",
          "quantity": _ceil(facade_net / 3.5), "unit": "sac",
-         "search": "enduit de finition sac 25 kg"},
+         "search": "reboco de acabamento saco 25 kg"},
         {"name": "Rede de fibra (rolo 50 m²)",
          "quantity": _ceil(facade_net / 50), "unit": "rouleau",
-         "search": "treillis armature ite rouleau 50m2"},
-        {"name": "Tinta de fachada (lata 10 L)",
+         "search": "rede de fibra ETICS rolo 50m2"},
+        {"name": "Tinta fachada (lata 10 L)",
          "quantity": _ceil(facade_net * 0.15 / 10), "unit": "pot 10L",
-         "search": "peinture facade acrylique 10L"},
+         "search": "tinta fachada acrílica 15L"},
     ]
 
 
@@ -367,11 +461,11 @@ def roof_facade(*args, **kwargs) -> dict:
             "ite_thickness_mm": p.ite_thickness_mm,
         },
         "results": [
-            {"label": "Superfície de cobertura projectada", "value": max(0.0, p.projected_m2), "unit": "m²"},
-            {"label": "Superfície REAL (inclinada)", "value": real_area, "unit": "m²"},
-            {"label": "Rácio de inclinação", "value": round(slope_ratio, 3), "unit": ""},
+            {"label": "Superfície de cobertura projetada", "value": max(0.0, p.projected_m2), "unit": "m²"},
+            {"label": "Superfície cobertura REAL (inclinada)", "value": real_area, "unit": "m²"},
+            {"label": "Rácio inclinação", "value": round(slope_ratio, 3), "unit": ""},
             {"label": "Fachada bruta", "value": facade_gross, "unit": "m²"},
-            {"label": "Fachada líquida (- vãos)", "value": facade_net, "unit": "m²"},
+            {"label": "Fachada líquida (- aberturas)", "value": facade_net, "unit": "m²"},
         ],
         "materials": _roof_facade_materials(real_area, facade_net,
                                              max(0.0, p.projected_m2), p.ite_thickness_mm),
@@ -387,26 +481,26 @@ CALCULATORS = {
                   {"name": "height", "label": "Altura (m)", "type": "number", "default": 2.5},
                   {"name": "doors", "label": "Número de portas", "type": "number", "default": 1},
                   {"name": "windows", "label": "Número de janelas", "type": "number", "default": 1},
-                  {"name": "coats", "label": "Número de demãos", "type": "number", "default": 2},
-                  {"name": "include_ceiling", "label": "Pintar o tecto", "type": "boolean", "default": True},
+                  {"name": "coats", "label": "Número de camadas", "type": "number", "default": 2},
+                  {"name": "include_ceiling", "label": "Pintar o teto", "type": "boolean", "default": True},
               ]},
-    "tile": {"key": "tile", "name": "Azulejos", "fn": tile, "icon": "GridFour",
+    "tile": {"key": "tile", "name": "Revestimento cerâmico", "fn": tile, "icon": "GridFour",
              "fields": [
                  {"name": "area", "label": "Superfície (m²)", "type": "number", "default": 12},
                  {"name": "tile_length", "label": "Comprimento azulejo (cm)", "type": "number", "default": 60},
                  {"name": "tile_width", "label": "Largura azulejo (cm)", "type": "number", "default": 60},
                  {"name": "joint", "label": "Largura junta (mm)", "type": "number", "default": 3},
-                 {"name": "pose", "label": "Tipo de assentamento", "type": "select",
+                 {"name": "pose", "label": "Tipo de aplicação", "type": "select",
                   "options": ["droite", "diagonale", "chevron"], "default": "droite"},
                  {"name": "tiles_per_box", "label": "Azulejos por caixa", "type": "number", "default": 6},
              ]},
     "drywall": {"key": "drywall", "name": "Pladur", "fn": drywall, "icon": "Wall",
                 "fields": [
                     {"name": "area", "label": "Superfície (m²)", "type": "number", "default": 35},
-                    {"name": "structure", "label": "Trabalho", "type": "select",
+                    {"name": "structure", "label": "Artigo", "type": "select",
                      "options": ["cloison", "doublage", "plafond"], "default": "plafond"},
                     {"name": "plate_type", "label": "Tipo de placa", "type": "select",
-                     "options": ["BA13 standard", "BA13 hydrofuge", "BA13 phonique", "BA18 haute dureté"],
+                     "options": ["BA13 standard", "pladur hidrófugo", "BA13 phonique", "BA18 alta dureza"],
                      "default": "BA13 standard"},
                     {"name": "plate_length", "label": "Comprimento placa (cm)", "type": "number", "default": 250},
                     {"name": "plate_width", "label": "Largura placa (cm)", "type": "number", "default": 120},
@@ -416,7 +510,7 @@ CALCULATORS = {
                      {"name": "length", "label": "Comprimento (m)", "type": "number", "default": 5},
                      {"name": "width", "label": "Largura (m)", "type": "number", "default": 4},
                      {"name": "thickness_cm", "label": "Espessura (cm)", "type": "number", "default": 12},
-                     {"name": "mode", "label": "Fornecimento", "type": "select",
+                     {"name": "mode", "label": "Aprovisionamento", "type": "select",
                       "options": ["sacs", "toupie", "melange"], "default": "sacs"},
                  ]},
     "insulation": {"key": "insulation", "name": "Isolamento", "fn": insulation, "icon": "ThermometerSimple",
@@ -427,14 +521,14 @@ CALCULATORS = {
                        {"name": "thickness_mm", "label": "Espessura (mm)", "type": "number", "default": 200},
                        {"name": "target_r", "label": "R pretendido (opcional)", "type": "number", "default": None},
                    ]},
-    "roof_facade": {"key": "roof_facade", "name": "Cobertura & Fachada ETIC", "fn": roof_facade, "icon": "Home",
+    "roof_facade": {"key": "roof_facade", "name": "Cobertura & Fachada ITE", "fn": roof_facade, "icon": "Home",
                     "fields": [
-                        {"name": "projected_m2", "label": "Superfície projectada (m²)", "type": "number", "default": 100},
+                        {"name": "projected_m2", "label": "Superfície cobertura projetada (m²)", "type": "number", "default": 100},
                         {"name": "pitch_deg", "label": "Inclinação (°)", "type": "number", "default": 30},
-                        {"name": "rampant_m", "label": "Comprimento inclinado (m, opcional)", "type": "number", "default": None},
+                        {"name": "rampant_m", "label": "Comprimento pendente (m, opcional)", "type": "number", "default": None},
                         {"name": "wall_perimeter_m", "label": "Perímetro fachada (m)", "type": "number", "default": 40},
                         {"name": "wall_height_m", "label": "Altura fachada (m)", "type": "number", "default": 5.5},
-                        {"name": "openings_m2", "label": "Vãos totais (m²)", "type": "number", "default": 15},
-                        {"name": "ite_thickness_mm", "label": "Espessura ETIC (mm)", "type": "number", "default": 140},
+                        {"name": "openings_m2", "label": "Aberturas totais (m²)", "type": "number", "default": 15},
+                        {"name": "ite_thickness_mm", "label": "Espessura ITE (mm)", "type": "number", "default": 140},
                     ]},
 }

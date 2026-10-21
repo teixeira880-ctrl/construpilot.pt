@@ -11,7 +11,7 @@ DEFAULTS = {
     "eif_bidon_kg": 25.0,
     "isolant_panel_m2": 1.44,   # panneau XPS 0.6x1.2 (indicatif)
 }
-_LAYER_KEYS = ("forme de pente", "chape", "eif", "primaire", "pare-vapeur",
+_LAYER_KEYS = ("betonilha de pendente", "chape", "eif", "primaire", "pare-vapeur",
                "isolant", "membrane 1", "membrane 2", "protection")
 
 
@@ -41,25 +41,25 @@ def compute(surface_m2: float, perimeter_m: float, releve_h_m: float,
                       "commandable_unit": commandable_unit, "commandable_qty": commandable_qty,
                       "confidence": c, "bbox": reg.get(region) or reg.get("surface")})
 
-    if _has(layers, "forme de pente", "pente"):
-        add("Forme de pente béton (350 kg/m³)", "m³", s * p["pente_ep_m"])
+    if _has(layers, "betonilha de pendente", "pente"):
+        add("Betonilha de pendente (350 kg/m³)", "m³", s * p["pente_ep_m"])
     if _has(layers, "chape", "lissage"):
-        add("Chape de lissage 2 cm", "m²", s)
+        add("Betonilha de regularização 2 cm", "m²", s)
     if _has(layers, "eif", "primaire"):
         kg = s * p["eif_g_m2"] / 1000.0
-        add("EIF / primaire", "kg", kg, "bidon", math.ceil(kg / p["eif_bidon_kg"]) if kg else 0)
+        add("Primário betuminoso", "kg", kg, "bidon", math.ceil(kg / p["eif_bidon_kg"]) if kg else 0)
     if _has(layers, "pare-vapeur", "vapeur"):
         a = round(s * recouv, 1)
-        add("Pare-vapeur", "m²", a, "rouleau", math.ceil(a / p["pv_roll_m2"]) if a else 0)
+        add("Barreira pára-vapor", "m²", a, "rouleau", math.ceil(a / p["pv_roll_m2"]) if a else 0)
     if _has(layers, "isolant", "polystyrène", "laine", "liège", "xps"):
-        add("Isolant thermique", "m²", s, "panneau", math.ceil(s / p["isolant_panel_m2"]) if s else 0)
-    add("Membrane étanchéité — couche 1", "m²", membrane_area, "rouleau",
+        add("Isolamento térmico", "m²", s, "panneau", math.ceil(s / p["isolant_panel_m2"]) if s else 0)
+    add("Membrana de impermeabilização — camada 1", "m²", membrane_area, "rouleau",
         math.ceil(membrane_area / p["roll_m2"]) if membrane_area else 0)
     if bicouche:
-        add("Membrane étanchéité — couche 2", "m²", membrane_area, "rouleau",
+        add("Membrana de impermeabilização — camada 2", "m²", membrane_area, "rouleau",
             math.ceil(membrane_area / p["roll_m2"]) if membrane_area else 0)
     if _has(layers, "protection"):
-        add("Protection (gravillon/dalles)", "m²", s)
+        add("Proteção (godo/lajetas)", "m²", s)
 
     return {"system_type": "bicouche" if bicouche else "monocouche",
             "surface_m2": round(s, 1), "releve_area_m2": round(area_releve, 1),

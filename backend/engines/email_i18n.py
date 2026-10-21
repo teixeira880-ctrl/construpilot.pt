@@ -8,23 +8,23 @@ SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"]
 
 EMAILS: dict[str, dict[str, str]] = {
     "fr": {
-        "reset.subject_has": "Réinitialisation de votre mot de passe ConstruPilot",
-        "reset.subject_set": "Définissez votre mot de passe ConstruPilot",
-        "reset.greeting": "Bonjour {name},",
-        "reset.intro_has": "Vous avez demandé la réinitialisation de votre mot de passe ConstruPilot.",
-        "reset.intro_set": "Vous pouvez définir un mot de passe pour votre compte ConstruPilot (vous pourrez ainsi vous connecter par email en plus de Google).",
-        "reset.cta_has": "Choisir un nouveau mot de passe",
-        "reset.cta_set": "Définir mon mot de passe",
-        "reset.note": "Ce lien est valable 1 heure et ne peut être utilisé qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.",
-        "twofa.subject": "{code} — votre code de connexion ConstruPilot",
-        "twofa.greeting": "Bonjour {name},",
-        "twofa.line": "Votre code de connexion ConstruPilot :",
-        "twofa.note": "Valable 10 minutes. Si vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.",
-        "invrem.subject": "Rappel — facture {number} en attente de règlement",
-        "invrem.title": "Facture {number} en attente",
-        "invrem.greeting": "Bonjour {name},",
-        "invrem.body1": "Sauf erreur de notre part, la facture {number}, d'un montant restant dû de {amount}, n'a pas encore été réglée.",
-        "invrem.body2": "Vous en trouverez une copie en pièce jointe. Merci de procéder au règlement dès que possible.",
+        "reset.subject_has": "Redefina a sua palavra-passe ConstruPilot",
+        "reset.subject_set": "Defina a sua palavra-passe ConstruPilot",
+        "reset.greeting": "Olá {name},",
+        "reset.intro_has": "Solicitou a redefinição da sua palavra-passe ConstruPilot.",
+        "reset.intro_set": "Pode definir uma palavra-passe para a sua conta ConstruPilot (assim poderá iniciar sessão por email além do Google).",
+        "reset.cta_has": "Escolher uma nova palavra-passe",
+        "reset.cta_set": "Definir a minha palavra-passe",
+        "reset.note": "Este link é válido durante 1 hora e só pode ser usado uma vez. Se não fez este pedido, ignore este email.",
+        "twofa.subject": "{code} — o seu código de acesso ConstruPilot",
+        "twofa.greeting": "Olá {name},",
+        "twofa.line": "O seu código de acesso ConstruPilot:",
+        "twofa.note": "Válido por 10 minutos. Se não tentou iniciar sessão, altere já a sua palavra-passe.",
+        "invrem.subject": "Lembrete — fatura {number} a aguardar pagamento",
+        "invrem.title": "Fatura {number} em dívida",
+        "invrem.greeting": "Olá {name},",
+        "invrem.body1": "Salvo erro da nossa parte, a fatura {number}, com um montante em dívida de {amount}, ainda não foi paga.",
+        "invrem.body2": "Segue uma cópia em anexo. Agradecemos que proceda ao pagamento o mais breve possível.",
     },
     "en": {
         "reset.subject_has": "Reset your ConstruPilot password",
@@ -144,8 +144,9 @@ EMAILS: dict[str, dict[str, str]] = {
 
 
 def norm_lang(lang: str | None) -> str:
-    lang = (lang or "fr").lower()[:2]
-    return lang if lang in SUPPORTED else "fr"
+    # construpilot.pt: e-mails sempre em português europeu, qualquer que seja a língua guardada.
+    del lang
+    return "pt"
 
 
 def T(lang: str | None, key: str, **kw) -> str:

@@ -1,0 +1,402 @@
+{
+  "project_identity": {
+    "name": "ConstruPilot",
+    "country": "France",
+    "domain": "Construction & Renovation BTP SaaS Platform",
+    "architecture": "Dual Independent Landing Pages with Unified Brand System"
+  },
+  "audience_switch_strategy": {
+    "component_name": "AudienceSwitchNav",
+    "location": "Top Navigation Bar (Centered or Right-aligned adjacent to CTA)",
+    "design": "Segmented Control Pill Container with Micro-Glow Active Indicator",
+    "behavior": "Instant switching between '/' (Pro BTP) and '/particuliers' (Homeowners/Individuals) with route preservation and clear active state badges",
+    "pro_pill_style": "Dark Charcoal background with Warm Amber (#F59E0B) active glow and 'PRO / ARTISAN' badge",
+    "particuliers_pill_style": "Soft Sand background with Warm Terracotta/Sage active accent and 'PARTICULIER' badge",
+    "data_testid": "nav-audience-switch-toggle"
+  },
+  "page_a_pro": {
+    "route": "/",
+    "target_audience": "BTP Artisans, General Contractors (TCE), Structural/Concrete, Electricians, Plumbers, Roofers, VRD, Architects",
+    "tone_and_mood": "Serious, High-Trust, Deterministic Technical Precision, Zero-Hallucination Engineering Trust",
+    "color_palette": {
+      "background": "#0B0F17 (Deep Slate Black / Steel Navy)",
+      "surface": "#141A26 (Card Navy / Technical Panel)",
+      "primary_brand": "#F59E0B (Industrial Amber Gold)",
+      "primary_brand_hover": "#D97706",
+      "text_primary": "#F9FAFB",
+      "text_secondary": "#9CA3AF",
+      "accent_cyan": "#06B6D4 (Cad / Plan Blueprint Line Highlight)",
+      "accent_green": "#10B981 (DTU Compliant / Factur-X Validated)",
+      "border": "#1F293D"
+    },
+    "typography": {
+      "headings": "Outfit (Bold / Heavy / Tight letter spacing)",
+      "body": "Manrope (Clean high legibility sans-serif)",
+      "data_and_code": "JetBrains Mono (Tabular numerals, quote totals, dimensions, DTU specs)"
+    },
+    "hero_section": {
+      "heading": "ConstruPilot Pro — Le Copilote BTP Déterministe pour Artisans & Entreprises Générales",
+      "subheading": "Métré sur plan, devis ultra-rapides, factures Factur-X, calcul 3D d'escaliers conforme DTU & intelligence documentaire sans aucune hallucination sur vos chiffres.",
+      "primary_cta": {
+        "text": "Démarrer l'essai gratuit 7 jours",
+        "action": "Open Pro Registration Modal / Trial Route",
+        "style": "Industrial Amber Gold Button with Icon, drop-shadow glow",
+        "data_testid": "pro-hero-primary-cta"
+      },
+      "secondary_cta": {
+        "text": "Voir la démonstration vidéo (4 min)",
+        "action": "Scroll or open modal with narrated video",
+        "data_testid": "pro-hero-secondary-cta"
+      },
+      "hero_media": {
+        "type": "Interactive Video Demo Container with Autoplay (Muted) + Audio Switcher + Interactive Timeline Chapters",
+        "video_poster": "https://images.unsplash.com/photo-1603901622056-0a5bee231395?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "features_overlay": ["Calculateur 3D DTU 21.1", "Import PDF/DWG Scaled", "Export Factur-X Standard EN 16931"]
+      }
+    },
+    "section_structure": [
+      {
+        "id": "hero",
+        "name": "Hero Section & Narrated Video Core",
+        "layout": "Asymmetric 12-column Grid with Sticky Proof Floating Badges"
+      },
+      {
+        "id": "trust_bar",
+        "name": "Barre de Confiance & Normes BTP",
+        "items": ["Norme NF EN 16931 (Factur-X)", "Réglementation DTU 21 & 26", "Garantie Calcul Mathématique 0% AI Hallucination", "Multi-TVA BTP (5.5%, 10%, 20%)"]
+      },
+      {
+        "id": "video_clip_gallery",
+        "name": "Galerie de Démonstration Vidéo par Fonctionnalité",
+        "layout": "Interactive Tabbed Feature Video Player with Side-by-Side Technical Bullet Points",
+        "clips": [
+          {
+            "id": "metre_plan",
+            "title": "Métré sur Plan PDF / DWG",
+            "description": "Importez un plan architecte, étalonnez l'échelle en 2 clics et extrayez automatiquement surfaces, longueurs et volumes de béton/cloisons.",
+            "duration": "0:45",
+            "tag": "Métré Scaled"
+          },
+          {
+            "id": "devis_editor",
+            "title": "Éditeur de Devis BTP Haute Précision",
+            "description": "Calcul automatique des déboursés secs, frais généraux, marge nette et ventilation TVA BTP. Intégration bibliothèque BATIPRIX.",
+            "duration": "0:52",
+            "tag": "Devis & Marge"
+          },
+          {
+            "id": "calculateur_3d",
+            "title": "Moteur 3D Escaliers & Murs conforme DTU",
+            "description": "Générez un escalier quart-tournant ou droit en 3D interactif avec vérification automatique de la loi de Blondel (2h + h).",
+            "duration": "1:10",
+            "tag": "Moteur 3D DTU"
+          },
+          {
+            "id": "dpgf_cctp",
+            "title": "Analyse CCTP & Conversion DPGF",
+            "description": "L'IA analyse vos appels d'offres, extrait le DPGF ligne par ligne avec traçabilité vérifiable et génère le devis pré-rempli.",
+            "duration": "0:58",
+            "tag": "Intelligence Doc"
+          },
+          {
+            "id": "facturx_invoicing",
+            "title": "Facturation & Factur-X B2B / Chorus Pro",
+            "description": "Factures de situation à l'avancement (pourcentage par lot), retenue de garantie 5% et export hybride XML/PDF Factur-X.",
+            "duration": "0:40",
+            "tag": "Conformité 2026"
+          }
+        ]
+      },
+      {
+        "id": "core_features_grid",
+        "name": "Grille Bento des Fonctionnalités Métier",
+        "layout": "Tetris Mode Bento Grid (cols 12)",
+        "items": [
+          {
+            "span": "col-span-12 lg:col-span-8",
+            "title": "Analyseur de Plans & Métré vectoriel",
+            "badge": "Technologie Vector-Scale",
+            "description": "Détection automatique des cloisons, pièces, ouvertures et calcul instantané des linéaires de bordure ou surfaces d'enduit."
+          },
+          {
+            "span": "col-span-12 lg:col-span-4",
+            "title": "Loi de Blondel & Escaliers 3D",
+            "badge": "Moteur Physique DTU",
+            "description": "Ajustez giron, hauteur de marche et échappée en temps réel avec rendu 3D Canvas R3F."
+          },
+          {
+            "span": "col-span-12 lg:col-span-4",
+            "title": "Factures de Situation & Acomptes",
+            "badge": "Factur-X Compliant",
+            "description": "Gestion des avancements de chantier par pourcentage ou montant fixe sans erreur de calcul."
+          },
+          {
+            "span": "col-span-12 lg:col-span-8",
+            "title": "Fournisseurs & Approvisionnement Matériaux",
+            "badge": "Portail Fournisseurs",
+            "description": "Passez vos commandes de matériaux en direct, suivez les bons de livraison (BL) et attribuez les coûts aux chantiers."
+          }
+        ]
+      },
+      {
+        "id": "pricing_pro",
+        "name": "Tarification Professionnels BTP",
+        "pricing_model": "Essai 7 jours offert, carte requise, sans engagement",
+        "plans": [
+          {
+            "name": "Pro Artisan",
+            "price": "149€",
+            "period": "/mois HT",
+            "description": "Idéal pour artisans indépendants et petites équipes (1 à 3 utilisateurs).",
+            "features": [
+              "Métré sur plan PDF illimité",
+              "Éditeur Devis & Factures Factur-X",
+              "Calculateur d'escaliers 3D DTU",
+              "Export PDF personnalisé avec votre logo",
+              "Support BTP prioritaire par téléphone"
+            ],
+            "cta": "Démarrer l'essai gratuit 7 jours",
+            "popular": false,
+            "data_testid": "plan-pro-artisan-cta"
+          },
+          {
+            "name": "Pro Business / TCE",
+            "price": "249€",
+            "period": "/mois HT",
+            "description": "Pour PME BTP, entreprises générales et conducteurs de travaux.",
+            "features": [
+              "Tout le plan Pro Artisan +",
+              "Analyseur CCTP & Import DPGF automatique",
+              "Projets multi-niveaux & Gestion d'équipe",
+              "Portail Sous-traitants & Suivi d'approvisionnement",
+              "Intégration comptable & Chorus Pro direct",
+              "Accompagnement personnalisé à la prise en main"
+            ],
+            "cta": "Démarrer l'essai Business 7 jours",
+            "popular": true,
+            "data_testid": "plan-pro-business-cta"
+          }
+        ]
+      },
+      {
+        "id": "faq_pro",
+        "name": "Foire Aux Questions BTP & Technique",
+        "items": [
+          {
+            "q": "Comment ConstruPilot garantit-il 0% d'hallucination sur mes métrés et devis ?",
+            "a": "Les calculs de surfaces, volumes, montants HT/TTC et cotes géométriques sont exécutés par un moteur déterministe strict en C++/JS. L'IA intervient uniquement pour l'extraction de texte (CCTP/DPGF) et sa provenance est traçable mot à mot."
+          },
+          {
+            "q": "Mes factures sont-elles conformes à la norme obligatoire Factur-X ?",
+            "a": "Oui, ConstruPilot génère nativement des fichiers PDF/A-3 intégrant le fichier XML normé EN 16931 pour Chorus Pro et la réforme de la facturation électronique 2026."
+          },
+          {
+            "q": "Puis-je importer mes propres tarifs fournisseurs ?",
+            "a": "Absolument. Vous pouvez importer vos catalogues Excel/CSV ou utiliser notre base intégrée d'ouvrages BTP."
+          }
+        ]
+      }
+    ]
+  },
+  "page_b_particuliers": {
+    "route": "/particuliers",
+    "target_audience": "Propriétaires, Homeowners, Particuliers préparant des travaux de rénovation ou construction",
+    "tone_and_mood": "Warm, Reassuring, Approachable, Transparent, Empathetic, Organic Craft",
+    "color_palette": {
+      "background": "#FAFA9 (Warm Linen / Off-White)",
+      "surface": "#FFFFFF (Pure Card White)",
+      "primary_brand": "#0F5257 (Deep Sage Forest Green)",
+      "primary_brand_hover": "#0B3C40",
+      "accent_terracotta": "#E07A5F (Warm Terracotta Brick)",
+      "text_primary": "#1F2937 (Charcoal Warm)",
+      "text_secondary": "#6B7280",
+      "border": "#E5E7EB"
+    },
+    "typography": {
+      "headings": "Outfit (Medium / SemiBold with organic elegance)",
+      "body": "Manrope (Warm and welcoming reading experience)"
+    },
+    "hero_section": {
+      "heading": "Estimez, vérifiez et réussissez vos travaux de rénovation en toute confiance",
+      "subheading": "Obtenez une estimation budgétaire instantanée, analysez les devis d'artisans avec l'IA et planifiez vos projets sans mauvaise surprise.",
+      "primary_cta": {
+        "text": "Estimer mes travaux gratuitement",
+        "action": "Focus Instant Estimator Widget",
+        "style": "Terracotta Brick Warm Pill Button",
+        "data_testid": "particuliers-hero-primary-cta"
+      },
+      "secondary_cta": {
+        "text": "Scanner un devis d'artisan",
+        "action": "Open Quote Scanner Drawer",
+        "data_testid": "particuliers-hero-secondary-cta"
+      },
+      "hero_interactive_widget": {
+        "type": "Estimateur Express en Langage Naturel",
+        "placeholder": "Ex: Rénover entièrement une salle de bain de 8m² avec douche à l'italienne...",
+        "preset_chips": [
+          "Rénovation Salle de Bains 8m²",
+          "Isolation Combles 60m²",
+          "Peinture T3 70m²",
+          "Remplacement Pompe à Chaleur"
+        ]
+      }
+    },
+    "section_structure": [
+      {
+        "id": "hero",
+        "name": "Hero Section & Interactive Express Estimator",
+        "layout": "Warm Centered/Split Layout with Live Estimation Preview Card"
+      },
+      {
+        "id": "how_it_works",
+        "name": "3 Étapes Pour Sécuriser Vos Travaux",
+        "steps": [
+          {
+            "num": "01",
+            "title": "Décrivez votre projet",
+            "desc": "Saisissez en quelques mots votre envie ou téléchargez une photo/un plan de la pièce."
+          },
+          {
+            "num": "02",
+            "title": "Obtenez un chiffrage détaillé",
+            "desc": "ConstruPilot génère le budget par lot (plomberie, carrelage, électricité) et la durée estimée."
+          },
+          {
+            "num": "03",
+            "title": "Scannez vos devis & trouvez le bon pro",
+            "desc": "Comparez les offres d'artisans locaux certifiés RGE et vérifiez les prix pratiqués."
+          }
+        ]
+      },
+      {
+        "id": "particulier_tools_grid",
+        "name": "Les Outils Clés Pour Les Particuliers",
+        "layout": "Grid 3 columns with Soft Shadows & Rounded Cards",
+        "tools": [
+          {
+            "id": "smart_project",
+            "title": "Smart Project Rénovation",
+            "tag": "IA Travaux",
+            "desc": "Décomposez un projet complet en sous-tâches, matériaux nécessaires et planning prévisionnel."
+          },
+          {
+            "id": "quote_scanner",
+            "title": "Scanner de Devis Artisan",
+            "tag": "Anti-Arnaque",
+            "desc": "Déposez le PDF/devis reçu : l'IA vérifie si les prix sont dans la moyenne régionale et signale les omissions."
+          },
+          {
+            "id": "photo_analyzer",
+            "title": "Analyse de Photo & Pièce",
+            "tag": "Vision AI",
+            "desc": "Prenez une photo de votre pièce à rénover pour détecter les contraintes techniques (prises, arrivées d'eau)."
+          },
+          {
+            "id": "diy_vs_pro",
+            "title": "Comparateur DIY vs Pro",
+            "tag": "Économies",
+            "desc": "Identifiez ce que vous pouvez réaliser vous-même et ce qu'il vaut mieux confier à un artisan certifié."
+          },
+          {
+            "id": "calculators_app",
+            "title": "Calculateurs de Quantités",
+            "tag": "Anti-Gaspillage",
+            "desc": "Calculez exactement le nombre de pots de peinture, carreaux ou m² d'isolant à acheter."
+          },
+          {
+            "id": "coach_ia",
+            "title": "Coach IA Travaux 24/7",
+            "tag": "Assistance",
+            "desc": "Posez toutes vos questions techniques avant et pendant le chantier pour éviter les pièges."
+          }
+        ]
+      },
+      {
+        "id": "video_clips_particuliers",
+        "name": "Aperçu Vidéo Outils Particuliers",
+        "clips": [
+          {
+            "title": "Démonstration Scanner de Devis",
+            "desc": "Comment vérifier en 20 secondes la conformité d'un devis d'artisan.",
+            "duration": "0:35"
+          },
+          {
+            "title": "Démonstration Estimation Salle de Bain",
+            "desc": "Génération d'un budget par lot avec option matériaux standard vs haut de gamme.",
+            "duration": "0:42"
+          }
+        ]
+      },
+      {
+        "id": "pricing_particuliers",
+        "name": "Offre Simple et Sans Engagement",
+        "plans": [
+          {
+            "name": "Gratuit Particulier",
+            "price": "0€",
+            "period": "Gratuit à vie",
+            "description": "Pour explorer et faire une première estimation rapide.",
+            "features": [
+              "3 estimations de projets express par mois",
+              "Calculateurs de surface & volumes basiques",
+              "Guide des prix moyens BTP par région"
+            ],
+            "cta": "Utiliser gratuitement",
+            "data_testid": "plan-particulier-free-cta"
+          },
+          {
+            "name": "Pass Sérénité Travaux",
+            "price": "19€",
+            "period": "/mois (sans engagement)",
+            "description": "Accompagnement complet pour toute la durée de vos travaux.",
+            "features": [
+              "Estimations & Smart Projects illimités",
+              "Analyseur & Scanner de devis illimité",
+              "Analyse photo IA & Détection des risques",
+              "Coach IA Travaux accessible 24/7",
+              "Mise en relation prioritaire avec artisans certifiés"
+            ],
+            "cta": "Activer le Pass Sérénité",
+            "popular": true,
+            "data_testid": "plan-particulier-pass-cta"
+          }
+        ]
+      }
+    ]
+  },
+  "visual_enhancers_and_micro_interactions": {
+    "lenis_scroll": "Smooth momentum scrolling enabled globally",
+    "framer_motion": "Staggered entrance animations on scroll (fade-up 12px, duration 0.35s)",
+    "glassmorphism": "Top Navbar uses backdrop-blur-md with subtle border",
+    "grain_overlay": "Subtle noise texture overlay for high-end tactile feel",
+    "interactive_components": [
+      "Live Stair Engine 3D Preview (Interactive Canvas in Pro page)",
+      "Live Devis Calculator Slider with real-time VAT updates",
+      "Video Clip Selector Tabs with sound/mute toggle",
+      "Instant Quote Scanner Dropzone Modal"
+    ]
+  },
+  "testing_requirements": {
+    "data_testid_convention": "kebab-case, role-based identifiers on all buttons, links, inputs, and pricing cards",
+    "required_test_ids": [
+      "nav-audience-switch-toggle",
+      "pro-hero-primary-cta",
+      "pro-hero-secondary-cta",
+      "particuliers-hero-primary-cta",
+      "particuliers-hero-secondary-cta",
+      "plan-pro-artisan-cta",
+      "plan-pro-business-cta",
+      "plan-particulier-free-cta",
+      "plan-particulier-pass-cta",
+      "video-clip-play-button",
+      "quote-scanner-dropzone"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Ensure both pages '/' (Pro BTP) and '/particuliers' (Particuliers) are rendered seamlessly using React Router.",
+    "The audience switch button in the navbar MUST toggle between the two landing pages cleanly without breaking state.",
+    "Do NOT hide technical BTP features on the Pro page (Métré sur plan, Devis, Factur-X, Escaliers 3D, DPGF/CCTP).",
+    "Ensure video players have simulated interactive playback controls and clip switching.",
+    "Ensure all data-testid attributes are preserved for automated verification."
+  ]
+}

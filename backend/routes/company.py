@@ -14,30 +14,13 @@ from pydantic import BaseModel, EmailStr, Field
 from core.db import db
 from core.security import current_user, hash_password, new_user_id, pro_required
 from engines import activity
+from core.permissions import FEATURES, ROLE_PERMISSIONS, permissions_for, require_feature
 
 router = APIRouter(prefix="/company", tags=["company"], dependencies=[Depends(pro_required)])
 
-# Features gérées par le frontend (nav + pages métier).
-FEATURES = ["dashboard", "devis", "factures", "situations", "chantier",
-            "rh", "catalogue", "entreprise", "pointage"]
-
-ROLE_PERMISSIONS: dict[str, dict] = {
-    "owner":         {f: True for f in FEATURES},
-    "admin":         {**{f: True for f in FEATURES}, "entreprise": True},
-    "chef_chantier": {"dashboard": True, "devis": True, "situations": True,
-                      "chantier": True, "rh": True, "catalogue": True,
-                      "factures": False, "entreprise": False, "pointage": False},
-    "comptable":     {"dashboard": True, "devis": True, "factures": True,
-                      "situations": True, "catalogue": True, "chantier": False,
-                      "rh": False, "entreprise": False, "pointage": False},
-    "member":        {"dashboard": True, "devis": True, "catalogue": True,
-                      "factures": False, "situations": False, "chantier": False,
-                      "rh": False, "entreprise": False, "pointage": False},
-    "ouvrier":       {f: False for f in FEATURES} | {"pointage": True},
-}
 ASSIGNABLE_ROLES = ["admin", "chef_chantier", "comptable", "member", "ouvrier"]
 ROLE_LABELS = {
-    "owner": "Proprietário", "admin": "Administrador", "chef_chantier": "Chefe de obra",
+    "owner": "Proprietário", "admin": "Administrador", "chef_chantier": "Encarregado de obra",
     "comptable": "Contabilista", "member": "Membro", "ouvrier": "Trabalhador",
 }
 
@@ -49,7 +32,7 @@ def _now() -> str:
 def _perms_for(role: str, active: bool = True) -> dict:
     if not active:
         return {f: False for f in FEATURES}
-    return ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["member"])
+    return ROLE_PERMISSIONS.get(role, {f: False for f in FEATURES})
 
 
 async def _me(user: dict) -> dict:
@@ -59,29 +42,34 @@ async def _me(user: dict) -> dict:
 
 
 async def _require_manager(user: dict) -> dict:
+    require_feature(user, "entreprise")
     u = await _me(user)
     if not u.get("organization_id"):
-        raise HTTPException(400, "Vous n'avez pas d'entreprise.")
+        raise HTTPException(400, "Não tem empresa.")
     if u.get("org_role") not in ("owner", "admin"):
-        raise HTTPException(403, "Réservé au propriétaire ou à un administrateur.")
+        raise HTTPException(403, "Reservado ao proprietário ou a um administrador.")
     return u
 
 
-@router.get("/me")
+class CompanyPermissions(BaseModel):
+    in_org: bool
+    role: str
+    active: bool
+    permissions: dict[str, bool]
+    role_label: str | None = None
+
+
+@router.get("/me", response_model=CompanyPermissions)
 async def company_me(user=Depends(current_user)) -> dict:
     """Rôle + permissions de l'utilisateur courant (utilisé pour le gating frontend)."""
     # Admin plateforme OU solo (sans org) → accès complet, pas de restriction.
     if user.get("role") == "admin":
         return {"in_org": False, "role": "owner", "active": True,
                 "permissions": {f: True for f in FEATURES}}
-    u = await _me(user)
-    if not u.get("organization_id"):
-        return {"in_org": False, "role": "owner", "active": True,
-                "permissions": {f: True for f in FEATURES}}
-    role = u.get("org_role", "member")
-    active = u.get("company_active", True)
-    return {"in_org": True, "role": role, "role_label": ROLE_LABELS.get(role, role),
-            "active": active, "permissions": _perms_for(role, active)}
+    role = user.get("org_role") if user.get("organization_id") else ("ouvrier" if user.get("role") == "worker" else "owner")
+    active = user.get("company_active") is not False and user.get("active") is not False
+    return {"in_org": bool(user.get("organization_id")), "role": role or "unknown", "role_label": ROLE_LABELS.get(role),
+            "active": active, "permissions": permissions_for(user)}
 
 
 @router.get("/dashboard")
@@ -140,10 +128,10 @@ class EmployeeIn(BaseModel):
 async def create_employee(body: EmployeeIn, user=Depends(current_user)) -> dict:
     mgr = await _require_manager(user)
     if body.role not in ASSIGNABLE_ROLES:
-        raise HTTPException(400, "Rôle invalide.")
+        raise HTTPException(400, "Função inválida.")
     email = body.email.lower().strip()
     if await db.users.find_one({"email": email}):
-        raise HTTPException(400, "Un compte existe déjà avec cet e-mail.")
+        raise HTTPException(400, "Já existe uma conta com este e-mail.")
     is_worker = body.role == "ouvrier"
     doc = {
         "user_id": new_user_id(), "name": body.name.strip(), "email": email,
@@ -171,18 +159,18 @@ class MemberUpdate(BaseModel):
 async def update_member(member_user_id: str, body: MemberUpdate, user=Depends(current_user)) -> dict:
     mgr = await _require_manager(user)
     if member_user_id == user["user_id"]:
-        raise HTTPException(400, "Vous ne pouvez pas modifier votre propre rôle/accès ici.")
+        raise HTTPException(400, "Não pode modificar a sua própria função/acesso aqui.")
     m = await db.users.find_one(
         {"user_id": member_user_id, "organization_id": mgr["organization_id"]},
         {"_id": 0, "org_role": 1})
     if not m:
-        raise HTTPException(404, "Employé introuvable dans votre entreprise.")
+        raise HTTPException(404, "Funcionário não encontrado na sua empresa.")
     if m.get("org_role") == "owner":
-        raise HTTPException(400, "Impossible de modifier le propriétaire.")
+        raise HTTPException(400, "Impossível modificar o proprietário.")
     upd = {}
     if body.role is not None:
         if body.role not in ASSIGNABLE_ROLES:
-            raise HTTPException(400, "Rôle invalide.")
+            raise HTTPException(400, "Função inválida.")
         upd["org_role"] = body.role
         upd["role"] = "worker" if body.role == "ouvrier" else "user"
         if body.role == "ouvrier":
@@ -199,14 +187,14 @@ async def update_member(member_user_id: str, body: MemberUpdate, user=Depends(cu
 async def remove_member(member_user_id: str, user=Depends(current_user)) -> dict:
     mgr = await _require_manager(user)
     if member_user_id == user["user_id"]:
-        raise HTTPException(400, "Utilisez « Quitter l'organisation » pour vous retirer.")
+        raise HTTPException(400, "Utilize «Sair da organização» para se retirar.")
     m = await db.users.find_one(
         {"user_id": member_user_id, "organization_id": mgr["organization_id"]},
         {"_id": 0, "org_role": 1})
     if not m:
-        raise HTTPException(404, "Employé introuvable.")
+        raise HTTPException(404, "Funcionário não encontrado.")
     if m.get("org_role") == "owner":
-        raise HTTPException(400, "Impossible de retirer le propriétaire.")
+        raise HTTPException(400, "Impossível retirar o proprietário.")
     await db.users.update_one(
         {"user_id": member_user_id},
         {"$unset": {"organization_id": "", "org_role": "", "company_active": "",
@@ -218,10 +206,11 @@ async def remove_member(member_user_id: str, user=Depends(current_user)) -> dict
 @router.get("/activity")
 async def company_activity(action: str = "", actor_id: str = "", user=Depends(current_user)):
     """Journal d'activité de l'entreprise (qui a fait quoi). Réservé owner/admin en organisation."""
+    require_feature(user, "entreprise")
     u = await _me(user)
     if u.get("organization_id"):
         if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
-            raise HTTPException(403, "Réservé au propriétaire ou à un administrateur.")
+            raise HTTPException(403, "Reservado ao proprietário ou a um administrador.")
         org_id = u["organization_id"]
     else:
         org_id = f"solo:{user['user_id']}"
@@ -232,10 +221,11 @@ async def company_activity(action: str = "", actor_id: str = "", user=Depends(cu
 async def export_activity(actor_id: str = "", user=Depends(current_user)):
     """Export CSV du journal d'activité (filtrable par employé)."""
     from fastapi import Response
+    require_feature(user, "entreprise")
     u = await _me(user)
     if u.get("organization_id"):
         if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
-            raise HTTPException(403, "Réservé au propriétaire ou à un administrateur.")
+            raise HTTPException(403, "Reservado ao proprietário ou a um administrador.")
         org_id = u["organization_id"]
     else:
         org_id = f"solo:{user['user_id']}"
@@ -244,7 +234,7 @@ async def export_activity(actor_id: str = "", user=Depends(current_user)):
     import io
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
-    w.writerow(["Date", "Employé", "Action", "Détail"])
+    w.writerow(["Data", "Colaborador", "Ação", "Detalhe"])
     for r in rows:
         w.writerow([r.get("created_at", "")[:19].replace("T", " "), r.get("actor_name", ""),
                     r.get("action_label", ""), r.get("label", "")])
@@ -255,6 +245,7 @@ async def export_activity(actor_id: str = "", user=Depends(current_user)):
 @router.get("/activity/pdf")
 async def export_activity_pdf(actor_id: str = "", user=Depends(current_user)):
     """Export PDF du journal d'activité (remise officielle)."""
+    require_feature(user, "entreprise")
     import io
     from fastapi import Response
     from reportlab.lib import colors
@@ -265,7 +256,7 @@ async def export_activity_pdf(actor_id: str = "", user=Depends(current_user)):
     u = await _me(user)
     if u.get("organization_id"):
         if u.get("org_role") not in ("owner", "admin") and user.get("role") != "admin":
-            raise HTTPException(403, "Réservé au propriétaire ou à un administrateur.")
+            raise HTTPException(403, "Reservado ao proprietário ou a um administrador.")
         org_id = u["organization_id"]
     else:
         org_id = f"solo:{user['user_id']}"
@@ -275,7 +266,7 @@ async def export_activity_pdf(actor_id: str = "", user=Depends(current_user)):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
                             topMargin=16 * mm, bottomMargin=16 * mm)
-    data = [["Date", "Employé", "Action", "Détail"]]
+    data = [["Data", "Colaborador", "Ação", "Detalhe"]]
     for r in rows:
         data.append([r.get("created_at", "")[:16].replace("T", " "),
                      Paragraph(r.get("actor_name", ""), small),
@@ -291,7 +282,7 @@ async def export_activity_pdf(actor_id: str = "", user=Depends(current_user)):
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
-    E = [Paragraph("<b>Journal d'activité — ConstruPilot</b>", styles["Title"]),
+    E = [Paragraph("<b>Registo de atividade — ConstruPilot</b>", styles["Title"]),
          Spacer(1, 8), tbl]
     doc.build(E)
     return Response(content=buf.getvalue(), media_type="application/pdf",

@@ -18,7 +18,7 @@ const CERTS = [
 
 /** Dialog de configuration du branding pro (logo + société + contact + certifications)
  *  utilisé dans les PDF Métré / Devis / Factures. */
-export function BrandingDialog({ trigger }) {
+export function BrandingDialog({ trigger, onSaved, contentClassName = "", overlayClassName }) {
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
@@ -30,7 +30,7 @@ export function BrandingDialog({ trigger }) {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("FR");
+  const [country, setCountry] = useState("PT");
   const [logoB64, setLogoB64] = useState("");
   const [defaultEmailMsg, setDefaultEmailMsg] = useState("");
   const [serviceZones, setServiceZones] = useState("");
@@ -54,7 +54,7 @@ export function BrandingDialog({ trigger }) {
       setAddress(data.address || "");
       setCity(data.city || "");
       setPostalCode(data.postal_code || "");
-      setCountry(data.country || "FR");
+      setCountry(data.country || "PT");
       setLogoB64(data.logo_b64 || "");
       setDefaultEmailMsg(data.default_email_message || "");
       setServiceZones((data.service_zones || []).join(", "));
@@ -71,7 +71,7 @@ export function BrandingDialog({ trigger }) {
   const onLogoChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 400 * 1024) return toast.error("Logo trop volumineux (max 400 Ko)");
+    if (file.size > 400 * 1024) return toast.error("Logótipo demasiado grande (máx 400 KB)");
     const reader = new FileReader();
     reader.onload = () => setLogoB64(reader.result);
     reader.readAsDataURL(file);
@@ -97,8 +97,9 @@ export function BrandingDialog({ trigger }) {
       });
       toast.success("Identidade profissional guardada");
       setOpen(false);
+      onSaved?.();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Sauvegarde impossible");
+      toast.error(e?.response?.data?.detail || "Não foi possível guardar");
     } finally { setBusy(false); }
   };
 
@@ -113,40 +114,40 @@ export function BrandingDialog({ trigger }) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="rounded-sm max-w-lg max-h-[88vh] overflow-y-auto" data-testid="branding-dialog">
+      <DialogContent className={`rounded-sm max-w-lg max-h-[88vh] overflow-y-auto ${contentClassName}`} overlayClassName={overlayClassName} data-testid="branding-dialog">
         <DialogHeader>
           <DialogTitle>Identidade profissional & certificações</DialogTitle>
           <DialogDescription>
             {source === "organization"
-              ? <>Identité partagée avec l'équipe <b>{orgName}</b>. {canEdit
-                  ? "Vos modifications s'appliquent à tous les membres."
-                  : "Seul un admin ou le propriétaire peut modifier ces informations."}</>
-              : "Logo, coordonnées et certifications — affichés en tête de chaque PDF (métré, devis, factures)."}
+              ? <>Identidade partilhada com a equipa <b>{orgName}</b>. {canEdit
+                  ? "As suas modificações aplicam-se a todos os membros."
+                  : "Apenas um admin ou o proprietário pode modificar estas informações."}</>
+              : "Logótipo, contactos e certificações — exibidos no cabeçalho de cada PDF (medições, orçamento, faturas)."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Nom de la société</Label>
+            <Label>Nome da sociedade</Label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)}
-                   placeholder="Ex : BTP Construction SAS" disabled={!canEdit}
+                   placeholder="Ex: BTP Construction SAS" disabled={!canEdit}
                    data-testid="branding-company-input"
                    className="rounded-sm h-11" maxLength={120} />
           </div>
           <div className="grid gap-2">
-            <Label>E-mail officiel de l'entreprise</Label>
+            <Label>E-mail oficial da empresa</Label>
             <Input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)}
-                   placeholder="Ex : contact@votre-entreprise.fr" disabled={!canEdit}
+                   placeholder="Ex: contacto@a-sua-empresa.pt" disabled={!canEdit}
                    data-testid="branding-company-email-input"
                    className="rounded-sm h-11" maxLength={120} />
             <p className="text-xs text-muted-foreground">
-              Utilisé comme adresse de réponse (reply-to) : quand un client répond à un devis/facture, sa réponse arrive dans cette boîte.
+              Usado como endereço de resposta (reply-to): quando um cliente responde a um orçamento/fatura, a sua resposta chega a esta caixa.
             </p>
           </div>
           <div className="grid gap-2">
-            <Label>Ligne contact</Label>
+            <Label>Linha de contacto</Label>
             <Textarea value={contactLine} onChange={(e) => setContactLine(e.target.value)}
-                      placeholder="12 rue de la Paix · 75002 Paris · 01 23 45 67 89 · contact@…"
+                      placeholder="Rua Augusta, 12 · 1100-053 Lisboa · 213 456 789 · contacto@…"
                       disabled={!canEdit}
                       data-testid="branding-contact-input"
                       className="rounded-sm text-sm" rows={2} maxLength={200} />
@@ -180,68 +181,68 @@ export function BrandingDialog({ trigger }) {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label>SIRET</Label>
+                  <Label>Estabelecimento</Label>
                   <Input value={siret} onChange={(e) => setSiret(e.target.value)}
-                         placeholder="14 chiffres" disabled={!canEdit}
+                         placeholder="14 dígitos" disabled={!canEdit}
                          data-testid="branding-siret-input" className="rounded-sm h-11 num" maxLength={14} />
                 </div>
                 <div className="grid gap-2">
-                  <Label>TVA intracom.</Label>
+                  <Label>NIF intracom.</Label>
                   <Input value={vat} onChange={(e) => setVat(e.target.value)}
                          placeholder="FR12345678901" disabled={!canEdit}
                          data-testid="branding-vat-input" className="rounded-sm h-11 num" maxLength={20} />
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">Requis pour des factures électroniques Factur-X 100 % conformes.</p>
+              <p className="text-[11px] text-muted-foreground">Obrigatório para faturas eletrónicas Factur-X 100% conformes.</p>
             </>
           )}
 
           <div className="grid gap-2">
-            <Label>Adresse (rue)</Label>
+            <Label>Morada (rua)</Label>
             <Input value={address} onChange={(e) => setAddress(e.target.value)}
-                   placeholder="12 rue de la Paix" disabled={!canEdit}
+                   placeholder="Rua Augusta, 12" disabled={!canEdit}
                    data-testid="branding-address-input" className="rounded-sm h-11" maxLength={160} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-2">
-              <Label>Code postal</Label>
+              <Label>Código postal</Label>
               <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)}
-                     placeholder="75002" disabled={!canEdit}
+                     placeholder="1100-053" disabled={!canEdit}
                      data-testid="branding-postal-input" className="rounded-sm h-11 num" maxLength={12} />
             </div>
             <div className="grid gap-2">
-              <Label>Ville</Label>
+              <Label>Cidade</Label>
               <Input value={city} onChange={(e) => setCity(e.target.value)}
-                     placeholder="Paris" disabled={!canEdit}
+                     placeholder="Lisboa" disabled={!canEdit}
                      data-testid="branding-city-input" className="rounded-sm h-11" maxLength={80} />
             </div>
             <div className="grid gap-2">
-              <Label>Pays</Label>
+              <Label>País</Label>
               <Input value={country} onChange={(e) => setCountry(e.target.value.toUpperCase())}
-                     placeholder="FR" disabled={!canEdit}
+                     placeholder="PT" disabled={!canEdit}
                      data-testid="branding-country-input" className="rounded-sm h-11 num" maxLength={2} />
             </div>
           </div>
 
 
           <div className="grid gap-2">
-            <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-primary" /> Zones d'intervention</Label>
+            <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-primary" /> Zonas de intervenção</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
-              Villes ou départements couverts, séparés par des virgules. Sert à vous attribuer automatiquement les demandes de votre secteur.
+              Cidades ou distritos abrangidos, separados por vírgulas. Serve para lhe atribuir automaticamente os pedidos da sua área.
             </p>
             <Input value={serviceZones} onChange={(e) => setServiceZones(e.target.value)}
-                   placeholder="Paris, Lyon, Rhône, 69, Villeurbanne" disabled={!canEdit}
+                   placeholder="Lisboa, Sintra, Cascais, Setúbal, Porto" disabled={!canEdit}
                    data-testid="branding-zones-input" className="rounded-sm h-11" maxLength={600} />
           </div>
 
 
           <div className="grid gap-2">
-            <Label className="flex items-center gap-1"><Landmark className="h-3.5 w-3.5 text-primary" /> Coordonnées bancaires (RIB)</Label>
+            <Label className="flex items-center gap-1"><Landmark className="h-3.5 w-3.5 text-primary" /> Coordenadas bancárias (NIB)</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
-              IBAN, BIC et banque. Affichés uniquement sur vos factures pour faciliter le paiement.
+              IBAN, BIC e banco. Exibidos apenas nas suas faturas para facilitar o pagamento.
             </p>
             <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)}
-                      placeholder={"IBAN : FR76 3000 4000 0512 3456 7890 143\nBIC : BNPAFRPPXXX\nBanque : BNP Paribas"}
+                      placeholder={"IBAN: PT50 0035 0000 0000 0000 0000 0 BIC: CGDIPTPL Banco: Caixa Geral de Depósitos"}
                       disabled={!canEdit} rows={3} maxLength={600}
                       data-testid="branding-bank-input"
                       className="rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-y" />
@@ -249,9 +250,9 @@ export function BrandingDialog({ trigger }) {
 
 
           <div className="grid gap-2">
-            <Label className="flex items-center gap-1"><Award className="h-3.5 w-3.5 text-primary" /> Certifications</Label>
+            <Label className="flex items-center gap-1"><Award className="h-3.5 w-3.5 text-primary" /> Certificações</Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
-              Sélectionnez vos qualifications et renseignez votre n° de certificat (optionnel).
+              Selecione as suas qualificações e indique o seu n.º de certificado (opcional).
             </p>
             <div className="grid gap-2" data-testid="branding-certs">
               {CERTS.map(([code, label]) => {
@@ -266,7 +267,7 @@ export function BrandingDialog({ trigger }) {
                     {on && (
                       <Input value={certSel[code]} disabled={!canEdit}
                              onChange={(e) => setCertSel((s) => ({ ...s, [code]: e.target.value }))}
-                             placeholder="N° de certificat (optionnel)"
+                             placeholder="N° de certificado (opcional)"
                              className="rounded-sm h-8 text-xs flex-1" data-testid={`cert-number-${code}`} />
                     )}
                   </div>
@@ -276,50 +277,50 @@ export function BrandingDialog({ trigger }) {
           </div>
 
           <div className="grid gap-2">
-            <Label>Message d'accompagnement par défaut (e-mails devis/factures)</Label>
+            <Label>Mensagem de acompanhamento predefinida (e-mails orçamento/faturas)</Label>
             <Textarea value={defaultEmailMsg} onChange={(e) => setDefaultEmailMsg(e.target.value)}
-                      placeholder={"Olá {client},\n\nSegue em anexo o seu orçamento n.º {numero}...\n\nCom os melhores cumprimentos,\n{entreprise}"}
+                      placeholder={"Olá {client}, Junto enviamos o seu orçamento n.º {numero}... Com os melhores cumprimentos, {entreprise}"}
                       disabled={!canEdit}
                       data-testid="branding-default-msg-input"
                       className="rounded-sm text-sm" rows={5} maxLength={1500} />
             <p className="text-[11px] text-muted-foreground">
-              Réutilisé automatiquement à chaque envoi. Variables : <b>{"{client}"}</b>, <b>{"{entreprise}"}</b>, <b>{"{numero}"}</b>. Laissez vide pour le message type automatique.
+              Reutilizado automaticamente em cada envio. Variáveis: <b>{"{client}"}</b>, <b>{"{entreprise}"}</b>, <b>{"{numero}"}</b>. Deixe vazio para a mensagem tipo automática.
             </p>
           </div>
 
           <div className="grid gap-2">
-            <Label>Logo (PNG/JPG, max 400 Ko)</Label>
+            <Label>Logótipo (PNG/JPG, máx 400 KB)</Label>
             {logoB64 ? (
               <div className="flex items-center gap-3 border border-border rounded-sm p-3 bg-secondary/30">
                 <img src={logoB64.startsWith("data:") ? logoB64 : `data:image/png;base64,${logoB64}`}
-                     alt="Logo" className="h-16 w-16 object-contain" data-testid="branding-logo-preview" />
+                     alt="Logótipo" className="h-16 w-16 object-contain" data-testid="branding-logo-preview" />
                 {canEdit && (
                   <Button size="sm" variant="ghost" onClick={removeLogo} data-testid="branding-logo-remove"
                           className="rounded-sm gap-1 ml-auto text-destructive">
-                    <Trash2 className="h-3 w-3" /> Retirer
+                    <Trash2 className="h-3 w-3" /> Remover
                   </Button>
                 )}
               </div>
             ) : canEdit ? (
               <label className="border border-dashed border-border rounded-sm p-4 text-center cursor-pointer hover:border-primary">
                 <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
-                <p className="text-xs text-muted-foreground mt-1">Cliquez pour importer un logo</p>
+                <p className="text-xs text-muted-foreground mt-1">Clique para importar um logótipo</p>
                 <input type="file" accept="image/png,image/jpeg" onChange={onLogoChange}
                        data-testid="branding-logo-input" className="sr-only" />
               </label>
             ) : (
-              <p className="text-xs text-muted-foreground">Aucun logo défini.</p>
+              <p className="text-xs text-muted-foreground">Nenhum logótipo definido.</p>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} className="rounded-sm">
-            {canEdit ? "Annuler" : "Fermer"}
+            {canEdit ? "Cancelar" : "Fechar"}
           </Button>
           {canEdit && (
             <Button onClick={save} disabled={busy} data-testid="branding-save-btn"
                     className="rounded-sm gap-2">
-              <Save className="h-4 w-4" /> Enregistrer
+              <Save className="h-4 w-4" /> Guardar
             </Button>
           )}
         </DialogFooter>

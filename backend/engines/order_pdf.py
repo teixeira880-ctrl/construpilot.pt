@@ -9,7 +9,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle)
 
 BRAND = colors.HexColor("#FF5A00")
-TYPE_LABEL = {"acier": "Ferraillage / Acier", "etancheite": "Étanchéité",
+TYPE_LABEL = {"acier": "Ferragem / Aço", "etancheite": "Impermeabilização",
               "toiture": "Toiture", "vrd": "VRD"}
 
 
@@ -25,17 +25,17 @@ def build_order_pdf(order: dict, company: dict | None = None) -> bytes:
 
     company_name = (company or {}).get("company_name") or "ConstruPilot"
     el.append(Paragraph(f"<b>{company_name}</b>", h1))
-    el.append(Paragraph("Bon de commande — Approvisionnement chantier", small))
+    el.append(Paragraph("Nota de encomenda — Aprovisionamento da obra", small))
     el.append(Spacer(1, 8))
 
     sup = order.get("supplier") or {}
     date = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     meta = [
-        ["N° commande", order.get("order_id", "—"), "Date", date],
+        ["N.º de encomenda", order.get("order_id", "—"), "Data", date],
         ["Type", TYPE_LABEL.get(order.get("type"), order.get("type", "—")),
-         "Projet", order.get("project") or "—"],
-        ["Fournisseur", sup.get("name") or "—", "Agence", sup.get("agency") or "—"],
-        ["N° client", sup.get("client_number") or "—", "Livraison", sup.get("delivery_address") or "—"],
+         "Projeto", order.get("project") or "—"],
+        ["Fornecedor", sup.get("name") or "—", "Agência", sup.get("agency") or "—"],
+        ["N.º cliente", sup.get("client_number") or "—", "Entrega", sup.get("delivery_address") or "—"],
     ]
     mt = Table(meta, colWidths=[28 * mm, 60 * mm, 24 * mm, 66 * mm])
     mt.setStyle(TableStyle([
@@ -48,9 +48,9 @@ def build_order_pdf(order: dict, company: dict | None = None) -> bytes:
     el.append(Spacer(1, 10))
 
     priced = any(it.get("unit_price") for it in order.get("items", []))
-    head = ["Désignation", "Qté", "Unité", "Cmd.", "Cond."]
+    head = ["Designação", "Qtd.", "Un.", "Cmd.", "Cond."]
     if priced:
-        head += ["PU HT", "Total HT"]
+        head += ["PU s/ IVA", "Total s/ IVA"]
     rows = [head]
     for it in order.get("items", []):
         r = [Paragraph(str(it.get("designation", "")), normal),
@@ -80,7 +80,7 @@ def build_order_pdf(order: dict, company: dict | None = None) -> bytes:
     if priced:
         el.append(Spacer(1, 8))
         total = sum(it.get("line_total", 0) for it in order.get("items", []))
-        tot = Table([["Total estimé HT", f"{total:.2f} €"]], colWidths=[130 * mm, 32 * mm])
+        tot = Table([["Total estimado s/ IVA", f"{total:.2f} €"]], colWidths=[130 * mm, 32 * mm])
         tot.setStyle(TableStyle([
             ("FONTSIZE", (0, 0), (-1, -1), 10), ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
             ("ALIGN", (1, 0), (1, 0), "RIGHT"), ("TEXTCOLOR", (1, 0), (1, 0), BRAND),
@@ -88,7 +88,6 @@ def build_order_pdf(order: dict, company: dict | None = None) -> bytes:
         el.append(tot)
 
     el.append(Spacer(1, 16))
-    el.append(Paragraph("Estimation quantitative indicative issue de l'analyse IA du plan — "
-                        "à vérifier avant commande ferme.", small))
+    el.append(Paragraph("Estimativa quantitativa indicativa proveniente da análise IA da planta — a verificar antes da encomenda firme.", small))
     doc.build(el)
     return buf.getvalue()

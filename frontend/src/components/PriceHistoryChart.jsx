@@ -19,7 +19,7 @@ export const PriceHistoryChart = ({ query, days = 90 }) => {
     return (
       <div className="surface p-6 text-center" data-testid="price-history-empty">
         <p className="text-sm text-muted-foreground">
-          Historique insuffisant pour tracer la courbe. Créez une alerte prix pour commencer le suivi quotidien.
+          Histórico insuficiente para traçar a curva. Crie um alerta de preço para começar o acompanhamento diário.
         </p>
       </div>
     );
@@ -35,8 +35,8 @@ export const PriceHistoryChart = ({ query, days = 90 }) => {
     <div className="surface p-6 grid gap-4" data-testid="price-history-chart">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <p className="overline">Historique des prix · {query}</p>
-          <p className="text-xs text-muted-foreground mt-1">Meilleur prix quotidien sur {days} derniers jours ({series.length} points)</p>
+          <p className="overline">Histórico de preços · {query}</p>
+          <p className="text-xs text-muted-foreground mt-1">Melhor preço diário em {days} últimos dias ({series.length} pontos)</p>
         </div>
         <div className={`flex items-center gap-2 ${color}`}>
           <Icon className="h-5 w-5" />
@@ -74,9 +74,9 @@ export const PriceHistoryChart = ({ query, days = 90 }) => {
         </ResponsiveContainer>
       </div>
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        <Badge variant="outline" className="rounded-sm num">Min : {eur2(Math.min(...series.map((d) => d.min_price)))}</Badge>
-        <Badge variant="outline" className="rounded-sm num">Max : {eur2(Math.max(...series.map((d) => d.max_price)))}</Badge>
-        <Badge variant="outline" className="rounded-sm num">Actuel : {eur2(last)}</Badge>
+        <Badge variant="outline" className="rounded-sm num">Mín.: {eur2(Math.min(...series.map((d) => d.min_price)))}</Badge>
+        <Badge variant="outline" className="rounded-sm num">Máx.: {eur2(Math.max(...series.map((d) => d.max_price)))}</Badge>
+        <Badge variant="outline" className="rounded-sm num">Atual: {eur2(last)}</Badge>
       </div>
     </div>
   );

@@ -1,0 +1,25 @@
+--- current/frontend/src/components/assistant/MessageBubble.jsx
++++ zip/frontend/src/components/assistant/MessageBubble.jsx
+@@ -1,8 +1,9 @@
+ import { FileText, Loader2 } from "lucide-react";
+ import ReactMarkdown from "react-markdown";
+ import { ActionCard } from "./ActionCard";
++import { toast } from "sonner";
+ 
+-export function MessageBubble({ m, live }) {
++export function MessageBubble({ m, live, onCorrect }) {
+   const mine = m.role === "user";
+   return (
+     <div className={`max-w-[85%] rounded-sm border px-3 py-2 text-sm animate-in fade-in slide-in-from-bottom-1 ${mine ? "ml-auto bg-primary/10" : "bg-card"}`} data-testid={`assistant-msg-${m.role}`}>
+@@ -21,6 +22,11 @@
+         </div>
+       )}
+       {m.interrupted && <div className="text-[11px] text-amber-600 mt-1" data-testid="assistant-interrupted">Réponse interrompue.</div>}
++      {!mine && !live && <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
++        <button className="underline" onClick={async () => { try { await navigator.clipboard.writeText(m.content); toast.success("Réponse copiée"); } catch { toast.error("Copie indisponible"); } }}>Copier</button>
++        {onCorrect && <button className="underline" onClick={() => onCorrect(m)}>Corriger / préciser</button>}
++        {m.model && <span>{m.response_mode === "thorough" ? "Approfondi" : "Rapide"} · {m.model}</span>}
++      </div>}
+     </div>
+   );
+ }

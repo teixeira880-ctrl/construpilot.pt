@@ -72,7 +72,7 @@ async def merge_orders(body: MergeOrdersIn, user=Depends(current_user)) -> dict:
     orders = await db.material_orders.find(
         {"order_id": {"$in": body.order_ids}, "user_id": user["user_id"]}, {"_id": 0}).to_list(40)
     if len(orders) < 2:
-        raise HTTPException(400, "Sélectionnez au moins 2 bons de commande valides")
+        raise HTTPException(400, "Selecione pelo menos 2 notas de encomenda válidas")
 
     grouped: dict = {}
     order_seq: list = []
@@ -118,7 +118,7 @@ async def merge_orders(body: MergeOrdersIn, user=Depends(current_user)) -> dict:
         "plan_id": plan_ids[0] if plan_ids else None,
         "plan_ids": plan_ids,
         "merged_from": body.order_ids,
-        "project": body.project.strip() or "Commande fusionnée",
+        "project": body.project.strip() or "Encomenda fundida",
         "type": next(iter(types)) if len(types) == 1 else "mixte",
         "supplier": supplier, "items": items, "status": "brouillon",
         "created_at": _now(),
@@ -136,12 +136,12 @@ class OrderStatusIn(BaseModel):
 @router.patch("/orders/{order_id}/status")
 async def set_order_status(order_id: str, body: OrderStatusIn, user=Depends(current_user)) -> dict:
     if body.status not in ("brouillon", "envoyé", "confirmé"):
-        raise HTTPException(422, "Statut invalide")
+        raise HTTPException(422, "Estado inválido")
     r = await db.material_orders.update_one(
         {"order_id": order_id, "user_id": user["user_id"]},
         {"$set": {"status": body.status, "updated_at": _now()}})
     if not r.matched_count:
-        raise HTTPException(404, "Bon de commande introuvable")
+        raise HTTPException(404, "Nota de encomenda não encontrada")
     return {"ok": True, "status": body.status}
 
 
@@ -149,7 +149,7 @@ async def set_order_status(order_id: str, body: OrderStatusIn, user=Depends(curr
 async def delete_order(order_id: str, user=Depends(current_user)) -> dict:
     r = await db.material_orders.delete_one({"order_id": order_id, "user_id": user["user_id"]})
     if not r.deleted_count:
-        raise HTTPException(404, "Bon de commande introuvable")
+        raise HTTPException(404, "Nota de encomenda não encontrada")
     return {"ok": True}
 
 
@@ -159,13 +159,13 @@ async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) 
     order = await db.material_orders.find_one(
         {"order_id": order_id, "user_id": user["user_id"]}, {"_id": 0})
     if not order:
-        raise HTTPException(404, "Bon de commande introuvable")
+        raise HTTPException(404, "Nota de encomenda não encontrada")
     if body.priced_items:
         order["items"] = body.priced_items
     supplier = order.get("supplier") or {}
     to = body.to or supplier.get("email")
     if not to:
-        raise HTTPException(422, "Aucune adresse e-mail fournisseur")
+        raise HTTPException(422, "Nenhum endereço de e-mail do fornecedor")
 
     branding = await _resolve_branding(user["user_id"]) or {}
     company_name = branding.get("company_name") or user.get("name") or "ConstruPilot"
@@ -174,11 +174,8 @@ async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) 
 
     type_lbl = {"acier": "ferraillage", "etancheite": "étanchéité",
                 "toiture": "toiture", "vrd": "VRD"}.get(order.get("type"), "matériaux")
-    subject = f"Bon de commande {type_lbl} — {company_name} (n° {order_id})"
-    body_html = (f"<p>Olá,</p><p>{body.message or f'Veuillez trouver ci-joint notre bon de commande {type_lbl}.'}</p>"
-                 f"<p>Le détail est en pièce jointe (PDF + CSV). Merci de nous confirmer "
-                 f"disponibilités et délai de livraison.</p>"
-                 f"<p>Cordialement,<br/>{company_name}</p>")
+    subject = f'Nota de encomenda {type_lbl} — {company_name} (n° {order_id})'
+    body_html = (f"<p>Olá,</p><p>{body.message or f'Segue em anexo a nossa nota de encomenda {type_lbl}.'}</p><p>O detalhe segue em anexo (PDF + CSV). Agradecemos que nos confirme disponibilidades e prazo de entrega.</p><p>Com os melhores cumprimentos,<br/>{company_name}</p>")
     html = wrap_company_html(subject, body_html, company_name=company_name,
                              logo_b64=branding.get("logo_b64"),
                              company_email=user.get("email"))
@@ -191,7 +188,7 @@ async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) 
                                 "content_type": "text/csv"}],
             reply_to=user.get("email"), from_name=company_name)
     except Exception as e:
-        raise HTTPException(502, f"Envoi e-mail impossible : {e}")
+        raise HTTPException(502, f'Envio de e-mail impossível: {e}')
 
     await db.material_orders.update_one(
         {"order_id": order_id, "user_id": user["user_id"]},
@@ -202,9 +199,9 @@ async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) 
 
 def _csv_from_items(items: list) -> str:
     priced = any(it.get("unit_price") for it in items)
-    head = ["Designation", "Quantite", "Unite", "Commandable_qty", "Commandable_unite"]
+    head = ["Designação", "Quantidade", "Unidade", "Qtd_encomendável", "Commandable_unite"]
     if priced:
-        head += ["PU_HT", "Total_HT"]
+        head += ["PU_HT", "Total_s/ IVA"]
     rows = [";".join(head)]
     for it in items:
         r = [it.get("designation", ""), it.get("qty", ""), it.get("unit", ""),

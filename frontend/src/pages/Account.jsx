@@ -1,14 +1,19 @@
 import { AlertTriangle, UserCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { usePermissions } from "@/context/PermissionContext";
 import { VerifiedProBadge } from "@/components/VerifiedProBadge";
 import { useI18n } from "@/context/I18nContext";
 import { ProfileForm } from "@/components/account/ProfileForm";
+import { PricingPrefsCard } from "@/components/account/PricingPrefsCard";
 import { PasswordForm } from "@/components/account/PasswordForm";
 import { DevicesList } from "@/components/account/DevicesList";
 import { TwoFaCard } from "@/components/account/TwoFaCard";
+import { DeleteAccountCard } from "@/components/account/DeleteAccountCard";
+import { BrochureCard } from "@/components/account/BrochureCard";
 
 export default function Account() {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const { t } = useI18n();
 
   return (
@@ -36,9 +41,12 @@ export default function Account() {
       )}
 
       <ProfileForm />
+      {can("devis") && <PricingPrefsCard />}
       <TwoFaCard />
       <PasswordForm />
       <DevicesList />
+      <BrochureCard />
+      <DeleteAccountCard />
     </div>
   );
 }

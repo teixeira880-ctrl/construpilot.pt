@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-export const LeadDialog = ({ projectId, budget, description, trigger, label = "Recevoir une proposition ConstruPilot" }) => {
+export const LeadDialog = ({ projectId, budget, description, trigger, label = "Receber uma proposta ConstruPilot" }) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -30,10 +30,10 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
         budget: form.budget ? Number(form.budget) : null,
         project_id: projectId || null,
       });
-      toast.success("Demande transmise à ConstruPilot — un conseiller vous contacte sous 48 h.");
+      toast.success("Pedido transmitido ao ConstruPilot — um consultor contacta-o em 48 h.");
       setOpen(false);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Envoi impossible");
+      toast.error(err?.response?.data?.detail || "Envio impossível");
     } finally {
       setBusy(false);
     }
@@ -50,15 +50,15 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
       </DialogTrigger>
       <DialogContent className="rounded-md max-w-lg max-h-[90vh] overflow-y-auto" data-testid="lead-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Faire réaliser ces travaux par ConstruPilot</DialogTitle>
+          <DialogTitle className="font-display text-xl">Mandar executar estes trabalhos pela ConstruPilot</DialogTitle>
           <DialogDescription>
-            Votre projet, vos surfaces et l'estimation générée sont transmis automatiquement à notre équipe.
+            O seu projeto, as suas superfícies e a estimativa gerada são transmitidos automaticamente à nossa equipa.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label>Nom complet</Label>
+              <Label>Nome completo</Label>
               <Input required value={form.name} onChange={set("name")} data-testid="lead-name-input" className="rounded-sm" />
             </div>
             <div className="grid gap-2">
@@ -66,28 +66,28 @@ export const LeadDialog = ({ projectId, budget, description, trigger, label = "R
               <Input required type="email" value={form.email} onChange={set("email")} data-testid="lead-email-input" className="rounded-sm" />
             </div>
             <div className="grid gap-2">
-              <Label>Téléphone</Label>
+              <Label>Telefone</Label>
               <Input required value={form.phone} onChange={set("phone")} data-testid="lead-phone-input" className="rounded-sm" />
             </div>
             <div className="grid gap-2">
-              <Label>Budget (€)</Label>
+              <Label>Orçamento (€)</Label>
               <Input type="number" value={form.budget} onChange={set("budget")} data-testid="lead-budget-input" className="rounded-sm num" />
             </div>
           </div>
           <div className="grid gap-2">
-            <Label>Adresse du chantier</Label>
+            <Label>Morada da obra</Label>
             <Input value={form.address} onChange={set("address")} data-testid="lead-address-input" className="rounded-sm" />
           </div>
           <div className="grid gap-2">
-            <Label>Disponibilités</Label>
-            <Input placeholder="Ex : en semaine après 17 h" value={form.availability} onChange={set("availability")} data-testid="lead-availability-input" className="rounded-sm" />
+            <Label>Disponibilidades</Label>
+            <Input placeholder="Ex: em dias de semana após as 17 h" value={form.availability} onChange={set("availability")} data-testid="lead-availability-input" className="rounded-sm" />
           </div>
           <div className="grid gap-2">
-            <Label>Description des travaux</Label>
+            <Label>Descrição dos trabalhos</Label>
             <Textarea rows={4} value={form.description} onChange={set("description")} data-testid="lead-description-input" className="rounded-sm" />
           </div>
           <Button type="submit" disabled={busy} data-testid="submit-lead-btn" className="rounded-sm hover:bg-orange-600 hover:text-white">
-            {busy ? "Envoi…" : "Envoyer ma demande"}
+            {busy ? "A enviar…" : "Enviar o meu pedido"}
           </Button>
         </form>
       </DialogContent>

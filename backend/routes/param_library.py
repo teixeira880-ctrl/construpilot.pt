@@ -55,7 +55,7 @@ async def _ensure_defaults():
 async def import_param(file: UploadFile = File(...)) -> dict:
     content = await file.read()
     if len(content) > 20 * 1024 * 1024:
-        raise HTTPException(400, "Fichier trop volumineux (max 20 Mo).")
+        raise HTTPException(400, "Ficheiro demasiado volumoso (máx. 20 MB).")
     try:
         parsed = parse_param_library(content, file.filename or "")
     except ValueError as e:
@@ -131,7 +131,7 @@ async def compute_ouvrage(base_code: str, level: str = "moyen", region: str = "s
                           margin_pct: float = 25.0, variables: dict | None = None) -> dict:
     lines = await db.param_recipe_lines.find({"base_code": base_code}, {"_id": 0}).sort("ordre", 1).to_list(500)
     if not lines:
-        raise HTTPException(404, "Ouvrage introuvable")
+        raise HTTPException(404, "Elemento não encontrado")
     await _ensure_defaults()
     rates = {r["metier"]: r for r in await db.labor_rates.find({}, {"_id": 0}).to_list(100)}
     coefs = {c["region"]: c for c in await db.regional_coefs.find({}, {"_id": 0}).to_list(100)}
@@ -250,7 +250,7 @@ async def add_material(body: MaterialIn) -> dict:
 async def update_material(mat_id: str, body: MaterialIn) -> dict:
     res = await db.material_prices.update_one({"mat_id": mat_id}, {"$set": body.model_dump()})
     if not res.matched_count:
-        raise HTTPException(404, "Matériau introuvable")
+        raise HTTPException(404, "Material não encontrado")
     return {"ok": True}
 
 
@@ -353,7 +353,7 @@ async def import_materials(file: UploadFile = File(...)) -> dict:
 async def list_ouvrages(q: str = "", user=Depends(current_user)) -> dict:
     from engines.monetization import user_tier
     if user.get("role") != "admin" and (await user_tier(user["user_id"])) != "pro_business":
-        raise HTTPException(402, "Bibliothèque paramétrique réservée au plan Pro Business.")
+        raise HTTPException(402, "Biblioteca paramétrica reservada ao plano Pro Business.")
     return {"ouvrages": await _ouvrage_list(q),
             "total_lines": await db.param_recipe_lines.count_documents({})}
 
@@ -374,7 +374,7 @@ async def ouvrage_to_quote_line(body: QuoteLineIn, user=Depends(current_user)) -
     mesurée et le prix unitaire = prix de vente / quantité."""
     from engines.monetization import user_tier
     if user.get("role") != "admin" and (await user_tier(user["user_id"])) != "pro_business":
-        raise HTTPException(402, "Réservé au plan Pro Business.")
+        raise HTTPException(402, "Reservado ao plano Pro Business.")
     r = await compute_ouvrage(body.base_code, body.level, body.region, body.margin_pct,
                               variables=body.variables)
     dv = r.get("driving_var")
@@ -387,7 +387,7 @@ async def ouvrage_to_quote_line(body: QuoteLineIn, user=Depends(current_user)) -
         qty = max(body.quantity or 1, 0.01)
         unit_price = r["prix_vente"]
     return {"line": {
-        "designation": r["famille"], "description": f"Ouvrage composé {r['base_code']} · {r['metier']}",
-        "unit": unit, "qty": qty, "unit_price_ht": unit_price, "vat_rate": 10,
-        "category": r.get("famille", "Ouvrage composé")},
+        "designation": r["famille"], "description": f"Trabalho composto {r['base_code']} · {r['metier']}",
+        "unit": unit, "qty": qty, "unit_price_ht": unit_price, "vat_rate": 6,
+        "category": r.get("famille", "Trabalho composto")},
         "detail": r}

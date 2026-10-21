@@ -7,7 +7,7 @@ import { getCity, CITY_LIST } from "@/lib/cities";
 export default function LocalLanding() {
   const location = useLocation();
   // Derive slug from URL: /devis-travaux-{slug}
-  const slug = location.pathname.replace(/^\/devis-travaux-/, "").split("/")[0];
+  const slug = location.pathname.replace(/^\/(devis-travaux|orcamento-obras)-/, "").split("/")[0];
   const c = getCity(slug);
   if (!c) return <Navigate to="/" replace />;
 
@@ -16,8 +16,8 @@ export default function LocalLanding() {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
     "name": `ConstruPilot ${c.name}`,
-    "description": `Estimation travaux, devis chiffré et comparateur prix matériaux pour tous les chantiers de rénovation et construction à ${c.name} (${c.department}).`,
-    "url": `https://construpilot.fr/devis-travaux-${c.slug}`,
+    "description": `Estimativa de obras, orçamento detalhado e comparador de preços de materiais para todas as obras de remodelação e construção em ${c.name} (${c.department}).`,
+    "url": `https://construpilot.pt/orcamento-obras-${c.slug}`,
     "areaServed": {
       "@type": "City",
       "name": c.name,
@@ -25,19 +25,14 @@ export default function LocalLanding() {
     },
     "geo": { "@type": "GeoCoordinates", "latitude": c.lat, "longitude": c.lng },
     "priceRange": `${c.priceRange} €/m²`,
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "reviewCount": Math.max(30, Math.floor(c.artisans / 100)),
-    },
     "hasOfferCatalog": {
       "@type": "OfferCatalog",
-      "name": `Services BTP ${c.name}`,
+      "name": `Serviços de construção ${c.name}`,
       "itemListElement": [
-        { "@type": "Offer", "name": "Estimation travaux gratuite" },
-        { "@type": "Offer", "name": "Devis rénovation chiffré" },
-        { "@type": "Offer", "name": "Comparateur prix matériaux" },
-        { "@type": "Offer", "name": "Métré 2D depuis plan" },
+        { "@type": "Offer", "name": "Estimativa de trabalhos gratuita" },
+        { "@type": "Offer", "name": "Orçamento renovação calculado" },
+        { "@type": "Offer", "name": "Comparador de preços de materiais" },
+        { "@type": "Offer", "name": "Medições 2D a partir de plano" },
       ],
     },
   };
@@ -45,17 +40,17 @@ export default function LocalLanding() {
   return (
     <>
       <SEO
-        title={`Devis travaux ${c.name} — Estimation rénovation en 30 s`}
-        description={`Estimez vos travaux à ${c.name} en 30 secondes. Prix moyen rénovation ${c.name} : ${c.priceRange} €/m². Devis IA gratuit, ${c.artisans.toLocaleString("pt-PT")} artisans référencés en ${c.region}.`}
-        keywords={`devis travaux ${c.name}, prix rénovation ${c.name}, artisan ${c.name}, devis rénovation ${c.department}, coût travaux ${c.name}, ${c.region} BTP`}
-        canonical={`/devis-travaux-${c.slug}`}
+        title={`Orçamento de obras ${c.name} — Estimativa de remodelação`}
+        description={`Estime as suas obras em ${c.name} com o ConstruPilot. Ordem de grandeza de remodelação ${c.name} : ${c.priceRange} €/m² consoante a gama. Estimativa detalhada, preços de materiais e orçamento em PDF.`}
+        keywords={`orçamento obras ${c.name}, preço remodelação ${c.name}, empreiteiro ${c.name}, orçamento remodelação ${c.department}, custo obras ${c.name}, ${c.region} construção`}
+        canonical={`/orcamento-obras-${c.slug}`}
         image={c.heroImage}
         jsonLd={jsonLd}
       />
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border grain">
-        <img src={c.heroImage} alt={`Rénovation appartement ${c.name}`}
+        <img src={c.heroImage} alt={`Renovação de apartamento ${c.name}`}
              className="absolute inset-0 h-full w-full object-cover opacity-25" />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/40" />
         <div className="relative mx-auto max-w-[1500px] px-5 lg:px-8 py-16 lg:py-20">
@@ -64,24 +59,23 @@ export default function LocalLanding() {
             {c.name} · {c.region}
           </p>
           <h1 className="mt-4 font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tighter">
-            Devis travaux à <span className="text-primary">{c.name}</span> :<br />
-            estimez, comparez, signez.
+            Orçamentos de obras em <span className="text-primary">{c.name}</span> :<br />
+            estime, compare, assine.
           </h1>
           <p className="mt-5 text-base md:text-lg text-muted-foreground max-w-2xl">
-            Rénovation appartement, maison, salle de bain, cuisine ou construction neuve à{" "}
-            <strong>{c.name} ({c.department})</strong> : ConstruPilot chiffre votre projet en 30 s
-            avec les prix réels France 2026 ajustés au marché local.
+            Renovação apartamento, moradia, casa de banho, cozinha ou construção nova em{" "}
+            <strong>{c.name} ({c.department})</strong> : o ConstruPilot orçamenta o seu projeto com os preços reais de Portugal 2026 ajustados ao mercado local.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/smart-project">
               <Button className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white h-11"
                       data-testid={`local-cta-smart-${c.slug}`}>
-                Estimer mon projet <ArrowRight className="h-4 w-4" />
+                Estimar o meu projeto <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link to="/prix">
               <Button variant="outline" className="rounded-sm h-11" data-testid={`local-cta-prix-${c.slug}`}>
-                Comparer les prix matériaux
+                Comparar os preços materiais
               </Button>
             </Link>
           </div>
@@ -92,31 +86,28 @@ export default function LocalLanding() {
       <section className="border-b border-border">
         <div className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-4">
           <Stat icon={TrendingUp} value={`${c.priceStandard.toLocaleString("pt-PT")} €`}
-                label="Rénovation standard / m²" />
-          <Stat icon={Users} value={c.artisans.toLocaleString("pt-PT")}
-                label={`Artisans en ${c.region}`} />
-          <Stat icon={Building2} value={c.surface} label={`Surface ${c.name}`} />
-          <Stat icon={Zap} value="30 s" label="Devis chiffré instantané" />
+                label="Renovação padrão / m²" />
+          <Stat icon={Users} value={`~${c.artisans.toLocaleString("pt-PT")}`}
+                label={`Profissionais da construção em ${c.region} (estimativa)`} />
+          <Stat icon={Building2} value={c.surface} label={`Superfície ${c.name}`} />
+          <Stat icon={Zap} value="PDF" label="Orçamento detalhado para transferir" />
         </div>
       </section>
 
       {/* Local content */}
       <section className="mx-auto max-w-[1500px] px-5 lg:px-8 py-16 grid lg:grid-cols-[2fr_1fr] gap-10">
         <div>
-          <p className="overline">Ce qu'il faut savoir</p>
+          <p className="overline">O que é preciso saber</p>
           <h2 className="mt-3 font-display text-2xl lg:text-3xl font-bold tracking-tight">
-            Rénover à {c.name} en 2026 : contexte local
+            Renovar em {c.name} em 2026: contexto local
           </h2>
           <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-            Le marché de la rénovation à <strong>{c.name}</strong> est particulièrement dynamique.
-            Le prix moyen d'une rénovation standard s'établit autour de{" "}
-            <strong>{c.priceStandard.toLocaleString("pt-PT")} €/m²</strong>, dans une fourchette de{" "}
-            <strong>{c.priceRange} €/m²</strong> selon la gamme (éco / standard / premium). Un chantier
-            type dans la région, par exemple <em>{c.typicalProject}</em>, se chiffre en moyenne
-            entre <strong>{c.typicalPrice}</strong>.
+            O mercado da renovação em <strong>{c.name}</strong> é particularmente dinâmico. O preço médio de uma renovação standard estabelece-se em torno de{" "}
+            <strong>{c.priceStandard.toLocaleString("pt-PT")} €/m²</strong>, num intervalo de{" "}
+            <strong>{c.priceRange} €/m²</strong> segundo a gama (eco / standard / premium). Uma obra tipo na região, por exemplo <em>{c.typicalProject}</em>, orçamenta-se em média entre <strong>{c.typicalPrice}</strong>.
           </p>
 
-          <h3 className="mt-8 font-display text-lg font-semibold">Spécificités locales</h3>
+          <h3 className="mt-8 font-display text-lg font-semibold">Especificidades locais</h3>
           <ul className="mt-4 grid gap-3">
             {c.localTips.map((tip, i) => (
               <li key={i} className="flex gap-3 text-sm" data-testid={`local-tip-${c.slug}-${i}`}>
@@ -127,7 +118,7 @@ export default function LocalLanding() {
           </ul>
 
           <h3 className="mt-8 font-display text-lg font-semibold">
-            Codes postaux couverts à {c.name}
+            Códigos postais cobertos em {c.name}
           </h3>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {c.zipcodes.map((z) => (
@@ -142,24 +133,24 @@ export default function LocalLanding() {
 
         {/* Sidebar CTA */}
         <aside className="surface p-6 h-fit sticky top-24" data-testid={`local-sidebar-${c.slug}`}>
-          <p className="overline">Prêt à démarrer ?</p>
+          <p className="overline">Pronto para começar?</p>
           <h3 className="mt-2 font-display text-xl font-bold">
-            Chiffrez votre projet {c.name}
+            Orçamente o seu projeto {c.name}
           </h3>
           <p className="mt-3 text-xs text-muted-foreground">
-            Gratuit, sans inscription. Résultat en 30 secondes avec prix ajustés à{" "}
+            Grátis para começar. Estimativa detalhada com preços ajustados a{" "}
             {c.region}.
           </p>
           <Link to="/smart-project" className="block mt-5">
             <Button className="w-full rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
-              Lancer l'estimation <ArrowRight className="h-4 w-4" />
+              Iniciar a estimativa <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
           <div className="mt-6 pt-6 border-t border-border grid gap-2 text-[11px]">
-            <p className="font-bold">Autres villes couvertes :</p>
+            <p className="font-bold">Outras cidades cobertas:</p>
             <div className="flex flex-wrap gap-1">
               {CITY_LIST.filter((x) => x.slug !== c.slug).map((x) => (
-                <Link key={x.slug} to={`/devis-travaux-${x.slug}`}
+                <Link key={x.slug} to={`/orcamento-obras-${x.slug}`}
                       className="text-primary hover:underline"
                       data-testid={`local-link-${x.slug}`}>
                   {x.name}

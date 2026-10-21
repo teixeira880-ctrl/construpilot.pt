@@ -20,7 +20,7 @@ def _now():
 async def _get_plan(plan_id: str, user_id: str) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user_id}, {"_id": 0})
     if not p:
-        raise HTTPException(404, "Plan introuvable")
+        raise HTTPException(404, "Planta não encontrada")
     return p
 
 
@@ -29,7 +29,7 @@ async def analyze(plan_id: str, user=Depends(current_user)) -> dict:
     p = await _get_plan(plan_id, user["user_id"])
     images = [pg["image_png_b64"] for pg in (p.get("pages") or []) if pg.get("image_png_b64")][:4]
     if not images:
-        raise HTTPException(422, "Aucune image de plan à analyser")
+        raise HTTPException(422, "Nenhuma imagem de planta a analisar")
     data = await ai.analyze_rebar(images)
     lines = rebar.enrich_lines(data.get("lines") or [])
     treillis = data.get("treillis") or []
@@ -53,7 +53,7 @@ async def get_analysis(plan_id: str, user=Depends(current_user)) -> dict:
     d = await db.steel_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0})
     if not d:
-        raise HTTPException(404, "Aucune analyse acier pour ce plan")
+        raise HTTPException(404, "Nenhuma análise de aço para esta planta")
     return d
 
 
@@ -94,7 +94,7 @@ async def commandable(plan_id: str, body: OrderIn, user=Depends(current_user)) -
     d = await db.steel_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0})
     if not d:
-        raise HTTPException(404, "Analyse acier introuvable")
+        raise HTTPException(404, "Análise de aço não encontrada")
     lines, treillis = _scaled(d, body.element_count)
     conv = rebar.to_commandable(lines, treillis,
                                 {"loss_pct": body.loss_pct, "bar_length_m": body.bar_length_m})
@@ -112,7 +112,7 @@ async def create_order(plan_id: str, body: OrderIn, user=Depends(current_user)) 
     d = await db.steel_analyses.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0})
     if not d:
-        raise HTTPException(404, "Analyse acier introuvable")
+        raise HTTPException(404, "Análise de aço não encontrada")
     lines, treillis = _scaled(d, body.element_count)
     conv = rebar.to_commandable(lines, treillis,
                                 {"loss_pct": body.loss_pct, "bar_length_m": body.bar_length_m})

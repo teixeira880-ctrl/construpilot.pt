@@ -1,0 +1,41 @@
+--- current/frontend/src/App.js
++++ zip4/frontend/src/App.js
+@@ -1,5 +1,8 @@
++import { useEffect } from "react";
+ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+ import "@/App.css";
++import "@/styles/workspace.css";
++import WorkspaceNavigation from "@/components/workspace/WorkspaceNavigation";
+ import { Toaster } from "@/components/ui/sonner";
+ import { AuthProvider, useAuth } from "@/context/AuthContext";
+ import { BillingProvider, useBilling } from "@/context/BillingContext";
+@@ -137,14 +140,21 @@
+   return children;
+ };
+ 
+-const Shell = ({ children }) => (
+-  <>
+-    <Nav />
+-    <main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main>
+-    <Footer />
+-    <HelpChatbot />
+-  </>
+-);
++const Shell = ({ children }) => {
++  const { user } = useAuth();
++  const { pathname } = useLocation();
++  const assistant = pathname === "/assistant";
++  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
++  if (!user) return <><Nav /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main><Footer /><HelpChatbot /></>;
++  return <div className={`workspace${assistant ? " workspace-chat" : ""}`}>
++    <WorkspaceNavigation />
++    <div className="workspace-content">
++      <main id="workspace-main" tabIndex={-1} className="workspace-main">{children}</main>
++      {!assistant && <Footer />}
++    </div>
++    {!assistant && <HelpChatbot />}
++  </div>;
++};
+ 
+ function AppRouter() {
+   const location = useLocation();

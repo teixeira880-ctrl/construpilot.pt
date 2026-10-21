@@ -33,7 +33,7 @@ def make_token(user_id: str) -> str:
 
 
 def build_unsubscribe_url(user_id: str) -> str:
-    base = os.environ.get("PUBLIC_APP_URL") or "https://construpilot.fr"
+    base = os.environ.get("PUBLIC_APP_URL") or "https://construpilot.pt"
     return f"{base.rstrip('/')}/api/emails/unsubscribe/{make_token(user_id)}"
 
 
@@ -45,28 +45,15 @@ def _verify(token: str) -> str | None:
 
 
 def _page(title: str, body: str) -> str:
-    return f"""<!doctype html><html><head><meta charset="utf-8">
-<title>{title} · ConstruPilot</title></head>
-<body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14;
-padding:60px 20px">
-<div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;
-border-radius:6px;padding:36px;text-align:center">
-<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;color:{BRAND}">
-ConstruPilot</div>
-<h1 style="font-size:20px;margin:24px 0 12px">{title}</h1>
-<div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>
-<div style="margin-top:32px">
-<a href="https://construpilot.fr" style="background:{BRAND};color:#fff;text-decoration:none;
-padding:12px 24px;border-radius:4px;font-size:14px;font-weight:600;display:inline-block">
-Retour à ConstruPilot</a></div></div></body></html>"""
+    return f'<!doctype html><html><head><meta charset="utf-8">\n<title>{title} · ConstruPilot</title></head>\n<body style="margin:0;background:#f5f5f7;font-family:Arial,sans-serif;color:#0A0D14;\npadding:60px 20px">\n<div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;\nborder-radius:6px;padding:36px;text-align:center">\n<div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;color:{BRAND}">\nConstruPilot</div>\n<h1 style="font-size:20px;margin:24px 0 12px">{title}</h1>\n<div style="font-size:14px;line-height:1.55;color:#334155">{body}</div>\n<div style="margin-top:32px">\n<a href="https://construpilot.pt" style="background:{BRAND};color:#fff;text-decoration:none;\npadding:12px 24px;border-radius:4px;font-size:14px;font-weight:600;display:inline-block">\nVoltar ao ConstruPilot</a></div></div></body></html>'
 
 
 @router.get("/unsubscribe/{token}", response_class=HTMLResponse)
 async def unsubscribe(token: str):
     user_id = _verify(token)
     if not user_id:
-        return HTMLResponse(_page("Lien invalide",
-                                  "<p>Ce lien de désinscription est invalide ou a expiré.</p>"),
+        return HTMLResponse(_page("Ligação inválida",
+                                  "<p>Esta ligação de cancelamento da subscrição é inválida ou expirou.</p>"),
                             status_code=400)
     res = await db.users.update_one(
         {"user_id": user_id},
@@ -74,15 +61,12 @@ async def unsubscribe(token: str):
                    "email_opt_out_at": _now_iso()}},
     )
     if res.matched_count == 0:
-        return HTMLResponse(_page("Utilisateur introuvable",
-                                  "<p>Nous n'avons pas retrouvé votre compte.</p>"),
+        return HTMLResponse(_page("Utilizador não encontrado",
+                                  "<p>Não encontrámos a sua conta.</p>"),
                             status_code=404)
     return HTMLResponse(_page(
-        "Désinscription confirmée",
-        "<p>Vous ne recevrez plus d'emails marketing ConstruPilot.</p>"
-        "<p style='color:#64748B;font-size:12px;margin-top:16px'>"
-        "Vous continuerez à recevoir les emails transactionnels essentiels "
-        "(devis signés, alertes de sécurité, factures).</p>"
+        "Cancelamento da subscrição confirmado",
+        "<p>Não voltará a receber emails de marketing do ConstruPilot.</p><p style=\'color:#64748B;font-size:12px;margin-top:16px\'>Continuará a receber os emails transacionais essenciais (orçamentos assinados, alertas de segurança, faturas).</p>"
     ))
 
 
@@ -124,7 +108,7 @@ async def create_template(body: TemplateIn, user=Depends(current_user)) -> dict:
     """Enregistre un modèle de message (max 20 par utilisateur)."""
     count = await db.message_templates.count_documents({"user_id": user["user_id"]})
     if count >= MAX_TEMPLATES:
-        raise HTTPException(422, f"Maximum {MAX_TEMPLATES} modèles — supprimez-en un d'abord")
+        raise HTTPException(422, f'Maximum {MAX_TEMPLATES} modelos — elimine primeiro um deles')
     doc = {
         "template_id": f"tpl_{secrets.token_hex(6)}",
         "user_id": user["user_id"],
@@ -142,5 +126,5 @@ async def delete_template(template_id: str, user=Depends(current_user)) -> dict:
     res = await db.message_templates.delete_one(
         {"template_id": template_id, "user_id": user["user_id"]})
     if res.deleted_count == 0:
-        raise HTTPException(404, "Modèle introuvable")
+        raise HTTPException(404, "Modelo não encontrado")
     return {"ok": True}

@@ -39,14 +39,14 @@ async def _mark_opened(email_id: str, when: str) -> int:
 async def resend_webhook(request: Request):
     secret = os.environ.get("RESEND_WEBHOOK_SECRET")
     if not secret:
-        raise HTTPException(503, "Webhook Resend non configuré (RESEND_WEBHOOK_SECRET manquant)")
+        raise HTTPException(503, "Webhook Resend não configurado (RESEND_WEBHOOK_SECRET em falta)")
 
     raw = await request.body()
     svix_id = request.headers.get("svix-id")
     svix_ts = request.headers.get("svix-timestamp")
     svix_sig = request.headers.get("svix-signature")
     if not all((svix_id, svix_ts, svix_sig)):
-        raise HTTPException(400, "En-têtes Svix manquants")
+        raise HTTPException(400, "Cabeçalhos Svix em falta")
 
     from svix.webhooks import Webhook, WebhookVerificationError
     try:
@@ -54,23 +54,23 @@ async def resend_webhook(request: Request):
             raw, {"svix-id": svix_id, "svix-timestamp": svix_ts, "svix-signature": svix_sig})
     except WebhookVerificationError:
         logger.warning("Signature webhook Resend invalide")
-        raise HTTPException(400, "Signature invalide")
+        raise HTTPException(400, "Assinatura inválida")
     except HTTPException:
         raise
     except Exception:
         logger.exception("Erreur vérification webhook Resend")
-        raise HTTPException(400, "Webhook invalide")
+        raise HTTPException(400, "Webhook inválido")
 
     try:
         event = json.loads(raw)
     except json.JSONDecodeError:
-        raise HTTPException(400, "Corps JSON invalide")
+        raise HTTPException(400, "Corpo JSON inválido")
 
     event_type = event.get("type")
     data = event.get("data") or {}
     email_id = data.get("email_id")
     if not event_type or not email_id:
-        raise HTTPException(400, "Événement Resend malformé")
+        raise HTTPException(400, "Evento Resend mal formado")
     if event_type not in _TRACKED:
         return {"received": True, "ignored": True}
 
@@ -92,7 +92,7 @@ async def resend_webhook(request: Request):
                     "user_id": send["user_id"], "type": "quote_opened",
                     "email_id": email_id, "doc_id": send.get("doc_id"),
                     "client_email": send.get("client_email"),
-                    "message": f"Votre e-mail a été ouvert par {send.get('client_email') or 'le destinataire'}",
+                    "message": f"O seu e-mail foi aberto por {send.get('client_email') or 'o destinatário'}",
                     "read": False, "created_at": now})
     elif event_type == "email.delivered":
         await db.quote_sends.update_many(

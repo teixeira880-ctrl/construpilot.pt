@@ -9,40 +9,20 @@ from engines import price_search, emailer
 logger = logging.getLogger(__name__)
 
 
-def _twilio_client():
-    """Devolve um cliente Twilio inicializado, ou None se credenciais faltam.
-
-    Usado por engines.sms_provider.get_sms_client() para wrapper unificado.
-    """
+def _send_sms(to: str, body: str) -> bool:
+    """Envoi SMS Twilio best-effort. Renvoie True si envoyé, False sinon (log warning)."""
     sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
     token = os.environ.get("TWILIO_AUTH_TOKEN", "")
-    if not (sid and token):
-        return None
+    from_ = os.environ.get("TWILIO_FROM_NUMBER", "")
+    if not (sid and token and from_ and to):
+        return False
     try:
         from twilio.rest import Client
-        return Client(sid, token)
-    except Exception as e:
-        logger.warning(f"Twilio client init failed: {e}")
-        return None
-
-
-def _send_sms(to: str, body: str) -> bool:
-    """Envio SMS via provider seleccionado (SMS_PROVIDER=twilio|smsto).
-
-    Best-effort: True se enviado com sucesso, False caso contrário.
-    """
-    if not to:
-        return False
-    from engines.sms_provider import get_sms_client
-    client = get_sms_client()
-    if client is None:
-        return False
-    resp = client.send(to=to, message=body[:320])
-    if resp.get("ok"):
+        Client(sid, token).messages.create(to=to, from_=from_, body=body[:320])
         return True
-    logger.warning(f"SMS alert failed provider={resp.get('provider')} "
-                   f"to={to[:-4] + '…' if len(to) > 6 else to}: {resp.get('reason') or resp.get('body')}")
-    return False
+    except Exception as e:
+        logger.warning(f"SMS alert failed to={to[:-4] + '…' if len(to) > 6 else to}: {e}")
+        return False
 
 
 async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
@@ -50,22 +30,13 @@ async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
         return False
     frontend = os.environ.get("FRONTEND_URL", "")
     html = emailer.wrap_html(
-        "Un matériau vient d'atteindre votre prix cible",
-        f"""<p>Olá {user.get("name") or ""},</p>
-<p>Le matériau que vous surveillez sur ConstruPilot est disponible à un prix intéressant :</p>
-<ul>
-<li><b>Produit</b> : {alert.get("product") or alert.get("query")}</li>
-<li><b>Recherche</b> : « {alert.get("query")} »</li>
-<li><b>Prix cible</b> : {alert.get("target_price"):.2f} €</li>
-<li><b>Meilleure offre</b> : <span style="color:#FF5A00;font-weight:bold">{best.get("price"):.2f} €</span>
-    chez <b>{best.get("supplier")}</b></li>
-</ul>
-<p>Réservez rapidement avant que le prix ne remonte.</p>""",
+        "Um material acaba de atingir o seu preço alvo",
+        f"""<p>Olá {user.get('name') or ''},</p>\n<p>O material que acompanha no ConstruPilot está disponível a um preço interessante:</p>\n<ul>\n<li><b>Produto</b>: {alert.get('product') or alert.get('query')}</li>\n<li><b>Recherche</b> : « {alert.get('query')}»</li>\n<li><b>Preço alvo</b>: {alert.get('target_price'):.2f} €</li>\n<li><b>Melhor oferta</b>: <span style="color:#FF5A00;font-weight:bold">{best.get('price'):.2f} €</span>\n    em <b>{best.get('supplier')}</b></li>\n</ul>\n<p>Reserve depressa antes que o preço volte a subir.</p>""",
         cta_url=best.get("url") or f"{frontend}/prix?q={alert.get('query')}",
-        cta_label="Voir l'offre")
+        cta_label="Ver a oferta")
     try:
         await emailer.send_email(user["email"],
-                                 f"Alerte prix ConstruPilot — {alert.get('product') or alert.get('query')}",
+                                 f"Alerta de preço ConstruPilot — {alert.get('product') or alert.get('query')}",
                                  html)
         await db.price_alerts.update_one({"alert_id": alert["alert_id"]},
                                          {"$set": {"last_notified_at": datetime.now(timezone.utc).isoformat(),
@@ -98,7 +69,7 @@ async def _push_alert(user_id: str, alert: dict, best: dict) -> None:
         await push_notify(
             user_id,
             f"💰 {alert.get('product') or alert.get('query')} : {best['price']:.2f} €",
-            f"Meilleure offre chez {best.get('supplier')} — cible {alert['target_price']:.2f} €",
+            f"Melhor oferta em {best.get('supplier')} — cible {alert['target_price']:.2f} €",
             best.get("url") or "/prix",
         )
     except Exception as e:
@@ -115,10 +86,8 @@ async def _notify_channels(user: dict, alert: dict, best: dict) -> bool:
     if "email" in channels:
         sent_any = await _notify_user(user, alert, best) or sent_any
     if "sms" in channels and alert.get("phone"):
-        price_txt = f"{best.get('price'):.2f} €" if best.get("price") is not None else "meilleur prix"
-        sms_body = (f"ConstruPilot alerte : {alert.get('product') or alert.get('query')} "
-                    f"à {price_txt} chez {best.get('supplier')} "
-                    f"(cible {alert['target_price']:.2f} €). {best.get('url', '')}")
+        price_txt = f"{best.get('price'):.2f} €" if best.get("price") is not None else "melhor preço"
+        sms_body = (f"Alerta ConstruPilot: {alert.get('product') or alert.get('query')} à {price_txt} chez {best.get('supplier')} (cible {alert['target_price']:.2f} €). {best.get('url', '')}")
         ok = _send_sms(alert["phone"], sms_body)
         if ok:
             await db.price_alerts.update_one(

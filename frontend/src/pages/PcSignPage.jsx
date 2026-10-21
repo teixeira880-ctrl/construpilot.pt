@@ -21,11 +21,11 @@ export default function PcSignPage() {
   const load = useCallback(() => {
     api.get(`/pc/sign/${token}`)
       .then(({ data: d }) => setData(d))
-      .catch((e) => setError(e?.response?.data?.detail || "Lien invalide ou expiré"));
+      .catch((e) => setError(e?.response?.data?.detail || "Ligação inválida ou expirada"));
   }, [token]);
   useEffect(load, [load]);
 
-  // Voltar de Stripe : confirme le paiement (sinal ou situation) par polling
+  // Retour de Stripe : confirme le paiement (acompte ou situation) par polling
   useEffect(() => {
     const sid = searchParams.get("session_id");
     if (!sid) return;
@@ -36,7 +36,7 @@ export default function PcSignPage() {
         const { data: st } = await api.get(`/pc/deposit/status/${sid}`);
         if (st.payment_status === "paid") {
           clearInterval(timer);
-          toast.success(`Paiement de ${eur(st.amount)} reçu — merci !`);
+          toast.success(`Pagamento de ${eur(st.amount)} recebido — obrigado!`);
           load();
         } else if (["expired", "failed"].includes(st.payment_status) || tries > 12) {
           clearInterval(timer);
@@ -53,7 +53,7 @@ export default function PcSignPage() {
 
   const accept = async () => {
     if (name.trim().length < 2) return toast.error("Indique o seu nome completo");
-    if (!agree) return toast.error("Selecione a caixa de aceitação");
+    if (!agree) return toast.error("Assinale a caixa de aceitação");
     setBusy(true);
     try {
       const { data: r } = await api.post(`/pc/sign/${token}/accept`,
@@ -63,7 +63,7 @@ export default function PcSignPage() {
         accepted_by: name.trim(), accepted_signature: signature,
       }));
       toast.success("Estudo aceite — obrigado!");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Acceptation impossível"); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "Aceitação impossível"); }
     finally { setBusy(false); }
   };
 
@@ -100,7 +100,7 @@ export default function PcSignPage() {
   }
   if (!data) {
     return <div className="min-h-screen grid place-items-center bg-background">
-      <p className="text-muted-foreground animate-pulse">Chargement de l'estudo…</p>
+      <p className="text-muted-foreground animate-pulse">Carregamento do estudo…</p>
     </div>;
   }
 
@@ -119,11 +119,11 @@ export default function PcSignPage() {
             <HardHat className="h-4 w-4" /> {data.company || "ConstruPilot"}
           </p>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold">
-            Estudo gros œuvre — {data.filename || "o seu projeto"}
+            Estudo de estrutura — {data.filename || "o seu projeto"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Établie le {String(data.generated_at || "").slice(0, 10)}
-            {data.planning?.total_days ? ` · chantier estimé ${data.planning.total_days} jours (${data.planning.total_weeks} semaines)` : ""}
+            Elaborado a {String(data.generated_at || "").slice(0, 10)}
+            {data.planning?.total_days ? ` · obra estimada ${data.planning.total_days} jours (${data.planning.total_weeks} semanas)` : ""}
           </p>
         </header>
 
@@ -158,8 +158,8 @@ export default function PcSignPage() {
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[["Béton", `${num(t.beton_m3, 1)} m³`], ["Aços", `${num(t.acier_kg)} kg`],
-            ["Briques isobrique", `${num(t.briques_u)} u`], ["Total TTC", eur(t.ttc)]].map(([k, v]) => (
+          {[["Betão", `${num(t.beton_m3, 1)} m³`], ["Aços", `${num(t.acier_kg)} kg`],
+            ["Tijolos térmicos", `${num(t.briques_u)} u`], ["Total c/ IVA", eur(t.ttc)]].map(([k, v]) => (
             <div key={k} className="surface p-3">
               <p className="text-[10px] text-muted-foreground">{k}</p>
               <p className="font-display font-bold num">{v}</p>
@@ -176,7 +176,7 @@ export default function PcSignPage() {
               </tr>
             ))}
             <tr className="border-t-2 border-primary/40 bg-muted/40">
-              <td className="p-2 font-bold">Total HT / TVA 20 % / TTC</td>
+              <td className="p-2 font-bold">Total s/ IVA / IVA 20 % / c/ IVA</td>
               <td className="p-2 text-right num font-bold text-primary">
                 {eur(t.ht)} / {eur(t.tva)} / {eur(t.ttc)}
               </td>
@@ -188,7 +188,7 @@ export default function PcSignPage() {
           <div className="rounded-sm border-2 border-emerald-500/50 bg-emerald-500/10 p-5 text-center space-y-2"
                data-testid="pc-sign-accepted">
             <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
-            <p className="font-display font-bold text-emerald-600">Estudo acceptée</p>
+            <p className="font-display font-bold text-emerald-600">Estudo aceite</p>
             <p className="text-sm text-muted-foreground">
               le {String(data.accepted_at || "").slice(0, 10)} par <b>{data.accepted_by}</b>
             </p>
@@ -201,7 +201,7 @@ export default function PcSignPage() {
         ) : (
           <div className="surface p-5 space-y-3" data-testid="pc-sign-form">
             <p className="font-semibold flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-primary" /> Accepter cette estudo en ligne
+              <ShieldCheck className="h-4 w-4 text-primary" /> Aceitar esta proposta online
             </p>
             <Input placeholder="O seu nome completo" value={name}
                    onChange={(e) => setName(e.target.value)}
@@ -210,12 +210,11 @@ export default function PcSignPage() {
             <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)}
                      data-testid="pc-sign-agree-checkbox" className="mt-0.5 accent-primary" />
-              J'ai pris connaissance de l'estudo gros œuvre ci-dessus (quantités et montants
-              indicatifs) et je l'accepte comme base de travail.
+              Tomei conhecimento do estudo de estrutura acima (quantidades e montantes indicativos) e aceito-o como base de trabalho.
             </label>
             <Button onClick={accept} disabled={busy} className="rounded-sm w-full gap-2"
                     data-testid="pc-sign-accept-btn">
-              <CheckCircle2 className="h-4 w-4" /> {busy ? "…" : "J'accepte cette estudo"}
+              <CheckCircle2 className="h-4 w-4" /> {busy ? "…" : "Aceito este estudo"}
             </Button>
           </div>
         )}
@@ -225,7 +224,7 @@ export default function PcSignPage() {
                data-testid="pc-deposit-paid">
             <CreditCard className="h-6 w-6 text-emerald-500 mx-auto" />
             <p className="font-display font-bold text-emerald-600">
-              Sinal de {eur(dep.paid_amount || dep.amount)} réglé
+              Sinal de {eur(dep.paid_amount || dep.amount)} pago
             </p>
             {dep.paid_at && (
               <p className="text-xs text-muted-foreground">le {String(dep.paid_at).slice(0, 10)}</p>
@@ -234,22 +233,21 @@ export default function PcSignPage() {
                target="_blank" rel="noreferrer"
                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline underline-offset-2"
                data-testid="pc-deposit-invoice-link">
-              <FileDown className="h-3.5 w-3.5" /> Descarregar la facture d'sinal
+              <FileDown className="h-3.5 w-3.5" /> Descarregar a fatura de adiantamento
             </a>
           </div>
         ) : (
           <div className="surface p-5 space-y-3" data-testid="pc-deposit-block">
             <p className="font-semibold flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-primary" /> Verser l'sinal pour lancer le chantier
+              <CreditCard className="h-4 w-4 text-primary" /> Pagar o sinal para iniciar a obra
             </p>
             <p className="text-sm text-muted-foreground">
-              Sinal de <b>{num(dep.pct)} %</b> — soit <b>{eur(dep.amount)}</b> sur un
-              total de {eur(t.ttc)} TTC. Paiement sécurisé par carte bancaire (Stripe).
+              Sinal de <b>{num(dep.pct)} %</b> — ou seja <b>{eur(dep.amount)}</b> num total de {eur(t.ttc)} c/ IVA. Pagamento seguro por cartão bancário (Stripe).
             </p>
             <Button onClick={payDeposit} disabled={payBusy === "deposit"}
                     className="rounded-sm w-full gap-2" data-testid="pc-deposit-pay-btn">
               <CreditCard className="h-4 w-4" />
-              {payBusy === "deposit" ? "A redirecionar para o pagamento…" : `Payer l'sinal de ${eur(dep.amount)}`}
+              {payBusy === "deposit" ? "A redirecionar para o pagamento…" : `Pagar o sinal de ${eur(dep.amount)}`}
             </Button>
           </div>
         ))}
@@ -257,7 +255,7 @@ export default function PcSignPage() {
         {data.accepted && prog.total > 0 && (
           <div className="surface p-5 space-y-3" data-testid="pc-progress-client">
             <p className="font-semibold flex items-center gap-2">
-              <Hammer className="h-4 w-4 text-primary" /> Avancement de votre chantier — {prog.pct} %
+              <Hammer className="h-4 w-4 text-primary" /> Progresso da sua obra — {prog.pct} %
             </p>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-primary transition-all" style={{ width: `${prog.pct}%` }} />
@@ -279,7 +277,7 @@ export default function PcSignPage() {
             </ul>
             {prog.updated_at && (
               <p className="text-[10px] text-muted-foreground">
-                Dernière mise à jour le {String(prog.updated_at).slice(0, 10)}
+                Última atualização em {String(prog.updated_at).slice(0, 10)}
               </p>
             )}
           </div>
@@ -288,11 +286,11 @@ export default function PcSignPage() {
         {data.accepted && (sits.length > 0 || bill.paid > 0) && (
           <div className="surface p-5 space-y-3" data-testid="pc-billing-client">
             <p className="font-semibold flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-primary" /> Facturation du chantier
+              <CreditCard className="h-4 w-4 text-primary" /> Faturação da obra
             </p>
             <p className="text-sm text-muted-foreground">
-              Réglé : <b className="text-emerald-600">{eur(bill.paid)}</b> sur {eur(bill.total_ttc)} TTC
-              {bill.remaining_to_pay > 0 ? <> — reste <b>{eur(bill.remaining_to_pay)}</b></> : " — obra liquidada, obrigado!"}
+              Pago: <b className="text-emerald-600">{eur(bill.paid)}</b> sur {eur(bill.total_ttc)} c/ IVA
+              {bill.remaining_to_pay > 0 ? <> — restante <b>{eur(bill.remaining_to_pay)}</b></> : " — obra liquidada, obrigado!"}
             </p>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-emerald-500 transition-all" style={{ width: `${paidPct}%` }} />
@@ -303,7 +301,7 @@ export default function PcSignPage() {
                      data-testid={`pc-client-situation-${s.sit_no}`}>
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span>
-                      <b>{s.is_final ? "Fatura de solde" : `Situation n° ${s.sit_no}`}</b>
+                      <b>{s.is_final ? "Fatura de saldo" : `Auto de medição n.º ${s.sit_no}`}</b>
                       <span className="text-muted-foreground text-xs"> · {s.invoice_no}</span>
                     </span>
                     <span className="num font-semibold shrink-0">{eur(s.amount)}</span>
@@ -319,7 +317,7 @@ export default function PcSignPage() {
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"
                             data-testid={`pc-client-situation-${s.sit_no}-paid`}>
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Payée le {new Date(s.paid_at).toLocaleDateString("pt-PT")}
+                        Paga a {new Date(s.paid_at).toLocaleDateString("pt-PT")}
                       </span>
                     ) : (
                       <Button size="sm" onClick={() => paySituation(s.sit_id)}
@@ -327,7 +325,7 @@ export default function PcSignPage() {
                               className="h-7 rounded-sm text-xs gap-1.5"
                               data-testid={`pc-client-situation-${s.sit_no}-pay-btn`}>
                         <CreditCard className="h-3 w-3" />
-                        {payBusy === s.sit_id ? "Redirection…" : `Régler ${eur(s.amount)} par carte`}
+                        {payBusy === s.sit_id ? "A redirecionar…" : `Pagar ${eur(s.amount)} par carte`}
                       </Button>
                     )}
                   </div>
@@ -335,7 +333,7 @@ export default function PcSignPage() {
               ))}
               {sits.length === 0 && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" /> Les prochaines factures de situation apparaîtront ici.
+                  <Clock className="h-3.5 w-3.5" /> Os próximos autos de medição aparecerão aqui.
                 </p>
               )}
             </div>
@@ -343,7 +341,7 @@ export default function PcSignPage() {
         )}
 
         <p className="text-[10px] text-muted-foreground text-center">
-          Document indicatif généré par ConstruPilot — ne constitue pas un devis contractuel.
+          Documento indicativo gerado por ConstruPilot — não constitui um orçamento contratual.
         </p>
       </div>
     </div>

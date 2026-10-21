@@ -18,25 +18,15 @@ import { useAuth } from "@/context/AuthContext";
 
 const SORTS = {
   cheapest: { label: "Mais barato", fn: (a, b) => (a.price ?? 1e9) - (b.price ?? 1e9) },
-  total: { label: "Preço total com portes", fn: (a, b) => (a.price ?? 1e9) + a.shipping - ((b.price ?? 1e9) + b.shipping) },
-  fast: { label: "Entrega mais rápida", fn: (a, b) => a.delivery_days - b.delivery_days },
-  rating: { label: "Avaliação", fn: (a, b) => b.rating - a.rating },
+  total: { label: "Preço total entregue", fn: (a, b) => (a.price ?? 1e9) + a.shipping - ((b.price ?? 1e9) + b.shipping) },
+  fast: { label: "Entrega rápida", fn: (a, b) => a.delivery_days - b.delivery_days },
+  rating: { label: "Avaliações", fn: (a, b) => b.rating - a.rating },
   stock: { label: "Disponibilidade", fn: (a, b) => a.stock.localeCompare(b.stock) },
   brand: { label: "Fornecedor (A-Z)", fn: (a, b) => a.supplier.localeCompare(b.supplier) },
 };
 
-const SUGGESTIONS = [
-  "Pladur hidrófugo 12,5mm",
-  "Azulejos 60x60",
-  "Lã de vidro 200mm",
-  "Tinta parede mate",
-  "Cola azulejos 25kg",
-  "Soalho flutuante",
-  "Cimento CEM II 25kg",
-  "Isolamento EPS 40mm",
-];
-
-const DEFAULT_QUERY = "Pladur hidrófugo 12,5mm";
+const SUGGESTIONS = ["BA13 hidrófugo 250 x 120", "mosaico 60x60", "lã de vidro 200mm",
+  "tinta mural mate", "cola azulejo 25kg", "soalho laminado"];
 
 function relativeAge(iso) {
   if (!iso) return null;
@@ -45,11 +35,11 @@ function relativeAge(iso) {
   if (diff < 60) return "agora mesmo";
   if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
-  return `há ${Math.floor(diff / 86400)} d`;
+  return `há ${Math.floor(diff / 86400)} j`;
 }
 
 export default function PriceSearch() {
-  const [query, setQuery] = useState(DEFAULT_QUERY);
+  const [query, setQuery] = useState("BA13 hidrófugo 250 x 120");
   const [data, setData] = useState(null);
   const [sort, setSort] = useState("cheapest");
   const [history, setHistory] = useState(null);
@@ -59,7 +49,7 @@ export default function PriceSearch() {
   const [target, setTarget] = useState("");
   const [smsChannel, setSmsChannel] = useState(false);
   const [smsPhone, setSmsPhone] = useState("");
-  // Lote de estimativas vindo do Smart Project (fix bug "Comparar preços materiais")
+  // Batch d'estimations depuis Smart Project (fix bug "Comparer prix matériaux")
   const [estimationBatch, setEstimationBatch] = useState(null);
   const { user } = useAuth();
 
@@ -77,14 +67,14 @@ export default function PriceSearch() {
   };
 
   useEffect(() => {
-    // Recupera o lote do Smart Project se existir (menos de 30 min)
+    // Récupère le batch de Smart Project s'il existe (moins de 30 min)
     const raw = sessionStorage.getItem("construpilot_price_search_batch");
     if (raw) {
       try {
         const batch = JSON.parse(raw);
         if (batch.ts && Date.now() - batch.ts < 30 * 60 * 1000) {
           setEstimationBatch(batch);
-          // Lança a primeira pesquisa automaticamente no 1.º item
+          // Lance la première recherche automatiquement sur le 1er item
           if (batch.items?.length > 0) {
             search(batch.items[0].search || batch.items[0].name);
             return;
@@ -92,12 +82,12 @@ export default function PriceSearch() {
         }
       } catch { /* ignore */ }
     }
-    search(DEFAULT_QUERY);
+    search("BA13 hidrófugo 250 x 120");
     // eslint-disable-next-line
   }, []);
 
   const locate = () => {
-    if (!navigator.geolocation) return toast.error("Geolocalização indisponível");
+    if (!navigator.geolocation) return toast.error("Geolocalização não disponível");
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         const { data: res } = await api.get("/prices/stores", {
@@ -111,11 +101,11 @@ export default function PriceSearch() {
 
   const createAlert = async () => {
     if (!user) return toast.error("Inicie sessão para criar um alerta de preço");
-    if (!target) return toast.error("Indique um preço-alvo");
+    if (!target) return toast.error("Indique um preço alvo");
     const channels = ["email"];
     if (smsChannel) {
       if (!smsPhone || !smsPhone.trim().startsWith("+")) {
-        return toast.error("Número obrigatório para o SMS (formato +351…)");
+        return toast.error("Número obrigatório para SMS (formato +33…)");
       }
       channels.push("sms");
     }
@@ -124,11 +114,11 @@ export default function PriceSearch() {
         query, target_price: Number(target), product: query,
         channels, phone: smsChannel ? smsPhone.trim() : null,
       });
-      const canais = smsChannel ? "e-mail + SMS" : "e-mail";
-      toast.success(`Alerta criado: ${canais} quando atingir ${eur2(Number(target))}`);
+      const canaux = smsChannel ? "email + SMS" : "email";
+      toast.success(`Alerta criado: ${canaux} assim que ${eur2(Number(target))} atteint`);
       setTarget("");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Não foi possível criar o alerta");
+      toast.error(e?.response?.data?.detail || "Criação impossível");
     }
   };
 
@@ -139,7 +129,7 @@ export default function PriceSearch() {
       if (data.notified > 0) {
         toast.success(`${data.notified} e-mail(s) de alerta enviado(s)`);
       } else {
-        toast.info("Nenhum material monitorizado abaixo do preço-alvo neste momento");
+        toast.info("Nenhum material monitorizado abaixo do seu preço-alvo de momento");
       }
     } catch { toast.error("Verificação impossível"); }
   };
@@ -148,15 +138,9 @@ export default function PriceSearch() {
 
   return (
     <div className="grid gap-10">
-      <SEO
-        title="Comparador de preços de materiais de construção"
-        description="Compare os preços dos materiais de construção nos 6 maiores fornecedores portugueses: Leroy Merlin, AKI, Maxmat, Bricomarché, BricoDepot e Casa Vieira. Histórico de 12 meses e alertas de preço."
-        keywords="comparador preços materiais construção, preços Leroy Merlin PT, preços AKI, preços azulejos, preços pladur, preços cimento"
-        canonical="/prix"
-      />
-      <SectionTitle as="h1" over="Navegador de preços" title="Compare os preços dos materiais em tempo real">
-        6 fornecedores portugueses consultados, portes de envio e stock incluídos. O conector é padronizado:
-        as APIs oficiais integram-se sem alterar a aplicação.
+      <SEO title="Comparador preços materiais construção" description="Compare os preços dos materiais de construção na Point.P, Leroy Merlin, Castorama, Brico Dépôt e 6 outras insígnias. Histórico 12 meses e alertas de preço." keywords="comparador preços materiais, preço Leroy Merlin, preço Maxmat, preço azulejo, preço pladur, preço madeira construção" canonical="/prix" />
+      <SectionTitle as="h1" over="Navegador de preços" title="Compare os preços materiais em tempo real">
+        10 fornecedores consultados, portes e stock incluídos. O conector é normalizado: as API oficiais ligam-se sem modificar a aplicação.
       </SectionTitle>
 
       <div className="surface p-2 flex flex-col sm:flex-row gap-2">
@@ -164,7 +148,7 @@ export default function PriceSearch() {
           value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && search()}
           data-testid="price-search-input"
-          placeholder="Ex.: Pladur hidrófugo 12,5mm"
+          placeholder="Ex: BA13 hidrófugo 250 x 120"
           className="border-0 bg-transparent focus-visible:ring-0 h-11 text-base"
         />
         <Button onClick={() => search()} disabled={busy} data-testid="price-search-btn" className="rounded-sm gap-2 h-11 hover:bg-orange-600 hover:text-white">
@@ -189,7 +173,7 @@ export default function PriceSearch() {
               data-testid="estimation-batch-clear"
               className="text-xs text-muted-foreground hover:text-destructive underline-offset-2 hover:underline"
             >
-              Apagar este lote
+              Apagar esta especialidade
             </button>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -256,7 +240,7 @@ export default function PriceSearch() {
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Produto</TableHead>
                   <TableHead className="text-right">Preço</TableHead>
-                  <TableHead className="text-right">Portes</TableHead>
+                  <TableHead className="text-right">Entrega</TableHead>
                   <TableHead>Stock</TableHead>
                   <TableHead className="text-right">Preço total</TableHead>
                   <TableHead className="text-right">Prazo</TableHead>
@@ -278,7 +262,7 @@ export default function PriceSearch() {
                       )}
                       {r.is_affiliate && (
                         <Badge variant="outline" className="ml-2 rounded-sm text-[9px] uppercase tracking-wider border-primary/30 text-primary" title={r.affiliate_disclosure} data-testid={`affiliate-badge-${r.supplier_key}`}>
-                          Link parceiro
+                          Ligação de parceiro
                         </Badge>
                       )}
                     </TableCell>
@@ -294,14 +278,14 @@ export default function PriceSearch() {
                     </TableCell>
                     <TableCell className="num text-right font-semibold">{r.price ? eur2(r.price) : "—"}</TableCell>
                     <TableCell className="num text-right text-muted-foreground">
-                      {r.shipping === 0 ? "Grátis" : eur2(r.shipping)}
+                      {r.shipping === 0 ? "Offerte" : eur2(r.shipping)}
                     </TableCell>
                     <TableCell className="text-xs">{r.stock}</TableCell>
                     <TableCell className="num text-right text-primary font-semibold">
                       {r.price ? eur2(r.price + r.shipping) : "—"}
                     </TableCell>
                     <TableCell className="num text-right text-xs text-muted-foreground whitespace-nowrap">
-                      <Truck className="inline h-3 w-3 mr-1" />{r.delivery_days} d
+                      <Truck className="inline h-3 w-3 mr-1" />{r.delivery_days} j
                     </TableCell>
                     <TableCell>
                       <a href={r.tracking_url || r.url} target="_blank" rel="noreferrer noopener sponsored"
@@ -324,9 +308,9 @@ export default function PriceSearch() {
           <div className="grid lg:grid-cols-3 gap-4">
             {history && (
               <div className="surface p-6" data-testid="price-history">
-                <p className="overline">Histórico de preços</p>
+                <p className="overline">Histórico dos preços</p>
                 <div className="mt-4 grid gap-2 text-sm">
-                  <p className="flex justify-between"><span className="text-muted-foreground">Preço actual</span><span className="num font-semibold">{eur2(history.current)}</span></p>
+                  <p className="flex justify-between"><span className="text-muted-foreground">Preço atual</span><span className="num font-semibold">{eur2(history.current)}</span></p>
                   <p className="flex justify-between"><span className="text-muted-foreground">Preço médio observado</span><span className="num">{eur2(history.avg_30d)}</span></p>
                   <p className="flex justify-between"><span className="text-muted-foreground">Melhor preço observado</span><span className="num text-emerald-500">{eur2(history.best)}</span></p>
                   <p className="flex justify-between">
@@ -341,12 +325,12 @@ export default function PriceSearch() {
             )}
 
             <div className="surface p-6">
-              <p className="overline flex items-center gap-2"><Bell className="h-4 w-4" /> Alerta de preço</p>
+              <p className="overline flex items-center gap-2"><Bell className="h-4 w-4" /> Alerta preço</p>
               <p className="mt-3 text-xs text-muted-foreground">
-                Monitorizamos este produto diariamente. Recebe um e-mail assim que o preço descer abaixo do alvo.
+                Monitorizamos este produto todos os dias. Recebe um email assim que fica abaixo do preço alvo.
               </p>
               <div className="mt-4 flex gap-2">
-                <Input type="number" placeholder="Preço-alvo €" value={target} onChange={(e) => setTarget(e.target.value)} data-testid="alert-target-input" className="rounded-sm num" />
+                <Input type="number" placeholder="Preço alvo €" value={target} onChange={(e) => setTarget(e.target.value)} data-testid="alert-target-input" className="rounded-sm num" />
                 <Button variant="outline" onClick={createAlert} data-testid="create-alert-btn" className="rounded-sm">Criar</Button>
               </div>
               <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
@@ -362,7 +346,7 @@ export default function PriceSearch() {
               {smsChannel && (
                 <Input
                   type="tel"
-                  placeholder="+351912345678"
+                  placeholder="+33612345678"
                   value={smsPhone}
                   onChange={(e) => setSmsPhone(e.target.value)}
                   data-testid="alert-sms-phone"
@@ -400,8 +384,8 @@ export default function PriceSearch() {
 
           <p className="text-xs text-muted-foreground">
             {data.mode === "demo"
-              ? "Modo demonstração: os preços vêm do conector de demonstração ConstruPilot (claramente identificados como tal). Adicione uma chave de pesquisa web ou as APIs dos fornecedores para preços reais."
-              : "Preços indicativos obtidos por pesquisa web: verifique sempre o preço final na página do fornecedor."}
+              ? "Modo demonstração: os preços provêm do conector de demonstração ConstruPilot (claramente identificados como tal). Adicione uma chave de pesquisa web ou as API de fornecedores para preços reais."
+              : "Preços indicativos obtidos de uma pesquisa web: verifique sempre o preço final na página do comerciante."}
           </p>
         </>
       )}
