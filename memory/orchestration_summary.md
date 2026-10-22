@@ -172,3 +172,63 @@ HEAD actual + checkpoint deste finish cobre:
 Lote 2 fica para deploy posterior se autorizado.
 
 Botão: Dashboard Emergent → `construpilot.pt` → Deploy → **"Deploy to production"**.
+
+---
+
+## Correcção estimativa Moradia Martins — motor real (iteração seguinte)
+
+### Problema identificado
+`_demo_moradia_martins_estimation()` tinha 13 lotes com `total` escritos à mão
+("ConstruPilot regional reference") — viola a regra "zero números inventados".
+
+### Motor usado
+`engines.estimation.estimate_from_request(PricingRequest(...))` — motor
+determinístico já em produção para `POST /api/estimation/analyse`
+(SmartProject) e `POST /api/estimation/materials`.
+
+### Parâmetros canónicos (`DEMO_MORADIA_MARTINS_PRICING`)
+```
+project_type:      construction_maison_neuve
+surface:           150.0 m²
+finish:            standard
+country / region:  PT / Lisboa
+building_type:     maison
+condition:         neuf
+ceiling_height_m:  2.7
+```
+
+### Output motor (substitui dados fictícios anteriores)
+- `project_type_name`: "Construção de moradia nova (chave na mão)"
+- `finish_level_name`: "Standard"
+- 20 lotes (vs 13 inventados) — vindos de `PROJECT_TYPES_BY_KEY["construction_maison_neuve"]`
+- `total_avg`: **€188 962,19** HT (motor; antes era €284 660 inventado)
+- `total_min / total_max`: €166 286,73 / €219 196,14
+- `price_per_sqm`: €1 259,75/m²
+- `source`: `engines.estimation.estimate_from_request:DEMO_MORADIA_MARTINS_PRICING`
+
+### Testes
+- `tests/test_demo_showcase_pt.py` actualizado: deixa de validar strings
+  hardcoded ("Moradia unifamiliar T3" / "Acabamentos médios") e passa a
+  validar `source` começa por `engines.estimation.`.
+- Novo teste `test_moradia_martins_estimation_matches_engine` — compara
+  campo a campo (`total_avg`, `total_min`, `total_max`, `price_per_sqm`,
+  `total_hours`, `duration_weeks`, `breakdown`, `coefficients` + lots
+  key/total/material_cost/labour_cost/hours). Falha ao primeiro drift.
+- Resultado: **57/57 verdes** (bet_core 46 + showcase 5 + admin audit 6).
+
+### Deploy LOTE 1 — aguarda clique manual
+HEAD actual `884e89e` + checkpoint deste finish cobre:
+- F5 (botão UI promote + log auditoria admin_actions)
+- Lote 1 fix `ProjectDetail` crash (optional chaining)
+- Correcção estimativa Moradia Martins (motor real, zero números inventados)
+
+Zero tool de deploy. Fundador: Dashboard Emergent → `construpilot.pt` → **"Deploy to production"**.
+
+### Smoke prod após "deploy on"
+1. `GET /api/health` → 200.
+2. Login demo pro `demo.websummit@construpilot.pt` → `GET /projects/<moradia_martins_id>` → UI mostra:
+   - nome "Moradia Martins", 150 m² Lisboa
+   - estimativa "Construção de moradia nova (chave na mão) · acabamento Standard"
+   - total €188 962,19 HT, 20 lotes, aba "Estimativa" funcional (zero crash).
+3. Login demo particular `demo.websummit.particular@construpilot.pt` → idem.
+4. Validação visual pelo fundador antes de "deploy on" para o Lote 2.
