@@ -8,7 +8,17 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
+# Suite e2e opcional: só corre quando REACT_APP_BACKEND_URL está exposto no
+# ambiente (preview/CI). Em CI local do pod a var pode faltar — nesse caso
+# saltamos tudo em vez de levantar KeyError na colecta do pytest.
+_BACKEND_URL = os.environ.get("REACT_APP_BACKEND_URL")
+if not _BACKEND_URL:
+    pytest.skip(
+        "REACT_APP_BACKEND_URL ausente — testes e2e `backend_test.py` saltados "
+        "(suite só corre no preview/CI).",
+        allow_module_level=True,
+    )
+BASE_URL = _BACKEND_URL.rstrip("/")
 API = f"{BASE_URL}/api"
 
 try:

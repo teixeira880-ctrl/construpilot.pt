@@ -52,14 +52,20 @@ root.render(
   </React.StrictMode>,
 );
 
-// PWA : enregistrement du service worker (requis pour les push notifications)
-if ("serviceWorker" in navigator) {
+// PWA : regista o service worker SÓ em produção.
+// Em desenvolvimento (CRA/craco), o SW em prod-only evita conflitos com o HMR e
+// garante que o build do stand WebSummit (modo avião, LOTE 2) usa o cache real.
+if (
+  typeof window !== "undefined" &&
+  "serviceWorker" in navigator &&
+  process.env.NODE_ENV === "production"
+) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then((reg) => {
-      // Force la vérification d'une nouvelle version à chaque chargement
+      // Força a verificação de nova versão a cada carregamento
       reg.update();
     }).catch(() => {});
-    // Quand un nouveau SW prend le contrôle, recharge une fois pour afficher la dernière version
+    // Quando um novo SW toma controlo, recarrega uma vez para mostrar a última versão
     let refreshed = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (refreshed) return;
@@ -67,4 +73,15 @@ if ("serviceWorker" in navigator) {
       window.location.reload();
     });
   });
+}
+// Em dev: se um SW ficou registado numa sessão anterior (prod→dev), desregista
+// para não interceptar o HMR nem servir chunks antigos durante o trabalho local.
+if (
+  typeof window !== "undefined" &&
+  "serviceWorker" in navigator &&
+  process.env.NODE_ENV !== "production"
+) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => r.unregister().catch(() => {}));
+  }).catch(() => {});
 }

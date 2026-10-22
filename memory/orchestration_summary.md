@@ -232,3 +232,14 @@ Zero tool de deploy. Fundador: Dashboard Emergent → `construpilot.pt` → **"D
    - total €188 962,19 HT, 20 lotes, aba "Estimativa" funcional (zero crash).
 3. Login demo particular `demo.websummit.particular@construpilot.pt` → idem.
 4. Validação visual pelo fundador antes de "deploy on" para o Lote 2.
+
+---
+
+## LOTE 2 — Sub-lote 2a (PWA infra) ✅
+- SW `/public/sw.js` → v6 (`construpilot-v6-pwa-demo-ready`): app shell strict + pré-cache best-effort das 7 rotas demo (`/`, `/demo/entrar`, `/dashboard`, `/assistant`, `/smart`, `/chantiers`, `/devis`) + 6 assets `/demo-assets/*` (gerados em 2c, best-effort não falha instalação). Estratégias: HTML network-first com fallback cache, assets cache-first, API sempre `no-store`.
+- Registo SW em `src/index.js` : gate `process.env.NODE_ENV === "production"`. Em dev: desregista SW órfãos de sessões anteriores (anti-HMR-ghost).
+- Manifest, ícones (192/512/maskable), splash iOS e meta Apple PWA já em `index.html` — preservados.
+- Preview: `/sw.js` 200 OK (v6 confirmada), `/manifest.json` 200 OK, `/icons/icon-192.png` 200 OK. Suite relevante 57/57 verdes (bet_core + showcase + admin).
+- `tests/backend_test.py`: `pytest.skip(..., allow_module_level=True)` quando `REACT_APP_BACKEND_URL` ausente — collect limpo em local, continua a correr em preview/CI.
+
+Smoke LOTE 1 pós-deploy preparado em `/app/scripts/websummit/smoke_lote1_prod.sh` (3 pontos: health · demo pro Moradia Martins · demo particular). Zero credenciais em claro (lê de env).
