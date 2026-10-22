@@ -361,56 +361,32 @@ async def _ensure_moradia_martins_for(db, user_id: str, kind: str) -> dict | Non
     return project
 
 
-def _demo_moradia_martins_estimation() -> dict:
-    """Estimativa fictícia determinística da Moradia Martins para a demo.
+# Parâmetros canónicos da Moradia Martins demo — qualquer alteração aqui tem de
+# ser reflectida no teste `test_demo_showcase_pt.py::test_moradia_martins_estimation_matches_engine`.
+DEMO_MORADIA_MARTINS_PRICING = {
+    "project_type": "construction_maison_neuve",
+    "surface": 150.0,
+    "finish": "standard",
+    "country": "PT",
+    "region": "Lisboa",
+    "building_type": "maison",
+    "condition": "neuf",
+    "ceiling_height_m": 2.7,
+}
 
-    Deriva os montantes principais do bet_core (`samples.moradia_pt_demo`):
-    - Estrutura (BET): €61 160,31 HT = valor directo do `demo_model`.
-    - Outros lotes: proporções típicas para moradia T3 chave-na-mão PT
-      (sem IVA; fonte: tabelas internas ConstruPilot — valores de
-      referência regionais, NÃO vinculativos).
-    Total ~€285 000 HT para T3 Lisboa (150 m² × ~1 900 €/m²).
+
+def _demo_moradia_martins_estimation() -> dict:
+    """Estimativa determinística da Moradia Martins — 100% output do motor real.
+
+    Fonte única: `engines.estimation.estimate_from_request()` com os parâmetros
+    canónicos em `DEMO_MORADIA_MARTINS_PRICING`. Nenhum número é escrito à mão,
+    nenhum lote é adicionado após o motor correr. A assinatura `source` deixa
+    rastreável que estes valores saem do motor, não de tabelas internas.
     """
-    lots = [
-        {"key": "demolicao", "name": "Demolições e preparação", "unit": "u",
-         "quantity": 1, "hours": 24, "total": 3500.0},
-        {"key": "terraplanagem", "name": "Terraplanagem e fundações", "unit": "u",
-         "quantity": 1, "hours": 80, "total": 18500.0},
-        {"key": "estrutura_bet", "name": "Estrutura (estudo BET)", "unit": "m²",
-         "quantity": 150, "hours": 320, "total": 61160.31},
-        {"key": "alvenaria", "name": "Alvenaria e isolamento", "unit": "m²",
-         "quantity": 185, "hours": 180, "total": 32000.0},
-        {"key": "cobertura", "name": "Cobertura e impermeabilizações", "unit": "m²",
-         "quantity": 95, "hours": 120, "total": 24500.0},
-        {"key": "revestimentos", "name": "Revestimentos interiores", "unit": "m²",
-         "quantity": 300, "hours": 200, "total": 28000.0},
-        {"key": "pavimentos", "name": "Pavimentos", "unit": "m²",
-         "quantity": 150, "hours": 90, "total": 21000.0},
-        {"key": "canalizacao", "name": "Canalização e águas", "unit": "u",
-         "quantity": 1, "hours": 110, "total": 18000.0},
-        {"key": "electricidade", "name": "Electricidade e domótica", "unit": "u",
-         "quantity": 1, "hours": 100, "total": 15500.0},
-        {"key": "aquecimento", "name": "AVAC e águas quentes", "unit": "u",
-         "quantity": 1, "hours": 70, "total": 14000.0},
-        {"key": "carpintaria", "name": "Carpintarias e vãos", "unit": "u",
-         "quantity": 18, "hours": 110, "total": 22500.0},
-        {"key": "acabamentos", "name": "Acabamentos finais", "unit": "u",
-         "quantity": 1, "hours": 90, "total": 16500.0},
-        {"key": "exterior", "name": "Exterior e arranjos", "unit": "m²",
-         "quantity": 200, "hours": 60, "total": 9500.0},
-    ]
-    total = sum(l["total"] for l in lots)
-    return {
-        "project_type_name": "Moradia unifamiliar T3",
-        "finish_level_name": "Acabamentos médios",
-        "total_avg": round(total, 2),
-        "total_min": round(total * 0.9, 2),
-        "total_max": round(total * 1.15, 2),
-        "lots": lots,
-        "ceiling_height_m": 2.7,
-        "surface_m2": 150,
-        "source": "bet_core.samples.moradia_pt_demo + ConstruPilot regional reference",
-    }
+    from engines.estimation import estimate_from_request, PricingRequest  # lazy import
+    out = estimate_from_request(PricingRequest(**DEMO_MORADIA_MARTINS_PRICING))
+    out["source"] = "engines.estimation.estimate_from_request:DEMO_MORADIA_MARTINS_PRICING"
+    return out
 
 
 async def apply_demo_showcase_pt(db) -> dict:

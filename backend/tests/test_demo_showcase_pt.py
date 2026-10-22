@@ -139,12 +139,14 @@ def test_showcase_installs_docs_with_moradia_martins_identity(env_demo):
         assert proj["name"] == "Moradia Martins"
         assert proj["status"] == "active"
         assert proj["description"].startswith("Moradia unifamiliar T3")
-        # Estimation injectada (anti-crash ProjectDetail)
+        # Estimation injectada 100% do motor real (anti-crash ProjectDetail)
         est = proj.get("estimation") or {}
-        assert est.get("project_type_name") == "Moradia unifamiliar T3"
-        assert est.get("finish_level_name") == "Acabamentos médios"
+        assert est.get("project_type_name"), est
+        assert est.get("finish_level_name"), est
         assert est.get("total_avg", 0) > 0
         assert isinstance(est.get("lots"), list) and len(est["lots"]) >= 10
+        # Rastreabilidade: assinatura `source` prova que vem do motor estimation
+        assert est.get("source", "").startswith("engines.estimation."), est.get("source")
         assert proj.get("surface") == 150
 
 
@@ -238,3 +240,46 @@ def test_showcase_fail_closed_missing_particular_config(env_only_pro):
     assert summary["docs"]["pro"]["count"] == 2
     assert summary["docs"]["particular"] == "skipped_missing_config"
     assert summary["branding"]["pro"] == "applied"
+
+
+def test_moradia_martins_estimation_matches_engine():
+    """Paridade: a estimativa guardada na Moradia Martins = output exacto do motor real.
+
+    Zero números inventados: `_demo_moradia_martins_estimation()` tem de corresponder
+    campo a campo ao output de `estimate_from_request(PricingRequest(**params))`
+    para os parâmetros canónicos. Qualquer drift (manual ou acidental) faz este teste
+    falhar.
+    """
+    from core.websummit_seed_pt import (
+        _demo_moradia_martins_estimation,
+        DEMO_MORADIA_MARTINS_PRICING,
+    )
+    from engines.estimation import estimate_from_request, PricingRequest
+
+    stored = _demo_moradia_martins_estimation()
+    engine = estimate_from_request(PricingRequest(**DEMO_MORADIA_MARTINS_PRICING))
+
+    # Igualdade estrita em todos os campos numéricos críticos
+    for key in ("total_avg", "total_min", "total_max", "price_per_sqm",
+                "total_hours", "duration_weeks", "ceiling_height_m", "surface"):
+        assert stored[key] == engine[key], f"drift em {key}: {stored[key]} != {engine[key]}"
+
+    # Lots idênticos (ordem + conteúdo)
+    assert len(stored["lots"]) == len(engine["lots"])
+    for s_lot, e_lot in zip(stored["lots"], engine["lots"]):
+        assert s_lot["key"] == e_lot["key"]
+        assert s_lot["total"] == e_lot["total"]
+        assert s_lot["material_cost"] == e_lot["material_cost"]
+        assert s_lot["labour_cost"] == e_lot["labour_cost"]
+        assert s_lot["hours"] == e_lot["hours"]
+
+    # Breakdown exacto
+    assert stored["breakdown"] == engine["breakdown"]
+    # Coeficientes exactos
+    assert stored["coefficients"] == engine["coefficients"]
+    # Metadata do projecto
+    assert stored["project_type"] == "construction_maison_neuve"
+    assert stored["country"] == "PT"
+    assert stored["region"] == "Lisboa"
+    # Rastreabilidade
+    assert stored["source"].startswith("engines.estimation.")
