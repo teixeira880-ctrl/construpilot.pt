@@ -130,7 +130,7 @@ def test_showcase_installs_docs_with_moradia_martins_identity(env_demo):
     part_user = _run(db.users.find_one({"user_id": "u-part"}))
     assert "brand_company_name" not in part_user
 
-    # Projecto Moradia Martins com doc_ids ligados
+    # Projecto Moradia Martins com doc_ids + estimation ligados
     for uid, pid in (("u-pro", "prj_pro_moradia"), ("u-part", "prj_part_moradia")):
         proj = _run(db.projects.find_one({"project_id": pid}))
         assert len(proj.get("doc_ids") or []) == 2, proj
@@ -139,6 +139,13 @@ def test_showcase_installs_docs_with_moradia_martins_identity(env_demo):
         assert proj["name"] == "Moradia Martins"
         assert proj["status"] == "active"
         assert proj["description"].startswith("Moradia unifamiliar T3")
+        # Estimation injectada (anti-crash ProjectDetail)
+        est = proj.get("estimation") or {}
+        assert est.get("project_type_name") == "Moradia unifamiliar T3"
+        assert est.get("finish_level_name") == "Acabamentos médios"
+        assert est.get("total_avg", 0) > 0
+        assert isinstance(est.get("lots"), list) and len(est["lots"]) >= 10
+        assert proj.get("surface") == 150
 
 
 def test_showcase_is_idempotent(env_demo):
@@ -200,7 +207,7 @@ def test_showcase_creates_moradia_martins_for_particular(env_demo):
     assert summary["docs"]["pro"]["count"] == 2
     assert summary["branding"]["pro"] == "applied"
 
-    # Particular: Moradia Martins CRIADA (addendum 3.5) + doc_ids ligados
+    # Particular: Moradia Martins CRIADA (addendum 3.5) + doc_ids ligados + estimation
     part_proj = _run(db.projects.find_one({"owner_user_id": "u-part", "name": DEMO_PROJECT_NAME}))
     assert part_proj is not None, "Moradia Martins devia ter sido criada para o particular"
     assert part_proj.get("user_id") == "u-part"
@@ -209,7 +216,10 @@ def test_showcase_creates_moradia_martins_for_particular(env_demo):
     assert part_proj["is_demo"] is True
     assert part_proj["demo_source"] == DEMO_SOURCE
     assert part_proj["location"] == "Lisboa, Portugal"
+    assert part_proj.get("surface") == 150
     assert len(part_proj.get("doc_ids") or []) == 2
+    # Estimation presente desde criação
+    assert part_proj.get("estimation", {}).get("total_avg", 0) > 100000
     # Zero dado pro-only no particular
     assert "custom_quotes" not in part_proj
     assert "brand_company_name" not in _run(db.users.find_one({"user_id": "u-part"}))

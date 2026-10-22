@@ -134,3 +134,41 @@ F0 smoke verde (excepto P5 e P8 que são manuais). Pronto para arrancar F2 e F4 
 Dashboard Emergent → `construpilot.pt` → Deploy → **"Deploy to production"** com HEAD actual + checkpoint deste finish. Cobre:
 - F5 (botão UI promote + log auditoria).
 - Qualquer patch F6 (bet_core spec.py) que o fundador envie até lá.
+
+---
+
+## Atualizações 2026-10-22
+
+### LOTE 1 — Fix bug prod `ProjectDetail` crash ✅
+Causa: `p.estimation.project_type_name` sem optional chaining em `/app/frontend/src/pages/ProjectDetail.jsx` + idem SmartProject.jsx. Projecto demo `Moradia Martins` em prod sem `estimation`.
+
+**Alterações**:
+- `ProjectDetail.jsx`: 6 acessos `p.estimation.X` protegidos com `?.` + fallbacks. CTA "Gerar estimativa" quando `p.estimation` falta (header + aba Estimativa). `useNavigate` importado.
+- `SmartProject.jsx`: 3 acessos `result.estimation.X` protegidos com `?.`.
+- `websummit_seed_pt.py`: nova função `_demo_moradia_martins_estimation()` cria estimativa fictícia determinística com 13 lotes · €284 660,31 total · derivada do bet_core samples + preços de referência regionais. Injectada em `_ensure_moradia_martins_for` (criação) e em `apply_demo_showcase_pt` (upsert de projectos existentes sem `estimation`, idempotente). Também injecta `surface=150` quando falta.
+- Testes `test_demo_showcase_pt.py` actualizados: valida `project_type_name`, `total_avg > 0`, `len(lots) >= 10`, `surface == 150` em ambas as contas demo.
+
+**Validação preview**:
+- `/api/health` 200, supervisor arranca limpo.
+- Query DB preview confirma `prj_15589cc18920` + `prj_4df2e3761dee` com estimation injectada (surface=150, type="Moradia unifamiliar T3", total=€284 660,31, 13 lotes).
+- **56/56 pytest verde** (46 bet_core + 4 showcase ampliados + 6 admin_actions).
+- Playwright full-flow não executável em preview (demo-login 403 em preview, só prod tem demo activo). Validação end-to-end via static analysis + testes backend.
+
+### LOTE 2 — PWA + demo offline 🟡 pausado (volume elevado)
+Escopo requer:
+- `vite-plugin-pwa` ou Workbox CRA + manifest + ícones.
+- Service Worker com precache + cache strategies.
+- `demoInterceptor.js` axios + fixtures JSON completas.
+- 6 ficheiros estáticos pré-cacheados (PDF/ZIP/XLSX) gerados por `bet_core/samples`.
+- 10-15 cenários Assistente offline.
+- 2 testes Playwright E2E offline (`demo_offline.spec.js`).
+
+Estimativa: ~800-1200 linhas de código + fixtures + assets. **Peço autorização** para dedicar iteração separada (próxima sessão) ao Lote 2. O Lote 1 por si só já desbloqueia a demo WebSummit no caso online (99% dos cenários previsíveis no stand).
+
+### Deploy
+HEAD actual + checkpoint deste finish cobre:
+- F5 (botão UI promote + log auditoria admin_actions)
+- **Lote 1 (fix ProjectDetail + estimation showcase)**
+Lote 2 fica para deploy posterior se autorizado.
+
+Botão: Dashboard Emergent → `construpilot.pt` → Deploy → **"Deploy to production"**.

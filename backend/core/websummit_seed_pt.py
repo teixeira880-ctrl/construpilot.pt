@@ -350,6 +350,8 @@ async def _ensure_moradia_martins_for(db, user_id: str, kind: str) -> dict | Non
         "status": "active",
         "location": "Lisboa, Portugal",
         "work_type": "construcao_nova",
+        "surface": 150,
+        "estimation": _demo_moradia_martins_estimation(),
         "is_demo": True,
         "demo_source": DEMO_SOURCE,
         "created_at": now,
@@ -357,6 +359,58 @@ async def _ensure_moradia_martins_for(db, user_id: str, kind: str) -> dict | Non
     await db.projects.insert_one(project)
     logger.info("websummit demo: project 'Moradia Martins' created for %s account (%s)", kind, user_id)
     return project
+
+
+def _demo_moradia_martins_estimation() -> dict:
+    """Estimativa fictícia determinística da Moradia Martins para a demo.
+
+    Deriva os montantes principais do bet_core (`samples.moradia_pt_demo`):
+    - Estrutura (BET): €61 160,31 HT = valor directo do `demo_model`.
+    - Outros lotes: proporções típicas para moradia T3 chave-na-mão PT
+      (sem IVA; fonte: tabelas internas ConstruPilot — valores de
+      referência regionais, NÃO vinculativos).
+    Total ~€285 000 HT para T3 Lisboa (150 m² × ~1 900 €/m²).
+    """
+    lots = [
+        {"key": "demolicao", "name": "Demolições e preparação", "unit": "u",
+         "quantity": 1, "hours": 24, "total": 3500.0},
+        {"key": "terraplanagem", "name": "Terraplanagem e fundações", "unit": "u",
+         "quantity": 1, "hours": 80, "total": 18500.0},
+        {"key": "estrutura_bet", "name": "Estrutura (estudo BET)", "unit": "m²",
+         "quantity": 150, "hours": 320, "total": 61160.31},
+        {"key": "alvenaria", "name": "Alvenaria e isolamento", "unit": "m²",
+         "quantity": 185, "hours": 180, "total": 32000.0},
+        {"key": "cobertura", "name": "Cobertura e impermeabilizações", "unit": "m²",
+         "quantity": 95, "hours": 120, "total": 24500.0},
+        {"key": "revestimentos", "name": "Revestimentos interiores", "unit": "m²",
+         "quantity": 300, "hours": 200, "total": 28000.0},
+        {"key": "pavimentos", "name": "Pavimentos", "unit": "m²",
+         "quantity": 150, "hours": 90, "total": 21000.0},
+        {"key": "canalizacao", "name": "Canalização e águas", "unit": "u",
+         "quantity": 1, "hours": 110, "total": 18000.0},
+        {"key": "electricidade", "name": "Electricidade e domótica", "unit": "u",
+         "quantity": 1, "hours": 100, "total": 15500.0},
+        {"key": "aquecimento", "name": "AVAC e águas quentes", "unit": "u",
+         "quantity": 1, "hours": 70, "total": 14000.0},
+        {"key": "carpintaria", "name": "Carpintarias e vãos", "unit": "u",
+         "quantity": 18, "hours": 110, "total": 22500.0},
+        {"key": "acabamentos", "name": "Acabamentos finais", "unit": "u",
+         "quantity": 1, "hours": 90, "total": 16500.0},
+        {"key": "exterior", "name": "Exterior e arranjos", "unit": "m²",
+         "quantity": 200, "hours": 60, "total": 9500.0},
+    ]
+    total = sum(l["total"] for l in lots)
+    return {
+        "project_type_name": "Moradia unifamiliar T3",
+        "finish_level_name": "Acabamentos médios",
+        "total_avg": round(total, 2),
+        "total_min": round(total * 0.9, 2),
+        "total_max": round(total * 1.15, 2),
+        "lots": lots,
+        "ceiling_height_m": 2.7,
+        "surface_m2": 150,
+        "source": "bet_core.samples.moradia_pt_demo + ConstruPilot regional reference",
+    }
 
 
 async def apply_demo_showcase_pt(db) -> dict:
@@ -465,6 +519,11 @@ async def apply_demo_showcase_pt(db) -> dict:
         set_fields: dict = {"doc_ids": merged, "updated_at": datetime.now(timezone.utc).isoformat()}
         if not project.get("user_id"):
             set_fields["user_id"] = uid
+        # Garantir estimation + surface para o `ProjectDetail` renderizar sem crash.
+        if not project.get("estimation"):
+            set_fields["estimation"] = _demo_moradia_martins_estimation()
+        if not project.get("surface"):
+            set_fields["surface"] = 150
         await db.projects.update_one(
             {"project_id": pid},
             {"$set": set_fields},

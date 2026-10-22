@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Download, Sparkles, ShoppingCart, Plus, Wallet, AlertTriangle, RefreshCw, Package, CloudOff, Save,
@@ -29,6 +29,7 @@ const LABEL = { todo: "⏳ A fazer", doing: "🔄 Em curso", done: "✅ Terminad
 
 export default function ProjectDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [p, setP] = useState(null);
   const [budget, setBudget] = useState(null);
@@ -90,7 +91,7 @@ export default function ProjectDetail() {
   const buildMaterials = async () => {
     setBusy("materials");
     try {
-      const { data } = await api.post("/estimation/materials", { lots: p.estimation.lots });
+      const { data } = await api.post("/estimation/materials", { lots: p.estimation?.lots || [] });
       setMaterials(data.items);
       await api.patch(`/projects/${id}`, { materials: data.items });
       toast.success(`${data.items.length} linhas de materiais geradas`);
@@ -138,19 +139,27 @@ export default function ProjectDetail() {
     <div className="grid gap-10">
       <div className="flex flex-col lg:flex-row gap-6 lg:items-end justify-between">
         <div>
-          <p className="overline">{p.estimation.project_type_name}</p>
+          <p className="overline">{p.estimation?.project_type_name || p.name}</p>
           <h1 className="mt-3 font-display text-3xl lg:text-4xl font-bold tracking-tight" data-testid="project-title">{p.name}</h1>
           <p className="num mt-2 text-sm text-muted-foreground">
-            {num(p.surface, 1)} m² · {p.city || p.region || "França"} · acabamento {p.estimation.finish_level_name}
+            {num(p.surface, 1)} m² · {p.city || p.region || "França"}{p.estimation?.finish_level_name ? ` · acabamento ${p.estimation.finish_level_name}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={downloadPdf} disabled={busy === "pdf"} data-testid="download-pdf-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <Download className="h-4 w-4" /> {busy === "pdf" ? "Geração…" : "Descarregar o PDF"}
           </Button>
-          <EmailPdfDialog project={{ name: p.name, city: p.city, description: p.description }} estimation={p.estimation} advice={p.advice || ""} />
-          <WhatsAppShare project={{ name: p.name, city: p.city, surface: p.surface }} estimation={p.estimation} projectId={p.project_id} />
-          <LeadDialog projectId={p.project_id} budget={p.estimation.total_avg} description={p.description} />
+          {p.estimation ? (
+            <>
+              <EmailPdfDialog project={{ name: p.name, city: p.city, description: p.description }} estimation={p.estimation} advice={p.advice || ""} />
+              <WhatsAppShare project={{ name: p.name, city: p.city, surface: p.surface }} estimation={p.estimation} projectId={p.project_id} />
+              <LeadDialog projectId={p.project_id} budget={p.estimation.total_avg} description={p.description} />
+            </>
+          ) : (
+            <Button onClick={() => navigate("/smart")} data-testid="generate-estimation-btn" className="rounded-sm gap-2">
+              Gerar estimativa
+            </Button>
+          )}
         </div>
       </div>
 
@@ -197,7 +206,7 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      <SavingsCard projectId={p.project_id} estimation={p.estimation} />
+      <SavingsCard projectId={p.project_id} estimation={p.estimation || null} />
 
       <ProjectArtisanSection project={p} onChange={(block) => setP((prev) => ({ ...prev, artisan: block }))} />
 
@@ -213,7 +222,7 @@ export default function ProjectDetail() {
 
         <TabsContent value="works" className="mt-6">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="progress-grid">
-            {p.estimation.lots.map((l) => (
+            {(p.estimation?.lots || []).map((l) => (
               <button
                 key={l.key} onClick={() => toggle(l.key)} data-testid={`progress-toggle-${l.key}`}
                 className="surface p-5 text-left transition-colors hover:border-primary/60"
@@ -241,7 +250,14 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="estimation" className="mt-6">
-          <EstimationView est={p.estimation} projectId={p.project_id} />
+          {p.estimation ? (
+            <EstimationView est={p.estimation} projectId={p.project_id} />
+          ) : (
+            <div className="surface p-8 text-center">
+              <p className="text-sm text-muted-foreground">Este projecto ainda não tem estimativa.</p>
+              <Button onClick={() => navigate("/smart")} className="mt-4 rounded-sm">Gerar estimativa</Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="materials" className="mt-6 grid gap-6">
@@ -333,7 +349,7 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="photos" className="mt-6">
-          <PhotosGallery projectId={p.project_id} lots={p.estimation.lots} />
+          <PhotosGallery projectId={p.project_id} lots={p.estimation?.lots || []} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-6">

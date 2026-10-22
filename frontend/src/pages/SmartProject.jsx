@@ -141,7 +141,7 @@ export default function SmartProject() {
                 <div className="mt-4 pt-4 border-t border-border" data-testid="analysis-levels">
                   <p className="text-xs text-muted-foreground mb-2">
                     Níveis detetados (altura ponderada: <span className="num font-medium">
-                    {result.estimation.ceiling_height_m?.toFixed(2)} m</span>)
+                    {result.estimation?.ceiling_height_m?.toFixed(2)} m</span>)
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {result.analysis.levels.map((lvl, i) => (
@@ -223,11 +223,11 @@ export default function SmartProject() {
               >
                 <ShoppingCart className="h-4 w-4" /> Comparar os preços materiais
               </Button>
-              <LeadDialog budget={result.estimation.total_avg} description={description} />
+              <LeadDialog budget={result.estimation?.total_avg} description={description} />
             </div>
           </div>
           <p className="text-xs text-muted-foreground -mt-8">
-            Estimativa média: <span className="num">{eur(result.estimation.total_avg)}</span> — indicativa, calculada pelo motor determinista ConstruPilot (preços de referência regionais).
+            Estimativa média: <span className="num">{eur(result.estimation?.total_avg)}</span> — indicativa, calculada pelo motor determinista ConstruPilot (preços de referência regionais).
           </p>
         </>
       )}
