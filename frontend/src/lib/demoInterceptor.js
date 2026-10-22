@@ -25,6 +25,7 @@ import brandingFx from "@/fixtures/demo/demo_branding.json";
 import assistantDocsFx from "@/fixtures/demo/assistant_docs.json";
 import plansFx from "@/fixtures/demo/plans.json";
 import quotesFx from "@/fixtures/demo/quotes.json";
+import assistantResponses from "@/fixtures/demo/assistant_responses.json";
 
 const LS_FLAG = "is_demo";
 const LS_KIND = "demo_kind";
@@ -199,7 +200,64 @@ const routes = [
 
   // Estimation materials (POST) — passagem silenciosa, devolve lista vazia
   { method: "POST", match: /^\/estimation\/materials$/, handle: async () => _ok({ items: [] }) },
+
+  // Assistente offline — matching por keywords normalizadas, zero LLM.
+  // Devolve { reply, suggestions, matched_id } + fallback com sugestões clicáveis.
+  { method: "POST", match: /^\/assistant\/(chat|ask|message)\/?$/, handle: async (req) => {
+      const body = req.data ? JSON.parse(req.data) : {};
+      const text = (body.message || body.text || body.query || body.prompt || "").toString();
+      const match = _matchAssistant(text);
+      if (match) {
+        return _ok({
+          reply: match.answer_md,
+          suggestions: match.suggestions || [],
+          matched_id: match.id,
+          source: "demo_offline:fixtures/assistant_responses.json",
+        });
+      }
+      // Fallback — mostra 3-4 sugestões clicáveis dos cenários mais populares
+      const popular = assistantResponses.slice(0, 4).map((r) => ({
+        label: r.title, action: "ask", prompt: r.title,
+      }));
+      return _ok({
+        reply: "Nesta demo offline o Assistente responde a cenários pré-carregados sobre a Moradia Martins. Experimente perguntar:",
+        suggestions: popular,
+        matched_id: null,
+        source: "demo_offline:fallback",
+      });
+    } },
+
+  // Threads/history vazios na demo
+  { method: "GET", match: /^\/assistant\/(threads|history)\/?$/, handle: async () => _ok([]) },
 ];
+
+function _normalise(s) {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function _matchAssistant(text) {
+  const q = _normalise(text);
+  if (!q) return null;
+  let best = null;
+  let bestScore = 0;
+  for (const r of assistantResponses) {
+    let score = 0;
+    for (const kw of r.keywords) {
+      if (q.includes(_normalise(kw))) score += 1;
+    }
+    if (score > bestScore) {
+      best = r;
+      bestScore = score;
+    }
+  }
+  return bestScore > 0 ? best : null;
+}
 
 // -------------------- adapter --------------------
 

@@ -1,0 +1,129 @@
+[
+  {
+    "id": "a-moradia-bet-completo",
+    "keywords": ["bet", "completo", "dossier", "estudo", "estrutura", "moradia", "estudo bet"],
+    "title": "Posso ver o dossier BET completo da Moradia Martins?",
+    "answer_md": "Claro. Para a **Moradia Martins** (T3, Lisboa) o motor `bet_core` corre o modelo determinista (NP EN 1990/1992/1997/1998 — Anexos Nacionais PT) e produz **3 ficheiros**:\n\n- **Dossier BET** (PDF) — nota de cálculo + folhas estrutura/MEP\n- **Desenhos** (ZIP com DXF)\n- **Orçamento** (XLSX com medições)\n\nQuer que descarregue os 3?",
+    "suggestions": [
+      {"label": "Descarregar dossier BET", "action": "download", "asset": "Dossier_BET_Moradia_Martins.pdf"},
+      {"label": "Descarregar desenhos DXF", "action": "download", "asset": "Desenhos_BET_Moradia_Martins.zip"},
+      {"label": "Descarregar orçamento", "action": "download", "asset": "Orcamento_Moradia_Martins.xlsx"}
+    ]
+  },
+  {
+    "id": "a-custo-estimativa",
+    "keywords": ["custo", "orcamento", "orçamento", "preço", "preco", "quanto custa", "valor"],
+    "title": "Qual é o custo estimado da Moradia Martins?",
+    "answer_md": "O motor determinista de estimativa (`engines.estimation.estimate_from_request`) devolve para 150 m² em Lisboa, construção nova chave-na-mão, acabamentos standard:\n\n- **Total médio**: €188 962,19 HT\n- **Intervalo**: €166 286,73 — €219 196,14 HT\n- **Ratio**: €1 259,75/m²\n- **Prazo indicativo**: ~90 semanas de obra\n\nValor derivado do catálogo PT 2026 (coeficiente região Lisboa 0,74). Zero IA inventada no número — tudo auditável.",
+    "suggestions": [
+      {"label": "Ver detalhe por lote (20 lotes)", "action": "navigate", "target": "/dashboard"},
+      {"label": "Descarregar orçamento XLSX", "action": "download", "asset": "Orcamento_Moradia_Martins.xlsx"}
+    ]
+  },
+  {
+    "id": "a-paredes-porteuses",
+    "keywords": ["paredes", "porteus", "estrutural", "parede", "muros"],
+    "title": "Quais são as paredes portantes?",
+    "answer_md": "No modelo da Moradia Martins (3 pisos: RDC + 1.º + sótão), o motor `structure.compute` identifica:\n\n- 4 paredes portantes periféricas em betão armado (RDC + 1.º piso)\n- 2 paredes interiores portantes que suportam a viga mestra\n- Fachadas em alvenaria de tijolo (não-portantes com reforço térmico)\n\nTudo isto vem do leitor BET (não é IA generativa). Secção detalhada no Dossier BET página 4.",
+    "suggestions": [
+      {"label": "Abrir Dossier BET", "action": "download", "asset": "Dossier_BET_Moradia_Martins.pdf"}
+    ]
+  },
+  {
+    "id": "a-sismico",
+    "keywords": ["sísmic", "sismic", "terramoto", "zona sísmica", "ec8", "eurocódigo 8"],
+    "title": "Como é tratado o cálculo sísmico?",
+    "answer_md": "A Moradia Martins está em **zona sísmica 2A (Lisboa)** segundo o Anexo Nacional PT do Eurocódigo 8 (NP EN 1998-1):\n\n- Classe de importância **II** (habitação)\n- Terreno a confirmar com o estudo geotécnico G2 (classe A/B provisória)\n- Coeficiente de comportamento q = 1,5 (ductilidade DCM)\n\nA nota de cálculo sísmica deriva de `bet_core.structure.compute` — sem IA.",
+    "suggestions": [
+      {"label": "Descarregar nota sísmica", "action": "download", "asset": "Nota_calculo_sismica_Moradia_Martins.pdf"},
+      {"label": "Descarregar estudo geotécnico", "action": "download", "asset": "Estudo_geotecnico_Moradia_Martins_DEMO.pdf"}
+    ]
+  },
+  {
+    "id": "a-betao",
+    "keywords": ["betão", "betao", "concrete", "classe", "c20", "c25", "c30"],
+    "title": "Que classe de betão é usada?",
+    "answer_md": "Para a Moradia Martins (NP EN 1992-1-1 + Anexo Nacional PT):\n\n- **Fundações**: C25/30 XC2 (ambiente húmido, teor cimento ≥ 300 kg/m³)\n- **Lajes e pilares**: C25/30 XC1\n- **Pavimento térreo**: C20/25 XC1\n- Classe de consistência: S3 (compactação por vibrador)\n\nValores fixados pelo motor `bet_core.structure` — não dependem de LLM.",
+    "suggestions": [
+      {"label": "Abrir Dossier BET", "action": "download", "asset": "Dossier_BET_Moradia_Martins.pdf"}
+    ]
+  },
+  {
+    "id": "a-aco",
+    "keywords": ["aço", "aco", "armadura", "ferros", "a500", "varão"],
+    "title": "Que armaduras são previstas?",
+    "answer_md": "Armaduras principais da Moradia Martins:\n\n- **Pilares**: A500NR Ø16/20 (longitudinal) + Ø8 cercilhas @ 15 cm\n- **Vigas**: A500NR Ø12/16 (superior/inferior) + estribos Ø8 @ 15 cm\n- **Lajes macizas**: A500NR Ø10 @ 15/15 cm (duas direcções)\n- **Fundações**: A500NR Ø16 @ 20 cm\n\nAço A500NR conforme NP EN 10080. Mapa completo em Desenhos BET → folha GO-02.",
+    "suggestions": [
+      {"label": "Descarregar desenhos", "action": "download", "asset": "Desenhos_BET_Moradia_Martins.zip"}
+    ]
+  },
+  {
+    "id": "a-ivs",
+    "keywords": ["iva", "vat", "6%", "23%", "fiscal"],
+    "title": "Que IVA se aplica à obra?",
+    "answer_md": "Para construção nova (chave-na-mão), aplica-se **IVA 23%** à totalidade (motor de estimativa devolve `default_vat_rate: 23`).\n\nIVA 6% está reservado a:\n- Reabilitação urbana em ARU/BIP (nas condições do CIVA + Portaria 302/2017)\n- Obras em prédios > 30 anos sob regime específico\n\nA Moradia Martins é construção nova → 23% em todos os lotes.",
+    "suggestions": [
+      {"label": "Pedir orçamento ao construtor", "action": "navigate", "target": "/dashboard"}
+    ]
+  },
+  {
+    "id": "a-prazo",
+    "keywords": ["prazo", "duração", "duracao", "semanas", "meses", "cronograma"],
+    "title": "Qual é o prazo de obra?",
+    "answer_md": "Prazo determinista calculado pelo motor (`estimate_from_request → duration_weeks`):\n\n- **90 semanas** de obra (~21 meses)\n- Baseado em soma de horas por lote / 70 h/semana por equipa\n- Ordem de execução conforme catálogo `EXECUTION_ORDER` (terraplanagem → fundações → estrutura → ...)\n\nPlaneamento detalhado disponível na secção Dashboard do projecto.",
+    "suggestions": [
+      {"label": "Ver planeamento", "action": "navigate", "target": "/dashboard"}
+    ]
+  },
+  {
+    "id": "a-arquitetura",
+    "keywords": ["arquitetura", "arquitectura", "arquitecto", "planta", "projeto arquitetura"],
+    "title": "Posso ver o projeto de arquitetura?",
+    "answer_md": "O Projeto de Arquitetura da Moradia Martins contém 5 folhas A3 (DEMO):\n\n1. ARQ-01 — Planta do rés-do-chão\n2. ARQ-02 — Planta do 1.º andar\n3. ARQ-03 — Cortes A-A e B-B\n4. ARQ-04 — Alçados principal e posterior\n5. ARQ-05 — Alçados laterais\n\nFolha original e metadata `/Subject: construpilot-demo:moradia_pt_demo` para o motor BET detectar automaticamente.",
+    "suggestions": [
+      {"label": "Descarregar projeto arquitetura", "action": "download", "asset": "Projeto_arquitetura_Moradia_Martins_DEMO.pdf"}
+    ]
+  },
+  {
+    "id": "a-geotecnico",
+    "keywords": ["geotécnic", "geotecnic", "g2", "solo", "fundações", "sondagem"],
+    "title": "O que diz o estudo geotécnico?",
+    "answer_md": "O Estudo Geotécnico G2 (DEMO) da Moradia Martins conclui:\n\n- Solo areno-argiloso, estratos superiores S1-S2\n- Resistência admissível à profundidade de fundação (−1,20 m): **200 kPa**\n- Nível freático a −3,50 m (sem risco imediato)\n- Terreno classe B segundo NP EN 1998-1\n\nRecomendação: fundações directas em sapatas isoladas conectadas por lintéis.",
+    "suggestions": [
+      {"label": "Descarregar estudo geotécnico", "action": "download", "asset": "Estudo_geotecnico_Moradia_Martins_DEMO.pdf"}
+    ]
+  },
+  {
+    "id": "a-energia",
+    "keywords": ["energia", "renovável", "renovavel", "solar", "painéis", "paineis", "fotovoltaico", "classe energética"],
+    "title": "Que soluções energéticas são previstas?",
+    "answer_md": "A Moradia Martins integra (projecto demo):\n\n- Isolamento térmico ETICS 10 cm (λ = 0,034 W/m·K)\n- Caixilharias Vfm Uw ≤ 1,3 W/m²·K\n- Painel fotovoltaico 3 kWp cobertura sul\n- Bomba calor ar-água para AQS\n\nClasse energética alvo **A+**. Valores conforme catálogo ConstruPilot — zero LLM.",
+    "suggestions": [
+      {"label": "Abrir Dossier BET", "action": "download", "asset": "Dossier_BET_Moradia_Martins.pdf"}
+    ]
+  },
+  {
+    "id": "a-licenciamento",
+    "keywords": ["licenciamento", "licença", "licenca", "camara", "câmara", "cml"],
+    "title": "Como é o processo de licenciamento?",
+    "answer_md": "Para a Moradia Martins na Câmara Municipal de Lisboa:\n\n1. Pedido de informação prévia (PIP) — ~30 dias\n2. Processo de licenciamento (RJUE) — ~60-90 dias\n3. Alvará de construção\n4. Comunicação prévia de início de obra\n5. Licença de utilização (fim de obra)\n\nAs peças desenhadas (ARQ-01 a ARQ-05) e o dossier BET já cumprem o conteúdo mínimo do RJUE art. 11.º.",
+    "suggestions": [
+      {"label": "Ver processo CML", "action": "navigate", "target": "/dashboard"},
+      {"label": "Descarregar projecto arquitectura", "action": "download", "asset": "Projeto_arquitetura_Moradia_Martins_DEMO.pdf"}
+    ]
+  },
+  {
+    "id": "a-exportar",
+    "keywords": ["exportar", "zip", "tudo", "download", "transferir"],
+    "title": "Como exporto todos os ficheiros da Moradia Martins?",
+    "answer_md": "No stand WebSummit, pode descarregar os **6 ficheiros oficiais** da Moradia Martins — tudo gerado pelos motores reais (zero LLM):",
+    "suggestions": [
+      {"label": "Projecto arquitectura (PDF)", "action": "download", "asset": "Projeto_arquitetura_Moradia_Martins_DEMO.pdf"},
+      {"label": "Estudo geotécnico G2 (PDF)", "action": "download", "asset": "Estudo_geotecnico_Moradia_Martins_DEMO.pdf"},
+      {"label": "Dossier BET (PDF)", "action": "download", "asset": "Dossier_BET_Moradia_Martins.pdf"},
+      {"label": "Desenhos DXF (ZIP)", "action": "download", "asset": "Desenhos_BET_Moradia_Martins.zip"},
+      {"label": "Orçamento (XLSX)", "action": "download", "asset": "Orcamento_Moradia_Martins.xlsx"},
+      {"label": "Nota sísmica (PDF)", "action": "download", "asset": "Nota_calculo_sismica_Moradia_Martins.pdf"}
+    ]
+  }
+]

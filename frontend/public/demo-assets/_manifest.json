@@ -1,0 +1,22 @@
+{
+  "generator": "scripts.websummit.generate_demo_assets",
+  "engines": [
+    "engines.bet_core.samples.build_all (PC + G2)",
+    "engines.bet_core.pipeline.run (dossier BET + desenhos + orçamento)",
+    "engines.bet_core.structure.compute (nota sísmica)"
+  ],
+  "project": {
+    "name": "Moradia Martins",
+    "client": "Carla & Rui Martins",
+    "address": "Rua das Oliveiras 12, 1700 Lisboa",
+    "architect": "Atelier Exemplo Arquitetos"
+  },
+  "outputs": {
+    "Projeto_arquitetura_Moradia_Martins_DEMO.pdf": 109025,
+    "Estudo_geotecnico_Moradia_Martins_DEMO.pdf": 41038,
+    "Dossier_BET_Moradia_Martins.pdf": 288633,
+    "Desenhos_BET_Moradia_Martins.zip": 160487,
+    "Orcamento_Moradia_Martins.xlsx": 17125,
+    "Nota_calculo_sismica_Moradia_Martins.pdf": 3311
+  }
+}
