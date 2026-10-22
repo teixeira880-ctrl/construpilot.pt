@@ -8,6 +8,13 @@ export const API = `${BACKEND_URL}/api`;
 // dans localStorage — plus de surface d'attaque XSS.
 export const api = axios.create({ baseURL: API, withCredentials: true });
 
+// LOTE 2b WebSummit : adapter demo offline. Enquanto `localStorage.is_demo !==
+// "true"`, o adapter original (XHR) é chamado tal como antes. Contas normais
+// não são afectadas. Em modo demo, todos os pedidos `/api/*` resolvem a partir
+// de fixtures locais + IndexedDB (ver `lib/demoInterceptor.js`).
+import { installDemoInterceptor } from "@/lib/demoInterceptor";
+installDemoInterceptor(api);
+
 export const eur = (v) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
     .format(Number(v || 0));

@@ -243,3 +243,10 @@ Zero tool de deploy. Fundador: Dashboard Emergent → `construpilot.pt` → **"D
 - `tests/backend_test.py`: `pytest.skip(..., allow_module_level=True)` quando `REACT_APP_BACKEND_URL` ausente — collect limpo em local, continua a correr em preview/CI.
 
 Smoke LOTE 1 pós-deploy preparado em `/app/scripts/websummit/smoke_lote1_prod.sh` (3 pontos: health · demo pro Moradia Martins · demo particular). Zero credenciais em claro (lê de env).
+
+## LOTE 2 — Sub-lote 2b (demo offline sem servidor) ✅
+- Script `backend/scripts/websummit/export_demo_fixtures.py` gera fixtures JSON a partir dos motores reais (`estimate_from_request` + `samples.demo_branding`) → `src/fixtures/demo/{users,projects,demo_branding,_manifest,assistant_docs,plans,quotes}.json`. Zero números à mão.
+- `src/lib/demoInterceptor.js` substitui o adapter do `api` (axios) com switch runtime: `localStorage.is_demo === "true"` → routing table local (auth, projects, branding, growth, assistant_docs, leads, estimation/materials); senão → adapter original (contas normais intactas). Mutações persistidas em IndexedDB `construpilot_demo_v1`.
+- `DemoPage.jsx` ganha bloco "Modo offline — stand WebSummit" com `data-testid="demo-offline-{pro|particular}-btn"` + `demo-offline-reset-btn`. Primeira carga online, depois modo avião funciona (fixtures no bundle, SW 2a serve HTML + chunks).
+- Testes backend 61/61 verdes (bet_core 46 + showcase 5 + admin 6 + **fixtures export 4 novos**). Snapshot visual `/demo/entrar` confirma CTAs offline presentes. Frontend compila sem erros (webpack `Compiled successfully!`).
+- Flag strict: `localStorage.is_demo` lido com guard `try/catch`; chamadas normais (sem flag) resolvem via `defaults.adapter` original (XHR real) — zero regressão para utilizadores reais.

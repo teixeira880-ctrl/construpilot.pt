@@ -1,0 +1,32 @@
+[
+  {
+    "user_id": "demo_pro_pt",
+    "email": "<redacted>",
+    "name": "Demo Pro — WebSummit",
+    "role": "user",
+    "plan_id": "pro_business",
+    "country": "PT",
+    "lang": "pt-PT",
+    "theme": "light",
+    "is_demo": true,
+    "demo_kind": "pro",
+    "demo_source": "websummit_2026",
+    "created_at": "2026-10-22T22:27:31.225779+00:00",
+    "brand_company_name": "Construções Horizonte, Lda.",
+    "brand_logo_url": "/demo-assets/branding_logo_horizonte.png"
+  },
+  {
+    "user_id": "demo_part_pt",
+    "email": "<redacted>",
+    "name": "Demo Particular — WebSummit",
+    "role": "user",
+    "plan_id": "free",
+    "country": "PT",
+    "lang": "pt-PT",
+    "theme": "light",
+    "is_demo": true,
+    "demo_kind": "particular",
+    "demo_source": "websummit_2026",
+    "created_at": "2026-10-22T22:27:31.225779+00:00"
+  }
+]

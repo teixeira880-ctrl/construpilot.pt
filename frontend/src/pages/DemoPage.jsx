@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Hammer, Briefcase, User, ArrowRight } from "lucide-react";
+import { Hammer, Briefcase, User, ArrowRight, WifiOff, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useI18n } from "@/context/I18nContext";
 import { api } from "@/lib/api";
+import {
+  enableDemoMode,
+  isDemoActive,
+  resetDemoStore,
+} from "@/lib/demoInterceptor";
 
 /**
  * Página dedicada `/demo` — 2 CTAs grandes para o QR code do stand Web Summit.
@@ -20,6 +25,9 @@ export default function DemoPage() {
 
   useEffect(() => {
     api.get("/auth/demo-status").then(({ data }) => setStatus(data)).catch(() => {
+      // Em modo demo offline (interceptor activo), a chamada acima resolve local
+      // devolvendo { enabled: true, kind }. Em modo normal com backend KO,
+      // devolve pro/particular false para esconder os CTA.
       setStatus({ pro: false, particular: false });
     });
   }, []);
@@ -46,6 +54,28 @@ export default function DemoPage() {
     } finally {
       setBusy(null);
     }
+  };
+
+  const onPickOffline = async (kind) => {
+    if (busy) return;
+    setBusy(kind);
+    try {
+      enableDemoMode({ kind });
+      // Com a flag activa, `demoLogin` resolve pelo interceptor (zero rede).
+      await demoLogin(kind);
+      toast.success("Modo offline WebSummit activado — pode fechar os dados móveis.");
+      navigate("/dashboard");
+    } catch (err) {
+      toast.error("Não foi possível activar o modo offline. Tente novamente.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onReset = async () => {
+    await resetDemoStore();
+    toast.success("Demo offline reiniciada.");
+    setTimeout(() => window.location.reload(), 400);
   };
 
   const anyAvailable = status.pro || status.particular;
@@ -149,6 +179,57 @@ export default function DemoPage() {
           <p className="text-xs text-muted-foreground">
             {t("demo_page.notice") || "Em modo demo algumas acções (envio de emails, pagamentos, assinaturas, facturação) estão desactivadas. Os dados são sintéticos e repostos diariamente."}
           </p>
+        </div>
+
+        {/* LOTE 2 WebSummit — Modo offline para o stand (modo avião após 1ª carga) */}
+        <div className="mt-6 rounded-md border border-primary/30 bg-primary/5 p-5" data-testid="demo-offline-block">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-primary/15 p-2">
+              <WifiOff className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-display font-semibold">Modo offline — stand WebSummit</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Carrega as fixtures da Moradia Martins em cache. Depois pode activar modo avião e a demo continua a funcionar (login, projecto, estimativa, dossier, assistente). Fluxo apenas para as contas demo — contas normais nunca são afectadas.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-sm"
+                  onClick={() => onPickOffline("pro")}
+                  disabled={!!busy}
+                  data-testid="demo-offline-pro-btn"
+                >
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Offline — Profissional
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-sm"
+                  onClick={() => onPickOffline("particular")}
+                  disabled={!!busy}
+                  data-testid="demo-offline-particular-btn"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Offline — Particular
+                </Button>
+                {isDemoActive() && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-sm text-destructive"
+                    onClick={onReset}
+                    data-testid="demo-offline-reset-btn"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reiniciar demo
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>

@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-10-22T22:27:31.336377+00:00",
+  "generator": "scripts.websummit.export_demo_fixtures",
+  "engines": {
+    "estimation": "engines.estimation.estimate_from_request",
+    "estimation_params": {
+      "project_type": "construction_maison_neuve",
+      "surface": 150.0,
+      "finish": "standard",
+      "country": "PT",
+      "region": "Lisboa",
+      "building_type": "maison",
+      "condition": "neuf",
+      "ceiling_height_m": 2.7
+    },
+    "branding": "engines.bet_core.samples.demo_branding"
+  },
+  "demo_source": "websummit_2026",
+  "outputs": {
+    "users.json": 842,
+    "projects.json": 31793,
+    "demo_branding.json": 26155
+  }
+}
