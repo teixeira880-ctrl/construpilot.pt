@@ -77,7 +77,11 @@ def dry_run(raw: dict) -> dict | None:
 
 
 def validate_raw(raw: dict) -> list[dict]:
-    S = modelo.load(copy.deepcopy(raw))
+    try:
+        S = modelo.load(copy.deepcopy(raw))
+    except (KeyError, TypeError, ValueError, IndexError) as exc:
+        return [{"level": BLOCK, "code": "INPUT", "message": f"Modelo incompleto ({type(exc).__name__}: {exc})",
+                 "fix": "completar pilares (x, y), núcleos (x0, y0, x1, y1) e paredes"}]
     an = modelo.validate(S)
     if not any(a["level"] == BLOCK for a in an):
         d = dry_run(raw)
@@ -129,8 +133,12 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
     blocking = [a for a in anomalies if a.get("level") == BLOCK]
     decisions = [str(d) for d in (raw or {}).get("_decisions") or []]
     questions = [] if decide_alone else list((raw or {}).get("_questions") or []) + [f"{a['message']} — {a.get('fix') or 'a precisar'}" for a in blocking]
+    failed = None
+    if decide_alone and blocking:
+        failed = ("Levantamento impossível de completar mesmo decidindo sozinho : " + " ; ".join(a["message"] for a in blocking[:3])
+                  + ". É preciso um documento ou um dado adicional.")
     if raw is not None and hypotheses:
         raw.setdefault("_decisions", []).append(f"Hipóteses do cliente : « {hypotheses[:300]} »")
-    return {"ok": raw is not None and not blocking, "model": raw, "anomalies": anomalies, "questions": questions, "decisions": decisions,
+    return {"ok": raw is not None and not blocking, "failed": failed, "model": raw, "anomalies": anomalies, "questions": questions, "decisions": decisions,
             "pages": [{k: p[k] for k in ("doc", "page", "kind")} for p in chosen], "attempts": attempts,
             "provider": BR.LAST_PROVIDER[0] if hasattr(BR, "LAST_PROVIDER") else None}

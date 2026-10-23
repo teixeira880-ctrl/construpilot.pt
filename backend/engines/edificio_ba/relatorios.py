@@ -127,7 +127,7 @@ def memoria(S, R, path, out_dir) -> Path:
     # 7 vigas
     b.append(("h2", T("7. Vigas", "7. Poutres")))
     rows = [[x["name"], f(x["L"]), f"{int(x['b_w'] * 100)}×{int(x['h'] * 100)}", f(x["trib"]), f(x["w_kNm"], 1), f(x["M_sup"], 0), f(x["V"], 0),
-             f"{f(x['As'], 1)} → {ES.beam_bars(x['As'])[0]}", f(x["w_mm"], 0)] for x in R["beams"]]
+             f"{f(x['As'], 1)} → {ES.beam_bars(x['As'])[0]}", f(x["w_mm"], 0)] for x in R["beams"] + (R.get("gbeam_design") or [])]
     b.append(("table", [T("Viga", "Poutre"), T("Vão (m)", "Portée (m)"), "b×h", T("Larg. infl. (m)", "Larg. infl. (m)"), "p_Ed (kN/m)", "M_Ed (kN.m)", "V_Ed (kN)",
                         T("A_s → varões", "A_s → barres"), T("Flecha (mm)", "Flèche (mm)")], rows,
               [16 * W, 15 * W, 15 * W, 18 * W, 20 * W, 20 * W, 18 * W, 38 * W, 18 * W]))
@@ -271,7 +271,7 @@ def memoria(S, R, path, out_dir) -> Path:
         if ld:
             ctl.append({"ref": T(f"Laje {sl['name']} — deformação (L/d)", f"Dalle {sl['name']} — flèche (L/d)"), "exigence": "L/d ≤ §7.4.2",
                         "valeur": f(ld.get("l_over_d", 0), 1), "ok": ld.get("ok")})
-    for x in R["beams"]:
+    for x in R["beams"] + (R.get("gbeam_design") or []):
         ctl.append({"ref": T(f"Viga {x['name']} — flecha", f"Poutre {x['name']} — flèche"), "exigence": f"≤ L/250 = {f(x['L'] / 250 * 1000, 0)} mm",
                     "valeur": f"{f(x['w_mm'], 0)} mm", "ok": x["w_mm"] <= x["L"] / 250 * 1000})
     for col in R["cols"]:

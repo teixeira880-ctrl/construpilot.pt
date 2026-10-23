@@ -50,7 +50,26 @@ def slabs(S: Spec, pans: list[dict], gpans: list[dict]) -> list[dict]:
     out = []
     for p, typ in [(p, "habitacao") for p in pans] + [(p, "jardim") for p in gpans]:
         a, b = p["x1"] - p["x0"], p["y1"] - p["y0"]
-        e = p["edges"]
+        e = dict(p["edges"])
+        mode = "2d"
+        if "libre" in e.values():
+            # bordo de corte (sem apoio) : laje calculada numa só direção entre os dois bordos opostos apoiados ;
+            # sem par de bordos apoiados opostos → retângulo envolvente da região, bordos de corte como contínuos (a favor da segurança)
+            sx = e["x0"] != "libre" and e["x1"] != "libre"
+            sy = e["y0"] != "libre" and e["y1"] != "libre"
+            if sx and (not sy or a <= b):
+                mode, span = "1d", a
+                e = {"x0": e["x0"], "x1": e["x1"], "y0": "rive", "y1": "rive"}
+                a, b = span, max(b, 10 * span)
+            elif sy:
+                mode, span = "1d", b
+                e = {"x0": "rive", "x1": "rive", "y0": e["y0"], "y1": e["y1"]}
+                a, b = max(a, 10 * span), span
+            else:
+                mode = "envelope"                       # região inteira, simplesmente apoiada (a favor da segurança)
+                rx0, ry0, rx1, ry1 = p.get("region") or (p["x0"], p["y0"], p["x1"], p["y1"])
+                a, b = rx1 - rx0, ry1 - ry0
+                e = {"x0": "rive", "x1": "rive", "y0": "rive", "y1": "rive"}
         lx, ly = min(a, b), max(a, b)
         ed = e if a <= b else {"x0": e["y0"], "x1": e["y1"], "y0": e["x0"], "y1": e["x1"]}
         key = "garden" if typ == "jardim" else "residential"
@@ -58,7 +77,8 @@ def slabs(S: Spec, pans: list[dict], gpans: list[dict]) -> list[dict]:
         Ld = S.loads[key]
         r = slab.design(lx, ly, hh, Ld["g2"], Ld["q"], ed, fck=M["fck"], fyk=M["fyk"], cover_m=0.025, psi2=Ld["psi2"])
         ok = bool(r.get("ok", True)) if isinstance(r, dict) else True
-        out.append({**p, "lx": round(lx, 2), "ly": round(ly, 2), "h": hh, "type": typ, "r": r, "ok": ok})
+        out.append({**p, "lx": round(lx, 2), "ly": round(min(ly, max(p["x1"] - p["x0"], p["y1"] - p["y0"])), 2), "h": hh, "type": typ, "r": r,
+                    "ok": ok, "mode": mode})
     return out
 
 
@@ -71,30 +91,37 @@ def cantilever(S: Spec, depth: float, h_root=0.20) -> dict:
     Med = pu_ * depth ** 2 / 2 + P * depth
     Ved = pu_ * depth + P
     r = ec2.design_section(Med, Ved, b_m=1.0, h_m=h_root, d_m=h_root - 0.035, fck=M["fck"], fyk=M["fyk"])
-    gk, qk = g + S.parapet_kn_m / depth, Ld["q"]
+    qk = Ld["q"]
     EI = M["Ec"] * h_root ** 3 / 12 / 2.5
-    w = (gk * 3 + 0.3 * qk) * depth ** 4 / (8 * EI) * 1000
+    # flecha a longo prazo (×3) : carga distribuída q·L⁴/8EI + guarda concentrada no bordo P·L³/3EI
+    w = ((g * 3 + 0.3 * qk) * depth ** 4 / (8 * EI) + S.parapet_kn_m * 3 * depth ** 3 / (3 * EI)) * 1000
+    wl = depth * 2 / 250 * 1000
+    ok = bool(r["flexure"].get("ok", True)) and w <= wl and Ved <= r["shear"]["vrdc_kn"] * 1.0 + 1e-9
     return {"depth": depth, "h_root": h_root, "h_tip": 0.15, "pu": round(pu_, 2), "M_Ed": round(Med, 1), "V_Ed": round(Ved, 1),
-            "as_cm2_m": r["flexure"]["as_cm2"], "w_mm": round(w, 1), "w_lim_mm": round(depth * 2 / 250 * 1000, 1), "vrdc": r["shear"]["vrdc_kn"]}
+            "as_cm2_m": r["flexure"]["as_cm2"], "w_mm": round(w, 1), "w_lim_mm": round(wl, 1), "vrdc": r["shear"]["vrdc_kn"], "ok": ok}
 
 
 # ------------------------------------------------------------------ 2. descida de cargas
 def load_takedown(S: Spec, trib: dict) -> list[dict]:
     f = per_floor_loads(S)
-    nf = n_suspended(S)
     rows = []
     for eid, a in trib.items():
         G_floor = a["hab"] * f["g_hab"] + a["balc"] * f["g_balc"] + a["fac"] * f["g_fac"]
         Q_floor = a["hab"] * f["q_hab"] + a["balc"] * f["q_balc"]
+        G_floor0 = G_floor - a["balc"] * f["g_balc"]                 # piso 0 : sem varandas em consola
+        Q_floor0 = Q_floor - a["balc"] * f["q_balc"]
         G_roof = (a["hab"] + a["balc"]) * f["g_roof"] + a["fac"] * S.parapet_kn_m
         Q_roof = (a["hab"] + a["balc"]) * f["q_roof"]
         if a["hab"] + a["balc"] + a["fac"] == 0:
-            G_floor = Q_floor = G_roof = Q_roof = 0.0
+            G_floor = Q_floor = G_roof = Q_roof = G_floor0 = Q_floor0 = 0.0
         G_gar, Q_gar = a["gar"] * f["g_gar"], a["gar"] * f["q_gar"]
+        lv = levels_above(S, storeys(S)[0])
+        n_b = sum(1 for k in lv if k >= 1)
+        n_0 = len(lv) - n_b
         rows.append({"id": eid, "A_hab": a["hab"], "A_balc": a["balc"], "L_fac": a["fac"], "A_gar": a["gar"],
                      "G_floor": round(G_floor, 1), "Q_floor": round(Q_floor, 1), "G_roof": round(G_roof, 1), "Q_roof": round(Q_roof, 1),
-                     "G_gar": round(G_gar, 1), "Q_gar": round(Q_gar, 1),
-                     "G": round(nf * G_floor + G_roof + G_gar, 1), "Q": round(nf * Q_floor + Q_roof + Q_gar, 1)})
+                     "G_floor0": round(G_floor0, 1), "Q_floor0": round(Q_floor0, 1), "G_gar": round(G_gar, 1), "Q_gar": round(Q_gar, 1),
+                     "G": round(n_b * G_floor + n_0 * G_floor0 + G_roof + G_gar, 1), "Q": round(n_b * Q_floor + n_0 * Q_floor0 + Q_roof + Q_gar, 1)})
     return rows
 
 
@@ -103,9 +130,16 @@ def storeys(S: Spec) -> list[int]:
     return list(range(-1 if S.basement else 0, S.n))
 
 
-def _floors_above(S: Spec, j: int) -> int:
-    """Número de lajes de piso suspensas acima do troço j (sem a cobertura)."""
-    return S.n if j == -1 else S.n - 1 - j
+def levels_above(S: Spec, j: int) -> list[int]:
+    """Níveis das lajes de piso suspensas acima do troço j (sem a cobertura)."""
+    return [k for k in range(0 if S.basement else 1, S.n) if k > j]
+
+
+def _gq_above(r: dict, S: Spec, j: int) -> tuple[float, float]:
+    lv = levels_above(S, j)
+    G = sum(r["G_floor"] if k >= 1 else r["G_floor0"] for k in lv) + r["G_roof"]
+    Q = sum(r["Q_floor"] if k >= 1 else r["Q_floor0"] for k in lv) + r["Q_roof"]
+    return G, Q
 
 
 def size_columns(S: Spec, rows: list[dict]) -> list[dict]:
@@ -124,9 +158,9 @@ def size_columns(S: Spec, rows: list[dict]) -> list[dict]:
         for tag, j in groups:
             if c.get("garage") and tag != "base":
                 continue
-            nfl = _floors_above(S, j)
-            G = nfl * r["G_floor"] + r["G_roof"] + (r["G_gar"] if j == -1 else 0.0)
-            Q = nfl * r["Q_floor"] + r["Q_roof"] + (r["Q_gar"] if j == -1 else 0.0)
+            G, Q = _gq_above(r, S, j)
+            if j == st[0]:
+                G, Q = G + r["G_gar"], Q + r["Q_gar"]
             if c.get("garage"):
                 G, Q = r["G_gar"], r["Q_gar"]
             n_seg = (S.n - j) if not c.get("garage") else 1
@@ -212,14 +246,16 @@ def _beam_trib(seg, pans) -> float:
     return max(w, 0.5)
 
 
-def beams(S: Spec, segs: list[dict], pans: list[dict]) -> list[dict]:
+def beams(S: Spec, segs: list[dict], pans: list[dict], garden: bool = False) -> list[dict]:
     M = mat(S)
     f = per_floor_loads(S)
-    h = S.slab_h
+    h = S.slab_hg if garden else S.slab_h
+    if garden:          # laje sobre a cave exterior : terras / pavimento e sobrecarga de espaços comuns
+        f = dict(f, g_hab=f["g_gar"], q_hab=f["q_gar"])
     out = []
     for sg in segs:
         tw = _beam_trib(sg, pans)
-        facade = sg["facade"] is not None
+        facade = sg.get("facade") is not None
         balc = None
         if facade:
             for bb in S.balconies:
@@ -230,11 +266,10 @@ def beams(S: Spec, segs: list[dict], pans: list[dict]) -> list[dict]:
                         balc = bb
         g = tw * f["g_hab"] + (f["g_fac"] if facade else 0) + (balc["depth"] * f["g_balc"] if balc else 0)
         q = tw * f["q_hab"] + (balc["depth"] * f["q_balc"] if balc else 0)
-        b = 0.25
-        span, cont = sg["L"], sg["cont"]
-        for hb in (0.40, 0.45, 0.50, 0.55, 0.60, 0.70, 0.80):
-            if hb < h + 0.15:
-                continue
+        span, cont = sg["L"], sg.get("cont", False)
+        cands = sorted({(bw, hh_) for bw in (0.25, 0.30, 0.35) for hh_ in (0.40, 0.45, 0.50, 0.55, 0.60, 0.70, 0.80, 0.90)
+                        if hh_ >= h + 0.15 and (bw == 0.25 or hh_ >= 0.60)}, key=lambda t: (t[0] * t[1], t[1]))
+        for b, hb in cands:
             gs = b * (hb - h) * GC
             p = 1.35 * (g + gs) + 1.5 * q
             M_sp = p * span ** 2 / (11 if cont else 8)
@@ -245,10 +280,10 @@ def beams(S: Spec, segs: list[dict], pans: list[dict]) -> list[dict]:
             ps = g + gs + 0.3 * q
             EI = M["Ec"] * b * hb ** 3 / 12 / 2.0
             w = 5 * ps * span ** 4 / (384 * EI) * (0.6 if cont else 1.0) * 3 * 1000
-            ok = r["flexure"].get("ok", True) and w <= span / 250 * 1000 and r["flexure"]["as_cm2"] / (b * d * 1e4) < 0.02
+            ok = r["flexure"].get("ok", True) and r["shear"].get("ok", True) and w <= span / 250 * 1000 and r["flexure"]["as_cm2"] / (b * d * 1e4) < 0.02
             if ok:
                 break
-        out.append({"name": sg["name"], "line": sg["line"], "a": sg["a"], "b": sg["b"], "L": span, "b_w": b, "h": hb, "trib": round(tw, 2),
+        out.append({"name": sg["name"], "line": sg["line"], "a": sg["a"], "b": sg["b"], "L": span, "b_w": b, "h": hb, "trib": round(tw, 2), "garden": garden,
                     "w_kNm": round(p, 1), "M_sp": round(M_sp, 1), "M_sup": round(M_sup, 1), "V": round(V, 1), "As": r["flexure"]["as_cm2"],
                     "Asw": r["shear"].get("asw_s_cm2_m"), "w_mm": round(w, 1), "facade": facade, "ok": bool(ok)})
     return out
@@ -326,8 +361,14 @@ def lateral_elements(S: Spec) -> list[dict]:
     els = []
     for c in S.cores:
         cs = core_section(c)
+        x0, y0, x1, y1 = c["box"]
+        am = (x1 - x0 - c["t"]) * (y1 - y0 - c["t"])
+        closed = not (c.get("door") or 0) > 0
+        # torção própria em « unidades de E » (G/E = 1/2,4) ; núcleo com porta : secção aberta (≈ 0)
+        jt = (4 * am ** 2 * c["t"] / (2 * ((x1 - x0) + (y1 - y0) - 2 * c["t"])) / 2.4) if closed else 0.0
+        jt *= (S.n * S.H) ** 2 / 3          # equivalência G·J/H ↔ 3·E·I/H³ (consola) : mesma unidade que Σ I·d²
         els.append({"id": c["id"], "kind": "core", "x": cs["cx"], "y": cs["cy"], "Ix": cs["Ix"], "Iy": cs["Iy"], "A": cs["A"],
-                    "Lx": cs["Lx"], "Ly": cs["Ly"], "t": c["t"]})
+                    "Lx": cs["Lx"], "Ly": cs["Ly"], "t": c["t"], "Jt": jt})
     for w in S.walls:
         Lw, t = w["Lw"], w["t"]
         x, y = (w["x0"] + w["x1"]) / 2, (w["y0"] + w["y1"]) / 2
@@ -364,14 +405,16 @@ def regularity(S: Spec, els: list[dict]) -> dict:
     KX = sum(e["Iy"] for e in els)
     KY = sum(e["Ix"] for e in els)
     if KX <= 0 or KY <= 0:
-        return {"ok": False, "KX": KX, "KY": KY}
+        return {"ok": False, "KX": KX, "KY": KY, "score": 99.0}
     xr = sum(e["Ix"] * e["x"] for e in els) / KY
     yr = sum(e["Iy"] * e["y"] for e in els) / KX
     xm, ym = S.L / 2, S.B / 2
     J = sum(e["Iy"] * (e["y"] - yr) ** 2 + e["Ix"] * (e["x"] - xr) ** 2 for e in els)
-    if J <= 1e-9 or KX <= 1e-6 or KY <= 1e-6:
-        return {"ok": False, "KX": KX, "KY": KY, "score": 99.0}
-    r_x, r_y = math.sqrt(J / KX), math.sqrt(J / KY)
+    # rigidez de torção própria (Saint-Venant) das secções fechadas : evita J = 0 com um núcleo único
+    J += sum(e.get("Jt", 0.0) for e in els)
+    J = max(J, 1e-6)
+    # NP/NF EN 1998-1 §4.2.3.2 : r_x = √(K_θ / K_Y), r_y = √(K_θ / K_X)
+    r_x, r_y = math.sqrt(J / KY), math.sqrt(J / KX)
     ls = math.sqrt((S.L ** 2 + S.B ** 2) / 12)
     e0x, e0y = abs(xm - xr), abs(ym - yr)
     strong_x = sum(1 for e in els if e["Lx"] >= 1.0)            # elementos com rigidez real segundo X (núcleos, paredes X)
@@ -426,7 +469,11 @@ def propose_walls(S: Spec, max_walls: int = 4) -> list[dict]:
             break
         best = None
         for c in wall_candidates(S):
-            w = _wall(f"W{len(S.walls) + 1}", c["a"]["x"], c["a"]["y"], c["b"]["x"], c["b"]["y"], 0.25, True)
+            used = {x["id"] for x in S.walls} | {x["id"] for x in S.columns} | {x["id"] for x in S.cores}
+            k = len(S.walls) + 1
+            while f"W{k}" in used:
+                k += 1
+            w = _wall(f"W{k}", c["a"]["x"], c["a"]["y"], c["b"]["x"], c["b"]["y"], 0.25, True)
             S.walls.append(w)
             r2 = regularity(S, lateral_elements(S))
             S.walls.pop()
@@ -440,6 +487,19 @@ def propose_walls(S: Spec, max_walls: int = 4) -> list[dict]:
         S.walls.append(best[1])
         added.append(best[1])
     return added
+
+
+def wall_checks(S: Spec, e: dict, Lw: float, webs: int, V: float, As_end: float) -> dict:
+    """V_Rd,max (EN 1992-1-1 §6.2.3, θ = 45°, z = 0,8·l_w) face a ε·V_Ed (ε = 1,5) ; taxa de armadura do elemento de extremidade ≤ 4 %."""
+    M = mat(S)
+    nu1 = 0.6 * (1 - S.fck / 250)
+    vrdmax = 0.5 * webs * e["t"] * 0.8 * max(Lw, 0.1) * nu1 * M["fcd"] * 1000
+    lc = max(0.15 * Lw, 1.5 * e["t"])
+    a_end = lc * e["t"]
+    if e["kind"] == "core":          # núcleo : a extremidade é a parede perpendicular inteira (banzo)
+        a_end = max(a_end, (e["Ly"] if Lw == e["Lx"] else e["Lx"]) * e["t"])
+    rho_end = As_end / (a_end * 1e4) if a_end > 0 else 0.0
+    return {"VRdmax": round(vrdmax, 0), "shear_ok": 1.5 * V <= vrdmax + 1e-6, "rho_end": round(rho_end, 4), "rho_ok": rho_end <= 0.04 + 1e-9}
 
 
 def seismic(S: Spec, rows: list[dict]) -> dict:
@@ -465,27 +525,31 @@ def seismic(S: Spec, rows: list[dict]) -> dict:
     if not req:
         # sem exigência sísmica regulamentar : contraventamento verificado ao vento (forfait c_f·q_p, EN 1991-1-4)
         qp = float((S.raw.get("wind") or {}).get("qp_kpa") or (0.8 if S.country == "FR" else 0.9))
-        Fd = {"X": round(1.3 * qp * S.B * H, 0), "Y": round(1.3 * qp * S.L * H, 0)}
+        Fd = {"X": round(1.5 * 1.3 * qp * S.B * H, 0), "Y": round(1.5 * 1.3 * qp * S.L * H, 0)}        # ELU : γ_Q = 1,5
         M0d = {d: Fd[d] * H / 2 for d in Fd}
         wind = {"qp": qp, "cf": 1.3, "Fx": Fd["X"], "Fy": Fd["Y"]}
         gov = dict(gov, label=S.t("vento (forfait)", "vent (forfait)"), Fb=max(Fd.values()))
+        wsum = (S.n - 0.5) * S.H
         for s in sts:
-            s["F"] = round(max(Fd.values()) * (S.H if s["k"] < S.n else S.H / 2) / H, 1)
+            s["F"] = round(max(Fd.values()) * (S.H if s["k"] < S.n else S.H / 2) / wsum, 1)
     els = lateral_elements(S)
     reg = regularity(S, els)
     if not els or not reg.get("KX") or not reg.get("KY"):
         return {"ok": False, "reason": "no_lateral", "q": q, "H": H, "T1": T1, "W": Wt, "storeys": sts, "acts": acts, "gov": gov, "elems": els}
     KX, KY, J, xr, yr = reg["KX"], reg["KY"], reg["J"], reg["xr"], reg["yr"]
     dist = {}
+    ecc = {"X": abs(reg["ym"] - yr) + 0.05 * S.B, "Y": abs(reg["xm"] - xr) + 0.05 * S.L}     # excentricidade total (estrutural + acidental)
     for d, K in (("X", KX), ("Y", KY)):
+        o = "Y" if d == "X" else "X"
         e0 = (reg["ym"] - yr) if d == "X" else (reg["xm"] - xr)
         ea = 0.05 * (S.B if d == "X" else S.L)
         shares = []
         for e in els:
             k = e["Iy"] if d == "X" else e["Ix"]
             ki = e["Iy"] * (e["y"] - yr) if d == "X" else e["Ix"] * (e["x"] - xr)
-            tors = max(abs(e0 + ea), abs(e0 - ea)) * abs(ki) / J
-            sh = k / K + tors
+            tors = ecc[d] * abs(ki) / J                                   # torção da ação segundo d
+            tors_o = 0.3 * ecc[o] * abs(ki) / J * Fd[o] / max(Fd[d], 1e-9)  # torção da ação perpendicular (E_d + 0,3·E_o)
+            sh = k / K + tors + tors_o
             shares.append({"id": e["id"], "share": round(sh, 3), "V": round(sh * Fd[d], 0), "M": round(sh * M0d[d], 0)})
         dist[d] = {"e0": round(e0, 2), "ea": round(ea, 2), "elems": shares}
     drift = {}
@@ -494,18 +558,25 @@ def seismic(S: Spec, rows: list[dict]) -> dict:
         dtop = 11 * Fd[d] * H ** 3 / (60 * EI) * 1.3
         ds = (q if req else 1.0) * dtop
         dr = ds / S.n * 1.4
-        nu_r = 0.5 if S.country == "FR" else 0.5
+        # coeficiente de redução da limitação de danos : PT 0,40 (tipo 1) / 0,55 (tipo 2) ; FR 0,40 (classes I-II), 0,5 (III-IV)
+        if S.country == "FR":
+            nu_r = 0.4 if S.seismic["importance"] in ("I", "II") else 0.5
+        else:
+            nu_r = 0.55 if gov.get("type") == 2 else 0.40
         drift[d] = {"d_e_mm": round(dtop * 1000, 1), "d_s_mm": round(ds * 1000, 1), "dr_mm": round(dr * 1000, 1),
                     "nu_dr_mm": round(nu_r * dr * 1000, 1), "lim_mm": round(0.005 * S.H * 1000, 1)}
     by = {r["id"]: r for r in rows}
     core_design, wall_design = [], []
     for e in els:
-        r = by.get(e["id"], {"G": 0.0, "Q": 0.0})
+        r = by.get(e["id"], {"G": 0.0, "Q": 0.0, "Q_roof": 0.0, "Q_gar": 0.0})
         n_seg = len(storeys(S))
         G = r["G"] + e["A"] * GC * S.H * n_seg
-        N = G + 0.3 * r["Q"]
+        Ld = S.loads
+        q_fl = r["Q"] - r.get("Q_roof", 0.0) - r.get("Q_gar", 0.0)
+        N = G + Ld["residential"]["psi2"] * q_fl + Ld["roof"]["psi2"] * r.get("Q_roof", 0.0) + Ld["garden"]["psi2"] * r.get("Q_gar", 0.0)
         out = {"id": e["id"], "kind": e["kind"], "N_sis": round(N, 0), "t": e["t"],
-               "nu": round((1.35 * G + 1.5 * r["Q"]) / (e["A"] * M["fcd"] * 1000), 3)}
+               "nu": round((1.35 * G + 1.5 * r["Q"]) / (e["A"] * M["fcd"] * 1000), 3),
+               "nu_sis": round(N / (e["A"] * M["fcd"] * 1000), 3)}            # EN 1998-1 §5.4.3.4.1 : ν_d ≤ 0,4 (DCM)
         for d in ("X", "Y"):
             Mx = next(s["M"] for s in dist[d]["elems"] if s["id"] == e["id"])
             V = next(s["V"] for s in dist[d]["elems"] if s["id"] == e["id"])
@@ -516,6 +587,7 @@ def seismic(S: Spec, rows: list[dict]) -> dict:
             vrdc = 0.35 * 1000 * e["t"] * 0.9 * Lw * webs
             rho_h = max((V * 1.5 - vrdc) / (webs * e["t"] * 0.9 * Lw * M["fyd"] * 1000), 0.0)
             out[d] = {"M": Mx, "V": V, "Lw": round(Lw, 2), "As_ext_cm2": round(As_end, 1), "VRdc": round(vrdc, 0), "rho_h": round(max(rho_h, 0.002), 4)}
+            out[d].update(wall_checks(S, e, Lw, webs, V, As_end))
         (core_design if e["kind"] == "core" else wall_design).append(out)
     return {"ok": True, "required": req, "wind": wind, "q": q, "H": H, "T1": round(T1, 3), "W": Wt, "storeys": sts, "acts": acts, "gov": gov,
             "M0": round(M0, 0), "elems": els, "reg": {k: (round(v, 3) if isinstance(v, float) else v) for k, v in reg.items()},
@@ -549,7 +621,11 @@ def footings(S: Spec, cols: list[dict]) -> list[dict]:
     srd, sels = S.soil["sigma_rd"], S.soil["sigma_sls"]
     out = []
     for c in cols:
-        N, Ns = c["base"]["N_Ed"], c["base"]["N_ser"]
+        N0, Ns0 = c["base"]["N_Ed"], c["base"]["N_ser"]
+        N, Ns = N0, Ns0
+        for _ in range(3):                                             # + peso próprio da sapata e das terras (≈ 22 kN/m³ × 1,0 m)
+            A_req = max(N / srd, Ns / sels)
+            N, Ns = N0 + 1.35 * 22.0 * A_req, Ns0 + 22.0 * A_req
         A_req = max(N / srd, Ns / sels)
         b, h = c["base"]["b"], c["base"]["h"]
         a = math.sqrt(A_req * h / b)
@@ -607,14 +683,16 @@ def rafts(S: Spec, seis: dict, rows: list[dict]) -> list[dict]:
             if ok:
                 cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
                 best = {"id": nm, "x0": round(cx - Lr / 2, 2), "y0": round(cy - Br / 2, 2), "x1": round(cx + Lr / 2, 2), "y1": round(cy + Br / 2, 2),
-                        "L": round(Lr, 2), "B": round(Br, 2), "h": hr, "sigma_grav": round((Ned_g + 1.35 * Wr) / (Lr * Br), 0), "members": [nm]}
+                        "L": round(Lr, 2), "B": round(Br, 2), "h": hr, "sigma_grav": round((Ned_g + 1.35 * Wr) / (Lr * Br), 0), "members": [nm],
+                        "N_g": round(Ned_g, 0)}
                 break
         out.append(best or {"id": nm, "L": None, "members": [nm], "fail": True})
     return out
 
 
-def merge_foundations(rafts_: list[dict], foots: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Ensoleiramentos sobrepostos fundidos ; sapatas isoladas que tocam um ensoleiramento são absorvidas. → (ensoleiramentos, sapatas)."""
+def merge_foundations(rafts_: list[dict], foots: list[dict], sigma_rd: float | None = None) -> tuple[list[dict], list[dict]]:
+    """Ensoleiramentos sobrepostos fundidos ; sapatas isoladas que tocam um ensoleiramento são absorvidas ; a tensão gravítica do
+    ensoleiramento resultante é verificada de novo (alargamento até 2 m se necessário). → (ensoleiramentos, sapatas)."""
     boxes = [dict(r) for r in rafts_ if r.get("L")]
     changed = True
     while changed:
@@ -624,7 +702,7 @@ def merge_foundations(rafts_: list[dict], foots: list[dict]) -> tuple[list[dict]
                 a, b = boxes[i], boxes[j]
                 if a["x0"] < b["x1"] and b["x0"] < a["x1"] and a["y0"] < b["y1"] and b["y0"] < a["y1"]:
                     m = {"x0": min(a["x0"], b["x0"]), "y0": min(a["y0"], b["y0"]), "x1": max(a["x1"], b["x1"]), "y1": max(a["y1"], b["y1"]),
-                         "h": max(a["h"], b["h"]), "members": a["members"] + b["members"]}
+                         "h": max(a["h"], b["h"]), "members": a["members"] + b["members"], "N_g": a.get("N_g", 0) + b.get("N_g", 0)}
                     boxes = [bx for k, bx in enumerate(boxes) if k not in (i, j)] + [m]
                     changed = True
                     break
@@ -636,8 +714,21 @@ def merge_foundations(rafts_: list[dict], foots: list[dict]) -> tuple[list[dict]
         if hit:
             hit.update(x0=min(hit["x0"], f["x0"]), y0=min(hit["y0"], f["y0"]), x1=max(hit["x1"], f["x1"]), y1=max(hit["y1"], f["y1"]))
             hit["members"] = hit["members"] + [f["id"]]
+            hit["N_g"] = hit.get("N_g", 0) + f["N_Ed"]
         else:
             left.append(f)
+    for b in boxes:
+        grow = 0.0
+        while True:
+            A = (b["x1"] - b["x0"] + 2 * grow) * (b["y1"] - b["y0"] + 2 * grow)
+            sig = (b.get("N_g", 0) + 1.35 * A * b["h"] * GC) / A
+            if sigma_rd is None or sig <= sigma_rd or grow >= 2.0:
+                break
+            grow += 0.10
+        if grow:
+            b.update(x0=round(b["x0"] - grow, 2), y0=round(b["y0"] - grow, 2), x1=round(b["x1"] + grow, 2), y1=round(b["y1"] + grow, 2))
+        b["sigma_grav"] = round(sig, 0)
+        b["ok"] = sigma_rd is None or sig <= sigma_rd + 1e-6
     boxes.sort(key=lambda b: (b["x0"], b["y0"]))
     for k, b in enumerate(boxes):
         b["id"] = f"E{k + 1}"

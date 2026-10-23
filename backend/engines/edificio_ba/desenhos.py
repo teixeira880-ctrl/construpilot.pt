@@ -356,8 +356,12 @@ def sheet_floor(pdf, S, R, code, title, subtitle, k, roof=False, level0=False):
         for sl in R["slabs"]:
             if sl["type"] == "jardim":
                 s.rect(sl["x0"], sl["y0"], sl["x1"], sl["y1"], fill=False, ec=GREEN, lw=0.3, ls=":")
-        for gb in R.get("gbeams") or []:
+        for gb in R.get("gbeam_design") or []:
             s.line(*gb["a"], *gb["b"], color=INK, lw=0.45, ls=(0, (4, 2)))
+            mx, my = (gb["a"][0] + gb["b"][0]) / 2, (gb["a"][1] + gb["b"][1]) / 2
+            horiz = abs(gb["a"][1] - gb["b"][1]) < 1e-6
+            s.text(mx + (0 if horiz else 0.4), my + (0.4 if horiz else 0), f"{gb['name']} {int(gb['b_w'] * 100)}×{int(gb['h'] * 100)} · {ES.beam_bars(gb['As'])[0]}",
+                   fontsize=3.8, color=ORANGE, rotation=0 if horiz else 90)
         draw_panels(s, R, "jardim")
     draw_outline(s, R, balconies=not level0)
     draw_panels(s, R, "habitacao")
@@ -454,7 +458,7 @@ def sheet_tables(pdf, S, R):
           rows, [14, 26, 12, 18, 16, 50], max_rows=24)
     rows = [[b["name"], f2(b["L"]), f"{int(b['b_w'] * 100)}×{int(b['h'] * 100)}", f2(b["M_sup"], 0), f2(b["V"], 0), ES.beam_bars(b["As"])[0],
              (S.t("Ø8//0,10", "HA8 e=10") if (b["Asw"] or 0) > 4.0 else S.t("Ø8//0,15", "HA8 e=15")) + S.t(" (2 ramos)", " (2 brins)"), f2(b["w_mm"], 0)]
-            for b in R["beams"]]
+            for b in R["beams"] + (R.get("gbeam_design") or [])]
     head = [S.t("Viga", "Poutre"), S.t("Vão (m)", "Portée (m)"), "b×h", "M_Ed (kN.m)", "V_Ed (kN)", S.t("Armad. inf./sup.", "Aciers inf./sup."),
             S.t("Estribos", "Étriers"), S.t("Flecha (mm)", "Flèche (mm)")]
     w_ = [16, 14, 14, 18, 16, 22, 30, 16]

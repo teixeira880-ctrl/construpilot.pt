@@ -144,6 +144,20 @@ class Spec:
         return t(self, pt, fr)
 
 
+def _num(v, default=0.0) -> float:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _int(v, default=-9) -> int:
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
+
+
 def _f(d, k, default=None):
     v = (d or {}).get(k)
     return default if v is None else v
@@ -185,8 +199,8 @@ def load(raw: dict) -> Spec:
         S.walls.append(_wall(str(w.get("id") or f"W{i + 1}"), x0, y0, x1, y1, float(_f(w, "t", 0.25)), bool(w.get("proposed"))))
     S.beams_in = [{"id": str(b.get("id") or f"V{i + 1}"), "a": (float(b["x0"]), float(b["y0"])), "b": (float(b["x1"]), float(b["y1"]))}
                   for i, b in enumerate(raw.get("beams") or [])] or None
-    S.balconies = [{"side": b["side"], "depth": float(b["depth"]), "from": float(_f(b, "from", 0.0)),
-                    "to": float(_f(b, "to", S.L if b["side"] in ("y0", "y1") else S.B))} for b in raw.get("balconies") or []]
+    S.balconies = [{"side": b.get("side") or "?", "depth": _num(b.get("depth")), "from": _num(_f(b, "from", 0.0)),
+                    "to": _num(_f(b, "to", S.L if b.get("side") in ("y0", "y1") else S.B))} for b in raw.get("balconies") or []]
     bs = raw.get("basement") or {}
     if S.basement:
         S.bpoly = [(float(p[0]), float(p[1])) for p in bs.get("polygon") or []]
@@ -225,7 +239,7 @@ def load(raw: dict) -> Spec:
     S.fck = perfis.fck_of(S.concrete)
     S.loads = {k: dict(v, **((raw.get("loads") or {}).get(k) or {})) for k, v in prof["loads"].items()}
     S.prices = dict(prof["prices"], **(raw.get("prices") or {}))
-    S.units = raw.get("units") or []
+    S.units = [dict(u, level=_int(u.get("level"), -9)) for u in raw.get("units") or []]
     S.opening_types = raw.get("opening_types") or {}
     S.interior = raw.get("interior_walls_m") or {}
     S.network = raw.get("network") or {}
@@ -318,11 +332,21 @@ def validate(S: Spec) -> list[dict]:
         for c in S.bcols:
             if len(P) >= 3 and not point_in_polygon(c["x"], c["y"], P):
                 add(BLOCK, "BCOL-OUT", f"Pilar da cave {c['id']} fora do contorno da cave.", f"Poteau de sous-sol {c['id']} hors du contour.")
+    if S.fck > 50:
+        add(BLOCK, "CONCRETE", f"Betão {S.concrete} : os motores cobrem até C50/60.", f"Béton {S.concrete} : les moteurs couvrent jusqu'à C50/60.",
+            "Indicar uma classe ≤ C50/60.", "Indiquer une classe ≤ C50/60.")
+    for w in S.raw.get("walls") or []:
+        try:
+            if abs(float(w["x1"]) - float(w["x0"])) > 0.05 and abs(float(w["y1"]) - float(w["y0"])) > 0.05:
+                add(BLOCK, "WALL-DIAG", f"Parede {w.get('id')} oblíqua : só paredes alinhadas com X ou Y são tratadas.",
+                    f"Voile {w.get('id')} oblique : seuls les voiles parallèles à X ou Y sont traités.")
+        except (KeyError, TypeError, ValueError):
+            pass
     lv_ok = set(range(S.n))
     for u in S.units:
-        if int(u.get("level", -9)) not in lv_ok:
+        if _int(u.get("level"), -9) not in lv_ok:
             add(BLOCK, "UNIT-LEVEL", f"Fração {u.get('id')} num nível inexistente ({u.get('level')}).", f"Logement {u.get('id')} : niveau inexistant ({u.get('level')}).")
-        a = sum(float(r.get("area") or 0) for r in u.get("rooms") or [])
+        a = sum(_num(r.get("area")) for r in u.get("rooms") or [])
         if a <= 5:
             add(BLOCK, "UNIT-AREA", f"Fração {u.get('id')} sem divisões com área.", f"Logement {u.get('id')} sans pièces surfacées.")
         for o in u.get("openings") or []:
@@ -330,7 +354,7 @@ def validate(S: Spec) -> list[dict]:
                 add(BLOCK, "OPENING-TYPE", f"Vão do tipo « {o.get('type')} » (fração {u.get('id')}) sem dimensões em opening_types.",
                     f"Baie de type « {o.get('type')} » (logement {u.get('id')}) sans dimensions dans opening_types.")
     for k in range(S.n):
-        a = sum(sum(float(r.get("area") or 0) for r in u.get("rooms") or []) for u in S.units if int(u.get("level", -9)) == k)
+        a = sum(sum(_num(r.get("area")) for r in u.get("rooms") or []) for u in S.units if _int(u.get("level"), -9) == k)
         if a > S.area_floor * 1.02:
             add(BLOCK, "UNIT-SUM", f"Áreas das frações do {S.lname(k)} ({a:.0f} m²) superiores à área do piso ({S.area_floor:.0f} m²).",
                 f"Surfaces des logements du {S.lname(k)} ({a:.0f} m²) supérieures à l'emprise ({S.area_floor:.0f} m²).")

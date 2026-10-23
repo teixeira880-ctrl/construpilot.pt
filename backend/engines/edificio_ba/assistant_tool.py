@@ -150,6 +150,9 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, dem
         else:
             await step(_t("Leitura das plantas por IA e levantamento do modelo", "Lecture des plans par IA et relevé du modèle"))
             rd = await leitura.read_building(docs, hypotheses, country, llm=llm, decide_alone=decide_alone)
+        if not rd["ok"] and rd.get("failed"):
+            await step(_t("Falhou", "Échec"), status="failed", error=rd["failed"][:1200], anomalies=_jsonable(rd["anomalies"]))
+            return
         if not rd["ok"]:
             await step(_t("Perguntas ao utilizador", "Questions à l'utilisateur"), status="questions", questions=rd["questions"],
                        anomalies=_jsonable(rd["anomalies"]), decisions=rd.get("decisions"), model=rd.get("model"))
@@ -176,6 +179,8 @@ async def _read_job(db, uid, job_id, cid=None):
     q = {"user_id": uid}
     proj = {"_id": 0, "model": 0}
     job = await db.edificio_jobs.find_one({**q, "job_id": job_id}, proj) if job_id else None
+    if job_id and not job:
+        return {"error": _t(f"Estudo {job_id} não encontrado para esta conta.", f"Étude {job_id} introuvable pour ce compte."), "status": "failed"}
     if not job and cid:
         job = await db.edificio_jobs.find_one({**q, "conversation_id": cid}, proj, sort=[("created_at", -1)])
     if not job:

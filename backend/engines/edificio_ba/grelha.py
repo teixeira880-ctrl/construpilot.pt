@@ -485,6 +485,8 @@ def panels(S: Spec, segs: list[dict], garage=False) -> list[dict]:
         cells = lab == rid
         if cells.sum() * STEP * STEP < 1.0:
             continue
+        ri, rj = np.nonzero(cells)
+        region = (R.x0 + ri.min() * STEP, R.y0 + rj.min() * STEP, R.x0 + (ri.max() + 1) * STEP, R.y0 + (rj.max() + 1) * STEP)
         for (i0, j0, i1, j1) in _decompose(cells):
             part = cells[i0:i1, j0:j1]
             if part.sum() * STEP * STEP < 0.8 or min(i1 - i0, j1 - j0) * STEP < 0.6:
@@ -496,7 +498,8 @@ def panels(S: Spec, segs: list[dict], garage=False) -> list[dict]:
             # alargar até ao eixo dos apoios (metade da largura da barreira)
             x0, y0, x1, y1 = round(x0 - 0.06, 2), round(y0 - 0.06, 2), round(x1 + 0.06, 2), round(y1 + 0.06, 2)
             edges = {s: _edge_type(R, lab, rid, barrier, i0, j0, i1, j1, s, slab_mask) for s in ("x0", "x1", "y0", "y1")}
-            out.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "edges": edges, "area": round(float(part.sum()) * STEP * STEP, 2)})
+            out.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "edges": edges, "area": round(float(part.sum()) * STEP * STEP, 2),
+                        "region": tuple(round(v, 2) for v in region)})
     out.sort(key=lambda p: (round(p["y0"] / 2), p["x0"]))
     pre = "LG" if garage else "L"
     for k, p in enumerate(out):
@@ -555,8 +558,15 @@ def _dist_grid(X, Y, e):
 
 
 def _nearest(X, Y, els):
-    D = np.stack([_dist_grid(X, Y, e) for e in els])
-    return np.argmin(D, axis=0)
+    """Índice do elemento mais próximo em cada ponto (argmin incremental : memória O(grelha), não O(grelha × elementos))."""
+    best = np.full(np.shape(X), np.inf)
+    idx = np.zeros(np.shape(X), dtype=np.int32)
+    for k, e in enumerate(els):
+        d = _dist_grid(X, Y, e)
+        m = d < best
+        best = np.where(m, d, best)
+        idx = np.where(m, k, idx)
+    return idx
 
 
 def tributary(S: Spec, step=0.10) -> tuple[list[dict], dict]:

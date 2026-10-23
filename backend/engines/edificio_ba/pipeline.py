@@ -53,6 +53,9 @@ def calcular(S: modelo.Spec, use_fem: bool = True) -> dict:
     R["rows"] = ES.load_takedown(S, trib)
     R["cols"] = ES.size_columns(S, R["rows"])
     R["beams"] = ES.beams(S, segs, pans)
+    gsegs = [{"name": g["id"], "line": g["id"], "a": g["a"], "b": g["b"], "L": round(((g["a"][0] - g["b"][0]) ** 2 + (g["a"][1] - g["b"][1]) ** 2) ** 0.5, 2),
+              "facade": None, "cont": False} for g in R["gbeams"]]
+    R["gbeam_design"] = ES.beams(S, gsegs, gpans, garden=True) if gsegs else []
     R["seis"] = ES.seismic(S, R["rows"])
     R["fem"] = None
     if use_fem and R["seis"].get("ok") and R["seis"].get("required") and fem3d.available():
@@ -68,7 +71,7 @@ def calcular(S: modelo.Spec, use_fem: bool = True) -> dict:
     R["bwalls"] = ES.basement_walls(S) if S.basement else []
     R["foots"] = ES.footings(S, R["cols"])
     R["rafts"] = ES.rafts(S, R["seis"], R["rows"]) if R["seis"].get("ok") else []
-    R["fnd"], R["foots"] = ES.merge_foundations(R["rafts"], R["foots"])
+    R["fnd"], R["foots"] = ES.merge_foundations(R["rafts"], R["foots"], S.soil["sigma_rd"])
     R["anomalies"] += _checks(S, R)
     return R
 
@@ -95,6 +98,44 @@ def _checks(S, R) -> list[dict]:
     elif R["seis"].get("required") and not R["seis"]["reg"]["ok"]:
         A.append({"level": "aviso", "code": "TORSION", "message": S.t("Regularidade em planta não verificada (torção) : rever a posição das paredes.",
                                                                       "Régularité en plan non vérifiée (torsion) : revoir la position des voiles.")})
+    s = R["seis"]
+    if s.get("ok"):
+        dsrc = s.get("drift_fem") or s["drift"]
+        for d, v in dsrc.items():
+            if v["nu_dr_mm"] > v["lim_mm"]:
+                A.append({"level": BLOCK, "code": "DRIFT", "message": S.t(
+                    f"Deriva entre pisos {d} : ν·d_r = {v['nu_dr_mm']:.1f} mm > {v['lim_mm']:.0f} mm — aumentar a rigidez (paredes / núcleos).",
+                    f"Déplacement entre niveaux {d} : ν·d_r = {v['nu_dr_mm']:.1f} mm > {v['lim_mm']:.0f} mm — rigidifier (voiles / noyaux).")})
+        for dsg in s["cores"] + s["walls"]:
+            if s.get("required") and dsg["nu_sis"] > 0.40:
+                A.append({"level": BLOCK, "code": "WALL-NU", "message": S.t(
+                    f"{dsg['id']} : esforço normal reduzido sísmico ν_d = {dsg['nu_sis']:.2f} > 0,40 (EN 1998-1 §5.4.3.4.1) — aumentar a espessura.",
+                    f"{dsg['id']} : effort normal réduit sismique ν_d = {dsg['nu_sis']:.2f} > 0,40 (EN 1998-1 §5.4.3.4.1) — épaissir.")})
+            for d in ("X", "Y"):
+                v = dsg[d]
+                if v["Lw"] < 1.0:
+                    continue
+                if not v.get("shear_ok", True):
+                    A.append({"level": BLOCK, "code": "WALL-SHEAR", "message": S.t(
+                        f"{dsg['id']} ({d}) : 1,5·V_Ed = {1.5 * v['V']:.0f} kN > V_Rd,max = {v['VRdmax']:.0f} kN — aumentar a espessura ou acrescentar paredes.",
+                        f"{dsg['id']} ({d}) : 1,5·V_Ed = {1.5 * v['V']:.0f} kN > V_Rd,max = {v['VRdmax']:.0f} kN — épaissir ou ajouter des voiles.")})
+                if not v.get("rho_ok", True):
+                    A.append({"level": BLOCK, "code": "WALL-STEEL", "message": S.t(
+                        f"{dsg['id']} ({d}) : armadura de extremidade {v['As_ext_cm2']:.0f} cm² (ρ = {v['rho_end'] * 100:.1f} % > 4 %) — rever o contraventamento.",
+                        f"{dsg['id']} ({d}) : aciers d'about {v['As_ext_cm2']:.0f} cm² (ρ = {v['rho_end'] * 100:.1f} % > 4 %) — revoir le contreventement.")})
+    for c in R["cant"].values():
+        if not c.get("ok", True):
+            A.append({"level": "aviso", "code": "BALCONY", "message": S.t(
+                f"Varanda em consola {c['depth']:.2f} m não verificada com h = 0,20 (flecha {c['w_mm']:.0f} mm / esforço) : prever viga em consola ou rotura com apoio.",
+                f"Balcon en console {c['depth']:.2f} m non vérifié avec h = 0,20 (flèche {c['w_mm']:.0f} mm / effort) : prévoir une poutre console.")})
+    for b in R.get("gbeam_design") or []:
+        if not b["ok"]:
+            A.append({"level": "aviso", "code": "BEAM", "message": S.t(f"Viga {b['name']} (laje sobre a cave) não verificada.", f"Poutre {b['name']} (dalle sur sous-sol) non vérifiée.")})
+    for fz in R["fnd"]:
+        if not fz.get("ok", True):
+            A.append({"level": "aviso", "code": "RAFT-SIGMA", "message": S.t(
+                f"Ensoleiramento {fz['id']} : σ = {fz['sigma_grav']:.0f} kPa > σ_Rd — fundação a rever (estudo geotécnico).",
+                f"Radier {fz['id']} : σ = {fz['sigma_grav']:.0f} kPa > σ_Rd — fondations à revoir (étude G2).")})
     for r in R["rafts"]:
         if r.get("fail"):
             A.append({"level": "aviso", "code": "RAFT", "message": S.t(f"Ensoleiramento sob {r['id']} não encontrado até 5 m de aba : fundação indireta a estudar.",
@@ -115,7 +156,12 @@ def run(raw: dict, out_dir: str | Path | None = None, use_fem: bool = True, espe
     """Estudo completo. → {status, anomalies, decisions, files {kind: path}, summary, R}."""
     from . import desenhos, excel, medicoes, relatorios
     raw = copy.deepcopy(raw)
-    S = modelo.load(raw)
+    try:
+        S = modelo.load(raw)
+    except (KeyError, TypeError, ValueError, IndexError) as exc:
+        return {"status": "MODELO_INVALIDO", "files": {}, "decisions": [],
+                "anomalies": [{"level": BLOCK, "code": "INPUT", "message": f"Modelo incompleto ou mal formado ({type(exc).__name__}: {exc})",
+                               "fix": "completar pilares (x, y), núcleos (x0, y0, x1, y1) e paredes"}]}
     anomalies = modelo.validate(S)
     if any(a["level"] == BLOCK for a in anomalies):
         return {"status": "MODELO_INVALIDO", "anomalies": anomalies, "decisions": S.decisions, "files": {}}

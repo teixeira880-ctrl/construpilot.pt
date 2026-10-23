@@ -130,6 +130,11 @@ def medir(S: Spec, R: dict) -> dict:
         v = b["L"] * b["b_w"] * (b["h"] - S.slab_h) * nb
         add("5", "5.4", T(f"Viga {b['name']} ({int(b['b_w'] * 100)}×{int(b['h'] * 100)})", f"Poutre {b['name']} ({int(b['b_w'] * 100)}×{int(b['h'] * 100)})"),
             f"{f(b['L'])} × {f(b['b_w'])} × {f(b['h'] - S.slab_h)} × {nb}", nb, v, "m³", v, (b["b_w"] + 2 * (b["h"] - S.slab_h)) * b["L"] * nb, KG["viga"])
+    for b in R.get("gbeam_design") or []:
+        v = b["L"] * b["b_w"] * (b["h"] - S.slab_hg)
+        add("5", "5.4", T(f"Viga {b['name']} da laje sobre a cave ({int(b['b_w'] * 100)}×{int(b['h'] * 100)})",
+                          f"Poutre {b['name']} de la dalle sur sous-sol ({int(b['b_w'] * 100)}×{int(b['h'] * 100)})"),
+            f"{f(b['L'])} × {f(b['b_w'])} × {f(b['h'] - S.slab_hg)}", 1, v, "m³", v, (b["b_w"] + 2 * (b["h"] - S.slab_hg)) * b["L"], KG["viga"])
     n_st = sum(1 for c in S.cores if c["kind"] == "stair")
     if n_st:
         v = n_st * ns * 2 * 1.20 * (S.H * 1.2) * 0.18
