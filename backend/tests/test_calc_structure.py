@@ -98,3 +98,16 @@ def test_poteau_et_poinconnement():
     p = S.calculer({"element": "poinconnement", "d_m": 0.18, "c1_m": 0.3, "v_ed_kn": 400})
     assert p["details"]["asw_cm2_contour"] > 0
     assert any(c["ok"] is False for c in S.calculer({"element": "poinconnement", "d_m": 0.16, "c1_m": 0.25, "v_ed_kn": 900})["controles"])
+
+
+def test_escada_sem_solucao_devolve_nota_nao_conforme(monkeypatch):
+    """Motor de escadas mais restritivo (versão de prod): sem solução → nota não conforme, nunca exceção."""
+    import stair_engine
+
+    class _Opt:
+        def model_dump(self, mode=None):
+            return {"solutions": [], "excluded": [{"type": "straight", "variant": "standard", "reason": "x"}]}
+    monkeypatch.setattr(stair_engine, "compute_optimize", lambda *a, **k: _Opt())
+    r = S.calculer({"element": "escalier", "hauteur_a_monter_mm": 2750, "reculement_mm": 2500, "largeur_mm": 900})
+    assert r["controles"][0]["ok"] is False and r["details"]["comprimento_necessario_mm"] > 2500
+    assert S.note({"element": "escalier", "hauteur_a_monter_mm": 2750, "reculement_mm": 2500, "largeur_mm": 900})["pdf"][:4] == b"%PDF"
