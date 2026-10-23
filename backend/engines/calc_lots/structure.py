@@ -353,9 +353,22 @@ def escalier(p: dict) -> dict:
                 "hypotheses": ["escada reta com cobertor reduzido para caber no comprimento disponível (regra de Blondel respeitada)" + alt,
                                "altura livre sob a abertura da laje e comprimento da abertura (caixa de escada) a verificar; " + _HYP_ESCADA]}
     if not sols:
-        raise ValueError("nenhuma escada construível neste espaço: " + "; ".join(
-            f"{ESCADA_PT.get(e.get('type'), e.get('type'))} ({_variante(e.get('variant'))}) — {_pt(e.get('reason'), 'não construível')}"
-            for e in (opt.get("excluded") or [])[:3]))
+        # nenhuma solução construível: nota honesta (não conforme) com o comprimento necessário, em vez de um erro
+        motivos = [f"{ESCADA_PT.get(e.get('type'), e.get('type'))} ({_variante(e.get('variant'))}) — {_pt(e.get('reason'), 'não construível')}"
+                   for e in (opt.get("excluded") or [])[:4]]
+        n_ok = next((n for n in range(math.ceil(H / 180), math.ceil(H / 150) + 1) if 600 <= 2 * H / n + max(250, 630 - 2 * H / n) <= 640), math.ceil(H / 175))
+        h_ok = H / n_ok
+        g_ok = max(250, min(300, 630 - 2 * h_ok))
+        L_ok = (n_ok - 1) * g_ok
+        ctl = [{"ref": "Desenvolvimento em planta", "exigence": f"comprimento disponível ≤ {Lr:.0f} mm",
+                "valeur": f"nenhuma escada construível; escada reta confortável precisa de ≈ {L_ok:.0f} mm", "ok": False,
+                "note": "aumentar o comprimento disponível, prever uma escada de um quarto / meia volta com patamar ou rever a altura a vencer"},
+               {"ref": "Regra de Blondel (2h + g)", "exigence": "600 a 640 mm", "valeur": f"referência: {n_ok} espelhos de {h_ok:.0f} mm, cobertor {g_ok:.0f} mm",
+                "ok": None}]
+        return {"element": "Escada (não construível no espaço disponível)",
+                "section": f"altura a vencer {H:.0f} mm, comprimento disponível {Lr:.0f} mm, largura {kw['stair_width_mm']:.0f} mm",
+                "sollicitations": {}, "controles": ctl, "details": {"excluidas": motivos, "comprimento_necessario_mm": L_ok}, "quantites": {},
+                "hypotheses": ["soluções testadas pelo otimizador e excluídas: " + ("; ".join(motivos) or "nenhuma geometria possível"), _HYP_ESCADA]}
     best = next((s_ for s_ in sols if s_["type"] == "straight" and s_["result"]["stair_run_mm"] <= kw["available_length_mm"] + 1), sols[0])
     r = best["result"]
     ctl = [{"ref": "Regra de Blondel (2h + g)", "exigence": "600 a 640 mm (conforto 630)", "valeur": f"{r['blondel_value_mm']:.0f} mm (h {r['riser_height_mm']:.0f}, g {r['tread_depth_mm']:.0f})",
