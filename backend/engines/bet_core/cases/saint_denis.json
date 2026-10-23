@@ -1,0 +1,776 @@
+{
+ "_comment": "BuildingModel relevé sur un PC de maison individuelle (Saint-Denis 93, dossier traduit en portugais, cas réel anonymisé) avec l'étude G2 AVP de La Courneuve (93) prise comme exemple de sol. Repère : X = longueur 15,00 m de la façade rue Ouest (x = 0) vers la façade jardin Est (x = 15) ; Y = largeur 8,00 m de la façade Sud (y = 0) à la façade Nord en limite séparative (y = 8). Cotes moteur : 0,00 = sol fini RDC = +0,90 du PC (rue ±0,00 du PC = -0,90).",
+ "project": {
+  "name": "Construction d'une maison individuelle R+1 sur sous-sol, combles aménageables",
+  "address": "Saint-Denis (93) — cas réel anonymisé",
+  "client": "—",
+  "architect": "Maître d'œuvre (voir PC)",
+  "pc_ref": "PC01 à PC08 + AN01 du 15/09/2026 (traduction portugaise)",
+  "g2_ref": "G2 AVP R20671 (La Courneuve 93, avril 2025) utilisée comme exemple — à remplacer par la G2 de la parcelle",
+  "country": "FR",
+  "code_postal": "93200",
+  "seismic_zone": 1,
+  "snow_region": "A1",
+  "wind_region": 1,
+  "altitude_m": 40,
+  "level_offset_pc": 0.9
+ },
+ "user_hypotheses": {
+  "floor_system": "poutrelles_hourdis",
+  "masonry": "brique_isobric_20",
+  "basement_wall": "bloc_a_bancher_20",
+  "_source": "demande du client dans l'Assistant : « coffrage sous-sol parpaing banché, à partir du RDC brique iso brique, charpente traditionnelle tuiles HP10, combles aménageables, étude RE2020, pompe à chaleur réversible, chauffage au sol »"
+ },
+ "envelope": {
+  "length_x": 15.0,
+  "width_y": 8.0,
+  "wall_total_thickness": 0.35,
+  "wall_structural_thickness": 0.2,
+  "lining_thickness": 0.15,
+  "refends": [
+   {
+    "id": "RF1",
+    "y0": 3.7,
+    "y1": 3.9,
+    "x0": 0.2,
+    "x1": 14.8,
+    "label": "Refend porteur file C (y = 3,80)",
+    "gaps": [
+     {
+      "level": "SS",
+      "x0": 0.2,
+      "x1": 5.7,
+      "kind": "garage deux véhicules"
+     }
+    ]
+   }
+  ],
+  "_source": "AN01 : 15,00 × 8,00 hors tout ; refend 0,20 coté sur les plans RDC et R1 (4,10 | 0,20 | 3,70) ; épaisseur des murs recalculée par l'étude thermique"
+ },
+ "sides": {
+  "facade_sud": {
+   "axis": "y",
+   "pos": 0.0,
+   "type": "facade",
+   "label": "Façade Sud (latérale)"
+  },
+  "facade_nord": {
+   "axis": "y",
+   "pos": 8.0,
+   "type": "facade",
+   "label": "Façade Nord (en limite séparative, aveugle)",
+   "on_boundary": true,
+   "_source": "PC02 : façade sur la limite de propriété ; PC07 : aucune baie"
+  },
+  "facade_rue": {
+   "axis": "x",
+   "pos": 0.0,
+   "type": "facade",
+   "label": "Façade Ouest (rue)"
+  },
+  "facade_jardin": {
+   "axis": "x",
+   "pos": 15.0,
+   "type": "facade",
+   "label": "Façade Est (jardin)"
+  }
+ },
+ "levels": [
+  {
+   "id": "SS",
+   "name": "Sous-sol",
+   "floor_top": -2.4,
+   "slab_thickness": 0.2,
+   "ceiling_height": 2.2,
+   "use": "annexe_garage",
+   "_source": "PC04 coupe : cave -1,50 PC (= -2,40), HSP 2,20, dallage 20"
+  },
+  {
+   "id": "RDC",
+   "name": "Rez-de-chaussée",
+   "floor_top": 0.0,
+   "slab_thickness": 0.2,
+   "ceiling_height": 2.9,
+   "use": "habitation",
+   "_source": "PC04 coupe : RDC +0,90 PC, HSP 2,90, plancher 20"
+  },
+  {
+   "id": "R1",
+   "name": "Étage",
+   "floor_top": 3.1,
+   "slab_thickness": 0.2,
+   "ceiling_height": 2.8,
+   "use": "habitation",
+   "_source": "PC04 coupe : 1er étage +4,00 PC (= +3,10), HSP 2,80"
+  }
+ ],
+ "roof": {
+  "type": "deux_pans",
+  "ridge_axis": "x",
+  "ridge_y": 4.0,
+  "eaves_level": 6.1,
+  "ridge_level": 10.1,
+  "ceiling_level": 5.9,
+  "attic_floor": true,
+  "habitable_attic": false,
+  "gables": [
+   "facade_rue",
+   "facade_jardin"
+  ],
+  "eaves_sides": [
+   "facade_sud",
+   "facade_nord"
+  ],
+  "covering": "tuile_mecanique",
+  "dormers": [],
+  "roof_windows": [
+   {
+    "id": "FT1",
+    "side": "facade_sud",
+    "x0": 3.2,
+    "x1": 3.98,
+    "w": 0.78,
+    "h": 0.98
+   },
+   {
+    "id": "FT2",
+    "side": "facade_sud",
+    "x0": 11.0,
+    "x1": 11.78,
+    "w": 0.78,
+    "h": 0.98
+   },
+   {
+    "id": "FT3",
+    "side": "facade_nord",
+    "x0": 3.2,
+    "x1": 3.98,
+    "w": 0.78,
+    "h": 0.98
+   },
+   {
+    "id": "FT4",
+    "side": "facade_nord",
+    "x0": 11.0,
+    "x1": 11.78,
+    "w": 0.78,
+    "h": 0.98
+   }
+  ],
+  "_source": "PC04/PC05 : façade +7,00 PC (égout 6,10), faîtage +11,00 PC (10,10), pignons sur rue et jardin ; PC02/PC06 : 4 fenêtres de toit ; combles aménageables (demande du client), non aménagés au PC"
+ },
+ "openings": [
+  {
+   "id": "B-SS-R1",
+   "level": "SS",
+   "side": "facade_rue",
+   "from": 0.35,
+   "to": 2.75,
+   "sill": 0.0,
+   "height": 2.0,
+   "kind": "porte de garage sectionnelle 2,40 × 2,00"
+  },
+  {
+   "id": "B-RDC-R1",
+   "level": "RDC",
+   "side": "facade_rue",
+   "from": 0.8,
+   "to": 2.0,
+   "sill": 1.0,
+   "height": 1.2,
+   "kind": "fenêtre 1,20 × 1,20 (bureau)"
+  },
+  {
+   "id": "B-RDC-R2",
+   "level": "RDC",
+   "side": "facade_rue",
+   "from": 2.7,
+   "to": 3.7,
+   "sill": 0.0,
+   "height": 2.7,
+   "kind": "porte d'entrée 1,00 × 2,20 + imposte vitrée"
+  },
+  {
+   "id": "B-RDC-R3",
+   "level": "RDC",
+   "side": "facade_rue",
+   "from": 5.4,
+   "to": 7.5,
+   "sill": 0.0,
+   "height": 2.2,
+   "kind": "baie 2,10 × 2,20 (séjour)"
+  },
+  {
+   "id": "B-R1-R1",
+   "level": "R1",
+   "side": "facade_rue",
+   "from": 0.8,
+   "to": 2.0,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "fenêtre 1,20 × 1,20"
+  },
+  {
+   "id": "B-R1-R2",
+   "level": "R1",
+   "side": "facade_rue",
+   "from": 5.9,
+   "to": 7.1,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "fenêtre 1,20 × 1,20"
+  },
+  {
+   "id": "B-RDC-J1",
+   "level": "RDC",
+   "side": "facade_jardin",
+   "from": 2.3,
+   "to": 3.7,
+   "sill": 0.0,
+   "height": 2.2,
+   "kind": "porte-fenêtre 1,40 × 2,20 (chambre PMR)"
+  },
+  {
+   "id": "B-RDC-J2",
+   "level": "RDC",
+   "side": "facade_jardin",
+   "from": 3.9,
+   "to": 4.9,
+   "sill": 0.0,
+   "height": 2.2,
+   "kind": "porte de service 1,00 × 2,20 (cuisine)"
+  },
+  {
+   "id": "B-RDC-J3",
+   "level": "RDC",
+   "side": "facade_jardin",
+   "from": 5.15,
+   "to": 7.15,
+   "sill": 1.3,
+   "height": 0.7,
+   "kind": "fenêtre 2,00 × 0,70 (cuisine)"
+  },
+  {
+   "id": "B-R1-J1",
+   "level": "R1",
+   "side": "facade_jardin",
+   "from": 1.1,
+   "to": 2.3,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "fenêtre 1,20 × 1,20"
+  },
+  {
+   "id": "B-R1-J2",
+   "level": "R1",
+   "side": "facade_jardin",
+   "from": 5.5,
+   "to": 6.7,
+   "sill": 0.9,
+   "height": 1.2,
+   "kind": "fenêtre 1,20 × 1,20"
+  },
+  {
+   "id": "B-RDC-S1",
+   "level": "RDC",
+   "side": "facade_sud",
+   "from": 4.8,
+   "to": 5.6,
+   "sill": 1.9,
+   "height": 0.6,
+   "kind": "jour 0,80 × 0,60 (WC)"
+  },
+  {
+   "id": "B-RDC-S2",
+   "level": "RDC",
+   "side": "facade_sud",
+   "from": 6.5,
+   "to": 7.3,
+   "sill": 1.9,
+   "height": 3.7,
+   "kind": "baie verticale d'escalier 0,80 × 3,70 (vitrage opaque)"
+  },
+  {
+   "id": "B-RDC-S3",
+   "level": "RDC",
+   "side": "facade_sud",
+   "from": 8.95,
+   "to": 9.75,
+   "sill": 1.9,
+   "height": 0.6,
+   "kind": "jour 0,80 × 0,60 (salle d'eau)"
+  },
+  {
+   "id": "B-R1-S1",
+   "level": "R1",
+   "side": "facade_sud",
+   "from": 4.8,
+   "to": 5.6,
+   "sill": 1.9,
+   "height": 0.6,
+   "kind": "jour 0,80 × 0,60"
+  },
+  {
+   "id": "B-R1-S2",
+   "level": "R1",
+   "side": "facade_sud",
+   "from": 8.95,
+   "to": 9.75,
+   "sill": 1.9,
+   "height": 0.6,
+   "kind": "jour 0,80 × 0,60 (salle d'eau)"
+  }
+ ],
+ "stair": {
+  "x0": 5.85,
+  "x1": 8.4,
+  "y0": 0.35,
+  "y1": 3.7,
+  "type": "deux quarts tournants, emmarchement 1,00",
+  "flights": [
+   {
+    "from": "SS",
+    "to": "RDC"
+   },
+   {
+    "from": "RDC",
+    "to": "R1"
+   }
+  ],
+  "cage_walls": [
+   {
+    "x": 5.775,
+    "y0": 0.2,
+    "y1": 3.7,
+    "t": 0.15
+   },
+   {
+    "x": 8.475,
+    "y0": 0.2,
+    "y1": 3.7,
+    "t": 0.15
+   }
+  ],
+  "_source": "AN01 : cage 2,55 entre murs (5,35 | 0,20 | 2,55), sur toute la travée Sud"
+ },
+ "interior_walls": {
+  "SS": [
+   {
+    "x0": 5.85,
+    "y0": 3.7,
+    "x1": 14.65,
+    "y1": 3.9,
+    "kind": "refend porteur blocs à bancher 20"
+   },
+   {
+    "x0": 10.6,
+    "y0": 0.35,
+    "x1": 10.7,
+    "y1": 3.7,
+    "kind": "cloison maçonnée 10"
+   }
+  ],
+  "RDC": [
+   {
+    "x0": 0.35,
+    "y0": 3.7,
+    "x1": 14.65,
+    "y1": 3.9,
+    "kind": "refend porteur brique 20 (portes)"
+   },
+   {
+    "x0": 0.35,
+    "y0": 2.6,
+    "x1": 5.7,
+    "y1": 2.7,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 2.76,
+    "y0": 0.35,
+    "x1": 2.86,
+    "y1": 2.6,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 4.3,
+    "y0": 0.35,
+    "x1": 4.4,
+    "y1": 2.6,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 10.1,
+    "y0": 0.35,
+    "x1": 10.2,
+    "y1": 3.7,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 11.4,
+    "y0": 3.9,
+    "x1": 11.5,
+    "y1": 7.65,
+    "kind": "cloison 10 cuisine"
+   },
+   {
+    "x0": 10.06,
+    "y0": 5.5,
+    "x1": 10.16,
+    "y1": 7.65,
+    "kind": "cloison 10 cellier"
+   },
+   {
+    "x0": 10.16,
+    "y0": 5.5,
+    "x1": 11.4,
+    "y1": 5.6,
+    "kind": "cloison 10 cellier"
+   }
+  ],
+  "R1": [
+   {
+    "x0": 0.35,
+    "y0": 3.7,
+    "x1": 14.65,
+    "y1": 3.9,
+    "kind": "refend porteur brique 20 (portes)"
+   },
+   {
+    "x0": 5.76,
+    "y0": 3.9,
+    "x1": 5.86,
+    "y1": 7.65,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 5.86,
+    "y0": 6.1,
+    "x1": 9.3,
+    "y1": 6.2,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 7.9,
+    "y0": 6.2,
+    "x1": 8.0,
+    "y1": 7.65,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 9.2,
+    "y0": 6.2,
+    "x1": 9.3,
+    "y1": 7.65,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 9.98,
+    "y0": 3.9,
+    "x1": 10.08,
+    "y1": 7.65,
+    "kind": "cloison 10"
+   },
+   {
+    "x0": 10.2,
+    "y0": 0.35,
+    "x1": 10.3,
+    "y1": 3.7,
+    "kind": "cloison 10"
+   }
+  ]
+ },
+ "rooms": {
+  "SS": [
+   {
+    "name": "Garage",
+    "type": "garage",
+    "x0": 0.35,
+    "y0": 0.35,
+    "x1": 5.7,
+    "y1": 7.65
+   },
+   {
+    "name": "Buanderie / rangement",
+    "type": "buanderie",
+    "x0": 5.85,
+    "y0": 3.9,
+    "x1": 14.65,
+    "y1": 7.65,
+    "fixtures": [
+     "lave_linge"
+    ]
+   },
+   {
+    "name": "Local technique 1",
+    "type": "local_technique",
+    "x0": 8.55,
+    "y0": 0.35,
+    "x1": 10.6,
+    "y1": 3.7
+   },
+   {
+    "name": "Local technique 2",
+    "type": "local_technique",
+    "x0": 10.7,
+    "y0": 0.35,
+    "x1": 14.65,
+    "y1": 3.7
+   }
+  ],
+  "RDC": [
+   {
+    "name": "Bureau",
+    "type": "bureau",
+    "x0": 0.35,
+    "y0": 0.35,
+    "x1": 2.76,
+    "y1": 2.6
+   },
+   {
+    "name": "Rangement",
+    "type": "annexe_seche",
+    "x0": 2.86,
+    "y0": 0.35,
+    "x1": 4.3,
+    "y1": 2.6
+   },
+   {
+    "name": "WC",
+    "type": "wc",
+    "x0": 4.4,
+    "y0": 0.35,
+    "x1": 5.7,
+    "y1": 2.6,
+    "fixtures": [
+     "wc",
+     "lave_mains"
+    ]
+   },
+   {
+    "name": "Entrée",
+    "type": "entree",
+    "x0": 0.35,
+    "y0": 2.7,
+    "x1": 5.7,
+    "y1": 3.7
+   },
+   {
+    "name": "SdE PMR",
+    "type": "salle_eau",
+    "x0": 8.55,
+    "y0": 0.35,
+    "x1": 10.1,
+    "y1": 3.7,
+    "fixtures": [
+     "douche",
+     "lavabo",
+     "wc"
+    ]
+   },
+   {
+    "name": "Chambre PMR",
+    "type": "chambre",
+    "x0": 10.2,
+    "y0": 0.35,
+    "x1": 14.65,
+    "y1": 3.7
+   },
+   {
+    "name": "Séjour + SAM",
+    "type": "sejour",
+    "x0": 0.35,
+    "y0": 3.9,
+    "x1": 10.06,
+    "y1": 7.65
+   },
+   {
+    "name": "Dégagement",
+    "type": "circulation",
+    "x0": 10.16,
+    "y0": 3.9,
+    "x1": 11.4,
+    "y1": 5.5
+   },
+   {
+    "name": "Cellier",
+    "type": "annexe_seche",
+    "x0": 10.16,
+    "y0": 5.6,
+    "x1": 11.4,
+    "y1": 7.65
+   },
+   {
+    "name": "Cuisine",
+    "type": "cuisine",
+    "x0": 11.5,
+    "y0": 3.9,
+    "x1": 14.65,
+    "y1": 7.65,
+    "fixtures": [
+     "evier",
+     "lave_vaisselle"
+    ]
+   }
+  ],
+  "R1": [
+   {
+    "name": "Chambre parentale + dressing",
+    "type": "chambre",
+    "x0": 0.35,
+    "y0": 3.9,
+    "x1": 5.76,
+    "y1": 7.65
+   },
+   {
+    "name": "SdB parentale",
+    "type": "salle_eau",
+    "x0": 5.86,
+    "y0": 6.2,
+    "x1": 7.9,
+    "y1": 7.65,
+    "fixtures": [
+     "douche",
+     "lavabo",
+     "wc"
+    ]
+   },
+   {
+    "name": "Buanderie",
+    "type": "buanderie",
+    "x0": 8.0,
+    "y0": 6.2,
+    "x1": 9.2,
+    "y1": 7.65,
+    "fixtures": [
+     "lave_linge"
+    ]
+   },
+   {
+    "name": "Palier",
+    "type": "circulation",
+    "x0": 5.86,
+    "y0": 3.9,
+    "x1": 9.98,
+    "y1": 6.1
+   },
+   {
+    "name": "Chambre 1",
+    "type": "chambre",
+    "x0": 10.08,
+    "y0": 3.9,
+    "x1": 14.65,
+    "y1": 7.65
+   },
+   {
+    "name": "Chambre 3",
+    "type": "chambre",
+    "x0": 0.35,
+    "y0": 0.35,
+    "x1": 5.7,
+    "y1": 3.7
+   },
+   {
+    "name": "SdB",
+    "type": "salle_eau",
+    "x0": 8.55,
+    "y0": 0.35,
+    "x1": 10.2,
+    "y1": 3.7,
+    "fixtures": [
+     "douche",
+     "lavabo",
+     "wc"
+    ]
+   },
+   {
+    "name": "Chambre 2",
+    "type": "chambre",
+    "x0": 10.3,
+    "y0": 0.35,
+    "x1": 14.65,
+    "y1": 3.7
+   }
+  ]
+ },
+ "geotech": {
+  "source": "G2 AVP R20671 (La Courneuve, avril 2025) — prise comme EXEMPLE à la demande du client, à confirmer par la G2 de la parcelle",
+  "bearing_layer": "Alluvions anciennes sablo-graveleuses",
+  "foundation_base_depth_m": 2.9,
+  "anchorage_m": 0.3,
+  "q_els_kpa": 250,
+  "q_elu_kpa": 420,
+  "verified_widths_m": {
+   "filante": 0.6,
+   "isolee": 0.8
+  },
+  "min_width_examples_m": 0.5,
+  "soft_layer": "Marnes et masses du gypse molles vers 4,5 m (Em 5,6 MPa) — à vérifier sur la parcelle",
+  "settlement_mm_B060": 12.7,
+  "lowest_level": "Dallage du sous-sol sur GNT après purge des remblais",
+  "water": "Niveau d'eau non stabilisé vers 7 m/TN (G2 exemple)",
+  "retaining": {
+   "layers": [
+    {
+     "name": "Remblais",
+     "base_m": 1.8,
+     "gamma": 18,
+     "phi": 25,
+     "k0": 0.577
+    },
+    {
+     "name": "Alluvions anciennes",
+     "base_m": 3.5,
+     "gamma": 19,
+     "phi": 30,
+     "k0": 0.5
+    }
+   ],
+   "mitoyen_method": "Terrassement par passes alternées sous blindage le long de la limite Nord ; talus 2V/3H ailleurs",
+   "neighbour_surcharge_kpa": 20,
+   "neighbour_surcharge_note": "Valeur forfaitaire (fondations voisines inconnues) — à confirmer en G2 PRO",
+   "works_period": "mai à octobre"
+  },
+  "exposure_class_soil": "XC2 retenue en hypothèse",
+  "seismic": "Zone de sismicité 1 (très faible) : pas d'exigence parasismique pour une maison individuelle (catégorie II)"
+ },
+ "hypotheses": [
+  {
+   "field": "cotes",
+   "value": "0,00 moteur = +0,90 PC (sol fini RDC)",
+   "source": "cote"
+  },
+  {
+   "field": "HSP",
+   "value": "SS 2,20 / RDC 2,90 / R1 2,80",
+   "source": "cote"
+  },
+  {
+   "field": "planchers",
+   "value": "20 cm (PC)",
+   "source": "cote"
+  },
+  {
+   "field": "refend",
+   "value": "y 3,70–3,90 sur toute la longueur",
+   "source": "mesure"
+  },
+  {
+   "field": "allèges R1",
+   "value": "0,90",
+   "source": "mesure"
+  },
+  {
+   "field": "géotechnique",
+   "value": "G2 La Courneuve (exemple)",
+   "source": "hypothese"
+  }
+ ],
+ "_decisions": [
+  "Cotes du PC décalées de -0,90 : 0,00 = sol fini RDC (+0,90 PC), rue à -0,90.",
+  "Refend porteur file C (y = 3,80) continu des fondations au plancher des combles ; poutre BA au sous-sol au droit du garage.",
+  "Vide « sur RDC » du palier R1 non repris dans le plancher (à confirmer avec l'architecte : chevêtres à ajouter s'il est conservé).",
+  "Combles aménageables : plancher des combles porté (poutrelles-hourdis) et charpente traditionnelle à pannes sur pignons + fermes, sans fermette.",
+  "Étude de sol : G2 de La Courneuve utilisée comme exemple ; fondations à confirmer par la G2 de la parcelle."
+ ]
+}

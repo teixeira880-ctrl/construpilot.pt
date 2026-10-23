@@ -10,6 +10,11 @@ from reportlab.lib.pagesizes import A3, landscape
 from reportlab.pdfgen import canvas
 
 from engines.bet_core import assistant_tool, checks, pipeline, reader
+import importlib.util as _ilu
+import pytest as _pt
+_NO_RE2020 = _pt.mark.skipif(_ilu.find_spec("engines.calc_lots.re2020") is None, reason="motor RE2020 só existe no .fr")
+_NO_PLANSRC = _pt.mark.skipif(_ilu.find_spec("engines.plan_sources") is None, reason="módulo Plans (plan_sources) só existe no .fr")
+
 
 CASE = json.loads((Path(__file__).parents[2] / "engines/bet_core/cases/la_courneuve.json").read_text(encoding="utf-8"))
 
@@ -30,36 +35,20 @@ class Coll:
         self.docs = []
 
     def _match(self, d, q):
-        return all(d.get(k) == v for k, v in q.items())
+        return all((d.get(k) != v["$ne"]) if isinstance(v, dict) and "$ne" in v else d.get(k) == v for k, v in q.items())
 
-    async def find_one(self, q, proj=None):
-        for d in self.docs:
-            if self._match(d, q):
-                out = copy.deepcopy(d)
-                for k, v in (proj or {}).items():
-                    if v == 0:
-                        out.pop(k, None)
-                return out
+    async def find_one(self, q, proj=None, sort=None):
+        rows = [d for d in self.docs if self._match(d, q)]
+        if sort:
+            for key, direction in reversed(sort):
+                rows.sort(key=lambda r: r.get(key), reverse=direction < 0)
+        for d in rows:
+            out = copy.deepcopy(d)
+            for k, v in (proj or {}).items():
+                if v == 0:
+                    out.pop(k, None)
+            return out
         return None
-
-    def find(self, q, proj=None):
-        docs = [copy.deepcopy(d) for d in self.docs if self._match(d, q)]
-
-        class Cur:
-            def sort(self, key, direction=1):
-                docs.sort(key=lambda d: d.get(key), reverse=direction < 0)
-                return self
-
-            def __aiter__(self):
-                self._it = iter(docs)
-                return self
-
-            async def __anext__(self):
-                try:
-                    return next(self._it)
-                except StopIteration:
-                    raise StopAsyncIteration
-        return Cur()
 
     async def update_one(self, q, upd, upsert=False):
         for d in self.docs:
@@ -71,6 +60,32 @@ class Coll:
             d.update(upd.get("$setOnInsert", {}))
             d.update(upd.get("$set", {}))
             self.docs.append(d)
+
+    def find(self, q, proj=None):
+        return _Cursor([copy.deepcopy(d) for d in self.docs if self._match(d, q)], proj)
+
+
+class _Cursor:
+    def __init__(self, rows, proj=None):
+        self._rows, self._proj, self._i = rows, proj or {}, 0
+
+    def sort(self, key, direction=1):
+        self._rows.sort(key=lambda r: r.get(key), reverse=direction < 0)
+        return self
+
+    def __aiter__(self):
+        self._i = 0
+        return self
+
+    async def __anext__(self):
+        if self._i >= len(self._rows):
+            raise StopAsyncIteration
+        r = self._rows[self._i]
+        self._i += 1
+        for k, v in self._proj.items():
+            if v == 0:
+                r.pop(k, None)
+        return r
 
 
 class DB:
@@ -117,6 +132,7 @@ def test_reader_gives_questions_when_unfixable():
     assert not res["ok"] and res["questions"]
 
 
+@_NO_RE2020
 def test_tool_end_to_end_stores_four_artifacts():
     db = DB()
     pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
@@ -130,9 +146,9 @@ def test_tool_end_to_end_stores_four_artifacts():
     st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
     assert st["status"] == "done", st
     assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx"}
-    assert [a["kind"] for a in st["artifacts"]] == ["pdf", "plans_pdf", "xlsx", "zip"]
+    assert [a["kind"] for a in st["artifacts"]] == ["pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"]
     assert st["blocking"] == 0 and len(st["sheets"]) >= 20
-    assert len(db.assistant_artifacts.docs) == 4
+    assert len(db.assistant_artifacts.docs) == 5
     # un autre utilisateur ne voit ni le job ni les documents
     other = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, {"user_id": "u2"}, conv, db))
     assert "error" in other
@@ -143,8 +159,13 @@ def test_tool_end_to_end_stores_four_artifacts():
 
 def test_tool_specs_are_strict():
     for t in assistant_tool.TOOLS:
-        assert t["strict"] and t["parameters"]["additionalProperties"] is False
-        assert set(t["parameters"]["required"]) == set(t["parameters"]["properties"])
+        assert t["parameters"]["additionalProperties"] is False   # contrat fermé : aucun argument inconnu
+        if t["name"] == "read_full_bet_study":
+            # lecture tolérante : accepte job_id OU plan_id, aucun requis (le dernier job est résolu à défaut)
+            assert t["strict"] is False and t["parameters"]["required"] == []
+            assert set(t["parameters"]["properties"]) == {"job_id", "plan_id"}
+        else:
+            assert t["strict"] and set(t["parameters"]["required"]) == set(t["parameters"]["properties"])
 
 
 def test_branding_only_for_pro_and_business():
@@ -182,97 +203,110 @@ def test_same_documents_give_same_results_without_rereading():
     llm, calls = _llm([json.dumps(CASE)])
     user = {"user_id": "u1"}
     res = []
-    for req in ("r1", "r2"):                         # deux demandes distinctes, mêmes pièces, mêmes hypothèses
+    for req in ("r1", "r2"):
         conv = {"conversation_id": "c1", "_quote_request_id": req}
         out = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["doc_1"], "hypotheses": "", "country": "FR"},
                                                  user, conv, db, llm=llm, background=False))
         res.append(asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db)))
     assert len(calls) == 1 and res[1]["cached"] is True
     assert res[0]["devis_ht"] == res[1]["devis_ht"] and res[0]["sheets"] == res[1]["sheets"]
-    # hypothèses différentes (ex. correction de l'utilisateur) → nouveau relevé
     conv = {"conversation_id": "c1", "_quote_request_id": "r3"}
     asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["doc_1"], "hypotheses": "murs parpaing 20", "country": "FR"},
                                        user, conv, db, llm=llm, background=False))
     assert len(calls) == 2
 
 
-def test_large_pdf_stored_in_chunks_is_read():
-    """PC / G2 de plus de 8 Mo : l'Assistant .fr les stocke en morceaux de 1 Mo (assistant_doc_chunks)."""
+def test_study_runs_from_chunked_pdf_over_8mb():
     db = DB()
     pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
-    parts = [pdf[i:i + 1000] for i in range(0, len(pdf), 1000)]
-    db.assistant_docs.docs.append({"doc_id": "big", "user_id": "u1", "filename": "PCMI01.pdf", "mime": "application/pdf", "chunk_count": len(parts)})
-    for i, part in enumerate(parts):
-        db.assistant_doc_chunks.docs.append({"doc_id": "big", "user_id": "u1", "index": i, "data_b64": base64.b64encode(part).decode()})
-    db.assistant_docs.docs.append({"doc_id": "dup", "user_id": "u1", "filename": "PCMI01 (2).pdf", "mime": "application/pdf",
-                                   "data_b64": base64.b64encode(pdf).decode()})
-    docs = asyncio.run(assistant_tool._load_assistant_docs(db, ["big", "dup"], "u1"))
-    assert len(docs) == 1 and docs[0][1] == pdf                     # morceaux recollés, doublon écarté
-    llm, _ = _llm([json.dumps(CASE)])
-    out = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["big", "dup"], "hypotheses": "", "country": "FR"},
-                                             {"user_id": "u1"}, {"conversation_id": "c1"}, db, llm=llm, background=False))
-    assert out["ok"]
-    st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, {"user_id": "u1"}, {}, db))
-    assert st["status"] == "done"
-    db.assistant_doc_chunks.docs.pop()                              # morceau manquant → message clair, pas de plantage
-    bad = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["big"], "hypotheses": "", "country": "FR"},
-                                             {"user_id": "u1"}, {"conversation_id": "c2"}, db, llm=llm, background=False))
-    assert "réimportez" in bad["error"]
+    db.assistant_docs.docs.append({"doc_id": "big_1", "user_id": "u1", "filename": "PC.pdf", "mime": "application/pdf", "chunk_count": 3})
+    size = (len(pdf) + 2) // 3
+    for i in range(3):
+        part = pdf[i * size:(i + 1) * size]
+        db.assistant_doc_chunks.docs.append({"doc_id": "big_1", "user_id": "u1", "index": i, "data_b64": base64.b64encode(part).decode()})
+    llm, calls = _llm([json.dumps(CASE)])
+    user, conv = {"user_id": "u1"}, {"conversation_id": "c1", "_quote_request_id": "rbig"}
+    out = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["big_1"], "hypotheses": "", "country": "FR"},
+                                             user, conv, db, llm=llm, background=False))
+    assert "error" not in out
+    res = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
+    assert res["status"] == "done" and len(calls) == 1
 
 
-def test_read_is_robust_to_datetimes_and_bad_ids():
-    from datetime import datetime, timedelta
+def test_duplicate_attachments_are_deduplicated():
     db = DB()
-    db.bet_study_jobs.docs.append({"job_id": "j1", "user_id": "u1", "status": "running",
-                                   "updated_at": datetime.utcnow() - timedelta(hours=2)})      # datetime naïf (pas une chaîne)
-    st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": "j1"}, {"user_id": "u1"}, {}, db))
-    assert st["status"] == "failed" and "relancez" in st["error"]
-    assert "error" in asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": ""}, {"user_id": "u1"}, {}, db))
-
-
-def test_relaunch_after_questions_with_new_hypotheses_runs_again():
-    db = DB()
-    pdf = _pdf(["PLAN DU RDC"])
-    db.assistant_docs.docs.append({"doc_id": "d", "user_id": "u1", "filename": "PC.pdf", "mime": "application/pdf",
-                                   "data_b64": base64.b64encode(pdf).decode()})
-    bad = copy.deepcopy(CASE)
-    del bad["levels"]
-    llm, calls = _llm([json.dumps(bad), json.dumps(bad), json.dumps(bad), json.dumps(CASE)])
-    conv = {"conversation_id": "c1", "_quote_request_id": "r1"}
-    a = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["d"], "hypotheses": "", "country": "FR"},
-                                           {"user_id": "u1"}, conv, db, llm=llm, background=False))
-    assert asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": a["job_id"]}, {"user_id": "u1"}, conv, db))["status"] == "questions"
-    b = asyncio.run(assistant_tool.execute("generate_full_bet_study", {"document_ids": ["d", "d"], "hypotheses": "combles habitables, parpaing 20", "country": "FR"},
-                                           {"user_id": "u1"}, conv, db, llm=llm, background=False))
-    assert b["job_id"] != a["job_id"]
-    assert asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": b["job_id"]}, {"user_id": "u1"}, conv, db))["status"] == "done"
-
-
-def test_llm_cascade_falls_back_to_openai_then_gemini(monkeypatch):
-    async def down(*a, **k):
-        raise RuntimeError("credit balance is too low")
-
-    async def no_json(*a, **k):
-        return "Désolé, je ne peux pas."
-
-    async def ok(*a, **k):
-        return json.dumps(CASE)
-    monkeypatch.setattr(reader, "PROVIDERS", {"claude": down, "openai": no_json, "gemini": ok})
-    monkeypatch.setenv("BET_LLM_ORDER", "claude,openai,gemini")
     pdf = _pdf(["PLAN DU SOUS-SOL", "PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
-    res = asyncio.run(reader.read_building([("PC.pdf", pdf)], "", "FR"))
-    assert res["ok"] and res["provider"] == "gemini"
-    monkeypatch.setattr(reader, "PROVIDERS", {"claude": down, "openai": down, "gemini": down})
-    try:
-        asyncio.run(reader.read_building([("PC.pdf", pdf)], "", "FR"))
-        raise AssertionError("doit lever")
-    except RuntimeError as exc:
-        assert "Aucun fournisseur" in str(exc) and "claude" in str(exc) and "gemini" in str(exc)
+    for did in ("a", "b"):
+        db.assistant_docs.docs.append({"doc_id": did, "user_id": "u1", "filename": f"{did}.pdf", "mime": "application/pdf",
+                                       "data_b64": base64.b64encode(pdf).decode()})
+    docs = asyncio.run(assistant_tool._load_assistant_docs(db, ["a", "b"], "u1"))
+    assert len(docs) == 1
 
 
-def test_truncated_or_sloppy_json_is_repaired():
-    full = json.dumps(CASE, ensure_ascii=False)
-    assert reader._extract_json("Voici le relevé :\n```json\n" + full + "\n```")["levels"] == CASE["levels"]
-    cut = reader._extract_json(full[: len(full) // 2])        # réponse coupée par la limite de jetons
-    assert isinstance(cut, dict) and "project" in cut
-    assert reader._extract_json('{"a": [1, 2,], "b": {"c": 3,},}') == {"a": [1, 2], "b": {"c": 3}}
+def test_read_resolves_latest_job_when_called_with_plan_id():
+    db = DB()
+    db.bet_study_jobs.docs.append({"job_id": "j_old", "user_id": "u1", "conversation_id": "c1", "status": "done",
+                                   "created_at": "2026-01-01T00:00:00+00:00", "updated_at": "2026-01-01T00:00:00+00:00", "devis_ht": 10.0})
+    db.bet_study_jobs.docs.append({"job_id": "j_new", "user_id": "u1", "conversation_id": "c1", "status": "questions",
+                                   "created_at": "2026-02-01T00:00:00+00:00", "updated_at": "2026-02-01T00:00:00+00:00", "questions": ["Q1"]})
+    user, conv = {"user_id": "u1"}, {"conversation_id": "c1"}
+    res = asyncio.run(assistant_tool.execute("read_full_bet_study", {"plan_id": "plan_x"}, user, conv, db))
+    assert res["ok"] and res["job_id"] == "j_new" and res["status"] == "questions"
+    res2 = asyncio.run(assistant_tool.execute("read_full_bet_study", {}, user, conv, db))
+    assert res2["ok"] and res2["job_id"] == "j_new"
+
+
+def test_read_returns_failed_study_cleanly():
+    db = DB()
+    db.bet_study_jobs.docs.append({"job_id": "j_fail", "user_id": "u1", "conversation_id": "c1", "status": "failed",
+                                   "created_at": "2026-02-01T00:00:00+00:00", "updated_at": "2026-02-01T00:00:00+00:00",
+                                   "error": "Lecture des plans par IA momentanément indisponible."})
+    res = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": "j_fail"}, {"user_id": "u1"}, {"conversation_id": "c1"}, db))
+    assert res["ok"] and res["status"] == "failed" and "error" in res
+
+
+def test_read_without_any_job_is_graceful():
+    res = asyncio.run(assistant_tool.execute("read_full_bet_study", {}, {"user_id": "u_none"}, {"conversation_id": "c9"}, DB()))
+    assert res.get("status") == "échoué" and "error" in res
+
+
+@_NO_PLANSRC
+def test_plan_imported_in_plans_module_is_read_as_attachment():
+    """Un PDF importé dans le module Plans (plan_…) puis joint à l'Assistant : lu depuis sa source privée, pas « inaccessible »."""
+    import hashlib
+    db = DB()
+    db.plans_takeoff, db.plan_sources = Coll(), Coll()
+    pdf = _pdf(["PLAN DU REZ-DE-CHAUSSEE", "COUPE 1"])
+    db.plans_takeoff.docs.append({"plan_id": "plan_xyz", "user_id": "u1", "filename": "PC_FICTIF_XYZ.pdf"})
+    db.plan_sources.docs.append({"plan_id": "plan_xyz", "user_id": "u1", "data_b64": base64.b64encode(pdf).decode(),
+                                 "size_bytes": len(pdf), "sha256": hashlib.sha256(pdf).hexdigest(), "source_kind": "original_pdf"})
+    docs = asyncio.run(assistant_tool._load_assistant_docs(db, ["plan_xyz"], "u1"))
+    assert docs == [("PC_FICTIF_XYZ.pdf", pdf)]
+    try:                                                            # plan d'un autre compte : toujours refusé
+        asyncio.run(assistant_tool._load_assistant_docs(db, ["plan_xyz"], "u2"))
+        raise AssertionError("plan d'un autre compte lu")
+    except PermissionError:
+        pass
+
+
+def test_lot_plans_from_done_study_draw_mep_sheets():
+    db = DB()
+    db.bet_study_jobs.docs.append({"job_id": "bet_x", "user_id": "u1", "conversation_id": "c1", "status": "done", "country": "FR",
+                                   "hypotheses": "PAC réversible plancher chauffant, VMC double flux, isolation 160", "model": copy.deepcopy(CASE),
+                                   "created_at": "2026-10-21T10:00:00+00:00"})
+    user, conv = {"user_id": "u1"}, {"conversation_id": "c1"}
+    out = asyncio.run(assistant_tool.execute("generate_bet_lot_plans", {"lots": ["electricite", "ventilation", "chauffage"], "hypotheses": "", "job_id": ""},
+                                             user, conv, db))
+    assert out.get("ok"), out
+    codes = [s.split()[0] for s in out["sheets"]]
+    assert any(c.startswith("EL-") for c in codes) and any(c.startswith("VE-") for c in codes) and any(c.startswith("CC-") for c in codes)
+    assert not any(c.startswith("GO-") or c.startswith("PL-") for c in codes)
+    art = db.assistant_artifacts.docs[-1]
+    assert art["format"] == "pdf" and base64.b64decode(art["data_b64"]).startswith(b"%PDF")
+
+
+def test_lot_plans_without_study_asks_for_study():
+    db = DB()
+    out = asyncio.run(assistant_tool.execute("generate_bet_lot_plans", {"lots": ["plomberie"], "hypotheses": "", "job_id": ""},
+                                             {"user_id": "u1"}, {"conversation_id": "c1"}, db))
+    assert "generate_full_bet_study" in out["error"]

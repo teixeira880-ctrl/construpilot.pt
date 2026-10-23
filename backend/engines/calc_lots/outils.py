@@ -6,7 +6,8 @@ e guardar o PDF e o PNG como artefactos; PROGRESS_LABELS dá o texto de progress
 """
 from __future__ import annotations
 
-from . import accessibilite, aquecimento, couverture, instalacoes, isolamento, photovoltaique, redes, reh, structure
+from . import (accessibilite, aquecimento, couverture, instalacoes, isolamento, lotes_tecnicos, patio_pluviais, photovoltaique, piso_radiante, redes, reh,
+               solar_termico, structure)
 
 
 def _n(desc=None):
@@ -253,7 +254,91 @@ STRUCTURE_TOOL = _tool(
     "flecha, bambeamento), sapata (NP EN 1997-1 anexo D ou tensão admissível do estudo geotécnico), escada (regra de Blondel). "
     "Preenche só os campos úteis ao elemento, null nos outros. A validar pelo projetista de estruturas.", _STRUCT_PROPS)
 
-CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL]
+# 10. Especialidades técnicas encadeadas
+_PAR_LT = {"tipo": _enum(["parede", "envidracado", "porta", "pavimento", "cobertura"]), "area_m2": {"type": "number"},
+           "U": _n("W/(m².°C); null = U da parede isolada (se calculado) ou valor por defeito"), "lado": _enum(list(aquecimento.B)), "b": _n()}
+_DIV_LT = {"nome": _NS(), "tipo": {"type": "string", "enum": list(aquecimento.T_INT)}, "area_m2": {"type": "number"}, "pe_direito_m": _n(),
+           "theta_int": _n(), "paredes": _arr(_PAR_LT, desc="paredes, envidraçados, portas, pavimento e cobertura em contacto com o exterior / ENU"),
+           "pontes": _arr({"comprimento_m": {"type": "number"}, "psi": {"type": "number"}}),
+           "revestimento": _enum(list(piso_radiante.REVESTIMENTO_R), "revestimento de piso (piso radiante)"),
+           "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante_piso": _n("R do isolante sob o piso radiante")}
+_ISO_LT = {k: v for k, v in _ISO_PROPS.items() if k not in ("concelho", "nuts", "altitude_m", "theta_e", "zona_inverno", "regiao", "area_m2")}
+_EQ_LT = {"placa": _enum(["monofasica", "trifasica", "sem_placa"]), "forno": _B(), "maquina_lavar_roupa": _B(), "maquina_lavar_loica": _B(),
+          "maquina_secar": _B(), "termoacumulador": _B(), "unidades_climatizacao": _n(), "carregamento_ve_kw": _n()}
+_LT_PROPS = {
+    "concelho": _NS(), "nuts": _enum(list(reh.NUTS)), "altitude_m": _n(), "theta_e": _n("temperatura exterior de projeto imposta"),
+    "obra": _enum(["nova", "renovacao"]), "tipologia": _n("T0…T7 → número"), "tipo_habitacao": _enum(["moradia", "apartamento"]),
+    "divisoes": _arr(_DIV_LT, nullable=False),
+    "isolamento_paredes": _obj(_ISO_LT, "isolamento das paredes exteriores (null = não calcular; o U calculado substitui o U por defeito das paredes)"),
+    "estanquidade": _enum(list(aquecimento.INFILTRACAO)), "recuperacao_calor": _n(), "rph_min": _n(),
+    "emissores": _enum(list(aquecimento.EMISSORES), "null = piso radiante"), "ida_max": _n("ida máxima do piso radiante (°C, null = 45)"),
+    "gerador": _enum(["bomba_calor", "outro"]),
+    "bomba_calor": _obj({"p_nominal_kw": _n("A7/W35"), "p_theta_e_kw": _n(), "cop_theta_e": _n(), "alimentacao": _enum(["mono", "tri"])}),
+    "equipamentos": _obj(_EQ_LT, "equipamentos elétricos (a bomba de calor é acrescentada automaticamente)"),
+    "dispositivos": _arr({"tipo": {"type": "string", "enum": list(instalacoes.DISPOSITIVOS)}, "quantidade": _n()}, desc="null = deduzidos das divisões"),
+    "pressao_rede_kpa": _n(), "comprimento_alimentacao_m": _n(), "desnivel_m": _n(),
+    "solar_termico": _obj({"ocupantes": _n(), "regiao": _enum(["continente", "acores", "madeira"]), "irradiacao_kwh_m2": _n(),
+                           "sistema": _enum(list(solar_termico.ETA_SIST)),
+                           "coletor": _obj({"numero": _n(), "area_m2": _n("área unitária"), "eta0": _n(), "a1": _n(), "t_estagnacao_c": _n(), "p_max_bar": _n(),
+                                            "absorvedor": _NS(), "identicos": _B(), "certificado": _B()}),
+                           "deposito": _obj({"volume_l": _n(), "ua_w_k": _n(), "en12897": _B()})}, "null = sem solar térmico")}
+LOTES_TOOL = _tool(
+    "calcul_lotes_tecnicos",
+    "Calcula de uma só vez as especialidades técnicas de uma habitação (Portugal) e produz UMA nota de cálculo PDF: isolamento das paredes "
+    "(U, Umáx REH, Glaser), perdas de calor divisão a divisão (EN 12831-1), piso radiante (NP EN 1264: ida, passos, circuitos, caudais), bomba de "
+    "calor ar/água, eletricidade (RTIEBT, com o circuito da bomba de calor), canalização e drenagem (DR 23/95) e, opcionalmente, solar térmico. "
+    "Cada etapa reutiliza o resultado da anterior. null = valor por defeito assinalado como hipótese.", _LT_PROPS)
+
+# 11. Piso radiante
+_DIV_PR = {"nome": _NS(), "tipo": {"type": "string", "enum": list(piso_radiante.T_INT)}, "area_m2": {"type": "number"},
+           "phi_w": {"type": "number", "description": "perdas de calor da divisão (W)"}, "theta_int": _n(),
+           "revestimento": _enum(list(piso_radiante.REVESTIMENTO_R)), "r_revestimento": _n(), "exclusao_m2": _n("área sem tubos (móveis fixos)"),
+           "comprimento_max_m": _n(), "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante": _n(), "distancia_coletor_m": _n()}
+PISO_TOOL = _tool(
+    "calcul_piso_radiante",
+    "Dimensiona um piso radiante hidráulico (NP EN 1264) a partir das perdas de calor por divisão: temperatura de superfície, passo dos tubos, "
+    "temperatura de ida e retorno, caudais, circuitos ≤ 120 m, perdas de carga, coletores, isolante sob o piso, juntas. Nota PDF.",
+    {"divisoes": _arr(_DIV_PR, nullable=False), "sigma_k": _n("salto térmico ida-retorno (null = 5 K)"), "ida_max": _n("null = 45 °C")})
+
+# 12. Solar térmico
+_ST_PROPS = {
+    "tipologia": _n(), "ocupantes": _n(), "tipo_habitacao": _enum(["moradia", "apartamento"]), "consumo_l_dia_ocupante": _n(),
+    "regiao": _enum(["continente", "acores", "madeira"]), "irradiacao_kwh_m2": _n("no plano dos coletores (SolTerm)"),
+    "sistema": _enum(list(solar_termico.ETA_SIST)), "utilizacao": _enum(["aqs", "combinado"]),
+    "tipo_instalacao": _enum(["cheio", "autodrenante"]), "circuito": _enum(["indireto", "direto"]), "coletivo": _B(),
+    "coletor": _obj({"numero": _n(), "area_m2": _n("área unitária Ac"), "eta0": _n(), "a1": _n(), "t_estagnacao_c": _n(), "p_max_bar": _n(),
+                     "absorvedor": _NS(), "identicos": _B(), "certificado": _B("Solar Keymark / EN ISO 9806")}),
+    "absorvedor_existente": _NS(), "t_max_regulacao_c": _n(), "p_max_instalacao_bar": _n(),
+    "tubagem": _obj({"material": _enum(sorted(solar_termico.NOMES)), "t_max_c": _n(), "p_max_bar": _n()}),
+    "isolamento": _obj({"tipo": _enum(["epdm", "la_mineral", "outro"]), "exterior": _B(), "uv": _B()}),
+    "fluido": _obj({"anticongelante_pct": _n(), "atoxico": _B()}),
+    "permutador": _obj({"ua_w_k": _n(), "dp_mca": _n(), "material": _enum(["inox", "inox_titanio", "cobre", "outro"]), "ep_cobre_mm": _n(), "dupla_permuta": _B()}),
+    "deposito": _obj({"volume_l": _n(), "ua_w_k": _n(), "en12897": _B()}),
+    "regulacao": _obj({"ip_controlador": _n(), "ip_sondas": _n(), "ip_detetor": _n(), "tempo_detetor_s": _n(), "t_max_sonda_coletor_c": _n(),
+                       "t_max_sonda_deposito_c": _n()}),
+    "tarado_valvula_bar": _n(), "manometro_max_bar": _n(), "contador_classe": _n(), "vaso_t_max_c": _n(), "purgador_t_max_c": _n(), "purgador_isolado": _B(),
+    "parafusos": _obj({"diametro_mm": _n(), "inox": _B()}),
+    "cargas": _obj({"ensaio_pressao_pa": _n(), "ensaio_succao_pa": _n(), "pressao_pa": _n(), "succao_pa": _n()})}
+SOLAR_TOOL = _tool(
+    "verificar_solar_termico",
+    "Solar térmico com coletores envidraçados (AQS ou combinado): pré-dimensionamento indicativo (necessidades de AQS convenção REH, área e "
+    "acumulação sugeridas, fração solar) e verificação da escolha dos materiais a partir das fichas do fabricante (coletor, tubagens, isolamento, "
+    "vaso, permutador Δη < 10 %, depósito (UA) ≤ 0,16·√V, regulação, cargas). Nota PDF. O cálculo SCE faz-se com o SolTerm.", _ST_PROPS)
+
+# 13. Pátio rebaixado
+PATIO_TOOL = _tool(
+    "calcul_patio_pluvial",
+    "Drenagem das águas pluviais de um pátio rebaixado / pátio inglês abaixo do arruamento (Portugal): caudal (IDF DR 23/95 × coeficiente de risco), "
+    "ralos e coletor, estação elevatória com 2 bombas (caudal, AMT, potência), poço (volume útil), compressão com pescoço de cisne e válvula de "
+    "retenção, retenção em caso de avaria, muros em consola. Nota PDF com corte de princípio.",
+    {"area_m2": _n("área em planta do pátio"), "profundidade_m": _n("fundo do pátio sob o terreno"), "comprimento_m": _n(), "altura_fachadas_m": _n(),
+     "coberturas_descarregadas_m2": _n(), "coef_risco": _n("null = 1,5"), "regiao_pluviometrica": _enum(["A", "B", "C"]),
+     "periodo_retorno_anos": _n("null = 10"), "cota_soleira_descarga_m": _n(), "distancia_descarga_m": _n(), "descarga_infiltracao": _B(),
+     "arranques_h": _n(), "altura_pescoco_cisne_m": _n(), "comprimento_compressao_m": _n(), "altura_agua_admissivel_m": _n(),
+     "chuva_1h_10anos_mm": _n(), "chuva_1h_100anos_mm": _n(), "sobrecarga_kpa": _n()})
+
+CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
+              PATIO_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -266,6 +351,10 @@ PROGRESS_LABELS = {
     "calcul_couverture": "A calcular vento, neve e inclinação das telhas…",
     "verifier_accessibilite": "A verificar a acessibilidade (DL 163/2006)…",
     "calcul_structure": "A pré-dimensionar o elemento estrutural…",
+    "calcul_lotes_tecnicos": "A calcular as especialidades técnicas encadeadas (isolamento, aquecimento, piso radiante, instalações)…",
+    "calcul_piso_radiante": "A dimensionar o piso radiante (NP EN 1264)…",
+    "verificar_solar_termico": "A verificar a instalação solar térmica…",
+    "calcul_patio_pluvial": "A dimensionar a drenagem do pátio rebaixado…",
 }
 
 PROTOCOL_PT = (
@@ -275,6 +364,9 @@ PROTOCOL_PT = (
     "painéis solares fotovoltaicos (UPAC) usa calcul_photovoltaique; para caleiras, tubos de queda, fossa séptica ou ventilação usa calcul_redes; "
     "para vento, neve ou inclinação mínima de telhas usa calcul_couverture; para a acessibilidade (DL 163/2006) usa verifier_accessibilite; "
     "para pré-dimensionar uma viga de betão armado ou de madeira, um pilar, o punçoamento, uma laje, um lintel, uma sapata ou uma escada usa calcul_structure "
+    "; para todas as especialidades técnicas de uma habitação numa só nota (isolamento → perdas → piso radiante → bomba de calor → eletricidade → "
+    "canalização → solar térmico) usa calcul_lotes_tecnicos; só o piso radiante: calcul_piso_radiante; solar térmico (AQS, coletores, depósito): "
+    "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -457,4 +549,72 @@ def run(name: str, args: dict) -> dict:
         res += _hyp(o.get("hypotheses"))
         res.append("Pré-dimensionamento a validar pelo projetista de estruturas.")
         return _ret(o, res, {"element": el, "conforme": all(c["ok"] is not False for c in o["controles"]), "quantites": o.get("quantites")})
+    if name == "calcul_lotes_tecnicos":
+        eq = a.get("equipamentos")
+        if eq is not None and "placa" in eq:
+            eq["placa"] = {"monofasica": True, "trifasica": "tri", "sem_placa": False}[eq["placa"]]
+        o = lotes_tecnicos.note(a)
+        res = [o["sous_titre"]]
+        if "isolamento" in o:
+            res.append(f"Isolamento: {o['isolamento']['sistema_nome']}, U = {o['isolamento']['U']:.3f} W/(m².°C) (Umáx {o['isolamento']['umax']:g})")
+        if "aquecimento" in o:
+            p_ = o["aquecimento"]
+            res.append(f"Perdas: θe {p_['theta_e']:g} °C, total {p_['phi_total']:.0f} W ({p_['w_m2']:.0f} W/m²) — "
+                       + ", ".join(f"{r['nome']} {r['phi']:.0f} W" for r in p_["divisoes"]))
+        if "piso_radiante" in o:
+            pr = o["piso_radiante"]
+            res.append(f"Piso radiante: ida {pr['theta_ida']:.1f} °C, {pr['circuitos']} circuitos, {pr['coletores']} coletor(es), {pr['tubo_total_m']:.0f} m de tubo, "
+                       f"caudal {pr['caudal_total_lh']:.0f} L/h, apoio {pr['apoio_total_w']:.0f} W")
+        if "bomba_calor" in o:
+            b = o["bomba_calor"]
+            res.append(f"Bomba de calor: {b['p_nominal_kw']:g} kW (A7/W35) → {b['p_theta_e_kw']:.1f} kW a θe ({b['cobertura'] * 100:.0f} %), apoio {b['apoio_kw']:g} kW, "
+                       f"{b['p_absorvida_kw']:.1f} kW absorvidos")
+        if "eletricidade" in o:
+            e = o["eletricidade"]
+            res.append(f"Eletricidade: {e['tomadas']} tomadas, {e['pontos_luz']} pontos de luz, {len(e['circuitos'])} circuitos → contratar {e['potencia_contratada_kva']:g} kVA "
+                       f"({e['alimentacao']})")
+        if "canalizacao" in o:
+            k = o["canalizacao"]
+            res.append(f"Canalização: Qc {k['qc_l_s']:.2f} L/s, ramal {k['tubo_af']}, pressão {k['pressao_kpa']:.0f} kPa; tubo de queda Ø{k['tubo_queda_mm']}")
+        if "solar_termico" in o and o["solar_termico"]["dimensionamento"]:
+            d = o["solar_termico"]["dimensionamento"]
+            res.append(f"Solar térmico: {d['ocupantes']} ocupantes, Qa {d['Qa_kwh']:.0f} kWh/ano, área sugerida {d['area_sugerida_m2']:.1f} m²"
+                       + (f", fração solar {d['fracao_solar'] * 100:.0f} %" if d.get("fracao_solar") is not None else ""))
+        for k in lotes_tecnicos.LOTES:
+            if k in o and isinstance(o[k], dict):
+                res += _ctl(o[k].get("controles"))
+        res += _hyp(o["hipoteses"])
+        data = {"lotes": [k for k in lotes_tecnicos.LOTES if k in o]}
+        if "aquecimento" in o:
+            data["phi_total_w"] = o["aquecimento"]["phi_total"]
+        if "bomba_calor" in o:
+            data["p_nominal_kw"] = o["bomba_calor"]["p_nominal_kw"]
+        if "eletricidade" in o:
+            data["potencia_contratada_kva"] = o["eletricidade"]["potencia_contratada_kva"]
+        return _ret(o, res, data)
+    if name == "calcul_piso_radiante":
+        o = piso_radiante.note(a)
+        res = [o["titre"], f"Ida {o['theta_ida']:.1f} °C / retorno {o['theta_retorno_crit']:.1f} °C, {o['circuitos']} circuitos, {o['coletores']} coletor(es), "
+                           f"{o['tubo_total_m']:.0f} m de tubo, caudal {o['caudal_total_lh']:.0f} L/h, volume {o['volume_agua_l']:.0f} L, apoio {o['apoio_total_w']:.0f} W",
+               "Divisões: " + "; ".join(f"{r['nome']} {r['q']:.0f} W/m², θF {r['tf']:.1f} °C, passo {r['passo']} cm, {r['caudal_lh']:.0f} L/h" for r in o["divisoes"])]
+        res += _ctl(o["controles"]) + _hyp(o["hipoteses"])
+        return _ret(o, res, {"theta_ida": o["theta_ida"], "circuitos": o["circuitos"], "apoio_total_w": o["apoio_total_w"]})
+    if name == "verificar_solar_termico":
+        o = solar_termico.note(a)
+        res = [o["titre"] + " — " + o["sous_titre"]]
+        d = o["dimensionamento"]
+        if d:
+            res.append(f"AQS: {d['ocupantes']} ocupantes, {d['consumo_l_dia']:.0f} L/dia, Qa {d['Qa_kwh']:.0f} kWh/ano; área sugerida {d['area_sugerida_m2']:.1f} m², "
+                       f"acumulação {d['volume_sugerido_l'][0]:.0f}–{d['volume_sugerido_l'][1]:.0f} L"
+                       + (f"; produção {d['producao_kwh']:.0f} kWh/ano, fração solar {d['fracao_solar'] * 100:.0f} %" if d.get("producao_kwh") is not None else ""))
+        res += _ctl(o["controles"]) + _hyp(o["hipoteses"])
+        return _ret(o, res, {"nao_conformes": sum(1 for c in o["controles"] if c["ok"] is False), "a_verificar": sum(1 for c in o["controles"] if c["ok"] is None)})
+    if name == "calcul_patio_pluvial":
+        o = patio_pluviais.note(a)
+        res = [o["titre"], f"Caudal de projeto {o['Q']:.2f} L/s (I {o['I']:.0f} mm/h, região {o['regiao']}, T {o['T']} anos, área de cálculo {o['A_calc']:.1f} m²); solução: "
+                           + ("descarga gravítica" if o["solucao"] == "gravitica" else "estação elevatória"),
+               f"2 bombas {o['bomba_m3h']} m³/h a {o['AMT']:.1f} m c.a. (≈ {o['P_kW']:g} kW), compressão PVC DN {o['dn_imp']} ({o['v_imp']:.2f} m/s), poço {o['poco']} "
+               f"com {o['Vu_L']:.0f} L úteis; retenção em avaria {o['V_ret']:.1f} m³ (chuvada 1 h/10 anos {o['V10']:.1f} m³)"]
+        res += _ctl(o["controles"]) + _hyp(o["hipoteses"])
+        return _ret(o, res, {"Q_l_s": o["Q"], "bomba_m3h": o["bomba_m3h"], "AMT_m": o["AMT"]})
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")

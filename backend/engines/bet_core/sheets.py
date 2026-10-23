@@ -32,7 +32,20 @@ def fmt(v: float) -> str:
     return f"{v:.2f}".replace(".", ",")
 
 
+PLAN_SCALE = [50]                   # 1:50 ; 1:75 quand le bâtiment ne tient pas dans la zone de dessin (réglé par all_sheets)
+PLAN_SHIFT = [0.0]                  # recentrage vertical (m) des plans réduits
+
+
+def plan_scale(m: Model) -> int:
+    """Échelle des plans : 1:50 tant que la longueur + chaînes de cotes tient à gauche du cartouche (≈ 215 mm)."""
+    return 50 if (m.L + 3.6) * 1000 / 50 <= 222 and (m.W + 4.2) * 1000 / 50 <= 262 else 75
+
+
 def _new(code, title, scale=50, origin=(-1.75, -1.85), subtitle="", area=PLAN_AREA):
+    if scale == 50:
+        scale = PLAN_SCALE[0]
+        if scale != 50 and origin == (-1.75, -1.85):
+            origin = (origin[0], origin[1] - PLAN_SHIFT[0])
     sh = Sheet(code=code, title=title, scale=scale, origin=origin, subtitle=subtitle)
     sh.area_mm = area
     return sh
@@ -275,6 +288,17 @@ def go_level(m: Model, r: dict, lid: str, code: str, stacks: list[dict]) -> Shee
             cv.append((w["x"] - 0.10, W - 0.20))
         for (x, y) in cv:
             sh.rect("ACIER", x, y, x + 0.20, y + 0.20, lw=0.3, fill=(0.75, 0.1, 0.1))
+    for bm in r["lintels"].get("beams", []):
+        if bm["level"] != lid:
+            continue
+        rf = m.refend(bm["refend"])
+        sh.rect("ACIER", bm["x0"] - 0.10, rf["y0"] - (bm["b"] - rf["t"]) / 2, bm["x1"] + 0.10, rf["y1"] + (bm["b"] - rf["t"]) / 2,
+                lw=0.4, dash="dashed")
+        for x in bm["posts"]:
+            sh.rect("ACIER", x - 0.10, bm["y"] - 0.10, x + 0.10, bm["y"] + 0.10, lw=0.4, fill=(0.75, 0.1, 0.1))
+            sh.text("ACIER", (x + 0.18, bm["y"] - 0.35), "poteau BA 20×20 4HA12", size=1.2, bold=True)
+        sh.text("ACIER", ((bm["x0"] + bm["x1"]) / 2, bm["y"] + bm["b"] / 2 + 0.15),
+                f"{bm['id']} retombée {int(bm['b']*100)}×{int(bm['h']*100)} {bm['bottom']} — passage libre {fmt(bm['headroom'])}", size=1.3, anchor="c", bold=True)
     _reservations(sh, m, lid, stacks)
     notes = []
     if buried:
@@ -283,6 +307,8 @@ def go_level(m: Model, r: dict, lid: str, code: str, stacks: list[dict]) -> Shee
                  "Voiles de cage d'escalier BA 15 continus jusqu'au dernier niveau (portent les chevêtres des trémies).",
                  "Cloisons du sous-sol en blocs 20 non porteurs sur épaississement du dallage.",
                  f"Dallage BA 20 cm sur polyane + GNT 20 cm, dessus fini {lv.floor_top:+.2f}.".replace(".", ",")]
+        notes += [f"{bm['label']} : M_Ed = {bm['M_Ed']} kN.m, {bm['bottom']} inf. + {bm['top']} sup., {bm['stirrups']} ; poteaux sur semelles isolées (GO-01)."
+                  for bm in r["lintels"].get("beams", []) if bm["level"] == lid]
     else:
         ratio = max([c["ratio"] for c in r["masonry"]["checks"] if c["level"] == lid] or [0])
         notes = [f"Murs porteurs {SPEC.of(m)['brick']} joint mince, f_k = {r['masonry']['brick']['fk']} MPa (DoP à confirmer) : taux maxi {ratio*100:.0f} %.",
@@ -328,14 +354,59 @@ def go_foundations(m: Model, r: dict) -> Sheet:
         sh.rect("FOND", *rect, lw=0.4, fill=FOND_FILL)
     cage = items["cage"]
     yb_top = W - items[bearing_sides(m)[-1]]["B"] if bearing_sides(m) else W
+    yb_bot = items[bearing_sides(m)[0]]["B"] if bearing_sides(m) else 0.0
+
+    def cage_span(w):
+        """Semelle de cage : du voile jusqu'à la semelle porteuse la plus proche à chaque extrémité."""
+        lo, hi = w["y0"] - 0.30, w["y1"] + 0.30
+        if w["y0"] < 0.6:
+            lo = yb_bot
+        if w["y1"] > W - 0.6:
+            hi = yb_top
+        for rf in m.refends:
+            it = items.get(rf["id"])
+            yc = (rf["y0"] + rf["y1"]) / 2
+            if it and abs(w["y1"] - rf["y0"]) < 0.6:
+                hi = yc - it["B"] / 2
+            if it and abs(w["y0"] - rf["y1"]) < 0.6:
+                lo = yc + it["B"] / 2
+        return lo, hi
     for w in m.stair["cage_walls"]:
-        sh.rect("FOND", w["x"] - cage["B"] / 2, w["y0"] - 0.30, w["x"] + cage["B"] / 2, yb_top, lw=0.4, fill=FOND_FILL)
+        lo, hi = cage_span(w)
+        sh.rect("FOND", w["x"] - cage["B"] / 2, lo, w["x"] + cage["B"] / 2, hi, lw=0.4, fill=FOND_FILL)
+    # refends : semelle filante centrée (hors interruptions au niveau bas) + semelles isolées sous les appuis de poutre
+    low = m.levels[0].id
+    for rf in m.refends:
+        it = items.get(rf["id"])
+        if not it:
+            continue
+        yc = (rf["y0"] + rf["y1"]) / 2
+        segs, x = [], rf["x0"]
+        for g in sorted((g for g in rf["gaps"] if g.get("level") == low), key=lambda g: g["x0"]):
+            if g["x0"] > x:
+                segs.append((x, g["x0"]))
+            x = max(x, g["x1"])
+        if x < rf["x1"]:
+            segs.append((x, rf["x1"]))
+        for a_, b_ in segs:
+            sh.rect("FOND", a_, yc - it["B"] / 2, b_, yc + it["B"] / 2, lw=0.4, fill=FOND_FILL)
+            sh.rect("BA", a_, rf["y0"], b_, rf["y1"], lw=0.3, fill=BA_FILL)
+        if segs:
+            a_, b_ = max(segs, key=lambda ab: ab[1] - ab[0])
+            sh.text("FOND", ((a_ + b_) / 2, yc + it["B"] / 2 + 0.12),
+                    f"SF {rf['id']} — B {fmt(it['B'])} × h {fmt(it['h'])} — {it['transversal']} + {it['longitudinal']}", size=1.5, anchor="c", bold=True)
+            sh.chain([yc - it["B"] / 2, rf["y0"], rf["y1"], yc + it["B"] / 2], "y", b_ - 0.6, size=1.2)
+    for pd in r["foundations"].get("pads", []):
+        B = pd["B"]
+        sh.rect("FOND", pd["x"] - B / 2, pd["y"] - B / 2, pd["x"] + B / 2, pd["y"] + B / 2, lw=0.5, fill=(0.75, 0.90, 0.80))
+        sh.rect("BA", pd["x"] - 0.10, pd["y"] - 0.10, pd["x"] + 0.10, pd["y"] + 0.10, lw=0.3, fill=(0.75, 0.1, 0.1))
+        sh.text("FOND", (pd["x"], pd["y"] - B / 2 - 0.20), f"{pd['id'].replace('SI-PO-', 'SI-')} {fmt(B)}×{fmt(B)}×{fmt(pd['h'])} {pd['steel']}", size=1.1, anchor="c", bold=True)
     # voiles / murs au-dessus
     for side in m.raw["sides"]:
         axis, pos, a0, a1, out = _side_geom(m, side)
         sh.rect("BA", *_wall_rect(axis, pos, a0, a1, m.t_str), lw=0.3, fill=BA_FILL)
     for w in m.stair["cage_walls"]:
-        sh.rect("BA", w["x"] - w["t"] / 2, w["y0"], w["x"] + w["t"] / 2, W - m.t_str, lw=0.3, fill=BA_FILL)
+        sh.rect("BA", w["x"] - w["t"] / 2, w["y0"], w["x"] + w["t"] / 2, w["y1"], lw=0.3, fill=BA_FILL)
     _axes(sh, m)
     # repères et cotes de chaque semelle
     for k, (side, rect, it) in enumerate(rects, 1):
@@ -350,7 +421,8 @@ def go_foundations(m: Model, r: dict) -> Sheet:
             sh.text("FOND", ((x0 + x1) / 2 + 0.06, (y0 + y1) / 2), tag, size=1.5, anchor="c", rot=90, bold=True)
             sh.chain([x0, x1] if it["excentric"] else [x0, pos, pos + m.t_str, x1], "x", -0.45, size=1.4)
     for w in m.stair["cage_walls"]:
-        sh.text("FOND", (w["x"] + 0.06, (w["y0"] + yb_top) / 2), f"SF cage B {fmt(cage['B'])} × h {fmt(cage['h'])}", size=1.3, anchor="c", rot=90, bold=True)
+        lo, hi = cage_span(w)
+        sh.text("FOND", (w["x"] + 0.06, (lo + hi) / 2), f"SF cage B {fmt(cage['B'])} × h {fmt(cage['h'])}", size=1.3, anchor="c", rot=90, bold=True)
     sh.chain([0.0] + sorted(v for w in m.stair["cage_walls"] for v in (w["x"] - cage["B"] / 2, w["x"] + cage["B"] / 2)) + [L], "x", W + 0.45, size=1.4)
     axes_x = [0.0, m.t_str / 2] + [w["x"] for w in m.stair["cage_walls"]] + [L - m.t_str / 2, L]
     sh.chain(axes_x, "x", -0.85, size=1.5)
@@ -359,7 +431,8 @@ def go_foundations(m: Model, r: dict) -> Sheet:
     sh.chain([0.0, m.t_str / 2, W - m.t_str / 2, W], "y", L + 0.85, size=1.5)
     sh.dim((L + 1.20, 0), (L + 1.20, W), 0, size=2.0)
     cw = m.stair["cage_walls"][0]
-    sh.chain([0.0, cw["y0"] - 0.30, yb_top, W], "y", cw["x"] - cage["B"] / 2 - 0.35, size=1.4)
+    lo, hi = cage_span(cw)
+    sh.chain(sorted({0.0, round(lo, 3), round(hi, 3), W}), "y", cw["x"] - cage["B"] / 2 - 0.35, size=1.4)
     for z, lab, p in ((zb, "arase inf. semelles", (m.t_tot + 0.8, W / 2 + 0.6)), (zb + 0.35, "arase sup. semelles", (m.t_tot + 0.8, W / 2 - 0.2)),
                       (m.levels[0].floor_top, "fini dallage", (m.t_tot + 0.8, W / 2 - 1.0))):
         sh.level_mark(p, z, lab)
@@ -395,55 +468,87 @@ def go_floor(m: Model, r: dict, slab: dict, code: str, stacks: list[dict]) -> Sh
     for w in s["cage_walls"]:
         sh.rect("BA", w["x"] - w["t"] / 2, w["y0"], w["x"] + w["t"] / 2, w["y1"], lw=0.3, fill=BA_FILL)
     sh.rect("ACIER", 0.03, 0.03, L - 0.03, W - 0.03, lw=0.4, dash="dashed")
+    from .structure import trimmer_y
+    attic = slab.get("attic")
+    ty = None if attic else trimmer_y(m)
+    stair_bay = None if attic else next(((a_, b_) for a_, b_ in m.bays if a_ - 0.06 <= s["y0"] < b_), None)
+    full_bay = (not attic) and stair_bay is not None and ty is None
+    for rf in m.refends:
+        sh.rect("BRIQUE", rf["x0"], rf["y0"], rf["x1"], rf["y1"], lw=0.4, fill=BRICK_FILL, hatch="brique")
+        sh.text("BRIQUE", (rf["x1"] - 1.2, rf["y1"] + 0.10), f"{rf['id']} refend porteur", size=1.3, bold=True)
     xs, n_full, n_cut = [], 0, 0
     x = ts + 0.30
     while x < L - ts - 0.05:
-        in_trem = s["x0"] - 0.02 < x < s["x1"] + 0.02
+        in_trem = (not attic) and s["x0"] - 0.02 < x < s["x1"] + 0.02
         xs.append((x, in_trem))
-        y_top = s["y0"] - 0.20 if in_trem else W - ts + 0.08
-        for dx in ((-0.03, 0.03) if slab["twin"] else (0.0,)):
-            sh.line("PLANCHER", (x + dx, ts - 0.08), (x + dx, y_top), lw=0.35)
+        for (ya, yb) in m.bays:
+            lo, hi = ya - 0.08, yb + 0.08
+            if in_trem and (ya, yb) == stair_bay:
+                if full_bay:
+                    continue
+                if ty is not None and ty <= s["y0"] + 1e-6:        # chevêtre côté bas de la trémie
+                    hi = ty - 0.20
+                else:
+                    lo = (ty or s["y1"]) + 0.20
+            for dx in ((-0.03, 0.03) if slab["twin"] else (0.0,)):
+                sh.line("PLANCHER", (x + dx, lo), (x + dx, hi), lw=0.35)
         if in_trem:
             n_cut += 1
         else:
             n_full += 1
         x += 0.60
-    sh.rect("BA", s["x0"] - 0.075, s["y0"] - 0.20, s["x1"] + 0.075, s["y0"], lw=0.4, fill=(0.75, 0.75, 0.78))
-    sh.rect("COTE", s["x0"], s["y0"], s["x1"], s["y1"], lw=0.3)
-    sh.line("COTE", (s["x0"], s["y0"]), (s["x1"], s["y1"]), lw=0.2)
-    sh.line("COTE", (s["x0"], s["y1"]), (s["x1"], s["y0"]), lw=0.2)
-    sh.text("TEXTE", ((s["x0"] + s["x1"]) / 2, s["y0"] + 0.95), "TRÉMIE", size=1.9, anchor="c", bold=True)
-    sh.text("TEXTE", ((s["x0"] + s["x1"]) / 2, s["y0"] + 0.65), f"{fmt(s['x1']-s['x0'])} × {fmt(s['y1']-s['y0'])}", size=1.7, anchor="c")
-    sh.rect("COTE", s["x0"] - 1.9, s["y0"] - 0.62, s["x1"] + 1.9, s["y0"] - 0.28, lw=0.1, fill=(1, 1, 1))
-    sh.text("ACIER", ((s["x0"] + s["x1"]) / 2, s["y0"] - 0.50), "Chevêtre BA 20×30 : 3HA12 inf. + 2HA10 sup., cadres HA6 e=15, sur voiles de cage", size=1.4, anchor="c")
-    # cotes : entraxes, trémie, rives
+    if not attic:
+        if ty is not None:
+            yy = ty - 0.20 if ty <= s["y0"] + 1e-6 else ty
+            sh.rect("BA", s["x0"] - 0.075, yy, s["x1"] + 0.075, yy + 0.20, lw=0.4, fill=(0.75, 0.75, 0.78))
+        sh.rect("COTE", s["x0"], s["y0"], s["x1"], s["y1"], lw=0.3)
+        sh.line("COTE", (s["x0"], s["y0"]), (s["x1"], s["y1"]), lw=0.2)
+        sh.line("COTE", (s["x0"], s["y1"]), (s["x1"], s["y0"]), lw=0.2)
+        sh.text("TEXTE", ((s["x0"] + s["x1"]) / 2, (s["y0"] + s["y1"]) / 2 + 0.30), "TRÉMIE", size=1.9, anchor="c", bold=True)
+        sh.text("TEXTE", ((s["x0"] + s["x1"]) / 2, (s["y0"] + s["y1"]) / 2), f"{fmt(s['x1']-s['x0'])} × {fmt(s['y1']-s['y0'])}", size=1.7, anchor="c")
+        if ty is not None:
+            yt = (ty - 0.50) if ty <= s["y0"] + 1e-6 else ty + 0.42
+            sh.rect("COTE", s["x0"] - 1.9, yt - 0.12, s["x1"] + 1.9, yt + 0.22, lw=0.1, fill=(1, 1, 1))
+            sh.text("ACIER", ((s["x0"] + s["x1"]) / 2, yt), "Chevêtre BA 20×30 : 3HA12 inf. + 2HA10 sup., cadres HA6 e=15, sur voiles de cage", size=1.4, anchor="c")
+        else:
+            sh.text("ACIER", ((s["x0"] + s["x1"]) / 2, (s["y0"] + s["y1"]) / 2 - 0.35), "trémie sur toute la travée : pas de chevêtre", size=1.2, anchor="c")
+    # cotes : entraxes, trémie, rives, travées
     sh.chain([0.0, ts] + [round(v, 3) for v, _ in xs] + [L - ts, L], "x", -0.45, size=1.15)
     sh.chain([0.0, s["x0"], s["x1"], L], "x", -0.80, size=1.5)
     sh.dim((0, -1.15), (L, -1.15), 0, size=2.0)
-    sh.chain([0.0, ts, s["y0"] - 0.20, s["y0"], s["y1"], W - ts, W], "y", L + 0.45, size=1.5)
-    sh.dim((L + 0.85, ts), (L + 0.85, W - ts), 0, text=f"portée libre {fmt(m.clear_span_y)}")
+    ych = [0.0, ts] + [v for rf in m.refends for v in (rf["y0"], rf["y1"])] + ([] if attic else [s["y0"], s["y1"]]) + [W - ts, W]
+    sh.chain(sorted(set(round(v, 3) for v in ych)), "y", L + 0.45, size=1.5)
+    for ya, yb in m.bays:
+        sh.dim((L + 0.85, ya), (L + 0.85, yb), 0, text=f"portée libre {fmt(yb - ya)}")
     sh.dim((L + 1.15, 0), (L + 1.15, W), 0, size=2.0)
     _axes(sh, m)
     _reservations(sh, m, "", stacks)
-    sh.rect("PLANCHER", 0.9, 2.55, 4.7, 4.75, lw=0.3, fill=(1, 1, 1))
+    big = max(m.bays, key=lambda ab: ab[1] - ab[0])
+    bx0 = 0.9 if s["x0"] > 5.0 or attic else s["x1"] + 0.6
+    by0 = big[0] + 0.25 if m.refends else 2.55
+    sh.rect("PLANCHER", bx0, by0, bx0 + 3.8, by0 + 2.2, lw=0.3, fill=(1, 1, 1))
+    n_bay = " / ".join(fmt(b_ - a_ + 0.10) for a_, b_ in m.bays)
     for i, t in enumerate([slab["system"] + (" — poutrelles jumelées" if slab["twin"] else ""),
                            f"entraxe 0,60 — portée de calcul {fmt(slab['span'])}",
-                           f"{n_full} nervures pleine portée L = {fmt(m.clear_span_y + 0.10)}",
-                           f"{n_cut} nervures coupées (trémie) L = {fmt(s['y0'] - 0.20 - ts + 0.05)}",
+                           (f"{n_full} files × {len(m.bays)} travées (L = {n_bay})" if m.refends else f"{n_full} nervures pleine portée L = {fmt(m.clear_span_y + 0.10)}"),
+                           ("pas de trémie (plancher des combles)" if attic else
+                            f"{n_cut} nervures {'supprimées' if full_bay else 'coupées'} (trémie)"),
                            f"M_Ed = {slab['M_per_m']} kN.m/m · V_Ed = {slab['V_per_m']} kN/m",
                            f"G = {slab['G']} · Q = {slab['Q']} kN/m² · L/h = {slab['slenderness']}",
                            "Table 5 cm C25/30 + treillis ST 15 C"]):
-        sh.text("PLANCHER", (2.8, 4.45 - 0.30 * i), t, size=2.2 if i == 0 else 1.6, anchor="c", bold=i == 0)
+        sh.text("PLANCHER", (bx0 + 1.9, by0 + 1.9 - 0.30 * i), t, size=2.2 if i == 0 else 1.6, anchor="c", bold=i == 0)
     sh.level_mark((L / 2 + 1.2, 1.0), slab["level_top"], "dessus table")
     sh.level_mark((L / 2 + 1.2, 0.6), slab["level_top"] - slab["h"], "sous-face")
     sh.text("TITRE", (0, W + 1.85), slab["label"].upper(), size=3.6, bold=True)
     sh.notes = [
-        f"Poutrelles précontraintes de mur porteur à mur porteur (sens Y), appui ≥ 5 cm + chaînage ; {n_full + n_cut} nervures {'jumelées ' if slab['twin'] else ''}à 0,60.",
+        (f"Poutrelles précontraintes de façade à refend (sens Y, {len(m.bays)} travées isostatiques), appui ≥ 5 cm + chaînage ; nervures {'jumelées ' if slab['twin'] else ''}à 0,60."
+         if m.refends else f"Poutrelles précontraintes de mur porteur à mur porteur (sens Y), appui ≥ 5 cm + chaînage ; {n_full + n_cut} nervures {'jumelées ' if slab['twin'] else ''}à 0,60."),
         f"Charges : poids propre {slab['g_self']} + finitions 1,25 + cloisons 1,00 = G {slab['G']} kN/m² ; Q = {slab['Q']} kN/m².",
         f"Moment par nervure : {slab['M_rib']} kN.m — NOTE ET PLAN DE POSE DU FABRICANT (Avis Technique) OBLIGATOIRES avant commande.",
         "Flèche active ≤ L/500 ; étaiement à mi-portée (et aux tiers si L > 6 m) maintenu 21 jours.",
         "Chapeaux sur appuis : HA10 e=33 (1 par nervure), L = 1,80 m ; rive : HA8 dans le chaînage.",
-        "Renforts de trémie : 2HA10 sur chaque bord dans la table, barres de coin à 45°.",
+        ("Plancher des combles aménageables : charge d'exploitation 1,5 kN/m² (future pièce habitable), cloisons légères 0,5 kN/m²." if slab.get("attic")
+         else "Renforts de trémie : 2HA10 sur chaque bord dans la table, barres de coin à 45°."),
         f"Épaisseur {int(slab['h']*100)} cm (PC : {int(m.level(m.levels[1].id).slab*100)} cm) : écart de {int(round(r['floors']['impact_heights']*100))} cm à valider avec l'architecte.",
         "Réservations Ø125 des chutes positionnées depuis les axes (voir cotes) ; fourreaux électriques dans la table.",
     ]
@@ -523,38 +628,65 @@ def go_sections(m: Model, r: dict, tim: dict) -> Sheet:
         pts += [eav] + list(extra)
         sh.chain(sorted(set(round(p, 3) for p in pts)), "y", x, size=1.4)
 
+    def roof_triangle(x0, run, span, pannes=True):
+        """Profil de toiture vu en coupe perpendiculaire au faîtage : versants, pannes, niveaux."""
+        tl = math.tan(a)
+        sh.poly("CHARPENTE", [(x0 - 0.35, eav - 0.35 * tl), (x0 + run, rid), (x0 + span + 0.35, eav - 0.35 * tl)], lw=0.8)
+        if pannes:
+            for p in tim["pannes"]:
+                b, h = tim["panne_section"]["b"] / 1000, tim["panne_section"]["h"] / 1000
+                sh.rect("CHARPENTE", x0 + p["x"] - b / 2, p["z"] - h / 2, x0 + p["x"] + b / 2, p["z"] + h / 2, lw=0.3, fill=(0.85, 0.70, 0.50))
+        if not m.roof.get("attic_floor"):
+            sh.line("CHARPENTE", (x0 + 0.2, m.roof["ceiling_level"]), (x0 + span - 0.2, m.roof["ceiling_level"]), lw=0.25, dash="dashed")
+        sh.level_mark((x0 + span + 0.7, eav), eav, "égout")
+        sh.level_mark((x0 + span + 0.7, rid), rid, "faîtage")
+
+    rx = m.ridge_along_x
     # ---- A-A : coupe selon X, passant par les lucarnes s'il y en a (sinon y = 0,40 W)
     yA = round(m.W * 0.40, 2)
-    dl = m.roof.get("dormers", [])
+    dl = [] if rx else m.roof.get("dormers", [])
     if dl:
         best = max(((max(a["y0"], b["y0"]), min(a["y1"], b["y1"])) for a in dl for b in dl), key=lambda iv: iv[1] - iv[0])
         yA = round((best[0] + best[1]) / 2, 2) if best[1] > best[0] else round((dl[0]["y0"] + dl[0]["y1"]) / 2, 2)
-    gab = m.roof.get("gables", [])
+    if rx and m.refends:                       # coupe dans la travée la plus large, hors cage d'escalier
+        a_, b_ = max(m.bays, key=lambda ab: ab[1] - ab[0])
+        yA = round((a_ + b_) / 2, 2)
     ops_l = [o for s in end_sides(m) if _side_geom(m, s)[1] == 0.0 for o in m.openings_on(s) if o.a <= yA <= o.b]
     ops_r = [o for s in end_sides(m) if _side_geom(m, s)[1] > 0.0 for o in m.openings_on(s) if o.a <= yA <= o.b]
-    body(0.0, L, eav, eav, (0.6, 0.6))
+    zA = m.roof_z(0.0, yA) if rx else eav
+    body(0.0, L, zA, zA, (0.6, 0.6))
     for xw, ops in ((0.0, ops_l), (L - 0.20, ops_r)):
         for o in ops:
             z0 = m.level(o.level).floor_top + o.sill
             sh.rect("BAIE", xw - 0.01, z0, xw + 0.21, z0 + o.height, lw=0.3, fill=(0.85, 0.92, 1.0))
-    cut = _dormer_section(sh, m, yA)
-    xl = max([g["dr"] for g in cut if g["dir"] > 0] or [None], key=lambda v: v or -1)
-    xr_ = min([L - g["dr"] for g in cut if g["dir"] < 0] or [None], key=lambda v: v if v is not None else 1e9)
-    tl = math.tan(a)
-    left = (xl, eav + xl * tl) if xl else (-0.35, eav - 0.35 * tl)
-    right = (xr_, eav + (L - xr_) * tl) if xr_ else (L + 0.35, eav - 0.35 * tl)
-    sh.poly("CHARPENTE", [left, (m.roof["ridge_x"], rid), right], lw=0.8)
-    if xl:
-        sh.line("CHARPENTE", (-0.35, eav - 0.35 * tl), (0.0, eav), lw=0.8)
-    if xr_:
-        sh.line("CHARPENTE", (L, eav), (L + 0.35, eav - 0.35 * tl), lw=0.8)
-    for p in tim["pannes"]:
-        b, h = tim["panne_section"]["b"] / 1000, tim["panne_section"]["h"] / 1000
-        sh.rect("CHARPENTE", p["x"] - b / 2, p["z"] - h / 2, p["x"] + b / 2, p["z"] + h / 2, lw=0.3, fill=(0.85, 0.70, 0.50))
-    sh.line("CHARPENTE", (0.2, m.roof["ceiling_level"]), (L - 0.2, m.roof["ceiling_level"]), lw=0.25, dash="dashed")
-    sh.level_mark((L + 0.7, eav), eav, "égout")
-    sh.level_mark((L + 0.7, rid), rid, "faîtage")
-    vchain(-0.55, (rid,))
+    if rx:
+        sh.rect("CHARPENTE", -0.35, zA, L + 0.35, zA + 0.22, lw=0.6, fill=(0.92, 0.65, 0.62))
+        sh.text("CHARPENTE", (L / 2, zA + 0.40), f"versant coupé à y = {fmt(yA)} (couverture + chevrons)", size=1.3, anchor="c")
+        for t in tim.get("trusses", []):
+            sh.line("CHARPENTE", (t["pos"], eav), (t["pos"], zA), lw=0.6)
+            sh.text("CHARPENTE", (t["pos"] + 0.12, eav + 0.35), t["id"], size=1.4, bold=True)
+        sh.level_mark((L + 0.7, eav), eav, "égout / plancher combles" if m.roof.get("attic_floor") else "égout")
+        vchain(-0.55, (zA,))
+    else:
+        cut = _dormer_section(sh, m, yA)
+        xl = max([g["dr"] for g in cut if g["dir"] > 0] or [None], key=lambda v: v or -1)
+        xr_ = min([L - g["dr"] for g in cut if g["dir"] < 0] or [None], key=lambda v: v if v is not None else 1e9)
+        tl = math.tan(a)
+        left = (xl, eav + xl * tl) if xl else (-0.35, eav - 0.35 * tl)
+        right = (xr_, eav + (L - xr_) * tl) if xr_ else (L + 0.35, eav - 0.35 * tl)
+        sh.poly("CHARPENTE", [left, (m.roof_run, rid), right], lw=0.8)
+        if xl:
+            sh.line("CHARPENTE", (-0.35, eav - 0.35 * tl), (0.0, eav), lw=0.8)
+        if xr_:
+            sh.line("CHARPENTE", (L, eav), (L + 0.35, eav - 0.35 * tl), lw=0.8)
+        for p in tim["pannes"]:
+            b, h = tim["panne_section"]["b"] / 1000, tim["panne_section"]["h"] / 1000
+            sh.rect("CHARPENTE", p["x"] - b / 2, p["z"] - h / 2, p["x"] + b / 2, p["z"] + h / 2, lw=0.3, fill=(0.85, 0.70, 0.50))
+        if not m.roof.get("attic_floor"):
+            sh.line("CHARPENTE", (0.2, m.roof["ceiling_level"]), (L - 0.2, m.roof["ceiling_level"]), lw=0.25, dash="dashed")
+        sh.level_mark((L + 0.7, eav), eav, "égout")
+        sh.level_mark((L + 0.7, rid), rid, "faîtage")
+        vchain(-0.55, (rid,))
     ops_z = sorted({round(v, 3) for o in ops_r for v in (m.level(o.level).floor_top + o.sill, m.level(o.level).floor_top + o.sill + o.height)} | {0.0})
     if len(ops_z) > 1:
         sh.chain(ops_z, "y", L + 0.35, size=1.3)
@@ -562,24 +694,87 @@ def go_sections(m: Model, r: dict, tim: dict) -> Sheet:
     sh.text("TITRE", (0, rid + 0.9), f"COUPE A-A (y = {fmt(yA)})", size=3.4, bold=True)
     # ---- B-B : coupe selon Y à travers la cage
     xo = L + 4.2
-    z_top = rid - abs(xb - m.roof["ridge_x"]) * math.tan(a)
+    z_top = eav if rx else rid - abs(xb - m.roof_run) * math.tan(a)
     body(xo, W, z_top, z_top, (0.6, 0.6))
-    for z in [s["level_top"] for s in slabs]:
+    for z in [s["level_top"] for s in slabs if not s.get("attic")]:
         sh.rect("COTE", xo + st["y0"], z - 0.30, xo + st["y1"] - 0.20, z + 0.001, lw=0.2, fill=(1, 1, 1))
         sh.text("COTE", (xo + (st["y0"] + st["y1"]) / 2, z - 0.20), "trémie", size=1.2, anchor="c")
-    sh.rect("CHARPENTE", xo + 0.20, z_top - 0.05, xo + W - 0.20, z_top + 0.05, lw=0.5, fill=(0.85, 0.65, 0.45))
-    sh.text("PLANCHER", (xo + W / 2, 1.2), "poutrelles de mur porteur à mur porteur", size=1.4, anchor="c")
-    vchain(xo - 0.55, (z_top,))
-    sh.chain([0.0, 0.20, st["y0"], st["y1"], W - 0.20, W], "x", zb - 0.6, size=1.4) if False else \
-        sh.chain([xo, xo + 0.20, xo + st["y0"], xo + st["y1"], xo + W - 0.20, xo + W], "x", zb - 0.6, size=1.4)
+    for rf in m.refends:
+        top_rf = max(s["level_top"] for s in slabs)
+        sh.rect("BRIQUE", xo + rf["y0"], 0.0, xo + rf["y1"], top_rf, lw=0.35, fill=BRICK_FILL, hatch="brique")
+        if has_basement(m):
+            sh.rect("BA", xo + rf["y0"], m.levels[0].floor_top, xo + rf["y1"], 0.0, lw=0.35, fill=BA_FILL)
+            fz = next((i for i in r["foundations"]["items"] if i["side"] == rf["id"]), None)
+            if fz:
+                yc = (rf["y0"] + rf["y1"]) / 2
+                sh.rect("FOND", xo + yc - fz["B"] / 2, zb, xo + yc + fz["B"] / 2, zb + fz["h"], lw=0.35, fill=FOND_FILL)
+        sh.text("BRIQUE", (xo + (rf["y0"] + rf["y1"]) / 2, -0.35 if not has_basement(m) else m.levels[0].floor_top - 0.55), rf["id"], size=1.3, anchor="c", bold=True)
+    if rx:
+        roof_triangle(xo, m.roof_run, W)
+        vchain(xo - 0.55, (rid,))
+    else:
+        sh.rect("CHARPENTE", xo + 0.20, z_top - 0.05, xo + W - 0.20, z_top + 0.05, lw=0.5, fill=(0.85, 0.65, 0.45))
+        vchain(xo - 0.55, (z_top,))
+    chain_b = [xo, xo + 0.20, xo + st["y0"], xo + st["y1"]] + [xo + v for rf in m.refends for v in (rf["y0"], rf["y1"])] + [xo + W - 0.20, xo + W]
+    sh.chain(sorted(set(round(v, 3) for v in chain_b)), "x", zb - 0.6, size=1.4)
     sh.text("TITRE", (xo, rid + 0.9), f"COUPE B-B (x = {fmt(xb)}, cage d'escalier)", size=3.4, bold=True)
+    _section_dressing(sh, m, slabs, yA, xo, xb, z_top, eav)
     sh.notes = [
         "Niveaux en mètres, 0,00 = sol fini RDC. Chaînes verticales : arases de semelles, dallage, sous-faces et dessus des planchers, égout, faîtage.",
         f"Planchers {slabs[0]['system']} (h = {int(slabs[0]['h']*100)} cm) portant de mur porteur à mur porteur.",
-        f"Charpente : pente {r['loads']['roof_pitch_deg']}°, pannes GL24h {tim['panne_section']['label']} de pignon à pignon.",
+        f"Charpente : pente {r['loads']['roof_pitch_deg']}°, pannes GL24h {tim['panne_section']['label']} de pignon à pignon"
+        + (f" sur {len(tim.get('trusses', []))} fermes intermédiaires." if tim.get("trusses") else "."),
         "Coupe A-A : baies de la façade de droite cotées (allège / hauteur).",
     ]
     return sh
+
+
+def _section_dressing(sh: Sheet, m: Model, slabs: list, yA: float, xo: float, xb: float, z_top: float, eav: float):
+    """Habillage des coupes : complexe de sol (chape + plancher chauffant), doublages isolés, noms des pièces et HSP,
+    volées d'escalier dans la cage (B-B), gaine technique."""
+    L, W = m.L, m.W
+    ins = 0.16 if "160" in str((m.raw.get("user_hypotheses") or {}).get("_text", "")) else max(0.10, m.t_tot - m.t_str)
+    tops = [m.levels[0].floor_top] + [s["level_top"] for s in slabs]
+    for x0, span in ((0.0, L), (xo, W)):
+        for z in tops:
+            sh.rect("CHAUF_A", x0 + 0.20, z - 0.08, x0 + span - 0.20, z, lw=0.1, fill=(0.98, 0.86, 0.80))
+        for lv in m.levels:
+            if lv.floor_top < -1.0:
+                continue
+            up = m.level_above(lv.id)
+            ztop = (up.floor_top - 0.30) if up else min(eav, z_top)
+            for xw in (x0 + 0.20, x0 + span - 0.20 - 0.10):
+                sh.rect("DOUBLAGE", xw, lv.floor_top, xw + 0.10, ztop, lw=0.1, fill=(0.98, 0.93, 0.70))
+    sh.text("CHAUF_A", (L / 2, tops[1] + 0.06 if len(tops) > 1 else 0.06), "complexe de sol 8 cm : isolant + chape + plancher chauffant", size=1.15, anchor="c")
+    # pièces coupées et HSP
+    for lv in m.levels:
+        up = m.level_above(lv.id)
+        hsp = lv.hsp
+        zc = lv.floor_top + min(hsp, 2.4) / 2
+        for r in m.rooms(lv.id):
+            if r["y0"] <= yA <= r["y1"] and (r["x1"] - r["x0"]) > 1.2:
+                sh.text("TEXTE", ((r["x0"] + r["x1"]) / 2, zc), r["name"], size=1.5, anchor="c", bold=True, color=(0.15, 0.25, 0.55))
+                sh.text("TEXTE", ((r["x0"] + r["x1"]) / 2, zc - 0.32), f"HSP {fmt(hsp)}", size=1.2, anchor="c", color=(0.35, 0.35, 0.35))
+            xr = (r["x0"], r["x1"])
+            if xr[0] <= xb <= xr[1] and (r["y1"] - r["y0"]) > 1.2 and not (m.stair["y0"] - 0.05 <= (r["y0"] + r["y1"]) / 2 <= m.stair["y1"] + 0.05):
+                sh.text("TEXTE", (xo + (r["y0"] + r["y1"]) / 2, zc), r["name"], size=1.5, anchor="c", bold=True, color=(0.15, 0.25, 0.55))
+    # volées d'escalier (B-B), profil marche par marche
+    st = m.stair
+    ya, yb_ = st["y0"] + 0.05, st["y1"] - 0.05
+    for fl in st.get("flights", []):
+        try:
+            za, zb_ = m.level(fl["from"]).floor_top, m.level(fl["to"]).floor_top
+        except StopIteration:
+            continue
+        n = max(2, round((zb_ - za) / 0.18))
+        g = (yb_ - ya) / n
+        h = (zb_ - za) / n
+        pts = [(xo + ya, za)]
+        for i in range(n):
+            pts += [(xo + ya + i * g, za + (i + 1) * h), (xo + ya + (i + 1) * g, za + (i + 1) * h)]
+        sh.poly("ESCALIER", pts, lw=0.3)
+        sh.line("ESCALIER", (xo + ya, za - 0.18), (xo + yb_, zb_ - 0.18), lw=0.3)
+        sh.text("ESCALIER", (xo + (ya + yb_) / 2 + 0.3, (za + zb_) / 2 - 0.35), f"{n} h. de {int(round(h*1000))/10:g} cm", size=1.15, anchor="c")
 
 
 # ================================================================ façades
@@ -597,7 +792,9 @@ def go_facades(m: Model, r: dict) -> list[Sheet]:
     sides = [s for s in m.raw["sides"] if m.openings_on(s)]
     sheets = []
     for k in range(0, len(sides), 2):
-        sh = _new(f"GO-10{chr(97 + k // 2) if len(sides) > 2 else ''}", "Élévations cotées des façades — baies, allèges, linteaux", scale=75, origin=(-1.6, -3.6))
+        span = sum((m.L if m.side(sd)["axis"] == "y" else m.W) for sd in sides[k:k + 2]) + 3.0 * (len(sides[k:k + 2]) - 1) + 3.2
+        sc = 75 if span * 1000 / 75 <= 222 else 100
+        sh = _new(f"GO-10{chr(97 + k // 2) if len(sides) > 2 else ''}", "Élévations cotées des façades — baies, allèges, linteaux", scale=sc, origin=(-1.6, -3.6))
         xo = 0.0
         for side in sides[k:k + 2]:
             axis, pos, a0, a1, out = _side_geom(m, side)
@@ -624,7 +821,7 @@ def go_facades(m: Model, r: dict) -> list[Sheet]:
                     sh.rect("ACIER", u0 - 0.20, z + o.height, u0 + o.width + 0.20, z + o.height + l["h"], lw=0.3, fill=(0.95, 0.75, 0.75))
                     sh.text("ACIER", (u0 + o.width / 2, z + o.height + l["h"] + 0.08), l["id"], size=1.3, anchor="c", bold=True)
             from .timber import dormer_geometry
-            for d in m.roof["dormers"]:
+            for d in (m.roof.get("dormers") or []):
                 if d["side"] != side:
                     continue
                 g = dormer_geometry(m, d)
@@ -818,11 +1015,13 @@ def _details_rest(sh, m, r, cen, base, bar, dot):
 
 # ================================================================ charpente
 def charpente(m: Model, r: dict, tim: dict) -> Sheet:
+    if m.ridge_along_x:
+        return charpente_x(m, r, tim)
     sh = _new("CH-01", "Charpente traditionnelle — plan coté des pannes, chevrons et lucarnes", scale=75, origin=(-1.6, -6.4),
               subtitle=f"Pannes GL24h {tim['panne_section']['label']} sur pignons · chevrons C24 {tim['chevron_section']['label']} e=0,60")
     L, W = m.L, m.W
     sh.rect("BRIQUE", -0.30, 0, L + 0.30, W, lw=0.3)
-    sh.line("CHARPENTE", (m.roof["ridge_x"], -0.2), (m.roof["ridge_x"], W + 0.2), lw=0.25, dash="axis")
+    sh.line("CHARPENTE", (m.roof_run, -0.2), (m.roof_run, W + 0.2), lw=0.25, dash="axis")
     for side in bearing_sides(m):
         axis, pos, a0, a1, out = _side_geom(m, side)
         sh.rect("BRIQUE", *_wall_rect(axis, pos, a0, a1, m.t_str), lw=0.3, fill=BRICK_FILL, hatch="brique")
@@ -834,7 +1033,7 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
             sh.rect("BA", p["x"] - 0.10, y - 0.10, p["x"] + 0.10, y + 0.10, lw=0.3, fill=BA_FILL)
     for x in (0.10, L - 0.10):
         sh.rect("CHARPENTE", x - 0.0375, 0.20, x + 0.0375, W - 0.20, lw=0.3, fill=(0.92, 0.80, 0.65))
-    dorm = m.roof["dormers"]
+    dorm = (m.roof.get("dormers") or [])
 
     from .timber import dormer_geometry
 
@@ -875,7 +1074,7 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
     a = math.radians(r["loads"]["roof_pitch_deg"])
     eav, rid = m.roof["eaves_level"], m.roof["ridge_level"]
     f = lambda z: zo + (z - eav)
-    sh.poly("CHARPENTE", [(-0.35, f(eav) - 0.35 * math.tan(a)), (m.roof["ridge_x"], f(rid)), (L + 0.35, f(eav) - 0.35 * math.tan(a))], lw=0.8)
+    sh.poly("CHARPENTE", [(-0.35, f(eav) - 0.35 * math.tan(a)), (m.roof_run, f(rid)), (L + 0.35, f(eav) - 0.35 * math.tan(a))], lw=0.8)
     for xw in (0, L - m.t_str):
         sh.rect("BRIQUE", xw, f(m.levels[-1].floor_top), xw + m.t_str, f(eav), lw=0.4, fill=BRICK_FILL, hatch="brique")
     sh.line("PLANCHER", (0, f(m.levels[-1].floor_top)), (L, f(m.levels[-1].floor_top)), lw=1.0)
@@ -890,7 +1089,7 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
         hh = tim["panne_section"]["h"] / 1000
         sh.rect("CHARPENTE", p["x"] - b / 2, f(p["z"]) - hh / 2, p["x"] + b / 2, f(p["z"]) + hh / 2, lw=0.3, fill=(0.88, 0.72, 0.52))
     sh.chain([f(v) for v in sorted({m.levels[-1].floor_top, eav, m.roof["ceiling_level"], rid})], "y", -0.6, size=1.3)
-    sh.dim((0, f(m.levels[-1].floor_top) - 0.4), (m.roof["ridge_x"], f(m.levels[-1].floor_top) - 0.4), 0, size=1.4)
+    sh.dim((0, f(m.levels[-1].floor_top) - 0.4), (m.roof_run, f(m.levels[-1].floor_top) - 0.4), 0, size=1.4)
     sh.text("CHARPENTE", (L / 2 + 0.5, f(rid) - 1.4), f"pente {r['loads']['roof_pitch_deg']}° · rampant {fmt(r['loads']['rafter_length'])}", size=1.6)
     sh.text("TITRE", (0, f(rid) + 0.3), "COUPE TRANSVERSALE DE LA CHARPENTE", size=2.8, bold=True)
     for z, lab in ((eav, "égout"), (rid, "faîtage"), (m.roof["ceiling_level"], "plafond"), (m.levels[-1].floor_top, m.levels[-1].name)):
@@ -903,6 +1102,122 @@ def charpente(m: Model, r: dict, tim: dict) -> Sheet:
         "Appuis des pannes : sommiers BA 20×20×40 dans les pignons + étriers ; feutre de désolidarisation côté voisin.",
         *([f"Lucarnes ({len(tim['dormers'])}) : {tim['dormers'][0]['chevetre']} ; jouées et front ossature 45×145, profondeur jouées {fmt(tim['dormers'][0]['geometry']['de'])}, faîtage {fmt(tim['dormers'][0]['geometry']['dr'])}."]
           + sorted({n for dd in tim["dormers"] for n in dd["pannes"]}) if tim["dormers"] else []),
+        tim["bracing"], tim["covering"], tim["insulation"],
+        "Bois traités classe 2, humidité ≤ 18 % ; assemblages et organes à justifier par le charpentier (EN 1995).",
+    ]
+    return sh
+
+
+def charpente_x(m: Model, r: dict, tim: dict) -> Sheet:
+    """Charpente à faîtage parallèle à X : pannes de pignon à ferme (sens X), chevrons selon Y, fermes intermédiaires,
+    fenêtres de toit avec chevêtres ; coupe transversale (selon Y) avec ferme à entrait retroussé."""
+    nt = len(tim.get("trusses", []))
+    h_sec = m.roof["ridge_level"] - m.levels[-1].floor_top
+    sc = 75 if (m.W + 2.6 + h_sec + 2.4) * 1000 / 75 <= 255 and (m.L + 3.4) * 1000 / 75 <= 222 else 100
+    oy = -(h_sec + 2.4)
+    sh = _new("CH-01", "Charpente traditionnelle — plan coté des pannes, fermes et chevrons", scale=sc, origin=(-1.6, oy),
+              subtitle=f"Pannes GL24h {tim['panne_section']['label']} sur pignons" + (f" et {nt} fermes" if nt else "")
+                       + f" · chevrons C24 {tim['chevron_section']['label']} e=0,60")
+    L, W = m.L, m.W
+    a = math.radians(r["loads"]["roof_pitch_deg"])
+    eav, rid = m.roof["eaves_level"], m.roof["ridge_level"]
+    ry = m.roof_run
+    sh.rect("BRIQUE", 0, -0.30, L, W + 0.30, lw=0.3)
+    sh.line("CHARPENTE", (-0.2, ry), (L + 0.2, ry), lw=0.25, dash="axis")
+    for side in end_sides(m):
+        axis, pos, a0, a1, out = _side_geom(m, side)
+        sh.rect("BRIQUE", *_wall_rect(axis, pos, 0.0, W, m.t_str), lw=0.3, fill=BRICK_FILL, hatch="brique")
+    for side in bearing_sides(m):
+        axis, pos, a0, a1, out = _side_geom(m, side)
+        sh.rect("BRIQUE", *_wall_rect(axis, pos, a0, a1, m.t_str), lw=0.3, fill=(0.95, 0.92, 0.90))
+    # chevrons (sens Y), interrompus aux fenêtres de toit
+    rw = m.roof.get("roof_windows") or []
+
+    def win_y(w):
+        south = m.side(w["side"])["pos"] < W / 2
+        d = w.get("h", 0.98) * math.cos(a)
+        yc = ry / 2 if south else W - (W - ry) / 2
+        return yc - d / 2, yc + d / 2
+    x = 0.30
+    xs = []
+    while x < L - 0.25:
+        xs.append(x)
+        cuts = sorted(win_y(w) for w in rw if w["x0"] - 0.02 < x < w["x1"] + 0.02)
+        pts = [-0.30]
+        for c0, c1 in cuts:
+            pts += [c0 - 0.04, c1 + 0.04]
+        pts.append(W + 0.30)
+        for y0, y1 in zip(pts[::2], pts[1::2]):
+            sh.line("CHARPENTE", (x, y0), (x, y1), lw=0.2)
+        x += 0.60
+    b = tim["panne_section"]["b"] / 1000
+    for p in tim["pannes"]:
+        sh.rect("CHARPENTE", 0.05, p["x"] - b / 2, L - 0.05, p["x"] + b / 2, lw=0.4, fill=(0.88, 0.72, 0.52))
+        sh.text("CHARPENTE", (1.2, p["x"] + b / 2 + 0.06), f"{p['id']} {p['role']} GL24h {tim['panne_section']['label']} · dessous {fmt(p['z'] - tim['panne_section']['h']/2000)}",
+                size=1.4, bold=True)
+        for xx in [0.10, L - 0.10]:
+            sh.rect("BA", xx - 0.10, p["x"] - 0.10, xx + 0.10, p["x"] + 0.10, lw=0.3, fill=BA_FILL)
+    for t in tim.get("trusses", []):
+        sh.rect("CHARPENTE", t["pos"] - 0.075, 0.0, t["pos"] + 0.075, W, lw=0.5, fill=(0.80, 0.60, 0.38))
+        sh.text("CHARPENTE", (t["pos"] + 0.15, W - 0.55), f"{t['id']} ferme", size=1.6, bold=True)
+        for yy in (0.10, W - 0.10):
+            sh.rect("BA", t["pos"] - 0.20, yy - 0.10, t["pos"] + 0.20, yy + 0.10, lw=0.3, fill=BA_FILL)
+    for y in (0.10, W - 0.10):
+        sh.rect("CHARPENTE", 0.20, y - 0.0375, L - 0.20, y + 0.0375, lw=0.3, fill=(0.92, 0.80, 0.65))
+    for w in rw:
+        y0, y1 = win_y(w)
+        sh.rect("CHARPENTE", w["x0"], y0, w["x1"], y1, lw=0.5, fill=(0.85, 0.92, 1.0))
+        for yy in (y0 - 0.04, y1 + 0.04):
+            sh.rect("CHARPENTE", w["x0"] - 0.35, yy - 0.03, w["x1"] + 0.35, yy + 0.03, lw=0.3, fill=(0.75, 0.55, 0.30))
+        sh.text("CHARPENTE", ((w["x0"] + w["x1"]) / 2, (y0 + y1) / 2), w["id"], size=1.3, anchor="c", bold=True)
+        sh.text("CHARPENTE", ((w["x0"] + w["x1"]) / 2, y0 - 0.25), f"{fmt(w['w'])}×{fmt(w.get('h', 0.98))} chevêtres", size=1.1, anchor="c")
+    sh.chain([0.0] + [t["pos"] for t in tim.get("trusses", [])] + [L], "x", W + 0.55, size=1.4)
+    sh.chain([0.0] + xs[:3] + [L], "x", -0.65, size=1.2)
+    sh.dim((0, W + 0.95), (L, W + 0.95), 0, text=f"{fmt(L)} — pannes en {nt + 1} travées de {fmt(L / (nt + 1))}", size=1.6)
+    sh.chain([0.0] + sorted(p["x"] for p in tim["pannes"]) + [W], "y", L + 0.55, size=1.4)
+    sh.dim((L + 1.05, -0.30), (L + 1.05, W + 0.30), 0, text=f"{fmt(W + 0.60)} débords compris", size=1.5)
+    sh.text("TITRE", (0, W + 1.45), "PLAN DE CHARPENTE (vue de dessus)", size=3.4, bold=True)
+    # coupe transversale (selon Y) au droit d'une ferme
+    zo = oy + 0.6 + (eav - m.levels[-1].floor_top)
+    f = lambda z: zo + (z - eav)
+    tl = math.tan(a)
+    sh.poly("CHARPENTE", [(-0.35, f(eav) - 0.35 * tl), (ry, f(rid)), (W + 0.35, f(eav) - 0.35 * tl)], lw=0.8)
+    for yw in (0, W - m.t_str):
+        sh.rect("BRIQUE", yw, f(m.levels[-1].floor_top), yw + m.t_str, f(eav), lw=0.4, fill=BRICK_FILL, hatch="brique")
+    zf = eav if m.roof.get("attic_floor") else m.roof["ceiling_level"]
+    sh.rect("PLANCHER", 0.20, f(zf) - 0.20, W - 0.20, f(zf), lw=0.4, fill=(0.80, 0.88, 0.97))
+    for rf in m.refends:
+        sh.rect("BRIQUE", rf["y0"], f(m.levels[-1].floor_top), rf["y1"], f(zf) - 0.20, lw=0.3, fill=BRICK_FILL, hatch="brique")
+    if tim.get("trusses"):
+        d = 0.25
+        sh.poly("CHARPENTE", [(0.15, f(eav)), (ry, f(rid) - 0.30), (W - 0.15, f(eav)), (W - 0.15 - d, f(eav)), (ry, f(rid) - 0.30 - d / math.cos(a)),
+                              (0.15 + d, f(eav))], lw=0.4, closed=True, fill=(0.80, 0.60, 0.38))
+        z_ent = eav + 2.00
+        half_w = (rid - 0.30 - z_ent) / tl
+        sh.rect("CHARPENTE", ry - half_w, f(z_ent) - 0.10, ry + half_w, f(z_ent) + 0.10, lw=0.4, fill=(0.85, 0.68, 0.45))
+        sh.rect("CHARPENTE", ry - 0.075, f(z_ent) + 0.10, ry + 0.075, f(rid) - 0.30, lw=0.4, fill=(0.85, 0.68, 0.45))
+        sh.text("CHARPENTE", (ry + half_w + 0.15, f(z_ent)), "entrait retroussé moisé 2×63×200", size=1.2)
+        sh.text("CHARPENTE", (ry + 0.25, f(rid) - 1.0), "poinçon 150×150", size=1.2)
+        sh.chain([f(eav), f(z_ent), f(rid)], "y", ry - half_w - 0.45, size=1.2)
+    for p in tim["pannes"]:
+        hh = tim["panne_section"]["h"] / 1000
+        sh.rect("CHARPENTE", p["x"] - b / 2, f(p["z"]) - hh / 2, p["x"] + b / 2, f(p["z"]) + hh / 2, lw=0.3, fill=(0.88, 0.72, 0.52))
+    sh.chain([f(v) for v in sorted({m.levels[-1].floor_top, eav, rid})], "y", -0.6, size=1.3)
+    sh.dim((0, f(m.levels[-1].floor_top) - 0.4), (ry, f(m.levels[-1].floor_top) - 0.4), 0, size=1.4)
+    sh.text("CHARPENTE", (ry + 1.0, f(rid) - 2.6), f"pente {r['loads']['roof_pitch_deg']}° · rampant {fmt(r['loads']['rafter_length'])}", size=1.6)
+    sh.text("TITRE", (0, f(rid) + 0.3), "COUPE TRANSVERSALE AU DROIT D'UNE FERME", size=2.8, bold=True)
+    for z, lab in ((eav, "égout / plancher combles" if m.roof.get("attic_floor") else "égout"), (rid, "faîtage"), (m.levels[-1].floor_top, m.levels[-1].name)):
+        sh.level_mark((W + 0.6, f(z)), z, lab)
+    pn, ch = tim["panne_section"], tim["chevron_section"]
+    sh.notes = [
+        ("Combles aménageables : plancher porté (poutrelles-hourdis), charpente à pannes sur pignons maçonnés et fermes à entrait "
+         "retroussé — AUCUNE fermette en W, volume libre pour un aménagement futur.") if m.roof.get("attic_floor") else
+        "Charpente à pannes sur pignons maçonnés et fermes intermédiaires.",
+        f"Pannes GL24h {pn['label']} : portée {fmt(tim['panne_span'])}, M_Ed = {pn['M_Ed']} kN.m, σ = {pn['sigma']} ≤ {pn['f_md']} MPa, flèche {pn['w_fin_mm']} ≤ {pn['w_lim_mm']} mm.",
+        *([tim["truss_text"]] if tim.get("truss_text") else []),
+        f"Chevrons C24 {ch['label']} entraxe 0,60 ({tim['chevron_count']} u) ; sablières 75×200 sur les arases d'égout Sud et Nord.",
+        "Appuis des pannes : sommiers BA 20×20×40 dans les pignons ; pieds de fermes sur sommiers BA 40×20 dans les murs d'égout.",
+        *([f"Fenêtres de toit ({len(rw)}) : chevêtres et linçoirs 75×175 C24, chevrons doublés de part et d'autre."] if rw else []),
         tim["bracing"], tim["covering"], tim["insulation"],
         "Bois traités classe 2, humidité ≤ 18 % ; assemblages et organes à justifier par le charpentier (EN 1995).",
     ]
@@ -1001,6 +1316,8 @@ def plumb_level(m: Model, p: dict, lid: str, code: str) -> Sheet:
         sh.text("PLOMB_EF", (n["x"], n["y"] + 0.22), "nourrices EF/ECS + CET 200 L", size=1.5, anchor="c", bold=True)
         col = p["collector"]["path"]
         sh.poly("PLOMB_EV", col, lw=0.8)
+        for br in p["collector"].get("branches") or []:
+            sh.poly("PLOMB_EV", br, lw=0.6)
         sh.text("PLOMB_EV", ((col[0][0] + col[-1][0]) / 2, col[0][1] + 0.10), "collecteur Ø100 → réseau public", size=1.4, anchor="c")
         if p["relevage"]["needed"]:
             rv = p["relevage"].get("xy", (m.L - 1.3, 0.9))
@@ -1048,6 +1365,8 @@ def _tag(sh: Sheet, kind: str, level: str | None = None) -> Sheet:
 def all_sheets(m: Model, r: dict, tim: dict, e: dict, p: dict) -> list[Sheet]:
     from .i18n import protect
     protect(m)
+    PLAN_SCALE[0] = plan_scale(m)
+    PLAN_SHIFT[0] = max(0.0, ((PLAN_AREA[3] - PLAN_AREA[1]) * PLAN_SCALE[0] / 1000 - (m.W + 4.4)) / 2 - 0.4) if PLAN_SCALE[0] != 50 else 0.0
     stacks = p["stacks"]
     fnd = _tag(go_foundations(m, r), "fond")
     sh = [fnd]
@@ -1068,14 +1387,35 @@ def all_sheets(m: Model, r: dict, tim: dict, e: dict, p: dict) -> list[Sheet]:
     det.code = f"GO-{nsec + 2:02d}"
     fnd.notes = [x.replace("{DETAILS}", det.code) for x in fnd.notes]
     sh += [det, _tag(charpente(m, r, tim), "charpente")]
+    n = len(m.levels)
+    if (m.raw.get("project") or {}).get("country", "FR") == "PT":      # dossier portugais : planches fluides historiques (entièrement traduites)
+        for k, lv in enumerate(m.levels):
+            sh.append(_tag(elec_level(m, e, lv.id, f"EL-{k+1:02d}"), "elec", lv.id))
+        pn = _tag(elec_panel(m, e), "elec_panel")
+        pn.code = f"EL-{n+1:02d}"
+        sh.append(pn)
+        for k, lv in enumerate(m.levels):
+            sh.append(_tag(plumb_level(m, p, lv.id, f"PL-{k+1:02d}"), "plumb", lv.id))
+        pr = _tag(plumb_riser(m, p), "plumb_riser")
+        pr.code = f"PL-{n+1:02d}"
+        sh.append(pr)
+        return sh
+    from . import hvac as _hvac, mep_sheets as MS
+    hv = _hvac.hvac(m, stacks, p["fixtures"])
     for k, lv in enumerate(m.levels):
-        sh.append(_tag(elec_level(m, e, lv.id, f"EL-{k+1:02d}"), "elec", lv.id))
-    pn = _tag(elec_panel(m, e), "elec_panel")
-    pn.code = f"EL-{len(m.levels)+1:02d}"
-    sh.append(pn)
+        sh.append(_tag(MS.elec_level(m, e, hv, lv.id, f"EL-{k+1:02d}"), "elec", lv.id))
+    sh.append(_tag(MS.elec_unifilaire(m, e, hv, f"EL-{n+1:02d}"), "elec_panel"))
     for k, lv in enumerate(m.levels):
-        sh.append(_tag(plumb_level(m, p, lv.id, f"PL-{k+1:02d}"), "plumb", lv.id))
+        sh.append(_tag(MS.plumb_level(m, p, hv, lv.id, f"PL-{k+1:02d}"), "plumb", lv.id))
     pr = _tag(plumb_riser(m, p), "plumb_riser")
-    pr.code = f"PL-{len(m.levels)+1:02d}"
+    pr.code = f"PL-{n+1:02d}"
     sh.append(pr)
+    for k, lv in enumerate(m.levels):
+        sh.append(_tag(MS.vmc_level(m, hv, lv.id, f"VE-{k+1:02d}"), "vmc", lv.id))
+    sh.append(_tag(MS.vmc_schema(m, hv, f"VE-{n+1:02d}"), "vmc_schema"))
+    if hv.get("pc"):
+        for k, lv in enumerate(m.levels):
+            sh.append(_tag(MS.pc_level(m, hv, lv.id, f"CC-{k+1:02d}"), "pc", lv.id))
+    sh.append(_tag(MS.hydro_schema(m, hv, f"CC-{n+1:02d}"), "hydro"))
+    sh.append(_tag(MS.pc_detail(m, hv, f"CC-{n+2:02d}"), "pc_detail"))
     return sh

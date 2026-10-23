@@ -24,11 +24,16 @@ def check_openings(m: Model) -> list[dict]:
         for lv in m.levels:
             ops = sorted(m.openings_on(side, lv.id), key=lambda o: o.a)
             for o in ops:
-                if o.a < m.t_tot - 1e-6 or o.b > length - m.t_tot + 1e-6:
+                if o.a < m.t_str - 1e-6 or o.b > length - m.t_str + 1e-6:      # la baie ne peut pas entamer le mur en retour (le doublage s'arrête au tableau)
                     out.append(_a("GEO-01", BLOCK, f"{o.id} déborde du mur {side} ({o.a:.2f}–{o.b:.2f} m)", "Relire la cote de la baie"))
                 if o.width <= 0.3:
                     out.append(_a("GEO-02", BLOCK, f"{o.id} : largeur {o.width:.2f} m invraisemblable", "Relire la baie"))
-                if o.sill + o.height > m.storey_height(lv.id) - 0.10 and lv.id != m.levels[-1].id:
+                st = m.raw.get("stair") or {}
+                stair_win = (m.side(side)["axis"] == "y" and st and o.a < st.get("x1", -1) and o.b > st.get("x0", 1e9)
+                             and (abs(m.side(side)["pos"] - st.get("y0", -9)) < 0.6 or abs(m.side(side)["pos"] - st.get("y1", -9)) < 0.6)) or \
+                            (m.side(side)["axis"] == "x" and st and o.a < st.get("y1", -1) and o.b > st.get("y0", 1e9)
+                             and (abs(m.side(side)["pos"] - st.get("x0", -9)) < 0.6 or abs(m.side(side)["pos"] - st.get("x1", -9)) < 0.6))
+                if o.sill + o.height > m.storey_height(lv.id) - 0.10 and lv.id != m.levels[-1].id and not stair_win:
                     out.append(_a("GEO-03", BLOCK, f"{o.id} : baie plus haute que l'étage", "Relire la hauteur"))
             for p, q in zip(ops, ops[1:]):
                 pier = round(q.a - p.b, 3)
@@ -160,12 +165,120 @@ def check_references(m: Model) -> list[dict]:
     return out
 
 
+def check_coherence(m: Model) -> list[dict]:
+    """Contrôles de cohérence géométrique du relevé (en plus des contrôles métier ci-dessus) :
+    cotes croissantes, enveloppe fermée, murs dans l'enveloppe, baies sur un côté existant, HSP plausible,
+    somme des surfaces ≈ surface de plancher déclarée. Sans eux, une lecture IA fausse passerait au calcul."""
+    out, raw = [], m.raw
+    for a, b in zip(m.levels, m.levels[1:]):
+        if b.floor_top <= a.floor_top:
+            out.append(_a("COH-01", BLOCK, f"Cotes de plancher non croissantes : {a.name} ({a.floor_top:+.2f}) ≥ {b.name} ({b.floor_top:+.2f}).",
+                          "Relire les cotes de niveau sur la coupe (du plus bas au plus haut)."))
+    try:
+        L, W = m.L, m.W
+    except Exception:  # noqa: BLE001
+        L = W = 0.0
+    if not (L > 0 and W > 0):
+        out.append(_a("COH-02", BLOCK, "Enveloppe non fermée : longueur ou largeur hors tout manquante ou nulle.",
+                      "Relever length_x et width_y (dimensions hors tout)."))
+    sides = raw.get("sides") or {}
+    axes = [s.get("axis") for s in sides.values() if isinstance(s, dict)]
+    if len(sides) != 4 or axes.count("x") != 2 or axes.count("y") != 2:
+        out.append(_a("COH-03", WARN, f"{len(sides)} côté(s) relevé(s) au lieu de 4 (2 d'axe x, 2 d'axe y).",
+                      "Décrire les 4 côtés de l'enveloppe."))
+    if L > 0 and W > 0:
+        tol = 0.05
+        for lid, walls in (raw.get("interior_walls") or {}).items():
+            for w in walls or []:
+                xs, ys = [w.get("x0", 0.0), w.get("x1", 0.0)], [w.get("y0", 0.0), w.get("y1", 0.0)]
+                if min(xs) < -tol or max(xs) > L + tol or min(ys) < -tol or max(ys) > W + tol:
+                    out.append(_a("COH-04", BLOCK, f"Mur intérieur hors enveloppe au niveau {lid} "
+                                  f"({w.get('x0')},{w.get('y0')}–{w.get('x1')},{w.get('y1')}).",
+                                  "Relire les coordonnées (origine au coin extérieur brut, en mètres)."))
+    for o in m.openings:
+        if o.side not in sides:
+            out.append(_a("COH-05", BLOCK, f"Baie {o.id} posée sur un côté inconnu « {o.side} ».",
+                          "Poser la baie sur un côté existant (sides)."))
+    for lv in m.levels:
+        if lv.use.startswith("habitation") and not (2.20 <= lv.hsp <= 3.50):
+            out.append(_a("COH-06", WARN, f"{lv.name} : HSP {lv.hsp:.2f} m hors plage courante 2,20–3,50 m.",
+                          "Vérifier la hauteur sous plafond sur la coupe."))
+    sp = (raw.get("project") or {}).get("surface_plancher")
+    if isinstance(sp, (int, float)) and sp > 0:
+        tot = 0.0
+        for rms in (raw.get("rooms") or {}).values():
+            for r in rms or []:
+                for part in [r] + (r.get("parts") or []):
+                    tot += max(part.get("x1", 0) - part.get("x0", 0), 0) * max(part.get("y1", 0) - part.get("y0", 0), 0)
+        if tot and abs(tot - sp) / sp > 0.05:
+            out.append(_a("COH-07", WARN, f"Somme des surfaces de pièces {tot:.1f} m² ≠ surface de plancher déclarée {sp:.1f} m² (écart > 5 %).",
+                          "Contrôler les cotes des pièces ou la surface de plancher."))
+    return out
+
+
+EC8_Z1 = {"1.1", "1.2", "1.3", "1.4", "1.5", "1.6"}      # zones sismiques action type 1 (NP EN 1998-1 AN PT)
+EC8_Z2 = {"2.1", "2.2", "2.3", "2.4", "2.5"}             # action type 2
+EC8_SOIL = {"A", "B", "C", "D", "E"}                     # types de terrain EC8
+EC8_CLASS = {"I", "II", "III", "IV"}                     # classes d'importance EC8
+PT_WIND = {"A", "B"}                                     # zones de vent NP EN 1991-1-4 AN PT
+PT_SNOW = {"Z1", "Z2", "Z3"}                             # zones de neige NP EN 1991-1-3 AN PT
+
+
+def _missing(v) -> bool:
+    return v in (None, "") or (isinstance(v, str) and "confirm" in v.lower())
+
+
+def check_seismic_pt(m: Model) -> list[dict]:
+    """Cohérence des données sismiques Eurocode 8 (NP EN 1998-1 AN PT) pour les projets portugais :
+    présence et validité des zones (type 1 / type 2), du terrain, de la classe d'importance et du coefficient q.
+    Sans cela, un relevé PT incomplet calculerait avec des défauts prudents silencieux."""
+    pr = m.raw.get("project") or {}
+    if pr.get("country") != "PT":
+        return []
+    out = []
+    for field, label in (("seismic_zone_type1", "zone sismique action type 1"),
+                         ("seismic_zone_type2", "zone sismique action type 2"),
+                         ("ground_type", "type de terrain"),
+                         ("importance_class", "classe d'importance")):
+        if _missing(pr.get(field)):
+            out.append(_a("SEIS-00", BLOCK, f"Donnée sismique manquante (projet portugais) : {label}.",
+                          "Relever la zone (NA NP EN 1998-1), le type de terrain et la classe d'importance, ou les préciser dans la demande."))
+    z1 = str(pr.get("seismic_zone_type1", "")).strip()
+    if z1 and not _missing(z1) and z1 not in EC8_Z1:
+        out.append(_a("SEIS-01", BLOCK, f"Zone sismique type 1 « {z1} » invalide (NP EN 1998-1 : 1.1 à 1.6).", "Corriger la zone type 1."))
+    z2 = str(pr.get("seismic_zone_type2", "")).strip()
+    if z2 and not _missing(z2) and z2 not in EC8_Z2:
+        out.append(_a("SEIS-02", BLOCK, f"Zone sismique type 2 « {z2} » invalide (NP EN 1998-1 : 2.1 à 2.5).", "Corriger la zone type 2."))
+    soil = str(pr.get("ground_type", "")).strip().upper()
+    if soil and not _missing(soil) and soil not in EC8_SOIL:
+        out.append(_a("SEIS-03", BLOCK, f"Type de terrain « {soil} » invalide (EC8 : A à E).", "Corriger le type de terrain."))
+    cls = str(pr.get("importance_class", "")).strip().upper()
+    if cls and not _missing(cls) and cls not in EC8_CLASS:
+        out.append(_a("SEIS-04", BLOCK, f"Classe d'importance « {cls} » invalide (EC8 : I à IV).", "Corriger la classe d'importance (II par défaut)."))
+    q = pr.get("behaviour_factor_q")
+    if q is not None and not _missing(q):
+        try:
+            qf = float(q)
+            if not (1.0 <= qf <= 5.0):
+                out.append(_a("SEIS-05", WARN, f"Coefficient de comportement q = {qf} hors plage courante (1,5–3,0 maçonnerie, ≤ 5,0).",
+                              "Vérifier q selon le système structurel (EC8 §5/§9)."))
+        except (TypeError, ValueError):
+            out.append(_a("SEIS-05", WARN, f"Coefficient de comportement q « {q} » non numérique.", "Renseigner q (ex. 1,5 pour la maçonnerie)."))
+    wind = str(pr.get("wind_zone", "")).strip().upper()
+    if wind and not _missing(wind) and wind not in PT_WIND:
+        out.append(_a("SEIS-06", WARN, f"Zone de vent « {wind} » inhabituelle (NP EN 1991-1-4 AN PT : A ou B).", "Vérifier la zone de vent."))
+    snow = str(pr.get("snow_zone", "")).strip().upper()
+    if snow and not _missing(snow) and snow not in PT_SNOW:
+        out.append(_a("SEIS-07", WARN, f"Zone de neige « {snow} » inhabituelle (NP EN 1991-1-3 AN PT : Z1 à Z3).", "Vérifier la zone de neige."))
+    return out
+
+
 def run_all(m: Model) -> list[dict]:
     ref = check_references(m)
     if any(a["level"] == BLOCK for a in ref):
         return ref                       # inutile (et dangereux) de lancer les autres contrôles sur un relevé incomplet
     out = list(ref)
-    for chk in (check_openings, check_levels, check_rooms, check_stair, check_spans):
+    for chk in (check_openings, check_levels, check_rooms, check_stair, check_spans, check_coherence, check_seismic_pt):
         try:
             out += chk(m)
         except Exception as exc:  # noqa: BLE001 — un contrôle qui plante devient une question, pas une erreur muette

@@ -79,7 +79,7 @@ def choose_n_bars(as_cm2: float, diams=(10, 12, 14, 16, 20), nmin=2, nmax=5) -> 
 # ---------------------------------------------------------------- 1. charges
 def loads(m: Model) -> dict:
     roof = m.roof
-    half = m.L / 2
+    half = m.roof_run
     alpha = math.degrees(math.atan((roof["ridge_level"] - roof["eaves_level"]) / half))
     sk = SNOW_SK.get(m.raw["project"].get("snow_region", "A1"), 0.45)
     mu = 0.8 if alpha <= 30 else (0.8 * (60 - alpha) / 30 if alpha < 60 else 0.0)
@@ -116,15 +116,22 @@ def loads(m: Model) -> dict:
 # ---------------------------------------------------------------- 2. planchers
 def floors(m: Model, ld: dict) -> dict:
     L = m.span_y_calc
+    bays = [round(b - a + 0.10, 3) for a, b in m.bays]           # portées de calcul de chaque travée
     slabs = []
+    pairs = [(below, above, above.floor_top, above.name) for below, above in zip(m.levels, m.levels[1:])]
+    top = m.levels[-1]
+    if m.roof.get("attic_floor"):                                  # plancher des combles aménageables (porté, pas des solives)
+        pairs.append((top, None, round(top.floor_top + top.hsp + top.slab, 3), "combles aménageables"))
     # plancher haut de chaque niveau qui porte le niveau supérieur
-    for below, above in zip(m.levels, m.levels[1:]):
-        q = Q_USE["garage"] if any(rm["type"] == "garage" for rm in m.rooms(above.id)) else Q_USE["habitation"]
+    for below, above, z_top, above_name in pairs:
+        rooms_above = m.rooms(above.id) if above else []
+        q = Q_USE["garage"] if any(rm["type"] == "garage" for rm in rooms_above) else \
+            (Q_USE["comble_hab"] if above is None else Q_USE["habitation"])
         best = None
         for name, h, g, mrd in HOURDIS:
             if L / h > SLENDER_MAX:
                 continue
-            G = g + G_FIN + G_CLOIS
+            G = g + G_FIN + (G_CLOIS if above is not None else 0.50)
             qu = 1.35 * G + 1.5 * q
             for ent, twin in ((0.60, False), (0.60, True)):
                 m_rib = qu * ent * L ** 2 / 8
@@ -137,16 +144,25 @@ def floors(m: Model, ld: dict) -> dict:
             if best:
                 break
         if best is None:
-            raise ValueError(f"Aucun plancher poutrelles-hourdis ne couvre {L:.2f} m sous {above.name} : prévoir refend, poutre ou dalle BA")
+            raise ValueError(f"Aucun plancher poutrelles-hourdis ne couvre {L:.2f} m sous {above_name} : prévoir refend, poutre ou dalle BA")
         G = best["G"]
+        # réactions : façade = demi-travée adjacente ; refend = somme des demi-travées (poutrelles isostatiques)
+        edge = max(bays[0], bays[-1])
+        ref = {rf["id"]: {"G": r2(G * (bays[i] + bays[i + 1]) / 2), "Q": r2(best["Q"] * (bays[i] + bays[i + 1]) / 2)}
+               for i, rf in enumerate(m.refends)}
+        label = f"Plancher haut {below.name} (porte {above.name})" if above else f"Plancher haut {below.name} (combles aménageables)"
+        direction = "Y (de mitoyen à mitoyen)" if _mitoyen_bearing(m) else "Y (entre murs porteurs)"
+        if m.refends:
+            direction = f"Y, {len(bays)} travées sur refend{'s' if len(m.refends) > 1 else ''}"
         slabs.append({
-            "id": f"PH-{below.id}", "label": f"Plancher haut {below.name} (porte {above.name})",
-            "level_top": above.floor_top, "span": L, "direction": "Y (de mitoyen à mitoyen)" if _mitoyen_bearing(m) else "Y (entre murs porteurs)",
-            "R_G_per_m": r2(G * L / 2), "R_Q_per_m": r2(best["Q"] * L / 2), **best,
+            "id": f"PH-{below.id}", "label": label,
+            "level_top": z_top, "span": L, "bays": bays, "direction": direction,
+            "R_G_per_m": r2(G * edge / 2), "R_Q_per_m": r2(best["Q"] * edge / 2), "R_refend": ref, **best,
             "label_system": f"Poutrelles précontraintes + entrevous béton {best['system']}"
                             + (" — poutrelles jumelées (2 par nervure)" if best["twin"] else "") + ", entraxe 0,60",
             "compression_slab": "Table de compression 5 cm C25/30 + treillis soudé ST 15 C (Ø5 maille 150 × 300) min. ; chapeaux HA10 e=33 sur appuis (L = 0,25 L)",
             "deflection": "Flèche active ≤ L/500 (cloisons et carrelage) : à garantir par la note du fabricant",
+            "attic": above is None,
         })
     pc_h = m.levels[1].slab if len(m.levels) > 1 else m.levels[0].slab
     thickest = max(s["h"] for s in slabs)
@@ -157,17 +173,41 @@ def floors(m: Model, ld: dict) -> dict:
         "slabs": slabs,
         "pc_thickness": pc_h,
         "impact_heights": round(thickest - pc_h, 3),
-        "variant": ("Variante respectant l'épaisseur du PC (25 cm) : dalles alvéolées précontraintes 20 cm + 5 cm de "
-                    "table (portée 7 m courante, pose à la grue) ; ou refend porteur intermédiaire non prévu au PC."),
+        "variant": (f"Variante respectant l'épaisseur du PC ({pc_h * 100:.0f} cm) : dalles alvéolées précontraintes 20 cm + 5 cm de "
+                    "table (portée 7 m courante, pose à la grue) ; ou refend porteur intermédiaire non prévu au PC.") if not m.refends else
+                   "Sans objet : les refends porteurs du PC ramènent la portée des poutrelles à " + f"{L:.2f} m.".replace(".", ","),
         "rules": [
             f"Portée de calcul L = {m.clear_span_y:.2f} m entre nus des briques + 0,10 m d'appuis = {L:.2f} m.",
             f"Élancement maxi retenu L/h ≤ {SLENDER_MAX:.0f} pour des poutrelles précontraintes en isostatique.",
             ("Les poutrelles portent de mitoyen à mitoyen : les murs mitoyens sont aveugles et continus, "
              "les façades sont percées de grandes baies et ne reçoivent que la rive.") if _mitoyen_bearing(m) else
             "Les poutrelles portent dans le sens de la plus petite portée, entre les deux murs longitudinaux porteurs ; les pignons ne reçoivent que la rive.",
+        ] + ([f"Travées {' / '.join(f'{b:.2f}'.replace('.', ',') for b in bays)} m : poutrelles isostatiques de façade à refend ; "
+              "le refend reçoit la somme des deux demi-travées (descente de charges spécifique)."] if m.refends else []) + [
+            (f"Trémie d'escalier {m.stair['x1'] - m.stair['x0']:.2f} × {m.stair['y1'] - m.stair['y0']:.2f} sur toute la travée : "
+             "pas de chevêtre, les nervures s'arrêtent sur les voiles de cage.").replace(".", ",", 2) if stair_full_bay(m) else
             f"Trémie d'escalier {m.stair['x1'] - m.stair['x0']:.2f} × {m.stair['y1'] - m.stair['y0']:.2f} : chevêtre BA porté par les deux voiles de cage.".replace(".", ",", 2),
         ],
     }
+
+
+def stair_full_bay(m: Model) -> bool:
+    """Vrai si la trémie occupe toute une travée (de façade à refend) : aucune nervure à reprendre par un chevêtre."""
+    st = m.stair
+    tol = max(m.t_tot - m.t_str, 0.0) + 0.06                 # la trémie s'arrête au nu du doublage
+    return any(st["y0"] <= a + tol and st["y1"] >= b - tol for a, b in m.bays) and bool(m.refends)
+
+
+def trimmer_y(m: Model) -> float | None:
+    """Ordonnée du chevêtre (bord de trémie qui n'est pas sur un mur porteur), None s'il n'y en a pas."""
+    if stair_full_bay(m):
+        return None
+    st = m.stair
+    tol = max(m.t_tot - m.t_str, 0.0) + 0.06
+    for a, b in m.bays:
+        if a - 0.06 <= st["y0"] < b:
+            return st["y1"] if st["y0"] <= a + tol else st["y0"]
+    return st["y0"]
 
 
 # ---------------------------------------------------------------- 3. descente de charges
@@ -193,16 +233,22 @@ def has_basement(m: Model) -> bool:
 
 
 def descent(m: Model, ld: dict, fl: dict) -> dict:
-    """Charges linéiques (kN/m) en pied de chaque niveau, pour chaque mur et pour les voiles de cage."""
+    """Charges linéiques (kN/m) en pied de chaque niveau, pour chaque mur, chaque refend et les voiles de cage."""
     gw = ld["g_wall"]
     eaves, ridge = m.roof["eaves_level"], m.roof["ridge_level"]
     gables = set(m.roof.get("gables", []))
-    roof_area = (m.L + 0.60) * m.W
-    roof_G_line = ld["g_roof_plan"] * roof_area / 2 / m.L
-    roof_S_line = ld["snow_s"] * roof_area / 2 / m.L
+    # toiture : les pannes portent de pignon à pignon (ou à ferme) ; les fermes descendent sur les murs d'égout
+    tr = m.trusses
+    span_r = m.ridge_length
+    panne_span = span_r / (len(tr) + 1)
+    roof_width = m.gable_length + 0.60
+    roof_G_line = ld["g_roof_plan"] * roof_width * (panne_span / 2) / m.gable_length
+    roof_S_line = ld["snow_s"] * roof_width * (panne_span / 2) / m.gable_length
+    truss_G = ld["g_roof_plan"] * roof_width * panne_span * len(tr) / 2 / span_r        # par mur d'égout, lissé
+    truss_S = ld["snow_s"] * roof_width * panne_span * len(tr) / 2 / span_r
     chain = GAMMA_BA * 0.20 * 0.30
-    sabl_G = 0.40 * ld["rafter_length"] / 3 * ld["g_roof_slope"] * 2.2
-    sabl_S = 0.40 * ld["rafter_length"] / 3 * ld["snow_s"] * 2.2
+    sabl_G = 0.40 * ld["rafter_length"] / 3 * ld["g_roof_slope"] * 2.2 + truss_G
+    sabl_S = 0.40 * ld["rafter_length"] / 3 * ld["snow_s"] * 2.2 + truss_S
     rows = []
     for side in bearing_sides(m) + end_sides(m):
         bearing = side in bearing_sides(m)
@@ -234,22 +280,39 @@ def descent(m: Model, ld: dict, fl: dict) -> dict:
             rows.append({"side": side, "file": m.side(side)["label"], "level": lv.id, "base": base, "material": mat,
                          "bearing": bearing, "G": r2(G), "Q": r2(Q), "S": r2(S), "ELS": r2(G + Q + S),
                          "ELU": r2(1.35 * G + 1.5 * Q + 0.75 * 1.5 * S)})
+    for rf in m.refends:
+        z_top = max(s["level_top"] for s in fl["slabs"])
+        for lv in reversed(m.levels):
+            base = lv.floor_top
+            floors_above = [s for s in fl["slabs"] if s["level_top"] > base + 1e-6]
+            buried = base < -1.0
+            wall_h = sum(m.storey_height(l.id) - l.slab for l in m.levels if l.floor_top >= base - 1e-6 and l.floor_top + 0.1 < z_top)
+            wall = (GAMMA_BA * 0.20 if buried else gw) * wall_h
+            G = wall + sum(s["R_refend"][rf["id"]]["G"] + chain for s in floors_above)
+            Q = sum(s["R_refend"][rf["id"]]["Q"] for s in floors_above)
+            rows.append({"side": rf["id"], "file": rf["label"], "level": lv.id, "base": base,
+                         "material": SPEC.of(m)["bw"] if buried else SPEC.of(m)["brick"], "bearing": True, "refend": True,
+                         "G": r2(G), "Q": r2(Q), "S": 0.0, "ELS": r2(G + Q), "ELU": r2(1.35 * G + 1.5 * Q)})
     st = m.stair
     Bt = st["x1"] - st["x0"]
     trem_len = st["y1"] - st["y0"]
     top_cage = m.levels[-1].floor_top + m.levels[-1].hsp
+    full = stair_full_bay(m)
+    bay = next((b - a + 0.10 for a, b in m.bays if a - 0.06 <= st["y0"] < b), m.span_y_calc)
     for lv in reversed(m.levels):
         base = lv.floor_top
-        floors_above = [s for s in fl["slabs"] if s["level_top"] > base + 1e-6]
-        G_pt = sum(s["G"] * Bt * (m.span_y_calc - trem_len) / 2 / 2 for s in floors_above)
-        Q_pt = sum(s["Q"] * Bt * (m.span_y_calc - trem_len) / 2 / 2 for s in floors_above)
+        floors_above = [s for s in fl["slabs"] if s["level_top"] > base + 1e-6 and s["level_top"] <= top_cage + 0.5]
+        k = 0.0 if full else 1.0
+        G_pt = k * sum(s["G"] * Bt * max(bay - trem_len, 0.0) / 2 / 2 for s in floors_above)
+        Q_pt = k * sum(s["Q"] * Bt * max(bay - trem_len, 0.0) / 2 / 2 for s in floors_above)
         wallG = GAMMA_BA * 0.15 * (top_cage - base) * trem_len + 0.25 * trem_len * 0.5 * 25 * len(floors_above)
         G = (G_pt + wallG) / trem_len
         Q = Q_pt / trem_len
         rows.append({"side": "cage", "file": "Voiles BA 15 de cage d'escalier", "level": lv.id, "base": base, "material": "voile BA 15",
                      "bearing": False, "G": r2(G), "Q": r2(Q), "S": 0.0, "ELS": r2(G + Q), "ELU": r2(1.35 * G + 1.5 * Q),
                      "point_G_chevetre": r2(G_pt), "point_Q_chevetre": r2(Q_pt)})
-    return {"rows": rows, "roof_G_per_gable": r2(roof_G_line), "roof_S_per_gable": r2(roof_S_line)}
+    return {"rows": rows, "roof_G_per_gable": r2(roof_G_line), "roof_S_per_gable": r2(roof_S_line),
+            "trusses": tr, "panne_span": r2(panne_span)}
 
 
 def row(desc: dict, side: str, level: str) -> dict:
@@ -262,14 +325,18 @@ def masonry(m: Model, desc: dict, fl: dict) -> dict:
     fd = BRICK["fk"] / BRICK["gamma_m"] * 1000  # kN/m²
     E = 1000 * BRICK["fk"]
     out = []
-    for side in bearing_sides(m) + end_sides(m):
+    refs = {rf["id"]: rf for rf in m.refends}
+    for side in bearing_sides(m) + end_sides(m) + list(refs):
         for lv in [l for l in m.levels if l.floor_top > -1.0]:
             r = row(desc, side, lv.id)
             last = lv.id == m.levels[-1].id
             h = (m.roof["eaves_level"] - lv.floor_top) if last else m.storey_height(lv.id) - lv.slab
             hef = 0.75 * h
             slab_above = next((s for s in fl["slabs"] if abs(s["level_top"] - (lv.floor_top + m.storey_height(lv.id))) < 0.01), None)
-            if r["bearing"] and slab_above:
+            if side in refs and slab_above:      # refend : travées voisines quasi symétriques → excentricité résiduelle 25 %
+                rr = slab_above["R_refend"][side]
+                N_floor = 0.25 * (1.35 * rr["G"] + 1.5 * rr["Q"])
+            elif r["bearing"] and slab_above:
                 N_floor = 1.35 * slab_above["R_G_per_m"] + 1.5 * slab_above["R_Q_per_m"]
             else:
                 N_floor = 0.3 * (1.35 * fl["slabs"][-1]["G"] + 1.5 * 1.5)
@@ -284,7 +351,7 @@ def masonry(m: Model, desc: dict, fl: dict) -> dict:
             phi = min(phi_i, phi_m)
             if phi <= 0.05:
                 # dernier niveau peu chargé : poids propre net des ouvertures (sinon N en tête ≈ 0 et excentricité infinie)
-                length = m.side_length(side)
+                length = (refs[side]["x1"] - refs[side]["x0"]) if side in refs else m.side_length(side)
                 net = WALL_G * max(h * length - sum(o.width * o.height for o in m.openings_on(side, lv.id)), 0.0) / length
                 N_top = max(r["ELU"] - 1.35 * net, 1.0)
                 e_i = min(max(N_floor * t / 6 / N_top + e_init, 0.05 * t), 0.40 * t)
@@ -374,6 +441,74 @@ def lintels(m: Model, ld: dict, fl: dict) -> dict:
     return {"lintels": out, "posts": posts, "chainages": chain}
 
 
+def _beam_design(Lc: float, G: float, Q: float, h_max: float):
+    """Poutre BA isostatique : plus petite section b × h (h ≤ h_max) qui passe μ ≤ 0,30 et τ ≤ 1,5 MPa ; None sinon."""
+    for b in (0.20, 0.25, 0.30):
+        h = max(0.30, round(math.ceil(Lc / 12 / 0.05) * 0.05, 2))
+        while h <= h_max + 1e-6:
+            Gt = G + GAMMA_BA * b * h
+            qu = 1.35 * Gt + 1.5 * Q
+            M, V = qu * Lc ** 2 / 8, qu * Lc / 2
+            d = h - COVER["poutre"] - 0.008 - 0.010
+            if M / (b * d ** 2 * FCD * 1000) <= 0.30 and V / (b * 0.9 * d) / 1000 <= 1.5:
+                As = M / (0.9 * d * FYD * 1000) * 1e4
+                As_min = 0.26 * FCTM / FYK * b * d * 1e4
+                return {"b": b, "h": round(h, 2), "qu": qu, "M": M, "V": V, "d": d, "As": max(As, As_min),
+                        "els": (G + GAMMA_BA * b * h + Q) * Lc / 2}
+            h = round(h + 0.05, 2)
+    return None
+
+
+def refend_beams(m: Model, fl: dict, desc: dict) -> list[dict]:
+    """Poutres BA franchissant les interruptions d'un refend (garage, séjour ouvert) : elles portent le refend du niveau
+    supérieur et la réaction du plancher qui s'appuie dessus. Retombée limitée pour garder ≥ 1,90 m de passage ;
+    si la poutre ne passe pas d'une traite, on ajoute des poteaux BA intermédiaires (entre les places de stationnement)."""
+    out = []
+    ids = [l.id for l in m.levels]
+    for rf in m.refends:
+        for gp in rf["gaps"]:
+            lid = gp.get("level")
+            if lid not in ids:
+                continue
+            i = ids.index(lid)
+            lv = m.levels[i]
+            up = m.levels[i + 1] if i + 1 < len(m.levels) else None
+            gx0, gx1 = float(gp["x0"]), float(gp["x1"])
+            slab = next((s for s in fl["slabs"] if up is not None and abs(s["level_top"] - up.floor_top) < 0.01), None)
+            r_up = row(desc, rf["id"], up.id) if up is not None else {"G": 0.0, "Q": 0.0}
+            G = r_up["G"] + (slab["R_refend"][rf["id"]]["G"] if slab else 0.0)
+            Q = r_up["Q"] + (slab["R_refend"][rf["id"]]["Q"] if slab else 0.0)
+            hs = slab["h"] if slab else 0.20
+            h_max = max(0.30, min(0.70, round(lv.hsp + hs - 1.90, 2)))
+            posts = gp.get("posts")
+            if posts is None:
+                for n in range(0, 4):
+                    des = _beam_design((gx1 - gx0) / (n + 1) + 0.20, G, Q, h_max)
+                    if des:
+                        posts = [round(gx0 + k * (gx1 - gx0) / (n + 1), 2) for k in range(1, n + 1)]
+                        break
+                else:
+                    posts = [round(gx0 + k * (gx1 - gx0) / 4, 2) for k in range(1, 4)]
+            pts = [gx0] + sorted(float(v) for v in posts) + [gx1]
+            Lc = round(max(b_ - a_ for a_, b_ in zip(pts, pts[1:])) + 0.20, 3)
+            des = _beam_design(Lc, G, Q, h_max) or _beam_design(Lc, G, Q, 0.80)
+            b, h = des["b"], des["h"]
+            low = choose_n_bars(des["As"], diams=(12, 14, 16, 20), nmin=3, nmax=5)
+            tau = des["V"] / (b * 0.9 * des["d"]) / 1000
+            n_sp = len(pts) - 1
+            out.append({"id": f"PO-{rf['id']}-{lid}", "refend": rf["id"], "level": lid, "x0": gx0, "x1": gx1,
+                        "posts": [round(v, 3) for v in pts[1:-1]], "spans": n_sp,
+                        "y": round((rf["y0"] + rf["y1"]) / 2, 3), "span": r2(Lc), "b": b, "h": r2(h), "G": r2(G), "Q": r2(Q),
+                        "qu": r2(des["qu"]), "M_Ed": r2(des["M"]), "V_Ed": r2(des["V"]), "As_req": r2(des["As"]), "bottom": low["label"],
+                        "top": "2HA12", "stirrups": "cadres HA8 e=15" if tau < 0.8 else "cadres HA8 e=10 (zones d'appui)",
+                        "tau_MPa": round(tau, 2), "reaction_ELU": r2(des["V"] * (2 if n_sp > 1 else 1)), "reaction_ELS": r2(des["els"] * (2 if n_sp > 1 else 1)),
+                        "headroom": r2(lv.hsp - (h - hs)),
+                        "label": (f"Poutre BA {b:.2f} × {h:.2f} sous {rf['label']} ({gp.get('kind') or 'interruption'})"
+                                  + (f", {n_sp} travées sur {n_sp - 1} poteau{'x' if n_sp > 2 else ''} BA 20 × 20" if n_sp > 1 else "")).replace(".", ","),
+                        "bearing": "appuis ≥ 0,25 m sur les voiles/poteaux BA 20 × 20 ancrés dans les massifs de fondation"})
+    return out
+
+
 # ---------------------------------------------------------------- 6. voiles enterrés
 def basement_walls(m: Model) -> dict:
     if not has_basement(m):
@@ -395,7 +530,9 @@ def basement_walls(m: Model) -> dict:
 
     out = []
     has_mit = any(d["type"] == "mitoyen" for d in m.raw["sides"].values())
+    has_bnd = any(d["type"] != "mitoyen" and d.get("on_boundary") and d["axis"] == "y" for d in m.raw["sides"].values())
     cases = ([("Voiles sur mitoyens (avec surcharge des fondations voisines)", q_n)] if has_mit else []) + \
+            ([("Voile en limite séparative (surcharge des fondations voisines)", q_n)] if has_bnd and not has_mit else []) + \
             [("Voiles sous façades (surcharge de chantier/voirie 10 kPa)", 10.0)]
     for name, q in cases:
         p_top, p_bot = p(0.10, q), p(H, q)
@@ -436,6 +573,9 @@ def foundations(m: Model, desc: dict) -> dict:
         exc = d["type"] == "mitoyen" or bool(d.get("on_boundary"))
         length = m.side_length(side) - (0.40 if side in end_sides(m) else 0.0)
         groups.append((side, f"Semelle {'excentrée' if exc else 'filante'} sous {d['label']}", exc, 1, length))
+    for rf in m.refends:
+        gaps_low = sum(float(g["x1"]) - float(g["x0"]) for g in rf["gaps"] if g.get("level") == low)
+        groups.append((rf["id"], f"Semelle filante sous {rf['label']}", False, 1, rf["x1"] - rf["x0"] - gaps_low))
     groups.append(("cage", "Semelles sous voiles de cage d'escalier", False, 2, m.stair["y1"] - m.stair["y0"]))
     for side, label, excentric, count, length in groups:
         r = row(desc, side, low)
@@ -477,6 +617,32 @@ def foundations(m: Model, desc: dict) -> dict:
             "Redans 1V/3H entre semelles filantes d'arases différentes.",
         ],
     }
+
+
+def beam_pads(m: Model, fnd: dict, beams: list[dict]) -> list[dict]:
+    """Semelles isolées sous les appuis des poutres de refend (charge ponctuelle = réaction de la poutre + poteau)."""
+    geo = m.geo
+    q_els, q_elu = geo["q_els_kpa"], geo["q_elu_kpa"]
+    out = []
+    for bm in beams:
+        sup = [(bm["x0"] - 0.10, 0.5), *[(x, 1.0) for x in bm.get("posts", [])], (bm["x1"] + 0.10, 0.5)]
+        for k, (x, f_) in enumerate(sup):
+            N_els = bm["reaction_ELS"] * (f_ if bm.get("spans", 1) > 1 else 1.0) + GAMMA_BA * 0.04 * 3.0
+            N_elu = bm["reaction_ELU"] * (f_ if bm.get("spans", 1) > 1 else 1.0) + 1.35 * GAMMA_BA * 0.04 * 3.0
+            B = max(geo.get("verified_widths_m", {}).get("isolee", 0.80), 0.80)
+            while True:
+                pp = GAMMA_BA * B * B * 0.40
+                if (N_els + pp) / (B * B) <= 0.90 * q_els and (N_elu + 1.35 * pp) / (B * B) <= 0.90 * q_elu:
+                    break
+                B = round(B + 0.05, 2)
+            console = (B - 0.20) / 2
+            d = 0.40 - COVER["fondation"] - 0.012
+            Mc = (N_elu + 1.35 * pp) / B * console ** 2 / 2
+            As = Mc / (0.9 * d * FYD * 1000) * 1e4
+            out.append({"id": f"SI-{bm['id']}-{k + 1}", "beam": bm["id"], "x": round(x, 3), "y": bm["y"], "B": B, "h": 0.40,
+                        "N_ELS": r2(N_els + pp), "N_ELU": r2(N_elu + 1.35 * pp), "sigma_ELS": r2((N_els + pp) / (B * B)),
+                        "ratio_ELS": round((N_els + pp) / (B * B) / q_els, 3), "steel": choose_bars(As, 2.0, diams=(10, 12, 14))["label"] + " (2 sens)"})
+    return out
 
 
 # ---------------------------------------------------------------- 8. dallage + escaliers
@@ -568,7 +734,7 @@ def quantities(m: Model, fl: dict, lin: dict, fnd: dict, bw: dict, ld: dict | No
         add(lot_d, "Dallage BA 15 cm sur terre-plein + 1 nappe ST 25 C", "m³", vd, (L - 0.4) * (W - 0.4) * 2.70)
     trem = (m.stair["x1"] - m.stair["x0"]) * (m.stair["y1"] - m.stair["y0"])
     for s in fl["slabs"]:
-        a = (L - 0.40) * (W - 0.40) - trem
+        a = (L - 0.40) * (W - 0.40) - (0.0 if s.get("attic") else trem) - sum((rf["x1"] - rf["x0"]) * rf["t"] for rf in m.refends)
         add("Planchers", f"{s['label']} — {s['label_system']}", "m²", a, a * (2.0 + 1.6))
     wall_area = 0.0
     for lv in [l for l in m.levels if l.floor_top > -1.0]:
@@ -577,13 +743,34 @@ def quantities(m: Model, fl: dict, lin: dict, fnd: dict, bw: dict, ld: dict | No
         voids = sum(o.width * o.height for o in m.openings if o.level == lv.id)
         wall_area += gross - voids
     gables = m.roof.get("gables", [])
-    gable = len(gables) * (L * (m.roof["ridge_level"] - m.roof["eaves_level"]) / 2)
+    gable = len(gables) * (m.gable_length * (m.roof["ridge_level"] - m.roof["eaves_level"]) / 2)
     mit = has_mitoyen(m)
     first = next(l for l in m.levels if l.floor_top > -1.0)
     add("Maçonnerie", f"Murs {SPEC.of(m)['brick']} joint mince ({'façades + mitoyens' if mit else 'façades'}, {first.id} → égout)", "m²", wall_area)
     gmit = any(m.side(g)["type"] == "mitoyen" for g in gables)
     add("Maçonnerie", f"Pignons{' mitoyens' if gmit else ''} {SPEC.of(m)['brick']} (triangles égout → faîtage)", "m²", gable)
-    perim = 2 * (L + W)
+    for rf in m.refends:
+        lr = rf["x1"] - rf["x0"]
+        h_up = sum(m.storey_height(l.id) - l.slab for l in m.levels if l.floor_top > -1.0 and l.floor_top + 0.1 < max(s_["level_top"] for s_ in fl["slabs"]))
+        add("Maçonnerie", f"{rf['label']} — {SPEC.of(m)['brick']} ({first.id} → dernier plancher)", "m²", lr * h_up)
+        if bsmt:
+            gl = sum(float(g["x1"]) - float(g["x0"]) for g in rf["gaps"] if g.get("level") == m.levels[0].id)
+            aw_rf = (lr - gl) * (m.storey_height(m.levels[0].id) - m.levels[0].slab)
+            if SPEC.of(m)["bw_blocks"]:
+                add("Sous-sol", f"Murs de refend en blocs à bancher 20 au sous-sol ({rf['id']})", "m²", aw_rf)
+                add("Sous-sol", f"Remplissage béton C25/30 des blocs à bancher du refend {rf['id']} + armatures", "m³", SPEC.of(m)["bw_core"] * aw_rf, SPEC.of(m)["bw_core"] * aw_rf * 65)
+            else:
+                add("Sous-sol", f"Voiles BA 20 de refend au sous-sol ({rf['id']})", "m³", 0.20 * aw_rf, 0.20 * aw_rf * 65)
+    for bm in lin.get("beams", []):
+        lt = bm["x1"] - bm["x0"] + 0.50                       # longueur totale (travées + appuis)
+        v = bm["b"] * bm["h"] * lt
+        add("Béton armé", f"{bm['label']}, L = {lt:.2f}".replace(".", ","), "m³", v, v * 140)
+        npt = len(bm.get("posts", [])) + 2
+        add("Béton armé", f"Poteaux BA 20 × 20 d'appui de {bm['id']}", "u", npt, npt * 3.0 * (4 * MASS[12] + 20 * 0.72 * MASS[6]))
+    for pd in fnd.get("pads", []):
+        v = pd["B"] * pd["B"] * pd["h"]
+        add("Fondations", f"Semelle isolée {pd['id']} {pd['B']:.2f} × {pd['B']:.2f} × {pd['h']:.2f}".replace(".", ","), "m³", v, v * 50)
+    perim = 2 * (L + W) + sum(rf["x1"] - rf["x0"] for rf in m.refends)
     n_ch = len([s_ for s_ in fl["slabs"] if s_["level_top"] > 0.01]) + 1
     add("Béton armé", f"Chaînages horizontaux 20 × 30 ({n_ch} niveaux)", "ml", perim * n_ch, perim * n_ch * 4 * MASS[10] * 1.1 + perim * n_ch * 5 * 0.82 * MASS[6])
     nvert = 4 + 4 + 2 * len([o for o in m.openings if o.width >= 1.80])
@@ -733,8 +920,10 @@ def compute(m: Model) -> dict:
     desc = descent(m, ld, fl)
     mas = masonry(m, desc, fl)
     lin = lintels(m, ld, fl)
+    lin["beams"] = refend_beams(m, fl, desc)
     bw = basement_walls(m)
     fnd = foundations(m, desc)
+    fnd["pads"] = beam_pads(m, fnd, lin["beams"])
     sz = seismic(m, ld, fl, desc)
     extra = {"seismic": sz} if sz else {}
     return {**extra, "loads": ld, "floors": fl, "descent": desc, "masonry": mas, "lintels": lin, "basement": bw,

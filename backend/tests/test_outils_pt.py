@@ -111,6 +111,21 @@ CASOS = {
     "verifier_accessibilite": lambda: _fill("verifier_accessibilite", contexte="pt",
                                             mesures=_o("verifier_accessibilite", "mesures", pente_rampe_pct=7, longueur_rampe_m=4, porte_entree_utile_m=0.9)),
     "calcul_structure": lambda: _fill("calcul_structure", element="poutre_ba", portee_m=5.0, b_m=0.25, h_m=0.45, g_kn_m=12.0, q_kn_m=6.0),
+    "calcul_lotes_tecnicos": lambda: _fill("calcul_lotes_tecnicos", concelho="Coimbra", obra="renovacao", divisoes=[
+        _o("calcul_lotes_tecnicos", "divisoes", tipo="sala", area_m2=24, paredes=[_o("calcul_lotes_tecnicos", "divisoes", "paredes", area_m2=12),
+                                                                                  _o("calcul_lotes_tecnicos", "divisoes", "paredes", tipo="envidracado", area_m2=4)]),
+        _o("calcul_lotes_tecnicos", "divisoes", tipo="quarto", area_m2=12, paredes=[_o("calcul_lotes_tecnicos", "divisoes", "paredes", area_m2=8)]),
+        _o("calcul_lotes_tecnicos", "divisoes", tipo="cozinha", area_m2=9, paredes=[_o("calcul_lotes_tecnicos", "divisoes", "paredes", area_m2=6)]),
+        _o("calcul_lotes_tecnicos", "divisoes", tipo="casa_de_banho", area_m2=4, paredes=[_o("calcul_lotes_tecnicos", "divisoes", "paredes", area_m2=3)])],
+        isolamento_paredes=_o("calcul_lotes_tecnicos", "isolamento_paredes", sistema="etics"), bomba_calor=_o("calcul_lotes_tecnicos", "bomba_calor"),
+        equipamentos=_o("calcul_lotes_tecnicos", "equipamentos", placa="monofasica"), solar_termico=_o("calcul_lotes_tecnicos", "solar_termico")),
+    "calcul_piso_radiante": lambda: _fill("calcul_piso_radiante", divisoes=[
+        _o("calcul_piso_radiante", "divisoes", tipo="sala", area_m2=30, phi_w=1600, r_isolante=1.0, local_inferior="solo"),
+        _o("calcul_piso_radiante", "divisoes", tipo="casa_de_banho", area_m2=5, phi_w=700)]),
+    "verificar_solar_termico": lambda: _fill("verificar_solar_termico", tipologia=2,
+                                             coletor=_o("verificar_solar_termico", "coletor", numero=1, area_m2=2.0, eta0=0.75, a1=3.8),
+                                             deposito=_o("verificar_solar_termico", "deposito", volume_l=150)),
+    "calcul_patio_pluvial": lambda: _fill("calcul_patio_pluvial", area_m2=16, profundidade_m=1.1, regiao_pluviometrica="B"),
 }
 
 

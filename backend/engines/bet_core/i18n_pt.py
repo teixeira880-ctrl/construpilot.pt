@@ -6,7 +6,7 @@ NORMS = [
      "RTIEBT (Portaria 949-A/2006) + ITED — pré-dimensionamento das instalações de utilização (equipamento mínimo, circuitos, proteções)"),
     ("NF DTU 60.11 (calcul des réseaux), NF DTU 60.1 (plomberie sanitaire), NF DTU 60.33 (PVC évacuation)",
      "Decreto Regulamentar 23/95 (RGSPPDADAR) — redes prediais de abastecimento e de drenagem ; NP EN 806 e NP EN 12056"),
-    ("NF DTU 13.11, 13.3, 20.1, 21, 31.1, 40.21", "regras de boa prática LNEC e documentos de homologação"),
+    ("NF DTU 13.1, 13.3, 20.1, 21, 31.1, 40.21", "regras de boa prática LNEC e documentos de homologação"),
     ("NF DTU 60.1 / 60.11", "Decreto Regulamentar 23/95"),
     ("NF P 94-261", "NP EN 1997-1"),
     ("NF C 15-100", "RTIEBT"),
@@ -125,7 +125,6 @@ GLOSSARY = {
     "Différentiel": "Diferencial", "différentiels": "diferenciais", "Disjoncteur (A)": "Disjuntor (A)", "Section (mm²)": "Secção (mm²)",
     "Pièce": "Compartimento", "Appareil": "Aparelho", "appareils": "aparelhos", "Alimentation": "Alimentação", "ECS": "AQS",
     "Évacuation": "Esgoto", "Chute": "Tubo de queda", "chutes": "tubos de queda", "Longueur évac. (m)": "Comprimento de esgoto (m)",
-
     # MEP
     "Prises": "Tomadas", "prises": "tomadas", "prise": "tomada", "Éclairage": "Iluminação", "éclairage": "iluminação",
     "Volets roulants": "Estores elétricos", "volets roulants": "estores elétricos",
@@ -244,7 +243,6 @@ TEMPLATES = {
     "toiture ⟨0⟩ pans sur pignons": "cobertura de ⟨0⟩ águas sobre empenas",
     "toiture ⟨0⟩ pans, pignons = mitoyens": "cobertura de ⟨0⟩ águas, empenas = paredes meeiras",
     "GTL / tableau": "quadro elétrico (QE)",
-
     # notes des planches
     "Contrainte admissible G⟨0⟩ : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.": "Tensão admissível (estudo geotécnico) : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.",
     "Semelle la plus chargée (Semelle filante sous ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.": "Sapata mais carregada (sapata contínua sob ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.",

@@ -13,6 +13,7 @@ from . import draw  # noqa: F401  (enregistre les polices)
 from .i18n import protect, tr
 from .profiles import profile
 from . import spec as SPEC
+from . import schema as SCHEMA
 
 _LANG = ["fr"]
 
@@ -120,6 +121,9 @@ def review(m, r, tim, e, p, devis_lines, sheets, model_anomalies) -> dict:
             ("Plans de planchers", code_of("floor")), ("Coupes", code_of("coupe")), ("Façades", code_of("facade")),
             ("Détails de ferraillage", code_of("detail")), ("Charpente", code_of("charpente")), ("Électricité", code_of("elec", first.id)),
             ("Tableau électrique", code_of("elec_panel")), ("Plomberie", code_of("plumb", first.id)), ("Schéma colonnes", code_of("plumb_riser"))]
+    if (m.raw.get("project") or {}).get("country", "FR") != "PT":
+        need += [("Ventilation", code_of("vmc", first.id)), ("Schéma de ventilation", code_of("vmc_schema")),
+                 ("Schéma hydraulique chauffage", code_of("hydro")), ("Coupe-type plancher et déperditions", code_of("pc_detail"))]
     for k, c in need:
         a("ok" if c else "bloquant", f"Livrable « {k} » ({c or '—'}) {'produit' if c else 'MANQUANT'}")
     nlots = len({l["lot"] for l in devis_lines})
@@ -202,6 +206,15 @@ def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
                  ["Hypothèses du client", _hyp_text(m)],
                  ["Normes", prof["norms_text"]]],
                 [45, 133]))
+    hyp_rows = SCHEMA.hypotheses_rows(m.raw)
+    if hyp_rows:
+        s.append(Spacer(1, 3 * mm))
+        s.append(Paragraph("Hypothèses retenues et sources", H2))
+        s.append(_t([["Donnée", "Valeur retenue", "Source"]] + [list(r) for r in hyp_rows[:40]], [70, 60, 48]))
+    notes = [str(n) for n in (m.raw.get("extraction_notes") or [])][:8]
+    if notes:
+        s.append(Spacer(1, 2 * mm))
+        s.append(Paragraph("Notes de lecture : " + " ; ".join(notes), P))
     s.append(Spacer(1, 5 * mm))
     col = colors.Color(0.1, 0.5, 0.25) if rev["blocking"] == 0 else colors.Color(0.75, 0.1, 0.1)
     s.append(Paragraph(f"STATUT DU DOSSIER : {rev['status']}", ParagraphStyle("st", fontName="DVB", fontSize=12, textColor=col)))
@@ -364,13 +377,66 @@ def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
         from reportlab.platypus import Paragraph as _P
         s.append(_P("Nota : redes prediais pré-dimensionadas ; o projeto de especialidade de águas e esgotos segundo o Decreto Regulamentar 23/95 "
                     "(caudais de cálculo, pressões, ventilação e ramais de ligação) e o regulamento da entidade gestora local deve ser elaborado e subscrito por técnico responsável.", SM))
+    if prof["country"] != "PT":
+        from .hvac import hvac as _hvac
+        hv = _hvac(m, p["stacks"])
+        loss, v = hv["loss"], hv["vmc"]
+        th = m.raw.get("thermal")
+        if th and th.get("U"):
+            fr = lambda v, n=0: f"{v:.{n}f}".replace(".", ",")
+            s.append(H("Étude thermique RE2020 (préalable aux plans) — isolation et épaisseur des parois"))
+            s.append(Paragraph("Aucune étude thermique n'étant fournie, le moteur RE2020 ConstruPilot a été exécuté AVANT les calculs de structure : "
+                               "il retient la solution la plus économique qui passe toutes les exigences avec 3 % de marge, puis l'épaisseur des murs "
+                               "qui en découle est reportée dans les plans, le métré et le devis. Pré-étude indicative : l'étude thermique réglementaire "
+                               "(logiciel évalué Th-BCE 2020) et l'attestation de dépôt de PC restent à produire par un thermicien.", P))
+            s.append(_t([["Indicateur", "Valeur", "Seuil", "Résultat"]] +
+                        [[k, fr(th[a], 1), fr(th[b], 1), "OK" if th[a] <= th[b] else "KO"] for k, a, b in
+                         (("Bbio", "Bbio", "Bbio_max"), ("Cep,nr (kWhep/m².an)", "Cep_nr", "Cep_nr_max"), ("Cep (kWhep/m².an)", "Cep", "Cep_max"),
+                          ("Ic énergie (kg éq. CO2/m²)", "Ic_energie", "Ic_energie_max"), ("DH (°C.h)", "DH", "DH_max"))] +
+                        [["Classe énergie (DPE neuf)", f"{fr(th['cep_dpe'])} kWhEP · {fr(th['ges'], 1)} kgCO2", "—", th["classe"]]], [62, 46, 30, 30]))
+            U, e = th["U"], th["thickness_mm"]
+            attic = bool(m.roof.get("habitable_attic"))
+            s.append(_t([["Paroi", "Composition retenue", "U (W/m².K)", "Épaisseur"]] + [
+                ["Murs extérieurs", f"{SPEC.of(m)['brick_name']} + doublage PSE graphité λ 0,032 « 10 + {e['doublage']} »", fr(U["mur"], 3),
+                 f"{fr(th['wall_total'], 2)} m + enduit"],
+                (["Rampants", f"Laine minérale {e['rampants']} mm entre et sous chevrons", fr(U["rampants"], 3), f"{e['rampants']} mm"] if attic else
+                 ["Plancher des combles", f"Laine minérale soufflée {e['combles']} mm λ 0,046", fr(U["combles"], 3), f"{e['combles']} mm"]),
+                ["Plancher bas", f"Polyuréthane {e['sous_chape']} mm λ 0,022 sous chape" + (" (sur sous-sol non chauffé)" if m.levels[0].floor_top < -1 else ""),
+                 fr(U["plancher_bas"], 3), f"{e['sous_chape']} mm"],
+                ["Menuiseries", f"Uw {fr(U['fenetre'], 1)}, g 0,45, volets roulants", fr(U["fenetre"], 2), "—"],
+                ["Ponts thermiques", "rupteurs en about de planchers" if th.get("psi", 0.22) <= 0.15 else "traitement courant (ITI)",
+                 f"ψ {fr(th.get('psi', 0.22), 2)} /m²Sref", "—"],
+            ], [36, 86, 22, 34]))
+            sy = th.get("systems") or {}
+            s.append(Paragraph("• Systèmes : PAC air/eau (SCOP 4) sur plancher chauffant" + (" réversible (rafraîchissement)" if sy.get("refroidissement") else "")
+                               + ", ECS par chauffe-eau thermodynamique, " + ("VMC double flux" if th.get("ventilation") == "vmc_df" else "VMC simple flux hygro B")
+                               + f" ; Sref {fr(th['sref'], 1)} m² ; zone {th['zone']}.", P))
+            if th.get("baies_manque_m2", 0) > 0:
+                s.append(Paragraph(f"• Exigence de moyens « surface de baies ≥ 1/6 de la surface habitable » NON tenue au PC ({fr(th['baies_m2'], 1)} m² "
+                                   f"pour {fr(th['sref'] / 6, 1)} m²) : ajouter ≈ {fr(th['baies_manque_m2'], 1)} m² de vitrage, de préférence au Sud.", P))
+        s.append(H("Génie climatique — déperditions, chauffage, ventilation"))
+        for x in [f"Choix retenus : chauffage {hv['options']['heating'].replace('_', ' ')}, ventilation {v['system']}, isolation intérieure "
+                  f"{hv['options']['insulation_mm']} mm ({', '.join(f'{k} : {w}' for k, w in hv['options']['source'].items())}).",
+                  f"Déperditions (NF EN 12831 simplifiée) : {loss['total_w']} W pour {loss['a_heated']} m² chauffés, soit {loss['w_m2']} W/m², "
+                  f"Tint {loss['t_int']:.0f} °C / Tbase {loss['t_base']} °C (département {loss['dept']}).",
+                  f"{hv['pac']['label']} : besoin {hv['pac']['need_kw']} kW (relance + 10 %)" + (f", froid ≈ {hv['pac']['cooling_kw']} kW." if hv['options']['cooling'] else "."),
+                  hv["pac"]["outdoor"]] + ((hv["pc"]["rules"] + [hv["pc"]["regime"]]) if hv.get("pc") else []) + v["rules"]:
+            s.append(Paragraph("• " + x, P))
+        s.append(_t([["Niveau", "Pièce", "Surface", "Déperditions", "W/m²"]] +
+                    [[x["level"], x["room"], f"{x['area']:.1f} m²", f"{x['phi_w']} W", str(x["w_m2"])] for x in loss["rooms"]], [18, 70, 28, 34, 22]))
+        if hv.get("pc"):
+            s.append(_t([["Boucle", "Pièce", "Surface", "Pas", "Longueur", "Débit"]] +
+                        [[l["id"], l["room"], f"{l['area']:.1f} m²", f"{int(l['pitch']*100)} cm", f"{l['length_m']} m", f"{l['flow_lh']} l/h"]
+                         for lv in hv["pc"]["levels"] for l in lv["loops"]], [22, 62, 26, 20, 24, 24]))
+        s.append(_t([["Niveau", "Pièce", "Bouche", "Débit base / pointe"]] +
+                    [[b["level"], b["room"], b["kind"], f"{b['q']} / {b['q_pointe']} m³/h"] for b in v["bouches"]], [20, 70, 40, 48]))
     s.append(H("Devis estimatif"))
     vat = tot.get("vat", 0.20)
     s.append(_t([["Lot", "Montant € HT"]] + [[k, f"{v:,.0f}".replace(",", " ")] for k, v in tot["lots"].items()] +
                 [["TOTAL HT", f"{tot['ht']:,.0f}".replace(",", " ")], [f"TVA {vat*100:.0f} %", f"{tot['tva']:,.0f}".replace(",", " ")], ["TOTAL TTC", f"{tot['ttc']:,.0f}".replace(",", " ")]],
                 [120, 40]))
     s.append(Paragraph(f"Prix unitaires indicatifs {prof['price_ref_long']} (fourni-posé, HT) ; détail ligne par ligne et formules dans le fichier Excel. "
-                       "Hors lots : menuiseries, plâtrerie, chapes, revêtements, peinture, chauffage, VRD.", SM))
+                       + ("Hors lots : menuiseries, plâtrerie, revêtements, peinture, VRD." if prof["country"] != "PT" else "Hors lots : menuiseries, plâtrerie, chapes, revêtements, peinture, chauffage, VRD."), SM))
     if prof["country"] != "FR":
         s.append(Paragraph(prof["vat_note"], SM))
 
@@ -382,6 +448,12 @@ def _write_note(path, m, r, tim, e, p, tot, rev, sheets):
     s.append(Paragraph("Ingénieur responsable (nom, visa, date) : ________________________________", P))
     doc.build(s, onFirstPage=lambda c, d: _cover(c, d, m, rev, tot, sheets, prof),
               onLaterPages=lambda c, d: _header_footer(c, d, m))
+
+
+def _short(t: str, n: int) -> str:
+    """Valeur de cartouche tronquée proprement (les références de PC / G2 peuvent être longues)."""
+    t = str(t)
+    return t if len(t) <= n else t[: n - 1].rstrip(" ,;—-(") + "…"
 
 
 # ------------------------------------------------------------------ mise en page premium
@@ -485,7 +557,7 @@ def _cover(c, doc, m, rev, tot, sheets, prof):
     c.drawString(18 * mm, y - 14.5 * mm, _T(pr["address"])[:95])
     # grille d'informations
     gy = y - 30 * mm
-    cells = [(_T("Permis / projet"), _T(f"{pr.get('pc_ref', '—')}")), (_T("Étude de sol"), _T(str(pr.get("g2_ref", "—")))[:58]),
+    cells = [(_T("Permis / projet"), _short(_T(f"{pr.get('pc_ref', '—')}"), 44)), (_T("Étude de sol"), _short(_T(str(pr.get("g2_ref", "—"))), 44)),
              (_T("Indice / date"), f"A · {pr.get('date', '')}"), (_T("Planches"), f"{len(sheets)} (PDF + DXF)"),
              (_T("Estimation"), f"{tot['ht']:,.0f} € ".replace(",", " ") + _T("HT")), (_T("Normes"), _T(prof["norms_text"])[:60] + "…")]
     cw = (W - 36 * mm) / 2
@@ -523,6 +595,8 @@ def _cover(c, doc, m, rev, tot, sheets, prof):
               (_T("Charpente"), ", ".join(x.code for x in sheets if x.code.startswith("CH"))),
               (_T("Électricité"), ", ".join(x.code for x in sheets if x.code.startswith("EL"))),
               (_T("Plomberie sanitaire"), ", ".join(x.code for x in sheets if x.code.startswith("PL"))),
+              ("Ventilation", ", ".join(x.code for x in sheets if x.code.startswith("VE"))),
+              ("Chauffage / rafraîchissement", ", ".join(x.code for x in sheets if x.code.startswith("CC"))),
               (_T("Devis et métré (Excel à formules) · plans DXF"), "XLSX · DXF")]
     yy = ty - 8 * mm
     for k, v in groups:
@@ -666,7 +740,7 @@ def _cover_pt(c, doc, m, rev, tot, sheets, prof):
     c.setFont("DV", 9)
     c.drawString(x0, y - 1 * mm, _T(pr["address"])[:70])
     y -= 16 * mm
-    cells = [(_T("Permis / projet"), _T(f"{pr.get('pc_ref', '—')}")), (_T("Étude de sol"), _T(str(pr.get("g2_ref", "—")))),
+    cells = [(_T("Permis / projet"), _short(_T(f"{pr.get('pc_ref', '—')}"), 44)), (_T("Étude de sol"), _short(_T(str(pr.get("g2_ref", "—"))), 44)),
              (_T("Indice / date"), f"A · {pr.get('date', '')}"), (_T("Planches"), f"{len(sheets)} (PDF + DXF)"),
              (_T("Estimation"), f"{tot['ht']:,.0f} € ".replace(",", " ") + _T("HT"))]
     for k, v in cells:
@@ -697,7 +771,8 @@ def _cover_pt(c, doc, m, rev, tot, sheets, prof):
     y -= 6 * mm
     groups = [(_T("Note de calcul et revue du dossier"), "A4"),
               (_T("Gros œuvre — plans d'exécution cotés"), "GO"), (_T("Charpente"), "CH"), (_T("Électricité"), "EL"),
-              (_T("Plomberie sanitaire"), "PL"), (_T("Devis et métré (Excel à formules) · plans DXF"), "XLSX")]
+              (_T("Plomberie sanitaire"), "PL"), ("Ventilation", "VE"), ("Chauffage / rafraîchissement", "CC"),
+              (_T("Devis et métré (Excel à formules) · plans DXF"), "XLSX")]
     for k, code in groups:
         n = sum(1 for x in sheets if x.code.startswith(code)) if code not in ("A4", "XLSX") else 0
         if code not in ("A4", "XLSX") and not n:
