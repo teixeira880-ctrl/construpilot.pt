@@ -55,10 +55,16 @@ root.render(
 // PWA : regista o service worker SÓ em produção.
 // Em desenvolvimento (CRA/craco), o SW em prod-only evita conflitos com o HMR e
 // garante que o build do stand WebSummit (modo avião, LOTE 2) usa o cache real.
+// Excepção: flag opt-in `localStorage.cp_force_pwa === "true"` activa em dev
+// — usada exclusivamente pelo spec Playwright `e2e/demo_offline.spec.js` (2d).
+const _forcePwaInDev = (() => {
+  try { return localStorage.getItem("cp_force_pwa") === "true"; }
+  catch { return false; }
+})();
 if (
   typeof window !== "undefined" &&
   "serviceWorker" in navigator &&
-  process.env.NODE_ENV === "production"
+  (process.env.NODE_ENV === "production" || _forcePwaInDev)
 ) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then((reg) => {
@@ -76,10 +82,12 @@ if (
 }
 // Em dev: se um SW ficou registado numa sessão anterior (prod→dev), desregista
 // para não interceptar o HMR nem servir chunks antigos durante o trabalho local.
+// Excepção: flag `cp_force_pwa` (teste 2d) mantém o SW activo.
 if (
   typeof window !== "undefined" &&
   "serviceWorker" in navigator &&
-  process.env.NODE_ENV !== "production"
+  process.env.NODE_ENV !== "production" &&
+  !_forcePwaInDev
 ) {
   navigator.serviceWorker.getRegistrations().then((regs) => {
     regs.forEach((r) => r.unregister().catch(() => {}));

@@ -257,3 +257,14 @@ Smoke LOTE 1 pós-deploy preparado em `/app/scripts/websummit/smoke_lote1_prod.s
 - Interceptor ganha rotas `POST /assistant/{chat,ask,message}` e `GET /assistant/{threads,history}` → resolve local via `_matchAssistant`. Resposta contém `reply` (markdown), `suggestions` com `action:"download"|"navigate"|"ask"` e `source:"demo_offline:..."` para rastreio.
 - Testes backend 65/65 verdes (+ 4 novos `test_demo_assets_export`): magic bytes PDF/ZIP/XLSX validados, manifest referencia motores reais, tamanhos > 1KB cada. Preview serve assets 200 OK (verificado por curl).
 - Zero dado real, zero número inventado — todos os valores (betão C25/30, zona sísmica 2A, €188 962,19, prazo 90 semanas, 20 lotes) saem dos motores `estimation` + `bet_core`.
+
+## LOTE 2 — Sub-lote 2d (Playwright offline) ✅
+- `e2e/demo_offline.spec.js` standalone node (chromium). Resultado local: **8/8 verdes**.
+- **Teste 1** (interceptor online→offline): /demo/entrar → "Offline — Pro" → setOffline(true) → nav /dashboard → Moradia Martins visível → 0 chamadas /api/* à rede → sem crash. 5/5 ✅.
+- **Teste 2** (SW offline boot): flag `cp_force_pwa` → SW registado activo → pré-aquecer /demo/entrar → setOffline(true) → reload serve HTML+chunks da cache SW → shell renderiza sem crash. 3/3 ✅.
+- Flag `DEMO_E2E_ENABLED` preview backend **não necessária** — interceptor resolve 100% client-side.
+- Index.js ganha gate opt-in `localStorage.cp_force_pwa === "true"` para o SW em dev (reservado ao spec 2d; contas normais em dev continuam sem SW anti-HMR-ghost).
+
+## Smoke LOTE 1 em prod (reactivo)
+- `/api/health` → 200 ✅ · `/api/auth/demo-status` → `{pro:true, particular:true}` (seed daily OK).
+- Smoke completo (`scripts/websummit/smoke_lote1_prod.sh`) exige `WEBSUMMIT_DEMO_PASSWORD_PT` real em env. No pod a var tem placeholder `<redacted>` → smoke aguarda credenciais reais ou execução manual pós-deploy pelo fundador.
