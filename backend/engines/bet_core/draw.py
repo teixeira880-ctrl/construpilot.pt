@@ -13,6 +13,8 @@ from pathlib import Path
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A3, landscape
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
 from .i18n import tr as _tr
@@ -45,10 +47,13 @@ LAYERS = {
     "FOND": (0.15, 0.50, 0.30), "ACIER": (0.80, 0.10, 0.10), "PLANCHER": (0.20, 0.45, 0.75), "CHARPENTE": (0.55, 0.35, 0.15),
     "ELEC": (0.85, 0.45, 0.00), "PLOMB_EF": (0.10, 0.40, 0.90), "PLOMB_ECS": (0.85, 0.15, 0.15), "PLOMB_EV": (0.35, 0.25, 0.10),
     "TERRAIN": (0.60, 0.50, 0.35), "TITRE": (0.10, 0.30, 0.20), "ESCALIER": (0.35, 0.35, 0.35), "NIVEAU": (0.10, 0.10, 0.10),
+    "VMC_S": (0.00, 0.55, 0.60), "VMC_E": (0.55, 0.25, 0.62), "CHAUF_A": (0.88, 0.22, 0.18), "CHAUF_R": (0.18, 0.40, 0.85),
+    "GAINE": (0.18, 0.45, 0.32), "RESA": (0.78, 0.10, 0.52), "FOND_PLAN": (0.62, 0.62, 0.64),
 }
 DXF_COLOR = {"BA": 7, "BRIQUE": 1, "DOUBLAGE": 8, "CLOISON": 8, "BAIE": 5, "COTE": 7, "TEXTE": 7, "AXE": 4, "FOND": 3,
              "ACIER": 1, "PLANCHER": 5, "CHARPENTE": 30, "ELEC": 30, "PLOMB_EF": 5, "PLOMB_ECS": 1, "PLOMB_EV": 34,
-             "TERRAIN": 42, "TITRE": 3, "ESCALIER": 8, "NIVEAU": 7}
+             "TERRAIN": 42, "TITRE": 3, "ESCALIER": 8, "NIVEAU": 7, "VMC_S": 4, "VMC_E": 6, "CHAUF_A": 1, "CHAUF_R": 5,
+             "GAINE": 3, "RESA": 6, "FOND_PLAN": 8}
 BRAND = colors.Color(0.12, 0.42, 0.27)
 
 
@@ -372,6 +377,95 @@ def _frame(c, sh: Sheet, project: dict, idx: int, total: int):
                 first = False
                 ny -= 2.9 * mm
             ny -= 1.0 * mm
+    leg = getattr(sh, "legend", None)
+    if leg:
+        nx = W - 112 * mm
+        ny = (ny - 3 * mm) if sh.notes else H - 17 * mm
+        _legend(c, leg, nx, ny, br)
+
+
+def _sym(c, kind, x, y, s=1.0):
+    """Symbole de légende dessiné (x, y = centre, en points) — mêmes formes que sur les plans."""
+    def col(layer):
+        return colors.Color(*LAYERS.get(layer, (0, 0, 0)))
+    c.saveState()
+    _set_dash(c, None)
+    c.setLineWidth(0.5)
+    r = 1.5 * mm * s
+    if kind in ("PC", "PL", "INT", "RJ45", "SPEC", "TH", "GTL", "DCL"):
+        c.setStrokeColor(col("ELEC"))
+        c.setFillColor(colors.white)
+        if kind == "PC":
+            c.circle(x, y, r, stroke=1, fill=1)
+            c.line(x - r, y, x + r, y)
+        elif kind == "PL":
+            c.circle(x, y, r, stroke=1, fill=0)
+            c.line(x - r * .7, y - r * .7, x + r * .7, y + r * .7)
+            c.line(x - r * .7, y + r * .7, x + r * .7, y - r * .7)
+        elif kind == "INT":
+            c.setFillColor(col("ELEC"))
+            c.circle(x, y, r * .45, stroke=0, fill=1)
+            c.line(x, y, x + r, y + r)
+        elif kind == "RJ45":
+            p = c.beginPath()
+            p.moveTo(x - r, y - r * .8); p.lineTo(x + r, y - r * .8); p.lineTo(x, y + r); p.close()
+            c.drawPath(p, stroke=1, fill=0)
+        elif kind == "TH":
+            c.rect(x - r, y - r, 2 * r, 2 * r, stroke=1, fill=1)
+            c.setFillColor(col("ELEC")); c.setFont("DVB", 5); c.drawCentredString(x, y - 1.7, "T")
+        elif kind == "GTL":
+            c.setFillColor(colors.Color(1, .85, .55)); c.rect(x - r * .8, y - r * 1.3, r * 1.6, r * 2.6, stroke=1, fill=1)
+        else:
+            c.setFillColor(colors.Color(1, .93, .8)); c.rect(x - r, y - r, 2 * r, 2 * r, stroke=1, fill=1)
+    elif kind.startswith("LINE:"):
+        _, layer, dash, lw = kind.split(":")
+        c.setStrokeColor(col(layer))
+        c.setLineWidth(float(lw))
+        _set_dash(c, dash or None)
+        c.line(x - 2.6 * mm, y, x + 2.6 * mm, y)
+    elif kind == "CHUTE":
+        c.setStrokeColor(col("PLOMB_EV")); c.setFillColor(colors.Color(.55, .42, .25)); c.circle(x, y, r, stroke=1, fill=1)
+    elif kind == "VANNE":
+        c.setStrokeColor(col("PLOMB_EF"))
+        p = c.beginPath(); p.moveTo(x - r, y - r * .7); p.lineTo(x + r, y + r * .7); p.lineTo(x + r, y - r * .7); p.lineTo(x - r, y + r * .7); p.close()
+        c.drawPath(p, stroke=1, fill=0)
+    elif kind in ("BOUCHE_E", "BOUCHE_S"):
+        c.setStrokeColor(col("VMC_E" if kind == "BOUCHE_E" else "VMC_S")); c.setFillColor(colors.white)
+        c.circle(x, y, r, stroke=1, fill=1); c.circle(x, y, r * .45, stroke=1, fill=0)
+    elif kind == "RESA":
+        c.setStrokeColor(col("RESA")); c.rect(x - r * 1.3, y - r, r * 2.6, r * 2, stroke=1, fill=0)
+        c.line(x - r * 1.3, y - r, x + r * 1.3, y + r); c.line(x - r * 1.3, y + r, x + r * 1.3, y - r)
+    elif kind == "GT":
+        c.setStrokeColor(col("GAINE")); c.setFillColor(colors.Color(.86, .94, .89)); c.rect(x - r * 1.3, y - r, r * 2.6, r * 2, stroke=1, fill=1)
+    elif kind == "COLL":
+        c.setStrokeColor(col("CHAUF_A")); c.setFillColor(colors.Color(1, .9, .88)); c.rect(x - r * 1.6, y - r * .5, r * 3.2, r, stroke=1, fill=1)
+    elif kind == "BOUCLE":
+        c.setStrokeColor(col("CHAUF_A")); c.rect(x - r * 1.5, y - r, r * 3, r * 2, stroke=1, fill=0)
+        c.setStrokeColor(col("CHAUF_R")); c.rect(x - r * 1.0, y - r * .55, r * 2, r * 1.1, stroke=1, fill=0)
+    c.restoreState()
+
+
+def _legend(c, leg, nx, ny, br):
+    ink = colors.Color(0.13, 0.15, 0.18)
+    if ny < 90 * mm:
+        return
+    c.setFillColor(br.accent)
+    c.setFont("TT", 10)
+    c.drawString(nx, ny, T("LÉGENDE"))
+    c.setFillColor(br.accent2)
+    c.rect(nx, ny - 2.0 * mm, 12 * mm, 0.7 * mm, stroke=0, fill=1)
+    ny -= 6.5 * mm
+    colw = 51 * mm
+    for i, (kind, label) in enumerate(leg):
+        cx = nx + (i % 2) * colw
+        if i % 2 == 0 and i:
+            ny -= 4.6 * mm
+        if ny < 80 * mm:
+            break
+        _sym(c, kind, cx + 3.2 * mm, ny + 0.9 * mm)
+        c.setFillColor(ink)
+        c.setFont("DV", 5.6)
+        c.drawString(cx + 7.4 * mm, ny, T(label)[:40])
 
 
 def _wrap(s: str, n: int) -> list[str]:
@@ -394,7 +488,7 @@ def render_pdf(sheets: list[Sheet], path: str | Path, project: dict, lang: str =
         c.setTitle(T(project["name"]))
         for i, sh in enumerate(sheets, 1):
             W, H = landscape(A3)
-            B.watermark(c, (W - 112 * mm) / 2 + 5 * mm, H / 2, 190 * mm)      # filigrane sous le dessin
+            # pas de filigrane sous le dessin : un plan d'exécution reste lisible (le logo est au cartouche)
             _render_items(c, sh)
             _frame(c, sh, project, i, len(sheets))
             c.showPage()

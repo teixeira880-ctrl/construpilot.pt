@@ -48,7 +48,8 @@ def test_demo_study_is_instant_without_llm():
     st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
     assert st["status"] == "done" and st["demo"] == "moradia_pt_demo" and st["blocking"] == 0
     assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx"}
-    assert any(a["filename"].startswith("Processo_estudo") for a in db.assistant_artifacts.docs)
+    assert [a["kind"] for a in st["artifacts"]] == ["pdf", "plans_pdf", "xlsx", "zip"]
+    assert any("Processo-estudo" in a["filename"] or a["filename"].startswith("Processo_estudo") for a in db.assistant_artifacts.docs)
 
 
 def test_demo_documents_can_carry_existing_demo_project_identity():

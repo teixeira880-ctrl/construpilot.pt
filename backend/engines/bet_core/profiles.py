@@ -8,8 +8,8 @@ from __future__ import annotations
 FR = {
     "country": "FR", "lang": "fr", "currency": "EUR",
     "norms": ["NF EN 1990", "NF EN 1991-1-1/-1-3", "NF EN 1992-1-1", "NF EN 1995-1-1", "NF EN 1996-1-1", "NF EN 1997-1 + AN",
-              "NF P 94-261", "NF DTU 13.11, 13.3, 20.1, 21, 31.1, 40.21", "NF C 15-100", "NF DTU 60.1 / 60.11"],
-    "norms_text": "NF EN 1990, 1991-1-1/-1-3, 1992-1-1, 1995-1-1, 1996-1-1, 1997-1 + AN ; NF P 94-261 ; NF DTU 13.11, 13.3, 20.1, 21, 31.1, 40.21 ; NF C 15-100 ; NF DTU 60.1 / 60.11",
+              "NF P 94-261", "NF DTU 13.1, 13.3, 20.1, 21, 31.1, 40.21", "NF C 15-100", "NF DTU 60.1 / 60.11"],
+    "norms_text": "NF EN 1990, 1991-1-1/-1-3, 1992-1-1, 1995-1-1, 1996-1-1, 1997-1 + AN ; NF P 94-261 ; NF DTU 13.1, 13.3, 20.1, 21, 31.1, 40.21 ; NF C 15-100 ; NF DTU 60.1 / 60.11",
     "steel": "B500B", "concrete": "C25/30",
     "vat": 0.20, "vat_note": "TVA 20 % (construction neuve)",
     "price_ref": "IDF 2026", "price_ref_long": "Île-de-France 2026",
@@ -21,7 +21,7 @@ FR = {
 # Prix indicatifs Portugal continental 2026 (Norte / Lisboa), € sem IVA, fornecido e assente.
 PT_PRICES = {
     "terr_masse": 12.0, "decap": 4.0, "blindage": 90.0, "fouille_rigole": 18.0, "evac": 14.0,
-    "semelle": 210.0, "proprete": 9.0, "voile20": 320.0, "coffrage": 22.0, "voile15": 420.0, "gnt": 12.0, "dallage": 160.0,
+    "semelle": 210.0, "proprete": 9.0, "voile20": 320.0, "coffrage": 22.0, "voile15": 420.0, "bloc_bancher": 32.0, "remplissage": 120.0, "gnt": 12.0, "dallage": 160.0,
     "impermea": 45.0, "plancher": 48.0, "porotherme": 38.0, "pignon": 42.0,
     "ch_h": 22.0, "ch_v": 20.0, "ch_r": 24.0, "linteau": 60.0, "poteau": 180.0,
     "escalier": 1800.0, "enduit": 16.0, "inst_chantier": 3500.0,

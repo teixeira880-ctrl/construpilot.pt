@@ -7,6 +7,7 @@ bibliothèque de prix de l'entreprise (cellules bleues du fichier Excel).
 from __future__ import annotations
 
 from openpyxl import Workbook
+from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -15,11 +16,11 @@ from .profiles import price as _price, profile as _profile
 PRICES = {   # clé : (unité, PU € HT)
     "terr_masse": ("m³", 38.0), "blindage": ("m²", 185.0), "fouille_rigole": ("m³", 48.0), "evac": ("m³", 36.0),
     "semelle": ("m³", 430.0), "proprete": ("m²", 19.0), "voile20": ("m³", 520.0), "coffrage": ("m²", 42.0),
-    "voile15": ("m³", 780.0), "gnt": ("m²", 24.0), "dallage": ("m³", 290.0), "impermea": ("ml", 95.0),
+    "voile15": ("m³", 780.0), "bloc_bancher": ("m²", 64.0), "remplissage": ("m³", 230.0), "gnt": ("m²", 24.0), "dallage": ("m³", 290.0), "impermea": ("ml", 95.0),
     "plancher": ("m²", 98.0), "porotherme": ("m²", 74.0), "pignon": ("m²", 88.0),
-    "ch_h": ("ml", 44.0), "ch_v": ("ml", 39.0), "ch_r": ("ml", 48.0), "linteau": ("ml", 125.0), "poteau": ("u", 380.0),
+    "ch_h": ("ml", 44.0), "ch_v": ("ml", 39.0), "ch_r": ("ml", 48.0), "linteau": ("ml", 125.0), "poteau": ("u", 380.0), "poutre_ba": ("ml", 265.0),
     "escalier": ("u", 3300.0), "enduit": ("m²", 39.0), "inst_chantier": ("ft", 6500.0),
-    "panne": ("ml", 96.0), "chevron": ("ml", 14.5), "sabliere": ("ml", 24.0), "sommier": ("u", 140.0), "lucarne": ("u", 2900.0),
+    "panne": ("ml", 96.0), "chevron": ("ml", 14.5), "sabliere": ("ml", 24.0), "sommier": ("u", 140.0), "lucarne": ("u", 2900.0), "ferme": ("u", 1150.0),
     "couverture": ("m²", 69.0), "gouttiere": ("ml", 56.0), "descente": ("ml", 46.0), "isol_rampant": ("m²", 52.0),
     "pc": ("u", 78.0), "pl": ("u", 88.0), "inter": ("u", 58.0), "rj45": ("u", 98.0), "spec": ("u", 185.0),
     "tableau": ("ft", 1550.0), "gtl": ("ft", 680.0), "terre": ("ft", 480.0), "vmc": ("ft", 1150.0), "volet_circ": ("u", 140.0),
@@ -28,6 +29,8 @@ PRICES = {   # clé : (unité, PU € HT)
     "nourrice": ("ft", 1850.0), "multicouche": ("ml", 9.5), "chute": ("ml", 39.0), "collecteur": ("ml", 48.0),
     "relevage": ("u", 1450.0), "branchement": ("ft", 950.0),
     "visa_bet": ("ft", 3600.0), "g2pro": ("ft", 2400.0), "decap": ("m³", 8.0),
+    "pac": ("u", 7900.0), "tampon": ("u", 690.0), "pc_pose": ("m²", 58.0), "chape_anh": ("m²", 26.0), "coll_pc": ("u", 720.0),
+    "thermostat": ("u", 165.0), "vmc_df": ("ft", 6200.0), "doublage": ("m²", 56.0), "etude_th": ("ft", 950.0),
 }
 
 
@@ -59,6 +62,8 @@ def build_lines(m, r: dict, tim: dict, e: dict, p: dict) -> list[dict]:
             add(lot, it["item"], "proprete" if "propreté" in it["item"] else "semelle", it["qty"])
         elif it["lot"] in ("Sous-sol", "Dallage"):
             key = ("coffrage" if "Coffrage" in it["item"] else "voile20" if "Voiles" in it["item"] else
+                   "bloc_bancher" if "blocs à bancher" in it["item"] and "Murs" in it["item"] else
+                   "remplissage" if "Remplissage" in it["item"] else
                    "gnt" if "GNT" in it["item"] else "dallage" if "Dallage" in it["item"] else "impermea")
             add(lot, it["item"], key, it["qty"])
     lot = "03 — Gros œuvre en élévation"
@@ -80,31 +85,39 @@ def build_lines(m, r: dict, tim: dict, e: dict, p: dict) -> list[dict]:
                 Lm = float(it["item"].split("L = ")[1].replace(",", "."))
                 add(lot, it["item"], "linteau", Lm)
             elif it["item"].startswith("Poteau"):
-                add(lot, it["item"], "poteau", 1)
+                add(lot, it["item"], "poteau", it["qty"] if it.get("unit") == "u" else 1)
+            elif it["item"].startswith("Poutre BA"):
+                Lm = float(it["item"].rsplit("L = ", 1)[1].replace(",", ".")) if "L = " in it["item"] else 6.0
+                add(lot, it["item"].rsplit(", L =", 1)[0], "poutre_ba", Lm)
         elif it["lot"] == "Escalier":
             add(lot, it["item"], "escalier", it["qty"])
     if mit:
         facade_area = 2 * W * m.roof["eaves_level"] - sum(o.width * o.height for o in m.openings)
         add(lot, "Enduit monocouche gratté façades rue et arrière (RAL 1013)", "enduit", facade_area)
     else:
-        gab = len(m.roof.get("gables", [])) * L * (m.roof["ridge_level"] - m.roof["eaves_level"]) / 2
+        gab = len(m.roof.get("gables", [])) * m.gable_length * (m.roof["ridge_level"] - m.roof["eaves_level"]) / 2
         facade_area = 2 * (L + W) * m.roof["eaves_level"] + gab - sum(o.width * o.height for o in m.openings)
         add(lot, "Enduit monocouche gratté toutes façades et pignons", "enduit", facade_area)
     lot = "04 — Charpente, couverture, zinguerie"
     n_p = len(tim["pannes"])
     add(lot, f"Pannes lamellé-collé GL24h {tim['panne_section']['label']} (×{n_p})", "panne", n_p * (tim["panne_span"] + 0.1))
-    add(lot, "Sommiers BA d'appui des pannes dans les pignons", "sommier", len(m.roof.get("gables", [])) * n_p)
+    add(lot, "Sommiers BA d'appui des pannes dans les pignons", "sommier", len(m.roof.get("gables", [])) * n_p + 2 * len(tim.get("trusses") or []))
+    if tim.get("trusses"):
+        add(lot, f"Fermes intermédiaires à entrait retroussé GL24h (portée {m.gable_length:.2f} m)".replace(".", ","), "ferme", len(tim["trusses"]))
     add(lot, f"Chevrons C24 {tim['chevron_section']['label']} entraxe 0,60", "chevron", tim["chevron_count"] * (tim["rafter_length"] + 0.4))
-    add(lot, "Sablières 75 × 200 sur arases de façade", "sabliere", 2 * W)
+    add(lot, "Sablières 75 × 200 sur arases de façade", "sabliere", 2 * m.ridge_length)
     if m.roof.get("dormers"):
-        add(lot, "Lucarnes jacobines 1,80 m (ossature, chevêtres, couverture, habillage)", "lucarne", len(m.roof["dormers"]))
-    roof_area = 2 * (tim["rafter_length"] + 0.35) * W
+        add(lot, "Lucarnes jacobines 1,80 m (ossature, chevêtres, couverture, habillage)", "lucarne", len((m.roof.get("dormers") or [])))
+    roof_area = 2 * (tim["rafter_length"] + 0.35) * (m.ridge_length + 0.60 * (1 if m.ridge_along_x else 0))
     add(lot, "Couverture tuile mécanique terre cuite + liteaux, contre-liteaux, écran HPV", "couverture", roof_area)
     if tim.get("insulation", "").startswith("Isolation sous rampants"):
         add(lot, "Isolation sous rampants R ≥ 8 + pare-vapeur (hors plaques)", "isol_rampant", roof_area * 0.92)
     else:
-        add(lot, "Isolation du plancher de comble perdu R ≥ 7 (laine soufflée)", "isol_rampant", (L - 0.4) * (W - 0.4))
-    add(lot, "Gouttières zinc demi-rondes 33", "gouttiere", 2 * W)
+        th = (m.raw.get("thermal") or {}).get("thickness_mm") or {}
+        lab = (f"Isolation du plancher des combles : laine minérale soufflée {th['combles']} mm (R ≈ {th['combles'] / 46:.1f}), étude thermique".replace(".", ",")
+               if th.get("combles") else "Isolation du plancher de comble perdu R ≥ 7 (laine soufflée)")
+        add(lot, lab, "isol_rampant", (L - 0.4) * (W - 0.4))
+    add(lot, "Gouttières zinc demi-rondes 33", "gouttiere", 2 * m.ridge_length)
     add(lot, "Descentes EP zinc Ø80 + dauphins fonte côté rue" if mit else "Descentes EP zinc Ø80 + dauphins fonte", "descente", 4 * (m.roof["eaves_level"] + 0.2))
     lot = f"05 — Électricité ({_profile(country)['electrical_short']})"
     t = e["totals"]
@@ -117,7 +130,12 @@ def build_lines(m, r: dict, tim: dict, e: dict, p: dict) -> list[dict]:
     add(lot, f"Tableau {e['panel']['rows']} rangées équipé ({len(e['rcds'])} ID 40 A 30 mA + disjoncteurs)", "tableau", 1)
     add(lot, "GTL + coffret de communication", "gtl", 1)
     add(lot, "Prise de terre à fond de fouille + liaisons équipotentielles", "terre", 1)
-    add(lot, "VMC simple flux hygroréglable B (caisson + bouches + gaines)", "vmc", 1)
+    hv = None
+    if country != "PT":
+        from .hvac import hvac as _hvac
+        hv = _hvac(m, p["stacks"])
+    if not (hv and hv["vmc"]["double_flux"]):
+        add(lot, "VMC simple flux hygroréglable B (caisson + bouches + gaines)", "vmc", 1)
     lot = f"06 — Plomberie sanitaire ({_profile(country)['plumbing_short']})"
     counts = {}
     for f in p["fixtures"]:
@@ -138,6 +156,30 @@ def build_lines(m, r: dict, tim: dict, e: dict, p: dict) -> list[dict]:
     if p["relevage"]["needed"]:
         add(lot, "Poste de relevage du sous-sol (buanderie)", "relevage", 1)
     add(lot, "Raccordement au réseau en limite (hors frais concessionnaire)", "branchement", 1)
+    if hv:
+        lot = "07 — Isolation, chauffage, rafraîchissement, ventilation"
+        opt, loss = hv["options"], hv["loss"]
+        fac = 0.0
+        for sid, sd in m.raw["sides"].items():
+            if sd.get("type") == "mitoyen":
+                continue
+            for lv in m.levels:
+                if lv.floor_top < -1.0:
+                    continue
+                fac += m.side_length(sid) * lv.hsp - sum(o.width * o.height for o in m.openings_on(sid, lv.id))
+        add(lot, f"Doublage isolant {opt['insulation_mm']} mm (PSE graphité λ 0,032 + plaque de plâtre) sur murs de façade", "doublage", fac)
+        add(lot, "Étude thermique RE 2020 réglementaire (Bbio, Cep, DH) + attestations", "etude_th", 1)
+        if opt["heating"] == "pac_plancher_chauffant":
+            add(lot, hv["pac"]["label"] + " monobloc, module hydraulique, liaisons", "pac", 1)
+            add(lot, f"Ballon tampon {hv['pac']['buffer_l']} L, vase d'expansion, pot à boues, soupape", "tampon", 1)
+            a_pc = sum(l["area"] for lv in (hv["pc"] or {}).get("levels", []) for l in lv["loops"])
+            add(lot, f"Plancher chauffant{'/rafraîchissant' if opt['cooling'] else ''} : isolant à plots, bande périphérique, tube PER-BAO Ø16", "pc_pose", a_pc)
+            add(lot, "Chape fluide anhydrite 5 cm sur plancher chauffant", "chape_anh", a_pc)
+            add(lot, "Collecteurs équipés (débitmètres, têtes thermiques) en coffret", "coll_pc", sum(lv["collectors"] for lv in (hv["pc"] or {}).get("levels", [])))
+            add(lot, "Thermostats d'ambiance (pièces de vie, chambres, salles d'eau)", "thermostat",
+                sum(1 for lv in m.levels for rr in m.rooms(lv.id) if rr["type"] in ("sejour", "chambre", "bureau", "salle_eau", "sdb", "sde")))
+        if hv["vmc"]["double_flux"]:
+            add(lot, "VMC double flux haut rendement (caisson, plénums, réseau PEHD, bouches, rejet/prise d'air)", "vmc_df", 1)
     return lines
 
 
@@ -270,7 +312,10 @@ def _build_xlsx(m, r: dict, tim: dict, e: dict, p: dict, lines: list[dict]):
     c = ws.cell(row=row, column=6, value=f"=F{ht_row}/{tot_sp}")
     c.font, c.number_format = norm, "#,##0 €"
     row += 2
-    for t in ["Hors lots : menuiseries extérieures, plâtrerie-isolation des murs, chape, revêtements, peinture, chauffage (émetteurs + PAC), VRD extérieurs, branchements concessionnaires.",
+    hors = ("Hors lots : menuiseries extérieures, cloisons et plafonds en plaques, revêtements, peinture, VRD extérieurs, branchements concessionnaires."
+            if any(str(l.get("lot", "")).startswith("07") for l in lines) else
+            "Hors lots : menuiseries extérieures, plâtrerie-isolation des murs, chape, revêtements, peinture, chauffage (émetteurs + PAC), VRD extérieurs, branchements concessionnaires.")
+    for t in [hors,
               "Prix indicatifs non contractuels : ConstruPilot ne garantit pas les prix ; remplacer par la bibliothèque de l'entreprise avant tout envoi au client."]:
         ws.cell(row=row, column=2, value=t).font = Font(name=F, size=9, italic=True)
         row += 1

@@ -1,0 +1,1599 @@
+{
+ "_comment": "Cas exemple ANONYMISÉ (géométrie d'un immeuble réel, nom et adresse fictifs) — profil France.",
+ "project": {
+  "name": "Immeuble de logements — exemple",
+  "address": "Rue de l'Exemple, Saint-Denis",
+  "municipality": "Saint-Denis",
+  "postal_code": "93200",
+  "altitude_m": 40,
+  "country": "FR",
+  "front_orientation": "S"
+ },
+ "levels": {
+  "basement": true,
+  "floors": 5,
+  "storey_height": 3.0,
+  "ground_floor_level": 40.3,
+  "clear_height": 2.7
+ },
+ "footprint": {
+  "L": 21.25,
+  "B": 14.44
+ },
+ "columns": [
+  {
+   "id": "P1",
+   "x": 0.0,
+   "y": 14.44,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P2",
+   "x": 0.0,
+   "y": 8.77,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P3",
+   "x": 0.0,
+   "y": 5.68,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P4",
+   "x": 0.0,
+   "y": 0.0,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P5",
+   "x": 5.48,
+   "y": 0.0,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P6",
+   "x": 7.05,
+   "y": 14.44,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P7",
+   "x": 9.63,
+   "y": 14.44,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P8",
+   "x": 10.82,
+   "y": 0.0,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P9",
+   "x": 14.35,
+   "y": 14.44,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P10",
+   "x": 14.35,
+   "y": 8.52,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P11",
+   "x": 14.35,
+   "y": 4.72,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P12",
+   "x": 14.35,
+   "y": 0.0,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P13",
+   "x": 21.25,
+   "y": 14.44,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P14",
+   "x": 21.25,
+   "y": 8.52,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P15",
+   "x": 21.25,
+   "y": 4.72,
+   "b": 0.25,
+   "h": 0.4
+  },
+  {
+   "id": "P16",
+   "x": 21.25,
+   "y": 0.0,
+   "b": 0.25,
+   "h": 0.4
+  }
+ ],
+ "cores": [
+  {
+   "id": "NE",
+   "kind": "stair",
+   "x0": 1.92,
+   "y0": 5.91,
+   "x1": 6.85,
+   "y1": 8.84,
+   "t": 0.2,
+   "door": {
+    "side": "x1",
+    "width": 1.0
+   }
+  },
+  {
+   "id": "NL",
+   "kind": "lift",
+   "x0": 9.52,
+   "y0": 6.11,
+   "x1": 11.6,
+   "y1": 8.28,
+   "t": 0.2,
+   "door": {
+    "side": "x0",
+    "width": 0.9
+   }
+  }
+ ],
+ "walls": [],
+ "beams": null,
+ "balconies": [
+  {
+   "side": "y0",
+   "depth": 1.74,
+   "from": -1.45,
+   "to": 22.7
+  },
+  {
+   "side": "y1",
+   "depth": 1.74,
+   "from": -1.45,
+   "to": 22.7
+  }
+ ],
+ "basement": {
+  "polygon": [
+   [
+    -5.26,
+    24.36
+   ],
+   [
+    10.3,
+    24.36
+   ],
+   [
+    10.3,
+    19.31
+   ],
+   [
+    26.07,
+    19.31
+   ],
+   [
+    26.07,
+    3.97
+   ],
+   [
+    20.11,
+    3.97
+   ],
+   [
+    20.11,
+    -0.22
+   ],
+   [
+    0.01,
+    -0.22
+   ],
+   [
+    0.01,
+    14.48
+   ],
+   [
+    -5.26,
+    14.48
+   ]
+  ],
+  "walls": [
+   {
+    "name": "M1 — ouest",
+    "from": 9,
+    "to": 0,
+    "soil_height": 3.0
+   },
+   {
+    "name": "M2 — nord (parking)",
+    "from": 0,
+    "to": 1,
+    "soil_height": 3.0
+   },
+   {
+    "name": "M3 — retrait nord",
+    "from": 1,
+    "to": 2,
+    "soil_height": 2.6
+   },
+   {
+    "name": "M4 — nord (est)",
+    "from": 2,
+    "to": 3,
+    "soil_height": 1.5
+   },
+   {
+    "name": "M5 — est",
+    "from": 3,
+    "to": 4,
+    "soil_height": 0.0
+   },
+   {
+    "name": "M6 — sud (rue)",
+    "from": 6,
+    "to": 7,
+    "soil_height": 2.6
+   },
+   {
+    "name": "M7 — sud (liaison)",
+    "from": 4,
+    "to": 5,
+    "soil_height": 0.0
+   },
+   {
+    "name": "M8 — sud est",
+    "from": 5,
+    "to": 6,
+    "soil_height": 0.0
+   },
+   {
+    "name": "M9 — patio",
+    "from": 7,
+    "to": 8,
+    "soil_height": 0.0
+   },
+   {
+    "name": "M10 — patio nord",
+    "from": 8,
+    "to": 9,
+    "soil_height": 0.0
+   }
+  ],
+  "columns": [
+   {
+    "id": "PG1",
+    "x": 0.0,
+    "y": 19.26
+   },
+   {
+    "id": "PG2",
+    "x": 6.93,
+    "y": 19.26
+   }
+  ],
+  "parking_spaces": 20
+ },
+ "soil": {
+  "sigma_rd_kpa": 300,
+  "sigma_sls_kpa": 200,
+  "ground_type": "C",
+  "geotech_report": false,
+  "description": "limons et sables (admis, G2 à réaliser)"
+ },
+ "seismic": {
+  "zone": "1",
+  "q": 2.0,
+  "importance": "II"
+ },
+ "materials": {
+  "concrete": "C30/37"
+ },
+ "units": [
+  {
+   "id": "A",
+   "level": 0,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 11.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.6
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 7.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V3",
+     "facade": "N",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "B",
+   "level": 0,
+   "typology": "T3",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 38.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 10.4
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2",
+     "area": 10.4
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 3",
+     "area": 10.4
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 3.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.6
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 4.2
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 13.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.0
+    }
+   ],
+   "common_wall_m": 5.0,
+   "openings": [
+    {
+     "type": "V4",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 2
+    },
+    {
+     "type": "V8",
+     "facade": "E",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "C",
+   "level": 0,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 23.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 11.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 1.9
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 7.4
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 7.5,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "D",
+   "level": 0,
+   "typology": "T2",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 31.2
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 10.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2 (suite parentale)",
+     "area": 14.7
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 3.5
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.9
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.4
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 11.4
+    },
+    {
+     "orientation": "E",
+     "length": 7.4
+    }
+   ],
+   "common_wall_m": 7.0,
+   "openings": [
+    {
+     "type": "V7",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V2",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V9",
+     "facade": "E",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "E",
+   "level": 1,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 11.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.6
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 7.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V3",
+     "facade": "N",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "F",
+   "level": 1,
+   "typology": "T2",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 38.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 10.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2 (suite parentale)",
+     "area": 14.7
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 3.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.9
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.4
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 13.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.0
+    }
+   ],
+   "common_wall_m": 5.0,
+   "openings": [
+    {
+     "type": "V4",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "G",
+   "level": 1,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.8
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 12.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 1.3
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 8.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V2",
+     "facade": "S",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "H",
+   "level": 1,
+   "typology": "T3",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 34.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 9.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2",
+     "area": 13.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 3",
+     "area": 10.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 2.5
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.6
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 3",
+     "area": 3.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.9
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 12.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V5",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V6",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "E",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "I",
+   "level": 2,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 11.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.6
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 7.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V3",
+     "facade": "N",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "J",
+   "level": 2,
+   "typology": "T2",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 38.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 10.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2 (suite parentale)",
+     "area": 14.7
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 3.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.9
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.4
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 13.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.0
+    }
+   ],
+   "common_wall_m": 5.0,
+   "openings": [
+    {
+     "type": "V4",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "L",
+   "level": 2,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.8
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 12.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 1.3
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 8.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V2",
+     "facade": "S",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "M",
+   "level": 2,
+   "typology": "T3",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 34.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 9.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2",
+     "area": 13.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 3",
+     "area": 10.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 2.5
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.6
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 3",
+     "area": 3.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.9
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 12.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V5",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V6",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "E",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "N",
+   "level": 3,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 11.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.6
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 7.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V3",
+     "facade": "N",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "O",
+   "level": 3,
+   "typology": "T2",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 38.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 10.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2 (suite parentale)",
+     "area": 14.7
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 3.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.9
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.4
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 13.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.0
+    }
+   ],
+   "common_wall_m": 5.0,
+   "openings": [
+    {
+     "type": "V4",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "P",
+   "level": 3,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.8
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 12.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 1.3
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 8.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V2",
+     "facade": "S",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "Q",
+   "level": 3,
+   "typology": "T3",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 34.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 9.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2",
+     "area": 13.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 3",
+     "area": 10.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 2.5
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.6
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 3",
+     "area": 3.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.9
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 12.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V5",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V6",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "E",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "R",
+   "level": 4,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 11.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.6
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 7.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V3",
+     "facade": "N",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "S",
+   "level": 4,
+   "typology": "T2",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 38.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 10.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2 (suite parentale)",
+     "area": 14.7
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 3.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.9
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.4
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "N",
+     "length": 13.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.0
+    }
+   ],
+   "common_wall_m": 5.0,
+   "openings": [
+    {
+     "type": "V4",
+     "facade": "N",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "N",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "T",
+   "level": 4,
+   "typology": "T1",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 27.8
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre",
+     "area": 12.9
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB",
+     "area": 4.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 1.3
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 8.6
+    },
+    {
+     "orientation": "O",
+     "length": 6.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V2",
+     "facade": "S",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "U",
+   "level": 4,
+   "typology": "T3",
+   "rooms": [
+    {
+     "kind": "sala",
+     "name": "Séjour/cuisine",
+     "area": 34.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 1",
+     "area": 9.5
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 2",
+     "area": 13.1
+    },
+    {
+     "kind": "quarto",
+     "name": "Chambre 3",
+     "area": 10.1
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 1",
+     "area": 2.5
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 2",
+     "area": 4.6
+    },
+    {
+     "kind": "casa_de_banho",
+     "name": "SdB 3",
+     "area": 3.5
+    },
+    {
+     "kind": "corredor",
+     "name": "Dégagement",
+     "area": 2.9
+    }
+   ],
+   "facades": [
+    {
+     "orientation": "S",
+     "length": 12.6
+    },
+    {
+     "orientation": "E",
+     "length": 7.4
+    }
+   ],
+   "common_wall_m": 6.0,
+   "openings": [
+    {
+     "type": "V1",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V5",
+     "facade": "S",
+     "count": 2
+    },
+    {
+     "type": "V6",
+     "facade": "S",
+     "count": 1
+    },
+    {
+     "type": "V1",
+     "facade": "E",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "opening_types": {
+  "V1": {
+   "width": 2.05,
+   "height": 2.4,
+   "label": "Porte-fenêtre — chambres et séjours"
+  },
+  "V2": {
+   "width": 2.1,
+   "height": 2.4,
+   "label": "Porte-fenêtre — séjour"
+  },
+  "V3": {
+   "width": 3.2,
+   "height": 2.4,
+   "label": "Porte-fenêtre — séjour/cuisine T1"
+  },
+  "V4": {
+   "width": 4.2,
+   "height": 2.4,
+   "label": "Porte-fenêtre — séjour/cuisine T2/T3"
+  },
+  "V5": {
+   "width": 1.55,
+   "height": 2.4,
+   "label": "Porte-fenêtre — chambre"
+  },
+  "V6": {
+   "width": 2.65,
+   "height": 2.4,
+   "label": "Porte-fenêtre — séjour/cuisine T3"
+  },
+  "V7": {
+   "width": 3.1,
+   "height": 2.4,
+   "label": "Porte-fenêtre — séjour/cuisine"
+  },
+  "V8": {
+   "width": 1.2,
+   "height": 1.4,
+   "label": "Fenêtre — chambre"
+  },
+  "V9": {
+   "width": 0.85,
+   "height": 1.4,
+   "label": "Fenêtre"
+  },
+  "P1": {
+   "width": 1.45,
+   "height": 2.4,
+   "label": "Porte d'entrée de l'immeuble"
+  }
+ },
+ "common_openings": [
+  {
+   "type": "P1",
+   "facade": "S",
+   "level": 0,
+   "count": 1
+  }
+ ],
+ "interior_walls_m": {
+  "partitions": [
+   80,
+   84,
+   84,
+   84,
+   84
+  ],
+  "separating": [
+   27,
+   27,
+   27,
+   27,
+   27
+  ],
+  "common": [
+   26,
+   24,
+   24,
+   24,
+   24
+  ]
+ },
+ "network": {
+  "water_pressure_kpa": 350,
+  "street_level": 40.0
+ },
+ "systems": {
+  "pv_kwp": 12,
+  "heating_fr": "pac_air_eau",
+  "dhw_fr": "cet"
+ }
+}

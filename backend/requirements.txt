@@ -177,3 +177,6 @@ ortools==9.12.4544
 litellm==1.80.0
 pytesseract==0.3.13
 weasyprint==70.0
+
+# BET-PT motores (calc_lots, edificio_ba)
+matplotlib==3.11.2

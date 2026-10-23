@@ -1,4 +1,5 @@
 """Non-régression sur le cas réel La Courneuve (incident du 18/10/2026)."""
+import copy
 import json
 from pathlib import Path
 

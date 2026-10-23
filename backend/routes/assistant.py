@@ -48,6 +48,9 @@ from engines.assistant_bet_core_tool import (
     BET_CORE_INSTRUCTIONS,
     run_bet_core_tool,
 )
+# BET-PT motores paridade .fr (calc_lots + edificio_ba)
+from engines.calc_lots.assistant_bridge import (CALC_TOOLS, CALC_TOOL_NAMES, CALC_INSTRUCTIONS, CALC_STATUS, execute_calc_tool)
+from engines.edificio_ba.assistant_tool import (TOOLS as EDIF_TOOLS, TOOL_NAMES as EDIF_TOOL_NAMES, TOOL_STATUS as EDIF_STATUS, INSTRUCTIONS as EDIF_INSTRUCTIONS, execute as execute_edif_tool)
 
 from engines.access import require_level
 
@@ -178,7 +181,7 @@ def tools_for(user: dict) -> list:
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL]
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
-    return [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS
+    return [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS
 
 
 MANDATORY_NOTICE_PT = ("Esta estimativa constitui uma indicação orçamental estabelecida a partir das informações fornecidas e de "
@@ -285,6 +288,10 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         return await run_bet_tool(name, args, user, conv, _allowed_doc)
     if name in BET_CORE_TOOL_NAMES:
         return await run_bet_core_tool(name, args, user, conv, _allowed_doc)
+    if name in EDIF_TOOL_NAMES:
+        return await execute_edif_tool(name, args, user, conv, db)
+    if name in CALC_TOOL_NAMES:
+        return await execute_calc_tool(name, args, user, conv, db)
     if name in AUTORIZACAO_TOOL_NAMES:
         return await run_autorizacao_tool(name, args, user, conv)
     if name == "read_generated_file":
@@ -1175,7 +1182,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_INSTRUCTIONS if account_type(user) == "professional" else "") + (BET_CORE_INSTRUCTIONS if account_type(user) == "professional" else "") + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_INSTRUCTIONS if account_type(user) == "professional" else "") + (BET_CORE_INSTRUCTIONS if account_type(user) == "professional" else "") + (EDIF_INSTRUCTIONS if account_type(user) == "professional" else "") + (CALC_INSTRUCTIONS if account_type(user) == "professional" else "") + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         instructions += QUOTE_INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. PRIMEIRO propõe numa frase o âmbito (plantas em causa, margem, nome do projeto) e PEDE confirmação; só depois chama run_construpilot_agent. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
@@ -1454,6 +1461,12 @@ TOOL_STATUS = {"read_building_geometry": "Leitura das plantas e do estudo geoté
                "compute_concrete_volumes": "Cálculo dos volumes de betão por elemento (DXF + cofragem + cortes)…", "update_project_state": "Atualização do estado do processo…", "draw_section_schema": "Desenho do esquema de princípio cotado…",
                "generate_structural_execution_dossier": "Cálculo estrutural e desenho dos planos de cofragem/armaduras…",
                "cross_check": "Croisement multi-IA (ChatGPT · Gemini Pro · Claude)…"}
+
+# BET-PT motores paridade .fr — merge dos status dos novos motores em ambos os dicionários
+TOOL_STATUS_PT.update(EDIF_STATUS)
+TOOL_STATUS_PT.update(CALC_STATUS)
+TOOL_STATUS.update(EDIF_STATUS)
+TOOL_STATUS.update(CALC_STATUS)
 
 
 @router.post("/message")

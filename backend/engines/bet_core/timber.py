@@ -45,7 +45,7 @@ def dormer_geometry(m: Model, d: dict) -> dict:
     roof = m.roof
     sd = m.side(d["side"])
     at0 = sd["pos"] < m.L / 2
-    run = roof["ridge_x"] if at0 else m.L - roof["ridge_x"]
+    run = m.roof_run if at0 else m.L - m.roof_run
     tan_a = (roof["ridge_level"] - roof["eaves_level"]) / max(run, 0.1)
     w = d["y1"] - d["y0"]
     he = d.get("front_h", d.get("window_h", 1.10) + 0.25)            # hauteur du front (égout de la lucarne) au-dessus de l'arase
@@ -59,11 +59,16 @@ def dormer_geometry(m: Model, d: dict) -> dict:
 def compute(m: Model, ld: dict) -> dict:
     roof = m.roof
     alpha = math.radians(ld["roof_pitch_deg"])
-    half = m.L / 2
-    n_inter = 2
+    half = m.roof_run                                    # projection d'un versant (égout → faîtage)
+    span_c = m.gable_length                              # portée de la toiture (perpendiculaire au faîtage)
+    n_inter = 2 if half > 3.2 else 1
     spacing_h = half / (n_inter + 1)                    # espacement horizontal des pannes
     spacing_r = spacing_h / math.cos(alpha)              # le long du rampant
-    L_panne = m.W - 2 * 0.20 + 0.15                      # entre nus des pignons + appuis
+    trusses = m.trusses
+    if trusses:                                          # pannes de pignon à ferme (travées ≈ égales)
+        L_panne = m.ridge_length / (len(trusses) + 1) + 0.15
+    else:
+        L_panne = m.ridge_length - 2 * 0.20 + 0.15       # entre nus des pignons + appuis
     gs, s = ld["g_roof_slope"], ld["snow_s"]
     qG = gs * spacing_r                                  # kN/m (vertical, par m de panne)
     qS = s * spacing_h
@@ -78,13 +83,19 @@ def compute(m: Model, ld: dict) -> dict:
     chevron = _section(spacing_r, qGc, qSc, C24, GAMMA_M_C, ch_sizes, limit=200.0)
     xs = []
     for k in range(1, n_inter + 1):
-        xs += [round(k * spacing_h, 3), round(m.L - k * spacing_h, 3)]
+        xs += [round(k * spacing_h, 3), round(span_c - k * spacing_h, 3)]
     pannes = [{"id": "PF", "role": "faîtière", "x": round(half, 3), "z": roof["ridge_level"] - 0.25}] + \
              [{"id": f"PI{i+1}", "role": "intermédiaire", "x": x,
-               "z": round(roof["eaves_level"] + (x if x < half else m.L - x) * math.tan(alpha) - 0.20, 3)} for i, x in enumerate(sorted(xs))]
-    n_chev = 2 * (math.floor((m.W - 0.40) / ent) + 1)
+               "z": round(roof["eaves_level"] + (x if x < half else span_c - x) * math.tan(alpha) - 0.20, 3)} for i, x in enumerate(sorted(xs))]
+    n_chev = 2 * (math.floor((m.ridge_length - 0.40) / ent) + 1)
+    # fermes intermédiaires (pannes trop longues de pignon à pignon) : charge apportée par les pannes
+    q_roof = (ld["g_roof_plan"] + ld["snow_s"]) * (span_c + 0.60)
+    qu_roof = (1.35 * ld["g_roof_plan"] + 1.5 * ld["snow_s"]) * (span_c + 0.60)
+    span_t = m.ridge_length / (len(trusses) + 1) if trusses else 0.0
+    ferme_list = [{"id": f"F{i + 1}", "pos": t, "load_ELS_kN": round(q_roof * span_t, 1), "load_ELU_kN": round(qu_roof * span_t, 1),
+                   "support_kN_ELU": round(qu_roof * span_t / 2, 1)} for i, t in enumerate(trusses)]
     dormers = []
-    for d in roof["dormers"]:
+    for d in (roof.get("dormers") or []) if not m.ridge_along_x else []:
         w = d["y1"] - d["y0"]
         g = dormer_geometry(m, d)
         L_up = max(g["run"] - g["dr"], 0.3) / math.cos(alpha)           # rampant au-dessus de la lucarne porté par le chevêtre
@@ -109,24 +120,38 @@ def compute(m: Model, ld: dict) -> dict:
                                  f"le front repose sur l'arase de façade (chaînage {_f(roof['eaves_level'])})"})
     mit = any(m.side(g)["type"] == "mitoyen" for g in roof.get("gables", []))
     attic = roof.get("habitable_attic", "omble" in m.levels[-1].name and m.levels[-1].floor_top >= roof["eaves_level"] - 1.5)
+    attic_floor = bool(roof.get("attic_floor"))
+    sec_f = "2 × 75 × 225" if span_c <= 8.5 else "2 × 75 × 250"
     return {
-        "type": "Charpente traditionnelle à pannes sur pignons mitoyens maçonnés" if mit else "Charpente traditionnelle à pannes sur pignons maçonnés",
+        "type": ("Charpente traditionnelle à pannes sur pignons mitoyens maçonnés" if mit else "Charpente traditionnelle à pannes sur pignons maçonnés")
+                + (f" et {len(trusses)} ferme{'s' if len(trusses) > 1 else ''} intermédiaire{'s' if len(trusses) > 1 else ''}" if trusses else ""),
+        "ridge_along_x": m.ridge_along_x, "run": round(half, 3), "span": round(span_c, 3),
         "pitch_deg": ld["roof_pitch_deg"], "rafter_length": ld["rafter_length"],
         "panne_span": round(L_panne, 2), "panne_spacing_slope": round(spacing_r, 2),
         "panne_section": panne, "pannes": pannes, "panne_material": "Lamellé-collé GL24h, classe de service 1, traitement classe 2",
         "chevron_section": chevron, "chevron_spacing": ent, "chevron_count": n_chev,
         "sabliere": f"Sablières 75 × 200 C24 sur les deux arases de façade ({_f(roof['eaves_level'])}), fixées par feuillards/tiges scellées tous les 1,20 m",
         "ceiling": (f"Plafond du comble à {_f(roof['ceiling_level'])} : entraits retroussés (moises 2 × 38 × 175) un couple de chevrons sur deux + suspentes" if attic else
+                    "Combles aménageables : plancher porté en poutrelles-hourdis (voir planche des planchers) — aucun entrait ni fermette dans le volume, "
+                    "charpente à pannes laissant le comble libre" if attic_floor else
                     f"Plafond du dernier niveau à {_f(roof['ceiling_level'])} : solives de plafond 63 × 175 C24 e=0,60 accrochées aux pannes et aux sablières (comble perdu isolé)"),
+        "trusses": ferme_list,
+        "truss_text": (f"{len(trusses)} ferme{'s' if len(trusses) > 1 else ''} intermédiaire{'s' if len(trusses) > 1 else ''} à entrait retroussé "
+                       f"(arbalétriers GL24h {sec_f}, entrait retroussé moisé 2 × 63 × 200 à 2,00 m au-dessus du plancher des combles, poinçon 150 × 150) "
+                       f"aux abscisses {', '.join(_f(t) for t in trusses)} : pannes de {_f(span_t)} m entre appuis ; "
+                       f"charge apportée par ferme ≈ {ferme_list[0]['load_ELU_kN']} kN à l'ELU, {ferme_list[0]['support_kN_ELU']} kN par appui sur les murs d'égout "
+                       "(sabots + platines, sommier BA sous chaque pied)") if trusses else "",
         "bearings": "Appuis des pannes : sommiers BA 0,20 × 0,20 × 0,40 dans les pignons, platines + ancrages ; profondeur d'appui ≥ 0,15 m ; "
                     + ("désolidarisation vis-à-vis du mur voisin (pignon mitoyen) par feutre bitumineux" if mit else "calage sur feutre bitumineux"),
         "bracing": "Contreventement des versants par bandes de feuillard en croix sur chevrons (ou panneaux OSB 12 mm) — à justifier au vent par le charpentier",
         "covering": f"Tuile mécanique terre cuite sur liteaux 27 × 38 et contre-liteaux, écran HPV ; pente {_f(ld['roof_pitch_deg'], 1)}° compatible (DTU 40.21)",
         "insulation": "Isolation sous rampants R ≥ 8 (laine minérale 140 entre chevrons + 160 sous chevrons), pare-vapeur, plaque de plâtre" if attic else
+                      "Isolation sur le plancher des combles aménageables (laine soufflée ou panneaux) selon l'étude thermique ; rampants isolables lors de l'aménagement" if attic_floor else
                       "Isolation du plancher de comble perdu R ≥ 7 (laine soufflée 300 mm), pare-vapeur, plaque de plâtre",
         "dormers": dormers,
         "checks": [
             f"Pannes : M_Ed = {panne['M_Ed']} kN.m, σ = {panne['sigma']} MPa ≤ f_m,d = {panne['f_md']} MPa ; flèche finale {panne['w_fin_mm']} mm ≤ L/200 = {panne['w_lim_mm']} mm" if panne else "Pannes : aucune section standard ne passe — revoir",
             f"Chevrons {chevron['label']} : σ = {chevron['sigma']} MPa ≤ {chevron['f_md']} MPa ; flèche {chevron['w_fin_mm']} mm ≤ {chevron['w_lim_mm']} mm" if chevron else "Chevrons : revoir",
-        ] + [f"Lucarne {d['id']} : {d['chevetre']}" for d in dormers[:1]] + sorted({n for d in dormers for n in d["pannes"]}),
+        ] + ([f"Fermes : {len(trusses)} intermédiaire(s), portée des pannes {_f(span_t)} m — note de fabrication du charpentier"] if trusses else [])
+          + [f"Lucarne {d['id']} : {d['chevetre']}" for d in dormers[:1]] + sorted({n for d in dormers for n in d["pannes"]}),
     }

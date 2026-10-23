@@ -6,7 +6,7 @@ NORMS = [
      "RTIEBT (Portaria 949-A/2006) + ITED — pré-dimensionamento das instalações de utilização (equipamento mínimo, circuitos, proteções)"),
     ("NF DTU 60.11 (calcul des réseaux), NF DTU 60.1 (plomberie sanitaire), NF DTU 60.33 (PVC évacuation)",
      "Decreto Regulamentar 23/95 (RGSPPDADAR) — redes prediais de abastecimento e de drenagem ; NP EN 806 e NP EN 12056"),
-    ("NF DTU 13.11, 13.3, 20.1, 21, 31.1, 40.21", "regras de boa prática LNEC e documentos de homologação"),
+    ("NF DTU 13.1, 13.3, 20.1, 21, 31.1, 40.21", "regras de boa prática LNEC e documentos de homologação"),
     ("NF DTU 60.1 / 60.11", "Decreto Regulamentar 23/95"),
     ("NF P 94-261", "NP EN 1997-1"),
     ("NF C 15-100", "RTIEBT"),
@@ -125,7 +125,6 @@ GLOSSARY = {
     "Différentiel": "Diferencial", "différentiels": "diferenciais", "Disjoncteur (A)": "Disjuntor (A)", "Section (mm²)": "Secção (mm²)",
     "Pièce": "Compartimento", "Appareil": "Aparelho", "appareils": "aparelhos", "Alimentation": "Alimentação", "ECS": "AQS",
     "Évacuation": "Esgoto", "Chute": "Tubo de queda", "chutes": "tubos de queda", "Longueur évac. (m)": "Comprimento de esgoto (m)",
-
     # MEP
     "Prises": "Tomadas", "prises": "tomadas", "prise": "tomada", "Éclairage": "Iluminação", "éclairage": "iluminação",
     "Volets roulants": "Estores elétricos", "volets roulants": "estores elétricos",
@@ -140,6 +139,11 @@ GLOSSARY = {
     "EF/ECS": "AF/AQS", "EU/EV": "águas residuais", "multicouche": "multicamada", "n°": "n.º", "pt(s)": "pt(s)", "type": "tipo",
     "rangées": "filas", "tableau": "quadro", "Tableau": "Quadro",
     # divers
+    "blocs à bancher 20": "blocos de cofragem perdida 20", "Murs en blocs à bancher 20 enterrés": "Paredes enterradas em blocos de cofragem perdida 20",
+    "Murs en blocs à bancher 20 cm remplis de béton C25/30 armé hydrofugé": "Paredes em blocos de cofragem perdida 20 cm cheios com betão C25/30 armado hidrófugo",
+    "Isobric 20": "Isobric 20", "brique 20": "tijolo 20", "murs brique 20 cm": "paredes de tijolo 20 cm",
+    "murs du sous-sol en voiles BA 20": "paredes da cave em betão armado 20", "charpente traditionnelle": "estrutura de cobertura tradicional",
+    "semelles BA classe XC2": "sapatas de betão armado classe XC2",
     "Charges": "Ações", "charges": "cargas", "et": "e",
 }
 
@@ -239,7 +243,6 @@ TEMPLATES = {
     "toiture ⟨0⟩ pans sur pignons": "cobertura de ⟨0⟩ águas sobre empenas",
     "toiture ⟨0⟩ pans, pignons = mitoyens": "cobertura de ⟨0⟩ águas, empenas = paredes meeiras",
     "GTL / tableau": "quadro elétrico (QE)",
-
     # notes des planches
     "Contrainte admissible G⟨0⟩ : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.": "Tensão admissível (estudo geotécnico) : q ELS = ⟨1⟩ kPa, q ELU = ⟨2⟩ kPa.",
     "Semelle la plus chargée (Semelle filante sous ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.": "Sapata mais carregada (sapata contínua sob ⟪A⟫) : σ ELS = ⟨0⟩ kPa = ⟨1⟩ % de q ELS.",
@@ -282,6 +285,8 @@ TEMPLATES = {
     "Rose : linteaux BA (repères et aciers sur les plans de niveau). Rouge : poteaux BA de trumeau.": "Rosa : lintéis de BA (referências e armaduras nas plantas dos pisos). Vermelho : pilares de BA entre vãos.",
     "Lucarnes : front sur l'arase d'égout, chevêtres en charpente (CH-⟨0⟩).": "Trapeiras : frente sobre o frechal, vigas de bordadura na estrutura de madeira (CH-⟨0⟩).",
     "Enduit, menuiseries et teintes : selon PC.": "Reboco, caixilharias e cores : segundo o projeto de arquitetura.",
+    "Béton C⟨0⟩/⟨1⟩ (fondations XC⟨2⟩) ; acier A⟨3⟩NR ; enrobages : fondations ⟨4⟩ cm, soubassements ⟨5⟩ cm, poutres/chaînages ⟨6⟩ cm, dalles ⟨7⟩ cm.": "Betão C⟨0⟩/⟨1⟩ (fundações XC⟨2⟩) ; aço A⟨3⟩NR ; recobrimentos : fundações ⟨4⟩ cm, embasamentos ⟨5⟩ cm, vigas/cintas ⟨6⟩ cm, lajes ⟨7⟩ cm.",
+    "Béton C⟨0⟩/⟨1⟩ (fondations XC⟨2⟩) ; acier A⟨3⟩NR ; enrobages : fondations ⟨4⟩ cm, voiles enterrés ⟨5⟩ cm, poutres/chaînages ⟨6⟩ cm, dalles ⟨7⟩ cm.": "Betão C⟨0⟩/⟨1⟩ (fundações XC⟨2⟩) ; aço A⟨3⟩NR ; recobrimentos : fundações ⟨4⟩ cm, paredes enterradas ⟨5⟩ cm, vigas/cintas ⟨6⟩ cm, lajes ⟨7⟩ cm.",
     "Béton C⟨0⟩/⟨1⟩ ; acier A⟨2⟩NR ; enrobages : fondations ⟨3⟩ cm, soubassements ⟨4⟩ cm, poutres/chaînages ⟨5⟩ cm, dalles ⟨6⟩ cm.": "Betão C⟨0⟩/⟨1⟩ ; aço A⟨2⟩NR ; recobrimentos : fundações ⟨3⟩ cm, embasamentos ⟨4⟩ cm, vigas/cintas ⟨5⟩ cm, lajes ⟨6⟩ cm.",
     "Béton C⟨0⟩/⟨1⟩ ; acier A⟨2⟩NR ; enrobages : fondations ⟨3⟩ cm, voiles enterrés ⟨4⟩ cm, poutres/chaînages ⟨5⟩ cm, dalles ⟨6⟩ cm.": "Betão C⟨0⟩/⟨1⟩ ; aço A⟨2⟩NR ; recobrimentos : fundações ⟨3⟩ cm, paredes enterradas ⟨4⟩ cm, vigas/cintas ⟨5⟩ cm, lajes ⟨6⟩ cm.",
     "Recouvrements ⟨0⟩ Ø ; ancrages des aciers de semelle par retour d'équerre ; façonnage selon NP EN ⟨1⟩-⟨2⟩-⟨3⟩ §⟨4⟩.": "Emendas ⟨0⟩ Ø ; amarração das armaduras das sapatas com dobra a 90° ; dobragem segundo NP EN ⟨1⟩-⟨2⟩-⟨3⟩ §⟨4⟩.",
