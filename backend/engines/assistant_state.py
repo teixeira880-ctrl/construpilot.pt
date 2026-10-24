@@ -110,7 +110,7 @@ def state_pdf(state: dict, *, title: str, meeting: str | None = None, photo_byte
         return cells
     base = ParagraphStyle("b", fontName="Helvetica", fontSize=8.2, leading=10.5)
     small = ParagraphStyle("s", parent=base, fontSize=7, leading=8.5, textColor=colors.HexColor("#555555"))
-    h = ParagraphStyle("h", parent=base, fontName="Helvetica-Bold", fontSize=10, leading=13, spaceBefore=5, spaceAfter=2, textColor=colors.HexColor("#163d78"))
+    h = ParagraphStyle("h", parent=base, fontName="Helvetica-Bold", fontSize=10, leading=13, spaceBefore=5, spaceAfter=2, textColor=colors.HexColor("#15435d"))
     t = ParagraphStyle("t", parent=base, fontName="Helvetica-Bold", fontSize=14, leading=17)
     status = {"current": "courante", "superseded": "remplacée", "to_confirm": "a confirmar"}
     kind = {"schema_de_principe": "esquema de princípio", "validation_execution": "validação de execução", "fait": "fait", "hypothese": "hypothèse", "action": "action"}
@@ -161,7 +161,7 @@ def agenda_pdf(state: dict, *, title: str, meeting: str | None, attendees: str |
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=12 * mm, bottomMargin=12 * mm, title="Ordem de trabalhos")
     base = ParagraphStyle("b", fontName="Helvetica", fontSize=8.4, leading=10.8)
     small = ParagraphStyle("s", parent=base, fontSize=7, leading=8.6, textColor=colors.HexColor("#555555"))
-    h = ParagraphStyle("h", parent=base, fontName="Helvetica-Bold", fontSize=10, leading=13, spaceBefore=6, spaceAfter=2, textColor=colors.HexColor("#163d78"))
+    h = ParagraphStyle("h", parent=base, fontName="Helvetica-Bold", fontSize=10, leading=13, spaceBefore=6, spaceAfter=2, textColor=colors.HexColor("#15435d"))
     t = ParagraphStyle("t", parent=base, fontName="Helvetica-Bold", fontSize=14, leading=17)
     story = [Paragraph("Ordem de trabalhos — reunião de obra", t), Paragraph(escape(title), base),
              Paragraph(f"Data / hora: {escape(meeting or 'a fixar')} · Participants : {escape(attendees or 'Dono de obra, projetista/arquiteto, empresa, gabinete de projeto se necessário')}", small), Spacer(1, 4)]
@@ -256,7 +256,7 @@ def meeting_report_pdf(state, *, title, meeting, attendees, decided, postponed, 
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=12 * mm, bottomMargin=12 * mm, title="Ata de reunião")
     base = ParagraphStyle("b", fontName="Helvetica", fontSize=8.4, leading=10.8)
     small = ParagraphStyle("s", parent=base, fontSize=7, leading=8.6, textColor=colors.HexColor("#555555"))
-    h = ParagraphStyle("h", parent=base, fontName="Helvetica-Bold", fontSize=10, leading=13, spaceBefore=6, spaceAfter=2, textColor=colors.HexColor("#163d78"))
+    h = ParagraphStyle("h", parent=base, fontName="Helvetica-Bold", fontSize=10, leading=13, spaceBefore=6, spaceAfter=2, textColor=colors.HexColor("#15435d"))
     t = ParagraphStyle("t", parent=base, fontName="Helvetica-Bold", fontSize=14, leading=17)
     story = [Paragraph("Ata de reunião de obra", t), Paragraph(escape(title), base),
              Paragraph(f"Reunião: {escape(meeting)} · Participants : {escape(attendees or '—')} · Redigida em {_now()[:10]}", small), Spacer(1, 4)]

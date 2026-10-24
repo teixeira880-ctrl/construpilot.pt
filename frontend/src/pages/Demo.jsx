@@ -277,7 +277,7 @@ function StairsResult({ o }) {
             width={380 / n - 2}
             height={(i + 1) * (190 / n)}
             fill="#3fcf8e"
-            stroke="#0b2c58"
+            stroke="#103f53"
             strokeWidth="1"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

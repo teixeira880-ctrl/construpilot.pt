@@ -15,7 +15,7 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 from engines.structuro_house import USE_LABEL, USE_Q
 
-BRAND = colors.HexColor("#163d78")  # cobalto (identidade .pt)
+BRAND = colors.HexColor("#15435d")  # cobalto (identidade .pt)
 INK = colors.HexColor("#1f2933")
 GREY = colors.HexColor("#6b7280")
 WALL = colors.HexColor("#c9ced6")
@@ -51,7 +51,7 @@ def _note_pdf(r: dict, project: str) -> bytes:
         st = [("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#d1d5db")), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
               ("FONTSIZE", (0, 0), (-1, -1), 7.6)]
         if head:
-            st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6edf7"))]
+            st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e4eff2"))]
         t.setStyle(TableStyle(st))
         return t
 
