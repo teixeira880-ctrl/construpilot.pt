@@ -154,3 +154,13 @@ def test_resposta_contem_url_fonte_oficial():
     assert any("pgdlisboa" in (ref.get("url") or "") or "diariodarepublica" in (ref.get("url") or "")
                for ref in r["referencias_legais"])
     assert r["lei_base"]["codigo"] == "DL 555/99"
+
+
+def test_moradia_nova_em_loteamento_ou_zuc_e_comunicacao_previa():
+    from engines.autorizacao_obras_pt.rules import diagnosticar
+    base = {"tipo_obra": "moradia_nova", "area_construcao_total_m2": 180}
+    assert diagnosticar(base)["procedimento"] == "licenciamento"
+    for flag in ("tem_pdm_com_parametros", "zona_urbana_consolidada", "tem_loteamento_pip"):
+        r = diagnosticar({**base, flag: True})
+        assert r["procedimento"] == "comunicacao_previa", flag
+        assert r["regra_aplicada"] == "MORADIA_NOVA_COMUNICACAO_PREVIA"

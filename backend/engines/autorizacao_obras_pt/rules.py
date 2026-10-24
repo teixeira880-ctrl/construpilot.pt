@@ -329,6 +329,48 @@ REGRAS: List[Dict[str, Any]] = [
         "match": lambda d: d.get("tipo_obra") == "ampliacao",
     },
 
+    # ------------------------------------------------------------------ 9a
+    {
+        "codigo": "MORADIA_NOVA_COMUNICACAO_PREVIA",
+        "titulo": "Construção nova em loteamento / PP / UE com parâmetros definidos ou zona urbana consolidada — comunicação prévia",
+        "status": "confirmado",
+        "referencias": [
+            _ref("4.º", "n.º 4 alínea d) — obras de construção, alteração ou ampliação em área abrangida por plano de pormenor, unidade de execução ou operação de loteamento que definam alinhamentos, polígono base, altura, pisos, área de construção e usos"),
+            _ref("4.º", "n.º 4 alínea e) — obras em zona urbana consolidada que respeitem os PMOT e cuja altura não ultrapasse a mais frequente das fachadas da frente edificada e não sejam sujeitas a cedências"),
+        ],
+        "procedimento": "comunicacao_previa",
+        "fundamento_legal": (
+            "A construção da moradia está sujeita a comunicação prévia por se enquadrar no art.º 4.º n.º 4 "
+            "alínea d) do RJUE (área abrangida por operação de loteamento, plano de pormenor ou unidade de "
+            "execução com parâmetros definidos) ou na alínea e) do mesmo n.º 4 (zona urbana consolidada)."
+        ),
+        "tecnicos_obrigatorios": [
+            "arquiteto", "engenheiro_estruturas", "engenheiro_civil", "engenheiro_eletrotecnico",
+            "coordenador_projeto",
+        ],
+        "pecas_necessarias": [
+            "Comunicação prévia (modelo oficial)",
+            "Projeto de arquitetura",
+            "Projetos das especialidades (estabilidade, redes de águas, esgotos e pluviais, "
+            "eletricidade, ITED, gás, acústica, SCIE, térmico/REH, acessibilidades)",
+            "Termos de responsabilidade dos autores de projeto (art.º 10.º)",
+            "Levantamento topográfico, plantas de localização e de implantação",
+            "Estimativa orçamental",
+        ],
+        "avisos": [
+            "A comunicação prévia só se aplica se o loteamento / plano de pormenor / unidade de execução "
+            "definir os parâmetros (alinhamentos, polígono base, altura, pisos, área de construção e usos) "
+            "ou se a obra cumprir as condições da zona urbana consolidada; confirme com o município.",
+            "O PDM por si só não basta para a alínea d): é necessário PP, UE ou loteamento com esses parâmetros. "
+            "Com informação prévia favorável válida, confirme no município o procedimento aplicável (art.º 17.º do RJUE).",
+            AVISO_PDM, AVISO_RESPONSABILIDADE,
+        ],
+        "match": lambda d: (
+            d.get("tipo_obra") == "moradia_nova"
+            and (d.get("tem_pdm_com_parametros") or d.get("tem_loteamento_pip") or d.get("zona_urbana_consolidada"))
+        ),
+    },
+
     # ------------------------------------------------------------------ 9
     {
         "codigo": "MORADIA_NOVA_LICENCIAMENTO",

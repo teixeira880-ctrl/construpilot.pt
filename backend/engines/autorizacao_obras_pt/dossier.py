@@ -28,7 +28,39 @@ from reportlab.platypus import (
 from reportlab.lib import colors
 from pypdf import PdfReader, PdfWriter
 
-VERSION = "dossier-1.0.0"
+VERSION = "dossier-1.0.1"
+
+# Fontes TrueType embebidas (Inter, licença SIL OFL — engines/bet_core/fonts): o Helvetica padrão do PDF não
+# garante «²», «º» e acentos em todos os leitores. Repli Helvetica se a fonte faltar.
+from pathlib import Path as _Path
+from reportlab.pdfbase import pdfmetrics as _pm
+from reportlab.pdfbase.ttfonts import TTFont as _TTF
+_FONTES = _Path(__file__).resolve().parent.parent / "bet_core" / "fonts"
+try:
+    _pm.registerFont(_TTF("AO", str(_FONTES / "Inter_400Regular.ttf")))
+    _pm.registerFont(_TTF("AOB", str(_FONTES / "Inter_600SemiBold.ttf")))
+    _pm.registerFontFamily("AO", normal="AO", bold="AOB", italic="AO", boldItalic="AOB")
+    F, FB = "AO", "AOB"
+except Exception:  # noqa: BLE001
+    F, FB = "Helvetica", "Helvetica-Bold"
+
+TIPOS_OBRA = {"moradia_nova": "Construção nova — moradia", "ampliacao": "Ampliação", "anexo": "Anexo / construção secundária",
+              "interiores": "Obras de alteração no interior", "piscina": "Piscina", "muro": "Muro / vedação",
+              "demolicao": "Demolição", "fachada": "Alteração de fachada", "alteracao_uso": "Alteração de utilização"}
+TECNICOS = {"arquiteto": "Arquiteto(a)", "engenheiro_estruturas": "Engenheiro(a) de estruturas",
+            "engenheiro_civil": "Engenheiro(a) civil", "engenheiro_eletrotecnico": "Engenheiro(a) eletrotécnico(a)",
+            "engenheiro_civil_ou_eletrotecnico": "Engenheiro(a) civil ou eletrotécnico(a)",
+            "coordenador_projeto": "Coordenador(a) de projeto"}
+
+
+def _num(v, casas: int = 1) -> str:
+    """Número em formato português (vírgula decimal, espaço nos milhares)."""
+    try:
+        x = float(v or 0)
+    except (TypeError, ValueError):
+        return str(v)
+    s = f"{x:,.{casas}f}".replace(",", " ").replace(".", ",")
+    return s[:-(casas + 1)] if casas and s.endswith("," + "0" * casas) else s
 
 NOTA_RODAPE = (
     "Documento preparado a partir do formato padrão da operação urbanística. "
@@ -47,22 +79,22 @@ def _now_iso_pt() -> str:
 def _styles() -> Dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
     return {
-        "title": ParagraphStyle("t", parent=base["Title"], fontName="Helvetica-Bold",
+        "title": ParagraphStyle("t", parent=base["Title"], fontName=FB,
                                 fontSize=16, leading=20, alignment=1, spaceAfter=10),
-        "h2": ParagraphStyle("h2", parent=base["Heading2"], fontName="Helvetica-Bold",
+        "h2": ParagraphStyle("h2", parent=base["Heading2"], fontName=FB,
                              fontSize=12, leading=14, spaceBefore=10, spaceAfter=4),
-        "body": ParagraphStyle("b", parent=base["BodyText"], fontName="Helvetica",
+        "body": ParagraphStyle("b", parent=base["BodyText"], fontName=F,
                                fontSize=10, leading=14, alignment=4),
-        "small": ParagraphStyle("s", parent=base["BodyText"], fontName="Helvetica",
+        "small": ParagraphStyle("s", parent=base["BodyText"], fontName=F,
                                 fontSize=8, leading=10, textColor=colors.grey),
-        "field": ParagraphStyle("f", parent=base["BodyText"], fontName="Helvetica",
+        "field": ParagraphStyle("f", parent=base["BodyText"], fontName=F,
                                 fontSize=10, leading=14),
     }
 
 
 def _footer(c: rl_canvas.Canvas, doc) -> None:
     c.saveState()
-    c.setFont("Helvetica", 7)
+    c.setFont(F, 7)
     c.setFillGray(0.4)
     text = f"ConstruPilot · Processo preparado em {_now_iso_pt()} · {VERSION}"
     c.drawString(15 * mm, 10 * mm, text)
@@ -252,14 +284,17 @@ def checklist_pecas(diagnostico: Dict[str, Any], pecas_carregadas: List[str]) ->
 # --------------------------------------------------------------------------- PDFs
 
 def _kv_table(rows: List[List[str]]) -> Table:
-    t = Table(rows, colWidths=[55 * mm, 110 * mm])
+    k = ParagraphStyle("kv", fontName=F, fontSize=9.5, leading=12)
+    kb = ParagraphStyle("kvb", parent=k, fontName=FB)
+    rows = [[Paragraph(str(a), kb), Paragraph(str(b), k)] for a, b in rows]   # quebra de linha: sem sobreposição
+    t = Table(rows, colWidths=[62 * mm, 103 * mm])
     t.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTNAME", (0, 0), (-1, -1), F),
         ("FONTSIZE", (0, 0), (-1, -1), 9.5),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.whitesmoke, colors.white]),
         ("BOX", (0, 0), (-1, -1), 0.4, colors.lightgrey),
         ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (0, -1), FB),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
@@ -299,11 +334,11 @@ def construir_requerimento_pdf(respostas: Dict[str, Any], diagnostico: Dict[str,
 
         Paragraph("3. Descrição da operação urbanística", s["h2"]),
         _kv_table([
-            ["Tipo", respostas.get("tipo_obra") or "—"],
-            ["Área de implantação (m²)", str(respostas.get("area_implantacao_m2") or 0)],
-            ["Área de construção total (m²)", str(respostas.get("area_construcao_total_m2") or 0)],
-            ["Área de construção criada (m²)", str(respostas.get("area_construcao_criada_m2") or 0)],
-            ["Altura (m)", str(respostas.get("altura_m") or 0)],
+            ["Tipo", TIPOS_OBRA.get(respostas.get("tipo_obra"), (respostas.get("tipo_obra") or "—").replace("_", " "))],
+            ["Área de implantação (m²)", _num(respostas.get("area_implantacao_m2"), 2)],
+            ["Área de construção total (m²)", _num(respostas.get("area_construcao_total_m2"), 2)],
+            ["Área de construção criada (m²)", _num(respostas.get("area_construcao_criada_m2"), 2)],
+            ["Altura (m)", _num(respostas.get("altura_m"), 2)],
         ]),
         Spacer(1, 4 * mm),
 
@@ -312,7 +347,7 @@ def construir_requerimento_pdf(respostas: Dict[str, Any], diagnostico: Dict[str,
         Spacer(1, 4 * mm),
 
         Paragraph("5. Técnicos subscritores (termos de responsabilidade)", s["h2"]),
-        _kv_table([[t.replace("_", " ").title(), "— a preencher —"]
+        _kv_table([[TECNICOS.get(t, t.replace("_", " ").capitalize()), "— a preencher —"]
                    for t in (diagnostico.get("tecnicos_obrigatorios") or [])] or [["—", "—"]]),
         Spacer(1, 6 * mm),
         Paragraph("Pede deferimento, " + _now_iso_pt(), s["body"]),
