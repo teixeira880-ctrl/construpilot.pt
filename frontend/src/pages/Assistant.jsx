@@ -4,7 +4,7 @@ import { lastConversation, rememberConversation, submittedJob } from "@/componen
 import "@/components/assistant/AssistantStudio.css";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe } from "lucide-react";
+import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe, FolderArchive } from "lucide-react";
 import { toast } from "sonner";
 import { api, uploadPlan } from "@/lib/api";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -27,6 +27,7 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { usePermissions } from "@/context/PermissionContext";
 import { isProfessional } from "@/components/workspace/navigation";
 import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
+import { useDossierImport, DossierChips } from "@/components/assistant/DossierImport";
 
 export default function Assistant() {
   const ui = useWorkspaceCopy();
@@ -51,6 +52,9 @@ export default function Assistant() {
   const [showJump, setShowJump] = useState(false);
   const textareaRef = useRef(null);
   const uploadRef = useRef(null);
+  const dossierRef = useRef(null);
+  const folderRef = useRef(null);
+  const dossierImport = useDossierImport();
   const uploadKind = useRef("doc");
   const activeConversation = useRef(null);
   const mounted = useRef(true);
@@ -108,7 +112,7 @@ export default function Assistant() {
     api.get(`/assistant/conversations/${encodeURIComponent(requestedConversation)}`).then(({ data }) => {
       if (!active) return;
       activeConversation.current = data.conversation_id;
-      setConv(data); setActivePlans(data.active_plans || []); setActiveDocs(data.active_docs || []); setPending([]);
+      setConv(data); setActivePlans(data.active_plans || []); setActiveDocs(data.active_docs || []); setPending([]); dossierImport.reset();
     }).catch(() => { if (active) setHistoryError(true); }).finally(() => { if (active) setLoadingConversation(false); });
     return () => { active = false; };
   }, [requestedConversation]);
@@ -160,7 +164,7 @@ export default function Assistant() {
       if (!mounted.current) return;
       followMessages.current = true; setShowJump(false);
       activeConversation.current = id;
-      setConv(r.data); setActivePlans(r.data.active_plans || []); setActiveDocs(r.data.active_docs || []); setPending([]);
+      setConv(r.data); setActivePlans(r.data.active_plans || []); setActiveDocs(r.data.active_docs || []); setPending([]); dossierImport.reset();
       setSearchParams({ conversation: id }, { replace: true });
       setText(textDrafts.current[id] || ""); setHistoryOpen(false);
     } catch { toast.error(ui("chatError")); }
@@ -175,7 +179,7 @@ export default function Assistant() {
       if (!mounted.current) return;
       followMessages.current = true; setShowJump(false);
       activeConversation.current = r.data.conversation_id;
-      setConv({ ...r.data, messages: [] }); setActivePlans([]); setActiveDocs([]); setPending([]); setText(""); setHistoryOpen(false); loadConvs();
+      setConv({ ...r.data, messages: [] }); setActivePlans([]); setActiveDocs([]); setPending([]); dossierImport.reset(); setText(""); setHistoryOpen(false); loadConvs();
       setSearchParams(convParams(r.data.conversation_id), { replace: true });
     } catch { toast.error(ui("chatError")); }
     finally { navigationLock.current = false; setLoadingConversation(false); }
@@ -188,20 +192,20 @@ export default function Assistant() {
     try {
       await api.delete(`/assistant/conversations/${c.conversation_id}`);
       toast.success(pt ? "Conversa movida para a reciclagem" : "Conversa movida para o lixo — recuperável durante 30 dias", { action: { label: pt ? "Reciclagem" : "Lixo", onClick: () => window.location.assign("/corbeille") } });
-      if (conv?.conversation_id === c.conversation_id) { activeConversation.current = null; setConv(null); setActivePlans([]); setActiveDocs([]); setPending([]); setSearchParams({}, { replace: true }); }
+      if (conv?.conversation_id === c.conversation_id) { activeConversation.current = null; setConv(null); setActivePlans([]); setActiveDocs([]); setPending([]); dossierImport.reset(); setSearchParams({}, { replace: true }); }
       loadConvs();
     } catch (e) { toast.error(e?.response?.data?.detail || ui("chatError")); }
   };
 
   const send = async () => {
-    if ((!text.trim() && !pending.length) || sendLock.current || navigationLock.current || uploading || rec || transcribing || cadFile) return;
+    if ((!text.trim() && !pending.length && !dossierImport.ids.length) || sendLock.current || navigationLock.current || uploading || dossierImport.uploading || rec || transcribing || cadFile) return;
     if (activeDocs.length > 10 || activePlans.length > 5) return toast.error(bg("maxFiles"));
     followMessages.current = true; setShowJump(false);
     sendLock.current = true; setBusy(true);
     let c = conv;
     if (!c) { try { const r = await api.post("/assistant/conversations", activeChantierId ? { chantier_id: activeChantierId } : {}); c = { ...r.data, messages: [] }; activeConversation.current = c.conversation_id; setConv(c); } catch { sendLock.current = false; setBusy(false); toast.error(ui("chatError")); return; } }
-    const content = text.trim() || bg("defaultPhoto");
-    const payload = { conversation_id: c.conversation_id, text: content, response_mode: mode, web_enabled: webEnabled, plan_ids: activePlans, doc_ids: activeDocs, attachments: pending };
+    const content = text.trim() || (dossierImport.ids.length ? "Faça o inventário deste processo." : bg("defaultPhoto"));
+    const payload = { conversation_id: c.conversation_id, text: content, response_mode: mode, web_enabled: webEnabled, plan_ids: activePlans, doc_ids: activeDocs, dossier_ids: dossierImport.ids, attachments: pending };
     const fingerprint = JSON.stringify(payload);
     if (retrySubmission.current?.fingerprint !== fingerprint) retrySubmission.current = { fingerprint, requestId: crypto.randomUUID() };
     const requestId = retrySubmission.current.requestId;
@@ -263,6 +267,8 @@ export default function Assistant() {
   };
   const onPickMany = async (files) => {
     const list = Array.from(files || []);
+    const hasZip = list.some((f) => f.name.toLowerCase().endsWith(".zip"));
+    if (hasZip || list.length > 10) { await dossierImport.importFiles(list); return; }   // processo completo (ZIP / dezenas de ficheiros)
     if (list.length <= 1) { if (list[0]) onPick(list[0]); return; }
     const room = 10 - activeDocs.length;
     if (list.length > room) toast.error(bg("maxFiles"));
@@ -339,7 +345,8 @@ export default function Assistant() {
         </div>
         {activePrefs.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground" data-testid="assistant-active-prefs"><Brain size={14} />{ui("appliedPrefs")} : {activePrefs.slice(0,4).map(p => <span key={p.pref_id} title={p.value} data-testid={`assistant-pref-${p.pref_id}`}>{p.category}</span>)}<Link to="/preferences" className="underline" data-testid="assistant-options-preferences">{ui("preferences")}</Link></div>}
       </div>}
-      {(activePlans.length > 0 || activeDocs.length > 0) && <div className="assistant-file-chips" data-testid="assistant-pending-files">
+      {(activePlans.length > 0 || activeDocs.length > 0 || dossierImport.dossiers.length > 0) && <div className="assistant-file-chips" data-testid="assistant-pending-files">
+        <DossierChips dossiers={dossierImport.dossiers} onRemove={dossierImport.remove} disabled={locked} />
         {[[activePlans, "plan"], [activeDocs, "doc"]].flatMap(([ids,kind]) => ids.map(id => <div key={id} className="assistant-file-chip" data-testid={`assistant-active-${kind}-${id}`}>{kind === "doc" && docs.find((d) => d.doc_id === id)?.kind === "photo" ? <PrivateImage path={`/assistant/documents/${id}/preview`} title={nameOf(id)} testId={`assistant-selected-photo-${id}`} small /> : <FileText size={13} aria-hidden="true" />}<span title={nameOf(id)}>{nameOf(id)}</span><button type="button" disabled={locked} data-testid={`assistant-remove-${kind}-${id}`} aria-label={`${ui("removeFile")} : ${nameOf(id)}`} onClick={() => removeContext(id,kind)}><X size={14} /></button></div>))}
       </div>}
       <div ref={messagesRef} className="assistant-messages" data-testid="assistant-messages" onScroll={e => { const el = e.currentTarget; followMessages.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; setShowJump(!followMessages.current); }}>
@@ -373,19 +380,23 @@ export default function Assistant() {
         <div className="assistant-input-box">
           <textarea ref={textareaRef} disabled={loadingConversation} rows={2} placeholder={ui("message")} aria-label={ui("message")} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if(e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia("(min-width: 768px)").matches) { e.preventDefault(); send(); } }} data-testid="assistant-input" />
           <div className="assistant-composer-actions">
-            <input ref={uploadRef} type="file" multiple className="hidden" accept=".pdf,.dxf,.dwg,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.docx,.txt" disabled={locked} onChange={e => { onPickMany(e.target.files); e.target.value = ""; }} data-testid="assistant-upload-input" />
+            <input ref={uploadRef} type="file" multiple className="hidden" accept=".zip,.pdf,.dxf,.dwg,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.docx,.txt" disabled={locked} onChange={e => { onPickMany(e.target.files); e.target.value = ""; }} data-testid="assistant-upload-input" />
+            <input ref={dossierRef} type="file" multiple className="hidden" accept=".zip,.pdf,.dxf,.dwg,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.docx,.txt" disabled={locked} onChange={e => { dossierImport.importFiles(e.target.files); e.target.value = ""; }} data-testid="assistant-dossier-input" />
+            <input ref={folderRef} type="file" multiple webkitdirectory="" directory="" className="hidden" disabled={locked} onChange={e => { dossierImport.importFiles(e.target.files); e.target.value = ""; }} data-testid="assistant-folder-input" />
             <DropdownMenu><DropdownMenuTrigger asChild>
-              <Button variant="ghost" disabled={locked} aria-label={ui("attach")} data-testid="assistant-attach-btn">{uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}<span>{studio("attach")}</span><ChevronDown size={13} /></Button>
+              <Button variant="ghost" disabled={locked} aria-label={ui("attach")} data-testid="assistant-attach-btn">{uploading || dossierImport.uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}<span>{studio("attach")}</span><ChevronDown size={13} /></Button>
             </DropdownMenuTrigger><DropdownMenuContent align="start" className="assistant-studio-menu">
               <DropdownMenuItem data-testid="assistant-import-document" onSelect={() => { uploadKind.current = "doc"; uploadRef.current?.click(); }}><Paperclip size={16} />{ui("docKind")}</DropdownMenuItem>
               {canPlan && <DropdownMenuItem data-testid="assistant-import-measurement-plan" onSelect={() => { uploadKind.current = "plan"; uploadRef.current?.click(); }}><Ruler size={16} />{bg("plan")}</DropdownMenuItem>}
+              <DropdownMenuItem data-testid="assistant-import-dossier" onSelect={() => dossierRef.current?.click()}><FolderArchive size={16} />Processo completo (ZIP ou vários ficheiros)</DropdownMenuItem>
+              <DropdownMenuItem data-testid="assistant-import-folder" onSelect={() => folderRef.current?.click()}><FolderArchive size={16} />Pasta inteira</DropdownMenuItem>
               <DropdownMenuItem data-testid="assistant-existing-files" onSelect={() => setOptionsOpen(true)}><FileText size={16} />{studio("existing")}</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem data-testid="assistant-image-prompt" onSelect={() => seedText(text ? `${text}\n${bg("jpgPrompt")}` : bg("jpgPrompt"))}><ImagePlus size={16} />{studio("image")}</DropdownMenuItem>
             </DropdownMenuContent></DropdownMenu>
             <Button variant={rec ? "destructive" : "ghost"} size="icon" disabled={busy || loadingConversation || uploading || transcribing} onClick={toggleMic} aria-label={ui(rec ? "stopMic" : "mic")} title={ui(rec ? "stopMic" : "mic")} data-testid="assistant-mic-btn">{rec ? <Square /> : <Mic />}</Button>
             {rec && <span className="text-xs text-destructive" role="status" data-testid="assistant-recording">{ui("recording")}</span>}
-            <Button disabled={(!text.trim() && !pending.length) || locked || !!cadFile} onClick={send} data-testid="assistant-send-btn">{busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}{ui("send")}</Button>
+            <Button disabled={(!text.trim() && !pending.length && !dossierImport.ids.length) || locked || dossierImport.uploading || !!cadFile} onClick={send} data-testid="assistant-send-btn">{busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}{ui("send")}</Button>
           </div>
         </div>
         <div className="assistant-composer-footer">

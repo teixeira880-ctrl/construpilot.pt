@@ -78,6 +78,9 @@ async def enqueue(body, user):
                 attached.append({"doc_id": did, "filename": doc["filename"], "kind": doc["kind"], "mime": doc["mime"]})
     except PermissionError as exc:
         raise HTTPException(403, "Anexo inacessível.") from exc
+    for dos_id in getattr(body, "dossier_ids", None) or []:
+        if not await db.assistant_dossiers.find_one({"dossier_id": dos_id, "user_id": uid}, {"_id": 1}):
+            raise HTTPException(403, "Processo inacessível.")
     if not requested.issubset(set(body.plan_ids + body.doc_ids)):
         raise HTTPException(422, "Falta um anexo no contexto.")
     counter = await db.assistant_convs.find_one_and_update({"conversation_id": body.conversation_id, "user_id": uid},
@@ -95,7 +98,7 @@ async def enqueue(body, user):
         return public_job(old)
     await db.assistant_msgs.update_one({"user_id": uid, "conversation_id": body.conversation_id, "request_id": body.request_id, "role": "user"}, {"$setOnInsert": {
         "message_id": "msg_" + uuid.uuid4().hex, "content": body.text, "attachments": attached, "created_at": now, "turn_seq": job["sequence"]}}, upsert=True)
-    update = {"updated_at": now, "active_docs": body.doc_ids, "active_plans": body.plan_ids}
+    update = {"updated_at": now, "active_docs": body.doc_ids, "active_plans": body.plan_ids, "active_dossiers": list(getattr(body, "dossier_ids", None) or [])}
     if conv["title"] == "Nouvelle conversation":
         update["title"] = body.text[:60]
     await db.assistant_convs.update_one({"conversation_id": body.conversation_id, "user_id": uid}, {"$set": update})
