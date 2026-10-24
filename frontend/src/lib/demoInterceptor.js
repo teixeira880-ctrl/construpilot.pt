@@ -106,6 +106,7 @@ async function idbSet(key, value) {
 }
 
 export async function resetDemoStore() {
+  _convCache = null;
   if (typeof indexedDB === "undefined") return;
   await new Promise((resolve) => {
     const req = indexedDB.deleteDatabase(IDB_NAME);
@@ -243,7 +244,82 @@ const routes = [
 
   // Threads/history vazios na demo
   { method: "GET", match: /^\/assistant\/(threads|history)\/?$/, handle: async () => _ok([]) },
+
+  // Página real do Assistente em modo stand/offline: conversas guardadas no browser, respostas dos
+  // cenários pré-carregados (mesmo matching acima), zero LLM e zero rede.
+  { method: "GET", match: /^\/assistant\/conversations\/?$/, handle: async () => {
+      const list = await _getConvs();
+      return _ok(list.map(({ messages, jobs, ...c }) => ({ ...c, message_count: messages.length })));
+    } },
+  { method: "POST", match: /^\/assistant\/conversations\/?$/, handle: async () => {
+      const list = await _getConvs();
+      const now = new Date().toISOString();
+      const c = { conversation_id: `conv_demo_${Date.now().toString(36)}`, title: "Nova conversa", created_at: now,
+                  updated_at: now, messages: [], jobs: [], active_plans: [], active_docs: [] };
+      await _saveConvs([c, ...list]);
+      return _ok(c);
+    } },
+  { method: "GET", match: /^\/assistant\/conversations\/([^/]+)\/calculations$/, handle: async () => _ok({ calculations: [] }) },
+  { method: "GET", match: /^\/assistant\/conversations\/([^/]+)$/, handle: async (_req, m) => {
+      const c = (await _getConvs()).find((x) => x.conversation_id === m[1]);
+      if (!c) throw _notFound("conversation not found (demo)");
+      return _ok(c);
+    } },
+  { method: "DELETE", match: /^\/assistant\/conversations\/([^/]+)$/, handle: async (_req, m) => {
+      await _saveConvs((await _getConvs()).filter((x) => x.conversation_id !== m[1]));
+      return _ok({ ok: true });
+    } },
+  { method: "POST", match: /^\/assistant\/jobs\/?$/, handle: async (req) => {
+      const body = req.data ? JSON.parse(req.data) : {};
+      const list = await _getConvs();
+      const c = list.find((x) => x.conversation_id === body.conversation_id);
+      if (!c) throw _notFound("conversation not found (demo)");
+      const text = (body.text || "").toString();
+      const now = new Date().toISOString();
+      c.messages.push({ message_id: `m_${Date.now().toString(36)}_u`, role: "user", content: text, created_at: now });
+      c.messages.push({ message_id: `m_${Date.now().toString(36)}_a`, role: "assistant", content: _demoAnswer(text),
+                        created_at: now, model: "demo-offline" });
+      if (c.title === "Nova conversa" && text) c.title = text.slice(0, 60);
+      c.updated_at = now;
+      await _saveConvs(list);
+      return _ok({ job_id: `job_demo_${Date.now().toString(36)}`, status: "completed", conversation_id: c.conversation_id });
+    } },
+  { method: "GET", match: /^\/assistant\/jobs\/?$/, handle: async () => _ok({ jobs: [] }) },
+  { method: "POST", match: /^\/assistant\/jobs\/([^/]+)\/cancel$/, handle: async () => _ok({ ok: true }) },
+  { method: "GET", match: /^\/assistant\/settings\/?$/, handle: async () => _ok({ web_enabled: false }) },
+  { method: "GET", match: /^\/assistant\/preferences\/?$/, handle: async () => _ok([]) },
+  { method: "GET", match: /^\/assistant\/documents\/?$/, handle: async () => _ok([]) },
+  { method: "GET", match: /^\/takeoffs\/?$/, handle: async () => _ok({ plans: [] }) },
 ];
+
+// -------------------- conversas do Assistente (offline) --------------------
+
+let _convCache = null;
+
+async function _getConvs() {
+  const key = `assistant_convs:${currentUser().user_id}`;
+  if (!_convCache || _convCache.key !== key) _convCache = { key, list: (await idbGet(key)) || [] };
+  return _convCache.list;
+}
+
+async function _saveConvs(list) {
+  const key = `assistant_convs:${currentUser().user_id}`;
+  _convCache = { key, list };
+  await idbSet(key, list);
+}
+
+function _demoAnswer(text) {
+  const match = _matchAssistant(text);
+  if (match) {
+    const links = (match.suggestions || [])
+      .map((s) => (s.asset ? `- [${s.label}](/demo-assets/${s.asset})` : s.target ? `- [${s.label}](${s.target})` : null))
+      .filter(Boolean);
+    return links.length ? `${match.answer_md}\n\n${links.join("\n")}` : match.answer_md;
+  }
+  const ideas = assistantResponses.slice(0, 5).map((r) => `- ${r.title}`).join("\n");
+  return "Nesta demonstração offline, o Assistente responde a perguntas preparadas sobre a **Moradia Martins**. "
+    + "Experimente, por exemplo:\n\n" + ideas;
+}
 
 function _normalise(s) {
   return (s || "")
@@ -258,6 +334,9 @@ function _normalise(s) {
 function _matchAssistant(text) {
   const q = _normalise(text);
   if (!q) return null;
+  // Pergunta sugerida (guia do stand, sugestões) → resposta correspondente, sem ambiguidade.
+  const exact = assistantResponses.find((r) => _normalise(r.title) === q);
+  if (exact) return exact;
   let best = null;
   let bestScore = 0;
   for (const r of assistantResponses) {

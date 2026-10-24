@@ -14,7 +14,7 @@ from html import escape
 
 from . import geometry as G
 from .equipment import FOOTPRINT
-from .i18n import tr
+from .i18n import net, tr
 
 PHASE = "#8B4513"
 NEUTRAL = "#4FA3E0"
@@ -350,13 +350,13 @@ def plumb_scene(study, level_id, rules) -> Scene:
             end = s["path"][-1]
             sc.circle(end, 0.05, fill=NET_COLOR[s["net"]], stroke=None)
         if ss:
-            sc.text((f["x"], f["y"] + 0.42), " / ".join(f'{s["net"]} {s["pipe_ext_mm"]}' for s in ss), 0.10, "#37474F")
+            sc.text((f["x"], f["y"] + 0.42), " / ".join(f'{net(lang, s["net"])} {s["pipe_ext_mm"]}' for s in ss), 0.10, "#37474F")
     for m in pl["manifolds"]:
         if m["level_id"] != level_id:
             continue
         sc.poly(G.rect_footprint((m["x"], m["y"]), 0.5, 0.22), fill="#FFFFFF", stroke=EF, w=0.04)
         sc.line([(m["x"] - 0.22, m["y"] + 0.07), (m["x"] + 0.22, m["y"] + 0.07)], ECS, 0.04)
-        sc.text((m["x"], m["y"] - 0.3), f'{tr(lang, "manifold")} {m["outlets_ef"]}EF/{m["outlets_ecs"]}ECS', 0.12, INK, bold=True)
+        sc.text((m["x"], m["y"] - 0.3), f'{tr(lang, "manifold")} {m["outlets_ef"]}{net(lang, "EF")}/{m["outlets_ecs"]}{net(lang, "ECS")}', 0.12, INK, bold=True)
     for st in pl["stacks"]:
         sc.circle((st["x"], st["y"]), 0.14, fill=EV, stroke=INK, w=0.02)
         sc.text((st["x"] + 0.25, st["y"] - 0.2), f'{tr(lang, "stack")} Ø{st["diameter_mm"]}', 0.13, EV, anchor="start", bold=True)
@@ -381,7 +381,7 @@ def plumb_scene(study, level_id, rules) -> Scene:
         en = pl["main"]["entry"]
         m = next(m for m in pl["manifolds"] if m["id"] == pl["main"]["to"])
         sc.line(G.manhattan_path(tuple(en), (m["x"], m["y"])), EF, 0.06)
-        sc.text((en[0], en[1] + 0.35), f'AEP Ø{pl["main"]["pipe_ext_mm"]}', 0.12, EF, bold=True)
+        sc.text((en[0], en[1] + 0.35), f'{net(lang, "AEP")} Ø{pl["main"]["pipe_ext_mm"]}', 0.12, EF, bold=True)
     _north_and_scale(sc, lv)
     return sc
 
@@ -475,7 +475,8 @@ def legend_plumb(lang) -> Scene:
     for i, (col, key, w) in enumerate(rows):
         y = i * 0.5
         sc.line([(0.05, y), (0.6, y)], col, w * 1.6)
-        sc.text((0.8, y), tr(lang, key), 0.17, INK, anchor="start")
+        lab = f'{net(lang, key[2:])} — {tr(lang, key)}' if lang == "pt" else tr(lang, key)
+        sc.text((0.8, y), lab, 0.17, INK, anchor="start")
     y = len(rows) * 0.5
     sc.poly(G.rect_footprint((0.32, y), 0.5, 0.22), fill="#FFFFFF", stroke=EF, w=0.04)
     sc.text((0.8, y), tr(lang, "manifold"), 0.17, INK, anchor="start")

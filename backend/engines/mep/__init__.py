@@ -21,6 +21,29 @@ from .rules import rules_for
 ENGINE_VERSION = "mep-1.0.0"
 
 
+_PT_PREFIX = (("Prises plan de travail", "Tomadas bancada"), ("Éclairage", "Iluminação"), ("Prises", "Tomadas"))
+
+
+def _labels_pt(points: list, elec: dict, plumb: dict) -> None:
+    """Rótulos gerados pelos motores (circuitos, saídas, tubos de queda) em PT-PT."""
+    for c in elec.get("circuits", []):
+        lab = c.get("label") or ""
+        for fr, pt in _PT_PREFIX:
+            if lab.startswith(fr):
+                c["label"] = pt + lab[len(fr):]
+                break
+    for p in points:
+        if p.get("label") == "Applique ext.":
+            p["label"] = "Aplique ext."
+    for st in plumb.get("stacks", []):
+        if "ventilation" in st:
+            st["ventilation"] = f"ventilação primária Ø{st.get('diameter_mm')} prolongada acima da cobertura"
+    if isinstance(plumb.get("exit"), dict) and plumb["exit"].get("label"):
+        plumb["exit"]["label"] = "Saída de águas residuais → caixa de visita"
+    if isinstance(plumb.get("main"), dict) and plumb["main"].get("from") == "Compteur / regard de branchement":
+        plumb["main"]["from"] = "Contador / caixa de ramal"
+
+
 def generate(data: dict, edits: dict | None = None) -> dict:
     """Calcule l'étude complète.
 
@@ -42,6 +65,8 @@ def generate(data: dict, edits: dict | None = None) -> dict:
         p.pop("circuit_id", None)
     elec = electrical.network(points, levels, options, rules)
     plumb = plumbing.network(equipment, levels, options, rules)
+    if lang == "pt":
+        _labels_pt(points, elec, plumb)
     controls = checks.run(levels, points, equipment, elec, plumb, options, rules, lang)
     bom = quantities.build(points, elec, plumb, equipment, options, rules, lang)
     summary = {

@@ -1067,7 +1067,7 @@ class TvaAttestationInput:
 
 
 def _tva_header_and_intro(story: list, tva_pct: int, S: dict) -> None:
-    is_reduced = tva_pct in (10, 5, 55)  # 5.5 arrondi
+    is_reduced = tva_pct in (6, 13)  # taxas reduzida e intermédia do IVA (continente)
     header_title = (f'DECLARAÇÃO — IVA À TAXA REDUZIDA ({tva_pct} %)'
                      if is_reduced else "DECLARAÇÃO DE OBRAS")
     story.append(Paragraph(header_title, S["kicker"]))

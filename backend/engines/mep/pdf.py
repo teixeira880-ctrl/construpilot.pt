@@ -15,7 +15,7 @@ from reportlab.platypus import (Flowable, PageBreak, Paragraph, SimpleDocTemplat
                                 TableStyle)
 
 from . import render as R
-from .i18n import tr
+from .i18n import fixture as _fx, net as _net, tr
 from .rules import rules_for
 
 _FONT = "Helvetica"
@@ -212,27 +212,27 @@ def build_pdf(study: dict) -> bytes:
     story += [Spacer(1, 6 * mm), Paragraph(T["supplies"], S["h2"])]
     rows = [T["h_sup"]]
     for s in pl["supplies"]:
-        rows.append([s["id"], s["net"], s["fixture"], f'Ø{s["pipe_ext_mm"]} ({s["pipe_int_mm"]} int.)',
+        rows.append([s["id"], _net(lang, s["net"]), _fx(lang, s["fixture"]), f'Ø{s["pipe_ext_mm"]} ({s["pipe_int_mm"]} int.)',
                      f'{s["q_ls"]} l/s', f'{s["velocity_ms"]} m/s', f'{s["length_m"]} m'])
     for s in pl["risers"]:
-        rows.append([s["id"], s["net"], tr(lang, "riser"), f'Ø{s["pipe_ext_mm"]}', f'{s["q_probable_ls"]} l/s',
+        rows.append([s["id"], _net(lang, s["net"]), tr(lang, "riser"), f'Ø{s["pipe_ext_mm"]}', f'{s["q_probable_ls"]} l/s',
                      f'{s["velocity_ms"]} m/s', f'{s["length_m"]} m'])
     if pl.get("main"):
         m = pl["main"]
-        rows.append(["AEP", "EF", T["main"], f'Ø{m["pipe_ext_mm"]}', f'{m["q_probable_ls"]} l/s',
+        rows.append([_net(lang, "AEP"), _net(lang, "EF"), T["main"], f'Ø{m["pipe_ext_mm"]}', f'{m["q_probable_ls"]} l/s',
                      f'{m["velocity_ms"]} m/s', f'{m.get("length_in_building_m") or "—"} m'])
     story.append(_table(rows, [22 * mm, 20 * mm, W - 192 * mm, 45 * mm, 30 * mm, 30 * mm, 45 * mm]))
     story += [Spacer(1, 6 * mm), Paragraph(T["drains"], S["h2"])]
     rows = [T["h_drn"]]
     for d in pl["drains"]:
-        rows.append([d["id"], d["net"], d["fixture"], d["to"], f'{d["diameter_mm"]}', f'{round(d["slope"] * 100, 1)} %',
+        rows.append([d["id"], _net(lang, d["net"]), _fx(lang, d["fixture"]), d["to"], f'{d["diameter_mm"]}', f'{round(d["slope"] * 100, 1)} %',
                      f'{d["length_m"]} m', f'{d["drop_m"]} / {d["available_m"]} m'])
     if pl.get("collector"):
         c = pl["collector"]
-        rows.append(["COL", "EU/EV", tr(lang, "collector"), tr(lang, "exit"), f'{c["diameter_mm"]}',
+        rows.append(["COL", _net(lang, "EU/EV"), tr(lang, "collector"), tr(lang, "exit"), f'{c["diameter_mm"]}',
                      f'{round(c["slope"] * 100, 1)} %', f'{c["length_m"]} m', f'{c["drop_m"]} / {c["available_m"]} m'])
     for st in pl["stacks"]:
-        rows.append([st["id"], "EU/EV", tr(lang, "stack"), st["lands_in_room"] or "—", f'{st["diameter_mm"]}', "—",
+        rows.append([st["id"], _net(lang, "EU/EV"), tr(lang, "stack"), st["lands_in_room"] or "—", f'{st["diameter_mm"]}', "—",
                      f'{st["height_m"]} m', st["ventilation"]])
     story.append(_table(rows, [22 * mm, 20 * mm, 50 * mm, 45 * mm, 20 * mm, 22 * mm, 30 * mm, W - 209 * mm]))
     # --- nomenclature --------------------------------------------------------------------

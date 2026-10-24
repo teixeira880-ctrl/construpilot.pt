@@ -682,3 +682,24 @@ GLOSSARY.update({
     "Lucarne": "Trapeira", "lucarne": "trapeira", "Lucarnes": "Trapeiras", "lucarnes": "trapeiras",
     "flèche": "flecha",
 })
+
+# Frases do verificador e das folhas que escapavam ao gabarito (texto do motor alterado depois da tradução).
+TEMPLATES.update({
+    "Murs demandés « Brique terre cuite Isobric ⟨0⟩ (joint mince) » → calculés en Isobric ⟨1⟩ (NP EN ⟨2⟩)":
+        "Paredes pedidas « tijolo térmico tipo Isobric ⟨0⟩ (junta delgada) » → calculadas em tijolo térmico ⟨1⟩ (NP EN ⟨2⟩)",
+    "Murs demandés « Brique terre cuite Porotherme ⟨0⟩ (R⟨1⟩ / Th+), joint mince » → calculés en Porotherme ⟨2⟩ (NP EN ⟨3⟩)":
+        "Paredes pedidas « tijolo térmico tipo Porotherme ⟨0⟩ (R⟨1⟩ / Th+), junta delgada » → calculadas em tijolo térmico ⟨2⟩ (NP EN ⟨3⟩)",
+    "Murs demandés « Brique terre cuite ⟨0⟩ cm à perforations verticales, joint mince » → calculés en brique ⟨1⟩ (NP EN ⟨2⟩)":
+        "Paredes pedidas « tijolo cerâmico ⟨0⟩ cm de furação vertical, junta delgada » → calculadas em tijolo ⟨1⟩ (NP EN ⟨2⟩)",
+    "complexe de sol ⟨0⟩ cm : isolant + chape + plancher chauffant": "pavimento ⟨0⟩ cm : isolamento + betonilha + piso radiante",
+})
+TEMPLATES.update({
+    "Charpente : pente ⟨0⟩°, pannes GL⟨1⟩h ⟨2⟩ × ⟨3⟩ de pignon à pignon sur ⟨4⟩ fermes intermédiaires.":
+        "Estrutura da cobertura : inclinação ⟨0⟩°, madres GL⟨1⟩h ⟨2⟩ × ⟨3⟩ de empena a empena sobre ⟨4⟩ asna(s) intermédia(s).",
+    "• Charpente traditionnelle à pannes sur pignons maçonnés et ⟨0⟩ ferme intermédiaire":
+        "• Estrutura de cobertura tradicional com madres apoiadas nas empenas de alvenaria e ⟨0⟩ asna intermédia",
+    "Fermes intermédiaires à entrait retroussé GL⟨0⟩h (portée ⟨1⟩ m)": "Asnas intermédias de linha alteada GL⟨0⟩h (vão ⟨1⟩ m)",
+    "• Fermes : ⟨0⟩ intermédiaire(s), portée des pannes ⟨1⟩ m — note de fabrication du charpentier": "• Asnas : ⟨0⟩ intermédia(s), vão das madres ⟨1⟩ m — nota de fabrico do carpinteiro",
+    "Fermes : ⟨0⟩ intermédiaire(s), portée des pannes ⟨1⟩ m — note de fabrication du charpentier": "Asnas : ⟨0⟩ intermédia(s), vão das madres ⟨1⟩ m — nota de fabrico do carpinteiro",
+})
+GLOSSARY.update({"Planchers poutrelles-hourdis": "Lajes aligeiradas (vigotas e abobadilhas)"})

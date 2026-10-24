@@ -156,6 +156,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 import CookieConsent from "@/components/CookieConsent";
+import StandBar from "@/components/StandBar";
+import StandMode from "@/pages/StandMode";
 import { DomTranslator } from "@/components/DomTranslator";
 
 const PostalFeature = ({ children }) => {
@@ -258,6 +260,7 @@ function AppRouter() {
       <Route path="/" element={<LandingPro />} />
       <Route path="/demo" element={<Demo />} />
       <Route path="/demo/entrar" element={<DemoPage />} />
+      <Route path="/stand" element={<StandMode />} />
       <Route path="/demo-entrar" element={<DemoPage />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
       <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />
@@ -455,6 +458,7 @@ function App() {
                         <MicFab />
                         <InstallPrompt />
                         <CookieConsent />
+                        <StandBar />
                         <DomTranslator />
                         <Toaster position="top-right" richColors />
                       </OfflineProvider>

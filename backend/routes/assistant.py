@@ -868,7 +868,7 @@ async def create_conv(body: ConvIn, user=Depends(current_user)) -> dict:
         chantier = await _get_chantier(body.chantier_id, user["user_id"])
     conv = {"conversation_id": f"conv_{uuid.uuid4().hex[:10]}", "user_id": user["user_id"], "organization_id": user.get("organization_id"),
             "project_id": body.project_id, "chantier_id": chantier["chantier_id"] if chantier else None, "chantier_name": chantier["name"] if chantier else None,
-            "title": body.title or (f"Obra {chantier['name']}" if chantier else "Nouvelle conversation"), "created_at": _now(), "updated_at": _now(),
+            "title": body.title or (f"Obra {chantier['name']}" if chantier else "Nova conversa"), "created_at": _now(), "updated_at": _now(),
             "active_plans": []}
     await db.assistant_convs.insert_one(dict(conv))
     conv.pop("_id", None)
@@ -1492,7 +1492,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
         if conv.get("_turn_seq") is not None:
             msg["turn_seq"] = conv["_turn_seq"]
         await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "assistant", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": dict(msg)}, upsert=True)
-        title = conv["title"] if conv["title"] != "Nouvelle conversation" else body.text[:60]
+        title = conv["title"] if conv["title"] not in ("Nouvelle conversation", "Nova conversa") else body.text[:60]
         update = {"updated_at": _now(), "title": title}
         if conv.get("_turn_seq") is None:
             update.update(active_plans=[p["plan_id"] for p in plans], active_docs=body.doc_ids)

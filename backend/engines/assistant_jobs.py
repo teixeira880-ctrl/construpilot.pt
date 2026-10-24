@@ -99,7 +99,7 @@ async def enqueue(body, user):
     await db.assistant_msgs.update_one({"user_id": uid, "conversation_id": body.conversation_id, "request_id": body.request_id, "role": "user"}, {"$setOnInsert": {
         "message_id": "msg_" + uuid.uuid4().hex, "content": body.text, "attachments": attached, "created_at": now, "turn_seq": job["sequence"]}}, upsert=True)
     update = {"updated_at": now, "active_docs": body.doc_ids, "active_plans": body.plan_ids, "active_dossiers": list(getattr(body, "dossier_ids", None) or [])}
-    if conv["title"] == "Nouvelle conversation":
+    if conv["title"] in ("Nouvelle conversation", "Nova conversa"):
         update["title"] = body.text[:60]
     await db.assistant_convs.update_one({"conversation_id": body.conversation_id, "user_id": uid}, {"$set": update})
     await db.assistant_jobs.update_one({"job_id": ident, "status": "preparing"}, {"$set": {"status": "queued"}})
