@@ -58,7 +58,7 @@ export default function Investors() {
               <Download className="h-4 w-4" /> Pitch deck PDF
             </Button>
             <Button asChild size="sm" className="rounded-full gap-2" data-testid="deck-contact-top">
-              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-4 w-4" /> Contactar</a>
+              <a href={`mailto:${CONTACT}?subject=Investimento ConstruPilot`}><Mail className="h-4 w-4" /> Contactar</a>
             </Button>
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function Investors() {
           </p>
           <div className="mt-9 flex flex-wrap gap-3 justify-center">
             <Button asChild size="lg" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-contact">
-              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot`}><Mail className="h-5 w-5" /> Falar com a equipa</a>
+              <a href={`mailto:${CONTACT}?subject=Investimento ConstruPilot`}><Mail className="h-5 w-5" /> Falar com a equipa</a>
             </Button>
             <Button asChild size="lg" variant="outline" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-demo">
               <Link to="/">Ver a demonstração <ArrowRight className="h-5 w-5" /></Link>
@@ -179,7 +179,7 @@ export default function Investors() {
           </div>
           <div className="mt-10 flex flex-wrap gap-3 justify-center">
             <Button asChild size="lg" className="rounded-full h-13 px-8 gap-2" data-testid="deck-cta-final">
-              <a href={`mailto:${CONTACT}?subject=Investissement ConstruPilot&body=Bonjour, je souhaite en savoir plus sur l'opportunité d'investissement dans ConstruPilot.`}>
+              <a href={`mailto:${CONTACT}?subject=Investimento ConstruPilot&body=Olá, gostaria de saber mais sobre a oportunidade de investimento no ConstruPilot.`}>
                 <Mail className="h-5 w-5" /> Solicitar o dossiê completo
               </a>
             </Button>

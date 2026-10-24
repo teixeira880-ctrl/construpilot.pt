@@ -75,7 +75,7 @@ export default function PilotagePanel({ onOpenBudget }) {
         <div className="surface rounded-md p-4" data-testid="pilotage-used">
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Consumido / teto</p>
           <p className="font-display text-3xl font-extrabold mt-1 num">{eur(st.used_eur)}</p>
-          <p className="text-xs text-muted-foreground mt-1">sur {eur(st.cap_eur)} · restante {eur(st.remaining_eur)}</p>
+          <p className="text-xs text-muted-foreground mt-1">de {eur(st.cap_eur)} · restante {eur(st.remaining_eur)}</p>
           <p className="text-xs mt-1 flex items-center gap-1">
             {data.new_engagements_allowed
               ? <><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Novos compromissos autorizados</>
@@ -89,7 +89,7 @@ export default function PilotagePanel({ onOpenBudget }) {
           {proj ? (
             <>
               <p className={`font-display text-3xl font-extrabold mt-1 num ${proj.over_cap ? "text-red-600" : ""}`}>{eur(proj.projected_eur)}</p>
-              <p className="text-xs text-muted-foreground mt-1">ao ritmo de {eur(proj.pace_eur_per_day)}/jour · jour {proj.day}/{proj.days_in_month}</p>
+              <p className="text-xs text-muted-foreground mt-1">ao ritmo de {eur(proj.pace_eur_per_day)}/dia · dia {proj.day}/{proj.days_in_month}</p>
               {proj.over_cap && <p className="text-xs text-red-600 mt-1 font-semibold">Ultrapassaria o teto</p>}
             </>
           ) : (

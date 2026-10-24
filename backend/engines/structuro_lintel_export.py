@@ -145,7 +145,7 @@ def lintel_figure_dim(lint: dict, width: float = 720, height: float = 300) -> Dr
         d.add(String(scx, sbase + bh + 16, rc.get("label", ""), fontSize=8.5, fillColor=_DK, textAnchor="middle"))
         det = (rc.get("detailing") or {}).get("anchorage") or {}
         if det:
-            d.add(String(scx, sbase - 26, f"ancrage {int(det.get('straight_mm', 0))} mm · crochet {int(det.get('hook_mm', 0))} mm",
+            d.add(String(scx, sbase - 26, f"amarração {int(det.get('straight_mm', 0))} mm · gancho {int(det.get('hook_mm', 0))} mm",
                          fontSize=7, fillColor=_MUT, textAnchor="middle"))
     else:
         d.add(String(scx, sbase + 40, "Secção não resolvida", fontSize=8, fillColor=_MUT, textAnchor="middle"))
@@ -163,8 +163,8 @@ def build_lintel_pdf(lint: dict, name: str, revision: int) -> bytes:
     rc = lint.get("rc") or {}
     reco = lint.get("recommendation") or {}
     br = lint.get("bearing") or {}
-    story = [Paragraph("ConstruPilot | Plan coté de linteau (reprise d'ouverture)", ss["Title"]),
-             p(f"{name} · revisão {revision} · moteur {lint.get('version', '')}"),
+    story = [Paragraph("ConstruPilot | Planta cotada da padieira (abertura de vão)", ss["Title"]),
+             p(f"{name} · revisão {revision} · motor {lint.get('version', '')}"),
              Paragraph("PLANTA NÃO EXECUTÓRIA — ESQUEMA COTADO INDICATIVO — A VISAR PELO ENGENHEIRO / ENTIDADE DE CONTROLO", ss["Heading2"]),
              p(f"Vão livre L = {lint.get('clear_span_m')} m · modelo de carga «{lint.get('load_model')} » · M_Ed {act.get('m_ed_knm')} kN·m · V_Ed {act.get('v_ed_kn')} kN · {act.get('combination', '')}"),
              Spacer(1, 6), lintel_figure_dim(lint, width=760, height=300), Spacer(1, 8)]

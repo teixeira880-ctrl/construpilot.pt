@@ -171,7 +171,7 @@ export default function LearningPanel() {
           </p>
         </div>
         <Button variant="outline" size="sm" className="rounded-sm gap-2 shrink-0" onClick={() => setShowImport((v) => !v)} data-testid="learning-toggle-import">
-          <Layers className="h-4 w-4" /> Importer en lot
+          <Layers className="h-4 w-4" /> Importar em lote
         </Button>
       </div>
 

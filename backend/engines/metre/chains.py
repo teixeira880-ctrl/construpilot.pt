@@ -91,7 +91,7 @@ def compare_values(a: Reading | dict, b: Reading | dict, *, same_interval: bool,
     if within:
         return {"calculation": calc.model_dump(), "findings": []}
     finding = Finding(subject=f"{ra.label} / {rb.label}", severity="demonstrated" if certainty == "confirmed" else "to_clarify", certainty=certainty,
-                      explanation=f'Diferença de {round(abs(diff) * 100, 1):g} cm entre {ra.label} ({_fmt(ra.usable)} m) et {rb.label} ({_fmt(rb.usable)} m).',
+                      explanation=f'Diferença de {round(abs(diff) * 100, 1):g} cm entre {ra.label} ({_fmt(ra.usable)} m) e {rb.label} ({_fmt(rb.usable)} m).',
                       consequence="Ponto de leitura ou de coerência a esclarecer; nenhuma tolerância de execução é aplicada sem referência verificada.",
                       action="Verificar as duas cotas na planta (ampliação / extração nativa) e pedir confirmação ao gabinete de projeto se a diferença persistir",
                       calc_id=calc.calc_id)

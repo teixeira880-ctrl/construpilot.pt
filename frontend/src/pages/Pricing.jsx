@@ -203,7 +203,7 @@ export default function Pricing() {
             </p>
           </div>
           <div className="text-center md:text-right shrink-0">
-            <p className="num text-3xl font-extrabold text-primary">5 €<span className="text-sm text-muted-foreground font-normal">/mois</span></p>
+            <p className="num text-3xl font-extrabold text-primary">5 €<span className="text-sm text-muted-foreground font-normal">/mês</span></p>
             <Button className="rounded-sm mt-3 w-full md:w-auto" data-testid="pricing-invoicing-addon-cta"
               disabled={busy === "invoicing_addon_monthly"}
               onClick={() => subscribe({ plan_id: "invoicing_addon_monthly" })}>

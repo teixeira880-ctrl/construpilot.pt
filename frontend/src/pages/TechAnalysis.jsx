@@ -131,7 +131,7 @@ const SupplierManager = ({ suppliers, reload }) => {
           {suppliers.map((s) => (
             <div key={s.supplier_id} className="flex items-center justify-between rounded-sm border border-border p-2 text-sm" data-testid={`supplier-item-${s.supplier_id}`}>
               <div><div className="font-semibold">{s.name}{s.agency ? ` · ${s.agency}` : ""}</div>
-                <div className="text-xs text-muted-foreground">{[s.client_number, s.email, s.phone].filter(Boolean).join(" · ")}{(s.price_list || []).length ? ` · ${s.price_list.length} prix` : ""}</div></div>
+                <div className="text-xs text-muted-foreground">{[s.client_number, s.email, s.phone].filter(Boolean).join(" · ")}{(s.price_list || []).length ? ` · ${s.price_list.length} preço(s)` : ""}</div></div>
               <div className="flex gap-2">
                 <button onClick={() => edit(s)} data-testid={`edit-supplier-${s.supplier_id}`} className="text-xs text-primary font-semibold">Editar</button>
                 <button onClick={() => del(s.supplier_id)} data-testid={`del-supplier-${s.supplier_id}`}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" /></button>

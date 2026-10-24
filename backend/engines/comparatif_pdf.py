@@ -37,22 +37,22 @@ FULLNAME = {"obat": "Obat", "trustup": "Trustup Pro", "vertuoza": "Vertuoza", "e
             "batappli": "Batappli", "alobees": "Alobees", "batichiffrage": "BatiChiffrage", "renalto": "Renalto"}
 
 ROWS = [
-    ("Orçamentos e faturas", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel", "Oui", "Oui"]),
-    ("Faturação eletrónica (SAF-T / QR code ATCUD)", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "—", "Oui", "Oui"]),
-    ("Biblioteca de artigos e preços", ["Oui", "Sim (30k)", "Oui", "Oui", "Option", "Oui", "Non", "Sim (80k)", "Sim (≤5k)"]),
-    ("Orçamentação 100% determinística (0 IA na matemática)", ["Oui", "—", "—", "—", "—", "—", "—", "—", "Non (IA)"]),
-    ("Medição em plantas (PDF/imagem) + calibração", ["Oui", "À venir", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]),
-    ("Leitura das cotas nativas DWG / DXF", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Deteção de paredes e vãos (IA / OpenCV)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Partiel"]),
-    ("Projetos multinível consolidados (R/C, 1.º andar…)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Cálculo de escadas (betão + armaduras + 3D)", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Leitura de mapas de quantidades / cadernos de encargos → orçamento detalhado", ["Oui", "—", "—", "—", "Option", "Oui", "—", "Oui", "Oui"]),
-    ("Comparação de versões de plantas", ["Oui", "Non", "Non", "Non", "Non", "Non", "Non", "Non", "Non"]),
-    ("Assistente IA + agentes especializados orquestrados", ["Oui", "Partiel", "Non", "Partiel", "Non", "Non", "Non", "Partiel", "Sim (Rita)"]),
-    ("Acompanhamento de obra / controlo de custos", ["Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Oui", "Partiel"]),
-    ("Assinatura eletrónica", ["Oui", "Oui", "—", "—", "Oui", "Oui", "—", "Oui", "—"]),
-    ("Processo PDF com a sua marca (página de rosto, logótipo, marca de água)", ["Oui", "Partiel", "Partiel", "Partiel", "Partiel", "Partiel", "—", "Partiel", "Partiel"]),
-    ("PDF multilingue (FR / EN / PT)", ["Oui", "—", "—", "—", "—", "—", "—", "—", "—"]),
+    ("Orçamentos e faturas", ["Sim", "Sim", "Sim", "Sim", "Sim", "Sim", "Parcial", "Sim", "Sim"]),
+    ("Faturação eletrónica (SAF-T / QR code ATCUD)", ["Sim", "Sim", "Sim", "Sim", "Sim", "Sim", "—", "Sim", "Sim"]),
+    ("Biblioteca de artigos e preços", ["Sim", "Sim (30k)", "Sim", "Sim", "Opção", "Sim", "Não", "Sim (80k)", "Sim (≤5k)"]),
+    ("Orçamentação 100% determinística (0 IA na matemática)", ["Sim", "—", "—", "—", "—", "—", "—", "—", "Não (IA)"]),
+    ("Medição em plantas (PDF/imagem) + calibração", ["Sim", "Em breve", "Não", "Não", "Não", "Não", "Não", "Não", "Parcial"]),
+    ("Leitura das cotas nativas DWG / DXF", ["Sim", "Não", "Não", "Não", "Não", "Não", "Não", "Não", "Não"]),
+    ("Deteção de paredes e vãos (IA / OpenCV)", ["Sim", "Não", "Não", "Não", "Não", "Não", "Não", "Não", "Parcial"]),
+    ("Projetos multinível consolidados (R/C, 1.º andar…)", ["Sim", "Não", "Não", "Não", "Não", "Não", "Não", "Não", "Não"]),
+    ("Cálculo de escadas (betão + armaduras + 3D)", ["Sim", "Não", "Não", "Não", "Não", "Não", "Não", "Não", "Não"]),
+    ("Leitura de mapas de quantidades / cadernos de encargos → orçamento detalhado", ["Sim", "—", "—", "—", "Opção", "Sim", "—", "Sim", "Sim"]),
+    ("Comparação de versões de plantas", ["Sim", "Não", "Não", "Não", "Não", "Não", "Não", "Não", "Não"]),
+    ("Assistente IA + agentes especializados orquestrados", ["Sim", "Parcial", "Não", "Parcial", "Não", "Não", "Não", "Parcial", "Sim (Rita)"]),
+    ("Acompanhamento de obra / controlo de custos", ["Sim", "Sim", "Sim", "Sim", "Sim", "Sim", "Sim", "Sim", "Parcial"]),
+    ("Assinatura eletrónica", ["Sim", "Sim", "—", "—", "Sim", "Sim", "—", "Sim", "—"]),
+    ("Processo PDF com a sua marca (página de rosto, logótipo, marca de água)", ["Sim", "Parcial", "Parcial", "Parcial", "Parcial", "Parcial", "—", "Parcial", "Parcial"]),
+    ("PDF multilingue (FR / EN / PT)", ["Sim", "—", "—", "—", "—", "—", "—", "—", "—"]),
 ]
 
 PROFILES = [
@@ -90,11 +90,11 @@ def _logo_flow(h_mm):
 
 def _cell_para(val):
     color, bold = DARK, False
-    if val == "Oui":
+    if val == "Sim":
         color, bold = colors.HexColor("#15803D"), True
-    elif val in ("Non", "Non (IA)"):
+    elif val in ("Não", "Não (IA)"):
         color = colors.HexColor("#B91C1C")
-    elif val in ("Partiel", "Option", "À venir") or val.startswith(("Oui (", "Partiel")):
+    elif val in ("Parcial", "Opção", "Em breve") or val.startswith(("Oui (", "Parcial")):
         color = colors.HexColor("#B45309")
     st = ParagraphStyle("c", fontName="Helvetica-Bold" if bold else "Helvetica", fontSize=7.2,
                         textColor=color, leading=8.4, alignment=1)

@@ -147,7 +147,7 @@ const FrenchPolicy = () => (
       <p>
         Qualquer alteração desta política será publicada nesta página com uma nova data de atualização. Para qualquer questão:{" "}
         <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>{" "}
-        · Assistance : <Link className="text-primary underline" to="/aide">página de ajuda</Link>.
+        · Assistência: <Link className="text-primary underline" to="/aide">página de ajuda</Link>.
       </p>
     </Section>
   </div>

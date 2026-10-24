@@ -174,7 +174,7 @@ export function ImportDocumentsDialog({ triggerLabel = "Importar PDFs", triggerV
                         <Input type="number" value={l.qty ?? 0} onChange={(e) => setLine(i, li, { qty: e.target.value })}
                                className="h-7 rounded-sm text-xs w-16" title="Qtd." />
                         <Input type="number" value={l.unit_price_ht ?? 0} onChange={(e) => setLine(i, li, { unit_price_ht: e.target.value })}
-                               className="h-7 rounded-sm text-xs w-20" title="PU HT" />
+                               className="h-7 rounded-sm text-xs w-20" title="PU s/ IVA" />
                         <button onClick={() => removeLine(i, li)} className="text-muted-foreground hover:text-red-600 shrink-0"
                                 data-testid={`import-preview-line-del-${i}-${li}`}><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>

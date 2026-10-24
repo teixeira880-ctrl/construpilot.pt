@@ -53,7 +53,7 @@ function EmailCard({ cfg }) {
     setBusy(true);
     try {
       const { data } = await api.post(cfg.sendPath, cfg.sendBody(to));
-      toast.success(`${data.sent} enviado(s)${data.failed ? ` · ${data.failed} falha(s)` : ""} sur ${data.recipients}`);
+      toast.success(`${data.sent} enviado(s)${data.failed ? ` · ${data.failed} falha(s)` : ""} de ${data.recipients}`);
       setTo("");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Envio impossível");

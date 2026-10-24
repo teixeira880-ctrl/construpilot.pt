@@ -23,7 +23,7 @@ def _report_payload(native: dict | None, sheet: dict | None) -> dict:
                 out["comparison"] = {"kind": "rebar_vs_recap", "formula": f"{c['a']} {c['a_kg']:g} kg − {c['b']} {c['b_kg']:g} kg", "result": c["difference_kg"], "unit": "kg",
                                      "state": "confirmed" if abs(c["difference_kg"]) <= max(1.0, 0.01 * c["b_kg"]) else "to_clarify", "inputs": []}
         if mesh:
-            out["lines"].append({"element": "Malhas eletrossoldadas (lista)", "location": f"{mesh['count']} panneaux", "formula": "Σ massas impressas",
+            out["lines"].append({"element": "Malhas eletrossoldadas (lista)", "location": f"{mesh['count']} painéis", "formula": "Σ massas impressas",
                                  "net": mesh["rows_mass_kg"], "unit": "kg", "state": "confirmed"})
             for cmp in mesh.get("comparisons", []):
                 if not cmp.get("expect_equal"):

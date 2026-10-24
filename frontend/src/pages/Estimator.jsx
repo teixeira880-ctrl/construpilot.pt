@@ -164,7 +164,7 @@ export default function Estimator() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Estimation-ConstruPilot-${name || "projet"}.pdf`;
+      a.download = `Estimativa-ConstruPilot-${name || "projet"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("est.pdf_ok"));
@@ -196,7 +196,7 @@ export default function Estimator() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Estimador trabalhos gratuito" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA 10 %, duração estimada. Baseado nos preços França 2026." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
+      <SEO title="Estimador trabalhos gratuito" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA a 6 % ou 23 %, duração estimada. Baseado em preços de referência 2026 ajustados a Portugal." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
       <SectionTitle as="h1" over={t("est.over")} title={t("est.title")}>
         {t("est.subtitle")}
       </SectionTitle>

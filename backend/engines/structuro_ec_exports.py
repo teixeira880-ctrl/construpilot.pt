@@ -22,7 +22,7 @@ def build_ferraillage_pdf(model: dict, revision: int, ec2_out: dict) -> bytes:
     p = lambda t: Paragraph(escape(str(t)), ss["Tiny"])
     title = (model or {}).get("title", "Estudo de estrutura")
     story = [Paragraph("ConstruPilot | Note de ferraillage EN 1992", ss["Title"]), p(title),
-             p(f"Revisão {revision} | moteur {ec2_out.get('version', '')}"),
+             p(f"Revisão {revision} | motor {ec2_out.get('version', '')}"),
              Spacer(1, 8),
              Paragraph("ARMADURAS — PROPOSTA NÃO EXECUTÓRIA — RESISTÊNCIA NÃO VERIFICADA", ss["Heading2"]),
              p("Aço NECESSÁRIO proveniente da envolvente NP EN 1990 (flexão simples/dupla, esforço transverso, As mín./máx.) e proposta de armaduras que cobrem esse aço. Coeficientes usuais do Anexo Nacional português. Nenhuma disposição construtiva, amarração, fendilhação nem flecha verificadas — A VERIFICAR PELO ENGENHEIRO."),
@@ -293,14 +293,14 @@ def build_dossier_pdf(model: dict, revision: int, sections: dict) -> bytes:
                     ver += f" · encurvadura lateral Mb,Rd {lt.get('mb_rd_knm')} kN·m (χLT {lt.get('chi_lt')}, Mcr {lt.get('mcr_knm')})"
                 rows.append(["Aço NP EN 1993", st.get("label", ""), ver, f"{st.get('cost_eur')} € ({st.get('mass_kg')} kg)"])
             elif st:
-                rows.append(["Aço NP EN 1993", st.get("message", "Pas de solution"), "", ""])
+                rows.append(["Aço NP EN 1993", st.get("message", "Sem solução"), "", ""])
             rc = lint.get("rc") or {}
             if rc.get("status") == "ok":
                 rows.append(["Betão armado NP EN 1992", rc.get("label", ""),
                              f"As {rc.get('as_required_cm2')} cm² · Asw/s {rc.get('asw_required_cm2_m')} cm²/m · L/d {rc.get('span_depth_ratio')}",
                              f"{rc.get('cost_eur')} € ({rc.get('concrete_m3')} m³ + {rc.get('rebar_kg')} kg)"])
             elif rc:
-                rows.append(["Betão armado NP EN 1992", rc.get("message", "Pas de solution"), "", ""])
+                rows.append(["Betão armado NP EN 1992", rc.get("message", "Sem solução"), "", ""])
             story.append(tbl(rows, [110, 150, 250, 110]))
             reco = lint.get("recommendation")
             if reco:

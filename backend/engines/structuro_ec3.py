@@ -232,12 +232,12 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
         span_source = "manuel" if override is not None else ("plan" if plan_L else "manquant")
         mono = bool(prof.get("mono"))
         if manual_mcr:
-            mcr, mcr_source = manual_mcr, "manuel"
+            mcr, mcr_source = manual_mcr, "manual"
         elif mono:
             mcr, mcr_source = None, "perfil em U — Mcr não automático (secção monossimétrica)"
         elif L:
             mcr = round(mcr_elastic(prof["Iz"], prof["It"], prof["Iw"], float(L), c1), 2)
-            mcr_source = "auto (plan)" if span_source == "plan" else "automático (introduzido)"
+            mcr_source = "auto (planta)" if span_source == "plan" else "automático (introduzido)"
         else:
             mcr, mcr_source = None, "vão em falta"
         res = verify(m["value"], (v or {}).get("value", 0.0), wpl_y_cm3=prof["Wpl"], wel_y_cm3=prof["Wel"],
@@ -272,7 +272,7 @@ def design_study(model: dict, result: dict, opts: dict) -> dict:
                 continue
             h = el.get("height_m")
             lcr = lcr_opt if lcr_opt else (k_buck * h if h else None)
-            lcr_source = "manuel" if lcr_opt else ("plan (K×h)" if h else "manquant")
+            lcr_source = "manual" if lcr_opt else ("planta (K×h)" if h else "em falta")
             if not lcr:
                 col_rows.append({"id": rid, "status": "need_length",
                                  "message": "Altura do pilar ausente da planta: introduzir Lcr."})

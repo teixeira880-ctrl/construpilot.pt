@@ -41,8 +41,8 @@ const buildMessage = ({ project, estimation, link }) => {
 const EXPIRY_OPTIONS = [
   { value: "never", label: "Sem expiração", days: null },
   { value: "1", label: "24 horas", days: 1 },
-  { value: "7", label: "7 jours", days: 7 },
-  { value: "30", label: "30 jours", days: 30 },
+  { value: "7", label: "7 dias", days: 7 },
+  { value: "30", label: "30 dias", days: 30 },
 ];
 
 export function WhatsAppShare({ project, estimation, projectId, trigger }) {
@@ -284,7 +284,7 @@ export function WhatsAppShare({ project, estimation, projectId, trigger }) {
             </Button>
             {!smsCfg.twilio_enabled && (
               <p className="text-xs text-muted-foreground text-center">
-                Adicione <span className="font-mono">TWILIO_AUTH_TOKEN</span> et <span className="font-mono">TWILIO_FROM_NUMBER</span> dans <span className="font-mono">.env</span> para ativar o envio por servidor.
+                Adicione <span className="font-mono">TWILIO_AUTH_TOKEN</span> e <span className="font-mono">TWILIO_FROM_NUMBER</span> em <span className="font-mono">.env</span> para ativar o envio por servidor.
               </p>
             )}
           </TabsContent>

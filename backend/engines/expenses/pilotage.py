@@ -64,13 +64,13 @@ def _recommendations(st: dict, proj: dict | None) -> list[dict]:
     if cs.get("stale"):
         recs.append({"severity": "high", "title": "Fonte de custos desatualizada",
                      "detail": ("Nunca reconciliada." if not cs.get("last_sync")
-                                else f"Última reconciliação há {cs.get('days_since')} jour(s)."),
+                                else f"Última reconciliação há {cs.get('days_since')} dia(s)."),
                      "action": "Lance «Reconciliar (sincronização local)» antes de qualquer novo compromisso: os totais apresentados podem estar incompletos."})
 
     # Projection de fin de mois.
     if proj and proj["over_cap"]:
         recs.append({"severity": "high", "title": "Projeção de fim de mês acima do teto",
-                     "detail": f"Ao ritmo de {proj['pace_eur_per_day']} €/dia, projeção ≈ {proj['projected_eur']} € le {proj['days_in_month']} do mês.",
+                     "detail": f"Ao ritmo de {proj['pace_eur_per_day']} €/dia, projeção ≈ {proj['projected_eur']} € no dia {proj['days_in_month']} do mês.",
                      "action": "Reduza o ritmo de despesa ou congele já as rubricas não essenciais."})
 
     # Enveloppes dépassées ou proches.

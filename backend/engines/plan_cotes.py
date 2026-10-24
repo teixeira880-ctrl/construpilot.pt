@@ -353,7 +353,7 @@ def quick_conclusion(report: dict) -> str:
     if bad_e:
         parts.append("Elementos desenhados cuja largura não corresponde à etiqueta: "
                      + " ; ".join(f"{e['label']} dessiné {e['measured_w_m'] * 100:.0f} cm ({e['delta_mm']:+.0f} mm)" for e in bad_e[:6])
-                     + (f" et {len(bad_e) - 6} autre(s)" if len(bad_e) > 6 else "") + ".")
+                     + (f" e mais {len(bad_e) - 6}" if len(bad_e) > 6 else "") + ".")
     floating = [it for it in report.get("items") or [] if it.get("anchor_status") in ("warn", "ko") and not it.get("ignored")]
     if floating:
         parts.append(f'{len(floating)} cota(s) provavelmente errada(s): as suas extremidades não estão alinhadas com nenhuma face nem eixo de parede desenhado (diferença > 10 mm em projeção perpendicular) — '

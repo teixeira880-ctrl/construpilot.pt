@@ -251,7 +251,7 @@ export default function PlansPro() {
                     <summary className="px-2 py-1 cursor-pointer">
                       {el.kind} × {el.count != null ? el.count : (el.count_range ? `${el.count_range[0]}–${el.count_range[1]} (a verificar)` : (el.sources_agreed != null ? "?" : "?"))}
                       <span className="text-slate-500 ml-1">
-                        {el.observations ? `(${el.contributions}/${el.providers_total} lectures${el.disagreement ? " em desacordo" : " concordantes"})` : `(${el.sources_agreed ?? "?"} leituras — formato antigo)`}
+                        {el.observations ? `(${el.contributions}/${el.providers_total} leituras${el.disagreement ? " em desacordo" : " concordantes"})` : `(${el.sources_agreed ?? "?"} leituras — formato antigo)`}
                       </span>
                     </summary>
                     {el.observations && (

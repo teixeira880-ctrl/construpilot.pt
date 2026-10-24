@@ -46,7 +46,7 @@ function Ticket({ t, onChanged }) {
             <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={3} placeholder="Resposta rápida enviada por e-mail ao requerente…" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none" data-testid={`ticket-reply-${t.ticket_id}`} />
             <div className="flex flex-wrap items-center gap-2">
               <select value={t.status} onChange={(e) => setStatus(e.target.value)} className="h-8 rounded-md border border-input bg-background px-2 text-xs" data-testid={`ticket-status-select-${t.ticket_id}`}>{Object.entries(ST).map(([v, [l]]) => <option key={v} value={v}>{l}</option>)}</select>
-              <a href={`mailto:${t.email}?subject=${encodeURIComponent(`Re: [Assistance ${t.ticket_id}] ${t.subject}`)}`} className="text-xs text-primary underline">Responder a partir do meu e-mail</a>
+              <a href={`mailto:${t.email}?subject=${encodeURIComponent(`Re: [Assistência ${t.ticket_id}] ${t.subject}`)}`} className="text-xs text-primary underline">Responder a partir do meu e-mail</a>
               <div className="ms-auto flex gap-2">
                 <Button size="sm" variant="outline" className="h-8 gap-1" disabled={busy || reply.trim().length < 2} onClick={() => send(false)} data-testid={`ticket-send-${t.ticket_id}`}><Send className="h-3.5 w-3.5" /> Enviar</Button>
                 <Button size="sm" className="h-8 gap-1" disabled={busy || reply.trim().length < 2} onClick={() => send(true)} data-testid={`ticket-send-close-${t.ticket_id}`}><CheckCircle2 className="h-3.5 w-3.5" /> Enviar e encerrar</Button>

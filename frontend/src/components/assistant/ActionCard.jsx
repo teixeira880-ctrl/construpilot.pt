@@ -35,7 +35,7 @@ function RebarCard({ r }) {
   const ha = r.native?.ha_bars, mesh = r.native?.mesh, recap = r.native?.mesh_recap, el = r.sheet?.element, chk = r.sheet?.checks;
   return (
     <div data-testid="assistant-rebar-card">
-      {r.requires_vision && <div>Texto vetorizado: relance com leitura visual (chamada faturada).</div>}
+      {r.requires_vision && <div>Texto vetorizado: nova execução com leitura visual (chamada faturada).</div>}
       {ha && <div>Aços A500: {ha.count} marcas · massa teórica {ha.total_mass_kg} kg · {ha.inconsistencies?.length || 0} incoerência(s) aritmética(s)
         {ha.comparison && ` · diferença vs resumo ${ha.comparison.difference_kg > 0 ? "+" : ""}${ha.comparison.difference_kg} kg`}</div>}
       {mesh && <div>Malha: {mesh.count} painéis · {mesh.rows_mass_kg} kg{recap?.mass_laid_kg != null && ` · massa colocada ${recap.mass_laid_kg} kg`}</div>}
@@ -95,7 +95,7 @@ export function ActionCard({ a }) {
       )}
       {isQuote && r.draft && a.tool !== "read_quote_draft" && <QuoteDraftCard result={r} />}
       {r.tracking_url && ["supervise_platform", "get_supervision_result"].includes(a.tool) && <div className="mt-2 space-y-1"><p>{r.status === "done" ? "Tratamento concluído; consulte os pontos que faltam verificar." : r.status === "error" ? "Tratamento interrompido; consulte os resultados parciais." : "O piloto trabalha em segundo plano. O resultado ainda não está validado."}</p><Link to={r.tracking_url} className="underline font-semibold">Acompanhar o controlo e as suas correções</Link></div>}
-      {a.tool === "run_platform_calculator" && r.ok && <div className="mt-2 space-y-1">{r.results?.map((row, index) => <p key={index}>{row.label} : <strong>{row.value} {row.unit}</strong></p>)}<p className="text-muted-foreground">Provenance : {r.source}. As medições de partida continuam por confirmar.</p></div>}
+      {a.tool === "run_platform_calculator" && r.ok && <div className="mt-2 space-y-1">{r.results?.map((row, index) => <p key={index}>{row.label} : <strong>{row.value} {row.unit}</strong></p>)}<p className="text-muted-foreground">Proveniência: {r.source}. As medições de partida continuam por confirmar.</p></div>}
       {r.artifact && <ArtifactCard artifact={r.artifact} />}
       {a.tool === "save_user_preference" && r.preference && <div>{r.preference.active ? "Ativa" : "Proposta, inativa"} · [{r.preference.scope}] {r.preference.category} = {r.preference.value} · <a className="underline" href="/preferences">Gerir a memória</a></div>}
       {["create_work_draft", "update_work_draft"].includes(a.tool) && r.draft && <WorkDraftCard initial={r.draft} />}

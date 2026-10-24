@@ -18,7 +18,7 @@ TRADE_ORDER = [
     ("menuiseries_ext", "Caixilharia exterior", ["menuiserie ext", "fenêtre", "fenetre", "porte d'entrée", "volet", "baie"]),
     ("plomberie", "Canalização", ["plomb", "sanitaire", "evacuation", "évacuation"]),
     ("electricite", "Eletricidade", ["élec", "elec", "courant", "tableau"]),
-    ("chauffage", "Chauffage / CVC", ["chauff", "pac", "bomba de calor", "vmc", "ventil", "clim", "radiateur"]),
+    ("chauffage", "Aquecimento / AVAC", ["chauff", "pac", "bomba de calor", "vmc", "ventil", "clim", "radiateur"]),
     ("isolation", "Isolamento", ["isol", "ite", "iti", "laine"]),
     ("platrerie", "Estuques / Divisórias", ["plâtre", "platre", "placo", "cloison", "doublage", "faux plafond", "ba13"]),
     ("chape", "Betonilha / Autonivelante", ["chape", "ragré", "ragre"]),
@@ -26,7 +26,7 @@ TRADE_ORDER = [
     ("menuiseries_int", "Carpintarias interiores", ["menuiserie int", "porte int", "placard", "escalier", "parquet"]),
     ("peinture", "Pintura", ["peint", "enduit", "ravalement", "papier peint"]),
     ("sols", "Pavimentos vinílicos", ["sol souple", "pvc", "lino", "moquette", "stratifié"]),
-    ("cuisine", "Cuisine / Agencement", ["cuisine", "agencement", "meuble"]),
+    ("cuisine", "Cozinha / Mobiliário", ["cuisine", "agencement", "meuble"]),
     ("nettoyage", "Limpeza / Receção", ["nettoy", "réception", "reception", "livraison"]),
 ]
 _RANK = {code: i for i, (code, _, _) in enumerate(TRADE_ORDER)}
@@ -370,8 +370,8 @@ def suggestions(plan: dict, result: dict, today: Optional[date] = None, baseline
         for a, b in zip(rr, rr[1:]):
             idle = b["start_idx"] - a["end_idx"]
             if idle > 3:
-                out.append({"kind": "idle", "severity": "info", "title": f'Equipa {res} inoccupée {idle} dias úteis',
-                            "detail": f"Entre «{a['name']} » et « {b['name']}». Prever outra atribuição ou antecipar uma tarefa sem antecessora bloqueante.",
+                out.append({"kind": "idle", "severity": "info", "title": f'Equipa {res} sem ocupação durante {idle} dias úteis',
+                            "detail": f"Entre « {a['name']} » e « {b['name']} ». Prever outra atribuição ou antecipar uma tarefa sem antecessora bloqueante.",
                             "task_ids": [a["id"], b["id"]], "gain_days": 0})
     sev = {"critical": 0, "high": 1, "medium": 2, "info": 3, "success": 4}
     out.sort(key=lambda s: (sev.get(s["severity"], 9), -s["gain_days"]))

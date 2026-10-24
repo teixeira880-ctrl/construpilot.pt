@@ -290,7 +290,7 @@ export function Interactive3D({ rooms = [], walls = [], structure = null,
         renderer.render(scene, camera);
         const url = renderer.domElement.toDataURL("image/png");
         const a = document.createElement("a");
-        a.href = url; a.download = "maquette-3d-beton.png"; a.click();
+        a.href = url; a.download = "maqueta-3d-betao.png"; a.click();
       },
       dataUrl: () => { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
     };

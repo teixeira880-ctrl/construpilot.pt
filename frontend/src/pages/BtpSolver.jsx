@@ -43,7 +43,7 @@ export default function BtpSolver() {
     setQuoting(true);
     try {
       const { data } = await api.post(`/btp-solver/${result.problem_id}/to-quote`, { solution_id: solutionId || null });
-      toast.success(`Rascunho de orçamento criado (${data.lines} ligne${data.lines > 1 ? "s" : ""}, ${Math.round(data.total_ht || 0)} € HT)`, {
+      toast.success(`Rascunho de orçamento criado (${data.lines} linha${data.lines > 1 ? "s" : ""}, ${Math.round(data.total_ht || 0)} € s/ IVA)`, {
         action: { label: "Abrir", onClick: () => navigate(data.url) },
       });
       navigate(data.url);
@@ -171,7 +171,7 @@ export default function BtpSolver() {
         <div className="grid md:grid-cols-3 gap-3">
           <label className="grid gap-1 text-sm">
             <span>Região</span>
-            <input data-testid="solver-region-input" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Île-de-France" value={region} onChange={(e) => setRegion(e.target.value)} />
+            <input data-testid="solver-region-input" className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-2" placeholder="Lisboa" value={region} onChange={(e) => setRegion(e.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
             <span>Tipo de edifício</span>
@@ -318,7 +318,7 @@ export default function BtpSolver() {
                     <p className="text-sm text-slate-600 dark:text-slate-400">{s.description}</p>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {s.cost_min_eur != null && (
-                        <div><span className="text-slate-500">Custo:</span> {Math.round(s.cost_min_eur)}–{Math.round(s.cost_max_eur || s.cost_min_eur)} € HT</div>
+                        <div><span className="text-slate-500">Custo:</span> {Math.round(s.cost_min_eur)}–{Math.round(s.cost_max_eur || s.cost_min_eur)} € s/ IVA</div>
                       )}
                       {s.duration_days_min != null && (
                         <div><span className="text-slate-500">Duração:</span> {s.duration_days_min}–{s.duration_days_max || s.duration_days_min} j</div>
@@ -374,7 +374,7 @@ export default function BtpSolver() {
                         className="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 p-3 text-sm hover:border-emerald-500/50">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium truncate">{DOMAIN_LABELS[h.domain] || h.domain || "Diagnóstico"}</span>
-                    <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("pt-PT") : h.status === "error" ? "Erro" : "En cours…"}</span>
+                    <span className="text-xs text-slate-500">{h.status === "done" ? new Date(h.generated_at_iso).toLocaleDateString("pt-PT") : h.status === "error" ? "Erro" : "Em curso…"}</span>
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 mt-1">{h.summary || h.description}</p>
                 </button>

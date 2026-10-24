@@ -98,7 +98,7 @@ export default function BridgePanel() {
                    data-testid="bridge-max-per-lead" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Cooldown (jours)</Label>
+            <Label className="text-xs">Intervalo mínimo (dias)</Label>
             <Input type="number" min={1} value={form.cooldown_days}
                    onChange={(e) => setForm({ ...form, cooldown_days: Number(e.target.value) })}
                    onBlur={() => save({ cooldown_days: form.cooldown_days })} className="rounded-sm h-9 text-sm"

@@ -352,7 +352,7 @@ export default function Invoices() {
                 </p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                   <span><b className="text-red-600 dark:text-red-400">{fxReport.error_count}</b> erro(s)</span>
-                  <span><b className="text-amber-600 dark:text-amber-400">{fxReport.warning_count}</b> avertissement(s)</span>
+                  <span><b className="text-amber-600 dark:text-amber-400">{fxReport.warning_count}</b> aviso(s)</span>
                 </div>
               </div>
               {fxReport.valid ? (

@@ -165,10 +165,10 @@ async def project_pdf(project_id: str, user=Depends(current_user)):
     data = pdf.build_estimation_pdf(p, est, est.get("planning") or [], p.get("advice") or "", user)
     safe = "".join(c for c in p["name"] if c.isalnum() or c in " -_").strip() or "projet"
     return Response(content=data, media_type="application/pdf", headers={
-        "Content-Disposition": f'attachment; filename="Estimation-ConstruPilot-{safe}.pdf"'})
+        "Content-Disposition": f'attachment; filename="Estimativa-ConstruPilot-{safe}.pdf"'})
 
 
-PROGRESS_LABEL = {"todo": "a fazer", "doing": "en cours", "done": "terminé"}
+PROGRESS_LABEL = {"todo": "a fazer", "doing": "em curso", "done": "concluído"}
 
 
 @router.get("/{project_id}/timeline")
@@ -186,7 +186,7 @@ async def project_timeline(project_id: str, user=Depends(current_user)) -> dict:
     for ph in p.get("photos", []):
         events.append({
             "type": "photo", "kind": ph.get("kind"), "at": ph.get("created_at"),
-            "title": {"before": "Photo AVANT", "after": "Fotografia DEPOIS",
+            "title": {"before": "Fotografia ANTES", "after": "Fotografia DEPOIS",
                       "progress": "Fotografia da obra"}.get(ph.get("kind"), "Fotografia"),
             "detail": ph.get("caption") or ph.get("lot") or "",
             "photo_id": ph.get("photo_id"), "lot": ph.get("lot"),

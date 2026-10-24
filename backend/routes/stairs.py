@@ -237,12 +237,12 @@ async def stair_to_quote(body: StairToQuoteIn, user=Depends(pro_required)):
                                  unit_price_ht=0, category="Armaduras da escada", price_missing=True, price_estimated=True))
     elif float(steel) > 0:
         lines.append(DocLine(kind="line", line_kind="ouvrage", designation="Armaduras (aço A500)",
-                             description="Nomenclature indicative DTU 21", unit="kg",
+                             description="Nomenclatura indicativa de armaduras", unit="kg",
                              qty=round(float(steel), 2), unit_price_ht=0,
                              category="Escada betão armado", price_missing=True, price_estimated=True))
     if not lines:
         raise HTTPException(422, "Quantidades nulas — calcule primeiro uma escada exequível")
-    doc = DocIn(doc_type="quote", title=f"Escalier — {body.project_name}"[:160],
+    doc = DocIn(doc_type="quote", title=f"Escada — {body.project_name}"[:160],
                 client_id=body.client_id, chantier_id=body.chantier_id, lines=lines, status="draft")
     return await create_document(doc, user)
 # ---------------------------------------------------------------------------

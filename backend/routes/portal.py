@@ -554,7 +554,7 @@ async def portal_document_pdf(ref: str, doc_id: str, p=Depends(current_participa
 async def _notify_pro_decision(d: dict, c: dict, p: dict, accepted: bool, signer: str = "") -> None:
     label = "accepté" if accepted else "refusé"
     who = signer or p.get("name") or p.get("email")
-    msg = f"Orçamento {d.get('number') or ''} {label} par {who} · obra {c.get('name') or ''}".strip()
+    msg = f"Orçamento {d.get('number') or ''} {label} por {who} · obra {c.get('name') or ''}".strip()
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(6), "user_id": c["user_id"],
         "type": "quote_accepted" if accepted else "quote_declined", "doc_id": d["doc_id"],

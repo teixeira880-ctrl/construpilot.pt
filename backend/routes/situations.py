@@ -112,7 +112,7 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
                           "vat_rate": bl.get("vat_rate", 6), "unit": bl.get("unit", "u")})
         if sit_ht > 0:
             inv_lines.append({
-                "designation": f"{bl.get('designation', '')} — avancement {delta:g}% (cumul {cum:g}%)",
+                "designation": f"{bl.get('designation', '')} — avanço {delta:g}% (acumulado {cum:g}%)",
                 "unit": "u", "qty": 1, "unit_price_ht": sit_ht,
                 "vat_rate": bl.get("vat_rate", 6), "category": f'Auto de medição n.º{seq}'})
 
@@ -134,9 +134,9 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
 
     note = f'Auto de medição de trabalhos n.º{seq} — empreitada {marche_label}.'
     if deposit_ht:
-        note += f' Adiantamento já pago deduzido: -{deposit_ht:.2f} € HT.'
+        note += f' Adiantamento já pago deduzido: -{deposit_ht:.2f} € s/ IVA.'
     if retention_amount:
-        note += (f' Retenção de garantia {body.retention_pct:g}% : -{retention_amount:.2f} € · Líquido a pagar: {net_due:.2f} € TTC.')
+        note += (f' Retenção de garantia {body.retention_pct:g}% : -{retention_amount:.2f} € · Líquido a pagar: {net_due:.2f} € c/ IVA.')
 
     number = await _next_number(_uid(user), "invoice")
     inv = {
@@ -539,9 +539,9 @@ async def create_dgd(body: DgdIn, user=Depends(current_user)):
     number = await _next_number(_uid(user), "invoice")
     marche_label = base.get("number") or base.get("title") or body.marche_id
     notes = [f'Conta final da empreitada {marche_label}.',
-             f"Trabalhos da empreitada: {recap['totals']['contract_ht']:.2f} € s/ IVA — já faturado: {recap['totals']['billed_ht']:.2f} € HT."]
+             f"Trabalhos da empreitada: {recap['totals']['contract_ht']:.2f} € s/ IVA — já faturado: {recap['totals']['billed_ht']:.2f} € s/ IVA."]
     if deposit_ht:
-        notes.append(f'Adiantamento já pago deduzido: -{deposit_ht:.2f} € HT.')
+        notes.append(f'Adiantamento já pago deduzido: -{deposit_ht:.2f} € s/ IVA.')
     if body.release_retention and held:
         notes.append(f'Retenção de garantia libertada: {held:.2f} €.')
     elif held:

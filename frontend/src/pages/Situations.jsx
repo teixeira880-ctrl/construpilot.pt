@@ -78,7 +78,7 @@ export default function Situations() {
       const { data } = await api.get(`/situations/dgd-pdf?marche_id=${marcheId}`, { responseType: "blob" });
       const url = URL.createObjectURL(data);
       const a = document.createElement("a");
-      a.href = url; a.download = "decompte-general-definitif.pdf"; a.click();
+      a.href = url; a.download = "conta-final.pdf"; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("PDF indisponível"); }
   };
@@ -143,7 +143,7 @@ export default function Situations() {
         deposit_mode: depMode, deposit_amount_ht: Number(depManual) || 0,
       });
       toast.success(`Auto de medição n.º${data.seq} criada — fatura ${data.invoice_number}`
-        + (data.deposit_imputed_ht ? ` · adiantamento deduzido ${data.deposit_imputed_ht} € HT` : ""));
+        + (data.deposit_imputed_ht ? ` · adiantamento deduzido ${data.deposit_imputed_ht} € s/ IVA` : ""));
       await refreshMarche(); loadRetentions();
     } catch (e) { toast.error(e?.response?.data?.detail || "Criação impossível"); }
     finally { setBusy(false); }
@@ -157,7 +157,7 @@ export default function Situations() {
       const { data } = await api.get(`/situations/${s.situation_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `decompte-situation-${s.seq}.pdf`; a.click();
+      a.href = url; a.download = `auto-medicao-${s.seq}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível gerar o desdobramento"); }
   };
@@ -166,7 +166,7 @@ export default function Situations() {
       const { data } = await api.get(`/situations/${s.situation_id}/certificate`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `certificat-paiement-${s.seq}.pdf`; a.click();
+      a.href = url; a.download = `certificado-pagamento-${s.seq}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível gerar o certificado"); }
   };
@@ -230,7 +230,7 @@ export default function Situations() {
           <SelectContent>
             {marches.map((m) => (
               <SelectItem key={m.doc_id} value={m.doc_id} data-testid={`marche-opt-${m.doc_id}`}>
-                {(m.number || "Rascunho")} · {m.title || "Sem título"} — {eur(m.total_ht)} HT
+                {(m.number || "Rascunho")} · {m.title || "Sem título"} — {eur(m.total_ht)} s/ IVA
               </SelectItem>
             ))}
           </SelectContent>
@@ -250,7 +250,7 @@ export default function Situations() {
         <p className="text-xs text-muted-foreground" data-testid="marche-deposit-note">
           Adiantamento faturado {eur(dep.invoiced_ttc)} c/ IVA · recebido {eur(dep.paid_ttc)} c/ IVA
           {dep.unpaid_ttc > 0 ? ` · não recebido ${eur(dep.unpaid_ttc)} (não dedutível)` : ""}
-          {" "}· já imputado {eur(dep.imputed_ht)} s/ IVA · disponível {eur(dep.available_ht)} HT
+          {" "}· já imputado {eur(dep.imputed_ht)} s/ IVA · disponível {eur(dep.available_ht)} s/ IVA
         </p>
       )}
 
@@ -324,7 +324,7 @@ export default function Situations() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Obras {eur(totalHT)} HT</p>
+                  <p className="text-xs text-muted-foreground">Obras {eur(totalHT)} s/ IVA</p>
                   <p className="num text-2xl font-extrabold text-primary" data-testid="situation-total-ht">{eur(invoiceHt)}</p>
                   <p className="text-[11px] text-muted-foreground">Fatura s/ IVA após adiantamento</p>
                 </div>
@@ -340,7 +340,7 @@ export default function Situations() {
                       <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center"><TrendingUp className="h-4 w-4 text-primary" /></div>
                       <div>
                         <p className="font-semibold">Auto de medição n.º{s.seq} · {s.invoice_number}</p>
-                        <p className="text-xs text-muted-foreground">{eur(s.total_ttc)} c/ IVA{s.deposit_imputed_ht ? ` · adiantamento deduzido ${eur(s.deposit_imputed_ht)} HT` : ""}{s.retention_amount ? ` · retenção ${eur(s.retention_amount)} · net ${eur(s.net_due)}` : ""}</p>
+                        <p className="text-xs text-muted-foreground">{eur(s.total_ttc)} c/ IVA{s.deposit_imputed_ht ? ` · adiantamento deduzido ${eur(s.deposit_imputed_ht)} s/ IVA` : ""}{s.retention_amount ? ` · retenção ${eur(s.retention_amount)} · líquido ${eur(s.net_due)}` : ""}</p>
                       </div>
                       <div className="ml-auto flex gap-2">
                         <Button size="sm" variant="outline" className="rounded-sm gap-1.5 text-primary border-primary/30" onClick={() => downloadSituationPdf(s)} data-testid={`situation-pdf-${s.situation_id}`}><FileText className="h-4 w-4" /> Auto PDF</Button>
@@ -499,8 +499,8 @@ export default function Situations() {
                 <Kpi label="Retenção detida" value={eur(dgd.totals.retention_held)} />
               </div>
               <div className="text-sm space-y-1">
-                <p>Adiantamento recebido por imputar: <b className="num">{eur(dgd.totals.deposit_available_ht)}</b> HT</p>
-                <p>Saldo a faturar: <b className="num text-primary">{eur(dgd.totals.dgd_ht)}</b> HT
+                <p>Adiantamento recebido por imputar: <b className="num">{eur(dgd.totals.deposit_available_ht)}</b> s/ IVA</p>
+                <p>Saldo a faturar: <b className="num text-primary">{eur(dgd.totals.dgd_ht)}</b> s/ IVA
                   {" · "}{eur(dgd.totals.dgd_ttc)} c/ IVA (IVA {dgd.totals.vat_rate}%)</p>
                 <p>Total devido a título da conta final: <b className="num">{eur(dgd.totals.dgd_due)}</b></p>
               </div>

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 const PlanCard = ({ plan, highlight, busy, onSelect }) => {
   const price = (plan.amount_cents || 0) / 100;
-  const per = plan.interval === "year" ? "an" : plan.interval === "month" ? "mois" : null;
+  const per = plan.interval === "year" ? "ano" : plan.interval === "month" ? "mês" : null;
   return (
     <Card className={`p-6 flex flex-col text-left relative ${highlight ? "border-primary ring-1 ring-primary/30" : ""}`} data-testid={`upsell-plan-${plan.plan_id}`}>
       {highlight && (

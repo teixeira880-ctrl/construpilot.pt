@@ -32,7 +32,7 @@ async def chat(body: ChatIn, request: Request, response: Response, user=Depends(
                                        {"_id": 0})
         if p:
             e = p["estimation"]
-            context = (f"Projet « {p['name']} » : {e['project_type_name']}, {e['surface']} m², acabamento {e['finish_level_name']}, orçamento estimado {e['total_avg']:.0f} €. Lots : {', '.join((l['name'] for l in e['lots']))}.")
+            context = (f"Projeto « {p['name']} »: {e['project_type_name']}, {e['surface']} m², acabamento {e['finish_level_name']}, orçamento estimado {e['total_avg']:.0f} €. Lotes: {', '.join((l['name'] for l in e['lots']))}.")
 
     await db.chat_messages.insert_one({
         "session_id": session_id, "user_id": user["user_id"] if user else None,

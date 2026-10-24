@@ -241,7 +241,7 @@ export default function Renovation() {
       setInputs(fresh.inputs || {});
       setProject(fresh);
       const d = data.dpe || {};
-      toast.success(`DPE ${d.numero_dpe} importado — ${d.etiquette_energie}/${d.etiquette_climat}${(data.audits || []).length ? ` · ${data.audits.length} audit(s)` : ""}`);
+      toast.success(`Certificado energético ${d.numero_dpe} importado — ${d.etiquette_energie}/${d.etiquette_climat}${(data.audits || []).length ? ` · ${data.audits.length} audit(s)` : ""}`);
     } catch (e) { toast.error(e?.response?.data?.detail || "Número de certificado energético não encontrado nos dados abertos"); }
     finally { setBusy(false); }
   };
@@ -424,7 +424,7 @@ export default function Renovation() {
                   <p><b className="text-foreground">Aquecimento:</b> {project.ademe_dpe.chauffage_energie} — {project.ademe_dpe.chauffage_desc}</p>
                   <p><b className="text-foreground">AQS:</b> {project.ademe_dpe.ecs_generateur || "—"}</p>
                   <p><b className="text-foreground">Isolamento das paredes:</b> {project.ademe_dpe.isolation?.murs || "—"} · <b className="text-foreground">caixilharias:</b> {project.ademe_dpe.isolation?.menuiseries || "—"}</p>
-                  <p><b className="text-foreground">DPE n° :</b> <span className="font-mono">{project.ademe_dpe.numero_dpe}</span> ({project.ademe_dpe.date_dpe})</p>
+                  <p><b className="text-foreground">Certificado energético n.º:</b> <span className="font-mono">{project.ademe_dpe.numero_dpe}</span> ({project.ademe_dpe.date_dpe})</p>
                 </div>
 
                 {project.ademe_dpe?.numero_dpe_immeuble && !project.ademe_dpe_immeuble && (
@@ -719,7 +719,7 @@ function PrepareScenario({ scenario, onBack, onEstimate, busy }) {
           </div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
             <p><b className="text-foreground">Objetivo:</b> {it.descriptif.objectif}</p>
-            <p><b className="text-foreground">Performance :</b> {it.descriptif.performance_cible}</p>
+            <p><b className="text-foreground">Desempenho:</b> {it.descriptif.performance_cible}</p>
             <p><b className="text-foreground">Medição:</b> {it.descriptif.metre}</p>
             <p><b className="text-foreground">Execução:</b> {it.descriptif.mise_en_oeuvre}</p>
             <p><b className="text-foreground">Interfaces :</b> {it.descriptif.interfaces}</p>
@@ -728,7 +728,7 @@ function PrepareScenario({ scenario, onBack, onEstimate, busy }) {
           </div>
           <div className="mt-2 flex items-center gap-2">
             {it.chiffrage.total_ht != null ? (
-              <Badge className="bg-emerald-600 text-[11px]">{eur(it.chiffrage.total_ht)} HT</Badge>
+              <Badge className="bg-emerald-600 text-[11px]">{eur(it.chiffrage.total_ht)} s/ IVA</Badge>
             ) : (
               <Badge variant="outline" className="text-[11px] border-amber-400 text-amber-700">a orçamentar</Badge>
             )}
@@ -961,7 +961,7 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
         <div className="mt-4 grid gap-3" data-testid="aides-result">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {res.revenu_classe && <Badge className="bg-emerald-600 capitalize">Rendimento: {res.revenu_classe}</Badge>}
-            {res.scenario_name && <Badge variant="outline">Travaux : {fmt(res.travaux_ht)} HT — {res.scenario_name}</Badge>}
+            {res.scenario_name && <Badge variant="outline">Obras: {fmt(res.travaux_ht)} s/ IVA — {res.scenario_name}</Badge>}
           </div>
 
           <div className="grid sm:grid-cols-3 gap-2 text-xs">
@@ -1046,7 +1046,7 @@ function AidesPanel({ projectId, scenarios, audits = [], ademeDpe }) {
                       {g.note && <div className="text-[9px] text-amber-700 mt-0.5">{g.note}</div>}
                     </td>
                     <td className="px-2 py-1 text-right">
-                      <Input type="number" value={gPrices[g.code] ?? ""} placeholder="€ HT"
+                      <Input type="number" value={gPrices[g.code] ?? ""} placeholder="€ s/ IVA"
                              onChange={(e) => setGPrices((s) => ({ ...s, [g.code]: e.target.value }))}
                              className="h-7 w-20 text-xs text-right ml-auto" data-testid={`aides-geste-price-${g.code}`} />
                     </td>

@@ -326,7 +326,7 @@ export default function ObjectPanel({
                     icon={Hash}
                     testId={`object-row-counter-${c.id}`}
                     primary={c.label}
-                    secondary={`${c.markers?.length || 0} marqueur${(c.markers?.length || 0) > 1 ? "s" : ""}`}
+                    secondary={`${c.markers?.length || 0} marcador${(c.markers?.length || 0) > 1 ? "es" : ""}`}
                     badge={`×${c.markers?.length || 0}`}
                     badgeColor={c.color}
                     onFocus={() => onFocusObject?.({ kind: "counter", data: c })}

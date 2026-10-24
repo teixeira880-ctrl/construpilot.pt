@@ -302,7 +302,7 @@ async def portal_report_issue(ref: str, request: Request, response: Response, ti
     issue.pop("_id", None)
     url = f"/chantiers/{chantier['chantier_id']}?tab=issues"
     urg = {"low": "faible", "normal": "normale", "high": "URGENT"}[urgency]
-    asyncio.create_task(_notify_pro(chantier["user_id"], "portal_issue", f"Problema assinalado por {reporter} sur {chantier['name']} : {title[:60]}", url,
+    asyncio.create_task(_notify_pro(chantier["user_id"], "portal_issue", f"Problema assinalado por {reporter} em {chantier['name']}: {title[:60]}", url,
                                     f"Problema assinalado — obra {chantier['name']}",
                                     f"<p><strong>{reporter}</strong> assinala: <strong>{title}</strong> (urgência {urg}{(', ' + location if location else '')}).</p><p>{description[:600]}</p><p>Foi criada automaticamente uma reserva no acompanhamento da obra.</p>",
                                     f"pro:{chantier['chantier_id']}:issue:{issue['issue_id']}"))

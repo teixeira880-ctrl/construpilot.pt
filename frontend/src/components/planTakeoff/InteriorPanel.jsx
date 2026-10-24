@@ -129,7 +129,7 @@ export function InteriorPanel({ interior, selected, onSelect, aiInterior, onFocu
             <div key={r.row_id} className="flex flex-wrap gap-x-2 border-l-2 pl-2" style={{ borderColor: r.status === "closed" ? "#16a34a" : r.status === "open" ? "#dc2626" : "#d97706" }}>
               <span className="font-mono">{r.row_id}</span>
               <span className="text-muted-foreground">{r.terms.map((t) => t.value_m.toFixed(2)).join(" + ")} = <b>{r.sum_m.toFixed(3)}</b></span>
-              <span>· cote ext. {r.written_exterior_m != null ? `${r.written_exterior_m.toFixed(2)} m` : "não encontrada"}</span>
+              <span>· cota ext. {r.written_exterior_m != null ? `${r.written_exterior_m.toFixed(2)} m` : "não encontrada"}</span>
               {r.difference_m != null && <span>· diferença {Math.round(r.difference_m * 1000)} mm</span>}
               <span className="font-medium">{{ closed: "fechada", open: "aberta", not_compared: "não comparada" }[r.status]}</span>
             </div>

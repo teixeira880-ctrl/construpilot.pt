@@ -87,15 +87,15 @@ _VALID_STATUS = {"documenté", "mesuré", "déclaré", "hypothèse", "inconnu", 
 # poste: clé corps_etat réutilisée pour le chiffrage, ou None → « à chiffrer »
 RENO_CATALOGUE = [
     {"code": "ISO_COMBLES", "lot": "LOTE 01 — Isolamento da cobertura", "label": "Isolamento do desvão / cobertura", "component": "toiture", "metre": "surface_toiture", "poste": "isolation", "induced": [], "controls": ["Continuidade do isolamento", "Ventilação da cobertura", "Barreira pára-vapor adequada"]},
-    {"code": "ITE", "lot": "LOTE 02 — Isolamento das paredes pelo exterior", "label": "Isolamento térmico pelo exterior (ETICS / capoto)", "component": "murs", "metre": "surface_murs", "poste": None, "induced": ["Andaime", "Tratamento das pontes térmicas", "Reposição dos peitoris"], "controls": ["Support", "Fixations", "Continuidade", "Fichas técnicas dos produtos"]},
-    {"code": "Isolamento pelo interior", "lot": "LOTE 02 — Isolamento das paredes pelo interior", "label": "Isolamento térmico pelo interior", "component": "murs", "metre": "surface_murs", "poste": "placo", "induced": ["Tratamento das ombreiras", "Reposição das redes", "Ponts thermiques"], "controls": ["Risco de condensação", "Continuidade", "Perda de área"]},
+    {"code": "ITE", "lot": "LOTE 02 — Isolamento das paredes pelo exterior", "label": "Isolamento térmico pelo exterior (ETICS / capoto)", "component": "murs", "metre": "surface_murs", "poste": None, "induced": ["Andaime", "Tratamento das pontes térmicas", "Reposição dos peitoris"], "controls": ["Suporte", "Fixações", "Continuidade", "Fichas técnicas dos produtos"]},
+    {"code": "Isolamento pelo interior", "lot": "LOTE 02 — Isolamento das paredes pelo interior", "label": "Isolamento térmico pelo interior", "component": "murs", "metre": "surface_murs", "poste": "placo", "induced": ["Tratamento das ombreiras", "Reposição das redes", "Pontes térmicas"], "controls": ["Risco de condensação", "Continuidade", "Perda de área"]},
     {"code": "ISO_PB", "lot": "LOTE 03 — Isolamento do pavimento inferior", "label": "Isolamento do pavimento térreo", "component": "plancher_bas", "metre": "surface_plancher_bas", "poste": "isolation", "induced": [], "controls": ["Acessibilidade", "Continuidade"]},
-    {"code": "MENUISERIES", "lot": "LOTE 04 — Caixilharias", "label": "Substituição da caixilharia exterior", "component": "menuiseries", "metre": "menuiseries", "poste": None, "induced": ["Remoção", "Calfeutrement", "Tableaux", "Protections solaires"], "controls": ["Uw/Sw", "Estanquidade das juntas", "Coordination ventilation"]},
-    {"code": "VMC", "lot": "LOTE 05 — Ventilação", "label": "Ventilação mecânica (simples ou de duplo fluxo)", "component": "ventilation", "metre": "forfait", "poste": None, "induced": ["Redes de condutas", "Entradas de ar"], "controls": ["Caudais", "Manutenção", "Renouvellement d'air"]},
+    {"code": "MENUISERIES", "lot": "LOTE 04 — Caixilharias", "label": "Substituição da caixilharia exterior", "component": "menuiseries", "metre": "menuiseries", "poste": None, "induced": ["Remoção", "Calafetagem", "Ombreiras", "Proteções solares"], "controls": ["Uw/Sw", "Estanquidade das juntas", "Coordenação com a ventilação"]},
+    {"code": "VMC", "lot": "LOTE 05 — Ventilação", "label": "Ventilação mecânica (simples ou de duplo fluxo)", "component": "ventilation", "metre": "forfait", "poste": None, "induced": ["Redes de condutas", "Entradas de ar"], "controls": ["Caudais", "Manutenção", "Renovação do ar"]},
     {"code": "ETANCH_AIR", "lot": "LOTE 05 — Estanquidade ao ar", "label": "Tratamento da estanquidade ao ar", "component": "enveloppe", "metre": "forfait", "poste": None, "induced": [], "controls": ["Ensaio de permeabilidade ao ar", "Aparelhos de combustão"]},
-    {"code": "CHAUFFAGE_PAC", "lot": "LOTE 06 — Aquecimento", "label": "Bomba de calor (estudo necessário)", "component": "chauffage", "metre": "forfait", "poste": None, "induced": ["Adaptação dos emissores", "Eletricidade"], "controls": ["Perdas térmicas após obras", "Regimes de temperatura da água", "Acoustique", "Implantation"]},
-    {"code": "REGULATION", "lot": "LOTE 06 — Regulação", "label": "Regulação / termóstatos programáveis", "component": "chauffage", "metre": "forfait", "poste": None, "induced": [], "controls": ["Zonage", "Programmation"]},
-    {"code": "ECS", "lot": "LOTE 07 — Água quente sanitária", "label": "Produção de AQS eficiente (ex. termoacumulador com bomba de calor)", "component": "ecs", "metre": "forfait", "poste": None, "induced": [], "controls": ["Volume", "Emplacement", "Calorifugeage"]},
+    {"code": "CHAUFFAGE_PAC", "lot": "LOTE 06 — Aquecimento", "label": "Bomba de calor (estudo necessário)", "component": "chauffage", "metre": "forfait", "poste": None, "induced": ["Adaptação dos emissores", "Eletricidade"], "controls": ["Perdas térmicas após obras", "Regimes de temperatura da água", "Acústica", "Implantação"]},
+    {"code": "REGULATION", "lot": "LOTE 06 — Regulação", "label": "Regulação / termóstatos programáveis", "component": "chauffage", "metre": "forfait", "poste": None, "induced": [], "controls": ["Zonamento", "Programação"]},
+    {"code": "ECS", "lot": "LOTE 07 — Água quente sanitária", "label": "Produção de AQS eficiente (ex. termoacumulador com bomba de calor)", "component": "ecs", "metre": "forfait", "poste": None, "induced": [], "controls": ["Volume", "Localização", "Isolamento das tubagens"]},
 ]
 _CAT_BY_CODE = {m["code"]: m for m in RENO_CATALOGUE}
 
@@ -403,7 +403,7 @@ def _build_work_item(measure, inputs):
 
 def _descriptif(measure, qty, unit, qstatus, chi):
     qty_txt = f"{qty:.2f} {unit}" if qty is not None else f'a confirmar ({unit})'
-    prix_txt = (f"{chi['total_ht']:.2f} € HT ({chi['status']})" if chi.get("total_ht") is not None
+    prix_txt = (f"{chi['total_ht']:.2f} € s/ IVA ({chi['status']})" if chi.get("total_ht") is not None
                 else chi["status"])
     return {
         "localisation": "A precisar na visita",
@@ -1222,7 +1222,7 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
         tr = aides.get("travaux_ht")
         ptz = _clean((aides.get("eco_ptz") or {}).get("formattedValue"))
         kv = Table([
-            [Paragraph("Travaux retenus", muted), Paragraph(f"<b>{_eur(tr)}</b>" if tr else "—", body),
+            [Paragraph("Obras consideradas", muted), Paragraph(f"<b>{_eur(tr)}</b>" if tr else "—", body),
              Paragraph("Total de subsídios", muted), Paragraph(f"<b>{_eur(sub)}</b>" if sub else "—", body)],
             [Paragraph("Valor a cargo", muted), Paragraph(f"<b>{_eur(reste)}</b>" if reste is not None else "—", body),
              Paragraph("Empréstimo bonificado", muted), Paragraph(ptz or "—", body)],
@@ -1233,7 +1233,7 @@ def _build_report_pdf(p: dict, branding: dict | None = None, thumb_b64: str | No
         rows = [["Apoio", "Montante", "Estado"]]
         for a in (aides.get("aides") or [])[:12]:
             rows.append([Paragraph(a.get("label") or "", muted), _clean(a.get("value")) or "—",
-                         "Applicable" if a.get("status") else "Não aplicável"])
+                         "Aplicável" if a.get("status") else "Não aplicável"])
         t = Table(rows, colWidths=[112 * mm, 30 * mm, 36 * mm])
         t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), GREEN), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                                ("FONTSIZE", (0, 0), (-1, -1), 7.5), ("GRID", (0, 0), (-1, -1), 0.4, colors.lightgrey),

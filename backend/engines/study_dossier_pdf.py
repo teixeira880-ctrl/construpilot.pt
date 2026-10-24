@@ -100,18 +100,18 @@ def build_dossier_pdf(plan, study, branding=None, source_images=None):
              para("Estimativa a partir das peças da obra. As quantidades, as suas fórmulas e as provisões estão detalhadas. Preços e opções construtivas ficam por confirmar.")]
     budget = Table([[para("ORÇAMENTO PARCIAL S/ IVA" if totals.get("partial") else "ORÇAMENTO ESTIMATIVO S/ IVA", "white")],
                     [para(fmt(totals["ht"], True), "money")],
-                    [para(f"{fmt(totals['ttc'], True)} TTC | TVA {fmt(totals.get('tva_rate')*100) if totals.get('tva_rate') is not None else 'N/C'} %", "white")]], colWidths=[WIDTH])
+                    [para(f"{fmt(totals['ttc'], True)} c/ IVA | IVA {fmt(totals.get('tva_rate')*100) if totals.get('tva_rate') is not None else 'N/C'} %", "white")]], colWidths=[WIDTH])
     budget.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), COPPER), ("LEFTPADDING", (0, 0), (-1, -1), 17),
                                 ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)]))
     story += [budget, Spacer(1, 18), table(["Artigo", "Montante s/ IVA"], [[l["lot"]+(" (parcial)" if l.get("partial") else ""),fmt(l["total_ht"], True)] for l in study["lots"]], [WIDTH-129,129], (1,))]
     story += [para("Leitura do orçamento", "h2"), para("M: medição controlada pelo utilizador; H: hipótese ou medição extraída a controlar; P: provisão; N/C: sem preço.", "small")]
     for variant in study.get("variants", []):
-        story += [para(f"{variant['label']}: dedução de {fmt(variant['deduction_ht'], True)} s/ IVA; orçamento resultante {fmt(variant['total_ht'], True)} HT. {variant.get('note') or ''}", "small")]
+        story += [para(f"{variant['label']}: dedução de {fmt(variant['deduction_ht'], True)} s/ IVA; orçamento resultante {fmt(variant['total_ht'], True)} s/ IVA. {variant.get('note') or ''}", "small")]
     story += [para("Documento orçamental não contratual. As reservas e exclusões fazem parte integrante desta estimativa.", "small"), PageBreak(), heading("Orçamento / trabalhos detalhados")]
     data = []
     for count, r in enumerate([r for lot in study['lots'] for r in lot['lines']], 1):
         data.append([str(count).zfill(2), r['designation'], para(fmt(r['qty'])+"<br/><font color='#925535'>"+text(r['quantity_status'])+"</font>", "cell", True), r['unit'], fmt(r['unit_price']), fmt(r['total'])])
-    story.append(table(["N.º", "Designação", "Qtd.", "U", "PU HT €", "Total s/ IVA €"], data, [30,WIDTH-285,54,35,76,90], (4,5)))
+    story.append(table(["N.º", "Designação", "Qtd.", "U", "PU s/ IVA €", "Total s/ IVA €"], data, [30,WIDTH-285,54,35,76,90], (4,5)))
     story += [Spacer(1, 14), table(["Resumo", "Montante"], [["Total s/ IVA"+(" partiel" if totals.get("partial") else ""),fmt(totals['ht'], True)],["IVA",fmt(totals['tva'], True)],["Total c/ IVA estimativo",fmt(totals['ttc'], True)]],[WIDTH-150,150],(1,)),
               PageBreak(), heading("Medições / cálculos e fontes")]
     geometry = [r for r in study["items"] if r["included"] and r["unit"] not in ("ft", "ens.", "u", "1") and (r["sources"] or r.get("error"))]
@@ -186,7 +186,7 @@ def build_dossier_docx(plan, study, branding=None):
         for c,v in zip(table.rows[0].cells,["Designação","Qtd.",'U',"Estado","PU s/ IVA","Total s/ IVA"]): c.text=v
         for r in lot['lines']:
             for c,v in zip(table.add_row().cells,[r['designation'],fmt(r['qty']),r['unit'],r['quantity_status'],fmt(r['unit_price']),fmt(r['total'])]): c.text=v
-    for key,label in [('ht','HT'),('tva',"IVA"),('ttc',"c/ IVA")]:doc.add_paragraph(f"{label} : {fmt(study['totals'][key],True)}")
+    for key,label in [('ht','s/ IVA'),('tva',"IVA"),('ttc',"c/ IVA")]:doc.add_paragraph(f"{label} : {fmt(study['totals'][key],True)}")
     doc.add_heading("Medições e fontes",1)
     for r in study['items']:
         doc.add_heading(r['designation'],2)

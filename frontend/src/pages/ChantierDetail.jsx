@@ -17,7 +17,7 @@ import { ChantierPilot } from "@/components/chantiers/ChantierPilot";
 import { ChantierCostsPanel } from "@/components/chantiers/ChantierCostsPanel";
 
 const FILE = process.env.REACT_APP_BACKEND_URL + "/api/site/file?path=";
-const DOC_STATUS = { draft: "Rascunho", sent: "Enviado", signed: "Assinado", refused: "Recusado", paid: "Paga", overdue: "En retard", partial: "Parcial", cancelled: "Anulado" };
+const DOC_STATUS = { draft: "Rascunho", sent: "Enviado", signed: "Assinado", refused: "Recusado", paid: "Paga", overdue: "Em atraso", partial: "Parcial", cancelled: "Anulado" };
 const JOB_STATUS = { done: "Concluída", needs_review: "A verificar", partial: "Partielle", failed: "Falha", running: "Em curso", queued: "Em espera" };
 const date = (d) => (d || "").slice(0, 10);
 
@@ -124,7 +124,7 @@ function ChantierDetailContent() {
     { to: `/plans-pro${ctx}`, icon: Layers, label: "Análise de planta Pro", test: "plans-pro" },
     { to: `/btp-solver${ctx}`, icon: Wrench, label: "Diagnosticar uma patologia", test: "solver" },
     { to: `/suivi-chantier${ctx}`, icon: Camera, label: "Relatório / fotografias", test: "site" },
-    { to: `/planning${ctx}`, icon: CalendarRange, label: "Planning (Gantt)", test: "planning" },
+    { to: `/planning${ctx}`, icon: CalendarRange, label: "Planeamento (Gantt)", test: "planning" },
     { to: `/assistant${ctx}`, icon: Bot, label: "Perguntar ao assistente", test: "assistant" },
   ];
 

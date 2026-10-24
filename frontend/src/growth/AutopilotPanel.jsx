@@ -50,8 +50,8 @@ export function AutopilotPanel({ projectId, canEdit, onGo }) {
     <div className="flex flex-wrap items-start gap-3">
       <p className="text-sm text-muted-foreground flex-1 min-w-[260px]"><Bot className="inline h-4 w-4 mr-1" />Todas as noites (06:00 UTC, após a auditoria): encerramento dos problemas desaparecidos, propostas de correções de title/description, criação e redação de artigos (pesquisa de fontes verificadas → brief → redação → controlos). Nada é publicado sem a sua aprovação; o teto do orçamento mensal é respeitado.</p>
       {canEdit && <div className="flex gap-2">
-        <Button size="sm" onClick={() => run(false)} disabled={busy || data.running} data-testid="growth-autopilot-run">{data.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {data.running ? "Cycle en cours…" : "Lançar um ciclo agora"}</Button>
-        {data.in_progress > 0 && <Button size="sm" variant="outline" onClick={() => run(true)} disabled={busy || data.running} data-testid="growth-autopilot-resume"><RefreshCw className="h-4 w-4" /> Retomar {data.in_progress} en cours</Button>}
+        <Button size="sm" onClick={() => run(false)} disabled={busy || data.running} data-testid="growth-autopilot-run">{data.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {data.running ? "Ciclo em curso…" : "Lançar um ciclo agora"}</Button>
+        {data.in_progress > 0 && <Button size="sm" variant="outline" onClick={() => run(true)} disabled={busy || data.running} data-testid="growth-autopilot-resume"><RefreshCw className="h-4 w-4" /> Retomar {data.in_progress} em curso</Button>}
       </div>}
     </div>
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -62,7 +62,7 @@ export function AutopilotPanel({ projectId, canEdit, onGo }) {
       <Stat label="Falhas" value={data.failed} testid="growth-autopilot-failed" tone={data.failed ? "text-red-700" : ""} />
     </div>
     {last && <div className="surface p-3 text-xs space-y-1" data-testid="growth-autopilot-last">
-      <p className="font-medium">Último ciclo · {dt(last.started_at)} · {last.trigger === "manual" ? "manuel" : "agendado"} · <span className={last.status === "failed" ? "text-red-700" : ""}>{last.status === "running" ? "en cours" : last.status === "completed" ? "concluída" : last.status}</span></p>
+      <p className="font-medium">Último ciclo · {dt(last.started_at)} · {last.trigger === "manual" ? "manual" : "agendado"} · <span className={last.status === "failed" ? "text-red-700" : ""}>{last.status === "running" ? "em curso" : last.status === "completed" ? "concluída" : last.status}</span></p>
       <p>Problemas encerrados: <strong className="num">{last.issues_closed}</strong> · Correções propostas: <strong className="num">{last.overrides_proposed}</strong> · Artigos criados: <strong className="num">{last.contents_created}</strong> · prontos a rever: <strong className="num">{last.contents_ready}</strong> · falhas: <strong className="num">{last.contents_failed}</strong>{last.skipped_budget && <span className="text-red-700"> · teto do orçamento atingido</span>}</p>
       {last.error && <p className="text-red-700">{last.error}</p>}{(last.notes || []).map((n, i) => <p key={i} className="text-muted-foreground">{n}</p>)}
     </div>}

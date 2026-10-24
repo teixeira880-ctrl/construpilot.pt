@@ -55,7 +55,7 @@ export const PitchDeckPreview = ({ onDownload }) => {
                 </div>
               ) : (
                 <a href={imageUrl} target="_blank" rel="noopener noreferrer" title="Ampliar o diapositivo" data-testid="pitch-deck-enlarge" className="block h-full w-full">
-                  <img key={imageUrl} src={imageUrl} alt={`ConstruPilot — diapositive ${page} sur ${info.page_count}`} width={info.width} height={info.height}
+                  <img key={imageUrl} src={imageUrl} alt={`ConstruPilot — diapositivo ${page} de ${info.page_count}`} width={info.width} height={info.height}
                     data-testid="pitch-deck-slide-image" onLoad={() => setImageState("loaded")} onError={() => setImageState("error")}
                     className="h-full w-full object-contain" />
                 </a>

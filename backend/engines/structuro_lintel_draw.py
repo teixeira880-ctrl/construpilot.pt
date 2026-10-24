@@ -109,7 +109,7 @@ def _section(d, geom, ox, oy, w, h):
         d.add(String(cx, base + bh + 8, rc.get("label", ""), fontSize=7.5, fillColor=_DK, textAnchor="middle"))
         det = (rc.get("detailing") or {}).get("anchorage") or {}
         if det:
-            d.add(String(cx, base - 10, f"ancrage {int(det.get('straight_mm',0))} mm (crochet {int(det.get('hook_mm',0))} mm)",
+            d.add(String(cx, base - 10, f"amarração {int(det.get('straight_mm',0))} mm (gancho {int(det.get('hook_mm',0))} mm)",
                          fontSize=6, fillColor=_MUT, textAnchor="middle"))
 
 

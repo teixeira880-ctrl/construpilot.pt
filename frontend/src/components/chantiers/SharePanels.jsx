@@ -11,7 +11,7 @@ import { PreviewAsGuestButton } from "@/components/portal/PreviewAsGuest";
 
 const PERM_LABELS = { progress: "Avanço", photos: "Fotografias", quotes: "Orçamento", invoices: "Faturas", sign: "Assinar", chat: "Mensagens", report_issue: "Assinalar um problema", post_reports: "Entregar relatórios" };
 const STATUS = { invited: ["Convite enviado", "bg-amber-500/10 text-amber-700 border-amber-500/30"], active: ["Ativo", "bg-emerald-500/10 text-emerald-700 border-emerald-500/30"], revoked: ["Revogado", "bg-muted text-muted-foreground"] };
-const MS_STATUS = { planned: "Previsto", in_progress: "Em curso", done: "Terminado", late: "En retard" };
+const MS_STATUS = { planned: "Previsto", in_progress: "Em curso", done: "Terminado", late: "Em atraso" };
 const copy = (text, msg) => navigator.clipboard?.writeText(text).then(() => toast.success(msg)).catch(() => toast.error("Cópia impossível"));
 
 function InviteDialog({ open, onOpenChange, chantierId, onDone }) {

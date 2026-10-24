@@ -37,7 +37,7 @@ router = APIRouter(tags=["agents"], prefix="/agents")
 
 AGENTS = {
     "supervise": {
-        "name": "Pilote ConstruPilot", "icon": "ShieldCheck", "needs_plans": False,
+        "name": "Piloto ConstruPilot", "icon": "ShieldCheck", "needs_plans": False,
         "desc": "Controla as suas plantas, medições e orçamentos, corrige os valores recalculáveis e detalha os pontos a verificar. Histórico e restauro incluídos.",
         "output": "supervision",
     },
@@ -253,7 +253,7 @@ async def propose_plan(body: PlanIn, user=Depends(current_user)) -> dict:
     elif body.agent == "compare":
         a, b = plan_status[0], plan_status[1]
         steps.append({"key": "compare", "label": "Associar divisões e paredes das 2 versões",
-                      "detail": f"Avant : {a['filename']} · Depois: {b['filename']}"})
+                      "detail": f"Antes: {a['filename']} · Depois: {b['filename']}"})
         steps.append({"key": "diff", "label": "Listar as diferenças (acrescentadas / retiradas / modificadas)",
                       "detail": "Divisões e paredes"})
 
@@ -276,7 +276,7 @@ async def propose_plan(body: PlanIn, user=Depends(current_user)) -> dict:
 
 
 async def _make_group(run: dict, project_name: str, user: dict) -> str:
-    name = (project_name or run.get("prompt") or "Dossier agent").strip()[:120] or "Dossier agent"
+    name = (project_name or run.get("prompt") or "Processo do agente").strip()[:120] or "Processo do agente"
     g = {
         "group_id": "grp_" + secrets.token_hex(6), "user_id": user["user_id"],
         "name": name, "chantier_id": run.get("chantier_id"),
@@ -427,7 +427,7 @@ async def run_checks(run_id: str, offset: int = 0, user=Depends(current_user)):
 async def cancel_run(run_id: str, user=Depends(current_user)):
     query = {"run_id": run_id, "user_id": user["user_id"]}
     queued = await db.agent_runs.update_one({**query, "status": "queued"},
-        {"$set": {"status": "error", "cancel_requested": True, "error": "Tâche annulée avant exécution.", "executed_at": _now()}})
+        {"$set": {"status": "error", "cancel_requested": True, "error": "Tarefa cancelada antes da execução.", "executed_at": _now()}})
     if queued.matched_count:
         return {"ok": True, "cancel_requested": True}
     running = await db.agent_runs.update_one({**query, "status": "running"}, {"$set": {"cancel_requested": True}})
@@ -531,7 +531,7 @@ async def revise_run(run_id: str, body: FeedbackIn, user=Depends(current_user)) 
         steps.append({"key": "group", "label": f'Agrupar {len(new_status)} planta(s) em níveis',
                       "detail": " · ".join(f"{s['filename']} → {s['level']}" for s in new_status)})
         steps.append({"key": "metre", "label": "Levantar a medição (paredes, aberturas, áreas)",
-                      "detail": f"{sum((s['measures'] for s in new_status))} medições · {sum((s['openings'] for s in new_status))} ouvertures"})
+                      "detail": f"{sum((s['measures'] for s in new_status))} medições · {sum((s['openings'] for s in new_status))} vãos"})
         steps.append({"key": "chiffrage", "label": "Orçamentar com os seus preços (motor determinístico)",
                       "detail": f"{sum((s['priced'] for s in new_status))} medição(ões) atribuída(s)"})
     if agent == "report":

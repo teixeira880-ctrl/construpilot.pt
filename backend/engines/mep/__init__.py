@@ -34,7 +34,7 @@ def generate(data: dict, edits: dict | None = None) -> dict:
     levels, options = build(data)
     if not levels or not any(lv.rooms for lv in levels):
         raise ValueError("Nenhuma divisão utilizável: verifique a leitura da planta (divisões fechadas)." if lang == "pt" else
-                         "Aucune pièce exploitable : vérifiez la lecture du plan (pièces fermées).")
+                         "Nenhuma divisão utilizável: verifique a leitura da planta (divisões fechadas).")
     edits = edits or {}
     equipment = edits.get("equipment") or equipment_mod.plan_equipment(levels, options)
     points = edits.get("points") or electrical.layout(levels, equipment, options, rules)

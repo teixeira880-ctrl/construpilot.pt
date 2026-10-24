@@ -165,7 +165,7 @@ export default function PcSettingsDialog({ open, onClose, onSaved }) {
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={teamShare} onChange={(e) => setTeamShare(e.target.checked)}
                    data-testid="pc-settings-teamshare-checkbox" className="accent-primary" />
-            Partilhar os meus estudos PC com a minha equipa
+            Partilhar os meus estudos de licenciamento com a minha equipa
           </label>
           <label className="flex items-center gap-2 text-xs cursor-pointer col-span-2 sm:col-span-1">
             <input type="checkbox" checked={teamCanEdit} onChange={(e) => setTeamCanEdit(e.target.checked)}

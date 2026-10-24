@@ -155,7 +155,7 @@ export function MailboxDialog({ trigger }) {
                      data-testid="mailbox-host-input" className="rounded-sm h-11" />
             </div>
             <div className="grid gap-2">
-              <Label>Porte</Label>
+              <Label>Porta</Label>
               <Input value={port} onChange={(e) => setPort(e.target.value)}
                      disabled={provider !== "other"} inputMode="numeric"
                      data-testid="mailbox-port-input" className="rounded-sm h-11 num" />

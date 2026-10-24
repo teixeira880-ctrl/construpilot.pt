@@ -75,7 +75,7 @@ export default function Admin() {
       const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : (parts[0] || "");
       const last = parts.length > 1 ? parts[parts.length - 1] : "";
       const snap = l.project_snapshot || {};
-      const notes = [l.description, snap.name ? `Projet: ${snap.name} ${snap.surface || ""} m²` : "", l.availability ? `Disp.: ${l.availability}` : ""].filter(Boolean).join(" — ");
+      const notes = [l.description, snap.name ? `Projeto: ${snap.name} ${snap.surface || ""} m²` : "", l.availability ? `Disp.: ${l.availability}` : ""].filter(Boolean).join(" — ");
       const { data } = await api.post("/clients", {
         first_name: first, last_name: last || first || "Cliente",
         email: l.email || "", phone: l.phone || "", address: l.address || "", notes,
@@ -209,8 +209,8 @@ export default function Admin() {
           <TabsTrigger value="affiliate" className="rounded-sm" data-testid="admin-tab-affiliate">{t("admin.t_affiliate")}</TabsTrigger>
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
-          <TabsTrigger value="pilotage" className="rounded-sm" data-testid="admin-tab-pilotage">Pilotage IA</TabsTrigger>
-          <TabsTrigger value="budget" className="rounded-sm" data-testid="admin-tab-budget">Plafond 500 €</TabsTrigger>
+          <TabsTrigger value="pilotage" className="rounded-sm" data-testid="admin-tab-pilotage">Pilotagem IA</TabsTrigger>
+          <TabsTrigger value="budget" className="rounded-sm" data-testid="admin-tab-budget">Teto 500 €</TabsTrigger>
           <TabsTrigger value="despesas" className="rounded-sm" data-testid="admin-tab-despesas">{expenseText("title")}</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
           <TabsTrigger value="evolution" className="rounded-sm" data-testid="admin-tab-evolution">AI Evolution Lab</TabsTrigger>
@@ -1128,7 +1128,7 @@ function InboxPanel() {
       const { data } = await api.get("/investors/deck-requests.csv", { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "text/csv" }));
       const a = document.createElement("a");
-      a.href = url; a.download = "leads-investisseurs.csv"; a.click();
+      a.href = url; a.download = "leads-investidores.csv"; a.click();
       URL.revokeObjectURL(url);
       toast.success("Export CSV transferido");
     } catch {
@@ -1160,7 +1160,7 @@ function InboxPanel() {
             data-testid={`inbox-window-${h}h`}
             className="rounded-sm"
           >
-            {h === 24 ? "24h" : h === 168 ? "7 jours" : "30 jours"}
+            {h === 24 ? "24h" : h === 168 ? "7 dias" : "30 dias"}
           </Button>
         ))}
         <div className="flex-1" />

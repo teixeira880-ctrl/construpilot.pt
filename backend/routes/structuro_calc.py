@@ -732,13 +732,13 @@ async def export(study_id:str,fmt:str,user=Depends(current_user),expected_revisi
             mime="application/pdf" if fmt=="plans" else "text/csv"
     elif fmt=="json":
         content=model.model_dump_json(indent=2).encode();mime="application/json"
-    else: raise HTTPException(422,"Formato disponível: pdf, dxf, aciers, plans, nomenclature, dossier ou json")
+    else: raise HTTPException(422,"Formatos disponíveis: pdf, dxf, aciers, plans, nomenclature, dossier ou json")
     await source_plan(s,user)
     if (await owned(study_id,user))["revision"]!=s["revision"]:
         raise HTTPException(409,"Estudo modificado durante a geração; recarregue")
     suffix={"aciers":"pdf","plans":"pdf","nomenclature":"csv","dossier":"zip"}.get(fmt,fmt)
     return Response(content,media_type=mime,headers={"Cache-Control":"no-store","X-Study-Revision":str(s["revision"]),
-        "Content-Disposition":f'attachment; filename="structure-{fmt}-{study_id}-r{s["revision"]}.{suffix}"'})
+        "Content-Disposition":f'attachment; filename="estrutura-{fmt}-{study_id}-r{s["revision"]}.{suffix}"'})
 
 
 @router.get("/studies/{study_id}/drawings")

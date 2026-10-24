@@ -15,7 +15,7 @@ export const ROUTE_SEO = {
   "/calculadoras": { title: "Calculadoras de construção: betão, pladur, azulejo", description: "Calcule as quantidades de materiais (betão, blocos, pladur, azulejo, tinta) com as perdas incluídas.", ptPath: "/calculadoras" },
   "/precos": { title: "Comparador preços materiais construção", description: "Compare os preços dos materiais no Leroy Merlin, Maxmat, Bricomarché, AKI e noutras lojas.", ptPath: "/precos" },
   "/diy": { title: "Guias de obras passo a passo", description: "Tutoriais e guias práticos para realizar as suas obras, com conselhos de segurança e materiais necessários.", ptPath: "/diy" },
-  "/coach": { title: "Coach travaux IA", description: "Faça as suas perguntas sobre obras à IA: ordem dos trabalhos, preços, regulamentação, escolha dos materiais.", ptPath: "/coach" },
+  "/coach": { title: "Coach de obras IA", description: "Faça as suas perguntas sobre obras à IA: ordem dos trabalhos, preços, regulamentação, escolha dos materiais.", ptPath: "/coach" },
   "/photo": { title: "Análise de fotografias de obras por IA", description: "Envie uma fotografia da sua divisão ou fachada: a IA identifica os trabalhos e propõe uma estimativa.", ptPath: "/photo" },
   "/planos": { title: "Preços e subscrições", description: "Oferta gratuita, Pro e Pro Business: escolha o plano ConstruPilot adequado à sua atividade.", ptPath: "/planos" },
   "/aide": { title: "Ajuda e assistência ConstruPilot", description: "Centro de ajuda: perguntas frequentes, assistente online, espaço do cliente e formulário de contacto com resposta em 1 dia útil.", ptPath: "/aide" },

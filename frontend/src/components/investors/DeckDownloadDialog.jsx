@@ -58,7 +58,7 @@ export const DeckDownloadDialog = ({ open, onOpenChange, format }) => {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="deck-email">E-mail *</Label>
-              <Input id="deck-email" type="email" required value={form.email} onChange={set("email")} placeholder="vous@fonds.com" data-testid="deck-form-email" />
+              <Input id="deck-email" type="email" required value={form.email} onChange={set("email")} placeholder="nome@fundo.pt" data-testid="deck-form-email" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="deck-fund">Fundo / sociedade</Label>

@@ -325,7 +325,7 @@ async def _run_import(job_id: str, fid: str, user_id: str, xlsx: list[tuple[str,
         await _job(job_id, status="done", step="done")
         label_txt = doc['label'] or doc['filename']
         await _notify(user_id, f'Orçamentação concluída — {label_txt}',
-                      f"{totals['priced']} linha(s) com preço · {totals['grand_total_ht']:,.0f} € HT".replace(",", " "))
+                      f"{totals['priced']} linha(s) com preço · {totals['grand_total_ht']:,.0f} € s/ IVA".replace(",", " "))
         if len(rows) >= EMAIL_MIN_LINES or cctp_info.get("used"):
             await _email_done(user_id, label_txt, totals["priced"], len(rows),
                               totals["grand_total_ht"])
@@ -493,7 +493,7 @@ async def add_gap_line(file_id: str, gap_id: str, body: GapAddIn,
     unit = (body.unit or gap.get("unit") or "u")[:12]
     row = {
         "line_id": f"gap{gap_id}", "sheet": "", "row": None, "src": -1,
-        "src_name": "Acréscimo do caderno de encargos", "lot": gap.get("lot") or "Ajouts CCTP",
+        "src_name": "Acréscimo do caderno de encargos", "lot": gap.get("lot") or "Acréscimos do caderno de encargos",
         "designation": gap["designation"], "description": gap.get("reason") or "",
         "unit": unit, "qty": round(float(body.qty), 3),
         "pu_file": None, "pu_library": None, "pu_ai": None,
@@ -587,13 +587,13 @@ async def dpgf_to_quote(file_id: str, body: QuoteIn, user=Depends(current_user))
     if doc.get("instructions"):
         notes.append(f"Instruções aplicadas: {doc['instructions']}")
     if (doc.get("cctp") or {}).get("summary"):
-        notes.append(f"CCTP : {doc['cctp']['summary']}")
+        notes.append(f"Caderno de encargos: {doc['cctp']['summary']}")
     if any(x.get("excluded") for x in rows):
         notes.append("Os serviços marcados «Sem preço — fora do contrato» não estão incluídos no total.")
     quote = {
         "doc_id": "doc_" + secrets.token_hex(6), "user_id": user["user_id"],
         "doc_type": "quote", "number": None,
-        "title": (body.title or f"DPGF — {doc.get('filename') or 'bordereau'}")[:160],
+        "title": (body.title or f"Mapa de quantidades — {doc.get('filename') or 'mapa'}")[:160],
         "client_id": body.client_id,
         "client": await _client_snapshot(body.client_id, user),
         "status": "draft", "lines": lines, "notes": "\n".join(notes)[:3000],
@@ -614,7 +614,7 @@ async def dpgf_to_quote(file_id: str, body: QuoteIn, user=Depends(current_user))
           "unit_price": x.get("pu_base"), "price_source": x.get("source") or "",
           "lot": x.get("lot") or x.get("category") or "", "vat_rate": x.get("vat_rate")}
          for x in rows if not x.get("excluded") and x.get("pu_base")],
-        origin=f"DPGF — {doc.get('filename') or file_id}")
+        origin=f"Mapa de quantidades — {doc.get('filename') or file_id}")
     from engines import activity
     await activity.log(user, "quote.dpgf", "document", quote["title"],
                        {"doc_id": quote["doc_id"], "lines": len(lines)})
@@ -636,7 +636,7 @@ async def remember_study_prices(file_id: str, user=Depends(current_user)) -> dic
              for x in doc.get("lines", [])
              if not x.get("excluded") and x.get("pu_base")]
     saved = await remember_prices(user["user_id"], items,
-                                  origin=f"DPGF — {doc.get('label') or doc.get('filename')}")
+                                  origin=f"Mapa de quantidades — {doc.get('label') or doc.get('filename')}")
     return {"remembered": saved, "candidates": len(items)}
 
 
@@ -890,7 +890,7 @@ async def public_rfq_submit(token: str, body: PublicOfferIn) -> dict:
     await db.notifications.insert_one({
         "notif_id": "n_" + secrets.token_hex(5), "user_id": rfq["user_id"],
         "type": "rfq_offer", "url": "/dashboard",
-        "message": f"Proposta recebida para o lote {rfq['lot']} : {rec['total_ht']:.2f} € HT ({rec.get('name') or rec.get('email')}).",
+        "message": f"Proposta recebida para o lote {rfq['lot']}: {rec['total_ht']:.2f} € s/ IVA ({rec.get('name') or rec.get('email')}).",
         "read": False, "created_at": _now()})
     return {"ok": True, "total_ht": rec["total_ht"]}
 

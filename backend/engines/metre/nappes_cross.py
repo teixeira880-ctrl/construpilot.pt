@@ -21,7 +21,7 @@ def _recap_area(recap: dict | None) -> float:
     return round(sum((r.get("count") or 0) * r["width_cm"] / 100 * r["height_cm"] / 100 for r in (recap or {}).get("rows", []) if r.get("width_cm")), 1)
 
 
-def cross_nappes(lower: dict, upper: dict, *, slab_area_m2: float | None, labels=("nappe inférieure", "nappe supérieure")) -> dict:
+def cross_nappes(lower: dict, upper: dict, *, slab_area_m2: float | None, labels=("malha inferior", "malha superior")) -> dict:
     out = {"layers": {}, "duplicates": {}, "coverage": [], "findings": []}
     for label, res in zip(labels, (lower, upper)):
         mesh, recap, ha = res.get("mesh"), res.get("mesh_recap"), res.get("ha_bars")
@@ -46,7 +46,7 @@ def cross_nappes(lower: dict, upper: dict, *, slab_area_m2: float | None, labels
                                                    + ", ".join(d["mark"] for d in differ[:8]) + ". Numeração por planta (normal) ou erro de marca: a confirmar com o gabinete de projeto."})
     if slab_area_m2:
         for label, info in out["layers"].items():
-            for key, name in (("mesh_laid_area_m2_from_cuts", "área colocada (cortes da lista)"), ("mesh_ordered_area_m2_from_recap", "surface commandée (récapitulatif)")):
+            for key, name in (("mesh_laid_area_m2_from_cuts", "área colocada (cortes da lista)"), ("mesh_ordered_area_m2_from_recap", "área encomendada (resumo)")):
                 area = info[key]
                 if area:
                     out["coverage"].append({"layer": label, "quantity": name, "area_m2": area, "slab_area_m2": slab_area_m2, "ratio": round(area / slab_area_m2, 3),

@@ -51,7 +51,7 @@ def build_pdf(model: Model, revision: int) -> bytes:
     ss=getSampleStyleSheet()
     ss.add(ParagraphStyle("Tiny",parent=ss["BodyText"],fontSize=8,leading=11))
     p=lambda text: Paragraph(escape(str(text)),ss["Tiny"])
-    story=[Paragraph("ConstruPilot | Étude gravitaire",ss["Title"]),p(model.title),
+    story=[Paragraph("ConstruPilot | Estudo gravítico",ss["Title"]),p(model.title),
         p(f"Revisão {revision} | moteur {result['engine_version']} | empreinte {result['input_hash']}"),
         Spacer(1,10),Paragraph("PLANTA DE PRINCÍPIO - NÃO EXECUTÓRIA",ss["Heading2"]),
         p("Secções introduzidas, não dimensionadas. Os resultados mecânicos não constituem uma verificação de resistência."),

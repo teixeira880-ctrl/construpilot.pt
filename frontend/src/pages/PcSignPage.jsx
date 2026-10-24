@@ -123,7 +123,7 @@ export default function PcSignPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             Elaborado a {String(data.generated_at || "").slice(0, 10)}
-            {data.planning?.total_days ? ` · obra estimada ${data.planning.total_days} jours (${data.planning.total_weeks} semanas)` : ""}
+            {data.planning?.total_days ? ` · obra estimada ${data.planning.total_days} dias (${data.planning.total_weeks} semanas)` : ""}
           </p>
         </header>
 
@@ -289,7 +289,7 @@ export default function PcSignPage() {
               <CreditCard className="h-4 w-4 text-primary" /> Faturação da obra
             </p>
             <p className="text-sm text-muted-foreground">
-              Pago: <b className="text-emerald-600">{eur(bill.paid)}</b> sur {eur(bill.total_ttc)} c/ IVA
+              Pago: <b className="text-emerald-600">{eur(bill.paid)}</b> de {eur(bill.total_ttc)} c/ IVA
               {bill.remaining_to_pay > 0 ? <> — restante <b>{eur(bill.remaining_to_pay)}</b></> : " — obra liquidada, obrigado!"}
             </p>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -325,7 +325,7 @@ export default function PcSignPage() {
                               className="h-7 rounded-sm text-xs gap-1.5"
                               data-testid={`pc-client-situation-${s.sit_no}-pay-btn`}>
                         <CreditCard className="h-3 w-3" />
-                        {payBusy === s.sit_id ? "A redirecionar…" : `Pagar ${eur(s.amount)} par carte`}
+                        {payBusy === s.sit_id ? "A redirecionar…" : `Pagar ${eur(s.amount)} com cartão`}
                       </Button>
                     )}
                   </div>

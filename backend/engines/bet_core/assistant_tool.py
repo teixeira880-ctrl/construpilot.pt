@@ -109,7 +109,7 @@ def _nom_livrable(path: Path) -> str:
     for prefix in _BET_PREFIXES:
         if stem.startswith(prefix + "_"):
             return nom_document(prefix.replace("_", "-"), stem[len(prefix) + 1:], ext=ext)
-    return nom_document("Etude-BET", stem, ext=ext)
+    return nom_document("Estudo-engenharia", stem, ext=ext)
 
 
 async def _store(db, uid, cid, request_id, kind, path: Path, title):
@@ -265,9 +265,9 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
         log.exception("bet study %s failed", job_id)
         txt = str(exc).lower()
         if any(s in txt for s in ("credit balance", "insufficient_quota", "quota", "rate limit", "overloaded", "authentication", "invalid x-api-key", "401", "403")):
-            msg = "Lecture des plans par IA momentanément indisponible (service de calcul saturé ou indisponible). Réessayez dans quelques minutes."
+            msg = "Leitura das plantas por IA temporariamente indisponível (serviço de cálculo saturado ou indisponível). Tente novamente dentro de alguns minutos."
         else:
-            msg = f"{type(exc).__name__}: {str(exc)[:300]} — à {pipeline.where(exc)}"
+            msg = f"{type(exc).__name__}: {str(exc)[:300]} — em {pipeline.where(exc)}"
         import traceback
         await step("Échec", status="failed", error=msg, trace=traceback.format_exc()[-3000:])
         try:
@@ -362,10 +362,10 @@ async def _read_job(db, uid, job_id, cid=None):
         if not job:
             job = await db.bet_study_jobs.find_one({"user_id": uid}, {"_id": 0, "model": 0, "pages": 0}, sort=[("created_at", -1)])
     if not job:
-        return {"error": "Aucune étude trouvée pour ce compte : lancez d'abord generate_full_bet_study.", "status": "échoué"}
+        return {"error": "Nenhum estudo encontrado para esta conta: execute primeiro generate_full_bet_study.", "status": "échoué"}
     job_id = job.get("job_id") or job_id
     if job.get("status") == "running" and _age_s(job.get("updated_at") or job.get("created_at")) > STALE_MIN * 60:
-        msg = "interrompue (redémarrage du serveur) : relancez l'étude"
+        msg = "interrompido (reinício do servidor): volte a lançar o estudo"
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"status": "failed", "error": msg}})
         job.update(status="failed", error=msg)
     out = _jsonable(job)

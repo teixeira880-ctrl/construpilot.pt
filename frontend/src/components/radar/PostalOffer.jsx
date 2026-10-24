@@ -42,7 +42,7 @@ export const PostalPacks = ({ packs = [], disabled }) => {
   return <div className="flex flex-wrap gap-2" data-testid="postal-packs">
     {packs.map((p) => <Button key={p.pack_id} size="sm" variant="outline" className="h-8 gap-1 text-xs" disabled={disabled || Boolean(buying)} onClick={() => buy(p)} data-testid={`postal-pack-${p.pack_id}`}>
       {buying === p.pack_id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
-      {ui("buyPack")} {p.letters} · {euros(p.amount_net_cents)} HT
+      {ui("buyPack")} {p.letters} · {euros(p.amount_net_cents)} s/ IVA
     </Button>)}
   </div>;
 };

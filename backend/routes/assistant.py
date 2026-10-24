@@ -1431,7 +1431,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
                     elif ev.type == "response.output_item.added" and getattr(ev.item, "type", "") == "function_call":
                         yield {"type": "status", "text": status_map.get(ev.item.name, "Processamento do processo…"), "tool": ev.item.name}
                     elif ev.type == "response.output_item.added" and getattr(ev.item, "type", "") == "web_search_call":
-                        yield {"type": "status", "text": "Recherche Internet…"}
+                        yield {"type": "status", "text": "Pesquisa na Internet…"}
                     elif ev.type == "response.completed":
                         r = ev.response
                     elif ev.type in ("response.failed", "response.incomplete", "error"):
@@ -1659,7 +1659,7 @@ async def conversation_report_pdf(conversation_id: str, user=Depends(current_use
         return crop_region(pdoc, pages[0], box) if pages else None
     pdf = build_conversation_report(conv=conv, calculations=calcs, solutions=sols, sources=srcs, plans=plans,
                                     branding=await _resolve_branding(uid), lang=lang, scope=conv.get("report_scope"), crop_provider=crop_provider)
-    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="rapport-{conversation_id[-8:]}.pdf"'})
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="relatorio-{conversation_id[-8:]}.pdf"'})
 
 
 # ---------- Calculs sur le plan : liste, recadrage de la cote source, correction tracée ----------
@@ -1835,7 +1835,7 @@ async def meeting_report(conversation_id: str, body: MeetingReportIn, user=Depen
                               photo_bytes=await _state_photos(await get_state(db, conversation_id, user["user_id"]), user["user_id"]))
     ident = "file_cr_" + uuid.uuid4().hex[:22]
     doc = {"artifact_id": ident, "user_id": user["user_id"], "conversation_id": conversation_id, "request_id": None, "title": f'Ata — reunião {body.meeting}', "body": body.remarks or "",
-           "filename": "compte-rendu-reunion.pdf", "format": "pdf", "mime": "application/pdf", "size": len(res["pdf"]), "data_b64": base64.b64encode(res["pdf"]).decode(), "source_artifact_ids": [],
+           "filename": "ata-reuniao.pdf", "format": "pdf", "mime": "application/pdf", "size": len(res["pdf"]), "data_b64": base64.b64encode(res["pdf"]).decode(), "source_artifact_ids": [],
            "created_at": _now(), "illustrative": False, "meeting_report": True, "download": f"/assistant/artifacts/{ident}/content"}
     await db.assistant_artifacts.insert_one(doc)
     return {"ok": True, "artifact": public_artifact(doc), "counts": res["counts"], "state": res["state"]}

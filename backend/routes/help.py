@@ -83,12 +83,12 @@ async def contact(body: ContactIn, request: Request, response: Response) -> dict
     admins = await db.users.find({"role": "admin"}, {"_id": 0, "user_id": 1}).to_list(20)
     for a in admins:
         await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": a["user_id"], "type": "support_request", "url": "/admin?tab=support",
-                                           "message": f"Assistance : {doc['name']} — {doc['subject'][:60]}", "read": False, "created_at": now})
+                                           "message": f"Assistência: {doc['name']} — {doc['subject'][:60]}", "read": False, "created_at": now})
     from engines.emailer import send_email, wrap_html
     support_to = os.environ.get("SUPPORT_EMAIL") or os.environ.get("ADMIN_SEED_EMAIL") or "info@construpilot.pt"
     status = "sent"
     try:
-        await send_email(support_to, f"[Assistance {doc['ticket_id']}] {doc['subject']}",
+        await send_email(support_to, f"[Assistência {doc['ticket_id']}] {doc['subject']}",
                          wrap_html("Novo pedido de assistência", f"<p><strong>{doc['name']}</strong> &lt;{doc['email']}&gt;</p><p><strong>{doc['subject']}</strong></p><p style='white-space:pre-wrap'>{doc['message']}</p><p>Page : {doc['page'] or '—'}</p>"),
                          reply_to=doc["email"])
         await send_email(doc["email"], f"O seu pedido de assistência {doc['ticket_id']} foi recebido",
@@ -173,9 +173,9 @@ async def reply_ticket(ticket_id: str, body: TicketReplyIn, admin=Depends(curren
     from engines.emailer import send_email, wrap_html
     support_to = os.environ.get("SUPPORT_EMAIL") or os.environ.get("ADMIN_SEED_EMAIL") or "info@construpilot.pt"
     try:
-        await send_email(t["email"], f"Re: [Assistance {ticket_id}] {t['subject']}",
+        await send_email(t["email"], f"Re: [Assistência {ticket_id}] {t['subject']}",
                          wrap_html(f'Resposta ao seu pedido {ticket_id}', f"<p>Olá {t['name']},</p><div style='white-space:pre-wrap'>{body.message.strip()}</div><hr><p style='color:#6b7280;font-size:12px'>O seu pedido: «{t['subject']} »<br>{t['message'][:800]}</p>"),
-                         reply_to=support_to, from_name="Assistance ConstruPilot")
+                         reply_to=support_to, from_name="Assistência ConstruPilot")
         status = "sent"
     except Exception as e:  # noqa: BLE001
         logger.warning("support reply failed: %s", e)

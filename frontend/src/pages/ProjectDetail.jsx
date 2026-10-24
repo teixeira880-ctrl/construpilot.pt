@@ -127,7 +127,7 @@ export default function ProjectDetail() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Estimation-ConstruPilot-${p.name}.pdf`;
+      a.download = `Estimativa-ConstruPilot-${p.name}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("PDF gerado");

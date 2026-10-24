@@ -180,7 +180,7 @@ async def estimation_pdf(body: PdfIn):
     name = (body.project or {}).get("name") or "Projeto"
     safe = "".join(c for c in name if c.isalnum() or c in " -_").strip() or "projet"
     return Response(content=data, media_type="application/pdf", headers={
-        "Content-Disposition": f'attachment; filename="Estimation-ConstruPilot-{safe}.pdf"'})
+        "Content-Disposition": f'attachment; filename="Estimativa-ConstruPilot-{safe}.pdf"'})
 
 
 class PdfEmailIn(BaseModel):
@@ -230,7 +230,7 @@ async def estimation_pdf_email(body: PdfEmailIn) -> dict:
             f'<p>Olá,</p>\n<p>Segue em anexo a estimativa detalhada gerada pelo <b>ConstruPilot</b>.</p>\n<ul>\n<li><b>Área</b>: {surface} m²</li>\n<li><b>Custo médio estimado</b>: {fmt(total)} €</li>\n</ul>\n<p>O PDF detalha cada lote, o planeamento, os materiais e as recomendações.</p>{extra}\n<p>Para afinar ou obter uma intervenção ConstruPilot, volte à aplicação.</p>')
     try:
         await emailer.send_email_with_pdf(body.to, subject, html, data,
-                                          filename=f"Estimation-ConstruPilot-{safe}.pdf")
+                                          filename=f"Estimativa-ConstruPilot-{safe}.pdf")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f'Envio impossível: {e}')
     return {"ok": True, "to": body.to}

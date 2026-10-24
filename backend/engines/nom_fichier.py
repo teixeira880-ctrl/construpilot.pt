@@ -178,8 +178,8 @@ def sujet_plan(plan: dict | None) -> str | None:
                          p.get("original_filename"), p.get("name"), p.get("project_name"))
 
 
-TYPES_PIECES = {"quote": "Devis", "invoice": "Facture", "credit_note": "Avoir", "deposit_invoice": "Facture-acompte",
-                "situation": "Situation", "order": "Bon-de-commande"}
+TYPES_PIECES = {"quote": "Orcamento", "invoice": "Fatura", "credit_note": "Nota-de-credito", "deposit_invoice": "Fatura-adiantamento",
+                "situation": "Auto-de-medicao", "order": "Nota-de-encomenda"}
 
 
 def nom_client(client) -> str | None:

@@ -1247,7 +1247,7 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
     return Response(
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="metre-beton-{plan_id}.xlsx"'})
+        headers={"Content-Disposition": f'attachment; filename="medicao-betao-{plan_id}.xlsx"'})
 
 
 @router.get("/{plan_id}/structure/{page_index}/beton-pdf")
@@ -1332,10 +1332,10 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
         sous_total = matiere + cost_labor
         pv = sous_total * (1 + (margin_pct or 0) / 100)
         crows = [["Orçamentação estimada", "Montante"],
-                 [f"Beton ({bt} m3 x {beton_price_m3:.0f} EUR/m3)", f"{cost_beton:,.0f} EUR".replace(",", " ")],
+                 [f"Betão ({bt} m3 x {beton_price_m3:.0f} EUR/m3)", f"{cost_beton:,.0f} EUR".replace(",", " ")],
                  [f'Armaduras ({at} kg x {acier_price_kg:.2f} EUR/kg)', f"{cost_acier:,.0f} EUR".replace(",", " ")],
-                 ["Cout matiere", f"{matiere:,.0f} EUR".replace(",", " ")],
-                 [f"Main d'oeuvre ({bt} m3 x {labor_price_m3:.0f} EUR/m3)", f"{cost_labor:,.0f} EUR".replace(",", " ")],
+                 ["Custo dos materiais", f"{matiere:,.0f} EUR".replace(",", " ")],
+                 [f"Mão de obra ({bt} m3 x {labor_price_m3:.0f} EUR/m3)", f"{cost_labor:,.0f} EUR".replace(",", " ")],
                  [f'Preço de venda estimado (margem {margin_pct:.0f}%)', f"{pv:,.0f} EUR".replace(",", " ")]]
         story += [_table([[str(c) for c in row] for row in crows], [110 * mm, 44 * mm],
                          style_extras=[("BACKGROUND", (0, 0), (-1, 0), DARK),
@@ -1366,7 +1366,7 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
     pdf.build(story)
     return Response(
         content=buf.getvalue(), media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="metre-beton-{plan_id}.pdf"'})
+        headers={"Content-Disposition": f'attachment; filename="medicao-betao-{plan_id}.pdf"'})
 
 
 @router.get("/{plan_id}/cotes-pdf")
@@ -1543,7 +1543,7 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
             if ops or wh:
                 if gross is not None and ops:
                     detail_rows.append(len(rows))
-                    rows.append(["", "", "     brut (avant ouvertures)", "", f"{round(float(gross), 3)} m"])
+                    rows.append(["", "", "     bruto (antes dos vãos)", "", f"{round(float(gross), 3)} m"])
                 if wh:
                     base_len = float(gross if gross is not None else (m.get("value_m") or m.get("length_m") or 0))
                     detail_rows.append(len(rows))
@@ -1608,7 +1608,7 @@ async def export_cotes_pdf(plan_id: str, user=Depends(current_user)):
     pdf.build(story)
     return Response(
         content=buf.getvalue(), media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="cotes-{plan_id}.pdf"'})
+        headers={"Content-Disposition": f'attachment; filename="cotas-{plan_id}.pdf"'})
 
 
 
@@ -1692,7 +1692,7 @@ async def _detect_structure_all_job(job_id: str, plan_id: str, user_id: str) -> 
         await db.plan_upload_jobs.update_one({"job_id": job_id}, {"$set": {"status": "done", "result": {"pages": results, "page_count": len(pages)}, "updated_at": _now()}})
     except Exception as e:  # noqa: BLE001
         logger.exception("detect-structure-all job failed")
-        await db.plan_upload_jobs.update_one({"job_id": job_id}, {"$set": {"status": "error", "status_code": 500, "detail": f"Analyse multi-pages impossible : {type(e).__name__}", "updated_at": _now()}})
+        await db.plan_upload_jobs.update_one({"job_id": job_id}, {"$set": {"status": "error", "status_code": 500, "detail": f"Análise multipágina impossível: {type(e).__name__}", "updated_at": _now()}})
 
 
 @router.post("/{plan_id}/structure/{page_index}/pdf")
@@ -1719,7 +1719,7 @@ async def annotated_plan_pdf(plan_id: str, page_index: int, wall_height: float =
     pdf = build_annotated_plan_pdf(pages[page_index]["image_png_b64"], structure,
                                    descriptif, p.get("filename") or "plan", branding)
     return Response(content=pdf, media_type="application/pdf", headers={
-        "Content-Disposition": f'attachment; filename="plan-annote-{plan_id}.pdf"'})
+        "Content-Disposition": f'attachment; filename="planta-anotada-{plan_id}.pdf"'})
 
 
 class QuoteFromStructureIn(BaseModel):
@@ -3033,7 +3033,7 @@ async def plan_group_to_quote(group_id: str, body: dict | None = None, user=Depe
     created = await create_document(doc, user)
     # Mémorise les infos de page de garde (réutilisées dans le PDF du devis)
     try:
-        cover_meta = {"group_id": group_id, "project_name": f"Estimation partielle — {g['name']}",
+        cover_meta = {"group_id": group_id, "project_name": f"Estimativa parcial — {g['name']}",
                       "levels_count": coverage["plans_count"],
                       "reference": _group_reference(group_id),
                       "client": await _group_cover_client(g, user)}
@@ -3139,9 +3139,9 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
     else:
         story.append(Paragraph("RELATÓRIO DE PROJETO COM VÁRIOS NÍVEIS", st["kicker"]))
     story.append(Paragraph(f"<b>{g['name']}</b>", st["h1"]))
-    sub = f"{len(payload.get('levels') or [])} niveau(x)"
+    sub = f"{len(payload.get('levels') or [])} piso(s)"
     if not metre_only:
-        sub += f" · marge {margin_pct:.0f}%"
+        sub += f" · margem {margin_pct:.0f}%"
     story.append(Paragraph(sub, st["muted"]))
     for warning in (payload.get("coverage") or {}).get("warnings", []):
         story.append(Paragraph(escape(warning), st["muted"]))
@@ -3163,7 +3163,7 @@ async def plan_group_pdf(group_id: str, margin_pct: float = Query(0.0),
                      f"{tot.get('length_ml', 0):.2f}", ""])
         tbl = Table(rows, colWidths=[30 * mm, 56 * mm, 32 * mm, 32 * mm, 26 * mm])
     else:
-        rows = [["Piso", "Planta", "Superfície (m²)", "Linear (ml)", "Medições", "HT (€)", "c/ IVA (€)"]]
+        rows = [["Piso", "Planta", "Superfície (m²)", "Linear (ml)", "Medições", "s/ IVA (€)", "c/ IVA (€)"]]
         for lv in (payload.get("levels") or []):
             c = lv.get("consolidated") or {}
             me = c.get("metre") or {}
@@ -3745,7 +3745,7 @@ def _measure_detail_rows(m: dict):
         for o in (m.get("openings") or []):
             w = float(o.get("width_m") or 0); h = float(o.get("height_m") or 0); c = int(o.get("count", 1))
             if h > 0:
-                rows.append([f"− Ouverture{(' ×' + str(c)) if c > 1 else ''}", f"{w:.2f} m × {h:.2f} m", f"− {w * h * c:.2f} m²"])
+                rows.append([f"− Vão{(' ×' + str(c)) if c > 1 else ''}", f"{w:.2f} m × {h:.2f} m", f"− {w * h * c:.2f} m²"])
         net = float(m.get("wall_area_net_m2", 0) or 0)
         ln = float(m.get("length_m") or 0)
         rows.append(["Parede líquida (aberturas deduzidas)", "", f"{net:.2f} m²"])

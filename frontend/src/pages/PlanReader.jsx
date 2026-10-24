@@ -130,7 +130,7 @@ export default function PlanReader() {
       const res = await api.get(`/structuro/plan/${read.read_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre-${read.read_id}.pdf`; a.click();
+      a.href = url; a.download = `medicao-${read.read_id}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível exportar"); }
   };

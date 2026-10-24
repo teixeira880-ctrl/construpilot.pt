@@ -15,7 +15,7 @@ export function GanttChart({ tasks = [], project, selected, onSelect }) {
     <div className="overflow-x-auto" data-testid="gantt-chart">
       <div className="min-w-[760px]">
         <div className="flex text-[10px] text-muted-foreground border-b border-border pb-1 mb-1">
-          <div className="w-56 shrink-0 ps-1">Início {fr(project?.start_date)} → fin {fr(project?.end_date)}</div>
+          <div className="w-56 shrink-0 ps-1">Início {fr(project?.start_date)} → fim {fr(project?.end_date)}</div>
           <div className="flex-1 relative h-4 me-24">
             {ticks.map((i) => (
               <span key={i} className="absolute -translate-x-1/2" style={{ left: `${(i / total) * 100}%` }}>J{i}</span>
@@ -31,13 +31,13 @@ export function GanttChart({ tasks = [], project, selected, onSelect }) {
                     data-testid={`gantt-row-${t.id}`}
                     className={`flex w-full items-center h-8 rounded-sm text-left transition-colors hover:bg-muted/60 ${selected === t.id ? "bg-muted" : ""}`}>
               <div className="w-56 shrink-0 ps-1 pe-2 truncate text-xs flex items-center gap-1">
-                {t.late && <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" title="En retard" />}
+                {t.late && <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" title="Em atraso" />}
                 <span className="truncate" title={t.name}>{t.name}</span>
               </div>
               <div className="flex-1 relative h-5 me-24">
                 {ticks.map((i) => <span key={i} className="absolute top-0 bottom-0 border-s border-dashed border-border/60" style={{ left: `${(i / total) * 100}%` }} />)}
                 <div className={`absolute top-0.5 bottom-0.5 rounded-sm ${bar} overflow-hidden`} style={{ left: `${left}%`, width: `${width}%` }}
-                     title={`${t.name} · ${fr(t.start_date)} → ${fr(t.end_date)} · ${t.duration} j${t.critical ? " · critique" : ` · marge ${t.slack} j`}`}>
+                     title={`${t.name} · ${fr(t.start_date)} → ${fr(t.end_date)} · ${t.duration} d${t.critical ? " · crítica" : ` · folga ${t.slack} d`}`}>
                   {t.progress > 0 && <div className="h-full bg-emerald-400/70" style={{ width: `${Math.min(100, t.progress)}%` }} />}
                 </div>
                 <span className="absolute top-0 text-[10px] text-muted-foreground ps-1 whitespace-nowrap" style={{ left: `${Math.min(left + width, 92)}%` }}>

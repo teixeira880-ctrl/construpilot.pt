@@ -606,7 +606,7 @@ export default function CeoAgentPanel() {
             {copyPreview.kind === "video" && (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">
-                  {copyPreview.payload?.duration_seconds}s · Ambiance : {copyPreview.payload?.music_mood || "—"}
+                  {copyPreview.payload?.duration_seconds}s · Ambiente: {copyPreview.payload?.music_mood || "—"}
                 </p>
                 {(copyPreview.payload?.storyboard || []).some((f) => f.url) && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

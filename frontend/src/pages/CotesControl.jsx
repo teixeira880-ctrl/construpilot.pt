@@ -117,7 +117,7 @@ export default function CotesControl() {
     try {
       const data = await runCotesJob(`/takeoffs/${plan.plan_id}/cotes/check-all`, { tol_pct: 2, tol_cm: 3 });
       const s = data.summary;
-      if (s) toast.success(`${s.pages} página(s) controlada(s) — ${s.total} cotes, ${s.ko} incoerência(s)` +
+      if (s) toast.success(`${s.pages} página(s) controlada(s) — ${s.total} cotas, ${s.ko} incoerência(s)` +
         (data.errors?.length ? ` · ${data.errors.length} página(s) sem cota legível` : ""), { duration: 8000 });
       else toast.error(data.errors?.[0]?.error || "Nenhuma cota legível");
       await loadPlan(plan.plan_id);
@@ -133,7 +133,7 @@ export default function CotesControl() {
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "Erro do servidor");
       const a = document.createElement("a");
       a.href = URL.createObjectURL(await res.blob());
-      a.download = `controle-cotes-global.pdf`;
+      a.download = `controlo-cotas-global.pdf`;
       a.click();
       toast.success("Relatório PDF global transferido");
     } catch (e) { toast.error(e.message); }
@@ -198,7 +198,7 @@ export default function CotesControl() {
         )}
         {report && <span className={`text-sm font-medium ${VERDICT[report.summary.verdict][1]}`} data-testid="cotes-control-verdict">{VERDICT[report.summary.verdict][0]}</span>}
         {report?.under_review && <span className="text-xs px-2 py-0.5 rounded-sm bg-orange-500/15 text-orange-700 border border-orange-400" data-testid="cotes-under-review">A rever · {report.open_issues} ocorrência(s) em aberto</span>}
-        {report && <ReportIssueButton plan={plan} pageIndex={pageIndex} target={interiorId || (highlight ? `Cote n° ${highlight.index}` : "")} onReported={() => { setIssueKey((k) => k + 1); loadPlan(plan.plan_id); }} />}
+        {report && <ReportIssueButton plan={plan} pageIndex={pageIndex} target={interiorId || (highlight ? `Cota n.º ${highlight.index}` : "")} onReported={() => { setIssueKey((k) => k + 1); loadPlan(plan.plan_id); }} />}
         {report?.interior && (
           <div className="inline-flex rounded-sm border overflow-hidden text-xs" data-testid="cotes-view-mode">
             <button className={`px-2.5 py-1 transition-colors ${mode === "cotes" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`} onClick={() => setMode("cotes")} data-testid="cotes-mode-cotes">Cotas</button>

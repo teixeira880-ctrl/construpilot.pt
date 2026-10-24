@@ -352,7 +352,7 @@ def _default_intro_plain(opp: dict, company: str) -> str:
     low, high = opp.get("my_lot_low") or 0, opp.get("my_lot_high") or 0
     price = ""
     if high:
-        price = (f'\n\nA título indicativo, os nossos serviços num projeto desta natureza situam-se geralmente entre {_eur_fr(low)} et {_eur_fr(high)} (estimativa preliminar, a afinar em conjunto consoante as suas necessidades).')
+        price = (f'\n\nA título indicativo, os nossos serviços num projeto desta natureza situam-se geralmente entre {_eur_fr(low)} e {_eur_fr(high)} (estimativa preliminar, a afinar em conjunto consoante as suas necessidades).')
     return (
         f"Olá,\n\nVerificámos que foi recentemente emitida uma licença de obras a {opp.get('commune')} para um projeto de {opp.get('batiment')}{surf_txt}.\n\nEmpresa de construção local, a {company} realiza este tipo de obras na sua zona. Teríamos todo o gosto em acompanhá-lo neste projeto — do estudo à orçamentação detalhada, até à execução." + price)
 
@@ -404,7 +404,7 @@ def _build_prospection_pdf(*, branding: dict | None, opp: dict, public_url: str,
     el.append(Paragraph(f"À atenção do dono de obra<br/>{opp.get('commune')} ({opp.get('cp')})",
                         body))
     el.append(Spacer(1, 6))
-    el.append(Paragraph(f"{opp.get('city') or opp.get('commune')}, le {today}", small))
+    el.append(Paragraph(f"{opp.get('city') or opp.get('commune')}, {today}", small))
     el.append(Spacer(1, 14))
 
     el.append(Paragraph(f"Assunto: o seu projeto «{opp.get('batiment')} »", h1))
@@ -871,7 +871,7 @@ async def public_prospection_lead(token: str, body: ProspectLeadIn, request: Req
         "name": body.name, "email": str(body.email).lower(), "phone": body.phone,
         "address": snap.get("commune") or "", "postal_code": snap.get("cp") or "",
         "description": (body.message or "").strip()
-        or f"Prospect Radar Chantiers — projet « {snap.get('batiment')}» para {snap.get('commune')}.",
+        or f"Prospeção Radar de obras — projeto « {snap.get('batiment')} » para {snap.get('commune')}.",
         "budget": None, "availability": "",
         "source": "radar_prospection", "radar_token": token, "radar_opp_id": rec.get("opp_id"),
         "project_snapshot": None,

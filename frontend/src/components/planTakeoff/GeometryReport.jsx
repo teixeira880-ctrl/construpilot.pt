@@ -34,7 +34,7 @@ function Anomaly({ a, onFocus }) {
           {a.explication && <p><b>Explication :</b> {a.explication}</p>}
           {a.hypotheses?.length > 0 && <p><b>Hipóteses:</b> {a.hypotheses.join(" · ")}</p>}
           {a.action && <p><b>Ação recomendada:</b> {a.action}</p>}
-          <p className="text-muted-foreground">Confiança {a.confiance} · Passage 2 : {v.verdict || "—"}{v.recalcul ? ` — ${v.recalcul}` : ""}</p>
+          <p className="text-muted-foreground">Confiança {a.confiance} · 2.ª passagem: {v.verdict || "—"}{v.recalcul ? ` — ${v.recalcul}` : ""}</p>
           {a.adversarial && (
             <p className={`border-l-2 pl-1.5 ${a.adversarial.verdict === "MAINTENUE" ? "border-red-400" : a.adversarial.verdict === "REJETÉE" ? "border-emerald-500" : "border-yellow-500"}`} data-testid={`geo-anomaly-${a.numero}-adversarial`}>
               <b>Controlo adversarial: {a.adversarial.verdict}</b>{a.niveau_initial && a.niveau_initial !== a.niveau ? ` (nível ${a.niveau_initial} → ${a.niveau})` : ""}
@@ -42,7 +42,7 @@ function Anomaly({ a, onFocus }) {
             </p>
           )}
           {a.cotes_index?.length > 0 && onFocus && (
-            <p>Cotes : {a.cotes_index.map((i) => (
+            <p>Cotas: {a.cotes_index.map((i) => (
               <button key={i} className="underline mr-1" onClick={() => onFocus(i)} data-testid={`geo-anomaly-${a.numero}-cote-${i}`}>#{i}</button>
             ))}</p>
           )}
@@ -145,7 +145,7 @@ export function StudiesPanel({ plan, pageIndex, study, onUpdated }) {
         {  credentials: "include" });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "Erro do servidor");
       const url = URL.createObjectURL(await res.blob());
-      const a = document.createElement("a"); a.href = url; a.download = `analyse-openai-p${pageIndex + 1}.pdf`; a.click();
+      const a = document.createElement("a"); a.href = url; a.download = `analise-openai-p${pageIndex + 1}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch (e) { toast.error(e.message); }
   };
@@ -161,7 +161,7 @@ export function StudiesPanel({ plan, pageIndex, study, onUpdated }) {
         </select>
         <Button size="sm" className="flex-1 justify-start gap-2 rounded-sm" disabled={busy} onClick={run} data-testid="studies-run-btn">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-          {busy ? `Analyse OpenAI en cours (${secs} s)…` : a ? "Relançar a análise OpenAI" : "Lançar a análise OpenAI (2 passagens)"}
+          {busy ? `Análise OpenAI em curso (${secs} s)…` : a ? "Relançar a análise OpenAI" : "Lançar a análise OpenAI (2 passagens)"}
         </Button>
         {a && <Button size="sm" variant="outline" className="gap-1 rounded-sm" onClick={pdf} data-testid="studies-pdf-btn"><FileDown className="h-3.5 w-3.5" /> PDF</Button>}
       </div>
@@ -210,7 +210,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
     <div className="grid gap-2 border-t pt-2" data-testid="geo-report">
       <Button size="sm" variant={geo ? "outline" : "default"} className="w-full justify-start gap-2 rounded-sm" disabled={busy} onClick={run} data-testid="geo-run-btn">
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-        {busy ? `Double lecture IA en cours (${secs} s)…` : geo ? "Repetir a análise geométrica" : "Análise geométrica completa (dupla leitura IA)"}
+        {busy ? `Dupla leitura IA em curso (${secs} s)…` : geo ? "Repetir a análise geométrica" : "Análise geométrica completa (dupla leitura IA)"}
       </Button>
       {!geo && <p className="text-[11px] text-muted-foreground">Reconstrução geométrica: fecho das cadeias (espaços + paredes), controlos cruzados, fachadas opostas, alinhamentos, hipóteses de correção, matriz de coerência — duas passagens independentes.</p>}
       {geo && (
@@ -245,7 +245,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
                   <p className="text-[11px] font-medium">Fecho das cadeias</p>
                   {geo.fermetures.map((f, i) => (
                     <div key={i} className="text-[11px] border rounded-sm px-1.5 py-1 num">
-                      <b>{f.direction}</b> {f.chaine} = {Number(f.cote_calculee_m).toFixed(2)} vs plan {Number(f.cote_plan_m).toFixed(2)} → <b>{cm(f.erreur_m)}</b> · {f.statut}
+                      <b>{f.direction}</b> {f.chaine} = {Number(f.cote_calculee_m).toFixed(2)} vs planta {Number(f.cote_plan_m).toFixed(2)} → <b>{cm(f.erreur_m)}</b> · {f.statut}
                     </div>
                   ))}
                 </div>
@@ -268,7 +268,7 @@ export default function GeometryReport({ plan, pageIndex, geo, onUpdated, onFocu
                 {geo.anomalies.map((a) => <Anomaly key={a.numero} a={a} onFocus={onFocusIndex} />)}
               </div>
               {geo.synthese && <p className="text-[11px] text-muted-foreground" data-testid="geo-synthesis">{geo.synthese}</p>}
-              {geo.double_lecture?.conclusion && <p className="text-[11px] text-muted-foreground"><b>Passage 2 :</b> {geo.double_lecture.conclusion}</p>}
+              {geo.double_lecture?.conclusion && <p className="text-[11px] text-muted-foreground"><b>2.ª passagem:</b> {geo.double_lecture.conclusion}</p>}
             </>
           )}
           <Narrative plan={plan} pageIndex={pageIndex} geo={geo} onUpdated={onUpdated} />
