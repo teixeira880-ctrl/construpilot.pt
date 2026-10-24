@@ -8,7 +8,7 @@
     endDate: "2026-11-13T00:00:00",
     delayMs: 1200,
     storageKey: "cp_websummit_2026_seen",
-    colors: { primary: "#F97316", dark: "#0F172A", accentPT: "#046A38", accentFR: "#1E3A8A" },
+    colors: { primary: "#875133", dark: "#203b2d", accentPT: "#285541", accentFR: "#285541" },
     texts: {
       pt: {
         badge: "WEB SUMMIT 2026 · LISBOA",
@@ -53,7 +53,7 @@
   var c = CONFIG.colors;
   var css =
     "#cp-ws-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px;" +
-    "background:rgba(15,23,42,.6);backdrop-filter:blur(4px);opacity:0;transition:opacity .35s ease;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}" +
+    "background:rgba(32,59,45,.6);backdrop-filter:blur(4px);opacity:0;transition:opacity .35s ease;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}" +
     "#cp-ws-overlay.cp-show{opacity:1}" +
     "#cp-ws-modal{position:relative;width:100%;max-width:480px;background:#fff;border-radius:20px;overflow:hidden;" +
     "box-shadow:0 25px 60px rgba(0,0,0,.35);transform:translateY(24px) scale(.97);transition:transform .4s cubic-bezier(.2,.9,.3,1.2)}" +
@@ -62,17 +62,17 @@
     "#cp-ws-head:after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:" + c.primary + "}" +
     "#cp-ws-badge{display:inline-block;background:" + c.primary + ";color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;" +
     "padding:5px 10px;border-radius:999px;margin-bottom:14px;animation:cpPulse 2s infinite}" +
-    "@keyframes cpPulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.6)}50%{box-shadow:0 0 0 8px rgba(249,115,22,0)}}" +
+    "@keyframes cpPulse{0%,100%{box-shadow:0 0 0 0 rgba(135,81,51,.55)}50%{box-shadow:0 0 0 8px rgba(135,81,51,0)}}" +
     "#cp-ws-title{margin:0 0 6px;font-size:26px;line-height:1.15;font-weight:800}" +
     "#cp-ws-sub{margin:0;font-size:15px;opacity:.9}" +
     "#cp-ws-body{padding:22px 24px 24px;color:#334155;font-size:15px;line-height:1.55}" +
     "#cp-ws-body p{margin:0 0 16px}" +
-    ".cp-ws-info{display:flex;flex-direction:column;gap:6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;margin-bottom:20px;font-weight:600;color:" + c.dark + "}" +
+    ".cp-ws-info{display:flex;flex-direction:column;gap:6px;background:#fbf7f0;border:1px solid #eadfce;border-radius:12px;padding:12px 14px;margin-bottom:20px;font-weight:600;color:" + c.dark + "}" +
     ".cp-ws-btns{display:flex;flex-wrap:wrap;gap:10px}" +
     ".cp-ws-btn{flex:1 1 180px;text-align:center;text-decoration:none;font-weight:700;font-size:15px;padding:13px 16px;border-radius:12px;cursor:pointer;border:0;transition:transform .15s,filter .15s}" +
     ".cp-ws-btn:hover{transform:translateY(-1px);filter:brightness(1.05)}" +
     ".cp-ws-primary{background:" + c.primary + ";color:#fff}" +
-    ".cp-ws-secondary{background:#fff;color:" + c.dark + ";border:2px solid #E2E8F0}" +
+    ".cp-ws-secondary{background:#fbf7f0;color:#285541;border:2px solid #285541}" +
     "#cp-ws-close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:0;cursor:pointer;" +
     "background:rgba(255,255,255,.15);color:#fff;font-size:20px;line-height:34px;z-index:2}" +
     "#cp-ws-close:hover{background:rgba(255,255,255,.3)}" +
