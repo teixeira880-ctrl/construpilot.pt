@@ -26,6 +26,10 @@ HUMIDAS = ("casa_de_banho",)
 T_INT = {"sala": 20, "quarto": 20, "cozinha": 20, "casa_de_banho": 22, "corredor": 18, "escritorio": 20, "lavandaria": 18, "arrumos": 15, "outro": 20}
 
 
+def _n(x, d=1) -> str:
+    return f"{x:.{d}f}".replace(".", ",")
+
+
 def q_de_tf(tf, ti):
     return 8.92 * max(tf - ti, 0) ** 1.1
 
@@ -132,23 +136,23 @@ def calcular(params: dict) -> dict:
         tot["caudal"] += row["caudal_lh"]; tot["tubo"] += row["tubo_m"]; tot["circuitos"] += n; tot["phi"] += row["q_ef"] * row["A_em"]
         tot["volume_l"] += math.pi * DI ** 2 / 4 * row["tubo_m"] * 1000
         ctl.append({"ref": f"{row['nome']} — temperatura de superfície (NP EN 1264-2)", "exigencia": f"θF ≤ {row['tf_lim']:g} °C",
-                    "valor": f"{row['tf']:.1f} °C ({row['q']:.0f} W/m² pedidos, {row['qmax']:.0f} máx.)",
+                    "valor": f"{_n(row['tf'])} °C ({row['q']:.0f} W/m² pedidos, {row['qmax']:.0f} máx.)",
                     "ok": row["apoio_w"] <= 50, "note": (f"apoio {row['apoio_w']:.0f} W (p. ex. toalheiro ou radiador)" if row["apoio_w"] > 1 else None)})
         if row["R_rev"] > 0.15:
-            ctl.append({"ref": f"{row['nome']} — revestimento", "exigencia": "R revestimento ≤ 0,15 m².°C/W", "valor": f"{row['R_rev']:.2f}", "ok": False})
+            ctl.append({"ref": f"{row['nome']} — revestimento", "exigencia": "R revestimento ≤ 0,15 m².°C/W", "valor": _n(row['R_rev'], 2), "ok": False})
         rmin = R_ISOLANTE_MIN.get(row["local_inferior"], 1.25)
         if row["r_isolante"] is not None:
             ctl.append({"ref": f"{row['nome']} — isolante sob o piso (NP EN 1264-4)", "exigencia": f"R ≥ {rmin:g} m².°C/W (local inferior: {row['local_inferior']})",
-                        "valor": f"{float(row['r_isolante']):.2f}", "ok": float(row["r_isolante"]) >= rmin})
+                        "valor": _n(float(row['r_isolante']), 2), "ok": float(row["r_isolante"]) >= rmin})
         if row["area_m2"] > 40 or (row["comprimento_max_m"] and float(row["comprimento_max_m"]) > 8):
             ctl.append({"ref": f"{row['nome']} — juntas de dilatação", "exigencia": "obrigatórias acima de 40 m² ou de 8 m de comprimento (NP EN 1264-4)",
                         "valor": f"{row['area_m2']:.0f} m²", "ok": None, "note": "prever as juntas em planta; tubos atravessam só em manga"})
     ctl.insert(0, {"ref": "Temperatura de ida", "exigencia": f"θ ida ≤ {tv_max:g} °C (bomba de calor; NP EN 1264 admite até 55 °C)",
-                   "valor": f"{tv:.1f} °C (divisão dimensionante: {crit['nome']})", "ok": tv <= tv_max})
+                   "valor": f"{_n(tv)} °C (divisão dimensionante: {crit['nome']})", "ok": tv <= tv_max})
     ctl.append({"ref": "Tubo PE-X / PE-RT com barreira de oxigénio (ISO 10508)", "exigencia": "classe de aplicação 4 (piso radiante, ≤ 60 °C de serviço)",
-                "valor": f"ida {tv:.1f} °C", "ok": tv <= 60})
+                "valor": f"ida {_n(tv)} °C", "ok": tv <= 60})
     dpmax = max(r["dp_kpa"] for r in rows)
-    ctl.append({"ref": "Perdas de carga por circuito", "exigencia": "≤ 25 kPa no circuito mais desfavorável", "valor": f"{dpmax:.1f} kPa", "ok": dpmax <= 25})
+    ctl.append({"ref": "Perdas de carga por circuito", "exigencia": "≤ 25 kPa no circuito mais desfavorável", "valor": f"{_n(dpmax)} kPa", "ok": dpmax <= 25})
     n_col = max(1, math.ceil(tot["circuitos"] / 12))
     if any(r["r_isolante"] is None for r in rows):
         hyp.append("isolante sob o piso não indicado: respeitar o R mínimo da NP EN 1264-4 (0,75 sobre local aquecido, 1,25 sobre o solo / local não aquecido, "
@@ -172,12 +176,12 @@ def blocos(r: dict, pref: str = "") -> list:
     from . import notes
     W = notes.W
     return [("h2", f"{pref}Piso radiante (NP EN 1264)"),
-            ("p", f"Ida {r['theta_ida']:.1f} °C / retorno {r['theta_retorno_crit']:.1f} °C (σ {r['sigma']:g} K na divisão dimensionante), "
+            ("p", f"Ida {_n(r['theta_ida'])} °C / retorno {_n(r['theta_retorno_crit'])} °C (σ {_n(r['sigma'], 0)} K na divisão dimensionante), "
                   f"{r['circuitos']} circuitos, {r['coletores']} coletor(es), {r['tubo_total_m']:.0f} m de tubo 16×2, caudal {r['caudal_total_lh']:.0f} L/h, "
                   f"volume de água {r['volume_agua_l']:.0f} L."),
             ("table", ["Divisão", "Φ W", "W/m²", "θF °C", "Passo cm", "σ K", "L/h", "Circ.", "Δp kPa"],
-             [[x["nome"], f"{x['phi_w']:.0f}", f"{x['q']:.0f}", f"{x['tf']:.1f}", f"{x['passo']}", f"{x['sigma']:.1f}", f"{x['caudal_lh']:.0f}",
-               f"{x['circuitos']}", f"{x['dp_kpa']:.1f}"] for x in r["divisoes"]],
+             [[x["nome"], f"{x['phi_w']:.0f}", f"{x['q']:.0f}", _n(x['tf']), f"{x['passo']}", _n(x['sigma']), f"{x['caudal_lh']:.0f}",
+               f"{x['circuitos']}", _n(x['dp_kpa'])] for x in r["divisoes"]],
              [38 * W, 16 * W, 16 * W, 16 * W, 18 * W, 14 * W, 18 * W, 14 * W, 18 * W]),
             ("controls", _conv(r["controles"]))]
 

@@ -28,7 +28,7 @@ from engines.assistant_collaboration import COLLABORATION_INSTRUCTIONS, continui
 from engines.assistant_workspace import EXTRA_TOOLS, WORK_INSTRUCTIONS, validate_args, calculate, read_pages, inspect_region, style_preferences
 from engines.platform_agent_tools import PLATFORM_TOOLS, PLATFORM_TOOL_NAMES, PLATFORM_INSTRUCTIONS, execute_platform_tool
 from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS, QUOTE_TOOLS
-from engines.assistant_files import FILE_INSTRUCTIONS, FILE_TOOLS, create_file, create_schema, owned_artifact, public_artifact
+from engines.assistant_files import FILE_INSTRUCTIONS, FILE_TOOLS, create_file, create_schema, edit_image, image_requested, owned_artifact, public_artifact
 from engines.section_schema import SCHEMA_TOOL
 from engines.assistant_bet_tool import BET_TOOLS, BET_TOOL_NAMES, BET_INSTRUCTIONS, run_bet_tool
 from engines.assistant_autorizacao_tool import (
@@ -179,7 +179,7 @@ INDIVIDUAL_TOOL_NAMES = {"start_construction_study", "read_construction_study", 
 
 def tools_for(user: dict) -> list:
     if account_type(user) == "individual":
-        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL]
+        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + CALC_TOOLS + WINDOW_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
     return [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS
@@ -283,6 +283,16 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         return await execute_platform_tool(name, args, user, conv, db)
     if name == "create_downloadable_file":
         return await create_file(args, user, conv)
+    if name == "edit_image_from_photo":
+        if not image_requested(conv.get("_user_request_text", "")):
+            return {"ok": False, "error": "É necessário um pedido explícito para alterar/retocar uma fotografia."}
+        try:
+            doc = await _allowed_doc(args["document_id"], uid)
+        except PermissionError:
+            return {"ok": False, "error": "Imagem anexada não encontrada nesta conversa."}
+        if not (doc.get("mime") or "").startswith("image/") or not doc.get("data_b64"):
+            return {"ok": False, "error": "O documento indicado não é uma imagem editável."}
+        return await edit_image(args, user, conv, base64.b64decode(doc["data_b64"]))
     if name == "draw_section_schema":
         return await create_schema(args, user, conv)
     if name in BET_TOOL_NAMES:
@@ -1185,7 +1195,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_INSTRUCTIONS if account_type(user) == "professional" else "") + (BET_CORE_INSTRUCTIONS if account_type(user) == "professional" else "") + (EDIF_INSTRUCTIONS if account_type(user) == "professional" else "") + (CALC_INSTRUCTIONS if account_type(user) == "professional" else "") + (WINDOW_INSTRUCTIONS if account_type(user) == "professional" else "") + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_INSTRUCTIONS if account_type(user) == "professional" else "") + (BET_CORE_INSTRUCTIONS if account_type(user) == "professional" else "") + (EDIF_INSTRUCTIONS if account_type(user) == "professional" else "") + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         instructions += QUOTE_INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. PRIMEIRO propõe numa frase o âmbito (plantas em causa, margem, nome do projeto) e PEDE confirmação; só depois chama run_construpilot_agent. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
@@ -1223,6 +1233,23 @@ def _fill_optional_tool_args(name: str, args: dict) -> None:
                 line.setdefault("unit_price", None)
                 line.setdefault("vat_rate", None)
                 line.setdefault("lot", "")
+
+
+def _error_ref() -> str:
+    import secrets as _secrets
+    return "ERR-" + _secrets.token_hex(2).upper()
+
+
+def _error_message(ref: str) -> str:
+    return (f"Erro técnico (ref. {ref}) — a equipa foi avisada. Dá esta referência ao utilizador e NÃO inventes nenhuma causa "
+            "(nem «PDF digitalizado», nem «limite da conta»).")
+
+
+ERROR_HONESTY = (
+    "\nHONESTIDADE DAS FERRAMENTAS: se uma ferramenta devolver ok=false, cita ao utilizador a sua mensagem `error` TAL COMO ESTÁ "
+    "e propõe a ação concreta correspondente (normalmente: anexar ou voltar a anexar o PDF certo à mensagem, ou confirmar/corrigir "
+    "um valor). NUNCA INVENTES uma causa técnica, um módulo «não ativado», um menu «Módulos» / «Assinaturas», nem um procedimento de "
+    "«ticket»: não existem no ConstruPilot. Se um anexo não for encontrado, é um problema de identificador ou de peça em falta, não de assinatura.\n")
 
 
 async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: dict, available: list, cache: dict, sources: list, actions: list, status_map: dict):
@@ -1263,13 +1290,21 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
             await asyncio.gather(task, return_exceptions=True)
         raise
     except PermissionError:
-        result = {"ok": False, "error": "Recurso inacessível para esta conta"}
+        result = {"ok": False, "error": "Recurso inacessível: o documento referido não pertence a esta conta ou já não existe. Pede ao utilizador para (re)anexar o ficheiro à mensagem (não é um problema de assinatura)."}
     except HTTPException as exc:
         result = {"ok": False, "error": str(exc.detail)}
     except Exception:
         # No raw provider exception, document text or credentials in UI.
-        logger.exception("Assistant tool '%s' failed (args keys=%s)", name, list(args.keys()) if isinstance(args, dict) else type(args).__name__)
-        result = {"ok": False, "error": "A ferramenta não foi concluída. Verificar os argumentos e as peças disponíveis; não anunciar sucesso."}
+        ref = _error_ref()
+        logger.exception("Assistant tool '%s' failed [%s] (args keys=%s)", name, ref, list(args.keys()) if isinstance(args, dict) else type(args).__name__)
+        try:
+            import traceback as _tb
+            await db.tool_errors.insert_one({"ref": ref, "tool": name, "user_id": user.get("user_id"),
+                "conversation_id": conv.get("conversation_id"), "args_keys": list(args.keys()) if isinstance(args, dict) else [],
+                "traceback": _tb.format_exc()[:8000], "created_at": datetime.now(timezone.utc).isoformat()})
+        except Exception:  # noqa: BLE001
+            logger.warning("tool_errors logging failed", exc_info=True)
+        result = {"ok": False, "error": _error_message(ref)}
     await db.assistant_actions.insert_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"],
         "tool": name, "ok": result.get("ok"), "preview": result.get("preview", False), "created_at": _now()})
     action = {"tool": name, "args": args, "result": result}
@@ -1471,6 +1506,8 @@ TOOL_STATUS_PT.update(CALC_STATUS)
 TOOL_STATUS.update(EDIF_STATUS)
 TOOL_STATUS.update(CALC_STATUS)
 TOOL_STATUS_PT.update(WINDOW_STATUS)
+TOOL_STATUS_PT.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")
+TOOL_STATUS.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")
 TOOL_STATUS.update(WINDOW_STATUS)
 
 
