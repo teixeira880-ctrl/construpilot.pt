@@ -1,6 +1,6 @@
 """Identidade visual portuguesa dos documentos ConstruPilot.pt (PDF reportlab).
 
-Paleta azulejo: fusão azul-petróleo / verde-petróleo sobre branco-cal, com cobre — a mesma do site (frontend/src/styles/portugal.css).
+Paleta azulejo (azul cobalto sobre branco-cal), telha e ocre — a mesma do site (frontend/src/styles/portugal.css).
 `faixa_azulejo(cv, x, y, w, h)` desenha uma faixa de azulejos de padrão em vetorial (sem imagem), para cabeçalhos e
 rodapés; `canto_azulejo` desenha um painel de azulejos esbatido num canto da página. Sem dependências além do reportlab.
 """
@@ -8,31 +8,28 @@ from __future__ import annotations
 
 from reportlab.lib import colors
 
-COBALTO = colors.HexColor("#1c5778")
-COBALTO_ESCURO = colors.HexColor("#15435d")
-COBALTO_NOITE = colors.HexColor("#0f3044")
+COBALTO = colors.HexColor("#1f4f96")
+COBALTO_ESCURO = colors.HexColor("#163d78")
+COBALTO_NOITE = colors.HexColor("#0f2b57")
 CAL = colors.HexColor("#f8f6f0")
 TELHA = colors.HexColor("#a8462a")
-OCRE = colors.HexColor("#b8612f")
+OCRE = colors.HexColor("#d39a2c")
 GRANITO = colors.HexColor("#1c2a3b")
-VERDE = colors.HexColor("#1f6650")          # verde-petróleo (fusão azul / verde)
-COBRE = colors.HexColor("#b8612f")
-COBALTO_CLARO = colors.HexColor("#e4eff2")   # fundo de cabeçalhos de quadro claros
-COBALTO_LINHA = colors.HexColor("#f2f7f6")   # linhas alternadas dos quadros
+COBALTO_CLARO = colors.HexColor("#e6edf7")   # fundo de cabeçalhos de quadro claros
+COBALTO_LINHA = colors.HexColor("#f3f6fb")   # linhas alternadas dos quadros
 
 
-def _azulejo(cv, x: float, y: float, s: float, cor=COBALTO, fundo=CAL, ocre=OCRE, cor2=None) -> None:
+def _azulejo(cv, x: float, y: float, s: float, cor=COBALTO, fundo=CAL, ocre=OCRE) -> None:
     """Um azulejo de lado s com canto inferior esquerdo em (x, y): rosáceas de canto + flor central de 4 pétalas."""
     cv.saveState()
     p = cv.beginPath(); p.rect(x, y, s, s); cv.clipPath(p, stroke=0, fill=0)
     cv.setFillColor(fundo); cv.rect(x, y, s, s, stroke=0, fill=1)
     k = s / 60.0
-    c2 = cor2 or cor
     for cx, cy in ((x, y), (x + s, y), (x, y + s), (x + s, y + s)):
-        cv.setFillColor(c2); cv.circle(cx, cy, 13 * k, stroke=0, fill=1)
+        cv.setFillColor(cor); cv.circle(cx, cy, 13 * k, stroke=0, fill=1)
         cv.setFillColor(fundo); cv.circle(cx, cy, 8 * k, stroke=0, fill=1)
-        cv.setFillColor(ocre); cv.circle(cx, cy, 4 * k, stroke=0, fill=1)
-    cv.setStrokeColor(c2); cv.setLineWidth(max(0.35, 1.8 * k))
+        cv.setFillColor(cor); cv.circle(cx, cy, 4 * k, stroke=0, fill=1)
+    cv.setStrokeColor(cor); cv.setLineWidth(max(0.35, 1.8 * k))
     for (x0, y0, xc, yc, x1, y1) in ((13, 0, 30, 17, 47, 0), (13, 60, 30, 43, 47, 60), (0, 13, 17, 30, 0, 47), (60, 13, 43, 30, 60, 47)):
         q = cv.beginPath(); q.moveTo(x + x0 * k, y + y0 * k)
         q.curveTo(x + (x0 + 2 * (xc - x0) / 3) * k, y + (y0 + 2 * (yc - y0) / 3) * k,
@@ -55,7 +52,7 @@ def faixa_azulejo(cv, x: float, y: float, w: float, h: float, cor=COBALTO) -> No
     p = cv.beginPath(); p.rect(x, y, w, h); cv.clipPath(p, stroke=0, fill=0)
     n = int(w // h) + 1
     for i in range(n):
-        _azulejo(cv, x + i * h, y, h, cor, cor2=VERDE)
+        _azulejo(cv, x + i * h, y, h, cor)
     cv.setStrokeColor(cor); cv.setLineWidth(0.3)
     cv.line(x, y, x + w, y); cv.line(x, y + h, x + w, y + h)
     cv.restoreState()
@@ -74,9 +71,9 @@ def canto_azulejo(cv, x: float, y: float, w: float, h: float, s: float = 18, int
     p = cv.beginPath(); p.rect(x, y, w, h); cv.clipPath(p, stroke=0, fill=0)
     for i in range(int(w // s) + 1):
         for j in range(int(h // s) + 1):
-            _azulejo(cv, x + i * s, y + j * s, s, cor, colors.white, ocre, _claro(VERDE, k))
+            _azulejo(cv, x + i * s, y + j * s, s, cor, colors.white, ocre)
     cv.restoreState()
 
 
-__all__ = ["VERDE", "COBRE", "COBALTO", "COBALTO_ESCURO", "COBALTO_NOITE", "CAL", "TELHA", "OCRE", "GRANITO", "COBALTO_CLARO", "COBALTO_LINHA",
+__all__ = ["COBALTO", "COBALTO_ESCURO", "COBALTO_NOITE", "CAL", "TELHA", "OCRE", "GRANITO", "COBALTO_CLARO", "COBALTO_LINHA",
            "faixa_azulejo", "canto_azulejo"]

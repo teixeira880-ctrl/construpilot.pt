@@ -164,7 +164,7 @@ def build_document_pdf(title, body, images=()):
     from reportlab.pdfbase.pdfmetrics import registerFontFamily
     registerFontFamily("DV", normal="DV", bold="DVB", italic="DV", boldItalic="DVB")
     font, bold, head = "DV", "DVB", "TT"
-    green = colors.HexColor("#15435d")  # cobalto (identidade .pt)
+    green = colors.HexColor("#163d78")  # cobalto (identidade .pt)
     ink = colors.HexColor("#1f2933")
     text_style = ParagraphStyle("body", fontName=font, fontSize=9.6, leading=14, spaceAfter=4, textColor=ink)
     cell = ParagraphStyle("cell", parent=text_style, fontSize=8.4, leading=11, spaceAfter=0)
@@ -173,8 +173,8 @@ def build_document_pdf(title, body, images=()):
     h_styles = {1: ParagraphStyle("h1", parent=text_style, fontName=head, fontSize=15, leading=20, spaceBefore=12, spaceAfter=5, textColor=green),
                 2: ParagraphStyle("h2", parent=text_style, fontName=head, fontSize=12.5, leading=17, spaceBefore=9, spaceAfter=4, textColor=ink),
                 3: ParagraphStyle("h3", parent=text_style, fontName=bold, fontSize=10.5, leading=15, spaceBefore=6, spaceAfter=3)}
-    mono = ParagraphStyle("mono", fontName="Courier", fontSize=8.2, leading=10.4, textColor=ink, backColor=colors.HexColor("#f2f7f6"),
-                          borderColor=colors.HexColor("#d2e3e6"), borderWidth=0.6, borderPadding=6, spaceBefore=4, spaceAfter=8)
+    mono = ParagraphStyle("mono", fontName="Courier", fontSize=8.2, leading=10.4, textColor=ink, backColor=colors.HexColor("#f3f6fb"),
+                          borderColor=colors.HexColor("#d3def0"), borderWidth=0.6, borderPadding=6, spaceBefore=4, spaceAfter=8)
     logo_path = Path(__file__).resolve().parents[2] / "frontend" / "public" / "construpilot-icon.png"
     brand = Paragraph("Assistente de Obra <font size=10 color='#6b7280'>· ConstruPilot</font>", ParagraphStyle("b", parent=title_style, fontSize=16, spaceAfter=0))
     if logo_path.exists():
@@ -203,9 +203,9 @@ def build_document_pdf(title, body, images=()):
             data = [[Paragraph(_inline_md(_esc(_clean(c, bold if ri == 0 else font))), cellh if ri == 0 else cell) for c in r] for ri, r in enumerate(rows)]
             t = Table(data, colWidths=cw, repeatRows=1)
             st = [("BACKGROUND", (0, 0), (-1, 0), green), ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                  ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#d2e3e6")), ("TOPPADDING", (0, 0), (-1, -1), 3),
+                  ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#d3def0")), ("TOPPADDING", (0, 0), (-1, -1), 3),
                   ("BOTTOMPADDING", (0, 0), (-1, -1), 3), ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)]
-            st += [("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f2f7f6")) for i in range(2, len(rows), 2)]
+            st += [("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f3f6fb")) for i in range(2, len(rows), 2)]
             t.setStyle(TableStyle(st))
             story += [Spacer(1, 3), t, Spacer(1, 8)]
     for data in images:

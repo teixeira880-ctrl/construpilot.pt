@@ -12,8 +12,8 @@ export function ProductPreview() {
         <svg viewBox="0 0 460 260" className="landing-floorplan" role="img" aria-label="Ilustração de uma planta com divisões e medidas a controlar">
           <defs><pattern id="landing-plan-grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#d5c9b4" strokeWidth=".6" /></pattern></defs>
           <rect width="460" height="260" fill="url(#landing-plan-grid)" />
-          <path d="M62 42H386V216H62Z" fill="#f6eee1" stroke="#1a5670" strokeWidth="7" />
-          <path d="M268 42V146H386M62 146H172V216M268 146V216" fill="none" stroke="#1a5670" strokeWidth="5" />
+          <path d="M62 42H386V216H62Z" fill="#f6eee1" stroke="#143e76" strokeWidth="7" />
+          <path d="M268 42V146H386M62 146H172V216M268 146V216" fill="none" stroke="#143e76" strokeWidth="5" />
           <path d="M88 43H186M316 43H360M63 164V194" stroke="#c28a60" strokeWidth="8" />
           <path d="M211 146H251M132 146H168M268 171V202" stroke="#f6eee1" strokeWidth="8" />
           <path d="M211 146V109A37 37 0 0 1 248 146M268 201H237A31 31 0 0 1 268 170" fill="none" stroke="#a26a44" strokeWidth="1.2" />

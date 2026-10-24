@@ -107,7 +107,7 @@ def mapa_xlsx(lotes: list[dict], titulo: str) -> bytes:
     ws.append(["N.º", "Designação", "Unid.", "Quantidade", "Preço unitário (€)", "Total (€)"])
     for c in ws[4]:
         c.font = Font(bold=True, color="FFFFFF")
-        c.fill = PatternFill("solid", fgColor="15435d")
+        c.fill = PatternFill("solid", fgColor="163D78")
     total = 0.0
     for lote in lotes:
         ws.append([f"{lote['numero']}", f"{lote['numero']}. {lote['lote']}"])

@@ -101,7 +101,7 @@ def build_g2(case_id: str, project: dict | None = None) -> bytes:
     from . import brand  # noqa: F401 — regista as fontes DV / DVB / TT
     raw = case(case_id, project)
     g, pj = raw["geotech"], raw["project"]
-    h1 = ParagraphStyle("h1", fontName="TT", fontSize=17, leading=21, spaceAfter=6, textColor=colors.HexColor("#15435d"))
+    h1 = ParagraphStyle("h1", fontName="TT", fontSize=17, leading=21, spaceAfter=6, textColor=colors.HexColor("#163D78"))
     h2 = ParagraphStyle("h2", fontName="DVB", fontSize=11, leading=14, spaceBefore=10, spaceAfter=4)
     bd = ParagraphStyle("bd", fontName="DV", fontSize=9.5, leading=13.5)
     sm = ParagraphStyle("sm", fontName="DV", fontSize=8, leading=11, textColor=colors.HexColor("#666666"))
@@ -149,7 +149,7 @@ DEMO_COMPANY = {
     "PT": {"company_name": "Construções Horizonte, Lda.", "contact_line": "Empresa fictícia de demonstração",
            "address": "Rua do Exemplo, 100", "postal_code": "4700-000", "city": "Braga",
            "phone": "+351 253 000 000", "company_email": "geral@construcoes-horizonte.example",
-           "nif": "500 000 000", "alvara": "00000-PUB", "accent_color": "#15435d", "accent2_color": "#b8612f",
+           "nif": "500 000 000", "alvara": "00000-PUB", "accent_color": "#163D78", "accent2_color": "#D39A2C",
            "footer_text": "Construções Horizonte, Lda. — empresa fictícia criada para demonstração do ConstruPilot. Sem valor contratual."},
 }
 

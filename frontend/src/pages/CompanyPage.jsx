@@ -22,12 +22,12 @@ const DOC_COLORS = [
   { key: "vert", name: "Verde construção", hex: "#15803D" },
   { key: "sapin", name: "Vert sapin", hex: "#166534" },
   { key: "olive", name: "Olive", hex: "#4D7C0F" },
-  { key: "ardoise", name: "Ardoise", hex: "#354a53" },
+  { key: "ardoise", name: "Ardoise", hex: "#334155" },
   { key: "bleu", name: "Azul profundo", hex: "#1D4ED8" },
   { key: "sarcelle", name: "Sarcelle", hex: "#0F766E" },
   { key: "brique", name: "Tijolo", hex: "#B45309" },
   { key: "bordeaux", name: "Bordeaux", hex: "#9F1239" },
-  { key: "graphite", name: "Graphite", hex: "#202f36" },
+  { key: "graphite", name: "Graphite", hex: "#1F2937" },
 ];
 
 /** Assombrit une couleur hex (même dérivation que la palette PDF côté backend). */
@@ -181,7 +181,7 @@ export default function CompanyPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-sm border px-2 py-1.5 text-[10px] truncate" style={{ borderColor: form.accent_color, background: "#f5f8fa" }} data-testid="pdf-preview-banner">
+            <div className="rounded-sm border px-2 py-1.5 text-[10px] truncate" style={{ borderColor: form.accent_color, background: "#f5f7fa" }} data-testid="pdf-preview-banner">
               <b>{page.company_name}</b> · {page.contact_line}
             </div>
           )}

@@ -8,8 +8,8 @@
   background:
     radial-gradient(1200px 600px at 15% -10%, rgba(63, 207, 142, 0.18), transparent 60%),
     radial-gradient(900px 500px at 110% 110%, rgba(63, 207, 142, 0.12), transparent 60%),
-    linear-gradient(180deg, #103f53 0%, #1a5670 55%, #103f53 100%);
-  color: #f4f9fb;
+    linear-gradient(180deg, #0b2c58 0%, #143e76 55%, #0b2c58 100%);
+  color: #f4f7fb;
   font-size: 18px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   z-index: 60;
@@ -38,7 +38,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #f4f9fb;
+  color: #f4f7fb;
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -63,7 +63,7 @@
   width: 40px; height: 40px;
   border-radius: 10px;
   background: #faf6ef;
-  color: #1a5670;
+  color: #143e76;
   font-weight: 800;
   font-size: 22px;
 }
@@ -76,7 +76,7 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
-  color: #ecf6fb;
+  color: #ebf3fc;
 }
 @media (min-width: 768px) { .demo-brand-tag { display: inline-flex; } }
 .demo-lang { display: flex; align-items: center; }
@@ -137,7 +137,7 @@
   gap: 8px;
   padding: 12px 18px;
   background: #3fcf8e;
-  color: #092430;
+  color: #061a33;
   font-weight: 700;
   font-size: 16px;
   border-radius: 12px;
@@ -179,7 +179,7 @@
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
-  color: #f4f9fb;
+  color: #f4f7fb;
   font-size: 14px;
   font-weight: 600;
   text-align: center;
@@ -213,14 +213,14 @@
   align-items: center;
   gap: 12px;
   padding: 48px;
-  color: #ecf6fb;
+  color: #ebf3fc;
   font-size: 20px;
 }
 .demo-result {
   width: 100%;
   max-width: 920px;
   background: rgba(255, 255, 255, 0.95);
-  color: #092430;
+  color: #061a33;
   border-radius: 20px;
   padding: clamp(20px, 3vw, 32px);
   box-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.4);
@@ -229,13 +229,13 @@
   font-size: clamp(20px, 3vw, 28px);
   font-weight: 800;
   margin: 0 0 16px;
-  color: #103f53;
+  color: #0b2c58;
 }
 .demo-elapsed {
   margin-top: 20px;
   padding: 14px 18px;
   background: #e9f8ee;
-  color: #103f53;
+  color: #0b2c58;
   border: 1px solid #c7edd5;
   border-radius: 12px;
   font-size: clamp(16px, 2vw, 20px);
@@ -250,14 +250,14 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #103f53;
+  background: #0b2c58;
   color: #ffffff;
   border: none;
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
 }
-.demo-restart:hover { background: #1a5670; }
+.demo-restart:hover { background: #143e76; }
 .demo-small { color: #4b5563; font-size: 13px; margin-top: 8px; }
 .demo-ok { color: #16a34a; }
 
@@ -287,7 +287,7 @@
   background: #faf7ef;
 }
 .demo-kv span { font-size: 12px; color: #6b7280; }
-.demo-kv strong { font-size: clamp(16px, 2vw, 20px); color: #103f53; }
+.demo-kv strong { font-size: clamp(16px, 2vw, 20px); color: #0b2c58; }
 
 /* Measurements */
 .demo-mes-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -300,7 +300,7 @@
   background: #f1f7fd;
   border-radius: 8px;
 }
-.demo-mes-lbl { font-weight: 600; color: #103f53; }
+.demo-mes-lbl { font-weight: 600; color: #0b2c58; }
 .demo-mes-val { font-weight: 800; color: #16a34a; font-size: clamp(16px, 2vw, 20px); }
 .demo-mes-det { grid-column: 1 / -1; color: #6b7280; font-size: 13px; }
 
@@ -314,13 +314,13 @@
   border-radius: 12px;
   margin-bottom: 16px;
 }
-.demo-budget-total strong { font-size: clamp(22px, 3vw, 32px); color: #103f53; }
+.demo-budget-total strong { font-size: clamp(22px, 3vw, 32px); color: #0b2c58; }
 .demo-budget-bars { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .demo-bar-lbl {
   display: flex;
   justify-content: space-between;
   font-size: 14px;
-  color: #103f53;
+  color: #0b2c58;
   margin-bottom: 4px;
   font-weight: 600;
 }
@@ -342,14 +342,14 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #f8f5ec;
-  border: 2px solid #103f53;
+  border: 2px solid #0b2c58;
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 12px;
 }
 .demo-plan-room {
   position: absolute;
-  border: 2px solid #103f53;
+  border: 2px solid #0b2c58;
   background: rgba(63, 207, 142, 0.08);
   display: flex;
   flex-direction: column;
@@ -359,9 +359,9 @@
   padding: 4px;
   text-align: center;
 }
-.demo-plan-name { font-weight: 700; color: #103f53; font-size: 13px; }
+.demo-plan-name { font-weight: 700; color: #0b2c58; font-size: 13px; }
 .demo-plan-area { font-size: 12px; color: #4b5563; }
-.demo-plan-total { color: #103f53; font-size: 16px; }
+.demo-plan-total { color: #0b2c58; font-size: 16px; }
 
 /* Procedure */
 .demo-proc-badge {
@@ -375,7 +375,7 @@
   margin-bottom: 14px;
   color: #16a34a;
 }
-.demo-proc-badge strong { display: block; color: #103f53; font-size: clamp(16px, 2vw, 20px); }
+.demo-proc-badge strong { display: block; color: #0b2c58; font-size: clamp(16px, 2vw, 20px); }
 .demo-proc-badge span { color: #4b5563; font-size: 14px; }
 .demo-proc-legal {
   display: flex;
@@ -387,7 +387,7 @@
   margin-bottom: 12px;
 }
 .demo-proc-legal-lbl { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; }
-.demo-proc-legal-link { color: #103f53; font-weight: 700; text-decoration: none; }
+.demo-proc-legal-link { color: #0b2c58; font-weight: 700; text-decoration: none; }
 .demo-proc-legal-link:hover { text-decoration: underline; }
 .demo-proc-reqs {
   list-style: none;
@@ -404,4 +404,4 @@
   color: #16a34a;
   font-weight: 600;
 }
-.demo-proc-next { color: #103f53; background: #f1f7fd; padding: 12px 16px; border-radius: 10px; margin: 0; }
+.demo-proc-next { color: #0b2c58; background: #f1f7fd; padding: 12px 16px; border-radius: 10px; margin: 0; }
