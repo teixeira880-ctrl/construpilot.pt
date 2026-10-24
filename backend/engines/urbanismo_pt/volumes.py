@@ -17,7 +17,7 @@ import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-GREEN = (19, 117, 102)
+GREEN = (31, 79, 150)   # cobalto (identidade .pt)
 INK = (31, 41, 51)
 RED = (190, 40, 40)
 GREY = (130, 136, 140)
@@ -88,7 +88,7 @@ def _png(img) -> bytes:
 
 
 def _header(dr, w, title):
-    dr.rectangle([0, 0, w, 36], fill=GREEN)
+    dr.rectangle([0, 0, w, 36], fill=(15, 43, 87))
     dr.text((12, 9), title, fill=(255, 255, 255), font=_font(16))
 
 
