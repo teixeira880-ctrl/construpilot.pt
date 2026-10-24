@@ -16,7 +16,8 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas as _canvas
 from reportlab.platypus import BaseDocTemplate, Flowable, Frame, KeepTogether, PageTemplate, Paragraph, Spacer, Table, TableStyle
 
-VERT, OCRE, GRIS, ROUGE = colors.HexColor("#17483f"), colors.HexColor("#8a6d00"), colors.HexColor("#555555"), colors.HexColor("#b3261e")
+from ..identidade_pt import COBALTO_NOITE as _CN, faixa_azulejo as _faixa
+VERT, OCRE, GRIS, ROUGE = _CN, colors.HexColor("#8a6d00"), colors.HexColor("#555555"), colors.HexColor("#b3261e")
 OK_BG, KO_BG, NA_BG = colors.HexColor("#e5f3ea"), colors.HexColor("#fbe4e2"), colors.HexColor("#f2f2f2")
 
 
@@ -61,7 +62,7 @@ LANG = {"note": "Nota de cálculo", "page": "página", "ref": "Ref.", "synthese"
         "verdict_glob_ko": "Pelo menos uma verificação não está conforme", "verdict_glob_na": "Nenhuma não conformidade — pontos a verificar",
         "head": ["Referência", "Exigência", "Valor", "Resultado"], "hyp": "Hipóteses / a validar",
         "brand_sub": "Gabinete de projeto digital"}
-CLAIR, ACCENT, AMBRE_BG, OK_C, KO_C, NA_C = (colors.HexColor("#cfe3dc"), colors.HexColor("#2a9d8f"), colors.HexColor("#fff7e0"),
+CLAIR, ACCENT, AMBRE_BG, OK_C, KO_C, NA_C = (colors.HexColor("#d3def0"), colors.HexColor("#1f4f96"), colors.HexColor("#fff7e0"),
                                            colors.HexColor("#1f8a52"), colors.HexColor("#c8453c"), colors.HexColor("#c98500"))
 
 
@@ -92,7 +93,7 @@ def table(head, rows, widths=None, st=None):
     data = [[Paragraph(_esc(h), st["cellb"]) for h in head]] + [[Paragraph(_esc(c), st["cell"]) for c in r] for r in rows]
     t = Table(data, colWidths=widths, repeatRows=1)
     t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), VERT), ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#dcdcd6")),
-                           ("VALIGN", (0, 0), (-1, -1), "TOP"), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f6f8f6")]),
+                           ("VALIGN", (0, 0), (-1, -1), "TOP"), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f3f6fb")]),
                            ("TOPPADDING", (0, 0), (-1, -1), 2.6), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.6),
                            ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)]))
     return t
@@ -115,7 +116,7 @@ def controls_table(ctl, st=None):
         [[Paragraph(_esc(r[0]), st["cell"]), Paragraph(_esc(r[1]), st["cell"]), Paragraph(_esc(r[2]), st["cell"]), Paragraph(_esc(r[3]), st["res"])] for r in rows]
     t = Table(data, colWidths=[46 * mm, 72 * mm, 36 * mm, 26 * mm], repeatRows=1)
     t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), VERT), ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#dcdcd6")),
-                           ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f6f8f6")]),
+                           ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f3f6fb")]),
                            ("TOPPADDING", (0, 0), (-1, -1), 2.6), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.6),
                            ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)] + sty))
     return t
@@ -155,7 +156,7 @@ def kpis(items, st=None, per_row=4):
     if row:
         rows.append(row + [""] * (per_row - len(row)))
     t = Table(rows, colWidths=[w] * per_row)
-    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3f6f4")), ("BOX", (0, 0), (-1, -1), 0, colors.white),
+    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eef3fa")), ("BOX", (0, 0), (-1, -1), 0, colors.white),
                            ("INNERGRID", (0, 0), (-1, -1), 3, colors.white), ("VALIGN", (0, 0), (-1, -1), "TOP"),
                            ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5), ("LEFTPADDING", (0, 0), (-1, -1), 6)] + sty))
     return t
@@ -241,7 +242,7 @@ def build_pdf(title, subtitle, blocks, footer="ConstruPilot — nota de cálculo
         cv.saveState()
         if first:
             cv.setFillColor(VERT); cv.rect(0, H - hdr_h, W, hdr_h, stroke=0, fill=1)
-            cv.setFillColor(ACCENT); cv.rect(0, H - hdr_h - 1.4 * mm, W, 1.4 * mm, stroke=0, fill=1)
+            _faixa(cv, 0, H - hdr_h - 4.2 * mm, W, 4.2 * mm)   # faixa de azulejos (identidade .pt)
             cv.setFillColor(colors.white); cv.setFont("CP-Bold", 11); cv.drawString(15 * mm, H - 11 * mm, "ConstruPilot")
             cv.setFillColor(CLAIR); cv.setFont("CP", 6.8); cv.drawString(15 * mm, H - 15 * mm, txt(LANG["brand_sub"]))
             cv.setFont("CP-Bold", 7.5); cv.setFillColor(colors.white)
@@ -250,11 +251,12 @@ def build_pdf(title, subtitle, blocks, footer="ConstruPilot — nota de cálculo
             cv.drawRightString(W - 15 * mm, H - 15 * mm, f"{txt(LANG['ref'])} {ref} · {date.today():%d/%m/%Y}")
         else:
             cv.setFillColor(VERT); cv.rect(0, H - 9 * mm, W, 9 * mm, stroke=0, fill=1)
+            _faixa(cv, 0, H - 11 * mm, W, 2 * mm)
             cv.setFillColor(colors.white); cv.setFont("CP-Bold", 7.5); cv.drawString(15 * mm, H - 5.8 * mm, "ConstruPilot")
             cv.setFont("CP", 7); cv.setFillColor(CLAIR)
             t = txt(title)
             cv.drawRightString(W - 15 * mm, H - 5.8 * mm, (t if len(t) <= 95 else t[:93] + "…") + f"  ·  {ref}")
-        cv.setStrokeColor(colors.HexColor("#d9dfdc")); cv.setLineWidth(0.4); cv.line(15 * mm, 12 * mm, W - 15 * mm, 12 * mm)
+        cv.setStrokeColor(colors.HexColor("#c9d5e6")); cv.setLineWidth(0.4); cv.line(15 * mm, 12 * mm, W - 15 * mm, 12 * mm)
         cv.setFont("CP", 6.3); cv.setFillColor(GRIS); cv.drawString(15 * mm, 8.5 * mm, txt(footer))
         cv.restoreState()
 

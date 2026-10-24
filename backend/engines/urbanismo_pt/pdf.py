@@ -28,7 +28,7 @@ from engines.urbanismo_pt import regras as R
 from engines.urbanismo_pt import volumes as V
 
 VERSION = "urbanismo-pt-1.0.0"
-GREEN = colors.HexColor("#137566")
+GREEN = colors.HexColor("#1f4f96")  # cobalto (identidade .pt)
 INK = colors.HexColor("#1f2933")
 _FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets", "fonts")
 _FONTS = {"regular": "Helvetica", "bold": "Helvetica-Bold"}
@@ -81,12 +81,12 @@ def _table(rows, widths, s, header=True):
         st = s["cellh"] if (header and i == 0) else s["cell"]
         data.append([c if isinstance(c, Paragraph) else _p(c, st) for c in r])
     t = Table(data, colWidths=widths, repeatRows=1 if header else 0)
-    style = [("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#cfd8d5")),
-             ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#dde5e2")),
+    style = [("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#c9d5e6")),
+             ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#dbe4f0")),
              ("VALIGN", (0, 0), (-1, -1), "TOP"),
              ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
              ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-             ("ROWBACKGROUNDS", (0, 1 if header else 0), (-1, -1), [colors.white, colors.HexColor("#f4f7f6")])]
+             ("ROWBACKGROUNDS", (0, 1 if header else 0), (-1, -1), [colors.white, colors.HexColor("#f3f6fb")])]
     if header:
         style.append(("BACKGROUND", (0, 0), (-1, 0), GREEN))
     t.setStyle(TableStyle(style))
@@ -111,6 +111,8 @@ def _footer(c, doc):
     c.setFillGray(0.4)
     c.drawString(15 * mm, 9 * mm, f"ConstruPilot · Urbanismo · {VERSION} · {_hoje()}")
     c.drawRightString(doc.pagesize[0] - 15 * mm, 9 * mm, f"Pág. {c.getPageNumber()}")
+    from ..identidade_pt import faixa_azulejo
+    faixa_azulejo(c, 0, doc.pagesize[1] - 5 * mm, doc.pagesize[0], 5 * mm)   # identidade .pt
     c.restoreState()
 
 

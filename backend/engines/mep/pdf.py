@@ -67,12 +67,12 @@ def _styles():
     return {
         "h1": ParagraphStyle("h1", **{**base, "fontName": _FONT_B, "fontSize": 22, "leading": 27}),
         "h2": ParagraphStyle("h2", **{**base, "fontName": _FONT_B, "fontSize": 14, "leading": 18,
-                                      "textColor": colors.HexColor(R.BRAND)}),
+                                      "textColor": colors.HexColor("#1f4f96")}),
         "p": ParagraphStyle("p", **base),
         "small": ParagraphStyle("small", **{**base, "fontSize": 7.5, "leading": 9.5}),
         "warn": ParagraphStyle("warn", **{**base, "fontName": _FONT_B, "fontSize": 10, "leading": 13,
                                           "textColor": colors.HexColor("#9A3412"), "backColor": colors.HexColor("#FFF7ED"),
-                                          "borderColor": colors.HexColor(R.BRAND), "borderWidth": 1, "borderPadding": 6}),
+                                          "borderColor": colors.HexColor("#d39a2c"), "borderWidth": 1, "borderPadding": 6}),
     }
 
 
@@ -82,7 +82,7 @@ def _table(rows, widths, header=True, zebra=True, font_size=8):
           ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D0D4D9")),
           ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)]
     if header:
-        st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(R.NAVY)), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f2b57")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                ("FONT", (0, 0), (-1, 0), _FONT_B, font_size)]
     if zebra:
         for i in range(1, len(rows)):
@@ -110,7 +110,7 @@ L = {
            "h_chk": ["Domaine", "Statut", "Contrôle", "Référence"], "elec": "Électricité", "plumb": "Plomberie"},
     "pt": {"status": "Estado", "errs": "{e} erro(s), {w} ponto(s) a verificar", "surface": "Área (sem garagem)",
            "points": "Pontos elétricos", "board": "quadro", "fixtures": "Aparelhos sanitários", "cables": "Cabos",
-           "hyp_route": "Passagem dos cabos: {r}; folga {p} %.",
+           "hyp_route": "Passagem dos cabos: {r}; margem de comprimento {p} %.",
            "hyp_ecs": "Produção de água quente: {h}; distribuição em coletor (sistema em estrela).",
            "hyp_depth": "Espessura disponível para esgotos: {a} m no piso, {b} m sob a laje térrea.",
            "hyp_auto": "Aparelhos marcados «auto» posicionados pelo motor; os restantes vêm da planta.",
@@ -122,7 +122,11 @@ L = {
            "h_drn": ["Ref.", "Rede", "Aparelho", "Para", "Ø", "Inclinação", "Comprimento", "Desnível / disponível"],
            "h_q": ["Código", "Designação", "Unid.", "Quantidade", "P.U. s/IVA", "Total s/IVA"], "to_price": "a orçamentar",
            "price_note": "Preços: apenas a tabela de preços da empresa — nenhum valor estimado pela IA.",
-           "h_chk": ["Domínio", "Estado", "Verificação", "Referência"], "elec": "Eletricidade", "plumb": "Canalização"},
+           "h_chk": ["Domínio", "Estado", "Verificação", "Referência"], "elec": "Eletricidade", "plumb": "Canalização",
+           "circ_word": "circuitos", "mod_word": "módulos",
+           "labels": {"plafond": "pelo teto", "sol": "pelo pavimento", "ballon_electrique": "termoacumulador elétrico",
+                      "thermodynamique": "bomba de calor para AQS (termodinâmico)", "chaudiere": "caldeira",
+                      "pac": "bomba de calor", "aucun": "nenhuma"}},
 }
 
 
@@ -140,15 +144,15 @@ def build_pdf(study: dict) -> bytes:
 
     def on_page(c, doc):
         c.saveState()
-        c.setFillColor(colors.HexColor(R.NAVY))
+        from ..identidade_pt import COBALTO_NOITE, faixa_azulejo
+        c.setFillColor(COBALTO_NOITE)
         c.rect(0, page[1] - 14 * mm, page[0], 14 * mm, fill=1, stroke=0)
         c.setFillColor(colors.white)
         c.setFont(_FONT_B, 11)
         c.drawString(15 * mm, page[1] - 9 * mm, f"ConstruPilot — {tr(lang, 'title')}")
         c.setFont(_FONT, 9)
         c.drawRightString(page[0] - 15 * mm, page[1] - 9 * mm, f"{proj.get('name', '')}  ·  {study['norms']}  ·  {study['engine']}")
-        c.setFillColor(colors.HexColor(R.BRAND))
-        c.rect(0, page[1] - 15 * mm, page[0], 1 * mm, fill=1, stroke=0)
+        faixa_azulejo(c, 0, page[1] - 17 * mm, page[0], 3 * mm)
         c.setFillColor(colors.HexColor("#9A3412"))
         c.setFont(_FONT_B, 8)
         c.drawString(15 * mm, 8 * mm, "⚠ " + study["disclaimer"])
@@ -172,16 +176,17 @@ def build_pdf(study: dict) -> bytes:
             [T["status"], f"{status_lbl} — " + T["errs"].format(e=sm["errors"], w=sm["warnings"])],
             [T["surface"], f"{sm['habitable_m2']} m²"],
             [T["points"], str(sm["points"])],
-            [tr(lang, "circuits"), f"{sm['circuits']} circuits · {sm['rcds']} × 30 mA · {T['board']} "
-                                   f"{study['electrical']['panel']['rows_13']} × 13 modules"],
+            [tr(lang, "circuits"), f"{sm['circuits']} {T.get('circ_word', 'circuits')} · {sm['rcds']} × 30 mA · {T['board']} "
+                                   f"{study['electrical']['panel']['rows_13']} × 13 {T.get('mod_word', 'modules')}"],
             [T["fixtures"], str(sm["fixtures"])],
-            [T["cables"], " · ".join(f"{k.replace('.', ',')} mm² : {v} m" for k, v in study["electrical"]["cables"]["by_section_m"].items())]]
+            [T["cables"], " · ".join(f"{k.replace('.', ',')} mm² : {str(v).replace('.', ',') if lang == 'pt' else v} m" for k, v in study["electrical"]["cables"]["by_section_m"].items())]]
     story.append(_table(rows, [70 * mm, W - 70 * mm], font_size=9))
     story.append(Spacer(1, 5 * mm))
     story.append(Paragraph(tr(lang, "assumptions"), S["h2"]))
     o = study["options"]
-    hyp = [T["hyp_route"].format(r=o["route"], p=int(o["cable_slack"] * 100)),
-           T["hyp_ecs"].format(h=o["water_heater"]),
+    _lab = T.get("labels", {})
+    hyp = [T["hyp_route"].format(r=_lab.get(o["route"], o["route"]), p=int(o["cable_slack"] * 100)),
+           T["hyp_ecs"].format(h=_lab.get(o["water_heater"], o["water_heater"])),
            T["hyp_depth"].format(a=o["floor_drain_depth_m"], b=o["slab_drain_depth_m"]),
            T["hyp_auto"], T["hyp_price"]]
     for h in hyp:

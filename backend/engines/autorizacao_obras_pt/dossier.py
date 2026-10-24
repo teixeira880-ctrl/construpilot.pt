@@ -99,6 +99,8 @@ def _footer(c: rl_canvas.Canvas, doc) -> None:
     text = f"ConstruPilot · Processo preparado em {_now_iso_pt()} · {VERSION}"
     c.drawString(15 * mm, 10 * mm, text)
     c.drawRightString(A4[0] - 15 * mm, 10 * mm, f"Pág. {c.getPageNumber()}")
+    from ..identidade_pt import faixa_azulejo
+    faixa_azulejo(c, 0, A4[1] - 5 * mm, A4[0], 5 * mm)   # identidade .pt
     c.restoreState()
 
 
