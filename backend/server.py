@@ -404,6 +404,21 @@ async def _seed_demo_org():
 
 @app.on_event("startup")
 async def seed():
+    """Arranque rápido: o servidor fica disponível de imediato (readiness probe do deploy) e as inicializações
+    (índices, contas demo / Web Summit, admins, workers) correm em segundo plano. Antes, o startup síncrono podia
+    ultrapassar o prazo do rollout e o deploy era rejeitado (a versão anterior ficava em produção)."""
+    import asyncio as _asyncio
+
+    async def _run():
+        try:
+            await _seed_impl()
+            logger.info("Inicialização em segundo plano concluída")
+        except Exception:  # noqa: BLE001
+            logger.exception("Inicialização em segundo plano falhou")
+    app.state.seed_task = _asyncio.create_task(_run())
+
+
+async def _seed_impl():
     try:
         from engines.llm_keys import load_state
         await load_state()
