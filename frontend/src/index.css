@@ -12,20 +12,20 @@
         --popover: 37 45% 97%;
         --popover-foreground: 222 47% 11%;
         /* Calm Olive/Moss Green for primary */
-        --primary: 214 52% 46%;
+        --primary: 140 25% 42%;
         --primary-foreground: 0 0% 100%;
         --secondary: 35 28% 90%;
         --secondary-foreground: 222 47% 11%;
         --muted: 35 28% 90%;
         --muted-foreground: 215 16% 42%;
-        --accent: 214 52% 97%;
-        --accent-foreground: 214 52% 33%;
+        --accent: 140 25% 92%;
+        --accent-foreground: 140 25% 30%;
         --destructive: 0 84% 60%;
         --destructive-foreground: 0 0% 100%;
         --border: 34 22% 82%;
         --input: 34 22% 82%;
-        --ring: 214 52% 46%;
-        --chart-1: 214 52% 46%;
+        --ring: 140 25% 42%;
+        --chart-1: 140 25% 42%;
         --chart-2: 160 84% 39%;
         --chart-3: 217 91% 60%;
         --chart-4: 38 92% 50%;
@@ -39,19 +39,19 @@
         --card-foreground: 210 20% 98%;
         --popover: 224 25% 10%;
         --popover-foreground: 210 20% 98%;
-        --primary: 214 52% 55%;
+        --primary: 140 25% 50%;
         --primary-foreground: 0 0% 100%;
         --secondary: 223 20% 14%;
         --secondary-foreground: 210 20% 98%;
         --muted: 223 20% 14%;
         --muted-foreground: 215 20% 65%;
         --accent: 223 25% 16%;
-        --accent-foreground: 214 52% 66%;
+        --accent-foreground: 140 25% 60%;
         --destructive: 0 72% 51%;
         --destructive-foreground: 0 0% 100%;
         --border: 224 20% 18%;
         --input: 224 20% 18%;
-        --ring: 214 52% 55%;
+        --ring: 140 25% 50%;
     }
 }
 

@@ -1,6 +1,6 @@
 """Identidade visual portuguesa dos documentos ConstruPilot.pt (PDF reportlab).
 
-Paleta azulejo (azul cobalto sobre branco-cal), telha e ocre — a mesma do site (frontend/src/styles/portugal.css).
+Paleta ConstruPilot (verde floresta e cobre sobre cal), a mesma do site — azulejo desenhado nas cores da marca.
 `faixa_azulejo(cv, x, y, w, h)` desenha uma faixa de azulejos de padrão em vetorial (sem imagem), para cabeçalhos e
 rodapés; `canto_azulejo` desenha um painel de azulejos esbatido num canto da página. Sem dependências além do reportlab.
 """
@@ -8,15 +8,15 @@ from __future__ import annotations
 
 from reportlab.lib import colors
 
-COBALTO = colors.HexColor("#1f4f96")
-COBALTO_ESCURO = colors.HexColor("#163d78")
-COBALTO_NOITE = colors.HexColor("#0f2b57")
+COBALTO = colors.HexColor("#285541")
+COBALTO_ESCURO = colors.HexColor("#203b2d")
+COBALTO_NOITE = colors.HexColor("#173c32")
 CAL = colors.HexColor("#f8f6f0")
 TELHA = colors.HexColor("#a8462a")
-OCRE = colors.HexColor("#d39a2c")
-GRANITO = colors.HexColor("#1c2a3b")
-COBALTO_CLARO = colors.HexColor("#e6edf7")   # fundo de cabeçalhos de quadro claros
-COBALTO_LINHA = colors.HexColor("#f3f6fb")   # linhas alternadas dos quadros
+OCRE = colors.HexColor("#875133")
+GRANITO = colors.HexColor("#1f2933")
+COBALTO_CLARO = colors.HexColor("#e7efea")   # fundo de cabeçalhos de quadro claros
+COBALTO_LINHA = colors.HexColor("#f4f8f7")   # linhas alternadas dos quadros
 
 
 def _azulejo(cv, x: float, y: float, s: float, cor=COBALTO, fundo=CAL, ocre=OCRE) -> None:

@@ -31,7 +31,7 @@
 .workspace-halo-sage {
   bottom: -35%;
   left: -22%;
-  background: radial-gradient(ellipse at 36% 66%, #5c81b273 0%, #7595bf52 24%, #c9b68b2b 43%, #c9b68b00 68%);
+  background: radial-gradient(ellipse at 36% 66%, #678e7173 0%, #8b9f7952 24%, #c9b68b2b 43%, #c9b68b00 68%);
   animation-name: workspace-sage-drift;
   animation-duration: 30s;
 }
@@ -53,7 +53,7 @@
 .workspace .dashboard-heading .dashboard-greeting { color: #61321e; }
 .workspace .dashboard-quick-action { background: hsl(var(--card) / .9); border-color: rgb(var(--workspace-copper-rgb) / .27); box-shadow: 0 5px 22px #71482808; }
 .workspace .dashboard-quick-action > span:first-child { background: #b5795215; color: var(--workspace-copper); }
-.workspace .dashboard-quick-action:first-child { background: linear-gradient(135deg, #113769, #214d87); border-color: #b7895c; }
+.workspace .dashboard-quick-action:first-child { background: linear-gradient(135deg, #234c3a, #35634b); border-color: #b7895c; }
 .workspace .dashboard-quick-action:first-child > span:first-child { background: #f5cf9d21; color: #f2c99d; }
 .workspace .dashboard-stats { background: hsl(var(--card) / .78); border: 1px solid rgb(var(--workspace-copper-rgb) / .2); }
 .workspace .dashboard-today { background: hsl(var(--card) / .92); border-color: rgb(var(--workspace-copper-rgb) / .3); }
@@ -75,9 +75,9 @@
 .workspace-motion-control:disabled { cursor: default; }
 .dark .workspace { --workspace-copper: #e5b38e; --workspace-copper-rgb: 201 139 96; --muted-foreground: 120 7% 74%; }
 .dark .workspace .dashboard-heading .dashboard-greeting { color: var(--workspace-copper); }
-.dark .workspace-backdrop { background: linear-gradient(145deg, #101720, #1e201b 58%, #151c25); }
+.dark .workspace-backdrop { background: linear-gradient(145deg, #131914, #1e201b 58%, #171d19); }
 .dark .workspace-halo-copper { background: radial-gradient(ellipse at 60% 35%, #ae633d73, #8256394d 25%, #82563900 67%); }
-.dark .workspace-halo-sage { background: radial-gradient(ellipse at 36% 66%, #2f66ad73, #1b52994d 25%, #1b529900 68%); }
+.dark .workspace-halo-sage { background: radial-gradient(ellipse at 36% 66%, #48806273, #356f4f4d 25%, #356f4f00 68%); }
 .dark .workspace-avatar { background: #4b372b; color: #edc29b; }
 .dark .workspace-motion-control > svg { color: #e5b38e; }
 @media (max-width: 767px) {
