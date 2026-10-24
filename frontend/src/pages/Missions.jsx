@@ -384,6 +384,9 @@ function StepResult({ result: r, onDownload, nav }) {
           )}
         </li>
       ))}
+      {r.lot === "dpe" && (r.notes || []).filter((n) => n.a_confirmar_perito?.length).map((n) => (
+        <li key={`c-${n.note_id}`} className="text-amber-700">{n.obra === "nova" ? "Edifício novo" : "Edifício existente"} · aquecimento {n.aquecimento_origem ? `da ${n.aquecimento_origem}` : "por defeito"} · dados por defeito a confirmar pelo perito qualificado: {n.a_confirmar_perito.join("; ")}</li>
+      ))}
       {r.lot === "dpe" && <li className="text-muted-foreground">Indicativo: não substitui o certificado energético SCE emitido por Perito Qualificado (ADENE).</li>}
     </ul>
   );

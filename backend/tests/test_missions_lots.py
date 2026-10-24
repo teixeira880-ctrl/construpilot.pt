@@ -299,3 +299,54 @@ async def test_metre_summary_adds_rooms_from_the_plan(db):
 ])
 def test_trade_detection_prefers_specific_words(designation, description, lote):
     assert MC.lote_de({"designation": designation, "description": description})[0] == lote
+
+
+# ------------------------------------------------------------------ pré-certificado: estado da obra e sistemas
+
+@pytest.mark.parametrize("chantier,obra", [
+    ({"name": "Moradia nova T3", "notes": ""}, "nova"),
+    ({"name": "Lote 4", "notes": "Construção nova, chave na mão"}, "nova"),
+    ({"name": "Lote 4", "work_type": "new_build"}, "nova"),
+    ({"name": "Remodelação apartamento", "notes": "obra em edifício de 1975"}, "existente"),
+])
+def test_estado_obra_from_chantier(chantier, obra):
+    from datetime import date
+    o, ano, origem = R.estado_obra(chantier)
+    assert o == obra and (ano == date.today().year if obra == "nova" else ano is None) and origem
+
+
+@pytest.mark.asyncio
+async def test_reh_new_house_reuses_thermal_heat_pump(db):
+    db.chantiers.rows = [{"chantier_id": "c1", "user_id": "owner", "city": "Coimbra", "name": "Moradia nova exemplo"}]
+    ctx = _ctx(["thermique", "dpe"], "c1")
+    db.agent_runs.rows = [copy.deepcopy(ctx["run"])]
+    result = await R.run_mission(ctx["run"], A.ExecIn(), USER)
+    assert [s["status"] for s in result["steps"]] == ["done", "done"], result["steps"]
+    n = result["steps"][1]["result"]["notes"][0]
+    assert n["obra"] == "nova" and n["aquecimento"] == "bomba_calor" and n["aquecimento_origem"] == "opção térmica deste programa"
+    assert any("SCOP" in c for c in n["a_confirmar_perito"]) and any("AQS" in c for c in n["a_confirmar_perito"])
+    assert any("PERITO QUALIFICADO" in h for h in n["hipoteses"]) and any("piso radiante" in h for h in n["hipoteses"])
+    assert n["classe"] not in ("E", "F")
+
+
+@pytest.mark.asyncio
+async def test_reh_reuses_previous_thermal_note_of_the_process(db):
+    db.chantiers.rows = [{"chantier_id": "c1", "user_id": "owner", "city": "Coimbra", "notes": "construção nova"}]
+    db.mission_notes.rows = [{"note_id": "old", "user_id": "owner", "chantier_id": "c1", "kind": "thermique", "created_at": "2026-10-01",
+                              "summary": {"plan_id": "p1", "bomba_calor_kw": 6, "cop_theta_e": 2.9, "emissores": "piso_radiante"}},
+                             {"note_id": "alheia", "user_id": "outro", "chantier_id": "c1", "kind": "thermique", "created_at": "2026-10-20",
+                              "summary": {"plan_id": "p1", "bomba_calor_kw": 16}}]
+    res = await R._exec_dpe(_ctx(["dpe"], "c1"))
+    n = res["notes"][0]
+    assert n["aquecimento"] == "bomba_calor" and n["aquecimento_origem"].startswith("nota térmica anterior")
+    assert any("bomba de calor ar/água 6 kW com piso radiante" in h for h in n["hipoteses"])
+    assert any("COP indicativo a θe: 2,90" in h for h in n["hipoteses"])
+
+
+@pytest.mark.asyncio
+async def test_reh_existing_without_thermal_flags_defaults(db):
+    db.chantiers.rows = [{"chantier_id": "c1", "user_id": "owner", "city": "Évora", "name": "Remodelação"}]
+    n = (await R._exec_dpe(_ctx(["dpe"], "c1")))["notes"][0]
+    assert n["obra"] == "existente" and n["aquecimento"] == "resistencia_eletrica" and n["aquecimento_origem"] is None
+    assert "sistema de aquecimento e respetiva eficiência" in n["a_confirmar_perito"]
+    assert any("1980 por defeito" in h for h in n["hipoteses"])

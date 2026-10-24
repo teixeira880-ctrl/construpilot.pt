@@ -286,6 +286,7 @@ async def _save_note(ctx, kind: str, title: str, data: bytes, summary: dict, ext
     import base64
     note_id = "mnote_" + secrets.token_hex(6)
     await db.mission_notes.insert_one({"note_id": note_id, "user_id": ctx["user"]["user_id"], "run_id": ctx["run"]["run_id"],
+                                       "chantier_id": ctx["run"].get("chantier_id"),
                                        "kind": kind, "title": title, "ext": ext, "data_b64": base64.b64encode(data).decode(),
                                        "summary": summary, "created_at": _now()})
     return {"note_id": note_id, "title": title, "ext": ext, "pdf": f"/missions/notes/{note_id}/file", **summary}
@@ -324,7 +325,8 @@ async def _exec_thermique(ctx) -> dict:
             hyp = hyp + ["concelho do processo de obra não indicado ou não reconhecido (localidade / morada): clima REH por defeito"]
         summary = {"plan_id": row["plan_id"], "filename": row["filename"], "divisoes": len(divisoes), "concelho": concelho,
                    "perdas_w": round(aq.get("phi_total") or 0), "theta_e": aq.get("theta_e"),
-                   "bomba_calor_kw": bc.get("p_nominal_kw"), "apoio_kw": bc.get("apoio_kw"),
+                   "bomba_calor_kw": bc.get("p_nominal_kw"), "apoio_kw": bc.get("apoio_kw"), "cop_theta_e": bc.get("cop"),
+                   "emissores": "piso_radiante" if pr else bc.get("emissores"), "aqs": None,
                    "theta_ida": bc.get("temperatura_ida") or pr.get("theta_ida"), "circuitos": pr.get("circuitos"),
                    "nao_conformes": sum(1 for c in ctl if c.get("ok") is False), "hipoteses": (hyp + n.get("hipoteses", []))[:20]}
         out.append(await _save_note(ctx, "thermique", n.get("titre") or "Nota térmica", n["pdf"], summary))
@@ -381,6 +383,40 @@ async def _exec_dpgf(ctx) -> dict:
     return {"kind": "files", "files": [{"note_id": f["note_id"], "title": f["title"], "ext": f["ext"], "url": f["pdf"]} for f in files], **summary}
 
 
+NOVA = ("construcao nova", "construção nova", "moradia nova", "chave na mao", "chave na mão", "obra nova", "edificio novo", "edifício novo")
+
+
+def estado_obra(chantier: dict) -> tuple[str, int | None, str]:
+    """(obra REH, ano de construção, origem) a partir do processo de obra: edifício novo só se o processo o disser."""
+    from datetime import date
+    from engines.mep.rules import _fold
+    if (chantier.get("work_type") or "") == "new_build":
+        return "nova", date.today().year, "tipo de obra do processo = construção nova"
+    for campo in ("type", "work_type", "name", "description", "notes"):
+        txt = _fold(str(chantier.get(campo) or ""))
+        hit = next((k for k in NOVA if _fold(k) in txt), None)
+        if hit:
+            return "nova", date.today().year, f"« {hit} » no campo {campo} do processo de obra"
+    return "existente", None, "processo de obra sem indicação de construção nova"
+
+
+async def _aquecimento_da_termica(ctx, plan_id: str) -> dict | None:
+    """Sistema de aquecimento dimensionado pela opção térmica: deste programa, senão a última nota térmica do mesmo processo."""
+    for n in (ctx["results"].get("thermique") or {}).get("notes") or []:
+        if n.get("plan_id") == plan_id and not n.get("error") and n.get("bomba_calor_kw"):
+            return {**n, "origem": "opção térmica deste programa"}
+    cid = ctx["run"].get("chantier_id")
+    if not cid:
+        return None
+    rows = await db.mission_notes.find({"user_id": ctx["user"]["user_id"], "chantier_id": cid, "kind": "thermique"},
+                                       {"_id": 0, "summary": 1, "created_at": 1, "run_id": 1}).sort("created_at", -1).to_list(20)
+    rows = [r for r in rows if (r.get("summary") or {}).get("bomba_calor_kw")]
+    best = next((r for r in rows if r["summary"].get("plan_id") == plan_id), rows[0] if rows else None)
+    if not best:
+        return None
+    return {**best["summary"], "origem": f"nota térmica anterior deste processo ({str(best.get('created_at') or '')[:10]})"}
+
+
 async def _exec_dpe(ctx) -> dict:
     from fastapi.concurrency import run_in_threadpool
     from engines.calc_lots import reh
@@ -398,13 +434,50 @@ async def _exec_dpe(ctx) -> dict:
             continue
         try:
             params, hyp = dados_reh(row["levels"])
-            n = await run_in_threadpool(reh.note, {**params, "concelho": concelho})
+            hyp = ["área útil, pé-direito, envidraçados e tipologia lidos na planta: " + "; ".join(hyp)]
+            confirmar = []
+            obra, ano, origem = estado_obra(chantier)
+            params["obra"] = obra
+            if ano:
+                params["ano_construcao"] = ano
+                hyp.append(f"edifício novo, ano de construção {ano} (origem: {origem})")
+                confirmar.append("envolvente-tipo de edifício novo (U ≈ 85 % do Umáx da Portaria 138-I): substituir pelas soluções do projeto")
+            else:
+                hyp.append(f"edifício existente, ano de construção 1980 por defeito do motor (origem: {origem})")
+                confirmar += ["estado da obra (existente) e ano de construção", "envolvente por defeito da época de construção"]
+            termica = await _aquecimento_da_termica(ctx, row["plan_id"])
+            if termica:
+                params["aquecimento"] = {"tipo": "bomba_calor"}
+                emis = "piso radiante" if termica.get("emissores") == "piso_radiante" else (termica.get("emissores") or "emissores não indicados")
+                cop = termica.get("cop_theta_e")
+                hyp.append(f"aquecimento: bomba de calor ar/água {termica['bomba_calor_kw']:g} kW com {emis} (origem: {termica['origem']}); "
+                           "o REH não distingue os emissores".replace(".", ","))
+                hyp.append("eficiência sazonal (SCOP) não determinada pela nota térmica"
+                           + (f" (só o COP indicativo a θe: {cop:.2f})".replace(".", ",") if cop else "")
+                           + ": eficiência por defeito do motor REH para bomba de calor (3,5)")
+                confirmar.append("SCOP da bomba de calor (ficha técnica / etiqueta energética do equipamento)")
+            else:
+                hyp.append("aquecimento não dimensionado (opção térmica não executada para este processo): sistema por defeito do motor REH "
+                           "(resistência elétrica, η = 1) — o motor não tem modo « sistemas de referência »")
+                confirmar.append("sistema de aquecimento e respetiva eficiência")
+            if termica and termica.get("aqs"):
+                params["aqs"] = {"tipo": termica["aqs"]}
+                hyp.append(f"AQS: {termica['aqs']} (origem: {termica['origem']})")
+            else:
+                hyp.append("AQS não determinadas pela nota térmica: termoacumulador elétrico por defeito do motor REH")
+                confirmar.append("sistema de AQS e respetiva eficiência")
+            confirmar += ["orientação e sombreamento dos envidraçados (repartição-tipo do motor)", "taxa de renovação de ar (Rph por defeito)",
+                          "pontes térmicas lineares"]
+            hyp.append("DADOS POR DEFEITO A CONFIRMAR PELO PERITO QUALIFICADO: " + "; ".join(confirmar))
+            n = await run_in_threadpool(reh.note, {**params, "concelho": concelho, "hipoteses_entrada": hyp})
         except (ValueError, KeyError) as exc:
             out.append({"plan_id": row["plan_id"], "filename": row["filename"], "error": str(exc)[:200]})
             continue
         summary = {"plan_id": row["plan_id"], "filename": row["filename"], "area_util_m2": params["area_util_m2"], "concelho": concelho,
                    "classe": n["classe"], "rnt": round(n["RNt"], 2), "ntc": round(n["Ntc"], 1), "nt": round(n["Nt"], 1),
-                   "nic": round(n["Nic"], 1), "ni": round(n["Ni"], 1), "hipoteses": (hyp + n.get("hipoteses", []))[:15],
+                   "nic": round(n["Nic"], 1), "ni": round(n["Ni"], 1), "obra": obra, "ano_construcao": ano,
+                   "aquecimento": n.get("aquecimento"), "aqs": n.get("aqs"), "aquecimento_origem": termica["origem"] if termica else None,
+                   "a_confirmar_perito": confirmar, "hipoteses": n.get("hipoteses", [])[:20],
                    "aviso": "Indicativo: não substitui o certificado energético SCE emitido por Perito Qualificado (ADENE)."}
         out.append(await _save_note(ctx, "dpe", n.get("titre") or "Pré-certificado energético", n["pdf"], summary))
     _all_failed(out)
