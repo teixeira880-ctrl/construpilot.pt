@@ -1,9 +1,9 @@
 .plan-workspace {
-  --plan-ink: #26342f; --plan-paper: hsl(var(--card)); --plan-muted: #626a64; --plan-line: hsl(var(--border));
-  --plan-accent: #29614d; --plan-copper: #986b40;
+  --plan-ink: #202f43; --plan-paper: hsl(var(--card)); --plan-muted: #626a64; --plan-line: hsl(var(--border));
+  --plan-accent: #114487; --plan-copper: #986b40;
   color: hsl(var(--foreground));
 }
-.dark .plan-workspace { --plan-ink: #ecede8; --plan-paper: #202822; --plan-muted: #b2b9b2; --plan-line: #39443b; --plan-accent: #b0d5c0; --plan-copper: #dcb184; }
+.dark .plan-workspace { --plan-ink: #ecede8; --plan-paper: #1d2632; --plan-muted: #b2b9b2; --plan-line: #354355; --plan-accent: #bdd3ef; --plan-copper: #dcb184; }
 .plan-workflow-header { margin-bottom: 20px; color: var(--plan-ink); }
 .plan-workflow-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 12px 0 22px; }
 .plan-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--plan-muted); }
@@ -13,8 +13,8 @@
 .plan-document-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; align-items: center; }
 .plan-workspace .plan-menu-button, .plan-workspace .plan-primary-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 9px 13px; border: 1px solid var(--plan-line); border-radius: 9px; font-size: 12px; font-weight: 600; background: var(--plan-paper); color: var(--plan-ink); transition: background .15s, border-color .15s; }
 .plan-menu-button:hover { border-color: var(--plan-muted); }
-.plan-workspace .plan-primary-action { background: #285541; color: #fff; border-color: #285541; min-height: 44px; padding: 11px 18px; }
-.plan-primary-action:hover { background: #1b4030; border-color: #1b4030; }
+.plan-workspace .plan-primary-action { background: #143e76; color: #fff; border-color: #143e76; min-height: 44px; padding: 11px 18px; }
+.plan-primary-action:hover { background: #0b2d59; border-color: #0b2d59; }
 .plan-workspace button:disabled, .plan-workspace select:disabled { cursor: not-allowed; opacity: .55; }
 .plan-workflow-header :is(button, select):focus-visible, .plan-analysis-results button:focus-visible, .plan-advanced-tools summary:focus-visible { outline: 2px solid var(--plan-accent); outline-offset: 3px; }
 .plan-workflow-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--plan-line); border-radius: 13px; overflow: hidden; background: var(--plan-paper); }
@@ -57,7 +57,7 @@
 .plan-results-warnings { margin-top: 12px; border-left: 2px solid var(--plan-copper); padding: 8px 14px; color: var(--plan-muted); font-size: 12px; }
 .plan-results-warnings ul { list-style: disc; padding-left: 18px; margin-top: 4px; }
 .plan-workspace > [data-testid="plan-settings-bar"] { border-radius: 10px; margin-bottom: 16px; }
-.plan-workspace [data-testid="plan-canvas-surface"] { border-radius: 12px; box-shadow: 0 3px 16px #172b2110; }
+.plan-workspace [data-testid="plan-canvas-surface"] { border-radius: 12px; box-shadow: 0 3px 16px #0e213a10; }
 .plan-library-hero { border-bottom: 1px solid var(--plan-line); padding-bottom: 26px; }
 .plan-library-hero h1 { color: var(--plan-ink); font-size: clamp(32px, 4.5vw, 52px); font-weight: 500; letter-spacing: -.05em; line-height: 1.12; max-width: 700px; }
 .plan-library-hero p { line-height: 1.7; }

@@ -336,7 +336,7 @@ export const Footer = () => (
           <a href="/confidentialite" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-confidentialite">Política de privacidade</a>
           <a href="/eliminar-conta" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-compte">Eliminar a minha conta</a>
           <a href="/eliminar-dados" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-suppression-donnees">Eliminar os meus dados</a>
-          <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">CGU / CGV</a>
+          <a href="/cgv" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-cgv">Termos e condições</a>
         </div>
         <p className="text-[11px] text-muted-foreground">
           © {new Date().getFullYear()} ConstruPilot — Todos os direitos reservados · Patente n.º FR2611044

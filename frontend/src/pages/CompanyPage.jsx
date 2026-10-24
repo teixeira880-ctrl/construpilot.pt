@@ -181,7 +181,7 @@ export default function CompanyPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-sm border px-2 py-1.5 text-[10px] truncate" style={{ borderColor: form.accent_color, background: "#f8faf9" }} data-testid="pdf-preview-banner">
+            <div className="rounded-sm border px-2 py-1.5 text-[10px] truncate" style={{ borderColor: form.accent_color, background: "#f5f7fa" }} data-testid="pdf-preview-banner">
               <b>{page.company_name}</b> · {page.contact_line}
             </div>
           )}
