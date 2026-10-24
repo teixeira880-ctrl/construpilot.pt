@@ -67,12 +67,12 @@ def _styles():
     return {
         "h1": ParagraphStyle("h1", **{**base, "fontName": _FONT_B, "fontSize": 22, "leading": 27}),
         "h2": ParagraphStyle("h2", **{**base, "fontName": _FONT_B, "fontSize": 14, "leading": 18,
-                                      "textColor": colors.HexColor("#1f4f96")}),
+                                      "textColor": colors.HexColor("#1c5778")}),
         "p": ParagraphStyle("p", **base),
         "small": ParagraphStyle("small", **{**base, "fontSize": 7.5, "leading": 9.5}),
         "warn": ParagraphStyle("warn", **{**base, "fontName": _FONT_B, "fontSize": 10, "leading": 13,
                                           "textColor": colors.HexColor("#9A3412"), "backColor": colors.HexColor("#FFF7ED"),
-                                          "borderColor": colors.HexColor("#d39a2c"), "borderWidth": 1, "borderPadding": 6}),
+                                          "borderColor": colors.HexColor("#b8612f"), "borderWidth": 1, "borderPadding": 6}),
     }
 
 
@@ -82,7 +82,7 @@ def _table(rows, widths, header=True, zebra=True, font_size=8):
           ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D0D4D9")),
           ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4)]
     if header:
-        st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f2b57")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f3044")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                ("FONT", (0, 0), (-1, 0), _FONT_B, font_size)]
     if zebra:
         for i in range(1, len(rows)):
