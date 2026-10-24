@@ -55,6 +55,7 @@ def _demo_users() -> list[dict]:
             "name": "Demo Pro — WebSummit",
             "role": "user",
             "plan_id": "pro_business",
+            "account_type": "pro_business",   # sem isto o modo demo offline tratava a conta Pro como particular
             "country": "PT",
             "lang": "pt-PT",
             "theme": "light",
@@ -74,6 +75,7 @@ def _demo_users() -> list[dict]:
             "name": "Demo Particular — WebSummit",
             "role": "user",
             "plan_id": "free",
+            "account_type": "particulier",
             "country": "PT",
             "lang": "pt-PT",
             "theme": "light",

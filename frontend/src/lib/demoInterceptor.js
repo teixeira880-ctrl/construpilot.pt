@@ -26,6 +26,7 @@ import assistantDocsFx from "@/fixtures/demo/assistant_docs.json";
 import plansFx from "@/fixtures/demo/plans.json";
 import quotesFx from "@/fixtures/demo/quotes.json";
 import assistantResponses from "@/fixtures/demo/assistant_responses.json";
+import missionsCatalogFx from "@/fixtures/demo/missions_catalog.json";
 
 const LS_FLAG = "is_demo";
 const LS_KIND = "demo_kind";
@@ -158,6 +159,19 @@ const routes = [
     } },
   { method: "POST", match: /^\/auth\/login$/, handle: async () => _ok({ user: currentUser() }) },
   { method: "POST", match: /^\/auth\/logout$/, handle: async () => _ok({ ok: true }) },
+
+  // Conta, permissões e faturação (modo demo offline): a conta Pro demo tem todas as permissões da empresa
+  // fictícia e o nível pro_business; a conta particular fica no nível gratuito.
+  { method: "GET", match: /^\/company\/me$/, handle: async () => {
+      const pro = currentKind() === "pro";
+      const feats = ["catalogue", "chantier", "devis", "entreprise", "factures", "rh", "situations", "pointage"];
+      return _ok({ role: pro ? "owner" : null, role_label: pro ? "Gerente" : null, active: true, in_org: pro,
+                   permissions: Object.fromEntries(feats.map((f) => [f, pro])) });
+    } },
+  { method: "GET", match: /^\/missions\/catalog$/, handle: async () => _ok({ options: missionsCatalogFx.options }) },
+  { method: "GET", match: /^\/billing\/me$/, handle: async () => _ok(currentKind() === "pro"
+      ? { tier: "pro_business", active: { plan: "pro_business", status: "active", demo: true } }
+      : { tier: "free", active: null }) },
 
   // Projects
   { method: "GET", match: /^\/projects\/?$/, handle: async () => {

@@ -1,0 +1,154 @@
+{
+ "options": [
+  {
+   "key": "analyse_plans",
+   "name": "Leitura e análise das plantas",
+   "group": "Plantas",
+   "desc": "Relê cada planta, lista os elementos reconhecidos, as quantidades a verificar e as informações em falta.",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [],
+   "deliverable": "Análise por planta (estado, elementos, pontos em falta)"
+  },
+  {
+   "key": "controle",
+   "name": "Controlo de qualidade dos dados",
+   "group": "Plantas",
+   "desc": "Controla a coerência das escalas, da geometria, das áreas e das quantidades, sem alterar nada.",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [],
+   "deliverable": "Relatório de controlo (pontos a verificar)"
+  },
+  {
+   "key": "metre",
+   "name": "Medição",
+   "group": "Medição e orçamento",
+   "desc": "Faz o ponto das áreas, lineares, medições e aberturas levantadas nas plantas.",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [],
+   "deliverable": "Síntese da medição por planta"
+  },
+  {
+   "key": "plan_electricite",
+   "name": "Planta de eletricidade",
+   "group": "Planos de execução",
+   "desc": "Implantação de tomadas, pontos de luz e comandos, esquema unifilar e quantitativo (RTIEBT).",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [],
+   "deliverable": "Estudo de eletricidade (plantas por piso, unifilar, PDF)"
+  },
+  {
+   "key": "plan_plomberie",
+   "name": "Planta de canalização",
+   "group": "Planos de execução",
+   "desc": "Coletores de água fria e quente, redes, tubos de queda e coletores de esgoto, diâmetros e inclinações (DR 23/95).",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [],
+   "deliverable": "Estudo de canalização (plantas por piso, PDF)"
+  },
+  {
+   "key": "thermique",
+   "name": "Térmica: perdas de calor, piso radiante, bomba de calor",
+   "group": "Especialidades técnicas",
+   "desc": "Perdas de calor divisão a divisão (EN 12831-1) a partir das divisões da planta, piso radiante (NP EN 1264) e bomba de calor ar/água, com nota de cálculo PDF. O concelho do processo fixa o clima REH.",
+   "needs": [
+    "plans",
+    "chantier"
+   ],
+   "depends_on": [],
+   "deliverable": "Nota de cálculo térmico PDF (indicativa)"
+  },
+  {
+   "key": "structure",
+   "name": "Estrutura (moradia)",
+   "group": "Especialidades técnicas",
+   "desc": "Lajes, descida de cargas, alvenaria resistente, lintéis, cintas e sapatas (Eurocódigos NP EN com Anexos Nacionais), nota e desenhos PDF a partir da implantação lida na planta. Ação sísmica não verificada.",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [],
+   "deliverable": "Nota de estrutura PDF (pré-dimensionamento, a validar por engenheiro civil)"
+  },
+  {
+   "key": "devis",
+   "name": "Orçamento por lotes",
+   "group": "Medição e orçamento",
+   "desc": "Orçamenta as medições associadas a um artigo com os seus preços e cria um orçamento em rascunho editável.",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [
+    "metre"
+   ],
+   "deliverable": "Orçamento em rascunho (nunca enviado automaticamente)"
+  },
+  {
+   "key": "dpgf",
+   "name": "Mapa de quantidades e caderno de encargos por especialidade",
+   "group": "Medição e orçamento",
+   "desc": "Retoma o orçamento em rascunho e organiza-o por especialidade: mapa de quantidades Excel (quantidades, preços, subtotais) e estrutura de caderno de encargos Word com as referências gerais de cada especialidade.",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [
+    "devis"
+   ],
+   "deliverable": "Mapa de quantidades Excel + caderno de encargos Word (prescrições a completar)"
+  },
+  {
+   "key": "dpe",
+   "name": "Pré-certificado energético (REH, indicativo)",
+   "group": "Especialidades técnicas",
+   "desc": "Classe energética estimada segundo a metodologia do REH a partir da área útil lida na planta e do concelho do processo. Indicativo: não substitui o certificado SCE emitido por Perito Qualificado (ADENE).",
+   "needs": [
+    "plans",
+    "chantier"
+   ],
+   "depends_on": [],
+   "deliverable": "Pré-certificado REH PDF (indicativo, não substitui o certificado SCE/ADENE)"
+  },
+  {
+   "key": "planning",
+   "name": "Planeamento da obra",
+   "group": "Organização",
+   "desc": "Gera o planeamento Gantt do processo a partir dos lotes dos orçamentos associados.",
+   "needs": [
+    "chantier"
+   ],
+   "depends_on": [],
+   "deliverable": "Planeamento Gantt (durações por defeito a confirmar)"
+  },
+  {
+   "key": "dossier",
+   "name": "Processo completo em PDF",
+   "group": "Organização",
+   "desc": "Agrupa as plantas por piso, a medição e o orçamento num processo PDF com capa.",
+   "needs": [
+    "plans"
+   ],
+   "depends_on": [
+    "metre"
+   ],
+   "deliverable": "Processo PDF"
+  },
+  {
+   "key": "partage",
+   "name": "Partilha do processo",
+   "group": "Organização",
+   "desc": "Prepara uma ligação só de leitura para os entregáveis deste programa (estudos de eletricidade e canalização, notas de cálculo, pré-certificado, mapa de quantidades, caderno de encargos). A ligação fica inativa até a ativar; nada é enviado.",
+   "needs": [],
+   "depends_on": [],
+   "deliverable": "Ligação de partilha pronta a ativar"
+  }
+ ],
+ "_source": "engines.missions.OPTIONS (gerado para o modo demo offline)"
+}
