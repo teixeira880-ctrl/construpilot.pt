@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Rocket, FileUp, Wand2, FileDown, Layers, Info, Building2, Mountain, CheckCircle2, FileText } from "lucide-react";
+import VistoBetRequest from "@/components/bet/VistoBetRequest";
 
 const sel = "border rounded-md p-2 bg-background text-sm w-full";
 const KIND = { plan: "Planta cotada", pc: "Projeto de licenciamento", g2: "Estudo geotécnico" };
@@ -309,6 +310,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
         <Button asChild variant="outline" data-testid="autopilot-open-calc"><a href="/structuro/calcul">Abrir no módulo de cálculo</a></Button>
       </div>
       <p className="text-[11px] text-muted-foreground">Pré-dimensionamento automático indicativo. Verifique as hipóteses, complete vento/sismo/continuidade e mande visar pelo engenheiro / pela fiscalização.</p>
+      {result?.calc_study_id && <VistoBetRequest dossierId={dossier.dossier_id} />}
     </div>}
   </Card>;
 }

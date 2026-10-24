@@ -267,6 +267,12 @@ from routes import assistant_dossiers as assistant_dossiers_routes  # noqa: E402
 api_router.include_router(assistant_dossiers_routes.router)
 from routes import image_studio as image_studio_routes  # noqa: E402  — estúdio de imagens IA (ilustração não contratual)
 api_router.include_router(image_studio_routes.router)
+from routes import urbanismo as urbanismo_routes  # noqa: E402  — editor de volumes, peças desenhadas, quadro de áreas
+api_router.include_router(urbanismo_routes.router)
+api_router.include_router(urbanismo_routes.public_router)
+from routes import structuro_bet_visto as bet_visto_routes  # noqa: E402  — visto do engenheiro (autopiloto BET)
+api_router.include_router(bet_visto_routes.bet_visto_router)
+api_router.include_router(bet_visto_routes.bet_visto_public)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
