@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import VoiceNoteButton from "@/components/VoiceNoteButton";
+import PromptBar from "@/components/PromptBar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -78,6 +79,21 @@ export default function Estimator() {
   }, []);
 
   const regions = (catalog?.regions || []).filter((r) => r.country === form.country);
+
+  // Pilotagem por prompt (texto ou ditado) — preenche o formulário; o cálculo continua manual e determinista.
+  const applyPromptFill = (data) => {
+    const p = data?.params || {};
+    setForm((f) => {
+      const next = { ...f };
+      for (const [k, v] of Object.entries(p)) {
+        if (v === null || v === undefined || v === "" || !(k in f)) continue;
+        if (k === "region" && !regions.some((r) => r.region === v)) continue;
+        next[k] = v;
+      }
+      return next;
+    });
+    if ((data?.defaults_used || []).length) toast.message("Valores por defeito aplicados", { description: data.defaults_used.join(", ") });
+  };
 
   const compute = async () => {
     setBusy(true);
@@ -195,6 +211,10 @@ export default function Estimator() {
           <div className="surface p-8 grid gap-6" data-testid={`wizard-step-${step}`}>
             {step === 0 && (
               <>
+                {user && <PromptBar appKey="estimativa" context={{ project_type: form.project_type, surface: form.surface, region: form.region }}
+                  onFill={applyPromptFill}
+                  placeholder="Descreva a obra: «remodelação de apartamento T3 de 90 m² em Matosinhos, gama média»"
+                  examples="Escreva ou dite: a IA pré-preenche a estimativa; pode ajustar tudo antes de calcular." />}
                 <div className="grid gap-2">
                   <Label>{t("est.project_type")}</Label>
                   <Select value={form.project_type} onValueChange={(v) => set("project_type", v)}>

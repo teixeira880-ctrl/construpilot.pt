@@ -54,10 +54,13 @@ async def _ask_text(prompt: str) -> str:
     key = os.environ.get("EMERGENT_LLM_KEY")
     if not key:
         raise RuntimeError("EMERGENT_LLM_KEY ausente")
-    from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+    from emergentintegrations.llm.chat import UserMessage  # type: ignore
 
-    chat = LlmChat(
+    from engines.expenses.metering import MeteredChat   # custos medidos (engines.expenses), como as outras chamadas IA
+
+    chat = MeteredChat(
         api_key=key,
+        expense_feature="prompt_fill",
         session_id="prompt-fill",
         system_message="Responde em JSON válido, em português europeu, sem texto fora do JSON.",
     ).with_model(*_MODEL)

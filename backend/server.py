@@ -263,6 +263,10 @@ from routes import admin_activity as admin_activity_routes  # noqa: E402
 api_router.include_router(admin_activity_routes.router)
 from routes import mep as mep_routes  # noqa: E402  — planos de execução eletricidade e canalização
 api_router.include_router(mep_routes.router)
+from routes import assistant_dossiers as assistant_dossiers_routes  # noqa: E402  — processos completos / ZIP no Assistente
+api_router.include_router(assistant_dossiers_routes.router)
+from routes import image_studio as image_studio_routes  # noqa: E402  — estúdio de imagens IA (ilustração não contratual)
+api_router.include_router(image_studio_routes.router)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
