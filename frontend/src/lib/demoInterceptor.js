@@ -19,6 +19,7 @@
  *   resetDemoStore(): Promise<void>
  */
 
+import axios from "axios";
 import users from "@/fixtures/demo/users.json";
 import projects from "@/fixtures/demo/projects.json";
 import brandingFx from "@/fixtures/demo/demo_branding.json";
@@ -404,10 +405,23 @@ function _makeDemoAdapter() {
  * Instala o adapter demo no cliente axios `api`. Preserva o adapter original e
  * delega-lhe quando `is_demo !== "true"` (contas normais passam intactas).
  */
+// Pedidos de autenticação reais (login, Google, registo, 2FA, recuperação):
+// saem sempre do modo demo. Sem isto, quem experimentou a demo/stand no mesmo
+// browser ficava impedido de entrar na sua conta («Ligação Google impossível»).
+const REAL_AUTH_RE = /\/auth\/(login|session|register|google|2fa|verify|forgot|reset)/;
+
 export function installDemoInterceptor(apiClient) {
-  const originalAdapter = apiClient.defaults.adapter;
+  // axios ≥ 1.x guarda em `defaults.adapter` a LISTA de nomes ['xhr','http','fetch'],
+  // não uma função: é preciso resolvê-la, senão todos os pedidos reais falham
+  // antes de sair do browser (login, Google, /auth/me…).
+  const rawAdapter = apiClient.defaults.adapter;
+  const originalAdapter = typeof rawAdapter === "function" ? rawAdapter : axios.getAdapter(rawAdapter);
   const demoAdapter = _makeDemoAdapter();
   apiClient.defaults.adapter = function switchingAdapter(config) {
+    if (isDemoActive() && REAL_AUTH_RE.test(config.url || "")) {
+      disableDemoMode();
+      try { localStorage.removeItem("cp_stand_mode"); } catch { /* noop */ }
+    }
     if (isDemoActive()) return demoAdapter(config);
     return originalAdapter(config);
   };
