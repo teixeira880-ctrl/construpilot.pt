@@ -15,7 +15,7 @@ const BASE = "/structuro/calc/studies";
 const SOURCE_LABELS = { manuel: "manual", plan: "planta", manquant: "em falta", "plan (auto)": "planta (auto)", "plan (K×h)": "planta (K×h)", "auto (plan)": "auto (planta)" };
 const srcLabel = s => SOURCE_LABELS[s] || s;
 const TYPES = { slab: "Laje", beam: "Viga", wall: "Parede", column: "Pilar", footing: "Sapata" };
-const COLORS = { slab: "#c7d3e1", beam: "#b46b42", wall: "#17574b", column: "#9d3e26", footing: "#837466" };
+const COLORS = { slab: "#b9c9c0", beam: "#b46b42", wall: "#17574b", column: "#9d3e26", footing: "#837466" };
 const number = value => value === "" ? null : Number(value);
 const errorMessage = e => typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Verifique os valores e os campos obrigatórios.";
 const emptySource = () => ({ document: "", page: null, note: "" });
@@ -37,10 +37,10 @@ function Plan({ model, level }) {
   const xmin = Math.min(...points.map(p => p[0])), xmax = Math.max(...points.map(p => p[0]));
   const ymin = Math.min(...points.map(p => p[1])), ymax = Math.max(...points.map(p => p[1]));
   const span = Math.max(xmax - xmin, ymax - ymin, 1), pad = span * .12;
-  return <><svg role="img" aria-label={`Planta de princípio ${level}`} className="w-full h-80 bg-[#f4f7fb] rounded-xl border" viewBox={`${xmin - pad} ${ymin - pad} ${xmax - xmin + 2 * pad} ${ymax - ymin + 2 * pad}`}>
+  return <><svg role="img" aria-label={`Planta de princípio ${level}`} className="w-full h-80 bg-[#f8faf7] rounded-xl border" viewBox={`${xmin - pad} ${ymin - pad} ${xmax - xmin + 2 * pad} ${ymax - ymin + 2 * pad}`}>
     {shapes.sort((a, b) => Number(a.e.kind !== "slab") - Number(b.e.kind !== "slab")).map(({ e, pts }) => <g key={e.id}>
       <polygon points={pts.map(p => p.join(",")).join(" ")} fill={COLORS[e.kind]} fillOpacity=".14" stroke={COLORS[e.kind]} strokeWidth={span / 220} strokeDasharray={e.reviewed ? undefined : `${span / 60} ${span / 90}`} />
-      <text x={pts.reduce((s, p) => s + p[0], 0) / 4} y={pts.reduce((s, p) => s + p[1], 0) / 4} textAnchor="middle" fontSize={span / 35} fill="#0a2951">{e.id}</text>
+      <text x={pts.reduce((s, p) => s + p[0], 0) / 4} y={pts.reduce((s, p) => s + p[1], 0) / 4} textAnchor="middle" fontSize={span / 35} fill="#173c32">{e.id}</text>
     </g>)}
   </svg><p className="text-xs text-muted-foreground mt-2">Coordenadas em metros, canto inferior esquerdo local. {elements.length - placed.length} elemento(s) sem implantação. Tracejado: a confirmar.</p></>;
 }

@@ -226,9 +226,9 @@ export default function PhotoMeasure() {
                   const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
                   return (
                     <g key={`m${i}`}>
-                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#235eab" strokeWidth={r * 0.7} />
-                      <circle cx={a.x} cy={a.y} r={r} fill="#235eab" />
-                      <circle cx={b.x} cy={b.y} r={r} fill="#235eab" />
+                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#3F7D54" strokeWidth={r * 0.7} />
+                      <circle cx={a.x} cy={a.y} r={r} fill="#3F7D54" />
+                      <circle cx={b.x} cy={b.y} r={r} fill="#3F7D54" />
                       <text x={mid.x} y={mid.y - r * 2} fontSize={fs} fill="#0A0D14"
                             stroke="#fff" strokeWidth={fs / 6} paintOrder="stroke"
                             textAnchor="middle" fontWeight="700">{fmtLen(m.value)}</text>
@@ -239,8 +239,8 @@ export default function PhotoMeasure() {
                 const path = m.pts.map((p, k) => `${k === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") + " Z";
                 return (
                   <g key={`m${i}`}>
-                    <path d={path} fill="rgba(63,125,84,0.22)" stroke="#235eab" strokeWidth={r * 0.7} />
-                    {m.pts.map((p, k) => <circle key={k} cx={p.x} cy={p.y} r={r} fill="#235eab" />)}
+                    <path d={path} fill="rgba(63,125,84,0.22)" stroke="#3F7D54" strokeWidth={r * 0.7} />
+                    {m.pts.map((p, k) => <circle key={k} cx={p.x} cy={p.y} r={r} fill="#3F7D54" />)}
                     <text x={c.x} y={c.y} fontSize={fs} fill="#0A0D14" stroke="#fff" strokeWidth={fs / 6}
                           paintOrder="stroke" textAnchor="middle" fontWeight="700">{fmtArea(m.value)}</text>
                   </g>

@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SeoProvider } from "@/components/SEO";
 import "@/index.css";
-import "@/styles/portugal.css";
 import App from "@/App";
 
 // Neutralise l'erreur bénigne "ResizeObserver loop ..." qui déclenche l'overlay

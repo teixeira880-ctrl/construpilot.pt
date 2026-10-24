@@ -1,13 +1,13 @@
 /* Scoped to the assistant; shared workspace navigation keeps its own layout. */
-.assistant-studio { --as-ink: #1e314b; --as-muted: #60695f; --as-accent: #143e76; }
+.assistant-studio { --as-ink: #26392f; --as-muted: #60695f; --as-accent: #285541; }
 .assistant-workspace.assistant-studio { grid-template-columns: 246px minmax(0, 1fr); gap: 22px; }
-.dark .assistant-studio { --as-ink: #f4f7fb; --as-muted: #b0b9b0; --as-accent: #c1d3ea; }
+.dark .assistant-studio { --as-ink: #e4ede5; --as-muted: #b0b9b0; --as-accent: #b4d1bd; }
 .assistant-studio .assistant-history { padding: 20px 14px 14px; border-radius: 14px; gap: 16px; }
 .assistant-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--as-ink); }
 .assistant-history-heading strong { font-size: 14px; font-weight: 600; }
 .assistant-history-heading span { font-size: 11px; color: var(--as-muted); }
 .assistant-history-hint { color: var(--as-muted); font-size: 11px; margin-top: -10px; }
-.assistant-studio .assistant-new-button { min-height: 44px; width: 100%; justify-content: center; border-radius: 8px; background: #143e76; color: #fff; box-shadow: none; }
+.assistant-studio .assistant-new-button { min-height: 44px; width: 100%; justify-content: center; border-radius: 8px; background: #285541; color: #fff; box-shadow: none; }
 .assistant-studio .workspace-search-field { background: hsl(var(--background)); border-radius: 8px; min-height: 42px; }
 .assistant-studio .assistant-history-row > button:first-child { display: flex; align-items: center; gap: 9px; font-size: 12px; min-height: 48px; }
 .assistant-history-row > button:first-child > svg { flex-shrink: 0; opacity: .6; }
@@ -52,8 +52,8 @@
 .assistant-studio .assistant-input-box textarea { font-size: 14px; line-height: 1.65; min-height: 58px; padding: 2px; }
 .assistant-studio .assistant-composer-actions { margin-top: 8px; flex-wrap: wrap; gap: 6px; }
 .assistant-studio .assistant-composer-actions > button { border-radius: 8px; font-size: 12px; min-height: 40px; }
-.assistant-studio [data-testid="assistant-send-btn"] { background: #143e76; color: white; padding: 9px 15px; }
-.assistant-studio [data-testid="assistant-send-btn"]:hover { background: #0f3363; }
+.assistant-studio [data-testid="assistant-send-btn"] { background: #285541; color: white; padding: 9px 15px; }
+.assistant-studio [data-testid="assistant-send-btn"]:hover { background: #204733; }
 .assistant-composer-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 2px 0; }
 .assistant-mode-summary { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; font-size: 10px; color: var(--as-muted); }
 .assistant-mode-summary svg { flex-shrink: 0; }
@@ -73,7 +73,7 @@
 .assistant-studio .assistant-message th { background: hsl(var(--muted)); }
 .assistant-studio .assistant-message pre { padding: 14px; border-radius: 8px; background: hsl(var(--background)); }
 .assistant-studio .assistant-message a { text-decoration: underline; text-underline-offset: 3px; }
-.assistant-studio :is(button, input, textarea, select, a):focus-visible, .assistant-studio-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--as-accent, #143e76); outline-offset: 3px; }
+.assistant-studio :is(button, input, textarea, select, a):focus-visible, .assistant-studio-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--as-accent, #285541); outline-offset: 3px; }
 .assistant-studio-menu { width: 285px; max-width: calc(100vw - 24px); padding: 6px; border-radius: 10px; }
 .assistant-studio-menu [role="menuitem"] { min-height: 42px; font-size: 12px; gap: 9px; border-radius: 6px; }
 @media (max-width: 1150px) and (min-width: 768px) { .assistant-workspace.assistant-studio { grid-template-columns: 200px minmax(0, 1fr); gap: 14px; } }
