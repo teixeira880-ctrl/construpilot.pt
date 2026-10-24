@@ -196,6 +196,8 @@ api_router.include_router(assistant_routes.router)
 api_router.include_router(assistant_routes.public_router)
 from routes import agents as agents_routes
 api_router.include_router(agents_routes.router)
+from routes import missions as missions_routes   # programa IA de opções
+api_router.include_router(missions_routes.router)
 from routes import marketing as marketing_routes
 api_router.include_router(marketing_routes.public_router)
 api_router.include_router(ads_routes.router)

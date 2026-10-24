@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SupervisorResult } from "@/components/agents/SupervisorResult";
 import {
   Bot, FileText, ReceiptText, Ruler, ScanLine, GitCompare, ArrowLeft, Loader2,
-  CheckCircle2, AlertTriangle, Download, Pencil, Clock, Play, ThumbsUp, ThumbsDown, Check, ShieldCheck,
+  CheckCircle2, AlertTriangle, Download, Pencil, Clock, Play, ThumbsUp, ThumbsDown, Check, ShieldCheck, ListChecks,
 } from "lucide-react";
 
 const ICONS = { FileText, ReceiptText, Ruler, ScanLine, GitCompare, ShieldCheck };
@@ -27,6 +27,7 @@ const resultSummary = (r) => {
   if (x.kind === "pdf") return `${x.levels} nível(is) · processo PDF pronto`;
   if (x.kind === "quote") return "Orçamento consolidado criado";
   if (x.kind === "compare") return "Comparação de plantas pronta";
+  if (x.kind === "mission") return `${x.done}/${(x.steps || []).length} opção(ões) terminada(s)`;
   return "";
 };
 
@@ -131,7 +132,10 @@ function AgentsHubContent() {
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
           Verifique os seus dados, identifique as incoerências e corrija os valores recalculáveis. O seu piloto trabalha <strong>em segundo plano</strong>, mesmo quando muda de página. Cada resultado precisa o que foi controlado e o que falta confirmar.
         </p>
-        <Button variant="outline" className="mt-4" onClick={() => nav(`/assistant?intent=supervise${chantierId ? `&chantier=${encodeURIComponent(chantierId)}` : ""}`)}>Descrever o meu pedido ao assistente</Button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={() => nav(`/missions${chantierId ? `?chantier=${encodeURIComponent(chantierId)}` : ""}`)} data-testid="agents-open-missions"><ListChecks className="h-4 w-4 mr-1" /> Programa de opções</Button>
+          <Button variant="outline" onClick={() => nav(`/assistant?intent=supervise${chantierId ? `&chantier=${encodeURIComponent(chantierId)}` : ""}`)}>Descrever o meu pedido ao assistente</Button>
+        </div>
       </header>
 
       {!box && (
@@ -173,7 +177,9 @@ function AgentsHubContent() {
                         <SI className={`h-3 w-3 ${st.spin ? "animate-spin" : ""}`} /> {st.label}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm truncate">{r.agent_name}</p>
+                        <p className="font-semibold text-sm truncate">{r.agent === "mission"
+                          ? <button type="button" className="hover:underline" onClick={() => nav(`/missions?run=${encodeURIComponent(r.run_id)}`)} data-testid={`agent-open-mission-${r.run_id}`}>{r.agent_name}</button>
+                          : r.agent_name}</p>
                         <p className="text-[11px] text-muted-foreground num">{new Date(r.created_at).toLocaleString("pt-PT")}</p>
                       </div>
                       {r.status === "done" && (

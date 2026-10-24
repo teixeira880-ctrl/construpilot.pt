@@ -35,6 +35,7 @@ import SeoBlogPanel from "@/components/admin/SeoBlogPanel";
 import BabyLoveGrowthSettingsPanel from "@/components/admin/BabyLoveGrowthSettingsPanel";
 import AutorizacaoObrasPanel from "@/components/admin/AutorizacaoObrasPanel";
 import CeoAgentPanel from "@/components/admin/CeoAgentPanel";
+import MissionOptionsPanel from "@/components/admin/MissionOptionsPanel";
 import CalcAuditorPanel from "@/components/admin/CalcAuditorPanel";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
@@ -225,6 +226,7 @@ export default function Admin() {
           <TabsTrigger value="masonry" className="rounded-sm" data-testid="admin-tab-masonry">Alvenaria</TabsTrigger>
           <TabsTrigger value="seoblog" className="rounded-sm" data-testid="admin-tab-seoblog">SEO / Blog</TabsTrigger>
           <TabsTrigger value="ceo" className="rounded-sm" data-testid="admin-tab-ceo">Agente CEO</TabsTrigger>
+          <TabsTrigger value="missions" className="rounded-sm" data-testid="admin-tab-missions">Opções IA</TabsTrigger>
           <TabsTrigger value="calcaudit" className="rounded-sm" data-testid="admin-tab-calcaudit">Auditor de cálculos</TabsTrigger>
           <TabsTrigger value="inbox" className="rounded-sm" data-testid="admin-tab-inbox">{t("admin.t_inbox")}</TabsTrigger>
           <TabsTrigger value="errors" className="rounded-sm" data-testid="admin-tab-errors">{t("admin.t_errors")}</TabsTrigger>
@@ -296,6 +298,10 @@ export default function Admin() {
 
         <TabsContent value="ceo" className="mt-6">
           <CeoAgentPanel />
+        </TabsContent>
+
+        <TabsContent value="missions" className="mt-6">
+          <MissionOptionsPanel />
         </TabsContent>
 
         <TabsContent value="calcaudit" className="mt-6">
