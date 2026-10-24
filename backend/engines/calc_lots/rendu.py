@@ -62,7 +62,7 @@ LANG = {"note": "Nota de cálculo", "page": "página", "ref": "Ref.", "synthese"
         "verdict_glob_ko": "Pelo menos uma verificação não está conforme", "verdict_glob_na": "Nenhuma não conformidade — pontos a verificar",
         "head": ["Referência", "Exigência", "Valor", "Resultado"], "hyp": "Hipóteses / a validar",
         "brand_sub": "Gabinete de projeto digital"}
-CLAIR, ACCENT, AMBRE_BG, OK_C, KO_C, NA_C = (colors.HexColor("#d2e3e6"), colors.HexColor("#1c5778"), colors.HexColor("#fff7e0"),
+CLAIR, ACCENT, AMBRE_BG, OK_C, KO_C, NA_C = (colors.HexColor("#d2e3e6"), colors.HexColor("#b8612f"), colors.HexColor("#fff7e0"),
                                            colors.HexColor("#1f8a52"), colors.HexColor("#c8453c"), colors.HexColor("#c98500"))
 
 
