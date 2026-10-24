@@ -96,6 +96,10 @@ const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 const PlansExecutionLazy = lazy(() => import("@/pages/PlansExecution"));
+const UrbanismoLazy = lazy(() => import("@/pages/Urbanismo"));
+const UrbanismoProcessoLazy = lazy(() => import("@/pages/UrbanismoProcesso"));
+const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
+const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 import AppsHub from "@/pages/AppsHub";
 import MedicaoRapida from "@/pages/MedicaoRapida";
 import BottomTabBar from "@/components/mobile/BottomTabBar";
@@ -369,6 +373,10 @@ function AppRouter() {
       <Route path="/structuro-bet" element={<ProRoute><Shell><BetDossier /></Shell></ProRoute>} />
       <Route path="/estudo-moradia" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><StructuroHouseLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/planos-execucao" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><PlansExecutionLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/urbanismo/validacao/:token" element={<Suspense fallback={<RouteSkeleton />}><UrbanismoValidacaoLazy /></Suspense>} />
+      <Route path="/urbanismo" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><UrbanismoLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/urbanismo/:id" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><UrbanismoProcessoLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/visto-bet/:token" element={<Suspense fallback={<RouteSkeleton />}><VistoBetLazy /></Suspense>} />
       <Route path="/structuro/lecture-plan" element={<ProRoute><Shell><PlanReader /></Shell></ProRoute>} />
       <Route path="/escaliers" element={<ProRoute><Shell><StairCalculator /></Shell></ProRoute>} />
       <Route path="/btp-solver" element={<Protected><Shell><BtpSolver /></Shell></Protected>} />

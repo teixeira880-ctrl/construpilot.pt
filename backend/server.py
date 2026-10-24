@@ -261,6 +261,12 @@ from routes import admin_activity as admin_activity_routes  # noqa: E402
 api_router.include_router(admin_activity_routes.router)
 from routes import mep as mep_routes  # noqa: E402  — planos de execução eletricidade e canalização
 api_router.include_router(mep_routes.router)
+from routes import urbanismo as urbanismo_routes  # noqa: E402  — editor de volumes, peças desenhadas, quadro de áreas
+api_router.include_router(urbanismo_routes.router)
+api_router.include_router(urbanismo_routes.public_router)
+from routes import structuro_bet_visto as bet_visto_routes  # noqa: E402  — visto do engenheiro (autopiloto BET)
+api_router.include_router(bet_visto_routes.bet_visto_router)
+api_router.include_router(bet_visto_routes.bet_visto_public)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
