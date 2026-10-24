@@ -259,6 +259,8 @@ from routes import prompt_fill as prompt_fill_routes  # noqa: E402
 api_router.include_router(prompt_fill_routes.router)
 from routes import admin_activity as admin_activity_routes  # noqa: E402
 api_router.include_router(admin_activity_routes.router)
+from routes import mep as mep_routes  # noqa: E402  — planos de execução eletricidade e canalização
+api_router.include_router(mep_routes.router)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
