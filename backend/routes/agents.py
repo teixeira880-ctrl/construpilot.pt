@@ -76,6 +76,12 @@ AGENTS = {
         "needs_plans": True,
         "output": "compare",
     },
+    # Programa de opções: lançado a partir de /missions (routes/missions.py), nunca a partir do catálogo.
+    "mission": {
+        "name": "Programa IA de opções", "icon": "ListChecks", "needs_plans": False, "hidden": True,
+        "desc": "Executa apenas as opções assinaladas e validadas no processo.",
+        "output": "mission",
+    },
 }
 
 
@@ -149,10 +155,35 @@ async def _load_owned_plans(ids, user):
     return sorted(plans, key=lambda p: order[p["plan_id"]])
 
 
+async def _plan_status(plans: list[dict], user: dict) -> list[dict]:
+    """Statut de métré par plan (déterministe, aucun calcul inventé)."""
+    # Libellés de niveau appris (corrections passées) par nom de fichier
+    learned = {m["key"]: m["value"] async for m in db.agent_memory.find(
+        {"user_id": user["user_id"], "kind": "level_label"}, {"_id": 0, "key": 1, "value": 1})}
+    plan_status = []
+    for i, p in enumerate(plans):
+        ms = p.get("measurements") or []
+        priced = [m for m in ms if m.get("poste")]
+        openings = sum(len(m.get("openings") or []) for m in ms)
+        rooms = p.get("rooms") or []
+        fname = p.get("filename") or p["plan_id"]
+        level = learned.get((p.get("filename") or "").lower()[:120]) or _auto_level(p.get("filename"), i)
+        plan_status.append({
+            "plan_id": p["plan_id"], "filename": fname,
+            "level": level,
+            "measures": len(ms), "priced": len(priced), "openings": openings,
+            "rooms": len(rooms), "rooms_surface_m2": round(sum(float(r.get("surface_m2") or 0) for r in rooms), 2),
+            "ready": len(ms) > 0 or len(rooms) > 0,
+        })
+    return plan_status
+
+
 @router.get("/catalog")
 async def catalog(user=Depends(current_user)) -> dict:
     available = []
     for key, spec in AGENTS.items():
+        if spec.get("hidden"):
+            continue
         try:
             await _authorize_agent(key, user)
         except HTTPException:
@@ -165,6 +196,8 @@ async def catalog(user=Depends(current_user)) -> dict:
 async def propose_plan(body: PlanIn, user=Depends(current_user)) -> dict:
     """Propose un plan d'actions SANS rien exécuter. L'utilisateur le valide ensuite."""
     await _authorize_agent(body.agent, user)
+    if AGENTS[body.agent].get("hidden"):
+        raise HTTPException(422, "Este agente lança-se a partir do seu próprio ecrã")
     if body.chantier_id:
         from routes.chantiers import _get
         await _get(body.chantier_id, user["user_id"])
@@ -185,26 +218,9 @@ async def propose_plan(body: PlanIn, user=Depends(current_user)) -> dict:
     order = {pid: i for i, pid in enumerate(body.plan_ids)}
     plans.sort(key=lambda p: order.get(p["plan_id"], 99))
 
-    # Libellés de niveau appris (corrections passées) par nom de fichier
-    learned = {m["key"]: m["value"] async for m in db.agent_memory.find(
-        {"user_id": user["user_id"], "kind": "level_label"}, {"_id": 0, "key": 1, "value": 1})}
-
-    # Statut de métré par plan (déterministe, aucun calcul inventé)
-    plan_status = []
-    priced_total = 0
-    for i, p in enumerate(plans):
-        ms = p.get("measurements") or []
-        priced = [m for m in ms if m.get("poste")]
-        openings = sum(len(m.get("openings") or []) for m in ms)
-        priced_total += len(priced)
-        fname = p.get("filename") or p["plan_id"]
-        level = learned.get((p.get("filename") or "").lower()[:120]) or _auto_level(p.get("filename"), i)
-        plan_status.append({
-            "plan_id": p["plan_id"], "filename": fname,
-            "level": level,
-            "measures": len(ms), "priced": len(priced), "openings": openings,
-            "ready": len(ms) > 0,
-        })
+    plan_status = await _plan_status(plans, user)
+    plan_status = [{**x, "ready": x["measures"] > 0} for x in plan_status]   # agents clássicos: só medições
+    priced_total = sum(x["priced"] for x in plan_status)
 
     steps = []
     if body.agent == "supervise":
@@ -291,6 +307,9 @@ async def _do_execute(run: dict, body: ExecIn, user: dict) -> dict:
                 {"run_id": run["run_id"], "user_id": user["user_id"], "status": "running", "worker": run["worker"]},
                 {"$set": {"partial_result": report}})
         return await run_supervisor(db, user, run, repair=body.mode == "repair", progress=progress)
+    if agent == "mission":
+        from routes.missions import run_mission
+        return await run_mission(run, body, user)
     from routes import plans_analysis as PA
     # Refresh source counts; a proposal may predate edits or resource deletion.
     fresh = await _load_owned_plans(run["plan_ids"], user)
@@ -451,7 +470,7 @@ async def list_runs(user=Depends(current_user), chantier_id: Optional[str] = Non
         await _get(chantier_id, user["user_id"])
         query["chantier_id"] = chantier_id
     rows = await db.agent_runs.find(
-        query, {"_id": 0, "plan_status": 0, "steps": 0}
+        query, {"_id": 0, "plan_status": 0, "steps": 0, "mission.steps.prompt": 0}
     ).sort("created_at", -1).limit(30).to_list(30)
     for r in rows:
         r["agent_name"] = AGENTS.get(r.get("agent"), {}).get("name", r.get("agent"))
@@ -496,6 +515,8 @@ async def revise_run(run_id: str, body: FeedbackIn, user=Depends(current_user)) 
     if not run:
         raise HTTPException(404, "Execução não encontrada")
     await _authorize_agent(run["agent"], user)
+    if AGENTS[run["agent"]].get("hidden"):
+        raise HTTPException(422, "Esta execução não se revê; crie uma nova seleção")
     new_status = []
     for s in run.get("plan_status") or []:
         s2 = dict(s)
@@ -533,7 +554,7 @@ async def revise_run(run_id: str, body: FeedbackIn, user=Depends(current_user)) 
 
 # ===================== Exécution en arrière-plan (worker) =====================
 
-async def _agent_notify(run_id: str, uid: str, status: str, agent_name: str) -> None:
+async def _agent_notify(run_id: str, uid: str, status: str, agent_name: str, agent: str = "") -> None:
     if status not in ("done", "error"):
         return
     await db.notifications.update_one(
@@ -542,7 +563,8 @@ async def _agent_notify(run_id: str, uid: str, status: str, agent_name: str) -> 
                   "title": "Agent terminé" if status == "done" else "Agent en échec",
                   "message": (f"{agent_name} : résultat prêt" if status == "done"
                               else f"{agent_name} : l'exécution a échoué"),
-                  "link": f"/agents?run={run_id}", "read": False, "created_at": _now()}},
+                  "link": f"/missions?run={run_id}" if agent == "mission" else f"/agents?run={run_id}",
+                  "read": False, "created_at": _now()}},
         upsert=True)
 
 
@@ -552,7 +574,7 @@ async def _finish_agent(run, status, result=None, error=None):
         {"$set": {"status": status, "result": result, "error": error, "executed_at": _now()},
          "$unset": {"lease_until": "", "worker": ""}})
     if changed.matched_count:
-        await _agent_notify(run["run_id"], run["user_id"], status, AGENTS[run["agent"]]["name"])
+        await _agent_notify(run["run_id"], run["user_id"], status, AGENTS[run["agent"]]["name"], run["agent"])
 
 
 async def _heartbeat(run, operation):
@@ -626,7 +648,7 @@ async def _claim_agent_run(worker: str) -> dict | None:
             {"$set": {"status": "error", "error": "Processamento interrompido (reinício). Verifique os resultados parciais.", "executed_at": now},
              "$unset": {"lease_until": "", "worker": ""}})
         if changed.matched_count:
-            await _agent_notify(run["run_id"], run["user_id"], "error", AGENTS.get(run["agent"], {}).get("name", "Agent"))
+            await _agent_notify(run["run_id"], run["user_id"], "error", AGENTS.get(run["agent"], {}).get("name", "Agent"), run["agent"])
     until = (datetime.now(timezone.utc) + timedelta(seconds=AGENT_LEASE_SECONDS)).isoformat()
     return await db.agent_runs.find_one_and_update(
         {"status": "queued"},

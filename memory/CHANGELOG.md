@@ -1,5 +1,16 @@
 # ConstruPilot — CHANGELOG
 
+## 24/10/2026 — Programa IA de opções (motor do .fr adaptado a Portugal)
+Pedido por Martinho (« envoie les moteurs chez Emergent pour les installer », opção « Cadre seul, adapté PT »).
+
+- **Novo** `backend/engines/missions.py`, `backend/routes/missions.py` : o cliente assinala as opções, vê o resumo e valida; a IA executa em segundo plano APENAS as opções validadas (fila e worker de `routes/agents.py`, agente oculto `mission`). Uma opção falhada só bloqueia as que dela dependem.
+- **Opções PT** : leitura das plantas, controlo de qualidade, medição, planta de eletricidade (RTIEBT) e de canalização (DR 23/95) pelo motor MEP PT, orçamento em rascunho, planeamento, processo PDF, partilha.
+- **Não incluídas** : as notas térmica, de estrutura, DPGF/CCTP e DPE do .fr aplicam regras francesas (NF DTU, RE2020, DPE) e não valem em Portugal.
+- **Partilha** : ligação só de leitura para os PDF dos estudos MEP do programa, criada **inativa**; o profissional ativa-a (1 a 365 dias) ou revoga-a; nada é enviado. Página pública `GET /api/missions/public/{token}` (noindex).
+- **Assistente** : ferramentas `programme_ia_options`, `lancer_programme_ia`, `suivre_programme_ia` ; lança sem voltar a pedir confirmação quando o pedido é claro ; envio, assinatura, pagamento e correio continuam a ser um clique do profissional.
+- **Frontend** : página `/missions`, botão « Programa de opções » em `/agents`, separador admin « Opções IA ».
+- **Testes** : `tests/test_missions.py`, `tests/test_missions_partage.py`, `tests/test_assistant_missions.py` (26 testes).
+
 ## Itération 120 — 18/06/2026 (Vitrine i18n + CTA essai gratuit + Marge par poste)
 - **Traductions vitrine (7 langues)** : `FeatureShowcase.jsx` consomme désormais `src/lib/showcaseI18n.js` (SHOWCASE_I18N fr/en/es/pt/it/de/ar) via `lang` du contexte i18n. Tous les textes (over/title/sub, 4 items overline/title/text/bullets/statLabel, CTA) traduits. Vérifié EN.
 - **CTA « Essai gratuit »** : bloc final `showcase-try-cta` (dégradé, halo, `showcase-try-btn` → /inscription) avec titre/sous-titre/note traduits. Vérifié (« Ready to quote faster? » / « Free trial »).
