@@ -283,7 +283,7 @@ function DashboardTab({ t }) {
       const res = await api.get(`/hr/export/${fmt}`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `paie.${fmt}`; a.click();
+      a.href = url; a.download = `salarios.${fmt}`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível exportar"); }
   };

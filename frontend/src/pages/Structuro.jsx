@@ -556,7 +556,7 @@ function StudyDetail({ study, setStudy, onBack }) {
             onChange={(e) => setPlan((p) => ({ ...p, kind: e.target.value }))} data-testid="structuro-plan-kind">
             <option value="existant">Existente</option>
             <option value="projet">Projeto</option>
-            <option value="bet">Dossier BET</option>
+            <option value="bet">Processo de engenharia</option>
           </select>
           <Input className="h-8 w-40 text-xs" placeholder="Escala / cota de ref."
             value={plan.scale_note} onChange={(e) => setPlan((p) => ({ ...p, scale_note: e.target.value }))} />

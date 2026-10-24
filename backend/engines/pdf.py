@@ -197,7 +197,7 @@ def _esti_planning(story: list, planning: list, estimation: dict, S: dict) -> No
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     story += [pt, Paragraph(
-        f"Duração total estimada: {estimation['duration_weeks']} semaines ({estimation['total_hours']:g} horas de mão de obra).", S["small"])]
+        f"Duração total estimada: {estimation['duration_weeks']} semanas ({estimation['total_hours']:g} horas de mão de obra).", S["small"])]
 
 
 def _esti_advice(story: list, advice: str, S: dict) -> None:

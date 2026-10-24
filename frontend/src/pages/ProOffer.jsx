@@ -76,7 +76,7 @@ export default function ProOffer() {
           <div className="flex flex-wrap items-center gap-3">
             <Button size="lg" className="rounded-sm gap-2" data-testid="pro-hero-cta"
                     onClick={() => proPlans[0] ? subscribe(proPlans[0]) : navigate("/register?intent=pro")}>
-              Iniciar a experiência gratuita ({trialDays} jours) <ArrowRight className="h-5 w-5" />
+              Iniciar a experiência gratuita ({trialDays} dias) <ArrowRight className="h-5 w-5" />
             </Button>
             <a href="#offre-pro" className="text-sm font-medium underline underline-offset-4" data-testid="pro-see-plans">Ver as ofertas</a>
           </div>
@@ -123,7 +123,7 @@ export default function ProOffer() {
                   <span className={`h-10 w-10 grid place-items-center rounded-sm ${hi ? "bg-primary/15 text-primary" : "bg-secondary"}`}><Icon className="h-5 w-5" /></span>
                   <div><p className="font-display font-bold text-lg">{plan.name}</p>{plan.tagline && <p className="text-xs text-muted-foreground">{plan.tagline}</p>}</div>
                 </div>
-                <div><p className="num font-display text-4xl font-extrabold tracking-tighter">{eur} €<span className="text-base font-normal text-muted-foreground">/mois</span></p>
+                <div><p className="num font-display text-4xl font-extrabold tracking-tighter">{eur} €<span className="text-base font-normal text-muted-foreground">/mês</span></p>
                   <p className="text-[11px] text-muted-foreground mt-1">Experiência {trialDays} dias oferecidos · sem fidelização</p></div>
                 {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
                 <ul className="grid gap-2">
@@ -134,7 +134,7 @@ export default function ProOffer() {
                 <Button onClick={() => subscribe(plan)} disabled={busy === plan.plan_id}
                         data-testid={`pro-subscribe-${plan.plan_id}`}
                         className="w-full rounded-sm gap-2 mt-2" variant={hi ? "default" : "outline"}>
-                  {busy === plan.plan_id ? "A redirecionar…" : <>Iniciar a experiência {trialDays} jours <ArrowRight className="h-4 w-4" /></>}
+                  {busy === plan.plan_id ? "A redirecionar…" : <>Iniciar a experiência de {trialDays} dias <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               </div>
             );
@@ -149,7 +149,7 @@ export default function ProOffer() {
         <h2 className="font-display text-2xl font-extrabold tracking-tight text-center">Condições e faturação</h2>
         <div className="grid gap-3">
           {[
-            { icon: CalendarClock, q: `Como funciona a experiência de ${trialDays} jours ?`, a: `Acede a todas as funções Pro durante ${trialDays} dias. Não há qualquer débito durante a experiência.` },
+            { icon: CalendarClock, q: `Como funciona a experiência de ${trialDays} dias?`, a: `Acede a todas as funções Pro durante ${trialDays} dias. Não há qualquer débito durante a experiência.` },
             { icon: CreditCard, q: "Porque é pedido um cartão na inscrição?", a: "O cartão é registado para permitir o início automático da subscrição no fim da experiência. Só é debitado depois do período de experiência." },
             { icon: ShieldCheck, q: "Posso cancelar antes de ser faturado?", a: `Sim. Cancele a qualquer momento durante a experiência a partir do seu espaço de faturação: nenhum montante será cobrado.` },
             { icon: Building2, q: "Qual a diferença entre Pro e Pro Business?", a: "O Pro cobre um profissional e as suas obras. O Pro Business acrescenta a gestão de equipa (artigos partilhados), a faturação eletrónica e volumes superiores." },

@@ -138,9 +138,9 @@ export default function PriceSearch() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Comparador preços materiais construção" description="Compare os preços dos materiais de construção na Point.P, Leroy Merlin, Castorama, Brico Dépôt e 6 outras insígnias. Histórico 12 meses e alertas de preço." keywords="comparador preços materiais, preço Leroy Merlin, preço Maxmat, preço azulejo, preço pladur, preço madeira construção" canonical="/precos" />
+      <SEO title="Comparador preços materiais construção" description="Compare os preços dos materiais de construção no Leroy Merlin, Maxmat, Bricomarché, AKI e noutras lojas. Histórico de 12 meses e alertas de preço." keywords="comparador preços materiais, preço Leroy Merlin, preço Maxmat, preço azulejo, preço pladur, preço madeira construção" canonical="/precos" />
       <SectionTitle as="h1" over="Navegador de preços" title="Compare os preços materiais em tempo real">
-        10 fornecedores consultados, portes e stock incluídos. O conector é normalizado: as API oficiais ligam-se sem modificar a aplicação.
+        8 lojas consultadas, portes e stock incluídos. O conector é normalizado: as API oficiais ligam-se sem modificar a aplicação.
       </SectionTitle>
 
       <div className="surface p-2 flex flex-col sm:flex-row gap-2">

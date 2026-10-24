@@ -36,7 +36,7 @@ async def today(user=Depends(current_user)) -> dict:
                           "url": f"/devis-editeur/{inv['doc_id']}", "amount": (inv.get("totals") or {}).get("remaining") or (inv.get("totals") or {}).get("ttc"), "since": inv.get("due_date")})
         vat_unset = await db.pro_documents.count_documents({"user_id": uid, "status": "draft", "totals.vat_unset_lines": {"$gt": 0}})
         if vat_unset:
-            items.append({"kind": "vat_to_confirm", "label": f"{vat_unset} brouillon{('s' if vat_unset > 1 else '')} com linhas sem IVA escolhido", "url": "/devis?filtre=brouillons"})
+            items.append({"kind": "vat_to_confirm", "label": f"{vat_unset} rascunho{('s' if vat_unset > 1 else '')} com linhas sem IVA escolhido", "url": "/devis?filtre=brouillons"})
         review_jobs = await db.plans_pro_jobs.find({"user_id": uid, "status": {"$in": ["needs_review", "partial"]}, "reviewed": {"$ne": True}},
                                                    {"_id": 0, "job_id": 1, "filename": 1, "status": 1}).sort("created_at", -1).to_list(5)
         for j in review_jobs:

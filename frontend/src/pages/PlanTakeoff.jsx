@@ -450,7 +450,7 @@ export default function PlanTakeoff() {
         description: l.detail, qty: l.qty, unit: l.unit === "m²" ? "m2" : l.unit,
         unit_price_ht: sellingPu(l.pu, margin), category: cat });
     });
-    toast.success(`${chiffrageResult.lines.length} linha(s) « ${cat} » adicionadas ao orçamento (${chiffrageResult.totals.ht_with_margin} € HT)`, { duration: 6000 });
+    toast.success(`${chiffrageResult.lines.length} linha(s) « ${cat} » adicionadas ao orçamento (${chiffrageResult.totals.ht_with_margin} € s/ IVA)`, { duration: 6000 });
     setChiffrageDialog(null); setChiffrageResult(null);
   };
 
@@ -1017,7 +1017,7 @@ export default function PlanTakeoff() {
     loadAllPlans();
     loadPlanGroups();
     if (createdGroup) {
-      toast.success(`Projet « ${createdGroup.name} » — ${uploaded.length} niveau${uploaded.length > 1 ? "x" : ""} adicionada${uploaded.length > 1 ? "s" : ""}`);
+      toast.success(`Projeto « ${createdGroup.name} » — ${uploaded.length} piso${uploaded.length > 1 ? "s" : ""} adicionado${uploaded.length > 1 ? "s" : ""}`);
       openGroupConsolidated(createdGroup);
     } else if (ok > 1) toast.success(`${ok} plantas importadas`);
     else if (ok === 0) toast.error("Nenhuma planta importada — os ficheiros continuam disponíveis para tentar novamente");
@@ -1338,7 +1338,7 @@ export default function PlanTakeoff() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `cotes-${plan.filename || plan.plan_id}.pdf`;
+      a.download = `cotas-${plan.filename || plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("PDF das cotas transferido");
@@ -1378,7 +1378,7 @@ export default function PlanTakeoff() {
       const { data: blob } = await api.get(`/takeoffs/${plan.plan_id}/export-xlsx`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre-${plan.plan_id}.xlsx`;
+      a.href = url; a.download = `medicao-${plan.plan_id}.xlsx`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Export Excel transferido");
@@ -1404,7 +1404,7 @@ export default function PlanTakeoff() {
       const { data: blob } = await api.get(`/takeoffs/${plan.plan_id}/pc-study/${fmt}${qs}`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `etude-pc-${plan.plan_id}.${fmt}`;
+      a.href = url; a.download = `estudo-licenciamento-${plan.plan_id}.${fmt}`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success(`Estudo licença de construção ${fmt.toUpperCase()} descarregada`);
@@ -1422,7 +1422,7 @@ export default function PlanTakeoff() {
     ].filter((it) => it.quantity > 0);
     if (!items.length) return toast.error("Nenhuma quantidade a comparar — lance primeiro o estudo");
     sessionStorage.setItem("construpilot_price_search_batch", JSON.stringify({
-      ts: Date.now(), project_name: `Estudo do projeto de licenciamento — ${plan?.filename || "plan"}`,
+      ts: Date.now(), project_name: `Estudo do projeto de licenciamento — ${plan?.filename || "planta"}`,
       total_avg: t.ht || 0, items,
     }));
     nav("/precos");
@@ -1633,7 +1633,7 @@ export default function PlanTakeoff() {
         const total = cumulValue(next, isArea);
         const noun = isArea ? "Zona" : "Troço";
         const what = isArea ? "Superfície" : "Parede";
-        toast.success(`${noun} ${next.length} adicionada${next.length > 1 ? "" : ""} · ${what} en cours : ${total.toFixed(2)} ${isArea ? "m²" : "m"} — continue ou «Terminar»`, { duration: 5000 });
+        toast.success(`${noun} ${next.length} adicionada${next.length > 1 ? "" : ""} · ${what} em curso: ${total.toFixed(2)} ${isArea ? "m²" : "m"} — continue ou «Terminar»`, { duration: 5000 });
         return;
       }
     }
@@ -1966,7 +1966,7 @@ export default function PlanTakeoff() {
         { page_index: pageIndex });
       toast.success(
         `Escala calibrada pelas cotas: ${data.calibration.pixels_per_meter.toFixed(1)} px/m ` +
-        `(${data.calibration.samples_used} cote${data.calibration.samples_used > 1 ? "s" : ""}, ±${data.calibration.spread_pct}%)` +
+        `(${data.calibration.samples_used} cota${data.calibration.samples_used > 1 ? "s" : ""}, ±${data.calibration.spread_pct}%)` +
         (data.rooms_recomputed ? ` · ${data.rooms_recomputed} divisão(ões) recalculada(s)` : ""),
         { duration: 8000 });
       await refreshPlan();
@@ -2258,9 +2258,9 @@ export default function PlanTakeoff() {
         const ttc = Number(data?.totals?.ttc || 0);
         const ht = Number(data?.totals?.ht_with_margin || 0);
         const msg = `Estimativa da página: ${ht.toLocaleString("pt-PT", { maximumFractionDigits: 0 })} euros sem IVA, ou seja ${ttc.toLocaleString("pt-PT", { maximumFractionDigits: 0 })} euros com IVA.`;
-        toast.success(`Total da página: ${ht.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} € HT · ${ttc.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} € c/ IVA`);
+        toast.success(`Total da página: ${ht.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} € s/ IVA · ${ttc.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} € c/ IVA`);
         aiSpeak(msg);
-        turnResult = `Página orçamentada: ${ht.toFixed(0)} € HT`;
+        turnResult = `Página orçamentada: ${ht.toFixed(0)} € s/ IVA`;
       } else {
         toast.success("Ação aplicada e guardada");
         let hist = inverse;
@@ -2355,7 +2355,7 @@ export default function PlanTakeoff() {
           setShowStructure(true);
           setSelectedStruct(null);
         }
-        else warnings.push("structure : " + data.error);
+        else warnings.push("estrutura: " + data.error);
       } catch (e) { warnings.push("deteção de estrutura indisponível"); }
       if (currentPageKeyRef.current !== sourceKey) return;
 
@@ -2429,9 +2429,9 @@ export default function PlanTakeoff() {
 
       toast.dismiss(tid);
       const parts = [];
-      if (struct) parts.push(`${struct.wall_count || 0} paredes · ${struct.column_count || 0} pilares · ${struct.beam_count || 0} vigas · ${struct.floor_count || 0} dalles`);
+      if (struct) parts.push(`${struct.wall_count || 0} paredes · ${struct.column_count || 0} pilares · ${struct.beam_count || 0} vigas · ${struct.floor_count || 0} lajes`);
       if (aiRooms.length) parts.push(`${aiRooms.length} divisão(ões)`);
-      if (warnings.length) toast.warning(`Analyse partielle : ${warnings.join(" ; ")}. Verifique os resultados antes de exportar.`, { duration: 10000 });
+      if (warnings.length) toast.warning(`Análise parcial: ${warnings.join("; ")}. Verifique os resultados antes de exportar.`, { duration: 10000 });
       else toast.success(`Análise concluída — ${parts.join(" · ") || "nenhum elemento detetado"}. Verifique os resultados na planta.`, { duration: 8000 });
     } catch (e) {
       toast.dismiss(tid);
@@ -2450,7 +2450,7 @@ export default function PlanTakeoff() {
       const { data: job } = await api.post(`/takeoffs/${plan.plan_id}/detect-structure-all`);
       const data = await waitPlanJob(job.job_id, { onProgress: (j) => {
         if (currentPageKeyRef.current === sourceKey && j.total > 0) {
-          setAnalysisProgress(`Structure · ${j.progress || 0} / ${j.total} páginas tratadas…`);
+          setAnalysisProgress(`Estrutura · ${j.progress || 0} / ${j.total} páginas tratadas…`);
         }
       } });
       await refreshPlan();
@@ -2494,7 +2494,7 @@ export default function PlanTakeoff() {
       const res = await api.get(`/documents/${data.doc_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-${plan.plan_id}.pdf`;
+      a.href = url; a.download = `orcamento-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       const ttc = data.totals?.ttc || 0;
@@ -2511,7 +2511,7 @@ export default function PlanTakeoff() {
         {}, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `plan-annote-${plan.plan_id}.pdf`; a.click();
+      a.href = url; a.download = `planta-anotada-${plan.plan_id}.pdf`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("PDF da planta anotada descarregado");
     } catch (e) {
@@ -2535,7 +2535,7 @@ export default function PlanTakeoff() {
       const { data: blob } = await api.get(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/beton-xlsx?${q}`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre-beton-${plan.plan_id}.xlsx`; a.click();
+      a.href = url; a.download = `medicao-betao-${plan.plan_id}.xlsx`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Medições betão (Excel) descarregado");
     } catch (e) { toast.error(e.message || "Exportação Excel do betão impossível"); }
@@ -2548,7 +2548,7 @@ export default function PlanTakeoff() {
       const { data: blob } = await api.get(`/takeoffs/${plan.plan_id}/structure/${pageIndex}/beton-pdf?${q}`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre-beton-${plan.plan_id}.pdf`; a.click();
+      a.href = url; a.download = `medicao-betao-${plan.plan_id}.pdf`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Medições betão (PDF) descarregado");
     } catch (e) { toast.error(e.message || "Exportação PDF do betão impossível"); }
@@ -2763,7 +2763,7 @@ export default function PlanTakeoff() {
       const { data: blob } = await api.get(`/takeoffs/${plan.plan_id}/pdf?include_materials=true&floor_material=${floorMaterial}`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre-${plan.plan_id}.pdf`;
+      a.href = url; a.download = `medicao-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Medições PDF descarregado");
@@ -2778,7 +2778,7 @@ export default function PlanTakeoff() {
         { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre-${(plan.filename || "plan").replace(/[^\w]+/g, "_")}.pdf`;
+      a.href = url; a.download = `medicao-${(plan.filename || "plan").replace(/[^\w]+/g, "_")}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Medição PDF (sem preços) transferida");
@@ -2790,7 +2790,7 @@ export default function PlanTakeoff() {
       const { data: blob } = await api.get(`/takeoffs/${plan.plan_id}/ecarts-pdf?page_index=${pageIndex}`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `rapport-ecarts-${plan.plan_id}.pdf`;
+      a.href = url; a.download = `relatorio-desvios-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Relatório de desvios PDF descarregado");
@@ -2904,7 +2904,7 @@ export default function PlanTakeoff() {
       const { data: blob } = await api.get(`/takeoffs/${plan.plan_id}/quote-pdf?${qs}`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-${plan.plan_id}.pdf`;
+      a.href = url; a.download = `orcamento-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Orçamento PDF descarregado");
@@ -3061,7 +3061,7 @@ export default function PlanTakeoff() {
     if (!render3dImg) return;
     const a = document.createElement("a");
     a.href = render3dImg;
-    a.download = `rendu-3d-${plan.plan_id}-${render3dStyle}.png`;
+    a.download = `render-3d-${plan.plan_id}-${render3dStyle}.png`;
     document.body.appendChild(a); a.click(); a.remove();
   };
 
@@ -3207,7 +3207,7 @@ export default function PlanTakeoff() {
     try {
       if (gb.group_id) await api.put(`/takeoffs/multilevel/groups/${gb.group_id}`, body);
       else await api.post("/takeoffs/multilevel/groups", body);
-      toast.success(`Projet « ${gb.name.trim()} » guardado${chantierId ? " e associado ao processo de obra" : ""}`);
+      toast.success(`Projeto « ${gb.name.trim()} » guardado${chantierId ? " e associado ao processo de obra" : ""}`);
       setGroupBuilder(null);
       loadPlanGroups();
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar"); }
@@ -3348,7 +3348,7 @@ export default function PlanTakeoff() {
                                 { params: { metre_only: true }, responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre_${(groupView.name || "projet").replace(/[^\w]+/g, "_")}.pdf`;
+      a.href = url; a.download = `medicao_${(groupView.name || "projet").replace(/[^\w]+/g, "_")}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Medição do projeto (sem preços) transferida");
@@ -3406,11 +3406,11 @@ export default function PlanTakeoff() {
 
   const bulkTrashPlans = async (ids) => {
     if (!ids.length) return;
-    const ok = await confirmDialog({ title: `Colocar ${ids.length} plan${ids.length > 1 ? "s" : ""} para o lixo?`, description: "Continuarão recuperáveis durante 30 dias no lixo.", confirmLabel: "Mover para o lixo" });
+    const ok = await confirmDialog({ title: `Colocar ${ids.length} planta${ids.length > 1 ? "s" : ""} para o lixo?`, description: "Continuarão recuperáveis durante 30 dias no lixo.", confirmLabel: "Mover para o lixo" });
     if (!ok) return;
     try {
       const { data } = await api.post("/takeoffs/bulk-trash", { plan_ids: ids });
-      toast.success(`${data.trashed} plan${data.trashed > 1 ? "s" : ""} movida(s) para o lixo`, { action: { label: "Lixo", onClick: () => nav("/corbeille") } });
+      toast.success(`${data.trashed} planta${data.trashed > 1 ? "s" : ""} movida(s) para o lixo`, { action: { label: "Lixo", onClick: () => nav("/corbeille") } });
       setSelectedRecent([]);
       if (plan && ids.includes(plan.plan_id)) setPlan(null);
       loadAllPlans();
@@ -3418,11 +3418,11 @@ export default function PlanTakeoff() {
   };
 
   const trashAllPlans = async () => {
-    const ok = await confirmDialog({ title: `Eliminar tudo (${allPlans.length} plan${allPlans.length > 1 ? "s" : ""}) ?`, description: "Todas as suas plantas serão movidas para o lixo (recuperáveis durante 30 dias).", confirmLabel: "Mover tudo para o lixo" });
+    const ok = await confirmDialog({ title: `Eliminar tudo (${allPlans.length} planta${allPlans.length > 1 ? "s" : ""})?`, description: "Todas as suas plantas serão movidas para o lixo (recuperáveis durante 30 dias).", confirmLabel: "Mover tudo para o lixo" });
     if (!ok) return;
     try {
       const { data } = await api.post("/takeoffs/bulk-trash", { all: true });
-      toast.success(`${data.trashed} plan${data.trashed > 1 ? "s" : ""} movida(s) para o lixo`, { action: { label: "Lixo", onClick: () => nav("/corbeille") } });
+      toast.success(`${data.trashed} planta${data.trashed > 1 ? "s" : ""} movida(s) para o lixo`, { action: { label: "Lixo", onClick: () => nav("/corbeille") } });
       setSelectedRecent([]);
       setPlan(null);
       loadAllPlans();
@@ -3437,7 +3437,7 @@ export default function PlanTakeoff() {
     if (!ok) return;
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measurements/wall-height-bulk`, { height_m: h, page_index: pageIndex });
-      toast.success(`Altura ${h} m aplicada a ${data.updated} cote${data.updated > 1 ? "s" : ""}`);
+      toast.success(`Altura ${h} m aplicada a ${data.updated} cota${data.updated > 1 ? "s" : ""}`);
       const { data: full } = await api.get(`/takeoffs/${plan.plan_id}`);
       setPlan(full);
     } catch (e) { toast.error(e?.response?.data?.detail || "Aplicação impossível"); }
@@ -3466,7 +3466,7 @@ export default function PlanTakeoff() {
       }, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-projet.pdf`;
+      a.href = url; a.download = `orcamento-projeto.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success(`Orçamento do projeto (${multiSelected.length} plantas) transferido`);
@@ -3484,7 +3484,7 @@ export default function PlanTakeoff() {
         { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = "metre-groupe.pdf";
+      a.href = url; a.download = "medicao-grupo.pdf";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success(`Medição agrupada (${multiSelected.length} plantas) transferido`);
@@ -3503,7 +3503,7 @@ export default function PlanTakeoff() {
         project_name: multiProjectName.trim() || "",
         subcontract_plan_ids: subcontractSel.filter((id) => multiSelected.includes(id)),
       });
-      toast.success(`Orçamento consolidado criado — ${data.line_count} lignes`);
+      toast.success(`Orçamento consolidado criado — ${data.line_count} linha(s)`);
       setMultiDialog(false);
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
@@ -4106,7 +4106,7 @@ export default function PlanTakeoff() {
                 ))}
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-between border-t border-border pt-2 text-sm font-semibold">
                   <span>Subtotal medido · {groupView.totals?.area_m2 || 0} m² · {groupView.totals?.length_ml || 0} ml</span>
-                  {(groupView.levels || []).some((lv) => lv.consolidated?.chiffrage?.priced_measures > 0) ? <span>HT <span className="num">{groupView.totals?.ht_with_margin?.toFixed(2)} €</span> · c/ IVA <span className="num text-primary">{groupView.totals?.ttc?.toFixed(2)} €</span></span> : <span>Não orçamentado</span>}
+                  {(groupView.levels || []).some((lv) => lv.consolidated?.chiffrage?.priced_measures > 0) ? <span>s/ IVA <span className="num">{groupView.totals?.ht_with_margin?.toFixed(2)} €</span> · c/ IVA <span className="num text-primary">{groupView.totals?.ttc?.toFixed(2)} €</span></span> : <span>Não orçamentado</span>}
                 </div>
               </div>
             )}
@@ -4162,9 +4162,9 @@ export default function PlanTakeoff() {
                     placeholder="Rua das Obras, 12" data-testid="cover-client-address" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Code postal &amp; ville</Label>
+                  <Label className="text-xs">Código postal e localidade</Label>
                   <Input value={coverDialog.city} onChange={(e) => setCoverDialog((d) => ({ ...d, city: e.target.value }))}
-                    placeholder="75001 Paris" data-testid="cover-client-city" />
+                    placeholder="1000-001 Lisboa" data-testid="cover-client-city" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -4359,11 +4359,11 @@ export default function PlanTakeoff() {
                   <p className="font-semibold">✓ Agente concluído</p>
                   {agentBox.result.kind === "pdf" && <p className="text-[12px] mt-1">Processo gerado · {agentBox.result.levels} piso(s) · Total c/ IVA {(agentBox.result.totals?.ttc || 0).toLocaleString("pt-PT")} €</p>}
                   {agentBox.result.kind === "quote" && <p className="text-[12px] mt-1">Orçamento consolidado criado — editável no editor.</p>}
-                  {agentBox.result.kind === "summary" && <p className="text-[12px] mt-1">{agentBox.result.total_measures} medições · {agentBox.result.total_openings} vãos em {agentBox.result.plans?.length} plan(s).</p>}
+                  {agentBox.result.kind === "summary" && <p className="text-[12px] mt-1">{agentBox.result.total_measures} medições · {agentBox.result.total_openings} vãos em {agentBox.result.plans?.length} planta(s).</p>}
                   {agentBox.result.kind === "detect" && <p className="text-[12px] mt-1">{agentBox.result.total_walls} paredes · {agentBox.result.total_openings} vãos detetados. <b>Calibração necessária</b> : abra a planta e introduza uma cota conhecida antes de qualquer medição.</p>}
                   {agentBox.result.kind === "compare" && (
                     <div className="text-[12px] mt-1 space-y-0.5">
-                      <p>Avant : {agentBox.result.diff.before.room_count} divisão(ões) · {agentBox.result.diff.before.total_surface_m2} m² — Depois: {agentBox.result.diff.after.room_count} divisão(ões) · {agentBox.result.diff.after.total_surface_m2} m²</p>
+                      <p>Antes: {agentBox.result.diff.before.room_count} divisão(ões) · {agentBox.result.diff.before.total_surface_m2} m² — Depois: {agentBox.result.diff.after.room_count} divisão(ões) · {agentBox.result.diff.after.total_surface_m2} m²</p>
                       <p>Diferença de área: {agentBox.result.diff.delta_surface_m2} m² ({agentBox.result.diff.delta_surface_pct}%)</p>
                       <p>+{agentBox.result.diff.added.length} adicionada(s) · −{agentBox.result.diff.removed.length} removida(s) · {agentBox.result.diff.modified.length} alterada(s)</p>
                     </div>
@@ -4447,7 +4447,7 @@ export default function PlanTakeoff() {
               <div className="grid gap-1">
                 <Label className="text-xs">Nome do artigo</Label>
                 <Input value={cpForm.label} onChange={(e) => setCpForm((f) => ({ ...f, label: e.target.value }))}
-                       placeholder="Ex : Faux plafond coupe-feu 1h" maxLength={60}
+                       placeholder="Ex.: Teto falso corta-fogo 1 h" maxLength={60}
                        data-testid="custom-poste-label" className="rounded-sm h-9 text-sm" />
               </div>
               <div className="grid gap-1">
@@ -6013,7 +6013,7 @@ export default function PlanTakeoff() {
                     )}
                     {(betonPriceM3 > 0 || acierPriceKg > 0 || laborPriceM3 > 0) && descriptif.beton_total_m3 > 0 && (
                       <>
-                        <span className="text-muted-foreground font-semibold">Preço de venda estimado{marginPct > 0 ? ` (marge ${marginPct}%)` : ""}</span>
+                        <span className="text-muted-foreground font-semibold">Preço de venda estimado{marginPct > 0 ? ` (margem ${marginPct}%)` : ""}</span>
                         <span className="num text-right font-bold text-primary" data-testid="descriptif-prix-vente">
                           {Math.round((((descriptif.beton_total_m3 || 0) * betonPriceM3 + (descriptif.acier_total_kg || 0) * acierPriceKg) + (descriptif.beton_total_m3 || 0) * laborPriceM3) * (1 + marginPct / 100)).toLocaleString("pt-PT")} €
                         </span>
@@ -7112,7 +7112,7 @@ export default function PlanTakeoff() {
                   <div className="rounded border border-border overflow-hidden">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 text-xs">
-                        <tr><th className="p-2 text-left">Designação</th><th className="p-2 text-right">Qtd.</th><th className="p-2">Un.</th><th className="p-2 text-right">PU HT (€)</th><th className="p-2 text-right">Total s/ IVA</th></tr>
+                        <tr><th className="p-2 text-left">Designação</th><th className="p-2 text-right">Qtd.</th><th className="p-2">Un.</th><th className="p-2 text-right">PU s/ IVA (€)</th><th className="p-2 text-right">Total s/ IVA</th></tr>
                       </thead>
                       <tbody>
                         {chiffrageResult.lines.map((l, i) => (
@@ -7132,7 +7132,7 @@ export default function PlanTakeoff() {
                   </div>
                   <div className="flex flex-wrap justify-end gap-4 text-sm">
                     <span>Total s/ IVA: <b className="num">{chiffrageResult.totals.ht.toFixed(2)} €</b></span>
-                    <span>+ Marge {chiffrageResult.totals.margin_pct}% : <b className="num">{chiffrageResult.totals.ht_with_margin.toFixed(2)} €</b></span>
+                    <span>+ Margem {chiffrageResult.totals.margin_pct}% : <b className="num">{chiffrageResult.totals.ht_with_margin.toFixed(2)} €</b></span>
                     <span>c/ IVA: <b className="num text-primary">{chiffrageResult.totals.ttc.toFixed(2)} €</b></span>
                   </div>
                 </div>
@@ -7164,7 +7164,7 @@ export default function PlanTakeoff() {
                 <div key={it.measurement_id} className="rounded border border-border p-2" data-testid={`page-chiffrage-item-${it.measurement_id}`}>
                   <div className="flex justify-between text-sm font-medium">
                     <span>{it.label || it.label} <span className="text-muted-foreground">· {it.label !== it.poste ? it.label : ""}</span></span>
-                    <span className="num">{it.totals.ht_with_margin.toFixed(2)} € HT</span>
+                    <span className="num">{it.totals.ht_with_margin.toFixed(2)} € s/ IVA</span>
                   </div>
                   <div className="text-[11px] text-muted-foreground">{it.quantity} {it.unit} — {it.lines.length} lignes</div>
                 </div>
@@ -7310,7 +7310,7 @@ export default function PlanTakeoff() {
                   <div key={i} className="rounded border border-border p-2" data-testid={`preset-item-${it.slot}`}>
                     <div className="flex justify-between text-sm font-medium">
                       <span>{it.slot} <span className="text-muted-foreground">· {it.label}</span></span>
-                      <span className="num">{it.totals.ht_with_margin.toFixed(2)} € HT</span>
+                      <span className="num">{it.totals.ht_with_margin.toFixed(2)} € s/ IVA</span>
                     </div>
                     <div className="text-[11px] text-muted-foreground">{it.quantity} {it.unit} — {it.lines.length} lignes</div>
                   </div>
@@ -7348,7 +7348,7 @@ export default function PlanTakeoff() {
             {metreVersions.map((v) => (
               <div key={v.version_id} className={`flex items-center gap-2 rounded border p-2 text-sm ${metreSel.includes(v.version_id) ? "border-primary bg-primary/5" : "border-border"}`} data-testid={`metre-version-${v.version_id}`}>
                 <input type="checkbox" checked={metreSel.includes(v.version_id)} onChange={() => toggleMetreSel(v.version_id)} data-testid={`metre-pick-${v.version_id}`} />
-                <span className="flex-1">{v.label} <span className="text-[11px] text-muted-foreground">· {v.summary?.area_m2 || 0} m² · {v.summary?.ht || 0} € HT</span></span>
+                <span className="flex-1">{v.label} <span className="text-[11px] text-muted-foreground">· {v.summary?.area_m2 || 0} m² · {v.summary?.ht || 0} € s/ IVA</span></span>
                 <button onClick={() => deleteMetreVersion(v.version_id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             ))}
@@ -7358,12 +7358,12 @@ export default function PlanTakeoff() {
             <div className="rounded border border-border p-3 space-y-2" data-testid="metre-compare-result">
               <div className="flex justify-between text-sm font-medium">
                 <span>{metreCompare.a.label} → {metreCompare.b.label}</span>
-                <span className={metreCompare.delta.ht >= 0 ? "text-emerald-600" : "text-red-600"}>{metreCompare.delta.ht >= 0 ? "+" : ""}{metreCompare.delta.ht.toFixed(2)} € HT</span>
+                <span className={metreCompare.delta.ht >= 0 ? "text-emerald-600" : "text-red-600"}>{metreCompare.delta.ht >= 0 ? "+" : ""}{metreCompare.delta.ht.toFixed(2)} € s/ IVA</span>
               </div>
               <div className="text-[11px] text-muted-foreground">Δ área {metreCompare.delta.area_m2} m² · Δ linear {metreCompare.delta.length_ml} ml · Δ medições {metreCompare.delta.measures}</div>
               {metreCompare.by_poste.length > 0 && (
                 <table className="w-full text-xs">
-                  <thead className="text-muted-foreground"><tr><th className="text-left">Artigo</th><th className="text-right">Qtd. A→B</th><th className="text-right">Δ HT</th></tr></thead>
+                  <thead className="text-muted-foreground"><tr><th className="text-left">Artigo</th><th className="text-right">Qtd. A→B</th><th className="text-right">Δ s/ IVA</th></tr></thead>
                   <tbody>
                     {metreCompare.by_poste.map((p) => (
                       <tr key={p.poste} className="border-t border-border">

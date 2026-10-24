@@ -96,7 +96,7 @@ export default function LibraryImportDialog({ open, onClose, onDone }) {
                 <thead className="sticky top-0 bg-background">
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="p-2 w-8" /><th className="p-2">Designação</th><th className="p-2 w-16">Un.</th>
-                    <th className="p-2 w-24 text-right">PU HT</th><th className="p-2 w-24 text-right">Custo produção</th><th className="p-2 w-28">Atual</th>
+                    <th className="p-2 w-24 text-right">PU s/ IVA</th><th className="p-2 w-24 text-right">Custo produção</th><th className="p-2 w-28">Atual</th>
                   </tr>
                 </thead>
                 <tbody>

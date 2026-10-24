@@ -128,13 +128,13 @@ def build_pv_pdf(pv: dict, branding: dict | None = None, lang: str = "pt") -> by
     pro_cell = [Paragraph("<b>Pela empresa</b>", S["body"])]
     if pro_sig.get("name"):
         pro_cell.append(Paragraph(f"Assinado: {escape(pro_sig['name'])}", S["muted"]))
-        pro_cell.append(Paragraph(f"Le {pro_sig.get('at', '')[:10]}", S["muted"]))
+        pro_cell.append(Paragraph(f"Em {pro_sig.get('at', '')[:10]}", S["muted"]))
     else:
         pro_cell.append(Paragraph("Data e assinatura:", S["muted"]))
     cli_cell = [Paragraph("<b>Pelo dono de obra</b>", S["body"])]
     if cli_sig.get("name"):
         cli_cell.append(Paragraph(f"Assinado: {escape(cli_sig['name'])}", S["muted"]))
-        cli_cell.append(Paragraph(f"Le {cli_sig.get('at', '')[:10]} · online", S["muted"]))
+        cli_cell.append(Paragraph(f"Em {cli_sig.get('at', '')[:10]} · online", S["muted"]))
     else:
         cli_cell.append(Paragraph("Data e assinatura:", S["muted"]))
     story.append(_table([[pro_cell, cli_cell]], [87 * mm, 87 * mm], style_extras=[

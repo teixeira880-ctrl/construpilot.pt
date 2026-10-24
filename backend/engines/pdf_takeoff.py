@@ -695,7 +695,7 @@ def _story_quote_signature(story: list, signature: dict | None, S: dict) -> None
     sig_img = _decode_signature_image(signature["b64"])
     signed_date = (signature.get("at") or "")[:10]
     info = [
-        Paragraph(f"<b>Signataire :</b> {signature.get('name') or ''}", S["body"]),
+        Paragraph(f"<b>Signatário:</b> {signature.get('name') or ''}", S["body"]),
         Paragraph(f"<b>Email :</b> {signature.get('client_email') or ''}", S["body"]),
         Paragraph(f'<b>Assinado em:</b> {signed_date}', S["body"]),
     ]
@@ -725,7 +725,7 @@ def _story_quote_reviews(story: list, reviews: dict | None, S: dict) -> None:
     story.append(Spacer(1, 16))
     avg = reviews.get("average", 0)
     story.append(Paragraph(
-        f"Opiniões de clientes — classificação média {avg}/5 sur {reviews.get('count')} opiniões verificadas",
+        f"Opiniões de clientes — classificação média {avg}/5 em {reviews.get('count')} opiniões verificadas",
         S["h2"]))
     for it in (reviews.get("items") or [])[:3]:
         comment = (it.get("comment") or "").strip()
@@ -767,7 +767,7 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
 
 def _pq_title(story: list, project: dict, S: dict) -> None:
     story.append(Paragraph("ORÇAMENTO CONSOLIDADO DO PROJETO", S["kicker"]))
-    story.append(Paragraph(project.get("project_name") or "Projet ConstruPilot", S["h1"]))
+    story.append(Paragraph(project.get("project_name") or "Projeto ConstruPilot", S["h1"]))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     finish_label = {"eco": "Eco", "std": "Standard",
                     "premium": "Premium"}.get(project.get("finish", "std"), "Standard")
@@ -794,7 +794,7 @@ def _pq_totals(story: list, totals: dict, S: dict) -> None:
 
 def _pq_sub_quote(story: list, sq: dict, index: int, S: dict) -> None:
     """Render one sub-quote block (per-plan detail table)."""
-    story.append(Paragraph(f"Planta {index} : {sq.get('filename', 'Sans nom')}", S["h2"]))
+    story.append(Paragraph(f"Planta {index} : {sq.get('filename', 'Sem nome')}", S["h2"]))
     story.append(Paragraph(
         f"Pavimento {sq['totals']['floor_m2']} m² · Paredes líquidas {sq['totals']['walls_net_m2']} m² · Perímetro {sq['totals']['perimeter_m']} m", S["muted"]))
     rows = [["Designação", "Qtd.", "Unit.", "Total s/ IVA"]]
@@ -941,7 +941,7 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
         "cv_title", fontName="Helvetica-Bold", fontSize=28, textColor=DARK,
         leading=32, spaceAfter=6)))
     story.append(Paragraph(
-        f"Projeto multinível · {project.get('levels_count', 0)} niveau(x)", S["muted"]))
+        f"Projeto multinível · {project.get('levels_count', 0)} piso(s)", S["muted"]))
 
     ttc = project.get("total_ttc")
     if ttc:
@@ -1069,7 +1069,7 @@ class TvaAttestationInput:
 def _tva_header_and_intro(story: list, tva_pct: int, S: dict) -> None:
     is_reduced = tva_pct in (10, 5, 55)  # 5.5 arrondi
     header_title = (f'DECLARAÇÃO — IVA À TAXA REDUZIDA ({tva_pct} %)'
-                     if is_reduced else "ATTESTATION TRAVAUX")
+                     if is_reduced else "DECLARAÇÃO DE OBRAS")
     story.append(Paragraph(header_title, S["kicker"]))
     story.append(Paragraph("Verba 2.27 da Lista I anexa ao Código do IVA", S["h1"]))
     story.append(Paragraph(

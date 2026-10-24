@@ -41,7 +41,7 @@ def _header(c, study: dict, sheet_code: str, sheet_title: str):
     c.setFont("Helvetica", 8)
     c.drawRightString(W - 10 * mm, H - 7 * mm, (study.get("title") or "")[:70])
     c.drawRightString(W - 10 * mm, H - 12 * mm,
-                      f"Rev. {study.get('revision', 1)} · Niveau : {study.get('output_level', 'exploration')}")
+                      f"Rev. {study.get('revision', 1)} · Nível: {study.get('output_level', 'exploration')}")
     # Bandeau statut (honnêteté)
     c.setFillColor(colors.HexColor("#fff7ed"))
     c.rect(0, H - 24 * mm, W, 8 * mm, fill=1, stroke=0)

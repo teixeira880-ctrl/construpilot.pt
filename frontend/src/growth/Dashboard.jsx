@@ -30,7 +30,7 @@ export function Dashboard({ projectKey, onGo }) {
             : <p className="text-sm text-muted-foreground">Nenhuma campanha concluída</p>}
         </button>
         <button className="surface p-3 text-left hover:border-primary" onClick={() => onGo("actions", project.key)} data-testid={`growth-card-actions-${project.key}`}>
-          <p className="overline">Plan d'action</p><p className="num text-xl font-bold">{open_actions} <span className="text-sm font-normal">ações em aberto</span></p>
+          <p className="overline">Plano de ação</p><p className="num text-xl font-bold">{open_actions} <span className="text-sm font-normal">ações em aberto</span></p>
           <p className="text-[11px] text-muted-foreground">Conteúdos: {contents.draft} rascunhos · {contents.review} a rever · {contents.approved + contents.scheduled} prontos · {contents.published} publicados</p>
         </button>
         <button className="surface p-3 text-left hover:border-primary" onClick={() => onGo("integrations", project.key)} data-testid={`growth-card-gsc-${project.key}`}>

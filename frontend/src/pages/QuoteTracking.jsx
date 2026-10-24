@@ -228,7 +228,7 @@ export default function QuoteTracking() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "construpilot-clients-devis.csv";
+      a.download = "construpilot-clientes-orcamentos.csv";
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Export CSV transferido");
@@ -244,7 +244,7 @@ export default function QuoteTracking() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `recap-comptable-${recapY}-${String(recapM).padStart(2, "0")}.pdf`;
+      a.download = `resumo-contabilistico-${recapY}-${String(recapM).padStart(2, "0")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Relatório PDF descarregado");
@@ -800,7 +800,7 @@ export default function QuoteTracking() {
                 </div>
                 <p className="text-[11px] text-muted-foreground" data-testid="billing-deposit-info">
                   {recap.deposit?.available_ht > 0
-                    ? `Adiantamento recebido ${eur(recap.deposit.paid_ttc)} c/ IVA · disponível para deduzir ${eur(recap.deposit.available_ht)} HT`
+                    ? `Adiantamento recebido ${eur(recap.deposit.paid_ttc)} c/ IVA · disponível para deduzir ${eur(recap.deposit.available_ht)} s/ IVA`
                     : "Nenhum adiantamento recebido a deduzir (só o adiantamento efetivamente pago é dedutível)."}
                 </p>
               </div>

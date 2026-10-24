@@ -161,13 +161,13 @@ def _footer(unsubscribe_url: str | None = None) -> str:
         f'<a href="{COMPANY_WEBSITE}" style="color:#64748B;text-decoration:none">'
         f'{COMPANY_WEBSITE.replace("https://","")}</a> · '
         '<a href="' + COMPANY_WEBSITE + '/mentions-legales" '
-        'style="color:#64748B;text-decoration:none">Mentions légales</a> · '
+        'style="color:#64748B;text-decoration:none">Informação legal</a> · '
         '<a href="' + COMPANY_WEBSITE + '/confidentialite" '
-        'style="color:#64748B;text-decoration:none">Confidentialité</a>'
+        'style="color:#64748B;text-decoration:none">Privacidade</a>'
         '</div>'
         '<div style="font-size:11px;color:#94A3B8;margin-top:8px">'
-        'Estimation indicative — ne constitue pas un devis contractuel. '
-        'Vous recevez cet email car vous utilisez ConstruPilot.'
+        'Estimativa indicativa — não constitui um orçamento contratual. '
+        'Recebe este e-mail porque utiliza o ConstruPilot.'
         '</div>'
         '</td></tr>' + unsub_row
     )

@@ -311,7 +311,7 @@ def build_study_note(study: dict) -> bytes:
         for p in plans:
             story.append(_p(f"• {p.get('original_filename','plan')} "
                             f"<font color='#6b7280' size=7>({p.get('kind','')} · "
-                            f"{p.get('level') or 'niveau ?'} · {(p.get('size',0)/1024):.0f} KB)</font>", ss["Body"]))
+                            f"{p.get('level') or 'piso ?'} · {(p.get('size',0)/1024):.0f} KB)</font>", ss["Body"]))
     else:
         story.append(_p("Nenhuma planta importada.", ss["Body"]))
 

@@ -28,7 +28,7 @@ export const StateEmailDialog = ({ open, onClose, conversationId, meeting }) => 
       <DialogTitle className="text-base">Enviar o processo por e-mail</DialogTitle>
       <DialogDescription className="text-xs">Ordem de trabalhos e estado do processo em PDF, enviados a partir do ConstruPilot; as respostas chegam-lhe diretamente.</DialogDescription>
       <div className="grid gap-2 text-sm">
-        <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="architecte@exemple.fr, conducteur@exemple.fr" aria-label="Destinatários" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-to" />
+        <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="arquiteto@exemplo.pt, diretor.obra@exemplo.pt" aria-label="Destinatários" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-to" />
         <input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="Participantes (opcional)" aria-label="Participantes" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-attendees" />
         <textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Mensagem de acompanhamento (opcional)" aria-label="Mensagem" className="rounded-sm border px-2 py-1.5 bg-background" data-testid="state-email-message" />
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={agenda} onChange={(e) => setAgenda(e.target.checked)} data-testid="state-email-agenda" /> Ordem de trabalhos{meeting ? ` (${meeting})` : ""}</label>

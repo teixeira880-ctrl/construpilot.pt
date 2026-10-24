@@ -121,7 +121,7 @@ function QuoteCard({ q }) {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `devis-${q.log_id}.pdf`;
+      a.href = url; a.download = `orcamento-${q.log_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch { toast.error("Transferência impossível"); }

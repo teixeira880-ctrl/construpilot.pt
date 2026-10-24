@@ -142,7 +142,7 @@ def plan(s,model,manifest,sheet):
     s.line([(304,43),(304,248)],GREY,.15)
     s.text(310,49,"LEGENDA E MARCAS",3.2,GREEN,True)
     yy=s.lines(310,57,"Projeção dos elementos do piso. As cotas de base e de topo constam da marcação do processo JSON. Negativos atravessantes: branco; parciais: salmão.",width=93,size=2.7)
-    s.text(310,yy+5,f"{len(es)} éléments | {sum(b.count for b in d.bars if any(e.id==b.element_id for e in es))} barres",2.8,bold=True);yy+=14
+    s.text(310,yy+5,f"{len(es)} elementos | {sum(b.count for b in d.bars if any(e.id==b.element_id for e in es))} varões",2.8,bold=True);yy+=14
     placements={p.element_id:p.base_z_m for p in d.placements}
     for e in es[:8]:
         label=e.id if len(e.id)<=28 else e.id[:25]+"…"
@@ -221,7 +221,7 @@ def general(s,model,manifest,sheet):
     s.text(308,53,"CONTEÚDO DO PROCESSO",3.5,GREEN,True)
     counts={kind:sum(sh["kind"]==kind for sh in manifest["sheets"]) for kind in ("general","formwork","section","reinforcement","detail","schedule","members","openings")}
     y=66
-    for kind,label in (("general","G · Dados e controlos"),("formwork","C · Cofragem por piso"),("members","R · Marcação da cofragem"),("openings","O · Negativos"),("section","S · Cortes"),("reinforcement","F · Plantas de aços"),("detail","D · Pormenores de varões"),("schedule","N · Nomenclature")):
+    for kind,label in (("general","G · Dados e controlos"),("formwork","C · Cofragem por piso"),("members","R · Marcação da cofragem"),("openings","O · Negativos"),("section","S · Cortes"),("reinforcement","F · Plantas de aços"),("detail","D · Pormenores de varões"),("schedule","N · Nomenclatura")):
         s.text(308,y,f"{label} : {counts[kind]}",3);y+=10
     s.lines(308,154,"Imprimir em A3 a 100 %. Controlar a escala e as cotas antes de qualquer revisão. Todas as folhas têm o seu índice e a impressão digital dos dados.",95,2.8,4.5)
     s.lines(308,195,"Os controlos incidem sobre a geometria desenhável, o recobrimento declarado e os negativos. Não valem como validação da resistência, do solo ou das disposições de execução.",95,2.8,4.5,color=RED)

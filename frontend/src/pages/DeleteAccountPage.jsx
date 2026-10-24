@@ -175,7 +175,7 @@ export default function DeleteAccountPage() {
         subject: partial ? "Pedido de eliminação de dados (RGPD)"
                          : "Pedido de eliminação de conta (RGPD)",
         message: (partial
-          ? `Pedido de eliminação de dados para a conta ${form.email.trim()} (conta mantida).\nDados visados: ${form.which.trim() || "non précisé"}.`
+          ? `Pedido de eliminação de dados para a conta ${form.email.trim()} (conta mantida).\nDados visados: ${form.which.trim() || "não especificado"}.`
           : `Pedido de eliminação definitiva da conta ${form.email.trim()}.`)
           + `\n\n${form.message.trim() || "Sem precisões."}`,
         website: form.website,

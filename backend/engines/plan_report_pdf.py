@@ -279,7 +279,7 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
                   if cal.get("effective_scale_denominator") else ""))
     cross = (report.get("reading") or {}).get("cross") or {}
     if cross:
-        hyp.append(f"fonte das cotas: extração vetorial do PDF ({cross.get('vector', 0)} cotas medidas ao milímetro entre linhas de chamada) cruzada com a leitura IA ({cross.get('confirmed', 0)} confirmées, {cross.get('ai_only', 0)} lidas apenas pela IA e não verificadas"
+        hyp.append(f"fonte das cotas: extração vetorial do PDF ({cross.get('vector', 0)} cotas medidas ao milímetro entre linhas de chamada) cruzada com a leitura IA ({cross.get('confirmed', 0)} confirmadas, {cross.get('ai_only', 0)} lidas apenas pela IA e não verificadas"
                    + (f", {len(cross['divergences'])} divergência(s) de leitura decidida(s) pelo texto vetorial" if cross.get("divergences") else "") + ")")
     story.append(Paragraph("Hipóteses consideradas", S["h2"]))
     for line in hyp:
@@ -410,7 +410,7 @@ def build_control_report(plan: dict, page_index: int, report: dict, image_b64: s
     story.append(PageBreak())
     story.append(Paragraph("PONTOS A ESCLARECER ANTES DA EXECUÇÃO", S["kicker"]))
     checklist = list(geo.get("checklist") or [])
-    checklist += [f"Confirmer la cote #{it['index']} ({_m(it['indicated_m'])}) : mesure {_m(it['measured_m'])}"
+    checklist += [f"Confirmar a cota #{it['index']} ({_m(it['indicated_m'])}): medição {_m(it['measured_m'])}"
                   for it in report["items"] if it["status"] == "ko" and not it.get("ignored")][:8]
     checklist += ["Confirmar as referências de cotagem face/eixo", "Comparar com a planta de arquitetura / estrutura",
                   "Verificar a correspondência paredes / fundações"]

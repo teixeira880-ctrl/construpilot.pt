@@ -16,7 +16,7 @@ async def get_forecast(city: str) -> dict:
                              params={"name": city, "count": 1, "language": "fr"})
             results = (g.json() or {}).get("results") or []
             if not results:
-                return {"error": f'Ville « {city}» não encontrado'}
+                return {"error": f'Localidade « {city} » não encontrada'}
             loc = results[0]
             f = await cl.get("https://api.open-meteo.com/v1/forecast", params={
                 "latitude": loc["latitude"], "longitude": loc["longitude"],

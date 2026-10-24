@@ -42,8 +42,8 @@ def build_dossier_xlsx(study):
             '; '.join(f"p. {s['page']} : {s.get('text','')}" for s in p.get('sources',[])),p.get('note') or ''] for p in study['spec']['parameters']])
     t = study['totals']
     sheet("Síntese", ["Indicador","Valor"], [55,70],
-          [["Parcial s/ IVA" if t['partial'] else 'HT',t['ht']],["IVA",t['tva']],["c/ IVA",t['ttc']],
-           ['TVA (%)',t['tva_rate']*100 if t['tva_rate'] is not None else None],["Revisão",study['revision']],
+          [["Parcial s/ IVA" if t['partial'] else 's/ IVA',t['ht']],["IVA",t['tva']],["c/ IVA",t['ttc']],
+           ['IVA (%)',t['tva_rate']*100 if t['tva_rate'] is not None else None],["Revisão",study['revision']],
            *[["Ponto a controlar",w] for w in study['warnings']], *[["Hipótese",x] for x in study['assumptions']],
            *[['Exclusion',x] for x in study['exclusions']]])
     out = BytesIO()

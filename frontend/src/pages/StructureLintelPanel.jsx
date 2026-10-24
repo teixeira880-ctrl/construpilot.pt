@@ -141,7 +141,7 @@ export default function StructureLintelPanel({ study, model, opts, setOpts, base
     try {
       const { data } = await api.get(`${LINTELS}/${e.id}/export/${fmt}`, { responseType: "blob" });
       const url = URL.createObjectURL(data), a = document.createElement("a");
-      a.href = url; a.download = `linteau-${(e.name || "ouverture").replace(/[^a-z0-9]/gi, "-")}.${fmt}`; a.click();
+      a.href = url; a.download = `padieira-${(e.name || "ouverture").replace(/[^a-z0-9]/gi, "-")}.${fmt}`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success(`Planta cotada ${fmt.toUpperCase()} descarregado`);
     } catch (err) { toast.error("Exportação impossível — guarde a abertura e tente novamente"); }

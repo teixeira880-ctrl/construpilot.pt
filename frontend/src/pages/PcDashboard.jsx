@@ -57,7 +57,7 @@ export default function PcDashboard() {
             <HardHat className="h-4 w-4" /> Estudos Licença de Construção
           </p>
           <h1 className="font-display text-3xl font-extrabold" title="Licença de construção">
-            Painel de controlo PC <span className="text-muted-foreground font-normal text-lg">— Licença de construção</span>
+            Painel dos estudos de licenciamento <span className="text-muted-foreground font-normal text-lg">— Licença de construção</span>
           </h1>
           <p className="text-sm text-muted-foreground">
             Todos os estudos de estrutura da sua equipa e o seu estado cliente, no mesmo lugar.
@@ -87,7 +87,7 @@ export default function PcDashboard() {
         <div className="surface p-8 text-center space-y-2" data-testid="pc-dashboard-empty">
           <FileSearch className="h-8 w-8 mx-auto text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Nenhum estudo PC por enquanto — abra um plano e clique «Estudo PC».
+            Nenhum estudo de licenciamento por enquanto — abra uma planta e clique em «Estudo do projeto de licenciamento».
           </p>
           <Button onClick={() => nav("/plan")} className="rounded-sm" data-testid="pc-dashboard-goto-plan">
             Abrir Medir

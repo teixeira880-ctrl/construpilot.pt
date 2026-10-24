@@ -332,8 +332,8 @@ def disclaimer(plan: dict, page_index: int, report: dict, branding: dict | None,
     if lang == "pt":
         who = f" realizado por <b>{company}</b>" if company else ""
         return (f"<b>Âmbito deste documento.</b> Este documento constitui um controlo de coerência da planta « {fname} » "
-                f"({scope}, página {page_index + 1}){who} com <b>ConstruPilot.fr</b>. Não põe em causa, em nenhum caso, o "
-                "dimensionamento nem os cálculos de estrutura elaborados pelo gabinete de projeto de estruturas (BET): assinala "
+                f"({scope}, página {page_index + 1}){who} com <b>ConstruPilot.pt</b>. Não põe em causa, em nenhum caso, o "
+                "dimensionamento nem os cálculos de estrutura elaborados pelo gabinete de projeto de estruturas: assinala "
                 "unicamente as incoerências de esquadria e de cotagem verificadas na planta fornecida, para que sejam confirmadas "
                 "com o autor da planta antes da execução.")
     who = f' realizado por <b>{company}</b>' if company else ""
@@ -345,7 +345,7 @@ COVER = {
            "asker": "Empresa requerente", "with": "Análise realizada com o apoio de ConstruPilot.fr", "project": "Projeto",
            "doc": "Documento examinado", "scale": "échelle", "page": "page", "date": "Data da análise"},
     "pt": {"kicker": "CONTROLO DE COERÊNCIA DAS COTAS", "title1": "RELATÓRIO DE CONTROLO", "title2": "DAS COTAS E DA ESQUADRIA",
-           "asker": "Empresa requerente", "with": "Análise realizada com o apoio de ConstruPilot.fr", "project": "Projeto",
+           "asker": "Empresa requerente", "with": "Análise realizada com o apoio de ConstruPilot.pt", "project": "Projeto",
            "doc": "Documento examinado", "scale": "escala", "page": "página", "date": "Data da análise"},
 }
 

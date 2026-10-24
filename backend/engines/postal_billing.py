@@ -66,7 +66,7 @@ async def create_letter_checkout(*, user, token, quote_id, recipient, mode, cont
         return {"url": pending["checkout_url"], "session_id": pending["session_id"], "amount_cents": pending["amount_cents"], "reused": True}
     gross = offer.unit_price_gross_cents
     session = await _create_session(user, name="Correio postal ConstruPilot — 1 carta",
-        description=f"{offer.unit_price_net_cents / 100:.2f} € HT + TVA {offer.vat_rate} % · destinataire {recipient.get('nom', '')[:40]}",
+        description=f"{offer.unit_price_net_cents / 100:.2f} € s/ IVA + IVA {offer.vat_rate} % · destinatário {recipient.get('nom', '')[:40]}",
         unit_cents=gross, quantity=1, origin_url=origin_url,
         metadata={"type": LETTER_TYPE, "token": token, "quote_id": quote_id, "lock_id": quote["lock_id"]})
     await postal_delivery.extend_quote_for_checkout(quote_id, session.id)
@@ -87,7 +87,7 @@ async def create_credits_checkout(*, user, pack_id: str, origin_url: str) -> dic
     net = letters * postal_offer.UNIT_NET_CENTS
     gross = postal_offer.gross(net)
     session = await _create_session(user, name=f'Pack {letters} cartas postais ConstruPilot',
-        description=f"{letters} lettres · {net / 100:.2f} € HT + TVA {postal_offer.VAT_RATE} %",
+        description=f"{letters} cartas · {net / 100:.2f} € s/ IVA + IVA {postal_offer.VAT_RATE} %",
         unit_cents=gross, quantity=1, origin_url=origin_url, metadata={"type": CREDITS_TYPE, "pack_id": pack_id, "letters": str(letters)})
     await db.payment_transactions.insert_one({
         "session_id": session.id, "checkout_url": session.url, "user_id": user["user_id"], "type": CREDITS_TYPE,

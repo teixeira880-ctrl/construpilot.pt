@@ -136,7 +136,7 @@ export default function CampaignsPanel() {
                 <p className="font-semibold truncate">{c.subject}</p>
                 <p className="text-xs text-muted-foreground">
                   {c.created_at ? new Date(c.created_at).toLocaleString("pt-PT") : ""}
-                  {c.sent_by ? ` · par ${c.sent_by}` : ""}
+                  {c.sent_by ? ` · por ${c.sent_by}` : ""}
                 </p>
               </div>
               <span className="text-sm flex items-center gap-1 text-muted-foreground">

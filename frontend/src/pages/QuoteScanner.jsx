@@ -99,7 +99,7 @@ export default function QuoteScanner() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Digitalizador de orçamentos IA" description="Carregue o seu orçamento PDF: ConstruPilot compara cada linha aos preços França 2026 e indica se o orçamento é baixo, correto ou demasiado elevado. Gratuito e sem registo." keywords="análise orçamento obras, verificar preço orçamento, comparador orçamentos, orçamento demasiado caro, IA análise orçamento" canonical="/scanner-devis" />
+      <SEO title="Digitalizador de orçamentos IA" description="Carregue o seu orçamento PDF: ConstruPilot compara cada linha com os preços de referência 2026 e indica se o orçamento é baixo, correto ou demasiado elevado. Gratuito e sem registo." keywords="análise orçamento obras, verificar preço orçamento, comparador orçamentos, orçamento demasiado caro, IA análise orçamento" canonical="/scanner-devis" />
       <SectionTitle as="h1" over="Digitalizador de faturas e orçamentos" title="Este preço está correto?">
         A IA lê o orçamento, extrai as linhas e compara com a base de preços ConstruPilot: preço baixo, correto, elevado ou muito elevado, com os elementos potencialmente esquecidos.
       </SectionTitle>
@@ -118,7 +118,7 @@ export default function QuoteScanner() {
               ) : pdfB64 ? (
                 <div className="flex items-center justify-center gap-3 text-sm">
                   <FileSearch className="h-6 w-6 text-primary" />
-                  <span className="font-medium">{pdfName || "Devis.pdf"}</span>
+                  <span className="font-medium">{pdfName || "Orcamento.pdf"}</span>
                   <Badge variant="outline" className="rounded-sm">PDF</Badge>
                 </div>
               ) : (

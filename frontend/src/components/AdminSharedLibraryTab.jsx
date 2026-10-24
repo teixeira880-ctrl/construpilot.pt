@@ -67,7 +67,7 @@ export default function AdminSharedLibraryTab() {
     const blob = new Blob([data], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "modele-bibliotheque-construpilot.csv"; a.click();
+    a.href = url; a.download = "modelo-biblioteca-construpilot.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -123,7 +123,7 @@ export default function AdminSharedLibraryTab() {
                   try {
                     const res = await api.get("/admin/shared-library/export.xlsx", { responseType: "blob" });
                     const url = URL.createObjectURL(res.data); const a = document.createElement("a");
-                    a.href = url; a.download = "ConstruPilot_FR_Bibliotheque_export.xlsx"; a.click(); URL.revokeObjectURL(url);
+                    a.href = url; a.download = "ConstruPilot_PT_Biblioteca_export.xlsx"; a.click(); URL.revokeObjectURL(url);
                   } catch { toast.error("Impossível exportar"); }
                 }} className="rounded-sm gap-2" data-testid="shared-lib-export-btn">
           <Download className="h-4 w-4" /> Exportar a biblioteca FR (Excel)

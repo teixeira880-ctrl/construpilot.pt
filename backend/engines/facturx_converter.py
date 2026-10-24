@@ -179,7 +179,7 @@ async def convert_facturx(pdf_bytes: bytes, invoice_data: dict) -> tuple[bytes, 
         if {"BR-CO-26", "BR-S-02", "BR-S-08"} & rules:
             hint = ("Complete o NIF e/ou o número de IVA da sua empresa (Perfil → Empresa): a norma EN 16931 exige-os para certificar a fatura.")
         raise FacturxConvertError(
-            f"Fatura não conforme EN 16931 ({validation.get('summary', {}).get('errorCount', '?')} erreur(s))",
+            f"Fatura não conforme EN 16931 ({validation.get('summary', {}).get('errorCount', '?')} erro(s))",
             issues=issues, hint=hint)
     report = {
         "valid": bool(validation.get("valid", data.get("success"))),

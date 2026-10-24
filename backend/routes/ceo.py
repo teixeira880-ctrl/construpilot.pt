@@ -343,7 +343,7 @@ async def _run_storyboard(copy_id: str, prompts: list[str]) -> None:
     ok, reason = await _budget_allows()
     if not ok:
         await db.ceo_copy.update_one({"copy_id": copy_id},
-                                     {"$set": {"storyboard_warning": f"Images non générées : {reason}"}})
+                                     {"$set": {"storyboard_warning": f"Imagens não geradas: {reason}"}})
         return
     for i, p in enumerate(prompts[:4]):
         asset_id = "ast_" + secrets.token_hex(8)

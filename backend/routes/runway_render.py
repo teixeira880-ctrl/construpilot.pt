@@ -170,7 +170,7 @@ async def generate(file: UploadFile = File(None),
     q = await _quota_status(user)
     if not q["unlimited"] and q["remaining"] <= 0:
         raise HTTPException(status_code=403,
-                            detail=f"Quota mensal de renderizações IA atingida ({q['limit']}/mois). Réessayez le mois prochain.")
+                            detail=f"Quota mensal de renderizações IA atingida ({q['limit']}/mês). Tente novamente no próximo mês.")
 
     # Source : photo d'un projet existant OU fichier importé
     if project_id and photo_id:

@@ -206,7 +206,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                             <th className="p-2 text-right">Betão (m³)</th>
                             <th className="p-2 text-right">Cofragem (m²)</th>
                             <th className="p-2 text-right">Aço (kg)</th>
-                            <th className="p-2 text-right">€ HT</th>
+                            <th className="p-2 text-right">€ s/ IVA</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -249,7 +249,7 @@ export default function StructuralTakeoffDialog({ open, onClose, planId }) {
                   </div>
                 ))}
                 <div className="flex justify-end gap-6 text-sm border-t pt-2" data-testid="structural-totals">
-                  <span>HT : <b>{eur(t.ht)}</b></span>
+                  <span>s/ IVA: <b>{eur(t.ht)}</b></span>
                   <span>IVA {Math.round(t.tva_rate * 100)}% : {eur(t.tva)}</span>
                   <span className="text-primary">c/ IVA: <b>{eur(t.ttc)}</b></span>
                 </div>

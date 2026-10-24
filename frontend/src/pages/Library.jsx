@@ -182,7 +182,7 @@ export default function Library() {
             <span className="col-span-5">Designação</span>
             <span className="col-span-2">Categoria</span>
             <span className="col-span-1 text-center">Un.</span>
-            <span className="col-span-2 text-right">PU HT</span>
+            <span className="col-span-2 text-right">PU s/ IVA</span>
             <span className="col-span-1 text-center">IVA</span>
             <span className="col-span-1 text-right">Ações</span>
           </div>

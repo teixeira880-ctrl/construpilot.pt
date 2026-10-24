@@ -123,7 +123,7 @@ def demo_search(query: str, limit: int = 8) -> list[dict]:
     for s in SUPPLIERS[:limit]:
         r = _seeded(query, s["key"])
         price = round(ref["base"] * (0.82 + r * 0.42), 2)
-        stock = ["En stock", "En stock", "Stock limité", "Sur commande"][int(r * 4) % 4]
+        stock = ["Em stock", "Em stock", "Stock limitado", "Por encomenda"][int(r * 4) % 4]
         out.append({
             "supplier": s["name"], "supplier_key": s["key"], "product": ref["label"],
             "unit": ref["unit"], "price": price, "currency": "EUR",
@@ -386,7 +386,7 @@ def stores_nearby(lat: float, lng: float, radius_km: int = 20) -> list[dict]:
             d = round(uniform(1.0, radius_km), 1)
             out.append({
                 "supplier": s["name"], "supplier_key": s["key"],
-                "name": f"{s['name']} - agence {i + 1}", "distance_km": d,
+                "name": f"{s['name']} - loja {i + 1}", "distance_km": d,
                 "lat": round(lat + uniform(-0.08, 0.08), 5),
                 "lng": round(lng + uniform(-0.08, 0.08), 5),
                 "open_now": uniform(0, 1) > 0.25, "source": "demo",

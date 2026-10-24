@@ -373,7 +373,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
     if len(vectors)>150000:
         # Plan dense (BET) : cotes natives et inventaire conservés, analyse automatique des murs non tentée (pas de classification hasardeuse).
         from engines.plan_walls import INCOMPLETE_MSG
-        walls={"walls":[],"validation":{"complete":False,"failed_checks":[f'plan dense ({len(vectors)} primitivas): análise das paredes não tentada'],"message":INCOMPLETE_MSG}}
+        walls={"walls":[],"validation":{"complete":False,"failed_checks":[f'planta densa ({len(vectors)} primitivas): análise das paredes não tentada'],"message":INCOMPLETE_MSG}}
     else:
         walls=analyze_walls(vectors,[{**d,"index":i+1} for i,d in enumerate(dims)],text_blocks,ratio/unit_to_m,1,
                             page_size_px=(mapping["width"],mapping["height"]))

@@ -178,7 +178,7 @@ def build_pc_pdf(plan: dict, study: dict, branding: dict | None = None,
                              ("ALIGN", (1, 1), (-1, -1), "CENTER")]))
         story.append(Spacer(1, 3))
         story.append(Paragraph(
-            f"Equipa de {pl['crew_size']} colaboradores — {pl['total_work_days']} dias úteis de trabalho + {pl['total_cure_days']} dias de secagem betão, ou seja ≈ {pl['total_days']} jours ({pl['total_weeks']} semanas) de obra.",
+            f"Equipa de {pl['crew_size']} colaboradores — {pl['total_work_days']} dias úteis de trabalho + {pl['total_cure_days']} dias de secagem betão, ou seja ≈ {pl['total_days']} dias ({pl['total_weeks']} semanas) de obra.",
             S["muted"]))
     _story_footer(story, S)
     doc.build(story)
@@ -290,7 +290,7 @@ def build_pc_docx(plan: dict, study: dict, branding: dict | None = None,
             cells[3].text = _fr_long(sched[r - 1]["work_start"]) if sched else f"J{ph['start_day']}"
             cells[4].text = _fr_long(sched[r - 1]["cure_end"]) if sched else f"J{ph['end_day']}"
         doc.add_paragraph(
-            f"Equipa de {pl['crew_size']} colaboradores — {pl['total_work_days']} dias úteis + {pl['total_cure_days']} dias de secagem betão, ou seja ≈ {pl['total_days']} jours ({pl['total_weeks']} semanas) de obra.")
+            f"Equipa de {pl['crew_size']} colaboradores — {pl['total_work_days']} dias úteis + {pl['total_cure_days']} dias de secagem betão, ou seja ≈ {pl['total_days']} dias ({pl['total_weeks']} semanas) de obra.")
 
     buf = BytesIO()
     doc.save(buf)

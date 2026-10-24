@@ -6,7 +6,7 @@ import { eur2 } from "@/lib/api";
 async function dlComparePdf(id) {
   const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/assistant/comparisons/${id}/pdf`, {  credentials: "include" });
   if (!res.ok) return toast.error("PDF indisponível");
-  const url = URL.createObjectURL(await res.blob()); const el = document.createElement("a"); el.href = url; el.download = "comparaison-construpilot.pdf"; el.click(); URL.revokeObjectURL(url);
+  const url = URL.createObjectURL(await res.blob()); const el = document.createElement("a"); el.href = url; el.download = "comparacao-construpilot.pdf"; el.click(); URL.revokeObjectURL(url);
 }
 
 const STATUS = {
@@ -28,7 +28,7 @@ function DocHead({ tag, d, name }) {
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Documento {tag}</div>
       <b className="block truncate" title={name}>{name}</b>
       <div className="text-muted-foreground">{d.issuer || "—"}{d.date ? ` · ${d.date}` : ""} · {d.lines_count} linha(s)</div>
-      <div>HT {n(d.total_ht)} · TVA {d.vat_rate ?? "—"} % · <b>c/ IVA {n(d.total_ttc)}</b></div>
+      <div>s/ IVA {n(d.total_ht)} · IVA {d.vat_rate ?? "—"} % · <b>c/ IVA {n(d.total_ttc)}</b></div>
     </div>
   );
 }

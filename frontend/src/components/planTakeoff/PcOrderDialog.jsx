@@ -27,7 +27,7 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `bon-commande-${levelName}.pdf`;
+      a.href = url; a.download = `nota-encomenda-${levelName}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       toast.success("Ordem de encomenda descarregada");
@@ -43,7 +43,7 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
         level_index: levelIndex, supplier_email: email.trim(),
         supplier_name: supplier, notes,
       });
-      toast.success(`Nota de encomenda ${data.ref} enviado para ${data.sent_to} — ${data.total_ht} € HT`);
+      toast.success(`Nota de encomenda ${data.ref} enviado para ${data.sent_to} — ${data.total_ht} € s/ IVA`);
       onClose();
     } catch (e) { toast.error(e?.response?.data?.detail || "Envio impossível"); }
     finally { setBusy(false); }
@@ -61,13 +61,13 @@ export default function PcOrderDialog({ open, onClose, planId, levelIndex, level
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="pc-order-supplier">Nome do fornecedor (opcional)</Label>
-            <Input id="pc-order-supplier" placeholder="Ex: Point.P Marselha"
+            <Input id="pc-order-supplier" placeholder="Ex.: Maxmat Lisboa"
                    value={supplier} onChange={(e) => setSupplier(e.target.value)}
                    data-testid="pc-order-supplier-input" className="rounded-sm" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="pc-order-email">Email do armazém (para envio direto)</Label>
-            <Input id="pc-order-email" type="email" placeholder="commandes@negoce.fr"
+            <Input id="pc-order-email" type="email" placeholder="encomendas@fornecedor.pt"
                    value={email} onChange={(e) => setEmail(e.target.value)}
                    data-testid="pc-order-email-input" className="rounded-sm" />
           </div>

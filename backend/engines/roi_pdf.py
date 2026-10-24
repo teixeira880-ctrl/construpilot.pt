@@ -85,7 +85,7 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     # ---- A) pertes ----
     s.append(Paragraph("A. Perdas reduzidas (em % do volume de negócios)", h2))
     arows = [
-        [Paragraph("<b>Levier</b>", cell), Paragraph("<b>Funcionalidade</b>", cell), Paragraph("<b>% do volume de negócios</b>", cell)],
+        [Paragraph("<b>Alavanca</b>", cell), Paragraph("<b>Funcionalidade</b>", cell), Paragraph("<b>% do volume de negócios</b>", cell)],
         [Paragraph("Menos desperdício de materiais", cell), Paragraph("Calculadoras de quantidades exatas", cell), Paragraph("0,5 – 1,5 %", cellb)],
         [Paragraph("Margem protegida (preços justos)", cell), Paragraph("Motores determinísticos + margem no orçamento", cell), Paragraph("0,5 – 1,5 %", cellb)],
         [Paragraph("Menos litígios / esquecimentos", cell), Paragraph("Medição precisa, comparação antes/depois", cell), Paragraph("0,3 – 0,5 %", cellb)],
@@ -129,7 +129,7 @@ def build_roi_pdf(ca_annual: float = 500_000, materials_pct: float = 40,
     brows = [
         [Paragraph("<b>Perfil automatizado</b>", cell), Paragraph("<b>Custo com encargos</b>", cell),
          Paragraph("<b>Equivalente ETI</b>", cell), Paragraph("<b>Poupança / mês</b>", cell)],
-        [Paragraph("Medidor / orçamentista / técnico de estudos", cell), Paragraph(_eur(loaded) + " / mois", cell),
+        [Paragraph("Medidor / orçamentista / técnico de estudos", cell), Paragraph(_eur(loaded) + " / mês", cell),
          Paragraph(f"{fte_saved:.2f} ETP".replace(".", ","), cellb), Paragraph(_eur(b_month), cellb)],
     ]
     bt = Table(brows, colWidths=[72 * mm, 36 * mm, 30 * mm, 30 * mm])

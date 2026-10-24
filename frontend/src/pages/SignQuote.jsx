@@ -179,7 +179,7 @@ export default function SignQuote() {
                 <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-600" />
                 <p className="font-display text-lg font-bold">Sinal pago — obrigado!</p>
                 <p className="text-sm text-muted-foreground">
-                  {eur(data.deposit.paid_amount)} recebido{data.deposit.paid_at ? ` le ${new Date(data.deposit.paid_at).toLocaleDateString("pt-PT")}` : ""}. A sua obra pode começar.
+                  {eur(data.deposit.paid_amount)} recebido{data.deposit.paid_at ? ` em ${new Date(data.deposit.paid_at).toLocaleDateString("pt-PT")}` : ""}. A sua obra pode começar.
                 </p>
               </div>
             ) : data.deposit?.enabled ? (

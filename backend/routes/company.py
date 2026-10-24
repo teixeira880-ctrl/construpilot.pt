@@ -239,7 +239,7 @@ async def export_activity(actor_id: str = "", user=Depends(current_user)):
         w.writerow([r.get("created_at", "")[:19].replace("T", " "), r.get("actor_name", ""),
                     r.get("action_label", ""), r.get("label", "")])
     return Response(content="\ufeff" + buf.getvalue(), media_type="text/csv",
-                    headers={"Content-Disposition": 'attachment; filename="journal-activite.csv"'})
+                    headers={"Content-Disposition": 'attachment; filename="registo-atividade.csv"'})
 
 
 @router.get("/activity/pdf")
@@ -286,4 +286,4 @@ async def export_activity_pdf(actor_id: str = "", user=Depends(current_user)):
          Spacer(1, 8), tbl]
     doc.build(E)
     return Response(content=buf.getvalue(), media_type="application/pdf",
-                    headers={"Content-Disposition": 'attachment; filename="journal-activite.pdf"'})
+                    headers={"Content-Disposition": 'attachment; filename="registo-atividade.pdf"'})

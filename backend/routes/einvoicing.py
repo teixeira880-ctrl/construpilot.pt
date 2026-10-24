@@ -302,7 +302,7 @@ async def _maybe_overspend_alert(user: dict, inv: dict, recon: dict) -> dict | N
     threshold = acc.get("overspend_threshold_pct", 5)
     if recon.get("gap_pct", 0) < threshold:
         return None
-    msg = (f"Sobrecusto detetado: a fatura {inv.get('supplier')} ({inv.get('number')}) excede a nota de encomenda de {recon['gap_pct']}% (+{recon['gap_ht']:.2f} € HT).")
+    msg = (f"Sobrecusto detetado: a fatura {inv.get('supplier')} ({inv.get('number')}) excede a nota de encomenda de {recon['gap_pct']}% (+{recon['gap_ht']:.2f} € s/ IVA).")
     await db.notifications.insert_one({
         "user_id": user["user_id"], "type": "einvoice_overspend",
         "inv_id": inv.get("inv_id"), "order_id": recon.get("order_id"),

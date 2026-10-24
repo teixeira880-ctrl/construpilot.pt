@@ -123,7 +123,7 @@ async def export_takeoff_pdf(plan_id: str, include_materials: bool = True,
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
-                 f'attachment; filename="metre-{plan_id}.pdf"'}
+                 f'attachment; filename="medicao-{plan_id}.pdf"'}
     )
 
 
@@ -178,7 +178,7 @@ async def export_ecarts_pdf(plan_id: str, page_index: int = 0,
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition":
-                 f'attachment; filename="rapport-ecarts-{plan_id}.pdf"'}
+                 f'attachment; filename="relatorio-desvios-{plan_id}.pdf"'}
     )
 
 
@@ -207,7 +207,7 @@ async def send_ecarts_pdf(plan_id: str, body: SendEcartsIn,
         await send_email_with_pdf(
             body.to_email,
             f"Relatório de controlo das áreas — {meta['filename']}",
-            html, pdf_bytes, filename=f"rapport-ecarts-{plan_id}.pdf")
+            html, pdf_bytes, filename=f"relatorio-desvios-{plan_id}.pdf")
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception:
@@ -243,7 +243,7 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
         import asyncio
         content = await asyncio.to_thread(build_dossier_xlsx, p["pc_study"])
         return Response(content=content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        headers={"Content-Disposition": f'attachment; filename="etude-{plan_id}.xlsx"'})
+                        headers={"Content-Disposition": f'attachment; filename="estudo-{plan_id}.xlsx"'})
 
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor="1F2733")
@@ -263,7 +263,7 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
     ws.title = "Divisões"
     sheet_header(ws, ["Divisão", "Página", "Área líquida (m²)", "Área bruta (m²)",
                       "Deduções (m²)", "Perímetro (m)", "Paredes brutas (m²)",
-                      "Paredes líquidas (m²)", "Plafond (m²)", "Pé-direito (m)", "Volume (m³)",
+                      "Paredes líquidas (m²)", "Teto (m²)", "Pé-direito (m)", "Volume (m³)",
                       "Material do pavimento", "Área escrita (m²)", "Desvio (%)"],
                  [22, 6, 16, 16, 14, 13, 13, 12, 12, 8, 12, 16, 16, 10])
     rooms = p.get("rooms") or []
@@ -324,7 +324,7 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
                            ("Armaduras total (kg)", t.get("acier_kg")),
                            ("Briques isobrique (u)", t.get("briques_u")),
                            ("Total s/ IVA (€)", t.get("ht")),
-                           ("TVA (€)", t.get("tva")),
+                           ("IVA (€)", t.get("tva")),
                            ("TOTAL C/ IVA (€)", t.get("ttc"))]:
             ws3.append(["", "", "", "", "", "", label, val])
             ws3.cell(row=ws3.max_row, column=7).font = bold
@@ -336,7 +336,7 @@ async def export_xlsx(plan_id: str, user=Depends(current_user)):
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition":
-                 f'attachment; filename="metre-{plan_id}.xlsx"'}
+                 f'attachment; filename="medicao-{plan_id}.xlsx"'}
     )
 
 
@@ -407,7 +407,7 @@ def _build_tva_attachment(quote: dict, body: SendQuoteIn, company: str,
         branding=branding, tva_rate=quote.get("tva_rate", 0.06),
     )
     return {
-        "filename": f"attestation-tva-{quote['plan_id']}.pdf",
+        "filename": f"declaracao-iva-{quote['plan_id']}.pdf",
         "content": tva_pdf,
         "content_type": "application/pdf",
     }
@@ -533,7 +533,7 @@ async def send_quote(plan_id: str, body: SendQuoteIn, user=Depends(current_user)
         cc = (sender_u or {}).get("email") if body.cc_self else None
         res = await deliver_email(user["user_id"], body.client_email, subject,
                                   html, pdf_bytes=pdf_bytes,
-                                  filename=f"devis-{plan_id}.pdf", cc=cc,
+                                  filename=f"orcamento-{plan_id}.pdf", cc=cc,
                                   extra_attachments=extra_attachments,
                                   reply_to=(company_email or cc),
                                   from_name=company)
@@ -876,7 +876,7 @@ async def export_multi_quote_pdf(body: MultiQuoteIn, user=Depends(current_user))
         return round(sum(q.get(key, 0) for q in sub_quotes), 2)
 
     project = {
-        "project_name": (body.project_name or "Projet ConstruPilot").strip(),
+        "project_name": (body.project_name or "Projeto ConstruPilot").strip(),
         "plan_count": len(sub_quotes),
         "sub_quotes": sub_quotes,
         "totals": {
@@ -1020,7 +1020,7 @@ async def send_to_invoice(log_id: str, body: SendToInvoiceIn | None = None,
     ht = round(ttc / (1 + vat_rate / 100), 2) if ttc else 0.0
     label = send.get("plan_filename") or send.get("work_address") \
         or send.get("client_name") or "Obras de remodelação"
-    lines = [{"designation": f"Travaux — {label}", "unit": "forfait", "qty": 1,
+    lines = [{"designation": f"Trabalhos — {label}", "unit": "forfait", "qty": 1,
               "unit_price_ht": ht, "vat_rate": vat_rate, "category": ""}]
     totals = _compute_totals(lines, 0)
 
@@ -1126,7 +1126,7 @@ async def export_clients_csv(user=Depends(current_user)):
     from fastapi.responses import Response
     buf = StringIO()
     w = csv.writer(buf, delimiter=";")
-    w.writerow(["Type", "Date d'envoi", "Cliente", "Email do cliente", "Documento",
+    w.writerow(["Tipo", "Data de envio", "Cliente", "Email do cliente", "Documento",
                 "Montante c/ IVA (EUR)", "Estado", "Assinado a", "Adiantamento pago",
                 "Fatura de adiantamento"])
     sends = await db.quote_sends.find(
@@ -1281,7 +1281,7 @@ def _build_pro_signature_email(pro_name: str, signer: str, ttc: float,
     ttc_html = (f' — <strong>{int(ttc):,} € c/ IVA</strong>'.replace(",", " ")
                 if ttc else "")
     return (
-        f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'><div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'><h1 style='margin:0;font-size:22px'>✍️ Orçamento assinado</h1></div><div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'><p>Olá {pro_name or ''},</p><p><strong>{signer}</strong> acaba de assinar o seu orçamento{ttc_html}.</p><p>Client : <em>{client_email}</em><br/>Date : {_now()[:10]}</p><p style='margin-top:24px'><a href='https://construpilot.pt/devis' style='background:hsl(24,96%,55%);color:white;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>Ver o orçamento assinado</a></p><p style='margin-top:32px;color:#888;font-size:12px'>ConstruPilot · Estime. Compare. Construa.</p></div></div>"
+        f"<div style='font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px'><div style='background:hsl(24,96%,55%);color:white;padding:20px;border-radius:6px 6px 0 0'><h1 style='margin:0;font-size:22px'>✍️ Orçamento assinado</h1></div><div style='border:1px solid #eee;border-top:none;padding:24px;border-radius:0 0 6px 6px'><p>Olá {pro_name or ''},</p><p><strong>{signer}</strong> acaba de assinar o seu orçamento{ttc_html}.</p><p>Cliente: <em>{client_email}</em><br/>Data: {_now()[:10]}</p><p style='margin-top:24px'><a href='https://construpilot.pt/devis' style='background:hsl(24,96%,55%);color:white;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:600;display:inline-block'>Ver o orçamento assinado</a></p><p style='margin-top:32px;color:#888;font-size:12px'>ConstruPilot · Estime. Compare. Construa.</p></div></div>"
     )
 
 

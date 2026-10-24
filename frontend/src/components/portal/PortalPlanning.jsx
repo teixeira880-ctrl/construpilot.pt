@@ -22,7 +22,7 @@ export function PortalPlanning({ portalApi, chantierRef, accent }) {
       <div className="flex flex-wrap items-center gap-2">
         <CalendarRange className="h-5 w-5" style={{ color: accent }} />
         <h2 className="font-semibold">Planeamento das obras</h2>
-        <span className="text-xs text-slate-500">du {fr(project.start_date)} au <b data-testid="portal-planning-end">{fr(project.end_date)}</b> · {project.duration_workdays} dias úteis · situação em {fr(project.as_of)}</span>
+        <span className="text-xs text-slate-500">de {fr(project.start_date)} a <b data-testid="portal-planning-end">{fr(project.end_date)}</b> · {project.duration_workdays} dias úteis · situação em {fr(project.as_of)}</span>
       </div>
 
       {(current.length > 0 || upcoming.length > 0) && (

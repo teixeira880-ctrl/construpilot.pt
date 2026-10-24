@@ -287,7 +287,7 @@ export default function QuoteEditor() {
       setNotes((n) => (n?.trim() ? `${n.trim()}\n\nPrescrições do caderno de encargos:\n${presc}` : `Prescrições do caderno de encargos:\n${presc}`));
     }
     const imposed = keep.filter((l) => l.imposed_materials?.length).length;
-    toast.success(`${newLines.length} artigo(s) importado(s) do caderno de encargos${data.ocr ? " (OCR)" : ""} · ${imposed} com materiais impostos · ${selected.size} lot(s)`);
+    toast.success(`${newLines.length} artigo(s) importado(s) do caderno de encargos${data.ocr ? " (OCR)" : ""} · ${imposed} com materiais impostos · ${selected.size} lote(s)`);
     setCctpPreview(null);
   };
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -782,7 +782,7 @@ export default function QuoteEditor() {
     for (const l of toSave) {
       try {
         await api.post("/library", {
-          type: "ouvrage", category: l.category || "Devis", designation: l.designation,
+          type: "ouvrage", category: l.category || "Orçamento", designation: l.designation,
           unit: l.unit, unit_price_ht: Number(l.unit_price_ht) || 0, cost_price_ht: Number(l.cost_price_ht) || 0, vat_rate: (l.vat_rate === "" || l.vat_rate == null) ? (defVat ?? 0) : Number(l.vat_rate),
         });
       } catch { /* ignore */ }
@@ -1121,9 +1121,9 @@ export default function QuoteEditor() {
   const openSend = async () => {
     const targetPct = targetMargin || 0;
     if (totals.marginPct != null && targetPct > 0 && totals.marginPct < targetPct) {
-      const ok = window.confirm(`⚠️ Marge faible : ${totals.marginPct.toFixed(1)} % neste orçamento, abaixo do seu objetivo de ${targetPct} %${lossLines ? ` (${lossLines} ouvrage${lossLines > 1 ? "s" : ""} com prejuízo)` : ""}.\n\nEnviar mesmo assim?`);
+      const ok = window.confirm(`⚠️ Margem baixa: ${totals.marginPct.toFixed(1)} % neste orçamento, abaixo do seu objetivo de ${targetPct} %${lossLines ? ` (${lossLines} artigo${lossLines > 1 ? "s" : ""} com prejuízo)` : ""}.\n\nEnviar mesmo assim?`);
       if (!ok) return;
-    } else if (lossLines > 0 && !window.confirm(`⚠️ ${lossLines} ouvrage${lossLines > 1 ? "s" : ""} orçamentado${lossLines > 1 ? "s" : ""} com prejuízo neste orçamento.\n\nEnviar mesmo assim?`)) {
+    } else if (lossLines > 0 && !window.confirm(`⚠️ ${lossLines} artigo${lossLines > 1 ? "s" : ""} orçamentado${lossLines > 1 ? "s" : ""} com prejuízo neste orçamento.\n\nEnviar mesmo assim?`)) {
       return;
     }
     const c = clients.find((x) => x.client_id === clientId);
@@ -1242,7 +1242,7 @@ export default function QuoteEditor() {
               <th className="text-left py-1.5">Designação</th>
               <th className="text-right py-1.5 w-12">Qtd.</th>
               <th className="text-left py-1.5 w-12 pl-2">Un.</th>
-              <th className="text-right py-1.5 w-20">PU HT</th>
+              <th className="text-right py-1.5 w-20">PU s/ IVA</th>
               <th className="text-right py-1.5 w-14">Rem.</th>
               <th className="text-right py-1.5 w-24 pr-1">Total s/ IVA</th>
             </tr>
@@ -1397,8 +1397,8 @@ export default function QuoteEditor() {
           </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => document.getElementById("qe-cctp-input").click()}
                   disabled={cctpBusy}
-                  title="Ler um CCTP: trabalhos e materiais impostos adicionados ao orçamento" data-testid="editor-cctp-btn">
-            {cctpBusy ? <Loader2 className="animate-spin" /> : <FileText />} {cctpBusy ? "Leitura do CCTP…" : "Ler um caderno de encargos"}
+                  title="Ler um caderno de encargos: trabalhos e materiais impostos adicionados ao orçamento" data-testid="editor-cctp-btn">
+            {cctpBusy ? <Loader2 className="animate-spin" /> : <FileText />} {cctpBusy ? "Leitura do caderno de encargos…" : "Ler um caderno de encargos"}
           </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => document.getElementById("qe-video-input").click()}
                   disabled={videoBusy} data-testid="editor-video-gallery-btn">
@@ -1553,7 +1553,7 @@ export default function QuoteEditor() {
             <div className="grid gap-1.5">
               <Label htmlFor="send-email">{t("crm.ed_client_email_req")}</Label>
               <Input id="send-email" type="text" value={sendEmail} onChange={(e) => setSendEmail(e.target.value)}
-                     placeholder="client@email.com, associe@email.com" data-testid="send-quote-email" />
+                     placeholder="cliente@email.pt, socio@email.pt" data-testid="send-quote-email" />
               <p className="text-[11px] text-muted-foreground mt-1">Vários destinatários possíveis — separe os endereços por vírgula.</p>
             </div>
             <div className="grid gap-1.5">
@@ -1833,7 +1833,7 @@ export default function QuoteEditor() {
             <option value="company_first">{isPT ? "Empresa → ConstruPilot" : "Entreprise → ConstruPilot"}</option>
             <option value="company_only">{isPT ? "Só empresa" : "Apenas a empresa"}</option>
           </select>
-          <span className="text-muted-foreground">{isPT ? "— usado para orçamentos por voz, foto, vídeo, planta e CCTP." : "— utilizado para orçamentos por ditado, foto, vídeo, projeto e caderno de encargos."}</span>
+          <span className="text-muted-foreground">{isPT ? "— usado para orçamentos por voz, foto, vídeo, planta e caderno de encargos." : "— utilizado para orçamentos por ditado, foto, vídeo, projeto e caderno de encargos."}</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap rounded-sm border border-border/60 bg-secondary/30 px-3 py-2 text-xs" data-testid="editor-target-margin">
@@ -2014,17 +2014,17 @@ export default function QuoteEditor() {
             <label className="quote-field quote-field-price"><span>{t("crm.col_price")}</span>
             <Input type="number" step="0.01" value={l.unit_price_ht} onChange={(e) => setLine(i, "unit_price_ht", e.target.value)}
                    className="rounded-sm num h-9 min-w-0 xl:col-span-2 text-right" data-testid={`editor-line-price-${i}`} /></label>
-            <label className="quote-field"><span>Remise (%)</span>
+            <label className="quote-field"><span>Desconto (%)</span>
             <div className="xl:col-span-1 relative min-w-0">
               <Input type="number" step="0.01" min="0" max="100" value={l.discount_pct || 0} onChange={(e) => setLine(i, "discount_pct", e.target.value)}
-                     className="rounded-sm num h-9 text-right pr-4" title="Remise %" data-testid={`editor-line-discount-${i}`} />
+                     className="rounded-sm num h-9 text-right pr-4" title="Desconto %" data-testid={`editor-line-discount-${i}`} />
               <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">%</span>
             </div></label>
             <label className="quote-field"><span>{t("crm.col_vat")}</span>
             <select value={l.vat_rate ?? ""} onChange={(e) => { const v = e.target.value === "" ? null : Number(e.target.value); setLines((ls) => ls.map((x, j) => (j === i ? { ...x, vat_rate: v, vat_assumed: false, vat_confirmed: v != null } : x))); }}
                     className={`rounded-sm border bg-background px-2 h-9 text-sm min-w-0 xl:col-span-1 ${l.vat_rate == null ? "border-amber-500 text-amber-600" : "border-border"}`} data-testid={`editor-line-vat-${i}`}
-                    title={l.vat_suggestion ? `Suggestion : ${l.vat_suggestion} % — ${l.vat_suggestion_reason || "a confirmar"}` : undefined}>
-              <option value="">TVA ?</option>
+                    title={l.vat_suggestion ? `Sugestão: ${l.vat_suggestion} % — ${l.vat_suggestion_reason || "a confirmar"}` : undefined}>
+              <option value="">IVA?</option>
               {[...new Set([...vatRates, ...(l.vat_rate != null ? [Number(l.vat_rate)] : [])])].sort((a, b) => a - b).map((r) => <option key={r} value={r}>{r === 0 ? "0 %" : `${r}%`}</option>)}
             </select></label>
             <div className="quote-field quote-field-total"><span>Total s/ IVA</span>
@@ -2055,7 +2055,7 @@ export default function QuoteEditor() {
                     <Input value={c.unit} onChange={(e) => setComponents(i, (l.components || []).map((x, j) => (j === ci ? { ...x, unit: e.target.value } : x)))}
                            className="col-span-1 rounded-sm h-8 text-xs" title="Un." />
                     <Input type="number" step="0.01" value={c.unit_price_ht} onChange={(e) => setComponents(i, (l.components || []).map((x, j) => (j === ci ? { ...x, unit_price_ht: e.target.value } : x)))}
-                           className="col-span-2 rounded-sm h-8 text-xs num text-right" title="PU HT" data-testid={`ouvrage-comp-pu-${i}-${ci}`} />
+                           className="col-span-2 rounded-sm h-8 text-xs num text-right" title="PU s/ IVA" data-testid={`ouvrage-comp-pu-${i}-${ci}`} />
                     <div className="col-span-3 flex items-center justify-end gap-0.5">
                       <span draggable
                             onDragStart={(e) => { compDragRef.current = { line: i, comp: ci }; e.dataTransfer.effectAllowed = "move"; }}
@@ -2118,7 +2118,7 @@ export default function QuoteEditor() {
                 {(() => { const m = lineMargin(l); return m ? (
                   <Badge variant="outline" data-testid={`editor-line-margin-${i}`}
                          className={`rounded-sm text-[10px] num h-6 ${m.loss ? "border-red-500 text-red-500 bg-red-500/10" : m.pct < 15 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}>
-                    {m.loss ? <><AlertTriangle className="h-3 w-3 mr-1" /> Com prejuízo</> : `marge ${m.pct.toFixed(0)} %`}
+                    {m.loss ? <><AlertTriangle className="h-3 w-3 mr-1" /> Com prejuízo</> : `margem ${m.pct.toFixed(0)} %`}
                   </Badge>
                 ) : null; })()}
               </div>
@@ -2305,7 +2305,7 @@ export default function QuoteEditor() {
           {totals.margin == null && totals.coverage.known > 0 && (
             <div className="rounded-sm px-3 py-2 mb-1 text-xs bg-amber-500/10 border border-amber-500/40" data-testid="editor-margin-incomplete">
               <div className="flex justify-between font-bold"><span>Custos incompletos</span><span>{totals.coverage.known}/{totals.coverage.total} linhas preenchidas</span></div>
-              <div className="flex justify-between text-muted-foreground"><span>Margem nas linhas cobertas ({eur(totals.coverage.coveredHt)} HT)</span><span className="num">{eur(totals.partialMargin)}</span></div>
+              <div className="flex justify-between text-muted-foreground"><span>Margem nas linhas cobertas ({eur(totals.coverage.coveredHt)} s/ IVA)</span><span className="num">{eur(totals.partialMargin)}</span></div>
               <p className="mt-1 text-muted-foreground">A margem global não é apresentada enquanto faltar um custo: introduza-o ou assinale «custo nulo confirmado».</p>
             </div>
           )}

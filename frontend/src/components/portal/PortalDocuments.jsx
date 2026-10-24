@@ -12,7 +12,7 @@ const STATUS = {
   refused: ["Recusado", "bg-red-100 text-red-700"],
   invoiced: ["Faturado", "bg-violet-100 text-violet-700"],
   paid: ["Paga", "bg-emerald-100 text-emerald-700"],
-  overdue: ["En retard", "bg-red-100 text-red-700"],
+  overdue: ["Em atraso", "bg-red-100 text-red-700"],
 };
 
 const Badge = ({ status, accepted, declined }) => {

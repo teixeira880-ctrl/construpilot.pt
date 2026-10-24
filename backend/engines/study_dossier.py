@@ -116,7 +116,7 @@ class QuantityEvaluator:
         if p is None:
             raise StudyError(f'Medição ausente: {key}')
         if p.get("conflict"):
-            raise StudyError(f"Cotes contradictoires : {key}")
+            raise StudyError(f"Cotas contraditórias: {key}")
         self.stack.add(key)
         try:
             if p.get("expression"):

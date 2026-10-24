@@ -56,8 +56,8 @@ export default function Referrals() {
         title={`Recomende colegas, ganhe ${data.bonus_days_cap / 30} meses Pro`}>
         <span>
           Por cada profissional que convida, oferecemos-lhe{" "}
-          <b className="text-primary">30 dias Pro gratuitos</b> (plafond{" "}
-          {data.bonus_days_cap} jours = {data.bonus_days_cap / 30} meses).
+          <b className="text-primary">30 dias Pro gratuitos</b> (limite de{" "}
+          {data.bonus_days_cap} dias = {data.bonus_days_cap / 30} meses).
         </span>
       </SectionTitle>
 
@@ -104,10 +104,10 @@ export default function Referrals() {
       <section className="grid md:grid-cols-3 gap-4" data-testid="referral-stats">
         <StatBig icon={Users} value={data.total_referrals} label="Afilhados inscritos"
                  testid="referral-stat-count" />
-        <StatBig icon={TrendingUp} value={`${data.bonus_days_earned} jours`}
+        <StatBig icon={TrendingUp} value={`${data.bonus_days_earned} dias`}
                  label={`${monthsEarned} mês Pro oferecido${monthsEarned > 1 ? "s" : ""}`}
                  testid="referral-stat-days" />
-        <StatBig icon={Gift} value={`${data.bonus_days_cap - data.bonus_days_earned} jours`}
+        <StatBig icon={Gift} value={`${data.bonus_days_cap - data.bonus_days_earned} dias`}
                  label="Restantes no limite" testid="referral-stat-remaining" />
       </section>
 

@@ -96,13 +96,13 @@ export function MultiPlanDialog({
                  data-testid="multi-plans-list">
               {allPlans.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
-                  Nenhum plano disponível. Carregue pelo menos 2 planos a partir da página /plan.
+                  Nenhuma planta disponível. Carregue pelo menos 2 plantas a partir da página /plan.
                 </p>
               ) : visiblePlans.map((p) => {
                 const on = multiSelected.includes(p.plan_id);
                 const sub = subcontractSel.includes(p.plan_id);
                 const isGros = !!p.structural_metre;
-                const kindLbl = isGros ? "🏢 Estrutura" : (p.rooms?.length ? "🏠 Maison" : "Planta");
+                const kindLbl = isGros ? "🏢 Estrutura" : (p.rooms?.length ? "🏠 Habitação" : "Planta");
                 const linkedCount = (p.ferraillage_plan_ids || []).length;
                 return (
                   <div key={p.plan_id}

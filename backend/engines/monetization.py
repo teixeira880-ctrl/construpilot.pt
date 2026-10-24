@@ -604,7 +604,7 @@ async def require_3d_access(user: dict, kind: str) -> str:
             "error": "credit_required", "kind": kind,
             "price_cents": acc["price_cents"], "price_eur": price,
             "credit_plan_id": acc["credit_plan_id"],
-            "message": f"Para gerar {labels.get(kind, 'cette création 3D')}, compre um crédito ({price:.0f} €).",
+            "message": f"Para gerar {labels.get(kind, 'esta criação 3D')}, compre um crédito ({price:.0f} €).",
         })
     return acc["mode"]
 

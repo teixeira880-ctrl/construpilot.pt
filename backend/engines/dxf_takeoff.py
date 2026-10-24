@@ -618,7 +618,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         struct_lines += [
             _line("Escadas de betão — lanços e degraus",
                   f'{esc_count} escada(s) · implantação {round(esc_area, 1)} m² × ép. éq. {esc_eq_thk} m', "m³", esc_m3, P["beton_escalier"]),
-            _line("Cofragem de escadas", f"{round(esc_area,1)} m² d'emprise", "m²", esc_cof, P["coffrage_escalier"]),
+            _line("Cofragem de escadas", f"{round(esc_area,1)} m² de projeção em planta", "m²", esc_cof, P["coffrage_escalier"]),
             _line("Aços de escadas", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
         ]
     if lint_ml:

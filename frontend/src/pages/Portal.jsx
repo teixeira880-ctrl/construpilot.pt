@@ -83,7 +83,7 @@ export function PortalAccept() {
   );
 }
 
-const MS = { planned: [Circle, "text-slate-400", "Previsto"], in_progress: [Clock, "text-amber-600", "Em curso"], done: [CheckCircle2, "text-emerald-600", "Terminado"], late: [AlertTriangle, "text-red-600", "En retard"] };
+const MS = { planned: [Circle, "text-slate-400", "Previsto"], in_progress: [Clock, "text-amber-600", "Em curso"], done: [CheckCircle2, "text-emerald-600", "Terminado"], late: [AlertTriangle, "text-red-600", "Em atraso"] };
 
 export function PortalChantier() {
   const { ref } = useParams();
@@ -188,7 +188,7 @@ export function PortalChantier() {
             <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">{photos.slice(0, 40).map((p, i) => <a key={i} href={photoUrl(p.path)} target="_blank" rel="noreferrer" title={p.title || ""}><img src={photoUrl(p.path)} alt={p.title || "Fotografia de obra"} loading="lazy" className="h-24 w-full object-cover rounded-md border" /></a>)}</div>
           </section>
         )}
-        <p className="text-[11px] text-slate-400 text-center">Vê apenas esta obra, com os elementos que {company.name || "l'entreprise"} escolheu partilhar.</p>
+        <p className="text-[11px] text-slate-400 text-center">Vê apenas esta obra, com os elementos que {company.name || "a empresa"} escolheu partilhar.</p>
       </>
     </Frame>
   );

@@ -128,7 +128,7 @@ async def _finish(job, state, live, error=None):
     if state in ("completed", "failed", "interrupted"):
         await db.notifications.update_one({"user_id": job["user_id"], "assistant_job_id": job["job_id"]}, {"$setOnInsert": {
             "notif_id": "n_assistant_" + job["job_id"],
-            "type": "assistant", "title": "Réponse de l’assistant prête" if state == "completed" else "Traitement de l’assistant interrompu",
+            "type": "assistant", "title": "Resposta do assistente pronta" if state == "completed" else "Tratamento do assistente interrompido",
             "message": job["payload"]["text"][:100], "link": f'/assistant?conversation={job["conversation_id"]}',
             "read": False, "created_at": now}}, upsert=True)
 
@@ -215,7 +215,7 @@ async def claim_next(worker):
     for old in expired:
         await _finish(old, "interrupted", old.get("live"), "Ligação do tratamento perdida. Nenhum reinício automático para evitar uma ação em duplicado.")
     await db.assistant_jobs.update_many({"status": "preparing", "created_at": {"$lt": (now - timedelta(minutes=2)).isoformat()}},
-        {"$set": {"status": "failed", "error": "Demande non mise en file. Réessayez explicitement."}})
+        {"$set": {"status": "failed", "error": "Pedido não colocado na fila. Tente novamente de forma explícita."}})
     queued = await db.assistant_jobs.find({"status": "queued"}, {"_id": 0}).sort("created_at", 1).to_list(50)
     for candidate in queued:
         # A lower sequence that is still preparing must not be overtaken.

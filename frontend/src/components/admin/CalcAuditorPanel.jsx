@@ -71,7 +71,7 @@ export default function CalcAuditorPanel() {
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="icon" onClick={load} title="Atualizar" data-testid="calc-auditor-refresh"><RefreshCw className="h-4 w-4" /></Button>
           <Button onClick={runNow} disabled={running || !configured} className="gap-2" data-testid="calc-auditor-run">
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {running ? "Audit en cours…" : "Lancer l'audit"}
+            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {running ? "Auditoria em curso…" : "Lançar a auditoria"}
           </Button>
         </div>
       </div>
@@ -103,7 +103,7 @@ export default function CalcAuditorPanel() {
         <p className="text-xs text-muted-foreground">
           Última auditoria: {audit.started_at ? new Date(audit.started_at).toLocaleString("pt-PT") : "—"}
           {audit.triggered_by ? ` · desencadeada por ${audit.triggered_by === "scheduler" ? "o agendador (diário)" : "o administrador"}` : ""}
-          {audit.status === "running" ? " · en cours…" : ""}
+          {audit.status === "running" ? " · em curso…" : ""}
         </p>
       )}
 

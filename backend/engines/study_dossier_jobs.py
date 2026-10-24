@@ -104,7 +104,7 @@ async def finish(job, status, error=None):
     if result.matched_count and status in ("completed", "failed", "interrupted"):
         await db.notifications.update_one({"user_id": job["user_id"], "pc_job_id": job["job_id"]}, {"$setOnInsert": {
             "notif_id": "n_"+job["job_id"], "title": "Estudo e orçamento disponíveis" if status == "completed" else "Estudo a retomar",
-            "message": "Consulte as medições, hipóteses e preços." if status == "completed" else (error or "Traitement interrompu"),
+            "message": "Consulte as medições, hipóteses e preços." if status == "completed" else (error or "Tratamento interrompido"),
             "link": f"/plan?open={job['plan_id']}&study=1", "type": "study", "read": False, "created_at": now().isoformat()}}, upsert=True)
 
 

@@ -215,7 +215,7 @@ def zone_crops(pdf_bytes: bytes, page_index: int, walls_result: dict, px_per_pt:
         c = mm["coordinates"]
         cx0, cy0, cx1, cy1 = (min(c["x1"], c["x2"]) / px_per_pt, min(c["y1"], c["y2"]) / px_per_pt,
                               max(c["x1"], c["x2"]) / px_per_pt, max(c["y1"], c["y2"]) / px_per_pt)
-        zones.append((f"travée {mm['measurement_id']} ({mm['from_wall']}→{mm['to_wall']})", cx0 - m * 0.5, cy0 - m * 0.5, cx1 + m * 0.5, cy1 + m * 0.5))
+        zones.append((f"vão {mm['measurement_id']} ({mm['from_wall']}→{mm['to_wall']})", cx0 - m * 0.5, cy0 - m * 0.5, cx1 + m * 0.5, cy1 + m * 0.5))
     out = []
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     try:

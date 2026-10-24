@@ -63,7 +63,7 @@ async def subscribe(body: SubscribeIn, request: Request):
                 f"<p style='font-size:11px;color:#888'><a href='{unsub}'>Cancelar a subscrição</a></p>")
         else:
             subj, html = "Bem-vindo ao jornal ConstruPilot", (
-                f"<p>Obrigado! Receberá os nossos novos guias de obras, preços e métodos logo que forem publicados.</p><p><a href='{_frontend()}/blog'>Découvrir le blog</a></p><p style='font-size:11px;color:#888'><a href='{unsub}'>Cancelar a subscrição</a></p>")
+                f"<p>Obrigado! Receberá os nossos novos guias de obras, preços e métodos logo que forem publicados.</p><p><a href='{_frontend()}/blog'>Descobrir o blogue</a></p><p style='font-size:11px;color:#888'><a href='{unsub}'>Cancelar a subscrição</a></p>")
         await send_email(email, subj, html, from_name="ConstruPilot")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Newsletter welcome email failed for {email}: {e}")
@@ -75,7 +75,7 @@ async def unsubscribe(token: str):
     r = await db.newsletter_subscribers.update_one({"token": token}, {"$set": {"unsubscribed_at": _now()}})
     msg = "Cancelou a subscrição do jornal ConstruPilot." if r.matched_count else "Ligação inválida ou já utilizada."
     return HTMLResponse(f"<html><body style='font-family:sans-serif;padding:40px;text-align:center'>"
-                        f"<h2>{msg}</h2><a href='{_frontend()}/blog'>Retour au blog</a></body></html>")
+                        f"<h2>{msg}</h2><a href='{_frontend()}/blog'>Voltar ao blogue</a></body></html>")
 
 
 @router.get("/admin/stats")

@@ -164,7 +164,7 @@ def test_export_csv():
     assert "attachment" in r.headers.get("content-disposition", "")
     body = r.content.decode("utf-8")
     assert body.startswith("\ufeff")
-    assert "Type;Date d'envoi;Client" in body
+    assert "Tipo;Data de envio;Cliente" in body
 
 
 def test_export_csv_requires_auth():

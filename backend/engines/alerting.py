@@ -31,7 +31,7 @@ async def _notify_user(user: dict, alert: dict, best: dict) -> bool:
     frontend = os.environ.get("FRONTEND_URL", "")
     html = emailer.wrap_html(
         "Um material acaba de atingir o seu preço alvo",
-        f"""<p>Olá {user.get('name') or ''},</p>\n<p>O material que acompanha no ConstruPilot está disponível a um preço interessante:</p>\n<ul>\n<li><b>Produto</b>: {alert.get('product') or alert.get('query')}</li>\n<li><b>Recherche</b> : « {alert.get('query')}»</li>\n<li><b>Preço alvo</b>: {alert.get('target_price'):.2f} €</li>\n<li><b>Melhor oferta</b>: <span style="color:#FF5A00;font-weight:bold">{best.get('price'):.2f} €</span>\n    em <b>{best.get('supplier')}</b></li>\n</ul>\n<p>Reserve depressa antes que o preço volte a subir.</p>""",
+        f"""<p>Olá {user.get('name') or ''},</p>\n<p>O material que acompanha no ConstruPilot está disponível a um preço interessante:</p>\n<ul>\n<li><b>Produto</b>: {alert.get('product') or alert.get('query')}</li>\n<li><b>Pesquisa</b>: « {alert.get('query')} »</li>\n<li><b>Preço alvo</b>: {alert.get('target_price'):.2f} €</li>\n<li><b>Melhor oferta</b>: <span style="color:#FF5A00;font-weight:bold">{best.get('price'):.2f} €</span>\n    em <b>{best.get('supplier')}</b></li>\n</ul>\n<p>Reserve depressa antes que o preço volte a subir.</p>""",
         cta_url=best.get("url") or f"{frontend}/prix?q={alert.get('query')}",
         cta_label="Ver a oferta")
     try:
@@ -87,7 +87,7 @@ async def _notify_channels(user: dict, alert: dict, best: dict) -> bool:
         sent_any = await _notify_user(user, alert, best) or sent_any
     if "sms" in channels and alert.get("phone"):
         price_txt = f"{best.get('price'):.2f} €" if best.get("price") is not None else "melhor preço"
-        sms_body = (f"Alerta ConstruPilot: {alert.get('product') or alert.get('query')} à {price_txt} chez {best.get('supplier')} (cible {alert['target_price']:.2f} €). {best.get('url', '')}")
+        sms_body = (f"Alerta ConstruPilot: {alert.get('product') or alert.get('query')} a {price_txt} em {best.get('supplier')} (alvo {alert['target_price']:.2f} €). {best.get('url', '')}")
         ok = _send_sms(alert["phone"], sms_body)
         if ok:
             await db.price_alerts.update_one(

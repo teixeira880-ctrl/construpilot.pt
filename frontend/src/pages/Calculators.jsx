@@ -173,7 +173,7 @@ export default function Calculators() {
         unit_price_ht: 0, vat_rate: 10, category: entry.name,
       })));
       const { data } = await api.post("/documents", {
-        doc_type: "quote", title: `Devis — ${cart.map((e) => e.name).join(" + ")}`, lines,
+        doc_type: "quote", title: `Orçamento — ${cart.map((e) => e.name).join(" + ")}`, lines,
       });
       toast.success("Orçamento agrupado criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
@@ -205,7 +205,7 @@ export default function Calculators() {
       const { data } = await api.post("/calculators-pdf", payload, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `fiche-calcul-${active.key}.pdf`;
+      a.href = url; a.download = `ficha-calculo-${active.key}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível exportar PDF"); }
@@ -226,7 +226,7 @@ export default function Calculators() {
         unit_price_ht: 0, vat_rate: 10, category: active.name,
       }));
       const { data } = await api.post("/documents", {
-        doc_type: "quote", title: `Devis — ${active.name}`, lines,
+        doc_type: "quote", title: `Orçamento — ${active.name}`, lines,
       });
       toast.success("Orçamento criado — complete os preços");
       navigate(`/devis-editeur/${data.doc_id}`);
@@ -539,11 +539,11 @@ export default function Calculators() {
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 mt-1">
-            <a href={`sms:?&body=${encodeURIComponent(`Votre fiche de calcul ConstruPilot : ${shareUrl}`)}`}
+            <a href={`sms:?&body=${encodeURIComponent(`A sua ficha de cálculo ConstruPilot: ${shareUrl}`)}`}
                data-testid="calc-share-sms">
               <Button variant="outline" className="w-full rounded-sm gap-2"><MessageSquare className="h-4 w-4" /> SMS</Button>
             </a>
-            <a href={`mailto:?subject=${encodeURIComponent("Votre fiche de calcul — ConstruPilot")}&body=${encodeURIComponent(`Bonjour,\n\nVoici votre fiche de calcul détaillée : ${shareUrl}\n\nCordialement.`)}`}
+            <a href={`mailto:?subject=${encodeURIComponent("A sua ficha de cálculo — ConstruPilot")}&body=${encodeURIComponent(`Olá,\n\nSegue a sua ficha de cálculo detalhada: ${shareUrl}\n\nCom os melhores cumprimentos.`)}`}
                data-testid="calc-share-email">
               <Button variant="outline" className="w-full rounded-sm gap-2"><Mail className="h-4 w-4" /> E-mail</Button>
             </a>

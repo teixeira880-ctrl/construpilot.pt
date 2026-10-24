@@ -92,7 +92,7 @@ export const PriceLibrary = () => {
                 <tr>
                   <th className="text-left p-2">Designação</th>
                   <th className="p-2">Un.</th>
-                  <th className="p-2 text-right">PU HT</th>
+                  <th className="p-2 text-right">PU s/ IVA</th>
                   <th className="p-2"></th>
                 </tr>
               </thead>

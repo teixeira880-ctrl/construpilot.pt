@@ -26,7 +26,7 @@ export const CompanyContactSearch = ({ opp, onSaved }) => {
   };
   return <div className="mt-4 space-y-3" data-testid="radar-company-search">
     <form onSubmit={search} className="space-y-2">
-      <label className="text-xs block">Denominação social ou SIREN conhecido
+      <label className="text-xs block">Denominação social ou NIPC conhecido
         <Input className="mt-1" value={query} onChange={(e) => setQuery(e.target.value)} minLength={2} maxLength={120} required data-testid="radar-company-query" />
       </label>
       <Button size="sm" type="submit" disabled={busy || query.trim().length < 2} className="gap-1" data-testid="radar-company-search-btn">

@@ -54,5 +54,5 @@ async def roi_lead(body: RoiLeadIn, request: Request, response: Response) -> dic
         await db.notifications.insert_one({
             "notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": a["user_id"], "type": "roi_lead",
             "link": "/admin", "read": False, "created_at": now,
-            "message": (f"Lead da calculadora de ROI: {doc['email']} (CA {int(doc['ca_annual'])} €, poupança ~{int(doc['estimated_monthly'])} €/mois)")})
+            "message": (f"Lead da calculadora de ROI: {doc['email']} (CA {int(doc['ca_annual'])} €, poupança ~{int(doc['estimated_monthly'])} €/mês)")})
     return {"ok": True, "lead_id": doc["lead_id"]}

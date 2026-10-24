@@ -74,7 +74,7 @@ async def read_plan(file: UploadFile = File(...), title: str = Form(""),
         raise HTTPException(503, "Serviço de leitura IA momentaneamente indisponível. Tente novamente dentro de instantes.")
     doc = {
         "read_id": _nid(), "user_id": user["user_id"],
-        "title": (title or file.filename or "Plan structure")[:160],
+        "title": (title or file.filename or "Planta de estrutura")[:160],
         "filename": file.filename, "created_at": _now(), "updated_at": _now(),
         "steel_ratios_input": steel_ratios or "",
         **result,

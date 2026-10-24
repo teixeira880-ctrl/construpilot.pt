@@ -13,7 +13,7 @@ def build_automation_pdf(model,report,revision):
     out=io.BytesIO();doc=SimpleDocTemplate(out,pagesize=A4,leftMargin=38,rightMargin=38,topMargin=42,bottomMargin=46)
     styles=getSampleStyleSheet();styles.add(ParagraphStyle('Small',fontName='Helvetica',fontSize=8,leading=11))
     p=lambda x:Paragraph(escape(str(x)),styles['Small'])
-    story=[Paragraph('ConstruPilot | Chaîne automatique',styles['Title']),p(model.title),p(f"Revisão {revision} | {report['engine_version']}"),
+    story=[Paragraph('ConstruPilot | Cadeia automática',styles['Title']),p(model.title),p(f"Revisão {revision} | {report['engine_version']}"),
         p("Impressão digital: "+report['generation_hash']),Spacer(1,12),Paragraph("ESTUDO PARCIAL - NÃO EXECUTÓRIO",styles['Heading2'])]
     story.extend(p(t) for t in report['limits'])
     story+=[Spacer(1,10),p("O motor escolhe disposições no catálogo introduzido. Os cálculos locais não validam a estrutura completa, o solo nem as ligações."),
@@ -41,7 +41,7 @@ def build_automation_pdf(model,report,revision):
         story += [Spacer(1,12),table([["Caso",'M (kN.m)','V (kN)',"As necessário (mm²)",'MRd (kN.m)']]+[[c['case_id'],f"{c['input']['med_knm']:.3f}",f"{c['input']['ved_kn']:.3f}",f"{c['result']['as_required_mm2']:.2f}",f"{c['result']['mrd_provided_knm']:.3f}"] for c in r['cases']],[70,100,90,130,125])]
         for case in r['cases']:
             names={'area_at_least_required':"Aço fornecido suficiente",'area_below_four_percent':"Taxa máxima",'provided_section_in_domain':"Domínio da secção",'shear_without_links':"Corte sem estribos",'strut_crushing':"Escora comprimida"}
-            story.append(p(case['case_id']+' : '+', '.join(names.get(k,k)+(' : satisfait' if v else " : NÃO SATISFEITO") for k,v in case['result']['checks'].items())))
+            story.append(p(case['case_id']+' : '+', '.join(names.get(k,k)+(': satisfeito' if v else ": NÃO SATISFEITO") for k,v in case['result']['checks'].items())))
         a=r['anchorage'];story += [Spacer(1,12),Paragraph("Amarração e emenda calculadas",styles['Heading2']),
             p(f"fbd = {a['fbd_mpa']:.3f} MPa ; sigma_sd = {a['sigma_sd_mpa']:.3f} MPa ; lb,rqd = {a['lb_rqd_mm']:.1f} mm."),
             p(f"lbd arredondado por excesso = {a['lbd_mm']} mm ; emenda majorada alpha6=1,5 = {a['lap_mm']} mm."),
