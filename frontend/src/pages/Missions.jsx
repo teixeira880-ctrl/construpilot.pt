@@ -11,11 +11,12 @@ import {
 } from "lucide-react";
 
 // Nome do ficheiro devolvido pelo servidor (Content-Disposition), senão um nome por defeito.
-const fileName = (res, fallback) => {
+const fileName = (res, fallback, ext = "pdf") => {
   const cd = res?.headers?.["content-disposition"] || "";
   const m = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
-  return m ? decodeURIComponent(m[1] || m[2]) : `${fallback}.pdf`;
+  try { return m ? decodeURIComponent(m[1] || m[2]) : `${fallback}.${ext}`; } catch { return `${fallback}.${ext}`; }
 };
+const num = (x, d = 1) => (x === null || x === undefined ? "—" : Number(x).toLocaleString("pt-PT", { maximumFractionDigits: d }));
 
 const STEP = {
   pending: { label: "Em espera", cls: "bg-muted text-muted-foreground border-border", icon: Clock },
@@ -147,11 +148,11 @@ function MissionsContent() {
     catch (e) { toast.error(e?.response?.data?.detail || "Paragem impossível"); }
   };
 
-  const download = async (path, label) => {
+  const download = async (path, label, ext = "pdf") => {
     try {
       const res = await api.get(path, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
-      const a = document.createElement("a"); a.href = url; a.download = fileName(res, label);
+      const a = document.createElement("a"); a.href = url; a.download = fileName(res, label, ext);
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     } catch { toast.error("Descarga impossível"); }
   };
@@ -364,6 +365,38 @@ function StepResult({ result: r, onDownload, nav }) {
       ))}
     </ul>
   );
+  if (r.kind === "notes") return (
+    <ul className="mt-2 space-y-1 text-xs">
+      {(r.notes || []).map((n) => (
+        <li key={n.note_id || n.plan_id} className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium">{n.filename}</span>
+          {n.error ? <span className="text-destructive">{n.error}</span> : (
+            <>
+              <span className="text-muted-foreground">
+                {r.lot === "thermique"
+                  ? `perdas ${num(n.perdas_w / 1000, 2)} kW · bomba de calor ${num(n.bomba_calor_kw)} kW · ${n.nao_conformes} não conformidade(s)${n.concelho ? "" : " · concelho não indicado"}`
+                  : r.lot === "dpe"
+                    ? `classe ${n.classe} · Ntc/Nt ${num(n.rnt, 2)} · ${num(n.area_util_m2)} m² · ${n.concelho}`
+                    : `implantação ${(n.implantacao_m || []).map((v) => num(v, 2)).join(" × ")} m · ${(n.pisos || []).length} piso(s) · ${n.linteis} lintel(éis)`}
+              </span>
+              <Button size="sm" variant="outline" className={btn} onClick={() => onDownload(n.pdf, n.title || "Nota")}><Download className="h-3.5 w-3.5 mr-1" /> PDF</Button>
+            </>
+          )}
+        </li>
+      ))}
+      {r.lot === "dpe" && <li className="text-muted-foreground">Indicativo: não substitui o certificado energético SCE emitido por Perito Qualificado (ADENE).</li>}
+    </ul>
+  );
+  if (r.kind === "files") return (
+    <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+      <span className="text-muted-foreground">{(r.lotes || []).length} especialidade(s) · total {num(r.total, 2)} € sem IVA{(r.lotes || []).some((l) => l.por_orcamentar) ? " · linhas por orçamentar" : ""}</span>
+      {(r.files || []).map((f) => (
+        <Button key={f.note_id} size="sm" variant="outline" className={btn} onClick={() => onDownload(f.url, f.title, f.ext)}>
+          <Download className="h-3.5 w-3.5 mr-1" /> {(f.ext || "").toUpperCase()}
+        </Button>
+      ))}
+    </div>
+  );
   if (r.kind === "share") return <ShareResult result={r} />;
   if (r.kind === "planning") return (
     <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
@@ -371,7 +404,7 @@ function StepResult({ result: r, onDownload, nav }) {
       <Button size="sm" variant="outline" className={btn} onClick={() => nav(r.link)}><Pencil className="h-3.5 w-3.5 mr-1" /> Abrir o planeamento</Button>
     </div>
   );
-  if (r.kind === "summary") return <p className="mt-2 text-xs text-muted-foreground">{r.total_measures} medição(ões) · {r.total_openings} abertura(s) · {r.total_surface_m2} m²</p>;
+  if (r.kind === "summary") return <p className="mt-2 text-xs text-muted-foreground">{r.total_measures} medição(ões) · {r.total_openings} abertura(s){r.total_rooms !== undefined ? ` · ${r.total_rooms} divisão(ões) (${num(r.total_surface_m2)} m²)` : ""}</p>;
   if (r.kind === "supervision") return <p className="mt-2 text-xs text-muted-foreground">{r.checked} recurso(s) controlado(s) · {r.needs_review} ponto(s) a verificar</p>;
   return (
     <div className="mt-2 flex items-center gap-2 flex-wrap">

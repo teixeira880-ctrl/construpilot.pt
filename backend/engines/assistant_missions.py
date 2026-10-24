@@ -18,7 +18,8 @@ _IDS = {"type": "array", "items": _S}
 MISSION_TOOLS = [
     {"type": "function", "name": "programme_ia_options", "strict": True,
      "description": "Lista as opções do motor IA de opções acessíveis a esta conta (plantas, medição, plantas de eletricidade RTIEBT / canalização DR 23/95, "
-                    "orçamento em rascunho, planeamento, processo PDF, ligação de partilha inativa), com as dependências e as peças exigidas, bem como as plantas e "
+                    "nota térmica (perdas de calor EN 12831-1, piso radiante, bomba de calor), estrutura de moradia (Eurocódigos), "
+                    "orçamento em rascunho, mapa de quantidades / caderno de encargos, pré-certificado REH indicativo, planeamento, processo PDF, ligação de partilha inativa), com as dependências e as peças exigidas, bem como as plantas e "
                     "os processos de obra da conta (identificadores a passar a lancer_programme_ia). Chamar antes de lançar um programa.",
      "parameters": {"type": "object", "additionalProperties": False, "properties": {"chantier_id": {"type": ["string", "null"],
                     "description": "limitar as plantas a este processo de obra"}}, "required": ["chantier_id"]}},
@@ -41,9 +42,10 @@ MISSION_TOOL_NAMES = {t["name"] for t in MISSION_TOOLS}
 
 MISSION_INSTRUCTIONS = (
     "Motor IA de opções: quando o profissional pede uma análise de plantas, uma medição, plantas de eletricidade / canalização, "
-    "um orçamento em rascunho, um planeamento, um processo PDF ou uma ligação de partilha nas suas plantas, chama programme_ia_options e depois lancer_programme_ia sem "
-    "voltar a pedir confirmação se o pedido for claro (o pedido vale como validação); se faltar uma planta ou uma dependência, "
-    "propõe-na numa frase. Acompanha depois o programa com suivre_programme_ia e apresenta as sínteses e as ligações. "
+    "uma nota térmica (perdas de calor, bomba de calor, piso radiante), um estudo de estrutura de moradia, um mapa de quantidades / "
+    "caderno de encargos, um pré-certificado REH, um orçamento em rascunho, um planeamento, um processo PDF ou uma ligação de partilha nas suas plantas, chama programme_ia_options e depois lancer_programme_ia sem "
+    "voltar a pedir confirmação se o pedido for claro (o pedido vale como validação); se faltar uma planta, um processo de obra (térmica e pré-certificado exigem-no, com o concelho na localidade) ou uma "
+    "dependência, propõe-na numa frase. Acompanha depois o programa com suivre_programme_ia e apresenta as sínteses e as ligações; os números vêm só dos motores, não os recalcules nem os inventes. "
     "Encadeia por iniciativa própria os cálculos úteis (ferramentas de notas de cálculo) sobre os resultados, mas nunca envias, assinas, pagas nem "
     "expedes nada: essas ações ficam um clique do profissional. A ligação de partilha é criada inativa: diz-lhe que "
     "a ative ele próprio na página do programa, e nunca transmitas o endereço a terceiros."

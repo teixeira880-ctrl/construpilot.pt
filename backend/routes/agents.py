@@ -148,7 +148,7 @@ async def _load_owned_plans(ids, user):
         raise HTTPException(422, "Seleção de plantas inválida ou duplicada")
     plans = await db.plans_takeoff.find(
         {"plan_id": {"$in": ids}, "user_id": user["user_id"]},
-        {"_id": 0, "plan_id": 1, "filename": 1, "measurements": 1, "chantier_id": 1}).to_list(51)
+        {"_id": 0, "plan_id": 1, "filename": 1, "measurements": 1, "rooms": 1, "chantier_id": 1}).to_list(51)
     if {p["plan_id"] for p in plans} != set(ids):
         raise HTTPException(404, "Uma ou várias plantas não foram encontradas para esta conta")
     order = {pid: i for i, pid in enumerate(ids)}
@@ -560,9 +560,9 @@ async def _agent_notify(run_id: str, uid: str, status: str, agent_name: str, age
     await db.notifications.update_one(
         {"user_id": uid, "notif_id": "n_agent_" + run_id},
         {"$set": {"notif_id": "n_agent_" + run_id, "user_id": uid, "type": "agent",
-                  "title": "Agent terminé" if status == "done" else "Agent en échec",
-                  "message": (f"{agent_name} : résultat prêt" if status == "done"
-                              else f"{agent_name} : l'exécution a échoué"),
+                  "title": "Agente concluído" if status == "done" else "Agente em falha",
+                  "message": (f"{agent_name}: resultado pronto" if status == "done"
+                              else f"{agent_name}: a execução falhou"),
                   "link": f"/missions?run={run_id}" if agent == "mission" else f"/agents?run={run_id}",
                   "read": False, "created_at": _now()}},
         upsert=True)

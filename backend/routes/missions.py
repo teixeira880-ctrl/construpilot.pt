@@ -1,12 +1,12 @@
 """Programa IA de opções — o cliente assinala, valida e depois a IA executa sozinha.
 
 Só as opções assinaladas e validadas são executadas (nenhum acréscimo implícito).
-Cada opção chama os motores determinísticos existentes (versão PT : RTIEBT,
-DR 23/95) ; o prompt preparado só serve para redigir a síntese do entregável.
+Cada opção chama os motores determinísticos portugueses existentes (RTIEBT, DR 23/95, EN 12831-1, NP EN 1264,
+Eurocódigos NP EN, REH); o prompt preparado só serve para redigir a síntese do entregável.
 
-Fluxo : GET /missions/catalog → POST /missions/plan (resumo, nada é executado)
-→ POST /agents/{run_id}/launch (fila e worker dos agentes : segundo plano,
-concessão, cancelamento, notificação) → GET /missions/{run_id}.
+Fluxo: GET /missions/catalog → POST /missions/plan (resumo, nada é executado)
+→ POST /agents/{run_id}/launch (fila e worker dos agentes: segundo plano,
+lease, cancelamento, notificação) → GET /missions/{run_id}.
 """
 from __future__ import annotations
 
@@ -32,9 +32,9 @@ async def _option_allowed(key: str, user: dict) -> None:
     from routes.agents import _authorize_agent
     if key == "controle":
         await _authorize_agent("supervise", user)
-    elif key in ("devis", "dossier"):
+    elif key in ("devis", "dossier", "dpgf"):
         await _authorize_agent("devis", user)
-    elif key in ("plan_electricite", "plan_plomberie"):
+    elif key in ("plan_electricite", "plan_plomberie", "thermique", "structure", "dpe"):
         from engines.access import require_level
         await _authorize_agent("metre", user)
         await require_level("pro")(user=user)
@@ -95,9 +95,9 @@ async def propose(body: MissionIn, user=Depends(current_user)) -> dict:
                 for s in plan_status if not s["ready"]]
     if "devis" in ordered and not sum(s["priced"] for s in plan_status):
         warnings.append("Nenhuma medição está associada a um artigo: o orçamento ficará vazio enquanto não associar artigos.")
-    if "partage" in ordered and not {"plan_electricite", "plan_plomberie"} & set(ordered):
-        warnings.append("A partilha só contém os estudos produzidos por este programa: assinale também a planta de "
-                        "eletricidade ou de canalização.")
+    if "partage" in ordered and not SHAREABLE & set(ordered):
+        warnings.append("A partilha só contém os entregáveis produzidos por este programa: assinale também uma planta de "
+                        "execução, uma nota de cálculo, o pré-certificado ou o mapa de quantidades / caderno de encargos.")
     if "planning" in ordered and "devis" not in ordered:
         warnings.append("O planeamento parte dos orçamentos já associados ao processo; sem orçamento, ficará vazio.")
 
@@ -149,6 +149,9 @@ async def _exec_analyse(ctx) -> dict:
             a = await get_analysis(s["plan_id"], user=ctx["user"])
         except HTTPException as exc:
             rows.append({"plan_id": s["plan_id"], "filename": s["filename"], "error": str(exc.detail)[:200]})
+            continue
+        except (TypeError, AttributeError, ValueError):    # planta sem divisões utilizáveis: o motor não produz análise
+            rows.append({"plan_id": s["plan_id"], "filename": s["filename"], "error": "Análise indisponível nesta planta"})
             continue
         analysis = a.get("analysis") or {}
         rows.append({"plan_id": s["plan_id"], "filename": s["filename"], "state": a.get("state"),
@@ -220,12 +223,206 @@ async def _exec_planning(ctx) -> dict:
             "end_date": project.get("end_date"), "link": f"/planning?chantier={cid}"}
 
 
+async def _exec_metre(ctx) -> dict:
+    """Síntese de medição do agente « metre », completada com as divisões relevadas (contagens da base, sem cálculo)."""
+    out = await _exec_agent("metre", ctx)
+    ids = ctx["run"].get("plan_ids") or []
+    plans = await db.plans_takeoff.find({"plan_id": {"$in": ids}, "user_id": ctx["user"]["user_id"]},
+                                        {"_id": 0, "plan_id": 1, "rooms": 1}).to_list(51) if ids else []
+    rooms = {p["plan_id"]: p.get("rooms") or [] for p in plans}
+    for row in out.get("plans") or []:
+        rs = rooms.get(row.get("plan_id"), [])
+        row["rooms"] = len(rs)
+        row["rooms_surface_m2"] = round(sum(float(r.get("surface_m2") or 0) for r in rs), 2)
+    out["total_rooms"] = sum(len(v) for v in rooms.values())
+    out["total_surface_m2"] = round(sum(float(r.get("surface_m2") or 0) for v in rooms.values() for r in v), 2)
+    return out
+
+
+async def _levels(ctx) -> list[dict]:
+    """Pisos lidos em cada planta (mesma leitura que o motor de instalações), partilhados entre opções."""
+    if "levels" in ctx["cache"]:
+        return ctx["cache"]["levels"]
+    from engines.calc_lots.depuis_plan import niveaux
+    from engines.mep.adapter import AdapterError
+    rows = []
+    for s in ctx["run"]["plan_status"]:
+        plan = await db.plans_takeoff.find_one({"plan_id": s["plan_id"], "user_id": ctx["user"]["user_id"]},
+            {"_id": 0, "plan_id": 1, "filename": 1, "rooms": 1, "calibrations": 1, "structure": 1, "mep_fixtures": 1})
+        if not plan:
+            rows.append({"plan_id": s["plan_id"], "filename": s["filename"], "error": "Planta não encontrada"})
+            continue
+        try:
+            rows.append({"plan_id": s["plan_id"], "filename": s["filename"], "levels": niveaux(plan)})
+        except (AdapterError, ValueError) as exc:
+            rows.append({"plan_id": s["plan_id"], "filename": s["filename"], "error": str(exc)[:200]})
+    ctx["cache"]["levels"] = rows
+    return rows
+
+
+def concelho_do_processo(chantier: dict) -> str | None:
+    """Concelho reconhecido pelo clima REH a partir da localidade ou da morada do processo (None se nenhum)."""
+    from engines.calc_lots import reh
+    import re
+    cands = [chantier.get("city")] + [p.strip() for p in (chantier.get("address") or "").split(",")]
+    for c in cands:
+        c = re.sub(r"^\s*\d{4}(-\d{3})?\s*", "", c or "")     # código postal à frente da localidade
+        if not c:
+            continue
+        try:
+            reh.clima(c)
+        except ValueError:
+            continue
+        return c.strip()
+    return None
+
+
+MIME = {"pdf": "application/pdf", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+
+
+async def _save_note(ctx, kind: str, title: str, data: bytes, summary: dict, ext: str = "pdf") -> dict:
+    """Entregável guardado (PDF, Excel, Word), descarregável pelo proprietário e partilhável pela opção « partilha »."""
+    import base64
+    note_id = "mnote_" + secrets.token_hex(6)
+    await db.mission_notes.insert_one({"note_id": note_id, "user_id": ctx["user"]["user_id"], "run_id": ctx["run"]["run_id"],
+                                       "kind": kind, "title": title, "ext": ext, "data_b64": base64.b64encode(data).decode(),
+                                       "summary": summary, "created_at": _now()})
+    return {"note_id": note_id, "title": title, "ext": ext, "pdf": f"/missions/notes/{note_id}/file", **summary}
+
+
+def _all_failed(out: list[dict]) -> None:
+    if out and all(r.get("error") for r in out):
+        raise HTTPException(422, out[0]["error"])
+
+
+THERMIQUE_LOTES = ("aquecimento", "piso_radiante", "bomba_calor")
+
+
+async def _exec_thermique(ctx) -> dict:
+    from fastapi.concurrency import run_in_threadpool
+    from engines.calc_lots import lotes_tecnicos
+    from engines.calc_lots.depuis_plan import divisoes_termicas
+    from routes.chantiers import _get
+    chantier = await _get(ctx["run"]["chantier_id"], ctx["user"]["user_id"])
+    concelho = concelho_do_processo(chantier)
+    out = []
+    for row in await _levels(ctx):
+        if row.get("error"):
+            out.append({k: row[k] for k in ("plan_id", "filename", "error")})
+            continue
+        try:
+            divisoes, hyp = divisoes_termicas(row["levels"])
+            params = {"divisoes": divisoes, **({"concelho": concelho} if concelho else {})}
+            n = await run_in_threadpool(lotes_tecnicos.note, params, THERMIQUE_LOTES)
+        except (ValueError, KeyError) as exc:
+            out.append({"plan_id": row["plan_id"], "filename": row["filename"], "error": str(exc)[:200]})
+            continue
+        aq, bc, pr = n.get("aquecimento") or {}, n.get("bomba_calor") or {}, n.get("piso_radiante") or {}
+        ctl = [c for k in THERMIQUE_LOTES for c in (n.get(k) or {}).get("controles", [])]
+        if not concelho:
+            hyp = hyp + ["concelho do processo de obra não indicado ou não reconhecido (localidade / morada): clima REH por defeito"]
+        summary = {"plan_id": row["plan_id"], "filename": row["filename"], "divisoes": len(divisoes), "concelho": concelho,
+                   "perdas_w": round(aq.get("phi_total") or 0), "theta_e": aq.get("theta_e"),
+                   "bomba_calor_kw": bc.get("p_nominal_kw"), "apoio_kw": bc.get("apoio_kw"),
+                   "theta_ida": bc.get("temperatura_ida") or pr.get("theta_ida"), "circuitos": pr.get("circuitos"),
+                   "nao_conformes": sum(1 for c in ctl if c.get("ok") is False), "hipoteses": (hyp + n.get("hipoteses", []))[:20]}
+        out.append(await _save_note(ctx, "thermique", n.get("titre") or "Nota térmica", n["pdf"], summary))
+    _all_failed(out)
+    return {"kind": "notes", "lot": "thermique", "notes": out}
+
+
+async def _exec_structure(ctx) -> dict:
+    from fastapi.concurrency import run_in_threadpool
+    from engines import structuro_house as SH
+    from engines.calc_lots.depuis_plan import geometria_estrutura
+    from engines.structuro_house_pdf import build_pdf
+    out = []
+    for row in await _levels(ctx):
+        if row.get("error"):
+            out.append({k: row[k] for k in ("plan_id", "filename", "error")})
+            continue
+        nome = (row["filename"] or "Moradia").rsplit(".", 1)[0][:80]
+        try:
+            geo, hyp = geometria_estrutura(row["levels"], nome)
+            r = await run_in_threadpool(SH.compute, geo)
+            pdf = await run_in_threadpool(build_pdf, r, nome)
+        except (ValueError, TypeError, KeyError) as exc:
+            out.append({"plan_id": row["plan_id"], "filename": row["filename"], "error": f"Geometria inválida: {exc}"[:200]})
+            continue
+        g = r["geometry"]
+        summary = {"plan_id": row["plan_id"], "filename": row["filename"], "implantacao_m": [g["outer_L_m"], g["outer_W_m"]],
+                   "pisos": [lv["name"] for lv in g["levels"]], "linteis": len(r.get("lintels") or []),
+                   "betao_m3": (r.get("quantities") or {}).get("concrete_m3"), "aco_kg": (r.get("quantities") or {}).get("steel_kg"),
+                   "avisos": (r.get("warnings") or [])[:15], "hipoteses": hyp}
+        out.append(await _save_note(ctx, "structure", f"Estudo de estrutura — {nome}", pdf, summary))
+    _all_failed(out)
+    return {"kind": "notes", "lot": "structure", "notes": out}
+
+
+async def _exec_dpgf(ctx) -> dict:
+    from engines import mapa_caderno as MC
+    devis = (ctx["results"].get("devis") or {})
+    doc_id = devis.get("doc_id")
+    if not doc_id:
+        raise HTTPException(422, "O rascunho de orçamento não foi criado: mapa de quantidades e caderno de encargos impossíveis.")
+    doc = await db.pro_documents.find_one({"doc_id": doc_id, "user_id": ctx["user"]["user_id"]}, {"_id": 0, "title": 1, "lines": 1})
+    if not doc:
+        raise HTTPException(404, "Orçamento não encontrado")
+    lotes = MC.por_lote(doc.get("lines") or [])
+    if not lotes:
+        raise HTTPException(422, "O orçamento não contém nenhuma linha de trabalhos.")
+    titulo = (doc.get("title") or "Projeto").replace("Orçamento parcial — ", "")[:120]
+    summary = {"lotes": [{"lote": l["lote"], "linhas": len(l["linhas"]), "total": l["total"], "por_orcamentar": l["por_orcamentar"],
+                          "referencias": l["refs"]} for l in lotes],
+               "total": round(sum(l["total"] for l in lotes), 2)}
+    files = [await _save_note(ctx, "mapa_quantidades", f"Mapa de quantidades — {titulo}", MC.mapa_xlsx(lotes, titulo), {}, ext="xlsx"),
+             await _save_note(ctx, "caderno_encargos", f"Caderno de encargos — {titulo}", MC.caderno_docx(lotes, titulo), {}, ext="docx")]
+    return {"kind": "files", "files": [{"note_id": f["note_id"], "title": f["title"], "ext": f["ext"], "url": f["pdf"]} for f in files], **summary}
+
+
+async def _exec_dpe(ctx) -> dict:
+    from fastapi.concurrency import run_in_threadpool
+    from engines.calc_lots import reh
+    from engines.calc_lots.depuis_plan import dados_reh
+    from routes.chantiers import _get
+    chantier = await _get(ctx["run"]["chantier_id"], ctx["user"]["user_id"])
+    concelho = concelho_do_processo(chantier)
+    if not concelho:
+        raise HTTPException(422, "Concelho do processo de obra em falta ou não reconhecido (localidade ou morada): "
+                                 "fixa o clima do pré-certificado REH.")
+    out = []
+    for row in await _levels(ctx):
+        if row.get("error"):
+            out.append({k: row[k] for k in ("plan_id", "filename", "error")})
+            continue
+        try:
+            params, hyp = dados_reh(row["levels"])
+            n = await run_in_threadpool(reh.note, {**params, "concelho": concelho})
+        except (ValueError, KeyError) as exc:
+            out.append({"plan_id": row["plan_id"], "filename": row["filename"], "error": str(exc)[:200]})
+            continue
+        summary = {"plan_id": row["plan_id"], "filename": row["filename"], "area_util_m2": params["area_util_m2"], "concelho": concelho,
+                   "classe": n["classe"], "rnt": round(n["RNt"], 2), "ntc": round(n["Ntc"], 1), "nt": round(n["Nt"], 1),
+                   "nic": round(n["Nic"], 1), "ni": round(n["Ni"], 1), "hipoteses": (hyp + n.get("hipoteses", []))[:15],
+                   "aviso": "Indicativo: não substitui o certificado energético SCE emitido por Perito Qualificado (ADENE)."}
+        out.append(await _save_note(ctx, "dpe", n.get("titre") or "Pré-certificado energético", n["pdf"], summary))
+    _all_failed(out)
+    return {"kind": "notes", "lot": "dpe", "notes": out}
+
+
+SHAREABLE = {"plan_electricite", "plan_plomberie", "thermique", "structure", "dpgf", "dpe"}
+
+
 async def _exec_partage(ctx) -> dict:
-    """Prepara uma ligação de partilha dos estudos deste programa. A ligação fica INATIVA: só o profissional a ativa."""
+    """Prepara uma ligação de partilha dos entregáveis deste programa. A ligação fica INATIVA: só o profissional a ativa."""
     studies = [r for r in ctx["cache"].get("mep") or [] if r.get("study_id")]
-    if not studies:
-        raise HTTPException(422, "Nenhum entregável a partilhar: assinale também a planta de eletricidade ou de canalização.")
-    items = [{"type": "mep", "id": r["study_id"], "title": f"Planos de execução — {r['filename']}"} for r in studies]
+    notes = await db.mission_notes.find({"run_id": ctx["run"]["run_id"], "user_id": ctx["user"]["user_id"]},
+                                        {"_id": 0, "note_id": 1, "title": 1, "ext": 1}).to_list(100)
+    if not studies and not notes:
+        raise HTTPException(422, "Nenhum entregável a partilhar: assinale também uma opção que produza um estudo, uma nota ou um ficheiro.")
+    items = [{"type": "mep", "id": r["study_id"], "title": f"Planos de execução — {r['filename']}", "ext": "pdf"} for r in studies]
+    items += [{"type": "note", "id": n["note_id"], "title": n.get("title") or "Documento", "ext": n.get("ext") or "pdf"} for n in notes]
     share = {"share_id": "mshare_" + secrets.token_hex(6), "token": secrets.token_urlsafe(24), "user_id": ctx["user"]["user_id"],
              "run_id": ctx["run"]["run_id"], "items": items, "active": False, "created_at": _now()}
     await db.mission_shares.insert_one(dict(share))
@@ -236,11 +433,15 @@ async def _exec_partage(ctx) -> dict:
 EXECUTORS = {
     "analyse_plans": _exec_analyse,
     "controle": _exec_controle,
-    "metre": lambda ctx: _exec_agent("metre", ctx),
+    "metre": _exec_metre,
     "plan_electricite": lambda ctx: _exec_mep("elec", ctx),
     "plan_plomberie": lambda ctx: _exec_mep("plumb", ctx),
+    "thermique": _exec_thermique,
+    "structure": _exec_structure,
     "devis": lambda ctx: _exec_agent("devis", ctx),
     "planning": _exec_planning,
+    "dpgf": _exec_dpgf,
+    "dpe": _exec_dpe,
     "dossier": lambda ctx: _exec_agent("report", ctx),
     "partage": _exec_partage,
 }
@@ -279,7 +480,7 @@ async def run_mission(run: dict, body, user: dict) -> dict:
             result = await EXECUTORS[key](ctx)
             step.update(status="done", result=result)
             ctx["results"][key] = result
-            step["synthese"] = await M.synthesize(prompts[key], result)
+            step["synthese"] = await M.synthesize(prompts[key], result, user=user)
         except HTTPException as exc:
             step.update(status="error", error=str(exc.detail)[:300])
         except Exception as exc:  # noqa: BLE001 -- no provider secrets in client errors
@@ -292,6 +493,24 @@ async def run_mission(run: dict, body, user: dict) -> dict:
     if not counts["done"]:
         raise HTTPException(422, "Nenhuma opção terminou: " + (next((s["error"] for s in steps if s.get("error")), "")))
     return {"kind": "mission", "steps": steps, **counts}
+
+
+def _file_response(doc: dict):
+    import base64
+    from fastapi.responses import Response
+    from engines.nom_fichier import content_disposition, nom_document
+    ext = doc.get("ext") or "pdf"
+    return Response(content=base64.b64decode(doc["data_b64"]), media_type=MIME.get(ext, "application/octet-stream"),
+                    headers={"Content-Disposition": content_disposition(nom_document("Nota", doc.get("title") or "calculo", ext=ext),
+                                                                        inline=ext == "pdf")})
+
+
+@router.get("/notes/{note_id}/file")
+async def note_file(note_id: str, user=Depends(current_user)):
+    doc = await db.mission_notes.find_one({"note_id": note_id, "user_id": user["user_id"]}, {"_id": 0, "data_b64": 1, "title": 1, "ext": 1})
+    if not doc:
+        raise HTTPException(404, "Nota não encontrada")
+    return _file_response(doc)
 
 
 # ============================ Partilha dos entregáveis ============================
@@ -346,8 +565,8 @@ async def public_share(token: str):
     from html import escape
     from fastapi.responses import HTMLResponse
     share = await _live_share(token)
-    items = "".join(f'<li><a href="{escape(token)}/{escape(i["id"])}">{escape(i.get("title") or "Documento")}</a> <small>(PDF)</small></li>'
-                    for i in share.get("items") or [])
+    items = "".join(f'<li><a href="{escape(token)}/{escape(i["id"])}">{escape(i.get("title") or "Documento")}</a> '
+                    f'<small>({escape((i.get("ext") or "pdf").upper())})</small></li>' for i in share.get("items") or [])
     html = ("<!doctype html><html lang='pt-PT'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
             "<meta name='robots' content='noindex'><title>Processo partilhado — ConstruPilot</title>"
             "<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 16px;color:#1f2937}"
@@ -365,6 +584,14 @@ async def public_share_file(token: str, item_id: str):
     item = next((i for i in share.get("items") or [] if i["id"] == item_id), None)
     if not item:
         raise HTTPException(404, "Documento não encontrado")
+    if item.get("type") == "note":
+        note = await db.mission_notes.find_one({"note_id": item_id, "user_id": share["user_id"]},
+                                               {"_id": 0, "data_b64": 1, "title": 1, "ext": 1})
+        if not note:
+            raise HTTPException(404, "Documento não encontrado")
+        resp = _file_response(note)
+        resp.headers.update({"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+        return resp
     doc = await db.mep_studies.find_one({"study_id": item_id, "user_id": share["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Documento não encontrado")

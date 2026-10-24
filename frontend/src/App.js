@@ -283,7 +283,7 @@ function AppRouter() {
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="/planning" element={<ProRoute><Shell><Planning /></Shell></ProRoute>} />
       <Route path="/agents" element={<Protected><Shell><AgentsHub /></Shell></Protected>} />
-      <Route path="/missions" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><Missions /></Suspense></Shell></Protected>} />
+      <Route path="/missions" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><Missions /></Suspense></Shell></ProRoute>} />
       <Route path="/rendu-ia" element={<SubscriberRoute><Shell><RenderStudio /></Shell></SubscriberRoute>} />
       <Route path="/mes-demandes" element={<ProRoute><Shell><MyLeads /></Shell></ProRoute>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />

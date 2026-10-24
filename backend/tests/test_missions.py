@@ -144,7 +144,7 @@ async def test_only_validated_options_run_and_get_synthesis(db, monkeypatch):
             return {"kind": key}
         monkeypatch.setitem(R.EXECUTORS, key, executor)
 
-    async def synth(prompt, result, feature="mission"):
+    async def synth(prompt, result, feature="mission", user=None):
         prompts.append(prompt)
         return "Synthèse"
     monkeypatch.setattr(M, "synthesize", synth)
