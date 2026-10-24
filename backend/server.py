@@ -470,6 +470,12 @@ async def _seed_impl():
         logger.info("websummit demo seed summary: %s", _ws_summary)
     except Exception as e:  # noqa: BLE001
         logger.warning("websummit demo seed skipped: %s", e)
+    # Acessos oferecidos a clientes reais — fail-closed (password provisória só via env).
+    try:
+        from core.client_grants import apply_client_grants
+        logger.info("client grants: %s", await apply_client_grants(db, hash_password, new_user_id))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("client grants skipped: %s", e)
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
     # Règle sécurité : zéro password en clair dans le code — les 5 passwords
