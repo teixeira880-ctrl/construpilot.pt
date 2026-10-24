@@ -1,11 +1,11 @@
-/* ConstruPilot Service Worker — v6 pwa-demo-ready
+/* ConstruPilot Service Worker — v7 identidade-pt
    - HTML / navegação : NETWORK-FIRST (garante que a última versão é sempre servida)
    - Assets estáticos (JS/CSS/img) : cache-first (bundles hashed pelo build)
    - API : rede obrigatória, nunca cache (dados privados / permissões)
    - LOTE 2 WebSummit : pré-cache do app shell + rotas demo + ficheiros estáticos
      para funcionamento 100% offline no stand (modo avião após 1ª carga).
    IMPORTANTE : bumpar CACHE a cada deploy para purgar o cache antigo. */
-const CACHE = "construpilot-v6-pwa-demo-ready";
+const CACHE = "construpilot-v7-identidade-pt";
 
 // App shell + manifest + ícones (sempre em pré-cache)
 const APP_SHELL = [

@@ -35,7 +35,7 @@ export function ParamLibraryPromo() {
     <section className="relative overflow-hidden border-y border-border bg-[#0A0D14] text-white"
              data-testid="param-promo">
       <div className="absolute inset-0 opacity-[0.07]"
-           style={{ backgroundImage: "radial-gradient(circle at 20% 30%, #3F7D54 0, transparent 45%), radial-gradient(circle at 80% 70%, #C9A227 0, transparent 45%)" }} />
+           style={{ backgroundImage: "radial-gradient(circle at 20% 30%, #235eab 0, transparent 45%), radial-gradient(circle at 80% 70%, #C9A227 0, transparent 45%)" }} />
       <div className="relative mx-auto max-w-[1500px] px-6 lg:px-10 py-24 lg:py-28">
         <div className="grid lg:grid-cols-[1.1fr,1fr] gap-14 items-center">
           <div>

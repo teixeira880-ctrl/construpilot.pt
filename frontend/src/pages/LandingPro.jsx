@@ -12,7 +12,7 @@ const FEATURES = [
   { id: "metre", icon: Ruler, clip: "metre", tag: "Ler e medir", title: "Plantas e medições", desc: "Importe as suas plantas PDF, DWG ou DXF, calibre a escala e controle as suas áreas, comprimentos e volumes.", to: "/plan" },
   { id: "devis", icon: FileText, clip: "devis_editeur", tag: "Orçamentar e apresentar", title: "Orçamentos à sua imagem", desc: "Estruture os seus artigos, ajuste os seus preços e tenha os descontos, o IVA e os totais à mão.", to: "/devis-editeur" },
   { id: "factures", icon: ReceiptText, clip: "factures", tag: "Faturar e acompanhar", title: "Faturas e autos de medição", desc: "Encontre os seus documentos, prepare os seus autos de medição e as suas exportações de faturação.", to: "/factures" },
-  { id: "dpgf", icon: FileSpreadsheet, clip: "dpgf", tag: "Organizar as peças", title: "DPGF & CCTP", desc: "Reúna as informações do processo para preparar uma orçamentação que pode verificar e completar.", to: "/dpgf" },
+  { id: "dpgf", icon: FileSpreadsheet, clip: "dpgf", tag: "Organizar as peças", title: "Mapa de quantidades e caderno de encargos", desc: "Reúna as informações do processo para preparar uma orçamentação que pode verificar e completar.", to: "/dpgf" },
   { id: "escaliers", icon: Cuboid, clip: "escaliers", tag: "Estudar uma solução", title: "Escadas 3D", desc: "Explore a geometria da sua escada e consulte as suas dimensões numa vista interativa.", to: "/escaliers" },
   { id: "appro", icon: Truck, clip: null, tag: "Preparar a obra", title: "Aprovisionamento", desc: "Organize os materiais, as encomendas e os custos no processo da obra.", to: "/appro" },
   { id: "multiniveaux", icon: Layers, clip: "multiniveaux", tag: "Manter uma visão global", title: "Projetos multinível", desc: "Encontre as plantas de cada piso e reúna as quantidades do seu projeto.", to: "/plan" },
@@ -20,12 +20,12 @@ const FEATURES = [
 ];
 
 const PLANS = [
-  { name: "Pro Artisan", price: "149 €", period: "/mois HT", popular: false, tid: "plan-pro-artisan-cta",
+  { name: "Pro Artesão", price: "149 €", period: "/mês + IVA", popular: false, tid: "plan-pro-artisan-cta",
     desc: "Profissionais independentes e pequenas equipas.",
     features: ["Medição em planta ilimitada", "Orçamentos e faturas eletrónicas", "Cálculo de escadas 3D (RGEU)", "Exportação PDF com o seu logótipo", "Suporte prioritário de construção"] },
-  { name: "Pro Business / TCE", price: "249 €", period: "/mois HT", popular: true, tid: "plan-pro-business-cta",
+  { name: "Pro Empresa", price: "249 €", period: "/mês + IVA", popular: true, tid: "plan-pro-business-cta",
     desc: "PME de construção, empreiteiros gerais, diretores de obra.",
-    features: ["Tudo do Pro Artesão +", "Analyse CCTP & import DPGF", "Projetos multinível e equipa", "Portal de subempreiteiros e aprovisionamento", "Acompanhamento na implementação"] },
+    features: ["Tudo do Pro Artesão +", "Análise do caderno de encargos e importação do mapa de quantidades", "Projetos multinível e equipa", "Portal de subempreiteiros e aprovisionamento", "Acompanhamento na implementação"] },
 ];
 
 const FAQ = [
@@ -43,14 +43,14 @@ export default function LandingPro() {
   return <LandingLayout audience="pro">
     <SEO title="ConstruPilot Pro — Medições, orçamentos e acompanhamento de obra" description="Reúna as suas plantas, medições, orçamentos e faturas num espaço de trabalho de construção pensado para profissionais e empresas. Descubra o ConstruPilot Pro."
       canonical="/" keywords="software orçamentos construção, medição em planta, orçamentação construção, gestão de obra"
-      jsonLd={{"@context":"https://schema.org","@type":"SoftwareApplication",name:"ConstruPilot Pro",applicationCategory:"BusinessApplication",operatingSystem:"Web",offers:[{"@type":"Offer",name:"Pro Artisan",price:"149",priceCurrency:"EUR"},{"@type":"Offer",name:"Pro Business",price:"249",priceCurrency:"EUR"}]}} />
+      jsonLd={{"@context":"https://schema.org","@type":"SoftwareApplication",name:"ConstruPilot Pro",applicationCategory:"BusinessApplication",operatingSystem:"Web",offers:[{"@type":"Offer",name:"Pro Artesão",price:"149",priceCurrency:"EUR"},{"@type":"Offer",name:"Pro Empresa",price:"249",priceCurrency:"EUR"}]}} />
     <section className="landing-hero landing-section" data-testid="pro-hero">
       <div className="landing-hero-copy"><p className="landing-eyebrow"><span className="pt-flag-dot" aria-hidden="true" />FEITO PARA OS PROFISSIONAIS DA CONSTRUÇÃO EM PORTUGAL E SEUS CLIENTES</p>
         <h1>O futuro não se espera, constrói-se<br /><em>Ambição, liderança e inovação</em></h1>
         <p className="landing-hero-description">Da primeira planta ao acompanhamento da obra, encontre as suas medições, orçamentos e documentos num espaço de trabalho pensado para o terreno.</p>
         <div className="landing-hero-actions"><Link to="/inscription" className="landing-button" data-testid="pro-hero-primary-cta">Experimentar o ConstruPilot <ArrowRight size={18} /></Link><button type="button" className="landing-button landing-button-outline" onClick={showDemo} data-testid="pro-hero-secondary-cta"><Play size={16} />Ver a demonstração</button></div>
         <p className="landing-hero-note">Experiência de 7 dias · Cartão obrigatório · Sem fidelização após a experiência</p>
-        <div className="landing-hero-proof"><span><Check size={15} />Plantas e medições</span><span><Check size={15} />Orçamentos e faturas</span><span><Check size={15} />Dossiers de obra</span></div>
+        <div className="landing-hero-proof"><span><Check size={15} />Plantas e medições</span><span><Check size={15} />Orçamentos e faturas</span><span><Check size={15} />Processos de obra</span></div>
       </div>
       <ProductPreview />
     </section>
