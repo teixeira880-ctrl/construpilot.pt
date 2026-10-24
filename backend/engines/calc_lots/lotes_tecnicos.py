@@ -50,13 +50,29 @@ def calcular(params: dict, lotes=LOTES) -> dict:
                     usados.add(t)
             paredes.append({"area_m2": float(w["area_m2"]), "U": float(U), "lado": lado, "b": w.get("b")})
         div_aq.append({**{k: d.get(k) for k in ("nome", "tipo", "area_m2", "pe_direito_m", "theta_int", "pontes")}, "paredes": paredes})
+    if not any(w for d in div_aq for w in d["paredes"]) and not all(d.get("phi_w") for d in div):
+        hyp.append("nenhuma parede / envidraçado descrito: perdas por transmissão nulas — indicar as paredes ou as perdas de calor (phi_w) por divisão")
     if usados:
         hyp.append(f"U por defeito ({'construção nova' if obra == 'nova' else 'renovação'}) para: "
                    + ", ".join(f"{t} {U_DEFEITO[obra][t]:g}" for t in sorted(usados)) + " W/(m².°C)")
     per = None
     if any(k in lotes for k in ("aquecimento", "piso_radiante", "bomba_calor")):
-        per = aquecimento.perdas({**loc, "theta_e": p.get("theta_e"), "divisoes": div_aq, "estanquidade": p.get("estanquidade"),
+        te = p.get("theta_e")
+        if te is None and not (p.get("concelho") or p.get("nuts")):
+            te = 0.0
+            hyp.append("concelho não indicado: temperatura exterior de projeto θe = 0 °C por defeito (indicar o concelho para o clima REH)")
+        per = aquecimento.perdas({**loc, "theta_e": te, "divisoes": div_aq, "estanquidade": p.get("estanquidade"),
                                   "recuperacao_calor": p.get("recuperacao_calor"), "rph_min": p.get("rph_min")})
+        dadas = [(i, float(d["phi_w"])) for i, d in enumerate(div) if d.get("phi_w")]
+        if dadas:                                           # perdas indicadas pelo utilizador / pelo projeto térmico: prevalecem sobre o cálculo
+            for i, phi in dadas:
+                r = per["divisoes"][i]
+                r.update(phi_T=phi, phi_V=0.0, phi_RH=0.0, phi=phi, w_m2=phi / r["area_m2"] if r["area_m2"] else 0.0)
+            tot = sum(r["phi"] for r in per["divisoes"])
+            per.update(phi_T=sum(r["phi_T"] for r in per["divisoes"]), phi_V=sum(r["phi_V"] for r in per["divisoes"]), phi_RH=0.0,
+                       phi_total=tot, w_m2=tot / per["area_m2"] if per["area_m2"] else 0.0)
+            hyp.append("perdas de calor indicadas para " + ", ".join(per["divisoes"][i]["nome"] for i, _ in dadas)
+                       + ": usadas tal como dadas (não recalculadas)")
         res["aquecimento"] = per
     em = p.get("emissores") or "piso_radiante"
     # 3. piso radiante
@@ -64,7 +80,8 @@ def calcular(params: dict, lotes=LOTES) -> dict:
     if per and "piso_radiante" in lotes and em == "piso_radiante":
         pr = piso_radiante.calcular({"divisoes": [{"nome": r["nome"], "tipo": r["tipo"], "area_m2": r["area_m2"], "phi_w": r["phi"], "theta_int": r["theta_int"],
                                                    "revestimento": src.get("revestimento"), "local_inferior": src.get("local_inferior"),
-                                                   "r_isolante": src.get("r_isolante_piso")}
+                                                   "r_isolante": src.get("r_isolante_piso"), "comprimento_m": src.get("comprimento_m"),
+                                                   "largura_m": src.get("largura_m")}
                                                   for r, src in zip(per["divisoes"], div)], "ida_max": p.get("ida_max")})
         res["piso_radiante"] = pr
         tv = round(pr["theta_ida"] * 2) / 2

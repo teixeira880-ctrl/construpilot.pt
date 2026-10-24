@@ -261,7 +261,9 @@ _DIV_LT = {"nome": _NS(), "tipo": {"type": "string", "enum": list(aquecimento.T_
            "theta_int": _n(), "paredes": _arr(_PAR_LT, desc="paredes, envidraçados, portas, pavimento e cobertura em contacto com o exterior / ENU"),
            "pontes": _arr({"comprimento_m": {"type": "number"}, "psi": {"type": "number"}}),
            "revestimento": _enum(list(piso_radiante.REVESTIMENTO_R), "revestimento de piso (piso radiante)"),
-           "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante_piso": _n("R do isolante sob o piso radiante")}
+           "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante_piso": _n("R do isolante sob o piso radiante"),
+           "phi_w": _n("perdas de calor da divisão já conhecidas (W): prevalecem sobre o cálculo"),
+           "comprimento_m": _n("comprimento interior (planta desenhada)"), "largura_m": _n("largura interior (planta desenhada)")}
 _ISO_LT = {k: v for k, v in _ISO_PROPS.items() if k not in ("concelho", "nuts", "altitude_m", "theta_e", "zona_inverno", "regiao", "area_m2")}
 _EQ_LT = {"placa": _enum(["monofasica", "trifasica", "sem_placa"]), "forno": _B(), "maquina_lavar_roupa": _B(), "maquina_lavar_loica": _B(),
           "maquina_secar": _B(), "termoacumulador": _B(), "unidades_climatizacao": _n(), "carregamento_ve_kw": _n()}
@@ -269,6 +271,8 @@ _LT_PROPS = {
     "concelho": _NS(), "nuts": _enum(list(reh.NUTS)), "altitude_m": _n(), "theta_e": _n("temperatura exterior de projeto imposta"),
     "obra": _enum(["nova", "renovacao"]), "tipologia": _n("T0…T7 → número"), "tipo_habitacao": _enum(["moradia", "apartamento"]),
     "divisoes": _arr(_DIV_LT, nullable=False),
+    "lotes": {"type": ["array", "null"], "items": {"type": "string", "enum": list(lotes_tecnicos.LOTES)},
+              "description": "especialidades a calcular (null = todas); p. ex. [\"aquecimento\", \"piso_radiante\", \"bomba_calor\"] para o aquecimento só"},
     "isolamento_paredes": _obj(_ISO_LT, "isolamento das paredes exteriores (null = não calcular; o U calculado substitui o U por defeito das paredes)"),
     "estanquidade": _enum(list(aquecimento.INFILTRACAO)), "recuperacao_calor": _n(), "rph_min": _n(),
     "emissores": _enum(list(aquecimento.EMISSORES), "null = piso radiante"), "ida_max": _n("ida máxima do piso radiante (°C, null = 45)"),
@@ -293,11 +297,13 @@ LOTES_TOOL = _tool(
 _DIV_PR = {"nome": _NS(), "tipo": {"type": "string", "enum": list(piso_radiante.T_INT)}, "area_m2": {"type": "number"},
            "phi_w": {"type": "number", "description": "perdas de calor da divisão (W)"}, "theta_int": _n(),
            "revestimento": _enum(list(piso_radiante.REVESTIMENTO_R)), "r_revestimento": _n(), "exclusao_m2": _n("área sem tubos (móveis fixos)"),
-           "comprimento_max_m": _n(), "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante": _n(), "distancia_coletor_m": _n()}
+           "comprimento_max_m": _n(), "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante": _n(), "distancia_coletor_m": _n(),
+           "comprimento_m": _n("comprimento interior da divisão (null = retângulo equivalente à área)"), "largura_m": _n("largura interior")}
 PISO_TOOL = _tool(
     "calcul_piso_radiante",
     "Dimensiona um piso radiante hidráulico (NP EN 1264) a partir das perdas de calor por divisão: temperatura de superfície, passo dos tubos, "
-    "temperatura de ida e retorno, caudais, circuitos ≤ 120 m, perdas de carga, coletores, isolante sob o piso, juntas. Nota PDF.",
+    "temperatura de ida e retorno, caudais, circuitos ≤ 120 m, perdas de carga, coletores, isolante sob o piso, juntas, e DESENHA a planta de cada "
+    "divisão (circuitos em espiral ao passo, coletor, cotas). Usa-a também para qualquer pedido de «planta» / «esquema» de piso radiante. Nota PDF.",
     {"divisoes": _arr(_DIV_PR, nullable=False), "sigma_k": _n("salto térmico ida-retorno (null = 5 K)"), "ida_max": _n("null = 45 °C")})
 
 # 12. Solar térmico
@@ -553,7 +559,8 @@ def run(name: str, args: dict) -> dict:
         eq = a.get("equipamentos")
         if eq is not None and "placa" in eq:
             eq["placa"] = {"monofasica": True, "trifasica": "tri", "sem_placa": False}[eq["placa"]]
-        o = lotes_tecnicos.note(a)
+        lotes = tuple(a.pop("lotes", None) or lotes_tecnicos.LOTES)
+        o = lotes_tecnicos.note(a, lotes)
         res = [o["sous_titre"]]
         if "isolamento" in o:
             res.append(f"Isolamento: {o['isolamento']['sistema_nome']}, U = {o['isolamento']['U']:.3f} W/(m².°C) (Umáx {o['isolamento']['umax']:g})")
