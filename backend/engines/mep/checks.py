@@ -98,7 +98,7 @@ def run(levels, points, equipment, elec, plumb, options, rules, lang) -> list[di
         add("plumb", "error", tr(lang, "chk.drop", id=d["id"], f=d["fixture"], d=d["drop_m"], a=d["available_m"],
                                  s=round(d["slope"] * 100, 1)), psrc["drain"], d["id"])
     if plumb["drains"] and not worst:
-        add("plumb", "ok", tr(lang, "chk.drop", id="EU/EV", f="—", d=max(d["drop_m"] for d in plumb["drains"]),
+        add("plumb", "ok", tr(lang, "chk.drop", id=("AR" if lang == "pt" else "EU/EV"), f="—", d=max(d["drop_m"] for d in plumb["drains"]),
                               a=min(d["available_m"] for d in plumb["drains"]), s=round(pr["slope_min"] * 100, 1)),
             psrc["drain"])
     col = plumb.get("collector")

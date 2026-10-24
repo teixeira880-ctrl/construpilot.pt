@@ -105,3 +105,20 @@ def tr(lang: str, key: str, **kw) -> str:
     table = T.get(lang) or T["fr"]
     s = table.get(key) or T["fr"].get(key) or key
     return s.format(**kw) if kw else s
+
+
+# Siglas das redes e nomes dos aparelhos, como aparecem nos quadros e nas plantas (códigos internos inalterados).
+NET_PT = {"EF": "AF", "ECS": "AQ", "EU": "AS", "EV": "AN", "EU/EV": "AR", "AEP": "RAMAL"}
+
+
+def net(lang: str, code: str) -> str:
+    return NET_PT.get(code, code) if lang == "pt" else code
+
+
+def fixture(lang: str, kind: str) -> str:
+    if lang != "pt":
+        return kind
+    if kind == "chute":
+        return "Tubo de queda"
+    from .rules import rules_for
+    return (rules_for("pt")["plumbing"]["fixtures"].get(kind) or {}).get("label", kind)

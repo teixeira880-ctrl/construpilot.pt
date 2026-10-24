@@ -192,7 +192,7 @@ async def run_chat_gemini(body, user, conv, plans, instructions, inputs, availab
             msg["turn_seq"] = conv["_turn_seq"]
         await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "assistant", "request_id": conv["_quote_request_id"]},
                                            {"$setOnInsert": dict(msg)}, upsert=True)
-        title = conv["title"] if conv["title"] != "Nouvelle conversation" else body.text[:60]
+        title = conv["title"] if conv["title"] not in ("Nouvelle conversation", "Nova conversa") else body.text[:60]
         update = {"updated_at": now(), "title": title}
         if conv.get("_turn_seq") is None:
             update.update(active_plans=[p["plan_id"] for p in plans], active_docs=body.doc_ids)

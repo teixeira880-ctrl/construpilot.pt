@@ -37,7 +37,7 @@ function ScopeSelect({ value, onChange, scopes, testid }) {
 
 export default function LearningPanel() {
   const [examples, setExamples] = useState([]);
-  const [scopes, setScopes] = useState(["global", "devis", "análise", "coach", "plan"]);
+  const [scopes, setScopes] = useState(["global", "devis", "analyse", "coach", "plan"]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(EMPTY);

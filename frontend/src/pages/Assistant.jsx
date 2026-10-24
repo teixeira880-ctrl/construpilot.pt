@@ -81,7 +81,7 @@ export default function Assistant() {
   const [prefs, setPrefs] = useState([]);
   const [text, setText] = useState(() => searchParams.get("resumeQuote")
     ? `Retoma o orçamento existente (doc_id: ${searchParams.get("resumeQuote")}): relê-o com read_quote_draft e depois aplica as seguintes alterações — `
-    : searchParams.get("intent") === "supervise" ? "Verifica os dados do meu processo, identifica as incoerências e corrige automaticamente os valores recalculáveis. O meu pedido: " : searchParams.get("intent") === "quote" ? quoteText("quotePrompt") : searchParams.get("intent") === "research" ? "Pesquisa documental técnica (com fontes verificáveis) — país da obra: PT. Pergunta: " : "");
+    : searchParams.get("intent") === "supervise" ? "Verifica os dados do meu processo, identifica as incoerências e corrige automaticamente os valores recalculáveis. O meu pedido: " : searchParams.get("intent") === "quote" ? quoteText("quotePrompt") : searchParams.get("intent") === "research" ? "Pesquisa documental técnica (com fontes verificáveis) — país da obra: PT. Pergunta: " : (searchParams.get("q") || "").slice(0, 500));
   const [busy, setBusy] = useState(false);
   const [rec, setRec] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -356,7 +356,7 @@ export default function Assistant() {
           <div className="assistant-welcome-brand"><AssistantMark size={64} data-testid="assistant-mark" /><span>{studio("eyebrow")}</span></div>
           <h2>{studio("title")}</h2><p>{studio("intro")}</p>
           <div className="assistant-prompts">
-            {(canQuote ? [["quote", FileText, quoteText("quotePrompt")]] : [["solve", Wrench, prompts[3]]]).concat([["análise", Ruler, prompts[1]], ["report", ClipboardList, prompts[2]], ["mail", Mail, prompts[0]]]).map(([key, Icon, value]) =>
+            {(canQuote ? [["quote", FileText, quoteText("quotePrompt")]] : [["solve", Wrench, prompts[3]]]).concat([["analyse", Ruler, prompts[1]], ["report", ClipboardList, prompts[2]], ["mail", Mail, prompts[0]]]).map(([key, Icon, value]) =>
               <button key={key} type="button" onClick={() => seedText(value)} data-testid={`assistant-prompt-${key}`}>
                 <Icon size={19} aria-hidden="true" /><span className="assistant-prompt-text"><strong>{studio(key)}</strong><small>{studio(`${key}Desc`)}</small></span><ArrowUpRight className="assistant-prompt-arrow" aria-hidden="true" />
               </button>)}

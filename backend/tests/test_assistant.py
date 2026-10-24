@@ -42,7 +42,7 @@ def conv_id(pro_headers):
     r = requests.post(f"{BASE_URL}/api/assistant/conversations", json={}, headers=pro_headers, timeout=30)
     assert r.status_code == 200, r.text
     j = r.json()
-    assert j["title"] == "Nouvelle conversation"
+    assert j["title"] == "Nova conversa"
     assert j["conversation_id"].startswith("conv_")
     return j["conversation_id"]
 

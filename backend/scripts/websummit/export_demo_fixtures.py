@@ -91,6 +91,7 @@ def _demo_project_for(user_id: str) -> dict:
     """Moradia Martins com estimation 100% motor real (`estimate_from_request`)."""
     now = _utc_now_iso()
     pid = f"prj_demo_{user_id}"
+    estimation = _demo_moradia_martins_estimation()
     return {
         "project_id": pid,
         "name": DEMO_PROJECT_NAME,
@@ -103,7 +104,8 @@ def _demo_project_for(user_id: str) -> dict:
         "surface": DEMO_MORADIA_MARTINS_PRICING["surface"],
         "country": "PT",
         "region": "Lisboa",
-        "estimation": _demo_moradia_martins_estimation(),
+        "estimation": estimation,
+        "budget": round(float(estimation.get("total_avg") or 0), 2),   # valor mostrado no painel (estimativa média sem IVA)
         "is_demo": True,
         "demo_source": DEMO_SOURCE,
         "created_at": now,
