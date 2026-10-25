@@ -108,3 +108,123 @@
   .assistant-studio .assistant-message-actions > span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .assistant-studio *, .assistant-studio-menu * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+/* Glisser-déposer de fichiers sur le composer */
+.assistant-input-box { position: relative; }
+.assistant-input-box-dragover { outline: 2px dashed var(--primary, #16653d); outline-offset: 2px; border-radius: 10px; }
+.assistant-dropzone-overlay {
+  position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: color-mix(in srgb, var(--primary, #16653d) 10%, white 90%);
+  color: var(--primary, #16653d); font-weight: 600; font-size: 0.85rem; border-radius: 10px; pointer-events: none;
+}
+
+/* === Mode focus (étape 2) === */
+.assistant-studio .assistant-conv-toggle { display: inline-flex; align-items: center; justify-content: center; width: 40px; min-height: 40px; }
+.assistant-workspace.assistant-studio.conv-collapsed { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.assistant-studio.conv-collapsed > .assistant-history { display: none; }
+.assistant-studio .assistant-messages { padding-left: max(18px, calc((100% - 1100px) / 2)); padding-right: max(18px, calc((100% - 1100px) / 2)); }
+.assistant-studio .assistant-input-box textarea { min-height: 72px; }
+@media (max-width: 767px) {
+  .assistant-studio .assistant-conv-toggle { display: none; }
+  .assistant-workspace.assistant-studio { min-height: 100svh; }
+  .assistant-studio .assistant-messages { padding-left: 15px; padding-right: 15px; }
+}
+
+/* === Tiroir droit « Calculs & état » (fermé par défaut) === */
+.assistant-studio .assistant-conversation { position: relative; overflow: hidden; }
+.assistant-studio .assistant-panels-toggle { display: inline-flex; align-items: center; justify-content: center; width: 40px; min-height: 40px; }
+.assistant-drawer {
+  position: absolute; inset-block: 0; inset-inline-end: 0; width: min(400px, 92vw); z-index: 25;
+  display: flex; flex-direction: column; background: hsl(var(--card));
+  border-inline-start: 1px solid hsl(var(--border)); box-shadow: -18px 0 48px -24px rgba(0,0,0,.4);
+  transform: translateX(100%); transition: transform .26s ease; will-change: transform;
+}
+[dir="rtl"] .assistant-drawer { transform: translateX(-100%); }
+.assistant-drawer.open { transform: translateX(0); }
+.assistant-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px; border-bottom: 1px solid hsl(var(--border)); flex-shrink: 0; }
+.assistant-drawer-head strong { font-size: 14px; font-weight: 600; color: var(--as-ink); }
+.assistant-drawer-head button { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 7px; color: var(--as-muted); }
+.assistant-drawer-head button:hover { background: hsl(var(--muted)); color: var(--as-ink); }
+.assistant-drawer-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 16px 24px; display: flex; flex-direction: column; gap: 16px; }
+.assistant-drawer-scrim { position: absolute; inset: 0; z-index: 24; background: rgba(16,24,20,.28); border: 0; }
+@media (max-width: 767px) {
+  .assistant-studio .assistant-panels-toggle { width: 36px; min-height: 40px; padding: 6px; }
+  .assistant-drawer { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .assistant-drawer { transition: none !important; } }
+
+/* ============================================================
+   Refonte « conversation d'abord » (oct. 2026)
+   En-tête compact + pastille d'état, colonne de lecture centrée,
+   composer d'une ligne collé en bas, puces de fichiers intégrées.
+   ============================================================ */
+.assistant-studio .assistant-topbar { min-height: 46px; padding: 5px 16px; gap: 10px; }
+.assistant-studio .assistant-brand-text h1 { font-size: 14.5px; line-height: 1.2; margin: 0; }
+.assistant-studio .assistant-status-pill { display: inline-flex; align-items: center; gap: 6px; max-width: 240px; min-height: 26px; padding: 3px 11px; border-radius: 999px; font-size: 11px; font-weight: 600; background: hsl(var(--muted)); color: var(--as-muted); }
+.assistant-studio .assistant-status-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.assistant-studio .assistant-status-pill.is-ready { background: color-mix(in srgb, #285541 13%, transparent); color: #285541; }
+.dark .assistant-studio .assistant-status-pill.is-ready { color: #b4d1bd; }
+.assistant-studio .assistant-status-pill.is-working { background: color-mix(in srgb, #285541 11%, transparent); color: #285541; }
+.dark .assistant-studio .assistant-status-pill.is-working { color: #b4d1bd; }
+.assistant-studio .assistant-topbar-actions { margin-inline-start: auto; }
+.assistant-studio .assistant-topbar-actions button { min-height: 34px; }
+
+/* Messages : colonne de lecture centrée ~860px */
+.assistant-studio .assistant-messages,
+.assistant-studio.conv-collapsed .assistant-messages { padding: 20px max(16px, calc((100% - 860px) / 2)) 14px; }
+.assistant-studio .assistant-message { max-width: 100%; }
+.assistant-studio .assistant-message[data-message-role="user"] { max-width: min(80%, 620px); }
+.assistant-message-queued { opacity: .55; }
+
+/* Composer : une ligne par défaut, collé en bas */
+.assistant-studio .assistant-composer { padding: 6px 16px 6px; max-width: 920px; width: 100%; margin: 0 auto; }
+.assistant-studio .assistant-input-box { padding: 5px 9px; }
+.assistant-studio .assistant-input-box textarea { min-height: 34px; line-height: 1.5; padding: 3px 2px; }
+.assistant-studio .assistant-composer-actions { margin-top: 3px; }
+.assistant-studio .assistant-composer-actions > button { min-height: 34px; }
+.assistant-studio .assistant-stop-btn { margin-inline-start: 6px; color: #b42318; border-color: color-mix(in srgb, #b42318 42%, transparent); }
+.assistant-studio .assistant-stop-btn:hover { background: color-mix(in srgb, #b42318 8%, transparent); }
+.assistant-studio .assistant-composer-footer { padding-top: 3px; }
+.assistant-studio .assistant-mode-summary { min-height: 22px; }
+
+/* Récupérer la hauteur verticale : moins de marge autour de la carte */
+.workspace.workspace-chat .workspace-main { padding: 12px 22px 8px; }
+.assistant-workspace.assistant-studio { height: calc(100dvh - 88px); }
+
+/* Puces de fichiers intégrées au composer */
+.assistant-studio .assistant-file-chips-inline { border-bottom: 0; padding: 0 0 8px; max-height: 78px; }
+.assistant-studio .assistant-file-chips-inline .assistant-file-chip { font-size: 11px; padding: 3px 7px; }
+.assistant-studio .assistant-file-chips-inline .assistant-file-chip > span { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 767px) {
+  .assistant-studio .assistant-topbar { min-height: 44px; padding: 2px 10px; gap: 7px; }
+  .assistant-studio .assistant-brand-text h1 { font-size: 13.5px; }
+  .assistant-studio .assistant-status-pill { max-width: 128px; padding: 3px 8px; }
+  .assistant-studio .assistant-status-pill > span { display: none; }
+  .assistant-studio .assistant-messages,
+  .assistant-studio.conv-collapsed .assistant-messages { padding: 14px 14px 12px; }
+  .assistant-studio .assistant-message[data-message-role="user"] { max-width: 88%; }
+  .assistant-studio .assistant-composer { padding: 8px 10px; max-width: 100%; }
+}
+
+/* Mobile : le composer doit rester au-dessus de la barre d'onglets fixe. */
+@media (max-width: 767px) {
+  .workspace.workspace-chat .workspace-main { padding: 8px 8px calc(78px + env(safe-area-inset-bottom)); }
+  .workspace.workspace-chat .assistant-workspace.assistant-studio {
+    height: calc(100dvh - var(--workspace-header) - 86px - env(safe-area-inset-bottom));
+    min-height: 300px;
+  }
+}
+
+/* Mobile : boutons du composer sur une seule ligne (le bouton « Arrêter » ne passe plus sous la barre d'onglets). */
+@media (max-width: 767px) {
+  .assistant-studio .assistant-composer-actions { flex-wrap: nowrap; gap: 4px; }
+  .assistant-studio .assistant-composer-actions > button { flex-shrink: 0; }
+  .assistant-studio [data-testid="assistant-attach-btn"] > span,
+  .assistant-studio .assistant-composer-actions .assistant-btn-label { display: none; }
+  .assistant-studio [data-testid="assistant-send-btn"],
+  .assistant-studio .assistant-stop-btn { min-width: 44px; padding: 8px 12px; }
+  .assistant-studio [data-testid="assistant-send-btn"] { margin-inline-start: auto; }
+  .assistant-studio .assistant-stop-btn { margin-inline-start: 0; }
+  .assistant-studio .assistant-input-box textarea { max-height: 96px; }
+}

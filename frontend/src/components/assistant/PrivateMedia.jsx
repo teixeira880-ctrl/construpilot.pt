@@ -6,12 +6,13 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDocumentViewer } from "./DocumentViewer";
 import { useBackgroundCopy } from "./backgroundCopy";
+import { filenameFromResponse } from "@/lib/downloadName";
 
 export async function downloadAssistantFile(path, filename) {
-  const { data } = await api.get(path, { responseType: "blob" });
-  const url = URL.createObjectURL(data);
+  const res = await api.get(path, { responseType: "blob" });
+  const url = URL.createObjectURL(res.data);
   const link = document.createElement("a");
-  link.href = url; link.download = filename; link.click();
+  link.href = url; link.download = filenameFromResponse(res, filename); link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -53,6 +54,6 @@ export const ArtifactCard = ({ artifact }) => {
     {(artifact.mime === "image/jpeg" || artifact.mime === "image/png") && <PrivateImage path={artifact.download} title={artifact.title} testId={`${id}-preview`} />}
     {artifact.illustrative && <p className="text-xs text-muted-foreground" data-testid={`${id}-notice`}>{copy("illustrative")}</p>}
     <button className="inline-flex gap-2 items-center border rounded-md px-3 py-2 mr-2 hover:bg-secondary transition-colors" data-testid={`${id}-open`} onClick={() => view(artifact.download, artifact.filename, artifact.title)}><Eye size={15} />Abrir</button>
-    <button className="inline-flex gap-2 items-center border rounded-md px-3 py-2 hover:bg-secondary transition-colors" data-testid={`${id}-download`} onClick={() => downloadAssistantFile(artifact.download, artifact.filename).catch(() => toast.error(copy("imageError")))}><Download size={15} />{copy("download")} {artifact.format.toUpperCase()}</button>
+    <button className="inline-flex gap-2 items-center rounded-md px-3 py-2 bg-[#2563EB] text-white font-medium hover:bg-[#1D4ED8] transition-colors" data-testid={`${id}-download`} onClick={() => downloadAssistantFile(artifact.download, artifact.filename).catch(() => toast.error(copy("imageError")))}><Download size={15} />{artifact.title || `${copy("download")} ${(artifact.format || "").toUpperCase()}`}</button>
   </div>;
 };

@@ -1,10 +1,11 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { FileDown, Link2 } from "lucide-react";
+import { FileDown, Link2, CheckCircle2, Layers, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { eur } from "@/lib/api";
+import { eur, api } from "@/lib/api";
 import { pollCotesJob } from "@/lib/cotesJobs";
 import { CompareCard } from "./CompareCard";
+import { ChoiceCard } from "./ChoiceCard";
 import { WorkDraftCard } from "./WorkDraftCard";
 import { QuoteDraftCard } from "./QuoteDraftCard";
 import { useQuoteCopy } from "./quoteCopy";
@@ -29,7 +30,79 @@ const TOOL_LABEL = {
   compute_concrete_volumes: "Volumes de betão calculados", update_project_state: "Estado do processo atualizado", draw_section_schema: "Esquema de princípio cotado desenhado",
   generate_structural_execution_dossier: "Dossier de execução estrutural",
   read_building_geometry: "Geometria lida (a validar)",
+  generate_full_bet_study: "Estudo BET completo", read_full_bet_study: "Estado do estudo BET", generate_bet_lot_plans: "Desenhos da especialidade",
+  ask_user_choices: "Perguntas de escolha",
 };
+
+const BET_PHASES = ["Leitura das plantas", "Verificações", "Cálculos", "Desenhos", "Orçamento"];
+const prefillAssistant = (t) => { try { window.dispatchEvent(new CustomEvent("cp-assistant-prefill", { detail: t })); } catch { /* sem efeito */ } };
+
+// Cartão vivo do estudo BET completo : etapa, barra de progresso, perguntas, ficheiros para descarregar.
+export function BetStudyFollow({ jobId }) {
+  const [s, setS] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
+  useEffect(() => {
+    let active = true, timer;
+    const tick = async () => {
+      try {
+        const { data } = await api.get(`/bet-studies/${jobId}`);
+        if (!active) return;
+        setS(data);
+        if (["running", "queued"].includes(data.status) || !data.status) timer = setTimeout(tick, 3000);
+      } catch { if (active) timer = setTimeout(tick, 5000); }
+    };
+    tick();
+    const el = setInterval(() => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)), 1000);
+    return () => { active = false; clearTimeout(timer); clearInterval(el); };
+  }, [jobId]);
+
+  const status = s?.status;
+  const running = !status || ["running", "queued"].includes(status);
+  const pct = s?.pct ?? 12;
+  const mmss = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+
+  return (
+    <div className="mt-1 grid gap-2 rounded-sm border border-emerald-500/30 bg-emerald-500/5 p-2" data-testid="assistant-bet-study-card" data-status={status || "running"}>
+      <div className="flex items-center gap-2">
+        <Layers className="h-3.5 w-3.5 text-emerald-700" />
+        <b className="text-[12px]">Estudo BET completo</b>
+        {running && <span className="ml-auto text-[10px] text-muted-foreground num">{mmss}</span>}
+        {status === "done" && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
+      </div>
+      {running && (
+        <>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-600 transition-all duration-700" style={{ width: `${pct}%` }} data-testid="assistant-bet-study-bar" /></div>
+          <div className="flex flex-wrap gap-1">{BET_PHASES.map((p, i) => <span key={p} className={`text-[9px] px-1.5 py-0.5 rounded-full border ${pct >= (i + 1) * 18 ? "bg-emerald-600 text-white border-emerald-600" : "text-muted-foreground border-border"}`}>{p}</span>)}</div>
+          <p className="text-[11px] text-muted-foreground" data-testid="assistant-bet-study-step">{s?.step || "A iniciar o estudo…"} · pode mudar de página, o estudo continua no servidor (3 a 8 min).</p>
+        </>
+      )}
+      {status === "questions" && (
+        <div className="grid gap-1.5" data-testid="assistant-bet-study-questions">
+          <p className="text-[11px] font-semibold">Questões a precisar:</p>
+          <ul className="list-disc pl-4 text-[11px] space-y-0.5">{(s.questions || []).map((q, i) => <li key={i}>{q}</li>)}</ul>
+          <div className="flex flex-wrap gap-3">
+            <button className="underline text-[11px] text-primary" onClick={() => prefillAssistant("Aqui estão as precisões pedidas: ")} data-testid="assistant-bet-study-answer">Responder</button>
+            <button className="underline text-[11px] text-primary" onClick={() => prefillAssistant("Decide sozinho com as melhores opções e relança o estudo BET completo com os mesmos anexos.")} data-testid="assistant-bet-study-decide">Decide por mim</button>
+          </div>
+        </div>
+      )}
+      {status === "done" && (
+        <div className="grid gap-1.5" data-testid="assistant-bet-study-done">
+          <p className="text-[11px]">Ficheiros prontos a descarregar{s.review_status ? ` · Verificação: ${s.review_status}` : ""}{s.devis_ht != null ? ` · ${eur(s.devis_ht)} s/ IVA` : ""}.</p>
+          <div className="grid gap-1">{(s.artifacts || []).map((x) => <ArtifactCard key={x.artifact_id} artifact={x} />)}</div>
+          {Array.isArray(s.decisions) && s.decisions.length > 0 && <details className="text-[11px]"><summary className="cursor-pointer">Decisões tomadas ({s.decisions.length}) — modificáveis</summary><ul className="list-disc pl-4">{s.decisions.slice(0, 30).map((d, i) => <li key={i}>{d}</li>)}</ul></details>}
+        </div>
+      )}
+      {status === "failed" && (
+        <div className="grid gap-1.5" data-testid="assistant-bet-study-failed">
+          <p className="text-[11px] text-red-700">{s.error || "O estudo não foi concluído."}</p>
+          <button className="self-start underline text-[11px] inline-flex items-center gap-1 text-primary" onClick={() => prefillAssistant("Relança o estudo BET completo com os mesmos anexos.")} data-testid="assistant-bet-study-retry"><RotateCcw className="h-3 w-3" /> Relançar</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function RebarCard({ r }) {
   const ha = r.native?.ha_bars, mesh = r.native?.mesh, recap = r.native?.mesh_recap, el = r.sheet?.element, chk = r.sheet?.checks;
@@ -90,6 +163,7 @@ export function ActionCard({ a }) {
   return (
     <div className={`text-[11px] min-w-0 max-w-full rounded-sm border px-2 py-1.5 ${r.ok === false ? "border-red-300 bg-red-50 dark:bg-red-950/30" : "border-sky-300 bg-sky-50 dark:bg-sky-950/30"}`} data-testid={`assistant-action-${a.tool}${isQuote || r.artifact ? `-${instance}` : ""}`} data-tool={a.tool}>
       <b>{isQuote ? quoteText(a.tool === "read_quote_draft" ? "read" : a.tool === "update_quote_draft" ? "updated" : "quote") : a.tool === "save_user_preference" && r.preference && !r.preference.active ? "Preferência proposta" : TOOL_LABEL[a.tool] || a.tool}</b>{r.preview && " · pré-visualização"}{r.error && ` · ${r.error}`}
+      {a.tool === "ask_user_choices" && Array.isArray(r.questions) && r.questions.length > 0 && <ChoiceCard r={r} />}
       {a.tool === "define_analysis_scope" && r.scope && (
         <div>incluídos: {r.scope.include.join(", ") || "—"} · excluídos: {r.scope.exclude.join(", ") || "—"} · controlos: {r.scope.checks.join(", ") || "—"} · sortie : {r.scope.output}</div>
       )}
@@ -97,6 +171,7 @@ export function ActionCard({ a }) {
       {r.tracking_url && ["supervise_platform", "get_supervision_result"].includes(a.tool) && <div className="mt-2 space-y-1"><p>{r.status === "done" ? "Tratamento concluído; consulte os pontos que faltam verificar." : r.status === "error" ? "Tratamento interrompido; consulte os resultados parciais." : "O piloto trabalha em segundo plano. O resultado ainda não está validado."}</p><Link to={r.tracking_url} className="underline font-semibold">Acompanhar o controlo e as suas correções</Link></div>}
       {a.tool === "run_platform_calculator" && r.ok && <div className="mt-2 space-y-1">{r.results?.map((row, index) => <p key={index}>{row.label} : <strong>{row.value} {row.unit}</strong></p>)}<p className="text-muted-foreground">Proveniência: {r.source}. As medições de partida continuam por confirmar.</p></div>}
       {r.artifact && <ArtifactCard artifact={r.artifact} />}
+      {a.tool !== "read_full_bet_study" && Array.isArray(r.artifacts) && r.artifacts.map((x) => <ArtifactCard key={x.artifact_id} artifact={x} />)}
       {a.tool === "save_user_preference" && r.preference && <div>{r.preference.active ? "Ativa" : "Proposta, inativa"} · [{r.preference.scope}] {r.preference.category} = {r.preference.value} · <a className="underline" href="/preferences">Gerir a memória</a></div>}
       {["create_work_draft", "update_work_draft"].includes(a.tool) && r.draft && <WorkDraftCard initial={r.draft} />}
       {a.tool === "inspect_document_region" && r.ok && <div>{r.filename} · page {r.page} · zone agrandie<br />{r.note}</div>}
@@ -116,6 +191,7 @@ export function ActionCard({ a }) {
       {a.tool === "calculate_quantities" && r.lines && <div data-testid="assistant-qty-card">{r.lines.map((l, i) => <div key={i}>{l.element} : {l.formula} · {l.state}{l.missing?.length ? ` · manque ${l.missing.join(", ")}` : ""}</div>)}</div>}
       {r.download && <button className="underline ml-1" onClick={dl} data-testid="assistant-download-btn"><FileDown className="inline h-3 w-3" /> Abrir / transferir</button>}
       {a.tool === "analyze_plan" && r.job_id && <JobFollow jobId={r.job_id} />}
+      {a.tool === "generate_full_bet_study" && r.job_id && <BetStudyFollow jobId={r.job_id} />}
     </div>
   );
 }
