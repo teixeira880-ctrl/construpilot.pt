@@ -190,3 +190,33 @@ def test_hooks_installes():
     assert install_hooks.main(check_only=True) == 0
     src = (Path(install_hooks.BASE) / "assistant_tool.py").read_text(encoding="utf-8")
     assert "_frame_hook.maybe_handle" in src and "_FRAME_INSTRUCTIONS" in src
+
+
+def test_champs_null_de_la_lecture_ia(tmp_path):
+    raw = copy.deepcopy(CASE)
+    raw["project"].update(pc_ref=None, g2_ref=None, architect=None, address=None)
+    raw["geotech"] = {"sigma_adm_mpa": None, "depth": None, "source": None}
+    raw["facade"] = {"weight": None}
+    raw["loads"] = {"partitions": None}
+    raw["cores"][0].update(label=None, wall=None)
+    raw["structure"].update(columns_omit=None, column_sections=None)
+    raw["units"][0].update(typology=None, fixtures=None)
+    raw["levels"][1]["name"] = None
+    raw["roof"] = None
+    res = pipeline.run(raw, tmp_path, stem="T")
+    assert res["status"].startswith("PRONTO") and res["files"]["pdf"]
+
+
+def test_hook_erreur_moteur_message_clair(monkeypatch):
+    db = _DB()
+    steps = []
+
+    async def step(label, **extra):
+        steps.append((label, extra))
+
+    async def boom(*a, **k):
+        raise TypeError("unsupported operand type(s) for +: 'NoneType' and 'str'")
+    monkeypatch.setattr(reader, "read_frame", boom)
+    docs = [("plantas.pdf", _pdf(["PLANTA DO PISO TIPO — Fração A, Fração B", "Fração C — habitação coletiva"]))]
+    done = asyncio.run(hook.maybe_handle(db, "j", "u", "c", "r", docs, None, "PT", step=step, store=None, llm=None))
+    assert done and steps[-1][1]["status"] == "failed" and steps[-1][1]["error"].startswith("O estudo do edifício")
