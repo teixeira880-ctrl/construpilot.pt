@@ -79,3 +79,23 @@ def test_tratamento_sem_eventos_termina_por_tempo(db, monkeypatch):
 
 def test_quatro_workers():
     assert J.WORKER_COUNT >= 4
+
+
+def test_workers_arrancam_mesmo_com_indice_impossivel(db, monkeypatch):
+    async def boom(*a, **k):
+        raise RuntimeError("E11000 duplicate key")
+    monkeypatch.setattr(type(db.assistant_msgs), "create_index", boom, raising=False)
+
+    async def go():
+        J.STARTUP.clear()
+        tasks = await J.start_workers()
+        await asyncio.sleep(0.05)
+        try:
+            assert len(tasks) == J.WORKER_COUNT
+            assert J.STARTUP.get("index_errors")
+            st = await J.queue_status()
+            assert st["workers_in_this_process"] and "startup" in st
+        finally:
+            for t in tasks:
+                t.cancel()
+    asyncio.run(go())

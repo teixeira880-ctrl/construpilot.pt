@@ -285,12 +285,22 @@ async def worker_loop():
             await asyncio.sleep(3)
 
 
+STARTUP: dict = {}      # diagnóstico do arranque (seed, workers) mostrado em /admin/assistant-queue
+
+
 async def start_workers():
-    await db.assistant_jobs.create_index("job_id", unique=True)
-    await db.assistant_jobs.create_index([("conversation_id", 1), ("sequence", 1)])
-    await db.assistant_jobs.create_index([("user_id", 1), ("status", 1), ("created_at", 1)])
-    await db.assistant_msgs.create_index([("user_id", 1), ("conversation_id", 1), ("role", 1), ("request_id", 1)], unique=True, partialFilterExpression={"request_id": {"$type": "string"}})
-    await db.assistant_artifacts.create_index("artifact_id", unique=True)
+    specs = ((db.assistant_jobs, "job_id", {"unique": True}),
+             (db.assistant_jobs, [("conversation_id", 1), ("sequence", 1)], {}),
+             (db.assistant_jobs, [("user_id", 1), ("status", 1), ("created_at", 1)], {}),
+             (db.assistant_msgs, [("user_id", 1), ("conversation_id", 1), ("role", 1), ("request_id", 1)],
+              {"unique": True, "partialFilterExpression": {"request_id": {"$type": "string"}}}),
+             (db.assistant_artifacts, "artifact_id", {"unique": True}))
+    for coll, keys, kw in specs:
+        try:                    # um índice impossível (dados antigos duplicados) não pode impedir os workers de arrancar
+            await coll.create_index(keys, **kw)
+        except Exception as e:  # noqa: BLE001
+            STARTUP.setdefault("index_errors", []).append(f"{coll.name} {keys}: {type(e).__name__}: {str(e)[:160]}")
+            log.warning("assistant index skipped: %s", e)
     return [asyncio.create_task(worker_loop()) for _ in range(WORKER_COUNT)]
 
 
@@ -307,7 +317,7 @@ async def queue_status() -> dict:
         if isinstance(r.get("lease_until"), datetime):
             r["lease_until"] = r["lease_until"].isoformat()
     return {"now": now.isoformat(), "counts": counts, "running": running, "oldest_queued": oldest,
-            "workers_in_this_process": WORKERS}
+            "workers_in_this_process": WORKERS, "startup": STARTUP, "pid": __import__("os").getpid()}
 
 
 async def unstick(older_than_minutes: int = 10) -> dict:
