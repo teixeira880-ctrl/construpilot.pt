@@ -258,8 +258,13 @@ def _render_items(c, sh: Sheet):
             c.drawString(a[0] + 3.5, a[1] + 1.2, v + (f"  {T(label)}" if label else ""))
 
 
+def page_of(sh: Sheet):
+    """Format de la planche (points) : A3 paysage par défaut, `sh.page` pour les plans d'exécution en grand format."""
+    return getattr(sh, "page", None) or landscape(A3)
+
+
 def _frame(c, sh: Sheet, project: dict, idx: int, total: int):
-    W, H = landscape(A3)
+    W, H = page_of(sh)
     br = B.get()
     ink = colors.Color(0.13, 0.15, 0.18)
     grey = colors.Color(0.45, 0.47, 0.50)
@@ -437,6 +442,27 @@ def _sym(c, kind, x, y, s=1.0):
         c.line(x - r * 1.3, y - r, x + r * 1.3, y + r); c.line(x - r * 1.3, y + r, x + r * 1.3, y - r)
     elif kind == "GT":
         c.setStrokeColor(col("GAINE")); c.setFillColor(colors.Color(.86, .94, .89)); c.rect(x - r * 1.3, y - r, r * 2.6, r * 2, stroke=1, fill=1)
+    elif kind.startswith("COF_"):                     # légende des plans de coffrage
+        ink = colors.Color(0.2, 0.2, 0.22)
+        c.setStrokeColor(ink)
+        if kind == "COF_POUTRE":
+            c.setFillColor(colors.Color(0.80, 0.80, 0.82)); c.rect(x - r * 1.8, y - r * 0.45, r * 3.6, r * 0.9, stroke=1, fill=1)
+        elif kind == "COF_POTEAU":
+            c.setFillColor(colors.Color(0.55, 0.56, 0.60)); c.rect(x - r * 0.7, y - r * 0.7, r * 1.4, r * 1.4, stroke=1, fill=1)
+        elif kind == "COF_VOILE":
+            c.setFillColor(colors.Color(0.55, 0.56, 0.60)); c.rect(x - r * 1.8, y - r * 0.4, r * 3.6, r * 0.8, stroke=1, fill=1)
+        elif kind == "COF_RESA":
+            c.setStrokeColor(col("RESA")); c.rect(x - r, y - r * 0.7, r * 2, r * 1.4, stroke=1, fill=0)
+            c.line(x - r, y - r * 0.7, x + r, y + r * 0.7); c.line(x - r, y + r * 0.7, x + r, y - r * 0.7)
+        elif kind == "COF_DALLE":
+            c.setFillColor(colors.white); c.circle(x, y, r, stroke=1, fill=1); c.line(x - r, y, x + r, y)
+        elif kind == "COF_PORTEE":
+            c.line(x - r * 1.6, y, x + r * 1.6, y)
+            for sgn in (-1, 1):
+                p = c.beginPath(); p.moveTo(x + sgn * r * 1.6, y); p.lineTo(x + sgn * r * 0.9, y + r * 0.45); p.lineTo(x + sgn * r * 0.9, y - r * 0.45); p.close()
+                c.setFillColor(ink); c.drawPath(p, stroke=0, fill=1)
+        elif kind == "COF_ARASE":
+            c.setFillColor(colors.white); c.roundRect(x - r * 1.7, y - r * 0.55, r * 3.4, r * 1.1, r * 0.5, stroke=1, fill=1)
     elif kind == "COLL":
         c.setStrokeColor(col("CHAUF_A")); c.setFillColor(colors.Color(1, .9, .88)); c.rect(x - r * 1.6, y - r * .5, r * 3.2, r, stroke=1, fill=1)
     elif kind == "BOUCLE":
@@ -487,7 +513,7 @@ def render_pdf(sheets: list[Sheet], path: str | Path, project: dict, lang: str =
         c = canvas.Canvas(str(path), pagesize=landscape(A3))
         c.setTitle(T(project["name"]))
         for i, sh in enumerate(sheets, 1):
-            W, H = landscape(A3)
+            c.setPageSize(page_of(sh))
             # pas de filigrane sous le dessin : un plan d'exécution reste lisible (le logo est au cartouche)
             _render_items(c, sh)
             _frame(c, sh, project, i, len(sheets))

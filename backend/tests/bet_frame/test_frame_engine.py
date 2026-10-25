@@ -322,3 +322,21 @@ def test_lots_mep_sans_planches_de_structure(tmp_path):
     res = pipeline.render_lots(raw, ["chauffage"], tmp_path / "ch.pdf")
     from pypdf import PdfReader
     assert res["ok"] and len(PdfReader(str(tmp_path / "ch.pdf")).pages) > len(res["sheets"])      # note thermique en tête
+
+
+def test_plans_execution_coffrage(tmp_path):
+    """Coffrage et fondations au format d'un plan d'exécution : grand format, 1:50–1:100, poutres et poteaux repérés et sectionnés,
+    arases (Ai / As / b / f), cotes en cm, légende et hypothèses."""
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    res = pipeline.render_lots(raw, ["gros_oeuvre"], tmp_path / "go.pdf", lang="fr")
+    assert res["ok"]
+    pdf = PdfReader(res["path"])
+    p_fon, p_cof = pdf.pages[0], pdf.pages[1]
+    assert float(p_cof.mediabox.width) > 1190 and float(p_fon.mediabox.width) > 1190          # A2 ou plus
+    t = p_cof.extract_text()
+    assert "1:100" in t or "1:75" in t or "1:50" in t
+    assert "30x50ht" in t and "(Ai:" in t and "DP" in t and "f" in t and "LÉGENDE" in t and "HYPOTHÈSES" in t
+    assert "570" in t or "580" in t                                                          # cotes nu à nu en cm
+    tf = p_fon.extract_text()
+    assert "(As:" in tf and "LN01" in tf and "ht" in tf
