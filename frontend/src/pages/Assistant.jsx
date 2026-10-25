@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { ConversationJobs, useConversationJobs } from "@/components/assistant/ConversationJobs";
 import { CalculationsPanel } from "@/components/assistant/CalculationsPanel";
 import { ProjectStatePanel } from "@/components/assistant/ProjectStatePanel";
-import { FallbackBanner } from "@/components/assistant/FallbackBanner";
 import { DocumentViewerProvider } from "@/components/assistant/DocumentViewer";
 import { AssistantSendContext } from "@/components/assistant/assistantSend";
 import { PrivateImage } from "@/components/assistant/PrivateMedia";
@@ -437,7 +436,6 @@ export default function Assistant() {
         <ConversationJobs conversation={conv} onCancel={stop} onResume={seedText} onCorrect={(m) => seedText(`${ui("correct")} — « ${m.content.slice(0,120)}… » : `)} />
       </div>
       {showJump && <button type="button" className="mx-auto text-xs flex items-center gap-2 px-3 min-h-9 border rounded-md" data-testid="assistant-latest-reply" aria-label={ui("latest")} onClick={() => { followMessages.current = true; setShowJump(false); const el = messagesRef.current; if(el) el.scrollTop = el.scrollHeight; }}><ArrowDown size={15} />{ui("latest")}</button>}
-      <FallbackBanner refreshKey={conv?.messages?.length || 0} />
       <div className="assistant-composer">
         {cadFile && <CadUnitPicker file={cadFile} onChoose={unit => upload(cadFile,"plan",unit)} onCancel={() => setCadFile(null)} />}
         {pickFile && <div className="mb-3 p-3 bg-muted/50 rounded-md text-xs" data-testid="assistant-pick-kind"><p className="break-words mb-2"><b>{pickFile.name}</b> · {ui("addAs")}</p><div className="flex flex-wrap gap-2">
