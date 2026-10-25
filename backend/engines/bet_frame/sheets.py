@@ -115,7 +115,11 @@ def cores(sh: Sheet, m: Frame, cut=True):
 
 
 def outline(sh: Sheet, m: Frame, lw=0.5):
-    sh.rect("BA", m.gx[0], m.gy[0], m.gx[-1], m.gy[-1], lw)
+    if not m.voids:
+        sh.rect("BA", m.gx[0], m.gy[0], m.gx[-1], m.gy[-1], lw)
+        return
+    for a, b in m.boundary_edges():          # emprise réelle (L, U, cour)
+        sh.line("BA", a, b, lw)
 
 
 def _balcony_rect(m: Frame, bc: dict):
@@ -429,7 +433,7 @@ def level_plan(m: Frame, lids: list[str], code: str, e: dict, r: dict) -> Sheet:
     if not units:
         use = lv.use
         if use == "stationnement":
-            n = int((m.L * m.W - sum((c["x1"] - c["x0"]) * (c["y1"] - c["y0"]) for c in m.cores)) / 25)
+            n = int((m.footprint - sum((c["x1"] - c["x0"]) * (c["y1"] - c["y0"]) for c in m.cores)) / 25)
             sh.text("TITRE", (m.gx[0] + m.L / 2, m.gy[0] + m.W / 2 - u(sh, 18)),
                     S(_(f"Parking — env. {n} places (25 m²/place, circulation comprise)", f"Estacionamento — cerca de {n} lugares (25 m²/lugar, com circulação)")), 2.2, "c")
     outline(sh, m, 0.7)

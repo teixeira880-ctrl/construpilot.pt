@@ -35,7 +35,7 @@ def _orient(m: Frame) -> dict:
 
 
 def concelho(m: Frame) -> str | None:
-    from engines.calc_lots import reh
+    from . import _reh as reh
     txt = _norm(" ".join(str((m.project or {}).get(k) or "") for k in ("municipality", "concelho", "address", "name")))
     best = None
     for k in getattr(reh, "CONCELHOS", {}):
@@ -45,15 +45,30 @@ def concelho(m: Frame) -> str | None:
     return best
 
 
+def _outside_len(m: Frame, side: str, un, d=0.5, n=12) -> float:
+    """Longueur du côté de la fraction donnant sur l'extérieur (point décalé de d vers l'extérieur hors de l'emprise réelle)."""
+    if side in ("y0", "y1"):
+        y = (un.y0 - d) if side == "y0" else (un.y1 + d)
+        pts = [(un.x0 + (k + 0.5) * (un.x1 - un.x0) / n, y) for k in range(n)]
+        L = un.x1 - un.x0
+    else:
+        x = (un.x0 - d) if side == "x0" else (un.x1 + d)
+        pts = [(x, un.y0 + (k + 0.5) * (un.y1 - un.y0) / n) for k in range(n)]
+        L = un.y1 - un.y0
+    out = sum(1 for p in pts if not m.point_in(*p) and not m.in_core(*p))
+    return L * out / n
+
+
 def _sides(m: Frame, un, tol=0.35):
     """[(côté, longueur, nature)] nature : ext | core | int."""
-    x0, x1, y0, y1 = m.gx[0], m.gx[-1], m.gy[0], m.gy[-1]
     out = []
-    for side, L, on_edge, pos in (("y0", un.x1 - un.x0, abs(un.y0 - y0) < tol, ("y", un.y0)), ("y1", un.x1 - un.x0, abs(un.y1 - y1) < tol, ("y", un.y1)),
-                                  ("x0", un.y1 - un.y0, abs(un.x0 - x0) < tol, ("x", un.x0)), ("x1", un.y1 - un.y0, abs(un.x1 - x1) < tol, ("x", un.x1))):
-        if on_edge:
-            out.append((side, L, "ext"))
-            continue
+    for side, L, pos in (("y0", un.x1 - un.x0, ("y", un.y0)), ("y1", un.x1 - un.x0, ("y", un.y1)),
+                         ("x0", un.y1 - un.y0, ("x", un.x0)), ("x1", un.y1 - un.y0, ("x", un.x1))):
+        ext = _outside_len(m, side, un)
+        if ext > 0.5:
+            out.append((side, ext, "ext"))
+            if ext > L - 0.5:
+                continue
         touch = 0.0
         for c in m.cores:
             if pos[0] == "y" and (abs(c["y0"] - pos[1]) < tol or abs(c["y1"] - pos[1]) < tol):
@@ -81,7 +96,7 @@ def compute(m: Frame) -> dict | None:
 
 
 def _pt(m: Frame) -> dict:
-    from engines.calc_lots import aquecimento, reh
+    from . import _aquec as aquecimento, _reh as reh
     hyp = []
     conc = concelho(m)
     nuts = None
@@ -96,7 +111,7 @@ def _pt(m: Frame) -> dict:
     out = []
     te_h = []
     ap_tot = sum(u.area * 0.85 for u in m.units) or 1.0
-    roof = m.L * m.W - sum((c["x1"] - c["x0"]) * (c["y1"] - c["y0"]) for c in m.cores)
+    roof = m.footprint - sum((c["x1"] - c["x0"]) * (c["y1"] - c["y0"]) for c in m.cores)
     pv = float((m.raw.get("mep") or {}).get("pv_kwp") or round(min(0.6 * len(m.units), 0.5 * roof / 5.5), 1))
     e_pv = pv * 1520.0 * 0.60
     for un in m.units:

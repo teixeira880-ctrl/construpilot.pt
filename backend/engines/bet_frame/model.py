@@ -8,7 +8,9 @@ Champs (voir cases/immeuble_demo_pt.json) :
   grid{x[],y[],x_labels[],y_labels[]}
   levels[{id,name,floor_top,height,use,on_grade?}]        du plus bas au plus haut ; height = hauteur d'étage
   roof{use}                                               dalle haute du dernier niveau (toiture)
-  structure{column[b,h], beam[b,h], slab, concrete, steel, columns_omit[[xlab,ylab]], column_sections{"B3":[b,h]}}
+  structure{column[b,h], beam[b,h], slab, concrete, steel, columns_omit[[xlab,ylab]], column_sections{"B3":[b,h]},
+            void_cells[[xlab,ylab]]}                      cases de trame SANS plancher (emprise en L, U, cour…) : case
+                                                          comprise entre la file xlab et la suivante, ylab et la suivante
   cores[{id,label,x0,y0,x1,y1,wall}]                      cages d'escalier / ascenseur (voiles BA)
   balconies[{side:N|S|E|W, depth, a0, a1, levels[]}]       balcons en console (a = abscisse le long de la façade)
   units[{id,name,typology,levels[],x0,y0,x1,y1,fixtures{}}] fractions / logements / lots (répétés sur `levels`)
@@ -153,12 +155,67 @@ class Frame:
         return f"{self.yl[j]}{self.xl[i]}"
 
     @property
+    def voids(self) -> set[tuple[int, int]]:
+        """Cases (i, j) sans plancher : i = file x à gauche, j = file y en dessous."""
+        out = set()
+        xi = {lab: k for k, lab in enumerate(self.xl)}
+        yj = {lab: k for k, lab in enumerate(self.yl)}
+        for v in self.st.get("void_cells") or []:
+            try:
+                a, b = str(v[0]), str(v[1])
+            except (TypeError, IndexError):
+                continue
+            i, j = (xi.get(a), yj.get(b)) if a in xi else (xi.get(b), yj.get(a))
+            if i is not None and j is not None and i < len(self.gx) - 1 and j < len(self.gy) - 1:
+                out.add((i, j))
+        return out
+
+    def cell_in(self, i: int, j: int) -> bool:
+        """La case (i, j) porte un plancher (dans la trame et pas évidée)."""
+        return 0 <= i < len(self.gx) - 1 and 0 <= j < len(self.gy) - 1 and (i, j) not in self.voids
+
+    def point_in(self, x: float, y: float) -> bool:
+        """Point dans l'emprise réelle (cases pleines)."""
+        gx, gy = self.gx, self.gy
+        if not (gx[0] - 1e-6 <= x <= gx[-1] + 1e-6 and gy[0] - 1e-6 <= y <= gy[-1] + 1e-6):
+            return False
+        i = max(0, min(len(gx) - 2, next((k for k in range(len(gx) - 1) if x <= gx[k + 1] + 1e-9), len(gx) - 2)))
+        j = max(0, min(len(gy) - 2, next((k for k in range(len(gy) - 1) if y <= gy[k + 1] + 1e-9), len(gy) - 2)))
+        return self.cell_in(i, j)
+
+    def boundary_edges(self) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+        """Arêtes du contour réel (côtés de cases pleines bordant le vide ou l'extérieur)."""
+        gx, gy = self.gx, self.gy
+        out = []
+        for j in range(len(gy) - 1):
+            for i in range(len(gx) - 1):
+                if not self.cell_in(i, j):
+                    continue
+                if not self.cell_in(i, j - 1):
+                    out.append(((gx[i], gy[j]), (gx[i + 1], gy[j])))
+                if not self.cell_in(i, j + 1):
+                    out.append(((gx[i], gy[j + 1]), (gx[i + 1], gy[j + 1])))
+                if not self.cell_in(i - 1, j):
+                    out.append(((gx[i], gy[j]), (gx[i], gy[j + 1])))
+                if not self.cell_in(i + 1, j):
+                    out.append(((gx[i + 1], gy[j]), (gx[i + 1], gy[j + 1])))
+        return out
+
+    @property
+    def footprint(self) -> float:
+        gx, gy = self.gx, self.gy
+        return sum((gx[i + 1] - gx[i]) * (gy[j + 1] - gy[j]) for j in range(len(gy) - 1) for i in range(len(gx) - 1) if self.cell_in(i, j))
+
+    @property
     def columns(self) -> list[tuple[int, int]]:
         omit = {(str(a), str(b)) for a, b in (self.st.get("columns_omit") or [])}
         out = []
+        voids = self.voids
         for j in range(len(self.gy)):
             for i in range(len(self.gx)):
                 if (self.xl[i], self.yl[j]) in omit or (self.yl[j], self.xl[i]) in omit:
+                    continue
+                if voids and not any(self.cell_in(i + di, j + dj) for di in (-1, 0) for dj in (-1, 0)):
                     continue
                 if self.in_core(self.gx[i], self.gy[j], strict=True):
                     continue
@@ -327,6 +384,15 @@ def check(m: Frame) -> list[dict]:
     for r in m.risers:
         if not (x0 - 0.6 <= float(r["x"]) <= x1 + 0.6 and y0 - 0.6 <= float(r["y"]) <= y1 + 0.6):
             a("RIS-01", BLOCK, f"Colonne {r.get('id')} hors emprise.", f"Coluna {r.get('id')} fora da implantação.")
+    if m.voids:
+        for u in m.units:
+            cx, cy = u.center
+            if not m.point_in(cx, cy):
+                a("UNIT-02", BLOCK, f"Fraction {u.name} ({u.level}) dans une case de trame déclarée vide (void_cells).",
+                  f"Fração {u.name} ({u.level}) numa célula da trama declarada vazia (void_cells).",
+                  "Corriger void_cells ou le rectangle de la fraction.", "Corrigir void_cells ou o retângulo da fração.")
+        if m.footprint < 0.3 * m.L * m.W:
+            a("VOID-01", BLOCK, "Cases vides > 70 % de la trame : emprise incohérente.", "Células vazias > 70 % da trama: implantação incoerente.")
     if not m.units:
         a("UNIT-00", WARN, "Aucune fraction / aucun lot relevé : réseaux et plans de niveaux limités aux colonnes.",
           "Nenhuma fração relevada: redes e plantas limitadas às colunas.")

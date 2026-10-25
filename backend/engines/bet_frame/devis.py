@@ -28,7 +28,7 @@ def build_lines(m: Frame, r: dict, e: dict) -> list[dict]:
     bas = r.get("basement")
     lot1 = _("1. Terrassements et fondations", "1. Movimento de terras e fundações")
     if bas:
-        add(lot1, _("Terrassement général en pleine masse du sous-sol", "Escavação geral da cave"), "m³", m.L * m.W * (bas["H"] + 0.3) * 1.08, P["terr"])
+        add(lot1, _("Terrassement général en pleine masse du sous-sol", "Escavação geral da cave"), "m³", m.footprint * (bas["H"] + 0.3) * 1.08, P["terr"])
     add(lot1, _("Fouilles des semelles", "Escavação de sapatas"), "m³", sum((p["B"] + 0.4) ** 2 * (p["h"] + 0.3) for p in f["pads"]), P["fouille"])
     add(lot1, _("Béton de propreté e=10 cm", "Betão de limpeza e=10 cm"), "m³", sum((p["B"] + 0.1) ** 2 * 0.10 for p in f["pads"]), P["propre"])
     vf = sum(p["B"] ** 2 * p["h"] for p in f["pads"])
@@ -76,7 +76,7 @@ def build_lines(m: Frame, r: dict, e: dict) -> list[dict]:
                 kgb += (sp["bot"]["As"] * (sp["L"] + 0.5) + (sp["top_l"]["As"] + sp["top_r"]["As"]) * sp["L"] * 0.35
                         + 2 * (bm["b"] + bm["h"]) * area(8) * sp["L"] / sp["s"]) * STEEL
         core_a = sum((c["x1"] - c["x0"]) * (c["y1"] - c["y0"]) for c in m.cores)
-        a_ = m.L * m.W - core_a
+        a_ = m.footprint - core_a
         vs += a_ * s.h
         fs += a_
         for p in fl["panels"]:
@@ -106,7 +106,7 @@ def build_lines(m: Frame, r: dict, e: dict) -> list[dict]:
         kgw = 0.0
     lv0 = m.levels[0]
     if lv0.on_grade:
-        add(lot2, _(f"Dallage / dalle sur terre-plein {lv0.name} e=0,15 (treillis soudé)", f"Laje térrea {lv0.name} e=0,15 (malha eletrossoldada)"), "m²", m.L * m.W, P["dallage"])
+        add(lot2, _(f"Dallage / dalle sur terre-plein {lv0.name} e=0,15 (treillis soudé)", f"Laje térrea {lv0.name} e=0,15 (malha eletrossoldada)"), "m²", m.footprint, P["dallage"])
     kg2 = kgcol + kgb + kgs + vbal * 110 + vcore * 80 + kgw
     add(lot2, _(f"Aciers {r['mat']['steel']} façonnés — ossature", f"Aço {r['mat']['steel']} moldado — estrutura"), "kg", kg2 * 1.05, P["acier"])
     # ---------------------------------------------------------------- réseaux collectifs

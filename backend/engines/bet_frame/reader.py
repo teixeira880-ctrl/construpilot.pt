@@ -117,6 +117,11 @@ Règles :
 4. structure : sections indiquées sur les plans sinon column [0.30, 0.30], beam [0.30, 0.50], slab 0.20 ; concrete C25/30 ; columns_omit
    = intersections de la trame SANS poteau (ex. [["3","B"]]).
 5. cores : cages d'escalier / ascenseur (rectangle extérieur des voiles, wall = épaisseur).
+4 bis. EMPRISE RÉELLE : la trame est le rectangle englobant ; si le bâtiment n'est PAS rectangulaire (forme en L, en U, en T,
+   décrochements, cour ou patio), liste dans structure.void_cells les cases de trame SANS plancher, chacune repérée par la file x à
+   sa gauche et la file y en dessous (ex. [["5","C"], ["6","C"]] = cases entre les files 5-6 et 6-7, au-dessus de la file C). Les
+   poteaux qui ne touchent aucune case pleine sont supprimés automatiquement. Ne laisse JAMAIS une partie hors bâtiment en case
+   pleine : les plans, les charges et les métrés en dépendent.
 6. balconies : balcons en console (side N/S/E/W, depth, a0/a1 = début/fin le long de la façade depuis l'origine, levels).
 7. units : chaque fraction / logement / lot par niveau (rectangle englobant x0,y0,x1,y1 dans le repère ; name ; typology T0…T5 ou
    « commerce », « bureau » ; levels = liste des niveaux où il se répète à l'identique ; fixtures = appareils sanitaires comptés sur le plan :

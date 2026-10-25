@@ -244,3 +244,23 @@ def test_termica_fr_e_lote_aquecimento(tmp_path):
     from engines.bet_core import pipeline as core
     res = core.render_lots(copy.deepcopy(CASE), ["chauffage"], tmp_path / "ch.pdf", None, "pt", None)
     assert res["ok"] and any("AVAC-" in s for s in res["sheets"]) and any("TER-01" in s for s in res["sheets"])
+
+
+def test_emprise_em_L_sem_caixa(tmp_path):
+    raw = copy.deepcopy(CASE)
+    raw["structure"]["void_cells"] = [["5", "C"], ["6", "C"]]
+    for u in raw["units"]:
+        if u["x1"] > 31.1 and u["y1"] > 12.3:
+            u["y1"] = 12.3
+    with use_lang("pt"):
+        m = model.from_dict(copy.deepcopy(raw))
+        assert not model.has_block(model.check(m))
+        r = calc.compute(m)
+    assert abs(m.footprint - (m.L * m.W - 12.4 * 6.0)) < 0.5
+    names = {c["name"] for c in r["columns"]}
+    assert "D6" not in names and "D7" not in names and "D5" in names
+    assert all(not (p["x0"] >= 24.9 and p["y0"] >= 12.3) for p in r["floors"][0]["panels"])
+    vd = [b for b in r["floors"][0]["beams"] if b["name"].startswith("VD")]
+    assert vd and max(b["pos"][-1] for b in vd) <= 24.91
+    res = pipeline.run(raw, tmp_path, stem="T")
+    assert res["status"].startswith("PRONTO") and res["thermal"]["units"] == 20
