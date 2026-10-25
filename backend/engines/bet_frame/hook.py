@@ -19,7 +19,12 @@ INSTRUCTIONS_EXTRA = (
     " TYPES DE BÂTIMENTS : generate_full_bet_study traite la maison individuelle ET les bâtiments à ossature béton armé (immeuble "
     "collectif / edifício de habitação coletiva, bureaux, commerce, parking / garagem, bâtiment d'activité, équipement public) : le type est "
     "détecté automatiquement sur les plans ; pour ces bâtiments le dossier comprend fondations, plans de coffrage de chaque plancher, "
-    "tableaux de poteaux / poutres / dalles / semelles, coupe, plans de niveaux, réseaux et schéma vertical des colonnes montantes. "
+    "tableaux de poteaux / poutres / dalles / semelles, PLANS D'EXÉCUTION DU FERRAILLAGE (élévations cotées des poutres avec barres, "
+    "longueurs et cadres ; sections armées des poteaux ; semelles armées en plan et coupe), coupe, plans de niveaux, réseaux, schéma "
+    "vertical des colonnes, ÉTUDE THERMIQUE par logement (PT : pré-certificat REH — classe énergétique, Nic/Ni, Ntc/Nt ; FR : déperditions "
+    "et puissances) et plans de chauffage / ventilation par niveau. Ne dis donc jamais que l'étude thermique ou les plans d'exécution "
+    "ne sont pas faits : présente-les (champ `thermal` = classes et puissance totale). Avec generate_bet_lot_plans, le lot « chauffage » "
+    "donne l'étude thermique + les plans de chauffage / ventilation et le lot « gros_oeuvre » inclut le ferraillage d'exécution. "
     "Le génie civil (ponts, murs de soutènement isolés, VRD, réseaux publics, ouvrages hydrauliques) n'est PAS encore couvert : dis-le "
     "clairement et n'improvise pas de calcul. "
     "N'écris JAMAIS un document texte intitulé « Plan », « Planta » ou « Plan de coffrage » : un plan est un dessin produit par "
@@ -120,5 +125,5 @@ async def _handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, l
     await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"], sheets=res["sheets"],
                devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"], decisions=decisions, decide_alone=decide_alone,
                points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
-               questions=rd["questions"], provider=rd.get("provider"), building_kind="frame")
+               questions=rd["questions"], provider=rd.get("provider"), building_kind="frame", thermal=res.get("thermal"))
     return True

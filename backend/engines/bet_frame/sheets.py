@@ -595,7 +595,8 @@ def riser_diagram(m: Frame, e: dict, r: dict, code: str) -> Sheet:
     return sh
 
 
-def all_sheets(m: Frame, r: dict, e: dict) -> list[Sheet]:
+def all_sheets(m: Frame, r: dict, e: dict, t: dict | None = None) -> list[Sheet]:
+    from . import details
     NAT.clear()
     out = [foundations(m, r)]
     groups = _slab_groups(r)
@@ -604,6 +605,9 @@ def all_sheets(m: Frame, r: dict, e: dict) -> list[Sheet]:
     out.append(section(m, r))
     out[-1].code = f"EST-{len(groups) + 2:02d}"
     out += tables(m, r)
+    out += details.beam_sheets(m, r)
+    out += details.column_sheets(m, r)
+    out += details.footing_sheets(m, r)
     # plans de niveaux / réseaux, regroupés par niveaux identiques
     lv_groups = []
     for lv in m.levels:
@@ -622,6 +626,8 @@ def all_sheets(m: Frame, r: dict, e: dict) -> list[Sheet]:
     if any(x["sections"] for x in e["risers"]):
         out.append(riser_diagram(m, e, r, f"RED-{n:02d}"))
         out += elec_table(m, e, f"ELE-01")
+    out += details.thermal_sheets(m, t)
+    out += details.hvac_plans(m, t, r)
     return out
 
 

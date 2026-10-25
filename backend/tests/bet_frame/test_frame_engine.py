@@ -11,7 +11,7 @@ from pypdf import PdfReader
 from reportlab.lib.pagesizes import A3, landscape
 from reportlab.pdfgen import canvas
 
-from engines.bet_frame import calc, hook, mep, model, pipeline, reader
+from engines.bet_frame import calc, hook, mep, model, pipeline, reader, thermal
 from engines.bet_frame.lang import use_lang
 
 CASE = json.loads((Path(__file__).parents[2] / "engines/bet_frame/cases/immeuble_demo_pt.json").read_text(encoding="utf-8"))
@@ -220,3 +220,27 @@ def test_hook_erreur_moteur_message_clair(monkeypatch):
     docs = [("plantas.pdf", _pdf(["PLANTA DO PISO TIPO — Fração A, Fração B", "Fração C — habitação coletiva"]))]
     done = asyncio.run(hook.maybe_handle(db, "j", "u", "c", "r", docs, None, "PT", step=step, store=None, llm=None))
     assert done and steps[-1][1]["status"] == "failed" and steps[-1][1]["error"].startswith("O estudo do edifício")
+
+
+def test_execucao_termica_e_climatizacao(tmp_path):
+    raw = copy.deepcopy(CASE)
+    raw["project"]["address"] = "Rua do Exemplo, Ermesinde, Valongo"
+    res = pipeline.run(raw, tmp_path, stem="T")
+    codes = [s.split()[0] for s in res["sheets"]]
+    for c in ("EST-A1", "EST-P1", "TER-01", "AVAC-01"):
+        assert c in codes, codes
+    assert any(c.startswith("EST-F1") for c in codes)
+    assert res["thermal"]["units"] == 20 and res["thermal"]["heating_kw"] > 10 and set(res["thermal"]["classes"]) <= {"A+", "A", "B", "B-", "C", "D", "E", "F"}
+    txt = "".join(p.extract_text() or "" for p in PdfReader(res["files"]["pdf"]).pages)
+    assert "Comportamento térmico" in txt and "Armaduras das vigas" in txt and "Grande Porto" in txt
+
+
+def test_termica_fr_e_lote_aquecimento(tmp_path):
+    raw = copy.deepcopy(CASE)
+    raw["project"]["country"] = "FR"
+    with use_lang("fr"):
+        t = thermal.compute(model.from_dict(copy.deepcopy(raw)))
+    assert t["country"] == "FR" and all(x["phi_w"] > 300 for x in t["units"])
+    from engines.bet_core import pipeline as core
+    res = core.render_lots(copy.deepcopy(CASE), ["chauffage"], tmp_path / "ch.pdf", None, "pt", None)
+    assert res["ok"] and any("AVAC-" in s for s in res["sheets"]) and any("TER-01" in s for s in res["sheets"])

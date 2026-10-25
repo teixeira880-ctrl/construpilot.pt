@@ -12,7 +12,7 @@ from pypdf import PdfReader, PdfWriter
 from engines.bet_core import brand, draw, i18n
 from engines.bet_core.pipeline import _RENDER_LOCK, _slug, where
 
-from . import calc, devis, mep, model, report, sheets
+from . import calc, devis, mep, model, report, sheets, thermal
 from .lang import _, use_lang
 
 _LOCK = threading.Lock()
@@ -26,6 +26,16 @@ def where_frame(exc: BaseException) -> str:
         return where(exc)
     f = fr[-1]
     return f"{Path(f.filename).name}:{f.lineno} {f.name}"
+
+
+def _thermal(m, anomalies: list) -> dict | None:
+    """Étude thermique par fraction ; une erreur n'arrête jamais l'étude de structure (avertissement lisible)."""
+    try:
+        return thermal.compute(m)
+    except Exception as exc:  # noqa: BLE001
+        anomalies.append({"code": "THERM", "level": model.WARN, "message": _(f"Étude thermique non calculée ({type(exc).__name__}: {str(exc)[:160]}).",
+                                                                           f"Estudo térmico não calculado ({type(exc).__name__}: {str(exc)[:160]}).")})
+        return None
 
 
 def is_frame(raw: dict | None) -> bool:
@@ -53,7 +63,7 @@ def dry_run(raw: dict, lang: str = "fr") -> dict | None:
         try:
             r = calc.compute(m)
             e = mep.compute(m)
-            sheets.all_sheets(m, r, e)
+            sheets.all_sheets(m, r, e, _thermal(m, []))
         except Exception as exc:  # noqa: BLE001
             return {"code": "CALC-00", "level": model.BLOCK, "message": f"{type(exc).__name__}: {str(exc)[:300]} — {where_frame(exc)}"}
     return None
@@ -90,7 +100,8 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
         try:
             r = calc.compute(m)
             e = mep.compute(m)
-            shs = sheets.all_sheets(m, r, e)
+            th = _thermal(m, anomalies)
+            shs = sheets.all_sheets(m, r, e, th)
             lines = devis.build_lines(m, r, e)
             tot = devis.totals(lines, m.country)
             rev = report.review(m, r, e, anomalies)
@@ -115,7 +126,7 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
                 if lots:
                     return {"ok": True, "path": str(plans_pdf), "sheets": [s.code + " " + s.title for s in shs]}
                 note = out / "_note.pdf"
-                report.write_note(note, m, r, e, tot, rev, shs)
+                report.write_note(note, m, r, e, tot, rev, shs, th)
             except Exception as exc:  # noqa: BLE001 — rendu impossible : anomalie lisible, jamais une erreur brute
                 if lots:
                     return {"ok": False, "anomalies": [{"message": f"{type(exc).__name__}: {str(exc)[:200]} — {where(exc)}"}]}
@@ -143,7 +154,13 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
         (out / "resultats.json").write_text(json.dumps({"decisions": r["decisions"], "review": rev, "devis": tot,
                                                         "columns": [{k: c[k] for k in ("name", "b", "h")} for c in r["columns"]]},
                                                        ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-        return {"status": rev["status"], "blocking": rev["blocking"], "lang": lang, "kind": "frame",
+        thermo = None
+        if th:
+            cl = {}
+            for x in th["units"]:
+                cl[x["classe"]] = cl.get(x["classe"], 0) + 1
+            thermo = {"classes": cl, "heating_kw": round(sum(x["phi_w"] for x in th["units"]) / 1000, 1), "units": len(th["units"])}
+        return {"status": rev["status"], "blocking": rev["blocking"], "lang": lang, "kind": "frame", "thermal": thermo,
                 "sheets": [s.code + " " + s.title for s in shs], "devis_ht": tot["ht"], "devis_ttc": tot["ttc"],
                 "decisions": r["decisions"], "anomalies": [a for a in anomalies + r["issues"] if a.get("level") != model.BLOCK],
                 "review": [i for i in rev["items"] if str(i.get("level", "")).upper() != "OK"][:40],
@@ -152,8 +169,9 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
 
 LOT_KINDS = {
     "plomberie": ("plumb", "plumb_riser"), "electricite": ("plumb_riser", "table"), "coupes": ("coupe",),
-    "gros_oeuvre": ("fond", "floor", "coupe", "table"), "schemas": ("plumb_riser",), "ventilation": ("plumb_riser",),
-    "chauffage": ("plumb_riser",),
+    "gros_oeuvre": ("fond", "floor", "coupe", "table", "detail_beam", "detail_col", "detail_fond"), "schemas": ("plumb_riser",),
+    "ventilation": ("hvac",), "chauffage": ("hvac", "thermal"), "thermique": ("thermal", "hvac"), "termica": ("thermal", "hvac"),
+    "execution": ("detail_beam", "detail_col", "detail_fond"), "ferraillage": ("detail_beam", "detail_col", "detail_fond"),
 }
 
 
