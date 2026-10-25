@@ -246,6 +246,9 @@ def render_lots(raw: dict, lots: list[str], out: str | Path, date: str | None = 
                 branding: dict | None = None) -> dict:
     """Plans d'un ou plusieurs lots (électricité, plomberie, ventilation, chauffage, coupes, schémas…) en un PDF A3,
     depuis le modèle bâtiment d'une étude déjà faite. Rapide (pas de note ni de devis)."""
+    if (raw or {}).get("kind") == "frame":          # bet_frame : relevé d'un bâtiment à ossature
+        from engines.bet_frame.pipeline import render_lots as _frame_lots
+        return _frame_lots(raw, lots, out, date, lang, branding)
     out = Path(out)
     m, anomalies = validate(raw)
     blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]

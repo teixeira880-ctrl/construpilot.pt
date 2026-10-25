@@ -27,7 +27,9 @@ _TASKS: set = set()     # références fortes : évite qu'asyncio ne ramasse une
 
 TOOLS = [
     {"type": "function", "name": "generate_full_bet_study", "strict": True,
-     "description": ("ÉTUDE BET COMPLÈTE d'une maison individuelle à partir du PC / plans d'architecte (PDF joints) et de l'étude de sol : "
+     "description": ("ÉTUDE BET COMPLÈTE d'un bâtiment — maison individuelle OU bâtiment à ossature béton armé (immeuble collectif, bureaux, "
+                     "commerce, parking, bâtiment d'activité, équipement public ; type détecté sur les plans) — à partir des plans "
+                     "d'architecte (PDF joints) et de l'étude de sol : "
                      "note de calcul Eurocodes, plans d'exécution GROS ŒUVRE entièrement cotés (fondations, niveaux, planchers, coupes, "
                      "façades, détails ferraillés), charpente, électricité, plomberie, devis chiffré Excel et DXF. Lecture des plans par "
                      "IA puis calculs 100 % déterministes et contrôle automatique. Tâche de fond (3 à 8 min) : renvoie un job_id. "
@@ -89,6 +91,8 @@ INSTRUCTIONS = (
     "dans `hypotheses` : le PDF s'affiche en bouton de téléchargement. Ne produis PAS de document texte ou de dessin approximatif "
     "à la place. Sans étude BET, propose d'abord generate_full_bet_study (le PC est nécessaire)."
 )
+from engines.bet_frame.hook import INSTRUCTIONS_EXTRA as _FRAME_INSTRUCTIONS  # bet_frame
+INSTRUCTIONS += _FRAME_INSTRUCTIONS
 
 MIME = {"pdf": "application/pdf", "zip": "application/zip",
         "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
@@ -187,6 +191,10 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
     try:
+        from engines.bet_frame import hook as _frame_hook       # bet_frame : immeubles, bureaux, parkings, ERP (ossature BA)
+        if await _frame_hook.maybe_handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, step=step, store=_store,
+                                          llm=llm, branding=branding, decide_alone=decide_alone):
+            return
         key = docs_hash(docs, hypotheses, country, decide_alone)
         cached = await _cached_model(db, uid, key)
         if cached and cached.get("model"):
