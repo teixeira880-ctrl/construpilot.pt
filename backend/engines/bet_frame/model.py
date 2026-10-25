@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -371,14 +372,31 @@ def from_dict(raw: dict) -> Frame:
                               use_key(d.get("use")), bool(d.get("on_grade", k == 0)), list(d.get("void_cells") or [])))
     ids = [l.id for l in m.levels]
     for u in raw.get("units") or []:
-        for lid in (u.get("levels") or [u.get("level")]):
-            if lid not in ids:
-                continue
+        lids = [lid for lid in (u.get("levels") or [u.get("level")]) if lid in ids]
+        lids.sort(key=ids.index)
+        for k, lid in enumerate(lids):
             m.units.append(Unit(f"{u['id']}" if len(u.get("levels") or [1]) == 1 else f"{lid}-{u['id']}",
-                                str(u.get("name") or u["id"]), str(u.get("typology") or ""), lid,
+                                unit_name(str(u.get("name") or u["id"]), k, len(lids)), str(u.get("typology") or ""), lid,
                                 float(u["x0"]), float(u["y0"]), float(u["x1"]), float(u["y1"]), dict(u.get("fixtures") or {}),
                                 _rooms(u)))
     return m
+
+
+_PLURALS = {"frações": "Fração", "fracções": "Fracção", "fracoes": "Fração", "fractions": "Fraction", "logements": "Logement",
+            "lots": "Lot", "apartamentos": "Apartamento", "appartements": "Appartement", "habitations": "Habitation"}
+
+
+def unit_name(name: str, k: int, n: int) -> str:
+    """Fraction empilée sur n niveaux nommée « Frações E, I, N, R » : le niveau k (bas → haut) reçoit « Fração E »."""
+    if n <= 1:
+        return name
+    head, _, rest = name.strip().partition(" ")
+    sing = _PLURALS.get(head.lower())
+    body = rest if sing else name
+    parts = [p.strip() for p in re.split(r"\s*(?:,|;|/|\be\b|\bet\b|&)\s*", body) if p.strip()]
+    if len(parts) != n:
+        return name
+    return f"{sing} {parts[k]}" if sing else parts[k]
 
 
 ROOM_TYPES = {"sala": "sejour", "salon": "sejour", "sejour": "sejour", "séjour": "sejour", "living": "sejour", "quarto": "chambre", "chambre": "chambre",

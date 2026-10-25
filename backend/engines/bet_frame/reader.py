@@ -117,6 +117,12 @@ Règles :
 4. structure : sections indiquées sur les plans sinon column [0.30, 0.30], beam [0.30, 0.50], slab 0.20 ; concrete C25/30 ; columns_omit
    = intersections de la trame SANS poteau (ex. [["3","B"]]).
 5. cores : cages d'escalier / ascenseur (rectangle extérieur des voiles, wall = épaisseur).
+4 ter. GÉOMÉTRIE RÉELLE — les plans cotés produits en dépendent, aucune valeur estimée ou arrondie :
+   "geometry": {"overall": {"length": cote extérieure totale en x (m), "width": en y, "facade_to_axis": distance nu de façade → axe
+   des files de rive (m, souvent 0,15), "source": "planche + cote lue, ex. Planta Piso 1, cota 26,40"}}. Recopie les cotes écrites sur
+   les planches (chaînes de cotes) ; les files de poteaux tombent sur des murs / cotes réelles du plan, jamais une trame régulière inventée.
+   units[].area_declared = surface du quadro de áreas / tableau des surfaces de l'architecte quand il existe ; le rectangle de la fraction
+   doit la respecter (limites = murs séparatifs et palier). Deux fractions d'un même piso ne se chevauchent jamais.
 4 bis. EMPRISE RÉELLE : la trame est le rectangle englobant ; si le bâtiment n'est PAS rectangulaire (forme en L, en U, en T,
    décrochements, cour ou patio), liste dans structure.void_cells les cases de trame SANS plancher, chacune repérée par la file x à
    sa gauche et la file y en dessous (ex. [["5","C"], ["6","C"]] = cases entre les files 5-6 et 6-7, au-dessus de la file C). Les
@@ -135,11 +141,30 @@ Règles :
 10. project : name, address, country (FR ou PT), architect, pc_ref (référence des plans), g2_ref.
 10 bis. LANGUE : tous les noms (niveaux, fractions, noyaux, pièces) s'écrivent dans la langue du PAYS du projet (PT → português :
    « Piso 0 — habitação e cobertura das caves », « Fração A — noroeste », « Caixa de escada » ; FR → français), jamais un mélange.
+   Les textes "_decisions" et "_questions" aussi : PT → português europeu (« Fundações diretas supostas a 1 m »), jamais en français.
+   Une fraction répétée sur plusieurs pisos (un seul objet avec "levels") : "name" liste les fractions dans l'ordre des pisos,
+   du plus bas au plus haut (« Frações E, I, N, R » = E au Piso 1, I au Piso 2…).
 11. "_questions" : uniquement ce qui est indispensable et illisible. "_decisions" : chaque hypothèse que tu as prise.
 Réponds par le JSON complet seul, sans texte autour."""
 
 DECIDE = ("\n\nMODE DÉCIDER SEUL : ne pose AUCUNE question (\"_questions\": []) ; tranche l'hypothèse la plus probable pour chaque point "
           "et écris-la dans \"_decisions\".")
+
+
+_FR_WORDS = re.compile(r"\b(les|des|du|aux|selon|d'après|supposée?s?|déduite?s?|étages?|logements?|sous-sol|absence|chauffage|fondations)\b", re.I)
+
+
+async def _to_pt(items: list[str], llm) -> list[str]:
+    """Hypothèses rédigées en français par le lecteur sur un projet PT → português europeu (repli : texte d'origine)."""
+    try:
+        txt = await llm("Traduz para português europeu técnico (engenharia civil, Portugal). Mantém números, unidades e siglas. "
+                        "Responde só com o JSON {\"t\": [strings na mesma ordem]}.", json.dumps(items, ensure_ascii=False), max_tokens=2000)
+        out = json.loads(txt[txt.index("{"): txt.rindex("}") + 1]).get("t")
+        if isinstance(out, list) and len(out) == len(items):
+            return [str(x) for x in out]
+    except Exception:  # noqa: BLE001
+        pass
+    return items
 
 
 async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR", llm=None, decide_alone: bool = False,
@@ -172,7 +197,11 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
             raw.setdefault("building_type", building_type)
             raw.setdefault("project", {}).setdefault("country", country)
             with use_lang(lang):
-                m, anomalies = pipeline.validate(raw)
+                m, anomalies = pipeline.validate(raw, pages=chosen, strict=True)
+                if attempts > max_fix:        # dernière lecture : cotes introuvables / trame idéalisée → avertissement mémorisé
+                    soft = [dict(x, level=model.WARN) for x in anomalies if x.get("code") in ("GEO-02", "GEO-03")]
+                    anomalies = [x for x in anomalies if x.get("code") not in ("GEO-02", "GEO-03")] + soft
+                    raw["_geo_warnings"] = soft
             if m is not None and not model.has_block(anomalies):
                 calc_err = pipeline.dry_run(raw, lang)
                 if calc_err:
@@ -190,6 +219,10 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
         attempts += 1
     blocking = [a for a in anomalies if a.get("level") == model.BLOCK]
     decisions = [str(d) for d in (raw or {}).get("_decisions") or []]
+    if lang == "pt" and decisions and any(_FR_WORDS.search(d) for d in decisions):
+        decisions = await _to_pt(decisions, llm)
+        if raw is not None:
+            raw["_decisions"] = decisions
     questions = [] if decide_alone else list((raw or {}).get("_questions") or []) + [f"{a['message']} — {a.get('fix') or '?'}" for a in blocking]
     if raw is not None and hypotheses:
         raw.setdefault("user_hypotheses", {})["_source"] = hypotheses[:300]

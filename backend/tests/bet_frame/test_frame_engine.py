@@ -318,7 +318,7 @@ def test_lots_mep_sans_planches_de_structure(tmp_path):
     res = pipeline.render_lots(raw, ["electricite", "plomberie"], tmp_path / "lot.pdf")
     assert res["ok"]
     assert not any(s.startswith("EST-") for s in res["sheets"])
-    assert any(s.startswith("ELE-AU") for s in res["sheets"]) and any(s.startswith("PLB-A") for s in res["sheets"])
+    assert any(s.startswith("ELE-1U") for s in res["sheets"]) and any(s.startswith("PLB-1") for s in res["sheets"])
     res = pipeline.render_lots(raw, ["chauffage"], tmp_path / "ch.pdf")
     from pypdf import PdfReader
     assert res["ok"] and len(PdfReader(str(tmp_path / "ch.pdf")).pages) > len(res["sheets"])      # note thermique en tête

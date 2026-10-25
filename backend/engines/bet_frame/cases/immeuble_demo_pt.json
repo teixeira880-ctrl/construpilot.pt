@@ -12,7 +12,8 @@
   "pc_ref": "Projeto de arquitetura (caso de teste)",
   "g2_ref": "hipótese de teste"
  },
- "grid": {
+ "geometry": {"overall": {"length": 37.6, "width": 18.6, "facade_to_axis": 0.15, "source": "Planta do piso tipo — cotas exteriores (caso de teste)"}},
+  "grid": {
   "x": [
    0,
    6.1,
