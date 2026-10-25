@@ -42,10 +42,23 @@ def test_cascade_skips_response_without_json(monkeypatch):
 
 
 def test_cascade_all_fail_raises(monkeypatch):
-    for p in ("claude", "openai", "gemini"):
+    for p in ("claude", "openai", "gemini", "emergent"):
         monkeypatch.setitem(reader.PROVIDERS, p, _fail())
     with pytest.raises(RuntimeError):
         asyncio.run(reader._default_llm("s", "t"))
+
+
+def test_cascade_emergent_rescues(monkeypatch):
+    for p in ("claude", "openai", "gemini"):
+        monkeypatch.setitem(reader.PROVIDERS, p, _fail())
+    monkeypatch.setitem(reader.PROVIDERS, "emergent", _ok('{"e":1}'))
+    out = asyncio.run(reader._default_llm("s", "t"))
+    assert out == '{"e":1}' and reader.LAST_PROVIDER[0] == "emergent"
+
+
+def test_ordre_reduit_garde_tous_les_replis(monkeypatch):
+    monkeypatch.setenv("BET_LLM_ORDER", "openai")
+    assert reader._provider_order() == ["openai", "claude", "gemini", "emergent"]
 
 
 def test_extract_json_closes_truncated():
