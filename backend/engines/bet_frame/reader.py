@@ -123,6 +123,8 @@ Règles :
    les planches (chaînes de cotes) ; les files de poteaux tombent sur des murs / cotes réelles du plan, jamais une trame régulière inventée.
    units[].area_declared = surface du quadro de áreas / tableau des surfaces de l'architecte quand il existe ; le rectangle de la fraction
    doit la respecter (limites = murs séparatifs et palier). Deux fractions d'un même piso ne se chevauchent jamais.
+   INTERDIT : recalculer, ajuster ou « déduire » les dimensions du bâtiment, la trame ou le nombre de niveaux à partir du quadro de
+   áreas ou pour faire coïncider des surfaces. Le bâtiment est celui DESSINÉ ; un écart de surface se signale dans "_questions".
 4 bis. EMPRISE RÉELLE : la trame est le rectangle englobant ; si le bâtiment n'est PAS rectangulaire (forme en L, en U, en T,
    décrochements, cour ou patio), liste dans structure.void_cells les cases de trame SANS plancher, chacune repérée par la file x à
    sa gauche et la file y en dessous (ex. [["5","C"], ["6","C"]] = cases entre les files 5-6 et 6-7, au-dessus de la file C). Les
@@ -167,6 +169,35 @@ async def _to_pt(items: list[str], llm) -> list[str]:
     return items
 
 
+COTES_SYS = """Tu es métreur. Sur les planches jointes (plans d'architecte), tu TRANSCRIS les cotes écrites, sans rien calculer ni
+déduire. Réponds en JSON seul : {"overall": {"length": cote extérieure totale la plus grande du bâtiment en m, "width": cote extérieure
+totale perpendiculaire en m, "where": "planche + emplacement de la cote"}, "cotes": [toutes les cotes lues, en mètres],
+"levels": nombre de niveaux dessinés (caves comprises), "units_per_level": {"nom du niveau": nombre de fractions}}.
+Si une cote totale n'est pas écrite, additionne la chaîne de cotes extérieure écrite et dis-le dans "where" ; si illisible : null."""
+
+
+async def _read_cotes(images: list, llm) -> dict:
+    """Lecture indépendante des cotes (appel séparé, sans le modèle d'ossature) : sert de témoin contre un relevé fabriqué."""
+    try:
+        txt = await llm(COTES_SYS, "Transcris les cotes de ces planches.", images=images, max_tokens=3000)
+        d = R._extract_json(txt)
+        out = {"overall": d.get("overall") or {}, "cotes": [], "levels": d.get("levels"), "units_per_level": d.get("units_per_level")}
+        for v in d.get("cotes") or []:
+            try:
+                out["cotes"].append(float(str(v).replace(",", ".")))
+            except ValueError:
+                continue
+        for k in ("length", "width"):
+            v = out["overall"].get(k)
+            try:
+                out["overall"][k] = float(str(v).replace(",", ".")) if v is not None else None
+            except ValueError:
+                out["overall"][k] = None
+        return out
+    except Exception:  # noqa: BLE001 — témoin facultatif
+        return {}
+
+
 async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR", llm=None, decide_alone: bool = False,
                      building_type: str = "immeuble_collectif", max_fix: int = 2) -> dict:
     llm = llm or R._default_llm
@@ -181,6 +212,12 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
                 "questions": [_("Aucun plan lisible dans les documents joints : joignez les plans de niveaux, coupes et façades en PDF.",
                                 "Nenhuma planta legível nos documentos: junte as plantas dos pisos, cortes e alçados em PDF.")]}
     images = [R.render_png(by_doc[p["doc"]], p["page"]) for p in chosen]
+    ref = await _read_cotes(images, llm)
+    if (ref.get("overall") or {}).get("length"):
+        ov = ref["overall"]
+        hypotheses = (hypotheses + "\n" if hypotheses else "") + (
+            f"COTES EXTÉRIEURES LUES SUR LES PLANCHES (contrôle indépendant) : {ov.get('length')} × {ov.get('width')} m ({ov.get('where') or '?'}). "
+            "La trame et l'emprise doivent les respecter.")
     legend = "\n\n".join(f"Image {i + 1} : {p['doc']} p.{p['page']} ({p['kind']}, feuille {p['size_mm'][0]}×{p['size_mm'][1]} mm). "
                          f"Texte vectoriel (mot@x,y mm ; cotes fiables) : {p['words'] or '(plan scanné — lire l image)'}" for i, p in enumerate(chosen))
     base = (f"EXEMPLE DE FrameModel (autre bâtiment, même schéma — ne recopie pas ses valeurs) :\n{EXAMPLE.read_text(encoding='utf-8')}\n\n"
@@ -197,7 +234,7 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
             raw.setdefault("building_type", building_type)
             raw.setdefault("project", {}).setdefault("country", country)
             with use_lang(lang):
-                m, anomalies = pipeline.validate(raw, pages=chosen, strict=True)
+                m, anomalies = pipeline.validate(raw, pages=chosen, strict=True, ref=ref)
                 if attempts > max_fix:        # dernière lecture : cotes introuvables / trame idéalisée → avertissement mémorisé
                     soft = [dict(x, level=model.WARN) for x in anomalies if x.get("code") in ("GEO-02", "GEO-03")]
                     anomalies = [x for x in anomalies if x.get("code") not in ("GEO-02", "GEO-03")] + soft

@@ -12,6 +12,8 @@ une anomalie bloquante renvoie le relevé à l'IA avec le motif, puis, si elle p
 - GEO-05 : fractions qui se chevauchent sur un même niveau.
 - GEO-06 : somme des fractions d'un niveau > surface de plancher.
 - GEO-07 : typologies différentes avec des rectangles identiques (relevé schématique).
+- GEO-08 : cotes extérieures « déduites / ajustées / estimées » (des surfaces, d'une hypothèse) au lieu d'être lues.
+- GEO-09 : cotes extérieures ≠ celles d'une lecture indépendante des cotes des planches (relevé fabriqué).
 """
 from __future__ import annotations
 
@@ -45,7 +47,11 @@ def _has(cs: list[float], v: float, tol: float = 0.02) -> bool:
     return any(abs(c - v) <= tol for c in cs)
 
 
-def check(raw: dict, pages: list[dict] | None = None) -> list[dict]:
+_INVENTED = re.compile(r"dedu|déduit|estim|ajust|recalcul|adot|adopt|suppos|supost|assum|hypoth|hipót|quadro de áreas|tableau des surfaces|coerência|cohérence", re.I)
+
+
+def check(raw: dict, pages: list[dict] | None = None, ref: dict | None = None) -> list[dict]:
+    """ref : lecture indépendante des planches {"overall": {"length", "width"}, "cotes": [m…]} (cf. reader._read_cotes)."""
     out = []
 
     def a(code, level, fr, pt, fix_fr="", fix_pt=""):
@@ -57,6 +63,8 @@ def check(raw: dict, pages: list[dict] | None = None) -> list[dict]:
         return out
     vector = [p for p in (pages or []) if len((p.get("text") or "").strip()) > 200]
     cs = cotes(vector) if vector else []
+    ref = ref or {}
+    cs = sorted(set(cs) | {round(float(v), 2) for v in ref.get("cotes") or [] if isinstance(v, (int, float)) and 0.3 <= v <= 300})
     L, W = m.gx[-1] - m.gx[0], m.gy[-1] - m.gy[0]
     ov = (raw.get("geometry") or {}).get("overall") or {}
     oL, oW = ov.get("length"), ov.get("width")
@@ -67,6 +75,19 @@ def check(raw: dict, pages: list[dict] | None = None) -> list[dict]:
           "Relevar na planta a cota total em x e em y (geometry.overall.length / width, source = desenho e cota lida).")
     else:
         oL, oW = float(oL), float(oW)
+        src = " ".join(str(x) for x in (ov.get("source"), *((raw.get("_decisions") or [])[:8])) if x)
+        if _INVENTED.search(str(ov.get("source") or "")) or re.search(r"(dimens|malha|trama|grille|largura|comprimento).{0,60}(recalcul|deduz|ajust|adot)", src, re.I):
+            a("GEO-08", model.BLOCK, "Cotes extérieures / trame déduites ou ajustées au lieu d'être lues sur les planches.",
+              "Cotas exteriores / trama deduzidas ou ajustadas em vez de lidas nos desenhos.",
+              "Recopier les cotes écrites sur les plans ; ne JAMAIS modifier la géométrie pour coller aux surfaces : signaler l'écart.",
+              "Copiar as cotas escritas nas plantas; NUNCA alterar a geometria para acertar as áreas: assinalar a diferença.")
+        rov = ref.get("overall") or {}
+        for nm, o, r_ in (("x", oL, rov.get("length")), ("y", oW, rov.get("width"))):
+            if isinstance(r_, (int, float)) and r_ > 1 and abs(o - r_) > max(0.30, 0.02 * r_):
+                a("GEO-09", model.BLOCK, f"Cote extérieure {nm} relevée {o:.2f} m, mais les planches portent {r_:.2f} m.",
+                  f"Cota exterior {nm} relevada {o:.2f} m, mas os desenhos indicam {r_:.2f} m.",
+                  f"Reprendre la trame sur {r_:.2f} m (lecture des chaînes de cotes extérieures).",
+                  f"Refazer a trama sobre {r_:.2f} m (leitura das cadeias de cotas exteriores).")
         off = float(ov.get("facade_to_axis") or 0.0)          # nu de façade → axe des files de rive (demi-poteau, isolant…)
         for nm, g, o in (("x", L, oL), ("y", W, oW)):
             if abs(g + 2 * off - o) > max(0.40, 0.015 * o):
@@ -103,7 +124,7 @@ def check(raw: dict, pages: list[dict] | None = None) -> list[dict]:
         if d:
             ar = (float(u["x1"]) - float(u["x0"])) * (float(u["y1"]) - float(u["y0"]))
             if abs(ar - float(d)) > max(5.0, 0.20 * float(d)):
-                a("GEO-04", model.BLOCK,
+                a("GEO-04", model.WARN,       # avertissement : l'IA ne doit pas déformer le bâtiment pour coller aux surfaces
                   f"{u.get('name') or u['id']} : rectangle relevé {ar:.1f} m² ≠ {float(d):.1f} m² du tableau des surfaces.",
                   f"{u.get('name') or u['id']}: retângulo relevado {ar:.1f} m² ≠ {float(d):.1f} m² do quadro de áreas.",
                   "Relever les limites réelles de la fraction (murs séparatifs, palier).",

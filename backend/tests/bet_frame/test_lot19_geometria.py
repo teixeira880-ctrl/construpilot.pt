@@ -45,7 +45,7 @@ def test_area_declarada_e_sobreposicao():
     raw = copy.deepcopy(CASE)
     u = raw["units"][0]
     u["area_declared"] = round((u["x1"] - u["x0"]) * (u["y1"] - u["y0"]) * 0.5, 1)
-    assert "GEO-04" in codes(geometry.check(raw), model.BLOCK)
+    assert "GEO-04" in codes(geometry.check(raw), model.WARN)
     raw = copy.deepcopy(CASE)
     a, b = raw["units"][0], raw["units"][1]
     b.update({k: a[k] for k in ("x0", "y0", "x1", "y1")})
