@@ -196,8 +196,8 @@ async def _text_llm(system: str, text: str) -> str:
     """Appel IA court en texte brut (pas de JSON) pour la classification d'intention — cascade Claude → OpenAI → Gemini."""
     import asyncio
     import os
-    order = [p.strip() for p in os.environ.get("BET_LLM_ORDER", "claude,openai,gemini").split(",") if p.strip() in PROVIDERS]
-    for name in order or ["claude"]:
+    order = _provider_order()
+    for name in order:
         try:
             out = await asyncio.wait_for(PROVIDERS[name](system, text, images=None, max_tokens=8), 30)
             if out and out.strip():
@@ -400,7 +400,23 @@ async def _gemini(system, text, images=None, model=None, max_tokens=4096, json_s
     return resp.text or ""
 
 
-PROVIDERS = {"claude": _claude, "openai": _openai, "gemini": _gemini}
+async def _emergent(system, text, images=None, model=None, max_tokens=4096, json_schema=None):
+    """Filet universel : la chaîne IA de la plateforme (engines.ai._complete, clé universelle Emergent incluse)."""
+    from engines import ai
+    return await ai._complete(system, text, images=images, feature="bet_reader")
+
+
+PROVIDERS = {"claude": _claude, "openai": _openai, "gemini": _gemini, "emergent": _emergent}
+FULL_ORDER = ("claude", "openai", "gemini")
+
+
+def _provider_order() -> list[str]:
+    """Ordre BET_LLM_ORDER en tête, puis TOUS les autres fournisseurs, puis le filet Emergent en dernier :
+    une variable d'environnement réduite (« claude » seul) ne doit jamais supprimer les replis."""
+    import os
+    pref = [p.strip() for p in os.environ.get("BET_LLM_ORDER", ",".join(FULL_ORDER)).split(",") if p.strip() in PROVIDERS and p.strip() != "emergent"]
+    order = list(dict.fromkeys(pref + list(FULL_ORDER)))
+    return order + ["emergent"]
 LAST_PROVIDER = [None]          # fournisseur qui a réellement répondu au dernier appel
 
 
@@ -412,7 +428,7 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
     import logging
     import os
     log = logging.getLogger(__name__)
-    order = [p.strip() for p in os.environ.get("BET_LLM_ORDER", "claude,openai,gemini").split(",") if p.strip() in PROVIDERS]
+    order = _provider_order()
     timeout = float(os.environ.get("BET_LLM_TIMEOUT", "600"))
     errors = []
     first_text = None

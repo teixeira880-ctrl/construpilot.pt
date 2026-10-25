@@ -50,6 +50,12 @@ def fallback_available() -> bool:
     return bool(os.environ.get("EMERGENT_LLM_KEY") and os.environ.get("ASSISTANT_CLAUDE_MODEL_FAST"))
 
 
+def gemini_fallback_available() -> bool:
+    """Dernier recours du chat : Gemini (clé Google directe ou clé universelle) quand Claude a échoué lui aussi."""
+    return bool((os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GEMINI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
+                and os.environ.get("ASSISTANT_GEMINI_MODEL_FAST"))
+
+
 async def openai_degraded() -> dict | None:
     """Active degradation record (or None). Missing OpenAI key counts as degraded."""
     if not os.environ.get("OPENAI_API_KEY"):
