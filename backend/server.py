@@ -422,11 +422,35 @@ async def seed():
     import asyncio as _asyncio
 
     async def _run():
+        from engines.assistant_jobs import STARTUP
         try:
             await _seed_impl()
+            STARTUP["seed"] = "ok"
             logger.info("Inicialização em segundo plano concluída")
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            STARTUP["seed"] = f"falhou: {type(e).__name__}: {str(e)[:300]}"
             logger.exception("Inicialização em segundo plano falhou")
+
+    async def _workers():
+        """Workers da fila primeiro e independentes do resto do arranque: uma falha de seed / índice em produção
+        não pode deixar o Assistente «Em espera» para sempre."""
+        import importlib
+        from engines.assistant_jobs import STARTUP
+        try:
+            from engines.llm_keys import load_state
+            await load_state()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"openai key state load skipped: {e}")
+        for attr, mod, fn in (("assistant_workers", "engines.assistant_jobs", "start_workers"),
+                              ("agent_workers", "routes.agents", "start_agent_workers"),
+                              ("study_workers", "engines.study_dossier_jobs", "start_workers")):
+            try:
+                setattr(app.state, attr, await getattr(importlib.import_module(mod), fn)())
+                STARTUP[attr] = "ok"
+            except Exception as e:  # noqa: BLE001
+                STARTUP[attr] = f"falhou: {type(e).__name__}: {str(e)[:300]}"
+                logger.exception("Arranque de %s falhou", attr)
+    app.state.workers_task = _asyncio.create_task(_workers())
     app.state.seed_task = _asyncio.create_task(_run())
 
 
@@ -959,12 +983,6 @@ async def _seed_impl():
     app.state.scheduler = scheduler
     logger.info("Scheduler started (daily price alerts @ 08:00 UTC)")
 
-    from engines.assistant_jobs import start_workers
-    app.state.assistant_workers = await start_workers()
-    from routes.agents import start_agent_workers
-    app.state.agent_workers = await start_agent_workers()
-    from engines.study_dossier_jobs import start_workers as start_study_workers
-    app.state.study_workers = await start_study_workers()
     logger.info("ConstruPilot backend prêt")
 
 
