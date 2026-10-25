@@ -36,7 +36,17 @@ def mat(m: Frame) -> dict:
     fck = m.fck
     return {"fck": fck, "fcd": fck / GAM_C, "fctm": 0.30 * fck ** (2 / 3), "fyk": 500.0, "fyd": 500.0 / GAM_S,
             "concrete": f"C{int(fck)}/{ {20: 25, 25: 30, 30: 37, 35: 45, 40: 50}.get(int(fck), int(fck * 1.25))}",
-            "steel": m.steel, "cover_slab": 0.025, "cover_beam": 0.030, "cover_col": 0.030, "cover_fond": 0.050}
+            "steel": m.steel, "cover_slab": 0.025, "cover_beam": 0.030, "cover_col": 0.030, "cover_fond": 0.050,
+            "dcm": dcm(m)}
+
+
+def dcm(m: Frame) -> bool:
+    """Disposições construtivas sísmicas (NP EN 1998-1, classe de ductilidade média DCM) : projetos portugueses, salvo
+    seismic.dcm = false ; projets français si seismic.dcm = true (zones de sismicité ≥ 3)."""
+    seis = m.raw.get("seismic") or {}
+    if "dcm" in seis:
+        return bool(seis["dcm"])
+    return m.country == "PT"
 
 
 # ================================================================ charges
@@ -397,8 +407,12 @@ def design_beam(bl: dict, mt: dict, brittle: bool) -> dict:
             ok = False
             why.append("flexion")
         amin = as_min(b, d, mt)
+        if mt.get("dcm"):      # EC8 5.4.3.1.2(5) : ρmin = 0,5 fctm/fyk na face tracionada ; compressão ≥ 0,5 da tração nas zonas críticas
+            amin = max(amin, 0.5 * mt["fctm"] / mt["fyk"] * b * d)
         As_b = max(bot["As"] or 0, amin)
         As_l, As_r = max(tl["As"] or 0, amin), max(tr_["As"] or 0, amin)
+        if mt.get("dcm"):
+            As_b = max(As_b, 0.5 * max(As_l, As_r))
         bars_b = pick_bars(As_b, b, mt["cover_beam"])
         bars_l, bars_r = pick_bars(As_l, b, mt["cover_beam"]), pick_bars(As_r, b, mt["cover_beam"])
         if not (bars_b["ok"] and bars_l["ok"] and bars_r["ok"]):
@@ -442,7 +456,14 @@ def design_beam(bl: dict, mt: dict, brittle: bool) -> dict:
         if not dok:
             ok = False
             why.append("flèche")
+        if mt.get("dcm"):      # EC8 5.4.3.1.2(6) : s ≤ min(hw/4 ; 24 dbw ; 225 ; 8 dbL) em lcr = hw ; 1.º estribo a ≤ 50 mm da face
+            dbl = min([bars_b.get("phi") or 12, bars_l.get("phi") or 12, bars_r.get("phi") or 12])
+            scr = min(h / 4, 24 * 0.008, 0.225, 8 * dbl / 1000, s)
+            scr = max(math.floor(scr * 100 + 1e-6) / 100, 0.05)
+        else:
+            scr = s
         spans.append({"k": k, "L": bl["L"][k], "M_span": Ms, "M_left": Mleft, "M_right": Mright, "V": VEd, "cot": cot,
+                      "stirrups_crit": f"Ø8//{sp(scr)}", "s_crit": scr, "lcr": h,
                       "bot": bars_b, "top_l": bars_l, "top_r": bars_r, "stirrups": f"Ø8//{sp(s)}",
                       "s": s, "ld": bl["L"][k] / d, "ld_lim": lim, "defl_ok": dok, "pU": wU})
     return {"name": bl["name"], "axis": bl["axis"], "line": bl["line"], "b": b, "h": h, "pos": bl["pos"], "sup_idx": bl["sup_idx"],
@@ -485,6 +506,7 @@ def mrd(b, h, As_face, N, mt, dp=0.05) -> float | None:
 
 RHO_MAX = 0.03          # taux pratique (EN 1992 : 4 % hors recouvrements) — au-delà on agrandit la section
 NU_MAX = 0.85           # effort normal réduit NEd / (Ac·fcd) maximal retenu
+NU_DCM = 0.65           # NP EN 1998-1 5.4.3.2.1(3) : effort normal réduit de calcul des pilares sísmicos primários (DCM)
 ARRANGE = ((4, 2), (8, 3), (12, 4), (16, 5))       # (barres, barres par face)
 
 
@@ -493,11 +515,12 @@ def design_column(b, h, NEd, Mx, My, mt) -> dict:
     Ac = b * h
     fcd, fyd = mt["fcd"] * 1000, mt["fyd"] * 1000
     nu = NEd / (Ac * fcd)
-    As_min = max(0.10 * NEd / fyd, 0.002 * Ac)
-    As_max = RHO_MAX * Ac
-    if nu > NU_MAX:
+    seis = mt.get("dcm")
+    As_min = max(0.10 * NEd / fyd, 0.002 * Ac, 0.01 * Ac if seis else 0.0)       # EC8 5.4.3.2.2(1) : 1 % ≤ ρl ≤ 4 %
+    As_max = (0.04 if seis else RHO_MAX) * Ac
+    if nu > (NU_DCM if seis else NU_MAX):                                         # EC8 5.4.3.2.1(3) : νd ≤ 0,65
         return {"ok": False, "nu": nu}
-    per_face_min = max(2, math.ceil((max(b, h) - 2 * 0.05) / 0.30) + 1)
+    per_face_min = max(3 if seis else 2, math.ceil((max(b, h) - 2 * 0.05) / 0.30) + 1)   # EC8 : une barre intermédiaire par face
     best = None
     NRd0 = None
     for nbar, pf in ARRANGE:
@@ -529,8 +552,16 @@ def design_column(b, h, NEd, Mx, My, mt) -> dict:
     phit = 8 if phi >= 20 else 6
     st = min(20 * phi / 1000, min(b, h), 0.40)
     st = math.floor(st / 0.025 + 1e-6) * 0.025
+    if seis:      # EC8 5.4.3.2.2(11) : s ≤ min(b0/2 ; 175 mm ; 8 dbL) nas zonas críticas
+        b0 = min(b, h) - 2 * mt["cover_col"] - phit / 1000
+        sc = min(b0 / 2, 0.175, 8 * phi / 1000)
+        sc = max(math.floor(sc * 100 + 1e-6) / 100, 0.05)
+        if sc < 0.075 and phit == 6:
+            phit = 8
+    else:
+        sc = math.floor(0.6 * st / 0.025 + 1e-6) * 0.025
     return {"ok": True, "nu": nu, "n": nbar, "phi": phi, "As": As, "util": util, "MRdx": mrx, "MRdy": mry, "NRd": NRd0,
-            "ties": f"Ø{phit}//{sp(st)}", "ties_crit": f"Ø{phit}//{sp(math.floor(0.6 * st / 0.025 + 1e-6) * 0.025)}",
+            "ties": f"Ø{phit}//{sp(st)}", "ties_crit": f"Ø{phit}//{sp(sc)}", "s_crit": sc,
             "txt": f"{nbar}Ø{phi}", "rho": As / Ac}
 
 
@@ -539,7 +570,10 @@ def compute(m: Frame) -> dict:
     mt = mat(m)
     decisions, issues = [], []
     brittle = any(s.use in ("habitation", "bureaux") for s in m.slabs)
-    pans = panels(m)
+    pans_of = {}
+    for s0 in m.slabs:                               # panneaux de chaque dalle (étages en retrait : dalle propre à chaque niveau)
+        with m.at_slab(s0.id):
+            pans_of[s0.id] = panels(m)
     slab_h = {s.id: s.h for s in m.slabs}
     beam_sec: dict = {}
     col_sec = {(i, j): m.col_section(i, j) for (i, j) in m.columns}
@@ -551,6 +585,9 @@ def compute(m: Frame) -> dict:
         for s in m.slabs:
             s.h = slab_h[s.id]
             ld = slab_loads(m, s.use, s.h)
+            pans = pans_of[s.id]
+            if not pans:
+                continue
             pd = [dict(p, **design_panel(p, ld, s.h, mt, brittle)) for p in pans]
             bad = [p for p in pd if not p["ok"] and not p["core"]]
             if bad and s.h < 0.32:
@@ -565,7 +602,8 @@ def compute(m: Frame) -> dict:
             for (sid, name), sec in beam_sec.items():
                 if sid == s.id:
                     key_sec[name] = sec
-            bls = beam_lines(m, s, ld, key_sec, pans)
+            with m.at_slab(s.id):
+                bls = beam_lines(m, s, ld, key_sec, pans)
             beams = [design_beam(bl, mt, brittle) for bl in bls]
             for bm in beams:
                 if not bm["ok"]:
@@ -586,7 +624,9 @@ def compute(m: Frame) -> dict:
             continue
         # ---------------- descente de charges
         node = {c: {"G": [0.0] * len(m.slabs), "Q": [0.0] * len(m.slabs), "Mx": [0.0] * len(m.slabs), "My": [0.0] * len(m.slabs)} for c in m.columns}
-        for si, fl in enumerate(floors):
+        sidx = {s_.id: k for k, s_ in enumerate(m.slabs)}
+        for fl in floors:
+            si = sidx[fl["slab"].id]
             for bm in fl["beams"]:
                 for k, idx in enumerate(bm["sup_idx"]):
                     c = (idx, bm["line"]) if bm["axis"] == "x" else (bm["line"], idx)
@@ -614,11 +654,13 @@ def compute(m: Frame) -> dict:
             b, h = col_sec[c]
             segs = []
             ok_all = True
+            loaded = [si for si in range(len(m.slabs)) if node[c]["G"][si] > 0]
+            z_top = max((m.slabs[si].z for si in loaded), default=None)          # le poteau s'arrête sous la plus haute dalle qu'il porte
             for k, lv in enumerate(m.levels):
-                above = [si for si, s in enumerate(m.slabs) if s.z > lv.z + 1e-6]
-                if not above:
+                above = [si for si, s in enumerate(m.slabs) if s.z > lv.z + 1e-6 and (z_top is None or s.z <= z_top + 1e-6)]
+                if not above or z_top is None or lv.z >= z_top - 1e-6:
                     continue
-                NG = sum(node[c]["G"][si] for si in above) + RHO_C * b * h * sum(m.levels[q].height for q in range(k, nl))
+                NG = sum(node[c]["G"][si] for si in above) + RHO_C * b * h * sum(m.levels[q].height for q in range(k, nl) if m.levels[q].z < z_top - 1e-6)
                 NQ = sum(node[c]["Q"][si] for si in above)
                 NEd = GAM_G * NG + GAM_Q * NQ
                 si_top = min(above, key=lambda s_: m.slabs[s_].z)
@@ -662,7 +704,10 @@ def compute(m: Frame) -> dict:
                     col_sec[c] = (nb_, nh_)
                     ncols_fail.append((m.node_name(*c), b, h, nb_, nh_))
                     changed = True
-            cols.append({"node": c, "name": m.node_name(*c), "x": m.gx[c[0]], "y": m.gy[c[1]], "b": b, "h": h, "segs": segs})
+            if not segs:                                  # aucune dalle portée : pas de poteau à cette intersection
+                continue
+            cols.append({"node": c, "name": m.node_name(*c), "x": m.gx[c[0]], "y": m.gy[c[1]], "b": b, "h": h, "segs": segs,
+                         "z_top": z_top})
         if changed:
             continue
         break
@@ -687,8 +732,10 @@ def compute(m: Frame) -> dict:
         if (b, h) != (b1, h1):
             grp.setdefault((b1, h1, b, h), []).append(m.node_name(*c))
     for (b1, h1, b, h), names in sorted(grp.items(), key=lambda kv: -kv[0][2]):
-        decisions.append(_("Poteaux {0} : {1}×{2} → {3}×{4} (flexion composée, ν ≤ 0,85, ρ ≤ 3 %)",
-                           "Pilares {0}: {1}×{2} → {3}×{4} (flexão composta, ν ≤ 0,85, ρ ≤ 3 %)").format(
+        decisions.append((_("Poteaux {0} : {1}×{2} → {3}×{4} (flexion composée, ν ≤ 0,85, ρ ≤ 3 %)",
+                            "Pilares {0}: {1}×{2} → {3}×{4} (flexão composta, ν ≤ 0,85, ρ ≤ 3 %)") if not mt.get("dcm") else
+                          _("Poteaux {0} : {1}×{2} → {3}×{4} (flexion composée, EC8 DCM : νd ≤ 0,65, 1 % ≤ ρ ≤ 4 %)",
+                            "Pilares {0}: {1}×{2} → {3}×{4} (flexão composta, NP EN 1998-1 DCM: νd ≤ 0,65, 1 % ≤ ρ ≤ 4 %)")).format(
             ", ".join(sorted(names)), num(b1), num(h1), num(b), num(h)))
     balc = []
     for bc in m.balconies:
@@ -814,12 +861,14 @@ def seismic_estimate(m: Frame, floors, cols) -> dict:
     for fl in floors:
         s = fl["slab"]
         ld = fl["loads"]
-        g = ld["g"] * m.footprint
+        with m.at_slab(s.id):
+            fp = m.footprint
+        g = ld["g"] * fp
         for bm in fl["beams"]:
             g += RHO_C * bm["b"] * max(bm["h"] - s.h, 0) * sum(x["L"] for x in bm["spans"])
         g += sum(RHO_C * c["b"] * c["h"] * 3.0 for c in cols)
         psi = {"habitation": 0.3, "bureaux": 0.3}.get(ld["use"], 0.6 if ld["use"] in ("commerce", "stationnement", "public") else 0.0)
-        mass.append({"slab": s.name, "z": s.z - m.levels[0].z, "W_kN": g + psi * 0.8 * ld["q"] * m.footprint})
+        mass.append({"slab": s.name, "z": s.z - m.levels[0].z, "W_kN": g + psi * 0.8 * ld["q"] * fp})
     H = m.height_total
     T1 = 0.075 * H ** 0.75 if not m.cores else 0.05 * H ** 0.75
     seis = m.raw.get("seismic") or {}

@@ -86,7 +86,7 @@ def _draw_beam(sh, m: Frame, r: dict, bm: dict, names: list[str], y0: float, row
                 S(f"{bot['txt']}" + (_(" (2 lits)", " (2 camadas)") if bot["layers"] > 1 else "") + f" L={_m(Lbar)}"), 1.45, "c", bold=True)
         # estribos : zonas críticas junto aos apoios (lcr = h) e zona corrente
         s = sp.get("s", 0.20)
-        s_cr = max(0.075, min(s, math.floor(min(bm["h"] / 4, 0.15) / 0.025) * 0.025))
+        s_cr = sp.get("s_crit") or max(0.075, min(s, math.floor(min(bm["h"] / 4, 0.15) / 0.025) * 0.025))
         lcr = max(bm["h"], 0.50)
         span = a1 - a0
         zones = [(a0 + 0.05, min(a0 + lcr, a0 + span / 2), s_cr), (a0 + lcr, a1 - lcr, s), (max(a1 - lcr, a0 + span / 2), a1 - 0.05, s_cr)]

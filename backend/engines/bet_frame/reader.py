@@ -125,12 +125,16 @@ Règles :
 6. balconies : balcons en console (side N/S/E/W, depth, a0/a1 = début/fin le long de la façade depuis l'origine, levels).
 7. units : chaque fraction / logement / lot par niveau (rectangle englobant x0,y0,x1,y1 dans le repère ; name ; typology T0…T5 ou
    « commerce », « bureau » ; levels = liste des niveaux où il se répète à l'identique ; fixtures = appareils sanitaires comptés sur le plan :
-   wc, lavatorio, duche, banheira, bide, pia, mlr, mll).
+   wc, lavatorio, duche, banheira, bide, pia, mlr, mll ; rooms = compartiments relevés sur le plan d'architecte, chacun
+   {type, name, x0, y0, x1, y1} dans le repère du bâtiment, type ∈ sala, quarto, cozinha, instalacao_sanitaria, hall, corredor,
+   lavandaria, arrumos — relève-les dès que la planta les montre, ils servent aux plans d'électricité et de plomberie de chaque logement).
 8. risers : colonnes montantes et chutes (kind AF eau froide, ECS eau chaude collective, EU chute eaux usées, EP eaux pluviales,
    ELEC colonne électrique, VENT ventilation, GAZ), position x,y dans le repère (gaines techniques, courettes). S'il n'y en a pas sur les
    plans : une chute EU près des pièces d'eau de chaque fraction et une colonne AF + une colonne ELEC dans le noyau, en _decisions.
 9. geotech : sigma_adm_mpa, depth (assise), source — depuis l'étude de sol jointe ; sinon laisse null (le code prendra une valeur prudente).
 10. project : name, address, country (FR ou PT), architect, pc_ref (référence des plans), g2_ref.
+10 bis. LANGUE : tous les noms (niveaux, fractions, noyaux, pièces) s'écrivent dans la langue du PAYS du projet (PT → português :
+   « Piso 0 — habitação e cobertura das caves », « Fração A — noroeste », « Caixa de escada » ; FR → français), jamais un mélange.
 11. "_questions" : uniquement ce qui est indispensable et illisible. "_decisions" : chaque hypothèse que tu as prise.
 Réponds par le JSON complet seul, sans texte autour."""
 

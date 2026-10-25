@@ -159,7 +159,7 @@ def test_hook_immeuble_de_bout_en_bout():
     assert done
     final = steps[-1]
     assert final[0] == "Terminé" and final[1]["status"] == "done" and final[1]["building_kind"] == "frame"
-    assert {k for k, _ in stored} == {"pdf", "plans_pdf", "xlsx", "zip"} and all(s > 1000 for _, s in stored)
+    assert {k for k, _ in stored} == {"pdf", "re2020_pdf", "plans_pdf", "xlsx", "zip"} and all(s > 1000 for _, s in stored)
 
 
 def test_hook_maison_et_genie_civil():
@@ -264,3 +264,61 @@ def test_emprise_em_L_sem_caixa(tmp_path):
     assert vd and max(b["pos"][-1] for b in vd) <= 24.91
     res = pipeline.run(raw, tmp_path, stem="T")
     assert res["status"].startswith("PRONTO") and res["thermal"]["units"] == 20
+
+
+# ---------------------------------------------------------------- lot 15 : note thermique, plans par logement type, lots MEP
+def _demo():
+    return copy.deepcopy(CASE)
+
+def test_note_thermique_pt_et_fr(tmp_path):
+    from engines.bet_frame import thermal, thermal_note
+    from pypdf import PdfReader
+    raw = _demo()
+    with use_lang("pt"):
+        m = model.from_dict(raw)
+        t = thermal.compute(m)
+        p = thermal_note.write(m, t, tmp_path / "pt.pdf", "pt")
+    assert len(PdfReader(str(p)).pages) >= 6
+    assert all(s["U"] < 0.6 for k, s in t["solutions"].items() if s["layers"])
+    assert t["solutions"]["parede"]["U"] <= t["solutions"]["parede"]["Umax"]
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    raw["project"]["address"] = "12 rue de Paris 93200 Saint-Denis"
+    m = model.from_dict(raw)
+    t = thermal.compute(m)
+    assert t["re2020"].get("Bbio") and t["re2020"]["zone"] == "H1a" and t["re2020"].get("blocs")
+    p = thermal_note.write(m, t, tmp_path / "fr.pdf", "fr")
+    assert len(PdfReader(str(p)).pages) >= 4
+
+
+def test_plans_par_logement_type():
+    from engines.bet_frame import dwelling
+    raw = _demo()
+    with use_lang("pt"):
+        m = model.from_dict(raw)
+        shs = dwelling.sheets_for(m)
+    kinds = {s.kind for s in shs}
+    assert {"elec", "elec_uni", "plumb_unit", "hvac_unit"} <= kinds
+    assert len(dwelling.unit_types(m)) == len({s.code[4] for s in shs if s.kind == "elec"})
+    assert all("fração tipo" in s.title for s in shs)
+    rooms, ind = dwelling.zoning(m, m.units[0])
+    types = [r["type"] for r in rooms]
+    assert ind and [r["_k"] for r in rooms].count("chambre") == 3 and "cuisine" in types and "salle_eau" in types and "sejour" in types
+    for r in rooms:                       # pièces dans la fraction, sans recouvrement
+        assert -0.01 <= r["x0"] < r["x1"] <= m.units[0].x1 - m.units[0].x0 + 0.01
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    m = model.from_dict(raw)
+    shs = dwelling.sheets_for(m)
+    assert any(s.code.startswith("CHF-") for s in shs)
+
+
+def test_lots_mep_sans_planches_de_structure(tmp_path):
+    raw = _demo()
+    res = pipeline.render_lots(raw, ["electricite", "plomberie"], tmp_path / "lot.pdf")
+    assert res["ok"]
+    assert not any(s.startswith("EST-") for s in res["sheets"])
+    assert any(s.startswith("ELE-AU") for s in res["sheets"]) and any(s.startswith("PLB-A") for s in res["sheets"])
+    res = pipeline.render_lots(raw, ["chauffage"], tmp_path / "ch.pdf")
+    from pypdf import PdfReader
+    assert res["ok"] and len(PdfReader(str(tmp_path / "ch.pdf")).pages) > len(res["sheets"])      # note thermique en tête

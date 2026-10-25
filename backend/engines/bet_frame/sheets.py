@@ -92,12 +92,32 @@ def grid_dims(sh: Sheet, m: Frame):
     sh.dim((x0, y0), (x0, y1), ox + u(sh, 4.5), size=2.0)
 
 
+def tw(s: str, size: float) -> float:
+    """Largeur approchée d'un texte (mm papier)."""
+    return len(s) * 0.53 * size
+
+
+def _dominant(vals):
+    from collections import Counter
+    return Counter(vals).most_common(1)[0][0] if vals else None
+
+
 def columns(sh: Sheet, m: Frame, r: dict, tags=True):
-    for c in r["columns"]:
+    """Poteaux ; étiquette = repère seul, section ajoutée seulement si elle diffère de la section courante (note de planche)."""
+    z = _z_sheet(sh, m)
+    floor = getattr(sh, "kind", "") == "floor"
+    cols = [c for c in r["columns"] if z is None or c.get("z_top") is None or
+            (c["z_top"] >= z - 1e-6 if floor else c["z_top"] > z + 1e-6)]       # poteaux présents à ce niveau
+    dom = _dominant([(int(round(c["b"] * 100)), int(round(c["h"] * 100))) for c in cols])
+    for c in cols:
         b, h = c["b"], c["h"]
         sh.rect("BA", c["x"] - b / 2, c["y"] - h / 2, c["x"] + b / 2, c["y"] + h / 2, 0.4, BA)
         if tags:
-            sh.text("TEXTE", (c["x"] + b / 2 + u(sh, 0.8), c["y"] + h / 2 + u(sh, 0.6)), S(f"{c['name']} {int(round(b * 100))}×{int(round(h * 100))}"), 1.5)
+            sec = (int(round(b * 100)), int(round(h * 100)))
+            lab = c["name"] + ("" if sec == dom else f" {sec[0]}×{sec[1]}")
+            sh.text("TEXTE", (c["x"] + b / 2 + u(sh, 0.6), c["y"] + h / 2 + u(sh, 0.5)), S(lab), 1.45, bold=sec != dom)
+    if tags and dom:
+        sh._col_dom = dom
 
 
 def cores(sh: Sheet, m: Frame, cut=True):
@@ -114,17 +134,55 @@ def cores(sh: Sheet, m: Frame, cut=True):
                 S(_("voiles BA e=", "paredes BA e=") + num(t)), 1.5, "c")
 
 
+def _ctx(sh: Sheet, m: Frame):
+    """Contexte d'emprise de la planche : dalle (plans de coffrage) ou étage (plans de niveaux, réseaux, AVAC)."""
+    lid = getattr(sh, "level", None)
+    if not lid or not (m.has_setbacks or m.voids):
+        return m._Ctx(m, m.voids)
+    if getattr(sh, "kind", "") == "floor":
+        return m.at_slab(lid)
+    if lid in [l.id for l in m.levels]:
+        return m.at_storey(lid)
+    return m._Ctx(m, m.voids)
+
+
 def outline(sh: Sheet, m: Frame, lw=0.5):
-    if not m.voids:
-        sh.rect("BA", m.gx[0], m.gy[0], m.gx[-1], m.gy[-1], lw)
-        return
-    for a, b in m.boundary_edges():          # emprise réelle (L, U, cour)
-        sh.line("BA", a, b, lw)
+    with _ctx(sh, m):
+        if not m.voids:
+            sh.rect("BA", m.gx[0], m.gy[0], m.gx[-1], m.gy[-1], lw)
+            return
+        for a, b in m.boundary_edges():          # emprise réelle (L, U, cour, étage en retrait)
+            sh.line("BA", a, b, lw)
+    if m.has_setbacks and getattr(sh, "kind", "") != "floor":   # emprise du niveau inférieur en trait fin (terrasses / sous-sol)
+        for a, b in m.boundary_edges():
+            sh.line("FOND_PLAN", a, b, 0.18, "dashed")
+
+
+def _z_sheet(sh: Sheet, m: Frame):
+    lid = getattr(sh, "level", None)
+    if not lid:
+        return None
+    if lid == "COB":
+        return m.slabs[-1].z
+    lv = next((l for l in m.levels if l.id == lid), None)
+    return lv.z if lv else None
 
 
 def _balcony_rect(m: Frame, bc: dict):
+    """Rectangle du balcon, limité à la façade réellement construite (emprise de la dalle courante)."""
     d = bc["depth"]
     a0, a1 = max(bc["a0"], 0.0), min(bc["a1"], m.L if bc["side"] in ("S", "N") else m.W)
+    side = bc["side"]
+    if side in ("S", "N"):
+        j = 0 if side == "S" else len(m.gy) - 2
+        xs = [(m.gx[i] - m.gx[0], m.gx[i + 1] - m.gx[0]) for i in range(len(m.gx) - 1) if m.cell_in(i, j)]
+        if xs:
+            a0, a1 = max(a0, min(x for x, _x in xs)), min(a1, max(x for _x, x in xs))
+    else:
+        i = 0 if side == "W" else len(m.gx) - 2
+        ys = [(m.gy[j] - m.gy[0], m.gy[j + 1] - m.gy[0]) for j in range(len(m.gy) - 1) if m.cell_in(i, j)]
+        if ys:
+            a0, a1 = max(a0, min(y for y, _y in ys)), min(a1, max(y for _y, y in ys))
     if bc["side"] == "S":
         return m.gx[0] + a0, m.gy[0] - d, m.gx[0] + a1, m.gy[0]
     if bc["side"] == "N":
@@ -135,6 +193,17 @@ def _balcony_rect(m: Frame, bc: dict):
 
 
 # ================================================================ tableaux (coordonnées papier en mm, échelle 1:1000)
+def _fit(txt: str, w: float, size: float, cw=0.53) -> tuple[str, float]:
+    """Texte de cellule tenant dans la largeur w (mm) : police réduite jusqu'à 1,35 puis coupure « … »."""
+    if not txt or len(txt) * cw * size <= w:
+        return txt, size
+    sz = max(1.35, w / (len(txt) * cw))
+    if len(txt) * cw * sz <= w:
+        return txt, sz
+    n = max(3, int(w / (cw * sz)) - 1)
+    return txt[:n].rstrip() + "…", sz
+
+
 def table_sheets(code, title, subtitle, head: list[tuple[str, float]], rows: list[list], kind: str, notes=(), row_h=4.4, size=1.85,
                  groups: list[int] | None = None) -> list[Sheet]:
     hh = row_h * 1.6
@@ -161,7 +230,8 @@ def table_sheets(code, title, subtitle, head: list[tuple[str, float]], rows: lis
             for (txt, w), cell in zip(head, row):
                 anchor = "l" if x == 0 else "c"
                 px = x + 1.4 if anchor == "l" else x + w / 2
-                sh.text("TEXTE", (px, y - row_h + 1.25), S(cell), size, anchor, bold=(x == 0))
+                txt, sz = _fit(str(cell), w - 2.0, size)
+                sh.text("TEXTE", (px, y - row_h + 1.25), S(txt), sz, anchor, bold=(x == 0))
                 x += w
             y -= row_h
         x = 0
@@ -269,25 +339,37 @@ def framing(m: Frame, r: dict, g: list[dict], code: str, e: dict) -> Sheet:
             continue
         if s.id == "COB":
             continue
-        x0, y0, x1, y1 = _balcony_rect(m, bc)
+        with _ctx(sh, m):
+            x0, y0, x1, y1 = _balcony_rect(m, bc)
+        if x1 - x0 < 0.3 or y1 - y0 < 0.3:
+            continue
         sh.rect("BA", x0, y0, x1, y1, 0.35, BA_LIGHT)
         sh.text("TEXTE", ((x0 + x1) / 2, (y0 + y1) / 2 - u(sh, 0.7)),
                 S(_(f"Balcon en console {num(bc['depth'])} m e={num(bc['h'])} — chapeaux {mesh_txt(bc['top'])}",
                     f"Varanda em consola {num(bc['depth'])} m e={num(bc['h'])} — armadura superior {mesh_txt(bc['top'])}")), 1.5, "c")
     outline(sh, m, 0.6)
-    # poutres (traits interrompus : sous la dalle)
+    # poutres (traits interrompus : sous la dalle) — repère sur chaque travée assez longue, section si ≠ section courante
+    bdom = _dominant([(int(round(bm["b"] * 100)), int(round(bm["h"] * 100))) for bm in fl["beams"]])
     for bm in fl["beams"]:
         b = bm["b"]
+        sec = (int(round(b * 100)), int(round(bm["h"] * 100)))
         for k, sp in enumerate(bm["spans"]):
             a0, a1 = bm["pos"][k], bm["pos"][k + 1]
+            room = (a1 - a0 - 0.4) * 1000 / sh.scale            # mm papier disponibles entre poteaux
+            lab = f"{bm['name']}.{k + 1}" + ("" if sec == bdom else f" {sec[0]}×{sec[1]}")
+            if tw(lab, 1.45) > room:
+                lab = f"{bm['name']}.{k + 1}"
+            show = tw(lab, 1.45) <= room
             if bm["axis"] == "x":
                 y = m.gy[bm["line"]]
                 sh.rect("BA", a0, y - b / 2, a1, y + b / 2, 0.25, None, dash="dashed")
-                sh.text("TEXTE", ((a0 + a1) / 2, y + b / 2 + u(sh, 0.6)), S(f"{bm['name']}.{k + 1} {int(round(b * 100))}×{int(round(bm['h'] * 100))}"), 1.45, "c")
+                if show:
+                    sh.text("TEXTE", ((a0 + a1) / 2, y + b / 2 + u(sh, 0.6)), S(lab), 1.45, "c")
             else:
                 x = m.gx[bm["line"]]
                 sh.rect("BA", x - b / 2, a0, x + b / 2, a1, 0.25, None, dash="dashed")
-                sh.text("TEXTE", (x - b / 2 - u(sh, 0.6), (a0 + a1) / 2), S(f"{bm['name']}.{k + 1} {int(round(b * 100))}×{int(round(bm['h'] * 100))}"), 1.45, "c", rot=90)
+                if show:
+                    sh.text("TEXTE", (x - b / 2 - u(sh, 0.6), (a0 + a1) / 2), S(lab), 1.45, "c", rot=90)
     # panneaux
     for p in fl["panels"]:
         cx, cy = (p["x0"] + p["x1"]) / 2, (p["y0"] + p["y1"]) / 2
@@ -301,12 +383,21 @@ def framing(m: Frame, r: dict, g: list[dict], code: str, e: dict) -> Sheet:
         for ri in e["risers"]:
             if abs(ri["x"] - cx) < u(sh, 20) and -u(sh, 5) < ri["y"] - cy < u(sh, 5):
                 cy = ri["y"] + (u(sh, 7.5) if ri["y"] <= (p["y0"] + p["y1"]) / 2 else -u(sh, 7.5))
-        sh.text("PLANCHER", (cx, cy + u(sh, 2.4)), S(f"{p['id']}  e={num(s.h)}"), 1.7, "c", bold=True)
+        wmm = (p["x1"] - p["x0"] - 0.4) * 1000 / sh.scale
+        hmm = (p["y1"] - p["y0"] - 0.4) * 1000 / sh.scale
         sx = mesh_txt(p["mesh_short"] if p["dx"] <= p["dy"] else p["mesh_long"])
         sy = mesh_txt(p["mesh_long"] if p["dx"] <= p["dy"] else p["mesh_short"])
-        sh.text("PLANCHER", (cx, cy), S(_(f"inf. x {sx} · y {sy}", f"inf. x {sx} · y {sy}")), 1.4, "c")
+        l1, l2 = f"{p['id']}  e={num(s.h)}", _(f"inf. x {sx} · y {sy}", f"inf. x {sx} · y {sy}")
         tops = sorted({mesh_txt(t) for t in p["top"].values()})
-        sh.text("PLANCHER", (cx, cy - u(sh, 2.2)), S(_("chapeaux ", "sup. ") + " / ".join(tops)), 1.4, "c")
+        l3 = _("chapeaux ", "sup. ") + " / ".join(tops)
+        if wmm >= max(tw(l1, 1.7), tw(l2, 1.4), tw(l3, 1.4)) and hmm >= 8:
+            sh.text("PLANCHER", (cx, cy + u(sh, 2.4)), S(l1), 1.7, "c", bold=True)
+            sh.text("PLANCHER", (cx, cy), S(l2), 1.4, "c")
+            sh.text("PLANCHER", (cx, cy - u(sh, 2.2)), S(l3), 1.4, "c")
+        elif wmm >= tw(p["id"], 1.6) and hmm >= 3:              # panneau étroit : repère seul (armatures au quadro EST-T3)
+            sh.text("PLANCHER", (cx, cy - u(sh, 0.6)), S(p["id"]), 1.6, "c", bold=True)
+        elif hmm >= tw(p["id"], 1.6) and wmm >= 3:
+            sh.text("PLANCHER", (cx + u(sh, 0.6), cy), S(p["id"]), 1.6, "c", bold=True, rot=90)
     cores(sh, m)
     columns(sh, m, r)
     grid_dims(sh, m)
@@ -322,6 +413,7 @@ def framing(m: Frame, r: dict, g: list[dict], code: str, e: dict) -> Sheet:
         sh.text("RESA", (ri["x"] + w / 2 + u(sh, 0.5), ri["y"] - u(sh, 0.6)), S(ri["id"] + (" " + dn_txt(k, d) if d else "")), 1.3)
     mt = r["mat"]
     ld = fl["loads"]
+    bdom_c = getattr(sh, "_col_dom", None)
     _note(sh,
           _(f"Béton {mt['concrete']} XC1, aciers {mt['steel']} ; enrobage dalle 2,5 cm, poutres et poteaux 3 cm.",
             f"Betão {mt['concrete']} XC1, aço {mt['steel']}; recobrimento lajes 2,5 cm, vigas e pilares 3 cm."),
@@ -331,7 +423,9 @@ def framing(m: Frame, r: dict, g: list[dict], code: str, e: dict) -> Sheet:
             "Vigas a tracejado (sob a laje): referência, largura × altura total (cm). Armaduras: quadro EST-T2."),
           _("Panneaux : aciers inférieurs dans les deux sens ; chapeaux sur appuis sur 0,25 × portée. Détail : tableau EST-T3.",
             "Painéis: armadura inferior nas duas direções; armadura superior nos apoios em 0,25 × vão. Detalhe: quadro EST-T3."),
-          _("Poteaux : repère et section (cm). Ferraillage : tableau EST-T1.", "Pilares: referência e secção (cm). Armaduras: quadro EST-T1."),
+          _(f"Poteaux : repère ; section {bdom_c[0]}×{bdom_c[1]} cm sauf indication (en gras). Ferraillage : tableau EST-T1.",
+            f"Pilares: referência; secção {bdom_c[0]}×{bdom_c[1]} cm salvo indicação (a negrito). Armaduras: quadro EST-T1.") if bdom_c else "",
+          _(f"Poutres : section {bdom[0]}×{bdom[1]} cm sauf indication.", f"Vigas: secção {bdom[0]}×{bdom[1]} cm salvo indicação.") if bdom else "",
           _("Réservations (magenta) pour colonnes et chutes : à caler avec l'architecte et les lots techniques.",
             "Negativos (magenta) para colunas e tubos de queda: a confirmar com a arquitetura e as especialidades."),
           _("Étaiement : ne décoffrer qu'après 7 j minimum (contrôle de la résistance).", "Escoramento: descofrar só após 7 dias no mínimo (controlo da resistência)."))
@@ -615,7 +709,8 @@ def all_sheets(m: Frame, r: dict, e: dict, t: dict | None = None) -> list[Sheet]
     # plans de niveaux / réseaux, regroupés par niveaux identiques
     lv_groups = []
     for lv in m.levels:
-        key = (lv.use, tuple((un.name, un.typology, round(un.x0, 2), round(un.y0, 2), round(un.x1, 2), round(un.y1, 2)) for un in m.units_on(lv.id)))
+        key = (lv.use, tuple(sorted(m.storey_voids(lv.id))),
+               tuple((un.name, un.typology, round(un.x0, 2), round(un.y0, 2), round(un.x1, 2), round(un.y1, 2)) for un in m.units_on(lv.id)))
         if lv_groups and lv_groups[-1][0] == key:
             lv_groups[-1][1].append(lv.id)
         else:
@@ -630,6 +725,12 @@ def all_sheets(m: Frame, r: dict, e: dict, t: dict | None = None) -> list[Sheet]
     if any(x["sections"] for x in e["risers"]):
         out.append(riser_diagram(m, e, r, f"RED-{n:02d}"))
         out += elec_table(m, e, f"ELE-01")
+    try:                                   # plans d'exécution par logement type (moteurs électricité / plomberie / VMC éprouvés)
+        from . import dwelling
+        out += dwelling.sheets_for(m)
+    except Exception:  # noqa: BLE001 — un logement atypique ne doit jamais faire échouer l'étude de l'immeuble
+        import logging
+        logging.getLogger(__name__).warning("bet_frame: plans par logement non produits", exc_info=True)
     out += details.thermal_sheets(m, t)
     out += details.hvac_plans(m, t, r)
     return out
@@ -668,8 +769,9 @@ def tables(m: Frame, r: dict) -> list[Sheet]:
                                  "Flexão composta desviada (NP EN 1992-1-1 5.8.9), imperfeições l0/400, 2.ª ordem por curvatura nominal se λ > λlim."),
                                _("Moments : sous-portique (encastrement partiel des poutres de rive, charges d'exploitation alternées).",
                                  "Momentos: subpórtico (encastramento parcial das vigas de bordo, sobrecargas alternadas)."),
-                               _("Zones critiques : 1,5 × la plus grande dimension en tête et en pied de chaque tronçon." if m.country != "PT" else "",
-                                 "Zonas críticas (NP EN 1998-1, DCM): max(hc; lcl/6; 0,45 m) junto aos nós — confirmar com a análise sísmica.")])
+                               _("Zones critiques : 1,5 × la plus grande dimension en tête et en pied de chaque tronçon." if not r["mat"].get("dcm") else
+                                 "Zones critiques (EN 1998-1 DCM) : max(hc ; lcl/6 ; 0,45 m) aux nœuds ; s ≤ min(b0/2 ; 175 ; 8 Øl) ; νd ≤ 0,65 ; 1 % ≤ ρl ≤ 4 %, une barre intermédiaire par face.",
+                                 "Zonas críticas (NP EN 1998-1 DCM): max(hc; lcl/6; 0,45 m) junto aos nós; s ≤ min(b0/2; 175; 8 Øl); νd ≤ 0,65; 1 % ≤ ρl ≤ 4 %, um varão intermédio por face.")])
     # --- poutres
     groups_ = _slab_groups(r)
     for gi, g in enumerate(groups_):
@@ -681,17 +783,22 @@ def tables(m: Frame, r: dict) -> list[Sheet]:
                 rows.append([f"{bm['name']}.{k + 1}", f"{int(round(bm['b'] * 100))}×{int(round(bm['h'] * 100))}", num(sp["L"]),
                              f"{int(round(sp['M_span']))}", sp["bot"]["txt"] + (" (2 lits)" if sp["bot"]["layers"] > 1 else ""),
                              f"{int(round(sp['M_left']))} / {int(round(sp['M_right']))}", f"{sp['top_l']['txt']} / {sp['top_r']['txt']}",
-                             f"{int(round(sp['V']))}", sp["stirrups"], f"{num(sp['ld'], 1)} ≤ {num(sp['ld_lim'], 1)}"])
+                             f"{int(round(sp['V']))}", sp["stirrups"], sp.get("stirrups_crit", sp["stirrups"]),
+                             f"{num(sp['ld'], 1)} ≤ {num(sp['ld_lim'], 1)}"])
         out += table_sheets("EST-T2" + suf, _("Tableau des poutres — dalle ", "Quadro de vigas — laje ") + _group_name(g),
                             _("Poutres continues : moments ELU, aciers, cadres, flèche (l/d)", "Vigas contínuas: momentos ELU, armaduras, estribos, flecha (l/d)"),
                             [(_("Poutre", "Viga"), 22), ("b×h\n(cm)", 18), ("L\n(m)", 14), ("M+ ELU\n(kN·m)", 20), (_("Aciers\ninférieurs", "Armadura\ninferior"), 30),
                              ("M− g/d\n(kN·m)", 24), (_("Chapeaux\ngauche / droite", "Armadura sup.\nesq. / dir."), 42), ("VEd\n(kN)", 16),
-                             (_("Cadres\n2 brins", "Estribos\n2 ramos"), 24), ("l/d ≤ lim", 26)], rows, "table",
+                             (_("Cadres\n2 brins", "Estribos\n2 ramos"), 22), (_("Cadres zones\ncritiques", "Estribos zonas\ncríticas"), 24),
+                             ("l/d ≤ lim", 24)], rows, "table",
                             notes=[_("Équation des trois moments, cas de charge alternés (1,35 G + 1,5 Q).", "Equação dos três momentos, casos de carga alternados (1,35 G + 1,5 Q)."),
                                    _("Charges des panneaux en triangles / trapèzes, façades et balcons sur les poutres de rive.",
                                      "Cargas dos painéis em triângulos / trapézios, fachadas e varandas nas vigas de bordo."),
                                    _("Effort tranchant : EN 1992-1-1 6.2, bielle variable (cot θ ≤ 2,5).", "Esforço transverso: NP EN 1992-1-1 6.2, biela variável (cot θ ≤ 2,5)."),
-                                   _("Appuis de rive : chapeaux ≥ 15 % du moment en travée (9.2.1.2).", "Apoios de extremidade: armadura superior ≥ 15 % do momento a meio vão (9.2.1.2).")])
+                                   _("Appuis de rive : chapeaux ≥ 15 % du moment en travée (9.2.1.2).", "Apoios de extremidade: armadura superior ≥ 15 % do momento a meio vão (9.2.1.2)."),
+                                   _("Zones critiques (EN 1998-1 DCM) : lcr = h à chaque nu d'appui, s ≤ min(h/4 ; 24 Øw ; 225 ; 8 Øl), 1er cadre à 5 cm ; ρmin = 0,5 fctm/fyk, aciers comprimés ≥ 50 % des tendus.",
+                                     "Zonas críticas (NP EN 1998-1 DCM): lcr = h junto a cada apoio, s ≤ min(h/4; 24 Øw; 225; 8 Øl), 1.º estribo a 5 cm; ρmin = 0,5 fctm/fyk, armadura comprimida ≥ 50 % da tracionada.")
+                                   if r["mat"].get("dcm") else ""])
         # --- dalles
         rows = []
         for p in fl["panels"]:
@@ -738,6 +845,6 @@ def elec_table(m: Frame, e: dict, code: str) -> list[Sheet]:
                         _("Électricité, eau froide, eau chaude, eaux usées par fraction", "Eletricidade, água fria, água quente e esgotos por fração"),
                         [(_("Fraction", "Fração"), 28), (_("Niveau", "Piso"), 30), (_("Typo.", "Tipol."), 14), ("S (m²)", 16), ("P (kVA)", 16),
                          (_("Alimentation", "Alimentação"), 24), (_("Colonne élec.", "Coluna elétr."), 24), (_("EF", "AF"), 14), (_("ECS", "AQS"), 14),
-                         ("ΣDU (l/s)", 18), (_("Chute", "Tubo de queda"), 24)], rows, "table",
+                         ("ΣDU (l/s)", 18), (_("Chute", "Tubo de queda"), 24)], rows, "elec_table",
                         notes=[_("Puissance par logement : 9 kVA (T1-T2), 12 kVA (T3 et +) — à ajuster avec le maître d'ouvrage.",
                                  "Potência por fração: 6,90 kVA (T0-T1), 10,35 kVA (T2-T3), 13,80 kVA (T4+) — a ajustar com o dono de obra.")])
