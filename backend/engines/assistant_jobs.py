@@ -22,6 +22,14 @@ from pymongo.errors import DuplicateKeyError
 log = logging.getLogger("assistant-jobs")
 TERMINAL = {"completed", "cancelled", "interrupted", "failed"}
 LEASE_SECONDS = 45
+# Um tratamento nunca pode prender um worker para sempre: sem eventos durante
+# IDLE_SECONDS, ou acima de MAX_JOB_SECONDS no total, é terminado como falhado.
+IDLE_SECONDS = 240
+MAX_JOB_SECONDS = 900
+WORKER_COUNT = 4
+TIMEOUT_ERROR = "O tratamento demorou demasiado e foi interrompido. As suas peças e o seu pedido são conservados: tente novamente."
+# Estado dos workers (diagnóstico admin): worker_id -> {last_tick, job_id, last_error}
+WORKERS: dict[str, dict] = {}
 
 
 def public_job(job):
@@ -123,7 +131,7 @@ async def cancel_job(job_id, uid):
 
 async def _finish(job, state, live, error=None):
     now = datetime.now(timezone.utc).isoformat()
-    result = await db.assistant_jobs.update_one({"job_id": job["job_id"], "worker": job["worker"], "status": "running"}, {"$set": {
+    result = await db.assistant_jobs.update_one({"job_id": job["job_id"], "worker": job.get("worker"), "status": "running"}, {"$set": {
         "status": state, "live": live, "error": error, "updated_at": now}, "$unset": {"lease_until": ""}})
     if not result.matched_count:
         return
@@ -132,7 +140,7 @@ async def _finish(job, state, live, error=None):
         await db.notifications.update_one({"user_id": job["user_id"], "assistant_job_id": job["job_id"]}, {"$setOnInsert": {
             "notif_id": "n_assistant_" + job["job_id"],
             "type": "assistant", "title": "Resposta do assistente pronta" if state == "completed" else "Tratamento do assistente interrompido",
-            "message": job["payload"]["text"][:100], "link": f'/assistant?conversation={job["conversation_id"]}',
+            "message": ((job.get("payload") or {}).get("text") or "")[:100], "link": f'/assistant?conversation={job["conversation_id"]}',
             "read": False, "created_at": now}}, upsert=True)
 
 
@@ -144,13 +152,15 @@ async def run_job(job):
         return
     bind(user)
     live = {"role": "assistant", "content": "", "actions": [], "sources": [], "status": "Análise em segundo plano…"}
-    state = {"image_running": False, "last_save": 0., "error": None, "completed": False}
+    state = {"image_running": False, "last_save": 0., "error": None, "completed": False,
+             "started": time.monotonic(), "last_event": time.monotonic(), "timed_out": False}
 
     async def consume():
         body = MsgIn(**job["payload"])
         prepared = await _prepare(body, user, turn_seq=job["sequence"])
         prepared[0]["_background_job_id"] = job["job_id"]
         async for event in _run_chat(body, user, stream=True, prepared=prepared):
+            state["last_event"] = time.monotonic()
             kind = event["type"]
             if kind == "delta":
                 live["content"] += event["text"]
@@ -185,6 +195,11 @@ async def run_job(job):
             fresh = await owned_job(job["job_id"], job["user_id"])
             if fresh["status"] != "running" or (fresh.get("cancel_requested") and not state["image_running"]):
                 task.cancel()
+            mono = time.monotonic()
+            if not task.done() and (mono - state["last_event"] > IDLE_SECONDS or mono - state["started"] > MAX_JOB_SECONDS):
+                state["timed_out"] = True
+                log.warning("Assistant job %s timed out", job["job_id"])
+                task.cancel()
             until = datetime.now(timezone.utc) + timedelta(seconds=LEASE_SECONDS)
             await db.assistant_jobs.update_one({"job_id": job["job_id"], "worker": job["worker"], "status": "running"}, {"$set": {"lease_until": until}})
             await db.assistant_convs.update_one({"active_job_id": job["job_id"]}, {"$set": {"job_lease_until": until}})
@@ -193,6 +208,8 @@ async def run_job(job):
     except asyncio.CancelledError:
         stopping_worker = bool(asyncio.current_task().cancelling())
         outcome = "completed" if state["completed"] else "cancelled" if (await owned_job(job["job_id"], job["user_id"])).get("cancel_requested") else "interrupted"
+        if state["timed_out"] and outcome != "completed":
+            outcome, state["error"] = "failed", TIMEOUT_ERROR
         task.cancel()
         with suppress(asyncio.CancelledError, Exception):
             await task
@@ -216,11 +233,18 @@ async def claim_next(worker):
     now = datetime.now(timezone.utc)
     expired = await db.assistant_jobs.find({"status": "running", "lease_until": {"$lt": now}}, {"_id": 0}).to_list(20)
     for old in expired:
-        await _finish(old, "interrupted", old.get("live"), "Ligação do tratamento perdida. Nenhum reinício automático para evitar uma ação em duplicado.")
+        try:
+            await _finish(old, "interrupted", old.get("live"), "Ligação do tratamento perdida. Nenhum reinício automático para evitar uma ação em duplicado.")
+        except Exception:  # noqa: BLE001 -- um documento antigo/inválido não pode parar a fila
+            log.exception("Expired job %s could not be finished", old.get("job_id"))
     await db.assistant_jobs.update_many({"status": "preparing", "created_at": {"$lt": (now - timedelta(minutes=2)).isoformat()}},
         {"$set": {"status": "failed", "error": "Pedido não colocado na fila. Tente novamente de forma explícita."}})
     queued = await db.assistant_jobs.find({"status": "queued"}, {"_id": 0}).sort("created_at", 1).to_list(50)
     for candidate in queued:
+        if not candidate.get("conversation_id") or candidate.get("sequence") is None or not candidate.get("payload"):
+            await db.assistant_jobs.update_one({"job_id": candidate.get("job_id"), "status": "queued"},
+                {"$set": {"status": "failed", "error": "Pedido inválido.", "updated_at": now.isoformat()}})
+            continue
         # A lower sequence that is still preparing must not be overtaken.
         prior = await db.assistant_jobs.find_one({"conversation_id": candidate["conversation_id"], "sequence": {"$lt": candidate["sequence"]}, "status": {"$in": ["preparing", "queued", "running"]}}, {"_id": 1})
         if prior:
@@ -240,16 +264,23 @@ async def claim_next(worker):
 
 async def worker_loop():
     worker = uuid.uuid4().hex
+    info = WORKERS.setdefault(worker, {"last_tick": None, "job_id": None, "last_error": None})
     while True:
+        info["last_tick"] = datetime.now(timezone.utc).isoformat()
         try:
             job = await claim_next(worker)
             if job:
-                await run_job(job)
+                info["job_id"] = job["job_id"]
+                try:
+                    await run_job(job)
+                finally:
+                    info["job_id"] = None
             else:
                 await asyncio.sleep(1)
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as exc:
+            info["last_error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
             log.exception("Assistant queue worker failed")
             await asyncio.sleep(3)
 
@@ -260,4 +291,30 @@ async def start_workers():
     await db.assistant_jobs.create_index([("user_id", 1), ("status", 1), ("created_at", 1)])
     await db.assistant_msgs.create_index([("user_id", 1), ("conversation_id", 1), ("role", 1), ("request_id", 1)], unique=True, partialFilterExpression={"request_id": {"$type": "string"}})
     await db.assistant_artifacts.create_index("artifact_id", unique=True)
-    return [asyncio.create_task(worker_loop()) for _ in range(2)]
+    return [asyncio.create_task(worker_loop()) for _ in range(WORKER_COUNT)]
+
+
+async def queue_status() -> dict:
+    """Diagnóstico da fila (admin): contagens, trabalhos em curso e estado dos workers."""
+    now = datetime.now(timezone.utc)
+    counts = {}
+    for st in ("preparing", "queued", "running"):
+        counts[st] = await db.assistant_jobs.count_documents({"status": st})
+    running = await db.assistant_jobs.find({"status": "running"}, {"_id": 0, "job_id": 1, "worker": 1, "created_at": 1,
+                                                                   "updated_at": 1, "lease_until": 1}).to_list(50)
+    oldest = await db.assistant_jobs.find_one({"status": "queued"}, {"_id": 0, "job_id": 1, "created_at": 1}, sort=[("created_at", 1)])
+    for r in running:
+        if isinstance(r.get("lease_until"), datetime):
+            r["lease_until"] = r["lease_until"].isoformat()
+    return {"now": now.isoformat(), "counts": counts, "running": running, "oldest_queued": oldest,
+            "workers_in_this_process": WORKERS}
+
+
+async def unstick(older_than_minutes: int = 10) -> dict:
+    """Termina trabalhos 'running' parados há mais de N minutos (o worker solta-os em ~2 s)."""
+    limit = (datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)).isoformat()
+    res = await db.assistant_jobs.update_many(
+        {"status": "running", "updated_at": {"$lt": limit}},
+        {"$set": {"status": "failed", "error": TIMEOUT_ERROR, "updated_at": datetime.now(timezone.utc).isoformat()},
+         "$unset": {"lease_until": ""}})
+    return {"unstuck": res.modified_count}

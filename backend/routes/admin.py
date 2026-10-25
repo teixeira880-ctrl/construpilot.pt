@@ -622,6 +622,20 @@ async def upsert_region(body: RegionIn):
     return body.model_dump()
 
 
+@router.get("/assistant-queue")
+async def assistant_queue() -> dict:
+    """Estado da fila do Assistente (diagnóstico)."""
+    from engines.assistant_jobs import queue_status
+    return await queue_status()
+
+
+@router.post("/assistant-queue/unstick")
+async def assistant_queue_unstick(older_than_minutes: int = 10) -> dict:
+    """Liberta trabalhos do Assistente presos em 'running' há mais de N minutos."""
+    from engines.assistant_jobs import unstick
+    return await unstick(max(1, older_than_minutes))
+
+
 @router.get("/users")
 async def users():
     return await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
