@@ -56,12 +56,13 @@ def specs(m: Frame, r: dict) -> list[dict]:
     if r.get("basement"):
         out.append({"kind": "basement", "bas": r["basement"]})
     seen = set()
-    for p in sorted(r["foundations"]["pads"], key=lambda q: (-q["B"], -q["h"])):
-        key = (round(p["B"], 2), round(p["h"], 2))
+    for p in sorted(r["foundations"]["pads"], key=lambda q: (-q["h"], -q["B"])):
+        key = round(p["h"], 2)        # une coupe type par épaisseur de semelle (B variable → quadro/tableau EST-T4)
         if key not in seen:
             seen.add(key)
-            out.append({"kind": "pad", "pad": p, "same": [q["name"] for q in r["foundations"]["pads"]
-                                                         if (round(q["B"], 2), round(q["h"], 2)) == key]})
+            grp = [q for q in r["foundations"]["pads"] if round(q["h"], 2) == key]
+            out.append({"kind": "pad", "pad": p, "same": [q["name"] for q in grp],
+                        "B_range": (min(q["B"] for q in grp), max(q["B"] for q in grp))})
     for i, o in enumerate(out, 1):
         o["id"] = f"C{i}"
     return out
@@ -326,8 +327,12 @@ def pad_cut(c: Cell, sp: dict, m: Frame, r: dict, axis_lab: str):
     c.level(B / 2 + _u(2), za, "b")
     c.text("TEXTE", (-B / 2 - _u(2), za + hp / 2 - _u(0.7)), f"{p['name']}  {cm(B)}x{cm(B)}x{cm(hp)}ht", 2.0, "r", bold=True)
     others = [n for n in sp["same"] if n != p["name"]]
+    b0, b1 = sp.get("B_range") or (B, B)
     if others:
         c.text("TEXTE", (-B / 2 - _u(2), za + hp / 2 - _u(4.2)), _("idem ", "idem ") + ", ".join(others[:6]) + ("…" if len(others) > 6 else ""), 1.5, "r")
+    if b1 - b0 > 0.01:
+        c.text("TEXTE", (-B / 2 - _u(2), za + hp / 2 - _u(7.4)),
+               _(f"B = {cm(b0)} à {cm(b1)} : voir tableau EST-T4", f"B = {cm(b0)} a {cm(b1)}: ver quadro EST-T4"), 1.5, "r")
     c.text("TEXTE", (0.0, za + _u(2)), mesh_txt(p["mesh"]) + _(" 2 dir. (nappe inf.)", " 2 dir. (malha inf.)"), 1.5, "c")
     if col:
         c.text("TEXTE", (cb / 2 + _u(2), top - _u(6)), f"{col['name']} {cm(col['b'])}x{cm(col['h'])}", 1.8, "l", bold=True)
@@ -377,8 +382,11 @@ def layout(m: Frame, r: dict, sp_all: list[dict]) -> list[tuple[int, list[dict]]
     """Planches : deux coupes côte à côte si chacune tient au 1:25 (ou 1:20), sinon une coupe sur toute la planche."""
     pages, cur = [], []
     for sp in sp_all:
-        half = _scale_for(_bbox(sp, m, r), 1) <= 25
+        half = _scale_for(_bbox(sp, m, r), 1) <= (50 if sp["kind"] in ("pad", "basement") else 25)   # semelles : 1:50 suffit, deux par planche
         if half:
+            if cur and (cur[0]["kind"] in ("pad", "basement")) != (sp["kind"] in ("pad", "basement")):
+                pages.append(cur)       # pas de coupe de poutre au 1:50 à côté d'une semelle
+                cur = []
             cur.append(sp)
             if len(cur) == 2:
                 pages.append(cur)

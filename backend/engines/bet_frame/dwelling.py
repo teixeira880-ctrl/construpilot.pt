@@ -253,6 +253,8 @@ def house_raw(m: Frame, un, rooms: list[dict], indicative: bool) -> dict:
     for r in rooms:
         r["area_pc"] = round((r["x1"] - r["x0"]) * (r["y1"] - r["y0"]), 2)
     proj = dict(m.project or {})
+    from .mep import power_kva
+    proj["subscribed_kva"] = power_kva(un.typology, m.country)
     proj["name"] = f"{proj.get('name') or ''} — {un.name}".strip(" —")
     return {"project": proj, "user_hypotheses": copy.deepcopy(m.raw.get("user_hypotheses") or {}),
             "envelope": {"length_x": L, "width_y": W, "wall_total_thickness": 0.12, "wall_structural_thickness": 0.10, "lining_thickness": 0.02},
@@ -398,7 +400,7 @@ def sheets_for(m: Frame, kinds: set | None = None) -> list:
             hs.PLAN_SHIFT[0] = max(0.0, ((hs.PLAN_AREA[3] - hs.PLAN_AREA[1]) * sc / 1000 - (W + 4.4)) / 2 - 0.4) if sc != 50 else 0.0
             e, p = hmep.electrical(hm), hmep.plumbing(hm)
             p["fixtures"] = [f for f in p["fixtures"] if f["fixture"] != "robinet_ext"]     # logement en étage : pas de robinet extérieur
-            tag = chr(65 + k) if k < 26 else f"Z{k}"
+            tag = str(k + 1)     # numéro de type : les lettres se confondaient avec les noms des fractions (A, B, …)
             same_txt = ", ".join(same[:8]) + (f" (+{len(same) - 8})" if len(same) > 8 else "")
             note = [_(f"Logement type {tag} : {same_txt}.", f"Fração tipo {tag} : {same_txt}."),
                     _("Cloisonnement indicatif déduit de la typologie, de la façade et du palier — à remplacer par les plans de l'architecte.",

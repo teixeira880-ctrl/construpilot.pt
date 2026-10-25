@@ -135,11 +135,30 @@ Règles :
 10. project : name, address, country (FR ou PT), architect, pc_ref (référence des plans), g2_ref.
 10 bis. LANGUE : tous les noms (niveaux, fractions, noyaux, pièces) s'écrivent dans la langue du PAYS du projet (PT → português :
    « Piso 0 — habitação e cobertura das caves », « Fração A — noroeste », « Caixa de escada » ; FR → français), jamais un mélange.
+   Les textes "_decisions" et "_questions" aussi : PT → português europeu (« Fundações diretas supostas a 1 m »), jamais en français.
+   Une fraction répétée sur plusieurs pisos (un seul objet avec "levels") : "name" liste les fractions dans l'ordre des pisos,
+   du plus bas au plus haut (« Frações E, I, N, R » = E au Piso 1, I au Piso 2…).
 11. "_questions" : uniquement ce qui est indispensable et illisible. "_decisions" : chaque hypothèse que tu as prise.
 Réponds par le JSON complet seul, sans texte autour."""
 
 DECIDE = ("\n\nMODE DÉCIDER SEUL : ne pose AUCUNE question (\"_questions\": []) ; tranche l'hypothèse la plus probable pour chaque point "
           "et écris-la dans \"_decisions\".")
+
+
+_FR_WORDS = re.compile(r"\b(les|des|du|aux|selon|d'après|supposée?s?|déduite?s?|étages?|logements?|sous-sol|absence|chauffage|fondations)\b", re.I)
+
+
+async def _to_pt(items: list[str], llm) -> list[str]:
+    """Hypothèses rédigées en français par le lecteur sur un projet PT → português europeu (repli : texte d'origine)."""
+    try:
+        txt = await llm("Traduz para português europeu técnico (engenharia civil, Portugal). Mantém números, unidades e siglas. "
+                        "Responde só com o JSON {\"t\": [strings na mesma ordem]}.", json.dumps(items, ensure_ascii=False), max_tokens=2000)
+        out = json.loads(txt[txt.index("{"): txt.rindex("}") + 1]).get("t")
+        if isinstance(out, list) and len(out) == len(items):
+            return [str(x) for x in out]
+    except Exception:  # noqa: BLE001
+        pass
+    return items
 
 
 async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR", llm=None, decide_alone: bool = False,
@@ -190,6 +209,10 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
         attempts += 1
     blocking = [a for a in anomalies if a.get("level") == model.BLOCK]
     decisions = [str(d) for d in (raw or {}).get("_decisions") or []]
+    if lang == "pt" and decisions and any(_FR_WORDS.search(d) for d in decisions):
+        decisions = await _to_pt(decisions, llm)
+        if raw is not None:
+            raw["_decisions"] = decisions
     questions = [] if decide_alone else list((raw or {}).get("_questions") or []) + [f"{a['message']} — {a.get('fix') or '?'}" for a in blocking]
     if raw is not None and hypotheses:
         raw.setdefault("user_hypotheses", {})["_source"] = hypotheses[:300]

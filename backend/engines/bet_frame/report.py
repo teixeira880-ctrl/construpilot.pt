@@ -11,6 +11,7 @@ from engines.bet_core import brand as B
 from engines.bet_core import draw  # noqa: F401 — enregistre les polices
 
 from .calc import mesh_txt
+from .calc import sp as _sp
 from .lang import _, num
 from .model import BLOCK, Frame
 
@@ -143,9 +144,9 @@ def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: l
             for k, sp in enumerate(bm["spans"]):
                 rows.append([f"{bm['name']}.{k + 1}", f"{int(round(bm['b'] * 100))}×{int(round(bm['h'] * 100))}", num(sp["L"]),
                              f"{int(round(sp['M_span']))} / {int(round(max(sp['M_left'], sp['M_right'])))}", sp["bot"]["txt"],
-                             f"{sp['top_l']['txt']} / {sp['top_r']['txt']}", f"{int(round(sp['V']))}", sp["stirrups"]])
+                             f"{sp['top_l']['txt']} / {sp['top_r']['txt']}", f"{int(round(sp['V']))}", sp["stirrups"] + (f" · zc {_sp(sp['s_crit'])}" if sp.get("stirrups_crit") and sp["stirrups_crit"] != sp["stirrups"] else "")])
         s.append(Paragraph(_esc(_("Dalle ", "Laje ") + _group_name(g)), H2))
-        s.append(_t(rows, [18, 16, 14, 30, 22, 36, 16, 22]))
+        s.append(_t(rows, [18, 16, 14, 28, 22, 32, 16, 28]))
     # 6. poteaux
     s.append(H(_("Poteaux — descente de charges et flexion composée", "Pilares — descida de cargas e flexão composta")))
     rows = [[_("Poteau", "Pilar"), _("Section", "Secção"), _("Pied : NG / NQ / NEd (kN)", "Base: NG / NQ / NEd (kN)"), "ν", "λ / λlim", _("Aciers", "Armadura"), _("Cadres", "Cintas"), "M/MRd"]]
@@ -153,8 +154,8 @@ def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: l
         s0 = c["segs"][0]
         ax = s0["axes"]["x"]
         rows.append([c["name"], f"{int(round(c['b'] * 100))}×{int(round(c['h'] * 100))}", f"{int(s0['NG'])} / {int(s0['NQ'])} / {int(s0['NEd'])}",
-                     num(s0["nu"]), f"{num(ax['lam'], 1)} / {num(ax['lam_lim'], 1)}", s0.get("txt", "—"), s0.get("ties", "—"), num(s0.get("util", 0))])
-    s.append(_t(rows, [16, 16, 42, 12, 22, 20, 22, 14]))
+                     num(s0["nu"]), f"{num(ax['lam'], 1)} / {num(ax['lam_lim'], 1)}", s0.get("txt", "—"), s0.get("ties", "—") + (f" · zc {_sp(s0['s_crit'])}" if s0.get("ties_crit") and s0["ties_crit"] != s0.get("ties") else ""), num(s0.get("util", 0))])
+    s.append(_t(rows, [16, 16, 38, 12, 20, 20, 30, 12]))
     s.append(Paragraph(_esc(_("Longueur de flambement l0 = 0,7 h (contreventé par les noyaux) ; second ordre par courbure nominale (5.8.8) si λ > λlim ; "
                               "imperfection ei = l0/400 ; e0 ≥ max(h/30 ; 20 mm) ; flexion déviée 5.8.9 (4).",
                               "Comprimento de encurvadura l0 = 0,7 h (contraventado pelos núcleos); 2.ª ordem por curvatura nominal (5.8.8) se λ > λlim; "
@@ -233,7 +234,8 @@ def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: l
     # 10. revue
     s.append(H(_("Vérifications et points à valider", "Verificações e pontos a validar")))
     for it in rev["items"]:
-        lvl = str(it["level"]).upper()
+        lvl = {"ok": "OK", "avertissement": _("À VÉRIFIER", "A VERIFICAR"), "bloquant": _("BLOQUANT", "BLOQUEANTE"),
+               "info": "INFO"}.get(str(it["level"]).lower(), str(it["level"]).upper())
         s.append(Paragraph(f"<b>[{_esc(lvl)}]</b> " + _esc(it["message"]), SM))
     s.append(Paragraph(_esc(_(f"Estimation du coût : {tot['ht']:,.0f} € HT ({tot['ttc']:,.0f} € TTC) — voir le devis Excel.".replace(",", " "),
                               f"Estimativa de custo: {tot['ht']:,.0f} € s/IVA ({tot['ttc']:,.0f} € c/IVA) — ver o orçamento Excel.".replace(",", " "))), P))

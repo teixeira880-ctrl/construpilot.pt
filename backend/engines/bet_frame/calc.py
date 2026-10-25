@@ -101,7 +101,7 @@ def pick_mesh(As_m: float, h: float, main: bool = True) -> dict:
 
 def sp(s: float) -> str:
     """Espacement au format plan : 0,15 / 0,175."""
-    return num(s, 3 if round(s * 1000) % 50 else 2)
+    return num(s, 3 if round(s * 1000) % 10 else 2)
 
 
 def mesh_txt(x: dict) -> str:
@@ -847,7 +847,7 @@ def review_checks(m: Frame, floors, cols, fnd, mt) -> list[dict]:
         ok("OK" if not acou else "avertissement",
            "Acoustique : dalles entre logements ≥ 18 cm" + (" — à épaissir : " + ", ".join(acou) if acou else " — vérifié"),
            "Acústica: lajes entre frações ≥ 18 cm (RRAE)" + (" — a aumentar: " + ", ".join(acou) if acou else " — verificado"))
-    ok("avertissement" if not m.cores else "OK",
+    ok("avertissement",       # jamais « OK » : les noyaux ne sont pas dimensionnés ici
        "Contreventement : " + ("assuré par les noyaux BA (escaliers / ascenseur) — à justifier par un modèle 3D" if m.cores else
                                "AUCUN noyau relevé : portiques autostables, à justifier impérativement"),
        "Contraventamento: " + ("assegurado pelos núcleos BA (escadas / elevador) — a justificar com modelo 3D" if m.cores else
@@ -870,6 +870,10 @@ def seismic_estimate(m: Frame, floors, cols) -> dict:
         psi = {"habitation": 0.3, "bureaux": 0.3}.get(ld["use"], 0.6 if ld["use"] in ("commerce", "stationnement", "public") else 0.0)
         mass.append({"slab": s.name, "z": s.z - m.levels[0].z, "W_kN": g + psi * 0.8 * ld["q"] * fp})
     H = m.height_total
+    if m.levels[0].z < -0.5:      # EC8 4.3.3.2.2 / 4.3.1(5) : H et masses comptés au-dessus de la cave rigide (piso 0)
+        z0 = min((l.z for l in m.levels if l.z > -0.5), default=m.levels[0].z) - m.levels[0].z
+        H = max(H - z0, 3.0)
+        mass = [x for x in mass if x["z"] > z0 + 0.05] or mass
     T1 = 0.075 * H ** 0.75 if not m.cores else 0.05 * H ** 0.75
     seis = m.raw.get("seismic") or {}
     out = {"T1": T1, "H": H, "W_total": sum(x["W_kN"] for x in mass), "levels": mass, "ag": seis.get("ag")}
