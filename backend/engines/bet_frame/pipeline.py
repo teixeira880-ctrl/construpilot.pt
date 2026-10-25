@@ -18,6 +18,16 @@ from .lang import _, use_lang
 _LOCK = threading.Lock()
 
 
+def where_frame(exc: BaseException) -> str:
+    """Dernier cadre bet_frame / bet_core de la pile (fichier:ligne fonction)."""
+    import traceback
+    fr = [f for f in traceback.extract_tb(exc.__traceback__) if "bet_frame" in (f.filename or "") or "bet_core" in (f.filename or "")]
+    if not fr:
+        return where(exc)
+    f = fr[-1]
+    return f"{Path(f.filename).name}:{f.lineno} {f.name}"
+
+
 def is_frame(raw: dict | None) -> bool:
     return bool(raw) and raw.get("kind") == "frame"
 
@@ -45,7 +55,7 @@ def dry_run(raw: dict, lang: str = "fr") -> dict | None:
             e = mep.compute(m)
             sheets.all_sheets(m, r, e)
         except Exception as exc:  # noqa: BLE001
-            return {"code": "CALC-00", "level": model.BLOCK, "message": f"{type(exc).__name__}: {str(exc)[:300]} — {where(exc)}"}
+            return {"code": "CALC-00", "level": model.BLOCK, "message": f"{type(exc).__name__}: {str(exc)[:300]} — {where_frame(exc)}"}
     return None
 
 
@@ -87,8 +97,8 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
         except Exception as exc:  # noqa: BLE001 — jamais de plantage muet : une anomalie lisible
             return {"status": "MODELE_INVALIDE", "blocking": 1, "files": {},
                     "anomalies": anomalies + [{"code": "CALC-00", "level": model.BLOCK,
-                                               "message": _(f"Calcul impossible ({type(exc).__name__}: {str(exc)[:300]} — à {where(exc)})",
-                                                            f"Cálculo impossível ({type(exc).__name__}: {str(exc)[:300]} — em {where(exc)})"),
+                                               "message": _(f"Calcul impossible ({type(exc).__name__}: {str(exc)[:300]} — à {where_frame(exc)})",
+                                                            f"Cálculo impossível ({type(exc).__name__}: {str(exc)[:300]} — em {where_frame(exc)})"),
                                                "fix": _("Vérifier la trame, les niveaux et les sections relevés.", "Verificar a trama, os pisos e as secções relevadas.")}]}
         proj = dict(m.project, date=date)
         if lots:
@@ -106,6 +116,14 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
                     return {"ok": True, "path": str(plans_pdf), "sheets": [s.code + " " + s.title for s in shs]}
                 note = out / "_note.pdf"
                 report.write_note(note, m, r, e, tot, rev, shs)
+            except Exception as exc:  # noqa: BLE001 — rendu impossible : anomalie lisible, jamais une erreur brute
+                if lots:
+                    return {"ok": False, "anomalies": [{"message": f"{type(exc).__name__}: {str(exc)[:200]} — {where(exc)}"}]}
+                return {"status": "MODELE_INVALIDE", "blocking": 1, "files": {},
+                        "anomalies": anomalies + [{"code": "CALC-02", "level": model.BLOCK,
+                                                   "message": _(f"Plans ou note impossibles ({type(exc).__name__}: {str(exc)[:300]} — à {where_frame(exc)})",
+                                                                f"Desenhos ou memória impossíveis ({type(exc).__name__}: {str(exc)[:300]} — em {where_frame(exc)})"),
+                                                   "fix": _("Compléter le champ du relevé en cause.", "Completar o campo do levantamento em causa.")}]}
             finally:
                 brand.use(None, "FR")
         w = PdfWriter()

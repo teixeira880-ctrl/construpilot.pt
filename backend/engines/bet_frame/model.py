@@ -235,7 +235,24 @@ def load(path: str | Path) -> Frame:
     return from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
+def strip_none(v):
+    """Champs « null » de la lecture IA → absents (les valeurs par défaut du moteur s'appliquent)."""
+    if isinstance(v, dict):
+        for k in [k for k, x in v.items() if x is None]:
+            del v[k]
+        for x in v.values():
+            strip_none(x)
+    elif isinstance(v, list):
+        for x in v:
+            strip_none(x)
+    return v
+
+
 def from_dict(raw: dict) -> Frame:
+    strip_none(raw)
+    for k in ("project", "structure", "grid", "roof", "geotech", "facade", "loads", "mep", "seismic"):
+        if not isinstance(raw.get(k, {}), dict):
+            raw.pop(k, None)
     raw.setdefault("project", {})
     for k, v in (("name", "Projet"), ("address", ""), ("country", "FR"), ("pc_ref", "—"), ("g2_ref", "—")):
         raw["project"].setdefault(k, v)

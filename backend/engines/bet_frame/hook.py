@@ -44,19 +44,44 @@ CIVIL_MSG = {"fr": ("Ces documents décrivent un ouvrage de génie civil (pont, 
 async def maybe_handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *, step, store, llm=None, branding=None,
                        decide_alone=False) -> bool:
     lang = "pt" if country == "PT" else "fr"
+    hypotheses = hypotheses or ""
+    try:
+        return await _handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, lang, step=step, store=store, llm=llm,
+                             branding=branding, decide_alone=decide_alone)
+    except _NotFrame:
+        return False
+    except Exception as exc:  # noqa: BLE001 — erreur du moteur ossature : message clair, jamais une pile Python brute
+        log.exception("bet_frame study failed")
+        from .pipeline import where_frame
+        msg = (_FAIL[lang] + f" ({type(exc).__name__}: {str(exc)[:200]} — {where_frame(exc)})")
+        await step("Échec", status="failed", error=msg[:1200])
+        return True
+
+
+class _NotFrame(Exception):
+    pass
+
+
+_FAIL = {"fr": "L'étude du bâtiment n'a pas pu être menée à son terme. Relancez-la ; si l'erreur persiste, transmettez ce message au support",
+         "pt": "O estudo do edifício não pôde ser concluído. Volte a lançá-lo; se o erro persistir, envie esta mensagem ao suporte"}
+
+
+async def _handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, lang, *, step, store, llm=None, branding=None,
+                  decide_alone=False) -> bool:
     try:
         from engines.bet_core import samples
-        if samples.detect(docs):
-            return False
-    except Exception:  # noqa: BLE001
-        pass
+        demo = bool(samples.detect(docs))
+    except Exception:  # noqa: BLE001 — samples n'existe pas sur tous les sites
+        demo = False
+    if demo:
+        raise _NotFrame
     try:
         det = await reader.detect(docs, hypotheses, llm=llm)
     except Exception:  # noqa: BLE001 — détection impossible : chaîne maison historique
         log.warning("bet_frame: détection du type impossible", exc_info=True)
-        return False
+        raise _NotFrame
     if det["kind"] == "maison":
-        return False
+        raise _NotFrame
     await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"building_kind": det["kind"], "building_type": det.get("building_type")}})
     if det["kind"] == "civil":
         await step("Échec", status="failed", error=CIVIL_MSG[lang], out_of_scope=True)
