@@ -117,6 +117,12 @@ Règles :
 4. structure : sections indiquées sur les plans sinon column [0.30, 0.30], beam [0.30, 0.50], slab 0.20 ; concrete C25/30 ; columns_omit
    = intersections de la trame SANS poteau (ex. [["3","B"]]).
 5. cores : cages d'escalier / ascenseur (rectangle extérieur des voiles, wall = épaisseur).
+4 ter. GÉOMÉTRIE RÉELLE — les plans cotés produits en dépendent, aucune valeur estimée ou arrondie :
+   "geometry": {"overall": {"length": cote extérieure totale en x (m), "width": en y, "facade_to_axis": distance nu de façade → axe
+   des files de rive (m, souvent 0,15), "source": "planche + cote lue, ex. Planta Piso 1, cota 26,40"}}. Recopie les cotes écrites sur
+   les planches (chaînes de cotes) ; les files de poteaux tombent sur des murs / cotes réelles du plan, jamais une trame régulière inventée.
+   units[].area_declared = surface du quadro de áreas / tableau des surfaces de l'architecte quand il existe ; le rectangle de la fraction
+   doit la respecter (limites = murs séparatifs et palier). Deux fractions d'un même piso ne se chevauchent jamais.
 4 bis. EMPRISE RÉELLE : la trame est le rectangle englobant ; si le bâtiment n'est PAS rectangulaire (forme en L, en U, en T,
    décrochements, cour ou patio), liste dans structure.void_cells les cases de trame SANS plancher, chacune repérée par la file x à
    sa gauche et la file y en dessous (ex. [["5","C"], ["6","C"]] = cases entre les files 5-6 et 6-7, au-dessus de la file C). Les
@@ -191,7 +197,11 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
             raw.setdefault("building_type", building_type)
             raw.setdefault("project", {}).setdefault("country", country)
             with use_lang(lang):
-                m, anomalies = pipeline.validate(raw)
+                m, anomalies = pipeline.validate(raw, pages=chosen, strict=True)
+                if attempts > max_fix:        # dernière lecture : cotes introuvables / trame idéalisée → avertissement mémorisé
+                    soft = [dict(x, level=model.WARN) for x in anomalies if x.get("code") in ("GEO-02", "GEO-03")]
+                    anomalies = [x for x in anomalies if x.get("code") not in ("GEO-02", "GEO-03")] + soft
+                    raw["_geo_warnings"] = soft
             if m is not None and not model.has_block(anomalies):
                 calc_err = pipeline.dry_run(raw, lang)
                 if calc_err:

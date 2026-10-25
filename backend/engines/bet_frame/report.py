@@ -40,6 +40,13 @@ def _t(rows, widths):
     return t
 
 
+def _ov(m: Frame) -> str:
+    ov = (m.raw.get("geometry") or {}).get("overall") or {}
+    if not (ov.get("length") and ov.get("width")):
+        return _("NON RELEVÉES — trame à recaler sur les plans d'architecte", "NÃO RELEVADAS — trama a acertar pelas plantas de arquitetura")
+    return f"{num(float(ov['length']))} × {num(float(ov['width']))} m" + (f" ({ov['source']})" if ov.get("source") else "")
+
+
 def review(m: Frame, r: dict, e: dict, anomalies: list[dict]) -> dict:
     items = []
     for a in anomalies + r["issues"]:
@@ -91,6 +98,7 @@ def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: l
                  [_("Plans d'architecte", "Projeto de arquitetura"), pr.get("pc_ref", "—")],
                  [_("Étude de sol", "Estudo geotécnico"), pr.get("g2_ref", "—") + (f" ({m.geo.get('source')})" if m.geo.get("source") else "")],
                  [_("Emprise de la trame", "Implantação da trama"), f"{num(m.L)} × {num(m.W)} m — {num(m.footprint, 1)} m²"],
+                 [_("Cotes extérieures relevées", "Cotas exteriores relevadas"), _ov(m)],
                  [_("Trame x", "Trama x"), " / ".join(num(b - a) for a, b in zip(m.gx, m.gx[1:])) + " m"],
                  [_("Trame y", "Trama y"), " / ".join(num(b - a) for a, b in zip(m.gy, m.gy[1:])) + " m"],
                  [_("Niveaux", "Pisos"), ", ".join(f"{l.name} ({'+' if l.z >= 0 else ''}{num(l.z)}, h={num(l.height)})" for l in m.levels)],

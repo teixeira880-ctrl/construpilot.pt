@@ -42,7 +42,23 @@ def is_frame(raw: dict | None) -> bool:
     return bool(raw) and raw.get("kind") == "frame"
 
 
-def validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
+def validate(raw: dict, pages: list[dict] | None = None, strict: bool = False) -> tuple[model.Frame | None, list[dict]]:
+    """Contrôles du modèle + contrôles de géométrie (geometry.py). strict=False (calcul d'un relevé déjà accepté) :
+    la géométrie n'est qu'en avertissement, plus ceux mémorisés par le lecteur (cotes introuvables dans les plans)."""
+    m, an = _validate(raw)
+    if m is None:
+        return m, an
+    from . import geometry
+    try:
+        geo = geometry.check(raw, pages)
+    except Exception:  # noqa: BLE001
+        geo = []
+    if not strict:
+        geo = [dict(x, level=model.WARN) for x in geo] + [x for x in raw.get("_geo_warnings") or [] if x.get("code") not in {g["code"] for g in geo}]
+    return m, an + geo
+
+
+def _validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
     try:
         m = model.from_dict(raw)
     except Exception as exc:  # noqa: BLE001
