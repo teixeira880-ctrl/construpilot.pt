@@ -712,6 +712,24 @@ def _guess_kind(filename: str, text: str) -> str:
     return "plan" if ext in ("dxf", "dwg") else "document"
 
 
+def _pdf_text_pages(data: bytes, max_pages: int = 60) -> tuple[str, int]:
+    """Texte + nombre de pages d'un PDF en une seule lecture (PyMuPDF, ~10× plus rapide que pypdf) ; repli pypdf."""
+    try:
+        import fitz
+        with fitz.open(stream=data, filetype="pdf") as d:
+            n = d.page_count
+            return "\n".join(d[i].get_text() for i in range(min(n, max_pages))).strip(), max(1, n)
+    except Exception:  # noqa: BLE001
+        from routes.documents import _pdf_extract_text_long
+        text = _pdf_extract_text_long(data, max_pages=max_pages)
+        try:
+            import io
+            from pypdf import PdfReader
+            return text, len(PdfReader(io.BytesIO(data)).pages)
+        except Exception:  # noqa: BLE001
+            return text, 1
+
+
 @router.post("/documents")
 async def upload_doc(file: UploadFile = File(...), kind: str = "", user=Depends(current_user)) -> dict:
     """Document joint à l'assistant (devis, facture, CCTP, photo…) : stocké par compte, texte extrait pour le contexte."""
@@ -754,14 +772,7 @@ async def upload_doc(file: UploadFile = File(...), kind: str = "", user=Depends(
             raise HTTPException(415, str(exc)) from None
         pages = max(1, -(-len(text) // 12_000))
     elif mime == "application/pdf":
-        from routes.documents import _pdf_extract_text_long
-        text = _pdf_extract_text_long(data, max_pages=60)
-        try:
-            import io
-            from pypdf import PdfReader
-            pages = len(PdfReader(io.BytesIO(data)).pages)
-        except Exception:  # noqa: BLE001
-            pages = 1
+        text, pages = await asyncio.to_thread(_pdf_text_pages, data, 60)   # hors de la boucle : ne bloque plus le serveur
     doc = {"doc_id": f"doc_{uuid.uuid4().hex[:10]}", "user_id": user["user_id"], "organization_id": user.get("organization_id"),
            "filename": name, "mime": mime, "size": len(data), "pages": pages, "kind": kind if kind in ("quote", "plan", "invoice", "cctp", "photo", "document") else "photo" if mime.startswith("image/") else ("document" if office and _guess_kind(name, text) == "plan" else _guess_kind(name, text)),
            "text": text[:200000], "has_text": len(text) >= 120, "data_b64": base64.b64encode(data).decode(), "created_at": _now()}
@@ -1558,6 +1569,29 @@ TOOL_STATUS_PT.update(WINDOW_STATUS)
 TOOL_STATUS_PT.update(DOSSIER_STATUS)
 TOOL_STATUS.update(DOSSIER_STATUS)
 TOOL_STATUS_PT.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")
+TOOL_STATUS_PT.setdefault("generate_bet_lot_plans", "Desenho das plantas da especialidade (alguns segundos)…")
+TOOL_STATUS.setdefault("generate_bet_lot_plans", "Desenho das plantas da especialidade (alguns segundos)…")
+
+
+class _StatusMap(dict):
+    """Rótulo de progresso: entrada explícita, senão rótulo deduzido do nome da ferramenta (nunca o genérico «Processamento do processo…»)."""
+    KW = (("web", "A pesquisar na Internet…"), ("search", "A pesquisar…"), ("fetch", "A abrir a fonte…"), ("bet", "Estudo de engenharia em curso…"),
+          ("draw", "A desenhar…"), ("plan", "A analisar as plantas…"), ("read", "A ler os documentos…"), ("document", "A analisar os documentos…"),
+          ("calc", "A calcular…"), ("quote", "A preparar o orçamento…"), ("pdf", "A preparar o PDF…"), ("file", "A preparar o ficheiro…"),
+          ("image", "A tratar a imagem…"), ("dossier", "A preparar o processo…"), ("mission", "A preparar a missão…"))
+
+    def get(self, key, default=None):
+        if key in self:
+            return self[key]
+        n = str(key or "").lower()
+        for kw, label in self.KW:
+            if kw in n:
+                return label
+        return "A trabalhar no seu pedido…"
+
+
+TOOL_STATUS_PT = _StatusMap({**TOOL_STATUS, **TOOL_STATUS_PT})
+TOOL_STATUS = _StatusMap(TOOL_STATUS)
 TOOL_STATUS.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")
 TOOL_STATUS.update(WINDOW_STATUS)
 
