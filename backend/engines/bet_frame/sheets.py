@@ -632,6 +632,8 @@ def framing(m: Frame, r: dict, g: list[dict], code: str, e: dict) -> Sheet:
         sh.text("RESA", (b_[0] + u(sh, 0.6), ri["y"] + u(sh, 0.4)), S(ri["id"] + (" " + dn_txt(k, d) if d else "")), 1.3)
         sh.text("RESA", (b_[0] + u(sh, 0.6), ri["y"] - u(sh, 1.6)), S(f"{cm(w)}x{cm(w)}"), 1.25)
     exe_dims(sh, m, r)
+    from . import coupes
+    coupes.plan_marks(sh, m, r, s.id)
     cof_legend(sh)
     ld = fl["loads"]
     _note(sh, *hypotheses(m, r),
@@ -918,6 +920,8 @@ def all_sheets(m: Frame, r: dict, e: dict, t: dict | None = None) -> list[Sheet]
         out.append(framing(m, r, g, f"EST-{k + 2:02d}", e))
     out.append(section(m, r))
     out[-1].code = f"EST-{len(groups) + 2:02d}"
+    from . import coupes
+    out += coupes.sheets(m, r)
     out += tables(m, r)
     out += details.beam_sheets(m, r)
     out += details.column_sheets(m, r)

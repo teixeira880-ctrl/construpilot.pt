@@ -340,3 +340,25 @@ def test_plans_execution_coffrage(tmp_path):
     assert "570" in t or "580" in t                                                          # cotes nu à nu en cm
     tf = p_fon.extract_text()
     assert "(As:" in tf and "LN01" in tf and "ht" in tf
+
+
+def test_coupes_de_coffrage_verticales(tmp_path):
+    """Cahier de coupes verticales au 1:25 : rive + courante par plancher, balcon, noyau, sous-sol, chaque type de semelle ;
+    repères C n identiques sur les plans de coffrage et dans la nomenclature."""
+    from engines.bet_frame import calc, coupes
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    m = model.from_dict(raw)
+    r = calc.compute(m)
+    sp = coupes.specs(m, r)
+    kinds = [s["kind"] for s in sp]
+    assert {"beam", "pad"} <= set(kinds) and any(s["kind"] == "beam" and s["rive"] for s in sp) and any(s["kind"] == "beam" and not s["rive"] for s in sp)
+    assert len({(s["pad"]["B"], s["pad"]["h"]) for s in sp if s["kind"] == "pad"}) == kinds.count("pad")
+    res = pipeline.render_lots(raw, ["gros_oeuvre"], tmp_path / "go.pdf", lang="fr")
+    pages = PdfReader(res["path"]).pages
+    txt = {p.extract_text().split("\n")[0]: p.extract_text() for p in pages}
+    allt = "\n".join(txt.values())
+    assert "Nomenclature des coupes" in allt and "1:25" in allt and "HSP" in allt and "Coupe sur semelle isolée" in allt
+    cof = pages[1].extract_text()
+    assert "C1" in cof and "C2" in cof                                    # repères de coupe sur le plan de coffrage
+    assert any(s.startswith("EST-C01") for s in res["sheets"])
