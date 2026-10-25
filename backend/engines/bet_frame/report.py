@@ -59,7 +59,7 @@ def review(m: Frame, r: dict, e: dict, anomalies: list[dict]) -> dict:
     return {"status": status, "blocking": blocking, "items": items}
 
 
-def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: list):
+def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: list, th: dict | None = None):
     br = B.get()
     for st in (H1, H2):
         st.textColor = br.accent
@@ -89,7 +89,7 @@ def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: l
                  [_("Type", "Tipo"), bt],
                  [_("Plans d'architecte", "Projeto de arquitetura"), pr.get("pc_ref", "—")],
                  [_("Étude de sol", "Estudo geotécnico"), pr.get("g2_ref", "—") + (f" ({m.geo.get('source')})" if m.geo.get("source") else "")],
-                 [_("Emprise de la trame", "Implantação da trama"), f"{num(m.L)} × {num(m.W)} m = {num(m.L * m.W, 1)} m²"],
+                 [_("Emprise de la trame", "Implantação da trama"), f"{num(m.L)} × {num(m.W)} m — {num(m.footprint, 1)} m²"],
                  [_("Trame x", "Trama x"), " / ".join(num(b - a) for a, b in zip(m.gx, m.gx[1:])) + " m"],
                  [_("Trame y", "Trama y"), " / ".join(num(b - a) for a, b in zip(m.gy, m.gy[1:])) + " m"],
                  [_("Niveaux", "Pisos"), ", ".join(f"{l.name} ({'+' if l.z >= 0 else ''}{num(l.z)}, h={num(l.height)})" for l in m.levels)],
@@ -208,6 +208,28 @@ def write_note(path, m: Frame, r: dict, e: dict, tot: dict, rev: dict, sheets: l
     s.append(_t(rows, [22, 16, 18, 60, 58]))
     for n in e["notes"]:
         s.append(Paragraph("• " + _esc(n), SM))
+    # 9 bis. térmica
+    if th:
+        pt = th["country"] == "PT"
+        s.append(H(_("Comportement thermique et chauffage", "Comportamento térmico e climatização")))
+        if pt:
+            rows = [["Fração", "Piso", "Ap (m²)", "Nic / Ni", "Ntc / Nt", "RNt", "Classe", "Φ (kW)"]]
+            for x in th["units"]:
+                rows.append([x["name"], x["level_name"], num(x["Ap"], 1), f"{num(x['Nic'], 1)} / {num(x['Ni'], 1)}", f"{num(x['Ntc'], 1)} / {num(x['Nt'], 1)}",
+                             num(x["RNt"], 2), x["classe"], num(x["phi_w"] / 1000, 2)])
+            s.append(_t(rows, [24, 30, 16, 26, 30, 14, 14, 18]))
+            cl = {}
+            for x in th["units"]:
+                cl[x["classe"]] = cl.get(x["classe"], 0) + 1
+            s.append(Paragraph(_esc("Classes energéticas: " + ", ".join(f"{k} × {v}" for k, v in sorted(cl.items())) +
+                                    f" · potência total de aquecimento {num(sum(x['phi_w'] for x in th['units']) / 1000, 1)} kW."), P))
+        else:
+            rows = [["Logement", "Niveau", "Su (m²)", "Besoin (kWh/m².an)", "Φ (kW)"]]
+            for x in th["units"]:
+                rows.append([x["name"], x["level_name"], num(x["Ap"], 1), num(x["bch"], 1), num(x["phi_w"] / 1000, 2)])
+            s.append(_t(rows, [34, 40, 20, 40, 20]))
+        for h in th["hyp"]:
+            s.append(Paragraph("• " + _esc(h), SM))
     # 10. revue
     s.append(H(_("Vérifications et points à valider", "Verificações e pontos a validar")))
     for it in rev["items"]:

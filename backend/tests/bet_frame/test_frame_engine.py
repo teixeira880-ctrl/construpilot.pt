@@ -11,7 +11,7 @@ from pypdf import PdfReader
 from reportlab.lib.pagesizes import A3, landscape
 from reportlab.pdfgen import canvas
 
-from engines.bet_frame import calc, hook, mep, model, pipeline, reader
+from engines.bet_frame import calc, hook, mep, model, pipeline, reader, thermal
 from engines.bet_frame.lang import use_lang
 
 CASE = json.loads((Path(__file__).parents[2] / "engines/bet_frame/cases/immeuble_demo_pt.json").read_text(encoding="utf-8"))
@@ -159,7 +159,7 @@ def test_hook_immeuble_de_bout_en_bout():
     assert done
     final = steps[-1]
     assert final[0] == "Terminé" and final[1]["status"] == "done" and final[1]["building_kind"] == "frame"
-    assert {k for k, _ in stored} == {"pdf", "plans_pdf", "xlsx", "zip"} and all(s > 1000 for _, s in stored)
+    assert {k for k, _ in stored} == {"pdf", "re2020_pdf", "plans_pdf", "xlsx", "zip"} and all(s > 1000 for _, s in stored)
 
 
 def test_hook_maison_et_genie_civil():
@@ -220,3 +220,145 @@ def test_hook_erreur_moteur_message_clair(monkeypatch):
     docs = [("plantas.pdf", _pdf(["PLANTA DO PISO TIPO — Fração A, Fração B", "Fração C — habitação coletiva"]))]
     done = asyncio.run(hook.maybe_handle(db, "j", "u", "c", "r", docs, None, "PT", step=step, store=None, llm=None))
     assert done and steps[-1][1]["status"] == "failed" and steps[-1][1]["error"].startswith("O estudo do edifício")
+
+
+def test_execucao_termica_e_climatizacao(tmp_path):
+    raw = copy.deepcopy(CASE)
+    raw["project"]["address"] = "Rua do Exemplo, Ermesinde, Valongo"
+    res = pipeline.run(raw, tmp_path, stem="T")
+    codes = [s.split()[0] for s in res["sheets"]]
+    for c in ("EST-A1", "EST-P1", "TER-01", "AVAC-01"):
+        assert c in codes, codes
+    assert any(c.startswith("EST-F1") for c in codes)
+    assert res["thermal"]["units"] == 20 and res["thermal"]["heating_kw"] > 10 and set(res["thermal"]["classes"]) <= {"A+", "A", "B", "B-", "C", "D", "E", "F"}
+    txt = "".join(p.extract_text() or "" for p in PdfReader(res["files"]["pdf"]).pages)
+    assert "Comportamento térmico" in txt and "Armaduras das vigas" in txt and "Grande Porto" in txt
+
+
+def test_termica_fr_e_lote_aquecimento(tmp_path):
+    raw = copy.deepcopy(CASE)
+    raw["project"]["country"] = "FR"
+    with use_lang("fr"):
+        t = thermal.compute(model.from_dict(copy.deepcopy(raw)))
+    assert t["country"] == "FR" and all(x["phi_w"] > 300 for x in t["units"])
+    from engines.bet_core import pipeline as core
+    res = core.render_lots(copy.deepcopy(CASE), ["chauffage"], tmp_path / "ch.pdf", None, "pt", None)
+    assert res["ok"] and any("AVAC-" in s for s in res["sheets"]) and any("TER-01" in s for s in res["sheets"])
+
+
+def test_emprise_em_L_sem_caixa(tmp_path):
+    raw = copy.deepcopy(CASE)
+    raw["structure"]["void_cells"] = [["5", "C"], ["6", "C"]]
+    for u in raw["units"]:
+        if u["x1"] > 31.1 and u["y1"] > 12.3:
+            u["y1"] = 12.3
+    with use_lang("pt"):
+        m = model.from_dict(copy.deepcopy(raw))
+        assert not model.has_block(model.check(m))
+        r = calc.compute(m)
+    assert abs(m.footprint - (m.L * m.W - 12.4 * 6.0)) < 0.5
+    names = {c["name"] for c in r["columns"]}
+    assert "D6" not in names and "D7" not in names and "D5" in names
+    assert all(not (p["x0"] >= 24.9 and p["y0"] >= 12.3) for p in r["floors"][0]["panels"])
+    vd = [b for b in r["floors"][0]["beams"] if b["name"].startswith("VD")]
+    assert vd and max(b["pos"][-1] for b in vd) <= 24.91
+    res = pipeline.run(raw, tmp_path, stem="T")
+    assert res["status"].startswith("PRONTO") and res["thermal"]["units"] == 20
+
+
+# ---------------------------------------------------------------- lot 15 : note thermique, plans par logement type, lots MEP
+def _demo():
+    return copy.deepcopy(CASE)
+
+def test_note_thermique_pt_et_fr(tmp_path):
+    from engines.bet_frame import thermal, thermal_note
+    from pypdf import PdfReader
+    raw = _demo()
+    with use_lang("pt"):
+        m = model.from_dict(raw)
+        t = thermal.compute(m)
+        p = thermal_note.write(m, t, tmp_path / "pt.pdf", "pt")
+    assert len(PdfReader(str(p)).pages) >= 6
+    assert all(s["U"] < 0.6 for k, s in t["solutions"].items() if s["layers"])
+    assert t["solutions"]["parede"]["U"] <= t["solutions"]["parede"]["Umax"]
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    raw["project"]["address"] = "12 rue de Paris 93200 Saint-Denis"
+    m = model.from_dict(raw)
+    t = thermal.compute(m)
+    assert t["re2020"].get("Bbio") and t["re2020"]["zone"] == "H1a" and t["re2020"].get("blocs")
+    p = thermal_note.write(m, t, tmp_path / "fr.pdf", "fr")
+    assert len(PdfReader(str(p)).pages) >= 4
+
+
+def test_plans_par_logement_type():
+    from engines.bet_frame import dwelling
+    raw = _demo()
+    with use_lang("pt"):
+        m = model.from_dict(raw)
+        shs = dwelling.sheets_for(m)
+    kinds = {s.kind for s in shs}
+    assert {"elec", "elec_uni", "plumb_unit", "hvac_unit"} <= kinds
+    assert len(dwelling.unit_types(m)) == len({s.code[4] for s in shs if s.kind == "elec"})
+    assert all("fração tipo" in s.title for s in shs)
+    rooms, ind = dwelling.zoning(m, m.units[0])
+    types = [r["type"] for r in rooms]
+    assert ind and [r["_k"] for r in rooms].count("chambre") == 3 and "cuisine" in types and "salle_eau" in types and "sejour" in types
+    for r in rooms:                       # pièces dans la fraction, sans recouvrement
+        assert -0.01 <= r["x0"] < r["x1"] <= m.units[0].x1 - m.units[0].x0 + 0.01
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    m = model.from_dict(raw)
+    shs = dwelling.sheets_for(m)
+    assert any(s.code.startswith("CHF-") for s in shs)
+
+
+def test_lots_mep_sans_planches_de_structure(tmp_path):
+    raw = _demo()
+    res = pipeline.render_lots(raw, ["electricite", "plomberie"], tmp_path / "lot.pdf")
+    assert res["ok"]
+    assert not any(s.startswith("EST-") for s in res["sheets"])
+    assert any(s.startswith("ELE-AU") for s in res["sheets"]) and any(s.startswith("PLB-A") for s in res["sheets"])
+    res = pipeline.render_lots(raw, ["chauffage"], tmp_path / "ch.pdf")
+    from pypdf import PdfReader
+    assert res["ok"] and len(PdfReader(str(tmp_path / "ch.pdf")).pages) > len(res["sheets"])      # note thermique en tête
+
+
+def test_plans_execution_coffrage(tmp_path):
+    """Coffrage et fondations au format d'un plan d'exécution : grand format, 1:50–1:100, poutres et poteaux repérés et sectionnés,
+    arases (Ai / As / b / f), cotes en cm, légende et hypothèses."""
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    res = pipeline.render_lots(raw, ["gros_oeuvre"], tmp_path / "go.pdf", lang="fr")
+    assert res["ok"]
+    pdf = PdfReader(res["path"])
+    p_fon, p_cof = pdf.pages[0], pdf.pages[1]
+    assert float(p_cof.mediabox.width) > 1190 and float(p_fon.mediabox.width) > 1190          # A2 ou plus
+    t = p_cof.extract_text()
+    assert "1:100" in t or "1:75" in t or "1:50" in t
+    assert "30x50ht" in t and "(Ai:" in t and "DP" in t and "f" in t and "LÉGENDE" in t and "HYPOTHÈSES" in t
+    assert "570" in t or "580" in t                                                          # cotes nu à nu en cm
+    tf = p_fon.extract_text()
+    assert "(As:" in tf and "LN01" in tf and "ht" in tf
+
+
+def test_coupes_de_coffrage_verticales(tmp_path):
+    """Cahier de coupes verticales au 1:25 : rive + courante par plancher, balcon, noyau, sous-sol, chaque type de semelle ;
+    repères C n identiques sur les plans de coffrage et dans la nomenclature."""
+    from engines.bet_frame import calc, coupes
+    raw = _demo()
+    raw["project"]["country"] = "FR"
+    m = model.from_dict(raw)
+    r = calc.compute(m)
+    sp = coupes.specs(m, r)
+    kinds = [s["kind"] for s in sp]
+    assert {"beam", "pad"} <= set(kinds) and any(s["kind"] == "beam" and s["rive"] for s in sp) and any(s["kind"] == "beam" and not s["rive"] for s in sp)
+    assert len({(s["pad"]["B"], s["pad"]["h"]) for s in sp if s["kind"] == "pad"}) == kinds.count("pad")
+    res = pipeline.render_lots(raw, ["gros_oeuvre"], tmp_path / "go.pdf", lang="fr")
+    pages = PdfReader(res["path"]).pages
+    txt = {p.extract_text().split("\n")[0]: p.extract_text() for p in pages}
+    allt = "\n".join(txt.values())
+    assert "Nomenclature des coupes" in allt and "1:25" in allt and "HSP" in allt and "Coupe sur semelle isolée" in allt
+    cof = pages[1].extract_text()
+    assert "C1" in cof and "C2" in cof                                    # repères de coupe sur le plan de coffrage
+    assert any(s.startswith("EST-C01") for s in res["sheets"])

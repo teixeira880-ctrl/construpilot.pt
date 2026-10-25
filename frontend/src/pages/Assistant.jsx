@@ -4,7 +4,8 @@ import { lastConversation, rememberConversation, submittedJob } from "@/componen
 import "@/components/assistant/AssistantStudio.css";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe, FolderArchive } from "lucide-react";
+import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Check, FolderArchive } from "lucide-react";
+import { useDossierImport, DossierChips } from "@/components/assistant/DossierImport";
 import { toast } from "sonner";
 import { api, uploadPlan } from "@/lib/api";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -16,6 +17,7 @@ import { CalculationsPanel } from "@/components/assistant/CalculationsPanel";
 import { ProjectStatePanel } from "@/components/assistant/ProjectStatePanel";
 import { FallbackBanner } from "@/components/assistant/FallbackBanner";
 import { DocumentViewerProvider } from "@/components/assistant/DocumentViewer";
+import { AssistantSendContext } from "@/components/assistant/assistantSend";
 import { PrivateImage } from "@/components/assistant/PrivateMedia";
 import { useBackgroundCopy } from "@/components/assistant/backgroundCopy";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -27,7 +29,6 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { usePermissions } from "@/context/PermissionContext";
 import { isProfessional } from "@/components/workspace/navigation";
 import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
-import { useDossierImport, DossierChips } from "@/components/assistant/DossierImport";
 
 export default function Assistant() {
   const ui = useWorkspaceCopy();
@@ -36,6 +37,7 @@ export default function Assistant() {
   const bg = useBackgroundCopy();
   const [searchParams, setSearchParams] = useSearchParams();
   const { lang } = useI18n();
+  const dossierImport = useDossierImport();
   const confirm = useConfirm();
   const { user } = useAuth();
   const chantierParam = searchParams.get("chantier") || "";
@@ -45,6 +47,8 @@ export default function Assistant() {
   const canQuote = isProfessional(user) && can("devis");
   const [transcribing, setTranscribing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [convOpen, setConvOpen] = useState(() => { try { const v = localStorage.getItem("cp_assistant_conv_open"); if (v !== null) return v === "1"; } catch {} return typeof window !== "undefined" && window.innerWidth >= 1600; });
+  const [panelsOpen, setPanelsOpen] = useState(() => { try { return localStorage.getItem("cp_assistant_panels_open") === "1"; } catch { return false; } });
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyError, setHistoryError] = useState(false);
@@ -54,7 +58,6 @@ export default function Assistant() {
   const uploadRef = useRef(null);
   const dossierRef = useRef(null);
   const folderRef = useRef(null);
-  const dossierImport = useDossierImport();
   const uploadKind = useRef("doc");
   const activeConversation = useRef(null);
   const mounted = useRef(true);
@@ -78,6 +81,7 @@ export default function Assistant() {
   const [docs, setDocs] = useState([]);
   const [activeDocs, setActiveDocs] = useState([]);
   const [pickFile, setPickFile] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
   const [prefs, setPrefs] = useState([]);
   const [text, setText] = useState(() => searchParams.get("resumeQuote")
     ? `Retoma o orçamento existente (doc_id: ${searchParams.get("resumeQuote")}): relê-o com read_quote_draft e depois aplica as seguintes alterações — `
@@ -115,6 +119,7 @@ export default function Assistant() {
       setConv(data); setActivePlans(data.active_plans || []); setActiveDocs(data.active_docs || []); setPending([]); dossierImport.reset();
     }).catch(() => { if (active) setHistoryError(true); }).finally(() => { if (active) setLoadingConversation(false); });
     return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedConversation]);
   useEffect(() => {
     loadConvs();
@@ -128,11 +133,30 @@ export default function Assistant() {
     api.get("/takeoffs").then(r => { if (current) setPlans(r.data.plans || r.data.items || (Array.isArray(r.data) ? r.data : [])); }).catch(() => {});
     return () => { current = false; };
   }, [canPlan]);
+  useEffect(() => {                         // plantas ativas de uma conversa reaberta : obtém as que faltam na lista para nomear as etiquetas
+    if (!canPlan) return;
+    const missing = activePlans.filter((id) => !plans.some((p) => p.plan_id === id));
+    if (!missing.length) return;
+    let current = true;
+    Promise.all(missing.map((id) => api.get(`/takeoffs/${id}`).then((r) => r.data).catch(() => null)))
+      .then((fetched) => { const ok = fetched.filter(Boolean); if (current && ok.length) setPlans((p) => [...ok.filter((f) => !p.some((x) => x.plan_id === f.plan_id)), ...p]); });
+    return () => { current = false; };
+  }, [canPlan, activePlans, plans]);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; if (recorderRef.current) { recorderRef.current.onstop = null; recorderRef.current.stream.getTracks().forEach(t => t.stop()); } };
   }, []);
   useEffect(() => { rememberConversation(user?.user_id, conv?.conversation_id); }, [conv?.conversation_id, user?.user_id]);
+  useEffect(() => { try { localStorage.setItem("cp_assistant_conv_open", convOpen ? "1" : "0"); } catch {} }, [convOpen]);
+  useEffect(() => { try { localStorage.setItem("cp_assistant_panels_open", panelsOpen ? "1" : "0"); } catch {} }, [panelsOpen]);
+  useEffect(() => {
+    const h = (e) => { setText(e.detail || ""); setTimeout(() => textareaRef.current?.focus(), 50); };
+    window.addEventListener("cp-assistant-prefill", h);
+    let pending = null;
+    try { pending = sessionStorage.getItem("cp_assistant_prefill"); sessionStorage.removeItem("cp_assistant_prefill"); } catch { /* armazenamento indisponível */ }
+    if (pending) h({ detail: pending });
+    return () => window.removeEventListener("cp-assistant-prefill", h);
+  }, []);
   const jobFollow = useConversationJobs(conv?.conversation_id, (data) => {
     if (activeConversation.current !== data.conversation_id) return;
     setConv(data);
@@ -149,11 +173,21 @@ export default function Assistant() {
     if (received) loadConvs();
   });
   const running = conv?.jobs?.some((job) => ["queued", "running", "preparing"].includes(job.status));
+  const [betProg, setBetProg] = useState(null);
+  useEffect(() => {
+    if (!running || !conv?.conversation_id) { setBetProg(null); return; }
+    let active = true;
+    const tick = () => api.get(`/assistant/bet-progress/${conv.conversation_id}`)
+      .then(({ data }) => { if (active) setBetProg(data?.label ? data : null); }).catch(() => {});
+    tick();
+    const id = setInterval(tick, 3000);
+    return () => { active = false; clearInterval(id); };
+  }, [running, conv?.conversation_id]);
   useEffect(() => {
     const area = messagesRef.current;
     if (area && followMessages.current) area.scrollTop = area.scrollHeight;
   }, [conv?.messages?.length, conv?.conversation_id, conv?.jobs]);
-  useEffect(() => { const input = textareaRef.current; if (input) { input.style.height = "auto"; input.style.height = `${Math.min(input.scrollHeight, 140)}px`; } }, [text]);
+  useEffect(() => { const input = textareaRef.current; if (input) { input.style.height = "auto"; const max = Math.max(120, Math.round((typeof window !== "undefined" ? window.innerHeight : 800) * 0.3)); input.style.height = `${Math.min(input.scrollHeight, max)}px`; } }, [text]);
   const seedText = (value) => { setText(value); requestAnimationFrame(() => textareaRef.current?.focus()); };
   const open = async (id) => {
     if (sendLock.current || navigationLock.current || uploading || rec || transcribing || pickFile || cadFile) return;
@@ -187,11 +221,11 @@ export default function Assistant() {
   const nameOf = (id) => plans.find((p) => p.plan_id === id)?.filename || docs.find((d) => d.doc_id === id)?.filename || id;
   const removeConv = async (c) => {
     const pt = lang === "pt";
-    const ok = await confirm({ title: pt ? "Mover esta conversa para a reciclagem?" : "Mover esta conversa para o lixo?", description: pt ? `« ${c.title} » ficará recuperável durante 30 dias.` : `« ${c.title} » continuará recuperável durante 30 dias no lixo.`, confirmLabel: pt ? "Mover" : "Mover para o lixo" });
+    const ok = await confirm({ title: "Mover esta conversa para a reciclagem?", description: `« ${c.title} » ficará recuperável durante 30 dias.`, confirmLabel: "Mover" });
     if (!ok) return;
     try {
       await api.delete(`/assistant/conversations/${c.conversation_id}`);
-      toast.success(pt ? "Conversa movida para a reciclagem" : "Conversa movida para o lixo — recuperável durante 30 dias", { action: { label: pt ? "Reciclagem" : "Lixo", onClick: () => window.location.assign("/corbeille") } });
+      toast.success("Conversa movida para a reciclagem", { action: { label: "Reciclagem", onClick: () => window.location.assign("/corbeille") } });
       if (conv?.conversation_id === c.conversation_id) { activeConversation.current = null; setConv(null); setActivePlans([]); setActiveDocs([]); setPending([]); dossierImport.reset(); setSearchParams({}, { replace: true }); }
       loadConvs();
     } catch (e) { toast.error(e?.response?.data?.detail || ui("chatError")); }
@@ -228,6 +262,25 @@ export default function Assistant() {
     } finally { sendLock.current = false; setBusy(false); }
   };
 
+  // Envio programático de uma mensagem do utilizador (ex. escolhas validadas num ChoiceCard).
+  const sendStructured = async (content) => {
+    if (!content || sendLock.current) return;
+    followMessages.current = true; setShowJump(false);
+    sendLock.current = true; setBusy(true);
+    let c = activeConversation.current ? conv : conv;
+    try {
+      if (!c) { const r = await api.post("/assistant/conversations", activeChantierId ? { chantier_id: activeChantierId } : {}); c = { ...r.data, messages: [] }; activeConversation.current = c.conversation_id; setConv(c); }
+      const payload = { conversation_id: c.conversation_id, text: content, response_mode: mode, web_enabled: webEnabled, plan_ids: [], doc_ids: [], attachments: [] };
+      await api.post("/assistant/jobs", { ...payload, request_id: crypto.randomUUID() });
+      submittedJob(user?.user_id, c.conversation_id);
+      setSearchParams(convParams(c.conversation_id), { replace: true });
+      const { data } = await api.get(`/assistant/conversations/${c.conversation_id}`);
+      if (activeConversation.current === c.conversation_id) setConv(data);
+      jobFollow.refresh(); loadConvs();
+    } catch { toast.error(ui("assistantError")); }
+    finally { sendLock.current = false; setBusy(false); }
+  };
+
   const stop = async (jobId) => {
     try { await api.post(`/assistant/jobs/${jobId}/cancel`); jobFollow.refresh(); }
     catch { toast.error(ui("assistantError")); }
@@ -247,6 +300,18 @@ export default function Assistant() {
       mr.start(); recorderRef.current = mr; setRec(mr);
     } catch { toast.error(ui("microphoneError")); }
   };
+
+  // Microfone flutuante → /assistant?voice=1 : inicia o ditado automaticamente.
+  const voiceStarted = useRef(false);
+  useEffect(() => {
+    if (voiceStarted.current || searchParams.get("voice") !== "1") return;
+    voiceStarted.current = true;
+    const sp = new URLSearchParams(searchParams); sp.delete("voice"); setSearchParams(sp, { replace: true });
+    textareaRef.current?.focus();
+    const id = setTimeout(() => { if (!recorderRef.current) toggleMic(); }, 350);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const upload = async (file, as, cadUnit) => {
     if (as === "plan" && !canPlan) { toast.error(ui("accessDenied")); return; }
@@ -281,6 +346,10 @@ export default function Assistant() {
 
   const activePrefs = prefs.filter((p) => p.active);
   const locked = busy || loadingConversation || uploading || !!rec || transcribing;
+  const runningJob = conv?.jobs?.find((job) => ["queued", "running", "preparing"].includes(job.status));
+  const betReady = betProg?.pct != null && betProg.pct >= 100;
+  const statusWorking = running && !betReady;
+  const composerPlaceholder = lang === "en" ? "Write your request… (e.g. run the full BET study for these plans)" : "Escreva o seu pedido… (ex.: faz o estudo BET completo destas plantas)";
   const matchingConvs = convs.filter(c => normalizeSearch(c.title).includes(normalizeSearch(historyQuery)));
   const history = (scope) => <div className="assistant-history">
     <div className="assistant-history-heading"><strong>{ui("history")}</strong><span>{convs.length}</span></div>
@@ -291,7 +360,7 @@ export default function Assistant() {
       {historyError && <p role="alert" data-testid={`assistant-history-error-${scope}`}>{ui("historyError")} <button type="button" className="underline" onClick={loadConvs} data-testid={`assistant-history-retry-${scope}`}>{ui("retry")}</button></p>}
       {!historyError && !matchingConvs.length && <p data-testid={`assistant-history-empty-${scope}`}>{ui(historyQuery ? "noHistoryMatch" : "noHistory")}</p>}
       {matchingConvs.map(c => <div key={c.conversation_id} className="assistant-history-row"><button disabled={locked || !!pickFile || !!cadFile} onClick={() => open(c.conversation_id)} aria-current={conv?.conversation_id === c.conversation_id ? "true" : undefined} title={c.title} data-conversation-id={c.conversation_id} data-testid={`assistant-conv-${scope}-${c.conversation_id}`}><MessageSquare size={14} aria-hidden="true" /><span>{c.title}</span></button>
-        <button type="button" className="assistant-history-delete" disabled={locked} aria-label={lang === "pt" ? "Mover para a reciclagem" : "Mover para o lixo"} title={lang === "pt" ? "Mover para a reciclagem" : "Mover para o lixo"} onClick={() => removeConv(c)} data-testid={`assistant-conv-delete-${scope}-${c.conversation_id}`}><Trash2 size={14} /></button></div>)}
+        <button type="button" className="assistant-history-delete" disabled={locked} aria-label="Mover para a reciclagem" title="Mover para a reciclagem" onClick={() => removeConv(c)} data-testid={`assistant-conv-delete-${scope}-${c.conversation_id}`}><Trash2 size={14} /></button></div>)}
     </div>
     <Link to="/preferences" className="text-xs flex items-center gap-2 border-t pt-3 min-h-11" data-testid={`assistant-prefs-link-${scope}`}><Brain size={16} className="text-primary shrink-0" /><span>{ui("preferences")}</span><span className="ms-auto text-muted-foreground" data-testid={`assistant-prefs-count-${scope}`}>{activePrefs.length}</span></Link>
   </div>;
@@ -306,7 +375,7 @@ export default function Assistant() {
     "Write a site report with observed facts, decisions, actions, owners and known dates. My notes: ",
     "Help me solve this site problem. Check the documents and suggest the next actions: ",
   ] : [
-    "Prepara uma resposta profissional a este e-mail. Destinatário e objetivo: E-mail recebido: ",
+    "Prepara uma resposta profissional a este e-mail. Destinatário e objetivo: \nE-mail recebido: ",
     "Analisa as paredes interiores parede a parede da planta anexa. Identifica as faces, verifica as cotas e indica o que falta confirmar. Âmbito: ",
     "Redige uma ata com os factos constatados, decisões, ações, responsáveis e datas conhecidas. As minhas notas: ",
     "Ajuda-me a resolver este problema de obra. Verifica as peças, explica as causas possíveis e propõe as próximas ações: ",
@@ -315,7 +384,7 @@ export default function Assistant() {
     if (kind === "plan") setActivePlans(a => a.filter(x => x !== id)); else setActiveDocs(a => a.filter(x => x !== id));
     setPending(a => a.filter(x => x !== id));
   };
-  return <DocumentViewerProvider><div className="assistant-workspace assistant-studio" data-testid="assistant-page">
+  return <AssistantSendContext.Provider value={sendStructured}><DocumentViewerProvider><div className={`assistant-workspace assistant-studio${convOpen ? "" : " conv-collapsed"}`} data-testid="assistant-page">
     {history("desktop")}
     <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
       <DialogContent className="assistant-history-dialog assistant-studio" data-testid="assistant-history-dialog" onCloseAutoFocus={e => { e.preventDefault(); historyButtonRef.current?.focus(); }}>
@@ -324,15 +393,20 @@ export default function Assistant() {
     </Dialog>
     <section className="assistant-conversation" aria-label={ui("assistant")}>
       <header className="assistant-topbar">
-        <AssistantMark size={42} className="shrink-0" />
-        <div className="assistant-brand-text"><h1>{ui("assistant")}</h1><p title={conv?.title}>{conv?.title || studio("subtitle")}</p></div>
+        <AssistantMark size={30} className="shrink-0" />
+        <div className="assistant-brand-text"><h1 title={conv?.title || studio("subtitle")}>{ui("assistant")}</h1></div>
+        {(statusWorking || betProg?.label) && <span className={`assistant-status-pill${statusWorking ? " is-working" : " is-ready"}`} role="status" data-testid="assistant-status-pill" title={betProg?.label || (statusWorking ? bg("working") : bg("ready"))}>
+          {statusWorking ? <Loader2 size={13} className="animate-spin shrink-0" /> : <Check size={13} className="shrink-0" />}
+          <span>{betProg?.label ? `${betProg.label}${betProg.pct != null ? ` · ${betProg.pct}%` : ""}` : statusWorking ? bg("working") : bg("ready")}</span>
+        </span>}
         <div className="assistant-topbar-actions">
+          <Button variant="ghost" className="assistant-conv-toggle" onClick={() => setConvOpen(v => !v)} aria-pressed={convOpen} aria-label={convOpen ? "Esconder as conversas" : "Mostrar as conversas"} title={convOpen ? "Esconder as conversas" : "Mostrar as conversas"} data-testid="assistant-conv-toggle">{convOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</Button>
+          <Button variant="ghost" className="assistant-panels-toggle" onClick={() => setPanelsOpen(v => !v)} aria-pressed={panelsOpen} aria-label={panelsOpen ? "Esconder cálculos e estado" : "Cálculos e estado do processo"} title={panelsOpen ? "Esconder cálculos e estado" : "Cálculos e estado do processo"} data-testid="assistant-panels-toggle">{panelsOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}</Button>
           <Button ref={historyButtonRef} variant="ghost" className="assistant-mobile-history" onClick={() => setHistoryOpen(true)} aria-label={ui("history")} data-testid="assistant-history-open"><History size={17} /><span>{ui("history")}</span></Button>
           <Button variant="outline" onClick={() => setOptionsOpen(v => !v)} aria-expanded={optionsOpen} aria-controls="assistant-options" aria-label={studio("contextTitle")} data-testid="assistant-options-toggle"><SlidersHorizontal size={16} /><span>{studio("context")}</span>{activePlans.length + activeDocs.length > 0 && <span className="assistant-context-count">{activePlans.length + activeDocs.length}</span>}</Button>
         </div>
       </header>
       {activeChantierId && <div className="px-3 pt-3"><ChantierContextBar chantierId={activeChantierId} chantier={activeChantier} /></div>}
-      {running && <p role="status" className="px-4 py-2 text-xs text-primary border-b flex items-center gap-2" data-testid="assistant-background-status"><Loader2 size={14} className="animate-spin shrink-0" />{studio("backgroundHint")}</p>}
       {jobFollow.error && <p role="alert" className="px-4 py-2 text-xs text-amber-700" data-testid="assistant-background-error">{bg("offline")} <button className="underline" onClick={jobFollow.refresh} data-testid="assistant-background-refresh">{bg("refresh")}</button></p>}
       {optionsOpen && <div id="assistant-options" className="assistant-context-settings" data-testid="assistant-context">
         <div className="assistant-context-heading"><div><h2>{studio("contextTitle")}</h2><p>{studio("contextHint")}</p></div><button type="button" onClick={() => setOptionsOpen(false)} aria-label={ui("close")} data-testid="assistant-options-close"><X size={16} /></button></div>
@@ -344,10 +418,6 @@ export default function Assistant() {
           <label>{ui("chooseDoc")}<select value="" aria-label={ui("chooseDoc")} disabled={locked} onChange={e => { const id = e.target.value; if(id) setActiveDocs(a => a.includes(id) ? a : [...a,id]); }} data-testid="assistant-doc-select"><option value="">{ui("chooseDoc")}</option>{docs.map(d => <option key={d.doc_id} value={d.doc_id} disabled={activeDocs.includes(d.doc_id) || activeDocs.length >= 10}>{d.filename}</option>)}</select></label>
         </div>
         {activePrefs.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground" data-testid="assistant-active-prefs"><Brain size={14} />{ui("appliedPrefs")} : {activePrefs.slice(0,4).map(p => <span key={p.pref_id} title={p.value} data-testid={`assistant-pref-${p.pref_id}`}>{p.category}</span>)}<Link to="/preferences" className="underline" data-testid="assistant-options-preferences">{ui("preferences")}</Link></div>}
-      </div>}
-      {(activePlans.length > 0 || activeDocs.length > 0 || dossierImport.dossiers.length > 0) && <div className="assistant-file-chips" data-testid="assistant-pending-files">
-        <DossierChips dossiers={dossierImport.dossiers} onRemove={dossierImport.remove} disabled={locked} />
-        {[[activePlans, "plan"], [activeDocs, "doc"]].flatMap(([ids,kind]) => ids.map(id => <div key={id} className="assistant-file-chip" data-testid={`assistant-active-${kind}-${id}`}>{kind === "doc" && docs.find((d) => d.doc_id === id)?.kind === "photo" ? <PrivateImage path={`/assistant/documents/${id}/preview`} title={nameOf(id)} testId={`assistant-selected-photo-${id}`} small /> : <FileText size={13} aria-hidden="true" />}<span title={nameOf(id)}>{nameOf(id)}</span><button type="button" disabled={locked} data-testid={`assistant-remove-${kind}-${id}`} aria-label={`${ui("removeFile")} : ${nameOf(id)}`} onClick={() => removeContext(id,kind)}><X size={14} /></button></div>))}
       </div>}
       <div ref={messagesRef} className="assistant-messages" data-testid="assistant-messages" onScroll={e => { const el = e.currentTarget; followMessages.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; setShowJump(!followMessages.current); }}>
         {activePlans.map(id => <CadImportInfo key={id} info={plans.find(p => p.plan_id === id)?.cad_import} />)}
@@ -365,10 +435,6 @@ export default function Assistant() {
           <p className="assistant-prompt-hint">{studio("draftHint")}</p>
         </div>}
         <ConversationJobs conversation={conv} onCancel={stop} onResume={seedText} onCorrect={(m) => seedText(`${ui("correct")} — « ${m.content.slice(0,120)}… » : `)} />
-        <div className="assistant-dossier-results">
-      <ProjectStatePanel conversationId={conv?.conversation_id} refreshKey={conv?.messages?.length || 0} />
-      <CalculationsPanel conversationId={conv?.conversation_id} refreshKey={conv?.messages?.length || 0} onCorrected={() => conv?.conversation_id && open(conv.conversation_id)} />
-        </div>
       </div>
       {showJump && <button type="button" className="mx-auto text-xs flex items-center gap-2 px-3 min-h-9 border rounded-md" data-testid="assistant-latest-reply" aria-label={ui("latest")} onClick={() => { followMessages.current = true; setShowJump(false); const el = messagesRef.current; if(el) el.scrollTop = el.scrollHeight; }}><ArrowDown size={15} />{ui("latest")}</button>}
       <FallbackBanner refreshKey={conv?.messages?.length || 0} />
@@ -377,8 +443,17 @@ export default function Assistant() {
         {pickFile && <div className="mb-3 p-3 bg-muted/50 rounded-md text-xs" data-testid="assistant-pick-kind"><p className="break-words mb-2"><b>{pickFile.name}</b> · {ui("addAs")}</p><div className="flex flex-wrap gap-2">
           {canPlan && <Button size="sm" variant="outline" onClick={() => upload(pickFile,"plan")} data-testid="assistant-pick-plan">{ui("planKind")}</Button>}<Button size="sm" onClick={() => upload(pickFile,"doc")} data-testid="assistant-pick-doc">{ui("docKind")}</Button><Button size="sm" variant="ghost" onClick={() => setPickFile(null)} data-testid="assistant-pick-cancel">{ui("cancel")}</Button>
         </div></div>}
-        <div className="assistant-input-box">
-          <textarea ref={textareaRef} disabled={loadingConversation} rows={2} placeholder={ui("message")} aria-label={ui("message")} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if(e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia("(min-width: 768px)").matches) { e.preventDefault(); send(); } }} data-testid="assistant-input" />
+        {(activePlans.length > 0 || activeDocs.length > 0 || dossierImport.dossiers.length > 0) && <div className="assistant-file-chips assistant-file-chips-inline" data-testid="assistant-pending-files">
+          {[[activePlans, "plan"], [activeDocs, "doc"]].flatMap(([ids,kind]) => ids.map(id => <div key={id} className="assistant-file-chip" data-testid={`assistant-active-${kind}-${id}`}>{kind === "doc" && docs.find((d) => d.doc_id === id)?.kind === "photo" ? <PrivateImage path={`/assistant/documents/${id}/preview`} title={nameOf(id)} testId={`assistant-selected-photo-${id}`} small /> : <FileText size={12} aria-hidden="true" />}<span title={nameOf(id)}>{nameOf(id)}</span><button type="button" disabled={locked} data-testid={`assistant-remove-${kind}-${id}`} aria-label={`${ui("removeFile")} : ${nameOf(id)}`} onClick={() => removeContext(id,kind)}><X size={13} /></button></div>))}
+          <DossierChips dossiers={dossierImport.dossiers} onRemove={dossierImport.remove} disabled={locked} />
+        </div>}
+        <div className={`assistant-input-box${dragOver ? " assistant-input-box-dragover" : ""}`}
+             data-testid="assistant-dropzone"
+             onDragOver={e => { if (!locked) { e.preventDefault(); setDragOver(true); } }}
+             onDragLeave={e => { e.preventDefault(); setDragOver(false); }}
+             onDrop={e => { e.preventDefault(); setDragOver(false); if (!locked && e.dataTransfer.files?.length) onPickMany(e.dataTransfer.files); }}>
+          {dragOver && <div className="assistant-dropzone-overlay" aria-hidden="true"><Paperclip size={18} />Largue os seus ficheiros aqui</div>}
+          <textarea ref={textareaRef} disabled={loadingConversation} rows={1} placeholder={composerPlaceholder} aria-label={ui("message")} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if(e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia("(min-width: 768px)").matches) { e.preventDefault(); send(); } }} data-testid="assistant-input" />
           <div className="assistant-composer-actions">
             <input ref={uploadRef} type="file" multiple className="hidden" accept=".zip,.pdf,.dxf,.dwg,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.docx,.txt" disabled={locked} onChange={e => { onPickMany(e.target.files); e.target.value = ""; }} data-testid="assistant-upload-input" />
             <input ref={dossierRef} type="file" multiple className="hidden" accept=".zip,.pdf,.dxf,.dwg,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.docx,.txt" disabled={locked} onChange={e => { dossierImport.importFiles(e.target.files); e.target.value = ""; }} data-testid="assistant-dossier-input" />
@@ -396,7 +471,8 @@ export default function Assistant() {
             </DropdownMenuContent></DropdownMenu>
             <Button variant={rec ? "destructive" : "ghost"} size="icon" disabled={busy || loadingConversation || uploading || transcribing} onClick={toggleMic} aria-label={ui(rec ? "stopMic" : "mic")} title={ui(rec ? "stopMic" : "mic")} data-testid="assistant-mic-btn">{rec ? <Square /> : <Mic />}</Button>
             {rec && <span className="text-xs text-destructive" role="status" data-testid="assistant-recording">{ui("recording")}</span>}
-            <Button disabled={(!text.trim() && !pending.length && !dossierImport.ids.length) || locked || dossierImport.uploading || !!cadFile} onClick={send} data-testid="assistant-send-btn">{busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}{ui("send")}</Button>
+            <Button disabled={(!text.trim() && !pending.length && !dossierImport.ids.length) || locked || dossierImport.uploading || !!cadFile} onClick={send} data-testid="assistant-send-btn" aria-label={ui("send")}>{busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}<span className="assistant-btn-label">{ui("send")}</span></Button>
+            {running && runningJob && <Button type="button" variant="outline" className="assistant-stop-btn" disabled={runningJob.cancel_requested} onClick={() => stop(runningJob.job_id)} data-testid="assistant-stop-response-btn" aria-label={bg("stop")} title={bg("stop")}><Square size={14} /><span className="assistant-btn-label">{bg("stop")}</span></Button>}
           </div>
         </div>
         <div className="assistant-composer-footer">
@@ -405,7 +481,15 @@ export default function Assistant() {
         </div>
         <span className="sr-only" role="status" data-testid="assistant-announcement">{loadingConversation || transcribing ? ui("loading") : running ? bg("background") : ""}</span>
       </div>
+      <aside className={`assistant-drawer${panelsOpen ? " open" : ""}`} aria-hidden={!panelsOpen} data-testid="assistant-drawer">
+        <div className="assistant-drawer-head"><strong>Cálculos e estado do processo</strong><button type="button" onClick={() => setPanelsOpen(false)} aria-label={ui("close")} data-testid="assistant-drawer-close"><X size={16} /></button></div>
+        <div className="assistant-drawer-body">
+          <ProjectStatePanel conversationId={conv?.conversation_id} refreshKey={conv?.messages?.length || 0} />
+          <CalculationsPanel conversationId={conv?.conversation_id} refreshKey={conv?.messages?.length || 0} onCorrected={() => conv?.conversation_id && open(conv.conversation_id)} />
+        </div>
+      </aside>
+      {panelsOpen && <button type="button" className="assistant-drawer-scrim" aria-label={ui("close")} onClick={() => setPanelsOpen(false)} data-testid="assistant-drawer-scrim" />}
     </section>
-  </div></DocumentViewerProvider>;
+  </div></DocumentViewerProvider></AssistantSendContext.Provider>;
 }
 

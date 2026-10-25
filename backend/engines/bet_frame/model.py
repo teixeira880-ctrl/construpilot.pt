@@ -6,9 +6,14 @@ bas-gauche de l'emprise (nu extérieur des poteaux de rive). Cotes en mètres, n
 Champs (voir cases/immeuble_demo_pt.json) :
   kind = "frame", building_type, project{name,address,country,client,architect,pc_ref,g2_ref}
   grid{x[],y[],x_labels[],y_labels[]}
-  levels[{id,name,floor_top,height,use,on_grade?}]        du plus bas au plus haut ; height = hauteur d'étage
+  levels[{id,name,floor_top,height,use,on_grade?,void_cells?}]  du plus bas au plus haut ; height = hauteur d'étage ;
+                                                          void_cells = cases de trame où l'ÉTAGE n'existe pas (étages en
+                                                          retrait au-dessus d'un sous-sol plus grand, terrasses) ; la dalle d'un
+                                                          niveau couvre son étage ET l'étage du dessous (toiture-terrasse)
   roof{use}                                               dalle haute du dernier niveau (toiture)
-  structure{column[b,h], beam[b,h], slab, concrete, steel, columns_omit[[xlab,ylab]], column_sections{"B3":[b,h]}}
+  structure{column[b,h], beam[b,h], slab, concrete, steel, columns_omit[[xlab,ylab]], column_sections{"B3":[b,h]},
+            void_cells[[xlab,ylab]]}                      cases de trame SANS plancher (emprise en L, U, cour…) : case
+                                                          comprise entre la file xlab et la suivante, ylab et la suivante
   cores[{id,label,x0,y0,x1,y1,wall}]                      cages d'escalier / ascenseur (voiles BA)
   balconies[{side:N|S|E|W, depth, a0, a1, levels[]}]       balcons en console (a = abscisse le long de la façade)
   units[{id,name,typology,levels[],x0,y0,x1,y1,fixtures{}}] fractions / logements / lots (répétés sur `levels`)
@@ -61,6 +66,7 @@ class Level:
     height: float         # hauteur d'étage (m)
     use: str
     on_grade: bool = False
+    void_cells: list = field(default_factory=list)
 
 
 @dataclass
@@ -85,6 +91,7 @@ class Unit:
     x1: float
     y1: float
     fixtures: dict
+    rooms: list = field(default_factory=list)     # compartiments relevés [{type, name, x0, y0, x1, y1}] (repère du bâtiment)
 
     @property
     def area(self) -> float:
@@ -153,12 +160,112 @@ class Frame:
         return f"{self.yl[j]}{self.xl[i]}"
 
     @property
+    def voids(self) -> set[tuple[int, int]]:
+        """Cases (i, j) sans plancher : i = file x à gauche, j = file y en dessous. Dans un contexte d'étage ou de dalle
+        (with m.at_storey(...) / m.at_slab(...)), cases absentes de cet étage / de cette dalle."""
+        ctx = self.__dict__.get("_ctx")
+        if ctx is not None:
+            return ctx
+        return self._cells(self.st.get("void_cells") or [])
+
+    def _cells(self, lst) -> set[tuple[int, int]]:
+        out = set()
+        xi = {lab: k for k, lab in enumerate(self.xl)}
+        yj = {lab: k for k, lab in enumerate(self.yl)}
+        for v in lst:
+            try:
+                a, b = str(v[0]), str(v[1])
+            except (TypeError, IndexError):
+                continue
+            i, j = (xi.get(a), yj.get(b)) if a in xi else (xi.get(b), yj.get(a))
+            if i is not None and j is not None and i < len(self.gx) - 1 and j < len(self.gy) - 1:
+                out.add((i, j))
+        return out
+
+    def storey_voids(self, lid: str) -> set[tuple[int, int]]:
+        """Cases où l'étage `lid` n'existe pas (vides de l'emprise + retraits propres à l'étage)."""
+        base = self._cells(self.st.get("void_cells") or [])
+        lv = next((l for l in self.levels if l.id == lid), None)
+        return base | (self._cells(lv.void_cells) if lv else set())
+
+    def slab_voids(self, sid: str) -> set[tuple[int, int]]:
+        """Cases sans dalle : la dalle d'un niveau couvre son étage et l'étage du dessous ; la toiture couvre le dernier étage."""
+        ids = [l.id for l in self.levels]
+        if sid == "COB":
+            return self.storey_voids(ids[-1])
+        k = ids.index(sid) if sid in ids else 0
+        v = self.storey_voids(sid)
+        return v & self.storey_voids(ids[k - 1]) if k > 0 else v
+
+    @property
+    def has_setbacks(self) -> bool:
+        return any(l.void_cells for l in self.levels)
+
+    class _Ctx:
+        def __init__(self, m, voids):
+            self.m, self.v, self.prev = m, voids, None
+
+        def __enter__(self):
+            self.prev = self.m.__dict__.get("_ctx")
+            self.m.__dict__["_ctx"] = self.v
+            return self.m
+
+        def __exit__(self, *a):
+            self.m.__dict__["_ctx"] = self.prev
+
+    def at_storey(self, lid: str):
+        return Frame._Ctx(self, self.storey_voids(lid))
+
+    def at_slab(self, sid: str):
+        return Frame._Ctx(self, self.slab_voids(sid))
+
+    def cell_in(self, i: int, j: int) -> bool:
+        """La case (i, j) porte un plancher (dans la trame et pas évidée)."""
+        return 0 <= i < len(self.gx) - 1 and 0 <= j < len(self.gy) - 1 and (i, j) not in self.voids
+
+    def point_in(self, x: float, y: float) -> bool:
+        """Point dans l'emprise réelle (cases pleines)."""
+        gx, gy = self.gx, self.gy
+        if not (gx[0] - 1e-6 <= x <= gx[-1] + 1e-6 and gy[0] - 1e-6 <= y <= gy[-1] + 1e-6):
+            return False
+        i = max(0, min(len(gx) - 2, next((k for k in range(len(gx) - 1) if x <= gx[k + 1] + 1e-9), len(gx) - 2)))
+        j = max(0, min(len(gy) - 2, next((k for k in range(len(gy) - 1) if y <= gy[k + 1] + 1e-9), len(gy) - 2)))
+        return self.cell_in(i, j)
+
+    def boundary_edges(self) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+        """Arêtes du contour réel (côtés de cases pleines bordant le vide ou l'extérieur)."""
+        gx, gy = self.gx, self.gy
+        out = []
+        for j in range(len(gy) - 1):
+            for i in range(len(gx) - 1):
+                if not self.cell_in(i, j):
+                    continue
+                if not self.cell_in(i, j - 1):
+                    out.append(((gx[i], gy[j]), (gx[i + 1], gy[j])))
+                if not self.cell_in(i, j + 1):
+                    out.append(((gx[i], gy[j + 1]), (gx[i + 1], gy[j + 1])))
+                if not self.cell_in(i - 1, j):
+                    out.append(((gx[i], gy[j]), (gx[i], gy[j + 1])))
+                if not self.cell_in(i + 1, j):
+                    out.append(((gx[i + 1], gy[j]), (gx[i + 1], gy[j + 1])))
+        return out
+
+    @property
+    def footprint(self) -> float:
+        gx, gy = self.gx, self.gy
+        return sum((gx[i + 1] - gx[i]) * (gy[j + 1] - gy[j]) for j in range(len(gy) - 1) for i in range(len(gx) - 1) if self.cell_in(i, j))
+
+    @property
     def columns(self) -> list[tuple[int, int]]:
         omit = {(str(a), str(b)) for a, b in (self.st.get("columns_omit") or [])}
         out = []
+        voids = self._cells(self.st.get("void_cells") or [])
+        inside = lambda i_, j_: 0 <= i_ < len(self.gx) - 1 and 0 <= j_ < len(self.gy) - 1 and (i_, j_) not in voids
         for j in range(len(self.gy)):
             for i in range(len(self.gx)):
                 if (self.xl[i], self.yl[j]) in omit or (self.yl[j], self.xl[i]) in omit:
+                    continue
+                if voids and not any(inside(i + di, j + dj) for di in (-1, 0) for dj in (-1, 0)):
                     continue
                 if self.in_core(self.gx[i], self.gy[j], strict=True):
                     continue
@@ -261,7 +368,7 @@ def from_dict(raw: dict) -> Frame:
     lv = sorted(raw["levels"], key=lambda d: float(d["floor_top"]))
     for k, d in enumerate(lv):
         m.levels.append(Level(str(d["id"]), str(d.get("name") or d["id"]), float(d["floor_top"]), float(d["height"]),
-                              use_key(d.get("use")), bool(d.get("on_grade", k == 0))))
+                              use_key(d.get("use")), bool(d.get("on_grade", k == 0)), list(d.get("void_cells") or [])))
     ids = [l.id for l in m.levels]
     for u in raw.get("units") or []:
         for lid in (u.get("levels") or [u.get("level")]):
@@ -269,8 +376,34 @@ def from_dict(raw: dict) -> Frame:
                 continue
             m.units.append(Unit(f"{u['id']}" if len(u.get("levels") or [1]) == 1 else f"{lid}-{u['id']}",
                                 str(u.get("name") or u["id"]), str(u.get("typology") or ""), lid,
-                                float(u["x0"]), float(u["y0"]), float(u["x1"]), float(u["y1"]), dict(u.get("fixtures") or {})))
+                                float(u["x0"]), float(u["y0"]), float(u["x1"]), float(u["y1"]), dict(u.get("fixtures") or {}),
+                                _rooms(u)))
     return m
+
+
+ROOM_TYPES = {"sala": "sejour", "salon": "sejour", "sejour": "sejour", "séjour": "sejour", "living": "sejour", "quarto": "chambre", "chambre": "chambre",
+              "cozinha": "cuisine", "cuisine": "cuisine", "kitchenette": "cuisine", "is": "salle_eau", "wc": "salle_eau", "instalacao_sanitaria": "salle_eau",
+              "casa_de_banho": "salle_eau", "salle_eau": "salle_eau", "salle_de_bains": "salle_eau", "sdb": "salle_eau", "sde": "salle_eau",
+              "hall": "entree", "entree": "entree", "entrée": "entree", "vestibulo": "entree", "corredor": "circulation", "circulation": "circulation",
+              "degagement": "circulation", "dégagement": "circulation", "lavandaria": "buanderie", "buanderie": "buanderie", "arrumos": "annexe_seche",
+              "rangement": "annexe_seche", "despensa": "annexe_seche", "cellier": "annexe_seche", "escritorio": "chambre", "bureau": "chambre"}
+
+
+def _rooms(u: dict) -> list:
+    out = []
+    for r in u.get("rooms") or []:
+        try:
+            x0, y0, x1, y1 = (float(r[k]) for k in ("x0", "y0", "x1", "y1"))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if x1 - x0 < 0.5 or y1 - y0 < 0.5:
+            continue
+        t = str(r.get("type") or "").lower().replace(" ", "_").replace("ç", "c").replace("ã", "a")
+        out.append({"type": ROOM_TYPES.get(t, "annexe_seche"), "name": str(r.get("name") or r.get("type") or ""), "x0": x0, "y0": y0, "x1": x1, "y1": y1})
+    # pièces exploitables seulement si elles couvrent l'essentiel de la fraction
+    if out and sum((r["x1"] - r["x0"]) * (r["y1"] - r["y0"]) for r in out) < 0.6 * (float(u["x1"]) - float(u["x0"])) * (float(u["y1"]) - float(u["y0"])):
+        return []
+    return out
 
 
 # ================================================================ contrôles avant calcul
@@ -327,6 +460,17 @@ def check(m: Frame) -> list[dict]:
     for r in m.risers:
         if not (x0 - 0.6 <= float(r["x"]) <= x1 + 0.6 and y0 - 0.6 <= float(r["y"]) <= y1 + 0.6):
             a("RIS-01", BLOCK, f"Colonne {r.get('id')} hors emprise.", f"Coluna {r.get('id')} fora da implantação.")
+    if m.voids or m.has_setbacks:
+        for u in m.units:
+            cx, cy = u.center
+            with m.at_storey(u.level):
+                inside = m.point_in(cx, cy)
+            if not inside:
+                a("UNIT-02", BLOCK, f"Fraction {u.name} ({u.level}) dans une case de trame déclarée vide (void_cells).",
+                  f"Fração {u.name} ({u.level}) numa célula da trama declarada vazia (void_cells).",
+                  "Corriger void_cells ou le rectangle de la fraction.", "Corrigir void_cells ou o retângulo da fração.")
+        if m.footprint < 0.3 * m.L * m.W:
+            a("VOID-01", BLOCK, "Cases vides > 70 % de la trame : emprise incohérente.", "Células vazias > 70 % da trama: implantação incoerente.")
     if not m.units:
         a("UNIT-00", WARN, "Aucune fraction / aucun lot relevé : réseaux et plans de niveaux limités aux colonnes.",
           "Nenhuma fração relevada: redes e plantas limitadas às colunas.")

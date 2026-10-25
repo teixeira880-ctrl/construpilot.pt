@@ -194,6 +194,7 @@ api_router.include_router(radar_sync.router)
 from routes import assistant as assistant_routes
 api_router.include_router(assistant_routes.router)
 api_router.include_router(assistant_routes.public_router)
+api_router.include_router(assistant_routes.bet_studies_router)
 from routes import agents as agents_routes
 api_router.include_router(agents_routes.router)
 from routes import missions as missions_routes   # programa IA de opções
