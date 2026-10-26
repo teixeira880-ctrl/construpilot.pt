@@ -73,3 +73,31 @@ def test_extract_json_trailing_commas_and_fences():
 
 def test_extract_json_surrounding_text():
     assert reader._extract_json('voici le relevé {"ok": true} fin')["ok"] is True
+
+
+def test_mensagem_clara_quando_todas_as_ia_falham(monkeypatch):
+    monkeypatch.setitem(reader.PROVIDERS, "claude", _fail(RuntimeError("Error code: 401 invalid x-api-key")))
+    monkeypatch.setitem(reader.PROVIDERS, "openai", _fail(RuntimeError("You have no credits remaining")))
+    monkeypatch.setitem(reader.PROVIDERS, "gemini", _fail(RuntimeError("503 UNAVAILABLE high demand")))
+    monkeypatch.setitem(reader.PROVIDERS, "emergent", _fail(RuntimeError("Budget has been exceeded")))
+    with pytest.raises(reader.ProvidersDown) as e:
+        asyncio.run(reader._default_llm("s", "t"))
+    assert e.value.status == {"claude": "auth", "openai": "credits", "gemini": "overloaded", "emergent": "credits"}
+    pt = reader.providers_message(e.value, "pt")
+    assert "Claude : chave recusada" in pt and "OpenAI : sem créditos" in pt and "Gemini : sobrecarregado" in pt
+
+
+def test_gemini_sobrecarregado_tenta_de_novo(monkeypatch):
+    calls = []
+
+    async def g(system, text, images=None, model=None, max_tokens=4096):
+        calls.append(model)
+        if len(calls) < 3:
+            raise RuntimeError("503 UNAVAILABLE")
+        return '{"ok":1}'
+    monkeypatch.setattr(reader, "_gemini", g)
+
+    async def nosleep(_s):
+        return None
+    monkeypatch.setattr(reader.asyncio if hasattr(reader, "asyncio") else asyncio, "sleep", nosleep)
+    assert asyncio.run(reader._gemini_retry("s", "t")) == '{"ok":1}' and len(calls) == 3

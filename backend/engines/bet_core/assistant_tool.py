@@ -272,7 +272,11 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
     except Exception as exc:  # noqa: BLE001
         log.exception("bet study %s failed", job_id)
         txt = str(exc).lower()
-        if any(s in txt for s in ("credit balance", "insufficient_quota", "quota", "rate limit", "overloaded", "authentication", "invalid x-api-key", "401", "403")):
+        from engines.bet_core.reader import providers_message
+        pm = providers_message(exc, "pt")
+        if pm:
+            msg = pm
+        elif any(s in txt for s in ("credit balance", "insufficient_quota", "quota", "rate limit", "overloaded", "authentication", "invalid x-api-key", "401", "403")):
             msg = "Leitura das plantas por IA temporariamente indisponível (serviço de cálculo saturado ou indisponível). Tente novamente dentro de alguns minutos."
         else:
             msg = f"{type(exc).__name__}: {str(exc)[:300]} — em {pipeline.where(exc)}"

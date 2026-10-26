@@ -406,7 +406,63 @@ async def _emergent(system, text, images=None, model=None, max_tokens=4096, json
     return await ai._complete(system, text, images=images, feature="bet_reader")
 
 
-PROVIDERS = {"claude": _claude, "openai": _openai, "gemini": _gemini, "emergent": _emergent}
+class ProvidersDown(RuntimeError):
+    """Toutes les IA ont échoué ; .status = {fournisseur: motif court} (auth, credits, overloaded, timeout, json, other)."""
+
+    def __init__(self, status: dict, detail: str):
+        self.status = status
+        super().__init__("Aucun fournisseur IA n'a pu lire les plans — " + " | ".join(f"{k}: {v}" for k, v in status.items()) + " — " + detail[:400])
+
+
+def _why(exc: BaseException) -> str:
+    t = f"{type(exc).__name__} {exc}".lower()
+    if "timeout" in t:
+        return "timeout"
+    if "401" in t or "invalid x-api-key" in t or "invalid api key" in t or "authentication" in t or "permission" in t:
+        return "auth"
+    if "credit" in t or "quota" in t or "billing" in t or "402" in t or "insufficient" in t or "budget" in t:
+        return "credits"
+    if "503" in t or "529" in t or "overload" in t or "unavailable" in t or "high demand" in t or "429" in t or "rate" in t:
+        return "overloaded"
+    return "other"
+
+
+WHY_TXT = {"fr": {"auth": "clé refusée", "credits": "crédits épuisés", "overloaded": "surchargé", "timeout": "délai dépassé",
+                  "json": "réponse illisible", "other": "erreur"},
+           "pt": {"auth": "chave recusada", "credits": "sem créditos", "overloaded": "sobrecarregado", "timeout": "tempo esgotado",
+                  "json": "resposta ilegível", "other": "erro"}}
+
+
+def providers_message(exc: BaseException, lang: str) -> str | None:
+    """Message court et lisible quand toutes les IA sont tombées (sinon None)."""
+    st = getattr(exc, "status", None)
+    if not isinstance(st, dict):
+        return None
+    w = WHY_TXT["pt" if lang == "pt" else "fr"]
+    names = {"claude": "Claude", "openai": "OpenAI", "gemini": "Gemini", "emergent": "chave universal" if lang == "pt" else "clé universelle"}
+    lst = ", ".join(f"{names.get(k, k)} : {w.get(v, v)}" for k, v in st.items())
+    if lang == "pt":
+        return f"Nenhuma IA disponível para ler as plantas ({lst}). Verifique as chaves e os créditos dos fornecedores e volte a lançar o estudo."
+    return f"Aucune IA disponible pour lire les plans ({lst}). Vérifiez les clés et crédits des fournisseurs puis relancez l'étude."
+
+
+async def _gemini_retry(system, text, images=None, model=None, max_tokens=4096, json_schema=None):
+    """Gemini surchargé (503/429) : 2 nouvelles tentatives espacées, puis le modèle Flash."""
+    import asyncio
+    import os
+    last = None
+    for k, mdl in enumerate((model, model, os.environ.get("GOOGLE_GEMINI_MODEL_FAST", "gemini-flash-latest"))):
+        try:
+            return await _gemini(system, text, images=images, model=mdl, max_tokens=max_tokens)
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if _why(exc) != "overloaded":
+                raise
+            await asyncio.sleep(4 * (k + 1))
+    raise last
+
+
+PROVIDERS = {"claude": _claude, "openai": _openai, "gemini": _gemini_retry, "emergent": _emergent}
 FULL_ORDER = ("claude", "openai", "gemini")
 
 
@@ -431,6 +487,7 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
     order = _provider_order()
     timeout = float(os.environ.get("BET_LLM_TIMEOUT", "600"))
     errors = []
+    status = {}
     first_text = None
     for name in order:
         try:
@@ -450,13 +507,15 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
                     log.warning("bet reader: relevé fait par %s après échec de %s", name, "; ".join(errors))
                 return txt
             errors.append(f"{name}: JSON illisible ou absent")
+            status[name] = "json"
         except Exception as exc:  # noqa: BLE001 — on bascule sur le fournisseur suivant
             errors.append(f"{name}: {type(exc).__name__}: {str(exc)[:160]}")
+            status[name] = _why(exc)
             log.warning("bet reader: %s indisponible (%s) → fournisseur suivant", name, type(exc).__name__)
     if first_text:
         log.warning("bet reader: aucun JSON valide ; on renvoie la 1re réponse pour correction (%s)", "; ".join(errors))
         return first_text
-    raise RuntimeError("Aucun fournisseur IA n'a pu lire les plans — " + " | ".join(errors))
+    raise ProvidersDown(status, " | ".join(errors))
 
 
 # ------------------------------------------------------------------ point d'entrée
