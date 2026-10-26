@@ -269,7 +269,8 @@ export default function Assistant() {
     let c = activeConversation.current ? conv : conv;
     try {
       if (!c) { const r = await api.post("/assistant/conversations", activeChantierId ? { chantier_id: activeChantierId } : {}); c = { ...r.data, messages: [] }; activeConversation.current = c.conversation_id; setConv(c); }
-      const payload = { conversation_id: c.conversation_id, text: content, response_mode: mode, web_enabled: webEnabled, plan_ids: [], doc_ids: [], attachments: [] };
+      // os ficheiros ativos acompanham também as respostas estruturadas (escolhas, confirmações) : sem eles o assistente perde os documentos
+      const payload = { conversation_id: c.conversation_id, text: content, response_mode: mode, web_enabled: webEnabled, plan_ids: activePlans.slice(0, 5), doc_ids: activeDocs.slice(0, 10), dossier_ids: dossierImport.ids.length ? dossierImport.ids : (c.active_dossiers || []).slice(0, 5), attachments: [] };
       await api.post("/assistant/jobs", { ...payload, request_id: crypto.randomUUID() });
       submittedJob(user?.user_id, c.conversation_id);
       setSearchParams(convParams(c.conversation_id), { replace: true });
