@@ -64,7 +64,8 @@ async def maybe_handle(db, job_id, uid, cid, request_id, docs, hypotheses, count
     except Exception as exc:  # noqa: BLE001 — erreur du moteur ossature : message clair, jamais une pile Python brute
         log.exception("bet_frame study failed")
         from .pipeline import where_frame
-        msg = (_FAIL[lang] + f" ({type(exc).__name__}: {str(exc)[:200]} — {where_frame(exc)})")
+        from engines.bet_core.reader import providers_message
+        msg = providers_message(exc, lang) or (_FAIL[lang] + f" ({type(exc).__name__}: {str(exc)[:200]} — {where_frame(exc)})")
         await step("Échec", status="failed", error=msg[:1200])
         return True
 

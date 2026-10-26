@@ -123,6 +123,8 @@ Règles :
    les planches (chaînes de cotes) ; les files de poteaux tombent sur des murs / cotes réelles du plan, jamais une trame régulière inventée.
    units[].area_declared = surface du quadro de áreas / tableau des surfaces de l'architecte quand il existe ; le rectangle de la fraction
    doit la respecter (limites = murs séparatifs et palier). Deux fractions d'un même piso ne se chevauchent jamais.
+   NIVEAUX D'EMPRISES DIFFÉRENTES : si la cave / le sous-sol déborde des étages (garage, pátio, zona técnica) ou si un étage est en
+   retrait, la trame couvre le PLUS GRAND niveau et chaque niveau plus petit liste ses cases absentes dans levels[].void_cells.
    ÉTAGE COURANT : une planta « Piso 1 » dont les fractions portent « Fr. E/I/N/R » représente 4 pisos identiques (E au Piso 1,
    I au Piso 2, N au Piso 3, R au Piso 4) : crée ces 4 niveaux et l'unité avec levels = les 4 pisos (même règle pour « E - N »).
    INTERDIT : recalculer, ajuster ou « déduire » les dimensions du bâtiment, la trame ou le nombre de niveaux à partir du quadro de
@@ -176,7 +178,8 @@ MAX_TOTAL_IMAGES = 20
 COTES_SYS = """Tu es métreur. Sur les planches jointes (plans d'architecte), tu TRANSCRIS les cotes écrites, sans rien calculer ni
 déduire. Réponds en JSON seul : {"overall": {"length": cote extérieure totale la plus grande du bâtiment en m, "width": cote extérieure
 totale perpendiculaire en m, "where": "planche + emplacement de la cote"}, "cotes": [toutes les cotes lues, en mètres],
-"levels": nombre de niveaux dessinés (caves comprises), "units_per_level": {"nom du niveau": nombre de fractions}}.
+"levels": nombre de niveaux dessinés (caves comprises), "per_level": [{"level": "nom de la planta (ex. Piso -1)", "length": cote extérieure
+la plus grande de CE niveau en m, "width": perpendiculaire en m}] (une entrée par planta, murs extérieurs, balcons exclus), "units_per_level": {"nom du niveau": nombre de fractions}}.
 Si une cote totale n'est pas écrite, additionne la chaîne de cotes extérieure écrite et dis-le dans "where" ; si illisible : null."""
 
 
@@ -185,7 +188,8 @@ async def _read_cotes(images: list, llm) -> dict:
     try:
         txt = await llm(COTES_SYS, "Transcris les cotes de ces planches.", images=images, max_tokens=3000)
         d = R._extract_json(txt)
-        out = {"overall": d.get("overall") or {}, "cotes": [], "levels": d.get("levels"), "units_per_level": d.get("units_per_level")}
+        out = {"overall": d.get("overall") or {}, "cotes": [], "levels": d.get("levels"), "units_per_level": d.get("units_per_level"),
+               "per_level": [x for x in d.get("per_level") or [] if isinstance(x, dict)]}
         for v in d.get("cotes") or []:
             try:
                 out["cotes"].append(float(str(v).replace(",", ".")))
