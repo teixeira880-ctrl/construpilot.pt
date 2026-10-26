@@ -121,8 +121,11 @@ def check(raw: dict, pages: list[dict] | None = None, ref: dict | None = None) -
                   f"Trama {nm} = {g:.2f} m entre alinhamentos extremos, mas a cota exterior relevada = {o:.2f} m.",
                   "Recaler les files de rive sur les façades et les files intermédiaires sur les cotes du plan.",
                   "Acertar os alinhamentos extremos pelas fachadas e os intermédios pelas cotas da planta.")
+        rov0 = (ref or {}).get("overall") or {}
         if cs:
-            miss = [f"{v:.2f}" for v in (oL, oW) if not _has(cs, v)]
+            # une cote totale obtenue en additionnant une chaîne écrite est admise si la lecture indépendante trouve la même
+            miss = [f"{v:.2f}" for v, r_ in ((oL, rov0.get("length")), (oW, rov0.get("width")))
+                    if not _has(cs, v) and not (isinstance(r_, (int, float)) and abs(r_ - v) <= max(0.10, 0.005 * v))]
             if miss:
                 a("GEO-02", model.BLOCK, f"Cote(s) extérieure(s) {', '.join(miss)} m introuvable(s) dans les plans joints.",
                   f"Cota(s) exterior(es) {', '.join(miss)} m não encontrada(s) nos desenhos.",

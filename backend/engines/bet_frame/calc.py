@@ -506,6 +506,7 @@ def mrd(b, h, As_face, N, mt, dp=0.05) -> float | None:
 
 RHO_MAX = 0.03          # taux pratique (EN 1992 : 4 % hors recouvrements) — au-delà on agrandit la section
 NU_MAX = 0.85           # effort normal réduit NEd / (Ac·fcd) maximal retenu
+MAX_ITER = 40           # itérations de redimensionnement (dalles, poutres +5 cm, poteaux par saut)
 NU_DCM = 0.65           # NP EN 1998-1 5.4.3.2.1(3) : effort normal réduit de calcul des pilares sísmicos primários (DCM)
 ARRANGE = ((4, 2), (8, 3), (12, 4), (16, 5))       # (barres, barres par face)
 
@@ -579,7 +580,7 @@ def compute(m: Frame) -> dict:
     col_sec = {(i, j): m.col_section(i, j) for (i, j) in m.columns}
     braced = bool(m.cores)
     beam_why: dict = {}
-    for it in range(8):
+    for it in range(MAX_ITER):
         changed = False
         floors = []
         for s in m.slabs:
@@ -700,7 +701,12 @@ def compute(m: Frame) -> dict:
                                                 f"Pilar {m.node_name(*c)}: secção máxima atingida sem verificar."),
                                    "fix": _("Revoir la trame ou le béton.", "Rever a trama ou a classe de betão.")})
                 else:
-                    nb_, nh_ = round(b + 0.05, 2), round(h + 0.05, 2)
+                    # saut direct vers la section requise par l'effort normal réduit (sinon +5 cm par itération ne suffit pas)
+                    nmax = max(sg["NEd"] for sg in segs) if segs else 0.0
+                    nlim = NU_DCM if mt.get("dcm") else NU_MAX
+                    side = ceil_to(math.sqrt(nmax / (nlim * mt["fcd"] * 1000)), 0.05) if nmax > 0 else 0.0
+                    nb_ = min(0.90, max(round(b + 0.05, 2), side))
+                    nh_ = min(0.90, max(round(h + 0.05, 2), side))
                     col_sec[c] = (nb_, nh_)
                     ncols_fail.append((m.node_name(*c), b, h, nb_, nh_))
                     changed = True
@@ -712,8 +718,8 @@ def compute(m: Frame) -> dict:
             continue
         break
     else:
-        issues.append({"code": "CALC-ITER", "level": WARN, "message": _("Redimensionnement non stabilisé après 8 itérations.",
-                                                                       "Redimensionamento não estabilizado após 8 iterações.")})
+        issues.append({"code": "CALC-ITER", "level": WARN, "message": _(f"Redimensionnement non stabilisé après {MAX_ITER} itérations.",
+                                                                       f"Redimensionamento não estabilizado após {MAX_ITER} iterações.")})
     for sl in m.slabs:
         if abs(slab_h[sl.id] - sl.h) > 1e-6:
             decisions.append(_("Dalle {0} : épaisseur {1} → {2} m (flèche / flexion EN 1992-1-1)",
