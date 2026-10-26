@@ -226,7 +226,15 @@ def _dormers_plan(sh: Sheet, m: Model, lid: str, dims=True):
             sh.chain([y0, y1], "y", xr + k * 0.25, size=1.25)
 
 
+def _exterior(sh: Sheet, m: Model, lid: str):
+    """Patios, porches, terrasses dans l'emprise : surface hachurée « extérieur », sans équipement intérieur."""
+    for r in m.exterior_spaces(lid):
+        sh.rect("FOND_PLAN", r["x0"] + 0.03, r["y0"] + 0.03, r["x1"] - 0.03, r["y1"] - 0.03, lw=0.15, hatch="terrain", fill=(0.95, 0.97, 0.93))
+        sh.text("TEXTE", ((r["x0"] + r["x1"]) / 2, (r["y0"] + r["y1"]) / 2), f"{r['name']} — extérieur", size=1.5, anchor="c", color=(0.35, 0.45, 0.30))
+
+
 def base_plan(sh: Sheet, m: Model, lid: str, rooms=True, dims=True, axes=True, light=False):
+    _exterior(sh, m, lid)
     _ext_walls(sh, m, lid, light=light)
     _interior(sh, m, lid)
     _stair(sh, m, lid)
