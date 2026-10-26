@@ -95,6 +95,11 @@ Règles :
   plancher qui PORTE ce niveau (dallage pour le niveau le plus bas). Ids courts (SS, RDC, R1, R2…).
 - "interior_walls" et "rooms" : rectangles (x0,y0,x1,y1) aux nus. Types de pièces : sejour, cuisine, chambre, sdb, sde, wc,
   degagement, garage, annexe_seche, local_technique, buanderie, dressing, bureau. area_pc = surface écrite sur le plan.
+  Espaces EXTÉRIEURS situés dans l'emprise (patio / cour à ciel ouvert, porche ou auvent d'entrée, terrasse, loggia) : relève-les
+  aussi dans "rooms" avec type "patio", "porche" ou "terrasse" — jamais comme séjour ou dégagement (ni chauffage, ni VMC, ni prises).
+  Une case de plan sans nom de pièce, sans mobilier et en matériau de sol extérieur est un patio, pas une pièce.
+- Murs intérieurs PORTEURS continus (refends parallèles à X, qui reprennent les planchers) : "envelope.refends" — indispensable dès
+  que la largeur Y dépasse ~6 m (sinon la portée des planchers est fausse).
 - "stair" : emprise de la trémie et murs de cage s'il y en a ; "roof" : niveaux d'égout / faîtage / plafond, côtés pignons et
   côtés d'égout, lucarnes.
 - Toiture : "ridge_axis": "y" si le faîtage est parallèle à Y (pignons = côtés d'axe "y", cas des maisons de ville entre mitoyens) ;
@@ -542,9 +547,21 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
         return {"ok": False, "model": None, "anomalies": [], "pages": [], "attempts": 0, "decisions": [],
                 "questions": ["Je ne trouve aucune planche de plan, coupe ou façade dans les documents joints : joignez le PC (PCMI 02 à 05) en PDF."]}
     images = [render_png(by_doc[p["doc"]], p["page"]) for p in chosen]
+    zl = []
+    try:                       # grandes planches (A2/A1/A0) : agrandissements du bâtiment, cotes lisibles
+        from engines.bet_frame.zoom import zooms
+        for p in chosen:
+            if len(images) + len(zl) >= 20:
+                break
+            zl += [(p, i, im) for i, im in enumerate(zooms(by_doc[p["doc"]], p["page"])[:20 - len(images) - len(zl)])]
+    except Exception:  # noqa: BLE001
+        zl = []
+    images += [im for _p, _i, im in zl]
+    zoom_legend = "".join(f"\n\nImage {len(chosen) + n + 1} : AGRANDISSEMENT de {p['doc']} p.{p['page']} — "
+                          + ("bâtiment entier" if i == 0 else f"moitié {i}") + " (cotes lisibles)." for n, (p, i, _im) in enumerate(zl))
     legend = "\n\n".join(f"Image {i + 1} : {p['doc']} p.{p['page']} ({p['kind']}, feuille {p['size_mm'][0]}×{p['size_mm'][1]} mm).\n"
                          f"Couche texte vectorielle (mot@x,y en mm depuis le coin haut-gauche ; les cotes écrites sont FIABLES, "
-                         f"utilise-les en priorité sur la lecture de l'image) : {p['words'] or '(aucune — plan scanné)'}" for i, p in enumerate(chosen))
+                         f"utilise-les en priorité sur la lecture de l'image) : {p['words'] or '(aucune — plan scanné)'}" for i, p in enumerate(chosen)) + zoom_legend
     base = (f"EXEMPLE DE BuildingModel (autre maison, même schéma — ne recopie pas ses valeurs) :\n{_example()}\n\n"
             f"PAYS : {country}\nHYPOTHÈSES DU CLIENT (prioritaires sur les plans pour les matériaux) : {hypotheses or 'aucune'}\n\n"
             f"PLANCHES JOINTES :\n{legend}\n\nÉTUDE DE SOL (texte extrait) :\n{g2 or 'AUCUNE ÉTUDE DE SOL FOURNIE'}\n\n"
