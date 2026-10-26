@@ -1317,7 +1317,8 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
             conv["_chantier"] = {"chantier_id": chantier_ctx["chantier_id"], "client_id": (chantier_ctx.get("client") or {}).get("client_id"), "name": chantier_ctx["nom"]}
         except HTTPException:
             chantier_ctx = {"erreur": "processo de obra eliminado ou inacessível"}
-    context = json.dumps({"project_id": conv.get("project_id"), "plans": plans, "documents": docs, "dossier_chantier": chantier_ctx}, ensure_ascii=False)
+    context = json.dumps({"project_id": conv.get("project_id"), "plans": plans, "documents": docs,
+                          "dossiers": list(getattr(body, "dossier_ids", None) or [])[:5], "dossier_chantier": chantier_ctx}, ensure_ascii=False)
     history_query = {"conversation_id": conv["conversation_id"], "cancelled": {"$ne": True}, "request_id": {"$ne": conv["_quote_request_id"]}}
     if turn_seq is not None:
         history_query["$or"] = [{"turn_seq": {"$exists": False}}, {"turn_seq": {"$lt": turn_seq}}]
