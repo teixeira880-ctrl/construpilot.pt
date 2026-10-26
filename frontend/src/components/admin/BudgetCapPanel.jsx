@@ -65,7 +65,7 @@ export default function BudgetCapPanel() {
             {data.new_engagements_allowed
               ? <ShieldCheck className="h-5 w-5 text-primary" />
               : <ShieldAlert className="h-5 w-5 text-orange-500" />}
-            Plafond d'exploitation — {eur(data.cap_eur)} / mois
+            Teto de exploração — {eur(data.cap_eur)} / mês
           </h2>
           <p className="text-xs text-muted-foreground">
             Mês {data.month} · alerta a {eur(data.warning_at)} · congelamento de novos compromissos a {eur(data.freeze_at)} · reserva preservada {eur(data.reserve_eur)}
@@ -180,7 +180,7 @@ export default function BudgetCapPanel() {
         {verdict && (
           <p className={`text-sm ${verdict.allowed ? "text-primary" : "text-red-600"}`} data-testid="cap-sim-verdict">
             {verdict.allowed
-              ? `Autorizado — total projetado ${eur(verdict.projected_used_eur)} sur ${eur(verdict.cap_eur)}`
+              ? `Autorizado — total projetado ${eur(verdict.projected_used_eur)} de ${eur(verdict.cap_eur)}`
               : `Recusado — ${verdict.reason}`}
           </p>
         )}

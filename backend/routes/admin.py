@@ -323,8 +323,8 @@ async def drill_inbox(metric: str, hours: int = 168) -> dict:
                 "columns": [{"key": "sent_at", "label": "Enviado em"}, {"key": "pro", "label": "Profissional (conta)"}, {"key": "client_name", "label": "Cliente"},
                             {"key": "client_email", "label": "E-mail cliente"}, {"key": "total_ttc", "label": "c/ IVA"}, {"key": "state", "label": "Estado"},
                             {"key": "email_status", "label": "E-mail"}, {"key": "opened_at", "label": "Aberto a"}, {"key": "signed_at", "label": "Assinado a"}],
-                "rows": [{"sent_at": s.get("sent_at"), "pro": pro(s.get("user_id")), "email_status": s.get("email_status") or "en file", "client_name": s.get("client_name") or "—", "client_email": s.get("client_email") or "—",
-                          "total_ttc": f"{(s.get('total_ttc') or 0):,.2f} €".replace(",", " "), "state": "signé" if s.get("signed") else "ouvert" if s.get("opened_at") else "envoyé",
+                "rows": [{"sent_at": s.get("sent_at"), "pro": pro(s.get("user_id")), "email_status": s.get("email_status") or "em fila", "client_name": s.get("client_name") or "—", "client_email": s.get("client_email") or "—",
+                          "total_ttc": f"{(s.get('total_ttc') or 0):,.2f} €".replace(",", " "), "state": "assinado" if s.get("signed") else "aberto" if s.get("opened_at") else "enviado",
                           "opened_at": s.get("opened_at") or "—", "signed_at": s.get("signed_at") or "—"} for s in sends]}
 
     if metric == "client_errors":
@@ -620,6 +620,20 @@ async def upsert_region(body: RegionIn):
     await db.regions.delete_many({})
     await db.regions.insert_many([dict(r) for r in R])
     return body.model_dump()
+
+
+@router.get("/assistant-queue")
+async def assistant_queue() -> dict:
+    """Estado da fila do Assistente (diagnóstico)."""
+    from engines.assistant_jobs import queue_status
+    return await queue_status()
+
+
+@router.post("/assistant-queue/unstick")
+async def assistant_queue_unstick(older_than_minutes: int = 10) -> dict:
+    """Liberta trabalhos do Assistente presos em 'running' há mais de N minutos."""
+    from engines.assistant_jobs import unstick
+    return await unstick(max(1, older_than_minutes))
 
 
 @router.get("/users")

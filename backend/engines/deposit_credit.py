@@ -109,7 +109,7 @@ def deduction_lines(amount_ht: float, state: dict, label_suffix: str = "") -> li
         if label_suffix:
             desig += f" {label_suffix}"
         if multi:
-            desig += f" — TVA {rate:g}%"
+            desig += f" — IVA {rate:g}%"
         lines.append({"designation": desig, "description": "", "unit": "forfait", "qty": 1,
                       "unit_price_ht": -part, "vat_rate": rate, "category": "Adiantamento deduzido"})
     return lines

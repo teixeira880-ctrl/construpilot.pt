@@ -90,7 +90,7 @@ export function TaskTable({ tasks, computed, trades = [], selected, onSelect, on
                 </td>
                 <td className="py-1.5 pe-2">
                   {c && (c.critical ? <span className="text-primary font-semibold">critique</span> : <span>{c.slack} j</span>)}
-                  {c?.late && <div className="text-red-600 text-[10px]">en retard</div>}
+                  {c?.late && <div className="text-red-600 text-[10px]">em atraso</div>}
                 </td>
                 <td className="py-1.5 pe-2">
                   <div className="flex items-center gap-1">

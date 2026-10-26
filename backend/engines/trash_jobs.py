@@ -66,7 +66,7 @@ async def run_purge_alerts() -> dict:
         days = max(1, (datetime.fromisoformat(soonest) - now).days + (1 if (datetime.fromisoformat(soonest) - now).seconds else 0))
         labels = ", ".join(it["label"] for it in items[:3]) + (" …" if len(items) > 3 else "")
         msg = (f'{len(items)} elemento(s) da reciclagem serão eliminados definitivamente dentro de {days} dia(s): {labels}'
-               if len(items) > 1 else f"« {items[0]['label']}» será eliminado definitivamente da reciclagem dentro de {days} jour(s)")
+               if len(items) > 1 else f"« {items[0]['label']}» será eliminado definitivamente da reciclagem dentro de {days} dia(s)")
         await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": uid, "type": "trash_purge", "url": "/corbeille",
                                            "message": msg, "items": [{"kind": it["kind"], "item_id": it["item_id"]} for it in items],
                                            "created_at": now.isoformat(), "read": False})

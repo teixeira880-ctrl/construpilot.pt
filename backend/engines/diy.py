@@ -165,7 +165,7 @@ TASKS = [
         "calculator": "drywall", "calc_defaults": {"structure": "cloison"}, "duration": "0,55 h / m²", "lot": "placo",
         "safety": ["Verificar a ausência de tubagens ou canalizações antes de furar o pavimento e o teto."],
         "steps": [
-            {"title": "Tracer l'implantation", "text": "Traçar no pavimento, transferir para o teto com fio de prumo ou laser.",
+            {"title": "Marcar a implantação", "text": "Traçar no pavimento, transferir para o teto com fio de prumo ou laser.",
              "tips": "Verifique a esquadria com a regra 3-4-5.", "mistakes": "Divisória fora de prumo.", "tools": ["Laser"]},
             {"title": "Colocar as calhas", "text": "Calhas no pavimento e no teto com fita resiliente, fixação a cada 60 cm.",
              "tips": "Fita resiliente = conforto acústico.", "mistakes": "Fixação direta sem resiliente.", "tools": ["Martelo perfurador"]},

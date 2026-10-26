@@ -69,7 +69,7 @@ export default function RfqPublic() {
           <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-5 flex gap-3" data-testid="rfq-done">
             <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
             <div className="text-sm">
-              <p className="font-semibold">Proposta transmitida — {eur(total)} HT</p>
+              <p className="font-semibold">Proposta transmitida — {eur(total)} s/ IVA</p>
               <p className="text-muted-foreground mt-1">{data.company} recebeu os seus preços. Obrigado.</p>
             </div>
           </div>

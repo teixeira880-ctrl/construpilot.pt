@@ -61,13 +61,13 @@ export const PriceHistoryChart = ({ query, days = 90 }) => {
                    tickFormatter={(v) => `${v}€`} />
             <Tooltip
               contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 2, fontSize: 12 }}
-              formatter={(v) => eur2(v)} labelFormatter={(l) => `Le ${l}`}
+              formatter={(v) => eur2(v)} labelFormatter={(l) => `Em ${l}`}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Area type="monotone" dataKey="min_price" name="Meilleur prix"
+            <Area type="monotone" dataKey="min_price" name="Melhor preço"
                   stroke="hsl(var(--primary))" strokeWidth={2}
                   fill="url(#priceGrad)" />
-            <Line type="monotone" dataKey="avg_price" name="Prix moyen"
+            <Line type="monotone" dataKey="avg_price" name="Preço médio"
                   stroke="hsl(var(--muted-foreground))" strokeWidth={1}
                   strokeDasharray="4 4" dot={false} />
           </AreaChart>

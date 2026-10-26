@@ -56,7 +56,7 @@ export default function Trash() {
     try { await api.delete("/trash"); toast.success("Lixo esvaziado"); await load(); } catch { toast.error("Ação impossível"); }
   };
   const restoreAll = async () => {
-    if (!(await confirm({ title: "Restaurar tudo?", description: `Les ${data.count} elemento(s) recuperáveis serão repostos no seu lugar.`, confirmLabel: "Restaurar tudo" }))) return;
+    if (!(await confirm({ title: "Restaurar tudo?", description: `Os ${data.count} elemento(s) recuperáveis serão repostos no seu lugar.`, confirmLabel: "Restaurar tudo" }))) return;
     setBusy("restore-all");
     try { const { data: r } = await api.post("/trash/restore-all"); toast.success(`${r.restored} elemento(s) restaurado(s)${r.failed ? ` · ${r.failed} falha(s)` : ""}`); await load(); }
     catch { toast.error("Restauro impossível"); } finally { setBusy(null); }
@@ -98,7 +98,7 @@ export default function Trash() {
               {i.status && <span className={`ml-2 rounded-sm px-1 text-xs ${i.status === "signed" ? "bg-emerald-500/15" : "bg-muted"}`}>{STATUS[i.status] || i.status}</span>}
               {i.message_count > 0 && <span className="ml-2 text-xs text-muted-foreground">{i.message_count} message(s)</span>}
             </div>
-            <div className="text-xs text-muted-foreground">Eliminado em {new Date(i.deleted_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })} · encore {days(i)} j{days(i) <= data.alert_days_before_purge && <span className="ml-1 text-amber-600 font-medium" data-testid={`trash-soon-${i.item_id}`}>· effacement imminent</span>}</div>
+            <div className="text-xs text-muted-foreground">Eliminado em {new Date(i.deleted_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })} · faltam {days(i)} d{days(i) <= data.alert_days_before_purge && <span className="ml-1 text-amber-600 font-medium" data-testid={`trash-soon-${i.item_id}`}>· eliminação iminente</span>}</div>
           </div>
           <Button size="sm" onClick={() => restore(i)} disabled={busy === i.item_id} data-testid={`trash-restore-${i.item_id}`}>{busy === i.item_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArchiveRestore className="h-4 w-4" />} Restaurar</Button>
           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => purge(i)} data-testid={`trash-purge-${i.item_id}`}><Trash2 className="h-4 w-4" /></Button>

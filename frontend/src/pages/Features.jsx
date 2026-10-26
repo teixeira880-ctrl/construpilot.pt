@@ -30,7 +30,7 @@ const PRO = [
   { icon: Droplets, title: "Impermeabilização", desc: "Cobertura plana: mapa por camada → rolos, bidões, painéis." },
   { icon: Layers, title: "Cobertura", desc: "Telhas/ardósias/chapa, tela, ripas, cumeeira, rincões, caleiras." },
   { icon: Waves, title: "VRD / Redes", desc: "EP, EU, AEP, telecom, gás + medições das valas (escavação, areia, aterro, reposição)." },
-  { icon: Boxes, title: "Biblioteca de preços DPGF", desc: "Importe o seu Excel/BPU para sobrepor os preços da IA." },
+  { icon: Boxes, title: "Biblioteca de preços", desc: "Importe a sua lista de preços em Excel para sobrepor os preços da IA." },
   { icon: Truck, title: "Aprovisionamento & fornecedores", desc: "Orçamentação, marcação na planta, exportação CSV e nota de encomenda por e-mail." },
   { icon: FileSignature, title: "Orçamentos assináveis online", desc: "Os seus clientes aceitam e assinam o orçamento à distância." },
   { icon: CreditCard, title: "Sinal Stripe", desc: "Cobre 30 % de sinal à assinatura do orçamento." },
@@ -95,7 +95,7 @@ export default function Features() {
       <section className="max-w-6xl mx-auto px-4 py-10" data-testid="features-downloads">
         <div className="surface p-6 rounded-xl">
           <h2 className="font-display text-xl font-bold flex items-center gap-2"><Download className="h-5 w-5 text-primary" /> Todas as funcionalidades em PDF e PowerPoint</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Brochura comercial (1 oferta por página) e catálogo exaustivo — Particulares, Premium, Pro, Pro Business, Blog & SEO, Radar Chantiers, API. Em francês.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Brochura comercial (1 oferta por página) e catálogo exaustivo — Particulares, Premium, Pro, Pro Business, Blog & SEO, Radar de obras, API. Em francês.</p>
           <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               ["Brochura (PDF)", "/docs/ConstruPilot_Brochure_Fonctionnalites.pdf", "features-dl-brochure-pdf"],

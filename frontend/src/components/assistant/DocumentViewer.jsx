@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { filenameFromResponse, isOpaque, nomDocument } from "@/lib/downloadName";
 
 const ViewerContext = createContext(() => {});
 
@@ -14,13 +15,15 @@ export const DocumentViewerProvider = ({ children }) => {
   const [blob, setBlob] = useState(null);
   const [error, setError] = useState(false);
   const [pages, setPages] = useState(null);
+  const [serverName, setServerName] = useState(null);
   useEffect(() => {
     if (!doc) return undefined;
     let active = true, objectUrl;
-    setUrl(null); setBlob(null); setError(false); setPages(null);
-    api.get(doc.path, { responseType: "blob" }).then(async ({ data }) => {
+    setUrl(null); setBlob(null); setError(false); setPages(null); setServerName(null);
+    api.get(doc.path, { responseType: "blob" }).then(async (res) => {
+      const { data } = res;
       if (!active) return;
-      objectUrl = URL.createObjectURL(data); setBlob(data); setUrl(objectUrl);
+      objectUrl = URL.createObjectURL(data); setBlob(data); setUrl(objectUrl); setServerName(filenameFromResponse(res, null));
       if (data.type === "application/pdf" || /\.pdf$/i.test(doc.filename || "")) {
         const fd = new FormData(); fd.append("file", data, doc.filename || "document.pdf");
         try { const r = await api.post("/assistant/pdf-pages", fd); if (active) setPages(r.data); } catch { if (active) setPages({ pages: [], total_pages: 0, failed: true }); }
@@ -31,7 +34,9 @@ export const DocumentViewerProvider = ({ children }) => {
   const close = () => { setDoc(null); setUrl(null); setBlob(null); setPages(null); };
   const download = () => {
     if (!blob) return;
-    const link = document.createElement("a"); link.href = url; link.download = doc.filename || "document"; link.click();
+    const ext = /\.([A-Za-z0-9]{1,5})$/.exec(doc.filename || "")?.[1] || (blob.type === "application/pdf" ? "pdf" : "");
+    const stored = doc.filename && !isOpaque(doc.filename.replace(/\.[^.]+$/, "")) ? doc.filename : null;
+    const link = document.createElement("a"); link.href = url; link.download = serverName || stored || nomDocument("Documento", doc.title, { ext }); link.click();
   };
   const isPdf = doc && (blob?.type === "application/pdf" || /\.pdf$/i.test(doc.filename || ""));
   return <ViewerContext.Provider value={setDoc}>

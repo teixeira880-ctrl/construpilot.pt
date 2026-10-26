@@ -21,7 +21,7 @@ export function PortalMessages({ portalApi, chantierRef, participantId }) {
   if (!data) return <p className="text-sm text-slate-500">A carregar…</p>;
   return (
     <section className="rounded-2xl border bg-white" data-testid="portal-messages">
-      <div className="px-4 py-3 border-b"><h2 className="font-semibold">Mensagens com {data.company || "l'entreprise"}</h2><p className="text-xs text-slate-500">Pode anexar fotografias ou PDF. A empresa é avisada por e-mail.</p></div>
+      <div className="px-4 py-3 border-b"><h2 className="font-semibold">Mensagens com {data.company || "a empresa"}</h2><p className="text-xs text-slate-500">Pode anexar fotografias ou PDF. A empresa é avisada por e-mail.</p></div>
       <MessageList messages={data.messages} mine={(m) => m.author_id === participantId} fileUrl={fileUrl} emptyText="Nenhuma mensagem por agora. Faça a sua pergunta abaixo." testId="portal-message-list" />
       <MessageComposer testId="portal-composer" dictate={dictate} placeholder="Escrever à empresa…" send={async (fd) => { await portalApi.post(`/${chantierRef}/messages`, fd); await load(); }} />
     </section>

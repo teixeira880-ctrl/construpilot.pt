@@ -6,6 +6,8 @@ géométrie et des accesseurs.
 """
 from __future__ import annotations
 
+EXTERIOR = {"exterieur", "patio", "porche", "terrasse", "loggia", "cour", "auvent", "preau", "varanda", "alpendre", "patio_exterieur"}
+
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -171,7 +173,13 @@ class Model:
         return self.raw["geotech"]
 
     def rooms(self, lid: str) -> list[dict]:
-        return self.raw["rooms"].get(lid, [])
+        """Pièces intérieures du niveau (les espaces extérieurs — patio, porche, terrasse — sont exclus :
+        ni chauffage, ni VMC, ni équipements intérieurs)."""
+        return [r for r in self.raw["rooms"].get(lid, []) if str(r.get("type", "")).lower() not in EXTERIOR]
+
+    def exterior_spaces(self, lid: str) -> list[dict]:
+        """Patios, porches, terrasses, loggias situés dans l'emprise : dessinés hachurés « extérieur »."""
+        return [r for r in self.raw["rooms"].get(lid, []) if str(r.get("type", "")).lower() in EXTERIOR]
 
     def side(self, sid: str) -> dict:
         return self.raw["sides"][sid]

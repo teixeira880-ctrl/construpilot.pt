@@ -95,7 +95,7 @@ export function PlanAnalysisResults({ recap, onClose, onReview, onQuote }) {
   return <section className="plan-analysis-results" data-testid="analysis-recap" aria-label="Resultados da análise">
     <div className="plan-results-heading">
       <div><p className="plan-eyebrow">RESULTADOS · ESTA PÁGINA</p><h2>A sua medição ganha forma</h2></div>
-      <span className="plan-review-badge">{warnings.length ? "Analyse partielle" : "A verificar na planta"}</span>
+      <span className="plan-review-badge">{warnings.length ? "Análise parcial" : "A verificar na planta"}</span>
       <button type="button" onClick={onClose} className="plan-text-button" data-testid="recap-close">Ocultar</button>
     </div>
     <div className="plan-results-grid">

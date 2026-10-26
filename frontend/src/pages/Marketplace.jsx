@@ -113,7 +113,7 @@ export default function Marketplace() {
             <Textarea rows={4} value={form.description}
                       onChange={(e) => setForm({ ...form, description: e.target.value })}
                       required data-testid="ld-description" className="rounded-sm"
-                      placeholder="Ex: renovação completa apartamento 65m² em Paris 11º — cozinha aberta, casa de banho, pintura, pavimentos. Início desejado em abril." />
+                      placeholder="Ex: renovação completa apartamento 65 m² em Lisboa (Arroios) — cozinha aberta, casa de banho, pintura, pavimentos. Início desejado em abril." />
           </div>
           <Button type="submit" disabled={busy} data-testid="ld-submit"
                   className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white justify-self-start">

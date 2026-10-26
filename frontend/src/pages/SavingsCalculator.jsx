@@ -106,7 +106,7 @@ export default function SavingsCalculator() {
         {/* Résultats */}
         <div className="lg:col-span-3">
           <div className="grid sm:grid-cols-3 gap-3">
-            <Stat icon={TrendingDown} label="A · Perdas evitadas (2% do volume de negócios)" value={eur(r.A)} sub={`${eur(r.Alow)} – ${eur(r.Ahigh)}/mois`} />
+            <Stat icon={TrendingDown} label="A · Perdas evitadas (2% do volume de negócios)" value={eur(r.A)} sub={`${eur(r.Alow)} – ${eur(r.Ahigh)}/mês`} />
             <Stat icon={Users} label="B · Pessoal automatizado" value={eur(r.B)} sub={`${r.fte.toFixed(2).replace(".", ",")} ETI × ${eur(r.loaded)}`} />
             <Stat icon={Calculator} label="TOTAL estimado / mês" value={eur(r.total)} sub={`${eur(r.totalLow)} – ${eur(r.totalHigh)}`} accent />
           </div>
@@ -114,7 +114,7 @@ export default function SavingsCalculator() {
           <div className="mt-4 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-transparent p-6">
             <p className="text-sm text-muted-foreground">Poupança estimada num ano</p>
             <p className="font-display text-4xl sm:text-5xl font-extrabold text-primary mt-1" data-testid="result-total">{eur(r.total * 12)}</p>
-            <p className="text-sm text-muted-foreground mt-1">ou seja, cerca de <strong>{eur(r.total)}/mois</strong> (cenário típico)</p>
+            <p className="text-sm text-muted-foreground mt-1">ou seja, cerca de <strong>{eur(r.total)}/mês</strong> (cenário típico)</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <a href={pdfUrl} target="_blank" rel="noreferrer" data-testid="download-pdf-btn">
                 <Button size="lg" className="rounded-full gap-2 font-bold"><Download className="h-5 w-5" /> Descarregar o PDF</Button>

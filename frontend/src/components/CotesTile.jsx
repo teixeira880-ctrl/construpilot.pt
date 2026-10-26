@@ -30,7 +30,7 @@ export const CotesTile = () => {
             <p className="text-sm text-muted-foreground mt-1" data-testid="cotes-tile-last">
               Último controlo: <b className="text-foreground">{last.filename || last.plan_id}</b>
               {last.pages_checked > 1 ? ` (${last.pages_checked} páginas)` : ""} ·{" "}
-              {last.summary?.total} cotes · <b className="text-red-700">{last.summary?.ko} incoerência(s)</b> ·{" "}
+              {last.summary?.total} cotas · <b className="text-red-700">{last.summary?.ko} incoerência(s)</b> ·{" "}
               {new Date(last.checked_at).toLocaleDateString("pt-PT")}
             </p>
           ) : (

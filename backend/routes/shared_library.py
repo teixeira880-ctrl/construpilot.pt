@@ -303,7 +303,7 @@ async def export_library_xlsx():
     wb.save(buf)
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                             headers={"Content-Disposition": 'attachment; filename="ConstruPilot_FR_Bibliotheque_export.xlsx"'})
+                             headers={"Content-Disposition": 'attachment; filename="ConstruPilot_PT_Biblioteca_export.xlsx"'})
 
 
 @admin_router.get("/price-history")

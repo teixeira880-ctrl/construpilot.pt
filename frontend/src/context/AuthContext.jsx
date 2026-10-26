@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
+import { disableDemoMode } from "@/lib/demoInterceptor";
 
 const AuthContext = createContext(null);
 
@@ -84,6 +85,9 @@ export const AuthProvider = ({ children }) => {
     } catch {}
     // Nettoyer un éventuel legacy token qui traînerait de l'ancienne version.
     try { localStorage.removeItem("construpilot_token"); localStorage.removeItem("construpilot_session"); } catch {}
+    // Sair da demo/stand ao terminar sessão, para a conta real voltar a funcionar.
+    disableDemoMode();
+    try { localStorage.removeItem("cp_stand_mode"); } catch { /* noop */ }
     setUser(null);
   };
 

@@ -11,6 +11,9 @@ import StructureManualPanels from "./StructureManualPanels";
 import StructureLintelPanel, { DEFAULT_LINTEL } from "./StructureLintelPanel";
 
 const BASE = "/structuro/calc/studies";
+// Rótulos PT das origens devolvidas pelo motor (valores internos mantidos).
+const SOURCE_LABELS = { manuel: "manual", plan: "planta", manquant: "em falta", "plan (auto)": "planta (auto)", "plan (K×h)": "planta (K×h)", "auto (plan)": "auto (planta)" };
+const srcLabel = s => SOURCE_LABELS[s] || s;
 const TYPES = { slab: "Laje", beam: "Viga", wall: "Parede", column: "Pilar", footing: "Sapata" };
 const COLORS = { slab: "#b9c9c0", beam: "#b46b42", wall: "#17574b", column: "#9d3e26", footing: "#837466" };
 const number = value => value === "" ? null : Number(value);
@@ -149,7 +152,7 @@ export default function StructureCalc() {
   const download = fmt => task(async () => {
     const ext = { aciers: "pdf", plans: "pdf", nomenclature: "csv", dossier: "zip" }[fmt] || fmt;
     const { data } = await api.get(`${BASE}/${study.study_id}/export/${fmt}`, { responseType: "blob", params: { expected_revision: study.revision } });
-    const url = URL.createObjectURL(data), a = document.createElement("a"); a.href = url; a.download = `structure-${fmt}-r${study.revision}.${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const url = URL.createObjectURL(data), a = document.createElement("a"); a.href = url; a.download = `estrutura-${fmt}-r${study.revision}.${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   const automate = () => task(async () => {
     const { data } = await api.post(`${BASE}/${study.study_id}/automate`, { expected_revision: study.revision, model }, { timeout: 95000 });
@@ -178,7 +181,7 @@ export default function StructureCalc() {
   });
   const exportFerraillage = () => task(async () => {
     const res = await api.post(`${BASE}/${study.study_id}/export/ferraillage`, ec2opts, { responseType: "blob" });
-    const url = URL.createObjectURL(res.data), a = document.createElement("a"); a.href = url; a.download = `ferraillage-r${study.revision}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const url = URL.createObjectURL(res.data), a = document.createElement("a"); a.href = url; a.download = `armaduras-r${study.revision}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Nota de armaduras PDF transferida");
   });
   const designEc7 = () => task(async () => {
@@ -214,7 +217,7 @@ export default function StructureCalc() {
     const include = Object.entries(dossierInc).filter(([, v]) => v).map(([k]) => k);
     const body = { include, ec2: ec2opts, ec3: ec3Payload(), ec5: ec5Payload(), ec7: ec7opts, sls: slsPayload(), crack: crackPayload(), anchorage: ancPayload(), lintel: lintelOpts.clear_span_m ? lintelOpts : undefined };
     const res = await api.post(`${BASE}/${study.study_id}/export/dossier`, body, { responseType: "blob" });
-    const url = URL.createObjectURL(res.data), a = document.createElement("a"); a.href = url; a.download = `dossier-bet-r${study.revision}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const url = URL.createObjectURL(res.data), a = document.createElement("a"); a.href = url; a.download = `processo-engenharia-r${study.revision}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Processo de engenharia PDF transferido");
   });
   const updateElement = e => setModel(m => ({ ...m, gravity_model_reviewed: false, elements: m.elements.map(x => x.id === e.id ? e : x) }));
@@ -226,11 +229,11 @@ export default function StructureCalc() {
   const activeCase = result?.cases.find(c => c.id === caseId) || result?.cases[0];
   const active = model?.elements.find(e => e.id === selected);
   return <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6" data-testid="structure-calc">
-    <header className="flex flex-wrap justify-between gap-4"><div><p className="text-xs uppercase tracking-widest text-emerald-800">ConstruPilot · Structure</p>
+    <header className="flex flex-wrap justify-between gap-4"><div><p className="text-xs uppercase tracking-widest text-emerald-800">ConstruPilot · Estrutura</p>
       <h1 className="text-3xl font-semibold mt-2 flex gap-2 items-center"><Building2 /> Do projeto de licenciamento ao modelo estrutural</h1>
       <p className="text-sm text-muted-foreground mt-2">Leitura das plantas, cálculo gravítico e plantas de princípio com fontes.</p></div><a href="/structuro" className="text-sm underline">Espaço estrutura</a></header>
     <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><b>Versão preliminar.</b> O motor calcula esforços no modelo introduzido. Ainda não dimensiona as secções nem as armaduras. Solo, estabilidade, resistência e sismo continuam a ser verificados por um engenheiro de estruturas.</div>
-    {busy && <p role="status" className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" />{progress || "Traitement en cours…"}</p>}
+    {busy && <p role="status" className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" />{progress || "Processamento em curso…"}</p>}
     <fieldset disabled={busy} className="space-y-6 disabled:opacity-70">
       {!study ? <>
         <Card className="p-5 space-y-4"><h2 className="font-semibold">Começar a partir do seu projeto de licenciamento</h2><select className={selectClass} aria-label="PC source" value={plan} onChange={ev => setPlan(ev.target.value)}><option value="">Estudo vazio / introdução manual</option>{plans.map(p => <option key={p.plan_id} value={p.plan_id}>{p.filename}</option>)}</select>
@@ -327,10 +330,10 @@ export default function StructureCalc() {
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="ec7-panel">
           <h2 className="font-semibold">NP EN 1997 — Capacidade resistente das fundações (sapatas)</h2>
-          <p className="text-sm text-muted-foreground">A partir da <b>pressão condicionante</b> da envolvente NP EN 1990, capacidade resistente admissível (Anexo D, carga vertical centrada). Abordagem de cálculo 1 (Anexo Nacional português) por omissão. A razão q_Ed/q_Rd é <b>indicatif</b> — não vale como verificação regulamentar, a validar pelo engenheiro.</p>
+          <p className="text-sm text-muted-foreground">A partir da <b>pressão condicionante</b> da envolvente NP EN 1990, capacidade resistente admissível (Anexo D, carga vertical centrada). Abordagem de cálculo 1 (Anexo Nacional português) por omissão. A razão q_Ed/q_Rd é <b>indicativa</b> — não vale como verificação regulamentar, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
             <label className="space-y-1">Regime<select className={selectClass} value={ec7opts.mode} onChange={ev => setEc7opts({ ...ec7opts, mode: ev.target.value })} data-testid="ec7-mode"><option value="drained">Drenado (c', φ')</option><option value="undrained">Não drenado (cu)</option></select></label>
-            <label className="space-y-1">Encastrement D (m)<Input type="number" step="any" value={ec7opts.d_m} onChange={ev => setEc7opts({ ...ec7opts, d_m: Number(ev.target.value) })} /></label>
+            <label className="space-y-1">Encastramento D (m)<Input type="number" step="any" value={ec7opts.d_m} onChange={ev => setEc7opts({ ...ec7opts, d_m: Number(ev.target.value) })} /></label>
             <label className="space-y-1">γ sol (kN/m³)<Input type="number" step="any" value={ec7opts.gamma_soil} onChange={ev => setEc7opts({ ...ec7opts, gamma_soil: Number(ev.target.value) })} /></label>
             {ec7opts.mode === "drained" ? <>
               <label className="space-y-1">φ' (°)<Input type="number" step="any" value={ec7opts.phi_deg} onChange={ev => setEc7opts({ ...ec7opts, phi_deg: Number(ev.target.value) })} data-testid="ec7-phi" /></label>
@@ -358,7 +361,7 @@ export default function StructureCalc() {
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="ec3-panel">
           <h2 className="font-semibold">NP EN 1993 — Verificação do aço (vigas)</h2>
-          <p className="text-sm text-muted-foreground">A partir do <b>M e V condicionantes</b> da envolvente: resistência da secção (flexão, corte) e encurvadura lateral. Propriedades de perfis públicas (EN 10365). Razões <b>indicatifs</b>, a validar pelo engenheiro.</p>
+          <p className="text-sm text-muted-foreground">A partir do <b>M e V condicionantes</b> da envolvente: resistência da secção (flexão, corte) e encurvadura lateral. Propriedades de perfis públicas (EN 10365). Razões <b>indicativas</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
             <label className="space-y-1">Perfil<select className={selectClass} value={ec3opts.profile} onChange={ev => setEc3opts({ ...ec3opts, profile: ev.target.value })} data-testid="ec3-profile">{ec3cat?.families ? Object.entries(ec3cat.families).map(([fam, keys]) => <optgroup key={fam} label={fam}>{keys.map(k => <option key={k} value={k}>{k}</option>)}</optgroup>) : <option value="IPE300">IPE300</option>}</select></label>
             <label className="space-y-1">Classe<select className={selectClass} value={ec3opts.grade} onChange={ev => setEc3opts({ ...ec3opts, grade: ev.target.value })} data-testid="ec3-grade">{Object.keys(ec3cat?.grades || { S235: 235, S275: 275, S355: 355 }).map(g => <option key={g} value={g}>{g}</option>)}</select></label>
@@ -371,7 +374,7 @@ export default function StructureCalc() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs border-t pt-3">
             <label className="space-y-1 col-span-2 md:col-span-6 text-muted-foreground">Pilares — flexão composta N+M pelo <b>método regulamentar §6.3.3 (método 2, Anexo B)</b> : encurvadura nos dois eixos χy/χz (curvas automáticas Quadro 6.2) + encurvadura lateral χLT, fatores de interação <b>kyy/kzy</b> (eq. 6.61 &amp; 6.62). N automático da envolvente, Lcr automático da planta (K×h).</label>
             <label className="space-y-1">K long. flamb.<Input type="number" step="any" value={ec3opts.k_buckling} onChange={ev => setEc3opts({ ...ec3opts, k_buckling: Number(ev.target.value) })} data-testid="ec3-k" /></label>
-            <label className="space-y-1">Lcr manuel (m)<Input type="number" step="any" placeholder="auto K×h" value={ec3opts.lcr_m} onChange={ev => setEc3opts({ ...ec3opts, lcr_m: ev.target.value })} data-testid="ec3-lcr" /></label>
+            <label className="space-y-1">Lcr manual (m)<Input type="number" step="any" placeholder="auto K×h" value={ec3opts.lcr_m} onChange={ev => setEc3opts({ ...ec3opts, lcr_m: ev.target.value })} data-testid="ec3-lcr" /></label>
             <label className="space-y-1">M aplicado (kN·m)<Input type="number" step="any" placeholder="0" value={ec3opts.med_col_knm} onChange={ev => setEc3opts({ ...ec3opts, med_col_knm: ev.target.value })} data-testid="ec3-medcol" /></label>
             <label className="space-y-1">Cmy<select className={selectClass} value={ec3opts.cmy} onChange={ev => setEc3opts({ ...ec3opts, cmy: Number(ev.target.value) })} data-testid="ec3-cmy">{(ec3cat?.cm_presets || [{ label: "0.9", value: 0.9 }]).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
             <label className="space-y-1">CmLT<select className={selectClass} value={ec3opts.cm_lt} onChange={ev => setEc3opts({ ...ec3opts, cm_lt: Number(ev.target.value) })} data-testid="ec3-cmlt">{(ec3cat?.cm_presets || [{ label: "0.9", value: 0.9 }]).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
@@ -381,24 +384,24 @@ export default function StructureCalc() {
           {ec3res && <div className="overflow-auto" data-testid="ec3-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Flexion M/Mc,Rd</th><th>Corte V/Vpl,Rd</th><th>Encurvadura lateral M/Mb,Rd</th></tr></thead>
             <tbody>{ec3res.elements.map(r => r.status !== "ok"
               ? <tr key={r.id} className="border-b"><td className="p-1 font-medium">{r.id}</td><td colSpan={3} className="text-amber-700">{r.message}</td></tr>
-              : <tr key={r.id} className="border-b align-top"><td className="p-1 font-medium">{r.id}<div className="text-[10px] text-muted-foreground">{r.profile}/{r.grade}{r.section_class ? ` · classe ${r.section_class} (${r.class_mode})` : ""}{r.span_m ? ` · L=${r.span_m}m (${r.span_source})` : ""}</div></td>
+              : <tr key={r.id} className="border-b align-top"><td className="p-1 font-medium">{r.id}<div className="text-[10px] text-muted-foreground">{r.profile}/{r.grade}{r.section_class ? ` · classe ${r.section_class} (${r.class_mode})` : ""}{r.span_m ? ` · L=${r.span_m}m (${srcLabel(r.span_source)})` : ""}</div></td>
                   <td><Util u={r.result.bending.utilisation} /><div className="text-[10px] text-muted-foreground">{r.result.bending.mv_interaction ? `Mc,Rd reduzido ${r.result.bending.mc_rd_eff_knm} (M-V)` : `Mc,Rd ${r.result.bending.mc_rd_knm}`} kN·m</div></td>
                   <td><Util u={r.result.shear.utilisation} /><div className="text-[10px] text-muted-foreground">Vpl,Rd {r.result.shear.vpl_rd_kn} kN</div></td>
-                  <td><Util u={r.result.lateral_torsional.utilisation} /><div className="text-[10px] text-muted-foreground">{r.result.lateral_torsional.note || `Mb,Rd ${r.result.lateral_torsional.mb_rd_knm} · Mcr ${r.mcr_knm} (${r.mcr_source})`}</div></td></tr>)}</tbody></table>
+                  <td><Util u={r.result.lateral_torsional.utilisation} /><div className="text-[10px] text-muted-foreground">{r.result.lateral_torsional.note || `Mb,Rd ${r.result.lateral_torsional.mb_rd_knm} · Mcr ${r.mcr_knm} (${srcLabel(r.mcr_source)})`}</div></td></tr>)}</tbody></table>
             <p className="text-[11px] text-muted-foreground mt-1">{ec3res.note}</p></div>}
           {ec3res?.columns?.length > 0 && <div className="overflow-auto mt-2" data-testid="ec3-columns"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Pilar</th><th>N dim (kN)</th><th>Lcr (m)</th><th>Encurvadura (χy/χz)</th><th>Interaction N+M (§6.3.3 · kyy/kzy)</th></tr></thead>
             <tbody>{ec3res.columns.map(c => c.status !== "ok"
               ? <tr key={c.id} className="border-b"><td className="p-1 font-medium">{c.id}</td><td colSpan={4} className="text-amber-700">{c.message}</td></tr>
               : <tr key={c.id} className="border-b align-top"><td className="p-1 font-medium">{c.id}<div className="text-[10px] text-muted-foreground">{c.profile}/{c.grade} · classe {c.section_class} ({c.class_mode})</div></td>
                   <td>{c.ned_kn}<div className="text-[10px] text-muted-foreground">{c.ned_case}</div></td>
-                  <td>{c.lcr_m} <span className="text-[10px] text-muted-foreground">({c.lcr_source})</span></td>
+                  <td>{c.lcr_m} <span className="text-[10px] text-muted-foreground">({srcLabel(c.lcr_source)})</span></td>
                   <td><Util u={c.result.buckling.utilisation} /><div className="text-[10px] text-muted-foreground">Nb,Rd {c.result.nb_rd_kn} kN · χy={c.result.chi_y} / χz={c.result.chi_z}</div></td>
                   <td>{c.result.interaction ? <><Util u={c.result.interaction.utilisation} /><div className="text-[10px] text-muted-foreground">(6.61)={c.result.interaction.eq_661} · (6.62)={c.result.interaction.eq_662} · kyy={c.result.interaction.kyy} kzy={c.result.interaction.kzy} · χLT={c.result.interaction.chi_lt}</div></> : <span className="text-muted-foreground">Só N (M=0)</span>}</td></tr>)}</tbody></table>
             <p className="text-[11px] text-muted-foreground mt-1">Flexão composta dos pilares: método 2 (Anexo B) — equações 6.61 &amp; 6.62, fatores kyy/kzy. Indicativo, a validar.</p></div>}
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="sls-panel">
           <h2 className="font-semibold">Flechas em serviço (ELS · NP EN 1990)</h2>
-          <p className="text-sm text-muted-foreground">Flechas elásticas da envolvente <b>característica</b> et <b>quasi-permanente</b> (segundo o EI introduzido: betão/aço/madeira) comparadas com L/razão. Vão <b>100 % automático segundo a geometria da planta</b> (length_m), para todas as vigas, sem introdução manual. Razão <b>indicatif</b>, a validar pelo engenheiro.</p>
+          <p className="text-sm text-muted-foreground">Flechas elásticas da envolvente <b>característica</b> e <b>quase-permanente</b> (segundo o EI introduzido: betão/aço/madeira) comparadas com L/razão. Vão <b>100 % automático segundo a geometria da planta</b> (length_m), para todas as vigas, sem introdução manual. Razão <b>indicativa</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <label className="space-y-1">Limite característico L/<Input type="number" step="any" value={slsopts.ratio_char} onChange={ev => setSlsopts({ ...slsopts, ratio_char: Number(ev.target.value) })} data-testid="sls-ratio-char" /></label>
             <label className="space-y-1">Limite quasi-perm. L/<Input type="number" step="any" value={slsopts.ratio_qp} onChange={ev => setSlsopts({ ...slsopts, ratio_qp: Number(ev.target.value) })} data-testid="sls-ratio-qp" /></label>
@@ -407,14 +410,14 @@ export default function StructureCalc() {
           {slsres && <div className="overflow-auto" data-testid="sls-results"><table className="w-full text-xs"><thead><tr className="text-left border-b"><th className="p-1">Viga</th><th>Vão (m)</th><th>Característica (w / limite)</th><th>Quasi-permanente (w / limite)</th></tr></thead>
             <tbody>{slsres.elements.map(r => r.status !== "ok"
               ? <tr key={r.id} className="border-b"><td className="p-1 font-medium">{r.id}</td><td colSpan={3} className="text-amber-700">{r.message}</td></tr>
-              : <tr key={r.id} className="border-b align-top"><td className="p-1 font-medium">{r.id}</td><td>{r.span_m} <span className="text-[10px] text-muted-foreground">({r.span_source})</span></td>
+              : <tr key={r.id} className="border-b align-top"><td className="p-1 font-medium">{r.id}</td><td>{r.span_m} <span className="text-[10px] text-muted-foreground">({srcLabel(r.span_source)})</span></td>
                   <td><Util u={r.char.utilisation} /><div className="text-[10px] text-muted-foreground">{r.char.w_mm ?? "—"} / {r.char.limit_mm} mm ({r.char.ratio_label})</div></td>
                   <td><Util u={r.qp.utilisation} /><div className="text-[10px] text-muted-foreground">{r.qp.w_mm ?? "—"} / {r.qp.limit_mm} mm ({r.qp.ratio_label})</div></td></tr>)}</tbody></table>
             <p className="text-[11px] text-muted-foreground mt-1">{slsres.note}</p></div>}
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="crack-panel">
           <h2 className="font-semibold">NP EN 1992 §7.3 — Fendilhação do betão (ELS quase permanente)</h2>
-          <p className="text-sm text-muted-foreground">Abertura de fendas wk e As mín. de fendilhação, sob momento <b>quasi-permanent</b> da envolvente, a partir das armaduras propostas (classe do betão / recobrimento / Ø do painel NP EN 1992). Razão <b>indicatif</b>, a validar pelo engenheiro.</p>
+          <p className="text-sm text-muted-foreground">Abertura de fendas wk e As mín. de fendilhação, sob momento <b>quasi-permanent</b> da envolvente, a partir das armaduras propostas (classe do betão / recobrimento / Ø do painel NP EN 1992). Razão <b>indicativa</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <label className="space-y-1">wk,max (mm)<Input type="number" step="any" value={crackopts.w_max_mm} onChange={ev => setCrackopts({ w_max_mm: Number(ev.target.value) })} data-testid="crack-wmax" /></label>
           </div>
@@ -429,7 +432,7 @@ export default function StructureCalc() {
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="anc-panel">
           <h2 className="font-semibold">NP EN 1992 §8.4/§8.7 — Amarrações e emendas</h2>
-          <p className="text-sm text-muted-foreground">Comprimento de amarração <b>lbd</b> (§8.4) e de emenda <b>l0</b> (§8.7) calculados a partir das <b>armaduras propostas</b> (Ø do varão, classe do betão, recobrimento, As,req/As,prov do painel NP EN 1992). Condições de aderência e ρ1 (% de varões emendados) editáveis. Razão <b>indicatif</b>, a validar pelo engenheiro.</p>
+          <p className="text-sm text-muted-foreground">Comprimento de amarração <b>lbd</b> (§8.4) e de emenda <b>l0</b> (§8.7) calculados a partir das <b>armaduras propostas</b> (Ø do varão, classe do betão, recobrimento, As,req/As,prov do painel NP EN 1992). Condições de aderência e ρ1 (% de varões emendados) editáveis. Razão <b>indicativa</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
             <label className="space-y-1">Aderência<select className={selectClass} value={ancopts.bond} onChange={ev => setAncopts({ ...ancopts, bond: ev.target.value })} data-testid="anc-bond"><option value="good">Bonne (η1=1,0)</option><option value="poor">Má (η1=0,7)</option></select></label>
             <label className="space-y-1">ρ1 recouvr. (%)<Input type="number" step="any" value={ancopts.rho1_pct} onChange={ev => setAncopts({ ...ancopts, rho1_pct: Number(ev.target.value) })} data-testid="anc-rho1" /></label>
@@ -449,7 +452,7 @@ export default function StructureCalc() {
         </Card>}
         {!dirty && result && result.status === "mechanical_only" && <Card className="p-5 space-y-3" data-testid="ec5-panel">
           <h2 className="font-semibold">NP EN 1995 — Verificação da madeira (vigas)</h2>
-          <p className="text-sm text-muted-foreground">A partir do <b>M e V condicionantes</b> : flexão, corte (kcr) e encurvadura lateral. kmod segundo duração × classe de serviço, γM e classes EN 338/EN 14080. Razões <b>indicatifs</b>, a validar pelo engenheiro.</p>
+          <p className="text-sm text-muted-foreground">A partir do <b>M e V condicionantes</b> : flexão, corte (kcr) e encurvadura lateral. kmod segundo duração × classe de serviço, γM e classes EN 338/EN 14080. Razões <b>indicativas</b>, a validar pelo engenheiro.</p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
             <label className="space-y-1">Classe da madeira<select className={selectClass} value={ec5opts.strength_class} onChange={ev => setEc5opts({ ...ec5opts, strength_class: ev.target.value })} data-testid="ec5-class">{(ec5cat?.classes || [{ key: "C24" }]).map(c => <option key={c.key} value={c.key}>{c.key}</option>)}</select></label>
             <label className="space-y-1">Classe de serviço<select className={selectClass} value={ec5opts.service_class} onChange={ev => setEc5opts({ ...ec5opts, service_class: ev.target.value })} data-testid="ec5-sc">{["1", "2", "3"].map(c => <option key={c} value={c}>{c}</option>)}</select></label>

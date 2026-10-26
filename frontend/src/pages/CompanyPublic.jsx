@@ -42,11 +42,11 @@ export default function CompanyPublic() {
       </header>
 
       <main className="max-w-5xl mx-auto px-5 py-10 space-y-12">
-        {data.description && <section><h2 className="text-lg font-semibold mb-3">L'entreprise</h2><p className="whitespace-pre-wrap text-slate-700 leading-relaxed" data-testid="company-public-description">{data.description}</p></section>}
+        {data.description && <section><h2 className="text-lg font-semibold mb-3">A empresa</h2><p className="whitespace-pre-wrap text-slate-700 leading-relaxed" data-testid="company-public-description">{data.description}</p></section>}
         <section className="grid md:grid-cols-3 gap-4 text-sm">
           {data.address && <div className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5" style={{ color: accent }} /><span>{data.address}</span></div>}
           {data.website && <a href={data.website} target="_blank" rel="noreferrer" className="flex items-start gap-2 underline"><Globe className="h-4 w-4 mt-0.5" style={{ color: accent }} />{data.website}</a>}
-          {(data.service_zones || []).length > 0 && <div><span className="font-medium">Zones d'intervention : </span>{data.service_zones.map((z) => (typeof z === "string" ? z : z.label || z.name)).join(", ")}</div>}
+          {(data.service_zones || []).length > 0 && <div><span className="font-medium">Zonas de intervenção: </span>{data.service_zones.map((z) => (typeof z === "string" ? z : z.label || z.name)).join(", ")}</div>}
         </section>
 
         {data.photos.length > 0 && (

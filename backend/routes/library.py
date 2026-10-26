@@ -33,7 +33,7 @@ STARTER_CATALOGUE: list[dict] = [
     # --- Plâtrerie / Isolation ---
     {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Divisória em pladur sobre estrutura metálica", "unit": "m²", "unit_price_ht": 45, "vat_rate": 6},
     {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Contra-fachada isolante em lã de vidro", "unit": "m²", "unit_price_ht": 42, "vat_rate": 6},
-    {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Faux plafond BA13", "unit": "m²", "unit_price_ht": 48, "vat_rate": 6},
+    {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Teto falso em gesso cartonado", "unit": "m²", "unit_price_ht": 48, "vat_rate": 6},
     {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Barramento de paredes", "unit": "m²", "unit_price_ht": 18, "vat_rate": 6},
     {"type": "ouvrage", "category": "Gesso cartonado / Isolamento", "designation": "Isolamento do desvão com lã insuflada", "unit": "m²", "unit_price_ht": 25, "vat_rate": 6},
     # --- Électricité ---

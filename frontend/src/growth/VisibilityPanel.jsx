@@ -22,7 +22,7 @@ function NewCampaign({ projectId, onCreated, providers }) {
     setBusy(true);
     try {
       const r = await api.post(`/growth/projects/${projectId}/campaigns`, { name, question_ids: sel, providers: Object.entries(prov).filter(([, v]) => v).map(([p]) => ({ provider: p })), repetitions: reps });
-      toast.success(`Campanha criada — custo estimado ${usd(r.data.estimated_cost_usd)} pour ${r.data.planned_tests} tests`); onCreated(r.data);
+      toast.success(`Campanha criada — custo estimado ${usd(r.data.estimated_cost_usd)} para ${r.data.planned_tests} testes`); onCreated(r.data);
     } catch (e) { toast.error(err(e)); } finally { setBusy(false); }
   };
   if (!data) return null;
@@ -34,7 +34,7 @@ function NewCampaign({ projectId, onCreated, providers }) {
     <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-2">
       {intents.map((it) => <div key={it}><p className="overline">{it}</p>{data.questions.filter((q) => q.intent === it && q.active).map((q) => <label key={q.question_id} className="flex items-start gap-2 py-0.5"><input type="checkbox" checked={sel.includes(q.question_id)} onChange={(e) => setSel(e.target.checked ? [...sel, q.question_id] : sel.filter((x) => x !== q.question_id))} data-testid={`growth-campaign-q-${q.question_id}`} /><span>{q.text}{q.branded && <Badge variant="outline" className="ml-1 rounded-sm text-[10px]">marque</Badge>}</span></label>)}</div>)}
     </div>
-    <p className="text-xs text-muted-foreground">{sel.length} question(s) × {Object.values(prov).filter(Boolean).length} fornecedor(es) × {reps} = <strong className="num">{sel.length * Object.values(prov).filter(Boolean).length * reps} tests</strong>. As perguntas «marca» são testadas separadamente das perguntas sem marca; nenhum contexto ConstruPilot é injetado.</p>
+    <p className="text-xs text-muted-foreground">{sel.length} pergunta(s) × {Object.values(prov).filter(Boolean).length} fornecedor(es) × {reps} = <strong className="num">{sel.length * Object.values(prov).filter(Boolean).length * reps} testes</strong>. As perguntas «marca» são testadas separadamente das perguntas sem marca; nenhum contexto ConstruPilot é injetado.</p>
     <Button size="sm" onClick={create} disabled={busy || !sel.length || !Object.values(prov).some(Boolean)} data-testid="growth-campaign-create"><Plus className="h-4 w-4" /> Estimar e criar</Button>
   </div>;
 }
@@ -46,7 +46,7 @@ function TestDialog({ testId, onClose, canEdit }) {
   return <Dialog open={!!testId} onOpenChange={(o) => !o && onClose()}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto" data-testid="growth-test-dialog">
     <DialogTitle className="text-base">Resposta de origem</DialogTitle>
     {t && <>
-      <DialogDescription className="text-xs">{t.question_text} — {t.provider} · {t.model} · resp. {t.repetition} · {dt(t.executed_at)} · recherche web : {t.web_search ? "oui" : "non"} · geolocalização aplicada: {t.geo_applied} · {t.latency_ms} ms · {usd(t.cost_usd)}{t.cost_estimated ? " (estimado)" : ""} · protocolo {t.protocol_version}</DialogDescription>
+      <DialogDescription className="text-xs">{t.question_text} — {t.provider} · {t.model} · resp. {t.repetition} · {dt(t.executed_at)} · pesquisa web: {t.web_search ? "sim" : "não"} · geolocalização aplicada: {t.geo_applied} · {t.latency_ms} ms · {usd(t.cost_usd)}{t.cost_estimated ? " (estimado)" : ""} · protocolo {t.protocol_version}</DialogDescription>
       <div className="space-y-2 text-sm">
         <p className="overline">Marcas detetadas</p>
         {(t.mentions || []).length === 0 && <p className="text-xs text-muted-foreground">Nenhuma marca acompanhada detetada.</p>}

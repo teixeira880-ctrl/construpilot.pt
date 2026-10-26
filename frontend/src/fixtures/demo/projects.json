@@ -545,7 +545,8 @@
     "is_demo": true,
     "demo_source": "websummit_2026",
     "created_at": "2026-10-23T00:07:56.024203+00:00",
-    "doc_ids": []
+    "doc_ids": [],
+    "budget": 188962.19
   },
   {
     "project_id": "prj_demo_demo_part_pt",
@@ -1093,6 +1094,7 @@
     "is_demo": true,
     "demo_source": "websummit_2026",
     "created_at": "2026-10-23T00:07:56.031268+00:00",
-    "doc_ids": []
+    "doc_ids": [],
+    "budget": 188962.19
   }
 ]

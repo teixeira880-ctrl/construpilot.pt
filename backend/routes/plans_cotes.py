@@ -295,7 +295,7 @@ async def inconsistencies_pdf(plan_id: str, page_index: int = Query(0, ge=0), us
     branding = await _resolve_branding(user["user_id"])
     pdf = build_inconsistencies_pdf(p, page_index, report, branding, _lang_of(branding))
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="incoherences-{plan_id[-6:]}-p{page_index + 1}.pdf"'})
+                    headers={"Content-Disposition": f'attachment; filename="incoerencias-{plan_id[-6:]}-p{page_index + 1}.pdf"'})
 
 
 @router.post("/{plan_id}/cotes/issues/{issue_id}/reanalyze")
@@ -340,7 +340,7 @@ async def _guided_reanalysis(plan_id: str, issue_id: str, user: dict) -> dict:
     changed = tb != ta
     v = await _push_version(plan_id, user["user_id"], page_index, after_report, "guided_correction", issue_id)
     await db.plan_report_versions.update_one({"version_id": v["version_id"]}, {"$set": {"target_before": tb, "target_after": ta, "changed": changed}})
-    resolution = (f"Correction guidée : cible recalculée ({'valeur modifiée' if changed else 'valeur inchangée'}) — avant {tb} / après {ta}")[:2000]
+    resolution = (f"Correção guiada: alvo recalculado ({'valor modificado' if changed else 'valor inalterado'}) — antes {tb} / depois {ta}")[:2000]
     if changed:
         await db.plan_report_issues.update_one({"issue_id": issue_id}, {"$set": {"status": "resolved", "resolved_at": _now(), "resolution": resolution}})
     else:
@@ -462,7 +462,7 @@ async def cotes_pdf_all(plan_id: str, user=Depends(current_user)):
     PDF_LANG.set(_lang_of(branding))
     pdf = build_cotes_pdf_multi(p, bundle, _global_summary([b[1] for b in bundle]), branding)
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="controle-cotes-{plan_id}-global.pdf"'})
+                    headers={"Content-Disposition": f'attachment; filename="controlo-cotas-{plan_id}-global.pdf"'})
 
 
 latest_router = APIRouter(prefix="/cotes", tags=["cotes"])
@@ -768,7 +768,7 @@ async def studies_pdf(plan_id: str, page_index: int = Query(0, ge=0), user=Depen
     PDF_LANG.set(lang)
     pdf = build_studies_report(p, page_index, study, report, page.get("image_png_b64"), branding, lang)
     return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="analyse-openai-{plan_id[-6:]}-p{page_index + 1}.pdf"'})
+                    headers={"Content-Disposition": f'attachment; filename="analise-openai-{plan_id[-6:]}-p{page_index + 1}.pdf"'})
 
 
 @router.get("/{plan_id}/cotes")
@@ -956,11 +956,11 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
     reply_to = branding.get("company_email") or user.get("email")
     try:
         await send_email_with_pdf(body.to_email, subject, html, pdf,
-                                  filename=f"controle-cotes-p{body.page_index + 1}.pdf",
+                                  filename=f"controlo-cotas-p{body.page_index + 1}.pdf",
                                   reply_to=reply_to, from_name=company)
         if body.copy_me and user.get("email") and user["email"].lower() != body.to_email.lower():
             await send_email_with_pdf(user["email"], f"[{'Cópia' if lang == 'pt' else 'Copie'}] {subject}", html, pdf,
-                                      filename=f"controle-cotes-p{body.page_index + 1}.pdf",
+                                      filename=f"controlo-cotas-p{body.page_index + 1}.pdf",
                                       reply_to=reply_to, from_name=company)
     except RuntimeError as e:
         raise HTTPException(503, str(e))

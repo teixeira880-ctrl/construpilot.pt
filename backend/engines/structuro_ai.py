@@ -44,7 +44,7 @@ def _fallback_extract(description: str) -> dict:
     facts = []
     patterns = [
         (r"(vers|en|autour de|circa)?\s*(1[6-9]\d{2}|20\d{2})", "Época declarada: {m}"),
-        (r"(\d+)\s*niveau", "{m} niveau(x) déclaré(s)"),
+        (r"(\d+)\s*niveau", "{m} piso(s) declarado(s)"),
         (r"(pierre|brique|pis[ée]|moellon|torchis|pan de bois)", "Paredes declaradas: {m}"),
         (r"(plancher[s]?\s+(?:bois|béton|béton|métal|acier))", "{m}"),
         (r"(ouverture|baie|tr[ée]mie)", "Abertura/vão mencionado"),

@@ -103,7 +103,7 @@ export function EstimateDialog({
               </div>
               <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
                 Intervalo: {estimateResult?.estimation?.total_min?.toLocaleString("pt-PT") ?? "—"} €
-                → {estimateResult?.estimation?.total_max?.toLocaleString("pt-PT") ?? "—"} € · Duração estimada: {estimateResult?.estimation?.duration_weeks ?? "—"} semaine(s)
+                → {estimateResult?.estimation?.total_max?.toLocaleString("pt-PT") ?? "—"} € · Duração estimada: {estimateResult?.estimation?.duration_weeks ?? "—"} semana(s)
               </p>
             </div>
           )}

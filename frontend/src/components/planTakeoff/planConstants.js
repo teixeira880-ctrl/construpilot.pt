@@ -27,7 +27,7 @@ export const CALIB_METHOD_LABELS = {
   auto_pdf_scale: "escala do PDF",
   two_points: "2 pontos",
   known_dimension: "cota conhecida",
-  auto_cotes: "auto (cotes IA)",
+  auto_cotes: "auto (cotas IA)",
   reconcile_surfaces: "reajustada (áreas escritas)",
   ai_scale_text: "escala escrita",
 };

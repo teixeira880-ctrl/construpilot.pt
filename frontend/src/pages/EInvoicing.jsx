@@ -310,7 +310,7 @@ export default function EInvoicing() {
                     <StatusPill s={inv.status} />
                     <div className="text-right">
                       <p className="num text-lg font-bold text-primary">{eur(inv.amount_ttc)}</p>
-                      <p className="text-[11px] text-muted-foreground num">HT {eur(inv.amount_ht)} · TVA {eur(inv.vat)}</p>
+                      <p className="text-[11px] text-muted-foreground num">s/ IVA {eur(inv.amount_ht)} · IVA {eur(inv.vat)}</p>
                     </div>
                     <div className="flex gap-2">
                       {inv.status === "received" && (
@@ -350,7 +350,7 @@ export default function EInvoicing() {
                         ? <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
                         : <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
                       <span className="text-muted-foreground">
-                        Encomenda <b className="text-foreground">{inv.reconciliation.order_type || "materiais"}</b> · previsto <b className="num text-foreground">{eur(inv.reconciliation.expected_ht)}</b> s/ IVA · faturado <b className="num text-foreground">{eur(inv.reconciliation.invoice_ht)}</b> HT
+                        Encomenda <b className="text-foreground">{inv.reconciliation.order_type || "materiais"}</b> · previsto <b className="num text-foreground">{eur(inv.reconciliation.expected_ht)}</b> s/ IVA · faturado <b className="num text-foreground">{eur(inv.reconciliation.invoice_ht)}</b> s/ IVA
                       </span>
                       <span className={`num font-bold ${inv.reconciliation.gap_flag === "over" ? "text-red-600 dark:text-red-400" : inv.reconciliation.gap_flag === "under" ? "text-blue-600 dark:text-blue-400" : "text-emerald-600 dark:text-emerald-400"}`} data-testid={`einv-recon-gap-${inv.inv_id}`}>
                         {inv.reconciliation.gap_ht > 0 ? "+" : ""}{eur(inv.reconciliation.gap_ht)} ({inv.reconciliation.gap_pct > 0 ? "+" : ""}{inv.reconciliation.gap_pct}%)
@@ -423,7 +423,7 @@ export default function EInvoicing() {
           {reconOn && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Fatura {reconOn.supplier} · {reconOn.number} · <b className="text-foreground num">{eur(reconOn.amount_ht)}</b> HT
+                Fatura {reconOn.supplier} · {reconOn.number} · <b className="text-foreground num">{eur(reconOn.amount_ht)}</b> s/ IVA
               </p>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">Nota de encomenda materiais</label>
@@ -433,7 +433,7 @@ export default function EInvoicing() {
                     {orders.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma nota de encomenda</div>}
                     {orders.map((o) => (
                       <SelectItem key={o.order_id} value={o.order_id} data-testid={`einv-recon-order-${o.order_id}`}>
-                        {(o.type || "Encomenda")} · {o.item_count} linha(s){o.est_ht > 0 ? ` · ~${eur(o.est_ht)} HT` : ""}
+                        {(o.type || "Encomenda")} · {o.item_count} linha(s){o.est_ht > 0 ? ` · ~${eur(o.est_ht)} s/ IVA` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -463,7 +463,7 @@ export default function EInvoicing() {
           {expenseOn && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                {expenseOn.supplier} · {expenseOn.number} · <b className="text-foreground num">{eur(expenseOn.amount_ht)}</b> HT
+                {expenseOn.supplier} · {expenseOn.number} · <b className="text-foreground num">{eur(expenseOn.amount_ht)}</b> s/ IVA
               </p>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">Obra</label>

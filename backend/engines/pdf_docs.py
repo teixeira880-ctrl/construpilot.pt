@@ -640,7 +640,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict, P: dict,
             pref = f"{nums[i]} " if nums[i] else ""
             sub_amount = (sec_sub if k == "section" else subsec_sub).get(i, 0)
             seg["rows"].append([Paragraph(f"<b>{escape(pref)}{escape(title)}</b>", S["body"]), "", "", "", "", "",
-                                Paragraph(f"{_fmt(sub_amount, '€')} HT", lot_total)])
+                                Paragraph(f"{_fmt(sub_amount, '€')} s/ IVA", lot_total)])
             seg["roles"][r] = k
         elif k == "text":
             r = len(seg["rows"])
@@ -676,7 +676,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict, P: dict,
                 r = len(seg["rows"])
                 subt = round(sum(_line_ht(x) for x in lns), 2)
                 seg["rows"].append([Paragraph(f"<b>{escape(cat or L.get('other_lot', 'Autres'))}</b>", S["body"]),
-                                    "", "", "", "", "", Paragraph(f"{_fmt(subt, '€')} HT", lot_total)])
+                                    "", "", "", "", "", Paragraph(f"{_fmt(subt, '€')} s/ IVA", lot_total)])
                 seg["roles"][r] = "section"
                 for x in lns:
                     rr = len(seg["rows"])
@@ -759,7 +759,7 @@ def _recap(story: list, doc: dict, S: dict, L: dict, P: dict) -> None:
     # Synthèse par lot/étage : aperçu rapide pour relire un gros chiffrage (dès 2 lots).
     lots = _lot_breakdown(doc.get("lines") or [], L)
     if len([x for x in lots if abs(x[1]) > 0.005]) >= 2:
-        story.append(Paragraph(L.get("lot_recap_title", "Récapitulatif par lot (HT)"), S["h2"]))
+        story.append(Paragraph(L.get("lot_recap_title", "Resumo por lote (s/ IVA)"), S["h2"]))
         lrows = [[Paragraph(escape(n), S["body"]), _fmt(ht, "€")] for n, ht in lots]
         story.append(_table(lrows, [130 * mm, 45 * mm], style_extras=[
             ("BACKGROUND", (0, 0), (-1, -1), P["soft"]),

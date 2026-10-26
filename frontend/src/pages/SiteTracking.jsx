@@ -87,7 +87,7 @@ export default function SiteTracking() {
     try {
       const { data } = await api.get(`/site/report-pdf?project=${encodeURIComponent(project)}`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
-      const a = document.createElement("a"); a.href = url; a.download = `chantier-${project}.pdf`;
+      const a = document.createElement("a"); a.href = url; a.download = `obra-${project}.pdf`;
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     } catch { toast.error("Impossível exportar"); } finally { setBusy(false); }
   };

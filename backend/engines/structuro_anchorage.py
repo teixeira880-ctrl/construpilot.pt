@@ -86,7 +86,7 @@ def anchorage_study(model: dict, result: dict, opts: dict, auto: dict | None = N
     for r in ec2_out.get("elements", []):
         if r.get("status") != "ok":
             rows.append({"id": r.get("id"), "status": r.get("status", "skip"),
-                         "message": r.get("message", "Pas de ferraillage EN 1992 calculé.")})
+                         "message": r.get("message", "Nenhuma armadura EN 1992 calculada.")})
             continue
         scheme = r.get("scheme") or {}
         longi = scheme.get("longitudinal") or {}

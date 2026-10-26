@@ -80,7 +80,7 @@ export function OuvrageComposeDialog({ onAdd, planVariables }) {
                 <button key={l} onClick={() => setLevel(l)} className={`rounded-sm px-2 py-1 border capitalize ${level === l ? "border-primary bg-primary text-white" : "border-input"}`}>{l}</button>))}</div>
               <div className="flex gap-1 items-center">Região:
                 <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded-sm border border-input bg-background px-2 py-1">
-                  <option value="idf">Île-de-France</option><option value="grandes_villes">Grandes cidades</option>
+                  <option value="idf">Zona de custo elevado</option><option value="grandes_villes">Grandes cidades</option>
                   <option value="standard">Standard</option><option value="rural">Rural</option>
                 </select></div>
               <div className="flex items-center gap-1">Margem:

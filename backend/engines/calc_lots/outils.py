@@ -91,40 +91,76 @@ REH_TOOL = _tool(
 
 # 2. Instalações
 _DIV_EL = {"nome": _NS(), "tipo": {"type": "string", "enum": list(instalacoes.DIVISOES)}, "area_m2": {"type": "number"},
-           "perimetro_m": _n("sala: perímetro (número de tomadas)"), "comprimento_m": _n("corredor: comprimento")}
+           "perimetro_m": _n("sala: perímetro (número de tomadas)"), "comprimento_m": _n("corredor: comprimento"),
+           "distancia_quadro_m": _n("comprimento real do cabo do quadro até à divisão (null = comprimento médio)"),
+           "tomadas": _n("número de tomadas imposto (null = recomendação do guia técnico)"), "pontos_luz": _n("número de pontos de luz imposto"),
+           "estores": _n("estores elétricos na divisão (ligados à iluminação)"), "aquecimento_w": _n("aquecimento elétrico da divisão (W) → circuito dedicado")}
 _EQ_EL = {"placa": _enum(["monofasica", "trifasica", "sem_placa"]), "forno": _B(), "maquina_lavar_roupa": _B(), "maquina_lavar_loica": _B(),
-          "maquina_secar": _B("null = não"), "termoacumulador": _B(), "unidades_climatizacao": _n(), "bomba_calor_kw": _n("potência elétrica"),
-          "carregamento_ve_kw": _n("3,7 / 7,4 / 11 kW")}
+          "maquina_secar": _B("null = não"), "termoacumulador": _B(), "unidades_climatizacao": _n(), "bomba_calor_kw": _n("potência elétrica do compressor"),
+          "apoio_bomba_calor_kw": _n("resistência de apoio da bomba de calor (circuito separado)"), "carregamento_ve_kw": _n("3,7 / 7,4 / 11 kW")}
+_COMP_EL = _obj({k: _n() for k in instalacoes._COMP_EQ}, "comprimentos reais (m) dos circuitos dedicados; null = distância da divisão ou comprimento médio")
+_DISP = {"tipo": {"type": "string", "enum": list(instalacoes.DISPOSITIVOS)}, "quantidade": _n()}
+_TROCO = {"nome": {"type": "string"}, "montante": _NS("nome do troço a montante (null = origem: contador ou aparelho de produção de AQ)"),
+          "comprimento_m": {"type": "number"}, "desnivel_m": _n("subida no troço (m, negativo se desce)"), "agua": _enum(["fria", "quente"], "null = fria"),
+          "dispositivos": _arr(_DISP, desc="dispositivos ligados no fim do troço")}
+_TROCO_DR = {"nome": {"type": "string"}, "jusante": _NS("nome do troço a jusante (null = saída para a rede pública / câmara)"),
+             "tipo": _enum(["ramal", "tubo_queda", "coletor"], "null = ramal"), "comprimento_m": _n(), "inclinacao_pct": _n("null = 2 %"),
+             "dispositivos": _arr(_DISP, desc="aparelhos que descarregam neste troço")}
+_REDE = _arr(_TROCO, desc="rede de abastecimento troço a troço (null = só ramal geral)")
+_REDE_DR = _arr(_TROCO_DR, desc="rede de drenagem troço a troço (null = só valores globais)")
 _INST_PROPS = {
-    "eletricidade": _obj({"divisoes": _arr(_DIV_EL, nullable=False), "comprimento_medio_circuito_m": _n(), "resistencia_terra_ohm": _n("valor medido"),
-                          "equipamentos": _obj(_EQ_EL, "null = cozinha corrente (placa, forno, máquinas de lavar, termoacumulador)")},
+    "eletricidade": _obj({"divisoes": _arr(_DIV_EL, nullable=False), "comprimento_medio_circuito_m": _n("null = 15 m"), "resistencia_terra_ohm": _n("valor medido"),
+                          "equipamentos": _obj(_EQ_EL, "null = cozinha corrente (placa, forno, máquinas de lavar, termoacumulador)"),
+                          "comprimentos_m": _COMP_EL, "comprimento_entrada_m": _n("contador / portinhola → quadro (queda de tensão da entrada)"),
+                          "seccao_entrada_mm2": _n(), "alimentacao": _enum(["monofasica", "trifasica"], "null = escolhida pela potência"),
+                          "circuitos_max_diferencial": _n("null = 8 (boa prática)")},
                          "RTIEBT; null = não calcular"),
-    "canalizacao": _obj({"dispositivos": _arr({"tipo": {"type": "string", "enum": list(instalacoes.DISPOSITIVOS)}, "quantidade": _n()}, nullable=False),
+    "canalizacao": _obj({"dispositivos": _arr(_DISP, desc="null = deduzidos da rede troço a troço"),
                          "velocidade_max_m_s": _n(), "comprimento_m": _n("até ao dispositivo mais desfavorável"), "desnivel_m": _n(),
-                         "pressao_rede_kpa": _n("pressão disponível na rede")}, "DR 23/95; null = não calcular")}
+                         "pressao_rede_kpa": _n("pressão disponível na rede"), "rede": _REDE, "rede_drenagem": _REDE_DR,
+                         "ventilacao_secundaria": _B("tubos de queda com ventilação secundária (taxa de ocupação 1/3; null = não, 1/7)"),
+                         "taxa_ocupacao": _n("taxa de ocupação imposta do tubo de queda")}, "DR 23/95; null = não calcular")}
 INSTALACOES_TOOL = _tool(
     "calcul_instalacoes",
     "Pré-dimensiona as instalações de uma habitação (Portugal) e produz uma nota PDF: eletricidade (RTIEBT: tomadas e pontos de luz por divisão, "
-    "circuitos, secções, disjuntores, diferenciais 30 mA, quedas de tensão, potência a contratar) e canalização (DR 23/95: caudais, caudal de "
-    "cálculo, diâmetros, velocidade, pressão; drenagem: tubo de queda e coletor). Preenche só as partes pedidas (null nas outras).", _INST_PROPS)
+    "circuitos atribuídos às divisões com comprimento real, secções, disjuntores, quedas de tensão por circuito, diferenciais 30 mA agrupados "
+    "(AC / A / B), potência a contratar BTN, entrada) e canalização (DR 23/95: caudais, caudal de cálculo, diâmetros, velocidade, pressão — troço a "
+    "troço quando a rede é descrita; drenagem: ramais, tubos de queda e coletores troço a troço). Preenche só as partes pedidas (null nas outras).", _INST_PROPS)
 
 # 3. Aquecimento
 _PAREDE = {"area_m2": {"type": "number"}, "U": {"type": "number", "description": "W/(m².°C)"}, "lado": _enum(list(aquecimento.B)), "b": _n("fator b se conhecido")}
 _DIV_AQ = {"nome": _NS(), "tipo": {"type": "string", "enum": list(aquecimento.T_INT)}, "area_m2": {"type": "number"}, "pe_direito_m": _n(),
            "theta_int": _n("temperatura interior se diferente da convencional"), "paredes": _arr(_PAREDE, desc="paredes, envidraçados, pavimento, teto"),
-           "pontes": _arr({"comprimento_m": {"type": "number"}, "psi": {"type": "number"}}, desc="pontes térmicas lineares")}
+           "pontes": _arr({"comprimento_m": {"type": "number"}, "psi": {"type": "number"}, "designacao": _NS()}, desc="pontes térmicas lineares ψ·L"),
+           "q_extracao_m3h": _n("caudal de extração da zona húmida (null = referência NP 1037-1)")}
+_BC_PROPS = {"emissores": _enum(list(aquecimento.EMISSORES)), "p_nominal_kw": _n("A7/W35"), "p_theta_e_kw": _n("potência à θe (ficha)"),
+             "cop_theta_e": _n(), "curva_fabricante": _arr({"theta_ext": {"type": "number"}, "p_kw": {"type": "number"}, "cop": _n()},
+                                                         desc="potência (e COP) do fabricante à temperatura de ida do projeto, por θext"),
+             "temperatura_ida": _n("null = ida de referência dos emissores (ou a do piso radiante)"), "theta_int": _n("null = 20 °C"),
+             "inercia": _enum(list(aquecimento.COBERTURA), "inércia do edifício (cobertura recomendada)"),
+             "fator_apoio": _n("bomba de calor + apoio ≥ fator × perdas (null = 1,2)"), "tipo_apoio": _enum(["resistencia_eletrica", "caldeira", "nenhum"]),
+             "volume_instalacao_l": _n(), "volume_min_l_kw": _n("volume de água mínimo do fabricante (null = 10 L/kW)"),
+             "caudal_emissores_lh": _n("caudal dos emissores (verificação do separador hidráulico)"), "delta_t_k": _n("null = 5 K"),
+             "altura_estatica_m": _n("altura da instalação acima do vaso (null = 3 m)"), "pressao_valvula_bar": _n("tarado da válvula de segurança (null = 3 bar)"),
+             "t_max_c": _n("temperatura máxima da água (null = ida + 10 K)"), "vaso_integrado_l": _n("vaso de expansão integrado na bomba de calor"),
+             "scop": _n("SCOP da ficha à temperatura do projeto"), "eta_s_pct": _n("η_s da ficha / EPREL na aplicação de referência (%)"),
+             "baixa_temperatura": _B("bomba de calor de baixa temperatura (Reg. 813/2013: η_s ≥ 125 %)"), "alta_temperatura": _B("modelo de alta temperatura (ida > 55 °C)"),
+             "alimentacao": _enum(["mono", "tri"])}
 _AQ_PROPS = {
     "concelho": _NS(), "nuts": _enum(list(reh.NUTS)), "altitude_m": _n(), "theta_e": _n("temperatura exterior de projeto imposta (°C)"),
     "divisoes": _arr(_DIV_AQ, nullable=False), "recuperacao_calor": _n("eficiência do recuperador (0–1)"),
-    "estanquidade": _enum(list(aquecimento.INFILTRACAO)), "rph_min": _n(), "delta_u_pontes": _n("majoração ΔU forfetária"),
-    "reaquecimento_w_m2": _n(),
-    "bomba_calor": _obj({"emissores": _enum(list(aquecimento.EMISSORES)), "p_nominal_kw": _n("A7/W35"), "p_theta_e_kw": _n("potência à θe (ficha)"),
-                         "cop_theta_e": _n(), "volume_instalacao_l": _n(), "alimentacao": _enum(["mono", "tri"])},
-                        "null = só perdas; objeto (mesmo com campos null) = pré-dimensionar a bomba de calor ar/água")}
+    "ventilacao": _enum(list(aquecimento.VENTILACAO), "natural, mecânica simples fluxo ou dupla fluxo com recuperação (null = natural, ou dupla fluxo se houver recuperador)"),
+    "estanquidade": _enum(list(aquecimento.INFILTRACAO)), "n50": _n("ensaio de pressurização n50 (h⁻¹): substitui a classe de estanquidade"),
+    "coef_protecao": _n("coeficiente de proteção e (null = 0,02)"), "rph_min": _n("null = 0,4 h⁻¹ (a confirmar)"),
+    "delta_u_pontes": _n("majoração ΔU forfetária (null = 0,10 se não houver ψ·L)"), "reaquecimento_w_m2": _n(),
+    "bomba_calor": _obj(_BC_PROPS, "null = só perdas; objeto (mesmo com campos null) = pré-dimensionar a bomba de calor ar/água")}
 AQUECIMENTO_TOOL = _tool(
     "calcul_aquecimento",
-    "Calcula as perdas de calor de projeto divisão a divisão (EN 12831-1 simplificada, θe a partir do clima REH do concelho) e pré-dimensiona "
-    "uma bomba de calor ar/água (potência à θe, cobertura, apoio, volume de água, alimentação). Produz uma nota PDF. "
+    "Calcula as perdas de calor de projeto divisão a divisão (EN 12831-1 simplificada, θe a partir do clima REH do concelho; ventilação natural, "
+    "simples fluxo ou dupla fluxo com recuperação, ar transferido para as zonas húmidas, infiltrações por classe ou n50, pontes térmicas ψ·L ou ΔU, "
+    "reaquecimento) e pré-dimensiona uma bomba de calor ar/água (potência à θe pela curva do fabricante ou lei indicativa, cobertura, ponto de "
+    "bivalência, apoio, volume de água e depósito de inércia, vaso de expansão EN 12828, η_s / SCOP face ao Reg. (UE) 813/2013, alimentação "
+    "elétrica). Produz uma nota PDF. "
     "null = valor por defeito assinalado como hipótese.", _AQ_PROPS)
 
 # 4. Isolamento
@@ -261,7 +297,11 @@ _DIV_LT = {"nome": _NS(), "tipo": {"type": "string", "enum": list(aquecimento.T_
            "theta_int": _n(), "paredes": _arr(_PAR_LT, desc="paredes, envidraçados, portas, pavimento e cobertura em contacto com o exterior / ENU"),
            "pontes": _arr({"comprimento_m": {"type": "number"}, "psi": {"type": "number"}}),
            "revestimento": _enum(list(piso_radiante.REVESTIMENTO_R), "revestimento de piso (piso radiante)"),
-           "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante_piso": _n("R do isolante sob o piso radiante")}
+           "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante_piso": _n("R do isolante sob o piso radiante"),
+           "phi_w": _n("perdas de calor da divisão já conhecidas (W): prevalecem sobre o cálculo"),
+           "comprimento_m": _n("comprimento interior (planta desenhada)"), "largura_m": _n("largura interior (planta desenhada)"),
+           "q_extracao_m3h": _n("zona húmida: caudal de extração"), "distancia_quadro_m": _n("eletricidade: distância real ao quadro"),
+           "estores": _n("estores elétricos"), "aquecimento_w": _n("aquecimento elétrico da divisão (W)")}
 _ISO_LT = {k: v for k, v in _ISO_PROPS.items() if k not in ("concelho", "nuts", "altitude_m", "theta_e", "zona_inverno", "regiao", "area_m2")}
 _EQ_LT = {"placa": _enum(["monofasica", "trifasica", "sem_placa"]), "forno": _B(), "maquina_lavar_roupa": _B(), "maquina_lavar_loica": _B(),
           "maquina_secar": _B(), "termoacumulador": _B(), "unidades_climatizacao": _n(), "carregamento_ve_kw": _n()}
@@ -269,14 +309,20 @@ _LT_PROPS = {
     "concelho": _NS(), "nuts": _enum(list(reh.NUTS)), "altitude_m": _n(), "theta_e": _n("temperatura exterior de projeto imposta"),
     "obra": _enum(["nova", "renovacao"]), "tipologia": _n("T0…T7 → número"), "tipo_habitacao": _enum(["moradia", "apartamento"]),
     "divisoes": _arr(_DIV_LT, nullable=False),
+    "lotes": {"type": ["array", "null"], "items": {"type": "string", "enum": list(lotes_tecnicos.LOTES)},
+              "description": "especialidades a calcular (null = todas); p. ex. [\"aquecimento\", \"piso_radiante\", \"bomba_calor\"] para o aquecimento só"},
     "isolamento_paredes": _obj(_ISO_LT, "isolamento das paredes exteriores (null = não calcular; o U calculado substitui o U por defeito das paredes)"),
-    "estanquidade": _enum(list(aquecimento.INFILTRACAO)), "recuperacao_calor": _n(), "rph_min": _n(),
+    "ventilacao": _enum(list(aquecimento.VENTILACAO)), "estanquidade": _enum(list(aquecimento.INFILTRACAO)), "n50": _n(), "recuperacao_calor": _n(),
+    "rph_min": _n(), "delta_u_pontes": _n(), "reaquecimento_w_m2": _n(),
     "emissores": _enum(list(aquecimento.EMISSORES), "null = piso radiante"), "ida_max": _n("ida máxima do piso radiante (°C, null = 45)"),
     "gerador": _enum(["bomba_calor", "outro"]),
-    "bomba_calor": _obj({"p_nominal_kw": _n("A7/W35"), "p_theta_e_kw": _n(), "cop_theta_e": _n(), "alimentacao": _enum(["mono", "tri"])}),
-    "equipamentos": _obj(_EQ_LT, "equipamentos elétricos (a bomba de calor é acrescentada automaticamente)"),
-    "dispositivos": _arr({"tipo": {"type": "string", "enum": list(instalacoes.DISPOSITIVOS)}, "quantidade": _n()}, desc="null = deduzidos das divisões"),
-    "pressao_rede_kpa": _n(), "comprimento_alimentacao_m": _n(), "desnivel_m": _n(),
+    "bomba_calor": _obj({k: v for k, v in _BC_PROPS.items() if k != "emissores"}, "dados da bomba de calor (null = valores indicativos)"),
+    "equipamentos": _obj(_EQ_LT, "equipamentos elétricos (a bomba de calor e o apoio são acrescentados automaticamente)"),
+    "comprimento_medio_circuito_m": _n(), "comprimentos_m": _COMP_EL, "comprimento_entrada_m": _n(), "alimentacao": _enum(["monofasica", "trifasica"]),
+    "resistencia_terra_ohm": _n(),
+    "dispositivos": _arr(_DISP, desc="null = deduzidos das divisões (ou da rede)"),
+    "pressao_rede_kpa": _n(), "comprimento_alimentacao_m": _n(), "desnivel_m": _n(), "rede": _REDE, "rede_drenagem": _REDE_DR,
+    "ventilacao_secundaria": _B(),
     "solar_termico": _obj({"ocupantes": _n(), "regiao": _enum(["continente", "acores", "madeira"]), "irradiacao_kwh_m2": _n(),
                            "sistema": _enum(list(solar_termico.ETA_SIST)),
                            "coletor": _obj({"numero": _n(), "area_m2": _n("área unitária"), "eta0": _n(), "a1": _n(), "t_estagnacao_c": _n(), "p_max_bar": _n(),
@@ -293,11 +339,13 @@ LOTES_TOOL = _tool(
 _DIV_PR = {"nome": _NS(), "tipo": {"type": "string", "enum": list(piso_radiante.T_INT)}, "area_m2": {"type": "number"},
            "phi_w": {"type": "number", "description": "perdas de calor da divisão (W)"}, "theta_int": _n(),
            "revestimento": _enum(list(piso_radiante.REVESTIMENTO_R)), "r_revestimento": _n(), "exclusao_m2": _n("área sem tubos (móveis fixos)"),
-           "comprimento_max_m": _n(), "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante": _n(), "distancia_coletor_m": _n()}
+           "comprimento_max_m": _n(), "local_inferior": _enum(list(piso_radiante.R_ISOLANTE_MIN)), "r_isolante": _n(), "distancia_coletor_m": _n(),
+           "comprimento_m": _n("comprimento interior da divisão (null = retângulo equivalente à área)"), "largura_m": _n("largura interior")}
 PISO_TOOL = _tool(
     "calcul_piso_radiante",
     "Dimensiona um piso radiante hidráulico (NP EN 1264) a partir das perdas de calor por divisão: temperatura de superfície, passo dos tubos, "
-    "temperatura de ida e retorno, caudais, circuitos ≤ 120 m, perdas de carga, coletores, isolante sob o piso, juntas. Nota PDF.",
+    "temperatura de ida e retorno, caudais, circuitos ≤ 120 m, perdas de carga, coletores, isolante sob o piso, juntas, e DESENHA a planta de cada "
+    "divisão (circuitos em espiral ao passo, coletor, cotas). Usa-a também para qualquer pedido de «planta» / «esquema» de piso radiante. Nota PDF.",
     {"divisoes": _arr(_DIV_PR, nullable=False), "sigma_k": _n("salto térmico ida-retorno (null = 5 K)"), "ida_max": _n("null = 45 °C")})
 
 # 12. Solar térmico
@@ -344,7 +392,7 @@ CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 PROGRESS_LABELS = {
     "pre_certificado_reh": "A calcular o pré-certificado energético (REH)…",
     "calcul_instalacoes": "A dimensionar as instalações elétricas e de águas…",
-    "calcul_aquecimento": "A calcular as perdas de calor e a bomba de calor…",
+    "calcul_aquecimento": "A calcular as perdas de calor (ventilação, pontes térmicas) e a bomba de calor…",
     "calcul_isolamento": "A calcular o isolamento da parede (U, REH, Glaser)…",
     "calcul_photovoltaique": "A dimensionar a instalação fotovoltaica…",
     "calcul_redes": "A dimensionar águas pluviais, fossa séptica e ventilação…",
@@ -395,6 +443,53 @@ def _hyp(lst, n=None) -> list[str]:
     return [f"Hipótese: {h}" for h in (lst or [])[:n]]
 
 
+def _c(x, n=1) -> str:
+    return f"{x:.{n}f}".replace(".", ",")
+
+
+def _g(x) -> str:
+    return f"{x:g}".replace(".", ",")
+
+
+def _res_perdas(p) -> str:
+    return (f"Perdas: θe {_g(p['theta_e'])} °C ({p['theta_e_fonte']}), ventilação {aquecimento.VENTILACAO_PT[p['ventilacao']]} {p['q_ventilacao_m3h']:.0f} m³/h"
+            + (f" (recuperação η {_c(p['recuperacao_calor'], 2)})" if p["recuperacao_calor"] else "")
+            + f", infiltrações {_c(p['n_inf'], 2)} h⁻¹, total {p['phi_total']:.0f} W ({p['w_m2']:.0f} W/m² sobre {p['area_m2']:.0f} m²; "
+            f"transmissão {p['phi_T']:.0f} W, ventilação {p['phi_V']:.0f} W) — " + ", ".join(f"{r['nome']} {r['phi']:.0f} W" for r in p["divisoes"]))
+
+
+def _res_bc(b) -> list[str]:
+    v = b["vaso"]
+    return [f"Bomba de calor: {_g(b['p_nominal_kw'])} kW nominal (A7/W35) → {_c(b['p_theta_e_kw'], 2)} kW à θe ({b['cobertura'] * 100:.0f} %, {b['fonte_potencia']}), "
+            f"COP {_c(b['cop'], 2)}, bivalência {(_c(b['bivalencia_c']) + ' °C') if b['bivalencia_c'] is not None else '—'}, apoio {_g(b['apoio_kw'])} kW, "
+            f"ida {_g(b['temperatura_ida'])} °C ({b['emissores'].replace('_', ' ')}), caudal {b['caudal_lh']:.0f} L/h",
+            f"Hidráulica: volume {b['volume_instalacao_l']:.0f} L (mínimo {b['volume_min_l']:.0f} L), depósito de inércia "
+            + (f"{_g(b['deposito_inercia_l'])} L" if b["deposito_inercia_l"] else "não necessário")
+            + (f", vaso de expansão ≥ {_c(v['vn_min_l'])} L → {v['vaso_l']} L (p0 {_c(v['p0_bar'])} bar)" if v["realizavel"] else ", vaso: tarado insuficiente")
+            + f"; SCOP {_c(b['scop'], 2)} / η_s {b['eta_s_pct']:.0f} % ({b['scop_fonte']}); {_c(b['p_absorvida_kw'], 2)} kW absorvidos → {_c(b['corrente_a'])} A "
+            f"({'monofásica' if b['alimentacao'] == 'mono' else 'trifásica'})"]
+
+
+def _res_el(e) -> list[str]:
+    return [f"Eletricidade: {e['tomadas']} tomadas, {e['pontos_luz']} pontos de luz, {len(e['circuitos'])} circuitos, {e['diferenciais']} diferenciais 30 mA "
+            f"({', '.join(d['tipo'] + ' ' + str(d['calibre']) + ' A' for d in e['diferenciais_lista'])}); potência estimada {e['potencia_estimada_w']:.0f} W → "
+            f"contratar {_g(e['potencia_contratada_kva'])} kVA ({e['alimentacao']}, {_c(e['corrente_contrato_a'])} A)",
+            "Circuitos: " + "; ".join(f"{c['nome']} {_g(c['seccao'])} mm² / {c['disjuntor']} A, {_g(round(c['comprimento_m'], 1))} m, ΔU {_c(c['du'], 2)} % ({c['diferencial']})"
+                                      + (f" → secção {_g(c['seccao_recomendada'])} mm²" if not c["du_ok"] and c.get("seccao_recomendada") else "") for c in e["circuitos"])]
+
+
+def _res_can(k) -> list[str]:
+    out = [f"Canalização: Qa {_c(k['qa_l_s'], 2)} L/s → Qc {_c(k['qc_l_s'], 2)} L/s, ramal água fria {k['tubo_af']} ({_c(k['velocidade_m_s'], 2)} m/s), "
+           f"água quente {k['tubo_aq'] or '—'}, pressão no dispositivo mais desfavorável {k['pressao_kpa']:.0f} kPa; drenagem {k['drenagem_qc_l_min']:.0f} L/min, "
+           f"tubo de queda Ø{k['tubo_queda_mm']}, coletor Ø{k['coletor_mm']}"]
+    if k.get("rede"):
+        out.append("Troços de abastecimento: " + "; ".join(f"{r['nome']} Qc {_c(r['qc_l_s'], 2)} L/s Ø{r['dn']} {_c(r['velocidade_m_s'], 2)} m/s "
+                                                        f"P fim {r['p_fim_kpa']:.0f} kPa" for r in k["rede"]["trocos"]))
+    if k.get("rede_drenagem"):
+        out.append("Troços de drenagem: " + "; ".join(f"{r['nome']} ({r['tipo']}) Qc {r['qc_l_min']:.0f} L/min Ø{r['dn']}" for r in k["rede_drenagem"]["trocos"]))
+    return out
+
+
 def _ret(o: dict, res: list[str], data: dict) -> dict:
     res.append(FIM)
     return {"titre": o["titre"], "resume": "\n".join(res), "pdf": o["pdf"], "png": o["png"], "data": data}
@@ -422,15 +517,9 @@ def run(name: str, args: dict) -> dict:
         o = instalacoes.note(a)
         res = [o["titre"]]
         if "eletricidade" in o:
-            e = o["eletricidade"]
-            res.append(f"Eletricidade: {e['tomadas']} tomadas, {e['pontos_luz']} pontos de luz, {len(e['circuitos'])} circuitos, {e['diferenciais']} diferenciais 30 mA; "
-                       f"potência estimada {e['potencia_estimada_w']:.0f} W → contratar {e['potencia_contratada_kva']:g} kVA ({e['alimentacao']})")
-            res.append("Circuitos: " + "; ".join(f"{c['nome']} {c['seccao']:g} mm² / {c['disjuntor']} A ({c['diferencial']})" for c in e["circuitos"]))
+            res += _res_el(o["eletricidade"])
         if "canalizacao" in o:
-            k = o["canalizacao"]
-            res.append(f"Canalização: Qa {k['qa_l_s']:.2f} L/s → Qc {k['qc_l_s']:.2f} L/s, ramal água fria {k['tubo_af']} ({k['velocidade_m_s']:.2f} m/s), "
-                       f"água quente {k['tubo_aq'] or '—'}, pressão no dispositivo mais desfavorável {k['pressao_kpa']:.0f} kPa; drenagem {k['drenagem_qc_l_min']:.0f} L/min, "
-                       f"tubo de queda Ø{k['tubo_queda_mm']}, coletor Ø{k['coletor_mm']}")
+            res += _res_can(o["canalizacao"])
         for s in ("eletricidade", "canalizacao"):
             res += _ctl((o.get(s) or {}).get("controles"))
         for s in ("eletricidade", "canalizacao"):
@@ -440,23 +529,23 @@ def run(name: str, args: dict) -> dict:
             data["potencia_contratada_kva"] = o["eletricidade"]["potencia_contratada_kva"]
         if "canalizacao" in o:
             data["qc_l_s"] = o["canalizacao"]["qc_l_s"]
+            data["pressao_kpa"] = o["canalizacao"]["pressao_kpa"]
         return _ret(o, res, data)
     if name == "calcul_aquecimento":
         o = aquecimento.note(a)
         p = o["perdas"]
-        res = [o["titre"],
-               f"Perdas: θe {p['theta_e']:g} °C ({p['theta_e_fonte']}), ventilação {p['q_ventilacao_m3h']:.0f} m³/h, total {p['phi_total']:.0f} W "
-               f"({p['w_m2']:.0f} W/m² sobre {p['area_m2']:.0f} m²) — " + ", ".join(f"{r['nome']} {r['phi']:.0f} W" for r in p["divisoes"])]
+        res = [o["titre"], _res_perdas(p)]
+        res += _ctl(p.get("controles"))
         if "bomba_calor" in o:
             b = o["bomba_calor"]
-            res.append(f"Bomba de calor: {b['p_nominal_kw']:g} kW nominal (A7/W35) → {b['p_theta_e_kw']:.1f} kW à θe ({b['cobertura'] * 100:.0f} %), apoio {b['apoio_kw']:g} kW, "
-                       f"COP {b['cop']:.2f}, caudal {b['caudal_lh']:.0f} L/h, volume {b['volume_instalacao_l']:.0f} L, {b['p_absorvida_kw']:.1f} kW absorvidos "
-                       f"({b['corrente_mono_a']:.1f} A em monofásico), emissores {b['emissores']} (ida {b['temperatura_ida']} °C)")
+            res += _res_bc(b)
             res += _ctl(b["controles"])
         res += _hyp(p["hipoteses"]) + _hyp((o.get("bomba_calor") or {}).get("hipoteses"))
         data = {"phi_total_w": p["phi_total"], "theta_e": p["theta_e"], "w_m2": p["w_m2"]}
         if "bomba_calor" in o:
-            data["p_nominal_kw"] = o["bomba_calor"]["p_nominal_kw"]
+            b = o["bomba_calor"]
+            data.update(p_nominal_kw=b["p_nominal_kw"], p_theta_e_kw=b["p_theta_e_kw"], apoio_kw=b["apoio_kw"], bivalencia_c=b["bivalencia_c"],
+                        deposito_inercia_l=b["deposito_inercia_l"], vaso_l=b["vaso"]["vaso_l"])
         return _ret(o, res, data)
     if name == "calcul_isolamento":
         o = isolamento.note(a)
@@ -553,29 +642,23 @@ def run(name: str, args: dict) -> dict:
         eq = a.get("equipamentos")
         if eq is not None and "placa" in eq:
             eq["placa"] = {"monofasica": True, "trifasica": "tri", "sem_placa": False}[eq["placa"]]
-        o = lotes_tecnicos.note(a)
+        lotes = tuple(a.pop("lotes", None) or lotes_tecnicos.LOTES)
+        o = lotes_tecnicos.note(a, lotes)
         res = [o["sous_titre"]]
         if "isolamento" in o:
             res.append(f"Isolamento: {o['isolamento']['sistema_nome']}, U = {o['isolamento']['U']:.3f} W/(m².°C) (Umáx {o['isolamento']['umax']:g})")
         if "aquecimento" in o:
-            p_ = o["aquecimento"]
-            res.append(f"Perdas: θe {p_['theta_e']:g} °C, total {p_['phi_total']:.0f} W ({p_['w_m2']:.0f} W/m²) — "
-                       + ", ".join(f"{r['nome']} {r['phi']:.0f} W" for r in p_["divisoes"]))
+            res.append(_res_perdas(o["aquecimento"]))
         if "piso_radiante" in o:
             pr = o["piso_radiante"]
-            res.append(f"Piso radiante: ida {pr['theta_ida']:.1f} °C, {pr['circuitos']} circuitos, {pr['coletores']} coletor(es), {pr['tubo_total_m']:.0f} m de tubo, "
+            res.append(f"Piso radiante: ida {_c(pr['theta_ida'])} °C, {pr['circuitos']} circuitos, {pr['coletores']} coletor(es), {pr['tubo_total_m']:.0f} m de tubo, "
                        f"caudal {pr['caudal_total_lh']:.0f} L/h, apoio {pr['apoio_total_w']:.0f} W")
         if "bomba_calor" in o:
-            b = o["bomba_calor"]
-            res.append(f"Bomba de calor: {b['p_nominal_kw']:g} kW (A7/W35) → {b['p_theta_e_kw']:.1f} kW a θe ({b['cobertura'] * 100:.0f} %), apoio {b['apoio_kw']:g} kW, "
-                       f"{b['p_absorvida_kw']:.1f} kW absorvidos")
+            res += _res_bc(o["bomba_calor"])
         if "eletricidade" in o:
-            e = o["eletricidade"]
-            res.append(f"Eletricidade: {e['tomadas']} tomadas, {e['pontos_luz']} pontos de luz, {len(e['circuitos'])} circuitos → contratar {e['potencia_contratada_kva']:g} kVA "
-                       f"({e['alimentacao']})")
+            res += _res_el(o["eletricidade"])
         if "canalizacao" in o:
-            k = o["canalizacao"]
-            res.append(f"Canalização: Qc {k['qc_l_s']:.2f} L/s, ramal {k['tubo_af']}, pressão {k['pressao_kpa']:.0f} kPa; tubo de queda Ø{k['tubo_queda_mm']}")
+            res += _res_can(o["canalizacao"])
         if "solar_termico" in o and o["solar_termico"]["dimensionamento"]:
             d = o["solar_termico"]["dimensionamento"]
             res.append(f"Solar térmico: {d['ocupantes']} ocupantes, Qa {d['Qa_kwh']:.0f} kWh/ano, área sugerida {d['area_sugerida_m2']:.1f} m²"

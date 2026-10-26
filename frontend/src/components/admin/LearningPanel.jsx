@@ -37,7 +37,7 @@ function ScopeSelect({ value, onChange, scopes, testid }) {
 
 export default function LearningPanel() {
   const [examples, setExamples] = useState([]);
-  const [scopes, setScopes] = useState(["global", "devis", "análise", "coach", "plan"]);
+  const [scopes, setScopes] = useState(["global", "devis", "analyse", "coach", "plan"]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -171,7 +171,7 @@ export default function LearningPanel() {
           </p>
         </div>
         <Button variant="outline" size="sm" className="rounded-sm gap-2 shrink-0" onClick={() => setShowImport((v) => !v)} data-testid="learning-toggle-import">
-          <Layers className="h-4 w-4" /> Importer en lot
+          <Layers className="h-4 w-4" /> Importar em lote
         </Button>
       </div>
 

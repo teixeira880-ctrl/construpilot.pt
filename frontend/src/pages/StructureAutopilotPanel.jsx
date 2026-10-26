@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Rocket, FileUp, Wand2, FileDown, Layers, Info, Building2, Mountain, CheckCircle2, FileText } from "lucide-react";
+import VistoBetRequest from "@/components/bet/VistoBetRequest";
 
 const sel = "border rounded-md p-2 bg-background text-sm w-full";
 const KIND = { plan: "Planta cotada", pc: "Projeto de licenciamento", g2: "Estudo geotécnico" };
@@ -120,7 +121,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
       const body = { include: ["ec2", "ec7", "sls"], ec7: { mode: so.mode || "drained", d_m: so.anchorage_depth_m || 0, phi_deg: so.phi_deg || 0, c_kpa: so.c_kpa || 0, cu_kpa: so.cu_kpa || 0, gamma_soil: so.gamma_soil_kn_m3 || 0 } };
       const { data } = await api.post(`/structuro/calc/studies/${result.calc_study_id}/export/dossier`, body, { responseType: "blob", timeout: 120000 });
       const url = URL.createObjectURL(data), a = document.createElement("a");
-      a.href = url; a.download = `dossier-bet-auto-${result.calc_study_id}.pdf`; a.click();
+      a.href = url; a.download = `processo-engenharia-auto-${result.calc_study_id}.pdf`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Processo de engenharia transferido");
     } catch (e) { toast.error("Exportação do processo impossível"); }
@@ -132,7 +133,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
     try {
       const { data } = await api.get(`${base}/autopilot/coffrage.pdf`, { responseType: "blob", timeout: 120000 });
       const url = URL.createObjectURL(data), a = document.createElement("a");
-      a.href = url; a.download = `plans-coffrage-${dossier.dossier_id}.pdf`; a.click();
+      a.href = url; a.download = `plantas-cofragem-${dossier.dossier_id}.pdf`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success("Plantas de cofragem transferidas");
     } catch (e) { toast.error("Exportação das plantas de cofragem impossível — gere primeiro o modelo"); }
@@ -165,7 +166,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
       <h2 className="font-semibold">Piloto automático de engenharia — descida de cargas &amp; fundações automáticas</h2>
       <Badge className="rounded-sm border-0 bg-primary/15 text-primary">Phase 1</Badge>
     </div>
-    <p className="text-sm text-muted-foreground">Importe uma <b>planta cotada</b>, le <b>PC</b> e o <b>G2</b> : a IA pré-preenche a malha, os pisos, as cargas e o solo. <b>Valida</b>, e depois o motor calcula a descida de cargas e pré-dimensiona as sapatas (100 % determinístico, NP EN 1990/1991/1997). Plantas de execução &amp; armaduras no processo de engenharia. <b>Não executório — a visar pelo engenheiro.</b></p>
+    <p className="text-sm text-muted-foreground">Importe uma <b>planta cotada</b>, o <b>projeto de licenciamento</b> e o <b>estudo geotécnico</b>: a IA pré-preenche a malha, os pisos, as cargas e o solo. <b>Valida</b>, e depois o motor calcula a descida de cargas e pré-dimensiona as sapatas (100 % determinístico, NP EN 1990/1991/1997). Plantas de execução &amp; armaduras no processo de engenharia. <b>Não executório — a visar pelo engenheiro.</b></p>
 
     <div className="space-y-2">
       <h3 className="text-sm font-medium flex items-center gap-2"><FileUp className="h-4 w-4" />1. Importar as peças</h3>
@@ -226,10 +227,10 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
         </div>
 
         <div className="rounded-md bg-muted/30 p-3 space-y-2">
-          <h4 className="text-xs font-medium flex items-center gap-2"><Mountain className="h-3.5 w-3.5" />Sol (G2 PRO)</h4>
+          <h4 className="text-xs font-medium flex items-center gap-2"><Mountain className="h-3.5 w-3.5" />Solo (estudo geotécnico)</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Num label="Contrainte adm. ELS (kPa)" value={so.q_els_kpa} onChange={v => setSo({ q_els_kpa: v })} testid="autopilot-q-els" />
-            <Num label="Contrainte adm. ELU (kPa)" value={so.q_elu_kpa} onChange={v => setSo({ q_elu_kpa: v })} testid="autopilot-q-elu" />
+            <Num label="Tensão admissível ELS (kPa)" value={so.q_els_kpa} onChange={v => setSo({ q_els_kpa: v })} testid="autopilot-q-els" />
+            <Num label="Tensão admissível ELU (kPa)" value={so.q_elu_kpa} onChange={v => setSo({ q_elu_kpa: v })} testid="autopilot-q-elu" />
             <label className="block text-xs">Tipo de fundação<select className={sel + " mt-1"} value={so.foundation_type || "isolee"} onChange={e => setSo({ foundation_type: e.target.value })} data-testid="autopilot-foundation-type">{FOND.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
             <Num label="Encastramento D (m)" value={so.anchorage_depth_m} onChange={v => setSo({ anchorage_depth_m: v })} />
             <Num label="φ' (°) — se conhecido" value={so.phi_deg} onChange={v => setSo({ phi_deg: v })} />
@@ -309,6 +310,7 @@ export default function StructureAutopilotPanel({ dossier, onChange }) {
         <Button asChild variant="outline" data-testid="autopilot-open-calc"><a href="/structuro/calcul">Abrir no módulo de cálculo</a></Button>
       </div>
       <p className="text-[11px] text-muted-foreground">Pré-dimensionamento automático indicativo. Verifique as hipóteses, complete vento/sismo/continuidade e mande visar pelo engenheiro / pela fiscalização.</p>
+      {result?.calc_study_id && <VistoBetRequest dossierId={dossier.dossier_id} />}
     </div>}
   </Card>;
 }

@@ -300,7 +300,7 @@ async def create_pc_situation(plan_id: str, body: PcSituationIn,
                     f'Fatura {label} — {invoice_no}',
                     f"<p>Olá {_html.escape(entry.get('accepted_by') or '')},</p><p>As obras da obra «{_html.escape(filename)} » avancent{('' if sit['is_final'] else f' ({pct_cumul:g} % executados)')}: segue em anexo a fatura {label} de <b>{amount} € c/ IVA</b>.</p><p>Pode pagá-la online por cartão bancário com um clique a partir da sua área de obra.<br/>{_html.escape(company)}</p>",
                     cta_url=link, cta_label="Pagar online por cartão"),
-                pdf, filename=f"facture-{invoice_no}.pdf")
+                pdf, filename=f"fatura-{invoice_no}.pdf")
             emailed = True
         except Exception as e:
             logger.warning(f"pc situation email {plan_id}: {e}")
@@ -371,7 +371,7 @@ async def send_purchase_order(plan_id: str, body: PcOrderSendIn,
         notes_html = ("<p><b>Notes :</b><br/>"
                       f"{_html.escape(body.notes.strip()).replace(chr(10), '<br/>')}</p>")
     html_body = (
-        f"<p>Olá{(' ' + _html.escape(body.supplier_name) if body.supplier_name else '')},</p><p>Segue em anexo a nossa <b>nota de encomenda {ref}</b> para a fase «{_html.escape(lvl['name'])}» da nossa obra «{_html.escape(p.get('filename') or 'construction')} » — {len(items)} artigos, total indicativo <b>{total} € HT</b>.</p>{notes_html}<p>Agradecemos que nos confirme os seus preços, disponibilidades e prazos de entrega respondendo a este email ({_html.escape(user.get('email') or '')}).<br/>{_html.escape(company)}</p>")
+        f"<p>Olá{(' ' + _html.escape(body.supplier_name) if body.supplier_name else '')},</p><p>Segue em anexo a nossa <b>nota de encomenda {ref}</b> para a fase «{_html.escape(lvl['name'])}» da nossa obra «{_html.escape(p.get('filename') or 'obra')} » — {len(items)} artigos, total indicativo <b>{total} € s/ IVA</b>.</p>{notes_html}<p>Agradecemos que nos confirme os seus preços, disponibilidades e prazos de entrega respondendo a este email ({_html.escape(user.get('email') or '')}).<br/>{_html.escape(company)}</p>")
     try:
         await deliver_email(
             p["user_id"], body.supplier_email, f'Nota de encomenda {ref} · {company}',
@@ -440,7 +440,7 @@ async def export_pc_pdf(plan_id: str, start: str | None = None,
         pdf = await asyncio.to_thread(build_pc_pdf, p, p["pc_study"], branding, start_date=_valid_date(start))
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition":
-                             f'attachment; filename="etude-pc-{plan_id}.pdf"'})
+                             f'attachment; filename="estudo-licenciamento-{plan_id}.pdf"'})
 
 
 @router.get("/{plan_id}/pc-study/docx")
@@ -453,7 +453,7 @@ async def export_pc_docx(plan_id: str, start: str | None = None,
         content=docx,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition":
-                 f'attachment; filename="etude-pc-{plan_id}.docx"'})
+                 f'attachment; filename="estudo-licenciamento-{plan_id}.docx"'})
 
 
 class PcSendIn(BaseModel):
@@ -484,7 +484,7 @@ async def send_pc_study(plan_id: str, body: PcSendIn, user=Depends(current_user)
     intro = f"<p>{perso}</p>" if perso else ""
     recap = (f"<p><b>{t.get('beton_m3', 0)} m³</b> de betão · <b>{t.get('acier_kg', 0)} kg</b> de armaduras · <b>{t.get('briques_u', 0)}</b> tijolos térmicos — Total <b>{t.get('ttc', 0)} € c/ IVA</b>.</p>")
     if pl.get("total_days"):
-        recap += (f"<p>Duração estimada da obra: <b>{pl['total_days']} jours</b> ({pl['total_weeks']} semanas), equipa de {pl['crew_size']}.</p>")
+        recap += (f"<p>Duração estimada da obra: <b>{pl['total_days']} dias</b> ({pl['total_weeks']} semanas), equipa de {pl['crew_size']}.</p>")
     if start and pl.get("phases"):
         sched = schedule_with_dates(pl, start)
         d0, d1 = sched[0]["work_start"], sched[-1]["cure_end"]
@@ -987,7 +987,7 @@ async def pc_deposit_checkout(token: str, body: PcDepositCheckoutIn) -> dict:
     if amount_cents < 100:
         raise HTTPException(400, "Montante de adiantamento inválido")
     origin = body.origin_url.rstrip("/")
-    filename = (p.get("filename") or "étude gros œuvre")[:80]
+    filename = (p.get("filename") or "estudo de estrutura")[:80]
     try:
         session = stripe.checkout.Session.create(
             line_items=[{"price_data": {
@@ -1174,7 +1174,7 @@ async def pc_situation_checkout(token: str, sit_id: str,
     if amount_cents < 100:
         raise HTTPException(400, "Montante inválido")
     origin = body.origin_url.rstrip("/")
-    filename = (p.get("filename") or "étude gros œuvre")[:80]
+    filename = (p.get("filename") or "estudo de estrutura")[:80]
     label = "Saldo" if sit.get("is_final") else f"Auto de medição n.º {sit['sit_no']}"
     try:
         session = stripe.checkout.Session.create(
@@ -1246,7 +1246,7 @@ async def _apply_pc_situation(rec: dict) -> None:
                 pdf, filename=f"facture-{sit['invoice_no']}.pdf")
         solde_txt = (" A empreitada está integralmente liquidada 🎉"
                      if bs["remaining_to_pay"] <= 0.01 else
-                     f" Falta receber: {bs['remaining_to_pay']} € TTC.")
+                     f" Falta receber: {bs['remaining_to_pay']} € c/ IVA.")
         html = wrap_html(
             "Pagamento de auto de medição recebido",
             f"<p>O pagamento {label} (<b>{amount} €</b>, fatura {sit['invoice_no']}) acaba de ser recebido por cartão para o estudo «{_html.escape(filename)} ».{solde_txt}</p>")
@@ -1391,7 +1391,7 @@ async def _send_weekly_pc_report_email(u: dict, rows: list[dict]) -> None:
     cta = (f'<p style="margin:18px 0"><a href="{frontend}/etudes-pc" '
            'style="background:#FF5A00;color:#ffffff;padding:11px 24px;'
            'border-radius:4px;text-decoration:none;font-weight:bold">'
-           "Ouvrir le tableau de bord PC</a></p>") if frontend else ""
+           "Abrir o painel dos estudos de licenciamento</a></p>") if frontend else ""
     name = _html.escape(u.get("name") or "")
     html = wrap_html(
         "Relatório semanal — Estudos de projeto",

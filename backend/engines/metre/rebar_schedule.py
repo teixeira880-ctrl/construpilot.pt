@@ -374,7 +374,7 @@ def extract_rebar_schedule(page) -> dict:
     if result["mesh"]:
         result["mesh"].update(check_mesh(result["mesh"]["rows"], result["mesh_recap"]))
     if result["partial"]:
-        result["findings"].append({"severity": "info", "subject": "Nomenclature partielle",
+        result["findings"].append({"severity": "info", "subject": "Lista de armaduras parcial",
                                    "explanation": "A folha indica «(parcial)»: os totais das tabelas não representam o conjunto dos aços do piso."})
     for c in (result["ha_bars"] or {}).get("inconsistencies", []):
         result["findings"].append({"severity": "to_clarify", "subject": f"Referência {c['mark']}", "explanation": f"{c['check']} : {c['formula']} ≠ {c['declared']:g} (valor impresso)."})

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 
-const MS = { planned: [Circle, "text-slate-400", "Previsto"], in_progress: [Clock, "text-amber-600", "Em curso"], done: [CheckCircle2, "text-emerald-600", "Terminado"], late: [AlertTriangle, "text-red-600", "En retard"] };
+const MS = { planned: [Circle, "text-slate-400", "Previsto"], in_progress: [Clock, "text-amber-600", "Em curso"], done: [CheckCircle2, "text-emerald-600", "Terminado"], late: [AlertTriangle, "text-red-600", "Em atraso"] };
 const FILE = `${process.env.REACT_APP_BACKEND_URL}/api/site/file?path=`;
 
 /** « Voir comme le client » : rendu fidèle de la page Avancement + Messages + Problèmes de l'invité, avec le rappel de ce qui reste interne. */
@@ -33,7 +33,7 @@ export function PreviewAsGuestButton({ chantierId, participants = [] }) {
           <select value={who} onChange={(e) => setWho(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm w-full" data-testid="preview-as-select">
             <option value="role:client">Cliente (permissões por omissão)</option>
             <option value="role:subcontractor">Subempreiteiro (permissões por omissão)</option>
-            {active.map((p) => <option key={p.participant_id} value={`pid:${p.participant_id}`}>{`${p.name || p.email} — ${p.role === "client" ? "client" : "sous-traitant"} (permissões reais)`}</option>)}
+            {active.map((p) => <option key={p.participant_id} value={`pid:${p.participant_id}`}>{`${p.name || p.email} — ${p.role === "client" ? "cliente" : "subempreiteiro"} (permissões reais)`}</option>)}
           </select>
           {!data ? <p className="text-sm text-muted-foreground">A carregar…</p> : data.error ? <p className="text-sm text-red-600">Pré-visualização indisponível</p> : (
             <div className="grid gap-3 rounded-xl bg-slate-50 p-4 text-slate-900" data-testid="preview-as-content">
@@ -51,7 +51,7 @@ export function PreviewAsGuestButton({ chantierId, participants = [] }) {
                 {data.participant.permissions.photos && data.photos.length > 0 && <div className="mt-3 grid grid-cols-6 gap-1">{data.photos.slice(0, 12).map((p, i) => <img key={i} src={FILE + encodeURIComponent(p.path)} alt="" className="h-14 w-full object-cover rounded border" loading="lazy" />)}</div>}
               </div>}
               <div className="rounded-xl border bg-white p-4 grid gap-1">
-                <p className="font-semibold text-sm flex items-center gap-1"><MessageSquare className="h-4 w-4" /> Mensagens {data.participant?.permissions?.chat ? `(${data.messages.length}, canal ${data.participant.role === "client" ? "client" : "sous-traitants"})` : "— não autorizados"}</p>
+                <p className="font-semibold text-sm flex items-center gap-1"><MessageSquare className="h-4 w-4" /> Mensagens {data.participant?.permissions?.chat ? `(${data.messages.length}, canal ${data.participant.role === "client" ? "cliente" : "subempreiteiros"})` : "— não autorizados"}</p>
                 {data.participant?.permissions?.chat && data.messages.slice(-3).map((m) => <p key={m.message_id} className="text-xs text-slate-600 truncate">{m.author_name} : {m.body || `${m.attachments?.length} anexo(s)`}</p>)}
                 <p className="font-semibold text-sm mt-2 flex items-center gap-1"><AlertTriangle className="h-4 w-4" /> Problemas {data.participant?.permissions?.report_issue ? `(${data.issues.length})` : "— não autorizados"}</p>
                 {data.participant?.permissions?.report_issue && data.issues.slice(0, 5).map((i) => <p key={i.issue_id} className="text-xs text-slate-600 truncate">{i.title} · {data.issue_labels[i.status]}</p>)}

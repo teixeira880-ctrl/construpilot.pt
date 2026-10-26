@@ -238,7 +238,7 @@ export default function RenderStudio() {
     try {
       const url = await fetchBlobUrl(`/runway/renders/${current.render_id}/file`, { which: "output" });
       const a = document.createElement("a");
-      a.href = url; a.download = `rendu-${current.render_id}.${current.kind === "video" ? "mp4" : "jpg"}`; a.click();
+      a.href = url; a.download = `render-${current.render_id}.${current.kind === "video" ? "mp4" : "jpg"}`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Transferência impossível"); }
   };

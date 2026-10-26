@@ -277,7 +277,7 @@ def _resolved_email_message(doc: dict, company: str, name: str, branding: dict |
 def _email_template(doc: dict, company: str, client_name: str | None) -> str:
     """Modèle d'e-mail type selon type de document + taux de TVA."""
     number = doc.get("number") or ""
-    name = (client_name or "").strip() or "Madame, Monsieur"
+    name = (client_name or "").strip() or "Exmo.(a) Senhor(a)"
     if doc.get("doc_type") == "invoice":
         return (f'Olá {name},\n\nSegue em anexo a sua fatura n.º {number}.\n\nAguardamos o seu pagamento.\n\nCom os melhores cumprimentos,\n{company}')
     if _reduced_vat_rate(doc) is not None:
@@ -445,7 +445,7 @@ async def build_deposit_invoice(doc_id: str, user: dict, pct: float = 30) -> dic
     multi = len(ht_by_rate) > 1
     lines = []
     for rate, ht in sorted(ht_by_rate.items()):
-        desig = f'Adiantamento {pct_txt}% sobre o orçamento N.º{num}' + (f" — TVA {rate:g}%" if multi else "")
+        desig = f'Adiantamento {pct_txt}% sobre o orçamento N.º{num}' + (f" — IVA {rate:g}%" if multi else "")
         lines.append({"designation": desig, "description": (q.get("title") or "").strip()[:200],
                       "unit": "forfait", "qty": 1, "unit_price_ht": round(ht * pct / 100, 2),
                       "vat_rate": rate, "category": "Adiantamento"})
@@ -597,7 +597,7 @@ async def create_situation_invoice(doc_id: str, body: SituationIn, user=Depends(
     multi = len(quote_ht_by_rate) > 1
     lines = []
     for rate, ht in sorted(quote_ht_by_rate.items()):
-        suffix = f" — TVA {rate:g}%" if multi else ""
+        suffix = f" — IVA {rate:g}%" if multi else ""
         lines.append({"designation": f'Auto de medição n.º{sit_no} — avancement {pct:g}% — orçamento N.º{num}{suffix}',
                       "description": (q.get("title") or "").strip()[:200], "unit": "forfait", "qty": 1,
                       "unit_price_ht": round(ht * pct / 100, 2), "vat_rate": rate, "category": "Situação"})
@@ -614,7 +614,7 @@ async def create_situation_invoice(doc_id: str, body: SituationIn, user=Depends(
 
     title = f'Auto de medição n.º{sit_no} ({pct:g}%) — orçamento N.º{num}'
     note = f'Auto de medição n.º{sit_no} pro rata ({pct:g}% de execução) do orçamento N.º{num}.' \
-           + (f' Adiantamento já pago deduzido: -{deposit_ht:.2f} € HT.' if deposit_ht else "")
+           + (f' Adiantamento já pago deduzido: -{deposit_ht:.2f} € s/ IVA.' if deposit_ht else "")
     inv = await _create_child_invoice(q, user, lines, title, note, "situation",
                                       {"works_ht": works_ht, "deposit_imputed_ht": deposit_ht,
                                        "deposit_mode": body.deposit_mode})
@@ -642,7 +642,7 @@ async def create_balance_invoice(doc_id: str, user=Depends(current_user)) -> dic
         remaining = round(ht - billed_ht_by_rate.get(rate, 0), 2)
         if abs(remaining) < 0.01:
             continue
-        suffix = f" — TVA {rate:g}%" if multi else ""
+        suffix = f" — IVA {rate:g}%" if multi else ""
         lines.append({"designation": f'Saldo — orçamento N.º{num}{suffix}',
                       "description": (q.get("title") or "").strip()[:200], "unit": "forfait", "qty": 1,
                       "unit_price_ht": remaining, "vat_rate": rate, "category": "Saldo"})
@@ -1029,7 +1029,7 @@ async def _persist_imported_doc(user: dict, item: dict, chosen: str) -> tuple[di
         "user_id": user["user_id"],
         "doc_type": dtype,
         "number": number,
-        "title": item.get("title") or f"{label} importé{(' — ' + src[:60]) if src else ''}",
+        "title": item.get("title") or f"{label} importado{(' — ' + src[:60]) if src else ''}",
         "client_id": client_id,
         "client": await _client_snapshot(client_id, user),
         "status": doc_status,
@@ -1243,7 +1243,7 @@ async def _ferraillage_lines(fid: str, user_id: str, prefix: str, vat: float) ->
             "designation": f"Aço {dia.get('diameter', '')} — fornecimento, moldagem e colocação",
             "description": f"{dia.get('ml', 0)} ml (perdas {int(loss * 100)}%)",
             "unit": "kg", "qty": kg, "unit_price_ht": ACIER_PRICE_KG,
-            "vat_rate": vat, "category": f"{prefix} · Ferraillage",
+            "vat_rate": vat, "category": f"{prefix} · Armaduras",
         })
     for t in treillis:
         panels = int(t.get("panels") or 0)
@@ -1253,7 +1253,7 @@ async def _ferraillage_lines(fid: str, user_id: str, prefix: str, vat: float) ->
             "designation": f"Malha eletrossoldada {t.get('ref', '')}".strip(),
             "description": f"{t.get('area_m2', '')} m²",
             "unit": "panneau", "qty": panels, "unit_price_ht": TREILLIS_PRICE_PANEL,
-            "vat_rate": vat, "category": f"{prefix} · Ferraillage",
+            "vat_rate": vat, "category": f"{prefix} · Armaduras",
         })
     return out
 
@@ -1302,7 +1302,7 @@ async def _consolidated_lines_for_plan(plan_id: str, user_id: str, subcontract: 
     if p.get("rooms"):
         # MAISON / rénovation (finitions depuis les pièces) — TVA 10 % (ou 0 %)
         vat = 0.0 if subcontract else 10.0
-        prefix = f"Maison · {fname}"
+        prefix = f"Moradia · {fname}"
         try:
             from routes.plans_common import _build_quote_and_pdf
             quote, _ = await _build_quote_and_pdf(
@@ -1355,7 +1355,7 @@ async def document_from_plans(body: FromPlansIn, user=Depends(current_user)) -> 
     if not all_lines:
         raise HTTPException(400, "Nenhuma planta selecionada contém medição orçamentável (meça/analise primeiro as plantas).")
     title = (body.project_name.strip()
-             or f"Orçamento de projeto — {len(included)} plan{('s' if len(included) > 1 else '')}")
+             or f"Orçamento de projeto — {len(included)} planta{('s' if len(included) > 1 else '')}")
     doc = {
         "doc_id": "doc_" + secrets.token_hex(6),
         "user_id": uid, "doc_type": "quote", "number": None,
@@ -2071,7 +2071,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                 work_description=work_desc, company_name=company,
                 company_address=branding.get("contact_line") or "",
                 branding=branding, tva_rate=reduced_rate / 100.0)
-            extra_attachments.append({"filename": f"attestation-tva-{number or doc_id}.pdf",
+            extra_attachments.append({"filename": f"declaracao-iva-{number or doc_id}.pdf",
                                       "content": att_pdf, "content_type": "application/pdf"})
         except Exception as e:  # noqa: BLE001
             logger.warning("Attestation TVA non générée pour %s: %s", doc_id, e)
@@ -2081,7 +2081,7 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
         if "," in raw and raw.strip().startswith("data:"):
             raw = raw.split(",", 1)[1]
         try:
-            extra_attachments.append({"filename": "rendu-3d.png",
+            extra_attachments.append({"filename": "render-3d.png",
                                       "content": _b64.b64decode(raw),
                                       "content_type": "image/png"})
             has_3d = True

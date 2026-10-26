@@ -57,7 +57,7 @@ def wall_area(item: dict) -> QuantityLine:
     incomplete = [d for d in deductions if d.get("area_m2") is None]
     invalid = (bool(incomplete) and rule != "none") or net < 0 or (item.get("extra_pct") is not None and extra is None)
     return QuantityLine(**base, formula=f"{_f(length)} × {_f(height)} = {_f(gross)} m² − {_f(deducted)} m² = {_f(net)} m²", gross=gross,
-                        deductions=deductions, net=None if invalid else net, extra_pct=extra, order_qty=None if invalid else order, rule=DEDUCTION_RULES.get(rule, "sans ouverture"),
+                        deductions=deductions, net=None if invalid else net, extra_pct=extra, order_qty=None if invalid else order, rule=DEDUCTION_RULES.get(rule, "sem vãos"),
                         state="indeterminate" if invalid else "confirmed",
                         reason="Dimensões, perdas ou deduções incoerentes: quantidade líquida a verificar." if invalid else
                         ("Perda aplicada apenas porque foi explicitamente pedida." if extra is not None else "Nenhuma perda acrescentada sem regra explícita."))

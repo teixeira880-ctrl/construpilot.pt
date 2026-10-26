@@ -92,7 +92,7 @@ async def list_dossiers(user=Depends(current_user)) -> dict:
 async def create_dossier(body: CreateIn, user=Depends(current_user)) -> dict:
     d = {
         "dossier_id": _nid("bet"), "user_id": user["user_id"],
-        "title": body.title.strip() or "Dossier BET",
+        "title": body.title.strip() or "Processo de engenharia",
         "documents": [], "comparisons": [], "inconsistencies": None,
         "created_at": _now(), "updated_at": _now(),
     }
@@ -109,7 +109,7 @@ async def get_dossier(dossier_id: str, user=Depends(current_user)) -> dict:
 async def update_meta(dossier_id: str, body: MetaIn, user=Depends(current_user)) -> dict:
     d = await _get(dossier_id, user["user_id"])
     if body.title is not None:
-        d["title"] = body.title.strip() or d.get("title") or "Dossier BET"
+        d["title"] = body.title.strip() or d.get("title") or "Processo de engenharia"
     if body.responsable is not None:
         d["responsable"] = body.responsable.strip()
     await _save(d)

@@ -27,7 +27,9 @@ _TASKS: set = set()     # références fortes : évite qu'asyncio ne ramasse une
 
 TOOLS = [
     {"type": "function", "name": "generate_full_bet_study", "strict": True,
-     "description": ("ÉTUDE BET COMPLÈTE d'une maison individuelle à partir du PC / plans d'architecte (PDF joints) et de l'étude de sol : "
+     "description": ("ÉTUDE BET COMPLÈTE d'un bâtiment — maison individuelle OU bâtiment à ossature béton armé (immeuble collectif, bureaux, "
+                     "commerce, parking, bâtiment d'activité, équipement public ; type détecté sur les plans) — à partir des plans "
+                     "d'architecte (PDF joints) et de l'étude de sol : "
                      "note de calcul Eurocodes, plans d'exécution GROS ŒUVRE entièrement cotés (fondations, niveaux, planchers, coupes, "
                      "façades, détails ferraillés), charpente, électricité, plomberie, devis chiffré Excel et DXF. Lecture des plans par "
                      "IA puis calculs 100 % déterministes et contrôle automatique. Tâche de fond (3 à 8 min) : renvoie un job_id. "
@@ -89,6 +91,8 @@ INSTRUCTIONS = (
     "dans `hypotheses` : le PDF s'affiche en bouton de téléchargement. Ne produis PAS de document texte ou de dessin approximatif "
     "à la place. Sans étude BET, propose d'abord generate_full_bet_study (le PC est nécessaire)."
 )
+from engines.bet_frame.hook import INSTRUCTIONS_EXTRA as _FRAME_INSTRUCTIONS  # bet_frame
+INSTRUCTIONS += _FRAME_INSTRUCTIONS
 
 MIME = {"pdf": "application/pdf", "zip": "application/zip",
         "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
@@ -109,7 +113,7 @@ def _nom_livrable(path: Path) -> str:
     for prefix in _BET_PREFIXES:
         if stem.startswith(prefix + "_"):
             return nom_document(prefix.replace("_", "-"), stem[len(prefix) + 1:], ext=ext)
-    return nom_document("Etude-BET", stem, ext=ext)
+    return nom_document("Estudo-engenharia", stem, ext=ext)
 
 
 async def _store(db, uid, cid, request_id, kind, path: Path, title):
@@ -187,6 +191,10 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
     try:
+        from engines.bet_frame import hook as _frame_hook       # bet_frame : immeubles, bureaux, parkings, ERP (ossature BA)
+        if await _frame_hook.maybe_handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, step=step, store=_store,
+                                          llm=llm, branding=branding, decide_alone=decide_alone):
+            return
         key = docs_hash(docs, hypotheses, country, decide_alone)
         cached = await _cached_model(db, uid, key)
         if cached and cached.get("model"):
@@ -264,10 +272,14 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
     except Exception as exc:  # noqa: BLE001
         log.exception("bet study %s failed", job_id)
         txt = str(exc).lower()
-        if any(s in txt for s in ("credit balance", "insufficient_quota", "quota", "rate limit", "overloaded", "authentication", "invalid x-api-key", "401", "403")):
-            msg = "Lecture des plans par IA momentanément indisponible (service de calcul saturé ou indisponible). Réessayez dans quelques minutes."
+        from engines.bet_core.reader import providers_message
+        pm = providers_message(exc, "pt")
+        if pm:
+            msg = pm
+        elif any(s in txt for s in ("credit balance", "insufficient_quota", "quota", "rate limit", "overloaded", "authentication", "invalid x-api-key", "401", "403")):
+            msg = "Leitura das plantas por IA temporariamente indisponível (serviço de cálculo saturado ou indisponível). Tente novamente dentro de alguns minutos."
         else:
-            msg = f"{type(exc).__name__}: {str(exc)[:300]} — à {pipeline.where(exc)}"
+            msg = f"{type(exc).__name__}: {str(exc)[:300]} — em {pipeline.where(exc)}"
         import traceback
         await step("Échec", status="failed", error=msg, trace=traceback.format_exc()[-3000:])
         try:
@@ -362,10 +374,10 @@ async def _read_job(db, uid, job_id, cid=None):
         if not job:
             job = await db.bet_study_jobs.find_one({"user_id": uid}, {"_id": 0, "model": 0, "pages": 0}, sort=[("created_at", -1)])
     if not job:
-        return {"error": "Aucune étude trouvée pour ce compte : lancez d'abord generate_full_bet_study.", "status": "échoué"}
+        return {"error": "Nenhum estudo encontrado para esta conta: execute primeiro generate_full_bet_study.", "status": "échoué"}
     job_id = job.get("job_id") or job_id
     if job.get("status") == "running" and _age_s(job.get("updated_at") or job.get("created_at")) > STALE_MIN * 60:
-        msg = "interrompue (redémarrage du serveur) : relancez l'étude"
+        msg = "interrompido (reinício do servidor): volte a lançar o estudo"
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"status": "failed", "error": msg}})
         job.update(status="failed", error=msg)
     out = _jsonable(job)

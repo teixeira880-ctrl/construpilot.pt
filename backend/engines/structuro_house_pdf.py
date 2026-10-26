@@ -15,7 +15,7 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 from engines.structuro_house import USE_LABEL, USE_Q
 
-BRAND = colors.HexColor("#285541")
+BRAND = colors.HexColor("#203b2d")  # verde ConstruPilot
 INK = colors.HexColor("#1f2933")
 GREY = colors.HexColor("#6b7280")
 WALL = colors.HexColor("#c9ced6")
@@ -51,7 +51,7 @@ def _note_pdf(r: dict, project: str) -> bytes:
         st = [("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#d1d5db")), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
               ("FONTSIZE", (0, 0), (-1, -1), 7.6)]
         if head:
-            st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef2ef"))]
+            st += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e7efea"))]
         t.setStyle(TableStyle(st))
         return t
 
@@ -211,6 +211,8 @@ class Sheet:
         x0, y0, w, h = self.W - 190 * mm, 10 * mm, 180 * mm, 34 * mm
         c.setFillColor(colors.white)
         c.rect(x0, y0, w, h, fill=1)
+        from .identidade_pt import faixa_azulejo
+        faixa_azulejo(c, x0, y0 + h, w, 3 * mm)   # identidade .pt
         c.setFillColor(BRAND)
         c.setFont("Helvetica-Bold", 11)
         c.drawString(x0 + 4 * mm, y0 + h - 7 * mm, "CONSTRUPILOT · ESTRUTURAS")

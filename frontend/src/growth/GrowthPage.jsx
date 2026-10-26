@@ -16,8 +16,8 @@ import { ContentsPanel } from "./ContentsPanel";
 import { IntegrationsPanel } from "./IntegrationsPanel";
 import { LinksPanel, BudgetPanel, AssistantPanel } from "./MorePanels";
 
-const TABS = [["dashboard", "Painel"], ["audit", "Auditoria"], ["visibility", "Visibilidade IA"], ["questions", "Questions"], ["competitors", "Concorrentes"], ["actions", "Plan d'action"],
-  ["autopilot", "Auto-pilote"], ["contents", "Conteúdos"], ["marketing", "Publicidade e e-mails"], ["results", "Resultados"], ["brand", "Ficha de marca"], ["links", "Ligações"], ["integrations", "Integrações"], ["budget", "Orçamento"], ["assistant", "Assistente"]];
+const TABS = [["dashboard", "Painel"], ["audit", "Auditoria"], ["visibility", "Visibilidade IA"], ["questions", "Perguntas"], ["competitors", "Concorrentes"], ["actions", "Plano de ação"],
+  ["autopilot", "Piloto automático"], ["contents", "Conteúdos"], ["marketing", "Publicidade e e-mails"], ["results", "Resultados"], ["brand", "Ficha de marca"], ["links", "Ligações"], ["integrations", "Integrações"], ["budget", "Orçamento"], ["assistant", "Assistente"]];
 
 export default function GrowthPage() {
   const { data, error, reload } = useApi("/growth/me");

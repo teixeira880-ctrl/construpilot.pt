@@ -149,7 +149,7 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
                     drop += d["length_m"] * d["width_m"] * retombee; paired_in += 1
     if drop:
         total += drop
-        lines.append({"element": "Vigas emparelhadas — alturas abaixo da laje", "formula": f"Σ C_dxf × b × (h folha Arche − esp. laje) em {paired_in} vigas emparelhadas / {beams['count']} en plan",
+        lines.append({"element": "Vigas emparelhadas — alturas abaixo da laje", "formula": f"Σ C_dxf × b × (h folha Arche − esp. laje) em {paired_in} vigas emparelhadas / {beams['count']} em planta",
                       "net": round(drop, 2), "unit": "m³", "state": "to_clarify" if paired_in < beams["count"] else "confirmed",
                       "note": f"{beams['count'] - paired_in} viga(s) da planta sem folha Arche emparelhada: altura abaixo da laje não contada" if paired_in < beams["count"] else None})
     elif beams["count"]:

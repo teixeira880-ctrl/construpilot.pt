@@ -63,7 +63,7 @@ export function WorkDraftCard({ initial }) {
       else {
         const r = await api.get(`/assistant/work-drafts/${d.draft_id}/export?format=${action}`, { responseType: "blob" });
         const url = URL.createObjectURL(r.data); const link = document.createElement("a");
-        link.href = url; link.download = `brouillon-construpilot.${action}`; link.click();
+        link.href = url; link.download = `rascunho-construpilot.${action}`; link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch (e) {

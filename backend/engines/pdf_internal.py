@@ -60,7 +60,7 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
 
     lines = doc.get("lines") or []
     header = ["Designação", "Qtd.", "U", "PU venda s/ IVA", "Custo unit. s/ IVA", "Total venda s/ IVA",
-              "Custo total", "Marge €", "Marge %"]
+              "Custo total", "Margem €", "Margem %"]
     rows: list = [header]
     styles: list = []
 
@@ -156,8 +156,8 @@ def build_internal_quote_pdf(doc: dict, branding: dict | None = None) -> bytes:
 
     if lot_summary and has_cost:
         story.append(Spacer(1, 8))
-        story.append(Paragraph("Marge par lot", S["h2"]))
-        lrows = [["Lote", "Venda s/ IVA", "Marge €", "Marge %", "Com prejuízo"]]
+        story.append(Paragraph("Margem por lote", S["h2"]))
+        lrows = [["Lote", "Venda s/ IVA", "Margem €", "Margem %", "Com prejuízo"]]
         lstyles = [("BACKGROUND", (0, 0), (-1, 0), DARK), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                    ("FONTSIZE", (0, 0), (-1, -1), 8.5), ("ALIGN", (1, 1), (-1, -1), "RIGHT")]
         for i, (cat, sale, margin, pct, loss) in enumerate(lot_summary, start=1):

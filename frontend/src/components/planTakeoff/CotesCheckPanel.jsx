@@ -38,7 +38,7 @@ function Summary({ s }) {
     <div className="flex flex-wrap items-center gap-1.5" data-testid="cotes-summary">
       <Badge className={`rounded-sm border ${CLS[s.verdict]}`} data-testid="cotes-verdict">{LABEL[s.verdict]}</Badge>
       <span className="text-[11px] text-muted-foreground">
-        {s.total} cotes · {s.ok} OK · {s.warn} a verificar · <b className="text-red-700">{s.ko} incoerência(s)</b>
+        {s.total} cotas · {s.ok} OK · {s.warn} a verificar · <b className="text-red-700">{s.ko} incoerência(s)</b>
         {s.ignored > 0 && ` · ${s.ignored} ignorada(s)`}
         {s.chains_total > 0 && ` · ${s.chains_total} cadeia(s) (${s.chains_ko} KO)`}
         {s.facades_total > 0 && ` · ${s.facades_total} fachada(s) oposta(s) (${s.facades_ko} KO)`}
@@ -143,7 +143,7 @@ function Reading({ r, calib }) {
       {cross?.divergences?.length > 0 && (
         <div data-testid="cotes-divergences">
           <b>Divergência(s) de leitura</b> (o texto vetorial prevalece):{" "}
-          {cross.divergences.map((d, i) => `« ${d.vector_text} » lu « ${d.ai_text} » par l'IA`).join(" ; ")}
+          {cross.divergences.map((d, i) => `« ${d.vector_text} » lido « ${d.ai_text} » pela IA`).join(" ; ")}
         </div>
       )}
       {r.vector?.partial_vectors && <div>⚠ Vetores parciais (planta importada antes da leitura vetorial) — volte a importar o PDF para uma cobertura completa.</div>}
@@ -320,10 +320,10 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
     (d) => `Recalculado com ±${d.tolerance.pct} % / ${d.tolerance.cm} cm — ${d.summary.ko} incoerência(s)`);
   const editItem = (index, indicated_m) => apply(
     () => api.patch(`/takeoffs/${plan.plan_id}/cotes/items/${index}`, { page_index: pageIndex, indicated_m }),
-    () => `Cote #${index} corrigida e relatório recalculado`);
+    () => `Cota #${index} corrigida e relatório recalculado`);
   const toggleIgnore = (it) => apply(
     () => api.patch(`/takeoffs/${plan.plan_id}/cotes/items/${it.index}`, { page_index: pageIndex, ignored: !it.ignored }),
-    () => (it.ignored ? `Cote #${it.index} reintegrada` : `Cote #${it.index} ignorada`));
+    () => (it.ignored ? `Cota #${it.index} reintegrada` : `Cota #${it.index} ignorada`));
 
   const showOverlay = async () => {
     try {
@@ -337,7 +337,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       const blob = await authedBlob(`/takeoffs/${plan.plan_id}/cotes/report.pdf?page_index=${pageIndex}`);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `controle-cotes-p${pageIndex + 1}.pdf`;
+      a.download = `controlo-cotas-p${pageIndex + 1}.pdf`;
       a.click();
       toast.success("Relatório PDF descarregado");
     } catch (e) { toast.error(e.message); }
@@ -348,7 +348,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
       const blob = await authedBlob(`/takeoffs/${plan.plan_id}/cotes/rapport.pdf?page_index=${pageIndex}`);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `rapport-controle-plan-p${pageIndex + 1}.pdf`;
+      a.download = `relatorio-controlo-planta-p${pageIndex + 1}.pdf`;
       a.click();
       toast.success("Relatório de controlo da planta transferido");
     } catch (e) { toast.error(e.message); }
@@ -395,7 +395,7 @@ export default function CotesCheckPanel({ plan, pageIndex, refreshPlan, selected
             <table className="w-full text-[11px]">
               <thead className="bg-muted sticky top-0">
                 <tr><th className="px-1 text-left">#</th><th className="px-1 text-left">Localização</th>
-                  <th className="px-1 text-right">Cote (m)</th><th className="px-1 text-right">Medido (m)</th>
+                  <th className="px-1 text-right">Cota (m)</th><th className="px-1 text-right">Medido (m)</th>
                   <th className="px-1 text-right">Diferença (cm)</th><th className="px-1"></th><th className="px-1"></th></tr>
               </thead>
               <tbody>

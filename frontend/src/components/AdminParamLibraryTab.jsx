@@ -125,7 +125,7 @@ export default function AdminParamLibraryTab() {
     const rows = [["Nome", "Unidade", "Preço"], ...(data.materials || []).map((m) => [m.name, m.unit, m.price])];
     const csv = rows.map((r) => r.join(";")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a"); a.href = url; a.download = "prix-materiaux-construpilot.csv"; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = "precos-materiais-construpilot.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 

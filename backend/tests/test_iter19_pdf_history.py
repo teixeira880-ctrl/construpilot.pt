@@ -66,7 +66,7 @@ class TestPdfExport:
         r = requests.get(f"{API}/takeoffs/{plan_id}/pdf", headers=auth, timeout=60)
         assert r.status_code == 200, r.text
         assert r.headers.get("content-type", "").startswith("application/pdf")
-        assert f"metre-{plan_id}.pdf" in r.headers.get("content-disposition", "")
+        assert f"medicao-{plan_id}.pdf" in r.headers.get("content-disposition", "")
         assert len(r.content) > 2000
         assert r.content[:5] == b"%PDF-"
 

@@ -26,6 +26,10 @@ HUMIDAS = ("casa_de_banho",)
 T_INT = {"sala": 20, "quarto": 20, "cozinha": 20, "casa_de_banho": 22, "corredor": 18, "escritorio": 20, "lavandaria": 18, "arrumos": 15, "outro": 20}
 
 
+def _n(x, d=1) -> str:
+    return f"{x:.{d}f}".replace(".", ",")
+
+
 def q_de_tf(tf, ti):
     return 8.92 * max(tf - ti, 0) ** 1.1
 
@@ -97,7 +101,9 @@ def calcular(params: dict) -> dict:
         rows.append({"nome": r.get("nome") or typ, "tipo": typ, "theta_int": ti, "area_m2": A, "A_em": Aem, "phi_w": phi, "q": q, "q_ef": q_ef,
                      "qmax": qmax, "tf": tf_de_q(q_ef, ti), "tf_lim": tf_lim, "apoio_w": apoio, "revestimento": rev, "R_rev": R, "passo": passo,
                      "dth": dth, "comprimento_max_m": r.get("comprimento_max_m"), "local_inferior": r.get("local_inferior") or "solo",
-                     "r_isolante": r.get("r_isolante"), "dist_col": float(r.get("distancia_coletor_m") or 6.0)})
+                     "r_isolante": r.get("r_isolante"), "dist_col": float(r.get("distancia_coletor_m") or 6.0),
+                     "comprimento_m": float(r["comprimento_m"]) if r.get("comprimento_m") else None,
+                     "largura_m": float(r["largura_m"]) if r.get("largura_m") else None})
     if not rows:
         raise ValueError("indicar as divisões (tipo, área, perdas de calor)")
     for row in rows:
@@ -132,23 +138,23 @@ def calcular(params: dict) -> dict:
         tot["caudal"] += row["caudal_lh"]; tot["tubo"] += row["tubo_m"]; tot["circuitos"] += n; tot["phi"] += row["q_ef"] * row["A_em"]
         tot["volume_l"] += math.pi * DI ** 2 / 4 * row["tubo_m"] * 1000
         ctl.append({"ref": f"{row['nome']} — temperatura de superfície (NP EN 1264-2)", "exigencia": f"θF ≤ {row['tf_lim']:g} °C",
-                    "valor": f"{row['tf']:.1f} °C ({row['q']:.0f} W/m² pedidos, {row['qmax']:.0f} máx.)",
+                    "valor": f"{_n(row['tf'])} °C ({row['q']:.0f} W/m² pedidos, {row['qmax']:.0f} máx.)",
                     "ok": row["apoio_w"] <= 50, "note": (f"apoio {row['apoio_w']:.0f} W (p. ex. toalheiro ou radiador)" if row["apoio_w"] > 1 else None)})
         if row["R_rev"] > 0.15:
-            ctl.append({"ref": f"{row['nome']} — revestimento", "exigencia": "R revestimento ≤ 0,15 m².°C/W", "valor": f"{row['R_rev']:.2f}", "ok": False})
+            ctl.append({"ref": f"{row['nome']} — revestimento", "exigencia": "R revestimento ≤ 0,15 m².°C/W", "valor": _n(row['R_rev'], 2), "ok": False})
         rmin = R_ISOLANTE_MIN.get(row["local_inferior"], 1.25)
         if row["r_isolante"] is not None:
             ctl.append({"ref": f"{row['nome']} — isolante sob o piso (NP EN 1264-4)", "exigencia": f"R ≥ {rmin:g} m².°C/W (local inferior: {row['local_inferior']})",
-                        "valor": f"{float(row['r_isolante']):.2f}", "ok": float(row["r_isolante"]) >= rmin})
+                        "valor": _n(float(row['r_isolante']), 2), "ok": float(row["r_isolante"]) >= rmin})
         if row["area_m2"] > 40 or (row["comprimento_max_m"] and float(row["comprimento_max_m"]) > 8):
             ctl.append({"ref": f"{row['nome']} — juntas de dilatação", "exigencia": "obrigatórias acima de 40 m² ou de 8 m de comprimento (NP EN 1264-4)",
                         "valor": f"{row['area_m2']:.0f} m²", "ok": None, "note": "prever as juntas em planta; tubos atravessam só em manga"})
     ctl.insert(0, {"ref": "Temperatura de ida", "exigencia": f"θ ida ≤ {tv_max:g} °C (bomba de calor; NP EN 1264 admite até 55 °C)",
-                   "valor": f"{tv:.1f} °C (divisão dimensionante: {crit['nome']})", "ok": tv <= tv_max})
+                   "valor": f"{_n(tv)} °C (divisão dimensionante: {crit['nome']})", "ok": tv <= tv_max})
     ctl.append({"ref": "Tubo PE-X / PE-RT com barreira de oxigénio (ISO 10508)", "exigencia": "classe de aplicação 4 (piso radiante, ≤ 60 °C de serviço)",
-                "valor": f"ida {tv:.1f} °C", "ok": tv <= 60})
+                "valor": f"ida {_n(tv)} °C", "ok": tv <= 60})
     dpmax = max(r["dp_kpa"] for r in rows)
-    ctl.append({"ref": "Perdas de carga por circuito", "exigencia": "≤ 25 kPa no circuito mais desfavorável", "valor": f"{dpmax:.1f} kPa", "ok": dpmax <= 25})
+    ctl.append({"ref": "Perdas de carga por circuito", "exigencia": "≤ 25 kPa no circuito mais desfavorável", "valor": f"{_n(dpmax)} kPa", "ok": dpmax <= 25})
     n_col = max(1, math.ceil(tot["circuitos"] / 12))
     if any(r["r_isolante"] is None for r in rows):
         hyp.append("isolante sob o piso não indicado: respeitar o R mínimo da NP EN 1264-4 (0,75 sobre local aquecido, 1,25 sobre o solo / local não aquecido, "
@@ -159,6 +165,8 @@ def calcular(params: dict) -> dict:
     hyp.append("perdas para baixo do piso radiante não contadas nas perdas de calor (isolante sob a betonilha suposto conforme)")
     hyp.append("coeficientes K_H indicativos (tubo 16 mm, betonilha ≈ 45 mm): substituir pelo ábaco do fabricante escolhido")
     hyp.append(f"áreas não aquecidas (móveis fixos, roupeiros): 8 % da divisão se não indicadas; circuitos ≤ {L_CIRCUITO_MAX:g} m")
+    if any(not (r["comprimento_m"] and r["largura_m"]) for r in rows):
+        hyp.append("dimensões das divisões não indicadas: plantas desenhadas sobre um retângulo equivalente à área (traçado indicativo)")
     return {"divisoes": rows, "theta_ida": tv, "theta_retorno_crit": tv - sigma, "sigma": sigma, "caudal_total_lh": tot["caudal"], "tubo_total_m": tot["tubo"],
             "circuitos": tot["circuitos"], "coletores": n_col, "potencia_w": tot["phi"], "volume_agua_l": tot["volume_l"],
             "apoio_total_w": sum(r["apoio_w"] for r in rows), "controles": ctl, "hipoteses": hyp}
@@ -168,18 +176,106 @@ def _conv(lst):
     return [{"ref": c["ref"], "exigence": c["exigencia"], "valeur": c["valor"], "ok": c["ok"], "note": c.get("note")} for c in lst]
 
 
+def _dims(row):
+    """Dimensões interiores (m): as indicadas, ou um quadrado equivalente à área (assinalado como hipótese)."""
+    L, B = row.get("comprimento_m"), row.get("largura_m")
+    A = row["area_m2"]
+    if L and B:
+        return max(L, B), min(L, B), True
+    if L or B:
+        k = L or B
+        return max(k, A / k), min(k, A / k), True
+    c = math.sqrt(A)
+    return c, c, False
+
+
+def planta(row) -> tuple:
+    """Planta desenhada do piso radiante de uma divisão: contorno, zona periférica sem tubos, circuitos em espiral dupla
+    (contracorrente) ao passo calculado, coletor, cotas e legenda. → (Drawing, legenda)."""
+    from reportlab.graphics.shapes import Drawing, Line, PolyLine, Rect, String
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from . import rendu
+    rendu.fonts()
+    C = colors.HexColor
+    L, B, given = _dims(row)
+    Wd, Hd = 172 * mm, 112 * mm
+    m0 = 14 * mm
+    sc = min((Wd - 2 * m0 - 40 * mm) / L, (Hd - 2 * m0) / B)
+    x0, y0 = m0 + 6 * mm, m0
+    X = lambda x: x0 + x * sc
+    Y = lambda y: y0 + y * sc
+    d = Drawing(Wd, Hd)
+    t = lambda x, y, s_, sz=6.6, col=C("#1d2422"), anc="start", bold=False: String(x, y, rendu.txt(s_), fontName="CP-Bold" if bold else "CP",
+                                                                                fontSize=sz, fillColor=col, textAnchor=anc)
+    ida, ret = C("#d8452f"), C("#2a78d6")
+    d.add(Rect(X(0), Y(0), L * sc, B * sc, fillColor=C("#f7f7f2"), strokeColor=C("#1d2422"), strokeWidth=2.2))
+    borda = 0.15                                                      # zona periférica / junta perimetral
+    n = max(1, int(row.get("circuitos") or 1))
+    passo = row["passo"] / 100.0
+    # divide a divisão em n faixas ao longo do comprimento, uma espiral dupla por circuito
+    faixa = (L - 2 * borda) / n
+    for k in range(n):
+        ax, ay = borda + k * faixa, borda
+        bw, bh = faixa, B - 2 * borda
+        # espiral contracorrente: anéis concêntricos com passo 2×p, ida e retorno intercalados
+        ring = 0
+        while True:
+            off = ring * passo
+            w_, h_ = bw - 2 * off, bh - 2 * off
+            if w_ <= passo or h_ <= passo:
+                break
+            col = ida if ring % 2 == 0 else ret
+            d.add(Rect(X(ax + off), Y(ay + off), w_ * sc, h_ * sc, fillColor=None, strokeColor=col, strokeWidth=0.9))
+            ring += 1
+        # alimentação até ao coletor (lado esquerdo, a meio)
+        yc = B / 2
+        d.add(PolyLine([X(ax + 0.02), Y(ay + 0.05), X(ax + 0.02), Y(yc - 0.06 * (k + 1)), X(-0.18), Y(yc - 0.06 * (k + 1))],
+                       strokeColor=ida, strokeWidth=0.8))
+        d.add(PolyLine([X(ax + 0.06), Y(ay + 0.05), X(ax + 0.06), Y(yc + 0.06 * (k + 1)), X(-0.18), Y(yc + 0.06 * (k + 1))],
+                       strokeColor=ret, strokeWidth=0.8))
+        d.add(Rect(X(ax + bw / 2) - 5 * mm, Y(B) + 2, 10 * mm, 4.2 * mm, fillColor=C("#ffffff"), strokeColor=None))
+        d.add(t(X(ax + bw / 2), Y(B) + 4, f"C{k + 1}", 7, bold=True, anc="middle"))
+        if k:
+            d.add(Line(X(ax), Y(borda), X(ax), Y(B - borda), strokeColor=C("#9aa3a0"), strokeWidth=0.4, strokeDashArray=[2, 2]))
+    # coletor
+    d.add(Rect(X(-0.18) - 8 * mm, Y(B / 2) - 7 * mm, 8 * mm, 14 * mm, fillColor=C("#1d2422"), strokeColor=None))
+    d.add(t(X(-0.18) - 4 * mm, Y(B / 2) - 10 * mm, "Coletor", 6.2, anc="middle", bold=True))
+    # cotas
+    d.add(Line(X(0), Y(0) - 6, X(L), Y(0) - 6, strokeColor=C("#1d2422"), strokeWidth=0.5))
+    d.add(t(X(L / 2), Y(0) - 14, f"{_n(L, 2)} m", 7, anc="middle", bold=True))
+    d.add(Line(X(L) + 6, Y(0), X(L) + 6, Y(B), strokeColor=C("#1d2422"), strokeWidth=0.5))
+    d.add(t(X(L) + 9, Y(B / 2), f"{_n(B, 2)} m", 7, bold=True))
+    lab = f"{row['nome']} — {_n(row['area_m2'], 1)} m²"
+    d.add(Rect(X(L / 2) - (len(lab) * 2.4 + 6), Y(B / 2) - 6, len(lab) * 4.8 + 12, 14, fillColor=C("#ffffff"), strokeColor=C("#1d2422"), strokeWidth=0.5))
+    d.add(t(X(L / 2), Y(B / 2) - 2, lab, 8, anc="middle", bold=True))
+    # legenda
+    lx = X(L) + 26 * mm
+    for i, (col, lab) in enumerate(((ida, "Ida"), (ret, "Retorno"))):
+        d.add(Line(lx, Hd - 20 * mm - i * 6 * mm, lx + 8 * mm, Hd - 20 * mm - i * 6 * mm, strokeColor=col, strokeWidth=1.6))
+        d.add(t(lx + 10 * mm, Hd - 21 * mm - i * 6 * mm, lab, 6.6))
+    info = [f"Passo {row['passo']} cm", f"{n} circuito(s) ≤ {L_CIRCUITO_MAX:g} m", f"{row['tubo_m']:.0f} m de tubo 16×2",
+            f"{row['caudal_lh']:.0f} L/h, σ {_n(row['sigma'])} K", f"θF {_n(row['tf'])} °C (≤ {row['tf_lim']:g})", f"Faixa periférica {borda * 100:.0f} cm"]
+    for i, s_ in enumerate(info):
+        d.add(t(lx, Hd - 36 * mm - i * 5 * mm, s_, 6.4))
+    leg = (f"Planta esquemática do piso radiante — {row['nome']}: espiral dupla em contracorrente ao passo de {row['passo']} cm, "
+           f"{n} circuito(s) até ao coletor. " + ("Dimensões indicadas." if given else
+           f"Dimensões não indicadas: quadrado equivalente de {_n(L, 2)} × {_n(B, 2)} m (a substituir pelas dimensões reais)."))
+    return d, leg
+
+
 def blocos(r: dict, pref: str = "") -> list:
     from . import notes
     W = notes.W
     return [("h2", f"{pref}Piso radiante (NP EN 1264)"),
-            ("p", f"Ida {r['theta_ida']:.1f} °C / retorno {r['theta_retorno_crit']:.1f} °C (σ {r['sigma']:g} K na divisão dimensionante), "
+            ("p", f"Ida {_n(r['theta_ida'])} °C / retorno {_n(r['theta_retorno_crit'])} °C (σ {_n(r['sigma'], 0)} K na divisão dimensionante), "
                   f"{r['circuitos']} circuitos, {r['coletores']} coletor(es), {r['tubo_total_m']:.0f} m de tubo 16×2, caudal {r['caudal_total_lh']:.0f} L/h, "
                   f"volume de água {r['volume_agua_l']:.0f} L."),
             ("table", ["Divisão", "Φ W", "W/m²", "θF °C", "Passo cm", "σ K", "L/h", "Circ.", "Δp kPa"],
-             [[x["nome"], f"{x['phi_w']:.0f}", f"{x['q']:.0f}", f"{x['tf']:.1f}", f"{x['passo']}", f"{x['sigma']:.1f}", f"{x['caudal_lh']:.0f}",
-               f"{x['circuitos']}", f"{x['dp_kpa']:.1f}"] for x in r["divisoes"]],
+             [[x["nome"], f"{x['phi_w']:.0f}", f"{x['q']:.0f}", _n(x['tf']), f"{x['passo']}", _n(x['sigma']), f"{x['caudal_lh']:.0f}",
+               f"{x['circuitos']}", _n(x['dp_kpa'])] for x in r["divisoes"]],
              [38 * W, 16 * W, 16 * W, 16 * W, 18 * W, 14 * W, 18 * W, 14 * W, 18 * W]),
-            ("controls", _conv(r["controles"]))]
+            ("controls", _conv(r["controles"]))] + [("chart", *planta(x)) for x in r["divisoes"]]
 
 
 def note(params: dict) -> dict:

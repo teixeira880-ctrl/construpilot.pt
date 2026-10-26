@@ -36,7 +36,7 @@ const SourceTag = ({ s }) => {
     ia: ["IA", "bg-amber-500/10 text-amber-600"],
     manuel: ["Introduzido", "bg-primary/10 text-primary"],
     soustraitant: ["Subempreiteiro", "bg-violet-500/10 text-violet-600"],
-    fichier: ["Bordereau", "bg-sky-500/10 text-sky-600"],
+    fichier: ["Ficheiro", "bg-sky-500/10 text-sky-600"],
   };
   const [label, cls] = map[s] || ["—", "text-muted-foreground"];
   return <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${cls}`}>{label}</span>;
@@ -151,7 +151,7 @@ export const DpgfImport = () => {
   };
 
   const removeStudy = async (h) => {
-    if (!window.confirm(`Eliminar a orçamentação « ${h.filename || "Bordereau"} »? O orçamento associado, se existir, é mantido.`)) return;
+    if (!window.confirm(`Eliminar a orçamentação « ${h.filename || "Mapa de quantidades"} »? O orçamento associado, se existir, é mantido.`)) return;
     try {
       await api.delete(`/pro/dpgf/${h.file_id}`);
       setHistory((p) => p.filter((x) => x.file_id !== h.file_id));
@@ -255,7 +255,7 @@ export const DpgfImport = () => {
         if (data.status === "done") {
           setRes(data.result); setRfqs([]); loadHistory();
           const r = data.result || {};
-          toast.success(`${r.priced}/${r.line_count} linhas orçamentadas · ${r.excluded} não orçamentada(s) · ${eur(r.grand_total_ht)} HT`);
+          toast.success(`${r.priced}/${r.line_count} linhas orçamentadas · ${r.excluded} não orçamentada(s) · ${eur(r.grand_total_ht)} s/ IVA`);
         } else if (data.status === "error") {
           toast.error(data.error || "Orçamentação impossível");
         } else {
@@ -335,7 +335,7 @@ export const DpgfImport = () => {
       const { data } = await api.post(`/pro/dpgf/${res.file_id}/quote`, {
         vat_rate: Number(vat), full_descriptions: fullDesc,
       });
-      toast.success(`Orçamento criado — ${data.lines} lignes`
+      toast.success(`Orçamento criado — ${data.lines} linha(s)`
         + (data.remembered_prices ? ` · ${data.remembered_prices} preços memorizados` : ""));
       loadHistory();
       nav(`/devis-editeur/${data.doc_id}`);
@@ -366,7 +366,7 @@ export const DpgfImport = () => {
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="grid gap-1.5">
-          <label className="text-xs text-muted-foreground">Bordereaux (.xlsx — plusieurs possibles)</label>
+          <label className="text-xs text-muted-foreground">Mapas de quantidades (.xlsx — vários possíveis)</label>
           <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple hidden data-testid="dpgf-file-input"
                  onChange={(e) => setFiles((p) => [...p, ...Array.from(e.target.files || [])])} />
           <Button variant="outline" className="rounded-sm justify-start gap-2" onClick={() => fileRef.current?.click()} data-testid="dpgf-pick-file">
@@ -584,7 +584,7 @@ export const DpgfImport = () => {
               <ul className="mt-1 space-y-0.5">
                 {lowMarginLots.map((l) => (
                   <li key={l.lot} data-testid={`dpgf-margin-alert-${l.lot}`}>
-                    {l.lot} — marge {l.margin_pct}% ({eur(l.margin_ht)} sur {eur(l.total_ht)})
+                    {l.lot} — margem {l.margin_pct}% ({eur(l.margin_ht)} de {eur(l.total_ht)})
                   </li>
                 ))}
               </ul>
@@ -616,7 +616,7 @@ export const DpgfImport = () => {
 
           {res.cctp?.summary && (
             <div className="rounded-sm border border-primary/30 bg-primary/5 p-3 text-xs" data-testid="dpgf-cctp-summary">
-              <p className="font-semibold mb-1 inline-flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" /> CCTP — {res.cctp.filename}</p>
+              <p className="font-semibold mb-1 inline-flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" /> Caderno de encargos — {res.cctp.filename}</p>
               <p>{res.cctp.summary}</p>
               <p className="text-muted-foreground mt-1">{res.cctp.prescriptions?.length || 0} prescrição(ões) associada(s) às linhas.</p>
               {res.cctp.documents?.some((d) => d.plans_skipped > 0) ? (
@@ -626,7 +626,7 @@ export const DpgfImport = () => {
               ) : null}
               {res.cctp.documents?.some((d) => d.truncated) ? (
                 <p className="text-amber-600 mt-1" data-testid="dpgf-cctp-truncated">
-                  Lecture partielle : {res.cctp.documents.filter((d) => d.truncated)
+                  Leitura parcial: {res.cctp.documents.filter((d) => d.truncated)
                     .map((d) => `${d.filename} (${d.pages_read}/${d.pages} páginas)`).join(", ")} — estes ficheiros são sobretudo plantas. Junte o caderno de encargos do capítulo para uma análise completa.
                 </p>
               ) : null}
@@ -678,7 +678,7 @@ export const DpgfImport = () => {
                       </span>
                       {d.responded_at ? (
                         <>
-                          <span className="num font-semibold text-primary">{eur(d.total_ht)} HT</span>
+                          <span className="num font-semibold text-primary">{eur(d.total_ht)} s/ IVA</span>
                           <Button size="sm" variant="outline" className="rounded-sm h-7"
                             onClick={() => applyOffer(r, d.token)} data-testid={`dpgf-offer-apply-${d.token}`}>
                             Selecionar
@@ -781,7 +781,7 @@ export const DpgfImport = () => {
                             onBlur={(e) => setLotMargin(lot, e.target.value)}
                             className="rounded-sm h-6 w-14 num text-right text-[11px]"
                             data-testid={`dpgf-lot-margin-${lot}`} />
-                          <span className="text-[10px] text-muted-foreground">% marge</span>
+                          <span className="text-[10px] text-muted-foreground">% margem</span>
                         </span>
                       </td>
                       <td className="p-2 text-right">
@@ -801,7 +801,7 @@ export const DpgfImport = () => {
                             <span className="ml-1 text-[10px] text-muted-foreground">[{l.src_name}]</span>
                           )}
                           {l.excluded && <span className="ml-1 text-[10px] font-bold uppercase text-muted-foreground">· {l.exclusion_reason || "Não orçamentado — fora da empreitada"}</span>}
-                          {l.cctp_note && <span className="block text-[10px] text-primary mt-0.5">CCTP : {l.cctp_note}</span>}
+                          {l.cctp_note && <span className="block text-[10px] text-primary mt-0.5">Caderno de encargos: {l.cctp_note}</span>}
                         </td>
                         <td className="p-2 text-center num">{l.qty ?? "—"}</td>
                         <td className="p-2 text-center">{l.unit || "—"}</td>
@@ -882,7 +882,7 @@ export const DpgfImport = () => {
             {history.slice(0, 8).map((h) => (
               <div key={h.file_id} className="flex flex-wrap items-center gap-2 text-xs" data-testid={`dpgf-hist-${h.file_id}`}>
                 <span className="flex-1 min-w-[220px] truncate">
-                  {h.label || h.filename || "Bordereau"} · {h.line_count} linha(s) · <b>{eur(h.grand_total_ht)}</b> HT
+                  {h.label || h.filename || "Mapa de quantidades"} · {h.line_count} linha(s) · <b>{eur(h.grand_total_ht)}</b> s/ IVA
                   <span className="text-muted-foreground"> — {(h.created_at || "").slice(0, 10)}</span>
                 </span>
                 <Button size="sm" variant="ghost" className="rounded-sm h-7" title="Renomear"
@@ -940,7 +940,7 @@ export const DpgfImport = () => {
             </div>
             <label className="grid gap-1.5 text-xs text-muted-foreground">Outros e-mails (separados por vírgula)
               <Input value={rfqEmail} onChange={(e) => setRfqEmail(e.target.value)} className="rounded-sm h-9"
-                placeholder="plombier@exemple.fr, carreleur@exemple.fr" data-testid="dpgf-rfq-emails" />
+                placeholder="canalizador@exemplo.pt, ladrilhador@exemplo.pt" data-testid="dpgf-rfq-emails" />
             </label>
             <label className="grid gap-1.5 text-xs text-muted-foreground">Mensagem (opcional)
               <Textarea value={rfqMsg} onChange={(e) => setRfqMsg(e.target.value)} rows={2} className="rounded-sm"

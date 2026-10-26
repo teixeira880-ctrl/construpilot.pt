@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import VoiceNoteButton from "@/components/VoiceNoteButton";
+import PromptBar from "@/components/PromptBar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -79,6 +80,21 @@ export default function Estimator() {
 
   const regions = (catalog?.regions || []).filter((r) => r.country === form.country);
 
+  // Pilotagem por prompt (texto ou ditado) — preenche o formulário; o cálculo continua manual e determinista.
+  const applyPromptFill = (data) => {
+    const p = data?.params || {};
+    setForm((f) => {
+      const next = { ...f };
+      for (const [k, v] of Object.entries(p)) {
+        if (v === null || v === undefined || v === "" || !(k in f)) continue;
+        if (k === "region" && !regions.some((r) => r.region === v)) continue;
+        next[k] = v;
+      }
+      return next;
+    });
+    if ((data?.defaults_used || []).length) toast.message("Valores por defeito aplicados", { description: data.defaults_used.join(", ") });
+  };
+
   const compute = async () => {
     setBusy(true);
     try {
@@ -148,7 +164,7 @@ export default function Estimator() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Estimation-ConstruPilot-${name || "projet"}.pdf`;
+      a.download = `Estimativa-ConstruPilot-${name || "projet"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("est.pdf_ok"));
@@ -180,7 +196,7 @@ export default function Estimator() {
 
   return (
     <div className="grid gap-10">
-      <SEO title="Estimador trabalhos gratuito" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA 10 %, duração estimada. Baseado nos preços França 2026." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
+      <SEO title="Estimador trabalhos gratuito" description="Estimativa gratuita dos seus trabalhos de renovação em 30 segundos. Preço por lote, IVA a 6 % ou 23 %, duração estimada. Baseado em preços de referência 2026 ajustados a Portugal." keywords="estimador de obras gratuito, estimativa de remodelação online, custo de obras, cálculo de orçamento, preço de obra" canonical="/estimation" />
       <SectionTitle as="h1" over={t("est.over")} title={t("est.title")}>
         {t("est.subtitle")}
       </SectionTitle>
@@ -195,6 +211,10 @@ export default function Estimator() {
           <div className="surface p-8 grid gap-6" data-testid={`wizard-step-${step}`}>
             {step === 0 && (
               <>
+                {user && <PromptBar appKey="estimativa" context={{ project_type: form.project_type, surface: form.surface, region: form.region }}
+                  onFill={applyPromptFill}
+                  placeholder="Descreva a obra: «remodelação de apartamento T3 de 90 m² em Matosinhos, gama média»"
+                  examples="Escreva ou dite: a IA pré-preenche a estimativa; pode ajustar tudo antes de calcular." />}
                 <div className="grid gap-2">
                   <Label>{t("est.project_type")}</Label>
                   <Select value={form.project_type} onValueChange={(v) => set("project_type", v)}>

@@ -71,7 +71,7 @@ class Brand:
 
 
 THEMES = {"FR": {"accent": "#14365C", "accent2": "#B87333", "style": "fr"},     # bleu nuit / cuivre, bandeau
-          "PT": {"accent": "#0E4D4A", "accent2": "#C9A227", "style": "pt"}}     # verde-petróleo / dourado, coluna lateral
+          "PT": {"accent": "#203B2D", "accent2": "#875133", "style": "pt"}}     # verde ConstruPilot / cobre, coluna lateral
 
 
 def _faded(png: bytes, alpha: float = 0.07) -> ImageReader | None:

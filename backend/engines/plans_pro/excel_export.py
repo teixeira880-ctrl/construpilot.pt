@@ -293,7 +293,7 @@ def _write_resumo_sheet(
 
     ws.cell(row=next_row, column=1, value="Contagens").font = Font(bold=True, size=11, color="0F766E")
     next_row += 1
-    ws.cell(row=next_row, column=1, value="Ouvrages orçamentados:").font = LABEL_FONT
+    ws.cell(row=next_row, column=1, value="Trabalhos orçamentados:").font = LABEL_FONT
     ws.cell(row=next_row, column=2, value=ouvrages_count)
     next_row += 1
     ws.cell(row=next_row, column=1, value="Categorias Autodesk:").font = LABEL_FONT

@@ -119,7 +119,7 @@ def build_control_report(dossier: dict) -> bytes:
 
     # 1. Inventaire des documents
     story.append(_p("1. Documentos importados", ss["CPH2"]))
-    rows = [["Documento", "Type", "Índice", "Lecture IA"]]
+    rows = [["Documento", "Tipo", "Índice", "Leitura IA"]]
     for d in docs:
         ext = (d.get("extraction") or {})
         idx = d.get("index") or ext.get("indice_detecte") or "—"

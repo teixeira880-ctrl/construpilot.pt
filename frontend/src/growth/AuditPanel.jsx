@@ -52,14 +52,14 @@ export function AuditPanel({ projectId, canEdit }) {
     </div>}
     {detail && <>
       <div className="flex flex-wrap gap-2 items-center text-xs">
-        <select className="h-8 rounded-md border bg-background px-2" value={filter.severity} onChange={(e) => setFilter({ ...filter, severity: e.target.value })} data-testid="growth-issue-filter-severity"><option value="">Todas as gravidades</option><option value="haute">haute</option><option value="moyenne">moyenne</option><option value="basse">basse</option></select>
+        <select className="h-8 rounded-md border bg-background px-2" value={filter.severity} onChange={(e) => setFilter({ ...filter, severity: e.target.value })} data-testid="growth-issue-filter-severity"><option value="">Todas as gravidades</option><option value="haute">alta</option><option value="moyenne">média</option><option value="basse">baixa</option></select>
         <select className="h-8 rounded-md border bg-background px-2" value={filter.kind} onChange={(e) => setFilter({ ...filter, kind: e.target.value })} data-testid="growth-issue-filter-kind"><option value="">Todos os tipos</option>{kinds.map((k) => <option key={k} value={k}>{k}</option>)}</select>
         <span className="text-muted-foreground">{issues.length} problema(s) · «facto» = medido, «hipótese» = a confirmar</span>
       </div>
       {issues.length === 0 && <Empty testid="growth-issues-empty">Nenhum problema para este filtro.</Empty>}
       <ul className="divide-y border rounded-md">
         {issues.slice(0, 300).map((i) => <li key={i.issue_id} className={`px-3 py-2 text-sm space-y-1 ${i.status !== "open" ? "opacity-50" : ""}`} data-testid={`growth-issue-${i.issue_id}`}>
-          <div className="flex flex-wrap items-center gap-2"><Badge className={`rounded-sm border-0 ${SEV[i.severity]}`}>{i.severity}</Badge><span className="font-medium">{i.kind}</span>
+          <div className="flex flex-wrap items-center gap-2"><Badge className={`rounded-sm border-0 ${SEV[i.severity]}`}>{({ haute: "alta", moyenne: "média", basse: "baixa" })[i.severity] || i.severity}</Badge><span className="font-medium">{i.kind}</span>
             <Badge variant="outline" className="rounded-sm text-[10px]">{i.is_fact ? "fait" : "hipótese"}</Badge><span className="text-[11px] text-muted-foreground">effort {i.effort} · {dt(i.observed_at)}</span>
             <a className="text-[11px] underline truncate max-w-[360px]" href={i.url} target="_blank" rel="noreferrer">{i.url}</a></div>
           <p className="text-xs"><strong>Prova:</strong> {i.evidence}</p>

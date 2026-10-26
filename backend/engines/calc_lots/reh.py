@@ -187,6 +187,7 @@ def _envolvente_tipo(p: dict, hyp: list) -> list:
 def calcular(p: dict) -> dict:
     p = dict(p or {})
     hyp: list[str] = ["pré-certificado indicativo (metodologia REH): não substitui o certificado energético emitido por Perito Qualificado (ADENE)"]
+    hyp += [str(h) for h in p.get("hipoteses_entrada") or []]      # origem dos dados indicada por quem chama (p. ex. leitura da planta)
     ap = float(p.get("area_util_m2") or 0)
     if ap <= 0:
         raise ValueError("area_util_m2 obrigatória")

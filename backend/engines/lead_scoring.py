@@ -59,9 +59,9 @@ def _score_address(lead: dict, add) -> None:
 def _score_description(lead: dict, add) -> None:
     desc = (lead.get("description") or "").strip()
     if len(desc) >= 100:
-        add("Descrição detalhada", 10, f"{len(desc)} caractères")
+        add("Descrição detalhada", 10, f"{len(desc)} caracteres")
     elif len(desc) >= 30:
-        add("Description sommaire", 5, f"{len(desc)} caractères")
+        add("Descrição sumária", 5, f"{len(desc)} caracteres")
 
 
 def _score_surface(lead: dict, add) -> None:
@@ -74,9 +74,9 @@ def _score_delay(lead: dict, add) -> None:
     if d is None:
         return
     if d <= 90:
-        add("Arranque rápido", 10, "≤ 3 mois")
+        add("Arranque rápido", 10, "≤ 3 meses")
     elif d <= 180:
-        add("Arranque a curto prazo", 5, "≤ 6 mois")
+        add("Arranque a curto prazo", 5, "≤ 6 meses")
 
 
 def _score_phone(lead: dict, add) -> None:
@@ -108,7 +108,7 @@ def _score_keywords(lead: dict, add) -> None:
         add("Tipo de obras detalhado", min(10, len(matched) * 3),
             ", ".join(matched[:4]))
     if any(kw in low for kw in ("urgent", "cette année", "asap", "au plus vite")):
-        add("Intention forte", 5, "palavras-chave de urgência")
+        add("Intenção forte", 5, "palavras-chave de urgência")
 
 
 # Pipeline de règles — ajouter/retirer une règle = 1 ligne

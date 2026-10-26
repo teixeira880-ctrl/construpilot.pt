@@ -39,7 +39,7 @@ async def get_analysis(plan_id: str, user=Depends(current_user)) -> dict:
     pages = [{"index": pg.get("index", i), "width_px": pg.get("width_px"), "height_px": pg.get("height_px"), "calibrated": str(pg.get("index", i)) in (p.get("calibrations") or {})} for i, pg in enumerate(p.get("pages") or [])]
     stat = {s: sum(1 for q in lines if q["status"] == s) for s in ("to_verify", "provisional", "validated", "undetermined")}
     return {"plan": {"plan_id": plan_id, "filename": p.get("filename"), "project_id": p.get("project_id"), "updated_at": p.get("updated_at"), "pages": pages}, "analysis": a, "elements": elements, "quantities": lines,
-            "overrides": overrides, "stats": stat, "state": "com erro" if not elements and (p.get("rooms")) else ("parcialmente analisada" if a.get("missing") else "analysé"),
+            "overrides": overrides, "stats": stat, "state": "com erro" if not elements and (p.get("rooms")) else ("parcialmente analisada" if a.get("missing") else "analisada"),
             "disclaimer": "Controlo de coerência e medição a partir das divisões traçadas e calibradas da planta. Não constitui uma memória de cálculo estrutural."}
 
 

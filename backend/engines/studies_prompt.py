@@ -477,7 +477,7 @@ VERIFY_SCHEMA = {
 
 MENTION = {
  "fr": "Este documento constitui um controlo de coerência da planta {plan}, realizado pela ConstruPilot.fr por conta de {company}. Assinala unicamente as eventuais incoerências de geometria, alinhamento e cotagem visíveis no documento fornecido. Não altera, não valida nem põe em causa, em nenhum caso, os cálculos de estrutura ou os estudos realizados pelo gabinete de projeto competente.",
- "pt": "Este documento constitui um controlo de coerência da planta {plan}, realizado pela ConstruPilot.fr por conta de {company}. "
+ "pt": "Este documento constitui um controlo de coerência da planta {plan}, realizado pela ConstruPilot.pt por conta de {company}. "
        "Assinala unicamente as eventuais incoerências de geometria, alinhamento e cotagem visíveis no documento fornecido. "
        "Não altera, não valida nem põe em causa, em nenhum caso, os cálculos de estrutura ou os estudos realizados pelo gabinete de projeto competente.",
 }

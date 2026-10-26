@@ -220,7 +220,7 @@ def draw_vertical(args: dict) -> bytes:
         x += w
     # ground line
     d.line([(margin_x, y_ground), (W - margin_x - 300, y_ground)], fill="#111111", width=4)
-    d.text((margin_x, y_ground - 30), (v.get("ground_label") or "Sol fini extérieur")[:40] + "  ±0,00", fill="#111111", font=f_small)
+    d.text((margin_x, y_ground - 30), (v.get("ground_label") or "Pavimento exterior acabado")[:40] + "  ±0,00", fill="#111111", font=f_small)
     # drain
     if drain_d is not None:
         r = 16
@@ -233,7 +233,7 @@ def draw_vertical(args: dict) -> bytes:
     xd = W - margin_x - 220
     _dim_v(d, xd, y_top, y_ground, f"{h_up:g} cm", f_dim)
     _dim_v(d, xd + 90, y_ground, y_foot_bottom, f"−{f_depth:g} cm", f_dim)
-    _dim_v(d, xd, y_foot_top, y_foot_bottom, f"semelle {f_h:g} cm", f_dim, "#555555")
+    _dim_v(d, xd, y_foot_top, y_foot_bottom, f"sapata {f_h:g} cm", f_dim, "#555555")
     # horizontal chain (top)
     yd = top - 50
     d.line([(x_left, yd), (x_left + wall_w, yd)], fill="#111111", width=2)

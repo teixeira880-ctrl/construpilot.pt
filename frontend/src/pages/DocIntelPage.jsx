@@ -197,12 +197,12 @@ export default function DocIntelPage() {
       <div className="rounded-lg border border-border p-4 mb-6 bg-card" data-testid="doc-intel-import">
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1">
-            <Label className="text-xs">Fichier (.xlsx / .pdf / image)</Label>
+            <Label className="text-xs">Ficheiro (.xlsx / .pdf / imagem)</Label>
             <Input ref={fileRef} type="file" accept=".xlsx,.xlsm,.pdf,.jpg,.jpeg,.png,.webp" data-testid="doc-intel-file"
                    onChange={(e) => doImport(e.target.files?.[0])} className="w-72" disabled={busy} />
           </div>
           <div className="grid gap-1">
-            <Label className="text-xs">TVA (%)</Label>
+            <Label className="text-xs">IVA (%)</Label>
             <Input value={vat} onChange={(e) => setVat(e.target.value)} className="w-24" inputMode="decimal"
                    data-testid="doc-intel-vat" placeholder="20" />
           </div>
@@ -250,7 +250,7 @@ export default function DocIntelPage() {
                 <Badge variant="outline">{res.format?.toUpperCase()}</Badge>
                 {res.ocr?.engine && (
                   <Badge variant="outline" className="border-indigo-400 text-indigo-600 gap-1">
-                    <Sparkles className="h-3 w-3" /> Lu par IA · {res.ocr.engine === "gemini-user" ? "Assistente Construção" : "IA (recurso)"}
+                    <Sparkles className="h-3 w-3" /> Lido pela IA · {res.ocr.engine === "gemini-user" ? "Assistente Construção" : "IA (recurso)"}
                   </Badge>
                 )}
                 {res.language && <Badge variant="outline">{res.language.toUpperCase()}</Badge>}
@@ -334,7 +334,7 @@ export default function DocIntelPage() {
                                 </Button>
                               </div>
                               <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-                                {a.cctp && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> CCTP p{a.cctp.page} : « {a.cctp.text?.slice(0, 90)} »</span>}
+                                {a.cctp && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> Caderno de encargos p. {a.cctp.page}: « {a.cctp.text?.slice(0, 90)} »</span>}
                                 {a.devis && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> Orçamento {a.devis.source || ""} : {a.devis.designation}</span>}
                               </div>
                             </li>
@@ -413,7 +413,7 @@ export default function DocIntelPage() {
                                 )}
                               </div>
                               <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-                                <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> Plan : « {c.label} »</span>
+                                <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> Planta: « {c.label} »</span>
                                 <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> Orçamento {c.devis.source || ""} : {c.devis.designation}</span>
                               </div>
                             </li>
@@ -526,7 +526,7 @@ export default function DocIntelPage() {
                   <div className="flex flex-wrap gap-2 text-xs">
                     {(res.pages || []).map((p) => (
                       <Badge key={p.page} variant="outline" className={p.ocr ? "border-indigo-400 text-indigo-600" : p.scanned ? "border-amber-400 text-amber-600" : ""}>
-                        Página {p.page} · {p.lines} lignes{p.ocr ? " · IA (OCR)" : p.scanned ? " · scan (OCR)" : ""}{p.tables ? ` · ${p.tables} tableau(x)` : ""}
+                        Página {p.page} · {p.lines} lignes{p.ocr ? " · IA (OCR)" : p.scanned ? " · scan (OCR)" : ""}{p.tables ? ` · ${p.tables} tabela(s)` : ""}
                       </Badge>
                     ))}
                   </div>

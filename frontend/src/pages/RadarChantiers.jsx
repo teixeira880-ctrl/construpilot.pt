@@ -236,7 +236,7 @@ export default function RadarChantiers() {
   const downloadLetter = () => {
     const url = URL.createObjectURL(b64ToBlob(campaign.letter_b64));
     const a = document.createElement("a");
-    a.href = url; a.download = `courrier-${campaign.token}.pdf`; a.click();
+    a.href = url; a.download = `carta-${campaign.token}.pdf`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 

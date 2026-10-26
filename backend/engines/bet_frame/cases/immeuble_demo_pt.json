@@ -1,0 +1,336 @@
+{
+ "kind": "frame",
+ "schema_version": "frame-1",
+ "building_type": "immeuble_collectif",
+ "_comment": "Caso de teste anonimizado — edifício habitacional plurifamiliar R/C + 4 pisos sobre cave de estacionamento (trama de pilares BA).",
+ "project": {
+  "name": "Edifício habitacional — caso de teste",
+  "address": "Portugal (endereço omitido)",
+  "country": "PT",
+  "client": "—",
+  "architect": "—",
+  "pc_ref": "Projeto de arquitetura (caso de teste)",
+  "g2_ref": "hipótese de teste"
+ },
+ "geometry": {"overall": {"length": 37.6, "width": 18.6, "facade_to_axis": 0.15, "source": "Planta do piso tipo — cotas exteriores (caso de teste)"}},
+  "grid": {
+  "x": [
+   0,
+   6.1,
+   12.3,
+   18.6,
+   24.9,
+   31.1,
+   37.3
+  ],
+  "y": [
+   0,
+   6.0,
+   12.3,
+   18.3
+  ],
+  "x_labels": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6",
+   "7"
+  ],
+  "y_labels": [
+   "A",
+   "B",
+   "C",
+   "D"
+  ]
+ },
+ "levels": [
+  {
+   "id": "P-1",
+   "name": "Piso -1 (cave)",
+   "floor_top": -3.0,
+   "height": 3.0,
+   "use": "estacionamento",
+   "on_grade": true
+  },
+  {
+   "id": "P0",
+   "name": "R/C (piso 0)",
+   "floor_top": 0.0,
+   "height": 3.0,
+   "use": "habitação"
+  },
+  {
+   "id": "P1",
+   "name": "Piso 1",
+   "floor_top": 3.0,
+   "height": 3.0,
+   "use": "habitação"
+  },
+  {
+   "id": "P2",
+   "name": "Piso 2",
+   "floor_top": 6.0,
+   "height": 3.0,
+   "use": "habitação"
+  },
+  {
+   "id": "P3",
+   "name": "Piso 3",
+   "floor_top": 9.0,
+   "height": 3.0,
+   "use": "habitação"
+  },
+  {
+   "id": "P4",
+   "name": "Piso 4",
+   "floor_top": 12.0,
+   "height": 3.0,
+   "use": "habitação"
+  }
+ ],
+ "roof": {
+  "use": "cobertura"
+ },
+ "structure": {
+  "column": [
+   0.35,
+   0.35
+  ],
+  "beam": [
+   0.3,
+   0.5
+  ],
+  "slab": 0.2,
+  "concrete": "C25/30",
+  "steel": "A500 NR"
+ },
+ "cores": [
+  {
+   "id": "N1",
+   "label": "Escadas + elevador",
+   "x0": 18.6,
+   "y0": 6.0,
+   "x1": 22.1,
+   "y1": 12.3,
+   "wall": 0.2
+  }
+ ],
+ "balconies": [
+  {
+   "side": "S",
+   "depth": 1.5,
+   "a0": 0.0,
+   "a1": 37.3,
+   "levels": [
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ]
+  },
+  {
+   "side": "N",
+   "depth": 1.2,
+   "a0": 6.1,
+   "a1": 31.1,
+   "levels": [
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ]
+  }
+ ],
+ "units": [
+  {
+   "id": "A",
+   "name": "Fração A",
+   "typology": "T3",
+   "levels": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ],
+   "x0": 0.0,
+   "y0": 0.0,
+   "x1": 15.0,
+   "y1": 9.15,
+   "fixtures": {
+    "wc": 2,
+    "lavatorio": 2,
+    "banheira": 1,
+    "duche": 1,
+    "bide": 1,
+    "pia": 1,
+    "mlr": 1,
+    "mll": 1
+   }
+  },
+  {
+   "id": "B",
+   "name": "Fração B",
+   "typology": "T3",
+   "levels": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ],
+   "x0": 0.0,
+   "y0": 9.15,
+   "x1": 15.0,
+   "y1": 18.3,
+   "fixtures": {
+    "wc": 2,
+    "lavatorio": 2,
+    "banheira": 1,
+    "duche": 1,
+    "bide": 1,
+    "pia": 1,
+    "mlr": 1,
+    "mll": 1
+   }
+  },
+  {
+   "id": "C",
+   "name": "Fração C",
+   "typology": "T3",
+   "levels": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ],
+   "x0": 22.3,
+   "y0": 0.0,
+   "x1": 37.3,
+   "y1": 9.15,
+   "fixtures": {
+    "wc": 2,
+    "lavatorio": 2,
+    "banheira": 1,
+    "duche": 1,
+    "bide": 1,
+    "pia": 1,
+    "mlr": 1,
+    "mll": 1
+   }
+  },
+  {
+   "id": "D",
+   "name": "Fração D",
+   "typology": "T2",
+   "levels": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ],
+   "x0": 22.3,
+   "y0": 9.15,
+   "x1": 37.3,
+   "y1": 18.3,
+   "fixtures": {
+    "wc": 1,
+    "lavatorio": 1,
+    "banheira": 1,
+    "bide": 1,
+    "pia": 1,
+    "mlr": 1,
+    "mll": 1
+   }
+  }
+ ],
+ "risers": [
+  {
+   "id": "TQ1",
+   "kind": "EU",
+   "x": 14.6,
+   "y": 8.7,
+   "label": "Tubo de queda TQ1"
+  },
+  {
+   "id": "TQ2",
+   "kind": "EU",
+   "x": 14.6,
+   "y": 9.6,
+   "label": "Tubo de queda TQ2"
+  },
+  {
+   "id": "TQ3",
+   "kind": "EU",
+   "x": 22.7,
+   "y": 8.7,
+   "label": "Tubo de queda TQ3"
+  },
+  {
+   "id": "TQ4",
+   "kind": "EU",
+   "x": 22.7,
+   "y": 9.6,
+   "label": "Tubo de queda TQ4"
+  },
+  {
+   "id": "CAF1",
+   "kind": "AF",
+   "x": 15.4,
+   "y": 12.0,
+   "label": "Coluna AF 1"
+  },
+  {
+   "id": "CAF2",
+   "kind": "AF",
+   "x": 22.6,
+   "y": 12.0,
+   "label": "Coluna AF 2"
+  },
+  {
+   "id": "CE",
+   "kind": "ELEC",
+   "x": 19.2,
+   "y": 12.0,
+   "label": "Coluna montante elétrica"
+  },
+  {
+   "id": "TP1",
+   "kind": "EP",
+   "x": 0.25,
+   "y": 0.25
+  },
+  {
+   "id": "TP2",
+   "kind": "EP",
+   "x": 37.05,
+   "y": 0.25
+  },
+  {
+   "id": "TP3",
+   "kind": "EP",
+   "x": 0.25,
+   "y": 18.05
+  },
+  {
+   "id": "TP4",
+   "kind": "EP",
+   "x": 37.05,
+   "y": 18.05
+  }
+ ],
+ "geotech": {
+  "sigma_adm_mpa": 0.3,
+  "depth": 1.0,
+  "source": "hipótese de teste (sem estudo geotécnico)"
+ },
+ "mep": {
+  "hot_water": "individual"
+ },
+ "_decisions": [],
+ "_questions": []
+}

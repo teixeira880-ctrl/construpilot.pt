@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import PromptBar from "@/components/PromptBar";
 import {
   Upload, Loader2, FileDown, Save, Trash2, AlertTriangle, CheckCircle2,
   Ruler, Layers, Boxes, ArrowLeft, HardHat,
@@ -94,6 +95,17 @@ export default function PlanReader() {
   };
   const delFond = (i) => setRead((r) => ({ ...r, fondations: r.fondations.filter((_, k) => k !== i) }));
   const delMur = (i) => setRead((r) => ({ ...r, murs: r.murs.filter((_, k) => k !== i) }));
+  // Pilotagem por prompt: acrescenta um elemento ditado/escrito («3 sapatas S1 de 80x80, altura 40 cm»), sempre «a verificar».
+  const addFondFromPrompt = (data) => {
+    const p = data?.params || {};
+    if (!p.type) return;
+    setRead((r) => ({ ...r, fondations: [...(r.fondations || []), {
+      type: p.type, repere: p.repere || "", nombre: p.nombre || 1,
+      longueur_m: p.longueur_m ?? null, largeur_m: p.largeur_m ?? null, hauteur_m: p.hauteur_m ?? null,
+      a_verifier: true, confidence: 1,
+    }] }));
+    toast.success("Elemento acrescentado — verifique as cotas e depois «Recalcular / Guardar».");
+  };
   const addFond = () => setRead((r) => ({ ...r, fondations: [...r.fondations, { type: "semelle_isolee", repere: "", nombre: 1, a_verifier: true, confidence: 1 }] }));
 
   const save = async () => {
@@ -118,7 +130,7 @@ export default function PlanReader() {
       const res = await api.get(`/structuro/plan/${read.read_id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = `metre-${read.read_id}.pdf`; a.click();
+      a.href = url; a.download = `medicao-${read.read_id}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível exportar"); }
   };
@@ -222,6 +234,9 @@ export default function PlanReader() {
               <h3 className="font-semibold text-sm">Elementos de fundação / estrutura</h3>
               <Button variant="outline" size="sm" className="rounded-sm" onClick={addFond} data-testid="add-fondation-btn">+ Linha</Button>
             </div>
+            <PromptBar appKey="fundacao" onFill={addFondFromPrompt}
+              placeholder="Acrescente um elemento: «3 sapatas isoladas S1 de 80x80 cm, altura 40 cm»"
+              examples="Escreva ou dite: o elemento é acrescentado como «a verificar»." />
             <table className="w-full text-sm">
               <thead><tr className="text-left text-xs text-muted-foreground border-b">
                 <th className="py-1 pr-2">Tipo</th><th className="pr-2">Referência</th><th className="pr-2">L (m)</th><th className="pr-2">l (m)</th><th className="pr-2">h (m)</th><th className="pr-2">Nb</th><th className="pr-2">Betão m³</th><th className="pr-2">Aço kg</th><th className="pr-2">Conf.</th><th></th>

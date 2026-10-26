@@ -12,7 +12,7 @@ import {
   GitCompareArrows, ShieldAlert, FileSearch, AlertTriangle, RefreshCw, Eye, Boxes,
 } from "lucide-react";
 
-const KIND_LABEL = { bet: "Note BET", plan: "Planta", cctp: "CCTP", autre: "Outro" };
+const KIND_LABEL = { bet: "Nota de cálculo", plan: "Planta", cctp: "Caderno de encargos", autre: "Outro" };
 const ENGINE = {
   claude: { label: "Analisado", cls: "bg-emerald-500/15 text-emerald-600" },
   skipped: { label: "Ilegível (DWG/IFC)", cls: "bg-slate-500/15 text-slate-600 dark:text-slate-300" },

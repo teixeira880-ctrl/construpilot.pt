@@ -104,7 +104,7 @@ def build_conversation_report(*, conv: dict, calculations: list[dict], solutions
     _story_header_branding(story, branding, S)
     story.append(Paragraph("Relatório de controlo e de soluções técnicas", S["h1"]))
     today = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    story.append(_p(f"Dossier : {conv.get('title', '')} · Referência: {conv.get('conversation_id', '')[-10:].upper()} · Date : {today}", S, "muted"))
+    story.append(_p(f"Processo: {conv.get('title', '')} · Referência: {conv.get('conversation_id', '')[-10:].upper()} · Data: {today}", S, "muted"))
     story.append(Spacer(1, 4))
     crops = []
     rows, findings, qty = _calc_rows([c for c in calculations if not c.get("superseded_by")], S, crops)
@@ -166,7 +166,7 @@ def build_conversation_report(*, conv: dict, calculations: list[dict], solutions
             story.append(_p("Factos: " + " · ".join(sol["facts"]), S, "body"))
         if sol.get("hypotheses"):
             story.append(_p("Hipóteses: " + " · ".join(sol["hypotheses"]), S, "body"))
-        orow = [["Option", "Adequação", "Condições", "Avantages / limites", "Fontes"]]
+        orow = [["Opção", "Adequação", "Condições", "Vantagens / limites", "Fontes"]]
         for o in sol.get("options", []):
             srcs = [f"{s.get('title') or s.get('url')} ({s.get('status')})" for s in o.get("sources", [])] or ["nenhuma fonte"]
             orow.append([_p(o.get("name", ""), S), _p(f"{o.get('suitability', '')} · {o.get('evidence_level', '')}", S), _p(" · ".join(o.get("conditions") or []) or "—", S),

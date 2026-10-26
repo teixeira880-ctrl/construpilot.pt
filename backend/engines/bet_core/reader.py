@@ -95,6 +95,11 @@ Règles :
   plancher qui PORTE ce niveau (dallage pour le niveau le plus bas). Ids courts (SS, RDC, R1, R2…).
 - "interior_walls" et "rooms" : rectangles (x0,y0,x1,y1) aux nus. Types de pièces : sejour, cuisine, chambre, sdb, sde, wc,
   degagement, garage, annexe_seche, local_technique, buanderie, dressing, bureau. area_pc = surface écrite sur le plan.
+  Espaces EXTÉRIEURS situés dans l'emprise (patio / cour à ciel ouvert, porche ou auvent d'entrée, terrasse, loggia) : relève-les
+  aussi dans "rooms" avec type "patio", "porche" ou "terrasse" — jamais comme séjour ou dégagement (ni chauffage, ni VMC, ni prises).
+  Une case de plan sans nom de pièce, sans mobilier et en matériau de sol extérieur est un patio, pas une pièce.
+- Murs intérieurs PORTEURS continus (refends parallèles à X, qui reprennent les planchers) : "envelope.refends" — indispensable dès
+  que la largeur Y dépasse ~6 m (sinon la portée des planchers est fausse).
 - "stair" : emprise de la trémie et murs de cage s'il y en a ; "roof" : niveaux d'égout / faîtage / plafond, côtés pignons et
   côtés d'égout, lucarnes.
 - Toiture : "ridge_axis": "y" si le faîtage est parallèle à Y (pignons = côtés d'axe "y", cas des maisons de ville entre mitoyens) ;
@@ -196,8 +201,8 @@ async def _text_llm(system: str, text: str) -> str:
     """Appel IA court en texte brut (pas de JSON) pour la classification d'intention — cascade Claude → OpenAI → Gemini."""
     import asyncio
     import os
-    order = [p.strip() for p in os.environ.get("BET_LLM_ORDER", "claude,openai,gemini").split(",") if p.strip() in PROVIDERS]
-    for name in order or ["claude"]:
+    order = _provider_order()
+    for name in order:
         try:
             out = await asyncio.wait_for(PROVIDERS[name](system, text, images=None, max_tokens=8), 30)
             if out and out.strip():
@@ -400,7 +405,79 @@ async def _gemini(system, text, images=None, model=None, max_tokens=4096, json_s
     return resp.text or ""
 
 
-PROVIDERS = {"claude": _claude, "openai": _openai, "gemini": _gemini}
+async def _emergent(system, text, images=None, model=None, max_tokens=4096, json_schema=None):
+    """Filet universel : la chaîne IA de la plateforme (engines.ai._complete, clé universelle Emergent incluse)."""
+    from engines import ai
+    return await ai._complete(system, text, images=images, feature="bet_reader")
+
+
+class ProvidersDown(RuntimeError):
+    """Toutes les IA ont échoué ; .status = {fournisseur: motif court} (auth, credits, overloaded, timeout, json, other)."""
+
+    def __init__(self, status: dict, detail: str):
+        self.status = status
+        super().__init__("Aucun fournisseur IA n'a pu lire les plans — " + " | ".join(f"{k}: {v}" for k, v in status.items()) + " — " + detail[:400])
+
+
+def _why(exc: BaseException) -> str:
+    t = f"{type(exc).__name__} {exc}".lower()
+    if "timeout" in t:
+        return "timeout"
+    if "401" in t or "invalid x-api-key" in t or "invalid api key" in t or "authentication" in t or "permission" in t:
+        return "auth"
+    if "credit" in t or "quota" in t or "billing" in t or "402" in t or "insufficient" in t or "budget" in t:
+        return "credits"
+    if "503" in t or "529" in t or "overload" in t or "unavailable" in t or "high demand" in t or "429" in t or "rate" in t:
+        return "overloaded"
+    return "other"
+
+
+WHY_TXT = {"fr": {"auth": "clé refusée", "credits": "crédits épuisés", "overloaded": "surchargé", "timeout": "délai dépassé",
+                  "json": "réponse illisible", "other": "erreur"},
+           "pt": {"auth": "chave recusada", "credits": "sem créditos", "overloaded": "sobrecarregado", "timeout": "tempo esgotado",
+                  "json": "resposta ilegível", "other": "erro"}}
+
+
+def providers_message(exc: BaseException, lang: str) -> str | None:
+    """Message court et lisible quand toutes les IA sont tombées (sinon None)."""
+    st = getattr(exc, "status", None)
+    if not isinstance(st, dict):
+        return None
+    w = WHY_TXT["pt" if lang == "pt" else "fr"]
+    names = {"claude": "Claude", "openai": "OpenAI", "gemini": "Gemini", "emergent": "chave universal" if lang == "pt" else "clé universelle"}
+    lst = ", ".join(f"{names.get(k, k)} : {w.get(v, v)}" for k, v in st.items())
+    if lang == "pt":
+        return f"Nenhuma IA disponível para ler as plantas ({lst}). Verifique as chaves e os créditos dos fornecedores e volte a lançar o estudo."
+    return f"Aucune IA disponible pour lire les plans ({lst}). Vérifiez les clés et crédits des fournisseurs puis relancez l'étude."
+
+
+async def _gemini_retry(system, text, images=None, model=None, max_tokens=4096, json_schema=None):
+    """Gemini surchargé (503/429) : 2 nouvelles tentatives espacées, puis le modèle Flash."""
+    import asyncio
+    import os
+    last = None
+    for k, mdl in enumerate((model, model, os.environ.get("GOOGLE_GEMINI_MODEL_FAST", "gemini-flash-latest"))):
+        try:
+            return await _gemini(system, text, images=images, model=mdl, max_tokens=max_tokens)
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if _why(exc) != "overloaded":
+                raise
+            await asyncio.sleep(4 * (k + 1))
+    raise last
+
+
+PROVIDERS = {"claude": _claude, "openai": _openai, "gemini": _gemini_retry, "emergent": _emergent}
+FULL_ORDER = ("claude", "openai", "gemini")
+
+
+def _provider_order() -> list[str]:
+    """Ordre BET_LLM_ORDER en tête, puis TOUS les autres fournisseurs, puis le filet Emergent en dernier :
+    une variable d'environnement réduite (« claude » seul) ne doit jamais supprimer les replis."""
+    import os
+    pref = [p.strip() for p in os.environ.get("BET_LLM_ORDER", ",".join(FULL_ORDER)).split(",") if p.strip() in PROVIDERS and p.strip() != "emergent"]
+    order = list(dict.fromkeys(pref + list(FULL_ORDER)))
+    return order + ["emergent"]
 LAST_PROVIDER = [None]          # fournisseur qui a réellement répondu au dernier appel
 
 
@@ -412,9 +489,10 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
     import logging
     import os
     log = logging.getLogger(__name__)
-    order = [p.strip() for p in os.environ.get("BET_LLM_ORDER", "claude,openai,gemini").split(",") if p.strip() in PROVIDERS]
+    order = _provider_order()
     timeout = float(os.environ.get("BET_LLM_TIMEOUT", "600"))
     errors = []
+    status = {}
     first_text = None
     for name in order:
         try:
@@ -434,13 +512,15 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
                     log.warning("bet reader: relevé fait par %s après échec de %s", name, "; ".join(errors))
                 return txt
             errors.append(f"{name}: JSON illisible ou absent")
+            status[name] = "json"
         except Exception as exc:  # noqa: BLE001 — on bascule sur le fournisseur suivant
             errors.append(f"{name}: {type(exc).__name__}: {str(exc)[:160]}")
+            status[name] = _why(exc)
             log.warning("bet reader: %s indisponible (%s) → fournisseur suivant", name, type(exc).__name__)
     if first_text:
         log.warning("bet reader: aucun JSON valide ; on renvoie la 1re réponse pour correction (%s)", "; ".join(errors))
         return first_text
-    raise RuntimeError("Aucun fournisseur IA n'a pu lire les plans — " + " | ".join(errors))
+    raise ProvidersDown(status, " | ".join(errors))
 
 
 # ------------------------------------------------------------------ point d'entrée
@@ -467,9 +547,21 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
         return {"ok": False, "model": None, "anomalies": [], "pages": [], "attempts": 0, "decisions": [],
                 "questions": ["Je ne trouve aucune planche de plan, coupe ou façade dans les documents joints : joignez le PC (PCMI 02 à 05) en PDF."]}
     images = [render_png(by_doc[p["doc"]], p["page"]) for p in chosen]
+    zl = []
+    try:                       # grandes planches (A2/A1/A0) : agrandissements du bâtiment, cotes lisibles
+        from engines.bet_frame.zoom import zooms
+        for p in chosen:
+            if len(images) + len(zl) >= 20:
+                break
+            zl += [(p, i, im) for i, im in enumerate(zooms(by_doc[p["doc"]], p["page"])[:20 - len(images) - len(zl)])]
+    except Exception:  # noqa: BLE001
+        zl = []
+    images += [im for _p, _i, im in zl]
+    zoom_legend = "".join(f"\n\nImage {len(chosen) + n + 1} : AGRANDISSEMENT de {p['doc']} p.{p['page']} — "
+                          + ("bâtiment entier" if i == 0 else f"moitié {i}") + " (cotes lisibles)." for n, (p, i, _im) in enumerate(zl))
     legend = "\n\n".join(f"Image {i + 1} : {p['doc']} p.{p['page']} ({p['kind']}, feuille {p['size_mm'][0]}×{p['size_mm'][1]} mm).\n"
                          f"Couche texte vectorielle (mot@x,y en mm depuis le coin haut-gauche ; les cotes écrites sont FIABLES, "
-                         f"utilise-les en priorité sur la lecture de l'image) : {p['words'] or '(aucune — plan scanné)'}" for i, p in enumerate(chosen))
+                         f"utilise-les en priorité sur la lecture de l'image) : {p['words'] or '(aucune — plan scanné)'}" for i, p in enumerate(chosen)) + zoom_legend
     base = (f"EXEMPLE DE BuildingModel (autre maison, même schéma — ne recopie pas ses valeurs) :\n{_example()}\n\n"
             f"PAYS : {country}\nHYPOTHÈSES DU CLIENT (prioritaires sur les plans pour les matériaux) : {hypotheses or 'aucune'}\n\n"
             f"PLANCHES JOINTES :\n{legend}\n\nÉTUDE DE SOL (texte extrait) :\n{g2 or 'AUCUNE ÉTUDE DE SOL FOURNIE'}\n\n"

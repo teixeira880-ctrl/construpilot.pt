@@ -180,7 +180,7 @@ export default function StructureManualPanels({ study, model, setModel, dirty, s
           <div className="flex flex-wrap items-center gap-2">
             <Input aria-label={`Marca da altura ${i + 1}`} className="max-w-[8rem]" value={c.id} onChange={e => editArr("clearances", i, { id: e.target.value })} />
             <select aria-label={`Elemento da altura ${i + 1}`} className={sel + " max-w-[10rem]"} value={c.element_id} onChange={e => editArr("clearances", i, { element_id: e.target.value })}><option value="">Viga…</option>{beams.map(e => <option key={e.id} value={e.id}>{e.id}</option>)}</select>
-            {res && <span className="text-xs">→ <Status s={res.status} />{res.margin_m != null ? ` · marge ${(res.margin_m * 100).toFixed(1)} cm` : ""}</span>}
+            {res && <span className="text-xs">→ <Status s={res.status} />{res.margin_m != null ? ` · margem ${(res.margin_m * 100).toFixed(1)} cm` : ""}</span>}
             <Button variant="ghost" size="sm" aria-label={`Eliminar altura ${i + 1}`} onClick={() => removeArr("clearances", i)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <Txt label="Descrição" value={c.label} onChange={v => editArr("clearances", i, { label: v })} />

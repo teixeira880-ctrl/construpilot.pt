@@ -332,7 +332,7 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
               f"{bricks} briques (≈ {R['bricks_per_m2']} u/m²) — pose joint mince — {wall_gross} m² brutos − {i['openings_area_m2']} m² de vãos",
               "m²", wall_net, "mur_isobrique", P),
         _line("Lintéis horizontais + pilaretes verticais BA 20 × 20",
-              f"{ch_h} ml CH + {ch_v} ml CV ({n_raid} raidisseurs/niveau)", "m³",
+              f"{ch_h} ml CH + {ch_v} ml CV ({n_raid} pilaretes/piso)", "m³",
               ch_beton, "chainage_beton", P),
         _line("Aços dos lintéis — 4 Ø10 + estribos Ø6",
               f"{R['acier_chainage_kg_ml']} kg/ml × {round(ch_h + ch_v, 1)} ml", "kg",
@@ -373,7 +373,7 @@ def compute_gros_oeuvre(i: dict, stairs_steps: int | None = None,
         _line("Máquinas e equipamentos — grua/manipulador telescópico, betoneira, ferramentas",
               "aluguer pela duração da estrutura (valor global)", "forfait", 1, "engins_levage", P),
         _line("Andaime periférico — aluguer, montagem e desmontagem",
-              f'périmètre {per} m (valor global)', "forfait", 1, "echafaudage", P),
+              f'perímetro {per} m (valor global)', "forfait", 1, "echafaudage", P),
         _line("Proteção coletiva e segurança — guarda-corpos periféricos, redes, sinalização e plano de segurança e saúde", "valor global pela duração da obra", "forfait", 1,
               "protection_securite", P),
     ]
@@ -477,7 +477,7 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
         n_open_lvl = base_open + (1 if k < extra_open else 0)
         if n_open_lvl > 0:
             lines.append(
-                _line("Padieiras BA sobre vãos", f"{n_open_lvl} ouvertures", "ml",
+                _line("Padieiras BA sobre vãos", f"{n_open_lvl} vãos", "ml",
                       n_open_lvl * (i["avg_opening_width_m"] + 0.40), "linteau", P))
         if stairs_left > 0 and k < lv - 1:
             vol = _stair_volume(h, stairs_steps)
@@ -496,7 +496,7 @@ def compute_levels_breakdown(i: dict, prices: dict | None = None,
         _line("Cobertura em telha — telhas, subtelha, ripas e cumeeira", "forfait",
               "forfait", 1, "couverture_tuiles", P),
         _line("Caixilharia exterior — janelas e portas-janelas aplicadas",
-              f"{i['openings_count']} ouvertures", "forfait", 1, "menuiseries_ext", P),
+              f"{i['openings_count']} vãos", "forfait", 1, "menuiseries_ext", P),
     ], 0, 0.0))
     return out
 

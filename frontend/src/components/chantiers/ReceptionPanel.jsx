@@ -71,7 +71,7 @@ export function ReceptionPanel({ chantierId }) {
                 <p className="text-sm font-medium">{pv.ref} · {DECISIONS.find((d) => d[0] === pv.decision)?.[1]}</p>
                 <p className="text-xs text-muted-foreground">
                   Receção {(pv.date_reception || "").slice(0, 10)} · {(pv.reserves || []).length} reserva(s)
-                  {pv.pro_signature?.name ? ` · entreprise : ${pv.pro_signature.name}` : ""}
+                  {pv.pro_signature?.name ? ` · empresa: ${pv.pro_signature.name}` : ""}
                   {pv.client_signature?.name ? ` · cliente: ${pv.client_signature.name}` : ""}
                 </p>
               </div>

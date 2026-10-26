@@ -72,7 +72,7 @@ export default function Entreprise() {
       const q = actorFilter && actorFilter !== "all" ? `?actor_id=${actorFilter}` : "";
       const { data } = await api.get(`/company/activity/export${q}`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "text/csv" }));
-      const a = document.createElement("a"); a.href = url; a.download = "journal-activite.csv"; a.click();
+      const a = document.createElement("a"); a.href = url; a.download = "registo-atividade.csv"; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível exportar"); }
   };
@@ -81,7 +81,7 @@ export default function Entreprise() {
       const q = actorFilter && actorFilter !== "all" ? `?actor_id=${actorFilter}` : "";
       const { data } = await api.get(`/company/activity/pdf${q}`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
-      const a = document.createElement("a"); a.href = url; a.download = "journal-activite.pdf"; a.click();
+      const a = document.createElement("a"); a.href = url; a.download = "registo-atividade.pdf"; a.click();
       URL.revokeObjectURL(url);
     } catch { toast.error("Impossível exportar PDF"); }
   };
@@ -148,7 +148,7 @@ export default function Entreprise() {
           <Kpi icon={FileText} label="Orçamento" value={k.quotes} />
           <Kpi icon={ClipboardList} label="Obras" value={k.chantiers} />
           <Kpi icon={XCircle} label="Reservas em curso" value={k.open_reserves} />
-          <Kpi icon={Users} label="Equipa" value={`${k.members} (${k.workers} ouvriers)`} />
+          <Kpi icon={Users} label="Equipa" value={`${k.members} (${k.workers} operários)`} />
         </div>
       )}
 

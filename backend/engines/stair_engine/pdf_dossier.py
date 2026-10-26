@@ -152,7 +152,7 @@ def build_pdf(result: dict, *, project_name: str = "Projeto",
         buf, pagesize=A4,
         leftMargin=1.8 * cm, rightMargin=1.8 * cm,
         topMargin=1.5 * cm, bottomMargin=1.5 * cm,
-        title="ConstruPilot — Dossier escada",
+        title="ConstruPilot — Processo da escada",
     )
     styles = _styles()
     story: list = []

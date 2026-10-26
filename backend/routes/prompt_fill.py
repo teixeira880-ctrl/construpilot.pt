@@ -25,6 +25,8 @@ from engines.prompt_fill import plantas as _plantas_registered  # noqa: F401
 from engines.prompt_fill import autorizacao as _autorizacao_registered  # noqa: F401
 from engines.prompt_fill import moradia as _moradia_registered  # noqa: F401
 from engines.prompt_fill import calculadoras as _calculadoras_registered  # noqa: F401
+from engines.prompt_fill import estimativa as _estimativa_registered  # noqa: F401
+from engines.prompt_fill import fundacao as _fundacao_registered  # noqa: F401
 
 router = APIRouter(prefix="/prompt-fill", tags=["prompt-fill"])
 

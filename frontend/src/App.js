@@ -94,7 +94,14 @@ import DemoPage from "@/pages/DemoPage";
 // Rotas pesadas via lazy loading para code-splitting
 const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
+const Missions = lazy(() => import("@/pages/Missions"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
+const PlansExecutionLazy = lazy(() => import("@/pages/PlansExecution"));
+const EstudioImagensLazy = lazy(() => import("@/pages/EstudioImagens"));
+const UrbanismoLazy = lazy(() => import("@/pages/Urbanismo"));
+const UrbanismoProcessoLazy = lazy(() => import("@/pages/UrbanismoProcesso"));
+const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
+const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 import AppsHub from "@/pages/AppsHub";
 import MedicaoRapida from "@/pages/MedicaoRapida";
 import BottomTabBar from "@/components/mobile/BottomTabBar";
@@ -149,6 +156,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 import CookieConsent from "@/components/CookieConsent";
+import StandBar from "@/components/StandBar";
+import StandMode from "@/pages/StandMode";
 import { DomTranslator } from "@/components/DomTranslator";
 
 const PostalFeature = ({ children }) => {
@@ -251,6 +260,7 @@ function AppRouter() {
       <Route path="/" element={<LandingPro />} />
       <Route path="/demo" element={<Demo />} />
       <Route path="/demo/entrar" element={<DemoPage />} />
+      <Route path="/stand" element={<StandMode />} />
       <Route path="/demo-entrar" element={<DemoPage />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
       <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />
@@ -281,6 +291,7 @@ function AppRouter() {
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="/planning" element={<ProRoute><Shell><Planning /></Shell></ProRoute>} />
       <Route path="/agents" element={<Protected><Shell><AgentsHub /></Shell></Protected>} />
+      <Route path="/missions" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><Missions /></Suspense></Shell></ProRoute>} />
       <Route path="/rendu-ia" element={<SubscriberRoute><Shell><RenderStudio /></Shell></SubscriberRoute>} />
       <Route path="/mes-demandes" element={<ProRoute><Shell><MyLeads /></Shell></ProRoute>} />
       <Route path="/diy" element={<Shell><Diy /></Shell>} />
@@ -367,6 +378,12 @@ function AppRouter() {
       <Route path="/structuro/calcul" element={<ProRoute><Shell><StructureCalc /></Shell></ProRoute>} />
       <Route path="/structuro-bet" element={<ProRoute><Shell><BetDossier /></Shell></ProRoute>} />
       <Route path="/estudo-moradia" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><StructuroHouseLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/planos-execucao" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><PlansExecutionLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/estudio-imagens" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><EstudioImagensLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/urbanismo/validacao/:token" element={<Suspense fallback={<RouteSkeleton />}><UrbanismoValidacaoLazy /></Suspense>} />
+      <Route path="/urbanismo" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><UrbanismoLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/urbanismo/:id" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><UrbanismoProcessoLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/visto-bet/:token" element={<Suspense fallback={<RouteSkeleton />}><VistoBetLazy /></Suspense>} />
       <Route path="/structuro/lecture-plan" element={<ProRoute><Shell><PlanReader /></Shell></ProRoute>} />
       <Route path="/escaliers" element={<ProRoute><Shell><StairCalculator /></Shell></ProRoute>} />
       <Route path="/btp-solver" element={<Protected><Shell><BtpSolver /></Shell></Protected>} />
@@ -441,6 +458,7 @@ function App() {
                         <MicFab />
                         <InstallPrompt />
                         <CookieConsent />
+                        <StandBar />
                         <DomTranslator />
                         <Toaster position="top-right" richColors />
                       </OfflineProvider>

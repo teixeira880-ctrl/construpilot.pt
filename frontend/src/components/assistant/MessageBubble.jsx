@@ -6,21 +6,30 @@ import remarkGfm from "remark-gfm";
 import { ActionCard } from "./ActionCard";
 import { toast } from "sonner";
 import { useWorkspaceCopy } from "@/components/workspace/copy";
-import { PrivateImage } from "./PrivateMedia";
+import { PrivateImage, downloadAssistantFile } from "./PrivateMedia";
 import { useDocumentViewer } from "./DocumentViewer";
 import { ListenButton } from "@/components/voice/VoiceButtons";
 
-export function MessageBubble({ m, live, onCorrect, testId }) {
+export function MessageBubble({ m, live, onCorrect, testId, queued }) {
   const ui = useWorkspaceCopy();
   const studio = useStudioCopy();
   const view = useDocumentViewer();
   const id = testId || `assistant-msg-${m.role}`;
   const mine = m.role === "user";
   return (
-    <div className={`assistant-message rounded-sm border text-sm ${mine ? "ml-auto bg-primary/10" : "bg-card"}`} data-testid={id} data-message-role={m.role}>
+    <div className={`assistant-message rounded-sm border text-sm ${mine ? "ml-auto bg-primary/10" : "bg-card"}${queued ? " assistant-message-queued" : ""}`} data-testid={id} data-message-role={m.role} data-queued={queued ? "true" : undefined}>
       <div className="assistant-message-author">{!mine && <AssistantMark size={24} />}<span>{mine ? studio("you") : ui("assistant")}</span></div>
       {mine ? <div className="whitespace-pre-wrap">{m.content}</div>
-        : <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ img: ({ alt }) => <span>{alt}</span>, table: ({ children }) => <div className="assistant-table-scroll" tabIndex={0} role="region" aria-label={studio("table")}><table>{children}</table></div> }}>{m.content}</ReactMarkdown>{live && <span className="inline-block w-1.5 h-4 bg-primary/70 animate-pulse align-middle ml-0.5" />}</div>}
+        : <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ img: ({ alt }) => <span>{alt}</span>, a: ({ href, children }) => {
+            const h = href || "";
+            const path = h.startsWith("http") ? (() => { try { const u = new URL(h); return u.pathname + u.search; } catch { return h; } })() : h;
+            if (path.includes("/assistant/artifacts/")) {
+              const fname = typeof children === "string" ? children : "ficheiro";
+              return <button type="button" className="underline inline-flex items-center gap-1 text-primary" onClick={() => downloadAssistantFile(path.replace(/^\/api/, ""), fname).catch(() => toast.error("Descarga impossível"))} data-testid="assistant-inline-artifact"><Download className="inline h-3 w-3" />{children}</button>;
+            }
+            const ext = /^https?:/.test(h);
+            return <a href={h} target={ext ? "_blank" : undefined} rel={ext ? "noreferrer" : undefined}>{children}</a>;
+          }, table: ({ children }) => <div className="assistant-table-scroll" tabIndex={0} role="region" aria-label={studio("table")}><table>{children}</table></div> }}>{m.content}</ReactMarkdown>{live && <span className="inline-block w-1.5 h-4 bg-primary/70 animate-pulse align-middle ml-0.5" />}</div>}
       {m.attachments?.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1.5" data-testid={`${id}-attachments`}>
           {m.attachments.map((f) => <div key={f.plan_id || f.doc_id} className="max-w-full grid gap-1 text-[11px] px-1.5 py-1 rounded-sm border bg-background" data-testid={`${id}-attachment-${f.plan_id || f.doc_id}`}>

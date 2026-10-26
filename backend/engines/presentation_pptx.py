@@ -182,7 +182,7 @@ CLIENT = {
                 f"Patente n.º {PATENT} · alojamento na União Europeia.",
             ], "dashboard.png"),
             ("1. Orçamentar o mapa do arquiteto", [
-                "DPGF / BPU / DQE: vários mapas Excel e vários cadernos de encargos num mesmo estudo.",
+                "Mapas de quantidades: vários mapas Excel e vários cadernos de encargos num mesmo estudo.",
                 "Lotes detetados, preços da SUA biblioteca e depois IA para as linhas desconhecidas.",
                 "Instruções em linguagem natural: « não orçamentes a cerâmica nem o parquet, margem 12 % ».",
                 "Leitura do caderno de encargos: prescrições ligadas às linhas e alerta sobre trabalhos esquecidos.",
@@ -467,11 +467,11 @@ INV = {
             ], None),
             ("2. O produto: a cadeia completa", [
                 "Um único registo do mapa do arquiteto até à conta final.",
-                "Estimativa, medições sobre planta, orçamentação DPGF, orçamentos, obra, autos de medição, conta final, espaço do cliente.",
+                "Estimativa, medições sobre planta, orçamentação de mapas de quantidades, orçamentos, obra, autos de medição, conta final, espaço do cliente.",
                 "Web e aplicações nativas Android e iOS para utilização no terreno.",
                 "Gestão interna integrada: origem dos registos, ativação, despesas por envelope.",
             ], "dashboard.png"),
-            ("3. O núcleo técnico: orçamentação DPGF", [
+            ("3. O núcleo técnico: orçamentação de mapas de quantidades", [
                 "Leitura multi-folha de vários mapas Excel e vários cadernos de encargos num mesmo estudo.",
                 "Preços da biblioteca da empresa e depois IA para as linhas desconhecidas, com a origem de cada preço registada.",
                 "Instruções em linguagem natural, margem por lote, alerta de margem baixa, deteção de trabalhos exigidos no caderno de encargos mas ausentes do mapa.",
@@ -493,7 +493,7 @@ INV = {
                 "Fontes: ffbatiment.fr/le-batiment-en-chiffres · nota de conjuntura CAPEB T4 2025 · INSEE.",
             ], None),
             ("6. Posicionamento concorrencial", [
-                "Ferramentas de gestão (orçamentos/faturas): não orçamentam um DPGF nem tratam autos completos ou conta final.",
+                "Ferramentas de gestão (orçamentos/faturas): não orçamentam um mapa de quantidades nem tratam autos completos ou conta final.",
                 "Software de medições: poderoso, mas desligado da faturação e do acompanhamento de obra.",
                 "ERP de construção: caro e pesado, fora do alcance de estruturas de 1 a 20 pessoas.",
                 "ConstruPilot: a cadeia completa para o artesão e a PME, com IA onde é verificável.",
@@ -509,7 +509,7 @@ INV = {
         ],
         "slides_after": [
             ("Marcos do plano", [
-                "Meses 1-6: publicação das aplicações Android e iOS, primeiros clientes pagantes, industrialização da orçamentação DPGF.",
+                "Meses 1-6: publicação das aplicações Android e iOS, primeiros clientes pagantes, industrialização da orçamentação de mapas de quantidades.",
                 "Meses 7-12: aquisição controlada (SEO, terreno, parcerias com armazenistas), integrações contabilísticas.",
                 "Meses 13-18: equipa comercial, implantação regional, módulos de subcontratação.",
                 "Meses 19-24: abertura da API, parcerias de distribuição, preparação da internacionalização.",

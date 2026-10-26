@@ -499,7 +499,7 @@ export default function PlanCanvas({
       const val = fillPoly
         ? `${Number(m.area_m2 ?? 0).toFixed(2)} m²`
         : `${Number(m.value_m ?? m.length_m ?? 0).toFixed(2)} m`;
-      const suffix = isCumul ? ` (${segs.length} troços)` : isCumulArea ? ` (${segs.length} zones)` : "";
+      const suffix = isCumul ? ` (${segs.length} troços)` : isCumulArea ? ` (${segs.length} zonas)` : "";
       const label = (m.label ? `${m.label} · ${val}` : val) + suffix;
       ctx.font = `bold ${12 / zoom}px system-ui`;
       const w = ctx.measureText(label).width + 8 / zoom;

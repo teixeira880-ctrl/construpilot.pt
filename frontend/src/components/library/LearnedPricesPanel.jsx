@@ -69,7 +69,7 @@ export default function LearnedPricesPanel({ onValidated }) {
                        defaultValue={it.unit_price_ht}
                        onChange={(e) => setPrices((p) => ({ ...p, [it.item_id]: e.target.value }))}
                        className="w-28 rounded-sm num h-9" data-testid={`learned-price-${it.item_id}`} />
-                <span className="text-xs text-muted-foreground">HT</span>
+                <span className="text-xs text-muted-foreground">s/ IVA</span>
               </div>
               <Button size="sm" onClick={() => validate(it)} disabled={busy === it.item_id}
                       className="rounded-sm gap-1.5" data-testid={`learned-validate-${it.item_id}`}>

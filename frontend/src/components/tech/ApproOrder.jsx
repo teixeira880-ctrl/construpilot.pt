@@ -110,7 +110,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
           </select>
         </div>
         <Button variant="outline" onClick={() => estimate()} disabled={busy} className="gap-2 rounded-sm" data-testid="appro-estimate-btn">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Euro className="h-4 w-4" />}Orçamentar (fornecedor / DPGF)
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Euro className="h-4 w-4" />}Orçamentar (fornecedor / mapa de quantidades)
         </Button>
       </div>
 
@@ -120,7 +120,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
             <th className="text-left p-2">Designação</th>
             <th className="p-2 text-right">Qtd.</th><th className="p-2">Un.</th>
             <th className="p-2 text-right">Encomendável</th><th className="p-2">Cond.</th>
-            {priced && <th className="p-2 text-right">PU HT</th>}
+            {priced && <th className="p-2 text-right">PU s/ IVA</th>}
             {priced && <th className="p-2 text-right">Total s/ IVA</th>}
             <th className="p-2">Conf.</th><th className="p-2"></th>
           </tr></thead>
@@ -178,7 +178,7 @@ export default function ApproOrder({ items, suppliers, csvName, createOrder, onH
               Colocar-me em cópia (CC)
             </label>
             <div className="rounded-sm border border-border p-3 bg-secondary/20 text-xs">
-              <div className="font-semibold mb-1">Pré-visualização · {rows.length} linha(s){priced ? ` · Total ${eur(priced.grand_total)} € HT` : ""}</div>
+              <div className="font-semibold mb-1">Pré-visualização · {rows.length} linha(s){priced ? ` · Total ${eur(priced.grand_total)} € s/ IVA` : ""}</div>
               <ul className="space-y-0.5 max-h-40 overflow-auto">
                 {rows.slice(0, 12).map((it, i) => (
                   <li key={i} className="flex justify-between gap-2">

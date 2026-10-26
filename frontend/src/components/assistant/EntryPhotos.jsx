@@ -17,7 +17,7 @@ export const EntryPhotos = ({ conversationId, entry, onChange }) => {
       const fd = new FormData(); fd.append("file", file); fd.append("kind", "photo");
       const { data: doc } = await api.post("/assistant/documents", fd);
       await api.post(`/assistant/conversations/${conversationId}/state/${entry.entry_id}/photos`, { doc_id: doc.doc_id, phase, taken_at: null, caption: null });
-      toast.success(`Photo « ${phase === "before" ? "avant" : "após" } » fixada`);
+      toast.success(`Fotografia « ${phase === "before" ? "antes" : "depois" } » fixada`);
       onChange?.();
     } catch (e) { toast.error(typeof e?.response?.data?.detail === "string" ? e.response.data.detail : "Fotografia não fixada"); }
     finally { setBusy(false); if (input.current) input.current.value = ""; }

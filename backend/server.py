@@ -194,8 +194,11 @@ api_router.include_router(radar_sync.router)
 from routes import assistant as assistant_routes
 api_router.include_router(assistant_routes.router)
 api_router.include_router(assistant_routes.public_router)
+api_router.include_router(assistant_routes.bet_studies_router)
 from routes import agents as agents_routes
 api_router.include_router(agents_routes.router)
+from routes import missions as missions_routes   # programa IA de opções
+api_router.include_router(missions_routes.router)
 from routes import marketing as marketing_routes
 api_router.include_router(marketing_routes.public_router)
 api_router.include_router(ads_routes.router)
@@ -259,6 +262,18 @@ from routes import prompt_fill as prompt_fill_routes  # noqa: E402
 api_router.include_router(prompt_fill_routes.router)
 from routes import admin_activity as admin_activity_routes  # noqa: E402
 api_router.include_router(admin_activity_routes.router)
+from routes import mep as mep_routes  # noqa: E402  — planos de execução eletricidade e canalização
+api_router.include_router(mep_routes.router)
+from routes import assistant_dossiers as assistant_dossiers_routes  # noqa: E402  — processos completos / ZIP no Assistente
+api_router.include_router(assistant_dossiers_routes.router)
+from routes import image_studio as image_studio_routes  # noqa: E402  — estúdio de imagens IA (ilustração não contratual)
+api_router.include_router(image_studio_routes.router)
+from routes import urbanismo as urbanismo_routes  # noqa: E402  — editor de volumes, peças desenhadas, quadro de áreas
+api_router.include_router(urbanismo_routes.router)
+api_router.include_router(urbanismo_routes.public_router)
+from routes import structuro_bet_visto as bet_visto_routes  # noqa: E402  — visto do engenheiro (autopiloto BET)
+api_router.include_router(bet_visto_routes.bet_visto_router)
+api_router.include_router(bet_visto_routes.bet_visto_public)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
 
@@ -402,6 +417,45 @@ async def _seed_demo_org():
 
 @app.on_event("startup")
 async def seed():
+    """Arranque rápido: o servidor fica disponível de imediato (readiness probe do deploy) e as inicializações
+    (índices, contas demo / Web Summit, admins, workers) correm em segundo plano. Antes, o startup síncrono podia
+    ultrapassar o prazo do rollout e o deploy era rejeitado (a versão anterior ficava em produção)."""
+    import asyncio as _asyncio
+
+    async def _run():
+        from engines.assistant_jobs import STARTUP
+        try:
+            await _seed_impl()
+            STARTUP["seed"] = "ok"
+            logger.info("Inicialização em segundo plano concluída")
+        except Exception as e:  # noqa: BLE001
+            STARTUP["seed"] = f"falhou: {type(e).__name__}: {str(e)[:300]}"
+            logger.exception("Inicialização em segundo plano falhou")
+
+    async def _workers():
+        """Workers da fila primeiro e independentes do resto do arranque: uma falha de seed / índice em produção
+        não pode deixar o Assistente «Em espera» para sempre."""
+        import importlib
+        from engines.assistant_jobs import STARTUP
+        try:
+            from engines.llm_keys import load_state
+            await load_state()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"openai key state load skipped: {e}")
+        for attr, mod, fn in (("assistant_workers", "engines.assistant_jobs", "start_workers"),
+                              ("agent_workers", "routes.agents", "start_agent_workers"),
+                              ("study_workers", "engines.study_dossier_jobs", "start_workers")):
+            try:
+                setattr(app.state, attr, await getattr(importlib.import_module(mod), fn)())
+                STARTUP[attr] = "ok"
+            except Exception as e:  # noqa: BLE001
+                STARTUP[attr] = f"falhou: {type(e).__name__}: {str(e)[:300]}"
+                logger.exception("Arranque de %s falhou", attr)
+    app.state.workers_task = _asyncio.create_task(_workers())
+    app.state.seed_task = _asyncio.create_task(_run())
+
+
+async def _seed_impl():
     try:
         from engines.llm_keys import load_state
         await load_state()
@@ -441,6 +495,12 @@ async def seed():
         logger.info("websummit demo seed summary: %s", _ws_summary)
     except Exception as e:  # noqa: BLE001
         logger.warning("websummit demo seed skipped: %s", e)
+    # Acessos oferecidos a clientes reais — fail-closed (password provisória só via env).
+    try:
+        from core.client_grants import apply_client_grants
+        logger.info("client grants: %s", await apply_client_grants(db, hash_password, new_user_id))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("client grants skipped: %s", e)
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
     # Règle sécurité : zéro password en clair dans le code — les 5 passwords
@@ -924,12 +984,6 @@ async def seed():
     app.state.scheduler = scheduler
     logger.info("Scheduler started (daily price alerts @ 08:00 UTC)")
 
-    from engines.assistant_jobs import start_workers
-    app.state.assistant_workers = await start_workers()
-    from routes.agents import start_agent_workers
-    app.state.agent_workers = await start_agent_workers()
-    from engines.study_dossier_jobs import start_workers as start_study_workers
-    app.state.study_workers = await start_study_workers()
     logger.info("ConstruPilot backend prêt")
 
 

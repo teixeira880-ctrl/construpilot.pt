@@ -42,7 +42,7 @@ export function QuoteDialog({
             {quoteMode === "send" ? "Enviar o orçamento por email" : "Gerar um orçamento PDF"}
           </DialogTitle>
           <DialogDescription>
-            O orçamento retoma automaticamente as áreas medidas e aplica a mão de obra & os preços de materiais médios França 2026.
+            O orçamento retoma automaticamente as áreas medidas e aplica a mão de obra & os preços médios de materiais de referência 2026.
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-2 border-b border-border pb-2">
@@ -120,7 +120,7 @@ export function QuoteDialog({
               <div className="grid gap-2">
                 <Label>Assunto email (opcional)</Label>
                 <Input value={quoteSubject} onChange={(e) => setQuoteSubject(e.target.value)}
-                       placeholder="Ex: O seu orçamento para a renovação apartamento Paris 11"
+                       placeholder="Ex: O seu orçamento para a renovação do apartamento em Lisboa"
                        maxLength={180}
                        data-testid="quote-subject-input" className="rounded-sm h-11" />
                 <p className="text-[10px] text-muted-foreground">

@@ -172,16 +172,16 @@ async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) 
     pdf = order_pdf.build_order_pdf(order, {"company_name": company_name})
     csv_txt = _csv_from_items(order["items"])
 
-    type_lbl = {"acier": "ferraillage", "etancheite": "étanchéité",
-                "toiture": "toiture", "vrd": "VRD"}.get(order.get("type"), "matériaux")
-    subject = f'Nota de encomenda {type_lbl} — {company_name} (n° {order_id})'
+    type_lbl = {"acier": "de armaduras", "etancheite": "de impermeabilização",
+                "toiture": "de cobertura", "vrd": "de redes exteriores"}.get(order.get("type"), "de materiais")
+    subject = f'Nota de encomenda {type_lbl} — {company_name} (n.º {order_id})'
     body_html = (f"<p>Olá,</p><p>{body.message or f'Segue em anexo a nossa nota de encomenda {type_lbl}.'}</p><p>O detalhe segue em anexo (PDF + CSV). Agradecemos que nos confirme disponibilidades e prazo de entrega.</p><p>Com os melhores cumprimentos,<br/>{company_name}</p>")
     html = wrap_company_html(subject, body_html, company_name=company_name,
                              logo_b64=branding.get("logo_b64"),
                              company_email=user.get("email"))
     try:
         await send_email_with_pdf(
-            to, subject, html, pdf, filename=f"bon_commande_{order_id}.pdf",
+            to, subject, html, pdf, filename=f"nota_encomenda_{order_id}.pdf",
             cc=user.get("email") if body.cc_self else None,
             extra_attachments=[{"filename": f"bon_commande_{order_id}.csv",
                                 "content": csv_txt.encode("utf-8"),

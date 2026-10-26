@@ -138,7 +138,7 @@ async def reserve(user: dict, postal_id: str, opp_id: str, kind: Kind = "demo", 
         try:
             await db.postal_demo_allowances.insert_one({"_id": key, "count": 1, "credits": 0, "sends": [entry], "created_at": _now()})
         except DuplicateKeyError:
-            raise _exhausted(f'Les {DEMO_LIMIT} envios oferecidos à sua empresa já foram utilizados ou reservados. Nenhum novo envio foi desencadeado.')
+            raise _exhausted(f'Os {DEMO_LIMIT} envios oferecidos à sua empresa já foram utilizados ou reservados. Nenhum novo envio foi desencadeado.')
         return
     if kind == "credit":
         if not await _push_entry(key, entry, {"credits": {"$gt": 0}}, {"$inc": {"credits": -1}}):
@@ -221,7 +221,7 @@ async def _maybe_alert_admins(user: dict, key: str) -> None:
 
 async def _email_admins(admins: list[dict], label: str, message: str) -> None:
     from engines.emailer import send_email
-    html = (f'<p>Olá,</p><p>{message}</p><p>Entreprise : <b>{label}</b><br>Preço após a quota: {UNIT_NET_CENTS / 100:.2f} € HT par envoi ({gross(UNIT_NET_CENTS) / 100:.2f} € c/ IVA) ou packs de créditos.</p><p>— ConstruPilot</p>')
+    html = (f'<p>Olá,</p><p>{message}</p><p>Empresa: <b>{label}</b><br>Preço após a quota: {UNIT_NET_CENTS / 100:.2f} € s/ IVA por envio ({gross(UNIT_NET_CENTS) / 100:.2f} € c/ IVA) ou packs de créditos.</p><p>— ConstruPilot</p>')
     for admin in admins:
         if admin.get("email"):
             try:

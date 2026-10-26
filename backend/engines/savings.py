@@ -53,7 +53,7 @@ def diy_savings(est: dict) -> dict:
     return {
         "key": "diy_savings",
         "label": "Trabalhos que pode fazer sozinho",
-        "description": (f"En prenant en charge {len(tasks)} lot(s) DIY : "
+        "description": (f"Ao assumir {len(tasks)} lote(s) por conta própria: "
                         + (", ".join(tasks[:4]) + ("…" if len(tasks) > 4 else "") if tasks
                            else "nenhum capítulo de bricolage neste projeto")),
         "amount": round(saved, 2),

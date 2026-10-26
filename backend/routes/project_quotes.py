@@ -117,7 +117,7 @@ async def get_artisan_block(project_id: str, user=Depends(current_user)) -> dict
 
 async def _notify_pro(doc: dict, project: dict, user, accepted: bool) -> None:
     label = "accepté" if accepted else "refusé"
-    msg = f"Orçamento {doc.get('number') or ''} {label} par {user.get('name') or user.get('email')} · {project.get('name') or 'chantier'}"
+    msg = f"Orçamento {doc.get('number') or ''} {label} por {user.get('name') or user.get('email')} · {project.get('name') or 'obra'}"
     await db.notifications.insert_one({"notif_id": "n_" + uuid.uuid4().hex[:10], "user_id": doc["user_id"],
                                        "type": "quote_accepted" if accepted else "quote_declined", "doc_id": doc["doc_id"],
                                        "message": msg, "created_at": _now(), "read": False})

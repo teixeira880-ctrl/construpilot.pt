@@ -62,6 +62,17 @@ def _perimeter_points(r, n, inset=0.12, skip_corners=0.35):
 UNIQUE_SPECS = {"chauffe_eau_20A", "vmc", "pac_32A"}     # un seul appareil par maison, même s'il y a plusieurs locaux techniques
 
 
+def _head(m: Model) -> str:
+    """Disjoncteur de branchement : puissance de la fraction quand le modèle la porte (immeuble), sinon 12 kVA mono."""
+    kva = (m.raw.get("project") or {}).get("subscribed_kva")
+    if not kva:
+        return "Disjoncteur de branchement 500 mA 15/45 A (Enedis, 12 kVA mono à confirmer)"
+    kva = float(kva)
+    amp = next((a for a, k in ((30, 6.9), (45, 10.35), (60, 13.8), (90, 20.7)) if kva <= k + 1e-6), 90)
+    txt = f"{kva:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+    return f"Disjoncteur de branchement 500 mA 15/{amp} A (Enedis, {txt} kVA mono à confirmer)"
+
+
 def electrical(m: Model) -> dict:
     levels = []
     circuits = []
@@ -138,7 +149,7 @@ def electrical(m: Model) -> dict:
         "levels": levels, "circuits": circuits, "rcds": rcds, "totals": totals,
         "habitable_area": round(hab, 1),
         "panel": {"location": "GTL dans le hall RDC (près de l'entrée), largeur ≥ 0,60 m", "rows": rows, "modules": modules,
-                  "head": "Disjoncteur de branchement 500 mA 15/45 A (Enedis, 12 kVA mono à confirmer)",
+                  "head": _head(m),
                   "spare": "20 % de réserve", "earth": "Prise de terre : boucle à fond de fouille en câblette Cu 25 mm² sous les semelles, barrette de mesure en LT, R ≤ 100 Ω"},
         "cables_m": {f"{k} mm²": round(v) for k, v in cable.items()},
         "rules": [

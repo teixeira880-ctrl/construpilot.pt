@@ -97,7 +97,7 @@ async def _weekly_promo_code() -> tuple[str, str]:
         stripe.Coupon.retrieve(coupon_id)
     except Exception:  # noqa: BLE001
         stripe.Coupon.create(id=coupon_id, percent_off=PROMO_PERCENT, duration="repeating",
-                             duration_in_months=3, name=f"Relance -{PROMO_PERCENT} % (3 mois)")
+                             duration_in_months=3, name=f"Lembrete -{PROMO_PERCENT} % (3 meses)")
     existing = stripe.PromotionCode.list(code=code, limit=1).data
     if not existing:
         stripe.PromotionCode.create(promotion={"type": "coupon", "coupon": coupon_id}, code=code,
@@ -160,7 +160,7 @@ async def run_upsell_j10_emails(days_after_signup: int = 10, limit: int = 200) -
            "expires": expires_iso, "at": datetime.now(timezone.utc).isoformat()}
     await db.email_campaigns.insert_one({
         "campaign_id": "auto_" + os.urandom(5).hex(), "type": "auto_upsell_j10",
-        "subject": f"Relance J+10 code {code} (-{PROMO_PERCENT} %)", "recipients_count": len(users),
+        "subject": f"Lembrete D+10 código {code} (-{PROMO_PERCENT} %)", "recipients_count": len(users),
         "sent": sent, "failed": failed, "sent_by": "system", "created_at": res["at"]})
     logger.info(f"Upsell J+10: {res}")
     return res

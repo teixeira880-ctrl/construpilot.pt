@@ -150,7 +150,7 @@ async def journey_metrics(days: int = 30) -> dict:
             "sessions_total": total_sessions,
             "sessions_without_date": total_sessions - dated_sessions,
             "session_holders_not_countable": orphan_sessions,
-            "active_definition": f'pelo menos uma sessão aberta em {days} jours (collection user_sessions)',
+            "active_definition": f'pelo menos uma sessão aberta em {days} dias (coleção user_sessions)',
             "paying_customers": paying,
             "paying_note": "direitos ativos; a fase de lançamento gratuita (FREE_PROMO_MODE) não cria nenhum",
         },

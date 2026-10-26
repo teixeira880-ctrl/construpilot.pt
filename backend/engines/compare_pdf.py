@@ -58,7 +58,7 @@ def build_comparison_pdf(rec: dict, branding: dict | None, lang: str = "pt") -> 
              Paragraph(f"{L('Gerado em', 'Gerado em')} {datetime.now(timezone.utc).strftime('%d/%m/%Y')} · {L('réf.', 'ref.')} {rec.get('comparison_id')}"
                        + (f" · {L('focus', 'foco')} : {_e(rec.get('focus'))}" if rec.get("focus") else ""), S["muted"]), Spacer(1, 3 * mm)]
     da, db_ = c.get("document_a") or {}, c.get("document_b") or {}
-    head = [[L("Documento", "Documento"), L("Emitente", "Emissor"), L("Data", "Dados"), L("Linhas", "Linhas"), "HT", L("TVA %", "IVA %"), "c/ IVA"],
+    head = [[L("Documento", "Documento"), L("Emitente", "Emissor"), L("Data", "Dados"), L("Linhas", "Linhas"), L("HT", "s/ IVA"), L("TVA %", "IVA %"), "c/ IVA"],
             ["A — " + (rec.get("filename_a") or "")[:40], da.get("issuer") or "—", da.get("date") or "—", da.get("lines_count"), _n(da.get("total_ht")), da.get("vat_rate") or "—", _n(da.get("total_ttc"))],
             ["B — " + (rec.get("filename_b") or "")[:40], db_.get("issuer") or "—", db_.get("date") or "—", db_.get("lines_count"), _n(db_.get("total_ht")), db_.get("vat_rate") or "—", _n(db_.get("total_ttc"))]]
     t = Table(head, colWidths=[W * f for f in (0.28, 0.2, 0.1, 0.08, 0.12, 0.08, 0.14)])

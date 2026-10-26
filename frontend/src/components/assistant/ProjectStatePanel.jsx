@@ -34,7 +34,7 @@ const Entry = ({ e, section, onSave, onRemove, conversationId, onChange }) => {
     </div> : <>
       <div><span className={`inline-block rounded-sm px-1 mr-1 ${e.status === "current" ? "bg-emerald-500/15" : e.status === "to_confirm" ? "bg-amber-500/15" : "bg-muted line-through"}`}>{STATUS[e.status] || e.status}</span>
         <span className="text-muted-foreground">{KIND[e.kind] || e.kind} · </span>{e.statement}</div>
-      <div className="text-muted-foreground">Fonte: {e.source} · {e.author === "user" ? "vous" : "assistant"}{(e.owner || e.deadline) && <> · <b>{e.owner || "resp. a designar"}</b> · {e.deadline || "prazo a fixar"}</>}</div>
+      <div className="text-muted-foreground">Fonte: {e.source} · {e.author === "user" ? "você" : "assistente"}{(e.owner || e.deadline) && <> · <b>{e.owner || "resp. a designar"}</b> · {e.deadline || "prazo a fixar"}</>}</div>
       <div className="flex gap-3 mt-0.5">
         <button type="button" className="underline text-[11px] flex items-center gap-1" onClick={() => setEditing(true)} data-testid={`${id}-edit`}><Pencil size={10} /> Corrigir</button>
         {e.status !== "superseded" && <button type="button" className="underline text-[11px]" onClick={() => onSave({ ...e, section, status: "superseded" })} data-testid={`${id}-supersede`}>Marcar como substituída</button>}

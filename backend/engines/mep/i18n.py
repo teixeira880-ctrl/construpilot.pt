@@ -1,0 +1,124 @@
+"""Libellés FR / PT du moteur MEP (contrôles, plans, nomenclature, PDF)."""
+from __future__ import annotations
+
+T = {
+    "fr": {
+        "disclaimer": "Pré-étude générée automatiquement, à vérifier et valider par un professionnel "
+                      "qualifié avant exécution. Installation électrique soumise à l'attestation de "
+                      "conformité Consuel.",
+        "title": "Plans d'exécution — Électricité & Plomberie",
+        "elec_plan": "Plan électricité", "plumb_plan": "Plan plomberie", "unifilar": "Schéma unifilaire",
+        "circuits": "Circuits", "quantities": "Quantitatif", "checks": "Contrôles de conformité",
+        "legend": "Légende", "level": "Niveau", "room": "Pièce", "rules": "Référentiel",
+        "summary": "Synthèse", "assumptions": "Hypothèses",
+        "k.prise": "Socle de prise 16 A", "k.prise_plan_travail": "Socle 16 A plan de travail",
+        "k.prise_specialisee": "Prise spécialisée 16/20 A", "k.sortie_cable": "Sortie de câble",
+        "k.point_lumineux": "Point lumineux (DCL)", "k.point_lumineux_ext": "Applique extérieure",
+        "k.interrupteur": "Interrupteur simple allumage", "k.va_et_vient": "Interrupteur va-et-vient",
+        "k.rj45": "Prise RJ45", "k.tableau": "Tableau électrique (GTL)", "k.coffret_com": "Coffret de communication",
+        "k.daaf": "Détecteur de fumée (DAAF)", "k.les": "Liaison équipotentielle supplémentaire",
+        "n.EF": "Eau froide", "n.ECS": "Eau chaude sanitaire", "n.EU": "Eaux usées", "n.EV": "Eaux vannes",
+        "n.EU/EV": "Eaux usées / vannes", "manifold": "Nourrice", "stack": "Chute", "collector": "Collecteur",
+        "exit": "Sortie vers regard", "heater": "Production ECS", "riser": "Colonne montante",
+        "c.eclairage": "Éclairage", "c.prises": "Prises", "c.prises_cuisine": "Prises cuisine",
+        "c.specialise": "Spécialisé",
+        "phase": "Phase", "neutral": "Neutre", "earth": "Terre (PE)",
+        "status.ok": "Conforme", "status.warning": "À vérifier", "status.error": "Non conforme",
+        "status.info": "Information",
+        "chk.sockets": "{room} : {n} socle(s) pour {min} requis",
+        "chk.worktop": "{room} : {n} socle(s) au-dessus du plan de travail pour {min} requis",
+        "chk.light": "{room} : {n} point(s) d'éclairage",
+        "chk.rj45": "{room} : {n} prise(s) RJ45 pour {min} requise(s)",
+        "chk.switch": "{room} : aucune commande d'éclairage",
+        "chk.bath": "{room} : socle à {d} m de la douche/baignoire (≥ {min} m hors volume 2)",
+        "chk.circuit": "{c} : {n} point(s) pour {max} maximum",
+        "chk.rcd": "{r} : {n} circuit(s) pour {max} maximum",
+        "chk.rcd_count": "{n} DDR 30 mA prévus (surface habitable {s} m²)",
+        "chk.reserve": "Réserve tableau : {r} module(s) sur {u} utilisés ({p} %)",
+        "chk.daaf": "{level} : {n} détecteur(s) de fumée",
+        "chk.spec": "Circuit spécialisé {u} présent",
+        "chk.velocity": "{id} ({f}) : vitesse {v} m/s (≤ {max} m/s)",
+        "chk.drop": "{id} ({f}) : dénivelé {d} m pour {a} m disponibles (pente {s} %)",
+        "chk.wc_long": "{id} : branchement WC de {l} m — rapprocher la chute ou prévoir un broyeur",
+        "chk.stack": "Chute {id} Ø{d} : tombe dans « {room} » au RDC — vérifier le passage",
+        "chk.auto": "{n} appareil(s) implanté(s) automatiquement — positions à confirmer",
+        "chk.practice": "Nombre de prises : règle de l'art (le référentiel ne fixe pas de minimum)",
+        "chk.levels": "Superposition des niveaux à confirmer (origine du niveau {level})",
+        "chk.branch_up": "{f} : branchement porté à Ø{d} (Ø intérieur ≥ {need} mm exigé, siphon compris)",
+        "chk.stack_dtu": "Chute {id} Ø{d} : Ø intérieur ≥ {need} mm pour {n} appareil(s) desservi(s), ventilation primaire Ø{d}",
+        "chk.collector": "Collecteur Ø{d} : débit probable {q} l/s pour {c} l/s à demi-plein (pente {s} %)",
+        "chk.supports": "Colliers PVC : 0,50 m (Ø32 à 63), 0,80 m (Ø75 à 140), 1 m (Ø160 à 250) en horizontal, ≤ 2,70 m en vertical ; "
+                        "point fixe au plus tous les 3 m (vidanges), 4 m (chutes), 8 m (collecteurs) ; assemblage coulissant au-delà de 1 m",
+        "chk.heater": "Chauffe-eau : groupe de sécurité à ≤ 3 m sans piquage intermédiaire, vidange par entonnoir siphonné "
+                      "(Ø32 mini) ; espaces libres 10 cm dessus, 40 cm dessous, 12 cm sur le côté ; ballon mural vertical ≤ 200 l",
+        "chk.heater_per": "Sortie ECS en {mat} : manchette cuivre ≥ 50 cm si les sécurités du chauffe-eau permettent plus de 80 °C",
+        "chk.hyp": "Hypothèse : {h}",
+    },
+    "pt": {
+        "disclaimer": "Pré-estudo gerado automaticamente, a verificar e validar por um técnico "
+                      "qualificado antes da execução. Projeto de instalações elétricas sujeito a "
+                      "termo de responsabilidade e certificação (DGEG / entidade inspetora).",
+        "title": "Plantas de execução — Eletricidade & Canalização",
+        "elec_plan": "Planta de eletricidade", "plumb_plan": "Planta de águas e esgotos",
+        "unifilar": "Esquema unifilar", "circuits": "Circuitos", "quantities": "Mapa de quantidades",
+        "checks": "Verificações de conformidade", "legend": "Legenda", "level": "Piso", "room": "Compartimento",
+        "rules": "Regulamentação", "summary": "Síntese", "assumptions": "Hipóteses",
+        "k.prise": "Tomada 16 A", "k.prise_plan_travail": "Tomada 16 A bancada",
+        "k.prise_specialisee": "Tomada dedicada 16 A", "k.sortie_cable": "Saída de cabo",
+        "k.point_lumineux": "Ponto de luz", "k.point_lumineux_ext": "Aplique exterior",
+        "k.interrupteur": "Interruptor simples", "k.va_et_vient": "Comutador de escada",
+        "k.rj45": "Tomada RJ45", "k.tableau": "Quadro elétrico", "k.coffret_com": "ATI (telecomunicações)",
+        "k.daaf": "Detetor de fumo", "k.les": "Ligação equipotencial suplementar",
+        "n.EF": "Água fria", "n.ECS": "Água quente", "n.EU": "Águas residuais (saboneira)",
+        "n.EV": "Águas negras", "n.EU/EV": "Águas residuais", "manifold": "Coletor de distribuição",
+        "stack": "Tubo de queda", "collector": "Coletor predial", "exit": "Saída para caixa de visita",
+        "heater": "Produção AQS", "riser": "Coluna montante",
+        "c.eclairage": "Iluminação", "c.prises": "Tomadas", "c.prises_cuisine": "Tomadas cozinha",
+        "c.specialise": "Dedicado",
+        "phase": "Fase", "neutral": "Neutro", "earth": "Terra (PE)",
+        "status.ok": "Conforme", "status.warning": "A verificar", "status.error": "Não conforme",
+        "status.info": "Informação",
+        "chk.sockets": "{room}: {n} tomada(s) para {min} recomendada(s)",
+        "chk.worktop": "{room}: {n} tomada(s) na bancada para {min} recomendada(s)",
+        "chk.light": "{room}: {n} ponto(s) de luz",
+        "chk.rj45": "{room}: {n} tomada(s) RJ45 para {min}",
+        "chk.switch": "{room}: sem comando de iluminação",
+        "chk.bath": "{room}: tomada a {d} m do duche/banheira (≥ {min} m fora do volume 2)",
+        "chk.circuit": "{c}: {n} ponto(s) para {max} no máximo",
+        "chk.rcd": "{r}: {n} circuito(s) para {max} no máximo",
+        "chk.rcd_count": "{n} diferencial(is) 30 mA previstos (área habitável {s} m²)",
+        "chk.reserve": "Reserva do quadro: {r} módulo(s) para {u} utilizados ({p} %)",
+        "chk.daaf": "{level}: {n} detetor(es) de fumo",
+        "chk.spec": "Circuito dedicado {u} presente",
+        "chk.velocity": "{id} ({f}): velocidade {v} m/s (≤ {max} m/s)",
+        "chk.drop": "{id} ({f}): desnível {d} m para {a} m disponíveis (inclinação {s} %)",
+        "chk.wc_long": "{id}: ramal da sanita com {l} m — aproximar o tubo de queda",
+        "chk.stack": "Tubo de queda {id} Ø{d}: desce em «{room}» no R/C — verificar a passagem",
+        "chk.auto": "{n} aparelho(s) colocado(s) automaticamente — posições a confirmar",
+        "chk.practice": "Número de tomadas: prática corrente (o RTIEBT não fixa mínimo)",
+        "chk.levels": "Sobreposição dos pisos a confirmar (origem do piso {level})",
+    },
+}
+
+
+def tr(lang: str, key: str, **kw) -> str:
+    table = T.get(lang) or T["fr"]
+    s = table.get(key) or T["fr"].get(key) or key
+    return s.format(**kw) if kw else s
+
+
+# Siglas das redes e nomes dos aparelhos, como aparecem nos quadros e nas plantas (códigos internos inalterados).
+NET_PT = {"EF": "AF", "ECS": "AQ", "EU": "AS", "EV": "AN", "EU/EV": "AR", "AEP": "RAMAL"}
+
+
+def net(lang: str, code: str) -> str:
+    return NET_PT.get(code, code) if lang == "pt" else code
+
+
+def fixture(lang: str, kind: str) -> str:
+    if lang != "pt":
+        return kind
+    if kind == "chute":
+        return "Tubo de queda"
+    from .rules import rules_for
+    return (rules_for("pt")["plumbing"]["fixtures"].get(kind) or {}).get("label", kind)

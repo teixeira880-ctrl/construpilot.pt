@@ -26,7 +26,7 @@ export default function SharedCalc() {
       }, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
       const a = document.createElement("a");
-      a.href = url; a.download = "fiche-calcul-construpilot.pdf";
+      a.href = url; a.download = "ficha-calculo-construpilot.pdf";
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch { toast.error("Transferência impossível"); }

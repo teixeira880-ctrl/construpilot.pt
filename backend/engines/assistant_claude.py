@@ -61,6 +61,13 @@ async def run_chat_claude(body, user, conv, plans, instructions, inputs, availab
     direct_key = None if force_emergent else (os.environ.get("ANTHROPIC_API_KEY") or None)
     key = direct_key or os.environ.get("EMERGENT_LLM_KEY")
     if not key:
+        from engines.assistant_fallback import gemini_fallback_available
+        if gemini_fallback_available():
+            conv["_fallback_reason"] = "nenhuma chave Claude — recurso ao Gemini"
+            from engines.assistant_gemini import run_chat_gemini
+            async for ev in run_chat_gemini(body, user, conv, plans, instructions, inputs, available, settings, status_map, tool_turn, now, account_type):
+                yield ev
+            return
         yield {"type": "error", "error": "Assistente indisponível — nenhuma chave Claude disponível"}
         return
     billing = "anthropic_direct" if direct_key else "emergent"
@@ -163,7 +170,7 @@ async def run_chat_claude(body, user, conv, plans, instructions, inputs, availab
             msg["turn_seq"] = conv["_turn_seq"]
         await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "assistant", "request_id": conv["_quote_request_id"]},
                                            {"$setOnInsert": dict(msg)}, upsert=True)
-        title = conv["title"] if conv["title"] != "Nouvelle conversation" else body.text[:60]
+        title = conv["title"] if conv["title"] not in ("Nouvelle conversation", "Nova conversa") else body.text[:60]
         update = {"updated_at": now(), "title": title}
         if conv.get("_turn_seq") is None:
             update.update(active_plans=[p["plan_id"] for p in plans], active_docs=body.doc_ids)
@@ -179,6 +186,13 @@ async def run_chat_claude(body, user, conv, plans, instructions, inputs, availab
         if direct_key and not force_emergent and os.environ.get("EMERGENT_LLM_KEY") and should_failover(exc) and not reply.strip():
             conv["_fallback_reason"] = "chave Claude direta indisponível — recurso à chave universal"
             async for ev in run_chat_claude(body, user, conv, plans, instructions, inputs, available, settings, status_map, tool_turn, now, account_type, force_emergent=True):
+                yield ev
+            return
+        from engines.assistant_fallback import gemini_fallback_available
+        if not reply.strip() and gemini_fallback_available():     # Claude (directe et universelle) KO → Gemini en dernier recours
+            conv["_fallback_reason"] = "Claude indisponível — recurso ao Gemini"
+            from engines.assistant_gemini import run_chat_gemini
+            async for ev in run_chat_gemini(body, user, conv, plans, instructions, inputs, available, settings, status_map, tool_turn, now, account_type):
                 yield ev
             return
         yield {"type": "error", "error": friendly_error(exc)}

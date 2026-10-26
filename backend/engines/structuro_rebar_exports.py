@@ -28,7 +28,7 @@ def build_rebar_pdf(model, revision=1):
             ("VALIGN", (0,0), (-1,-1), "TOP"), ("TOPPADDING", (0,0), (-1,-1), 5),
             ("BOTTOMPADDING", (0,0), (-1,-1), 5)]))
         return t
-    story = [Paragraph("ConstruPilot | Aciers et fondations", styles["Title"]), heading(model.title),
+    story = [Paragraph("ConstruPilot | Armaduras e fundações", styles["Title"]), heading(model.title),
              p(f"Revisão {revision} - {result['engine_version']}"),
              p("Cálculos parciais e controlo documental - NÃO EXECUTÓRIO"),
              p("Revisão dos documentos de origem" if inputs.basis == "source_replay" else "Projeto de dimensionamento"),
@@ -95,7 +95,7 @@ def build_rebar_pdf(model, revision=1):
                 story.extend(p(f"{labels.get(k, k)} : {('satisfeito para este controlo' if v else 'NÃO SATISFEITO')}") for k,v in r["checks"].items())
                 story.extend(p("- "+o) for o in r["issues"])
     for r in result["schedules"]:
-        story += [PageBreak(),heading(f"Nomenclature {r['id']}"),p(r["basis"]),p(r["source"]),p(r["note"])]
+        story += [PageBreak(),heading(f"Nomenclatura {r['id']}"),p(r["basis"]),p(r["source"]),p(r["note"])]
         rows=[["Referência", "Ø (mm)", "Número", "Comp. unitário (m)", "Comp. total (m)", "Peso (kg)"]]
         for b in r["bars"]:
             rows.append([b["mark"],f"{b['diameter_mm']:g}",b["count"],f"{b['developed_length_m']:.3f}",f"{b['total_length_m']:.3f}",f"{b['mass_kg']:.3f}"])

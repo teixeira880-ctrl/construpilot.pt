@@ -277,7 +277,7 @@ function LegacyPcStudyDialog({ open, onClose, study, busy, onRun, onDownload, on
                   </tbody>
                 </table>
                 <p className="text-[11px] text-muted-foreground mt-1" data-testid="pc-planning-summary">
-                  Equipa de {study.planning.crew_size} colaboradores — {study.planning.total_work_days} dias úteis + {study.planning.total_cure_days} dias de secagem betão, ou seja ≈ <b>{study.planning.total_days} jours ({study.planning.total_weeks} semanas)</b> de obra.
+                  Equipa de {study.planning.crew_size} colaboradores — {study.planning.total_work_days} dias úteis + {study.planning.total_cure_days} dias de secagem betão, ou seja ≈ <b>{study.planning.total_days} dias ({study.planning.total_weeks} semanas)</b> de obra.
                 </p>
                 <PcProgress key={planId} planId={planId} planning={study.planning}
                             progress={study.progress} />

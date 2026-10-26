@@ -407,7 +407,7 @@ export default function StairCalculator() {
       setResult(data.result || null);
       setConcrete(data.concrete_analysis || null);
       setShowProjects(false);
-      toast.success(`Projet « ${data.name} » aberto`);
+      toast.success(`Projeto « ${data.name} » aberto`);
     } catch { toast.error("Abertura impossível"); }
   };
 

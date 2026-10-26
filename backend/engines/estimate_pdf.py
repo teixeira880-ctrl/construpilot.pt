@@ -26,7 +26,7 @@ T = {
            "range": "Amplitude", "finish": "Nível de acabamento", "region": "Região de referência", "source": "Fonte dos preços", "date": "Data dos preços",
            "conf": "Confiança", "incl": "Incluído na estimativa", "excl": "Não incluído", "assum": "Hipóteses consideradas", "unc": "Fatores de incerteza",
            "missing": "Informações em falta", "questions": "Perguntas a colocar às empresas consultadas", "notice": "Menção obrigatória",
-           "gen": "Gerado em", "foot": "ConstruPilot.fr · Estimativa indicativa — não constitui um orçamento", "ref": "Referência"},
+           "gen": "Gerado em", "foot": "ConstruPilot.pt · Estimativa indicativa — não constitui um orçamento", "ref": "Referência"},
 }
 
 

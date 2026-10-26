@@ -9,7 +9,7 @@ import { useI18n } from "@/context/I18nContext";
 const L = {
   fr: { title: "Trabalhos de piscina propostos (biblioteca ConstruPilot)", geo: (g) => `Tanque ≈ ${g.length} × ${g.width} m · profundidade ${g.depth} m · ${g.perim} m³ ${g.walls} m³ ${g.excav_m3} m³`,
         create: (n) => `linhas)${n} linhas)`, created: "Orçamento de piscina criado", err: "Não foi possível criar o orçamento", quoteTitle: (g) => `Piscina ${g.length} × ${g.width} m`,
-        h: ["Artigo", "Qtd.", "Un.", "PU HT", "Total s/ IVA"], total: "Total do mapa s/ IVA", note: "Quantidades calculadas para um tanque retangular 2:1 a partir da área indicada — ajuste-as no editor de orçamentos." },
+        h: ["Artigo", "Qtd.", "Un.", "PU s/ IVA", "Total s/ IVA"], total: "Total do mapa s/ IVA", note: "Quantidades calculadas para um tanque retangular 2:1 a partir da área indicada — ajuste-as no editor de orçamentos." },
   pt: { title: "Trabalhos de piscina propostos (biblioteca ConstruPilot)", geo: (g) => `Tanque ≈ ${g.length} × ${g.width} m · profundidade ${g.depth} m · ${g.perim} ml de bordadura · ${g.walls} m² de paredes · escavação ${g.excav_m3} m³`,
         create: (n) => `Criar o orçamento (${n} linhas)`, created: "Orçamento de piscina criado", err: "Não foi possível criar o orçamento", quoteTitle: (g) => `Piscina ${g.length} × ${g.width} m`,
         h: ["Trabalho", "Qtd", "Unid.", "PU s/IVA", "Total s/IVA"], total: "Total do mapa s/ IVA", note: "Quantidades calculadas para um tanque retangular 2:1 a partir da área indicada — ajuste-as no editor de orçamentos." },
