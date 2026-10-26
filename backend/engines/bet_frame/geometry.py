@@ -14,6 +14,7 @@ une anomalie bloquante renvoie le relevé à l'IA avec le motif, puis, si elle p
 - GEO-07 : typologies différentes avec des rectangles identiques (relevé schématique).
 - GEO-08 : cotes extérieures « déduites / ajustées / estimées » (des surfaces, d'une hypothèse) au lieu d'être lues.
 - GEO-09 : cotes extérieures ≠ celles d'une lecture indépendante des cotes des planches (relevé fabriqué).
+- GEO-10 : emprise d'un niveau (ex. cave plus grande que les étages, étage en retrait) ≠ cotes de sa planta.
 """
 from __future__ import annotations
 
@@ -48,6 +49,30 @@ def _has(cs: list[float], v: float, tol: float = 0.02) -> bool:
 
 
 _INVENTED = re.compile(r"dedu|déduit|estim|ajust|recalcul|adot|adopt|suppos|supost|assum|hypoth|hipót|quadro de áreas|tableau des surfaces|coerência|cohérence", re.I)
+
+
+def storey_bbox(m, lid: str) -> tuple[float, float] | None:
+    """Longueur × largeur du rectangle englobant les cases pleines de l'étage."""
+    with m.at_storey(lid):
+        cells = [(i, j) for j in range(len(m.gy) - 1) for i in range(len(m.gx) - 1) if m.cell_in(i, j)]
+    if not cells:
+        return None
+    i0, i1 = min(c[0] for c in cells), max(c[0] for c in cells) + 1
+    j0, j1 = min(c[1] for c in cells), max(c[1] for c in cells) + 1
+    return m.gx[i1] - m.gx[i0], m.gy[j1] - m.gy[j0]
+
+
+_NUM_LV = re.compile(r"(?<![\d.,])(-?\d{1,2})(?![\d.,])")
+
+
+def _level_no(name: str) -> int | None:
+    n = (name or "").lower()
+    if re.search(r"cave|sous-sol|subsolo|garagem|estacionamento|parking", n) and not _NUM_LV.search(n):
+        return -1
+    if re.search(r"\br/?c\b|rés-do-chão|rdc|rez", n) and not _NUM_LV.search(n):
+        return 0
+    mo = _NUM_LV.search(n)
+    return int(mo.group(1)) if mo else None
 
 
 def check(raw: dict, pages: list[dict] | None = None, ref: dict | None = None) -> list[dict]:
@@ -103,6 +128,24 @@ def check(raw: dict, pages: list[dict] | None = None, ref: dict | None = None) -
                   f"Cota(s) exterior(es) {', '.join(miss)} m não encontrada(s) nos desenhos.",
                   "Recopier la cote écrite sur la planche (chaîne de cotes extérieure), ne pas l'estimer.",
                   "Copiar a cota escrita no desenho (cadeia de cotas exterior), não a estimar.")
+    for rl in ref.get("per_level") or []:
+        try:
+            rL, rW, no = float(rl.get("length")), float(rl.get("width")), _level_no(str(rl.get("level") or ""))
+        except (TypeError, ValueError):
+            continue
+        lv = next((l for l in m.levels if no is not None and _level_no(l.name) == no), None)
+        if lv is None or rL < 2 or rW < 2:
+            continue
+        bb = storey_bbox(m, lv.id)
+        if not bb:
+            continue
+        gL, gW = sorted(bb, reverse=True)
+        rL, rW = sorted((rL, rW), reverse=True)
+        if abs(gL - rL) > max(0.6, 0.04 * rL) or abs(gW - rW) > max(0.6, 0.04 * rW):
+            a("GEO-10", model.BLOCK, f"{lv.name} : emprise relevée {gL:.2f} × {gW:.2f} m, mais sa planta est cotée {rL:.2f} × {rW:.2f} m.",
+              f"{lv.name}: implantação relevada {gL:.2f} × {gW:.2f} m, mas a sua planta tem {rL:.2f} × {rW:.2f} m.",
+              "La trame couvre le plus grand niveau (souvent la cave) ; les niveaux plus petits reçoivent leurs void_cells.",
+              "A trama cobre o maior piso (muitas vezes a cave); os pisos menores recebem as suas void_cells.")
     if cs:
         spans = [round(b - a_, 2) for g in (m.gx, m.gy) for a_, b in zip(g, g[1:])]
         found = sum(1 for s in spans if _has(cs, s, 0.03))

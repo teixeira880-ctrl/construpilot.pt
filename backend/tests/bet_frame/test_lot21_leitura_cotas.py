@@ -73,3 +73,21 @@ def test_leitor_envia_ampliacoes_e_cotas_independentes():
     metreur, frame = calls[0], calls[1]
     assert metreur[0].startswith("Tu es métreur") and metreur[1] >= 4         # página + 3 ampliações
     assert "AGRANDISSEMENT" in frame[2] and "lecture indépendante" in frame[2]
+
+
+def test_cave_maior_que_os_pisos_tem_de_ser_respeitada():
+    raw = copy.deepcopy(CASE)
+    m = model.from_dict(raw)
+    L, W = geometry.storey_bbox(m, m.levels[0].id)
+    cave = next(l for l in raw["levels"] if l["id"] == m.levels[0].id)
+    ref = {"per_level": [{"level": cave.get("name") or "Piso -1", "length": L + 8.0, "width": W + 12.0}]}
+    if geometry._level_no(cave.get("name") or "") is None:
+        ref["per_level"][0]["level"] = m.levels[0].name
+    assert "GEO-10" in {a["code"] for a in geometry.check(raw, None, ref) if a["level"] == model.BLOCK}
+    ref = {"per_level": [{"level": ref["per_level"][0]["level"], "length": L, "width": W}]}
+    assert "GEO-10" not in {a["code"] for a in geometry.check(raw, None, ref)}
+
+
+def test_numero_do_piso():
+    assert geometry._level_no("Piso -1 — estacionamento") == -1 and geometry._level_no("Cave") == -1
+    assert geometry._level_no("R/C (piso 0)") == 0 and geometry._level_no("Piso 3") == 3
