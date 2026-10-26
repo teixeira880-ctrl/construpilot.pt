@@ -65,7 +65,7 @@ export function HeadTags({ routeDefaults }) {
   const url = canonicalPath === "/" ? `${BASE}/` : `${BASE}${canonicalPath}`;
   const fullTitle = clampTitle(ov?.title || cfg.title);
   const desc = clampDesc(ov?.description || cfg.description);
-  const ogImg = cfg.image || `${BASE}/og-cover.jpg`;
+  const ogImg = cfg.image || `${BASE}/og-cover-pt.jpg`;
   return (
     <>
       <title>{fullTitle}</title>
