@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 // Reservado a admins: o backend (/admin/avatar/token) verifica o papel e só
 // devolve um token de sala de 15 min. Nenhuma chave chega ao navegador.
 
-const LANG_LABEL = { fr: "Français", pt: "Português (PT)" };
+const LANG_LABEL = { fr: "Français", pt: "Português (PT)", en: "English" };
 
 // Mensagens enviadas pelo agente (topic « avatar ») quando o avatar não consegue arrancar.
 const AVATAR_STATUS = {
@@ -114,7 +114,7 @@ export default function AvatarAssistantPanel() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        {(status?.langs || ["fr", "pt"]).map((l) => (
+        {(status?.langs || ["fr", "pt", "en"]).map((l) => (
           <Button key={l} type="button" size="sm" variant={lang === l ? "default" : "outline"}
             className="rounded-sm" disabled={phase !== "idle"} onClick={() => setLang(l)}
             data-testid={`admin-avatar-lang-${l}`}>
@@ -124,13 +124,13 @@ export default function AvatarAssistantPanel() {
         {phase === "idle" ? (
           <Button type="button" className="rounded-sm" onClick={start}
             disabled={status && !status.configured} data-testid="admin-avatar-start">
-            <Video className="mr-2 h-4 w-4" /> {lang === "pt" ? "Falar" : "Parler"}
+            <Video className="mr-2 h-4 w-4" /> {{ pt: "Falar", en: "Talk" }[lang] || "Parler"}
           </Button>
         ) : (
           <Button type="button" variant="destructive" className="rounded-sm" onClick={stop}
             disabled={phase === "connecting"} data-testid="admin-avatar-stop">
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PhoneOff className="mr-2 h-4 w-4" />}
-            {lang === "pt" ? "Parar" : "Arrêter"}
+            {{ pt: "Parar", en: "Stop" }[lang] || "Arrêter"}
           </Button>
         )}
       </div>

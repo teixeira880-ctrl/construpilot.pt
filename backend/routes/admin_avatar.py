@@ -7,7 +7,7 @@ ficam no agente (LiveKit Cloud), nunca no site nem no navegador.
 
 Variáveis de ambiente do backend:
   LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET   (projeto LiveKit do agente)
-  AVATAR_DEFAULT_LANG   fr | pt  (opcional, « pt » por defeito em construpilot.pt)
+  AVATAR_DEFAULT_LANG   fr | pt | en  (opcional, « pt » por defeito em construpilot.pt)
 """
 import json
 import logging
@@ -24,7 +24,7 @@ from core.security import admin_user
 logger = logging.getLogger(__name__)
 
 AGENT_NAME = "construpilot-avatar"  # tem de corresponder ao agent_name do worker
-LANGS = ("fr", "pt")
+LANGS = ("fr", "pt", "en")
 
 router = APIRouter(prefix="/admin/avatar", tags=["admin-avatar"],
                    dependencies=[Depends(admin_user)])
@@ -83,7 +83,7 @@ async def avatar_token(lang: str | None = None, user=Depends(admin_user)) -> dic
                                    "LIVEKIT_API_KEY e LIVEKIT_API_SECRET no servidor.")
     lang = (lang or _default_lang()).lower()
     if lang not in LANGS:
-        raise HTTPException(status_code=400, detail="Língua desconhecida (fr ou pt).")
+        raise HTTPException(status_code=400, detail="Língua desconhecida (fr, pt ou en).")
 
     room = f"cp-admin-{lang}-{uuid.uuid4().hex[:10]}"
     identity = f"admin-{(user.get('user_id') or uuid.uuid4().hex)[:24]}"

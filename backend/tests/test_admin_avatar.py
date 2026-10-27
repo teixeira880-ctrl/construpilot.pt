@@ -56,7 +56,7 @@ def test_not_configured_returns_503(monkeypatch):
     assert r.status_code == 503 and "LIVEKIT_URL" in r.json()["detail"]
 
 
-@pytest.mark.parametrize("lang", ["fr", "pt"])
+@pytest.mark.parametrize("lang", ["fr", "pt", "en"])
 def test_admin_token_dispatches_agent_with_language(livekit_env, lang):
     r = make_client(ADMIN).get(f"/api/admin/avatar/token?lang={lang}")
     assert r.status_code == 200
