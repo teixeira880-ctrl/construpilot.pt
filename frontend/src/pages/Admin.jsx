@@ -36,6 +36,7 @@ import BabyLoveGrowthSettingsPanel from "@/components/admin/BabyLoveGrowthSettin
 import AutorizacaoObrasPanel from "@/components/admin/AutorizacaoObrasPanel";
 import CeoAgentPanel from "@/components/admin/CeoAgentPanel";
 import CalcAuditorPanel from "@/components/admin/CalcAuditorPanel";
+import AvatarAssistantPanel from "@/components/admin/AvatarAssistantPanel";
 import RevenueTab from "@/components/RevenueTab";
 import AiModelTab from "@/components/AiModelTab";
 import AdminSharedLibraryTab from "@/components/AdminSharedLibraryTab";
@@ -192,7 +193,7 @@ export default function Admin() {
         </div>
       </section>
 
-      <Tabs defaultValue={["radar", "postal", "despesas", "ai", "support", "journey", "budget", "pilotage"].includes(searchParams.get("tab")) ? searchParams.get("tab") : "journey"}>
+      <Tabs defaultValue={["radar", "postal", "despesas", "ai", "support", "journey", "budget", "pilotage", "avatar"].includes(searchParams.get("tab")) ? searchParams.get("tab") : "journey"}>
         <TabsList className="rounded-sm flex-wrap h-auto">
           <TabsTrigger value="journey" className="rounded-sm" data-testid="admin-tab-journey">Contas e percurso</TabsTrigger>
           <TabsTrigger value="prices" className="rounded-sm" data-testid="admin-tab-prices">{t("admin.t_prices")}</TabsTrigger>
@@ -209,6 +210,7 @@ export default function Admin() {
           <TabsTrigger value="plans" className="rounded-sm" data-testid="admin-tab-plans">{t("admin.t_plans")}</TabsTrigger>
           <TabsTrigger value="revenue" className="rounded-sm" data-testid="admin-tab-revenue">{t("admin.t_revenue")}</TabsTrigger>
           <TabsTrigger value="pilotage" className="rounded-sm" data-testid="admin-tab-pilotage">Pilotage IA</TabsTrigger>
+          <TabsTrigger value="avatar" className="rounded-sm" data-testid="admin-tab-avatar">Assistente de vídeo</TabsTrigger>
           <TabsTrigger value="budget" className="rounded-sm" data-testid="admin-tab-budget">Plafond 500 €</TabsTrigger>
           <TabsTrigger value="despesas" className="rounded-sm" data-testid="admin-tab-despesas">{expenseText("title")}</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-sm" data-testid="admin-tab-ai">{t("admin.t_ai")}</TabsTrigger>
@@ -278,6 +280,7 @@ export default function Admin() {
 
         <TabsContent value="postal" className="mt-6">{postalEnabled && <PostalAdminPanel />}</TabsContent>
         <TabsContent value="pilotage" className="mt-6"><PilotagePanel /></TabsContent>
+        <TabsContent value="avatar" className="mt-6"><AvatarAssistantPanel /></TabsContent>
         <TabsContent value="budget" className="mt-6"><BudgetCapPanel /></TabsContent>
 
         <TabsContent value="despesas" className="mt-6"><ExpenseAdminPanel /></TabsContent>
