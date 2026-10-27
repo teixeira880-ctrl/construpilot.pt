@@ -145,7 +145,8 @@ async def publish_today() -> dict:
     now = _now()
     res = await db.autoseo_articles.update_many(
         {"source": "ceo_agent", "status": "draft", "daily_date": today},
-        {"$set": {"status": "published", "published_at": now, "updated_at": now}})
+        {"$set": {"status": "published", "language_code": "pt",
+                  "published_at": now, "updated_at": now}})
     return {"published": res.modified_count}
 
 
@@ -516,9 +517,14 @@ async def email_send_campaign(copy_id: str) -> dict:
 
 @router.post("/blog/{article_id}/publish")
 async def publish_blog(article_id: str) -> dict:
+    # Normaliza também `language_code` para "pt": artigos antigos do agente CEO podiam
+    # ter ficado em "fr" (migração vinda do projeto .fr) e, uma vez publicados, não
+    # apareciam em GET /api/blog/autoseo?lang=pt. Estamos no projeto .pt, logo o idioma
+    # correcto é PT.
     res = await db.autoseo_articles.update_one(
         {"autoseo_id": article_id, "source": "ceo_agent"},
-        {"$set": {"status": "published", "published_at": _now(), "updated_at": _now()}})
+        {"$set": {"status": "published", "language_code": "pt",
+                  "published_at": _now(), "updated_at": _now()}})
     if not res.matched_count:
         raise HTTPException(404, "Rascunho não encontrado")
     return {"published": True, "article_id": article_id}
