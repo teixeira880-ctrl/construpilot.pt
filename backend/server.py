@@ -17,6 +17,7 @@ from engines.expenses.context import ExpenseContextMiddleware
 from routes import admin_expenses
 from routes import admin_apify
 from routes import admin_learning
+from routes import admin_avatar
 from routes import bridge as bridge_routes
 from routes import media as media_routes
 from routes import presentation
@@ -160,6 +161,7 @@ api_router.include_router(admin_revenue.router)
 api_router.include_router(admin_expenses.router)
 api_router.include_router(admin_apify.router)
 api_router.include_router(admin_learning.router)
+api_router.include_router(admin_avatar.router)
 api_router.include_router(bridge_routes.admin_router)
 api_router.include_router(bridge_routes.public_router)
 api_router.include_router(media_routes.router)
