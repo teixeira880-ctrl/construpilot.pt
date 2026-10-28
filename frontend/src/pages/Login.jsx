@@ -20,7 +20,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [tfa, setTfa] = useState(() => location.state?.twoFactor || null);
   const [tfaCode, setTfaCode] = useState("");
-  const [form, setForm] = useState({ name: "", email: params.get("email") || "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
+  const [form, setForm] = useState({ name: "", email: params.get("email") || "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null, marketing: false });
   const [demoStatus, setDemoStatus] = useState({ pro: false, particular: false });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -82,7 +82,7 @@ export default function Login() {
         }
         sessionStorage.setItem("construpilot_new_signup", "1");
         await register(form.name, form.email, form.password, ref || null,
-                       { account_type: acct, siret: isPro ? form.siret : null });
+                       { account_type: acct, siret: isPro ? form.siret : null, marketing_consent: !!form.marketing });
         if (isPro) {
           const fd = new FormData();
           fd.append("kbis", form.kbis);
@@ -370,6 +370,12 @@ export default function Login() {
                   </Label>
                   <Input value={form.ref} onChange={set("ref")} data-testid="register-ref-input" placeholder="CP-XXXXXX" className="rounded-sm h-11 font-mono uppercase" />
                 </div>
+                <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer" data-testid="register-marketing-consent">
+                  <input type="checkbox" checked={!!form.marketing}
+                         onChange={(e) => setForm({ ...form, marketing: e.target.checked })}
+                         className="mt-0.5 h-4 w-4 accent-primary" />
+                  <span>Quero receber por e-mail as novidades e ofertas do ConstruPilot (pode cancelar a qualquer momento).</span>
+                </label>
                 <Button type="submit" disabled={busy} data-testid="register-submit-btn" className="rounded-sm h-11 hover:bg-orange-600 hover:text-white">
                   {busy ? t("login.registering") : t("login.register_submit")}
                 </Button>

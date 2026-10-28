@@ -1,11 +1,14 @@
-/* ConstruPilot Service Worker — v6 pwa-demo-ready
+/* ConstruPilot Service Worker — v7 code-splitting
    - HTML / navegação : NETWORK-FIRST (garante que a última versão é sempre servida)
    - Assets estáticos (JS/CSS/img) : cache-first (bundles hashed pelo build)
    - API : rede obrigatória, nunca cache (dados privados / permissões)
    - LOTE 2 WebSummit : pré-cache do app shell + rotas demo + ficheiros estáticos
      para funcionamento 100% offline no stand (modo avião após 1ª carga).
+   - v7 : as páginas passaram a ser ficheiros JS separados (code-splitting).
+     Todos os JS/CSS listados em /asset-manifest.json são pré-carregados em
+     segundo plano na instalação, para que qualquer página abra offline.
    IMPORTANTE : bumpar CACHE a cada deploy para purgar o cache antigo. */
-const CACHE = "construpilot-v6-pwa-demo-ready";
+const CACHE = "construpilot-v7-code-splitting";
 
 // App shell + manifest + ícones (sempre em pré-cache)
 const APP_SHELL = [
@@ -43,6 +46,16 @@ const DEMO_ASSETS = [
   "/demo-assets/Nota_calculo_sismica_Moradia_Martins.pdf",
 ];
 
+// Todos os bundles JS/CSS do build (páginas, dicionários de tradução…).
+async function _buildAssets() {
+  try {
+    const r = await fetch("/asset-manifest.json", { cache: "no-store" });
+    if (!r.ok) return [];
+    const { files = {} } = await r.json();
+    return Object.values(files).filter((u) => typeof u === "string" && /\.(js|css)$/.test(u));
+  } catch (_) { return []; }
+}
+
 async function _precacheBestEffort(cache, urls) {
   await Promise.all(urls.map(async (u) => {
     try {
@@ -60,6 +73,8 @@ self.addEventListener("install", (e) => {
     // 2) Rotas demo + assets : best-effort (não bloqueia activação do SW)
     await _precacheBestEffort(cache, DEMO_ROUTES);
     await _precacheBestEffort(cache, DEMO_ASSETS);
+    // 3) Todos os ficheiros JS/CSS do build : best-effort
+    await _precacheBestEffort(cache, await _buildAssets());
     await self.skipWaiting();
   })());
 });

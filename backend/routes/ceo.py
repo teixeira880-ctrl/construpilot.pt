@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from core.db import db
+from engines.campaign_audience import campaign_recipients
 from core.security import admin_user
 from engines import storage
 from engines import ceo_media
@@ -475,8 +476,8 @@ async def _run_email_campaign(copy_id: str) -> None:
         return
     em = doc["payload"]["emails"][0]
     subject = (em.get("subjects") or ["ConstruPilot"])[0]
-    subs = await db.newsletter_subscribers.find(
-        {"unsubscribed_at": None}, {"_id": 0, "email": 1, "token": 1}).to_list(10000)
+    # Subscritores da newsletter + contas que aceitaram receber novidades.
+    subs = await campaign_recipients(db)
     total = len(subs)
     await db.ceo_copy.update_one({"copy_id": copy_id}, {"$set": {
         "send_status": "sending", "send_total": total, "send_count": 0, "send_failed": 0,
@@ -489,7 +490,7 @@ async def _run_email_campaign(copy_id: str) -> None:
             sent += 1
         except Exception as exc:  # noqa: BLE001
             failed += 1
-            log.warning("CEO campaign send failed %s (%s)", s.get("email"), type(exc).__name__)
+            log.warning("CEO campaign send failed (%s)", type(exc).__name__)
         if (sent + failed) % 10 == 0:
             await db.ceo_copy.update_one({"copy_id": copy_id},
                                          {"$set": {"send_count": sent, "send_failed": failed}})
@@ -507,9 +508,10 @@ async def email_send_campaign(copy_id: str) -> dict:
         raise HTTPException(400, "Aprove primeiro a campanha antes de a enviar.")
     if doc.get("send_status") == "sending":
         return {"status": "sending", "total": doc.get("send_total", 0), "already": True}
-    total = await db.newsletter_subscribers.count_documents({"unsubscribed_at": None})
+    total = len(await campaign_recipients(db))
     if total == 0:
-        raise HTTPException(400, "Nenhum subscritor ativo da newsletter a quem enviar.")
+        raise HTTPException(400, "Ainda ninguém aceitou receber e-mails: nem subscritores da newsletter, "
+                                 "nem contas com a opção « Receber novidades e ofertas » ativa.")
     asyncio.create_task(_run_email_campaign(copy_id))
     return {"status": "sending", "total": total}
 

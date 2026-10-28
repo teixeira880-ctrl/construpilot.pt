@@ -72,8 +72,20 @@ async def subscribe(body: SubscribeIn, request: Request):
 
 @router.get("/unsubscribe", response_class=HTMLResponse)
 async def unsubscribe(token: str):
-    r = await db.newsletter_subscribers.update_one({"token": token}, {"$set": {"unsubscribed_at": _now()}})
-    msg = "Cancelou a subscrição do jornal ConstruPilot." if r.matched_count else "Ligação inválida ou já utilizada."
+    # O mesmo link serve a newsletter e as contas (campanhas do Agente CEO).
+    # Cancelar desliga as duas coisas para esse e-mail.
+    found = None
+    if token:
+        found = await db.newsletter_subscribers.find_one({"token": token}, {"_id": 0, "email": 1}) \
+            or await db.users.find_one({"marketing_unsub_token": token}, {"_id": 0, "email": 1})
+    if found and found.get("email"):
+        email = found["email"].strip().lower()
+        await db.newsletter_subscribers.update_many(
+            {"email": email, "unsubscribed_at": None}, {"$set": {"unsubscribed_at": _now()}})
+        await db.users.update_many(
+            {"email": email}, {"$set": {"marketing_consent": False, "marketing_consent_at": _now(),
+                                         "marketing_consent_source": "unsubscribe_link"}})
+    msg = "Cancelou a receção de e-mails do ConstruPilot." if found else "Ligação inválida ou já utilizada."
     return HTMLResponse(f"<html><body style='font-family:sans-serif;padding:40px;text-align:center'>"
                         f"<h2>{msg}</h2><a href='{_frontend()}/blog'>Retour au blog</a></body></html>")
 

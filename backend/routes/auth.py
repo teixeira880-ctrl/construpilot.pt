@@ -14,6 +14,7 @@ from core.security import (hash_password, verify_password, make_jwt, new_user_id
                           current_user, optional_user, admin_user)
 from core.rate_limit import limiter
 from core.account_purge import purge_user_data
+from engines.campaign_audience import consent_fields
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -27,6 +28,8 @@ class RegisterIn(BaseModel):
     account_type: str | None = "particulier"
     siret: str | None = None
     attribution: dict | None = None
+    # Caixa « Quero receber novidades e ofertas » — desmarcada por defeito (RGPD).
+    marketing_consent: bool = False
 
 
 def _valid_nif(value: str) -> bool:
@@ -76,7 +79,8 @@ def _public(u: dict) -> dict:
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
                                   "lang", "created_at", "account_type", "kyc_status",
                                   "siret", "target_margin_pct", "target_margins_by_lot",
-                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode", "theme", "nav_favorites")}
+                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode", "theme", "nav_favorites",
+                                  "marketing_consent")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
     return out
@@ -170,6 +174,8 @@ async def register(body: RegisterIn, request: Request, response: Response) -> di
         "email_verified": False,
         "email_verify_token": uuid.uuid4().hex,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        **consent_fields(body.marketing_consent, "signup"),
+        "marketing_unsub_token": secrets.token_urlsafe(24),
     }
     if body.attribution:
         user["attribution"] = {k: str(body.attribution.get(k) or "")[:300] for k in ("landing_path", "referrer", "utm_source", "utm_medium", "utm_campaign", "qr", "ref", "first_seen")}
@@ -423,6 +429,22 @@ async def set_nav_favorites(body: NavFavoritesIn, user=Depends(current_user)) ->
     favs = list(dict.fromkeys(f for f in body.favorites if isinstance(f, str) and f.startswith("/") and len(f) <= 80))
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"nav_favorites": favs}})
     return {"nav_favorites": favs}
+
+
+class MarketingConsentIn(BaseModel):
+    consent: bool
+    source: str = "preferences"
+
+
+@router.put("/marketing-consent")
+async def set_marketing_consent(body: MarketingConsentIn, user=Depends(current_user)) -> dict:
+    """Aceitar / recusar os e-mails de novidades e ofertas (campanhas)."""
+    fields = consent_fields(body.consent, body.source or "preferences")
+    full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "marketing_unsub_token": 1})
+    if not (full or {}).get("marketing_unsub_token"):
+        fields["marketing_unsub_token"] = secrets.token_urlsafe(24)
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": fields})
+    return {"marketing_consent": fields["marketing_consent"]}
 
 
 @router.put("/theme")
