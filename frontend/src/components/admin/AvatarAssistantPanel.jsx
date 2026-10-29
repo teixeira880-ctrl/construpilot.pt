@@ -55,7 +55,8 @@ export default function AvatarAssistantPanel() {
         if (!video) {
           video = document.createElement("video");
           video.playsInline = true;
-          video.className = "w-full aspect-video rounded-md bg-black";
+          video.className = "block mx-auto h-auto max-h-[70vh] w-auto max-w-full rounded-xl bg-black object-contain shadow-lg";
+          requestAnimationFrame(() => video.scrollIntoView({ behavior: "smooth", block: "center" }));
           mediaRef.current?.replaceChildren(video);
         }
         track.attach(video); // áudio + vídeo no mesmo elemento
@@ -103,7 +104,7 @@ export default function AvatarAssistantPanel() {
         <h3 className="text-lg font-semibold">Assistente de vídeo da equipa</h3>
         <p className="text-sm text-muted-foreground">
           Uso interno apenas. Ensaiar o pitch do Web Summit, preparar respostas aos
-          investidores, redigir mensagens. Não tem acesso aos dados em tempo real do site.
+          investidores, redigir mensagens. Lê os dados do site e age com os seus direitos de admin: cada alteração espera pelo seu «sim»; pagamentos, palavras-passe e eliminações definitivas continuam proibidos.
         </p>
       </div>
 
@@ -143,7 +144,7 @@ export default function AvatarAssistantPanel() {
            "Clique em Falar e autorize o microfone.")}
       </p>
 
-      <div ref={mediaRef} className="max-w-3xl" />
+      <div ref={mediaRef} className="flex w-full justify-center" />
     </div>
   );
 }
