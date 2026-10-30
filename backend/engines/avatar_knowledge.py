@@ -44,3 +44,23 @@ MÉTODO (autonomia total pedida pelo fundador):
 6. Pede um « sim » APENAS para o irreversível ou o que chega a terceiros: apagar, enviar e-mail/orçamento/fatura a um cliente,
    emitir ou finalizar uma fatura, publicar, mudar preços/assinaturas/direitos de um utilizador, desativar uma conta.
 """
+
+
+def live_capabilities(user: dict) -> str:
+    """Lista VIVA do que o Assistente BTP sabe fazer para esta conta, lida no código implementado a cada arranque do avatar:
+    uma nova função posta em linha (ex. check_plans_coherence) passa a ser conhecida pelo avatar sem o voltar a implementar."""
+    try:
+        from routes.assistant import tools_for  # noqa: PLC0415 — carregado a pedido (módulo pesado)
+        tools = tools_for(user)
+    except Exception:  # noqa: BLE001 — o avatar arranca na mesma, com o mapa estático
+        return ""
+    lines = []
+    for t in tools:
+        name = t.get("name")
+        if not name:
+            continue
+        desc = " ".join(str(t.get("description") or "").split())
+        cut = desc.find(". ")
+        lines.append(f"- {name}: {(desc[:cut + 1] if 0 < cut < 160 else desc[:160]).strip()}")
+    return ("\nO QUE O ASSISTENTE BTP SABE FAZER HOJE (lista viva, atualizada a cada colocação em linha; pede-lhe em linguagem "
+            "natural, ele escolhe a ferramenta):\n" + "\n".join(lines[:120]) + "\n") if lines else ""

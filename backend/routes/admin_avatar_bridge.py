@@ -96,10 +96,11 @@ class CallIn(BaseModel):
 async def whoami(identity: str, x_avatar_agent_key: str | None = Header(default=None)) -> dict:
     _check_key(x_avatar_agent_key)
     u = await _admin_from_identity(identity)
-    from engines.avatar_knowledge import SITE_MAP, WORK_RULES
+    from engines.avatar_knowledge import SITE_MAP, WORK_RULES, live_capabilities
+    full = await db.users.find_one({"user_id": u["user_id"]}, {"_id": 0, "password_hash": 0, "password": 0}) or u
     return {"ok": True, "name": u.get("name"), "email": u.get("email"),
             "site": os.environ.get("PUBLIC_SITE_NAME") or os.environ.get("FRONTEND_URL") or "",
-            "knowledge": SITE_MAP + WORK_RULES}
+            "knowledge": SITE_MAP + WORK_RULES + live_capabilities(full)}
 
 
 async def _internal(admin: dict, method: str, path: str, params: dict | None = None, body=None):

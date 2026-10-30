@@ -121,3 +121,12 @@ def test_catalog_hides_blocked(env):
     c, _ = env
     paths = [x["path"] for x in c.get("/api/admin-avatar-bridge/catalog", params={"identity": IDENT}, headers=H).json()["routes"]]
     assert "/api/admin/stats" in paths and not any("auth" in p or "avatar-bridge" in p for p in paths)
+
+
+def test_live_capabilities_follow_deployed_code():
+    """O avatar aprende as novidades sem nova implementação: a lista vem do Assistente BTP implementado."""
+    for k, v in {"STUDIES_MODEL_ANALYSIS": "test", "STUDIES_MODEL_LIGHT": "test"}.items():
+        os.environ.setdefault(k, v)
+    from engines.avatar_knowledge import live_capabilities
+    txt = live_capabilities({"user_id": "u", "role": "admin", "account_type": "pro"})
+    assert "check_plans_coherence" in txt and "ask_user_choices" in txt
