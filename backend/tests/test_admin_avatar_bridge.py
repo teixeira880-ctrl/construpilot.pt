@@ -40,6 +40,18 @@ def env(monkeypatch):
     async def note(user=Depends(S.admin_user)):
         return {"created": True}
 
+    @r.delete("/admin/notes/{nid}", summary="Apagar nota")
+    async def del_note(nid: str, user=Depends(S.admin_user)):
+        return {"deleted": nid}
+
+    @r.post("/ceo/email/draft")
+    async def email_draft(user=Depends(S.admin_user)):
+        return {"draft": True}
+
+    @r.post("/ceo/email/{cid}/send")
+    async def email_send(cid: str, user=Depends(S.admin_user)):
+        return {"sent": cid}
+
     @r.post("/auth/change-password")
     async def pw():
         return {"changed": True}
@@ -69,14 +81,33 @@ def test_read_runs_as_admin(env):
     assert r["ok"] and '"by": "admin@construpilot.pt"' in r["data"]
 
 
-def test_write_needs_confirmation_and_is_logged(env):
+def test_ordinary_write_is_autonomous_and_logged(env):
+    """Autonomia (31/10/2026): uma escrita comum segue sem confirmação, mas fica registada."""
     c, mdb = env
-    body = {"identity": IDENT, "method": "POST", "path": "admin/notes", "summary": "nota de teste"}
-    assert c.post("/api/admin-avatar-bridge/call", headers=H, json=body).json()["needs_confirmation"] is True
-    r = c.post("/api/admin-avatar-bridge/call", headers=H, json={**body, "confirmed": True}).json()
-    assert r["ok"] and r["status"] == 200
+    for path in ("admin/notes", "/api/ceo/email/draft"):
+        r = c.post("/api/admin-avatar-bridge/call", headers=H, json={"identity": IDENT, "method": "POST", "path": path, "summary": "teste"}).json()
+        assert r["ok"] and r["status"] == 200, path
     logged = asyncio.get_event_loop_policy().get_event_loop().run_until_complete(mdb.avatar_actions.count_documents({}))
-    assert logged == 1
+    assert logged == 2
+
+
+def test_irreversible_or_external_write_needs_confirmation(env):
+    c, mdb = env
+    for method, path in (("DELETE", "/api/admin/notes/n1"), ("POST", "/api/ceo/email/c1/send")):
+        body = {"identity": IDENT, "method": method, "path": path, "summary": "teste"}
+        assert c.post("/api/admin-avatar-bridge/call", headers=H, json=body).json()["needs_confirmation"] is True, path
+        r = c.post("/api/admin-avatar-bridge/call", headers=H, json={**body, "confirmed": True}).json()
+        assert r["ok"] and r["status"] == 200, path
+    assert B.needs_confirmation("PUT", "/api/admin/prices/k") and B.needs_confirmation("POST", "/api/faturas/f1/emitir")
+    assert not B.needs_confirmation("POST", "/api/assistant/jobs") and not B.needs_confirmation("POST", "/api/devis")
+
+
+def test_whoami_carries_platform_knowledge_and_overview(env):
+    c, _ = env
+    k = c.get("/api/admin-avatar-bridge/whoami", params={"identity": IDENT}, headers=H).json()["knowledge"]
+    assert "/assistant" in k and "/admin/growth" in k and "assistant_answer_choices" in k
+    o = c.get("/api/admin-avatar-bridge/overview", params={"identity": IDENT}, headers=H).json()
+    assert o["ok"] and '"users": 2' in o["data"] and "indisponivel" in o["data"]
 
 
 def test_blocked_routes(env):

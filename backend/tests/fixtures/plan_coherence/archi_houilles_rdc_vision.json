@@ -1,0 +1,6 @@
+{"chains": [
+ {"orientation": "horizontal", "values": [5.20, 2.70, 5.19], "ticks_px": [[480, 75], [713, 75], [843, 74], [1077, 75]], "objet": "batiment"},
+ {"orientation": "horizontal", "values": [3.94, 5.60, 2.10, 5.73], "ticks_px": [[292, 842], [478, 842], [714, 842], [838, 842], [1074, 842]], "objet": "batiment"},
+ {"orientation": "vertical", "values": [4.70, 4.70, 5.20], "ticks_px": [[445, 110], [445, 322], [445, 545], [445, 780]], "objet": "batiment"},
+ {"orientation": "vertical", "values": [4.53, 4.53], "ticks_px": [[318, 330], [318, 537], [318, 745]], "objet": "terrasse"}
+]}

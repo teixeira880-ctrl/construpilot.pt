@@ -22,7 +22,7 @@ FILE_TOOLS = [
         "body": {"type": "string", "minLength": 1, "maxLength": 45000},
         "source_artifact_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 4}}),
     function("read_generated_file", "Reler o conteúdo ou ver uma ilustração gerada anteriormente nesta conversa antes de propor uma nova versão. O ficheiro antigo é conservado.", {"artifact_id": {"type": "string"}}),
-    function("edit_image_from_photo", "Editar / retocar uma FOTOGRAFIA já fornecida na conversa com IA (Nano Banana): simular obras ou uma renovação, acrescentar/retirar um elemento, mudar um acabamento ou uma cor, inserir uma construção, etc. document_id = identificador de uma imagem anexada à conversa (doc_…). body = instruções de alteração. Produz uma ilustração IA NÃO contratual a partir da fotografia real. Usar APENAS a pedido explícito de alterar/retocar uma fotografia fornecida.", {
+    function("edit_image_from_photo", "Editar / retocar uma FOTOGRAFIA já fornecida na conversa com IA (Nano Banana): simular obras ou uma renovação, acrescentar/retirar um elemento, mudar um acabamento ou uma cor, inserir uma construção, etc. document_id = identificador de uma imagem anexada à conversa (doc_…). body = instruções de alteração. Produz uma ilustração IA NÃO contratual a partir da fotografia real. Usar APENAS a pedido explícito de alterar/retocar uma fotografia fornecida. NUNCA para anotar, cotar ou comparar plantas (arquitetura, estruturas): usar check_plans_coherence.", {
         "document_id": {"type": "string"}, "title": {"type": "string", "minLength": 1, "maxLength": 160},
         "body": {"type": "string", "minLength": 1, "maxLength": 4000}}),
 ]

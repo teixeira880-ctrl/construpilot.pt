@@ -34,8 +34,13 @@ SITES = {"pt": os.environ.get("CONSTRUPILOT_PT_URL", "https://construpilot.pt"),
          "fr": os.environ.get("CONSTRUPILOT_FR_URL", "https://construpilot.fr")}
 
 RULES = (
-    "You are the INTERNAL video assistant of the ConstruPilot team, shown only to administrators in the admin area. "
-    "You float in a corner of the admin's screen while they navigate. You have two ways to work, both with the admin's rights: "
+    "You are the INTERNAL video assistant of the ConstruPilot team, shown only to administrators. You are an autonomous operator of the "
+    "whole platform: you decide the best tool and carry the job to the end without asking permission for each step. "
+    "Your strongest tool is the Assistant BTP (it holds every business engine: BET studies, structure, MEP, RE2020, quotes, plans, "
+    "take-offs, documents): delegate business work to it with assistant_ask, follow it with assistant_wait until done, and ANSWER ITS "
+    "CHOICE CARDS YOURSELF with assistant_answer_choices (the admin's stated preferences, otherwise the 'recommended' option). "
+    "For company figures use platform_overview first. "
+    "You float in a corner of the admin's screen while they navigate. Other ways to work, with the admin's rights: "
     "(A) DRIVE THE SCREEN VISIBLY (preferred whenever the admin asks you to do, open, show, fill or create something): "
     "ui_read (see the current page: text + numbered elements), ui_navigate(path), ui_click(id), ui_type(id, text, submit), ui_scroll, ui_back. "
     "Always ui_read after navigating or clicking, then act on element ids from the LATEST ui_read. Useful pages: /dashboard, /assistant "
@@ -43,8 +48,10 @@ RULES = (
     "/chantiers, /clients, /admin (admin tabs). Narrate briefly what you are doing while you do it. "
     "(B) DATA THROUGH THE API (for quick figures or when no page shows it): find_features (discover API routes by keywords), "
     "read (GET, free) and act (POST/PUT/PATCH/DELETE). "
-    "Rules: (1) before ANY action that changes data, say in one sentence exactly what you will do and ask 'Confirmas?'/'Vous confirmez ?'; "
-    "call act or ui_click with confirmed=true ONLY after a clear yes in the admin's last answer; if a tool answers needs_confirmation, ask and wait. "
+    "Rules: (1) act without asking, EXCEPT for irreversible actions or actions that reach a third party (delete, send an e-mail/quote/"
+    "invoice to a customer, issue or finalise an invoice, publish, change prices/plans/user rights/feature flags): for those only, say "
+    "in one sentence what you will do and ask 'Confirmas?'/'Vous confirmez ?', then call with confirmed=true after a clear yes. "
+    "If a tool answers needs_confirmation, ask and wait. "
     "(2) You never handle passwords, payments, card data, secrets or permanent deletion — say it must be done by hand on the site. "
     "(3) Never invent figures: read them with the tools; if a tool fails, say so briefly. "
     "(4) Speak in short sentences (2-3), summarise long data, read numbers naturally. "
@@ -73,6 +80,13 @@ class Bridge:
         except httpx.HTTPError:
             return None
 
+    async def overview(self) -> str:
+        try:
+            r = await self.http.get(f"{self.base}/api/admin-avatar-bridge/overview", params={"identity": self.identity}, headers=self.h)
+            return r.text[:14000]
+        except httpx.HTTPError as e:
+            return json.dumps({"ok": False, "error": f"tableau de bord injoignable: {str(e)[:120]}"})
+
     async def catalog(self, q: str) -> str:
         r = await self.http.get(f"{self.base}/api/admin-avatar-bridge/catalog", params={"identity": self.identity, "q": q}, headers=self.h)
         return r.text[:12000]
@@ -94,9 +108,47 @@ def _json(s: str, default):
 
 
 class AdminAssistant(Agent):
-    def __init__(self, bridge: Bridge, lang: str, room=None, identity: str = ""):
-        super().__init__(instructions=RULES + LANG_TXT.get(lang, LANG_TXT["pt"]) + f" Site: {bridge.base}.")
+    def __init__(self, bridge: Bridge, lang: str, room=None, identity: str = "", knowledge: str = ""):
+        super().__init__(instructions=RULES + LANG_TXT.get(lang, LANG_TXT["pt"]) + f" Site: {bridge.base}.\n" + knowledge)
         self.bridge, self.room, self.identity = bridge, room, identity
+
+    # ------------------------------------------------------------------ Assistant BTP (structuré, sous les yeux de l'admin)
+    @function_tool()
+    async def assistant_ask(self, context: RunContext, request: str, new_conversation: bool = False, conversation_id: str = "") -> str:
+        """Give a job to the Assistant BTP, shown live on the admin's screen (page /assistant). Write the request as a complete,
+        precise instruction (what to produce, constraints, files already in the conversation). new_conversation=true for a new
+        subject; conversation_id to continue a given one; otherwise continues the conversation open on screen.
+        Returns the conversation state. Then call assistant_wait until done=true."""
+        return await self._ui("assistant.ask", {"text": request, "new_conversation": new_conversation,
+                                                "conversation_id": conversation_id}, timeout=40)
+
+    @function_tool()
+    async def assistant_wait(self, context: RunContext, seconds: int = 35) -> str:
+        """Wait (up to 40 s) for the Assistant BTP to finish or to ask choices. Returns running, progress, last_answer, choices
+        (pending choice cards with question ids, option ids and the recommended option), files produced and tools used.
+        If done=false call it again (long studies take minutes); tell the admin briefly where it stands."""
+        return await self._ui("assistant.wait", {"seconds": max(3, min(40, int(seconds)))}, timeout=55)
+
+    @function_tool()
+    async def assistant_status(self, context: RunContext) -> str:
+        """Current state of the Assistant BTP conversation on screen (answer, pending choices, files, running job)."""
+        return await self._ui("assistant.status", timeout=15)
+
+    @function_tool()
+    async def assistant_answer_choices(self, context: RunContext, answers_json: str = "", use_recommended: bool = False,
+                                       other_json: str = "") -> str:
+        """Answer the Assistant BTP's pending choice card by clicking it on screen, then submit. answers_json maps question id to
+        option id (or a list of option ids for multi-choice), e.g. {"murs_ext": "brique_20", "planchers": "hourdis"}; questions
+        not listed keep their recommended option. Use "other" as option id with other_json {"question_id": "free text"}.
+        use_recommended=true submits every recommended option at once."""
+        return await self._ui("assistant.choose", {"answers": _json(answers_json, {}), "other": _json(other_json, {}),
+                                                   "use_recommended": use_recommended}, timeout=40)
+
+    @function_tool()
+    async def platform_overview(self, context: RunContext) -> str:
+        """ConstruPilot dashboard in one call: users/activity stats, revenue KPIs, AI spending, leads, requests, daily health and
+        recent tool errors (ERR-… references). Use it first for any 'how is ConstruPilot doing' / CEO / management question."""
+        return await self.bridge.overview()
 
     async def _ui(self, method: str, payload: dict | None = None, timeout: float = 20) -> str:
         """Commande exécutée dans le navigateur de l'admin (RPC LiveKit vers la fenêtre flottante)."""
@@ -177,10 +229,11 @@ async def entrypoint(ctx: JobContext):
     lang = (meta.get("lang") or "pt").lower()
     identity = await _admin_identity(ctx)
     order = ["fr", "pt"] if lang == "fr" else ["pt", "fr"]
-    bridge = None
+    bridge, me = None, None
     for site in order:  # o admin pertence ao site onde a ponte o reconhece
         b = Bridge(SITES[site], identity)
-        if await b.whoami():
+        me = await b.whoami()
+        if me:
             bridge = b
             break
     if bridge is None:
@@ -193,7 +246,15 @@ async def entrypoint(ctx: JobContext):
         [(JENNY, "coral"), (MEI, "coral"), (KENJI, "ash")]
     session, ok, err = None, False, None
     for avatar_id, voice in candidates:
-        session = AgentSession(llm=openai.realtime.RealtimeModel(voice=voice))
+        # Voix + mains : gpt-realtime-2.1 (raisonnement réglable, appels d'outils fiables, latence plus basse) ; le travail
+        # lourd est délégué à l'Assistant BTP, d'où un raisonnement « low » par défaut pour garder une voix réactive.
+        # Changeable sans toucher au code : AVATAR_REALTIME_MODEL / AVATAR_REASONING (minimal|low|medium|high|xhigh).
+        rt = {"voice": voice, "model": os.environ.get("AVATAR_REALTIME_MODEL") or "gpt-realtime-2.1"}
+        effort = (os.environ.get("AVATAR_REASONING") or "low").strip()
+        if effort in ("minimal", "low", "medium", "high", "xhigh") and "realtime-2" in rt["model"]:
+            from openai.types.realtime import RealtimeReasoning
+            rt["reasoning"] = RealtimeReasoning(effort=effort)
+        session = AgentSession(llm=openai.realtime.RealtimeModel(**rt), max_tool_steps=25)
         avatar = synthesia.AvatarSession(synthesia.AvatarConfig(avatar_ids=[avatar_id]))
         try:
             await avatar.start(session, room=ctx.room)  # antes de session.start — a ordem conta
@@ -212,7 +273,7 @@ async def entrypoint(ctx: JobContext):
         await ctx.room.local_participant.publish_data(json.dumps({"type": "avatar_status", "code": code, "detail": str(err)[:200]}).encode(),
                                                       reliable=True, topic="avatar")
         raise err or RuntimeError("avatar indisponível")
-    await session.start(agent=AdminAssistant(bridge, lang, ctx.room, identity), room=ctx.room)
+    await session.start(agent=AdminAssistant(bridge, lang, ctx.room, identity, (me or {}).get("knowledge", "")), room=ctx.room)
     await session.generate_reply(instructions=GREET.get(lang, GREET["pt"]))
 
 

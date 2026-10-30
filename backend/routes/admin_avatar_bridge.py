@@ -6,8 +6,9 @@ X-Avatar-Agent-Key) e a identidade LiveKit do admin (« admin-<user_id> »).
 
 Regras de segurança (aplicadas aqui, no servidor, e não só no prompt do agente):
   - só contas com role « admin » e ativas;
-  - leituras (GET) livres; escritas (POST/PUT/PATCH/DELETE) exigem confirmed=true,
-    que o agente só envia depois de o admin confirmar em voz alta;
+  - leituras (GET) livres; escritas livres (autonomia pedida pelo fundador, 31/10/2026), EXCETO as irreversíveis ou
+    que saem para terceiros (DELETE, envio de e-mail/fatura/orçamento, publicação, emissão, preços, ofertas, direitos de
+    utilizadores, feature flags, modelo IA, orçamentos de despesas): essas exigem confirmed=true após o « sim » do admin;
   - rotas proibidas: autenticação e palavras-passe, pagamentos e faturação Stripe,
     segredos, eliminação definitiva, a própria ponte e o token do avatar;
   - cada escrita fica registada em avatar_actions (quem, o quê, quando, resultado).
@@ -41,6 +42,20 @@ BLOCKED = [re.compile(p, re.I) for p in (
     r"impersonat|login[-_]?as|sudo",
 )]
 MAX_OUT = 14000
+# Escritas que exigem o « sim » explícito do admin (irreversível, sai para terceiros, ou muda a configuração do negócio).
+CONFIRM_PATHS = re.compile(
+    r"send|envoi|enviar|e-?mail|mail|bulk|invite|convite|publish|publier|publicar|emit|emett|finali|sign|assin|"
+    r"/admin/(prices|regions|plans|users|feature-flags|ai-model|ai-openai-key|campaigns/.+/run)|"
+    r"/admin/expenses/(budgets|rates|cap)|deactivat|desativ|d[ée]sactiv|block|bloque|revoke|revog|/(copy|creative)/[^/]+/(approve|publish|send)",
+    re.I)
+
+
+def needs_confirmation(method: str, path: str) -> bool:
+    if method == "DELETE":
+        return True
+    if method == "POST" and re.search(r"/drafts?$", path):
+        return False          # um rascunho (CEO, orçamento…) não compromete nada: é revisto antes de qualquer envio
+    return method in WRITE and bool(CONFIRM_PATHS.search(path))
 
 
 def _check_key(key: str | None) -> None:
@@ -81,8 +96,59 @@ class CallIn(BaseModel):
 async def whoami(identity: str, x_avatar_agent_key: str | None = Header(default=None)) -> dict:
     _check_key(x_avatar_agent_key)
     u = await _admin_from_identity(identity)
+    from engines.avatar_knowledge import SITE_MAP, WORK_RULES
     return {"ok": True, "name": u.get("name"), "email": u.get("email"),
-            "site": os.environ.get("PUBLIC_SITE_NAME") or os.environ.get("FRONTEND_URL") or ""}
+            "site": os.environ.get("PUBLIC_SITE_NAME") or os.environ.get("FRONTEND_URL") or "",
+            "knowledge": SITE_MAP + WORK_RULES}
+
+
+async def _internal(admin: dict, method: str, path: str, params: dict | None = None, body=None):
+    """Chamada interna à API do site, com os direitos do admin (token de sessão assinado para ele)."""
+    from server import app  # noqa: PLC0415
+    token = make_jwt(admin["user_id"], admin.get("token_version") or 0)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://avatar.internal", timeout=120) as client:
+        return await client.request(method, path, params=params or None, json=body if method in WRITE else None,
+                                    headers={"Authorization": f"Bearer {token}"})
+
+
+OVERVIEW = {"stats": "/api/admin/stats", "revenue_kpis": "/api/admin/revenue/kpis", "expenses": "/api/admin/expenses/overview",
+            "leads": "/api/admin/leads/stats", "assistente_btp": "/api/admin/btp-assistant/metrics", "uso_ia": "/api/admin/ai-usage"}
+
+
+def _compact(v, depth: int = 0):
+    """Reduz uma resposta JSON (listas longas cortadas, textos longos truncados) para caber numa mensagem de voz."""
+    if isinstance(v, dict):
+        return {k: _compact(x, depth + 1) for k, x in list(v.items())[:40] if k not in ("traceback", "data_b64")}
+    if isinstance(v, list):
+        return [_compact(x, depth + 1) for x in v[: (5 if depth else 8)]] + ([f"… {len(v) - (5 if depth else 8)} autres"] if len(v) > (5 if depth else 8) else [])
+    if isinstance(v, str) and len(v) > 200:
+        return v[:200] + "…"
+    return v
+
+
+@router.get("/overview")
+async def overview(identity: str, x_avatar_agent_key: str | None = Header(default=None)) -> dict:
+    """Painel numa só chamada (estatísticas, receitas, despesas IA, leads, métricas do Assistente BTP, uso de IA)."""
+    _check_key(x_avatar_agent_key)
+    admin = await _admin_from_identity(identity)
+    import asyncio  # noqa: PLC0415
+    rs = await asyncio.gather(*(_internal(admin, "GET", p) for p in OVERVIEW.values()), return_exceptions=True)
+    out = {}
+    for key, r in zip(OVERVIEW, rs):
+        if isinstance(r, Exception) or r.status_code >= 400:
+            out[key] = {"indisponivel": True}
+            continue
+        try:
+            data = r.json()
+        except ValueError:
+            continue
+        if key == "reliability" and isinstance(data, dict):
+            data = {"erros_recentes": [{k: e.get(k) for k in ("ref", "tool", "created_at")} for e in (data.get("errors") or [])[:8]],
+                    "saude": [{k: h.get(k) for k in ("created_at", "status", "ok")} for h in (data.get("health") or [])[:3]]}
+        out[key] = _compact(data)
+    text = json.dumps(out, ensure_ascii=False, default=str)
+    return {"ok": True, "data": text[:MAX_OUT], "truncated": len(text) > MAX_OUT}
 
 
 @router.get("/catalog")
@@ -113,16 +179,10 @@ async def call(body: CallIn, x_avatar_agent_key: str | None = Header(default=Non
     if ".." in path or "://" in path or _blocked(path):
         raise HTTPException(403, "Ação não permitida ao assistente de vídeo (fazer no site, à mão)")
     method = body.method.upper()
-    if method in WRITE and not body.confirmed:
+    if needs_confirmation(method, path) and not body.confirmed:
         return {"ok": False, "needs_confirmation": True,
-                "message": "Ação que altera dados: descrever ao admin e pedir confirmação explícita antes de repetir com confirmed=true."}
-    from server import app  # noqa: PLC0415
-    token = make_jwt(admin["user_id"], admin.get("token_version") or 0)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://avatar.internal", timeout=120) as client:
-        r = await client.request(method, path, params=body.params or None,
-                                 json=body.body if method in WRITE else None,
-                                 headers={"Authorization": f"Bearer {token}"})
+                "message": "Ação irreversível ou que chega a terceiros: descrevê-la ao admin numa frase e pedir « sim » antes de repetir com confirmed=true."}
+    r = await _internal(admin, method, path, body.params, body.body)
     ctype = r.headers.get("content-type", "")
     if "json" in ctype:
         try:

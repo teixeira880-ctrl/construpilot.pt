@@ -36,8 +36,10 @@ let videoEl = null;
 // ------------------------------------------------------------------ pilotage visible de l'écran
 const SEL = 'a[href],button,input:not([type=hidden]),textarea,select,[role=button],[role=tab],[role=menuitem],[role=option],[role=combobox],[role=checkbox],[role=switch],[contenteditable=true]';
 const FORBID = /\b(pagar|pagamento|payer|paiement|payment|checkout|stripe|cart[aã]o|carte bancaire|eliminar definitivamente|supprimer d[ée]finitivement|esvaziar|vider la corbeille|palavra-passe|mot de passe|password)/i;
-const CONFIRM = /(apagar|eliminar|supprimer|delete|remover|retirer|enviar e-?mail|envoyer|send|emitir|[ée]mettre|finalizar|finaliser|validar|valider|aprovar|approuver|publicar|publier|aceitar|accepter|desativar|d[ée]sactiver|bloquear|bloquer|guardar|enregistrer|save|confirmar|confirmer|submeter|soumettre)/i;
-const NO_CONFIRM_TESTIDS = new Set(["assistant-send-btn"]);   // envoyer un message à l'Assistant BTP n'engage rien
+// Autonomie (demande du fondateur, 31/10) : l'assistante agit seule ; seules les actions irréversibles ou qui partent
+// vers l'extérieur (suppression, envoi d'e-mail / de facture / signature, émission, publication) demandent un « oui ».
+const CONFIRM = /(apagar|eliminar|supprimer|delete|remover|enviar (?:o |a )?(?:e-?mail|fatura|orçamento|ao cliente)|envoyer (?:l['’]|le |la |au |par )?(?:e-?mail|mail|facture|devis|client)|send (?:e-?mail|invoice)|emitir|[ée]mettre|publicar|publier|signer|assinar|desativar|d[ée]sactiver|bloquear|bloquer|r[ée]voquer|revogar)/i;
+const NO_CONFIRM_TESTIDS = new Set(["assistant-send-btn", "choice-submit-btn", "choice-defaults-btn"]);
 let ids = new WeakMap();
 let seq = 0;
 
@@ -63,12 +65,15 @@ function snapshot() {
     const ia = ra.bottom > 0 && ra.top < vh ? 0 : 1, ib = rb.bottom > 0 && rb.top < vh ? 0 : 1;
     return ia - ib || ra.top - rb.top || ra.left - rb.left;
   });
-  const items = els.slice(0, 120).map((el) => {
+  const items = els.slice(0, 160).map((el) => {
     if (!ids.has(el)) ids.set(el, `e${++seq}`);
     const id = ids.get(el);
     el.setAttribute("data-cp-ai", id);
     const role = el.getAttribute("role") || (el.tagName === "A" ? "link" : el.tagName === "INPUT" ? `input:${el.type || "text"}` : el.tagName.toLowerCase());
-    return { id, role, label: labelOf(el), ...(el.tagName === "A" ? { href: el.getAttribute("href") } : {}) };
+    const group = el.closest("fieldset")?.querySelector("legend")?.innerText?.trim();
+    const checked = el.getAttribute("aria-checked") ?? el.getAttribute("aria-selected") ?? (el.type === "checkbox" || el.type === "radio" ? String(el.checked) : null);
+    return { id, role, label: labelOf(el), ...(group ? { group: group.slice(0, 90) } : {}), ...(checked != null ? { checked: checked === "true" } : {}),
+             ...(el.tagName === "A" ? { href: el.getAttribute("href") } : {}) };
   });
   const main = document.querySelector("main") || document.body;
   const text = (main.innerText || "").replace(/\n{3,}/g, "\n\n").slice(0, 7000);
@@ -79,6 +84,11 @@ function fit(o) {
   let out = JSON.stringify(o);
   while (out.length > 14000 && o.text.length > 500) { o.text = o.text.slice(0, Math.floor(o.text.length * 0.7)); out = JSON.stringify(o); }
   while (out.length > 14000 && o.elements.length > 20) { o.elements = o.elements.slice(0, o.elements.length - 15); out = JSON.stringify(o); }
+  return out;
+}
+function fit2(o) {
+  let out = JSON.stringify(o);
+  while (out.length > 14000 && o.last_answer?.length > 400) { o.last_answer = o.last_answer.slice(0, Math.floor(o.last_answer.length * 0.7)) + "…"; out = JSON.stringify(o); }
   return out;
 }
 function find(id) { return document.querySelector(`[data-cp-ai="${CSS.escape(id)}"]`); }
@@ -118,7 +128,121 @@ const ko = (error, o = {}) => JSON.stringify({ ok: false, error, ...o });
 const parse = (d) => { try { return JSON.parse(d.payload || "{}"); } catch { return {}; } };
 const settle = (ms = 900) => new Promise((r) => setTimeout(r, ms));
 
+// ------------------------------------------------------------------ Assistant BTP : actions structurées
+// L'assistante ne « devine » plus l'écran : elle lit l'état réel de la conversation (réponse, cartes de choix,
+// fichiers produits) et agit par le même chemin que l'utilisateur (window.__cpAssistant exposé par la page).
+const RUNNING = ["queued", "running", "preparing"];
+async function assistantPage(timeoutMs = 12000) {
+  if (!window.location.pathname.startsWith("/assistant")) {
+    window.history.pushState({}, "", "/assistant");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end) { if (window.__cpAssistant) return window.__cpAssistant; await settle(300); }
+  return null;
+}
+function pendingChoices(conv) {
+  const msgs = conv?.messages || [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (m.role === "user") return [];            // une réponse a déjà suivi la dernière carte
+    for (const a of m.actions || []) {
+      const r = a.result || {};
+      if (a.tool === "ask_user_choices" && Array.isArray(r.questions)) {
+        if (document.querySelector('[data-testid="choice-card-frozen"]') && !document.querySelector('[data-testid="choice-card"]')) return [];
+        return [{ intro: r.intro || "", submit_label: r.submit_label || "", questions: r.questions.map((q) => ({
+          id: q.id, label: q.label, multi: !!q.multi, allow_other: !!q.allow_other, recommended: q.default_option_id || null,
+          options: (q.options || []).map((o) => ({ id: o.id, label: o.label })) })) }];
+      }
+    }
+  }
+  return [];
+}
+function assistantState() {
+  const conv = window.__cpAssistant?.state();
+  if (!conv) return { ok: true, page: window.location.pathname, conversation_id: null, running: false, last_answer: "", choices: [], files: [] };
+  const msgs = conv.messages || [];
+  const last = [...msgs].reverse().find((m) => m.role === "assistant");
+  const files = [];
+  for (const a of last?.actions || []) {
+    const r = a.result || {};
+    for (const art of [r.artifact, r.pdf_artifact, r.xlsx_artifact].filter(Boolean)) files.push({ title: art.title, file: art.filename, format: art.format });
+    if (r.ok === false && r.error) files.push({ error: `${a.tool}: ${String(r.error).slice(0, 160)}` });
+  }
+  const job = (conv.jobs || []).find((j) => RUNNING.includes(j.status));
+  return { ok: true, conversation_id: conv.conversation_id, title: conv.title || "", running: !!job, job_status: job?.status || null,
+           progress: job?.live?.label || job?.live?.status || null, messages: msgs.length,
+           last_answer: (last?.content || "").slice(0, 6000), last_message_id: last?.message_id || null,
+           tools_used: (last?.actions || []).map((a) => `${a.tool}${a.result?.ok === false ? " (échec)" : ""}`).slice(0, 15),
+           choices: pendingChoices(conv), files };
+}
+async function clickTestId(testid) {
+  const el = document.querySelector(`[data-testid="${CSS.escape(testid)}"]`);
+  if (!el) return false;
+  await pointTo(el);
+  el.click();
+  await settle(250);
+  return true;
+}
+
 const HANDLERS = {
+  "assistant.status": async () => fit2(assistantState()),
+  "assistant.ask": async (d) => {
+    const { text, new_conversation, conversation_id } = parse(d);
+    if (!String(text || "").trim()) return ko("texte vide");
+    const a = await assistantPage();
+    if (!a) return ko("page Assistant BTP indisponible");
+    if (conversation_id && a.state()?.conversation_id !== conversation_id) { await a.open(conversation_id); await settle(800); }
+    else if (new_conversation) { await a.newConversation(); await settle(800); }
+    const before = (a.state()?.messages || []).length;
+    await a.send(String(text).slice(0, 7900));
+    const end = Date.now() + 15000;
+    while (Date.now() < end && (a.state()?.messages || []).length <= before && !(a.state()?.jobs || []).some((j) => RUNNING.includes(j.status))) await settle(500);
+    return fit2({ ...assistantState(), sent: true });
+  },
+  "assistant.wait": async (d) => {
+    const secs = Math.min(40, Math.max(3, Number(parse(d).seconds) || 30));
+    const a = await assistantPage(4000);
+    if (!a) return ko("page Assistant BTP indisponible");
+    const startId = assistantState().last_message_id;
+    const end = Date.now() + secs * 1000;
+    while (Date.now() < end) {
+      a.refresh?.();
+      await settle(2500);
+      const st = assistantState();
+      if (!st.running && st.last_message_id !== startId) return fit2({ ...st, done: true });
+      if (!st.running && st.choices.length) return fit2({ ...st, done: true });
+    }
+    return fit2({ ...assistantState(), done: false, note: "toujours en cours : rappeler assistant_wait" });
+  },
+  "assistant.choose": async (d) => {
+    const { answers = {}, other = {}, use_recommended } = parse(d);
+    const st = assistantState();
+    const card = st.choices[0];
+    if (!card) return ko("aucune carte de choix en attente");
+    if (use_recommended) {
+      if (!(await clickTestId("choice-defaults-btn"))) return ko("bouton « hypothèses courantes » introuvable");
+    } else {
+      for (const q of card.questions) {
+        const want = [].concat(answers[q.id] ?? []).map(String);
+        if (!want.length) continue;                        // question non précisée : la valeur recommandée reste cochée
+        for (const o of q.options) {
+          const el = document.querySelector(`[data-testid="${CSS.escape(`choice-opt-${q.id}-${o.id}`)}"]`);
+          if (!el) continue;
+          const on = el.getAttribute("aria-checked") === "true";
+          if (want.includes(o.id) !== on && (q.multi || want.includes(o.id))) { await pointTo(el); el.click(); await settle(200); }
+        }
+        if (want.includes("other") && other[q.id]) {
+          await clickTestId(`choice-opt-${q.id}-other`);
+          const input = document.querySelector(`[data-testid="${CSS.escape(`choice-other-input-${q.id}`)}"]`);
+          if (input) { await pointTo(input); setNativeValue(input, String(other[q.id])); await settle(200); }
+        }
+      }
+      if (!(await clickTestId("choice-submit-btn"))) return ko("bouton de validation introuvable");
+    }
+    await settle(2500);
+    return fit2({ ...assistantState(), submitted: true });
+  },
   "ui.read": async () => fit(snapshot()),
   "ui.navigate": async (d) => {
     const p = String(parse(d).path || "");
