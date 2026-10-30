@@ -8,8 +8,8 @@ regras no servidor: leituras livres, escritas só com confirmação, rotas sens�
 Variáveis de ambiente (segredos do agente no LiveKit Cloud, nunca no código):
   SYNTHESIA_API_KEY, OPENAI_API_KEY, AVATAR_AGENT_KEY
   CONSTRUPILOT_PT_URL (https://construpilot.pt), CONSTRUPILOT_FR_URL (https://construpilot.fr)
-  AVATAR_IDS   ids Synthesia separados por vírgula (1.º = ativo; por defeito Kenji)
-  AVATAR_VOICE voz OpenAI Realtime (por defeito « marin »)
+  AVATAR_IDS   ids Synthesia a impor (opcional; por defeito Jenny → Mei → Kenji, o 1.º aceite)
+  AVATAR_VOICE voz OpenAI Realtime para AVATAR_IDS (por defeito « coral », feminina)
 """
 from __future__ import annotations
 
@@ -28,15 +28,23 @@ log = logging.getLogger("construpilot-avatar")
 
 AGENT_NAME = "construpilot-avatar"
 KENJI = "7572faa9-15da-400d-8227-ef1ab8932523"
+JENNY = "8788bef1-8020-46e0-a8f4-510ea9989b25"  # exemplos interativos oficiais Synthesia
+MEI = "4b638067-6319-46e1-b634-371a4bdfceb9"
 SITES = {"pt": os.environ.get("CONSTRUPILOT_PT_URL", "https://construpilot.pt"),
          "fr": os.environ.get("CONSTRUPILOT_FR_URL", "https://construpilot.fr")}
 
 RULES = (
     "You are the INTERNAL video assistant of the ConstruPilot team, shown only to administrators in the admin area. "
-    "You can act on the website with the admin's rights through your tools: find_features (discover API routes by keywords), "
+    "You float in a corner of the admin's screen while they navigate. You have two ways to work, both with the admin's rights: "
+    "(A) DRIVE THE SCREEN VISIBLY (preferred whenever the admin asks you to do, open, show, fill or create something): "
+    "ui_read (see the current page: text + numbered elements), ui_navigate(path), ui_click(id), ui_type(id, text, submit), ui_scroll, ui_back. "
+    "Always ui_read after navigating or clicking, then act on element ids from the LATEST ui_read. Useful pages: /dashboard, /assistant "
+    "(Assistant BTP: type the request in its composer and send it, then read its answer), /devis, /devis-editeur (quotes), /factures (invoices), "
+    "/chantiers, /clients, /admin (admin tabs). Narrate briefly what you are doing while you do it. "
+    "(B) DATA THROUGH THE API (for quick figures or when no page shows it): find_features (discover API routes by keywords), "
     "read (GET, free) and act (POST/PUT/PATCH/DELETE). "
     "Rules: (1) before ANY action that changes data, say in one sentence exactly what you will do and ask 'Confirmas?'/'Vous confirmez ?'; "
-    "call act with confirmed=true ONLY after a clear yes in the admin's last answer; otherwise call nothing. "
+    "call act or ui_click with confirmed=true ONLY after a clear yes in the admin's last answer; if a tool answers needs_confirmation, ask and wait. "
     "(2) You never handle passwords, payments, card data, secrets or permanent deletion — say it must be done by hand on the site. "
     "(3) Never invent figures: read them with the tools; if a tool fails, say so briefly. "
     "(4) Speak in short sentences (2-3), summarise long data, read numbers naturally. "
@@ -86,9 +94,50 @@ def _json(s: str, default):
 
 
 class AdminAssistant(Agent):
-    def __init__(self, bridge: Bridge, lang: str):
+    def __init__(self, bridge: Bridge, lang: str, room=None, identity: str = ""):
         super().__init__(instructions=RULES + LANG_TXT.get(lang, LANG_TXT["pt"]) + f" Site: {bridge.base}.")
-        self.bridge = bridge
+        self.bridge, self.room, self.identity = bridge, room, identity
+
+    async def _ui(self, method: str, payload: dict | None = None, timeout: float = 20) -> str:
+        """Commande exécutée dans le navigateur de l'admin (RPC LiveKit vers la fenêtre flottante)."""
+        if self.room is None:
+            return '{"ok": false, "error": "écran indisponible"}'
+        try:
+            return await self.room.local_participant.perform_rpc(destination_identity=self.identity, method=method,
+                                                                 payload=json.dumps(payload or {}), response_timeout=timeout)
+        except Exception as e:  # noqa: BLE001 — page rechargée, onglet fermé…
+            return json.dumps({"ok": False, "error": f"écran injoignable: {str(e)[:120]}"})
+
+    @function_tool()
+    async def ui_read(self, context: RunContext) -> str:
+        """See the admin's current screen: path, title, visible text and the list of clickable/typable elements with their ids."""
+        return await self._ui("ui.read")
+
+    @function_tool()
+    async def ui_navigate(self, context: RunContext, path: str) -> str:
+        """Open a page of the site in the admin's browser, e.g. '/assistant', '/devis', '/factures', '/admin'."""
+        return await self._ui("ui.navigate", {"path": path})
+
+    @function_tool()
+    async def ui_click(self, context: RunContext, element_id: str, confirmed: bool = False) -> str:
+        """Click an element (id from the latest ui_read). Buttons that send, save, validate or delete need confirmed=true,
+        given ONLY after the admin said yes."""
+        return await self._ui("ui.click", {"id": element_id, "confirmed": confirmed})
+
+    @function_tool()
+    async def ui_type(self, context: RunContext, element_id: str, text: str, submit: bool = False) -> str:
+        """Type text into a field (id from the latest ui_read); submit=true presses Enter afterwards."""
+        return await self._ui("ui.type", {"id": element_id, "text": text, "submit": submit})
+
+    @function_tool()
+    async def ui_scroll(self, context: RunContext, direction: str = "down") -> str:
+        """Scroll the admin's page 'down' or 'up'."""
+        return await self._ui("ui.scroll", {"direction": direction})
+
+    @function_tool()
+    async def ui_back(self, context: RunContext) -> str:
+        """Go back to the previous page in the admin's browser."""
+        return await self._ui("ui.back")
 
     @function_tool()
     async def find_features(self, context: RunContext, keywords: str) -> str:
@@ -138,16 +187,32 @@ async def entrypoint(ctx: JobContext):
         log.warning("admin %s não reconhecido por nenhuma ponte", identity)
         bridge = Bridge(SITES[order[0]], identity)
 
-    session = AgentSession(llm=openai.realtime.RealtimeModel(voice=os.environ.get("AVATAR_VOICE", "marin")))
-    ids = [x.strip() for x in os.environ.get("AVATAR_IDS", KENJI).split(",") if x.strip()][:5]
-    avatar = synthesia.AvatarSession(synthesia.AvatarConfig(avatar_ids=ids))
-    try:
-        await avatar.start(session, room=ctx.room)  # antes de session.start — a ordem conta
-    except synthesia.SynthesiaError as e:  # mensagem legível para o painel admin (topic « avatar »)
-        await ctx.room.local_participant.publish_data(json.dumps({"error": str(getattr(e, "type", "UNKNOWN")),
-                                                                  "message": str(e)[:200]}), topic="avatar")
-        raise
-    await session.start(agent=AdminAssistant(bridge, lang), room=ctx.room)
+    # Assistente mulher (35-45 anos, forte presença) ; repli sur Kenji si l'espace Synthesia refuse les autres.
+    forced = [x.strip() for x in os.environ.get("AVATAR_IDS", "").split(",") if x.strip()]
+    candidates = [(i, os.environ.get("AVATAR_VOICE", "coral")) for i in forced] or \
+        [(JENNY, "coral"), (MEI, "coral"), (KENJI, "ash")]
+    session, ok, err = None, False, None
+    for avatar_id, voice in candidates:
+        session = AgentSession(llm=openai.realtime.RealtimeModel(voice=voice))
+        avatar = synthesia.AvatarSession(synthesia.AvatarConfig(avatar_ids=[avatar_id]))
+        try:
+            await avatar.start(session, room=ctx.room)  # antes de session.start — a ordem conta
+            log.info("avatar %s (voz %s)", avatar_id, voice)
+            ok = True
+            break
+        except synthesia.SynthesiaError as e:
+            err = e
+            kind = str(getattr(e, "type", "")).upper()
+            log.warning("avatar %s recusado: %s", avatar_id, kind or e)
+            if not kind.endswith(("UNKNOWN_AVATAR", "INVALID_SESSION_REQUEST")):
+                break
+    if not ok:  # mensagem legível para o painel admin (topic « avatar »)
+        kind = str(getattr(err, "type", "error")).split(".")[-1].lower()
+        code = {"concurrency_limit": "busy", "quota_exceeded": "quota", "auth": "config", "feature_not_in_plan": "config"}.get(kind, "error")
+        await ctx.room.local_participant.publish_data(json.dumps({"type": "avatar_status", "code": code, "detail": str(err)[:200]}).encode(),
+                                                      reliable=True, topic="avatar")
+        raise err or RuntimeError("avatar indisponível")
+    await session.start(agent=AdminAssistant(bridge, lang, ctx.room, identity), room=ctx.room)
     await session.generate_reply(instructions=GREET.get(lang, GREET["pt"]))
 
 

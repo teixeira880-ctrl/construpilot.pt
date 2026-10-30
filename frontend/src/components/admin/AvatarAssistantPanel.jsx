@@ -1,150 +1,67 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Video, PhoneOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { avatarStore, startAvatar, stopAvatar } from "@/components/admin/AvatarDock";
 
-// Assistente de vídeo interno (avatar Synthesia « Kenji » via LiveKit).
-// Reservado a admins: o backend (/admin/avatar/token) verifica o papel e só
-// devolve um token de sala de 15 min. Nenhuma chave chega ao navegador.
-
+// Assistant vidéo interne : lance l'assistante, qui s'affiche ensuite dans un coin de l'écran
+// (fenêtre flottante AvatarDock) et reste là quand on change de page.
+const PT = typeof window !== "undefined" && /construpilot\.pt|construpilot-recon/.test(window.location.hostname);
 const LANG_LABEL = { fr: "Français", pt: "Português (PT)", en: "English" };
-
-// Mensagens enviadas pelo agente (topic « avatar ») quando o avatar não consegue arrancar.
-const AVATAR_STATUS = {
-  busy: "O avatar já está a ser usado por outro admin (uma conversa de cada vez com o plano Synthesia atual). Tente daqui a alguns minutos.",
-  quota: "Quota Synthesia esgotada este mês.",
-  config: "Problema de configuração do avatar (chave Synthesia ou LiveKit): ",
-  error: "O avatar não conseguiu arrancar, tente de novo.",
+const T = PT ? {
+  title: "Assistente de vídeo da equipa",
+  desc: "Uso interno apenas. A assistente aparece num canto do ecrã e fica lá enquanto navega. Lê os dados do site e, a seu pedido, mexe no site à sua frente (páginas, Assistente BTP, orçamentos, faturas…). Cada alteração espera pelo seu «sim»; pagamentos, palavras-passe e eliminações definitivas continuam proibidos.",
+  notconf: "Não configurado: adicione LIVEKIT_URL, LIVEKIT_API_KEY e LIVEKIT_API_SECRET às variáveis do backend.",
+  talk: "Falar", stop: "Terminar", hint: "Clique em Falar e autorize o microfone.", live: "Em direto — fale, a assistente está a ouvir (canto inferior direito).",
+  connecting: "A ligar…", waiting: "Ligado — a assistente está a chegar (até 60 s na primeira vez)…",
+} : {
+  title: "Assistant vidéo de l'équipe",
+  desc: "Usage interne uniquement. L'assistante s'affiche dans un coin de l'écran et y reste pendant la navigation. Elle lit les données du site et, à votre demande, agit sur le site sous vos yeux (pages, Assistant BTP, devis, factures…). Chaque modification attend votre « oui » ; paiements, mots de passe et suppressions définitives restent interdits.",
+  notconf: "Non configuré : ajoutez LIVEKIT_URL, LIVEKIT_API_KEY et LIVEKIT_API_SECRET aux variables du backend.",
+  talk: "Parler", stop: "Terminer", hint: "Cliquez sur Parler et autorisez le micro.", live: "En direct — parlez, l'assistante vous écoute (coin inférieur droit).",
+  connecting: "Connexion…", waiting: "Connecté — l'assistante arrive (jusqu'à 60 s la première fois)…",
 };
 
 export default function AvatarAssistantPanel() {
   const [status, setStatus] = useState(null);
-  const [lang, setLang] = useState("pt");
-  const [phase, setPhase] = useState("idle"); // idle | connecting | waiting | live
-  const [message, setMessage] = useState("");
-  const roomRef = useRef(null);
-  const mediaRef = useRef(null);
-  const timerRef = useRef(null);
-
+  const [s, setS] = useState(avatarStore.get());
+  const [lang, setLang] = useState(PT ? "pt" : "fr");
+  useEffect(() => avatarStore.subscribe(setS), []);
   useEffect(() => {
     api.get("/admin/avatar/status")
-      .then(({ data }) => { setStatus(data); setLang(data.default_lang || "pt"); })
+      .then(({ data }) => { setStatus(data); if (data.default_lang) setLang(data.default_lang); })
       .catch(() => setStatus({ configured: false }));
-    return () => { clearTimeout(timerRef.current); roomRef.current?.disconnect(); };
   }, []);
-
-  const reset = (msg = "") => {
-    clearTimeout(timerRef.current);
-    roomRef.current = null;
-    if (mediaRef.current) mediaRef.current.replaceChildren();
-    setPhase("idle");
-    setMessage(msg);
-  };
-
-  const start = async () => {
-    setPhase("connecting");
-    setMessage("");
-    try {
-      const { data } = await api.get("/admin/avatar/token", { params: { lang } });
-      const { Room, RoomEvent } = await import("livekit-client");
-      const room = new Room({ adaptiveStream: false }); // resolução máxima para o avatar
-      roomRef.current = room;
-      let video = null;
-      room.on(RoomEvent.TrackSubscribed, (track) => {
-        if (!video) {
-          video = document.createElement("video");
-          video.playsInline = true;
-          video.className = "block mx-auto h-auto max-h-[70vh] w-auto max-w-full rounded-xl bg-black object-contain shadow-lg";
-          requestAnimationFrame(() => video.scrollIntoView({ behavior: "smooth", block: "center" }));
-          mediaRef.current?.replaceChildren(video);
-        }
-        track.attach(video); // áudio + vídeo no mesmo elemento
-        if (track.kind === "video") {
-          clearTimeout(timerRef.current);
-          setPhase("live");
-          setMessage("");
-        }
-      });
-      let notice = null;
-      room.on(RoomEvent.DataReceived, (payload, _p, _k, topic) => {
-        if (topic !== "avatar") return;
-        try {
-          const m = JSON.parse(new TextDecoder().decode(payload));
-          if (m.type === "avatar_status") {
-            clearTimeout(timerRef.current);
-            notice = (AVATAR_STATUS[m.code] || AVATAR_STATUS.error) + (m.code === "config" ? (m.detail || "") : "");
-            setMessage(notice);
-            room.disconnect();
-          }
-        } catch (_) { /* mensagem ilegível: ignorada */ }
-      });
-      room.on(RoomEvent.Disconnected, () => reset(notice || "Conversa terminada."));
-      await room.connect(data.url, data.token);
-      await room.localParticipant.setMicrophoneEnabled(true);
-      setPhase((p) => (p === "live" ? p : "waiting"));
-      timerRef.current = setTimeout(() => {
-        setMessage("O avatar não responde: o agente está online (LiveKit Cloud)?");
-      }, 60000);
-    } catch (e) {
-      const detail = e?.response?.data?.detail || e?.message || "Erro";
-      toast.error(detail);
-      roomRef.current?.disconnect();
-      reset(detail);
-    }
-  };
-
-  const stop = async () => { await roomRef.current?.disconnect(); reset("Conversa terminada."); };
-
-  const busy = phase === "connecting" || phase === "waiting";
-
+  const langs = status?.langs?.length ? status.langs : ["fr", "pt", "en"];
+  const idle = s.phase === "idle";
+  const busy = s.phase === "connecting" || s.phase === "waiting";
+  const line = s.message || { idle: T.hint, connecting: T.connecting, waiting: T.waiting, live: T.live }[s.phase];
   return (
     <div className="space-y-4" data-testid="admin-avatar-panel">
       <div>
-        <h3 className="text-lg font-semibold">Assistente de vídeo da equipa</h3>
-        <p className="text-sm text-muted-foreground">
-          Uso interno apenas. Ensaiar o pitch do Web Summit, preparar respostas aos
-          investidores, redigir mensagens. Lê os dados do site e age com os seus direitos de admin: cada alteração espera pelo seu «sim»; pagamentos, palavras-passe e eliminações definitivas continuam proibidos.
-        </p>
+        <h3 className="text-lg font-semibold">{T.title}</h3>
+        <p className="text-sm text-muted-foreground">{T.desc}</p>
       </div>
-
       {status && !status.configured && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="admin-avatar-not-configured">
-          Não configurado: adicione LIVEKIT_URL, LIVEKIT_API_KEY e LIVEKIT_API_SECRET às variáveis do backend.
-        </div>
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="admin-avatar-not-configured">{T.notconf}</div>
       )}
-
       <div className="flex flex-wrap items-center gap-2">
-        {(status?.langs || ["fr", "pt", "en"]).map((l) => (
-          <Button key={l} type="button" size="sm" variant={lang === l ? "default" : "outline"}
-            className="rounded-sm" disabled={phase !== "idle"} onClick={() => setLang(l)}
-            data-testid={`admin-avatar-lang-${l}`}>
+        {langs.map((l) => (
+          <Button key={l} type="button" variant={lang === l ? "default" : "outline"} className="rounded-sm" disabled={!idle} onClick={() => setLang(l)}>
             {LANG_LABEL[l] || l}
           </Button>
         ))}
-        {phase === "idle" ? (
-          <Button type="button" className="rounded-sm" onClick={start}
-            disabled={status && !status.configured} data-testid="admin-avatar-start">
-            <Video className="mr-2 h-4 w-4" /> {{ pt: "Falar", en: "Talk" }[lang] || "Parler"}
+        {idle ? (
+          <Button type="button" className="rounded-sm" onClick={() => startAvatar(lang)} disabled={!status?.configured} data-testid="admin-avatar-start">
+            <Video className="mr-2 h-4 w-4" /> {T.talk}
           </Button>
         ) : (
-          <Button type="button" variant="destructive" className="rounded-sm" onClick={stop}
-            disabled={phase === "connecting"} data-testid="admin-avatar-stop">
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PhoneOff className="mr-2 h-4 w-4" />}
-            {{ pt: "Parar", en: "Stop" }[lang] || "Arrêter"}
+          <Button type="button" variant="destructive" className="rounded-sm" onClick={stopAvatar} data-testid="admin-avatar-stop">
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PhoneOff className="mr-2 h-4 w-4" />} {T.stop}
           </Button>
         )}
       </div>
-
-      <p className="text-sm text-muted-foreground" data-testid="admin-avatar-status">
-        {message ||
-          (phase === "connecting" ? "A ligar…" :
-           phase === "waiting" ? "Ligado — o avatar está a chegar (até 60 s na primeira vez)…" :
-           phase === "live" ? "Em direto — fale, o assistente está a ouvir." :
-           "Clique em Falar e autorize o microfone.")}
-      </p>
-
-      <div ref={mediaRef} className="flex w-full justify-center" />
+      <p className="text-sm text-muted-foreground" data-testid="admin-avatar-status">{line}</p>
     </div>
   );
 }
