@@ -17,6 +17,15 @@ import core.security as S  # noqa: E402
 from routes import admin_avatar_bridge as B  # noqa: E402
 
 KEY = "k" * 40
+
+
+def _run(coro):
+    """Python 3.11+ : pas de boucle implicite dans le thread principal → boucle dédiée par appel."""
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 ADMIN = {"user_id": "user_admin0000001", "email": "admin@construpilot.pt", "name": "Admin", "role": "admin", "token_version": 0}
 PRO = {"user_id": "user_pro000000001", "email": "pro@example.pt", "role": "user"}
 
@@ -24,7 +33,7 @@ PRO = {"user_id": "user_pro000000001", "email": "pro@example.pt", "role": "user"
 @pytest.fixture
 def env(monkeypatch):
     mdb = AsyncMongoMockClient()["t"]
-    asyncio.get_event_loop_policy().get_event_loop().run_until_complete(mdb.users.insert_many([dict(ADMIN), dict(PRO)]))
+    _run(mdb.users.insert_many([dict(ADMIN), dict(PRO)]))
     monkeypatch.setattr(B, "db", mdb)
     monkeypatch.setattr(S, "db", mdb)
     monkeypatch.setenv("AVATAR_AGENT_KEY", KEY)
@@ -87,7 +96,7 @@ def test_ordinary_write_is_autonomous_and_logged(env):
     for path in ("admin/notes", "/api/ceo/email/draft"):
         r = c.post("/api/admin-avatar-bridge/call", headers=H, json={"identity": IDENT, "method": "POST", "path": path, "summary": "teste"}).json()
         assert r["ok"] and r["status"] == 200, path
-    logged = asyncio.get_event_loop_policy().get_event_loop().run_until_complete(mdb.avatar_actions.count_documents({}))
+    logged = _run(mdb.avatar_actions.count_documents({}))
     assert logged == 2
 
 

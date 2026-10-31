@@ -347,7 +347,7 @@ function Dock() {
   useEffect(() => avatarStore.subscribe(setS), []);
   useEffect(() => {
     if (holder.current && videoEl && videoEl.parentElement !== holder.current) {
-      videoEl.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;background:#000";
+      videoEl.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;background:transparent";
       holder.current.replaceChildren(videoEl);
     }
   });
@@ -366,7 +366,7 @@ function Dock() {
                border: "2px solid #c8763a", fontFamily: "inherit" }}>
       <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => { drag.current = null; }}
         style={{ cursor: "move", height: min ? 64 : 290, position: "relative" }}>
-        <div ref={holder} style={{ width: "100%", height: "100%", background: "#0b0f0d" }} />
+        <div ref={holder} style={{ width: "100%", height: "100%", background: "transparent" }} />
         {s.phase !== "live" && !min && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#f5efe3",
                         fontSize: 12, textAlign: "center", padding: 12 }}>{s.message || T.waiting}</div>)}
