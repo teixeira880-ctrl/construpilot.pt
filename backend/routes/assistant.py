@@ -13,6 +13,7 @@ from html import escape as html_escape
 import base64
 import json
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -30,6 +31,7 @@ from engines.platform_agent_tools import PLATFORM_TOOLS, PLATFORM_TOOL_NAMES, PL
 from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS, QUOTE_TOOLS
 from engines.assistant_files import FILE_INSTRUCTIONS, FILE_TOOLS, create_file, create_schema, edit_image, image_requested, owned_artifact, public_artifact
 from engines.section_schema import SCHEMA_TOOL
+from engines.plan_coherence_tool import INSTRUCTIONS as COHERENCE_INSTRUCTIONS, PLANS_COHERENCE_TOOL
 from engines.assistant_bet_tool import BET_TOOLS, BET_TOOL_NAMES, BET_INSTRUCTIONS, run_bet_tool
 from engines.assistant_autorizacao_tool import (
     AUTORIZACAO_TOOLS,
@@ -187,7 +189,7 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "due_date": {"type": "string"}, "assignee": {"type": "string"}},
                     "required": ["title", "due_date", "assignee"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "compare_documents",
-     "description": "Compara dois documentos anexados à conversa (orçamento ↔ orçamento, orçamento ↔ planta, ou outro): linhas associadas, diferenças de quantidades/preços/âmbito, elementos presentes num só documento, perguntas a fazer. Identificadores: doc_… (documento anexado) ou plan_… (planta importada). Análise longa (30 a 120 s).",
+     "description": "Compara dois documentos anexados à conversa (orçamento ↔ orçamento, orçamento ↔ planta, ou outro): linhas associadas, diferenças de quantidades/preços/âmbito, elementos presentes num só documento, perguntas a fazer. Identificadores: doc_… (documento anexado) ou plan_… (planta importada). Análise longa (30 a 120 s). NÃO para comparar uma planta de arquitetura com uma de estruturas: usar check_plans_coherence.",
      "parameters": {"type": "object", "properties": {"document_a": {"type": "string"}, "document_b": {"type": "string"},
                                                      "focus": {"type": "string", "description": "Pontos a privilegiar (vazio = comparação completa)"}},
                     "required": ["document_a", "document_b", "focus"], "additionalProperties": False}, "strict": True},
@@ -264,10 +266,10 @@ INDIVIDUAL_TOOL_NAMES = {"start_construction_study", "read_construction_study", 
 
 def tools_for(user: dict) -> list:
     if account_type(user) == "individual":
-        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS
+        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS
     return [t for t in out if t.get("name") not in BET_SUPERSEDED_TOOL_NAMES]
 
 
@@ -380,6 +382,38 @@ async def _settings(uid):
     return {"learning_mode": "suggest", "web_enabled": True, **saved}
 
 
+PLAN_IMAGE_REFUSAL = ("Recusado: esta conversa compara / anota plantas técnicas (arquitetura, estruturas). Uma imagem IA (retoque ou JPG) "
+                      "inventaria cotas. Chama check_plans_coherence com os identificadores das duas plantas: devolve o quadro das "
+                      "diferenças E a sobreposição calculada (PNG + PDF). Para um relatório, cria um PDF com source_artifact_ids = essa sobreposição.")
+_PLAN_TEXT_RE = re.compile(r"incoer[êe]n|incoh[ée]ren|sobrepos|superpos|\bBET\b|estrutur|cofragem|coffrage|plantas? (?:de )?arquitet|\bcotas?\b|\bcotes?\b|"
+                           r"\bv[ãa]os?\b|trav[ée]e|esquemas? compar|quadro compar|tabela compar|comparativ|comparati", re.I)
+_PLAN_NAME_RE = re.compile(r"plan|coffrage|cofragem|estrutur|structur|arquitet|archi|\bbet\b|\brdc\b|r/c|r\+\d|\bph\b|piso|fa[cç]ad|al[çc]ado|corte|coupe|\bdce\b", re.I)
+
+
+async def _plan_comparison_context(conv: dict, uid: str) -> bool:
+    """Verdadeiro se o pedido é uma comparação / anotação de plantas técnicas: palavras-chave da mensagem, ≥ 2 plantas anexadas
+    à conversa (mesmo numa mensagem anterior), ou check_plans_coherence já lançado na conversa. Nesse caso as ferramentas de
+    imagem IA são recusadas (inventam cotas) a favor de check_plans_coherence."""
+    if _PLAN_TEXT_RE.search(conv.get("_user_request_text") or ""):
+        return True
+    docs = list(conv.get("_conv_docs") or [])
+    async for m in db.assistant_msgs.find({"conversation_id": conv.get("conversation_id"), "user_id": uid, "role": "user"},
+                                          {"_id": 0, "attachments": 1}).limit(40):
+        docs += [a for a in (m.get("attachments") or []) if isinstance(a, dict)]
+    seen, plans = set(), 0
+    for d in docs:
+        key = d.get("doc_id") or d.get("plan_id")
+        if key in seen:
+            continue
+        seen.add(key)
+        if d.get("plan_id") or d.get("kind") == "plan" or _PLAN_NAME_RE.search(d.get("filename") or ""):
+            plans += 1
+    if plans >= 2:
+        return True
+    return bool(await db.assistant_actions.find_one({"user_id": uid, "conversation_id": conv.get("conversation_id"),
+                                                    "tool": "check_plans_coherence"}, {"_id": 1}))
+
+
 async def _compare_source(ident: str, user_id: str) -> dict:
     """Charge un document (doc_… ou plan_…) sous forme exploitable par le comparateur, après contrôle d'accès."""
     if ident.startswith("plan_"):
@@ -418,10 +452,14 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
     if name in PLATFORM_TOOL_NAMES:
         return await execute_platform_tool(name, args, user, conv, db)
     if name == "create_downloadable_file":
+        if args.get("format") == "jpg" and await _plan_comparison_context(conv, uid):
+            return {"ok": False, "error": PLAN_IMAGE_REFUSAL}
         return await create_file(args, user, conv)
     if name == "ask_user_choices":
         return user_choices(args)
     if name == "edit_image_from_photo":
+        if await _plan_comparison_context(conv, uid):
+            return {"ok": False, "error": PLAN_IMAGE_REFUSAL}
         if not image_requested(conv.get("_user_request_text", "")):
             return {"ok": False, "error": "É necessário um pedido explícito para alterar/retocar uma fotografia."}
         try:
@@ -433,6 +471,18 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         return await edit_image(args, user, conv, base64.b64decode(doc["data_b64"]))
     if name == "draw_section_schema":
         return await create_schema(args, user, conv)
+    if name == "check_plans_coherence":
+        from engines.plan_coherence_tool import run as run_coherence
+        try:
+            res = await asyncio.wait_for(run_coherence(args, user, conv, db, _compare_source), timeout=300)
+        except HTTPException:
+            raise
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": f"Controlo de coerência impossível — {_safe_error(e)}"}
+        if res.get("artifact"):
+            art = await owned_artifact(res["artifact"]["artifact_id"], uid, conv["conversation_id"])
+            res["_model_attachments"] = await asyncio.to_thread(image_content, base64.b64decode(art["data_b64"]), art["mime"], art["filename"], art["artifact_id"])
+        return res
     if name in BET_TOOL_NAMES:
         return await run_bet_tool(name, args, user, conv, _allowed_doc)
     if name in BET_CORE_TOOL_NAMES:
@@ -1376,12 +1426,14 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
     att = set(body.attachments)
     attachments = ([{"plan_id": p["plan_id"], "filename": p["filename"]} for p in plans if p["plan_id"] in att]
                    + [{"doc_id": d["doc_id"], "filename": d["filename"], "kind": d["kind"]} for d in docs if d["doc_id"] in att])
+    conv["_conv_docs"] = [{"plan_id": p["plan_id"], "filename": p["filename"], "kind": "plan"} for p in plans] + \
+        [{"doc_id": d["doc_id"], "filename": d.get("filename"), "kind": d.get("kind")} for d in docs]
     user_message = {"message_id": "msg_"+uuid.uuid4().hex, "content": body.text, "attachments": attachments, "created_at": _now()}
     if turn_seq is not None:
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         instructions += QUOTE_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
@@ -1661,7 +1713,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
             with suppress(Exception): await client.close()
 
 
-TOOL_STATUS_PT = {"read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
+TOOL_STATUS_PT = {"check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
                   "generate_branded_pdf": "Preparação do relatório PDF…", "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "A consultar o orçamento atual…", "update_quote_draft": "A atualizar o rascunho de orçamento…", "add_quote_lines": "A adicionar as linhas ao orçamento…", "find_quote_drafts": "A procurar os seus orçamentos existentes…",
                   "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…",
                   "estimate_budget_range": "Cálculo do intervalo orçamental…", "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…",
@@ -1675,7 +1727,7 @@ TOOL_STATUS_PT = {"read_building_geometry": "Leitura das plantas e do estudo geo
                   "ask_user_choices": "Preparação das perguntas…",
                   "preparar_autorizacao_obras": "Consulta do RJUE e enquadramento legal da obra…",
                   "cross_check": "Cruzamento multi-IA (ChatGPT · Gemini Pro · Claude)…"}
-TOOL_STATUS = {"read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
+TOOL_STATUS = {"check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
                "read_document": "Leitura das páginas e do desenho…", "calculate": "Verificação do cálculo…", "create_work_draft": "Redação do documento…", "search_own_history": "Pesquisa nas suas conversas…","define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Lançamento da análise aprofundada…",
                "get_plan_results": "Leitura dos resultados da planta…", "generate_branded_pdf": "Preparação do relatório PDF…",
                "run_construpilot_agent": "Agente em curso — agrupamento, medição e orçamentação…",

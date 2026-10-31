@@ -281,6 +281,22 @@ export default function Assistant() {
     finally { sendLock.current = false; setBusy(false); }
   };
 
+  // Pont pour l'assistante vidéo admin (AvatarDock) : elle passe par EXACTEMENT le même chemin qu'un clic humain
+  // (création de conversation, envoi en tâche de fond, suivi des réponses). Rien n'est exposé hors de cette page.
+  const bridgeRef = useRef({});
+  bridgeRef.current = { conv, create, sendStructured, open, refresh: () => jobFollow.refresh() };
+  useEffect(() => {
+    const api_ = {
+      state: () => bridgeRef.current.conv,
+      newConversation: () => bridgeRef.current.create(),
+      open: (id) => bridgeRef.current.open(id),
+      send: (t) => bridgeRef.current.sendStructured(t),
+      refresh: () => bridgeRef.current.refresh(),
+    };
+    window.__cpAssistant = api_;
+    return () => { if (window.__cpAssistant === api_) delete window.__cpAssistant; };
+  }, []);
+
   const stop = async (jobId) => {
     try { await api.post(`/assistant/jobs/${jobId}/cancel`); jobFollow.refresh(); }
     catch { toast.error(ui("assistantError")); }
