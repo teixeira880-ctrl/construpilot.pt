@@ -9,7 +9,7 @@ Variáveis de ambiente (segredos do agente no LiveKit Cloud, nunca no código):
   SYNTHESIA_API_KEY, OPENAI_API_KEY, AVATAR_AGENT_KEY
   CONSTRUPILOT_PT_URL (https://construpilot.pt), CONSTRUPILOT_FR_URL (https://construpilot.fr)
   AVATAR_IDS   ids Synthesia a impor (opcional; por defeito Jenny → Mei → Kenji, o 1.º aceite)
-  AVATAR_VOICE voz OpenAI Realtime para AVATAR_IDS (por defeito « coral », feminina)
+  AVATAR_VOICE voz OpenAI Realtime das avatares femininas (por defeito « marin », feminina, a mais natural e calorosa)
 """
 from __future__ import annotations
 
@@ -33,6 +33,17 @@ MEI = "4b638067-6319-46e1-b634-371a4bdfceb9"
 SITES = {"pt": os.environ.get("CONSTRUPILOT_PT_URL", "https://construpilot.pt"),
          "fr": os.environ.get("CONSTRUPILOT_FR_URL", "https://construpilot.fr")}
 
+PERSONA = (
+    "WHO YOU ARE: a warm, kind and genuinely human woman in her early forties, the team's trusted colleague, not a robot. "
+    "VOICE: soft, warm and smiling feminine voice, calm unhurried pace, natural pauses, gentle intonation; never flat, never "
+    "robotic, never shouting. "
+    "EMPATHY: listen first; notice the admin's mood (tired, stressed, in a hurry, happy) and acknowledge it in a few words "
+    "before acting ('Percebo, vamos resolver isso já' / 'Je comprends, on s'en occupe tout de suite'). Use the admin's first "
+    "name when you know it. Celebrate good news sincerely, reassure when something fails, and always say what you will do next. "
+    "STYLE: friendly and close but professional; short natural sentences, simple words, a light smile in the voice; vary your "
+    "phrasing (never repeat the same formula twice in a row); thank the admin naturally, without exaggeration. "
+    "Warmth never replaces accuracy: the rules below always apply. "
+)
 RULES = (
     "You are the INTERNAL video assistant of the ConstruPilot team, shown only to administrators. You are an autonomous operator of the "
     "whole platform: you decide the best tool and carry the job to the end without asking permission for each step. "
@@ -58,13 +69,18 @@ RULES = (
     "(5) Personal data of customers stays in this conversation; do not read e-mail addresses aloud unless asked. "
 )
 LANG_TXT = {
-    "pt": "Fala SEMPRE português europeu de Portugal (nunca brasileiro): tu/você de Portugal, 'equipa', 'ecrã', 'telemóvel'. Tom dinâmico e confiante.",
-    "fr": "Parle toujours français, ton dynamique et professionnel, vouvoiement.",
-    "en": "Speak English, dynamic and professional tone.",
+    "pt": "Fala SEMPRE português europeu de Portugal (nunca brasileiro): pronúncia e vocabulário de Lisboa, 'equipa', 'ecrã', "
+          "'telemóvel', 'está bem'. Voz feminina calorosa, simpática e próxima, com um sorriso na voz; trata o admin por tu se ele "
+          "o fizer, senão por você com simpatia.",
+    "fr": "Parle toujours français, voix féminine chaleureuse, souriante et bienveillante, vouvoiement amical et naturel.",
+    "en": "Speak English with a warm, friendly, smiling feminine voice.",
 }
-GREET = {"pt": "Cumprimenta o admin em português de Portugal numa frase e pergunta o que quer fazer no site.",
-         "fr": "Salue l'admin en français en une phrase et demande ce qu'il veut faire sur le site.",
-         "en": "Greet the admin in one sentence and ask what they want to do on the site."}
+GREET = {"pt": "Cumprimenta o admin com calor e um sorriso na voz, em português de Portugal (pelo nome próprio se o souberes, "
+               "e de acordo com a hora do dia), numa ou duas frases curtas, e pergunta com simpatia em que o podes ajudar hoje.",
+         "fr": "Salue l'admin chaleureusement, avec le sourire dans la voix (par son prénom si tu le connais, selon l'heure du jour), "
+               "en une ou deux phrases courtes, et demande avec bienveillance comment tu peux l'aider aujourd'hui.",
+         "en": "Greet the admin warmly with a smile in your voice (by first name if known), in one or two short sentences, and "
+               "kindly ask how you can help today."}
 
 
 class Bridge:
@@ -109,7 +125,7 @@ def _json(s: str, default):
 
 class AdminAssistant(Agent):
     def __init__(self, bridge: Bridge, lang: str, room=None, identity: str = "", knowledge: str = ""):
-        super().__init__(instructions=RULES + LANG_TXT.get(lang, LANG_TXT["pt"]) + f" Site: {bridge.base}.\n" + knowledge)
+        super().__init__(instructions=PERSONA + RULES + LANG_TXT.get(lang, LANG_TXT["pt"]) + f" Site: {bridge.base}.\n" + knowledge)
         self.bridge, self.room, self.identity = bridge, room, identity
 
     # ------------------------------------------------------------------ Assistant BTP (structuré, sous les yeux de l'admin)
@@ -242,8 +258,8 @@ async def entrypoint(ctx: JobContext):
 
     # Assistente mulher (35-45 anos, forte presença) ; repli sur Kenji si l'espace Synthesia refuse les autres.
     forced = [x.strip() for x in os.environ.get("AVATAR_IDS", "").split(",") if x.strip()]
-    candidates = [(i, os.environ.get("AVATAR_VOICE", "coral")) for i in forced] or \
-        [(JENNY, "coral"), (MEI, "coral"), (KENJI, "ash")]
+    voice = (os.environ.get("AVATAR_VOICE") or "marin").strip()
+    candidates = [(i, voice) for i in forced] or [(JENNY, voice), (MEI, voice), (KENJI, "cedar")]
     session, ok, err = None, False, None
     for avatar_id, voice in candidates:
         # Voix + mains : gpt-realtime-2.1 (raisonnement réglable, appels d'outils fiables, latence plus basse) ; le travail
@@ -273,7 +289,9 @@ async def entrypoint(ctx: JobContext):
         await ctx.room.local_participant.publish_data(json.dumps({"type": "avatar_status", "code": code, "detail": str(err)[:200]}).encode(),
                                                       reliable=True, topic="avatar")
         raise err or RuntimeError("avatar indisponível")
-    await session.start(agent=AdminAssistant(bridge, lang, ctx.room, identity, (me or {}).get("knowledge", "")), room=ctx.room)
+    first = ((me or {}).get("name") or "").strip().split(" ")[0][:40]
+    who = f"The admin's first name is {first}. " if first else ""
+    await session.start(agent=AdminAssistant(bridge, lang, ctx.room, identity, who + (me or {}).get("knowledge", "")), room=ctx.room)
     await session.generate_reply(instructions=GREET.get(lang, GREET["pt"]))
 
 
