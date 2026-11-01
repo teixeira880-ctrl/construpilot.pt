@@ -9,6 +9,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { api } from "@/lib/api";
+import { startScreenWatch, stopScreenWatch, markAgentAction } from "./avatarScreenWatch";
 
 const PT = typeof window !== "undefined" && /construpilot\.pt|construpilot-recon/.test(window.location.hostname);
 const T = PT ? {
@@ -289,6 +290,7 @@ const HANDLERS = {
 
 // ------------------------------------------------------------------ session
 function reset(message = "") {
+  stopScreenWatch();
   clearTimeout(timer);
   room = null;
   videoEl = null;
@@ -319,8 +321,9 @@ export async function startAvatar(lang = "fr") {
       } catch { /* ignoré */ }
     });
     r.on(RoomEvent.Disconnected, () => reset(notice || T.ended));
-    Object.entries(HANDLERS).forEach(([name, fn]) => r.registerRpcMethod(name, fn));
+    Object.entries(HANDLERS).forEach(([name, fn]) => r.registerRpcMethod(name, async (d) => { markAgentAction(); try { return await fn(d); } finally { markAgentAction(); } }));
     await r.connect(data.url, data.token);
+    startScreenWatch(r);
     await r.localParticipant.setMicrophoneEnabled(true);
     if (state.phase !== "live") set({ phase: "waiting" });
     timer = setTimeout(() => { if (state.phase !== "live") set({ message: T.noagent }); }, 60000);
