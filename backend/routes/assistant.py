@@ -32,6 +32,7 @@ from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS, QUOTE_TOOLS
 from engines.assistant_files import FILE_INSTRUCTIONS, FILE_TOOLS, create_file, create_schema, edit_image, image_requested, owned_artifact, public_artifact
 from engines.section_schema import SCHEMA_TOOL
 from engines.plan_coherence_tool import INSTRUCTIONS as COHERENCE_INSTRUCTIONS, PLANS_COHERENCE_TOOL
+from engines.pac_layout.tool import INSTRUCTIONS as PAC_LAYOUT_INSTRUCTIONS, PAC_LAYOUT_TOOL
 from engines.assistant_bet_tool import BET_TOOLS, BET_TOOL_NAMES, BET_INSTRUCTIONS, run_bet_tool
 from engines.assistant_autorizacao_tool import (
     AUTORIZACAO_TOOLS,
@@ -269,7 +270,7 @@ def tools_for(user: dict) -> list:
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS
     return [t for t in out if t.get("name") not in BET_SUPERSEDED_TOOL_NAMES]
 
 
@@ -482,6 +483,24 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         if res.get("artifact"):
             art = await owned_artifact(res["artifact"]["artifact_id"], uid, conv["conversation_id"])
             res["_model_attachments"] = await asyncio.to_thread(image_content, base64.b64decode(art["data_b64"]), art["mime"], art["filename"], art["artifact_id"])
+        return res
+    if name == "generate_heat_pump_layout":
+        from engines.bet_core.assistant_tool import _default_branding
+        from engines.pac_layout.tool import run as run_pac_layout
+        if account_type(user) == "individual":
+            return {"ok": False, "error": "Implantação de bomba de calor reservada às ofertas profissionais."}
+        try:
+            res = await asyncio.wait_for(run_pac_layout(args, user, conv, db, _compare_source, _default_branding), timeout=300)
+        except HTTPException:
+            raise
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": f"Implantação da bomba de calor impossível — {_safe_error(e)}"}
+        atts = []
+        for a in (res.get("artifacts") or [])[1:3]:
+            art = await owned_artifact(a["artifact_id"], uid, conv["conversation_id"])
+            atts += await asyncio.to_thread(image_content, base64.b64decode(art["data_b64"]), art["mime"], art["filename"], art["artifact_id"])
+        if atts:
+            res["_model_attachments"] = atts
         return res
     if name in BET_TOOL_NAMES:
         return await run_bet_tool(name, args, user, conv, _allowed_doc)
@@ -1436,6 +1455,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
     instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         instructions += QUOTE_INSTRUCTIONS
+        instructions += PAC_LAYOUT_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. Se o pedido indicar as plantas e o entregável, lança-o diretamente (o resultado fica um rascunho editável, nada é enviado); se o âmbito for ambíguo (plantas, margem, nome do projeto), pergunta-o numa frase. Para vários entregáveis de uma vez, prefere lancer_programme_ia. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
     await db.assistant_prefs.update_many({"active": True, "user_id": user["user_id"]}, {"$set": {"last_used_at": _now()}})
@@ -1713,7 +1733,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
             with suppress(Exception): await client.close()
 
 
-TOOL_STATUS_PT = {"check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
+TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
                   "generate_branded_pdf": "Preparação do relatório PDF…", "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "A consultar o orçamento atual…", "update_quote_draft": "A atualizar o rascunho de orçamento…", "add_quote_lines": "A adicionar as linhas ao orçamento…", "find_quote_drafts": "A procurar os seus orçamentos existentes…",
                   "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…",
                   "estimate_budget_range": "Cálculo do intervalo orçamental…", "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…",
@@ -1727,7 +1747,7 @@ TOOL_STATUS_PT = {"check_plans_coherence": "Controlo arquitetura ↔ estruturas:
                   "ask_user_choices": "Preparação das perguntas…",
                   "preparar_autorizacao_obras": "Consulta do RJUE e enquadramento legal da obra…",
                   "cross_check": "Cruzamento multi-IA (ChatGPT · Gemini Pro · Claude)…"}
-TOOL_STATUS = {"check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
+TOOL_STATUS = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
                "read_document": "Leitura das páginas e do desenho…", "calculate": "Verificação do cálculo…", "create_work_draft": "Redação do documento…", "search_own_history": "Pesquisa nas suas conversas…","define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Lançamento da análise aprofundada…",
                "get_plan_results": "Leitura dos resultados da planta…", "generate_branded_pdf": "Preparação do relatório PDF…",
                "run_construpilot_agent": "Agente em curso — agrupamento, medição e orçamentação…",
