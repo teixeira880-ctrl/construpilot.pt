@@ -9,7 +9,7 @@ done
 command -v lk >/dev/null || curl -sSL https://get.livekit.io/cli | bash >/dev/null
 umask 077
 { for v in SYNTHESIA_API_KEY OPENAI_API_KEY AVATAR_AGENT_KEY; do printf '%s=%s\n' "$v" "${!v}"; done
-  printf 'CONSTRUPILOT_PT_URL=%s\nCONSTRUPILOT_FR_URL=%s\nAVATAR_VOICE=%s\n' "${CONSTRUPILOT_PT_URL:-https://construpilot.pt}" "${CONSTRUPILOT_FR_URL:-https://construpilot.fr}" "${AVATAR_VOICE:-coral}"
+  printf 'CONSTRUPILOT_PT_URL=%s\nCONSTRUPILOT_FR_URL=%s\nAVATAR_VOICE=%s\n' "${CONSTRUPILOT_PT_URL:-https://construpilot.pt}" "${CONSTRUPILOT_FR_URL:-https://construpilot.fr}" "${AVATAR_VOICE:-marin}"
   printf 'AVATAR_REALTIME_MODEL=%s\nAVATAR_REASONING=%s\n' "${AVATAR_REALTIME_MODEL:-gpt-realtime-2.1}" "${AVATAR_REASONING:-low}"
   if [ -n "${AVATAR_IDS:-}" ]; then printf "AVATAR_IDS=%s\n" "$AVATAR_IDS"; fi; } > .env.agent
 if [ -f livekit.toml ]; then
