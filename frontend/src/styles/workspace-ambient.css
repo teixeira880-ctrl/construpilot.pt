@@ -2,6 +2,7 @@
 .workspace {
   position: relative;
   isolation: isolate;
+  overflow-x: clip;
   --workspace-copper: #984f2d;
   --workspace-copper-rgb: 168 93 52;
   --muted-foreground: 128 6% 24%;

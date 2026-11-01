@@ -1,5 +1,6 @@
 import "@/styles/workspace-design.css";
 import "@/styles/workspace-ambient.css";
+import "@/styles/workspace-tiles.css";
 import { WorkspaceBackdrop, useWorkspaceMotion } from "./WorkspaceBackdrop";
 import { useExperienceCopy } from "./experienceCopy";
 import { useEffect, useRef, useState } from "react";
@@ -21,6 +22,7 @@ import { workspaceLinks, isProfessional, activeWorkspaceLink, OPEN_WORKSPACE_MEN
 import { normalizeSearch, useWorkspaceCopy } from "./copy";
 import { translatedToolLabel } from "./translations";
 import { UpgradeLock } from "@/components/UpgradeLock";
+import { AppTile } from "./AppTile";
 import InstallAppButton from "@/components/InstallAppButton";
 
 export default function WorkspaceNavigation() {
@@ -41,10 +43,12 @@ export default function WorkspaceNavigation() {
   const searchRef = useRef(null);
   const returnFocus = useRef(null);
   const [sidebarPinned, setSidebarPinned] = useState(() => localStorage.getItem("construpilot_sidebar_pinned") !== "false");
+  const onAssistant = location.pathname === "/assistant";
   useEffect(() => {
-    document.documentElement.classList.toggle("cp-sidebar-unpinned", !sidebarPinned);
+    // Em /assistant, o menu global recolhe-se automaticamente para alargar a zona de trabalho.
+    document.documentElement.classList.toggle("cp-sidebar-unpinned", onAssistant || !sidebarPinned);
     localStorage.setItem("construpilot_sidebar_pinned", sidebarPinned ? "true" : "false");
-  }, [sidebarPinned]);
+  }, [sidebarPinned, onAssistant]);
   const links = workspaceLinks(user, can, tier);
   const isPro = isProfessional(user);
   const active = activeWorkspaceLink(location.pathname, links);
@@ -107,7 +111,7 @@ export default function WorkspaceNavigation() {
       data-testid={`${directory ? "tool" : "workspace-nav"}-${item.to.slice(1)}`} data-tool-link={directory || undefined}
       data-locked={item.locked || undefined}
       className={`${directory ? "workspace-tool" : `workspace-nav-link ${item.to === "/assistant" ? "workspace-nav-assistant" : ""}`}${item.locked ? " workspace-locked" : ""}`}>
-      <item.icon size={18} aria-hidden="true" /><span>{label(item)}</span>
+      <AppTile icon={item.icon} family={item.family} size={28} label={label(item)} className="workspace-nav-tile" /><span>{label(item)}</span>
       {item.locked ? lockIcon : (directory && <ArrowRight size={15} className="ms-auto" aria-hidden="true" />)}
     </Link>;
     if (!directory || item.locked) return link;
@@ -122,7 +126,7 @@ export default function WorkspaceNavigation() {
     <WorkspaceBackdrop paused={motion.paused || motion.reduced} />
     <a href="#workspace-main" className="workspace-skip" data-testid="workspace-skip-content">{ui("skip")}</a>
     <header className="workspace-header">
-      {!sidebarPinned && <button type="button" className="workspace-icon-button workspace-reopen-menu" onClick={openTools} aria-label={experience("showMenu")} data-testid="workspace-reopen-menu"><Menu size={20} /></button>}
+      {(!sidebarPinned || onAssistant) && <button type="button" className="workspace-icon-button workspace-reopen-menu" onClick={openTools} aria-label={experience("showMenu")} data-testid="workspace-reopen-menu"><Menu size={20} /></button>}
       <Link to="/dashboard" className="workspace-brand" data-testid="nav-logo" aria-label="ConstruPilot">
         <img src="/construpilot-icon.png" alt="" width="34" height="34" />
         <span>Constru<span className="text-primary">Pilot</span></span>

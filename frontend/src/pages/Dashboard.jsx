@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, FolderOpen, Trash2, FileSearch, Bell, HardHat, Sparkles, TrendingUp, Ruler, Search, ChevronDown, Grid2X2, Loader2, X,
-  FileText, Receipt, ArrowRight, Phone, Mail, MapPin, CalendarClock, Euro, User as UserIcon, FileSpreadsheet, Wrench, Users,
+  FileText, Receipt, ArrowRight, Phone, Mail, MapPin, CalendarClock, Euro, User as UserIcon, FileSpreadsheet, Wrench, Users, Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,10 @@ import { CotesTile } from "@/components/CotesTile";
 import { PermissionNotice } from "@/components/workspace/PermissionNotice";
 import { UpgradeLock } from "@/components/UpgradeLock";
 import { benefitFor } from "@/components/workspace/navigation";
+import { AppTile } from "@/components/workspace/AppTile";
+import { AssistantHero, WeekGoal } from "@/components/dashboard/Bento";
+import { useRefreshable } from "@/lib/useRefreshable";
+import "@/styles/workspace-tiles.css";
 
 
 export default function Dashboard() {
@@ -105,6 +109,7 @@ export default function Dashboard() {
     setLoadState(previous => ({ ...previous, ...state }));
   }, [isPro, user?.user_id]);
   useEffect(() => { load(); return () => { generation.current += 1; }; }, [load]);
+  useRefreshable(load);
   useEffect(() => {
     const onSynced = () => load();
     window.addEventListener("construpilot-offline-synced", onSynced);
@@ -130,23 +135,36 @@ export default function Dashboard() {
     <div className="dashboard-workspace">
       {professionalAccount && <PermissionNotice />}
       {guideOpen && <OnboardingTour forceOpen onClose={() => setGuideOpen(false)} />}
-      <header className="dashboard-heading">
-        <div><p className="dashboard-greeting">{experience("hello")}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p><h1>{experience("overview")}</h1><p>{experience("intro")}</p></div>
-        <div className="dashboard-heading-actions"><span className="dashboard-date">{new Date().toLocaleDateString({pt:"pt-PT",en:"en-GB"}[lang] || "pt-PT", {weekday:"long",day:"numeric",month:"long"})}</span><Button asChild><Link to={isPro && can("devis") ? "/devis-editeur" : "/estimation"} data-testid="dashboard-primary-create"><Plus size={17} />{experience(isPro && can("devis") ? "quoteShort" : "estimateShort")}</Link></Button></div>
+      <header className="dashboard-heading dashboard-heading-bento">
+        <div>
+          <p className="dashboard-greeting">{new Date().toLocaleDateString({fr:"fr-FR",en:"en-GB"}[lang] || "pt-PT", {weekday:"long",day:"numeric",month:"long"})}</p>
+          <h1 className="font-display font-bold tracking-tight text-[34px] sm:text-[44px] leading-[1.05]" data-testid="dashboard-title">
+            {experience("hello")}{user?.name ? ` ${user.name.split(" ")[0]}` : ""},{" "}
+            <span className="cp-grad-text">{{ fr: "on attaque ?", en: "let's go?" }[lang] || "vamos a isso?"}</span>
+          </h1>
+        </div>
+        <div className="dashboard-heading-actions"><Button asChild className="rounded-xl h-11"><Link to={isPro && can("devis") ? "/devis-editeur" : "/estimation"} data-testid="dashboard-primary-create"><Plus size={17} />{experience(isPro && can("devis") ? "quoteShort" : "estimateShort")}</Link></Button></div>
       </header>
+      <div className="grid gap-3.5 lg:grid-cols-6" data-testid="dashboard-bento">
+        {canAssistant && <AssistantHero lang={lang} title={experience("assistantShort")} />}
+        <WeekGoal projects={projects} ready={loadState.projects === "ready"} lang={lang} wide={!canAssistant} />
+        <div className="cp-glass cp-lift rounded-3xl p-5 flex flex-col gap-1 lg:col-span-2" data-testid="dashboard-budget-tile">
+          <p className="text-[13px] font-bold text-muted-foreground">{t("dash.stat_budget")}</p>
+          <p className="font-display text-[38px] font-bold tracking-tight leading-none mt-1">{loadState.projects === "ready" ? eur(totalBudget) : "—"}</p>
+          <p className="text-[12.5px] font-semibold text-muted-foreground mt-auto pt-2">{loadState.projects === "ready" ? `${num(projects.length)} ${t("dash.stat_projects").toLowerCase()} · ${num(totalSurface, 1)} m²` : ""}</p>
+        </div>
+      </div>
       <div className="dashboard-quick-actions" data-testid="dash-quick-actions">
         {[
-          canAssistant
-            ? { to: "/assistant", icon: AssistantIcon, title: experience("assistantShort"), desc: ui("askDesc"), testid: "quick-assistant" }
-            : { to: "/btp-solver", icon: Wrench, title: "Resolver um problema", desc: "Faça a sua pergunta sobre obras", testid: "quick-solver" },
-          isPro ? { to: "/plan", icon: Ruler, title: experience("planShort"), desc: ui("planDesc"), testid: "quick-plan" } : { to: "/estimation", icon: FileText, title: ui("estimate"), desc: ui("estimateDesc"), testid: "quick-estimate" },
-          isPro ? { to: "/chantiers", icon: HardHat, title: ui("chantiers"), desc: experience("sitesDesc"), testid: "quick-chantiers" } : { to: "/calculadoras", icon: Wrench, title: ui("calculators"), desc: ui("personalMore"), testid: "quick-calculators" },
-          isPro && can("devis") ? { to: "/devis-editeur", icon: FileText, title: experience("quoteShort"), desc: ui("quoteDesc"), testid: "quick-new-quote" } : { to: "/precos", icon: Search, title: ui("prices"), desc: ui("pricesDesc"), testid: "quick-prices" },
-        ].map(a => <Link key={a.to} to={a.to} className="dashboard-quick-action" data-testid={a.testid}><span><a.icon size={21} /></span><span className="flex-1 min-w-0"><strong>{a.title}</strong><small>{a.desc}</small></span><ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" /></Link>)}
+          { to: "/btp-solver", icon: Lightbulb, family: "ia", title: { fr: "Résoudre un problème", en: "Solve a problem" }[lang] || "Resolver um problema",
+            desc: { fr: "Diagnostic de chantier pas à pas", en: "Step-by-step site diagnosis" }[lang] || "Diagnóstico de obra passo a passo", testid: "quick-solver" },
+          isPro ? { to: "/plan", icon: Ruler, family: "plans", title: experience("planShort"), desc: ui("planDesc"), testid: "quick-plan" } : { to: "/estimation", icon: FileText, family: "devis", title: ui("estimate"), desc: ui("estimateDesc"), testid: "quick-estimate" },
+          isPro ? { to: "/chantiers", icon: HardHat, family: "projets", title: ui("chantiers"), desc: experience("sitesDesc"), testid: "quick-chantiers" } : { to: "/calculadoras", icon: Wrench, family: "etudes", title: ui("calculators"), desc: ui("personalMore"), testid: "quick-calculators" },
+          isPro && can("devis") ? { to: "/devis-editeur", icon: FileText, family: "devis", title: experience("quoteShort"), desc: ui("quoteDesc"), testid: "quick-new-quote" } : { to: "/precos", icon: Search, family: "devis", title: ui("prices"), desc: ui("pricesDesc"), testid: "quick-prices" },
+        ].map(a => <Link key={a.to} to={a.to} className="dashboard-quick-action cp-glass cp-lift" data-testid={a.testid}><AppTile icon={a.icon} family={a.family} size={42} label={a.title} /><span className="flex-1 min-w-0"><strong>{a.title}</strong><small>{a.desc}</small></span><ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" /></Link>)}
       </div>
       <div className="dashboard-stats">
         <Stat label={t("dash.stat_projects")} value={loadState.projects === "ready" ? num(projects.length) : "—"} testId="stat-projects" />
-        <Stat label={t("dash.stat_budget")} value={loadState.projects === "ready" ? eur(totalBudget) : "—"} testId="stat-budget" accent />
         <Stat label={t("dash.stat_surface")} value={loadState.projects === "ready" ? `${num(totalSurface, 1)} m²` : "—"} testId="stat-surface" />
         {isPro ? <Stat label={t("dash.stat_leads")} value={loadState.leads === "ready" ? num(leads.length) : "—"} testId="stat-leads"
               badge={unreadLeads > 0 ? unreadLeads : null}
