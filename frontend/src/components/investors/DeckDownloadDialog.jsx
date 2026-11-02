@@ -9,13 +9,13 @@ import { deckFileUrl } from "@/lib/pitchDeck";
 
 const EMPTY_FORM = { name: "", email: "", fund: "", note: "" };
 
-export const DeckDownloadDialog = ({ open, onOpenChange, format }) => {
+export const DeckDownloadDialog = ({ open, onOpenChange, format, lang = "pt" }) => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const label = format === "pptx" ? "PowerPoint" : "PDF";
-  const url = deckFileUrl(format);
+  const url = deckFileUrl(format, lang);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -40,7 +40,7 @@ export const DeckDownloadDialog = ({ open, onOpenChange, format }) => {
       <DialogContent data-testid="deck-download-dialog">
         <DialogHeader>
           <DialogTitle data-testid="deck-download-title">Receber o pitch deck</DialogTitle>
-          <DialogDescription data-testid="deck-download-description">{label} — ConstruPilot</DialogDescription>
+          <DialogDescription data-testid="deck-download-description">{label} ({lang.toUpperCase()}) — ConstruPilot</DialogDescription>
         </DialogHeader>
         {ready ? (
           <div className="grid gap-4">

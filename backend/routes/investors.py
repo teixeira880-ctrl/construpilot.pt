@@ -5,8 +5,11 @@ from datetime import datetime, timezone
 
 from core.db import db
 from core.security import admin_user
-from engines.pdf_pitch import DECK_MANIFEST, deck_asset_response
+from engines.pdf_pitch import DECK_MANIFESTS, deck_asset_response
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Path, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr
 
@@ -67,22 +70,26 @@ async def deck_requests_csv():
                     headers={"Content-Disposition": "attachment; filename=leads-investidores.csv"})
 
 
+DeckLang = Literal["pt", "fr", "en"]
+
+
 @router.api_route("/pitch-deck.pdf", methods=["GET", "HEAD"])
-async def pitch_deck_pdf():
+async def pitch_deck_pdf(lang: DeckLang = "pt"):
     """PDF fidèle du PowerPoint fourni, conservant l'URL publique existante."""
-    return deck_asset_response("ConstruPilot_PitchDeck.pdf", "application/pdf")
+    return deck_asset_response("ConstruPilot_PitchDeck.pdf", "application/pdf", lang=lang)
 
 
 @router.api_route("/pitch-deck.pptx", methods=["GET", "HEAD"])
-async def pitch_deck_powerpoint():
+async def pitch_deck_powerpoint(lang: DeckLang = "pt"):
     return deck_asset_response(
         "ConstruPilot_PitchDeck.pptx",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        inline=False,
+        inline=False, lang=lang,
     )
 
 
 class DeckInfo(BaseModel):
+    lang: str
     source_filename: str
     source_sha256: str
     page_count: int
@@ -91,10 +98,12 @@ class DeckInfo(BaseModel):
 
 
 @router.get("/pitch-deck", response_model=DeckInfo)
-async def pitch_deck_info():
-    return DeckInfo(**{key: DECK_MANIFEST[key] for key in DeckInfo.model_fields})
+async def pitch_deck_info(lang: DeckLang = "pt"):
+    return DeckInfo(**{key: DECK_MANIFESTS[lang][key] for key in DeckInfo.model_fields})
 
 
 @router.api_route("/pitch-deck/slides/{page}.webp", methods=["GET", "HEAD"])
-async def pitch_deck_slide(page: int = Path(ge=1, le=DECK_MANIFEST["page_count"])):
-    return deck_asset_response(f"slides/{page}.webp", "image/webp")
+async def pitch_deck_slide(page: int = Path(ge=1), lang: DeckLang = "pt"):
+    if page > DECK_MANIFESTS[lang]["page_count"]:
+        raise RequestValidationError([{"loc": ("path", "page"), "msg": "page out of range", "type": "value_error"}])
+    return deck_asset_response(f"slides/{page}.webp", "image/webp", lang=lang)

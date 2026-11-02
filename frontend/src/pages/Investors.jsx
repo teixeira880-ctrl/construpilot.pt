@@ -44,10 +44,11 @@ const Stat = ({ v, l }) => (
 export default function Investors() {
   const [deckOpen, setDeckOpen] = useState(false);
   const [deckFormat, setDeckFormat] = useState("pdf");
+  const [deckLang, setDeckLang] = useState("pt");
   const openDeck = (format = "pdf") => { setDeckFormat(format); setDeckOpen(true); };
   return (
     <div className="min-h-screen bg-background text-foreground" data-testid="investors-page">
-      <DeckDownloadDialog open={deckOpen} onOpenChange={setDeckOpen} format={deckFormat} />
+      <DeckDownloadDialog open={deckOpen} onOpenChange={setDeckOpen} format={deckFormat} lang={deckLang} />
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-10 min-h-16 py-3 flex flex-wrap gap-3 items-center justify-between">
@@ -64,7 +65,7 @@ export default function Investors() {
         </div>
       </header>
 
-      <PitchDeckPreview onDownload={openDeck} />
+      <PitchDeckPreview onDownload={openDeck} lang={deckLang} onLangChange={setDeckLang} />
 
       {/* HERO */}
       <section className="relative overflow-hidden border-b border-border">

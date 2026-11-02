@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { deckSlideUrl } from "@/lib/pitchDeck";
+import { DECK_LANGS, deckSlideUrl } from "@/lib/pitchDeck";
 
-export const PitchDeckPreview = ({ onDownload }) => {
+export const PitchDeckPreview = ({ onDownload, lang = "pt", onLangChange }) => {
   const [info, setInfo] = useState(null);
   const [page, setPage] = useState(1);
   const [error, setError] = useState(false);
@@ -14,14 +14,15 @@ export const PitchDeckPreview = ({ onDownload }) => {
   useEffect(() => {
     let active = true;
     setError(false);
-    api.get("/investors/pitch-deck").then(({ data }) => {
-      if (active) setInfo(data);
+    setInfo(null);
+    api.get("/investors/pitch-deck", { params: { lang } }).then(({ data }) => {
+      if (active) { setInfo(data); setPage((p) => Math.min(p, data.page_count)); setImageState("loading"); }
     }).catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [attempt]);
+  }, [attempt, lang]);
 
   const changePage = (value) => { setImageState("loading"); setPage(value); };
-  const imageUrl = info && deckSlideUrl(page, `${info.source_sha256}-${attempt}`);
+  const imageUrl = info && deckSlideUrl(page, `${info.source_sha256}-${attempt}`, lang);
 
   return (
     <section id="pitch-deck" data-testid="pitch-deck-preview" className="border-b border-border scroll-mt-32">
@@ -29,6 +30,15 @@ export const PitchDeckPreview = ({ onDownload }) => {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <h2 className="font-display text-base md:text-lg font-bold" data-testid="pitch-deck-preview-title">Pitch deck ConstruPilot</h2>
           <div className="flex flex-wrap gap-2">
+            <div role="group" aria-label="Língua do pitch deck" className="inline-flex rounded-full border border-border p-0.5" data-testid="pitch-deck-lang">
+              {DECK_LANGS.map(({ code, label }) => (
+                <button key={code} type="button" aria-pressed={lang === code} data-testid={`pitch-deck-lang-${code}`}
+                  onClick={() => onLangChange?.(code)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${lang === code ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
             {["pdf", "pptx"].map((format) => (
               <Button key={format} size="sm" variant="outline" className="gap-2 rounded-full"
                 data-testid={`pitch-deck-download-${format}`} onClick={() => onDownload(format)}>
