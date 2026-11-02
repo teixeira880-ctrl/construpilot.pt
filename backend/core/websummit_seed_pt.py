@@ -188,6 +188,16 @@ async def seed_websummit_demo_pt(db, hash_password_fn, verify_password_fn, new_u
             else:
                 summary["project"] = "unchanged"
 
+    # Lote 46: dossier demo « Moradia Ferreira » (planta, levantamento, orçamento, faturas) na conta Pro.
+    if cfg["pro"]["password"]:
+        try:
+            from core.demo_dossier_pt import apply_demo_dossier_pt
+            _pro = await db.users.find_one({"email": cfg["pro"]["email"], "is_demo": True}, {"user_id": 1})
+            summary["dossier"] = await apply_demo_dossier_pt(db, (_pro or {}).get("user_id"), DEMO_SOURCE)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("websummit demo seed: dossier step failed (%s)", exc)
+            summary["dossier"] = f"error: {exc}"
+
     # Showcase BET-core: documentos demo + branding fictício nas contas demo.
     # Idempotente, não duplica, preserva dados pré-existentes.
     try:
@@ -231,6 +241,7 @@ async def reset_websummit_demo_data_pt(db) -> dict:
             "quotes", "takeoffs", "photos", "project_documents",
             "assistant_messages", "coach_messages", "activity_log",
             "notifications", "email_logs", "stripe_customer_actions",
+            "pro_documents", "plans_takeoff", "clients", "chantiers",
         ]
         deleted = {}
         for coll in collections_to_clean:
@@ -248,6 +259,15 @@ async def reset_websummit_demo_data_pt(db) -> dict:
             {"user_id": uid},
             {"$set": {"demo_quota_ai_calls_today": 0, "demo_quota_date": today}},
         )
+
+    # Lote 46: repõe o dossier demo « Moradia Ferreira » da conta Pro.
+    try:
+        from core.demo_dossier_pt import apply_demo_dossier_pt
+        reset_summary["dossier"] = await apply_demo_dossier_pt(
+            db, reset_summary.get("pro_user_id"), DEMO_SOURCE, restore=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("websummit demo reset: dossier step failed (%s)", exc)
+        reset_summary["dossier"] = f"error: {exc}"
 
     # Re-aplicar documentos BET-core demo + branding fictício. Idempotente.
     try:
