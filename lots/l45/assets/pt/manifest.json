@@ -1,0 +1,66 @@
+{
+  "lang": "pt",
+  "source_filename": "ConstruPilot_PitchDeck.pptx",
+  "source_sha256": "2c89c412719f16c53c3b71cc5315647c6d43620482774daebd4c11303c84cebc",
+  "page_count": 12,
+  "width": 1920,
+  "height": 1080,
+  "files": {
+    "ConstruPilot_PitchDeck.pdf": {
+      "sha256": "df17a216aa8c485724f062e6e42bc76f143fbcd42b8670c3dded65eebea5b1c5",
+      "byte_size": 1016274
+    },
+    "ConstruPilot_PitchDeck.pptx": {
+      "sha256": "2c89c412719f16c53c3b71cc5315647c6d43620482774daebd4c11303c84cebc",
+      "byte_size": 856453
+    },
+    "slides/1.webp": {
+      "sha256": "1809271644a8052f8201ba2791d6ccc0ca2d6ede565f2ad4554c3564ad51b823",
+      "byte_size": 72650
+    },
+    "slides/2.webp": {
+      "sha256": "65ca791ed1c9ccba8b8169dc033cab44c36e81ef5c87f226d60138ebef057214",
+      "byte_size": 103122
+    },
+    "slides/3.webp": {
+      "sha256": "bd85e3f8ff9ee75d7b6a503c0ae91a18304c4f9b045c2a8a8fb3627d65b30859",
+      "byte_size": 88468
+    },
+    "slides/4.webp": {
+      "sha256": "91068bf83011996480b04c28338d0c066c57b21511bcde83ea734299873adafe",
+      "byte_size": 76214
+    },
+    "slides/5.webp": {
+      "sha256": "40e04ebb3712946a625e73e5292effc8d3e28e86c6dc8217f0d1f82c511eeff8",
+      "byte_size": 121072
+    },
+    "slides/6.webp": {
+      "sha256": "689de380c6e7bfb6441e6a6f66185977f956cd994ed7b5c4fc5ef926befa69ed",
+      "byte_size": 81192
+    },
+    "slides/7.webp": {
+      "sha256": "8acda1acb92f020ba4dfdaf2523bd402132e15cdde1f9302e1854aa437c0db78",
+      "byte_size": 79854
+    },
+    "slides/8.webp": {
+      "sha256": "4ebcceed9cb67d0ae9e3537366a839e8d3456abb18a46dfcb59aebd643bfb5ea",
+      "byte_size": 68404
+    },
+    "slides/9.webp": {
+      "sha256": "a102c69e1541f3ced57f590ff54248ac67d43b70e47250cbd94090a0d32be1d9",
+      "byte_size": 123028
+    },
+    "slides/10.webp": {
+      "sha256": "96ff4b5ee87dce92b7864b7c762b3e0c4e9ca1c126276343e6a7cd215b7ae1e6",
+      "byte_size": 87690
+    },
+    "slides/11.webp": {
+      "sha256": "5cb257bcda159d817c7568fa5bddebb95457f31e23b24e470b600b019733d5bb",
+      "byte_size": 90254
+    },
+    "slides/12.webp": {
+      "sha256": "934803c0b26fea869aab1a7c0d014ef4b384c10a23bf976acfea3777335e14f1",
+      "byte_size": 95280
+    }
+  }
+}
