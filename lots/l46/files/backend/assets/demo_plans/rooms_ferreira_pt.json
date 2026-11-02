@@ -1,0 +1,456 @@
+{
+ "pt": {
+  "rooms": [
+   {
+    "room_id": "room_sejour",
+    "page_index": 0,
+    "name": "Sala / Cozinha",
+    "points": [
+     [
+      212.6,
+      1166.8
+     ],
+     [
+      911.8,
+      1166.8
+     ],
+     [
+      911.8,
+      713.2
+     ],
+     [
+      212.6,
+      713.2
+     ]
+    ],
+    "openings": [
+     {
+      "type": "fenetre",
+      "width_m": 2.4,
+      "height_m": 2.15,
+      "area_m2": 5.16
+     },
+     {
+      "type": "fenetre",
+      "width_m": 1.2,
+      "height_m": 1.25,
+      "area_m2": 1.5
+     },
+     {
+      "type": "fenetre",
+      "width_m": 1.0,
+      "height_m": 1.05,
+      "area_m2": 1.05
+     },
+     {
+      "type": "porte",
+      "width_m": 0.9,
+      "height_m": 2.04,
+      "area_m2": 1.84
+     }
+    ],
+    "surface_m2": 35.52,
+    "perimeter_m": 24.4,
+    "ceiling_area_m2": 35.52,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 61.0,
+    "wall_area_net_m2": 51.45,
+    "openings_area_m2": 9.55
+   },
+   {
+    "room_id": "room_ch1",
+    "page_index": 0,
+    "name": "Quarto 1",
+    "points": [
+     [
+      921.3,
+      1166.8
+     ],
+     [
+      1346.5,
+      1166.8
+     ],
+     [
+      1346.5,
+      713.2
+     ],
+     [
+      921.3,
+      713.2
+     ]
+    ],
+    "openings": [
+     {
+      "type": "fenetre",
+      "width_m": 1.4,
+      "height_m": 1.35,
+      "area_m2": 1.89
+     },
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     }
+    ],
+    "surface_m2": 21.6,
+    "perimeter_m": 18.6,
+    "ceiling_area_m2": 21.6,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 46.5,
+    "wall_area_net_m2": 42.92,
+    "openings_area_m2": 3.58
+   },
+   {
+    "room_id": "room_entree",
+    "page_index": 0,
+    "name": "Entrada",
+    "points": [
+     [
+      212.6,
+      703.8
+     ],
+     [
+      581.1,
+      703.8
+     ],
+     [
+      581.1,
+      467.6
+     ],
+     [
+      212.6,
+      467.6
+     ]
+    ],
+    "openings": [
+     {
+      "type": "porte",
+      "width_m": 0.9,
+      "height_m": 2.04,
+      "area_m2": 1.84
+     },
+     {
+      "type": "porte",
+      "width_m": 0.9,
+      "height_m": 2.15,
+      "area_m2": 1.94
+     },
+     {
+      "type": "porte",
+      "width_m": 0.9,
+      "height_m": 2.04,
+      "area_m2": 1.84
+     },
+     {
+      "type": "porte",
+      "width_m": 0.73,
+      "height_m": 2.04,
+      "area_m2": 1.49
+     },
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     }
+    ],
+    "surface_m2": 9.75,
+    "perimeter_m": 12.8,
+    "ceiling_area_m2": 9.75,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 32.0,
+    "wall_area_net_m2": 23.2,
+    "openings_area_m2": 8.8
+   },
+   {
+    "room_id": "room_wc",
+    "page_index": 0,
+    "name": "WC",
+    "points": [
+     [
+      212.6,
+      458.1
+     ],
+     [
+      344.9,
+      458.1
+     ],
+     [
+      344.9,
+      221.9
+     ],
+     [
+      212.6,
+      221.9
+     ]
+    ],
+    "openings": [
+     {
+      "type": "porte",
+      "width_m": 0.73,
+      "height_m": 2.04,
+      "area_m2": 1.49
+     },
+     {
+      "type": "fenetre",
+      "width_m": 0.4,
+      "height_m": 0.6,
+      "area_m2": 0.24
+     }
+    ],
+    "surface_m2": 3.5,
+    "perimeter_m": 7.8,
+    "ceiling_area_m2": 3.5,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 19.5,
+    "wall_area_net_m2": 17.77,
+    "openings_area_m2": 1.73
+   },
+   {
+    "room_id": "room_cellier",
+    "page_index": 0,
+    "name": "Lavandaria",
+    "points": [
+     [
+      354.3,
+      458.1
+     ],
+     [
+      581.1,
+      458.1
+     ],
+     [
+      581.1,
+      221.9
+     ],
+     [
+      354.3,
+      221.9
+     ]
+    ],
+    "openings": [
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     },
+     {
+      "type": "fenetre",
+      "width_m": 0.6,
+      "height_m": 0.75,
+      "area_m2": 0.45
+     }
+    ],
+    "surface_m2": 6.0,
+    "perimeter_m": 9.8,
+    "ceiling_area_m2": 6.0,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 24.5,
+    "wall_area_net_m2": 22.36,
+    "openings_area_m2": 2.14
+   },
+   {
+    "room_id": "room_degag",
+    "page_index": 0,
+    "name": "Corredor",
+    "points": [
+     [
+      590.6,
+      703.8
+     ],
+     [
+      1346.5,
+      703.8
+     ],
+     [
+      1346.5,
+      599.9
+     ],
+     [
+      590.6,
+      599.9
+     ]
+    ],
+    "openings": [
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     },
+     {
+      "type": "porte",
+      "width_m": 0.9,
+      "height_m": 2.04,
+      "area_m2": 1.84
+     },
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     },
+     {
+      "type": "porte",
+      "width_m": 0.73,
+      "height_m": 2.04,
+      "area_m2": 1.49
+     },
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     }
+    ],
+    "surface_m2": 8.8,
+    "perimeter_m": 18.2,
+    "ceiling_area_m2": 8.8,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 45.5,
+    "wall_area_net_m2": 37.1,
+    "openings_area_m2": 8.4
+   },
+   {
+    "room_id": "room_ch2",
+    "page_index": 0,
+    "name": "Quarto 2",
+    "points": [
+     [
+      590.6,
+      590.4
+     ],
+     [
+      902.4,
+      590.4
+     ],
+     [
+      902.4,
+      221.9
+     ],
+     [
+      590.6,
+      221.9
+     ]
+    ],
+    "openings": [
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     },
+     {
+      "type": "fenetre",
+      "width_m": 1.2,
+      "height_m": 1.35,
+      "area_m2": 1.62
+     }
+    ],
+    "surface_m2": 12.87,
+    "perimeter_m": 14.4,
+    "ceiling_area_m2": 12.87,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 36.0,
+    "wall_area_net_m2": 32.69,
+    "openings_area_m2": 3.31
+   },
+   {
+    "room_id": "room_sdb",
+    "page_index": 0,
+    "name": "Casa de banho",
+    "points": [
+     [
+      911.8,
+      590.4
+     ],
+     [
+      1119.7,
+      590.4
+     ],
+     [
+      1119.7,
+      221.9
+     ],
+     [
+      911.8,
+      221.9
+     ]
+    ],
+    "openings": [
+     {
+      "type": "porte",
+      "width_m": 0.73,
+      "height_m": 2.04,
+      "area_m2": 1.49
+     },
+     {
+      "type": "fenetre",
+      "width_m": 0.6,
+      "height_m": 0.75,
+      "area_m2": 0.45
+     }
+    ],
+    "surface_m2": 8.58,
+    "perimeter_m": 12.2,
+    "ceiling_area_m2": 8.58,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 30.5,
+    "wall_area_net_m2": 28.56,
+    "openings_area_m2": 1.94
+   },
+   {
+    "room_id": "room_ch3",
+    "page_index": 0,
+    "name": "Quarto 3",
+    "points": [
+     [
+      1129.1,
+      590.4
+     ],
+     [
+      1346.5,
+      590.4
+     ],
+     [
+      1346.5,
+      221.9
+     ],
+     [
+      1129.1,
+      221.9
+     ]
+    ],
+    "openings": [
+     {
+      "type": "porte",
+      "width_m": 0.83,
+      "height_m": 2.04,
+      "area_m2": 1.69
+     },
+     {
+      "type": "fenetre",
+      "width_m": 1.0,
+      "height_m": 1.25,
+      "area_m2": 1.25
+     }
+    ],
+    "surface_m2": 8.97,
+    "perimeter_m": 12.4,
+    "ceiling_area_m2": 8.97,
+    "ceiling_height_m": 2.5,
+    "wall_area_gross_m2": 31.0,
+    "wall_area_net_m2": 28.06,
+    "openings_area_m2": 2.94
+   }
+  ],
+  "meta": {
+   "pixels_per_meter": 94.4882,
+   "width_px": 1984,
+   "height_px": 1403
+  },
+  "shab": 115.59
+ }
+}
