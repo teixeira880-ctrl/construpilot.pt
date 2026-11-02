@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConstruPilot — Brochura</title>
+  <meta name="description" content="ConstruPilot: orçamentação, medições, orçamentos, obra e faturação numa só ferramenta. Brochura em português, français e English." />
+  <style>
+    :root { --green:#1F5136; --deep:#0E241B; --copper:#C8763A; --mint:#5FD39A; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+      font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#E8F1EC;
+      background:radial-gradient(ellipse 70% 60% at 10% 0%, #2f9e7766, transparent 60%),
+                 radial-gradient(ellipse 60% 60% at 100% 100%, #6d5bd055, transparent 60%), var(--deep); }
+    .card { width:100%; max-width:560px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; font-size:22px; letter-spacing:-.01em; }
+    .brand img { width:44px; height:44px; border-radius:12px; }
+    .kicker { margin:26px 0 8px; color:#E9B98F; font-size:12px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
+    h1 { margin:0 0 10px; font-size:34px; line-height:1.1; letter-spacing:-.02em; color:#fff; }
+    .sub { margin:0 0 26px; color:#B8CFC1; font-size:15px; line-height:1.5; }
+    a.dl { display:flex; align-items:center; gap:14px; text-decoration:none; background:#fff; color:var(--deep);
+      border-radius:16px; padding:16px 20px; margin-bottom:12px; font-weight:700; font-size:16px; border:2px solid transparent;
+      transition:transform .12s ease, border-color .12s ease; }
+    a.dl:hover { transform:translateY(-2px); border-color:var(--copper); }
+    a.dl .flag { font-size:24px; } a.dl .lang { flex:1; }
+    a.dl small { display:block; font-weight:500; color:#5B6B63; font-size:12.5px; margin-top:2px; }
+    a.dl .arrow { color:var(--green); font-size:20px; }
+    .foot { color:#8FA79A; font-size:12px; margin-top:22px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><img src="/construpilot-icon.png" alt="" />ConstruPilot</div>
+    <div class="kicker">Brochura · Plaquette · Brochure</div>
+    <h1>Do mapa de quantidades à conta final</h1>
+    <p class="sub">Orçamentação, medições, orçamentos, obra e faturação por autos numa só ferramenta, para artesãos e PME da construção.</p>
+    <a class="dl" href="construpilot-pt.pdf" download="ConstruPilot_Brochura_PT.pdf">
+      <span class="flag">🇵🇹</span><span class="lang">Português<small>Descarregar a brochura PDF · 3 páginas</small></span><span class="arrow">↓</span></a>
+    <a class="dl" href="construpilot-fr.pdf" download="ConstruPilot_Plaquette_FR.pdf">
+      <span class="flag">🇫🇷</span><span class="lang">Français<small>Télécharger la plaquette PDF · 3 pages</small></span><span class="arrow">↓</span></a>
+    <a class="dl" href="construpilot-en.pdf" download="ConstruPilot_Brochure_EN.pdf">
+      <span class="flag">🇬🇧</span><span class="lang">English<small>Download the PDF brochure · 3 pages</small></span><span class="arrow">↓</span></a>
+    <p class="foot">ConstruPilot · construpilot.pt · construpilot.fr · patente / brevet FR2611044</p>
+  </div>
+</body>
+</html>
