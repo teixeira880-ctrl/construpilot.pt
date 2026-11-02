@@ -90,8 +90,8 @@ CLIENT = {
                 "Eliminação autónoma da conta e dos dados, conforme as regras das lojas de aplicações.",
             ], None),
             ("Preços e início", [
-                "Profissional: 149 € / mês por empresa · Particular: 19 € / mês.",
-                "API e integrações: 99 € / mês · opções e módulos a partir de 5 € / mês.",
+                "Pro: 149 € + IVA / mês (1 utilizador) · Pro Business: 249 € + IVA / mês (5 utilizadores, faturação incluída).",
+                "Premium particular: 19 € / mês · Project Pass 50 € · opção Faturação 5 € / mês · API desde 99 € / mês.",
                 "Teste de 7 dias, fase de lançamento gratuita em curso, pagamentos por Stripe.",
                 f'Os preços apresentados na aplicação prevalecem ({SITE}/tarifs) : ce document est indicatif.',
                 "Para começar: crie a conta, importe a sua biblioteca de preços, carregue o primeiro mapa de quantidades.",
@@ -157,8 +157,8 @@ CLIENT = {
                 "Self-service account and data deletion, in line with app store rules.",
             ], None),
             ("Pricing and getting started", [
-                "Professional: €149 / month per company · Individual: €19 / month.",
-                "API and integrations: €99 / month · add-ons from €5 / month.",
+                "Pro: €149 excl. VAT / month (1 user) · Pro Business: €249 excl. VAT / month (5 users, invoicing included).",
+                "Homeowner Premium: €19 / month · Project Pass €50 · invoicing option €5 / month · API from €99 / month.",
                 "7-day trial, free launch phase in progress, Stripe payments.",
                 f"Prices shown in the application prevail ({SITE}/tarifs): this document is indicative.",
                 "Getting started: create your account, import your price library, upload your first schedule.",
@@ -224,8 +224,8 @@ CLIENT = {
                 "Eliminação autónoma da conta e dos dados, conforme as regras das lojas de aplicações.",
             ], None),
             ("Preços e início", [
-                "Profissional: 149 € / mês por empresa · Particular: 19 € / mês.",
-                "API e integrações: 99 € / mês · opções e módulos a partir de 5 € / mês.",
+                "Pro: 149 € + IVA / mês (1 utilizador) · Pro Business: 249 € + IVA / mês (5 utilizadores, faturação incluída).",
+                "Premium particular: 19 € / mês · Project Pass 50 € · opção Faturação 5 € / mês · API desde 99 € / mês.",
                 "Teste de 7 dias, fase de lançamento gratuita em curso, pagamentos por Stripe.",
                 f"Os preços apresentados na aplicação prevalecem ({SITE}/tarifs): este documento é indicativo.",
                 "Para começar: crie a conta, importe a sua biblioteca de preços, carregue o primeiro mapa de quantidades.",

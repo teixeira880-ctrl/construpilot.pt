@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from core.db import db
 from core.security import admin_user, current_user
 from engines import presentation_pdf, presentation_pptx
+from engines import premium_docs
 from engines.journey import journey_metrics
 from routes.plans_common import _resolve_branding
 
@@ -34,6 +35,8 @@ async def client_brochure(lang: str = Query("fr", pattern=LANG), branded: bool =
                           prospect: str | None = Query(None, max_length=80),
                           user=Depends(current_user)):
     """Plaquette commerciale, à l'en-tête de l'entreprise abonnée."""
+    if (user.get("role") == "admin" or not branded) and premium_docs.available("plaquette", lang, "pdf"):
+        return premium_docs.response("plaquette", lang, "pdf")
     branding = await _resolve_branding(user["user_id"]) if branded else None
     return _file(presentation_pdf.build_client_pdf(lang, branding, (prospect or "").strip() or None),
                  f'ConstruPilot-brochura-{lang}.pdf', "application/pdf")
@@ -44,6 +47,8 @@ async def client_deck_pptx(lang: str = Query("fr", pattern=LANG), branded: bool 
                            prospect: str | None = Query(None, max_length=80),
                            user=Depends(current_user)):
     """Deck client PowerPoint : page de garde personnalisée et captures d'écran réelles."""
+    if (user.get("role") == "admin" or not branded) and premium_docs.available("client", lang, "pptx"):
+        return premium_docs.response("client", lang, "pptx")
     branding = await _resolve_branding(user["user_id"]) if branded else None
     return _file(
         presentation_pptx.build_client_pptx(lang, branding, (prospect or "").strip() or None),
@@ -53,6 +58,8 @@ async def client_deck_pptx(lang: str = Query("fr", pattern=LANG), branded: bool 
 @router.get("/investisseurs.pdf")
 async def investor_deck(lang: str = Query("fr", pattern=LANG), admin=Depends(admin_user)):
     """Présentation investisseur avec les KPI réels mesurés à l'instant de la génération."""
+    if premium_docs.available("investor", lang, "pdf"):
+        return premium_docs.response("investor", lang, "pdf")
     metrics, docs = await _investor_context()
     budget = None
     try:
@@ -69,6 +76,8 @@ async def investor_deck(lang: str = Query("fr", pattern=LANG), admin=Depends(adm
 @router.get("/investisseurs.pptx")
 async def investor_deck_pptx(lang: str = Query("fr", pattern=LANG), admin=Depends(admin_user)):
     """Deck investisseur PowerPoint : KPI réels, marché, plan d'exploitation de 500 000 €."""
+    if premium_docs.available("investor", lang, "pptx"):
+        return premium_docs.response("investor", lang, "pptx")
     metrics, docs = await _investor_context()
     return _file(presentation_pptx.build_investor_pptx(lang, metrics, docs),
                  f'ConstruPilot-investidores-{lang}.pptx', PPTX_MIME)
