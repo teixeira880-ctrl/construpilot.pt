@@ -5,6 +5,10 @@ l'estimation ni dans le devis généré (« Métré → devis ») ; le total cof
 Correctif (engines/dxf_takeoff.py, cost_structural) : coffrage poteaux = périmètre de chaque section
 lue sur le plan (sinon section uniforme) × hauteur des éléments verticaux × niveaux ; prix 60 € HT/m² ;
 ajouté au lot structure, au récapitulatif par catégorie et au total coffrage.
+Le devis « Métré → devis » enregistre le prix de revient de chaque ligne (avant marge) : la marge
+est suivie (avant : « 0 ligne sur 14 avec coût »).
+Aussi : le métré par éléments fermés (Lot 54) lit maintenant les POLYLINE des DXF anciens (R12) ;
+avant, ces fichiers retombaient sur l'ancienne méthode (fond de plan et traits cachés comptés).
 
 Usage : python3 lots/l55/apply_l55.py <racine /app> <fr|pt>   (idempotent ; ARRÊT si une ancre manque)
 """
@@ -41,6 +45,16 @@ EDITS = [
  ('col_m3, 0.0, col_ac,', 'col_m3, col_cof, col_ac,'),
  ('col_m3 * P["beton_poteau"] + col_ac * P["acier_poteau"]))',
   'col_m3 * P["beton_poteau"] + col_cof * P["coffrage_poteau"] + col_ac * P["acier_poteau"]))'),
+ ('        elif t == "LWPOLYLINE":\n'
+  '            pts = [(p[0], p[1]) for p in e.get_points("xy")]\n'
+  '            if e.closed and pts:\n',
+  '        elif t in ("LWPOLYLINE", "POLYLINE"):  # Lot 55 : POLYLINE des DXF anciens (R12) aussi\n'
+  '            if t == "LWPOLYLINE":\n'
+  '                pts, closed = [(p[0], p[1]) for p in e.get_points("xy")], e.closed\n'
+  '            else:\n'
+  '                pts = [(v.dxf.location.x, v.dxf.location.y) for v in e.vertices]\n'
+  '                closed = e.is_closed\n'
+  '            if closed and pts:\n'),
  ('        "coffrage_m2": round(wall_cof + beam_cof + slab_m2 + esc_cof, 1),\n',
   '        "coffrage_m2": round(wall_cof + beam_cof + col_cof + slab_m2 + esc_cof, 1),\n'),
 ]
@@ -56,8 +70,16 @@ if not m or len(re.findall(r'col_detail, "m³", col_m3, P\["beton_poteau"\]', s)
 ins = (f'{m.group(1)}_line({LABEL!r}, f"{DETAIL.replace("{h}", "{h_label}")}", "m²", col_cof, '
        'P["coffrage_poteau"]),  # Lot 55\n')
 s = s[:m.end()] + ins + s[m.end():]
+g = root / "backend" / "routes" / "plans_crud.py"
+gs = g.read_text(encoding="utf-8")
+GA = '                "unit_price_ht": pu,\n'
+if "Lot 55" not in gs:
+    if gs.count(GA) != 1:
+        print("ANCRE unit_price_ht: pu introuvable dans plans_crud.py — ARRÊT, rien écrit"); sys.exit(1)
+    gs = gs.replace(GA, GA + '                "cost_price_ht": round(float(ln.get("pu", 0)), 2),  # Lot 55 : coût connu → marge suivie\n')
 f.write_text(s, encoding="utf-8")
+g.write_text(gs, encoding="utf-8")
 t = pathlib.Path(__file__).resolve().parent / "tests" / "test_l55.py"
 (root / "backend" / "tests" / "test_l55.py").write_bytes(t.read_bytes())
-print("ok backend/engines/dxf_takeoff.py + backend/tests/test_l55.py")
+print("ok backend/engines/dxf_takeoff.py + backend/routes/plans_crud.py + backend/tests/test_l55.py")
 print(f"L55 {site.upper()} OK")

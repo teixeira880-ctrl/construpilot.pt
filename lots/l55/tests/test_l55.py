@@ -33,3 +33,25 @@ def test_column_formwork_uniform_section_and_levels():
                                                  "col_w_m": 0.25, "col_h_m": 0.25})
     cat = next(c for c in est["by_category"] if c["key"] == "poteaux")
     assert cat["coffrage_m2"] == 24.0          # 4 × 1,0 m × 3 m × 2 niveaux
+
+
+def test_r12_polylines_use_bet_polygon_method():
+    import ezdxf
+    from engines.dxf_takeoff import extract_structural_metre
+    doc = ezdxf.new("R12")
+    msp = doc.modelspace()
+
+    def r(x, y, w, h, layer):
+        msp.add_polyline2d([(x, y), (x + w, y), (x + w, y + h), (x, y + h)], close=True, dxfattribs={"layer": layer})
+    r(0, 0, 10, 8, "A-FLOR")
+    r(0, 0, 5, 0.2, "A-WALL")
+    r(1, 1, 5, 0.2, "01-Murs_Stylo_No__2")
+    r(7, 1, 0.25, 0.25, "S-COLS")
+    m = extract_structural_metre(doc, 1.0)
+    assert m["method"] == "polygones_calques_bet"
+    assert abs(m["walls_ml"] - 5.0) < 0.05 and m["columns_count"] == 1 and m["slab_area_m2"] == 80.0
+
+
+def test_metre_to_quote_records_cost_price():
+    src = (pathlib.Path(__file__).resolve().parents[1] / "routes" / "plans_crud.py").read_text(encoding="utf-8")
+    assert '"cost_price_ht": round(float(ln.get("pu", 0)), 2)' in src
