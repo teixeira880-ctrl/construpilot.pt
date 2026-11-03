@@ -44,10 +44,10 @@ export const BillingProvider = ({ children }) => {
         api.get("/billing/me"),
         api.get("/billing/flags").catch(() => ({ data: {} })),
       ]);
-      setState({ tier: me.data.tier || "free", active: me.data.active || null, loading: false });
+      setState({ tier: me.data.tier || "free", active: me.data.active || null, loading: false, uid: user.user_id });
       if (pf.data) setFlags((f) => ({ ...f, ...pf.data }));
     } catch {
-      setState({ tier: "free", active: null, loading: false });
+      setState({ tier: "free", active: null, loading: false, uid: user.user_id });
     }
   }, [user]);
 
@@ -61,7 +61,7 @@ export const BillingProvider = ({ children }) => {
   };
 
   return (
-    <BillingContext.Provider value={{ ...state, flags, has, refresh }}>
+    <BillingContext.Provider value={{ ...state, ready: !user || state.uid === user.user_id, flags, has, refresh }}>
       {children}
     </BillingContext.Provider>
   );

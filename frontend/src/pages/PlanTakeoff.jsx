@@ -3676,7 +3676,7 @@ export default function PlanTakeoff() {
       <Dialog open={pendingFiles.length > 0} onOpenChange={(o) => { if (!o && !importingBatch) { setPendingFiles([]); setGroupImport({ enabled: false, mode: "new", name: "", groupId: "" }); } }}>
         <DialogContent className="rounded-sm max-w-lg" data-testid="plan-import-dialog">
           <DialogHeader>
-            <DialogTitle>Importar {pendingFiles.length} plan{pendingFiles.length > 1 ? "s" : ""}</DialogTitle>
+            <DialogTitle>Importar {pendingFiles.length} planta{pendingFiles.length > 1 ? "s" : ""}</DialogTitle>
             <DialogDescription>
               Dê um nome a cada planta antes da importação. Esse nome será apresentado na lista e retomado nas exportações PDF.
             </DialogDescription>
@@ -3898,7 +3898,7 @@ export default function PlanTakeoff() {
               </p>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-muted-foreground">
-                  {allPlans.length} plan{allPlans.length > 1 ? "s" : ""} guardado{allPlans.length > 1 ? "s" : ""}
+                  {allPlans.length} planta{allPlans.length > 1 ? "s" : ""} guardada{allPlans.length > 1 ? "s" : ""}
                 </span>
                 {selectedRecent.length > 0 && (
                   <Button variant="outline" size="sm" onClick={() => bulkTrashPlans(selectedRecent)}
@@ -3944,11 +3944,11 @@ export default function PlanTakeoff() {
                       {p.filename || "Plano sem nome"}
                     </p>
                     <Badge variant="outline" className="text-[10px] rounded-sm shrink-0">
-                      {p.rooms_count || 0} pce
+                      {p.rooms_count || 0} div.
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    {p.page_count || 1} page{p.page_count > 1 ? "s" : ""}
+                    {p.page_count || 1} página{p.page_count > 1 ? "s" : ""}
                     {p.created_at && (
                       <span> · {new Date(p.created_at).toLocaleDateString("pt-PT")}</span>
                     )}
@@ -4527,7 +4527,7 @@ export default function PlanTakeoff() {
                       <div className="min-w-0 flex-1">
                         <p className="font-display font-bold text-sm truncate">{p.filename || "Plano sem nome"}</p>
                         <p className="text-[11px] text-muted-foreground mt-1">
-                          {(p.page_count || 1)} page{(p.page_count || 1) > 1 ? "s" : ""} · {p.rooms_count || 0} divisão{(p.rooms_count || 0) > 1 ? "s" : ""}
+                          {(p.page_count || 1)} página{(p.page_count || 1) > 1 ? "s" : ""} · {p.rooms_count || 0} {(p.rooms_count || 0) > 1 ? "divisões" : "divisão"}
                           {p.created_at && <span> · {new Date(p.created_at).toLocaleDateString("pt-PT")}</span>}
                           {plan?.plan_id === p.plan_id && <span className="text-primary"> · aberto</span>}
                         </p>

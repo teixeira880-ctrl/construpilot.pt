@@ -57,7 +57,7 @@ def _config() -> dict:
             "email": pro_email.lower(),
             "password": pro_pwd,
             "name": "Demo Pro Web Summit",
-            "account_type": "pro",
+            "account_type": "pro_business",
             "plan": "premium",
             "plan_id": "pro_business_monthly",
         },
@@ -207,7 +207,47 @@ async def seed_websummit_demo_pt(db, hash_password_fn, verify_password_fn, new_u
         logger.warning("websummit demo seed: showcase step failed (%s)", exc)
         summary["showcase"] = f"error: {exc}"
 
+    # Lote 47: empresa demo (Espaço Empresa, equipa, RH) para a conta Pro Business.
+    if cfg["pro"]["password"]:
+        try:
+            summary["org"] = await _ensure_demo_org_pt(db, cfg["pro"]["email"])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("websummit demo seed: org step failed (%s)", exc)
+            summary["org"] = f"error: {exc}"
     return summary
+
+
+DEMO_ORG_CODE = "WEBSUMMIT-2026-PT"
+_ORG_BRAND = {"brand_company_name": "brand_company_name", "brand_contact_line": "brand_contact_line",
+              "brand_logo_b64": "brand_logo_b64", "brand_company_email": "brand_company_email",
+              "brand_nif": "brand_nif", "brand_alvara": "brand_alvara", "brand_address": "brand_address",
+              "brand_city": "brand_city", "brand_postal": "brand_postal_code"}
+
+
+async def _ensure_demo_org_pt(db, pro_email: str) -> str:
+    """Empresa fictícia da conta demo Pro (idempotente). Copia o branding fictício da conta
+    para a empresa, para que os PDF continuem com « Construções Horizonte, Lda. »."""
+    u = await db.users.find_one({"email": pro_email, "is_demo": True, "demo_source": DEMO_SOURCE}, {"_id": 0})
+    if not u:
+        return "skipped_user_absent"
+    now = datetime.now(timezone.utc).isoformat()
+    org = await db.organizations.find_one({"org_code": DEMO_ORG_CODE}, {"_id": 0})
+    if not org:
+        org = {"org_id": "org_" + secrets.token_hex(6), "org_code": DEMO_ORG_CODE,
+               "name": "Construções Horizonte, Lda. (demo)", "owner_user_id": u["user_id"],
+               "is_demo": True, "demo_source": DEMO_SOURCE, "created_at": now}
+        await db.organizations.insert_one(dict(org))
+        state = "created"
+    else:
+        state = "unchanged"
+    brand = {k: u.get(src) for k, src in _ORG_BRAND.items() if u.get(src)}
+    brand["brand_country"] = "PT"
+    await db.organizations.update_one({"org_code": DEMO_ORG_CODE}, {"$set": brand})
+    if u.get("organization_id") != org["org_id"] or u.get("org_role") != "owner":
+        await db.users.update_one({"user_id": u["user_id"]},
+                                  {"$set": {"organization_id": org["org_id"], "org_role": "owner",
+                                            "joined_org_at": now}})
+    return state
 
 
 async def reset_websummit_demo_data_pt(db) -> dict:

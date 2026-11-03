@@ -456,6 +456,8 @@ async def list_plans(user=Depends(current_user)) -> dict:
         {"user_id": user["user_id"], "trashed_at": {"$exists": False}},
         {"_id": 0, "pages.image_png_b64": 0}
     ).sort("created_at", -1).to_list(100)
+    for d in docs:
+        d["rooms_count"] = len(d.get("rooms") or [])
     return {"plans": docs}
 
 

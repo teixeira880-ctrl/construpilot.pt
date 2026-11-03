@@ -181,10 +181,10 @@ const Protected = ({ children, admin }) => {
 
 const ProRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const { tier } = useBilling();
+  const { tier, ready: billingReady } = useBilling();
   const permissions = usePermissions();
   const location = useLocation();
-  if (loading)
+  if (loading || (user && billingReady === false))
     return (
       <div className="min-h-[60vh] grid place-items-center">
         <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -204,8 +204,8 @@ const ProRoute = ({ children }) => {
 // Accès réservé aux abonnés : pros/admins OU particuliers avec un forfait payant.
 const SubscriberRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const { tier } = useBilling();
-  if (loading)
+  const { tier, ready: billingReady } = useBilling();
+  if (loading || (user && billingReady === false))
     return (
       <div className="min-h-[60vh] grid place-items-center">
         <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -220,8 +220,8 @@ const SubscriberRoute = ({ children }) => {
 // Accès réservé aux offres « Business » (équipes) — et admin.
 const BusinessRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const { tier } = useBilling();
-  if (loading)
+  const { tier, ready: billingReady } = useBilling();
+  if (loading || (user && billingReady === false))
     return (
       <div className="min-h-[60vh] grid place-items-center">
         <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

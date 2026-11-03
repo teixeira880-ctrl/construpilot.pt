@@ -46,6 +46,7 @@
   }
   function alreadySeen() { try { return sessionStorage.getItem(CONFIG.storageKey) === "1"; } catch (e) { return false; } }
   function markSeen() { try { sessionStorage.setItem(CONFIG.storageKey, "1"); } catch (e) {} }
+  if (/^\/demo(\/|$)/.test(location.pathname || "")) return;
   if (alreadySeen()) return;
   var lang = detectLang();
   var t = CONFIG.texts[lang];

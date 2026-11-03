@@ -147,7 +147,8 @@ async def _level_for(user: dict, tier: str) -> str:
     if user.get("role") == "admin":
         return "business"
     from engines.access import RANK, _TIER_TO_LEVEL
-    base = "pro" if user.get("account_type") == "pro" else "particulier_gratuit"
+    at = user.get("account_type")
+    base = "business" if at == "pro_business" else "pro" if at == "pro" else "particulier_gratuit"
     from_tier = _TIER_TO_LEVEL.get(tier)
     cands = [base] + ([from_tier] if from_tier else [])
     return max(cands, key=lambda lv: RANK[lv])
