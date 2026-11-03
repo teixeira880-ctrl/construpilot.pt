@@ -874,6 +874,14 @@ async def _find_or_create_client(user_id: str, cl: dict) -> str | None:
     return cid
 
 
+async def _already_imported(user_id: str, doc_type: str, number: str | None) -> bool:
+    """Vrai si ce compte a déjà un document de ce type avec ce numéro (anti-doublon d'import)."""
+    if not number:
+        return False
+    return bool(await db.pro_documents.find_one(
+        {"user_id": user_id, "doc_type": doc_type, "number": number}, {"_id": 0, "doc_id": 1}))
+
+
 async def _bump_counter(user_id: str, doc_type: str, seq: int) -> None:
     """Fait continuer le compteur ConstruPilot à partir du plus grand n° importé (année courante)."""
     if seq <= 0:
@@ -933,6 +941,9 @@ async def import_documents_pdf(files: list[UploadFile] = File(...),
             dtype = ext.get("doc_type") or "quote"
             client_id = await _find_or_create_client(user["user_id"], ext.get("client") or {})
             number = (ext.get("number") or "").strip() or None
+            if await _already_imported(user["user_id"], dtype, number):
+                results.append({"file": name, "ok": False, "duplicate": True, "number": number, "error": f"Já importado: o n.º {number} já existe"})
+                continue
             label = "Fatura" if dtype == "invoice" else ("Nota de crédito" if dtype == "credit_note" else "Orçamento")
             totals = _compute_totals(lines, 0)
             doc_status = STATUS_MAP[chosen][dtype]
@@ -1020,6 +1031,9 @@ async def _persist_imported_doc(user: dict, item: dict, chosen: str) -> tuple[di
         })
     client_id = await _find_or_create_client(user["user_id"], item.get("client") or {})
     number = (item.get("number") or "").strip() or None
+    if await _already_imported(user["user_id"], dtype, number):
+        return ({"ok": False, "file": (item.get("file") or "").strip(), "duplicate": True,
+                 "number": number, "error": f"Já importado: o n.º {number} já existe"}, dtype, 0)
     label = "Fatura" if dtype == "invoice" else ("Nota de crédito" if dtype == "credit_note" else "Orçamento")
     src = (item.get("file") or "").strip()
     totals = _compute_totals(lines, 0)
