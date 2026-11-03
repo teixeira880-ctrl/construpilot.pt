@@ -97,3 +97,66 @@ async def build_lines(body, user, previous=None):
             row.update(match or {"price_source": "unpriced", "price_missing": True})
         lines.append(row)
     return lines
+
+
+# --- Lot 50 : filet de sécurité « catalogue ConstruPilot » ---
+_CATALOG_KEYWORDS = [  # du plus spécifique au plus général ; mots sans accents, en minuscules
+    ("salle_de_bain", ("salle de bain", "salle d'eau", "casa de banho", "instalacao sanitaria")),
+    ("cuisine", ("cuisine", "cozinha")),
+    ("menuiseries", ("fenetre", "porte-fenetre", "baie vitree", "menuiserie", "janela", "porta ", "caixilh")),
+    ("ventilation", ("vmc", "ventilation", "ventilacao", "extracao")),
+    ("dechets", ("dechet", "gravat", "benne", "evacuation", "entulho", "residuo")),
+    ("demolition", ("demolition", "depose", "demoli", "remocao", "arrachage", "picagem")),
+    ("placo", ("placo", "platre", "ba13", "cloison", "doublage", "faux plafond", "pladur", "gesso cartonado", "teto falso", "tecto falso")),
+    ("isolation", ("isolation", "isolant", "laine de", "isolamento", "la de rocha", "la mineral")),
+    ("peinture", ("peinture", "pintura")),
+    ("carrelage", ("carrelage", "faience", "carreau", "gres cerame", "azulej", "ceramic", "porcelanico", "mosaico")),
+    ("parquet", ("parquet", "sol souple", "vinyle", "stratifie", "lino", "soalho", "flutuante", "vinilico")),
+    ("facade", ("facade", "ravalement", "enduit exterieur", "fachada", "capoto", "etics", "reboco exterior")),
+    ("toiture", ("toiture", "couverture", "tuile", "telhado", "cobertura", "telha")),
+    ("terrasse", ("terrasse", "terraco", "deck")),
+    ("electricite", ("electricite", "electrique", "eletricidade", "eletrica")),
+    ("plomberie", ("plomberie", "canalizacao", "canalisation")),
+    ("chauffage", ("chauffage", "aquecimento")),
+    ("climatisation", ("climatisation", "climatizacao", "ar condicionado")),
+    ("maconnerie", ("maconnerie", "parpaing", "agglo", "alvenaria", "tijolo")),
+    ("terrassement", ("terrassement", "fouille", "deblai", "escavacao", "movimento de terras")),
+    ("fondations", ("fondation", "semelle", "sapata", "fundac")),
+]
+
+
+def _norm_txt(s):
+    s = unicodedata.normalize("NFKD", str(s or "").lower())
+    return " " + "".join(c for c in s if not unicodedata.combining(c)) + " "
+
+
+def catalog_price(designation, unit, lot=""):
+    """Prix « fourniture + pose, gamme standard » du catalogue ConstruPilot si le métier ET l'unité correspondent."""
+    from engines.catalog import LOTS_BY_KEY
+    text = _norm_txt(f"{designation} {lot}")
+    for key, words in _CATALOG_KEYWORDS:
+        if not any(w in text for w in words):
+            continue
+        item = LOTS_BY_KEY.get(key)
+        if not item or unit_key(item.get("unit")) != unit_key(unit):
+            continue
+        price = round(float(item.get("mat_std", 0)) + float(item.get("labour", 0)), 2)
+        if price <= 0:
+            continue
+        return {"unit_price_ht": price, "price_source": "construpilot_catalog", "price_estimated": True,
+                "price_missing": False, "price_reference": f"catalog:{key}",
+                "price_reference_label": 'Preço do catálogo ConstruPilot (fornecimento + aplicação, gama standard) — a verificar'}
+    return None
+
+
+_build_lines_lot50_base = build_lines
+
+
+async def build_lines(body, user, previous=None):
+    lines = await _build_lines_lot50_base(body, user, previous)
+    for item, row in zip(body.lines, lines):
+        if item.price_origin == "library" and row.get("price_missing"):
+            match = catalog_price(row.get("designation"), row.get("unit"), row.get("category", ""))
+            if match:
+                row.update(match)
+    return lines
