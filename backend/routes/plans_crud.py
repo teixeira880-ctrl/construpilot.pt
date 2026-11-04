@@ -180,11 +180,29 @@ async def _run_upload_job(job_id, data, filename, mime, user, project_id, deskew
         await db.plan_upload_jobs.update_one({"job_id": job_id}, {"$set": {"status": "error", "status_code": 500, "detail": f"Import impossible : {type(e).__name__}", "updated_at": _now()}})
 
 
+def _stale85(j: dict, minutes: int = 10) -> bool:
+    """Lot 85 : vrai si la tâche n'a pas bougé depuis `minutes` (dernier updated_at, sinon created_at)."""
+    from datetime import datetime, timezone
+    ts = j.get("updated_at") or j.get("created_at")
+    try:
+        t = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return False
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - t).total_seconds() > minutes * 60
+
+
 @router.get("/upload-jobs/{job_id}")
 async def upload_job(job_id: str, user=Depends(current_user)):
     j = await db.plan_upload_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]}, {"_id": 0})
     if not j:
         raise HTTPException(404, "Importação não encontrada")
+    # Lot 85 : tâche orpheline (processus redémarré pendant le traitement) → close en erreur après 10 min sans nouvelle
+    if j.get("status") == "processing" and _stale85(j):
+        j.update({"status": "error", "status_code": 503, "detail": 'Importação interrompida no servidor — volte a enviar o ficheiro.'})
+        await db.plan_upload_jobs.update_one({"job_id": job_id, "status": "processing"},
+                                             {"$set": {"status": "error", "status_code": 503, "detail": j["detail"], "updated_at": _now()}})
     if j["status"] == "done" and j.get("kind") is None:
         p = await db.plans_takeoff.find_one({"plan_id": j["plan_id"], "user_id": user["user_id"]}, {"_id": 0})
         j["plan"] = _plan_summary(p) if p else None
