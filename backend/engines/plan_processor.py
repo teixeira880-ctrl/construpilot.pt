@@ -64,7 +64,7 @@ def _encode_preview(img: Image.Image, max_side: int = 1800):
     img.save(pbuf, format="PNG")
     png = pbuf.getvalue()
     jbuf = io.BytesIO()
-    img.convert("RGB").save(jbuf, format="JPEG", quality=85, optimize=True)
+    (img if img.mode == "RGB" else img.convert("RGB")).save(jbuf, format="JPEG", quality=85, optimize=True)  # Lot 86 : pas de copie inutile
     jpg = jbuf.getvalue()
     if len(jpg) < len(png):
         return _b64(jpg), "image/jpeg", fw, fh, ratio
@@ -87,10 +87,12 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
     for i, page in enumerate(doc):
         # --- Rendu image pour le viewer (JPEG/PNG adaptatif, redimensionné) ---
         # Lot 84 : rendu direct à la taille utile (un A0 à 200 dpi saturait la mémoire du serveur)
-        page_dpi = int(min(render_dpi, max(36, 72 * max_side * 1.25 // max(page.rect.width, page.rect.height, 1.0))))
+        page_dpi = int(min(render_dpi, max(36, 72 * max_side // max(page.rect.width, page.rect.height, 1.0))))
         pix = page.get_pixmap(dpi=page_dpi, alpha=False)
-        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        # Lot 86 : rendu à la taille servie, image sans copie (frombuffer), pixmap libérée aussitôt
+        img = Image.frombuffer("RGB", (pix.width, pix.height), pix.samples_mv, "raw", "RGB", pix.stride, 1)
         img_b64, img_mime, fw, fh, ratio = _encode_preview(img, max_side=max_side)
+        del img, pix
 
         # --- Extraction texte ---
         text = page.get_text("text") or ""
