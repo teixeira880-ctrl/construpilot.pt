@@ -18,6 +18,10 @@ LOTS = [
     {"key": "fondations", "name": "Fundações", "unit": "m³", "mat_eco": 130, "mat_std": 165, "mat_premium": 210,
      "labour": 140, "hours": 2.5, "difficulty": "pro", "diy_possible": False,
      "tools": ["Mini-escavadora", "Cofragem", "Agulha vibradora"]},
+    # Lot 78 : laje térrea / pavimento térreo (faltava na construção de moradia)
+    {"key": "dallage", "name": "Laje térrea / pavimento em betão armado", "unit": "m²", "mat_eco": 24, "mat_std": 32,
+     "mat_premium": 45, "labour": 30, "hours": 0.6, "difficulty": "pro", "diy_possible": False,
+     "tools": ["Enrocamento / tela", "Malha electrossoldada", "Régua vibratória", "Autobetoneira"]},
     {"key": "terrassement", "name": "Movimentação de terras", "unit": "m²", "mat_eco": 15, "mat_std": 25, "mat_premium": 40,
      "labour": 30, "hours": 0.5, "difficulty": "pro", "diy_possible": False,
      "tools": ["Escavadora", "Laser de obra", "Compactador", "Camião-basculante"]},
@@ -128,7 +132,7 @@ PROJECT_TYPES = [
     # ---- Construction maison neuve (tous corps d'état détaillés) ----
     {"key": "construction_maison_neuve", "name": "Construção de moradia nova (chave na mão)",
      "image": "project_card_exterior",
-     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "dallage": 1.0, "vrd": 0.40, "maconnerie": 1.10,
               "charpente": 1.10, "toiture": 1.10, "facade": 1.0, "menuiseries": 0.08,
               "electricite": 1.0, "plomberie": 1.0, "chauffage": 1.0, "ventilation": 1.0,
               "isolation": 1.4, "placo": 1.8, "carrelage": 0.35, "parquet": 0.5,
@@ -136,13 +140,13 @@ PROJECT_TYPES = [
     {"key": "construction_maison_hors_eau_hors_air",
      "name": "Construção de moradia nova — impermeabilizada / fechada",
      "image": "project_card_exterior",
-     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "dallage": 1.0, "vrd": 0.40, "maconnerie": 1.10,
               "charpente": 1.10, "toiture": 1.10, "facade": 1.0, "menuiseries": 0.08,
               "dechets": 0.4}},
     {"key": "construction_maison_gros_oeuvre",
      "name": "Construção de moradia — apenas estrutura",
      "image": "project_card_exterior",
-     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "dallage": 1.0, "vrd": 0.40, "maconnerie": 1.10,
               "dechets": 0.3}},
     {"key": "construction_maison_second_oeuvre",
      "name": "Construção de moradia — acabamentos & finalizações",
@@ -153,7 +157,7 @@ PROJECT_TYPES = [
     {"key": "construction_maison_main_oeuvre",
      "name": "Construção de moradia nova — apenas mão de obra",
      "image": "project_card_exterior", "labour_only": True,
-     "lots": {"terrassement": 1.0, "fondations": 0.30, "vrd": 0.40, "maconnerie": 1.10,
+     "lots": {"terrassement": 1.0, "fondations": 0.30, "dallage": 1.0, "vrd": 0.40, "maconnerie": 1.10,
               "charpente": 1.10, "toiture": 1.10, "facade": 1.0, "menuiseries": 0.08,
               "electricite": 1.0, "plomberie": 1.0, "chauffage": 1.0, "ventilation": 1.0,
               "isolation": 1.4, "placo": 1.8, "carrelage": 0.35, "parquet": 0.5,
@@ -290,7 +294,7 @@ HIGH_RISK_LOTS = {"electricite", "chauffage", "climatisation", "toiture", "facad
                   "vrd"}
 
 # Ordre d'exécution pour le planning
-EXECUTION_ORDER = ["demolition", "terrassement", "fondations", "vrd", "maconnerie", "extension",
+EXECUTION_ORDER = ["demolition", "terrassement", "fondations", "dallage", "vrd", "maconnerie", "extension",
                    "charpente", "toiture", "menuiseries",
                    "electricite", "plomberie", "chauffage", "climatisation", "ventilation",
                    "isolation", "placo",

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T00:07:56.132624+00:00",
+  "generated_at": "2026-11-04T01:52:10.519767+00:00",
   "generator": "scripts.websummit.export_demo_fixtures",
   "engines": {
     "estimation": "engines.estimation.estimate_from_request",
@@ -17,8 +17,8 @@
   },
   "demo_source": "websummit_2026",
   "outputs": {
-    "users.json": 842,
-    "projects.json": 31793,
-    "demo_branding.json": 26155
+    "users.json": 913,
+    "projects.json": 33339,
+    "demo_branding.json": 26139
   }
 }
