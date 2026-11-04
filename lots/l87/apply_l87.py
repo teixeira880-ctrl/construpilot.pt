@@ -57,7 +57,7 @@ T = [("    col_sections_units: list = []  # (w, h) en unités dessin, par poteau
      ('        "slab_area_m2": slab_area_m2,\n',
       '        "slab_area_m2": slab_area_m2,\n'
       '        "slab_status": slab_status,\n'),
-     ("def extract_structural_metre(doc, unit_to_m: float) -> dict:\n",
+     ("def extract_structural_metre(doc, unit_to_m: float) -> dict:\n    \"\"\"Parcourt le modelspace et agrège les quantités par catégorie de calque.\"\"\"\n",
       "def _hatch_loops_wh87(e):\n"
       "    \"\"\"Lot 87 : (largeur, hauteur) de chaque boucle extérieure d'une hachure, en unités dessin.\"\"\"\n"
       "    out = []\n"
@@ -74,7 +74,7 @@ T = [("    col_sections_units: list = []  # (w, h) en unités dessin, par poteau
       "    except Exception:  # noqa: BLE001 — hachure illisible : ignorée, jamais bloquante\n"
       "        return []\n"
       "    return out\n\n\n"
-      "def extract_structural_metre(doc, unit_to_m: float) -> dict:\n")]
+      "def extract_structural_metre(doc, unit_to_m: float) -> dict:\n    \"\"\"Parcourt le modelspace et agrège les quantités par catégorie de calque.\"\"\"\n")]
 for s, reps, name in ((g, G, "cad_geometry"), (t, T, "dxf_takeoff")):
     for a, _ in reps:
         if s.count(a) != 1:
