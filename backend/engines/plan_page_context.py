@@ -146,13 +146,14 @@ def level_candidates(text: str) -> list[dict]:
         levels.add(0)
     for match in re.finditer(r"(?<![\w/])r[ \t]*([+-])[ \t]*(\d{1,2})\b", text, re.I):
         levels.add(int(match.group(2)) * (1 if match.group(1) == "+" else -1))
-    for match in re.finditer(r"(?<![:/\d])(?<![:/][ \t])\b(\d{1,2})(?:e|er|eme|ème)?[ \t]*[eé]tage\b", text, re.I):
+    # Lot 72 : « +3.10  Étage » est une cote, pas le 10e étage
+    for match in re.finditer(r"(?<![:/\d.,])(?<![:/.,][ \t])\b(\d{1,2})(?:e|er|eme|ème)?[ \t]*[eé]tage\b", text, re.I):
         levels.add(int(match.group(1)))
     for match in re.finditer(r"\b[eé]tage[ \t]+(\d{1,2})\b", text, re.I):
         levels.add(int(match.group(1)))
     for match in re.finditer(r"\bpiso[ \t]*(-?[ \t]*\d{1,2})\b", text, re.I):
         levels.add(int(match.group(1).replace(" ", "").replace("\t", "")))
-    for match in re.finditer(r"(?<![:/\d])\b(\d{1,2})[ \t]*\.?[ \t]*[ºo°][ \t]*andar\b", text, re.I):
+    for match in re.finditer(r"(?<![:/\d.,])\b(\d{1,2})[ \t]*\.?[ \t]*[ºo°][ \t]*andar\b", text, re.I):  # Lot 72
         levels.add(int(match.group(1)))
     if re.search(r"\b(?:combles?|grenier|s[óo]t[ãa]o|[áa]guas[\s-]furtadas)\b", text, re.I):
         levels.add(99)
@@ -164,7 +165,12 @@ def _title_levels(text: str) -> list[dict]:
     """Niveaux cités dans les lignes de titre (« Plan coffrage PH R+4 », « Planta do piso 1 »)."""
     lines = [ln for ln in (text or "").splitlines() if re.match(r"\s*(?:plans?|plantas?)\b", ln, re.I)]
     found = {}
+    _doc_floors = {lv["level_index"] for lv in level_candidates(text) if 0 < lv["level_index"] < 99}
     for ln in lines:
         for lv in level_candidates(ln):
             found[lv["level_index"]] = lv
+        # Lot 72 : « … — Étage » seul dans un titre = R+1 si le document ne cite pas d'étage au-delà de R+1
+        if (not level_candidates(ln) and re.search(r"(?:^|[\s—–\-:])[eé]tage\s*$", ln, re.I)
+                and _doc_floors <= {1}):
+            found[1] = {"level_index": 1, "level_label": "R+1"}
     return list(found.values())
