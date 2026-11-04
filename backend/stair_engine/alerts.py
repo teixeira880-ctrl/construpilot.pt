@@ -248,6 +248,9 @@ def check_optimal(
 
 def summarize(alerts: List[Alert]) -> List[Alert]:
     """Ajoute un GEOMETRY_OK vert si aucune alerte rouge/orange n'a été émise (hors verts)."""
+    # Lot 79 : pas de « configuration optimale » quand une alerte rouge existe (message contradictoire)
+    if any(a.level == "red" for a in alerts):
+        alerts = [a for a in alerts if a.code != "OPTIMAL_CONFIG"]
     non_green = [a for a in alerts if a.level != "green"]
     if not non_green:
         alerts.append(

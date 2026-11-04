@@ -225,6 +225,12 @@ def compute_straight(
             )
         )
 
+    # Lot 79 : largeur de l'escalier droit comparée à la largeur disponible
+    if inp.available_width_mm and inp.stair_width_mm > inp.available_width_mm:
+        alerts_all.append(Alert(level="red", code="STAIR_WIDTH_INSUFFICIENT",
+                                message_fr=f"Largura da escada {inp.stair_width_mm:.0f} mm > largura disponível {inp.available_width_mm:.0f} mm. A escada não cabe.",
+                                metric="available_width_mm", value=inp.stair_width_mm,
+                                threshold=inp.available_width_mm))
     # 6. is_buildable
     is_buildable = A.compute_is_buildable(alerts_all)
     is_geometrically_possible = A.compute_is_geometrically_possible(alerts_all)
