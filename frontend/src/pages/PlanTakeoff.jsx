@@ -249,6 +249,15 @@ export default function PlanTakeoff() {
   const [autoRotated, setAutoRotated] = useState(false);
   // P1 — Plein écran + réglage contraste/luminosité du plan
   const [fullscreen, setFullscreen] = useState(false);
+  // Lot 90 : plan en grand (par défaut), outils au survol — choix mémorisé dans le navigateur
+  const [planWide, setPlanWide] = useState(() => {
+    try { return localStorage.getItem("cp_plan_wide") !== "0"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("cp_plan_wide", planWide ? "1" : "0"); } catch { /* stockage indisponible */ }
+    const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
+    return () => clearTimeout(t);
+  }, [planWide]);
   const [planContrast, setPlanContrast] = useState(1.25);
   const [planBrightness, setPlanBrightness] = useState(1.02);
   const [showImgAdjust, setShowImgAdjust] = useState(false);
@@ -4713,7 +4722,7 @@ export default function PlanTakeoff() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[180px_minmax(0,1fr)_320px] gap-4 min-w-0">
+      <div className={planWide ? "grid grid-cols-1 gap-4 min-w-0" : "grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[180px_minmax(0,1fr)_320px] gap-4 min-w-0"}>
         {/* SIDEBAR PAGES */}
         <div className="surface p-3 max-h-[80vh] overflow-auto min-w-0 xl:col-span-2 2xl:col-span-1">
           <p className="overline mb-3">Páginas ({plan.page_count})</p>
@@ -4773,10 +4782,19 @@ export default function PlanTakeoff() {
 
         {/* MAIN CANVAS */}
         <div className={fullscreen
-          ? "fixed inset-0 z-[60] p-3 bg-background overflow-auto"
-          : "surface p-3 min-w-0"} data-testid="plan-canvas-surface">
+          ? "fixed inset-0 z-[60] p-3 bg-background overflow-auto group/plan"
+          : planWide ? "surface p-2 min-w-0 order-first group/plan" : "surface p-3 min-w-0"} data-testid="plan-canvas-surface">
           {/* TOOLBAR */}
-          <div className="flex flex-wrap gap-2 mb-3 pb-3 border-b border-border">
+          {/* Lot 90 : zone de survol du haut du plan — la barre d'outils y apparaît */}
+          <div className={(planWide || fullscreen) ? "relative z-40 group/tb h-0" : "contents"}>
+          {(planWide || fullscreen) && (
+            <div className="absolute top-0 inset-x-0 h-4 z-30" aria-hidden="true" />
+          )}
+          {(planWide || fullscreen) && (
+            <div className="absolute top-1 left-1/2 -translate-x-1/2 z-30 px-3 py-0.5 rounded-full text-[11px] bg-foreground/70 text-background pointer-events-none transition-opacity group-hover/tb:opacity-0 [@media(hover:none)]:hidden" data-testid="plan-tools-hint">Ferramentas — passe o rato no topo da planta</div>
+          )}
+          <div className={(planWide || fullscreen) ? "absolute top-0 inset-x-0 z-40 p-2 flex flex-wrap gap-2 rounded-t-md border-b border-border bg-background/95 backdrop-blur shadow-lg opacity-0 pointer-events-none transition-opacity duration-150 group-hover/tb:opacity-100 group-hover/tb:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto" : "flex flex-wrap gap-2 mb-3 pb-3 border-b border-border"}
+               data-testid="plan-toolbar">
             <MeasureHelpDialog />
             <ToolButton icon={MousePointer2} label="Seleção" testId="tool-select" active={tool === TOOLS.SELECT} onClick={() => { setDeductDraw(null); setTool(TOOLS.SELECT); setPoints([]); }} />
             <ToolButton icon={Ruler} label="Calibrar" testId="tool-calibrate" active={tool === TOOLS.CALIB} onClick={() => { setDeductDraw(null); setTool(TOOLS.CALIB); setPoints([]); }} />
@@ -4908,6 +4926,12 @@ export default function PlanTakeoff() {
                 </div>
               )}
             </div>
+            {/* Lot 90 : bascule plan en grand / affichage classique */}
+            <Button size="sm" variant={planWide ? "default" : "outline"} onClick={() => setPlanWide((v) => !v)}
+                    data-testid="tool-plan-wide" className="rounded-sm gap-1 h-8"
+                    title="Planta em grande: a planta ocupa o ecrã inteiro, ferramentas ao passar o rato">
+              {planWide ? "Vista clássica" : "Planta em grande"}
+            </Button>
             {/* P1 — Plein écran */}
             <Button
               size="sm"
@@ -4933,8 +4957,9 @@ export default function PlanTakeoff() {
             </Button>
           </div>
 
+          </div>{/* Lot 90 : fin zone de survol */}
           {/* CANVAS */}
-          <div className={fullscreen ? "relative h-[calc(100vh-92px)]" : "relative"}>
+          <div className={fullscreen ? "relative h-[calc(100vh-24px)]" : planWide ? "relative h-[calc(100vh-96px)] min-h-[520px]" : "relative"}>
           {(pageLoading || loadedPageKey !== pageKey || pageError) && (
             <div role={pageError ? "alert" : "status"} className="min-h-[300px] grid place-content-center gap-3 text-center p-6">
               <p>{pageError || "A carregar a planta…"}</p>
