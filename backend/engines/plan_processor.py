@@ -86,7 +86,9 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
     max_side = 4200 if n_pages <= 3 else (2800 if n_pages <= 8 else 1800)
     for i, page in enumerate(doc):
         # --- Rendu image pour le viewer (JPEG/PNG adaptatif, redimensionné) ---
-        pix = page.get_pixmap(dpi=render_dpi, alpha=False)
+        # Lot 84 : rendu direct à la taille utile (un A0 à 200 dpi saturait la mémoire du serveur)
+        page_dpi = int(min(render_dpi, max(36, 72 * max_side * 1.25 // max(page.rect.width, page.rect.height, 1.0))))
+        pix = page.get_pixmap(dpi=page_dpi, alpha=False)
         img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
         img_b64, img_mime, fw, fh, ratio = _encode_preview(img, max_side=max_side)
 
@@ -113,13 +115,13 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
 
         # Import and refresh must share the same scale/view safeguards.
         from engines.plan_refresh import extract_pdf_page
-        geometry = extract_pdf_page(page, render_dpi * ratio / 72, vectors=vectors, text_blocks=text_blocks)
+        geometry = extract_pdf_page(page, page_dpi * ratio / 72, vectors=vectors, text_blocks=text_blocks)
         pages_out.append({
             **geometry,
             "index": i,
             "width_px": fw,
             "height_px": fh,
-            "dpi": round(render_dpi * ratio, 2),
+            "dpi": round(page_dpi * ratio, 2),
             "image_png_b64": img_b64,
             "img_mime": img_mime,
             "dimensions_count": len(DIM_PATTERN.findall(text)),
