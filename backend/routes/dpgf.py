@@ -571,6 +571,13 @@ async def dpgf_to_quote(file_id: str, body: QuoteIn, user=Depends(current_user))
             continue
         if x.get("pu") is None:
             continue
+        if x.get("option"):  # Lot 88 : option affichée à part, jamais additionnée au total du devis
+            amount = f"{(x.get('total') or 0):,.2f} € HT".replace(",", " ")
+            lines.append({"designation": f"OPÇÃO (não incluída no total) — {x['designation'][:240]} — {amount}",
+                          "description": (desc or "")[:2000], "unit": x.get("unit") or "u",
+                          "qty": x.get("qty") if x.get("qty") is not None else 1, "unit_price_ht": 0,
+                          "vat_rate": body.vat_rate, "category": "Opções"})
+            continue
         lines.append({
             "designation": x["designation"][:300], "description": (desc or "")[:2000],
             "unit": x.get("unit") or "u", "qty": x.get("qty") if x.get("qty") is not None else 1,
@@ -588,6 +595,8 @@ async def dpgf_to_quote(file_id: str, body: QuoteIn, user=Depends(current_user))
         notes.append(f"Instruções aplicadas: {doc['instructions']}")
     if (doc.get("cctp") or {}).get("summary"):
         notes.append(f"Caderno de encargos: {doc['cctp']['summary']}")
+    if any(x.get("option") and x.get("pu") is not None for x in rows):  # Lot 88
+        notes.append('As linhas «OPÇÃO» são indicadas à parte e não estão incluídas no total.')
     if any(x.get("excluded") for x in rows):
         notes.append("Os serviços marcados «Sem preço — fora do contrato» não estão incluídos no total.")
     quote = {
