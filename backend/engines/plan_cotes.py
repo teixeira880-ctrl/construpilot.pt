@@ -461,3 +461,36 @@ def check_dimensions(dims: list[dict], ppm: float, tol_pct: float, tol_cm: float
     }
     result["summary"]["conclusion"] = quick_conclusion(result)
     return result
+
+
+# --- Lot 63 : emprise non rectangulaire ≠ incohérence ---
+_find_facades_lot63_base = _find_facades
+
+
+def _find_facades(items, img_w, img_h):
+    out = _find_facades_lot63_base(items, img_w, img_h)
+    for fc in out:
+        d = abs(float(fc.get("delta_m") or 0))
+        big = max(abs(float(fc.get("a_m") or 0)), abs(float(fc.get("b_m") or 0)), 1e-6)
+        if fc.get("status") in ("ko", "warn"):
+            if d > 0.30 or d / big > 0.05:
+                fc["status"] = "nd"
+                fc["shape_note"] = "non_rectangular"
+            elif d > 0.10:
+                fc["status"] = "warn"
+    return out
+
+
+_quick_conclusion_lot63_base = quick_conclusion
+
+
+def quick_conclusion(report):
+    fac = report.get("facades") or []
+    nd = [fc for fc in fac if fc.get("status") == "nd"]
+    if not nd:
+        return _quick_conclusion_lot63_base(report)
+    base = _quick_conclusion_lot63_base({**report, "facades": [fc for fc in fac if fc.get("status") != "nd"]})
+    if base.startswith('Todas as cotas inscritas correspondem'):
+        base = 'Todas as cotas inscritas correspondem à medição, as cadeias fecham, as cotas estão associadas ao desenho e os elementos etiquetados têm a largura anunciada: nenhuma incoerência registada nesta página.'
+    lst = " ; ".join('{a:.2f} m {sa} / {b:.2f} m {sb}'.format(a=fc["a_m"], sa=fc.get("a_side", ""), b=fc["b_m"], sb=fc.get("b_side", "")) for fc in nd[:3])
+    return 'Dimensões gerais opostas diferentes ({lst}): implantação provavelmente não retangular (recuos, forma em L) — não é uma incoerência demonstrada.'.format(lst=lst) + " " + base
