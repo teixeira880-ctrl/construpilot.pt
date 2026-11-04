@@ -50,7 +50,8 @@ def page_context(text: str) -> dict:
     schedule = bool(re.search(r"^\s*(?:NOMENCLATURE|TABLEAU)\s+DES\s+(?:BAIES|MENUISERIES)\b", text, re.I | re.M))
     # Lot 56 : « Coupe 12 » seul sur sa ligne est un repère de coupe, pas un titre ; PT : CORTE(S)
     section = bool(re.search(r"^\s*(?:COUPES?\s+(?!FEU\b)(?!\d+\s*$)|CORTES?\s+(?!CORTA\b)(?!\d+\s*$))\S", text, re.I | re.M))
-    elevation = bool(re.search(r"^\s*(?:FA[ÇC]ADES?\s+(?:BAT|NORD|SUD|EST|OUEST)|AL[ÇC]ADOS?\s+(?:NORTE|SUL|NASCENTE|POENTE|ESTE|OESTE|PRINCIPAL|POSTERIOR|LATERAL))", text, re.I | re.M))
+    # Lot 73 : « ÉLÉVATION NORD », « FAÇADE PRINCIPALE », « ALÇADO FRONTAL » sont des façades
+    elevation = bool(re.search(r"^\s*(?:FA[ÇC]ADES?\s+(?:BAT|NORD|SUD|EST|OUEST|PRINCIPALE|ARRI[ÈE]RE|LAT[ÉE]RALE|AVANT|SUR\s+(?:RUE|JARDIN|COUR))|[ÉE]L[ÉE]VATIONS?\s+(?:NORD|SUD|EST|OUEST|PRINCIPALE|ARRI[ÈE]RE|LAT[ÉE]RALE|AVANT|[A-Z]['’]?\s*$)|AL[ÇC]ADOS?\s+(?:NORTE|SUL|NASCENTE|POENTE|ESTE|OESTE|PRINCIPAL|POSTERIOR|LATERAL|FRONTAL|TARDOZ))", text, re.I | re.M))
     floor = bool(re.search(r"^\s*(?:PLAN\s+(?:R[+\-\d ]|RDC|DE\s+RDC|DU\s+(?:RDC|SOUS-SOL))|PLANTA\s+(?:D[OA]\s+)?(?:PISO|R/?C|R[ÉE]S|CAVE|S[ÓO]T[ÃA]O|\d|PRIMEIRO|SEGUNDO|PISO))", text, re.I | re.M))  # Lot 56 : PT
     kinds = [name for name, present in (("section", section), ("elevation", elevation), ("floor_plan", floor)) if present]
     kind = "opening_schedule" if schedule else "mixed" if len(kinds) > 1 else kinds[0] if kinds else "unknown"
