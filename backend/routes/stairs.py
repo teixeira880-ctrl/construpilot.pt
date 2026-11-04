@@ -242,6 +242,18 @@ async def stair_to_quote(body: StairToQuoteIn, user=Depends(pro_required)):
                              category="Escada betão armado", price_missing=True, price_estimated=True))
     if not lines:
         raise HTTPException(422, "Quantidades nulas — calcule primeiro uma escada exequível")
+    # Lot 64 : devis escalier chiffré automatiquement (prix catalogue escalier, marge par défaut intégrée)
+    from engines.dxf_takeoff import DEFAULTS as _SD, PRICES as _SP
+    _sm = 1 + float(_SD.get("margin_pct", 12.0)) / 100.0
+    for _ln in lines:
+        _u = (_ln.unit or "").lower().replace("³", "3").replace("²", "2")
+        _base = {"m3": _SP.get("beton_escalier", 0), "m2": _SP.get("coffrage_escalier", 0), "kg": _SP.get("acier_escalier", 0)}.get(_u, 0)
+        if _base and not _ln.unit_price_ht:
+            _ln.unit_price_ht = round(float(_base) * _sm, 2)
+            _ln.cost_price_ht = round(float(_base), 2)
+            _ln.price_missing = False
+            _ln.price_estimated = True
+            _ln.price_reference_label = 'Preço do catálogo ConstruPilot (escada em betão, fornecimento + aplicação) — a verificar'
     doc = DocIn(doc_type="quote", title=f"Escada — {body.project_name}"[:160],
                 client_id=body.client_id, chantier_id=body.chantier_id, lines=lines, status="draft")
     return await create_document(doc, user)

@@ -186,3 +186,23 @@ def find_price(designation, unit, sources):
     if match and _work_family(designation) != _work_family(match.get("price_reference_label")):
         return None
     return match
+
+
+# --- Lote 65 : coefficient pays/região sur le prix catalogue (catalogue = prix France) ---
+_catalog_price_lot65_base = catalog_price
+
+
+def catalog_price(designation, unit, lot=""):
+    m = _catalog_price_lot65_base(designation, unit, lot)
+    if not m:
+        return m
+    try:
+        from engines.estimation import region_coef
+        coef = float(region_coef("PT", None))
+    except Exception:  # noqa: BLE001
+        coef = 0.68
+    if 0 < coef < 1.5:
+        m = dict(m)
+        m["unit_price_ht"] = round(float(m["unit_price_ht"]) * coef, 2)
+        m["price_reference_label"] = (m.get("price_reference_label") or "") + f" · coeficiente Portugal {coef:g}"
+    return m

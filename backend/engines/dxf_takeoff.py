@@ -719,6 +719,31 @@ def _bet_kind(layer: str):
     return None
 
 
+def _bet_main_zone(slabs, margin=8.0, link=25.0):
+    """Lot 68 : emprise du dessin principal = groupe de dalles le plus étendu (les vues 3D/détails sont ailleurs)."""
+    from shapely.geometry import box
+    from shapely.ops import unary_union
+    if not slabs:
+        return None
+    boxes = [box(*p.bounds) for p in slabs]
+    parent = list(range(len(boxes)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
+            if boxes[i].distance(boxes[j]) <= link:
+                parent[find(i)] = find(j)
+    groups = {}
+    for i in range(len(boxes)):
+        groups.setdefault(find(i), []).append(i)
+    best = max(groups.values(), key=lambda g: sum(slabs[i].area for i in g))
+    return box(*unary_union([boxes[i] for i in best]).bounds).buffer(margin)
+
+
 def _bet_polygon_metre(doc, unit_to_m: float):
     """Quantités par polygones fermés sur les calques BET (traits continus uniquement)."""
     import statistics
@@ -757,10 +782,18 @@ def _bet_polygon_metre(doc, unit_to_m: float):
     if not segs["wall"] and not segs["slab"]:
         return None
 
-    def polys(kind):
+    _zone_cache = {}
+
+    def _raw(kind):
         if not segs[kind]:
             return []
         return [p for p in polygonize(unary_union(segs[kind])) if p.area > 1e-4]
+
+    def polys(kind):  # Lot 68 : uniquement le dessin principal (pas la vue 3D / les autres vues)
+        if "z" not in _zone_cache:
+            _zone_cache["z"] = _bet_main_zone([p for p in _raw("slab") if p.area >= 1.0])
+        z = _zone_cache["z"]
+        return [p for p in _raw(kind) if z is None or z.contains(p.centroid)]
 
     def dims(p):
         r = p.minimum_rotated_rectangle

@@ -175,7 +175,7 @@ def test_price_only_from_company_library():
     res = price(st["quantities"], lib)
     line = next(q for q in st["quantities"] if q["code"] == "EL-PRISE")
     assert line["unit_price"] == 18.5 and res["priced_lines"] >= 1
-    assert res["unpriced_lines"] > 0          # le reste reste « à chiffrer »
+    assert res["unpriced_lines"] == 0 and res["estimated_lines"] > 0  # Lot 69 : le reste est estimé (référence)
 
 
 # --------------------------------------------------------------------------------- édition

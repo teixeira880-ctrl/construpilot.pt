@@ -46,7 +46,7 @@ export default function LearnedPricesPanel({ onValidated }) {
               className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
         <span className="flex items-center gap-2 font-display font-bold text-sm">
           <Sparkles className="h-4 w-4 text-amber-500" />
-          {items.length} preço médio{items.length > 1 ? "s" : ""} de mercado aprendidos — a validar
+          {items.length} {items.length > 1 ? "preços médios" : "preço médio"} de mercado {items.length > 1 ? "aprendidos" : "aprendido"} — a validar
         </span>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
