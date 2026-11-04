@@ -23,7 +23,8 @@ def test_column_formwork_from_sections():
     cat = next(c for c in est["by_category"] if c["key"] == "poteaux")
     assert cat["coffrage_m2"] == 12.0          # 4 × 2×(0,20+0,40) × 2,5
     lines = _col_line(est)
-    assert len(lines) == 1 and lines[0]["total"] == 720.0
+    from engines.dxf_takeoff import PRICES  # Lot 74 PT : preço de referência com coeficiente PT
+    assert len(lines) == 1 and lines[0]["total"] == round(12.0 * PRICES["coffrage_poteau"], 2)
     base = cost_structural(_metre(columns_count=0, detected={}), {"storey_height_m": 2.5})
     assert est["totals"]["coffrage_m2"] == round(base["totals"]["coffrage_m2"] + 12.0, 1)
 

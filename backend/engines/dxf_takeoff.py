@@ -472,6 +472,13 @@ PRICES = {
     "echafaudage":         12000.0,
     "protection_securite":  6000.0,
 }
+# Lot 74 PT : preços de referência ajustados ao mercado português (mesmo coeficiente regional da estimativa)
+try:
+    from engines.estimation import region_coef as _rc74
+    _COEF_PT74 = float(_rc74("PT", None))
+except Exception:  # pragma: no cover
+    _COEF_PT74 = 0.68
+PRICES = {k: (round(v * _COEF_PT74, 2) if isinstance(v, (int, float)) else v) for k, v in PRICES.items()}
 # Ratios aciers kg/m³
 REBAR = {"voile": 60.0, "poutre": 120.0, "poteau": 130.0, "dalle": 85.0, "escalier": 110.0}
 
