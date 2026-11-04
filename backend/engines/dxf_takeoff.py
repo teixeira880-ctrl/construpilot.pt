@@ -184,6 +184,24 @@ def _footprint_area_m2(segments, bounds, unit_to_m: float) -> float:
     return round(area_units2 * unit_to_m * unit_to_m, 1)
 
 
+def _hatch_loops_wh87(e):
+    """Lot 87 : (largeur, hauteur) de chaque boucle extérieure d'une hachure, en unités dessin."""
+    out = []
+    try:
+        from ezdxf.path import from_hatch
+        for p in from_hatch(e):
+            pts = list(p.flattening(distance=1.0, segments=8))
+            if len(pts) < 3:
+                continue
+            xs = [q.x for q in pts]; ys = [q.y for q in pts]
+            w, h = max(xs) - min(xs), max(ys) - min(ys)
+            if w > 0 and h > 0:
+                out.append((w, h))
+    except Exception:  # noqa: BLE001 — hachure illisible : ignorée, jamais bloquante
+        return []
+    return out
+
+
 def extract_structural_metre(doc, unit_to_m: float) -> dict:
     """Parcourt le modelspace et agrège les quantités par catégorie de calque."""
     msp = doc.modelspace()
@@ -209,6 +227,8 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     beam_segs: list = []
     col_segs: list = []
     col_sections_units: list = []  # (w, h) en unités dessin, par poteau
+    col_hatch_sections: list = []  # Lot 87 : poteaux tracés en traits + hachure (une boucle = un poteau)
+    slab_lines87 = 0
 
     def _entity_wh(ent):
         """Largeur/hauteur (unités dessin) de la bbox d'une entité (bloc INSERT inclus)."""
@@ -256,6 +276,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
                 stair_bboxes.append((min(e.dxf.start.x, e.dxf.end.x), min(e.dxf.start.y, e.dxf.end.y),
                                      max(e.dxf.start.x, e.dxf.end.x), max(e.dxf.start.y, e.dxf.end.y)))
             elif _match(L, _LINTEL): lintel_len += ln
+            if _match(L, _SLAB): slab_lines87 += 1  # Lot 87
             if ln:
                 layer_line_len[getattr(e.dxf, "layer", "?")] += ln
         elif t in ("LWPOLYLINE", "POLYLINE"):
@@ -278,6 +299,8 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
                 beam_len += ln
                 beam_fill_units += ar
         elif t == "HATCH":
+            if _match(L, _COL):  # Lot 87
+                col_hatch_sections.extend(_hatch_loops_wh87(e))
             # Emprise béton lue par élément (voiles/poutres) — remplissage plein
             if _match(L, _BEAM):
                 beam_fill_units += _hatch_area(e)
@@ -329,8 +352,14 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         walls_ml, partitions_ml, wall_source = partitions_ml, 0.0, "archi_fallback"
     beams_ml = round(m(beam_len) / 2, 1)
     columns_count = col_inserts
+    if len(col_hatch_sections) > col_inserts:  # Lot 87 : poteaux sans bloc, comptés par hachure
+        columns_count = len(col_hatch_sections)
+        col_sections_units = list(col_hatch_sections)
     linteaux_ml = round(m(lintel_len) / 2, 1)
     slab_area_m2 = round(slab_area_units * U * U, 1)
+    slab_status = "mesuree" if slab_area_m2 > 0 else "absente"
+    if slab_area_m2 < 1.0 and slab_lines87 >= 20:  # Lot 87 : dalle tracée en lignes ouvertes → à mesurer
+        slab_area_m2, slab_status = 0.0, "contours_ouverts"
 
     ngf_vals = []
     for s in resa_ngf:
@@ -406,6 +435,7 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "beam_area_m2": beam_area_m2,
         "linteaux_ml": linteaux_ml,
         "slab_area_m2": slab_area_m2,
+        "slab_status": slab_status,
         "footprint_m2": footprint_m2,
         "escaliers_count": escaliers_count,
         "escaliers_area_m2": escaliers_area_m2,
