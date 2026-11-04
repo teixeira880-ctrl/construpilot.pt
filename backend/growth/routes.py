@@ -796,6 +796,16 @@ def _looks_portuguese(title: str) -> bool:
     return any(m in s for m in _PT_MARKERS)
 
 
+_FR_MARKERS80 = ("bureau d", "en ligne", "devis", "travaux", "déposez", "maison", "chantier", "études",
+                 "coût", "prix au m", "estimez", "rénovation")
+
+
+def _looks_french80(title: str) -> bool:
+    """Lote 80 PT : título com ar francês (não deve aparecer no .pt)."""
+    s = (title or "").lower()
+    return any(m in s for m in _FR_MARKERS80) and not _looks_portuguese(title)
+
+
 @router.get("/seo-overrides")
 async def public_seo_overrides() -> dict:
     """Public : surcharges title/description approuvées, appliquées à chaud par le composant SEO du site.
@@ -813,8 +823,11 @@ async def public_seo_overrides() -> dict:
             titles.setdefault(o["path"], []).append((o.get("title"), o.get("description")))
     for path, variants in titles.items():
         # Préfère une variante française quand plusieurs coexistent ; sinon garde la seule disponible (chemins PT légitimes).
-        chosen = next((v for v in variants if v[0] and not _looks_portuguese(v[0])), variants[0])
-        out.setdefault(path, {}).update({"title": chosen[0], "description": chosen[1]})
+        # Lote 80 PT : construpilot.pt é PT → variante portuguesa primeiro ; nunca servir um título francês
+        chosen = (next((v for v in variants if v[0] and _looks_portuguese(v[0])), None)
+                  or next((v for v in variants if v[0] and not _looks_french80(v[0])), None))
+        if chosen:
+            out.setdefault(path, {}).update({"title": chosen[0], "description": chosen[1]})
     return {"overrides": out}
 
 
