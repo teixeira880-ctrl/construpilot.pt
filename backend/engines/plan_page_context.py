@@ -52,7 +52,7 @@ def page_context(text: str) -> dict:
     section = bool(re.search(r"^\s*(?:COUPES?\s+(?!FEU\b)(?!\d+\s*$)|CORTES?\s+(?!CORTA\b)(?!\d+\s*$))\S", text, re.I | re.M))
     # Lot 73 : « ÉLÉVATION NORD », « FAÇADE PRINCIPALE », « ALÇADO FRONTAL » sont des façades
     elevation = bool(re.search(r"^\s*(?:FA[ÇC]ADES?\s+(?:BAT|NORD|SUD|EST|OUEST|PRINCIPALE|ARRI[ÈE]RE|LAT[ÉE]RALE|AVANT|SUR\s+(?:RUE|JARDIN|COUR))|[ÉE]L[ÉE]VATIONS?\s+(?:NORD|SUD|EST|OUEST|PRINCIPALE|ARRI[ÈE]RE|LAT[ÉE]RALE|AVANT|[A-Z]['’]?\s*$)|AL[ÇC]ADOS?\s+(?:NORTE|SUL|NASCENTE|POENTE|ESTE|OESTE|PRINCIPAL|POSTERIOR|LATERAL|FRONTAL|TARDOZ))", text, re.I | re.M))
-    floor = bool(re.search(r"^\s*(?:PLAN\s+(?:R[+\-\d ]|RDC|DE\s+RDC|DU\s+(?:RDC|SOUS-SOL))|PLANTA\s+(?:D[OA]\s+)?(?:PISO|R/?C|R[ÉE]S|CAVE|S[ÓO]T[ÃA]O|\d|PRIMEIRO|SEGUNDO|PISO))", text, re.I | re.M))  # Lot 56 : PT
+    floor = bool(re.search(r"^\s*(?:PLAN\s+(?:R[+\-\d ]|RDC|DE\s+(?:RDC|R\s*[+\-]\s*\d|REZ|L['’]?\s*[EÉ]TAGE|SOUS-SOL|COMBLES?)|DU\s+(?:RDC|SOUS-SOL|REZ|\d+\s*(?:ER|E|EME|ÈME)?\s*[EÉ]TAGE|[EÉ]TAGE|NIVEAU|COMBLES?)|DES\s+COMBLES|[EÉ]TAGE|NIVEAU\s+[-+]?\d|SOUS-SOL|REZ)|PLANTA\s+(?:D[OA]\s+)?(?:PISO|R/?C|R[ÉE]S|CAVE|S[ÓO]T[ÃA]O|\d|PRIMEIRO|SEGUNDO|PISO))", text, re.I | re.M))  # Lot 56 : PT ; Lot 77 : PLAN DE R+1 / DU 1er ETAGE
     kinds = [name for name, present in (("section", section), ("elevation", elevation), ("floor_plan", floor)) if present]
     kind = "opening_schedule" if schedule else "mixed" if len(kinds) > 1 else kinds[0] if kinds else "unknown"
     # Structural diagrams contain parallel reinforcement lines and sections that
