@@ -62,7 +62,9 @@ def _defl_mm(components, fg, fq, i_mm4, e_mpa, l_mm):
 
 def _loads(opts):
     """Construit les composantes de charge sur le linteau + trace le modèle retenu."""
-    L = float(opts["clear_span_m"])
+    L_n = float(opts["clear_span_m"])
+    # Lot 71 : portée utile EN 1992-1-1 §5.3.2.2 (l_eff = l_n + a1 + a2, a_i = about/2)
+    L = L_n + max(float(opts.get("bearing_length_m", 0.2) or 0.0), 0.0)
     t = float(opts.get("wall_thickness_m", 0.2))
     gamma = float(opts.get("masonry_unit_weight_kn_m3", 20.0))
     w_face = gamma * t                                           # kN/m² de face de maçonnerie
@@ -70,6 +72,7 @@ def _loads(opts):
     model = opts.get("load_model", "arching")
     theta = float(opts.get("arch_angle_deg", 60.0))
     comps, notes = [], []
+    notes.append('Vão de cálculo = vão efetivo l_eff = l_n + entrega (EN 1992-1-1 §5.3.2.2) = ' + f"{_r(L_n, 3)} + {_r(L - L_n, 3)} = {_r(L, 3)} m.")  # Lot 71
     h_apex = (L / 2.0) * math.tan(math.radians(theta))
     if model == "arching" and h_mas + 1e-9 >= h_apex:
         w_tri = 0.5 * L * h_apex * w_face                        # poids total du triangle (kN)
@@ -140,7 +143,7 @@ def _steel(opts, L, comps, m_ed, v_ed, psi2, load_kind="udl"):
             ok = (m_ed <= mb_rd and v_ed <= vrd and d_char <= l_mm / lim_t and d_qp <= l_mm / lim_q)
             if not ok:
                 continue
-            mass = p["A"] * 1e-4 * STEEL_DENSITY * L * n            # kg
+            mass = p["A"] * 1e-4 * STEEL_DENSITY * (L + max(float(opts.get("bearing_length_m", 0.2) or 0.0), 0.0)) * n  # kg — Lot 71 : l_n + 2 abouts
             cand = {"profile": name, "family": p["family"], "count": n, "grade": grade,
                     "section_class": cls, "mrd_knm": _r(mrd), "vrd_kn": _r(vrd),
                     "mb_rd_knm": _r(mb_rd), "lateral_restraint": restrained, "ltb": ltb,
@@ -195,8 +198,8 @@ def _rc(opts, L, comps, m_ed, v_ed, psi2):
         if (L * 1000.0 / d) > sd_limit and not fixed_h:
             continue                                            # pré-dimensionnement flèche (portée/hauteur utile)
         asw = res.get("asw_required_mm2_m", 0.0)
-        vol = (b_mm / 1000.0) * (h / 1000.0) * (L + 2 * a_m)    # m³ (y compris abouts)
-        rebar_kg = (as_req * 1e-6 * (L + 2 * a_m) * STEEL_DENSITY) * 1.3  # +30 % étriers/recouvrements (estimé)
+        vol = (b_mm / 1000.0) * (h / 1000.0) * (L + a_m)    # m³ (y compris abouts)
+        rebar_kg = (as_req * 1e-6 * (L + a_m) * STEEL_DENSITY) * 1.3  # +30 % étriers/recouvrements (estimé)
         cost = vol * price_c + rebar_kg * price_s
         return {"status": "ok", "b_mm": _r(b_mm, 0), "h_mm": _r(h, 0), "d_mm": _r(d, 0),
                 "as_required_cm2": _r(as_req / 100.0), "as_min_cm2": _r(res.get("as_min_mm2", 0) / 100.0),
@@ -290,10 +293,10 @@ def lintel_design(opts: dict) -> dict:
                 "cost_eur": (steel if recommended == "steel" else rc)["cost_eur"]}
     reactions = {"g_kn": _r(v_g), "q_kn": _r(v_q), "ed_kn": _r(v_ed),
                  "note": "Reação característica por apoio (metade da carga), a reintroduzir como carga pontual em cada nembo para fechar a descida de cargas."}
-    geometry = {"clear_span_m": _r(L, 3), "wall_thickness_m": t, "bearing_m": _r(a_adopt, 3),
+    geometry = {"clear_span_m": _r(L - max(a, 0.0), 3), "effective_span_m": _r(L, 3), "wall_thickness_m": t, "bearing_m": _r(a_adopt, 3),
                 "masonry_model": masonry_model,
                 "recommended": recommended, "steel": steel, "rc": rc}
-    return {"version": VERSION, "execution_ready": False, "clear_span_m": _r(L, 3),
+    return {"version": VERSION, "execution_ready": False, "clear_span_m": _r(L - max(a, 0.0), 3), "effective_span_m": _r(L, 3),
             "load_model": masonry_model, "notes": notes,
             "actions": {"m_g_knm": _r(m_g), "m_q_knm": _r(m_q), "v_g_kn": _r(v_g), "v_q_kn": _r(v_q),
                         "m_ed_knm": _r(m_ed), "v_ed_kn": _r(v_ed), "m_char_knm": _r(m_char),

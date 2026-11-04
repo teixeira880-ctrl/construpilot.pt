@@ -718,7 +718,10 @@ GENERATED_SOURCES_MANUAL = {"", "manual", "library", "company_library", "user"}
 async def normalize_generated_vat(user: dict, lines: list[dict]) -> None:
     """Toute ligne produite par un générateur (plan, photo, dictée, CCTP, solveur…) prend le taux
     normal de la politique fiscale de l'entreprise, marqué « à confirmer », sauf si l'utilisateur l'a confirmé."""
-    generated = [ln for ln in lines if (ln.get("price_source") or "") not in GENERATED_SOURCES_MANUAL and not ln.get("vat_confirmed")]
+    # Lot 70 : une ligne chiffrable sans taux (générateur escalier, RenoPilot…) prend aussi le taux par défaut « à confirmer »
+    generated = [ln for ln in lines if not ln.get("vat_confirmed") and (
+        (ln.get("price_source") or "") not in GENERATED_SOURCES_MANUAL
+        or (ln.get("vat_rate") is None and (ln.get("kind") or "line") == "line"))]
     if not generated:
         return
     from routes.plans_common import _resolve_branding
