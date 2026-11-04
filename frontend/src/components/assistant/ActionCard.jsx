@@ -162,7 +162,7 @@ export function ActionCard({ a }) {
   const dl = () => view(r.download, "rapport-construpilot.pdf", TOOL_LABEL[a.tool] || a.tool);
   return (
     <div className={`text-[11px] min-w-0 max-w-full rounded-sm border px-2 py-1.5 ${r.ok === false ? "border-red-300 bg-red-50 dark:bg-red-950/30" : "border-sky-300 bg-sky-50 dark:bg-sky-950/30"}`} data-testid={`assistant-action-${a.tool}${isQuote || r.artifact ? `-${instance}` : ""}`} data-tool={a.tool}>
-      <b>{isQuote ? quoteText(a.tool === "read_quote_draft" ? "read" : a.tool === "update_quote_draft" ? "updated" : "quote") : a.tool === "save_user_preference" && r.preference && !r.preference.active ? "Preferência proposta" : TOOL_LABEL[a.tool] || a.tool}</b>{r.preview && " · pré-visualização"}{r.error && ` · ${r.error}`}
+      <b>{isQuote ? quoteText(a.tool === "read_quote_draft" ? "read" : a.tool === "update_quote_draft" ? "updated" : "quote") : a.tool === "save_user_preference" && r.preference && !r.preference.active ? "Preferência proposta" : TOOL_LABEL[a.tool] || a.tool}</b>{r.preview && " · pré-visualização"}{r.error && ` · ${isQuote && /rappelle l.outil|volta a chamar a ferramenta|Arguments du devis invalides|Argumentos do or[çc]amento inv[áa]lidos/i.test(String(r.error)) ? "correção automática em curso" : r.error}`}{/* Lot 57 : erreur interne destinée au modèle, jamais montrée brute */}
       {a.tool === "ask_user_choices" && Array.isArray(r.questions) && r.questions.length > 0 && <ChoiceCard r={r} />}
       {a.tool === "define_analysis_scope" && r.scope && (
         <div>incluídos: {r.scope.include.join(", ") || "—"} · excluídos: {r.scope.exclude.join(", ") || "—"} · controlos: {r.scope.checks.join(", ") || "—"} · sortie : {r.scope.output}</div>

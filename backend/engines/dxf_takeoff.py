@@ -458,6 +458,7 @@ PRICES = {
     "acier_poutre":    1.6,
     "beton_poteau":  300.0,  # m³
     "acier_poteau":    1.6,
+    "coffrage_poteau": 60.0,  # m² (Lot 55) — 4 faces, par m² de paroi
     "beton_dalle":   170.0,  # m³
     "coffrage_dalle": 40.0,  # m² (sous-face + étaiement)
     "acier_dalle":     1.45,
@@ -479,6 +480,9 @@ def _line(desig, detail, unit, qty, pu):
     qty = round(qty, 2)
     return {"designation": desig, "detail": detail, "unit": unit,
             "qty": qty, "pu": pu, "total": round(qty * pu, 2)}
+
+
+_SLAB_SRC_PT = {"saisie": "indicada", "contour": "contorno", "emprise_auto": "implantação automática"}  # Lot 60
 
 
 def cost_structural(metre: dict, params: dict | None = None) -> dict:
@@ -544,11 +548,11 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         wall_m3 = round(wall_area * h_vert, 2)
         wall_ml_eff = (wall_area / tw) if tw > 0 else walls_ml   # linéaire équivalent
         wall_face = round(wall_ml_eff * h_vert, 1)
-        wall_detail = f'emprise {round(wall_area, 1)} m² (espess. lidas) × {h_label}'
+        wall_detail = f'implantação {round(wall_area, 1)} m² (espessuras lidas) × {h_label}'
     else:
         wall_m3 = round(walls_ml * h_vert * tw, 2)
         wall_face = round(walls_ml * h_vert, 1)
-        wall_detail = f"{walls_ml} ml × {h_label} × ép. {tw} m"
+        wall_detail = f"{walls_ml} ml × {h_label} × esp. {tw} m"
     wall_cof = round(wall_face * 2, 1)              # 2 faces
     wall_ac = round(wall_m3 * REBAR["voile"], 0)
 
@@ -557,7 +561,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         beam_m3 = round(beam_area * bh, 2)
         beam_ml_eff = (beam_area / bw) if bw > 0 else beams_ml
         beam_cof = round(beam_area + 2 * beam_ml_eff * bh, 1)  # fond (emprise) + 2 joues
-        beam_detail = f"emprise {round(beam_area, 1)} m² (larg. lues) × h {bh} m"
+        beam_detail = f"implantação {round(beam_area, 1)} m² (larguras lidas) × h {bh} m"
     else:
         beam_m3 = round(beams_ml * bw * bh, 2)
         beam_cof = round(beams_ml * (bw + 2 * bh), 1)
@@ -575,6 +579,16 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         col_m3 = round(cols * cw * ch * h_vert, 2)
         col_detail = f"{cols} × {cw}×{ch} m × {h_label}"
     col_ac = round(col_m3 * REBAR["poteau"], 0)
+    # Lot 55 : coffrage poteaux = périmètre des sections lues (sinon section uniforme) × hauteur
+    _secs = [sc for sc in ((metre.get("detected") or {}).get("col_sections") or metre.get("col_sections") or [])
+             if isinstance(sc, dict) and sc.get("w_cm") and sc.get("h_cm")]
+    _n_cols = int(metre.get("columns_count", 0))
+    if _secs and _n_cols:
+        _per = sum(2 * (sc["w_cm"] + sc["h_cm"]) / 100.0 for sc in _secs) / len(_secs) * _n_cols
+    else:
+        _per = 2 * (cw + ch) * _n_cols
+    col_cof = round(_per * h_vert * nlv, 1)
+    P.setdefault("coffrage_poteau", 60.0)
 
     slab_m3 = round(slab_m2 * ts, 2)
     slab_ac = round(slab_m3 * REBAR["dalle"], 0)
@@ -606,18 +620,19 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     if cols:
         struct_lines += [
             _line("Pilares de betão — betão C25/30", col_detail, "m³", col_m3, P["beton_poteau"]),
+            _line('Cofragem de pilares', f"perímetro das secções × {h_label}", "m²", col_cof, P["coffrage_poteau"]),  # Lot 55
             _line("Aços de pilares", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
         ]
     if slab_m2:
         struct_lines += [
-            _line("Laje / pavimento de betão", f"{slab_m2} m² ({slab_source}) × ép. {ts} m", "m³", slab_m3, P["beton_dalle"]),
+            _line("Laje / pavimento de betão", f"{slab_m2} m² ({_SLAB_SRC_PT.get(slab_source, slab_source)}) × esp. {ts} m", "m³", slab_m3, P["beton_dalle"]),
             _line("Cofragem + escoramento da laje", f"{slab_m2} m²", "m²", slab_m2, P["coffrage_dalle"]),
             _line("Aços da laje", f"{REBAR['dalle']} kg/m³", "kg", slab_ac, P["acier_dalle"]),
         ]
     if esc_area or esc_count:
         struct_lines += [
             _line("Escadas de betão — lanços e degraus",
-                  f'{esc_count} escada(s) · implantação {round(esc_area, 1)} m² × ép. éq. {esc_eq_thk} m', "m³", esc_m3, P["beton_escalier"]),
+                  f'{esc_count} escada(s) · implantação {round(esc_area, 1)} m² × esp. eq. {esc_eq_thk} m', "m³", esc_m3, P["beton_escalier"]),
             _line("Cofragem de escadas", f"{round(esc_area,1)} m² de projeção em planta", "m²", esc_cof, P["coffrage_escalier"]),
             _line("Aços de escadas", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
         ]
@@ -637,9 +652,9 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         lots.append({"lot": "Negativos e aros", "lines": div})
 
     lots.append({"lot": "Estaleiro e segurança", "lines": [
-        _line("Instalação de estaleiro — instalações sociais, vedação, contentor de resíduos", "forfait", "forfait", 1, P["installation_chantier"]),
-        _line("Andaime periférico — aluguer, montagem e desmontagem", "forfait", "forfait", 1, P["echafaudage"]),
-        _line("Proteção coletiva e segurança — guarda-corpos, redes, plano de segurança e saúde", "forfait", "forfait", 1, P["protection_securite"]),
+        _line("Instalação de estaleiro — instalações sociais, vedação, contentor de resíduos", "global", "vg", 1, P["installation_chantier"]),
+        _line("Andaime periférico — aluguer, montagem e desmontagem", "global", "vg", 1, P["echafaudage"]),
+        _line("Proteção coletiva e segurança — guarda-corpos, redes, plano de segurança e saúde", "global", "vg", 1, P["protection_securite"]),
     ]})
 
     all_lines = [ln for l in lots for ln in l["lines"]]
@@ -667,13 +682,13 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         by_category.append(_cat("poutres", "Vigas", beam_m3, beam_cof, beam_ac,
                                  beam_m3 * P["beton_poutre"] + beam_cof * P["coffrage_poutre"] + beam_ac * P["acier_poutre"]))
     if cols:
-        by_category.append(_cat("poteaux", "Pilares", col_m3, 0.0, col_ac,
-                                 col_m3 * P["beton_poteau"] + col_ac * P["acier_poteau"]))
+        by_category.append(_cat("poteaux", "Pilares", col_m3, col_cof, col_ac,
+                                 col_m3 * P["beton_poteau"] + col_cof * P["coffrage_poteau"] + col_ac * P["acier_poteau"]))
 
     totals = {
         "beton_m3": round(wall_m3 + beam_m3 + col_m3 + slab_m3 + esc_m3, 2),
         "acier_kg": round(wall_ac + beam_ac + col_ac + slab_ac + esc_ac, 0),
-        "coffrage_m2": round(wall_cof + beam_cof + slab_m2 + esc_cof, 1),
+        "coffrage_m2": round(wall_cof + beam_cof + col_cof + slab_m2 + esc_cof, 1),
         "walls_ml": round(walls_ml, 1), "beams_ml": round(beams_ml, 1),
         "columns": cols, "slab_m2": round(slab_m2, 1), "slab_source": slab_source,
         "escaliers": esc_count, "escaliers_m2": round(esc_area, 1),
@@ -730,9 +745,13 @@ def _bet_polygon_metre(doc, unit_to_m: float):
         t = e.dxftype()
         if t == "LINE":
             add(kind, [(e.dxf.start.x, e.dxf.start.y), (e.dxf.end.x, e.dxf.end.y)])
-        elif t == "LWPOLYLINE":
-            pts = [(p[0], p[1]) for p in e.get_points("xy")]
-            if e.closed and pts:
+        elif t in ("LWPOLYLINE", "POLYLINE"):  # Lot 55 : POLYLINE des DXF anciens (R12) aussi
+            if t == "LWPOLYLINE":
+                pts, closed = [(p[0], p[1]) for p in e.get_points("xy")], e.closed
+            else:
+                pts = [(v.dxf.location.x, v.dxf.location.y) for v in e.vertices]
+                closed = e.is_closed
+            if closed and pts:
                 pts.append(pts[0])
             add(kind, pts)
     if not segs["wall"] and not segs["slab"]:

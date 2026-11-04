@@ -160,3 +160,29 @@ async def build_lines(body, user, previous=None):
             if match:
                 row.update(match)
     return lines
+
+
+# --- Lot 62 : même famille de travail entre la ligne et l'article de bibliothèque ---
+_DEMOL_WORDS = ("demoli", "demol", "remoc", "remocao", "remover", "picagem", "levantamento de", "arranque",
+                "depose", "arrachage", "enlevement", "curage", "decroutage")
+_SITE_WORDS = ("estaleiro", "installation de chantier", "repli de chantier", "base vie", "base de vida")
+
+
+def _work_family(text):
+    t = " " + "".join(c for c in unicodedata.normalize("NFKD", str(text or "").lower())
+                      if not unicodedata.combining(c)) + " "
+    if any(w in t for w in _SITE_WORDS):
+        return "site"
+    if any(w in t for w in _DEMOL_WORDS):
+        return "demolition"
+    return "work"
+
+
+_find_price_lot62_base = find_price
+
+
+def find_price(designation, unit, sources):
+    match = _find_price_lot62_base(designation, unit, sources)
+    if match and _work_family(designation) != _work_family(match.get("price_reference_label")):
+        return None
+    return match

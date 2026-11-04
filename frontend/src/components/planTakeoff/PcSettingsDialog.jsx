@@ -9,29 +9,30 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 
+// Lot 60 : unité « vg » (valor global) au lieu de « forfait »
 const PRICE_LABELS = {
-  installation_chantier: ["Instalação de estaleiro (base de vida, vedação, contentor)", "forfait"],
-  engins_levage: ["Máquinas & equipamentos (grua, betoneira)", "forfait"],
-  echafaudage: ["Andaime (aluguer + montagem)", "forfait"],
-  protection_securite: ["Proteção coletiva & segurança (guarda-corpos, redes, PPSPS)", "forfait"],
-  terrassement_complet: ["Terraplanagem completa (escavações, aterros)", "forfait"],
+  installation_chantier: ["Instalação de estaleiro (base de vida, vedação, contentor)", "vg"],
+  engins_levage: ["Máquinas & equipamentos (grua, betoneira)", "vg"],
+  echafaudage: ["Andaime (aluguer + montagem)", "vg"],
+  protection_securite: ["Proteção coletiva & segurança (guarda-corpos, redes, PPSPS)", "vg"],
+  terrassement_complet: ["Terraplanagem completa (escavações, aterros)", "vg"],
   beton_proprete: ["Betão de limpeza", "m³"],
   beton_semelle: ["Betão sapatas C25/30", "m³"],
   acier_semelle: ["Aços sapatas", "kg"],
-  fondations_moe: ["Execução de fundações", "forfait"],
+  fondations_moe: ["Execução de fundações", "vg"],
   beton_dalle: ["Betão laje RDC", "m³"],
   treillis_dalle: ["Malha ST25C", "kg"],
   coffrage_rive: ["Cofragem de bordas", "ml"],
-  plancher_etage: ["Pavimento de piso completo", "forfait/niv."],
+  plancher_etage: ["Pavimento de piso completo", "vg/piso"],
   mur_isobrique: ["Parede tijolo isotérmico 20", "m²"],
   chainage_beton: ["Betão cintas", "m³"],
   acier_chainage: ["Aços cintas", "kg"],
   linteau: ["Padieiras BA", "ml"],
   escalier_beton: ["Betão escada", "m³"],
   acier_escalier: ["Aços escada", "kg"],
-  charpente_trad: ["Carpintaria tradicional", "forfait"],
-  couverture_tuiles: ["Cobertura de telhas", "forfait"],
-  menuiseries_ext: ["Caixilharias ext. (janelas)", "forfait"],
+  charpente_trad: ["Carpintaria tradicional", "vg"],
+  couverture_tuiles: ["Cobertura de telhas", "vg"],
+  menuiseries_ext: ["Caixilharias ext. (janelas)", "vg"],
 };
 
 export default function PcSettingsDialog({ open, onClose, onSaved }) {

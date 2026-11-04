@@ -14,7 +14,8 @@ def run_validated(key: str, params: dict, *, require_inputs: bool = False) -> di
         raise ValueError("Campo desconhecido para esta calculadora; verifique os parâmetros e unidades")
     args, defaults = {}, []
     integers = {"doors", "windows", "coats", "tiles_per_box"}
-    positive = {"tile_length", "tile_width", "tiles_per_box", "plate_length", "plate_width", "coats"}
+    positive = {"tile_length", "tile_width", "tiles_per_box", "plate_length", "plate_width", "coats",
+                "length", "width", "height"}  # Lot 51 : une dimension nulle fausse le calcul
     for field in cfg["fields"]:
         name = field["name"]
         value = params.get(name)
@@ -52,6 +53,10 @@ def run_validated(key: str, params: dict, *, require_inputs: bool = False) -> di
         elif field["type"] == "select" and value not in field.get("options", []):
             raise ValueError(f"{field['label']} : opção desconhecida")
         args[name] = value
+    if key == "paint":  # Lot 59 : ouvertures > murs → « 0 m² » silencieux
+        _walls = 2 * (args.get("length", 0) + args.get("width", 0)) * args.get("height", 0)
+        if args.get("doors", 0) * 2.0 + args.get("windows", 0) * 1.5 > _walls:
+            raise ValueError('A área das portas e janelas ultrapassa a das paredes; verifique as dimensões e o número de vãos')
     if key == "roof_facade" and args.get("openings_m2", 0) > args.get("wall_perimeter_m", 0) * args.get("wall_height_m", 0):
         raise ValueError("A área dos vãos ultrapassa a da fachada")
     try:

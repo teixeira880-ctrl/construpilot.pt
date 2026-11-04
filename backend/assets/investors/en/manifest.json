@@ -1,18 +1,18 @@
 {
   "lang": "en",
   "source_filename": "ConstruPilot_PitchDeck.pptx",
-  "source_sha256": "62f0da6530595e12db03bdbcddd826564cc5cd6b5a92d711c7198c166693508b",
+  "source_sha256": "de17950e358844c1f3a6417bc5a7604f174a89142ee1741454ff32edc5faadf1",
   "page_count": 12,
   "width": 1920,
   "height": 1080,
   "files": {
     "ConstruPilot_PitchDeck.pdf": {
-      "sha256": "b1a611d41c4d1f5d8a79614db7c3e8954cce17008149f010a700c62d0e900112",
-      "byte_size": 1008558
+      "sha256": "8df8ffd9f7d3b1fc0c37f0d39a6e9bdf87f243fd888d113dbef7ec93f3a58b4d",
+      "byte_size": 1008166
     },
     "ConstruPilot_PitchDeck.pptx": {
-      "sha256": "62f0da6530595e12db03bdbcddd826564cc5cd6b5a92d711c7198c166693508b",
-      "byte_size": 855978
+      "sha256": "de17950e358844c1f3a6417bc5a7604f174a89142ee1741454ff32edc5faadf1",
+      "byte_size": 854733
     },
     "slides/1.webp": {
       "sha256": "239fdaae4eb0fb5938012e1001bbda66c1cb21b1df1b24aa3550f937383b7da7",
@@ -43,8 +43,8 @@
       "byte_size": 79772
     },
     "slides/8.webp": {
-      "sha256": "1ef507785986fe8df547b8e137d2a438ac992a19dda703552eddeac82b659b9c",
-      "byte_size": 64194
+      "sha256": "d69aa4c731e736a8bf8cbec8332e37263eeca7e35b6b4e2bad469b20066e3a92",
+      "byte_size": 65104
     },
     "slides/9.webp": {
       "sha256": "60b55ec31622a84b2b415e9727edada24d8743dc29bccbc1cf77adf60a98741e",
@@ -55,8 +55,8 @@
       "byte_size": 79250
     },
     "slides/11.webp": {
-      "sha256": "4c59d2d3f11f4561c1eb88d8ea80719de036dc422eb8bdad46c5737301e31079",
-      "byte_size": 82228
+      "sha256": "c73c0ff994b29e6f463800684dfe0c54ed7ffd98baf1bd2712bc649415987fd4",
+      "byte_size": 85066
     },
     "slides/12.webp": {
       "sha256": "3b722b900ed7d1f490b9cb20fa07b4cb8c3220ef1f95a667e586eaf39383ac4d",

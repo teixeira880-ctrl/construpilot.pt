@@ -194,7 +194,20 @@ async def delete_beton_preset(name: str, user=Depends(current_user)) -> dict:
 # ============ ANALYSE IA ============
 
 @router.post("/{plan_id}/analyze")
-async def analyze_plan(plan_id: str, page_index: int = 0, user=Depends(current_user)):
+async def analyze_plan(plan_id: str, page_index: int = 0, background: bool = Query(False), user=Depends(current_user)):
+    """Lot 51 : ?background=1 → tâche de fond suivie sur /takeoffs/cotes-jobs/{job_id} (évite le 524 > 100 s)."""
+    if background:
+        import inspect
+        from routes.plans_cotes import _start_job
+        exists = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "plan_id": 1})
+        if not exists:
+            raise HTTPException(404, "Plan introuvable")
+        job = _start_job(lambda: _analyze_plan_now(plan_id, page_index, user), user["user_id"])
+        return (await job) if inspect.isawaitable(job) else job
+    return await _analyze_plan_now(plan_id, page_index, user)
+
+
+async def _analyze_plan_now(plan_id: str, page_index: int, user):
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "pages": 1}

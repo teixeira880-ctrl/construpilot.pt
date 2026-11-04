@@ -279,6 +279,7 @@ async def structural_metre_to_quote(plan_id: str, body: StructuralEstimateIn,
                 "unit": ln.get("unit", "u"),
                 "qty": round(float(ln.get("qty", 0)), 2),
                 "unit_price_ht": pu,
+                "cost_price_ht": round(float(ln.get("pu", 0)), 2),  # Lot 55 : coût connu → marge suivie
                 "vat_rate": vat_rate,
                 "category": lot.get("lot", ""),
             })

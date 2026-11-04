@@ -43,6 +43,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { runPlanAnalysis } from "@/lib/cotesJobs";
 import { api, eur, num, uploadPlan, waitPlanJob } from "@/lib/api";
 import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
 import PlanCanvas from "@/components/planTakeoff/PlanCanvas";
@@ -1940,7 +1941,7 @@ export default function PlanTakeoff() {
     setAnalysisRecap(null);
     setAnalysisProgress("A ler os textos, divisões e vãos desta página…");
     try {
-      const { data } = await api.post(`/takeoffs/${plan.plan_id}/analyze?page_index=${pageIndex}`);
+      const { data } = await runPlanAnalysis(plan.plan_id, pageIndex);
       await refreshPlan();
       if (currentPageKeyRef.current !== sourceKey) return;
       setRightTab("ai");
@@ -2363,7 +2364,7 @@ export default function PlanTakeoff() {
       // 2) Pièces (rooms) par IA vision
       let aiRooms = [];
       try {
-        const { data } = await api.post(`/takeoffs/${plan.plan_id}/analyze?page_index=${pageIndex}`);
+        const { data } = await runPlanAnalysis(plan.plan_id, pageIndex);
         aiRooms = data?.rooms || [];
         if (data?.error) warnings.push("análise das divisões: " + data.error);
       } catch (e) { warnings.push("análise das divisões indisponível"); }

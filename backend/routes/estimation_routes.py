@@ -85,8 +85,25 @@ async def _track_first_value(user, origin: str) -> None:
         pass
 
 
+def _validate_estimate_in(body):
+    """Lot 51 : refuse les entrées absurdes au lieu de calculer un total faux."""
+    import math
+    from engines.catalog import FINISH_BY_KEY, PROJECT_TYPES_BY_KEY
+    s = body.surface
+    if s is None or not math.isfinite(s) or s <= 0 or s > 100000:
+        raise HTTPException(422, 'Área inválida: indique uma área superior a 0 e no máximo 100 000 m².')
+    if body.project_type not in PROJECT_TYPES_BY_KEY:
+        raise HTTPException(422, 'Tipo de projeto desconhecido')
+    if body.finish_level not in FINISH_BY_KEY:
+        raise HTTPException(422, 'Nível de acabamento desconhecido')
+    h = body.ceiling_height_m
+    if h is not None and (not math.isfinite(h) or h < 1.8 or h > 15):
+        raise HTTPException(422, 'Pé-direito inválido (entre 1,80 m e 15 m)')
+
+
 @router.post("/compute")
 async def compute(body: EstimateIn, user=Depends(optional_user)):
+    _validate_estimate_in(body)
     overrides = {d["key"]: d async for d in db.price_reference.find({}, {"_id": 0})}
     _apply_overrides(overrides)
     est = estimation.estimate(
