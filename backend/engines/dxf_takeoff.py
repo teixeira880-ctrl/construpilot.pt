@@ -930,11 +930,12 @@ def _l91_wall_axis_m(segs, unit_to_m, tmin=0.08, tmax=0.45, ang_tol_deg=3.0):
     u = unary_union([LineString(x) for x in segs])
     lines = [g for g in (u.geoms if hasattr(u, "geoms") else [u]) if g.length > 0]
     if not lines:
-        return 0.0
+        return 0.0, 0.0
     tree = STRtree(lines)
     lo, hi = tmin / unit_to_m, tmax / unit_to_m
     sin_tol = math.sin(math.radians(ang_tol_deg))
     total = 0.0
+    area = 0.0  # Lot 92 : emprise = Σ recouvrement × écartement
     for i, a in enumerate(lines):
         (x1, y1), (x2, y2) = a.coords[0], a.coords[-1]
         la = a.length
@@ -957,7 +958,8 @@ def _l91_wall_axis_m(segs, unit_to_m, tmin=0.08, tmax=0.45, ang_tol_deg=3.0):
             ov = min(la, max(t1, t2)) - max(0.0, min(t1, t2))
             if ov > 0:
                 total += ov
-    return total * unit_to_m
+                area += ov * d
+    return total * unit_to_m, area * unit_to_m * unit_to_m
 
 
 def _l91_slab_from_lines(segs, unit_to_m, tol_m=0.05, min_share=0.02):
@@ -993,13 +995,34 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
                                        for k in low)]
         if twins:
             segs = _l91_lines(doc, lambda lay: lay in twins)
-            axis = _l91_wall_axis_m(segs, unit_to_m)
+            axis, area = _l91_wall_axis_m(segs, unit_to_m)
             if axis > 0:
                 res["walls_ml_raw"] = res.get("walls_ml")
                 res["walls_ml"] = round(axis, 1)
+                # Lot 92 : emprise béton des voiles et épaisseur moyenne cohérentes avec l'axe
+                res["wall_area_m2_raw"] = res.get("wall_area_m2")
+                res["wall_area_m2"] = round(area, 2)
+                det = dict(res.get("detected") or {})
+                det["wall_area_m2"] = round(area, 2)
+                det["wall_thickness_m"] = round(area / axis, 3)
+                res["detected"] = det
                 res["walls_method"] = "murs_coupes_par_paires"
                 res["walls_note"] = ("Murs du niveau (calques « coupé ») mesurés à l'axe entre leurs deux traits ; "
                                      "les murs vus / doublons sont exclus.")
+        # Lot 92 : poutres tracées en paires de traits (sans hachure exploitable) : axe + emprise
+        beam_layers = [n for n in names if "poutre" in n.lower() or n.upper().endswith("BEAM")]
+        bsegs = _l91_lines(doc, lambda lay: lay in beam_layers)
+        if bsegs and float(res.get("beam_area_m2") or 0) < 1.0:
+            baxis, barea = _l91_wall_axis_m(bsegs, unit_to_m, tmin=0.10, tmax=0.60)
+            if baxis > 0:
+                res["beams_ml_raw"] = res.get("beams_ml")
+                res["beams_ml"] = round(baxis, 1)
+                res["beam_area_m2"] = round(barea, 2)
+                det = dict(res.get("detected") or {})
+                det["beam_area_m2"] = round(barea, 2)
+                det["beam_w_m"] = round(barea / baxis, 3)
+                res["detected"] = det
+                res["beams_method"] = "poutres_par_paires"
         if res.get("slab_status") == "contours_ouverts":
             slab = _l91_slab_from_lines(_l91_lines(doc, lambda lay: "dalle" in lay.lower() or "slab" in lay.lower()), unit_to_m)
             if slab:
