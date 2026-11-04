@@ -18,6 +18,10 @@ API_BASE = os.environ["CLOUDCONVERT_API_BASE"].rstrip("/")
 SYNC_BASE = os.environ["CLOUDCONVERT_SYNC_BASE"].rstrip("/")
 
 
+class OdaMissing89(RuntimeError):
+    """Lot 89 : ODA_FILE_CONVERTER défini mais exécutable absent."""
+
+
 def is_configured() -> bool:
     return bool(os.environ.get("ODA_FILE_CONVERTER") or os.environ.get("CLOUDCONVERT_API_KEY") or
                 (os.environ.get("APS_DWG_ENABLED") == "true" and os.environ.get("APS_ACTIVITY_QUALIFIED")))
@@ -30,9 +34,15 @@ async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg", *, user_id=No
     if not re.match(rb"AC10[0-9]{2}",dwg_bytes[:6]):
         raise RuntimeError("O ficheiro não tem uma assinatura DWG AutoCAD reconhecida")
     if os.environ.get("ODA_FILE_CONVERTER"):
-        output = await asyncio.to_thread(_local_dwg_to_dxf,dwg_bytes)
-        if provenance is not None: provenance.update(provider="oda", status="converted")
-        return output
+        try:
+            output = await asyncio.to_thread(_local_dwg_to_dxf,dwg_bytes)
+        except OdaMissing89 as exc:  # Lot 89 : ODA déclaré mais absent → service suivant
+            logger.warning("%s : repli sur les autres convertisseurs", exc)
+            if provenance is not None: provenance.update(fallback_reason="oda_missing")
+            output = None
+        if output is not None:
+            if provenance is not None: provenance.update(provider="oda", status="converted")
+            return output
     if os.environ.get("APS_DWG_ENABLED") == "true":
         from engines.autodesk_client import AutodeskError
         from engines.autodesk_dwg import convert
@@ -135,7 +145,7 @@ def _local_dwg_to_dxf(data):
     from pathlib import Path
     executable=Path(os.environ["ODA_FILE_CONVERTER"])
     if not executable.is_absolute() or not executable.is_file():
-        raise RuntimeError("Caminho ODA_FILE_CONVERTER inválido no servidor")
+        raise OdaMissing89("Caminho ODA_FILE_CONVERTER inválido no servidor")
     with tempfile.TemporaryDirectory(prefix="cp-cad-") as temp:
         source=Path(temp)/"input";destination=Path(temp)/"output"
         source.mkdir();destination.mkdir();(source/"plan.dwg").write_bytes(data)
