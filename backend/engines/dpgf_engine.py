@@ -79,7 +79,8 @@ def _is_lot_title(text: str, qty, pu) -> bool:
     t = text.strip()
     if len(t) < 3 or len(t) > 120:
         return False
-    letters = [c for c in t if c.isalpha()]
+    # Lot 75 : « POUTRES BA (consoles de balcons…) » — la parenthèse ne compte pas dans la part de majuscules
+    letters = [c for c in (re.sub(r"\([^)]*\)", "", t) or t) if c.isalpha()]
     upper = letters and sum(1 for c in letters if c.isupper()) / len(letters) > 0.7
     return bool(_LOT_RE.match(t) or upper)
 
@@ -100,6 +101,10 @@ def parse_workbook(raw: bytes) -> dict:
         count = 0
         pending_desc: list[str] = []
         for r in range(hrow + 1, ws.max_row + 1):
+            # Lot 75 : fin du devis (Total TTC / général) → les « ratios de contrôle » qui suivent ne sont pas des ouvrages
+            _cells75 = " ".join(fold(str(ws.cell(row=r, column=_c).value or "")) for _c in range(1, min(ws.max_column, 30) + 1))
+            if re.search(r"\btotal\s+(?:ttc|general|geral|com\s+iva)\b", _cells75):
+                break
             des = ws.cell(row=r, column=c_des).value if c_des else None
             text = str(des or "").strip()
             if not text:
