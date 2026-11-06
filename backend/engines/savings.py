@@ -29,13 +29,14 @@ def supplier_optimization(est: dict) -> dict:
     """Comparaison meilleur fournisseur vs moyenne (~6 %)."""
     materials = est.get("breakdown", {}).get("materials", 0)
     pct = 0.06
-    amount = round(materials * pct, 2)
+    # CP-FIAB-EST : appliqué aux matériaux déjà optimisés (-8 %), sinon la même économie est comptée deux fois.
+    amount = round(materials * (1 - 0.08) * pct, 2)
     return {
         "key": "supplier_optimization",
         "label": "Otimização de fornecedores",
         "description": "Preços mais baixos identificados entre 10 lojas (vs média de mercado).",
         "amount": amount,
-        "basis": f'{pct * 100:.0f} % sobre {materials:.0f} € via comparador Tavily',
+        "basis": f'{pct * 100:.0f} % sobre {materials:.0f} € após otimização, via comparador de fornecedores',
         "confidence": "élevée",
     }
 
@@ -87,11 +88,11 @@ def alternative_materials(est: dict) -> dict:
     return {
         "key": "alternative_materials",
         "label": "Alternativas de materiais",
-        "description": (f'Escolha de materiais equivalentes a preço mais baixo em {len(switched)} lot(s) : '
+        "description": (f'Escolha de materiais equivalentes a preço mais baixo em {len(switched)} lote(s): '
                         + (", ".join(switched[:4]) + ("…" if len(switched) > 4 else "")
                            if switched else "nenhum capítulo elegível")),
         "amount": round(saved, 2),
-        "basis": f'delta de preço standard → económico em {len(switched)} lot(s)',
+        "basis": f'delta de preço standard → económico em {len(switched)} lote(s)',
         "confidence": "moyenne",
         "lots": switched,
     }
@@ -119,5 +120,5 @@ def compute(est: dict) -> dict:
         "roi_multiplier": roi_multiplier,
         "message": (f'O ConstruPilot identificou {total:,.0f} €'.replace(",", " ")
                     + " de poupanças potenciais no seu projeto"
-                    + (f', soit {roi_multiplier}× o preço do Project Pass.' if roi_multiplier else ".")),
+                    + (f', ou seja {roi_multiplier}× o preço do Project Pass.' if roi_multiplier else ".")),
     }

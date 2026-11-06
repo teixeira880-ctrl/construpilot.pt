@@ -27,6 +27,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useBilling } from "@/context/BillingContext";
 import { useI18n } from "@/context/I18nContext";
 
+// CP-FIAB-EST : libellés lisibles des champs remplis par défaut (jamais les clés techniques).
+const FIELD_LABEL = {
+  finish_level: "nível de acabamento (Standard)", building_type: "tipo de edifício (Moradia)",
+  condition: "estado atual (Bom estado)", region: "região", city: "cidade", surface: "área",
+  construction_year: "ano de construção", project_type: "tipo de obras",
+};
+
 const CONDITION_LABEL = {
   neuf: "Novo", bon: "Bom estado", moyen: "Estado médio", vetuste: "Degradado",
   a_renover_totalement: "A renovar totalmente",
@@ -43,6 +50,7 @@ export default function Estimator() {
   const [optim, setOptim] = useState(null);
   const [busyOptim, setBusyOptim] = useState(false);
   const [name, setName] = useState("");
+  const [pendingPrompt, setPendingPrompt] = useState("");
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -74,9 +82,24 @@ export default function Estimator() {
         condition: a.condition || f.condition,
         description: a.summary || a._raw || a.description || f.description,
       }));
+      // CP-FIAB-EST : vindo da landing só com texto livre → a IA pré-preenche tipo de obra, área, região…
+      if (!a.project_type && (a._raw || a.description)) setPendingPrompt(a._raw || a.description);
       toast.success(t("est.imported"));
     } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    if (!pendingPrompt || !catalog || !user) return;
+    const prompt = pendingPrompt;
+    setPendingPrompt("");
+    api.post("/prompt-fill/estimativa", { prompt, contexto: {} })
+      .then(({ data }) => {
+        if (data?.params && Object.keys(data.params).length) applyPromptFill(data);
+        if (data?.clarification_question) toast.info(data.clarification_question, { duration: 8000 });
+      })
+      .catch(() => { /* a barra «Gerar» continua disponível */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPrompt, catalog, user]);
 
   const regions = (catalog?.regions || []).filter((r) => r.country === form.country);
 
@@ -92,7 +115,7 @@ export default function Estimator() {
       }
       return next;
     });
-    if ((data?.defaults_used || []).length) toast.message("Valores por defeito aplicados", { description: data.defaults_used.join(", ") });
+    if ((data?.defaults_used || []).length) toast.message("Valores por defeito aplicados", { description: data.defaults_used.map((k) => FIELD_LABEL[k] || k).join(", ") });
   };
 
   const compute = async () => {
