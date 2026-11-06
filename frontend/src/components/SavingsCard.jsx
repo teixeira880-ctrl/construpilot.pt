@@ -51,7 +51,7 @@ export const SavingsCard = ({ estimation, projectId }) => {
             </p>
           </div>
         </div>
-        {data.roi_multiplier > 5 && (
+        {data.roi_multiplier > 5 && data.roi_multiplier <= 100 && (
           <Badge className="rounded-sm bg-primary text-primary-foreground uppercase tracking-wider text-[10px]">
             ROI {data.roi_multiplier}× o Project Pass
           </Badge>

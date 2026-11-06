@@ -44,9 +44,9 @@ export const EstimationView = ({ est, projectId }) => {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 stagger">
         <Stat label="Materiais" value={eur(b.materials)} testId="stat-materials" />
-        <Stat label="Outro" value={eur(b.labour)} testId="stat-labour" />
-        <Stat label="Outro" value={eur(b.equipment_rental)} testId="stat-equipment" />
-        <Stat label="Resíduos / evacuação" value={eur(b.waste_disposal)} testId="stat-waste" />
+        <Stat label="Mão de obra" value={eur(b.labour)} testId="stat-labour" />
+        <Stat label="Aluguer de equipamento" value={eur(b.equipment_rental)} testId="stat-equipment" />
+        {b.waste_disposal > 0 && <Stat label="Resíduos / evacuação" value={eur(b.waste_disposal)} testId="stat-waste" />}
         <Stat label="Margem imprevistos" value={eur(b.contingency)} sub={`${Math.round(b.contingency_rate * 100)} % recomendados`} testId="stat-contingency" accent />
       </div>
 
@@ -80,7 +80,7 @@ export const EstimationView = ({ est, projectId }) => {
                   <TableHead>Lote</TableHead>
                   <TableHead className="text-right">Quantidade</TableHead>
                   <TableHead className="text-right">Materiais</TableHead>
-                  <TableHead className="text-right">Outro</TableHead>
+                  <TableHead className="text-right">Mão de obra</TableHead>
                   <TableHead className="text-right">Preço / unidade</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Tempo</TableHead>

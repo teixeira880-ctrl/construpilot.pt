@@ -181,7 +181,8 @@ def _financials(lots: list[dict], surface: float, rc: float) -> dict:
     labour = round(sum(l["labour_cost"] for l in lots), 2)
     hours = round(sum(l["hours"] for l in lots), 1)
     equipment = round((materials + labour) * 0.035, 2)
-    waste = round(surface * 9 * rc, 2)
+    # CP-FIAB-EST : si le poste « déchets / évacuation » est déjà chiffré, pas de frais forfaitaires en double.
+    waste = 0.0 if any(l.get("key") == "dechets" for l in lots) else round(surface * 9 * rc, 2)
     subtotal = round(materials + labour + equipment + waste, 2)
     contingency = round(subtotal * 0.10, 2)
     return {"materials": materials, "labour": labour, "hours": hours,
@@ -259,7 +260,7 @@ _MONEY_KEYS = {
     "material_cost", "labour_cost", "total", "material_unit_price", "labour_unit_price",
     "price_per_unit", "materials", "labour", "equipment_rental", "waste_disposal",
     "contingency", "equipment", "waste", "total_min", "total_avg", "total_max",
-    "price_per_sqm", "min", "max", "avg", "price_low", "price_high", "low", "high",
+    "price_per_sqm", "per_sqm", "min", "max", "avg", "price_low", "price_high", "low", "high",
 }
 
 
