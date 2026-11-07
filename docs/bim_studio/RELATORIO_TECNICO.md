@@ -72,7 +72,7 @@ Ficheiros **novos**:
 
 Ficheiros **existentes** (só linhas acrescentadas, nenhuma removida):
 - `backend/server.py` (+5: routers e arranque/paragem do BIM)
-- `backend/requirements.txt` (+3: `ifcopenshell==0.9.0.post1`, `isodate==0.7.2`, `lark==1.3.1`)
+- `backend/requirements.txt` (+3: `ifcopenshell==0.8.5`, `isodate==0.7.2`, `lark==1.3.1`)
 - `frontend/src/App.js` (+2: rota `/bim-studio`)
 - `frontend/src/components/workspace/navigation.js` (+2: entrada no menu e descrição)
 
