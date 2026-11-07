@@ -107,7 +107,7 @@ def _bbox_around(lat: float, lon: float, meters: float) -> str:
 # ------------------------------------------------------------------ geocodificação
 def _limpa_morada(m: str) -> str:
     m = re.sub(r"\s+", " ", m or "").strip(" ,.")
-    m = re.sub(r"\bn\.?\s*[ºo°]\s*", "", m, flags=re.I)      # «nº 7» → «7»
+    m = re.sub(r"\bn\.?\s*[º°]\s*|\bn\.?\s*o\.?\s*(?=\d)|\bn\.\s*(?=\d)", "", m, flags=re.I)   # «nº 7» → «7» (não toca em «Nova»)
     m = re.sub(r"\bmunic[ií]pio de\b", "", m, flags=re.I)
     return re.sub(r"\s*,\s*,", ",", m).strip(" ,")
 
@@ -139,6 +139,16 @@ async def geocode(morada: str) -> Dict[str, Any]:
     freguesia = lugar[0] if len(lugar) >= 2 else ""
     cp = re.search(r"\b\d{4}-\d{3}\b", q)
 
+    rua_pedida = _norm(re.sub(r"\b\d+[A-Za-z]?\b", "", rua_num)).strip(" ,") if partes and len(partes) > 1 else ""
+
+    def _mesma_rua(rua: Optional[str]) -> bool:
+        """A rua devolvida tem de ser a pedida (o Photon devolve por vezes uma rua vizinha: «Rua do Marco» por «Rua do Monte»)."""
+        if not rua_pedida or not rua:
+            return True
+        from difflib import SequenceMatcher
+        a, b = _norm(rua), rua_pedida
+        return a == b or SequenceMatcher(None, a, b).ratio() >= 0.9
+
     def _match(texto: str) -> int:
         """Pontuação: o resultado tem de estar no concelho/freguesia pedidos (há muitas «Rua do Monte»)."""
         t = _norm(texto)
@@ -159,10 +169,12 @@ async def geocode(morada: str) -> Dict[str, Any]:
                 "concelho": a.get("municipality") or a.get("city") or a.get("county"),
                 "codigo_postal": a.get("postcode"),
                 "precisao": "porta" if a.get("house_number") else ("rua" if a.get("road") else "localidade"),
-                "consulta": consulta}
+                "consulta": consulta,
+                "via_geom": (r.get("geojson") if r.get("category", r.get("class")) == "highway"
+                             and (r.get("geojson") or {}).get("type") in ("LineString", "MultiLineString") else None)}
 
     def _melhor(cands: List[Tuple[Dict[str, Any], str]], exige_rua: bool) -> Optional[Dict[str, Any]]:
-        bons = [(d, txt) for d, txt in cands if not exige_rua or d.get("rua")]
+        bons = [(d, txt) for d, txt in cands if (not exige_rua or d.get("rua")) and (not d.get("rua") or _mesma_rua(d["rua"]))]
         if not bons:
             return None
         # com freguesia indicada, uma rua tem de estar NESSA freguesia (há várias «Rua do Monte» no mesmo concelho)
@@ -173,7 +185,8 @@ async def geocode(morada: str) -> Dict[str, Any]:
         return bons[0][0] if bons else None
 
     async def nominatim(params: dict, rotulo: str, exige_rua: bool = True):
-        base = {"format": "jsonv2", "addressdetails": 1, "limit": 8, "countrycodes": "pt", "accept-language": "pt-PT"}
+        base = {"format": "jsonv2", "addressdetails": 1, "limit": 8, "countrycodes": "pt", "accept-language": "pt-PT",
+                "polygon_geojson": 1, "polygon_threshold": 0.00002}
         st, js = await _fetch("GET", f"{NOMINATIM}/search", {**base, **params}, None, "json")
         diag.append(f"nominatim[{rotulo}]={st}:{len(js) if isinstance(js, list) else '-'}")
         await asyncio.sleep(1.05)   # política de uso do Nominatim: ≤ 1 pedido/s
@@ -399,16 +412,44 @@ async def elevacoes(pontos: List[Tuple[float, float]]) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ via de acesso
+_OVERPASS_KO = {"ate": 0.0}
+
+
+def via_de_geometria(lat: float, lon: float, geom: Optional[dict], nome: Optional[str] = None) -> Dict[str, Any]:
+    """Segmento da rua mais próximo do ponto, a partir da geometria GeoJSON devolvida pelo Nominatim."""
+    if not geom:
+        return _res(False, nota="sem geometria da rua")
+    linhas = [geom["coordinates"]] if geom.get("type") == "LineString" else list(geom.get("coordinates") or [])
+    best = None
+    for ln in linhas:
+        for a, b in zip(ln, ln[1:]):
+            d, _t = _dist_seg((lat, lon), (a[1], a[0]), (b[1], b[0]))
+            if best is None or d < best[0]:
+                best = (d, (a[1], a[0]), (b[1], b[0]))
+    if not best:
+        return _res(False, nota="geometria da rua vazia")
+    return _res(True, {"distancia_m": round(best[0], 1), "a": best[1], "b": best[2], "nome": nome, "tipo": "rua"},
+                "OpenStreetMap (Nominatim — geometria da rua)", None)
+
+
 async def via_proxima(lat: float, lon: float, raio_m: int = 80) -> Dict[str, Any]:
     q = (f"[out:json][timeout:15];way(around:{raio_m},{lat},{lon})[highway]"
          f"[highway!~\"footway|path|steps|cycleway|track|service\"];out geom 20;")
+    if time.time() < _OVERPASS_KO["ate"]:
+        return _res(False, nota="OpenStreetMap (Overpass) indisponível (falhou há pouco)")
+
+    async def um(url):
+        try:
+            return url, await asyncio.wait_for(_fetch("GET", url, {"data": q}, None, "json"), 12)
+        except Exception:  # noqa: BLE001
+            return url, (0, None)
     js, diag = None, []
-    for url in OVERPASS_ESPELHOS:
-        st, js = await _get(url, {"data": q}, tries=2, conc=2)
+    for url, (st, j) in await asyncio.gather(*(um(u) for u in OVERPASS_ESPELHOS)):
         diag.append(f"{url.split('/')[2]}={st}")
-        if js:
-            break
+        if j and js is None:
+            js = j
     if not js:
+        _OVERPASS_KO["ate"] = time.time() + 600
         return _res(False, nota="OpenStreetMap (Overpass) indisponível: " + "; ".join(diag))
     best = None
     for w in js.get("elements", []):

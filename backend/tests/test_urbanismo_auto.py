@@ -291,3 +291,46 @@ def test_dados_criticos_por_confirmar_nunca_pronto_e_declive_rastreado():
     assert any("CRUS" in a for a in r["avisos"])
     c = r["processo"]["auto"]["coerencia"]
     assert not any(f["codigo"] == "MEMORIA_NUMEROS" for f in c["falhas"]), c["falhas"]
+
+
+def test_normalizacao_nao_come_o_no_de_nova():
+    assert G._limpa_morada("Rua Nova de Santa Cruz nº 10, São Vicente, Braga") == "Rua Nova de Santa Cruz 10, São Vicente, Braga"
+    assert G._limpa_morada("Rua do Monte n.º7, Padim da Graça, município de Braga").startswith("Rua do Monte 7")
+    assert G._limpa_morada("Rua Norte no 5, Braga") == "Rua Norte 5, Braga"
+
+
+def test_photon_rua_vizinha_rejeitada_e_via_pela_geometria():
+    """Caso real: o Photon devolvia «Rua do Marco» para «Rua do Monte»; o Overpass estava inacessível."""
+    async def t(method, url, params=None, headers=None, want="json"):
+        q = (params or {}).get("q", "")
+        if "photon" in url:
+            return 200, {"features": [{"geometry": {"coordinates": [-8.5043, 41.5630]}, "properties": {
+                "countrycode": "PT", "street": "Rua do Marco", "district": "Padim da Graça", "city": "Braga"}}]}
+        if "nominatim" in url and q == "Rua do Monte, Padim da Graça, Braga":
+            return 200, [{"lat": "41.5402", "lon": "-8.4786", "category": "highway",
+                          "display_name": "Rua do Monte, Padim da Graça, Braga, Portugal",
+                          "address": {"road": "Rua do Monte", "village": "Padim da Graça", "municipality": "Braga"},
+                          "geojson": {"type": "LineString", "coordinates": [[-8.4795, 41.5401], [-8.4775, 41.5403]]}}]
+        if "nominatim" in url:
+            return 200, []
+        return 404, None
+    r = _geo(t)
+    assert r["ok"] and r["data"]["rua"] == "Rua do Monte" and r["data"]["via_geom"]
+    v = G.via_de_geometria(r["data"]["lat"], r["data"]["lon"], r["data"]["via_geom"], "Rua do Monte")
+    assert v["ok"] and v["data"]["distancia_m"] < 5
+
+
+def test_geocode_so_rua_vizinha_cai_na_localidade():
+    async def t(method, url, params=None, headers=None, want="json"):
+        q = (params or {}).get("q", "")
+        if "photon" in url:
+            return 200, {"features": [{"geometry": {"coordinates": [-8.5043, 41.5630]}, "properties": {
+                "countrycode": "PT", "street": "Rua do Marco", "district": "Padim da Graça", "city": "Braga"}}]}
+        if "nominatim" in url and q == "Padim da Graça, Braga":
+            return 200, [{"lat": "41.54", "lon": "-8.48", "display_name": "Padim da Graça, Braga, Portugal",
+                          "address": {"village": "Padim da Graça", "municipality": "Braga"}}]
+        if "nominatim" in url:
+            return 200, []
+        return 404, None
+    r = _geo(t)
+    assert r["ok"] and r["data"]["precisao"] == "localidade"

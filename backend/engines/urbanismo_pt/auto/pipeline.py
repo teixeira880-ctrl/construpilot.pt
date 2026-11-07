@@ -114,6 +114,8 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     mun, crus, srup, cad, via, orto = await asyncio.gather(
         G.municipio(lat, lon), G.crus(lat, lon), G.servidoes(lat, lon), G.cadastro(lat, lon), G.via_proxima(lat, lon),
         G.ortofoto(lat, lon))
+    if not via["ok"] and geo.get("via_geom"):
+        via = G.via_de_geometria(lat, lon, geo["via_geom"], geo.get("rua"))
     for r in (mun, crus, srup, cad, via, orto):
         fonte(r)
     concelho = (mun.get("data") or {}).get("concelho") if mun["ok"] else None

@@ -25,7 +25,7 @@ async def main(morada: str):
         st, js = await G._http("GET", url, params, None, "json")
         print("NET", nome, st, "json" if js is not None else "sem-dados")
     g = await G.geocode(morada)
-    print("GEOCODE", json.dumps({k: g[k] for k in ("ok", "fonte", "nota")}, ensure_ascii=False), json.dumps(g.get("data"), ensure_ascii=False))
+    print("GEOCODE", json.dumps({k: g[k] for k in ("ok", "fonte", "nota")}, ensure_ascii=False), json.dumps({k: v for k, v in (g.get("data") or {}).items() if k != "via_geom"}, ensure_ascii=False), "via_geom=" + str(bool((g.get("data") or {}).get("via_geom"))))
     if g["ok"]:
         lat, lon = g["data"]["lat"], g["data"]["lon"]
         cols = await G.dgt_collections()
