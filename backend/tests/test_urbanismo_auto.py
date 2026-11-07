@@ -11,6 +11,16 @@ from engines.urbanismo_pt.auto import coerencia as C
 from engines.urbanismo_pt.auto import geo as G
 from engines.urbanismo_pt.auto import pipeline as P
 
+from engines.urbanismo_pt.auto import dgt_cache as CACHE  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _copia_isolada(tmp_path):
+    """Cada teste com a sua cópia local da DGT (vazia)."""
+    CACHE.usar_pasta(str(tmp_path / "dgt_cache"))
+    yield
+
+
 LAT, LON = 41.5402, -8.4786   # Padim da Graça (Braga) — coordenadas aproximadas para o teste
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 50
 
@@ -394,3 +404,45 @@ def test_via_reversa_com_geometria():
     finally:
         G.set_transport(None)
     assert v["ok"] and 8 < v["data"]["distancia_m"] < 14 and v["data"]["nome"] == "Rua do Monte"
+
+
+
+def test_copia_local_da_dgt_quando_o_servico_cai():
+    base = fake(solo="Solo Urbano", categoria="Espaços Habitacionais", srup_titles=("Reserva Ecológica Nacional",))
+    estado = {"dgt": True}
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        if "dgterritorio" in url and not estado["dgt"]:
+            return 503, None
+        if "/collections/crus/items" in url and estado["dgt"]:
+            return 200, {"features": [{"id": "c1", "geometry": {"type": "Polygon", "coordinates": [[
+                [LON - 0.01, LAT - 0.01], [LON + 0.01, LAT - 0.01], [LON + 0.01, LAT + 0.01], [LON - 0.01, LAT + 0.01],
+                [LON - 0.01, LAT - 0.01]]]}, "properties": {"Classe": "Solo Rústico", "Categoria": "Espaço Agrícola"}}]}
+        if "/collections/srup_0/items" in url:
+            return 200, {"features": [{"id": "ren1", "geometry": {"type": "Point", "coordinates": [LON, LAT]}, "properties": {}}]}
+        return await base(method, url, params, headers, want)
+    orig = _sem_esperas()
+    G.set_transport(t)
+    G._COLLECTIONS.update(t=0.0, list=[])
+    try:
+        on = _loop_run(G.prefetch_zona(LAT, LON, 300))          # DGT a responder: guarda a zona
+        assert on["crus"] == 1
+        estado["dgt"] = False                                     # DGT em baixo
+        G._COLLECTIONS.update(t=0.0, list=[])
+        c = _loop_run(G.crus(LAT + 0.0005, LON + 0.0005))         # ponto vizinho, dentro da zona guardada
+        fora = _loop_run(G.crus(LAT + 0.05, LON))                 # fora da zona guardada
+        srup = _loop_run(G.servidoes(LAT, LON))
+    finally:
+        G.asyncio.sleep = orig
+        G.set_transport(None)
+    assert c["ok"] and c["data"]["solo"] == "rustico" and "cópia local" in c["fonte"]
+    assert not fora["ok"] and "indispon" in fora["nota"]          # sem cobertura → não se inventa
+    assert srup["ok"] and srup["data"]["copia_local"]
+    assert any("Ecol" in h["titulo"] for h in srup["data"]["afetado_por"])   # a REN guardada continua a bloquear
+
+
+def test_copia_sem_geometria_nao_conta_como_cobertura():
+    CACHE.guardar("srup_x", "0,0,1,1", [{"properties": {"a": 1}}], True)
+    assert CACHE.consultar("srup_x", "0.1,0.1,0.2,0.2") is None
+    CACHE.guardar("srup_y", "0,0,1,1", [], True)
+    assert CACHE.consultar("srup_y", "0.1,0.1,0.2,0.2")[0] == []
