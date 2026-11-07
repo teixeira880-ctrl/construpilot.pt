@@ -2454,10 +2454,18 @@ async def detect_all_rooms_route(plan_id: str, page_index: int = 0, user=Depends
     calib = (p.get("calibrations") or {}).get(str(page_index))
     if calib:
         ppm = calib["pixels_per_meter"]
+        kept = []
         for r in result.get("rooms", []):
             if len(r.get("points", [])) >= 3:
                 r["surface_m2"] = round(G.polygon_area_m2(r["points"], ppm), 3)
                 r["perimeter_m"] = round(G.polygon_perimeter_m(r["points"], ppm), 3)
+                # Auditoria V2 : < 0,5 m² = traço de cota / letra, não uma divisão.
+                if r["surface_m2"] < 0.5:
+                    result.setdefault("dropped", []).append(
+                        {"reason": "below_0_5_m2", "surface_m2": r["surface_m2"]})
+                    continue
+            kept.append(r)
+        result["rooms"] = kept
     return result
 
 

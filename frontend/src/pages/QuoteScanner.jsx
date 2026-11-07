@@ -18,7 +18,11 @@ const VERDICT = {
   correct: { label: "Preço correto", cls: "border-sky-500/40 text-sky-600 dark:text-sky-400" },
   eleve: { label: "Preço elevado", cls: "border-amber-500/40 text-amber-600 dark:text-amber-400" },
   tres_eleve: { label: "Muito elevado", cls: "border-red-500/40 text-red-600 dark:text-red-400" },
+  sem_referencia: { label: "Comparação indisponível", cls: "border-slate-400/50 text-slate-600 dark:text-slate-300" },
 };
+// Auditoria V2 : um veredicto de preço só é mostrado com uma referência real
+// (calculada no servidor). Análises antigas sem base → «comparação indisponível».
+const verdictOf = (an) => (an?.reference_basis ? VERDICT[an.verdict] : null) || VERDICT.sem_referencia;
 
 export default function QuoteScanner() {
   const { user } = useAuth();
@@ -95,7 +99,7 @@ export default function QuoteScanner() {
   };
 
   const a = result?.analysis;
-  const v = a ? VERDICT[a.verdict] || VERDICT.correct : null;
+  const v = a ? verdictOf(a) : null;
 
   return (
     <div className="grid gap-10">
@@ -149,10 +153,20 @@ export default function QuoteScanner() {
               </div>
               <Badge variant="outline" className={`rounded-sm ${v.cls}`} data-testid="quote-verdict">{v.label}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">{a.verdict_label}</p>
-            {a.delta_vs_reference_pct !== undefined && a.delta_vs_reference_pct !== null && (
+            <p className="text-sm text-muted-foreground">{a.reference_basis ? a.verdict_label : "Comparação de preço indisponível: nenhuma referência equivalente (mesmo artigo, unidade, região e data) foi associada a este orçamento. A leitura das linhas e as contas abaixo continuam válidas."}</p>
+            {a.arithmetic?.mismatches > 0 && (
+              <div className="rounded-sm border border-red-300 bg-red-50 p-3 text-sm text-red-700" data-testid="quote-arith-errors">
+                <p className="font-semibold">Erro(s) de cálculo no orçamento</p>
+                <ul className="mt-1 grid gap-1">
+                  {a.arithmetic.checks.map((c, i) => (
+                    <li key={i}>• {c.label}: esperado {eur2(c.expected)}, orçamento indica {eur2(c.file)} (diferença {eur2(c.diff)})</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {a.reference_basis && a.delta_vs_reference_pct !== undefined && a.delta_vs_reference_pct !== null && (
               <p className="num text-sm">
-                Desvio vs preço de referência ConstruPilot:{" "}
+                Desvio vs {a.reference_basis.label?.toLowerCase() || "referência"}:{" "}
                 <span className={a.delta_vs_reference_pct > 0 ? "text-red-500 font-semibold" : "text-emerald-500 font-semibold"}>
                   {a.delta_vs_reference_pct > 0 ? "+" : ""}{num(a.delta_vs_reference_pct, 1)} %
                 </span>
@@ -219,8 +233,8 @@ export default function QuoteScanner() {
                 >
                   <p className="overline text-muted-foreground">{q.company || "Empresa"}</p>
                   <p className="num mt-2 text-lg font-bold">{eur(q.analysis?.total_ttc || q.analysis?.total_ht)}</p>
-                  <Badge variant="outline" className={`mt-3 rounded-sm ${(VERDICT[q.analysis?.verdict] || VERDICT.correct).cls}`}>
-                    {(VERDICT[q.analysis?.verdict] || VERDICT.correct).label}
+                  <Badge variant="outline" className={`mt-3 rounded-sm ${verdictOf(q.analysis).cls}`}>
+                    {verdictOf(q.analysis).label}
                   </Badge>
                 </button>
               );

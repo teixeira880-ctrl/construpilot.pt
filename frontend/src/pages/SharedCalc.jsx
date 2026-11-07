@@ -154,7 +154,7 @@ export default function SharedCalc() {
                 </tbody>
               </table>
             </div>
-            <p className="num mt-4 text-right">Orçamento materiais estimado: <span className="text-primary font-bold text-lg">{eur(data.estimated_budget)}</span></p>
+            <p className="num mt-4 text-right">Orçamento materiais estimado: {data.estimated_budget === null || data.estimated_budget === undefined ? <span className="text-amber-700 font-semibold">preços indisponíveis</span> : <span className="text-primary font-bold text-lg">{eur(data.estimated_budget)}</span>}</p>
           </section>
         )}
 

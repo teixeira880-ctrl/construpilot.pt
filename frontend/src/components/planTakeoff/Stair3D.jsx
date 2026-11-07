@@ -1,14 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 /** Aperçu 3D interactif d'un escalier (volée droite approximée depuis le résultat). */
 export default function Stair3D({ result, stairWidthMm = 1000 }) {
   const mountRef = useRef(null);
+  // Auditoria V2 : sem WebGL (navegador/equipamento), mostrar um perfil 2D em vez
+  // de derrubar a página ; o cálculo da escada continua disponível.
+  const [glError, setGlError] = useState(false);
 
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount || !result) return;
+    if (!mount || !result || glError) return;
     const W = mount.clientWidth || 640;
     const H = 360;
     const n = Math.max(2, result.num_steps || 16);
@@ -19,7 +22,14 @@ export default function Stair3D({ result, stairWidthMm = 1000 }) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf5f6f8);
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, failIfMajorPerformanceCaveat: false });
+      if (!renderer.getContext()) throw new Error("no WebGL context");
+    } catch {
+      setGlError(true);
+      return undefined;
+    }
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(W, H);
     mount.appendChild(renderer.domElement);
@@ -119,13 +129,41 @@ export default function Stair3D({ result, stairWidthMm = 1000 }) {
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
     };
-  }, [result, stairWidthMm]);
+  }, [result, stairWidthMm, glError]);
+
+  if (glError) return <Stair2DProfile result={result} />;
 
   return (
     <div className="rounded-lg border border-border overflow-hidden" data-testid="stair-3d">
       <div ref={mountRef} className="w-full" style={{ height: 360 }} />
       <p className="text-[11px] text-muted-foreground px-3 py-2 border-t border-border">
         Pré-visualização 3D indicativa — arraste para rodar, roda do rato para fazer zoom.
+      </p>
+    </div>
+  );
+}
+
+
+/** Perfil 2D (alçado) da escada — alternativa quando o WebGL não está disponível. */
+function Stair2DProfile({ result }) {
+  const n = Math.max(2, result?.num_steps || 16);
+  const g = result?.tread_depth_mm || 280;
+  const r = result?.riser_height_mm || 175;
+  const W = n * g, H = n * r;
+  const pad = Math.max(W, H) * 0.06;
+  let d = `M 0 ${H}`;
+  for (let i = 0; i < n; i++) d += ` l 0 ${-r} l ${g} 0`;
+  return (
+    <div className="rounded-lg border border-border overflow-hidden" data-testid="stair-2d-fallback">
+      <svg viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}`} className="w-full bg-muted/30" style={{ height: 360 }}
+           role="img" aria-label={`Perfil da escada : ${n} degraus, altura ${r} mm, profundidade ${g} mm`}>
+        <path d={`${d} L ${W} ${H} Z`} fill="#ffb27a" stroke="#ff5a00" strokeWidth={Math.max(W, H) / 300} />
+        <text x={W / 2} y={H + pad * 0.7} textAnchor="middle" fontSize={Math.max(W, H) / 30} fill="currentColor">
+          {n} × {g} mm = {(W / 1000).toFixed(2)} m
+        </text>
+      </svg>
+      <p className="text-[11px] text-muted-foreground px-3 py-2 border-t border-border">
+        Vista 3D indisponível neste navegador (WebGL) — perfil 2D indicativo. Os cálculos da escada não são afetados.
       </p>
     </div>
   );

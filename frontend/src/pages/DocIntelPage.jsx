@@ -180,8 +180,20 @@ export default function DocIntelPage() {
   const anomalies = [];
   (res?.lines || []).forEach((l) => (l.flags || []).forEach((f) =>
     anomalies.push({ kind: flagLabel(f), where: l.provenance?.designation || `${l.sheet}!${l.row}`, txt: l.designation })));
-  (arith?.checks || []).filter((c) => c.status === "mismatch").forEach((c) =>
-    anomalies.push({ kind: "Diferença aritmética", where: c.provenance || `${c.sheet}!${c.row}`, txt: `calculado ${num(c.computed)} ≠ ficheiro ${num(c.file_amount)}` }));
+  const arithLines = {};
+  (arith?.lines || []).forEach((l) => { arithLines[l.line_id] = l; });
+  (arith?.checks || []).filter((c) => c.status === "mismatch").forEach((c) => {
+    const src = arithLines[c.line_id];
+    const label = src ? `${src.designation || "Linha"} : ${num(src.qty?.value)} × ${num(src.pu?.value)} = ${num(c.computed)} € esperado, documento indica ${num(c.file_amount)} € (diferença ${num(c.diff)} €)`
+      : `calculado ${num(c.computed)} ≠ ficheiro ${num(c.file_amount)} (diferença ${num(c.diff)})`;
+    anomalies.push({ kind: "Erro aritmético na linha", where: src?.page ? `página ${src.page}` : (c.provenance || `${c.sheet}!${c.row}`), txt: label, severe: true });
+  });
+  (arith?.totals || []).filter((t) => t.status === "mismatch").forEach((t) =>
+    anomalies.push({ kind: t.type === "doc_ttc_coherence" ? "Totais incoerentes" : "Efeito nos totais", where: t.page ? `página ${t.page}` : "—",
+      txt: `${t.label} : documento ${num(t.file_amount)} €, recalculado ${num(t.computed)} € (diferença ${num(t.diff)} €)`, severe: true }));
+  (arith?.checks || []).filter((c) => c.status === "insufficient").forEach((c) =>
+    anomalies.push({ kind: "Linha não verificável", where: arithLines[c.line_id]?.page ? `página ${arithLines[c.line_id].page}` : (c.provenance || "—"), txt: `${arithLines[c.line_id]?.designation || ""} — ${c.reason || "valores em falta"}` }));
+  const arithStatus = arith?.summary?.status || (arith ? "executed" : "not_run");
   (res?.warnings || []).forEach((w) => anomalies.push({ kind: w.type === "scanned_page" ? "Página digitalizada (OCR necessário)" : w.type === "hidden_sheet" ? "Folha oculta" : w.type, where: w.sheet ? w.sheet : w.page ? `page ${w.page}` : "—", txt: w.message }));
 
   return (
@@ -231,7 +243,7 @@ export default function DocIntelPage() {
                 <span className="flex-1 truncate text-sm font-medium">{it.filename}</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                <span>{it.lines} lignes</span>
+                <span>{it.lines} linhas</span>
                 {it.ocr && <Badge variant="outline" className="h-4 border-indigo-400 text-indigo-600 text-[10px] gap-0.5"><Sparkles className="h-2.5 w-2.5" /> IA</Badge>}
                 {it.warnings > 0 && <Badge variant="outline" className="h-4 border-amber-400 text-amber-600 text-[10px]">{it.warnings} alerta(s)</Badge>}
                 {it.arithmetic?.mismatches > 0 && <Badge variant="outline" className="h-4 border-red-400 text-red-600 text-[10px]">{it.arithmetic.mismatches} diferença(s)</Badge>}
@@ -261,7 +273,19 @@ export default function DocIntelPage() {
               </div>
 
               {/* Synthèse arithmétique */}
-              {arith && (
+              <div data-testid="doc-intel-arith-status" className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
+                arithStatus === "executed" ? (arith?.summary?.mismatches ? "border-red-300 bg-red-50 text-red-700" : "border-emerald-300 bg-emerald-50 text-emerald-700")
+                : arithStatus === "inconclusive" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-300 bg-slate-50 text-slate-700"}`}>
+                {arithStatus === "executed" && !arith?.summary?.mismatches ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />}
+                <span>
+                  {arithStatus === "executed" && (arith?.summary?.mismatches
+                    ? `Controlo aritmético executado : ${arith.summary.lines_checked ?? ""} linha(s) e ${arith.summary.totals_checks ?? 0} total(is) verificados — ${arith.summary.mismatches} diferença(s).`
+                    : `Controlo aritmético executado : ${arith.summary.lines_checked ?? ""} linha(s) e ${arith.summary.totals_checks ?? 0} total(is) verificados, sem diferenças.`)}
+                  {arithStatus === "inconclusive" && `Controlo aritmético parcial (inconclusivo) : ${arith.summary.status_reason || "alguns valores não puderam ser lidos."}`}
+                  {arithStatus === "not_run" && (arith?.summary?.status_reason || "Controlo aritmético NÃO executado : nenhuma linha quantidade × preço × montante reconhecida. A ausência de alertas não significa que as contas estão certas.")}
+                </span>
+              </div>
+              {arith && arithStatus !== "not_run" && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="doc-intel-arith">
                   {[["Total s/ IVA calculado", `${num(arith.summary.sum_computed_ht)} €`, Sigma],
                     ["IVA", arith.summary.vat_amount != null ? `${num(arith.summary.vat_amount)} €` : "—", Sigma],
@@ -281,12 +305,14 @@ export default function DocIntelPage() {
                   <AlertTriangle className="h-4 w-4 text-amber-500" /> Pontos a verificar ({anomalies.length})
                 </div>
                 {anomalies.length === 0 ? (
-                  <div className="flex items-center gap-2 px-3 py-3 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Nenhum ponto detetado (a ausência de anomalia não garante a exatidão).</div>
+                  arithStatus === "executed"
+                    ? <div className="flex items-center gap-2 px-3 py-3 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Nenhum ponto detetado nas verificações executadas (a ausência de anomalia não garante a exatidão).</div>
+                    : <div className="flex items-center gap-2 px-3 py-3 text-sm text-slate-600"><AlertTriangle className="h-4 w-4" /> Nenhum alerta, mas a aritmética não foi (totalmente) verificada — confirme manualmente.</div>
                 ) : (
                   <ul className="divide-y divide-border">
                     {anomalies.slice(0, 60).map((a, i) => (
                       <li key={i} className="flex items-start gap-2 px-3 py-2 text-sm">
-                        <Badge variant="outline" className="shrink-0 border-amber-400 text-amber-700">{a.kind}</Badge>
+                        <Badge variant="outline" className={`shrink-0 ${a.severe ? "border-red-400 text-red-700" : "border-amber-400 text-amber-700"}`}>{a.kind}</Badge>
                         <span className="flex-1">{a.txt}</span>
                         <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"><MapPin className="h-3 w-3" /> {a.where}</span>
                       </li>
@@ -526,7 +552,7 @@ export default function DocIntelPage() {
                   <div className="flex flex-wrap gap-2 text-xs">
                     {(res.pages || []).map((p) => (
                       <Badge key={p.page} variant="outline" className={p.ocr ? "border-indigo-400 text-indigo-600" : p.scanned ? "border-amber-400 text-amber-600" : ""}>
-                        Página {p.page} · {p.lines} lignes{p.ocr ? " · IA (OCR)" : p.scanned ? " · scan (OCR)" : ""}{p.tables ? ` · ${p.tables} tabela(s)` : ""}
+                        Página {p.page} · {p.lines} linhas{p.ocr ? " · IA (OCR)" : p.scanned ? " · scan (OCR)" : ""}{p.tables ? ` · ${p.tables} tabela(s)` : ""}
                       </Badge>
                     ))}
                   </div>

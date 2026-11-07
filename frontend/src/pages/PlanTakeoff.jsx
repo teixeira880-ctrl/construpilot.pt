@@ -1927,6 +1927,14 @@ export default function PlanTakeoff() {
     await refreshPlan();
     if (currentPageKeyRef.current === sourceKey) setRightTab("rooms");
     if (imported) toast.success(`${imported} contorno(s) importado(s) — verifique a sua posição e as suas dimensões na planta`);
+    // Auditoria V2 : nada desaparece em silêncio, e a soma é confrontada com a leitura da planta.
+    const droppedN = (data?.dropped || []).length;
+    if (droppedN) toast.message(`${droppedN} contorno(s) ignorado(s) : face exterior de parede, contorno do edifício ou traço de cota/texto.`, { duration: 8000 });
+    const importedSum = contours.reduce((s, c) => s + (Number(c.surface_m2) || 0), 0);
+    const readSum = (plan?.ai_analysis?.rooms || []).reduce((s, r) => s + (Number(r.surface_written_m2 || r.estimated_surface_m2) || 0), 0);
+    if (imported && importedSum > 0 && readSum > 0 && Math.abs(importedSum - readSum) / readSum > 0.1) {
+      toast.warning(`Atenção : contornos detetados = ${importedSum.toFixed(2)} m², leitura da planta = ${readSum.toFixed(2)} m² (diferença > 10 %). Confirme as divisões antes de orçamentar.`, { duration: 15000 });
+    }
     if (failed) toast.warning(`${failed} divisão(ões) não importada(s)`);
     if (!imported && skipped) toast.message("Estes contornos já estão presentes na medição");
     return imported;
