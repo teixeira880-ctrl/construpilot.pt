@@ -105,11 +105,13 @@ AUTORIZACAO_TOOLS += [
     function(
         "licenciamento_imagens",
         "Gera AUTOMATICAMENTE as imagens realistas do processo (o mais fotorrealistas possível) e junta-as ao dossier: vistas 3D "
-        "exatas do projeto (perspetiva, frente, jardim, aérea) tornadas fotorrealistas por IA SEM mudar a geometria (verificação "
-        "automática contra a vista exata), e o «antes/depois» sobre o ortofotomapa oficial do terreno. Usar depois de "
+        "exatas do projeto (perspetiva, piscina, frente, jardim, aérea, entardecer) e interiores (sala, cozinha, suite, casa de banho) "
+        "tornadas fotorrealistas por IA SEM mudar a geometria (verificação automática contra a vista exata), planta de implantação "
+        "humanizada, «antes/depois» sobre o ortofotomapa oficial e, se o cliente enviou uma fotografia do terreno, a montagem "
+        "sobre essa foto (que o cliente tem de aprovar). Usar depois de "
         "licenciamento_automatico ou de qualquer alteração ao projeto, e sempre que pedirem imagens, renders, fotos ou 3D.",
         {"processo_id": {"type": "string"},
-         "vistas": {"type": "array", "items": {"type": "string"}, "description": "perspetiva, frente, tardoz, aerea (por omissão todas)"},
+         "vistas": {"type": "array", "items": {"type": "string"}, "description": "perspetiva, piscina, frente, tardoz, aerea, perspetiva_entardecer, interior_sala, interior_cozinha, interior_suite, interior_wc (por omissão todas)"},
          "antes_depois": {"type": "boolean"}},
     ),
     function(
@@ -170,9 +172,9 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
     if name == "licenciamento_imagens":
         from routes import urbanismo_auto as UA
         try:
-            vistas = (args or {}).get("vistas") or ["perspetiva", "frente", "tardoz", "aerea"]
+            vistas = (args or {}).get("vistas") or None
             return await asyncio.wait_for(UA.gerar_imagens((args or {}).get("processo_id") or "", user, vistas,
-                                                           bool((args or {}).get("antes_depois", True))), timeout=420)
+                                                           bool((args or {}).get("antes_depois", True))), timeout=900)
         except asyncio.TimeoutError:
             return {"ok": False, "error": "As imagens estão a demorar; peça de novo dentro de momentos."}
         except Exception as e:  # noqa: BLE001

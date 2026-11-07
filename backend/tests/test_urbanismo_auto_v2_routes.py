@@ -48,22 +48,32 @@ def test_uma_frase_dossier_completo_com_imagens(env):
         r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
         assert r["ok"] and r["estado"] == "pronto", r
         pid = r["processo_id"]
-        im = await UA.gerar_imagens(pid, USER, ["perspetiva", "frente", "tardoz", "aerea"], True)
+        im = await UA.gerar_imagens(pid, USER, None, True)      # conjunto completo por omissão
         tipos = [i["tipo"] for i in im["imagens"]]
-        assert tipos.count("exata") == 4 and tipos.count("fotorrealista") == 4
-        assert {"antes", "depois_esquema", "depois"} <= set(tipos)
+        vistas = {i["vista"] for i in im["imagens"] if i["tipo"] == "fotorrealista"}
+        assert vistas == set(UA.VISTAS_PADRAO)                  # exteriores, piscina, entardecer e 4 interiores
+        assert tipos.count("exata") == 9                         # o entardecer reutiliza a vista exata da perspetiva
+        assert {"antes", "depois_esquema", "depois", "implantacao"} <= set(tipos)
         assert all(i["verificada"] for i in im["imagens"])
-        assert chamadas["n"] == 4 + 1      # 4 vistas (geometria aprovada à 1.ª) + aérea
+        from engines.urbanismo_pt.auto import imagens as IM
+        assert chamadas["n"] == 10 * IM.CANDIDATOS + 1           # N candidatos por vista (aprovados à 1.ª) + aérea
         doc = await db.urbanismo_processos.find_one({"processo_id": pid})
+        # qualidade de entrega: ≥ 1920 px, e a ampliação fica registada (nunca passa por resolução nativa)
+        fotos = [i for i in doc["imagens"] if i["tipo"] == "fotorrealista"]
+        assert all(i["qualidade"]["largura"] >= 1920 for i in fotos)
+        assert all(i["qualidade"]["ampliada"] == (i["qualidade"]["largura_nativa"] < 1920) for i in fotos)
+        assert next(i for i in doc["imagens"] if i["vista"] == "perspetiva_entardecer")["iluminacao"] == "entardecer"
+        assert {i.get("compartimento") for i in fotos if i["vista"].startswith("interior_")} >= {"Sala de estar e jantar", "Suite"}
         assert all(k.startswith(f"urbanismo-auto/{USER['user_id']}/{pid}/") for k in store)
         # imagens no PDF de peças desenhadas e no ZIP
         pdf = await UA.pecas_pdf(pid, USER)
         assert pdf.body[:4] == b"%PDF"
         sims = await UA.simulacoes(doc)
-        assert len(sims) == 6 and sims[0]["title"].startswith("Simulação 3D")
+        assert len(sims) == 10 + 1 + 2 and sims[0]["title"].startswith("Simulação 3D")
+        assert any("implantação humanizada" in x["title"] for x in sims)
         z = await UA.exportar(pid, USER)
         nomes = zipfile.ZipFile(io.BytesIO(z.body)).namelist()
-        assert sum("SIMULACOES_3D" in n for n in nomes) == 6
+        assert sum("SIMULACOES_3D" in n for n in nomes) == 13
         # imagem servida só ao dono
         iid = im["imagens"][0]["id"]
         assert (await UA.obter_imagem(pid, iid, USER)).body[:2] == b"\xff\xd8"
@@ -90,7 +100,7 @@ def test_geometria_alterada_e_rejeitada_e_cai_para_vista_exata(env, monkeypatch)
         assert foto["verificada"] is False
         doc = await env[0].urbanismo_processos.find_one({"processo_id": r["processo_id"]})
         reg = next(i for i in doc["imagens"] if i["tipo"] == "fotorrealista")
-        assert len(reg["tentativas"]) == 2 and reg["tentativas"][1]["estrito"] is True
+        assert len(reg["tentativas"]) == 2 * IM.CANDIDATOS and reg["tentativas"][-1]["estrito"] is True
         assert "ATENÇÃO" in reg["nota"]
         sims = await UA.simulacoes(doc)   # o dossier usa a vista EXATA, nunca a imagem não verificada
         assert sims and sims[0]["data"] == next(
@@ -133,3 +143,74 @@ def test_ferramentas_assistente_e_aurora(env):
         mau = await run_autorizacao_tool("licenciamento_imagens", {"processo_id": "nao_existe"}, USER, {})
         assert mau["ok"] is False
     run(go())
+
+
+def test_foto_do_terreno_montagem_so_entra_aprovada(env, monkeypatch):
+    from engines.urbanismo_pt.auto import imagens as IM
+    from PIL import Image
+    db, store, _ = env
+    recebidas = {}
+
+    async def montagem_falsa(proc, foto, ref, sessao):
+        recebidas["n_refs"] = (foto[:2], ref[:4])
+        return ref
+    monkeypatch.setattr(IM, "montagem", montagem_falsa)
+
+    class Up:   # UploadFile mínimo
+        def __init__(self, data):
+            self.data = data
+
+        async def read(self, n=-1):
+            return self.data
+    b = io.BytesIO()
+    Image.new("RGB", (1200, 800), (120, 160, 90)).save(b, "PNG")
+
+    async def go():
+        r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
+        pid = r["processo_id"]
+        with pytest.raises(Exception):
+            await UA.enviar_foto_terreno(pid, Up(b"<script>nao e imagem</script>"), USER)
+        ok = await UA.enviar_foto_terreno(pid, Up(b.getvalue()), USER)
+        assert ok["ok"] and store[f"urbanismo-auto/{USER['user_id']}/{pid}/foto-terreno.jpg"][:2] == b"\xff\xd8"
+        im = await UA.gerar_imagens(pid, USER, ["perspetiva"], True)
+        mont = next(i for i in im["imagens"] if i["tipo"] == "montagem")
+        assert mont["verificada"] is False and recebidas["n_refs"][0] == b"\xff\xd8"
+        doc = await db.urbanismo_processos.find_one({"processo_id": pid})
+        assert not any("fotografia do terreno" in x["title"] for x in await UA.simulacoes(doc))   # não aprovada → fora
+        with pytest.raises(Exception):
+            await UA.aprovar_imagem(pid, im["imagens"][0]["id"], UA.AprovarIn(), USER)        # só montagens
+        await UA.aprovar_imagem(pid, mont["id"], UA.AprovarIn(aprovada=True), USER)
+        doc = await db.urbanismo_processos.find_one({"processo_id": pid})
+        assert any("fotografia do terreno" in x["title"] for x in await UA.simulacoes(doc))
+        # a fotografia continua associada depois de alterar o projeto
+        await UA.editar_projeto(pid, UA.ProjetoIn(texto="estilo minimalista"), USER)
+        doc = await db.urbanismo_processos.find_one({"processo_id": pid})
+        assert doc.get("foto_terreno")
+    run(go())
+
+
+def test_interiores_e_implantacao_sao_exatos(env, tmp_path):
+    from PIL import Image
+    import test_urbanismo_auto as B
+    from engines.urbanismo_pt.auto import dgt_cache as CACHE, imagens as IM, interiores as INT
+    CACHE.usar_pasta(str(tmp_path / "dgt"))
+    d = B.run({"texto": PEDIDO_CLIENTE})["processo"]
+    esc = INT.escolher(d)
+    assert [n for n, *_ in esc] == ["interior_sala", "interior_cozinha", "interior_suite", "interior_wc"]
+    for nome, c, piso in esc:
+        v = INT.vista(d, nome, c, piso)
+        vaos = [x for x in d["auto"]["vaos"] if x["compartimento"] == c["nome"]]
+        assert v["n_vaos"] == len(vaos) >= 1 and v["cobertura_mascara"] > 0.005   # os vãos reais estão visíveis
+        assert "EXACTLY" in INT.prompt_interior(d, nome, c) and c["nome"] in INT.prompt_interior(d, nome, c)
+    # implantação humanizada: a cobertura da casa aparece no sítio certo
+    m = UA.modelo3d(d)
+    im = Image.open(io.BytesIO(IM.implantacao_humanizada(m, 1000))).convert("RGB")
+    assert im.size == (1000, 1000)
+    # nitidez: uma imagem desfocada tem nitidez muito menor
+    from PIL import ImageFilter
+    b1, b2 = io.BytesIO(), io.BytesIO()
+    im.save(b1, "PNG")
+    im.filter(ImageFilter.GaussianBlur(6)).save(b2, "PNG")
+    assert IM.nitidez(b1.getvalue()) > 3 * IM.nitidez(b2.getvalue())
+    jpeg, q = IM.acabar(b2.getvalue(), 1920)
+    assert q["ampliada"] and q["largura"] == 1920 and q["largura_nativa"] == 1000

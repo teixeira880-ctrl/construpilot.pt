@@ -12,6 +12,8 @@ POST /urbanismo-auto/processos/{pid}/imagens     imagens realistas automáticas 
 GET  /urbanismo-auto/processos/{pid}/imagens · /imagens/{iid}.jpg
 PATCH /urbanismo-auto/processos/{pid}/projeto    alterar qualquer escolha (forma, área, estilo, piscina…) e recalcular tudo
 GET  /urbanismo-auto/estilos                     estilos arquitetónicos disponíveis
+POST /urbanismo-auto/processos/{pid}/foto-terreno       fotografia real do terreno (para a montagem «depois»)
+POST /urbanismo-auto/processos/{pid}/imagens/{iid}/aprovar  o cliente aprova (ou não) uma montagem para o dossier
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -105,9 +107,12 @@ async def executar_e_gravar(pedido: Dict[str, Any], user: Dict[str, Any], pid: O
     doc = _doc(user["user_id"], r["processo"], pid)
     if pid:
         old = await db.urbanismo_processos.find_one({"processo_id": pid, "user_id": user["user_id"]},
-                                                    {"_id": 0, "created_at": 1, "pecas": 1, "imagens": 1, "imagens_assinatura": 1})
+                                                    {"_id": 0, "created_at": 1, "pecas": 1, "imagens": 1, "imagens_assinatura": 1,
+                                                     "foto_terreno": 1})
         doc["created_at"] = (old or {}).get("created_at") or doc["created_at"]
         doc["pecas"] = (old or {}).get("pecas") or {}
+        if (old or {}).get("foto_terreno"):
+            doc["foto_terreno"] = old["foto_terreno"]
         if (old or {}).get("imagens"):   # imagens antigas mantidas, mas marcadas como desatualizadas se o projeto mudou
             doc["imagens"] = old["imagens"]
             doc["imagens_assinatura"] = old.get("imagens_assinatura")
@@ -350,8 +355,20 @@ async def editar_projeto(pid: str, body: ProjetoIn, user=Depends(current_user)) 
     return await asyncio.wait_for(executar_e_gravar(pedido, user, pid=pid), timeout=240)
 
 
+# Conjunto completo, ao nível das apresentações de promotores: exteriores de dia, piscina, entardecer, aérea, interiores,
+# planta de implantação humanizada, antes/depois e (se houver fotografia do terreno) montagem sobre a foto real.
+VISTAS_PADRAO = ["perspetiva", "piscina", "frente", "tardoz", "aerea", "perspetiva_entardecer",
+                 "interior_sala", "interior_cozinha", "interior_suite", "interior_wc"]
+TITULOS_IMG = {"perspetiva": "perspetiva", "frente": "vista da frente", "tardoz": "vista do jardim", "aerea": "vista aérea",
+               "piscina": "vista da piscina", "perspetiva_entardecer": "perspetiva ao entardecer",
+               "interior_sala": "interior — sala de estar e jantar", "interior_cozinha": "interior — cozinha",
+               "interior_suite": "interior — suite", "interior_wc": "interior — instalação sanitária"}
+ORDEM_DOSSIER = ["perspetiva", "piscina", "frente", "tardoz", "aerea", "perspetiva_entardecer",
+                 "interior_sala", "interior_cozinha", "interior_suite", "interior_wc"]
+
+
 class ImagensIn(BaseModel):
-    vistas: list[str] = Field(default_factory=lambda: ["perspetiva", "frente", "tardoz", "aerea"], max_length=4)
+    vistas: list[str] = Field(default_factory=lambda: list(VISTAS_PADRAO), max_length=14)
     antes_depois: bool = True
 
 
@@ -359,41 +376,113 @@ def _img_key(uid: str, pid: str, iid: str) -> str:
     return f"urbanismo-auto/{uid}/{pid}/imagens/{iid}.jpg"
 
 
-async def gerar_imagens(pid: str, user: Dict[str, Any], vistas: list, antes_depois: bool = True) -> Dict[str, Any]:
-    """Gera e guarda as imagens (usado pela página, pelo Assistente e pela Aurora). Nunca levanta exceção por imagem."""
-    from engines.object_storage import put_object
-    from engines.urbanismo_pt.auto import imagens as IM, render3d as R3
+def _foto_key(uid: str, pid: str) -> str:
+    return f"urbanismo-auto/{uid}/{pid}/foto-terreno.jpg"
+
+
+async def gerar_imagens(pid: str, user: Dict[str, Any], vistas: Optional[list] = None, antes_depois: bool = True) -> Dict[str, Any]:
+    """Gera e guarda as imagens (usado pela página, pelo Assistente e pela Aurora). Nunca levanta exceção por imagem.
+    As vistas correm em paralelo (limite de 3 pedidos simultâneos ao fornecedor)."""
+    from engines.object_storage import get_object, put_object
+    from engines.urbanismo_pt.auto import imagens as IM, interiores as INT, render3d as R3
     d = await _owned(pid, user["user_id"])
     m = modelo3d(d)
     sol = (d["auto"].get("implantacao") or {}).get("fachada_sol") or "frente"
-    out = []
+    vistas = list(vistas or VISTAS_PADRAO)
+    if not m.get("piscina"):
+        vistas = [v for v in vistas if v != "piscina"]
+    out: list = []
+    sem = asyncio.Semaphore(3)
+    exatas: Dict[str, Dict[str, Any]] = {}
 
-    async def guardar(tipo, vista, jpeg, extra):
+    async def guardar(ordem, tipo, vista, jpeg, extra):
         iid = "img_" + uuid.uuid4().hex[:10]
         await run_in_threadpool(put_object, _img_key(user["user_id"], pid, iid), jpeg, "image/jpeg")
-        out.append({"id": iid, "tipo": tipo, "vista": vista, "criado": _now(), **extra})
+        out.append({"id": iid, "tipo": tipo, "vista": vista, "criado": _now(), "_o": ordem, **extra})
 
-    for v in [x for x in vistas if x in R3.VISTAS]:
-        ex = await run_in_threadpool(R3.vista, m, v, sol)
-        await guardar("exata", v, IM._jpeg(ex["png"], 92), {"nota": "Vista 3D exata (medidas do projeto)."})
-        fr = await IM.fotorrealista(d, ex, sessao=pid)
-        await guardar(fr["tipo"], v, fr["jpeg"], {k: fr[k] for k in ("fornecedor", "geometria", "verificada", "nota", "tentativas")})
+    async def exata(v):
+        if v not in exatas:
+            exatas[v] = await run_in_threadpool(R3.vista, m, v, sol)
+        return exatas[v]
+
+    def campos(fr):
+        return {k: fr[k] for k in ("fornecedor", "geometria", "verificada", "nota", "tentativas", "qualidade") if k in fr}
+
+    async def exterior(k, v):
+        base, luz = IM.VARIANTES.get(v, (v, "dia"))
+        ex = await exata(base)
+        if v == base:
+            await guardar((k, 0), "exata", v, IM._jpeg(ex["png"], 92), {"nota": "Vista 3D exata (medidas do projeto)."})
+        async with sem:
+            fr = await IM.fotorrealista(d, ex, sessao=pid, luz=luz, nome=v)
+        await guardar((k, 1), fr["tipo"], v, fr["jpeg"], campos(fr) | {"iluminacao": luz})
+
+    interiores = {n: (c, p) for n, c, p in INT.escolher(d)}
+
+    async def interior(k, v):
+        if v not in interiores:
+            return
+        c, piso = interiores[v]
+        ex = await run_in_threadpool(INT.vista, d, v, c, piso)
+        await guardar((k, 0), "exata", v, IM._jpeg(ex["png"], 92),
+                      {"nota": f"Vista interior exata — {c['nome']} ({c.get('area_m2')} m², pé-direito {ex['pe_direito_m']} m).",
+                       "compartimento": c["nome"]})
+        async with sem:
+            fr = await IM.fotorrealista(d, ex, sessao=pid, limiar=IM.LIMIAR_INTERIOR, nome=v,
+                                        prompt_fn=lambda estrito: INT.prompt_interior(d, v, c, estrito))
+        fr["nota"] = fr["nota"] + " Mobiliário e acabamentos interiores são sugestões ilustrativas."
+        await guardar((k, 1), fr["tipo"], v, fr["jpeg"], campos(fr) | {"compartimento": c["nome"]})
+
+    tarefas = []
+    for k, v in enumerate(vistas):
+        if v in R3.VISTAS or v in IM.VARIANTES:
+            tarefas.append(exterior(k, v))
+        elif v.startswith("interior_"):
+            tarefas.append(interior(k, v))
+    res = await asyncio.gather(*tarefas, return_exceptions=True)
+    for r in res:
+        if isinstance(r, BaseException):
+            log.warning("vista falhou: %s", type(r).__name__)
+    # planta de implantação humanizada (exata, sem IA)
+    try:
+        jpeg = await run_in_threadpool(IM.implantacao_humanizada, m)
+        await guardar((90, 0), "implantacao", "implantacao", jpeg,
+                      {"verificada": True, "fornecedor": "render", "nota": "Planta de implantação a cores, à escala; "
+                       "vegetação e arranjos exteriores ilustrativos."})
+    except Exception as e:  # noqa: BLE001
+        log.warning("implantação humanizada falhou: %s", type(e).__name__)
     if antes_depois:
         base = await run_in_threadpool(IM.antes_depois_base, d)
         if base:
-            await guardar("antes", "aerea_orto", base["antes"], {"nota": "Ortofotomapa oficial (DGT) — situação existente."})
-            await guardar("depois_esquema", "aerea_orto", base["depois_esquema"],
+            await guardar((91, 0), "antes", "aerea_orto", base["antes"], {"nota": "Ortofotomapa oficial (DGT) — situação existente."})
+            await guardar((91, 1), "depois_esquema", "aerea_orto", base["depois_esquema"],
                           {"nota": "Implantação proposta desenhada à escala sobre o ortofotomapa."})
             try:
                 img = await IM._gemini(IM.prompt_aerea(d), base["depois_esquema"], pid)
-                await guardar("depois", "aerea_orto", IM._jpeg(img),
-                              {"fornecedor": "gemini", "nota": IM.NOTA + " Envolvente: ortofotomapa oficial (DGT)."})
+                jpeg, q = IM.acabar(img, 1024)
+                await guardar((91, 2), "depois", "aerea_orto", jpeg,
+                              {"fornecedor": "gemini", "qualidade": q, "nota": IM.NOTA + " Envolvente: ortofotomapa oficial (DGT)."})
             except Exception as e:  # noqa: BLE001
                 log.warning("imagem aérea «depois» falhou: %s", type(e).__name__)
+        ft = d.get("foto_terreno")
+        if ft:   # montagem sobre a fotografia real do terreno (precisa de aprovação do cliente para entrar no dossier)
+            try:
+                foto, _ = await run_in_threadpool(get_object, _foto_key(user["user_id"], pid))
+                ex = await exata(ft.get("vista_ref") or "perspetiva")
+                img = await IM.montagem(d, foto, ex["png"], pid)
+                if img:
+                    jpeg, q = IM.acabar(img)
+                    await guardar((92, 0), "montagem", "foto_terreno", jpeg,
+                                  {"fornecedor": "gemini", "qualidade": q, "verificada": False, "aprovada": False,
+                                   "nota": "Montagem ilustrativa sobre a fotografia real do terreno. Não é verificável "
+                                           "automaticamente: só entra no dossier depois de aprovada por si."})
+            except Exception as e:  # noqa: BLE001
+                log.warning("montagem sobre a foto do terreno falhou: %s", type(e).__name__)
+    out.sort(key=lambda i: i.pop("_o"))
     await db.urbanismo_processos.update_one({"processo_id": pid, "user_id": user["user_id"]},
                                             {"$set": {"imagens": out, "imagens_desatualizadas": False,
                                                       "imagens_assinatura": (d.get("auto") or {}).get("assinatura")}})
-    return {"ok": True, "processo_id": pid, "imagens": [{k: i[k] for k in ("id", "tipo", "vista") } |
+    return {"ok": True, "processo_id": pid, "imagens": [{k: i[k] for k in ("id", "tipo", "vista")} |
                                                        {"url": f"/api/urbanismo-auto/processos/{pid}/imagens/{i['id']}.jpg",
                                                         "verificada": i.get("verificada", True), "fornecedor": i.get("fornecedor")}
                                                        for i in out],
@@ -418,7 +507,56 @@ async def pedir_imagens(pid: str, body: ImagensIn, user=Depends(current_user)) -
     t = asyncio.create_task(run())
     _TASKS.add(t)
     t.add_done_callback(_TASKS.discard)
-    return {"ok": True, "estado": "a_correr", "nota": "As imagens demoram cerca de 1 a 3 minutos."}
+    return {"ok": True, "estado": "a_correr", "nota": "As imagens demoram cerca de 2 a 5 minutos."}
+
+
+FOTO_MAX_BYTES = 15 * 1024 * 1024
+
+
+@router.post("/processos/{pid}/foto-terreno")
+async def enviar_foto_terreno(pid: str, ficheiro: UploadFile = File(...), user=Depends(current_user)) -> dict:
+    """Fotografia real do terreno vazio (telemóvel ou drone). É reescrita como JPEG limpo (sem metadados nem conteúdo
+    estranho), guardada em armazenamento privado e usada só para a montagem «depois» deste processo."""
+    await _owned(pid, user["user_id"])
+    raw = await ficheiro.read(FOTO_MAX_BYTES + 1)
+    if len(raw) > FOTO_MAX_BYTES:
+        raise HTTPException(413, "Fotografia demasiado grande (máximo 15 MB).")
+    import io
+    from PIL import Image, ImageOps
+    try:
+        Image.open(io.BytesIO(raw)).verify()
+        im = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert("RGB")
+    except Exception:  # noqa: BLE001
+        raise HTTPException(422, "O ficheiro não é uma fotografia válida (JPEG, PNG, HEIC convertido…).")
+    if min(im.size) < 400:
+        raise HTTPException(422, "Fotografia demasiado pequena (mínimo 400 px).")
+    im.thumbnail((2400, 2400), Image.LANCZOS)
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=92)
+    from engines.object_storage import put_object
+    await run_in_threadpool(put_object, _foto_key(user["user_id"], pid), b.getvalue(), "image/jpeg")
+    await db.urbanismo_processos.update_one({"processo_id": pid, "user_id": user["user_id"]},
+                                            {"$set": {"foto_terreno": {"enviada": _now(), "largura": im.width,
+                                                                       "altura": im.height}}})
+    return {"ok": True, "nota": "Fotografia recebida. Volte a criar as imagens para obter a montagem «depois» sobre ela."}
+
+
+class AprovarIn(BaseModel):
+    aprovada: bool = True
+
+
+@router.post("/processos/{pid}/imagens/{iid}/aprovar")
+async def aprovar_imagem(pid: str, iid: str, body: AprovarIn, user=Depends(current_user)) -> dict:
+    d = await _owned(pid, user["user_id"])
+    imgs = d.get("imagens") or []
+    alvo = next((i for i in imgs if i["id"] == iid), None)
+    if not alvo:
+        raise HTTPException(404, "Imagem inexistente.")
+    if alvo["tipo"] != "montagem":
+        raise HTTPException(422, "Só as montagens sobre fotografia precisam de aprovação.")
+    alvo["aprovada"] = bool(body.aprovada)
+    await db.urbanismo_processos.update_one({"processo_id": pid, "user_id": user["user_id"]}, {"$set": {"imagens": imgs}})
+    return {"ok": True, "id": iid, "aprovada": alvo["aprovada"]}
 
 
 @router.get("/processos/{pid}/imagens")
@@ -439,23 +577,30 @@ async def obter_imagem(pid: str, iid: str, user=Depends(current_user)):
 
 
 async def simulacoes(d: Dict[str, Any]) -> list:
-    """Imagens para as peças desenhadas e o ZIP: fotorrealistas verificadas (ou exatas) + antes/depois."""
+    """Imagens para as peças desenhadas e o ZIP: só fotorrealistas VERIFICADAS (exteriores sem verificação → vista exata;
+    interiores sem verificação ficam de fora), planta humanizada, antes/depois e montagens APROVADAS pelo cliente."""
     from engines.object_storage import get_object
-    titulos = {"perspetiva": "perspetiva", "frente": "vista da frente", "tardoz": "vista do jardim", "aerea": "vista aérea"}
     escolha = []
     imgs = d.get("imagens") or []
     if d.get("imagens_desatualizadas"):
         return []
-    for v in ("perspetiva", "frente", "tardoz", "aerea"):
-        fr = next((i for i in imgs if i["vista"] == v and i["tipo"] == "fotorrealista" and i.get("verificada")), None) \
-            or next((i for i in imgs if i["vista"] == v and i["tipo"] == "exata"), None)
+    for v in ORDEM_DOSSIER:
+        fr = next((i for i in imgs if i["vista"] == v and i["tipo"] == "fotorrealista" and i.get("verificada")), None)
+        if not fr and not v.startswith("interior_") and v not in ("perspetiva_entardecer",):
+            fr = next((i for i in imgs if i["vista"] == v and i["tipo"] == "exata"), None)
         if fr:
-            escolha.append((fr, f"Simulação 3D — {titulos[v]} (imagem ilustrativa)"))
+            escolha.append((fr, f"Simulação 3D — {TITULOS_IMG.get(v, v)} (imagem ilustrativa)"))
+    i = next((x for x in imgs if x["tipo"] == "implantacao"), None)
+    if i:
+        escolha.append((i, "Planta de implantação humanizada (vegetação ilustrativa)"))
     for t, tit in (("antes", "Antes — ortofotomapa oficial (DGT)"), ("depois", "Depois — simulação sobre o ortofotomapa (ilustrativa)")):
         i = next((x for x in imgs if x["tipo"] == t), None) or (
             next((x for x in imgs if x["tipo"] == "depois_esquema"), None) if t == "depois" else None)
         if i:
             escolha.append((i, tit))
+    for i in imgs:
+        if i["tipo"] == "montagem" and i.get("aprovada"):
+            escolha.append((i, "Depois — montagem sobre fotografia do terreno (ilustrativa, aprovada pelo requerente)"))
     out = []
     for k, (i, tit) in enumerate(escolha):
         try:
@@ -492,7 +637,7 @@ async def dossier_completo(body: PedidoIn, user=Depends(current_user)) -> dict:
                 pid = res["processo_id"]
                 await emit("imagens", "a criar as imagens realistas")
                 try:
-                    im = await gerar_imagens(pid, user, ["perspetiva", "frente", "tardoz", "aerea"], True)
+                    im = await gerar_imagens(pid, user, None, True)
                     res["imagens"] = im["imagens"]
                 except Exception as e:  # noqa: BLE001
                     res["imagens_erro"] = str(getattr(e, "detail", e))[:200]

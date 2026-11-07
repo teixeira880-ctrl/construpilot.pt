@@ -164,7 +164,7 @@ def construir_cena(m: Dict[str, Any], fachada_sol: str = "frente") -> Tuple[Cena
         cena.quad((x - 1.2, y - 1.2, 0.0), (x + l + 1.2, y - 1.2, 0.0), (x + l + 1.2, y + w + 1.2, 0.0), (x - 1.2, y + w + 1.2, 0.0),
                   COR["lajeado"], 0)
         cena.quad((x, y, 0.01), (x + l, y, 0.01), (x + l, y + w, 0.01), (x, y + w, 0.01), COR["agua"], 0)
-    info = {"casa_bbox": bb, "terreno_bbox": (min(xs), min(ys), max(xs), max(ys))}
+    info = {"casa_bbox": bb, "terreno_bbox": (min(xs), min(ys), max(xs), max(ys)), "piscina": pi}
     return cena, info
 
 
@@ -194,7 +194,7 @@ def _telhado(cena: Cena, x0, y0, x1, y1, h, rh, cor, cor_parede):
 
 
 # ------------------------------------------------------------------ câmara e rasterização
-VISTAS = ("perspetiva", "frente", "tardoz", "aerea")
+VISTAS = ("perspetiva", "frente", "tardoz", "aerea", "piscina")
 
 
 def camara(info: Dict[str, Any], vista: str) -> Tuple[np.ndarray, np.ndarray, float]:
@@ -213,6 +213,14 @@ def camara(info: Dict[str, Any], vista: str) -> Tuple[np.ndarray, np.ndarray, fl
         olho = de(0, dist, 1.7)
     elif vista == "tardoz":   # do jardim de tardoz, a olhar para o pátio/ala
         olho = de(150, dist, 1.7)
+    elif vista == "piscina" and info.get("piscina"):   # do lado de lá da piscina, a olhar para a casa (foto de revista)
+        pi = info["piscina"]
+        px, py = float(pi["x_m"]) + float(pi["l_m"]) / 2, float(pi["y_m"]) + float(pi["w_m"]) / 2
+        vx, vy = px - cx, py - cy
+        n = math.hypot(vx, vy) or 1.0
+        d2 = max(n + float(pi["w_m"]) / 2 + 5.0, dist * 0.9)
+        olho = np.array([cx + vx / n * d2 + vy / n * 2.5, cy + vy / n * d2 - vx / n * 2.5, 1.6])
+        alvo = np.array([cx, cy, 2.0])
     elif vista == "aerea":
         olho = de(-35, dist * 1.15, dist * 0.75)
         alvo = np.array([cx, cy, 0.5])
@@ -222,7 +230,7 @@ def camara(info: Dict[str, Any], vista: str) -> Tuple[np.ndarray, np.ndarray, fl
 
 
 def rasterizar(cena: Cena, olho: np.ndarray, alvo: np.ndarray, fov_deg: float = 50.0, W: int = 1536, H: int = 1024,
-               sol: Tuple[float, float, float] = (0.45, -0.55, 0.70)) -> Tuple[Image.Image, np.ndarray]:
+               sol: Tuple[float, float, float] = (0.45, -0.55, 0.70), ambiente: float = 0.55) -> Tuple[Image.Image, np.ndarray]:
     fwd = alvo - olho
     fwd /= np.linalg.norm(fwd)
     right = np.cross(fwd, np.array([0.0, 0.0, 1.0]))
@@ -270,7 +278,7 @@ def rasterizar(cena: Cena, olho: np.ndarray, alvo: np.ndarray, fov_deg: float = 
         n /= nn
         if n @ (olho - tri[0]) < 0:
             n = -n
-        luz = 0.55 + 0.45 * max(0.0, float(n @ L))
+        luz = ambiente + (1 - ambiente) * max(0.0, float(n @ L))
         rgb = np.clip(np.array(cor) * luz, 0, 1)
         xmin, xmax = int(max(0, math.floor(sx.min()))), int(min(W - 1, math.ceil(sx.max())))
         ymin, ymax = int(max(0, math.floor(sy.min()))), int(min(H - 1, math.ceil(sy.max())))

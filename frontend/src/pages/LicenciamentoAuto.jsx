@@ -15,8 +15,11 @@ const ETAPA_LABEL = {
   verificacao: "Quadro de áreas, PDM, RGEU e RJUE", documentos: "Memória descritiva e peças", coerencia: "Controlo de coerência entre motores",
   imagens: "Imagens realistas da casa (3D, antes e depois)",
 };
-const TIPO_IMG = { fotorrealista: "Fotorrealista", exata: "Vista 3D exata", antes: "Antes", depois: "Depois", depois_esquema: "Depois (esquema à escala)" };
-const VISTA_IMG = { perspetiva: "perspetiva", frente: "frente", tardoz: "jardim", aerea: "aérea", aerea_orto: "vista de cima" };
+const TIPO_IMG = { fotorrealista: "Fotorrealista", exata: "Vista 3D exata", antes: "Antes", depois: "Depois", depois_esquema: "Depois (esquema à escala)",
+  implantacao: "Planta de implantação", montagem: "Montagem na sua foto" };
+const VISTA_IMG = { perspetiva: "perspetiva", frente: "frente", tardoz: "jardim", aerea: "aérea", aerea_orto: "vista de cima", piscina: "piscina",
+  perspetiva_entardecer: "ao entardecer", interior_sala: "sala", interior_cozinha: "cozinha", interior_suite: "suite",
+  interior_wc: "casa de banho", implantacao: "a cores", foto_terreno: "terreno" };
 const EXEMPLOS = [
   "Casa térrea em L com 200 m2 habitáveis, piscina e garagem exterior, terreno de 1500 m2, fachadas em granito e madeira, na Rua do Monte 7, Padim da Graça, Braga",
   "Moradia T3 de dois pisos estilo tradicional português com garagem, na Rua do Monte 7, Padim da Graça, Braga",
@@ -159,6 +162,19 @@ function Processo({ pid }) {
     try { await api.post(`/urbanismo-auto/processos/${pid}/imagens`, {}); await carregarImgs(); }
     catch (e) { setErro(e?.response?.data?.detail || "Não foi possível pedir as imagens."); }
   };
+  const fotoRef = useRef(null);
+  const enviarFoto = async (f) => {
+    if (!f) return;
+    setErro("");
+    const fd = new FormData();
+    fd.append("ficheiro", f);
+    try { await api.post(`/urbanismo-auto/processos/${pid}/foto-terreno`, fd); await gerarImgs(); }
+    catch (e) { setErro(e?.response?.data?.detail || "Não foi possível enviar a fotografia."); }
+  };
+  const aprovar = async (i, aprovada) => {
+    try { await api.post(`/urbanismo-auto/processos/${pid}/imagens/${i.id}/aprovar`, { aprovada }); await carregarImgs(); }
+    catch (e) { setErro(e?.response?.data?.detail || "Não foi possível guardar a aprovação."); }
+  };
   const mudarProjeto = async (body) => {
     setOcupado(true); setErro("");
     try {
@@ -252,25 +268,39 @@ function Processo({ pid }) {
       <Card className="p-4 space-y-3" data-testid="lic-auto-imagens">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="font-medium flex items-center gap-2"><ImageIcon className="h-4 w-4" />Imagens realistas</div>
-          <Button size="sm" onClick={gerarImgs} disabled={imgs.job?.estado === "a_correr"} data-testid="lic-auto-gerar-imagens">
-            {imgs.job?.estado === "a_correr" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
-            {imgs.imagens.length ? "Atualizar imagens" : "Criar imagens realistas"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <input ref={fotoRef} type="file" accept="image/*" className="hidden" data-testid="lic-auto-foto-input"
+              onChange={e => { enviarFoto(e.target.files?.[0]); e.target.value = ""; }} />
+            <Button size="sm" variant="outline" onClick={() => fotoRef.current?.click()} disabled={imgs.job?.estado === "a_correr"}
+              data-testid="lic-auto-foto-terreno">Enviar foto do terreno</Button>
+            <Button size="sm" onClick={gerarImgs} disabled={imgs.job?.estado === "a_correr"} data-testid="lic-auto-gerar-imagens">
+              {imgs.job?.estado === "a_correr" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
+              {imgs.imagens.length ? "Atualizar imagens" : "Criar imagens realistas"}
+            </Button>
+          </div>
         </div>
-        {imgs.job?.estado === "a_correr" && <p className="text-sm text-muted-foreground">A criar as imagens (1 a 3 minutos)…</p>}
+        <p className="text-xs text-muted-foreground">Exteriores de dia e ao entardecer, piscina, vista aérea, interiores (sala, cozinha, suite,
+          casa de banho) e planta a cores. Com uma fotografia do terreno vazio (telemóvel ou drone), criamos também a montagem da casa nessa foto.</p>
+        {imgs.job?.estado === "a_correr" && <p className="text-sm text-muted-foreground">A criar as imagens (2 a 5 minutos)…</p>}
         {imgs.job?.estado === "erro" && <p className="text-sm text-red-600">{imgs.job.erro}</p>}
         {imgs.desatualizadas && imgs.imagens.length > 0 && <p className="text-sm text-amber-700">O projeto mudou depois destas imagens: atualize-as para as juntar ao processo.</p>}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {imgs.imagens.filter(i => i.tipo !== "exata" || !imgs.imagens.some(j => j.vista === i.vista && j.tipo === "fotorrealista" && j.verificada)).map(i => (
-            <button type="button" key={i.id} onClick={() => setZoom(i)} className="block text-left border rounded overflow-hidden hover:shadow">
-              <AuthImg path={`/urbanismo-auto/processos/${pid}/imagens/${i.id}.jpg`} alt={`${TIPO_IMG[i.tipo]} — ${VISTA_IMG[i.vista] || i.vista}`} />
+            <div key={i.id} className="border rounded overflow-hidden hover:shadow" data-testid={`lic-auto-img-${i.tipo}`}>
+              <button type="button" onClick={() => setZoom(i)} className="block w-full text-left">
+                <AuthImg path={`/urbanismo-auto/processos/${pid}/imagens/${i.id}.jpg`} alt={`${TIPO_IMG[i.tipo]} — ${VISTA_IMG[i.vista] || i.vista}`} />
+              </button>
               <div className="p-2 text-xs flex items-center justify-between gap-2">
                 <span>{TIPO_IMG[i.tipo] || i.tipo} · {VISTA_IMG[i.vista] || i.vista}</span>
                 {i.tipo === "fotorrealista" && (i.verificada
                   ? <span className="text-emerald-700">✓ geometria verificada</span>
                   : <span className="text-amber-700">⚠ comparar com a vista exata</span>)}
+                {i.tipo === "montagem" && (i.aprovada
+                  ? <button type="button" className="text-emerald-700 underline" onClick={() => aprovar(i, false)}>✓ no dossier (retirar)</button>
+                  : <button type="button" className="text-blue-700 underline" onClick={() => aprovar(i, true)}
+                      data-testid="lic-auto-aprovar-montagem">Aprovar para o dossier</button>)}
               </div>
-            </button>
+            </div>
           ))}
         </div>
         {zoom && (

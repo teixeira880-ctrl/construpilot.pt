@@ -34,3 +34,25 @@ supervisorctl restart backend frontend
 
 ## Rollback
 `git revert -m 1 <merge>` e redeploy. As alterações ao motor existente são compatíveis (83 testes antigos do licenciamento aprovados).
+
+## Atualização — nível de imagens «promotor imobiliário» (referências do cliente)
+
+Conjunto gerado por omissão (POST /imagens sem corpo, `/dossier-completo`, Assistente e Aurora):
+perspetiva, piscina, frente, jardim, aérea, perspetiva ao entardecer, interiores (sala, cozinha, suite, I.S. da suite),
+planta de implantação humanizada (exata, sem IA), antes/depois DGT e — se o cliente enviar uma foto do terreno —
+montagem sobre essa fotografia (só entra no dossier depois de aprovada pelo cliente).
+
+Regras mantidas: geometria sempre da vista exata; fotorrealistas verificadas automaticamente; interiores não verificados
+ficam fora do dossier; ampliação registada (`qualidade.ampliada`), nunca apresentada como resolução nativa.
+
+Novas rotas: `POST /api/urbanismo-auto/processos/{pid}/foto-terreno` (multipart `ficheiro`, ≤15 MB, reescrita como JPEG
+limpo, armazenamento privado) · `POST /api/urbanismo-auto/processos/{pid}/imagens/{iid}/aprovar` `{aprovada}`.
+
+Variáveis opcionais (sem novo deploy para afinar):
+- `URB_IMG_GEMINI_MODEL` — modelo de imagem Gemini (por omissão o do image_studio). Se a chave Emergent der acesso a um
+  modelo de imagem superior, indicá-lo aqui — a confirmar no ambiente de teste, não assumido.
+- `URB_IMG_CANDIDATOS` (2) — candidatos por vista, escolhido o de melhor geometria/nitidez. Custo ≈ 10 × N + 2 imagens por processo.
+- `URB_IMG_LIMIAR_GEOMETRIA` (0.45) · `URB_IMG_LIMIAR_INTERIOR` (0.40) · `URB_IMG_LARGURA_MIN` (1920).
+
+A validar no ambiente de teste com a chave real: qualidade das saídas Gemini face às referências, limiares de geometria
+(interiores sobretudo) e tempo total (estimado 2 a 5 min com 3 pedidos em paralelo).
