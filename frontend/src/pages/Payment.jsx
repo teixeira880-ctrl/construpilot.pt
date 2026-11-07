@@ -68,7 +68,7 @@ export function PaymentSuccess() {
             <Button onClick={() => navigate("/dashboard")} data-testid="ps-cta-dashboard" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
               Ir para o painel de controlo <ArrowRight className="h-4 w-4" />
             </Button>
-            <Link to="/estimateur"><Button variant="outline" className="rounded-sm">Criar um projeto</Button></Link>
+            <Link to="/estimation"><Button variant="outline" className="rounded-sm">Criar um projeto</Button></Link>
           </div>
         </>
       )}

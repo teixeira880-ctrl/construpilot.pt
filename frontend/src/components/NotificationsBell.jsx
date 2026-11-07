@@ -81,7 +81,7 @@ export function NotificationsBell() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon"
-                data-testid="notif-bell-btn"
+                data-testid="notif-bell-btn" aria-label="Notificações"
                 className="relative rounded-sm h-9 w-9">
           <Bell className="h-4 w-4" />
           {unread > 0 && (

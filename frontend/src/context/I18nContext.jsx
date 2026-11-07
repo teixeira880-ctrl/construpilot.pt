@@ -1694,7 +1694,7 @@ export function LangToggle({ testId = "lang-toggle" }) {
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={onBtnKey}
-        aria-label="Mudar idioma"
+        aria-label={`Mudar idioma: ${current.code_label}`}
         aria-haspopup="menu"
         aria-expanded={open}
         data-testid={testId}

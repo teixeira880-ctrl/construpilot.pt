@@ -36,7 +36,7 @@ export function StarterChecklist({ status, isPro = true }) {
             <p className="text-xs text-muted-foreground">Etapas reais, marcadas automaticamente assim que são feitas.</p>
           </div>
         </div>
-        <button onClick={close} data-testid="checklist-dismiss" className="text-muted-foreground hover:text-foreground" title="Ocultar"><X className="h-4 w-4" /></button>
+        <button type="button" aria-label="Ocultar a lista de início" onClick={close} data-testid="checklist-dismiss" className="text-muted-foreground hover:text-foreground" title="Ocultar"><X className="h-4 w-4" /></button>
       </div>
       <div className="mt-4 h-1.5 w-full rounded-full bg-border overflow-hidden">
         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(doneCount / items.length) * 100}%` }} />

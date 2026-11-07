@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SeoProvider } from "@/components/SEO";
 import "@/index.css";
 import App from "@/App";
+import "@/styles/brand-v2.css";
 
 // Neutralise l'erreur bénigne "ResizeObserver loop ..." qui déclenche l'overlay
 // d'erreur CRA en dev et bloque parfois les clics (aucun impact fonctionnel).

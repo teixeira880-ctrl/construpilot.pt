@@ -164,7 +164,7 @@ function QuoteCard({ q }) {
           PDF
         </Button>
         {!q.signed && q.signature_token && (
-          <Link to={`/devis/signer/${q.signature_token}`} data-testid={`portal-quote-sign-${q.log_id}`}>
+          <Link to={`/sign/${q.signature_token}`} data-testid={`portal-quote-sign-${q.log_id}`}>
             <Button size="sm" className="rounded-sm gap-1">
               Assinar <ExternalLink className="h-3 w-3" />
             </Button>

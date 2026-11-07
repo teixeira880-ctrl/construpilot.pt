@@ -40,7 +40,7 @@ export default function ProOffer() {
   const trialDays = flags?.trial_days || 7;
 
   const subscribe = async (plan) => {
-    if (!user) { toast.info("Crie a sua conta para iniciar a experiência Pro"); navigate("/register?intent=pro"); return; }
+    if (!user) { toast.info("Crie a sua conta para iniciar a experiência Pro"); navigate("/inscription?signup=1&intent=pro"); return; }
     setBusy(plan.plan_id);
     try {
       const { data } = await api.post("/billing/checkout", { plan_id: plan.plan_id, origin_url: window.location.origin });
@@ -75,7 +75,7 @@ export default function ProOffer() {
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button size="lg" className="rounded-sm gap-2" data-testid="pro-hero-cta"
-                    onClick={() => proPlans[0] ? subscribe(proPlans[0]) : navigate("/register?intent=pro")}>
+                    onClick={() => proPlans[0] ? subscribe(proPlans[0]) : navigate("/inscription?signup=1&intent=pro")}>
               Iniciar a experiência gratuita ({trialDays} dias) <ArrowRight className="h-5 w-5" />
             </Button>
             <a href="#offre-pro" className="text-sm font-medium underline underline-offset-4" data-testid="pro-see-plans">Ver as ofertas</a>
@@ -162,7 +162,7 @@ export default function ProOffer() {
         </div>
         <div className="text-center mt-2">
           <Button size="lg" className="rounded-sm gap-2" data-testid="pro-bottom-cta"
-                  onClick={() => proPlans[0] ? subscribe(proPlans[0]) : navigate("/register?intent=pro")}>
+                  onClick={() => proPlans[0] ? subscribe(proPlans[0]) : navigate("/inscription?signup=1&intent=pro")}>
             <Sparkles className="h-5 w-5" /> Começar agora
           </Button>
           <p className="mt-2 text-xs text-muted-foreground">Está com dúvidas? <a href="/planos" className="underline underline-offset-4">Comparar todos os planos</a></p>

@@ -37,7 +37,7 @@ export default function HelpChatbot() {
   return (
     <>
       {!open && (
-        <button onClick={() => setOpen(true)} data-testid="help-chatbot-open"
+        <button type="button" aria-label={t("help.open")} onClick={() => setOpen(true)} data-testid="help-chatbot-open"
           className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 hover:scale-105 transition-transform">
           <MessageCircle className="h-5 w-5" />
           <span className="text-sm font-semibold hidden sm:inline">{t("help.open")}</span>
