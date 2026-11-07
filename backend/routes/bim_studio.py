@@ -129,6 +129,14 @@ async def set_prefs(body: PrefsIn, user=Depends(viewer)):
     return {"profile": body.profile}
 
 
+@router.get("/library")
+async def bim_library(user=Depends(viewer)):
+    """Artigos da biblioteca da empresa (preços definidos pela empresa — nunca inventados)."""
+    items = await _library(user)
+    return {"items": [{k: i.get(k) for k in ("item_id", "designation", "category", "unit", "unit_price_ht",
+                                              "vat_rate", "type")} for i in items]}
+
+
 # ── Upload ───────────────────────────────────────────────────────────────────
 async def _read_limited(file: UploadFile, limit: int) -> bytes:
     buf = io.BytesIO()
@@ -659,15 +667,28 @@ async def model_audit(model_id: str, user=Depends(viewer)):
 
 # ── Arranque / paragem (chamados pelo server.py) ────────────────────────────
 async def on_startup():
+    """Não bloqueia o arranque (readiness do deploy): índices e workers em segundo plano."""
     if not config.enabled():
         return
-    from bim_studio.store import ensure_indexes
-    try:
-        await ensure_indexes()
-    except Exception:  # noqa: BLE001
-        import logging
-        logging.getLogger("bim_studio").exception("BIM índices")
-    await jobs.start()
+    import asyncio
+    import logging
+
+    async def _boot():
+        from bim_studio.store import ensure_indexes
+        try:
+            await ensure_indexes()
+        except Exception:  # noqa: BLE001
+            logging.getLogger("bim_studio").exception("BIM índices")
+        try:
+            await jobs.start()
+        except Exception:  # noqa: BLE001
+            logging.getLogger("bim_studio").exception("BIM workers")
+
+    global _BOOT_TASK
+    _BOOT_TASK = asyncio.create_task(_boot())
+
+
+_BOOT_TASK = None
 
 
 async def on_shutdown():

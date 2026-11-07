@@ -153,23 +153,31 @@ def _confidence(g: dict) -> str:
 
 
 # ── Sugestões de artigos ─────────────────────────────────────────────────────
+_STOP = {"com", "para", "sobre", "dos", "das", "tipo", "interior", "exterior", "piso", "nivel"}
+
+
 def suggest(group: dict, items: list[dict], top: int = 3) -> list[dict]:
-    words = set(CATEGORY_WORDS.get(group["category"], [])) | tokens(group["label"]) | tokens(group.get("material") or "")
+    """Pontuação explicável: nome/tipo/material do grupo pesam mais do que as palavras genéricas
+    da categoria; palavras típicas de OUTRA categoria (ex.: "janela" num grupo de portas) penalizam."""
+    cat = group["category"]
+    cat_words = set(CATEGORY_WORDS.get(cat, []))
+    specific = (tokens(group["label"]) | tokens(group.get("material") or "")) - _STOP
+    other = set().union(*(set(w) for c, w in CATEGORY_WORDS.items() if c != cat)) - cat_words - specific
     available = {k for k, v in group["totals"].items() if v > 0}
     scored = []
     for it in items:
         itoks = tokens(it.get("designation", "")) | tokens(it.get("category", ""))
-        overlap = words & itoks
-        if not overlap:
+        sp, cw, ot = specific & itoks, (cat_words & itoks) - specific, other & tokens(it.get("designation", ""))
+        if not sp and not cw:
             continue
+        score = 2.0 * len(sp) + 0.5 * len(cw) - 0.75 * len(ot)
+        reasons = [f"palavras em comum: {', '.join(sorted(sp | cw))}"]
+        if ot:
+            reasons.append(f"refere outro tipo de elemento ({', '.join(sorted(ot))})")
         uk = unit_key(it.get("unit", ""))
-        score = len(overlap) * 1.0
-        reasons = [f"palavras em comum: {', '.join(sorted(overlap))}"]
         if uk and uk in available:
-            score += 1.5
+            score += 1.5 + (0.5 if uk == group["primary_key"] else 0)
             reasons.append(f"unidade compatível ({it.get('unit')})")
-            if uk == group["primary_key"]:
-                score += 0.5
         else:
             score -= 2
             reasons.append(f"unidade {it.get('unit')!r} sem quantidade BIM correspondente")

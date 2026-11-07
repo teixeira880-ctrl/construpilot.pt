@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_NEW_OR_CHANGED = [
     "backend/bim_studio/*", "backend/routes/bim_studio.py", "backend/tests/test_bim/*",
     "frontend/src/pages/BimStudio.jsx", "frontend/src/components/bim/*", "frontend/tests/bim/*",
-    "docs/bim_studio/*", "scripts/bim_studio/*",
+    "docs/bim_studio/*", "scripts/bim_studio/*", "frontend/jest.bim.config.cjs",
 ]
 # Ficheiros existentes onde só se aceitam linhas acrescentadas com estas palavras
 SHARED_ADDITIVE = {

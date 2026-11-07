@@ -517,3 +517,19 @@ def test_french_platform_untouched():
     script = os.path.join(os.path.dirname(root), "scripts", "bim_studio", "check_isolation.py")
     out = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=120)
     assert out.returncode == 0, out.stdout + out.stderr
+
+
+def test_suggestions_prefer_specific_match():
+    from routes.library import STARTER_CATALOGUE
+    items = [dict(x, item_id=f"i{n}") for n, x in enumerate(STARTER_CATALOGUE)]
+
+    def g(label, cat, mat, totals):
+        return {"label": label, "category": cat, "material": mat, "totals": totals, "primary_key": bud.PRIMARY[cat]}
+    top = lambda grp: bud.suggest(grp, items)[0]["designation"]  # noqa: E731
+    assert top(g("Parede Norte", "paredes", "Bloco de betão", {"area": 28})) == "Parede de bloco de cimento 20 cm"
+    assert top(g("Divisória interior", "paredes", "Gesso cartonado", {"area": 14})) == "Divisória em pladur sobre estrutura metálica"
+    assert top(g("Porta de entrada", "portas", None, {"count": 1})) == "Porta interior (kit completo)"
+    assert top(g("Janela sala", "janelas", None, {"count": 1})) == "Janela PVC vidro duplo"
+    assert top(g("Laje térrea", "lajes", "Betão C25/30", {"area": 80})) == "Laje de betão armado"
+    # unidade sem medição BIM correspondente (forfait) nunca é a primeira sugestão
+    assert all(s["unit"] != "forfait" for s in bud.suggest(g("Parede", "paredes", None, {"area": 1}), items)[:1])
