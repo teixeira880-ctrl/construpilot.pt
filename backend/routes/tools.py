@@ -28,9 +28,25 @@ async def run_calculator(key: str, body: CalcIn):
         raise HTTPException(status_code=404, detail="Calculadora desconhecida")
     from engines.calculator_validation import run_validated
     try:
-        return run_validated(key, body.params)
+        return _price_status(run_validated(key, body.params))
     except ValueError as exc:
-        raise HTTPException(422, str(exc)) from None
+        raise HTTPException(422, {"message": str(exc), "field": getattr(exc, "field", None)}) from None
+
+
+def _price_status(result: dict) -> dict:
+    """Auditoria V2 : distinguir preço desconhecido de preço zero.
+    Uma calculadora sem tabela de preços devolve estimated_budget = None
+    (nunca 0 €) e o estado explícito dos preços."""
+    mats = result.get("materials") or []
+    budget = result.get("estimated_budget")
+    if budget is None:
+        result["estimated_budget"] = None
+        result["price_status"] = {"status": "unavailable", "priced_items": 0, "items": len(mats),
+                                  "message": "Preços indisponíveis para estes materiais : quantidades calculadas, orçamento a completar."}
+    else:
+        result["price_status"] = {"status": "indicative", "priced_items": len(mats), "items": len(mats),
+                                  "message": "Preços indicativos por omissão (não são preços de fornecedor)."}
+    return result
 
 
 class CalcPdfIn(BaseModel):
@@ -38,7 +54,7 @@ class CalcPdfIn(BaseModel):
     inputs: list[dict] = []
     results: list[dict] = []
     materials: list[dict] = []
-    estimated_budget: float = 0
+    estimated_budget: float | None = None
     priced_lines: list[dict] = []       # [{name, quantity, supplier, unit_price, total}]
     priced_total: float | None = None   # total devis prix fournisseurs
 
@@ -137,8 +153,12 @@ async def calculator_pdf(body: CalcPdfIn):
             f'Total do orçamento de materiais (preços de fornecedores): <b>{body.priced_total or 0:,.2f} €</b>'.replace(",", " "),
             ParagraphStyle("bud2", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
     else:
-        flow.append(Paragraph(f'Orçamento de materiais estimado: <b>{body.estimated_budget:,.0f} €</b>'.replace(",", " "),
-                              ParagraphStyle("bud", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
+        if body.estimated_budget is None:
+            flow.append(Paragraph('Orçamento de materiais: <b>preços indisponíveis</b> — quantidades calculadas, preços a completar.',
+                                  ParagraphStyle("bud", parent=styles["Normal"], textColor=GREY, fontSize=12)))
+        else:
+            flow.append(Paragraph(f'Orçamento de materiais estimado (preços indicativos): <b>{body.estimated_budget:,.0f} €</b>'.replace(",", " "),
+                                  ParagraphStyle("bud", parent=styles["Normal"], textColor=GREEN, fontSize=13)))
     flow.append(Spacer(1, 16))
     flow.append(Paragraph(
         "Estimativa indicativa com margens de segurança incluídas. As quantidades podem variar consoante a execução e as condições de obra. Verifique antes de encomendar. — Gerado pelo ConstruPilot · construpilot.pt",
@@ -156,7 +176,7 @@ class ShareCalcIn(BaseModel):
     inputs: list[dict] = []
     results: list[dict] = []
     materials: list[dict] = []
-    estimated_budget: float = 0
+    estimated_budget: float | None = None
     priced_lines: list[dict] = []
     priced_total: float | None = None
     contractor: str = ""

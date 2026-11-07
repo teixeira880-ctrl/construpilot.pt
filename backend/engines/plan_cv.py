@@ -454,13 +454,53 @@ def detect_all_rooms(png_b64: str,
 
     # Keep top N largest
     candidates.sort(key=lambda t: t[0], reverse=True)
+    candidates, dropped = _dedupe_nested(candidates)
     rooms = []
     for area, c, bbox in candidates[:max_rooms]:
         room = _contour_to_room(c, area, bbox, simplify_epsilon_px)
         if room:
             rooms.append(room)
 
-    return {"image_width": w, "image_height": h, "rooms": rooms}
+    return {"image_width": w, "image_height": h, "rooms": rooms, "dropped": dropped}
+
+
+def _dedupe_nested(candidates: list[tuple]) -> tuple[list[tuple], list[dict]]:
+    """Auditoria V2 (07/11/2026) : uma parede desenhada com duas linhas dá dois
+    contornos para a MESMA divisão (face exterior + face interior), e o contorno
+    exterior do edifício envolve todas as divisões. Antes, todos eram importados
+    (uma divisão de 12 m² → 24,87 m²). Regras determinísticas :
+    - um contorno cujo interior já está coberto (≥ 70 %) por divisões mais
+      pequenas detetadas dentro dele é um INVÓLUCRO (face exterior de parede ou
+      contorno do edifício) → descartado, mantêm-se as faces interiores ;
+    - regiões minúsculas (< 1 % da maior divisão) → letras / traços de cota.
+    Cada descarte é devolvido com o motivo (nada desaparece em silêncio)."""
+    dropped: list[dict] = []
+
+    def inside(inner, outer) -> bool:
+        _, ci, _ = outer
+        _, _, (xj, yj, wj, hj) = inner
+        _, _, (xi, yi, wi, hi) = outer
+        if not (xj >= xi - 2 and yj >= yi - 2 and xj + wj <= xi + wi + 2 and yj + hj <= yi + hi + 2):
+            return False
+        return cv2.pointPolygonTest(ci, (float(xj + wj / 2.0), float(yj + hj / 2.0)), False) >= 0
+
+    kept: list[tuple] = []
+    for cand in sorted(candidates, key=lambda t: t[0]):          # do mais pequeno ao maior
+        children = [k for k in kept if k[0] < cand[0] and inside(k, cand)]
+        covered = sum(k[0] for k in children)
+        if children and covered >= 0.7 * cand[0]:
+            dropped.append({"reason": "envelope_of_detected_rooms", "area_px": float(cand[0]),
+                            "children": len(children)})
+            continue
+        kept.append(cand)
+    kept.sort(key=lambda t: t[0], reverse=True)
+    if kept:
+        biggest = max(a for a, _, _ in kept)
+        for a, _, _ in kept:
+            if a < 0.01 * biggest:
+                dropped.append({"reason": "too_small_relative", "area_px": float(a)})
+        kept = [c for c in kept if c[0] >= 0.01 * biggest]
+    return kept, dropped
 
 
 # ============ DESKEW (perspective correction photo smartphone) ============

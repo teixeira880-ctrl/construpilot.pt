@@ -114,6 +114,9 @@ def _extract_pdf_text(b64: str) -> str:
     return "\n".join(parts).strip()
 
 
+from engines.quote_grounding import ground_quote_analysis as _ground_quote_analysis  # noqa: E402
+
+
 @router.post("/quotes/analyse")
 async def analyse_quote(body: QuoteIn, user=Depends(optional_user)):
     reference = None
@@ -138,6 +141,7 @@ async def analyse_quote(body: QuoteIn, user=Depends(optional_user)):
     if not text and not b64:
         raise HTTPException(status_code=400, detail="Forneça um texto, uma imagem ou um PDF")
     result = await ai.analyse_quote(text, b64, reference)
+    result = _ground_quote_analysis(result, reference)
     doc = {"quote_id": f"qt_{uuid.uuid4().hex[:10]}",
            "user_id": user["user_id"] if user else None, "project_id": body.project_id,
            "company": body.company or result.get("company"), "analysis": result,

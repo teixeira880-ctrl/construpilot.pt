@@ -4,6 +4,20 @@ import math
 from engines.calculators import CALCULATORS
 
 
+class FieldError(ValueError):
+    """Erro ligado a um campo preciso (mostrado junto do campo na interface)."""
+
+    def __init__(self, field: str | None, message: str):
+        super().__init__(message)
+        self.field = field
+
+
+# Auditoria V2 : dimensões que não podem ser zero (um comprimento 0 dava um
+# resultado vazio sem explicação).
+_STRICT_POSITIVE = {"length", "width", "height", "area", "thickness_cm", "thickness_mm",
+                    "projected_m2", "wall_height_m"}
+
+
 def run_validated(key: str, params: dict, *, require_inputs: bool = False) -> dict:
     cfg = CALCULATORS.get(key)
     if not cfg:
@@ -28,37 +42,37 @@ def run_validated(key: str, params: dict, *, require_inputs: bool = False) -> di
             defaults.append(name)
         if field["type"] == "number":
             if isinstance(value, bool):
-                raise ValueError(f"{field['label']} : número esperado")
+                raise FieldError(name, f"{field['label']} : número esperado")
             try:
                 value = float(value)
             except (TypeError, ValueError):
-                raise ValueError(f"{field['label']} : número esperado") from None
+                raise FieldError(name, f"{field['label']} : número esperado") from None
             if not math.isfinite(value) or value < 0 or value > 1_000_000:
-                raise ValueError(f"{field['label']} : valor positivo finito obrigatório (máximo 1 000 000)")
-            if name in positive and value <= 0:
-                raise ValueError(f"{field['label']} deve ser superior a zero")
+                raise FieldError(name, f"{field['label']} : valor positivo finito obrigatório (máximo 1 000 000)")
+            if (name in positive or name in _STRICT_POSITIVE) and value <= 0:
+                raise FieldError(name, f"{field['label']} deve ser superior a zero")
             if name in integers:
                 if not value.is_integer():
-                    raise ValueError(f"{field['label']} : número inteiro obrigatório")
+                    raise FieldError(name, f"{field['label']} : número inteiro obrigatório")
                 value = int(value)
             if name == "pitch_deg" and value >= 89:
-                raise ValueError("A inclinação deve estar entre 0 e 89 graus exclusive")
+                raise FieldError(name, "A inclinação deve estar entre 0 e 89 graus exclusive")
         elif field["type"] == "boolean":
             if type(value) is bool:
                 pass
             elif value in ("true", "false"):
                 value = value == "true"
             else:
-                raise ValueError(f"{field['label']} : verdadeiro ou falso esperado")
+                raise FieldError(name, f"{field['label']} : verdadeiro ou falso esperado")
         elif field["type"] == "select" and value not in field.get("options", []):
-            raise ValueError(f"{field['label']} : opção desconhecida")
+            raise FieldError(name, f"{field['label']} : opção desconhecida")
         args[name] = value
     if key == "paint":  # Lot 59 : ouvertures > murs → « 0 m² » silencieux
         _walls = 2 * (args.get("length", 0) + args.get("width", 0)) * args.get("height", 0)
         if args.get("doors", 0) * 2.0 + args.get("windows", 0) * 1.5 > _walls:
             raise ValueError('A área das portas e janelas ultrapassa a das paredes; verifique as dimensões e o número de vãos')
     if key == "roof_facade" and args.get("openings_m2", 0) > args.get("wall_perimeter_m", 0) * args.get("wall_height_m", 0):
-        raise ValueError("A área dos vãos ultrapassa a da fachada")
+        raise FieldError("openings_m2", "A área dos vãos ultrapassa a da fachada")
     try:
         result = cfg["fn"](**args)
     except (TypeError, ValueError, ZeroDivisionError, OverflowError):

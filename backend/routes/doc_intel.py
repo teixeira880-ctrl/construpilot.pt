@@ -109,6 +109,7 @@ async def import_document(file: UploadFile = File(...),
         existing = await db.doc_imports.find_one(
             {**_scope(user), "content_sha256": sha, "status": "done"}, {"_id": 0})
         if existing:
+            existing = await _upgrade_arithmetic(existing)
             return {"reused": True, **existing}
 
     import_id = "doc_" + uuid.uuid4().hex[:12]
@@ -144,6 +145,7 @@ async def import_document(file: UploadFile = File(...),
                 raise RuntimeError("Leitura IA (OCR) não configurada")
             ocr_data = await gemini_ocr.ocr(raw, mime, filename)
             _merge_ocr(result, ocr_data)
+            result["arithmetic"] = doc_intel.ocr_arithmetic(result.get("ocr"), vat_rate)
         else:
             result = doc_intel.analyse(raw, filename, vat_rate=vat_rate)
             # OCR automatique des pages PDF scannées (sans texte natif).
@@ -152,6 +154,8 @@ async def import_document(file: UploadFile = File(...),
                 try:
                     ocr_data = await gemini_ocr.ocr(raw, "application/pdf", filename)
                     _merge_ocr(result, ocr_data)
+                    if ((result.get("arithmetic") or {}).get("summary") or {}).get("status") == "not_run":
+                        result["arithmetic"] = doc_intel.ocr_arithmetic(result.get("ocr"), vat_rate)
                 except Exception as exc:  # pragma: no cover
                     result.setdefault("warnings", []).append(
                         {"type": "ocr", "message": f'OCR indisponível: {type(exc).__name__}'})
@@ -225,6 +229,35 @@ async def get_import(import_id: str, user=Depends(current_user)) -> dict:
     doc = await db.doc_imports.find_one({**_scope(user), "import_id": import_id}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Análise não encontrada")
+    return await _upgrade_arithmetic(doc)
+
+
+async def _upgrade_arithmetic(doc: dict) -> dict:
+    """Análises antigas (antes da auditoria V2) : PDF/imagens sem controlo
+    aritmético → recalcular uma vez, de forma determinística, e guardar."""
+    res = doc.get("result") or {}
+    arith = res.get("arithmetic") or {}
+    if doc.get("status") != "done" or (arith.get("summary") or {}).get("status"):
+        return doc
+    try:
+        vat = (arith.get("summary") or {}).get("vat_rate")
+        fmt = res.get("format")
+        if fmt == "xlsx":
+            new = doc_intel.finalize_arithmetic(doc_intel.arithmetic_check(res.get("lines") or [], vat), {}, vat, "xlsx")
+        elif fmt == "pdf":
+            new = doc_intel.pdf_arithmetic(res, vat)
+            if new["summary"]["status"] == "not_run" and res.get("ocr"):
+                new = doc_intel.ocr_arithmetic(res.get("ocr"), vat)
+        elif fmt == "image":
+            new = doc_intel.ocr_arithmetic(res.get("ocr"), vat)
+        else:
+            return doc
+        res["arithmetic"] = new
+        doc["result"] = res
+        await db.doc_imports.update_one({"import_id": doc["import_id"]},
+                                        {"$set": {"result.arithmetic": new, "updated_at": _now()}})
+    except Exception:  # pragma: no cover — nunca bloquear a leitura
+        pass
     return doc
 
 
@@ -367,7 +400,7 @@ async def correct_line_qty(import_id: str, line_id: str, body: LineQtyIn,
         amt = round(float(body.qty) * float(pu), 2)
         line["amount"] = {"value": amt, "status": "ok", "raw": str(amt), "recomputed": True}
     vat = ((result.get("arithmetic") or {}).get("summary") or {}).get("vat_rate")
-    result["arithmetic"] = doc_intel.arithmetic_check(lines, vat)
+    result["arithmetic"] = doc_intel.finalize_arithmetic(doc_intel.arithmetic_check(lines, vat), {}, vat, "xlsx")
     await db.doc_imports.update_one(
         {"import_id": import_id}, {"$set": {"result": result, "updated_at": _now()}})
     return {"ok": True, "line_id": line_id, "qty": float(body.qty), "old_qty": old,
@@ -430,7 +463,7 @@ async def plan_reconcile_apply_all(import_id: str, body: PlanReconcileIn,
 
     if corrected:
         vat = ((result.get("arithmetic") or {}).get("summary") or {}).get("vat_rate")
-        result["arithmetic"] = doc_intel.arithmetic_check(lines, vat)
+        result["arithmetic"] = doc_intel.finalize_arithmetic(doc_intel.arithmetic_check(lines, vat), {}, vat, "xlsx")
         await db.doc_imports.update_one(
             {"import_id": import_id}, {"$set": {"result": result, "updated_at": _now()}})
 

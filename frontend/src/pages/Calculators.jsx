@@ -73,6 +73,7 @@ export default function Calculators() {
     catch { return []; }
   });
   const [busy, setBusy] = useState(false);
+  const [fieldErr, setFieldErr] = useState(null); // {field, message}
   const [busyPdf, setBusyPdf] = useState(false);
   const [addingQuote, setAddingQuote] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
@@ -102,11 +103,19 @@ export default function Calculators() {
   const run = async () => {
     setBusy(true);
     try {
+      setFieldErr(null);
       const { data } = await api.post(`/calculators/${active.key}`, { params });
       setResult(data);
       setOptim(null);
       setCompare(null);
-    } catch { toast.error("Cálculo impossível"); }
+    } catch (err) {
+      // Auditoria V2 : explicar o erro junto do campo, conservar os dados introduzidos.
+      const d = err?.response?.data?.detail;
+      const message = typeof d === "string" ? d : d?.message || "Cálculo impossível : verifique os valores introduzidos.";
+      setFieldErr({ field: typeof d === "object" ? d?.field : null, message });
+      setResult(null);
+      toast.error(message);
+    }
     finally { setBusy(false); }
   };
 
@@ -121,7 +130,7 @@ export default function Calculators() {
           .then(({ data }) => ({
             format: cfg.label(v),
             metric: data.results.find((r) => cfg.metric.match.test(r.label))?.value ?? "—",
-            budget: data.estimated_budget,
+            budget: data.estimated_budget ?? null,
           }))
       ));
       setCompare({ rows: runs, cfg });
@@ -332,28 +341,38 @@ export default function Calculators() {
         <div className="surface p-6 grid gap-5 h-fit" data-testid="calculator-form">
           {active.fields.map((f) => (
             <div key={f.name} className="grid gap-2">
-              <Label>{f.label}</Label>
+              <Label htmlFor={`calc-input-${f.name}`} id={`calc-label-${f.name}`}>{f.label}</Label>
               {f.type === "select" ? (
                 <Select value={String(params[f.name] ?? "")} onValueChange={(v) => setParams({ ...params, [f.name]: v })}>
-                  <SelectTrigger className="rounded-sm h-11" data-testid={`calc-field-${f.name}`}><SelectValue /></SelectTrigger>
+                  <SelectTrigger id={`calc-input-${f.name}`} aria-labelledby={`calc-label-${f.name}`} className="rounded-sm h-11" data-testid={`calc-field-${f.name}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {f.options.map((o) => <SelectItem key={o} value={o}>{o.replace(/_/g, " ")}</SelectItem>)}
                   </SelectContent>
                 </Select>
               ) : f.type === "boolean" ? (
                 <Switch
+                  id={`calc-input-${f.name}`} aria-labelledby={`calc-label-${f.name}`}
                   checked={!!params[f.name]} data-testid={`calc-field-${f.name}`}
                   onCheckedChange={(v) => setParams({ ...params, [f.name]: v })}
                 />
               ) : (
                 <Input
-                  type="number" step="any" value={params[f.name] ?? ""} data-testid={`calc-field-${f.name}`}
-                  onChange={(e) => setParams({ ...params, [f.name]: e.target.value })}
-                  className="rounded-sm h-11 num"
+                  id={`calc-input-${f.name}`} type="number" step="any" min="0" inputMode="decimal"
+                  value={params[f.name] ?? ""} data-testid={`calc-field-${f.name}`}
+                  aria-invalid={fieldErr?.field === f.name || undefined}
+                  aria-describedby={fieldErr?.field === f.name ? `calc-err-${f.name}` : undefined}
+                  onChange={(e) => { setParams({ ...params, [f.name]: e.target.value }); if (fieldErr?.field === f.name) setFieldErr(null); }}
+                  className={`rounded-sm h-11 num ${fieldErr?.field === f.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                 />
+              )}
+              {fieldErr?.field === f.name && (
+                <p id={`calc-err-${f.name}`} role="alert" className="text-xs text-red-600" data-testid={`calc-error-${f.name}`}>{fieldErr.message}</p>
               )}
             </div>
           ))}
+          {fieldErr && !fieldErr.field && (
+            <p role="alert" className="text-xs text-red-600" data-testid="calc-error-general">{fieldErr.message}</p>
+          )}
           <Button onClick={run} disabled={busy} data-testid="calculate-btn" className="rounded-sm gap-2 hover:bg-orange-600 hover:text-white">
             <Calculator className="h-4 w-4" /> Calcular
           </Button>
@@ -373,13 +392,20 @@ export default function Calculators() {
                   {result.results.map((r, i) => (
                     <div key={i} className="p-4 border border-border rounded-sm">
                       <p className="text-xs text-muted-foreground">{r.label}</p>
-                      <p className="num mt-1 text-lg font-bold">{num(r.value, 2)} <span className="text-sm font-normal text-muted-foreground">{r.unit}</span></p>
+                      <p className="num mt-1 text-lg font-bold">{num(r.value, typeof r.value === "number" && r.value !== 0 && Math.abs(r.value) < 1 ? 3 : 2)} <span className="text-sm font-normal text-muted-foreground">{r.unit}</span></p>
                     </div>
                   ))}
                 </div>
-                <p className="num mt-6 text-sm">
-                  Orçamento materiais estimado: <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
-                </p>
+                {result.estimated_budget === null || result.estimated_budget === undefined ? (
+                  <p className="mt-6 text-sm rounded-sm border border-amber-300 bg-amber-50 px-3 py-2 text-amber-800" data-testid="calc-price-unavailable">
+                    Orçamento materiais: <b>preços indisponíveis</b> para {result.price_status?.items ?? result.materials?.length ?? 0} material(is) — as quantidades estão calculadas, os preços têm de ser completados (não é um total de 0 €).
+                  </p>
+                ) : (
+                  <p className="num mt-6 text-sm">
+                    Orçamento materiais estimado: <span className="text-primary font-bold text-lg">{eur(result.estimated_budget)}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">(preços indicativos por omissão, não de fornecedor)</span>
+                  </p>
+                )}
 
                 <div className="mt-6 flex flex-wrap gap-2 pt-5 border-t border-border">
                   {!isPremium && (
@@ -433,7 +459,7 @@ export default function Calculators() {
                           <TableRow key={i} className={isBest ? "bg-primary/10" : "even:bg-muted/30"}>
                             <TableCell className="font-medium">{c.format} {isBest && <span className="text-primary text-xs font-semibold ml-2">✓ o mais barato</span>}</TableCell>
                             <TableCell className="num text-right">{num(c.metric, 0)}</TableCell>
-                            <TableCell className="num text-right font-semibold text-primary">{eur(c.budget)}</TableCell>
+                            <TableCell className="num text-right font-semibold text-primary">{c.budget == null ? "—" : eur(c.budget)}</TableCell>
                           </TableRow>
                         );
                       })}
