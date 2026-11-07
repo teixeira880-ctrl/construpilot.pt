@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MessageSquarePlus, Users, FolderKanban } from "lucide-react";
 import { api } from "@/lib/api";
+import { useOffer } from "@/components/OfferNotice";
 import { ReviewDialog } from "@/components/TrustSection";
 import { LandingHeading } from "@/components/landing/LandingLayout";
 
@@ -43,4 +44,11 @@ export function LandingProof() {
       <Link to="/sobre" className="landing-text-link" data-testid="pro-proof-about">Quem somos</Link>
     </div>
   </section>;
+}
+
+/** Auditoria D2.4 / brief : a versão gratuita fica visível por baixo do título das ofertas (só fora da fase de lançamento). */
+export function PricingFreeLine() {
+  const offer = useOffer();
+  if (!offer || offer.free_promo) return null;
+  return <p className="landing-pricing-free" data-testid="pro-pricing-free">Versão gratuita disponível para começar.</p>;
 }
