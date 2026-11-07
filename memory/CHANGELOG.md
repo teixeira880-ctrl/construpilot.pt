@@ -1,5 +1,16 @@
 # ConstruPilot — CHANGELOG
 
+## 07/11/2026 (2) — Visita, registo diário, trabalhos adicionais, ferramentas de ofício, demo offline
+- **Visita à obra** `/visita-obra` (`routes/field_records.py`, coleção `field_visits`): fotografias (mesma validação do acompanhamento), medidas com origem (medido / planta / estimado), acessos, demolições, proteções, perguntas pendentes; resumo editável e lista « falta confirmar ».
+- **Registo diário** `/registo-diario` (coleção `field_daily`): texto ou voz → proposta determinística (sem IA): equipa, trabalhos, materiais em falta; horas e quantidades nunca inventadas; ambiguidades sinalizadas; só grava com `confirmed=true`; idempotente. Acessível ao trabalhador de campo (permissão `pointage`).
+- **Trabalho adicional** (botão em /devis, `POST /api/documents/{id}/change-request`): novo rascunho ligado ao orçamento, impacto no preço; prazo só se indicado; original nunca alterado; histórico em `change_requests`.
+- **Ferramentas**: levantamento de pontos (canalização / eletricidade — sem dimensionamento) e carpintaria (placas, orla, ferragens).
+- **Projetos vs processos de obra**: coleções distintas (`projects` = estimativas, `chantiers` = processos), ligação opcional `chantier_id`. Novo `POST /api/chantiers/from-project/{id}` + botão no painel: cria e liga, a pedido, sem mover nem fundir dados.
+- **Assistente único**: « Piloto ConstruPilot » passa a « Assistente — tarefas automáticas » (fora dos essenciais); ligação « Tarefas automáticas » no Assistente.
+- **Modo demonstração offline**: perfil, painel, orçamento guiado, ferramentas, visita e registo diário funcionam sem internet (`lib/demoWorkRoutes.js`, `lib/demoTradeCalcs.js`). Paridade JS ↔ Python verificada (`tests/test_demo_parity.py`); catálogo gerado por `scripts/export_work_profile_catalog.py`.
+- **Correção**: « Adicionar outra divisão » saltava a pergunta do nome da nova divisão.
+- **Testes**: 32 testes backend (`test_work_profile.py`, `test_field_records.py`, `test_demo_parity.py`) + 21 verificações de percursos de interface (`frontend/tests/flows/run.sh`).
+
 ## 07/11/2026 — Perfil adaptativo, modos de utilização e orçamento guiado (codificado por Claude)
 - **Perfil de trabalho por utilizador** (`engines/work_profile.py`, `routes/work_profile.py`, coleção `work_profiles`): profissões (15, várias possíveis), responsabilidades, modo (guiado/direto/avançado) e linguagem (simples/técnica), separados das permissões (`core/permissions.py`) e do plano (`engines/access.py`), que NUNCA são alterados. Contas antigas: perfil genérico guiado por defeito, sem onboarding obrigatório (sem migração necessária).
 - **Onboarding em 3 perguntas**, saltável e editável (Preferências → Perfil de trabalho). Sugestão de profissão a partir de uma descrição: sempre a confirmar.

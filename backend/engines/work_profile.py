@@ -64,7 +64,11 @@ TASKS: dict[str, dict] = {
     "calc_alvenaria": {"label": "Calcular blocos de alvenaria", "url": "/ferramentas-oficio?ferramenta=masonry", "feature": None, "min_level": "particulier_gratuit"},
     "plantas": {"label": "Medir numa planta", "url": "/plan", "feature": None, "min_level": "particulier_gratuit"},
     "obras": {"label": "Acompanhar as obras", "url": "/chantiers", "feature": "chantier", "min_level": "pro"},
-    "diario": {"label": "Registar o dia de obra", "url": "/suivi-chantier", "feature": "chantier", "min_level": "business"},
+    "diario": {"label": "Registar o dia de obra", "url": "/registo-diario", "feature": ("chantier", "pointage"), "min_level": "pro"},
+    "visita": {"label": "Registar uma visita à obra", "url": "/visita-obra", "feature": ("chantier", "devis"), "min_level": "pro"},
+    "acompanhamento": {"label": "Reservas e relatórios de obra", "url": "/suivi-chantier", "feature": "chantier", "min_level": "business"},
+    "calc_pontos": {"label": "Levantamento de pontos (água, eletricidade)", "url": "/ferramentas-oficio?ferramenta=points", "feature": None, "min_level": "particulier_gratuit"},
+    "calc_carpintaria": {"label": "Lista de peças de carpintaria", "url": "/ferramentas-oficio?ferramenta=carpentry", "feature": None, "min_level": "particulier_gratuit"},
     "planeamento": {"label": "Planear os trabalhos", "url": "/planning", "feature": "chantier", "min_level": "pro"},
     "materiais": {"label": "Materiais e encomendas", "url": "/appro", "feature": "chantier", "min_level": "pro"},
     "clientes": {"label": "Clientes", "url": "/clients", "feature": "devis", "min_level": "pro"},
@@ -80,15 +84,15 @@ TASKS: dict[str, dict] = {
 
 # Sugestões iniciais por profissão (ordem = prioridade). A profissão sugere; nunca obriga.
 PROFESSION_TASKS: dict[str, list[str]] = {
-    "pintor": ["orcamento_guiado", "calc_tinta", "reutilizar", "obras"],
-    "pedreiro": ["orcamento_guiado", "calc_alvenaria", "calc_pavimento", "obras"],
-    "canalizador": ["orcamento", "reutilizar", "obras", "materiais"],
-    "eletricista": ["orcamento", "reutilizar", "obras", "materiais"],
-    "carpinteiro": ["orcamento", "reutilizar", "materiais", "obras"],
-    "revestimentos": ["calc_pavimento", "orcamento_guiado", "reutilizar", "obras"],
+    "pintor": ["orcamento_guiado", "calc_tinta", "visita", "reutilizar", "diario"],
+    "pedreiro": ["orcamento", "calc_alvenaria", "calc_pavimento", "visita", "diario"],
+    "canalizador": ["visita", "calc_pontos", "orcamento", "reutilizar", "materiais"],
+    "eletricista": ["visita", "calc_pontos", "orcamento", "reutilizar", "materiais"],
+    "carpinteiro": ["calc_carpintaria", "visita", "orcamento", "reutilizar", "materiais"],
+    "revestimentos": ["calc_pavimento", "visita", "orcamento", "reutilizar", "diario"],
     "empreiteiro": ["orcamento", "planeamento", "materiais", "rentabilidade", "obras"],
-    "independente": ["orcamento_guiado", "reutilizar", "obras", "faturas"],
-    "encarregado": ["diario", "obras", "planeamento", "materiais"],
+    "independente": ["orcamento_guiado", "visita", "reutilizar", "diario", "faturas"],
+    "encarregado": ["diario", "visita", "obras", "planeamento", "acompanhamento"],
     "orcamentista": ["medicoes", "plantas", "orcamento", "reutilizar"],
     "arquiteto": ["projetos", "plantas", "plantas_versoes", "medicoes"],
     "engenheiro": ["medicoes", "plantas", "plantas_versoes", "obras"],
@@ -163,7 +167,8 @@ def visible_tasks(profile: dict, permissions: dict, level: str, *, meets, limit:
     out = []
     for key in suggested_task_keys(profile):
         t = TASKS[key]
-        if t["feature"] and permissions.get(t["feature"]) is not True:
+        feats = t["feature"] if isinstance(t["feature"], tuple) else ((t["feature"],) if t["feature"] else ())
+        if feats and not any(permissions.get(f) is True for f in feats):
             continue
         if not meets(level, t["min_level"]):
             continue

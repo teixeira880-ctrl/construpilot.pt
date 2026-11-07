@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Send, Eye, CheckCircle2, FileText, Copy, ExternalLink, RefreshCw, Mail,
+  Send, Plus, Eye, CheckCircle2, FileText, Copy, ExternalLink, RefreshCw, Mail,
   Download, FileDown, Star, Receipt, Trash2, Sparkles, PenLine, GraduationCap,
 } from "lucide-react";
+import { ChangeRequestDialog } from "@/components/quotes/ChangeRequestDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -120,6 +121,7 @@ export default function QuoteTracking() {
       toast.success("Orçamento movido para o lixo — recuperável durante 30 dias", { action: { label: "Lixo", onClick: () => navigate("/corbeille") } });
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível eliminar"); }
   };
+  const [changeQuote, setChangeQuote] = useState(null);
   const reuseQuote = async (doc) => {
     try {
       const { data } = await api.post(`/documents/${doc.doc_id}/reuse`);
@@ -433,6 +435,7 @@ export default function QuoteTracking() {
 
   return (
     <div className="grid grid-cols-1 gap-8 min-w-0" data-testid="quote-tracking-page">
+      <ChangeRequestDialog quote={changeQuote} onOpenChange={o => { if (!o) setChangeQuote(null); }} />
       <div className="flex flex-wrap items-start justify-between gap-3 min-w-0">
         <SectionTitle over={quoteText("tracking")} title={quoteText("title")} />
         <Link to="/devis-editeur" data-testid="create-quote-link">
@@ -561,6 +564,11 @@ export default function QuoteTracking() {
                             onClick={() => reuseQuote(d)} title="Criar um novo rascunho com a mesma estrutura (o original não muda)"
                             data-testid={`quote-reuse-${d.doc_id}`}>
                       <Copy className="h-3.5 w-3.5" /> Reutilizar
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-sm h-9 gap-1.5 text-xs"
+                            onClick={() => setChangeQuote(d)} title="O cliente pediu algo a mais: proposta separada, o orçamento não muda"
+                            data-testid={`quote-change-${d.doc_id}`}>
+                      <Plus className="h-3.5 w-3.5" /> Trabalho adicional
                     </Button>
                     <Button size="sm" variant="ghost" className="rounded-sm h-9 w-9 p-0 text-muted-foreground hover:text-red-600 shrink-0 ml-auto"
                             onClick={() => deleteQuote(d)} data-testid={`quote-delete-${d.doc_id}`}>

@@ -246,6 +246,8 @@ api_router.include_router(chantiers_routes.router)
 api_router.include_router(onboarding_routes.router)
 from routes import work_profile as work_profile_routes  # noqa: E402
 api_router.include_router(work_profile_routes.router)
+from routes import field_records as field_records_routes  # noqa: E402
+api_router.include_router(field_records_routes.router)
 from routes import portal as portal_routes  # noqa: E402
 api_router.include_router(portal_routes.pro_router)
 api_router.include_router(portal_routes.router)

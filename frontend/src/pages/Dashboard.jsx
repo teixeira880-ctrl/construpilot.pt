@@ -125,6 +125,13 @@ export default function Dashboard() {
     ? <div className="surface p-8 flex items-center gap-3 text-sm text-muted-foreground" role="status" data-testid={`dashboard-${key}-loading`}><Loader2 className="h-4 w-4 animate-spin" />{ui("loading")}</div>
     : loadState[key] === "error" ? <div className="dashboard-error" role="alert" data-testid={`dashboard-${key}-error`}><span>{ui("loadError")}</span><Button variant="outline" onClick={load} data-testid={`dashboard-${key}-retry`}>{ui("retry")}</Button></div> : null;
 
+  const toDossier = async (p) => {
+    try {
+      const { data } = await api.post(`/chantiers/from-project/${p.project_id}`);
+      setProjects(ps => ps.map(x => (x.project_id === p.project_id ? { ...x, chantier_id: data.chantier_id } : x)));
+      toast.success(data.already_linked ? "Este projeto já tem um processo de obra." : "Processo de obra criado e ligado ao projeto.");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível criar o processo de obra"); }
+  };
   const totalBudget = projects.reduce((s, p) => s + (p.budget || 0), 0);
   const totalSurface = projects.reduce((s, p) => s + (p.surface || 0), 0);
 
@@ -208,6 +215,9 @@ export default function Dashboard() {
                     </div>
                     <div className="mt-5 flex gap-2 pt-4 border-t border-border dashboard-project-actions">
                       <Button asChild variant="outline" size="sm" className="flex-1 rounded-sm"><Link to={`/projet/${p.project_id}`} data-testid={`open-project-${p.project_id}`}>{t("dash.open_project")}</Link></Button>
+                      {isPro && can("chantier") && (p.chantier_id
+                        ? <Button asChild variant="ghost" size="sm" className="rounded-sm"><Link to={`/chantiers/${p.chantier_id}`} data-testid={`project-dossier-${p.project_id}`}><HardHat className="h-4 w-4" /></Link></Button>
+                        : <Button variant="ghost" size="sm" className="rounded-sm" title="Criar um processo de obra ligado a este projeto (nada é movido)" onClick={() => toDossier(p)} data-testid={`project-to-dossier-${p.project_id}`}><HardHat className="h-4 w-4" /><Plus className="h-3 w-3" /></Button>)}
                       <Button variant="ghost" size="sm" disabled={!!deleting} aria-label={`${ui("delete")} : ${p.name}`} onClick={() => remove(p.project_id)} data-testid={`delete-project-${p.project_id}`} className="rounded-sm">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

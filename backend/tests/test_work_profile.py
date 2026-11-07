@@ -112,8 +112,10 @@ def test_visible_tasks_respect_permissions_and_plan():
     assert "obras" not in keys and "diario" not in keys
     owner = permissions_for(ENGINEER)
     keys = [t["key"] for t in W.visible_tasks(prof, owner, "pro", meets=meets)]
-    assert "obras" in keys and "diario" not in keys       # diário exige Business
-    assert "diario" in [t["key"] for t in W.visible_tasks(prof, owner, "business", meets=meets)]
+    assert "obras" in keys and "diario" in keys and "acompanhamento" not in keys   # acompanhamento exige Business
+    assert "acompanhamento" in [t["key"] for t in W.visible_tasks(prof, owner, "business", meets=meets)]
+    worker = permissions_for({"user_id": "w", "account_type": "pro", "organization_id": "org_a", "org_role": "ouvrier"})
+    assert [t["key"] for t in W.visible_tasks(prof, worker, "pro", meets=meets)] == ["diario"]
 
 
 def test_suggest_from_text_requires_confirmation_semantics():

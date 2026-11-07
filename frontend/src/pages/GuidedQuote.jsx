@@ -158,6 +158,11 @@ export default function GuidedQuote() {
     try {
       const { data } = await api.post("/guided-quote", toPayload(job, requestId));
       localStorage.removeItem(DRAFT_KEY);
+      if (data.demo) {
+        toast.success("Modo demonstração: orçamento calculado neste dispositivo (não é guardado numa conta).");
+        setJob(EMPTY()); setIdx(0); setRequestId(newRequestId());
+        return;
+      }
       toast.success("Orçamento guardado como rascunho. Nada foi enviado ao cliente.");
       nav(`/devis-editeur/${data.doc_id}`);
     } catch (e) {
@@ -193,7 +198,7 @@ export default function GuidedQuote() {
             <input type="checkbox" className="h-5 w-5 accent-[hsl(var(--primary))]" checked={job.works[k]} onChange={e => set({ works: { ...job.works, [k]: e.target.checked } })} data-testid={`gq-work-${k}`} />{l}</label>)}
       </div>;
       case "room-add": return <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => { set({ rooms: [...job.rooms, EMPTY_ROOM()] }); setIdx(i => i + 1); }} data-testid="gq-add-room"><Plus className="mr-1 h-4 w-4" />Adicionar outra divisão</Button>
+        <Button type="button" variant="outline" onClick={() => set({ rooms: [...job.rooms, EMPTY_ROOM()] })} data-testid="gq-add-room"><Plus className="mr-1 h-4 w-4" />Adicionar outra divisão</Button>
         {job.rooms.length > 1 && <Button type="button" variant="ghost" onClick={() => set({ rooms: job.rooms.slice(0, -1) })}><Trash2 className="mr-1 h-4 w-4" />Remover a última</Button>}
         <p className="w-full text-sm text-muted-foreground">{job.rooms.length} divisão(ões): {job.rooms.map((x, i) => x.name || `Divisão ${i + 1}`).join(", ")}</p>
       </div>;

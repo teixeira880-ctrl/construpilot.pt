@@ -232,6 +232,119 @@ def masonry_calc(payload: dict) -> dict:
 TOOLS = {"paint": paint_calc, "floor": floor_calc, "masonry": masonry_calc}
 
 
+# --------------------------------------------------------------------------- levantamento de pontos (canalizador / eletricista)
+
+POINT_TYPES = {
+    "canalizacao": {
+        "agua_fria": "Ponto de água fria", "agua_quente": "Ponto de água quente", "esgoto": "Ponto de esgoto",
+        "sanita": "Sanita", "lavatorio": "Lavatório", "base_duche": "Base de duche / banheira", "lava_loica": "Lava-loiça",
+        "maquina": "Máquina (lavar roupa / loiça)", "esquentador": "Esquentador / termoacumulador", "outro": "Outro",
+    },
+    "eletricidade": {
+        "tomada": "Tomada", "tomada_dedicada": "Tomada dedicada (forno, placa, máquina)", "interruptor": "Interruptor / comutador",
+        "ponto_luz": "Ponto de luz", "tomada_rede": "Tomada de rede / TV", "quadro": "Quadro elétrico", "campainha": "Campainha / intercomunicador",
+        "outro": "Outro",
+    },
+}
+
+
+def points_takeoff(payload: dict) -> dict:
+    """Lista de pontos e equipamentos por divisão → totais por tipo → linhas de orçamento.
+
+    Só levantamento e organização: NÃO dimensiona circuitos, secções, diâmetros nem verifica regulamentos."""
+    trade = payload.get("trade")
+    if trade not in POINT_TYPES:
+        raise CalcError("Escolha a especialidade: canalização ou eletricidade.")
+    types = POINT_TYPES[trade]
+    items = payload.get("items") or []
+    if not isinstance(items, list) or not items:
+        raise CalcError("Adicione pelo menos um ponto.")
+    if len(items) > 1000:
+        raise CalcError("Máximo de 1000 linhas.")
+    totals: dict[str, float] = {}
+    by_room: dict[str, dict[str, float]] = {}
+    pending: list[str] = []
+    for i, it in enumerate(items):
+        kind = it.get("type")
+        if kind not in types:
+            raise CalcError(f"Linha {i + 1}: tipo de ponto desconhecido.")
+        label = (it.get("label") or "").strip()[:80] if kind == "outro" else types[kind]
+        if kind == "outro" and not label:
+            raise CalcError(f"Linha {i + 1}: descreva o ponto «Outro».")
+        qty = _num(it.get("qty"), f"Linha {i + 1}: quantidade", maximum=10000)
+        room = (it.get("room") or "Sem divisão").strip()[:60]
+        if qty is None:
+            pending.append(f"Quantidade: {label} ({room})")
+            continue
+        totals[label] = totals.get(label, 0) + qty
+        by_room.setdefault(room, {})[label] = by_room.setdefault(room, {}).get(label, 0) + qty
+    prices = payload.get("prices") or {}
+    lines = [{"kind": "section", "title": "Canalização" if trade == "canalizacao" else "Eletricidade"}]
+    for label, qty in totals.items():
+        price = _num(prices.get(label), f"Preço: {label}", maximum=1e6)
+        if price is None:
+            pending.append(f"Preço: {label}")
+        lines.append({"kind": "line", "line_kind": "ouvrage", "designation": label, "description": "",
+                      "unit": "u", "qty": qty, "unit_price_ht": price or 0, "vat_rate": None,
+                      "price_missing": price is None, "quantity_missing": False,
+                      "price_source": "utilizador" if price is not None else ""})
+    return {"tool": "points", "trade": trade, "totals": totals, "by_room": by_room, "lines": lines,
+            "limits": "Levantamento de quantidades. Não dimensiona circuitos, secções de cabo, diâmetros nem verifica a conformidade regulamentar.",
+            "pending": pending, "complete": not pending}
+
+
+# --------------------------------------------------------------------------- carpintaria
+
+def carpentry_calc(payload: dict) -> dict:
+    """Lista de peças → área de painel por material (com perdas), orla e ferragens."""
+    pieces = payload.get("pieces") or []
+    if not isinstance(pieces, list) or not pieces:
+        raise CalcError("Adicione pelo menos uma peça.")
+    if len(pieces) > 500:
+        raise CalcError("Máximo de 500 peças.")
+    pending: list[str] = []
+    materials: dict[str, float] = {}
+    edge_ml = 0.0
+    hardware: dict[str, float] = {}
+    for i, p in enumerate(pieces):
+        name = (p.get("name") or f"Peça {i + 1}").strip()[:60]
+        L = _num(p.get("length_m"), f"{name}: comprimento", maximum=10, allow_zero=False)
+        W = _num(p.get("width_m"), f"{name}: largura", maximum=10, allow_zero=False)
+        q = _num(p.get("qty", 1), f"{name}: quantidade", maximum=10000, allow_zero=False)
+        mat = (p.get("material") or "").strip()[:60]
+        if not mat:
+            pending.append(f"{name}: material")
+        if L is None or W is None or q is None:
+            pending.append(f"{name}: medidas")
+            continue
+        if mat:
+            materials[mat] = materials.get(mat, 0) + L * W * q
+        edges = _num(p.get("edges_m"), f"{name}: orla por peça (m)", maximum=100)
+        if edges:
+            edge_ml += edges * q
+        for h in p.get("hardware") or []:
+            hn = (h.get("name") or "").strip()[:60]
+            hq = _num(h.get("qty"), f"{name}: quantidade de {hn or 'ferragem'}", maximum=10000)
+            if hn and hq:
+                hardware[hn] = hardware.get(hn, 0) + hq * q
+    waste = _num(payload.get("waste_pct"), "Perdas de corte (%)", maximum=60)
+    if waste is None:
+        pending.append("Percentagem de perdas de corte")
+    sheet = _num(payload.get("sheet_m2"), "Área de uma placa (m²)", maximum=20, allow_zero=False)
+    out_mats = []
+    for mat, area in materials.items():
+        with_waste = area * (1 + waste / 100) if waste is not None else None
+        sheets = math.ceil(with_waste / sheet - 1e-9) if with_waste is not None and sheet else None
+        out_mats.append({"material": mat, "area_m2": _r(area), "area_with_waste_m2": _r(with_waste), "sheets": sheets})
+    return {"tool": "carpentry", "materials": out_mats, "edge_banding_ml": _r(edge_ml), "hardware": hardware,
+            "formula": "placas = arredondar acima( Σ(c × l × qtd) × (1 + perdas/100) ÷ área da placa )",
+            "limits": "Não otimiza o plano de corte: o número real de placas pode ser superior.",
+            "pending": pending, "complete": not pending}
+
+
+TOOLS.update({"points": points_takeoff, "carpentry": carpentry_calc})
+
+
 def compute(tool: str, payload: dict) -> dict:
     fn = TOOLS.get(tool)
     if not fn:

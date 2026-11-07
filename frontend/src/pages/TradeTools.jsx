@@ -11,6 +11,12 @@ const TOOLS = {
   paint: { title: "Tinta", intro: "Litros e latas de tinta a partir das medidas das divisões, do número de demãos e do rendimento do produto." },
   floor: { title: "Pavimento / revestimento", intro: "Número de embalagens a partir da área, das perdas e da cobertura de cada embalagem." },
   masonry: { title: "Alvenaria", intro: "Número de blocos ou tijolos para uma parede. Só quantidades: não verifica estabilidade." },
+  points: { title: "Pontos (água / eletricidade)", intro: "Levantamento dos pontos e equipamentos por divisão, com totais para o orçamento. Não dimensiona instalações." },
+  carpentry: { title: "Carpintaria", intro: "Lista de peças → área de placa por material, orla e ferragens." },
+};
+const POINT_TYPES = {
+  canalizacao: [["agua_fria", "Ponto de água fria"], ["agua_quente", "Ponto de água quente"], ["esgoto", "Ponto de esgoto"], ["sanita", "Sanita"], ["lavatorio", "Lavatório"], ["base_duche", "Base de duche / banheira"], ["lava_loica", "Lava-loiça"], ["maquina", "Máquina (lavar roupa / loiça)"], ["esquentador", "Esquentador / termoacumulador"], ["outro", "Outro"]],
+  eletricidade: [["tomada", "Tomada"], ["tomada_dedicada", "Tomada dedicada (forno, placa, máquina)"], ["interruptor", "Interruptor / comutador"], ["ponto_luz", "Ponto de luz"], ["tomada_rede", "Tomada de rede / TV"], ["quadro", "Quadro elétrico"], ["campainha", "Campainha / intercomunicador"], ["outro", "Outro"]],
 };
 
 const Field = ({ label, unit, value, onChange, hint, testid }) => (
@@ -33,6 +39,8 @@ export default function TradeTools() {
     paint: { rooms: [{ name: "Divisão 1", length_m: "", width_m: "", height_m: "", openings: [] }], coats: "", yield_m2_per_l: "", can_size_l: "" },
     floor: { length_m: "", width_m: "", area_m2: "", waste_pct: "", package_m2: "", piece_length_m: "", piece_width_m: "", pieces_per_package: "", package_price: "" },
     masonry: { wall_length_m: "", wall_height_m: "", block_length_m: "", block_height_m: "", joint_m: "", waste_pct: "", openings: [] },
+    points: { trade: "eletricidade", items: [{ room: "", type: "tomada", qty: "", label: "" }], prices: {} },
+    carpentry: { pieces: [{ name: "", material: "", length_m: "", width_m: "", qty: "1", edges_m: "", hardware: [] }], waste_pct: "", sheet_m2: "" },
   });
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -105,6 +113,38 @@ export default function TradeTools() {
           <Field label={term("waste", lang)} unit="%" value={data.waste_pct} onChange={v => set({ waste_pct: v })} />
           {openings(data.openings, ops => set({ openings: ops }))}
         </>}
+        {tool === "points" && <>
+          <div className="flex gap-2 sm:col-span-2">{[["eletricidade", "Eletricidade"], ["canalizacao", "Canalização"]].map(([k, l]) =>
+            <button key={k} type="button" onClick={() => set({ trade: k, items: [{ room: "", type: POINT_TYPES[k][0][0], qty: "", label: "" }] })} data-testid={`points-trade-${k}`}
+              className={`min-h-10 rounded-xl border px-3 text-sm ${data.trade === k ? "border-primary bg-primary/10 font-semibold" : ""}`}>{l}</button>)}</div>
+          {data.items.map((it, i) => <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border p-2 sm:col-span-2 sm:grid-cols-[1fr_2fr_80px_auto]">
+            <input aria-label="Divisão" className="h-11 rounded-lg border bg-background px-2" placeholder="Divisão" value={it.room} onChange={e => set({ items: data.items.map((x, j) => j === i ? { ...x, room: e.target.value } : x) })} />
+            <select aria-label="Tipo" className="h-11 rounded-lg border bg-background px-2" value={it.type} onChange={e => set({ items: data.items.map((x, j) => j === i ? { ...x, type: e.target.value } : x) })} data-testid={`points-${i}-type`}>
+              {POINT_TYPES[data.trade].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            <input aria-label="Quantidade" type="number" min="0" inputMode="numeric" className="h-11 rounded-lg border bg-background px-2" placeholder="Qtd." value={it.qty} onChange={e => set({ items: data.items.map((x, j) => j === i ? { ...x, qty: e.target.value } : x) })} data-testid={`points-${i}-qty`} />
+            <Button variant="ghost" size="icon" aria-label="Remover" onClick={() => set({ items: data.items.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></Button>
+            {it.type === "outro" && <input aria-label="Descrição" className="col-span-2 h-11 rounded-lg border bg-background px-2 sm:col-span-4" placeholder="Descreva" value={it.label} onChange={e => set({ items: data.items.map((x, j) => j === i ? { ...x, label: e.target.value } : x) })} />}
+          </div>)}
+          <Button type="button" variant="outline" className="sm:col-span-2" onClick={() => set({ items: [...data.items, { room: data.items.at(-1)?.room || "", type: POINT_TYPES[data.trade][0][0], qty: "", label: "" }] })} data-testid="points-add"><Plus className="mr-1 h-4 w-4" />Ponto</Button>
+        </>}
+        {tool === "carpentry" && <>
+          {data.pieces.map((p, i) => <fieldset key={i} className="grid grid-cols-2 gap-2 rounded-xl border p-3 sm:col-span-2 sm:grid-cols-3">
+            <label className="text-sm font-medium">Peça<input className="mt-1 h-11 w-full rounded-xl border bg-background px-3" placeholder="Lateral" value={p.name} onChange={e => set({ pieces: data.pieces.map((x, j) => j === i ? { ...x, name: e.target.value } : x) })} /></label>
+            <label className="text-sm font-medium">Material<input className="mt-1 h-11 w-full rounded-xl border bg-background px-3" placeholder="MDF 19 mm" value={p.material} onChange={e => set({ pieces: data.pieces.map((x, j) => j === i ? { ...x, material: e.target.value } : x) })} data-testid={`carp-${i}-material`} /></label>
+            {[["length_m", "Comprimento", "m"], ["width_m", "Largura", "m"], ["qty", "Quantidade", ""], ["edges_m", "Orla por peça", "m"]].map(([k, l, u]) =>
+              <Field key={k} label={l} unit={u} value={p[k]} testid={`carp-${i}-${k}`} onChange={v => set({ pieces: data.pieces.map((x, j) => j === i ? { ...x, [k]: v } : x) })} />)}
+            <div className="col-span-2 space-y-1 sm:col-span-3"><p className="text-sm font-medium">Ferragens por peça</p>
+              {p.hardware.map((h, k) => <div key={k} className="grid grid-cols-[2fr_1fr_auto] gap-2">
+                <input className="h-10 rounded-lg border bg-background px-2" placeholder="Dobradiça" value={h.name} onChange={e => set({ pieces: data.pieces.map((x, j) => j === i ? { ...x, hardware: x.hardware.map((y, z) => z === k ? { ...y, name: e.target.value } : y) } : x) })} />
+                <input type="number" min="0" className="h-10 rounded-lg border bg-background px-2" placeholder="Qtd." value={h.qty} onChange={e => set({ pieces: data.pieces.map((x, j) => j === i ? { ...x, hardware: x.hardware.map((y, z) => z === k ? { ...y, qty: e.target.value } : y) } : x) })} />
+                <Button variant="ghost" size="icon" aria-label="Remover" onClick={() => set({ pieces: data.pieces.map((x, j) => j === i ? { ...x, hardware: x.hardware.filter((_, z) => z !== k) } : x) })}><Trash2 className="h-4 w-4" /></Button></div>)}
+              <Button variant="outline" size="sm" onClick={() => set({ pieces: data.pieces.map((x, j) => j === i ? { ...x, hardware: [...x.hardware, { name: "", qty: "" }] } : x) })}><Plus className="mr-1 h-4 w-4" />Ferragem</Button></div>
+            {data.pieces.length > 1 && <Button variant="ghost" size="sm" className="justify-self-start" onClick={() => set({ pieces: data.pieces.filter((_, j) => j !== i) })}><Trash2 className="mr-1 h-4 w-4" />Remover peça</Button>}
+          </fieldset>)}
+          <Button type="button" variant="outline" className="sm:col-span-2" onClick={() => set({ pieces: [...data.pieces, { name: "", material: data.pieces.at(-1)?.material || "", length_m: "", width_m: "", qty: "1", edges_m: "", hardware: [] }] })}><Plus className="mr-1 h-4 w-4" />Peça</Button>
+          <Field label={term("waste", lang)} unit="%" value={data.waste_pct} onChange={v => set({ waste_pct: v })} testid="carp-waste" hint={hint("Perdas de corte; 10–20 % é habitual.")} />
+          <Field label="Área de uma placa" unit="m²" value={data.sheet_m2} onChange={v => set({ sheet_m2: v })} testid="carp-sheet" hint={hint("Ex.: placa 2,75 × 1,84 m = 5,06 m²")} />
+        </>}
         <Button type="button" className="min-h-12 sm:col-span-2" onClick={compute} disabled={busy} data-testid="tool-compute">{busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Calculator className="mr-1 h-4 w-4" />}Calcular</Button>
         {error && <p className="text-sm text-red-600 sm:col-span-2" role="alert" data-testid="tool-error">{error}</p>}
       </div>
@@ -125,7 +165,18 @@ export default function TradeTools() {
           <p>Blocos: <strong data-testid="mas-blocks">{result.blocks ?? "—"}</strong></p>
           <p className="text-xs text-muted-foreground">{result.limits}</p>
         </>}
-        <p className="text-xs text-muted-foreground">Fórmula: {result.formula}</p>
+        {tool === "points" && <>
+          <ul className="text-sm" data-testid="points-totals">{Object.entries(result.totals).map(([k, v]) => <li key={k}><strong>{fmt(v, 0)}</strong> × {k}</li>)}</ul>
+          {advanced && <ul className="text-xs text-muted-foreground">{Object.entries(result.by_room).map(([room, t]) => <li key={room}>{room}: {Object.entries(t).map(([k, v]) => `${fmt(v, 0)} ${k}`).join(", ")}</li>)}</ul>}
+          <p className="text-xs text-muted-foreground">{result.limits}</p>
+        </>}
+        {tool === "carpentry" && <>
+          <ul className="text-sm" data-testid="carp-materials">{result.materials.map(m => <li key={m.material}>{m.material}: {fmt(m.area_m2)} m² → com perdas {fmt(m.area_with_waste_m2)} m²{m.sheets != null && <> → <strong>{m.sheets} placa(s)</strong></>}</li>)}</ul>
+          <p>Orla: <strong>{fmt(result.edge_banding_ml)} ml</strong></p>
+          {Object.keys(result.hardware).length > 0 && <p>Ferragens: {Object.entries(result.hardware).map(([k, v]) => `${fmt(v, 0)} × ${k}`).join(", ")}</p>}
+          <p className="text-xs text-muted-foreground">{result.limits}</p>
+        </>}
+        {result.formula && <p className="text-xs text-muted-foreground">Fórmula: {result.formula}</p>}
         {result.pending?.length > 0 && <div className="rounded-xl bg-amber-500/10 p-3 text-sm" data-testid="tool-pending"><p className="flex items-center gap-1 font-semibold"><TriangleAlert className="h-4 w-4" />Falta indicar</p>
           <ul className="list-disc pl-5">{result.pending.map(p => <li key={p}>{p}</li>)}</ul>
           {Object.values(result.suggestions || {}).map(s => <p key={s.note} className="mt-1 text-xs">Sugestão (a confirmar): {s.value} — {s.note}</p>)}</div>}
