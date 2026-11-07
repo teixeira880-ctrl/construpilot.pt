@@ -127,7 +127,7 @@ export default function WorkspaceNavigation() {
         <img src="/construpilot-icon.png" alt="" width="34" height="34" />
         <span>Constru<span className="text-primary">Pilot</span></span>
       </Link>
-      <button type="button" onClick={openTools} className="workspace-search-trigger" data-testid="workspace-search-trigger" aria-label={ui("search")} aria-haspopup="dialog">
+      <button type="button" onClick={openTools} className="workspace-search-trigger" data-testid="workspace-search-trigger" aria-label={`${ui("search")} Ctrl K`} aria-haspopup="dialog">
         <Search size={18} aria-hidden="true" /><span>{ui("search")}</span><kbd>Ctrl K</kbd>
       </button>
       <div className="workspace-header-actions">

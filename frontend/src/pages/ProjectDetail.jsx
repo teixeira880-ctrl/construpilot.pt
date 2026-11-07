@@ -156,7 +156,7 @@ export default function ProjectDetail() {
               <LeadDialog projectId={p.project_id} budget={p.estimation.total_avg} description={p.description} />
             </>
           ) : (
-            <Button onClick={() => navigate("/smart")} data-testid="generate-estimation-btn" className="rounded-sm gap-2">
+            <Button onClick={() => navigate("/smart-project")} data-testid="generate-estimation-btn" className="rounded-sm gap-2">
               Gerar estimativa
             </Button>
           )}
@@ -255,7 +255,7 @@ export default function ProjectDetail() {
           ) : (
             <div className="surface p-8 text-center">
               <p className="text-sm text-muted-foreground">Este projecto ainda não tem estimativa.</p>
-              <Button onClick={() => navigate("/smart")} className="mt-4 rounded-sm">Gerar estimativa</Button>
+              <Button onClick={() => navigate("/smart-project")} className="mt-4 rounded-sm">Gerar estimativa</Button>
             </div>
           )}
         </TabsContent>

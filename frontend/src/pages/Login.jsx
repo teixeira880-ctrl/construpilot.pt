@@ -273,7 +273,7 @@ export default function Login() {
               </div>
             </form>
           ) : (
-          <Tabs defaultValue={(params.get("email") || params.get("signup")) ? "register" : "login"}>
+          <Tabs defaultValue={(location.pathname === "/inscription" || params.get("email") || params.get("signup")) ? "register" : "login"}>
             <TabsList className="w-full rounded-sm">
               <TabsTrigger value="login" className="flex-1 rounded-sm" data-testid="tab-login">{t("login.tab_login")}</TabsTrigger>
               <TabsTrigger value="register" className="flex-1 rounded-sm" data-testid="tab-register">{t("login.tab_register")}</TabsTrigger>
@@ -282,12 +282,12 @@ export default function Login() {
             <TabsContent value="login">
               <form onSubmit={submit("login")} className="grid gap-4 mt-6">
                 <div className="grid gap-2">
-                  <Label>{t("login.email")}</Label>
-                  <Input required type="email" value={form.email} onChange={set("email")} data-testid="login-email-input" className="rounded-sm h-11" />
+                  <Label htmlFor="login-email-input">{t("login.email")}</Label>
+                  <Input id="login-email-input" required type="email" autoComplete="email" value={form.email} onChange={set("email")} data-testid="login-email-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>{t("login.password")}</Label>
-                  <Input required type="password" value={form.password} onChange={set("password")} data-testid="login-password-input" className="rounded-sm h-11" />
+                  <Label htmlFor="login-password-input">{t("login.password")}</Label>
+                  <Input id="login-password-input" required type="password" autoComplete="current-password" value={form.password} onChange={set("password")} data-testid="login-password-input" className="rounded-sm h-11" />
                   <Link to="/reinitialiser" className="text-xs text-muted-foreground hover:text-primary w-fit"
                         data-testid="forgot-password-link">
                     {t("login.forgot")}
@@ -323,16 +323,16 @@ export default function Login() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>{t("login.name")}</Label>
-                  <Input required value={form.name} onChange={set("name")} data-testid="register-name-input" className="rounded-sm h-11" />
+                  <Label htmlFor="register-name-input">{t("login.name")}</Label>
+                  <Input id="register-name-input" required value={form.name} onChange={set("name")} data-testid="register-name-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>{t("login.email")}</Label>
-                  <Input required type="email" value={form.email} onChange={set("email")} data-testid="register-email-input" className="rounded-sm h-11" />
+                  <Label htmlFor="register-email-input">{t("login.email")}</Label>
+                  <Input id="register-email-input" required type="email" value={form.email} onChange={set("email")} data-testid="register-email-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>{t("login.password")}</Label>
-                  <Input required type="password" minLength={6} value={form.password} onChange={set("password")} data-testid="register-password-input" className="rounded-sm h-11" />
+                  <Label htmlFor="register-password-input">{t("login.password")}</Label>
+                  <Input id="register-password-input" required type="password" minLength={6} value={form.password} onChange={set("password")} data-testid="register-password-input" className="rounded-sm h-11" />
                 </div>
 
                 {/* Documents pro obligatoires */}
