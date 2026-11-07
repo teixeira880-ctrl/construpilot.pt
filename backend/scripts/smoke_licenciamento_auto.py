@@ -28,6 +28,9 @@ async def main(morada: str):
     print("GEOCODE", json.dumps({k: g[k] for k in ("ok", "fonte", "nota")}, ensure_ascii=False), json.dumps({k: v for k, v in (g.get("data") or {}).items() if k != "via_geom"}, ensure_ascii=False), "via_geom=" + str(bool((g.get("data") or {}).get("via_geom"))))
     if g["ok"]:
         lat, lon = g["data"]["lat"], g["data"]["lon"]
+        fr = await G._dgt_items("freguesias", G._tiny_bbox(lat, lon), 1)
+        print("FREGUESIA_CAOP", await G.freguesia_caop(lat, lon), json.dumps((fr or [{}])[0].get("properties"), ensure_ascii=False)[:400])
+        print("VIA_REVERSA", json.dumps({k: v for k, v in (await G.via_reversa(lat, lon)).items()}, ensure_ascii=False, default=str)[:400])
         cols = await G.dgt_collections()
         print("DGT_COLECOES", len(cols), [c["id"] for c in cols][:80])
         for nome, coro in (("MUNICIPIO", G.municipio(lat, lon)), ("CRUS", G.crus(lat, lon)), ("SRUP", G.servidoes(lat, lon)),
