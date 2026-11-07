@@ -140,7 +140,16 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
             avisos.append(f"Servidão ou restrição na envolvente: «{h['titulo'] or h['id']}» — confirmar a distância e o parecer necessário.")
     if not srup["ok"]:
         avisos.append("Não foi possível consultar as servidões e restrições (REN, RAN, domínio hídrico…): confirmar na câmara.")
-    await passo("viabilidade", "bloqueado" if bloqueios else "ok", "; ".join(bloqueios)[:300])
+    elif (srup.get("data") or {}).get("incompleta"):
+        falt = ", ".join(c.get("titulo") or c.get("id") for c in srup["data"].get("nao_consultadas", [])[:6])
+        avisos.append(f"Algumas servidões não responderam e ficaram por confirmar ({falt}): confirmar na câmara antes de avançar.")
+    if geo.get("precisao") == "localidade":
+        avisos.append("Só foi encontrada a localidade, não a rua: a classe do PDM e as servidões referem-se ao centro da localidade, "
+                      "não ao terreno. Confirme a localização exata antes de usar este estudo.")
+    # dados críticos que não puderam ser confirmados: o processo nunca é dado como «pronto» sem eles
+    criticos_por_confirmar = (not classe) or (not srup["ok"]) or bool((srup.get("data") or {}).get("incompleta")) \
+        or geo.get("precisao") == "localidade"
+    await passo("viabilidade", "bloqueado" if bloqueios else ("atencao" if criticos_por_confirmar else "ok"), "; ".join(bloqueios)[:300])
     if bloqueios and not _bool(p.get("forcar_estudo"), False):
         return {"ok": False, "estado": "inviavel", "bloqueios": bloqueios, "avisos": avisos, "etapas": etapas,
                 "fontes": fontes, "localizacao": geo,
@@ -257,7 +266,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
             "programa": {k: prog[k] for k in ("tipologia", "n_pisos", "area_bruta_total_m2", "minimo_area_bruta_m2", "garagem",
                                               "fonte_minimos")},
             "implantacao": {k: res[k] for k in ("fachada_sol", "lado_garagem", "cota_soleira_m", "terras", "decisoes",
-                                                 "casa_rect", "garagem_rect")},
+                                                 "casa_rect", "garagem_rect", "declive_profundidade_pct")},
             "plantas": {"pisos": plan["pisos"], "casa_rect": plan["casa_rect"]},
             "vaos": PA.vaos(plan, res["volume"], res["fachada_sol"]),
             "materiais": mats, "casa_latlon": casa_ll,
@@ -276,7 +285,8 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     # 8. documentos: memória determinística, com controlo de números
     mem = PA.memoria_descritiva(processo, verif)
     sem_fonte = C.numeros_sem_fonte(mem, C.numeros_permitidos(verif["quadro"], processo["volume"], plan, processo["auto"]["implantacao"],
-                                                               processo["auto"]["programa"], processo["auto"]["alvos"]))
+                                                               processo["auto"]["programa"], processo["auto"]["alvos"],
+                                                               {k: v for k, v in (topo or {}).items() if k != "grelha"}))
     processo["memoria_texto"] = mem
     await passo("documentos", "ok" if not sem_fonte else "atencao", "; ".join(sem_fonte))
 
@@ -300,7 +310,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         perguntas.append("Qual é a área do terreno indicada na caderneta predial? (assim ajusto a casa ao terreno real)")
     if not p.get("artigo_matricial"):
         perguntas.append("Tem o número do artigo matricial ou da descrição predial? (está na caderneta / certidão)")
-    return {"ok": True, "estado": "pronto" if coer["ok"] and not bloqueios else "revisao", "processo": processo, "verificacao": verif,
+    return {"ok": True, "estado": "pronto" if coer["ok"] and not bloqueios and not criticos_por_confirmar else "revisao", "processo": processo, "verificacao": verif,
             "coerencia": coer, "pressupostos": pressupostos, "avisos": avisos, "bloqueios": bloqueios, "fontes": fontes,
             "perguntas": perguntas, "etapas": etapas}
 

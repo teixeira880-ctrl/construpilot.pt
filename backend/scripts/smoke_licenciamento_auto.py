@@ -20,7 +20,7 @@ async def main(morada: str):
     for nome, url, params in (("NOMINATIM", G.NOMINATIM + "/search", {"q": "Braga", "format": "jsonv2", "limit": 1}),
                               ("PHOTON", G.PHOTON, {"q": "Braga", "limit": 1}),
                               ("DGT", G.DGT + "/collections", {"f": "json"}),
-                              ("OVERPASS", G.OVERPASS, {"data": "[out:json];node(1);out;"}),
+                              *((f"OVERPASS {u.split('/')[2]}", u, {"data": "[out:json];node(1);out;"}) for u in G.OVERPASS_ESPELHOS),
                               ("OPENTOPO", G.OPENTOPO, {"locations": "41.55,-8.42"})):
         st, js = await G._http("GET", url, params, None, "json")
         print("NET", nome, st, "json" if js is not None else "sem-dados")
