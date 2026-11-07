@@ -8,7 +8,10 @@
 // confirmed=true (l'agent ne l'envoie qu'après le « oui » de l'admin).
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { api } from "@/lib/api";
+import { api, API } from "@/lib/api";
+import { startScreenWatch, stopScreenWatch, markAgentAction, agentActing, pushScreenNow } from "./avatarScreenWatch";
+import { brief, describe, elements, findTarget, labelOf } from "./avatarDom";
+import { startSpeechSync, stopSpeechSync } from "./avatarSpeech";
 
 const PT = typeof window !== "undefined" && /construpilot\.pt|construpilot-recon/.test(window.location.hostname);
 const T = PT ? {
@@ -16,60 +19,55 @@ const T = PT ? {
   noagent: "A assistente não responde: o agente está online (LiveKit Cloud)?", ended: "Conversa terminada.",
   busy: "A assistente já está a ser usada por outro admin. Tente daqui a alguns minutos.", quota: "Quota Synthesia esgotada este mês.",
   config: "Problema de configuração do avatar (chave Synthesia ou LiveKit). ", error: "A assistente não conseguiu arrancar, tente de novo.",
+  listening: "A ouvir", thinking: "A pensar…", speaking: "A falar", acting: "A agir no ecrã", you: "Você",
 } : {
   waiting: "Connexion de l'assistante…", live: "En direct", stop: "Terminer", min: "Réduire", open: "Ouvrir", mic: "Micro",
   noagent: "L'assistante ne répond pas : l'agent est-il en ligne (LiveKit Cloud) ?", ended: "Conversation terminée.",
   busy: "L'assistante est déjà utilisée par un autre admin. Réessayez dans quelques minutes.", quota: "Quota Synthesia épuisé pour ce mois.",
   config: "Problème de configuration de l'avatar (clé Synthesia ou LiveKit). ", error: "L'assistante n'a pas pu démarrer, réessayez.",
+  listening: "À l'écoute", thinking: "Réfléchit…", speaking: "Parle", acting: "Agit à l'écran", you: "Vous",
 };
 
 // ------------------------------------------------------------------ petit magasin partagé (panneau admin ↔ fenêtre flottante)
 const listeners = new Set();
-let state = { phase: "idle", message: "", lang: "fr", micOn: true };
+let state = { phase: "idle", message: "", lang: "fr", micOn: true, caption: null, agentState: null, acting: 0 };
 const set = (patch) => { state = { ...state, ...patch }; listeners.forEach((l) => l(state)); };
 export const avatarStore = { get: () => state, subscribe: (l) => { listeners.add(l); return () => listeners.delete(l); } };
 
 let room = null;
 let timer = null;
 let videoEl = null;
+let roomName = null;
+
+// Libère la salle côté serveur (créneau Synthesia unique) : fermeture d'onglet ou « Terminer ».
+function releaseRoom() {
+  const rn = roomName;
+  if (!rn) return;
+  roomName = null;
+  try {
+    const url = `${API}/admin/avatar/release`;
+    const body = JSON.stringify({ room: rn });
+    if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+    else fetch(url, { method: "POST", credentials: "include", keepalive: true,
+                      headers: { "Content-Type": "application/json" }, body });
+  } catch { /* ignoré */ }
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", releaseRoom);
+  window.addEventListener("beforeunload", releaseRoom);
+}
 
 // ------------------------------------------------------------------ pilotage visible de l'écran
 const SEL = 'a[href],button,input:not([type=hidden]),textarea,select,[role=button],[role=tab],[role=menuitem],[role=option],[role=combobox],[role=checkbox],[role=switch],[contenteditable=true]';
 const FORBID = /\b(pagar|pagamento|payer|paiement|payment|checkout|stripe|cart[aã]o|carte bancaire|eliminar definitivamente|supprimer d[ée]finitivement|esvaziar|vider la corbeille|palavra-passe|mot de passe|password)/i;
-const CONFIRM = /(apagar|eliminar|supprimer|delete|remover|retirer|enviar e-?mail|envoyer|send|emitir|[ée]mettre|finalizar|finaliser|validar|valider|aprovar|approuver|publicar|publier|aceitar|accepter|desativar|d[ée]sactiver|bloquear|bloquer|guardar|enregistrer|save|confirmar|confirmer|submeter|soumettre)/i;
-const NO_CONFIRM_TESTIDS = new Set(["assistant-send-btn"]);   // envoyer un message à l'Assistant BTP n'engage rien
-let ids = new WeakMap();
-let seq = 0;
-
-function labelOf(el) {
-  const aria = el.getAttribute("aria-label") || el.getAttribute("title");
-  if (aria) return aria.trim();
-  if (el.id) { const l = document.querySelector(`label[for="${CSS.escape(el.id)}"]`); if (l?.innerText) return l.innerText.trim(); }
-  const t = (el.innerText || el.value || "").trim();
-  if (t) return t.replace(/\s+/g, " ").slice(0, 60);
-  return (el.getAttribute("placeholder") || el.getAttribute("name") || el.getAttribute("data-testid") || el.tagName.toLowerCase()).slice(0, 80);
-}
-function visible(el) {
-  if (el.closest("#cp-avatar-dock")) return false;
-  const r = el.getBoundingClientRect();
-  const s = getComputedStyle(el);
-  return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && !el.disabled;
-}
+// Autonomie (demande du fondateur, 31/10) : l'assistante agit seule ; seules les actions irréversibles ou qui partent
+// vers l'extérieur (suppression, envoi d'e-mail / de facture / signature, émission, publication) demandent un « oui ».
+const CONFIRM = /(apagar|eliminar|supprimer|delete|remover|enviar (?:o |a )?(?:e-?mail|fatura|orçamento|ao cliente)|envoyer (?:l['’]|le |la |au |par )?(?:e-?mail|mail|facture|devis|client)|send (?:e-?mail|invoice)|emitir|[ée]mettre|publicar|publier|signer|assinar|desativar|d[ée]sactiver|bloquear|bloquer|r[ée]voquer|revogar)/i;
+const NO_CONFIRM_TESTIDS = new Set(["assistant-send-btn", "choice-submit-btn", "choice-defaults-btn"]);
+// Identifiants, libellés et recherche d'éléments partagés avec l'écran en direct (avatarDom.js) : l'agent clique
+// directement sur les ids envoyés en direct, ou sur le texte visible d'un bouton.
 function snapshot() {
-  const els = [...document.querySelectorAll(SEL)].filter(visible);
-  const vh = window.innerHeight;
-  els.sort((a, b) => {
-    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-    const ia = ra.bottom > 0 && ra.top < vh ? 0 : 1, ib = rb.bottom > 0 && rb.top < vh ? 0 : 1;
-    return ia - ib || ra.top - rb.top || ra.left - rb.left;
-  });
-  const items = els.slice(0, 120).map((el) => {
-    if (!ids.has(el)) ids.set(el, `e${++seq}`);
-    const id = ids.get(el);
-    el.setAttribute("data-cp-ai", id);
-    const role = el.getAttribute("role") || (el.tagName === "A" ? "link" : el.tagName === "INPUT" ? `input:${el.type || "text"}` : el.tagName.toLowerCase());
-    return { id, role, label: labelOf(el), ...(el.tagName === "A" ? { href: el.getAttribute("href") } : {}) };
-  });
+  const items = elements({ limit: 160 }).map(describe);
   const main = document.querySelector("main") || document.body;
   const text = (main.innerText || "").replace(/\n{3,}/g, "\n\n").slice(0, 7000);
   return { path: window.location.pathname + window.location.search, title: document.title, text, elements: items };
@@ -81,29 +79,48 @@ function fit(o) {
   while (out.length > 14000 && o.elements.length > 20) { o.elements = o.elements.slice(0, o.elements.length - 15); out = JSON.stringify(o); }
   return out;
 }
-function find(id) { return document.querySelector(`[data-cp-ai="${CSS.escape(id)}"]`); }
+function fit2(o) {
+  let out = JSON.stringify(o);
+  while (out.length > 14000 && o.last_answer?.length > 400) { o.last_answer = o.last_answer.slice(0, Math.floor(o.last_answer.length * 0.7)) + "…"; out = JSON.stringify(o); }
+  return out;
+}
+// résultat d'action + nouvel écran (court) : l'agent enchaîne sans relire la page
+function withScreen(o) {
+  const b = brief();
+  let out = JSON.stringify({ ok: true, ...o, screen: b });
+  while (out.length > 13500 && b.elements.length > 10) { b.elements = b.elements.slice(0, b.elements.length - 8); out = JSON.stringify({ ok: true, ...o, screen: b }); }
+  return out;
+}
+const find = (ref, o) => findTarget(ref, o);
 
+// Pointeur : rapide et non bloquant (avant ~1 s par geste). soft = l'assistante parle de l'élément (contour léger, pas de clic).
 let cursor = null;
-function pointTo(el) {
+function pointTo(el, { soft = false } = {}) {
   return new Promise((resolve) => {
     if (!cursor) {
       cursor = document.createElement("div");
       cursor.id = "cp-avatar-cursor";
-      cursor.style.cssText = "position:fixed;z-index:2147483646;width:26px;height:26px;pointer-events:none;transition:left .45s ease,top .45s ease,opacity .3s;left:50vw;top:50vh;opacity:0";
+      cursor.style.cssText = "position:fixed;z-index:2147483646;width:26px;height:26px;pointer-events:none;transition:left .22s ease-out,top .22s ease-out,opacity .2s;left:50vw;top:50vh;opacity:0";
       cursor.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 2l16 9-7 2-3 7z" fill="#c8763a" stroke="#fff" stroke-width="1.5"/></svg>';
       document.body.appendChild(cursor);
     }
-    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    setTimeout(() => {
+    const r0 = el.getBoundingClientRect();
+    const off = r0.top < 60 || r0.bottom > window.innerHeight - 40;
+    if (off) el.scrollIntoView({ behavior: soft ? "smooth" : "auto", block: "center", inline: "nearest" });
+    requestAnimationFrame(() => {
       const r = el.getBoundingClientRect();
       cursor.style.opacity = "1";
       cursor.style.left = `${r.left + Math.min(r.width / 2, 40)}px`;
       cursor.style.top = `${r.top + r.height / 2}px`;
-      const prev = el.style.outline;
-      el.style.outline = "3px solid #c8763a";
+      const prevO = el.style.outline, prevOff = el.style.outlineOffset, prevT = el.style.transition, prevB = el.style.boxShadow;
+      el.style.transition = "box-shadow .2s";
+      el.style.outline = soft ? "2px solid rgba(200,118,58,.85)" : "3px solid #c8763a";
       el.style.outlineOffset = "2px";
-      setTimeout(() => { el.style.outline = prev; resolve(); }, 650);
-    }, 350);
+      if (soft) el.style.boxShadow = "0 0 0 6px rgba(200,118,58,.18)";
+      setTimeout(() => { el.style.outline = prevO; el.style.outlineOffset = prevOff; el.style.boxShadow = prevB; el.style.transition = prevT; },
+                 soft ? 1600 : 700);
+      setTimeout(resolve, soft ? 0 : 230);   // le clic part dès que le pointeur est arrivé
+    });
   });
 }
 function setNativeValue(el, value) {
@@ -117,67 +134,240 @@ const ok = (o) => JSON.stringify({ ok: true, ...o });
 const ko = (error, o = {}) => JSON.stringify({ ok: false, error, ...o });
 const parse = (d) => { try { return JSON.parse(d.payload || "{}"); } catch { return {}; } };
 const settle = (ms = 900) => new Promise((r) => setTimeout(r, ms));
+// Attend que la page se stabilise (plus aucune mutation pendant quiet ms), au plus max ms : rapide quand la page l'est.
+function settleSmart(max = 1500, quiet = 220) {
+  return new Promise((resolve) => {
+    let t = null;
+    const done = () => { obs.disconnect(); clearTimeout(t); clearTimeout(hard); resolve(); };
+    const obs = new MutationObserver(() => { clearTimeout(t); t = setTimeout(done, quiet); });
+    obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    t = setTimeout(done, quiet);
+    const hard = setTimeout(done, max);
+  });
+}
+
+// ------------------------------------------------------------------ Assistant BTP : actions structurées
+// L'assistante ne « devine » plus l'écran : elle lit l'état réel de la conversation (réponse, cartes de choix,
+// fichiers produits) et agit par le même chemin que l'utilisateur (window.__cpAssistant exposé par la page).
+const RUNNING = ["queued", "running", "preparing"];
+async function assistantPage(timeoutMs = 12000) {
+  if (!window.location.pathname.startsWith("/assistant")) {
+    window.history.pushState({}, "", "/assistant");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end) { if (window.__cpAssistant) return window.__cpAssistant; await settle(300); }
+  return null;
+}
+function pendingChoices(conv) {
+  const msgs = conv?.messages || [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (m.role === "user") return [];            // une réponse a déjà suivi la dernière carte
+    for (const a of m.actions || []) {
+      const r = a.result || {};
+      if (a.tool === "ask_user_choices" && Array.isArray(r.questions)) {
+        if (document.querySelector('[data-testid="choice-card-frozen"]') && !document.querySelector('[data-testid="choice-card"]')) return [];
+        return [{ intro: r.intro || "", submit_label: r.submit_label || "", questions: r.questions.map((q) => ({
+          id: q.id, label: q.label, multi: !!q.multi, allow_other: !!q.allow_other, recommended: q.default_option_id || null,
+          options: (q.options || []).map((o) => ({ id: o.id, label: o.label })) })) }];
+      }
+    }
+  }
+  return [];
+}
+function assistantState() {
+  const conv = window.__cpAssistant?.state();
+  if (!conv) return { ok: true, page: window.location.pathname, conversation_id: null, running: false, last_answer: "", choices: [], files: [] };
+  const msgs = conv.messages || [];
+  const last = [...msgs].reverse().find((m) => m.role === "assistant");
+  const files = [];
+  for (const a of last?.actions || []) {
+    const r = a.result || {};
+    for (const art of [r.artifact, r.pdf_artifact, r.xlsx_artifact].filter(Boolean)) files.push({ title: art.title, file: art.filename, format: art.format });
+    if (r.ok === false && r.error) files.push({ error: `${a.tool}: ${String(r.error).slice(0, 160)}` });
+  }
+  const job = (conv.jobs || []).find((j) => RUNNING.includes(j.status));
+  return { ok: true, conversation_id: conv.conversation_id, title: conv.title || "", running: !!job, job_status: job?.status || null,
+           progress: job?.live?.label || job?.live?.status || null, messages: msgs.length,
+           last_answer: (last?.content || "").slice(0, 6000), last_message_id: last?.message_id || null,
+           tools_used: (last?.actions || []).map((a) => `${a.tool}${a.result?.ok === false ? " (échec)" : ""}`).slice(0, 15),
+           choices: pendingChoices(conv), files };
+}
+async function clickTestId(testid) {
+  const el = document.querySelector(`[data-testid="${CSS.escape(testid)}"]`);
+  if (!el) return false;
+  await pointTo(el);
+  el.click();
+  await settle(250);
+  return true;
+}
 
 const HANDLERS = {
+  "assistant.status": async () => fit2(assistantState()),
+  "assistant.ask": async (d) => {
+    const { text, new_conversation, conversation_id } = parse(d);
+    if (!String(text || "").trim()) return ko("texte vide");
+    const a = await assistantPage();
+    if (!a) return ko("page Assistant BTP indisponible");
+    if (conversation_id && a.state()?.conversation_id !== conversation_id) { await a.open(conversation_id); await settle(800); }
+    else if (new_conversation) { await a.newConversation(); await settle(800); }
+    const before = (a.state()?.messages || []).length;
+    await a.send(String(text).slice(0, 7900));
+    const end = Date.now() + 15000;
+    while (Date.now() < end && (a.state()?.messages || []).length <= before && !(a.state()?.jobs || []).some((j) => RUNNING.includes(j.status))) await settle(500);
+    return fit2({ ...assistantState(), sent: true });
+  },
+  "assistant.wait": async (d) => {
+    const secs = Math.min(40, Math.max(3, Number(parse(d).seconds) || 30));
+    const a = await assistantPage(4000);
+    if (!a) return ko("page Assistant BTP indisponible");
+    const startId = assistantState().last_message_id;
+    const end = Date.now() + secs * 1000;
+    while (Date.now() < end) {
+      a.refresh?.();
+      await settle(2500);
+      const st = assistantState();
+      if (!st.running && st.last_message_id !== startId) return fit2({ ...st, done: true });
+      if (!st.running && st.choices.length) return fit2({ ...st, done: true });
+    }
+    return fit2({ ...assistantState(), done: false, note: "toujours en cours : rappeler assistant_wait" });
+  },
+  "assistant.choose": async (d) => {
+    const { answers = {}, other = {}, use_recommended } = parse(d);
+    const st = assistantState();
+    const card = st.choices[0];
+    if (!card) return ko("aucune carte de choix en attente");
+    if (use_recommended) {
+      if (!(await clickTestId("choice-defaults-btn"))) return ko("bouton « hypothèses courantes » introuvable");
+    } else {
+      for (const q of card.questions) {
+        const want = [].concat(answers[q.id] ?? []).map(String);
+        if (!want.length) continue;                        // question non précisée : la valeur recommandée reste cochée
+        for (const o of q.options) {
+          const el = document.querySelector(`[data-testid="${CSS.escape(`choice-opt-${q.id}-${o.id}`)}"]`);
+          if (!el) continue;
+          const on = el.getAttribute("aria-checked") === "true";
+          if (want.includes(o.id) !== on && (q.multi || want.includes(o.id))) { await pointTo(el); el.click(); await settle(200); }
+        }
+        if (want.includes("other") && other[q.id]) {
+          await clickTestId(`choice-opt-${q.id}-other`);
+          const input = document.querySelector(`[data-testid="${CSS.escape(`choice-other-input-${q.id}`)}"]`);
+          if (input) { await pointTo(input); setNativeValue(input, String(other[q.id])); await settle(200); }
+        }
+      }
+      if (!(await clickTestId("choice-submit-btn"))) return ko("bouton de validation introuvable");
+    }
+    await settle(2500);
+    return fit2({ ...assistantState(), submitted: true });
+  },
   "ui.read": async () => fit(snapshot()),
-  "ui.navigate": async (d) => {
-    const p = String(parse(d).path || "");
-    if (!p.startsWith("/") || p.startsWith("//")) return ko("chemin invalide (commencer par /)");
+  "ui.navigate": async (d) => res(await act.navigate(parse(d).path)),
+  "ui.back": async () => res(await act.back()),
+  "ui.scroll": async (d) => res(await act.scroll(parse(d).direction)),
+  "ui.click": async (d) => { const { id, confirmed } = parse(d); return res(await act.click(id, confirmed)); },
+  "ui.type": async (d) => { const { id, text, submit } = parse(d); return res(await act.type(id, text, submit)); },
+  "ui.point": async (d) => res(await act.point(parse(d).id), false),
+  // Plusieurs gestes en un seul appel : l'agent ne fait plus un aller-retour (et une réflexion) par clic.
+  "ui.do": async (d) => {
+    const steps = Array.isArray(parse(d).steps) ? parse(d).steps.slice(0, 12) : [];
+    if (!steps.length) return ko("aucune étape");
+    const done = [];
+    for (const st of steps) {
+      let r;
+      if (!st || typeof st !== "object") continue;
+      if ("navigate" in st) r = await act.navigate(st.navigate);
+      else if ("click" in st) r = await act.click(st.click, !!st.confirmed);
+      else if ("type" in st) r = await act.type(st.type, st.text, !!st.submit);
+      else if ("scroll" in st) r = await act.scroll(st.scroll);
+      else if ("back" in st) r = await act.back();
+      else if ("point" in st) r = await act.point(st.point);
+      else if ("wait" in st) { await settle(Math.max(0, Math.min(5, Number(st.wait) || 0)) * 1000); r = { ok: true }; }
+      else continue;
+      done.push({ step: st, ok: r.ok, ...(r.ok ? {} : { error: r.error, needs_confirmation: r.needs_confirmation, label: r.label }) });
+      if (!r.ok) return withScreen({ ok: false, done, error: r.error });
+    }
+    return withScreen({ done });
+  },
+};
+
+// ------------------------------------------------------------------ gestes élémentaires (objets, pas encore sérialisés)
+const res = (r, screen = true) => (r.ok ? (screen ? withScreen(r) : JSON.stringify(r)) : JSON.stringify(r));
+const act = {
+  async navigate(path) {
+    const p = String(path || "");
+    if (!p.startsWith("/") || p.startsWith("//")) return { ok: false, error: "chemin invalide (commencer par /)" };
+    if (window.location.pathname + window.location.search === p || window.location.pathname === p)
+      return { ok: true, path: p, note: "page déjà ouverte" };
     window.history.pushState({}, "", p);
     window.dispatchEvent(new PopStateEvent("popstate"));
-    await settle(1400);
-    return ok({ path: window.location.pathname });
+    await settleSmart(1600, 260);
+    pushScreenNow();
+    return { ok: true, path: window.location.pathname };
   },
-  "ui.back": async () => { window.history.back(); await settle(1200); return ok({ path: window.location.pathname }); },
-  "ui.scroll": async (d) => {
-    const dir = parse(d).direction === "up" ? -1 : 1;
+  async back() { window.history.back(); await settleSmart(1400, 260); pushScreenNow(); return { ok: true, path: window.location.pathname }; },
+  async scroll(direction) {
+    const dir = direction === "up" ? -1 : 1;
     window.scrollBy({ top: dir * window.innerHeight * 0.8, behavior: "smooth" });
-    await settle(600);
-    return ok({});
+    await settle(380);
+    return { ok: true };
   },
-  "ui.click": async (d) => {
-    const { id, confirmed } = parse(d);
-    const el = find(String(id || ""));
-    if (!el) return ko("élément introuvable : relire la page avec ui_read");
+  async click(ref, confirmed) {
+    const el = find(String(ref || ""));
+    if (!el) return { ok: false, error: `élément « ${String(ref).slice(0, 60)} » introuvable : regarder l'écran en direct ou ui_read` };
     const label = labelOf(el);
-    if (FORBID.test(label)) return ko("action interdite à l'assistante (paiement, mot de passe ou suppression définitive) : à faire à la main", { label });
+    if (FORBID.test(label)) return { ok: false, error: "action interdite à l'assistante (paiement, mot de passe ou suppression définitive) : à faire à la main", label };
     if (CONFIRM.test(label) && !NO_CONFIRM_TESTIDS.has(el.getAttribute("data-testid")) && !confirmed)
-      return ko("confirmation requise", { needs_confirmation: true, label });
+      return { ok: false, error: "confirmation requise", needs_confirmation: true, label };
     await pointTo(el);
     el.click();
-    await settle();
-    return ok({ clicked: label, path: window.location.pathname });
+    await settleSmart(1200, 200);
+    pushScreenNow();
+    return { ok: true, clicked: label, path: window.location.pathname };
   },
-  "ui.type": async (d) => {
-    const { id, text, submit } = parse(d);
-    const el = find(String(id || ""));
-    if (!el) return ko("élément introuvable : relire la page avec ui_read");
-    if (el.type === "password" || FORBID.test(labelOf(el))) return ko("champ interdit à l'assistante");
+  async type(ref, text, submit) {
+    const el = find(String(ref || ""), { fields: true }) || find(String(ref || ""));
+    if (!el) return { ok: false, error: `champ « ${String(ref).slice(0, 60)} » introuvable` };
+    if (el.type === "password" || FORBID.test(labelOf(el))) return { ok: false, error: "champ interdit à l'assistante" };
     await pointTo(el);
     el.focus();
     if (el.isContentEditable) { document.execCommand("selectAll"); document.execCommand("insertText", false, String(text ?? "")); }
     else setNativeValue(el, String(text ?? ""));
-    if (submit) el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
-    await settle(500);
-    return ok({ typed: true });
+    if (submit) {
+      el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
+      await settleSmart(1000, 200);
+    } else await settle(120);
+    return { ok: true, typed: labelOf(el) };
+  },
+  async point(ref) {
+    const el = find(String(ref || ""));
+    if (!el) return { ok: false, error: "élément introuvable" };
+    pointTo(el, { soft: true });
+    return { ok: true, pointed: labelOf(el) };
   },
 };
 
 // ------------------------------------------------------------------ session
 function reset(message = "") {
+  stopScreenWatch();
+  stopSpeechSync();
   clearTimeout(timer);
   room = null;
+  roomName = null;
   videoEl = null;
   cursor?.remove(); cursor = null;
-  set({ phase: "idle", message });
+  set({ phase: "idle", message, caption: null, agentState: null, acting: 0 });
 }
+// Préchargement du client LiveKit dès que le panneau admin s'affiche : « Parler » démarre sans attendre le téléchargement.
+let lkModule = null;
+export const preloadAvatar = () => { lkModule = lkModule || import("livekit-client"); return lkModule; };
 
 export async function startAvatar(lang = "fr") {
   if (room) return;
   set({ phase: "connecting", message: "", lang, micOn: true });
   try {
-    const { data } = await api.get("/admin/avatar/token", { params: { lang } });
-    const { Room, RoomEvent } = await import("livekit-client");
+    const [{ data }, { Room, RoomEvent }] = await Promise.all([api.get("/admin/avatar/token", { params: { lang } }), preloadAvatar()]);
+    roomName = data.room;
     const r = new Room({ adaptiveStream: false });
     room = r;
     let notice = null;
@@ -195,8 +385,27 @@ export async function startAvatar(lang = "fr") {
       } catch { /* ignoré */ }
     });
     r.on(RoomEvent.Disconnected, () => reset(notice || T.ended));
-    Object.entries(HANDLERS).forEach(([name, fn]) => r.registerRpcMethod(name, fn));
+    Object.entries(HANDLERS).forEach(([name, fn]) => r.registerRpcMethod(name, async (d) => {
+      markAgentAction();
+      if (name !== "ui.read" && name !== "assistant.status") set({ acting: state.acting + 1 });
+      try { return await fn(d); } finally {
+        markAgentAction();
+        if (name !== "ui.read" && name !== "assistant.status") set({ acting: Math.max(0, state.acting - 1) });
+      }
+    }));
+    // sous-titres, état de l'assistante, l'écran qui suit ses mots, navigation vocale instantanée
+    startSpeechSync(r, {
+      onCaption: (c) => set({ caption: c }),
+      onState: (st) => {
+        set({ agentState: st });
+        if (st === "listening") setTimeout(() => { if (state.agentState === "listening" && state.caption?.who === "agent") set({ caption: null }); }, 5000);
+      },
+      point: (el, o) => pointTo(el, o),
+      isAgentActing: agentActing,
+      markAgentAction,
+    });
     await r.connect(data.url, data.token);
+    startScreenWatch(r);
     await r.localParticipant.setMicrophoneEnabled(true);
     if (state.phase !== "live") set({ phase: "waiting" });
     timer = setTimeout(() => { if (state.phase !== "live") set({ message: T.noagent }); }, 60000);
@@ -205,7 +414,7 @@ export async function startAvatar(lang = "fr") {
     reset(e?.response?.data?.detail || e?.message || T.error);
   }
 }
-export async function stopAvatar() { await room?.disconnect(); reset(T.ended); }
+export async function stopAvatar() { releaseRoom(); await room?.disconnect(); reset(T.ended); }
 async function toggleMic() {
   if (!room) return;
   const on = !state.micOn;
@@ -223,7 +432,7 @@ function Dock() {
   useEffect(() => avatarStore.subscribe(setS), []);
   useEffect(() => {
     if (holder.current && videoEl && videoEl.parentElement !== holder.current) {
-      videoEl.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;background:#000";
+      videoEl.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;background:transparent";
       holder.current.replaceChildren(videoEl);
     }
   });
@@ -242,14 +451,24 @@ function Dock() {
                border: "2px solid #c8763a", fontFamily: "inherit" }}>
       <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => { drag.current = null; }}
         style={{ cursor: "move", height: min ? 64 : 290, position: "relative" }}>
-        <div ref={holder} style={{ width: "100%", height: "100%", background: "#0b0f0d" }} />
+        <div ref={holder} style={{ width: "100%", height: "100%", background: "transparent" }} />
         {s.phase !== "live" && !min && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#f5efe3",
                         fontSize: 12, textAlign: "center", padding: 12 }}>{s.message || T.waiting}</div>)}
+        {s.phase === "live" && !min && s.caption?.text && (
+          <div data-testid="avatar-caption" aria-live="polite"
+            style={{ position: "absolute", left: 6, right: 6, bottom: 6, padding: "5px 8px", borderRadius: 10, fontSize: 12, lineHeight: 1.35,
+                     color: "#fff", background: s.caption.who === "admin" ? "rgba(40,85,65,.82)" : "rgba(20,20,20,.62)",
+                     maxHeight: 74, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}>
+            {s.caption.who === "admin" ? <b>{T.you} : </b> : null}{s.caption.text}
+          </div>)}
       </div>
       {!min && (
         <div style={{ display: "flex", gap: 6, padding: 6, alignItems: "center", background: "#14532d" }}>
-          <span style={{ color: "#f5efe3", fontSize: 11, flex: 1 }}>{s.phase === "live" ? `● ${T.live}` : "…"}</span>
+          <span data-testid="avatar-state" style={{ color: "#f5efe3", fontSize: 11, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {s.phase !== "live" ? "…" : s.acting > 0 ? `⚙ ${T.acting}` : s.agentState === "thinking" ? `💭 ${T.thinking}`
+              : s.agentState === "speaking" ? `● ${T.speaking}` : s.agentState === "listening" ? `👂 ${T.listening}` : `● ${T.live}`}
+          </span>
           <button type="button" style={{ ...btn, background: s.micOn ? "#285541" : "#7a2e2e" }} onClick={toggleMic} title={T.mic}>{s.micOn ? "🎙" : "🔇"}</button>
           <button type="button" style={{ ...btn, background: "#285541" }} onClick={() => setMin(true)} title={T.min}>▁</button>
           <button type="button" style={{ ...btn, background: "#b42318" }} onClick={stopAvatar} data-testid="avatar-dock-stop">{T.stop}</button>
