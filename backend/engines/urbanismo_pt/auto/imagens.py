@@ -158,14 +158,18 @@ _MODELO_OPENAI: Dict[str, Any] = {}
 
 
 def _ordem_modelos_imagem(ids: List[str]) -> List[str]:
-    """Modelos de imagem com edição, do mais recente para o mais antigo (gpt-image-2 > 1.5 > 1 > mini)."""
+    """Modelos de imagem com edição: primeiro as versões estáveis «gpt-image-N[.M]» da mais recente para a mais antiga,
+    depois as variantes com sufixo (ex.: -flare, -sunburst — possivelmente pré-visualizações) e por fim as datadas/mini."""
     import re
     cands = [i for i in ids if i.startswith("gpt-image")]
 
     def chave(i):
-        m = re.match(r"gpt-image-(\d+)(?:\.(\d+))?", i)
-        v = (int(m.group(1)), int(m.group(2) or 0)) if m else (0, 0)
-        return (v, "mini" not in i, "-20" not in i)   # versão, completo antes de mini, alias antes de datado
+        m = re.match(r"gpt-image-(\d+)(?:\.(\d+))?(.*)$", i)
+        if not m:
+            return (False, (0, 0), False, False)
+        resto = m.group(3)
+        estavel = resto == ""
+        return (estavel, (int(m.group(1)), int(m.group(2) or 0)), "mini" not in resto, not re.search(r"-20\d\d", resto))
     return sorted(cands, key=chave, reverse=True)
 
 

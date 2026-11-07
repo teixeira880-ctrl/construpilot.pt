@@ -304,6 +304,9 @@ def test_modelo_openai_escolhido_pela_conta(monkeypatch):
     from engines.urbanismo_pt.auto import imagens as IM
     assert IM._ordem_modelos_imagem(["gpt-4o", "dall-e-3", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"])[0] == "gpt-image-1.5"
     assert IM._ordem_modelos_imagem(["gpt-4o", "dall-e-2"]) == []
+    conta = ['chatgpt-image-latest', 'gpt-image-1-mini', 'gpt-image-1.5', 'gpt-image-2', 'gpt-image-2-2026-04-21',
+             'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst-2026-09-08', 'gpt-image-2.6-flare', 'gpt-image-2.6-sunburst']
+    assert IM._ordem_modelos_imagem(conta)[:2] == ["gpt-image-2", "gpt-image-1.5"]   # estável primeiro
     monkeypatch.delenv("URB_IMG_OPENAI_MODEL", raising=False)
     IM._MODELO_OPENAI.clear()
 
