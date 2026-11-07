@@ -236,10 +236,27 @@ async def geocode(morada: str) -> Dict[str, Any]:
         if d:
             return ok(d, "OpenStreetMap (Photon)", f"{PHOTON}?q={consulta}")
     if freguesia and concelho:
+        # rua com nome único no concelho (todos os troços a < 500 m): aceita-se mesmo que a freguesia indicada não coincida
+        # com a do OpenStreetMap (uniões de freguesias, nomes antigos) — fica registado para confirmação
         rua = re.sub(r"\b\d+[A-Za-z]?\b", "", rua_num).strip()
-        d = await nominatim({"q": f"{rua}, {concelho}"}, f"{rua}, {concelho}")
-        if d and freguesia and _norm(freguesia) in _norm(d["morada_formatada"]):
-            return ok(d, "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={rua}, {concelho}")
+        base = {"format": "jsonv2", "addressdetails": 1, "limit": 10, "countrycodes": "pt", "accept-language": "pt-PT",
+                "polygon_geojson": 1, "polygon_threshold": 0.00002}
+        st, js = await _fetch("GET", f"{NOMINATIM}/search", {**base, "q": f"{rua}, {concelho}"}, None, "json")
+        diag.append(f"nominatim[{rua}, {concelho}]={st}:{len(js) if isinstance(js, list) else '-'}")
+        await asyncio.sleep(1.05)
+        cands = [_nom(r, f"{rua}, {concelho}") for r in (js or []) if isinstance(js, list) and r.get("lat")
+                 and _norm(concelho) in _norm(r.get("display_name", ""))]
+        cands = [d for d in cands if d.get("rua") and _mesma_rua(d["rua"])]
+        if cands:
+            em_freg = [d for d in cands if _norm(freguesia) in _norm(d["morada_formatada"])]
+            if em_freg:
+                return ok(em_freg[0], "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={rua}, {concelho}")
+            # o OSM diverge da freguesia indicada (uniões de freguesias, nomes antigos): decide a CAOP oficial da DGT
+            for d in cands[:3]:
+                fr = await freguesia_caop(d["lat"], d["lon"])
+                if fr and _norm(freguesia) in _norm(fr):
+                    d = dict(d, freguesia=fr, freguesia_divergente=freguesia)
+                    return ok(d, "OpenStreetMap (Nominatim) + DGT CAOP", f"{NOMINATIM}/search?q={rua}, {concelho}")
     if lugar:
         loc = ", ".join(lugar)
         d = await nominatim({"q": loc}, loc, exige_rua=False) or await photon(loc, exige_rua=False)
@@ -298,6 +315,15 @@ async def municipio(lat: float, lon: float) -> Dict[str, Any]:
         return _res(True, {"concelho": nome, "distrito": _pick(p, "distrito"), "props": p},
                     "DGT — CAOP (municípios)", f"{DGT}/collections/municipios")
     return _res(False, nota="CAOP indisponível")
+
+
+async def freguesia_caop(lat: float, lon: float) -> Optional[str]:
+    """Nome oficial da freguesia (CAOP, DGT) no ponto, ou None se o serviço não responder."""
+    feats = await _dgt_items("freguesias", _tiny_bbox(lat, lon), 2)
+    if not feats:
+        return None
+    p = _props_text(feats[0].get("properties"))
+    return _pick(p, "freguesia", "nome", "designacao", "name")
 
 
 def classificar_solo(p: Dict[str, str]) -> Dict[str, Any]:
@@ -413,6 +439,22 @@ async def elevacoes(pontos: List[Tuple[float, float]]) -> Dict[str, Any]:
 
 # ------------------------------------------------------------------ via de acesso
 _OVERPASS_KO = {"ate": 0.0}
+
+
+async def via_reversa(lat: float, lon: float) -> Dict[str, Any]:
+    """Rua mais próxima do ponto pela geocodificação inversa do Nominatim (com geometria) — repli do Overpass."""
+    st, js = await _fetch("GET", f"{NOMINATIM}/reverse", {"lat": f"{lat:.7f}", "lon": f"{lon:.7f}", "zoom": 17, "format": "jsonv2",
+                                                          "polygon_geojson": 1, "polygon_threshold": 0.00002,
+                                                          "accept-language": "pt-PT"}, None, "json")
+    if not isinstance(js, dict) or (js.get("category") or js.get("class")) != "highway":
+        return _res(False, nota=f"geocodificação inversa sem rua ({st})")
+    g = js.get("geojson") or {}
+    if g.get("type") not in ("LineString", "MultiLineString"):
+        return _res(False, nota="rua sem geometria")
+    r = via_de_geometria(lat, lon, g, (js.get("address") or {}).get("road") or js.get("name"))
+    if r["ok"]:
+        r["fonte"] = "OpenStreetMap (Nominatim — rua mais próxima)"
+    return r
 
 
 def via_de_geometria(lat: float, lon: float, geom: Optional[dict], nome: Optional[str] = None) -> Dict[str, Any]:

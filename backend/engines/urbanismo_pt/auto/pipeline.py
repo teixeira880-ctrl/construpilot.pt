@@ -104,6 +104,9 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                 "perguntas": ["Não encontrei esta morada. Pode indicar o código postal ou um ponto de referência próximo?"]}
     geo = g["data"]
     fonte(g)
+    if geo.get("freguesia_divergente"):
+        pressupostos.append(f"O OpenStreetMap indica outra freguesia para esta rua («{geo.get('morada_formatada')}»), mas a "
+                            f"carta oficial de freguesias (CAOP) confirma que o ponto fica em {geo.get('freguesia')}.")
     if geo.get("precisao") != "porta":
         pressupostos.append(f"A localização exata da porta não foi encontrada: usou-se o ponto da {geo.get('precisao')} "
                             f"«{geo.get('morada_formatada')}». Confirme o terreno no mapa.")
@@ -116,6 +119,20 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         G.ortofoto(lat, lon))
     if not via["ok"] and geo.get("via_geom"):
         via = G.via_de_geometria(lat, lon, geo["via_geom"], geo.get("rua"))
+    if not via["ok"] and geo.get("precisao") != "localidade":
+        via = await G.via_reversa(lat, lon)
+    # DGT em baixo (ocorre por minutos): uma nova tentativa da classe do PDM e das servidões antes de desistir
+    if not crus["ok"] and "indispon" in (crus.get("nota") or "") or not srup["ok"]:
+        await asyncio.sleep(8)
+        G._COLLECTIONS.update(t=0.0)
+        if not crus["ok"]:
+            crus = await G.crus(lat, lon)
+        if not srup["ok"]:
+            srup = await G.servidoes(lat, lon)
+        if not mun["ok"]:
+            mun = await G.municipio(lat, lon)
+        if not orto["ok"]:
+            orto = await G.ortofoto(lat, lon)
     for r in (mun, crus, srup, cad, via, orto):
         fonte(r)
     concelho = (mun.get("data") or {}).get("concelho") if mun["ok"] else None

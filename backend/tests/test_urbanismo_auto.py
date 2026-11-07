@@ -334,3 +334,61 @@ def test_geocode_so_rua_vizinha_cai_na_localidade():
         return 404, None
     r = _geo(t)
     assert r["ok"] and r["data"]["precisao"] == "localidade"
+
+
+def test_rua_com_freguesia_divergente_confirmada_pela_caop():
+    """Caso real: «Rua Nova de Santa Cruz, São Vicente, Braga» — o OSM põe a rua noutra freguesia (união de freguesias)."""
+    rua = {"lat": "41.5567", "lon": "-8.4060", "category": "highway",
+           "display_name": "Rua Nova de Santa Cruz, São Victor, Braga, 4710-409, Portugal",
+           "address": {"road": "Rua Nova de Santa Cruz", "suburb": "São Victor", "city": "Braga"},
+           "geojson": {"type": "LineString", "coordinates": [[-8.4070, 41.5566], [-8.4050, 41.5568]]}}
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        q = (params or {}).get("q", "")
+        if "nominatim" in url and q == "Rua Nova de Santa Cruz, Braga":
+            return 200, [rua, dict(rua, lat="41.5569", lon="-8.4045")]
+        if "photon" in url:
+            return 200, {"features": []}
+        if "nominatim" in url:
+            return 200, []
+        if "/collections/freguesias/items" in url:
+            return 200, {"features": [{"properties": {"freguesia": "União das freguesias de Braga (São Vicente)"}}]}
+        return 404, None
+    r = _geo(t, "Rua Nova de Santa Cruz 10, São Vicente, Braga")
+    assert r["ok"] and r["data"]["rua"] == "Rua Nova de Santa Cruz" and r["data"]["freguesia_divergente"] == "São Vicente"
+    assert "CAOP" in r["fonte"] and "São Vicente" in r["data"]["freguesia"]
+    assert r["data"]["via_geom"]
+
+
+def test_rua_repetida_no_concelho_nao_e_aceite():
+    async def t(method, url, params=None, headers=None, want="json"):
+        q = (params or {}).get("q", "")
+        if "nominatim" in url and q == "Rua do Monte, Braga":
+            return 200, [{"lat": "41.58", "lon": "-8.37", "display_name": "Rua do Monte, Santa Lucrécia, Braga",
+                          "address": {"road": "Rua do Monte", "city": "Braga"}},
+                         {"lat": "41.50", "lon": "-8.45", "display_name": "Rua do Monte, Ruilhe, Braga",
+                          "address": {"road": "Rua do Monte", "city": "Braga"}}]
+        if "nominatim" in url and q == "Padim da Graça, Braga":
+            return 200, [{"lat": "41.565", "lon": "-8.486", "display_name": "Padim da Graça, Braga, Portugal",
+                          "address": {"village": "Padim da Graça", "municipality": "Braga"}}]
+        if "photon" in url:
+            return 200, {"features": []}
+        if "nominatim" in url:
+            return 200, []
+        return 404, None
+    r = _geo(t)
+    assert r["ok"] and r["data"]["precisao"] == "localidade"
+
+
+def test_via_reversa_com_geometria():
+    async def t(method, url, params=None, headers=None, want="json"):
+        if "reverse" in url:
+            return 200, {"category": "highway", "name": "Rua do Monte", "address": {"road": "Rua do Monte"},
+                         "geojson": {"type": "LineString", "coordinates": [[-8.4795, 41.5401], [-8.4775, 41.5401]]}}
+        return 404, None
+    G.set_transport(t)
+    try:
+        v = _loop_run(G.via_reversa(41.5402, -8.4786))
+    finally:
+        G.set_transport(None)
+    assert v["ok"] and 8 < v["data"]["distancia_m"] < 14 and v["data"]["nome"] == "Rua do Monte"
