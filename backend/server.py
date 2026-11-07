@@ -217,6 +217,8 @@ api_router.include_router(company_routes.router)
 from routes import investors as investors_routes
 api_router.include_router(investors_routes.router)
 api_router.include_router(autoseo_routes.router)
+from routes import heycatch_blog as heycatch_blog_routes  # noqa: E402 — blog HeyCatch
+api_router.include_router(heycatch_blog_routes.router)
 api_router.include_router(blg_routes.router)
 api_router.include_router(newsletter_routes.router)
 api_router.include_router(dpgf_routes.router)

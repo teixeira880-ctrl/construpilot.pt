@@ -1,0 +1,97 @@
+[
+[
+"backend/routes/autoseo.py",
+"        parts.append(\"</url>\")\n    parts.append(\"</urlset>\")\n",
+"        parts.append(\"</url>\")\n    # Blog HeyCatch : cada artigo, lastmod = updated (lido em direto, cache 120 s)\n    try:\n        from routes.heycatch_blog import all_articles\n        seen = {d[\"slug\"] for d in docs}\n        for h in (await all_articles()).get(\"articles\", []):\n            if h[\"slug\"] in seen:\n                continue\n            url = f\"{SITE_URL}/blog/{escape(h['slug'])}\"\n            mod = (h.get(\"updated\") or h.get(\"updated_at\") or h.get(\"published\") or \"\")[:10]\n            parts.append(f\"<url><loc>{url}</loc>\" + (f\"<lastmod>{mod}</lastmod>\" if mod else \"\")\n                         + f'<changefreq>weekly</changefreq><priority>0.7</priority><xhtml:link rel=\"alternate\" hreflang=\"pt-PT\" href=\"{url}\" /></url>')\n    except Exception:  # noqa: BLE001 — o sitemap nunca falha por causa do HeyCatch\n        pass\n    parts.append(\"</urlset>\")\n"
+],
+[
+"backend/server.py",
+"api_router.include_router(autoseo_routes.router)\napi_router.include_router(blg_routes.router)\n",
+"api_router.include_router(autoseo_routes.router)\nfrom routes import heycatch_blog as heycatch_blog_routes  # noqa: E402 — blog HeyCatch\napi_router.include_router(heycatch_blog_routes.router)\napi_router.include_router(blg_routes.router)\n"
+],
+[
+"frontend/src/components/AutoSeoBlogPost.jsx",
+"import NewsletterForm from \"@/components/NewsletterForm\";\n\n",
+"import NewsletterForm from \"@/components/NewsletterForm\";\nimport NotFound from \"@/pages/NotFound\";\n\n"
+],
+[
+"frontend/src/components/AutoSeoBlogPost.jsx",
+"  }\n  if (state.notFound || !state.article) return <Navigate to=\"/blog\" replace />;\n\n",
+"  }\n  if (state.notFound) return <NotFound />;            // slug desconhecido (nem estático, nem HeyCatch, nem AutoSEO) → página 404\n  if (!state.article) return <Navigate to=\"/blog\" replace />;\n\n"
+],
+[
+"frontend/src/components/SEO.jsx",
+"      <meta name=\"twitter:image\" content={ogImg} />\n      {cfg.jsonLd && <script type=\"application/ld+json\">{JSON.stringify(cfg.jsonLd)}</script>}\n    </>\n",
+"      <meta name=\"twitter:image\" content={ogImg} />\n      {cfg.jsonLd && <script type=\"application/ld+json\" dangerouslySetInnerHTML={{ __html: JSON.stringify(cfg.jsonLd).replace(/</g, \"\\\\u003c\") }} />}\n    </>\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"import { Link } from \"react-router-dom\";\nimport { useEffect, useState } from \"react\";\n",
+"import { Link, useSearchParams } from \"react-router-dom\";\nimport { useEffect, useState } from \"react\";\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"import NewsletterForm from \"@/components/NewsletterForm\";\n\n",
+"import NewsletterForm from \"@/components/NewsletterForm\";\nimport { fmtDate } from \"@/components/HeyCatchBlogPost\";\n\nconst PER_PAGE = 12;\n// Blog HeyCatch : artigos lidos em direto (/api/blog/heycatch), mesmo cartão que os outros artigos.\nconst hcToCard = (a) => ({\n  slug: a.slug, title: a.title, excerpt: \"\", cover: a.hero_image_url || a.featured_image || \"\",\n  category: \"Artigo\", readingMinutes: a.read_time || null, publishedAt: a.published || a.published_at,\n  audience: null, source: \"heycatch\",\n});\n\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"  const [aud, setAud] = useState(\"all\");\n  useEffect(() => {\n",
+"  const [aud, setAud] = useState(\"all\");\n  const [hc, setHc] = useState([]);\n  const [sp, setSp] = useSearchParams();\n  const page = Math.max(1, parseInt(sp.get(\"page\") || \"1\", 10) || 1);\n  useEffect(() => {\n    api.get(\"/blog/heycatch\").then(({ data }) => setHc((data.articles || []).map(hcToCard))).catch(() => setHc([]));\n  }, []);\n  useEffect(() => {\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"  const staticSlugs = new Set(staticArticles.map((a) => a.slug));\n  const combined = [...dyn.filter((a) => !staticSlugs.has(a.slug)), ...staticArticles];\n  const articles = aud === \"all\" ? combined : combined.filter((a) => a.audience === aud);\n  const SEGMENTS = [\n",
+"  const staticSlugs = new Set(staticArticles.map((a) => a.slug));\n  const hcSlugs = new Set(hc.map((a) => a.slug));\n  const combined = [...hc.filter((a) => !staticSlugs.has(a.slug)),\n    ...dyn.filter((a) => !staticSlugs.has(a.slug) && !hcSlugs.has(a.slug)), ...staticArticles]\n    .map((a) => ({ ...a, publishedAt: a.publishedAt || a.published }))\n    .sort((x, y) => String(y.publishedAt || \"\").localeCompare(String(x.publishedAt || \"\")));\n  const filtered = aud === \"all\" ? combined : combined.filter((a) => a.audience === aud);\n  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));\n  const cur = Math.min(page, pages);\n  const articles = filtered.slice((cur - 1) * PER_PAGE, cur * PER_PAGE);\n  const goPage = (n) => { const q = new URLSearchParams(sp); if (n > 1) q.set(\"page\", String(n)); else q.delete(\"page\"); setSp(q); window.scrollTo(0, 0); };\n  const SEGMENTS = [\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"          : \"blog construção, custo renovação, IVA 10 porcento, medições 2D, orçamento obras, preço materiais\"}\n        canonical=\"/blog\"\n        jsonLd={JSON_LD}\n",
+"          : \"blog construção, custo renovação, IVA 10 porcento, medições 2D, orçamento obras, preço materiais\"}\n        canonical={cur > 1 ? `/blog?page=${cur}` : \"/blog\"}\n        jsonLd={JSON_LD}\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"              aria-selected={aud === key}\n              onClick={() => setAud(key)}\n              data-testid={tid}\n",
+"              aria-selected={aud === key}\n              onClick={() => { setAud(key); goPage(1); }}\n              data-testid={tid}\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"            >\n              <div className=\"aspect-[16/9] overflow-hidden\">\n                <img\n",
+"            >\n              {a.cover && <div className=\"aspect-[16/9] overflow-hidden\">\n                <img\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"                />\n              </div>\n              <div className=\"p-5 grid gap-3\">\n",
+"                />\n              </div>}\n              <div className=\"p-5 grid gap-3\">\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"                  <span className=\"text-muted-foreground\">·</span>\n                  <span className=\"text-muted-foreground inline-flex items-center gap-1\">\n                    <Clock className=\"h-3 w-3\" /> {a.readingMinutes} min\n",
+"                  <span className=\"text-muted-foreground\">·</span>\n                  {a.readingMinutes ? <span className=\"text-muted-foreground inline-flex items-center gap-1\">\n                    <Clock className=\"h-3 w-3\" /> {a.readingMinutes} min\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"                    <Clock className=\"h-3 w-3\" /> {a.readingMinutes} min\n                  </span>\n                </div>\n",
+"                    <Clock className=\"h-3 w-3\" /> {a.readingMinutes} min\n                  </span> : null}\n                  {a.publishedAt && <><span className=\"text-muted-foreground\">·</span>\n                    <time className=\"text-muted-foreground\" dateTime={a.publishedAt}>{fmtDate(a.publishedAt)}</time></>}\n                </div>\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"                </h2>\n                <p className=\"text-sm text-muted-foreground line-clamp-3\">{a.excerpt}</p>\n                <span className=\"text-primary text-sm font-semibold inline-flex items-center gap-1 mt-1\">\n",
+"                </h2>\n                {a.excerpt && <p className=\"text-sm text-muted-foreground line-clamp-3\">{a.excerpt}</p>}\n                <span className=\"text-primary text-sm font-semibold inline-flex items-center gap-1 mt-1\">\n"
+],
+[
+"frontend/src/pages/Blog.jsx",
+"        </div>\n        <div className=\"mt-12 max-w-2xl\"><NewsletterForm source=\"blog-list\" /></div>\n",
+"        </div>\n        {filtered.length === 0 && <p className=\"text-sm text-muted-foreground\" data-testid=\"blog-empty\">Ainda não há artigos publicados. Volte em breve.</p>}\n        {pages > 1 && <nav className=\"mt-10 flex flex-wrap items-center gap-2\" aria-label=\"Páginas do blog\" data-testid=\"blog-pagination\">\n          {cur > 1 && <a href={`/blog${cur - 1 > 1 ? `?page=${cur - 1}` : \"\"}`} onClick={(e) => { e.preventDefault(); goPage(cur - 1); }} className=\"px-4 py-2 rounded-full text-xs font-semibold border border-border hover:border-primary\">← Anterior</a>}\n          {Array.from({ length: pages }, (_, i) => i + 1).map((n) => <a key={n} href={`/blog${n > 1 ? `?page=${n}` : \"\"}`} aria-current={n === cur ? \"page\" : undefined}\n            onClick={(e) => { e.preventDefault(); goPage(n); }} data-testid={`blog-page-${n}`}\n            className={`px-3 py-2 rounded-full text-xs font-semibold border ${n === cur ? \"bg-primary text-white border-primary\" : \"border-border hover:border-primary\"}`}>{n}</a>)}\n          {cur < pages && <a href={`/blog?page=${cur + 1}`} onClick={(e) => { e.preventDefault(); goPage(cur + 1); }} className=\"px-4 py-2 rounded-full text-xs font-semibold border border-border hover:border-primary\">Seguinte →</a>}\n        </nav>}\n        <div className=\"mt-12 max-w-2xl\"><NewsletterForm source=\"blog-list\" /></div>\n"
+],
+[
+"frontend/src/pages/BlogPost.jsx",
+"import AutoSeoBlogPost from \"@/components/AutoSeoBlogPost\";\nimport NewsletterForm from \"@/components/NewsletterForm\";\n",
+"import AutoSeoBlogPost from \"@/components/AutoSeoBlogPost\";\nimport HeyCatchBlogPost from \"@/components/HeyCatchBlogPost\";\nimport NewsletterForm from \"@/components/NewsletterForm\";\n"
+],
+[
+"frontend/src/pages/BlogPost.jsx",
+"  const article = isPT ? getArticlePT(slug) : getArticle(slug);\n  if (!article) return <AutoSeoBlogPost slug={slug} />;\n\n",
+"  const article = isPT ? getArticlePT(slug) : getArticle(slug);\n  if (!article) return <HeyCatchBlogPost slug={slug} fallback={<AutoSeoBlogPost slug={slug} />} />;\n\n"
+]
+]

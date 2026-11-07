@@ -227,6 +227,19 @@ async def blog_sitemap():
             parts.append(f"<image:image><image:loc>{escape(img)}</image:loc>"
                          f"<image:title>{escape(d.get('title') or '')}</image:title></image:image>")
         parts.append("</url>")
+    # Blog HeyCatch : cada artigo, lastmod = updated (lido em direto, cache 120 s)
+    try:
+        from routes.heycatch_blog import all_articles
+        seen = {d["slug"] for d in docs}
+        for h in (await all_articles()).get("articles", []):
+            if h["slug"] in seen:
+                continue
+            url = f"{SITE_URL}/blog/{escape(h['slug'])}"
+            mod = (h.get("updated") or h.get("updated_at") or h.get("published") or "")[:10]
+            parts.append(f"<url><loc>{url}</loc>" + (f"<lastmod>{mod}</lastmod>" if mod else "")
+                         + f'<changefreq>weekly</changefreq><priority>0.7</priority><xhtml:link rel="alternate" hreflang="pt-PT" href="{url}" /></url>')
+    except Exception:  # noqa: BLE001 — o sitemap nunca falha por causa do HeyCatch
+        pass
     parts.append("</urlset>")
     return Response("".join(parts), media_type="application/xml",
                     headers={"Cache-Control": "public, max-age=3600"})

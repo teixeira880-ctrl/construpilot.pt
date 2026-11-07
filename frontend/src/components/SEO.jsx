@@ -85,7 +85,7 @@ export function HeadTags({ routeDefaults }) {
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={desc} />
       <meta name="twitter:image" content={ogImg} />
-      {cfg.jsonLd && <script type="application/ld+json">{JSON.stringify(cfg.jsonLd)}</script>}
+      {cfg.jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(cfg.jsonLd).replace(/</g, "\\u003c") }} />}
     </>
   );
 }

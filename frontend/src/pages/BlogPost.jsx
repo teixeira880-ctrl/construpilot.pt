@@ -7,6 +7,7 @@ import { ARTICLE_BODIES } from "@/lib/blogBodies";
 import { BLOG_ARTICLES_PT, getArticlePT, ARTICLE_BODIES_PT } from "@/lib/blogPortugal";
 import { useI18n } from "@/context/I18nContext";
 import AutoSeoBlogPost from "@/components/AutoSeoBlogPost";
+import HeyCatchBlogPost from "@/components/HeyCatchBlogPost";
 import NewsletterForm from "@/components/NewsletterForm";
 
 export default function BlogPost() {
@@ -14,7 +15,7 @@ export default function BlogPost() {
   const { lang } = useI18n();
   const isPT = lang === "pt";
   const article = isPT ? getArticlePT(slug) : getArticle(slug);
-  if (!article) return <AutoSeoBlogPost slug={slug} />;
+  if (!article) return <HeyCatchBlogPost slug={slug} fallback={<AutoSeoBlogPost slug={slug} />} />;
 
   const body = (isPT ? ARTICLE_BODIES_PT : ARTICLE_BODIES)[slug];
   const list = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
