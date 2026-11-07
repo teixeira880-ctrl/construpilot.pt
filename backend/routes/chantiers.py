@@ -324,3 +324,25 @@ async def chantier_pilot(chantier_id: str, user=Depends(current_user)):
     c = await _get(chantier_id, user["user_id"])
     from engines.chantier_workspace import build_workspace
     return await build_workspace(db, c, user)
+
+
+@router.post("/from-project/{project_id}")
+async def chantier_from_project(project_id: str, user=Depends(current_user)) -> dict:
+    """Cria, a pedido explícito do utilizador, um processo de obra para um projeto existente e liga-os.
+
+    Projetos (estimativas) e processos de obra são coleções distintas: nada é movido, fundido ou apagado.
+    Idempotente: se o projeto já estiver ligado a um processo, devolve esse processo."""
+    require_feature(user, "chantier")
+    uid = user["user_id"]
+    project = await db.projects.find_one({"project_id": project_id, "user_id": uid}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Projeto não encontrado")
+    if project.get("chantier_id"):
+        existing = await db.chantiers.find_one({"chantier_id": project["chantier_id"], "user_id": uid}, {"_id": 0})
+        if existing:
+            return {**existing, "already_linked": True}
+    name = (project.get("name") or "Projeto").strip()[:160] or "Projeto"
+    doc = await create_chantier(ChantierIn(name=name, status="prospect",
+                                           notes=f"Criado a partir do projeto «{name}»."), user)
+    await db.projects.update_one({"project_id": project_id, "user_id": uid}, {"$set": {"chantier_id": doc["chantier_id"]}})
+    return {**doc, "already_linked": False}

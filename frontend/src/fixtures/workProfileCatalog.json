@@ -1,0 +1,475 @@
+{
+ "professions": [
+  {
+   "key": "arquiteto",
+   "label": "Arquiteto"
+  },
+  {
+   "key": "engenheiro",
+   "label": "Engenheiro civil / projetista"
+  },
+  {
+   "key": "empreiteiro",
+   "label": "Empresa de construção / empreiteiro geral"
+  },
+  {
+   "key": "independente",
+   "label": "Construtor ou trabalhador independente"
+  },
+  {
+   "key": "encarregado",
+   "label": "Encarregado / gestor de obra"
+  },
+  {
+   "key": "orcamentista",
+   "label": "Medidor / orçamentista"
+  },
+  {
+   "key": "pintor",
+   "label": "Pintor"
+  },
+  {
+   "key": "pedreiro",
+   "label": "Pedreiro"
+  },
+  {
+   "key": "canalizador",
+   "label": "Canalizador"
+  },
+  {
+   "key": "eletricista",
+   "label": "Eletricista"
+  },
+  {
+   "key": "carpinteiro",
+   "label": "Carpinteiro / instalador de mobiliário"
+  },
+  {
+   "key": "revestimentos",
+   "label": "Instalador de revestimentos, pavimentos ou isolamento"
+  },
+  {
+   "key": "administrativo",
+   "label": "Administrativo"
+  },
+  {
+   "key": "particular",
+   "label": "Particular / proprietário"
+  },
+  {
+   "key": "outra",
+   "label": "Outra profissão"
+  }
+ ],
+ "responsibilities": [
+  {
+   "key": "proprietario",
+   "label": "Proprietário da empresa"
+  },
+  {
+   "key": "gestor",
+   "label": "Gestor"
+  },
+  {
+   "key": "tecnico",
+   "label": "Técnico"
+  },
+  {
+   "key": "administrativo",
+   "label": "Administrativo"
+  },
+  {
+   "key": "campo",
+   "label": "Trabalhador de campo"
+  }
+ ],
+ "modes": [
+  {
+   "key": "guiado",
+   "label": "Guiado — uma pergunta de cada vez, com exemplos"
+  },
+  {
+   "key": "direto",
+   "label": "Direto — acesso rápido às tarefas frequentes"
+  },
+  {
+   "key": "avancado",
+   "label": "Avançado — todos os parâmetros técnicos"
+  }
+ ],
+ "languages": [
+  {
+   "key": "simples",
+   "label": "Linguagem corrente"
+  },
+  {
+   "key": "tecnica",
+   "label": "Linguagem técnica"
+  }
+ ],
+ "tasks": [
+  {
+   "key": "orcamento_guiado",
+   "label": "Preparar um orçamento passo a passo"
+  },
+  {
+   "key": "orcamento",
+   "label": "Criar ou editar um orçamento"
+  },
+  {
+   "key": "reutilizar",
+   "label": "Reutilizar um orçamento anterior"
+  },
+  {
+   "key": "calc_tinta",
+   "label": "Calcular tinta"
+  },
+  {
+   "key": "calc_pavimento",
+   "label": "Calcular pavimento ou revestimento"
+  },
+  {
+   "key": "calc_alvenaria",
+   "label": "Calcular blocos de alvenaria"
+  },
+  {
+   "key": "plantas",
+   "label": "Medir numa planta"
+  },
+  {
+   "key": "obras",
+   "label": "Acompanhar as obras"
+  },
+  {
+   "key": "diario",
+   "label": "Registar o dia de obra"
+  },
+  {
+   "key": "visita",
+   "label": "Registar uma visita à obra"
+  },
+  {
+   "key": "acompanhamento",
+   "label": "Reservas e relatórios de obra"
+  },
+  {
+   "key": "calc_pontos",
+   "label": "Levantamento de pontos (água, eletricidade)"
+  },
+  {
+   "key": "calc_carpintaria",
+   "label": "Lista de peças de carpintaria"
+  },
+  {
+   "key": "planeamento",
+   "label": "Planear os trabalhos"
+  },
+  {
+   "key": "materiais",
+   "label": "Materiais e encomendas"
+  },
+  {
+   "key": "clientes",
+   "label": "Clientes"
+  },
+  {
+   "key": "faturas",
+   "label": "Faturas e pagamentos"
+  },
+  {
+   "key": "rentabilidade",
+   "label": "Acompanhar custos e margem"
+  },
+  {
+   "key": "estimar",
+   "label": "Estimar o custo das obras"
+  },
+  {
+   "key": "analisar_orcamento",
+   "label": "Compreender um orçamento recebido"
+  },
+  {
+   "key": "projetos",
+   "label": "Organizar o meu projeto"
+  },
+  {
+   "key": "plantas_versoes",
+   "label": "Consultar e comparar plantas"
+  },
+  {
+   "key": "medicoes",
+   "label": "Medições e quantidades"
+  },
+  {
+   "key": "assistente",
+   "label": "Perguntar ao assistente"
+  }
+ ],
+ "profession_tasks": {
+  "pintor": [
+   "orcamento_guiado",
+   "calc_tinta",
+   "visita",
+   "reutilizar",
+   "diario"
+  ],
+  "pedreiro": [
+   "orcamento",
+   "calc_alvenaria",
+   "calc_pavimento",
+   "visita",
+   "diario"
+  ],
+  "canalizador": [
+   "visita",
+   "calc_pontos",
+   "orcamento",
+   "reutilizar",
+   "materiais"
+  ],
+  "eletricista": [
+   "visita",
+   "calc_pontos",
+   "orcamento",
+   "reutilizar",
+   "materiais"
+  ],
+  "carpinteiro": [
+   "calc_carpintaria",
+   "visita",
+   "orcamento",
+   "reutilizar",
+   "materiais"
+  ],
+  "revestimentos": [
+   "calc_pavimento",
+   "visita",
+   "orcamento",
+   "reutilizar",
+   "diario"
+  ],
+  "empreiteiro": [
+   "orcamento",
+   "planeamento",
+   "materiais",
+   "rentabilidade",
+   "obras"
+  ],
+  "independente": [
+   "orcamento_guiado",
+   "visita",
+   "reutilizar",
+   "diario",
+   "faturas"
+  ],
+  "encarregado": [
+   "diario",
+   "visita",
+   "obras",
+   "planeamento",
+   "acompanhamento"
+  ],
+  "orcamentista": [
+   "medicoes",
+   "plantas",
+   "orcamento",
+   "reutilizar"
+  ],
+  "arquiteto": [
+   "projetos",
+   "plantas",
+   "plantas_versoes",
+   "medicoes"
+  ],
+  "engenheiro": [
+   "medicoes",
+   "plantas",
+   "plantas_versoes",
+   "obras"
+  ],
+  "administrativo": [
+   "clientes",
+   "faturas",
+   "orcamento",
+   "rentabilidade"
+  ],
+  "particular": [
+   "estimar",
+   "analisar_orcamento",
+   "projetos",
+   "plantas"
+  ],
+  "outra": [
+   "orcamento_guiado",
+   "plantas",
+   "obras"
+  ]
+ },
+ "task_defs": {
+  "orcamento_guiado": {
+   "label": "Preparar um orçamento passo a passo",
+   "url": "/orcamento-guiado",
+   "feature": "devis",
+   "min_level": "pro"
+  },
+  "orcamento": {
+   "label": "Criar ou editar um orçamento",
+   "url": "/devis-editeur",
+   "feature": "devis",
+   "min_level": "pro"
+  },
+  "reutilizar": {
+   "label": "Reutilizar um orçamento anterior",
+   "url": "/devis",
+   "feature": "devis",
+   "min_level": "pro"
+  },
+  "calc_tinta": {
+   "label": "Calcular tinta",
+   "url": "/ferramentas-oficio?ferramenta=paint",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "calc_pavimento": {
+   "label": "Calcular pavimento ou revestimento",
+   "url": "/ferramentas-oficio?ferramenta=floor",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "calc_alvenaria": {
+   "label": "Calcular blocos de alvenaria",
+   "url": "/ferramentas-oficio?ferramenta=masonry",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "plantas": {
+   "label": "Medir numa planta",
+   "url": "/plan",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "obras": {
+   "label": "Acompanhar as obras",
+   "url": "/chantiers",
+   "feature": "chantier",
+   "min_level": "pro"
+  },
+  "diario": {
+   "label": "Registar o dia de obra",
+   "url": "/registo-diario",
+   "feature": [
+    "chantier",
+    "pointage"
+   ],
+   "min_level": "pro"
+  },
+  "visita": {
+   "label": "Registar uma visita à obra",
+   "url": "/visita-obra",
+   "feature": [
+    "chantier",
+    "devis"
+   ],
+   "min_level": "pro"
+  },
+  "acompanhamento": {
+   "label": "Reservas e relatórios de obra",
+   "url": "/suivi-chantier",
+   "feature": "chantier",
+   "min_level": "business"
+  },
+  "calc_pontos": {
+   "label": "Levantamento de pontos (água, eletricidade)",
+   "url": "/ferramentas-oficio?ferramenta=points",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "calc_carpintaria": {
+   "label": "Lista de peças de carpintaria",
+   "url": "/ferramentas-oficio?ferramenta=carpentry",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "planeamento": {
+   "label": "Planear os trabalhos",
+   "url": "/planning",
+   "feature": "chantier",
+   "min_level": "pro"
+  },
+  "materiais": {
+   "label": "Materiais e encomendas",
+   "url": "/appro",
+   "feature": "chantier",
+   "min_level": "pro"
+  },
+  "clientes": {
+   "label": "Clientes",
+   "url": "/clients",
+   "feature": "devis",
+   "min_level": "pro"
+  },
+  "faturas": {
+   "label": "Faturas e pagamentos",
+   "url": "/factures",
+   "feature": "factures",
+   "min_level": "pro"
+  },
+  "rentabilidade": {
+   "label": "Acompanhar custos e margem",
+   "url": "/rentabilite",
+   "feature": "dashboard",
+   "min_level": "pro"
+  },
+  "estimar": {
+   "label": "Estimar o custo das obras",
+   "url": "/estimation",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "analisar_orcamento": {
+   "label": "Compreender um orçamento recebido",
+   "url": "/scanner-devis",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "projetos": {
+   "label": "Organizar o meu projeto",
+   "url": "/smart-project",
+   "feature": null,
+   "min_level": "particulier_gratuit"
+  },
+  "plantas_versoes": {
+   "label": "Consultar e comparar plantas",
+   "url": "/plan/compare",
+   "feature": null,
+   "min_level": "pro"
+  },
+  "medicoes": {
+   "label": "Medições e quantidades",
+   "url": "/metre",
+   "feature": null,
+   "min_level": "pro"
+  },
+  "assistente": {
+   "label": "Perguntar ao assistente",
+   "url": "/assistant",
+   "feature": null,
+   "min_level": "particulier_payant"
+  }
+ },
+ "generic_tasks": [
+  "orcamento_guiado",
+  "plantas",
+  "estimar",
+  "obras"
+ ],
+ "default_profile": {
+  "professions": [],
+  "other_profession": "",
+  "responsibilities": [],
+  "frequent_tasks": [],
+  "mode": "guiado",
+  "language": "simples",
+  "onboarding": "pending"
+ }
+}

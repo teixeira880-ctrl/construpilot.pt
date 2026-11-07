@@ -95,6 +95,10 @@ import DemoPage from "@/pages/DemoPage";
 const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
 const Missions = lazy(() => import("@/pages/Missions"));
+const GuidedQuoteLazy = lazy(() => import("@/pages/GuidedQuote"));
+const TradeToolsLazy = lazy(() => import("@/pages/TradeTools"));
+const FieldVisitLazy = lazy(() => import("@/pages/FieldVisit"));
+const DailyLogLazy = lazy(() => import("@/pages/DailyLog"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 const PlansExecutionLazy = lazy(() => import("@/pages/PlansExecution"));
 const EstudioImagensLazy = lazy(() => import("@/pages/EstudioImagens"));
@@ -349,6 +353,10 @@ function AppRouter() {
       <Route path="/chantiers/:chantierId" element={<ProRoute><Shell><ChantierDetail /></Shell></ProRoute>} />
       <Route path="/bibliotheque" element={<ProRoute><Shell><Library /></Shell></ProRoute>} />
       <Route path="/devis-editeur" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
+      <Route path="/orcamento-guiado" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><GuidedQuoteLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/ferramentas-oficio" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><TradeToolsLazy /></Suspense></Shell></Protected>} />
+      <Route path="/visita-obra" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><FieldVisitLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/registo-diario" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><DailyLogLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/devis-editeur/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
       <Route path="/scanner-devis" element={<SubscriberRoute><Shell><QuoteScanner /></Shell></SubscriberRoute>} />
       <Route path="/e/:token" element={<PublicEstimation />} />
