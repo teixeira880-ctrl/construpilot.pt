@@ -298,3 +298,29 @@ def test_fornecedor_que_nao_responde_nao_bloqueia(env, monkeypatch):
         assert reg["tentativas"][0]["fornecedor"] == "runway" and reg["tentativas"][0]["erro"] == "TimeoutError"
         assert IM._erro_curto(RuntimeError("Bearer sk-abcdef123456 inválida")) == "RuntimeError: *** inválida"
     run(go())
+
+
+def test_modelo_openai_escolhido_pela_conta(monkeypatch):
+    from engines.urbanismo_pt.auto import imagens as IM
+    assert IM._ordem_modelos_imagem(["gpt-4o", "dall-e-3", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"])[0] == "gpt-image-1.5"
+    assert IM._ordem_modelos_imagem(["gpt-4o", "dall-e-2"]) == []
+    monkeypatch.delenv("URB_IMG_OPENAI_MODEL", raising=False)
+    IM._MODELO_OPENAI.clear()
+
+    class M:
+        def __init__(self, i):
+            self.id = i
+
+    class Models:
+        def list(self):
+            async def gen():
+                for i in ("gpt-4o", "gpt-image-1-mini", "gpt-image-1.5"):
+                    yield M(i)
+            return gen()
+
+    class Cli:
+        models = Models()
+    assert BR.run(IM._modelo_openai(Cli())) == "gpt-image-1.5"
+    monkeypatch.setenv("URB_IMG_OPENAI_MODEL", "gpt-image-1")
+    assert BR.run(IM._modelo_openai(Cli())) == "gpt-image-1"
+    IM._MODELO_OPENAI.clear()

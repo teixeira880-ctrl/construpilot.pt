@@ -154,18 +154,56 @@ async def _gemini(prompt: str, ref: bytes, sessao: str, extra: Optional[List[byt
     return imgs[0][0]
 
 
+_MODELO_OPENAI: Dict[str, Any] = {}
+
+
+def _ordem_modelos_imagem(ids: List[str]) -> List[str]:
+    """Modelos de imagem com edição, do mais recente para o mais antigo (gpt-image-2 > 1.5 > 1 > mini)."""
+    import re
+    cands = [i for i in ids if i.startswith("gpt-image")]
+
+    def chave(i):
+        m = re.match(r"gpt-image-(\d+)(?:\.(\d+))?", i)
+        v = (int(m.group(1)), int(m.group(2) or 0)) if m else (0, 0)
+        return (v, "mini" not in i, "-20" not in i)   # versão, completo antes de mini, alias antes de datado
+    return sorted(cands, key=chave, reverse=True)
+
+
+async def _modelo_openai(client) -> str:
+    """O modelo configurado (URB_IMG_OPENAI_MODEL) ou, se não existir nesta conta, o melhor modelo de imagem
+    disponível na lista de modelos da conta. Resultado guardado em memória (1 consulta por arranque)."""
+    if os.environ.get("URB_IMG_OPENAI_MODEL"):
+        return os.environ["URB_IMG_OPENAI_MODEL"]
+    if "id" not in _MODELO_OPENAI:
+        try:
+            ids = [m.id async for m in client.models.list()]
+            ordem = _ordem_modelos_imagem(ids)
+            _MODELO_OPENAI["id"] = ordem[0] if ordem else "gpt-image-1"
+        except Exception:  # noqa: BLE001
+            _MODELO_OPENAI["id"] = "gpt-image-1"
+    return _MODELO_OPENAI["id"]
+
+
 async def _openai(prompt: str, ref: bytes, sessao: str, extra: Optional[List[bytes]] = None) -> bytes:
-    """gpt-image-1 em modo EDIÇÃO a partir da vista exata (alta fidelidade à imagem de entrada)."""
+    """Edição de imagem OpenAI (família gpt-image) a partir da vista exata, alta fidelidade à imagem de entrada."""
     from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=240)
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=170, max_retries=0)
+    modelo = await _modelo_openai(client)
     im = Image.open(io.BytesIO(ref))
     size = "1536x1024" if im.width > im.height * 1.15 else ("1024x1536" if im.height > im.width * 1.15 else "1024x1024")
     imagens = [(f"ref{k}.png", b, "image/png") for k, b in enumerate([*(extra or []), ref])]
+    args = dict(model=modelo, image=imagens if len(imagens) > 1 else imagens[0], prompt=prompt[:30000],
+                size=size, quality="high", n=1)
     try:
-        r = await client.images.edit(model=os.environ.get("URB_IMG_OPENAI_MODEL", "gpt-image-1"),
-                                     image=imagens if len(imagens) > 1 else imagens[0], prompt=prompt[:30000],
-                                     size=size, quality="high", n=1, extra_body={"input_fidelity": "high"})
+        try:
+            r = await client.images.edit(**args, extra_body={"input_fidelity": "high"})
+        except Exception as e:  # noqa: BLE001
+            if "input_fidelity" not in str(e):
+                raise
+            r = await client.images.edit(**args)     # modelo sem esse parâmetro
     except Exception as e:  # noqa: BLE001
+        if "does not exist" in str(e):
+            _MODELO_OPENAI.pop("id", None)   # o modelo deixou de existir: volta a escolher no próximo pedido
         try:
             from engines.llm_keys import note_openai_error
             await note_openai_error(e)   # crédito esgotado / chave inválida → disjuntor para a chave Emergent
@@ -175,7 +213,7 @@ async def _openai(prompt: str, ref: bytes, sessao: str, extra: Optional[List[byt
     try:
         from engines.expenses.store import observe
         await observe(source="licenciamento_imagens", source_id=sessao, provider="openai_direct", feature="licenciamento_imagens",
-                      model="gpt-image-1", units={"images": 1}, state="completed")
+                      model=modelo, units={"images": 1}, state="completed")
     except Exception:  # noqa: BLE001
         pass
     return base64.b64decode(r.data[0].b64_json)
