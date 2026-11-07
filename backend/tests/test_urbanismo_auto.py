@@ -216,3 +216,78 @@ def test_geocode_rede_indisponivel_e_diagnostico():
         return 403 if "nominatim" in url else 0, None
     r = _geo(t)
     assert not r["ok"] and "inacess" in r["nota"] and "nominatim" in r["nota"] and "photon" in r["nota"]
+
+
+def test_geocode_rejeita_rua_de_outra_freguesia():
+    """Caso real (smoke 07/11): «Rua do Monte, Braga» devolvia a rua de Santa Lucrécia de Algeriz, não a de Padim da Graça."""
+    async def t(method, url, params=None, headers=None, want="json"):
+        q = (params or {}).get("q", "")
+        if "nominatim" in url and q == "Padim da Graça, Braga":
+            return 200, [{"lat": "41.52", "lon": "-8.47", "display_name": "Padim da Graça, Braga, Portugal",
+                          "address": {"village": "Padim da Graça", "municipality": "Braga"}}]
+        if "nominatim" in url and (params or {}).get("street") or "nominatim" in url and q:
+            return 200, [{"lat": "41.5833", "lon": "-8.3726",
+                          "display_name": "Rua do Monte, Santa Lucrécia de Algeriz e Navarra, Braga, 4715-567, Portugal",
+                          "address": {"road": "Rua do Monte", "municipality": "Braga"}}]
+        if "photon" in url:
+            return 200, {"features": []}
+        return 404, None
+    r = _geo(t)
+    assert r["ok"] and r["data"]["precisao"] == "localidade" and "Padim" in r["data"]["morada_formatada"]
+
+
+def _sem_esperas():
+    orig = G.asyncio.sleep
+
+    async def ns(_s):
+        return None
+    G.asyncio.sleep = ns
+    return orig
+
+
+def test_dgt_falha_transitoria_repete_e_deteta_solo_rustico():
+    base = fake(solo="Solo Rústico", categoria="Espaço Agrícola")
+    n = {"crus": 0}
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        if "/collections/crus/items" in url:
+            n["crus"] += 1
+            if n["crus"] < 3:
+                return 0, None          # duas falhas de rede seguidas
+        return await base(method, url, params, headers, want)
+    orig = _sem_esperas()
+    G.set_transport(t)
+    G._COLLECTIONS.update(t=0.0, list=[])
+    try:
+        r = _loop_run(P.executar({"morada": "Rua do Monte 7, Padim da Graça, Braga"}))
+    finally:
+        G.asyncio.sleep = orig
+        G.set_transport(None)
+    assert r["estado"] == "inviavel" and any("RÚSTICO" in b for b in r["bloqueios"])
+
+
+def test_dados_criticos_por_confirmar_nunca_pronto_e_declive_rastreado():
+    base = fake()
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        if "/collections/crus/items" in url or "overpass" in url or "kumi" in url or "coffee" in url:
+            return 0, None
+        if "opentopodata" in url:
+            res = []
+            for l in params["locations"].split("|"):
+                la, lo = map(float, l.split(","))
+                res.append({"elevation": 265 + (la - LAT) * 111320 * 0.15})
+            return 200, {"status": "OK", "results": res}
+        return await base(method, url, params, headers, want)
+    orig = _sem_esperas()
+    G.set_transport(t)
+    G._COLLECTIONS.update(t=0.0, list=[])
+    try:
+        r = _loop_run(P.executar({"morada": "Rua do Monte 7, Padim da Graça, Braga"}))
+    finally:
+        G.asyncio.sleep = orig
+        G.set_transport(None)
+    assert r["ok"] and r["estado"] == "revisao"                         # CRUS sem resposta → nunca «pronto»
+    assert any("CRUS" in a for a in r["avisos"])
+    c = r["processo"]["auto"]["coerencia"]
+    assert not any(f["codigo"] == "MEMORIA_NUMEROS" for f in c["falhas"]), c["falhas"]

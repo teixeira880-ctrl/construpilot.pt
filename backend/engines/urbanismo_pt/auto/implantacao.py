@@ -59,7 +59,7 @@ def implantar(ter: Dict[str, Any], topo: Optional[Dict[str, Any]], prog: Dict[st
 
     # profundidade preferida: declive no sentido y penaliza volumes profundos
     c = abs((topo or {}).get("plano", {}).get("c", 0.0)) if topo and topo.get("ok") else 0.0
-    decl_y = c * 100
+    decl_y = round(c * 100, 1)          # valor registado no resultado: o texto cita exatamente este número
     A1 = prog["area_bruta_total_m2"] / prog["n_pisos"]
     W_pref = min(10.5, max(8.0, math.sqrt(A1 / 1.45)))          # proporção ~1,45 : 1 (fachada longa ao sol)
     if decl_y > 10:
@@ -120,7 +120,7 @@ def implantar(ter: Dict[str, Any], topo: Optional[Dict[str, Any]], prog: Dict[st
                 decisoes.append(f"Garagem para {gar['lugares']} {'carro' if gar['lugares'] == 1 else 'carros'} do lado {'esquerdo' if lado_garagem == 'esquerda' else 'direito'} "
                                 f"({_rumo(az[lado_garagem])}), o menos exposto ao sol, com acesso direto à via.")
             if decl_y > 5:
-                decisoes.append(f"Declive de {decl_y:.0f} % no sentido da profundidade: volume com {_pt(W)} m de fundo para "
+                decisoes.append(f"Declive de {str(decl_y).replace('.', ',')} % no sentido da profundidade: volume com {_pt(W)} m de fundo para "
                                 "reduzir aterros e escavações.")
             volume = {
                 "shape": "rectangle", "plot_l_m": round(L_plot, 2), "plot_w_m": round(W_plot, 2),
@@ -134,7 +134,8 @@ def implantar(ter: Dict[str, Any], topo: Optional[Dict[str, Any]], prog: Dict[st
             }
             res = {"ok": True, "volume": volume, "casa_rect": h_rect, "garagem_rect": g_rect, "fachada_sol": fachada_sol,
                     "lado_garagem": lado_garagem, "n_pisos": n_pisos, "cota_soleira_m": soleira, "terras": terras,
-                    "decisoes": decisoes, "zona_edificavel_m2": round(zona.area, 1)}
+                    "decisoes": decisoes, "zona_edificavel_m2": round(zona.area, 1),
+                    "declive_profundidade_pct": decl_y}
             if validar:
                 ok_v, motivo_v = validar(res)
                 if not ok_v:

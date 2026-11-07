@@ -31,6 +31,7 @@ DGT = "https://ogcapi.dgterritorio.gov.pt"
 NOMINATIM = "https://nominatim.openstreetmap.org"
 PHOTON = "https://photon.komoot.io/api/"
 OVERPASS = "https://overpass-api.de/api/interpreter"
+OVERPASS_ESPELHOS = (OVERPASS, "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter")
 OPENTOPO = "https://api.opentopodata.org/v1/eudem25m"
 GMAPS = "https://maps.googleapis.com/maps/api"
 TIMEOUT = httpx.Timeout(20.0, connect=8.0)
@@ -54,6 +55,29 @@ async def _http(method: str, url: str, params: Optional[dict] = None, headers: O
 
 
 _fetch: Fetch = _http
+_SEMS: Dict[str, asyncio.Semaphore] = {}
+
+
+async def _get(url: str, params: Optional[dict] = None, want: str = "json", tries: int = 3, conc: int = 4) -> Tuple[int, Any]:
+    """GET com repetição (rede, 429, 5xx) e limite de pedidos simultâneos por serviço — os serviços públicos (DGT,
+    OpenStreetMap) recusam rajadas; sem isto, uma consulta falhada passaria por «sem dados» (ex.: CRUS ou REN em falta)."""
+    host = url.split("/")[2] if "//" in url else url
+    loop_id = id(asyncio.get_running_loop())
+    key = f"{host}:{loop_id}"
+    sem = _SEMS.get(key)
+    if sem is None:
+        if len(_SEMS) > 50:
+            _SEMS.clear()
+        sem = _SEMS[key] = asyncio.Semaphore(conc)
+    st, js = 0, None
+    for i in range(max(1, tries)):
+        async with sem:
+            st, js = await _fetch("GET", url, params, None, want)
+        if js is not None or st in (400, 401, 403, 404):
+            return st, js
+        if i < tries - 1:
+            await asyncio.sleep((1.0, 2.5, 4.0)[min(i, 2)])
+    return st, js
 
 
 def set_transport(fn: Optional[Fetch]) -> None:
@@ -141,9 +165,12 @@ async def geocode(morada: str) -> Dict[str, Any]:
         bons = [(d, txt) for d, txt in cands if not exige_rua or d.get("rua")]
         if not bons:
             return None
-        minimo = 2 if concelho else 0
+        # com freguesia indicada, uma rua tem de estar NESSA freguesia (há várias «Rua do Monte» no mesmo concelho)
+        def minimo(d):
+            return 5 if (freguesia and d.get("rua")) else (2 if concelho else 0)
+        bons = [c for c in bons if _match(c[1]) >= minimo(c[0])]
         bons.sort(key=lambda c: (-_match(c[1]), {"porta": 0, "rua": 1, "localidade": 2}[c[0]["precisao"]]))
-        return bons[0][0] if _match(bons[0][1]) >= minimo else None
+        return bons[0][0] if bons else None
 
     async def nominatim(params: dict, rotulo: str, exige_rua: bool = True):
         base = {"format": "jsonv2", "addressdetails": 1, "limit": 8, "countrycodes": "pt", "accept-language": "pt-PT"}
@@ -223,7 +250,7 @@ _COLLECTIONS: Dict[str, Any] = {"t": 0.0, "list": []}
 async def dgt_collections() -> List[Dict[str, str]]:
     if _COLLECTIONS["list"] and time.time() - _COLLECTIONS["t"] < 6 * 3600:
         return _COLLECTIONS["list"]
-    st, js = await _fetch("GET", f"{DGT}/collections", {"f": "json"}, None, "json")
+    st, js = await _get(f"{DGT}/collections", {"f": "json"})
     cols = [{"id": c.get("id", ""), "title": c.get("title", "")} for c in (js or {}).get("collections", []) if c.get("id")]
     if cols:
         _COLLECTIONS.update(t=time.time(), list=cols)
@@ -231,7 +258,7 @@ async def dgt_collections() -> List[Dict[str, str]]:
 
 
 async def _dgt_items(col: str, bbox: str, limit: int = 20) -> Optional[List[dict]]:
-    st, js = await _fetch("GET", f"{DGT}/collections/{col}/items", {"f": "json", "bbox": bbox, "limit": limit}, None, "json")
+    st, js = await _get(f"{DGT}/collections/{col}/items", {"f": "json", "bbox": bbox, "limit": limit})
     if js is None:
         return None
     return js.get("features") or []
@@ -296,20 +323,28 @@ async def servidoes(lat: float, lon: float, raio_m: float = 40.0) -> Dict[str, A
     if not cols:
         return _res(False, nota="lista de servidões indisponível")
     bbox = _bbox_around(lat, lon, raio_m)
-    sem = asyncio.Semaphore(6)
+    sem = asyncio.Semaphore(3)
 
     async def one(c):
         async with sem:
             f = await _dgt_items(c["id"], bbox, 3)
             return c, f
 
-    hits, falhas = [], 0
+    hits, falhadas = [], []
     for c, f in await asyncio.gather(*(one(c) for c in cols[:40])):
         if f is None:
-            falhas += 1
+            falhadas.append(c)
         elif f:
             hits.append({"id": c["id"], "titulo": c["title"]})
-    return _res(True, {"afetado_por": hits, "consultadas": min(len(cols), 40), "falhas": falhas, "raio_m": raio_m},
+    ainda = []
+    for c in falhadas:                     # segunda volta, uma a uma
+        f = await _dgt_items(c["id"], bbox, 3)
+        if f is None:
+            ainda.append({"id": c["id"], "titulo": c["title"]})
+        elif f:
+            hits.append({"id": c["id"], "titulo": c["title"]})
+    return _res(True, {"afetado_por": hits, "consultadas": min(len(cols), 40), "falhas": len(ainda), "nao_consultadas": ainda,
+                       "incompleta": bool(ainda), "raio_m": raio_m},
                 "DGT — servidões e restrições de utilidade pública (SRUP)", f"{DGT}/collections")
 
 
@@ -353,7 +388,7 @@ async def elevacoes(pontos: List[Tuple[float, float]]) -> Dict[str, Any]:
     out = []
     for i in range(0, len(pontos), 100):
         loc = "|".join(f"{a:.6f},{b:.6f}" for a, b in pontos[i:i + 100])
-        st, js = await _fetch("GET", OPENTOPO, {"locations": loc}, None, "json")
+        st, js = await _get(OPENTOPO, {"locations": loc}, conc=1)
         if not js or js.get("status") != "OK":
             return _res(False, nota="altimetria indisponível")
         out += [r.get("elevation") for r in js.get("results", [])]
@@ -367,9 +402,14 @@ async def elevacoes(pontos: List[Tuple[float, float]]) -> Dict[str, Any]:
 async def via_proxima(lat: float, lon: float, raio_m: int = 80) -> Dict[str, Any]:
     q = (f"[out:json][timeout:15];way(around:{raio_m},{lat},{lon})[highway]"
          f"[highway!~\"footway|path|steps|cycleway|track|service\"];out geom 20;")
-    st, js = await _fetch("GET", OVERPASS, {"data": q}, None, "json")
+    js, diag = None, []
+    for url in OVERPASS_ESPELHOS:
+        st, js = await _get(url, {"data": q}, tries=2, conc=2)
+        diag.append(f"{url.split('/')[2]}={st}")
+        if js:
+            break
     if not js:
-        return _res(False, nota="OpenStreetMap indisponível")
+        return _res(False, nota="OpenStreetMap (Overpass) indisponível: " + "; ".join(diag))
     best = None
     for w in js.get("elements", []):
         g = w.get("geometry") or []
@@ -401,8 +441,7 @@ def _dist_seg(p, a, b) -> Tuple[float, float]:
 # ------------------------------------------------------------------ ortofotomapa
 async def ortofoto(lat: float, lon: float, meia_largura_m: float = 60.0, px: int = 1024) -> Dict[str, Any]:
     bbox = _bbox_around(lat, lon, meia_largura_m)
-    st, img = await _fetch("GET", f"{DGT}/collections/ortos-rgb/map",
-                           {"bbox": bbox, "width": px, "height": px, "f": "png"}, None, "bytes")
+    st, img = await _get(f"{DGT}/collections/ortos-rgb/map", {"bbox": bbox, "width": px, "height": px, "f": "png"}, "bytes")
     if img and img[:4] == b"\x89PNG":
         return _res(True, {"png": img, "bbox": bbox}, "DGT — Ortofotomapa OrtoSat (30 cm)", f"{DGT}/collections/ortos-rgb")
     key = _gkey()
