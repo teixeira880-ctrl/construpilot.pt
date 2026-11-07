@@ -6,6 +6,7 @@ export const ROUTE_SEO = {
   "/particulares": { title: "Estimar as suas obras: orçamento claro e detalhado", description: "Particulares: estime a sua remodelação, compare os orçamentos recebidos e acompanhe a sua obra com o ConstruPilot.", ptPath: "/particulares" },
   "/medicoes": { title: "Editor de plantas IA: da planta ao orçamento", description: "Importe uma planta DWG ou PDF, obtenha as quantidades e um orçamento aos seus preços. Rastreabilidade completa das hipóteses.", ptPath: "/medicoes" },
   "/portugal": { title: "Orçamentos de obra com IA em Portugal", description: "Estime a sua obra, compare preços de materiais e prepare orçamentos profissionais com IVA e NIF.", lang: "pt", ptPath: "/" },
+  "/sobre": { title: "Sobre o ConstruPilot: a equipa por trás do produto", description: "Quem construiu o ConstruPilot, como contactar os fundadores e onde nos encontrar." },
   "/investisseurs": { title: "Investidores: a plataforma IA da construção", description: "Números-chave, visão e roteiro do ConstruPilot, a plataforma IA de orçamentos e obras." },
   "/fonctionnalites": { title: "Funcionalidades ConstruPilot", description: "Estimativa IA, análise de plantas DWG, medição, orçamentos PDF, aprovisionamento e acompanhamento de obra: todo o ConstruPilot.", ptPath: "/fonctionnalites" },
   "/login": { title: "Iniciar sessão", description: "Inicie sessão no seu espaço ConstruPilot para encontrar os seus projetos, estimativas e orçamentos.", noindex: true },

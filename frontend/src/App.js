@@ -30,6 +30,7 @@ import AutorizacaoObras from "@/pages/AutorizacaoObras";
 import SubscrevePublic from "@/pages/SubscrevePublic";
 import RadarChantiers from "@/pages/RadarChantiers";
 import Investors from "@/pages/Investors";
+import About from "@/pages/About";
 import Features from "@/pages/Features";
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
@@ -279,6 +280,8 @@ function AppRouter() {
       <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
       <Route path="/radar/courrier/retour" element={<Protected><Shell><PostalFeature><PostalPaymentReturn /></PostalFeature></Shell></Protected>} />
       <Route path="/investisseurs" element={<Investors />} />
+      <Route path="/sobre" element={<About />} />
+      <Route path="/about" element={<Navigate to="/sobre" replace />} />
       <Route path="/fonctionnalites" element={<Features />} />
       <Route path="/login" element={<Login />} />
       <Route path="/inscription" element={<Login />} />

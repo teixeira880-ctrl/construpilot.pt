@@ -284,3 +284,29 @@
 /* se o botão não existir (navegador sem suporte / já instalado) o botão nem renderiza; esconder faixa só com texto */
 .landing-install-strip:not(:has(button[data-testid="install-app-button"])) { display: none; }
 .landing-mobile-install { padding: 8px 0; display: flex; justify-content: flex-start; }
+
+/* Auditoria de site : dor no hero, versão gratuita, prova social, página Sobre */
+.landing-hero-pain { margin-top: 18px; max-width: 480px; font: 500 17px/1.5 'Outfit',sans-serif; color: #7a4a2b; }
+.landing-hero-note a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.landing-pricing-free { margin: -18px 0 26px; font-size: 13px; font-weight: 600; color: #285541; }
+.landing-proof-counters { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 16px; margin-bottom: 22px; }
+.landing-proof-counters > div { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; padding: 20px 22px; background: #fcf9f2eb; border: 1px solid #ac7b4f40; border-radius: 19px; color: #285541; }
+.landing-proof-counters strong { font: 600 30px 'Outfit',sans-serif; color: #263f2e; }
+.landing-proof-counters span { grid-column: 1 / -1; font-size: 13px; color: #3e4e42; }
+.landing-proof-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 16px; }
+.landing-proof-card { margin: 0; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; background: #fcf9f2eb; border: 1px solid #ac7b4f40; border-radius: 19px; }
+.landing-proof-card blockquote { margin: 0; font-size: 14px; line-height: 1.8; color: #263f2e; }
+.landing-proof-card figcaption { display: flex; align-items: center; gap: 12px; }
+.landing-proof-card figcaption img, .landing-proof-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.landing-proof-avatar { display: grid; place-items: center; background: #285541; color: #f6eee1; font-weight: 600; font-size: 14px; }
+.landing-proof-card figcaption span { display: grid; font-size: 13px; }
+.landing-proof-card figcaption small { color: #6a5a48; font-size: 12px; }
+.landing-proof-empty { padding: 22px 24px; border: 1px dashed #ac7b4f80; border-radius: 19px; font-size: 14px; line-height: 1.8; color: #3e4e42; max-width: 720px; }
+.landing-proof-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 22px; }
+.landing-about { max-width: 880px; }
+.landing-about-team { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 16px; margin-top: 10px; }
+.landing-about-person { padding: 24px; background: #fcf9f2eb; border: 1px solid #ac7b4f40; border-radius: 19px; display: grid; gap: 10px; justify-items: start; }
+.landing-about-person img, .landing-about-person .landing-proof-avatar { width: 72px; height: 72px; font-size: 20px; }
+.landing-about-person h3 { font: 600 18px 'Outfit',sans-serif; color: #263f2e; }
+.landing-about-person p { font-size: 13px; line-height: 1.7; color: #3e4e42; }
+.landing-about-story p { font-size: 15px; line-height: 1.9; color: #3e4e42; margin-bottom: 14px; }
