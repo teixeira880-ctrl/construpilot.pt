@@ -33,6 +33,15 @@ def env(monkeypatch, tmp_path):
         im.save(b, "PNG")
         return b.getvalue()
     monkeypatch.setattr(IM, "_gemini", gemini_falso)
+    # nunca chamar fornecedores reais nos testes, mesmo num servidor com chaves verdadeiras
+    monkeypatch.setattr(IM, "ORDEM_FORNECEDORES", ["gemini"])
+    for k in ("RUNWAYML_API_SECRET", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+
+    async def sem_rede(*a, **kw):
+        raise AssertionError("fornecedor real chamado num teste")
+    monkeypatch.setattr(IM, "_runway", sem_rede)
+    monkeypatch.setattr(IM, "_openai", sem_rede)
     yield db, store, chamadas
     BR.G.set_transport(None)
 
@@ -261,6 +270,7 @@ def test_cadeia_runway_openai_emergent_com_juiz_claude(env, monkeypatch):
     monkeypatch.setattr(IM, "_gemini", gemini)
     monkeypatch.setattr(IM, "juiz_claude", juiz)
     monkeypatch.setattr(IM, "CANDIDATOS", 1)
+    monkeypatch.setattr(IM, "ORDEM_FORNECEDORES", ["runway", "openai", "gemini"])
 
     async def go():
         r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
@@ -275,3 +285,55 @@ def test_cadeia_runway_openai_emergent_com_juiz_claude(env, monkeypatch):
         assert reg["qualidade"]["realismo_claude"] == 8.5
         assert [t["fornecedor"] for t in reg["tentativas"]] == ["runway", "openai", "gemini"]
     run(go())
+
+
+def test_fornecedor_que_nao_responde_nao_bloqueia(env, monkeypatch):
+    import asyncio
+    from engines.urbanismo_pt.auto import imagens as IM
+    monkeypatch.setenv("RUNWAYML_API_SECRET", "x")
+    monkeypatch.setattr(IM, "TEMPO_MAX_S", {"runway": 0.2, "openai": 0.2, "gemini": 5})
+    monkeypatch.setattr(IM, "ORDEM_FORNECEDORES", ["runway", "gemini"])
+
+    async def runway_parado(prompt, ref, sessao, extra=None):
+        await asyncio.sleep(30)
+    monkeypatch.setattr(IM, "_runway", runway_parado)
+
+    async def go():
+        r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
+        im = await UA.gerar_imagens(r["processo_id"], USER, ["perspetiva"], False)
+        foto = next(i for i in im["imagens"] if i["tipo"] == "fotorrealista")
+        assert foto["fornecedor"] == "gemini"
+        doc = await env[0].urbanismo_processos.find_one({"processo_id": r["processo_id"]})
+        reg = next(i for i in doc["imagens"] if i["tipo"] == "fotorrealista")
+        assert reg["tentativas"][0]["fornecedor"] == "runway" and reg["tentativas"][0]["erro"] == "TimeoutError"
+        assert IM._erro_curto(RuntimeError("Bearer sk-abcdef123456 inválida")) == "RuntimeError: *** inválida"
+    run(go())
+
+
+def test_modelo_openai_escolhido_pela_conta(monkeypatch):
+    from engines.urbanismo_pt.auto import imagens as IM
+    assert IM._ordem_modelos_imagem(["gpt-4o", "dall-e-3", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"])[0] == "gpt-image-1.5"
+    assert IM._ordem_modelos_imagem(["gpt-4o", "dall-e-2"]) == []
+    conta = ['chatgpt-image-latest', 'gpt-image-1-mini', 'gpt-image-1.5', 'gpt-image-2', 'gpt-image-2-2026-04-21',
+             'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst-2026-09-08', 'gpt-image-2.6-flare', 'gpt-image-2.6-sunburst']
+    assert IM._ordem_modelos_imagem(conta)[:2] == ["gpt-image-2", "gpt-image-1.5"]   # estável primeiro
+    monkeypatch.delenv("URB_IMG_OPENAI_MODEL", raising=False)
+    IM._MODELO_OPENAI.clear()
+
+    class M:
+        def __init__(self, i):
+            self.id = i
+
+    class Models:
+        def list(self):
+            async def gen():
+                for i in ("gpt-4o", "gpt-image-1-mini", "gpt-image-1.5"):
+                    yield M(i)
+            return gen()
+
+    class Cli:
+        models = Models()
+    assert BR.run(IM._modelo_openai(Cli())) == "gpt-image-1.5"
+    monkeypatch.setenv("URB_IMG_OPENAI_MODEL", "gpt-image-1")
+    assert BR.run(IM._modelo_openai(Cli())) == "gpt-image-1"
+    IM._MODELO_OPENAI.clear()

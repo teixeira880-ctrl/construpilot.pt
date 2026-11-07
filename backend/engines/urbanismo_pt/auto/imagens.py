@@ -154,18 +154,60 @@ async def _gemini(prompt: str, ref: bytes, sessao: str, extra: Optional[List[byt
     return imgs[0][0]
 
 
+_MODELO_OPENAI: Dict[str, Any] = {}
+
+
+def _ordem_modelos_imagem(ids: List[str]) -> List[str]:
+    """Modelos de imagem com edição: primeiro as versões estáveis «gpt-image-N[.M]» da mais recente para a mais antiga,
+    depois as variantes com sufixo (ex.: -flare, -sunburst — possivelmente pré-visualizações) e por fim as datadas/mini."""
+    import re
+    cands = [i for i in ids if i.startswith("gpt-image")]
+
+    def chave(i):
+        m = re.match(r"gpt-image-(\d+)(?:\.(\d+))?(.*)$", i)
+        if not m:
+            return (False, (0, 0), False, False)
+        resto = m.group(3)
+        estavel = resto == ""
+        return (estavel, (int(m.group(1)), int(m.group(2) or 0)), "mini" not in resto, not re.search(r"-20\d\d", resto))
+    return sorted(cands, key=chave, reverse=True)
+
+
+async def _modelo_openai(client) -> str:
+    """O modelo configurado (URB_IMG_OPENAI_MODEL) ou, se não existir nesta conta, o melhor modelo de imagem
+    disponível na lista de modelos da conta. Resultado guardado em memória (1 consulta por arranque)."""
+    if os.environ.get("URB_IMG_OPENAI_MODEL"):
+        return os.environ["URB_IMG_OPENAI_MODEL"]
+    if "id" not in _MODELO_OPENAI:
+        try:
+            ids = [m.id async for m in client.models.list()]
+            ordem = _ordem_modelos_imagem(ids)
+            _MODELO_OPENAI["id"] = ordem[0] if ordem else "gpt-image-1"
+        except Exception:  # noqa: BLE001
+            _MODELO_OPENAI["id"] = "gpt-image-1"
+    return _MODELO_OPENAI["id"]
+
+
 async def _openai(prompt: str, ref: bytes, sessao: str, extra: Optional[List[bytes]] = None) -> bytes:
-    """gpt-image-1 em modo EDIÇÃO a partir da vista exata (alta fidelidade à imagem de entrada)."""
+    """Edição de imagem OpenAI (família gpt-image) a partir da vista exata, alta fidelidade à imagem de entrada."""
     from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=240)
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=170, max_retries=0)
+    modelo = await _modelo_openai(client)
     im = Image.open(io.BytesIO(ref))
     size = "1536x1024" if im.width > im.height * 1.15 else ("1024x1536" if im.height > im.width * 1.15 else "1024x1024")
     imagens = [(f"ref{k}.png", b, "image/png") for k, b in enumerate([*(extra or []), ref])]
+    args = dict(model=modelo, image=imagens if len(imagens) > 1 else imagens[0], prompt=prompt[:30000],
+                size=size, quality="high", n=1)
     try:
-        r = await client.images.edit(model=os.environ.get("URB_IMG_OPENAI_MODEL", "gpt-image-1"),
-                                     image=imagens if len(imagens) > 1 else imagens[0], prompt=prompt[:30000],
-                                     size=size, quality="high", n=1, extra_body={"input_fidelity": "high"})
+        try:
+            r = await client.images.edit(**args, extra_body={"input_fidelity": "high"})
+        except Exception as e:  # noqa: BLE001
+            if "input_fidelity" not in str(e):
+                raise
+            r = await client.images.edit(**args)     # modelo sem esse parâmetro
     except Exception as e:  # noqa: BLE001
+        if "does not exist" in str(e):
+            _MODELO_OPENAI.pop("id", None)   # o modelo deixou de existir: volta a escolher no próximo pedido
         try:
             from engines.llm_keys import note_openai_error
             await note_openai_error(e)   # crédito esgotado / chave inválida → disjuntor para a chave Emergent
@@ -175,7 +217,7 @@ async def _openai(prompt: str, ref: bytes, sessao: str, extra: Optional[List[byt
     try:
         from engines.expenses.store import observe
         await observe(source="licenciamento_imagens", source_id=sessao, provider="openai_direct", feature="licenciamento_imagens",
-                      model="gpt-image-1", units={"images": 1}, state="completed")
+                      model=modelo, units={"images": 1}, state="completed")
     except Exception:  # noqa: BLE001
         pass
     return base64.b64decode(r.data[0].b64_json)
@@ -185,13 +227,13 @@ async def _runway(prompt: str, ref: bytes, sessao: str = "", extra: Optional[Lis
     import asyncio
     import httpx
     from runwayml import AsyncRunwayML
-    client = AsyncRunwayML(api_key=os.environ["RUNWAYML_API_SECRET"])
+    client = AsyncRunwayML(api_key=os.environ["RUNWAYML_API_SECRET"], timeout=60, max_retries=1)
     refs = [{"uri": "data:image/png;base64," + base64.b64encode(ref).decode(), "tag": "Projeto"}]
     for k, b in enumerate(extra or []):
         refs.append({"uri": "data:image/jpeg;base64," + base64.b64encode(_jpeg(b, 88)).decode(), "tag": f"Foto{k + 1}"})
     task = await client.text_to_image.create(model="gen4_image", ratio="1920:1080", prompt_text=prompt[:990],
                                              reference_images=refs)
-    for _ in range(100):
+    for _ in range(70):
         await asyncio.sleep(3)
         t = await client.tasks.retrieve(task.id)
         if t.status == "SUCCEEDED" and t.output:
@@ -202,6 +244,13 @@ async def _runway(prompt: str, ref: bytes, sessao: str = "", extra: Optional[Lis
         if t.status in ("FAILED", "CANCELLED"):
             raise RuntimeError(f"runway {t.status}")
     raise TimeoutError("runway sem resposta")
+
+
+def _erro_curto(e: BaseException) -> str:
+    """Tipo + início da mensagem do fornecedor (para diagnóstico), sem nada que pareça uma chave."""
+    import re
+    msg = re.sub(r"(sk-|key_|Bearer\s+)[A-Za-z0-9_\-]{6,}", "***", str(e))[:220]
+    return f"{type(e).__name__}: {msg}" if msg else type(e).__name__
 
 
 def _fornecedor(nome: str):
@@ -317,9 +366,18 @@ def acabar(b: bytes, largura: int = 0) -> Tuple[bytes, Dict[str, Any]]:
     return out.getvalue(), info
 
 
-async def _candidatos(gerar, prompt: str, ref: bytes, sessao: str, n: int) -> List[Any]:
+TEMPO_MAX_S = {"runway": float(os.environ.get("URB_IMG_TEMPO_RUNWAY_S", "240")),
+               "openai": float(os.environ.get("URB_IMG_TEMPO_OPENAI_S", "180")),
+               "gemini": float(os.environ.get("URB_IMG_TEMPO_GEMINI_S", "150"))}
+
+
+async def _candidatos(gerar, prompt: str, ref: bytes, sessao: str, n: int, limite_s: float = 240) -> List[Any]:
+    """N pedidos em paralelo, cada um com tempo máximo: um fornecedor que não responde nunca bloqueia o dossier."""
     import asyncio
-    res = await asyncio.gather(*[gerar(prompt, ref, sessao) for _ in range(n)], return_exceptions=True)
+
+    async def um():
+        return await asyncio.wait_for(gerar(prompt, ref, sessao), timeout=limite_s)
+    res = await asyncio.gather(*[um() for _ in range(n)], return_exceptions=True)
     return list(res)
 
 
@@ -355,9 +413,10 @@ async def fotorrealista(processo: Dict[str, Any], exata: Dict[str, Any], sessao:
             p += " Fix these issues seen in the previous attempt: " + "; ".join(defeitos[:4]) + "."
         if forn == "runway":
             p = prompt_curto(p)
-        for r in await _candidatos(fn, p, ref, sessao, CANDIDATOS):
+        for r in await _candidatos(fn, p, ref, sessao, CANDIDATOS, TEMPO_MAX_S.get(forn, 240)):
             if isinstance(r, BaseException):
-                tentativas.append({"fornecedor": forn, "estrito": estrito, "erro": type(r).__name__})
+                tentativas.append({"fornecedor": forn, "estrito": estrito, "erro": type(r).__name__,
+                                   "detalhe": _erro_curto(r)})
                 continue
             try:
                 sc = semelhanca_geometria(ref, r, msk)
@@ -406,8 +465,10 @@ async def editar_em_cadeia(prompt: str, ref: bytes, sessao: str, extra: Optional
         if f not in ("runway", "openai", "gemini") or not disponivel(f):
             continue
         try:
+            import asyncio
             fn = _fornecedor(f)
-            return await fn(prompt_curto(prompt) if f == "runway" else prompt, ref, sessao, extra), f
+            return await asyncio.wait_for(fn(prompt_curto(prompt) if f == "runway" else prompt, ref, sessao, extra),
+                                          timeout=TEMPO_MAX_S.get(f, 240)), f
         except Exception as e:  # noqa: BLE001
             log.warning("edição %s falhou: %s", f, type(e).__name__)
     return None, None
