@@ -24,7 +24,7 @@ const BADGES_PT = [
   { icon: Sparkles, label: "IA de última geração", sub: "Assistente BTP · Vision · Voz" },
 ];
 
-const ReviewDialog = ({ open, onOpenChange }) => {
+export const ReviewDialog = ({ open, onOpenChange }) => {
   const { lang } = useI18n();
   const pt = lang === "pt";
   const [form, setForm] = useState({ name: "", role: "", rating: 5, comment: "" });

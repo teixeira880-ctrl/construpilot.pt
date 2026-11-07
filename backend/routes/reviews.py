@@ -239,6 +239,16 @@ async def list_site_reviews(limit: int = 12) -> dict:
     return {"reviews": [_clean_site(d) for d in await cur.to_list(30)]}
 
 
+@router.get("/site/usage")
+async def site_usage() -> dict:
+    """Auditoria de site (D3.1) : contadores públicos reais da beta (nunca valores fixos no código).
+
+    Conta as contas não-admin e os projetos de obra; a página só mostra o contador acima de um mínimo."""
+    users = await db.users.count_documents({"role": {"$ne": "admin"}})
+    projects = await db.projects.count_documents({})
+    return {"beta_users": int(users), "projects": int(projects)}
+
+
 @router.get("/site/pending", dependencies=[Depends(admin_user)])
 async def pending_site_reviews() -> dict:
     cur = db.site_reviews.find({"approved": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).limit(100)

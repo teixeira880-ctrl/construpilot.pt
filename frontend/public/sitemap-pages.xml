@@ -179,4 +179,11 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://construpilot.pt/data-deletion" />
   </url>
 
+  <url>
+    <loc>https://construpilot.pt/sobre</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="pt-PT" href="https://construpilot.pt/sobre" />
+  </url>
+
 </urlset>

@@ -64,6 +64,7 @@ export const DemoShowcase = () => {
             onCanPlay={() => videoRef.current?.play().catch(() => {})}
             className="w-full aspect-video bg-black"
             data-testid="demo-video"
+            aria-label="Demonstração em vídeo do ConstruPilot: da planta ao orçamento"
           />
           <button
             onClick={toggleSound}

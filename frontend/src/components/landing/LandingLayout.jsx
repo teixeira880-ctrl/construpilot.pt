@@ -55,9 +55,11 @@ export function LandingHeading({ eyebrow, title, children }) {
 }
 
 export function LandingPricing({ plans, pro = false }) {
-  const oc = offerShort(useOffer());
+  const offer = useOffer();
+  const oc = offerShort(offer);
   return <section className="landing-section landing-pricing" id="landing-pricing" data-testid={pro ? "pro-pricing" : "particuliers-pricing"}>
     <LandingHeading eyebrow="Ao seu ritmo" title={pro ? "Uma oferta para a sua forma de trabalhar." : "Comece de forma simples. Vá mais longe."}>{pro ? oc.trial : "Descubra as primeiras ferramentas gratuitamente e depois escolha o acompanhamento que lhe convém."}</LandingHeading>
+    {pro && offer && !offer.free_promo && <p className="landing-pricing-free" data-testid="pro-pricing-free">Versão gratuita disponível para começar.</p>}
     <div className="landing-price-grid">{plans.map(p => <article key={p.name} className={`landing-price-card${p.popular ? " is-featured" : ""}`}>
       <div className="landing-price-name"><h3>{p.name}</h3>{p.popular && <span>{pro ? "Para as equipas" : "Para o seu projeto"}</span>}</div><p>{p.desc}</p>
       <div className="landing-price"><strong>{p.price}</strong><span>{p.period}</span></div>

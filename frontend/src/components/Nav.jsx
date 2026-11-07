@@ -310,6 +310,13 @@ export const Footer = () => (
             Ajuda e assistência
           </Link>
           <Link
+            to="/sobre"
+            className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
+            data-testid="footer-about-link"
+          >
+            Quem somos
+          </Link>
+          <Link
             to="/portugal"
             className="text-[11px] text-muted-foreground/70 hover:text-primary transition-colors"
             data-testid="footer-portugal-link"

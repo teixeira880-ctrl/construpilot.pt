@@ -51,6 +51,7 @@ export const FeatureClips = ({ title = "Cada função em vídeo", subtitle = "De
                 preload="metadata"
                 className="w-full aspect-video bg-black"
                 data-testid={`feature-clip-video-${f.key}`}
+                aria-label={`Vídeo da função ${f.title || f.key} no ConstruPilot`}
               />
               <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/70 text-white text-[11px] font-semibold px-2 py-0.5 backdrop-blur">
                 <Clock className="h-3 w-3" /> {Math.round(f.duration)} s
