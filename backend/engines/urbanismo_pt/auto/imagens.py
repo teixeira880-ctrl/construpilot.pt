@@ -185,13 +185,13 @@ async def _runway(prompt: str, ref: bytes, sessao: str = "", extra: Optional[Lis
     import asyncio
     import httpx
     from runwayml import AsyncRunwayML
-    client = AsyncRunwayML(api_key=os.environ["RUNWAYML_API_SECRET"])
+    client = AsyncRunwayML(api_key=os.environ["RUNWAYML_API_SECRET"], timeout=60, max_retries=1)
     refs = [{"uri": "data:image/png;base64," + base64.b64encode(ref).decode(), "tag": "Projeto"}]
     for k, b in enumerate(extra or []):
         refs.append({"uri": "data:image/jpeg;base64," + base64.b64encode(_jpeg(b, 88)).decode(), "tag": f"Foto{k + 1}"})
     task = await client.text_to_image.create(model="gen4_image", ratio="1920:1080", prompt_text=prompt[:990],
                                              reference_images=refs)
-    for _ in range(100):
+    for _ in range(70):
         await asyncio.sleep(3)
         t = await client.tasks.retrieve(task.id)
         if t.status == "SUCCEEDED" and t.output:
@@ -317,9 +317,18 @@ def acabar(b: bytes, largura: int = 0) -> Tuple[bytes, Dict[str, Any]]:
     return out.getvalue(), info
 
 
-async def _candidatos(gerar, prompt: str, ref: bytes, sessao: str, n: int) -> List[Any]:
+TEMPO_MAX_S = {"runway": float(os.environ.get("URB_IMG_TEMPO_RUNWAY_S", "240")),
+               "openai": float(os.environ.get("URB_IMG_TEMPO_OPENAI_S", "180")),
+               "gemini": float(os.environ.get("URB_IMG_TEMPO_GEMINI_S", "150"))}
+
+
+async def _candidatos(gerar, prompt: str, ref: bytes, sessao: str, n: int, limite_s: float = 240) -> List[Any]:
+    """N pedidos em paralelo, cada um com tempo máximo: um fornecedor que não responde nunca bloqueia o dossier."""
     import asyncio
-    res = await asyncio.gather(*[gerar(prompt, ref, sessao) for _ in range(n)], return_exceptions=True)
+
+    async def um():
+        return await asyncio.wait_for(gerar(prompt, ref, sessao), timeout=limite_s)
+    res = await asyncio.gather(*[um() for _ in range(n)], return_exceptions=True)
     return list(res)
 
 
@@ -355,7 +364,7 @@ async def fotorrealista(processo: Dict[str, Any], exata: Dict[str, Any], sessao:
             p += " Fix these issues seen in the previous attempt: " + "; ".join(defeitos[:4]) + "."
         if forn == "runway":
             p = prompt_curto(p)
-        for r in await _candidatos(fn, p, ref, sessao, CANDIDATOS):
+        for r in await _candidatos(fn, p, ref, sessao, CANDIDATOS, TEMPO_MAX_S.get(forn, 240)):
             if isinstance(r, BaseException):
                 tentativas.append({"fornecedor": forn, "estrito": estrito, "erro": type(r).__name__})
                 continue
@@ -406,8 +415,10 @@ async def editar_em_cadeia(prompt: str, ref: bytes, sessao: str, extra: Optional
         if f not in ("runway", "openai", "gemini") or not disponivel(f):
             continue
         try:
+            import asyncio
             fn = _fornecedor(f)
-            return await fn(prompt_curto(prompt) if f == "runway" else prompt, ref, sessao, extra), f
+            return await asyncio.wait_for(fn(prompt_curto(prompt) if f == "runway" else prompt, ref, sessao, extra),
+                                          timeout=TEMPO_MAX_S.get(f, 240)), f
         except Exception as e:  # noqa: BLE001
             log.warning("edição %s falhou: %s", f, type(e).__name__)
     return None, None

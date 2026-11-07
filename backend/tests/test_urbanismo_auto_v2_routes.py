@@ -275,3 +275,25 @@ def test_cadeia_runway_openai_emergent_com_juiz_claude(env, monkeypatch):
         assert reg["qualidade"]["realismo_claude"] == 8.5
         assert [t["fornecedor"] for t in reg["tentativas"]] == ["runway", "openai", "gemini"]
     run(go())
+
+
+def test_fornecedor_que_nao_responde_nao_bloqueia(env, monkeypatch):
+    import asyncio
+    from engines.urbanismo_pt.auto import imagens as IM
+    monkeypatch.setenv("RUNWAYML_API_SECRET", "x")
+    monkeypatch.setattr(IM, "TEMPO_MAX_S", {"runway": 0.2, "openai": 0.2, "gemini": 5})
+    monkeypatch.setattr(IM, "ORDEM_FORNECEDORES", ["runway", "gemini"])
+
+    async def runway_parado(prompt, ref, sessao, extra=None):
+        await asyncio.sleep(30)
+    monkeypatch.setattr(IM, "_runway", runway_parado)
+
+    async def go():
+        r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
+        im = await UA.gerar_imagens(r["processo_id"], USER, ["perspetiva"], False)
+        foto = next(i for i in im["imagens"] if i["tipo"] == "fotorrealista")
+        assert foto["fornecedor"] == "gemini"
+        doc = await env[0].urbanismo_processos.find_one({"processo_id": r["processo_id"]})
+        reg = next(i for i in doc["imagens"] if i["tipo"] == "fotorrealista")
+        assert reg["tentativas"][0] == {"fornecedor": "runway", "estrito": False, "erro": "TimeoutError"}
+    run(go())
