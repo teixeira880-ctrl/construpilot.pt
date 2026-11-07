@@ -232,9 +232,11 @@ def desenhos(processo: Dict[str, Any], verif: Optional[Dict[str, Any]] = None) -
             if topo.get("ok"):
                 out.insert(1, {"code": "LEVANTAMENTO_TOPOGRAFICO", "title": "Planta topográfica indicativa",
                                "filename": "topografia_indicativa.png",
-                               "png": PA.planta_topografica(topo, ter.get("poligono_m") or [], imp.get("casa_rect"),
+                               "png": PA.planta_topografica(topo, ter.get("poligono_m") or [],
+                                                            (auto.get("plantas") or {}).get("contorno") or imp.get("casa_rect"),
                                                             imp.get("garagem_rect"), imp.get("cota_soleira_m"))})
-            plan = {"pisos": auto["plantas"]["pisos"], "casa_rect": tuple(auto["plantas"]["casa_rect"])}
+            plan = {"pisos": auto["plantas"]["pisos"], "casa_rect": tuple(auto["plantas"]["casa_rect"]),
+                    **({"contorno": auto["plantas"]["contorno"]} if auto["plantas"].get("contorno") else {})}
             az = (ter.get("azimutes") or {}).get("tardoz")
             for k, pp in enumerate(plan["pisos"]):
                 add("PLANTAS_PISOS", f"Planta do {pp['nome'].lower()}", f"planta_piso_{k}.png", PL.desenho_planta(plan, k, az))

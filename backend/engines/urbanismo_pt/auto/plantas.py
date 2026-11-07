@@ -90,10 +90,79 @@ def _row(rooms: List[dict], x0: float, x1: float, y0: float, y1: float, fixa: Op
     return out
 
 
+def _faixas(rs: List[dict], rect: Tuple[float, float, float, float], fachada_sol: str, lado_garagem: str,
+            escada_x: Optional[Tuple[float, float]], compacto: bool = False,
+            circ_esquerda: bool = False) -> Tuple[Optional[List[dict]], Optional[Tuple[float, float]]]:
+    """Duas faixas (sol / serviço) dentro de um retângulo; devolve as linhas de compartimentos e a posição da escada."""
+    x0, y0, x1, y1 = rect
+    W = y1 - y0
+    sol = [r for r in rs if r["fila"] == "sol"]
+    srv = [r for r in rs if r["fila"] != "sol"]
+    s_sol = sum(r["area_projeto_m2"] for r in sol) or 1.0
+    s_srv = sum(r["area_projeto_m2"] for r in srv) or 1.0
+    d_sol = max(3.8, min(W - 2.6, W * s_sol / (s_sol + s_srv)))
+    key = {t: i for i, t in enumerate(ORDEM_SERVICO)}
+    srv.sort(key=lambda r: key.get(r["tipo"], 99))
+    ks = {t: i for i, t in enumerate(ORDEM_SOL)}
+    sol.sort(key=lambda r: ks.get(r["tipo"], 99))
+    if lado_garagem == "direita":     # serviços do lado da garagem
+        srv.reverse()
+        sol.reverse()
+    if circ_esquerda:   # casa em L: a circulação do corpo encosta à ala (à esquerda) e liga ao corredor dos quartos
+        srv.sort(key=lambda r: 0 if r["tipo"] == "circulacao" else 1)
+    if compacto and not srv:
+        return _row(sol, x0, x1, y0, y1), escada_x
+    if compacto and not sol:
+        return _row(srv, x0, x1, y0, y1, fixa=escada_x if any(r["tipo"] == "escada" for r in srv) else None), escada_x
+    if fachada_sol == "tardoz":
+        ys_sol, ys_srv = (y1 - d_sol, y1), (y0, y1 - d_sol)
+    else:
+        ys_sol, ys_srv = (y0, y0 + d_sol), (y0 + d_sol, y1)
+    row_srv = _row(srv, x0, x1, *ys_srv, fixa=escada_x if any(r["tipo"] == "escada" for r in srv) else None)
+    row_sol = _row(sol, x0, x1, *ys_sol)
+    if row_srv is None or row_sol is None:
+        return None, escada_x
+    if escada_x is None:
+        for r in row_srv:
+            if r["tipo"] == "escada":
+                escada_x = (r["x0"], r["x1"])
+    return row_sol + row_srv, escada_x
+
+
+_ZONA_NOITE = ("quarto", "wc")
+
+
+def _ala(rs: List[dict], rect: Tuple[float, float, float, float]) -> Optional[List[dict]]:
+    """Ala de uma casa em L (profunda, perpendicular à frente): faixas ao longo de y, quartos do lado do pátio (x máx.)."""
+    x0, y0, x1, y1 = rect
+    t = [dict(r) for r in rs]
+    for r in t:
+        r["fila"] = "sol" if r["tipo"] in ("quarto", "escritorio", "sala") else "servico"
+    rows, _ = _faixas(t, (y0, x0, y1, x1), "tardoz", "esquerda", None, compacto=True)   # referencial transposto (x↔y)
+    if rows is None:
+        return None
+    return [{**r, "x0": r["y0"], "x1": r["y1"], "y0": r["x0"], "y1": r["x1"]} for r in rows]
+
+
+def _comp(rows: List[dict]) -> List[dict]:
+    comp = []
+    for r in rows:
+        w, d = r["x1"] - r["x0"], r["y1"] - r["y0"]
+        util = max(0.0, (w - PAREDE_INT) * (d - PAREDE_INT))
+        minimo = r.get("minimo_m2")
+        lm = LARG_MIN.get(r["tipo"], 1.0)
+        comp.append({"nome": r["nome"], "tipo": r["tipo"], "x0": round(r["x0"], 3), "y0": round(r["y0"], 3),
+                     "x1": round(r["x1"], 3), "y1": round(r["y1"], 3), "largura_m": round(min(w, d), 2),
+                     "area_m2": round(w * d, 2), "area_util_m2": round(util, 2), "minimo_m2": minimo,
+                     "conforme": (minimo is None or util >= minimo - 1e-6) and min(w, d) >= lm - 1e-6})
+    return comp
+
+
 def distribuir(volume: dict, prog: dict, fachada_sol: str, lado_garagem: str) -> Dict[str, Any]:
     polys = [p for p in V.building_polygons(volume) if not p["annexe"]]
     x0, y0, x1, y1 = V.bbox(polys)
-    W = y1 - y0
+    forma_l = (volume.get("shape") or "rectangle").lower() == "l"
+    rects = V.main_rects(volume) if forma_l else [(x0, y0, x1, y1)]
     pisos = []
     escada_x = None
     for piso in range(int(volume.get("levels") or 1)):
@@ -102,45 +171,38 @@ def distribuir(volume: dict, prog: dict, fachada_sol: str, lado_garagem: str) ->
         for r in rs:
             if r["tipo"] == "entrada":
                 r["fila"] = "sol" if fachada_sol == "frente" else "servico"
-        sol = [r for r in rs if r["fila"] == "sol"]
-        srv = [r for r in rs if r["fila"] != "sol"]
-        s_sol = sum(r["area_projeto_m2"] for r in sol) or 1.0
-        s_srv = sum(r["area_projeto_m2"] for r in srv) or 1.0
-        d_sol = max(3.8, min(W - 2.6, W * s_sol / (s_sol + s_srv)))
-        key = {t: i for i, t in enumerate(ORDEM_SERVICO)}
-        srv.sort(key=lambda r: key.get(r["tipo"], 99))
-        ks = {t: i for i, t in enumerate(ORDEM_SOL)}
-        sol.sort(key=lambda r: ks.get(r["tipo"], 99))
-        if lado_garagem == "direita":     # serviços do lado da garagem
-            srv.reverse()
-            sol.reverse()
-        if fachada_sol == "tardoz":
-            ys_sol, ys_srv = (y1 - d_sol, y1), (y0, y1 - d_sol)
+        nome = "rés-do-chão" if piso == 0 else f"{piso}.º andar"
+        if not forma_l or len(rects) < 2:
+            rows, escada_x = _faixas(rs, rects[0], fachada_sol, lado_garagem, escada_x)
         else:
-            ys_sol, ys_srv = (y0, y0 + d_sol), (y0 + d_sol, y1)
-        row_srv = _row(srv, x0, x1, *ys_srv, fixa=escada_x if any(r["tipo"] == "escada" for r in srv) else None)
-        row_sol = _row(sol, x0, x1, *ys_sol)
-        if row_srv is None or row_sol is None:
-            return {"ok": False, "motivo": f"Os compartimentos do {('rés-do-chão' if piso == 0 else str(piso) + '.º andar')} "
-                                           "não cabem com as larguras mínimas nesta implantação."}
-        if escada_x is None:
-            for r in row_srv:
-                if r["tipo"] == "escada":
-                    escada_x = (r["x0"], r["x1"])
-        comp = []
-        for r in row_sol + row_srv:
-            w, d = r["x1"] - r["x0"], r["y1"] - r["y0"]
-            util = max(0.0, (w - PAREDE_INT) * (d - PAREDE_INT))
-            minimo = r.get("minimo_m2")
-            lm = LARG_MIN.get(r["tipo"], 1.0)
-            comp.append({"nome": r["nome"], "tipo": r["tipo"], "x0": round(r["x0"], 3), "y0": round(r["y0"], 3),
-                         "x1": round(r["x1"], 3), "y1": round(r["y1"], 3), "largura_m": round(min(w, d), 2),
-                         "area_m2": round(w * d, 2), "area_util_m2": round(util, 2), "minimo_m2": minimo,
-                         "conforme": (minimo is None or util >= minimo - 1e-6) and min(w, d) >= lm - 1e-6})
-        pisos.append({"piso": piso, "nome": "Rés-do-chão" if piso == 0 else f"{piso}.º andar", "compartimentos": comp})
+            corpo, ala = rects[0], rects[1]
+            noite = [r for r in rs if r["tipo"] in _ZONA_NOITE]
+            dia = [r for r in rs if r["tipo"] not in _ZONA_NOITE]
+            if not noite or not dia:   # piso de uma só zona: reparte pela área de cada braço
+                cap = (corpo[2] - corpo[0]) * (corpo[3] - corpo[1])
+                tot = cap + (ala[2] - ala[0]) * (ala[3] - ala[1])
+                alvo, acc, dia, noite = sum(r["area_projeto_m2"] for r in rs) * cap / tot, 0.0, [], []
+                for r in rs:
+                    (dia if acc + r["area_projeto_m2"] / 2 <= alvo or r["tipo"] == "escada" else noite).append(r)
+                    if r in dia:
+                        acc += r["area_projeto_m2"]
+            circ = [r for r in dia if r["tipo"] == "circulacao"]
+            if circ and noite:   # o corredor também serve a ala dos quartos
+                metade = round(circ[0]["area_projeto_m2"] / 2, 1)
+                circ[0]["area_projeto_m2"] = metade
+                noite.append({**circ[0], "nome": "Corredor dos quartos", "area_projeto_m2": metade})
+            r1, escada_x = _faixas(dia, corpo, fachada_sol, lado_garagem, escada_x, compacto=True, circ_esquerda=True)
+            r2 = _ala(noite, ala) if noite else []
+            rows = None if r1 is None or r2 is None else r1 + r2
+        if rows is None:
+            return {"ok": False, "motivo": f"Os compartimentos do {nome} não cabem com as larguras mínimas nesta implantação."}
+        pisos.append({"piso": piso, "nome": "Rés-do-chão" if piso == 0 else f"{piso}.º andar", "compartimentos": _comp(rows)})
     nao = [f"{c['nome']} ({p['nome']}): {c['area_util_m2']:.1f} m²" + (f" < {c['minimo_m2']:.1f} m²" if c["minimo_m2"] else "")
            for p in pisos for c in p["compartimentos"] if not c["conforme"]]
-    return {"ok": True, "pisos": pisos, "nao_conformes": nao, "casa_rect": (x0, y0, x1, y1)}
+    out = {"ok": True, "pisos": pisos, "nao_conformes": nao, "casa_rect": (x0, y0, x1, y1)}
+    if forma_l:
+        out["contorno"] = [list(map(float, pt)) for pt in polys[0]["pts"]]
+    return out
 
 
 # ------------------------------------------------------------------ desenho
@@ -188,12 +250,16 @@ def desenho_planta(plan: Dict[str, Any], piso: int, azimute_tardoz: Optional[flo
         dr.text((cx, cy - 12), nome, fill=col, font=fn, anchor="mm")
         dr.text((cx, cy + 12), f"{V.fmt(c['area_util_m2'], 1)} m²", fill=col, font=f_area, anchor="mm")
     a, b = P(x0, y1), P(x1, y0)
-    dr.rectangle([a, b], outline=V.INK, width=max(4, int(PAREDE_EXT * s * 0.6)))
+    if plan.get("contorno"):   # casa em L: parede exterior segue o contorno real
+        pts = [P(*q) for q in plan["contorno"]]
+        dr.line(pts + [pts[0]], fill=V.INK, width=max(4, int(PAREDE_EXT * s * 0.6)), joint="curve")
+    else:
+        dr.rectangle([a, b], outline=V.INK, width=max(4, int(PAREDE_EXT * s * 0.6)))
     # cotas parciais (largura de cada compartimento, nas duas faixas) e cotas gerais
     fc = V._font(15)
-    ymid = (y0 + y1) / 2
-    for faixa, yy in (([c for c in p["compartimentos"] if c["y0"] < ymid - 0.01], b[1] + 28),
-                      ([c for c in p["compartimentos"] if c["y0"] >= ymid - 0.01], a[1] - 28)):
+    # compartimentos encostados à fachada da frente (em baixo) e à do tardoz (em cima)
+    for faixa, yy in (([c for c in p["compartimentos"] if abs(c["y0"] - y0) < 0.01], b[1] + 28),
+                      ([c for c in p["compartimentos"] if abs(c["y1"] - y1) < 0.01], a[1] - 28)):
         for c in faixa:
             pa, pb = P(c["x0"], 0)[0], P(c["x1"], 0)[0]
             dr.line([(pa, yy), (pb, yy)], fill=V.GREY, width=1)
