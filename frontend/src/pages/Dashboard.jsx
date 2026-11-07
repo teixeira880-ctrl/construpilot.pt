@@ -19,6 +19,7 @@ import { useI18n } from "@/context/I18nContext";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { StarterChecklist } from "@/components/StarterChecklist";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
+import { TaskHome } from "@/components/dashboard/TaskHome";
 import { Stat } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
 import { PriceLibrary } from "@/components/PriceLibrary";
@@ -54,6 +55,7 @@ export default function Dashboard() {
     { to: "/chantiers", icon: HardHat, title: "Dossiers de obra", desc: "Plantas, fotografias e acompanhamento por obra", min: "pro" },
   ].filter((f) => RANK[level] < RANK[f.min]);
   const ui = useWorkspaceCopy();
+  const [workMode, setWorkMode] = useState("guiado");
   const experience = useExperienceCopy();
   const confirm = useConfirm();
   const [projectQuery, setProjectQuery] = useState("");
@@ -134,6 +136,11 @@ export default function Dashboard() {
         <div><p className="dashboard-greeting">{experience("hello")}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p><h1>{experience("overview")}</h1><p>{experience("intro")}</p></div>
         <div className="dashboard-heading-actions"><span className="dashboard-date">{new Date().toLocaleDateString({pt:"pt-PT",en:"en-GB"}[lang] || "pt-PT", {weekday:"long",day:"numeric",month:"long"})}</span><Button asChild><Link to={isPro && can("devis") ? "/devis-editeur" : "/estimation"} data-testid="dashboard-primary-create"><Plus size={17} />{experience(isPro && can("devis") ? "quoteShort" : "estimateShort")}</Link></Button></div>
       </header>
+      <TaskHome onProfile={p => setWorkMode(p?.mode || "guiado")} />
+      <TodayBlock />
+      {/* Em modo guiado os atalhos e indicadores ficam recolhidos para não competirem com a tarefa principal. */}
+      <details className="dashboard-secondary" open={workMode !== "guiado"} data-testid="dashboard-secondary">
+      <summary className="cursor-pointer select-none py-2 text-sm font-semibold text-muted-foreground" data-testid="dashboard-secondary-toggle">Atalhos e indicadores</summary>
       <div className="dashboard-quick-actions" data-testid="dash-quick-actions">
         {[
           canAssistant
@@ -156,8 +163,7 @@ export default function Dashboard() {
                 document.querySelector('[data-testid="dash-tab-leads"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
               }} /> : <Stat label={t("dash.tab_quotes")} value={loadState.quotes === "ready" ? num(quotes.length) : "—"} testId="stat-quotes" />}
       </div>
-
-      <TodayBlock />
+      </details>
       <div className="dashboard-section-heading"><h2>{ui("activity")}</h2>
         {tab === "projects" && <div className="workspace-search-field"><Search size={17} aria-hidden="true" /><input aria-label={ui("projectSearch")} placeholder={ui("projectSearch")} value={projectQuery} onChange={e => setProjectQuery(e.target.value)} data-testid="dashboard-project-search" />{projectQuery && <button type="button" aria-label={ui("clear")} data-testid="dashboard-project-search-clear" onClick={() => setProjectQuery("")}><X size={16} /></button>}</div>}
       </div>

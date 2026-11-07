@@ -1,5 +1,15 @@
 # ConstruPilot — CHANGELOG
 
+## 07/11/2026 — Perfil adaptativo, modos de utilização e orçamento guiado (codificado por Claude)
+- **Perfil de trabalho por utilizador** (`engines/work_profile.py`, `routes/work_profile.py`, coleção `work_profiles`): profissões (15, várias possíveis), responsabilidades, modo (guiado/direto/avançado) e linguagem (simples/técnica), separados das permissões (`core/permissions.py`) e do plano (`engines/access.py`), que NUNCA são alterados. Contas antigas: perfil genérico guiado por defeito, sem onboarding obrigatório (sem migração necessária).
+- **Onboarding em 3 perguntas**, saltável e editável (Preferências → Perfil de trabalho). Sugestão de profissão a partir de uma descrição: sempre a confirmar.
+- **Painel « O que precisas de fazer hoje? »** (`TaskHome.jsx`): 3–5 tarefas do perfil, filtradas pelas permissões e pelo plano calculados no servidor; « Continuar onde fiquei » (último rascunho / última planta); seletor de modo. Em modo guiado, atalhos e indicadores ficam recolhidos.
+- **Motores partilhados** (`engines/trade_calcs.py`): tinta (dedução de aberturas, demãos, rendimento, latas), pavimento/revestimento (perdas configuráveis, embalagens), alvenaria (blocos, junta, perdas; só quantidades). Sem constantes escondidas; « Não sei » ≠ 0 (dado pendente, resultado não calculado).
+- **Ferramentas de ofício** `/ferramentas-oficio` (todas as contas) e **orçamento de pintura guiado** `/orcamento-guiado` (Pro, permissão devis): uma pergunta de cada vez em modo guiado, secções completas em direto/avançado, mesmo objeto e mesmo cálculo de servidor; rascunho guardado no dispositivo; revisão com « por confirmar »; cria um rascunho (idempotente via `request_id`), nada é enviado; IVA não escolhido automaticamente.
+- **Reutilizar orçamento** (`POST /api/documents/{id}/reuse`, botão « Reutilizar » em /devis): novo rascunho com a estrutura; não copia cliente, número, estado, pagamentos, assinatura, fotos nem confirmação de IVA; original intacto.
+- **Linguagem**: página de plantas sem « OpenCV / flood-fill / deskew »; « Calibre a planta » → « Indique uma medida real da planta ».
+- **Testes**: `backend/tests/test_work_profile.py` (19 testes).
+
 ## 24/10/2026 — Programa IA de opções (motor do .fr adaptado a Portugal)
 Pedido por Martinho (« envoie les moteurs chez Emergent pour les installer », opção « Cadre seul, adapté PT »).
 
