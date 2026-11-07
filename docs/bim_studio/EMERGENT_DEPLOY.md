@@ -49,7 +49,7 @@ Sem novas dependências no frontend (usa o `three` já instalado).
 | `BIM_MAX_CONCURRENT_JOBS` | `1` | `1` | Análises em paralelo por processo backend |
 
 Não é preciso migrar dados: as coleções novas (`bim_models`, `bim_versions`, `bim_elements`,
-`bim_overrides`, `bim_mappings`, `bim_audit`, `bim_prefs`, `bim_quote_traces`) e os índices são
+`bim_overrides`, `bim_mappings`, `bim_audit`, `bim_prefs`, `bim_quote_traces`, `bim_finishes`) e os índices são
 criados no arranque. Os ficheiros vão para o Object Storage já usado pela plataforma, sob o prefixo
 privado `pt/bim/<empresa>/...`.
 
@@ -77,6 +77,8 @@ cd /app/frontend && yarn jest --config jest.bim.config.cjs
 - [ ] Parede Norte = 28 m² (declarada); Divisória interior = 14 m² (calculada).
 - [ ] Separador Orçamento: "Sugerir artigos" → confirmar 2 grupos → total coerente → "Gerar orçamento editável" abre o editor de orçamentos.
 - [ ] Exportação Excel do mapa de quantidades descarrega.
+- [ ] Revestimentos: "Revestir vários…" → faces exteriores, granito 0–1 m + capoto por cima → fachada visível no 3D com as duas zonas; o grupo "Capoto (ETICS)" aparece no Orçamento com a área correta.
+- [ ] Clicar numa face de uma parede abre o editor com o lado certo destacado (interior/exterior); "Trocar interior/exterior" funciona.
 - [ ] Outra conta Pro (outra empresa) **não** vê o modelo (lista vazia, 404 por URL direto).
 - [ ] Ficheiro .pdf renomeado para .ifc é recusado com mensagem clara.
 - [ ] Planos Pro, Orçamentos, Biblioteca e Assistente BTP continuam a funcionar.

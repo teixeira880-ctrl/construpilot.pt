@@ -21,6 +21,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from bim_studio import budget as bud
+from bim_studio import finishes as fin
 from bim_studio import config, jobs, storage
 from bim_studio.constants import CATEGORIES, QTY_LABELS, UNIT_OF
 from bim_studio.store import audit, get_db, now, tenant_of
@@ -301,7 +302,10 @@ async def get_element(model_id: str, version: int, gid: str, user=Depends(viewer
     e = await get_db().bim_elements.find_one({"model_id": model_id, "version": version, "gid": gid}, {"_id": 0})
     if not e:
         raise HTTPException(404, "Elemento não encontrado.")
-    return bud.element_view(e, await _overrides(model_id, version))
+    view = bud.element_view(e, await _overrides(model_id, version))
+    view["finishes"] = await get_db().bim_finishes.find_one(
+        {"model_id": model_id, "version": version, "gid": gid}, {"_id": 0})
+    return view
 
 
 class QtyEdit(BaseModel):
@@ -417,10 +421,159 @@ async def signed_file(token: str):
         "Content-Disposition": f'attachment; filename="{v["filename"]}"', "Cache-Control": "private, no-store"})
 
 
+# ── Revestimentos (faces interiores/exteriores, cores, texturas) ────────────
+@router.get("/finishes/presets")
+async def finish_presets(user=Depends(viewer)):
+    return {"presets": fin.PRESETS, "patterns": list(fin.PATTERNS)}
+
+
+@router.get("/models/{model_id}/versions/{version}/finishes")
+async def list_finishes(model_id: str, version: int, user=Depends(viewer)):
+    await _version(model_id, version, user, done=True)
+    return {"items": await _finish_docs(model_id, version)}
+
+
+class FinishesIn(BaseModel):
+    sides: dict[str, list[fin.Layer]] = {}
+    swap: bool | None = None
+
+
+async def _confirm_item_mappings(model_id: str, version: int, user: dict, layers: list[dict]) -> None:
+    """Artigo escolhido pelo utilizador numa camada = associação confirmada do grupo correspondente."""
+    ids = await _tenant_user_ids(user)
+    for l in layers:
+        if not l.get("item_id"):
+            continue
+        item = await get_db().library_items.find_one({"item_id": l["item_id"], "user_id": {"$in": ids}}, {"_id": 0})
+        if not item:
+            raise HTTPException(404, "Artigo não encontrado na biblioteca.")
+        name = f"{l['name']} · {l['color']}"
+        gk = bud.group_key({"category": "revestimentos", "type_name": name, "materials": [l["name"]]})
+        sel = {"model_id": model_id, "version": version, "group_key": gk}
+        await get_db().bim_mappings.update_one(sel, {"$set": {
+            **sel, "tenant_id": tenant_of(user), "item_id": item["item_id"],
+            "item_snapshot": {k: item.get(k) for k in ("designation", "unit", "unit_price_ht", "vat_rate")},
+            "quantity_key": "area", "status": "confirmed", "excluded": False,
+            "by": user.get("name") or user["user_id"], "at": now()},
+            "$setOnInsert": {"mapping_id": "map_" + secrets.token_hex(6)}}, upsert=True)
+
+
+async def _save_finishes(model_id: str, version: int, user: dict, e: dict, sides: dict, swap, mode: str) -> dict:
+    faces = e.get("faces")
+    if not faces:
+        raise HTTPException(409, f"{e.get('name') or e['gid']}: elemento sem faces revestíveis.")
+    valid = set((faces.get("sides") or {}).keys())
+    db = get_db()
+    sel = {"model_id": model_id, "version": version, "gid": e["gid"]}
+    cur = await db.bim_finishes.find_one(sel, {"_id": 0}) or {"sides": {}}
+    new_sides = dict(cur.get("sides") or {})
+    all_layers = []
+    for side, layers in sides.items():
+        if side not in valid:
+            raise HTTPException(422, f"Face inválida: {side}")
+        norm = fin.normalise_layers(layers)
+        new_sides[side] = (new_sides.get(side, []) + norm)[:8] if mode == "append" else norm
+        all_layers += norm
+    doc = {**sel, "tenant_id": tenant_of(user), "sides": {k: v for k, v in new_sides.items() if v},
+           "swap": cur.get("swap", False) if swap is None else bool(swap),
+           "by": user.get("name") or user["user_id"], "at": now()}
+    await db.bim_finishes.update_one(sel, {"$set": doc}, upsert=True)
+    await _confirm_item_mappings(model_id, version, user, all_layers)
+    return doc
+
+
+@router.put("/models/{model_id}/versions/{version}/finishes/{gid}")
+async def set_finishes(model_id: str, version: int, gid: str, body: FinishesIn, user=Depends(editor)):
+    await _version(model_id, version, user, done=True)
+    e = await get_db().bim_elements.find_one({"model_id": model_id, "version": version, "gid": gid}, {"_id": 0})
+    if not e:
+        raise HTTPException(404, "Elemento não encontrado.")
+    doc = await _save_finishes(model_id, version, user, e, body.sides, body.swap, "replace")
+    await audit(user, "set_finishes", model_id, version, gid=gid,
+                sides={k: len(v) for k, v in body.sides.items()}, swap=body.swap)
+    return doc
+
+
+class ApplyIn(BaseModel):
+    gids: list[str] = Field(default=[], max_length=20000)
+    category: str | None = None
+    storey: str | None = None
+    target: Literal["interior", "exterior", "A", "B", "ambos", "pavimento", "teto", "cobertura", "top", "bottom"]
+    layers: list[fin.Layer] = Field(min_length=0, max_length=8)
+    mode: Literal["replace", "append", "clear"] = "replace"
+
+
+@router.post("/models/{model_id}/versions/{version}/finishes/apply")
+async def apply_finishes(model_id: str, version: int, body: ApplyIn, user=Depends(editor)):
+    """Aplica as mesmas camadas a vários elementos (seleção, piso e/ou categoria)."""
+    await _version(model_id, version, user, done=True)
+    flt: dict = {"model_id": model_id, "version": version, "faces": {"$ne": None}, "counted": True}
+    if body.gids:
+        flt["gid"] = {"$in": body.gids}
+    if body.category:
+        flt["category"] = body.category
+    if body.storey:
+        flt["storey_gid"] = body.storey
+    if not (body.gids or body.category or body.storey):
+        raise HTTPException(422, "Indique os elementos, o piso ou a categoria.")
+    if body.mode != "clear" and not body.layers:
+        raise HTTPException(422, "Indique pelo menos uma camada.")
+    db = get_db()
+    applied, faces_n = 0, 0
+    swaps = {d["gid"]: d.get("swap", False) for d in await _finish_docs(model_id, version)}
+    async for e in db.bim_elements.find(flt, {"_id": 0, "properties": 0}):
+        sides = fin.resolve_sides(e["faces"], body.target, swaps.get(e["gid"], False))
+        if not sides:
+            continue
+        layers = [] if body.mode == "clear" else body.layers
+        await _save_finishes(model_id, version, user, e, {s: layers for s in sides}, None,
+                             "append" if body.mode == "append" else "replace")
+        applied += 1
+        faces_n += len(sides)
+    await audit(user, "apply_finishes", model_id, version, target=body.target, mode=body.mode,
+                elements=applied, faces=faces_n, layers=[l.name for l in body.layers])
+    return {"elements": applied, "faces": faces_n}
+
+
+@router.post("/models/{model_id}/versions/{version}/finishes/copy-from/{source}")
+async def copy_finishes(model_id: str, version: int, source: int, user=Depends(editor)):
+    """Reaproveita os revestimentos de outra versão (mesmo GlobalId e face ainda existente)."""
+    await _version(model_id, version, user, done=True)
+    await _version(model_id, source, user, done=True)
+    db = get_db()
+    gids = {e["gid"]: e for e in await _elements(model_id, version, {"_id": 0, "gid": 1, "faces": 1})}
+    copied = skipped = 0
+    for d in await _finish_docs(model_id, source):
+        e = gids.get(d["gid"])
+        valid = set(((e or {}).get("faces") or {}).get("sides", {}).keys())
+        sides = {k: v for k, v in (d.get("sides") or {}).items() if k in valid}
+        if not sides:
+            skipped += 1
+            continue
+        sel = {"model_id": model_id, "version": version, "gid": d["gid"]}
+        await db.bim_finishes.update_one(sel, {"$set": {**sel, "tenant_id": tenant_of(user), "sides": sides,
+                                                        "swap": d.get("swap", False),
+                                                        "by": user.get("name") or user["user_id"], "at": now()}},
+                                         upsert=True)
+        copied += 1
+    await audit(user, "copy_finishes", model_id, version, source=source, copied=copied, skipped=skipped)
+    return {"copied": copied, "skipped": skipped}
+
+
 # ── Associação a artigos e orçamento ────────────────────────────────────────
+async def _finish_docs(model_id: str, version: int) -> list[dict]:
+    return await get_db().bim_finishes.find({"model_id": model_id, "version": version}, {"_id": 0}).to_list(None)
+
+
 async def _groups_and_mappings(model_id: str, version: int):
     els = await _elements(model_id, version)
     ov = await _overrides(model_id, version)
+    fdocs = await _finish_docs(model_id, version)
+    if fdocs:
+        by_gid = {e["gid"]: e for e in els}
+        wall_areas = {d["gid"]: bud.effective(by_gid[d["gid"]], "area", ov) for d in fdocs
+                      if d["gid"] in by_gid and bud.effective(by_gid[d["gid"]], "area", ov)}
+        els = els + fin.pseudo_elements(by_gid, fdocs, wall_areas)
     groups = bud.build_groups(els, ov)
     maps = {m["group_key"]: m async for m in get_db().bim_mappings.find(
         {"model_id": model_id, "version": version}, {"_id": 0})}

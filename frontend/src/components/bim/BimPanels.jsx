@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api, eur2 } from "@/lib/api";
 import { CONFIDENCE_STYLE, ORIGIN_STYLE, formatQty } from "./bimGeometry";
+import { FacesEditor } from "./FinishEditor";
 
 const BTN = "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50";
 export const BTN_PRIMARY = `${BTN} bg-primary text-primary-foreground hover:opacity-90`;
@@ -21,19 +22,20 @@ export function OriginBadge({ q, simple }) {
 }
 
 // ── Painel do elemento selecionado ──────────────────────────────────────────
-export function ElementPanel({ base, gid, profile, canEdit, onChanged, onHide, onIsolate }) {
+export function ElementPanel({ base, gid, profile, canEdit, onChanged, onHide, onIsolate, presets = [], library = [], selectedSide = null }) {
   const [el, setEl] = useState(null);
   const [edit, setEdit] = useState({});
   const simple = profile === "simples";
   const technical = profile === "engenheiro";
 
+  const [reload, setReload] = useState(0);
   useEffect(() => {
-    setEl(null);
     if (gid) api.get(`${base}/elements/${gid}`).then(({ data }) => setEl(data)).catch(() => setEl(null));
-  }, [base, gid]);
+    else setEl(null);
+  }, [base, gid, reload]);
 
   if (!gid) return <p className="text-sm text-muted-foreground p-4">Clique num elemento do modelo para ver as suas propriedades e medições.</p>;
-  if (!el) return <p className="text-sm text-muted-foreground p-4">A carregar…</p>;
+  if (!el || el.gid !== gid) return <p className="text-sm text-muted-foreground p-4">A carregar…</p>;
 
   const save = async (body) => {
     try {
@@ -108,6 +110,10 @@ export function ElementPanel({ base, gid, profile, canEdit, onChanged, onHide, o
         </table>
         {!simple && <p className="text-[11px] text-muted-foreground mt-1">Passe o rato sobre a origem para ver a fonte exata (Qto IFC, geometria…).</p>}
       </div>
+      {el.faces && (
+        <FacesEditor base={base} element={el} presets={presets} library={library} selectedSide={selectedSide}
+                     canEdit={canEdit} onSaved={() => { setReload((k) => k + 1); onChanged?.(); }} />
+      )}
       {!simple && Object.keys(el.properties || {}).length > 0 && (
         <details open={technical}>
           <summary className="cursor-pointer font-medium">Propriedades IFC</summary>

@@ -89,6 +89,7 @@ Ficheiros **existentes** (só linhas acrescentadas, nenhuma removida):
 - Visualizador 3D: órbita/zoom/deslocação, seleção por clique, propriedades, ocultar/isolar, filtros por piso e categoria, medição visual de distância (marcada como não verificada), destaque e isolamento dos elementos de um artigo do orçamento, recurso sem WebGL.
 - Orçamento: grupos de elementos → sugestões explicáveis da biblioteca da empresa → confirmação → linhas com quantidade, preço da biblioteca, subtotais por categoria e por piso, avisos (artigo sem preço, elementos sem medição), artigos fora do orçamento, orçamento **editável** criado no editor existente (`pro_documents`), rastreabilidade linha → associação → elementos.
 - Exportação do mapa de quantidades em Excel (com subtotais) e CSV.
+- **Revestimentos por face** (como num software de arquitetura): paredes com lado A/B identificado como interior/exterior (Pset IsExternal + orientação em relação ao centro do edifício, com botão para trocar), lajes com pavimento/teto; pilha de até 8 camadas por face (de dentro para fora) com cor, textura procedimental no 3D (liso, reboco, azulejo, madeira, pedra, tijolo), módulo, zona em altura (ex.: azulejo 0–1,20 m + pintura por cima), espessura e artigo da biblioteca; 15 revestimentos predefinidos (pintura, reboco, estuque, azulejo, azulejo português, capoto/ETICS, granito, xisto, madeira, tijolo face à vista, pladur, microcimento, papel de parede, cerâmico, flutuante); aplicação em massa às faces visíveis (por piso/categoria/isolamento) em modo substituir, acrescentar ou remover; cópia entre versões pelo GlobalId; seleção do lado clicando na face no 3D. As áreas de cada camada entram no orçamento (camada em toda a altura = calculada pela geometria; zona parcial = estimada); escolher um artigo numa camada confirma a associação.
 - Perfis: arquiteto, engenheiro (propriedades técnicas abertas), empresa (abre no orçamento, versões), modo simples (passos guiados, sem terminologia IFC, legenda de cores).
 - Segurança: tenant por organização, 404 para recursos de outras empresas, permissão "devis" para alterar, URLs assinados (HMAC, 10 min) para descarregar o IFC, ficheiros nunca públicos, nada executado a partir dos ficheiros, limpeza dos ficheiros temporários, interruptor geral.
 
@@ -145,7 +146,8 @@ Procedimento completo em `docs/bim_studio/EMERGENT_DEPLOY.md` (pré-verificaçã
 
 1. **Validar com IFC reais** dos vossos projetos (Revit, ArchiCAD, Allplan) antes de produção — os testes usam modelos sintéticos.
 2. Áreas geométricas de formas complexas (paredes curvas/em L, coberturas inclinadas) são marcadas como estimadas; recomenda-se exportar o IFC com Qto (Base Quantities) ativadas.
-3. Sugestões de artigos são heurísticas (sem IA nesta versão); uma camada IA verificável pode ser acrescentada depois.
+3. Revestimentos: a área de uma zona parcial (ex.: azulejo até 1,20 m) supõe aberturas distribuídas uniformemente e por isso é marcada como estimada; as texturas 3D são procedimentais (aproximação visual, não imagens de catálogo) e podem mostrar efeito moiré à distância.
+4. Sugestões de artigos são heurísticas (sem IA nesta versão); uma camada IA verificável pode ser acrescentada depois.
 4. Visualizador próprio (three.js): sem planos de corte nem medição de áreas no 3D.
 5. ifcXML/ifcZIP não suportados.
 6. Não existia sistema de perfis profissionais → criada preferência própria do BIM Studio (`bim_prefs`).

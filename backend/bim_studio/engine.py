@@ -297,6 +297,65 @@ def _is_straight(areas: np.ndarray, normals: np.ndarray, side: float) -> bool:
     return other <= 0.25 * side
 
 
+FACE_CATEGORIES = ("paredes", "fachadas", "lajes", "coberturas", "pavimentos")
+
+
+def face_info(cat: str, v: np.ndarray, faces: np.ndarray) -> dict | None:
+    """Faces revestíveis de um elemento (metros).
+
+    Paredes: lados A/B segundo a normal horizontal dominante (eixo ``axis``); área de cada lado
+    medida na malha (triângulos alinhados com ±eixo), cota inferior/superior para zonas em altura.
+    Lajes/coberturas: face superior (pavimento/cobertura) e inferior (teto).
+    """
+    if len(faces) == 0 or cat not in FACE_CATEGORIES:
+        return None
+    areas, normals = _tri_areas_normals(v, faces)
+    z0, z1 = float(v[:, 2].min()), float(v[:, 2].max())
+    if cat in ("paredes", "fachadas"):
+        horiz = np.abs(normals[:, 2]) < 0.1
+        if not horiz.any():
+            return None
+        ang = np.round(np.degrees(np.arctan2(normals[horiz, 1], normals[horiz, 0])) / 2.0) * 2.0
+        bins: dict[float, float] = {}
+        for a, ar in zip(ang, areas[horiz]):
+            bins[float(a)] = bins.get(float(a), 0.0) + float(ar)
+        best = max(bins, key=bins.get)
+        axis = np.array([math.cos(math.radians(best)), math.sin(math.radians(best))])
+        d = normals[:, 0] * axis[0] + normals[:, 1] * axis[1]
+        a_area = float(areas[horiz & (d > 0.95)].sum())
+        b_area = float(areas[horiz & (d < -0.95)].sum())
+        c = v.mean(axis=0)
+        return {"kind": "wall", "axis": [round(float(axis[0]), 5), round(float(axis[1]), 5)],
+                "center": [round(float(c[0]), 3), round(float(c[1]), 3)],
+                "z0": round(z0, 4), "z1": round(z1, 4),
+                "sides": {"A": {"area": round(a_area, 4), "label": "interior"},
+                          "B": {"area": round(b_area, 4), "label": "interior"}}}
+    up = float(areas[normals[:, 2] > 0.9].sum())
+    down = float(areas[normals[:, 2] < -0.9].sum())
+    top_label = "cobertura" if cat == "coberturas" else "pavimento"
+    return {"kind": "slab", "z0": round(z0, 4), "z1": round(z1, 4),
+            "sides": {"top": {"area": round(up, 4), "label": top_label},
+                      "bottom": {"area": round(down, 4), "label": "teto"}}}
+
+
+def label_exterior_sides(records: list[dict]) -> None:
+    """Paredes exteriores: o lado cuja normal se afasta do centro do edifício é o exterior."""
+    walls = [r for r in records if (r.get("faces") or {}).get("kind") == "wall"]
+    if not walls:
+        return
+    cx = sum(r["faces"]["center"][0] for r in walls) / len(walls)
+    cy = sum(r["faces"]["center"][1] for r in walls) / len(walls)
+    for r in walls:
+        ext = (r.get("properties") or {}).get("Pset_WallCommon", {}).get("IsExternal")
+        f = r["faces"]
+        if ext is not True:
+            continue
+        out = (f["center"][0] - cx) * f["axis"][0] + (f["center"][1] - cy) * f["axis"][1]
+        f["sides"]["A"]["label"] = "exterior" if out >= 0 else "interior"
+        f["sides"]["B"]["label"] = "interior" if out >= 0 else "exterior"
+        f["exterior_guess"] = True
+
+
 def _q(key, value, origin, source):
     return {"key": key, "value": float(value), "unit": UNIT_OF.get(key, ""), "origin": origin, "source": source}
 
@@ -488,7 +547,7 @@ def process(ifc_path: str, out_dir: str, *, max_elements: int = 60000, max_trian
             "_declared": _declared_quantities(el, cat, units),
             "_attr": _attr_quantities(el, cat, units),
             "_layer_t": layer_t,
-            "_geom": [], "has_geometry": False, "bbox": None, "chunk": None,
+            "_geom": [], "has_geometry": False, "bbox": None, "chunk": None, "faces": None,
         }
         elements[el.id()] = rec
 
@@ -521,6 +580,7 @@ def process(ifc_path: str, out_dir: str, *, max_elements: int = 60000, max_trian
                         v = np.asarray(g.verts, dtype=np.float64).reshape(-1, 3)
                         faces = np.asarray(g.faces, dtype=np.int64).reshape(-1, 3)
                         rec["_geom"] = _geom_quantities(rec["category"], v, faces)
+                        rec["faces"] = face_info(rec["category"], v, faces)
                         rec["has_geometry"] = len(faces) > 0
                         rec["bbox"] = ([round(float(x), 3) for x in v.min(axis=0)] + [round(float(x), 3) for x in v.max(axis=0)]) if len(v) else None
                         if len(faces) and total_tris + len(faces) <= max_triangles:
@@ -581,6 +641,7 @@ def process(ifc_path: str, out_dir: str, *, max_elements: int = 60000, max_trian
         with gzip.open(os.path.join(out_dir, f"geom_{i}.json.gz"), "wt", encoding="utf-8") as fh:
             json.dump({"chunk": i, "elements": ch["elements"]}, fh, separators=(",", ":"))
 
+    label_exterior_sides(out_elements)
     counts: dict[str, int] = {}
     for e in out_elements:
         counts[e["category"]] = counts.get(e["category"], 0) + 1

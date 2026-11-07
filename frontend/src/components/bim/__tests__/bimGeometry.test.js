@@ -39,3 +39,35 @@ describe("BIM Studio — funções do visualizador", () => {
     });
   });
 });
+
+import { partitionFaces, sideOfNormal, visibleZones, hexToRgb, sideDisplayLabel } from "../bimGeometry";
+
+describe("BIM Studio — revestimentos por face", () => {
+  const wallFaces = { kind: "wall", axis: [0, 1], z0: 0, z1: 2.8, sides: { A: { label: "exterior" }, B: { label: "interior" } } };
+  test("lado a partir da normal", () => {
+    expect(sideOfNormal([0, 1, 0], wallFaces)).toBe("A");
+    expect(sideOfNormal([0, -1, 0], wallFaces)).toBe("B");
+    expect(sideOfNormal([1, 0, 0], wallFaces)).toBeNull();
+    expect(sideOfNormal([0, 0, 1], { kind: "slab" })).toBe("top");
+    expect(sideOfNormal([0, 0, -1], { kind: "slab" })).toBe("bottom");
+  });
+  test("partição dos triângulos por lado preserva todos os triângulos", () => {
+    // dois triângulos: um virado para +Y (lado A), outro para -Y (lado B), um para +X (topo/borda)
+    const p = [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1];
+    const idx = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    const { index, groups } = partitionFaces(p, idx, wallFaces);
+    expect(index.length).toBe(9);
+    expect(groups.reduce((s, g) => s + g.count, 0)).toBe(9);
+    expect(groups.map((g) => g.side).sort()).toEqual(["A", "B", null].sort());
+  });
+  test("zonas visíveis e cores", () => {
+    const z = visibleZones([{ color: "#FFFFFF", pattern: "azulejo", from_m: 0, to_m: 1.2 }, { color: "#E8D9C0", pattern: "liso", from_m: 1.2 }], wallFaces);
+    expect(z).toHaveLength(2);
+    expect(z[0].to).toBe(1.2);
+    expect(z[1].to).toBeGreaterThan(2.8);
+    expect(z[0].pattern).toBe(2);
+    expect(hexToRgb("#FF0000")).toEqual([1, 0, 0]);
+    expect(sideDisplayLabel(wallFaces, "A", false)).toBe("Exterior (lado A)");
+    expect(sideDisplayLabel(wallFaces, "A", true)).toBe("Interior (lado A)");
+  });
+});

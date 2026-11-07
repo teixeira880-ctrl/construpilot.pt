@@ -552,3 +552,90 @@ def test_non_straight_wall_is_estimated_not_calculated(tmp_path):
     res = {e["name"]: e["quantities"]["area"] for e in engine.process(str(p), str(tmp_path / "o"))["elements"]}
     assert res["Reta"]["origin"] == "calculated" and res["Reta"]["value"] == pytest.approx(18.0, rel=1e-3)
     assert res["Parede em L"]["origin"] == "estimated"  # nunca apresentada como medição fiável
+
+
+# ── Revestimentos por face ──────────────────────────────────────────────────
+def test_faces_detected_with_interior_exterior(ctx, house):
+    client, _ = ctx
+    north = _by_name(client, house, "Parede Norte")
+    f = north["faces"]
+    assert f["kind"] == "wall" and {s["label"] for s in f["sides"].values()} == {"interior", "exterior"}
+    assert f["sides"]["A"]["area"] == pytest.approx(28.0) and f["sides"]["B"]["area"] == pytest.approx(28.0)
+    inner = _by_name(client, house, "Divisória interior")["faces"]
+    assert {s["label"] for s in inner["sides"].values()} == {"interior"}
+    slab = _by_name(client, house, "Laje térrea")["faces"]
+    assert slab["sides"]["top"]["label"] == "pavimento" and slab["sides"]["bottom"]["label"] == "teto"
+    r = client.get("/api/bim/finishes/presets", headers=H()).json()
+    assert len(r["presets"]) >= 10 and "azulejo" in r["patterns"]
+
+
+def test_multi_layer_finishes_and_quantities(ctx, house):
+    client, mock = ctx
+    base = f"/api/bim/models/{house}/versions/1"
+    north = _by_name(client, house, "Parede Norte")
+    inside = next(s for s, v in north["faces"]["sides"].items() if v["label"] == "interior")
+    body = {"sides": {inside: [
+        {"name": "Azulejo cerâmico", "color": "#ffffff", "pattern": "azulejo", "pattern_size_m": 0.2, "from_m": 0, "to_m": 1.4},
+        {"name": "Pintura", "color": "#E8D9C0", "pattern": "liso", "from_m": 1.4},
+    ]}}
+    r = client.put(f"{base}/finishes/{north['gid']}", json=body, headers=H())
+    assert r.status_code == 200, r.text
+    assert [l["color"] for l in r.json()["sides"][inside]] == ["#FFFFFF", "#E8D9C0"]
+    e = client.get(f"{base}/elements/{north['gid']}", headers=H()).json()
+    assert len(e["finishes"]["sides"][inside]) == 2
+    groups = client.get(f"{base}/groups", headers=H()).json()["groups"]
+    tile = next(g for g in groups if g["label"].startswith("Azulejo cerâmico"))
+    paint = next(g for g in groups if g["label"] == "Pintura · #E8D9C0")
+    assert tile["totals"]["area"] == pytest.approx(10 * 1.4)        # 28 m² × 1,4/2,8
+    assert paint["totals"]["area"] == pytest.approx(10 * 1.4)
+    assert tile["confidence"] == "estimada"                          # zona parcial → nunca "calculada"
+    assert tile["gids"] == [north["gid"]]                            # "Ver no 3D" aponta para a parede
+    # validações
+    bad = {"sides": {inside: [{"name": "X", "color": "vermelho"}]}}
+    assert client.put(f"{base}/finishes/{north['gid']}", json=bad, headers=H()).status_code == 422
+    bad = {"sides": {inside: [{"name": "X", "color": "#FF0000", "from_m": 2, "to_m": 1}]}}
+    assert client.put(f"{base}/finishes/{north['gid']}", json=bad, headers=H()).status_code == 422
+    assert client.put(f"{base}/finishes/{north['gid']}", json={"sides": {"top": []}}, headers=H()).status_code == 422
+    door = _by_name(client, house, "Porta de entrada")
+    assert client.put(f"{base}/finishes/{door['gid']}", json=body, headers=H()).status_code == 409
+
+
+def test_bulk_apply_and_budget(ctx, house):
+    client, mock = ctx
+    base = f"/api/bim/models/{house}/versions/1"
+    piso0 = next(s["gid"] for s in client.get(f"{base}", headers=H()).json()["storeys"] if s["name"] == "Piso 0")
+    item = client.portal.call(mock.library_items.find_one, {"user_id": "u_a", "designation": {"$regex": "Pintura"}})
+    assert item, "catálogo inicial sem artigo de pintura"
+    r = client.post(f"{base}/finishes/apply", headers=H(), json={
+        "category": "paredes", "storey": piso0, "target": "exterior", "mode": "replace",
+        "layers": [{"name": "Capoto (ETICS)", "color": "#EDE6D8", "pattern": "reboco", "thickness_mm": 60,
+                    "item_id": item["item_id"]}]})
+    assert r.status_code == 200 and r.json() == {"elements": 4, "faces": 4}
+    groups = client.get(f"{base}/groups", headers=H()).json()["groups"]
+    etics = next(g for g in groups if g["label"].startswith("Capoto"))
+    assert etics["totals"]["area"] == pytest.approx(28 + 28 + 22.4 + 22.4)
+    assert etics["confidence"] == "calculada" and etics["mapping"]["status"] == "confirmed"
+    b = client.get(f"{base}/budget", headers=H()).json()
+    line = next(l for l in b["lines"] if l["bim_label"].startswith("Capoto"))
+    assert line["total_ht"] == pytest.approx(round(100.8, 2) * item["unit_price_ht"], rel=1e-6)
+    assert "Revestimentos" in b["subtotals_by_category"]
+    # pavimento das lajes, modo acrescentar, e limpeza
+    r = client.post(f"{base}/finishes/apply", headers=H(), json={
+        "category": "lajes", "target": "pavimento", "mode": "append",
+        "layers": [{"name": "Pavimento flutuante", "color": "#B98D5E", "pattern": "madeira"}]})
+    assert r.json()["elements"] == 2
+    r = client.post(f"{base}/finishes/apply", headers=H(), json={"category": "lajes", "target": "pavimento", "mode": "clear", "layers": []})
+    assert r.json()["elements"] == 2
+    assert not any(g["label"].startswith("Pavimento flutuante") for g in client.get(f"{base}/groups", headers=H()).json()["groups"])
+    assert client.post(f"{base}/finishes/apply", headers=H(), json={"target": "interior", "layers": []}).status_code == 422
+    # isolamento e permissões
+    assert client.post(f"{base}/finishes/apply", headers=H("pro_b"), json={"category": "paredes", "target": "ambos", "layers": [{"name": "X"}]}).status_code == 404
+    assert client.get(f"{base}/finishes", headers=H("pro_b")).status_code == 404
+
+
+def test_copy_finishes_between_versions(ctx, house):
+    client, _ = ctx
+    r = client.post(f"/api/bim/models/{house}/versions/2/finishes/copy-from/1", headers=H())
+    assert r.status_code == 200
+    # A versão 2 foi gerada com GlobalIds novos → nada é copiado, sem erro
+    assert r.json()["copied"] == 0 and r.json()["skipped"] >= 1

@@ -112,7 +112,7 @@ def build_groups(elements: list[dict], overrides: dict) -> list[dict]:
                 "missing": {}, "by_storey": {}, "verified": 0,
             }
         g["elements"] += 1
-        g["gids"].append(e["gid"])
+        g["gids"].append(e.get("host_gid") or e["gid"])
         if not e.get("included", True):
             continue
         g["included"] += 1

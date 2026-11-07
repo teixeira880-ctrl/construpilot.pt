@@ -1,7 +1,7 @@
 """Acesso à base de dados do BIM Studio, isolamento por organização e auditoria.
 
 Coleções (todas novas, prefixo ``bim_``): bim_models, bim_versions, bim_elements,
-bim_overrides, bim_mappings, bim_audit, bim_prefs, bim_quote_traces.
+bim_overrides, bim_mappings, bim_audit, bim_prefs, bim_quote_traces, bim_finishes.
 """
 from __future__ import annotations
 
@@ -55,4 +55,5 @@ async def ensure_indexes() -> None:
     await db.bim_elements.create_index([("model_id", 1), ("version", 1), ("category", 1), ("storey_gid", 1)])
     await db.bim_overrides.create_index([("model_id", 1), ("version", 1), ("gid", 1), ("key", 1)], unique=True)
     await db.bim_mappings.create_index([("model_id", 1), ("version", 1), ("group_key", 1)], unique=True)
+    await db.bim_finishes.create_index([("model_id", 1), ("version", 1), ("gid", 1)], unique=True)
     await db.bim_audit.create_index([("tenant_id", 1), ("at", -1)])

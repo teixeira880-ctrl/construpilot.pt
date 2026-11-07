@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import BimViewer from "@/components/bim/BimViewer";
 import { BTN_GHOST, BTN_PRIMARY, BudgetTab, ElementPanel, MeasurementsTab, VersionsTab } from "@/components/bim/BimPanels";
-import { PROFILE_COPY, SIMPLE_STEPS, formatQty } from "@/components/bim/bimGeometry";
+import { PROFILE_COPY, SIMPLE_STEPS, formatQty, isVisible } from "@/components/bim/bimGeometry";
+import { BulkFinishPanel } from "@/components/bim/FinishEditor";
 
 const FINAL = ["done", "failed", "cancelled"];
 const TABS = [["modelo", "Modelo 3D"], ["medicoes", "Medições"], ["orcamento", "Orçamento"], ["versoes", "Versões"]];
@@ -17,6 +18,12 @@ export default function BimStudio() {
   const [tab, setTab] = useState("modelo");
   const [uploading, setUploading] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [selectedSide, setSelectedSide] = useState(null);
+  const [finishes, setFinishes] = useState({});
+  const [showFinishes, setShowFinishes] = useState(true);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [presets, setPresets] = useState([]);
+  const [library, setLibrary] = useState([]);
   const [meta, setMeta] = useState({});
   const [filters, setFilters] = useState({ storeys: new Set(), categories: new Set(), hidden: new Set(), isolated: new Set() });
   const [highlight, setHighlight] = useState(null);
@@ -68,7 +75,7 @@ export default function BimStudio() {
       const out = {};
       for (let skip = 0; skip < 60000; skip += 1000) {
         const { data } = await api.get(`${base}/elements?limit=1000&skip=${skip}`);
-        data.items.forEach((e) => { out[e.gid] = { gid: e.gid, category: e.category, storey_gid: e.storey_gid }; });
+        data.items.forEach((e) => { out[e.gid] = { gid: e.gid, category: e.category, storey_gid: e.storey_gid, faces: e.faces || null }; });
         if (cancelled || skip + 1000 >= data.total) break;
       }
       if (!cancelled) setMeta(out);
@@ -108,6 +115,19 @@ export default function BimStudio() {
     if (s.has(value)) s.delete(value); else s.add(value);
     return { ...f, [key]: s };
   });
+
+  useEffect(() => {
+    if (!cfg?.enabled) return;
+    api.get("/bim/finishes/presets").then(({ data }) => setPresets(data.presets || [])).catch(() => {});
+    api.get("/bim/library").then(({ data }) => setLibrary(data.items || [])).catch(() => {});
+  }, [cfg?.enabled]);
+
+  useEffect(() => {
+    if (!base || version?.status !== "done") { setFinishes({}); return; }
+    api.get(`${base}/finishes`).then(({ data }) => setFinishes(Object.fromEntries((data.items || []).map((d) => [d.gid, d])))).catch(() => {});
+  }, [base, version?.status, refreshKey]);
+
+  const bulkGids = useMemo(() => Object.values(meta).filter((m) => m.faces && isVisible(m, filters)).map((m) => m.gid), [meta, filters]);
 
   const highlighted = useMemo(() => (highlight ? new Set(highlight) : null), [highlight]);
   const categoriesPresent = useMemo(() => Object.entries(version?.stats?.by_category || {}), [version]);
@@ -196,7 +216,8 @@ export default function BimStudio() {
                   </div>
                   <BimViewer ref={viewerRef} modelId={model.model_id} version={version.version} chunks={version.chunks || 0}
                              meta={meta} filters={filters} selectedGid={selected} highlighted={highlighted}
-                             onSelect={setSelected} measuring={measuring} onMeasure={setMeasure} />
+                             onSelect={(g, side) => { setSelected(g); setSelectedSide(side); }} measuring={measuring} onMeasure={setMeasure}
+                             finishes={finishes} showFinishes={showFinishes} />
                   {highlighted && (
                     <p className="text-xs">A destacar {highlighted.size} elemento(s) associados ao orçamento.{" "}
                       <button type="button" className="text-primary" onClick={() => { setHighlight(null); setFilters((f) => ({ ...f, isolated: new Set() })); }}>Limpar destaque</button></p>
@@ -205,11 +226,18 @@ export default function BimStudio() {
                     <button type="button" className={BTN_GHOST} onClick={() => viewerRef.current?.fit()}>Enquadrar</button>
                     <button type="button" className={BTN_GHOST} onClick={() => setFilters({ storeys: new Set(), categories: new Set(), hidden: new Set(), isolated: new Set() })}>Mostrar tudo</button>
                     <button type="button" className={`${BTN_GHOST} ${measuring ? "bg-[#c4733f] text-white" : ""}`} onClick={() => { setMeasuring(!measuring); setMeasure(null); }}>Medir distância</button>
+                    <label className="flex items-center gap-1 text-xs ml-1"><input type="checkbox" checked={showFinishes} onChange={(e) => setShowFinishes(e.target.checked)} data-testid="bim-show-finishes" /> Ver revestimentos</label>
+                    <button type="button" className={`${BTN_GHOST} ${bulkOpen ? "bg-accent" : ""}`} onClick={() => setBulkOpen(!bulkOpen)} data-testid="bim-bulk-open">Revestir vários…</button>
                     {measure != null && <span className="text-sm font-medium" data-testid="bim-measure-value">≈ {formatQty(measure, "m")} <span className="text-xs text-muted-foreground">(medição visual, não verificada)</span></span>}
                   </div>
+                  {bulkOpen && (
+                    <BulkFinishPanel base={base} gids={bulkGids} presets={presets} library={library}
+                                     onClose={() => setBulkOpen(false)} onDone={() => setRefreshKey((k) => k + 1)} />
+                  )}
                 </div>
                 <div className="rounded-xl border bg-card max-h-[75vh] overflow-y-auto">
                   <ElementPanel base={base} gid={selected} profile={profile} canEdit={canEdit} onChanged={() => setRefreshKey((k) => k + 1)}
+                                presets={presets} library={library} selectedSide={selectedSide}
                                 onHide={(g) => { toggleSet("hidden", g); setSelected(null); }}
                                 onIsolate={(g) => setFilters((f) => ({ ...f, isolated: new Set([g]) }))} />
                 </div>
@@ -217,7 +245,7 @@ export default function BimStudio() {
               {tab === "medicoes" && (
                 <div className="grid xl:grid-cols-[1fr_340px] gap-4">
                   <MeasurementsTab base={base} version={version} categories={cfg?.categories} profile={profile} onSelect={setSelected} refreshKey={refreshKey} />
-                  <div className="rounded-xl border bg-card max-h-[75vh] overflow-y-auto"><ElementPanel base={base} gid={selected} profile={profile} canEdit={canEdit} onChanged={() => setRefreshKey((k) => k + 1)} /></div>
+                  <div className="rounded-xl border bg-card max-h-[75vh] overflow-y-auto"><ElementPanel base={base} gid={selected} profile={profile} canEdit={canEdit} onChanged={() => setRefreshKey((k) => k + 1)} presets={presets} library={library} /></div>
                 </div>
               )}
               {tab === "orcamento" && <BudgetTab base={base} canEdit={canEdit} profile={profile} refreshKey={refreshKey}

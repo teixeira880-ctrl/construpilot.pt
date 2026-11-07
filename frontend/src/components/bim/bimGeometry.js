@@ -87,3 +87,77 @@ export const SIMPLE_STEPS = [
   "Associe cada grupo de elementos a um preço da sua biblioteca.",
   "Gere o orçamento e reveja-o no editor antes de o enviar.",
 ];
+
+// ── Revestimentos ───────────────────────────────────────────────────────────
+export const PATTERN_LABELS = { liso: "Liso", reboco: "Reboco / areado", azulejo: "Azulejo / mosaico", madeira: "Madeira", pedra: "Pedra", tijolo: "Tijolo" };
+export const PATTERN_CODE = { liso: 0, reboco: 1, azulejo: 2, madeira: 3, pedra: 4, tijolo: 5 };
+export const SIDE_LABELS = { interior: "Interior", exterior: "Exterior", pavimento: "Pavimento", teto: "Teto", cobertura: "Cobertura" };
+
+/** Lado da face a partir da normal de um triângulo (coordenadas IFC). */
+export function sideOfNormal(n, faces) {
+  if (!faces || !n) return null;
+  if (faces.kind === "wall") {
+    const d = n[0] * faces.axis[0] + n[1] * faces.axis[1];
+    if (Math.abs(n[2]) < 0.2 && d > 0.7) return "A";
+    if (Math.abs(n[2]) < 0.2 && d < -0.7) return "B";
+    return null;
+  }
+  if (n[2] > 0.7) return "top";
+  if (n[2] < -0.7) return "bottom";
+  return null;
+}
+
+/** Reordena os triângulos por lado e devolve grupos { start, count, side } (side null = restantes). */
+export function partitionFaces(p, idx, faces) {
+  const buckets = { null: [] };
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t] * 3; const b = idx[t + 1] * 3; const c = idx[t + 2] * 3;
+    const ux = p[b] - p[a]; const uy = p[b + 1] - p[a + 1]; const uz = p[b + 2] - p[a + 2];
+    const vx = p[c] - p[a]; const vy = p[c + 1] - p[a + 1]; const vz = p[c + 2] - p[a + 2];
+    let nx = uy * vz - uz * vy; let ny = uz * vx - ux * vz; let nz = ux * vy - uy * vx;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    nx /= l; ny /= l; nz /= l;
+    const side = sideOfNormal([nx, ny, nz], faces);
+    (buckets[side] || (buckets[side] = [])).push(idx[t], idx[t + 1], idx[t + 2]);
+  }
+  const index = [];
+  const groups = [];
+  Object.entries(buckets).forEach(([side, tris]) => {
+    if (!tris.length) return;
+    groups.push({ start: index.length, count: tris.length, side: side === "null" ? null : side });
+    for (let k = 0; k < tris.length; k += 1) index.push(tris[k]);
+  });
+  return { index, groups };
+}
+
+export function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return [0.9, 0.9, 0.9];
+  const n = parseInt(m[1], 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+/** Zonas visíveis de uma face: a camada mais exterior (última) cobre as anteriores. Máx. 4 para o shader. */
+export function visibleZones(layers, faces) {
+  if (!layers || !layers.length) return [];
+  const H = faces && faces.kind === "wall" ? faces.z1 - faces.z0 : 1e6;
+  return layers.slice(-4).map((l) => ({
+    from: faces && faces.kind === "wall" ? Math.max(0, l.from_m || 0) : -1e6,
+    to: faces && faces.kind === "wall" ? (l.to_m == null ? H + 1 : l.to_m) : 1e6,
+    color: hexToRgb(l.color), pattern: PATTERN_CODE[l.pattern] ?? 0, size: l.pattern_size_m || 0.3,
+  }));
+}
+
+export function sideDisplayLabel(faces, side, swap) {
+  const s = faces?.sides?.[side];
+  if (!s) return side;
+  let lab = s.label;
+  if (swap && faces.kind === "wall" && (lab === "interior" || lab === "exterior")) lab = lab === "interior" ? "exterior" : "interior";
+  return `${SIDE_LABELS[lab] || lab}${faces.kind === "wall" ? ` (lado ${side})` : ""}`;
+}
+
+export function sideLabelKey(faces, side, swap) {
+  let lab = faces?.sides?.[side]?.label;
+  if (swap && faces?.kind === "wall" && (lab === "interior" || lab === "exterior")) lab = lab === "interior" ? "exterior" : "interior";
+  return lab;
+}

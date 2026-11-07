@@ -5,13 +5,48 @@ import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "re
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { api } from "@/lib/api";
-import { CATEGORY_COLORS, boundsOf, distance, isValidMesh, isVisible } from "./bimGeometry";
+import { CATEGORY_COLORS, boundsOf, distance, isValidMesh, isVisible, partitionFaces, sideOfNormal, visibleZones } from "./bimGeometry";
+import { makeFinishMaterial, tintMaterial } from "./finishMaterial";
 
 const SELECT = new THREE.Color(0x2f7a55);
 const HILITE = new THREE.Color(0xc4733f);
 
+function disposeMats(mesh) {
+  (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((m) => m.dispose());
+  if (mesh.userData.baseMat && !(Array.isArray(mesh.material) ? mesh.material : [mesh.material]).includes(mesh.userData.baseMat)) {
+    mesh.userData.baseMat.dispose();
+  }
+}
+
+/** Revestimentos por face: reparte os triângulos por lado e aplica um material por camada visível. */
+function applyFinish(mesh, faces, doc, show) {
+  const ud = mesh.userData;
+  const key = show && doc && faces ? JSON.stringify([doc.sides, doc.swap]) : null;
+  if (key === ud.finishKey) return;
+  if (Array.isArray(mesh.material)) mesh.material.forEach((m) => { if (m !== ud.baseMat) m.dispose(); });
+  ud.finishKey = key;
+  const g = mesh.geometry;
+  g.clearGroups();
+  if (!key) {
+    g.setIndex(ud.i);
+    mesh.material = ud.baseMat;
+    return;
+  }
+  if (!ud.partition) ud.partition = partitionFaces(ud.p, ud.i, faces);
+  g.setIndex(ud.partition.index);
+  const mats = [ud.baseMat];
+  ud.partition.groups.forEach((grp) => {
+    const layers = grp.side ? doc.sides?.[grp.side] : null;
+    let mi = 0;
+    if (layers && layers.length) mi = mats.push(makeFinishMaterial(visibleZones(layers, faces), faces)) - 1;
+    g.addGroup(grp.start, grp.count, mi);
+  });
+  mesh.material = mats;
+}
+
 const BimViewer = forwardRef(function BimViewer(
-  { modelId, version, chunks, meta, filters, selectedGid, highlighted, onSelect, measuring, onMeasure }, ref) {
+  { modelId, version, chunks, meta, filters, selectedGid, highlighted, onSelect, measuring, onMeasure,
+    finishes, showFinishes = true }, ref) {
   const mountRef = useRef(null);
   const st = useRef({ meshes: new Map(), positions: [] });
   const [progress, setProgress] = useState({ loaded: 0, total: chunks || 0 });
@@ -22,6 +57,12 @@ const BimViewer = forwardRef(function BimViewer(
   const cbRef = useRef({ onSelect, onMeasure });
   cbRef.current = { onSelect, onMeasure };
   filtersRef.current = filters;
+  const metaRef = useRef(meta);
+  metaRef.current = meta;
+  const finishesRef = useRef(finishes);
+  finishesRef.current = finishes;
+  const showFinishesRef = useRef(showFinishes);
+  showFinishesRef.current = showFinishes;
   measureRef.current.active = measuring;
 
   useImperativeHandle(ref, () => ({
@@ -124,7 +165,10 @@ const BimViewer = forwardRef(function BimViewer(
         if (pts.length === 2) cbRef.current.onMeasure?.(distance(pts[0], pts[1]));
         return;
       }
-      cbRef.current.onSelect?.(hit ? hit.object.userData.gid : null);
+      if (!hit) { cbRef.current.onSelect?.(null, null); return; }
+      const gid = hit.object.userData.gid;
+      const n = hit.face?.normal;
+      cbRef.current.onSelect?.(gid, n ? sideOfNormal([n.x, n.y, n.z], metaRef.current?.[gid]?.faces) : null);
     };
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointerup", onUp);
@@ -158,11 +202,12 @@ const BimViewer = forwardRef(function BimViewer(
             const transparent = m0?.category === "espacos" || m0?.category === "janelas";
             const mat = new THREE.MeshLambertMaterial({ color: base, transparent, opacity: transparent ? 0.35 : 1, side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(g, mat);
-            mesh.userData = { gid: el.gid, base, cat: m0?.category };
+            mesh.userData = { gid: el.gid, base, cat: m0?.category, baseMat: mat, p: el.p, i: el.i };
             mesh.visible = isVisible(m0, filtersRef.current);
             root.add(mesh);
             s.meshes.set(el.gid, mesh);
             s.positions.push(el.p);
+            applyFinish(mesh, m0?.faces, finishesRef.current?.[el.gid], showFinishesRef.current);
           });
           if (c === 0) {
             const b = boundsOf(s.positions);
@@ -184,7 +229,7 @@ const BimViewer = forwardRef(function BimViewer(
       ro?.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onDown);
       renderer.domElement.removeEventListener("pointerup", onUp);
-      s.meshes.forEach((m) => { m.geometry.dispose(); m.material.dispose(); });
+      s.meshes.forEach((m) => { m.geometry.dispose(); disposeMats(m); });
       controls.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
@@ -201,16 +246,18 @@ const BimViewer = forwardRef(function BimViewer(
         m.userData.cat = cat;
         m.userData.base = new THREE.Color(...(CATEGORY_COLORS[cat] || [0.75, 0.73, 0.7]));
         const transparent = cat === "espacos" || cat === "janelas";
-        m.material.transparent = transparent;
-        m.material.opacity = transparent ? 0.35 : 1;
-        m.material.needsUpdate = true;
+        const bm = m.userData.baseMat;
+        bm.transparent = transparent;
+        bm.opacity = transparent ? 0.35 : 1;
+        bm.needsUpdate = true;
       }
+      applyFinish(m, meta?.[gid]?.faces, finishes?.[gid], showFinishes);
       m.visible = isVisible(meta?.[gid], filters);
-      const c = gid === selectedGid ? SELECT : highlighted?.has(gid) ? HILITE : m.userData.base;
-      m.material.color.copy(c);
-      m.material.emissive?.setHex(gid === selectedGid ? 0x0b3b25 : 0x000000);
+      const tint = gid === selectedGid ? SELECT : highlighted?.has(gid) ? HILITE : null;
+      (Array.isArray(m.material) ? m.material : [m.material]).forEach((mat) => tintMaterial(mat, tint, 0.45, m.userData.base));
+      m.userData.baseMat.emissive?.setHex(gid === selectedGid ? 0x0b3b25 : 0x000000);
     });
-  }, [filters, selectedGid, highlighted, meta]);
+  }, [filters, selectedGid, highlighted, meta, finishes, showFinishes]);
 
   useEffect(() => {
     if (!measuring) { measureRef.current.points = []; st.current.drawMeasure?.([]); }
