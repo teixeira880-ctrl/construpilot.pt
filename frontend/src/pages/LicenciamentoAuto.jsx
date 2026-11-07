@@ -13,9 +13,17 @@ const ETAPA_LABEL = {
   localizar: "Localizar a morada", dados_oficiais: "Ler PDM, servidões, cadastro e ortofotomapa (DGT)",
   viabilidade: "Verificar se é possível construir", terreno: "Terreno e topografia", projeto: "Implantar a casa e desenhar as plantas",
   verificacao: "Quadro de áreas, PDM, RGEU e RJUE", documentos: "Memória descritiva e peças", coerencia: "Controlo de coerência entre motores",
+  imagens: "Imagens realistas da casa (3D, antes e depois)",
 };
+const TIPO_IMG = { fotorrealista: "Fotorrealista", exata: "Vista 3D exata", antes: "Antes", depois: "Depois", depois_esquema: "Depois (esquema à escala)" };
+const VISTA_IMG = { perspetiva: "perspetiva", frente: "frente", tardoz: "jardim", aerea: "aérea", aerea_orto: "vista de cima" };
+const EXEMPLOS = [
+  "Casa térrea em L com 200 m2 habitáveis, piscina e garagem exterior, terreno de 1500 m2, fachadas em granito e madeira, na Rua do Monte 7, Padim da Graça, Braga",
+  "Moradia T3 de dois pisos estilo tradicional português com garagem, na Rua do Monte 7, Padim da Graça, Braga",
+  "Casa alentejana térrea de 3 quartos com piscina, terreno de 1000 m2, na Rua do Monte 7, Padim da Graça, Braga",
+];
 const PROC = { licenciamento: "Licença (licenciamento)", comunicacao_previa: "Comunicação prévia", isento: "Isento de controlo prévio" };
-const EXEMPLO = "Quero uma autorização de construção para uma casa T3 com garagem na Rua do Monte nº 7, Padim da Graça, Braga";
+const EXEMPLO = EXEMPLOS[0];
 
 function AuthImg({ path, alt }) {
   const [url, setUrl] = useState(null);
@@ -61,7 +69,7 @@ function Pedido() {
   const enviar = async () => {
     setErro(""); setJob(null);
     try {
-      const { data } = await api.post("/urbanismo-auto/pedidos", { texto });
+      const { data } = await api.post("/urbanismo-auto/dossier-completo", { texto });
       setJob({ estado: "a_correr", etapas: [], etapas_previstas: data.etapas_previstas });
       seguir(data.job_id);
     } catch (e) { setErro(e?.response?.data?.detail || "Não foi possível iniciar o pedido."); }
@@ -83,6 +91,11 @@ function Pedido() {
           </Button>
           <Button variant="outline" onClick={() => setTexto(EXEMPLO)}>Usar o exemplo</Button>
         </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {EXEMPLOS.slice(1).map(x => <button key={x} type="button" className="rounded-full border px-3 py-1 hover:bg-accent text-left" onClick={() => setTexto(x)}>{x.split(",")[0]}</button>)}
+        </div>
+        <p className="text-xs text-muted-foreground">Pode escrever como fala: forma da casa (em L…), área habitável, área do terreno, piscina, garagem, estilo
+          (contemporâneo, tradicional, minhoto, alentejano…), materiais. O que faltar, decidimos nós e explicamos no fim.</p>
       </Card>
       {job && (
         <Card className="p-4 space-y-2" data-testid="lic-auto-etapas">
@@ -119,13 +132,43 @@ function Processo({ pid }) {
   const [resp, setResp] = useState({ area_terreno_m2: "", nome: "", nif: "" });
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
+  const [mudanca, setMudanca] = useState("");
+  const [estilos, setEstilos] = useState([]);
+  const [imgs, setImgs] = useState({ imagens: [], job: null, desatualizadas: false });
+  const [zoom, setZoom] = useState(null);
   const casa = useRef(null);
+  const imgTimer = useRef(null);
 
   const carregar = useCallback(async () => {
     const [a, b] = await Promise.all([api.get(`/urbanismo-auto/processos/${pid}`), api.get(`/urbanismo-auto/processos/${pid}/modelo3d`)]);
     setD(a.data); setModelo(b.data);
   }, [pid]);
   useEffect(() => { carregar().catch(() => setErro("Processo não encontrado.")); }, [carregar]);
+  const carregarImgs = useCallback(async () => {
+    const { data } = await api.get(`/urbanismo-auto/processos/${pid}/imagens`);
+    setImgs(data);
+    if (data.job?.estado === "a_correr") imgTimer.current = setTimeout(() => carregarImgs().catch(() => {}), 3000);
+  }, [pid]);
+  useEffect(() => {
+    carregarImgs().catch(() => {});
+    api.get("/urbanismo-auto/estilos").then(r => setEstilos(r.data.estilos || [])).catch(() => {});
+    return () => clearTimeout(imgTimer.current);
+  }, [carregarImgs]);
+  const gerarImgs = async () => {
+    setErro("");
+    try { await api.post(`/urbanismo-auto/processos/${pid}/imagens`, {}); await carregarImgs(); }
+    catch (e) { setErro(e?.response?.data?.detail || "Não foi possível pedir as imagens."); }
+  };
+  const mudarProjeto = async (body) => {
+    setOcupado(true); setErro("");
+    try {
+      const { data } = await api.patch(`/urbanismo-auto/processos/${pid}/projeto`, body);
+      if (!data.ok) setErro(data.motivo || data.resposta || (data.perguntas || []).join(" ") || "Não foi possível aplicar a mudança.");
+      setMudanca(""); setRender(null);
+      await carregar(); await carregarImgs();
+    } catch (e) { setErro(e?.response?.data?.detail || "Erro ao aplicar a mudança."); }
+    setOcupado(false);
+  };
 
   const material = async (campo, valor) => {
     await api.patch(`/urbanismo-auto/processos/${pid}/materiais`, { [campo]: valor });
@@ -205,6 +248,58 @@ function Processo({ pid }) {
         <Card className="p-3"><img src={render} alt="Imagem fotorrealista da moradia" className="w-full rounded" />
           <p className="text-xs text-muted-foreground mt-2">Imagem ilustrativa gerada sobre a vista 3D exata; as medidas de referência são as das peças desenhadas.</p></Card>
       )}
+
+      <Card className="p-4 space-y-3" data-testid="lic-auto-imagens">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="font-medium flex items-center gap-2"><ImageIcon className="h-4 w-4" />Imagens realistas</div>
+          <Button size="sm" onClick={gerarImgs} disabled={imgs.job?.estado === "a_correr"} data-testid="lic-auto-gerar-imagens">
+            {imgs.job?.estado === "a_correr" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
+            {imgs.imagens.length ? "Atualizar imagens" : "Criar imagens realistas"}
+          </Button>
+        </div>
+        {imgs.job?.estado === "a_correr" && <p className="text-sm text-muted-foreground">A criar as imagens (1 a 3 minutos)…</p>}
+        {imgs.job?.estado === "erro" && <p className="text-sm text-red-600">{imgs.job.erro}</p>}
+        {imgs.desatualizadas && imgs.imagens.length > 0 && <p className="text-sm text-amber-700">O projeto mudou depois destas imagens: atualize-as para as juntar ao processo.</p>}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {imgs.imagens.filter(i => i.tipo !== "exata" || !imgs.imagens.some(j => j.vista === i.vista && j.tipo === "fotorrealista" && j.verificada)).map(i => (
+            <button type="button" key={i.id} onClick={() => setZoom(i)} className="block text-left border rounded overflow-hidden hover:shadow">
+              <AuthImg path={`/urbanismo-auto/processos/${pid}/imagens/${i.id}.jpg`} alt={`${TIPO_IMG[i.tipo]} — ${VISTA_IMG[i.vista] || i.vista}`} />
+              <div className="p-2 text-xs flex items-center justify-between gap-2">
+                <span>{TIPO_IMG[i.tipo] || i.tipo} · {VISTA_IMG[i.vista] || i.vista}</span>
+                {i.tipo === "fotorrealista" && (i.verificada
+                  ? <span className="text-emerald-700">✓ geometria verificada</span>
+                  : <span className="text-amber-700">⚠ comparar com a vista exata</span>)}
+              </div>
+            </button>
+          ))}
+        </div>
+        {zoom && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setZoom(null)} role="dialog">
+            <div className="max-w-6xl w-full"><AuthImg path={`/urbanismo-auto/processos/${pid}/imagens/${zoom.id}.jpg`} alt="" />
+              <p className="text-xs text-white/80 mt-2">{zoom.nota}</p></div>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">Imagens ilustrativas feitas sobre a geometria exata do projeto e verificadas automaticamente; entram nas peças
+          desenhadas (PDF) e no processo (ZIP). As medidas de referência são as dos desenhos.</p>
+      </Card>
+
+      <Card className="p-4 space-y-3" data-testid="lic-auto-mudar">
+        <div className="font-medium flex items-center gap-2"><Sparkles className="h-4 w-4" />Mudar o projeto</div>
+        <div className="flex flex-wrap gap-2">
+          {estilos.map(e => (
+            <button key={e.id} type="button" title={e.descricao} disabled={ocupado} onClick={() => mudarProjeto({ estilo: e.id })}
+              className={`rounded-full border px-3 py-1 text-xs ${a.estilo?.id === e.id ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>{e.nome}</button>
+          ))}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input placeholder="Diga o que quer mudar: «em L», «mais um quarto», «sem piscina», «2 pisos», «fachada em xisto»…" value={mudanca}
+            onChange={e => setMudanca(e.target.value)} data-testid="lic-auto-mudanca" />
+          <Button onClick={() => mudarProjeto({ texto: mudanca })} disabled={ocupado || !mudanca.trim()} data-testid="lic-auto-aplicar-mudanca">
+            {ocupado && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Aplicar e recalcular</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">Tudo é recalculado e verificado de novo (implantação, plantas, quadro, memória). Estilo atual: <b>{a.estilo?.nome || "—"}</b>
+          {a.forma === "l" ? " · casa em L" : ""}{a.piscina ? ` · piscina ${a.piscina.l_m}×${a.piscina.w_m} m` : ""}{a.garagem_tipo === "exterior" ? " · garagem independente" : ""}</p>
+      </Card>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-4 space-y-2">

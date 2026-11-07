@@ -507,6 +507,6 @@ async def dossier_completo(body: PedidoIn, user=Depends(current_user)) -> dict:
     t = asyncio.create_task(run())
     _TASKS.add(t)
     t.add_done_callback(_TASKS.discard)
-    return {"ok": True, "job_id": job_id, "estado": "a_correr",
+    return {"ok": True, "job_id": job_id, "estado": "a_correr", "etapas_previstas": P.ETAPAS + ["imagens"],
             "acompanhar": f"/api/urbanismo-auto/pedidos/{job_id}",
             "nota": "A preparar o processo completo e as imagens (2 a 5 minutos)."}

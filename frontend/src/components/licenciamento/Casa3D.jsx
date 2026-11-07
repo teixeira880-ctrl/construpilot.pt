@@ -143,8 +143,19 @@ function boxUV(geo, mPerRepeat) {
   return geo;
 }
 
+// contorno → retângulos (casa em L = corpo + ala), a mesma decomposição do servidor (volumes.main_rects)
+export function retangulos(pts) {
+  if (pts.length === 6) {
+    const [[xa, ya], [xb], [, yc], [xd], , [, yf]] = pts;
+    return [[xa, ya, xb, yc], [xa, yc, xd, yf]];
+  }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  return [[Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]];
+}
+
 function fachadaMats(fachada, piso, cache) {
   if (fachada === "misto_granito_reboco") return piso === 0 ? ["granito"] : ["reboco_branco"];
+  if (fachada === "misto_granito_madeira") return ["granito"];
   if (fachada === "misto_madeira_reboco") return ["reboco_branco"];
   return [fachada || "reboco_branco"];
 }
@@ -194,16 +205,21 @@ function buildScene(scene, m, cache) {
     group.add(new THREE.Line(line, new THREE.LineBasicMaterial({ color: 0xd62828 })));
   }
 
-  // volumes
-  for (const v of m.volumes || []) {
+  // volumes (cada contorno decomposto em retângulos: uma casa em L dá dois corpos)
+  const partes = [];
+  for (const v0 of m.volumes || []) {
+    retangulos(v0.pts).forEach((r, k) => partes.push({ ...v0, parte: k, pts: [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]] }));
+  }
+  for (const v of partes) {
     const vx = v.pts.map(p => p[0]), vy = v.pts.map(p => p[1]);
     const x0 = Math.min(...vx), x1 = Math.max(...vx), y0 = Math.min(...vy), y1 = Math.max(...vy);
     const L = x1 - x0, W = y1 - y0;
     const nPisos = v.anexo ? 1 : (m.pisos || 1);
     const hPiso = v.anexo ? v.altura_m : sh;
     for (let p = 0; p < nPisos; p++) {
-      const kind = v.anexo ? (fach === "madeira" || fach === "misto_madeira_reboco" ? "madeira" : fach.startsWith("misto_granito") ? "granito" : fachadaMats(fach, 0)[0])
-        : fachadaMats(fach, p)[0];
+      const kind = v.anexo ? (fach === "madeira" || fach === "misto_madeira_reboco" || fach === "misto_granito_madeira" ? "madeira"
+        : fach.startsWith("misto_granito") ? "granito" : fachadaMats(fach, 0)[0])
+        : (fach === "misto_granito_madeira" && v.parte === 1 ? "madeira" : fachadaMats(fach, p)[0]);
       const mat = matFor(kind, cache);
       const geo = boxUV(new THREE.BoxGeometry(L, hPiso, W), (mat.map.userData.m || 2));
       const mesh = new THREE.Mesh(geo, mat);
@@ -215,7 +231,7 @@ function buildScene(scene, m, cache) {
         fr.position.set(x0 + L / 2, p * hPiso, -(y0 + W / 2)); group.add(fr);
       }
     }
-    if (fach === "misto_madeira_reboco" && !v.anexo) {   // painel ripado na fachada do sol
+    if ((fach === "misto_madeira_reboco" || fach === "misto_granito_madeira") && !v.anexo && v.parte === 0) {   // painel ripado na fachada do sol
       const pan = new THREE.Mesh(boxUV(new THREE.BoxGeometry(L * 0.35, nPisos * sh * 0.95, 0.06), 1.5), matFor("madeira", cache));
       pan.position.set(x0 + L * 0.2, nPisos * sh / 2, -(y0) + 0.04); group.add(pan);
     }
@@ -280,26 +296,50 @@ function buildScene(scene, m, cache) {
   const casa = (m.volumes || []).find(v => !v.anexo);
   if (casa) {
     const vy = casa.pts.map(p => p[1]); const y0 = Math.min(...vy), y1 = Math.max(...vy);
+    const vxs = casa.pts.map(p => p[0]); const xa = Math.min(...vxs), xb = Math.max(...vxs);
+    const group0 = group;
     for (const o of m.vaos || []) {
       const w = o.x1 - o.x0, h = o.z1 - o.z0;
-      const zf = o.fachada === "frente" ? -y0 + 0.02 : -y1 - 0.02;
+      const lateral = o.fachada === "esquerda" || o.fachada === "direita";
+      let group = group0, zf;
+      if (lateral) {   // fachadas laterais (casa em L): o vão é construído no referencial da fachada e rodado 90°
+        group = new THREE.Group();
+        const xp = o.plano_m ?? (o.fachada === "esquerda" ? xa : xb);
+        group.rotation.y = o.fachada === "direita" ? Math.PI / 2 : -Math.PI / 2;
+        group.position.set(xp, 0, 0);
+        group0.add(group);
+        zf = 0.02;
+      } else {
+        zf = o.plano_m != null ? -o.plano_m + (o.fachada === "frente" ? 0.02 : -0.02) : (o.fachada === "frente" ? -y0 + 0.02 : -y1 - 0.02);
+      }
+      const ox = lateral && o.fachada === "esquerda" ? -1 : 1;   // eixo local ao longo da fachada
+      const X = (val) => (lateral ? ox * val : val);
       const fr = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.06), frame);
-      fr.position.set((o.x0 + o.x1) / 2, o.z0 + h / 2, zf); group.add(fr);
+      fr.position.set(X((o.x0 + o.x1) / 2), o.z0 + h / 2, zf); group.add(fr);
       const gl = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.07), o.tipo === "porta" ? new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.6 }) : glass);
-      gl.position.set((o.x0 + o.x1) / 2, o.z0 + h / 2, zf + (o.fachada === "frente" ? 0.01 : -0.01)); group.add(gl);
+      gl.position.set(X((o.x0 + o.x1) / 2), o.z0 + h / 2, zf + (lateral || o.fachada === "frente" ? 0.01 : -0.01)); group.add(gl);
       if (o.tipo !== "porta") {   // caixilhos: folhas de ~1,2 m e travessa nas portadas altas
         const folhas = Math.max(1, Math.round(w / 1.2));
         for (let k = 1; k < folhas; k++) {
           const mu = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.09), frame);
-          mu.position.set(o.x0 + (w * k) / folhas, o.z0 + h / 2, zf); group.add(mu);
+          mu.position.set(X(o.x0 + (w * k) / folhas), o.z0 + h / 2, zf); group.add(mu);
         }
-        if (h > 1.9) { const tr = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.09), frame); tr.position.set((o.x0 + o.x1) / 2, o.z0 + h * 0.78, zf); group.add(tr); }
+        if (h > 1.9) { const tr = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.09), frame); tr.position.set(X((o.x0 + o.x1) / 2), o.z0 + h * 0.78, zf); group.add(tr); }
       }
       if (o.z0 > 0.5 && o.tipo !== "porta") {   // peitoril em pedra
         const pe = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.05, 0.18), new THREE.MeshStandardMaterial({ color: 0xcfcac0 }));
-        pe.position.set((o.x0 + o.x1) / 2, o.z0 - 0.03, zf + (o.fachada === "frente" ? 0.08 : -0.08)); group.add(pe);
+        pe.position.set(X((o.x0 + o.x1) / 2), o.z0 - 0.03, zf + (lateral || o.fachada === "frente" ? 0.08 : -0.08)); group.add(pe);
       }
     }
+  }
+  // piscina (descoberta): água + capeamento em pedra
+  if (m.piscina) {
+    const { x_m: px, y_m: py, l_m: pl, w_m: pw } = m.piscina;
+    const cop = new THREE.Mesh(boxUV(new THREE.BoxGeometry(pl + 1.0, 0.05, pw + 1.0), 1.2), new THREE.MeshStandardMaterial({ color: 0xd9d4ca, roughness: 0.8 }));
+    cop.position.set(px + pl / 2, -0.04, -(py + pw / 2)); cop.receiveShadow = true; group.add(cop);
+    const agua = new THREE.Mesh(new THREE.BoxGeometry(pl, 0.04, pw), new THREE.MeshPhysicalMaterial({ color: 0x3fa3c8, roughness: 0.05, metalness: 0.1,
+      transmission: 0.2, clearcoat: 1 }));
+    agua.position.set(px + pl / 2, -0.005, -(py + pw / 2)); group.add(agua);
   }
   scene.add(group);
   return group;
