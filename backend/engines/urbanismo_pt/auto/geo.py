@@ -26,6 +26,8 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import httpx
 
+from . import dgt_cache as CACHE
+
 UA = {"User-Agent": "ConstruPilot/1.0 (licenciamento automatico; info@construpilot.pt)"}
 DGT = "https://ogcapi.dgterritorio.gov.pt"
 NOMINATIM = "https://nominatim.openstreetmap.org"
@@ -284,14 +286,43 @@ async def dgt_collections() -> List[Dict[str, str]]:
     cols = [{"id": c.get("id", ""), "title": c.get("title", "")} for c in (js or {}).get("collections", []) if c.get("id")]
     if cols:
         _COLLECTIONS.update(t=time.time(), list=cols)
-    return cols
+        CACHE.guardar_colecoes(cols)
+        return cols
+    return CACHE.colecoes()
 
 
-async def _dgt_items(col: str, bbox: str, limit: int = 20) -> Optional[List[dict]]:
+async def _dgt_items(col: str, bbox: str, limit: int = 20, uso: Optional[Dict[str, float]] = None) -> Optional[List[dict]]:
+    """Elementos da coleção na caixa. Com a DGT em baixo, responde a cópia local se cobrir a caixa (registado em `uso`)."""
     st, js = await _get(f"{DGT}/collections/{col}/items", {"f": "json", "bbox": bbox, "limit": limit})
-    if js is None:
+    if js is not None:
+        feats = js.get("features") or []
+        n_tot = js.get("numberMatched")
+        completa = (len(feats) < limit) if not isinstance(n_tot, int) else n_tot <= len(feats)
+        CACHE.guardar(col, bbox, feats, completa)
+        return feats
+    hit = CACHE.consultar(col, bbox)
+    if hit is None:
         return None
-    return js.get("features") or []
+    feats, ts = hit
+    if uso is not None:
+        uso[col] = ts
+    return feats
+
+
+def _fonte_copia(fonte: str, ts: Optional[float]) -> str:
+    return fonte if not ts else f"{fonte} — cópia local de {CACHE.data_txt(ts)} (serviço da DGT indisponível)"
+
+
+async def prefetch_zona(lat: float, lon: float, raio_m: float = 600.0) -> Dict[str, int]:
+    """Guarda na cópia local a classe do PDM, a CAOP e as servidões de uma zona (corre quando a DGT está a responder)."""
+    bbox = _bbox_around(lat, lon, raio_m)
+    cols = [c["id"] for c in await dgt_collections() if c["id"] in ("crus", "freguesias", "municipios")
+            or _SRUP_PAT.search(c["id"].replace("_", " ") + " " + c["title"])]
+    out = {}
+    for col in cols[:40]:
+        f = await _dgt_items(col, bbox, 500)
+        out[col] = -1 if f is None else len(f)
+    return out
 
 
 def _props_text(p: dict) -> Dict[str, str]:
@@ -308,18 +339,19 @@ def _pick(p: Dict[str, str], *names: str) -> Optional[str]:
 
 
 async def municipio(lat: float, lon: float) -> Dict[str, Any]:
-    feats = await _dgt_items("municipios", _tiny_bbox(lat, lon), 3)
+    uso: Dict[str, float] = {}
+    feats = await _dgt_items("municipios", _tiny_bbox(lat, lon), 3, uso)
     if feats:
         p = _props_text(feats[0].get("properties"))
         nome = _pick(p, "municipio", "concelho", "nome", "designacao", "name")
-        return _res(True, {"concelho": nome, "distrito": _pick(p, "distrito"), "props": p},
-                    "DGT — CAOP (municípios)", f"{DGT}/collections/municipios")
+        return _res(True, {"concelho": nome, "distrito": _pick(p, "distrito"), "props": p, "copia_local": uso.get("municipios")},
+                    _fonte_copia("DGT — CAOP (municípios)", uso.get("municipios")), f"{DGT}/collections/municipios")
     return _res(False, nota="CAOP indisponível")
 
 
 async def freguesia_caop(lat: float, lon: float) -> Optional[str]:
     """Nome oficial da freguesia (CAOP, DGT) no ponto, ou None se o serviço não responder."""
-    feats = await _dgt_items("freguesias", _tiny_bbox(lat, lon), 2)
+    feats = await _dgt_items("freguesias", _tiny_bbox(lat, lon), 2, {})
     if not feats:
         return None
     p = _props_text(feats[0].get("properties"))
@@ -344,13 +376,15 @@ def classificar_solo(p: Dict[str, str]) -> Dict[str, Any]:
 
 
 async def crus(lat: float, lon: float) -> Dict[str, Any]:
-    feats = await _dgt_items("crus", _tiny_bbox(lat, lon), 5)
+    uso: Dict[str, float] = {}
+    feats = await _dgt_items("crus", _tiny_bbox(lat, lon), 5, uso)
     if feats is None:
         return _res(False, nota="CRUS indisponível")
     if not feats:
         return _res(False, nota="sem polígono CRUS neste ponto")
     c = classificar_solo(_props_text(feats[0].get("properties")))
-    return _res(True, c, "DGT — Carta do Regime de Uso do Solo (PDM)", f"{DGT}/collections/crus")
+    c["copia_local"] = uso.get("crus")
+    return _res(True, c, _fonte_copia("DGT — Carta do Regime de Uso do Solo (PDM)", uso.get("crus")), f"{DGT}/collections/crus")
 
 
 _SRUP_PAT = re.compile(r"(\bren\b|reserva ecol|\bran\b|reserva agr|dom[ií]nio h[ií]dric|leito|cheia|patrim|monument|"
@@ -364,9 +398,11 @@ async def servidoes(lat: float, lon: float, raio_m: float = 40.0) -> Dict[str, A
     bbox = _bbox_around(lat, lon, raio_m)
     sem = asyncio.Semaphore(3)
 
+    uso: Dict[str, float] = {}
+
     async def one(c):
         async with sem:
-            f = await _dgt_items(c["id"], bbox, 3)
+            f = await _dgt_items(c["id"], bbox, 3, uso)
             return c, f
 
     hits, falhadas = [], []
@@ -377,14 +413,16 @@ async def servidoes(lat: float, lon: float, raio_m: float = 40.0) -> Dict[str, A
             hits.append({"id": c["id"], "titulo": c["title"]})
     ainda = []
     for c in falhadas:                     # segunda volta, uma a uma
-        f = await _dgt_items(c["id"], bbox, 3)
+        f = await _dgt_items(c["id"], bbox, 3, uso)
         if f is None:
             ainda.append({"id": c["id"], "titulo": c["title"]})
         elif f:
             hits.append({"id": c["id"], "titulo": c["title"]})
+    ts = min(uso.values()) if uso else None
     return _res(True, {"afetado_por": hits, "consultadas": min(len(cols), 40), "falhas": len(ainda), "nao_consultadas": ainda,
-                       "incompleta": bool(ainda), "raio_m": raio_m},
-                "DGT — servidões e restrições de utilidade pública (SRUP)", f"{DGT}/collections")
+                       "incompleta": bool(ainda), "raio_m": raio_m, "copia_local": ts,
+                       "colecoes_da_copia": sorted(uso)},
+                _fonte_copia("DGT — servidões e restrições de utilidade pública (SRUP)", ts), f"{DGT}/collections")
 
 
 async def cadastro(lat: float, lon: float) -> Dict[str, Any]:

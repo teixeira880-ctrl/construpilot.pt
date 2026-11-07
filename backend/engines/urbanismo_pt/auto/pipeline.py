@@ -7,6 +7,7 @@ guarda de coerência. Cada etapa fica registada (`etapas`), cada hipótese em `p
 from __future__ import annotations
 
 import asyncio
+import os
 import base64
 import io
 import re
@@ -135,6 +136,14 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
             orto = await G.ortofoto(lat, lon)
     for r in (mun, crus, srup, cad, via, orto):
         fonte(r)
+    copias = [ (r.get("data") or {}).get("copia_local") for r in (crus, srup) if r["ok"] ]
+    copias = [c for c in copias if c]
+    if copias:
+        avisos.append("O serviço da DGT não respondeu: a classe do PDM e as servidões vêm da cópia local de "
+                      f"{G.CACHE.data_txt(min(copias))} (dados oficiais da DGT). Confirme se houve alteração do PDM desde então.")
+    elif crus["ok"] and G._fetch is G._http and os.environ.get("DGT_PREFETCH", "1") != "0":
+        # a DGT está a responder: guardar a zona para quando falhar (em segundo plano, não atrasa o pedido)
+        asyncio.get_running_loop().create_task(G.prefetch_zona(lat, lon))
     concelho = (mun.get("data") or {}).get("concelho") if mun["ok"] else None
     concelho = concelho or geo.get("concelho")
     await passo("dados_oficiais", "ok", ", ".join(f["fonte"] for f in fontes))
