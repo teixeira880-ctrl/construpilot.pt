@@ -192,6 +192,8 @@ def _checklist(d: dict, verif: dict) -> dict:
     gerados = {"PLANTA_IMPLANTACAO", "CORTES", "ALCADOS", "AXONOMETRIA", "QUADRO_AREAS", "MEMORIA", "ESTIMATIVA", "FICHA_ESTATISTICA"}
     if d.get("tipo_obra") in R.TIPOS_EDIFICIO and not d.get("volume"):
         gerados -= {"PLANTA_IMPLANTACAO", "CORTES", "ALCADOS", "AXONOMETRIA", "QUADRO_AREAS"}
+    if (d.get("auto") or {}).get("plantas"):   # piloto automático: plantas, localização e topografia indicativa geradas
+        gerados |= {"PLANTAS_PISOS", "PLANTA_LOCALIZACAO"} | ({"LEVANTAMENTO_TOPOGRAFICO"} if (d["auto"].get("topografia") or {}).get("ok") else set())
     items = []
     for p in R.pecas_exigidas(proc, d.get("tipo_obra")):
         carregada = p["code"] in pecas
@@ -207,6 +209,10 @@ def _public(d: dict) -> dict:
                                  "parametros", "volume", "memoria_texto", "status", "created_at", "updated_at")}
     verif = R.verificar(d)
     out["tipo_obra_label"] = R.TIPOS_OBRA.get(d.get("tipo_obra"), d.get("tipo_obra"))
+    if d.get("auto"):
+        au = dict(d["auto"])
+        au.pop("orto", None)
+        out["auto"] = {k: au.get(k) for k in ("pressupostos", "avisos", "fontes", "coerencia", "materiais", "implantacao", "programa")}
     out["verificacao"] = verif
     out["checklist"] = _checklist(d, verif)
     out["pecas"] = [{"code": k, **{kk: vv for kk, vv in v.items() if kk != "storage_path"}} for k, v in (d.get("pecas") or {}).items()]
