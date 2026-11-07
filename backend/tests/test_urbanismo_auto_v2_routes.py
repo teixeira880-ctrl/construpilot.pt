@@ -295,5 +295,6 @@ def test_fornecedor_que_nao_responde_nao_bloqueia(env, monkeypatch):
         assert foto["fornecedor"] == "gemini"
         doc = await env[0].urbanismo_processos.find_one({"processo_id": r["processo_id"]})
         reg = next(i for i in doc["imagens"] if i["tipo"] == "fotorrealista")
-        assert reg["tentativas"][0] == {"fornecedor": "runway", "estrito": False, "erro": "TimeoutError"}
+        assert reg["tentativas"][0]["fornecedor"] == "runway" and reg["tentativas"][0]["erro"] == "TimeoutError"
+        assert IM._erro_curto(RuntimeError("Bearer sk-abcdef123456 inválida")) == "RuntimeError: *** inválida"
     run(go())

@@ -204,6 +204,13 @@ async def _runway(prompt: str, ref: bytes, sessao: str = "", extra: Optional[Lis
     raise TimeoutError("runway sem resposta")
 
 
+def _erro_curto(e: BaseException) -> str:
+    """Tipo + início da mensagem do fornecedor (para diagnóstico), sem nada que pareça uma chave."""
+    import re
+    msg = re.sub(r"(sk-|key_|Bearer\s+)[A-Za-z0-9_\-]{6,}", "***", str(e))[:220]
+    return f"{type(e).__name__}: {msg}" if msg else type(e).__name__
+
+
 def _fornecedor(nome: str):
     return {"runway": _runway, "openai": _openai, "gemini": _gemini}[nome]
 
@@ -366,7 +373,8 @@ async def fotorrealista(processo: Dict[str, Any], exata: Dict[str, Any], sessao:
             p = prompt_curto(p)
         for r in await _candidatos(fn, p, ref, sessao, CANDIDATOS, TEMPO_MAX_S.get(forn, 240)):
             if isinstance(r, BaseException):
-                tentativas.append({"fornecedor": forn, "estrito": estrito, "erro": type(r).__name__})
+                tentativas.append({"fornecedor": forn, "estrito": estrito, "erro": type(r).__name__,
+                                   "detalhe": _erro_curto(r)})
                 continue
             try:
                 sc = semelhanca_geometria(ref, r, msk)
