@@ -185,7 +185,7 @@ export default function Pricing() {
         <div className="surface p-5 rounded-sm border-primary/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-3xl mx-auto" data-testid="pricing-pro-offer-banner">
           <div>
             <p className="font-display font-bold">É profissional da construção?</p>
-            <p className="text-sm text-muted-foreground">Descubra o detalhe da oferta Pro, a experiência de 7 dias e as condições de faturação.</p>
+            <p className="text-sm text-muted-foreground">Descubra o detalhe da oferta Pro e as condições em vigor. Faturação incluída no Pro Business, ou em opção (5 €/mês) no Pro.</p>
           </div>
           <Button className="rounded-sm gap-2 shrink-0" data-testid="pricing-see-pro-offer" onClick={() => navigate("/pro")}>
             Ver a oferta Pro <ArrowRight className="h-4 w-4" />

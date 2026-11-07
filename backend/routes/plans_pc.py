@@ -6,7 +6,7 @@ import logging
 import os
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field
 
@@ -899,7 +899,7 @@ class PcAcceptIn(BaseModel):
 
 
 @pc_router.post("/sign/{token}/accept")
-async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
+async def accept_pc_study(token: str, body: PcAcceptIn, request: Request) -> dict:
     p = await db.plans_takeoff.find_one(
         {"sent_reports": {"$elemMatch": {"kind": "pc_study", "sign_token": token}}},
         {"_id": 0, "plan_id": 1, "user_id": 1, "filename": 1, "sent_reports.$": 1})
@@ -919,8 +919,15 @@ async def accept_pc_study(token: str, body: PcAcceptIn) -> dict:
            "sent_reports.$.opened_at": entry.get("opened_at") or now}
     if sig:
         upd["sent_reports.$.accepted_signature"] = sig
-    await db.plans_takeoff.update_one(
-        {"sent_reports.sign_token": token}, {"$set": upd})
+    # Auditoria V2 : prova técnica + aceitação atómica (sem dupla aceitação).
+    fwd = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    upd["sent_reports.$.accepted_evidence"] = {
+        "ip": fwd or (request.client.host if request.client else None),
+        "user_agent": (request.headers.get("user-agent") or "")[:300]}
+    res = await db.plans_takeoff.update_one(
+        {"sent_reports": {"$elemMatch": {"sign_token": token, "accepted": {"$ne": True}}}}, {"$set": upd})
+    if not res.modified_count:
+        return {"ok": True, "already": True}
     try:
         import html as _html
         from engines.emailer import send_email, wrap_html

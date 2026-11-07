@@ -437,6 +437,22 @@ async def revoke_entitlement(subscription_id: str, reason: str = "cancelled") ->
     await db.entitlements.update_many(
         {"stripe_subscription_id": subscription_id},
         {"$set": {"status": reason, "revoked_at": now_iso()}})
+    # Auditoria V2 : a opção Faturação cancelada deixava as faturas acessíveis.
+    await db.users.update_many(
+        {"invoicing_addon_sub": subscription_id},
+        {"$set": {"invoicing_addon": False, "invoicing_addon_ended_at": now_iso(),
+                  "invoicing_addon_end_reason": reason}})
+
+
+async def restore_entitlement(subscription_id: str) -> None:
+    """Pagamento recuperado (ou experiência convertida) : volta a ativo."""
+    await db.entitlements.update_many(
+        {"stripe_subscription_id": subscription_id, "status": {"$in": ["past_due", "unpaid"]}},
+        {"$set": {"status": "active", "updated_at": now_iso()}, "$unset": {"revoked_at": ""}})
+    await db.users.update_many(
+        {"invoicing_addon_sub": subscription_id, "invoicing_addon": False,
+         "invoicing_addon_end_reason": {"$in": ["past_due", "unpaid"]}},
+        {"$set": {"invoicing_addon": True}, "$unset": {"invoicing_addon_ended_at": ""}})
 
 
 # ---------- Webhook dispatch (nesting depth 1 in `handle_webhook`) ----------
@@ -453,15 +469,26 @@ async def _webhook_subscription_updated(obj: dict) -> None:
     status = obj.get("status")
     if status in ("canceled", "unpaid", "incomplete_expired"):
         await revoke_entitlement(obj["id"], status)
+    elif status in ("active", "trialing"):
+        await restore_entitlement(obj["id"])
 
 
 async def _webhook_invoice_failed(obj: dict) -> None:
+    # Auditoria V2 : o Stripe volta a tentar a cobrança ; o acesso mantém-se
+    # durante essas tentativas (estado past_due visível), e só é retirado quando
+    # a subscrição passa a unpaid/canceled.
     sub = obj.get("subscription")
     if not sub:
         return
     await db.entitlements.update_many(
-        {"stripe_subscription_id": sub},
+        {"stripe_subscription_id": sub, "status": "active"},
         {"$set": {"status": "past_due", "updated_at": now_iso()}})
+
+
+async def _webhook_invoice_paid(obj: dict) -> None:
+    sub = obj.get("subscription")
+    if sub:
+        await restore_entitlement(sub)
 
 
 _WEBHOOK_HANDLERS = {
@@ -471,12 +498,20 @@ _WEBHOOK_HANDLERS = {
     "customer.subscription.paused": _webhook_subscription_ended,
     "customer.subscription.updated": _webhook_subscription_updated,
     "invoice.payment_failed": _webhook_invoice_failed,
+    "invoice.paid": _webhook_invoice_paid,
 }
 
 
 async def handle_webhook(payload: bytes, sig: str) -> dict:
     """Gère les événements Stripe via dispatch table."""
-    event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+    # Auditoria V2 : sem segredo configurado, uma assinatura HMAC com chave vazia
+    # poderia ser forjada por qualquer pessoa → recusar.
+    secret = os.environ.get("STRIPE_WEBHOOK_SECRET") or STRIPE_WEBHOOK_SECRET
+    if not secret:
+        raise RuntimeError("STRIPE_WEBHOOK_SECRET não configurado: webhook recusado")
+    if not sig:
+        raise ValueError("Assinatura Stripe em falta")
+    event = stripe.Webhook.construct_event(payload, sig, secret)
     event_type = event["type"]
     handler = _WEBHOOK_HANDLERS.get(event_type)
     if handler:
@@ -490,7 +525,7 @@ async def user_active_plan(user_id: str) -> dict | None:
     """Retourne le plan actif (subscription non expirée OU project_pass valide)."""
     now = datetime.now(timezone.utc).isoformat()
     ent = await db.entitlements.find_one(
-        {"user_id": user_id, "status": "active",
+        {"user_id": user_id, "status": {"$in": ["active", "past_due"]},
          "$or": [{"expires_at": {"$exists": False}}, {"expires_at": {"$gt": now}}]},
         {"_id": 0},
         sort=[("granted_at", -1)])

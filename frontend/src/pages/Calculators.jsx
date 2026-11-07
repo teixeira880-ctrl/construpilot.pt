@@ -46,6 +46,24 @@ const COMPARE_CONFIG = {
   },
 };
 
+
+// Auditoria V2 : a linha do orçamento leva o preço indicativo do cálculo (ou o
+// preço de fornecedor encontrado) com a sua origem ; sem preço → marcada
+// «preço em falta», nunca um 0 € silencioso.
+const toQuoteLine = (m, category, supplierLine) => {
+  const sup = supplierLine && Number(supplierLine.unit_price) > 0 ? supplierLine : null;
+  const price = sup ? Number(sup.unit_price) : (m.unit_price ?? null);
+  return {
+    designation: m.name, unit: m.unit, qty: Math.ceil(m.quantity), vat_rate: 10, category,
+    unit_price_ht: price ?? 0,
+    price_source: sup ? "supplier_search" : price != null ? "calculator_default" : "missing",
+    price_estimated: price != null,
+    price_missing: price == null,
+    price_reference_label: sup ? `Fornecedor ${sup.supplier || ""} (pesquisa)`.trim()
+      : price != null ? "Preço indicativo ConstruPilot — confirmar" : "",
+  };
+};
+
 export default function Calculators() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -167,7 +185,7 @@ export default function Calculators() {
     setCart((c) => [...c, {
       id: Date.now() + Math.random(),
       name: active.name,
-      materials: result.materials.map((m) => ({ name: m.name, quantity: m.quantity, unit: m.unit })),
+      materials: result.materials.map((m) => ({ name: m.name, quantity: m.quantity, unit: m.unit, unit_price: m.unit_price ?? null })),
     }]);
     toast.success(`« ${active.name} » adicionado à seleção`);
   };
@@ -177,14 +195,11 @@ export default function Calculators() {
     if (!user) { toast.info("Inicie sessão para criar um orçamento"); navigate("/login"); return; }
     setAddingQuote(true);
     try {
-      const lines = cart.flatMap((entry) => entry.materials.map((m) => ({
-        designation: m.name, unit: m.unit, qty: Math.ceil(m.quantity),
-        unit_price_ht: 0, vat_rate: 10, category: entry.name,
-      })));
+      const lines = cart.flatMap((entry) => entry.materials.map((m) => toQuoteLine(m, entry.name)));
       const { data } = await api.post("/documents", {
         doc_type: "quote", title: `Orçamento — ${cart.map((e) => e.name).join(" + ")}`, lines,
       });
-      toast.success("Orçamento agrupado criado — complete os preços");
+      toast.success("Orçamento agrupado criado — preços indicativos a confirmar, materiais sem preço assinalados");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch { toast.error("Não foi possível criar o orçamento"); }
     finally { setAddingQuote(false); }
@@ -230,14 +245,13 @@ export default function Calculators() {
     }
     setAddingQuote(true);
     try {
-      const lines = result.materials.map((m) => ({
-        designation: m.name, unit: m.unit, qty: Math.ceil(m.quantity),
-        unit_price_ht: 0, vat_rate: 10, category: active.name,
-      }));
+      const lines = result.materials.map((m) => toQuoteLine(m, active.name,
+        (optim?.lines || []).find((l) => l.name === m.name)));
+      const missing = lines.filter((l) => l.price_missing).length;
       const { data } = await api.post("/documents", {
         doc_type: "quote", title: `Orçamento — ${active.name}`, lines,
       });
-      toast.success("Orçamento criado — complete os preços");
+      toast.success(missing ? `Orçamento criado — ${missing} material(is) sem preço a completar ; os restantes têm preço indicativo a confirmar` : "Orçamento criado com preços indicativos — confirme-os antes de enviar");
       navigate(`/devis-editeur/${data.doc_id}`);
     } catch { toast.error("Não foi possível criar o orçamento"); }
     finally { setAddingQuote(false); }

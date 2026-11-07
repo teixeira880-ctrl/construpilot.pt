@@ -83,7 +83,9 @@ SITE = "construpilot.pt"
 CONTACT = "info@construpilot.pt"
 PATENT = "FR2611044"
 # Source unique de l'offre (miroir de GET /api/offer)
-OFFER = {"free_promo": True, "trial_days": 7,
+# Auditoria V2 : free_promo segue a mesma variável que /api/offer (nunca em dur).
+import os as _os
+OFFER = {"free_promo": _os.environ.get("FREE_PROMO_MODE") == "true", "trial_days": 7,
          "particulier": 19.0, "pro": 149.0, "api": 99.0, "addon": 5.0}
 
 

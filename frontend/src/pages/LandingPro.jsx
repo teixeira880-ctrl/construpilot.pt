@@ -7,6 +7,7 @@ import { DemoShowcase } from "@/components/DemoShowcase";
 import { FeatureClips } from "@/components/FeatureClips";
 import { LandingLayout, LandingHeading, LandingPricing, scrollToLanding } from "@/components/landing/LandingLayout";
 import { ProductPreview } from "@/components/landing/ProductPreview";
+import { useOffer } from "@/components/OfferNotice";
 
 const FEATURES = [
   { id: "metre", icon: Ruler, clip: "metre", tag: "Ler e medir", title: "Plantas e medições", desc: "Importe as suas plantas PDF, DWG ou DXF, calibre a escala e controle as suas áreas, comprimentos e volumes.", to: "/plan" },
@@ -36,6 +37,10 @@ const FAQ = [
 
 export default function LandingPro() {
   const navigate = useNavigate();
+  const offer = useOffer();
+  const offerNote = !offer ? "" : offer.free_promo
+    ? "Fase de lançamento · acesso completo grátis · sem cartão"
+    : offer.trial_days ? `Experiência de ${offer.trial_days} dias · cartão pedido · sem fidelização` : "Sem fidelização";
   const [preview, setPreview] = useState(null);
   const [videosOpen, setVideosOpen] = useState(false);
   useEffect(() => { try { if (localStorage.getItem("construpilot_audience") === "particulier") navigate("/particulares", { replace: true }); } catch {} }, [navigate]);
@@ -49,7 +54,7 @@ export default function LandingPro() {
         <h1>O futuro não se espera, constrói-se<br /><em>Ambição, liderança e inovação</em></h1>
         <p className="landing-hero-description">Da primeira planta ao acompanhamento da obra, encontre as suas medições, orçamentos e documentos num espaço de trabalho pensado para o terreno.</p>
         <div className="landing-hero-actions"><Link to="/inscription" className="landing-button" data-testid="pro-hero-primary-cta">Experimentar o ConstruPilot <ArrowRight size={18} /></Link><button type="button" className="landing-button landing-button-outline" onClick={showDemo} data-testid="pro-hero-secondary-cta"><Play size={16} />Ver a demonstração</button></div>
-        <p className="landing-hero-note">Experiência de 7 dias · Cartão obrigatório · Sem fidelização após a experiência</p>
+        <p className="landing-hero-note">{offerNote}</p>
         <div className="landing-hero-proof"><span><Check size={15} />Plantas e medições</span><span><Check size={15} />Orçamentos e faturas</span><span><Check size={15} />Processos de obra</span></div>
       </div>
       <ProductPreview />

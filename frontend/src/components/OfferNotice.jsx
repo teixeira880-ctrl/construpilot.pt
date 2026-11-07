@@ -32,6 +32,21 @@ export const offerSentence = (offer, lang = "fr") => {
     : `Existe uma oferta gratuita. Subscrições: ${after}${offer.trial_days ? `, com ${offer.trial_days} dias de experiência` : ""}.`;
 };
 
+/** Auditoria V2 : frases curtas da oferta, sempre derivadas de /api/offer
+ * (fase de lançamento grátis sem cartão OU experiência com cartão — nunca as duas). */
+export const offerShort = (offer) => {
+  if (!offer) return { trial: "", cta: "Começar", card: "" };
+  if (offer.free_promo) {
+    return { trial: "Fase de lançamento: acesso completo grátis, sem cartão. Será avisado antes de qualquer pagamento.",
+             cta: "Começar gratuitamente", card: "sem cartão durante o lançamento" };
+  }
+  const d = offer.trial_days || 0;
+  return d > 0
+    ? { trial: `Experiência de ${d} dias, depois subscrição sem fidelização. Cartão pedido no início; nenhum débito antes do fim da experiência.`,
+        cta: `Experimentar durante ${d} dias`, card: `${d} dias de experiência (cartão pedido)` }
+    : { trial: "Subscrição mensal sem fidelização.", cta: "Subscrever", card: "sem fidelização" };
+};
+
 /** Bandeau à afficher partout où l'offre est évoquée — jamais de texte de prix en dur. */
 export const OfferNotice = ({ lang = "fr", className = "" }) => {
   const offer = useOffer();

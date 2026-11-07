@@ -8,6 +8,7 @@ import { WorkspaceBackdrop, useWorkspaceMotion } from "@/components/workspace/Wo
 import InstallAppButton from "@/components/InstallAppButton";
 import "@/styles/workspace-ambient.css";
 import "@/styles/landing-premium.css";
+import { useOffer, offerShort } from "@/components/OfferNotice";
 
 export function scrollToLanding(id, focus = false) {
   const target = document.getElementById(id);
@@ -54,13 +55,14 @@ export function LandingHeading({ eyebrow, title, children }) {
 }
 
 export function LandingPricing({ plans, pro = false }) {
+  const oc = offerShort(useOffer());
   return <section className="landing-section landing-pricing" id="landing-pricing" data-testid={pro ? "pro-pricing" : "particuliers-pricing"}>
-    <LandingHeading eyebrow="Ao seu ritmo" title={pro ? "Uma oferta para a sua forma de trabalhar." : "Comece de forma simples. Vá mais longe."}>{pro ? "Experiência de 7 dias, depois subscrição sem fidelização. Cartão obrigatório; nenhum débito antes do fim da experiência." : "Descubra as primeiras ferramentas gratuitamente e depois escolha o acompanhamento que lhe convém."}</LandingHeading>
+    <LandingHeading eyebrow="Ao seu ritmo" title={pro ? "Uma oferta para a sua forma de trabalhar." : "Comece de forma simples. Vá mais longe."}>{pro ? oc.trial : "Descubra as primeiras ferramentas gratuitamente e depois escolha o acompanhamento que lhe convém."}</LandingHeading>
     <div className="landing-price-grid">{plans.map(p => <article key={p.name} className={`landing-price-card${p.popular ? " is-featured" : ""}`}>
       <div className="landing-price-name"><h3>{p.name}</h3>{p.popular && <span>{pro ? "Para as equipas" : "Para o seu projeto"}</span>}</div><p>{p.desc}</p>
       <div className="landing-price"><strong>{p.price}</strong><span>{p.period}</span></div>
       <ul>{p.features.map(f => <li key={f}><span aria-hidden="true">✓</span>{f}</li>)}</ul>
-      <Link to="/inscription" className={`landing-button${p.popular ? "" : " landing-button-outline"}`} data-testid={p.tid}>{pro ? "Experimentar durante 7 dias" : p.popular ? "Descobrir o Passe" : "Começar gratuitamente"}<ArrowRight size={17} /></Link>
+      <Link to="/inscription" className={`landing-button${p.popular ? "" : " landing-button-outline"}`} data-testid={p.tid}>{pro ? oc.cta : p.popular ? "Descobrir o Passe" : "Começar gratuitamente"}<ArrowRight size={17} /></Link>
     </article>)}</div>
     <Link to="/planos" className="landing-text-link">Consultar o detalhe das ofertas <ArrowRight size={16} /></Link>
   </section>;

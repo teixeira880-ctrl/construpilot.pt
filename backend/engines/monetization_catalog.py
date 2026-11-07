@@ -118,7 +118,8 @@ DEFAULT_PLANS = [
             "Orçamentos + biblioteca de preços",
             "Cálculo automático de materiais + fornecedores",
             "Margem comercial",
-            "Clientes, projetos, faturas",
+            "Clientes e projetos",
+            "Faturação em opção (5 €/mês)",
             "IA profissional",
             "Análise de rentabilidade",
             "PDF com logótipo da empresa",
@@ -155,6 +156,7 @@ DEFAULT_PLANS = [
         "trial_days": 7,
         "features": [
             "Tudo do Pro +",
+            "Faturação e faturação eletrónica incluídas",
             "Vários utilizadores (5 incluídos)",
             "CRM + equipas",
             "Planeamento + Gantt",

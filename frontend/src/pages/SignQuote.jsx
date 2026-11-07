@@ -157,7 +157,12 @@ export default function SignQuote() {
           </div>
         </div>
 
-        {data.signed ? (
+        {!data.signed && data.expired ? (
+          <div className="surface p-8 text-center space-y-2" data-testid="sign-expired">
+            <p className="font-display text-xl font-bold">A validade deste orçamento terminou.</p>
+            <p className="text-sm text-muted-foreground">Peça à empresa um orçamento atualizado para o poder assinar.</p>
+          </div>
+        ) : data.signed ? (
           <div className="space-y-6">
             <div className="surface p-8 text-center space-y-4" data-testid="sign-done">
               <CheckCircle2 className="h-14 w-14 mx-auto text-primary" />

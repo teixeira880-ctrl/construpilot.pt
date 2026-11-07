@@ -1,7 +1,7 @@
 """One input contract for public calculators and the platform assistant."""
 import math
 
-from engines.calculators import CALCULATORS
+from engines.calculators import CALCULATORS, price_provenance
 
 
 class FieldError(ValueError):
@@ -84,5 +84,6 @@ def run_validated(key: str, params: dict, *, require_inputs: bool = False) -> di
                 finite(child)
 
     finite(result)
+    price_provenance(result)
     return {**result, "validation": {"arithmetic_checked": True, "defaulted_fields": defaults,
                                      "inputs": args, "source_measurements_verified": False}}
