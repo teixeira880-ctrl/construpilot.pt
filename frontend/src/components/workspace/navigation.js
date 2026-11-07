@@ -60,6 +60,7 @@ export const WORKSPACE_LINKS = [
   { to: "/photo", key: "nav.photo", label: "Análise de fotografia", icon: Camera, group: "discover" },
   { to: "/coach", key: "nav.coach", label: "Coach IA", icon: MessageSquare, group: "assistant" },
   { to: "/diy", key: "nav.diy", label: "Faço eu mesmo", icon: Wrench, group: "discover", personalPin: true },
+  { to: "/licenciamento-automatico", label: "Licenciamento automático", icon: Sparkles, group: "discover", words: "autorização construção casa moradia morada automático licença projeto 3d" },
   { to: "/particulares/autorizacao-obras", label: "Autorização de obras", icon: Shield, group: "discover", words: "licenciamento comunicação prévia escassa relevância rjue dl 555 obra licença câmara" },
   { to: "/marketplace", key: "nav.marketplace", label: "Encontrar um profissional", icon: Wrench, group: "discover", personalPin: true },
   { to: "/blog", key: "nav.blog", label: "Blog", icon: FileSearch, group: "discover" },

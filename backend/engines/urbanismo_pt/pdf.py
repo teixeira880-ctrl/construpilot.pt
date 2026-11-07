@@ -217,6 +217,27 @@ def desenhos(processo: Dict[str, Any], verif: Optional[Dict[str, Any]] = None) -
         add("CORTES", "Corte transversal A-A", "corte_AA.png", V.corte(vol))
         add("ALCADOS", "Alçado principal", "alcado_principal.png", V.alcado(vol))
         add("AXONOMETRIA", "Vista axonométrica", "axonometria.png", V.axonometria(vol))
+        auto = d.get("auto") or {}
+        if auto.get("plantas"):   # processo do piloto automático: peças adicionais geradas a partir dos mesmos dados
+            from engines.urbanismo_pt.auto import pecas_auto as PA, plantas as PL
+            ter = auto.get("terreno") or {}
+            orto = auto.get("orto") or {}
+            fonte = (orto.get("fonte") or "") + " · Limite: " + (ter.get("area_origem") or "")
+            out.insert(0, {"code": "PLANTA_LOCALIZACAO", "title": "Planta de localização (ortofotomapa)",
+                           "filename": "planta_localizacao.png",
+                           "png": PA.planta_localizacao(orto.get("b64"), orto.get("bbox"), ter.get("poligono_latlon") or [],
+                                                        auto.get("casa_latlon") or [], fonte=fonte)})
+            topo = auto.get("topografia") or {}
+            imp = auto.get("implantacao") or {}
+            if topo.get("ok"):
+                out.insert(1, {"code": "LEVANTAMENTO_TOPOGRAFICO", "title": "Planta topográfica indicativa",
+                               "filename": "topografia_indicativa.png",
+                               "png": PA.planta_topografica(topo, ter.get("poligono_m") or [], imp.get("casa_rect"),
+                                                            imp.get("garagem_rect"), imp.get("cota_soleira_m"))})
+            plan = {"pisos": auto["plantas"]["pisos"], "casa_rect": tuple(auto["plantas"]["casa_rect"])}
+            az = (ter.get("azimutes") or {}).get("tardoz")
+            for k, pp in enumerate(plan["pisos"]):
+                add("PLANTAS_PISOS", f"Planta do {pp['nome'].lower()}", f"planta_piso_{k}.png", PL.desenho_planta(plan, k, az))
     return out
 
 

@@ -230,6 +230,13 @@ export default function AutorizacaoObras() {
         <Link to="/particulares" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4" data-testid="autorizacao-voltar">
           <ArrowLeft size={16} /> Voltar
         </Link>
+        {step === 0 && (
+          <Link to="/licenciamento-automatico" data-testid="autorizacao-link-auto"
+            className="block mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm hover:bg-primary/10">
+            <span className="font-medium flex items-center gap-2"><Sparkles size={16} /> Novo: casa nova feita automaticamente</span>
+            <span className="text-muted-foreground">Escreva só a morada — o ConstruPilot lê o PDM e o terreno, desenha a casa em 3D e prepara o processo completo.</span>
+          </Link>
+        )}
         <StepHeader step={step + 1} total={TOTAL_STEPS} title="Diagnóstico de autorização de obras" />
 
         {step === 0 && (
