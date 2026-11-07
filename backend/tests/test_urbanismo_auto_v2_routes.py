@@ -33,6 +33,15 @@ def env(monkeypatch, tmp_path):
         im.save(b, "PNG")
         return b.getvalue()
     monkeypatch.setattr(IM, "_gemini", gemini_falso)
+    # nunca chamar fornecedores reais nos testes, mesmo num servidor com chaves verdadeiras
+    monkeypatch.setattr(IM, "ORDEM_FORNECEDORES", ["gemini"])
+    for k in ("RUNWAYML_API_SECRET", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+
+    async def sem_rede(*a, **kw):
+        raise AssertionError("fornecedor real chamado num teste")
+    monkeypatch.setattr(IM, "_runway", sem_rede)
+    monkeypatch.setattr(IM, "_openai", sem_rede)
     yield db, store, chamadas
     BR.G.set_transport(None)
 
@@ -261,6 +270,7 @@ def test_cadeia_runway_openai_emergent_com_juiz_claude(env, monkeypatch):
     monkeypatch.setattr(IM, "_gemini", gemini)
     monkeypatch.setattr(IM, "juiz_claude", juiz)
     monkeypatch.setattr(IM, "CANDIDATOS", 1)
+    monkeypatch.setattr(IM, "ORDEM_FORNECEDORES", ["runway", "openai", "gemini"])
 
     async def go():
         r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
