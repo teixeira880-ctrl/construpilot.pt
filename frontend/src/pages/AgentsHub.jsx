@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,8 @@ function AgentsHubContent() {
         <p className="text-xs uppercase tracking-widest text-primary font-semibold flex items-center gap-2">
           <Bot className="h-4 w-4" /> Agentes IA
         </p>
-        <h1 className="font-display text-3xl lg:text-4xl font-extrabold mt-1">O seu piloto de projeto</h1>
+        <h1 className="font-display text-3xl lg:text-4xl font-extrabold mt-1">Tarefas automáticas do assistente</h1>
+        <p className="text-sm text-muted-foreground">O mesmo assistente, a trabalhar em segundo plano. Para conversar, use o <Link to="/assistant" className="underline">Assistente</Link>.</p>
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
           Verifique os seus dados, identifique as incoerências e corrija os valores recalculáveis. O seu piloto trabalha <strong>em segundo plano</strong>, mesmo quando muda de página. Cada resultado precisa o que foi controlado e o que falta confirmar.
         </p>

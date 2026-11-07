@@ -1076,7 +1076,7 @@ export default function PlanTakeoff() {
       const next = [...points, pt];
       if (next.length === 2) {
         // Width computed from click distance in meters, opening dialog for kind + height
-        if (!currentCalib) return toast.error("Calibre primeiro a planta");
+        if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
         const ppm = Number(currentCalib.pixels_per_meter);
         const px_dist = Math.hypot(next[1][0] - next[0][0], next[1][1] - next[0][1]);
         const width_m = Math.max(0.05, Math.round((px_dist / ppm) * 100) / 100);
@@ -1233,7 +1233,7 @@ export default function PlanTakeoff() {
 
   const finishPolyline = async (pts = points) => {
     if (pts.length < 2) return;
-    if (!currentCalib) return toast.error("Calibre primeiro a planta");
+    if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "polyline", points: pts, color: pickAutoColor(),
@@ -1247,7 +1247,7 @@ export default function PlanTakeoff() {
 
   const finishPitchSurface = () => {
     if (points.length < 3) return toast.error("Clique pelo menos 3 pontos");
-    if (!currentCalib) return toast.error("Calibre primeiro a planta");
+    if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
     const ppm = currentCalib.pixels_per_meter;
     // Shoelace formula in pixel space
     let sum = 0;
@@ -1581,7 +1581,7 @@ export default function PlanTakeoff() {
 
   const finishDistance = async (pts = points) => {
     if (pts.length < 2) return;
-    if (!currentCalib) return toast.error("Calibre primeiro a planta");
+    if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "distance", points: pts.slice(0, 2), color: pickAutoColor(),
@@ -1595,7 +1595,7 @@ export default function PlanTakeoff() {
 
   const finishRoom = (pts = points) => {
     if (pts.length < 3) return toast.error("Uma divisão necessita pelo menos 3 pontos");
-    if (!currentCalib) return toast.error("Calibre primeiro a planta");
+    if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
     setPoints(pts);
     setPendingRoomName(`Divisão ${String(rooms.length + 1).padStart(2, "0")}`);
     setRoomDialog(true);
@@ -1604,7 +1604,7 @@ export default function PlanTakeoff() {
   // Iter67 — mesure de surface libre (polygone) en m²
   const finishSurface = async (pts = points) => {
     if (pts.length < 3) return toast.error("Uma superfície necessita pelo menos 3 pontos");
-    if (!currentCalib) return toast.error("Calibre primeiro a planta");
+    if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/measure`, {
         page_index: pageIndex, kind: "polygon", points: pts, color: pickAutoColor(),
@@ -1667,7 +1667,7 @@ export default function PlanTakeoff() {
     if (points.length >= need) segs = [...segs, points];
     segs = segs.filter((s) => s.length >= need);
     if (!segs.length) return toast.error(isArea ? "Nenhuma zona — meça pelo menos uma zona" : "Nenhum troço — meça pelo menos um troço de parede");
-    if (!currentCalib) return toast.error("Calibre primeiro a planta");
+    if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
     try {
       const flat = segs.flat();
       const payload = isArea
@@ -1844,7 +1844,7 @@ export default function PlanTakeoff() {
     : null;
 
   const saveRoom = async () => {
-    if (!currentCalib || points.length < 3) return toast.error("Trace uma divisão numa planta calibrada");
+    if (!currentCalib || points.length < 3) return toast.error("Indique primeiro uma medida real da planta e depois trace a divisão");
     const height = decimalNumber(ceilingH);
     if (!finitePositive(height)) return toast.error("Altura da divisão inválida");
     try {
@@ -1896,7 +1896,7 @@ export default function PlanTakeoff() {
 
   const importAiRooms = async () => {
     if (!plan?.plan_id || !currentCalib) {
-      toast.error("Calibre a planta antes de importar contornos"); return 0;
+      toast.error("Indique primeiro uma medida real da planta antes de importar contornos"); return 0;
     }
     const sourceKey = pageKey;
     let data;
@@ -2350,7 +2350,7 @@ export default function PlanTakeoff() {
   const analyzePlanFull = async () => {
     if (!plan?.plan_id || analysisLock.current) return;
     if (!currentCalib) {
-      toast.error("Calibre primeiro a planta: a escala é indispensável para calcular as quantidades.");
+      toast.error("Indique primeiro uma medida real da planta: sem ela as quantidades não podem ser calculadas.");
       setTool(TOOLS.CALIB);
       return;
     }
@@ -2483,7 +2483,7 @@ export default function PlanTakeoff() {
   const _hasStructure = () => !!(structure && ((structure.walls || []).length || (structure.openings || []).length || (structure.beams || []).length || (structure.floors || []).length || (structure.columns || []).length));
 
   const sendToQuote = async () => {
-    if (!currentCalib) { toast.error("Calibre primeiro a planta"); return; }
+    if (!currentCalib) { toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)"); return; }
     if (!_hasStructure()) { toast.error("Analise primeiro a planta"); return; }
     try {
       const body = plan3dSnapshot ? { snapshot_png: plan3dSnapshot } : {};
@@ -2500,7 +2500,7 @@ export default function PlanTakeoff() {
   };
 
   const estimateAndDownloadQuote = async () => {
-    if (!currentCalib) { toast.error("Calibre primeiro a planta"); return; }
+    if (!currentCalib) { toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)"); return; }
     if (!_hasStructure()) { toast.error("Analise primeiro a planta"); return; }
     setQuoteBusy(true);
     try {
@@ -2722,7 +2722,7 @@ export default function PlanTakeoff() {
   };
 
   const autoFillRoom = async (pt) => {
-    if (!currentCalib) return toast.error("Calibre primeiro a planta");
+    if (!currentCalib) return toast.error("Indique primeiro uma medida real da planta (ex.: uma cota ou o comprimento de uma parede conhecida)");
     setCvBusy(true);
     try {
       const { data } = await api.post(`/takeoffs/${plan.plan_id}/room-autofill`, {
@@ -3896,8 +3896,8 @@ export default function PlanTakeoff() {
 
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: Ruler, title: "Formatos variados", desc: "PDF · DXF · DWG · JPG · PNG · WEBP — DWG convertido automaticamente" },
-            { icon: Wand2, title: "Deteção automática", desc: "Paredes (OpenCV) · divisões flood-fill · deskew foto inclinada" },
+            { icon: Ruler, title: "Formatos variados", desc: "PDF, DWG, DXF ou fotografia (JPG, PNG). Uma fotografia sem medida de referência não dá medidas exatas." },
+            { icon: Wand2, title: "Deteção automática", desc: "Paredes e divisões detetadas automaticamente; fotografias inclinadas endireitadas. Reveja sempre as medidas." },
             { icon: Calculator, title: "Multi-pisos", desc: "R/C · R+1 · R+2 · águas-furtadas — medições por nível + total" },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="surface p-6">

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { WorkProfileSettings } from "@/components/workprofile/WorkProfileSettings";
 
 const SCOPE = { user: "Eu", project: "Obra", company: "Empresa" };
 const SOURCE = { automatic_style: "Hábito automático", style_proposal: "Hábito proposto", assistant_proposal: "Proposta a validar", assistant: "Assistente (com acordo)", manual: "Introdução manual" };
@@ -107,6 +108,7 @@ export default function Preferences() {
           O que o assistente reteve dos seus hábitos (apenas com o seu acordo) e as regras introduzidas manualmente. Uma regra ativa aplica-se a cada resposta salvo instrução contrária pontual. Pode modificá-la, desativá-la, eliminá-la ou apagar tudo.
         </p>
       </header>
+      <WorkProfileSettings />
       {settings && <section className="border rounded-md p-4 grid gap-3" aria-label="Aprendizagem">
         <label className="text-sm">Aprendizagem dos meus hábitos <select className="mt-1 w-full sm:w-auto max-w-full border bg-background rounded-sm p-2" value={settings.learning_mode} onChange={e => saveSettings({ ...settings, learning_mode: e.target.value })} data-testid="prefs-learning-mode">
           <option value="off">Desativado</option><option value="suggest">Propor-me os hábitos a memorizar</option><option value="automatic">Memorizar automaticamente o tom, a língua e o comprimento</option>

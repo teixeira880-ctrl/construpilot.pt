@@ -28,6 +28,7 @@ import plansFx from "@/fixtures/demo/plans.json";
 import quotesFx from "@/fixtures/demo/quotes.json";
 import assistantResponses from "@/fixtures/demo/assistant_responses.json";
 import missionsCatalogFx from "@/fixtures/demo/missions_catalog.json";
+import { workDemoRoutes } from "@/lib/demoWorkRoutes";
 
 const LS_FLAG = "is_demo";
 const LS_KIND = "demo_kind";
@@ -291,6 +292,9 @@ const routes = [
   { method: "GET", match: /^\/assistant\/preferences\/?$/, handle: async () => _ok([]) },
   { method: "GET", match: /^\/assistant\/documents\/?$/, handle: async () => _ok([]) },
   { method: "GET", match: /^\/takeoffs\/?$/, handle: async () => _ok({ plans: [] }) },
+
+  // Perfil de trabalho, ferramentas de ofício, orçamento guiado, visita e registo diário (offline)
+  ...workDemoRoutes({ idbGet, idbSet, ok: _ok, kind: currentKind }),
 ];
 
 // -------------------- conversas do Assistente (offline) --------------------

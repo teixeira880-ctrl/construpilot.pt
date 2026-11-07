@@ -1,5 +1,27 @@
 # ConstruPilot — CHANGELOG
 
+## 07/11/2026 (2) — Visita, registo diário, trabalhos adicionais, ferramentas de ofício, demo offline
+- **Visita à obra** `/visita-obra` (`routes/field_records.py`, coleção `field_visits`): fotografias (mesma validação do acompanhamento), medidas com origem (medido / planta / estimado), acessos, demolições, proteções, perguntas pendentes; resumo editável e lista « falta confirmar ».
+- **Registo diário** `/registo-diario` (coleção `field_daily`): texto ou voz → proposta determinística (sem IA): equipa, trabalhos, materiais em falta; horas e quantidades nunca inventadas; ambiguidades sinalizadas; só grava com `confirmed=true`; idempotente. Acessível ao trabalhador de campo (permissão `pointage`).
+- **Trabalho adicional** (botão em /devis, `POST /api/documents/{id}/change-request`): novo rascunho ligado ao orçamento, impacto no preço; prazo só se indicado; original nunca alterado; histórico em `change_requests`.
+- **Ferramentas**: levantamento de pontos (canalização / eletricidade — sem dimensionamento) e carpintaria (placas, orla, ferragens).
+- **Projetos vs processos de obra**: coleções distintas (`projects` = estimativas, `chantiers` = processos), ligação opcional `chantier_id`. Novo `POST /api/chantiers/from-project/{id}` + botão no painel: cria e liga, a pedido, sem mover nem fundir dados.
+- **Assistente único**: página `/agents` apresentada como « Tarefas automáticas do assistente », com ligação a partir do Assistente. O menu lateral (`navigation.js`) não foi alterado, para não entrar em conflito com os lotes PT; as novas páginas são acessíveis pelo painel « O que precisas de fazer hoje? ».
+- **Modo demonstração offline**: perfil, painel, orçamento guiado, ferramentas, visita e registo diário funcionam sem internet (`lib/demoWorkRoutes.js`, `lib/demoTradeCalcs.js`). Paridade JS ↔ Python verificada (`tests/test_demo_parity.py`); catálogo gerado por `scripts/export_work_profile_catalog.py`.
+- **Painel sem tocar em `Dashboard.jsx`** (evita conflito com os lotes PT do Emergent): novo `pages/DashboardHome.jsx` envolve o painel existente (rota `/dashboard`), mostra « O que precisas de fazer hoje? », recolhe atalhos/indicadores em modo guiado e lista projetos sem processo de obra.
+- **Correção**: « Adicionar outra divisão » saltava a pergunta do nome da nova divisão.
+- **Testes**: 32 testes backend (`test_work_profile.py`, `test_field_records.py`, `test_demo_parity.py`) + 21 verificações de percursos de interface (`frontend/tests/flows/run.sh`).
+
+## 07/11/2026 — Perfil adaptativo, modos de utilização e orçamento guiado (codificado por Claude)
+- **Perfil de trabalho por utilizador** (`engines/work_profile.py`, `routes/work_profile.py`, coleção `work_profiles`): profissões (15, várias possíveis), responsabilidades, modo (guiado/direto/avançado) e linguagem (simples/técnica), separados das permissões (`core/permissions.py`) e do plano (`engines/access.py`), que NUNCA são alterados. Contas antigas: perfil genérico guiado por defeito, sem onboarding obrigatório (sem migração necessária).
+- **Onboarding em 3 perguntas**, saltável e editável (Preferências → Perfil de trabalho). Sugestão de profissão a partir de uma descrição: sempre a confirmar.
+- **Painel « O que precisas de fazer hoje? »** (`TaskHome.jsx`): 3–5 tarefas do perfil, filtradas pelas permissões e pelo plano calculados no servidor; « Continuar onde fiquei » (último rascunho / última planta); seletor de modo. Em modo guiado, atalhos e indicadores ficam recolhidos.
+- **Motores partilhados** (`engines/trade_calcs.py`): tinta (dedução de aberturas, demãos, rendimento, latas), pavimento/revestimento (perdas configuráveis, embalagens), alvenaria (blocos, junta, perdas; só quantidades). Sem constantes escondidas; « Não sei » ≠ 0 (dado pendente, resultado não calculado).
+- **Ferramentas de ofício** `/ferramentas-oficio` (todas as contas) e **orçamento de pintura guiado** `/orcamento-guiado` (Pro, permissão devis): uma pergunta de cada vez em modo guiado, secções completas em direto/avançado, mesmo objeto e mesmo cálculo de servidor; rascunho guardado no dispositivo; revisão com « por confirmar »; cria um rascunho (idempotente via `request_id`), nada é enviado; IVA não escolhido automaticamente.
+- **Reutilizar orçamento** (`POST /api/documents/{id}/reuse`, botão « Reutilizar » em /devis): novo rascunho com a estrutura; não copia cliente, número, estado, pagamentos, assinatura, fotos nem confirmação de IVA; original intacto.
+- **Linguagem**: página de plantas sem « OpenCV / flood-fill / deskew »; « Calibre a planta » → « Indique uma medida real da planta ».
+- **Testes**: `backend/tests/test_work_profile.py` (19 testes).
+
 ## 24/10/2026 — Programa IA de opções (motor do .fr adaptado a Portugal)
 Pedido por Martinho (« envoie les moteurs chez Emergent pour les installer », opção « Cadre seul, adapté PT »).
 
