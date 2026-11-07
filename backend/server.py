@@ -277,6 +277,8 @@ api_router.include_router(image_studio_routes.router)
 from routes import urbanismo as urbanismo_routes  # noqa: E402  — editor de volumes, peças desenhadas, quadro de áreas
 api_router.include_router(urbanismo_routes.router)
 api_router.include_router(urbanismo_routes.public_router)
+from routes import urbanismo_auto as urbanismo_auto_routes  # noqa: E402  — piloto automático de licenciamento (morada → processo)
+api_router.include_router(urbanismo_auto_routes.router)
 from routes import structuro_bet_visto as bet_visto_routes  # noqa: E402  — visto do engenheiro (autopiloto BET)
 api_router.include_router(bet_visto_routes.bet_visto_router)
 api_router.include_router(bet_visto_routes.bet_visto_public)
