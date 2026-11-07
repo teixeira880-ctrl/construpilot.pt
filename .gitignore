@@ -116,6 +116,3 @@ frontend/node_modules/.cache/default-development/24.pack
 frontend/node_modules/.cache/default-development/25.pack
 frontend/node_modules/.cache/default-development/4.pack_
 frontend/node_modules/.cache/default-development/1.pack_
-
-# cópia local dos dados DGT (gerada em runtime)
-backend/data/dgt_cache/
