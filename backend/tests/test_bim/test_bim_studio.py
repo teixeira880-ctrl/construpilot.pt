@@ -533,3 +533,22 @@ def test_suggestions_prefer_specific_match():
     assert top(g("Laje térrea", "lajes", "Betão C25/30", {"area": 80})) == "Laje de betão armado"
     # unidade sem medição BIM correspondente (forfait) nunca é a primeira sugestão
     assert all(s["unit"] != "forfait" for s in bud.suggest(g("Parede", "paredes", None, {"area": 1}), items)[:1])
+
+
+def test_non_straight_wall_is_estimated_not_calculated(tmp_path):
+    import ifcopenshell.api.root
+    import ifcopenshell.api.geometry
+    from bim_studio.sample_models import _Builder
+    b = _Builder(units="m")
+    st = b.storey("P0", 0)
+    b.wall(st, "Reta", 0, 0, 0, 6, 3, 0.2, qto=False)
+    el = ifcopenshell.api.root.create_entity(b.f, ifc_class="IfcWall", name="Parede em L")
+    rep = ifcopenshell.api.geometry.add_slab_representation(
+        b.f, context=b.body, depth=3.0, polyline=[(0, 0), (5, 0), (5, 4), (4.8, 4), (4.8, 0.2), (0, 0.2), (0, 0)])
+    ifcopenshell.api.geometry.assign_representation(b.f, product=el, representation=rep)
+    b._place(el, st, 10, 0, 0)
+    p = tmp_path / "L.ifc"
+    b.f.write(str(p))
+    res = {e["name"]: e["quantities"]["area"] for e in engine.process(str(p), str(tmp_path / "o"))["elements"]}
+    assert res["Reta"]["origin"] == "calculated" and res["Reta"]["value"] == pytest.approx(18.0, rel=1e-3)
+    assert res["Parede em L"]["origin"] == "estimated"  # nunca apresentada como medição fiável

@@ -245,7 +245,11 @@ def _geom_quantities(cat: str, v: np.ndarray, faces: np.ndarray) -> list[dict]:
     if cat in ("paredes", "fachadas"):
         side = _dominant_side_area(areas[horiz], normals[horiz])
         if side > 0:
-            out.append(_q("area", side, "calculated", "geometria: área da maior face lateral"))
+            if _is_straight(areas[horiz], normals[horiz], side):
+                out.append(_q("area", side, "calculated", "geometria: área da maior face lateral"))
+            else:
+                out.append(_q("area", side, "estimated",
+                              "parede não retilínea: só a face dominante foi medida (subestima)"))
             if dims[2] > 0:
                 out.append(_q("length", side / dims[2], "estimated", "área lateral ÷ altura"))
             if closed and vol > 0:
@@ -277,6 +281,20 @@ def _dominant_side_area(areas: np.ndarray, normals: np.ndarray) -> float:
         bins[float(a)] = bins.get(float(a), 0.0) + float(ar)
     best = max(bins.values())
     return best
+
+
+def _is_straight(areas: np.ndarray, normals: np.ndarray, side: float) -> bool:
+    """False se houver faces laterais significativas noutras direções (parede curva ou em L)."""
+    if len(areas) == 0 or side <= 0:
+        return True
+    ang = np.degrees(np.arctan2(normals[:, 1], normals[:, 0]))
+    bins: dict[float, float] = {}
+    for a, ar in zip(np.round(ang / 2.0) * 2.0, areas):
+        bins[float(a)] = bins.get(float(a), 0.0) + float(ar)
+    b = max(bins, key=bins.get)
+    other = sum(v for a, v in bins.items()
+                if min(abs((a - b + 180) % 360 - 180), abs((a - b) % 360 - 180)) > 4)
+    return other <= 0.25 * side
 
 
 def _q(key, value, origin, source):
