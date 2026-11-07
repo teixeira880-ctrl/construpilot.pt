@@ -8,6 +8,7 @@
 - **Projetos vs processos de obra**: coleções distintas (`projects` = estimativas, `chantiers` = processos), ligação opcional `chantier_id`. Novo `POST /api/chantiers/from-project/{id}` + botão no painel: cria e liga, a pedido, sem mover nem fundir dados.
 - **Assistente único**: « Piloto ConstruPilot » passa a « Assistente — tarefas automáticas » (fora dos essenciais); ligação « Tarefas automáticas » no Assistente.
 - **Modo demonstração offline**: perfil, painel, orçamento guiado, ferramentas, visita e registo diário funcionam sem internet (`lib/demoWorkRoutes.js`, `lib/demoTradeCalcs.js`). Paridade JS ↔ Python verificada (`tests/test_demo_parity.py`); catálogo gerado por `scripts/export_work_profile_catalog.py`.
+- **Painel sem tocar em `Dashboard.jsx`** (evita conflito com os lotes PT do Emergent): novo `pages/DashboardHome.jsx` envolve o painel existente (rota `/dashboard`), mostra « O que precisas de fazer hoje? », recolhe atalhos/indicadores em modo guiado e lista projetos sem processo de obra.
 - **Correção**: « Adicionar outra divisão » saltava a pergunta do nome da nova divisão.
 - **Testes**: 32 testes backend (`test_work_profile.py`, `test_field_records.py`, `test_demo_parity.py`) + 21 verificações de percursos de interface (`frontend/tests/flows/run.sh`).
 

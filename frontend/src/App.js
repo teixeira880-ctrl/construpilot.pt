@@ -33,7 +33,7 @@ import Investors from "@/pages/Investors";
 import Features from "@/pages/Features";
 import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
-import Dashboard from "@/pages/Dashboard";
+import DashboardHome from "@/pages/DashboardHome";
 import Estimator from "@/pages/Estimator";
 import SmartProject from "@/pages/SmartProject";
 import ProjectDetail from "@/pages/ProjectDetail";
@@ -410,7 +410,7 @@ function AppRouter() {
       <Route path="/fournisseur" element={<ProRoute><Shell><SupplierPortal /></Shell></ProRoute>} />
       <Route path="/paiement/succes" element={<Shell><PaymentSuccess /></Shell>} />
       <Route path="/paiement/annule" element={<Shell><PaymentCancel /></Shell>} />
-      <Route path="/dashboard" element={<Protected><Shell><Dashboard /></Shell></Protected>} />
+      <Route path="/dashboard" element={<Protected><Shell><DashboardHome /></Shell></Protected>} />
       <Route path="/bienvenue" element={<Protected><Shell><Welcome /></Shell></Protected>} />
       <Route path="/projet/:id" element={<Protected><Shell><ProjectDetail /></Shell></Protected>} />
       <Route path="/admin" element={<Protected admin><Shell><Admin /></Shell></Protected>} />

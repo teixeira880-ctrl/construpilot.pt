@@ -19,7 +19,6 @@ import { useI18n } from "@/context/I18nContext";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { StarterChecklist } from "@/components/StarterChecklist";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
-import { TaskHome } from "@/components/dashboard/TaskHome";
 import { Stat } from "@/components/Bits";
 import { RevenueChart } from "@/components/RevenueChart";
 import { PriceLibrary } from "@/components/PriceLibrary";
@@ -55,7 +54,6 @@ export default function Dashboard() {
     { to: "/chantiers", icon: HardHat, title: "Dossiers de obra", desc: "Plantas, fotografias e acompanhamento por obra", min: "pro" },
   ].filter((f) => RANK[level] < RANK[f.min]);
   const ui = useWorkspaceCopy();
-  const [workMode, setWorkMode] = useState("guiado");
   const experience = useExperienceCopy();
   const confirm = useConfirm();
   const [projectQuery, setProjectQuery] = useState("");
@@ -125,13 +123,6 @@ export default function Dashboard() {
     ? <div className="surface p-8 flex items-center gap-3 text-sm text-muted-foreground" role="status" data-testid={`dashboard-${key}-loading`}><Loader2 className="h-4 w-4 animate-spin" />{ui("loading")}</div>
     : loadState[key] === "error" ? <div className="dashboard-error" role="alert" data-testid={`dashboard-${key}-error`}><span>{ui("loadError")}</span><Button variant="outline" onClick={load} data-testid={`dashboard-${key}-retry`}>{ui("retry")}</Button></div> : null;
 
-  const toDossier = async (p) => {
-    try {
-      const { data } = await api.post(`/chantiers/from-project/${p.project_id}`);
-      setProjects(ps => ps.map(x => (x.project_id === p.project_id ? { ...x, chantier_id: data.chantier_id } : x)));
-      toast.success(data.already_linked ? "Este projeto já tem um processo de obra." : "Processo de obra criado e ligado ao projeto.");
-    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível criar o processo de obra"); }
-  };
   const totalBudget = projects.reduce((s, p) => s + (p.budget || 0), 0);
   const totalSurface = projects.reduce((s, p) => s + (p.surface || 0), 0);
 
@@ -143,11 +134,6 @@ export default function Dashboard() {
         <div><p className="dashboard-greeting">{experience("hello")}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p><h1>{experience("overview")}</h1><p>{experience("intro")}</p></div>
         <div className="dashboard-heading-actions"><span className="dashboard-date">{new Date().toLocaleDateString({pt:"pt-PT",en:"en-GB"}[lang] || "pt-PT", {weekday:"long",day:"numeric",month:"long"})}</span><Button asChild><Link to={isPro && can("devis") ? "/devis-editeur" : "/estimation"} data-testid="dashboard-primary-create"><Plus size={17} />{experience(isPro && can("devis") ? "quoteShort" : "estimateShort")}</Link></Button></div>
       </header>
-      <TaskHome onProfile={p => setWorkMode(p?.mode || "guiado")} />
-      <TodayBlock />
-      {/* Em modo guiado os atalhos e indicadores ficam recolhidos para não competirem com a tarefa principal. */}
-      <details className="dashboard-secondary" open={workMode !== "guiado"} data-testid="dashboard-secondary">
-      <summary className="cursor-pointer select-none py-2 text-sm font-semibold text-muted-foreground" data-testid="dashboard-secondary-toggle">Atalhos e indicadores</summary>
       <div className="dashboard-quick-actions" data-testid="dash-quick-actions">
         {[
           canAssistant
@@ -170,7 +156,8 @@ export default function Dashboard() {
                 document.querySelector('[data-testid="dash-tab-leads"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
               }} /> : <Stat label={t("dash.tab_quotes")} value={loadState.quotes === "ready" ? num(quotes.length) : "—"} testId="stat-quotes" />}
       </div>
-      </details>
+
+      <TodayBlock />
       <div className="dashboard-section-heading"><h2>{ui("activity")}</h2>
         {tab === "projects" && <div className="workspace-search-field"><Search size={17} aria-hidden="true" /><input aria-label={ui("projectSearch")} placeholder={ui("projectSearch")} value={projectQuery} onChange={e => setProjectQuery(e.target.value)} data-testid="dashboard-project-search" />{projectQuery && <button type="button" aria-label={ui("clear")} data-testid="dashboard-project-search-clear" onClick={() => setProjectQuery("")}><X size={16} /></button>}</div>}
       </div>
@@ -215,9 +202,6 @@ export default function Dashboard() {
                     </div>
                     <div className="mt-5 flex gap-2 pt-4 border-t border-border dashboard-project-actions">
                       <Button asChild variant="outline" size="sm" className="flex-1 rounded-sm"><Link to={`/projet/${p.project_id}`} data-testid={`open-project-${p.project_id}`}>{t("dash.open_project")}</Link></Button>
-                      {isPro && can("chantier") && (p.chantier_id
-                        ? <Button asChild variant="ghost" size="sm" className="rounded-sm"><Link to={`/chantiers/${p.chantier_id}`} data-testid={`project-dossier-${p.project_id}`}><HardHat className="h-4 w-4" /></Link></Button>
-                        : <Button variant="ghost" size="sm" className="rounded-sm" title="Criar um processo de obra ligado a este projeto (nada é movido)" onClick={() => toDossier(p)} data-testid={`project-to-dossier-${p.project_id}`}><HardHat className="h-4 w-4" /><Plus className="h-3 w-3" /></Button>)}
                       <Button variant="ghost" size="sm" disabled={!!deleting} aria-label={`${ui("delete")} : ${p.name}`} onClick={() => remove(p.project_id)} data-testid={`delete-project-${p.project_id}`} className="rounded-sm">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
