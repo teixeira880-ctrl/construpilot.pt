@@ -1796,7 +1796,9 @@ class _StatusMap(dict):
 
 TOOL_STATUS_PT.update({"licenciamento_automatico": "A preparar o processo completo: terreno, PDM, implantação, plantas e verificação…",
                        "licenciamento_atualizar": "A recalcular o processo com os novos dados…",
-                       "licenciamento_materiais": "A aplicar os materiais da casa…"})
+                       "licenciamento_materiais": "A aplicar os materiais da casa…",
+                       "licenciamento_imagens": "A criar as imagens realistas da casa (vistas 3D e antes/depois)…",
+                       "licenciamento_estilos": "A consultar os estilos de casa disponíveis…"})
 TOOL_STATUS_PT = _StatusMap({**TOOL_STATUS, **TOOL_STATUS_PT})
 TOOL_STATUS = _StatusMap(TOOL_STATUS)
 TOOL_STATUS.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")

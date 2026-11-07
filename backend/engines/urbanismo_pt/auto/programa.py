@@ -36,8 +36,12 @@ def _int(v, d, lo, hi):
 
 
 def programa(tipologia: Any = 3, pisos: Any = None, garagem: Any = True, lugares: Any = 2,
-             escritorio: bool = False) -> Dict[str, Any]:
-    """Lista de compartimentos por piso, com área útil de projeto e mínimo regulamentar."""
+             escritorio: bool = False, area_util_alvo: Optional[float] = None) -> Dict[str, Any]:
+    """Lista de compartimentos por piso, com área útil de projeto e mínimo regulamentar.
+
+    `area_util_alvo`: área útil (habitável) pedida pelo cliente. As áreas confortáveis são ajustadas para a atingir:
+    os compartimentos de estar (sala, quartos, cozinha, escritório) crescem ou diminuem proporcionalmente, nunca abaixo
+    do mínimo do RGEU; se faltar muita área acrescenta-se um escritório e uma despensa. O ajuste fica em `ajuste_area`."""
     t = _int(str(tipologia).upper().lstrip("T") if tipologia is not None else 3, 3, 0, 6)
     n_pisos = _int(pisos, 2, 1, 2) if pisos not in (None, "") else 2
     quartos = max(t, 1) if t else 0
@@ -68,6 +72,29 @@ def programa(tipologia: Any = 3, pisos: Any = None, garagem: Any = True, lugares
     if quartos >= 2:
         add("Instalação sanitária", "wc", CONFORTO["wc"], noite, "servico")
 
+    ajuste = None
+    if area_util_alvo and area_util_alvo > 0:
+        alvo_comp = float(area_util_alvo) / (1 + CIRCULACAO)
+        atual = sum(r["area_projeto_m2"] for r in rooms)
+        if alvo_comp - atual > 14 and not any(r["tipo"] == "escritorio" for r in rooms):
+            add("Escritório", "escritorio", CONFORTO["escritorio"], dia, "sol")
+        atual = sum(r["area_projeto_m2"] for r in rooms)
+        if alvo_comp - atual > 20:
+            add("Despensa", "lavandaria", 4.0, dia, "servico")
+        flex = [r for r in rooms if r["tipo"] in ("sala", "quarto", "cozinha", "escritorio")]
+        fixo = sum(r["area_projeto_m2"] for r in rooms if r not in flex)
+        soma_flex = sum(r["area_projeto_m2"] for r in flex) or 1.0
+        f = max(0.5, min(1.9, (alvo_comp - fixo) / soma_flex))
+        for r in flex:
+            novo = r["area_projeto_m2"] * f
+            if r.get("minimo_m2"):
+                novo = max(novo, r["minimo_m2"] + 0.5)
+            r["area_projeto_m2"] = round(novo, 1)
+        obtido = sum(r["area_projeto_m2"] for r in rooms) * (1 + CIRCULACAO)
+        ajuste = {"alvo_util_m2": round(float(area_util_alvo), 1), "obtido_util_m2": round(obtido, 1), "fator": round(f, 3),
+                  "regra": "Áreas dos compartimentos de estar ajustadas proporcionalmente à área habitável pedida "
+                           "(mínimos do RGEU respeitados)."}
+
     por_piso = {}
     for p in range(n_pisos):
         util = sum(r["area_projeto_m2"] for r in rooms if r["piso"] == p)
@@ -85,4 +112,4 @@ def programa(tipologia: Any = 3, pisos: Any = None, garagem: Any = True, lugares
     return {"tipologia": f"T{t}", "t": t, "n_pisos": n_pisos, "compartimentos": rooms, "por_piso": por_piso,
             "area_bruta_por_piso_m2": round(bruta_piso, 1), "area_bruta_total_m2": round(bruta_piso * n_pisos, 1),
             "minimo_area_bruta_m2": RGEU_MIN["area_bruta"].get(t), "garagem": gar, "lugares": nl,
-            "fonte_minimos": RGEU_MIN["fonte"], "status_minimos": RGEU_MIN["status"]}
+            "fonte_minimos": RGEU_MIN["fonte"], "status_minimos": RGEU_MIN["status"], "ajuste_area": ajuste}
