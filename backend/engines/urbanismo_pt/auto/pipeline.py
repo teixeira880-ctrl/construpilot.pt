@@ -166,8 +166,10 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         avisos.append("Só foi encontrada a localidade, não a rua: a classe do PDM e as servidões referem-se ao centro da localidade, "
                       "não ao terreno. Confirme a localização exata antes de usar este estudo.")
     # dados críticos que não puderam ser confirmados: o processo nunca é dado como «pronto» sem eles
-    criticos_por_confirmar = (not classe) or (not srup["ok"]) or bool((srup.get("data") or {}).get("incompleta")) \
-        or geo.get("precisao") == "localidade"
+    por_confirmar = ([] if classe else ["classe do PDM (CRUS)"]) \
+        + ([] if srup["ok"] and not (srup.get("data") or {}).get("incompleta") else ["servidões e restrições (REN, RAN…)"]) \
+        + (["localização do terreno"] if geo.get("precisao") == "localidade" else [])
+    criticos_por_confirmar = bool(por_confirmar)
     await passo("viabilidade", "bloqueado" if bloqueios else ("atencao" if criticos_por_confirmar else "ok"), "; ".join(bloqueios)[:300])
     if bloqueios and not _bool(p.get("forcar_estudo"), False):
         return {"ok": False, "estado": "inviavel", "bloqueios": bloqueios, "avisos": avisos, "etapas": etapas,
@@ -320,6 +322,10 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     await passo("coerencia", "ok" if coer["ok"] else "falhou", f"{coer['aprovados']}/{coer['total']}")
 
     perguntas = []
+    processo["auto"]["por_confirmar"] = por_confirmar
+    if por_confirmar and any("PDM" in x or "servid" in x for x in por_confirmar):
+        perguntas.append("Os serviços oficiais da DGT não responderam agora (PDM / REN / RAN). Peça «refazer» daqui a uns minutos "
+                         "para confirmar — até lá o processo não pode ser exportado.")
     if geo.get("precisao") in ("localidade", "rua"):
         perguntas.append("Encontrei a " + ("localidade" if geo.get("precisao") == "localidade" else "rua") +
                          " mas não a porta exata: confirme ou mova o terreno no mapa (ou indique o código postal).")

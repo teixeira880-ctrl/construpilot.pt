@@ -295,6 +295,10 @@ async def exportar(pid: str, user=Depends(current_user)):
     if not coer["ok"]:
         raise HTTPException(409, "O processo tem incoerências entre motores — corrija antes de exportar: "
                                  + "; ".join(f["descricao"] for f in coer["falhas"][:3]))
+    falta = (d.get("auto") or {}).get("por_confirmar") or []
+    if falta:
+        raise HTTPException(409, "Ainda não foi possível confirmar com dados oficiais: " + ", ".join(falta)
+                                 + ". Use «Refazer» para voltar a consultar antes de exportar.")
     data = await run_in_threadpool(UP.export_zip, d, verif, [])
     data = _anexar_relatorio(data, d, coer)
     return Response(content=data, media_type="application/zip", headers={

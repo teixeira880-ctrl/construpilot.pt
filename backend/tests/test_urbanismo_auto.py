@@ -289,6 +289,8 @@ def test_dados_criticos_por_confirmar_nunca_pronto_e_declive_rastreado():
         G.set_transport(None)
     assert r["ok"] and r["estado"] == "revisao"                         # CRUS sem resposta → nunca «pronto»
     assert any("CRUS" in a for a in r["avisos"])
+    assert r["processo"]["auto"]["por_confirmar"] == ["classe do PDM (CRUS)"]      # exportação bloqueada até confirmar
+    assert any("DGT" in q for q in r["perguntas"])
     c = r["processo"]["auto"]["coerencia"]
     assert not any(f["codigo"] == "MEMORIA_NUMEROS" for f in c["falhas"]), c["falhas"]
 

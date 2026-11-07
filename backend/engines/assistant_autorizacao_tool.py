@@ -127,14 +127,14 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
         from routes import urbanismo_auto as UA
         try:
             if name == "licenciamento_automatico":
-                return await asyncio.wait_for(UA.executar_e_gravar(_pedido(args), user), timeout=150)
+                return await asyncio.wait_for(UA.executar_e_gravar(_pedido(args), user), timeout=240)
             pid = (args or {}).get("processo_id") or ""
             if name == "licenciamento_materiais":
                 return await UA.materiais(pid, UA.MateriaisIn(**{k: args.get(k) for k in ("fachada", "cobertura", "caixilharia")}), user)
             d = await UA._owned(pid, user["user_id"])
             pedido = {**(d["auto"].get("pedido") or {}), **{k: v for k, v in _pedido(args).items() if k != "processo_id"}}
             pedido["requerente"] = {**(d.get("requerente") or {}), **(pedido.get("requerente") or {})}
-            return await asyncio.wait_for(UA.executar_e_gravar(pedido, user, pid=pid), timeout=150)
+            return await asyncio.wait_for(UA.executar_e_gravar(pedido, user, pid=pid), timeout=240)
         except asyncio.TimeoutError:
             return {"ok": False, "error": "Os serviços de dados oficiais estão lentos; tente de novo dentro de momentos."}
         except Exception as e:  # noqa: BLE001
