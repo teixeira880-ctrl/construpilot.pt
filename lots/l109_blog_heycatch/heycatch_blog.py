@@ -36,8 +36,12 @@ ATTRS = {"href", "title", "id", "class", "src", "alt", "width", "height", "colsp
 _BAD_URL = re.compile(r"^\s*(javascript|vbscript|data):", re.I)
 
 
+# Chave publicável do blog (o guia HeyCatch permite-a no código) ; HEYCATCH_API_KEY no ambiente tem prioridade.
+_PUBLISHABLE_KEY = "hck_lv_cfcae4f9a95924320149f4e4"
+
+
 def _key() -> str:
-    return (os.environ.get("HEYCATCH_API_KEY") or "").strip()
+    return (os.environ.get("HEYCATCH_API_KEY") or _PUBLISHABLE_KEY).strip()
 
 
 def sanitize_html(html: str) -> str:
