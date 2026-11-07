@@ -254,11 +254,30 @@ async def geocode(morada: str) -> Dict[str, Any]:
             if em_freg:
                 return ok(em_freg[0], "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={rua}, {concelho}")
             # o OSM diverge da freguesia indicada (uniões de freguesias, nomes antigos): decide a CAOP oficial da DGT
+            frs = {}
             for d in cands[:3]:
-                fr = await freguesia_caop(d["lat"], d["lon"])
+                fr = frs[id(d)] = await freguesia_caop(d["lat"], d["lon"])
                 if fr and _norm(freguesia) in _norm(fr):
-                    d = dict(d, freguesia=fr, freguesia_divergente=freguesia)
+                    d = dict(d, freguesia=fr, freguesia_divergente=freguesia, freguesia_motivo="caop")
                     return ok(d, "OpenStreetMap (Nominatim) + DGT CAOP", f"{NOMINATIM}/search?q={rua}, {concelho}")
+            # nome indicado de uma freguesia VIZINHA (erro frequente nas cidades): aceita-se só se a rua for única no
+            # concelho (todos os troços a < 500 m) e ficar a menos de 3 km do centro da freguesia indicada
+            k = 111_320.0
+
+            def dist(a_lat, a_lon, b_lat, b_lon):
+                return math.hypot((a_lat - b_lat) * k, (a_lon - b_lon) * k * math.cos(math.radians(a_lat)))
+            unica = all(dist(d["lat"], d["lon"], cands[0]["lat"], cands[0]["lon"]) < 500 for d in cands)
+            if unica:
+                st, jf = await _fetch("GET", f"{NOMINATIM}/search", {"q": f"{freguesia}, {concelho}", "format": "jsonv2",
+                                                                    "limit": 1, "countrycodes": "pt"}, None, "json")
+                diag.append(f"nominatim[{freguesia}, {concelho}]={st}")
+                await asyncio.sleep(1.05)
+                if isinstance(jf, list) and jf:
+                    dk = dist(cands[0]["lat"], cands[0]["lon"], float(jf[0]["lat"]), float(jf[0]["lon"]))
+                    if dk < 3000:
+                        d = dict(cands[0], freguesia=frs.get(id(cands[0])) or cands[0].get("freguesia"),
+                                 freguesia_divergente=freguesia, freguesia_motivo="vizinha", distancia_freguesia_m=round(dk))
+                        return ok(d, "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={rua}, {concelho}")
     if lugar:
         loc = ", ".join(lugar)
         d = await nominatim({"q": loc}, loc, exige_rua=False) or await photon(loc, exige_rua=False)
@@ -286,9 +305,10 @@ async def dgt_collections() -> List[Dict[str, str]]:
     cols = [{"id": c.get("id", ""), "title": c.get("title", "")} for c in (js or {}).get("collections", []) if c.get("id")]
     if cols:
         _COLLECTIONS.update(t=time.time(), list=cols)
-        CACHE.guardar_colecoes(cols)
+        if _cache_ativa():
+            CACHE.guardar_colecoes(cols)
         return cols
-    return CACHE.colecoes()
+    return CACHE.colecoes() if _cache_ativa() else []
 
 
 async def _dgt_items(col: str, bbox: str, limit: int = 20, uso: Optional[Dict[str, float]] = None) -> Optional[List[dict]]:
@@ -298,15 +318,24 @@ async def _dgt_items(col: str, bbox: str, limit: int = 20, uso: Optional[Dict[st
         feats = js.get("features") or []
         n_tot = js.get("numberMatched")
         completa = (len(feats) < limit) if not isinstance(n_tot, int) else n_tot <= len(feats)
-        CACHE.guardar(col, bbox, feats, completa)
+        if _cache_ativa():
+            CACHE.guardar(col, bbox, feats, completa)
         return feats
-    hit = CACHE.consultar(col, bbox)
+    hit = CACHE.consultar(col, bbox) if _cache_ativa() else None
     if hit is None:
         return None
     feats, ts = hit
     if uso is not None:
         uso[col] = ts
     return feats
+
+
+_CACHE_EM_TESTE = {"on": False}
+
+
+def _cache_ativa() -> bool:
+    """A cópia local só é usada com o transporte HTTP real (ou num teste que a ligue explicitamente)."""
+    return _fetch is _http or _CACHE_EM_TESTE["on"]
 
 
 def _fonte_copia(fonte: str, ts: Optional[float]) -> str:
