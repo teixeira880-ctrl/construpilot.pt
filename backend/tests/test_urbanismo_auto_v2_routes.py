@@ -25,7 +25,7 @@ def env(monkeypatch, tmp_path):
     from engines.urbanismo_pt.auto import imagens as IM
     chamadas = {"n": 0}
 
-    async def gemini_falso(prompt, ref, sessao):   # devolve a própria referência «texturada»: geometria preservada
+    async def gemini_falso(prompt, ref, sessao, extra=None):   # devolve a própria referência «texturada»: geometria preservada
         chamadas["n"] += 1
         from PIL import Image, ImageEnhance
         im = ImageEnhance.Color(Image.open(io.BytesIO(ref)).convert("RGB")).enhance(1.4)
@@ -85,7 +85,7 @@ def test_uma_frase_dossier_completo_com_imagens(env):
 def test_geometria_alterada_e_rejeitada_e_cai_para_vista_exata(env, monkeypatch):
     from engines.urbanismo_pt.auto import imagens as IM
 
-    async def gemini_inventa(prompt, ref, sessao):   # devolve OUTRA vista: geometria diferente
+    async def gemini_inventa(prompt, ref, sessao, extra=None):   # devolve OUTRA vista: geometria diferente
         from PIL import Image
         im = Image.open(io.BytesIO(ref)).convert("RGB").transpose(Image.FLIP_LEFT_RIGHT).rotate(8)
         b = io.BytesIO()
@@ -214,3 +214,64 @@ def test_interiores_e_implantacao_sao_exatos(env, tmp_path):
     assert IM.nitidez(b1.getvalue()) > 3 * IM.nitidez(b2.getvalue())
     jpeg, q = IM.acabar(b2.getvalue(), 1920)
     assert q["ampliada"] and q["largura"] == 1920 and q["largura_nativa"] == 1000
+
+
+def test_cadeia_runway_openai_emergent_com_juiz_claude(env, monkeypatch):
+    """Ordem automática: Runway → OpenAI → Emergent; Claude julga; defeitos passam à ronda seguinte; nada é perguntado."""
+    from PIL import Image
+    from engines.urbanismo_pt.auto import imagens as IM
+    monkeypatch.setenv("RUNWAYML_API_SECRET", "x")
+    monkeypatch.setenv("OPENAI_API_KEY", "x")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    import engines.llm_keys as LK
+    monkeypatch.setattr(LK, "openai_direct_active", lambda: True)
+    visto = {"ordem": [], "prompts": {}}
+
+    def igual(ref):
+        b = io.BytesIO()
+        Image.open(io.BytesIO(ref)).convert("RGB").save(b, "PNG")
+        return b.getvalue()
+
+    async def runway(prompt, ref, sessao, extra=None):
+        visto["ordem"].append("runway")
+        visto["prompts"]["runway"] = prompt
+        assert Image.open(io.BytesIO(ref)).size[0] / Image.open(io.BytesIO(ref)).size[1] > 1.7   # referência alargada a 16:9
+        im = Image.open(io.BytesIO(ref)).convert("RGB").transpose(Image.FLIP_LEFT_RIGHT).rotate(8)
+        b = io.BytesIO()
+        im.save(b, "PNG")
+        return b.getvalue()
+
+    async def openai_(prompt, ref, sessao, extra=None):
+        visto["ordem"].append("openai")
+        return igual(ref)
+
+    async def gemini(prompt, ref, sessao, extra=None):
+        visto["ordem"].append("gemini")
+        visto["prompts"]["gemini"] = prompt
+        return igual(ref)
+    chamadas = {"n": 0}
+
+    async def juiz(ref, img):
+        chamadas["n"] += 1
+        # 1.º juízo (OpenAI): parece CGI; depois (Emergent): aprovado
+        return ({"realismo": 4.0, "geometria": True, "defeitos": ["plastic CGI look on the stone"]}
+                if visto["ordem"][-1] == "openai" else {"realismo": 8.5, "geometria": True, "defeitos": []})
+    monkeypatch.setattr(IM, "_runway", runway)
+    monkeypatch.setattr(IM, "_openai", openai_)
+    monkeypatch.setattr(IM, "_gemini", gemini)
+    monkeypatch.setattr(IM, "juiz_claude", juiz)
+    monkeypatch.setattr(IM, "CANDIDATOS", 1)
+
+    async def go():
+        r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
+        im = await UA.gerar_imagens(r["processo_id"], USER, ["perspetiva"], False)
+        foto = next(i for i in im["imagens"] if i["tipo"] == "fotorrealista")
+        assert foto["fornecedor"] == "gemini" and foto["verificada"]
+        assert visto["ordem"] == ["runway", "openai", "gemini"]
+        assert len(visto["prompts"]["runway"]) <= 990 and "@Projeto" in visto["prompts"]["runway"]
+        assert "plastic CGI look" in visto["prompts"]["gemini"]          # o Claude corrige a ronda seguinte
+        doc = await env[0].urbanismo_processos.find_one({"processo_id": r["processo_id"]})
+        reg = next(i for i in doc["imagens"] if i["tipo"] == "fotorrealista")
+        assert reg["qualidade"]["realismo_claude"] == 8.5
+        assert [t["fornecedor"] for t in reg["tentativas"]] == ["runway", "openai", "gemini"]
+    run(go())

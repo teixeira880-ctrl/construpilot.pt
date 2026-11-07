@@ -119,9 +119,25 @@ def test_l_que_nao_cabe_passa_a_retangular():
         assert r["estado"] == "nao_cabe" and r["perguntas"]
 
 
-def test_renovacao_pede_o_existente():
-    r = BASE.run({"texto": "quero renovar a minha casa na Rua do Monte 7, Braga"})
+def test_renovacao_pede_o_existente_so_em_modo_profissional():
+    r = BASE.run({"texto": "quero renovar a minha casa na Rua do Monte 7, Braga", "modo_leigo": False})
     assert r["ok"] is False and r["estado"] == "renovacao" and len(r["perguntas"]) == 2
+
+
+def test_modo_leigo_nunca_pergunta_o_que_pode_decidir():
+    r = BASE.run({"texto": "quero renovar a minha casa na Rua do Monte 7, Padim da Graça, Braga"})
+    assert r["ok"] and r["perguntas"] == [] and r["modo_leigo"]
+    assert any("plantas da casa existente" in x for x in r["pressupostos"])
+    assert any("nome" in x.lower() for x in r["a_completar"])          # papelada fica para depois, sem bloquear
+    # casa grande demais para o terreno: reduz sozinho em vez de perguntar
+    r2 = BASE.run({"texto": "moradia T5 térrea com 400 m2 habitáveis, terreno de 500 m2, Rua do Monte 7, Padim da Graça, Braga"})
+    if r2["ok"]:
+        assert r2["perguntas"] == [] and any("não cabia" in x or "não cabiam" in x or "pisos" in x for x in r2["pressupostos"])
+    else:
+        assert r2["estado"] in ("nao_cabe", "inviavel")
+    # sem morada é a única coisa que pergunta
+    r3 = BASE.run({"texto": "quero uma casa T3"})
+    assert r3["estado"] == "falta_morada" and len(r3["perguntas"]) == 1
 
 
 def test_estilo_tradicional_muda_cobertura_e_materiais():

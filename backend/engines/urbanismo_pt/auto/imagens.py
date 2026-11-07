@@ -1,13 +1,12 @@
 """Imagens realistas do processo — o mais fotorrealistas possível, SEM alterar a geometria.
 
-Cadeia (todas as APIs de imagem disponíveis na plataforma, por ordem):
-1. Vista 3D exata gerada no servidor (render3d) — a referência geométrica.
-2. Gemini «Nano Banana» (chave universal Emergent) em modo edição: aplica materiais reais, luz, vegetação e
-   envolvente à vista exata, com um prompt construído a partir do estilo, dos materiais e da região.
-3. Verificação automática da geometria: compara os contornos da imagem gerada com os da vista exata dentro da
-   silhueta da casa; abaixo do limiar tenta de novo com instruções mais estritas.
-4. Se o Gemini falhar: Runway gen4_image com a vista exata como referência (se RUNWAYML_API_SECRET existir).
-5. Se tudo falhar: fica a vista exata (nunca uma imagem inventada).
+Cadeia automática (sem perguntas):
+1. Vista 3D exata gerada no servidor (render3d / interiores) — a referência geométrica.
+2. Runway gen4_image → OpenAI gpt-image-1 (edição, alta fidelidade) → Emergent (Gemini, chave universal):
+   cada fornecedor só entra se o anterior falhar ou não passar os controlos.
+3. Controlos: verificação numérica dos contornos (geometria) + Claude como juiz por visão (realismo 0-10 e geometria);
+   os defeitos apontados pelo Claude entram nas instruções do fornecedor seguinte.
+4. Se tudo falhar: fica a vista exata (nunca uma imagem inventada).
 Antes / depois: ortofotomapa oficial (DGT) do terreno e a mesma vista com a implantação desenhada à escala,
 depois tornada fotorrealista pelo mesmo processo.
 
@@ -126,27 +125,73 @@ def semelhanca_geometria(ref_png: bytes, gen_bytes: bytes, mascara_png: bytes) -
     return max(0.0, float((a * b).sum() / den))
 
 
-# ------------------------------------------------------------------ fornecedores
-async def _gemini(prompt: str, ref: bytes, sessao: str) -> bytes:
+# ------------------------------------------------------------------ fornecedores (cadeia automática)
+# Ordem pedida pelo cliente: Runway → OpenAI (gpt-image-1, chave da empresa) → Emergent (Gemini, chave universal).
+# Claude não gera imagens: é o JUIZ (realismo + geometria, por visão) e reescreve as instruções da ronda seguinte
+# a partir dos defeitos que encontrou. Fornecedor sem chave configurada é saltado sem erro.
+ORDEM_FORNECEDORES = [f.strip() for f in os.environ.get("URB_IMG_FORNECEDORES", "runway,openai,gemini").split(",") if f.strip()]
+REALISMO_MIN = float(os.environ.get("URB_IMG_REALISMO_MIN", "7"))
+ASPETO = {"runway": 16 / 9}           # proporção imposta pelo fornecedor (a referência é alargada, nunca deformada)
+
+
+def disponivel(nome: str) -> bool:
+    if nome == "runway":
+        return bool(os.environ.get("RUNWAYML_API_SECRET"))
+    if nome == "openai":
+        try:
+            from engines.llm_keys import openai_direct_active
+            return openai_direct_active()
+        except Exception:  # noqa: BLE001
+            return bool(os.environ.get("OPENAI_API_KEY"))
+    return True   # gemini (Emergent): tenta sempre; sem chave falha e passa-se à vista exata
+
+
+async def _gemini(prompt: str, ref: bytes, sessao: str, extra: Optional[List[bytes]] = None) -> bytes:
     from engines import image_studio
-    imgs = await image_studio.generate(prompt=prompt, provider="gemini", reference_images=[ref], number=1,
+    imgs = await image_studio.generate(prompt=prompt, provider="gemini", reference_images=[*(extra or []), ref], number=1,
                                        feature="licenciamento_imagens", session_id=sessao,
                                        model=os.environ.get("URB_IMG_GEMINI_MODEL") or None)
     return imgs[0][0]
 
 
-async def _runway(prompt: str, ref: bytes) -> Optional[bytes]:
-    if not os.environ.get("RUNWAYML_API_SECRET"):
-        return None
+async def _openai(prompt: str, ref: bytes, sessao: str, extra: Optional[List[bytes]] = None) -> bytes:
+    """gpt-image-1 em modo EDIÇÃO a partir da vista exata (alta fidelidade à imagem de entrada)."""
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=240)
+    im = Image.open(io.BytesIO(ref))
+    size = "1536x1024" if im.width > im.height * 1.15 else ("1024x1536" if im.height > im.width * 1.15 else "1024x1024")
+    imagens = [(f"ref{k}.png", b, "image/png") for k, b in enumerate([*(extra or []), ref])]
+    try:
+        r = await client.images.edit(model=os.environ.get("URB_IMG_OPENAI_MODEL", "gpt-image-1"),
+                                     image=imagens if len(imagens) > 1 else imagens[0], prompt=prompt[:30000],
+                                     size=size, quality="high", n=1, extra_body={"input_fidelity": "high"})
+    except Exception as e:  # noqa: BLE001
+        try:
+            from engines.llm_keys import note_openai_error
+            await note_openai_error(e)   # crédito esgotado / chave inválida → disjuntor para a chave Emergent
+        except Exception:  # noqa: BLE001
+            pass
+        raise
+    try:
+        from engines.expenses.store import observe
+        await observe(source="licenciamento_imagens", source_id=sessao, provider="openai_direct", feature="licenciamento_imagens",
+                      model="gpt-image-1", units={"images": 1}, state="completed")
+    except Exception:  # noqa: BLE001
+        pass
+    return base64.b64decode(r.data[0].b64_json)
+
+
+async def _runway(prompt: str, ref: bytes, sessao: str = "", extra: Optional[List[bytes]] = None) -> bytes:
     import asyncio
     import httpx
     from runwayml import AsyncRunwayML
     client = AsyncRunwayML(api_key=os.environ["RUNWAYML_API_SECRET"])
-    uri = "data:image/png;base64," + base64.b64encode(ref).decode()
-    task = await client.text_to_image.create(model="gen4_image", ratio="1920:1080",
-                                             prompt_text="Use @Projeto as the exact geometry reference. " + prompt[:900],
-                                             reference_images=[{"uri": uri, "tag": "Projeto"}])
-    for _ in range(90):
+    refs = [{"uri": "data:image/png;base64," + base64.b64encode(ref).decode(), "tag": "Projeto"}]
+    for k, b in enumerate(extra or []):
+        refs.append({"uri": "data:image/jpeg;base64," + base64.b64encode(_jpeg(b, 88)).decode(), "tag": f"Foto{k + 1}"})
+    task = await client.text_to_image.create(model="gen4_image", ratio="1920:1080", prompt_text=prompt[:990],
+                                             reference_images=refs)
+    for _ in range(100):
         await asyncio.sleep(3)
         t = await client.tasks.retrieve(task.id)
         if t.status == "SUCCEEDED" and t.output:
@@ -155,8 +200,83 @@ async def _runway(prompt: str, ref: bytes) -> Optional[bytes]:
                 r.raise_for_status()
                 return r.content
         if t.status in ("FAILED", "CANCELLED"):
+            raise RuntimeError(f"runway {t.status}")
+    raise TimeoutError("runway sem resposta")
+
+
+def _fornecedor(nome: str):
+    return {"runway": _runway, "openai": _openai, "gemini": _gemini}[nome]
+
+
+def _alargar(png: bytes, aspeto: float, mascara: bool = False) -> bytes:
+    """Alarga a imagem para a proporção pedida repetindo as margens (céu/chão) — a casa não é deformada."""
+    a = np.asarray(Image.open(io.BytesIO(png)).convert("L" if mascara else "RGB"))
+    h, w = a.shape[:2]
+    alvo = int(round(h * aspeto))
+    if alvo <= w:
+        return png
+    e = (alvo - w) // 2
+    pad = ((0, 0), (e, alvo - w - e)) + (((0, 0),) if a.ndim == 3 else ())
+    a = np.pad(a, pad, mode="constant" if mascara else "edge")
+    b = io.BytesIO()
+    Image.fromarray(a).save(b, "PNG")
+    return b.getvalue()
+
+
+def prompt_curto(p: str) -> str:
+    """Versão ≤ 990 caracteres para o Runway: enquadramento + regra de geometria + estilo + luz + qualidade."""
+    frases = [f.strip() for f in p.replace("\n", " ").split(". ") if f.strip()]
+    chave = [f for f in frases if any(k in f for k in ("photograph", "Keep", "STRICT", "Style", "Lighting", "facade", "Fix"))]
+    out = "Use @Projeto as the exact geometry reference. "
+    for f in chave or frases:
+        if len(out) + len(f) + 2 > 960:
+            break
+        out += f + ". "
+    return (out + "Photorealistic, sharp, no text.")[:990]
+
+
+# ------------------------------------------------------------------ Claude: juiz de realismo e de geometria
+async def juiz_claude(ref_png: bytes, img: bytes) -> Optional[Dict[str, Any]]:
+    """{"realismo": 0-10, "geometria": bool, "defeitos": [...]} ou None (sem chave / erro → decide só a verificação numérica)."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return None
+    import json
+    import re
+    try:
+        from anthropic import AsyncAnthropic
+        client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=90)
+
+        def b64(b):
+            im = Image.open(io.BytesIO(b)).convert("RGB")
+            im.thumbnail((1024, 1024))
+            o = io.BytesIO()
+            im.save(o, "JPEG", quality=85)
+            return {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                 "data": base64.b64encode(o.getvalue()).decode()}}
+        msg = await client.messages.create(
+            model=os.environ.get("URB_IMG_JUIZ_MODEL", "claude-sonnet-5-5"), max_tokens=400,
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": "Image A is the exact geometric reference of an architectural project (flat colours)."},
+                b64(ref_png),
+                {"type": "text", "text": "Image B is a candidate photorealistic image of the same project."},
+                b64(img),
+                {"type": "text", "text": (
+                    "Judge B strictly, as a real-estate archviz art director. realismo: 0-10, where 10 = indistinguishable from "
+                    "a real photograph or a top V-Ray/Corona render, 7 = professional listing quality, <=5 = looks CGI, "
+                    "painted, blurry or distorted. geometria: true only if B keeps the same building volumes, roof shape, "
+                    "number of floors, the same number and positions of windows and doors, and the same camera as A "
+                    "(landscaping, furniture and sky may differ). defeitos: up to 4 short concrete defects to fix. "
+                    'Answer with JSON only: {"realismo": n, "geometria": true|false, "defeitos": ["..."]}')}]}])
+        txt = "".join(getattr(c, "text", "") for c in msg.content)
+        m = re.search(r"\{.*\}", txt, re.S)
+        d = json.loads(m.group(0)) if m else None
+        if not d:
             return None
-    return None
+        return {"realismo": float(d.get("realismo", 0)), "geometria": bool(d.get("geometria")),
+                "defeitos": [str(x)[:160] for x in (d.get("defeitos") or [])][:4]}
+    except Exception as e:  # noqa: BLE001
+        log.warning("juiz Claude indisponível: %s", type(e).__name__)
+        return None
 
 
 def _jpeg(b: bytes, q: int = 90) -> bytes:
@@ -207,49 +327,90 @@ async def fotorrealista(processo: Dict[str, Any], exata: Dict[str, Any], sessao:
                         gerar: Optional[Callable[[str, bytes, str], Awaitable[bytes]]] = None,
                         prompt_fn: Optional[Callable[[bool], str]] = None, limiar: Optional[float] = None,
                         luz: str = "dia", nome: Optional[str] = None) -> Dict[str, Any]:
-    """Uma vista: Gemini (N candidatos em paralelo; 2.ª ronda mais estrita) → Runway → vista exata.
-    Escolhe o candidato com melhor geometria (desempate pela nitidez). Devolve sempre um resultado."""
-    gerar = gerar or _gemini
+    """Uma vista, totalmente automática: para cada fornecedor da cadeia (Runway → OpenAI → Emergent/Gemini), N candidatos
+    em paralelo → verificação numérica da geometria → juiz Claude (realismo e geometria). Aceita o primeiro que passa
+    as duas; senão a ronda seguinte usa instruções mais estritas com os defeitos apontados pelo Claude. Se nenhum passar,
+    fica o melhor (marcado «não verificado» se a geometria não passou) ou, sem nenhum, a vista exata."""
     limiar = LIMIAR_GEOMETRIA if limiar is None else limiar
     prompt_fn = prompt_fn or (lambda estrito: prompt_vista(processo, exata["vista"], estrito, luz))
     nome = nome or exata["vista"]
+    cadeia = [("teste", gerar)] if gerar else [(f, _fornecedor(f)) for f in ORDEM_FORNECEDORES if disponivel(f)]
     tentativas: List[Dict[str, Any]] = []
     melhor = None
+    defeitos: List[str] = []
 
-    def considerar(img, forn, estrito):
-        nonlocal melhor
-        sc = semelhanca_geometria(exata["png"], img, exata["mascara_png"])
-        nt = nitidez(img)
-        tentativas.append({"fornecedor": forn, "estrito": estrito, "geometria": round(sc, 3), "nitidez": round(nt, 1)})
-        if melhor is None or (sc >= limiar, sc + min(nt, 400) / 4000) > (melhor[1] >= limiar, melhor[1] + min(melhor[3], 400) / 4000):
-            melhor = (img, sc, forn, nt)
-    for estrito in (False, True):
-        for r in await _candidatos(gerar, prompt_fn(estrito), exata["png"], sessao, CANDIDATOS):
+    def chave(c):
+        img, sc, forn, nt, jz, ok = c
+        return (ok, sc >= limiar, (jz or {}).get("realismo", REALISMO_MIN), sc + min(nt, 400) / 4000)
+
+    plano = [(f, fn, k > 0) for k, (f, fn) in enumerate(cadeia)]
+    if plano and not plano[-1][2]:           # o último fornecedor tem sempre uma ronda estrita
+        plano.append((plano[-1][0], plano[-1][1], True))
+    for forn, fn, estrito in plano:
+        asp = ASPETO.get(forn)
+        ref = _alargar(exata["png"], asp) if asp else exata["png"]
+        msk = _alargar(exata["mascara_png"], asp, True) if asp else exata["mascara_png"]
+        p = prompt_fn(estrito)
+        if defeitos:
+            p += " Fix these issues seen in the previous attempt: " + "; ".join(defeitos[:4]) + "."
+        if forn == "runway":
+            p = prompt_curto(p)
+        for r in await _candidatos(fn, p, ref, sessao, CANDIDATOS):
             if isinstance(r, BaseException):
-                tentativas.append({"fornecedor": "gemini", "estrito": estrito, "erro": type(r).__name__})
-            else:
-                considerar(r, "gemini", estrito)
-        if melhor is not None and melhor[1] >= limiar:
+                tentativas.append({"fornecedor": forn, "estrito": estrito, "erro": type(r).__name__})
+                continue
+            try:
+                sc = semelhanca_geometria(ref, r, msk)
+                nt = nitidez(r)
+            except Exception as e:  # noqa: BLE001
+                tentativas.append({"fornecedor": forn, "estrito": estrito, "erro": "imagem_invalida:" + type(e).__name__})
+                continue
+            jz = await juiz_claude(ref, r) if sc >= limiar * 0.85 else None
+            ok = sc >= limiar and (jz is None or (jz["geometria"] and jz["realismo"] >= REALISMO_MIN))
+            t = {"fornecedor": forn, "estrito": estrito, "geometria": round(sc, 3), "nitidez": round(nt, 1)}
+            if jz:
+                t["juiz"] = jz
+                defeitos = jz["defeitos"] or defeitos
+            tentativas.append(t)
+            cand = (r, sc, forn, nt, jz, ok)
+            if melhor is None or chave(cand) > chave(melhor):
+                melhor = cand
+        if melhor is not None and melhor[5]:
             break
-    if melhor is None or melhor[1] < limiar:
-        try:
-            rw = await _runway(prompt_fn(True), exata["png"])
-            if rw:
-                considerar(rw, "runway", True)
-        except Exception as e:  # noqa: BLE001
-            tentativas.append({"fornecedor": "runway", "erro": type(e).__name__})
     if melhor is None:
         jpeg, q = acabar(exata["png"], 1536)
         return {"vista": nome, "tipo": "exata", "jpeg": jpeg, "fornecedor": "render3d", "qualidade": q,
                 "geometria": 1.0, "verificada": True, "tentativas": tentativas,
                 "nota": "Os serviços de imagem fotorrealista não responderam: mostra-se a vista 3D exata do projeto."}
-    img, sc, forn, nt = melhor
+    img, sc, forn, nt, jz, ok = melhor
     jpeg, q = acabar(img)
     q["nitidez"] = round(nt, 1)
+    if jz:
+        q["realismo_claude"] = jz["realismo"]
+    verificada = sc >= limiar and (jz is None or jz["geometria"])
+    nota = NOTA
+    if not verificada:
+        nota += " ATENÇÃO: a verificação automática detetou diferenças de geometria — comparar com a vista exata."
+    elif jz and jz["realismo"] < REALISMO_MIN:
+        nota += " (Realismo abaixo do objetivo em todos os fornecedores — a melhor imagem obtida.)"
     return {"vista": nome, "tipo": "fotorrealista", "jpeg": jpeg, "fornecedor": forn, "qualidade": q,
-            "geometria": round(sc, 3), "verificada": sc >= limiar, "tentativas": tentativas, "iluminacao": luz,
-            "nota": NOTA + ("" if sc >= limiar else
-                            " ATENÇÃO: a verificação automática detetou diferenças de geometria — comparar com a vista exata.")}
+            "geometria": round(sc, 3), "verificada": verificada, "tentativas": tentativas, "iluminacao": luz,
+            "juiz": jz, "nota": nota}
+
+
+async def editar_em_cadeia(prompt: str, ref: bytes, sessao: str, extra: Optional[List[bytes]] = None,
+                           ordem: Optional[List[str]] = None) -> Tuple[Optional[bytes], Optional[str]]:
+    """Edição sem verificação de geometria possível (aérea sobre ortofoto, montagem sobre foto): primeiro fornecedor
+    disponível que responder. Devolve (imagem, fornecedor) ou (None, None)."""
+    for f in ordem or [x for x in ORDEM_FORNECEDORES if x != "runway"] + ["runway"]:
+        if f not in ("runway", "openai", "gemini") or not disponivel(f):
+            continue
+        try:
+            fn = _fornecedor(f)
+            return await fn(prompt_curto(prompt) if f == "runway" else prompt, ref, sessao, extra), f
+        except Exception as e:  # noqa: BLE001
+            log.warning("edição %s falhou: %s", f, type(e).__name__)
+    return None, None
 
 
 # ------------------------------------------------------------------ antes / depois (vista aérea)
@@ -452,8 +613,5 @@ def prompt_montagem(processo: Dict[str, Any]) -> str:
 
 
 async def montagem(processo: Dict[str, Any], foto: bytes, ref_png: bytes, sessao: str) -> Optional[bytes]:
-    from engines import image_studio
-    imgs = await image_studio.generate(prompt=prompt_montagem(processo), provider="gemini", reference_images=[foto, ref_png],
-                                       number=1, feature="licenciamento_imagens", session_id=sessao,
-                                       model=os.environ.get("URB_IMG_GEMINI_MODEL") or None)
-    return imgs[0][0] if imgs else None
+    img, _ = await editar_em_cadeia(prompt_montagem(processo), ref_png, sessao, extra=[foto], ordem=["openai", "gemini", "runway"])
+    return img

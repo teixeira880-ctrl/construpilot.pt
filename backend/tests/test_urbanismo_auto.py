@@ -85,6 +85,7 @@ def _loop_run(c):
 
 
 def run(pedido, **kw):
+    P.ESPERA_SERVICO_S = 0   # modo leigo: as repetições automáticas não esperam nos testes
     G.set_transport(fake(**kw))
     G._COLLECTIONS.update(t=0.0, list=[])
     try:
@@ -300,7 +301,7 @@ def test_dados_criticos_por_confirmar_nunca_pronto_e_declive_rastreado():
     assert r["ok"] and r["estado"] == "revisao"                         # CRUS sem resposta → nunca «pronto»
     assert any("CRUS" in a for a in r["avisos"])
     assert r["processo"]["auto"]["por_confirmar"] == ["classe do PDM (CRUS)"]      # exportação bloqueada até confirmar
-    assert any("DGT" in q for q in r["perguntas"])
+    assert any("DGT" in q for q in r["perguntas"] + r.get("a_completar", []))   # modo leigo: não bloqueia, fica «a completar»
     c = r["processo"]["auto"]["coerencia"]
     assert not any(f["codigo"] == "MEMORIA_NUMEROS" for f in c["falhas"]), c["falhas"]
 

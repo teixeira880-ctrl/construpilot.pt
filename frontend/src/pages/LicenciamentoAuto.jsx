@@ -342,6 +342,12 @@ function Processo({ pid }) {
           {(a.avisos || []).map((x, i) => <p key={`w${i}`} className="text-sm text-amber-800">• {x}</p>)}
         </Card>
       </div>
+      {(a.a_completar || []).length > 0 && (
+        <Card className="p-4 space-y-2" data-testid="lic-auto-a-completar">
+          <div className="font-medium">Para completar quando quiser (não impede nada)</div>
+          {a.a_completar.map((x, i) => <p key={i} className="text-sm">• {x}</p>)}
+        </Card>
+      )}
 
       <Card className="p-4 space-y-3">
         <div className="font-medium">Afinar com os seus dados (opcional)</div>

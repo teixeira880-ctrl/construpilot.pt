@@ -458,10 +458,12 @@ async def gerar_imagens(pid: str, user: Dict[str, Any], vistas: Optional[list] =
             await guardar((91, 1), "depois_esquema", "aerea_orto", base["depois_esquema"],
                           {"nota": "Implantação proposta desenhada à escala sobre o ortofotomapa."})
             try:
-                img = await IM._gemini(IM.prompt_aerea(d), base["depois_esquema"], pid)
-                jpeg, q = IM.acabar(img, 1024)
-                await guardar((91, 2), "depois", "aerea_orto", jpeg,
-                              {"fornecedor": "gemini", "qualidade": q, "nota": IM.NOTA + " Envolvente: ortofotomapa oficial (DGT)."})
+                img, forn = await IM.editar_em_cadeia(IM.prompt_aerea(d), base["depois_esquema"], pid,
+                                                      ordem=["openai", "gemini"])
+                if img:
+                    jpeg, q = IM.acabar(img, 1024)
+                    await guardar((91, 2), "depois", "aerea_orto", jpeg,
+                                  {"fornecedor": forn, "qualidade": q, "nota": IM.NOTA + " Envolvente: ortofotomapa oficial (DGT)."})
             except Exception as e:  # noqa: BLE001
                 log.warning("imagem aérea «depois» falhou: %s", type(e).__name__)
         ft = d.get("foto_terreno")

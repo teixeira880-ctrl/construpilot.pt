@@ -13,7 +13,7 @@ import io
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from engines.urbanismo_pt import regras as R
 from engines.urbanismo_pt.auto import coerencia as C
@@ -87,7 +87,113 @@ def interpretar_pedido(texto: str) -> Dict[str, Any]:
     return out
 
 
+# ------------------------------------------------------------------ modo leigo (por omissão)
+# Para quem não tem conhecimentos técnicos: o piloto NÃO pergunta nada que consiga decidir sozinho. Tenta variantes
+# prudentes (morada aproximada, casa mais pequena, sem piscina…), repete quando um serviço oficial falha, e regista
+# cada decisão em «pressupostos». Só fica a faltar o que é impossível adivinhar (a morada) — e os dados de papelada
+# (nome/NIF, artigo matricial) passam para «a_completar», sem bloquear nada.
+MODO_LEIGO = os.environ.get("URB_MODO_LEIGO", "1") not in ("0", "false", "nao", "não")
+ESPERA_SERVICO_S = float(os.environ.get("URB_LEIGO_ESPERA_S", "15"))
+
+
+def _leigo(pedido: Dict[str, Any]) -> bool:
+    v = pedido.get("modo_leigo")
+    return MODO_LEIGO if v is None else _bool(v, MODO_LEIGO)
+
+
+def _moradas_alternativas(morada: str) -> List[str]:
+    partes = [x.strip() for x in re.split(r",", morada or "") if x.strip()]
+    sem_num = re.sub(r"\b(n\.?\s*º?|nº|n\.)?\s*\d+[a-zA-Z]?\b", "", partes[0]).strip(" ,") if partes else ""
+    alt = []
+    if sem_num and sem_num != partes[0]:
+        alt.append(", ".join([sem_num] + partes[1:]))
+    if len(partes) >= 3:
+        alt.append(", ".join(partes[1:]))
+    if len(partes) >= 2:
+        alt.append(", ".join(partes[-2:]))
+        alt.append(partes[-1])
+    vistos, out = {morada.strip().lower()}, []
+    for a in alt:
+        if a and a.lower() not in vistos:
+            vistos.add(a.lower())
+            out.append(a)
+    return out
+
+
+def _mais_pequena(p: Dict[str, Any]) -> List[Tuple[Dict[str, Any], str]]:
+    """Variantes prudentes, da mais próxima do pedido para a mais simples."""
+    out = []
+    alvo = p.get("area_util_alvo_m2")
+    if alvo:
+        for f in (0.85, 0.7, 0.55):
+            a = round(float(alvo) * f)
+            if a >= 60:
+                out.append(({**p, "area_util_alvo_m2": a}, f"Os {round(float(alvo))} m² pedidos não cabiam com os afastamentos "
+                                                          f"legais: proposta com cerca de {a} m² habitáveis."))
+    t = str(p.get("tipologia") or "").upper().lstrip("T")
+    n = int(t) if t.isdigit() else None
+    if n and n > 1:
+        for k in range(n - 1, 0, -1):
+            out.append(({**{x: y for x, y in p.items() if x != "area_util_alvo_m2"}, "tipologia": f"T{k}"},
+                        f"A {p['tipologia']} não cabia no terreno: proposta T{k}."))
+    if p.get("piscina") or "piscina" in str(p.get("texto", "")).lower():
+        out.append(({**p, "piscina": False, "texto": re.sub(r"(?i)piscina", "", p.get("texto") or "")},
+                    "A piscina não cabia com os afastamentos: fica fora da proposta (pode ser estudada depois)."))
+    return out
+
+
 async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
+    if not _leigo(pedido):
+        return await _executar(pedido, emit)
+    import asyncio
+    extra: List[str] = []
+    p = dict(pedido)
+    if PD.interpretar(p.get("texto") or "").get("tipo_obra") in ("renovacao", "ampliacao") or p.get("tipo_obra") in ("renovacao", "ampliacao"):
+        if not _bool(p.get("forcar_estudo"), False):
+            p["forcar_estudo_renovacao"] = True
+    r = await _executar(p, emit)
+    def _pendente(x):   # serviço de mapas em baixo, ou dados oficiais críticos (PDM/servidões) sem resposta
+        return x.get("estado") == "servico_indisponivel" or (
+            x.get("estado") == "revisao" and any("PDM" in c or "servid" in c
+                                                  for c in ((x.get("processo") or {}).get("auto") or {}).get("por_confirmar") or []))
+    for _ in range(2):   # espera e repete sozinho
+        if not _pendente(r):
+            break
+        await asyncio.sleep(ESPERA_SERVICO_S)
+        r = await _executar(p, emit)
+    if r.get("estado") == "morada_nao_encontrada":
+        base = {**interpretar_pedido(p.get("texto") or ""), **{k: v for k, v in p.items() if v not in (None, "")}}
+        for alt in _moradas_alternativas(base.get("morada") or ""):
+            r2 = await _executar({**p, "morada": alt}, emit)
+            if r2.get("estado") != "morada_nao_encontrada":
+                extra.append(f"Não encontrei a morada exata; usei «{alt}» (localização aproximada — confirme o terreno no mapa).")
+                p, r = {**p, "morada": alt}, r2
+                break
+    if r.get("estado") == "nao_cabe":
+        base = {**interpretar_pedido(p.get("texto") or ""), **{k: v for k, v in p.items() if v not in (None, "")}}
+        if not base.get("tipologia") and base.get("area_util_alvo_m2"):
+            base["tipologia"] = PD.tipologia_por_area(base["area_util_alvo_m2"])
+        for variante, motivo in _mais_pequena(base)[:8]:
+            r2 = await _executar(variante, emit)
+            if r2.get("ok"):
+                extra.append(motivo)
+                r = r2
+                break
+    if r.get("ok"):
+        r["pressupostos"] = extra + (r.get("pressupostos") or [])
+        r["a_completar"] = r.get("perguntas") or []
+        r["perguntas"] = []
+        r["modo_leigo"] = True
+        auto = (r.get("processo") or {}).setdefault("auto", {})
+        auto["modo_leigo"] = True
+        auto["pressupostos"] = extra + [x for x in auto.get("pressupostos") or [] if x not in extra]
+        auto["a_completar"] = r["a_completar"]
+    else:
+        r["modo_leigo"] = True
+    return r
+
+
+async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     p = {**interpretar_pedido(pedido.get("texto") or ""), **{k: v for k, v in pedido.items() if v not in (None, "")}}
     etapas: List[Dict[str, Any]] = []
     pressupostos: List[str] = []
@@ -106,7 +212,12 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         if r and r.get("ok") and r.get("fonte"):
             fontes.append({"fonte": r["fonte"], "url": r.get("url")})
 
-    if p.get("tipo_obra") in ("renovacao", "ampliacao") and not _bool(p.get("forcar_estudo"), False):
+    if p.get("tipo_obra") in ("renovacao", "ampliacao") and p.get("forcar_estudo_renovacao"):
+        pressupostos.append("Pediu uma " + ("renovação" if p["tipo_obra"] == "renovacao" else "ampliação") + ": sem as plantas da "
+                            "casa existente, preparei o estudo completo como construção nova no mesmo terreno. Para o processo de "
+                            + ("renovação" if p["tipo_obra"] == "renovacao" else "ampliação") + " junte depois as plantas antigas "
+                            "ou fotografias da casa atual, e o estudo é refeito sobre o existente.")
+    elif p.get("tipo_obra") in ("renovacao", "ampliacao") and not _bool(p.get("forcar_estudo"), False):
         return {"ok": False, "estado": "renovacao", "pressupostos": [], "perguntas": [
             "Para uma " + ("renovação" if p["tipo_obra"] == "renovacao" else "ampliação") + " preciso de conhecer a casa existente: "
             "tem as plantas antigas (da câmara ou do arquiteto) ou pode enviar fotografias de todas as fachadas e das divisões?",
@@ -115,7 +226,8 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                         "ou fotografias da casa atual preparo o levantamento, o projeto e o processo para a câmara."}
     morada = (p.get("morada") or "").strip()
     if not morada:
-        return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"]}
+        return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"],
+                "resposta": "Só preciso da morada do terreno (ou a localidade e o concelho) — o resto faço eu."}
 
     # 1. localizar
     g = await G.geocode(morada)
@@ -424,7 +536,8 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
 def resumo_publico(r: Dict[str, Any], processo_id: Optional[str] = None) -> Dict[str, Any]:
     """Resumo curto (para o Assistente BTP, a Aurora e o ecrã)."""
     if not r.get("ok"):
-        return {k: r.get(k) for k in ("ok", "estado", "motivo", "bloqueios", "avisos", "perguntas", "resposta", "pressupostos") if r.get(k)}
+        return {k: r.get(k) for k in ("ok", "estado", "motivo", "bloqueios", "avisos", "perguntas", "resposta", "pressupostos",
+                                      "modo_leigo") if r.get(k)}
     v, q, a = r["verificacao"], r["verificacao"]["quadro"], r["processo"]["auto"]
     return {
         "ok": True, "estado": r["estado"], "processo_id": processo_id,
@@ -438,6 +551,9 @@ def resumo_publico(r: Dict[str, Any], processo_id: Optional[str] = None) -> Dict
         "decisoes": a["implantacao"]["decisoes"], "pressupostos": r["pressupostos"], "avisos": r["avisos"],
         "coerencia": {"ok": r["coerencia"]["ok"], "aprovados": r["coerencia"]["aprovados"], "total": r["coerencia"]["total"],
                       "falhas": [f["descricao"] for f in r["coerencia"]["falhas"]]},
-        "perguntas": r["perguntas"], "fontes": [f["fonte"] for f in r["fontes"]],
-        "proximo_passo": "Rever no ecrã, responder às perguntas e pedir a subscrição por arquiteto/engenheiro (termos de responsabilidade).",
+        "perguntas": r["perguntas"], "a_completar": r.get("a_completar") or [], "modo_leigo": bool(r.get("modo_leigo")),
+        "fontes": [f["fonte"] for f in r["fontes"]],
+        "proximo_passo": ("Está tudo feito. Quando quiser, complete os dados em falta (nome, NIF, artigo matricial) e peça a "
+                          "subscrição por arquiteto/engenheiro (termos de responsabilidade)." if r.get("modo_leigo") else
+                          "Rever no ecrã, responder às perguntas e pedir a subscrição por arquiteto/engenheiro (termos de responsabilidade)."),
     }

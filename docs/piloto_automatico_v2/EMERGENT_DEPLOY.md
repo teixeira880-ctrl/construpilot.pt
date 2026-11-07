@@ -56,3 +56,19 @@ Variáveis opcionais (sem novo deploy para afinar):
 
 A validar no ambiente de teste com a chave real: qualidade das saídas Gemini face às referências, limiares de geometria
 (interiores sobretudo) e tempo total (estimado 2 a 5 min com 3 pedidos em paralelo).
+
+## Atualização — cadeia Runway → OpenAI → Emergent, Claude como juiz, modo leigo
+
+Ordem automática por vista (`URB_IMG_FORNECEDORES`, por omissão `runway,openai,gemini`):
+1. Runway gen4_image (`RUNWAYML_API_SECRET`) — referência alargada a 16:9 (sem deformar a casa), prompt ≤ 990 caracteres.
+2. OpenAI gpt-image-1 em edição, qualidade alta, `input_fidelity=high` (`OPENAI_API_KEY`; disjuntor de crédito existente).
+3. Emergent / Gemini (`EMERGENT_LLM_KEY`) — último recurso, com ronda estrita.
+Fornecedor sem chave é saltado. Claude (`ANTHROPIC_API_KEY`, modelo `URB_IMG_JUIZ_MODEL`, por omissão claude-sonnet-5-5)
+NÃO gera imagens: julga cada candidato (realismo 0-10 e geometria) e os defeitos que aponta entram nas instruções do
+fornecedor seguinte. Aceitação: geometria numérica ≥ limiar E (juiz indisponível OU geometria confirmada e realismo ≥
+`URB_IMG_REALISMO_MIN`, por omissão 7). A confirmar no ambiente de teste: que as três chaves existem e que o parâmetro
+`input_fidelity` é aceite pela conta OpenAI (se não for, o erro é registado e passa-se ao fornecedor seguinte).
+
+Modo leigo (`URB_MODO_LEIGO=1` por omissão; `modo_leigo:false` no pedido para profissionais): não pergunta o que consegue
+decidir — morada aproximada, casa mais pequena se não couber, renovação sem plantas tratada como estudo (registado),
+repetição automática quando a DGT/mapas não respondem (`URB_LEIGO_ESPERA_S`, 15 s). Papelada em `a_completar`.
