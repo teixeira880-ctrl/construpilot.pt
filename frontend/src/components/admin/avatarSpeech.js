@@ -69,6 +69,10 @@ function navigateNow(href) {
   return true;
 }
 
+// ------------------------------------------------------------------ « cala-te » : silence immédiat (Lot 44)
+const HUSH = /^\W*(?:(?:por favor|s'il te pla[iî]t|s'il vous pla[iî]t|please|aurora|ok|okay|bon|agora|maintenant|now|ya|vale)\W+)*(?:cala(?:-te| te|-se| se)?|calada|chiu+|psiu+|sil[eê]ncio|p[aá]ra(?: de falar| j[aá])?|basta|chega|tais[- ]toi|taisez[- ]vous|chut+|silence|arr[eê]te(?:z)?(?: de parler)?|stop(?: talking)?|shut up|be quiet|quiet|hush|c[aá]llate|silencio|basta ya|zitto|stai zitto|ruhe|sei still)\b\W*(?:por favor|s'il te pla[iî]t|please|aurora)?\W*$/i;
+export const isHush = (t) => { const x = String(t || "").trim(); return !!x && x.length <= 60 && HUSH.test(x); };
+
 // ------------------------------------------------------------------ l'écran suit les mots de l'assistante
 function speakables() {
   const main = document.querySelector("main") || document.body;
@@ -107,6 +111,7 @@ async function onStream(reader, participantInfo) {
   const seg = a["lk.segment_id"] || reader.info?.id || String(Math.random());
   const final = a["lk.transcription_final"] === "true";
   let text = "";
+  let hushed = false;
   try {
     for await (const chunk of reader) {
       text += chunk;
@@ -116,6 +121,8 @@ async function onStream(reader, participantInfo) {
         followWords(text);
       } else {
         opts.onCaption?.({ who: "admin", text: clean(text.slice(-160), 160) });
+        if (isHush(text)) { if (!hushed) { hushed = true; opts.onHush?.(); } }
+        else if (text.trim().length > 3) opts.onSpeak?.();   // l'admin lui reparle : elle peut répondre
       }
     }
   } catch { /* flux interrompu */ }
@@ -148,5 +155,5 @@ export function stopSpeechSync() {
   lastPointed = null;
 }
 
-export const __speech = { navIntent, followWords, onStream: (r, p, rm) => { room = rm; return onStream(r, p); },
+export const __speech = { isHush, navIntent, followWords, onStream: (r, p, rm) => { room = rm; return onStream(r, p); },
                           setOpts: (o) => { opts = o; } };   // tests

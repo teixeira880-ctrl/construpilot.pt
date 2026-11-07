@@ -15,22 +15,36 @@ import { startSpeechSync, stopSpeechSync } from "./avatarSpeech";
 
 const PT = typeof window !== "undefined" && /construpilot\.pt|construpilot-recon/.test(window.location.hostname);
 const T = PT ? {
-  waiting: "A ligar a assistente…", live: "Em direto", stop: "Terminar", min: "Reduzir", open: "Abrir", mic: "Microfone",
+  waiting: "A ligar a assistente…", live: "Em direto", stop: "Terminar", min: "Reduzir", open: "Abrir", mic: "Microfone", cam: "Câmara", camOn: "Câmara ativa", camDenied: "Acesso à câmara recusado pelo navegador.",
+  camConsent: "Ativar a câmara?\n\nA assistente vê a imagem para perceber o ambiente (sala, obra, plano mostrado à câmara).\nNão identifica pessoas pelo rosto e não guarda nenhuma imagem.\nPode desligar a qualquer momento.",
   noagent: "A assistente não responde: o agente está online (LiveKit Cloud)?", ended: "Conversa terminada.",
   busy: "A assistente já está a ser usada por outro admin. Tente daqui a alguns minutos.", quota: "Quota Synthesia esgotada este mês.",
   config: "Problema de configuração do avatar (chave Synthesia ou LiveKit). ", error: "A assistente não conseguiu arrancar, tente de novo.",
-  listening: "A ouvir", thinking: "A pensar…", speaking: "A falar", acting: "A agir no ecrã", you: "Você",
+  hush: "Silêncio (ou diga « cala-te »)", listening: "A ouvir", thinking: "A pensar…", speaking: "A falar", acting: "A agir no ecrã", you: "Você",
 } : {
-  waiting: "Connexion de l'assistante…", live: "En direct", stop: "Terminer", min: "Réduire", open: "Ouvrir", mic: "Micro",
+  waiting: "Connexion de l'assistante…", live: "En direct", stop: "Terminer", min: "Réduire", open: "Ouvrir", mic: "Micro", cam: "Caméra", camOn: "Caméra active", camDenied: "Accès à la caméra refusé par le navigateur.",
+  camConsent: "Activer la caméra ?\n\nL'assistante voit l'image pour comprendre l'environnement (pièce, chantier, plan montré à la caméra).\nElle n'identifie personne par le visage et n'enregistre aucune image.\nVous pouvez la couper à tout moment.",
   noagent: "L'assistante ne répond pas : l'agent est-il en ligne (LiveKit Cloud) ?", ended: "Conversation terminée.",
   busy: "L'assistante est déjà utilisée par un autre admin. Réessayez dans quelques minutes.", quota: "Quota Synthesia épuisé pour ce mois.",
   config: "Problème de configuration de l'avatar (clé Synthesia ou LiveKit). ", error: "L'assistante n'a pas pu démarrer, réessayez.",
-  listening: "À l'écoute", thinking: "Réfléchit…", speaking: "Parle", acting: "Agit à l'écran", you: "Vous",
+  hush: "Silence (ou dites « tais-toi »)", listening: "À l'écoute", thinking: "Réfléchit…", speaking: "Parle", acting: "Agit à l'écran", you: "Vous",
 };
 
 // ------------------------------------------------------------------ petit magasin partagé (panneau admin ↔ fenêtre flottante)
+// Lot 105 : taille de la fenêtre de l'avatar (S → scène) et mode présentatrice
+const SIZES = ["S", "M", "L", "XL", "stage"];
+const loadSize = () => { try { const v = window.localStorage.getItem("cp_avatar_size"); return SIZES.includes(v) ? v : "M"; } catch { return "M"; } };
+const dockW = (sz) => {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const w = { S: 160, M: 230, L: 340, XL: 480, stage: Math.min(vw * 0.5, (vh - 140) / 1.26) }[sz] || 230;
+  return Math.round(Math.max(120, Math.min(w, vw - 24, (vh - 90) / 1.26)));
+};
+const dockPos = (sz, pos) => (sz === "stage" && typeof window !== "undefined"
+  ? { right: Math.max(4, Math.round((window.innerWidth - dockW(sz)) / 2)), bottom: 24 } : { right: pos.right, bottom: pos.bottom });
 const listeners = new Set();
-let state = { phase: "idle", message: "", lang: "fr", micOn: true, caption: null, agentState: null, acting: 0 };
+let state = { phase: "idle", message: "", lang: "fr", micOn: true, camOn: false, size: loadSize(), presenter: false, ptt: false,   // Lot 104 : caméra éteinte par défaut
+              caption: null, agentState: null, acting: 0 };
 const set = (patch) => { state = { ...state, ...patch }; listeners.forEach((l) => l(state)); };
 export const avatarStore = { get: () => state, subscribe: (l) => { listeners.add(l); return () => listeners.delete(l); } };
 
@@ -203,7 +217,56 @@ async function clickTestId(testid) {
   return true;
 }
 
+// Lot 107 : « appuyer pour parler » (stand / scène bruyants) — micro coupé sauf pendant l'appui (bouton ou barre d'espace)
+let pttKeys = null;
+async function micOn(on) {
+  if (!room) return;
+  try { await room.localParticipant.setMicrophoneEnabled(on); set({ micOn: on }); } catch { /* micro refusé */ }
+}
+export async function setPushToTalk(on) {
+  set({ ptt: on });
+  if (pttKeys) { window.removeEventListener("keydown", pttKeys.down); window.removeEventListener("keyup", pttKeys.up); pttKeys = null; }
+  if (on) {
+    const busy = () => ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+    pttKeys = {
+      down: (e) => { if (e.code === "Space" && !e.repeat && !busy()) { e.preventDefault(); micOn(true); } },
+      up: (e) => { if (e.code === "Space" && !busy()) { e.preventDefault(); micOn(false); } },
+    };
+    window.addEventListener("keydown", pttKeys.down);
+    window.addEventListener("keyup", pttKeys.up);
+  }
+  await micOn(!on);
+}
+export const pttPress = (down) => { if (state.ptt) micOn(down); };
+
+export function setAvatarSize(size) {   // Lot 105
+  if (!SIZES.includes(size)) return;
+  set({ size });
+  try { window.localStorage.setItem("cp_avatar_size", size); } catch { /* navigation privée */ }
+}
+export function resizeAvatar(step) {
+  const i = Math.max(0, SIZES.indexOf(state.size));
+  setAvatarSize(SIZES[Math.max(0, Math.min(SIZES.length - 1, i + step))]);
+}
+export async function togglePresenter(force) {
+  const on = typeof force === "boolean" ? force : !state.presenter;
+  set({ presenter: on });
+  try {
+    await room?.localParticipant.publishData(new TextEncoder().encode(JSON.stringify({ type: "presenter", on })), { reliable: true, topic: "avatar_ctrl" });
+  } catch { /* salle fermée */ }
+}
+
 const HANDLERS = {
+  "ui.avatar_size": async (d) => {   // Lot 105
+    const v = String(parse(d).size || "").trim().toLowerCase();
+    const i = Math.max(0, SIZES.indexOf(state.size));
+    const next = ["bigger", "+", "plus"].includes(v) ? SIZES[Math.min(SIZES.length - 1, i + 1)]
+      : ["smaller", "-", "moins", "menos"].includes(v) ? SIZES[Math.max(0, i - 1)] : SIZES.find((x) => x.toLowerCase() === v);
+    if (!next) return ko("taille inconnue (S, M, L, XL, stage, bigger, smaller)");
+    setAvatarSize(next);
+    return ok({ size: next });
+  },
+  "ui.presenter": async (d) => { set({ presenter: !!parse(d).on }); return ok({ presenter: state.presenter }); },
   "assistant.status": async () => fit2(assistantState()),
   "assistant.ask": async (d) => {
     const { text, new_conversation, conversation_id } = parse(d);
@@ -349,6 +412,7 @@ const act = {
 
 // ------------------------------------------------------------------ session
 function reset(message = "") {
+  setPushToTalk(false);   // Lot 107
   stopScreenWatch();
   stopSpeechSync();
   clearTimeout(timer);
@@ -356,19 +420,22 @@ function reset(message = "") {
   roomName = null;
   videoEl = null;
   cursor?.remove(); cursor = null;
-  set({ phase: "idle", message, caption: null, agentState: null, acting: 0 });
+  clearTimeout(hushTimer);
+  set({ phase: "idle", message, caption: null, agentState: null, acting: 0, hushed: false });
 }
 // Préchargement du client LiveKit dès que le panneau admin s'affiche : « Parler » démarre sans attendre le téléchargement.
 let lkModule = null;
 export const preloadAvatar = () => { lkModule = lkModule || import("livekit-client"); return lkModule; };
 
 export async function startAvatar(lang = "fr") {
+  set({ camOn: false });   // Lot 104
   if (room) return;
   set({ phase: "connecting", message: "", lang, micOn: true });
   try {
     const [{ data }, { Room, RoomEvent }] = await Promise.all([api.get("/admin/avatar/token", { params: { lang } }), preloadAvatar()]);
     roomName = data.room;
-    const r = new Room({ adaptiveStream: false });
+    const r = new Room({ audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, voiceIsolation: true, channelCount: 1 },   // Lot 107 : micro propre dans le bruit
+       adaptiveStream: false });
     room = r;
     let notice = null;
     r.on(RoomEvent.TrackSubscribed, (track) => {
@@ -395,6 +462,8 @@ export async function startAvatar(lang = "fr") {
     }));
     // sous-titres, état de l'assistante, l'écran qui suit ses mots, navigation vocale instantanée
     startSpeechSync(r, {
+      onHush: () => hush(false),
+      onSpeak: () => unhush(),
       onCaption: (c) => set({ caption: c }),
       onState: (st) => {
         set({ agentState: st });
@@ -415,6 +484,42 @@ export async function startAvatar(lang = "fr") {
   }
 }
 export async function stopAvatar() { releaseRoom(); await room?.disconnect(); reset(T.ended); }
+// Lot 104 : caméra sur demande, consentement explicite à chaque session, jamais allumée en silence
+async function toggleCam() {
+  if (!room) return;
+  const on = !state.camOn;
+  if (on && !window.confirm(T.camConsent)) return;
+  try {
+    await room.localParticipant.setCameraEnabled(on, on ? { resolution: { width: 640, height: 480, frameRate: 10 } } : undefined);
+    set({ camOn: on });
+  } catch {
+    set({ camOn: false, message: T.camDenied });
+  }
+}
+// « Cala-te » (voix ou bouton) : le son est coupé ici tout de suite, et l'agent arrête de parler et se tait (topic « avatar »).
+// Le son revient quand l'admin lui reparle, ou dès qu'elle a fini de se taire (au plus tard 4 s après).
+let hushTimer = null;
+function hush(fromButton = true) {
+  if (videoEl) videoEl.muted = true;
+  set({ caption: null, hushed: true });
+  try { room?.localParticipant?.publishData(new TextEncoder().encode(JSON.stringify({ type: "hush", from: fromButton ? "button" : "voice" })),
+                                            { reliable: true, topic: "avatar" }); } catch { /* salle fermée */ }
+  clearTimeout(hushTimer);
+  const t0 = Date.now();
+  const check = () => {
+    if (!state.hushed) return;
+    if (Date.now() - t0 > 4000 && state.agentState !== "speaking") return unhush();
+    hushTimer = setTimeout(check, 300);
+  };
+  hushTimer = setTimeout(check, 600);
+}
+function unhush() {
+  clearTimeout(hushTimer);
+  if (videoEl) videoEl.muted = false;
+  if (state.hushed) set({ hushed: false });
+}
+export const hushAvatar = () => hush(true);
+
 async function toggleMic() {
   if (!room) return;
   const on = !state.micOn;
@@ -446,12 +551,15 @@ function Dock() {
   const btn = { border: 0, borderRadius: 8, padding: "4px 8px", fontSize: 12, cursor: "pointer", color: "#fff" };
   return (
     <div id="cp-avatar-dock" data-testid="avatar-dock"
-      style={{ position: "fixed", right: pos.right, bottom: pos.bottom, zIndex: 2147483645, width: min ? 64 : 230,
+      style={{ position: "fixed", ...dockPos(s.size, pos), zIndex: 2147483645, width: min ? 64 : dockW(s.size),
                borderRadius: 16, overflow: "hidden", boxShadow: "0 12px 32px rgba(0,0,0,.35)", background: "#14532d",
                border: "2px solid #c8763a", fontFamily: "inherit" }}>
       <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => { drag.current = null; }}
-        style={{ cursor: "move", height: min ? 64 : 290, position: "relative" }}>
+        style={{ cursor: "move", height: min ? 64 : Math.round(dockW(s.size) * 1.26), position: "relative" }}>
         <div ref={holder} style={{ width: "100%", height: "100%", background: "transparent" }} />
+        {s.camOn && (
+          <div data-testid="avatar-cam-on" style={{ position: "absolute", top: 6, left: 6, zIndex: 3, background: "#b42318", color: "#fff", fontSize: 10,
+                        fontWeight: 700, padding: "2px 6px", borderRadius: 6 }}>● {T.camOn}</div>)}
         {s.phase !== "live" && !min && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#f5efe3",
                         fontSize: 12, textAlign: "center", padding: 12 }}>{s.message || T.waiting}</div>)}
@@ -469,7 +577,22 @@ function Dock() {
             {s.phase !== "live" ? "…" : s.acting > 0 ? `⚙ ${T.acting}` : s.agentState === "thinking" ? `💭 ${T.thinking}`
               : s.agentState === "speaking" ? `● ${T.speaking}` : s.agentState === "listening" ? `👂 ${T.listening}` : `● ${T.live}`}
           </span>
+          <button type="button" data-testid="avatar-hush" style={{ ...btn, background: s.hushed ? "#c8763a" : "#285541" }} onClick={() => hush(true)}
+            title={T.hush} aria-label={T.hush}>🤫</button>
           <button type="button" style={{ ...btn, background: s.micOn ? "#285541" : "#7a2e2e" }} onClick={toggleMic} title={T.mic}>{s.micOn ? "🎙" : "🔇"}</button>
+          <button type="button" style={{ ...btn, background: s.camOn ? "#b42318" : "#285541" }} onClick={toggleCam} title={T.cam}
+            data-testid="avatar-dock-cam" aria-pressed={s.camOn}>📷</button>
+          <button type="button" style={{ ...btn, background: s.ptt ? "#c8763a" : "#285541" }} onClick={() => setPushToTalk(!s.ptt)}
+            data-testid="avatar-dock-ptt" aria-pressed={!!s.ptt} title={state.lang === "fr" ? "Appuyer pour parler (barre d'espace)" : "Premir para falar (barra de espaço)"}>✋</button>
+          {s.ptt && <button type="button" style={{ ...btn, background: s.micOn ? "#b42318" : "#7a2e2e", userSelect: "none", touchAction: "none" }}
+            onPointerDown={() => pttPress(true)} onPointerUp={() => pttPress(false)} onPointerLeave={() => pttPress(false)} onPointerCancel={() => pttPress(false)}
+            data-testid="avatar-dock-ptt-hold">{state.lang === "fr" ? "Maintenir" : "Manter"}</button>}
+          <button type="button" style={{ ...btn, background: "#285541" }} onClick={() => resizeAvatar(-1)} data-testid="avatar-dock-smaller"
+            title={state.lang === "fr" ? "Réduire la fenêtre" : "Diminuir a janela"}>−</button>
+          <button type="button" style={{ ...btn, background: "#285541" }} onClick={() => resizeAvatar(1)} data-testid="avatar-dock-bigger"
+            title={state.lang === "fr" ? "Agrandir la fenêtre" : "Aumentar a janela"}>+</button>
+          <button type="button" style={{ ...btn, background: s.presenter ? "#c8763a" : "#285541" }} onClick={() => togglePresenter()}
+            data-testid="avatar-dock-presenter" aria-pressed={!!s.presenter} title={state.lang === "fr" ? "Mode présentatrice" : "Modo apresentadora"}>🎤</button>
           <button type="button" style={{ ...btn, background: "#285541" }} onClick={() => setMin(true)} title={T.min}>▁</button>
           <button type="button" style={{ ...btn, background: "#b42318" }} onClick={stopAvatar} data-testid="avatar-dock-stop">{T.stop}</button>
         </div>)}
