@@ -6,7 +6,7 @@
 - **Trabalho adicional** (botão em /devis, `POST /api/documents/{id}/change-request`): novo rascunho ligado ao orçamento, impacto no preço; prazo só se indicado; original nunca alterado; histórico em `change_requests`.
 - **Ferramentas**: levantamento de pontos (canalização / eletricidade — sem dimensionamento) e carpintaria (placas, orla, ferragens).
 - **Projetos vs processos de obra**: coleções distintas (`projects` = estimativas, `chantiers` = processos), ligação opcional `chantier_id`. Novo `POST /api/chantiers/from-project/{id}` + botão no painel: cria e liga, a pedido, sem mover nem fundir dados.
-- **Assistente único**: « Piloto ConstruPilot » passa a « Assistente — tarefas automáticas » (fora dos essenciais); ligação « Tarefas automáticas » no Assistente.
+- **Assistente único**: página `/agents` apresentada como « Tarefas automáticas do assistente », com ligação a partir do Assistente. O menu lateral (`navigation.js`) não foi alterado, para não entrar em conflito com os lotes PT; as novas páginas são acessíveis pelo painel « O que precisas de fazer hoje? ».
 - **Modo demonstração offline**: perfil, painel, orçamento guiado, ferramentas, visita e registo diário funcionam sem internet (`lib/demoWorkRoutes.js`, `lib/demoTradeCalcs.js`). Paridade JS ↔ Python verificada (`tests/test_demo_parity.py`); catálogo gerado por `scripts/export_work_profile_catalog.py`.
 - **Painel sem tocar em `Dashboard.jsx`** (evita conflito com os lotes PT do Emergent): novo `pages/DashboardHome.jsx` envolve o painel existente (rota `/dashboard`), mostra « O que precisas de fazer hoje? », recolhe atalhos/indicadores em modo guiado e lista projetos sem processo de obra.
 - **Correção**: « Adicionar outra divisão » saltava a pergunta do nome da nova divisão.

@@ -20,11 +20,7 @@ export const WORKSPACE_LINKS = [
   { to: "/dpgf", key: "nav.dpgf", label: "Mapa de quantidades do arquiteto → orçamento", icon: FileSpreadsheet, group: "billing", pro: true, perm: "devis", pin: true, words: "mapa quantidades orçamento excel caderno encargos concurso subempreiteiro orçamentação arquiteto" },
   { to: "/analyse-documents", key: "nav.docintel", label: "Análise de documentos", icon: FileSearch, group: "billing", pro: true, pin: true, words: "mapa quantidades orçamento pdf excel proveniência verificação iva quantidades fórmula fonte caderno encargos fatura leitura" },
   { to: "/plan", key: "nav.plan2d", label: "Plantas e medições", ui: "plan", icon: Ruler, group: "chantiers", pro: true, pin: true, upsell: true, words: "pdf dwg dxf áreas medição medições" },
-  { to: "/orcamento-guiado", label: "Orçamento passo a passo", icon: FileText, group: "billing", pro: true, perm: "devis", words: "guiado assistente pintura pintor simples ajuda orçamento fácil" },
-  { to: "/visita-obra", label: "Visita à obra", icon: Camera, group: "chantiers", pro: true, words: "visita levantamento medidas fotografias acessos demolição proteção perguntas" },
-  { to: "/registo-diario", label: "Registo diário", icon: CalendarRange, group: "chantiers", pro: true, words: "diário dia equipa trabalhos feitos falta material bloqueio" },
-  { to: "/ferramentas-oficio", label: "Ferramentas de ofício", icon: Calculator, group: "chantiers", words: "tinta pintura pavimento azulejo alvenaria tijolo bloco tomadas pontos canalização eletricidade carpintaria placas orla" },
-  { to: "/agents", key: "nav.agents", label: "Assistente — tarefas automáticas", icon: Bot, group: "assistant", words: "piloto construpilot pilote agente automático processo orçamento medição deteção comparação segundo plano tarefa automatização" },
+  { to: "/agents", key: "nav.agents", label: "Piloto ConstruPilot", icon: Bot, group: "assistant", pin: true, personalPin: true, words: "agente automático processo orçamento medição deteção comparação segundo plano tarefa automatização" },
   { to: "/renovation", key: "nav.renovation", label: "Renovação energética", icon: Leaf, group: "chantiers", pro: true, pin: true, words: "renopilot energia certificado energético auditoria isolamento térmico cenários remodelação" },
   { to: "/structuro", key: "nav.structuro", label: "StructuroPilot (estudo)", icon: Building2, group: "chantiers", pro: true, words: "estrutura viga parede resistente abertura sapata estudo descida de cargas ipe hea heb gabinete projeto eurocódigo" },
   { to: "/estudo-moradia", key: "nav.house", label: "Estudo estrutural de moradia", icon: Building2, group: "chantiers", pro: true, pin: true, words: "laje armaduras cofragem sapata lintel cinta pilarete betão armado plano de execução gros oeuvre ferraillage moradia estrutura" },
@@ -85,8 +81,8 @@ export const WORKSPACE_GROUPS = ["favorites", "today", "chantiers", "billing", "
 // Keep every specialist tool available in the directory; only daily work is pinned.
 export const workspaceEssentials = (links, professional) => {
   const paths = professional
-    ? ["/dashboard", "/chantiers", "/plan", "/devis", "/factures", "/clients", "/assistant"]
-    : ["/dashboard", "/estimation", "/assistant", "/ferramentas-oficio", "/precos", "/marketplace"];
+    ? ["/dashboard", "/chantiers", "/plan", "/agents", "/devis", "/factures", "/clients", "/assistant"]
+    : ["/dashboard", "/estimation", "/assistant", "/agents", "/calculadoras", "/precos", "/marketplace"];
   return paths.map(path => links.find(item => item.to === path && !item.locked)).filter(Boolean);
 };
 const RANK = { particulier_gratuit: 0, particulier_payant: 1, pro: 2, business: 3 };
