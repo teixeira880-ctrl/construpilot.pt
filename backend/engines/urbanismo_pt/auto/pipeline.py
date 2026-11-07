@@ -95,8 +95,12 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     # 1. localizar
     g = await G.geocode(morada)
     if not g["ok"]:
-        await passo("localizar", "falhou", "morada não encontrada")
-        return {"ok": False, "estado": "morada_nao_encontrada", "etapas": etapas,
+        inacessivel = "inacess" in (g.get("nota") or "")
+        await passo("localizar", "falhou", g.get("nota") or "morada não encontrada")
+        if inacessivel:
+            return {"ok": False, "estado": "servico_indisponivel", "etapas": etapas, "motivo": g.get("nota"),
+                    "perguntas": ["Os serviços de mapas não responderam agora. Tente de novo dentro de um minuto."]}
+        return {"ok": False, "estado": "morada_nao_encontrada", "etapas": etapas, "motivo": g.get("nota"),
                 "perguntas": ["Não encontrei esta morada. Pode indicar o código postal ou um ponto de referência próximo?"]}
     geo = g["data"]
     fonte(g)
@@ -287,6 +291,9 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     await passo("coerencia", "ok" if coer["ok"] else "falhou", f"{coer['aprovados']}/{coer['total']}")
 
     perguntas = []
+    if geo.get("precisao") in ("localidade", "rua"):
+        perguntas.append("Encontrei a " + ("localidade" if geo.get("precisao") == "localidade" else "rua") +
+                         " mas não a porta exata: confirme ou mova o terreno no mapa (ou indique o código postal).")
     if not req.get("nome"):
         perguntas.append("Em nome de quem fica o pedido (nome e NIF do requerente)?")
     if processo["auto"].get("area_terreno_hipotese") or ter["area_origem"] == "hipótese":

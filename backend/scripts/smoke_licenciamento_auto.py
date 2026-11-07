@@ -16,8 +16,16 @@ from engines.urbanismo_pt.auto import pipeline as P  # noqa: E402
 
 async def main(morada: str):
     t0 = time.time()
+    # conectividade bruta (estado HTTP por serviço; 0 = sem rede / bloqueado)
+    for nome, url, params in (("NOMINATIM", G.NOMINATIM + "/search", {"q": "Braga", "format": "jsonv2", "limit": 1}),
+                              ("PHOTON", G.PHOTON, {"q": "Braga", "limit": 1}),
+                              ("DGT", G.DGT + "/collections", {"f": "json"}),
+                              ("OVERPASS", G.OVERPASS, {"data": "[out:json];node(1);out;"}),
+                              ("OPENTOPO", G.OPENTOPO, {"locations": "41.55,-8.42"})):
+        st, js = await G._http("GET", url, params, None, "json")
+        print("NET", nome, st, "json" if js is not None else "sem-dados")
     g = await G.geocode(morada)
-    print("GEOCODE", json.dumps({k: g[k] for k in ("ok", "fonte", "nota")}, ensure_ascii=False), (g.get("data") or {}).get("morada_formatada"))
+    print("GEOCODE", json.dumps({k: g[k] for k in ("ok", "fonte", "nota")}, ensure_ascii=False), json.dumps(g.get("data"), ensure_ascii=False))
     if g["ok"]:
         lat, lon = g["data"]["lat"], g["data"]["lon"]
         cols = await G.dgt_collections()
