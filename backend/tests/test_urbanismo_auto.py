@@ -19,6 +19,7 @@ def _copia_isolada(tmp_path):
     """Cada teste com a sua cópia local da DGT (vazia)."""
     CACHE.usar_pasta(str(tmp_path / "dgt_cache"))
     yield
+    G._CACHE_EM_TESTE["on"] = False
 
 
 LAT, LON = 41.5402, -8.4786   # Padim da Graça (Braga) — coordenadas aproximadas para o teste
@@ -424,6 +425,7 @@ def test_copia_local_da_dgt_quando_o_servico_cai():
         return await base(method, url, params, headers, want)
     orig = _sem_esperas()
     G.set_transport(t)
+    G._CACHE_EM_TESTE["on"] = True
     G._COLLECTIONS.update(t=0.0, list=[])
     try:
         on = _loop_run(G.prefetch_zona(LAT, LON, 300))          # DGT a responder: guarda a zona
@@ -447,3 +449,41 @@ def test_copia_sem_geometria_nao_conta_como_cobertura():
     assert CACHE.consultar("srup_x", "0.1,0.1,0.2,0.2") is None
     CACHE.guardar("srup_y", "0,0,1,1", [], True)
     assert CACHE.consultar("srup_y", "0.1,0.1,0.2,0.2")[0] == []
+
+
+
+def test_transporte_falso_nao_suja_a_copia_local(tmp_path):
+    """Caso real: os testes de rotas (transporte falso) escreveram dados de teste na cópia do servidor."""
+    G.set_transport(fake())
+    G._COLLECTIONS.update(t=0.0, list=[])
+    try:
+        _loop_run(G.crus(LAT, LON))
+        _loop_run(G.dgt_collections())
+    finally:
+        G.set_transport(None)
+    assert not list((tmp_path / "dgt_cache").glob("*.jsonl")) if (tmp_path / "dgt_cache").exists() else True
+
+
+def test_rua_em_freguesia_vizinha_unica_no_concelho():
+    """Caso real: Rua Nova de Santa Cruz fica em São Vítor (CAOP), o requerente escreveu São Vicente (freguesia vizinha)."""
+    rua = {"lat": "41.5566", "lon": "-8.4070", "category": "highway",
+           "display_name": "Rua Nova de Santa Cruz, São Victor, Braga, 4710-409, Portugal",
+           "address": {"road": "Rua Nova de Santa Cruz", "suburb": "São Victor", "city": "Braga"},
+           "geojson": {"type": "LineString", "coordinates": [[-8.4080, 41.5565], [-8.4060, 41.5567]]}}
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        q = (params or {}).get("q", "")
+        if "nominatim" in url and q == "Rua Nova de Santa Cruz, Braga":
+            return 200, [rua, dict(rua, lat="41.5568", lon="-8.4062")]
+        if "nominatim" in url and q == "São Vicente, Braga":
+            return 200, [{"lat": "41.5560", "lon": "-8.4214", "display_name": "Braga (São Vicente), Braga"}]
+        if "/collections/freguesias/items" in url:
+            return 200, {"features": [{"properties": {"freguesia": "Braga (São Vítor)"}}]}
+        if "photon" in url:
+            return 200, {"features": []}
+        if "nominatim" in url:
+            return 200, []
+        return 404, None
+    r = _geo(t, "Rua Nova de Santa Cruz 10, São Vicente, Braga")
+    assert r["ok"] and r["data"]["rua"] == "Rua Nova de Santa Cruz" and r["data"]["freguesia_motivo"] == "vizinha"
+    assert r["data"]["freguesia"] == "Braga (São Vítor)" and r["data"]["distancia_freguesia_m"] < 3000

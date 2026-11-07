@@ -242,8 +242,13 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
     geo = g["data"]
     fonte(g)
     if geo.get("freguesia_divergente"):
-        pressupostos.append(f"O OpenStreetMap indica outra freguesia para esta rua («{geo.get('morada_formatada')}»), mas a "
-                            f"carta oficial de freguesias (CAOP) confirma que o ponto fica em {geo.get('freguesia')}.")
+        if geo.get("freguesia_motivo") == "vizinha":
+            pressupostos.append(f"A rua indicada fica na freguesia vizinha ({geo.get('freguesia') or geo.get('morada_formatada')}), "
+                                f"não em {geo['freguesia_divergente']}: é a única com este nome no concelho, a cerca de "
+                                f"{geo.get('distancia_freguesia_m', 0) / 1000:.1f} km. Confirme no mapa que é o seu terreno.")
+        else:
+            pressupostos.append(f"O OpenStreetMap indica outra freguesia para esta rua («{geo.get('morada_formatada')}»), mas a "
+                                f"carta oficial de freguesias (CAOP) confirma que o ponto fica em {geo.get('freguesia')}.")
     if geo.get("precisao") != "porta":
         pressupostos.append(f"A localização exata da porta não foi encontrada: usou-se o ponto da {geo.get('precisao')} "
                             f"«{geo.get('morada_formatada')}». Confirme o terreno no mapa.")
