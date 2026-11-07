@@ -24,7 +24,8 @@ from core.security import admin_user
 logger = logging.getLogger(__name__)
 
 AGENT_NAME = "construpilot-avatar"  # tem de corresponder ao agent_name do worker
-LANGS = ("fr", "pt", "en")
+# « auto » = a assistente fala a língua do admin; as outras = língua imposta (segue o admin se ele mudar de língua).
+LANGS = ("auto", "pt", "fr", "en", "es", "it", "de", "nl", "pl", "ro", "uk", "ar", "zh", "tr", "ru", "ja")
 
 router = APIRouter(prefix="/admin/avatar", tags=["admin-avatar"],
                    dependencies=[Depends(admin_user)])
@@ -43,7 +44,7 @@ def _default_lang() -> str:
 
 
 def mint_livekit_token(api_key: str, api_secret: str, *, identity: str, name: str,
-                       room: str, lang: str, ttl_seconds: int = 900) -> str:
+                       room: str, lang: str, site: str = "pt", ttl_seconds: int = 900) -> str:
     """Token de acesso LiveKit (formato oficial, HS256) sem dependência livekit-api.
 
     - acesso a UMA sala privada, 15 min (verificado só à entrada);
@@ -61,7 +62,7 @@ def mint_livekit_token(api_key: str, api_secret: str, *, identity: str, name: st
                   "canSubscribe": True, "canPublishData": True},
         "roomConfig": {
             "syncStreams": True,
-            "agents": [{"agentName": AGENT_NAME, "metadata": json.dumps({"lang": lang})}],
+            "agents": [{"agentName": AGENT_NAME, "metadata": json.dumps({"lang": lang, "site": site})}],
         },
     }
     return jwt.encode(claims, api_secret, algorithm="HS256")
@@ -83,12 +84,12 @@ async def avatar_token(lang: str | None = None, user=Depends(admin_user)) -> dic
                                    "LIVEKIT_API_KEY e LIVEKIT_API_SECRET no servidor.")
     lang = (lang or _default_lang()).lower()
     if lang not in LANGS:
-        raise HTTPException(status_code=400, detail="Língua desconhecida (fr, pt ou en).")
+        raise HTTPException(status_code=400, detail="Língua desconhecida (" + ", ".join(LANGS) + ").")
 
     room = f"cp-admin-{lang}-{uuid.uuid4().hex[:10]}"
     identity = f"admin-{(user.get('user_id') or uuid.uuid4().hex)[:24]}"
     token = mint_livekit_token(key, secret, identity=identity,
                                name=user.get("name") or user.get("email") or "Admin",
-                               room=room, lang=lang)
+                               room=room, lang=lang, site="pt")
     logger.info("avatar admin: sessão %s (%s) para %s", room, lang, user.get("email"))
     return {"url": url, "token": token, "room": room, "lang": lang}

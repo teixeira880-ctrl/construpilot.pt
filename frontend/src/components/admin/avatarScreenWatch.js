@@ -2,7 +2,9 @@
 // fenêtre, erreur, progression de l'Assistant BTP), un résumé compact part vers l'agent (data LiveKit, topic « screen »).
 // L'agent l'injecte dans ses instructions : il répond et décide sur ce que l'admin voit MAINTENANT,
 // sans aller-retour ui_read, et réagit seul aux erreurs, résultats et cartes de choix.
-const MAX = 3800;
+import { describe, elements as domElements } from "./avatarDom";
+
+const MAX = 7600;   // un peu plus large : la liste des éléments cliquables voyage avec l'écran
 let room = null;
 let observer = null;
 let timer = null;
@@ -17,6 +19,7 @@ const pushErr = (m) => { if (m) { pageErrors.push(m); if (pageErrors.length > 10
 const cleanups = [];
 
 export const markAgentAction = (ms = 4000) => { agentUntil = Date.now() + ms; };
+export const agentActing = () => Date.now() < agentUntil;
 const actor = () => (Date.now() < agentUntil ? "assistant" : "admin");
 const clean = (s, n) => String(s || "").replace(/\s+/g, " ").trim().slice(0, n);
 const inDock = (el) => !!el?.closest?.("#cp-avatar-dock, #cp-avatar-cursor");
@@ -116,6 +119,8 @@ function build() {
     errors: pageErrors.slice(-3),
     visible: viewportText(main),
     not_found: notFound(),
+    // éléments cliquables visibles, avec les mêmes ids que les actions : l'agent clique sans ui_read
+    elements: domElements({ limit: 60, viewportOnly: true }).map(describe).map(({ href, group, ...e }) => e),
     menu: window.location.pathname !== lastPath ? menuLinks() : undefined,
   };
 }
@@ -146,30 +151,33 @@ function send() {
   const msg = { type: "screen", event, actor: actor(), at: Date.now(), ...s };
   let out = JSON.stringify(msg);
   while (out.length > MAX && msg.visible.length > 200) { msg.visible = msg.visible.slice(0, Math.floor(msg.visible.length * 0.7)); out = JSON.stringify(msg); }
+  while (out.length > MAX && msg.elements.length > 10) { msg.elements = msg.elements.slice(0, msg.elements.length - 8); out = JSON.stringify(msg); }
   try { room.localParticipant.publishData(new TextEncoder().encode(out), { reliable: true, topic: "screen" }); } catch { /* salle fermée */ }
 }
-const schedule = (ms = 700) => { if (!timer) timer = setTimeout(send, ms); };
+const schedule = (ms = 300) => { if (!timer) timer = setTimeout(send, ms); };
+// après une action de l'assistante : l'écran part tout de suite (pas d'attente du prochain changement)
+export const pushScreenNow = () => { clearTimeout(timer); timer = null; send(); };
 const on = (target, ev, fn, opts) => { target.addEventListener(ev, fn, opts); cleanups.push(() => target.removeEventListener(ev, fn, opts)); };
 
 export function startScreenWatch(r) {
   stopScreenWatch();
   room = r;
   lastSent = ""; lastPath = ""; lastAlerts = ""; lastAsst = { running: false, choices: 0, id: null };
-  observer = new MutationObserver((list) => { if (list.some((m) => !inDock(m.target.nodeType === 1 ? m.target : m.target.parentElement))) schedule(900); });
+  observer = new MutationObserver((list) => { if (list.some((m) => !inDock(m.target.nodeType === 1 ? m.target : m.target.parentElement))) schedule(350); });
   observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["aria-checked", "aria-selected", "open", "data-state"] });
   for (const k of ["pushState", "replaceState"]) {
     const orig = window.history[k];
-    window.history[k] = function patched(...a) { const res = orig.apply(this, a); schedule(400); return res; };
+    window.history[k] = function patched(...a) { const res = orig.apply(this, a); schedule(150); return res; };
     cleanups.push(() => { window.history[k] = orig; });
   }
-  on(window, "popstate", () => schedule(400));
-  on(window, "scroll", () => schedule(1200), { passive: true });
-  on(document, "focusin", () => schedule(500));
-  on(document, "input", () => schedule(1200));
+  on(window, "popstate", () => schedule(150));
+  on(window, "scroll", () => schedule(600), { passive: true });
+  on(document, "focusin", () => schedule(250));
+  on(document, "input", () => schedule(700));
   on(document, "selectionchange", () => schedule(1200));
   on(window, "error", (e) => { pushErr(clean(e.message, 160)); schedule(300); });
   on(window, "unhandledrejection", (e) => { pushErr(clean(e.reason?.message || e.reason, 160)); schedule(300); });
-  poll = setInterval(() => schedule(0), 5000);
+  poll = setInterval(() => schedule(0), 4000);
   schedule(300);
 }
 export function stopScreenWatch() {

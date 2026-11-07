@@ -2,12 +2,17 @@ import { useEffect, useState } from "react";
 import { Video, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { avatarStore, startAvatar, stopAvatar } from "@/components/admin/AvatarDock";
+import { avatarStore, preloadAvatar, startAvatar, stopAvatar } from "@/components/admin/AvatarDock";
 
 // Assistant vidéo interne : lance l'assistante, qui s'affiche ensuite dans un coin de l'écran
 // (fenêtre flottante AvatarDock) et reste là quand on change de page.
 const PT = typeof window !== "undefined" && /construpilot\.pt|construpilot-recon/.test(window.location.hostname);
-const LANG_LABEL = { fr: "Français", pt: "Português (PT)", en: "English" };
+const LANG_LABEL = {
+  auto: PT ? "Automático (a língua em que fala)" : "Automatique (la langue dans laquelle vous parlez)",
+  pt: "Português (PT)", fr: "Français", en: "English", es: "Español", it: "Italiano", de: "Deutsch", nl: "Nederlands",
+  pl: "Polski", ro: "Română", uk: "Українська", ar: "العربية", zh: "中文", tr: "Türkçe", ru: "Русский", ja: "日本語",
+};
+const MAIN = ["auto", "pt", "fr", "en"];
 const T = PT ? {
   title: "Assistente de vídeo da equipa",
   desc: "Uso interno apenas. A assistente aparece num canto do ecrã e fica lá enquanto navega. Lê os dados do site e, a seu pedido, mexe no site à sua frente (páginas, Assistente BTP, orçamentos, faturas…). Cada alteração espera pelo seu «sim»; pagamentos, palavras-passe e eliminações definitivas continuam proibidos.",
@@ -27,6 +32,7 @@ export default function AvatarAssistantPanel() {
   const [s, setS] = useState(avatarStore.get());
   const [lang, setLang] = useState(PT ? "pt" : "fr");
   useEffect(() => avatarStore.subscribe(setS), []);
+  useEffect(() => { preloadAvatar().catch(() => {}); }, []);
   useEffect(() => {
     api.get("/admin/avatar/status")
       .then(({ data }) => { setStatus(data); if (data.default_lang) setLang(data.default_lang); })
@@ -46,11 +52,18 @@ export default function AvatarAssistantPanel() {
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="admin-avatar-not-configured">{T.notconf}</div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        {langs.map((l) => (
+        {langs.filter((l) => MAIN.includes(l)).map((l) => (
           <Button key={l} type="button" variant={lang === l ? "default" : "outline"} className="rounded-sm" disabled={!idle} onClick={() => setLang(l)}>
-            {LANG_LABEL[l] || l}
+            {l === "auto" ? (PT ? "Auto" : "Auto") : LANG_LABEL[l] || l}
           </Button>
         ))}
+        {langs.some((l) => !MAIN.includes(l)) && (
+          <select aria-label={PT ? "Outras línguas" : "Autres langues"} data-testid="admin-avatar-lang-more" disabled={!idle}
+            className="h-9 rounded-sm border bg-background px-2 text-sm" value={MAIN.includes(lang) ? "" : lang}
+            onChange={(e) => e.target.value && setLang(e.target.value)}>
+            <option value="">{PT ? "Outras línguas…" : "Autres langues…"}</option>
+            {langs.filter((l) => !MAIN.includes(l)).map((l) => <option key={l} value={l}>{LANG_LABEL[l] || l}</option>)}
+          </select>)}
         {idle ? (
           <Button type="button" className="rounded-sm" onClick={() => startAvatar(lang)} disabled={!status?.configured} data-testid="admin-avatar-start">
             <Video className="mr-2 h-4 w-4" /> {T.talk}

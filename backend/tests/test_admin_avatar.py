@@ -69,8 +69,8 @@ def test_admin_token_dispatches_agent_with_language(livekit_env, lang):
     assert claims["exp"] - claims["nbf"] == 900
     cfg = claims["roomConfig"]
     assert cfg["syncStreams"] is True
-    assert cfg["agents"] == [{"agentName": "construpilot-avatar",
-                              "metadata": json.dumps({"lang": lang})}]
+    assert [a["agentName"] for a in cfg["agents"]] == ["construpilot-avatar"]
+    assert json.loads(cfg["agents"][0]["metadata"]) == {"lang": lang, "site": "pt"}
     # O segredo nunca é devolvido ao navegador.
     assert LK["LIVEKIT_API_SECRET"] not in r.text
 
@@ -80,7 +80,9 @@ def test_default_language_and_bad_language(livekit_env, monkeypatch):
     assert c.get("/api/admin/avatar/token").json()["lang"] == "pt"
     monkeypatch.setenv("AVATAR_DEFAULT_LANG", "fr")
     assert c.get("/api/admin/avatar/token").json()["lang"] == "fr"
-    assert c.get("/api/admin/avatar/token?lang=es").status_code == 400
+    assert c.get("/api/admin/avatar/token?lang=xx").status_code == 400
+    assert c.get("/api/admin/avatar/token?lang=es").status_code == 200   # línguas alargadas
+    assert c.get("/api/admin/avatar/token?lang=auto").status_code == 200
 
 
 def test_route_uses_admin_dependency():
