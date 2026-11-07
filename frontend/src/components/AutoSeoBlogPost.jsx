@@ -5,6 +5,7 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import NewsletterForm from "@/components/NewsletterForm";
+import NotFound from "@/pages/NotFound";
 
 // Rendu d'un article publié via le webhook AutoSEO (contenu dynamique en base).
 export default function AutoSeoBlogPost({ slug }) {
@@ -38,7 +39,8 @@ export default function AutoSeoBlogPost({ slug }) {
       </div>
     );
   }
-  if (state.notFound || !state.article) return <Navigate to="/blog" replace />;
+  if (state.notFound) return <NotFound />;            // slug desconhecido (nem estático, nem HeyCatch, nem AutoSEO) → página 404
+  if (!state.article) return <Navigate to="/blog" replace />;
 
   const a = state.article;
   const published = a.published_at || a.created_at;

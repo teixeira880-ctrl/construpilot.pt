@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Clock, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -7,6 +7,15 @@ import { BLOG_ARTICLES_PT } from "@/lib/blogPortugal";
 import { useI18n } from "@/context/I18nContext";
 import { api } from "@/lib/api";
 import NewsletterForm from "@/components/NewsletterForm";
+import { fmtDate } from "@/components/HeyCatchBlogPost";
+
+const PER_PAGE = 12;
+// Blog HeyCatch : artigos lidos em direto (/api/blog/heycatch), mesmo cartão que os outros artigos.
+const hcToCard = (a) => ({
+  slug: a.slug, title: a.title, excerpt: "", cover: a.hero_image_url || a.featured_image || "",
+  category: "Artigo", readingMinutes: a.read_time || null, publishedAt: a.published || a.published_at,
+  audience: null, source: "heycatch",
+});
 
 const dynToCard = (a) => {
   const audLabel = a.audience === "pros" ? "Profissionais"
@@ -40,6 +49,12 @@ export default function Blog() {
   const isPT = lang === "pt";
   const [dyn, setDyn] = useState([]);
   const [aud, setAud] = useState("all");
+  const [hc, setHc] = useState([]);
+  const [sp, setSp] = useSearchParams();
+  const page = Math.max(1, parseInt(sp.get("page") || "1", 10) || 1);
+  useEffect(() => {
+    api.get("/blog/heycatch").then(({ data }) => setHc((data.articles || []).map(hcToCard))).catch(() => setHc([]));
+  }, []);
   useEffect(() => {
     const audQ = aud === "all" ? "" : `&audience=${aud}`;
     api.get(`/blog/autoseo?lang=${isPT ? "pt" : "fr"}${audQ}`)
@@ -48,8 +63,16 @@ export default function Blog() {
   }, [isPT, aud]);
   const staticArticles = isPT ? BLOG_ARTICLES_PT : BLOG_ARTICLES;
   const staticSlugs = new Set(staticArticles.map((a) => a.slug));
-  const combined = [...dyn.filter((a) => !staticSlugs.has(a.slug)), ...staticArticles];
-  const articles = aud === "all" ? combined : combined.filter((a) => a.audience === aud);
+  const hcSlugs = new Set(hc.map((a) => a.slug));
+  const combined = [...hc.filter((a) => !staticSlugs.has(a.slug)),
+    ...dyn.filter((a) => !staticSlugs.has(a.slug) && !hcSlugs.has(a.slug)), ...staticArticles]
+    .map((a) => ({ ...a, publishedAt: a.publishedAt || a.published }))
+    .sort((x, y) => String(y.publishedAt || "").localeCompare(String(x.publishedAt || "")));
+  const filtered = aud === "all" ? combined : combined.filter((a) => a.audience === aud);
+  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const cur = Math.min(page, pages);
+  const articles = filtered.slice((cur - 1) * PER_PAGE, cur * PER_PAGE);
+  const goPage = (n) => { const q = new URLSearchParams(sp); if (n > 1) q.set("page", String(n)); else q.delete("page"); setSp(q); window.scrollTo(0, 0); };
   const SEGMENTS = [
     ["all", "Todos", "blog-filter-all"],
     ["pros", "Profissionais", "blog-filter-pros"],
@@ -65,7 +88,7 @@ export default function Blog() {
         keywords={isPT
           ? "blog construção Portugal, custo renovação, IVA obras 6, estimar obra, orçamento obras"
           : "blog construção, custo renovação, IVA 10 porcento, medições 2D, orçamento obras, preço materiais"}
-        canonical="/blog"
+        canonical={cur > 1 ? `/blog?page=${cur}` : "/blog"}
         jsonLd={JSON_LD}
       />
       <section className="border-b border-border">
@@ -90,7 +113,7 @@ export default function Blog() {
               key={key}
               role="tab"
               aria-selected={aud === key}
-              onClick={() => setAud(key)}
+              onClick={() => { setAud(key); goPage(1); }}
               data-testid={tid}
               className={`px-4 py-2 rounded-full text-xs font-semibold border transition-colors ${
                 aud === key
@@ -110,25 +133,27 @@ export default function Blog() {
               data-testid={`blog-card-${a.slug}`}
               className="surface overflow-hidden group hover:-translate-y-1 transition-transform"
             >
-              <div className="aspect-[16/9] overflow-hidden">
+              {a.cover && <div className="aspect-[16/9] overflow-hidden">
                 <img
                   src={a.cover} alt={a.title}
                   loading="lazy"
                   className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-              </div>
+              </div>}
               <div className="p-5 grid gap-3">
                 <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest">
                   <span className="text-primary font-bold">{a.category}</span>
                   <span className="text-muted-foreground">·</span>
-                  <span className="text-muted-foreground inline-flex items-center gap-1">
+                  {a.readingMinutes ? <span className="text-muted-foreground inline-flex items-center gap-1">
                     <Clock className="h-3 w-3" /> {a.readingMinutes} min
-                  </span>
+                  </span> : null}
+                  {a.publishedAt && <><span className="text-muted-foreground">·</span>
+                    <time className="text-muted-foreground" dateTime={a.publishedAt}>{fmtDate(a.publishedAt)}</time></>}
                 </div>
                 <h2 className="font-display text-lg font-bold leading-snug group-hover:text-primary transition-colors">
                   {a.title}
                 </h2>
-                <p className="text-sm text-muted-foreground line-clamp-3">{a.excerpt}</p>
+                {a.excerpt && <p className="text-sm text-muted-foreground line-clamp-3">{a.excerpt}</p>}
                 <span className="text-primary text-sm font-semibold inline-flex items-center gap-1 mt-1">
                   {isPT ? "Ler o artigo" : "Ler o artigo"} <ArrowRight className="h-3 w-3" />
                 </span>
@@ -136,6 +161,14 @@ export default function Blog() {
             </Link>
           ))}
         </div>
+        {filtered.length === 0 && <p className="text-sm text-muted-foreground" data-testid="blog-empty">Ainda não há artigos publicados. Volte em breve.</p>}
+        {pages > 1 && <nav className="mt-10 flex flex-wrap items-center gap-2" aria-label="Páginas do blog" data-testid="blog-pagination">
+          {cur > 1 && <a href={`/blog${cur - 1 > 1 ? `?page=${cur - 1}` : ""}`} onClick={(e) => { e.preventDefault(); goPage(cur - 1); }} className="px-4 py-2 rounded-full text-xs font-semibold border border-border hover:border-primary">← Anterior</a>}
+          {Array.from({ length: pages }, (_, i) => i + 1).map((n) => <a key={n} href={`/blog${n > 1 ? `?page=${n}` : ""}`} aria-current={n === cur ? "page" : undefined}
+            onClick={(e) => { e.preventDefault(); goPage(n); }} data-testid={`blog-page-${n}`}
+            className={`px-3 py-2 rounded-full text-xs font-semibold border ${n === cur ? "bg-primary text-white border-primary" : "border-border hover:border-primary"}`}>{n}</a>)}
+          {cur < pages && <a href={`/blog?page=${cur + 1}`} onClick={(e) => { e.preventDefault(); goPage(cur + 1); }} className="px-4 py-2 rounded-full text-xs font-semibold border border-border hover:border-primary">Seguinte →</a>}
+        </nav>}
         <div className="mt-12 max-w-2xl"><NewsletterForm source="blog-list" /></div>
       </section>
     </>
