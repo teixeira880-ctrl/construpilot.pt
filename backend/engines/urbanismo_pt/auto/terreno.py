@@ -84,6 +84,8 @@ def construir_terreno(geo: Dict[str, Any], via: Optional[Dict[str, Any]], cad: O
         nvec = (-foot[0], -foot[1])
         if math.hypot(*nvec) < 0.5:          # morada sobre o eixo da via: o terreno fica do lado esquerdo do sentido da via
             nvec = (-u[1], u[0])
+            pressupostos.append("O ponto da morada está sobre a rua: assumiu-se o terreno de um dos lados. Confirme no mapa de que "
+                                "lado da rua fica o terreno.")
         ey = _unit(nvec)
         dist_via = math.hypot(*foot)
         fonte_frente = f"via mais próxima ({via['data'].get('nome') or via['data'].get('tipo') or 'OSM'})"
