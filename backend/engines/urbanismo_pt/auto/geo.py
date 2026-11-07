@@ -4,7 +4,8 @@ Cada função devolve {"ok": bool, "data": ..., "fonte": str, "url": str | None,
 um serviço em baixo produz ok=False e o piloto automático passa a uma hipótese prudente, registada como tal.
 
 Fontes (por ordem):
-- Geocodificação: Google Geocoding (se GOOGLE_MAPS_API_KEY) → Nominatim / OpenStreetMap.
+- Geocodificação: Google Geocoding (se GOOGLE_MAPS_API_KEY) → Nominatim (livre, estruturada, sem número) → Photon →
+  rua no concelho → localidade (marcada como «localidade», com pedido de confirmação no mapa).
 - Município / freguesia: DGT OGC API «municipios» (CAOP) → campos da geocodificação.
 - Classe de espaço do PDM: DGT OGC API «crus» (Carta do Regime de Uso do Solo).
 - Servidões e restrições (REN, RAN, domínio hídrico…): coleções SRUP da DGT, descobertas dinamicamente.
@@ -28,6 +29,7 @@ import httpx
 UA = {"User-Agent": "ConstruPilot/1.0 (licenciamento automatico; info@construpilot.pt)"}
 DGT = "https://ogcapi.dgterritorio.gov.pt"
 NOMINATIM = "https://nominatim.openstreetmap.org"
+PHOTON = "https://photon.komoot.io/api/"
 OVERPASS = "https://overpass-api.de/api/interpreter"
 OPENTOPO = "https://api.opentopodata.org/v1/eudem25m"
 GMAPS = "https://maps.googleapis.com/maps/api"
@@ -104,24 +106,114 @@ async def geocode(morada: str) -> Dict[str, Any]:
                                "concelho": comp.get("administrative_area_level_2"), "codigo_postal": comp.get("postal_code"),
                                "precisao": "porta" if precisa and comp.get("street_number") else "rua",
                                "consulta": q}, "Google Geocoding", None)
-    # Nominatim: tentativa com a morada inteira, depois sem o número (muitas portas não estão no OSM)
-    tentativas = [q, re.sub(r"\b\d+[A-Za-z]?\b", "", q).replace(" ,", ",").strip(" ,")]
-    for i, t in enumerate(dict.fromkeys(tentativas)):
-        st, js = await _fetch("GET", f"{NOMINATIM}/search", {"q": t, "format": "jsonv2", "addressdetails": 1, "limit": 1,
-                                                             "countrycodes": "pt", "accept-language": "pt-PT"}, None, "json")
-        if js:
-            r = js[0]
-            a = r.get("address") or {}
-            return _res(True, {"lat": float(r["lat"]), "lon": float(r["lon"]), "morada_formatada": r.get("display_name", t),
-                               "rua": a.get("road"), "numero": a.get("house_number"),
-                               "freguesia": a.get("village") or a.get("suburb") or a.get("town") or a.get("city_district"),
-                               "concelho": a.get("municipality") or a.get("city") or a.get("county"),
-                               "codigo_postal": a.get("postcode"),
-                               "precisao": "porta" if a.get("house_number") else ("rua" if a.get("road") else "localidade"),
-                               "consulta": t}, "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={t}")
-        if i == 0:
-            await asyncio.sleep(1.1)   # política de uso do Nominatim: ≤ 1 pedido/s
-    return _res(False, nota="morada não encontrada")
+    diag: List[str] = []
+    partes = [x.strip() for x in q.split(",") if x.strip()]
+    rua_num = partes[0] if partes else q
+    sem_num = re.sub(r"\b\d+[A-Za-z]?\b", "", q).replace(" ,", ",").strip(" ,")
+    lugar = [x for x in partes[1:] if not re.match(r"^\d{4}(-\d{3})?\b", x)]      # freguesia / concelho
+    concelho = lugar[-1] if lugar else ""
+    freguesia = lugar[0] if len(lugar) >= 2 else ""
+    cp = re.search(r"\b\d{4}-\d{3}\b", q)
+
+    def _match(texto: str) -> int:
+        """Pontuação: o resultado tem de estar no concelho/freguesia pedidos (há muitas «Rua do Monte»)."""
+        t = _norm(texto)
+        sc = 0
+        if concelho and _norm(concelho) in t:
+            sc += 2
+        if freguesia and _norm(freguesia) in t:
+            sc += 3
+        if cp and cp.group(0) in texto:
+            sc += 3
+        return sc
+
+    def _nom(r: dict, consulta: str) -> Dict[str, Any]:
+        a = r.get("address") or {}
+        return {"lat": float(r["lat"]), "lon": float(r["lon"]), "morada_formatada": r.get("display_name", consulta),
+                "rua": a.get("road"), "numero": a.get("house_number"),
+                "freguesia": a.get("village") or a.get("suburb") or a.get("town") or a.get("city_district"),
+                "concelho": a.get("municipality") or a.get("city") or a.get("county"),
+                "codigo_postal": a.get("postcode"),
+                "precisao": "porta" if a.get("house_number") else ("rua" if a.get("road") else "localidade"),
+                "consulta": consulta}
+
+    def _melhor(cands: List[Tuple[Dict[str, Any], str]], exige_rua: bool) -> Optional[Dict[str, Any]]:
+        bons = [(d, txt) for d, txt in cands if not exige_rua or d.get("rua")]
+        if not bons:
+            return None
+        minimo = 2 if concelho else 0
+        bons.sort(key=lambda c: (-_match(c[1]), {"porta": 0, "rua": 1, "localidade": 2}[c[0]["precisao"]]))
+        return bons[0][0] if _match(bons[0][1]) >= minimo else None
+
+    async def nominatim(params: dict, rotulo: str, exige_rua: bool = True):
+        base = {"format": "jsonv2", "addressdetails": 1, "limit": 8, "countrycodes": "pt", "accept-language": "pt-PT"}
+        st, js = await _fetch("GET", f"{NOMINATIM}/search", {**base, **params}, None, "json")
+        diag.append(f"nominatim[{rotulo}]={st}:{len(js) if isinstance(js, list) else '-'}")
+        await asyncio.sleep(1.05)   # política de uso do Nominatim: ≤ 1 pedido/s
+        if not isinstance(js, list) or not js:
+            return None
+        return _melhor([(_nom(r, rotulo), r.get("display_name", "")) for r in js if r.get("lat")], exige_rua)
+
+    async def photon(consulta: str, exige_rua: bool = True):
+        st, js = await _fetch("GET", PHOTON, {"q": consulta, "limit": 8, "lang": "default", "bbox": "-9.6,36.9,-6.1,42.2"},
+                              None, "json")
+        feats = (js or {}).get("features") if isinstance(js, dict) else None
+        diag.append(f"photon={st}:{len(feats) if feats is not None else '-'}")
+        if not feats:
+            return None
+        cands = []
+        for f in feats:
+            pr, co = f.get("properties") or {}, (f.get("geometry") or {}).get("coordinates") or []
+            if len(co) != 2 or (pr.get("countrycode") or "PT").upper() != "PT":
+                continue
+            rua = pr.get("street") or (pr.get("name") if pr.get("osm_key") == "highway" else None)
+            d = {"lat": float(co[1]), "lon": float(co[0]),
+                 "morada_formatada": ", ".join(x for x in (rua, pr.get("housenumber"), pr.get("district") or pr.get("locality"),
+                                                           pr.get("city"), pr.get("postcode")) if x),
+                 "rua": rua, "numero": pr.get("housenumber"), "freguesia": pr.get("district") or pr.get("locality"),
+                 "concelho": pr.get("city") or pr.get("county"), "codigo_postal": pr.get("postcode"),
+                 "precisao": "porta" if pr.get("housenumber") else ("rua" if rua else "localidade"), "consulta": consulta}
+            cands.append((d, " ".join(str(v) for v in pr.values() if isinstance(v, str))))
+        return _melhor(cands, exige_rua)
+
+    def ok(d, fonte, url):
+        return _res(True, d, fonte, url, "; ".join(diag) or None)
+
+    # 1) morada completa  2) pesquisa estruturada  3) sem número  4) Photon  5) rua no concelho  6) só a localidade
+    d = await nominatim({"q": q}, q, exige_rua=False)
+    if d and d["precisao"] != "localidade":
+        return ok(d, "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={q}")
+    if concelho and rua_num:
+        d = await nominatim({"street": rua_num, "city": concelho, "country": "Portugal"}, f"{rua_num}, {concelho}")
+        if d:
+            return ok(d, "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?street={rua_num}&city={concelho}")
+    if sem_num != q:
+        d = await nominatim({"q": sem_num}, sem_num)
+        if d:
+            return ok(d, "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={sem_num}")
+    for consulta in dict.fromkeys([q, sem_num]):
+        d = await photon(consulta)
+        if d:
+            return ok(d, "OpenStreetMap (Photon)", f"{PHOTON}?q={consulta}")
+    if freguesia and concelho:
+        rua = re.sub(r"\b\d+[A-Za-z]?\b", "", rua_num).strip()
+        d = await nominatim({"q": f"{rua}, {concelho}"}, f"{rua}, {concelho}")
+        if d and freguesia and _norm(freguesia) in _norm(d["morada_formatada"]):
+            return ok(d, "OpenStreetMap (Nominatim)", f"{NOMINATIM}/search?q={rua}, {concelho}")
+    if lugar:
+        loc = ", ".join(lugar)
+        d = await nominatim({"q": loc}, loc, exige_rua=False) or await photon(loc, exige_rua=False)
+        if d:
+            d["precisao"] = "localidade"
+            return ok(d, "OpenStreetMap", f"{NOMINATIM}/search?q={loc}")
+    rede = any(x.split("=")[1].startswith(("0:", "403", "429", "5")) for x in diag)
+    return _res(False, nota=("serviços de geocodificação inacessíveis: " if rede else "morada não encontrada: ") + "; ".join(diag))
+
+
+def _norm(t: str) -> str:
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(t or "").lower())
+    return re.sub(r"\s+", " ", "".join(c for c in t if not unicodedata.combining(c)))
 
 
 # ------------------------------------------------------------------ DGT OGC API

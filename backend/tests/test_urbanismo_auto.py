@@ -139,7 +139,7 @@ def test_ren_bloqueia():
 
 def test_servicos_em_baixo_assume_e_avisa():
     r = run({"morada": "Rua do Monte 7, Braga"}, rede=False)
-    assert not r["ok"] and r["estado"] == "morada_nao_encontrada"
+    assert not r["ok"] and r["estado"] == "servico_indisponivel"
 
 
 def test_terreno_pequeno_ajusta_variantes():
@@ -156,3 +156,63 @@ def test_coerencia_deteta_numero_alterado():
     c = C.verificar(proc, verif)
     assert not c["ok"] and any(f["codigo"] == "AREA_CONSTRUCAO" for f in c["falhas"])
     assert C.numeros_sem_fonte("A casa tem 999,5 m² de área.", [100.0, 50.0]) == ["999,5 m²"]
+
+
+# ------------------------------------------------------------------ geocodificação com repli (Lote 111b)
+def _geo(transport, morada="Rua do Monte 7, Padim da Graça, Braga"):
+    G.set_transport(transport)
+    orig = G.asyncio.sleep
+
+    async def nosleep(_s):
+        return None
+    G.asyncio.sleep = nosleep
+    try:
+        return _loop_run(G.geocode(morada))
+    finally:
+        G.asyncio.sleep = orig
+        G.set_transport(None)
+
+
+def test_geocode_repli_estruturado_e_photon():
+    vistos = []
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        vistos.append(("photon" if "photon" in url else "nom", dict(params or {})))
+        if "nominatim" in url and "street" in (params or {}):
+            return 200, []
+        if "nominatim" in url:
+            return 200, []
+        if "photon" in url:
+            return 200, {"features": [
+                {"geometry": {"coordinates": [-8.0, 40.0]}, "properties": {"countrycode": "PT", "street": "Rua do Monte",
+                 "city": "Lisboa", "postcode": "1000-001"}},
+                {"geometry": {"coordinates": [-8.47, 41.52]}, "properties": {"countrycode": "PT", "street": "Rua do Monte",
+                 "district": "Padim da Graça", "city": "Braga", "postcode": "4700-000"}}]}
+        return 404, None
+    r = _geo(t)
+    assert r["ok"] and r["fonte"].endswith("(Photon)")
+    assert r["data"]["concelho"] == "Braga" and r["data"]["precisao"] == "rua"        # a Rua do Monte de Lisboa é rejeitada
+    assert any("street" in p for k, p in vistos if k == "nom")                          # tentou a pesquisa estruturada
+
+
+def test_geocode_rejeita_concelho_errado_e_cai_na_localidade():
+    async def t(method, url, params=None, headers=None, want="json"):
+        q = (params or {}).get("q", "")
+        if "nominatim" in url and q == "Padim da Graça, Braga":
+            return 200, [{"lat": "41.52", "lon": "-8.47", "display_name": "Padim da Graça, Braga, Portugal",
+                          "address": {"village": "Padim da Graça", "municipality": "Braga"}}]
+        if "nominatim" in url:
+            return 200, [{"lat": "38.7", "lon": "-9.1", "display_name": "Rua do Monte, Lisboa",
+                          "address": {"road": "Rua do Monte", "city": "Lisboa"}}]
+        if "photon" in url:
+            return 200, {"features": []}
+        return 404, None
+    r = _geo(t)
+    assert r["ok"] and r["data"]["precisao"] == "localidade" and abs(r["data"]["lat"] - 41.52) < 1e-6
+
+
+def test_geocode_rede_indisponivel_e_diagnostico():
+    async def t(method, url, params=None, headers=None, want="json"):
+        return 403 if "nominatim" in url else 0, None
+    r = _geo(t)
+    assert not r["ok"] and "inacess" in r["nota"] and "nominatim" in r["nota"] and "photon" in r["nota"]
