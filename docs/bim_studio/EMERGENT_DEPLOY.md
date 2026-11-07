@@ -28,13 +28,13 @@ git merge --no-ff origin/feature/pt-bim-studio -m "BIM Studio PT"
 ## 3. Dependências (backend)
 Acrescentadas ao `backend/requirements.txt` (rodas binárias existem para Linux ARM64 e x86-64, Python 3.11–3.13):
 ```
-ifcopenshell==0.9.0.post1
+ifcopenshell==0.8.5
 isodate==0.7.2
 lark==1.3.1
 ```
 ```bash
 cd /app/backend && pip install -r requirements.txt
-python -c "import ifcopenshell, ifcopenshell.geom; print(ifcopenshell.version)"   # → 0.9.0.post1
+python -c "import ifcopenshell, ifcopenshell.geom; print(ifcopenshell.version)"   # → 0.8.5
 ```
 Sem novas dependências no frontend (usa o `three` já instalado).
 

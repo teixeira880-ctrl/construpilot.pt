@@ -19,6 +19,7 @@ import json
 import logging
 import math
 import os
+import re
 from typing import Callable
 
 import numpy as np
@@ -489,6 +490,27 @@ class EmptyModel(Exception):
     pass
 
 
+_INST = re.compile(rb"^\s*#(\d+)\s*=")
+
+
+def _instancias_ilegiveis(ifc_path: str, f) -> int:
+    """Linhas de dados (#id=...) que o leitor não conseguiu interpretar. Conforme a versão, o IfcOpenShell salta
+    estas linhas em silêncio — um ficheiro com dados corrompidos não pode passar por modelo válido."""
+    ids = set()
+    with open(ifc_path, "rb") as fh:
+        for line in fh:
+            m = _INST.match(line)
+            if m:
+                ids.add(int(m.group(1)))
+    perdidos = 0
+    for i in ids:
+        try:
+            f.by_id(i)
+        except Exception:  # noqa: BLE001
+            perdidos += 1
+    return perdidos
+
+
 def process(ifc_path: str, out_dir: str, *, max_elements: int = 60000, max_triangles: int = 4_000_000,
             chunk_triangles: int = 250_000, threads: int = 1,
             progress: Callable[[float, str], None] | None = None) -> dict:
@@ -499,6 +521,10 @@ def process(ifc_path: str, out_dir: str, *, max_elements: int = 60000, max_trian
     schema = f.schema
     if not f.by_type("IfcProject"):
         raise EmptyModel("O ficheiro não contém um IfcProject legível (ficheiro corrompido ou incompleto).")
+    perdidos = _instancias_ilegiveis(ifc_path, f)
+    if perdidos:
+        raise EmptyModel(f"O ficheiro está corrompido: {perdidos} linha(s) de dados ilegíveis. Exporte de novo o IFC "
+                         "a partir do programa de origem.")
     units = project_units(f)
     ls = units["scale"]["LENGTHUNIT"]
     warnings: list[str] = []
