@@ -63,6 +63,13 @@ AUTORIZACAO_TOOLS += [
             "fachada": {"type": "string", "description": "granito, madeira, xisto, tijolo, betão, reboco branco, misto…"},
             "area_terreno_m2": {"type": "number", "description": "Área do terreno (caderneta)."},
             "frente_m": {"type": "number", "description": "Largura da frente do terreno, se souber."},
+            "forma": {"type": "string", "description": "retangulo | l (casa em L) | u | t"},
+            "area_util_alvo_m2": {"type": "number", "description": "Área habitável (útil) pedida pelo cliente, sem garagem."},
+            "garagem_tipo": {"type": "string", "description": "integrada (encostada à casa) | exterior (independente)"},
+            "piscina": {"type": "boolean"}, "piscina_l_m": {"type": "number"}, "piscina_w_m": {"type": "number"},
+            "estilo": {"type": "string", "description": "contemporaneo | minimalista | tradicional_portugues | minhoto_granito | "
+                                                      "rustico_pedra_madeira | xisto_beira | alentejano | algarvio | mediterranico | nordico_madeira"},
+            "cobertura_tipo": {"type": "string", "description": "plana | duas_aguas | uma_agua"},
             "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
             "artigo_matricial": {"type": "string"},
         },
@@ -74,7 +81,16 @@ AUTORIZACAO_TOOLS += [
         {"processo_id": {"type": "string"}, "tipologia": {"type": "string"}, "pisos": {"type": "integer"},
          "garagem": {"type": "boolean"}, "lugares": {"type": "integer"}, "area_terreno_m2": {"type": "number"},
          "frente_m": {"type": "number"}, "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
-         "artigo_matricial": {"type": "string"}, "fachada": {"type": "string"}},
+         "artigo_matricial": {"type": "string"}, "fachada": {"type": "string"},
+         "texto": {"type": "string", "description": "O que o utilizador quer mudar, palavra por palavra (ex.: «quero em L com piscina»)."},
+         "forma": {"type": "string", "description": "retangulo | l (casa em L) | u | t"},
+         "area_util_alvo_m2": {"type": "number", "description": "Área habitável (útil) pedida pelo cliente, sem garagem."},
+         "garagem_tipo": {"type": "string", "description": "integrada (encostada à casa) | exterior (independente)"},
+         "piscina": {"type": "boolean"}, "piscina_l_m": {"type": "number"}, "piscina_w_m": {"type": "number"},
+         "estilo": {"type": "string", "description": "contemporaneo | minimalista | tradicional_portugues | minhoto_granito | "
+                                          "rustico_pedra_madeira | xisto_beira | alentejano | algarvio | mediterranico | nordico_madeira"},
+         "cobertura_tipo": {"type": "string", "description": "plana | duas_aguas | uma_agua"},
+        },
     ),
     function(
         "licenciamento_materiais",
@@ -83,6 +99,24 @@ AUTORIZACAO_TOOLS += [
         "aluminio_antracite, aluminio_branco, madeira, pvc_branco). O 3D, a memória e o render seguem a escolha.",
         {"processo_id": {"type": "string"}, "fachada": {"type": "string"}, "cobertura": {"type": "string"},
          "caixilharia": {"type": "string"}},
+    ),
+]
+AUTORIZACAO_TOOLS += [
+    function(
+        "licenciamento_imagens",
+        "Gera AUTOMATICAMENTE as imagens realistas do processo (o mais fotorrealistas possível) e junta-as ao dossier: vistas 3D "
+        "exatas do projeto (perspetiva, frente, jardim, aérea) tornadas fotorrealistas por IA SEM mudar a geometria (verificação "
+        "automática contra a vista exata), e o «antes/depois» sobre o ortofotomapa oficial do terreno. Usar depois de "
+        "licenciamento_automatico ou de qualquer alteração ao projeto, e sempre que pedirem imagens, renders, fotos ou 3D.",
+        {"processo_id": {"type": "string"},
+         "vistas": {"type": "array", "items": {"type": "string"}, "description": "perspetiva, frente, tardoz, aerea (por omissão todas)"},
+         "antes_depois": {"type": "boolean"}},
+    ),
+    function(
+        "licenciamento_estilos",
+        "Lista os estilos arquitetónicos disponíveis (contemporâneo, tradicional português, minhoto em granito, alentejano, "
+        "algarvio, xisto, rústico pedra e madeira, mediterrânico, nórdico…) para propor ao cliente.",
+        {},
     ),
 ]
 AUTORIZACAO_TOOL_NAMES = {t["name"] for t in AUTORIZACAO_TOOLS}
@@ -105,6 +139,13 @@ AUTORIZACAO_INSTRUCTIONS = (
     "requerente…). Quando responderem, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
     "licenciamento_materiais. Nunca inventes números: usa só os devolvidos pela ferramenta. Se o estado for «inviavel» "
     "(solo rústico, REN/RAN), explica o impedimento com honestidade e sugere o pedido de informação prévia à câmara. "
+    "O cliente é uma pessoa SEM conhecimentos técnicos: fala simples, decide tu o que falta (forma, estilo, piscina, garagem, "
+    "materiais) e explica no fim o que decidiste. Para pedidos como «casa térrea em L com 200 m2 habitáveis, piscina e garagem "
+    "exterior, fachadas em granito e madeira» passa o texto completo a licenciamento_automatico (ele entende forma, área "
+    "habitável vs terreno, piscina, garagem exterior, estilo) e a seguir chama licenciamento_imagens para juntar as imagens "
+    "realistas ao dossier, sem perguntar. Para qualquer alteração («quero mais um quarto», «estilo alentejano», «sem piscina», "
+    "«casa em L») usa licenciamento_atualizar com o texto do utilizador e depois licenciamento_imagens. Se a coerência falhar "
+    "ou o estado for «revisao», corrige tu (licenciamento_atualizar com outra escolha prudente) antes de responder. "
     "Diz sempre que o levantamento topográfico, os projetos de especialidades e a assinatura de arquiteto/engenheiros "
     "(termos de responsabilidade) são obrigatórios, e que a página do processo permite pedir essa subscrição.\n"
 )
@@ -123,6 +164,19 @@ def _pedido(args: dict) -> dict:
 
 
 async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
+    if name == "licenciamento_estilos":
+        from engines.urbanismo_pt.auto import estilos as E
+        return {"ok": True, "estilos": E.lista()}
+    if name == "licenciamento_imagens":
+        from routes import urbanismo_auto as UA
+        try:
+            vistas = (args or {}).get("vistas") or ["perspetiva", "frente", "tardoz", "aerea"]
+            return await asyncio.wait_for(UA.gerar_imagens((args or {}).get("processo_id") or "", user, vistas,
+                                                           bool((args or {}).get("antes_depois", True))), timeout=420)
+        except asyncio.TimeoutError:
+            return {"ok": False, "error": "As imagens estão a demorar; peça de novo dentro de momentos."}
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(getattr(e, "detail", e))[:300]}
     if name in ("licenciamento_automatico", "licenciamento_atualizar", "licenciamento_materiais"):
         from routes import urbanismo_auto as UA
         try:
@@ -132,7 +186,11 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
             if name == "licenciamento_materiais":
                 return await UA.materiais(pid, UA.MateriaisIn(**{k: args.get(k) for k in ("fachada", "cobertura", "caixilharia")}), user)
             d = await UA._owned(pid, user["user_id"])
-            pedido = {**(d["auto"].get("pedido") or {}), **{k: v for k, v in _pedido(args).items() if k != "processo_id"}}
+            novos = {k: v for k, v in _pedido(args).items() if k != "processo_id"}
+            texto = novos.pop("texto", "")
+            from engines.urbanismo_pt.auto import pipeline as AP
+            extra = {k: v for k, v in AP.interpretar_pedido(texto).items() if k != "morada"} if texto else {}
+            pedido = {**(d["auto"].get("pedido") or {}), **extra, **novos}
             pedido["requerente"] = {**(d.get("requerente") or {}), **(pedido.get("requerente") or {})}
             return await asyncio.wait_for(UA.executar_e_gravar(pedido, user, pid=pid), timeout=240)
         except asyncio.TimeoutError:

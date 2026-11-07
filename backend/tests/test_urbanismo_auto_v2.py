@@ -92,8 +92,10 @@ def test_pedido_do_cliente_de_a_a_z():
     # todos os compartimentos conformes e vãos em fachadas laterais do L
     for p in a["plantas"]["pisos"]:
         assert all(c["conforme"] for c in p["compartimentos"]), p
-    assert {"frente", "tardoz"} <= {x["fachada"] for x in a["vaos"]}
-    assert any(x["fachada"] in ("esquerda", "direita") for x in a["vaos"])
+    assert "frente" in {x["fachada"] for x in a["vaos"]}
+    # quartos da ala abrem para o pátio do L com vãos generosos (como a fachada do sol)
+    pat = [x for x in a["vaos"] if x["compartimento"].startswith(("Suite", "Quarto"))]
+    assert pat and all(x["fachada"] == "direita" and x["z1"] - x["z0"] >= 2.2 - 1e-6 for x in pat)
     assert all(x.get("plano_m") is not None for x in a["vaos"])
     # quartos na ala, sala no corpo
     quartos = [c for c in a["plantas"]["pisos"][0]["compartimentos"] if c["tipo"] == "quarto"]

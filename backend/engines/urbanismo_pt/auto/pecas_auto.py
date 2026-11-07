@@ -105,6 +105,11 @@ def _vaos_contorno(plan: Dict[str, Any], sh: float, fachada_sol: str) -> List[Di
     from shapely.geometry import LineString, Polygon
     contorno = Polygon(plan["contorno"])
     borda = contorno.exterior.buffer(0.02)
+    bx0, by0, bx1, by1 = contorno.bounds
+
+    def para_patio(plano, eixo):   # fachada interior do L (abre para o pátio): vãos generosos, como a do sol
+        return (eixo == "x" and min(abs(plano - by0), abs(plano - by1)) > 0.05) or \
+               (eixo == "y" and min(abs(plano - bx0), abs(plano - bx1)) > 0.05)
     out = []
     for p in plan["pisos"]:
         zb = p["piso"] * sh
@@ -121,11 +126,11 @@ def _vaos_contorno(plan: Dict[str, Any], sh: float, fachada_sol: str) -> List[Di
                     ext.append((fach, plano, eixo, a, b))
             if not ext:
                 continue
-            ext.sort(key=lambda e: (e[0] != fachada_sol, -(e[4] - e[3])))
+            ext.sort(key=lambda e: (not (e[0] == fachada_sol or para_patio(e[1], e[2])), -(e[4] - e[3])))
             entrada_frente = [e for e in ext if e[0] == "frente"]
             escolha = entrada_frente[:1] if c["tipo"] == "entrada" else ext[:1]
             for fach, plano, eixo, a, b in escolha:
-                d = _dims_vao(c["tipo"], b - a, fach == fachada_sol, p["piso"], fach == "frente")
+                d = _dims_vao(c["tipo"], b - a, fach == fachada_sol or para_patio(plano, eixo), p["piso"], fach == "frente")
                 if not d:
                     continue
                 larg, alt, peit, tipo = d
