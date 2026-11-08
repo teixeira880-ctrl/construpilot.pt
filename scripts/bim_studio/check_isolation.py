@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_NEW_OR_CHANGED = [
     "backend/bim_studio/*", "backend/routes/bim_studio.py", "backend/tests/test_bim/*",
     "frontend/src/pages/BimStudio.jsx", "frontend/src/components/bim/*", "frontend/tests/bim/*",
-    "docs/bim_studio/*", "scripts/bim_studio/*", "frontend/jest.bim.config.cjs",
+    "docs/bim_studio/*", "scripts/bim_studio/*", "scripts/urbanismo_pt/*", "frontend/jest.bim.config.cjs",
     # piloto automático de licenciamento PT (v2): módulos exclusivos deste repositório português
     "backend/engines/urbanismo_pt/*", "backend/routes/urbanismo_auto.py", "backend/engines/assistant_autorizacao_tool.py",
     "backend/engines/image_studio.py", "backend/routes/assistant.py", "backend/tests/test_urbanismo_auto*.py",
