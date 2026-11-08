@@ -287,24 +287,49 @@ async def desenho(pid: str, n: int, user=Depends(current_user)):
     return Response(content=ds[n]["png"], media_type="image/png")
 
 
-async def _planta_condicionantes(d: Dict[str, Any]) -> list:
-    """Planta de condicionantes (REN, RAN, PDM sobre o ortofotomapa, com o terreno e a casa) — peça do processo."""
+async def _condicionantes(d: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Ficha de condicionantes do processo: planta (REN, RAN, PDM sobre o ortofotomapa, com o terreno e a casa) e, se o
+    terreno tem desnível, carta de declives e recursos hídricos. Tudo de fontes oficiais."""
     a = d.get("auto") or {}
     loc = a.get("localizacao") or {}
     if not (a.get("ficha_terreno") and loc.get("lat") is not None):
-        return []
+        return None
     from engines.urbanismo_pt.auto import ficha_terreno as FT
     try:
         f = dict(a["ficha_terreno"])
         f["terreno"] = {**(f.get("terreno") or {}), "poligono_latlon": [tuple(p) for p in (a.get("terreno") or {}).get("poligono_latlon") or []]}
         f["ponto"] = {"lat": loc["lat"], "lon": loc["lon"]}
         casa = [[tuple(q) for q in pg] for pg in a.get("casa_latlon") or [] if pg] or None
-        png = await asyncio.wait_for(FT.planta_condicionantes(f, casa), timeout=60)
+        planta = await asyncio.wait_for(FT.planta_condicionantes(f, casa), timeout=60)
+        dcl = await asyncio.wait_for(FT.declives(f), timeout=60)
+        carta = await asyncio.wait_for(FT.carta_declives(f, dcl, casa), timeout=60) if FT.tem_desnivel(dcl) else None
+        pdf = FT.ficha_pdf(f, planta, carta, dcl, d.get("title") or "")
+        return {"ficha": f, "planta": planta, "carta": carta, "declives": dcl, "pdf": pdf}
     except Exception:  # noqa: BLE001
-        log.warning("planta de condicionantes falhou", exc_info=True)
+        log.warning("ficha de condicionantes falhou", exc_info=True)
+        return None
+
+
+async def _planta_condicionantes(d: Dict[str, Any]) -> list:
+    c = await _condicionantes(d)
+    if not c:
         return []
-    return [{"code": "PLANTA_CONDICIONANTES", "title": "Planta de condicionantes — REN, RAN e PDM (DGT) sobre o ortofotomapa",
-             "filename": "planta_condicionantes.png", "png": png}] if png else []
+    out = [{"code": "PLANTA_CONDICIONANTES", "title": "Planta de condicionantes — REN, RAN e PDM (DGT) sobre o ortofotomapa",
+            "filename": "planta_condicionantes.png", "png": c["planta"]}] if c["planta"] else []
+    if c["carta"]:
+        out.append({"code": "CARTA_DECLIVES", "title": "Carta de declives e recursos hídricos (linhas de água)",
+                    "filename": "carta_declives_recursos_hidricos.png", "png": c["carta"]})
+    return out
+
+
+@router.get("/processos/{pid}/ficha-condicionantes.pdf")
+async def ficha_condicionantes_pdf(pid: str, user=Depends(current_user)):
+    d = await _owned(pid, user["user_id"])
+    c = await _condicionantes(d)
+    if not c:
+        raise HTTPException(409, "Ficha de condicionantes indisponível (processo sem localização ou serviços oficiais em baixo).")
+    return Response(content=c["pdf"], media_type="application/pdf", headers={
+        "Content-Disposition": content_disposition(nom_document("Ficha-condicionantes", d.get("title")), inline=True)})
 
 
 @router.get("/ficha-terreno")
@@ -316,6 +341,19 @@ async def ficha_terreno(lat: float, lon: float, area_m2: Optional[float] = None,
     from engines.urbanismo_pt.auto import ficha_terreno as FT
     f = await FT.ficha(lat, lon, None, area_m2)
     return f
+
+
+@router.get("/ficha-terreno.pdf")
+async def ficha_terreno_pdf(lat: float, lon: float, area_m2: Optional[float] = None, user=Depends(current_user)):
+    if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
+        raise HTTPException(422, "Coordenadas fora de Portugal continental.")
+    from engines.urbanismo_pt.auto import ficha_terreno as FT
+    f = await FT.ficha(lat, lon, None, area_m2)
+    planta = await FT.planta_condicionantes(f)
+    dcl = await FT.declives(f)
+    carta = await FT.carta_declives(f, dcl) if FT.tem_desnivel(dcl) else None
+    return Response(content=FT.ficha_pdf(f, planta, carta, dcl), media_type="application/pdf",
+                    headers={"Content-Disposition": 'inline; filename="ficha-condicionantes.pdf"'})
 
 
 @router.get("/ficha-terreno/planta.png")
@@ -370,7 +408,12 @@ async def exportar(pid: str, user=Depends(current_user)):
         raise HTTPException(409, "Ainda não foi possível confirmar com dados oficiais: " + ", ".join(falta)
                                  + ". Use «Refazer» para voltar a consultar antes de exportar.")
     sims = [{"code": x["code"], "filename": x["filename"], "data": x["data"]} for x in await simulacoes(d)]
-    sims = [{"code": x["code"], "filename": x["filename"], "data": x["png"]} for x in await _planta_condicionantes(d)] + sims
+    cond = await _condicionantes(d)
+    if cond:
+        extra = [{"code": "FICHA_CONDICIONANTES", "filename": "ficha_condicionantes.pdf", "data": cond["pdf"]}]
+        extra += [{"code": "PLANTA_CONDICIONANTES", "filename": "planta_condicionantes.png", "data": cond["planta"]}] if cond["planta"] else []
+        extra += [{"code": "CARTA_DECLIVES", "filename": "carta_declives_recursos_hidricos.png", "data": cond["carta"]}] if cond["carta"] else []
+        sims = extra + sims
     data = await run_in_threadpool(UP.export_zip, d, verif, sims)
     data = _anexar_relatorio(data, d, coer)
     return Response(content=data, media_type="application/zip", headers={

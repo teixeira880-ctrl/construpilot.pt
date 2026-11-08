@@ -35,6 +35,12 @@ OUTRAS = ("srup_areas_protegidas", "srup_zec", "srup_zpe", "srup_perigosidade_in
           "srup_aquiferos", "srup_rede_viaria", "srup_rede_ferroviaria", "srup_rede_eletrica", "srup_defesa_militar",
           "srup_defesa_militar_zonas", "srup_aeronautica", "srup_marcos_geod", "srup_arvores_areal", "linhas_agua")
 RAIO_VIZINHANCA_M = 150.0
+NOMES = {"linhas_agua": "Linhas de água (hidrografia)", "srup_rede_eletrica": "Rede elétrica", "srup_rede_viaria": "Rede rodoviária nacional",
+         "srup_rede_ferroviaria": "Rede ferroviária", "srup_perigosidade_inc_rural": "Perigosidade de incêndio rural",
+         "srup_albufeiras": "Albufeiras de águas públicas", "srup_aquiferos": "Captações de água subterrânea",
+         "srup_areas_protegidas": "Áreas protegidas", "srup_zec": "Rede Natura — ZEC", "srup_zpe": "Rede Natura — ZPE",
+         "srup_defesa_militar": "Defesa nacional", "srup_defesa_militar_zonas": "Defesa nacional (zonas)",
+         "srup_aeronautica": "Servidão aeronáutica", "srup_marcos_geod": "Marcos geodésicos", "srup_arvores_areal": "Árvores de interesse público"}
 
 
 # ------------------------------------------------------------------ geometria (projeção local métrica)
@@ -216,7 +222,7 @@ async def ficha(lat: float, lon: float, poligono_latlon: Optional[Sequence[LatLo
     for c in OUTRAS:
         if res.get(c):
             x = _cruzar(res[c], L, terreno, ponto)
-            tit = next((k["title"] for k in G._COLLECTIONS.get("list") or [] if k["id"] == c), c)
+            tit = NOMES.get(c) or next((k["title"] for k in G._COLLECTIONS.get("list") or [] if k["id"] == c), c)
             p0 = _props(res[c][0])
             outras.append({"id": c, "titulo": tit, "distancia_m": x["distancia_m"], "pct": x["pct"],
                            "tipo": G._pick(p0, "tipologia", "servidao", "designacao", "nome")})
@@ -289,7 +295,7 @@ async def planta_condicionantes(f: Dict[str, Any], casa_latlon: Optional[Sequenc
     L = Local(lat, lon)
     xs = [L.m(p[1], p[0])[0] for p in poly]
     ys = [L.m(p[1], p[0])[1] for p in poly]
-    meia = max(max(xs) - min(xs), max(ys) - min(ys)) / 2 + 45.0
+    meia = max(max(xs) - min(xs), max(ys) - min(ys)) / 2 + 80.0
     cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
     clat, clon = lat + cy / L.ky, lon + cx / L.kx
     o = await G.ortofoto(clat, clon, meia, px)
@@ -352,3 +358,268 @@ async def planta_condicionantes(f: Dict[str, Any], casa_latlon: Optional[Sequenc
     out = io.BytesIO()
     img.convert("RGB").save(out, "PNG")
     return out.getvalue()
+
+
+# ------------------------------------------------------------------ carta de declives e recursos hídricos
+CLASSES_DECLIVE = ((0, 5, (120, 200, 110), "0–5 %"), (5, 10, (200, 225, 100), "5–10 %"), (10, 15, (250, 210, 90), "10–15 %"),
+                   (15, 25, (240, 140, 60), "15–25 %"), (25, 999, (200, 50, 50), "> 25 %"))
+
+
+async def declives(f: Dict[str, Any], n: int = 13) -> Dict[str, Any]:
+    """Grelha de cotas (EU-DEM 25 m Copernicus ou Google Elevation) sobre o terreno e envolvente → declive por célula,
+    declive médio e máximo do terreno, desnível e sentido de escoamento."""
+    lat, lon = f["ponto"]["lat"], f["ponto"]["lon"]
+    poly = f["terreno"]["poligono_latlon"]
+    L = Local(lat, lon)
+    xs = [L.m(p[1], p[0])[0] for p in poly]
+    ys = [L.m(p[1], p[0])[1] for p in poly]
+    meia = max(max(xs) - min(xs), max(ys) - min(ys)) / 2 + 80.0
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    passo = 2 * meia / (n - 1)
+    pts = [(cx - meia + i * passo, cy - meia + j * passo) for j in range(n) for i in range(n)]
+    ll = [(lat + y / L.ky, lon + x / L.kx) for x, y in pts]
+    el = await G.elevacoes(ll)
+    if not el["ok"]:
+        return {"ok": False, "nota": el.get("nota") or "altimetria indisponível"}
+    z = el["data"]["z"]
+    Z = [[z[j * n + i] for i in range(n)] for j in range(n)]
+    terreno = Polygon([L.m(p[1], p[0]) for p in poly]).buffer(0)
+    cel, dentro = [], []
+    for j in range(n - 1):
+        for i in range(n - 1):
+            q = [Z[j][i], Z[j][i + 1], Z[j + 1][i], Z[j + 1][i + 1]]
+            if any(v is None for v in q):
+                continue
+            gx = ((q[1] - q[0]) + (q[3] - q[2])) / (2 * passo)
+            gy = ((q[2] - q[0]) + (q[3] - q[1])) / (2 * passo)
+            d = 100 * math.hypot(gx, gy)
+            x0, y0 = cx - meia + i * passo, cy - meia + j * passo
+            c = {"x0": x0, "y0": y0, "x1": x0 + passo, "y1": y0 + passo, "declive_pct": round(d, 1), "gx": gx, "gy": gy}
+            cel.append(c)
+            if terreno.intersects(Polygon([(x0, y0), (x0 + passo, y0), (x0 + passo, y0 + passo), (x0, y0 + passo)])):
+                dentro.append(c)
+    zt = [Z[j][i] for j in range(n) for i in range(n) if Z[j][i] is not None
+          and terreno.buffer(passo / 2).contains(Point(cx - meia + i * passo, cy - meia + j * passo))]
+    gxm = sum(c["gx"] for c in dentro) / len(dentro) if dentro else 0.0
+    gym = sum(c["gy"] for c in dentro) / len(dentro) if dentro else 0.0
+    rumo = (math.degrees(math.atan2(-gxm, -gym)) + 360) % 360      # sentido em que a água corre (para baixo)
+    nomes = ["norte", "nordeste", "este", "sudeste", "sul", "sudoeste", "oeste", "noroeste"]
+    return {"ok": True, "celulas": cel, "passo_m": round(passo, 1), "centro": (cx, cy), "meia_m": meia,
+            "declive_medio_pct": round(sum(c["declive_pct"] for c in dentro) / len(dentro), 1) if dentro else None,
+            "declive_max_pct": max((c["declive_pct"] for c in dentro), default=None),
+            "desnivel_m": round(max(zt) - min(zt), 1) if zt else None, "cota_min_m": min(zt) if zt else None,
+            "cota_max_m": max(zt) if zt else None, "escoamento_para": nomes[int((rumo + 22.5) // 45) % 8],
+            "escoamento_rumo": round(rumo), "fonte": el["fonte"], "resolucao_m": el["data"].get("resolucao_m")}
+
+
+async def carta_declives(f: Dict[str, Any], dcl: Dict[str, Any], casa_latlon=None, px: int = 1400) -> Optional[bytes]:
+    """Carta de declives (classes) + curvas de nível (DGT) + linhas de água e albufeiras (DGT) + sentido de escoamento."""
+    from PIL import Image, ImageDraw
+    from engines.urbanismo_pt import volumes as V
+    if not dcl.get("ok"):
+        return None
+    lat, lon = f["ponto"]["lat"], f["ponto"]["lon"]
+    L = Local(lat, lon)
+    cx, cy = dcl["centro"]
+    meia = dcl["meia_m"]
+    clat, clon = lat + cy / L.ky, lon + cx / L.kx
+    o = await G.ortofoto(clat, clon, meia, px)
+    if o["ok"]:
+        base = Image.open(io.BytesIO(o["data"]["png"])).convert("L").convert("RGB").resize((px, px))
+        b = [float(v) for v in o["data"]["bbox"].split(",")]
+    else:
+        base = Image.new("RGB", (px, px), (236, 234, 226))
+        b = [clon - meia / L.kx, clat - meia / L.ky, clon + meia / L.kx, clat + meia / L.ky]
+
+    def P(la, lo):
+        return ((lo - b[0]) / (b[2] - b[0]) * px, (b[3] - la) / (b[3] - b[1]) * px)
+
+    def Pm(x, y):
+        return P(lat + y / L.ky, lon + x / L.kx)
+    over = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(over)
+    for c in dcl["celulas"]:
+        cor = next(k[2] for k in CLASSES_DECLIVE if k[0] <= c["declive_pct"] < k[1])
+        a, bb = Pm(c["x0"], c["y1"]), Pm(c["x1"], c["y0"])
+        dr.rectangle([a[0], a[1], bb[0], bb[1]], fill=cor + (120,))
+    img = Image.alpha_composite(base.convert("RGBA"), over)
+    dr = ImageDraw.Draw(img)
+    bbox = f"{b[0]},{b[1]},{b[2]},{b[3]}"
+    fontes = [dcl["fonte"]]
+    curvas = await G._dgt_items("altimetria_curvas_nivel", bbox, 200)
+    for ft in curvas or []:
+        g = ft.get("geometry") or {}
+        linhas = [g["coordinates"]] if g.get("type") == "LineString" else g.get("coordinates") or [] if g.get("type") == "MultiLineString" else []
+        for ln in linhas:
+            dr.line([P(c[1], c[0]) for c in ln], fill=(120, 80, 40, 255), width=2)
+        cota = G._pick(_props(ft), "cota", "altitude", "z", "elev")
+        if cota and linhas and linhas[0]:
+            m = linhas[0][len(linhas[0]) // 2]
+            dr.text(P(m[1], m[0]), str(cota).split(".")[0], fill=(90, 50, 20, 255), font=V._font(15))
+    if curvas:
+        fontes.append("DGT — Altimetria (curvas de nível)")
+    agua = []
+    for col in ("linhas_agua", "srup_albufeiras"):
+        fe = await G._dgt_items(col, bbox, 200)
+        for ft in fe or []:
+            g = ft.get("geometry") or {}
+            if g.get("type") in ("LineString", "MultiLineString"):
+                for ln in ([g["coordinates"]] if g["type"] == "LineString" else g["coordinates"]):
+                    dr.line([P(c[1], c[0]) for c in ln], fill=(30, 110, 230, 255), width=5)
+            elif g.get("type") in ("Polygon", "MultiPolygon"):
+                for pg in ([g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]):
+                    dr.polygon([P(c[1], c[0]) for c in pg[0]], fill=(60, 140, 240, 150), outline=(30, 110, 230, 255))
+        if fe:
+            agua += fe
+            fontes.append("DGT — Hidrografia (linhas de água)" if col == "linhas_agua" else "DGT — SRUP Albufeiras")
+    poly = f["terreno"]["poligono_latlon"]
+    dr.line([P(*p) for p in poly] + [P(*poly[0])], fill=(230, 30, 30, 255), width=6)
+    if casa_latlon:
+        polys = casa_latlon if isinstance(casa_latlon[0][0], (list, tuple)) else [casa_latlon]
+        for pg in polys:
+            if len(pg) >= 3:
+                dr.polygon([P(float(q[0]), float(q[1])) for q in pg], fill=(255, 210, 60, 200), outline=(40, 40, 40, 255))
+    # seta de escoamento
+    ax, ay = P(lat, lon)
+    r = math.radians(dcl["escoamento_rumo"])
+    bx, by = ax + 110 * math.sin(r), ay - 110 * math.cos(r)
+    dr.line([ax, ay, bx, by], fill=(20, 60, 200, 255), width=6)
+    dr.polygon([(bx, by), (bx - 16 * math.cos(r) - 22 * math.sin(r), by - 16 * math.sin(r) + 22 * math.cos(r)),
+                (bx + 16 * math.cos(r) - 22 * math.sin(r), by + 16 * math.sin(r) + 22 * math.cos(r))], fill=(20, 60, 200, 255))
+    # legenda
+    dr.rectangle([20, 20, 520, 330], fill=(255, 255, 255, 235), outline=(60, 60, 60, 255))
+    dr.text((34, 30), "Carta de declives e recursos hídricos", fill=(20, 20, 20, 255), font=V._font(20))
+    for k, (_, _, cor, t) in enumerate(CLASSES_DECLIVE):
+        dr.rectangle([34, 66 + k * 30, 64, 88 + k * 30], fill=cor + (255,))
+        dr.text((74, 66 + k * 30), t, fill=(20, 20, 20, 255), font=V._font(17))
+    dr.line([260, 76, 300, 76], fill=(120, 80, 40, 255), width=3)
+    dr.text((310, 66), "Curvas de nível (DGT)", fill=(20, 20, 20, 255), font=V._font(17))
+    dr.line([260, 106, 300, 106], fill=(30, 110, 230, 255), width=5)
+    dr.text((310, 96), "Linhas de água (DGT)", fill=(20, 20, 20, 255), font=V._font(17))
+    dr.line([260, 136, 300, 136], fill=(20, 60, 200, 255), width=5)
+    dr.text((310, 126), "Escoamento natural", fill=(20, 20, 20, 255), font=V._font(17))
+    txt = (f"Terreno: declive médio {dcl['declive_medio_pct']} % · máx. {dcl['declive_max_pct']} % · desnível "
+           f"{dcl['desnivel_m']} m · a água escorre para {dcl['escoamento_para']}")
+    dr.text((34, 226), txt[:62], fill=(20, 20, 20, 255), font=V._font(16))
+    dr.text((34, 250), txt[62:124], fill=(20, 20, 20, 255), font=V._font(16))
+    dr.text((34, 284), ("Fontes: " + "; ".join(fontes))[:70], fill=(80, 80, 80, 255), font=V._font(14))
+    dr.text((34, 304), ("Fontes: " + "; ".join(fontes))[70:140], fill=(80, 80, 80, 255), font=V._font(14))
+    out = io.BytesIO()
+    img.convert("RGB").save(out, "PNG")
+    return out.getvalue()
+
+
+def tem_desnivel(dcl: Dict[str, Any]) -> bool:
+    return bool(dcl.get("ok") and ((dcl.get("desnivel_m") or 0) >= 1.0 or (dcl.get("declive_medio_pct") or 0) >= 3.0))
+
+
+# ------------------------------------------------------------------ ficha de condicionantes (PDF A3)
+def ficha_pdf(f: Dict[str, Any], planta_png: Optional[bytes], declives_png: Optional[bytes] = None,
+              dcl: Optional[Dict[str, Any]] = None, titulo: str = "") -> bytes:
+    """Ficha de condicionantes em A3: planta sobre o ortofotomapa + quadro de todos os fatores com a fonte oficial;
+    segunda folha com a carta de declives e recursos hídricos, quando o terreno tem desnível."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A3, landscape
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+    from engines.urbanismo_pt import pdf as UP
+    fn = UP._fonts()
+    buf = io.BytesIO()
+    W, H = landscape(A3)
+    c = canvas.Canvas(buf, pagesize=(W, H))
+    c.setTitle("Ficha de condicionantes — ConstruPilot")
+
+    def cab(t):
+        c.setFillColor(colors.HexColor("#173C32"))
+        c.rect(12 * mm, H - 26 * mm, W - 24 * mm, 14 * mm, fill=1, stroke=0)
+        c.setFillColor(colors.white)
+        c.setFont(fn["bold"], 15)
+        c.drawString(18 * mm, H - 21 * mm, t)
+        c.setFont(fn["regular"], 9)
+        c.drawRightString(W - 18 * mm, H - 21 * mm, f"{f['ponto']['lat']:.6f}, {f['ponto']['lon']:.6f} · {UP._hoje()}")
+        c.setStrokeColor(colors.black)
+        c.rect(12 * mm, 12 * mm, W - 24 * mm, H - 24 * mm)
+
+    cab("Ficha de condicionantes do terreno" + (f" — {titulo}" if titulo else ""))
+    lado = H - 52 * mm
+    if planta_png:
+        c.drawImage(ImageReader(io.BytesIO(planta_png)), 18 * mm, 18 * mm, lado, lado)
+    x = 18 * mm + lado + 10 * mm
+    y = H - 36 * mm
+    par = f["parecer"]
+    cor = {"compativel": "#1D7A46", "condicionado": "#B8860B", "inviavel": "#B22222", "por_confirmar": "#555555"}[par["estado"]]
+
+    def linha(rotulo, valor, fonte=None, bold=False):
+        nonlocal y
+        c.setFillColor(colors.HexColor("#555555"))
+        c.setFont(fn["regular"], 9)
+        c.drawString(x, y, rotulo)
+        c.setFillColor(colors.black)
+        c.setFont(fn["bold"] if bold else fn["regular"], 10.5)
+        txt = str(valor if valor not in (None, "") else "por confirmar")
+        largura = W - x - 18 * mm - 48 * mm
+        palavras, atual, linhas = txt.split(), "", []
+        for p_ in palavras:
+            t2 = (atual + " " + p_).strip()
+            if c.stringWidth(t2, fn["regular"], 10.5) > largura and atual:
+                linhas.append(atual)
+                atual = p_
+            else:
+                atual = t2
+        linhas.append(atual)
+        for k, ln in enumerate(linhas):
+            c.drawString(x + 48 * mm, y - k * 4.6 * mm, ln)
+        if fonte:
+            c.setFillColor(colors.HexColor("#777777"))
+            c.setFont(fn["regular"], 7.5)
+            c.drawString(x + 48 * mm, y - len(linhas) * 4.6 * mm + 1 * mm, "Fonte: " + fonte)
+            y -= 3.2 * mm
+        y -= len(linhas) * 4.6 * mm + 2.4 * mm
+
+    c.setFillColor(colors.HexColor(cor))
+    c.roundRect(x, y - 16 * mm, W - x - 18 * mm, 18 * mm, 3 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.white)
+    c.setFont(fn["bold"], 13)
+    c.drawString(x + 5 * mm, y - 6 * mm, {"compativel": "COMPATÍVEL EM PRINCÍPIO", "condicionado": "POSSÍVEL COM CONDIÇÕES",
+                                          "inviavel": "EM REGRA NÃO É POSSÍVEL CONSTRUIR",
+                                          "por_confirmar": "POR CONFIRMAR"}[par["estado"]])
+    c.setFont(fn["regular"], 9)
+    c.drawString(x + 5 * mm, y - 12 * mm, par["resumo"][:120])
+    y -= 26 * mm
+    ad = f["administrativo"]
+    caop = "DGT — CAOP"
+    linha("Distrito", ad.get("distrito"), caop)
+    linha("Município (DICO)", f"{ad.get('municipio') or '—'} ({ad.get('dico') or '—'})", caop)
+    linha("Freguesia (DICOFRE)", f"{ad.get('freguesia') or '—'} ({ad.get('dicofre') or '—'})", caop)
+    linha("Lugar", ad.get("lugar"), "OpenStreetMap (geocodificação inversa)")
+    linha("Terreno", f"{f['terreno']['area_m2']:.0f} m² — limite {f['terreno']['origem_limite']}")
+    for p in f["pdm"] or [None]:
+        linha("PDM (classe / categoria)", p and f"{p['classe']} — {p['categoria']} ({p['pct_terreno']:.0f} % do terreno)"
+              + (f"; {p['pdm_situacao']}, registo {p['pdm_registo']}" if p and p.get("pdm_registo") else ""),
+              "DGT — Carta do Regime de Uso do Solo (CRUS)", bold=True)
+    for nome, r, src in (("REN", f["ren"], "DGT — SRUP REN"), ("RAN", f["ran"], "DGT — SRUP RAN")):
+        v = None if r is None else (f"{r['pct']:.0f} % do terreno ({r['area_m2']:.0f} m²)" if r["pct"] > 0 else
+                                     "não abrange o terreno" + (f" (limite a {r['distancia_m']:.0f} m)" if r["distancia_m"] is not None else ""))
+        linha(nome, v, src, bold=True)
+    for o in (f["outras_servidoes"] or [])[:7]:
+        linha(o["titulo"].replace("SRUP - ", "")[:40], (f"{o['pct']:.0f} % do terreno" if o["pct"] > 0 else f"a {o['distancia_m']:.0f} m")
+              + (f" — {o['tipo']}" if o.get("tipo") else ""), "DGT — SRUP")
+    if dcl and dcl.get("ok"):
+        linha("Declive do terreno", f"médio {dcl['declive_medio_pct']} %, máx. {dcl['declive_max_pct']} %, desnível "
+              f"{dcl['desnivel_m']} m; a água escorre para {dcl['escoamento_para']}", dcl["fonte"])
+    for t in par["condicoes"][:5]:
+        linha("Condição", t)
+    if f["por_confirmar"]:
+        linha("Por confirmar", ", ".join(f["por_confirmar"]))
+    c.setFillColor(colors.HexColor("#555555"))
+    c.setFont(fn["regular"], 7.5)
+    c.drawString(18 * mm, 14 * mm, f["nota"][:200])
+    c.showPage()
+    if declives_png:
+        cab("Carta de declives e recursos hídricos" + (f" — {titulo}" if titulo else ""))
+        lado = H - 52 * mm
+        c.drawImage(ImageReader(io.BytesIO(declives_png)), (W - lado) / 2, 18 * mm, lado, lado)
+        c.showPage()
+    c.save()
+    return buf.getvalue()

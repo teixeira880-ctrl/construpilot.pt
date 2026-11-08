@@ -21,7 +21,8 @@ def transporte(ren=None, ran=None, solo="Solo Urbano", rede=True):
             return 0, None
         if url.endswith("/collections"):
             return 200, {"collections": [{"id": c, "title": c} for c in ("crus", "municipios", "freguesias", "srup_ren_areal",
-                                                                           "srup_ran", "srup_rede_eletrica", "cadastro")]}
+                                                                           "srup_ran", "srup_rede_eletrica", "cadastro", "linhas_agua",
+                                                                           "altimetria_curvas_nivel")]}
         if "nominatim" in url and "reverse" in url:
             return 200, {"address": {"hamlet": "Monte da Preguiça", "village": "Padim da Graça"}}
         if "/municipios/items" in url:
@@ -39,8 +40,19 @@ def transporte(ren=None, ran=None, solo="Solo Urbano", rede=True):
         if "/srup_rede_eletrica/items" in url:
             return 200, {"features": [{"properties": {"tipologia": "Linha MT"},
                                        "geometry": {"type": "LineString", "coordinates": [[LON - 0.001, LAT + 0.00035], [LON + 0.001, LAT + 0.00035]]}}]}
+        if "/linhas_agua/items" in url:
+            return 200, {"features": [{"properties": {"nome": "Ribeiro"}, "geometry": {"type": "LineString",
+                                       "coordinates": [[LON - 0.002, LAT - 0.0006], [LON + 0.002, LAT - 0.0006]]}}]}
+        if "/altimetria_curvas_nivel/items" in url:
+            return 200, {"features": [{"properties": {"cota": 100 + k * 5}, "geometry": {"type": "LineString",
+                                       "coordinates": [[LON - 0.002, LAT - 0.0005 + k * 0.0002], [LON + 0.002, LAT - 0.0005 + k * 0.0002]]}}
+                                      for k in range(5)]}
         if "/items" in url:
             return 200, {"features": []}
+        if "opentopodata" in url:
+            locs = params["locations"].split("|")
+            return 200, {"status": "OK", "results": [{"elevation": 100 + (float(l.split(",")[0]) - LAT) * 110574 * 0.12}
+                                                     for l in locs]}
         if "ortos-rgb/map" in url:
             return 0, None
         return 0, None
@@ -103,3 +115,22 @@ def test_planta_de_condicionantes_desenha_sem_ortofoto():
     f = run(FT.ficha(LAT, LON, TERRENO))
     png = run(FT.planta_condicionantes(f, FT.terreno_aproximado(LAT, LON, 200)))
     assert png[:4] == b"\x89PNG" and len(png) > 20000
+
+
+def test_carta_de_declives_e_ficha_pdf_com_linhas_de_agua():
+    G.set_transport(transporte())
+    f = run(FT.ficha(LAT, LON, TERRENO))
+    d = run(FT.declives(f))
+    assert d["ok"] and d["declive_medio_pct"] == pytest.approx(12, abs=1.5) and d["escoamento_para"] == "sul"
+    assert FT.tem_desnivel(d) and d["desnivel_m"] > 3
+    carta = run(FT.carta_declives(f, d, FT.terreno_aproximado(LAT, LON, 200)))
+    assert carta[:4] == b"\x89PNG"
+    linha_agua = next(o for o in f["outras_servidoes"] if o["id"] == "linhas_agua")
+    assert linha_agua["distancia_m"] == pytest.approx(47, abs=4)       # o ribeiro passa ~47 m a sul do limite
+    pdf = FT.ficha_pdf(f, run(FT.planta_condicionantes(f)), carta, d, "Teste")
+    from pypdf import PdfReader
+    import io as _io
+    r = PdfReader(_io.BytesIO(pdf))
+    assert len(r.pages) == 2
+    t = r.pages[0].extract_text()
+    assert "030341" in t and "Padim da Graça" in t and "REN" in t and "RAN" in t and "Espaço Urbano" in t
