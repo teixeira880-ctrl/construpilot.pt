@@ -119,6 +119,15 @@ AUTORIZACAO_TOOLS += [
          "antes_depois": {"type": "boolean"}},
     ),
     function(
+        "terreno_ficha",
+        "Ficha OFICIAL de um terreno a partir de coordenadas (lat/lon): distrito, município (DICO), freguesia (DICOFRE) e lugar "
+        "(CAOP), classe e categoria do PDM (CRUS) com a % do terreno, REN e RAN (área dentro do terreno ou distância), outras "
+        "servidões (linhas elétricas, estradas, domínio hídrico, Rede Natura…) e um parecer prévio (compatível / condicionado / "
+        "inviável / por confirmar). Usar sempre que o cliente der coordenadas ou perguntar se pode construir num terreno.",
+        {"lat": {"type": "number"}, "lon": {"type": "number"},
+         "area_m2": {"type": "number", "description": "Área do terreno, se souber (sem cadastro usa-se um quadrado com esta área)."}},
+    ),
+    function(
         "licenciamento_aprovar_imagem",
         "Quando o cliente diz que aprova/quer no dossier uma imagem que ficou «não verificada» (p. ex. «quero a da piscina no "
         "dossier»), marca-a como aprovada pelo requerente: entra no dossier com a legenda «ilustrativa, aprovada pelo "
@@ -158,7 +167,9 @@ AUTORIZACAO_INSTRUCTIONS = (
     "encontrada ao nível da localidade, diz-lhe que basta dar as coordenadas do terreno (no Google Maps: carregar no "
     "terreno e copiar os dois números) e chama licenciamento_atualizar com lat/lon — com elas o PDM e a REN passam a ser os "
     "do terreno. Se o cliente aprovar uma imagem não verificada "
-    "(«quero a da piscina»), usa licenciamento_aprovar_imagem. Se o utilizador der dados, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
+    "(«quero a da piscina»), usa licenciamento_aprovar_imagem. Se o cliente der coordenadas ou perguntar se pode "
+    "construir num terreno, chama primeiro terreno_ficha e explica: freguesia (DICOFRE), PDM, REN, RAN, servidões e o "
+    "parecer prévio, citando as fontes; depois, se ele quiser, licenciamento_automatico com lat/lon. Se o utilizador der dados, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
     "licenciamento_materiais. Nunca inventes números: usa só os devolvidos pela ferramenta. Se o estado for «inviavel» "
     "(solo rústico, REN/RAN), explica o impedimento com honestidade e sugere o pedido de informação prévia à câmara. "
     "O cliente é uma pessoa SEM conhecimentos técnicos: fala simples, decide tu o que falta (forma, estilo, piscina, garagem, "
@@ -189,6 +200,21 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
     if name == "licenciamento_estilos":
         from engines.urbanismo_pt.auto import estilos as E
         return {"ok": True, "estilos": E.lista()}
+    if name == "terreno_ficha":
+        from engines.urbanismo_pt.auto import ficha_terreno as FT
+        try:
+            lat, lon = float((args or {})["lat"]), float((args or {})["lon"])
+        except (KeyError, TypeError, ValueError):
+            return {"ok": False, "error": "Indique as coordenadas do terreno (latitude e longitude)."}
+        if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
+            return {"ok": False, "error": "Coordenadas fora de Portugal continental."}
+        try:
+            f = await asyncio.wait_for(FT.ficha(lat, lon, None, (args or {}).get("area_m2")), timeout=120)
+        except asyncio.TimeoutError:
+            return {"ok": False, "error": "Os serviços da DGT estão lentos; tente de novo dentro de momentos."}
+        f.pop("terreno", None)
+        f["planta_url"] = f"/api/urbanismo-auto/ficha-terreno/planta.png?lat={lat}&lon={lon}"
+        return f
     if name == "licenciamento_aprovar_imagem":
         from routes import urbanismo_auto as UA
         try:

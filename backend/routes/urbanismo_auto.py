@@ -287,11 +287,53 @@ async def desenho(pid: str, n: int, user=Depends(current_user)):
     return Response(content=ds[n]["png"], media_type="image/png")
 
 
+async def _planta_condicionantes(d: Dict[str, Any]) -> list:
+    """Planta de condicionantes (REN, RAN, PDM sobre o ortofotomapa, com o terreno e a casa) — peça do processo."""
+    a = d.get("auto") or {}
+    loc = a.get("localizacao") or {}
+    if not (a.get("ficha_terreno") and loc.get("lat") is not None):
+        return []
+    from engines.urbanismo_pt.auto import ficha_terreno as FT
+    try:
+        f = dict(a["ficha_terreno"])
+        f["terreno"] = {**(f.get("terreno") or {}), "poligono_latlon": [tuple(p) for p in (a.get("terreno") or {}).get("poligono_latlon") or []]}
+        f["ponto"] = {"lat": loc["lat"], "lon": loc["lon"]}
+        casa = [[tuple(q) for q in pg] for pg in a.get("casa_latlon") or [] if pg] or None
+        png = await asyncio.wait_for(FT.planta_condicionantes(f, casa), timeout=60)
+    except Exception:  # noqa: BLE001
+        log.warning("planta de condicionantes falhou", exc_info=True)
+        return []
+    return [{"code": "PLANTA_CONDICIONANTES", "title": "Planta de condicionantes — REN, RAN e PDM (DGT) sobre o ortofotomapa",
+             "filename": "planta_condicionantes.png", "png": png}] if png else []
+
+
+@router.get("/ficha-terreno")
+async def ficha_terreno(lat: float, lon: float, area_m2: Optional[float] = None, user=Depends(current_user)) -> dict:
+    """Ficha oficial de um ponto: distrito, município (DICO), freguesia (DICOFRE), lugar, PDM (CRUS), REN, RAN e servidões
+    cruzadas com o terreno, e um parecer prévio. Sem gravar nada."""
+    if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
+        raise HTTPException(422, "Coordenadas fora de Portugal continental.")
+    from engines.urbanismo_pt.auto import ficha_terreno as FT
+    f = await FT.ficha(lat, lon, None, area_m2)
+    return f
+
+
+@router.get("/ficha-terreno/planta.png")
+async def ficha_terreno_planta(lat: float, lon: float, area_m2: Optional[float] = None, user=Depends(current_user)):
+    if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
+        raise HTTPException(422, "Coordenadas fora de Portugal continental.")
+    from engines.urbanismo_pt.auto import ficha_terreno as FT
+    f = await FT.ficha(lat, lon, None, area_m2)
+    png = await FT.planta_condicionantes(f)
+    return Response(content=png, media_type="image/png", headers={"Cache-Control": "private, max-age=600"})
+
+
 @router.get("/processos/{pid}/pecas-desenhadas.pdf")
 async def pecas_pdf(pid: str, user=Depends(current_user)):
     d = await _owned(pid, user["user_id"])
     sims = await simulacoes(d)
-    data = await run_in_threadpool(lambda: UP.pecas_desenhadas_pdf(d, UP.desenhos(d, None) + sims))
+    cond = await _planta_condicionantes(d)
+    data = await run_in_threadpool(lambda: UP.pecas_desenhadas_pdf(d, cond + UP.desenhos(d, None) + sims))
     return Response(content=data, media_type="application/pdf", headers={
         "Content-Disposition": content_disposition(nom_document("Pecas-desenhadas", d.get("title")), inline=True)})
 
@@ -328,6 +370,7 @@ async def exportar(pid: str, user=Depends(current_user)):
         raise HTTPException(409, "Ainda não foi possível confirmar com dados oficiais: " + ", ".join(falta)
                                  + ". Use «Refazer» para voltar a consultar antes de exportar.")
     sims = [{"code": x["code"], "filename": x["filename"], "data": x["data"]} for x in await simulacoes(d)]
+    sims = [{"code": x["code"], "filename": x["filename"], "data": x["png"]} for x in await _planta_condicionantes(d)] + sims
     data = await run_in_threadpool(UP.export_zip, d, verif, sims)
     data = _anexar_relatorio(data, d, coer)
     return Response(content=data, media_type="application/zip", headers={
