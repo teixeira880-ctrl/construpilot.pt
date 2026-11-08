@@ -564,6 +564,46 @@ def _seta_agua(dr, px: int, hidro: Optional[Dict[str, Any]], font, legenda=(0, 0
     dr.text((lx, ly), lbl, fill=(20, 70, 180, 255), font=font)
 
 
+def _tracejado(dr, pts, cor, w=5, traco=18, vazio=12) -> None:
+    for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+        d = math.hypot(x2 - x1, y2 - y1)
+        t = 0.0
+        while t < d:
+            t2 = min(t + traco, d)
+            dr.line([x1 + (x2 - x1) * t / d, y1 + (y2 - y1) * t / d, x1 + (x2 - x1) * t2 / d, y1 + (y2 - y1) * t2 / d], fill=cor, width=w)
+            t = t2 + vazio
+
+
+def _aproximado(f: Dict[str, Any]) -> bool:
+    return str(f["terreno"].get("origem_limite", "")).startswith("aproximado")
+
+
+def _terreno_e_casa(dr, P, f: Dict[str, Any], casa_latlon, piscina_latlon, font) -> None:
+    """Limite do terreno e casa. Sem limite real (sem cadastro nem limites indicados) o terreno é tracejado e a casa
+    aparece só como contorno de exemplo — não se pode afirmar que cabe ali nem que não colide com o que já existe."""
+    poly = f["terreno"]["poligono_latlon"]
+    pts = [P(*p) for p in poly] + [P(*poly[0])]
+    if _aproximado(f):
+        _tracejado(dr, pts, (255, 255, 255, 255), 9)
+        _tracejado(dr, pts, (230, 30, 30, 255), 5)
+        polys = []
+        if casa_latlon:
+            polys = casa_latlon if isinstance(casa_latlon[0][0], (list, tuple)) else [casa_latlon]
+        for pg in polys + ([piscina_latlon] if piscina_latlon else []):
+            q = [P(float(a[0]), float(a[1])) for a in pg]
+            _tracejado(dr, q + [q[0]], (255, 220, 60, 255), 4, 10, 7)
+        msg = "TERRENO APROXIMADO — sem cadastro: indique os limites ou as coordenadas do terreno"
+        w = 9 * len(msg)
+        xs = [p[0] for p in pts]
+        x0 = min(max((min(xs) + max(xs)) / 2 - w / 2, 10), 1400 - w - 10)
+        y0 = max(min(p[1] for p in pts) - 40, 420)
+        dr.rectangle([x0 - 6, y0 - 2, x0 + w, y0 + 26], fill=(255, 255, 255, 240), outline=(230, 30, 30, 255))
+        dr.text((x0, y0), msg, fill=(200, 20, 20, 255), font=font)
+    else:
+        dr.line(pts, fill=(230, 30, 30, 255), width=6)
+        _desenha_casa(dr, P, casa_latlon, piscina_latlon)
+
+
 def _desenha_casa(dr, P, casa_latlon, piscina_latlon) -> None:
     if casa_latlon:   # um polígono [(lat, lon)…] ou vários (casa + anexos)
         polys = casa_latlon if isinstance(casa_latlon[0][0], (list, tuple)) else [casa_latlon]
@@ -631,13 +671,13 @@ async def planta_condicionantes(f: Dict[str, Any], casa_latlon: Optional[Sequenc
                                       hidro, V._font(15), forte=False)
     img = Image.alpha_composite(base.convert("RGBA"), over)
     dr = ImageDraw.Draw(img)
-    dr.line([P(*p) for p in poly] + [P(*poly[0])], fill=(230, 30, 30, 255), width=6)
-    _desenha_casa(dr, P, casa_latlon, piscina_latlon)
+    _terreno_e_casa(dr, P, f, casa_latlon, piscina_latlon, V._font(15))
     dr.ellipse([P(lat, lon)[0] - 7, P(lat, lon)[1] - 7, P(lat, lon)[0] + 7, P(lat, lon)[1] + 7], fill=(230, 30, 30, 255))
     # legenda
     itens = [("r", (230, 30, 30), "Limite do terreno — " + f["terreno"]["origem_limite"].split(" (")[0][:30])]
     if casa_latlon:
-        itens.append(("r", (255, 210, 60), casa_rotulo.replace(" (implantação indicativa)", " (indicativa)")[:46]))
+        itens.append(("r", (255, 210, 60), ("Exemplo de implantação (posição a confirmar)" if _aproximado(f) else
+                                           casa_rotulo.replace(" (implantação indicativa)", " (indicativa)"))[:46]))
     if piscina_latlon:
         itens.append(("r", (70, 190, 235), "Piscina"))
     itens += [("r", (40, 170, 80), "REN (DGT)"), ("r", (240, 200, 40), "RAN (DGT)"), ("r", (180, 40, 160), "Limites de classes do PDM (CRUS)"),
@@ -724,6 +764,56 @@ async def declives(f: Dict[str, Any], n: int = 17) -> Dict[str, Any]:
             "escoamento_rumo": round(rumo), "fonte": el["fonte"], "resolucao_m": el["data"].get("resolucao_m")}
 
 
+def _raster_declives(dcl: Dict[str, Any], Pm, px: int):
+    """Classes de declive em mancha contínua: declive calculado na grelha do MDT afinada (interpolação bilinear) e
+    imagem suavizada — sem os quadrados de 25 m."""
+    from PIL import Image, ImageFilter
+    k = 6
+    Z = _grelha_fina(dcl["Z"], k)
+    m = len(Z)
+    h = dcl["passo_m"] / k
+    x0, y0 = dcl["centro"][0] - dcl["meia_m"], dcl["centro"][1] - dcl["meia_m"]
+    img = Image.new("RGBA", (m - 1, m - 1), (0, 0, 0, 0))
+    pix = img.load()
+    for j in range(m - 1):
+        for i in range(m - 1):
+            q = (Z[j][i], Z[j][i + 1], Z[j + 1][i], Z[j + 1][i + 1])
+            if any(v is None for v in q):
+                continue
+            gx = ((q[1] - q[0]) + (q[3] - q[2])) / (2 * h)
+            gy = ((q[2] - q[0]) + (q[3] - q[1])) / (2 * h)
+            d = 100 * math.hypot(gx, gy)
+            cor = next(c[2] for c in CLASSES_DECLIVE if c[0] <= d < c[1])
+            pix[i, m - 2 - j] = cor + (105,)          # linha 0 da imagem = norte
+    a = Pm(x0, y0 + (m - 1) * h)
+    b = Pm(x0 + (m - 1) * h, y0)
+    w, hh = max(1, int(round(b[0] - a[0]))), max(1, int(round(b[1] - a[1])))
+    img = img.resize((w, hh), Image.BILINEAR).filter(ImageFilter.GaussianBlur(3))
+    over = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+    over.paste(img, (int(round(a[0])), int(round(a[1]))))
+    return over
+
+
+def _seta_escoamento(dr, P, Pm, f: Dict[str, Any], dcl: Dict[str, Any]) -> None:
+    """Seta do escoamento a sair do limite do terreno no sentido em que a água corre (não por cima da casa)."""
+    lat, lon = f["ponto"]["lat"], f["ponto"]["lon"]
+    L = Local(lat, lon)
+    T = Polygon([L.m(p[1], p[0]) for p in f["terreno"]["poligono_latlon"]]).buffer(0)
+    c = T.centroid
+    r = math.radians(dcl["escoamento_rumo"])
+    from shapely.geometry import LineString
+    raio = LineString([(c.x, c.y), (c.x + 1000 * math.sin(r), c.y + 1000 * math.cos(r))])
+    sai = raio.intersection(T.exterior)
+    p0 = sai if sai.geom_type == "Point" else (list(sai.geoms)[0] if hasattr(sai, "geoms") and len(sai.geoms) else c)
+    ax, ay = Pm(p0.x, p0.y)
+    bx, by = ax + 120 * math.sin(r), ay - 120 * math.cos(r)
+    ax, ay = ax + 12 * math.sin(r), ay - 12 * math.cos(r)
+    dr.line([ax, ay, bx, by], fill=(255, 255, 255, 255), width=11)
+    dr.line([ax, ay, bx, by], fill=(20, 60, 200, 255), width=6)
+    e = (bx + 18 * math.sin(r), by - 18 * math.cos(r))
+    dr.polygon([e, (bx - 13 * math.cos(r), by - 13 * math.sin(r)), (bx + 13 * math.cos(r), by + 13 * math.sin(r))], fill=(20, 60, 200, 255))
+
+
 async def carta_declives(f: Dict[str, Any], dcl: Dict[str, Any], casa_latlon=None, px: int = 1400,
                          hidro: Optional[Dict[str, Any]] = None, piscina_latlon=None) -> Optional[bytes]:
     """Carta de declives (classes) + curvas de nível (DGT; sem elas, traçadas do MDT) + linhas de água e albufeiras
@@ -750,12 +840,7 @@ async def carta_declives(f: Dict[str, Any], dcl: Dict[str, Any], casa_latlon=Non
 
     def Pm(x, y):
         return P(lat + y / L.ky, lon + x / L.kx)
-    over = Image.new("RGBA", (px, px), (0, 0, 0, 0))
-    dr = ImageDraw.Draw(over)
-    for c in dcl["celulas"]:
-        cor = next(k[2] for k in CLASSES_DECLIVE if k[0] <= c["declive_pct"] < k[1])
-        a, bb = Pm(c["x0"], c["y1"]), Pm(c["x1"], c["y0"])
-        dr.rectangle([a[0], a[1], bb[0], bb[1]], fill=cor + (110,))
+    over = _raster_declives(dcl, Pm, px)
     img = Image.alpha_composite(base.convert("RGBA"), over)
     dr = ImageDraw.Draw(img)
     bbox = f"{b[0]},{b[1]},{b[2]},{b[3]}"
@@ -768,16 +853,8 @@ async def carta_declives(f: Dict[str, Any], dcl: Dict[str, Any], casa_latlon=Non
     dcl["hidro_txt"] = hidro.get("txt")
     dcl["curvas_fonte"] = "DGT — Altimetria" if curvas else (f"traçadas do MDT ({dcl['fonte']}), equidistância "
                                                              f"{mdt['equidistancia']:.0f} m" if mdt and mdt['segmentos'] else None)
-    poly = f["terreno"]["poligono_latlon"]
-    dr.line([P(*p) for p in poly] + [P(*poly[0])], fill=(230, 30, 30, 255), width=6)
-    _desenha_casa(dr, P, casa_latlon, piscina_latlon)
-    # seta de escoamento
-    ax, ay = P(lat, lon)
-    r = math.radians(dcl["escoamento_rumo"])
-    bx, by = ax + 110 * math.sin(r), ay - 110 * math.cos(r)
-    dr.line([ax, ay, bx, by], fill=(20, 60, 200, 255), width=6)
-    dr.polygon([(bx, by), (bx - 16 * math.cos(r) - 22 * math.sin(r), by - 16 * math.sin(r) + 22 * math.cos(r)),
-                (bx + 16 * math.cos(r) - 22 * math.sin(r), by + 16 * math.sin(r) + 22 * math.cos(r))], fill=(20, 60, 200, 255))
+    _terreno_e_casa(dr, P, f, casa_latlon, piscina_latlon, V._font(15))
+    _seta_escoamento(dr, P, Pm, f, dcl)
     # legenda
     dr.rectangle([20, 20, 560, 400], fill=(255, 255, 255, 235), outline=(60, 60, 60, 255))
     dr.text((34, 30), "Carta de declives e recursos hídricos", fill=(20, 20, 20, 255), font=V._font(20))
@@ -791,16 +868,16 @@ async def carta_declives(f: Dict[str, Any], dcl: Dict[str, Any], casa_latlon=Non
         dr.text((250, 66 + k * 30), t, fill=(20, 20, 20, 255), font=V._font(17))
     if casa_latlon:
         dr.rectangle([200, 186, 240, 206], fill=(255, 210, 60, 255), outline=(30, 30, 30, 255))
-        dr.text((250, 186), "Casa proposta", fill=(20, 20, 20, 255), font=V._font(17))
+        dr.text((250, 186), "Exemplo de casa (a confirmar)" if _aproximado(f) else "Casa proposta", fill=(20, 20, 20, 255), font=V._font(17))
     txt = (f"Terreno: declive médio {dcl['declive_medio_pct']} % · máx. {dcl['declive_max_pct']} % · desnível "
            f"{dcl['desnivel_m']} m · a água escorre para {dcl['escoamento_para']}")
     import textwrap
-    for k, ln in enumerate(textwrap.wrap(txt, 64)[:2]):
+    for k, ln in enumerate(textwrap.wrap(txt, 58)[:2]):
         dr.text((34, 226 + k * 22), ln, fill=(20, 20, 20, 255), font=V._font(16))
-    for k, ln in enumerate(textwrap.wrap("Água: " + (hidro.get("txt") or ""), 64)[:2]):
+    for k, ln in enumerate(textwrap.wrap("Água: " + (hidro.get("txt") or ""), 58)[:2]):
         dr.text((34, 278 + k * 22), ln, fill=(20, 70, 180, 255), font=V._font(16))
     ft = "Fontes: " + "; ".join(fontes) + "; " + (o.get("fonte") if o["ok"] else "ortofotomapa indisponível")
-    for k, ln in enumerate(textwrap.wrap(ft, 74)[:3]):
+    for k, ln in enumerate(textwrap.wrap(ft, 68)[:3]):
         dr.text((34, 330 + k * 20), ln, fill=(80, 80, 80, 255), font=V._font(14))
     _seta_agua(dr, px, hidro, V._font(18), (20, 20, 560, 400))
     dr.polygon([(px - 60, 40), (px - 75, 85), (px - 60, 75), (px - 45, 85)], fill=(20, 20, 20, 255))
