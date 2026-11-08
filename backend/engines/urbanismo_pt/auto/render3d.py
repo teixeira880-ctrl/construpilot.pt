@@ -113,8 +113,19 @@ def construir_cena(m: Dict[str, Any], fachada_sol: str = "frente") -> Tuple[Cena
             casa_bbox = bx if casa_bbox is None else (min(casa_bbox[0], bx[0]), min(casa_bbox[1], bx[1]),
                                                       max(casa_bbox[2], bx[2]), max(casa_bbox[3], bx[3]))
         n = len(pts)
+        # composição granito + madeira (desenho de arquiteto): corpo social e garagem em granito; ala dos quartos e
+        # panos virados ao pátio do L em ripado de madeira
+        comp_gm = mats.get("fachada") == "misto_granito_madeira"
+        yc = _rects(pts)[0][3] if (comp_gm and n == 6 and not anexo) else None
+        arestas = []
         for i in range(n):
             a, b = pts[i], pts[(i + 1) % n]
+            # parede contínua que atravessa corpo e ala: divide-se na junção para cada parte ter o seu material
+            if yc is not None and abs(a[0] - b[0]) < 1e-6 and min(a[1], b[1]) < yc - 1e-6 < yc + 1e-6 < max(a[1], b[1]):
+                arestas += [(a, (a[0], yc)), ((a[0], yc), b)]
+            else:
+                arestas.append((a, b))
+        for a, b in arestas:
             comp = math.hypot(b[0] - a[0], b[1] - a[1])
             if comp < 1e-6:
                 continue
@@ -122,6 +133,11 @@ def construir_cena(m: Dict[str, Any], fachada_sol: str = "frente") -> Tuple[Cena
             nx, ny = (b[1] - a[1]) / comp, -(b[0] - a[0]) / comp
             if anexo:
                 mat = "garagem" if p1 in ("reboco_branco", "betao") else p1
+            elif yc is not None:
+                ym = (a[1] + b[1]) / 2
+                ala = ym > yc + 1e-6
+                patio = abs(a[1] - yc) < 1e-6 and abs(b[1] - yc) < 1e-6
+                mat = "madeira" if (ala or patio) else "granito"
             elif p1 != p2:   # fachada mista: material secundário na fachada do sol e nos panos interiores do L
                 lado_sol = (ny < -0.7 and fachada_sol == "frente") or (ny > 0.7 and fachada_sol == "tardoz")
                 mat = p2 if lado_sol or (abs(nx) > 0.7 and comp < 10) else p1

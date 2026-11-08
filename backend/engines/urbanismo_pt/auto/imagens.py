@@ -95,8 +95,9 @@ def prompt_vista(processo: Dict[str, Any], vista: str, estrito: bool = False, lu
     return (
         f"Ultra photorealistic architectural photograph, {enquadr}, of THIS exact house. " + regra +
         f"Style: {est['render']}. Replace the flat colours with real materials: facade = "
-        f"{PA.MATERIAIS_FACHADA.get(mats.get('fachada'), 'white render')} (dark grey areas = natural granite stone, "
-        f"brown areas = natural timber cladding, light areas = render); roof = {PA.MATERIAIS_COBERTURA.get(mats.get('cobertura'), 'clay tiles')}; "
+        f"{PA.MATERIAIS_FACHADA.get(mats.get('fachada'), 'white render')} (grey areas = natural split-face granite "
+        f"stone cladding with real joints, brown areas = warm vertical timber slats with visible grain, light areas = render; "
+        f"keep each material exactly on the faces where the reference shows it); roof = {PA.MATERIAIS_COBERTURA.get(mats.get('cobertura'), 'clay tiles')}; "
         f"window frames = {PA.CAIXILHARIA.get(mats.get('caixilharia'), 'anthracite aluminium')}, slim profiles; dark rectangles = "
         "floor-to-ceiling clear glazing showing a furnished, warmly lit interior. Landscaping (only on the ground, never on "
         f"the building): {_arranjos(processo, concelho)}. Lighting: {ILUMINACAO.get(luz, ILUMINACAO['dia'])}. "

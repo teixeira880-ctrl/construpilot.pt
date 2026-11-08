@@ -21,7 +21,7 @@ MATERIAIS_FACHADA = {
     "betao": "Betão aparente",
     "misto_granito_reboco": "Granito no rés-do-chão e reboco branco no andar",
     "misto_madeira_reboco": "Reboco branco com apontamentos em madeira",
-    "misto_granito_madeira": "Granito na base e nos panos principais, com revestimento em ripado de madeira",
+    "misto_granito_madeira": "Granito natural no corpo principal e na garagem; ala dos quartos (planta em L) ou fachada do sol e panos virados ao pátio em ripado vertical de madeira",
 }
 MATERIAIS_COBERTURA = {"telha_ceramica": "Telha cerâmica vermelha (tipo Marselha / lusa)", "telha_preta": "Telha cerâmica preta",
                        "zinco": "Chapa de zinco", "plana_seixo": "Cobertura plana com proteção em seixo"}

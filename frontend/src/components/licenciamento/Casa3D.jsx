@@ -217,7 +217,7 @@ function buildScene(scene, m, cache) {
     const nPisos = v.anexo ? 1 : (m.pisos || 1);
     const hPiso = v.anexo ? v.altura_m : sh;
     for (let p = 0; p < nPisos; p++) {
-      const kind = v.anexo ? (fach === "madeira" || fach === "misto_madeira_reboco" || fach === "misto_granito_madeira" ? "madeira"
+      const kind = v.anexo ? (fach === "madeira" || fach === "misto_madeira_reboco" ? "madeira"
         : fach.startsWith("misto_granito") ? "granito" : fachadaMats(fach, 0)[0])
         : (fach === "misto_granito_madeira" && v.parte === 1 ? "madeira" : fachadaMats(fach, p)[0]);
       const mat = matFor(kind, cache);
