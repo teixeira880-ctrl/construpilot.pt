@@ -264,6 +264,9 @@ def _parecer(pdm, ren, ran, outras, por_confirmar) -> Dict[str, Any]:
             motivos.append(f"{nome}: o terreno não está abrangido"
                            + (f" (mais próxima a {r['distancia_m']:.0f} m)." if r["distancia_m"] is not None else "."))
     for o in outras:
+        if "perigosidade" in (o["id"] + " " + (o.get("titulo") or "")).lower() and re.search(r"baixa", (o.get("tipo") or "").lower()):
+            motivos.append(f"Perigosidade de incêndio rural: {o['tipo']} — sem condicionamento à construção por este motivo.")
+            continue
         if o["pct"] > 0 or (o["distancia_m"] is not None and o["distancia_m"] < 30):
             condicoes.append(f"{o['titulo']}{' — ' + o['tipo'] if o.get('tipo') else ''}: "
                              + (f"{o['pct']:.0f} % do terreno." if o["pct"] > 0 else f"a {o['distancia_m']:.0f} m."))
