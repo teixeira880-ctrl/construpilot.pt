@@ -350,6 +350,10 @@ function Processo({ pid }) {
             {(f.outras_servidoes || []).slice(0, 6).map((o, i) => <p key={`o${i}`} className="text-sm text-muted-foreground">• {o.titulo}{o.tipo ? ` (${o.tipo})` : ""}: {o.pct > 0 ? `${o.pct} % do terreno` : `a ${o.distancia_m} m`}</p>)}
             {(par.condicoes || []).map((x, i) => <p key={`c${i}`} className="text-sm text-amber-800">• {x}</p>)}
             <p className="text-xs text-muted-foreground">Limite do terreno: {f.terreno?.origem_limite}. {f.nota}</p>
+            <Button variant="outline" size="sm" data-testid="lic-auto-ficha-pdf"
+              onClick={() => descarregar(`/urbanismo-auto/processos/${pid}/ficha-condicionantes.pdf`, "ficha-condicionantes.pdf").catch(() => setErro("Ficha de condicionantes indisponível de momento."))}>
+              Ficha de condicionantes (PDF) — ortofotomapa, REN/RAN/PDM, curvas de nível e linhas de água
+            </Button>
           </Card>);
       })()}
 

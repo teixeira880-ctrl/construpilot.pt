@@ -604,6 +604,7 @@ def resumo_publico(r: Dict[str, Any], processo_id: Optional[str] = None) -> Dict
     return {
         "ok": True, "estado": r["estado"], "processo_id": processo_id,
         "pagina": f"/urbanismo/processos/{processo_id}" if processo_id else None,
+        "ficha_condicionantes_pdf": f"/api/urbanismo-auto/processos/{processo_id}/ficha-condicionantes.pdf" if processo_id else None,
         "procedimento": v["rjue"]["procedimento"], "procedimento_label": R.PROCEDIMENTO_LABEL.get(v["rjue"]["procedimento"]),
         "fundamento": v["rjue"].get("fundamento_legal"), "tecnicos_obrigatorios": v["rjue"].get("tecnicos_obrigatorios"),
         "casa": {"tipologia": a["programa"]["tipologia"], "pisos": q["n_pisos"], "area_construcao_m2": q["area_construcao_m2"],
