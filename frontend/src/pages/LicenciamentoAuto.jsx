@@ -85,6 +85,9 @@ function Pedido() {
         <h1 className="text-2xl sm:text-3xl font-semibold">Autorização de construção automática</h1>
         <p className="text-muted-foreground mt-2">Escreva o que quer e a morada. O ConstruPilot lê os dados oficiais do terreno, desenha a casa,
           verifica as regras e prepara o processo completo — com tudo o que assumiu explicado em linguagem simples.</p>
+        <Link to="/edificio-3d" className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2" data-testid="lic-auto-link-ed3d">
+          <Box className="h-4 w-4" />Edifício 3D georreferenciado (Blender + ArcGIS Pro)
+        </Link>
       </div>
       <Card className="p-4 space-y-3">
         <Textarea rows={3} value={texto} onChange={e => setTexto(e.target.value)} placeholder={EXEMPLO} data-testid="lic-auto-texto" />
