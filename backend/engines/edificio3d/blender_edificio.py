@@ -536,12 +536,13 @@ def vegetacao(scene, col, W, D, rng_seed=3, horizonte=True):
             _folhagem(c, folha_ob if m is folha else folha_ob2, int(2600 * h * 0.26), tamanho=2.4 + h * 0.12, seed=k + int(x))
 
     # árvores no jardim (fora dos eixos das câmaras das fachadas)
-    for (x, y, h) in ((-W / 2 - 6.5, D / 2 + 4.0, 7.5), (W / 2 + 6.0, D / 2 + 5.5, 8.5), (-W / 2 - 8.0, -D / 2 - 3.0, 6.0),
-                      (W / 2 + 7.5, -D / 2 - 2.0, 5.5), (W / 2 + 12.0, D / 2 + 12.0, 9.0), (-W / 2 - 13.0, 2.0, 8.0)):
+    # nos cantos do lote: nunca nos eixos das câmaras das fachadas nem da perspetiva
+    for (x, y, h) in ((-W / 2 - 6.0, D / 2 + 6.0, 7.5), (W / 2 + 6.5, D / 2 + 7.0, 8.5), (-W / 2 - 9.0, -D / 2 - 3.5, 6.0),
+                      (W / 2 + 7.5, -D / 2 - 5.5, 5.5), (W / 2 + 14.0, D / 2 + 14.0, 9.0), (-W / 2 - 15.0, D / 2 + 13.0, 8.0)):
         arvore(x, y, h, folha if rng.random() > 0.4 else folha2)
 
     # sebes nos limites do lote
-    lim = max(W, D) / 2 + 11.0
+    lim = max(W, D) * 2.3 + 6.0          # para lá das câmaras das fachadas (nunca à frente delas)
     for (x0, y0, x1, y1) in ((-lim, lim, lim, lim + 1.0), (-lim - 1.0, -lim + 3, -lim, lim), (lim, -lim + 3, lim + 1.0, lim)):
         bpy.ops.mesh.primitive_cube_add(size=1, location=((x0 + x1) / 2, (y0 + y1) / 2, 0.75))
         sb = bpy.context.active_object
