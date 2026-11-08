@@ -119,6 +119,46 @@ async def ficheiro(job_id: str, nome: str, user=Depends(current_user)):
                              "Content-Disposition": f'inline; filename="{nome}"'})
 
 
+class FotoIn(BaseModel):
+    vista: str = Field(pattern="^[a-z_]{3,40}$")
+    ambiente: str = Field(default="", max_length=300)
+
+
+@router.post("/projetos/{job_id}/fotorrealista")
+async def fotorrealista(job_id: str, body: FotoIn, user=Depends(current_user)) -> Dict[str, Any]:
+    """Acabamento fotorrealista (motor de imagem ConstruPilot) SOBRE um render real do Blender.
+
+    O render Blender é a referência obrigatória: a geometria, o enquadramento e as medidas vêm dele.
+    O resultado é guardado à parte (ia_<vista>.*) e o render original fica sempre disponível.
+    """
+    j = await _meu(job_id, user)
+    nome = (j.get("manifesto") or {}).get("imagens", {}).get(body.vista)
+    ref = await S.ler_ficheiro(job_id, nome) if nome else None
+    if not ref:
+        raise HTTPException(404, "Render Blender desta vista não encontrado.")
+    from engines import image_studio
+    p = j.get("params") or {}
+    prompt = (
+        "Photorealistic architectural photograph of THIS exact building, rendered by Blender. Keep the geometry 100% identical "
+        "to the reference image: same camera, framing, proportions, two-pitch gable roof and eaves, number of floors, every "
+        "window and door in the same position and size, the vertical wood cladding column at the entrance, the canopy, gutters "
+        "and downpipes. Do not add, remove or move any window, floor, balcony or volume and do not change the camera. "
+        "Only make the materials and lighting photographic: smooth white render facade with subtle texture, warm natural "
+        "wood vertical slats, slim black aluminium window frames, clear glass with real reflections, dark grey flat roof tiles, "
+        "natural daylight with soft realistic shadows, lush real lawn, real trees and hedges where the reference has them, "
+        f"real sky. Contemporary house in Portugal. {body.ambiente}").strip()
+    imgs = await image_studio.generate(prompt=prompt, provider="gemini", reference_images=[ref], number=1,
+                                       feature="edificio3d_fotorrealista", session_id=job_id)
+    data, mime = imgs[0]
+    ext = ".png" if "png" in (mime or "") else ".jpg"
+    saida = f"ia_{body.vista}{ext}"
+    await S.guardar_ficheiro(job_id, saida, data)
+    await db[S.COL].update_one({"job_id": job_id}, {"$set": {f"fotorrealistas.{body.vista}": saida}})
+    return {"ok": True, "vista": body.vista, "ficheiro": saida, "referencia": nome,
+            "nota": "Acabamento fotorrealista gerado sobre o render Blender (mesma câmara e geometria); "
+                    "o render Blender original mantém-se como referência técnica."}
+
+
 # ------------------------------------------------------------------ posto de trabalho (worker)
 def _worker(x_worker_token: Optional[str] = Header(default=None)) -> str:
     esperado = os.environ.get("EDIFICIO3D_WORKER_TOKEN", "")
