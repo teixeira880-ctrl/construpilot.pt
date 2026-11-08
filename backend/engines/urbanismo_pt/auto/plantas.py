@@ -144,6 +144,59 @@ def _ala(rs: List[dict], rect: Tuple[float, float, float, float]) -> Optional[Li
     return [{**r, "x0": r["y0"], "x1": r["y1"], "y0": r["x0"], "y1": r["x1"]} for r in rows]
 
 
+def _acessos_l(r1: List[dict], r2: List[dict], corpo, ala) -> Tuple[List[dict], List[dict]]:
+    """Garante que todos os compartimentos da ala dos quartos têm acesso por circulação (o corredor da ala tem de
+    nascer na circulação do corpo). Reorganiza a ala: quartos do lado do pátio (suite no topo), corredor do lado
+    exterior desde a junção do L até à suite, I.S. da suite contígua à suite; as outras I.S. passam para o corpo,
+    junto à circulação. Se a geometria não o permitir, devolve as filas sem alterações."""
+    ax0, ay0, ax1, ay1 = ala
+    quartos = [r for r in r2 if r["tipo"] == "quarto"]
+    corr = [r for r in r2 if r["tipo"] == "circulacao"]
+    wcs = [r for r in r2 if r["tipo"] == "wc"]
+    circ = [r for r in r1 if r["tipo"] == "circulacao"]
+    if not quartos or not corr or not circ or len(quartos) + len(corr) + len(wcs) != len(r2):
+        return r1, r2
+    servico = [r for r in r2 if r["tipo"] != "quarto"]
+    xs = min(r["x1"] for r in servico)          # limite da faixa de serviço (lado exterior, x mínimo)
+    if abs(min(r["x0"] for r in servico) - ax0) > 1e-3 or xs - ax0 < 1.6 - 1e-6:
+        return r1, r2
+    suite = next((q for q in quartos if "suite" in q["nome"].lower()), None)
+    outros = [q for q in quartos if q is not suite]
+    ordem = outros + ([suite] if suite else [])
+    span = ay1 - ay0
+    larg = [max(q.get("area_projeto_m2", 12.0) / max(ax1 - xs, 0.5), LARG_MIN["quarto"]) for q in ordem]
+    if sum(larg) > span + 1e-6:
+        return r1, r2
+    f = span / sum(larg)
+    novo2, y = [], ay0
+    for q, w in zip(ordem, larg):
+        novo2.append({**q, "x0": xs, "x1": ax1, "y0": y, "y1": y + w * f})
+        y += w * f
+    wc_suite = next((w for w in wcs if "suite" in w["nome"].lower()), None) if suite else None
+    if wc_suite:
+        s = novo2[-1]
+        y_wc = max(s["y0"] + 0.9, ay1 - max(1.6, wc_suite.get("area_projeto_m2", 4.5) / (xs - ax0)))
+        if ay1 - y_wc < 1.6 - 1e-6 or y_wc - s["y0"] < 0.9 - 1e-6:
+            return r1, r2
+        novo2.append({**corr[0], "x0": ax0, "x1": xs, "y0": ay0, "y1": y_wc})
+        novo2.append({**wc_suite, "x0": ax0, "x1": xs, "y0": y_wc, "y1": ay1})
+    else:
+        novo2.append({**corr[0], "x0": ax0, "x1": xs, "y0": ay0, "y1": ay1})
+    # restantes I.S. da ala → corpo, recortadas da circulação do lado exterior (mantém-se a ligação ao corredor)
+    resto = [w for w in wcs if w is not wc_suite]
+    c = circ[0]
+    novo1 = [r for r in r1 if r is not c]
+    cx0 = c["x0"]
+    for w in resto:
+        larg_wc = max(1.6, w.get("area_projeto_m2", 4.5) / max(c["y1"] - c["y0"], 0.5))
+        novo1.append({**w, "x0": cx0, "x1": cx0 + larg_wc, "y0": c["y0"], "y1": c["y1"]})
+        cx0 += larg_wc
+    if c["x1"] - cx0 < LARG_MIN["circulacao"] or min(c["x1"], xs) - max(cx0, ax0) < 0.9:
+        return r1, r2       # sem largura para a circulação ou sem ligação ao corredor da ala
+    novo1.append({**c, "x0": cx0})
+    return novo1, novo2
+
+
 def _comp(rows: List[dict]) -> List[dict]:
     comp = []
     for r in rows:
@@ -193,6 +246,8 @@ def distribuir(volume: dict, prog: dict, fachada_sol: str, lado_garagem: str) ->
                 noite.append({**circ[0], "nome": "Corredor dos quartos", "area_projeto_m2": metade})
             r1, escada_x = _faixas(dia, corpo, fachada_sol, lado_garagem, escada_x, compacto=True, circ_esquerda=True)
             r2 = _ala(noite, ala) if noite else []
+            if r1 is not None and r2:
+                r1, r2 = _acessos_l(r1, r2, corpo, ala)
             rows = None if r1 is None or r2 is None else r1 + r2
         if rows is None:
             return {"ok": False, "motivo": f"Os compartimentos do {nome} não cabem com as larguras mínimas nesta implantação."}

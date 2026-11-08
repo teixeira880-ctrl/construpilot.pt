@@ -238,8 +238,17 @@ def desenhos(processo: Dict[str, Any], verif: Optional[Dict[str, Any]] = None) -
             plan = {"pisos": auto["plantas"]["pisos"], "casa_rect": tuple(auto["plantas"]["casa_rect"]),
                     **({"contorno": auto["plantas"]["contorno"]} if auto["plantas"].get("contorno") else {})}
             az = (ter.get("azimutes") or {}).get("tardoz")
-            for k, pp in enumerate(plan["pisos"]):
-                add("PLANTAS_PISOS", f"Planta do {pp['nome'].lower()}", f"planta_piso_{k}.png", PL.desenho_planta(plan, k, az))
+            try:   # peças de arquitetura à escala 1:100 (plantas com paredes e portas, cobertura, 4 alçados, 2 cortes)
+                from engines.urbanismo_pt.auto import desenho_tecnico as DT
+                tecnicas = DT.pecas(d)
+            except Exception:  # noqa: BLE001 — sem peças à escala, mantêm-se as esquemáticas
+                tecnicas = []
+            if tecnicas:
+                out = [x for x in out if x["code"] not in ("CORTES", "ALCADOS")]
+                out += tecnicas
+            else:
+                for k, pp in enumerate(plan["pisos"]):
+                    add("PLANTAS_PISOS", f"Planta do {pp['nome'].lower()}", f"planta_piso_{k}.png", PL.desenho_planta(plan, k, az))
     return out
 
 
@@ -254,6 +263,12 @@ def pecas_desenhadas_pdf(processo: Dict[str, Any], drawings: List[Dict[str, Any]
     c = canvas.Canvas(buf, pagesize=(pw, ph))
     c.setTitle("Peças desenhadas — ConstruPilot")
     for i, dw in enumerate(drawings, 1):
+        if dw.get("folha"):   # folha A3 completa, à escala (com carimbo próprio): ocupa a página inteira, sem reduzir
+            c.drawImage(ImageReader(io.BytesIO(dw["png"])), 0, 0, pw, ph)
+            c.setFont(f["regular"], 7.5)
+            c.drawRightString(pw - 14 * mm, 14 * mm - 9, f"folha {i}/{len(drawings)}")
+            c.showPage()
+            continue
         m = 12 * mm
         c.setStrokeColor(INK)
         c.setLineWidth(1.2)
