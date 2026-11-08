@@ -254,3 +254,40 @@ def test_fotorrealista_sobre_render_blender(app, monkeypatch):
             assert j["fotorrealistas"]["perspetiva"] == "ia_perspetiva.png"
             assert Bucket.files["j1/perspetiva.jpg"] == b"\xff\xd8blender"                 # original intacto
     asyncio.run(run())
+
+
+def test_ferramentas_assistente_e_aurora(app, monkeypatch):
+    """O Assistente BTP (e a Aurora através dele) lança, acompanha e acaba o Edifício 3D com um prompt."""
+    a, fake = app
+    from engines.edificio3d import assistant_tool as T
+    from engines.assistant_workspace import validate_args
+    monkeypatch.setattr(T.S, "blender_no_servidor", lambda: None)
+    feitos = []
+
+    async def foto(jid, v, amb=""):
+        feitos.append(v)
+        return {"ficheiro": f"ia_{v}.png"}
+    monkeypatch.setattr(T.S, "gerar_fotorrealista", foto)
+    u = {"user_id": "u1"}
+    args = {"nome": None, "morada": None, "latitude": 41.56, "longitude": -8.40, "altitude_m": None, "azimute_fachada_graus": 135,
+            "largura_m": None, "profundidade_m": None, "pisos": 2, "pe_direito_m": None, "inclinacao_telhado_graus": None,
+            "beiral_m": None, "usar_arcgis": None, "qualidade": "rapida"}
+    validate_args("edificio3d_gerar", dict(args), T.TOOLS)          # esquema estrito aceita nulos
+
+    async def run():
+        assert not (await T.execute("edificio3d_gerar", {**args, "latitude": None}, u))["ok"]
+        r = await T.execute("edificio3d_gerar", args, u)
+        assert r["ok"] and r["link"] == f"/edificio-3d/{r['job_id']}"
+        await asyncio.sleep(0.3)
+        st = await T.execute("edificio3d_estado", {"job_id": r["job_id"]}, u)
+        assert st["parametros"]["azimute_fachada_graus"] == 135 and st["parametros"]["largura_m"] == 12
+        assert (await T.execute("edificio3d_estado", {"job_id": r["job_id"]}, {"user_id": "outro"}))["ok"] is False
+        nao = await T.execute("edificio3d_fotorrealista", {"job_id": r["job_id"], "vista": "todas", "ambiente": None}, u)
+        assert nao["ok"] is False and "concluído" in nao["error"]
+        await fake[S.COL].update_one({"job_id": r["job_id"]}, {"$set": {"estado": "concluido", "manifesto": {"imagens": {
+            "perspetiva": "p.jpg", "fachada_frente": "f.jpg", "antes_perspetiva": "a.jpg"}}}})
+        ok = await T.execute("edificio3d_fotorrealista", {"job_id": r["job_id"], "vista": "todas", "ambiente": None}, u)
+        assert ok["ok"] and feitos == ["perspetiva", "fachada_frente"]            # antes_* nunca recebe acabamento
+        lst = await T.execute("edificio3d_estado", {"job_id": None}, u)
+        assert lst["projetos"][0]["link"].startswith("/edificio-3d/")
+    asyncio.run(run())

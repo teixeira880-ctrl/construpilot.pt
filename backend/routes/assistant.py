@@ -56,6 +56,8 @@ from engines.edificio_ba.assistant_tool import (TOOLS as EDIF_TOOLS, TOOL_NAMES 
 from engines.dossier_tool import (TOOLS as DOSSIER_TOOLS, TOOL_NAMES as DOSSIER_TOOL_NAMES, STATUS as DOSSIER_STATUS, INSTRUCTIONS as DOSSIER_INSTRUCTIONS,  # processos completos / ZIP
                                   execute as execute_dossier_tool, list_dossier, context_text as dossier_context_text)
 
+from engines.edificio3d.assistant_tool import (TOOLS as ED3D_TOOLS, TOOL_NAMES as ED3D_TOOL_NAMES, STATUS as ED3D_STATUS,  # edifício 3D: Blender + ArcGIS Pro
+                                                INSTRUCTIONS as ED3D_INSTRUCTIONS, execute as execute_ed3d_tool)
 from engines.access import require_level
 
 logger = logging.getLogger(__name__)
@@ -264,10 +266,10 @@ INDIVIDUAL_TOOL_NAMES = {"start_construction_study", "read_construction_study", 
 
 def tools_for(user: dict) -> list:
     if account_type(user) == "individual":
-        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS
+        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
     return [t for t in out if t.get("name") not in BET_SUPERSEDED_TOOL_NAMES]
 
 
@@ -447,6 +449,8 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         return await execute_window_tool(name, args, user, conv, db)
     if name in DOSSIER_TOOL_NAMES:
         return await execute_dossier_tool(name, args, user, conv, db)
+    if name in ED3D_TOOL_NAMES:
+        return await execute_ed3d_tool(name, args, user)
     if name in AUTORIZACAO_TOOL_NAMES:
         return await run_autorizacao_tool(name, args, user, conv)
     if name == "read_generated_file":
@@ -1381,7 +1385,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         instructions += QUOTE_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
@@ -1729,6 +1733,8 @@ TOOL_STATUS_PT = _StatusMap({**TOOL_STATUS, **TOOL_STATUS_PT})
 TOOL_STATUS = _StatusMap(TOOL_STATUS)
 TOOL_STATUS.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")
 TOOL_STATUS.update(WINDOW_STATUS)
+TOOL_STATUS.update(ED3D_STATUS)
+TOOL_STATUS_PT.update(ED3D_STATUS)
 
 
 @router.post("/message")

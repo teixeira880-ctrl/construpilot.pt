@@ -61,7 +61,7 @@ def _publico(j: Dict[str, Any]) -> Dict[str, Any]:
     return j
 
 
-@router.get("/sistema")
+@router.get("/sistema", summary="Edifício 3D: Blender/ArcGIS Pro disponíveis (servidor e postos)")
 async def sistema(user=Depends(current_user)) -> Dict[str, Any]:
     from datetime import datetime, timedelta, timezone
     lim = (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat()
@@ -73,7 +73,7 @@ async def sistema(user=Depends(current_user)) -> Dict[str, Any]:
             "blender_disponivel": S.blender_no_servidor() is not None or any(p.get("blender") for p in postos)}
 
 
-@router.post("/projetos")
+@router.post("/projetos", summary="Edifício 3D: gerar edifício 3D georreferenciado (Blender, renders, GLB, ArcGIS)")
 async def criar(body: ProjetoIn, user=Depends(current_user)) -> Dict[str, Any]:
     if body.latitude is None and not body.morada.strip():
         raise HTTPException(422, "Indique as coordenadas (latitude/longitude) ou a morada.")
@@ -84,7 +84,7 @@ async def criar(body: ProjetoIn, user=Depends(current_user)) -> Dict[str, Any]:
     return _publico(j)
 
 
-@router.get("/projetos")
+@router.get("/projetos", summary="Edifício 3D: listar projetos 3D da conta")
 async def listar(user=Depends(current_user)) -> Dict[str, Any]:
     it = await db[S.COL].find({"user_id": user["user_id"]}, {"_id": 0, "job_id": 1, "nome": 1, "estado": 1,
                                                             "criado_em": 1, "params.latitude": 1, "params.longitude": 1}
@@ -100,7 +100,7 @@ async def _meu(job_id: str, user) -> Dict[str, Any]:
     return j
 
 
-@router.get("/projetos/{job_id}")
+@router.get("/projetos/{job_id}", summary="Edifício 3D: estado, etapas, renders e manifesto de um projeto")
 async def obter(job_id: str, user=Depends(current_user)) -> Dict[str, Any]:
     return _publico(await _meu(job_id, user))
 
@@ -124,7 +124,7 @@ class FotoIn(BaseModel):
     ambiente: str = Field(default="", max_length=300)
 
 
-@router.post("/projetos/{job_id}/fotorrealista")
+@router.post("/projetos/{job_id}/fotorrealista", summary="Edifício 3D: acabamento fotorrealista sobre um render Blender (vista)")
 async def fotorrealista(job_id: str, body: FotoIn, user=Depends(current_user)) -> Dict[str, Any]:
     """Acabamento fotorrealista (motor de imagem ConstruPilot) SOBRE um render real do Blender.
 
