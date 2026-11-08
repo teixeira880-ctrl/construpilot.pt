@@ -153,3 +153,41 @@ def test_estilo_tradicional_muda_cobertura_e_materiais():
 def test_numero_arredondado_com_fonte_e_aceite():
     assert C.numeros_sem_fonte("Lavandaria (5,5 m²) e I.S. (4,3 m²)", [5.54, 4.34]) == []
     assert C.numeros_sem_fonte("área de 7,9 m²", [5.54]) == ["7,9 m²"]
+
+
+def test_casa_em_l_todos_os_compartimentos_tem_acesso_e_pecas_a_escala():
+    """Cada compartimento abre para uma circulação (o corredor da ala nasce na circulação do corpo) e o dossier
+    traz as peças de arquitetura à escala: planta com paredes e portas, cobertura, 4 alçados, 2 cortes e piscina."""
+    from engines.urbanismo_pt.auto import desenho_tecnico as DT
+    r = BASE.run({"texto": PEDIDO_CLIENTE})
+    assert r["ok"]
+    proc = r["processo"]
+    comps = proc["auto"]["plantas"]["pisos"][0]["compartimentos"]
+    portas = DT._portas(comps)
+    # grafo de acessos: portas + ligações abertas entre sala / entrada / circulação
+    lig = {c["nome"]: set() for c in comps}
+    for p in portas:
+        lig[p["comp"]["nome"]].add(p["para"]["nome"])
+        lig[p["para"]["nome"]].add(p["comp"]["nome"])
+    ab = [c for c in comps if c["tipo"] in DT.NAO_PORTA]
+    for c in ab:
+        for o in ab:
+            if c is not o and (min(c["x1"], o["x1"]) - max(c["x0"], o["x0"]) > 0.9 and
+                               (abs(c["y1"] - o["y0"]) < 1e-3 or abs(c["y0"] - o["y1"]) < 1e-3)
+                               or min(c["y1"], o["y1"]) - max(c["y0"], o["y0"]) > 0.9 and
+                               (abs(c["x1"] - o["x0"]) < 1e-3 or abs(c["x0"] - o["x1"]) < 1e-3)):
+                lig[c["nome"]].add(o["nome"])
+    entrada = next(c["nome"] for c in comps if c["tipo"] == "entrada")
+    vistos, fila = {entrada}, [entrada]
+    while fila:
+        n = fila.pop()
+        for m in lig[n] - vistos:
+            vistos.add(m)
+            fila.append(m)
+    assert vistos == set(lig), f"sem acesso: {set(lig) - vistos}"
+    pecas = DT.pecas(proc)
+    codes = [p["code"] for p in pecas]
+    assert codes.count("ALCADOS") == 2 and "CORTES" in codes and "PLANTA_COBERTURA" in codes and "PISCINA" in codes
+    assert all(p["folha"] for p in pecas)
+    ds = UP.desenhos(proc, None)
+    assert any(d["filename"] == "planta_piso_0.png" for d in ds) and not any(d["filename"] == "corte_AA.png" for d in ds)
