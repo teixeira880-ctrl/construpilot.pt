@@ -70,6 +70,9 @@ AUTORIZACAO_TOOLS += [
             "estilo": {"type": "string", "description": "contemporaneo | minimalista | tradicional_portugues | minhoto_granito | "
                                                       "rustico_pedra_madeira | xisto_beira | alentejano | algarvio | mediterranico | nordico_madeira"},
             "cobertura_tipo": {"type": "string", "description": "plana | duas_aguas | uma_agua"},
+            "forcar_estudo": {"type": "boolean", "description": "true se o utilizador pedir para avançar MESMO com REN/RAN/solo rústico (os impedimentos ficam escritos no processo)."},
+            "lat": {"type": "number", "description": "Latitude do terreno, se o utilizador a der ou apontar no mapa."},
+            "lon": {"type": "number", "description": "Longitude do terreno, se o utilizador a der ou apontar no mapa."},
             "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
             "artigo_matricial": {"type": "string"},
         },
@@ -90,6 +93,7 @@ AUTORIZACAO_TOOLS += [
          "estilo": {"type": "string", "description": "contemporaneo | minimalista | tradicional_portugues | minhoto_granito | "
                                           "rustico_pedra_madeira | xisto_beira | alentejano | algarvio | mediterranico | nordico_madeira"},
          "cobertura_tipo": {"type": "string", "description": "plana | duas_aguas | uma_agua"},
+         "forcar_estudo": {"type": "boolean"}, "lat": {"type": "number"}, "lon": {"type": "number"},
         },
     ),
     function(
@@ -113,6 +117,14 @@ AUTORIZACAO_TOOLS += [
         {"processo_id": {"type": "string"},
          "vistas": {"type": "array", "items": {"type": "string"}, "description": "perspetiva, piscina, frente, tardoz, aerea, perspetiva_entardecer, interior_sala, interior_cozinha, interior_suite, interior_wc (por omissão todas)"},
          "antes_depois": {"type": "boolean"}},
+    ),
+    function(
+        "licenciamento_aprovar_imagem",
+        "Quando o cliente diz que aprova/quer no dossier uma imagem que ficou «não verificada» (p. ex. «quero a da piscina no "
+        "dossier»), marca-a como aprovada pelo requerente: entra no dossier com a legenda «ilustrativa, aprovada pelo "
+        "requerente — prevalecem as peças desenhadas». Indicar a vista (perspetiva, piscina, frente, tardoz, aerea, "
+        "perspetiva_entardecer, interior_sala, interior_cozinha, interior_suite, interior_wc).",
+        {"processo_id": {"type": "string"}, "vista": {"type": "string"}, "aprovada": {"type": "boolean"}},
     ),
     function(
         "licenciamento_estilos",
@@ -141,7 +153,12 @@ AUTORIZACAO_INSTRUCTIONS = (
     "aproximada, casa mais pequena se não couber, renovação sem plantas tratada como estudo, repetição quando um serviço "
     "oficial falha). Os dados de papelada devolvidos em «a_completar» (nome/NIF, artigo matricial, área da caderneta) "
     "mencionam-se UMA vez no fim como «pode completar quando quiser», nunca como pergunta que bloqueia. A única pergunta "
-    "permitida é a morada, se não existir de todo (estado «falta_morada»). Se o utilizador der dados, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
+    "permitida é a morada, se não existir de todo (estado «falta_morada»). Se o cliente disser «mesmo que esteja em REN/RAN» "
+    "passa forcar_estudo=true (os impedimentos continuam escritos no processo e tens de os explicar). Se a morada só for "
+    "encontrada ao nível da localidade, diz-lhe que basta dar as coordenadas do terreno (no Google Maps: carregar no "
+    "terreno e copiar os dois números) e chama licenciamento_atualizar com lat/lon — com elas o PDM e a REN passam a ser os "
+    "do terreno. Se o cliente aprovar uma imagem não verificada "
+    "(«quero a da piscina»), usa licenciamento_aprovar_imagem. Se o utilizador der dados, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
     "licenciamento_materiais. Nunca inventes números: usa só os devolvidos pela ferramenta. Se o estado for «inviavel» "
     "(solo rústico, REN/RAN), explica o impedimento com honestidade e sugere o pedido de informação prévia à câmara. "
     "O cliente é uma pessoa SEM conhecimentos técnicos: fala simples, decide tu o que falta (forma, estilo, piscina, garagem, "
@@ -172,6 +189,17 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
     if name == "licenciamento_estilos":
         from engines.urbanismo_pt.auto import estilos as E
         return {"ok": True, "estilos": E.lista()}
+    if name == "licenciamento_aprovar_imagem":
+        from routes import urbanismo_auto as UA
+        try:
+            pid, vista = (args or {}).get("processo_id") or "", (args or {}).get("vista") or ""
+            d = await UA._owned(pid, user["user_id"])
+            cand = [i for i in d.get("imagens") or [] if i.get("vista") == vista and i.get("tipo") in ("fotorrealista", "montagem")]
+            if not cand:
+                return {"ok": False, "error": f"Não há imagem fotorrealista da vista «{vista}» neste processo."}
+            return await UA.aprovar_imagem(pid, cand[-1]["id"], UA.AprovarIn(aprovada=bool((args or {}).get("aprovada", True))), user)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(getattr(e, "detail", e))[:300]}
     if name == "licenciamento_imagens":
         from routes import urbanismo_auto as UA
         try:

@@ -71,6 +71,8 @@ class PedidoIn(BaseModel):
     descricao_predial: Optional[str] = Field(default=None, max_length=80)
     requerente: Optional[RequerenteIn] = None
     forcar_estudo: Optional[bool] = None
+    lat: Optional[float] = Field(default=None, ge=36.8, le=42.2)    # ponto do terreno indicado no mapa (prevalece sobre a morada)
+    lon: Optional[float] = Field(default=None, ge=-9.6, le=-6.1)
     # v2 — tudo configurável em linguagem simples
     forma: Optional[str] = Field(default=None, pattern="^(retangulo|l|u|t)$")
     area_util_alvo_m2: Optional[float] = Field(default=None, gt=25, le=2000)
@@ -554,8 +556,8 @@ async def aprovar_imagem(pid: str, iid: str, body: AprovarIn, user=Depends(curre
     alvo = next((i for i in imgs if i["id"] == iid), None)
     if not alvo:
         raise HTTPException(404, "Imagem inexistente.")
-    if alvo["tipo"] != "montagem":
-        raise HTTPException(422, "Só as montagens sobre fotografia precisam de aprovação.")
+    if alvo["tipo"] not in ("montagem", "fotorrealista"):
+        raise HTTPException(422, "Só as montagens sobre fotografia e as imagens fotorrealistas podem ser aprovadas.")
     alvo["aprovada"] = bool(body.aprovada)
     await db.urbanismo_processos.update_one({"processo_id": pid, "user_id": user["user_id"]}, {"$set": {"imagens": imgs}})
     return {"ok": True, "id": iid, "aprovada": alvo["aprovada"]}
@@ -588,10 +590,14 @@ async def simulacoes(d: Dict[str, Any]) -> list:
         return []
     for v in ORDEM_DOSSIER:
         fr = next((i for i in imgs if i["vista"] == v and i["tipo"] == "fotorrealista" and i.get("verificada")), None)
-        if not fr and not v.startswith("interior_") and v not in ("perspetiva_entardecer",):
+        aprov = None if fr else next((i for i in imgs if i["vista"] == v and i["tipo"] == "fotorrealista" and i.get("aprovada")), None)
+        if not fr and not aprov and not v.startswith("interior_") and v not in ("perspetiva_entardecer",):
             fr = next((i for i in imgs if i["vista"] == v and i["tipo"] == "exata"), None)
         if fr:
             escolha.append((fr, f"Simulação 3D — {TITULOS_IMG.get(v, v)} (imagem ilustrativa)"))
+        elif aprov:   # não verificada, mas aprovada pelo requerente: entra com a ressalva
+            escolha.append((aprov, f"Simulação fotorrealista — {TITULOS_IMG.get(v, v)} (ilustrativa, aprovada pelo requerente — "
+                                   "geometria aproximada; prevalecem as peças desenhadas)"))
     i = next((x for x in imgs if x["tipo"] == "implantacao"), None)
     if i:
         escolha.append((i, "Planta de implantação humanizada (vegetação ilustrativa)"))

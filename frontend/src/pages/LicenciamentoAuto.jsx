@@ -298,7 +298,7 @@ function Processo({ pid }) {
                 {i.tipo === "fotorrealista" && (i.verificada
                   ? <span className="text-emerald-700">✓ geometria verificada</span>
                   : <span className="text-amber-700">⚠ comparar com a vista exata</span>)}
-                {i.tipo === "montagem" && (i.aprovada
+                {(i.tipo === "montagem" || (i.tipo === "fotorrealista" && !i.verificada)) && (i.aprovada
                   ? <button type="button" className="text-emerald-700 underline" onClick={() => aprovar(i, false)}>✓ no dossier (retirar)</button>
                   : <button type="button" className="text-blue-700 underline" onClick={() => aprovar(i, true)}
                       data-testid="lic-auto-aprovar-montagem">Aprovar para o dossier</button>)}

@@ -337,3 +337,47 @@ def test_modelo_openai_escolhido_pela_conta(monkeypatch):
     monkeypatch.setenv("URB_IMG_OPENAI_MODEL", "gpt-image-1")
     assert BR.run(IM._modelo_openai(Cli())) == "gpt-image-1"
     IM._MODELO_OPENAI.clear()
+
+
+def test_assistente_aprova_imagem_nao_verificada_e_aceita_coordenadas_e_ren(env, monkeypatch):
+    """«Quero a da piscina no dossier» → entra com a ressalva; ponto no mapa prevalece sobre a morada;
+    «mesmo que pertença à REN» → forcar_estudo."""
+    from engines.assistant_autorizacao_tool import AUTORIZACAO_TOOL_NAMES, run_autorizacao_tool
+    from engines.urbanismo_pt.auto import imagens as IM, pedido as PD
+    from PIL import Image
+    db, store, _ = env
+
+    async def outra_casa(prompt, ref, sessao, extra=None):   # geometria diferente → não verificada
+        b = io.BytesIO()
+        Image.new("RGB", (1536, 1024), (40, 90, 160)).save(b, "PNG")
+        return b.getvalue()
+    monkeypatch.setattr(IM, "_gemini", outra_casa)
+    assert PD.interpretar("faz igual mesmo que o terreno pertença à REN").get("forcar_estudo") is True
+    assert "licenciamento_aprovar_imagem" in AUTORIZACAO_TOOL_NAMES
+
+    async def go():
+        r = await run_autorizacao_tool("licenciamento_automatico", {"texto": PEDIDO_CLIENTE}, USER, {})
+        pid = r["processo_id"]
+        im = await UA.gerar_imagens(pid, USER, ["piscina"], False)
+        fr = next(i for i in im["imagens"] if i["tipo"] == "fotorrealista")
+        assert fr["verificada"] is False
+        doc = await db.urbanismo_processos.find_one({"processo_id": pid})
+        assert not any("aprovada pelo requerente" in x["title"] for x in await UA.simulacoes(doc))
+        a = await run_autorizacao_tool("licenciamento_aprovar_imagem", {"processo_id": pid, "vista": "piscina"}, USER, {})
+        assert a["ok"] and a["aprovada"]
+        doc = await db.urbanismo_processos.find_one({"processo_id": pid})
+        assert any("aprovada pelo requerente" in x["title"] for x in await UA.simulacoes(doc))
+        mau = await run_autorizacao_tool("licenciamento_aprovar_imagem", {"processo_id": pid, "vista": "interior_wc"}, USER, {})
+        assert mau["ok"] is False
+    run(go())
+
+
+def test_ponto_no_mapa_prevalece_sobre_a_morada(env):
+    from engines.urbanismo_pt.auto import pipeline as P
+
+    async def go():
+        r = await P.executar({"texto": PEDIDO_CLIENTE, "lat": 41.5651, "lon": -8.4861})
+        assert r["ok"], r
+        assert any("ponto indicado pelo requerente" in x for x in r["pressupostos"])
+        assert not any("localização exata da porta" in x for x in r["pressupostos"])
+    run(go())
