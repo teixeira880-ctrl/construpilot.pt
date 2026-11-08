@@ -64,6 +64,9 @@ async def _get(url: str, params: Optional[dict] = None, want: str = "json", trie
     """GET com repetição (rede, 429, 5xx) e limite de pedidos simultâneos por serviço — os serviços públicos (DGT,
     OpenStreetMap) recusam rajadas; sem isto, uma consulta falhada passaria por «sem dados» (ex.: CRUS ou REN em falta)."""
     host = url.split("/")[2] if "//" in url else url
+    dgt = "dgterritorio" in host and _fetch is _http
+    if dgt:   # a DGT responde 503 (limite de pedidos do nginx) a rajadas: menos pedidos simultâneos e mais paciência
+        conc, tries = min(conc, 2), max(tries, 5)
     loop_id = id(asyncio.get_running_loop())
     key = f"{host}:{loop_id}"
     sem = _SEMS.get(key)
@@ -72,13 +75,14 @@ async def _get(url: str, params: Optional[dict] = None, want: str = "json", trie
             _SEMS.clear()
         sem = _SEMS[key] = asyncio.Semaphore(conc)
     st, js = 0, None
+    esperas = (1.5, 3.0, 5.0, 8.0) if dgt else (1.0, 2.5, 4.0)
     for i in range(max(1, tries)):
         async with sem:
             st, js = await _fetch("GET", url, params, None, want)
         if js is not None or st in (400, 401, 403, 404):
             return st, js
         if i < tries - 1:
-            await asyncio.sleep((1.0, 2.5, 4.0)[min(i, 2)])
+            await asyncio.sleep(esperas[min(i, len(esperas) - 1)])
     return st, js
 
 

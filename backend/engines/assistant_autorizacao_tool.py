@@ -123,9 +123,13 @@ AUTORIZACAO_TOOLS += [
         "Ficha OFICIAL de um terreno a partir de coordenadas (lat/lon): distrito, município (DICO), freguesia (DICOFRE) e lugar "
         "(CAOP), classe e categoria do PDM (CRUS) com a % do terreno, REN e RAN (área dentro do terreno ou distância), outras "
         "servidões (linhas elétricas, estradas, domínio hídrico, Rede Natura…) e um parecer prévio (compatível / condicionado / "
-        "inviável / por confirmar). Usar sempre que o cliente der coordenadas ou perguntar se pode construir num terreno.",
+        "inviável / por confirmar), linhas de água e curvas de nível. Devolve as ligações da planta de condicionantes "
+        "(ortofotomapa + REN/RAN/PDM + curvas + linhas de água + casa como polígono) e do PDF da ficha (com a carta de "
+        "declives quando há desnível). Usar sempre que o cliente der coordenadas ou perguntar se pode construir num terreno.",
         {"lat": {"type": "number"}, "lon": {"type": "number"},
-         "area_m2": {"type": "number", "description": "Área do terreno, se souber (sem cadastro usa-se um quadrado com esta área)."}},
+         "area_m2": {"type": "number", "description": "Área do terreno, se souber (sem cadastro usa-se um quadrado com esta área)."},
+         "area_casa_m2": {"type": "number", "description": "Área de implantação da casa pretendida (desenha-a como polígono no terreno)."},
+         "forma": {"type": "string", "description": "L ou retangular"}, "piscina": {"type": "boolean"}, "garagem": {"type": "boolean"}},
     ),
     function(
         "licenciamento_aprovar_imagem",
@@ -169,7 +173,9 @@ AUTORIZACAO_INSTRUCTIONS = (
     "do terreno. Se o cliente aprovar uma imagem não verificada "
     "(«quero a da piscina»), usa licenciamento_aprovar_imagem. Se o cliente der coordenadas ou perguntar se pode "
     "construir num terreno, chama primeiro terreno_ficha e explica: freguesia (DICOFRE), PDM, REN, RAN, servidões e o "
-    "parecer prévio, citando as fontes; depois, se ele quiser, licenciamento_automatico com lat/lon. Se o utilizador der dados, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
+    "parecer prévio, citando as fontes, e dá a ligação ficha_pdf_url (planta de condicionantes sobre o ortofotomapa e, "
+    "se o terreno tiver desnível, carta de declives e recursos hídricos com curvas de nível e linhas de água); se o "
+    "cliente já disse a casa que quer, passa area_casa_m2/forma/piscina/garagem para a casa aparecer como polígono; depois, se ele quiser, licenciamento_automatico com lat/lon. Se o utilizador der dados, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
     "licenciamento_materiais. Nunca inventes números: usa só os devolvidos pela ferramenta. Se o estado for «inviavel» "
     "(solo rústico, REN/RAN), explica o impedimento com honestidade e sugere o pedido de informação prévia à câmara. "
     "O cliente é uma pessoa SEM conhecimentos técnicos: fala simples, decide tu o que falta (forma, estilo, piscina, garagem, "
@@ -213,7 +219,15 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
         except asyncio.TimeoutError:
             return {"ok": False, "error": "Os serviços da DGT estão lentos; tente de novo dentro de momentos."}
         f.pop("terreno", None)
-        f["planta_url"] = f"/api/urbanismo-auto/ficha-terreno/planta.png?lat={lat}&lon={lon}"
+        q = f"lat={lat}&lon={lon}"
+        a = args or {}
+        if a.get("area_m2"):
+            q += f"&area_m2={float(a['area_m2']):g}"
+        if a.get("area_casa_m2"):
+            q += (f"&area_casa_m2={float(a['area_casa_m2']):g}&forma={'L' if str(a.get('forma') or 'L').lower().startswith('l') else 'retangular'}"
+                  f"&piscina={'true' if a.get('piscina') else 'false'}&garagem={'true' if a.get('garagem') else 'false'}")
+        f["planta_url"] = f"/api/urbanismo-auto/ficha-terreno/planta.png?{q}"
+        f["ficha_pdf_url"] = f"/api/urbanismo-auto/ficha-terreno.pdf?{q}"
         return f
     if name == "licenciamento_aprovar_imagem":
         from routes import urbanismo_auto as UA
