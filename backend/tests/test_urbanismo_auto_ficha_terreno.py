@@ -134,3 +134,38 @@ def test_carta_de_declives_e_ficha_pdf_com_linhas_de_agua():
     assert len(r.pages) == 2
     t = r.pages[0].extract_text()
     assert "030341" in t and "Padim da Graça" in t and "REN" in t and "RAN" in t and "Espaço Urbano" in t
+
+
+def test_casa_indicativa_em_l_cabe_no_terreno_com_piscina():
+    from shapely.geometry import Polygon
+    ci = FT.casa_indicativa(TERRENO, 200, "L", piscina=True, garagem=True)
+    assert ci["cabe"] and ci["area_m2"] == pytest.approx(200, abs=1) and ci["piscina"] and len(ci["casa"]) == 2
+    L = FT.Local(LAT, LON)
+    t = Polygon([L.m(p[1], p[0]) for p in TERRENO])
+    casa = Polygon([L.m(p[1], p[0]) for p in ci["casa"][0]])
+    assert casa.area == pytest.approx(200, rel=0.02) and t.buffer(-2.9).contains(casa)
+
+
+def test_curvas_do_mdt_e_hidrografia_quando_a_dgt_nao_tem_curvas():
+    base = transporte()
+
+    async def sem_curvas(method, url, params=None, headers=None, want="json"):
+        if "/altimetria_curvas_nivel/items" in url:
+            return 503, None
+        return await base(method, url, params, headers, want)
+    G.set_transport(sem_curvas)
+    f = run(FT.ficha(LAT, LON, TERRENO))
+    d = run(FT.declives(f))
+    m = FT.curvas_mdt(d)
+    assert m["equidistancia"] == 2.0 and len(m["segmentos"]) > 50
+    h = run(FT.hidrografia(f))
+    assert h["dist_m"] == pytest.approx(47, abs=4) and "sul" in h["txt"]
+    ci = FT.casa_indicativa(f["terreno"]["poligono_latlon"], 200, "L", piscina=True)
+    c = run(FT.cartas(f, ci["casa"], ci["piscina"]))
+    assert c["planta"][:4] == b"\x89PNG" and c["carta"][:4] == b"\x89PNG"
+    assert c["declives"]["curvas_fonte"].startswith("traçadas do MDT")
+    pdf = FT.ficha_pdf(f, c["planta"], c["carta"], c["declives"], "Teste", casa_txt="200 m² em L")
+    from pypdf import PdfReader
+    import io as _io
+    t = PdfReader(_io.BytesIO(pdf)).pages[0].extract_text()
+    assert "Recursos hídricos" in t and "Curvas de nível" in t and "Casa proposta" in t

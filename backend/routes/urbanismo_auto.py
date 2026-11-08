@@ -300,9 +300,8 @@ async def _condicionantes(d: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         f["terreno"] = {**(f.get("terreno") or {}), "poligono_latlon": [tuple(p) for p in (a.get("terreno") or {}).get("poligono_latlon") or []]}
         f["ponto"] = {"lat": loc["lat"], "lon": loc["lon"]}
         casa = [[tuple(q) for q in pg] for pg in a.get("casa_latlon") or [] if pg] or None
-        planta = await asyncio.wait_for(FT.planta_condicionantes(f, casa), timeout=60)
-        dcl = await asyncio.wait_for(FT.declives(f), timeout=60)
-        carta = await asyncio.wait_for(FT.carta_declives(f, dcl, casa), timeout=60) if FT.tem_desnivel(dcl) else None
+        c = await asyncio.wait_for(FT.cartas(f, casa, casa_rotulo="Casa proposta (projeto)"), timeout=150)
+        planta, carta, dcl = c["planta"], c["carta"], c["declives"]
         pdf = FT.ficha_pdf(f, planta, carta, dcl, d.get("title") or "")
         return {"ficha": f, "planta": planta, "carta": carta, "declives": dcl, "pdf": pdf}
     except Exception:  # noqa: BLE001
@@ -343,26 +342,43 @@ async def ficha_terreno(lat: float, lon: float, area_m2: Optional[float] = None,
     return f
 
 
+def _casa_ficha(f: Dict[str, Any], area_casa_m2: float, forma: str, piscina: bool, garagem: bool):
+    """Implantação indicativa (polígono à escala) quando a ficha é pedida antes de haver projeto."""
+    from engines.urbanismo_pt.auto import ficha_terreno as FT
+    if not area_casa_m2 or area_casa_m2 <= 0:
+        return None, None, "Casa proposta", None
+    ci = FT.casa_indicativa(f["terreno"]["poligono_latlon"], area_casa_m2, forma, piscina, garagem)
+    rot = f"Casa proposta — {ci['area_m2']:.0f} m², em {ci['forma']} (implantação indicativa)"
+    txt = (f"{ci['area_m2']:.0f} m² de implantação, forma {ci['forma']}, afastada {ci['afastamento_m']:.0f} m dos limites"
+           + (", com piscina" if piscina else "") + (" e garagem exterior" if garagem else "")
+           + ("" if ci["cabe"] else " — NÃO CABE com estes afastamentos: rever área ou forma")
+           + "; posição indicativa, a fixar no projeto")
+    return ci["casa"], ci["piscina"], rot, txt
+
+
 @router.get("/ficha-terreno.pdf")
-async def ficha_terreno_pdf(lat: float, lon: float, area_m2: Optional[float] = None, user=Depends(current_user)):
+async def ficha_terreno_pdf(lat: float, lon: float, area_m2: Optional[float] = None, area_casa_m2: float = 0.0,
+                            forma: str = "L", piscina: bool = False, garagem: bool = False, user=Depends(current_user)):
     if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
         raise HTTPException(422, "Coordenadas fora de Portugal continental.")
     from engines.urbanismo_pt.auto import ficha_terreno as FT
     f = await FT.ficha(lat, lon, None, area_m2)
-    planta = await FT.planta_condicionantes(f)
-    dcl = await FT.declives(f)
-    carta = await FT.carta_declives(f, dcl) if FT.tem_desnivel(dcl) else None
-    return Response(content=FT.ficha_pdf(f, planta, carta, dcl), media_type="application/pdf",
+    casa, pis, rot, txt = _casa_ficha(f, area_casa_m2, forma, piscina, garagem)
+    c = await FT.cartas(f, casa, pis, rot)
+    return Response(content=FT.ficha_pdf(f, c["planta"], c["carta"], c["declives"], casa_txt=txt), media_type="application/pdf",
                     headers={"Content-Disposition": 'inline; filename="ficha-condicionantes.pdf"'})
 
 
 @router.get("/ficha-terreno/planta.png")
-async def ficha_terreno_planta(lat: float, lon: float, area_m2: Optional[float] = None, user=Depends(current_user)):
+async def ficha_terreno_planta(lat: float, lon: float, area_m2: Optional[float] = None, area_casa_m2: float = 0.0,
+                               forma: str = "L", piscina: bool = False, garagem: bool = False, user=Depends(current_user)):
     if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
         raise HTTPException(422, "Coordenadas fora de Portugal continental.")
     from engines.urbanismo_pt.auto import ficha_terreno as FT
     f = await FT.ficha(lat, lon, None, area_m2)
-    png = await FT.planta_condicionantes(f)
+    casa, pis, rot, _ = _casa_ficha(f, area_casa_m2, forma, piscina, garagem)
+    dcl = await FT.declives(f)
+    png = await FT.planta_condicionantes(f, casa, dcl=dcl, piscina_latlon=pis, casa_rotulo=rot)
     return Response(content=png, media_type="image/png", headers={"Cache-Control": "private, max-age=600"})
 
 
