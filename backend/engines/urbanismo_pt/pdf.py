@@ -287,7 +287,8 @@ def pecas_desenhadas_pdf(processo: Dict[str, Any], drawings: List[Dict[str, Any]
                 ("Requerente", req.get("nome") or "—"),
                 ("Local", ", ".join(x for x in (ter.get("morada"), ter.get("concelho")) if x) or "—"),
                 ("Peça", dw["title"]),
-                ("Escala", "sem escala — desenho esquemático"),
+                ("Escala", "sem escala — simulação fotorrealista / imagem ilustrativa" if dw.get("code") == "SIMULACOES_3D"
+                 else "sem escala — desenho esquemático"),
                 ("Data / folha", f"{_hoje()} · {i}/{len(drawings)}"),
                 ("Técnico autor", "______________________  (n.º de inscrição na Ordem)")]
         yy = cy + chh - 6 * mm
