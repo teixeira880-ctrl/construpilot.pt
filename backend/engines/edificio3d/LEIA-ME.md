@@ -21,3 +21,10 @@ Sem ArcGIS Pro, aponte `ARCGIS_PROPY` para vazio e execute `python worker_local.
   renders Cycles: fachada frente/tardoz/laterais, perspetiva, vista aérea do telhado, antes/depois.
 - ArcGIS Pro: `construpilot.gdb` (ponto e polígono de implantação, multipatch do edifício),
   vistas da cena com ortofotomapa e terreno (aérea antes/depois, 4 vistas em contexto), `edificio.slpk`, `.aprx`.
+
+## Blender no próprio servidor (sem posto local)
+O backend usa o Blender diretamente se `import bpy` funcionar (ou se `BLENDER_BIN` apontar para o executável).
+- Python 3.11 → `pip install bpy==4.5.*` (ou a versão 4.x mais recente disponível para 3.11); Python 3.13 → `pip install bpy==5.2.*`.
+- Bibliotecas de sistema por vezes necessárias: `libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 libsm6 libgl1`.
+- Teste: `python -c "import bpy; print(bpy.app.version_string)"`.
+- Demonstração completa no servidor: `python scripts/edificio3d_demo.py` (Blender + renders + acabamento fotorrealista).
