@@ -509,6 +509,12 @@ async def _seed_impl():
         logger.info("client grants: %s", await apply_client_grants(db, hash_password, new_user_id))
     except Exception as e:  # noqa: BLE001
         logger.warning("client grants skipped: %s", e)
+    # Contas Pro de empresas parceiras (ex. CLT Rezult) — idempotente, sem palavra-passe.
+    try:
+        from core.company_seeds import apply_company_seeds
+        logger.info("company seeds: %s", await apply_company_seeds(db, new_user_id))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("company seeds skipped: %s", e)
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
     # et le mot de passe d'un compte existant n'est JAMAIS réécrit.
     # Règle sécurité : zéro password en clair dans le code — les 5 passwords
