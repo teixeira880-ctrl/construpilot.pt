@@ -142,4 +142,7 @@ def interpretar(texto: str) -> Dict[str, Any]:
     elif re.search(r"amplia", n):
         out["tipo_obra"] = "ampliacao"
     out.update(areas(t))
+    # «mesmo que esteja / pertença à REN (RAN, solo rústico)» → avançar com o estudo, impedimentos escritos no processo
+    if re.search(r"mesmo (que|se)\b.{0,40}\b(ren|ran|reserva|rustico)", n) or re.search(r"\b(ren|ran)\b.{0,30}\b(faz|avanca|continua) (igual|na mesma|mesmo assim)", n):
+        out["forcar_estudo"] = True
     return out

@@ -229,8 +229,20 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
         return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"],
                 "resposta": "Só preciso da morada do terreno (ou a localidade e o concelho) — o resto faço eu."}
 
-    # 1. localizar
-    g = await G.geocode(morada)
+    # 1. localizar — coordenadas dadas pelo cliente (ponto no mapa) têm prioridade sobre a geocodificação da morada
+    g = None
+    try:
+        lat_c, lon_c = float(p.get("lat")), float(p.get("lon"))
+    except (TypeError, ValueError):
+        lat_c = lon_c = None
+    if lat_c is not None and 36.8 <= lat_c <= 42.2 and -9.6 <= lon_c <= -6.1:
+        g = {"ok": True, "fonte": "Ponto indicado pelo requerente no mapa", "url": None,
+             "data": {"lat": lat_c, "lon": lon_c, "morada_formatada": morada, "rua": None, "numero": None,
+                      "freguesia": None, "concelho": None, "codigo_postal": None, "precisao": "porta",
+                      "consulta": f"{lat_c:.6f},{lon_c:.6f}", "via_geom": None}}
+        pressupostos.append(f"Localização: ponto indicado pelo requerente ({lat_c:.6f}, {lon_c:.6f}); a morada «{morada}» "
+                            "é a do pedido.")
+    g = g or await G.geocode(morada)
     if not g["ok"]:
         inacessivel = "inacess" in (g.get("nota") or "")
         await passo("localizar", "falhou", g.get("nota") or "morada não encontrada")
