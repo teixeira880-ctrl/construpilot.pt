@@ -381,3 +381,24 @@ def test_ponto_no_mapa_prevalece_sobre_a_morada(env):
         assert any("ponto indicado pelo requerente" in x for x in r["pressupostos"])
         assert not any("localização exata da porta" in x for x in r["pressupostos"])
     run(go())
+
+
+def test_imagens_tem_tempo_maximo_total_e_entregam_o_que_ficou_pronto(env, monkeypatch):
+    import asyncio
+    from engines.urbanismo_pt.auto import imagens as IM
+    db, store, _ = env
+    monkeypatch.setenv("URB_IMG_TEMPO_TOTAL_S", "2")
+
+    async def lento(prompt, ref, sessao, extra=None):
+        await asyncio.sleep(30)
+    monkeypatch.setattr(IM, "_gemini", lento)
+
+    async def go():
+        r = await UA.executar_e_gravar({"texto": PEDIDO_CLIENTE}, USER)
+        im = await UA.gerar_imagens(r["processo_id"], USER, ["perspetiva", "frente"], False)
+        tipos = {(i["vista"], i["tipo"]) for i in im["imagens"]}
+        assert ("perspetiva", "exata") in tipos and ("frente", "exata") in tipos   # entregue o que ficou pronto
+        assert not any(t == "fotorrealista" for _, t in tipos)
+        velho = {"estado": "a_correr", "inicio": "2026-01-01T00:00:00+00:00"}
+        assert UA._job_vivo(velho)["estado"] == "erro" and UA._job_vivo({"estado": "concluido"})["estado"] == "concluido"
+    run(go())
