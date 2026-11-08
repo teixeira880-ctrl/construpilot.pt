@@ -331,6 +331,25 @@ function Processo({ pid }) {
           {a.forma === "l" ? " · casa em L" : ""}{a.piscina ? ` · piscina ${a.piscina.l_m}×${a.piscina.w_m} m` : ""}{a.garagem_tipo === "exterior" ? " · garagem independente" : ""}</p>
       </Card>
 
+      {a.ficha_terreno && (() => {
+        const f = a.ficha_terreno, ad = f.administrativo || {}, par = f.parecer || {};
+        const cor = { compativel: "border-emerald-300", condicionado: "border-amber-300", inviavel: "border-red-300", por_confirmar: "border-slate-300" }[par.estado] || "";
+        const rr = (n, r) => r == null ? `${n}: por confirmar` : r.pct > 0 ? `${n}: ${r.pct} % do terreno (${r.area_m2} m²)`
+          : `${n}: não abrange o terreno${r.distancia_m != null ? ` (a ${r.distancia_m} m)` : ""}`;
+        return (
+          <Card className={`p-4 space-y-2 ${cor}`} data-testid="lic-auto-ficha-terreno">
+            <div className="font-medium">Ficha oficial do terreno (DGT)</div>
+            <p className="text-sm font-medium">{par.resumo}</p>
+            <p className="text-sm">{[ad.lugar, ad.freguesia && `${ad.freguesia} (DICOFRE ${ad.dicofre || "?"})`, ad.municipio && `${ad.municipio} (DICO ${ad.dico || "?"})`, ad.distrito].filter(Boolean).join(" · ")}</p>
+            {(f.pdm || []).map((x, i) => <p key={i} className="text-sm">• PDM: {x.classe} — {x.categoria} ({x.pct_terreno} % do terreno){x.pdm_registo ? ` · registo ${x.pdm_registo}` : ""}</p>)}
+            <p className="text-sm">• {rr("REN", f.ren)}</p>
+            <p className="text-sm">• {rr("RAN", f.ran)}</p>
+            {(f.outras_servidoes || []).slice(0, 6).map((o, i) => <p key={`o${i}`} className="text-sm text-muted-foreground">• {o.titulo}{o.tipo ? ` (${o.tipo})` : ""}: {o.pct > 0 ? `${o.pct} % do terreno` : `a ${o.distancia_m} m`}</p>)}
+            {(par.condicoes || []).map((x, i) => <p key={`c${i}`} className="text-sm text-amber-800">• {x}</p>)}
+            <p className="text-xs text-muted-foreground">Limite do terreno: {f.terreno?.origem_limite}. {f.nota}</p>
+          </Card>);
+      })()}
+
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-4 space-y-2">
           <div className="font-medium flex items-center gap-2"><Sparkles className="h-4 w-4" />O que decidi</div>

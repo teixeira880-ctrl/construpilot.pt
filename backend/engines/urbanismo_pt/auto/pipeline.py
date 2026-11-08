@@ -10,6 +10,7 @@ import asyncio
 import os
 import base64
 import io
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
@@ -25,6 +26,8 @@ from engines.urbanismo_pt.auto import pecas_auto as PA
 from engines.urbanismo_pt.auto import plantas as PL
 from engines.urbanismo_pt.auto import programa as PG
 from engines.urbanismo_pt.auto import terreno as T
+
+log = logging.getLogger("urbanismo_pt.auto")
 
 Emit = Optional[Callable[[str, str], Awaitable[None]]]
 
@@ -359,6 +362,28 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
     # 4. terreno e topografia
     ter = T.construir_terreno(geo, via, cad, p.get("area_terreno_m2"), p.get("frente_m"))
     pressupostos += ter["pressupostos"]
+    # ficha oficial do terreno (CAOP/DICOFRE, PDM, REN, RAN e servidões cruzados com o POLÍGONO do terreno, não só o ponto)
+    ficha_t = None
+    try:
+        from engines.urbanismo_pt.auto import ficha_terreno as FT
+        ficha_t = await FT.ficha(lat, lon, ter["poligono_latlon"], ter["area_m2"])
+        for f_ in ficha_t["fontes"]:
+            if f_ not in fontes:
+                fontes.append(f_)
+        par = ficha_t["parecer"]
+        if par["estado"] == "inviavel":
+            for m_ in par["fundamentos"]:
+                if ("REN" in m_ or "RAN" in m_ or "rústico" in m_) and m_ not in bloqueios:
+                    bloqueios.append(m_)
+        for c_ in par["condicoes"]:
+            if c_ not in avisos:
+                avisos.append(c_)
+        if bloqueios and not _bool(p.get("forcar_estudo"), False):
+            return {"ok": False, "estado": "inviavel", "bloqueios": bloqueios, "avisos": avisos, "etapas": etapas,
+                    "fontes": fontes, "localizacao": geo, "ficha_terreno": ficha_t,
+                    "resposta": "Encontrei um impedimento sério no terreno: " + " ".join(bloqueios)}
+    except Exception:  # noqa: BLE001 — a ficha é um complemento: nunca impede o processo
+        log.warning("ficha do terreno falhou", exc_info=True)
     pts = T.grelha_pontos(ter, 9)
     el = await G.elevacoes([(q[2], q[3]) for q in pts])
     topo = T.topografia(pts, el["data"]["z"], el["fonte"], el.get("nota")) if el["ok"] else {"ok": False}
@@ -507,6 +532,8 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
             "terreno": {k: ter[k] for k in ("poligono_m", "poligono_latlon", "area_m2", "area_origem", "plot_l_m", "plot_w_m",
                                              "azimutes", "frente_fonte")},
             "topografia": topo, "classe_solo": classe, "servidoes": hits or [], "alvos": alv,
+            "ficha_terreno": ({k: v for k, v in ficha_t.items() if k != "terreno"} | {"terreno": {k: v for k, v in ficha_t["terreno"].items()
+                                                                                           if k != "poligono_latlon"}}) if ficha_t else None,
             "programa": {k: prog[k] for k in ("tipologia", "n_pisos", "area_bruta_total_m2", "minimo_area_bruta_m2", "garagem",
                                               "fonte_minimos")},
             "implantacao": {k: res[k] for k in ("fachada_sol", "lado_garagem", "cota_soleira_m", "terras", "decisoes",
