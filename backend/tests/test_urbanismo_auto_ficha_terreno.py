@@ -169,3 +169,15 @@ def test_curvas_do_mdt_e_hidrografia_quando_a_dgt_nao_tem_curvas():
     import io as _io
     t = PdfReader(_io.BytesIO(pdf)).pages[0].extract_text()
     assert "Recursos hídricos" in t and "Curvas de nível" in t and "Casa proposta" in t
+
+
+def test_assistente_ficha_do_local_com_a_casa_pedida_sem_projeto():
+    from engines import assistant_autorizacao_tool as T
+    c = T._casa_do_texto("casa térrea em L com 200 m2 habitáveis, piscina e garagem exterior, terreno de 1500 m2")
+    assert c["forma"] == "L" and c["piscina"] and c["garagem"] and c["area_m2"] == 1500 and 200 <= c["area_casa_m2"] <= 240
+    G.set_transport(transporte())
+    f = run(T._terreno_ficha({"lat": LAT, "lon": LON, "texto": "casa térrea em L com 200 m2 habitáveis e piscina, terreno de 1500 m2"}))
+    assert f["parecer"]["estado"] == "compativel"
+    assert "area_casa_m2=" in f["ficha_pdf_url"] and "forma=L" in f["ficha_pdf_url"] and "piscina=true" in f["ficha_pdf_url"]
+    assert "area_m2=1500" in f["ficha_pdf_url"] and "AUTORIZACAO" not in f["ficha_pdf_url"]
+    assert "SEMPRE a ficha de condicionantes" in T.AUTORIZACAO_INSTRUCTIONS

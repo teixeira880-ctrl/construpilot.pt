@@ -127,6 +127,8 @@ AUTORIZACAO_TOOLS += [
         "(ortofotomapa + REN/RAN/PDM + curvas + linhas de água + casa como polígono) e do PDF da ficha (com a carta de "
         "declives quando há desnível). Usar sempre que o cliente der coordenadas ou perguntar se pode construir num terreno.",
         {"lat": {"type": "number"}, "lon": {"type": "number"},
+         "morada": {"type": "string", "description": "Morada do local, se não houver coordenadas (é localizada automaticamente)."},
+         "texto": {"type": "string", "description": "O pedido do cliente palavra por palavra (dele tiram-se a casa a desenhar e a área do terreno)."},
          "area_m2": {"type": "number", "description": "Área do terreno, se souber (sem cadastro usa-se um quadrado com esta área)."},
          "area_casa_m2": {"type": "number", "description": "Área de implantação da casa pretendida (desenha-a como polígono no terreno)."},
          "forma": {"type": "string", "description": "L ou retangular"}, "piscina": {"type": "boolean"}, "garagem": {"type": "boolean"}},
@@ -158,6 +160,12 @@ AUTORIZACAO_INSTRUCTIONS = (
     "Para zonas de proteção ou imóveis classificados avisa claramente que as isenções do art.º 6.º-A "
     "não se aplicam (n.º 2 do mesmo artigo) exceto para a substituição de caixilhos para eficiência "
     "energética.\n"
+    "FICHA DE CONDICIONANTES — REGRA PERMANENTE: sempre que o cliente indicar um local (morada ou coordenadas), seja para "
+    "o que for (pergunta, viabilidade, orçamento, licenciamento) e MESMO QUE AINDA NÃO HAJA PROJETO, faz o que ele pede e "
+    "apresenta-lhe SEMPRE a ficha de condicionantes desse local: chama terreno_ficha com a morada ou lat/lon e o texto do "
+    "pedido (a casa que ele descreve aparece desenhada no terreno) e dá a ligação ficha_pdf_url — planta sobre o "
+    "ortofotomapa oficial com REN, RAN, PDM, CAOP/DICOFRE, curvas de nível e linhas de água, e carta de declives e "
+    "recursos hídricos quando o terreno tem desnível. Se já houver processo, a ligação é ficha_condicionantes_pdf.\n"
     "LICENCIAMENTO AUTOMÁTICO (0-100 %): quando alguém pedir uma autorização/licença/projeto para construir uma casa numa "
     "morada (mesmo em linguagem simples, p. ex. «quero uma autorização de construção na Rua do Monte 7, Braga»), chama "
     "licenciamento_automatico IMEDIATAMENTE com o texto e o que já souberes — não faças perguntas antes. Depois explica em "
@@ -190,6 +198,67 @@ AUTORIZACAO_INSTRUCTIONS = (
 )
 
 
+def _casa_do_texto(texto: str) -> dict:
+    """Casa pedida pelo cliente (área, forma, piscina, garagem exterior) para a desenhar na carta antes de haver projeto."""
+    if not texto:
+        return {}
+    from engines.urbanismo_pt.auto import pipeline as AP
+    p = AP.interpretar_pedido(texto)
+    out = {}
+    if p.get("area_util_alvo_m2"):
+        pisos = p.get("pisos") or 1
+        out["area_casa_m2"] = round(float(p["area_util_alvo_m2"]) * 1.15 / pisos)   # útil → implantação (paredes), por piso
+    elif p.get("tipologia") or p.get("forma") or p.get("piscina"):
+        out["area_casa_m2"] = 160
+    if p.get("forma"):
+        out["forma"] = "L" if str(p["forma"]).lower() == "l" else "retangular"
+    if p.get("piscina"):
+        out["piscina"] = True
+    if p.get("garagem_tipo") == "exterior":
+        out["garagem"] = True
+    if p.get("area_terreno_m2"):
+        out["area_m2"] = float(p["area_terreno_m2"])
+    return out
+
+
+async def _terreno_ficha(args: dict) -> dict:
+    """Ficha de condicionantes do LOCAL indicado (coordenadas ou morada), com a casa pedida desenhada — mesmo sem projeto."""
+    from engines.urbanismo_pt.auto import ficha_terreno as FT, geo as G
+    a = {**_casa_do_texto(args.get("texto") or ""), **{k: v for k, v in args.items() if v not in (None, "")}}
+    nota_local = None
+    try:
+        lat, lon = float(a["lat"]), float(a["lon"])
+    except (KeyError, TypeError, ValueError):
+        if not a.get("morada"):
+            return {"ok": False, "error": "Indique a morada ou as coordenadas do terreno."}
+        g = await G.geocode(a["morada"])
+        if not g["ok"]:
+            return {"ok": False, "error": "Não encontrei essa morada; envie as coordenadas do terreno (Google Maps: carregar no terreno e copiar os dois números)."}
+        lat, lon = g["data"]["lat"], g["data"]["lon"]
+        if g["data"].get("precisao") != "porta":
+            nota_local = ("A morada só foi localizada ao nível da " + str(g["data"].get("precisao") or "localidade")
+                          + "; com as coordenadas do terreno a ficha passa a ser a do terreno exato.")
+    if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
+        return {"ok": False, "error": "Coordenadas fora de Portugal continental."}
+    try:
+        f = await asyncio.wait_for(FT.ficha(lat, lon, None, a.get("area_m2")), timeout=120)
+    except asyncio.TimeoutError:
+        return {"ok": False, "error": "Os serviços da DGT estão lentos; tente de novo dentro de momentos."}
+    f.pop("terreno", None)
+    q = f"lat={lat}&lon={lon}"
+    if a.get("area_m2"):
+        q += f"&area_m2={float(a['area_m2']):g}"
+    if a.get("area_casa_m2"):
+        q += (f"&area_casa_m2={float(a['area_casa_m2']):g}&forma={'L' if str(a.get('forma') or 'L').lower().startswith('l') else 'retangular'}"
+              f"&piscina={'true' if a.get('piscina') else 'false'}&garagem={'true' if a.get('garagem') else 'false'}")
+        f["casa_desenhada"] = {k: a.get(k) for k in ("area_casa_m2", "forma", "piscina", "garagem")}
+    f["planta_url"] = f"/api/urbanismo-auto/ficha-terreno/planta.png?{q}"
+    f["ficha_pdf_url"] = f"/api/urbanismo-auto/ficha-terreno.pdf?{q}"
+    if nota_local:
+        f["nota_localizacao"] = nota_local
+    return f
+
+
 def _pedido(args: dict) -> dict:
     a = {k: v for k, v in (args or {}).items() if v not in (None, "")}
     req = {}
@@ -207,28 +276,7 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
         from engines.urbanismo_pt.auto import estilos as E
         return {"ok": True, "estilos": E.lista()}
     if name == "terreno_ficha":
-        from engines.urbanismo_pt.auto import ficha_terreno as FT
-        try:
-            lat, lon = float((args or {})["lat"]), float((args or {})["lon"])
-        except (KeyError, TypeError, ValueError):
-            return {"ok": False, "error": "Indique as coordenadas do terreno (latitude e longitude)."}
-        if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
-            return {"ok": False, "error": "Coordenadas fora de Portugal continental."}
-        try:
-            f = await asyncio.wait_for(FT.ficha(lat, lon, None, (args or {}).get("area_m2")), timeout=120)
-        except asyncio.TimeoutError:
-            return {"ok": False, "error": "Os serviços da DGT estão lentos; tente de novo dentro de momentos."}
-        f.pop("terreno", None)
-        q = f"lat={lat}&lon={lon}"
-        a = args or {}
-        if a.get("area_m2"):
-            q += f"&area_m2={float(a['area_m2']):g}"
-        if a.get("area_casa_m2"):
-            q += (f"&area_casa_m2={float(a['area_casa_m2']):g}&forma={'L' if str(a.get('forma') or 'L').lower().startswith('l') else 'retangular'}"
-                  f"&piscina={'true' if a.get('piscina') else 'false'}&garagem={'true' if a.get('garagem') else 'false'}")
-        f["planta_url"] = f"/api/urbanismo-auto/ficha-terreno/planta.png?{q}"
-        f["ficha_pdf_url"] = f"/api/urbanismo-auto/ficha-terreno.pdf?{q}"
-        return f
+        return await _terreno_ficha(args or {})
     if name == "licenciamento_aprovar_imagem":
         from routes import urbanismo_auto as UA
         try:
