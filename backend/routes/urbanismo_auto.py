@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -441,10 +442,19 @@ async def gerar_imagens(pid: str, user: Dict[str, Any], vistas: Optional[list] =
             tarefas.append(exterior(k, v))
         elif v.startswith("interior_"):
             tarefas.append(interior(k, v))
-    res = await asyncio.gather(*tarefas, return_exceptions=True)
-    for r in res:
-        if isinstance(r, BaseException):
-            log.warning("vista falhou: %s", type(r).__name__)
+    # tempo máximo TOTAL: com fornecedores lentos o cliente recebe o que já ficou pronto (as vistas exatas já estão
+    # guardadas antes de cada fotorrealista), em vez de esperar indefinidamente
+    limite = float(os.environ.get("URB_IMG_TEMPO_TOTAL_S", "600"))
+    pend = [asyncio.ensure_future(t) for t in tarefas]
+    feitas, por_acabar = await asyncio.wait(pend, timeout=limite) if pend else (set(), set())
+    for t in por_acabar:
+        t.cancel()
+    if por_acabar:
+        log.warning("imagens: %d vista(s) cortadas pelo tempo máximo de %.0f s", len(por_acabar), limite)
+        await asyncio.gather(*por_acabar, return_exceptions=True)
+    for t in feitas:
+        if t.exception() is not None:
+            log.warning("vista falhou: %s", type(t.exception()).__name__)
     # planta de implantação humanizada (exata, sem IA)
     try:
         jpeg = await run_in_threadpool(IM.implantacao_humanizada, m)
@@ -563,10 +573,23 @@ async def aprovar_imagem(pid: str, iid: str, body: AprovarIn, user=Depends(curre
     return {"ok": True, "id": iid, "aprovada": alvo["aprovada"]}
 
 
+def _job_vivo(job: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Um pedido «a correr» há mais de 25 min foi interrompido (reinício do servidor): devolve-o como erro para se poder
+    pedir de novo, em vez de ficar eternamente «a correr»."""
+    if job and job.get("estado") == "a_correr" and job.get("inicio"):
+        try:
+            ini = datetime.fromisoformat(str(job["inicio"]).replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - ini).total_seconds() > 25 * 60:
+                return {**job, "estado": "erro", "erro": "O pedido de imagens foi interrompido. Peça de novo."}
+        except ValueError:
+            pass
+    return job
+
+
 @router.get("/processos/{pid}/imagens")
 async def listar_imagens(pid: str, user=Depends(current_user)) -> dict:
     d = await _owned(pid, user["user_id"])
-    return {"job": d.get("imagens_job"), "desatualizadas": bool(d.get("imagens_desatualizadas")),
+    return {"job": _job_vivo(d.get("imagens_job")), "desatualizadas": bool(d.get("imagens_desatualizadas")),
             "imagens": [{**i, "url": f"/api/urbanismo-auto/processos/{pid}/imagens/{i['id']}.jpg"} for i in d.get("imagens") or []]}
 
 
