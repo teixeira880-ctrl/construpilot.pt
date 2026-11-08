@@ -512,7 +512,7 @@ async def _seed_impl():
     # Contas Pro de empresas parceiras (ex. CLT Rezult) — idempotente, sem palavra-passe.
     try:
         from core.company_seeds import apply_company_seeds
-        logger.info("company seeds: %s", await apply_company_seeds(db, new_user_id))
+        logger.info("company seeds: %s", await apply_company_seeds(db, new_user_id, hash_password))
     except Exception as e:  # noqa: BLE001
         logger.warning("company seeds skipped: %s", e)
     # SEC-001 : comptes de démonstration créés UNIQUEMENT si SEED_DEMO_DATA=true,
