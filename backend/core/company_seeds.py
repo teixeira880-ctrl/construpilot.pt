@@ -1,0 +1,114 @@
+"""Contas Pro de empresas parceiras criadas a pedido do fundador.
+
+Corre em CADA arranque (produção incluída), de forma idempotente:
+  - Conta ausente -> criada SEM palavra-passe (zero segredos no código).
+    A empresa ativa o acesso em « Esqueci-me da palavra-passe » com o seu e-mail:
+    o fluxo /api/auth/forgot-password envia um link « definir a palavra-passe ».
+  - Ficha da empresa + página pública + logótipo aplicados UMA só vez (marcador
+    `company_seed_version`): as alterações feitas depois pela empresa nunca são reescritas.
+  - O logótipo é lido de backend/data/company_logos/<ficheiro>.
+"""
+from __future__ import annotations
+
+import base64
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
+
+logger = logging.getLogger("company_seeds")
+LOGO_DIR = Path(__file__).resolve().parent.parent / "data" / "company_logos"
+
+COMPANIES = [
+    {
+        "seed_version": 1,
+        "email": "office@clt-rezult.com",
+        "name": "CLT Rezult",
+        "account_type": "pro",
+        "lang": "pt",
+        "logo_file": "clt-rezult.png",
+        "fields": {
+            "company": "CLT Rezult",
+            "company_name": "CLT Rezult",
+            "brand_company_name": "CLT Rezult",
+            "brand_company_email": "office@clt-rezult.com",
+            "brand_address": "15, Petro Sahaidachnoho Str.",
+            "brand_postal": "04070",
+            "brand_city": "Kyiv, Ucrânia",
+            "brand_country": "UA",
+            "brand_contact_line": "+380 50 402 00 50 · office@clt-rezult.com · clt-rezult.com",
+            "brand_accent_color": "#E21411",
+            "brand_tagline": "Painéis de madeira lamelada cruzada (CLT) — o primeiro e único fabricante na Ucrânia",
+            "brand_description": (
+                "A CLT Rezult é o primeiro e único fabricante e fornecedor de painéis multicamada "
+                "de madeira lamelada cruzada (CLT) na Ucrânia. Acompanha os clientes desde a solução "
+                "arquitetónica até à construção do edifício: consultoria, formação e acompanhamento.\n\n"
+                "Produção própria: a CLT Rezult integra a Rezult, um dos maiores grupos de "
+                "transformação de madeira da Europa de Leste (capacidade de 1,2 milhões de m³ de madeira por ano). "
+                "A linha de CLT ultrapassa 91 000 m³ por ano.\n\n"
+                "Painéis: até 18 m × 3,5 m; 3, 5, 7 ou 9 camadas; espessura de 60 a 360 mm; "
+                "resinosas (pinho, abeto, lariço); cola de poliuretano monocomponente (PUR) sem formaldeído. "
+                "Os elementos saem da fábrica prontos a montar, com vãos para janelas e roços para "
+                "as redes: montagem rápida, obra limpa e custos mais baixos.\n\n"
+                "Obras realizadas: casas modulares, moradias, casas em banda, edifícios multifamiliares, "
+                "residências, edifícios administrativos (até 1 650 m²), de um piso a vários pisos."
+            ),
+            "brand_header_text": "CLT Rezult — Cross Laminated Timber",
+            "brand_footer_text": (
+                "CLT Rezult — Sede: 15, Petro Sahaidachnoho Str., 04070 Kyiv, Ucrânia · "
+                "Fábrica: 11-T, Serhiya Kemskoho Str., Korosten, região de Zhytomyr, 11501, Ucrânia"
+            ),
+            "service_zones": ["Ucrânia"],
+            "public_slug": "clt-rezult",
+            "public_published": True,
+            "public_show_reviews": False,
+            "public_contact_phone": "+380 50 402 00 50",
+            "public_website": "https://clt-rezult.com/en/",
+        },
+    },
+]
+
+
+def _logo_data_url(fname: str) -> str | None:
+    p = LOGO_DIR / fname
+    if not p.is_file():
+        logger.warning("Logo introuvable : %s", p)
+        return None
+    return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
+
+
+async def apply_company_seeds(db, new_user_id) -> dict:
+    summary: dict[str, str] = {}
+    now = datetime.now(timezone.utc).isoformat()
+    for c in COMPANIES:
+        email = c["email"].lower().strip()
+        try:
+            user = await db.users.find_one({"email": email}, {"_id": 0})
+            if not user:
+                user = {"email": email, "name": c["name"], "role": "user", "plan": "free",
+                        "account_type": c["account_type"], "lang": c["lang"],
+                        "password_hash": None, "auth_provider": "password", "picture": None,
+                        "user_id": new_user_id(), "email_verified": True, "two_fa_enabled": False,
+                        "provisioned_by_admin": True, "created_at": now}
+                await db.users.insert_one(dict(user))
+                summary[email] = "created"
+            else:
+                summary[email] = "exists"
+            if (user.get("company_seed_version") or 0) >= c["seed_version"]:
+                continue
+            upd = dict(c["fields"])
+            # le slug ne doit pas voler celui d'une autre entreprise
+            if await db.users.find_one({"public_slug": upd["public_slug"], "user_id": {"$ne": user["user_id"]}}, {"_id": 1}):
+                upd["public_slug"] = f"{upd['public_slug']}-{user['user_id'][-4:]}"
+            logo = _logo_data_url(c["logo_file"])
+            if logo:
+                upd["brand_logo_b64"] = logo
+            if user.get("account_type") not in ("pro", "pro_business"):
+                upd["account_type"] = c["account_type"]
+            upd["company_seed_version"] = c["seed_version"]
+            await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
+            summary[email] += "+page"
+            logger.info("Page entreprise %s publiée : /entreprise/%s", c["name"], upd["public_slug"])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Seed entreprise %s échoué : %s", email, exc)
+            summary[email] = "error"
+    return summary
