@@ -497,7 +497,7 @@ def _linhas(g: dict):
 def _desenha_relevo_agua(dr, P, Pm, px: int, curvas_dgt, mdt, hidro, font, forte: bool) -> List[str]:
     """Curvas (DGT ou, sem elas, traçadas do MDT), linhas de água e seta para a mais próxima fora do quadro."""
     fontes = []
-    cor_c, cor_m = ((120, 80, 40, 230), (95, 55, 20, 255)) if forte else ((150, 105, 60, 170), (120, 80, 40, 210))
+    cor_c, cor_m = ((120, 80, 40, 230), (95, 55, 20, 255)) if forte else ((200, 150, 90, 220), (170, 110, 50, 255))
     if curvas_dgt:
         for ft in curvas_dgt:
             for ln in _linhas(ft.get("geometry") or {}):
@@ -512,7 +512,7 @@ def _desenha_relevo_agua(dr, P, Pm, px: int, curvas_dgt, mdt, hidro, font, forte
         rotulado = set()
         for h, a, b in mdt["segmentos"]:
             mestra = abs(h / mdt["mestra"] - round(h / mdt["mestra"])) < 1e-6
-            dr.line([Pm(*a), Pm(*b)], fill=cor_m if mestra else cor_c, width=3 if mestra else 1 if not forte else 2)
+            dr.line([Pm(*a), Pm(*b)], fill=cor_m if mestra else cor_c, width=3 if mestra else 2)
             q = Pm(*a)
             if h not in rotulado and 0.15 * px < q[0] < 0.85 * px and 0.3 * px < q[1] < 0.9 * px:
                 if mestra or len(mdt["segmentos"]) < 400:
@@ -531,22 +531,37 @@ def _desenha_relevo_agua(dr, P, Pm, px: int, curvas_dgt, mdt, hidro, font, forte
         if hidro["feats"]:
             fontes.append("linhas de água: DGT — Hidrografia")
         if hidro.get("alvo"):
-            tx, ty = Pm(*hidro["alvo"])
-            if not (0 <= tx <= px and 0 <= ty <= px):   # fora do quadro: seta na margem a indicar onde fica
-                cxp = cyp = px / 2
-                r = math.radians(hidro["rumo"])
-                ux, uy = math.sin(r), -math.cos(r)
-                t = min((px / 2 - 40) / abs(ux) if abs(ux) > 1e-6 else 1e9, (px / 2 - 40) / abs(uy) if abs(uy) > 1e-6 else 1e9)
-                bx, by = cxp + ux * t, cyp + uy * t
-                ax, ay = bx - ux * 70, by - uy * 70
-                dr.line([ax, ay, bx, by], fill=(30, 110, 230, 255), width=6)
-                dr.polygon([(bx + ux * 14, by + uy * 14), (bx - uy * 12, by + ux * 12), (bx + uy * 12, by - ux * 12)], fill=(30, 110, 230, 255))
-                lbl = f"linha de água a {hidro['dist_m']:.0f} m"
-                lx = min(max(ax - 90, 10), px - 260)
-                ly = min(max(ay - 30 if uy > 0 else ay + 10, 10), px - 80)
-                dr.rectangle([lx - 4, ly - 2, lx + 250, ly + 24], fill=(255, 255, 255, 220))
-                dr.text((lx, ly), lbl, fill=(20, 70, 180, 255), font=font)
+            hidro["_alvo_px"] = Pm(*hidro["alvo"])
     return fontes
+
+
+def _seta_agua(dr, px: int, hidro: Optional[Dict[str, Any]], font, legenda=(0, 0, 0, 0)) -> None:
+    """Linha de água fora do quadro: seta na margem (por cima da legenda) com a distância."""
+    if not hidro or not hidro.get("_alvo_px") or hidro.get("dist_m") is None:
+        return
+    tx, ty = hidro["_alvo_px"]
+    if 0 <= tx <= px and 0 <= ty <= px:
+        return
+    r = math.radians(hidro["rumo"])
+    ux, uy = math.sin(r), -math.cos(r)
+    t = min((px / 2 - 30) / abs(ux) if abs(ux) > 1e-6 else 1e9, (px / 2 - 30) / abs(uy) if abs(uy) > 1e-6 else 1e9)
+    bx, by = px / 2 + ux * t, px / 2 + uy * t
+    lx0, ly0, lx1, ly1 = legenda
+    if lx0 - 40 <= bx <= lx1 + 40 and ly0 - 40 <= by <= ly1 + 40:   # não tapar a legenda: desliza na margem
+        if by <= ly0 + 40:
+            bx = lx1 + 70
+        else:
+            by = ly1 + 70
+    ax, ay = bx - ux * 90, by - uy * 90
+    dr.line([ax, ay, bx, by], fill=(255, 255, 255, 255), width=12)
+    dr.line([ax, ay, bx, by], fill=(30, 110, 230, 255), width=7)
+    dr.polygon([(bx + ux * 18, by + uy * 18), (bx - uy * 14, by + ux * 14), (bx + uy * 14, by - ux * 14)], fill=(30, 110, 230, 255))
+    lbl = f"linha de água a {hidro['dist_m']:.0f} m" + (f" ({hidro['nome']})" if hidro.get("nome") else "")
+    w = 11 * len(lbl)
+    lx = min(max(ax - w / 2, 10), px - w - 10)
+    ly = min(max(ay + (14 if uy < 0 else -40), 10), px - 90)
+    dr.rectangle([lx - 6, ly - 4, lx + w, ly + 26], fill=(255, 255, 255, 235), outline=(30, 110, 230, 255))
+    dr.text((lx, ly), lbl, fill=(20, 70, 180, 255), font=font)
 
 
 def _desenha_casa(dr, P, casa_latlon, piscina_latlon) -> None:
@@ -620,9 +635,9 @@ async def planta_condicionantes(f: Dict[str, Any], casa_latlon: Optional[Sequenc
     _desenha_casa(dr, P, casa_latlon, piscina_latlon)
     dr.ellipse([P(lat, lon)[0] - 7, P(lat, lon)[1] - 7, P(lat, lon)[0] + 7, P(lat, lon)[1] + 7], fill=(230, 30, 30, 255))
     # legenda
-    itens = [("r", (230, 30, 30), "Limite do terreno — " + f["terreno"]["origem_limite"][:34])]
+    itens = [("r", (230, 30, 30), "Limite do terreno — " + f["terreno"]["origem_limite"].split(" (")[0][:30])]
     if casa_latlon:
-        itens.append(("r", (255, 210, 60), casa_rotulo[:44]))
+        itens.append(("r", (255, 210, 60), casa_rotulo.replace(" (implantação indicativa)", " (indicativa)")[:46]))
     if piscina_latlon:
         itens.append(("r", (70, 190, 235), "Piscina"))
     itens += [("r", (40, 170, 80), "REN (DGT)"), ("r", (240, 200, 40), "RAN (DGT)"), ("r", (180, 40, 160), "Limites de classes do PDM (CRUS)"),
@@ -630,7 +645,7 @@ async def planta_condicionantes(f: Dict[str, Any], casa_latlon: Optional[Sequenc
               ("l", (30, 110, 230), "Linhas de água (DGT)")]
     x0, y0 = 20, 20
     alt = 22 + len(itens) * 34 + 40
-    dr.rectangle([x0, y0, x0 + 500, y0 + alt], fill=(255, 255, 255, 235), outline=(60, 60, 60, 255))
+    dr.rectangle([x0, y0, x0 + 560, y0 + alt], fill=(255, 255, 255, 235), outline=(60, 60, 60, 255))
     for k, (tipo, cor, t) in enumerate(itens):
         yy = y0 + 16 + k * 34
         if tipo == "r":
@@ -641,6 +656,7 @@ async def planta_condicionantes(f: Dict[str, Any], casa_latlon: Optional[Sequenc
     import textwrap
     for k, ln in enumerate(textwrap.wrap("Água: " + (hidro or {}).get("txt", "por confirmar"), 62)[:2]):
         dr.text((x0 + 14, y0 + 14 + len(itens) * 34 + k * 18), ln, fill=(20, 70, 180, 255), font=V._font(15))
+    _seta_agua(dr, px, hidro, V._font(18), (x0, y0, x0 + 560, y0 + alt))
     # norte e escala gráfica
     dr.polygon([(px - 60, 40), (px - 75, 85), (px - 60, 75), (px - 45, 85)], fill=(20, 20, 20, 255))
     dr.text((px - 67, 90), "N", fill=(20, 20, 20, 255), font=V._font(20))
@@ -786,6 +802,7 @@ async def carta_declives(f: Dict[str, Any], dcl: Dict[str, Any], casa_latlon=Non
     ft = "Fontes: " + "; ".join(fontes) + "; " + (o.get("fonte") if o["ok"] else "ortofotomapa indisponível")
     for k, ln in enumerate(textwrap.wrap(ft, 74)[:3]):
         dr.text((34, 330 + k * 20), ln, fill=(80, 80, 80, 255), font=V._font(14))
+    _seta_agua(dr, px, hidro, V._font(18), (20, 20, 560, 400))
     dr.polygon([(px - 60, 40), (px - 75, 85), (px - 60, 75), (px - 45, 85)], fill=(20, 20, 20, 255))
     dr.text((px - 67, 90), "N", fill=(20, 20, 20, 255), font=V._font(20))
     out = io.BytesIO()
