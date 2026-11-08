@@ -102,6 +102,7 @@ const EstudioImagensLazy = lazy(() => import("@/pages/EstudioImagens"));
 const UrbanismoLazy = lazy(() => import("@/pages/Urbanismo"));
 const UrbanismoProcessoLazy = lazy(() => import("@/pages/UrbanismoProcesso"));
 const LicenciamentoAutoLazy = lazy(() => import("@/pages/LicenciamentoAuto"));
+const Edificio3DLazy = lazy(() => import("@/pages/Edificio3D"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 import AppsHub from "@/pages/AppsHub";
@@ -275,6 +276,8 @@ function AppRouter() {
       <Route path="/particulares/autorizacao-obras" element={<Shell><AutorizacaoObras /></Shell>} />
       <Route path="/licenciamento-automatico" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><LicenciamentoAutoLazy /></Suspense></Shell></Protected>} />
       <Route path="/licenciamento-automatico/:id" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><LicenciamentoAutoLazy /></Suspense></Shell></Protected>} />
+      <Route path="/edificio-3d" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><Edificio3DLazy /></Suspense></Shell></Protected>} />
+      <Route path="/edificio-3d/:id" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><Edificio3DLazy /></Suspense></Shell></Protected>} />
       <Route path="/subscrever/:token" element={<SubscrevePublic />} />
       <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
       <Route path="/radar/courrier/retour" element={<Protected><Shell><PostalFeature><PostalPaymentReturn /></PostalFeature></Shell></Protected>} />
