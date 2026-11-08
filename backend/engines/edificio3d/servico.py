@@ -198,3 +198,34 @@ async def criar_trabalho(user_id: str, params: Dict[str, Any], usar_arcgis: bool
     t.add_done_callback(_TASKS.discard)
     doc.pop("_id", None)
     return doc
+
+
+# ------------------------------------------------------------------ acabamento fotorrealista (API ConstruPilot)
+PROMPT_FOTO = (
+    "Photorealistic architectural photograph of THIS exact building, rendered by Blender. Keep the geometry 100% identical "
+    "to the reference image: same camera, framing, proportions, two-pitch gable roof and eaves, number of floors, every "
+    "window and door in the same position and size, the vertical wood cladding at the entrance, the canopy, gutters "
+    "and downpipes. Do not add, remove or move any window, floor, balcony or volume and do not change the camera. "
+    "Only make the materials and lighting photographic: smooth white render facade with subtle texture, warm natural "
+    "wood vertical slats, slim black aluminium window frames, clear glass with real reflections, dark grey flat roof tiles, "
+    "natural daylight with soft realistic shadows, lush real lawn, real trees and hedges where the reference has them, "
+    "real sky. Contemporary house in Portugal.")
+
+
+async def gerar_fotorrealista(job_id: str, vista: str, ambiente: str = "") -> Dict[str, Any]:
+    """Motor de imagem ConstruPilot (image_studio) com o render Blender como referência obrigatória."""
+    j = await db[COL].find_one({"job_id": job_id}, {"_id": 0})
+    nome = ((j or {}).get("manifesto") or {}).get("imagens", {}).get(vista)
+    ref = await ler_ficheiro(job_id, nome) if nome else None
+    if not ref:
+        raise LookupError("Render Blender desta vista não encontrado.")
+    from engines import image_studio
+    imgs = await image_studio.generate(prompt=f"{PROMPT_FOTO} {ambiente}".strip(), provider="gemini", reference_images=[ref],
+                                       number=1, feature="edificio3d_fotorrealista", session_id=job_id)
+    data, mime = imgs[0]
+    saida = f"ia_{vista}{'.png' if 'png' in (mime or '') else '.jpg'}"
+    await guardar_ficheiro(job_id, saida, data)
+    await db[COL].update_one({"job_id": job_id}, {"$set": {f"fotorrealistas.{vista}": saida}})
+    return {"ok": True, "vista": vista, "ficheiro": saida, "referencia": nome,
+            "nota": "Acabamento fotorrealista gerado sobre o render Blender (mesma câmara e geometria); "
+                    "o render Blender original mantém-se como referência técnica."}
