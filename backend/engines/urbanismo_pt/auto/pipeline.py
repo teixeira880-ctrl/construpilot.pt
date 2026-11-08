@@ -39,6 +39,24 @@ def _bool(v, d=None):
     return str(v).strip().lower() in ("1", "true", "sim", "yes", "s", "y", "oui")
 
 
+_ABREV = ("av", "r", "lg", "trav", "tv", "dr", "dra", "eng", "prof", "n", "nº", "sr", "sra", "sto", "sta", "s", "estr", "urb")
+
+
+def _cortar_morada(s: str) -> str:
+    """A morada acaba no fim da frase: «Rua do Monte 7, Braga. Dossier completo para a câmara…» → «Rua do Monte 7, Braga».
+    Não corta em abreviaturas («Av. da Liberdade», «R. de Santa Catarina») e corta também antes de pedidos colados à
+    morada («, mesmo que…», «para a câmara», «dossier…»)."""
+    for m in re.finditer(r"\.\s+(?=\S)", s):
+        antes = re.findall(r"([\wº]+)$", s[:m.start()])
+        if antes and antes[0].lower() in _ABREV:
+            continue
+        s = s[:m.start()]
+        break
+    s = re.split(r",?\s+(?:mesmo que|mesmo se|para (?:a|o) (?:c[âa]mara|munic[ií]pio)|dossier|com (?:piscina|garagem))\b", s,
+                 maxsplit=1, flags=re.I)[0]
+    return s.strip(" .,;")
+
+
 def interpretar_pedido(texto: str) -> Dict[str, Any]:
     """Extrai de uma frase simples os dados que já estão lá (morada, tipologia, pisos, garagem, materiais)."""
     t = texto or ""
@@ -68,15 +86,15 @@ def interpretar_pedido(texto: str) -> Dict[str, Any]:
     m = re.search(r"\b(?:na|no|em|sito em|situad[oa] em)\s+((?:rua|avenida|av\.|travessa|largo|estrada|caminho|lugar|praça|"
                   r"urbaniza[çc][ãa]o|quinta)\b.+)$", t, re.I)
     if m:
-        out["morada"] = re.sub(r"\s+", " ", m.group(1)).strip(" .")
+        out["morada"] = _cortar_morada(re.sub(r"\s+", " ", m.group(1)))
     m = re.search(r"(?:endere[çc]o|morada)\s*(?:é|e|:)\s*:?\s*([^\n(]+)", t, re.I)
     if m and not out.get("morada"):
-        out["morada"] = re.sub(r"\s+", " ", m.group(1)).strip(" .,")
+        out["morada"] = _cortar_morada(re.sub(r"\s+", " ", m.group(1)))
     if not out.get("morada"):   # morada escrita sem «na/no/em» (ex.: «…, Rua do Monte 7, Braga»)
         m = re.search(r"\b((?:rua|avenida|av\.|travessa|largo|estrada|caminho|lugar|praça|urbaniza[çc][ãa]o|quinta|bairro)\s+"
                       r"[^\n]+)$", t, re.I)
         if m:
-            out["morada"] = re.sub(r"\s+", " ", m.group(1)).strip(" .,")
+            out["morada"] = _cortar_morada(re.sub(r"\s+", " ", m.group(1)))
     # leitura v2 (forma, área habitável vs terreno, piscina, garagem exterior, estilo…): acrescenta sem apagar o anterior
     novo = PD.interpretar(t)
     for k, v in novo.items():

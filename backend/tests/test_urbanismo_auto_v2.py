@@ -191,3 +191,13 @@ def test_casa_em_l_todos_os_compartimentos_tem_acesso_e_pecas_a_escala():
     assert all(p["folha"] for p in pecas)
     ds = UP.desenhos(proc, None)
     assert any(d["filename"] == "planta_piso_0.png" for d in ds) and not any(d["filename"] == "corte_AA.png" for d in ds)
+
+
+@pytest.mark.parametrize("txt,morada", [
+    ("Casa em L na Rua do Monte 7, Padim da Graça, 4700-651 Braga. Dossier completo para a câmara, mesmo que pertença à REN.",
+     "Rua do Monte 7, Padim da Graça, 4700-651 Braga"),
+    ("quero uma casa na Av. da Liberdade 10, Lisboa. Com piscina", "Av. da Liberdade 10, Lisboa"),
+    ("moradia em Rua do Monte 7, Braga, mesmo que esteja em REN", "Rua do Monte 7, Braga"),
+])
+def test_morada_acaba_no_fim_da_frase(txt, morada):
+    assert P.interpretar_pedido(txt)["morada"] == morada
