@@ -59,7 +59,7 @@ A validar no ambiente de teste com a chave real: qualidade das saídas Gemini fa
 
 ## Atualização — cadeia Runway → OpenAI → Emergent, Claude como juiz, modo leigo
 
-Ordem automática por vista (`URB_IMG_FORNECEDORES`, por omissão `runway,openai,gemini`):
+Ordem automática por vista (`URB_IMG_FORNECEDORES`, por omissão `openai,runway,gemini` (o Runway ignorava a maquete: geometria 0,05 no teste real)):
 1. Runway gen4_image (`RUNWAYML_API_SECRET`) — referência alargada a 16:9 (sem deformar a casa), prompt ≤ 990 caracteres.
 2. OpenAI gpt-image-1 em edição, qualidade alta, `input_fidelity=high` (`OPENAI_API_KEY`; disjuntor de crédito existente).
 3. Emergent / Gemini (`EMERGENT_LLM_KEY`) — último recurso, com ronda estrita.

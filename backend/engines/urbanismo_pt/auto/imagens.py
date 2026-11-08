@@ -130,7 +130,7 @@ def semelhanca_geometria(ref_png: bytes, gen_bytes: bytes, mascara_png: bytes) -
 # Ordem pedida pelo cliente: Runway → OpenAI (gpt-image-1, chave da empresa) → Emergent (Gemini, chave universal).
 # Claude não gera imagens: é o JUIZ (realismo + geometria, por visão) e reescreve as instruções da ronda seguinte
 # a partir dos defeitos que encontrou. Fornecedor sem chave configurada é saltado sem erro.
-ORDEM_FORNECEDORES = [f.strip() for f in os.environ.get("URB_IMG_FORNECEDORES", "runway,openai,gemini").split(",") if f.strip()]
+ORDEM_FORNECEDORES = [f.strip() for f in os.environ.get("URB_IMG_FORNECEDORES", "openai,runway,gemini").split(",") if f.strip()]
 REALISMO_MIN = float(os.environ.get("URB_IMG_REALISMO_MIN", "7"))
 ASPETO = {"runway": 16 / 9}           # proporção imposta pelo fornecedor (a referência é alargada, nunca deformada)
 

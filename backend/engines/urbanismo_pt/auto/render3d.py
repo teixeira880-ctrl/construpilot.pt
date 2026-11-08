@@ -180,7 +180,8 @@ def construir_cena(m: Dict[str, Any], fachada_sol: str = "frente") -> Tuple[Cena
         cena.quad((x - 1.2, y - 1.2, 0.0), (x + l + 1.2, y - 1.2, 0.0), (x + l + 1.2, y + w + 1.2, 0.0), (x - 1.2, y + w + 1.2, 0.0),
                   COR["lajeado"], 0)
         cena.quad((x, y, 0.01), (x + l, y, 0.01), (x + l, y + w, 0.01), (x, y + w, 0.01), COR["agua"], 0)
-    info = {"casa_bbox": bb, "terreno_bbox": (min(xs), min(ys), max(xs), max(ys)), "piscina": pi}
+    em_l = any(len(v.get("pts") or []) == 6 and not v.get("anexo") for v in m.get("volumes") or [])
+    info = {"casa_bbox": bb, "terreno_bbox": (min(xs), min(ys), max(xs), max(ys)), "piscina": pi, "em_l": em_l}
     return cena, info
 
 
@@ -240,6 +241,9 @@ def camara(info: Dict[str, Any], vista: str) -> Tuple[np.ndarray, np.ndarray, fl
     elif vista == "aerea":
         olho = de(-35, dist * 1.15, dist * 0.75)
         alvo = np.array([cx, cy, 0.5])
+    elif info.get("em_l"):   # casa em L: do canto do pátio, ligeiramente elevado (drone baixo) — lê-se o L, as duas alas e o pátio
+        olho = de(135, dist * 0.82, 4.2)
+        alvo = np.array([cx, cy, 0.9])
     else:   # perspetiva 3/4 a partir do canto da frente
         olho = de(-38, dist, 1.7)
     return olho, alvo, fov
