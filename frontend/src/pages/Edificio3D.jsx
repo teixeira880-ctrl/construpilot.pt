@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Box, CheckCircle2, Compass, Cpu, Download, Globe2, Layers, Loader2, MapPin, Mountain, Server, XCircle } from "lucide-react";
+import { Box, CheckCircle2, Compass, Cpu, Download, Globe2, Layers, Loader2, MapPin, Mountain, Server, Sparkles, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,7 +55,7 @@ function Img({ base, nome, alt, className = "" }) {
   return <img src={u} alt={alt} className={className} />;
 }
 
-function AntesDepois({ base, antes, depois, titulo }) {
+function AntesDepois({ base, antes, depois, titulo, legendas = ["Antes", "Depois"] }) {
   const [x, setX] = useState(50);
   const ua = useBlob(`${base}/${antes}`), ud = useBlob(`${base}/${depois}`);
   if (!ua || !ud) return null;
@@ -66,8 +66,8 @@ function AntesDepois({ base, antes, depois, titulo }) {
         <img src={ud} alt="depois" className="absolute inset-0 w-full h-full object-cover" />
         <img src={ua} alt="antes" className="absolute inset-0 w-full h-full object-cover" style={{ clipPath: `inset(0 ${100 - x}% 0 0)` }} />
         <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow" style={{ left: `${x}%` }} />
-        <span className="absolute left-2 top-2 text-xs bg-black/60 text-white px-2 py-0.5 rounded">Antes</span>
-        <span className="absolute right-2 top-2 text-xs bg-black/60 text-white px-2 py-0.5 rounded">Depois</span>
+        <span className="absolute left-2 top-2 text-xs bg-black/60 text-white px-2 py-0.5 rounded">{legendas[0]}</span>
+        <span className="absolute right-2 top-2 text-xs bg-black/60 text-white px-2 py-0.5 rounded">{legendas[1]}</span>
         <input type="range" min="0" max="100" value={x} onChange={e => setX(+e.target.value)} aria-label="antes/depois"
           className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize" />
       </div>
@@ -220,6 +220,8 @@ function Historico() {
 function Resultado({ id }) {
   const [j, setJ] = useState(null);
   const [vista, setVista] = useState("perspetiva");
+  const [aFoto, setAFoto] = useState(false);
+  const [erroFoto, setErroFoto] = useState(null);
   const viz = useRef(null);
   useEffect(() => {
     let vivo = true, t;
@@ -241,6 +243,17 @@ function Resultado({ id }) {
   const p = j.params || {}, m = j.manifesto || {}, arc = j.arcgis || {}, fich = new Set(j.ficheiros || []);
   const imgs = m.imagens || {};
   const arcImgs = Object.entries(arc.imagens || {});
+
+  const fotos = j.fotorrealistas || {};
+  const fotorrealista = async () => {
+    setAFoto(true); setErroFoto(null);
+    try {
+      const { data } = await api.post(`/edificio3d/projetos/${id}/fotorrealista`, { vista }, { timeout: 180000 });
+      setJ(o => ({ ...o, fotorrealistas: { ...(o.fotorrealistas || {}), [vista]: data.ficheiro },
+        ficheiros: [...new Set([...(o.ficheiros || []), data.ficheiro])] }));
+    } catch (e) { setErroFoto(e?.response?.data?.detail?.toString?.() || "Não foi possível gerar o acabamento."); }
+    setAFoto(false);
+  };
 
   const baixar = async (nome) => {
     const r = await api.get(`${base}/${nome}`, { responseType: "blob", timeout: 300000 });
@@ -305,8 +318,20 @@ function Resultado({ id }) {
                 <Button key={k} size="sm" variant={vista === k ? "default" : "outline"} onClick={() => setVista(k)}>{t}</Button>
               ))}
             </div>
-            {imgs[vista] && <Img base={base} nome={imgs[vista]} alt={vista} className="w-full rounded" />}
-            <p className="text-xs text-muted-foreground">Renders Cycles produzidos pelo {m.motor || "Blender"} a partir do modelo 3D (sem imagens geradas por IA).</p>
+            {imgs[vista] && (fotos[vista]
+              ? <AntesDepois base={base} antes={imgs[vista]} depois={fotos[vista]} legendas={["Render Blender", "Fotorrealista"]}
+                  titulo="Render Blender (referência técnica) ↔ acabamento fotorrealista sobre o mesmo render" />
+              : <Img base={base} nome={imgs[vista]} alt={vista} className="w-full rounded" />)}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" onClick={fotorrealista} disabled={aFoto || !imgs[vista]} data-testid="ed3d-fotorrealista">
+                {aFoto ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                {fotos[vista] ? "Refazer acabamento fotorrealista" : "Acabamento fotorrealista desta vista"}
+              </Button>
+              {fotos[vista] && <Button size="sm" variant="outline" onClick={() => baixar(fotos[vista])}><Download className="h-4 w-4 mr-1" />Imagem fotorrealista</Button>}
+              {erroFoto && <span className="text-sm text-destructive">{erroFoto}</span>}
+            </div>
+            <p className="text-xs text-muted-foreground">Renders Cycles produzidos pelo {m.motor || "Blender"} a partir do modelo 3D. O acabamento fotorrealista
+              (motor de imagem ConstruPilot) é aplicado sobre o render Blender, com a mesma câmara e geometria; o original fica sempre disponível.</p>
           </Card>
 
           <div className="grid md:grid-cols-2 gap-4">

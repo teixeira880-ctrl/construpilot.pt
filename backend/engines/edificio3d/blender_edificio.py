@@ -127,7 +127,7 @@ def tex_telha(cor):
 def tex_relva():
     n = 512
     k = 0.80 + 0.25 * _noise(n, 8) + 0.12 * _noise(n, 64) + 0.06 * (RNG.random((n, n)) - 0.5)
-    return _img("relva", np.dstack([0.24 * k, 0.32 * k, 0.15 * k]))
+    return _img("relva", np.dstack([0.22 * k, 0.33 * k, 0.09 * k]))
 
 
 def tex_lajeado():
@@ -142,7 +142,7 @@ def tex_lajeado():
 # ---------------------------------------------------------------------------
 # Materiais
 # ---------------------------------------------------------------------------
-def material(nome, cor=(0.8, 0.8, 0.8), rough=0.6, metal=0.0, imagem=None, vidro=False, emissao=None):
+def material(nome, cor=(0.8, 0.8, 0.8), rough=0.6, metal=0.0, imagem=None, vidro=False, emissao=None, relevo=0.0):
     m = bpy.data.materials.new(nome)
     m.use_nodes = True
     nt = m.node_tree
@@ -154,6 +154,14 @@ def material(nome, cor=(0.8, 0.8, 0.8), rough=0.6, metal=0.0, imagem=None, vidro
         t = nt.nodes.new("ShaderNodeTexImage")
         t.image = imagem
         nt.links.new(t.outputs["Color"], bsdf.inputs["Base Color"])
+        if relevo > 0:
+            bw = nt.nodes.new("ShaderNodeRGBToBW")
+            bp = nt.nodes.new("ShaderNodeBump")
+            bp.inputs["Strength"].default_value = relevo
+            bp.inputs["Distance"].default_value = 0.02
+            nt.links.new(t.outputs["Color"], bw.inputs["Color"])
+            nt.links.new(bw.outputs["Val"], bp.inputs["Height"])
+            nt.links.new(bp.outputs["Normal"], bsdf.inputs["Normal"])
     if vidro:
         bsdf.inputs["Transmission Weight"].default_value = 1.0
         bsdf.inputs["IOR"].default_value = 1.45
@@ -407,6 +415,164 @@ class Edificio:
 
 
 # ---------------------------------------------------------------------------
+# Vegetação procedimental (só para os renders; não entra no GLB)
+# ---------------------------------------------------------------------------
+def _mat_folhagem(nome, base):
+    m = bpy.data.materials.new(nome)
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes.get("Principled BSDF")
+    nz = nt.nodes.new("ShaderNodeTexNoise"); nz.inputs["Scale"].default_value = 9.0; nz.inputs["Detail"].default_value = 8.0
+    cr = nt.nodes.new("ShaderNodeValToRGB")
+    cr.color_ramp.elements[0].color = (base[0] * 0.45, base[1] * 0.45, base[2] * 0.45, 1)
+    cr.color_ramp.elements[1].color = (*base, 1)
+    nt.links.new(nz.outputs["Fac"], cr.inputs["Fac"])
+    nt.links.new(cr.outputs["Color"], b.inputs["Base Color"])
+    bp = nt.nodes.new("ShaderNodeBump"); bp.inputs["Strength"].default_value = 1.0
+    nz2 = nt.nodes.new("ShaderNodeTexNoise"); nz2.inputs["Scale"].default_value = 40.0
+    nt.links.new(nz2.outputs["Fac"], bp.inputs["Height"])
+    nt.links.new(bp.outputs["Normal"], b.inputs["Normal"])
+    b.inputs["Roughness"].default_value = 0.75
+    try:
+        b.inputs["Subsurface Weight"].default_value = 0.15
+    except Exception:
+        pass
+    return m
+
+
+def _copa(nome, raio, mat, sub=3, seed=0):
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=sub, radius=raio, location=(0, 0, 0))
+    ob = bpy.context.active_object
+    ob.name = nome
+    tx = bpy.data.textures.new(f"tx_{nome}", "CLOUDS")
+    tx.noise_scale = raio * 0.45
+    md = ob.modifiers.new("disp", "DISPLACE"); md.texture = tx; md.strength = raio * 0.35
+    ob.data.materials.append(mat)
+    for f in ob.data.polygons:
+        f.use_smooth = True
+    return ob
+
+
+def _folha(col, mat):
+    me = bpy.data.meshes.new("folha")
+    me.from_pydata([(-0.06, 0, 0), (0.06, 0, 0), (0.05, 0.16, 0.02), (-0.05, 0.16, 0.02)], [], [(0, 1, 2, 3)])
+    me.materials.append(mat)
+    ob = bpy.data.objects.new("folha", me)
+    col.objects.link(ob)
+    ob.location = (0, -2000, -100)
+    ob.hide_render = True
+    return ob
+
+
+def _folhagem(emissor, folha, n, tamanho=1.0, seed=1):
+    ps = emissor.modifiers.new("folhas", "PARTICLE_SYSTEM").particle_system
+    st = ps.settings
+    st.type = "HAIR"
+    st.count = n
+    st.hair_length = 0.3
+    st.emit_from = "FACE"
+    st.use_advanced_hair = True
+    st.render_type = "OBJECT"
+    st.instance_object = folha
+    st.particle_size = tamanho
+    st.size_random = 0.6
+    st.use_rotations = True
+    st.rotation_mode = "NOR"
+    st.rotation_factor_random = 1.0
+    st.phase_factor_random = 2.0
+    ps.seed = seed
+    return ps
+
+
+def _relva(col, lado, mat):
+    """Relva em fios 3D (curvas Cycles) num quadrado à volta do edifício."""
+    me = bpy.data.meshes.new("relva_fios")
+    h = lado / 2
+    me.from_pydata([(-h, -h, 0.005), (h, -h, 0.005), (h, h, 0.005), (-h, h, 0.005)], [], [(0, 1, 2, 3)])
+    ob = bpy.data.objects.new("relva_fios", me)
+    col.objects.link(ob)
+    me.materials.append(mat)
+    ps = ob.modifiers.new("relva", "PARTICLE_SYSTEM").particle_system
+    st = ps.settings
+    st.type = "HAIR"
+    st.count = int(lado * lado * 90)
+    st.hair_length = 0.09
+    st.use_advanced_hair = True
+    st.factor_random = 0.04
+    st.brownian_factor = 0.02
+    st.length_random = 0.6
+    st.root_radius = 1.0
+    st.tip_radius = 0.0
+    try:
+        st.radius_scale = 0.004
+    except Exception:
+        pass
+    ob.show_instancer_for_render = False
+    return ob
+
+
+def vegetacao(scene, col, W, D, rng_seed=3, horizonte=True):
+    rng = np.random.default_rng(rng_seed)
+    folha = _mat_folhagem("Folhagem", (0.16, 0.30, 0.09))
+    folha2 = _mat_folhagem("Folhagem escura", (0.10, 0.22, 0.07))
+    tronco = material("Tronco", cor=(0.18, 0.13, 0.09), rough=0.9)
+    sebe = _mat_folhagem("Sebe", (0.13, 0.27, 0.08))
+    folha_ob = _folha(col, folha)
+    folha_ob2 = _folha(col, folha2)
+
+    def mover(ob, colecao):
+        for c in list(ob.users_collection):
+            c.objects.unlink(ob)
+        colecao.objects.link(ob)
+
+    def arvore(x, y, h, m):
+        bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.12 + h * 0.012, depth=h * 0.55, location=(x, y, h * 0.275))
+        t = bpy.context.active_object; t.data.materials.append(tronco); mover(t, col)
+        for k in range(3):
+            c = _copa(f"copa_{x:.0f}_{y:.0f}_{k}", h * (0.26 - 0.04 * k), m)
+            c.location = (x + rng.normal(0, h * 0.06), y + rng.normal(0, h * 0.06), h * (0.62 + 0.13 * k))
+            c.scale = (1, 1, 0.85)
+            mover(c, col)
+            _folhagem(c, folha_ob if m is folha else folha_ob2, int(2600 * h * 0.26), tamanho=2.4 + h * 0.12, seed=k + int(x))
+
+    # árvores no jardim (fora dos eixos das câmaras das fachadas)
+    for (x, y, h) in ((-W / 2 - 6.5, D / 2 + 4.0, 7.5), (W / 2 + 6.0, D / 2 + 5.5, 8.5), (-W / 2 - 8.0, -D / 2 - 3.0, 6.0),
+                      (W / 2 + 7.5, -D / 2 - 2.0, 5.5), (W / 2 + 12.0, D / 2 + 12.0, 9.0), (-W / 2 - 13.0, 2.0, 8.0)):
+        arvore(x, y, h, folha if rng.random() > 0.4 else folha2)
+
+    # sebes nos limites do lote
+    lim = max(W, D) / 2 + 11.0
+    for (x0, y0, x1, y1) in ((-lim, lim, lim, lim + 1.0), (-lim - 1.0, -lim + 3, -lim, lim), (lim, -lim + 3, lim + 1.0, lim)):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=((x0 + x1) / 2, (y0 + y1) / 2, 0.75))
+        sb = bpy.context.active_object
+        sb.scale = (abs(x1 - x0), abs(y1 - y0), 1.5)
+        bpy.ops.object.transform_apply(scale=True)
+        md = sb.modifiers.new("sub", "SUBSURF"); md.levels = 3; md.render_levels = 3; md.subdivision_type = "SIMPLE"
+        tx = bpy.data.textures.new("tx_sebe", "CLOUDS"); tx.noise_scale = 0.35
+        dp = sb.modifiers.new("disp", "DISPLACE"); dp.texture = tx; dp.strength = 0.25
+        sb.data.materials.append(sebe)
+        mover(sb, col)
+        _folhagem(sb, folha_ob2, int(abs(x1 - x0) * abs(y1 - y0) * 60 + abs(x1 - x0 + y1 - y0) * 260), tamanho=2.2)
+
+    relva_m = material("Relva fios", cor=(0.17, 0.30, 0.06), rough=0.8)
+    _relva(col, max(W, D) + 26.0, relva_m)
+    if not horizonte:      # com ortofoto real, a envolvente é a do local
+        return
+    # linha de árvores distante (horizonte natural), cópias ligadas de uma só copa
+    base = _copa("copa_horizonte", 3.2, folha2, sub=2)
+    mover(base, col)
+    base.location = (0, -1000, -50)
+    for i in range(70):
+        ang = 2 * math.pi * i / 70 + rng.normal(0, 0.03)
+        r = 52 + rng.normal(0, 4)
+        ob = base.copy()
+        ob.location = (r * math.cos(ang), r * math.sin(ang), 2.6 + rng.normal(0, 0.6))
+        s = 0.8 + rng.random() * 0.8
+        ob.scale = (s, s, s * 1.2)
+        col.objects.link(ob)
+
+
+# ---------------------------------------------------------------------------
 # Cena, câmaras e renders
 # ---------------------------------------------------------------------------
 def limpar():
@@ -440,11 +606,11 @@ def ceu(scene, azim_sol, elev_sol):
     except Exception:
         pass
     nt.links.new(sky.outputs["Color"], bg.inputs["Color"])
-    bg.inputs["Strength"].default_value = 0.35 if ok else 1.0
+    bg.inputs["Strength"].default_value = 0.45 if ok else 1.0
     nt.links.new(bg.outputs["Background"], out.inputs["Surface"])
     # Sol físico
     ld = bpy.data.lights.new("Sol", "SUN")
-    ld.energy = 3.2
+    ld.energy = 3.8
     ld.angle = math.radians(1.5)
     ld.color = (1.0, 0.96, 0.90)
     sol = bpy.data.objects.new("Sol", ld)
@@ -490,11 +656,11 @@ def main():
 
     # Materiais
     M = {
-        "reboco": material("Reboco branco", rough=0.85, imagem=tex_reboco(p["cor_fachada"])),
-        "madeira": material("Madeira ripado", rough=0.55, imagem=tex_madeira()),
+        "reboco": material("Reboco branco", rough=0.85, relevo=0.25, imagem=tex_reboco(p["cor_fachada"])),
+        "madeira": material("Madeira ripado", rough=0.55, relevo=0.6, imagem=tex_madeira()),
         "caixilho": material("Caixilharia preta", cor=(0.02, 0.02, 0.022), rough=0.35, metal=0.6),
         "vidro": material("Vidro", vidro=True),
-        "telha": material("Telha cinzenta", rough=0.85, imagem=tex_telha(p["cor_telha"])),
+        "telha": material("Telha cinzenta", rough=0.85, relevo=0.9, imagem=tex_telha(p["cor_telha"])),
         "zinco": material("Zinco / aço escuro", cor=(0.12, 0.12, 0.13), rough=0.45, metal=0.7),
         "pedra": material("Pedra clara", cor=(0.78, 0.76, 0.72), rough=0.6),
         "interior": material("Interior", cor=(0.85, 0.84, 0.80), rough=0.9),
@@ -507,7 +673,7 @@ def main():
     objs_ed = [o for k, mal in ed.m.items() if (o := mal.objeto(f"ed_{k}", M[k], col_ed))]
 
     # Terreno: ortofoto real (se fornecida) ou relva + pavimentos
-    lado = float(p.get("ortofoto_lado_m") or 120.0)
+    lado = float(p.get("ortofoto_lado_m") or 140.0)
     orto = p.get("ortofoto_path")
     chao = Malha(tex_m=lado if orto else 4.0)
     chao.poly([(-lado / 2, -lado / 2, 0), (lado / 2, -lado / 2, 0), (lado / 2, lado / 2, 0), (-lado / 2, lado / 2, 0)])
@@ -517,14 +683,17 @@ def main():
         chao.uv = [[((x + lado / 2) / lado, (y + lado / 2) / lado) for (x, y, _z) in chao.v]]
         mt_chao = material("Ortofoto", rough=0.95, imagem=img)
     else:
-        mt_chao = material("Relva", rough=0.95, imagem=tex_relva())
+        mt_chao = material("Relva", rough=0.95, relevo=0.8, imagem=tex_relva())
     chao.objeto("terreno", mt_chao, col_tr)
     pav = Malha(tex_m=1.0)
     W, D = ed.W, ed.D
     pav.caixa(-0.8, -D / 2 - 7.0, 0.0, 0.8, -D / 2 - 1.3, 0.025)                  # caminho de entrada
     pav.caixa(-W / 2 + 0.8, D / 2, 0.0, W / 2 - 0.8, D / 2 + 3.5, 0.025)          # terraço no tardoz
     pav.caixa(-0.8, -D / 2 - 1.3, 0.0, 0.8, -D / 2, 0.08)                          # soleira/patamar
-    pav.objeto("pavimentos", material("Lajeado", rough=0.8, imagem=tex_lajeado()), col_tr)
+    pav.objeto("pavimentos", material("Lajeado", rough=0.8, relevo=0.5, imagem=tex_lajeado()), col_tr)
+
+    if p.get("vegetacao", True):
+        vegetacao(scene, col_tr, W, D, horizonte=not (orto and os.path.exists(orto)))
 
     # Iluminação: sol a ~35° vindo da frente-esquerda (no referencial não rodado)
     ceu(scene, azim_sol=-35.0, elev_sol=34.0)

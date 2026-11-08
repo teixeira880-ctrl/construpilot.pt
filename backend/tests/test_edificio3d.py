@@ -62,7 +62,11 @@ class Coll:
 
     def _apply(self, d, upd):
         for k, v in upd.get("$set", {}).items():
-            d[k] = v
+            *pais, ult = k.split(".")
+            alvo = d
+            for x in pais:
+                alvo = alvo.setdefault(x, {})
+            alvo[ult] = v
         for k, v in upd.get("$push", {}).items():
             d.setdefault(k, []).append(v)
         for k, v in upd.get("$addToSet", {}).items():
@@ -224,4 +228,29 @@ def test_blender_real_no_servidor(app, monkeypatch):
             img = (await c.get(f"/edificio3d/projetos/{jid}/ficheiros/perspetiva.jpg")).content
             assert img[:2] == b"\xff\xd8"
             assert "antes_perspetiva.jpg" in j["ficheiros"]
+    asyncio.run(run())
+
+
+def test_fotorrealista_sobre_render_blender(app, monkeypatch):
+    a, fake = app
+    from engines import image_studio
+    chamadas = {}
+
+    async def gen(**kw):
+        chamadas.update(kw)
+        return [(b"\x89PNGfoto", "image/png")]
+    monkeypatch.setattr(image_studio, "generate", gen)
+
+    async def run():
+        await fake[S.COL].insert_one({"job_id": "j1", "user_id": "u1", "estado": "concluido", "ficheiros": [],
+                                      "manifesto": {"imagens": {"perspetiva": "perspetiva.jpg"}}, "params": {}})
+        Bucket.files["j1/perspetiva.jpg"] = b"\xff\xd8blender"
+        async with _client(a) as c:
+            assert (await c.post("/edificio3d/projetos/j1/fotorrealista", json={"vista": "fachada_tardoz"})).status_code == 404
+            r = (await c.post("/edificio3d/projetos/j1/fotorrealista", json={"vista": "perspetiva"})).json()
+            assert r["ficheiro"] == "ia_perspetiva.png" and r["referencia"] == "perspetiva.jpg"
+            assert chamadas["reference_images"] == [b"\xff\xd8blender"]          # a referência é o render Blender
+            j = (await c.get("/edificio3d/projetos/j1")).json()
+            assert j["fotorrealistas"]["perspetiva"] == "ia_perspetiva.png"
+            assert Bucket.files["j1/perspetiva.jpg"] == b"\xff\xd8blender"                 # original intacto
     asyncio.run(run())
