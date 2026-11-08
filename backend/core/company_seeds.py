@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,6 +27,7 @@ COMPANIES = [
         "account_type": "pro",
         "lang": "pt",
         "logo_file": "clt-rezult.png",
+        "temp_password_env": "CLT_REZULT_TEMP_PASSWORD",
         "fields": {
             "company": "CLT Rezult",
             "company_name": "CLT Rezult",
@@ -76,7 +78,7 @@ def _logo_data_url(fname: str) -> str | None:
     return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
 
 
-async def apply_company_seeds(db, new_user_id) -> dict:
+async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
     summary: dict[str, str] = {}
     now = datetime.now(timezone.utc).isoformat()
     for c in COMPANIES:
@@ -93,6 +95,15 @@ async def apply_company_seeds(db, new_user_id) -> dict:
                 summary[email] = "created"
             else:
                 summary[email] = "exists"
+            # Palavra-passe provisória (só via env, nunca no código) : posée UNIQUEMENT si le
+            # compte n'a encore aucun mot de passe ; jamais de réécriture d'un mot de passe existant.
+            temp_pw = (os.environ.get(c.get("temp_password_env") or "") or "").strip()
+            if temp_pw and hash_password and not user.get("password_hash"):
+                await db.users.update_one({"user_id": user["user_id"]},
+                                          {"$set": {"password_hash": hash_password(temp_pw),
+                                                    "must_change_password": True}})
+                user["password_hash"] = "set"
+                summary[email] += "+temp_password"
             if (user.get("company_seed_version") or 0) >= c["seed_version"]:
                 continue
             upd = dict(c["fields"])
