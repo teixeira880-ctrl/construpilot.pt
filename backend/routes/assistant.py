@@ -497,6 +497,18 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
                 result = office_pages(doc.get("text") or "", args["first_page"], args["page_count"])
             else:
                 result = await asyncio.to_thread(read_pages, base64.b64decode(doc["data_b64"]), doc["mime"], args["first_page"], args["page_count"])
+            # Páginas já lidas nesta conversa: só texto (sem novas imagens) e instrução explícita de não reler.
+            try:
+                prior = (await _pages_read_map(conv["conversation_id"], uid)).get(ident)
+                wanted = {p.get("page") for p in result.get("pages") or [] if isinstance(p, dict)}
+                if prior and wanted and wanted <= prior["pages"]:
+                    result["_model_attachments"] = [x for x in result.get("_model_attachments") or []
+                                                    if x.get("type") != "input_image"]
+                    result["already_read"] = True
+                    result["note"] = ("Páginas já lidas antes nesta conversa: só o texto é devolvido. "
+                                      "Não as releias; continua a tarefa (páginas em falta ou passo seguinte).")
+            except Exception:  # noqa: BLE001 — a memória de leitura nunca bloqueia uma leitura
+                logger.warning("read memory check failed", exc_info=True)
         elif doc.get("mime") in OFFICE_MIME_SET:
             return {"ok": False, "error": "Zoom impossível numa folha de cálculo/texto: utilizar read_document", "document_id": ident}
         else:
@@ -1281,6 +1293,14 @@ async def transcribe(file: UploadFile = File(...), user=Depends(current_user)) -
         if client: await client.close()
 
 
+async def _pages_read_map(conversation_id: str, uid: str) -> dict:
+    from engines.assistant_read_memory import pages_read_map
+    return await pages_read_map(db, conversation_id, uid)
+
+
+from engines.assistant_read_memory import ranges as _ranges  # noqa: E402
+
+
 async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, str, list]:
     conv = await db.assistant_convs.find_one({"conversation_id": body.conversation_id, "user_id": user["user_id"]}, {"_id": 0})
     if not conv:
@@ -1328,11 +1348,27 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
     history.sort(key=lambda m: (m.get("turn_seq") is not None, m.get("turn_seq", 0), 0 if m["role"] == "user" else 1) if m.get("turn_seq") is not None else (False, 0, m.get("created_at", "")))
     inputs = [{"role": m["role"], "content": m["content"]} for m in history if m["role"] in ("user", "assistant")]
     inputs.append({"role": "user", "content": "Dados do processo anexado (extratos parciais, utilizar read_document):\n"+context})
+    # Memória de leitura: as páginas já lidas NÃO são relidas a cada mensagem (regressão 09/11: o assistente
+    # relia os documentos desde o início e nunca chegava ao fim do estudo).
+    read_map = await _pages_read_map(conv["conversation_id"], user["user_id"])
+    if read_map:
+        names = {x.get("plan_id") or x.get("doc_id"): x.get("filename") for x in plans + docs}
+        lines = []
+        for did, e in read_map.items():
+            total = e["total"]
+            done = total and len(e["pages"]) >= int(total)
+            lines.append(f"« {names.get(did) or did} » (id {did}): páginas {_ranges(e['pages'])}" + (f" / {total}" if total else "")
+                         + (" — LEITURA COMPLETA" if done else ""))
+        inputs.append({"role": "user", "content": "PÁGINAS JÁ LIDAS NESTA CONVERSA (o conteúdo está nas tuas respostas anteriores):\n- "
+                       + "\n- ".join(lines) + "\nNÃO releias estas páginas: retoma a tarefa onde parou. Lê só as páginas em falta "
+                       "(3 por chamada) e passa diretamente ao passo seguinte pedido (ex.: lançar o estudo BET). "
+                       "Se tudo estiver lido, não releias nada e produz o resultado."})
     # Anexos DESTA mensagem : o utilizador viu-os reconhecidos no ecrã antes do envio ; o modelo tem de os tratar.
     fresh = set(getattr(body, "attachments", None) or [])
     joined = [f"« {x.get('filename')} » ({'planta' if 'plan_id' in x else x.get('kind') or 'documento'}, {x.get('pages') or 1} pág., id {x.get('plan_id') or x.get('doc_id')})"
               for x in plans + docs if (x.get("plan_id") or x.get("doc_id")) in fresh]
-    if joined or getattr(body, "dossier_ids", None):
+    # Um processo já explorado nesta conversa não é «novo»: sem instrução de releitura.
+    if joined or (getattr(body, "dossier_ids", None) and not read_map):
         inputs.append({"role": "user", "content": "FICHEIROS ANEXADOS A ESTA MENSAGEM (reconhecidos antes do envio): " + ("; ".join(joined) or "processo importado") +
                        ". Foram bem recebidos: começa a resposta citando-os pelo nome numa frase curta e depois trata o pedido a partir do "
                        "seu conteúdo (read_document / análise de planta para o texto completo). Nunca digas que não há ficheiro anexado nem "
@@ -1501,8 +1537,14 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         except Exception:  # noqa: BLE001
             logger.warning("tool_errors logging failed", exc_info=True)
         result = {"ok": False, "error": _error_message(ref)}
-    await db.assistant_actions.insert_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"],
-        "tool": name, "ok": result.get("ok"), "preview": result.get("preview", False), "created_at": _now()})
+    _log = {"user_id": user["user_id"], "conversation_id": conv["conversation_id"],
+        "tool": name, "ok": result.get("ok"), "preview": result.get("preview", False), "created_at": _now()}
+    if name == "read_document" and isinstance(args, dict) and result.get("pages"):
+        # Memória de leitura: que páginas de que documento já foram lidas nesta conversa.
+        _log["doc_id"] = args.get("document_id")
+        _log["pages_read"] = [p.get("page") for p in result.get("pages") if isinstance(p, dict) and p.get("page")]
+        _log["total_pages"] = result.get("total_pages") or result.get("page_count")
+    await db.assistant_actions.insert_one(_log)
     action = {"tool": name, "args": args, "result": result}
     if name == "search_technical_web":
         for source in result.get("sources", []):
