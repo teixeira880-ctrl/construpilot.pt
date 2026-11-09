@@ -97,3 +97,16 @@ def test_ferramenta_assistente():
 def test_sem_grelhas_erro_claro():
     with pytest.raises(ValueError):
         gros_oeuvre.calcular({"sapatas": []})
+
+
+def test_ajusta_painel_clt_subdimensionado():
+    m = smithers()
+    m["lajes"] = [{"ref": "C1", "piso": "cobertura", "tipo": "clt", "x0_m": 0, "y0_m": 0, "x1_m": 5, "y1_m": 5, "espessura_m": 0.14,
+                   "camadas_mm": [28] * 5, "vao_m": 5.0, "g2_kn_m2": 2.5, "q_kn_m2": 1.55, "psi2": 0.0, "produto": "rezult_clt",
+                   "descricao": "Rezult CLT 140-5s"}]
+    r = gros_oeuvre.calcular(m)
+    aj = [a for a in r["verificacao"]["ajustes"] if a.startswith("Painel CLT C1")]
+    assert aj and "CLT 140" in aj[0]
+    lj = r["modelo"]["lajes"][0]
+    assert sum(lj["camadas_mm"]) > 140 and "140" not in lj["descricao"]
+    assert all(e["ok"] for e in r["verificacao"]["elementos"] if e["tipo"] == "painel CLT")

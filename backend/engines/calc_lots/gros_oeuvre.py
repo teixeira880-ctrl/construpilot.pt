@@ -148,6 +148,12 @@ def clt_rigidez(camadas_mm, kmod=0.8, gm=1.25, produto=None, especie=None, n_tab
             "produto": pr}
 
 
+def _clt_candidatos(h_min_mm):
+    """Composições correntes (tábuas 20-43 mm, âmbito das ETA de CLT), da mais fina para a mais espessa, ≥ h_min."""
+    c = [[t] * 5 for t in (28, 30, 32, 34, 36, 38, 40, 42)] + [[t] * 7 for t in (30, 32, 34, 36, 38, 40, 42)]
+    return sorted((x for x in c if sum(x) >= h_min_mm - 1e-6), key=lambda x: (sum(x), len(x)))
+
+
 def clt_painel(lj, vao, kmod=0.8):
     from engines.bet_clt_ua.engine import panel
     from engines.bet_clt_ua.schema import Panel
@@ -318,7 +324,21 @@ def verificar(m: dict) -> dict:
     # --- painéis CLT (vão de cálculo indicado)
     for lj in m.get("lajes") or []:
         if lj.get("tipo") == "clt" and lj.get("vao_m"):
-            reg("painel CLT", lj, clt_painel(lj, float(lj["vao_m"])))
+            r, orig = clt_painel(lj, float(lj["vao_m"])), None
+            if not _ok(r["controles"]) and ajustar:
+                cam0 = lj.get("camadas_mm") or [round(float(lj["espessura_m"]) * 1000 / 5, 1)] * 5
+                orig = f"CLT {sum(cam0):g} ({len(cam0)} camadas) — taxa {(_taxa(r['controles']) or 0) * 100:.0f} %"
+                for cam in _clt_candidatos(sum(cam0)):
+                    rr = clt_painel(dict(lj, camadas_mm=cam, espessura_m=sum(cam) / 1000), float(lj["vao_m"]))
+                    if bom([c for c in rr["controles"] if c.get("lib") != "Âmbito ETA"]):
+                        r = rr
+                        lj.update(camadas_mm=cam, espessura_m=sum(cam) / 1000,
+                                  descricao=(lj.get("descricao") or "").replace(f"{sum(cam0):g}-{len(cam0)}s", f"{sum(cam):g}-{len(cam)}s")
+                                  .replace(f"CLT {sum(cam0):g}", f"CLT {sum(cam):g}") or None)
+                        ajustes.append(f"Painel CLT {lj.get('ref') or ''} (vão {float(lj['vao_m']):g} m): {orig} → CLT {sum(cam):g} "
+                                       f"({len(cam)} camadas {'-'.join(f'{c:g}' for c in cam)}) — taxa {(_taxa(rr['controles']) or 0) * 100:.0f} %")
+                        break
+            reg("painel CLT", lj, r, orig)
     prods = {lj.get("produto") for lj in m.get("lajes") or [] if lj.get("tipo") == "clt" and lj.get("vao_m") and lj.get("produto")}
     if prods:
         from . import clt_produtos as CP
