@@ -58,6 +58,10 @@ _UK = {
     "Painel CLT (motor bet_clt_ua)": "Панель CLT (модуль bet_clt_ua)", "painel CLT": "панель CLT",
     "Painéis CLT: propriedades C24 típicas (EN 338 / EN 16351, f_r,k 1,1 MPa, G_R 50 MPa) — substituir pelos valores da ETA do fabricante; vibração dos pavimentos (NP EN 1995-1-1 §7.3), ligações, estabilidade lateral e fogo não verificados aqui":
         "Панелі CLT: типові властивості C24 (EN 338 / EN 16351, f_r,k 1,1 МПа, G_R 50 МПа) — замінити значеннями ETA виробника; вібрацію перекриттів (EN 1995-1-1 §7.3), вузли, просторову стійкість і вогнестійкість тут не перевірено",
+    "; vibração, ligações, estabilidade lateral, integridade e isolamento ao fogo (E, I) não verificados aqui":
+        "; вібрацію, вузли, просторову стійкість, цілісність і теплоізоляцію при пожежі (E, I) тут не перевірено",
+    ": valores declarados na ": ": задекларовані значення за ", "f_R,k pela figura 3 da ETA": "f_R,k за рис. 3 ETA",
+    "carbonização": "обвуглювання", "Painéis ": "Панелі ", " MPa": " МПа",
 }
 
 _EN = {
@@ -103,6 +107,10 @@ _EN = {
     "Painel CLT (motor bet_clt_ua)": "CLT panel (bet_clt_ua engine)", "painel CLT": "CLT panel",
     "Painéis CLT: propriedades C24 típicas (EN 338 / EN 16351, f_r,k 1,1 MPa, G_R 50 MPa) — substituir pelos valores da ETA do fabricante; vibração dos pavimentos (NP EN 1995-1-1 §7.3), ligações, estabilidade lateral e fogo não verificados aqui":
         "CLT panels: typical C24 properties (EN 338 / EN 16351, f_r,k 1.1 MPa, G_R 50 MPa) — replace with the manufacturer's ETA values; floor vibration (EN 1995-1-1 §7.3), connections, lateral stability and fire not checked here",
+    "; vibração, ligações, estabilidade lateral, integridade e isolamento ao fogo (E, I) não verificados aqui":
+        "; vibration, connections, lateral stability, fire integrity and insulation (E, I) not checked here",
+    ": valores declarados na ": ": declared values from ", "f_R,k pela figura 3 da ETA": "f_R,k from ETA figure 3",
+    "carbonização": "charring", "Painéis ": "Panels ",
 }
 
 TRADUCOES = {"uk": _UK, "en": _EN}
