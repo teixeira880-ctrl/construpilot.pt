@@ -34,6 +34,10 @@ DEFAULTS = {
 def apply_defaults(raw: dict) -> dict:
     """Complète user_hypotheses avec les défauts du pays, sans écraser ce que le client a précisé."""
     country = ((raw.get("project") or {}).get("country") or "FR").upper()
+    from engines.bet_clt_ua.routing import legacy_issue
+    issue = legacy_issue(raw)
+    if issue:
+        raise ValueError(issue["message"])
     uh = raw.setdefault("user_hypotheses", {})
     for k, v in DEFAULTS.get(country, DEFAULTS["FR"]).items():
         uh.setdefault(k, v)
@@ -79,6 +83,8 @@ def complete_geotech(raw: dict) -> list[str]:
     if not isinstance(geo, dict) or not geo:
         return []
     country = ((raw.get("project") or {}).get("country") or "FR").upper()
+    if country == "UA":
+        raise ValueError("No legacy geotechnical defaults for UA (use bet_clt_ua / calc_lots.ucrania)")
     txt = GEO_TXT.get(country, GEO_TXT["FR"])
     added: list[tuple[str, object, str]] = []
 
@@ -155,6 +161,8 @@ def complete_project(raw: dict) -> list[str]:
     if not isinstance(pr, dict):
         pr = raw["project"] = {}
     country = (pr.get("country") or "FR").upper()
+    if country == "UA":
+        raise ValueError("No legacy project/climate defaults for UA (use bet_clt_ua / calc_lots.ucrania)")
     txt = PROJECT_TXT.get(country, PROJECT_TXT["FR"])
     added = []
     for k, v in txt.items():

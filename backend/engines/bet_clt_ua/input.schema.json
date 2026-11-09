@@ -1,0 +1,605 @@
+{
+  "$defs": {
+    "Assembly": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "wall",
+            "roof",
+            "floor_over_unheated"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "area_m2": {
+          "exclusiveMinimum": 0,
+          "title": "Area M2",
+          "type": "number"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/Layer"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "rsi_m2k_w": {
+          "minimum": 0,
+          "title": "Rsi M2K W",
+          "type": "number"
+        },
+        "rse_m2k_w": {
+          "minimum": 0,
+          "title": "Rse M2K W",
+          "type": "number"
+        },
+        "linear_bridges": {
+          "items": {
+            "$ref": "#/$defs/LinearBridge"
+          },
+          "title": "Linear Bridges",
+          "type": "array"
+        },
+        "point_bridges": {
+          "items": {
+            "$ref": "#/$defs/PointBridge"
+          },
+          "title": "Point Bridges",
+          "type": "array"
+        },
+        "bridges_reviewed": {
+          "default": false,
+          "title": "Bridges Reviewed",
+          "type": "boolean"
+        },
+        "required_effective_r_m2k_w": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required Effective R M2K W"
+        },
+        "basis": {
+          "$ref": "#/$defs/Basis"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "area_m2",
+        "layers",
+        "rsi_m2k_w",
+        "rse_m2k_w",
+        "linear_bridges",
+        "point_bridges",
+        "basis"
+      ],
+      "title": "Assembly",
+      "type": "object"
+    },
+    "Basis": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Reference",
+          "type": "string"
+        },
+        "revision": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Revision",
+          "type": "string"
+        },
+        "declared_by": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Declared By",
+          "type": "string"
+        },
+        "confirmed": {
+          "default": false,
+          "title": "Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reference",
+        "revision",
+        "declared_by"
+      ],
+      "title": "Basis",
+      "type": "object"
+    },
+    "Layer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "thickness_m": {
+          "exclusiveMinimum": 0,
+          "title": "Thickness M",
+          "type": "number"
+        },
+        "conductivity_w_mk": {
+          "exclusiveMinimum": 0,
+          "title": "Conductivity W Mk",
+          "type": "number"
+        },
+        "source": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "thickness_m",
+        "conductivity_w_mk",
+        "source"
+      ],
+      "title": "Layer",
+      "type": "object"
+    },
+    "LinearBridge": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "length_m": {
+          "minimum": 0,
+          "title": "Length M",
+          "type": "number"
+        },
+        "psi_w_mk": {
+          "title": "Psi W Mk",
+          "type": "number"
+        },
+        "source": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "length_m",
+        "psi_w_mk",
+        "source"
+      ],
+      "title": "LinearBridge",
+      "type": "object"
+    },
+    "Panel": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "product": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Product",
+          "type": "string"
+        },
+        "layup_id": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Layup Id",
+          "type": "string"
+        },
+        "bending_axis": {
+          "enum": [
+            "longitudinal",
+            "transverse"
+          ],
+          "title": "Bending Axis",
+          "type": "string"
+        },
+        "application": {
+          "enum": [
+            "floor",
+            "roof"
+          ],
+          "title": "Application",
+          "type": "string"
+        },
+        "support_model": {
+          "const": "one_way_simply_supported_udl",
+          "title": "Support Model",
+          "type": "string"
+        },
+        "span_m": {
+          "exclusiveMinimum": 0,
+          "title": "Span M",
+          "type": "number"
+        },
+        "strip_width_m": {
+          "exclusiveMinimum": 0,
+          "title": "Strip Width M",
+          "type": "number"
+        },
+        "thickness_m": {
+          "exclusiveMinimum": 0,
+          "title": "Thickness M",
+          "type": "number"
+        },
+        "density_kn_m3": {
+          "exclusiveMinimum": 0,
+          "title": "Density Kn M3",
+          "type": "number"
+        },
+        "ei_eff_kn_m2": {
+          "exclusiveMinimum": 0,
+          "title": "Ei Eff Kn M2",
+          "type": "number"
+        },
+        "ga_eff_kn": {
+          "exclusiveMinimum": 0,
+          "title": "Ga Eff Kn",
+          "type": "number"
+        },
+        "moment_resistance_knm": {
+          "exclusiveMinimum": 0,
+          "title": "Moment Resistance Knm",
+          "type": "number"
+        },
+        "shear_resistance_kn": {
+          "exclusiveMinimum": 0,
+          "title": "Shear Resistance Kn",
+          "type": "number"
+        },
+        "permanent_superimposed_kpa": {
+          "minimum": 0,
+          "title": "Permanent Superimposed Kpa",
+          "type": "number"
+        },
+        "variable_kpa": {
+          "minimum": 0,
+          "title": "Variable Kpa",
+          "type": "number"
+        },
+        "gamma_g": {
+          "exclusiveMinimum": 0,
+          "title": "Gamma G",
+          "type": "number"
+        },
+        "gamma_q": {
+          "exclusiveMinimum": 0,
+          "title": "Gamma Q",
+          "type": "number"
+        },
+        "creep_factor": {
+          "minimum": 0,
+          "title": "Creep Factor",
+          "type": "number"
+        },
+        "quasi_permanent_factor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Quasi Permanent Factor",
+          "type": "number"
+        },
+        "deflection_limit_mm": {
+          "exclusiveMinimum": 0,
+          "title": "Deflection Limit Mm",
+          "type": "number"
+        },
+        "product_basis": {
+          "$ref": "#/$defs/Basis"
+        },
+        "action_basis": {
+          "$ref": "#/$defs/Basis"
+        }
+      },
+      "required": [
+        "id",
+        "product",
+        "layup_id",
+        "bending_axis",
+        "application",
+        "support_model",
+        "span_m",
+        "strip_width_m",
+        "thickness_m",
+        "density_kn_m3",
+        "ei_eff_kn_m2",
+        "ga_eff_kn",
+        "moment_resistance_knm",
+        "shear_resistance_kn",
+        "permanent_superimposed_kpa",
+        "variable_kpa",
+        "gamma_g",
+        "gamma_q",
+        "creep_factor",
+        "quasi_permanent_factor",
+        "deflection_limit_mm",
+        "product_basis",
+        "action_basis"
+      ],
+      "title": "Panel",
+      "type": "object"
+    },
+    "PointBridge": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "chi_w_k": {
+          "title": "Chi W K",
+          "type": "number"
+        },
+        "source": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "count",
+        "chi_w_k",
+        "source"
+      ],
+      "title": "PointBridge",
+      "type": "object"
+    },
+    "Site": {
+      "additionalProperties": false,
+      "properties": {
+        "country": {
+          "const": "UA",
+          "default": "UA",
+          "title": "Country",
+          "type": "string"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locality"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "altitude_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Altitude M"
+        },
+        "thermal_zone": {
+          "anyOf": [
+            {
+              "enum": [
+                "I",
+                "II"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thermal Zone"
+        },
+        "winter_design_c": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Winter Design C"
+        },
+        "snow_ground_kpa": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snow Ground Kpa"
+        },
+        "wind_reference_kpa": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wind Reference Kpa"
+        },
+        "seismic_basis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seismic Basis"
+        },
+        "basis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Basis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Site",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "clt-ua-1",
+      "default": "clt-ua-1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "target_system": {
+      "const": "CLT",
+      "default": "CLT",
+      "title": "Target System",
+      "type": "string"
+    },
+    "source_address": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Address"
+    },
+    "site": {
+      "$ref": "#/$defs/Site"
+    },
+    "panels": {
+      "items": {
+        "$ref": "#/$defs/Panel"
+      },
+      "maxItems": 300,
+      "title": "Panels",
+      "type": "array"
+    },
+    "assemblies": {
+      "items": {
+        "$ref": "#/$defs/Assembly"
+      },
+      "maxItems": 300,
+      "title": "Assemblies",
+      "type": "array"
+    },
+    "unresolved": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "site"
+  ],
+  "title": "Study",
+  "type": "object"
+}

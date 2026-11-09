@@ -6,8 +6,8 @@ e guardar o PDF e o PNG como artefactos; PROGRESS_LABELS dá o texto de progress
 """
 from __future__ import annotations
 
-from . import (accessibilite, aquecimento, couverture, instalacoes, isolamento, lotes_tecnicos, patio_pluviais, photovoltaique, piso_radiante, redes, reh,
-               solar_termico, structure)
+from . import (accessibilite, aquecimento, couverture, gros_oeuvre, instalacoes, isolamento, lotes_tecnicos, patio_pluviais, photovoltaique, piso_radiante,
+               redes, reh, solar_termico, structure, ucrania)
 
 
 def _n(desc=None):
@@ -385,8 +385,48 @@ PATIO_TOOL = _tool(
      "arranques_h": _n(), "altura_pescoco_cisne_m": _n(), "comprimento_compressao_m": _n(), "altura_agua_admissivel_m": _n(),
      "chuva_1h_10anos_mm": _n(), "chuva_1h_100anos_mm": _n(), "sobrecarga_kpa": _n()})
 
+# 14. Gros-œuvre completo (verificação + planos cotados)
+GROS_OEUVRE_TOOL = _tool(
+    "calcul_gros_oeuvre",
+    "Gros-œuvre completo de um edifício (Portugal): verifica todos os elementos (sapatas isoladas e contínuas NP EN 1997, vigas e pilares de betão "
+    "NP EN 1992 ou de madeira NP EN 1995, lajes BA), AJUSTA automaticamente as secções que não verificam e produz o caderno de planos de execução "
+    "COTADOS das sapatas à cobertura (GO-01 fundações, GO-02 pavimento, GO-03 cobertura, GO-04 cortes com níveis, GO-05 quadros) a 1:50 ou 1:100, "
+    "anexo à nota de cálculo. Usa a geometria REAL lida nos planos (eixos, posições, cotas) — nunca inventes dimensões. "
+    "modelo_json = JSON com: projeto, local, solo_q_adm_kpa, cota_pavimento_m, grelhas_x / grelhas_y [{nome, pos_m}], niveis [{nome, cota_m}], "
+    "sapatas [{ref, x_m, y_m, b_m, l_m, h_m, cota_topo_m, g_kn, q_kn (null = soma dos pilares)}], sapatas_continuas [{ref, pontos [[x,y],…], b_m, h_m, "
+    "cota_topo_m, g_kn_m, q_kn_m}], muros [{pontos, espessura_m, cota_base_m, cota_topo_m}], pilares [{ref, x_m, y_m, b_m, h_m, material "
+    "(betao|C24|GL24h|GL28h), cota_base_m, cota_topo_m, g_kn, q_kn}], vigas [{ref, piso (pavimento|cobertura), x0_m, y0_m, x1_m, y1_m, b_m, h_m, material, "
+    "vao_calculo_m, g_kn_m, q_kn_m, cota_topo_ini_m, cota_topo_fim_m}], lajes [{ref, piso (fundacao|pavimento|cobertura), tipo (laje_terrea|laje_ba|"
+    "vigas_i|clt), x0_m, y0_m, x1_m, y1_m, espessura_m, CLT: camadas_mm [ímpar] + vao_m → verificação do painel (corte de rolamento, fluência), cota_topo_m ou cota_topo_ini_m/cota_topo_fim_m + pendente_dir, direcao_vao, q_kn_m2, descricao}], "
+    "cortes [{nome, direcao x|y, pos_m}] (null = automáticos).",
+    {"modelo_json": {"type": "string", "description": "modelo estrutural completo em JSON (ver descrição)"},
+     "ajustar": _B("null/true = ajustar as secções não conformes; false = só verificar")})
+
+# 15. Ucrânia (ДБН / ДСТУ): térmica, perdas, neve / vento, gros-œuvre
+_CAM_UA = {"material": {"type": "string", "enum": list(ucrania.MAT) + list(ucrania.MEMB)}, "espessura_mm": _n("null para membranas"),
+           "lambda": _n("λ declarado (DoP), W/(m·K); null = valor de referência")}
+_EL_UA = {"nome": _NS(), "tipo": {"type": "string", "enum": list(ucrania.EL_UK)}, "area_m2": _n(), "camadas": _arr(_CAM_UA, desc="camadas do interior para o exterior"),
+          "R": _n("R total m²·K/W (vãos / portas, se não houver camadas)"), "U": _n("W/(m²·K)"), "b": _n("fator de redução (espaço não aquecido)"),
+          "pontes_lineares": _arr({"comprimento_m": {"type": "number"}, "psi": {"type": "number"}}, desc="linear thermal bridges ψ W/(m·K)"),
+          "pontes_pontuais": _arr({"n": {"type": "number"}, "chi": {"type": "number"}}, desc="point thermal bridges χ W/K")}
+UCRANIA_TOOL = _tool(
+    "calcul_ucrania",
+    "UKRAINE / УКРАЇНА — building calculations to Ukrainian norms with a PDF report in Ukrainian + English summary: climate of the oblast centre "
+    "(ДСТУ-Н Б В.1.1-27:2010), envelope thermal resistance vs Rq,min by temperature zone I/II (ДБН В.2.6-31:2021 table 1), Δθ (table 3), "
+    "condensation (Glaser), design heat loss and annual heating need, snow and wind loads (ДБН В.1.2-2:2006), and — with modelo_estrutural_json "
+    "(same JSON as calcul_gros_oeuvre) — structural checks (Eurocodes adopted in Ukraine) with dimensioned construction drawings GO-01…GO-05 in "
+    "Ukrainian. exemplo=true → complete demonstration (house 120 m² in Kyiv; sistema=clt → CLT walls, floor and roof panels checked with "
+    "rolling-shear deformation; otherwise aerated concrete + mineral wool, RC slabs; strip footings). Linear / point thermal bridges ψ / χ per element. "
+    "Use it whenever the project is in Ukraine or the user writes in Ukrainian; answer in the user's language.",
+    {"cidade": _enum(ucrania.CIDADES, "oblast centre (null = give theta_e and zona)"), "projeto": _NS(), "exemplo": _B("true = demonstration case Kyiv"),
+     "sistema": _enum(["clt", "alvenaria_ba"], "demonstration system with exemplo=true: clt (CLT walls/floors/roof) or aerated concrete + RC"),
+     "uso": _enum(list(ucrania.INTERIOR)), "theta_i": _n(), "theta_e": _n(), "zona": _enum(["I", "II"]), "area_aquecida_m2": _n(), "volume_m3": _n(),
+     "renovacoes_h": _n("air changes per hour (null = 0.5)"), "recuperacao_calor": _n("heat recovery efficiency 0-1"),
+     "pontes_termicas_w_m2k": _n("null = 0.05"), "inclinacao_cobertura_graus": _n(), "termo_servico_anos": _n("50 or 100"), "altitude_m": _n(),
+     "elementos": _arr(_EL_UA, desc="envelope elements"), "modelo_estrutural_json": _NS("structural model JSON (see calcul_gros_oeuvre)")})
+
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
-              PATIO_TOOL]
+              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -403,6 +443,8 @@ PROGRESS_LABELS = {
     "calcul_piso_radiante": "A dimensionar o piso radiante (NP EN 1264)…",
     "verificar_solar_termico": "A verificar a instalação solar térmica…",
     "calcul_patio_pluvial": "A dimensionar a drenagem do pátio rebaixado…",
+    "calcul_gros_oeuvre": "A verificar a estrutura e a desenhar os planos de gros-œuvre cotados…",
+    "calcul_ucrania": "Розрахунок за нормами України (ДБН / ДСТУ)… / Calculating to Ukrainian norms…",
 }
 
 PROTOCOL_PT = (
@@ -414,7 +456,9 @@ PROTOCOL_PT = (
     "para pré-dimensionar uma viga de betão armado ou de madeira, um pilar, o punçoamento, uma laje, um lintel, uma sapata ou uma escada usa calcul_structure "
     "; para todas as especialidades técnicas de uma habitação numa só nota (isolamento → perdas → piso radiante → bomba de calor → eletricidade → "
     "canalização → solar térmico) usa calcul_lotes_tecnicos; só o piso radiante: calcul_piso_radiante; solar térmico (AQS, coletores, depósito): "
-    "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial "
+    "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial; estrutura completa de um edifício com planos de execução de gros-œuvre "
+    "cotados (fundações, pavimento, cobertura, cortes) a partir da geometria dos planos: calcul_gros_oeuvre; projeto na Ucrânia ou pedido em "
+    "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -700,4 +744,40 @@ def run(name: str, args: dict) -> dict:
                f"com {o['Vu_L']:.0f} L úteis; retenção em avaria {o['V_ret']:.1f} m³ (chuvada 1 h/10 anos {o['V10']:.1f} m³)"]
         res += _ctl(o["controles"]) + _hyp(o["hipoteses"])
         return _ret(o, res, {"Q_l_s": o["Q"], "bomba_m3h": o["bomba_m3h"], "AMT_m": o["AMT"]})
+    if name == "calcul_gros_oeuvre":
+        import json
+        try:
+            mod = json.loads(a.get("modelo_json") or "{}")
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"modelo_json inválido: {exc}") from None
+        if a.get("ajustar") is False:
+            mod["ajustar"] = False
+        o = gros_oeuvre.note(mod)
+        v = o["verificacao"]
+        res = [o["titre"] + f" — {len(v['elementos'])} elementos verificados, planos a 1:{o['escala']} ({o['formato']})"]
+        linhas = {}
+        for e in v["elementos"]:
+            ln = f"{'OK' if e['ok'] else 'KO'} {e['tipo']} {e['ref']}: {e['seccao']}" + (f" — taxa {e['taxa'] * 100:.0f} %" if e["taxa"] is not None else "")
+            linhas[ln] = linhas.get(ln, 0) + 1
+        res += [ln + (f" (× {k})" if k > 1 else "") for ln, k in linhas.items()][:60]
+        res += [f"Secção ajustada: {x}" for x in v["ajustes"]] + _hyp(v["hipoteses"])
+        res.append("Pré-dimensionamento a validar pelo projetista de estruturas.")
+        return _ret(o, res, {"conforme": v["conforme"], "ajustes": v["ajustes"], "escala": o["escala"]})
+    if name == "calcul_ucrania":
+        p = (ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {}
+        for k, v in a.items():
+            if k not in ("exemplo", "modelo_estrutural_json", "sistema"):
+                p[k] = v
+        if a.get("modelo_estrutural_json"):
+            p["modelo_estrutural"] = a["modelo_estrutural_json"]
+        o = ucrania.note(p)
+        r, c = o["r"], o["r"]["clima"]
+        res = [o["titre"], "English summary: " + o["resumo_en"]]
+        res += [f"{'OK' if e['ok'] else 'KO'} {e['nome']}: R = {e['R']:.2f} m²K/W" + (f" ≥ Rq,min {e['rq']:.2f}" if e["rq"] else "") for e in r["elementos"]]
+        if o["go"]:
+            v = o["go"]["verificacao"]
+            res.append(f"Structure: {len(v['elementos'])} elements, compliant: {v['conforme']}, adjustments: " + ("; ".join(v["ajustes"]) or "none"))
+        res += _hyp(r["hipoteses"])
+        return _ret(o, res, {"cidade": c["chave"], "zona": c["zona"], "theta_e": c["theta_e"], "phi_kw": round(r.get("phi_w", 0) / 1000, 2),
+                             "q_kwh_m2": round(r.get("q_kwh_m2", 0), 1), "envolvente_conforme": all(e["ok"] for e in r["elementos"])})
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")

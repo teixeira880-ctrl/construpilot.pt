@@ -126,6 +126,18 @@ CASOS = {
                                              coletor=_o("verificar_solar_termico", "coletor", numero=1, area_m2=2.0, eta0=0.75, a1=3.8),
                                              deposito=_o("verificar_solar_termico", "deposito", volume_l=150)),
     "calcul_patio_pluvial": lambda: _fill("calcul_patio_pluvial", area_m2=16, profundidade_m=1.1, regiao_pluviometrica="B"),
+    "calcul_ucrania": lambda: _fill("calcul_ucrania", exemplo=True, cidade="lviv"),
+    "calcul_gros_oeuvre": lambda: _fill("calcul_gros_oeuvre", modelo_json=json.dumps({
+        "projeto": "Moradia T3", "local": "Braga", "solo_q_adm_kpa": 200, "cota_pavimento_m": 0.0,
+        "grelhas_x": [{"nome": "1", "pos_m": 0}, {"nome": "2", "pos_m": 5}, {"nome": "3", "pos_m": 10}],
+        "grelhas_y": [{"nome": "A", "pos_m": 0}, {"nome": "B", "pos_m": 6}],
+        "sapatas": [{"ref": "S1", "x_m": x, "y_m": y, "b_m": 1.0, "l_m": 1.0, "h_m": 0.4, "cota_topo_m": -0.6} for x in (0, 5, 10) for y in (0, 6)],
+        "pilares": [{"ref": "P1", "x_m": x, "y_m": y, "b_m": 0.3, "h_m": 0.3, "material": "betao", "cota_base_m": -0.6, "cota_topo_m": 2.8,
+                     "g_kn": 180, "q_kn": 60} for x in (0, 5, 10) for y in (0, 6)],
+        "vigas": [{"ref": "V1", "piso": "cobertura", "x0_m": 0, "y0_m": y, "x1_m": 10, "y1_m": y, "vao_calculo_m": 5, "b_m": 0.3, "h_m": 0.5,
+                   "material": "betao", "g_kn_m": 20, "q_kn_m": 6, "cota_topo_ini_m": 3.0} for y in (0, 6)],
+        "lajes": [{"ref": "L1", "piso": "cobertura", "tipo": "laje_ba", "x0_m": 0, "y0_m": 0, "x1_m": 5, "y1_m": 6, "espessura_m": 0.2,
+                   "cota_topo_m": 3.0, "q_kn_m2": 2.0}]})),
 }
 
 
