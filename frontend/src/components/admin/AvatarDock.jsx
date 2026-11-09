@@ -9,7 +9,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { api, API } from "@/lib/api";
-import { startScreenWatch, stopScreenWatch, markAgentAction, agentActing, pushScreenNow } from "./avatarScreenWatch";
+import { startScreenWatch, stopScreenWatch, markAgentAction, agentActing, pushScreenNow, setCameraOn } from "./avatarScreenWatch";
 import { brief, describe, elements, findTarget, labelOf } from "./avatarDom";
 import { startSpeechSync, stopSpeechSync } from "./avatarSpeech";
 
@@ -266,6 +266,8 @@ const HANDLERS = {
     setAvatarSize(next);
     return ok({ size: next });
   },
+  // « Desligar Aurora » compris par l'agent (toutes formulations) : elle dit au revoir, puis la fenêtre se ferme.
+  "ui.close": async (d) => { const ms = Math.max(0, Math.min(4000, Number(parse(d).delay_ms) || 1200)); setTimeout(() => { stopAvatar(); }, ms); return ok({ closing: true }); },
   "ui.presenter": async (d) => { set({ presenter: !!parse(d).on }); return ok({ presenter: state.presenter }); },
   "assistant.status": async () => fit2(assistantState()),
   "assistant.ask": async (d) => {
@@ -429,6 +431,7 @@ export const preloadAvatar = () => { lkModule = lkModule || import("livekit-clie
 
 export async function startAvatar(lang = "fr") {
   set({ camOn: false });   // Lot 104
+  setCameraOn(false);
   if (room) return;
   set({ phase: "connecting", message: "", lang, micOn: true });
   try {
@@ -463,6 +466,7 @@ export async function startAvatar(lang = "fr") {
     // sous-titres, état de l'assistante, l'écran qui suit ses mots, navigation vocale instantanée
     startSpeechSync(r, {
       onHush: () => hush(false),
+      onOff: () => { hush(false); setTimeout(() => { stopAvatar(); }, 250); },   // « desligar Aurora » : fermeture immédiate
       onSpeak: () => unhush(),
       onCaption: (c) => set({ caption: c }),
       onState: (st) => {
@@ -492,8 +496,10 @@ async function toggleCam() {
   try {
     await room.localParticipant.setCameraEnabled(on, on ? { resolution: { width: 640, height: 480, frameRate: 10 } } : undefined);
     set({ camOn: on });
+    setCameraOn(on);   // l'assistante sait tout de suite que la caméra est allumée (ou éteinte)
   } catch {
     set({ camOn: false, message: T.camDenied });
+    setCameraOn(false);
   }
 }
 // « Cala-te » (voix ou bouton) : le son est coupé ici tout de suite, et l'agent arrête de parler et se tait (topic « avatar »).
