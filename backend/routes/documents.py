@@ -700,7 +700,9 @@ async def _freeze_document(doc_id: str, user: dict, reason: str) -> dict:
         from routes.plans_common import _resolve_branding
         from routes.company_page import pdf_customization
         branding = {**(await _resolve_branding(user["user_id"]) or {}), **await pdf_customization(user["user_id"])}
-        pdf = build_document_pdf(doc, branding=branding, reviews=None, lang=await _doc_lang(doc, branding))
+        from engines.doc_translate import localize_for_owner
+        _d, _lg = await localize_for_owner(db, doc, user["user_id"])
+        pdf = build_document_pdf(_d, branding=branding, reviews=None, lang=_lg or await _doc_lang(doc, branding))
         frozen["frozen_pdf_b64"] = base64.b64encode(pdf).decode()
     except Exception as exc:  # noqa: BLE001 — le PDF figé est un plus, l'empreinte fait foi
         logging.getLogger(__name__).warning("frozen pdf failed for %s: %s", doc_id, exc)
@@ -1844,11 +1846,21 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
                     appendix = ap
         except Exception:
             appendix = None
+    pdf_lang = await _doc_lang(doc, branding)
+    suffix = None
+    acct_langs = [x for x in (user.get("doc_langs") or []) if x in ("pt", "en", "uk")]
+    if acct_langs:
+        # Conta multilingue (ex. CLT Rezult: EN + UK): ?lang= escolhe uma das línguas da conta,
+        # senão a 1.ª. O conteúdo (designações, capítulos…) é traduzido, não só os rótulos.
+        pdf_lang = lang if lang in acct_langs else acct_langs[0]
+        from engines.doc_translate import translate_doc
+        doc = await translate_doc(db, doc, pdf_lang)
+        suffix = pdf_lang.upper()
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
-                                   lang=await _doc_lang(doc, branding), sign_url=sign_url,
+                                   lang=pdf_lang, sign_url=sign_url,
                                    cover=cover, watermark_logo_b64=watermark_logo,
                                    appendix=appendix)
-    fname = _pdf_filename(doc)
+    fname = _pdf_filename(doc, suffixe=suffix) if suffix else _pdf_filename(doc)
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
@@ -2038,8 +2050,13 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
             {"$set": {"number": doc["number"], "issue_date": doc["issue_date"]}})
     branding = await _resolve_branding(user["user_id"]) or {}
     reviews = await get_reviews_for_user(user["user_id"]) if doc["doc_type"] == "quote" else None
+    acct_langs = [x for x in (user.get("doc_langs") or []) if x in ("pt", "en", "uk")]
+    doc_src = doc
+    if acct_langs:
+        from engines.doc_translate import translate_doc
+        doc = await translate_doc(db, doc_src, acct_langs[0])
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
-                                   lang=await _doc_lang(doc, branding))
+                                   lang=acct_langs[0] if acct_langs else await _doc_lang(doc, branding))
     company = branding.get("company_name") or user.get("name") or "ConstruPilot"
     company_email = branding.get("company_email")
     ttc = (doc.get("totals") or {}).get("ttc") or doc.get("total_ttc") or 0
@@ -2073,9 +2090,19 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
                              verified=bool(branding.get("verified")),
                              verify_url=(f"{os.getenv('FRONTEND_URL', '')}/pro-verifie/{user['user_id']}"
                                          if branding.get("verified") else None))
-    filename = f"{doc.get('number') or doc_id}.pdf"
+    filename = (f"{doc.get('number') or doc_id}_{acct_langs[0].upper()}.pdf" if acct_langs
+                else f"{doc.get('number') or doc_id}.pdf")
     # Pièces jointes : attestation TVA (taux réduit) + rendu 3D éventuel
     extra_attachments: list[dict] = []
+    # Conta multilingue (ex. CLT Rezult): versões adicionais do orçamento em anexo (ex. ucraniano)
+    for _lg in acct_langs[1:]:
+        try:
+            _d = await translate_doc(db, doc_src, _lg)
+            extra_attachments.append({"filename": f"{doc.get('number') or doc_id}_{_lg.upper()}.pdf",
+                                      "content": build_document_pdf(_d, branding=branding, reviews=reviews, lang=_lg),
+                                      "content_type": "application/pdf"})
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Versão %s do documento %s não gerada: %s", _lg, doc_id, e)
     has_3d = False
     reduced_rate = _reduced_vat_rate(doc) if is_quote else None
     if reduced_rate is not None:

@@ -72,6 +72,21 @@ function navigateNow(href) {
 // ------------------------------------------------------------------ « cala-te » : silence immédiat (Lot 44)
 const HUSH = /^\W*(?:(?:por favor|s'il te pla[iî]t|s'il vous pla[iî]t|please|aurora|ok|okay|bon|agora|maintenant|now|ya|vale)\W+)*(?:cala(?:-te| te|-se| se)?|calada|chiu+|psiu+|sil[eê]ncio|p[aá]ra(?: de falar| j[aá])?|basta|chega|tais[- ]toi|taisez[- ]vous|chut+|silence|arr[eê]te(?:z)?(?: de parler)?|stop(?: talking)?|shut up|be quiet|quiet|hush|c[aá]llate|silencio|basta ya|zitto|stai zitto|ruhe|sei still)\b\W*(?:por favor|s'il te pla[iî]t|please|aurora)?\W*$/i;
 export const isHush = (t) => { const x = String(t || "").trim(); return !!x && x.length <= 60 && HUSH.test(x); };
+// « Desligar Aurora », « desliga-te », « fecha a Aurora », « éteins-toi », « turn off Aurora »… : l'avatar se ferme.
+// Un verbe d'arrêt seul ne suffit que sous sa forme pronominale (desliga-te, éteins-toi) ; sinon le nom (Aurora / avatar /
+// assistente) est exigé, pour ne jamais fermer sur « desliga a luz ». Vérifié sur la phrase FINALE uniquement.
+const OFF_VERB = String.raw`(?:deslig(?:a|ar|ue)|fech(?:a|ar|e)|encerr(?:a|ar|e)|termin(?:a|ar|e)|adeus|tchau|at[eé] logo|`
+  + String.raw`[eé]tein(?:s|dre|t)|ferm(?:e|er)|au revoir|coupe(?:r)?|turn off|switch off|shut down|close|goodbye|bye|`
+  + String.raw`apag(?:a|ar|ue)|cierr(?:a|e)|cerrar|adi[oó]s|spegni|chiudi|ciao|tsch[uü]ss)`;
+const OFF_NAME = String.raw`(?:(?:a|à|la|l'|o|the|el|o meu|mon|ma)\s+|l')?(?:aurora|avatar|assistente|assistante|assistant|asistente)`;
+const OFF_POLITE = String.raw`(?:por favor|s'il te pla[iî]t|s'il vous pla[iî]t|please|ok|okay|bon|agora|j[aá]|maintenant|now|pronto|obrigad[oa]|merci|thanks?|gracias)`;
+const OFF_SELF = String.raw`(?:deslig(?:a|ue)[- ](?:te|se)|[eé]teins[- ]toi|[eé]teignez[- ]vous|ap[aá]gate|turn yourself off|switch yourself off)`;
+const OFF = new RegExp(String.raw`^\W*(?:${OFF_POLITE}\W+)*(?:`
+  + String.raw`${OFF_VERB}(?:[- ]?(?:la|-a|-o))?\W+${OFF_NAME}`          // « desligar (a) Aurora », « ferme Aurora »
+  + String.raw`|${OFF_NAME}\W+${OFF_VERB}`                              // « Aurora, desliga »
+  + String.raw`|(?:${OFF_NAME}\W+)?${OFF_SELF}`                         // « desliga-te », « éteins-toi »
+  + String.raw`)(?:\W+${OFF_POLITE})*\W*$`, "i");
+export const isOff = (t) => { const x = String(t || "").trim(); return !!x && x.length <= 70 && OFF.test(x); };
 
 // ------------------------------------------------------------------ l'écran suit les mots de l'assistante
 function speakables() {
@@ -126,6 +141,7 @@ async function onStream(reader, participantInfo) {
       }
     }
   } catch { /* flux interrompu */ }
+  if (fromAdmin && final && isOff(text)) { opts.onOff?.(); return; }
   if (fromAdmin && (final || text)) {
     const href = navIntent(text);
     if (href && Date.now() - lastNavAt > 1500) navigateNow(href);
@@ -155,5 +171,5 @@ export function stopSpeechSync() {
   lastPointed = null;
 }
 
-export const __speech = { isHush, navIntent, followWords, onStream: (r, p, rm) => { room = rm; return onStream(r, p); },
+export const __speech = { isHush, isOff, navIntent, followWords, onStream: (r, p, rm) => { room = rm; return onStream(r, p); },
                           setOpts: (o) => { opts = o; } };   // tests

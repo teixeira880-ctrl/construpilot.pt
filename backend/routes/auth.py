@@ -76,7 +76,8 @@ def _public(u: dict) -> dict:
                                   "two_fa_enabled", "two_fa_email", "invoicing_addon",
                                   "lang", "created_at", "account_type", "kyc_status",
                                   "siret", "target_margin_pct", "target_margins_by_lot",
-                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode", "theme", "nav_favorites")}
+                                  "cctp_lots_kept", "cctp_lots_skipped", "price_library_mode", "theme", "nav_favorites",
+                                  "doc_langs")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
     return out

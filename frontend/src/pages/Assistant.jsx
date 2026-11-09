@@ -28,6 +28,7 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { usePermissions } from "@/context/PermissionContext";
 import { isProfessional } from "@/components/workspace/navigation";
 import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
+import { describeAttachments, attachmentDetail, attachmentLine } from "@/components/assistant/attachmentStatus";
 
 export default function Assistant() {
   const ui = useWorkspaceCopy();
@@ -281,6 +282,26 @@ export default function Assistant() {
     finally { sendLock.current = false; setBusy(false); }
   };
 
+  // Ponte para a assistente vídeo admin (Aurora) : o mesmo caminho que um clique humano, e os anexos reconhecidos
+  // ANTES do envio (visíveis por baixo do campo, lidos pela Aurora no ecrã em direto e pelo Assistente BTP).
+  const composerFiles = describeAttachments({ activePlans, activeDocs, pending, plans, docs, dossiers: dossierImport.dossiers });
+  const filesLine = attachmentLine(composerFiles, { uploading: uploading || dossierImport.uploading, lang: lang || "pt" });
+  const bridgeRef = useRef({});
+  bridgeRef.current = { conv, create, sendStructured, open, refresh: () => jobFollow.refresh(),
+    composer: { files: composerFiles, uploading: !!(uploading || dossierImport.uploading), draft: text, ready_to_send: !!(text.trim() || pending.length || dossierImport.ids.length) } };
+  useEffect(() => {
+    const api_ = {
+      state: () => bridgeRef.current.conv,
+      composer: () => bridgeRef.current.composer,
+      newConversation: () => bridgeRef.current.create(),
+      open: (id) => bridgeRef.current.open(id),
+      send: (t) => bridgeRef.current.sendStructured(t),
+      refresh: () => bridgeRef.current.refresh(),
+    };
+    window.__cpAssistant = api_;
+    return () => { if (window.__cpAssistant === api_) delete window.__cpAssistant; };
+  }, []);
+
   const stop = async (jobId) => {
     try { await api.post(`/assistant/jobs/${jobId}/cancel`); jobFollow.refresh(); }
     catch { toast.error(ui("assistantError")); }
@@ -442,8 +463,9 @@ export default function Assistant() {
         {pickFile && <div className="mb-3 p-3 bg-muted/50 rounded-md text-xs" data-testid="assistant-pick-kind"><p className="break-words mb-2"><b>{pickFile.name}</b> · {ui("addAs")}</p><div className="flex flex-wrap gap-2">
           {canPlan && <Button size="sm" variant="outline" onClick={() => upload(pickFile,"plan")} data-testid="assistant-pick-plan">{ui("planKind")}</Button>}<Button size="sm" onClick={() => upload(pickFile,"doc")} data-testid="assistant-pick-doc">{ui("docKind")}</Button><Button size="sm" variant="ghost" onClick={() => setPickFile(null)} data-testid="assistant-pick-cancel">{ui("cancel")}</Button>
         </div></div>}
+        <div role="status" aria-live="polite" className={filesLine ? "assistant-files-status" : "sr-only"} data-testid="assistant-files-status">{filesLine && <><Check size={13} aria-hidden="true" /><span>{filesLine}</span></>}</div>
         {(activePlans.length > 0 || activeDocs.length > 0 || dossierImport.dossiers.length > 0) && <div className="assistant-file-chips assistant-file-chips-inline" data-testid="assistant-pending-files">
-          {[[activePlans, "plan"], [activeDocs, "doc"]].flatMap(([ids,kind]) => ids.map(id => <div key={id} className="assistant-file-chip" data-testid={`assistant-active-${kind}-${id}`}>{kind === "doc" && docs.find((d) => d.doc_id === id)?.kind === "photo" ? <PrivateImage path={`/assistant/documents/${id}/preview`} title={nameOf(id)} testId={`assistant-selected-photo-${id}`} small /> : <FileText size={12} aria-hidden="true" />}<span title={nameOf(id)}>{nameOf(id)}</span><button type="button" disabled={locked} data-testid={`assistant-remove-${kind}-${id}`} aria-label={`${ui("removeFile")} : ${nameOf(id)}`} onClick={() => removeContext(id,kind)}><X size={13} /></button></div>))}
+          {[[activePlans, "plan"], [activeDocs, "doc"]].flatMap(([ids,kind]) => ids.map(id => { const info = composerFiles.find((f) => f.id === id); return <div key={id} className="assistant-file-chip" data-testid={`assistant-active-${kind}-${id}`} data-cp-attachment={nameOf(id)} data-cp-attachment-kind={info?.kind || kind} data-cp-attachment-new={info?.new ? "1" : undefined} title={info ? `${nameOf(id)} — ${attachmentDetail(info, lang || "pt")}` : nameOf(id)}>{kind === "doc" && docs.find((d) => d.doc_id === id)?.kind === "photo" ? <PrivateImage path={`/assistant/documents/${id}/preview`} title={nameOf(id)} testId={`assistant-selected-photo-${id}`} small /> : <FileText size={12} aria-hidden="true" />}<span title={nameOf(id)}>{nameOf(id)}</span><button type="button" disabled={locked} data-testid={`assistant-remove-${kind}-${id}`} aria-label={`${ui("removeFile")} : ${nameOf(id)}`} onClick={() => removeContext(id,kind)}><X size={13} /></button></div>; }))}
           <DossierChips dossiers={dossierImport.dossiers} onRemove={dossierImport.remove} disabled={locked} />
         </div>}
         <div className={`assistant-input-box${dragOver ? " assistant-input-box-dragover" : ""}`}
