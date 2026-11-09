@@ -96,12 +96,8 @@ def walk_entities(doc, entities=None, *, explode_dimensions=True, keep_inserts=F
             clone.dxf.layer=effective
             clone._cp_role=source_kind
             clone._cp_linetype=linetype
-            ext=tuple(entity.dxf.get('extrusion',(0,0,1)))
-            # Lot 87 : (0,0,-1) = entité miroir, plane ; un seul diagnostic par type avec compteur
-            if abs(ext[0])>1e-9 or abs(ext[1])>1e-9 or (kind=='POLYLINE' and entity.is_3d_polyline):
-                np87=next((i for i in issues if i.get('code')=='NON_PLANAR_GEOMETRY' and i.get('entity')==kind),None)
-                if np87 is None: issues.append({'code':'NON_PLANAR_GEOMETRY','entity':kind,'count':1})
-                else: np87['count']=np87.get('count',1)+1
+            if tuple(entity.dxf.get('extrusion',(0,0,1))) != (0,0,1) or (kind=='POLYLINE' and entity.is_3d_polyline):
+                issues.append({'code':'NON_PLANAR_GEOMETRY','entity':kind})
             yield clone
     yield from walk(doc.modelspace() if entities is None else entities)
 

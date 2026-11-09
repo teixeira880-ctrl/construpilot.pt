@@ -59,6 +59,10 @@ def validate(raw: dict, pages: list[dict] | None = None, strict: bool = False, r
 
 
 def _validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
+    from engines.bet_clt_ua.routing import legacy_issue
+    issue = legacy_issue(raw)
+    if issue:
+        return None, [issue]
     try:
         m = model.from_dict(raw)
     except Exception as exc:  # noqa: BLE001
@@ -215,6 +219,14 @@ LOT_KINDS = {
 def render_lots(raw: dict, lots: list[str], out_pdf: str | Path, date: str | None = None, lang: str | None = None, branding: dict | None = None) -> dict:
     """Planches d'un ou plusieurs lots depuis le relevé d'une étude ossature déjà faite (rapide, sans note ni devis)."""
     import tempfile
+    if str(((raw or {}).get("structure") or {}).get("system", "")) in ("post_beam", "walls"):     # relevé bois massif CLT → bet_clt
+        from engines.bet_clt import pipeline as _clt
+        with tempfile.TemporaryDirectory() as tmp:
+            res = _clt.run(raw, tmp, date, lang, None, branding)
+            if res.get("status") == "MODELE_INVALIDE":
+                return {"ok": False, "anomalies": res.get("anomalies", [])}
+            Path(out_pdf).write_bytes(Path(res["files"]["plans_pdf"]).read_bytes())
+            return {"ok": True, "path": str(out_pdf), "sheets": res["sheets"]}
     with tempfile.TemporaryDirectory() as tmp:
         res = run(raw, tmp, date, lang, None, branding, lots=lots)
         if not res.get("ok"):

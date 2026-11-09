@@ -23,8 +23,7 @@ OPENAI_IMAGE_MODEL = "gpt-image-1"
 
 
 async def generate(*, prompt: str, provider: str = "openai", reference_images: list[bytes] | None = None,
-                   number: int = 1, feature: str = "image_studio", session_id: str = "studio",
-                   model: str | None = None) -> list[tuple[bytes, str]]:
+                   number: int = 1, feature: str = "image_studio", session_id: str = "studio") -> list[tuple[bytes, str]]:
     api_key = os.getenv("EMERGENT_LLM_KEY")
     if not api_key:
         raise HTTPException(500, "EMERGENT_LLM_KEY em falta")
@@ -49,7 +48,7 @@ async def generate(*, prompt: str, provider: str = "openai", reference_images: l
             chat = (MeteredChat(api_key=api_key, expense_feature=feature, session_id=session_id,
                                 system_message="You are a professional architectural and marketing image "
                                                "generation and editing AI. Always return a single high quality image.")
-                    .with_model("gemini", model or GEMINI_IMAGE_MODEL).with_params(modalities=["image", "text"]))
+                    .with_model("gemini", GEMINI_IMAGE_MODEL).with_params(modalities=["image", "text"]))
             fc = [ImageContent(image_base64=base64.b64encode(b).decode()) for b in refs] if refs else None
             msg = UserMessage(text=prompt, file_contents=fc) if fc else UserMessage(text=prompt)
             _text, images = await chat.send_message_multimodal_response(msg)

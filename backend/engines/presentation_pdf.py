@@ -83,7 +83,9 @@ SITE = "construpilot.pt"
 CONTACT = "info@construpilot.pt"
 PATENT = "FR2611044"
 # Source unique de l'offre (miroir de GET /api/offer)
-OFFER = {"free_promo": False, "trial_days": 7,
+# Auditoria V2 : free_promo segue a mesma variável que /api/offer (nunca em dur).
+import os as _os
+OFFER = {"free_promo": _os.environ.get("FREE_PROMO_MODE") == "true", "trial_days": 7,
          "particulier": 19.0, "pro": 149.0, "api": 99.0, "addon": 5.0}
 
 
@@ -302,10 +304,10 @@ CLIENT = {
                    f"At the date of this document: {OFFER['trial_days']}-day trial"
                    + (" and a free launch phase in progress." if OFFER["free_promo"] else "."),
         "price": [["Planta", "For whom", "Entry price"],
-                  ["Homeowner · Premium", "Unlimited projects, quote scanner (free plan: 2 projects)", "€19 / month"],
-                  ["Pro", "Tradespeople: quotes from a plan, specification, photo or voice, e-signature", "€149 excl. VAT / month"],
-                  ["Pro Business", "SMEs: 5 users, invoicing and e-invoicing included, HR, site tracking", "€249 excl. VAT / month"],
-                  ["Add-ons and API", "Invoicing €5 / month · Project Pass €50 · API from €99 / month", "à la carte"]],
+                  ["Individual", "A personal project, an estimate, works monitoring", f"€{OFFER['particulier']:.0f} / month"],
+                  ["Professional", "Trade contractors and SMEs: quotes, sites, invoices, client portal", f"€{OFFER['pro']:.0f} / month"],
+                  ["API / integration", "Software vendors and large accounts connecting their tools", f"€{OFFER['api']:.0f} / month"],
+                  ["Add-ons", "Additional modules (advanced invoicing, etc.)", f"from €{OFFER['addon']:.0f} / month"]],
         "note_price": "Prices displayed in the application prevail; this document is indicative and "
                       "is not a contractual quotation.",
         "h_data": "Your data",
@@ -369,10 +371,10 @@ CLIENT = {
                    f"À data deste documento: teste de {OFFER['trial_days']} dias"
                    + (" e fase de lançamento gratuita em curso." if OFFER["free_promo"] else "."),
         "price": [["Plano", "Para quem", "Preço de entrada"],
-                  ["Particular · Premium", "Projetos ilimitados, análise de orçamentos (plano gratuito: 2 projetos)", "19 € / mês"],
-                  ["Pro", "Artesãos: orçamentos a partir de planta, caderno de encargos, foto ou voz", "149 € + IVA / mês"],
-                  ["Pro Business", "PME: 5 utilizadores, faturação incluída, RH, acompanhamento de obra", "249 € + IVA / mês"],
-                  ["Opções e API", "Faturação 5 € / mês · Project Pass 50 € · API desde 99 € / mês", "à medida"]],
+                  ["Particular", "Um projeto pessoal, uma estimativa, acompanhamento de obras", f"{OFFER['particulier']:.0f} € / mês"],
+                  ["Profissional", "Artesãos e PME: orçamentos, obras, faturas, espaço do cliente", f"{OFFER['pro']:.0f} € / mês"],
+                  ["API / integração", "Editores e grandes contas que ligam as suas ferramentas", f"{OFFER['api']:.0f} € / mês"],
+                  ["Opções", "Módulos adicionais (faturação avançada, etc.)", f"a partir de {OFFER['addon']:.0f} € / mês"]],
         "note_price": "Os preços apresentados na aplicação prevalecem; este documento é indicativo e "
                       "não constitui um orçamento contratual.",
         "h_data": "Os seus dados",

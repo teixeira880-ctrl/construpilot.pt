@@ -1,0 +1,13 @@
+{"kind": "frame", "building_type": "bureaux",
+ "project": {"name": "Immeuble de bureaux CLT — cas de test", "address": "12 rue de l'Industrie, 69007 Lyon", "country": "FR",
+             "client": "—", "architect": "—", "pc_ref": "cas de test", "g2_ref": "hypothèse", "wind_region": 2},
+ "grid": {"x": [0, 9.14, 18.29, 27.43, 36.58, 45.72], "y": [0, 9.14, 18.29, 27.43],
+          "x_labels": ["1", "2", "3", "4", "5", "6"], "y_labels": ["A", "B", "C", "D"]},
+ "levels": [{"id": "L1", "name": "Rez-de-chaussée", "floor_top": 0.0, "height": 4.2, "use": "bureaux", "on_grade": true},
+            {"id": "L2", "name": "Niveau 2", "floor_top": 4.2, "height": 3.8, "use": "bureaux"},
+            {"id": "L3", "name": "Niveau 3", "floor_top": 8.0, "height": 3.8, "use": "bureaux"},
+            {"id": "L4", "name": "Niveau 4", "floor_top": 11.8, "height": 3.8, "use": "bureaux"}],
+ "roof": {"use": "toiture"},
+ "structure": {"system": "post_beam", "concrete": "C25/30"},
+ "geotech": {"sigma_adm_mpa": 0.25, "depth": 1.0, "source": "G2 AVP"},
+ "facade": {"weight": 0.8}}

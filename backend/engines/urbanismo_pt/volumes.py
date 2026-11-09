@@ -282,12 +282,6 @@ def planta_implantacao(volume: dict, terreno: dict | None = None, quadro: dict |
             cy = sum(y for _, y in pp) / len(pp)
             dr.text((cx - 34, cy - 7), p["name"], fill=INK, font=_font(12))
 
-    pisc = v.get("piscina") or None
-    if pisc:   # piscina descoberta (não conta como construção)
-        px, py, pl_, pw_ = (_num(pisc.get(k)) for k in ("x_m", "y_m", "l_m", "w_m"))
-        a, b = m2px(px, py + pw_), m2px(px + pl_, py)
-        dr.rectangle([a, b], fill=WATER + (200,), outline=(20, 90, 140), width=3)
-        dr.text((a[0] + 4, a[1] + 4), f"Piscina {fmt(pl_, 1)}×{fmt(pw_, 1)} m", fill=INK, font=_font(11))
     main = [p for p in polys if not p["annexe"]]
     mnx, mny, mxx, mxy = bbox(main)
     # cotas de afastamento (construção principal → limites)

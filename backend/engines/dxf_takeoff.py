@@ -184,24 +184,6 @@ def _footprint_area_m2(segments, bounds, unit_to_m: float) -> float:
     return round(area_units2 * unit_to_m * unit_to_m, 1)
 
 
-def _hatch_loops_wh87(e):
-    """Lot 87 : (largeur, hauteur) de chaque boucle extérieure d'une hachure, en unités dessin."""
-    out = []
-    try:
-        from ezdxf.path import from_hatch
-        for p in from_hatch(e):
-            pts = list(p.flattening(distance=1.0, segments=8))
-            if len(pts) < 3:
-                continue
-            xs = [q.x for q in pts]; ys = [q.y for q in pts]
-            w, h = max(xs) - min(xs), max(ys) - min(ys)
-            if w > 0 and h > 0:
-                out.append((w, h))
-    except Exception:  # noqa: BLE001 — hachure illisible : ignorée, jamais bloquante
-        return []
-    return out
-
-
 def extract_structural_metre(doc, unit_to_m: float) -> dict:
     """Parcourt le modelspace et agrège les quantités par catégorie de calque."""
     msp = doc.modelspace()
@@ -227,8 +209,6 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
     beam_segs: list = []
     col_segs: list = []
     col_sections_units: list = []  # (w, h) en unités dessin, par poteau
-    col_hatch_sections: list = []  # Lot 87 : poteaux tracés en traits + hachure (une boucle = un poteau)
-    slab_lines87 = 0
 
     def _entity_wh(ent):
         """Largeur/hauteur (unités dessin) de la bbox d'une entité (bloc INSERT inclus)."""
@@ -276,7 +256,6 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
                 stair_bboxes.append((min(e.dxf.start.x, e.dxf.end.x), min(e.dxf.start.y, e.dxf.end.y),
                                      max(e.dxf.start.x, e.dxf.end.x), max(e.dxf.start.y, e.dxf.end.y)))
             elif _match(L, _LINTEL): lintel_len += ln
-            if _match(L, _SLAB): slab_lines87 += 1  # Lot 87
             if ln:
                 layer_line_len[getattr(e.dxf, "layer", "?")] += ln
         elif t in ("LWPOLYLINE", "POLYLINE"):
@@ -299,8 +278,6 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
                 beam_len += ln
                 beam_fill_units += ar
         elif t == "HATCH":
-            if _match(L, _COL):  # Lot 87
-                col_hatch_sections.extend(_hatch_loops_wh87(e))
             # Emprise béton lue par élément (voiles/poutres) — remplissage plein
             if _match(L, _BEAM):
                 beam_fill_units += _hatch_area(e)
@@ -352,14 +329,8 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         walls_ml, partitions_ml, wall_source = partitions_ml, 0.0, "archi_fallback"
     beams_ml = round(m(beam_len) / 2, 1)
     columns_count = col_inserts
-    if len(col_hatch_sections) > col_inserts:  # Lot 87 : poteaux sans bloc, comptés par hachure
-        columns_count = len(col_hatch_sections)
-        col_sections_units = list(col_hatch_sections)
     linteaux_ml = round(m(lintel_len) / 2, 1)
     slab_area_m2 = round(slab_area_units * U * U, 1)
-    slab_status = "mesuree" if slab_area_m2 > 0 else "absente"
-    if slab_area_m2 < 1.0 and slab_lines87 >= 20:  # Lot 87 : dalle tracée en lignes ouvertes → à mesurer
-        slab_area_m2, slab_status = 0.0, "contours_ouverts"
 
     ngf_vals = []
     for s in resa_ngf:
@@ -435,7 +406,6 @@ def extract_structural_metre(doc, unit_to_m: float) -> dict:
         "beam_area_m2": beam_area_m2,
         "linteaux_ml": linteaux_ml,
         "slab_area_m2": slab_area_m2,
-        "slab_status": slab_status,
         "footprint_m2": footprint_m2,
         "escaliers_count": escaliers_count,
         "escaliers_area_m2": escaliers_area_m2,
@@ -488,7 +458,6 @@ PRICES = {
     "acier_poutre":    1.6,
     "beton_poteau":  300.0,  # m³
     "acier_poteau":    1.6,
-    "coffrage_poteau": 60.0,  # m² (Lot 55) — 4 faces, par m² de paroi
     "beton_dalle":   170.0,  # m³
     "coffrage_dalle": 40.0,  # m² (sous-face + étaiement)
     "acier_dalle":     1.45,
@@ -502,13 +471,6 @@ PRICES = {
     "echafaudage":         12000.0,
     "protection_securite":  6000.0,
 }
-# Lot 74 PT : preços de referência ajustados ao mercado português (mesmo coeficiente regional da estimativa)
-try:
-    from engines.estimation import region_coef as _rc74
-    _COEF_PT74 = float(_rc74("PT", None))
-except Exception:  # pragma: no cover
-    _COEF_PT74 = 0.68
-PRICES = {k: (round(v * _COEF_PT74, 2) if isinstance(v, (int, float)) else v) for k, v in PRICES.items()}
 # Ratios aciers kg/m³
 REBAR = {"voile": 60.0, "poutre": 120.0, "poteau": 130.0, "dalle": 85.0, "escalier": 110.0}
 
@@ -517,9 +479,6 @@ def _line(desig, detail, unit, qty, pu):
     qty = round(qty, 2)
     return {"designation": desig, "detail": detail, "unit": unit,
             "qty": qty, "pu": pu, "total": round(qty * pu, 2)}
-
-
-_SLAB_SRC_PT = {"saisie": "indicada", "contour": "contorno", "emprise_auto": "implantação automática"}  # Lot 60
 
 
 def cost_structural(metre: dict, params: dict | None = None) -> dict:
@@ -585,11 +544,11 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         wall_m3 = round(wall_area * h_vert, 2)
         wall_ml_eff = (wall_area / tw) if tw > 0 else walls_ml   # linéaire équivalent
         wall_face = round(wall_ml_eff * h_vert, 1)
-        wall_detail = f'implantação {round(wall_area, 1)} m² (espessuras lidas) × {h_label}'
+        wall_detail = f'emprise {round(wall_area, 1)} m² (espess. lidas) × {h_label}'
     else:
         wall_m3 = round(walls_ml * h_vert * tw, 2)
         wall_face = round(walls_ml * h_vert, 1)
-        wall_detail = f"{walls_ml} ml × {h_label} × esp. {tw} m"
+        wall_detail = f"{walls_ml} ml × {h_label} × ép. {tw} m"
     wall_cof = round(wall_face * 2, 1)              # 2 faces
     wall_ac = round(wall_m3 * REBAR["voile"], 0)
 
@@ -598,7 +557,7 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         beam_m3 = round(beam_area * bh, 2)
         beam_ml_eff = (beam_area / bw) if bw > 0 else beams_ml
         beam_cof = round(beam_area + 2 * beam_ml_eff * bh, 1)  # fond (emprise) + 2 joues
-        beam_detail = f"implantação {round(beam_area, 1)} m² (larguras lidas) × h {bh} m"
+        beam_detail = f"emprise {round(beam_area, 1)} m² (larg. lues) × h {bh} m"
     else:
         beam_m3 = round(beams_ml * bw * bh, 2)
         beam_cof = round(beams_ml * (bw + 2 * bh), 1)
@@ -616,16 +575,6 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         col_m3 = round(cols * cw * ch * h_vert, 2)
         col_detail = f"{cols} × {cw}×{ch} m × {h_label}"
     col_ac = round(col_m3 * REBAR["poteau"], 0)
-    # Lot 55 : coffrage poteaux = périmètre des sections lues (sinon section uniforme) × hauteur
-    _secs = [sc for sc in ((metre.get("detected") or {}).get("col_sections") or metre.get("col_sections") or [])
-             if isinstance(sc, dict) and sc.get("w_cm") and sc.get("h_cm")]
-    _n_cols = int(metre.get("columns_count", 0))
-    if _secs and _n_cols:
-        _per = sum(2 * (sc["w_cm"] + sc["h_cm"]) / 100.0 for sc in _secs) / len(_secs) * _n_cols
-    else:
-        _per = 2 * (cw + ch) * _n_cols
-    col_cof = round(_per * h_vert * nlv, 1)
-    P.setdefault("coffrage_poteau", 60.0)
 
     slab_m3 = round(slab_m2 * ts, 2)
     slab_ac = round(slab_m3 * REBAR["dalle"], 0)
@@ -657,19 +606,18 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
     if cols:
         struct_lines += [
             _line("Pilares de betão — betão C25/30", col_detail, "m³", col_m3, P["beton_poteau"]),
-            _line('Cofragem de pilares', f"perímetro das secções × {h_label}", "m²", col_cof, P["coffrage_poteau"]),  # Lot 55
             _line("Aços de pilares", f"{REBAR['poteau']} kg/m³", "kg", col_ac, P["acier_poteau"]),
         ]
     if slab_m2:
         struct_lines += [
-            _line("Laje / pavimento de betão", f"{slab_m2} m² ({_SLAB_SRC_PT.get(slab_source, slab_source)}) × esp. {ts} m", "m³", slab_m3, P["beton_dalle"]),
+            _line("Laje / pavimento de betão", f"{slab_m2} m² ({slab_source}) × ép. {ts} m", "m³", slab_m3, P["beton_dalle"]),
             _line("Cofragem + escoramento da laje", f"{slab_m2} m²", "m²", slab_m2, P["coffrage_dalle"]),
             _line("Aços da laje", f"{REBAR['dalle']} kg/m³", "kg", slab_ac, P["acier_dalle"]),
         ]
     if esc_area or esc_count:
         struct_lines += [
             _line("Escadas de betão — lanços e degraus",
-                  f'{esc_count} escada(s) · implantação {round(esc_area, 1)} m² × esp. eq. {esc_eq_thk} m', "m³", esc_m3, P["beton_escalier"]),
+                  f'{esc_count} escada(s) · implantação {round(esc_area, 1)} m² × ép. éq. {esc_eq_thk} m', "m³", esc_m3, P["beton_escalier"]),
             _line("Cofragem de escadas", f"{round(esc_area,1)} m² de projeção em planta", "m²", esc_cof, P["coffrage_escalier"]),
             _line("Aços de escadas", f"{REBAR['escalier']} kg/m³", "kg", esc_ac, P["acier_escalier"]),
         ]
@@ -689,9 +637,9 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         lots.append({"lot": "Negativos e aros", "lines": div})
 
     lots.append({"lot": "Estaleiro e segurança", "lines": [
-        _line("Instalação de estaleiro — instalações sociais, vedação, contentor de resíduos", "global", "vg", 1, P["installation_chantier"]),
-        _line("Andaime periférico — aluguer, montagem e desmontagem", "global", "vg", 1, P["echafaudage"]),
-        _line("Proteção coletiva e segurança — guarda-corpos, redes, plano de segurança e saúde", "global", "vg", 1, P["protection_securite"]),
+        _line("Instalação de estaleiro — instalações sociais, vedação, contentor de resíduos", "forfait", "forfait", 1, P["installation_chantier"]),
+        _line("Andaime periférico — aluguer, montagem e desmontagem", "forfait", "forfait", 1, P["echafaudage"]),
+        _line("Proteção coletiva e segurança — guarda-corpos, redes, plano de segurança e saúde", "forfait", "forfait", 1, P["protection_securite"]),
     ]})
 
     all_lines = [ln for l in lots for ln in l["lines"]]
@@ -719,13 +667,13 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         by_category.append(_cat("poutres", "Vigas", beam_m3, beam_cof, beam_ac,
                                  beam_m3 * P["beton_poutre"] + beam_cof * P["coffrage_poutre"] + beam_ac * P["acier_poutre"]))
     if cols:
-        by_category.append(_cat("poteaux", "Pilares", col_m3, col_cof, col_ac,
-                                 col_m3 * P["beton_poteau"] + col_cof * P["coffrage_poteau"] + col_ac * P["acier_poteau"]))
+        by_category.append(_cat("poteaux", "Pilares", col_m3, 0.0, col_ac,
+                                 col_m3 * P["beton_poteau"] + col_ac * P["acier_poteau"]))
 
     totals = {
         "beton_m3": round(wall_m3 + beam_m3 + col_m3 + slab_m3 + esc_m3, 2),
         "acier_kg": round(wall_ac + beam_ac + col_ac + slab_ac + esc_ac, 0),
-        "coffrage_m2": round(wall_cof + beam_cof + col_cof + slab_m2 + esc_cof, 1),
+        "coffrage_m2": round(wall_cof + beam_cof + slab_m2 + esc_cof, 1),
         "walls_ml": round(walls_ml, 1), "beams_ml": round(beams_ml, 1),
         "columns": cols, "slab_m2": round(slab_m2, 1), "slab_source": slab_source,
         "escaliers": esc_count, "escaliers_m2": round(esc_area, 1),
@@ -735,302 +683,3 @@ def cost_structural(metre: dict, params: dict | None = None) -> dict:
         "tva_rate": p["tva_rate"], "tva": tva, "ttc": round(ht + tva, 2),
     }
     return {"lots": lots, "totals": totals, "by_category": by_category, "params": p}
-
-
-
-# --- Lot 54 : métré par éléments fermés sur les calques BET normalisés ---------------------------
-_BET_LAYERS = {
-    "wall": ("a-wall", "s-wall", "s-cwal"),
-    "slab": ("a-flor", "s-flor", "s-slab"),
-    "beam": ("s-beam",),
-    "col": ("s-cols", "s-col"),
-}
-_HIDDEN_LT = ("cach", "hidden", "dash", "tiret", "pointill", "axe", "center")
-
-
-def _bet_kind(layer: str):
-    low = (layer or "").strip().lower()
-    for kind, names in _BET_LAYERS.items():
-        if low in names:
-            return kind
-    return None
-
-
-def _bet_main_zone(slabs, margin=8.0, link=25.0):
-    """Lot 68 : emprise du dessin principal = groupe de dalles le plus étendu (les vues 3D/détails sont ailleurs)."""
-    from shapely.geometry import box
-    from shapely.ops import unary_union
-    if not slabs:
-        return None
-    boxes = [box(*p.bounds) for p in slabs]
-    parent = list(range(len(boxes)))
-
-    def find(i):
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-    for i in range(len(boxes)):
-        for j in range(i + 1, len(boxes)):
-            if boxes[i].distance(boxes[j]) <= link:
-                parent[find(i)] = find(j)
-    groups = {}
-    for i in range(len(boxes)):
-        groups.setdefault(find(i), []).append(i)
-    best = max(groups.values(), key=lambda g: sum(slabs[i].area for i in g))
-    return box(*unary_union([boxes[i] for i in best]).bounds).buffer(margin)
-
-
-def _bet_polygon_metre(doc, unit_to_m: float):
-    """Quantités par polygones fermés sur les calques BET (traits continus uniquement)."""
-    import statistics
-    from shapely.geometry import LineString
-    from shapely.ops import polygonize, unary_union
-    from engines.cad_geometry import walk_entities
-    U = unit_to_m
-    segs = {k: [] for k in _BET_LAYERS}
-
-    def add(kind, pts):
-        for a, b in zip(pts, pts[1:]):
-            a2 = (round(a[0] * U, 3), round(a[1] * U, 3))
-            b2 = (round(b[0] * U, 3), round(b[1] * U, 3))
-            if a2 != b2:
-                segs[kind].append(LineString([a2, b2]))
-
-    for e in walk_entities(doc, doc.modelspace(), explode_dimensions=False, preserve_blocks=lambda i, l: False):
-        kind = _bet_kind(getattr(e.dxf, "layer", ""))
-        if not kind:
-            continue
-        lt = (e.dxf.get("linetype", "") or "").lower()
-        if any(h in lt for h in _HIDDEN_LT):
-            continue  # traits cachés / axes : éléments d'un autre niveau, non métrés
-        t = e.dxftype()
-        if t == "LINE":
-            add(kind, [(e.dxf.start.x, e.dxf.start.y), (e.dxf.end.x, e.dxf.end.y)])
-        elif t in ("LWPOLYLINE", "POLYLINE"):  # Lot 55 : POLYLINE des DXF anciens (R12) aussi
-            if t == "LWPOLYLINE":
-                pts, closed = [(p[0], p[1]) for p in e.get_points("xy")], e.closed
-            else:
-                pts = [(v.dxf.location.x, v.dxf.location.y) for v in e.vertices]
-                closed = e.is_closed
-            if closed and pts:
-                pts.append(pts[0])
-            add(kind, pts)
-    if not segs["wall"] and not segs["slab"]:
-        return None
-
-    _zone_cache = {}
-
-    def _raw(kind):
-        if not segs[kind]:
-            return []
-        return [p for p in polygonize(unary_union(segs[kind])) if p.area > 1e-4]
-
-    def polys(kind):  # Lot 68 : uniquement le dessin principal (pas la vue 3D / les autres vues)
-        if "z" not in _zone_cache:
-            _zone_cache["z"] = _bet_main_zone([p for p in _raw("slab") if p.area >= 1.0])
-        z = _zone_cache["z"]
-        return [p for p in _raw(kind) if z is None or z.contains(p.centroid)]
-
-    def dims(p):
-        r = p.minimum_rotated_rectangle
-        c = list(r.exterior.coords)
-        import math
-        a, b = math.dist(c[0], c[1]), math.dist(c[1], c[2])
-        return min(a, b), max(a, b)
-
-    out = {}
-    walls = []
-    for p in polys("wall"):
-        t, l = dims(p)
-        if 0.15 <= t <= 0.40 and l >= 0.30:
-            walls.append((p.area / t, t, p.area))
-    slabs = [p.area for p in polys("slab") if p.area >= 1.0]
-    beams = []
-    for p in polys("beam"):
-        t, l = dims(p)
-        if 0.10 <= t <= 0.70 and l >= 0.50:
-            beams.append((p.area / t, t, p.area))
-    cols = []
-    merged = unary_union(polys("col")) if segs["col"] else None  # poteau coupé par sa hachure → une seule section
-    col_polys = [] if merged is None or merged.is_empty else list(getattr(merged, "geoms", [merged]))
-    for p in col_polys:
-        t, l = dims(p)
-        if 0.10 <= t <= 2.0 and l <= 2.0:
-            cols.append((t, l, p.area))
-    if walls:
-        out.update(walls_ml=round(sum(w[0] for w in walls), 1), wall_area_m2=round(sum(w[2] for w in walls), 2),
-                   partitions_ml=0.0, partition_area_m2=0.0, wall_source="polygones_bet",
-                   wall_elements=len(walls), wall_thickness_m=round(statistics.median(w[1] for w in walls), 3))
-    if slabs:
-        out.update(slab_area_m2=round(sum(slabs), 1), slab_panels=len(slabs))
-    if beams:
-        out.update(beams_ml=round(sum(b[0] for b in beams), 1), beam_area_m2=round(sum(b[2] for b in beams), 2),
-                   beam_elements=len(beams), beam_w_m=round(statistics.median(b[1] for b in beams), 3))
-    if cols:
-        out.update(columns_count=len(cols), col_area_m2=round(sum(c[2] for c in cols), 3),
-                   col_sections=[{"w_cm": round(c[0] * 100), "h_cm": round(c[1] * 100)} for c in cols[:400]])
-    return out or None
-
-
-_extract_structural_metre_lot54_base = extract_structural_metre
-
-
-def extract_structural_metre(doc, unit_to_m: float) -> dict:
-    res = _extract_structural_metre_lot54_base(doc, unit_to_m)
-    try:
-        poly = _bet_polygon_metre(doc, unit_to_m)
-    except Exception:  # noqa: BLE001 — la méthode historique reste disponible
-        poly = None
-    if not poly:
-        return res
-    det = dict(res.get("detected") or {})
-    for k_src, k_det in (("wall_area_m2", "wall_area_m2"), ("beam_area_m2", "beam_area_m2"), ("col_area_m2", "col_area_m2"),
-                         ("wall_thickness_m", "wall_thickness_m"), ("beam_w_m", "beam_w_m"), ("col_sections", "col_sections")):
-        if k_src in poly:
-            det[k_det] = poly[k_src]
-    if "partition_area_m2" in poly:
-        det["partition_area_m2"] = 0.0
-    keep = {k: v for k, v in poly.items() if k not in ("col_sections", "wall_thickness_m", "beam_w_m")}
-    res.update(keep)
-    res["detected"] = det
-    res["method"] = "polygones_calques_bet"
-    res["method_note"] = ("Quantités lues par éléments fermés sur les calques BET (traits continus) ; "
-                          "fond de plan architecte et traits cachés exclus.")
-    return res
-
-
-
-# ── Lot 91 : murs « coupés » mesurés par paires de traits ; dalle ouverte refermée ─────────────────────────────
-def _l91_lines(doc, pred):
-    out = []
-    for e in doc.modelspace():
-        try:
-            lay = (e.dxf.layer or "")
-            if not pred(lay):
-                continue
-            t = e.dxftype()
-            if t == "LINE":
-                out.append(((e.dxf.start.x, e.dxf.start.y), (e.dxf.end.x, e.dxf.end.y)))
-            elif t == "LWPOLYLINE":
-                pts = [(p[0], p[1]) for p in e.get_points()]
-                if e.closed and pts:
-                    pts.append(pts[0])
-                out.extend(zip(pts, pts[1:]))
-        except Exception:  # noqa: BLE001 — entité illisible ignorée
-            continue
-    return [s for s in out if s[0] != s[1]]
-
-
-def _l91_wall_axis_m(segs, unit_to_m, tmin=0.08, tmax=0.45, ang_tol_deg=3.0):
-    import math
-    from shapely.geometry import LineString
-    from shapely.ops import unary_union
-    from shapely.strtree import STRtree
-    u = unary_union([LineString(x) for x in segs])
-    lines = [g for g in (u.geoms if hasattr(u, "geoms") else [u]) if g.length > 0]
-    if not lines:
-        return 0.0, 0.0
-    tree = STRtree(lines)
-    lo, hi = tmin / unit_to_m, tmax / unit_to_m
-    sin_tol = math.sin(math.radians(ang_tol_deg))
-    total = 0.0
-    area = 0.0  # Lot 92 : emprise = Σ recouvrement × écartement
-    for i, a in enumerate(lines):
-        (x1, y1), (x2, y2) = a.coords[0], a.coords[-1]
-        la = a.length
-        ux, uy = (x2 - x1) / la, (y2 - y1) / la
-        for j in tree.query(a.buffer(hi)):
-            j = int(j)
-            if j <= i:
-                continue
-            b = lines[j]
-            (p1, q1), (p2, q2) = b.coords[0], b.coords[-1]
-            lb = b.length
-            vx, vy = (p2 - p1) / lb, (q2 - q1) / lb
-            if abs(ux * vy - uy * vx) > sin_tol:
-                continue
-            d = abs((p1 - x1) * uy - (q1 - y1) * ux)
-            if not lo <= d <= hi:
-                continue
-            t1 = (p1 - x1) * ux + (q1 - y1) * uy
-            t2 = (p2 - x1) * ux + (q2 - y1) * uy
-            ov = min(la, max(t1, t2)) - max(0.0, min(t1, t2))
-            if ov > 0:
-                total += ov
-                area += ov * d
-    return total * unit_to_m, area * unit_to_m * unit_to_m
-
-
-def _l91_slab_from_lines(segs, unit_to_m, tol_m=0.05, min_share=0.02):
-    from shapely.geometry import LineString, Polygon
-    from shapely.ops import unary_union
-    if len(segs) < 20:
-        return None
-    b = tol_m / unit_to_m
-    u = unary_union([LineString(x).buffer(b) for x in segs])
-    polys = list(u.geoms) if hasattr(u, "geoms") else [u]
-    if not polys:
-        return None
-    ext = sum(Polygon(p.exterior).area for p in polys)
-    panels = [Polygon(r).area for p in polys for r in p.interiors if Polygon(r).area >= min_share * ext]
-    if not panels:
-        return None
-    k = unit_to_m * unit_to_m
-    main = max(polys, key=lambda p: Polygon(p.exterior).area)
-    return {"slab_area_m2": round(sum(panels) * k, 1), "panels": len(panels),
-            "outline_perimeter_m": round(main.exterior.length * unit_to_m, 1)}
-
-
-_extract_structural_metre_l91_base = extract_structural_metre
-
-
-def extract_structural_metre(doc, unit_to_m: float) -> dict:
-    res = _extract_structural_metre_l91_base(doc, unit_to_m)
-    try:
-        names = {(L.dxf.name or "") for L in doc.layers}
-        low = {n.lower(): n for n in names}
-        cut = [n for n in names if "mur" in n.lower() and "coup" in n.lower()]
-        twins = [c for c in cut if any(k != c.lower() and k.replace(" ", "") == c.lower().replace("coupé", "").replace("coupe", "").replace(" ", "").rstrip("-_")
-                                       for k in low)]
-        if twins:
-            segs = _l91_lines(doc, lambda lay: lay in twins)
-            axis, area = _l91_wall_axis_m(segs, unit_to_m)
-            if axis > 0:
-                res["walls_ml_raw"] = res.get("walls_ml")
-                res["walls_ml"] = round(axis, 1)
-                # Lot 92 : emprise béton des voiles et épaisseur moyenne cohérentes avec l'axe
-                res["wall_area_m2_raw"] = res.get("wall_area_m2")
-                res["wall_area_m2"] = round(area, 2)
-                det = dict(res.get("detected") or {})
-                det["wall_area_m2"] = round(area, 2)
-                det["wall_thickness_m"] = round(area / axis, 3)
-                res["detected"] = det
-                res["walls_method"] = "murs_coupes_par_paires"
-                res["walls_note"] = ("Murs du niveau (calques « coupé ») mesurés à l'axe entre leurs deux traits ; "
-                                     "les murs vus / doublons sont exclus.")
-        # Lot 92 : poutres tracées en paires de traits (sans hachure exploitable) : axe + emprise
-        beam_layers = [n for n in names if "poutre" in n.lower() or n.upper().endswith("BEAM")]
-        bsegs = _l91_lines(doc, lambda lay: lay in beam_layers)
-        if bsegs and float(res.get("beam_area_m2") or 0) < 1.0:
-            baxis, barea = _l91_wall_axis_m(bsegs, unit_to_m, tmin=0.10, tmax=0.60)
-            if baxis > 0:
-                res["beams_ml_raw"] = res.get("beams_ml")
-                res["beams_ml"] = round(baxis, 1)
-                res["beam_area_m2"] = round(barea, 2)
-                det = dict(res.get("detected") or {})
-                det["beam_area_m2"] = round(barea, 2)
-                det["beam_w_m"] = round(barea / baxis, 3)
-                res["detected"] = det
-                res["beams_method"] = "poutres_par_paires"
-        if res.get("slab_status") == "contours_ouverts":
-            slab = _l91_slab_from_lines(_l91_lines(doc, lambda lay: "dalle" in lay.lower() or "slab" in lay.lower()), unit_to_m)
-            if slab:
-                res["slab_area_m2"] = slab["slab_area_m2"]
-                res["slab_status"] = "contours_reconstitues"
-                res["slab_outline_perimeter_m"] = slab["outline_perimeter_m"]
-                res["slab_note"] = ("Dalle tracée en lignes ouvertes : contours refermés (tolérance 5 cm), "
-                                    f"{slab['panels']} panneau(x) — estimation à vérifier.")
-    except Exception:  # noqa: BLE001 — en cas d'échec, le métré historique reste valable
-        pass
-    return res

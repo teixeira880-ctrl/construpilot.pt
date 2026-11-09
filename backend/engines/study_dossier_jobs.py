@@ -198,8 +198,8 @@ async def worker():
                 if stopping:
                     raise
             except Exception as exc:
-                msg = 'A síntese IA do processo excedeu o tempo limite; relance o estudo ou divida o processo por edifício / lote. As suas peças e o estudo anterior são conservados.' if isinstance(exc, asyncio.TimeoutError) else str(exc.detail) if isinstance(exc, HTTPException) else str(exc) if isinstance(exc, StudyError) else "Estudo não concluído; as suas peças e o seu estudo anterior são conservados."
-                log.warning("PC job failed: %s", type(exc).__name__)  # Lot 82 : TimeoutError → message clair
+                msg = str(exc.detail) if isinstance(exc, HTTPException) else str(exc) if isinstance(exc, StudyError) else "Estudo não concluído; as suas peças e o seu estudo anterior são conservados."
+                log.warning("PC job failed: %s", type(exc).__name__)
                 await finish(job, "failed", msg[:500])
         except asyncio.CancelledError:
             raise

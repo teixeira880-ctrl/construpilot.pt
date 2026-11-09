@@ -134,7 +134,7 @@ def deterministic_checks(lines: list[dict], totals: dict, policy: dict | None = 
 
     # 5. Marge globale non vérifiable si coûts inconnus
     cov = totals.get("cost_coverage") or {}
-    if not cov.get("complete") and cov.get("missing_lines", 0) > 0:  # Lot 67
+    if not cov.get("complete"):
         missing = cov.get("missing_lines", 0)
         alerts.append(_new("info", "marge", "Margem não verificável",
                            f'{missing} linha(s) sem custo de produção indicado: a margem global não pode ser controlada. Indique os custos ou assinale «custo nulo confirmado» para um controlo de margem completo.',

@@ -119,7 +119,7 @@ async def analyze_dossier(pages, indices, *, pdf_bytes=None, request="Obra gross
         raise StudyError("Processo demasiado denso para uma síntese única; reparta as peças por edifício/lote")
     raw = await asyncio.wait_for(_chat(SYNTHESIS_PROMPT + "\nGroupes : " + json.dumps(GROUPS, ensure_ascii=False)
         + "\nChaves de preço disponíveis (apenas unidade): " + json.dumps({k: v[0] for k, v in CATALOG.items()})
-        + "\nÂmbito pedido: " + request[:2000] + "\nLectures : " + payload), timeout=min(600, 240 + 20 * len(analyses)))  # Lot 82 : délai adapté au dossier
+        + "\nÂmbito pedido: " + request[:2000] + "\nLectures : " + payload), timeout=180)
     spec = ground_spec(normalize_ai_spec(raw, len(pages)), analyses)
     coverage = {"analyzed_pages": sorted(a["page"] for a in analyses), "failed_pages": sorted(failed),
                 "omitted_pages": [i+1 for i in range(len(pages)) if i not in indices],

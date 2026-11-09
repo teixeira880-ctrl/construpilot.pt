@@ -63,6 +63,8 @@ SOLUTIONS = {
 
 def solutions(country: str) -> dict:
     """{clé: {name, layers [(nom, e, λ, R)], Rsi, Rse, U}} — U calculé couche par couche."""
+    if country == "UA":
+        raise ValueError("Unknown thermal jurisdiction; use bet_clt_ua / calc_lots.ucrania for UA")
     out = {}
     for k, v in SOLUTIONS["PT" if country == "PT" else "FR"].items():
         if len(v) == 3 and not isinstance(v[2], list):

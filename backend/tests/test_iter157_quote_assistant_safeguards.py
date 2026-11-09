@@ -343,9 +343,7 @@ async def test_ambiguous_or_mismatched_candidates_are_not_priced(monkeypatch):
          "price_origin": "library", "vat_rate": 20.0, "lot": "Lot1"}
     ]))
     lines = await pricing.build_lines(body, {"user_id": "u1", "role": "owner"}, None)
-    # Lot 70 : bibliothèque ambiguë → jamais le prix bibliothèque ; estimation catalogue « à vérifier » admise (règle devis chiffré)
-    assert lines[0].get("price_source") != "library"
-    assert lines[0]["price_missing"] is True or (lines[0].get("price_source") == "construpilot_catalog" and lines[0].get("price_estimated") is True)
+    assert lines[0]["price_missing"] is True
 
 
 @pytest.mark.anyio

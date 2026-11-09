@@ -1,0 +1,18 @@
+{
+  "schema_version": "clt-ua-1",
+  "name": "Villavicencio - geometric reference for CLT Ukraine",
+  "source_address": "1776 Inglewood Avenue, West Vancouver, BC",
+  "target_system": "CLT",
+  "site": {
+    "country": "UA"
+  },
+  "panels": [],
+  "assemblies": [],
+  "unresolved": [
+    "Select a target site in Ukraine for each project; nationwide scope does not identify a site",
+    "Obtain CLT product layup, full-strip EI/GA and documented design capacities",
+    "Map load paths, supports, mixed materials and proposed replacements",
+    "Resolve A-2 versus A-10 insulation, floor F3, slopes and level differences",
+    "Geotechnical, connections, lateral stability, fire and vibration design outstanding"
+  ]
+}

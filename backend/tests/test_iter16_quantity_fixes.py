@@ -67,12 +67,12 @@ def test_calc_insulation_vapor_membrane_packaged():
     mats = data["materials"]
     membrane = _find_material(mats, "membrane pare-vapeur")
     assert membrane is not None, f"membrane not found in {[m['name'] for m in mats]}"
-    assert membrane["unit"] == "rolo", f"unit={membrane['unit']}"
+    assert membrane["unit"] == "rouleau", f"unit={membrane['unit']}"
     assert membrane["quantity"] == 1, f"qty={membrane['quantity']} (expected 1 for 64 m²)"
 
     adhesif = _find_material(mats, "adhésif pare-vapeur")
     assert adhesif is not None
-    assert adhesif["unit"] == "rolo"
+    assert adhesif["unit"] == "rouleau"
     # ceil(64*1.06 / 40) = ceil(67.84/40) = 2
     assert adhesif["quantity"] == 2, f"adhesif qty={adhesif['quantity']}"
 

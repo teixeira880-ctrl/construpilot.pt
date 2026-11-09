@@ -57,7 +57,10 @@ PROFILES = {"FR": FR, "PT": PT}
 
 
 def profile(country: str | None) -> dict:
-    return PROFILES.get((country or "FR").upper(), FR)
+    key = (country or "FR").upper()
+    if key == "UA":
+        raise ValueError("UA uses bet_clt_ua / calc_lots.ucrania; no FR fallback.")
+    return PROFILES.get(key, FR)
 
 
 def price(country: str | None, key: str, fr_value: float) -> float:

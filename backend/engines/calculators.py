@@ -60,10 +60,11 @@ def paint(*args, **kwargs) -> dict:
         ],
         "materials": [
             {"name": "Tinta parede (lata 10 L)", "quantity": _ceil(litres_margin / 10),
-             "unit": "pot 10L", "search": "tinta plástica mate branca interior 15L"},
+             "unit": "pot 10L", "search": "tinta plástica mate branca interior 15L",
+             "unit_price": round(p.price_per_litre * 10, 2)},
             {"name": "Primário universal (balde 10 L)",
              "quantity": _ceil(primer * 1.07 / 10),
-             "unit": "pot 10L", "search": "primário universal 15L"},
+             "unit": "pot 10L", "search": "primário universal 15L", "unit_price": 45.0},
             {"name": "Rolo + manga", "quantity": 2, "unit": "u",
              "search": "rolo de pintura com manga"},
             {"name": "Fita de mascaramento", "quantity": 2, "unit": "u",
@@ -116,7 +117,8 @@ def masonry(*args, **kwargs) -> dict:
         {"label": block_name, "value": net_blocks, "unit": "u"},
     ]
     materials = [
-        {"name": block_name, "quantity": net_blocks, "unit": "u", "search": block_search},
+        {"name": block_name, "quantity": net_blocks, "unit": "u", "search": block_search,
+         "unit_price": block_price},
     ]
     budget = net_blocks * block_price
 
@@ -124,34 +126,35 @@ def masonry(*args, **kwargs) -> dict:
         cans = _ceil(area / p.foam_m2_per_can)
         results.append({"label": "Espuma PU de colagem", "value": cans, "unit": "cartouche"})
         materials.append({"name": "Espuma poliuretano de colagem", "quantity": cans,
-                          "unit": "cartouche", "search": "espuma poliuretano colagem blocos tijolos"})
+                          "unit": "cartouche", "search": "espuma poliuretano colagem blocos tijolos",
+                          "unit_price": 7.0})
         budget += cans * 7.0
     elif bond == "colle":
         glue_bags = _ceil((area * p.glue_kg_per_m2) / 25)
-        results.append({"label": "Argamassa-cola (junta fina)", "value": glue_bags, "unit": "saco 25 kg"})
+        results.append({"label": "Argamassa-cola (junta fina)", "value": glue_bags, "unit": "sac 25 kg"})
         materials.append({"name": "Argamassa-cola junta fina 25 kg", "quantity": glue_bags,
-                          "unit": "sac", "search": "cimento cola junta fina alvenaria 25kg"})
+                          "unit": "sac", "search": "cimento cola junta fina alvenaria 25kg", "unit_price": 15.0})
         budget += glue_bags * 15.0
     else:  # mortier traditionnel : sable + ciment
         cement_bags = _ceil((area * p.cement_kg_per_m2) / 35)
         sand_m3 = round(area * p.sand_m3_per_m2, 2)
-        results.append({"label": "Cimento", "value": cement_bags, "unit": "saco 35 kg"})
+        results.append({"label": "Cimento", "value": cement_bags, "unit": "sac 35 kg"})
         results.append({"label": "Areia", "value": sand_m3, "unit": "m³"})
         materials.append({"name": "Cimento 35 kg", "quantity": cement_bags, "unit": "sac",
-                          "search": "cimento 35 kg"})
+                          "search": "cimento 35 kg", "unit_price": 6.0})
         materials.append({"name": "Areia (argamassa)", "quantity": sand_m3, "unit": "m³",
-                          "search": "sable a maconner big bag"})
+                          "search": "sable a maconner big bag", "unit_price": 40.0})
         budget += cement_bags * 6.0 + sand_m3 * 40.0
 
     if p.include_render:
         gobetis_bags = _ceil((area * p.gobetis_kg_per_m2) / 25)
         render_bags = _ceil((area * p.render_kg_per_m2) / 25)
-        results.append({"label": "Chapisco de aderência", "value": gobetis_bags, "unit": "saco 25 kg"})
-        results.append({"label": "Reboco de fachada", "value": render_bags, "unit": "saco 25 kg"})
+        results.append({"label": "Chapisco de aderência", "value": gobetis_bags, "unit": "sac 25 kg"})
+        results.append({"label": "Reboco de fachada", "value": render_bags, "unit": "sac 25 kg"})
         materials.append({"name": "Chapisco de aderência 25 kg", "quantity": gobetis_bags,
-                          "unit": "sac", "search": "chapisco aderência 25 kg"})
+                          "unit": "sac", "search": "chapisco aderência 25 kg", "unit_price": 10.0})
         materials.append({"name": "Reboco de fachada (corpo de reboco) 25 kg", "quantity": render_bags,
-                          "unit": "sac", "search": "reboco monocamada fachada 25 kg"})
+                          "unit": "sac", "search": "reboco monocamada fachada 25 kg", "unit_price": 12.0})
         budget += gobetis_bags * 10.0 + render_bags * 12.0
 
     return {
@@ -198,22 +201,23 @@ def tile(*args, **kwargs) -> dict:
         "results": [
             {"label": "Superfície com perdas", "value": round(net_area, 2), "unit": "m²"},
             {"label": "Número de azulejos", "value": tiles, "unit": "u"},
-            {"label": "Número de caixas", "value": boxes, "unit": "caixa"},
-            {"label": "Cola para azulejo", "value": glue_bags, "unit": "saco 25 kg"},
-            {"label": "Junta", "value": joint_bags, "unit": "saco 5 kg"},
+            {"label": "Número de caixas", "value": boxes, "unit": "carton"},
+            {"label": "Cola para azulejo", "value": glue_bags, "unit": "sac 25 kg"},
+            {"label": "Junta", "value": joint_bags, "unit": "sac 5 kg"},
         ],
         "materials": [
             {"name": f'Revestimento cerâmico {int(p.tile_length)}x{int(p.tile_width)}',
              "quantity": round(net_area, 2), "unit": "m²",
-             "search": f"carrelage {int(p.tile_length)}x{int(p.tile_width)}"},
+             "search": f"carrelage {int(p.tile_length)}x{int(p.tile_width)}",
+             "unit_price": p.price_per_sqm},
             {"name": "Cola para azulejo 25 kg", "quantity": glue_bags, "unit": "sac",
-             "search": "cimento cola azulejo 25 kg"},
+             "search": "cimento cola azulejo 25 kg", "unit_price": 14.0},
             {"name": "Junta azulejo 5 kg", "quantity": joint_bags, "unit": "sac",
-             "search": "betume juntas azulejo 5kg"},
+             "search": "betume juntas azulejo 5kg", "unit_price": 12.0},
             {"name": "Cruzetas", "quantity": _ceil(tiles / 100), "unit": "boîte",
              "search": f'espaçadores azulejo {int(p.joint)}mm'},
             {"name": "Primário de aderência", "quantity": _ceil(p.area / 30),
-             "unit": "bidão", "search": "primário aderência azulejo"},
+             "unit": "bidon", "search": "primário aderência azulejo"},
             {"name": "Manta de dessolidarização", "quantity": round(net_area, 2),
              "unit": "m²", "search": "membrana dessolidarização azulejo"},
             {"name": "Perfis de acabamento",
@@ -244,30 +248,31 @@ def drywall(area: float, plate_type: str = "BA13 standard", plate_length: float 
     coating_bags = _ceil(coating_kg / 25)
     mats = [
         {"name": f"Plaque {plate_type} {int(plate_length)}x{int(plate_width)}", "quantity": plates,
-         "unit": "placa", "search": f"placa gesso cartonado {plate_type} {int(plate_length)}x{int(plate_width)}"},
+         "unit": "plaque", "search": f"plaque platre {plate_type} {int(plate_length)}x{int(plate_width)}",
+         "unit_price": price_per_plate},
         {"name": "Calha R48 (barra 3 m)", "quantity": _ceil(rails / 3), "unit": "barre",
-         "search": "calha pladur R48 3m"},
+         "search": "calha pladur R48 3m", "unit_price": 6.6},
         {"name": "Montante M48 (barra 3 m)", "quantity": _ceil(studs / 3), "unit": "barre",
-         "search": "montante pladur M48 3m"},
-        {"name": "Parafusos TTPC 25mm", "quantity": screw_boxes, "unit": "caixa 500", "search": "parafuso pladur 25"},
-        {"name": "Fita para juntas 150 m", "quantity": _ceil(bands / 150), "unit": "rolo",
-         "search": "fita juntas pladur 150m"},
-        {"name": "Massa para juntas 25 kg", "quantity": coating_bags, "unit": "sac", "search": "massa juntas pladur 25kg"},
+         "search": "montante pladur M48 3m", "unit_price": 7.8},
+        {"name": "Parafusos TTPC 25mm", "quantity": screw_boxes, "unit": "caixa 500", "search": "parafuso pladur 25", "unit_price": 12.0},
+        {"name": "Fita para juntas 150 m", "quantity": _ceil(bands / 150), "unit": "rouleau",
+         "search": "fita juntas pladur 150m", "unit_price": 6.0},
+        {"name": "Massa para juntas 25 kg", "quantity": coating_bags, "unit": "sac", "search": "massa juntas pladur 25kg", "unit_price": 18.0},
     ]
     results = [
         {"label": "Superfície com 10% de margem", "value": round(net, 2), "unit": "m²"},
-        {"label": "Placas necessárias", "value": plates, "unit": "placa"},
+        {"label": "Placas necessárias", "value": plates, "unit": "plaque"},
         {"label": "Calhas", "value": rails, "unit": "ml"},
         {"label": "Montantes", "value": studs, "unit": "ml"},
         {"label": "Parafusos", "value": screws, "unit": "u"},
         {"label": "Fita para juntas", "value": bands, "unit": "ml"},
-        {"label": "Reboco", "value": coating_bags, "unit": "saco 25 kg"},
+        {"label": "Reboco", "value": coating_bags, "unit": "sac 25 kg"},
     ]
     if structure == "plafond":
         mats.insert(3, {"name": "Pendural (lote 100)", "quantity": _ceil(suspentes / 100), "unit": "lot",
-                        "search": "tirante pladur conjunto 100"})
+                        "search": "tirante pladur conjunto 100", "unit_price": 90.0})
         mats.insert(4, {"name": "Perfil F530 (barra 3 m)", "quantity": _ceil(fourrures / 3), "unit": "barre",
-                        "search": "perfil F530 3m"})
+                        "search": "perfil F530 3m", "unit_price": 5.4})
         results.insert(3, {"label": "Pendurais", "value": suspentes, "unit": "u"})
         results.insert(4, {"label": "Perfis", "value": fourrures, "unit": "ml"})
     return {
@@ -280,25 +285,38 @@ def drywall(area: float, plate_type: str = "BA13 standard", plate_length: float 
     }
 
 
+# Auditoria V2 : cada material leva o seu preço unitário indicativo (os mesmos
+# valores usados no total) ou unit_price = None quando nenhum preço existe.
+# Nunca 0 € por omissão.
+def price_provenance(result: dict) -> dict:
+    for m in result.get("materials") or []:
+        m.setdefault("unit_price", None)
+        m["price_source"] = ("ConstruPilot — preço indicativo por omissão (não é preço de fornecedor)"
+                             if m["unit_price"] is not None else None)
+    return result
+
+
 # =============== CONCRETE ===============
 
 def _concrete_materials_for_mode(mode: str, *, vol_margin: float, cement_kg: float,
                                   sand_kg: float, gravel_kg: float,
-                                  bags_35: int, length: float, width: float) -> list[dict]:
+                                  bags_35: int, length: float, width: float,
+                                  price_per_m3: float = 135.0) -> list[dict]:
     mats: list[dict] = []
     if mode == "sacs":
         mats.append({"name": "Betão pronto a usar 35 kg", "quantity": bags_35, "unit": "sac",
-                     "search": "betão pronto saco 35 kg"})
+                     "search": "betão pronto saco 35 kg",
+                     "unit_price": round(price_per_m3 * 0.0175, 2)})  # 1 saco ≈ 17,5 L
     elif mode == "toupie":
         mats.append({"name": "Betão entregue (betoneira)", "quantity": round(vol_margin, 2), "unit": "m³",
-                     "search": "betão pronto autobetoneira m3"})
+                     "search": "betão pronto autobetoneira m3", "unit_price": price_per_m3})
     else:
         mats += [
             {"name": "Cimento CEM II 35 kg", "quantity": _ceil(cement_kg / 35), "unit": "sac",
              "search": "cimento 35 kg CEM II"},
-            {"name": "Areia 0/4", "quantity": _ceil(sand_kg / 35), "unit": "saco 35 kg",
+            {"name": "Areia 0/4", "quantity": _ceil(sand_kg / 35), "unit": "sac 35 kg",
              "search": "sable 0/4 sac"},
-            {"name": "Brita 4/20", "quantity": _ceil(gravel_kg / 35), "unit": "saco 35 kg",
+            {"name": "Brita 4/20", "quantity": _ceil(gravel_kg / 35), "unit": "sac 35 kg",
              "search": "brita 4/20 saco"},
         ]
     mats.append({"name": "Rede eletrossoldada ST25", "quantity": _ceil(length * width / 6),
@@ -328,7 +346,8 @@ def concrete(length: float, width: float, thickness_cm: float, mode: str = "sacs
         ],
         "materials": _concrete_materials_for_mode(
             mode, vol_margin=vol_margin, cement_kg=cement_kg, sand_kg=sand_kg,
-            gravel_kg=gravel_kg, bags_35=bags_35, length=length, width=width),
+            gravel_kg=gravel_kg, bags_35=bags_35, length=length, width=width,
+            price_per_m3=price_per_m3),
         "estimated_budget": round(vol_margin * price_per_m3, 2),
     }
 
@@ -364,10 +383,11 @@ def insulation(area: float, material: str = "laine_de_verre", thickness_mm: floa
         ],
         "materials": [
             {"name": f"{material.replace('_', ' ').title()} {thickness_mm} mm", "quantity": round(net, 2),
-             "unit": "m²", "search": f"{material.replace('_', ' ')} {thickness_mm} mm"},
-            {"name": "Membrana para-vapor (rolo 75 m²)", "quantity": vapor_rolls, "unit": "rolo",
+             "unit": "m²", "search": f"{material.replace('_', ' ')} {thickness_mm} mm",
+             "unit_price": round(price_per_sqm * (thickness_mm / 200), 2)},
+            {"name": "Membrana para-vapor (rolo 75 m²)", "quantity": vapor_rolls, "unit": "rouleau",
              "search": "barreira pára-vapor 75m2 rolo"},
-            {"name": "Adesivo para-vapor", "quantity": _ceil(net / 40), "unit": "rolo",
+            {"name": "Adesivo para-vapor", "quantity": _ceil(net / 40), "unit": "rouleau",
              "search": "fita adesiva pára-vapor"},
         ],
         "estimated_budget": round(net * price_per_sqm * (thickness_mm / 200), 2),
@@ -414,7 +434,7 @@ def _roof_facade_materials(real_area: float, facade_net: float, projected: float
          "quantity": round(real_area * 1.05, 2), "unit": "m²",
          "search": "telha cerâmica cobertura"},
         {"name": "Tela sob cobertura (rolo 75 m²)",
-         "quantity": _ceil(real_area / 75), "unit": "rolo",
+         "quantity": _ceil(real_area / 75), "unit": "rouleau",
          "search": "subtelha respirável 75m2"},
         {"name": "Ripas 25×50 (barra 4 m)",
          "quantity": _ceil(real_area * 3 / 4), "unit": "barre",
@@ -433,7 +453,7 @@ def _roof_facade_materials(real_area: float, facade_net: float, projected: float
          "quantity": _ceil(facade_net / 3.5), "unit": "sac",
          "search": "reboco de acabamento saco 25 kg"},
         {"name": "Rede de fibra (rolo 50 m²)",
-         "quantity": _ceil(facade_net / 50), "unit": "rolo",
+         "quantity": _ceil(facade_net / 50), "unit": "rouleau",
          "search": "rede de fibra ETICS rolo 50m2"},
         {"name": "Tinta fachada (lata 10 L)",
          "quantity": _ceil(facade_net * 0.15 / 10), "unit": "pot 10L",
@@ -532,27 +552,3 @@ CALCULATORS = {
                         {"name": "ite_thickness_mm", "label": "Espessura ITE (mm)", "type": "number", "default": 140},
                     ]},
 }
-
-# Lot 59 : unités traduites en portugais (18)
-
-
-# --- Lot 61 : le R visé n'est plus ignoré quand une épaisseur est saisie ---
-_insulation_lot61_base = insulation
-
-
-def insulation(area, material="laine_de_verre", thickness_mm=None, target_r=None, price_per_sqm=12.0):
-    out = _insulation_lot61_base(area, material, thickness_mm, target_r, price_per_sqm)
-    try:
-        lam = LAMBDA.get(material, 0.035)
-        t = float(out["inputs"]["thickness_mm"])
-        r = round((t / 1000) / lam, 2)
-        if target_r and r + 1e-9 < float(target_r):
-            need = int(math.ceil(float(target_r) * lam * 1000 / 10.0) * 10)
-            out["results"].insert(3, {"label": '⚠ R pretendido não atingido — espessura mínima necessária', "value": need, "unit": "mm"})
-            out.setdefault("warnings", []).append('Com {t} mm, R = {r} m².K/W, inferior ao R pretendido de {target}: prever pelo menos {need} mm.'.format(t=int(t), r=r, target=target_r, need=need))
-    except (KeyError, TypeError, ValueError):
-        pass
-    return out
-
-
-CALCULATORS["insulation"]["fn"] = insulation

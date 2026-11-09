@@ -79,18 +79,9 @@ def _is_lot_title(text: str, qty, pu) -> bool:
     t = text.strip()
     if len(t) < 3 or len(t) > 120:
         return False
-    # Lot 75 : « POUTRES BA (consoles de balcons…) » — la parenthèse ne compte pas dans la part de majuscules
-    letters = [c for c in (re.sub(r"\([^)]*\)", "", t) or t) if c.isalpha()]
+    letters = [c for c in t if c.isalpha()]
     upper = letters and sum(1 for c in letters if c.isupper()) / len(letters) > 0.7
     return bool(_LOT_RE.match(t) or upper)
-
-
-_OPTION_RE88 = re.compile(r"^\s*(\d+(\.\d+)*\s*[-—:.]?\s*)?(option|variante|pse\b|prestation suppl|opcao|opção)", re.I)
-
-
-def _is_option_title88(text: str) -> bool:
-    """Lot 88 : titre de section d'option (« OPTION : … », « Variante … », « PSE … »)."""
-    return bool(_OPTION_RE88.match(fold(text)) or _OPTION_RE88.match(text or ""))
 
 
 def parse_workbook(raw: bytes) -> dict:
@@ -108,12 +99,7 @@ def parse_workbook(raw: bytes) -> dict:
         lot = ""
         count = 0
         pending_desc: list[str] = []
-        in_option = False  # Lot 88 : section OPTION / VARIANTE / PSE en cours
         for r in range(hrow + 1, ws.max_row + 1):
-            # Lot 75 : fin du devis (Total TTC / général) → les « ratios de contrôle » qui suivent ne sont pas des ouvrages
-            _cells75 = " ".join(fold(str(ws.cell(row=r, column=_c).value or "")) for _c in range(1, min(ws.max_column, 30) + 1))
-            if re.search(r"\btotal\s+(?:ttc|general|geral|com\s+iva)\b", _cells75):
-                break
             des = ws.cell(row=r, column=c_des).value if c_des else None
             text = str(des or "").strip()
             if not text:
@@ -127,22 +113,14 @@ def parse_workbook(raw: bytes) -> dict:
             if pu == 0:
                 pu = None  # colonne « prix unitaire » vide ou à 0 = à chiffrer, pas un prix
             if _is_lot_title(text, qty, pu):
-                in_option = _is_option_title88(text)
-                if not in_option:
-                    lot = text
+                lot = text
                 pending_desc = []
                 continue
             if qty is None and not unit and pu is None:
-                if _is_option_title88(text):
-                    in_option = True
-                elif len(text) <= 90 and not text.rstrip().endswith("."):
-                    in_option = False  # nouveau titre de section : fin de l'option
                 pending_desc.append(text)          # ligne de descriptif libre
                 if len(pending_desc) > 6:
                     pending_desc = pending_desc[-6:]
                 continue
-            if in_option and not fold(text).startswith("option"):
-                text = "OPTION — " + text
             rows.append({
                 "line_id": f"l{len(rows) + 1}",
                 "sheet": ws.title, "row": r, "lot": lot or "Sem capítulo",
@@ -152,7 +130,7 @@ def parse_workbook(raw: bytes) -> dict:
                 "pu_file": pu, "pu_library": None, "pu_ai": None,
                 "pu_base": pu, "pu": pu, "source": "fichier" if pu else None,
                 "matched_designation": None,
-                "excluded": False, "exclusion_reason": "", "option": in_option,
+                "excluded": False, "exclusion_reason": "",
                 "cctp_note": "", "margin_pct": 0,
             })
             pending_desc = []
@@ -279,7 +257,6 @@ def finalise(rows: list[dict]) -> dict:
     by_lot: dict[str, dict] = {}
     total = 0.0
     priced = 0
-    options_total = 0.0  # Lot 88
     for r in rows:
         if r["excluded"]:
             r["pu"] = None
@@ -309,9 +286,6 @@ def finalise(rows: list[dict]) -> dict:
         slot["lines"] += 1
         if r["excluded"]:
             slot["excluded"] += 1
-        elif r.get("total") and r.get("option"):  # Lot 88 : option chiffrée, hors total de base
-            slot["options_ht"] = round(slot.get("options_ht", 0.0) + r["total"], 2)
-            options_total = round(options_total + r["total"], 2)
         elif r.get("total"):
             slot["total_ht"] = round(slot["total_ht"] + r["total"], 2)
             cost = float(r.get("pu_base") or 0) * (r.get("qty") or 0)
@@ -323,8 +297,7 @@ def finalise(rows: list[dict]) -> dict:
         slot["margin_pct"] = (round((slot["total_ht"] - slot["cost_ht"]) / slot["cost_ht"] * 100, 1)
                               if slot["cost_ht"] else 0.0)
         slot["margin_ht"] = round(slot["total_ht"] - slot["cost_ht"], 2)
-    return {"lots": list(by_lot.values()), "grand_total_ht": round(total, 2), "priced": priced,
-            "options_total_ht": round(options_total, 2)}
+    return {"lots": list(by_lot.values()), "grand_total_ht": round(total, 2), "priced": priced}
 
 
 def write_workbook(raw: bytes, rows: list[dict]) -> bytes:

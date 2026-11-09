@@ -1,0 +1,247 @@
+{
+  "case_id": "villavicencio_reference_ua",
+  "document_sha256": "ef61e0ab30b7412a2f5e71b94b748e5fd5c4380634eddfdbd16f8571f8cd88c3",
+  "source_country": "CA",
+  "target_country": "UA",
+  "target_authority": "explicit user instruction",
+  "target_scope": "all Ukraine, site-specific project data required",
+  "source_facts": [
+    {
+      "id": "F001",
+      "page": 1,
+      "sheet": "cover",
+      "field": "source_address",
+      "value": "1776 Inglewood Avenue, West Vancouver, BC",
+      "unit": null,
+      "status": "source_document"
+    },
+    {
+      "id": "F002",
+      "page": 2,
+      "sheet": "A-1",
+      "field": "source_energy_target",
+      "value": "Energy Step Code 5 pursued",
+      "unit": null,
+      "status": "source_document"
+    },
+    {
+      "id": "F003",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "basement_datum",
+      "value": 166.5,
+      "unit": "ft",
+      "status": "source_document"
+    },
+    {
+      "id": "F004",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "main_datum",
+      "value": 175.5,
+      "unit": "ft",
+      "status": "source_document"
+    },
+    {
+      "id": "F005",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "upper_datum",
+      "value": 186.6,
+      "unit": "ft",
+      "status": "conflicting"
+    },
+    {
+      "id": "F006",
+      "page": 16,
+      "sheet": "A-15",
+      "field": "upper_datum",
+      "value": 186.5,
+      "unit": "ft",
+      "status": "conflicting"
+    },
+    {
+      "id": "F007",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "wall_W4_W5",
+      "value": "R-22 batt + 5 in R-25 XPS",
+      "unit": "imperial R",
+      "status": "conflicting"
+    },
+    {
+      "id": "F008",
+      "page": 3,
+      "sheet": "A-2",
+      "field": "new_exterior_walls",
+      "value": "R-24 + 3 in XPS; another insulation note refers to 5 in",
+      "unit": "imperial R",
+      "status": "conflicting"
+    },
+    {
+      "id": "F009",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "roof_R1",
+      "value": "CLT thickness per engineer; XPS R-25",
+      "unit": null,
+      "status": "source_document"
+    },
+    {
+      "id": "F010",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "floor_F3",
+      "value": "<varies>",
+      "unit": null,
+      "status": "missing"
+    },
+    {
+      "id": "F011",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "floor_F4_F5",
+      "value": "concrete over COMSLAB; R-25 spray foam",
+      "unit": null,
+      "status": "source_document"
+    },
+    {
+      "id": "F012",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "foundation_W2_W3",
+      "value": "8 in concrete; ICF 2 5/8 in each face; extra 2 in XPS",
+      "unit": null,
+      "status": "source_document"
+    },
+    {
+      "id": "F013",
+      "page": 7,
+      "sheet": "A-6",
+      "field": "foundation_note",
+      "value": "location only; technical information on structural engineer drawings",
+      "unit": null,
+      "status": "missing"
+    },
+    {
+      "id": "F014",
+      "page": 8,
+      "sheet": "A-7",
+      "field": "roof_min_slope",
+      "value": 2,
+      "unit": "%",
+      "status": "conflicting"
+    },
+    {
+      "id": "F015",
+      "page": 11,
+      "sheet": "A-10",
+      "field": "S1_F8_slope",
+      "value": 0.125,
+      "unit": "in/ft",
+      "status": "conflicting"
+    },
+    {
+      "id": "F016",
+      "page": 15,
+      "sheet": "A-14",
+      "field": "scheduled_windows_including_skylights",
+      "value": 21,
+      "unit": "count",
+      "status": "source_document"
+    },
+    {
+      "id": "F017",
+      "page": 15,
+      "sheet": "A-14",
+      "field": "west_window_B_width",
+      "value": 19.666666666666668,
+      "unit": "ft",
+      "status": "source_document"
+    },
+    {
+      "id": "F018",
+      "page": 20,
+      "sheet": "A-19",
+      "field": "main_reported_area",
+      "value": 1187.93,
+      "unit": "ft2",
+      "status": "source_document"
+    },
+    {
+      "id": "F019",
+      "page": 20,
+      "sheet": "A-19",
+      "field": "upper_reported_area",
+      "value": 1054.2,
+      "unit": "ft2",
+      "status": "source_document"
+    },
+    {
+      "id": "F020",
+      "page": 20,
+      "sheet": "A-19",
+      "field": "basement_reported_area",
+      "value": 1430.7,
+      "unit": "ft2",
+      "status": "source_document"
+    },
+    {
+      "id": "F021",
+      "page": 20,
+      "sheet": "A-19",
+      "field": "countable_area",
+      "value": 2760.1,
+      "unit": "ft2",
+      "status": "source_document"
+    },
+    {
+      "id": "F022",
+      "page": 20,
+      "sheet": "A-19",
+      "field": "garage_exemption",
+      "value": "440 in subtraction; 441 elsewhere",
+      "unit": "ft2",
+      "status": "conflicting"
+    },
+    {
+      "id": "F023",
+      "page": 5,
+      "sheet": "A-4",
+      "field": "upper_terrace_pavers",
+      "value": 187.1,
+      "unit": "ft",
+      "status": "source_document"
+    },
+    {
+      "id": "F024",
+      "page": 5,
+      "sheet": "A-4",
+      "field": "upper_interior_floor",
+      "value": 186.6,
+      "unit": "ft",
+      "status": "source_document"
+    }
+  ],
+  "calculation_input": {
+    "schema_version": "clt-ua-1",
+    "name": "Villavicencio - geometric reference for CLT Ukraine",
+    "source_address": "1776 Inglewood Avenue, West Vancouver, BC",
+    "target_system": "CLT",
+    "site": {
+      "country": "UA"
+    },
+    "panels": [],
+    "assemblies": [],
+    "unresolved": [
+      "Select a target site in Ukraine for each project; nationwide scope does not identify a site",
+      "Obtain CLT product layup, full-strip EI/GA and documented design capacities",
+      "Map load paths, supports, mixed materials and proposed replacements",
+      "Resolve A-2 versus A-10 insulation, floor F3, slopes and level differences",
+      "Geotechnical, connections, lateral stability, fire and vibration design outstanding"
+    ]
+  },
+  "expected_status": "INPUT_REQUIRED",
+  "training_status": "curated evidence and in-context examples; not model-weight training",
+  "human_engineering_approval": false
+}

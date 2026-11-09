@@ -1,0 +1,13 @@
+{"kind": "frame", "building_type": "immeuble_collectif",
+ "project": {"name": "Edifício habitacional CLT — caso de teste", "address": "Rua das Flores 10, 4050 Porto", "country": "PT",
+             "client": "—", "architect": "—", "pc_ref": "caso de teste", "g2_ref": "hipótese", "snow_zone": "Z3", "wind_zone": "A"},
+ "seismic": {"zone1": "1.4", "zone2": "2.4", "soil": "B"},
+ "grid": {"x": [0, 6.0, 12.0, 18.0, 24.0], "y": [0, 5.5, 11.0],
+          "x_labels": ["1", "2", "3", "4", "5"], "y_labels": ["A", "B", "C"]},
+ "levels": [{"id": "P0", "name": "R/C", "floor_top": 0.0, "height": 3.0, "use": "habitação", "on_grade": true},
+            {"id": "P1", "name": "Piso 1", "floor_top": 3.0, "height": 3.0, "use": "habitação"},
+            {"id": "P2", "name": "Piso 2", "floor_top": 6.0, "height": 3.0, "use": "habitação"},
+            {"id": "P3", "name": "Piso 3", "floor_top": 9.0, "height": 3.0, "use": "habitação"}],
+ "roof": {"use": "cobertura"},
+ "structure": {"system": "post_beam"},
+ "geotech": {"sigma_adm_mpa": 0.30, "depth": 0.8}}

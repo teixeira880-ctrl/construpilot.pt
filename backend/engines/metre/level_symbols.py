@@ -39,9 +39,7 @@ def parse_level_symbols(words: list[tuple], *, radius_pt: float | None = None) -
             return abs((a[0] + a[2]) / 2 - (b[0] + b[2]) / 2) + abs((a[1] + a[3]) / 2 - (b[1] + b[3]) / 2)
         brut = min(lv, key=lambda w: _dist(w, brut_w) if brut_w else _dist(w, n))
         m = NGF_LEVEL.match(brut[4].strip())
-        # Lot 76 : un « fini » est au-dessus du brut de 0 à 0,30 m (chape/revêtement), jamais le niveau d'un symbole voisin
-        fini = next((w for w in lv if w is not brut and (m.group(2) or "").lower() != "f" and (fini_w is None or _dist(w, fini_w) < _dist(brut, fini_w))
-                     and 0.0 < _f(NGF_LEVEL.match(w[4].strip()).group(1)) - _f(m.group(1)) <= 0.30), None)
+        fini = next((w for w in lv if w is not brut and (m.group(2) or "").lower() != "f" and (fini_w is None or _dist(w, fini_w) < _dist(brut, fini_w))), None)
         thick = next((w[4].strip() for w in near if THICKNESS.match(w[4].strip()) and 8 <= int(w[4]) <= 60), None)
         kind = next((w[4].strip().upper() for w in near if KIND.match(w[4].strip())), None)
         as_m = _f(m.group(1))

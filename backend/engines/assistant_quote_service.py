@@ -240,16 +240,3 @@ async def append_quote_lines(args, user, conv, *, doc_id):
     except Exception:  # noqa: BLE001
         pass
     return out
-
-
-# --- Lot 50 : demander à l'assistant de chiffrer les lignes restées sans prix ---
-_present_lot50_base = present
-
-
-def present(doc):
-    out = _present_lot50_base(doc)
-    rows = (out.get("draft") or {}).get("lines") or []
-    missing = [r.get("line_id") or str(i) for i, r in enumerate(rows) if r.get("price_missing")]
-    if missing:
-        out["action_required"] = "{n} linha(s) ainda sem preço: {ids}. Orçamenta-as AGORA: read_quote_draft e depois update_quote_draft com price_origin='estimate' e um unit_price sem IVA (preço médio de mercado, fornecimento + aplicação) para cada uma. Não respondas ao utilizador antes de o orçamento estar todo com preços.".format(n=len(missing), ids=", ".join(missing[:40]))
-    return out

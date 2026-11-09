@@ -17,15 +17,6 @@ import core.security as S  # noqa: E402
 from routes import admin_avatar_bridge as B  # noqa: E402
 
 KEY = "k" * 40
-
-
-def _run(coro):
-    """Python 3.11+ : pas de boucle implicite dans le thread principal → boucle dédiée par appel."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
 ADMIN = {"user_id": "user_admin0000001", "email": "admin@construpilot.pt", "name": "Admin", "role": "admin", "token_version": 0}
 PRO = {"user_id": "user_pro000000001", "email": "pro@example.pt", "role": "user"}
 
@@ -33,7 +24,7 @@ PRO = {"user_id": "user_pro000000001", "email": "pro@example.pt", "role": "user"
 @pytest.fixture
 def env(monkeypatch):
     mdb = AsyncMongoMockClient()["t"]
-    _run(mdb.users.insert_many([dict(ADMIN), dict(PRO)]))
+    asyncio.get_event_loop_policy().get_event_loop().run_until_complete(mdb.users.insert_many([dict(ADMIN), dict(PRO)]))
     monkeypatch.setattr(B, "db", mdb)
     monkeypatch.setattr(S, "db", mdb)
     monkeypatch.setenv("AVATAR_AGENT_KEY", KEY)
@@ -48,18 +39,6 @@ def env(monkeypatch):
     @r.post("/admin/notes", summary="Criar nota")
     async def note(user=Depends(S.admin_user)):
         return {"created": True}
-
-    @r.delete("/admin/notes/{nid}", summary="Apagar nota")
-    async def del_note(nid: str, user=Depends(S.admin_user)):
-        return {"deleted": nid}
-
-    @r.post("/ceo/email/draft")
-    async def email_draft(user=Depends(S.admin_user)):
-        return {"draft": True}
-
-    @r.post("/ceo/email/{cid}/send")
-    async def email_send(cid: str, user=Depends(S.admin_user)):
-        return {"sent": cid}
 
     @r.post("/auth/change-password")
     async def pw():
@@ -90,33 +69,14 @@ def test_read_runs_as_admin(env):
     assert r["ok"] and '"by": "admin@construpilot.pt"' in r["data"]
 
 
-def test_ordinary_write_is_autonomous_and_logged(env):
-    """Autonomia (31/10/2026): uma escrita comum segue sem confirmação, mas fica registada."""
+def test_write_needs_confirmation_and_is_logged(env):
     c, mdb = env
-    for path in ("admin/notes", "/api/ceo/email/draft"):
-        r = c.post("/api/admin-avatar-bridge/call", headers=H, json={"identity": IDENT, "method": "POST", "path": path, "summary": "teste"}).json()
-        assert r["ok"] and r["status"] == 200, path
-    logged = _run(mdb.avatar_actions.count_documents({}))
-    assert logged == 2
-
-
-def test_irreversible_or_external_write_needs_confirmation(env):
-    c, mdb = env
-    for method, path in (("DELETE", "/api/admin/notes/n1"), ("POST", "/api/ceo/email/c1/send")):
-        body = {"identity": IDENT, "method": method, "path": path, "summary": "teste"}
-        assert c.post("/api/admin-avatar-bridge/call", headers=H, json=body).json()["needs_confirmation"] is True, path
-        r = c.post("/api/admin-avatar-bridge/call", headers=H, json={**body, "confirmed": True}).json()
-        assert r["ok"] and r["status"] == 200, path
-    assert B.needs_confirmation("PUT", "/api/admin/prices/k") and B.needs_confirmation("POST", "/api/faturas/f1/emitir")
-    assert not B.needs_confirmation("POST", "/api/assistant/jobs") and not B.needs_confirmation("POST", "/api/devis")
-
-
-def test_whoami_carries_platform_knowledge_and_overview(env):
-    c, _ = env
-    k = c.get("/api/admin-avatar-bridge/whoami", params={"identity": IDENT}, headers=H).json()["knowledge"]
-    assert "/assistant" in k and "/admin/growth" in k and "assistant_answer_choices" in k
-    o = c.get("/api/admin-avatar-bridge/overview", params={"identity": IDENT}, headers=H).json()
-    assert o["ok"] and '"users": 2' in o["data"] and "indisponivel" in o["data"]
+    body = {"identity": IDENT, "method": "POST", "path": "admin/notes", "summary": "nota de teste"}
+    assert c.post("/api/admin-avatar-bridge/call", headers=H, json=body).json()["needs_confirmation"] is True
+    r = c.post("/api/admin-avatar-bridge/call", headers=H, json={**body, "confirmed": True}).json()
+    assert r["ok"] and r["status"] == 200
+    logged = asyncio.get_event_loop_policy().get_event_loop().run_until_complete(mdb.avatar_actions.count_documents({}))
+    assert logged == 1
 
 
 def test_blocked_routes(env):
@@ -130,12 +90,3 @@ def test_catalog_hides_blocked(env):
     c, _ = env
     paths = [x["path"] for x in c.get("/api/admin-avatar-bridge/catalog", params={"identity": IDENT}, headers=H).json()["routes"]]
     assert "/api/admin/stats" in paths and not any("auth" in p or "avatar-bridge" in p for p in paths)
-
-
-def test_live_capabilities_follow_deployed_code():
-    """O avatar aprende as novidades sem nova implementação: a lista vem do Assistente BTP implementado."""
-    for k, v in {"STUDIES_MODEL_ANALYSIS": "test", "STUDIES_MODEL_LIGHT": "test"}.items():
-        os.environ.setdefault(k, v)
-    from engines.avatar_knowledge import live_capabilities
-    txt = live_capabilities({"user_id": "u", "role": "admin", "account_type": "pro"})
-    assert "check_plans_coherence" in txt and "ask_user_choices" in txt

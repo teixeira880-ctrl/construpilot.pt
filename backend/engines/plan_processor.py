@@ -64,7 +64,7 @@ def _encode_preview(img: Image.Image, max_side: int = 1800):
     img.save(pbuf, format="PNG")
     png = pbuf.getvalue()
     jbuf = io.BytesIO()
-    (img if img.mode == "RGB" else img.convert("RGB")).save(jbuf, format="JPEG", quality=85, optimize=True)  # Lot 86 : pas de copie inutile
+    img.convert("RGB").save(jbuf, format="JPEG", quality=85, optimize=True)
     jpg = jbuf.getvalue()
     if len(jpg) < len(png):
         return _b64(jpg), "image/jpeg", fw, fh, ratio
@@ -86,13 +86,9 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
     max_side = 4200 if n_pages <= 3 else (2800 if n_pages <= 8 else 1800)
     for i, page in enumerate(doc):
         # --- Rendu image pour le viewer (JPEG/PNG adaptatif, redimensionné) ---
-        # Lot 84 : rendu direct à la taille utile (un A0 à 200 dpi saturait la mémoire du serveur)
-        page_dpi = int(min(render_dpi, max(36, 72 * max_side // max(page.rect.width, page.rect.height, 1.0))))
-        pix = page.get_pixmap(dpi=page_dpi, alpha=False)
-        # Lot 86 : rendu à la taille servie, image sans copie (frombuffer), pixmap libérée aussitôt
-        img = Image.frombuffer("RGB", (pix.width, pix.height), pix.samples_mv, "raw", "RGB", pix.stride, 1)
+        pix = page.get_pixmap(dpi=render_dpi, alpha=False)
+        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
         img_b64, img_mime, fw, fh, ratio = _encode_preview(img, max_side=max_side)
-        del img, pix
 
         # --- Extraction texte ---
         text = page.get_text("text") or ""
@@ -117,13 +113,13 @@ def process_pdf(pdf_bytes: bytes, render_dpi: int = 200) -> dict:
 
         # Import and refresh must share the same scale/view safeguards.
         from engines.plan_refresh import extract_pdf_page
-        geometry = extract_pdf_page(page, page_dpi * ratio / 72, vectors=vectors, text_blocks=text_blocks)
+        geometry = extract_pdf_page(page, render_dpi * ratio / 72, vectors=vectors, text_blocks=text_blocks)
         pages_out.append({
             **geometry,
             "index": i,
             "width_px": fw,
             "height_px": fh,
-            "dpi": round(page_dpi * ratio, 2),
+            "dpi": round(render_dpi * ratio, 2),
             "image_png_b64": img_b64,
             "img_mime": img_mime,
             "dimensions_count": len(DIM_PATTERN.findall(text)),

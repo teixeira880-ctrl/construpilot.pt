@@ -37,6 +37,10 @@ def _call(fn, *args, lang="fr"):
 def validate(raw: dict) -> tuple[model.Model | None, list[dict]]:
     """Charge et contrôle le modèle. Retourne (modèle, anomalies) ; modèle None si la structure JSON est inutilisable.
     Étapes avant tout calcul : conformité au schéma typé (schema.py) → défauts → chargement → contrôles de cohérence."""
+    from engines.bet_clt_ua.routing import legacy_issue
+    issue = legacy_issue(raw)
+    if issue:
+        return None, [issue]
     from . import schema as _schema
     from . import complete as _complete
     try:
@@ -58,6 +62,10 @@ def validate(raw: dict) -> tuple[model.Model | None, list[dict]]:
                          "fix": "Respecter le schéma du relevé (types et champs requis)."})
         return None, anis
     anomalies = []
+    from engines.bet_clt_ua.routing import clt_warning
+    _w = clt_warning(raw)
+    if _w:
+        anomalies.append(dict(_w, level=checks.WARN))
     if geo_defaults:
         anomalies.append({"code": "GEO-HYP", "level": checks.WARN,
                           "message": "Données incomplètes : valeurs prudentes retenues par défaut — " + " ; ".join(geo_defaults[:10]),

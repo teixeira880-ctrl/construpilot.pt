@@ -63,16 +63,6 @@ AUTORIZACAO_TOOLS += [
             "fachada": {"type": "string", "description": "granito, madeira, xisto, tijolo, betão, reboco branco, misto…"},
             "area_terreno_m2": {"type": "number", "description": "Área do terreno (caderneta)."},
             "frente_m": {"type": "number", "description": "Largura da frente do terreno, se souber."},
-            "forma": {"type": "string", "description": "retangulo | l (casa em L) | u | t"},
-            "area_util_alvo_m2": {"type": "number", "description": "Área habitável (útil) pedida pelo cliente, sem garagem."},
-            "garagem_tipo": {"type": "string", "description": "integrada (encostada à casa) | exterior (independente)"},
-            "piscina": {"type": "boolean"}, "piscina_l_m": {"type": "number"}, "piscina_w_m": {"type": "number"},
-            "estilo": {"type": "string", "description": "contemporaneo | minimalista | tradicional_portugues | minhoto_granito | "
-                                                      "rustico_pedra_madeira | xisto_beira | alentejano | algarvio | mediterranico | nordico_madeira"},
-            "cobertura_tipo": {"type": "string", "description": "plana | duas_aguas | uma_agua"},
-            "forcar_estudo": {"type": "boolean", "description": "true se o utilizador pedir para avançar MESMO com REN/RAN/solo rústico (os impedimentos ficam escritos no processo)."},
-            "lat": {"type": "number", "description": "Latitude do terreno, se o utilizador a der ou apontar no mapa."},
-            "lon": {"type": "number", "description": "Longitude do terreno, se o utilizador a der ou apontar no mapa."},
             "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
             "artigo_matricial": {"type": "string"},
         },
@@ -84,17 +74,7 @@ AUTORIZACAO_TOOLS += [
         {"processo_id": {"type": "string"}, "tipologia": {"type": "string"}, "pisos": {"type": "integer"},
          "garagem": {"type": "boolean"}, "lugares": {"type": "integer"}, "area_terreno_m2": {"type": "number"},
          "frente_m": {"type": "number"}, "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
-         "artigo_matricial": {"type": "string"}, "fachada": {"type": "string"},
-         "texto": {"type": "string", "description": "O que o utilizador quer mudar, palavra por palavra (ex.: «quero em L com piscina»)."},
-         "forma": {"type": "string", "description": "retangulo | l (casa em L) | u | t"},
-         "area_util_alvo_m2": {"type": "number", "description": "Área habitável (útil) pedida pelo cliente, sem garagem."},
-         "garagem_tipo": {"type": "string", "description": "integrada (encostada à casa) | exterior (independente)"},
-         "piscina": {"type": "boolean"}, "piscina_l_m": {"type": "number"}, "piscina_w_m": {"type": "number"},
-         "estilo": {"type": "string", "description": "contemporaneo | minimalista | tradicional_portugues | minhoto_granito | "
-                                          "rustico_pedra_madeira | xisto_beira | alentejano | algarvio | mediterranico | nordico_madeira"},
-         "cobertura_tipo": {"type": "string", "description": "plana | duas_aguas | uma_agua"},
-         "forcar_estudo": {"type": "boolean"}, "lat": {"type": "number"}, "lon": {"type": "number"},
-        },
+         "artigo_matricial": {"type": "string"}, "fachada": {"type": "string"}},
     ),
     function(
         "licenciamento_materiais",
@@ -103,49 +83,6 @@ AUTORIZACAO_TOOLS += [
         "aluminio_antracite, aluminio_branco, madeira, pvc_branco). O 3D, a memória e o render seguem a escolha.",
         {"processo_id": {"type": "string"}, "fachada": {"type": "string"}, "cobertura": {"type": "string"},
          "caixilharia": {"type": "string"}},
-    ),
-]
-AUTORIZACAO_TOOLS += [
-    function(
-        "licenciamento_imagens",
-        "Gera AUTOMATICAMENTE as imagens realistas do processo (o mais fotorrealistas possível) e junta-as ao dossier: vistas 3D "
-        "exatas do projeto (perspetiva, piscina, frente, jardim, aérea, entardecer) e interiores (sala, cozinha, suite, casa de banho) "
-        "tornadas fotorrealistas por IA SEM mudar a geometria (verificação automática contra a vista exata), planta de implantação "
-        "humanizada, «antes/depois» sobre o ortofotomapa oficial e, se o cliente enviou uma fotografia do terreno, a montagem "
-        "sobre essa foto (que o cliente tem de aprovar). Usar depois de "
-        "licenciamento_automatico ou de qualquer alteração ao projeto, e sempre que pedirem imagens, renders, fotos ou 3D.",
-        {"processo_id": {"type": "string"},
-         "vistas": {"type": "array", "items": {"type": "string"}, "description": "perspetiva, piscina, frente, tardoz, aerea, perspetiva_entardecer, interior_sala, interior_cozinha, interior_suite, interior_wc (por omissão todas)"},
-         "antes_depois": {"type": "boolean"}},
-    ),
-    function(
-        "terreno_ficha",
-        "Ficha OFICIAL de um terreno a partir de coordenadas (lat/lon): distrito, município (DICO), freguesia (DICOFRE) e lugar "
-        "(CAOP), classe e categoria do PDM (CRUS) com a % do terreno, REN e RAN (área dentro do terreno ou distância), outras "
-        "servidões (linhas elétricas, estradas, domínio hídrico, Rede Natura…) e um parecer prévio (compatível / condicionado / "
-        "inviável / por confirmar), linhas de água e curvas de nível. Devolve as ligações da planta de condicionantes "
-        "(ortofotomapa + REN/RAN/PDM + curvas + linhas de água + casa como polígono) e do PDF da ficha (com a carta de "
-        "declives quando há desnível). Usar sempre que o cliente der coordenadas ou perguntar se pode construir num terreno.",
-        {"lat": {"type": "number"}, "lon": {"type": "number"},
-         "morada": {"type": "string", "description": "Morada do local, se não houver coordenadas (é localizada automaticamente)."},
-         "texto": {"type": "string", "description": "O pedido do cliente palavra por palavra (dele tiram-se a casa a desenhar e a área do terreno)."},
-         "area_m2": {"type": "number", "description": "Área do terreno, se souber (sem cadastro usa-se um quadrado com esta área)."},
-         "area_casa_m2": {"type": "number", "description": "Área de implantação da casa pretendida (desenha-a como polígono no terreno)."},
-         "forma": {"type": "string", "description": "L ou retangular"}, "piscina": {"type": "boolean"}, "garagem": {"type": "boolean"}},
-    ),
-    function(
-        "licenciamento_aprovar_imagem",
-        "Quando o cliente diz que aprova/quer no dossier uma imagem que ficou «não verificada» (p. ex. «quero a da piscina no "
-        "dossier»), marca-a como aprovada pelo requerente: entra no dossier com a legenda «ilustrativa, aprovada pelo "
-        "requerente — prevalecem as peças desenhadas». Indicar a vista (perspetiva, piscina, frente, tardoz, aerea, "
-        "perspetiva_entardecer, interior_sala, interior_cozinha, interior_suite, interior_wc).",
-        {"processo_id": {"type": "string"}, "vista": {"type": "string"}, "aprovada": {"type": "boolean"}},
-    ),
-    function(
-        "licenciamento_estilos",
-        "Lista os estilos arquitetónicos disponíveis (contemporâneo, tradicional português, minhoto em granito, alentejano, "
-        "algarvio, xisto, rústico pedra e madeira, mediterrânico, nórdico…) para propor ao cliente.",
-        {},
     ),
 ]
 AUTORIZACAO_TOOL_NAMES = {t["name"] for t in AUTORIZACAO_TOOLS}
@@ -160,103 +97,17 @@ AUTORIZACAO_INSTRUCTIONS = (
     "Para zonas de proteção ou imóveis classificados avisa claramente que as isenções do art.º 6.º-A "
     "não se aplicam (n.º 2 do mesmo artigo) exceto para a substituição de caixilhos para eficiência "
     "energética.\n"
-    "FICHA DE CONDICIONANTES — REGRA PERMANENTE: sempre que o cliente indicar um local (morada ou coordenadas), seja para "
-    "o que for (pergunta, viabilidade, orçamento, licenciamento) e MESMO QUE AINDA NÃO HAJA PROJETO, faz o que ele pede e "
-    "apresenta-lhe SEMPRE a ficha de condicionantes desse local: chama terreno_ficha com a morada ou lat/lon e o texto do "
-    "pedido (a casa que ele descreve aparece desenhada no terreno) e dá a ligação ficha_pdf_url — planta sobre o "
-    "ortofotomapa oficial com REN, RAN, PDM, CAOP/DICOFRE, curvas de nível e linhas de água, e carta de declives e "
-    "recursos hídricos quando o terreno tem desnível. Se já houver processo, a ligação é ficha_condicionantes_pdf.\n"
     "LICENCIAMENTO AUTOMÁTICO (0-100 %): quando alguém pedir uma autorização/licença/projeto para construir uma casa numa "
     "morada (mesmo em linguagem simples, p. ex. «quero uma autorização de construção na Rua do Monte 7, Braga»), chama "
     "licenciamento_automatico IMEDIATAMENTE com o texto e o que já souberes — não faças perguntas antes. Depois explica em "
-    "linguagem corrente: procedimento (licença ou comunicação prévia), a casa proposta, as decisões (sol, garagem, declive) "
-    "e as hipóteses assumidas. MODO LEIGO (ativo por omissão): NÃO faças perguntas — o motor já decide sozinho (morada "
-    "aproximada, casa mais pequena se não couber, renovação sem plantas tratada como estudo, repetição quando um serviço "
-    "oficial falha). Os dados de papelada devolvidos em «a_completar» (nome/NIF, artigo matricial, área da caderneta) "
-    "mencionam-se UMA vez no fim como «pode completar quando quiser», nunca como pergunta que bloqueia. A única pergunta "
-    "permitida é a morada, se não existir de todo (estado «falta_morada»). Se o cliente disser «mesmo que esteja em REN/RAN» "
-    "passa forcar_estudo=true (os impedimentos continuam escritos no processo e tens de os explicar). Se a morada só for "
-    "encontrada ao nível da localidade, diz-lhe que basta dar as coordenadas do terreno (no Google Maps: carregar no "
-    "terreno e copiar os dois números) e chama licenciamento_atualizar com lat/lon — com elas o PDM e a REN passam a ser os "
-    "do terreno. Se o cliente aprovar uma imagem não verificada "
-    "(«quero a da piscina»), usa licenciamento_aprovar_imagem. Se o cliente der coordenadas ou perguntar se pode "
-    "construir num terreno, chama primeiro terreno_ficha e explica: freguesia (DICOFRE), PDM, REN, RAN, servidões e o "
-    "parecer prévio, citando as fontes, e dá a ligação ficha_pdf_url (planta de condicionantes sobre o ortofotomapa e, "
-    "se o terreno tiver desnível, carta de declives e recursos hídricos com curvas de nível e linhas de água); se o "
-    "cliente já disse a casa que quer, passa area_casa_m2/forma/piscina/garagem para a casa aparecer como polígono; depois, se ele quiser, licenciamento_automatico com lat/lon. Se o utilizador der dados, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
+    "linguagem corrente: procedimento (licença ou comunicação prévia), a casa proposta, as decisões (sol, garagem, declive), "
+    "as hipóteses assumidas e faz no máximo 2 ou 3 perguntas simples das «perguntas» devolvidas (área da caderneta, nome do "
+    "requerente…). Quando responderem, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
     "licenciamento_materiais. Nunca inventes números: usa só os devolvidos pela ferramenta. Se o estado for «inviavel» "
     "(solo rústico, REN/RAN), explica o impedimento com honestidade e sugere o pedido de informação prévia à câmara. "
-    "O cliente é uma pessoa SEM conhecimentos técnicos: fala simples, decide tu o que falta (forma, estilo, piscina, garagem, "
-    "materiais) e explica no fim o que decidiste. Para pedidos como «casa térrea em L com 200 m2 habitáveis, piscina e garagem "
-    "exterior, fachadas em granito e madeira» passa o texto completo a licenciamento_automatico (ele entende forma, área "
-    "habitável vs terreno, piscina, garagem exterior, estilo) e a seguir chama licenciamento_imagens para juntar as imagens "
-    "realistas ao dossier, sem perguntar. Para qualquer alteração («quero mais um quarto», «estilo alentejano», «sem piscina», "
-    "«casa em L») usa licenciamento_atualizar com o texto do utilizador e depois licenciamento_imagens. Se a coerência falhar "
-    "ou o estado for «revisao», corrige tu (licenciamento_atualizar com outra escolha prudente) antes de responder. "
     "Diz sempre que o levantamento topográfico, os projetos de especialidades e a assinatura de arquiteto/engenheiros "
     "(termos de responsabilidade) são obrigatórios, e que a página do processo permite pedir essa subscrição.\n"
 )
-
-
-def _casa_do_texto(texto: str) -> dict:
-    """Casa pedida pelo cliente (área, forma, piscina, garagem exterior) para a desenhar na carta antes de haver projeto."""
-    if not texto:
-        return {}
-    from engines.urbanismo_pt.auto import pipeline as AP
-    p = AP.interpretar_pedido(texto)
-    out = {}
-    if p.get("area_util_alvo_m2"):
-        pisos = p.get("pisos") or 1
-        out["area_casa_m2"] = round(float(p["area_util_alvo_m2"]) * 1.15 / pisos)   # útil → implantação (paredes), por piso
-    elif p.get("tipologia") or p.get("forma") or p.get("piscina"):
-        out["area_casa_m2"] = 160
-    if p.get("forma"):
-        out["forma"] = "L" if str(p["forma"]).lower() == "l" else "retangular"
-    if p.get("piscina"):
-        out["piscina"] = True
-    if p.get("garagem_tipo") == "exterior":
-        out["garagem"] = True
-    if p.get("area_terreno_m2"):
-        out["area_m2"] = float(p["area_terreno_m2"])
-    return out
-
-
-async def _terreno_ficha(args: dict) -> dict:
-    """Ficha de condicionantes do LOCAL indicado (coordenadas ou morada), com a casa pedida desenhada — mesmo sem projeto."""
-    from engines.urbanismo_pt.auto import ficha_terreno as FT, geo as G
-    a = {**_casa_do_texto(args.get("texto") or ""), **{k: v for k, v in args.items() if v not in (None, "")}}
-    nota_local = None
-    try:
-        lat, lon = float(a["lat"]), float(a["lon"])
-    except (KeyError, TypeError, ValueError):
-        if not a.get("morada"):
-            return {"ok": False, "error": "Indique a morada ou as coordenadas do terreno."}
-        g = await G.geocode(a["morada"])
-        if not g["ok"]:
-            return {"ok": False, "error": "Não encontrei essa morada; envie as coordenadas do terreno (Google Maps: carregar no terreno e copiar os dois números)."}
-        lat, lon = g["data"]["lat"], g["data"]["lon"]
-        if g["data"].get("precisao") != "porta":
-            nota_local = ("A morada só foi localizada ao nível da " + str(g["data"].get("precisao") or "localidade")
-                          + "; com as coordenadas do terreno a ficha passa a ser a do terreno exato.")
-    if not (36.8 <= lat <= 42.2 and -9.6 <= lon <= -6.1):
-        return {"ok": False, "error": "Coordenadas fora de Portugal continental."}
-    try:
-        f = await asyncio.wait_for(FT.ficha(lat, lon, None, a.get("area_m2")), timeout=120)
-    except asyncio.TimeoutError:
-        return {"ok": False, "error": "Os serviços da DGT estão lentos; tente de novo dentro de momentos."}
-    f.pop("terreno", None)
-    q = f"lat={lat}&lon={lon}"
-    if a.get("area_m2"):
-        q += f"&area_m2={float(a['area_m2']):g}"
-    if a.get("area_casa_m2"):
-        q += (f"&area_casa_m2={float(a['area_casa_m2']):g}&forma={'L' if str(a.get('forma') or 'L').lower().startswith('l') else 'retangular'}"
-              f"&piscina={'true' if a.get('piscina') else 'false'}&garagem={'true' if a.get('garagem') else 'false'}")
-        f["casa_desenhada"] = {k: a.get(k) for k in ("area_casa_m2", "forma", "piscina", "garagem")}
-    f["planta_url"] = f"/api/urbanismo-auto/ficha-terreno/planta.png?{q}"
-    f["ficha_pdf_url"] = f"/api/urbanismo-auto/ficha-terreno.pdf?{q}"
-    if nota_local:
-        f["nota_localizacao"] = nota_local
-    return f
 
 
 def _pedido(args: dict) -> dict:
@@ -272,32 +123,6 @@ def _pedido(args: dict) -> dict:
 
 
 async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
-    if name == "licenciamento_estilos":
-        from engines.urbanismo_pt.auto import estilos as E
-        return {"ok": True, "estilos": E.lista()}
-    if name == "terreno_ficha":
-        return await _terreno_ficha(args or {})
-    if name == "licenciamento_aprovar_imagem":
-        from routes import urbanismo_auto as UA
-        try:
-            pid, vista = (args or {}).get("processo_id") or "", (args or {}).get("vista") or ""
-            d = await UA._owned(pid, user["user_id"])
-            cand = [i for i in d.get("imagens") or [] if i.get("vista") == vista and i.get("tipo") in ("fotorrealista", "montagem")]
-            if not cand:
-                return {"ok": False, "error": f"Não há imagem fotorrealista da vista «{vista}» neste processo."}
-            return await UA.aprovar_imagem(pid, cand[-1]["id"], UA.AprovarIn(aprovada=bool((args or {}).get("aprovada", True))), user)
-        except Exception as e:  # noqa: BLE001
-            return {"ok": False, "error": str(getattr(e, "detail", e))[:300]}
-    if name == "licenciamento_imagens":
-        from routes import urbanismo_auto as UA
-        try:
-            vistas = (args or {}).get("vistas") or None
-            return await asyncio.wait_for(UA.gerar_imagens((args or {}).get("processo_id") or "", user, vistas,
-                                                           bool((args or {}).get("antes_depois", True))), timeout=900)
-        except asyncio.TimeoutError:
-            return {"ok": False, "error": "As imagens estão a demorar; peça de novo dentro de momentos."}
-        except Exception as e:  # noqa: BLE001
-            return {"ok": False, "error": str(getattr(e, "detail", e))[:300]}
     if name in ("licenciamento_automatico", "licenciamento_atualizar", "licenciamento_materiais"):
         from routes import urbanismo_auto as UA
         try:
@@ -307,11 +132,7 @@ async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) ->
             if name == "licenciamento_materiais":
                 return await UA.materiais(pid, UA.MateriaisIn(**{k: args.get(k) for k in ("fachada", "cobertura", "caixilharia")}), user)
             d = await UA._owned(pid, user["user_id"])
-            novos = {k: v for k, v in _pedido(args).items() if k != "processo_id"}
-            texto = novos.pop("texto", "")
-            from engines.urbanismo_pt.auto import pipeline as AP
-            extra = {k: v for k, v in AP.interpretar_pedido(texto).items() if k != "morada"} if texto else {}
-            pedido = {**(d["auto"].get("pedido") or {}), **extra, **novos}
+            pedido = {**(d["auto"].get("pedido") or {}), **{k: v for k, v in _pedido(args).items() if k != "processo_id"}}
             pedido["requerente"] = {**(d.get("requerente") or {}), **(pedido.get("requerente") or {})}
             return await asyncio.wait_for(UA.executar_e_gravar(pedido, user, pid=pid), timeout=240)
         except asyncio.TimeoutError:
