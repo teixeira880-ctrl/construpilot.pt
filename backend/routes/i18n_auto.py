@@ -16,8 +16,8 @@ Funcionamento:
 Segurança: só textos que constam do manifesto (gerado a partir do código-fonte) são enviados
 ao modelo — nunca dados introduzidos por utilizadores (nomes de clientes, moradas…).
 """
-from __future__ import annotations
-
+# NB: sem `from __future__ import annotations` — com o decorador do slowapi, o FastAPI 0.115
+# deixaria de reconhecer o corpo JSON (TranslateIn) e responderia 422.
 import asyncio
 import gzip
 import hashlib
