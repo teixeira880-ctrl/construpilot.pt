@@ -1328,6 +1328,15 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
     history.sort(key=lambda m: (m.get("turn_seq") is not None, m.get("turn_seq", 0), 0 if m["role"] == "user" else 1) if m.get("turn_seq") is not None else (False, 0, m.get("created_at", "")))
     inputs = [{"role": m["role"], "content": m["content"]} for m in history if m["role"] in ("user", "assistant")]
     inputs.append({"role": "user", "content": "Dados do processo anexado (extratos parciais, utilizar read_document):\n"+context})
+    # Anexos DESTA mensagem : o utilizador viu-os reconhecidos no ecrã antes do envio ; o modelo tem de os tratar.
+    fresh = set(getattr(body, "attachments", None) or [])
+    joined = [f"« {x.get('filename')} » ({'planta' if 'plan_id' in x else x.get('kind') or 'documento'}, {x.get('pages') or 1} pág., id {x.get('plan_id') or x.get('doc_id')})"
+              for x in plans + docs if (x.get("plan_id") or x.get("doc_id")) in fresh]
+    if joined or getattr(body, "dossier_ids", None):
+        inputs.append({"role": "user", "content": "FICHEIROS ANEXADOS A ESTA MENSAGEM (reconhecidos antes do envio): " + ("; ".join(joined) or "processo importado") +
+                       ". Foram bem recebidos: começa a resposta citando-os pelo nome numa frase curta e depois trata o pedido a partir do "
+                       "seu conteúdo (read_document / análise de planta para o texto completo). Nunca digas que não há ficheiro anexado nem "
+                       "peças para os reenviar. Se o pedido estiver vazio, propõe o que podes fazer com estes ficheiros."})
     if chantier_ctx and "erreur" not in chantier_ctx:
         inputs.append({"role": "user", "content": "CONTEXTO DE OBRA: esta conversa está associada ao processo de obra acima (chave `dossier_chantier`). Responde com estes dados conhecidos (cliente, morada, orçamentos/faturas e respetivos estados/montantes, plantas, análises, diagnósticos, reservas) sem os voltar a pedir. Qualquer orçamento criado aqui fica automaticamente associado a este processo e ao seu cliente CRM: utiliza exatamente o nome do cliente indicado. Se faltar um dado no processo, di-lo em vez de o inventar."})
     settings = await _settings(user["user_id"])

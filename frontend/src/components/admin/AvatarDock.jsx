@@ -266,6 +266,8 @@ const HANDLERS = {
     setAvatarSize(next);
     return ok({ size: next });
   },
+  // « Desligar Aurora » compris par l'agent (toutes formulations) : elle dit au revoir, puis la fenêtre se ferme.
+  "ui.close": async (d) => { const ms = Math.max(0, Math.min(4000, Number(parse(d).delay_ms) || 1200)); setTimeout(() => { stopAvatar(); }, ms); return ok({ closing: true }); },
   "ui.presenter": async (d) => { set({ presenter: !!parse(d).on }); return ok({ presenter: state.presenter }); },
   "assistant.status": async () => fit2(assistantState()),
   "assistant.ask": async (d) => {
@@ -463,6 +465,7 @@ export async function startAvatar(lang = "fr") {
     // sous-titres, état de l'assistante, l'écran qui suit ses mots, navigation vocale instantanée
     startSpeechSync(r, {
       onHush: () => hush(false),
+      onOff: () => { hush(false); setTimeout(() => { stopAvatar(); }, 250); },   // « desligar Aurora » : fermeture immédiate
       onSpeak: () => unhush(),
       onCaption: (c) => set({ caption: c }),
       onState: (st) => {
