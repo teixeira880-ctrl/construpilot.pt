@@ -21,6 +21,7 @@ MATERIAIS_FACHADA = {
     "betao": "Betão aparente",
     "misto_granito_reboco": "Granito no rés-do-chão e reboco branco no andar",
     "misto_madeira_reboco": "Reboco branco com apontamentos em madeira",
+    "misto_granito_madeira": "Granito natural no corpo principal e na garagem; ala dos quartos (planta em L) ou fachada do sol e panos virados ao pátio em ripado vertical de madeira",
 }
 MATERIAIS_COBERTURA = {"telha_ceramica": "Telha cerâmica vermelha (tipo Marselha / lusa)", "telha_preta": "Telha cerâmica preta",
                        "zinco": "Chapa de zinco", "plana_seixo": "Cobertura plana com proteção em seixo"}
@@ -41,6 +42,8 @@ def material_fachada(txt: Optional[str]) -> str:
         return "misto_granito_reboco"
     if "madeira" in hits and "reboco_branco" in hits:
         return "misto_madeira_reboco"
+    if "granito" in hits and "madeira" in hits:
+        return "misto_granito_madeira"
     return hits[0] if hits else "reboco_branco"
 
 
@@ -50,6 +53,8 @@ def vaos(plan: Dict[str, Any], volume: dict, fachada_sol: str) -> List[Dict[str,
     Coordenadas no referencial do terreno: fachada (frente/tardoz/esquerda/direita), x ao longo da fachada, z cota."""
     x0, y0, x1, y1 = plan["casa_rect"]
     sh = float(volume.get("storey_h_m") or 3.0)
+    if plan.get("contorno"):
+        return _vaos_contorno(plan, sh, fachada_sol)
     out = []
     for p in plan["pisos"]:
         zb = p["piso"] * sh
@@ -77,6 +82,64 @@ def vaos(plan: Dict[str, Any], volume: dict, fachada_sol: str) -> List[Dict[str,
                 out.append({"fachada": fach, "piso": p["piso"], "compartimento": c["nome"], "tipo": tipo,
                             "x0": round(cx - larg / 2, 3), "x1": round(cx + larg / 2, 3),
                             "z0": round(zb + peit + 0.0, 3), "z1": round(zb + peit + alt, 3)})
+    return out
+
+
+def _dims_vao(t: str, w: float, ao_sol: bool, piso: int, frente: bool):
+    if t == "sala":
+        return min(w - 0.8, 4.8 if ao_sol else 2.4), 2.3, 0.0, "envidracado"
+    if t in ("quarto", "escritorio"):
+        return min(w - 0.8, 1.8 if ao_sol else 1.2), 2.2 if ao_sol else 1.4, 0.0 if ao_sol else 0.9, "janela"
+    if t == "cozinha":
+        return min(w - 0.6, 1.6), 1.2, 1.0, "janela"
+    if t in ("wc", "wc_social", "lavandaria"):
+        return min(w - 0.4, 0.8), 0.6, 1.5, "janela"
+    if t == "entrada" and frente and piso == 0:
+        return min(w - 0.4, 1.2), 2.3, 0.0, "porta"
+    return None
+
+
+def _vaos_contorno(plan: Dict[str, Any], sh: float, fachada_sol: str) -> List[Dict[str, Any]]:
+    """Casa de contorno qualquer (p. ex. em L): um vão por compartimento em CADA parede exterior que o compartimento toca,
+    escolhendo a fachada mais comprida (e a do sol para a sala). Cada vão leva o plano da fachada (`plano_m`)."""
+    from shapely.geometry import LineString, Polygon
+    contorno = Polygon(plan["contorno"])
+    borda = contorno.exterior.buffer(0.02)
+    bx0, by0, bx1, by1 = contorno.bounds
+
+    def para_patio(plano, eixo):   # fachada interior do L (abre para o pátio): vãos generosos, como a do sol
+        return (eixo == "x" and min(abs(plano - by0), abs(plano - by1)) > 0.05) or \
+               (eixo == "y" and min(abs(plano - bx0), abs(plano - bx1)) > 0.05)
+    out = []
+    for p in plan["pisos"]:
+        zb = p["piso"] * sh
+        for c in p["compartimentos"]:
+            lados = [("frente", ((c["x0"], c["y0"]), (c["x1"], c["y0"])), c["y0"], "x"),
+                     ("tardoz", ((c["x0"], c["y1"]), (c["x1"], c["y1"])), c["y1"], "x"),
+                     ("esquerda", ((c["x0"], c["y0"]), (c["x0"], c["y1"])), c["x0"], "y"),
+                     ("direita", ((c["x1"], c["y0"]), (c["x1"], c["y1"])), c["x1"], "y")]
+            ext = []
+            for fach, seg, plano, eixo in lados:
+                ln = LineString(seg)
+                if ln.length > 0.6 and ln.within(borda):
+                    a, b = (seg[0][0], seg[1][0]) if eixo == "x" else (seg[0][1], seg[1][1])
+                    ext.append((fach, plano, eixo, a, b))
+            if not ext:
+                continue
+            ext.sort(key=lambda e: (not (e[0] == fachada_sol or para_patio(e[1], e[2])), -(e[4] - e[3])))
+            entrada_frente = [e for e in ext if e[0] == "frente"]
+            escolha = entrada_frente[:1] if c["tipo"] == "entrada" else ext[:1]
+            for fach, plano, eixo, a, b in escolha:
+                d = _dims_vao(c["tipo"], b - a, fach == fachada_sol or para_patio(plano, eixo), p["piso"], fach == "frente")
+                if not d:
+                    continue
+                larg, alt, peit, tipo = d
+                if larg < 0.5:
+                    continue
+                cm = (a + b) / 2
+                out.append({"fachada": fach, "piso": p["piso"], "compartimento": c["nome"], "tipo": tipo,
+                            "x0": round(cm - larg / 2, 3), "x1": round(cm + larg / 2, 3), "eixo": eixo,
+                            "plano_m": round(plano, 3), "z0": round(zb + peit, 3), "z1": round(zb + peit + alt, 3)})
     return out
 
 
@@ -210,7 +273,9 @@ def planta_topografica(topo: Dict[str, Any], parcel_m: List, casa_rect, garagem_
     pts = [P(*p) for p in parcel_m]
     dr.line(pts + [pts[0]], fill=(230, 40, 40), width=4)
     for r, col in ((casa_rect, (255, 210, 90)), (garagem_rect, (240, 170, 120))):
-        if r:
+        if r and isinstance(r[0], (list, tuple)):   # contorno (p. ex. casa em L)
+            dr.polygon([P(*q) for q in r], fill=col, outline=V.INK, width=2)
+        elif r:
             a, b = P(r[0], r[3]), P(r[2], r[1])
             dr.rectangle([a, b], fill=col, outline=V.INK, width=2)
     for q in g:
@@ -275,7 +340,17 @@ def memoria_descritiva(processo: Dict[str, Any], verif: Dict[str, Any]) -> str:
     if (processo.get("volume") or {}).get("blocks"):
         b = processo["volume"]["blocks"][0]
         nl = q.get('lugares_previstos') or 0
-        linhas.append(f"Garagem anexa com {_n(b['l_m'])} m × {_n(b['w_m'])} m, para {nl} {'lugar' if nl == 1 else 'lugares'}.")
+        tipo_g = "independente (afastada da moradia)" if a.get("garagem_tipo") == "exterior" else "anexa"
+        linhas.append(f"Garagem {tipo_g} com {_n(b['l_m'])} m × {_n(b['w_m'])} m, para {nl} {'lugar' if nl == 1 else 'lugares'}.")
+    if a.get("forma") == "l":
+        linhas.append("A moradia tem planta em L: corpo de dia junto à frente e ala dos quartos no tardoz, que delimitam um pátio "
+                      "abrigado.")
+    if a.get("piscina"):
+        pi = a["piscina"]
+        linhas.append(f"Piscina descoberta com {_n(pi['l_m'])} m × {_n(pi['w_m'])} m, implantada no jardim (não conta para a área "
+                      "de implantação nem de construção; afastamento aos limites a confirmar no regulamento municipal).")
+    if a.get("estilo"):
+        linhas.append(f"Linguagem arquitetónica: {a['estilo']['nome'].lower()}.")
     linhas += [
         "",
         "4. Implantação e orientação",

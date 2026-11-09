@@ -196,7 +196,7 @@ def iso(m, r) -> Sheet:
         for w in r["walls"]:
             seg = next((s for s in w["segs"] if abs(next(l.z + l.height for l in m.levels if l.id == s["level"]) - z) < 0.05), None)
             if seg:
-                a, b = _wall_axis(w)
+                a, b = _wall_axis(w, seg)
                 z0 = z - next(l.height for l in m.levels if l.id == seg["level"])
                 sh.poly("CHARPENTE", [Q(a[0], a[1], z0), Q(b[0], b[1], z0), Q(b[0], b[1], z), Q(a[0], a[1], z)], 0.15, True, WOOD2)
     for c in r["columns"]:
@@ -222,10 +222,11 @@ def _beam_axis(m, bm, o):
     return ((bm["a0"], pos), (bm["a1"], pos)) if o == "x" else ((pos, bm["a0"]), (pos, bm["a1"]))
 
 
-def _wall_axis(w):
+def _wall_axis(w, seg=None):
+    a_, b_ = (seg.get("a", w["a"]), seg.get("b", w["b"])) if seg else (w["a"], w["b"])     # étendue propre à l'étage
     if w["axis"] == "x":                      # mur sur une file x = pos (porteur, perpendiculaire à x)
-        return (w["pos"], w["a"]), (w["pos"], w["b"])
-    return (w["a"], w["pos"]), (w["b"], w["pos"])
+        return (w["pos"], a_), (w["pos"], b_)
+    return (a_, w["pos"]), (b_, w["pos"])
 
 
 # ================================================================ CL02 fondations
@@ -308,14 +309,14 @@ def columns_plan(m, r) -> Sheet:
 
 
 def _wall_plan(sh, w, seg):
-    tt = seg["t"] / 1000
-    a, b = _wall_axis(w)
+    tt = seg["t"] / 1000 * seg.get("leaves", 1)
+    a, b = _wall_axis(w, seg)
     if w["axis"] == "x":
         sh.rect("CHARPENTE", a[0] - tt / 2, a[1], a[0] + tt / 2, b[1], 0.35, WOOD2, hatch="bois")
-        sh.text("TEXTE", (a[0] - tt / 2 - u(sh, 1.2), (a[1] + b[1]) / 2), S(f"{w['id']} CLT {seg['layup']}"), 1.5, "c", rot=90, bold=True)
+        sh.text("TEXTE", (a[0] - tt / 2 - u(sh, 1.2), (a[1] + b[1]) / 2), S(f"{w['id']} CLT {(str(seg.get('leaves', 1)) + '×') if seg.get('leaves', 1) > 1 else ''}{seg['layup']}"), 1.5, "c", rot=90, bold=True)
     else:
         sh.rect("CHARPENTE", a[0], a[1] - tt / 2, b[0], a[1] + tt / 2, 0.35, WOOD2, hatch="bois")
-        sh.text("TEXTE", ((a[0] + b[0]) / 2, a[1] + tt / 2 + u(sh, 1.0)), S(f"{w['id']} CLT {seg['layup']}"), 1.5, "c", bold=True)
+        sh.text("TEXTE", ((a[0] + b[0]) / 2, a[1] + tt / 2 + u(sh, 1.0)), S(f"{w['id']} CLT {(str(seg.get('leaves', 1)) + '×') if seg.get('leaves', 1) > 1 else ''}{seg['layup']}"), 1.5, "c", bold=True)
 
 
 # ================================================================ CL1x plans de charpente

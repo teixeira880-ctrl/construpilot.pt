@@ -175,7 +175,18 @@ _CLT_DOC = re.compile(r"\b(clt|cross[- ]?laminated|crosslam|bois lamell[ée][- ]
                       r"lamelado[- ]colado|mass timber|клеєн|перехресно)", re.I)
 _CLT_HINT = (" STRUCTURE BOIS MASSIF CLT / LAMELLÉ-COLLÉ : relève la trame des poteaux (ou des murs porteurs pour une maison) comme pour un "
              "bâtiment à ossature ; ajoute structure.system = \"post_beam\" (poteaux-poutres) ou \"walls\" (murs CLT porteurs, maison / petit "
-             "collectif) ; pas de dalle ni de poutre BA à relever. Pays FR, PT ou UA.")
+             "collectif) ; pas de dalle ni de poutre BA à relever. Pays FR, PT ou UA."
+             " Si le plan ou le détail constructif DONNE les compositions CLT (« CLT Panel 240-7s », « CLT 5s 100 wall »…), recopie-les : "
+             "structure.clt_floor_layup, structure.clt_roof_layup, structure.wall_layup (le moteur les VÉRIFIE au lieu de les choisir) ; mur mitoyen "
+             "double (« CLT wall 80+80 mm 3 layers ») → structure.party_wall = {side: x0|x1|y0|y1, layup: \"80 L3s\", leaves: 2} ; sens de portée "
+             "évident (grande pièce sans mur intermédiaire) → structure.clt_span_dir. Étage partiel (R+1 en retrait, en L) → levels[].void_cells. "
+             "Couches d'enveloppe du détail (isolant, épaisseur) → envelope.wall|roof|floor.layers [[nom, e en m, λ W/m.K]], plancher bas sur sous-sol "
+             "non chauffé → envelope.below = \"unheated\". Sous-sol BA ou terrasse hors trame → estimate.basement {area, height, perimeter} / "
+             "estimate.terrace {area}. Plans sans repères de files dans un sens (seuls des axes 1, 2, 3… numérotés) : prends comme files "
+             "les lignes des murs porteurs principaux (façades, murs entre pièces) et nomme-les A, B, C… ; niveaux non cotés : hauteur "
+             "sous plafond + épaisseur de plancher du détail. Ne bloque jamais sur la trame : décide et trace la décision.")
+_UA_PRICES = re.compile(r"(pre[çc]os?|prix|prices?|ціни|цін|orçamento|devis|estimate|кошторис)[^.\n]{0,40}(ucr[aâ]nia|ukrain|україн|uah|грн|hryvn)|"
+                        r"(ucr[aâ]nia|ukrain|україн)[^.\n]{0,30}(pre[çc]os?|prix|prices?|ціни)", re.I)
 
 
 def _wants_clt(docs, hypotheses: str) -> bool:
@@ -198,10 +209,10 @@ async def _doc_langs(db, uid) -> list[str]:
 
 
 CLT_LABELS = {
-    "fr": {"pdf": "Dossier bois massif CLT — note de calcul + plans", "plans_pdf": "Plans CLT / lamellé-collé (PDF)", "xlsx": "Devis et métré CLT (Excel)", "zip": "Plans DXF"},
-    "pt": {"pdf": "Processo madeira maciça CLT — memória de cálculo + desenhos", "plans_pdf": "Desenhos CLT / lamelado-colado (PDF)", "xlsx": "Medições e orçamento CLT (Excel)", "zip": "Desenhos DXF"},
-    "en": {"pdf": "Mass timber CLT study — calculation report + drawings", "plans_pdf": "CLT / glulam drawings (PDF)", "xlsx": "CLT quantities and estimate (Excel)", "zip": "DXF drawings"},
-    "uk": {"pdf": "Розрахунок CLT — записка + креслення", "plans_pdf": "Креслення CLT / клеєний брус (PDF)", "xlsx": "Кошторис CLT (Excel)", "zip": "Креслення DXF"},
+    "fr": {"pdf": "Dossier bois massif CLT — note de calcul + plans", "plans_pdf": "Plans CLT / lamellé-collé (PDF)", "xlsx": "Devis et métré CLT (Excel)", "zip": "Plans DXF", "estimate_pdf": "Devis final aux prix ukrainiens (PDF)", "estimate_xlsx": "Devis final aux prix ukrainiens (Excel)"},
+    "pt": {"pdf": "Processo madeira maciça CLT — memória de cálculo + desenhos", "plans_pdf": "Desenhos CLT / lamelado-colado (PDF)", "xlsx": "Medições e orçamento CLT (Excel)", "zip": "Desenhos DXF", "estimate_pdf": "Orçamento final com preços da Ucrânia (PDF)", "estimate_xlsx": "Orçamento final com preços da Ucrânia (Excel)"},
+    "en": {"pdf": "Mass timber CLT study — calculation report + drawings", "plans_pdf": "CLT / glulam drawings (PDF)", "xlsx": "CLT quantities and estimate (Excel)", "zip": "DXF drawings", "estimate_pdf": "Final estimate at Ukrainian prices (PDF)", "estimate_xlsx": "Final estimate at Ukrainian prices (Excel)"},
+    "uk": {"pdf": "Розрахунок CLT — записка + креслення", "plans_pdf": "Креслення CLT / клеєний брус (PDF)", "xlsx": "Кошторис CLT (Excel)", "zip": "Креслення DXF", "estimate_pdf": "Остаточний кошторис за цінами України (PDF)", "estimate_xlsx": "Остаточний кошторис за цінами України (Excel)"},
 }
 
 
@@ -232,6 +243,8 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
     st = raw.setdefault("structure", {})
     if not st.get("system"):
         st["system"] = "walls" if house else "post_beam"
+    if _UA_PRICES.search(hypotheses or ""):           # « orçamento com os preços da Ucrânia » → devis final aux prix UA (грн + €)
+        raw.setdefault("estimate", {})["market"] = "UA"
     try:
         from core.ui_lang import current_doc_lang
         wanted = current_doc_lang()
@@ -250,10 +263,11 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
         arts = []
         for key, path in res["files"].items():
             base, _, lg = key.partition("_")
-            if key == "plans_pdf":
-                base, lg = "plans_pdf", ""
-            elif key.startswith("plans_pdf_"):
-                base, lg = "plans_pdf", key[len("plans_pdf_"):]
+            for two in ("plans_pdf", "estimate_pdf", "estimate_xlsx"):
+                if key == two:
+                    base, lg = two, ""
+                elif key.startswith(two + "_"):
+                    base, lg = two, key[len(two) + 1:]
             lg = lg or res["lang"]
             label = CLT_LABELS.get(lg, CLT_LABELS["en"]).get(base, base)
             arts.append(await store(db, uid, cid, request_id, base, Path(path), label + ("" if lg == res["lang"] else f" [{lg.upper()}]")))
