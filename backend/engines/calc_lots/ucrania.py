@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import math
+import re
 
 from . import graficos as G
 from . import isolamento, rendu
@@ -222,8 +223,14 @@ def note(p: dict) -> dict:
     import pymupdf
     r = calcular(p)
     c, els = r["clima"], r["elementos"]
+    lingua = (p.get("lingua") or "uk").lower()
+    from . import lingua_ucrania as LU
+    L = {"pt": LU.tr, "en": LU.tr_en}.get(lingua, lambda x: x)
+    DEEP = {"pt": LU.deep, "en": LU.deep_en}.get(lingua)
+    if lingua in ("pt", "en"):
+        c = dict(c, nome=c["name"])
     W = rendu.mm
-    proj = p.get("projeto") or "Будинок"
+    proj = p.get(f"projeto_{(p.get('lingua') or 'uk').lower()}") or p.get("projeto") or "Будинок"
     blocs = []
     kpis = [{"label": "Місто / City", "value": c["nome"], "unit": f"{c['name']} · зона {c['zona']}"},
             {"label": "θe розрахункова / design", "value": f"{c['theta_e']:g}", "unit": "°C"}]
@@ -267,7 +274,7 @@ def note(p: dict) -> dict:
                   ("p", "Опір теплопередачі R∑ = Rsi + Σ(d/λ) + Rse порівнюється з мінімально допустимим Rq,min (ДБН В.2.6-31:2021, табл. 1); "
                         "перевіряються перепад температур Δθ (табл. 3) і відсутність конденсації в товщі конструкції."),
                   ("table", ["Конструкція", "R∑, м²·К/Вт", "Rq,min", "U, Вт/(м²·К)", "Статус"], rows, [70 * W, 24 * W, 20 * W, 26 * W, 40 * W]),
-                  ("chart", G.barres_h([(e["nome"][:30], e["R"] / e["rq"] if e["rq"] else None) for e in els], "R∑ / Rq,min (≥ 1,0 — відповідає)",
+                  ("chart", G.barres_h([(L(e["nome"])[:30], e["R"] / e["rq"] if e["rq"] else None) for e in els], L("R∑ / Rq,min (≥ 1,0 — відповідає)"),
                                        None, ref=(1.0, "Rq,min"), dec=2), None)]
         for e in els:
             if e["camadas"]:
@@ -285,7 +292,7 @@ def note(p: dict) -> dict:
                         f"Φ = (H_T + H_V)·(θi − θe) = {_c(r['phi_w'] / 1000, 2)} кВт при θe = {c['theta_e']:g} °C. "
                         f"Рекомендована потужність теплогенератора ≈ {_c(r['potencia_kw'], 1)} кВт (+10 %)."
                         + (f" Річна потреба ≈ {_c(r['q_kwh'], 0)} кВт·год ({_c(r['q_kwh_m2'], 0)} кВт·год/м² на рік, {_c(r['area'], 0)} м²)." if r.get("q_kwh") else "")),
-                  ("chart", G.donut([(n, v) for n, v in parts if v > 0], "Розподіл тепловтрат, кВт", _c(r["phi_w"] / 1000, 1), "кВт"), None)]
+                  ("chart", G.donut([(L(n), v) for n, v in parts if v > 0], L("Розподіл тепловтрат, кВт"), _c(r["phi_w"] / 1000, 1), L("кВт")), None)]
     # 4. навантаження
     if r["cargas"]:
         k = r["cargas"]
@@ -299,7 +306,12 @@ def note(p: dict) -> dict:
     planos_pdf, go = None, None
     if p.get("modelo_estrutural"):
         from . import gros_oeuvre
-        mod = json.loads(p["modelo_estrutural"]) if isinstance(p["modelo_estrutural"], str) else dict(p["modelo_estrutural"])
+        import copy
+        mod = json.loads(p["modelo_estrutural"]) if isinstance(p["modelo_estrutural"], str) else copy.deepcopy(p["modelo_estrutural"])
+        if p.get(f"projeto_{lingua}"):
+            mod["projeto"] = p[f"projeto_{lingua}"]            # título dos planos na língua do dossier
+        if lingua == "en":
+            mod = LU.modelo_en(mod)
         mod.setdefault("local", f"{c['nome']} ({c['name']})")
         for lj in mod.get("lajes") or []:
             if lj.get("tipo") == "clt":
@@ -314,12 +326,12 @@ def note(p: dict) -> dict:
             for lj in mod.get("lajes") or []:
                 if lj.get("piso") == "cobertura" and lj.get("tipo") in ("laje_ba", "clt") and lj.get("q_kn_m2") is None:
                     lj["q_kn_m2"] = round(r["cargas"]["sm_kpa"], 2)
-        go = gros_oeuvre.calcular(mod, lingua="uk")
+        go = gros_oeuvre.calcular(mod, lingua={"pt": None, "en": "en"}.get(lingua, "uk"))
         planos_pdf = go["planos_pdf"]
         ver = go["verificacao"]
         rows = [[e["tipo"], e["ref"], e["seccao"], f"{e['taxa'] * 100:.0f} %" if e["taxa"] is not None else "—", "відповідає" if e["ok"] else "НЕ відповідає"]
                 for e in ver["elementos"]]
-        tr = gros_oeuvre._dic("uk")
+        tr = gros_oeuvre._dic("uk")         # (em PT, a tradução final LU.deep repõe o português)
         tok = gros_oeuvre._TR_CV.set(tr)
         try:
             rows = [[gros_oeuvre._tr(str(x)) for x in rw] for rw in rows]
@@ -337,16 +349,95 @@ def note(p: dict) -> dict:
         en.append(f"Structure: {len(ver['elementos'])} elements checked (Eurocodes adopted in Ukraine), {len(ver['ajustes'])} section adjustments, "
                   f"dimensioned drawings GO-01…GO-05 at 1:{go['escala']} attached.")
         blocs[2] = ("p", " ".join(en))
+    # 6. кошторисна оцінка з ПДВ 20 %
+    orc = None
+    if go and p.get("orcamento") is not False:
+        from . import orcamento_ua as OU
+        orc = OU.orcamento(go["modelo"], [e for e in (p.get("elementos") or [])], r.get("potencia_kw"), r.get("area"), p.get("precos"))
+        rows = [[x["desc"], x["un"], _c(x["qt"], 1), _c(x["pu"], 0), _c(x["total"], 0), "✓ " + x["fonte"] if x["tipo"] == "джерело" else "≈ " + x["fonte"]]
+                for x in orc["linhas"]]
+        rows += [["Разом без ПДВ", "", "", "", _c(orc["sem_pdv"], 0), ""],
+                 [f"ПДВ {orc['taxa_pdv'] * 100:.0f} % (ПКУ, ст. 193)", "", "", "", _c(orc["pdv"], 0), ""],
+                 ["РАЗОМ З ПДВ", "", "", "", _c(orc["com_pdv"], 0), f"≈ {_c(orc['eur_com_pdv'], 0)} € (НБУ {orc['cambio']:g} грн/€, {orc['data']})"]]
+        blocs += [("h2", "6. Кошторисна оцінка (несучі конструкції, оболонка, опалення) з ПДВ 20 %"),
+                  ("kpis", [{"label": "Без ПДВ / excl. VAT", "value": _c(orc["sem_pdv"] / 1e6, 2), "unit": "млн грн"},
+                            {"label": "ПДВ 20 % / VAT", "value": _c(orc["pdv"] / 1e6, 2), "unit": "млн грн"},
+                            {"label": "З ПДВ / incl. VAT", "value": _c(orc["com_pdv"] / 1e6, 2), "unit": f"млн грн ≈ {_c(orc['eur_com_pdv'] / 1000, 0)} тис. €"}]
+                   + ([{"label": "На 1 м² опалюваної площі", "value": _c(orc["por_m2_com_pdv"], 0), "unit": "грн/м² з ПДВ"}] if orc["por_m2_com_pdv"] else [])),
+                  ("table", ["Позиція", "Од.", "К-сть", "Ціна, грн", "Сума, грн", "Джерело ціни"], rows, [52 * W, 10 * W, 14 * W, 16 * W, 20 * W, 58 * W]),
+                  ("chart", G.donut([(L(g), v / 1e6) for g, v in orc["grupos"].items() if v > 0], L("Структура вартості, млн грн без ПДВ"),
+                                    _c(orc["sem_pdv"] / 1e6, 2), L("млн")), None),
+                  ("p", "Кількості обчислені з розрахункової моделі (бетон, арматура за питомими витратами, об'єм CLT, площі оболонки). Ціни без ПДВ: "
+                        "«✓» — опубліковані ціни постачальників із датою, «≈» — орієнтири ConstruPilot, які слід замінити комерційними пропозиціями "
+                        "(зокрема ціну Rezult CLT). Не включено: внутрішнє оздоблення, інженерні мережі (крім теплового насоса), благоустрій, проєктні роботи.")]
+        en.append(f"Cost estimate (structure, envelope, heat pump): {orc['sem_pdv']:,.0f} UAH excl. VAT + VAT 20 % = {orc['com_pdv']:,.0f} UAH "
+                  f"(≈ {orc['eur_com_pdv']:,.0f} € at NBU {orc['cambio']:g} UAH/€).")
+        blocs[2] = ("p", " ".join(en))
     blocs += [("h2", "Припущення / для перевірки"), ("hyp", r["hipoteses"] + (["перерізи несучих конструкцій — попередній розрахунок, підлягає перевірці "
                                                                                "інженером-конструктором; ДБН В.1.2-14 (надійність) і ДБН В.2.1-10 (основи)"] if go else []))]
     titre = f"Україна / Ukraine — {proj} · {c['nome']} / {c['name']}"
-    pdf = rendu.build_pdf(titre, f"Теплотехніка, тепловтрати, навантаження та несучі конструкції · ДБН / ДСТУ · {c['name']}, Ukraine", blocs,
-                          footer="ConstruPilot — розрахунок детермінованими модулями; підлягає перевірці відповідальним проєктувальником.", lang=UK)
+    sub = f"Теплотехніка, тепловтрати, навантаження та несучі конструкції · ДБН / ДСТУ · {c['name']}, Ukraine"
+    foot = "ConstruPilot — розрахунок детермінованими модулями; підлягає перевірці відповідальним проєктувальником."
+    if DEEP:
+        blocs = [b if b[0] == "chart" else DEEP(b) for b in blocs]
+        titre, sub, foot = L(titre), L(sub), L(foot)
+        r["hipoteses"] = DEEP(r["hipoteses"])
+        pdf = rendu.build_pdf(titre, sub, blocs, footer=foot, lang=LU.EN_RENDU if lingua == "en" else None)
+    else:
+        pdf = rendu.build_pdf(titre, sub, blocs, footer=foot, lang=UK)
     d = pymupdf.open(stream=pdf, filetype="pdf")
+    n_nota = len(d)
+    extra = p.get("paginas_extra_pdf")                     # p.ex. renders 3D (PDF) inseridos depois da nota
+    renders = p.get("renders")
+    if renders is None and go and p.get("render", True) is not False:
+        renders = gerar_renders(go["modelo"], p.get("render_opcoes"))
+    if renders:
+        extra = pagina_renders(renders, L, extra)
+        if not p.get("capa_imagem"):
+            p = dict(p, capa_imagem=renders[0][1])
+    if extra:
+        d.insert_pdf(pymupdf.open(stream=extra, filetype="pdf"))
+        n_nota = len(d)
     if planos_pdf:
         d.insert_pdf(pymupdf.open(stream=planos_pdf, filetype="pdf"))
     out = d.tobytes(garbage=3, deflate=True)
-    return {"titre": titre, "pdf": out, "png": d[0].get_pixmap(dpi=110).tobytes("png"), "r": r, "go": go, "resumo_en": " ".join(en)}
+    if p.get("premium", True):
+        from . import premium as PR
+        emp = PR.marca(p.get("empresa"))
+        idx = []
+        for i, pg in enumerate(pymupdf.open(stream=pdf, filetype="pdf")):
+            for ln in pg.get_text().splitlines():
+                if re.match(r"^[1-9]\. [А-ЯІЇЄҐA-Z]", ln) and not any(ln.strip()[:70] == t for t, _ in idx):
+                    idx.append((ln.strip()[:70], i + 2))
+        if extra:
+            idx.append(("Візуалізації 3D / 3D views", len(pymupdf.open(stream=pdf, filetype="pdf")) + 2))
+        if planos_pdf:
+            for j, pg in enumerate(pymupdf.open(stream=planos_pdf, filetype="pdf")):
+                t0 = next((ln for ln in pg.get_text().splitlines() if ln.startswith("GO-")), f"GO-{j + 1:02d}")
+                idx.append((t0[:70], n_nota + j + 2))
+        kp = [("Місто / City", c["nome"], f"{c['name']} · зона {c['zona']}"), ("θe розрахункова", f"{c['theta_e']:g} °C", "ДСТУ-Н Б В.1.1-27")]
+        if r.get("phi_w"):
+            kp.append(("Тепловтрати / heat loss", f"{_c(r['phi_w'] / 1000, 1)} кВт", "EN 12831 (спрощено)"))
+        if go:
+            kp.append(("Конструкції / structure", "OK ✓" if go["verificacao"]["conforme"] else "перевірити",
+                       f"{len(go['verificacao']['elementos'])} ел., {len(go['verificacao']['ajustes'])} коригув."))
+        if els:
+            kp.append(("Оболонка ДБН В.2.6-31", "OK ✓" if all(e["ok"] for e in els) else "посилити", "Rq,min зона " + str(c["zona"])))
+        if orc:
+            kp += [("Вартість з ПДВ / incl. VAT", f"{_c(orc['com_pdv'] / 1e6, 2)} млн", "грн"), ("≈ EUR з ПДВ", f"{_c(orc['eur_com_pdv'] / 1000, 0)} тис.", "€ (курс НБУ)")]
+            if orc["por_m2_com_pdv"]:
+                kp.append(("На 1 м²", f"{_c(orc['por_m2_com_pdv'], 0)}", "грн/м² з ПДВ"))
+        from datetime import date
+        capa = {"titulo": proj, "subtitulo": "Розрахунок за нормами України · Calculation to Ukrainian norms",
+                "local": f"{c['name']}, Україна" if DEEP else f"{c['nome']} / {c['name']}, Україна",
+                "data": date.today().strftime("%d.%m.%Y"), "kpis": kp, "indice": idx,
+                "miniatura_pagina": p.get("miniatura_pagina", n_nota + 2 if planos_pdf else None) if not p.get("capa_imagem") else None}
+        if DEEP:
+            capa = DEEP(capa)
+        capa["capa_imagem"] = p.get("capa_imagem")
+        out = PR.embelezar(out, capa, emp, n_nota, tr=L)
+    d = pymupdf.open(stream=out, filetype="pdf")
+    return {"titre": titre, "pdf": out, "png": d[0].get_pixmap(dpi=110).tobytes("png"), "r": r, "go": go, "resumo_en": " ".join(en), "orcamento": orc}
 
 
 def exemplo_kyiv() -> dict:  # noqa: D401
@@ -458,3 +549,49 @@ def exemplo_clt(cidade: str = "kyiv", produto: str = "rezult_clt") -> dict:
                                "direcao_vao": "x", "descricao": "Rezult CLT 200 + мінвата 260"})
     p["modelo_estrutural"] = m
     return p
+
+
+def dossiers(p: dict) -> dict:
+    """Os dois dossiers completos (sempre): ucraniano e inglês, com o mesmo cálculo. → {"uk": note, "en": note}."""
+    if p.get("modelo_estrutural") and p.get("renders") is None and p.get("render", True) is not False:
+        import json
+        from . import gros_oeuvre
+        mod = json.loads(p["modelo_estrutural"]) if isinstance(p["modelo_estrutural"], str) else p["modelo_estrutural"]
+        p = dict(p, renders=gerar_renders(gros_oeuvre.calcular(mod)["modelo"], p.get("render_opcoes")))
+    return {lg: note(dict(p, lingua=lg)) for lg in ("uk", "en")}
+
+
+def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None):
+    """Render 3D fotorrealista a partir do modelo dos planos (sempre que há modelo estrutural). Sem Mitsuba → lista vazia.
+    Qualidade por omissão 1600 × 900, 128 amostras (CP_RENDER_SPP / CP_RENDER_W para testes rápidos)."""
+    import os
+    largura = largura or int(os.environ.get("CP_RENDER_W", 1600))
+    altura = altura or int(largura * 9 / 16)
+    spp = spp or int(os.environ.get("CP_RENDER_SPP", 128))
+    try:
+        from . import render3d
+        return render3d.render(modelo, opcoes or {}, largura, altura, spp)
+    except ImportError:
+        return []
+
+
+def pagina_renders(renders, L, extra_pdf=None) -> bytes:
+    """Páginas A4 horizontais com os renders (legendas na língua do dossier)."""
+    import pymupdf
+    from .gros_oeuvre import _fontes
+    fr, fb = _fontes()
+    nomes = {"principal": "Загальний вигляд", "terraco": "Вигляд з боку тераси", "aerea": "Вигляд з висоти"}
+    d = pymupdf.open(stream=extra_pdf, filetype="pdf") if extra_pdf else pymupdf.open()
+    W, H = 841.89, 595.28
+    for i, (nome, png) in enumerate(renders):
+        pg = d.new_page(width=W, height=H)
+        pg.insert_font(fontname="cr", fontfile=fr)
+        pg.insert_font(fontname="cb", fontfile=fb)
+        pg.draw_rect(pymupdf.Rect(0, 0, W, H), color=None, fill=(0.10, 0.11, 0.12))
+        pg.insert_image(pymupdf.Rect(28, 52, W - 28, 52 + (W - 56) * 9 / 16), stream=png)
+        tit = L("Візуалізація 3D") + " — " + L(nomes.get(nome, nome))
+        pg.insert_text((28, 36), tit, fontname="cb", fontsize=14, color=(1, 1, 1))
+        pg.insert_text((28, H - 18), L("Згенеровано з моделі робочих креслень (Mitsuba 3, трасування шляхів, фізичне сонце й небо). "
+                                      "Геометрія — за кресленнями; фасади, прорізи та озеленення — орієнтовні."), fontname="cr", fontsize=7.5,
+                       color=(0.75, 0.75, 0.75))
+    return d.tobytes(garbage=3, deflate=True)

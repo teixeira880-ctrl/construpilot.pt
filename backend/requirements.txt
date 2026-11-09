@@ -180,3 +180,5 @@ weasyprint==70.0
 
 # BET-PT motores (calc_lots, edificio_ba)
 matplotlib==3.11.2
+mitsuba==3.9.1
+drjit==1.5.0

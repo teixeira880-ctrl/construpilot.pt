@@ -1,7 +1,12 @@
 """Ferramentas do Assistente (PT): esquemas estritos e execução de cada motor."""
 import json
 
+import os
+
 import pytest
+
+os.environ.setdefault("CP_RENDER_SPP", "2")
+os.environ.setdefault("CP_RENDER_W", "160")
 
 from engines.calc_lots import outils as O
 

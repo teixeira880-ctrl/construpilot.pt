@@ -148,6 +148,12 @@ def clt_rigidez(camadas_mm, kmod=0.8, gm=1.25, produto=None, especie=None, n_tab
             "produto": pr}
 
 
+def _clt_candidatos(h_min_mm):
+    """Composições correntes (tábuas 20-43 mm, âmbito das ETA de CLT), da mais fina para a mais espessa, ≥ h_min."""
+    c = [[t] * 5 for t in (28, 30, 32, 34, 36, 38, 40, 42)] + [[t] * 7 for t in (30, 32, 34, 36, 38, 40, 42)]
+    return sorted((x for x in c if sum(x) >= h_min_mm - 1e-6), key=lambda x: (sum(x), len(x)))
+
+
 def clt_painel(lj, vao, kmod=0.8):
     from engines.bet_clt_ua.engine import panel
     from engines.bet_clt_ua.schema import Panel
@@ -318,7 +324,21 @@ def verificar(m: dict) -> dict:
     # --- painéis CLT (vão de cálculo indicado)
     for lj in m.get("lajes") or []:
         if lj.get("tipo") == "clt" and lj.get("vao_m"):
-            reg("painel CLT", lj, clt_painel(lj, float(lj["vao_m"])))
+            r, orig = clt_painel(lj, float(lj["vao_m"])), None
+            if not _ok(r["controles"]) and ajustar:
+                cam0 = lj.get("camadas_mm") or [round(float(lj["espessura_m"]) * 1000 / 5, 1)] * 5
+                orig = f"CLT {sum(cam0):g} ({len(cam0)} camadas) — taxa {(_taxa(r['controles']) or 0) * 100:.0f} %"
+                for cam in _clt_candidatos(sum(cam0)):
+                    rr = clt_painel(dict(lj, camadas_mm=cam, espessura_m=sum(cam) / 1000), float(lj["vao_m"]))
+                    if bom([c for c in rr["controles"] if c.get("lib") != "Âmbito ETA"]):
+                        r = rr
+                        lj.update(camadas_mm=cam, espessura_m=sum(cam) / 1000,
+                                  descricao=(lj.get("descricao") or "").replace(f"{sum(cam0):g}-{len(cam0)}s", f"{sum(cam):g}-{len(cam)}s")
+                                  .replace(f"CLT {sum(cam0):g}", f"CLT {sum(cam):g}") or None)
+                        ajustes.append(f"Painel CLT {lj.get('ref') or ''} (vão {float(lj['vao_m']):g} m): {orig} → CLT {sum(cam):g} "
+                                       f"({len(cam)} camadas {'-'.join(f'{c:g}' for c in cam)}) — taxa {(_taxa(rr['controles']) or 0) * 100:.0f} %")
+                        break
+            reg("painel CLT", lj, r, orig)
     prods = {lj.get("produto") for lj in m.get("lajes") or [] if lj.get("tipo") == "clt" and lj.get("vao_m") and lj.get("produto")}
     if prods:
         from . import clt_produtos as CP
@@ -1024,13 +1044,121 @@ def planos(m: dict, ver: dict, data: str | None = None, lingua: str | None = Non
         _TR_CV.reset(tok)
 
 
+
+def _paredes_niveis(m):
+    """Paredes acima do pavimento agrupadas por cota de base → [(cota_base, [muros])]."""
+    cp = m.get("cota_pavimento_m") or 0.0
+    g = {}
+    for mu in m.get("muros") or []:
+        if mu.get("cota_base_m") is not None and mu["cota_base_m"] >= cp - 0.05:
+            g.setdefault(round(mu["cota_base_m"], 3), []).append(mu)
+    return sorted(g.items())
+
+
+def _f_paredes(doc, m, ver, fmt, s, k, n, tot, data, cota, muros, num):
+    fl = _Folha(doc, fmt)
+    nome = next((nv["nome"] for nv in m.get("niveis") or [] if abs(nv["cota_m"] - cota) < 0.05), _cota_txt(cota))
+    p, (x0, x1, y0, y1) = _base_planta(fl, m, s, f"{num} · PLANTA DE PAREDES PORTANTES — {nome.upper()}",
+                                       f"Paredes estruturais com espessura, material e comprimento de cada troço · escala 1:{k} · cotas em mm, níveis em m")
+    _paredes(p, muros, "espessura_m", BET)
+    xs, ys = set(), set()
+    for mu in muros:
+        e = float(mu.get("espessura_m") or 0.2)
+        mat = {"clt": "CLT", "gazobeton": "Газобетон", "tijolo": "Alvenaria", "alvenaria": "Alvenaria"}.get(mu.get("material"), "BA")
+        for (xa, ya), (xb, yb) in zip(mu["pontos"][:-1], mu["pontos"][1:]):
+            xs.update((xa, xb)); ys.update((ya, yb))
+            L = math.hypot(xb - xa, yb - ya)
+            if L < 0.3:
+                continue
+            mx, my = (xa + xb) / 2, (ya + yb) / 2
+            vert = abs(xa - xb) < 1e-6
+            lab = f"{mat} {_mm(e)} · L {_mm(L)}"
+            p.txt(mx + (e / 2 + 0.28 if vert else 0), my + (0 if vert else e / 2 + 0.14), lab, 6.8, CASTANHO, True, rot=90 if vert else 0)
+    p.cota_h(y0 - 2.4, sorted(xs), 6.5)
+    p.cota_v(x1 + 2.4, sorted(ys), 6.5)
+    tops = sorted({mu["cota_topo_m"] for mu in muros})
+    p.nivel(x0 + 0.6, y0 + 0.6, f"base {_cota_txt(cota)} · topo {' / '.join(_cota_txt(t) for t in tops)}")
+    xl = _lado(fl)
+    tot_L = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for mu in muros for a, b in zip(mu["pontos"][:-1], mu["pontos"][1:]))
+    area = sum(math.hypot(b[0] - a[0], b[1] - a[1]) * (mu["cota_topo_m"] - mu["cota_base_m"]) for mu in muros for a, b in zip(mu["pontos"][:-1], mu["pontos"][1:]))
+    vol = sum(math.hypot(b[0] - a[0], b[1] - a[1]) * (mu["cota_topo_m"] - mu["cota_base_m"]) * float(mu.get("espessura_m") or 0.2)
+              for mu in muros for a, b in zip(mu["pontos"][:-1], mu["pontos"][1:]))
+    y = fl.tabela(xl, 140, ["Grandeza", "Valor"], [["Comprimento total de paredes", f"{_c(tot_L, 2)} m"], ["Área bruta de paredes", f"{_c(area, 1)} m²"],
+                                                 ["Volume bruto", f"{_c(vol, 2)} m³"], ["Altura", f"{_c(tops[-1] - cota, 2)} m"]], [300, 200])
+    fl.caixa(xl, y + 20, 610, "Notas: vãos de portas e janelas conforme o projeto de arquitetura (não representados); ligações parede / laje e parede / "
+             "fundação com cantoneiras e chapas perfuradas conforme ETA dos ligadores; juntas entre painéis com tira de contraplacado e parafusos.", 8)
+    fl.cartucho(m.get("projeto") or "—", m.get("local") or "—", f"Gros-œuvre — paredes {nome.lower()}", num, n, tot, f"1:{k}", data)
+
+
+def _f_alcados(doc, m, fmt, s, k, n, tot, data, num):
+    """Alçados das quatro fachadas a partir das paredes, lajes e níveis do modelo."""
+    zr = _zrange(m)
+    if not zr:
+        return
+    zmin, zmax = zr
+    fl = _Folha(doc, fmt)
+    fl.t(40, 52, f"{num} · ALÇADOS ESTRUTURAIS COTADOS", 20, VERDE, True)
+    fl.t(40, 74, f"Volumes das paredes portantes, lajes e coberturas, com níveis absolutos · escala 1:{k}", 10, CINZA)
+    cp = m.get("cota_pavimento_m") or 0.0
+    vistas = [("SUL / ПІВДЕНЬ", "x", 0, False), ("NORTE / ПІВНІЧ", "x", 1, True), ("OESTE / ЗАХІД", "y", 0, True), ("ESTE / СХІД", "y", 1, False)]
+    larg = max(g["pos_m"] for g in m["grelhas_x"]) - min(g["pos_m"] for g in m["grelhas_x"])
+    prof = max(g["pos_m"] for g in m["grelhas_y"]) - min(g["pos_m"] for g in m["grelhas_y"])
+    W_av = fl.W - 120
+    alt = (zmax - min(zmin, cp - 0.5) + 3.5)
+    if (max(larg, prof) + 5) * s * 2 > W_av or alt * s * 2 > fl.H - 330:      # 2 × 2 não cabe → 1:100
+        s, k = s / 2, k * 2
+        fl.t(40, 90, f"(alçados a 1:{k})", 9, CINZA)
+    col_w = (max(larg, prof) + 5) * s
+    ncol = max(1, min(2, int(W_av // col_w)))
+    for i, (nome, eixo, lado, inv) in enumerate(vistas):
+        L = larg if eixo == "x" else prof
+        cx = 60 + (i % ncol) * col_w + 2.5 * s
+        cy = 120 + (i // ncol) * (alt * s)
+        p = _Pl(fl, cx, cy + (zmax + 0.8) * s, s)
+        u0 = min(g["pos_m"] for g in (m["grelhas_x"] if eixo == "x" else m["grelhas_y"]))
+        U = (lambda u: (u0 + L - (u - u0)) if inv else u)
+        # terreno
+        p.lin([(U(u0) - 1.5 if not inv else U(u0 + L) - 1.5, cp - 0.15), (U(u0 + L) + 1.5 if not inv else U(u0) + 1.5, cp - 0.15)], (0.35, 0.25, 0.15), 1.2)
+        for mu in m.get("muros") or []:
+            if mu.get("cota_topo_m") is None or mu["cota_topo_m"] <= cp:
+                continue
+            us = [pt[0] if eixo == "x" else pt[1] for pt in mu["pontos"]]
+            a, b = U(min(us)), U(max(us))
+            fill = MURO_FILL.get(mu.get("material"), BET)
+            p.rect(min(a, b), max(mu["cota_base_m"], cp - 0.15), max(a, b), mu["cota_topo_m"], (0.25, 0.25, 0.25), fill, 0.7)
+        for lj in m.get("lajes") or []:
+            if lj.get("piso") == "fundacao":
+                continue
+            ua, ub = (lj["x0_m"], lj["x1_m"]) if eixo == "x" else (lj["y0_m"], lj["y1_m"])
+            zt = lj.get("cota_topo_m") if lj.get("cota_topo_m") is not None else max(lj.get("cota_topo_ini_m") or 0, lj.get("cota_topo_fim_m") or 0)
+            e = float(lj.get("espessura_m") or 0.2) + float(lj.get("isolamento_m") or 0)
+            p.rect(min(U(ua), U(ub)), zt - float(lj.get("espessura_m") or 0.2), max(U(ua), U(ub)), zt + float(lj.get("isolamento_m") or 0),
+                   CASTANHO, (0.80, 0.62, 0.38), 0.6)
+        zs = sorted({round(nv["cota_m"], 3) for nv in m.get("niveis") or [] if nv["cota_m"] >= cp - 0.01} |
+                    {round(mu["cota_topo_m"], 3) for mu in m.get("muros") or [] if mu.get("cota_topo_m") and mu["cota_topo_m"] > cp} |
+                    {round(lj["cota_topo_m"] + float(lj.get("isolamento_m") or 0), 3) for lj in m.get("lajes") or [] if lj.get("cota_topo_m") and lj["cota_topo_m"] > cp})
+        p.cota_v(min(U(u0), U(u0 + L)) - 1.0, [cp] + [z for z in zs if z > cp], 6.3)
+        last = -1e9
+        for z in zs:
+            if (z - last) * s < 11:
+                continue
+            p.nivel(max(U(u0), U(u0 + L)) + 0.6, z, _cota_txt(z), 6.8)
+            last = z
+        p.cota_h(cp - 0.9, [U(g["pos_m"]) for g in (m["grelhas_x"] if eixo == "x" else m["grelhas_y"])], 6.3)
+        q = p.P(U(u0 + L / 2) if not inv else U(u0 + L / 2), max(zs + [cp]) + 0.9)
+        fl.t(q[0], q[1], f"ALÇADO {nome}", 10, VERDE, True, centrado=True)
+    fl.cartucho(m.get("projeto") or "—", m.get("local") or "—", "Gros-œuvre — alçados", num, n, tot, f"1:{k}", data)
+    fl.escala_grafica(60, fl.H - 70, s)
+
+
 def _planos(m: dict, ver: dict, data: str | None = None) -> bytes:
     import pymupdf
     from datetime import date
     data = data or date.today().strftime("%d/%m/%Y")
     fmt, s, k = _escala(m)
     pisos = [pz for pz in ("pavimento", "cobertura") if any(e.get("piso") == pz for e in (m.get("vigas") or []) + (m.get("lajes") or []))]
-    tot = 1 + len(pisos) + (1 if _zrange(m) else 0) + 1
+    niv = _paredes_niveis(m)
+    tot = 1 + len(pisos) + (1 if _zrange(m) else 0) + 1 + len(niv) + (1 if niv and _zrange(m) else 0)
     doc = pymupdf.open()
     i = 1
     _f_fund(doc, m, ver, fmt, s, k, i, tot, data)
@@ -1043,6 +1171,12 @@ def _planos(m: dict, ver: dict, data: str | None = None) -> bytes:
         _f_cortes(doc, m, fmt, s, k, i, tot, data)
     i += 1
     _f_quadros(doc, m, ver, i, tot, data)
+    for j, (cota, mus) in enumerate(niv):
+        i += 1
+        _f_paredes(doc, m, ver, fmt, s, k, i, tot, data, cota, mus, f"GO-{6 + j:02d}")
+    if niv and _zrange(m):
+        i += 1
+        _f_alcados(doc, m, fmt, s, k, i, tot, data, f"GO-{6 + len(niv):02d}")
     return doc.tobytes(garbage=3, deflate=True)
 
 

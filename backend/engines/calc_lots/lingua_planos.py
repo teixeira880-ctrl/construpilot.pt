@@ -55,13 +55,24 @@ _UK = {
     "sapata contínua": "стрічк. фундамент", "Sapata contínua": "Стрічковий фундамент", "sapata": "фундамент", "Sapata": "Фундамент",
     "viga": "балка", "Viga": "Балка", "pilar": "колона", "Pilar": "Колона", "laje": "плита",
     "vão": "проліт", "taxa": "викор.",
-    "Painel CLT (motor bet_clt_ua)": "Панель CLT (модуль bet_clt_ua)", "painel CLT": "панель CLT",
+    "Painel CLT (motor bet_clt_ua)": "Панель CLT (модуль bet_clt_ua)", "painel CLT": "панель CLT", "Painel CLT": "Панель CLT",
+    " camadas": " шарів",
     "Painéis CLT: propriedades C24 típicas (EN 338 / EN 16351, f_r,k 1,1 MPa, G_R 50 MPa) — substituir pelos valores da ETA do fabricante; vibração dos pavimentos (NP EN 1995-1-1 §7.3), ligações, estabilidade lateral e fogo não verificados aqui":
         "Панелі CLT: типові властивості C24 (EN 338 / EN 16351, f_r,k 1,1 МПа, G_R 50 МПа) — замінити значеннями ETA виробника; вібрацію перекриттів (EN 1995-1-1 §7.3), вузли, просторову стійкість і вогнестійкість тут не перевірено",
     "; vibração, ligações, estabilidade lateral, integridade e isolamento ao fogo (E, I) não verificados aqui":
         "; вібрацію, вузли, просторову стійкість, цілісність і теплоізоляцію при пожежі (E, I) тут не перевірено",
     ": valores declarados na ": ": задекларовані значення за ", "f_R,k pela figura 3 da ETA": "f_R,k за рис. 3 ETA",
     "carbonização": "обвуглювання", "Painéis ": "Панелі ", " MPa": " МПа",
+    "PLANTA DE PAREDES PORTANTES": "ПЛАН НЕСУЧИХ СТІН", "Paredes estruturais com espessura, material e comprimento de cada troço":
+        "Несучі стіни: товщина, матеріал і довжина кожної ділянки", "ALÇADOS ESTRUTURAIS COTADOS": "ФАСАДИ З ПОЗНАЧКАМИ",
+    "Volumes das paredes portantes, lajes e coberturas, com níveis absolutos": "Об'єми несучих стін, перекриттів і покриттів з абсолютними позначками",
+    "ALÇADO ": "ФАСАД ", "SUL / ПІВДЕНЬ": "ПІВДЕННИЙ", "NORTE / ПІВНІЧ": "ПІВНІЧНИЙ", "OESTE / ЗАХІД": "ЗАХІДНИЙ", "ESTE / СХІД": "СХІДНИЙ",
+    "Gros-œuvre — paredes ": "Несучі конструкції — стіни ", "Gros-œuvre — alçados": "Несучі конструкції — фасади",
+    "Comprimento total de paredes": "Загальна довжина стін", "Área bruta de paredes": "Площа стін (брутто)", "Volume bruto": "Об'єм (брутто)",
+    "Grandeza": "Показник", "Valor": "Значення", "Altura": "Висота", "base ": "низ ", " · topo ": " · верх ", "Alvenaria": "Кладка",
+    "Notas: vãos de portas e janelas conforme o projeto de arquitetura (não representados); ligações parede / laje e parede / fundação com cantoneiras e chapas perfuradas conforme ETA dos ligadores; juntas entre painéis com tira de contraplacado e parafusos.":
+        "Примітки: дверні та віконні прорізи — за архітектурним проєктом (не показані); вузли стіна / перекриття і стіна / фундамент — кутики та перфоровані пластини за ETA кріплень; стики панелей — смуга фанери та шурупи.",
+    "(alçados a 1:": "(фасади в масштабі 1:",
 }
 
 _EN = {
@@ -104,13 +115,24 @@ _EN = {
     "Laje de BA armada em duas direções": "Two-way RC slab", "Sapata contínua (por metro)": "Strip footing (per metre)", "Sapata isolada": "Pad footing",
     "sapata contínua": "strip footing", "Sapata contínua": "Strip footing", "sapata": "footing", "Sapata": "Footing",
     "viga": "beam", "Viga": "Beam", "pilar": "column", "Pilar": "Column", "laje": "slab", "vão": "span", "taxa": "util.",
-    "Painel CLT (motor bet_clt_ua)": "CLT panel (bet_clt_ua engine)", "painel CLT": "CLT panel",
+    "Painel CLT (motor bet_clt_ua)": "CLT panel (bet_clt_ua engine)", "painel CLT": "CLT panel", "Painel CLT": "CLT panel",
+    " camadas": " layers",
     "Painéis CLT: propriedades C24 típicas (EN 338 / EN 16351, f_r,k 1,1 MPa, G_R 50 MPa) — substituir pelos valores da ETA do fabricante; vibração dos pavimentos (NP EN 1995-1-1 §7.3), ligações, estabilidade lateral e fogo não verificados aqui":
         "CLT panels: typical C24 properties (EN 338 / EN 16351, f_r,k 1.1 MPa, G_R 50 MPa) — replace with the manufacturer's ETA values; floor vibration (EN 1995-1-1 §7.3), connections, lateral stability and fire not checked here",
     "; vibração, ligações, estabilidade lateral, integridade e isolamento ao fogo (E, I) não verificados aqui":
         "; vibration, connections, lateral stability, fire integrity and insulation (E, I) not checked here",
     ": valores declarados na ": ": declared values from ", "f_R,k pela figura 3 da ETA": "f_R,k from ETA figure 3",
     "carbonização": "charring", "Painéis ": "Panels ",
+    "PLANTA DE PAREDES PORTANTES": "LOAD-BEARING WALL PLAN", "ALÇADOS ESTRUTURAIS COTADOS": "DIMENSIONED STRUCTURAL ELEVATIONS", "ALÇADO ": "ELEVATION ",
+    "Gros-œuvre — paredes ": "Structure — walls ", "Gros-œuvre — alçados": "Structure — elevations",
+    "SUL / ПІВДЕНЬ": "SOUTH", "NORTE / ПІВНІЧ": "NORTH", "OESTE / ЗАХІД": "WEST", "ESTE / СХІД": "EAST",
+    "Paredes estruturais com espessura, material e comprimento de cada troço": "Load-bearing walls: thickness, material and length of each segment",
+    "Volumes das paredes portantes, lajes e coberturas, com níveis absolutos": "Load-bearing walls, floors and roofs with absolute levels",
+    "Comprimento total de paredes": "Total wall length", "Área bruta de paredes": "Gross wall area", "Volume bruto": "Gross volume",
+    "Grandeza": "Quantity", "Valor": "Value", "Altura": "Height", "base ": "base ", " · topo ": " · top ", "Alvenaria": "Masonry", "Газобетон": "AAC",
+    "Notas: vãos de portas e janelas conforme o projeto de arquitetura (não representados); ligações parede / laje e parede / fundação com cantoneiras e chapas perfuradas conforme ETA dos ligadores; juntas entre painéis com tira de contraplacado e parafusos.":
+        "Notes: door and window openings per the architectural design (not shown); wall / floor and wall / foundation connections with angle brackets and perforated plates per the fasteners' ETA; panel joints with plywood spline and screws.",
+    "(alçados a 1:": "(elevations at 1:",
 }
 
 TRADUCOES = {"uk": _UK, "en": _EN}

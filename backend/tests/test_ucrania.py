@@ -1,7 +1,12 @@
 """Módulo Ucrânia: ДБН В.2.6-31:2021 (Rq,min por zona), ДБН В.1.2-2:2006 (neve / vento), perdas, gros-œuvre com planos em ucraniano."""
 import json
 
+import os
+
 import pytest
+
+os.environ.setdefault("CP_RENDER_SPP", "2")
+os.environ.setdefault("CP_RENDER_W", "160")
 
 pytest.importorskip("reportlab")
 pymupdf = pytest.importorskip("pymupdf")
@@ -35,7 +40,7 @@ def test_exemplo_kyiv_completo():
     assert 4000 < r["phi_w"] < 9000 and 60 < r["q_kwh_m2"] < 160
     assert o["go"]["verificacao"]["conforme"]
     d = pymupdf.open(stream=o["pdf"], filetype="pdf")
-    t0, tp = d[0].get_text(), "".join(d[i].get_text() for i in range(len(d)))
+    t0, tp = d[0].get_text() + d[1].get_text(), "".join(d[i].get_text() for i in range(len(d)))   # [0] = capa premium
     assert "Київ" in t0 and "Summary (English)" in t0 and "ДБН В.2.6-31:2021" in t0
     assert "ПЛАН ФУНДАМЕНТІВ З РОЗМІРАМИ" in tp and "РОЗРІЗ" in tp and "10000" in tp
     assert "Sapata" not in tp and "CORTE" not in tp                    # nada em português nas peças ucranianas

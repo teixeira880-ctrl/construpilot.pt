@@ -57,7 +57,16 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
                "illustrative": False, "calc_note": name, "download": f"/assistant/artifacts/{aid}/content"}
         await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)
         docs.append({k: doc[k] for k in ("artifact_id", "title", "filename", "format", "kind", "mime", "size", "download")})
-    return {"ok": True, "artifact": docs[0], "preview_artifact": docs[1], "resume": out["resume"], "data": out["data"],
+    extra = []
+    for j, (lab, titre_x, data) in enumerate(out.get("pdf_extra") or []):          # dossiers adicionais (p.ex. versão inglesa)
+        aid = "file_" + digest + f"e{j + 1}"
+        doc = {"artifact_id": aid, "user_id": uid, "conversation_id": cid, "request_id": rid, "title": titre_x, "body": out["resume"],
+               "filename": f"ConstruPilot_{lab}_{_slug(titre_x)}_{day}.pdf", "format": "pdf", "kind": "calc_note", "mime": MIME["pdf"],
+               "size": len(data), "data_b64": base64.b64encode(data).decode(), "source_artifact_ids": [], "created_at": now,
+               "illustrative": False, "calc_note": name, "download": f"/assistant/artifacts/{aid}/content"}
+        await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)
+        extra.append({k: doc[k] for k in ("artifact_id", "title", "filename", "format", "kind", "mime", "size", "download")})
+    return {"ok": True, "artifact": docs[0], "preview_artifact": docs[1], "extra_artifacts": extra, "resume": out["resume"], "data": out["data"],
             "note": "Nota de cálculo produzida pelos motores determinísticos. Restitui os resultados-chave, as não conformidades e as hipóteses "
                     "a validar; não recalcules."}
 
