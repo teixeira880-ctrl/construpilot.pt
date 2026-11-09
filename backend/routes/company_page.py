@@ -43,9 +43,10 @@ class PageIn(BaseModel):
 
 async def pdf_customization(user_id: str) -> dict:
     u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "brand_header_text": 1, "brand_footer_text": 1,
-                                                       "brand_accent_color": 1, "brand_doc_layout": 1}) or {}
+                                                       "brand_accent_color": 1, "brand_doc_layout": 1, "brand_logo_plate": 1}) or {}
     return {"header_text": u.get("brand_header_text"), "footer_text": u.get("brand_footer_text"),
-            "accent_color": u.get("brand_accent_color"), "doc_layout": u.get("brand_doc_layout")}
+            "accent_color": u.get("brand_accent_color"), "doc_layout": u.get("brand_doc_layout"),
+            "logo_plate": bool(u.get("brand_logo_plate"))}
 
 
 def _public_payload(u: dict) -> dict:

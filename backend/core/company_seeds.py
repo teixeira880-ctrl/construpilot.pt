@@ -21,10 +21,15 @@ LOGO_DIR = Path(__file__).resolve().parent.parent / "data" / "company_logos"
 
 COMPANIES = [
     {
-        "seed_version": 1,
-        "email": "office@clt-rezult.com",
+        "seed_version": 2,
+        # Conta de DEMONSTRAÇÃO : login fictício num domínio ConstruPilot (ninguém de fora recebe e-mails).
+        "email": "clt-rezult.demo@construpilot.pt",
+        "legacy_emails": ["office@clt-rezult.com"],
+        # PDFs idênticos aos da CM RENOV : mesmo nível de conta e mesmo modelo de documento.
+        "style_from_email": "contact@cmrenov.com",
+        "style_defaults": {"account_type": "pro_business", "brand_doc_layout": "detaille", "kyc_status": "verified"},
         "name": "CLT Rezult",
-        "account_type": "pro",
+        "account_type": "pro_business",
         "lang": "pt",
         "logo_file": "clt-rezult.png",
         "temp_password_env": "CLT_REZULT_TEMP_PASSWORD",
@@ -39,6 +44,7 @@ COMPANIES = [
             "brand_country": "UA",
             "brand_contact_line": "+380 50 402 00 50 · office@clt-rezult.com · clt-rezult.com",
             "brand_accent_color": "#E21411",
+            "brand_logo_plate": True,
             "brand_tagline": "Painéis de madeira lamelada cruzada (CLT) — o primeiro e único fabricante na Ucrânia",
             "brand_description": (
                 "A CLT Rezult é o primeiro e único fabricante e fornecedor de painéis multicamada "
@@ -86,6 +92,16 @@ async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
         try:
             user = await db.users.find_one({"email": email}, {"_id": 0})
             if not user:
+                # Migration : compte créé avant avec un ancien e-mail -> on le renomme (pas de doublon).
+                for old in c.get("legacy_emails") or []:
+                    legacy = await db.users.find_one({"email": old.lower()}, {"_id": 0})
+                    if legacy:
+                        await db.users.update_one({"user_id": legacy["user_id"]}, {"$set": {"email": email}})
+                        await db.user_sessions.delete_many({"user_id": legacy["user_id"]})
+                        user = {**legacy, "email": email}
+                        summary[email] = f"renamed_from:{old}"
+                        break
+            if not user:
                 user = {"email": email, "name": c["name"], "role": "user", "plan": "free",
                         "account_type": c["account_type"], "lang": c["lang"],
                         "password_hash": None, "auth_provider": "password", "picture": None,
@@ -93,7 +109,7 @@ async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
                         "provisioned_by_admin": True, "created_at": now}
                 await db.users.insert_one(dict(user))
                 summary[email] = "created"
-            else:
+            elif email not in summary:
                 summary[email] = "exists"
             # Palavra-passe provisória (só via env, nunca no código) : posée UNIQUEMENT si le
             # compte n'a encore aucun mot de passe ; jamais de réécriture d'un mot de passe existant.
@@ -113,7 +129,16 @@ async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
             logo = _logo_data_url(c["logo_file"])
             if logo:
                 upd["brand_logo_b64"] = logo
-            if user.get("account_type") not in ("pro", "pro_business"):
+            # Style des PDF : copié du compte de référence (CM RENOV) s'il existe, sinon valeurs par défaut.
+            style = dict(c.get("style_defaults") or {})
+            if c.get("style_from_email"):
+                ref = await db.users.find_one({"email": c["style_from_email"]},
+                                              {"_id": 0, "account_type": 1, "brand_doc_layout": 1, "kyc_status": 1})
+                for k, v in (ref or {}).items():
+                    if v and k in ("brand_doc_layout", "kyc_status"):
+                        style[k] = v
+            upd.update(style)
+            if not upd.get("account_type"):
                 upd["account_type"] = c["account_type"]
             upd["company_seed_version"] = c["seed_version"]
             await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
