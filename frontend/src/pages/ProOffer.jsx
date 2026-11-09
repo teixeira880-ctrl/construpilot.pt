@@ -57,7 +57,7 @@ export default function ProOffer() {
     <div className="grid gap-16 pb-20" data-testid="pro-offer-page">
       <SEO
         title="Oferta Pro ConstruPilot — software de orçamentos e medições para profissionais da construção"
-        description="Passe ao Pro: orçamentos para clientes, medição em planta, orçamentação por especialidade, cálculo de escadas e projetos multinível. Experiência gratuita de 7 dias, depois 149 €/mês. Sem fidelização."
+        description="Passe ao Pro: orçamentos para clientes, medição em planta, orçamentação por especialidade, cálculo de escadas e projetos multinível. Planos profissionais desde 99 €/mês + IVA (Solo), Professional 249 €, Business 599 €. Sem fidelização."
         keywords="software orçamentos profissional, medições construção, orçamentação por especialidade, subscrição pro construpilot, experiência gratuita orçamentos"
         canonical="/pro"
       />

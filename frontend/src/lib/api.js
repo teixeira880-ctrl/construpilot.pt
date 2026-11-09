@@ -1,4 +1,5 @@
 import axios from "axios";
+import { currentMarket } from "@/lib/market";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -76,3 +77,28 @@ export async function waitPlanJob(jobId, { onProgress, timeoutMs = 20 * 60 * 100
     if (Date.now() - started > timeoutMs) throw new Error("Análise demasiado longa — tente novamente");
   }
 }
+
+// Offres commerciales : limite de l'offre atteinte (HTTP 402 code "plan_limit_reached").
+// Message unique et localisé, avec lien vers la page tarifs. Les autres 402 restent gérés par les écrans.
+api.interceptors.response.use(undefined, (error) => {
+  try {
+    const d = error?.response?.data?.detail;
+    if (error?.response?.status === 402 && d && d.code === "plan_limit_reached") {
+      const pt = currentMarket() === "pt";
+      const res = {
+        active_projects: pt ? "projetos ativos" : "projets actifs",
+        pages_monthly: pt ? "páginas técnicas deste mês" : "pages techniques du mois",
+        seats: pt ? "utilizadores" : "utilisateurs",
+        storage_bytes: pt ? "armazenamento" : "stockage",
+      }[d.resource] || d.resource;
+      const msg = pt
+        ? `Limite do seu plano atingido (${res}). Os seus dados continuam acessíveis.`
+        : `Limite de votre offre atteinte (${res}). Vos données restent accessibles.`;
+      import("sonner").then(({ toast }) => toast.warning(msg, {
+        id: "plan-limit", duration: 9000,
+        action: { label: pt ? "Ver planos" : "Voir les offres", onClick: () => { window.location.href = pt ? "/planos" : "/tarifs"; } },
+      }));
+    }
+  } catch { /* jamais bloquant */ }
+  return Promise.reject(error);
+});

@@ -425,6 +425,7 @@ function AppRouter() {
       <Route path="/analyse/:planId" element={<ProRoute><Shell><PlanAnalysis /></Shell></ProRoute>} />
       <Route path="/mentions-legales" element={<Shell><MentionsLegales /></Shell>} />
       <Route path="/confidentialite" element={<Shell><Confidentialite /></Shell>} />
+      <Route path="/privacidade" element={<Shell><Confidentialite /></Shell>} />
       <Route path="/privacy" element={<Shell><AppPrivacy /></Shell>} />
       <Route path="/app-privacy" element={<Shell><AppPrivacy /></Shell>} />
       <Route path="/confidentialite-apps" element={<Shell><AppPrivacy /></Shell>} />

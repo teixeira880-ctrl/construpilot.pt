@@ -43,6 +43,8 @@ async def _get(project_id: str, user: dict):
 
 @router.post("")
 async def create_project(body: ProjectIn, user=Depends(current_user)):
+    from engines import usage_meter
+    await usage_meter.check_new_project(user)
     est = body.estimation
     if not est:
         est = estimation.estimate(body.project_type, body.surface, body.finish_level, body.country,

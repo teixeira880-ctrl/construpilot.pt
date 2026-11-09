@@ -1,0 +1,525 @@
+{
+ "market": "pt",
+ "annual_discount_pct": 15,
+ "plans": [
+  {
+   "key": "solo",
+   "highlight": false,
+   "checkout": true,
+   "limits": {
+    "seats": 1,
+    "active_projects": 10,
+    "pages_monthly": 100,
+    "storage_bytes": 10737418240
+   },
+   "limits_are_reference": false,
+   "features": [
+    {
+     "key": "pdf_import",
+     "status": "available"
+    },
+    {
+     "key": "dwg_dxf_import",
+     "status": "available"
+    },
+    {
+     "key": "ai_plan_reading",
+     "status": "available"
+    },
+    {
+     "key": "takeoff",
+     "status": "available"
+    },
+    {
+     "key": "quotes",
+     "status": "available"
+    },
+    {
+     "key": "price_library",
+     "status": "available"
+    },
+    {
+     "key": "manual_edit",
+     "status": "available"
+    },
+    {
+     "key": "export_pdf_excel",
+     "status": "available"
+    },
+    {
+     "key": "project_history",
+     "status": "available"
+    },
+    {
+     "key": "support_email",
+     "status": "available"
+    }
+   ],
+   "inherits": null,
+   "price": {
+    "currency": "EUR",
+    "tax": "excl",
+    "month_cents": 9900,
+    "year_cents": 100980,
+    "year_monthly_equiv_cents": 8415
+   }
+  },
+  {
+   "key": "professional",
+   "highlight": true,
+   "checkout": true,
+   "limits": {
+    "seats": 5,
+    "active_projects": 50,
+    "pages_monthly": 750,
+    "storage_bytes": 107374182400
+   },
+   "limits_are_reference": false,
+   "features": [
+    {
+     "key": "pdf_import",
+     "status": "available"
+    },
+    {
+     "key": "dwg_dxf_import",
+     "status": "available"
+    },
+    {
+     "key": "ai_plan_reading",
+     "status": "available"
+    },
+    {
+     "key": "takeoff",
+     "status": "available"
+    },
+    {
+     "key": "quotes",
+     "status": "available"
+    },
+    {
+     "key": "price_library",
+     "status": "available"
+    },
+    {
+     "key": "manual_edit",
+     "status": "available"
+    },
+    {
+     "key": "export_pdf_excel",
+     "status": "available"
+    },
+    {
+     "key": "project_history",
+     "status": "available"
+    },
+    {
+     "key": "support_email",
+     "status": "available"
+    },
+    {
+     "key": "advanced_takeoff",
+     "status": "available"
+    },
+    {
+     "key": "advanced_quotes",
+     "status": "available"
+    },
+    {
+     "key": "revision_compare",
+     "status": "beta"
+    },
+    {
+     "key": "clients_crm",
+     "status": "available"
+    },
+    {
+     "key": "proposals",
+     "status": "available"
+    },
+    {
+     "key": "quote_branding",
+     "status": "available"
+    },
+    {
+     "key": "collaboration",
+     "status": "available"
+    },
+    {
+     "key": "site_basic",
+     "status": "available"
+    },
+    {
+     "key": "cost_margin_reports",
+     "status": "available"
+    },
+    {
+     "key": "change_history",
+     "status": "available"
+    },
+    {
+     "key": "support_priority",
+     "status": "available"
+    }
+   ],
+   "inherits": "solo",
+   "price": {
+    "currency": "EUR",
+    "tax": "excl",
+    "month_cents": 24900,
+    "year_cents": 253980,
+    "year_monthly_equiv_cents": 21165
+   }
+  },
+  {
+   "key": "business",
+   "highlight": false,
+   "checkout": true,
+   "limits": {
+    "seats": 15,
+    "active_projects": 200,
+    "pages_monthly": 3000,
+    "storage_bytes": 536870912000
+   },
+   "limits_are_reference": false,
+   "features": [
+    {
+     "key": "pdf_import",
+     "status": "available"
+    },
+    {
+     "key": "dwg_dxf_import",
+     "status": "available"
+    },
+    {
+     "key": "ai_plan_reading",
+     "status": "available"
+    },
+    {
+     "key": "takeoff",
+     "status": "available"
+    },
+    {
+     "key": "quotes",
+     "status": "available"
+    },
+    {
+     "key": "price_library",
+     "status": "available"
+    },
+    {
+     "key": "manual_edit",
+     "status": "available"
+    },
+    {
+     "key": "export_pdf_excel",
+     "status": "available"
+    },
+    {
+     "key": "project_history",
+     "status": "available"
+    },
+    {
+     "key": "support_email",
+     "status": "available"
+    },
+    {
+     "key": "advanced_takeoff",
+     "status": "available"
+    },
+    {
+     "key": "advanced_quotes",
+     "status": "available"
+    },
+    {
+     "key": "revision_compare",
+     "status": "beta"
+    },
+    {
+     "key": "clients_crm",
+     "status": "available"
+    },
+    {
+     "key": "proposals",
+     "status": "available"
+    },
+    {
+     "key": "quote_branding",
+     "status": "available"
+    },
+    {
+     "key": "collaboration",
+     "status": "available"
+    },
+    {
+     "key": "site_basic",
+     "status": "available"
+    },
+    {
+     "key": "cost_margin_reports",
+     "status": "available"
+    },
+    {
+     "key": "change_history",
+     "status": "available"
+    },
+    {
+     "key": "support_priority",
+     "status": "available"
+    },
+    {
+     "key": "site_advanced",
+     "status": "available"
+    },
+    {
+     "key": "planned_vs_actual",
+     "status": "available"
+    },
+    {
+     "key": "team_management",
+     "status": "available"
+    },
+    {
+     "key": "role_permissions",
+     "status": "available"
+    },
+    {
+     "key": "business_dashboards",
+     "status": "available"
+    },
+    {
+     "key": "financial_tracking",
+     "status": "available"
+    },
+    {
+     "key": "budget_vs_execution",
+     "status": "available"
+    },
+    {
+     "key": "advanced_reports",
+     "status": "available"
+    },
+    {
+     "key": "multi_project",
+     "status": "available"
+    },
+    {
+     "key": "activity_audit",
+     "status": "available"
+    },
+    {
+     "key": "integrations",
+     "status": "beta"
+    },
+    {
+     "key": "assisted_onboarding",
+     "status": "available"
+    }
+   ],
+   "inherits": "professional",
+   "price": {
+    "currency": "EUR",
+    "tax": "excl",
+    "month_cents": 59900,
+    "year_cents": 610980,
+    "year_monthly_equiv_cents": 50915
+   }
+  },
+  {
+   "key": "enterprise",
+   "highlight": false,
+   "checkout": false,
+   "limits": {
+    "seats": 50,
+    "active_projects": 500,
+    "pages_monthly": 10000,
+    "storage_bytes": 2199023255552
+   },
+   "limits_are_reference": true,
+   "features": [
+    {
+     "key": "pdf_import",
+     "status": "available"
+    },
+    {
+     "key": "dwg_dxf_import",
+     "status": "available"
+    },
+    {
+     "key": "ai_plan_reading",
+     "status": "available"
+    },
+    {
+     "key": "takeoff",
+     "status": "available"
+    },
+    {
+     "key": "quotes",
+     "status": "available"
+    },
+    {
+     "key": "price_library",
+     "status": "available"
+    },
+    {
+     "key": "manual_edit",
+     "status": "available"
+    },
+    {
+     "key": "export_pdf_excel",
+     "status": "available"
+    },
+    {
+     "key": "project_history",
+     "status": "available"
+    },
+    {
+     "key": "support_email",
+     "status": "available"
+    },
+    {
+     "key": "advanced_takeoff",
+     "status": "available"
+    },
+    {
+     "key": "advanced_quotes",
+     "status": "available"
+    },
+    {
+     "key": "revision_compare",
+     "status": "beta"
+    },
+    {
+     "key": "clients_crm",
+     "status": "available"
+    },
+    {
+     "key": "proposals",
+     "status": "available"
+    },
+    {
+     "key": "quote_branding",
+     "status": "available"
+    },
+    {
+     "key": "collaboration",
+     "status": "available"
+    },
+    {
+     "key": "site_basic",
+     "status": "available"
+    },
+    {
+     "key": "cost_margin_reports",
+     "status": "available"
+    },
+    {
+     "key": "change_history",
+     "status": "available"
+    },
+    {
+     "key": "support_priority",
+     "status": "available"
+    },
+    {
+     "key": "site_advanced",
+     "status": "available"
+    },
+    {
+     "key": "planned_vs_actual",
+     "status": "available"
+    },
+    {
+     "key": "team_management",
+     "status": "available"
+    },
+    {
+     "key": "role_permissions",
+     "status": "available"
+    },
+    {
+     "key": "business_dashboards",
+     "status": "available"
+    },
+    {
+     "key": "financial_tracking",
+     "status": "available"
+    },
+    {
+     "key": "budget_vs_execution",
+     "status": "available"
+    },
+    {
+     "key": "advanced_reports",
+     "status": "available"
+    },
+    {
+     "key": "multi_project",
+     "status": "available"
+    },
+    {
+     "key": "activity_audit",
+     "status": "available"
+    },
+    {
+     "key": "integrations",
+     "status": "beta"
+    },
+    {
+     "key": "assisted_onboarding",
+     "status": "available"
+    },
+    {
+     "key": "multi_company",
+     "status": "roadmap"
+    },
+    {
+     "key": "departments",
+     "status": "roadmap"
+    },
+    {
+     "key": "enterprise_permissions",
+     "status": "roadmap"
+    },
+    {
+     "key": "enterprise_api",
+     "status": "roadmap"
+    },
+    {
+     "key": "erp_integrations",
+     "status": "roadmap"
+    },
+    {
+     "key": "custom_automations",
+     "status": "roadmap"
+    },
+    {
+     "key": "custom_config",
+     "status": "available"
+    },
+    {
+     "key": "dedicated_onboarding",
+     "status": "available"
+    },
+    {
+     "key": "account_manager",
+     "status": "available"
+    },
+    {
+     "key": "enterprise_support",
+     "status": "available"
+    },
+    {
+     "key": "contractual_sla",
+     "status": "available"
+    },
+    {
+     "key": "capacity_on_demand",
+     "status": "available"
+    }
+   ],
+   "inherits": "business"
+  }
+ ],
+ "checkout_open": false,
+ "demo": true
+}

@@ -508,6 +508,8 @@ async def org_invite(body: OrgInviteIn, user=Depends(current_user)) -> dict:
     if not org:
         raise HTTPException(404, "Organização não encontrada.")
 
+    from engines import usage_meter
+    await usage_meter.check_new_seat(user)
     invite_id = "inv_" + secrets.token_hex(6)
     invite = {
         "invite_id": invite_id, "org_id": org_id, "org_code": org["org_code"],

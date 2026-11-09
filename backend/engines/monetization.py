@@ -58,8 +58,11 @@ def _upsert_product(plan: dict, existing: dict):
 
 
 def _price_matches(price, plan: dict) -> bool:
-    return (price.unit_amount == plan["amount_cents"]
-            and price.currency == plan["currency"])
+    ok = (price.unit_amount == plan["amount_cents"]
+          and price.currency == plan["currency"])
+    if ok and plan.get("tax_behavior"):
+        ok = price.get("tax_behavior") == plan["tax_behavior"]
+    return ok
 
 
 def _upsert_price(plan: dict, prod):
@@ -82,6 +85,8 @@ def _upsert_price(plan: dict, prod):
     }
     if plan.get("interval"):
         kwargs["recurring"] = {"interval": plan["interval"]}
+    if plan.get("tax_behavior"):
+        kwargs["tax_behavior"] = plan["tax_behavior"]  # preços públicos sem IVA
     return stripe.Price.create(**kwargs)
 
 
@@ -109,10 +114,23 @@ async def ensure_stripe_catalog() -> None:
     for plan in plans:
         if not plan.get("lookup_key"):
             continue
+        # Ofertas comerciais 2026-11: nada é criado na Stripe antes de autorização explícita.
+        if plan.get("stripe_sync") is False and os.environ.get("COMMERCIAL_STRIPE_SYNC") != "true":
+            continue
         prod = _upsert_product(plan, existing)
         price = _upsert_price(plan, prod)
         await _persist_stripe_ids(plan, prod, price)
     logger.info(f"Stripe catalog synced ({len(plans)} plans)")
+
+
+async def ensure_plan_price(plan: dict) -> None:
+    """Cria/verifica Product + Price de UM plano (usado pelo checkout comercial, já protegido)."""
+    if not stripe.api_key:
+        raise RuntimeError("Stripe não configurado")
+    existing = _index_existing_products()
+    prod = _upsert_product(plan, existing)
+    price = _upsert_price(plan, prod)
+    await _persist_stripe_ids(plan, prod, price)
 
 
 # ---------- Customer & Checkout ----------
@@ -141,7 +159,7 @@ async def _resolve_price(lookup: str):
 
 
 def _plan_is_pro_tier(plan: dict) -> bool:
-    return plan.get("audience") == "pro" or plan["plan_id"].startswith("pro")
+    return plan.get("audience") in ("pro", "b2b") or plan["plan_id"].startswith("pro")
 
 
 async def _compute_trial_days(user: dict, plan: dict, is_sub: bool) -> tuple[int, int]:
@@ -220,7 +238,7 @@ async def _record_payment_transaction(session, price, plan: dict, user: dict,
 
 
 async def create_checkout(user: dict, plan: dict, origin_url: str,
-                          promo_code: str | None = None) -> dict:
+                          promo_code: str | None = None, extra: dict | None = None) -> dict:
     """Crée une Checkout Session Stripe pour le plan donné.
 
     Refactor iter53 : orchestration only — logique déléguée à des helpers.
@@ -243,6 +261,8 @@ async def create_checkout(user: dict, plan: dict, origin_url: str,
         bonus_days_consumed=bonus_days_consumed,
         promo_discount=promo_discount,
     ))
+    if extra:
+        kwargs.update(extra)
     session = stripe.checkout.Session.create(**kwargs)
     await _record_payment_transaction(session, price, plan, user,
                                        kwargs["mode"], bonus_days_consumed, origin_url)
@@ -385,14 +405,15 @@ async def grant_entitlement(user_id: str, plan: dict, payment_rec: dict) -> None
                     "active_audience": plan["audience"]}
     # Bascule automatique en compte Pro après souscription d'un plan Pro
     # (accès immédiat ; le KYC SIRET/K-bis reste vérifié en parallèle).
-    if plan.get("audience") == "pro":
-        pro_type = "pro_business" if plan["plan_id"].startswith("pro_business") else "pro"
+    if plan.get("audience") in ("pro", "b2b"):
+        from engines.commercial_plans import tier_for_plan_id
+        pro_type = "pro_business" if tier_for_plan_id(plan["plan_id"]) == "pro_business" else "pro"
         user_updates["account_type"] = pro_type
         if user and user.get("account_type") == "particulier":
             user_updates["upgraded_from_particulier_at"] = now.isoformat()
     await db.users.update_one({"user_id": user_id}, {"$set": user_updates})
     logger.info(f"Entitlement granted: user={user_id} plan={plan['plan_id']}")
-    if plan.get("audience") == "pro" and plan.get("kind") == "subscription":
+    if plan.get("audience") in ("pro", "b2b") and plan.get("kind") == "subscription":
         await _send_pro_welcome(user_id, plan, payment_rec, user)
 
 
@@ -471,6 +492,42 @@ async def _webhook_subscription_updated(obj: dict) -> None:
         await revoke_entitlement(obj["id"], status)
     elif status in ("active", "trialing"):
         await restore_entitlement(obj["id"])
+    if status not in ("canceled", "unpaid", "incomplete_expired"):
+        await _sync_plan_change(obj)
+
+
+async def _sync_plan_change(obj: dict) -> None:
+    """Upgrade / downgrade feito no portal Stripe: o entitlement passa para o novo Price."""
+    items = ((obj.get("items") or {}).get("data") or [])
+    if not items:
+        return
+    price = items[0].get("price") or {}
+    new_pid = (price.get("metadata") or {}).get("plan_id")
+    if not new_pid and price.get("lookup_key"):
+        plan = await db.plans.find_one({"lookup_key": price["lookup_key"]}, {"_id": 0, "plan_id": 1})
+        new_pid = (plan or {}).get("plan_id")
+    if not new_pid:
+        return
+    ent = await db.entitlements.find_one({"stripe_subscription_id": obj["id"]}, {"_id": 0})
+    if not ent or ent.get("plan_id") == new_pid:
+        return
+    plan = await db.plans.find_one({"plan_id": new_pid}, {"_id": 0})
+    if not plan:
+        return
+    await db.entitlements.update_one(
+        {"stripe_subscription_id": obj["id"], "plan_id": ent["plan_id"]},
+        {"$set": {"plan_id": new_pid, "plan_code": plan.get("code"), "audience": plan.get("audience"),
+                  "previous_plan_id": ent["plan_id"], "plan_changed_at": now_iso()}})
+    from engines.commercial_plans import tier_for_plan_id
+    user_updates = {"active_plan_id": new_pid}
+    if plan.get("audience") in ("pro", "b2b"):
+        user_updates["account_type"] = ("pro_business" if tier_for_plan_id(new_pid) == "pro_business"
+                                        else "pro")
+    await db.users.update_one({"user_id": ent["user_id"]}, {"$set": user_updates})
+    await db.billing_audit.insert_one({"user_id": ent["user_id"], "action": "plan.changed",
+                                       "data": {"from": ent["plan_id"], "to": new_pid,
+                                                "subscription": obj["id"]}, "at": now_iso()})
+    logger.info(f"Plan change {ent['plan_id']} -> {new_pid} (sub {obj['id']})")
 
 
 async def _webhook_invoice_failed(obj: dict) -> None:
@@ -514,8 +571,21 @@ async def handle_webhook(payload: bytes, sig: str) -> dict:
     event = stripe.Webhook.construct_event(payload, sig, secret)
     event_type = event["type"]
     handler = _WEBHOOK_HANDLERS.get(event_type)
-    if handler:
+    if not handler:
+        return {"received": True, "type": event_type}
+    # Idempotência: a Stripe pode entregar o mesmo evento várias vezes.
+    evt_id = event.get("id")
+    if evt_id:
+        try:
+            await db.stripe_events.insert_one({"_id": evt_id, "type": event_type, "received_at": now_iso()})
+        except Exception:  # noqa: BLE001 — chave duplicada: já tratado
+            return {"received": True, "type": event_type, "duplicate": True}
+    try:
         await handler(event["data"]["object"])
+    except Exception:
+        if evt_id:  # falha: liberta o id para que o reenvio da Stripe seja tratado
+            await db.stripe_events.delete_one({"_id": evt_id})
+        raise
     return {"received": True, "type": event_type}
 
 
@@ -562,15 +632,8 @@ async def user_tier(user_id: str | None) -> str:
     if not active:
         return "free"
     pid = active["entitlement"]["plan_id"]
-    if pid == "project_pass":
-        return "project_pass"
-    if pid.startswith("premium"):
-        return "premium"
-    if pid.startswith("pro_business"):
-        return "pro_business"
-    if pid.startswith("pro"):
-        return "pro"
-    return "free"
+    from engines.commercial_plans import tier_for_plan_id
+    return tier_for_plan_id(pid) or "free"
 
 
 async def require_pro_business(user: dict) -> None:

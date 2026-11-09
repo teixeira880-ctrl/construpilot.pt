@@ -21,13 +21,17 @@ const FEATURES = [
   { id: "equipe", icon: Users, clip: null, tag: "A sua equipa, reunida", title: "Passe de trabalhador independente a pequena empresa sem perder o fio", desc: "Partilhe as informações úteis e organize os acessos dos seus colaboradores.", to: "/equipe" },
 ];
 
+// Ofertas B2B 2026-11 (fonte: backend/engines/commercial_plans.py). Enterprise: sob contacto, sem preço.
 const PLANS = [
-  { name: "Pro Artesão", price: "149 €", period: "/mês + IVA", popular: false, tid: "plan-pro-artisan-cta",
-    desc: "Profissionais independentes e pequenas equipas.",
-    features: ["Medição em planta ilimitada", "Orçamentos e faturas eletrónicas", "Cálculo de escadas 3D (RGEU)", "Exportação PDF com o seu logótipo", "Suporte prioritário de construção"] },
-  { name: "Pro Empresa", price: "249 €", period: "/mês + IVA", popular: true, tid: "plan-pro-business-cta",
-    desc: "PME de construção, empreiteiros gerais, diretores de obra.",
-    features: ["Tudo do Pro Artesão +", "Análise do caderno de encargos e importação do mapa de quantidades", "Projetos multinível e equipa", "Portal de subempreiteiros e aprovisionamento", "Acompanhamento na implementação"] },
+  { name: "Solo", price: "99 €", period: "/mês + IVA", popular: false, tid: "plan-pro-artisan-cta",
+    desc: "Arquitetos, engenheiros, medidores orçamentistas e técnicos independentes.",
+    features: ["1 utilizador · 10 projetos ativos", "100 páginas técnicas processadas / mês", "Importação de PDF, DWG e DXF", "Medições, quantidades e orçamentos", "Exportação PDF e Excel"] },
+  { name: "Professional", price: "249 €", period: "/mês + IVA", popular: true, tid: "plan-pro-business-cta",
+    desc: "Gabinetes de arquitetura e engenharia, pequenas construtoras, empresas de especialidades.",
+    features: ["5 utilizadores · 50 projetos ativos", "750 páginas técnicas processadas / mês", "Clientes, propostas e orçamentos com o seu logótipo", "Relatórios de custos e margens", "Suporte prioritário"] },
+  { name: "Business", price: "599 €", period: "/mês + IVA", popular: false, tid: "plan-business-cta",
+    desc: "Construtoras com várias equipas e múltiplas obras.",
+    features: ["15 utilizadores · 200 projetos ativos", "3 000 páginas técnicas processadas / mês", "Custos previstos vs reais, orçamento vs execução", "Permissões por função e auditoria", "Onboarding assistido"] },
 ];
 
 const FAQ = [
@@ -51,7 +55,7 @@ export default function LandingPro() {
   return <LandingLayout audience="pro">
     <SEO title="ConstruPilot Pro — Medições, orçamentos e acompanhamento de obra" description="Reúna as suas plantas, medições, orçamentos e faturas num espaço de trabalho de construção pensado para profissionais e empresas. Descubra o ConstruPilot Pro."
       canonical="/" keywords="software orçamentos construção, medição em planta, orçamentação construção, gestão de obra"
-      jsonLd={{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication",name:"ConstruPilot Pro",applicationCategory:"BusinessApplication",operatingSystem:"Web",offers:[{"@type":"Offer",name:"Pro Artesão",price:"149",priceCurrency:"EUR"},{"@type":"Offer",name:"Pro Empresa",price:"249",priceCurrency:"EUR"}]},{"@type":"FAQPage",mainEntity:FAQ.map(f=>({"@type":"Question",name:f.q,acceptedAnswer:{"@type":"Answer",text:f.a}}))}]}} />
+      jsonLd={{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication",name:"ConstruPilot Pro",applicationCategory:"BusinessApplication",operatingSystem:"Web",offers:[{"@type":"Offer",name:"Solo",price:"99",priceCurrency:"EUR"},{"@type":"Offer",name:"Professional",price:"249",priceCurrency:"EUR"},{"@type":"Offer",name:"Business",price:"599",priceCurrency:"EUR"}]},{"@type":"FAQPage",mainEntity:FAQ.map(f=>({"@type":"Question",name:f.q,acceptedAnswer:{"@type":"Answer",text:f.a}}))}]}} />
     <section className="landing-hero landing-section" data-testid="pro-hero">
       <div className="landing-hero-copy"><p className="landing-eyebrow"><span className="pt-flag-dot" aria-hidden="true" />FEITO PARA OS PROFISSIONAIS DA CONSTRUÇÃO EM PORTUGAL E SEUS CLIENTES</p>
         <h1>Medições e orçamentos de obras,<br /><em>da planta ao acompanhamento</em></h1>

@@ -152,6 +152,8 @@ api_router.include_router(structuro_calc_routes.router)
 from routes import btp_router as btp_router_routes  # noqa: E402
 api_router.include_router(btp_router_routes.router)
 api_router.include_router(billing.router)
+from routes import commercial as commercial_routes  # noqa: E402 — ofertas B2B 2026-11
+api_router.include_router(commercial_routes.router)
 api_router.include_router(revenue.router)
 api_router.include_router(phase4.router)
 api_router.include_router(phase5.router)
@@ -814,6 +816,16 @@ async def _seed_impl():
         await db.plans.update_one({"plan_id": plan_id}, {"$set": copy})
     if not await db.feature_flags.find_one({"_id": "global"}):
         await db.feature_flags.insert_one({"_id": "global", **DEFAULT_FEATURE_FLAGS})
+    # Ofertas comerciais B2B (Solo/Professional/Business): só inserção, nunca substituição.
+    try:
+        from engines.commercial_plans import db_plan_docs
+        for doc in db_plan_docs():
+            await db.plans.update_one({"plan_id": doc["plan_id"]}, {"$setOnInsert": doc}, upsert=True)
+        await db.usage_events.create_index([("account_id", 1), ("at", -1)])
+        await db.commercial_leads.create_index("lead_id", unique=True)
+        await db.commercial_leads.create_index([("dedup_key", 1), ("created_at", -1)])
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Commercial plans seed skipped: {e}")
 
     # Affiliate configs seed (idempotent)
     try:

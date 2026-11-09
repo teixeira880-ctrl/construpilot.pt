@@ -129,6 +129,8 @@ async def create_employee(body: EmployeeIn, user=Depends(current_user)) -> dict:
     mgr = await _require_manager(user)
     if body.role not in ASSIGNABLE_ROLES:
         raise HTTPException(400, "Função inválida.")
+    from engines import usage_meter
+    await usage_meter.check_new_seat(user)
     email = body.email.lower().strip()
     if await db.users.find_one({"email": email}):
         raise HTTPException(400, "Já existe uma conta com este e-mail.")
