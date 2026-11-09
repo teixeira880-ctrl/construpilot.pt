@@ -5,6 +5,7 @@ Une note = titre + sections (texte, tableau, contrôles conformes / non conforme
 """
 from __future__ import annotations
 
+import contextvars
 import io
 import os
 
@@ -24,7 +25,8 @@ OK_BG, KO_BG, NA_BG = colors.HexColor("#e5f3ea"), colors.HexColor("#fbe4e2"), co
 _UNICODE = {"ok": False}
 _ASCII = {"λ": "lambda ", "ψ": "psi ", "Ψ": "Psi ", "Δ": "delta ", "→": "->", "●": "o", "χ": "chi ", "μ": "mu ", "φ": "phi ", "θ": "theta ",
           "η": "eta ", "ρ": "rho ", "Σ": "soma ", "σ": "sigma "}
-_DEJAVU = ("/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu", "/usr/share/fonts/TTF")
+_DEJAVU = (os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "fonts"),   # fontes do repositório
+           "/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu", "/usr/share/fonts/TTF")
 
 
 def fonts():
@@ -36,6 +38,8 @@ def fonts():
         return
     for d in _DEJAVU:
         files = [os.path.join(d, f) for f in ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans-Oblique.ttf")]
+        if not os.path.exists(files[2]):
+            files[2] = files[0]                        # sem itálico: regular (cirílico e grego garantidos)
         if all(os.path.exists(f) for f in files):
             for name, f in zip(("CP", "CP-Bold", "CP-Oblique"), files):
                 pdfmetrics.registerFont(TTFont(name, f))
@@ -62,6 +66,13 @@ LANG = {"note": "Nota de cálculo", "page": "página", "ref": "Ref.", "synthese"
         "verdict_glob_ko": "Pelo menos uma verificação não está conforme", "verdict_glob_na": "Nenhuma não conformidade — pontos a verificar",
         "head": ["Referência", "Exigência", "Valor", "Resultado"], "hyp": "Hipóteses / a validar",
         "brand_sub": "Gabinete de projeto digital"}
+LANG_CV = contextvars.ContextVar("rendu_lang", default=None)      # rótulos de outra língua só para o PDF em curso (thread-safe)
+
+
+def _lg() -> dict:
+    return LANG_CV.get() or LANG
+
+
 CLAIR, ACCENT, AMBRE_BG, OK_C, KO_C, NA_C = (colors.HexColor("#d5e3df"), colors.HexColor("#285541"), colors.HexColor("#fff7e0"),
                                            colors.HexColor("#1f8a52"), colors.HexColor("#c8453c"), colors.HexColor("#c98500"))
 
@@ -100,7 +111,7 @@ def table(head, rows, widths=None, st=None):
 
 
 def _res(ok):
-    return (LANG["verdict_ok"], OK_C) if ok is True else ((LANG["verdict_ko"], KO_C) if ok is False else (LANG["verdict_na"], NA_C))
+    return (_lg()["verdict_ok"], OK_C) if ok is True else ((_lg()["verdict_ko"], KO_C) if ok is False else (_lg()["verdict_na"], NA_C))
 
 
 def controls_table(ctl, st=None):
@@ -112,7 +123,7 @@ def controls_table(ctl, st=None):
         txt_ = c.get("exigence", "") + (f" — {c['note']}" if c.get("note") else "")
         rows.append([c.get("ref", ""), txt_, c.get("valeur", ""), lab])
         sty += [("BACKGROUND", (3, i), (3, i), col), ("LINEBEFORE", (0, i), (0, i), 2.2, col)]
-    data = [[Paragraph(_esc(h), st["cellb"]) for h in LANG["head"]]] + \
+    data = [[Paragraph(_esc(h), st["cellb"]) for h in _lg()["head"]]] + \
         [[Paragraph(_esc(r[0]), st["cell"]), Paragraph(_esc(r[1]), st["cell"]), Paragraph(_esc(r[2]), st["cell"]), Paragraph(_esc(r[3]), st["res"])] for r in rows]
     t = Table(data, colWidths=[46 * mm, 72 * mm, 36 * mm, 26 * mm], repeatRows=1)
     t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), VERT), ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#dcdcd6")),
@@ -170,7 +181,7 @@ def _synthese(blocks, st):
     n_ko = sum(1 for c in ctl if c.get("ok") is False)
     n_na = len(ctl) - n_ok - n_ko
     glob = False if n_ko else (True if not n_na else None)
-    msg = LANG["verdict_glob_ko"] if n_ko else (LANG["verdict_glob_ok"] if not n_na else LANG["verdict_glob_na"])
+    msg = _lg()["verdict_glob_ko"] if n_ko else (_lg()["verdict_glob_ok"] if not n_na else _lg()["verdict_glob_na"])
     lab, col = _res(glob)
     from reportlab.graphics.shapes import Drawing, Rect, String
     d = Drawing(180 * mm, 16)
@@ -181,12 +192,12 @@ def _synthese(blocks, st):
             wseg = 180 * mm * n / tot
             d.add(Rect(x, 9, max(0.0, wseg - 1.5), 6, fillColor=c, strokeColor=None, rx=2, ry=2))
             x += wseg
-    d.add(String(0, 0, txt(f"{n_ok} {LANG['conformes']} · {n_na} {LANG['a_verifier']} · {n_ko} {LANG['non_conformes']}"), fontName="CP", fontSize=7, fillColor=GRIS))
+    d.add(String(0, 0, txt(f"{n_ok} {_lg()['conformes']} · {n_na} {_lg()['a_verifier']} · {n_ko} {_lg()['non_conformes']}"), fontName="CP", fontSize=7, fillColor=GRIS))
     pill = Table([[Paragraph(_esc(lab), st["res"]), Paragraph(_esc(msg), ParagraphStyle("m", parent=st["p"], fontName="CP-Bold", textColor=col))]],
                  colWidths=[28 * mm, 152 * mm])
     pill.setStyle(TableStyle([("BACKGROUND", (0, 0), (0, 0), col), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (1, 0), (1, 0), 6),
                               ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
-    return [Paragraph(_esc(LANG["synthese"]), ParagraphStyle("sy", parent=st["kl"], fontName="CP-Bold", textColor=VERT, spaceAfter=2)), pill, Spacer(1, 1.5 * mm), d, Spacer(1, 2 * mm)]
+    return [Paragraph(_esc(_lg()["synthese"]), ParagraphStyle("sy", parent=st["kl"], fontName="CP-Bold", textColor=VERT, spaceAfter=2)), pill, Spacer(1, 1.5 * mm), d, Spacer(1, 2 * mm)]
 
 
 def _hyp_box(lines, st):
@@ -219,15 +230,21 @@ class _NumCanvas(_canvas.Canvas):
         for st_ in self._pages:
             self.__dict__.update(st_)
             self.setFont("CP", 6.5); self.setFillColor(GRIS)
-            self.drawRightString(A4[0] - 15 * mm, 8.5 * mm, f"{LANG['page']} {self._pageNumber} / {n}")
+            self.drawRightString(A4[0] - 15 * mm, 8.5 * mm, f"{_lg()['page']} {self._pageNumber} / {n}")
             super().showPage()
         super().save()
 
 
-def build_pdf(title, subtitle, blocks, footer="ConstruPilot — nota de cálculo gerada por motor determinístico; a validar pelo projetista / técnico responsável antes da execução.") -> bytes:
+def build_pdf(title, subtitle, blocks, footer="ConstruPilot — nota de cálculo gerada por motor determinístico; a validar pelo projetista / técnico responsável antes da execução.", lang=None) -> bytes:
     """blocks : liste de ("h2", texte) | ("p", texte) | ("table", head, rows, widths) | ("controls", ctl) | ("figure", flowable)
     | ("chart", drawing[, légende]) | ("kpis", [{label, value, unit, ok}]) | ("hyp", [textes]) | ("spacer", h_mm).
     Première page : bandeau de marque, titre, référence et date ; synthèse automatique des contrôles ; pied « page x / n »."""
+    if lang:
+        tok = LANG_CV.set({**LANG, **lang})
+        try:
+            return build_pdf(title, subtitle, blocks, footer)
+        finally:
+            LANG_CV.reset(tok)
     from datetime import date
     st = styles()
     buf = io.BytesIO()
@@ -244,11 +261,11 @@ def build_pdf(title, subtitle, blocks, footer="ConstruPilot — nota de cálculo
             cv.setFillColor(VERT); cv.rect(0, H - hdr_h, W, hdr_h, stroke=0, fill=1)
             _faixa(cv, 0, H - hdr_h - 4.2 * mm, W, 4.2 * mm)   # faixa de azulejos (identidade .pt)
             cv.setFillColor(colors.white); cv.setFont("CP-Bold", 11); cv.drawString(15 * mm, H - 11 * mm, "ConstruPilot")
-            cv.setFillColor(CLAIR); cv.setFont("CP", 6.8); cv.drawString(15 * mm, H - 15 * mm, txt(LANG["brand_sub"]))
+            cv.setFillColor(CLAIR); cv.setFont("CP", 6.8); cv.drawString(15 * mm, H - 15 * mm, txt(_lg()["brand_sub"]))
             cv.setFont("CP-Bold", 7.5); cv.setFillColor(colors.white)
-            cv.drawRightString(W - 15 * mm, H - 11 * mm, txt(LANG["note"].upper()))
+            cv.drawRightString(W - 15 * mm, H - 11 * mm, txt(_lg()["note"].upper()))
             cv.setFont("CP", 6.8); cv.setFillColor(CLAIR)
-            cv.drawRightString(W - 15 * mm, H - 15 * mm, f"{txt(LANG['ref'])} {ref} · {date.today():%d/%m/%Y}")
+            cv.drawRightString(W - 15 * mm, H - 15 * mm, f"{txt(_lg()['ref'])} {ref} · {date.today():%d/%m/%Y}")
         else:
             cv.setFillColor(VERT); cv.rect(0, H - 9 * mm, W, 9 * mm, stroke=0, fill=1)
             _faixa(cv, 0, H - 11 * mm, W, 2 * mm)

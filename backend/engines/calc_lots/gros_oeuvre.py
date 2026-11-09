@@ -11,6 +11,7 @@ As secções desenhadas são as secções verificadas (ajustadas). Pré-dimensio
 """
 from __future__ import annotations
 
+import contextvars
 import math
 import os
 
@@ -28,13 +29,37 @@ LARG_GL = (0.115, 0.14, 0.16, 0.175, 0.20, 0.215, 0.24, 0.265, 0.28, 0.315)
 
 # ================================================================================================================ fontes
 def _fontes():
-    for d in ("/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu", "/usr/share/fonts/TTF"):
+    assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "fonts")
+    for d in (assets, "/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu", "/usr/share/fonts/TTF"):
         a, b = os.path.join(d, "DejaVuSans.ttf"), os.path.join(d, "DejaVuSans-Bold.ttf")
         if os.path.exists(a) and os.path.exists(b):
             return a, b
     import reportlab
     d = os.path.join(os.path.dirname(reportlab.__file__), "fonts")
     return os.path.join(d, "Vera.ttf"), os.path.join(d, "VeraBd.ttf")
+
+
+_TR_CV = contextvars.ContextVar("go_lingua", default=None)
+
+
+def _tr(s: str) -> str:
+    """Tradução das peças desenhadas (lingua ≠ pt): substituições por ordem decrescente de comprimento."""
+    d = _TR_CV.get()
+    if not d or not s:
+        return s
+    for k in d["_ordem"]:
+        if k in s:
+            s = s.replace(k, d[k])
+    return s
+
+
+def _dic(lingua):
+    if not lingua or lingua == "pt":
+        return None
+    from .lingua_planos import TRADUCOES
+    d = dict(TRADUCOES[lingua])
+    d["_ordem"] = sorted(TRADUCOES[lingua], key=len, reverse=True)
+    return d
 
 
 def _c(x, n=2):
@@ -282,9 +307,10 @@ class _Folha:
         return self._fonts[k]
 
     def lw(self, s, size, bold=False):
-        return self._font(bold).text_length(s, fontsize=size)
+        return self._font(bold).text_length(_tr(s), fontsize=size)
 
     def t(self, x, y, s, size=7, cor=(0, 0, 0), bold=False, centrado=False, rot=0):
+        s = _tr(s)
         if centrado:
             L = self.lw(s, size, bold)
             if rot == 90:
@@ -319,7 +345,7 @@ class _Folha:
 
     def caixa(self, x, y, w, s, size=7, cor=(0, 0, 0)):
         """Texto com quebra de linha; devolve o y seguinte."""
-        palavras, linha, yy = s.split(), "", y
+        palavras, linha, yy = _tr(s).split(), "", y
         for pw in palavras:
             tst = (linha + " " + pw).strip()
             if self.lw(tst, size) > w and linha:
@@ -344,11 +370,11 @@ class _Folha:
             if i % 2 == 0:
                 self.ret((x, yy - passo + 4, x + tot, yy + 4), (0.94, 0.95, 0.94), fill=(0.94, 0.95, 0.94), w=0)
             for j, v in enumerate(ln):
-                s = str(v)
+                s = _tr(str(v))
                 while s and self.lw(s, size) > larg[j] - 6:
                     s = s[:-1]
-                cor = (0.75, 0.12, 0.12) if s.startswith("NÃO") else (0, 0, 0)
-                self.t(xs[j] + 3, yy, s, size, cor, s.startswith("NÃO"))
+                ko = s.startswith(("NÃO", "НЕ ", "NOT "))
+                self.t(xs[j] + 3, yy, s, size, (0.75, 0.12, 0.12) if ko else (0, 0, 0), ko)
         return y + passo * (len(linhas) + 1)
 
     def cartucho(self, projeto, local, titulo, num, n, tot, escala, data):
@@ -511,18 +537,22 @@ def _base_planta(fl, m, s, titulo, sub):
     return p, (x0, x1, y0, y1)
 
 
+MURO_FILL = {"gazobeton": (0.95, 0.93, 0.84), "tijolo": (0.86, 0.55, 0.42), "alvenaria": (0.86, 0.55, 0.42), "clt": MAD, "madeira": MAD}
+
+
 def _paredes(p, lst, esp_key, fill, cor=(0, 0, 0), dash=None, w=0.8):
     for s in lst:
         e = float(s.get(esp_key) or 0.2)
+        fill_s = MURO_FILL.get(s.get("material"), fill) if fill is not None else None
         for (xa, ya), (xb, yb) in zip(s["pontos"][:-1], s["pontos"][1:]):
             if abs(ya - yb) < 1e-6:
-                p.rect(min(xa, xb) - e / 2, ya - e / 2, max(xa, xb) + e / 2, ya + e / 2, cor, fill, w, dash)
+                p.rect(min(xa, xb) - e / 2, ya - e / 2, max(xa, xb) + e / 2, ya + e / 2, cor, fill_s, w, dash)
             elif abs(xa - xb) < 1e-6:
-                p.rect(xa - e / 2, min(ya, yb) - e / 2, xa + e / 2, max(ya, yb) + e / 2, cor, fill, w, dash)
+                p.rect(xa - e / 2, min(ya, yb) - e / 2, xa + e / 2, max(ya, yb) + e / 2, cor, fill_s, w, dash)
             else:
                 ang = math.atan2(yb - ya, xb - xa)
                 dx, dy = -math.sin(ang) * e / 2, math.cos(ang) * e / 2
-                p.poli([(xa + dx, ya + dy), (xb + dx, yb + dy), (xb - dx, yb - dy), (xa - dx, ya - dy)], cor, fill, w)
+                p.poli([(xa + dx, ya + dy), (xb + dx, yb + dy), (xb - dx, yb - dy), (xa - dx, ya - dy)], cor, fill_s, w)
 
 
 def _lado(fl):
@@ -546,7 +576,8 @@ def _f_fund(doc, m, ver, fmt, s, k, n, tot, data):
         p.rect(x - a / 2, y - b / 2, x + a / 2, y + b / 2, (0, 0, 0), BRANCO, 0.9, "[5 3] 0")
         p.lin([(x - a / 2, y - b / 2), (x + a / 2, y + b / 2)], (0.55, 0.55, 0.55), 0.3)
         p.lin([(x - a / 2, y + b / 2), (x + a / 2, y - b / 2)], (0.55, 0.55, 0.55), 0.3)
-    _paredes(p, m.get("muros") or [], "espessura_m", BET)
+    cp = m.get("cota_pavimento_m")
+    _paredes(p, [mu for mu in m.get("muros") or [] if cp is None or mu.get("cota_topo_m") is None or mu["cota_topo_m"] <= cp + 0.05], "espessura_m", BET)
     for pl in m.get("pilares") or []:
         if (pl.get("material") or "betao") == "betao" or pl.get("pedestal_m"):
             e = pl.get("pedestal_m") or max(pl["b_m"], pl["h_m"])
@@ -659,7 +690,7 @@ def _f_piso(doc, m, ver, fmt, s, k, n, tot, data, piso, num, titulo):
         if e["tipo"] in ("viga", "pilar", "laje"):
             el = next((v for v in (m.get("vigas") or []) + (m.get("pilares") or []) + (m.get("lajes") or []) if (v.get("ref") or e["tipo"]) == e["ref"]), {})
             if e["tipo"] == "pilar" or el.get("piso") == piso:
-                rows.append([e["ref"], e["elemento"][:28], e["seccao"][:34], f"{e['taxa'] * 100:.0f} %" if e["taxa"] is not None else "—", "conforme" if e["ok"] else "NÃO conforme"])
+                rows.append([e["ref"], e["elemento"], e["seccao"], f"{e['taxa'] * 100:.0f} %" if e["taxa"] is not None else "—", "conforme" if e["ok"] else "NÃO conforme"])
     y = fl.tabela(xl, 140, ["Ref.", "Elemento", "Secção", "Taxa", "Estado"], rows[:40], [60, 170, 220, 60, 100])
     aj = [a for a in ver["ajustes"] if a.startswith(("Viga", "Pilar"))]
     if aj:
@@ -724,7 +755,7 @@ def _corte(fl, m, c, s, ox, oy_top, zmax, zmin):
             niveis.add(sp["cota_topo_m"])
     for mu in m.get("muros") or []:
         for a, b, *_ in seg_corta(mu["pontos"], mu.get("espessura_m") or 0.2):
-            p.rect(a, Z(mu["cota_base_m"]), b, Z(mu["cota_topo_m"]), (0, 0, 0), BET, 0.8)
+            p.rect(a, Z(mu["cota_base_m"]), b, Z(mu["cota_topo_m"]), (0, 0, 0), MURO_FILL.get(mu.get("material"), BET), 0.8)
             niveis.add(mu["cota_topo_m"])
     for lj in m.get("lajes") or []:
         wa, wb = (lj["y0_m"], lj["y1_m"]) if d == "x" else (lj["x0_m"], lj["x1_m"])
@@ -824,8 +855,8 @@ def _cortes_auto(m):
     if m.get("cortes"):
         return m["cortes"]
     gx, gy = sorted(g["pos_m"] for g in m["grelhas_x"]), sorted(g["pos_m"] for g in m["grelhas_y"])
-    px = next((v["x0_m"] for v in m.get("vigas") or [] if abs(v["x0_m"] - v["x1_m"]) < 1e-6), gx[len(gx) // 2])
-    py = next((s["y_m"] for s in m.get("sapatas") or [] if gy[0] < s["y_m"] < gy[-1]), gy[len(gy) // 2])
+    px = next((v["x0_m"] for v in m.get("vigas") or [] if abs(v["x0_m"] - v["x1_m"]) < 1e-6), (gx[0] + gx[1]) / 2 if len(gx) > 1 else gx[0])
+    py = next((s["y_m"] for s in m.get("sapatas") or [] if gy[0] < s["y_m"] < gy[-1]), (gy[0] + gy[1]) / 2 if len(gy) > 1 else gy[0])
     return [{"nome": "1-1", "direcao": "y", "pos_m": px}, {"nome": "2-2", "direcao": "x", "pos_m": py}]
 
 
@@ -852,8 +883,8 @@ def _f_quadros(doc, m, ver, n, tot, data):
     fl = _Folha(doc, "A1")
     fl.t(40, 52, "GO-05 · QUADROS DE ELEMENTOS, VERIFICAÇÕES E AJUSTES", 20, VERDE, True)
     fl.t(40, 74, "Resultados dos motores ConstruPilot (NP EN 1992 / 1995 / 1997) — secções adotadas = secções desenhadas", 10, CINZA)
-    rows = [[e["tipo"], e["ref"], e["elemento"][:34], e["seccao"][:46], f"{(e['taxa'] or 0) * 100:.0f} %" if e["taxa"] is not None else "—",
-             "conforme" if e["ok"] else "NÃO conforme", (e["original"] or "")[:40]] for e in ver["elementos"]]
+    rows = [[e["tipo"], e["ref"], e["elemento"], e["seccao"], f"{(e['taxa'] or 0) * 100:.0f} %" if e["taxa"] is not None else "—",
+             "conforme" if e["ok"] else "NÃO conforme", (e["original"] or "")] for e in ver["elementos"]]
     y = fl.tabela(40, 140, ["Tipo", "Ref.", "Elemento", "Secção adotada", "Taxa", "Estado", "Secção original (se ajustada)"], rows[:70],
                   [100, 70, 230, 330, 60, 110, 300], size=8, passo=16)
     if y + 40 < fl.H - 500:
@@ -872,8 +903,16 @@ def _f_quadros(doc, m, ver, n, tot, data):
     fl.cartucho(m.get("projeto") or "—", m.get("local") or "—", "Gros-œuvre — quadros e verificações", "GO-05", n, tot, "—", data)
 
 
-def planos(m: dict, ver: dict, data: str | None = None) -> bytes:
-    """Caderno de planos de gros-œuvre (PDF vetorial)."""
+def planos(m: dict, ver: dict, data: str | None = None, lingua: str | None = None) -> bytes:
+    """Caderno de planos de gros-œuvre (PDF vetorial); lingua 'uk' / 'en' traduz as peças desenhadas."""
+    tok = _TR_CV.set(_dic(lingua))
+    try:
+        return _planos(m, ver, data)
+    finally:
+        _TR_CV.reset(tok)
+
+
+def _planos(m: dict, ver: dict, data: str | None = None) -> bytes:
     import pymupdf
     from datetime import date
     data = data or date.today().strftime("%d/%m/%Y")
@@ -896,13 +935,13 @@ def planos(m: dict, ver: dict, data: str | None = None) -> bytes:
 
 
 # ================================================================================================================ nota + interface
-def calcular(m: dict) -> dict:
+def calcular(m: dict, lingua: str | None = None) -> dict:
     """→ {"verificacao", "planos_pdf", "escala", "formato"} (m é copiado: a entrada do chamador não é alterada)."""
     import copy
     m = copy.deepcopy(m)
     ver = verificar(m)
     fmt, s, k = _escala(m)
-    return {"modelo": m, "verificacao": ver, "planos_pdf": planos(m, ver), "escala": k, "formato": fmt}
+    return {"modelo": m, "verificacao": ver, "planos_pdf": planos(m, ver, lingua=lingua), "escala": k, "formato": fmt}
 
 
 def note(m: dict) -> dict:

@@ -126,6 +126,7 @@ CASOS = {
                                              coletor=_o("verificar_solar_termico", "coletor", numero=1, area_m2=2.0, eta0=0.75, a1=3.8),
                                              deposito=_o("verificar_solar_termico", "deposito", volume_l=150)),
     "calcul_patio_pluvial": lambda: _fill("calcul_patio_pluvial", area_m2=16, profundidade_m=1.1, regiao_pluviometrica="B"),
+    "calcul_ucrania": lambda: _fill("calcul_ucrania", exemplo=True, cidade="lviv"),
     "calcul_gros_oeuvre": lambda: _fill("calcul_gros_oeuvre", modelo_json=json.dumps({
         "projeto": "Moradia T3", "local": "Braga", "solo_q_adm_kpa": 200, "cota_pavimento_m": 0.0,
         "grelhas_x": [{"nome": "1", "pos_m": 0}, {"nome": "2", "pos_m": 5}, {"nome": "3", "pos_m": 10}],
