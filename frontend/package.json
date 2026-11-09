@@ -71,6 +71,8 @@
   },
   "scripts": {
     "start": "craco start",
+    "prebuild": "node scripts/i18n-manifest.cjs || echo i18n-manifest-skipped",
+    "i18n:manifest": "node scripts/i18n-manifest.cjs",
     "build": "DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false craco build",
     "test": "craco test",
     "test:pilot": "node scripts/test-platform-pilot.cjs",

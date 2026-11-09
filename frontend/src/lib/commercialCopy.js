@@ -242,9 +242,9 @@ export const FEATURE_LABELS = {
 };
 
 export function copyFor(lang) {
-  return COPY[lang] || COPY.fr;
+  return COPY[lang] || COPY.pt;
 }
 
 export function featureLabel(lang, key) {
-  return (FEATURE_LABELS[lang] || FEATURE_LABELS.fr)[key] || key;
+  return (FEATURE_LABELS[lang] || FEATURE_LABELS.pt)[key] || key;
 }

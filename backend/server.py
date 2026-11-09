@@ -105,6 +105,8 @@ from routes import admin_bet_agent as admin_bet_agent_routes  # noqa: E402
 api_router.include_router(admin_bet_agent_routes.router)
 from routes import public_config as public_config_routes  # noqa: E402
 api_router.include_router(public_config_routes.router)
+from routes import i18n_auto as i18n_auto_routes  # noqa: E402  (tradução completa da interface)
+api_router.include_router(i18n_auto_routes.router)
 api_router.include_router(estimation_routes.router)
 api_router.include_router(tools.router)
 api_router.include_router(prices.router)
@@ -474,6 +476,8 @@ async def seed():
                 logger.exception("Arranque de %s falhou", attr)
     app.state.workers_task = _asyncio.create_task(_workers())
     app.state.seed_task = _asyncio.create_task(_run())
+    # Tradução automática completa da interface (EN/FR/PT…): pré-tradução em segundo plano.
+    app.state.i18n_task = _asyncio.create_task(i18n_auto_routes.warm_all_background())
 
 
 async def _seed_impl():
