@@ -87,7 +87,32 @@ def normalize(raw: dict) -> list[str]:
                                f"{len(items) - len(ok)} « {key} » item(s) without coordinates ignored.",
                                f"{len(items) - len(ok)} елемент(ів) « {key} » без координат пропущено."))
             raw[key] = ok
+    st = raw.get("structure") if isinstance(raw.get("structure"), dict) else {}
+    for k in ("beam", "column"):                     # sections BA du relevé : sans objet en bois massif, gardées seulement si valides
+        v = st.get(k)
+        if v is not None and not (isinstance(v, (list, tuple)) and len(v) == 2 and all(isinstance(x, (int, float)) for x in v)):
+            st.pop(k, None)
+    if "columns_omit" in st:
+        st["columns_omit"] = [x for x in (st.get("columns_omit") or []) if isinstance(x, (list, tuple)) and len(x) == 2]
+    if "void_cells" in st:
+        st["void_cells"] = [x for x in (st.get("void_cells") or []) if isinstance(x, (list, tuple)) and len(x) == 2]
+    if isinstance(st.get("column_sections"), dict):
+        st["column_sections"] = {k: v for k, v in st["column_sections"].items() if isinstance(v, (list, tuple)) and len(v) == 2}
+    for slab_key in ("slab",):
+        if slab_key in st and not isinstance(st[slab_key], (int, float)):
+            st.pop(slab_key, None)
+    g = raw.get("grid") if isinstance(raw.get("grid"), dict) else {}
+    for ax, labk in (("x", "x_labels"), ("y", "y_labels")):
+        vals = g.get(ax)
+        if isinstance(vals, list):
+            g[ax] = sorted({round(float(v), 4) for v in vals if isinstance(v, (int, float)) or str(v).replace(".", "", 1).lstrip("-").isdigit()})
+            if len(g.get(labk) or []) != len(g[ax]):
+                g.pop(labk, None)
     lv = [d for d in (raw.get("levels") or []) if isinstance(d, dict)]
+    for d in lv:
+        if not isinstance(d.get("void_cells", []), list):
+            d["void_cells"] = []
+        d["void_cells"] = [x for x in (d.get("void_cells") or []) if isinstance(x, (list, tuple)) and len(x) == 2]
     if not lv:
         return notes
     if lv[0].get("floor_top") in (None, ""):
@@ -130,8 +155,13 @@ def validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
         for a in model.check(m):
             if a["code"] in _KEEP or (a["code"] == "COL-01" and calc.system(m) == "post_beam"):
                 out.append(a)
-    except Exception as exc:  # noqa: BLE001
-        out.append({"code": "MODEL-01", "level": model.BLOCK, "message": f"{type(exc).__name__}: {exc}"})
+    except Exception as exc:  # noqa: BLE001 — contrôles génériques du relevé BA : jamais bloquants pour le bois massif
+        out.append({"code": "MODEL-01", "level": model.WARN, "message": f"{type(exc).__name__}: {exc}"})
+    if len(m.gx) < 2 or len(m.gy) < 2:
+        out.append({"code": "GRID-01", "level": model.BLOCK, "message": t("Trame incomplète : au moins 2 files dans chaque sens.",
+                                                                        "Trama incompleta: pelo menos 2 alinhamentos em cada direção.",
+                                                                        "Incomplete grid: at least 2 gridlines in each direction.",
+                                                                        "Неповна сітка осей: щонайменше 2 осі в кожному напрямку.")})
     if m.country not in ("FR", "PT", "UA"):
         out.append({"code": "CTRY", "level": model.WARN, "message": t(f"Pays {m.country} : valeurs FR appliquées (Eurocodes).",
                                                                     f"País {m.country}: valores FR aplicados (Eurocódigos).",
