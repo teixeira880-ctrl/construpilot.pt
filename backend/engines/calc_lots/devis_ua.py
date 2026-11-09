@@ -136,6 +136,9 @@ def build(m: dict, r: dict, conectores: dict, env: dict | None = None) -> dict:
     add(l3, "ext_ins", f"Façade: vapour control + mineral wool {env['mw_mm']} mm (ДБН R ≥ 4.0) + breather membrane + ventilated cladding",
         f"Фасад: пароізоляція + мінвата {env['mw_mm']} мм (ДБН R ≥ 4,0) + вітрозахист + вентильоване облицювання", "m²", "м²", env["fachada_m2"])
     add(l3, "plinth_xps", "XPS 100 mm plinth insulation", "Утеплення цоколя XPS 100 мм", "m²", "м²", 2 * (W + D) * 0.5)
+    if env.get("xps_pavimento_m2"):
+        add(l3, "plinth_xps", "Extra XPS 100 mm under ground-floor slab / basement ceiling (ДБН R ≥ 5.0 over unheated basement)",
+            "Додаткове утеплення XPS 100 мм перекриття над підвалом (ДБН R ≥ 5,0 над неопалюваним підвалом)", "m²", "м²", env["xps_pavimento_m2"])
     add(l3, "roof_vcl", "Roof vapour control layer (Al)", "Пароізоляція покрівлі (Al)", "m²", "м²", env["cobertura_m2"])
     add(l3, "roof_xps", f"Roof XPS {env['xps_cob_mm']} mm (ДБН R ≥ 7.0)", f"Утеплення покрівлі XPS {env['xps_cob_mm']} мм (ДБН R ≥ 7,0)", "m²", "м²", env["cobertura_m2"])
     add(l3, "roof_lwc", "Lightweight concrete to falls ±100 mm", "Ухилоутворювальний легкий бетон ±100 мм", "m²", "м²", env["cobertura_m2"])
