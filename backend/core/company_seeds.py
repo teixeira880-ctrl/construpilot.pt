@@ -33,6 +33,9 @@ COMPANIES = [
         "lang": "en",
         "logo_file": "clt-rezult.png",
         "temp_password_env": "CLT_REZULT_TEMP_PASSWORD",
+        # Repli si le secret n'est pas configuré : empreinte bcrypt du mot de passe provisoire
+        # (jamais le mot de passe en clair). Changement obligatoire à la 1re connexion.
+        "temp_password_bcrypt": "$2b$12$HFqaKiNQ31CrApac/kDmd.pubDWbXrLxbPlPk7EbPjOfxD1hX4n0e",
         "fields": {
             "company": "CLT Rezult",
             "company_name": "CLT Rezult",
@@ -116,9 +119,10 @@ async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
             # Palavra-passe provisória (só via env, nunca no código) : posée UNIQUEMENT si le
             # compte n'a encore aucun mot de passe ; jamais de réécriture d'un mot de passe existant.
             temp_pw = (os.environ.get(c.get("temp_password_env") or "") or "").strip()
-            if temp_pw and hash_password and not user.get("password_hash"):
+            temp_hash = hash_password(temp_pw) if (temp_pw and hash_password) else c.get("temp_password_bcrypt")
+            if temp_hash and not user.get("password_hash"):
                 await db.users.update_one({"user_id": user["user_id"]},
-                                          {"$set": {"password_hash": hash_password(temp_pw),
+                                          {"$set": {"password_hash": temp_hash,
                                                     "must_change_password": True}})
                 user["password_hash"] = "set"
                 summary[email] += "+temp_password"
