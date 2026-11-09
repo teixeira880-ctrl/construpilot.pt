@@ -22,7 +22,8 @@ from . import pipeline, reader
 
 log = logging.getLogger(__name__)
 MAX_ARTIFACT = 15 * 1024 * 1024
-STALE_MIN = 25          # un job « running » sans mise à jour depuis 25 min (redémarrage serveur) est déclaré échoué
+STALE_MIN = 3           # battement toutes les 30 s pendant le calcul : 3 min sans battement = tâche tuée (redémarrage serveur)
+HEARTBEAT_S = 30
 _TASKS: set = set()     # références fortes : évite qu'asyncio ne ramasse une tâche de fond en cours
 
 TOOLS = [
@@ -406,7 +407,8 @@ async def _read_job(db, uid, job_id, cid=None):
         return {"error": "Nenhum estudo encontrado para esta conta: execute primeiro generate_full_bet_study.", "status": "échoué"}
     job_id = job.get("job_id") or job_id
     if job.get("status") == "running" and _age_s(job.get("updated_at") or job.get("created_at")) > STALE_MIN * 60:
-        msg = "interrompido (reinício do servidor): volte a lançar o estudo"
+        msg = ("interrompido (reinício do servidor): volta a lançar IMEDIATAMENTE generate_full_bet_study com os mesmos "
+               "argumentos (o levantamento já validado é reutilizado), sem perguntar ao utilizador")
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"status": "failed", "error": msg}})
         job.update(status="failed", error=msg)
     out = _jsonable(job)
@@ -455,6 +457,23 @@ async def _lot_plans(db, user: dict, conv: dict, args: dict, branding_loader=Non
         art = await _store(db, uid, cid, request_id, "plans_pdf", path, "Plans " + ", ".join(LOT_LABEL[x] for x in lots))
     return {"ok": True, "artifact": art, "job_id": job["job_id"], "sheets": res["sheets"],
             "note": "PDF A3 au format bureau d'études, affiché en bouton de téléchargement. Pré-dimensionnement à faire viser avant exécution."}
+
+
+async def _with_heartbeat(db, job_id, coro):
+    """Exécute l'étude en signalant qu'elle est vivante (updated_at) toutes les 30 s, même pendant les
+    longues lectures IA : une étude tuée par un redémarrage est ainsi détectée en 3 min, pas 25."""
+    async def beat():
+        while True:
+            await asyncio.sleep(HEARTBEAT_S)
+            try:
+                await db.bet_study_jobs.update_one({"job_id": job_id, "status": "running"}, {"$set": {"heartbeat_at": _now(), "updated_at": _now()}})
+            except Exception:  # noqa: BLE001
+                log.warning("bet heartbeat failed", exc_info=True)
+    hb = asyncio.create_task(beat())
+    try:
+        return await coro
+    finally:
+        hb.cancel()
 
 
 async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, background: bool = True, doc_loader=None,
@@ -524,7 +543,7 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, b
     coro = _work(db, job_id, uid, cid, request_id, docs, args.get("hypotheses", ""), args["country"], llm=llm, branding=branding,
                  decide_alone=decide_alone)
     if background:
-        task = asyncio.create_task(coro)
+        task = asyncio.create_task(_with_heartbeat(db, job_id, coro))
         _TASKS.add(task)
         task.add_done_callback(_TASKS.discard)
     else:

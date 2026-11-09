@@ -4,6 +4,7 @@ maybe_handle() décide du moteur selon le bâtiment : maison individuelle → Fa
 bâtiment à ossature (immeuble, bureaux, parking, ERP…) → étude bet_frame complète ; génie civil → réponse claire « hors périmètre ».
 """
 from __future__ import annotations
+import re
 
 import asyncio
 import copy
@@ -74,6 +75,23 @@ class _NotFrame(Exception):
     pass
 
 
+_HOUSE = re.compile(r"\b(maison|moradia|vivenda|casa|house|villa|pavillon|habitation individuelle|clt|bois massif|madeira maci[cç]a|"
+                    r"cross[- ]?laminated|massivholz|будин(ок|ку))\b", re.I)
+_BUILDING = re.compile(r"\b(immeuble|pr[ée]dio|edif[ií]cio de habita[cç][aã]o coletiva|apartments?|logements collectifs|bureaux|"
+                       r"escrit[oó]rios|parking|erp|frame|ossature)\b", re.I)
+
+
+_TIMBER = re.compile(r"\b(clt|bois massif|madeira maci[cç]a|cross[- ]?laminated|massivholz)\b", re.I)
+
+
+def _user_says_house(hypotheses: str) -> bool:
+    """Choix explicite de l'utilisateur : maison / CLT bois massif → chaîne maison (jamais l'ossature BA)."""
+    h = hypotheses or ""
+    if _TIMBER.search(h):
+        return True
+    return bool(_HOUSE.search(h)) and not _BUILDING.search(h)
+
+
 _FAIL = {"fr": "L'étude du bâtiment n'a pas pu être menée à son terme. Relancez-la ; si l'erreur persiste, transmettez ce message au support",
          "pt": "O estudo do edifício não pôde ser concluído. Volte a lançá-lo; se o erro persistir, envie esta mensagem ao suporte"}
 
@@ -88,6 +106,10 @@ async def _handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, l
     if demo:
         raise _NotFrame
     try:
+        # Le choix explicite de l'utilisateur prime sur la détection IA (09/11 : « maison CLT / bois massif »
+        # était reclassée « immeuble_collectif » et l'étude partait dans le moteur ossature BA).
+        if _user_says_house(hypotheses):
+            raise _NotFrame
         det = await reader.detect(docs, hypotheses, llm=llm)
     except Exception:  # noqa: BLE001 — détection impossible : chaîne maison historique
         log.warning("bet_frame: détection du type impossible", exc_info=True)
