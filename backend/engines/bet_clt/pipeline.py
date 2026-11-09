@@ -53,20 +53,24 @@ class _render_ctx:
     def __enter__(self):
         self.T = draw.T
         draw.T = _T(self.lang)
-        if self.lang == "uk":
+        self.saved = {}
+        if self.lang == "uk":                      # Barlow n'a pas de cyrillique : titres en Inter le temps du rendu
             from reportlab.pdfbase import pdfmetrics
             from reportlab.pdfbase.ttfonts import TTFont
-            pdfmetrics.registerFont(TTFont("TT", str(brand.FONTS / "Inter_700Bold.ttf")))
-            pdfmetrics.registerFont(TTFont("TTS", str(brand.FONTS / "Inter_600SemiBold.ttf")))
+            for alias, src, fname in (("TTU", "TT", "Inter_700Bold.ttf"), ("TTSU", "TTS", "Inter_600SemiBold.ttf")):
+                try:
+                    pdfmetrics.getFont(alias)
+                except KeyError:
+                    pdfmetrics.registerFont(TTFont(alias, str(brand.FONTS / fname)))
+                self.saved[src] = pdfmetrics._fonts[src]
+                pdfmetrics._fonts[src] = pdfmetrics.getFont(alias)
         return self
 
     def __exit__(self, *a):
         draw.T = self.T
-        if self.lang == "uk":
+        if self.saved:
             from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-            pdfmetrics.registerFont(TTFont("TT", str(brand.FONTS / "BarlowSemiCondensed_700Bold.ttf")))
-            pdfmetrics.registerFont(TTFont("TTS", str(brand.FONTS / "BarlowSemiCondensed_600SemiBold.ttf")))
+            pdfmetrics._fonts.update(self.saved)
 
 
 def validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:

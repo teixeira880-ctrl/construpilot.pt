@@ -274,7 +274,10 @@ def foundations(m, r) -> Sheet:
 
 # ================================================================ CL03 implantation des poteaux
 def columns_plan(m, r) -> Sheet:
-    sh = _plan_sheet(m, "CL03", t("Implantation des poteaux — rez-de-chaussée", "Implantação dos pilares — R/C", "Column layout — level 1", "Розміщення колон — 1-й поверх"),
+    walls = r["system"] == "walls"
+    sh = _plan_sheet(m, "CL03", t("Implantation des murs CLT — rez-de-chaussée", "Implantação das paredes CLT — R/C", "CLT wall layout — level 1",
+                                  "Розміщення стін CLT — 1-й поверх") if walls else
+                     t("Implantation des poteaux — rez-de-chaussée", "Implantação dos pilares — R/C", "Column layout — level 1", "Розміщення колон — 1-й поверх"),
                      t("Pieds de poteaux : voir détails CL31", "Bases dos pilares: ver pormenores CL31", "Column bases: see details CL31", "Опори колон: див. вузли CL31"),
                      kind="col")
     grid(sh, m)
