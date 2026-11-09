@@ -429,7 +429,7 @@ def _tonemap(img):
     return np.clip(x, 0, 1)
 
 
-def render(m: dict, opcoes: dict | None = None, largura=1600, altura=900, spp=96) -> list[tuple[str, bytes]]:
+def render(m: dict, opcoes: dict | None = None, largura=1600, altura=900, spp=96, orcamento_s: float | None = None) -> list[tuple[str, bytes]]:
     """→ [(nome da vista, PNG)] — vista principal, vista do terraço, vista aérea."""
     import os
     import tempfile
@@ -450,7 +450,11 @@ def render(m: dict, opcoes: dict | None = None, largura=1600, altura=900, spp=96
             ("aerea", (0.70, -0.70), None, 1.25),
         ]
         out = []
+        import time
+        t0 = time.time()
         for nome, (dx, dy), h, k in vistas:
+            if out and orcamento_s and (time.time() - t0) * (len(out) + 1) / len(out) > orcamento_s:
+                break                                          # orçamento de tempo: a vista seguinte não caberia
             n = math.hypot(dx, dy)
             dx, dy = dx / n, dy / n
             d = dist * k

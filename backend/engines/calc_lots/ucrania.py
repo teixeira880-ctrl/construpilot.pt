@@ -562,17 +562,38 @@ def dossiers(p: dict) -> dict:
 
 
 def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None):
-    """Render 3D fotorrealista a partir do modelo dos planos (sempre que há modelo estrutural). Sem Mitsuba → lista vazia.
-    Qualidade por omissão 1600 × 900, 128 amostras (CP_RENDER_SPP / CP_RENDER_W para testes rápidos)."""
+    """Render 3D fotorrealista a partir do modelo dos planos (sempre que há modelo estrutural).
+    Produção: 1280 × 720, 32 amostras, orçamento de tempo CP_RENDER_BUDGET (80 s; a 1.ª vista é sempre feita) e cache em disco
+    (mesmo modelo → resultado imediato). Qualquer falha do motor de render → lista vazia: o dossier sai sempre."""
+    import hashlib
+    import json
+    import logging
     import os
-    largura = largura or int(os.environ.get("CP_RENDER_W", 1600))
+    import pickle
+    import tempfile
+    largura = largura or int(os.environ.get("CP_RENDER_W", 1280))
     altura = altura or int(largura * 9 / 16)
-    spp = spp or int(os.environ.get("CP_RENDER_SPP", 128))
+    spp = spp or int(os.environ.get("CP_RENDER_SPP", 32))
+    budget = float(os.environ.get("CP_RENDER_BUDGET", 80))
+    chave = hashlib.sha256(json.dumps([modelo, opcoes or {}, largura, altura, spp], sort_keys=True, default=str).encode()).hexdigest()[:24]
+    cache = os.path.join(os.environ.get("CP_RENDER_CACHE") or os.path.join(tempfile.gettempdir(), "cp_render_cache"), chave + ".pkl")
+    try:
+        if os.path.exists(cache):
+            return pickle.load(open(cache, "rb"))
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from . import render3d
-        return render3d.render(modelo, opcoes or {}, largura, altura, spp)
-    except ImportError:
+        out = render3d.render(modelo, opcoes or {}, largura, altura, spp, orcamento_s=budget)
+    except Exception as exc:  # noqa: BLE001 — o render nunca pode impedir o dossier
+        logging.getLogger(__name__).warning("render 3D indisponível: %s", exc)
         return []
+    try:
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
+        pickle.dump(out, open(cache, "wb"))
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def pagina_renders(renders, L, extra_pdf=None) -> bytes:

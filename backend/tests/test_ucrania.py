@@ -116,3 +116,13 @@ def test_exemplo_clt_rezult_fogo():
     assert all(any(c["lib"] == "Fogo R" and c["ok"] for c in e["controles"]) for e in paineis)
     tp = "".join(pg.get_text() for pg in pymupdf.open(stream=o["pdf"], filetype="pdf"))
     assert "Rezult CLT" in tp and "ETA-21/0914" in tp and "Painéis" not in tp
+
+
+def test_render_nunca_bloqueia_o_dossier(monkeypatch, tmp_path):
+    from engines.calc_lots import render3d
+    monkeypatch.setenv("CP_RENDER_CACHE", str(tmp_path))
+
+    def falha(*a, **k):
+        raise RuntimeError("LLVM indisponível")
+    monkeypatch.setattr(render3d, "render", falha)
+    assert ucrania.gerar_renders({"muros": []}, {}) == []
