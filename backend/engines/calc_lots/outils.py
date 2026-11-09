@@ -430,7 +430,9 @@ UCRANIA_TOOL = _tool(
      "uso": _enum(list(ucrania.INTERIOR)), "theta_i": _n(), "theta_e": _n(), "zona": _enum(["I", "II"]), "area_aquecida_m2": _n(), "volume_m3": _n(),
      "renovacoes_h": _n("air changes per hour (null = 0.5)"), "recuperacao_calor": _n("heat recovery efficiency 0-1"),
      "pontes_termicas_w_m2k": _n("null = 0.05"), "inclinacao_cobertura_graus": _n(), "termo_servico_anos": _n("50 or 100"), "altitude_m": _n(),
-     "elementos": _arr(_EL_UA, desc="envelope elements"), "modelo_estrutural_json": _NS("structural model JSON (see calcul_gros_oeuvre)")})
+     "elementos": _arr(_EL_UA, desc="envelope elements"), "modelo_estrutural_json": _NS("structural model JSON (see calcul_gros_oeuvre)"),
+     "empresa": _enum(["clt-rezult"], "company branding of the dossiers (logo, colour); clt-rezult = CLT Rezult"),
+     "projeto_uk": _NS("project title in Ukrainian"), "projeto_en": _NS("project title in English")})
 
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
               PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL]
@@ -541,9 +543,12 @@ def _res_can(k) -> list[str]:
     return out
 
 
-def _ret(o: dict, res: list[str], data: dict) -> dict:
+def _ret(o: dict, res: list[str], data: dict, extra=None) -> dict:
     res.append(FIM)
-    return {"titre": o["titre"], "resume": "\n".join(res), "pdf": o["pdf"], "png": o["png"], "data": data}
+    out = {"titre": o["titre"], "resume": "\n".join(res), "pdf": o["pdf"], "png": o["png"], "data": data}
+    if extra:
+        out["pdf_extra"] = extra
+    return out
 
 
 def run(name: str, args: dict) -> dict:
@@ -777,7 +782,8 @@ def run(name: str, args: dict) -> dict:
                 p[k] = v
         if a.get("modelo_estrutural_json"):
             p["modelo_estrutural"] = a["modelo_estrutural_json"]
-        o = ucrania.note(p)
+        dd = ucrania.dossiers(p)                                   # sempre dois dossiers completos: ucraniano + inglês
+        o, oen = dd["uk"], dd["en"]
         r, c = o["r"], o["r"]["clima"]
         res = [o["titre"], "English summary: " + o["resumo_en"]]
         res += [f"{'OK' if e['ok'] else 'KO'} {e['nome']}: R = {e['R']:.2f} m²K/W" + (f" ≥ Rq,min {e['rq']:.2f}" if e["rq"] else "") for e in r["elementos"]]
@@ -785,6 +791,12 @@ def run(name: str, args: dict) -> dict:
             v = o["go"]["verificacao"]
             res.append(f"Structure: {len(v['elementos'])} elements, compliant: {v['conforme']}, adjustments: " + ("; ".join(v["ajustes"]) or "none"))
         res += _hyp(r["hipoteses"])
+        if o.get("orcamento"):
+            ob = o["orcamento"]
+            res.append(f"Cost estimate: {ob['sem_pdv']:,.0f} UAH excl. VAT + VAT 20 % = {ob['com_pdv']:,.0f} UAH (≈ {ob['eur_com_pdv']:,.0f} €).")
+        res.append("Two complete dossiers delivered: Ukrainian (main file) and English (extra file).")
         return _ret(o, res, {"cidade": c["chave"], "zona": c["zona"], "theta_e": c["theta_e"], "phi_kw": round(r.get("phi_w", 0) / 1000, 2),
-                             "q_kwh_m2": round(r.get("q_kwh_m2", 0), 1), "envolvente_conforme": all(e["ok"] for e in r["elementos"])})
+                             "q_kwh_m2": round(r.get("q_kwh_m2", 0), 1), "envolvente_conforme": all(e["ok"] for e in r["elementos"]),
+                             "custo_com_pdv_uah": round(o["orcamento"]["com_pdv"]) if o.get("orcamento") else None},
+                    extra=[("Dossier-EN", oen["titre"], oen["pdf"])])
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")
