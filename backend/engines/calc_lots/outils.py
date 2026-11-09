@@ -397,7 +397,8 @@ GROS_OEUVRE_TOOL = _tool(
     "cota_topo_m, g_kn_m, q_kn_m}], muros [{pontos, espessura_m, cota_base_m, cota_topo_m}], pilares [{ref, x_m, y_m, b_m, h_m, material "
     "(betao|C24|GL24h|GL28h), cota_base_m, cota_topo_m, g_kn, q_kn}], vigas [{ref, piso (pavimento|cobertura), x0_m, y0_m, x1_m, y1_m, b_m, h_m, material, "
     "vao_calculo_m, g_kn_m, q_kn_m, cota_topo_ini_m, cota_topo_fim_m}], lajes [{ref, piso (fundacao|pavimento|cobertura), tipo (laje_terrea|laje_ba|"
-    "vigas_i|clt), x0_m, y0_m, x1_m, y1_m, espessura_m, CLT: camadas_mm [ímpar] + vao_m → verificação do painel (corte de rolamento, fluência), cota_topo_m ou cota_topo_ini_m/cota_topo_fim_m + pendente_dir, direcao_vao, q_kn_m2, descricao}], "
+    "vigas_i|clt), x0_m, y0_m, x1_m, y1_m, espessura_m, CLT: camadas_mm [ímpar] + vao_m → verificação do painel (corte de rolamento, fluência; "
+    "produto rezult_clt = ETA-21/0914, especie pinho|outras, fogo_min 30|60|90 → resistência ao fogo R), cota_topo_m ou cota_topo_ini_m/cota_topo_fim_m + pendente_dir, direcao_vao, q_kn_m2, descricao}], "
     "cortes [{nome, direcao x|y, pos_m}] (null = automáticos).",
     {"modelo_json": {"type": "string", "description": "modelo estrutural completo em JSON (ver descrição)"},
      "ajustar": _B("null/true = ajustar as secções não conformes; false = só verificar")})
@@ -417,9 +418,15 @@ UCRANIA_TOOL = _tool(
     "(same JSON as calcul_gros_oeuvre) — structural checks (Eurocodes adopted in Ukraine) with dimensioned construction drawings GO-01…GO-05 in "
     "Ukrainian. exemplo=true → complete demonstration (house 120 m² in Kyiv; sistema=clt → CLT walls, floor and roof panels checked with "
     "rolling-shear deformation; otherwise aerated concrete + mineral wool, RC slabs; strip footings). Linear / point thermal bridges ψ / χ per element. "
-    "Use it whenever the project is in Ukraine or the user writes in Ukrainian; answer in the user's language.",
+    "CLT panels use the declared values of the product's ETA when produto_clt is given (Rezult CLT = ETA-21/0914 is built in: "
+    "E0 12000 MPa, f_m,k 24 × k_sys, rolling shear by cross-layer thickness, charring β0 0.65 mm/min with fire check R30/R60/R90). "
+    "If the user mentions Rezult / Резулт, set produto_clt=rezult_clt. Use it whenever the project is in Ukraine or the user writes in "
+    "Ukrainian; answer in the user's language.",
     {"cidade": _enum(ucrania.CIDADES, "oblast centre (null = give theta_e and zona)"), "projeto": _NS(), "exemplo": _B("true = demonstration case Kyiv"),
      "sistema": _enum(["clt", "alvenaria_ba"], "demonstration system with exemplo=true: clt (CLT walls/floors/roof) or aerated concrete + RC"),
+     "produto_clt": _enum(["rezult_clt", "generico_c24"], "CLT product with ETA: rezult_clt = Rezult CLT, ETA-21/0914 (Ukrainian Sawmill Holding, Kyiv)"),
+     "especie_clt": _enum(["pinho", "outras"], "cross-layer species (Rezult ETA fig. 3: pine f_R,k 1.34-1.8 MPa, others 1.1)"),
+     "fogo_min": _n("fire resistance R (minutes) to check on CLT panels: 30, 60, 90"),
      "uso": _enum(list(ucrania.INTERIOR)), "theta_i": _n(), "theta_e": _n(), "zona": _enum(["I", "II"]), "area_aquecida_m2": _n(), "volume_m3": _n(),
      "renovacoes_h": _n("air changes per hour (null = 0.5)"), "recuperacao_calor": _n("heat recovery efficiency 0-1"),
      "pontes_termicas_w_m2k": _n("null = 0.05"), "inclinacao_cobertura_graus": _n(), "termo_servico_anos": _n("50 or 100"), "altitude_m": _n(),

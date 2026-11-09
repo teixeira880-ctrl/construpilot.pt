@@ -90,3 +90,24 @@ def test_fusao_codex_preenche_sem_confirmar():
 def test_ferramenta_clt():
     out = outils.run("calcul_ucrania", {"exemplo": True, "sistema": "clt", "cidade": "chernihiv"})
     assert "CLT" in out["resume"] and out["data"]["envolvente_conforme"]
+
+
+def test_eta_rezult_valores_declarados():
+    from engines.calc_lots import clt_produtos as CP
+    p = CP.produto("Rezult")
+    assert p["eta"].startswith("ETA-21/0914") and p["E0_mean"] == 12000 and p["G_R"] == 50 and p["beta_0"] == 0.65
+    assert CP.fr_k(p, 20, "pinho") == 1.8 and CP.fr_k(p, 43, "pinho") == pytest.approx(1.34) and CP.fr_k(p, 30, None) == 1.1
+    assert CP.k_sys(4) == pytest.approx(1.075) and CP.k_sys(20) == 1.2
+    assert CP.validar_camadas(p, [40] * 5) == [] and CP.validar_camadas(p, [50, 50, 50])          # tábuas 50 mm fora da ETA
+    assert CP.carbonizacao([40] * 5, 60, 0.65)["d_char"] == pytest.approx(39.0)
+    assert CP.carbonizacao([40] * 5, 90, 0.65)["d_char"] == pytest.approx(71.0)                    # bilinear: 2·β após a 1.ª lamela
+
+
+def test_exemplo_clt_rezult_fogo():
+    o = ucrania.note(ucrania.exemplo_clt())
+    v = o["go"]["verificacao"]
+    paineis = [e for e in v["elementos"] if e["tipo"] == "painel CLT"]
+    assert paineis and all(e["ok"] for e in paineis) and all("ETA-21/0914" in e["seccao"] for e in paineis)
+    assert all(any(c["lib"] == "Fogo R" and c["ok"] for c in e["controles"]) for e in paineis)
+    tp = "".join(pg.get_text() for pg in pymupdf.open(stream=o["pdf"], filetype="pdf"))
+    assert "Rezult CLT" in tp and "ETA-21/0914" in tp and "Painéis" not in tp

@@ -301,6 +301,11 @@ def note(p: dict) -> dict:
         from . import gros_oeuvre
         mod = json.loads(p["modelo_estrutural"]) if isinstance(p["modelo_estrutural"], str) else dict(p["modelo_estrutural"])
         mod.setdefault("local", f"{c['nome']} ({c['name']})")
+        for lj in mod.get("lajes") or []:
+            if lj.get("tipo") == "clt":
+                for k_src, k_dst in (("produto_clt", "produto"), ("especie_clt", "especie"), ("fogo_min", "fogo_min")):
+                    if p.get(k_src):
+                        lj[k_dst] = p[k_src]
         if r["cargas"]:
             for v in mod.get("vigas") or []:
                 if v.get("piso") == "cobertura" and v.get("q_kn_m") is None and v.get("largura_influencia_m"):
@@ -418,10 +423,10 @@ def preencher_clt_ua(raw: dict) -> tuple[dict, list[str]]:
     return raw, feito
 
 
-def exemplo_clt(cidade: str = "kyiv") -> dict:
+def exemplo_clt(cidade: str = "kyiv", produto: str = "rezult_clt") -> dict:
     """Будинок 10 × 12 м з панелей CLT (стіни, перекриття, покриття) на стрічкових фундаментах — приклад для CLT в Україні."""
     p = exemplo_kyiv()
-    p.update(projeto="Житловий будинок CLT 120 м²", cidade=cidade)
+    p.update(projeto="Житловий будинок Rezult CLT 120 м²", cidade=cidade)
     p["elementos"] = [
         {"nome": "Стіна CLT 100 + мінвата 200", "tipo": "parede", "area_m2": 105,
          "camadas": [{"material": "gipsokarton", "espessura_mm": 12.5}, {"material": "clt", "espessura_mm": 100}, {"material": "paroizolyatsiya"},
@@ -435,7 +440,7 @@ def exemplo_clt(cidade: str = "kyiv") -> dict:
         {"nome": "Вікна (двокамерний склопакет)", "tipo": "janela", "area_m2": 22, "R": 0.95},
         {"nome": "Вхідні двері", "tipo": "porta", "area_m2": 2.2, "R": 0.80}]
     m = modelo_casa_kyiv()
-    m["projeto"] = "Житловий будинок CLT 120 м²"
+    m["projeto"] = "Житловий будинок Rezult CLT 120 м²"
     m["muros"] = [mu for mu in m["muros"] if mu.get("material") != "gazobeton"] + \
                  [dict(mu, espessura_m=0.10, material="clt") for mu in modelo_casa_kyiv()["muros"] if mu.get("material") == "gazobeton"]
     for g in m["sapatas_continuas"]:
@@ -445,9 +450,11 @@ def exemplo_clt(cidade: str = "kyiv") -> dict:
         for y0, y1 in ((0, 6), (6, 12)):
             m["lajes"].append({"ref": "CLT-П", "piso": "pavimento", "tipo": "clt", "x0_m": x0, "y0_m": y0, "x1_m": x1, "y1_m": y1, "espessura_m": 0.2,
                                "camadas_mm": [40, 40, 40, 40, 40], "vao_m": 5.0, "cota_topo_m": 0.0, "q_kn_m2": 1.5, "g2_kn_m2": 1.3, "psi2": 0.3,
-                               "direcao_vao": "x", "descricao": "CLT 200 (5 × 40), проліт 5,0 м"})
+                               "produto": produto, "fogo_min": 60,
+                               "direcao_vao": "x", "descricao": "Rezult CLT 200 (5 × 40), ETA-21/0914"})
             m["lajes"].append({"ref": "CLT-К", "piso": "cobertura", "tipo": "clt", "x0_m": x0, "y0_m": y0, "x1_m": x1, "y1_m": y1, "espessura_m": 0.2,
                                "camadas_mm": [40, 40, 40, 40, 40], "vao_m": 5.0, "cota_topo_m": 3.2, "g2_kn_m2": 0.8, "psi2": 0.0, "isolamento_m": 0.26,
-                               "direcao_vao": "x", "descricao": "CLT 200 + мінвата 260"})
+                               "produto": produto, "fogo_min": 60,
+                               "direcao_vao": "x", "descricao": "Rezult CLT 200 + мінвата 260"})
     p["modelo_estrutural"] = m
     return p

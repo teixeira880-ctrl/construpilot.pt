@@ -105,8 +105,11 @@ def _pilar_madeira(b, h, L, N_ed, classe, sc=1):
 CLT_PROP = {"E0": 11000.0, "G0": 690.0, "GR": 50.0, "fm_k": 24.0, "fv_k": 4.0, "fr_k": 1.1, "rho": 4.7}   # C24 típico (EN 338 / EN 16351)
 
 
-def clt_rigidez(camadas_mm, kmod=0.8, gm=1.25):
-    """Faixa de 1 m; camadas ímpares (1.ª, 3.ª…) na direção do vão. → EI (kN·m²), GA (kN), M_Rd (kN·m), V_Rd (kN)."""
+def clt_rigidez(camadas_mm, kmod=0.8, gm=1.25, produto=None, especie=None, n_tabuas=None):
+    """Faixa de 1 m; camadas ímpares (1.ª, 3.ª…) na direção do vão. → EI (kN·m²), GA (kN), M_Rd (kN·m), V_Rd (kN).
+    produto = chave de clt_produtos (ETA): E0, G_R, f_m,k × k_sys, f_R,k pela espessura da camada cruzada e espécie."""
+    from . import clt_produtos as CP
+    pr = CP.produto(produto) if produto else None
     t = [c / 1000 for c in camadas_mm]
     if len(t) < 3 or len(t) % 2 == 0:
         raise ValueError("CLT: número ímpar de camadas (≥ 3)")
@@ -118,12 +121,20 @@ def clt_rigidez(camadas_mm, kmod=0.8, gm=1.25):
     lon = [i for i in range(len(t)) if i % 2 == 0]
     zs = sum(t[i] * zc[i] for i in lon) / sum(t[i] for i in lon)
     I = sum(t[i] ** 3 / 12 + t[i] * (zc[i] - zs) ** 2 for i in lon)            # m⁴ por m (só camadas longitudinais)
-    E, G0, GR = CLT_PROP["E0"] * 1e3, CLT_PROP["G0"] * 1e3, CLT_PROP["GR"] * 1e3
+    if pr:
+        E, G0, GR = pr["E0_mean"] * 1e3, pr["G0_mean"] * 1e3, pr["G_R"] * 1e3
+        n_t = int(n_tabuas or math.floor(1000 / pr["tabua_b_mm"][1]))          # tábuas da camada exterior na faixa de 1 m (b máx → conservador)
+        ksys = CP.k_sys(n_t)
+        fm, fv = pr["fm_k"] * ksys, pr["fv_k"]
+        frk = min(CP.fr_k(pr, camadas_mm[i], especie) for i in range(1, len(camadas_mm), 2))
+    else:
+        E, G0, GR = CLT_PROP["E0"] * 1e3, CLT_PROP["G0"] * 1e3, CLT_PROP["GR"] * 1e3
+        ksys, fm, fv, frk = 1.0, CLT_PROP["fm_k"], CLT_PROP["fv_k"], CLT_PROP["fr_k"]
     a = zc[-1] - zc[0]
     den = t[0] / (2 * G0) + t[-1] / (2 * G0) + sum(t[i] / (GR if i % 2 else G0) for i in range(1, len(t) - 1))
     GA = a * a / den
     zmax = max(zs, H - zs)
-    M_Rd = kmod * CLT_PROP["fm_k"] * 1e3 / gm * I / zmax
+    M_Rd = kmod * fm * 1e3 / gm * I / zmax
     S_R = t[0] * abs(zc[0] - zs)                                                 # momento estático na 1.ª camada transversal
     S_max = 0.0                                                                  # momento estático máximo (no eixo neutro)
     for i in lon:
@@ -131,21 +142,24 @@ def clt_rigidez(camadas_mm, kmod=0.8, gm=1.25):
         if bot > top:
             S_max += (bot - top) * (zs - (top + bot) / 2)
     S_max = max(S_max, S_R)
-    V_R = kmod * CLT_PROP["fr_k"] * 1e3 / gm * I / S_R
-    V_v = kmod * CLT_PROP["fv_k"] * 1e3 / gm * I / S_max
-    return {"EI": E * I, "GA": GA, "M_Rd": M_Rd, "V_Rd": min(V_R, V_v), "H": H, "I": I}
+    V_R = kmod * frk * 1e3 / gm * I / S_R
+    V_v = kmod * fv * 1e3 / gm * I / S_max
+    return {"EI": E * I, "GA": GA, "M_Rd": M_Rd, "V_Rd": min(V_R, V_v), "H": H, "I": I, "k_sys": ksys, "f_R_k": frk, "E0": E / 1e3,
+            "produto": pr}
 
 
 def clt_painel(lj, vao, kmod=0.8):
     from engines.bet_clt_ua.engine import panel
     from engines.bet_clt_ua.schema import Panel
+    from . import clt_produtos as CP
     cam = lj.get("camadas_mm") or [round(float(lj["espessura_m"]) * 1000 / 5, 1)] * 5
-    rg = clt_rigidez(cam, kmod)
+    rg = clt_rigidez(cam, kmod, produto=lj.get("produto"), especie=lj.get("especie"), n_tabuas=lj.get("n_tabuas"))
+    pr = rg["produto"]
     cobertura = lj.get("piso") == "cobertura"
     psi2 = float(lj["psi2"]) if lj.get("psi2") is not None else (0.0 if cobertura else 0.3)
-    basis = {"reference": "ConstruPilot — CLT C24 valores típicos (EN 338 / EN 16351); substituir pela ETA do fabricante", "revision": "1",
-             "declared_by": "ConstruPilot calc_lots.gros_oeuvre", "confirmed": False}
-    pn = Panel.model_validate({"id": lj.get("ref") or "CLT", "product": "CLT C24 (típico)", "layup_id": "-".join(f"{c:g}" for c in cam),
+    basis = {"reference": (f"{pr['nome']} — {pr['eta']}" if pr else "ConstruPilot — CLT C24 valores típicos (EN 338 / EN 16351); substituir pela ETA do fabricante"),
+             "revision": "1", "declared_by": pr["fabricante"] if pr else "ConstruPilot calc_lots.gros_oeuvre", "confirmed": False}
+    pn = Panel.model_validate({"id": lj.get("ref") or "CLT", "product": pr["nome"] if pr else "CLT C24 (típico)", "layup_id": "-".join(f"{c:g}" for c in cam),
                                "bending_axis": "longitudinal", "application": "roof" if cobertura else "floor",
                                "support_model": "one_way_simply_supported_udl", "span_m": float(vao), "strip_width_m": 1.0,
                                "thickness_m": rg["H"], "density_kn_m3": CLT_PROP["rho"], "ei_eff_kn_m2": rg["EI"], "ga_eff_kn": rg["GA"],
@@ -163,7 +177,22 @@ def clt_painel(lj, vao, kmod=0.8):
            {"ref": "Flecha final com deformação por corte e fluência (kdef 0,8)", "exigence": f"w_fin ≤ L/{float(lj.get('limite_flecha') or 300):g}",
             "valeur": f"{r['final_deflection']['total_mm']:.1f} mm (corte {r['final_deflection']['shear_mm']:.1f} mm)",
             "ok": ra["final_deflection"] <= 1 + 1e-9, "taux": ra["final_deflection"], "lib": "Flecha final"}]
-    return {"element": "Painel CLT (motor bet_clt_ua)", "section": f"CLT {'-'.join(f'{c:g}' for c in cam)} mm, vão {vao:g} m", "controles": ctl,
+    if pr:
+        av = CP.validar_camadas(pr, cam)
+        ctl.append({"ref": f"Âmbito {pr['eta']}", "exigence": "composição dentro do Anexo 2 da ETA",
+                    "valeur": "dentro do âmbito" if not av else "; ".join(av), "ok": True if not av else None, "lib": "Âmbito ETA"})
+    if lj.get("fogo_min"):
+        prf = pr or CP.produto("generico_c24")
+        g_tot = CLT_PROP["rho"] * rg["H"] + float(lj.get("g2_kn_m2") or 0.0)
+        psi_fi = float(lj["psi_fogo"]) if lj.get("psi_fogo") is not None else (0.2 if cobertura else 0.5)
+        fo = CP.fogo_painel(prf, cam, float(vao), g_tot, float(lj.get("q_kn_m2") or 0.0), psi_fi, float(lj["fogo_min"]),
+                            int(lj.get("n_tabuas") or math.floor(1000 / prf["tabua_b_mm"][1])))
+        ctl.append({"ref": f"Fogo R{float(lj['fogo_min']):g} — EN 1995-1-2 §3.4.3 / §4.2.2, β0 {prf['beta_0']:g} mm/min ({prf['eta'][:13]})",
+                    "exigence": "M_Ed,fi ≤ M_Rd,fi (secção residual)",
+                    "valeur": f"{fo['M_ed']:.1f} / {fo['M_rd']:.1f} kN·m/m — carbonização {fo['d_char']:.0f} mm + d0 7 mm, restam {fo['residual_mm']:.0f} mm",
+                    "ok": fo["ok"], "taux": fo["taxa"] if math.isfinite(fo["taxa"]) else 9.99, "lib": "Fogo R"})
+    nome = f"{pr['nome']} ({pr['eta'].split(' ')[0]})" if pr else "CLT"
+    return {"element": "Painel CLT (motor bet_clt_ua)", "section": f"{nome} {'-'.join(f'{c:g}' for c in cam)} mm, vão {vao:g} m", "controles": ctl,
             "quantites": {"bois_m3": rg["H"]}, "rigidez": rg}
 
 
@@ -290,7 +319,15 @@ def verificar(m: dict) -> dict:
     for lj in m.get("lajes") or []:
         if lj.get("tipo") == "clt" and lj.get("vao_m"):
             reg("painel CLT", lj, clt_painel(lj, float(lj["vao_m"])))
-    if any(lj.get("tipo") == "clt" and lj.get("vao_m") for lj in m.get("lajes") or []):
+    prods = {lj.get("produto") for lj in m.get("lajes") or [] if lj.get("tipo") == "clt" and lj.get("vao_m") and lj.get("produto")}
+    if prods:
+        from . import clt_produtos as CP
+        for k in sorted(prods):
+            pp = CP.produto(k)
+            hip.append(f"Painéis {pp['nome']}: valores declarados na {pp['eta']} — E0,mean {pp['E0_mean']:g} MPa, f_m,k {pp['fm_k']:g} MPa × k_sys, "
+                       f"G_R {pp['G_R']:g} MPa, f_R,k pela figura 3 da ETA, carbonização β0 {pp['beta_0']:g} mm/min; vibração, ligações, "
+                       "estabilidade lateral, integridade e isolamento ao fogo (E, I) não verificados aqui")
+    elif any(lj.get("tipo") == "clt" and lj.get("vao_m") for lj in m.get("lajes") or []):
         hip.append("Painéis CLT: propriedades C24 típicas (EN 338 / EN 16351, f_r,k 1,1 MPa, G_R 50 MPa) — substituir pelos valores da ETA do fabricante; "
                    "vibração dos pavimentos (NP EN 1995-1-1 §7.3), ligações, estabilidade lateral e fogo não verificados aqui")
 
