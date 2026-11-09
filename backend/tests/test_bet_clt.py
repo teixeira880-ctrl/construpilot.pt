@@ -107,3 +107,51 @@ def test_four_languages_texts():
     for lg, word in (("fr", "Plancher"), ("pt", "Piso"), ("en", "Floor"), ("uk", "Перекриття")):
         with use_lang(lg):
             assert t("Plancher", "Piso", "Floor", "Перекриття") == word
+
+
+# ---- 09/11/2026 : plan réel « Home A » (CLT Rezult) — compositions imposées, étages en L, thermique, devis final aux prix UA
+def test_layup_parser():
+    from engines.bet_clt.mat import layup
+    assert layup("CLT Panel 240-7s")[0] == "240 L7s"
+    assert layup("CLT Panel140-5s")[0] == "140 L5s"
+    assert layup("100 L5s")[1] == (20, 20, 20, 20, 20)
+    assert layup("n'importe quoi") is None
+
+
+def test_home_a_imposed_layups_checked_per_span(tmp_path):
+    r = _run("home_a_clt_rezult_pt.json", tmp_path)
+    fl = {f["name"]: f for f in r["summary"]["floors"]}
+    assert fl["1.º andar"]["clt"] == "240 L7s" and fl["Cobertura"]["clt"] == "140 L5s"     # composições da planta, não substituídas
+    txt = " ".join(r["decisions"])
+    assert "5,10 m → 0,93" in txt                     # vão real da sala : 240-7s OK
+    assert "5,61 m → 1,11 ✗" in txt                  # se os painéis vencerem N–S sobre os quartos : vibração
+    assert "5,10 m → 1,39 ✗" in txt                  # cobertura 140-5s insuficiente sobre a sala (terraço do R/C)
+    walls = {w["id"]: w for w in r["summary"]["walls"]}
+    assert walls["WN"]["segs"][0][1] == "80 L3s"     # mitoyen 2 × 80 L3s
+    assert "WF1" in walls and len(walls["WS"]["segs"]) == 1     # façade du 1.º andar en retrait (alinhamento 2), pas de mur fantôme
+
+
+def test_home_a_thermal_pt_and_fr(tmp_path):
+    from engines.bet_clt import thermal
+    from engines.bet_frame import model
+    raw = json.loads((CASES / "home_a_clt_rezult_pt.json").read_text(encoding="utf-8"))
+    th = thermal.compute(model.from_dict(raw))
+    s = th["solutions"]
+    # parede : 1 / (0,13 + 0,025/0,25 + 0,10/0,13 + 0,10/0,035 + 0,01/1,0 + 0,04)
+    assert abs(s["wall"]["U"] - 1 / (0.13 + 0.1 + 0.1 / 0.13 + 0.1 / 0.035 + 0.01 + 0.04)) < 1e-3
+    g = th["geometry"]["storeys"]
+    assert g[1]["fac"]["x0"] == 13.53 and g[0]["party"] == 13.53 and abs(g[0]["roof"] - 50.87) < 0.05
+    assert th["reh"]["classe"] in ("A+", "A") and th["ok"]
+    raw = json.loads((CASES / "home_a_clt_rezult_fr.json").read_text(encoding="utf-8"))
+    th = thermal.compute(model.from_dict(raw))
+    assert th["re2020"]["conforme"] and th["re2020"]["Bbio"] < th["re2020"]["seuils"]["Bbio_max"]
+
+
+def test_home_a_final_estimate_ua(tmp_path):
+    r = _run("home_a_clt_rezult_pt.json", tmp_path, langs=["en", "uk"])
+    for k in ("estimate_pdf", "estimate_xlsx", "estimate_pdf_en", "estimate_pdf_uk"):
+        assert Path(r["files"][k]).stat().st_size > 5000
+    d = r["summary"]["devis"]
+    assert 25000 < d["ua_per_m2"] < 48000          # dans la fourchette du marché ukrainien 2026 (maison clés en main)
+    from pypdf import PdfReader
+    assert "грн" in PdfReader(r["files"]["estimate_pdf_uk"]).pages[0].extract_text()

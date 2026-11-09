@@ -18,7 +18,7 @@ from engines.bet_frame.model import BLOCK, WARN, Frame, use_key
 
 from . import norms, timber
 from .lang import num, t
-from .mat import CLT, GL_COLS, LAYUPS, PANEL_MAX_L, PANEL_MAX_W, WALL_LAYUPS, beam_sizes
+from .mat import CLT, GL_COLS, LAYUPS, PANEL_MAX_L, PANEL_MAX_W, WALL_LAYUPS, beam_sizes, layup
 
 SIZES = beam_sizes()
 
@@ -377,19 +377,39 @@ def compute(m: Frame) -> dict:
     floors = []
     for s in timber_slabs:
         roof = s.id == "COB"
+        sname = t("Toiture", "Cobertura", "Roof", "Покрівля") if roof else s.name
         ld = _loads_for(m, s.use, roof, snow)
         cells = _cells(m, s.id)
         if not cells:
             continue
         gs = m.gx if o == "x" else m.gy
         spans = sorted({round((gs[k + 1] - gs[k]) / n, 3) for k in range(len(gs) - 1)})
-        clt = timber.design_clt(max(spans), ld["g"], ld["q"], ld["psi1"], ld["psi2"], R, q_dur=ld["dur"], defl=defl, a_vib=_avib(m, ld))
+        imposed = layup(m.st.get("clt_roof_layup" if roof else "clt_floor_layup"))
+        if imposed:                                   # composition imposée par le plan de l'architecte / du fabricant : on la VÉRIFIE
+            clt = timber.design_clt(max(spans), ld["g"], ld["q"], ld["psi1"], ld["psi2"], R, q_dur=ld["dur"], defl=defl, a_vib=_avib(m, ld),
+                                    layups=[imposed])
+            mini = timber.design_clt(max(spans), ld["g"], ld["q"], ld["psi1"], ld["psi2"], R, q_dur=ld["dur"], defl=defl, a_vib=_avib(m, ld))
+            decisions.append(t(f"{sname} : CLT {imposed[0]} imposé par le plan, vérifié (taux {num(clt['u_max'])}, {clt['governing']}) — minimum de calcul : {mini['name']}.",
+                               f"{sname}: CLT {imposed[0]} imposto pela planta, verificado (taxa {num(clt['u_max'])}, {clt['governing']}) — mínimo de cálculo: {mini['name']}.",
+                               f"{sname}: CLT {imposed[0]} specified on the drawings, checked (ratio {num(clt['u_max'])}, {clt['governing']}) — calculated minimum: {mini['name']}.",
+                               f"{sname}: CLT {imposed[0]} задано кресленнями, перевірено (коеф. {num(clt['u_max'])}, {clt['governing']}) — розрахунковий мінімум: {mini['name']}."))
+            if len(spans) > 1:                        # taux par portée : localise les travées à reprendre (sens de pose, épaisseur, poutre)
+                det = []
+                for sp in spans:
+                    ck = timber.design_clt(sp, ld["g"], ld["q"], ld["psi1"], ld["psi2"], R, q_dur=ld["dur"], defl=defl, a_vib=_avib(m, ld), layups=[imposed])
+                    det.append(f"{num(sp)} m → {num(ck['u_max'])}{'' if ck['u_max'] <= 1 else ' ✗'}")
+                decisions.append(t(f"{sname} : CLT {imposed[0]} par portée : " + " ; ".join(det) + ".",
+                                   f"{sname}: CLT {imposed[0]} por vão: " + "; ".join(det) + ".",
+                                   f"{sname}: CLT {imposed[0]} per span: " + "; ".join(det) + ".",
+                                   f"{sname}: CLT {imposed[0]} за прольотами: " + "; ".join(det) + "."))
+        else:
+            clt = timber.design_clt(max(spans), ld["g"], ld["q"], ld["psi1"], ld["psi2"], R, q_dur=ld["dur"], defl=defl, a_vib=_avib(m, ld))
         if not clt["ok"]:
             issues.append({"code": "CLT-NOK", "level": BLOCK, "message": t(
-                f"Plancher {s.name} : portée {num(max(spans))} m trop grande pour le CLT 280 mm (taux {num(clt['u_max'])}, {clt['governing']}).",
-                f"Laje {s.name}: vão {num(max(spans))} m demasiado grande para CLT 280 mm (taxa {num(clt['u_max'])}).",
-                f"Floor {s.name}: span {num(max(spans))} m too long for 280 mm CLT (ratio {num(clt['u_max'])}).",
-                f"Перекриття {s.name}: проліт {num(max(spans))} м завеликий для CLT 280 мм (коеф. {num(clt['u_max'])})."),
+                f"Plancher {sname} : portée {num(max(spans))} m trop grande pour le CLT 280 mm (taux {num(clt['u_max'])}, {clt['governing']}).",
+                f"Laje {sname}: vão {num(max(spans))} m demasiado grande para CLT 280 mm (taxa {num(clt['u_max'])}).",
+                f"Floor {sname}: span {num(max(spans))} m too long for 280 mm CLT (ratio {num(clt['u_max'])}).",
+                f"Перекриття {sname}: проліт {num(max(spans))} м завеликий для CLT 280 мм (коеф. {num(clt['u_max'])})."),
                 "fix": t("Ajouter des pannes ou réduire la trame.", "Acrescentar madres ou reduzir a trama.", "Add purlins or reduce the grid.",
                          "Додати прогони або зменшити сітку.")})
         lvl_no = "R" if roof else str(next((k + 1 for k, l in enumerate(m.levels) if l.id == s.id), len(floors) + 1))
@@ -397,7 +417,7 @@ def compute(m: Frame) -> dict:
         ptypes = _panel_types(panels)
         beams = [] if syst == "walls" else beams_for_slab(m, cells, o, n, lvl_no, ld, clt, R, defl, facade * (1.0 if roof else _storey_h(m, s)), roof, issues)
         area = sum((m.gx[i + 1] - m.gx[i]) * (m.gy[j + 1] - m.gy[j]) for (i, j) in cells)
-        floors.append({"id": s.id, "name": s.name, "z": s.z, "roof": roof, "loads": ld, "clt": clt, "panels": panels, "ptypes": ptypes,
+        floors.append({"id": s.id, "name": sname, "z": s.z, "roof": roof, "loads": ld, "clt": clt, "panels": panels, "ptypes": ptypes,
                        "beams": beams, "area": round(area, 2), "cells": sorted(cells), "tag": lvl_no, "level_below": s.level_below,
                        "spans": spans})
     # ---- descente de charges : poteaux (ou murs)
@@ -526,40 +546,90 @@ def _walls(m: Frame, floors: list, o: str, R: int, snow: dict, wind: dict, issue
                 kk = 1.25 if left and right else 1.0
                 ng += f["clt"]["G"] * (sl + sr) / 2 * kk
                 nq += f["loads"]["q"] * (sl + sr) / 2 * kk
-            if ng + nq <= 0:
+            run = _run(m, o, js, lv.id, bearing=True)
+            if ng + nq <= 0 or not run:
                 continue
-            ext = js in (0, len(gs) - 1)
-            seg = _wall_check(lv.height, ng, nq, R, wind["qp"] * 1.1 if ext else 0.0)
+            ext = js in (0, len(gs) - 1) or _run(m, o, js, lv.id, bearing=False) is not None
+            seg = _wall_check(lv.height, ng, nq, R, wind["qp"] * 1.1 if ext else 0.0, _wall_lays(m))
             ng += seg["sw"]
-            segs.append(dict(seg, level=lv.id, level_name=lv.name, ng=round(ng, 1), nq=round(nq, 1)))
+            segs.append(dict(seg, level=lv.id, level_name=lv.name, ng=round(ng, 1), nq=round(nq, 1), leaves=1, **run))
         if segs:
             segs.reverse()
-            out.append({"id": f"W{js + 1}", "axis": o, "pos": gs[js], "a": gp[0], "b": gp[-1], "L": round(gp[-1] - gp[0], 2),
+            out.append({"id": f"W{js + 1}", "axis": o, "pos": gs[js], "a": segs[0]["a"], "b": segs[0]["b"], "L": segs[0]["L"],
                         "bearing": True, "segs": segs, "n_ser": segs[0]["ng"] + segs[0]["nq"],
                         "n_uls": round(1.35 * segs[0]["ng"] + 1.5 * segs[0]["nq"], 1)})
-    # façades parallèles à la portée (non porteuses verticalement, contreventement + vent)
-    for jp in (0, len(gp) - 1):
+    # façades parallèles à la portée (non porteuses verticalement, contreventement + vent), y compris les façades en retrait
+    # d'un étage (emprise en L) : longueur réelle par étage
+    for jp in range(len(gp)):
         segs = []
         ng = 0.0
         for k in range(len(m.levels) - 1, -1, -1):
             lv = m.levels[k]
-            seg = _wall_check(lv.height, ng + 2.0, 0.0, R, wind["qp"] * 1.1)
+            run = _run(m, o, jp, lv.id, bearing=False)
+            if not run:
+                continue
+            pw = _party(m, o, jp) if jp in (0, len(gp) - 1) else (_wall_lays(m), 1)
+            seg = _wall_check(lv.height, (ng + 2.0) / pw[1], 0.0, R, wind["qp"] * 1.1 / pw[1], pw[0])
             ng += seg["sw"]
-            segs.append(dict(seg, level=lv.id, level_name=lv.name, ng=round(ng + 2.0, 1), nq=0.0))
+            segs.append(dict(seg, level=lv.id, level_name=lv.name, ng=round(ng + 2.0, 1), nq=0.0, leaves=pw[1], **run))
+        if not segs:
+            continue
         segs.reverse()
-        out.append({"id": f"W{'S' if jp == 0 else 'N'}", "axis": "y" if o == "x" else "x", "pos": gp[jp], "a": gs[0], "b": gs[-1],
-                    "L": round(gs[-1] - gs[0], 2), "bearing": False, "segs": segs, "n_ser": segs[0]["ng"], "n_uls": round(1.35 * segs[0]["ng"], 1)})
+        wid = "WS" if jp == 0 else "WN" if jp == len(gp) - 1 else f"WF{jp}"
+        out.append({"id": wid, "axis": "y" if o == "x" else "x", "pos": gp[jp], "a": segs[0]["a"], "b": segs[0]["b"],
+                    "L": segs[0]["L"], "bearing": False, "segs": segs, "n_ser": segs[0]["ng"], "n_uls": round(1.35 * segs[0]["ng"], 1)})
     for w in out:
         if any(not s["ok"] for s in w["segs"]):
-            issues.append({"code": "WALL-NOK", "level": BLOCK, "message": t(f"Mur {w['id']} : CLT 200 mm insuffisant.", f"Parede {w['id']}: CLT 200 mm insuficiente.",
-                                                                            f"Wall {w['id']}: 200 mm CLT insufficient.", f"Стіна {w['id']}: CLT 200 мм недостатньо.")})
+            ly = next(s_["layup"] for s_ in w["segs"] if not s_["ok"])
+            issues.append({"code": "WALL-NOK", "level": BLOCK, "message": t(f"Mur {w['id']} : CLT {ly} insuffisant.", f"Parede {w['id']}: CLT {ly} insuficiente.",
+                                                                            f"Wall {w['id']}: CLT {ly} insufficient.", f"Стіна {w['id']}: CLT {ly} недостатньо.")})
     return out
 
 
-def _wall_check(Hs: float, ng: float, nq: float, R: int, wlat: float) -> dict:
+def _run(m: Frame, o: str, line: int, lid: str, bearing: bool) -> dict | None:
+    """Étendue réelle d'un mur sur une file à un étage (emprise propre à l'étage : retraits, L, U).
+    bearing : file `line` de la trame de portée gs, mur présent là où une case de l'étage la borde ;
+    sinon façade sur la file `line` de gp, présente là où UNE seule des deux cases adjacentes existe (contour)."""
+    gs = m.gx if o == "x" else m.gy
+    gp = m.gy if o == "x" else m.gx
+    with m.at_storey(lid):
+        def cell(a_, b_):                    # a_ le long de gs, b_ le long de gp
+            return m.cell_in(a_, b_) if o == "x" else m.cell_in(b_, a_)
+        iv = []
+        if bearing:
+            for k in range(len(gp) - 1):
+                if cell(line - 1, k) or cell(line, k):
+                    iv.append((gp[k], gp[k + 1]))
+        else:
+            for k in range(len(gs) - 1):
+                if cell(k, line - 1) != cell(k, line):
+                    iv.append((gs[k], gs[k + 1]))
+    if not iv:
+        return None
+    return {"a": iv[0][0], "b": iv[-1][1], "L": round(sum(b_ - a_ for a_, b_ in iv), 2)}
+
+
+def _wall_lays(m: Frame) -> list:
+    lay = layup(m.st.get("wall_layup"))
+    return [lay] if lay else WALL_LAYUPS
+
+
+def _party(m: Frame, o: str, jp: int) -> tuple[list, int]:
+    """Mur mitoyen double (ex. 2 × CLT 80 L3s + isolant acoustique) sur la façade parallèle à la portée : chaque voile reprend la
+    moitié du vent et de son poids ; il est vérifié seul. structure.party_wall = {side: x0|x1|y0|y1, layup, leaves}."""
+    pw = m.st.get("party_wall") or {}
+    side = ("y0" if jp == 0 else "y1") if o == "x" else ("x0" if jp == 0 else "x1")
+    lay = layup(pw.get("layup"))
+    if lay and str(pw.get("side", "")).lower() == side:
+        return [lay], max(1, int(pw.get("leaves") or 1))
+    return _wall_lays(m), 1
+
+
+def _wall_check(Hs: float, ng: float, nq: float, R: int, wlat: float, lays: list | None = None) -> dict:
     """Mur CLT (bande 1 m, plis longitudinaux verticaux) : flambement §6.3.2 sur la section efficace (méthode γ), vent latéral
     (M = w·h²/8), compression ⟂ du plancher sous le mur (plate-forme, k_c,90 = 1,0)."""
-    for name, lay in WALL_LAYUPS:
+    lays = lays or WALL_LAYUPS
+    for name, lay in lays:
         p = timber.clt_props(lay, Hs * 1000)
         A = 1000 * sum(t_ for k, t_ in enumerate(lay) if k % 2 == 0)
         I_ef = p["EI"] / CLT["E0"]
@@ -591,7 +661,7 @@ def _wall_check(Hs: float, ng: float, nq: float, R: int, wlat: float) -> dict:
             else:
                 fire = {"R": R, "u": 9.9}
         ok = u <= 1 and u90 <= 1 and (fire is None or fire["u"] <= 1)
-        if ok or name == WALL_LAYUPS[-1][0]:
+        if ok or name == lays[-1][0]:
             return {"ok": ok, "layup": name, "t": sum(lay), "kc": round(kc, 3), "u": round(u, 3), "u_c90": round(u90, 3), "sw": round(sw, 2),
                     "N_Ed": round(N / 1000, 1), "fire": fire}
 
@@ -740,8 +810,9 @@ def quantities(m: Frame, floors, cols, walls, fnd, conns, lat) -> dict:
     clt_m2 = sum(tp["area"] for f in floors for tp in f["ptypes"])
     gl_beams = sum(b["b"] * b["h"] / 1e6 * b["L"] for f in floors for b in f["beams"])
     gl_cols = sum(s["b"] * s["h"] / 1e6 * next(l.height for l in m.levels if l.id == s["level"]) for c in cols for s in c["segs"])
-    wall_m2 = sum(w["L"] * sum(next(l.height for l in m.levels if l.id == s["level"]) for s in w["segs"]) for w in walls)
-    wall_m3 = sum(w["L"] * next(l.height for l in m.levels if l.id == s["level"]) * s["t"] / 1000 for w in walls for s in w["segs"])
+    wall_m2 = sum(s.get("L", w["L"]) * s.get("leaves", 1) * next(l.height for l in m.levels if l.id == s["level"]) for w in walls for s in w["segs"])
+    wall_m3 = sum(s.get("L", w["L"]) * s.get("leaves", 1) * next(l.height for l in m.levels if l.id == s["level"]) * s["t"] / 1000
+                  for w in walls for s in w["segs"])
     conc = sum(p["B"] ** 2 * p["h"] for p in fnd.get("pads", []))
     conc += sum(s["B"] * s["h"] * s["L"] for s in fnd.get("wall_strips", []))
     gs = fnd["ground_slab"]

@@ -355,6 +355,9 @@ def write_note(path, m, r: dict, tot: dict, rev: dict, sheets: list):
         s.append(_tbl(rows, (30, 22, 22, 26, 22)))
     for st in fnd.get("wall_strips", []):
         s.append(Paragraph(_esc(f"{st['id']} : B = {num(st['B'])} m, h = {num(st['h'])} m, n = {num(st['n'], 1)} kN/m, σ = {num(st['sigma'], 0)} kPa"), SM))
+    if r.get("thermal"):
+        from .thermal import blocks as _th_blocks
+        s += _th_blocks(r["thermal"], H, P, SM, _tbl, _esc)
     # ---------------------------------------------------------------- 9 quantités
     s.append(H(t("Quantités et estimation", "Quantidades e estimativa", "Quantities and estimate", "Обсяги та кошторис")))
     q = r["quantities"]

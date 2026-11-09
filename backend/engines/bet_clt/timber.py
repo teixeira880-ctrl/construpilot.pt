@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 
-from .mat import CLT, GL, LAYUPS
+from .mat import CLT, FLOOR_LAYUPS, GL, LAYUPS  # noqa: F401
 from .norms import GAM_M, KDEF, KMOD
 
 KFI = 1.15
@@ -111,7 +111,7 @@ def clt_props(layers: tuple, span_mm: float, remove_bottom: float = 0.0, E: floa
 
 
 def design_clt(span: float, g: float, q: float, psi1: float, psi2: float, R: int, *, q_dur="medium", defl=(300, 250),
-               a_vib=1.5, continuous=True, layups=LAYUPS, g_self_in=False) -> dict | None:
+               a_vib=1.5, continuous=True, layups=FLOOR_LAYUPS, g_self_in=False) -> dict | None:
     """Plus petite composition CLT vérifiant ELU, ELS, vibrations et feu. span en m, g / q en kN/m² (g sans poids propre CLT).
     Bande de 1 m ; panneau continu sur au moins 2 appuis → effort tranchant d'appui intermédiaire 0,625·q·L."""
     L = span * 1000.0

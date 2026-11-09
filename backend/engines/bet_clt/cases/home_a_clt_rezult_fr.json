@@ -1,0 +1,257 @@
+{
+ "kind": "frame",
+ "building_type": "maison",
+ "project": {
+  "name": "Home A — Lot A (CLT Rezult)",
+  "address": "France — commune à confirmer (zone H2b retenue)",
+  "country": "FR",
+  "client": "CLT Rezult",
+  "architect": "CLT Rezult — plan Home A (éch. 1:50)",
+  "pc_ref": "Home A : plans -1, RDC, R+1 + détail constructif CLT",
+  "g2_ref": "hypothèse (sans étude G2)",
+  "snow_zone": "C2",
+  "north": "y0",
+  "wind_region": 2
+ },
+ "source": {
+  "pdf": "Home A.en.pdf (CLT Rezult, traduzido do ucraniano)",
+  "scale": "1:50",
+  "grid": "x = alinhamentos 1, 2, 5, 7 da planta (0 / 3,76 / 7,10 / 10,90 m) ; y = linhas de paredes CLT : fachada posterior, IS/quartos, sala/quartos, fachada do terraço (0 / 5,61 / 8,43 / 13,53 m)",
+  "upper_floor": "1.º andar entre os alinhamentos 2 e 7 (quartos 3 e 4, IS3, IS4, hall 3, escada 2)",
+  "not_modelled": [
+   "piso -1 (cave em betão armado, ≈ 147 m²) — estimado à parte",
+   "terraço coberto 26,5 m² (pala) — estimado à parte"
+  ]
+ },
+ "grid": {
+  "x": [
+   0,
+   3.76,
+   7.1,
+   10.9
+  ],
+  "y": [
+   0,
+   5.61,
+   8.43,
+   13.53
+  ],
+  "x_labels": [
+   "1",
+   "2",
+   "5",
+   "7"
+  ],
+  "y_labels": [
+   "A",
+   "B",
+   "C",
+   "D"
+  ]
+ },
+ "levels": [
+  {
+   "id": "P0",
+   "name": "RDC",
+   "floor_top": 0.0,
+   "height": 3.25,
+   "use": "habitation",
+   "on_grade": true
+  },
+  {
+   "id": "P1",
+   "name": "R+1",
+   "floor_top": 3.25,
+   "height": 3.0,
+   "use": "habitation",
+   "void_cells": [
+    [
+     "1",
+     "A"
+    ],
+    [
+     "1",
+     "B"
+    ],
+    [
+     "1",
+     "C"
+    ]
+   ]
+  }
+ ],
+ "roof": {
+  "use": "toiture"
+ },
+ "structure": {
+  "system": "walls",
+  "clt_span_dir": "y",
+  "clt_floor_layup": "CLT Panel 240-7s",
+  "clt_roof_layup": "CLT Panel 140-5s",
+  "wall_layup": "100 L5s",
+  "party_wall": {
+   "side": "x1",
+   "layup": "80 L3s",
+   "leaves": 2
+  }
+ },
+ "loads": {
+  "finishes": 2.2,
+  "partitions": 0.8,
+  "roof_finishes": 3.0
+ },
+ "units": [
+  {
+   "id": "A0",
+   "name": "Lot A — RDC",
+   "typology": "T4",
+   "levels": [
+    "P0"
+   ],
+   "x0": 0,
+   "y0": 0,
+   "x1": 10.9,
+   "y1": 13.53
+  },
+  {
+   "id": "A1",
+   "name": "Lot A — R+1",
+   "typology": "T4",
+   "levels": [
+    "P1"
+   ],
+   "x0": 3.76,
+   "y0": 0,
+   "x1": 10.9,
+   "y1": 13.53
+  }
+ ],
+ "envelope": {
+  "below": "unheated",
+  "glazing": {
+   "y1": 0.45,
+   "y0": 0.15,
+   "x0": 0.15,
+   "x1": 0.0
+  },
+  "uw": 1.3,
+  "g": 0.5,
+  "pv_kwp": 2.0,
+  "tipologia": "T4",
+  "wall": {
+   "layers": [
+    [
+     "Gesso cartonado BA13 duplo",
+     0.025,
+     0.25
+    ],
+    [
+     "CLT 5s 100 mm",
+     0.1,
+     0.13
+    ],
+    [
+     "Membrana Vapor IN 150",
+     0.0,
+     null
+    ],
+    [
+     "Lã mineral 100 mm",
+     0.1,
+     0.035
+    ],
+    [
+     "Revestimento exterior",
+     0.01,
+     1.0
+    ]
+   ]
+  },
+  "roof": {
+   "layers": [
+    [
+     "Gesso cartonado BA15 (teto suspenso)",
+     0.015,
+     0.25
+    ],
+    [
+     "Plenum 200 mm",
+     0.0,
+     0.16
+    ],
+    [
+     "CLT 140-5s",
+     0.14,
+     0.13
+    ],
+    [
+     "XPS 100 mm (painel térmico e acústico)",
+     0.1,
+     0.034
+    ],
+    [
+     "Betão leve de pendentes ±100 mm",
+     0.1,
+     0.3
+    ],
+    [
+     "Membrana PVC + seixo rolado",
+     0.0,
+     null
+    ]
+   ]
+  },
+  "floor": {
+   "layers": [
+    [
+     "Betonilha de betão leve",
+     0.05,
+     0.3
+    ],
+    [
+     "Membrana TERMI FLOOR Rothoblaas",
+     0.0,
+     null
+    ],
+    [
+     "Laje de betão",
+     0.15,
+     2.0
+    ],
+    [
+     "XPS 100 mm",
+     0.1,
+     0.034
+    ]
+   ]
+  }
+ },
+ "geotech": {
+  "sigma_adm_mpa": 0.2,
+  "depth": 0.8
+ },
+ "estimate": {
+  "market": "UA",
+  "basement": {
+   "area": 147.5,
+   "height": 2.8,
+   "perimeter": 48.9
+  },
+  "terrace": {
+   "area": 26.5
+  },
+  "partitions_m2": 227,
+  "bathrooms": 5,
+  "wc": 1,
+  "kitchens": 1,
+  "doors": 14,
+  "stairs": 2
+ },
+ "seismic": {
+  "zone": 2,
+  "soil": "B"
+ },
+ "site": {
+  "zone": "H2b"
+ }
+}

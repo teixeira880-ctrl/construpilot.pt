@@ -147,6 +147,15 @@ def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict |
             return {"status": "MODELE_INVALIDE", "blocking": sum(a.get("level") == model.BLOCK for a in anomalies), "anomalies": anomalies, "files": {}}
         try:
             r = calc.compute(m)
+            try:
+                from . import thermal
+                house = str(m.raw.get("building_type", "")).lower() in ("maison", "moradia", "house", "maison_individuelle")
+                r["thermal"] = thermal.compute(m) if (house or m.raw.get("envelope")) else None     # moradia / maison individuelle
+            except Exception as exc:  # noqa: BLE001 — l'étude thermique complète le dossier, son échec est signalé, pas bloquant
+                r["thermal"] = None
+                r["issues"].append({"code": "TH-00", "level": model.WARN, "message": t("Étude thermique non produite", "Estudo térmico não produzido",
+                                                                                      "Thermal study not produced", "Теплотехнічний розрахунок не виконано")
+                                    + f" ({type(exc).__name__}: {str(exc)[:160]})"})
             shs = sheets.all_sheets(m, r)
             lines = devis.build_lines(m, r)
             tot = devis.totals(lines, r["country"])
@@ -187,18 +196,43 @@ def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict |
                 z.write(f, f.name)
         xlsx = out / f"{names[2]}_{stem}{sfx}.xlsx"
         devis.write_xlsx(xlsx, m, lines, r["country"])
+        est_files = {}
+        if str((m.raw.get("estimate") or {}).get("market") or "").upper() == "UA":       # devis final aux prix ukrainiens (грн + €)
+            from . import estimate
+            est = estimate.build(m, r, r.get("thermal"))
+            en = {"fr": "Devis_final_UA", "pt": "Orcamento_final_UA", "en": "Final_Estimate_UA", "uk": "Koshtorys_final_UA"}[lang]
+            with _RENDER_LOCK:
+                brand.use(branding, m.country if m.country in ("FR", "PT") else "FR")
+                try:
+                    est_files["estimate_pdf"] = str(estimate.write_pdf(out / f"{en}_{stem}{sfx}.pdf", m, est))
+                finally:
+                    brand.use(None, "FR")
+            est_files["estimate_xlsx"] = str(estimate.write_xlsx(out / f"{en}_{stem}{sfx}.xlsx", m, est))
+            tot = dict(tot, ua_ht_uah=est["ht"], ua_ttc_uah=est["ttc"], ua_ht_eur=round(est["ht"] / est["eur"], 2), ua_per_m2=est["per_m2"])
         summary = {"system": r["system"], "scheme": {k: v for k, v in r["scheme"].items() if k != "cands"}, "R": r["R"],
                    "floors": [{"name": f["name"], "clt": f["clt"]["name"], "u": f["clt"]["u_max"], "gov": f["clt"]["governing"], "panels": len(f["panels"]),
                                "beams": len(f["beams"])} for f in r["floors"]],
                    "columns": [{"name": c["name"], "segs": [(s["level"], s["b"], s["h"], s["grade"], s["NEd"]) for s in c["segs"]]} for c in r["columns"]],
                    "walls": [{"id": w_["id"], "segs": [(s["level"], s["layup"], s["u"]) for s in w_["segs"]]} for w_ in r["walls"]],
-                   "quantities": r["quantities"], "devis": tot, "review": rev}
+                   "quantities": r["quantities"], "devis": tot, "review": rev,
+                   "thermal": _th_summary(r.get("thermal"))}
         (out / f"resultats_{lang}.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
         return {"status": rev["status"], "blocking": rev["blocking"], "lang": lang, "kind": "clt", "sheets": [s.code + " " + s.title for s in shs],
                 "devis_ht": tot["ht"], "devis_ttc": tot["ttc"], "decisions": r["decisions"],
                 "anomalies": [a for a in anomalies + r["issues"] if a.get("level") != model.BLOCK],
                 "review": [i for i in rev["items"] if str(i.get("level", "")).upper() != "OK"][:40], "summary": summary,
-                "files": {"pdf": str(pdf), "plans_pdf": str(plans_pdf), "zip": str(zp), "xlsx": str(xlsx)}}
+                "files": {"pdf": str(pdf), "plans_pdf": str(plans_pdf), "zip": str(zp), "xlsx": str(xlsx), **est_files}}
+
+
+def _th_summary(th: dict | None) -> dict | None:
+    if not th:
+        return None
+    out = {"U": {k: v["U"] for k, v in th["solutions"].items()}, "Ap": th["Ap"], "phi_kw": round(th["phi_w"] / 1000, 2), "ok": th["ok"], "fails": th["fails"]}
+    if th.get("reh"):
+        out.update({k: th["reh"][k] for k in ("Nic", "Ni", "Nvc", "Nv", "Ntc", "Nt", "RNt", "classe")})
+    if th.get("re2020") and "error" not in th["re2020"]:
+        out.update({k: th["re2020"][k] for k in ("Bbio", "Cep", "Cep_nr", "DH", "Ic_energie", "Ic_construction", "conforme")})
+    return out
 
 
 def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = None, stem: str | None = None,
