@@ -9,7 +9,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { api, API } from "@/lib/api";
-import { startScreenWatch, stopScreenWatch, markAgentAction, agentActing, pushScreenNow } from "./avatarScreenWatch";
+import { startScreenWatch, stopScreenWatch, markAgentAction, agentActing, pushScreenNow, setCameraOn } from "./avatarScreenWatch";
 import { brief, describe, elements, findTarget, labelOf } from "./avatarDom";
 import { startSpeechSync, stopSpeechSync } from "./avatarSpeech";
 
@@ -431,6 +431,7 @@ export const preloadAvatar = () => { lkModule = lkModule || import("livekit-clie
 
 export async function startAvatar(lang = "fr") {
   set({ camOn: false });   // Lot 104
+  setCameraOn(false);
   if (room) return;
   set({ phase: "connecting", message: "", lang, micOn: true });
   try {
@@ -495,8 +496,10 @@ async function toggleCam() {
   try {
     await room.localParticipant.setCameraEnabled(on, on ? { resolution: { width: 640, height: 480, frameRate: 10 } } : undefined);
     set({ camOn: on });
+    setCameraOn(on);   // l'assistante sait tout de suite que la caméra est allumée (ou éteinte)
   } catch {
     set({ camOn: false, message: T.camDenied });
+    setCameraOn(false);
   }
 }
 // « Cala-te » (voix ou bouton) : le son est coupé ici tout de suite, et l'agent arrête de parler et se tait (topic « avatar »).

@@ -17,6 +17,10 @@ let lastPath = "";
 let lastAlerts = "";
 let lastAsst = { running: false, choices: 0, id: null };
 let lastFiles = "";
+// Caméra de l'admin : l'assistante sait qu'elle est allumée et que les images reçues sont la caméra EN DIRECT.
+let cameraOn = false;
+let lastCamera = false;
+export const setCameraOn = (on) => { cameraOn = !!on; if (room) { clearTimeout(timer); timer = null; send(); } };
 let agentUntil = 0;
 const pageErrors = [];
 const pushErr = (m) => { if (m) { pageErrors.push(m); if (pageErrors.length > 10) pageErrors.shift(); } };
@@ -167,6 +171,7 @@ function build() {
     beyond: viewportText(main, 2400, true),   // le reste de la page (hors écran) : l'assistante sait ce qu'il y a plus haut / plus bas
     fields: fields(),
     attachments: attachments(),
+    camera: cameraOn,
     not_found: notFound(),
     // éléments cliquables visibles, avec les mêmes ids que les actions : l'agent clique sans ui_read
     elements: domElements({ limit: 70, viewportOnly: true }).map(describe).map(({ href, group, ...e }) => e),
@@ -179,6 +184,7 @@ function classify(s) {
   if (s.path !== lastPath) return "navigate";
   const al = alertSig(s);
   if (al !== lastAlerts && al !== "[[],null,[]]") return "alert";
+  if (s.camera && !lastCamera) return "camera_on";
   const fsig = JSON.stringify(s.attachments.files.map((f) => f.name));
   if (fsig !== lastFiles && s.attachments.files.length > (JSON.parse(lastFiles || "[]").length)) return "files_attached";
   const a = s.assistant;
@@ -199,6 +205,7 @@ function send() {
   lastPath = s.path;
   lastAlerts = alertSig(s);
   lastFiles = JSON.stringify(s.attachments.files.map((f) => f.name));
+  lastCamera = s.camera;
   if (s.assistant) lastAsst = { running: s.assistant.running, choices: s.assistant.choices, id: s.assistant.last_id };
   const msg = { type: "screen", event, actor: actor(), at: Date.now(), ...s };
   let out = JSON.stringify(msg);
@@ -219,7 +226,7 @@ const on = (target, ev, fn, opts) => { target.addEventListener(ev, fn, opts); cl
 export function startScreenWatch(r) {
   stopScreenWatch();
   room = r;
-  lastSent = ""; lastPath = ""; lastAlerts = ""; lastFiles = ""; lastAsst = { running: false, choices: 0, id: null };
+  lastSent = ""; lastPath = ""; lastAlerts = ""; lastFiles = ""; lastCamera = false; lastAsst = { running: false, choices: 0, id: null };
   observer = new MutationObserver((list) => { if (list.some((m) => !inDock(m.target.nodeType === 1 ? m.target : m.target.parentElement))) schedule(350); });
   observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["aria-checked", "aria-selected", "open", "data-state"] });
   for (const k of ["pushState", "replaceState"]) {
