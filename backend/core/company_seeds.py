@@ -33,6 +33,10 @@ COMPANIES = [
         "lang": "en",
         "logo_file": "clt-rezult.png",
         "temp_password_env": "CLT_REZULT_TEMP_PASSWORD",
+        # Repli si le secret n'est pas configuré : empreinte bcrypt du mot de passe provisoire
+        # (jamais le mot de passe en clair). Changement obligatoire à la 1re connexion.
+        "temp_password_version": 1,
+        "temp_password_bcrypt": "$2b$12$HFqaKiNQ31CrApac/kDmd.pubDWbXrLxbPlPk7EbPjOfxD1hX4n0e",
         "fields": {
             "company": "CLT Rezult",
             "company_name": "CLT Rezult",
@@ -116,10 +120,22 @@ async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
             # Palavra-passe provisória (só via env, nunca no código) : posée UNIQUEMENT si le
             # compte n'a encore aucun mot de passe ; jamais de réécriture d'un mot de passe existant.
             temp_pw = (os.environ.get(c.get("temp_password_env") or "") or "").strip()
-            if temp_pw and hash_password and not user.get("password_hash"):
+            temp_hash = hash_password(temp_pw) if (temp_pw and hash_password) else c.get("temp_password_bcrypt")
+            # Posé si le compte n'a pas de mot de passe, OU une seule fois (marqueur temp_password_version)
+            # pour remettre le mot de passe provisoire connu, tant que l'entreprise ne l'a pas changé.
+            tpv = c.get("temp_password_version") or 0
+            reset_once = tpv and (user.get("temp_password_version") or 0) < tpv
+            if temp_hash and (not user.get("password_hash") or reset_once):
                 await db.users.update_one({"user_id": user["user_id"]},
-                                          {"$set": {"password_hash": hash_password(temp_pw),
-                                                    "must_change_password": True}})
+                                          {"$set": {"password_hash": temp_hash,
+                                                    "must_change_password": True,
+                                                    "temp_password_version": tpv}})
+                await db.user_sessions.delete_many({"user_id": user["user_id"]})
+                try:   # lève le blocage « trop de tentatives » lié à cet e-mail
+                    import re as _re
+                    await db.login_attempts.delete_many({"identifier": {"$regex": ":" + _re.escape(email) + "$"}})
+                except Exception:  # noqa: BLE001
+                    pass
                 user["password_hash"] = "set"
                 summary[email] += "+temp_password"
             if (user.get("company_seed_version") or 0) >= c["seed_version"]:
