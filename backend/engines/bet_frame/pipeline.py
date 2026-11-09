@@ -59,6 +59,10 @@ def validate(raw: dict, pages: list[dict] | None = None, strict: bool = False, r
 
 
 def _validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
+    from engines.bet_clt_ua.routing import legacy_issue
+    issue = legacy_issue(raw)
+    if issue:
+        return None, [issue]
     try:
         m = model.from_dict(raw)
     except Exception as exc:  # noqa: BLE001

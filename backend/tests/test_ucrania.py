@@ -49,3 +49,44 @@ def test_ferramenta_e_nome_do_ficheiro():
     out2 = outils.run("calcul_ucrania", {"cidade": "lviv", "modelo_estrutural_json": m,
                                          "elementos": [{"tipo": "parede", "area_m2": 80, "R": 4.2}]})
     assert "Structure" in out2["resume"]
+
+
+def test_exemplo_clt_paineis_e_pontes():
+    o = ucrania.note(ucrania.exemplo_clt())
+    r, v = o["r"], o["go"]["verificacao"]
+    assert all(e["ok"] for e in r["elementos"])
+    parede = r["elementos"][0]
+    assert parede["pontes_explicitas"] and parede["U"] > 1 / parede["R"]            # ψ / χ explícitos agravam o U
+    clt = [e for e in v["elementos"] if e["tipo"] == "painel CLT"]
+    assert len(clt) == 8 and all(e["ok"] for e in clt)
+    assert any("Корте" not in h and "CLT" in h for h in r["hipoteses"])              # limites do CLT declarados (vibração, ETA)
+    tp = "".join(pg.get_text() for pg in pymupdf.open(stream=o["pdf"], filetype="pdf"))
+    assert "Панель CLT" in tp and "Painel" not in tp
+
+
+def test_rigidez_clt_referencia():
+    from engines.calc_lots import gros_oeuvre
+    r = gros_oeuvre.clt_rigidez([27.8] * 5)
+    assert r["EI"] == pytest.approx(11e6 * (3 * 0.0278 ** 3 / 12 + 2 * 0.0278 * 0.0556 ** 2), rel=1e-6)
+    assert r["V_Rd"] == pytest.approx(0.8 * 1.1e3 / 1.25 * r["I"] / (0.0278 * 0.0556), rel=1e-6)
+    with pytest.raises(ValueError):
+        gros_oeuvre.clt_rigidez([40, 40])
+
+
+def test_fusao_codex_preenche_sem_confirmar():
+    from engines.bet_clt_ua.engine import run
+    raw = json.load(open("engines/bet_clt_ua/cases/synthetic_mechanics_only.json"))
+    raw["site"]["locality"] = "Kharkiv"
+    raw["assemblies"][0]["required_effective_r_m2k_w"] = None
+    full, feito = ucrania.preencher_clt_ua(raw)
+    assert full["site"]["snow_ground_kpa"] == pytest.approx(1.6) and full["site"]["thermal_zone"] == "I"
+    assert full["assemblies"][0]["required_effective_r_m2k_w"] == 4.0 and len(feito) == 5
+    assert raw["assemblies"][0]["required_effective_r_m2k_w"] is None                  # entrada intacta
+    res = run(full)
+    assert res["status"] in ("INPUT_REQUIRED", "LIMITED_CHECKS_FAILED") and res["certified"] is False   # nunca "confirmado" automaticamente
+    assert "site.confirmed_basis" in res["missing"]
+
+
+def test_ferramenta_clt():
+    out = outils.run("calcul_ucrania", {"exemplo": True, "sistema": "clt", "cidade": "chernihiv"})
+    assert "CLT" in out["resume"] and out["data"]["envolvente_conforme"]

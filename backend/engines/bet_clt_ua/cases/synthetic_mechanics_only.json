@@ -1,0 +1,76 @@
+{
+  "name": "Synthetic verification only",
+  "site": {
+    "country": "UA"
+  },
+  "panels": [
+    {
+      "id": "P1",
+      "product": "SYNTHETIC NOT FOR CONSTRUCTION",
+      "layup_id": "synthetic-5-layer",
+      "bending_axis": "longitudinal",
+      "application": "floor",
+      "support_model": "one_way_simply_supported_udl",
+      "span_m": 4.0,
+      "strip_width_m": 1.0,
+      "thickness_m": 0.12,
+      "density_kn_m3": 5.0,
+      "ei_eff_kn_m2": 1000.0,
+      "ga_eff_kn": 10000.0,
+      "moment_resistance_knm": 30.0,
+      "shear_resistance_kn": 30.0,
+      "permanent_superimposed_kpa": 1.4,
+      "variable_kpa": 2.0,
+      "gamma_g": 1.35,
+      "gamma_q": 1.5,
+      "creep_factor": 0.6,
+      "quasi_permanent_factor": 0.3,
+      "deflection_limit_mm": 20.0,
+      "product_basis": {
+        "reference": "SYNTHETIC TEST ONLY - not a product or site",
+        "revision": "test-1",
+        "declared_by": "offline test",
+        "confirmed": true
+      },
+      "action_basis": {
+        "reference": "SYNTHETIC TEST ONLY - not a product or site",
+        "revision": "test-1",
+        "declared_by": "offline test",
+        "confirmed": true
+      }
+    }
+  ],
+  "assemblies": [
+    {
+      "id": "W1",
+      "category": "wall",
+      "area_m2": 10.0,
+      "layers": [
+        {
+          "name": "test CLT",
+          "thickness_m": 0.12,
+          "conductivity_w_mk": 0.12,
+          "source": "synthetic"
+        },
+        {
+          "name": "test insulation",
+          "thickness_m": 0.16,
+          "conductivity_w_mk": 0.04,
+          "source": "synthetic"
+        }
+      ],
+      "rsi_m2k_w": 0.13,
+      "rse_m2k_w": 0.04,
+      "linear_bridges": [],
+      "point_bridges": [],
+      "bridges_reviewed": true,
+      "required_effective_r_m2k_w": 4.0,
+      "basis": {
+        "reference": "SYNTHETIC TEST ONLY - not a product or site",
+        "revision": "test-1",
+        "declared_by": "offline test",
+        "confirmed": true
+      }
+    }
+  ]
+}

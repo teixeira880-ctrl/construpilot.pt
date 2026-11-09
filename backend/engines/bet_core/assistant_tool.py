@@ -38,7 +38,7 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… des PDF joints à la conversation (PC, plans, coupes, façades, étude de sol)"},
          "hypotheses": {"type": "string", "description": "Hypothèses du client (ex. « planchers poutrelles-hourdis, murs brique 20 »), vide sinon"},
-         "country": {"type": "string", "enum": ["FR", "PT"]}},
+         "country": {"type": "string", "enum": ["FR", "PT", "UA"]}},
          "required": ["document_ids", "hypotheses", "country"], "additionalProperties": False}},
     {"type": "function", "name": "read_full_bet_study", "strict": False,
      "description": "Lit l'état d'une étude BET lancée par generate_full_bet_study : avancement, questions bloquantes, statut du contrôle, liens des livrables. Passe le job_id renvoyé par generate_full_bet_study ; à défaut, lit la dernière étude de la conversation.",
@@ -59,6 +59,14 @@ TOOLS.append(
          "hypotheses": {"type": "string", "description": "Précisions du client pour ces lots (ex. « PAC réversible, plancher chauffant, VMC double flux, isolation 160 mm »), vide sinon"},
          "job_id": {"type": "string", "description": "Étude à utiliser ; vide = dernière étude de la conversation"}},
          "required": ["lots", "hypotheses", "job_id"], "additionalProperties": False}})
+TOOLS.extend([
+    {"type": "function", "name": "get_clt_ua_schema", "strict": True,
+     "description": "Returns the explicit-input Ukraine CLT schema. Use before calculate_clt_ua. No default product or climatic values.",
+     "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": False}},
+    {"type": "function", "name": "calculate_clt_ua", "strict": True,
+     "description": "Ukraine CLT LIMITED preliminary panel and opaque-envelope calculations from documented engineering inputs. NOT a whole-building certification or automatic design. Never invent properties, location, source references or confirmation.",
+     "parameters": {"type": "object", "properties": {"model_json": {"type": "string", "description": "JSON conforming to get_clt_ua_schema; explicit supplied data only"}}, "required": ["model_json"], "additionalProperties": False}}
+])
 TOOL_NAMES = {t["name"] for t in TOOLS}
 
 INSTRUCTIONS = (
@@ -91,8 +99,21 @@ INSTRUCTIONS = (
     "dans `hypotheses` : le PDF s'affiche en bouton de téléchargement. Ne produis PAS de document texte ou de dessin approximatif "
     "à la place. Sans étude BET, propose d'abord generate_full_bet_study (le PC est nécessaire)."
 )
+INSTRUCTIONS += (
+    " UKRAINE / CLT OVERRIDE: target country UA takes precedence over a reference drawing address. "
+    "generate_full_bet_study country=UA reads all pages into an evidence dossier; it does NOT generate execution drawings, "
+    "a cost estimate or regulatory approval. CLT in FR / PT keeps the existing engines (never silently changed to masonry: warning CLT-SCOPE). "
+    "For UA calculations (climate, ДБН thermal Rq,min, heat loss, snow / wind, structure with dimensioned drawings GO-01…GO-05, CLT panels) "
+    "use calcul_ucrania; for a CLT panel / assembly check from manufacturer data use get_clt_ua_schema then calculate_clt_ua "
+    "(empty site / requirement fields are pre-filled from ConstruPilot UA norms, never marked confirmed). "
+    "Never invent confirmation, source documents, CLT stiffness/resistance, soil or climate. Deciding alone does not lift these limits. "
+    "Source facts and proposed CLT redesign remain distinct. A soil report from another site is NOT confirmation of target-site soil. "
+    "All-Ukraine support means local inputs are mandatory per project, not a single nationwide climate. "
+    "A successful limited check is not structural approval. Explain missing and not_checked fields. "
+)
 from engines.bet_frame.hook import INSTRUCTIONS_EXTRA as _FRAME_INSTRUCTIONS  # bet_frame
 INSTRUCTIONS += _FRAME_INSTRUCTIONS
+
 
 MIME = {"pdf": "application/pdf", "zip": "application/zip",
         "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
@@ -190,6 +211,14 @@ async def _cached_model(db, uid, key):
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None, decide_alone=False):
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
+    if str(country).upper() == "UA":                     # bet_clt_ua : Ucrânia (CLT), nunca os motores FR / PT
+        try:
+            from engines.bet_clt_ua.hook import handle
+            await handle(docs, hypotheses, step=step, store=_store, db=db, uid=uid, cid=cid, request_id=request_id, llm=llm)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("bet study UA %s failed", job_id)
+            await step("Échec", status="failed", error=f"{type(exc).__name__}: {exc}"[:1200], trace=traceback.format_exc()[-3000:])
+        return
     try:
         from engines.bet_frame import hook as _frame_hook       # bet_frame : immeubles, bureaux, parkings, ERP (ossature BA)
         if await _frame_hook.maybe_handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, step=step, store=_store,
@@ -406,6 +435,8 @@ async def _lot_plans(db, user: dict, conv: dict, args: dict, branding_loader=Non
         return {"error": "Aucune étude BET avec un relevé validé : lance d'abord generate_full_bet_study avec le PC (et la G2).", "status": "échoué"}
     lots = [x for x in args.get("lots") or [] if x in LOT_LABEL] or ["electricite", "plomberie", "ventilation", "chauffage"]
     raw = dict(job["model"])
+    if raw.get("kind") == "clt_ua_evidence" or job.get("country") == "UA":
+        return {"status": "input_required", "error": "CLT Ukraine evidence is not an execution model. Lot drawings are not available from this preliminary module."}
     txt = " ".join(x for x in (job.get("hypotheses") or "", args.get("hypotheses") or "") if x)
     raw["user_hypotheses"] = dict(raw.get("user_hypotheses") or {}, _text=txt[:3000])
     try:
@@ -431,6 +462,23 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, b
     """doc_loader(db, ids, user_id) -> [(nom, pdf_bytes)] : à fournir si les pièces jointes ne sont pas dans db.assistant_docs (ex. .pt).
     branding_loader(db, user_id) -> dict : identité de l'entreprise (défaut : résolveurs de la plateforme)."""
     uid, cid = user["user_id"], conv.get("conversation_id")
+    if name == "get_clt_ua_schema":
+        from engines.bet_clt_ua.schema import Study
+        return {"schema": Study.model_json_schema(), "scope": "preliminary_explicit_inputs_only"}
+    if name == "calculate_clt_ua":
+        import json
+        from engines.bet_clt_ua.engine import run as run_clt
+        try:
+            text = args.get("model_json") or ""
+            if len(text) > 1000000:
+                raise ValueError("Input exceeds 1 MB")
+            from engines.calc_lots.ucrania import preencher_clt_ua
+            raw, filled = preencher_clt_ua(json.loads(text))       # normas UA ConstruPilot só nos campos vazios, nunca "confirmed"
+            out = run_clt(raw)
+            out["auto_filled_from_constru_pilot_norms"] = filled
+            return out
+        except (ValueError, TypeError, OverflowError) as exc:
+            return {"status": "INVALID_INPUT", "execution_ready": False, "error": str(exc)[:3000]}
     if name == "generate_bet_lot_plans":
         try:
             return await _lot_plans(db, user, conv, args)

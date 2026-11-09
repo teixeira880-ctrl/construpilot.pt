@@ -1,0 +1,14 @@
+{
+  "country": "UA",
+  "coverage": "All Ukraine through explicit site-specific inputs; no automatic national climate map is included",
+  "reference_checked_on": "2026-11-09",
+  "compliance_engine": "NOT_IMPLEMENTED",
+  "references": [
+    {"id":"DBN V.2.6-161:2017","topic":"Timber structures","url":"https://e-construction.gov.ua/laws_detail/3873877735990363514?doc_type=2","use":"Reference register only; no automatic normative coefficient extraction"},
+    {"id":"DBN V.1.2-2:2006","topic":"Loads and combinations; applicable amendments must be fixed per project","url":"https://e-construction.gov.ua/laws_detail/3875993677809583397","use":"Location-specific design values and combinations must be supplied with a confirmed basis"},
+    {"id":"DBN V.2.6-31:2021","topic":"Thermal insulation and building energy efficiency","url":"https://e-construction.gov.ua/laws_detail/3876000386489779420?doc_type=2","use":"Requirement and thermal zone must be supplied and referenced; effective-R comparison is not whole-building energy certification"},
+    {"id":"DBN V.1.1-12:2025","topic":"Seismic construction","url":"https://e-construction.gov.ua/laws?doc_type=2","use":"Current register lists 2025; lateral/seismic calculation is not implemented in this module"}
+  ],
+  "administrative_coverage": ["Autonomous Republic of Crimea","Vinnytsia","Volyn","Dnipropetrovsk","Donetsk","Zhytomyr","Zakarpattia","Zaporizhzhia","Ivano-Frankivsk","Kyiv oblast","Kirovohrad","Luhansk","Lviv","Mykolaiv","Odesa","Poltava","Rivne","Sumy","Ternopil","Kharkiv","Kherson","Khmelnytskyi","Cherkasy","Chernivtsi","Chernihiv","Kyiv city","Sevastopol city"],
+  "no_default_fields": ["manufacturer","CLT_layup","CLT_stiffness","CLT_strength","connection_resistance","soil_bearing","snow","wind","seismicity","winter_temperature","thermal_requirement","prices"]
+}

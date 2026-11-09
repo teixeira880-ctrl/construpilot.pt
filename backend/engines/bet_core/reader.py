@@ -47,6 +47,15 @@ def classify(text: str) -> str:
             return PCMI[num]
         return "autre"
     up = t.upper()
+    english = [
+        ("plan", r"\b(?:MAIN FLOOR|UPPER FLOOR|BASEMENT|FOUNDATION|ROOF)\s+(?:FLOOR\s+)?PLAN\b"),
+        ("coupe", r"\bSECTIONS? AND ASSEMBLIES\b|\bSITE SECTION CONTEXT\b"),
+        ("notice", r"\bSPECIFICATIONS\b|\bDETAILS AND SCHEDULES\b|\bCODE COMPLIANCE PLANS\b"),
+        ("masse", r"\bSITE PLAN\b|\bLANDSCAPE PLAN\b"),
+    ]
+    for kind, rx in english:
+        if re.search(rx, up):
+            return kind
     for kind, rx in TITLES:
         if kind == "g2":
             if re.search(rx, t, flags=re.I):
@@ -528,6 +537,9 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
                         llm: LLM | None = None, max_fix: int = 2, decide_alone: bool = False) -> dict:
     """docs = [(nom, pdf_bytes)]. Retourne {model, anomalies, questions, decisions, pages, attempts, ok}.
     decide_alone=True : l'IA tranche seule les points en suspens, ne pose plus de questions et liste ses choix dans _decisions."""
+    if str(country).upper() == "UA":
+        return {"ok": False, "model": None, "anomalies": [], "pages": [], "attempts": 0,
+                "decisions": [], "questions": ["Use bet_clt_ua for UA. No FR/PT material or climate substitution permitted."]}
     from . import samples
     sid = samples.detect(docs)
     if sid:          # documentos de demonstração pré-configurados (.pt) : modelo exato do caso, sem IA (imediato, sem custo, offline)

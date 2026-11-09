@@ -125,12 +125,24 @@ def elemento(e: dict, c: dict, ti: float, phi_i: float, uso: str) -> dict:
         Rt = 1 / float(e["U"])
     else:
         raise ValueError(f"{nome}: задайте шари (camadas) або R / U")
+    # pontes térmicas explícitas (método bet_clt_ua.engine.assembly): U_ef = U + (Σ L·ψ + Σ n·χ) / A
+    pl, pp = e.get("pontes_lineares") or [], e.get("pontes_pontuais") or []
+    area = float(e.get("area_m2") or 0)
+    pontes = sum(float(x["comprimento_m"]) * float(x["psi"]) for x in pl) + sum(int(x["n"]) * float(x["chi"]) for x in pp)
+    u_ef = None
+    if (pl or pp) and area > 0:
+        u_ef = 1 / Rt + pontes / area
+        if u_ef <= 0:
+            raise ValueError(f"{nome}: U efetivo não positivo — rever as áreas de referência das pontes térmicas")
     zona = c["zona"]
     rq = RQMIN.get(tipo, {}).get(zona)
     ctl = []
     if rq:
         ctl.append({"ref": f"ДБН В.2.6-31:2021 табл. 1 (зона {zona})", "exigence": f"R∑ ≥ Rq,min = {_c(rq)} м²·К/Вт", "valeur": f"{_c(Rt)} м²·К/Вт",
                     "ok": Rt >= rq - 1e-9, "taux": rq / Rt})
+        if u_ef is not None:
+            ctl.append({"ref": "Приведений опір з тепловими містками (ψ, χ)", "exigence": f"Rпр = 1/Uеф ≥ {_c(rq)} м²·К/Вт",
+                        "valeur": f"{_c(1 / u_ef)} м²·К/Вт (Uеф {_c(u_ef, 3)})", "ok": 1 / u_ef >= rq - 1e-9, "taux": rq * u_ef})
     dt = None
     if tipo in DTMAX:
         lim = DTMAX[tipo][0 if uso in ("residencial", "escola_saude") else 1]
@@ -147,7 +159,7 @@ def elemento(e: dict, c: dict, ti: float, phi_i: float, uso: str) -> dict:
                     "exigence": "немає зони конденсації", "ok": not gl["condensation"] if not gl["condensation"] else None,
                     "valeur": "немає" if not gl["condensation"] else
                     f"можлива конденсація: {str(gl['plan']).replace('após ', 'після ')} ({gl['g_jour']:.1f} г/м² на добу) — перевірити вологісний режим за ДСТУ Б В.2.6-189"})
-    return {"nome": nome, "tipo": tipo, "area_m2": float(e.get("area_m2") or 0), "R": Rt, "U": 1 / Rt, "rq": rq, "dt": dt, "camadas": camadas,
+    return {"nome": nome, "tipo": tipo, "area_m2": area, "R": Rt, "U": u_ef if u_ef is not None else 1 / Rt, "pontes_explicitas": u_ef is not None, "rq": rq, "dt": dt, "camadas": camadas,
             "glaser": gl, "controles": ctl, "ok": all(x["ok"] is not False for x in ctl), "b": b}
 
 
@@ -181,7 +193,7 @@ def calcular(p: dict) -> dict:
     if els and any(e["area_m2"] for e in els):
         ht = sum(e["area_m2"] * e["U"] * e["b"] for e in els)
         dpt = float(p.get("pontes_termicas_w_m2k") if p.get("pontes_termicas_w_m2k") is not None else 0.05)
-        a_env = sum(e["area_m2"] for e in els)
+        a_env = sum(e["area_m2"] for e in els if not e["pontes_explicitas"])      # elementos com ψ / χ explícitos: sem margem global
         ht += dpt * a_env
         vol = float(p.get("volume_m3") or 0)
         n = float(p.get("renovacoes_h") if p.get("renovacoes_h") is not None else 0.5)
@@ -295,7 +307,7 @@ def note(p: dict) -> dict:
                     v["q_kn_m"] = round(r["cargas"]["sm_kpa"] * float(v["largura_influencia_m"]), 2)
                     v.setdefault("psi2", 0.0)
             for lj in mod.get("lajes") or []:
-                if lj.get("piso") == "cobertura" and lj.get("tipo") == "laje_ba" and lj.get("q_kn_m2") is None:
+                if lj.get("piso") == "cobertura" and lj.get("tipo") in ("laje_ba", "clt") and lj.get("q_kn_m2") is None:
                     lj["q_kn_m2"] = round(r["cargas"]["sm_kpa"], 2)
         go = gros_oeuvre.calcular(mod, lingua="uk")
         planos_pdf = go["planos_pdf"]
@@ -307,8 +319,10 @@ def note(p: dict) -> dict:
         try:
             rows = [[gros_oeuvre._tr(str(x)) for x in rw] for rw in rows]
             aj = [gros_oeuvre._tr(a) for a in ver["ajustes"]]
+            hip_go = [gros_oeuvre._tr(h) for h in ver["hipoteses"]]
         finally:
             gros_oeuvre._TR_CV.reset(tok)
+        r["hipoteses"] += hip_go
         blocs += [("h2", "5. Несучі конструкції (ДСТУ-Н Б EN 1992 / 1995 / 1997)"),
                   ("p", f"Перевірено {len(ver['elementos'])} елементів; снігове навантаження на покриття Sm = "
                         f"{_c(r['cargas']['sm_kpa']) if r['cargas'] else '—'} кПа. Робочі креслення ГО-01…ГО-05 (масштаб 1:{go['escala']}, {go['formato']}) додані до записки."),
@@ -369,3 +383,71 @@ def modelo_casa_kyiv() -> dict:
             m["lajes"].append({"ref": "П-2", "piso": "cobertura", "tipo": "laje_ba", "x0_m": x0, "y0_m": y0, "x1_m": x1, "y1_m": y1, "espessura_m": 0.2,
                                "cota_topo_m": 3.2, "g2_kn_m2": 1.2, "isolamento_m": 0.18, "direcao_vao": "x", "descricao": "з/б плита 200 + PIR 180"})
     return m
+
+
+# ------------------------------------------------------------------------------------------------ fusão com bet_clt_ua (Codex)
+_CAT = {"wall": "parede", "roof": "cobertura", "floor_over_unheated": "pavimento_ext"}
+
+
+def preencher_clt_ua(raw: dict) -> tuple[dict, list[str]]:
+    """Completa um estudo bet_clt_ua com os dados normativos ConstruPilot (clima da localidade, S0 / W0 em kPa, zona,
+    Rq,min do ДБН В.2.6-31:2021) SÓ onde o campo está vazio. Nada é marcado como confirmado: a confirmação continua a ser
+    do projetista (o motor bet_clt_ua mantém INPUT_REQUIRED até lá). Devolve (estudo, lista do que foi preenchido)."""
+    import copy
+    raw = copy.deepcopy(raw)
+    feito = []
+    site = raw.setdefault("site", {"country": "UA"})
+    loc = site.get("locality") or site.get("region")
+    c = None
+    if loc:
+        try:
+            c = clima(str(loc))
+        except ValueError:
+            c = None
+    if c:
+        for campo, valor, fonte in (("thermal_zone", c["zona"], "ДБН В.2.6-31:2021 дод. А"), ("winter_design_c", float(c["theta_e"]), "ДСТУ-Н Б В.1.1-27:2010"),
+                                    ("snow_ground_kpa", c["s0_pa"] / 1000, "ДБН В.1.2-2:2006 дод. Е"), ("wind_reference_kpa", c["w0_pa"] / 1000, "ДБН В.1.2-2:2006 дод. Е")):
+            if site.get(campo) is None:
+                site[campo] = valor
+                feito.append(f"site.{campo} = {valor} ({fonte}, {c['name']}, довідково — підтвердити)")
+    zona = site.get("thermal_zone")
+    for a in raw.get("assemblies") or []:
+        if a.get("required_effective_r_m2k_w") is None and zona in ("I", "II") and a.get("category") in _CAT:
+            a["required_effective_r_m2k_w"] = RQMIN[_CAT[a["category"]]][zona]
+            feito.append(f"assemblies.{a.get('id')}.required_effective_r_m2k_w = {a['required_effective_r_m2k_w']} (ДБН В.2.6-31:2021 табл. 1, зона {zona})")
+    return raw, feito
+
+
+def exemplo_clt(cidade: str = "kyiv") -> dict:
+    """Будинок 10 × 12 м з панелей CLT (стіни, перекриття, покриття) на стрічкових фундаментах — приклад для CLT в Україні."""
+    p = exemplo_kyiv()
+    p.update(projeto="Житловий будинок CLT 120 м²", cidade=cidade)
+    p["elementos"] = [
+        {"nome": "Стіна CLT 100 + мінвата 200", "tipo": "parede", "area_m2": 105,
+         "camadas": [{"material": "gipsokarton", "espessura_mm": 12.5}, {"material": "clt", "espessura_mm": 100}, {"material": "paroizolyatsiya"},
+                     {"material": "mineralna_vata", "espessura_mm": 200}, {"material": "vitrozakhyst"}],
+         "pontes_lineares": [{"comprimento_m": 44, "psi": 0.03}, {"comprimento_m": 60, "psi": 0.02}], "pontes_pontuais": [{"n": 160, "chi": 0.002}]},
+        {"nome": "Покриття CLT 200 + мінвата 260", "tipo": "cobertura", "area_m2": 120,
+         "camadas": [{"material": "clt", "espessura_mm": 200}, {"material": "paroizolyatsiya_al"}, {"material": "mineralna_vata_pokr", "espessura_mm": 260},
+                     {"material": "pokrivelna_membrana"}]},
+        {"nome": "Перекриття CLT 200 над техпідпіллям + мінвата 200", "tipo": "pavimento_ext", "area_m2": 120,
+         "camadas": [{"material": "styazhka", "espessura_mm": 50}, {"material": "clt", "espessura_mm": 200}, {"material": "mineralna_vata", "espessura_mm": 200}]},
+        {"nome": "Вікна (двокамерний склопакет)", "tipo": "janela", "area_m2": 22, "R": 0.95},
+        {"nome": "Вхідні двері", "tipo": "porta", "area_m2": 2.2, "R": 0.80}]
+    m = modelo_casa_kyiv()
+    m["projeto"] = "Житловий будинок CLT 120 м²"
+    m["muros"] = [mu for mu in m["muros"] if mu.get("material") != "gazobeton"] + \
+                 [dict(mu, espessura_m=0.10, material="clt") for mu in modelo_casa_kyiv()["muros"] if mu.get("material") == "gazobeton"]
+    for g in m["sapatas_continuas"]:
+        g.update(g_kn_m=22 if g["ref"] == "ФС-1" else 30, q_kn_m=9 if g["ref"] == "ФС-1" else 15)
+    m["lajes"] = []
+    for x0, x1 in ((0, 5), (5, 10)):
+        for y0, y1 in ((0, 6), (6, 12)):
+            m["lajes"].append({"ref": "CLT-П", "piso": "pavimento", "tipo": "clt", "x0_m": x0, "y0_m": y0, "x1_m": x1, "y1_m": y1, "espessura_m": 0.2,
+                               "camadas_mm": [40, 40, 40, 40, 40], "vao_m": 5.0, "cota_topo_m": 0.0, "q_kn_m2": 1.5, "g2_kn_m2": 1.3, "psi2": 0.3,
+                               "direcao_vao": "x", "descricao": "CLT 200 (5 × 40), проліт 5,0 м"})
+            m["lajes"].append({"ref": "CLT-К", "piso": "cobertura", "tipo": "clt", "x0_m": x0, "y0_m": y0, "x1_m": x1, "y1_m": y1, "espessura_m": 0.2,
+                               "camadas_mm": [40, 40, 40, 40, 40], "vao_m": 5.0, "cota_topo_m": 3.2, "g2_kn_m2": 0.8, "psi2": 0.0, "isolamento_m": 0.26,
+                               "direcao_vao": "x", "descricao": "CLT 200 + мінвата 260"})
+    p["modelo_estrutural"] = m
+    return p

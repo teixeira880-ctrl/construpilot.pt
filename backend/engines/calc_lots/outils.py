@@ -397,7 +397,7 @@ GROS_OEUVRE_TOOL = _tool(
     "cota_topo_m, g_kn_m, q_kn_m}], muros [{pontos, espessura_m, cota_base_m, cota_topo_m}], pilares [{ref, x_m, y_m, b_m, h_m, material "
     "(betao|C24|GL24h|GL28h), cota_base_m, cota_topo_m, g_kn, q_kn}], vigas [{ref, piso (pavimento|cobertura), x0_m, y0_m, x1_m, y1_m, b_m, h_m, material, "
     "vao_calculo_m, g_kn_m, q_kn_m, cota_topo_ini_m, cota_topo_fim_m}], lajes [{ref, piso (fundacao|pavimento|cobertura), tipo (laje_terrea|laje_ba|"
-    "vigas_i|clt), x0_m, y0_m, x1_m, y1_m, espessura_m, cota_topo_m ou cota_topo_ini_m/cota_topo_fim_m + pendente_dir, direcao_vao, q_kn_m2, descricao}], "
+    "vigas_i|clt), x0_m, y0_m, x1_m, y1_m, espessura_m, CLT: camadas_mm [ímpar] + vao_m → verificação do painel (corte de rolamento, fluência), cota_topo_m ou cota_topo_ini_m/cota_topo_fim_m + pendente_dir, direcao_vao, q_kn_m2, descricao}], "
     "cortes [{nome, direcao x|y, pos_m}] (null = automáticos).",
     {"modelo_json": {"type": "string", "description": "modelo estrutural completo em JSON (ver descrição)"},
      "ajustar": _B("null/true = ajustar as secções não conformes; false = só verificar")})
@@ -406,16 +406,20 @@ GROS_OEUVRE_TOOL = _tool(
 _CAM_UA = {"material": {"type": "string", "enum": list(ucrania.MAT) + list(ucrania.MEMB)}, "espessura_mm": _n("null para membranas"),
            "lambda": _n("λ declarado (DoP), W/(m·K); null = valor de referência")}
 _EL_UA = {"nome": _NS(), "tipo": {"type": "string", "enum": list(ucrania.EL_UK)}, "area_m2": _n(), "camadas": _arr(_CAM_UA, desc="camadas do interior para o exterior"),
-          "R": _n("R total m²·K/W (vãos / portas, se não houver camadas)"), "U": _n("W/(m²·K)"), "b": _n("fator de redução (espaço não aquecido)")}
+          "R": _n("R total m²·K/W (vãos / portas, se não houver camadas)"), "U": _n("W/(m²·K)"), "b": _n("fator de redução (espaço não aquecido)"),
+          "pontes_lineares": _arr({"comprimento_m": {"type": "number"}, "psi": {"type": "number"}}, desc="linear thermal bridges ψ W/(m·K)"),
+          "pontes_pontuais": _arr({"n": {"type": "number"}, "chi": {"type": "number"}}, desc="point thermal bridges χ W/K")}
 UCRANIA_TOOL = _tool(
     "calcul_ucrania",
     "UKRAINE / УКРАЇНА — building calculations to Ukrainian norms with a PDF report in Ukrainian + English summary: climate of the oblast centre "
     "(ДСТУ-Н Б В.1.1-27:2010), envelope thermal resistance vs Rq,min by temperature zone I/II (ДБН В.2.6-31:2021 table 1), Δθ (table 3), "
     "condensation (Glaser), design heat loss and annual heating need, snow and wind loads (ДБН В.1.2-2:2006), and — with modelo_estrutural_json "
     "(same JSON as calcul_gros_oeuvre) — structural checks (Eurocodes adopted in Ukraine) with dimensioned construction drawings GO-01…GO-05 in "
-    "Ukrainian. exemplo=true → complete demonstration (house 120 m² in Kyiv, aerated concrete + mineral wool, RC slabs, strip footings). "
+    "Ukrainian. exemplo=true → complete demonstration (house 120 m² in Kyiv; sistema=clt → CLT walls, floor and roof panels checked with "
+    "rolling-shear deformation; otherwise aerated concrete + mineral wool, RC slabs; strip footings). Linear / point thermal bridges ψ / χ per element. "
     "Use it whenever the project is in Ukraine or the user writes in Ukrainian; answer in the user's language.",
     {"cidade": _enum(ucrania.CIDADES, "oblast centre (null = give theta_e and zona)"), "projeto": _NS(), "exemplo": _B("true = demonstration case Kyiv"),
+     "sistema": _enum(["clt", "alvenaria_ba"], "demonstration system with exemplo=true: clt (CLT walls/floors/roof) or aerated concrete + RC"),
      "uso": _enum(list(ucrania.INTERIOR)), "theta_i": _n(), "theta_e": _n(), "zona": _enum(["I", "II"]), "area_aquecida_m2": _n(), "volume_m3": _n(),
      "renovacoes_h": _n("air changes per hour (null = 0.5)"), "recuperacao_calor": _n("heat recovery efficiency 0-1"),
      "pontes_termicas_w_m2k": _n("null = 0.05"), "inclinacao_cobertura_graus": _n(), "termo_servico_anos": _n("50 or 100"), "altitude_m": _n(),
@@ -760,9 +764,9 @@ def run(name: str, args: dict) -> dict:
         res.append("Pré-dimensionamento a validar pelo projetista de estruturas.")
         return _ret(o, res, {"conforme": v["conforme"], "ajustes": v["ajustes"], "escala": o["escala"]})
     if name == "calcul_ucrania":
-        p = ucrania.exemplo_kyiv() if a.get("exemplo") else {}
+        p = (ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {}
         for k, v in a.items():
-            if k not in ("exemplo", "modelo_estrutural_json"):
+            if k not in ("exemplo", "modelo_estrutural_json", "sistema"):
                 p[k] = v
         if a.get("modelo_estrutural_json"):
             p["modelo_estrutural"] = a["modelo_estrutural_json"]

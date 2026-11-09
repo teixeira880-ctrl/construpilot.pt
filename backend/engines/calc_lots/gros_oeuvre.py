@@ -100,6 +100,73 @@ def _pilar_madeira(b, h, L, N_ed, classe, sc=1):
             "sollicitations": {"ned": N_ed}, "quantites": {"bois_m3": A * L}, "lam": lam, "kc": kc}
 
 
+# ---- painéis CLT: rigidez EI / GA pela analogia de corte (camadas cruzadas, corte de rolamento) e verificação pelo motor
+#      bet_clt_ua.engine.panel (flexão, corte, flecha instantânea + fluência com a deformação por corte incluída)
+CLT_PROP = {"E0": 11000.0, "G0": 690.0, "GR": 50.0, "fm_k": 24.0, "fv_k": 4.0, "fr_k": 1.1, "rho": 4.7}   # C24 típico (EN 338 / EN 16351)
+
+
+def clt_rigidez(camadas_mm, kmod=0.8, gm=1.25):
+    """Faixa de 1 m; camadas ímpares (1.ª, 3.ª…) na direção do vão. → EI (kN·m²), GA (kN), M_Rd (kN·m), V_Rd (kN)."""
+    t = [c / 1000 for c in camadas_mm]
+    if len(t) < 3 or len(t) % 2 == 0:
+        raise ValueError("CLT: número ímpar de camadas (≥ 3)")
+    z, zc = 0.0, []
+    for ti in t:
+        zc.append(z + ti / 2)
+        z += ti
+    H = z
+    lon = [i for i in range(len(t)) if i % 2 == 0]
+    zs = sum(t[i] * zc[i] for i in lon) / sum(t[i] for i in lon)
+    I = sum(t[i] ** 3 / 12 + t[i] * (zc[i] - zs) ** 2 for i in lon)            # m⁴ por m (só camadas longitudinais)
+    E, G0, GR = CLT_PROP["E0"] * 1e3, CLT_PROP["G0"] * 1e3, CLT_PROP["GR"] * 1e3
+    a = zc[-1] - zc[0]
+    den = t[0] / (2 * G0) + t[-1] / (2 * G0) + sum(t[i] / (GR if i % 2 else G0) for i in range(1, len(t) - 1))
+    GA = a * a / den
+    zmax = max(zs, H - zs)
+    M_Rd = kmod * CLT_PROP["fm_k"] * 1e3 / gm * I / zmax
+    S_R = t[0] * abs(zc[0] - zs)                                                 # momento estático na 1.ª camada transversal
+    S_max = 0.0                                                                  # momento estático máximo (no eixo neutro)
+    for i in lon:
+        top, bot = zc[i] - t[i] / 2, min(zc[i] + t[i] / 2, zs)
+        if bot > top:
+            S_max += (bot - top) * (zs - (top + bot) / 2)
+    S_max = max(S_max, S_R)
+    V_R = kmod * CLT_PROP["fr_k"] * 1e3 / gm * I / S_R
+    V_v = kmod * CLT_PROP["fv_k"] * 1e3 / gm * I / S_max
+    return {"EI": E * I, "GA": GA, "M_Rd": M_Rd, "V_Rd": min(V_R, V_v), "H": H, "I": I}
+
+
+def clt_painel(lj, vao, kmod=0.8):
+    from engines.bet_clt_ua.engine import panel
+    from engines.bet_clt_ua.schema import Panel
+    cam = lj.get("camadas_mm") or [round(float(lj["espessura_m"]) * 1000 / 5, 1)] * 5
+    rg = clt_rigidez(cam, kmod)
+    cobertura = lj.get("piso") == "cobertura"
+    psi2 = float(lj["psi2"]) if lj.get("psi2") is not None else (0.0 if cobertura else 0.3)
+    basis = {"reference": "ConstruPilot — CLT C24 valores típicos (EN 338 / EN 16351); substituir pela ETA do fabricante", "revision": "1",
+             "declared_by": "ConstruPilot calc_lots.gros_oeuvre", "confirmed": False}
+    pn = Panel.model_validate({"id": lj.get("ref") or "CLT", "product": "CLT C24 (típico)", "layup_id": "-".join(f"{c:g}" for c in cam),
+                               "bending_axis": "longitudinal", "application": "roof" if cobertura else "floor",
+                               "support_model": "one_way_simply_supported_udl", "span_m": float(vao), "strip_width_m": 1.0,
+                               "thickness_m": rg["H"], "density_kn_m3": CLT_PROP["rho"], "ei_eff_kn_m2": rg["EI"], "ga_eff_kn": rg["GA"],
+                               "moment_resistance_knm": rg["M_Rd"], "shear_resistance_kn": rg["V_Rd"],
+                               "permanent_superimposed_kpa": float(lj.get("g2_kn_m2") or 0.0), "variable_kpa": float(lj.get("q_kn_m2") or 0.0),
+                               "gamma_g": 1.35, "gamma_q": 1.5, "creep_factor": 0.8, "quasi_permanent_factor": psi2,
+                               "deflection_limit_mm": float(vao) * 1000 / float(lj.get("limite_flecha") or 300),
+                               "product_basis": basis, "action_basis": basis})
+    r = panel(pn)
+    ra = r["ratios"]
+    ctl = [{"ref": "NP EN 1995-1-1 §6.1.6 flexão (CLT, analogia de corte)", "exigence": "M_Ed ≤ M_Rd", "valeur": f"{r['moment_knm']:.1f} / {rg['M_Rd']:.1f} kN·m/m",
+            "ok": ra["bending"] <= 1 + 1e-9, "taux": ra["bending"], "lib": "Flexão"},
+           {"ref": "Corte de rolamento / corte (CLT)", "exigence": "V_Ed ≤ V_Rd", "valeur": f"{r['reaction_each_support_kn']:.1f} / {rg['V_Rd']:.1f} kN/m",
+            "ok": ra["shear"] <= 1 + 1e-9, "taux": ra["shear"], "lib": "Corte"},
+           {"ref": "Flecha final com deformação por corte e fluência (kdef 0,8)", "exigence": f"w_fin ≤ L/{float(lj.get('limite_flecha') or 300):g}",
+            "valeur": f"{r['final_deflection']['total_mm']:.1f} mm (corte {r['final_deflection']['shear_mm']:.1f} mm)",
+            "ok": ra["final_deflection"] <= 1 + 1e-9, "taux": ra["final_deflection"], "lib": "Flecha final"}]
+    return {"element": "Painel CLT (motor bet_clt_ua)", "section": f"CLT {'-'.join(f'{c:g}' for c in cam)} mm, vão {vao:g} m", "controles": ctl,
+            "quantites": {"bois_m3": rg["H"]}, "rigidez": rg}
+
+
 def _barras_sapata(ned, B, bmur, h, por_metro):
     """Armadura inferior pelo método das bielas (As = Nu(B − b)/(8·d·fyd)), Ø12 ou Ø16 com espaçamento ≤ 0,25 m."""
     d = max(h - 0.06, 0.15)
@@ -218,6 +285,14 @@ def verificar(m: dict) -> dict:
         r = structure.calculer({"element": "dalle_ba", "lx_m": lx, "ly_m": ly, "h_m": lj["espessura_m"], "g2_kn_m2": lj.get("g2_kn_m2") or 1.5,
                                 "q_kn_m2": lj.get("q_kn_m2") or 2.0, "fck": lj.get("fck") or 25})
         reg("laje", lj, r)
+
+    # --- painéis CLT (vão de cálculo indicado)
+    for lj in m.get("lajes") or []:
+        if lj.get("tipo") == "clt" and lj.get("vao_m"):
+            reg("painel CLT", lj, clt_painel(lj, float(lj["vao_m"])))
+    if any(lj.get("tipo") == "clt" and lj.get("vao_m") for lj in m.get("lajes") or []):
+        hip.append("Painéis CLT: propriedades C24 típicas (EN 338 / EN 16351, f_r,k 1,1 MPa, G_R 50 MPa) — substituir pelos valores da ETA do fabricante; "
+                   "vibração dos pavimentos (NP EN 1995-1-1 §7.3), ligações, estabilidade lateral e fogo não verificados aqui")
 
     # --- sapatas isoladas
     def sap_calc(B, Lg, h, G, Q, bmur, filante):
@@ -687,7 +762,7 @@ def _f_piso(doc, m, ver, fmt, s, k, n, tot, data, piso, num, titulo):
     xl = _lado(fl)
     rows = []
     for e in ver["elementos"]:
-        if e["tipo"] in ("viga", "pilar", "laje"):
+        if e["tipo"] in ("viga", "pilar", "laje", "painel CLT"):
             el = next((v for v in (m.get("vigas") or []) + (m.get("pilares") or []) + (m.get("lajes") or []) if (v.get("ref") or e["tipo"]) == e["ref"]), {})
             if e["tipo"] == "pilar" or el.get("piso") == piso:
                 rows.append([e["ref"], e["elemento"], e["seccao"], f"{e['taxa'] * 100:.0f} %" if e["taxa"] is not None else "—", "conforme" if e["ok"] else "NÃO conforme"])

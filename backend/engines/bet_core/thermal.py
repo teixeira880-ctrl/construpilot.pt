@@ -202,6 +202,8 @@ def candidates(m: Model, forced: int | None):
 
 def size(m: Model) -> dict:
     """Dimensionne l'isolation au plus juste qui passe la RE2020 ; renvoie le palier, les U, les épaisseurs et le calcul."""
+    if str((m.raw.get("project") or {}).get("country", "FR")).upper() == "UA":
+        raise ValueError("RE2020 automatic sizing is not applicable to UA; UA uses bet_clt_ua / calc_lots.ucrania")
     from engines.calc_lots import re2020
     forced = requested_insulation(m)
     tried, chosen, last = [], None, None
