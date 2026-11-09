@@ -144,6 +144,9 @@ async def _log_usage(feature: str, provider: str, model: str) -> None:
         day = now.date().isoformat()
         await db.ai_usage_daily.update_one(
             {"_id": day}, {"$inc": {"calls": 1}}, upsert=True)
+        from engines.expenses.context import actor
+        from engines import usage_meter
+        await usage_meter.note_ai_call(actor().get("user_id"))
     except Exception:
         pass
 

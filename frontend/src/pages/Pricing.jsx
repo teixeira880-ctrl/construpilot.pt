@@ -13,6 +13,9 @@ import { useI18n } from "@/context/I18nContext";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { OfferNotice } from "@/components/OfferNotice";
+import CommercialPricing from "@/components/pricing/CommercialPricing";
+import { copyFor } from "@/lib/commercialCopy";
+import { currentMarket, PRICING_PATH } from "@/lib/market";
 
 const ICON = {
   FREE: Sparkles, PROJECT_PASS: Zap,
@@ -110,7 +113,16 @@ export default function Pricing() {
   }, []);
   const [plans, setPlans] = useState([]);
   const [flags, setFlags] = useState({});
-  const [audience, setAudience] = useState("particulier");
+  // Oferta B2B por defeito; ?pour=particulier (ou #particuliers) abre o separador particulares.
+  const [audience, setAudience] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("pour") || window.location.hash.replace("#", "");
+      return /^particuli/.test(q || "") ? "particulier" : "pro";
+    } catch { return "pro"; }
+  });
+  const market = currentMarket();
+  const b2bLang = lang === "fr" || lang === "pt" ? lang : market;
+  const cc = copyFor(b2bLang);
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
@@ -146,14 +158,30 @@ export default function Pricing() {
   return (
     <div className="grid gap-10">
       <SEO
-        title="Preços e subscrições ConstruPilot"
-        description="Oferta gratuita para começar, Premium para particulares, Pro e Pro Business para profissionais: detalhe das funções incluídas em cada plano, sem fidelização."
-        keywords="preço software orçamentos, preço construpilot, subscrição profissional, software construção gratuito, preço ferramenta estimativa obras"
-        canonical="/planos"
+        title={cc.seo_title}
+        description={cc.seo_desc}
+        keywords={market === "pt"
+          ? "software construção, preço software orçamentação, medições sobre projeto, software gestão de obra, construpilot preços"
+          : "logiciel BTP prix, tarif logiciel métré, logiciel chiffrage bâtiment, abonnement bureau d'études, construpilot tarifs"}
+        canonical={PRICING_PATH[market]}
+        jsonLd={{
+          "@context": "https://schema.org", "@type": "SoftwareApplication", name: "ConstruPilot",
+          applicationCategory: "BusinessApplication", operatingSystem: "Web",
+          // Enterprise volontairement absent : aucun prix public, même dans les données structurées.
+          offers: [["Solo", "99.00"], ["Professional", "249.00"], ["Business", "599.00"]].map(([name, price]) => ({
+            "@type": "Offer", name, price, priceCurrency: "EUR",
+            priceSpecification: { "@type": "UnitPriceSpecification", price, priceCurrency: "EUR",
+              valueAddedTaxIncluded: false, unitCode: "MON" },
+          })),
+        }}
       />
-      <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
-        {t("pricing.subtitle")}
-      </SectionTitle>
+      {audience === "pro" ? (
+        <SectionTitle as="h1" over={cc.over} title={cc.title}>{cc.subtitle}</SectionTitle>
+      ) : (
+        <SectionTitle as="h1" over={t("pricing.over")} title={t("pricing.title")}>
+          {t("pricing.subtitle")}
+        </SectionTitle>
+      )}
       <OfferNotice lang={lang} className="max-w-2xl mx-auto -mt-4" />
       {promo && (
         <div className="surface border-primary/40 rounded-md p-4 text-center max-w-xl mx-auto -mt-4" data-testid="pricing-promo-banner">
@@ -164,15 +192,18 @@ export default function Pricing() {
 
       <Tabs value={audience} onValueChange={setAudience}>
         <TabsList className="rounded-sm mx-auto">
+          <TabsTrigger value="pro" data-testid="pricing-tab-pro" className="rounded-sm">
+            {cc.tab_pro}
+          </TabsTrigger>
           <TabsTrigger value="particulier" data-testid="pricing-tab-particulier" className="rounded-sm">
             {t("pricing.tab_particulier")}
           </TabsTrigger>
-          <TabsTrigger value="pro" data-testid="pricing-tab-pro" className="rounded-sm">
-            {t("pricing.tab_pro")}
-          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={audience} className="mt-10">
+        <TabsContent value="pro" className="mt-10">
+          <CommercialPricing lang={b2bLang} user={user} />
+        </TabsContent>
+        <TabsContent value="particulier" className="mt-10">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-start" data-testid="pricing-grid">
             {filtered.map((p) => (
               <PlanCard key={p.plan_id} plan={p} flags={flags} busy={busy} onSubscribe={subscribe} />
@@ -181,19 +212,8 @@ export default function Pricing() {
         </TabsContent>
       </Tabs>
 
-      {audience === "pro" && (
-        <div className="surface p-5 rounded-sm border-primary/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-3xl mx-auto" data-testid="pricing-pro-offer-banner">
-          <div>
-            <p className="font-display font-bold">É profissional da construção?</p>
-            <p className="text-sm text-muted-foreground">Descubra o detalhe da oferta Pro, a experiência de 7 dias e as condições de faturação.</p>
-          </div>
-          <Button className="rounded-sm gap-2 shrink-0" data-testid="pricing-see-pro-offer" onClick={() => navigate("/pro")}>
-            Ver a oferta Pro <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
 
-      {audience === "pro" && (
+      {audience === "particulier" && (
         <div className="surface p-6 md:p-8 rounded-sm border-primary/30 flex flex-col md:flex-row md:items-center gap-6" data-testid="invoicing-addon-banner">
           <div className="flex-1">
             <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Opção</p>
@@ -213,7 +233,7 @@ export default function Pricing() {
         </div>
       )}
 
-      <div className="surface p-8 grid md:grid-cols-3 gap-6">
+      {audience === "particulier" && <div className="surface p-8 grid md:grid-cols-3 gap-6">
         <div className="flex gap-3">
           <ShieldCheck className="h-6 w-6 text-primary shrink-0" />
           <div>
@@ -241,7 +261,7 @@ export default function Pricing() {
             </p>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

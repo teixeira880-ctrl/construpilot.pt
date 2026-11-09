@@ -75,6 +75,8 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
             page.setdefault("cad_import", {})["conversion"] = conversion
 
     plan_id = "plan_" + secrets.token_hex(6)
+    from engines import usage_meter
+    await usage_meter.consume_pages(user, parsed.get("page_count") or 0, ref=plan_id)
     calibrations = _auto_calibrate_pages(parsed)
 
     doc = {
@@ -154,6 +156,8 @@ async def upload_plan(
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f'Ficheiro demasiado volumoso (>{MAX_UPLOAD_MB} MB)')
     if not data: raise HTTPException(422, "Ficheiro vazio")
+    from engines import usage_meter
+    await usage_meter.check_storage(user, len(data))
     if project_id and not await db.projects.find_one({"project_id": project_id, "user_id": user["user_id"]}, {"_id": 1}):
         raise HTTPException(403, "Obra inacessível para esta conta")
     mime = (file.content_type or "").lower()

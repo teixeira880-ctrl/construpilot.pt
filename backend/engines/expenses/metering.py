@@ -5,6 +5,21 @@ from uuid import uuid4
 from emergentintegrations.llm.chat import LlmChat, StreamDone
 
 from engines.expenses.store import observe
+from engines.expenses.context import actor
+
+
+async def _guard():
+    """Garde-fou de coût : refuse l'appel si le budget IA mensuel du compte est consommé."""
+    from engines import usage_meter
+    await usage_meter.check_ai_budget(actor().get("user_id"))
+
+
+async def _account_cost(model, units):
+    try:
+        from engines import usage_meter
+        await usage_meter.note_ai_cost(actor().get("user_id"), model, units)
+    except Exception:  # noqa: BLE001 — la mesure ne casse jamais un appel
+        pass
 
 
 def usage_units(usage):
@@ -38,6 +53,7 @@ class MeteredChat:
 
     async def stream_message(self, *args, **kwargs):
         ref, usage, state = uuid4().hex, None, "interrupted"
+        await _guard()
         try:
             async for event in self._inner.stream_message(*args, **kwargs):
                 if isinstance(event, StreamDone):
@@ -47,6 +63,7 @@ class MeteredChat:
         finally:
             await observe(source_id=ref, provider=self._billing, feature=self._feature, model=self._model,
                           units=usage_units(usage), state=state)
+            await _account_cost(self._model, usage_units(usage))
 
     async def send_message(self, *args, **kwargs):
         return await self._send("send_message", *args, **kwargs)
@@ -57,6 +74,7 @@ class MeteredChat:
     async def _send(self, method, *args, **kwargs):
         ref, usage, state = uuid4().hex, None, "failed"
         images = None
+        await _guard()
         try:
             result = await getattr(self._inner, method)(*args, **kwargs)
             usage, state = getattr(result, "usage", None), "completed"
@@ -69,3 +87,4 @@ class MeteredChat:
                 units["images"] = images
             await observe(source_id=ref, provider=self._billing, feature=self._feature, model=self._model,
                           units=units, state=state)
+            await _account_cost(self._model, units)

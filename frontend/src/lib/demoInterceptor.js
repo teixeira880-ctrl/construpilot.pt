@@ -25,6 +25,7 @@ import projects from "@/fixtures/demo/projects.json";
 import brandingFx from "@/fixtures/demo/demo_branding.json";
 import assistantDocsFx from "@/fixtures/demo/assistant_docs.json";
 import plansFx from "@/fixtures/demo/plans.json";
+import commercialPlansFx from "@/fixtures/demo/commercial_plans.json";
 import quotesFx from "@/fixtures/demo/quotes.json";
 import assistantResponses from "@/fixtures/demo/assistant_responses.json";
 import missionsCatalogFx from "@/fixtures/demo/missions_catalog.json";
@@ -203,6 +204,16 @@ const routes = [
 
   // Plans / quotes (listagens — vazias até 2c)
   { method: "GET", match: /^\/plans\/?$/, handle: async () => _ok(plansFx) },
+
+  // Planos comerciais B2B (página /planos) — catálogo estático, funciona sem internet.
+  { method: "GET", match: /^\/commercial\/plans\/?$/, handle: async () => _ok(commercialPlansFx) },
+  { method: "POST", match: /^\/commercial\/enterprise-lead\/?$/, handle: async (req) => {
+      const payload = req.data ? JSON.parse(req.data) : {};
+      const existing = (await idbGet("commercial_leads")) || [];
+      existing.push({ ...payload, demo: true, created_at: new Date().toISOString() });
+      await idbSet("commercial_leads", existing);
+      return _ok({ ok: true, demo: true, message: "Obrigado. A nossa equipa comercial entrará em contacto consigo em 2 dias úteis." });
+  } },
   { method: "GET", match: /^\/quotes\/?$/, handle: async () => _ok(quotesFx) },
 
   // Leads (POST) — guardar em IndexedDB

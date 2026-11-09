@@ -51,6 +51,11 @@ async def check_quota(user_id: str) -> None:
     n = await db.ai_usage.count_documents({"user_id": user_id, "engine": "openai_studies", "created": {"$gte": since}})
     if n >= MAX_PER_HOUR:
         raise StudiesError(f'Limite atingido: {MAX_PER_HOUR} análises OpenAI por hora e por conta')
+    from engines import usage_meter
+    try:
+        await usage_meter.check_ai_budget(user_id)
+    except Exception as e:  # HTTPException 402 → mensagem de negócio
+        raise StudiesError("Orçamento mensal de IA do seu plano atingido. Mude para o plano superior ou aguarde pelo próximo mês.") from e
 
 
 async def _log_usage(user_id: str, project_id: str | None, kind: str, model: str, usage, plan_id: str | None) -> None:
@@ -65,6 +70,8 @@ async def _log_usage(user_id: str, project_id: str | None, kind: str, model: str
         "created": datetime.now(timezone.utc)})
     await observe(source="ai_usage", source_id=str(inserted.inserted_id), provider="openai_direct", feature=kind,
                   model=model, units=usage_units(usage), state="completed")
+    from engines import usage_meter
+    await usage_meter.note_ai_cost(user_id, model, usage_units(usage))
 
 
 def _safe_error(e: Exception) -> str:
