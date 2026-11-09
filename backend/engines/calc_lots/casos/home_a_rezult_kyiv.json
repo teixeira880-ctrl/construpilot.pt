@@ -1,0 +1,1474 @@
+{
+ "projeto": "Житловий будинок «Fração A» — Rezult CLT",
+ "grelhas_x": [
+  {
+   "nome": "1",
+   "pos_m": 0.0
+  },
+  {
+   "nome": "2",
+   "pos_m": 3.757
+  },
+  {
+   "nome": "3",
+   "pos_m": 5.221
+  },
+  {
+   "nome": "4",
+   "pos_m": 6.438
+  },
+  {
+   "nome": "5",
+   "pos_m": 7.108
+  },
+  {
+   "nome": "6",
+   "pos_m": 9.578
+  },
+  {
+   "nome": "7",
+   "pos_m": 10.918
+  }
+ ],
+ "grelhas_y": [
+  {
+   "nome": "А",
+   "pos_m": 0.0
+  },
+  {
+   "nome": "Б",
+   "pos_m": 1.831
+  },
+  {
+   "nome": "В",
+   "pos_m": 4.001
+  },
+  {
+   "nome": "Г",
+   "pos_m": 8.503
+  },
+  {
+   "nome": "Д",
+   "pos_m": 13.527
+  }
+ ],
+ "solo_q_adm_kpa": 200,
+ "cota_pavimento_m": 0.0,
+ "niveis": [
+  {
+   "nome": "1-й поверх",
+   "cota_m": 0.0
+  },
+  {
+   "nome": "2-й поверх",
+   "cota_m": 3.36
+  },
+  {
+   "nome": "підвал",
+   "cota_m": -2.75
+  },
+  {
+   "nome": "верх фундаментів",
+   "cota_m": -2.95
+  }
+ ],
+ "sapatas": [],
+ "pilares": [],
+ "vigas": [],
+ "lajes": [
+  {
+   "ref": "Пл-1",
+   "piso": "fundacao",
+   "tipo": "laje_ba",
+   "x0_m": 0.1,
+   "y0_m": 0.1,
+   "x1_m": 10.818,
+   "y1_m": 3.9010000000000002,
+   "espessura_m": 0.25,
+   "cota_topo_m": -0.15,
+   "g2_kn_m2": 2.2,
+   "q_kn_m2": 2.0,
+   "descricao": "з/б плита 250 над підвалом"
+  },
+  {
+   "ref": "Пл-1",
+   "piso": "fundacao",
+   "tipo": "laje_ba",
+   "x0_m": 0.1,
+   "y0_m": 4.101,
+   "x1_m": 10.818,
+   "y1_m": 8.403,
+   "espessura_m": 0.25,
+   "cota_topo_m": -0.15,
+   "g2_kn_m2": 2.2,
+   "q_kn_m2": 2.0,
+   "descricao": "з/б плита 250 над підвалом"
+  },
+  {
+   "ref": "Пл-1",
+   "piso": "fundacao",
+   "tipo": "laje_ba",
+   "x0_m": 0.1,
+   "y0_m": 8.603,
+   "x1_m": 10.818,
+   "y1_m": 13.427,
+   "espessura_m": 0.25,
+   "cota_topo_m": -0.15,
+   "g2_kn_m2": 2.2,
+   "q_kn_m2": 2.0,
+   "descricao": "з/б плита 250 над підвалом"
+  },
+  {
+   "ref": "CLT240-К",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 0.0,
+   "y0_m": 0.0,
+   "x1_m": 10.918,
+   "y1_m": 1.831,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 1.831,
+   "cota_topo_m": 3.24,
+   "g2_kn_m2": 2.5,
+   "cobertura_terraco": true,
+   "acessivel": true,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s — покрівля (гравій, легкий бетон, XPS)"
+  },
+  {
+   "ref": "CLT240-П",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 3.83,
+   "y0_m": 1.831,
+   "x1_m": 10.918,
+   "y1_m": 4.001,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 2.17,
+   "cota_topo_m": 3.24,
+   "q_kn_m2": 2.0,
+   "g2_kn_m2": 2.75,
+   "psi2": 0.3,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s + легкий бетон 100"
+  },
+  {
+   "ref": "CLT240-К",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 0.0,
+   "y0_m": 1.831,
+   "x1_m": 3.83,
+   "y1_m": 4.001,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 2.17,
+   "cota_topo_m": 3.24,
+   "g2_kn_m2": 2.5,
+   "cobertura_terraco": true,
+   "acessivel": true,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s — покрівля (гравій, легкий бетон, XPS)"
+  },
+  {
+   "ref": "CLT240-П",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 3.83,
+   "y0_m": 4.001,
+   "x1_m": 10.918,
+   "y1_m": 8.503,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 4.502,
+   "cota_topo_m": 3.24,
+   "q_kn_m2": 2.0,
+   "g2_kn_m2": 2.75,
+   "psi2": 0.3,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s + легкий бетон 100"
+  },
+  {
+   "ref": "CLT240-К",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 0.0,
+   "y0_m": 4.001,
+   "x1_m": 3.83,
+   "y1_m": 8.503,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 4.502,
+   "cota_topo_m": 3.24,
+   "g2_kn_m2": 2.5,
+   "cobertura_terraco": true,
+   "acessivel": true,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s — покрівля (гравій, легкий бетон, XPS)"
+  },
+  {
+   "ref": "CLT240-П",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 5.32,
+   "y0_m": 8.503,
+   "x1_m": 10.918,
+   "y1_m": 13.527,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 5.024,
+   "cota_topo_m": 3.24,
+   "q_kn_m2": 2.0,
+   "g2_kn_m2": 2.75,
+   "psi2": 0.3,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s + легкий бетон 100"
+  },
+  {
+   "ref": "CLT240-К",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 0.0,
+   "y0_m": 8.503,
+   "x1_m": 5.32,
+   "y1_m": 13.527,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 5.024,
+   "cota_topo_m": 3.24,
+   "g2_kn_m2": 2.5,
+   "cobertura_terraco": true,
+   "acessivel": true,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s — покрівля (гравій, легкий бетон, XPS)"
+  },
+  {
+   "ref": "CLT140",
+   "piso": "cobertura",
+   "tipo": "clt",
+   "x0_m": 3.83,
+   "y0_m": 1.831,
+   "x1_m": 10.918,
+   "y1_m": 4.001,
+   "espessura_m": 0.14,
+   "camadas_mm": [
+    28,
+    28,
+    28,
+    28,
+    28
+   ],
+   "vao_m": 2.17,
+   "cota_topo_m": 6.2,
+   "g2_kn_m2": 2.5,
+   "psi2": 0.0,
+   "isolamento_m": 0.1,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 140-5s + XPS 100 + легкий бетон + гравій"
+  },
+  {
+   "ref": "CLT140",
+   "piso": "cobertura",
+   "tipo": "clt",
+   "x0_m": 3.83,
+   "y0_m": 4.001,
+   "x1_m": 10.918,
+   "y1_m": 8.503,
+   "espessura_m": 0.14,
+   "camadas_mm": [
+    28,
+    28,
+    28,
+    28,
+    28
+   ],
+   "vao_m": 4.502,
+   "cota_topo_m": 6.2,
+   "g2_kn_m2": 2.5,
+   "psi2": 0.0,
+   "isolamento_m": 0.1,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 140-5s + XPS 100 + легкий бетон + гравій"
+  },
+  {
+   "ref": "CLT140",
+   "piso": "cobertura",
+   "tipo": "clt",
+   "x0_m": 5.32,
+   "y0_m": 8.503,
+   "x1_m": 10.918,
+   "y1_m": 13.527,
+   "espessura_m": 0.14,
+   "camadas_mm": [
+    28,
+    28,
+    28,
+    28,
+    28
+   ],
+   "vao_m": 5.024,
+   "cota_topo_m": 6.2,
+   "g2_kn_m2": 2.5,
+   "psi2": 0.0,
+   "isolamento_m": 0.1,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 140-5s + XPS 100 + легкий бетон + гравій"
+  }
+ ],
+ "sapatas_continuas": [
+  {
+   "ref": "ФС-1",
+   "pontos": [
+    [
+     0,
+     0
+    ],
+    [
+     10.918,
+     0
+    ],
+    [
+     10.918,
+     13.527
+    ],
+    [
+     0,
+     13.527
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "b_m": 0.8,
+   "h_m": 0.4,
+   "cota_topo_m": -2.95,
+   "g_kn_m": 58,
+   "q_kn_m": 14,
+   "largura_muro_m": 0.25
+  },
+  {
+   "ref": "ФС-2",
+   "pontos": [
+    [
+     0,
+     4.001
+    ],
+    [
+     10.918,
+     4.001
+    ]
+   ],
+   "b_m": 0.9,
+   "h_m": 0.4,
+   "cota_topo_m": -2.95,
+   "g_kn_m": 70,
+   "q_kn_m": 20,
+   "largura_muro_m": 0.25
+  },
+  {
+   "ref": "ФС-2",
+   "pontos": [
+    [
+     0,
+     8.503
+    ],
+    [
+     10.918,
+     8.503
+    ]
+   ],
+   "b_m": 0.9,
+   "h_m": 0.4,
+   "cota_topo_m": -2.95,
+   "g_kn_m": 70,
+   "q_kn_m": 20,
+   "largura_muro_m": 0.25
+  }
+ ],
+ "muros": [
+  {
+   "pontos": [
+    [
+     0,
+     0
+    ],
+    [
+     10.918,
+     0
+    ],
+    [
+     10.918,
+     13.527
+    ],
+    [
+     0,
+     13.527
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "espessura_m": 0.25,
+   "cota_base_m": -2.95,
+   "cota_topo_m": -0.4
+  },
+  {
+   "pontos": [
+    [
+     0,
+     4.001
+    ],
+    [
+     10.918,
+     4.001
+    ]
+   ],
+   "espessura_m": 0.25,
+   "cota_base_m": -2.95,
+   "cota_topo_m": -0.4
+  },
+  {
+   "pontos": [
+    [
+     0,
+     8.503
+    ],
+    [
+     10.918,
+     8.503
+    ]
+   ],
+   "espessura_m": 0.25,
+   "cota_base_m": -2.95,
+   "cota_topo_m": -0.4
+  },
+  {
+   "pontos": [
+    [
+     0,
+     0
+    ],
+    [
+     10.918,
+     0
+    ],
+    [
+     10.918,
+     13.527
+    ],
+    [
+     0,
+     13.527
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "espessura_m": 0.1,
+   "cota_base_m": 0.0,
+   "cota_topo_m": 3.0,
+   "material": "clt"
+  },
+  {
+   "pontos": [
+    [
+     0,
+     4.001
+    ],
+    [
+     10.918,
+     4.001
+    ]
+   ],
+   "espessura_m": 0.1,
+   "cota_base_m": 0.0,
+   "cota_topo_m": 3.0,
+   "material": "clt"
+  },
+  {
+   "pontos": [
+    [
+     0,
+     8.503
+    ],
+    [
+     10.918,
+     8.503
+    ]
+   ],
+   "espessura_m": 0.1,
+   "cota_base_m": 0.0,
+   "cota_topo_m": 3.0,
+   "material": "clt"
+  },
+  {
+   "pontos": [
+    [
+     3.83,
+     1.831
+    ],
+    [
+     10.918,
+     1.831
+    ],
+    [
+     10.918,
+     13.527
+    ],
+    [
+     5.32,
+     13.527
+    ],
+    [
+     5.32,
+     8.503
+    ],
+    [
+     3.83,
+     8.503
+    ],
+    [
+     3.83,
+     1.831
+    ]
+   ],
+   "espessura_m": 0.1,
+   "cota_base_m": 3.36,
+   "cota_topo_m": 6.06,
+   "material": "clt"
+  }
+ ],
+ "cortes": [
+  {
+   "nome": "1-1",
+   "direcao": "y",
+   "pos_m": 8.3
+  },
+  {
+   "nome": "2-2",
+   "direcao": "x",
+   "pos_m": 6.3
+  }
+ ],
+ "divisoes": [
+  {
+   "id": "-1.1",
+   "nome_en": "Machine room",
+   "nome_uk": "Машинне приміщення",
+   "tipo": "arrumos",
+   "cota": -2.75,
+   "x0": 0.15,
+   "y0": 8.6,
+   "x1": 7.95,
+   "y1": 13.35,
+   "pe_direito": 2.35,
+   "aquecida": false,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    7.6,
+    8.6
+   ],
+   "revestimento": "madeira_colada_10"
+  },
+  {
+   "id": "-1.2",
+   "nome_en": "Laundry / technical",
+   "nome_uk": "Пральня / техн. приміщення",
+   "tipo": "lavandaria",
+   "cota": -2.75,
+   "x0": 8.25,
+   "y0": 8.6,
+   "x1": 10.75,
+   "y1": 13.35,
+   "pe_direito": 2.35,
+   "aquecida": false,
+   "janelas_m2": 0.0,
+   "aparelhos": [
+    {
+     "tipo": "maquina_lavar_roupa",
+     "x": 10.4,
+     "y": 12.4
+    },
+    {
+     "tipo": "maquina_secar",
+     "x": 10.4,
+     "y": 11.8
+    },
+    {
+     "tipo": "tanque",
+     "x": 10.4,
+     "y": 13.0
+    }
+   ],
+   "porta": [
+    8.8,
+    8.6
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "-1.3",
+   "nome_en": "Gym",
+   "nome_uk": "Спортзал",
+   "tipo": "sala",
+   "cota": -2.75,
+   "x0": 0.15,
+   "y0": 3.15,
+   "x1": 6.95,
+   "y1": 8.4,
+   "pe_direito": 2.35,
+   "aquecida": false,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    6.95,
+    7.6
+   ],
+   "revestimento": "madeira_colada_10"
+  },
+  {
+   "id": "-1.4",
+   "nome_en": "Hall",
+   "nome_uk": "Хол",
+   "tipo": "corredor",
+   "cota": -2.75,
+   "x0": 7.05,
+   "y0": 1.0,
+   "x1": 9.25,
+   "y1": 8.4,
+   "pe_direito": 2.35,
+   "aquecida": false,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    8.2,
+    8.4
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "-1.5",
+   "nome_en": "Shower room",
+   "nome_uk": "Санвузол",
+   "tipo": "casa_de_banho",
+   "cota": -2.75,
+   "x0": 9.35,
+   "y0": 5.65,
+   "x1": 10.75,
+   "y1": 8.4,
+   "pe_direito": 2.35,
+   "aquecida": false,
+   "janelas_m2": 0.0,
+   "aparelhos": [
+    {
+     "tipo": "autoclismo",
+     "x": 10.3,
+     "y": 7.9
+    },
+    {
+     "tipo": "lavatorio",
+     "x": 10.45,
+     "y": 7.0
+    },
+    {
+     "tipo": "chuveiro",
+     "x": 10.05,
+     "y": 6.1
+    }
+   ],
+   "porta": [
+    9.35,
+    7.2
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "-1.6",
+   "nome_en": "Storage",
+   "nome_uk": "Комора",
+   "tipo": "arrumos",
+   "cota": -2.75,
+   "x0": 0.15,
+   "y0": 0.15,
+   "x1": 6.95,
+   "y1": 3.05,
+   "pe_direito": 2.35,
+   "aquecida": false,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    6.95,
+    2.4
+   ],
+   "revestimento": "madeira_colada_10"
+  },
+  {
+   "id": "0.1",
+   "nome_en": "Living room",
+   "nome_uk": "Вітальня",
+   "tipo": "sala",
+   "cota": 0.0,
+   "x0": 0.15,
+   "y0": 8.55,
+   "x1": 7.4,
+   "y1": 13.4,
+   "pe_direito": 2.9,
+   "aquecida": true,
+   "janelas_m2": 14.0,
+   "aparelhos": [],
+   "porta": [
+    7.0,
+    8.55
+   ],
+   "revestimento": "madeira_colada_10"
+  },
+  {
+   "id": "0.2",
+   "nome_en": "Kitchen",
+   "nome_uk": "Кухня",
+   "tipo": "cozinha",
+   "cota": 0.0,
+   "x0": 7.4,
+   "y0": 8.55,
+   "x1": 10.8,
+   "y1": 13.4,
+   "pe_direito": 2.9,
+   "aquecida": true,
+   "janelas_m2": 4.0,
+   "aparelhos": [
+    {
+     "tipo": "lava_loica",
+     "x": 10.45,
+     "y": 10.6
+    },
+    {
+     "tipo": "maquina_lavar_loica",
+     "x": 10.45,
+     "y": 11.2
+    }
+   ],
+   "porta": [
+    9.0,
+    8.55
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.3",
+   "nome_en": "Bathroom 2",
+   "nome_uk": "Санвузол 2",
+   "tipo": "casa_de_banho",
+   "cota": 0.0,
+   "x0": 0.15,
+   "y0": 6.25,
+   "x1": 2.55,
+   "y1": 8.45,
+   "pe_direito": 2.81,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [
+    {
+     "tipo": "chuveiro",
+     "x": 0.6,
+     "y": 7.9
+    },
+    {
+     "tipo": "autoclismo",
+     "x": 0.45,
+     "y": 7.1
+    },
+    {
+     "tipo": "lavatorio",
+     "x": 0.45,
+     "y": 6.6
+    }
+   ],
+   "porta": [
+    2.2,
+    6.25
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.4",
+   "nome_en": "Lobby",
+   "nome_uk": "Тамбур",
+   "tipo": "corredor",
+   "cota": 0.0,
+   "x0": 3.6,
+   "y0": 6.0,
+   "x1": 4.25,
+   "y1": 8.45,
+   "pe_direito": 2.9,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    3.9,
+    6.0
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.5",
+   "nome_en": "Bathroom 1",
+   "nome_uk": "Санвузол 1",
+   "tipo": "casa_de_banho",
+   "cota": 0.0,
+   "x0": 4.3,
+   "y0": 6.3,
+   "x1": 6.5,
+   "y1": 8.45,
+   "pe_direito": 2.93,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [
+    {
+     "tipo": "chuveiro",
+     "x": 4.8,
+     "y": 8.0
+    },
+    {
+     "tipo": "autoclismo",
+     "x": 4.6,
+     "y": 7.1
+    },
+    {
+     "tipo": "lavatorio",
+     "x": 4.6,
+     "y": 6.65
+    }
+   ],
+   "porta": [
+    6.1,
+    6.3
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.6",
+   "nome_en": "Entrance hall",
+   "nome_uk": "Вхідний хол",
+   "tipo": "corredor",
+   "cota": 0.0,
+   "x0": 8.5,
+   "y0": 7.65,
+   "x1": 10.85,
+   "y1": 8.45,
+   "pe_direito": 2.9,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    10.85,
+    8.05
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.7",
+   "nome_en": "WC",
+   "nome_uk": "Туалет",
+   "tipo": "casa_de_banho",
+   "cota": 0.0,
+   "x0": 8.5,
+   "y0": 6.1,
+   "x1": 9.65,
+   "y1": 7.65,
+   "pe_direito": 2.9,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [
+    {
+     "tipo": "autoclismo",
+     "x": 9.2,
+     "y": 6.45
+    },
+    {
+     "tipo": "lavatorio",
+     "x": 8.95,
+     "y": 7.35
+    }
+   ],
+   "porta": [
+    8.5,
+    6.9
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.8",
+   "nome_en": "Hall 1",
+   "nome_uk": "Хол 1",
+   "tipo": "corredor",
+   "cota": 0.0,
+   "x0": 7.2,
+   "y0": 1.95,
+   "x1": 9.65,
+   "y1": 6.05,
+   "pe_direito": 2.9,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    7.2,
+    4.0
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.9",
+   "nome_en": "Hall 1b",
+   "nome_uk": "Хол 1б",
+   "tipo": "corredor",
+   "cota": 0.0,
+   "x0": 7.2,
+   "y0": 6.05,
+   "x1": 8.45,
+   "y1": 8.45,
+   "pe_direito": 2.9,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [],
+   "porta": [
+    7.8,
+    8.45
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "0.10",
+   "nome_en": "Bedroom 2",
+   "nome_uk": "Спальня 2",
+   "tipo": "quarto",
+   "cota": 0.0,
+   "x0": 0.15,
+   "y0": 0.15,
+   "x1": 3.7,
+   "y1": 6.1,
+   "pe_direito": 2.97,
+   "aquecida": true,
+   "janelas_m2": 3.6,
+   "aparelhos": [],
+   "porta": [
+    3.0,
+    6.1
+   ],
+   "revestimento": "madeira_colada_10"
+  },
+  {
+   "id": "0.11",
+   "nome_en": "Bedroom 1",
+   "nome_uk": "Спальня 1",
+   "tipo": "quarto",
+   "cota": 0.0,
+   "x0": 3.85,
+   "y0": 0.15,
+   "x1": 7.1,
+   "y1": 5.85,
+   "pe_direito": 2.905,
+   "aquecida": true,
+   "janelas_m2": 3.6,
+   "aparelhos": [],
+   "porta": [
+    7.1,
+    5.3
+   ],
+   "revestimento": "madeira_colada_10"
+  },
+  {
+   "id": "1.1",
+   "nome_en": "Bathroom 3",
+   "nome_uk": "Санвузол 3",
+   "tipo": "casa_de_banho",
+   "cota": 3.36,
+   "x0": 5.35,
+   "y0": 8.95,
+   "x1": 7.2,
+   "y1": 13.45,
+   "pe_direito": 2.67,
+   "aquecida": true,
+   "janelas_m2": 1.0,
+   "aparelhos": [
+    {
+     "tipo": "banheira",
+     "x": 6.25,
+     "y": 13.1
+    },
+    {
+     "tipo": "lavatorio",
+     "x": 5.6,
+     "y": 10.8
+    },
+    {
+     "tipo": "lavatorio",
+     "x": 5.6,
+     "y": 10.15
+    },
+    {
+     "tipo": "autoclismo",
+     "x": 5.75,
+     "y": 9.2
+    }
+   ],
+   "porta": [
+    6.9,
+    8.95
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "1.2",
+   "nome_en": "Bedroom 3",
+   "nome_uk": "Спальня 3",
+   "tipo": "quarto",
+   "cota": 3.36,
+   "x0": 7.25,
+   "y0": 8.6,
+   "x1": 10.8,
+   "y1": 13.45,
+   "pe_direito": 2.67,
+   "aquecida": true,
+   "janelas_m2": 3.6,
+   "aparelhos": [],
+   "porta": [
+    7.8,
+    8.6
+   ],
+   "revestimento": "madeira_colada_10"
+  },
+  {
+   "id": "1.3",
+   "nome_en": "Hall 3",
+   "nome_uk": "Хол 3",
+   "tipo": "corredor",
+   "cota": 3.36,
+   "x0": 5.15,
+   "y0": 7.2,
+   "x1": 9.65,
+   "y1": 8.55,
+   "pe_direito": 2.67,
+   "aquecida": true,
+   "janelas_m2": 1.0,
+   "aparelhos": [],
+   "porta": [
+    9.65,
+    7.9
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "1.4",
+   "nome_en": "Bathroom 4",
+   "nome_uk": "Санвузол 4",
+   "tipo": "casa_de_banho",
+   "cota": 3.36,
+   "x0": 3.9,
+   "y0": 5.3,
+   "x1": 7.6,
+   "y1": 7.15,
+   "pe_direito": 2.67,
+   "aquecida": true,
+   "janelas_m2": 0.0,
+   "aparelhos": [
+    {
+     "tipo": "chuveiro",
+     "x": 4.5,
+     "y": 6.3
+    },
+    {
+     "tipo": "lavatorio",
+     "x": 5.9,
+     "y": 6.9
+    },
+    {
+     "tipo": "autoclismo",
+     "x": 7.2,
+     "y": 6.5
+    }
+   ],
+   "porta": [
+    6.9,
+    7.15
+   ],
+   "revestimento": "ceramico"
+  },
+  {
+   "id": "1.5",
+   "nome_en": "Bedroom 4",
+   "nome_uk": "Спальня 4",
+   "tipo": "quarto",
+   "cota": 3.36,
+   "x0": 3.9,
+   "y0": 1.95,
+   "x1": 9.6,
+   "y1": 5.25,
+   "pe_direito": 2.67,
+   "aquecida": true,
+   "janelas_m2": 3.6,
+   "aparelhos": [],
+   "porta": [
+    8.2,
+    5.25
+   ],
+   "revestimento": "madeira_colada_10"
+  }
+ ],
+ "mep": {
+  "cidade_ua": "kyiv",
+  "U": {
+   "parede": 0.287,
+   "cobertura": 0.223,
+   "pavimento_enu": 0.323,
+   "janela": 1.05
+  },
+  "niveis": [
+   {
+    "cota": -2.75,
+    "en": "Basement (level −1)",
+    "uk": "Підвал (рівень −1)",
+    "contorno": [
+     [
+      0,
+      0
+     ],
+     [
+      10.918,
+      0
+     ],
+     [
+      10.918,
+      13.527
+     ],
+     [
+      0,
+      13.527
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "laje_cota": -0.15
+   },
+   {
+    "cota": 0.0,
+    "en": "Ground floor",
+    "uk": "Перший поверх",
+    "contorno": [
+     [
+      0,
+      0
+     ],
+     [
+      10.918,
+      0
+     ],
+     [
+      10.918,
+      13.527
+     ],
+     [
+      0,
+      13.527
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "laje_cota": 3.24
+   },
+   {
+    "cota": 3.36,
+    "en": "First floor",
+    "uk": "Другий поверх",
+    "contorno": [
+     [
+      3.83,
+      1.831
+     ],
+     [
+      10.918,
+      1.831
+     ],
+     [
+      10.918,
+      13.527
+     ],
+     [
+      5.32,
+      13.527
+     ],
+     [
+      5.32,
+      8.503
+     ],
+     [
+      3.83,
+      8.503
+     ],
+     [
+      3.83,
+      1.831
+     ]
+    ],
+    "laje_cota": 6.2
+   }
+  ],
+  "cobertura_sobre": [
+   [
+    3.83,
+    1.831
+   ],
+   [
+    10.918,
+    1.831
+   ],
+   [
+    10.918,
+    13.527
+   ],
+   [
+    5.32,
+    13.527
+   ],
+   [
+    5.32,
+    8.503
+   ],
+   [
+    3.83,
+    8.503
+   ],
+   [
+    3.83,
+    1.831
+   ]
+  ],
+  "quadro": {
+   "cota": 0.0,
+   "x": 7.05,
+   "y": 7.1
+  },
+  "central": {
+   "cota": -2.75,
+   "x": 6.6,
+   "y": 12.6
+  },
+  "unidade_exterior": {
+   "x": 3.0,
+   "y": 16.427
+  },
+  "coluna_agua": {
+   "x": 6.65,
+   "y": 7.75
+  },
+  "entrada_agua": {
+   "cota": -2.75,
+   "x": 10.75,
+   "y": 9.2
+  },
+  "coletores": [
+   {
+    "cota": 0.0,
+    "x": 7.35,
+    "y": 6.3
+   },
+   {
+    "cota": 3.36,
+    "x": 9.4,
+    "y": 7.35
+   }
+  ],
+  "prumadas": [
+   {
+    "id": "TQ1",
+    "x": 6.85,
+    "y": 8.25
+   },
+   {
+    "id": "TQ2",
+    "x": 2.35,
+    "y": 8.25
+   },
+   {
+    "id": "TQ3",
+    "x": 9.5,
+    "y": 6.25
+   },
+   {
+    "id": "TQ4",
+    "x": 10.6,
+    "y": 10.0
+   },
+   {
+    "id": "TQ5",
+    "x": 6.85,
+    "y": 6.4
+   }
+  ],
+  "saida_esgoto": {
+   "x": 11.918,
+   "y": 4.5
+  }
+ },
+ "envolvente": [
+  {
+   "nome": "Стіна: CLT 100 + мінвата 100",
+   "tipo": "parede",
+   "area_m2": 236,
+   "camadas": [
+    {
+     "material": "gipsokarton",
+     "espessura_mm": 25
+    },
+    {
+     "material": "clt",
+     "espessura_mm": 100
+    },
+    {
+     "material": "paroizolyatsiya"
+    },
+    {
+     "material": "mineralna_vata",
+     "espessura_mm": 100
+    },
+    {
+     "material": "vitrozakhyst"
+    }
+   ]
+  },
+  {
+   "nome": "Покрівля: CLT 140 + XPS 100 + легкий бетон 100",
+   "tipo": "cobertura",
+   "area_m2": 148,
+   "camadas": [
+    {
+     "material": "gipsokarton",
+     "espessura_mm": 15
+    },
+    {
+     "material": "clt",
+     "espessura_mm": 140
+    },
+    {
+     "material": "paroizolyatsiya_al"
+    },
+    {
+     "material": "xps",
+     "espessura_mm": 100
+    },
+    {
+     "material": "keramzyt",
+     "espessura_mm": 100
+    },
+    {
+     "material": "pokrivelna_membrana"
+    }
+   ]
+  },
+  {
+   "nome": "Підлога над підвалом: з/б 250 + XPS 100 + легкий бетон",
+   "tipo": "pavimento_ext",
+   "area_m2": 147,
+   "b": 0.5,
+   "camadas": [
+    {
+     "material": "styazhka",
+     "espessura_mm": 100
+    },
+    {
+     "material": "xps",
+     "espessura_mm": 100
+    },
+    {
+     "material": "zalizobeton",
+     "espessura_mm": 250
+    }
+   ]
+  },
+  {
+   "nome": "Вікна та двері тераси",
+   "tipo": "janela",
+   "area_m2": 30,
+   "R": 0.95
+  }
+ ],
+ "render_opcoes": {
+  "fachada_envidracada": "y+",
+  "terracos": [
+   {
+    "x0": 0.0,
+    "y0": 13.726999999999999,
+    "x1": 10.918,
+    "y1": 16.027,
+    "coberto": true,
+    "cota_cobertura": 3.0
+   }
+  ]
+ },
+ "fonte": "Home_A.en1.pdf (CLT Rezult) — plantas −1 / R/C / 1.º andar a 1:50, lidas por ConstruPilot em 09.11.2026"
+}

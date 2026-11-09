@@ -121,11 +121,14 @@ def embelezar(pdf: bytes, capa: dict, empresa: dict | None = None, n_nota: int |
     iy = 385 + 92 * ((len(kp[:8]) + 3) // 4) + 18
     t(30, iy, tr("Зміст / Contents"), 11, ESCURO, True)
     iy += 18
-    for tt, pnum in (capa.get("indice") or [])[:16]:
-        t(42, iy, str(tt)[:80], 8.5, ESCURO)
-        t(W - 50, iy, str(pnum), 8.5, CINZA, True)
-        pg.draw_line((42 + min(len(str(tt)) * 4.4, 380), iy - 2), (W - 58, iy - 2), color=(0.82, 0.82, 0.82), width=0.4, dashes="[1 2] 0")
-        iy += 14
+    ind = (capa.get("indice") or [])[:28]
+    passo = min(14.0, (H - 60 - iy) / max(1, len(ind)))
+    fs = min(8.5, passo - 1.6)
+    for tt, pnum in ind:
+        t(42, iy, str(tt)[:80], fs, ESCURO)
+        t(W - 50, iy, str(pnum), fs, CINZA, True)
+        pg.draw_line((42 + min(len(str(tt)) * fs * 0.52, 380), iy - 2), (W - 58, iy - 2), color=(0.82, 0.82, 0.82), width=0.4, dashes="[1 2] 0")
+        iy += passo
     pg.draw_rect(pymupdf.Rect(0, H - 48, W, H), color=None, fill=ESCURO)
     t(30, H - 22, "ConstruPilot · construpilot.pt" + (f"   |   {empresa['nome']} · {empresa.get('site', '')}" if empresa else ""), 8, (0.9, 0.9, 0.9))
     t(30, H - 10, tr("Попередній розрахунок детермінованими модулями — підлягає перевірці відповідальним інженером. / Preliminary design — to be checked by "
