@@ -35,11 +35,7 @@ TOOLS = [
                      "façades, détails ferraillés), charpente, électricité, plomberie, devis chiffré Excel et DXF. Lecture des plans par "
                      "IA puis calculs 100 % déterministes et contrôle automatique. Tâche de fond (3 à 8 min) : renvoie un job_id. "
                      "AVANT d'appeler : confirme avec l'utilisateur les documents à utiliser, le pays et ses hypothèses (planchers, murs). "
-                     "Ne l'utilise pas pour un simple métré ou un devis de rénovation. "
-                     "BOIS MASSIF : si la structure est en CLT / bois lamellé-croisé / lamellé-collé (maison ou immeuble, poteaux-poutres "
-                     "ou murs CLT), écris « CLT » dans hypotheses : le moteur bois massif produit note EN 1995 (CLT, poutres, pannes, poteaux, "
-                     "feu, vibrations, assemblages), calepinage CLT, plans de charpente par niveau, détails, tableaux, fondations BA et devis ; "
-                     "pays FR, PT ou UA (Ukraine, livrables en anglais et ukrainien)."),
+                     "Ne l'utilise pas pour un simple métré ou un devis de rénovation."),
      "parameters": {"type": "object", "properties": {
          "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… des PDF joints à la conversation (PC, plans, coupes, façades, étude de sol)"},
          "hypotheses": {"type": "string", "description": "Hypothèses du client (ex. « planchers poutrelles-hourdis, murs brique 20 »), vide sinon"},
@@ -106,11 +102,8 @@ INSTRUCTIONS = (
 )
 INSTRUCTIONS += (
     " UKRAINE / CLT OVERRIDE: target country UA takes precedence over a reference drawing address. "
-    "generate_full_bet_study country=UA now runs the full CLT / glulam engine (bet_clt, EN 1995 via ДСТУ-Н Б EN 1995 with ДБН loads): "
-    "calculation report, CLT panel layout, framing plans, details, schedules, RC foundations and estimate, in English and Ukrainian; "
-    "missing site data (S0, W0, soil, seismic) are taken on the safe side and listed as warnings to confirm — say so. "
-    "If the plans cannot be read as a grid, the evidence dossier (inputs required) is returned instead. It is never a regulatory approval. "
-    "CLT in FR / PT uses the same bet_clt engine (never silently changed to masonry). "
+    "generate_full_bet_study country=UA reads all pages into an evidence dossier; it does NOT generate execution drawings, "
+    "a cost estimate or regulatory approval. CLT in FR / PT keeps the existing engines (never silently changed to masonry: warning CLT-SCOPE). "
     "For UA calculations (climate, ДБН thermal Rq,min, heat loss, snow / wind, structure with dimensioned drawings GO-01…GO-05, CLT panels) "
     "use calcul_ucrania; for a CLT panel / assembly check from manufacturer data use get_clt_ua_schema then calculate_clt_ua "
     "(empty site / requirement fields are pre-filled from ConstruPilot UA norms, never marked confirmed). "
@@ -219,14 +212,7 @@ async def _cached_model(db, uid, key):
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None, decide_alone=False):
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
-    if str(country).upper() == "UA":                     # Ucrânia : moteur bois massif complet (bet_clt), sinon dossier de preuves bet_clt_ua
-        try:
-            from engines.bet_frame import hook as _fh
-            if await _fh._handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses or "CLT", "UA", "uk", step=step, store=_store,
-                                     llm=llm, branding=branding, decide_alone=decide_alone):
-                return
-        except Exception:  # noqa: BLE001 — repli : dossier de preuves UA (entrées requises)
-            log.exception("bet_clt UA %s failed, fallback to evidence dossier", job_id)
+    if str(country).upper() == "UA":                     # bet_clt_ua : Ucrânia (CLT), nunca os motores FR / PT
         try:
             from engines.bet_clt_ua.hook import handle
             await handle(docs, hypotheses, step=step, store=_store, db=db, uid=uid, cid=cid, request_id=request_id, llm=llm)

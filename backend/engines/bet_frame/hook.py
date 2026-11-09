@@ -30,6 +30,12 @@ INSTRUCTIONS_EXTRA = (
     "jamais que l'étude thermique, les plans électriques, de plomberie ou d'exécution ne sont pas faits : présente-les (champ `thermal` = "
     "classes et puissance totale). Avec generate_bet_lot_plans, le lot « chauffage » donne la note thermique + les plans de chauffage / "
     "ventilation, « electricite » et « plomberie » les plans par logement type, et « gros_oeuvre » inclut le ferraillage d'exécution. "
+    "BOIS MASSIF (mise à jour 09/11/2026, prioritaire) : si la structure est en CLT / bois lamellé-croisé / lamellé-collé (maison, "
+    "immeuble, poteaux-poutres ou murs CLT), écris « CLT » dans `hypotheses` de generate_full_bet_study : le moteur bois massif "
+    "produit la note EN 1995 (CLT, poutres, pannes, poteaux, feu, vibrations, assemblages), le calepinage CLT, les plans de charpente "
+    "par niveau, les détails, les tableaux, les fondations BA et le devis ; pays FR, PT ou UA. Pour country=UA, l'étude CLT est désormais "
+    "COMPLÈTE (plans, note, devis en anglais + ukrainien) ; les données de site manquantes (S0, W0, sol, séisme) sont prises du côté de "
+    "la sécurité et listées comme points à confirmer — dis-le ; ce n'est jamais une approbation réglementaire. "
     "Le génie civil (ponts, murs de soutènement isolés, VRD, réseaux publics, ouvrages hydrauliques) n'est PAS encore couvert : dis-le "
     "clairement et n'improvise pas de calcul. "
     "N'écris JAMAIS un document texte intitulé « Plan », « Planta » ou « Plan de coffrage » : un plan est un dessin produit par "
@@ -205,7 +211,8 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
     from engines.bet_clt import pipeline as cp
     from engines.bet_clt.lang import pick_lang
     house = bool(_HOUSE.search(hypotheses or "")) and not _BUILDING.search(hypotheses or "")
-    await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"building_kind": "clt"}})
+    if job_id:
+        await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"building_kind": "clt"}})
     await step("Lecture des plans par IA et relevé de la trame bois massif (CLT)")
     rd = await reader.read_frame(docs, (hypotheses or "") + _CLT_HINT, country, llm=llm, decide_alone=decide_alone,
                                  building_type="maison" if house else "immeuble_collectif", engine="clt")
