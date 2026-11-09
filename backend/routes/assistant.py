@@ -671,7 +671,13 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         st = p.get("pc_study") or {}
         job = await db.pc_study_jobs.find_one({"plan_id": args["plan_id"], "user_id": uid}, {"_id": 0}, sort=[("created_at", -1)])
         from engines.study_dossier_jobs import public
-        return {"ok": True, "job": public(job) if job else None, "schema_version": st.get("schema_version"),
+        files, files_error = [], None
+        try:
+            from engines.assistant_quote_exports import study_exports
+            files = await study_exports(args["plan_id"], user, conv, st)
+        except Exception as exc:  # noqa: BLE001 — l'étude reste lisible même si un export échoue
+            files_error = f"Fichiers PDF/Excel de l'étude non générés : {type(exc).__name__}."
+        return {"ok": True, "artifacts": files, "files_error": files_error, "job": public(job) if job else None, "schema_version": st.get("schema_version"),
                 "totals": st.get("totals"), "warnings": st.get("warnings"), "controls": st.get("controls"),
                 "coverage": st.get("coverage"), "variants": st.get("variants"),
                 "items": [{k: r.get(k) for k in ("id", "designation", "qty", "unit", "unit_price", "total", "quantity_status", "expression", "detail")} for r in st.get("items", [])][:150],
@@ -727,19 +733,21 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
                               "total_openings": result.get("total_openings")}
         return out
     if name in {"create_quote_draft", "read_quote_draft", "update_quote_draft", "find_quote_drafts", "add_quote_lines"}:
+        from engines.assistant_quote_exports import with_exports
         from engines.assistant_quote_service import append_quote_lines, find_quotes, read_quote, save_quote
         if name == "find_quote_drafts":
             return await find_quotes(user, args.get("query", ""))
+        # Devis + métré TOUJOURS fournis en PDF et en Excel, pour tout compte entreprise.
         if name == "read_quote_draft":
-            return await read_quote(args["doc_id"], user)
+            return await with_exports(await read_quote(args["doc_id"], user), user, conv)
         if name == "add_quote_lines":
-            return await append_quote_lines({k: v for k, v in args.items() if k != "doc_id"}, user, conv, doc_id=args["doc_id"])
+            return await with_exports(await append_quote_lines({k: v for k, v in args.items() if k != "doc_id"}, user, conv, doc_id=args["doc_id"]), user, conv)
         if name == "update_quote_draft":
-            return await save_quote({k: v for k, v in args.items() if k not in {"doc_id", "expected_updated_at"}}, user, conv,
-                                    doc_id=args["doc_id"], expected_updated_at=args["expected_updated_at"])
+            return await with_exports(await save_quote({k: v for k, v in args.items() if k not in {"doc_id", "expected_updated_at"}}, user, conv,
+                                                        doc_id=args["doc_id"], expected_updated_at=args["expected_updated_at"]), user, conv)
         result = await save_quote(args, user, conv)
         conv["_quote_create_slot"] = conv.get("_quote_create_slot", 0) + 1
-        return result
+        return await with_exports(result, user, conv)
     if name == "search_technical_docs":
         from btp_ai.research import search_technical_docs
         res = await search_technical_docs(args["question"][:1500], args.get("country") or "PT", uid, conv.get("project_id"))
@@ -1503,7 +1511,8 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
     instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
-        instructions += QUOTE_INSTRUCTIONS
+        from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
+        instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
         instructions += PAC_LAYOUT_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. Se o pedido indicar as plantas e o entregável, lança-o diretamente (o resultado fica um rascunho editável, nada é enviado); se o âmbito for ambíguo (plantas, margem, nome do projeto), pergunta-o numa frase. Para vários entregáveis de uma vez, prefere lancer_programme_ia. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
