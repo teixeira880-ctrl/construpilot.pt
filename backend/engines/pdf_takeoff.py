@@ -4,6 +4,7 @@ from io import BytesIO
 from datetime import datetime, timezone
 
 from reportlab.lib import colors
+from engines.pdf_fonts import F, remap_styles, cyrillic_fonts, needs_cyrillic  # noqa: F401
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
@@ -41,7 +42,7 @@ def _preset_icon_drawing(kind: str) -> Drawing:
     font_size = 7 if len(letter) > 1 else 8
     d.add(String(size / 2, size / 2 - 2.2, letter,
                  fillColor=colors.white,
-                 fontName="Helvetica-Bold", fontSize=font_size, textAnchor="middle"))
+                 fontName=F("Helvetica-Bold"), fontSize=font_size, textAnchor="middle"))
     return d
 
 ORANGE = colors.HexColor('#FF5A00')
@@ -60,20 +61,20 @@ def _fmt(v, unit="", digits=2):
 
 def _styles() -> dict:
     ss = getSampleStyleSheet()
-    return {
+    return remap_styles({
         "h1": ParagraphStyle("h1", parent=ss["Heading1"], textColor=DARK,
-                              fontName="Helvetica-Bold", fontSize=22, leading=26,
+                              fontName=F("Helvetica-Bold"), fontSize=22, leading=26,
                               spaceAfter=6),
         "h2": ParagraphStyle("h2", parent=ss["Heading2"], textColor=ORANGE,
-                              fontName="Helvetica-Bold", fontSize=13, leading=16,
+                              fontName=F("Helvetica-Bold"), fontSize=13, leading=16,
                               spaceBefore=14, spaceAfter=6),
-        "kicker": ParagraphStyle("k", textColor=ORANGE, fontName="Helvetica-Bold",
+        "kicker": ParagraphStyle("k", textColor=ORANGE, fontName=F("Helvetica-Bold"),
                                   fontSize=9, letterSpacing=1.5, spaceAfter=2),
         "body": ParagraphStyle("body", parent=ss["BodyText"], fontSize=9,
                                 leading=12, textColor=DARK),
         "muted": ParagraphStyle("mu", parent=ss["BodyText"], fontSize=8, leading=11,
                                  textColor=GREY),
-    }
+    })
 
 
 # ============ TAKEOFF PDF HELPERS ============
@@ -92,6 +93,7 @@ def _table(rows, col_widths, style_extras=None, repeat_rows=0, splittable=False)
         t = Table(rows, colWidths=col_widths,
                   repeatRows=repeat_rows) if repeat_rows else Table(rows, colWidths=col_widths)
     base_style = [
+        ("FONTNAME", (0, 0), (-1, -1), F("Helvetica")),   # cellules texte brut (cyrillique si PDF ukrainien)
         ("BOX", (0, 0), (-1, -1), 0.4, GREY),
         ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -191,7 +193,7 @@ def _story_totals_global(story: list, totals: dict, S: dict) -> None:
     story.append(_table(data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("TEXTCOLOR", (0, 0), (-1, -1), DARK),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
     ]))
@@ -213,7 +215,7 @@ def _story_totals_per_level(story: list, levels: list, S: dict) -> None:
     story.append(_table(rows, [35 * mm, 20 * mm, 30 * mm, 30 * mm, 30 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
         ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
     ]))
@@ -243,7 +245,7 @@ def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
                         style_extras=[
                             ("BACKGROUND", (0, 0), (-1, 0), DARK),
                             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
                             ("FONTSIZE", (0, 0), (-1, -1), 7.5),
                             ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
                             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
@@ -268,7 +270,7 @@ def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
             style_extras=[
                 ("BACKGROUND", (0, 0), (-1, 0), DARK),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
@@ -307,7 +309,7 @@ def _story_materials(story: list, materials: dict | None, S: dict) -> None:
     story.append(_table(rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (-1, 0), ORANGE),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
     ], repeat_rows=1))
@@ -352,7 +354,7 @@ def _story_room_presets(story: list, rooms: list, presets_by_id: dict, S: dict) 
                         style_extras=[
                             ("BACKGROUND", (0, 0), (-1, 0), DARK),
                             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
                             ("FONTSIZE", (0, 0), (-1, -1), 8),
                             ("ALIGN", (2, 1), (2, -1), "CENTER"),  # icône centrée
                             ("ALIGN", (3, 1), (4, -1), "RIGHT"),
@@ -415,7 +417,7 @@ def _story_measurements(story: list, measurements: list, S: dict) -> None:
                         style_extras=[
                             ("BACKGROUND", (0, 0), (-1, 0), DARK),
                             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
                             ("FONTSIZE", (0, 0), (-1, -1), 8),
                             ("ALIGN", (2, 1), (3, -1), "RIGHT"),
                             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
@@ -513,7 +515,7 @@ def _ecarts_table(story: list, matches: list[dict], unmatched: list[dict], S: di
                      f"{'+' if delta > 0 else ''}{delta} %",
                      "Conforme" if ok else "Desvio"])
         row_styles.append(("TEXTCOLOR", (3, i), (4, i), GREEN if ok else AMBER))
-        row_styles.append(("FONTNAME", (4, i), (4, i), "Helvetica-Bold"))
+        row_styles.append(("FONTNAME", (4, i), (4, i), F("Helvetica-Bold")))
     for j, r in enumerate(unmatched, start=len(matches) + 1):
         rows.append([r.get("name") or "—", _fmt(r.get("surface_m2", 0), "m²"),
                      "—", "—", "Sem referência"])
@@ -521,7 +523,7 @@ def _ecarts_table(story: list, matches: list[dict], unmatched: list[dict], S: di
     story.append(_table(rows, [45 * mm, 28 * mm, 30 * mm, 22 * mm, 30 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (-1, 0), DARK),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
         ("ALIGN", (1, 1), (3, -1), "RIGHT"),
         ("ALIGN", (4, 1), (4, -1), "CENTER"),
@@ -544,19 +546,19 @@ def _ecarts_summary(story: list, matches: list[dict], unmatched: list[dict], S: 
         rows.append(["Diferença mediana absoluta", f"{round(med, 1)} %"])
     story.append(_table(rows, [90 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
     ]))
     story.append(Spacer(1, 8))
     if matches and ecarts == 0:
-        verdict = ParagraphStyle("v_ok", fontName="Helvetica-Bold", fontSize=10,
+        verdict = ParagraphStyle("v_ok", fontName=F("Helvetica-Bold"), fontSize=10,
                                  textColor=GREEN, leading=13)
         story.append(Paragraph(
             "Todas as áreas medidas estão conformes com as áreas escritas na planta (tolerância 5 %).", verdict))
     elif ecarts:
-        verdict = ParagraphStyle("v_ko", fontName="Helvetica-Bold", fontSize=10,
+        verdict = ParagraphStyle("v_ko", fontName=F("Helvetica-Bold"), fontSize=10,
                                  textColor=AMBER, leading=13)
         story.append(Paragraph(
             f'{ecarts} divisão(ões) apresentam uma diferença superior a 5 % — utilize «Reajustar a escala» no ConstruPilot PLANTA ou verifique o traçado dessas divisões.', verdict))
@@ -616,7 +618,7 @@ def _story_quote_surfaces(story: list, totals: dict, S: dict) -> None:
     ]
     story.append(_table(surf_data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
     ]))
@@ -638,7 +640,7 @@ def _story_quote_line_items(story: list, line_items: list, S: dict) -> None:
         style_extras=[
             ("BACKGROUND", (0, 0), (-1, 0), DARK),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
             ("FONTSIZE", (0, 0), (-1, -1), 8.5),
             ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
@@ -661,8 +663,8 @@ def _story_quote_recap(story: list, quote: dict, S: dict) -> None:
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("BACKGROUND", (0, -1), (-1, -1), ORANGE),
         ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
-        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (0, -1), (-1, -1), F("Helvetica-Bold")),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9.5),
         ("FONTSIZE", (0, -1), (-1, -1), 12),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
@@ -786,7 +788,7 @@ def _pq_totals(story: list, totals: dict, S: dict) -> None:
     ]
     story.append(_table(data, [60 * mm, 40 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
     ]))
     story.append(Spacer(1, 14))
@@ -804,8 +806,8 @@ def _pq_sub_quote(story: list, sq: dict, index: int, S: dict) -> None:
     story.append(_table(rows, [85 * mm, 20 * mm, 20 * mm, 30 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (-1, 0), DARK),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (2, -1), (-1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
+        ("FONTNAME", (2, -1), (-1, -1), F("Helvetica-Bold")),
         ("BACKGROUND", (0, -1), (-1, -1), LIGHT_GREY),
         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
         ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
@@ -828,8 +830,8 @@ def _pq_recap(story: list, project: dict, S: dict) -> None:
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("BACKGROUND", (0, -1), (-1, -1), ORANGE),
         ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
-        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (0, -1), (-1, -1), F("Helvetica-Bold")),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9.5),
         ("FONTSIZE", (0, -1), (-1, -1), 12),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
@@ -884,13 +886,13 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
     from reportlab.platypus import PageBreak
     story: list = []
 
-    white_big = ParagraphStyle("cv_wb", fontName="Helvetica-Bold", fontSize=14,
+    white_big = ParagraphStyle("cv_wb", fontName=F("Helvetica-Bold"), fontSize=14,
                                textColor=colors.white, leading=17)
-    white_small = ParagraphStyle("cv_ws", fontName="Helvetica", fontSize=8.5,
+    white_small = ParagraphStyle("cv_ws", fontName=F("Helvetica"), fontSize=8.5,
                                  textColor=colors.white, leading=12)
-    label_style = ParagraphStyle("cv_lbl", fontName="Helvetica-Bold", fontSize=8,
+    label_style = ParagraphStyle("cv_lbl", fontName=F("Helvetica-Bold"), fontSize=8,
                                  textColor=GREEN_BRAND, leading=12, spaceAfter=2)
-    kicker_green = ParagraphStyle("cv_kick", fontName="Helvetica-Bold", fontSize=9,
+    kicker_green = ParagraphStyle("cv_kick", fontName=F("Helvetica-Bold"), fontSize=9,
                                   textColor=GREEN_BRAND, leading=12, spaceAfter=2)
 
     # --- Bandeau vert de marque : logo + identité société ---
@@ -938,7 +940,7 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
     # --- Titre principal ---
     story.append(Paragraph("PROCESSO DE ORÇAMENTAÇÃO", kicker_green))
     story.append(Paragraph(project.get("name") or "Projeto", ParagraphStyle(
-        "cv_title", fontName="Helvetica-Bold", fontSize=28, textColor=DARK,
+        "cv_title", fontName=F("Helvetica-Bold"), fontSize=28, textColor=DARK,
         leading=32, spaceAfter=6)))
     story.append(Paragraph(
         f"Projeto multinível · {project.get('levels_count', 0)} piso(s)", S["muted"]))
@@ -948,10 +950,10 @@ def build_cover_story(branding: dict | None, project: dict, client: dict | None,
         story.append(Spacer(1, 10 * mm))
         amount_box = Table([[
             [Paragraph("MONTANTE ESTIMADO c/ IVA", ParagraphStyle(
-                "cv_ttc_lbl", fontName="Helvetica-Bold", fontSize=8.5,
+                "cv_ttc_lbl", fontName=F("Helvetica-Bold"), fontSize=8.5,
                 textColor=colors.white, leading=11, spaceAfter=3)),
              Paragraph(_fmt(ttc, "€"), ParagraphStyle(
-                "cv_ttc_val", fontName="Helvetica-Bold", fontSize=26,
+                "cv_ttc_val", fontName=F("Helvetica-Bold"), fontSize=26,
                 textColor=colors.white, leading=30))]
         ]], colWidths=[None])
         amount_box.setStyle(TableStyle([
@@ -1083,7 +1085,7 @@ def _tva_labelled_block(story: list, title: str, rows: list, S: dict) -> None:
     t = Table(rows, colWidths=[45 * mm, 120 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (0, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 10),
         ("BOX", (0, 0), (-1, -1), 0.4, GREY),
         ("INNERGRID", (0, 0), (-1, -1), 0.2, GREY),
@@ -1247,7 +1249,7 @@ def build_accounting_recap_pdf(period: str, rows: list[dict],
         style_extras=[
             ("BACKGROUND", (0, 0), (-1, 0), DARK),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
             ("FONTSIZE", (0, 0), (-1, -1), 8),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_GREY]),
             ("ALIGN", (3, 1), (3, -1), "RIGHT"),
@@ -1269,8 +1271,8 @@ def build_accounting_recap_pdf(period: str, rows: list[dict],
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
         ("BACKGROUND", (0, 4), (-1, 4), ORANGE),
         ("TEXTCOLOR", (0, 4), (-1, 4), colors.white),
-        ("FONTNAME", (0, 4), (-1, 4), "Helvetica-Bold"),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (0, 4), (-1, 4), F("Helvetica-Bold")),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9.5),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),

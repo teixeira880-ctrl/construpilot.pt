@@ -12,6 +12,7 @@ from xml.sax.saxutils import escape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
+from engines.pdf_fonts import F, remap_styles, cyrillic_fonts, needs_cyrillic  # noqa: F401
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak, Table, TableStyle
 
 from engines.pdf_takeoff import (
@@ -99,7 +100,7 @@ def _doc_styles(base: dict, P: dict, layout: str = DEFAULT_LAYOUT) -> dict:
     idn = base["h2"].clone("doc_ident")
     idn.textColor, idn.fontSize, idn.leading, idn.spaceBefore, idn.spaceAfter = P["deep"], 12.5, 15, 0, 1
     S["ident"] = idn
-    return S
+    return remap_styles(S)
 
 
 def _compact_header_text(text: str, branding: dict | None) -> str:
@@ -268,7 +269,7 @@ def _header_letterhead(story: list, branding: dict | None, S: dict, P: dict,
     doc_key = {"quote": "doc_quote", "invoice": "doc_invoice", "credit_note": "doc_credit"}
     label = L[doc_key.get(doc.get("doc_type"), "doc_generic")]
     if layout == "detaille" and doc.get("doc_type") == "quote":
-        label = "ORÇAMENTO POR CAPÍTULOS"
+        label = L.get("doc_quote_lots", "ORÇAMENTO POR CAPÍTULOS")
     right: list = [Paragraph(f"<b>{escape(label)}</b>", label_style)]
     meta_style = muted if layout == "detaille" else S["muted_right"]
     if doc.get("number"):
@@ -300,9 +301,9 @@ def _header_letterhead(story: list, branding: dict | None, S: dict, P: dict,
     story.append(_table([[left, right]], [104 * mm, 70 * mm], style_extras=extras))
 
     if layout == "signature":
-        title = doc.get("title") or "O seu projeto de remodelação"
+        title = doc.get("title") or L.get("default_title", "O seu projeto de remodelação")
         serif = S["h1"].clone("lh_serif")
-        serif.fontName, serif.fontSize, serif.leading = "Times-Bold", 24, 27
+        serif.fontName, serif.fontSize, serif.leading = F("Times-Bold"), 24, 27
         serif.textColor = colors.HexColor("#313834")
         story.append(_table([[Paragraph(escape(str(title)), serif)]], [174 * mm], style_extras=[
             ("BACKGROUND", (0, 0), (-1, -1), sable),
@@ -320,7 +321,7 @@ def _header_letterhead(story: list, branding: dict | None, S: dict, P: dict,
 def _signature_block(story: list, S: dict, L: dict, P: dict, sign_url: str | None) -> None:
     """Bon pour accord + QR code de signature en ligne (déterministe, aucun visuel généré)."""
     left = [Paragraph(f"<b>{L['agreement']}</b>", S["body"]),
-            Paragraph("Data e assinatura do cliente:", S["muted"]),
+            Paragraph(L.get("sign_date", "Data e assinatura do cliente:"), S["muted"]),
             Spacer(1, 16)]
     qr_cell = ""
     if sign_url:
@@ -331,12 +332,12 @@ def _signature_block(story: list, S: dict, L: dict, P: dict, sign_url: str | Non
             img.save(bio, format="PNG")
             bio.seek(0)
             qr_cell = [Image(bio, width=24 * mm, height=24 * mm),
-                       Paragraph("Ler para assinar", S["muted"])]
+                       Paragraph(L.get("scan_to_sign", "Ler para assinar"), S["muted"])]
             link_style = S["muted"].clone("doc_signlink")
             link_style.wordWrap = "CJK"   # force la coupe d'une URL sans espace
             link_style.fontSize = 6.2
             link_style.leading = 8
-            left.append(Paragraph("Ou assinar online:", S["muted"]))
+            left.append(Paragraph(L.get("sign_online", "Ou assinar online:"), S["muted"]))
             left.append(Paragraph(f'<font color="#1F5F3F">{escape(sign_url)}</font>', link_style))
         except Exception:  # noqa: BLE001 — le devis reste valide sans QR
             qr_cell = ""
@@ -388,16 +389,16 @@ def _page_footer(canvas, pdf_doc, branding: dict | None, P: dict, L: dict) -> No
     canvas.setStrokeColor(P["main"])
     canvas.setLineWidth(0.8)
     canvas.line(18 * mm, y + 9 * mm, w - 18 * mm, y + 9 * mm)
-    canvas.setFont("Helvetica", 6.4)
+    canvas.setFont(F("Helvetica"), 6.4)
     canvas.setFillColor(colors.HexColor("#4B5563"))
     avail = w - 36 * mm - 18 * mm  # marges + place pour la pagination
     legal = " · ".join(x.strip() for x in str(b.get("footer_text") or "").splitlines() if x.strip())
-    lines = _wrap_to_width(canvas, legal, avail, "Helvetica", 6.4, max_lines=2)
-    lines += _wrap_to_width(canvas, L["footer"], avail, "Helvetica", 6.4, max_lines=2)
+    lines = _wrap_to_width(canvas, legal, avail, F("Helvetica"), 6.4, max_lines=2)
+    lines += _wrap_to_width(canvas, L["footer"], avail, F("Helvetica"), 6.4, max_lines=2)
     for i, ln in enumerate(lines[:4]):
         canvas.drawString(18 * mm, y + 6 * mm - i * 2.6 * mm, ln)
-    canvas.setFont("Helvetica-Bold", 6.6)
-    canvas.drawRightString(w - 18 * mm, y + 6 * mm, f"page {canvas.getPageNumber()}")
+    canvas.setFont(F("Helvetica-Bold"), 6.6)
+    canvas.drawRightString(w - 18 * mm, y + 6 * mm, f"{L.get('page', 'página')} {canvas.getPageNumber()}")
     canvas.restoreState()
 
 
@@ -482,7 +483,7 @@ def _payment_schedule(story: list, doc: dict, S: dict, L: dict, P: dict) -> None
     story.append(_table(rows, [116 * mm, 20 * mm, 38 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (-1, 0), P["head"]),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
         ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, P["soft"]]),
@@ -554,6 +555,7 @@ def _photo_strip(photos):
         while len(r) < 3:
             r.append("")
     t = Table(rows, hAlign="LEFT")
+    t.setStyle(TableStyle([("FONTNAME", (0, 0), (-1, -1), F("Helvetica"))]))
     t.setStyle(TableStyle([
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
@@ -627,7 +629,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict, P: dict,
                 subsec_sub[cur_sub] += _line_ht(b)
 
     lot_total = S["body_right"].clone("lot_total2")
-    lot_total.textColor, lot_total.fontName = P["deep"], "Helvetica-Bold"
+    lot_total.textColor, lot_total.fontName = P["deep"], F("Helvetica-Bold")
 
     def _new_seg():
         return {"rows": [list(header)], "roles": {}}
@@ -648,7 +650,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict, P: dict,
             pref = f"{nums[i]} " if nums[i] else ""
             sub_amount = (sec_sub if k == "section" else subsec_sub).get(i, 0)
             seg["rows"].append([Paragraph(f"<b>{escape(pref)}{escape(title)}</b>", S["body"]), "", "", "", "", "",
-                                Paragraph(f"{_fmt(sub_amount, '€')} s/ IVA", lot_total)])
+                                Paragraph(f"{_fmt(sub_amount, '€')} {L.get('ht_suffix', 's/ IVA')}", lot_total)])
             seg["roles"][r] = k
         elif k == "text":
             r = len(seg["rows"])
@@ -684,7 +686,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict, P: dict,
                 r = len(seg["rows"])
                 subt = round(sum(_line_ht(x) for x in lns), 2)
                 seg["rows"].append([Paragraph(f"<b>{escape(cat or L.get('other_lot', 'Autres'))}</b>", S["body"]),
-                                    "", "", "", "", "", Paragraph(f"{_fmt(subt, '€')} s/ IVA", lot_total)])
+                                    "", "", "", "", "", Paragraph(f"{_fmt(subt, '€')} {L.get('ht_suffix', 's/ IVA')}", lot_total)])
                 seg["roles"][r] = "section"
                 for x in lns:
                     rr = len(seg["rows"])
@@ -701,7 +703,7 @@ def _lines_table(story: list, lines: list, S: dict, L: dict, P: dict,
         extras = [
             ("BACKGROUND", (0, 0), (-1, 0), P["head"]),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 0), (-1, 0), F("Helvetica-Bold")),
             ("FONTSIZE", (0, 0), (-1, -1), 7.6 if layout == "compact" else 8.5),
             ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
             ("ALIGN", (0, 0), (0, -1), "LEFT"),
@@ -771,7 +773,7 @@ def _recap(story: list, doc: dict, S: dict, L: dict, P: dict) -> None:
         lrows = [[Paragraph(escape(n), S["body"]), _fmt(ht, "€")] for n, ht in lots]
         story.append(_table(lrows, [130 * mm, 45 * mm], style_extras=[
             ("BACKGROUND", (0, 0), (-1, -1), P["soft"]),
-            ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+            ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
             ("FONTSIZE", (0, 0), (-1, -1), 9),
             ("ALIGN", (1, 0), (1, -1), "RIGHT"),
             ("LINEBELOW", (0, 0), (-1, -2), 0.3, P["line"]),
@@ -797,8 +799,8 @@ def _recap(story: list, doc: dict, S: dict, L: dict, P: dict) -> None:
         ("BACKGROUND", (0, 0), (0, -1), P["soft"]),
         ("BACKGROUND", (0, ttc_row), (-1, ttc_row), P["main"]),
         ("TEXTCOLOR", (0, ttc_row), (-1, ttc_row), colors.white),
-        ("FONTNAME", (0, ttc_row), (-1, ttc_row), "Helvetica-Bold"),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+        ("FONTNAME", (0, ttc_row), (-1, ttc_row), F("Helvetica-Bold")),
+        ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
         ("FONTSIZE", (0, 0), (-1, -1), 9.5),
         ("FONTSIZE", (0, ttc_row), (-1, ttc_row), 12),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
@@ -839,6 +841,17 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
                        sign_url: str | None = None, cover: list | None = None,
                        watermark_logo_b64: str | None = None,
                        appendix: list | None = None, facturx: bool = False) -> bytes:
+    # Ucraniano (cirílico): fontes DejaVu só para este PDF; PT/FR/EN sem alterações.
+    with cyrillic_fonts(needs_cyrillic(lang)):
+        return _build_document_pdf(doc, branding, reviews, lang, sign_url, cover,
+                                   watermark_logo_b64, appendix, facturx)
+
+
+def _build_document_pdf(doc: dict, branding: dict | None = None,
+                        reviews: dict | None = None, lang: str | None = None,
+                        sign_url: str | None = None, cover: list | None = None,
+                        watermark_logo_b64: str | None = None,
+                        appendix: list | None = None, facturx: bool = False) -> bytes:
     dossier = doc.get("study_dossier") if doc.get("doc_type") == "quote" else None
     if dossier and dossier.get("schema_version") == "construction-dossier-1":
         # The commercial cover retains identity, legal terms, VAT and signature.
@@ -915,7 +928,7 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
     # RIB / coordonnées bancaires (factures et avoirs uniquement)
     if doc.get("doc_type") in ("invoice", "credit_note") and (branding or {}).get("bank_details"):
         story.append(Spacer(1, 12))
-        story.append(Paragraph("Dados bancários", S["h2"]))
+        story.append(Paragraph(L.get("bank_details", "Dados bancários"), S["h2"]))
         story.append(Paragraph(str(branding["bank_details"]).replace("\n", "<br/>"), S["body"]))
 
     # Encart « Factur-X » — réassurance conformité facturation électronique (factures/avoirs)

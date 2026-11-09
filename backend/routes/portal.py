@@ -544,7 +544,9 @@ async def portal_document_pdf(ref: str, doc_id: str, p=Depends(current_participa
     from routes.documents import _doc_lang
     branding = {**(await _resolve_branding(c["user_id"]) or {}), **await pdf_customization(c["user_id"])}
     reviews = await get_reviews_for_user(c["user_id"]) if d["doc_type"] == "quote" else None
-    pdf = build_document_pdf(d, branding=branding, reviews=reviews, lang=await _doc_lang(d, branding))
+    from engines.doc_translate import localize_for_owner
+    _d, _lg = await localize_for_owner(db, d, c["user_id"])
+    pdf = build_document_pdf(_d, branding=branding, reviews=reviews, lang=_lg or await _doc_lang(d, branding))
     fname = f"{d.get('number') or d['doc_id']}.pdf"
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
                              headers={"Content-Disposition": f'inline; filename="{fname}"',

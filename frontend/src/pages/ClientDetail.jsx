@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { downloadExtraPdfs } from "@/lib/docLangs";
 import { useI18n } from "@/context/I18nContext";
 import { ChantierFormDialog } from "@/components/chantiers/ChantierFormDialog";
 import { HardHat } from "lucide-react";
@@ -63,6 +64,7 @@ export default function ClientDetail() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a"); a.href = url; a.download = `${docId}.pdf`; a.click();
       URL.revokeObjectURL(url);
+      await downloadExtraPdfs(user, docId, docId);
     } catch { toast.error(t("crm.pdf_fail")); }
   };
   const doConvert = async () => {

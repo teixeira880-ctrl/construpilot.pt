@@ -13,6 +13,7 @@ import { api, eur } from "@/lib/api";
 import { useBilling } from "@/context/BillingContext";
 import { usePermissions } from "@/context/PermissionContext";
 import { useAuth } from "@/context/AuthContext";
+import { downloadExtraPdfs } from "@/lib/docLangs";
 import { useI18n } from "@/context/I18nContext";
 import { toast } from "sonner";
 
@@ -96,6 +97,7 @@ export default function Invoices() {
       const a = document.createElement("a");
       a.href = url; a.download = `${doc.number || "facture"}.pdf`; a.click();
       URL.revokeObjectURL(url);
+      await downloadExtraPdfs(user, doc.doc_id, doc.number || "fatura");
     } catch { toast.error(t("crm.pdf_fail")); }
   };
 
