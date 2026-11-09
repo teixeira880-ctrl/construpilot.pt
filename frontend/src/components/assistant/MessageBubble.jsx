@@ -10,6 +10,17 @@ import { PrivateImage, downloadAssistantFile } from "./PrivateMedia";
 import { useDocumentViewer } from "./DocumentViewer";
 import { ListenButton } from "@/components/voice/VoiceButtons";
 
+
+// Un devis construit en plusieurs appels (par étage/lot) : seuls les fichiers PDF/Excel de sa dernière version sont affichés.
+function onlyLatestQuoteFiles(actions) {
+  const last = {};
+  actions.forEach((a, j) => { const d = a?.result?.doc_id; if (d && Array.isArray(a.result.artifacts)) last[d] = j; });
+  return actions.map((a, j) => {
+    const d = a?.result?.doc_id;
+    return d && Array.isArray(a.result.artifacts) && last[d] !== j ? { ...a, result: { ...a.result, artifacts: undefined } } : a;
+  });
+}
+
 export function MessageBubble({ m, live, onCorrect, testId, queued }) {
   const ui = useWorkspaceCopy();
   const studio = useStudioCopy();
@@ -39,7 +50,7 @@ export function MessageBubble({ m, live, onCorrect, testId, queued }) {
         </div>
       )}
       {m.status && <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1" data-testid={`${id}-status`}><Loader2 className="h-3 w-3 animate-spin" /> {m.status}</div>}
-      {m.actions?.length > 0 && <div className="grid grid-cols-1 min-w-0 max-w-full gap-1 mt-2">{m.actions.map((a, j) => <ActionCard key={j} a={a} />)}</div>}
+      {m.actions?.length > 0 && <div className="grid grid-cols-1 min-w-0 max-w-full gap-1 mt-2">{onlyLatestQuoteFiles(m.actions).map((a, j) => <ActionCard key={j} a={a} />)}</div>}
       {m.sources?.length > 0 && (
         <div className="mt-2 text-[11px] text-muted-foreground" data-testid={`${id}-sources`}>
           {ui("sources")} : {m.sources.map((s, j) => <a key={j} href={s.url} data-testid={`${id}-source-${j}`} target="_blank" rel="noreferrer" className="underline mr-2">{s.title}</a>)}

@@ -598,7 +598,13 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         st = p.get("pc_study") or {}
         job = await db.pc_study_jobs.find_one({"plan_id": args["plan_id"], "user_id": uid}, {"_id": 0}, sort=[("created_at", -1)])
         from engines.study_dossier_jobs import public
-        return {"ok": True, "job": public(job) if job else None, "schema_version": st.get("schema_version"),
+        files, files_error = [], None
+        try:
+            from engines.assistant_quote_exports import study_exports
+            files = await study_exports(args["plan_id"], user, conv, st)
+        except Exception as exc:  # noqa: BLE001 — l'étude reste lisible même si un export échoue
+            files_error = f"Fichiers PDF/Excel de l'étude non générés : {type(exc).__name__}."
+        return {"ok": True, "artifacts": files, "files_error": files_error, "job": public(job) if job else None, "schema_version": st.get("schema_version"),
                 "totals": st.get("totals"), "warnings": st.get("warnings"), "controls": st.get("controls"),
                 "coverage": st.get("coverage"), "variants": st.get("variants"),
                 "items": [{k: r.get(k) for k in ("id", "designation", "qty", "unit", "unit_price", "total", "quantity_status", "expression", "detail")} for r in st.get("items", [])][:150],
@@ -654,19 +660,21 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
                               "total_openings": result.get("total_openings")}
         return out
     if name in {"create_quote_draft", "read_quote_draft", "update_quote_draft", "find_quote_drafts", "add_quote_lines"}:
+        from engines.assistant_quote_exports import with_exports
         from engines.assistant_quote_service import append_quote_lines, find_quotes, read_quote, save_quote
         if name == "find_quote_drafts":
             return await find_quotes(user, args.get("query", ""))
+        # Devis + métré TOUJOURS fournis en PDF et en Excel, pour tout compte entreprise.
         if name == "read_quote_draft":
-            return await read_quote(args["doc_id"], user)
+            return await with_exports(await read_quote(args["doc_id"], user), user, conv)
         if name == "add_quote_lines":
-            return await append_quote_lines({k: v for k, v in args.items() if k != "doc_id"}, user, conv, doc_id=args["doc_id"])
+            return await with_exports(await append_quote_lines({k: v for k, v in args.items() if k != "doc_id"}, user, conv, doc_id=args["doc_id"]), user, conv)
         if name == "update_quote_draft":
-            return await save_quote({k: v for k, v in args.items() if k not in {"doc_id", "expected_updated_at"}}, user, conv,
-                                    doc_id=args["doc_id"], expected_updated_at=args["expected_updated_at"])
+            return await with_exports(await save_quote({k: v for k, v in args.items() if k not in {"doc_id", "expected_updated_at"}}, user, conv,
+                                                        doc_id=args["doc_id"], expected_updated_at=args["expected_updated_at"]), user, conv)
         result = await save_quote(args, user, conv)
         conv["_quote_create_slot"] = conv.get("_quote_create_slot", 0) + 1
-        return result
+        return await with_exports(result, user, conv)
     if name == "search_technical_docs":
         from btp_ai.research import search_technical_docs
         res = await search_technical_docs(args["question"][:1500], args.get("country") or "PT", uid, conv.get("project_id"))
