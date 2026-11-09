@@ -90,6 +90,7 @@ api.interceptors.response.use(undefined, (error) => {
         pages_monthly: pt ? "páginas técnicas deste mês" : "pages techniques du mois",
         seats: pt ? "utilizadores" : "utilisateurs",
         storage_bytes: pt ? "armazenamento" : "stockage",
+        ai_budget: pt ? "análise IA deste mês" : "analyse IA du mois",
       }[d.resource] || d.resource;
       const msg = pt
         ? `Limite do seu plano atingido (${res}). Os seus dados continuam acessíveis.`

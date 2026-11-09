@@ -5,8 +5,14 @@ compte de leur entreprise), sinon l'utilisateur lui-même.
 
 Mode (variable ``PLAN_LIMITS_MODE``) :
   * ``off``      — rien n'est mesuré ni bloqué ;
-  * ``observe``  — (défaut) on mesure, on journalise les dépassements, on ne bloque JAMAIS ;
-  * ``enforce``  — on mesure et on bloque (HTTP 402) au-delà de la limite.
+  * ``observe``  — on mesure, on journalise les dépassements, on ne bloque JAMAIS ;
+  * ``enforce``  — (défaut, décision 2026-11-09 « ne jamais perdre d'argent ») on mesure et on
+    bloque (HTTP 402) au-delà de la limite.
+
+Garde-fou de coût IA (toutes offres, y compris historiques et gratuites) : le coût IA estimé
+d'un compte sur le mois ne peut jamais dépasser un budget dérivé de ce qu'il paie
+(voir ``ai_budget_micros``). Au-delà, les nouveaux appels IA sont refusés (402
+``ai_budget_reached``) ; les données et les fonctions sans IA restent accessibles.
 
 Seuls les comptes sur une offre commerciale (Solo/Professional/Business/Enterprise) ont des
 limites : les plans historiques et le mode promo gratuit ne sont jamais bridés ici.
@@ -29,8 +35,8 @@ INACTIVE_PROJECT_STATUSES = ["archived", "deleted", "trash", "trashed", "complet
 
 
 def mode() -> str:
-    m = (os.environ.get("PLAN_LIMITS_MODE") or "observe").strip().lower()
-    return m if m in ("off", "observe", "enforce") else "observe"
+    m = (os.environ.get("PLAN_LIMITS_MODE") or "enforce").strip().lower()
+    return m if m in ("off", "observe", "enforce") else "enforce"
 
 
 def _now() -> datetime:
@@ -59,11 +65,16 @@ async def billing_account(user: dict) -> dict:
 
 
 async def account_plan(account: dict) -> tuple[str | None, dict | None]:
-    """(plan_id actif du propriétaire, limites commerciales ou None)."""
+    """(plan_id actif du propriétaire, limites commerciales ou None). Inclut les utilisateurs
+    supplémentaires achetés (organizations.extra_seats)."""
     from engines import monetization
     active = await monetization.user_active_plan(account["owner_user_id"])
     pid = ((active or {}).get("entitlement") or {}).get("plan_id")
-    return pid, cp.limits_for_plan_id(pid)
+    limits = cp.limits_for_plan_id(pid)
+    if limits and account.get("org_id"):
+        org = await db.organizations.find_one({"org_id": account["org_id"]}, {"_id": 0, "extra_seats": 1}) or {}
+        limits["seats"] += int(org.get("extra_seats") or 0)
+    return pid, limits
 
 
 async def _usage_doc(account_id: str, per: str) -> dict:
@@ -206,3 +217,161 @@ async def note_ai_call(user_id: str | None) -> None:
             upsert=True)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"note_ai_call skipped: {e}")
+
+
+# ====================================================================== garde-fou de coût IA
+# Prix publics de référence, USD par million de tokens (entrée, sortie). Surchargeables via
+# AI_PRICE_TABLE='{"sonnet":[3,15],...}'. Clé = sous-chaîne du nom de modèle (première trouvée).
+# USD comptés 1:1 en EUR (sur-estimation volontaire tant que 1 € > 1 $).
+DEFAULT_PRICES = [
+    ("haiku", (1.0, 5.0)), ("sonnet", (3.0, 15.0)), ("opus", (5.0, 25.0)), ("fable", (15.0, 75.0)),
+    ("mythos", (15.0, 75.0)), ("gpt-4o-mini", (0.15, 0.6)), ("mini", (0.4, 1.6)), ("gpt", (2.5, 10.0)),
+    ("o3", (2.0, 8.0)), ("flash", (0.3, 2.5)), ("gemini", (1.25, 10.0)), ("image", (0.0, 40.0)),
+]
+FALLBACK_PRICE = (15.0, 75.0)       # modèle inconnu : on compte au plus cher
+PER_CALL_FLOOR_MICROS = 20_000       # appel sans compteur de tokens : 0,02 € minimum
+PER_IMAGE_MICROS = 80_000            # image générée : 0,08 €
+# Part du revenu mensuel HT qu'un compte peut consommer en IA (le reste couvre Stripe,
+# stockage, infrastructure et marge). Plans commerciaux : 70 %. Plans historiques : 100 %
+# (équilibre, jamais de perte). Sans abonnement (gratuit / promo / bêta) : budget fixe.
+COMMERCIAL_BUDGET_RATIO = float(os.environ.get("AI_BUDGET_RATIO_COMMERCIAL", "0.70"))
+LEGACY_BUDGET_RATIO = float(os.environ.get("AI_BUDGET_RATIO_LEGACY", "1.0"))
+FREE_BUDGET_EUR = float(os.environ.get("FREE_AI_BUDGET_EUR", "3"))
+STRIPE_FEE_RATIO = 0.03              # commission de paiement estimée, déduite du revenu
+
+
+def _price_table() -> list:
+    raw = os.environ.get("AI_PRICE_TABLE")
+    if raw:
+        try:
+            import json
+            return [(k, tuple(v)) for k, v in json.loads(raw).items()] + DEFAULT_PRICES
+        except Exception:  # noqa: BLE001
+            logger.warning("AI_PRICE_TABLE invalide, prix par défaut utilisés")
+    return DEFAULT_PRICES
+
+
+def estimate_cost_micros(model: str | None, units: dict | None) -> int:
+    """Coût estimé d'un appel en micro-euros (1 € = 1 000 000)."""
+    units = units or {}
+    name = (model or "").lower()
+    price_in, price_out = next((p for k, p in _price_table() if k in name), FALLBACK_PRICE)
+    tin, tout = units.get("input_tokens"), units.get("output_tokens")
+    cost = 0
+    if isinstance(tin, (int, float)) or isinstance(tout, (int, float)):
+        cost = int((tin or 0) * price_in + (tout or 0) * price_out)  # $/M tokens × tokens = micro-$
+    cost = max(cost, PER_CALL_FLOOR_MICROS if units.get("calls") else 0)
+    cost += int(units.get("images") or 0) * PER_IMAGE_MICROS
+    return cost
+
+
+async def note_ai_cost(user_id: str | None, model: str | None, units: dict | None) -> None:
+    """Ajoute le coût estimé d'un appel IA au compte (jamais bloquant)."""
+    if not user_id or mode() == "off":
+        return
+    try:
+        acc = await billing_account({"user_id": user_id})
+        per = period()
+        await db.usage_monthly.update_one(
+            {"_id": f"{acc['account_id']}:{per}"},
+            {"$inc": {"ai_cost_micros": estimate_cost_micros(model, units)},
+             "$setOnInsert": {"account_id": acc["account_id"], "period": per, "pages": 0, "bonus_pages": 0}},
+            upsert=True)
+        _budget_cache.pop(acc["account_id"], None)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"note_ai_cost skipped: {e}")
+
+
+async def monthly_revenue_cents(account: dict) -> tuple[int, float]:
+    """(revenu mensuel HT en centimes, ratio de budget) pour le propriétaire du compte."""
+    from engines import monetization
+    active = await monetization.user_active_plan(account["owner_user_id"])
+    ent = (active or {}).get("entitlement") or {}
+    pid = ent.get("plan_id")
+    parsed = cp.parse_plan_id(pid)
+    if parsed:
+        key, interval = parsed
+        cents = cp.price_cents(key, interval)
+        return (cents // 12 if interval == "year" else cents), COMMERCIAL_BUDGET_RATIO
+    if pid and not ent.get("free_promo"):
+        plan = (active or {}).get("plan") or await db.plans.find_one({"plan_id": pid}, {"_id": 0}) or {}
+        cents = int(plan.get("amount_cents") or 0)
+        if plan.get("interval") == "year":
+            cents //= 12
+        elif plan.get("kind") == "one_time":
+            cents //= 3  # pass ponctuel : étalé sur sa durée d'usage typique (3 mois)
+        return cents, LEGACY_BUDGET_RATIO
+    return 0, 0.0
+
+
+_budget_cache: dict[str, tuple[float, int, int]] = {}
+
+
+async def ai_budget(account: dict) -> dict:
+    """{'budget_micros', 'spent_micros'} du mois (cache 60 s)."""
+    import time
+    hit = _budget_cache.get(account["account_id"])
+    if hit and time.monotonic() - hit[0] < 60:
+        return {"budget_micros": hit[1], "spent_micros": hit[2]}
+    cents, ratio = await monthly_revenue_cents(account)
+    doc = await _usage_doc(account["account_id"], period())
+    if cents > 0:
+        budget = int(cents * (1 - STRIPE_FEE_RATIO) * ratio * 10_000)  # centimes → micro-euros
+    else:
+        budget = int(FREE_BUDGET_EUR * 1_000_000)
+    budget += int(doc.get("bonus_ai_budget_micros", 0))  # packs achetés
+    spent = int(doc.get("ai_cost_micros", 0))
+    _budget_cache[account["account_id"]] = (time.monotonic(), budget, spent)
+    return {"budget_micros": budget, "spent_micros": spent}
+
+
+async def check_ai_budget(user_id: str | None) -> None:
+    """Refuse un nouvel appel IA quand le budget du mois est consommé (mode enforce).
+
+    Exemptés : appels sans utilisateur (tâches système) et administrateurs ConstruPilot.
+    """
+    if not user_id or mode() != "enforce":
+        return
+    u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "role": 1}) or {}
+    if u.get("role") == "admin":
+        return
+    acc = await billing_account({"user_id": user_id})
+    b = await ai_budget(acc)
+    if b["spent_micros"] < b["budget_micros"]:
+        return
+    per = period()
+    first = await db.usage_monthly.update_one(
+        {"_id": f"{acc['account_id']}:{per}", "ai_budget_alerted": {"$ne": True}},
+        {"$set": {"ai_budget_alerted": True}})
+    if first.modified_count:
+        await _log_event(acc["account_id"], "ai_budget_reached", {
+            "spent_micros": b["spent_micros"], "budget_micros": b["budget_micros"], "period": per})
+        try:
+            from engines import emailer
+            to = os.environ.get("COMMERCIAL_SALES_EMAIL") or (
+                "info@construpilot.pt" if cp.market() == "pt" else "info@construpilot.fr")
+            await emailer.send_email(
+                to, f"[Coûts IA] Budget atteint — compte {acc['account_id']}",
+                f"<p>Compte <b>{acc['account_id']}</b> : coût IA estimé {b['spent_micros'] / 1e6:.2f} € "
+                f"pour un budget de {b['budget_micros'] / 1e6:.2f} € ({per}). Nouveaux appels IA suspendus "
+                f"jusqu'au mois prochain ou à une montée d'offre.</p>")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"ai budget alert email failed: {e}")
+    raise HTTPException(status_code=402, detail={
+        "code": "plan_limit_reached", "resource": "ai_budget",
+        "used": b["spent_micros"], "limit": b["budget_micros"], "requested": 0})
+
+
+async def credit_pages_pack(account_id: str, packs: int = 1, admin_id: str | None = None) -> dict:
+    """Crédite N packs de 500 pages sur le mois en cours (après paiement accepté par le client)."""
+    addon = cp.ADDONS["pages_500"]
+    per = period()
+    net = addon["unit_cents"] * (1 - STRIPE_FEE_RATIO)
+    budget = int(net * addon["ai_budget_ratio"] * 10_000) * packs
+    await db.usage_monthly.update_one(
+        {"_id": f"{account_id}:{per}"},
+        {"$inc": {"bonus_pages": addon["pages"] * packs, "bonus_ai_budget_micros": budget},
+         "$setOnInsert": {"account_id": account_id, "period": per, "pages": 0}}, upsert=True)
+    _budget_cache.pop(account_id, None)
+    await _log_event(account_id, "addon_pages_credited", {"packs": packs, "by": admin_id, "period": per})
+    return {"bonus_pages": addon["pages"] * packs, "bonus_ai_budget_micros": budget}

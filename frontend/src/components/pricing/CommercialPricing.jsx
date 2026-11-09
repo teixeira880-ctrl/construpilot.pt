@@ -1,16 +1,17 @@
 // Offre commerciale B2B : Solo · Professional · Business · Enterprise.
 // Fichier IDENTIQUE dans construpilot.fr et construpilot.pt. Montants fournis par l'API
 // /commercial/plans (source unique côté serveur). Enterprise : aucun montant affiché.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ArrowRight, Building2, Check, CreditCard, Landmark, Loader2, Lock, Minus, RefreshCw, Ruler, ShieldCheck, Users,
+  ArrowRight, Sparkles, Trophy, Building2, Check, CreditCard, Landmark, Loader2, Lock, Minus, RefreshCw, Ruler, ShieldCheck, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { api } from "@/lib/api";
 import { copyFor, featureLabel } from "@/lib/commercialCopy";
+import { CATEGORIES, guideFor, recommendPlan } from "@/lib/commercialGuide";
 import { formatEur, formatInt, formatStorage } from "@/lib/market";
 import EnterpriseLeadForm from "@/components/pricing/EnterpriseLeadForm";
 
@@ -20,6 +21,43 @@ const LIMIT_KEYS = ["seats", "active_projects", "pages_monthly", "storage_bytes"
 function limitText(c, key, value, lang) {
   if (key === "storage_bytes") return c.limits.storage_bytes(formatStorage(value, lang));
   return c.limits[key](key === "seats" ? value : formatInt(value, lang));
+}
+
+// Coût mensuel effectif (centimes) selon la périodicité choisie.
+function monthlyCents(plan, interval) {
+  if (!plan.price) return null;
+  return interval === "year" ? plan.price.year_monthly_equiv_cents : plan.price.month_cents;
+}
+
+// Offre au meilleur coût par page (calculé, pas affirmé) → badge « meilleur rapport qualité-prix ».
+export function bestValueKey(plans) {
+  const priced = plans.filter((p) => p.price);
+  if (!priced.length) return null;
+  return priced.reduce((a, b) => (b.price.month_cents / b.limits.pages_monthly < a.price.month_cents / a.limits.pages_monthly ? b : a)).key;
+}
+
+function ValueLine({ g, plan, interval, lang }) {
+  const m = monthlyCents(plan, interval);
+  if (m == null) return null;
+  return (
+    <p className="mt-2 text-xs text-muted-foreground" data-testid={`value-${plan.key}`}>
+      {g.per_page(formatEur(m / plan.limits.pages_monthly, lang, { decimals: 2 }))}
+      {" · "}
+      {g.per_user(formatEur(m / plan.limits.seats, lang, { decimals: 2 }))}
+    </p>
+  );
+}
+
+function UpgradeHint({ g, c, plan, next, interval, lang }) {
+  if (!next?.price || !plan.price) return null;
+  const diff = monthlyCents(next, interval) - monthlyCents(plan, interval);
+  const factor = Math.round((next.limits.pages_monthly / plan.limits.pages_monthly) * 10) / 10;
+  return (
+    <p className="mt-3 flex gap-2 rounded-lg bg-primary/5 p-3 text-xs leading-snug" data-testid={`upgrade-hint-${plan.key}`}>
+      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+      <span>{g.upgrade_hint(formatEur(diff, lang, { decimals: diff % 100 ? 2 : 0 }), c.names[next.key], String(factor).replace(".", ","))}</span>
+    </p>
+  );
 }
 
 export function BillingToggle({ c, interval, onChange }) {
@@ -87,9 +125,10 @@ function StatusTag({ c, status }) {
   );
 }
 
-function PlanCard({ c, lang, plan, parent, interval, busy, onChoose, onContact }) {
+function PlanCard({ c, g, lang, plan, parent, next, bestValue, interval, busy, onChoose, onContact }) {
   const Icon = ICONS[plan.key] || Ruler;
   const hi = plan.highlight;
+  const best = bestValue === plan.key && !hi;
   const inherited = new Set(parent ? parent.features.map((f) => f.key) : []);
   const own = plan.features.filter((f) => !inherited.has(f.key));
   const isEnt = plan.key === "enterprise";
@@ -97,7 +136,13 @@ function PlanCard({ c, lang, plan, parent, interval, busy, onChoose, onContact }
     <article data-testid={`plan-card-${plan.key}`} aria-labelledby={`plan-${plan.key}-name`}
       className={`relative flex flex-col rounded-xl border bg-card p-6 transition-all duration-200 motion-safe:hover:-translate-y-0.5 ${
         hi ? "border-primary shadow-[0_18px_50px_-24px_hsl(var(--primary)/0.65)] ring-1 ring-primary/40 lg:-mt-3 lg:pb-9"
-          : "border-border shadow-sm hover:shadow-md"}`}>
+          : best ? "border-accent ring-1 ring-accent/60 shadow-md lg:-mt-3 lg:pb-9" : "border-border shadow-sm hover:shadow-md"}`}>
+      {best && (
+        <span data-testid="badge-best-value"
+          className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow">
+          <Trophy className="h-3 w-3" aria-hidden />{g.value_badge}
+        </span>
+      )}
       {hi && (
         <span data-testid="badge-popular"
           className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary-foreground shadow">
@@ -115,6 +160,8 @@ function PlanCard({ c, lang, plan, parent, interval, busy, onChoose, onContact }
       </div>
       <p className="mt-4 text-sm font-medium leading-snug min-h-[40px]">{c.taglines[plan.key]}</p>
       <div className="mt-4"><PriceBlock c={c} plan={plan} interval={interval} lang={lang} /></div>
+      <ValueLine g={g} plan={plan} interval={interval} lang={lang} />
+      <p className="mt-3 rounded-lg border border-dashed border-border p-2.5 text-xs leading-snug" data-testid={`best-for-${plan.key}`}>{g.best_for[plan.key]}</p>
 
       <div className="mt-4">
         {isEnt ? (
@@ -122,12 +169,13 @@ function PlanCard({ c, lang, plan, parent, interval, busy, onChoose, onContact }
             {c.cta_contact} <ArrowRight className="h-4 w-4" aria-hidden />
           </Button>
         ) : (
-          <Button className="w-full gap-2 rounded-lg h-11" variant={hi ? "default" : "outline"} disabled={!!busy}
+          <Button className="w-full gap-2 rounded-lg h-11" variant={hi || best ? "default" : "outline"} disabled={!!busy}
             onClick={() => onChoose(plan)} data-testid={`plan-cta-${plan.key}`} aria-busy={busy === plan.key}>
             {busy === plan.key ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {c.redirecting}</>
               : <>{c.cta_choose(c.names[plan.key])} <ArrowRight className="h-4 w-4" aria-hidden /></>}
           </Button>
         )}
+        <UpgradeHint g={g} c={c} plan={plan} next={next} interval={interval} lang={lang} />
       </div>
 
       <ul className="mt-6 grid gap-2 border-t border-border pt-5" aria-label={c.compare_limits}>
@@ -155,47 +203,71 @@ function PlanCard({ c, lang, plan, parent, interval, busy, onChoose, onContact }
   );
 }
 
-function ComparisonTable({ c, lang, plans }) {
-  const allFeatures = plans[plans.length - 1].features;
+function ComparisonTable({ c, g, lang, plans, interval, bestValue, onChoose, onContact }) {
   const has = (plan, key) => plan.features.some((f) => f.key === key);
+  const status = Object.fromEntries(plans[plans.length - 1].features.map((f) => [f.key, f.status]));
+  const colCls = (p) => (p.key === bestValue ? "bg-accent/10" : p.highlight ? "bg-primary/5" : "");
   return (
     <section aria-labelledby="compare-title" className="grid gap-4" data-testid="pricing-compare">
       <h2 id="compare-title" className="font-display text-2xl font-bold tracking-tight text-center">{c.compare_title}</h2>
       <div className="overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <caption className="sr-only">{c.compare_title}</caption>
-          <thead>
-            <tr className="border-b border-border">
-              <th scope="col" className="sticky left-0 bg-card p-4 text-left font-medium text-muted-foreground w-[34%]">{c.compare_limits}</th>
+          <thead className="sticky top-0 z-10 bg-card">
+            <tr className="border-b border-border align-bottom">
+              <th scope="col" className="sticky left-0 z-10 bg-card p-4 text-left font-medium text-muted-foreground w-[34%]">{c.compare_limits}</th>
               {plans.map((p) => (
-                <th key={p.key} scope="col" className={`p-4 text-center font-display font-bold ${p.highlight ? "text-primary" : ""}`}>{c.names[p.key]}</th>
+                <th key={p.key} scope="col" className={`p-4 text-center ${colCls(p)}`}>
+                  {p.key === bestValue && <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-accent-foreground">{g.recommended}</span>}
+                  {p.highlight && <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-primary">{c.popular}</span>}
+                  <span className="block font-display text-base font-bold">{c.names[p.key]}</span>
+                  <span className="block text-xs font-normal text-muted-foreground num">
+                    {p.price ? `${formatEur(monthlyCents(p, interval), lang, { decimals: interval === "year" ? 2 : 0 })}${c.per_month}` : c.on_quote}
+                  </span>
+                  <Button size="sm" variant={p.key === bestValue || p.highlight ? "default" : "outline"} className="mt-2 h-8 w-full text-xs"
+                    onClick={() => (p.price ? onChoose(p) : onContact())} data-testid={`compare-cta-${p.key}`}>
+                    {p.price ? g.choose_this : c.cta_contact}
+                  </Button>
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {LIMIT_KEYS.map((k) => (
               <tr key={k} className="border-b border-border/60">
-                <th scope="row" className="sticky left-0 bg-card p-3 text-left font-normal">{c.limit_labels[k]}</th>
+                <th scope="row" className="sticky left-0 bg-card p-3 text-left font-medium">{c.limit_labels[k]}</th>
                 {plans.map((p) => (
-                  <td key={p.key} className="p-3 text-center num">
+                  <td key={p.key} className={`p-3 text-center num font-semibold ${colCls(p)}`}>
                     {k === "storage_bytes" ? formatStorage(p.limits[k], lang) : formatInt(p.limits[k], lang)}
                     {p.limits_are_reference ? "*" : ""}
                   </td>
                 ))}
               </tr>
             ))}
-            <tr><th colSpan={plans.length + 1} scope="colgroup" className="bg-secondary/50 p-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{c.compare_features}</th></tr>
-            {allFeatures.map((f) => (
-              <tr key={f.key} className="border-b border-border/40">
-                <th scope="row" className="sticky left-0 bg-card p-3 text-left font-normal">{featureLabel(lang, f.key)}<StatusTag c={c} status={f.status} /></th>
-                {plans.map((p) => (
-                  <td key={p.key} className="p-3 text-center">
-                    {has(p, f.key)
-                      ? <Check className="mx-auto h-4 w-4 text-primary" aria-label="✓" />
-                      : <Minus className="mx-auto h-4 w-4 text-muted-foreground/40" aria-label="—" />}
-                  </td>
+            {CATEGORIES.map(([cat, keys]) => (
+              <Fragment key={cat}>
+                <tr>
+                  <th colSpan={plans.length + 1} scope="colgroup" data-testid={`compare-cat-${cat}`}
+                    className="bg-secondary/60 p-3 text-left text-xs font-semibold uppercase tracking-wider text-foreground">
+                    {g.categories[cat]}
+                  </th>
+                </tr>
+                {keys.map((key) => (
+                  <tr key={key} className="border-b border-border/40">
+                    <th scope="row" className="sticky left-0 bg-card p-3 text-left font-normal">
+                      <span className="font-medium">{featureLabel(lang, key)}</span><StatusTag c={c} status={status[key] || "available"} />
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{g.help[key]}</span>
+                    </th>
+                    {plans.map((p) => (
+                      <td key={p.key} className={`p-3 text-center ${colCls(p)}`}>
+                        {has(p, key)
+                          ? <Check className="mx-auto h-4 w-4 text-primary" aria-label={g.included} />
+                          : <Minus className="mx-auto h-4 w-4 text-muted-foreground/40" aria-label={g.not_included} />}
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -205,12 +277,56 @@ function ComparisonTable({ c, lang, plans }) {
   );
 }
 
+function PlanFinder({ c, g, plans, onChoose, onContact }) {
+  const [a, setA] = useState({ users: 3, projects: 15, site: true });
+  const pick = recommendPlan(plans, a);
+  const plan = plans.find((p) => p.key === pick);
+  const opt = (field, values) => (
+    <div className="flex flex-wrap gap-2">
+      {values.map(([v, label]) => (
+        <button key={String(v)} type="button" aria-pressed={a[field] === v} onClick={() => setA((s) => ({ ...s, [field]: v }))}
+          data-testid={`finder-${field}-${v}`}
+          className={`rounded-full border px-3 py-1.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            a[field] === v ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"}`}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <section aria-labelledby="finder-title" className="grid gap-6 rounded-2xl border border-border bg-card p-6 md:grid-cols-[1.4fr_1fr] md:p-8" data-testid="plan-finder">
+      <div className="grid gap-5">
+        <div>
+          <h2 id="finder-title" className="font-display text-2xl font-bold tracking-tight">{g.finder_title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{g.finder_sub}</p>
+        </div>
+        <div className="grid gap-2"><p className="text-sm font-medium">{g.q_users}</p>
+          {opt("users", [[1, "1"], [3, "2–4"], [8, "5–10"], [20, "11–25"], [60, "25+"]])}</div>
+        <div className="grid gap-2"><p className="text-sm font-medium">{g.q_projects}</p>
+          {opt("projects", [[5, "< 7"], [15, "7–30"], [60, "30–120"], [200, "120+"]])}</div>
+        <div className="grid gap-2"><p className="text-sm font-medium">{g.q_site}</p>
+          {opt("site", [[true, g.yes], [false, g.no]])}</div>
+      </div>
+      <div role="status" aria-live="polite" className="flex flex-col justify-center rounded-xl bg-primary/10 p-6" data-testid="finder-result">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{c.names[pick]}</p>
+        <p className="mt-1 font-display text-2xl font-bold" data-testid={`finder-pick-${pick}`}>{g.result(c.names[pick])}</p>
+        <p className="mt-2 text-sm leading-relaxed">{g.result_why[pick]}</p>
+        <Button className="mt-4 h-11 gap-2" onClick={() => (plan?.price ? onChoose(plan) : onContact())} data-testid="finder-cta">
+          {plan?.price ? g.choose_this : c.cta_contact} <ArrowRight className="h-4 w-4" aria-hidden />
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 export default function CommercialPricing({ lang, user }) {
   const c = copyFor(lang);
+  const g = guideFor(lang);
   const navigate = useNavigate();
   const [state, setState] = useState({ status: "loading", data: null });
   const [interval, setIntervalState] = useState(() => {
-    try { return localStorage.getItem("cp_billing_interval") === "year" ? "year" : "month"; } catch { return "month"; }
+    // Annuel par défaut : prix mensuel équivalent le plus bas affiché d'abord.
+    try { return localStorage.getItem("cp_billing_interval") === "month" ? "month" : "year"; } catch { return "year"; }
   });
   const [busy, setBusy] = useState(null);
   const entRef = useRef(null);
@@ -230,6 +346,7 @@ export default function CommercialPricing({ lang, user }) {
 
   const plans = useMemo(() => state.data?.plans || [], [state.data]);
   const byKey = useMemo(() => Object.fromEntries(plans.map((p) => [p.key, p])), [plans]);
+  const bestValue = useMemo(() => bestValueKey(plans), [plans]);
 
   const contact = () => {
     entRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -296,11 +413,29 @@ export default function CommercialPricing({ lang, user }) {
         <>
           <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-4" data-testid="pricing-grid-b2b">
             {plans.map((p) => (
-              <PlanCard key={p.key} c={c} lang={lang} plan={p} parent={p.inherits ? byKey[p.inherits] : null}
+              <PlanCard key={p.key} c={c} g={g} lang={lang} plan={p} parent={p.inherits ? byKey[p.inherits] : null}
+                next={plans[plans.indexOf(p) + 1]} bestValue={bestValue}
                 interval={interval} busy={busy} onChoose={choose} onContact={contact} />
             ))}
           </div>
           <p className="-mt-8 text-center text-xs text-muted-foreground" data-testid="tax-note">{c.tax_note}</p>
+
+          <section aria-labelledby="addons-title" className="grid gap-4" data-testid="pricing-addons">
+            <h2 id="addons-title" className="font-display text-2xl font-bold tracking-tight text-center">{c.addons_title}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {["extra_seat", "pages_500", "onboarding", "custom_integration"].map((k) => {
+                const [name, price, scope] = c.addons[k];
+                return (
+                  <div key={k} className="rounded-xl border border-border bg-card p-5" data-testid={`addon-${k}`}>
+                    <p className="font-display font-semibold">{name}</p>
+                    <p className="mt-1 num text-lg font-bold">{price}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{scope}</p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-center text-xs text-muted-foreground">{c.addons_note}</p>
+          </section>
 
           <section className="grid gap-4 md:grid-cols-3" aria-label="trust">
             {c.trust.map(([t, d], i) => {
@@ -314,7 +449,10 @@ export default function CommercialPricing({ lang, user }) {
             })}
           </section>
 
-          <ComparisonTable c={c} lang={lang} plans={plans} />
+          <PlanFinder c={c} g={g} plans={plans} onChoose={choose} onContact={contact} />
+
+          <ComparisonTable c={c} g={g} lang={lang} plans={plans} interval={interval} bestValue={bestValue}
+            onChoose={choose} onContact={contact} />
         </>
       )}
 

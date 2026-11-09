@@ -121,6 +121,24 @@ PLANS: dict[str, dict] = {
 
 INTERVALS = ("month", "year")
 
+# Options (décision 2026-11-09, règle « ne jamais perdre d'argent ») :
+#  * utilisateur supplémentaire 39 € HT/mois, à partir de Professional (19 € cannibalisait
+#    Professional : Solo + 4 × 19 € = 175 € < 249 €) ;
+#  * pack 500 pages 79 € HT (49 € était déficitaire dès 0,10 €/page) ; il crédite aussi
+#    90 % de son prix net en budget IA, donc le garde-fou de coût le protège toujours ;
+#  * prise en main dès 299 € HT (temps humain) ; intégrations sur devis.
+# Aucune option n'est débitée automatiquement : vente sur demande explicite, puis crédit admin.
+ADDONS: dict[str, dict] = {
+    "extra_seat": {"key": "extra_seat", "unit_cents": 3900, "recurring": "month",
+                   "available_for": ["professional", "business"]},
+    "pages_500": {"key": "pages_500", "unit_cents": 7900, "recurring": None, "pages": 500,
+                  "ai_budget_ratio": 0.90, "available_for": ["solo", "professional", "business"]},
+    "onboarding": {"key": "onboarding", "from_cents": 29900, "recurring": None,
+                   "available_for": ["solo", "professional", "business"]},
+    "custom_integration": {"key": "custom_integration", "on_quote": True, "recurring": None,
+                           "available_for": ["business", "enterprise"]},
+}
+
 
 # Seule ligne qui diffère entre les dépôts construpilot.fr ("fr") et construpilot.pt ("pt").
 DEFAULT_MARKET = "pt"
@@ -249,7 +267,8 @@ def public_catalog() -> dict:
                 "year_monthly_equiv_cents": round(annual_cents(p["monthly_cents"]) / 12),
             }
         plans.append(item)
-    return {"market": market(), "annual_discount_pct": ANNUAL_DISCOUNT_PCT, "plans": plans}
+    addons = [{k: v for k, v in a.items() if k != "ai_budget_ratio"} for a in ADDONS.values()]
+    return {"market": market(), "annual_discount_pct": ANNUAL_DISCOUNT_PCT, "plans": plans, "addons": addons}
 
 
 def checkout_open() -> bool:

@@ -38,6 +38,12 @@ def env(monkeypatch):
     monkeypatch.delenv("FREE_PROMO_MODE", raising=False)
     monkeypatch.setenv("PLAN_LIMITS_MODE", "enforce")
     monkeypatch.setenv("CP_MARKET", "pt")
+    from engines import emailer
+
+    async def _no_mail(*a, **k):
+        return {"ok": True}
+    monkeypatch.setattr(emailer, "send_email", _no_mail)
+    usage_meter._budget_cache.clear()
     return SimpleNamespace(db=db, monetization=monetization, usage=usage_meter, commercial=commercial)
 
 
@@ -417,3 +423,127 @@ def test_webhook_handler_en_echec_libere_l_evenement(env, monkeypatch):
     with pytest.raises(RuntimeError):
         _event(env, monkeypatch, evt)
     assert run(env.db.stripe_events.count_documents({"_id": "evt_x"})) == 0
+
+
+# ------------------------------------------------------------------ garde-fou de coût IA (09/11)
+
+def test_estimation_cout_appel():
+    from engines import usage_meter as um
+    # Sonnet : 10 000 tokens entrée × 3 $ + 2 000 sortie × 15 $ = 0,06 €
+    assert um.estimate_cost_micros("claude-sonnet-5-5", {"calls": 1, "input_tokens": 10_000, "output_tokens": 2_000}) == 60_000
+    # Modèle inconnu → prix maximal ; appel sans compteur → plancher
+    assert um.estimate_cost_micros("mystery", {"calls": 1, "input_tokens": 1000, "output_tokens": 0}) == 20_000
+    assert um.estimate_cost_micros("claude-sonnet-5-5", {"calls": 1}) == um.PER_CALL_FLOOR_MICROS
+    assert um.estimate_cost_micros("gpt-image", {"calls": 1, "images": 2}) >= 2 * um.PER_IMAGE_MICROS
+
+
+def test_budget_ia_bloque_avant_perte(env):
+    async def go():
+        await _subscribe(env.db, "u_solo", "cp_solo_monthly")
+        acc = await env.usage.billing_account(SOLO)
+        b = await env.usage.ai_budget(acc)
+        assert b["budget_micros"] == int(9900 * 0.97 * 0.70 * 10_000)  # 67,23 € pour 99 €
+        await env.db.usage_monthly.update_one({"_id": f"u_solo:{env.usage.period()}"},
+                                              {"$set": {"ai_cost_micros": b["budget_micros"]}}, upsert=True)
+        env.usage._budget_cache.clear()
+        with pytest.raises(Exception) as ei:
+            await env.usage.check_ai_budget("u_solo")
+        assert ei.value.status_code == 402 and ei.value.detail["resource"] == "ai_budget"
+        assert await env.db.usage_events.count_documents({"kind": "ai_budget_reached"}) == 1
+        # Pack de pages acheté : budget relevé, appels de nouveau autorisés
+        await env.usage.credit_pages_pack("u_solo", 1, "admin")
+        await env.usage.check_ai_budget("u_solo")
+    run(go())
+
+
+def test_budget_gratuit_admin_et_historique(env):
+    async def go():
+        await env.db.users.insert_one({"user_id": "u_free"})
+        await env.db.users.insert_one({"user_id": "u_admin", "role": "admin"})
+        for uid in ("u_free", "u_admin"):
+            await env.db.usage_monthly.update_one({"_id": f"{uid}:{env.usage.period()}"},
+                                                  {"$set": {"ai_cost_micros": 50_000_000}}, upsert=True)
+        with pytest.raises(Exception):
+            await env.usage.check_ai_budget("u_free")      # gratuit : 3 € / mois
+        await env.usage.check_ai_budget("u_admin")         # admin : jamais bloqué
+        await env.usage.check_ai_budget(None)              # tâche système
+        # Client historique Pro Business 249 € : budget = revenu net (équilibre, jamais de perte)
+        await env.db.plans.insert_one({"plan_id": "pro_business_monthly", "amount_cents": 24900, "interval": "month"})
+        await env.db.entitlements.insert_one({"user_id": "u_old", "plan_id": "pro_business_monthly", "status": "active",
+                                              "granted_at": "2026-01-01"})
+        b = await env.usage.ai_budget(await env.usage.billing_account({"user_id": "u_old"}))
+        assert b["budget_micros"] == int(24900 * 0.97 * 1.0 * 10_000)
+    run(go())
+
+
+def test_note_ai_cost_cumule(env):
+    async def go():
+        await env.usage.note_ai_cost("u_solo", "claude-sonnet-5-5", {"calls": 1, "input_tokens": 10_000, "output_tokens": 2_000})
+        await env.usage.note_ai_cost("u_solo", "claude-sonnet-5-5", {"calls": 1, "input_tokens": 10_000, "output_tokens": 2_000})
+        doc = await env.db.usage_monthly.find_one({"_id": f"u_solo:{env.usage.period()}"})
+        assert doc["ai_cost_micros"] == 120_000
+    run(go())
+
+
+def test_options_tarifs_et_lugares(env):
+    assert cp.ADDONS["extra_seat"]["unit_cents"] == 3900 and "solo" not in cp.ADDONS["extra_seat"]["available_for"]
+    assert cp.ADDONS["pages_500"]["unit_cents"] == 7900
+    # 500 pages à 0,12 €/page = 60 € < 79 € × 0,97 → marge positive au scénario central
+    assert 500 * 0.12 < 79 * 0.97
+
+    async def go():
+        await _subscribe(env.db, "u_owner", "cp_professional_monthly")
+        await env.db.organizations.insert_one({"org_id": "org1", "owner_user_id": "u_owner", "extra_seats": 2})
+        await env.db.users.insert_one({"user_id": "u_owner", "organization_id": "org1"})
+        _, limits = await env.usage.account_plan(await env.usage.billing_account({"user_id": "u_owner"}))
+        assert limits["seats"] == 7
+    run(go())
+
+
+def test_admin_credit_option_exige_accord(env, monkeypatch):
+    from core.security import admin_user
+    c = _client(env)
+    c.app.dependency_overrides[admin_user] = lambda: {"user_id": "adm", "role": "admin"}
+    run(_subscribe(env.db, "u_solo", "cp_solo_monthly"))
+    r = c.post("/api/commercial/admin/addons/credit", json={"account_id": "u_solo", "addon": "pages_500", "quantity": 1})
+    assert r.status_code == 422  # référence d'accord client obligatoire
+    r = c.post("/api/commercial/admin/addons/credit", json={"account_id": "u_solo", "addon": "pages_500", "quantity": 1,
+                                                            "customer_consent_ref": "devis D-2026-001"})
+    assert r.status_code == 200 and r.json()["bonus_pages"] == 500
+    run(env.db.organizations.insert_one({"org_id": "o9", "owner_user_id": "u_solo"}))
+    r = c.post("/api/commercial/admin/addons/credit", json={"account_id": "u_solo", "addon": "extra_seat", "quantity": 1,
+                                                            "customer_consent_ref": "mail 09/11"})
+    assert r.status_code == 400  # Solo : pas d'utilisateur supplémentaire
+
+
+def test_metering_refuse_avant_appel(env, monkeypatch):
+    import sys, types
+    if "emergentintegrations.llm.chat" not in sys.modules:
+        pkg = types.ModuleType("emergentintegrations"); llm = types.ModuleType("emergentintegrations.llm")
+        chat = types.ModuleType("emergentintegrations.llm.chat")
+        chat.LlmChat = object; chat.StreamDone = object
+        sys.modules.update({"emergentintegrations": pkg, "emergentintegrations.llm": llm, "emergentintegrations.llm.chat": chat})
+    from engines.expenses import metering, context
+    calls = []
+
+    class Inner:
+        async def send_message(self, *a, **k):
+            calls.append(1)
+            return types.SimpleNamespace(usage={"input_tokens": 100, "output_tokens": 10})
+
+    async def fake_observe(**k):
+        return None
+    monkeypatch.setattr(metering, "observe", fake_observe)
+    m = metering.MeteredChat.__new__(metering.MeteredChat)
+    m._inner, m._model, m._feature, m._billing = Inner(), "claude-sonnet-5-5", "t", "other"
+
+    async def go():
+        await env.db.users.insert_one({"user_id": "u_free"})
+        await env.db.usage_monthly.update_one({"_id": f"u_free:{env.usage.period()}"},
+                                              {"$set": {"ai_cost_micros": 99_000_000}}, upsert=True)
+        env.usage._budget_cache.clear()
+        context.bind({"user_id": "u_free"})
+        with pytest.raises(Exception) as ei:
+            await m.send_message("x")
+        assert ei.value.status_code == 402 and calls == []  # aucun appel payant n'est parti
+    run(go())

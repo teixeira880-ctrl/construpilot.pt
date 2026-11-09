@@ -28,28 +28,44 @@ les abonnés existants gardent leurs conditions et ne reçoivent **aucune** nouv
 | `COMMERCIAL_CHECKOUT_ENABLED` | `false` | Ouvre la souscription en ligne Solo/Professional/Business. Fermé → bouton « Créer mon compte ». |
 | `STRIPE_LIVE_ALLOWED` | `false` | Avec une clé `sk_live_…`, le checkout B2B est refusé tant que ce n'est pas `true`. |
 | `COMMERCIAL_STRIPE_SYNC` | `false` | Autorise `ensure_stripe_catalog` à créer les Products/Prices `cp_*` au démarrage. Sans lui, le Price est créé seulement au premier checkout autorisé. |
-| `PLAN_LIMITS_MODE` | `observe` | `off` / `observe` (mesure + journal `usage_events`, jamais de blocage) / `enforce` (HTTP 402). |
+| `PLAN_LIMITS_MODE` | `enforce` | `off` / `observe` (mesure + journal `usage_events`, jamais de blocage) / `enforce` (HTTP 402). Décision du 09/11 : `enforce` par défaut. |
+| `AI_BUDGET_RATIO_COMMERCIAL` | `0.70` | Part du revenu net (après ~3 % Stripe) qu'un compte Solo/Professional/Business peut consommer en IA. |
+| `AI_BUDGET_RATIO_LEGACY` | `1.0` | Idem pour Pro / Pro Business / Premium / Project Pass existants (équilibre : jamais de perte). |
+| `FREE_AI_BUDGET_EUR` | `3` | Budget IA mensuel des comptes sans abonnement (gratuit, promo, bêta). Administrateurs exemptés. |
+| `AI_PRICE_TABLE` | prix publics | JSON `{"sonnet":[3,15]}` (USD / million de tokens entrée, sortie) pour recaler l'estimation. |
 | `CP_MARKET` | `fr` (dépôt FR) / `pt` (dépôt PT) | Préfixe des lookup_keys Stripe, e-mail commercial, URL de retour. |
 | `COMMERCIAL_SALES_EMAIL` | `info@construpilot.fr` / `info@construpilot.pt` | Destinataire des demandes Enterprise. |
 | `COMMERCIAL_ALLOWED_ORIGINS` | domaine du marché | Liste blanche des URL de retour Stripe. |
+
+## Règle « ne jamais perdre d'argent » (décision du 09/11/2026)
+
+* **Garde-fou de coût IA** (`usage_meter.check_ai_budget`, appelé par `MeteredChat` avant chaque appel et par
+  `openai_studies`) : le coût IA estimé d'un compte sur le mois ne dépasse jamais son budget
+  (revenu net × ratio, + crédits de packs). Au-delà : 402 `ai_budget`, e-mail d'alerte une fois par mois,
+  données et fonctions sans IA intactes. Modèle inconnu = compté au prix maximal ; appel sans compteur = 0,02 €.
+* **Options décidées** : utilisateur supplémentaire 39 € HT/mois (Professional et Business uniquement),
+  pack 500 pages 79 € HT (crédite aussi 90 % de son prix net en budget IA), prise en main dès 299 € HT,
+  intégrations sur devis. Crédit uniquement par un admin avec référence d'accord client
+  (`POST /api/commercial/admin/addons/credit`) : rien n'est facturé automatiquement.
+* **Limites des nouvelles offres** appliquées dès le premier jour (aucun client existant concerné).
 
 ## Ordre d'activation recommandé
 
 1. Déployer (tout fermé). Vérifier `/tarifs` et `/planos`, le formulaire Enterprise, `GET /api/commercial/plans`.
 2. Stripe **mode test** : activer Stripe Tax (inscription TVA FR / PT), `COMMERCIAL_CHECKOUT_ENABLED=true`, faire un checkout Solo mensuel et Business annuel avec la carte 4242…, puis un upgrade via le portail, un échec de paiement (carte 4000 0000 0000 0341) et un rattrapage.
-3. Laisser `PLAN_LIMITS_MODE=observe` 2 à 4 semaines ; lire `usage_events` (`limit_would_block`) et `usage_monthly` (pages, appels IA) pour calibrer.
-4. Sur autorisation explicite : clé live + `STRIPE_LIVE_ALLOWED=true`, puis `PLAN_LIMITS_MODE=enforce`.
+3. Suivre `usage_monthly.ai_cost_micros` et `usage_events` (`ai_budget_reached`) pour recaler `AI_PRICE_TABLE`.
+4. Sur autorisation explicite : clé live + `STRIPE_LIVE_ALLOWED=true`.
 
 ## Tests
 
-`cd backend && python -m pytest tests/test_commercial_offer.py -n 0` → 23 tests (catalogue, Enterprise sans prix,
+`cd backend && python -m pytest tests/test_commercial_offer.py -n 0` → 30 tests (catalogue, Enterprise sans prix,
 limites, idempotence, comptes d'organisation, checkout sandbox simulé, formulaire, anti-spam, débit, webhooks).
 Non-régression : les suites existantes touchant facturation/accès/projets/plans donnent le même ensemble d'échecs avant
 et après (échecs préexistants : tests nécessitant un serveur et une base en direct).
 
 ## Retour arrière
 
-* Immédiat, sans redéploiement : `PLAN_LIMITS_MODE=off`, `COMMERCIAL_CHECKOUT_ENABLED=false`.
+* Immédiat, sans redéploiement : `PLAN_LIMITS_MODE=observe` (mesure sans blocage) ou `off`, `COMMERCIAL_CHECKOUT_ENABLED=false`.
 * Code : revenir au commit précédent de `main`. Les données ajoutées (`plans` `cp_*`, `usage_monthly`, `usage_events`,
   `commercial_leads`, `billing_audit`, `stripe_events`) sont additives ; les supprimer est facultatif.
 * Aucun abonnement existant n'est modifié par cette branche.
@@ -57,6 +73,5 @@ et après (échecs préexistants : tests nécessitant un serveur et une base en 
 ## Points restant à valider (non faits volontairement)
 
 * Paiement réel, prix Stripe live, Stripe Tax (inscriptions TVA) — autorisation requise.
-* Extras (utilisateur 19 €, 500 pages 49 €, onboarding 299 €) : **non publiés** — voir le rapport stratégique.
 * Plusieurs fonctions Enterprise sont marquées « Bientôt » (multi-entités, API entreprise, ERP).
 * Facturation électronique au Portugal : le module actuel est Factur-X (norme française) ; au Portugal, un logiciel de facturation doit être certifié par l'AT.

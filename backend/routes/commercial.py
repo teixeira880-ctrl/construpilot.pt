@@ -23,7 +23,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
 from core.rate_limit import limiter
-from core.security import current_user
+from core.security import admin_user, current_user
 from engines import commercial_plans as cp
 from engines import usage_meter
 
@@ -235,3 +235,32 @@ async def enterprise_lead(body: EnterpriseLeadIn, request: Request, response: Re
         logger.warning(f"enterprise lead notification failed: {e}")
     await db.commercial_leads.update_one({"lead_id": doc["lead_id"]}, {"$set": {"notified": notified}})
     return {"ok": True, "lead_id": doc["lead_id"], "message": _OK_MSG[lang]}
+
+
+# ---------------------------------------------------------------- options (admin, après accord client)
+
+class AddonCreditIn(BaseModel):
+    account_id: str = Field(min_length=3, max_length=80)
+    addon: Literal["pages_500", "extra_seat"]
+    quantity: int = Field(ge=1, le=50)
+    customer_consent_ref: str = Field(min_length=3, max_length=200)  # n° de devis / e-mail d'accord
+
+
+@router.post("/admin/addons/credit")
+async def credit_addon(body: AddonCreditIn, admin=Depends(admin_user)) -> dict:
+    """Crédite une option vendue. Exige une référence d'accord explicite du client : aucune option
+    n'est jamais ajoutée ni facturée automatiquement."""
+    if body.addon == "pages_500":
+        res = await usage_meter.credit_pages_pack(body.account_id, body.quantity, admin["user_id"])
+    else:
+        owner = await db.organizations.find_one({"owner_user_id": body.account_id}, {"_id": 0, "org_id": 1})
+        if not owner:
+            raise HTTPException(404, {"code": "no_organization"})
+        pid, _ = await usage_meter.account_plan({"owner_user_id": body.account_id, "org_id": None})
+        parsed = cp.parse_plan_id(pid)
+        if not parsed or parsed[0] not in cp.ADDONS["extra_seat"]["available_for"]:
+            raise HTTPException(400, {"code": "addon_not_available_for_plan"})
+        await db.organizations.update_one({"org_id": owner["org_id"]}, {"$inc": {"extra_seats": body.quantity}})
+        res = {"extra_seats_added": body.quantity}
+    await _audit(admin["user_id"], "addon.credited", {**body.model_dump(), **res})
+    return {"ok": True, **res}
