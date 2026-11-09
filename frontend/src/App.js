@@ -98,6 +98,7 @@ const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
 const Missions = lazy(() => import("@/pages/Missions"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 const PlansExecutionLazy = lazy(() => import("@/pages/PlansExecution"));
+const BimStudioLazy = lazy(() => import("@/pages/BimStudio"));
 const EstudioImagensLazy = lazy(() => import("@/pages/EstudioImagens"));
 const UrbanismoLazy = lazy(() => import("@/pages/Urbanismo"));
 const UrbanismoProcessoLazy = lazy(() => import("@/pages/UrbanismoProcesso"));
@@ -394,6 +395,7 @@ function AppRouter() {
       <Route path="/escaliers" element={<ProRoute><Shell><StairCalculator /></Shell></ProRoute>} />
       <Route path="/btp-solver" element={<Protected><Shell><BtpSolver /></Shell></Protected>} />
       <Route path="/plans-pro" element={<ProRoute><Shell><PlansPro /></Shell></ProRoute>} />
+      <Route path="/bim-studio" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><BimStudioLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/mesure-photo" element={<SubscriberRoute><Shell><PhotoMeasure /></Shell></SubscriberRoute>} />
       <Route path="/pro-verifie/:userId" element={<Shell><ProVerified /></Shell>} />
       <Route path="/passez-pro" element={<Protected><Shell><ProUpsell /></Shell></Protected>} />
