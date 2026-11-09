@@ -6,8 +6,8 @@ e guardar o PDF e o PNG como artefactos; PROGRESS_LABELS dá o texto de progress
 """
 from __future__ import annotations
 
-from . import (accessibilite, aquecimento, couverture, instalacoes, isolamento, lotes_tecnicos, patio_pluviais, photovoltaique, piso_radiante, redes, reh,
-               solar_termico, structure)
+from . import (accessibilite, aquecimento, couverture, gros_oeuvre, instalacoes, isolamento, lotes_tecnicos, patio_pluviais, photovoltaique, piso_radiante,
+               redes, reh, solar_termico, structure)
 
 
 def _n(desc=None):
@@ -385,8 +385,25 @@ PATIO_TOOL = _tool(
      "arranques_h": _n(), "altura_pescoco_cisne_m": _n(), "comprimento_compressao_m": _n(), "altura_agua_admissivel_m": _n(),
      "chuva_1h_10anos_mm": _n(), "chuva_1h_100anos_mm": _n(), "sobrecarga_kpa": _n()})
 
+# 14. Gros-œuvre completo (verificação + planos cotados)
+GROS_OEUVRE_TOOL = _tool(
+    "calcul_gros_oeuvre",
+    "Gros-œuvre completo de um edifício (Portugal): verifica todos os elementos (sapatas isoladas e contínuas NP EN 1997, vigas e pilares de betão "
+    "NP EN 1992 ou de madeira NP EN 1995, lajes BA), AJUSTA automaticamente as secções que não verificam e produz o caderno de planos de execução "
+    "COTADOS das sapatas à cobertura (GO-01 fundações, GO-02 pavimento, GO-03 cobertura, GO-04 cortes com níveis, GO-05 quadros) a 1:50 ou 1:100, "
+    "anexo à nota de cálculo. Usa a geometria REAL lida nos planos (eixos, posições, cotas) — nunca inventes dimensões. "
+    "modelo_json = JSON com: projeto, local, solo_q_adm_kpa, cota_pavimento_m, grelhas_x / grelhas_y [{nome, pos_m}], niveis [{nome, cota_m}], "
+    "sapatas [{ref, x_m, y_m, b_m, l_m, h_m, cota_topo_m, g_kn, q_kn (null = soma dos pilares)}], sapatas_continuas [{ref, pontos [[x,y],…], b_m, h_m, "
+    "cota_topo_m, g_kn_m, q_kn_m}], muros [{pontos, espessura_m, cota_base_m, cota_topo_m}], pilares [{ref, x_m, y_m, b_m, h_m, material "
+    "(betao|C24|GL24h|GL28h), cota_base_m, cota_topo_m, g_kn, q_kn}], vigas [{ref, piso (pavimento|cobertura), x0_m, y0_m, x1_m, y1_m, b_m, h_m, material, "
+    "vao_calculo_m, g_kn_m, q_kn_m, cota_topo_ini_m, cota_topo_fim_m}], lajes [{ref, piso (fundacao|pavimento|cobertura), tipo (laje_terrea|laje_ba|"
+    "vigas_i|clt), x0_m, y0_m, x1_m, y1_m, espessura_m, cota_topo_m ou cota_topo_ini_m/cota_topo_fim_m + pendente_dir, direcao_vao, q_kn_m2, descricao}], "
+    "cortes [{nome, direcao x|y, pos_m}] (null = automáticos).",
+    {"modelo_json": {"type": "string", "description": "modelo estrutural completo em JSON (ver descrição)"},
+     "ajustar": _B("null/true = ajustar as secções não conformes; false = só verificar")})
+
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
-              PATIO_TOOL]
+              PATIO_TOOL, GROS_OEUVRE_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -403,6 +420,7 @@ PROGRESS_LABELS = {
     "calcul_piso_radiante": "A dimensionar o piso radiante (NP EN 1264)…",
     "verificar_solar_termico": "A verificar a instalação solar térmica…",
     "calcul_patio_pluvial": "A dimensionar a drenagem do pátio rebaixado…",
+    "calcul_gros_oeuvre": "A verificar a estrutura e a desenhar os planos de gros-œuvre cotados…",
 }
 
 PROTOCOL_PT = (
@@ -414,7 +432,8 @@ PROTOCOL_PT = (
     "para pré-dimensionar uma viga de betão armado ou de madeira, um pilar, o punçoamento, uma laje, um lintel, uma sapata ou uma escada usa calcul_structure "
     "; para todas as especialidades técnicas de uma habitação numa só nota (isolamento → perdas → piso radiante → bomba de calor → eletricidade → "
     "canalização → solar térmico) usa calcul_lotes_tecnicos; só o piso radiante: calcul_piso_radiante; solar térmico (AQS, coletores, depósito): "
-    "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial "
+    "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial; estrutura completa de um edifício com planos de execução de gros-œuvre "
+    "cotados (fundações, pavimento, cobertura, cortes) a partir da geometria dos planos: calcul_gros_oeuvre "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -700,4 +719,23 @@ def run(name: str, args: dict) -> dict:
                f"com {o['Vu_L']:.0f} L úteis; retenção em avaria {o['V_ret']:.1f} m³ (chuvada 1 h/10 anos {o['V10']:.1f} m³)"]
         res += _ctl(o["controles"]) + _hyp(o["hipoteses"])
         return _ret(o, res, {"Q_l_s": o["Q"], "bomba_m3h": o["bomba_m3h"], "AMT_m": o["AMT"]})
+    if name == "calcul_gros_oeuvre":
+        import json
+        try:
+            mod = json.loads(a.get("modelo_json") or "{}")
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"modelo_json inválido: {exc}") from None
+        if a.get("ajustar") is False:
+            mod["ajustar"] = False
+        o = gros_oeuvre.note(mod)
+        v = o["verificacao"]
+        res = [o["titre"] + f" — {len(v['elementos'])} elementos verificados, planos a 1:{o['escala']} ({o['formato']})"]
+        linhas = {}
+        for e in v["elementos"]:
+            ln = f"{'OK' if e['ok'] else 'KO'} {e['tipo']} {e['ref']}: {e['seccao']}" + (f" — taxa {e['taxa'] * 100:.0f} %" if e["taxa"] is not None else "")
+            linhas[ln] = linhas.get(ln, 0) + 1
+        res += [ln + (f" (× {k})" if k > 1 else "") for ln, k in linhas.items()][:60]
+        res += [f"Secção ajustada: {x}" for x in v["ajustes"]] + _hyp(v["hipoteses"])
+        res.append("Pré-dimensionamento a validar pelo projetista de estruturas.")
+        return _ret(o, res, {"conforme": v["conforme"], "ajustes": v["ajustes"], "escala": o["escala"]})
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")
