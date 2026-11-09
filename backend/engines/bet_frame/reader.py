@@ -206,8 +206,33 @@ async def _read_cotes(images: list, llm) -> dict:
         return {}
 
 
+def _clt_validate(raw, pages, ref):
+    from engines.bet_clt import pipeline as cp
+    from . import geometry
+    m, an = cp.validate(raw)
+    if m is None:
+        return m, an
+    try:
+        an = an + geometry.check(raw, pages, ref)
+    except Exception:  # noqa: BLE001
+        pass
+    return m, an
+
+
+def _clt_dry(raw):
+    import copy as _c
+    from engines.bet_clt import calc as cc
+    from engines.bet_frame import model as fm
+    try:
+        cc.compute(fm.from_dict(_c.deepcopy(raw)))
+    except Exception as exc:  # noqa: BLE001
+        return {"code": "CALC-00", "level": model.BLOCK, "message": f"{type(exc).__name__}: {str(exc)[:300]}"}
+    return None
+
+
 async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR", llm=None, decide_alone: bool = False,
-                     building_type: str = "immeuble_collectif", max_fix: int = 2) -> dict:
+                     building_type: str = "immeuble_collectif", max_fix: int = 2, engine: str = "frame") -> dict:
+    """engine = "clt" : même relevé de trame, contrôlé par le moteur bois massif (bet_clt) au lieu du moteur BA."""
     llm = llm or R._default_llm
     pages, by_doc = [], {}
     for name, data in docs:
@@ -258,13 +283,16 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
             raw.setdefault("building_type", building_type)
             raw.setdefault("project", {}).setdefault("country", country)
             with use_lang(lang):
-                m, anomalies = pipeline.validate(raw, pages=chosen, strict=True, ref=ref)
+                if engine == "clt":
+                    m, anomalies = _clt_validate(raw, chosen, ref)
+                else:
+                    m, anomalies = pipeline.validate(raw, pages=chosen, strict=True, ref=ref)
                 if attempts > max_fix:        # dernière lecture : cotes introuvables / trame idéalisée → avertissement mémorisé
                     soft = [dict(x, level=model.WARN) for x in anomalies if x.get("code") in ("GEO-02", "GEO-03")]
                     anomalies = [x for x in anomalies if x.get("code") not in ("GEO-02", "GEO-03")] + soft
                     raw["_geo_warnings"] = soft
             if m is not None and not model.has_block(anomalies):
-                calc_err = pipeline.dry_run(raw, lang)
+                calc_err = _clt_dry(raw) if engine == "clt" else pipeline.dry_run(raw, lang)
                 if calc_err:
                     anomalies = anomalies + [calc_err]
         except Exception as exc:  # noqa: BLE001

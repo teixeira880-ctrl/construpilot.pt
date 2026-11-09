@@ -1,0 +1,9 @@
+{"kind": "frame", "building_type": "maison",
+ "project": {"name": "Житловий будинок CLT — тестовий об'єкт", "address": "Київська область", "country": "UA",
+             "client": "—", "architect": "—", "pc_ref": "тест", "g2_ref": "припущення", "snow_s0_kpa": 1.6, "wind_w0_kpa": 0.40},
+ "grid": {"x": [0, 4.2, 8.4, 12.0], "y": [0, 4.5, 9.0],
+          "x_labels": ["1", "2", "3", "4"], "y_labels": ["A", "B", "C"]},
+ "levels": [{"id": "N1", "name": "1-й поверх", "floor_top": 0.0, "height": 2.9, "use": "habitation", "on_grade": true},
+            {"id": "N2", "name": "2-й поверх", "floor_top": 2.9, "height": 2.8, "use": "habitation"}],
+ "roof": {"use": "toiture"},
+ "structure": {"system": "walls"}}

@@ -106,6 +106,12 @@ async def _handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, l
     if demo:
         raise _NotFrame
     try:
+        # Bois massif CLT / lamellé-collé (poteaux-poutres ou murs) : moteur bet_clt (09/11 : FR, PT, UA).
+        if _wants_clt(docs, hypotheses):
+            if await _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, country, lang, step=step, store=store, llm=llm,
+                                 branding=branding, decide_alone=decide_alone):
+                return True
+            raise _NotFrame
         # Le choix explicite de l'utilisateur prime sur la détection IA (09/11 : « maison CLT / bois massif »
         # était reclassée « immeuble_collectif » et l'étude partait dans le moteur ossature BA).
         if _user_says_house(hypotheses):
@@ -155,4 +161,98 @@ async def _handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, l
                devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"], decisions=decisions, decide_alone=decide_alone,
                points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
                questions=rd["questions"], provider=rd.get("provider"), building_kind="frame", thermal=res.get("thermal"))
+    return True
+
+
+# ====================================================================== bois massif CLT (bet_clt)
+_CLT_DOC = re.compile(r"\b(clt|cross[- ]?laminated|crosslam|bois lamell[ée][- ]crois[ée]|madeira lamelada[- ]cruzada|glulam|lamell[ée][- ]coll[ée]|"
+                      r"lamelado[- ]colado|mass timber|клеєн|перехресно)", re.I)
+_CLT_HINT = (" STRUCTURE BOIS MASSIF CLT / LAMELLÉ-COLLÉ : relève la trame des poteaux (ou des murs porteurs pour une maison) comme pour un "
+             "bâtiment à ossature ; ajoute structure.system = \"post_beam\" (poteaux-poutres) ou \"walls\" (murs CLT porteurs, maison / petit "
+             "collectif) ; pas de dalle ni de poutre BA à relever. Pays FR, PT ou UA.")
+
+
+def _wants_clt(docs, hypotheses: str) -> bool:
+    if _TIMBER.search(hypotheses or "") or _CLT_DOC.search(hypotheses or ""):
+        return True
+    try:
+        from .reader import _doc_text
+        txt = _doc_text(docs)[:200000]
+    except Exception:  # noqa: BLE001
+        return False
+    return len(_CLT_DOC.findall(txt)) >= 2
+
+
+async def _doc_langs(db, uid) -> list[str]:
+    try:
+        u = await db.users.find_one({"user_id": uid}, {"_id": 0, "doc_langs": 1}) or {}
+        return [x for x in (u.get("doc_langs") or []) if x in ("fr", "pt", "en", "uk")]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+CLT_LABELS = {
+    "fr": {"pdf": "Dossier bois massif CLT — note de calcul + plans", "plans_pdf": "Plans CLT / lamellé-collé (PDF)", "xlsx": "Devis et métré CLT (Excel)", "zip": "Plans DXF"},
+    "pt": {"pdf": "Processo madeira maciça CLT — memória de cálculo + desenhos", "plans_pdf": "Desenhos CLT / lamelado-colado (PDF)", "xlsx": "Medições e orçamento CLT (Excel)", "zip": "Desenhos DXF"},
+    "en": {"pdf": "Mass timber CLT study — calculation report + drawings", "plans_pdf": "CLT / glulam drawings (PDF)", "xlsx": "CLT quantities and estimate (Excel)", "zip": "DXF drawings"},
+    "uk": {"pdf": "Розрахунок CLT — записка + креслення", "plans_pdf": "Креслення CLT / клеєний брус (PDF)", "xlsx": "Кошторис CLT (Excel)", "zip": "Креслення DXF"},
+}
+
+
+async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, country, lang, *, step, store, llm=None, branding=None,
+                      decide_alone=False) -> bool:
+    """Étude CLT complète. False → la chaîne maison historique prend le relais (plans illisibles en trame)."""
+    from engines.bet_clt import pipeline as cp
+    from engines.bet_clt.lang import pick_lang
+    house = bool(_HOUSE.search(hypotheses or "")) and not _BUILDING.search(hypotheses or "")
+    await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"building_kind": "clt"}})
+    await step("Lecture des plans par IA et relevé de la trame bois massif (CLT)")
+    rd = await reader.read_frame(docs, (hypotheses or "") + _CLT_HINT, country, llm=llm, decide_alone=decide_alone,
+                                 building_type="maison" if house else "immeuble_collectif", engine="clt")
+    decisions = rd.get("decisions") or []
+    if not rd["ok"]:
+        if rd.get("model") is None and house:
+            return False
+        if decide_alone and not rd.get("questions"):
+            blocking = [a for a in rd.get("anomalies") or [] if a.get("level") == "bloquant"]
+            await step("Échec", status="failed", error=("Relevé CLT impossible : " + " ; ".join(a["message"] for a in blocking[:3]))[:1200],
+                       anomalies=rd.get("anomalies"), decisions=decisions)
+        else:
+            await step("Questions à l'utilisateur", status="questions", questions=rd["questions"], anomalies=rd["anomalies"],
+                       decisions=decisions, decide_alone=decide_alone, model=rd["model"], pages=rd["pages"], provider=rd.get("provider"))
+        return True
+    raw = copy.deepcopy(rd["model"])
+    st = raw.setdefault("structure", {})
+    if not st.get("system"):
+        st["system"] = "walls" if house else "post_beam"
+    try:
+        from core.ui_lang import current_doc_lang
+        wanted = current_doc_lang()
+    except Exception:  # noqa: BLE001
+        wanted = None
+    extra = await _doc_langs(db, uid)
+    main = extra[0] if extra else pick_lang(country, wanted if country == "FR" else None)
+    await step("Calculs CLT (EN 1995), plans, devis et contrôle", model=raw, pages=rd["pages"])
+    with tempfile.TemporaryDirectory() as tmp:
+        res = await asyncio.to_thread(cp.run, raw, tmp, None, main, None, branding, extra[1:] if extra else None)
+        if res["status"] == "MODELE_INVALIDE":
+            msg = "; ".join(a["message"] for a in res["anomalies"] if a.get("level") == "bloquant")
+            await step("Échec" if decide_alone else "Questions à l'utilisateur", status="failed" if decide_alone else "questions",
+                       error=msg[:1200] if decide_alone else None, questions=[] if decide_alone else [msg], anomalies=res["anomalies"], decisions=decisions)
+            return True
+        arts = []
+        for key, path in res["files"].items():
+            base, _, lg = key.partition("_")
+            if key == "plans_pdf":
+                base, lg = "plans_pdf", ""
+            elif key.startswith("plans_pdf_"):
+                base, lg = "plans_pdf", key[len("plans_pdf_"):]
+            lg = lg or res["lang"]
+            label = CLT_LABELS.get(lg, CLT_LABELS["en"]).get(base, base)
+            arts.append(await store(db, uid, cid, request_id, base, Path(path), label + ("" if lg == res["lang"] else f" [{lg.upper()}]")))
+    decisions = list(dict.fromkeys(decisions + res.get("decisions", [])))
+    await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"], sheets=res["sheets"],
+               devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"], decisions=decisions, decide_alone=decide_alone,
+               points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
+               questions=rd["questions"], provider=rd.get("provider"), building_kind="clt", langs=res.get("langs"))
     return True
