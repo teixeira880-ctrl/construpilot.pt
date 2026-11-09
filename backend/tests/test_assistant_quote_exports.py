@@ -93,5 +93,9 @@ def test_real_quote_pdf_builder_on_draft():
 
 
 def test_instructions_require_four_files():
-    from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS
-    assert "devis PDF, devis Excel, métré PDF, métré Excel" in QUOTE_INSTRUCTIONS
+    from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
+    assert "devis PDF, devis Excel, métré PDF, métré Excel" in EXPORT_INSTRUCTIONS
+    assert "orçamento PDF, orçamento Excel, medição PDF, medição Excel" in EXPORT_INSTRUCTIONS
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parent.parent / "routes" / "assistant.py").read_text("utf-8")
+    assert "QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS" in src

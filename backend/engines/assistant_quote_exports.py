@@ -15,6 +15,16 @@ from core.db import db
 from engines.nom_fichier import nom_document
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+# Instruções do Assistente (acrescentadas a QUOTE_INSTRUCTIONS em routes/assistant.py).
+EXPORT_INSTRUCTIONS = (
+    "\nORÇAMENTO + MEDIÇÃO (regra absoluta, qualquer conta empresa): cada orçamento criado, completado, revisto ou relido "
+    "traz 4 ficheiros anexos (artifacts) — orçamento PDF, orçamento Excel, medição PDF, medição Excel "
+    "(devis PDF, devis Excel, métré PDF, métré Excel). Quando te pedem um orçamento e/ou uma medição, anuncia SEMPRE "
+    "estes 4 ficheiros. Para fornecer os ficheiros de um orçamento existente, chama read_quote_draft. "
+    "Não cries um PDF separado com create_downloadable_file para um orçamento ou medição: usa estes ficheiros. "
+    "Se files_error estiver presente, di-lo honestamente e volta a chamar read_quote_draft.\n"
+)
 _LINE_KINDS_SKIP = ("section", "subsection", "text", "pagebreak")
 
 L = {
