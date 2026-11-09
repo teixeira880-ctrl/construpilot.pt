@@ -323,9 +323,9 @@ def note(p: dict) -> dict:
                 if v.get("piso") == "cobertura" and v.get("q_kn_m") is None and v.get("largura_influencia_m"):
                     v["q_kn_m"] = round(r["cargas"]["sm_kpa"] * float(v["largura_influencia_m"]), 2)
                     v.setdefault("psi2", 0.0)
-            for lj in mod.get("lajes") or []:
-                if lj.get("piso") == "cobertura" and lj.get("tipo") in ("laje_ba", "clt") and lj.get("q_kn_m2") is None:
-                    lj["q_kn_m2"] = round(r["cargas"]["sm_kpa"], 2)
+            for lj in mod.get("lajes") or []:          # neve ДБН В.1.2-2; o gros_oeuvre toma máx(neve, sobrecarga de cobertura / terraço)
+                if (lj.get("piso") == "cobertura" or lj.get("cobertura_terraco")) and lj.get("q_kn_m2") is None and lj.get("neve_kn_m2") is None:
+                    lj["neve_kn_m2"] = round(r["cargas"]["sm_kpa"], 2)
         go = gros_oeuvre.calcular(mod, lingua={"pt": None, "en": "en"}.get(lingua, "uk"))
         planos_pdf = go["planos_pdf"]
         ver = go["verificacao"]

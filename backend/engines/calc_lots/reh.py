@@ -318,7 +318,11 @@ def calcular(p: dict) -> dict:
     eta_vr = min(0.90, 0.52 + 0.22 * math.log(dth)) if dth > 1 else 0.45 if dth > 0 else 0.30
     Nv = max(2.0, (1 - eta_vr) * (11.712 + 0.086 * c["Isol"]["H"]))
     # ---- AQS
-    tip = int(p.get("tipologia") if p.get("tipologia") is not None else max(1, round(ap / 30)))
+    if p.get("tipologia") is not None:
+        tip = int(p["tipologia"])
+    else:                                    # antes Ap/30 (200 m² → T7, 8 ocupantes): sobrestimava a AQS das moradias grandes
+        tip = min(5, max(1, round(ap / 40)))
+        hyp.append(f"tipologia não indicada: T{tip} assumida pela área útil (Ap/40, máx. T5) — indicar a tipologia real (ocupantes da AQS)")
     n_oc = OCUPANTES.get(tip, tip)
     litros = 40 if tipo == "moradia" else 30
     Qa = litros * n_oc * 4187 * 35 * 365 / 3.6e6
@@ -338,6 +342,13 @@ def calcular(p: dict) -> dict:
     delta = 0 if eta_v > eta_vr else 1
     Wvm = (0.3 * (rph * ap * pd) * 8760 / 1000) if p.get("ventilacao_mecanica") else 0.0
     eren = float(p.get("renovavel_kwh") or 0) + (float(sq.get("solar_kwh") or 0))
+    if p.get("renovavel_tipo") == "fotovoltaico" and p.get("renovavel_kwh"):
+        # eletricidade renovável só conta até ao consumo elétrico final dos usos regulados (autoconsumo; excedente injetado não é deduzido)
+        el_final = ap * ((Nic / ea if va == "eletricidade" else 0) + delta * Nvc / ev + (Qa / ap / eq if vq == "eletricidade" else 0) + Wvm / ap)
+        pv = float(p["renovavel_kwh"])
+        if pv > el_final:
+            eren -= pv - el_final
+            hyp.append(f"fotovoltaico limitado ao consumo elétrico dos usos regulados: {el_final:,.0f} de {pv:,.0f} kWh/ano deduzidos (o excedente injetado na rede não conta)".replace(",", " "))
     Ntc = (Nic / ea * FPU[va] + delta * Nvc / ev * 2.5 + Qa / ap / eq * FPU[vq] + Wvm / ap * 2.5 - eren / ap * (2.5 if p.get("renovavel_tipo") == "fotovoltaico" else 1.0))
     Ntc = max(0.0, Ntc)
     usos = {"aquecimento": Nic / ea * FPU[va], "arrefecimento": delta * Nvc / ev * 2.5, "aqs": Qa / ap / eq * FPU[vq], "ventilacao": Wvm / ap * 2.5,

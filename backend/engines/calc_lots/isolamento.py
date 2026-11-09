@@ -21,6 +21,8 @@ MATERIAIS: dict[str, dict] = {
     "bloco_termico": {"nome": "Bloco térmico (argila expandida)", "R_fixo": {250: 0.80, 300: 1.00}, "mu": 6, "familia": "suporte"},
     "alvenaria_pedra": {"nome": "Alvenaria de pedra (antiga)", "lambda": 2.3, "mu": 15, "familia": "suporte", "antigo": True},
     "taipa": {"nome": "Taipa / adobe", "lambda": 1.1, "mu": 8, "familia": "suporte", "antigo": True},
+    "clt": {"nome": "Painel CLT (madeira lamelada-colada cruzada)", "lambda": 0.13, "mu": 20, "familia": "suporte", "madeira": True},
+    "madeira_macica": {"nome": "Madeira maciça / lamelada-colada", "lambda": 0.13, "mu": 20, "familia": "suporte", "madeira": True},
     "caixa_ar": {"nome": "Caixa de ar não ventilada", "R_qualquer": 0.18, "mu": 1, "familia": "ar"},
     # revestimentos
     "reboco_cimento": {"nome": "Reboco de cimento", "lambda": 1.3, "mu": 20, "familia": "revestimento"},
@@ -28,6 +30,7 @@ MATERIAIS: dict[str, dict] = {
     "estuque": {"nome": "Estuque / gesso projetado", "lambda": 0.4, "mu": 10, "familia": "revestimento"},
     "reboco_etics": {"nome": "Reboco delgado armado (ETICS)", "lambda": 0.7, "mu": 25, "familia": "revestimento"},
     "gesso_cartonado": {"nome": "Placa de gesso cartonado", "lambda": 0.25, "mu": 10, "familia": "revestimento"},
+    "osb": {"nome": "Painel OSB", "lambda": 0.13, "mu": 200, "familia": "revestimento"},
     # isolantes
     "eps": {"nome": "Poliestireno expandido (EPS)", "lambda": 0.036, "mu": 40, "familia": "isolante"},
     "eps_grafite": {"nome": "EPS com grafite", "lambda": 0.031, "mu": 40, "familia": "isolante"},
@@ -102,7 +105,16 @@ def calcular(p: dict) -> dict:
     if sk not in SISTEMAS:
         raise ValueError(f"sistema desconhecido {sk!r} ({', '.join(SISTEMAS)})")
     nome_s, pos, ref = SISTEMAS[sk]
-    if p.get("theta_e") is not None:
+    norma = "REH — requisito mínimo (Portaria 138-I/2021)"
+    ua = None
+    if p.get("cidade_ua"):
+        from . import ucrania
+        ua = ucrania.clima(p["cidade_ua"])
+        te, c, ri, regiao = float(ua["theta_e"]), None, 0, "continente"
+        norma = "ДБН В.2.6-31:2021 (Ucrânia) — resistência térmica mínima Rq,min"
+        hyp.append(f"{ua['name']} (Ucrânia): zona de temperatura {ua['zona']}, θe de projeto {ua['theta_e']:g} °C (ДСТУ-Н Б В.1.1-27:2010); "
+                   f"requisito ДБН В.2.6-31:2021 R ≥ {ucrania.RQMIN['parede'][ua['zona']]:g} m²·K/W, ou seja U ≤ {1 / ucrania.RQMIN['parede'][ua['zona']]:.3f}")
+    elif p.get("theta_e") is not None:
         te, c = float(p["theta_e"]), None
         ri, regiao = int(p.get("zona_inverno", "I1")[-1]) - 1, p.get("regiao") or "continente"
     else:
@@ -115,6 +127,9 @@ def calcular(p: dict) -> dict:
     btr = float(p.get("btr") or (1.0 if lado == "exterior" else 0.8))
     tabela = reh.UMAX_ACORES if regiao == "acores" else (reh.UMAX_INT if (lado == "enu" and btr <= 0.7) else reh.UMAX)
     umax = tabela["parede"][ri]
+    if ua:
+        from . import ucrania
+        umax = round(1 / ucrania.RQMIN["parede"][ua["zona"]], 3)
     suporte = p.get("suporte") or ([{"material": "tijolo_furado", "ep_mm": 150}] + ([{"material": "caixa_ar", "ep_mm": 40}, {"material": "tijolo_furado", "ep_mm": 110}] if sk == "caixa_ar" else []))
     if not p.get("suporte"):
         hyp.append("suporte por defeito: " + " + ".join(f"{MATERIAIS[s['material']]['nome'].lower()} {s['ep_mm']} mm" for s in suporte))
@@ -146,7 +161,10 @@ def calcular(p: dict) -> dict:
                 add(s["material"], float(s["ep_mm"]))
             add("reboco_cal" if antigo else "reboco_cimento", 20)
             return cs, RSE
-        add("estuque", 10)
+        if MATERIAIS.get(sup[0]["material"], {}).get("madeira"):
+            add("gesso_cartonado", 12.5)                    # parede de madeira / CLT: forro interior em gesso cartonado
+        else:
+            add("estuque", 10)
         if sk == "caixa_ar":
             add(sup[0]["material"], float(sup[0]["ep_mm"]))
             if bv:
@@ -160,6 +178,8 @@ def calcular(p: dict) -> dict:
             return cs, RSE
         for s in sup:
             add(s["material"], float(s["ep_mm"]))
+        if bv:                                               # fachada ventilada: barreira entre o suporte e o isolante (lado quente)
+            add("barreira_vapor", 0)
         add(iso, ep, lam, "isolante")
         if sk == "etics":
             add("reboco_etics", 8)
@@ -182,7 +202,7 @@ def calcular(p: dict) -> dict:
     cs, rse = montar(ep)
     g = glaser(cs, 20.0, te, phi_i, rse=rse)
     bv = False
-    if g["condensation"] and sk in ("interior", "caixa_ar"):
+    if g["condensation"] and sk in ("interior", "caixa_ar", "fachada_ventilada"):
         bv = True
         cs, rse = montar(ep, True)
         g2 = glaser(cs, 20.0, te, phi_i, rse=rse)
@@ -191,7 +211,7 @@ def calcular(p: dict) -> dict:
     R_par = sum(x["R"] for x in cs)
     U = 1 / (RSI + R_par + rse) + dU
     iso_c = next(x for x in cs if x["role"] == "isolante")
-    ctl = [{"ref": "REH — requisito mínimo (Portaria 138-I/2021)", "exigencia": f"U ≤ Umax = {umax:g} W/(m².°C) (zona I{ri + 1}, {regiao}, {lado})",
+    ctl = [{"ref": norma, "exigencia": (f"U ≤ 1/Rq,min = {umax:g} W/(m².°C) (zona {ua['zona']}, {ua['name']})" if ua else f"U ≤ Umax = {umax:g} W/(m².°C) (zona I{ri + 1}, {regiao}, {lado})"),
             "valor": f"{U:.3f}", "ok": (U <= umax + 1e-9) if lam else (None if U <= umax + 1e-9 else False),
             "note": None if lam else "conforme apenas com o λ declarado do produto (DoP)"},
            {"ref": "Condensações internas — Glaser EN ISO 13788", "exigencia": f"sem condensação (20 °C / {phi_i * 100:.0f} %, {te:g} °C / 80 %)",
@@ -223,9 +243,13 @@ def calcular(p: dict) -> dict:
                     q("Barreira pára-vapor", S * 1.1, "m²") if bv else q("Fita de juntas", S * 1.5, "m")]
         elif sk == "fachada_ventilada":
             met += [q("Subestrutura (montantes)", S * 1.75, "m"), q("Ancoragens", S * 1.4, "un"), q("Membrana respirável", S * 1.1, "m²"), q("Revestimento", S * 1.08, "m²")]
+            if bv:
+                met.append(q("Barreira pára-vapor (juntas fitadas)", S * 1.1, "m²"))
         else:
             met += [q("Grampos inox", S * 4, "un"), q("Tubos de drenagem da caixa de ar", S / 1.5, "un")]
-    return {"sistema": sk, "sistema_nome": nome_s, "referencia": ref, "couches": cs, "R_parede": R_par, "U": U, "dU_buchas": dU, "umax": umax, "theta_e": te,
+    if any(MATERIAIS.get(x["material"], {}).get("madeira") for x in suporte):
+        hyp.append("madeira / CLT: λ 0,13 W/(m·K) e μ 20 (EN ISO 10456, valor húmido — conservador para o Glaser); usar os valores da ETA / DoP do painel")
+    return {"norma": norma, "pais": "ua" if ua else "pt", "sistema": sk, "sistema_nome": nome_s, "referencia": ref, "couches": cs, "R_parede": R_par, "U": U, "dU_buchas": dU, "umax": umax, "theta_e": te,
             "isolante": {"code": iso, "ep_mm": ep, "lambda": lam_v, "declarado": bool(lam)}, "glaser": g, "barreira_vapor": bv, "controles": ctl,
             "regras": regras, "metre": met, "hipoteses": hyp, "conforme": all(x["ok"] is not False for x in ctl)}
 
@@ -239,7 +263,7 @@ def note(params: dict) -> dict:
     rows = [[c["nom"], f"{c['ep_mm']:g}" if c["ep_mm"] else "—", f"{c['R']:.2f}", f"{c['Sd']:.2f}", c["origine"]] for c in r["couches"]]
     from . import graficos as G
     kp = [{"label": "U da parede", "value": f"{r['U']:.3f}".replace(".", ","), "unit": "W/(m².°C)", "ok": r["controles"][0]["ok"]},
-          {"label": "Umáx (Portaria 138-I)", "value": f"{r['umax']:g}".replace(".", ","), "unit": "W/(m².°C)"},
+          {"label": "Umáx (ДБН В.2.6-31)" if r.get("pais") == "ua" else "Umáx (Portaria 138-I)", "value": f"{r['umax']:g}".replace(".", ","), "unit": "W/(m².°C)"},
           {"label": "Espessura de isolante", "value": f"{r['isolante']['ep_mm']:g}", "unit": "mm"},
           {"label": "Condensação (Glaser)", "value": "nula" if not r["glaser"]["condensation"] else "a tratar", "ok": not r["glaser"]["condensation"]}]
     blocks = [("kpis", kp), ("h2", "1. Composição (do interior para o exterior)"),

@@ -283,6 +283,7 @@ EN.update({
     "легкий бетон": "lightweight concrete", "гравій": "gravel", "покрівля": "roof", "Житловий будинок": "Residential house",
     "секція": "unit", "з/б": "RC",
 })
+EN.update({'Покриття без заданого корисного навантаження: ': 'Roofs without a specified imposed load: ', ' кН/м² (EN 1991-1-1, категорія H — неексплуатоване, ψ2 = 0)': ' kN/m² (EN 1991-1-1, category H — not accessible, ψ2 = 0)', 'Експлуатовані покрівлі (тераси) без заданого навантаження: ': 'Roof terraces without a specified load: ', ' кН/м² (EN 1991-1-1, категорія I — експлуатована, житлове призначення, ψ2 = 0,3)': ' kN/m² (EN 1991-1-1, category I — accessible, residential use, ψ2 = 0.3)', 'Покриття: визначальне навантаження — сніг (не поєднується з корисним навантаженням на покрівлю, EN 1991-1-1 §3.3.2)': 'Roofs: snow governs (not combined with the roof imposed load, EN 1991-1-1 §3.3.2)', 'Сніг на покритті: ': 'Snow on roof: ', ' кН/м² (розрахункове значення для місця будівництва)': ' kN/m² (design value for the site)'})
 _TRANSLIT = dict(zip("АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя",
                      ["A", "B", "V", "H", "G", "D", "E", "Ye", "Zh", "Z", "Y", "I", "Yi", "Y", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "F",
                       "Kh", "Ts", "Ch", "Sh", "Shch", "", "Yu", "Ya",

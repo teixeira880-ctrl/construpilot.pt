@@ -231,6 +231,41 @@ def _seg_len(pts):
     return sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(pts[:-1], pts[1:]))
 
 
+Q_COB_H, Q_TERRACO = 0.4, 2.0      # NP EN 1991-1-1 / DSTU-N B EN 1991-1-1: cobertura não acessível (cat. H) e terraço acessível (cat. I → uso A)
+
+
+def cargas_cobertura(m: dict) -> list[str]:
+    """Sobrecargas por defeito nas coberturas sem q_kn_m2 (antes: 0 kN/m²).
+    q = máx(sobrecarga de utilização, neve) — a sobrecarga de cobertura não se combina com a neve (EN 1991-1-1 §3.3.2(1)).
+    Neve: lj["neve_kn_m2"] ou m["neve_kn_m2"] (valor de cálculo s = μ·Ce·Ct·sk, ou Sm ДБН). Devolve as hipóteses assumidas."""
+    hip, usados = [], set()
+    neve_m = m.get("neve_kn_m2")
+    for lj in m.get("lajes") or []:
+        terraco = bool(lj.get("cobertura_terraco"))
+        if lj.get("q_kn_m2") is not None or not (lj.get("piso") == "cobertura" or terraco):
+            continue
+        acess = terraco and lj.get("acessivel") is not False
+        qu = Q_TERRACO if acess else Q_COB_H
+        neve = lj.get("neve_kn_m2") if lj.get("neve_kn_m2") is not None else neve_m
+        neve = float(neve or 0.0)
+        lj["q_kn_m2"] = round(max(qu, neve), 2)
+        if lj.get("psi2") is None:
+            lj["psi2"] = 0.3 if (acess and qu >= neve) else 0.0
+        usados.add(("terraco" if acess else "cobertura", "neve" if neve > qu else "uso"))
+        if neve:
+            usados.add(("neve_val", round(neve, 2)))
+    for k in sorted(usados, key=str):
+        if k == ("cobertura", "uso"):
+            hip.append(f"Coberturas sem sobrecarga indicada: {Q_COB_H:g} kN/m² (EN 1991-1-1, categoria H — não acessível, ψ2 = 0)")
+        elif k == ("terraco", "uso"):
+            hip.append(f"Terraços sem sobrecarga indicada: {Q_TERRACO:g} kN/m² (EN 1991-1-1, categoria I — acessível, uso habitacional, ψ2 = 0,3)")
+        elif k[1] == "neve" and k[0] in ("cobertura", "terraco"):
+            hip.append("Coberturas: a neve condiciona a sobrecarga (não combinada com a sobrecarga de utilização, EN 1991-1-1 §3.3.2)")
+        elif k[0] == "neve_val":
+            hip.append(f"Neve na cobertura: {_c(k[1])} kN/m² (valor de cálculo do local)")
+    return hip
+
+
 def verificar(m: dict) -> dict:
     """Verifica todos os elementos; ajusta as secções não conformes se m["ajustar"] (por defeito sim). Muta m (secções adotadas)."""
     if not m.get("grelhas_x") or not m.get("grelhas_y"):
@@ -241,6 +276,12 @@ def verificar(m: dict) -> dict:
     qadm = m.get("solo_q_adm_kpa")
     res, ajustes, hip = [], [], []
     pil = m.get("pilares") or []
+    for lj in m.get("lajes") or []:                  # produto / fogo indicados ao nível do modelo → todos os painéis CLT
+        if lj.get("tipo") == "clt":
+            for k_m, k_l in (("produto_clt", "produto"), ("especie_clt", "especie"), ("fogo_min", "fogo_min")):
+                if m.get(k_m) and not lj.get(k_l):
+                    lj[k_l] = m[k_m]
+    hip += cargas_cobertura(m)
 
     def reg(tipo, el, r, orig=None):
         res.append({"tipo": tipo, "ref": el.get("ref") or tipo, "seccao": r["section"], "controles": r["controles"], "taxa": _taxa(r["controles"]),

@@ -81,6 +81,11 @@ def _g(x) -> str:
 def theta_projeto(p: dict, hyp: list) -> tuple[float, str]:
     if p.get("theta_e") is not None:
         return float(p["theta_e"]), "indicada"
+    if p.get("cidade_ua"):
+        from . import ucrania
+        u = ucrania.clima(p["cidade_ua"])
+        hyp.append(f"θe de projeto {u['theta_e']:g} °C — {u['name']} (Ucrânia), ДСТУ-Н Б В.1.1-27:2010 (temperatura dos 5 dias mais frios, 0,92)")
+        return float(u["theta_e"]), f"ДСТУ {u['name']}"
     c = reh.clima(p.get("concelho"), p.get("nuts"), p.get("altitude_m"))
     if c.get("aviso"):
         hyp.append(c["aviso"])
@@ -385,8 +390,9 @@ def bomba_calor(D_w: float, te: float, p: dict) -> dict:
     # vaso de expansão (EN 12828)
     h = p.get("altura_estatica_m")
     if h is None:
-        h = 3.0
-        hyp.append("altura estática da instalação acima do vaso de expansão: 3 m por defeito (habitação num piso)")
+        n_p = int(p.get("pisos") or 1)
+        h = 3.0 * n_p
+        hyp.append(f"altura estática da instalação acima do vaso de expansão: {h:g} m por defeito (3 m por piso, {n_p} piso{'s' if n_p > 1 else ''})")
     psv = p.get("pressao_valvula_bar")
     if psv is None:
         psv = 3.0
@@ -514,7 +520,10 @@ def note(params: dict) -> dict:
     blocs += notes.blocos_perdas(r, "1. ")
     out = {"perdas": r}
     if params.get("bomba_calor") is not None:
-        bc = bomba_calor(r["phi_total"], r["theta_e"], params["bomba_calor"] or {})
+        bcp = dict(params["bomba_calor"] or {})
+        if params.get("pisos") and bcp.get("altura_estatica_m") is None:
+            bcp["pisos"] = params["pisos"]
+        bc = bomba_calor(r["phi_total"], r["theta_e"], bcp)
         out["bomba_calor"] = bc
         hip += bc["hipoteses"]
         blocs += notes.blocos_bomba_calor(bc, "2. ")
