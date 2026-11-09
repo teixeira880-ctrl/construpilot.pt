@@ -76,6 +76,17 @@ class _render_ctx:
 def normalize(raw: dict) -> list[str]:
     """Complète un relevé incomplet de façon traçable (niveaux sans hauteur / cote, identifiants manquants)."""
     notes = []
+    need = {"units": ("x0", "y0", "x1", "y1"), "cores": ("x0", "y0", "x1", "y1"), "risers": ("x", "y"), "balconies": ("side",)}
+    for key, fields in need.items():                 # éléments secondaires sans coordonnées : écartés (inutiles au calcul CLT)
+        items = raw.get(key)
+        if isinstance(items, list):
+            ok = [x for x in items if isinstance(x, dict) and all(x.get(f) not in (None, "") for f in fields)]
+            if len(ok) != len(items):
+                notes.append(t(f"{len(items) - len(ok)} élément(s) « {key} » sans coordonnées écarté(s).",
+                               f"{len(items) - len(ok)} elemento(s) « {key} » sem coordenadas ignorado(s).",
+                               f"{len(items) - len(ok)} « {key} » item(s) without coordinates ignored.",
+                               f"{len(items) - len(ok)} елемент(ів) « {key} » без координат пропущено."))
+            raw[key] = ok
     lv = [d for d in (raw.get("levels") or []) if isinstance(d, dict)]
     if not lv:
         return notes
