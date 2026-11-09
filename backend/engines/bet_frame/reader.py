@@ -230,6 +230,55 @@ def _clt_dry(raw):
     return None
 
 
+def _auto_grid(raw: dict, ref: dict) -> bool:
+    import math as _m
+    ov = (ref or {}).get("overall") or {}
+    g = raw.get("grid") if isinstance(raw.get("grid"), dict) else {}
+
+    def ext(k):
+        v = [float(x) for x in (g.get(k) or []) if isinstance(x, (int, float))]
+        return (max(v) - min(v)) if len(v) >= 2 else 0.0
+    try:
+        L = float(ov.get("length") or 0) or ext("x")
+        W = float(ov.get("width") or 0) or ext("y")
+    except (TypeError, ValueError):
+        return False
+    if L < W:
+        L, W = W, L
+    if not (4.0 <= W <= 60.0 and 4.0 <= L <= 120.0):
+        return False
+    gx = g.get("x") if isinstance(g.get("x"), list) and len(g.get("x")) >= 2 and ext("x") >= 4 else None
+    gy = g.get("y") if isinstance(g.get("y"), list) and len(g.get("y")) >= 2 and ext("y") >= 4 else None
+    dx, dy = L, W                               # dimension portée par chaque sens : celle qui n'est pas déjà relevée
+    if gx and not gy:
+        dx, dy = (L, W) if abs(ext("x") - L) <= abs(ext("x") - W) else (W, L)
+    elif gy and not gx:
+        dx, dy = (W, L) if abs(ext("y") - L) <= abs(ext("y") - W) else (L, W)
+
+    def reg(d):
+        n = _m.ceil(d / 5.0)
+        return [round(d * k / n, 2) for k in range(n + 1)]
+    gx = [round(float(v), 2) for v in gx] if gx else reg(dx)
+    gy = [round(float(v), 2) for v in gy] if gy else reg(dy)
+    L, W = gx[-1] - gx[0], gy[-1] - gy[0]
+    raw["grid"] = {"x": gx, "y": gy, "x_labels": [str(i + 1) for i in range(len(gx))], "y_labels": [chr(65 + j) for j in range(len(gy))]}
+    lv = [x for x in raw.get("levels") or [] if isinstance(x, dict)]
+    if not lv:
+        lv = [{"id": "N0", "name": "RDC", "floor_top": 0.0, "height": 3.0, "use": "habitation", "on_grade": True}]
+    z = 0.0
+    for k, x in enumerate(sorted(lv, key=lambda d: float(d.get("floor_top") or 0))):
+        h = x.get("height")
+        x["height"] = float(h) if isinstance(h, (int, float)) and 2.2 <= float(h) <= 9 else 3.0
+        x["floor_top"] = round(z, 2)
+        x.setdefault("id", f"N{k}")
+        z += x["height"]
+    raw["levels"] = lv
+    raw.setdefault("_decisions", []).append(
+        f"Trame non lisible sur les plans : trame régulière retenue sur les cotes hors tout {L:.2f} × {W:.2f} m "
+        f"(files tous les {L / (len(gx) - 1):.2f} m et {W / (len(gy) - 1):.2f} m), niveaux de 3,00 m si non cotés — à confirmer.")
+    return True
+
+
 async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR", llm=None, decide_alone: bool = False,
                      building_type: str = "immeuble_collectif", max_fix: int = 2, engine: str = "frame") -> dict:
     """engine = "clt" : même relevé de trame, contrôlé par le moteur bois massif (bet_clt) au lieu du moteur BA."""
@@ -307,6 +356,17 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
         txt = await llm(SYSTEM, fix, images=images, max_tokens=R.MAX_OUT)
         attempts += 1
     blocking = [a for a in anomalies if a.get("level") == model.BLOCK]
+    if blocking and decide_alone and engine == "clt" and raw is not None and all(str(a.get("code", "")).startswith(("GRID", "LEV", "COL-01"))
+                                                                                    for a in blocking):
+        # Mode automatique : trame ou niveaux introuvables malgré les relectures → trame régulière sur les cotes hors tout
+        # lues (portées ≤ 5 m, sens courts) et niveaux de 3 m ; décision tracée, l'étude va jusqu'au bout.
+        if _auto_grid(raw, ref):
+            with use_lang(lang):
+                m, anomalies = _clt_validate(raw, chosen, ref)
+            if m is not None and not model.has_block(anomalies):
+                err = _clt_dry(raw)
+                anomalies = anomalies + ([err] if err else [])
+            blocking = [a for a in anomalies if a.get("level") == model.BLOCK]
     decisions = [str(d) for d in (raw or {}).get("_decisions") or []]
     if lang == "pt" and decisions and any(_FR_WORDS.search(d) for d in decisions):
         decisions = await _to_pt(decisions, llm)

@@ -139,7 +139,7 @@ SYSTEM = "És o ConstruPilot, assistente IA especializado em construção / reab
 TOOLS = [
     *PLATFORM_TOOLS,
     {"type": "function", "name": "ask_user_choices",
-     "description": "Coloca ao utilizador uma ou várias perguntas FECHADAS sob a forma de cartões de escolha clicáveis, em vez de uma lista numerada para copiar. Usar sempre que houver ≥ 1 pergunta fechada (ex. antes do estudo BET: paredes exteriores, paredes interiores resistentes, lajes, cobertura, escada, piso radiante, ventilação; ou para um orçamento, um licenciamento, uma medição). 2 a 6 opções por pergunta, a opção recomendada/corrente EM PRIMEIRO e com o sufixo «(recomendado)». Só pergunta o que os documentos anexados não indicam. Reserva o texto livre para as verdadeiras perguntas abertas.",
+     "description": "Coloca ao utilizador uma ou várias perguntas FECHADAS sob a forma de cartões de escolha clicáveis, em vez de uma lista numerada para copiar. NUNCA antes ou durante um estudo (BET, térmico, orçamento, licenciamento, medição) : esses estudos decidem sozinhos com a opção recomendada. Usar só se o utilizador pedir expressamente para escolher. 2 a 6 opções por pergunta, a opção recomendada/corrente EM PRIMEIRO e com o sufixo «(recomendado)». Só pergunta o que os documentos anexados não indicam. Reserva o texto livre para as verdadeiras perguntas abertas.",
      "parameters": {"type": "object", "properties": {
          "intro": {"type": "string", "description": "Frase curta de introdução (contexto das perguntas)"},
          "questions": {"type": "array", "items": {"type": "object", "properties": {
@@ -282,10 +282,11 @@ garagem, armazém…) e eventualmente o estudo geotécnico e pede um estudo de e
 armaduras), especialidades (águas, esgotos, eletricidade), um dossier de gabinete de projeto ou um orçamento a partir das
 plantas : utiliza UNICAMENTE generate_full_bet_study e depois read_full_bet_study para acompanhar e obter os ficheiros. NÃO
 utilizes read_building_geometry, generate_structural_execution_dossier nem generate_multifamily_building_study (substituídos).
-Reporta FIELMENTE no parâmetro `hypotheses` todas as precisões dadas pelo utilizador. PERGUNTAS FECHADAS (antes do estudo, de um
-orçamento, de um licenciamento ou de uma medição) : usa SEMPRE ask_user_choices (cartões clicáveis) em vez de uma lista numerada ;
-só pergunta o que as peças não indicam, opção recomendada em primeiro com «(recomendado)», e copia TAL E QUAL as escolhas do
-utilizador para `hypotheses`. Opções típicas para o estudo : paredes exteriores (Tijolo térmico 30 cm (recomendado) / Bloco de
+Reporta FIELMENTE no parâmetro `hypotheses` todas as precisões dadas pelo utilizador. ESTUDOS AUTOMÁTICOS (regra de 09/11/2026) : dado o
+pedido, um estudo (BET, térmico, medição, orçamento, licenciamento) vai ATÉ AO FIM SEM PERGUNTAS : o que as peças não indicam é
+tomado com a opção recomendada abaixo, escrito em `hypotheses` («hipótese adotada : …») e listado no fim em «Decisões tomadas
+(modificáveis)». NÃO uses ask_user_choices antes de um estudo, só se o utilizador pedir expressamente para escolher ele próprio.
+Opções recomendadas por defeito (a primeira de cada lista) : paredes exteriores (Tijolo térmico 30 cm (recomendado) / Bloco de
 betão 20 cm / Betão armado) ; lajes (Laje maciça BA (recomendado) / Laje aligeirada de vigotas / Pré-laje) ; fundações (Sapatas
 isoladas BA (recomendado) / Ensoleiramento geral) ; cobertura (Laje + terraço (recomendado) / Cobertura inclinada em madeira) ;
 escada (Betão armado (recomendado) / Metálica) ; piso radiante (todos os pisos / só piso 0 / nenhum) ; ventilação (VMC simples

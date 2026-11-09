@@ -182,7 +182,9 @@ _CLT_HINT = (" STRUCTURE BOIS MASSIF CLT / LAMELLÉ-COLLÉ : relève la trame de
              "évident (grande pièce sans mur intermédiaire) → structure.clt_span_dir. Étage partiel (R+1 en retrait, en L) → levels[].void_cells. "
              "Couches d'enveloppe du détail (isolant, épaisseur) → envelope.wall|roof|floor.layers [[nom, e en m, λ W/m.K]], plancher bas sur sous-sol "
              "non chauffé → envelope.below = \"unheated\". Sous-sol BA ou terrasse hors trame → estimate.basement {area, height, perimeter} / "
-             "estimate.terrace {area}.")
+             "estimate.terrace {area}. Plans sans repères de files dans un sens (seuls des axes 1, 2, 3… numérotés) : prends comme files "
+             "les lignes des murs porteurs principaux (façades, murs entre pièces) et nomme-les A, B, C… ; niveaux non cotés : hauteur "
+             "sous plafond + épaisseur de plancher du détail. Ne bloque jamais sur la trame : décide et trace la décision.")
 _UA_PRICES = re.compile(r"(pre[çc]os?|prix|prices?|ціни|цін|orçamento|devis|estimate|кошторис)[^.\n]{0,40}(ucr[aâ]nia|ukrain|україн|uah|грн|hryvn)|"
                         r"(ucr[aâ]nia|ukrain|україн)[^.\n]{0,30}(pre[çc]os?|prix|prices?|ціни)", re.I)
 

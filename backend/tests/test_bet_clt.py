@@ -155,3 +155,25 @@ def test_home_a_final_estimate_ua(tmp_path):
     assert 25000 < d["ua_per_m2"] < 48000          # dans la fourchette du marché ukrainien 2026 (maison clés en main)
     from pypdf import PdfReader
     assert "грн" in PdfReader(r["files"]["estimate_pdf_uk"]).pages[0].extract_text()
+
+
+def test_english_and_ukrainian_plan_titles_are_plans():
+    from engines.bet_core.reader import classify
+    for t in ("GROUND FLOOR PLAN FRAÇÃO A", "- 1 FLOOR PLAN FRAÇÃO A", "FIRST FLOOR PLAN", "ПЛАН ПЕРШОГО ПОВЕРХУ"):
+        assert classify(t) == "plan", t
+
+
+def test_study_is_automatic_unless_questions_requested():
+    from engines.bet_core.assistant_tool import wants_questions
+    assert not wants_questions("maison CLT, prix Ukraine")
+    assert not wants_questions("")
+    assert wants_questions("pose-moi les questions avant de lancer")
+    assert wants_questions("pergunta-me as opções")
+
+
+def test_auto_grid_when_unreadable():
+    from engines.bet_frame.reader import _auto_grid
+    raw = {"levels": [], "grid": {"x": [0, 3.76, 7.10, 10.90]}}
+    assert _auto_grid(raw, {"overall": {"length": 13.53, "width": 10.90}})
+    assert raw["grid"]["y"][-1] == 13.53 and max(b - a for a, b in zip(raw["grid"]["y"], raw["grid"]["y"][1:])) <= 5.0
+    assert raw["levels"][0]["height"] == 3.0 and raw["_decisions"]

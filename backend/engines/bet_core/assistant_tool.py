@@ -8,6 +8,7 @@ téléchargeables par /assistant/artifacts/{artifact_id}/content.
 """
 from __future__ import annotations
 
+import re
 import asyncio
 import base64
 import copy
@@ -72,13 +73,14 @@ TOOL_NAMES = {t["name"] for t in TOOLS}
 
 INSTRUCTIONS = (
     "\n\nÉTUDE BET COMPLÈTE (generate_full_bet_study / read_full_bet_study) : quand l'utilisateur demande un dossier de bureau d'études "
-    "(plans d'exécution, coupes, ferraillage, charpente, électricité, plomberie, devis) à partir d'un PC, propose le périmètre "
-    "(documents, pays, hypothèses) et attends sa confirmation, puis lance generate_full_bet_study. Suis l'avancement avec "
-    "read_full_bet_study. Si l'étude renvoie des QUESTIONS, pose-les telles quelles à l'utilisateur et relance après ses réponses "
-    "(en les ajoutant aux hypothèses). "
-    "MODE « DÉCIDER SEUL » : si l'utilisateur demande de faire avec les documents fournis, de prendre la meilleure solution, de "
-    "décider à ta place ou à ta façon (« je n'ai que ces plans », « faites au mieux », « prenez la meilleure solution »…), l'étude "
-    "ne pose PLUS de questions : elle tranche seule et renvoie un champ `decisions`. Dans ce cas, NE REPOSE AUCUNE question : "
+    "(plans d'exécution, coupes, ferraillage, charpente, électricité, plomberie, thermique, devis) à partir de plans, LANCE "
+    "IMMÉDIATEMENT generate_full_bet_study avec les documents joints et ses précisions dans `hypotheses` — sans demander de "
+    "confirmation du périmètre ni poser de questions préalables (pas d'ask_user_choices avant l'étude). Suis l'avancement avec "
+    "read_full_bet_study jusqu'au dossier terminé. "
+    "MODE AUTOMATIQUE (par défaut, règle du 09/11/2026) : l'étude va TOUJOURS jusqu'au bout seule ; tout ce que les plans ne "
+    "précisent pas est tranché avec la meilleure option (recommandée, la plus sûre / la plus courante) et renvoyé dans le champ "
+    "`decisions`. Les questions ne sont posées QUE si l'utilisateur l'a expressément demandé (« pose-moi les questions »). "
+    "NE REPOSE AUCUNE question : "
     "présente le dossier terminé, puis liste brièvement les décisions prises, UNE LIGNE chacune telle quelle, sous le titre "
     "« Décisions prises (modifiables) », et invite l'utilisateur à corriger un point s'il le souhaite. Quand l'utilisateur corrige "
     "ensuite une décision (ou que tu relances un calcul), ajoute sa correction aux hypothèses, relance l'étude et n'affiche QUE ce "
@@ -189,6 +191,15 @@ async def _default_branding(db, uid, user=None):
     except Exception:  # noqa: BLE001
         pass
     return b or None
+
+
+_ASK_RX = re.compile(r"(pose[- ]?moi|posez[- ]?moi|demande[- ]?moi|demandez[- ]?moi|pergunta[- ]?me|pergunte[- ]?me|faz[- ]?me|ask me)"
+                     r"[^.\n]{0,30}(questions?|perguntas?|choix|op[cç][oõ]es)|avec (des |mes )?questions|valider (chaque|les) (choix|options)", re.I)
+
+
+def wants_questions(text: str) -> bool:
+    """L'utilisateur demande expressément à valider les choix un par un (sinon l'étude décide seule)."""
+    return bool(_ASK_RX.search(text or ""))
 
 
 def docs_hash(docs, hypotheses, country, decide_alone=False) -> str:
@@ -522,10 +533,9 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, llm=None, b
         return {"error": f"Lecture des pièces jointes impossible ({type(exc).__name__}) : réimportez le PC et la G2 en PDF.", "status": "échoué"}
     request_id = conv.get("_quote_request_id") or hashlib.sha256(("".join(ids) + _now()).encode()).hexdigest()[:16]
     hyp = " ".join((args.get("hypotheses") or "").lower().split())
-    decide_alone = await reader.intends_decide_alone(args.get("hypotheses") or "", llm=llm)
-    if not decide_alone and cid:            # drapeau « décider seul » posé une fois : les relances ne reposent plus de questions
-        prior = await db.bet_study_jobs.find_one({"user_id": uid, "conversation_id": cid, "decide_alone": True}, {"_id": 0, "job_id": 1})
-        decide_alone = bool(prior)
+    # 09/11/2026 (Martinho) : l'étude va TOUJOURS jusqu'au bout, seule, avec les meilleures options (décisions listées et
+    # modifiables ensuite). Les questions ne reviennent que si l'utilisateur les demande expressément (« pose-moi les questions »).
+    decide_alone = not wants_questions(args.get("hypotheses") or "")
     job_id = "bet_" + hashlib.sha256((uid + request_id + "".join(sorted(set(ids))) + hyp + args["country"]).encode()).hexdigest()[:20]
     old = await db.bet_study_jobs.find_one({"job_id": job_id, "user_id": uid}, {"_id": 0, "status": 1, "updated_at": 1})
     if old and old.get("status") == "running" and _age_s(old.get("updated_at")) > STALE_MIN * 60:

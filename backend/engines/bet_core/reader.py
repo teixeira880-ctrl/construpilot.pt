@@ -29,9 +29,12 @@ PCMI = {"01": "autre", "02.1": "masse", "02": "plan", "03": "coupe", "04": "noti
 TITLES = [   # ordre = priorité ; les renvois de coupe (« Coupe 1 ») sur les plans ne doivent pas l'emporter sur le titre
     ("g2", r"\bG2\b|g[ée]otechni|sondages?\b|pressiom[eè]tr|estudo geot[eé]cnico|prospe[cç][aã]o geot"),
     ("masse", r"PLAN DE? ?MASSE|PLAN DE SITUATION|PLANTA DE (IMPLANTA|LOCALIZA)"),
-    ("plan", r"\bPLAN (DU |DE |D')?(SOUS[- ]?SOL|RDC|REZ|[ÉE]TAGE|R ?\+ ?\d|COMBLE|NIVEAU)|\bPLANTA (DA |DO |DE )?(CAVE|R/?C|R[ÉE]S|PISO|ANDAR|\d|S[OÓ]T[AÃ]O|COBERTURA)"),
-    ("coupe", r"\bCOUPES?\b(?! ?\d)|\bCORTES?\b(?! ?[A-Z0-9]\b)"),
-    ("facade", r"\bFA[CÇ]ADES?\b|[ÉE]L[ÉE]VATIONS?|\bAL[CÇ]ADOS?\b"),
+    ("plan", r"\bPLAN (DU |DE |D')?(SOUS[- ]?SOL|RDC|REZ|[ÉE]TAGE|R ?\+ ?\d|COMBLE|NIVEAU)|\bPLANTA (DA |DO |DE )?(CAVE|R/?C|R[ÉE]S|PISO|ANDAR|\d|S[OÓ]T[AÃ]O|COBERTURA)"
+             # 09/11/2026 : plantas em inglês (« GROUND FLOOR PLAN », « -1 FLOOR PLAN ») e em ucraniano / russo
+             r"|\bFLOOR PLANS?\b|\b(BASEMENT|GROUND|FIRST|SECOND|THIRD|UPPER|LOWER|ATTIC|TYPICAL) (FLOOR|LEVEL)\b|\bLEVEL ?-?\d+ PLAN"
+             r"|ПЛАН (ПОВЕРХУ|ПІДВАЛУ|ЦОКОЛ|ПЕРШОГО|ДРУГОГО|ТРЕТЬОГО|МАНСАРД|\d|-\d)|ПЛАН (ЭТАЖА|ПОДВАЛА|ПЕРВОГО|ВТОРОГО)"),
+    ("coupe", r"\bCOUPES?\b(?! ?\d)|\bCORTES?\b(?! ?[A-Z0-9]\b)|\bSECTIONS?\b(?! ?[A-Z0-9]\b)|\bРОЗРІЗ|\bРАЗРЕЗ"),
+    ("facade", r"\bFA[CÇ]ADES?\b|[ÉE]L[ÉE]VATIONS?|\bAL[CÇ]ADOS?\b|\bФАСАД"),
     ("notice", r"\bNOTICE\b|MEM[OÓ]RIA DESCRITIVA"),
 ]
 
@@ -62,7 +65,7 @@ def classify(text: str) -> str:
                 return kind
         elif re.search(rx, up):
             return kind
-    if re.search(r"\bCOUPE|\bCORTE", up):      # page de coupe dont le titre n'est qu'un repère (« COUPE 1 », « CORTE A-B »)
+    if re.search(r"\bCOUPE|\bCORTE|\bSECTION", up):      # page de coupe dont le titre n'est qu'un repère (« COUPE 1 », « CORTE A-B »)
         return "coupe"
     return "autre"
 
@@ -320,6 +323,10 @@ def _extract_json(txt: str) -> dict:
 def select_pages(pages: list[dict]) -> list[dict]:
     order = {"plan": 0, "coupe": 1, "facade": 2, "masse": 3}
     pick = sorted([p for p in pages if p["kind"] in order], key=lambda p: (order[p["kind"]], p["doc"], p["page"]))
+    if not any(p["kind"] == "plan" for p in pick):
+        # aucun titre de plan reconnu (autre langue, cartouche en image) : les planches non classées riches en cotes sont des plans
+        cotes = [p for p in pages if p["kind"] == "autre" and len(re.findall(r"(?:^|\s)\d{2,5}@", p.get("words") or "")) >= 25]
+        pick = sorted(cotes, key=lambda p: (p["doc"], p["page"])) + pick
     return pick[:MAX_IMAGES]
 
 
