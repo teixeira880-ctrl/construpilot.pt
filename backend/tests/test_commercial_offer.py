@@ -35,7 +35,13 @@ def env(monkeypatch):
     from routes import commercial
     for mod in (monetization, usage_meter, commercial):
         monkeypatch.setattr(mod, "db", db)
-    monkeypatch.delenv("FREE_PROMO_MODE", raising=False)
+    # Environnement propre : les variables du serveur (origine, clés Stripe, interrupteurs)
+    # ne doivent pas influencer les tests.
+    for var in ("FREE_PROMO_MODE", "APP_ORIGIN", "COMMERCIAL_ALLOWED_ORIGINS", "STRIPE_API_KEY",
+                "STRIPE_SECRET_KEY", "STRIPE_LIVE_ALLOWED", "COMMERCIAL_CHECKOUT_ENABLED",
+                "COMMERCIAL_SALES_EMAIL", "COMMERCIAL_STRIPE_SYNC", "AI_PRICE_TABLE", "FREE_AI_BUDGET_EUR",
+                "AI_BUDGET_RATIO_COMMERCIAL", "AI_BUDGET_RATIO_LEGACY"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("PLAN_LIMITS_MODE", "enforce")
     monkeypatch.setenv("CP_MARKET", "pt")
     from engines import emailer
