@@ -1,0 +1,28 @@
+{
+  "summary": "Verified BET bugfix patch (commit 0a5ca15 / HEAD 6a2516b5): (1) _user_says_house routing override in bet_frame/hook.py and (2) _with_heartbeat + HEARTBEAT_S/STALE_MIN stall detection in bet_core/assistant_tool.py. Ran the targeted unit test file plus regression suites. Also smoke-tested backend API endpoints.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_bet_routing_heartbeat.py",
+    "/app/backend/tests/test_assistant_read_memory.py",
+    "/app/backend/tests/test_commercial_offer.py",
+    "/app/test_reports/pytest/bet_heartbeat.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "N/A (skipped per request)"},
+  "test_credentials": "N/A (pure unit tests, no auth)",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Patch verified. 35/35 pytest tests passed (3 new in test_bet_routing_heartbeat.py covering _user_says_house keyword detection FR/PT/EN, STALE_MIN<=3min and HEARTBEAT_S*2<STALE_MIN*60 invariant, and _with_heartbeat update_one call count during/after coro; plus 2 assistant_read_memory + 30 commercial_offer regressions). GET /api/ -> 200 and GET /api/openapi.json -> 200. No frontend testing performed (patch is backend-only per request). bet_agent/ folder untouched. No DB mutations.",
+  "rca of the issue": "Bug1 RCA: BET routing engine was overriding explicit user house choice; mitigated by _user_says_house keyword matcher that respects user intent. Bug2 RCA: BET study jobs stuck in 'running' after backend restart; mitigated by periodic heartbeat writes (HEARTBEAT_S=10s) and STALE_MIN=3min threshold enabling detection of dead jobs."
+}
