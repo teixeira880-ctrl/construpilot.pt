@@ -247,6 +247,14 @@ def _header_letterhead(story: list, branding: dict | None, S: dict, P: dict,
         label_style = S["label_right"].clone("lh_label_a"); label_style.textColor = P["main"]
 
     left: list = []
+    if logo and banner and b.get("logo_plate"):
+        # Logo posé sur une plaque blanche : reste lisible même si ses couleurs = celles du bandeau
+        # (ex. logo rouge/noir sur bandeau rouge). Option par entreprise (brand_logo_plate).
+        logo = Table([[logo]], style=TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
+        logo.hAlign = "LEFT"
     if logo:
         left.append(logo)
     if b.get("company_name"):
