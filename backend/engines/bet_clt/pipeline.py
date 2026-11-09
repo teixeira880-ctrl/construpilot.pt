@@ -73,7 +73,40 @@ class _render_ctx:
             pdfmetrics._fonts.update(self.saved)
 
 
+def normalize(raw: dict) -> list[str]:
+    """Complète un relevé incomplet de façon traçable (niveaux sans hauteur / cote, identifiants manquants)."""
+    notes = []
+    lv = [d for d in (raw.get("levels") or []) if isinstance(d, dict)]
+    if not lv:
+        return notes
+    if lv[0].get("floor_top") in (None, ""):
+        lv[0]["floor_top"] = 0.0
+    for k, d in enumerate(lv):
+        d.setdefault("id", f"N{k}")
+        d.setdefault("name", str(d["id"]))
+        if not d.get("use"):
+            d["use"] = "habitation"
+        if d.get("floor_top") in (None, "") and k > 0:
+            prev = lv[k - 1]
+            d["floor_top"] = round(float(prev["floor_top"]) + float(prev.get("height") or 2.8), 3)
+    for k, d in enumerate(lv):
+        if d.get("height") in (None, "", 0):
+            nxt = next((x for x in lv[k + 1:] if x.get("floor_top") not in (None, "")), None)
+            h = float(nxt["floor_top"]) - float(d["floor_top"]) if nxt else float((raw.get("roof") or {}).get("storey_height") or 2.8)
+            d["height"] = round(h if 2.2 <= h <= 9.0 else 2.8, 3)
+            notes.append(t(f"Hauteur d'étage de {d['name']} non relevée : {d['height']} m retenus.",
+                           f"Pé-direito de {d['name']} não relevado: {d['height']} m admitidos.",
+                           f"Storey height of {d['name']} not read: {d['height']} m assumed.",
+                           f"Висоту поверху {d['name']} не зчитано: прийнято {d['height']} м."))
+    raw["levels"] = lv
+    return notes
+
+
 def validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
+    try:
+        fixes = normalize(raw)
+    except Exception:  # noqa: BLE001
+        fixes = []
     try:
         m = model.from_dict(raw)
     except Exception as exc:  # noqa: BLE001
@@ -81,7 +114,7 @@ def validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
                                                                             f"Levantamento incompleto: {type(exc).__name__}: {exc}",
                                                                             f"Incomplete survey: {type(exc).__name__}: {exc}",
                                                                             f"Неповні вихідні дані: {type(exc).__name__}: {exc}")}]
-    out = []
+    out = [{"code": "MODEL-FIX", "level": model.WARN, "message": f} for f in fixes]
     try:
         for a in model.check(m):
             if a["code"] in _KEEP or (a["code"] == "COL-01" and calc.system(m) == "post_beam"):
