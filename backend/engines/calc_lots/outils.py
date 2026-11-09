@@ -148,6 +148,8 @@ _BC_PROPS = {"emissores": _enum(list(aquecimento.EMISSORES)), "p_nominal_kw": _n
              "alimentacao": _enum(["mono", "tri"])}
 _AQ_PROPS = {
     "concelho": _NS(), "nuts": _enum(list(reh.NUTS)), "altitude_m": _n(), "theta_e": _n("temperatura exterior de projeto imposta (°C)"),
+    "cidade_ua": _enum(list(ucrania.CIDADES), "obra na Ucrânia: θe de projeto da cidade (ДСТУ-Н Б В.1.1-27) em vez do clima REH"),
+    "pisos": _n("número de pisos (altura estática do vaso de expansão: 3 m por piso)"),
     "divisoes": _arr(_DIV_AQ, nullable=False), "recuperacao_calor": _n("eficiência do recuperador (0–1)"),
     "ventilacao": _enum(list(aquecimento.VENTILACAO), "natural, mecânica simples fluxo ou dupla fluxo com recuperação (null = natural, ou dupla fluxo se houver recuperador)"),
     "estanquidade": _enum(list(aquecimento.INFILTRACAO)), "n50": _n("ensaio de pressurização n50 (h⁻¹): substitui a classe de estanquidade"),
@@ -169,6 +171,7 @@ _ISOLANTES = [k for k, v in isolamento.MATERIAIS.items() if v["familia"] == "iso
 _ISO_PROPS = {
     "sistema": _enum(list(isolamento.SISTEMAS), "etics, fachada_ventilada, caixa_ar ou interior"),
     "concelho": _NS(), "nuts": _enum(list(reh.NUTS)), "altitude_m": _n(), "theta_e": _n("temperatura exterior de projeto imposta (com zona_inverno)"),
+    "cidade_ua": _enum(list(ucrania.CIDADES), "obra na Ucrânia: θe da cidade e requisito ДБН В.2.6-31 (U ≤ 1/Rq,min) em vez do REH"),
     "zona_inverno": _enum(["I1", "I2", "I3"], "só com theta_e"), "regiao": _enum(["continente", "acores", "madeira"], "só com theta_e"),
     "lado": _enum(["exterior", "enu"], "parede em contacto com o exterior ou com espaço não útil"), "btr": _n(),
     "suporte": _arr({"material": {"type": "string", "enum": _SUPORTES}, "ep_mm": {"type": "number"}}, desc="camadas existentes do interior para o exterior"),
@@ -399,7 +402,9 @@ GROS_OEUVRE_TOOL = _tool(
     "vao_calculo_m, g_kn_m, q_kn_m, cota_topo_ini_m, cota_topo_fim_m}], lajes [{ref, piso (fundacao|pavimento|cobertura), tipo (laje_terrea|laje_ba|"
     "vigas_i|clt), x0_m, y0_m, x1_m, y1_m, espessura_m, CLT: camadas_mm [ímpar] + vao_m → verificação do painel (corte de rolamento, fluência; "
     "produto rezult_clt = ETA-21/0914, especie pinho|outras, fogo_min 30|60|90 → resistência ao fogo R), cota_topo_m ou cota_topo_ini_m/cota_topo_fim_m + pendente_dir, direcao_vao, q_kn_m2, descricao}], "
-    "cortes [{nome, direcao x|y, pos_m}] (null = automáticos).",
+    "cortes [{nome, direcao x|y, pos_m}] (null = automáticos). Ao nível do modelo: produto_clt (p. ex. rezult_clt), especie_clt e fogo_min aplicam-se a todos os painéis CLT; "
+    "neve_kn_m2 = neve de cálculo na cobertura; coberturas sem q_kn_m2 → 0,4 kN/m² (cat. H) ou 2,0 kN/m² nos terraços acessíveis (cobertura_terraco, acessivel), "
+    "sempre máx(sobrecarga, neve).",
     {"modelo_json": {"type": "string", "description": "modelo estrutural completo em JSON (ver descrição)"},
      "ajustar": _B("null/true = ajustar as secções não conformes; false = só verificar")})
 
