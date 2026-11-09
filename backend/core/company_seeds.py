@@ -21,7 +21,7 @@ LOGO_DIR = Path(__file__).resolve().parent.parent / "data" / "company_logos"
 
 COMPANIES = [
     {
-        "seed_version": 2,
+        "seed_version": 3,
         # Conta de DEMONSTRAÇÃO : login fictício num domínio ConstruPilot (ninguém de fora recebe e-mails).
         "email": "clt-rezult.demo@construpilot.pt",
         "legacy_emails": ["office@clt-rezult.com"],
@@ -30,7 +30,7 @@ COMPANIES = [
         "style_defaults": {"account_type": "pro_business", "brand_doc_layout": "detaille", "kyc_status": "verified"},
         "name": "CLT Rezult",
         "account_type": "pro_business",
-        "lang": "pt",
+        "lang": "en",
         "logo_file": "clt-rezult.png",
         "temp_password_env": "CLT_REZULT_TEMP_PASSWORD",
         "fields": {
@@ -45,6 +45,8 @@ COMPANIES = [
             "brand_contact_line": "+380 50 402 00 50 · office@clt-rezult.com · clt-rezult.com",
             "brand_accent_color": "#E21411",
             "brand_logo_plate": True,
+            # Orçamentos/faturas automaticamente em inglês + 2.º PDF em ucraniano.
+            "doc_langs": ["en", "uk"],
             "brand_tagline": "Painéis de madeira lamelada cruzada (CLT) — o primeiro e único fabricante na Ucrânia",
             "brand_description": (
                 "A CLT Rezult é o primeiro e único fabricante e fornecedor de painéis multicamada "
@@ -62,8 +64,8 @@ COMPANIES = [
             ),
             "brand_header_text": "CLT Rezult — Cross Laminated Timber",
             "brand_footer_text": (
-                "CLT Rezult — Sede: 15, Petro Sahaidachnoho Str., 04070 Kyiv, Ucrânia · "
-                "Fábrica: 11-T, Serhiya Kemskoho Str., Korosten, região de Zhytomyr, 11501, Ucrânia"
+                "CLT Rezult — Head office: 15, Petro Sahaidachnoho Str., 04070 Kyiv, Ukraine · "
+                "Plant: 11-T, Serhiya Kemskoho Str., Korosten, Zhytomyr region, 11501, Ukraine"
             ),
             "service_zones": ["Ucrânia"],
             "public_slug": "clt-rezult",

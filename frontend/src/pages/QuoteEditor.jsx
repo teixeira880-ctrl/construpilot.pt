@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { api, API, uploadPlan } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { downloadExtraPdfs } from "@/lib/docLangs";
 import { VerifiedProBadge } from "@/components/VerifiedProBadge";
 import { useI18n } from "@/context/I18nContext";
 import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
@@ -1054,6 +1055,7 @@ export default function QuoteEditor() {
       const a = document.createElement("a");
       a.href = url; a.download = internal ? `devis-INTERNE.pdf` : `devis.pdf`; a.click();
       URL.revokeObjectURL(url);
+      if (!internal) await downloadExtraPdfs(user, d.doc_id, "orcamento");
       toast.success(internal ? "Versão interna (custos & margens) descarregada" : t("crm.pdf_ok"));
     } catch { toast.error(t("crm.pdf_fail")); }
   };

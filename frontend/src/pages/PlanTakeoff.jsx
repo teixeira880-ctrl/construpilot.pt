@@ -8,6 +8,7 @@ import { BrandingDialog } from "@/components/BrandingDialog";
 import { MailboxDialog } from "@/components/MailboxDialog";
 import { useBilling } from "@/context/BillingContext";
 import { useAuth } from "@/context/AuthContext";
+import { downloadExtraPdfs } from "@/lib/docLangs";
 import { Lock, Unlock, ClipboardCheck } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { QuoteDialog } from "@/components/planTakeoff/QuoteDialog";
@@ -2515,6 +2516,7 @@ export default function PlanTakeoff() {
       a.href = url; a.download = `orcamento-${plan.plan_id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await downloadExtraPdfs(user, data.doc_id, "orcamento");
       const ttc = data.totals?.ttc || 0;
       toast.success(`Orçamento estimado transferido — ${ttc.toLocaleString("pt-PT")} € c/ IVA · ${data.priced_lines || 0} artigo(s) orçamentado(s)`, { duration: 6000 });
     } catch (e) {
