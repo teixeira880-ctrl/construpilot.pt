@@ -11,6 +11,7 @@ import os
 import base64
 import io
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Optional
@@ -28,6 +29,18 @@ from engines.urbanismo_pt.auto import terreno as T
 Emit = Optional[Callable[[str, str], Awaitable[None]]]
 
 ETAPAS = ["localizar", "dados_oficiais", "viabilidade", "terreno", "projeto", "verificacao", "documentos", "coerencia"]
+
+
+# prazos em segundos (total < 240 s, o limite do Assistente BTP e da Aurora); a escala só muda nos testes
+PRAZO_ESCALA = float(os.environ.get("URB_PRAZO_ESCALA", "1") or 1)
+
+
+async def _prazo(coro, segundos: float, nota: str) -> Dict[str, Any]:
+    """Cada consulta oficial tem um prazo: se o serviço estiver lento, segue «não confirmado» em vez de parar o processo."""
+    try:
+        return await asyncio.wait_for(coro, timeout=segundos * PRAZO_ESCALA)
+    except asyncio.TimeoutError:
+        return {"ok": False, "data": None, "fonte": "", "url": None, "nota": nota}
 
 
 def _bool(v, d=None):
@@ -108,7 +121,8 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"]}
 
     # 1. localizar
-    g = await G.geocode(morada)
+    t0 = time.monotonic()
+    g = await _prazo(G.geocode(morada), 40, "os serviços de moradas não responderam a tempo (inacessíveis)")
     if not g["ok"]:
         inacessivel = "inacess" in (g.get("nota") or "")
         await passo("localizar", "falhou", g.get("nota") or "morada não encontrada")
@@ -136,24 +150,33 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
 
     # 2. dados oficiais em paralelo
     mun, crus, srup, cad, via, orto = await asyncio.gather(
-        G.municipio(lat, lon), G.crus(lat, lon), G.servidoes(lat, lon), G.cadastro(lat, lon), G.via_proxima(lat, lon),
-        G.ortofoto(lat, lon))
+        _prazo(G.municipio(lat, lon), 45, "município: a DGT não respondeu a tempo"),
+        _prazo(G.crus(lat, lon), 60, "classe do PDM indisponível: a DGT não respondeu a tempo"),
+        _prazo(G.servidoes(lat, lon, prazo_s=70 * PRAZO_ESCALA), 80, "servidões: a DGT não respondeu a tempo"),
+        _prazo(G.cadastro(lat, lon), 40, "cadastro: sem resposta a tempo"),
+        _prazo(G.via_proxima(lat, lon), 40, "via: sem resposta a tempo"),
+        _prazo(G.ortofoto(lat, lon), 45, "ortofotomapa: sem resposta a tempo"))
     if not via["ok"] and geo.get("via_geom"):
         via = G.via_de_geometria(lat, lon, geo["via_geom"], geo.get("rua"))
     if not via["ok"] and geo.get("precisao") != "localidade":
-        via = await G.via_reversa(lat, lon)
+        via = await _prazo(G.via_reversa(lat, lon), 25, "via: sem resposta a tempo")
     # DGT em baixo (ocorre por minutos): uma nova tentativa da classe do PDM e das servidões antes de desistir
-    if not crus["ok"] and "indispon" in (crus.get("nota") or "") or not srup["ok"]:
-        await asyncio.sleep(8)
+    # (só se ainda houver tempo: o processo tem de acabar sempre, com o que faltar marcado «a confirmar»)
+    if (not crus["ok"] and "indispon" in (crus.get("nota") or "") or not srup["ok"]) and time.monotonic() - t0 < 110 * PRAZO_ESCALA:
+        await asyncio.sleep(8 * PRAZO_ESCALA)
         G._COLLECTIONS.update(t=0.0)
+        segunda = []
         if not crus["ok"]:
-            crus = await G.crus(lat, lon)
+            segunda.append(("crus", _prazo(G.crus(lat, lon), 35, "classe do PDM indisponível")))
         if not srup["ok"]:
-            srup = await G.servidoes(lat, lon)
+            segunda.append(("srup", _prazo(G.servidoes(lat, lon, prazo_s=35 * PRAZO_ESCALA), 40, "servidões indisponíveis")))
         if not mun["ok"]:
-            mun = await G.municipio(lat, lon)
+            segunda.append(("mun", _prazo(G.municipio(lat, lon), 30, "município indisponível")))
         if not orto["ok"]:
-            orto = await G.ortofoto(lat, lon)
+            segunda.append(("orto", _prazo(G.ortofoto(lat, lon), 30, "ortofotomapa indisponível")))
+        res2 = dict(zip([k for k, _ in segunda], await asyncio.gather(*(c for _, c in segunda))))
+        crus, srup = res2.get("crus", crus), res2.get("srup", srup)
+        mun, orto = res2.get("mun", mun), res2.get("orto", orto)
     for r in (mun, crus, srup, cad, via, orto):
         fonte(r)
     copias = [ (r.get("data") or {}).get("copia_local") for r in (crus, srup) if r["ok"] ]
@@ -225,7 +248,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
             centro = None
     pressupostos += ter["pressupostos"]
     pts = T.grelha_pontos(ter, 9)
-    el = await G.elevacoes([(q[2], q[3]) for q in pts])
+    el = await _prazo(G.elevacoes([(q[2], q[3]) for q in pts]), 30, "altimetria: sem resposta a tempo")
     topo = T.topografia(pts, el["data"]["z"], el["fonte"], el.get("nota")) if el["ok"] else {"ok": False}
     if el["ok"]:
         fonte(el)

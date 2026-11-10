@@ -65,3 +65,31 @@ def test_rota_zona_igual_ao_motor():
     assert r["zona_latlon"] and 0 < r["area_m2"] < r["area_terreno_m2"]
     # parte larga: 40 − 2×3 = 34 m de largura útil; parte estreita até ao tardoz
     assert 300 < r["area_m2"] < 700
+
+
+def test_dgt_lenta_o_processo_acaba_sempre(monkeypatch):
+    """Com a DGT a não responder (pedidos pendurados), o dossier sai a tempo com as servidões «a confirmar»."""
+    import asyncio
+    import time as _t
+    from engines.urbanismo_pt.auto import geo as G
+    from engines.urbanismo_pt.auto import pipeline as P
+    from tests.test_urbanismo_auto import _loop_run, fake
+    monkeypatch.setattr(P, "PRAZO_ESCALA", 0.03)
+    base = fake()
+
+    async def lenta(method, url, params=None, headers=None, want="json"):
+        if "/collections/srup_" in url or "/collections/crus/items" in url:
+            await asyncio.sleep(3600)          # servidor pendurado
+        return await base(method, url, params, headers, want)
+    G.set_transport(lenta)
+    G._COLLECTIONS.update(t=0.0, list=[])
+    t = _t.monotonic()
+    try:
+        r = _loop_run(P.executar({"morada": "Rua do Monte 7, Padim da Graça, Braga", "tipologia": "T3"}))
+    finally:
+        G.set_transport(None)
+    assert _t.monotonic() - t < 30
+    assert r["ok"], r
+    assert r["estado"] != "pronto"           # dados críticos por confirmar: nunca dado como pronto
+    txt = " ".join(r["processo"]["auto"]["avisos"])
+    assert "servidões" in txt and "PDM" in txt
