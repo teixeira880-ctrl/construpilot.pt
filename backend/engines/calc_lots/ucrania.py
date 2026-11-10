@@ -607,9 +607,10 @@ def _render_isolado(modelo, opcoes, largura, altura, spp, budget, hard):
             pass
 
 
-def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None):
+def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None, so_cache: bool = False):
     """Render 3D fotorrealista a partir do modelo dos planos (sempre que há modelo estrutural).
-    Produção: 1280 × 720, 32 amostras, orçamento de tempo CP_RENDER_BUDGET (80 s; a 1.ª vista é sempre feita) e cache em disco
+    `so_cache` : devolve só o render já em cache, ou None (sem calcular).
+    Produção: 1920 × 1080 (Full HD), 32 amostras, orçamento de tempo CP_RENDER_BUDGET (80 s; a 1.ª vista é sempre feita) e cache em disco
     (mesmo modelo → resultado imediato). Qualquer falha do motor de render → lista vazia: o dossier sai sempre."""
     import hashlib
     import json
@@ -617,7 +618,7 @@ def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura
     import os
     import pickle
     import tempfile
-    largura = largura or int(os.environ.get("CP_RENDER_W", 1280))
+    largura = largura or int(os.environ.get("CP_RENDER_W", 1920))
     altura = altura or int(largura * 9 / 16)
     spp = spp or int(os.environ.get("CP_RENDER_SPP", 32))
     budget = float(os.environ.get("CP_RENDER_BUDGET", 80))
@@ -628,7 +629,9 @@ def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura
             return pickle.load(open(cache, "rb"))
     except Exception:  # noqa: BLE001
         pass
-    hard = float(os.environ.get("CP_RENDER_HARD", 150))        # teto absoluto: o render corre num processo à parte, morto se exceder
+    if so_cache:
+        return None
+    hard = float(os.environ.get("CP_RENDER_HARD", 240))        # teto: acima disto o dossier sai sem renders, o estudo nunca fica parado        # teto absoluto: o render corre num processo à parte, morto se exceder
     try:
         out = _render_isolado(modelo, opcoes or {}, largura, altura, spp, budget, hard)
     except Exception as exc:  # noqa: BLE001 — o render nunca pode impedir o dossier

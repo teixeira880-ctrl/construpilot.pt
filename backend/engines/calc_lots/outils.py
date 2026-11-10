@@ -794,8 +794,10 @@ def run(name: str, args: dict) -> dict:
         RTU.inicio(p, caso)
         if caso:                                                   # o caso guardado manda na geometria; título/empresa do utilizador mantêm-se
             a = {k: v for k, v in a.items() if k in ("projeto_uk", "projeto_en", "empresa", "fogo_min", "produto_clt")}
+            # ordem: 1) estudo estrutural (geometria lida nos planos) 2) renders 3D Full HD desse modelo 3) dossiers com os renders
+            mod_calc = gros_oeuvre.calcular(__import__("copy").deepcopy(p["modelo_estrutural"]))["modelo"]
             RTU.renders()
-            p["renders"] = ucrania.gerar_renders(gros_oeuvre.calcular(__import__("copy").deepcopy(p["modelo_estrutural"]))["modelo"], p.get("render_opcoes"))
+            p["renders"] = ucrania.gerar_renders(mod_calc, p.get("render_opcoes"))
         for k, v in a.items():
             if k not in ("exemplo", "modelo_estrutural_json", "sistema"):
                 p[k] = v
@@ -821,8 +823,9 @@ def run(name: str, args: dict) -> dict:
             res.append("Complete package also delivered: construction drawings UK + EN (structure GO-01…09, electrical EL, water & drainage WS, "
                        f"heating HT) and detailed cost estimate UK + EN — total {p.get('_devis_ttc', 0):,.0f} UAH incl. VAT 20 % (the dossier figure above "
                        "covers structure, envelope and heat pump only; the detailed estimate is the complete figure).")
-        return _ret(o, res, {"cidade": c["chave"], "zona": c["zona"], "theta_e": c["theta_e"], "phi_kw": round(r.get("phi_w", 0) / 1000, 2),
+        out_ = _ret(o, res, {"cidade": c["chave"], "zona": c["zona"], "theta_e": c["theta_e"], "phi_kw": round(r.get("phi_w", 0) / 1000, 2),
                              "q_kwh_m2": round(r.get("q_kwh_m2", 0), 1), "envolvente_conforme": all(e["ok"] for e in r["elementos"]),
                              "custo_com_pdv_uah": round(o["orcamento"]["com_pdv"]) if o.get("orcamento") else None},
                     extra=[("Dossier-EN", oen["titre"], oen["pdf"])] + extra_pac)
+        return out_
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")
