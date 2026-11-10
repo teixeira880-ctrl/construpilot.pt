@@ -205,6 +205,11 @@ def write_xlsx(path, m, r: dict, tim: dict, e: dict, p: dict, lines: list[dict],
                         c.value = tr(c.value, lang)
             ws.title = tr(ws.title, lang)[:31]
     wb.save(path)
+    try:                                  # totais visíveis em qualquer pré-visualização
+        from engines.xlsx_cache import preencher as _preencher_xlsx
+        _preencher_xlsx(path)
+    except Exception:  # noqa: BLE001 — o Excel recalcula ao abrir
+        pass
 
 
 def _build_xlsx(m, r: dict, tim: dict, e: dict, p: dict, lines: list[dict]):

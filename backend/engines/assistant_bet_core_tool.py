@@ -221,6 +221,22 @@ def _make_pt_doc_loader(allowed_doc_fn: AllowedDocFn) -> Callable[..., Awaitable
 # Entrypoint do Assistente
 # ---------------------------------------------------------------------------
 
+_CLT_UA_HIP = "Estudo CLT (madeira maciça Rezult CLT). Orçamento com os preços da Ucrânia. Documentos em ucraniano e inglês."
+
+
+def conta_clt_ua(user: dict, name: str, args: dict) -> dict:
+    """Conta CLT Rezult (10/11/2026, Martinho): QUALQUER plano novo sai sempre no modelo premium do caso Ucrânia —
+    estudo CLT, preços da Ucrânia, peças em ucraniano + inglês — mesmo que o projeto seja francês ou português."""
+    try:
+        from engines.calc_live import CLT_EMAILS
+    except Exception:  # noqa: BLE001
+        return args
+    if name != "generate_full_bet_study" or (user.get("email") or "").strip().lower() not in CLT_EMAILS:
+        return args
+    hip = (args or {}).get("hypotheses") or ""
+    return {**(args or {}), "country": "UA", "hypotheses": (hip + " " + _CLT_UA_HIP).strip() if _CLT_UA_HIP not in hip else hip}
+
+
 async def run_bet_core_tool(
     name: str,
     args: dict,
@@ -241,6 +257,7 @@ async def run_bet_core_tool(
             "status": "falhou",
         }
     doc_loader = _make_pt_doc_loader(allowed_doc_fn)
+    args = conta_clt_ua(user, name, args)
     result = await _bet_core_execute(
         name,
         args,

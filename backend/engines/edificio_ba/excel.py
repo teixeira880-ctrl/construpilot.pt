@@ -247,4 +247,9 @@ def build(S, R, Q, O, path):
             res.cell(row=r, column=3, value=u).font = TXT
         r += 1
     wb.save(path)
+    try:                                  # totais visíveis em qualquer pré-visualização
+        from engines.xlsx_cache import preencher as _preencher_xlsx
+        _preencher_xlsx(path)
+    except Exception:  # noqa: BLE001 — o Excel recalcula ao abrir
+        pass
     return path

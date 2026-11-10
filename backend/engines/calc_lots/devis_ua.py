@@ -388,3 +388,8 @@ def xlsx(dv: dict, path: str, lg: str, projeto: str):
     s2.column_dimensions["B"].width = 120
     s2.column_dimensions["C"].width = 80
     wb.save(path)
+    try:                                  # totais visíveis em qualquer pré-visualização
+        from engines.xlsx_cache import preencher as _preencher_xlsx
+        _preencher_xlsx(path)
+    except Exception:  # noqa: BLE001 — o Excel recalcula ao abrir
+        pass
