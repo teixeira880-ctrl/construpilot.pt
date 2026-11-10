@@ -196,7 +196,21 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                 "resposta": "Encontrei um impedimento sério antes de desenhar a casa: " + " ".join(bloqueios)}
 
     # 4. terreno e topografia
-    ter = T.construir_terreno(geo, via, cad, p.get("area_terreno_m2"), p.get("frente_m"))
+    parcela_user = None
+    if p.get("parcela_latlon"):
+        parcela_user = T.anel_utilizador(p["parcela_latlon"], p.get("frente_idx"))
+        if not parcela_user:
+            return {"ok": False, "estado": "parcela_invalida", "etapas": etapas,
+                    "motivo": "Os limites desenhados no mapa não formam um terreno válido (linhas cruzadas ou área demasiado pequena).",
+                    "perguntas": ["Pode acertar os pontos da parcela no mapa para que os limites não se cruzem?"]}
+    ter = T.construir_terreno(geo, via, cad, p.get("area_terreno_m2"), p.get("frente_m"), parcela_user=parcela_user)
+    centro = None
+    cc = p.get("casa_centro_latlon")
+    if isinstance(cc, (list, tuple)) and len(cc) == 2:
+        try:
+            centro = ter["_ref"].para_local(*ter["_local"].xy(float(cc[0]), float(cc[1])))
+        except (TypeError, ValueError):
+            centro = None
     pressupostos += ter["pressupostos"]
     pts = T.grelha_pontos(ter, 9)
     el = await G.elevacoes([(q[2], q[3]) for q in pts])
@@ -242,7 +256,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
             r["plantas"] = pl
             return True, ""
         await RT.programa(prog, np_, gar_, lug_)
-        res = I.implantar(ter, topo, prog, alv, validar=validar)
+        res = I.implantar(ter, topo, prog, alv, validar=validar, centro=centro)
         await RT.variante(np_, gar_, lug_, res)
         if res["ok"]:
             if (np_, gar_, lug_) != variantes[0]:
@@ -251,6 +265,12 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                                        else " sem garagem (estacionamento no logradouro)") + ".")
             break
         motivos.append(res.get("motivo"))
+        if res.get("posicao_invalida"):      # posição escolhida no mapa: nunca encolher a casa às escondidas
+            await passo("projeto", "falhou", res["motivo"])
+            return {"ok": False, "estado": "posicao_invalida", "motivo": res["motivo"], "pressupostos": pressupostos,
+                    "etapas": etapas, "fontes": fontes,
+                    "perguntas": ["Arraste a casa para dentro da zona amarela tracejada (onde se pode construir) ou use "
+                                  "«Posicionar automaticamente»."]}
     if not res or not res["ok"]:
         await passo("projeto", "falhou", motivos[-1] if motivos else "")
         return {"ok": False, "estado": "nao_cabe", "motivo": motivos[-1] if motivos else "", "pressupostos": pressupostos,

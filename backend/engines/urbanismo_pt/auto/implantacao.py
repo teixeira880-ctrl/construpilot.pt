@@ -39,9 +39,32 @@ def alvos(pdm: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return {"valores": out, "origem": origem}
 
 
+def _motivo_posicao(parcel: Polygon, grupo: Polygon, sf: float, sl: float, sr: float, plot_maxy: float) -> str:
+    """Explica em linguagem simples porque é que a posição escolhida pelo requerente não cumpre."""
+    if not parcel.buffer(1e-6).contains(grupo):
+        return "A casa escolhida sai fora dos limites do terreno."
+    minx, miny, maxx, maxy = grupo.bounds
+    p0, p1 = parcel.bounds[1], plot_maxy
+    falhas = []
+    if miny - p0 < sf - 1e-6:
+        falhas.append(f"fica a {_pt(miny - p0)} m da frente (mínimo {_pt(sf)} m)")
+    if p1 - maxy < sr - 1e-6:
+        falhas.append(f"fica a {_pt(p1 - maxy)} m do tardoz (mínimo {_pt(sr)} m)")
+    d_lat = parcel.exterior.distance(grupo)
+    if d_lat < sl - 1e-6 and not falhas:
+        falhas.append(f"fica a {_pt(d_lat)} m de um limite lateral (mínimo {_pt(sl)} m)")
+    return ("Na posição escolhida a casa " + " e ".join(falhas) + ".") if falhas else \
+        "Na posição escolhida a casa não respeita os afastamentos."
+
+
 def implantar(ter: Dict[str, Any], topo: Optional[Dict[str, Any]], prog: Dict[str, Any],
-              alv: Dict[str, Any], validar=None) -> Dict[str, Any]:
-    """`validar(resultado) -> (ok, motivo)`: p. ex. as plantas dos pisos; se falhar, tenta a proporção seguinte."""
+              alv: Dict[str, Any], validar=None, centro: Optional[tuple] = None) -> Dict[str, Any]:
+    """`validar(resultado) -> (ok, motivo)`: p. ex. as plantas dos pisos; se falhar, tenta a proporção seguinte.
+
+    `centro` (x, y no referencial da frente): posição escolhida pelo requerente no mapa para o centro do conjunto
+    casa + garagem. A casa mantém-se alinhada com a via (como nas peças desenhadas); se a posição não cumprir os
+    afastamentos, o motor diz exatamente porquê em vez de a mover às escondidas.
+    """
     a = alv["valores"]
     sf, sl, sr = a["afastamento_frontal_min_m"], a["afastamento_lateral_min_m"], a["afastamento_tardoz_min_m"]
     parcel = Polygon(ter["poligono_m"])
@@ -88,22 +111,40 @@ def implantar(ter: Dict[str, Any], topo: Optional[Dict[str, Any]], prog: Dict[st
             if impl / area_ter * 100 > io_max + 1e-6 or constr / area_ter > iu_max + 1e-6:
                 tentativas.append(f"{n_pisos} piso(s), {L:.1f}×{W:.1f} m: excede Io/Iu alvo")
                 continue
-            # posição em y (frente/tardoz)
-            folga_y = (zy1 - zy0) - max(W, gw)
-            y0 = zy0 if fachada_sol == "tardoz" else zy0 + min(6.0, folga_y * 0.5)
-            # posição em x: grupo casa + garagem centrado na zona edificável
-            folga_x = (zx1 - zx0) - largura
-            gx0 = zx0 + folga_x / 2
-            if gar and lado_garagem == "esquerda":
-                g_rect = (gx0, y0, gx0 + gl, y0 + gw)
-                h_rect = (gx0 + gl, y0, gx0 + gl + L, y0 + W)
+            if centro:   # posição escolhida pelo requerente
+                gx0, y0 = centro[0] - largura / 2, centro[1] - max(W, gw) / 2
             else:
-                h_rect = (gx0, y0, gx0 + L, y0 + W)
-                g_rect = (gx0 + L, y0, gx0 + L + gl, y0 + gw) if gar else None
-            casa_ok = zona.buffer(1e-6).contains(box(*h_rect))
-            gar_ok = (not gar) or zona.buffer(1e-6).contains(box(*g_rect))
+                # posição em y (frente/tardoz)
+                folga_y = (zy1 - zy0) - max(W, gw)
+                y0 = zy0 if fachada_sol == "tardoz" else zy0 + min(6.0, folga_y * 0.5)
+                # posição em x: grupo casa + garagem centrado na zona edificável
+                folga_x = (zx1 - zx0) - largura
+                gx0 = zx0 + folga_x / 2
+            h_rect, g_rect = _rects(gx0, y0, L, W, gl, gw, gar, lado_garagem)
+            casa_ok, gar_ok = _cabe(zona, h_rect, g_rect, gar)
+            if not (casa_ok and gar_ok) and not centro:
+                # terreno irregular (em L, trapézio…): a posição mais próxima da preferida que cabe na zona edificável
+                melhor = None
+                passo = 0.5
+                nx, ny = int((zx1 - zx0) / passo) + 1, int((zy1 - zy0) / passo) + 1
+                for j in range(ny):
+                    for i in range(nx):
+                        cx0, cy0 = zx0 + i * passo, zy0 + j * passo
+                        dist = abs(cy0 - y0) * 1.5 + abs(cx0 - gx0)
+                        if melhor and dist >= melhor[0]:
+                            continue
+                        hr, gr = _rects(cx0, cy0, L, W, gl, gw, gar, lado_garagem)
+                        if all(_cabe(zona, hr, gr, gar)):
+                            melhor = (dist, hr, gr)
+                if melhor:
+                    h_rect, g_rect = melhor[1], melhor[2]
+                    casa_ok = gar_ok = True
             if not (casa_ok and gar_ok):
-                tentativas.append(f"{n_pisos} piso(s), {L:.1f}×{W:.1f} m: forma do terreno não permite")
+                if centro:
+                    grupo = box(*h_rect) if not gar else box(*h_rect).union(box(*g_rect))
+                    tentativas.append(_motivo_posicao(parcel, grupo, sf, sl, sr, maxy))
+                else:
+                    tentativas.append(f"{n_pisos} piso(s), {L:.1f}×{W:.1f} m: forma do terreno não permite")
                 continue
             if n_pisos > a["n_pisos_max"]:
                 continue
@@ -113,7 +154,8 @@ def implantar(ter: Dict[str, Any], topo: Optional[Dict[str, Any]], prog: Dict[st
                 f"Moradia com {_pt(L)} m de frente × {_pt(W)} m de fundo, em {n_pisos} {'piso' if n_pisos == 1 else 'pisos'}.",
                 f"Sala e quartos voltados para o {_rumo(az[fachada_sol])} (fachada de {'tardoz' if fachada_sol == 'tardoz' else 'frente'}), "
                 "a melhor exposição solar do terreno.",
-                ("Casa encostada ao afastamento frontal: acesso curto e jardim grande a tardoz, do lado do sol."
+                ("Posição da casa escolhida pelo requerente no mapa, verificada contra os afastamentos." if centro else
+                 "Casa encostada ao afastamento frontal: acesso curto e jardim grande a tardoz, do lado do sol."
                  if fachada_sol == "tardoz" else "Casa recuada para criar um jardim frontal soalheiro."),
             ]
             if gar:
@@ -143,8 +185,22 @@ def implantar(ter: Dict[str, Any], topo: Optional[Dict[str, Any]], prog: Dict[st
                     decisoes[:] = []
                     continue
             return res
+    pos = [t for t in tentativas if t.startswith(("Na posição", "A casa escolhida"))]
+    if centro and pos:
+        return {"ok": False, "motivo": pos[0], "posicao_invalida": True, "tentativas": tentativas[:8]}
     return {"ok": False, "motivo": "Não foi possível implantar a casa pedida neste terreno com os afastamentos e índices "
                                    "aplicáveis. Reduza a tipologia ou retire a garagem.", "tentativas": tentativas[:8]}
+
+
+def _rects(gx0, y0, L, W, gl, gw, gar, lado_garagem):
+    if gar and lado_garagem == "esquerda":
+        return (gx0 + gl, y0, gx0 + gl + L, y0 + W), (gx0, y0, gx0 + gl, y0 + gw)
+    return (gx0, y0, gx0 + L, y0 + W), ((gx0 + L, y0, gx0 + L + gl, y0 + gw) if gar else None)
+
+
+def _cabe(zona, h_rect, g_rect, gar):
+    z = zona.buffer(1e-6)
+    return z.contains(box(*h_rect)), (not gar) or z.contains(box(*g_rect))
 
 
 def _pt(v: float) -> str:

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import Casa3D from "@/components/licenciamento/Casa3D";
+import ImplantacaoMapa from "@/components/licenciamento/ImplantacaoMapa";
 
 const ETAPA_LABEL = {
   localizar: "Localizar a morada", dados_oficiais: "Ler PDM, servidões, cadastro e ortofotomapa (DGT)",
@@ -201,6 +202,14 @@ function Processo({ pid }) {
           </div>
         </Card>
       </div>
+      <Card className="p-0 overflow-hidden">
+        <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2">
+          <div className="font-medium flex items-center gap-2"><MapPin className="h-4 w-4" />Implantação no terreno real</div>
+          <span className="text-xs text-muted-foreground">Ortofotomapa oficial · arraste a casa · linhas vermelhas = afastamento em falta</span>
+        </div>
+        <ImplantacaoMapa pid={pid} auto={a} onAplicado={carregar} />
+      </Card>
+
       {render && (
         <Card className="p-3"><img src={render} alt="Imagem fotorrealista da moradia" className="w-full rounded" />
           <p className="text-xs text-muted-foreground mt-2">Imagem ilustrativa gerada sobre a vista 3D exata; as medidas de referência são as das peças desenhadas.</p></Card>

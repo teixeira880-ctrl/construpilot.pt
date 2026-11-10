@@ -7,6 +7,8 @@ POST /urbanismo-auto/processos/{pid}/refazer   respostas às perguntas (área, t
 PATCH /urbanismo-auto/processos/{pid}/materiais  fachada / cobertura / caixilharia (3D, memória, render)
 GET  /urbanismo-auto/processos/{pid}/modelo3d    geometria exata para o visualizador 3D
 POST /urbanismo-auto/processos/{pid}/render      imagem fotorrealista a partir da vista 3D (mesmas medidas)
+POST /urbanismo-auto/zona             zona edificável de uma parcela desenhada no mapa (mesma regra do motor)
+GET  /urbanismo-auto/processos/{pid}/streetview.jpg  fotografia real da rua virada para o terreno (Street View)
 GET  /urbanismo-auto/processos/{pid}/desenhos/{n}.png · pecas-desenhadas.pdf · export.zip
 """
 from __future__ import annotations
@@ -16,7 +18,7 @@ import base64
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
@@ -65,6 +67,11 @@ class PedidoIn(BaseModel):
     descricao_predial: Optional[str] = Field(default=None, max_length=80)
     requerente: Optional[RequerenteIn] = None
     forcar_estudo: Optional[bool] = None
+    # editor de implantação (mapa): limites da parcela [[lat, lon], …], limite da frente e centro da casa [lat, lon];
+    # casa_centro_latlon = [] repõe a posição automática
+    parcela_latlon: Optional[List[List[float]]] = Field(default=None, max_length=200)
+    frente_idx: Optional[int] = Field(default=None, ge=0, le=199)
+    casa_centro_latlon: Optional[List[float]] = Field(default=None, max_length=2)
 
 
 class MateriaisIn(BaseModel):
@@ -249,6 +256,66 @@ async def render(pid: str, body: RenderIn, user=Depends(current_user)) -> dict:
     data, mime = imgs[0]
     return {"ok": True, "imagem_b64": base64.b64encode(data).decode(), "mime": mime,
             "nota": "Imagem ilustrativa gerada sobre a vista 3D exata; as medidas de referência são as das peças desenhadas."}
+
+
+class ZonaIn(BaseModel):
+    parcela_latlon: List[List[float]] = Field(min_length=3, max_length=200)
+    frente_idx: int = Field(default=0, ge=0, le=199)
+    frontal_m: float = Field(default=5.0, ge=0, le=50)
+    lateral_m: float = Field(default=3.0, ge=0, le=50)
+    tardoz_m: float = Field(default=6.0, ge=0, le=50)
+
+
+@router.post("/zona")
+async def zona(body: ZonaIn, user=Depends(current_user)) -> dict:
+    """Zona onde se pode construir (a mesma regra do motor de implantação), para desenhar no mapa."""
+    from shapely.geometry import Polygon, box
+    from engines.urbanismo_pt.auto import terreno as T
+    pu = T.anel_utilizador(body.parcela_latlon, body.frente_idx)
+    if not pu:
+        raise HTTPException(422, "Os limites do terreno cruzam-se ou a área é demasiado pequena.")
+    la0, lo0 = pu["anel_latlon"][0]
+    ter = T.construir_terreno({"lat": la0, "lon": lo0}, None, None, parcela_user=pu)
+    parcel = Polygon(ter["poligono_m"])
+    minx, miny, maxx, maxy = parcel.bounds
+    z = parcel.buffer(-body.lateral_m, join_style=2).intersection(
+        box(minx - 1, miny + body.frontal_m, maxx + 1, maxy - body.tardoz_m))
+    ref, loc = ter["_ref"], ter["_local"]
+    aneis = []
+    for g in (getattr(z, "geoms", None) or [z]):
+        if g.is_empty or g.geom_type != "Polygon":
+            continue
+        aneis.append([list(loc.ll(*ref.para_en(x, y))) for x, y in list(g.exterior.coords)[:-1]])
+    return {"zona_latlon": aneis, "area_m2": round(z.area, 1), "area_terreno_m2": ter["area_m2"]}
+
+
+@router.get("/processos/{pid}/streetview.jpg")
+async def streetview(pid: str, user=Depends(current_user)):
+    """Fotografia real da rua virada para o terreno (Google Street View Static API, imagem oficial do Google)."""
+    import math
+    import os
+    from engines.urbanismo_pt.auto import geo as G
+    d = await _owned(pid, user["user_id"])
+    key = (os.environ.get("GOOGLE_MAPS_API_KEY") or "").strip()
+    pts = (d["auto"].get("terreno") or {}).get("poligono_latlon") or []
+    if not key or not pts:
+        raise HTTPException(404, "Fotografia de rua indisponível (serviço do Google não configurado).")
+    lat = sum(p[0] for p in pts) / len(pts)
+    lon = sum(p[1] for p in pts) / len(pts)
+    st, meta = await G._fetch("GET", f"{G.GMAPS}/streetview/metadata",
+                              {"location": f"{lat},{lon}", "radius": 120, "source": "outdoor", "key": key}, None, "json")
+    if not meta or meta.get("status") != "OK":
+        raise HTTPException(404, "Não há fotografias de rua do Google junto a este terreno.")
+    plat, plon = meta["location"]["lat"], meta["location"]["lng"]
+    dy, dx = lat - plat, (lon - plon) * math.cos(math.radians(lat))
+    heading = (math.degrees(math.atan2(dx, dy)) + 360.0) % 360.0
+    st, img = await G._fetch("GET", f"{G.GMAPS}/streetview", {"size": "640x400", "pano": meta["pano_id"], "heading": f"{heading:.0f}",
+                                                              "fov": 80, "pitch": 2, "key": key}, None, "bytes")
+    if not img or img[:2] != b"\xff\xd8":
+        raise HTTPException(502, "O Google não devolveu a fotografia de rua.")
+    return Response(content=img, media_type="image/jpeg",
+                    headers={"Cache-Control": "private, max-age=86400", "X-Streetview-Data": str(meta.get("date") or ""),
+                             "X-Streetview-Copyright": str(meta.get("copyright") or "© Google")})
 
 
 @router.get("/processos/{pid}/desenhos/{n}.png")
