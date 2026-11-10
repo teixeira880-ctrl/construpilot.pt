@@ -57,14 +57,26 @@ def interpretar_pedido(texto: str) -> Dict[str, Any]:
         found = re.findall(rgx, t, re.I)
         if found:
             out[k] = " ".join(found)
-    m = re.search(r"(\d[\d .]*)\s*m(?:²|2|etros quadrados)", t, re.I)
-    if m:
+    # áreas: «casa de 200 m2 num terreno de 1500 m2» → casa 200, terreno 1500 (pelo contexto de cada número)
+    soltas = []
+    for m in re.finditer(r"(\d[\d .]*?)\s*m(?:²|2\b|etros quadrados)", t, re.I):
         try:
-            out["area_terreno_m2"] = float(m.group(1).replace(" ", "").replace(".", ""))
+            v = float(m.group(1).replace(" ", "").replace(".", ""))
         except ValueError:
-            pass
+            continue
+        antes, depois = t[max(0, m.start() - 48):m.start()].lower(), t[m.end():m.end() + 24].lower()
+        lig = r"(?:\s+[\wçãõáéíóúâêô]+){0,3}?\s+(?:de|com|tem|:)\s+(?:cerca de\s+|aprox\w*\s+|±\s*)?$"
+        if re.search(r"(?:terreno|lote|parcela|quintal|propriedade)" + lig, antes) or re.match(r"\s*(?:de\s+)?(?:terreno|lote)", depois):
+            out.setdefault("area_terreno_m2", v)
+        elif re.search(r"(?:casa|moradia|habita\w*|constru\w*|vivenda|edif\w*|[áa]rea bruta|[áa]rea [úu]til)" + lig, antes) \
+                or re.match(r"\s*(?:de\s+)?(?:constru|[áa]rea bruta|habita|casa)", depois):
+            out.setdefault("area_casa_m2", v)
+        else:
+            soltas.append(v)
+    if soltas and "area_terreno_m2" not in out:          # número sem contexto: como antes, é a área do terreno
+        out["area_terreno_m2"] = soltas[0]
     # morada: depois de «na/no/em» até ao fim (sem «município de»)
-    m = re.search(r"\b(?:na|no|em|sito em|situad[oa] em)\s+((?:rua|avenida|av\.|travessa|largo|estrada|caminho|lugar|praça|"
+    m = re.search(r"\b(?:na|no|em|sito em|situad[oa] em|endere[çc]o:?|morada:?)\s+((?:rua|avenida|av\.|travessa|largo|estrada|caminho|lugar|praça|"
                   r"urbaniza[çc][ãa]o|quinta)\b.+)$", t, re.I)
     if m:
         out["morada"] = re.sub(r"\s+", " ", m.group(1)).strip(" .")
@@ -229,10 +241,17 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     pressupostos.append("Parâmetros numéricos do PDM não disponíveis em dados abertos: a casa foi desenhada com alvos prudentes "
                         "(implantação ≤ 30 % do terreno, índice ≤ 0,60, fachada ≤ 6,5 m, 2 pisos, afastamentos 5 / 3 / 6 m) "
                         "— a confirmar no regulamento do PDM.")
-    tip = p.get("tipologia") or "T3"
-    if not p.get("tipologia"):
-        pressupostos.append("Tipologia não indicada: assumiu-se T3 (sala, cozinha, 3 quartos com uma suite).")
     pisos_pref = p.get("pisos")
+    try:
+        area_casa = float(p.get("area_casa_m2") or 0) or None
+    except (TypeError, ValueError):
+        area_casa = None
+    if area_casa:
+        area_casa = max(35.0, min(area_casa, 600.0))
+    tip = p.get("tipologia") or (f"T{PG.tipologia_para_area(area_casa, pisos_pref or 2)}" if area_casa else "T3")
+    if not p.get("tipologia"):
+        pressupostos.append(f"Tipologia não indicada: assumiu-se {tip} (a que melhor aproveita os {area_casa:.0f} m² pedidos)." if area_casa
+                            else "Tipologia não indicada: assumiu-se T3 (sala, cozinha, 3 quartos com uma suite).")
     garagem = _bool(p.get("garagem"), True)
     if p.get("garagem") in (None, ""):
         pressupostos.append("Garagem não indicada: previu-se garagem para 2 carros.")
@@ -242,10 +261,23 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         variantes.append((2, garagem, lugares))
     if garagem:
         variantes += [(2, True, 1), (2, False, 0)]
+    # com área pedida: primeiro mantém pisos e garagem e reduz a casa (90 %, 80 %); depois as outras variantes à área
+    # pedida; por fim reduz mais (70 %, 60 %) até ao mínimo do RGEU. Sem área pedida: só as variantes, como antes.
+    # Se ainda não couber, desce a tipologia (menos quartos) nas mesmas áreas reduzidas.
+    if area_casa:
+        t0 = int(str(tip).upper().lstrip("T") or 3)
+        tentativas_prog = [(variantes[0], f, tip) for f in (1.0, 0.9, 0.8)] + [(v, 1.0, tip) for v in variantes[1:]] \
+            + [(v, f, tip) for f in (0.7, 0.6) for v in variantes] \
+            + [(v, f, f"T{t2}") for t2 in range(t0 - 1, 0, -1) for f in (0.8, 0.6, 0.45) for v in variantes]
+    else:
+        tentativas_prog = [(v, None, tip) for v in variantes]
     res = prog = None
     motivos = []
-    for (np_, gar_, lug_) in variantes:
-        prog = PG.programa(tip, np_, gar_, lug_, escritorio=_bool(p.get("escritorio"), False))
+    for ((np_, gar_, lug_), fator, tip_) in tentativas_prog:
+        alvo = area_casa * fator if area_casa and fator else None
+        prog = PG.programa(tip_, np_, gar_, lug_, escritorio=_bool(p.get("escritorio"), False), area_alvo_m2=alvo)
+        if alvo and prog.get("limitado_pelo_rgeu") and fator < 1.0:
+            continue                                      # abaixo do mínimo regulamentar: não vale a pena reduzir mais
 
         def validar(r, prog=prog):
             pl = PL.distribuir(r["volume"], prog, r["fachada_sol"], r["lado_garagem"])
@@ -259,6 +291,15 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         res = I.implantar(ter, topo, prog, alv, validar=validar, centro=centro)
         await RT.variante(np_, gar_, lug_, res)
         if res["ok"]:
+            if area_casa:
+                if fator and fator < 1.0 or tip_ != tip:
+                    pressupostos.append(f"A casa pedida ({area_casa:.0f} m²) não cabe no terreno com os afastamentos e índices: "
+                                        f"foi reduzida automaticamente para {prog['area_bruta_total_m2']:.0f} m² "
+                                        f"({prog['area_bruta_total_m2'] / area_casa * 100:.0f} % do pedido)"
+                                        + (f", passando de {tip} a {tip_}." if tip_ != tip else ", com as mesmas divisões."))
+                else:
+                    pressupostos.append(f"Área da casa pedida respeitada: {prog['area_bruta_total_m2']:.0f} m² de área bruta "
+                                        "(sem a garagem), compartimentos dimensionados à medida.")
             if (np_, gar_, lug_) != variantes[0]:
                 pressupostos.append(f"Para caber no terreno com os afastamentos, passou-se a {np_} {'piso' if np_ == 1 else 'pisos'}"
                                     + ((f" e garagem para {lug_} {'carro' if lug_ == 1 else 'carros'}") if gar_

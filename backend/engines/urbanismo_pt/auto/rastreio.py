@@ -127,7 +127,9 @@ async def programa(prog: Dict[str, Any], np_: int, gar_: bool, lug_: int) -> Non
              resultado=n(prog.get("area_bruta_total_m2"), 1, "m²"),
              valores={"compartimentos": len(prog.get("compartimentos") or []),
                       "área bruta por piso": n(prog.get("area_bruta_por_piso_m2"), 1, "m²"),
-                      "mínimo RGEU": n(prog.get("minimo_area_bruta_m2"), 1, "m²")},
+                      "mínimo RGEU": n(prog.get("minimo_area_bruta_m2"), 1, "m²"),
+                      "área pedida (alvo desta tentativa)": n(prog.get("area_alvo_m2"), 1, "m²") if prog.get("area_alvo_m2") else None,
+                      "fator aplicado às áreas de conforto": n(prog.get("escala_areas"), 3) if prog.get("escala_areas") else None},
              norma=prog.get("fonte_minimos"))
     if prog.get("minimo_area_bruta_m2"):
         await ev("verificacao", "Área bruta ≥ mínimo do RGEU para a tipologia", ok=prog["area_bruta_total_m2"] >= prog["minimo_area_bruta_m2"],

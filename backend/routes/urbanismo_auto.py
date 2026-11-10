@@ -62,6 +62,7 @@ class PedidoIn(BaseModel):
     cobertura: Optional[str] = Field(default=None, max_length=40)
     caixilharia: Optional[str] = Field(default=None, max_length=40)
     area_terreno_m2: Optional[float] = Field(default=None, gt=20, le=200_000)
+    area_casa_m2: Optional[float] = Field(default=None, gt=20, le=2_000)
     frente_m: Optional[float] = Field(default=None, gt=3, le=500)
     artigo_matricial: Optional[str] = Field(default=None, max_length=80)
     descricao_predial: Optional[str] = Field(default=None, max_length=80)

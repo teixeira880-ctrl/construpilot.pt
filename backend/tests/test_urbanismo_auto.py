@@ -486,3 +486,29 @@ def test_rua_em_freguesia_vizinha_unica_no_concelho():
     r = _geo(t, "Rua Nova de Santa Cruz 10, São Vicente, Braga")
     assert r["ok"] and r["data"]["rua"] == "Rua Nova de Santa Cruz" and r["data"]["freguesia_motivo"] == "vizinha"
     assert r["data"]["freguesia"] == "Braga (São Vítor)" and r["data"]["distancia_freguesia_m"] < 3000
+
+
+def test_area_da_casa_e_do_terreno_lidas_pelo_contexto():
+    d = P.interpretar_pedido("quero uma casa de 200m2 num terreno de 1500m2 térrea endereço rua 25 de abril Barbudo 4730-062 Vila Verde")
+    assert d["area_casa_m2"] == 200 and d["area_terreno_m2"] == 1500 and d["pisos"] == 1
+    assert d["morada"].lower().startswith("rua 25 de abril")
+    d = P.interpretar_pedido("moradia térrea com cerca de 180 m², lote de 900 m2, na Rua Y 2, Porto")
+    assert d["area_casa_m2"] == 180 and d["area_terreno_m2"] == 900
+    d = P.interpretar_pedido("terreno com 800 m2, moradia T3 na Rua X 3, Braga")
+    assert d["area_terreno_m2"] == 800 and "area_casa_m2" not in d
+
+
+def test_area_pedida_respeitada_quando_cabe():
+    r = run({"texto": "casa de 200m2 num terreno de 1500m2 térrea na rua do monte nº7 padim da graça municipio de braga"})
+    assert r["ok"] and r["coerencia"]["ok"]
+    a = r["processo"]["auto"]["programa"]
+    assert a["n_pisos"] == 1 and abs(a["area_bruta_total_m2"] - 200) <= 2
+    assert any("Área da casa pedida respeitada" in x for x in r["pressupostos"])
+
+
+def test_casa_grande_demais_e_reduzida_automaticamente():
+    r = run({"texto": "casa de 200m2 num terreno de 600m2 térrea na rua do monte nº7 padim da graça municipio de braga"})
+    assert r["ok"] and r["coerencia"]["ok"]
+    a = r["processo"]["auto"]["programa"]
+    assert a["area_bruta_total_m2"] < 200
+    assert any("reduzida automaticamente" in x for x in r["pressupostos"])

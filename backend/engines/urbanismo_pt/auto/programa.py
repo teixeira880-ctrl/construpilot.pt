@@ -35,15 +35,52 @@ def _int(v, d, lo, hi):
     return max(lo, min(hi, x))
 
 
+ESCALAVEIS = {"entrada", "sala", "cozinha", "quarto", "wc", "lavandaria", "escritorio"}   # escada e I.S. social ficam fixas
+
+
+def tipologia_para_area(area_m2: float, n_pisos: int = 1) -> int:
+    """Maior tipologia (T1…T5) cuja área de conforto cabe em 90 % da área pedida: os compartimentos ficam um pouco
+    maiores que o conforto, nunca apertados (200 m² térrea → T4; 200 m² em 2 pisos → T3)."""
+    cabe = [t for t in range(1, 6) if _programa(t, n_pisos, False, 0)["area_bruta_total_m2"] <= area_m2 * 0.9]
+    return max(cabe) if cabe else 1
+
+
 def programa(tipologia: Any = 3, pisos: Any = None, garagem: Any = True, lugares: Any = 2,
-             escritorio: bool = False) -> Dict[str, Any]:
-    """Lista de compartimentos por piso, com área útil de projeto e mínimo regulamentar."""
+             escritorio: bool = False, area_alvo_m2: Optional[float] = None) -> Dict[str, Any]:
+    """Lista de compartimentos por piso, com área útil de projeto e mínimo regulamentar.
+
+    `area_alvo_m2` (área bruta da habitação pedida, sem garagem): as áreas de conforto dos compartimentos são escaladas
+    pelo mesmo fator até a área bruta total bater com o pedido — nunca abaixo do mínimo do RGEU de cada compartimento."""
+    base = _programa(tipologia, pisos, garagem, lugares, escritorio)
+    if not area_alvo_m2 or area_alvo_m2 <= 0:
+        return base
+    alvo = float(area_alvo_m2)
+    lo, hi = 0.3, 3.0
+    out = base
+    for _ in range(40):                       # bissecção no fator de escala (a área é monótona no fator)
+        k = (lo + hi) / 2
+        out = _programa(tipologia, pisos, garagem, lugares, escritorio, escala=k)
+        if out["area_bruta_total_m2"] < alvo:
+            lo = k
+        else:
+            hi = k
+    out = _programa(tipologia, pisos, garagem, lugares, escritorio, escala=hi)
+    out["area_alvo_m2"] = round(alvo, 1)
+    out["escala_areas"] = round(hi, 3)
+    out["limitado_pelo_rgeu"] = out["area_bruta_total_m2"] > alvo * 1.02
+    return out
+
+
+def _programa(tipologia: Any = 3, pisos: Any = None, garagem: Any = True, lugares: Any = 2,
+              escritorio: bool = False, escala: float = 1.0) -> Dict[str, Any]:
     t = _int(str(tipologia).upper().lstrip("T") if tipologia is not None else 3, 3, 0, 6)
     n_pisos = _int(pisos, 2, 1, 2) if pisos not in (None, "") else 2
     quartos = max(t, 1) if t else 0
     rooms: List[Dict[str, Any]] = []
 
     def add(nome, tipo, area, piso, fila, minimo=None):
+        if tipo in ESCALAVEIS and escala != 1.0:
+            area = max(area * escala, minimo or 0.0, 2.0)
         rooms.append({"nome": nome, "tipo": tipo, "area_projeto_m2": round(area, 1), "piso": piso, "fila": fila,
                       "minimo_m2": minimo})
 
