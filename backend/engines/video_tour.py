@@ -30,7 +30,7 @@ FRAME_DURATION_S = 5.0
 # Ken Burns zoom factor (1.0 = no zoom, 1.25 = zoom to 125% at end)
 ZOOM_END = 1.20
 # Output resolution
-OUT_W, OUT_H = 1280, 720
+OUT_W, OUT_H = 1920, 1080           # Full HD (todas as contas)
 # Frames per second
 FPS = 30
 
@@ -113,7 +113,7 @@ def build_video_tour(image_b64_list: list[str], styles: list[str] | None = None,
                 "-t", str(FRAME_DURATION_S),
                 "-vf", _kenburns_filter(direction),
                 "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                "-preset", "veryfast", "-crf", "23",
+                "-preset", "veryfast", "-crf", "20",
                 str(clip),
             ]
             try:
@@ -241,7 +241,7 @@ def _concat_and_finalize(*, ffmpeg: str, clip_paths: list[Path], out_path: Path,
     cmd += audio_map
     cmd += [
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-preset", "veryfast", "-crf", "23",
+        "-preset", "veryfast", "-crf", "20",
         "-movflags", "+faststart",
         str(out_path),
     ]

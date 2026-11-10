@@ -4,6 +4,7 @@ Refactor iter53 : extrait de `routes/plans.py`.
 """
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import secrets
@@ -127,13 +128,26 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
     if not api_key:
         raise HTTPException(500, "EMERGENT_LLM_KEY em falta")
 
-    prompt = _build_render_prompt(style, include_furniture, rooms,
-                                    ai_analysis or {}, extra_prompt)
+    from engines.image_hd import hd_prompt, sharpen_b64
+    from engines.image_studio import GEMINI_IMAGE_MODEL
+    prompt = hd_prompt(_build_render_prompt(style, include_furniture, rooms,
+                                            ai_analysis or {}, extra_prompt))
+    try:                                                 # motores de estúdio primeiro (GPT Image 2, Nano Banana Pro, Gen-4)
+        from engines import photoreal as PR
+        res = await PR.render(base64.b64decode(page_img_b64), prompt, feature="plan_3d_image", timeout=100,
+                              session_id=f"render3d_{plan_id}_{page_index}_{style}",
+                              engines=[m for m in PR._order() if m != "emergent"],
+                              head="@model is the 2D architectural plan to visualise: respect its exact layout, walls, "
+                                   "openings and proportions. ")
+        if res:
+            return base64.b64encode(res[0]).decode(), "image/jpeg", prompt
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"photoreal studio engines failed: {e}")
     try:
         chat = (LlmChat(api_key=api_key, expense_feature="plan_3d_image",
                         session_id=f"render3d_{plan_id}_{page_index}_{style}",
                         system_message="You are an architectural visualization AI.")
-                .with_model("gemini", "gemini-2.5-flash-image"))
+                .with_model("gemini", GEMINI_IMAGE_MODEL).with_params(modalities=["image", "text"]))
         message = UserMessage(text=prompt,
                               file_contents=[ImageContent(image_base64=page_img_b64)])
         _text_out, images = await chat.send_message_multimodal_response(message)
@@ -144,7 +158,9 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
     if not images:
         raise HTTPException(502,
             "O modelo não devolveu nenhuma imagem (experimente outro estilo).")
-    return images[0].get("data"), images[0].get("mime_type", "image/png"), prompt
+    import asyncio
+    b64, mime = await asyncio.to_thread(sharpen_b64, images[0].get("data"), images[0].get("mime_type", "image/png"))
+    return b64, mime, prompt
 
 
 @router.post("/{plan_id}/render-3d")

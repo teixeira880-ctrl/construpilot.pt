@@ -23,7 +23,12 @@ OPENAI_IMAGE_MODEL = "gpt-image-1"
 
 
 async def generate(*, prompt: str, provider: str = "openai", reference_images: list[bytes] | None = None,
-                   number: int = 1, feature: str = "image_studio", session_id: str = "studio") -> list[tuple[bytes, str]]:
+                   number: int = 1, feature: str = "image_studio", session_id: str = "studio",
+                   hd: bool = True) -> list[tuple[bytes, str]]:
+    """`hd` (por defeito, todas as contas): instrução de alta definição + ampliação 4K nítida (engines.image_hd)."""
+    from engines import image_hd
+    if hd:
+        prompt = image_hd.hd_prompt(prompt)
     api_key = os.getenv("EMERGENT_LLM_KEY")
     if not api_key:
         raise HTTPException(500, "EMERGENT_LLM_KEY em falta")
@@ -60,6 +65,9 @@ async def generate(*, prompt: str, provider: str = "openai", reference_images: l
 
     if not out:
         raise HTTPException(502, "O modelo não devolveu nenhuma imagem. Reformule o pedido.")
+    if hd:
+        import asyncio
+        out = [await asyncio.to_thread(image_hd.sharpen, b, m) for b, m in out]
     return out
 
 
