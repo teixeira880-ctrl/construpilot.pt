@@ -631,8 +631,8 @@ _VISTA_IA = {"principal": "main", "terraco": "side_main", "aerea": "aerial"}
 LOOP = None          # loop asyncio do servidor (definido pelo assistant_bridge): as chamadas IA correm nele (cliente Mongo / métricas)
 
 
-def _leve(img: bytes, lado: int = 2560) -> bytes:
-    """Foto IA (até 4K) → JPEG ≤ 2560 px, q 90: nítida no PDF sem o tornar pesado."""
+def _leve(img: bytes, lado: int = 3840) -> bytes:
+    """Foto IA → JPEG 4K (≤ 3840 px), q 90: nítida no PDF sem o tornar demasiado pesado."""
     import io
     from PIL import Image
     im = Image.open(io.BytesIO(img)).convert("RGB")
@@ -677,7 +677,7 @@ def _fotorrealismo(base: list) -> list:
 
 def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None, so_cache: bool = False):
     """Imagens realistas da casa a partir do modelo dos planos, em 2 passos rápidos:
-      1) render geométrico (Mitsuba, 1280 × 720, poucas amostras: segundos) — volumes, vãos e câmara exatos ;
+      1) render geométrico (Mitsuba, 1920 × 1080 Full HD, 24 amostras) — volumes, vãos e câmara exatos ;
       2) fotorrealismo por IA sobre esse render (engines.photoreal, 4K), geometria bloqueada no prompt.
     Tetos de tempo em cada passo (processo à parte / CP_PHOTO_HARD) e cache em disco (mesmo modelo → imediato).
     Qualquer falha → o dossier sai sempre (com o render geométrico, ou sem renders). `so_cache` : só a cache, ou None."""
@@ -687,10 +687,10 @@ def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura
     import os
     import pickle
     import tempfile
-    largura = largura or int(os.environ.get("CP_RENDER_W", 1280))
+    largura = largura or int(os.environ.get("CP_RENDER_W", 1920))
     altura = altura or int(largura * 9 / 16)
-    spp = spp or int(os.environ.get("CP_RENDER_SPP", 12))
-    budget = float(os.environ.get("CP_RENDER_BUDGET", 60))
+    spp = spp or int(os.environ.get("CP_RENDER_SPP", 24))
+    budget = float(os.environ.get("CP_RENDER_BUDGET", 90))
     ia = os.environ.get("CP_RENDER_IA", "1") != "0"
     chave = hashlib.sha256(json.dumps([modelo, opcoes or {}, largura, altura, spp, ia], sort_keys=True, default=str).encode()).hexdigest()[:24]
     cache = os.path.join(os.environ.get("CP_RENDER_CACHE") or os.path.join(tempfile.gettempdir(), "cp_render_cache"), chave + ".pkl")
