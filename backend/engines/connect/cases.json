@@ -1,0 +1,58 @@
+{
+  "description": "Casos de paridade entre recommend.py (servidor) e engine.js (offline). Os dois testes leem este ficheiro.",
+  "cases": [
+    {
+      "name": "Teste 1 — Pintor: orçamentos e quantidades",
+      "answers": {"activity": "painting", "volume": {"quotes_per_month": "q16_40"}, "pains": ["p_quote_slow", "p_quantities"],
+                  "deep": {"tools": "excel", "b_time": "h1_3"}, "urgency": "d30", "decision": "decide"},
+      "expect": {"primary_case": "B", "demo": "demo_painting", "track": "painting",
+                 "capabilities": ["cap_quote", "cap_price_library", "cap_takeoff", "cap_quantities"],
+                 "process_current": "excel", "process_with": "with", "quotes_per_month": 25, "hours_per_quote": 2}
+    },
+    {
+      "name": "Teste 2 — Arquiteto: medições e documentação",
+      "answers": {"activity": "architect", "volume": {"projects_parallel": "p3_5"}, "pains": ["p_measure", "p_docs_scattered"],
+                  "deep": {"a_formats": ["pdf", "dwg"], "a_main_issue": "handover"}, "urgency": "m3", "decision": "evaluate"},
+      "expect": {"primary_case": "A", "demo": "demo_takeoff", "track": null,
+                 "capabilities": ["cap_takeoff", "cap_quantities", "cap_plan_ai", "cap_documents", "cap_sites"],
+                 "process_current": null, "process_with": "with", "quotes_per_month": null, "hours_per_quote": null}
+    },
+    {
+      "name": "Teste 3 — Construtora: obras, margens e faturação",
+      "answers": {"activity": "construction_company", "volume": {"quotes_per_month": "q6_15"}, "pains": ["p_multi_sites", "p_margins", "p_billing"],
+                  "deep": {"d_sites": "s6_15", "c_compare": "hard"}, "urgency": "immediate", "decision": "decide"},
+      "expect": {"primary_case": "D", "demo": "demo_documents", "track": null,
+                 "capabilities": ["cap_sites", "cap_site_costs", "cap_documents", "cap_margin", "cap_quote"],
+                 "process_current": null, "process_with": "with_tracking", "quotes_per_month": 10, "hours_per_quote": null}
+    },
+    {
+      "name": "Exemplo da missão — empreiteiro com Excel, orçamentos lentos e margens",
+      "answers": {"activity": "general_contractor", "volume": {"quotes_per_month": "q6_15"}, "pains": ["p_quote_slow", "p_margins"],
+                  "deep": {"tools": "excel", "b_time": "h3_8"}, "extra": {"team_size": "t2_10"}, "urgency": "d30", "decision": "decide"},
+      "expect": {"primary_case": "B", "demo": "demo_quote", "track": null,
+                 "capabilities": ["cap_quote", "cap_price_library", "cap_takeoff", "cap_margin", "cap_site_costs"],
+                 "process_current": "excel", "process_with": "with", "quotes_per_month": 10, "hours_per_quote": 5}
+    },
+    {
+      "name": "Particular a explorar",
+      "answers": {"activity": "homeowner", "pains": ["p_quantities"], "deep": {"tools": "none"}, "urgency": "exploring", "decision": "personal"},
+      "expect": {"primary_case": "A", "demo": "demo_takeoff", "track": null,
+                 "capabilities": ["cap_quantities", "cap_takeoff"],
+                 "process_current": "none", "process_with": "with", "quotes_per_month": null, "hours_per_quote": null}
+    },
+    {
+      "name": "Outro problema em texto livre",
+      "answers": {"activity": "other", "pains": ["p_other"], "other_text": "Gestão de garantias", "urgency": "m3", "decision": "evaluate"},
+      "expect": {"primary_case": "GENERAL", "demo": "demo_quote", "track": null,
+                 "capabilities": ["cap_takeoff", "cap_quote", "cap_margin"],
+                 "process_current": null, "process_with": "with", "quotes_per_month": null, "hours_per_quote": null, "needs_human_review": true}
+    },
+    {
+      "name": "Eletricista com faturação",
+      "answers": {"activity": "electrical", "volume": {"quotes_per_month": "q40p"}, "pains": ["p_billing"], "deep": {"e_link": "no"}, "urgency": "d30", "decision": "decide"},
+      "expect": {"primary_case": "E", "demo": "demo_billing", "track": "electrical",
+                 "capabilities": ["cap_progress_claims", "cap_invoices", "cap_site_costs"],
+                 "process_current": null, "process_with": "with_billing", "quotes_per_month": 50, "hours_per_quote": null}
+    }
+  ]
+}

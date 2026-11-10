@@ -185,6 +185,7 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2 text-sm">
             <a href="/admin/pedidos" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-all">Todos os pedidos</a>
             <a href="/admin/contactos" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-contactos">Contactos</a>
+            <a href="/admin/connect" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-commercial-hub">Commercial Hub (/connect)</a>
             <a href="/admin/orcamentos" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-orcamentos">Orçamentos</a>
             <a href="/admin/autorizacoes" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-autorizacoes">Autorizações</a>
             <a href="/admin/ia" className="px-3 py-1.5 rounded border hover:bg-accent" data-testid="quick-pedidos-ia">Chats IA</a>

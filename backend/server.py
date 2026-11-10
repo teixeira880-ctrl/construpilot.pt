@@ -125,6 +125,8 @@ from plans_pro.routes import router as plans_pro_router  # noqa: E402
 api_router.include_router(plans_pro_router)
 api_router.include_router(ai_routes.router)
 api_router.include_router(leads.router)
+from routes import connect as connect_routes  # noqa: E402  (Discovery Engine /connect — só construpilot.pt, feature flag CONNECT_ENABLED)
+api_router.include_router(connect_routes.router)
 api_router.include_router(autorizacao_obras_routes.router)
 api_router.include_router(autorizacao_obras_routes.router_publico)
 api_router.include_router(autorizacao_obras_routes.router_admin)
