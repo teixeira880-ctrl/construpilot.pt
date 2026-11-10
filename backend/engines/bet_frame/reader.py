@@ -281,7 +281,16 @@ def _auto_grid(raw: dict, ref: dict) -> bool:
 
 async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR", llm=None, decide_alone: bool = False,
                      building_type: str = "immeuble_collectif", max_fix: int = 2, engine: str = "frame") -> dict:
-    """engine = "clt" : même relevé de trame, contrôlé par le moteur bois massif (bet_clt) au lieu du moteur BA."""
+    """engine = "clt" : même relevé de trame, contrôlé par le moteur bois massif (bet_clt) au lieu du moteur BA.
+    Prazo total da leitura por IA: o mesmo do bet_core (BET_READ_BUDGET_S)."""
+    tok = R.abrir_prazo()
+    try:
+        return await _read_frame(docs, hypotheses, country, llm, decide_alone, building_type, max_fix, engine)
+    finally:
+        R.fechar_prazo(tok)
+
+
+async def _read_frame(docs, hypotheses, country, llm, decide_alone, building_type, max_fix, engine) -> dict:
     llm = llm or R._default_llm
     pages, by_doc = [], {}
     for name, data in docs:
@@ -347,7 +356,7 @@ async def read_frame(docs: list[tuple[str, bytes]], hypotheses: str = "", countr
         except Exception as exc:  # noqa: BLE001
             anomalies = [{"code": "JSON", "level": model.BLOCK, "message": f"JSON illisible : {exc}"}]
         blocking = [a for a in anomalies if a.get("level") == model.BLOCK]
-        if not blocking or attempts > max_fix:
+        if not blocking or attempts > max_fix or not R.ha_tempo():    # prazo total da leitura (bet_core.reader)
             break
         fix = (base + "\n\nTON RELEVÉ PRÉCÉDENT :\n" + (json.dumps(raw, ensure_ascii=False) if raw else txt[:20000]) +
                "\n\nCONTRÔLES DÉTERMINISTES — ANOMALIES BLOQUANTES :\n" +

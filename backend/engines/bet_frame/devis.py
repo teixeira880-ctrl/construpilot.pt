@@ -176,3 +176,8 @@ def write_xlsx(path, m: Frame, lines: list[dict]):
         r_[1].alignment = Alignment(wrap_text=True)
     ws.freeze_panes = "A5"
     wb.save(str(path))
+    try:                                  # totais visíveis em qualquer pré-visualização
+        from engines.xlsx_cache import preencher as _preencher_xlsx
+        _preencher_xlsx(str(path))
+    except Exception:  # noqa: BLE001 — o Excel recalcula ao abrir
+        pass

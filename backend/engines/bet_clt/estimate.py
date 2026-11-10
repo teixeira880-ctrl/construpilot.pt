@@ -394,4 +394,9 @@ def write_xlsx(path, m, e: dict):
     ws2.column_dimensions["B"].width = 110
     ws.freeze_panes = "A5"
     wb.save(str(path))
+    try:                                  # totais visíveis em qualquer pré-visualização
+        from engines.xlsx_cache import preencher as _preencher_xlsx
+        _preencher_xlsx(str(path))
+    except Exception:  # noqa: BLE001 — o Excel recalcula ao abrir
+        pass
     return path

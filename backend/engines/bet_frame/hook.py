@@ -251,6 +251,8 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
     except Exception:  # noqa: BLE001
         wanted = None
     extra = await _doc_langs(db, uid)
+    if not extra and str(country).upper() == "UA":   # Ucrânia: sempre ucraniano + inglês (como o pacote Home A)
+        extra = ["uk", "en"]
     main = extra[0] if extra else pick_lang(country, wanted if country == "FR" else None)
     await step("Calculs CLT (EN 1995), plans, devis et contrôle", model=raw, pages=rd["pages"])
     with tempfile.TemporaryDirectory() as tmp:
