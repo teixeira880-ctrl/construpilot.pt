@@ -138,3 +138,35 @@ _EN = {
 _UK.update({'Coberturas sem sobrecarga indicada: ': 'Покриття без заданого корисного навантаження: ', ' kN/m² (EN 1991-1-1, categoria H — não acessível, ψ2 = 0)': ' кН/м² (EN 1991-1-1, категорія H — неексплуатоване, ψ2 = 0)', 'Terraços sem sobrecarga indicada: ': 'Експлуатовані покрівлі (тераси) без заданого навантаження: ', ' kN/m² (EN 1991-1-1, categoria I — acessível, uso habitacional, ψ2 = 0,3)': ' кН/м² (EN 1991-1-1, категорія I — експлуатована, житлове призначення, ψ2 = 0,3)', 'Coberturas: a neve condiciona a sobrecarga (não combinada com a sobrecarga de utilização, EN 1991-1-1 §3.3.2)': 'Покриття: визначальне навантаження — сніг (не поєднується з корисним навантаженням на покрівлю, EN 1991-1-1 §3.3.2)', 'Neve na cobertura: ': 'Сніг на покритті: ', ' kN/m² (valor de cálculo do local)': ' кН/м² (розрахункове значення для місця будівництва)'})
 _EN.update({'Coberturas sem sobrecarga indicada: ': 'Roofs without a specified imposed load: ', ' kN/m² (EN 1991-1-1, categoria H — não acessível, ψ2 = 0)': ' kN/m² (EN 1991-1-1, category H — not accessible, ψ2 = 0)', 'Terraços sem sobrecarga indicada: ': 'Roof terraces without a specified load: ', ' kN/m² (EN 1991-1-1, categoria I — acessível, uso habitacional, ψ2 = 0,3)': ' kN/m² (EN 1991-1-1, category I — accessible, residential use, ψ2 = 0.3)', 'Coberturas: a neve condiciona a sobrecarga (não combinada com a sobrecarga de utilização, EN 1991-1-1 §3.3.2)': 'Roofs: snow governs (not combined with the roof imposed load, EN 1991-1-1 §3.3.2)', 'Neve na cobertura: ': 'Snow on roof: ', ' kN/m² (valor de cálculo do local)': ' kN/m² (design value for the site)'})
 TRADUCOES = {"uk": _UK, "en": _EN}
+
+# coupes GO-04 (09/11/2026)
+_UK.update({
+    'Terreno natural / aterro': 'Природний ґрунт / зворотна засипка',
+    'Terreno natural': 'Природний ґрунт',
+    'Parede CLT ': 'Стіна CLT ',
+    'Muro BA ': 'З/б стіна ',
+    'Laje BA ': 'З/б плита ',
+    ' camadas': ' шарів',
+    'Composição dos elementos cortados': 'Склад перерізаних елементів',
+    'Legenda': 'Умовні позначення',
+    'Betão armado': 'Залізобетон',
+    'Painel CLT (camadas cruzadas)': 'Панель CLT (перехресні шари)',
+    'Madeira lamelada-colada / estrutura': "Клеєна деревина / дерев'яні несучі елементи",
+    'Isolamento térmico': 'Теплоізоляція',
+    'Cotas em mm, níveis em m (absolutos, ±0,000 = pavimento acabado do rés-do-chão). Composições CLT: camadas longitudinais claras, transversais escuras. Muros enterrados com impermeabilização e isolamento pelo exterior.': 'Розміри в мм, позначки в м (абсолютні, ±0,000 = чиста підлога першого поверху). Склад CLT: поздовжні шари світлі, поперечні темні. Підземні стіни з гідроізоляцією та утепленням зовні.',
+})
+_EN.update({
+    'Terreno natural / aterro': 'Natural ground / backfill',
+    'Terreno natural': 'Natural ground',
+    'Parede CLT ': 'CLT wall ',
+    'Muro BA ': 'RC wall ',
+    'Laje BA ': 'RC slab ',
+    ' camadas': ' layers',
+    'Composição dos elementos cortados': 'Build-up of the elements cut',
+    'Legenda': 'Legend',
+    'Betão armado': 'Reinforced concrete',
+    'Painel CLT (camadas cruzadas)': 'CLT panel (cross layers)',
+    'Madeira lamelada-colada / estrutura': 'Glulam / structural timber',
+    'Isolamento térmico': 'Thermal insulation',
+    'Cotas em mm, níveis em m (absolutos, ±0,000 = pavimento acabado do rés-do-chão). Composições CLT: camadas longitudinais claras, transversais escuras. Muros enterrados com impermeabilização e isolamento pelo exterior.': 'Dimensions in mm, levels in m (absolute, ±0.000 = finished ground-floor level). CLT build-ups: longitudinal layers light, cross layers dark. Buried walls waterproofed and insulated on the outside.',
+})
