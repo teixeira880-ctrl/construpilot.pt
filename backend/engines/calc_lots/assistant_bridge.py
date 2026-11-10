@@ -47,6 +47,8 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
         return {"ok": True, "artifact": {k: old.get(k) for k in ("artifact_id", "title", "filename", "format", "mime", "size", "download")},
                 "resume": old.get("body", "")}
     try:
+        from . import ucrania as _ua
+        _ua.LOOP = asyncio.get_running_loop()               # renders realistas: as chamadas IA correm no loop do servidor
         out = await asyncio.to_thread(run, name, args)
     except (ValueError, KeyError, TypeError) as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:400]}

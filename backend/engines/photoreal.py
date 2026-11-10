@@ -1,12 +1,12 @@
 """Rendu photoréaliste « niveau studio » à partir d'une image de référence géométrique (rendu calculé du projet).
 
 Cascade de moteurs (le premier qui répond gagne ; la géométrie de la référence est verrouillée dans chaque prompt) :
-  1. GPT Image 2 (OpenAI) via Runway — 3840×2160 natif, qualité « high » ;
-  2. Gemini 3 Pro Image (Nano Banana Pro) via Runway — 2752×1536 ;
+  1. GPT Image 2 (OpenAI) via Runway — 2560×1440, qualité « high » (agrandi en 4K par image_hd : plus rapide) ;
+  2. Gemini 3 Pro Image (Nano Banana Pro) via Runway — 1344×768 ;
   3. Runway Gen-4 Image — 1920×1080 ;
   4. Nano Banana 3.1 via la clé universelle Emergent (engines.image_studio).
 L'ordre se règle par la variable PHOTOREAL_MODELS (ex. "gpt_image_2,gemini_image3_pro,gen4_image,emergent").
-Chaque image retenue passe par engines.image_hd (4K affiné). Aucune exception ne remonte : None si tout échoue.
+Chaque image retenue passe par engines.image_hd (Full HD affiné, PHOTOREAL_LONG). Aucune exception ne remonte : None si tout échoue.
 """
 from __future__ import annotations
 
@@ -18,8 +18,9 @@ import os
 
 log = logging.getLogger(__name__)
 
-DEFAULT_ORDER = "gpt_image_2,gemini_image3_pro,gen4_image,emergent"
-RATIO = {"gpt_image_2": "3840:2160", "gemini_image3_pro": "2752:1536", "gen4_image": "1920:1080"}
+DEFAULT_ORDER = "emergent,gemini_image3_pro,gpt_image_2,gen4_image"     # Nano Banana 3.1 primeiro (~15 s), GPT Image 2 é lento (~2 min)
+RATIO = {"gpt_image_2": "1920:1088", "gemini_image3_pro": "1344:768", "gen4_image": "1920:1080"}  # menores resoluções 16:9 de cada motor
+LONG_SIDE = int(os.environ.get("PHOTOREAL_LONG", 1920))      # Full HD : rápido e nítido no PDF
 PROMPT_MAX = {"gen4_image": 1000}
 
 
@@ -117,7 +118,7 @@ async def render(base: bytes, prompt: str, *, style_ref: bytes | None = None, ti
             data = await asyncio.wait_for(_runway(model, _tagged(prompt, bool(style_ref), head), refs, timeout), timeout + 30)
             if data:
                 await _meter(model, feature, session_id)
-                hd, _ = await asyncio.to_thread(image_hd.sharpen, data, "image/png")
+                hd, _ = await asyncio.to_thread(image_hd.sharpen, data, "image/png", long_side=LONG_SIDE)
                 return hd, model
         except Exception as exc:  # noqa: BLE001 — on passe au moteur suivant
             log.warning("photoreal %s failed: %s", model, str(exc)[:200])
