@@ -1715,9 +1715,15 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
                          max_output_tokens=max_out, instructions=instructions, tools=available, first_inputs=first_inputs, steps=trace_steps, reply_chars=len(msg["content"]))
         yield {"type": "done", "message": msg}
     except Exception as exc:
-        if should_failover(exc) and fallback_available() and not reply.strip():
-            rec = await mark_openai_degraded(exc)
-            conv["_fallback_reason"] = rec["reason"]
+        # Repli automatique sur TOUTE erreur OpenAI sans réponse produite (pas seulement crédits / débit) :
+        # Claude, puis Gemini en dernier recours — l'utilisateur ne voit jamais « momentaneamente indisponível ».
+        if fallback_available() and not reply.strip():
+            logger.warning("OpenAI turn failed (%s: %s) — fallback Claude", type(exc).__name__, str(exc)[:300])
+            if should_failover(exc):
+                rec = await mark_openai_degraded(exc)
+                conv["_fallback_reason"] = rec["reason"]
+            else:
+                conv["_fallback_reason"] = f"OpenAI indisponível ({type(exc).__name__}) — recurso ao Claude"
             async for ev in run_chat_claude(body, user, conv, plans, instructions, inputs, available, settings, status_map, _tool_turn, _now, account_type):
                 yield ev
             return
