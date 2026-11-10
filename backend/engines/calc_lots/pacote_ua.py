@@ -25,6 +25,19 @@ def carregar(caso: str) -> dict:
     return json.load(open(fn, encoding="utf-8"))
 
 
+def renders_fixos(caso: str) -> list | None:
+    """Fotos realistas já validadas do caso (casos/<caso>_renders/principal|terraco|aerea.jpg) → entrega imediata, sem
+    render nem IA no momento do pedido. None se a pasta não existir ou estiver incompleta."""
+    pasta = os.path.join(CASOS, f"{caso}_renders")
+    out = []
+    for nome in ("principal", "terraco", "aerea"):
+        fn = next((os.path.join(pasta, nome + ext) for ext in (".jpg", ".png") if os.path.exists(os.path.join(pasta, nome + ext))), None)
+        if not fn:
+            return None
+        out.append((nome, open(fn, "rb").read()))
+    return out
+
+
 def parametros(caso: str) -> dict:
     """Parâmetros de calcul_ucrania para o caso (geometria lida nos planos)."""
     c = carregar(caso)
