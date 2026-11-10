@@ -4,6 +4,7 @@ Refactor iter53 : extrait de `routes/plans.py`.
 """
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import secrets
@@ -131,6 +132,17 @@ async def _gemini_render_3d(*, plan_id: str, page_index: int, page_img_b64: str,
     from engines.image_studio import GEMINI_IMAGE_MODEL
     prompt = hd_prompt(_build_render_prompt(style, include_furniture, rooms,
                                             ai_analysis or {}, extra_prompt))
+    try:                                                 # motores de estúdio primeiro (GPT Image 2, Nano Banana Pro, Gen-4)
+        from engines import photoreal as PR
+        res = await PR.render(base64.b64decode(page_img_b64), prompt, feature="plan_3d_image", timeout=100,
+                              session_id=f"render3d_{plan_id}_{page_index}_{style}",
+                              engines=[m for m in PR._order() if m != "emergent"],
+                              head="@model is the 2D architectural plan to visualise: respect its exact layout, walls, "
+                                   "openings and proportions. ")
+        if res:
+            return base64.b64encode(res[0]).decode(), "image/jpeg", prompt
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"photoreal studio engines failed: {e}")
     try:
         chat = (LlmChat(api_key=api_key, expense_feature="plan_3d_image",
                         session_id=f"render3d_{plan_id}_{page_index}_{style}",
