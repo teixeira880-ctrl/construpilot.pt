@@ -564,19 +564,35 @@ def dossiers(p: dict) -> dict:
     return {lg: note(dict(p, lingua=lg)) for lg in ("uk", "en")}
 
 
+VISTAS_PADRAO = [("principal", (0.55, -0.84), 1.55, 1.05), ("terraco", (-0.62, 0.78), 1.55, 1.05), ("aerea", (0.70, -0.70), None, 1.25)]
+
+
 def _render_proc(args, destino):
-    """Processo filho: render Mitsuba → pickle em `destino`."""
+    """Processo filho: uma vista de cada vez (mesma qualidade fotorrealista, path tracing) ; cada vista terminada é gravada
+    logo em `destino`, para que um teto de tempo nunca faça perder as vistas já prontas. Se a 1.ª vista demorar muito, as
+    seguintes descem de resolução (o realismo — amostras, materiais, luz — mantém-se)."""
     import pickle
+    import time
     from . import render3d
     modelo, opcoes, largura, altura, spp, budget = args
-    out = render3d.render(modelo, opcoes, largura, altura, spp, orcamento_s=budget)
-    with open(destino, "wb") as fh:
-        pickle.dump(out, fh)
+    vistas = (opcoes or {}).get("vistas") or VISTAS_PADRAO
+    out, t0 = [], time.time()
+    for n, v in enumerate(vistas):
+        if n and budget and time.time() - t0 > budget:
+            break                                           # orçamento esgotado: entrega as vistas já prontas
+        if n == 1 and time.time() - t0 > budget / 3:       # máquina lenta: vistas seguintes em 1280 × 720
+            largura, altura = min(largura, 1280), min(altura, 720)
+        t1 = time.time()
+        out += render3d.render(modelo, dict(opcoes or {}, vistas=[v]), largura, altura, spp)
+        with open(destino + ".tmp", "wb") as fh:
+            pickle.dump(out, fh)
+        import os
+        os.replace(destino + ".tmp", destino)
 
 
 def _render_isolado(modelo, opcoes, largura, altura, spp, budget, hard):
     """Render num processo separado (spawn) com teto de tempo: se o motor de render encravar ou demorar demasiado, o
-    processo é terminado e o dossier sai sem renders — o cálculo nunca fica parado."""
+    processo é terminado e o dossier sai com as vistas já prontas (ou sem renders) — o cálculo nunca fica parado."""
     import multiprocessing as mp
     import os
     import pickle
@@ -595,34 +611,88 @@ def _render_isolado(modelo, opcoes, largura, altura, spp, budget, hard):
             pr.join(5)
             if pr.is_alive():
                 pr.kill()
-            raise TimeoutError(f"render 3D > {hard:.0f} s — dossier sem renders")
-        if pr.exitcode != 0 or os.path.getsize(destino) == 0:
-            raise RuntimeError(f"processo de render terminou com código {pr.exitcode}")
-        with open(destino, "rb") as fh:
-            return pickle.load(fh)
-    finally:
         try:
-            os.unlink(destino)
-        except OSError:
-            pass
+            with open(destino, "rb") as fh:
+                out = pickle.load(fh)
+        except Exception:  # noqa: BLE001 — ficheiro vazio: nenhuma vista terminou
+            out = []
+        if not out:
+            raise TimeoutError(f"render 3D sem nenhuma vista em {hard:.0f} s (código {pr.exitcode})")
+        return out
+    finally:
+        for f in (destino, destino + ".tmp"):
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
+
+
+_VISTA_IA = {"principal": "main", "terraco": "side_main", "aerea": "aerial"}
+LOOP = None          # loop asyncio do servidor (definido pelo assistant_bridge): as chamadas IA correm nele (cliente Mongo / métricas)
+
+
+def _leve(img: bytes, lado: int = 2560) -> bytes:
+    """Foto IA (até 4K) → JPEG ≤ 2560 px, q 90: nítida no PDF sem o tornar pesado."""
+    import io
+    from PIL import Image
+    im = Image.open(io.BytesIO(img)).convert("RGB")
+    im.thumbnail((lado, lado), Image.LANCZOS)
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=90, optimize=True, progressive=True)
+    return b.getvalue()
+
+
+def _fotorrealismo(base: list) -> list:
+    """Passa cada vista geométrica (render rápido, geometria exata dos planos) a fotografia realista por IA —
+    GPT Image 2 (4K) / Nano Banana Pro / Runway Gen-4 / Nano Banana 3.1 (engines.photoreal). A vista principal primeiro,
+    as outras alinham-se com ela (mesmos materiais e luz). Vista sem resposta da IA → fica o render geométrico."""
+    import asyncio
+    import logging
+    import os
+    teto = float(os.environ.get("CP_PHOTO_HARD", 200))
+
+    async def _todas():
+        from engines import photoreal as PR
+        from engines.bet_clt.premium import MATCH_HINT, PHOTO_PROMPT, VIEW_HINT
+
+        async def uma(nome, png, ref):
+            k = _VISTA_IA.get(nome, "main")
+            prompt = PHOTO_PROMPT + VIEW_HINT.get(k, "") + (MATCH_HINT if ref else "")
+            r = await PR.render(png, prompt, style_ref=ref, timeout=120, feature="ua_render", session_id="calcul_ucrania")
+            return r[0] if r else None
+        principal = await uma(base[0][0], base[0][1], None)
+        outras = await asyncio.gather(*(uma(n, p, principal) for n, p in base[1:]))
+        return [principal] + list(outras)
+    try:
+        if LOOP is not None and LOOP.is_running():
+            fotos = asyncio.run_coroutine_threadsafe(asyncio.wait_for(_todas(), teto), LOOP).result(teto + 10)
+        else:
+            fotos = asyncio.run(asyncio.wait_for(_todas(), teto))
+        fotos = [_leve(f) if f else None for f in fotos]
+    except Exception as exc:  # noqa: BLE001 — a IA embeleza, nunca bloqueia: fica o render geométrico
+        logging.getLogger(__name__).warning("fotorrealismo IA indisponível: %s", exc)
+        return base
+    return [(n, f or p) for (n, p), f in zip(base, fotos)]
 
 
 def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None, so_cache: bool = False):
-    """Render 3D fotorrealista a partir do modelo dos planos (sempre que há modelo estrutural).
-    `so_cache` : devolve só o render já em cache, ou None (sem calcular).
-    Produção: 1920 × 1080 (Full HD), 32 amostras, orçamento de tempo CP_RENDER_BUDGET (80 s; a 1.ª vista é sempre feita) e cache em disco
-    (mesmo modelo → resultado imediato). Qualquer falha do motor de render → lista vazia: o dossier sai sempre."""
+    """Imagens realistas da casa a partir do modelo dos planos, em 2 passos rápidos:
+      1) render geométrico (Mitsuba, 1280 × 720, poucas amostras: segundos) — volumes, vãos e câmara exatos ;
+      2) fotorrealismo por IA sobre esse render (engines.photoreal, 4K), geometria bloqueada no prompt.
+    Tetos de tempo em cada passo (processo à parte / CP_PHOTO_HARD) e cache em disco (mesmo modelo → imediato).
+    Qualquer falha → o dossier sai sempre (com o render geométrico, ou sem renders). `so_cache` : só a cache, ou None."""
     import hashlib
     import json
     import logging
     import os
     import pickle
     import tempfile
-    largura = largura or int(os.environ.get("CP_RENDER_W", 1920))
+    largura = largura or int(os.environ.get("CP_RENDER_W", 1280))
     altura = altura or int(largura * 9 / 16)
-    spp = spp or int(os.environ.get("CP_RENDER_SPP", 32))
-    budget = float(os.environ.get("CP_RENDER_BUDGET", 80))
-    chave = hashlib.sha256(json.dumps([modelo, opcoes or {}, largura, altura, spp], sort_keys=True, default=str).encode()).hexdigest()[:24]
+    spp = spp or int(os.environ.get("CP_RENDER_SPP", 12))
+    budget = float(os.environ.get("CP_RENDER_BUDGET", 60))
+    ia = os.environ.get("CP_RENDER_IA", "1") != "0"
+    chave = hashlib.sha256(json.dumps([modelo, opcoes or {}, largura, altura, spp, ia], sort_keys=True, default=str).encode()).hexdigest()[:24]
     cache = os.path.join(os.environ.get("CP_RENDER_CACHE") or os.path.join(tempfile.gettempdir(), "cp_render_cache"), chave + ".pkl")
     try:
         if os.path.exists(cache):
@@ -631,15 +701,21 @@ def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura
         pass
     if so_cache:
         return None
-    hard = float(os.environ.get("CP_RENDER_HARD", 240))        # teto: acima disto o dossier sai sem renders, o estudo nunca fica parado        # teto absoluto: o render corre num processo à parte, morto se exceder
+    hard = float(os.environ.get("CP_RENDER_HARD", 120))        # teto do render geométrico (processo à parte, morto se exceder)
     try:
         out = _render_isolado(modelo, opcoes or {}, largura, altura, spp, budget, hard)
     except Exception as exc:  # noqa: BLE001 — o render nunca pode impedir o dossier
         logging.getLogger(__name__).warning("render 3D indisponível: %s", exc)
         return []
+    completo = len(out) >= len((opcoes or {}).get("vistas") or VISTAS_PADRAO)
+    if ia:
+        out2 = _fotorrealismo(out)
+        completo = completo and any(a[1] is not b[1] for a, b in zip(out2, out))   # só fica em cache se a IA respondeu
+        out = out2
     try:
-        os.makedirs(os.path.dirname(cache), exist_ok=True)
-        pickle.dump(out, open(cache, "wb"))
+        if completo:
+            os.makedirs(os.path.dirname(cache), exist_ok=True)
+            pickle.dump(out, open(cache, "wb"))
     except Exception:  # noqa: BLE001
         pass
     return out
