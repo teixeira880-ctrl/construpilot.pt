@@ -30,7 +30,7 @@ def test_cascade_falls_through(monkeypatch):
     monkeypatch.setenv("PHOTOREAL_MODELS", "gpt_image_2,gemini_image3_pro,gen4_image")
     data, eng = asyncio.run(PR.render(_img(), "A house.", style_ref=_img()))
     assert eng == "gen4_image" and [c[0] for c in calls] == ["gpt_image_2", "gemini_image3_pro", "gen4_image"]
-    assert calls[0][2] == ["model", "style"] and Image.open(io.BytesIO(data)).size[0] == 3840
+    assert calls[0][2] == ["model", "style"] and Image.open(io.BytesIO(data)).size[0] == 1920
 
 
 def test_all_fail_none(monkeypatch):

@@ -17,7 +17,7 @@ if __name__ == "__main__":
     p = pacote_ua.parametros("home_a_rezult_kyiv")
     m = gros_oeuvre.calcular(copy.deepcopy(p["modelo_estrutural"]))["modelo"]
     t = time.time()
-    base = ucrania._render_isolado(m, p.get("render_opcoes") or {}, 1920, 1080, 24, 90, 240)
+    base = ucrania._render_isolado(m, p.get("render_opcoes") or {}, 1280, 720, 24, 90, 240)
     print("render geometrico", len(base), "vistas", round(time.time() - t, 1), "s")
     for n, b in base:
         open(os.path.join(pasta, f"base_{n}.png"), "wb").write(b)

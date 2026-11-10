@@ -631,14 +631,14 @@ _VISTA_IA = {"principal": "main", "terraco": "side_main", "aerea": "aerial"}
 LOOP = None          # loop asyncio do servidor (definido pelo assistant_bridge): as chamadas IA correm nele (cliente Mongo / métricas)
 
 
-def _leve(img: bytes, lado: int = 3840) -> bytes:
-    """Foto IA → JPEG 4K (≤ 3840 px), q 90: nítida no PDF sem o tornar demasiado pesado."""
+def _leve(img: bytes, lado: int = 1920) -> bytes:
+    """Foto IA → JPEG Full HD (≤ 1920 px), q 92."""
     import io
     from PIL import Image
     im = Image.open(io.BytesIO(img)).convert("RGB")
     im.thumbnail((lado, lado), Image.LANCZOS)
     b = io.BytesIO()
-    im.save(b, "JPEG", quality=90, optimize=True, progressive=True)
+    im.save(b, "JPEG", quality=92, optimize=True, progressive=True)
     return b.getvalue()
 
 
@@ -649,7 +649,7 @@ def _fotorrealismo(base: list) -> list:
     import asyncio
     import logging
     import os
-    teto = float(os.environ.get("CP_PHOTO_HARD", 200))
+    teto = float(os.environ.get("CP_PHOTO_HARD", 120))
 
     async def _todas():
         from engines import photoreal as PR
@@ -658,11 +658,10 @@ def _fotorrealismo(base: list) -> list:
         async def uma(nome, png, ref):
             k = _VISTA_IA.get(nome, "main")
             prompt = PHOTO_PROMPT + VIEW_HINT.get(k, "") + (MATCH_HINT if ref else "")
-            r = await PR.render(png, prompt, style_ref=ref, timeout=120, feature="ua_render", session_id="calcul_ucrania")
+            r = await PR.render(png, prompt, style_ref=ref, timeout=90, feature="ua_render", session_id="calcul_ucrania")
             return r[0] if r else None
-        principal = await uma(base[0][0], base[0][1], None)
-        outras = await asyncio.gather(*(uma(n, p, principal) for n, p in base[1:]))
-        return [principal] + list(outras)
+        # todas as vistas em paralelo (mesmo prompt de materiais e luz) : o tempo total é o de uma só imagem
+        return list(await asyncio.gather(*(uma(n, p, None) for n, p in base)))
     try:
         if LOOP is not None and LOOP.is_running():
             fotos = asyncio.run_coroutine_threadsafe(asyncio.wait_for(_todas(), teto), LOOP).result(teto + 10)
@@ -677,8 +676,8 @@ def _fotorrealismo(base: list) -> list:
 
 def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None, so_cache: bool = False):
     """Imagens realistas da casa a partir do modelo dos planos, em 2 passos rápidos:
-      1) render geométrico (Mitsuba, 1920 × 1080 Full HD, 24 amostras) — volumes, vãos e câmara exatos ;
-      2) fotorrealismo por IA sobre esse render (engines.photoreal, 4K), geometria bloqueada no prompt.
+      1) render geométrico (Mitsuba, 1280 × 720, 24 amostras: base rápida para a IA) — volumes, vãos e câmara exatos ;
+      2) fotorrealismo por IA sobre esse render (engines.photoreal, Full HD, vistas em paralelo), geometria bloqueada no prompt.
     Tetos de tempo em cada passo (processo à parte / CP_PHOTO_HARD) e cache em disco (mesmo modelo → imediato).
     Qualquer falha → o dossier sai sempre (com o render geométrico, ou sem renders). `so_cache` : só a cache, ou None."""
     import hashlib
@@ -687,7 +686,7 @@ def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura
     import os
     import pickle
     import tempfile
-    largura = largura or int(os.environ.get("CP_RENDER_W", 1920))
+    largura = largura or int(os.environ.get("CP_RENDER_W", 1280))
     altura = altura or int(largura * 9 / 16)
     spp = spp or int(os.environ.get("CP_RENDER_SPP", 24))
     budget = float(os.environ.get("CP_RENDER_BUDGET", 90))
