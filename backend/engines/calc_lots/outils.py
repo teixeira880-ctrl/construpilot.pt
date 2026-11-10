@@ -6,6 +6,9 @@ e guardar o PDF e o PNG como artefactos; PROGRESS_LABELS dá o texto de progress
 """
 from __future__ import annotations
 
+import json
+
+from . import pacote_ua
 from . import (accessibilite, aquecimento, couverture, gros_oeuvre, instalacoes, isolamento, lotes_tecnicos, patio_pluviais, photovoltaique, piso_radiante,
                redes, reh, solar_termico, structure, ucrania)
 
@@ -437,7 +440,11 @@ UCRANIA_TOOL = _tool(
      "pontes_termicas_w_m2k": _n("null = 0.05"), "inclinacao_cobertura_graus": _n(), "termo_servico_anos": _n("50 or 100"), "altitude_m": _n(),
      "elementos": _arr(_EL_UA, desc="envelope elements"), "modelo_estrutural_json": _NS("structural model JSON (see calcul_gros_oeuvre)"),
      "empresa": _enum(["clt-rezult"], "company branding of the dossiers (logo, colour); clt-rezult = CLT Rezult"),
-     "projeto_uk": _NS("project title in Ukrainian"), "projeto_en": _NS("project title in English")})
+     "projeto_uk": _NS("project title in Ukrainian"), "projeto_en": _NS("project title in English"),
+     "caso": _enum(pacote_ua.listar(), "plan already read and stored by ConstruPilot: home_a_rezult_kyiv = CLT Rezult «Home A» / «Fração A» "
+                   "(plans -1, ground floor, first floor 1:50). Use it whenever the user's plan is Home A / Fração A of CLT Rezult: the tool then "
+                   "delivers the COMPLETE package (dossiers UK + EN, construction drawings UK + EN with electrical / water / heating, detailed cost "
+                   "estimate UK + EN). Other fields may stay null.")})
 
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
               PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL]
@@ -472,7 +479,7 @@ PROTOCOL_PT = (
     "canalização → solar térmico) usa calcul_lotes_tecnicos; só o piso radiante: calcul_piso_radiante; solar térmico (AQS, coletores, depósito): "
     "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial; estrutura completa de um edifício com planos de execução de gros-œuvre "
     "cotados (fundações, pavimento, cobertura, cortes) a partir da geometria dos planos: calcul_gros_oeuvre; projeto na Ucrânia ou pedido em "
-    "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) "
+    "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN) e NÃO lances o estudo BET completo "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -781,7 +788,11 @@ def run(name: str, args: dict) -> dict:
         res.append("Pré-dimensionamento a validar pelo projetista de estruturas.")
         return _ret(o, res, {"conforme": v["conforme"], "ajustes": v["ajustes"], "escala": o["escala"]})
     if name == "calcul_ucrania":
-        p = (ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {}
+        caso = a.get("caso")
+        p = pacote_ua.parametros(caso) if caso else ((ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {})
+        if caso:                                                   # o caso guardado manda na geometria; título/empresa do utilizador mantêm-se
+            a = {k: v for k, v in a.items() if k in ("projeto_uk", "projeto_en", "empresa", "fogo_min", "produto_clt")}
+            p["renders"] = ucrania.gerar_renders(gros_oeuvre.calcular(__import__("copy").deepcopy(p["modelo_estrutural"]))["modelo"], p.get("render_opcoes"))
         for k, v in a.items():
             if k not in ("exemplo", "modelo_estrutural_json", "sistema"):
                 p[k] = v
@@ -789,6 +800,7 @@ def run(name: str, args: dict) -> dict:
             p["modelo_estrutural"] = a["modelo_estrutural_json"]
         dd = ucrania.dossiers(p)                                   # sempre dois dossiers completos: ucraniano + inglês
         o, oen = dd["uk"], dd["en"]
+        extra_pac = pacote_ua.pacote(caso, dd, p.get("renders") or [], p) if caso else []
         r, c = o["r"], o["r"]["clima"]
         res = [o["titre"], "English summary: " + o["resumo_en"]]
         res += [f"{'OK' if e['ok'] else 'KO'} {e['nome']}: R = {e['R']:.2f} m²K/W" + (f" ≥ Rq,min {e['rq']:.2f}" if e["rq"] else "") for e in r["elementos"]]
@@ -800,8 +812,12 @@ def run(name: str, args: dict) -> dict:
             ob = o["orcamento"]
             res.append(f"Cost estimate: {ob['sem_pdv']:,.0f} UAH excl. VAT + VAT 20 % = {ob['com_pdv']:,.0f} UAH (≈ {ob['eur_com_pdv']:,.0f} €).")
         res.append("Two complete dossiers delivered: Ukrainian (main file) and English (extra file).")
+        if extra_pac:
+            res.append("Complete package also delivered: construction drawings UK + EN (structure GO-01…09, electrical EL, water & drainage WS, "
+                       f"heating HT) and detailed cost estimate UK + EN — total {p.get('_devis_ttc', 0):,.0f} UAH incl. VAT 20 % (the dossier figure above "
+                       "covers structure, envelope and heat pump only; the detailed estimate is the complete figure).")
         return _ret(o, res, {"cidade": c["chave"], "zona": c["zona"], "theta_e": c["theta_e"], "phi_kw": round(r.get("phi_w", 0) / 1000, 2),
                              "q_kwh_m2": round(r.get("q_kwh_m2", 0), 1), "envolvente_conforme": all(e["ok"] for e in r["elementos"]),
                              "custo_com_pdv_uah": round(o["orcamento"]["com_pdv"]) if o.get("orcamento") else None},
-                    extra=[("Dossier-EN", oen["titre"], oen["pdf"])])
+                    extra=[("Dossier-EN", oen["titre"], oen["pdf"])] + extra_pac)
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")
