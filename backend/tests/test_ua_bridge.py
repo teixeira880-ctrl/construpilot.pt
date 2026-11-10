@@ -32,3 +32,13 @@ def test_dossier_ingles_visivel_no_cartao():
     assert len(out["artifacts"]) == 1 and out["artifacts"][0]["format"] == "pdf"
     assert out["artifacts"][0]["artifact_id"] != out["artifact"]["artifact_id"]
     assert len(db.assistant_artifacts.docs) == 3              # UK + pré-visualização + EN
+
+
+def test_caso_home_a_entrega_pacote_completo():
+    db = _DB()
+    out = asyncio.run(execute_calc_tool("calcul_ucrania", {"caso": "home_a_rezult_kyiv"}, {"user_id": "u2"},
+                                        {"conversation_id": "c2", "_quote_request_id": "r2"}, db))
+    nomes = [a["filename"] for a in out["artifacts"]]
+    assert out["ok"] and len(nomes) == 5
+    for k in ("Dossier-EN", "Drawings-UK", "Drawings-EN", "Estimate-UK", "Estimate-EN"):
+        assert any(n.startswith(f"ConstruPilot_{k}_") for n in nomes), k
