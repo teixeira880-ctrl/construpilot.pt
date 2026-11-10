@@ -25,6 +25,7 @@ import LandingParticuliers from "@/pages/LandingParticuliers";
 import LandingMetre from "@/pages/LandingMetre";
 import LandingPortugal from "@/pages/LandingPortugal";
 import { RouteSkeleton } from "@/components/Skeleton";
+import { currentMarket } from "@/lib/market";
 import { initTheme } from "@/components/ThemeToggle";
 import AutorizacaoObras from "@/pages/AutorizacaoObras";
 import SubscrevePublic from "@/pages/SubscrevePublic";
@@ -95,6 +96,17 @@ import DemoPage from "@/pages/DemoPage";
 // Rotas pesadas via lazy loading para code-splitting
 const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
+// Discovery Engine (/connect) — exclusivo do construpilot.pt (carregado à parte para não pesar no bundle principal).
+// Feature flag: REACT_APP_CONNECT_ENABLED=false desliga as rotas; por defeito só ativo no mercado "pt".
+const CONNECT_ENABLED = process.env.REACT_APP_CONNECT_ENABLED !== "false" && currentMarket() === "pt";
+const ConnectHome = lazy(() => import("@/pages/connect/ConnectHome"));
+const ConnectClient = lazy(() => import("@/pages/connect/ConnectClient"));
+const ConnectInvestor = lazy(() => import("@/pages/connect/ConnectInvestor"));
+const ConnectPartner = lazy(() => import("@/pages/connect/ConnectPartner"));
+const ConnectResult = lazy(() => import("@/pages/connect/ConnectResult"));
+const ConnectDemo = lazy(() => import("@/pages/connect/ConnectDemo"));
+const ConnectStand = lazy(() => import("@/pages/connect/ConnectStand"));
+const AdminConnect = lazy(() => import("@/pages/connect/AdminConnect"));
 const Missions = lazy(() => import("@/pages/Missions"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 const PlansExecutionLazy = lazy(() => import("@/pages/PlansExecution"));
@@ -264,6 +276,16 @@ function AppRouter() {
       <Route path="/demo" element={<Demo />} />
       <Route path="/demo/entrar" element={<DemoPage />} />
       <Route path="/stand" element={<StandMode />} />
+      {CONNECT_ENABLED && (<>
+        <Route path="/connect" element={<Suspense fallback={<RouteSkeleton />}><ConnectHome /></Suspense>} />
+        <Route path="/connect/client" element={<Suspense fallback={<RouteSkeleton />}><ConnectClient /></Suspense>} />
+        <Route path="/connect/investor" element={<Suspense fallback={<RouteSkeleton />}><ConnectInvestor /></Suspense>} />
+        <Route path="/connect/partner" element={<Suspense fallback={<RouteSkeleton />}><ConnectPartner /></Suspense>} />
+        <Route path="/connect/result/:id" element={<Suspense fallback={<RouteSkeleton />}><ConnectResult /></Suspense>} />
+        <Route path="/connect/demo/:id" element={<Suspense fallback={<RouteSkeleton />}><ConnectDemo /></Suspense>} />
+        <Route path="/connect/stand" element={<Suspense fallback={<RouteSkeleton />}><ConnectStand /></Suspense>} />
+        <Route path="/admin/connect" element={<Protected admin><Shell><Suspense fallback={<RouteSkeleton />}><AdminConnect /></Suspense></Shell></Protected>} />
+      </>)}
       <Route path="/demo-entrar" element={<DemoPage />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
       <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />

@@ -47,6 +47,8 @@
   function alreadySeen() { try { return sessionStorage.getItem(CONFIG.storageKey) === "1"; } catch (e) { return false; } }
   function markSeen() { try { sessionStorage.setItem(CONFIG.storageKey, "1"); } catch (e) {} }
   if (alreadySeen()) return;
+  // Discovery Engine (/connect): os visitantes chegam do stand por QR Code — o convite para o stand não deve tapar o diagnóstico.
+  if (/^\/connect(\/|$)/.test(location.pathname || "")) return;
   var lang = detectLang();
   var t = CONFIG.texts[lang];
   var accent = lang === "pt" ? CONFIG.colors.accentPT : CONFIG.colors.accentFR;

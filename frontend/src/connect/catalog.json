@@ -1,0 +1,416 @@
+{
+  "version": "2026-11-10",
+  "statuses": ["VERIFICADA", "PARCIAL", "NAO_VERIFICADA", "INDISPONIVEL"],
+  "activities": [
+    {"id": "construction_company", "group": "builder", "label": {"pt": "Empresa de construção", "en": "Construction company", "fr": "Entreprise de construction"}},
+    {"id": "general_contractor", "group": "builder", "label": {"pt": "Empreiteiro geral", "en": "General contractor", "fr": "Entreprise générale"}},
+    {"id": "architect", "group": "design", "label": {"pt": "Arquiteto", "en": "Architect", "fr": "Architecte"}},
+    {"id": "civil_engineer", "group": "design", "label": {"pt": "Engenheiro civil", "en": "Civil engineer", "fr": "Ingénieur civil"}},
+    {"id": "quantity_surveyor", "group": "estimator", "label": {"pt": "Medidor-orçamentista", "en": "Quantity surveyor / cost estimator", "fr": "Métreur / économiste"}},
+    {"id": "renovation", "group": "builder", "label": {"pt": "Especialista em remodelações", "en": "Renovation specialist", "fr": "Spécialiste de la rénovation"}},
+    {"id": "painting", "group": "trade", "track": "painting", "label": {"pt": "Pintura", "en": "Painting contractor", "fr": "Peinture"}},
+    {"id": "electrical", "group": "trade", "track": "electrical", "label": {"pt": "Eletricidade", "en": "Electrical contractor", "fr": "Électricité"}},
+    {"id": "plumbing_hvac", "group": "trade", "track": "plumbing", "label": {"pt": "Canalização / AVAC", "en": "Plumbing / HVAC contractor", "fr": "Plomberie / CVC"}},
+    {"id": "developer", "group": "owner", "label": {"pt": "Promotor imobiliário", "en": "Property developer", "fr": "Promoteur immobilier"}},
+    {"id": "supplier", "group": "supplier", "label": {"pt": "Fornecedor de materiais", "en": "Building materials supplier", "fr": "Fournisseur de matériaux"}},
+    {"id": "homeowner", "group": "private", "label": {"pt": "Particular", "en": "Private homeowner", "fr": "Particulier"}},
+    {"id": "other", "group": "other", "label": {"pt": "Outra atividade", "en": "Other", "fr": "Autre activité"}}
+  ],
+  "volume_questions": {
+    "builder": {"id": "quotes_per_month", "label": {"pt": "Quantos orçamentos prepara por mês?", "en": "How many estimates do you prepare per month?", "fr": "Combien de devis préparez-vous par mois ?"}},
+    "trade": {"id": "quotes_per_month", "label": {"pt": "Quantos orçamentos prepara por mês?", "en": "How many estimates do you prepare per month?", "fr": "Combien de devis préparez-vous par mois ?"}},
+    "estimator": {"id": "quotes_per_month", "label": {"pt": "Quantos orçamentos ou mapas de quantidades prepara por mês?", "en": "How many estimates or bills of quantities do you prepare per month?", "fr": "Combien de devis ou de métrés préparez-vous par mois ?"}},
+    "design": {"id": "projects_parallel", "label": {"pt": "Quantos projetos gere em simultâneo?", "en": "How many projects do you manage at the same time?", "fr": "Combien de projets gérez-vous en parallèle ?"}},
+    "owner": {"id": "projects_parallel", "label": {"pt": "Quantos empreendimentos acompanha em simultâneo?", "en": "How many developments do you follow at the same time?", "fr": "Combien d'opérations suivez-vous en parallèle ?"}},
+    "supplier": {"id": "team_size", "label": {"pt": "Quantas pessoas trabalham na sua empresa?", "en": "How many people work in your company?", "fr": "Combien de personnes travaillent dans votre entreprise ?"}},
+    "other": {"id": "team_size", "label": {"pt": "Quantas pessoas trabalham na sua empresa?", "en": "How many people work in your company?", "fr": "Combien de personnes travaillent dans votre entreprise ?"}},
+    "private": null
+  },
+  "ranges": {
+    "quotes_per_month": [
+      {"id": "q0_5", "label": {"pt": "0 a 5", "en": "0 to 5", "fr": "0 à 5"}, "mid": 3},
+      {"id": "q6_15", "label": {"pt": "6 a 15", "en": "6 to 15", "fr": "6 à 15"}, "mid": 10},
+      {"id": "q16_40", "label": {"pt": "16 a 40", "en": "16 to 40", "fr": "16 à 40"}, "mid": 25},
+      {"id": "q40p", "label": {"pt": "Mais de 40", "en": "More than 40", "fr": "Plus de 40"}, "mid": 50}
+    ],
+    "projects_parallel": [
+      {"id": "p1_2", "label": {"pt": "1 a 2", "en": "1 to 2", "fr": "1 à 2"}, "mid": 2},
+      {"id": "p3_5", "label": {"pt": "3 a 5", "en": "3 to 5", "fr": "3 à 5"}, "mid": 4},
+      {"id": "p6_10", "label": {"pt": "6 a 10", "en": "6 to 10", "fr": "6 à 10"}, "mid": 8},
+      {"id": "p10p", "label": {"pt": "Mais de 10", "en": "More than 10", "fr": "Plus de 10"}, "mid": 12}
+    ],
+    "team_size": [
+      {"id": "t1", "label": {"pt": "Só eu", "en": "Just me", "fr": "Moi seul"}, "mid": 1},
+      {"id": "t2_10", "label": {"pt": "2 a 10", "en": "2 to 10", "fr": "2 à 10"}, "mid": 6},
+      {"id": "t11_50", "label": {"pt": "11 a 50", "en": "11 to 50", "fr": "11 à 50"}, "mid": 30},
+      {"id": "t50p", "label": {"pt": "Mais de 50", "en": "More than 50", "fr": "Plus de 50"}, "mid": 60}
+    ],
+    "job_value": [
+      {"id": "v_lt20k", "label": {"pt": "Menos de 20 000 €", "en": "Under €20,000", "fr": "Moins de 20 000 €"}},
+      {"id": "v20_100k", "label": {"pt": "20 000 € a 100 000 €", "en": "€20,000 to €100,000", "fr": "20 000 € à 100 000 €"}},
+      {"id": "v100_500k", "label": {"pt": "100 000 € a 500 000 €", "en": "€100,000 to €500,000", "fr": "100 000 € à 500 000 €"}},
+      {"id": "v500kp", "label": {"pt": "Mais de 500 000 €", "en": "Over €500,000", "fr": "Plus de 500 000 €"}},
+      {"id": "v_na", "label": {"pt": "Prefiro não indicar", "en": "Prefer not to say", "fr": "Je préfère ne pas répondre"}}
+    ],
+    "market": [
+      {"id": "m_pt", "label": {"pt": "Portugal", "en": "Portugal", "fr": "Portugal"}},
+      {"id": "m_fr", "label": {"pt": "França", "en": "France", "fr": "France"}},
+      {"id": "m_both", "label": {"pt": "Portugal e França", "en": "Portugal and France", "fr": "Portugal et France"}},
+      {"id": "m_other", "label": {"pt": "Outros mercados", "en": "Other markets", "fr": "Autres marchés"}}
+    ]
+  },
+  "pains": [
+    {"id": "p_measure", "case": "A", "label": {"pt": "Demoro demasiado tempo a medir plantas", "en": "Measuring drawings takes me too long", "fr": "Le métré des plans me prend trop de temps"}, "summary": {"pt": "o tempo gasto a medir plantas", "en": "the time spent measuring drawings", "fr": "le temps passé à métrer les plans"}, "capabilities": ["cap_takeoff", "cap_quantities", "cap_plan_ai"]},
+    {"id": "p_quote_slow", "case": "B", "label": {"pt": "Preparar orçamentos é lento e repetitivo", "en": "Preparing estimates is slow and repetitive", "fr": "Préparer des devis est lent et répétitif"}, "summary": {"pt": "a preparação lenta e repetitiva de orçamentos", "en": "slow, repetitive estimate preparation", "fr": "la préparation lente et répétitive des devis"}, "capabilities": ["cap_quote", "cap_price_library", "cap_takeoff"]},
+    {"id": "p_quantities", "case": "A", "label": {"pt": "Tenho dificuldade em estimar quantidades de materiais", "en": "Estimating material quantities is hard", "fr": "J'ai du mal à estimer les quantités de matériaux"}, "summary": {"pt": "a estimativa das quantidades de materiais", "en": "estimating material quantities", "fr": "l'estimation des quantités de matériaux"}, "capabilities": ["cap_quantities", "cap_takeoff"]},
+    {"id": "p_errors", "case": "B", "label": {"pt": "Preocupo-me com erros e omissões nos orçamentos", "en": "I worry about errors and omissions in estimates", "fr": "Je crains les erreurs et oublis dans mes devis"}, "summary": {"pt": "o risco de erros e omissões nos orçamentos", "en": "the risk of errors and omissions in estimates", "fr": "le risque d'erreurs et d'oublis dans les devis"}, "capabilities": ["cap_quote", "cap_takeoff", "cap_margin"]},
+    {"id": "p_margins", "case": "C", "label": {"pt": "Não consigo controlar facilmente custos e margens", "en": "I can't easily control costs and margins", "fr": "Je ne maîtrise pas facilement coûts et marges"}, "summary": {"pt": "o controlo de custos e margens", "en": "controlling costs and margins", "fr": "la maîtrise des coûts et des marges"}, "capabilities": ["cap_margin", "cap_site_costs", "cap_quote"]},
+    {"id": "p_multi_sites", "case": "D", "label": {"pt": "Tenho dificuldade em acompanhar várias obras", "en": "Following several jobs at once is hard", "fr": "J'ai du mal à suivre plusieurs chantiers"}, "summary": {"pt": "o acompanhamento de várias obras em simultâneo", "en": "following several jobs at once", "fr": "le suivi de plusieurs chantiers à la fois"}, "capabilities": ["cap_sites", "cap_site_costs", "cap_documents"]},
+    {"id": "p_docs_scattered", "case": "D", "label": {"pt": "Os documentos estão espalhados por várias ferramentas", "en": "Documents are scattered across several tools", "fr": "Les documents sont éparpillés dans plusieurs outils"}, "summary": {"pt": "a dispersão dos documentos do projeto", "en": "project documents scattered across tools", "fr": "la dispersion des documents du projet"}, "capabilities": ["cap_documents", "cap_sites"]},
+    {"id": "p_suppliers", "case": "D", "label": {"pt": "É difícil organizar fornecedores e materiais", "en": "Organising suppliers and materials is hard", "fr": "Organiser fournisseurs et matériaux est difficile"}, "summary": {"pt": "a organização de fornecedores e materiais", "en": "organising suppliers and materials", "fr": "l'organisation des fournisseurs et des matériaux"}, "capabilities": ["cap_procurement", "cap_price_library"]},
+    {"id": "p_billing", "case": "E", "label": {"pt": "Tenho problemas com autos, faturação ou acompanhamento financeiro", "en": "Progress claims, invoicing or financial follow-up are a problem", "fr": "Situations de travaux, facturation ou suivi financier posent problème"}, "summary": {"pt": "os autos de medição, a faturação e o acompanhamento financeiro", "en": "progress claims, invoicing and financial follow-up", "fr": "les situations de travaux, la facturation et le suivi financier"}, "capabilities": ["cap_progress_claims", "cap_invoices", "cap_site_costs"]},
+    {"id": "p_slow_reply", "case": "B", "label": {"pt": "Demoro demasiado tempo a responder a potenciais clientes", "en": "I take too long to reply to prospective clients", "fr": "Je mets trop de temps à répondre aux prospects"}, "summary": {"pt": "o tempo de resposta a potenciais clientes", "en": "response time to prospective clients", "fr": "le délai de réponse aux prospects"}, "capabilities": ["cap_quote", "cap_quote_tracking", "cap_price_library"]},
+    {"id": "p_team_comms", "case": "D", "label": {"pt": "Tenho dificuldade em comunicar com equipas e subempreiteiros", "en": "Communicating with teams and subcontractors is hard", "fr": "Communiquer avec équipes et sous-traitants est difficile"}, "summary": {"pt": "a comunicação com equipas e subempreiteiros", "en": "communication with teams and subcontractors", "fr": "la communication avec équipes et sous-traitants"}, "capabilities": ["cap_sites", "cap_team", "cap_documents"]},
+    {"id": "p_understand", "case": null, "label": {"pt": "Preciso de compreender melhor um software de construção", "en": "I need to better understand construction software", "fr": "J'ai besoin de mieux comprendre un logiciel du bâtiment"}, "summary": {"pt": "compreender o que um software de construção pode fazer", "en": "understanding what construction software can do", "fr": "comprendre ce qu'un logiciel du bâtiment peut faire"}, "capabilities": ["cap_takeoff", "cap_quote", "cap_margin"]},
+    {"id": "p_other", "case": null, "free_text": true, "label": {"pt": "Outro problema (descreva)", "en": "Another problem (describe it)", "fr": "Autre problème (décrivez-le)"}, "summary": {"pt": "o problema que descreveu", "en": "the problem you described", "fr": "le problème que vous avez décrit"}, "capabilities": []}
+  ],
+  "deep_questions": {
+    "A": [
+      {"id": "a_formats", "multi": true, "quick": true, "label": {"pt": "Que formatos de planta recebe habitualmente?", "en": "Which drawing formats do you usually receive?", "fr": "Quels formats de plans recevez-vous habituellement ?"}, "options": [
+        {"id": "pdf", "label": {"pt": "PDF", "en": "PDF", "fr": "PDF"}}, {"id": "dwg", "label": {"pt": "DWG", "en": "DWG", "fr": "DWG"}}, {"id": "dxf", "label": {"pt": "DXF", "en": "DXF", "fr": "DXF"}}, {"id": "image", "label": {"pt": "Imagem / digitalização", "en": "Image / scan", "fr": "Image / scan"}}, {"id": "paper", "label": {"pt": "Papel", "en": "Paper", "fr": "Papier"}}, {"id": "other", "label": {"pt": "Outro", "en": "Other", "fr": "Autre"}}]},
+      {"id": "a_measures", "multi": true, "quick": false, "label": {"pt": "O que mede mais vezes?", "en": "What do you measure most often?", "fr": "Que mesurez-vous le plus souvent ?"}, "options": [
+        {"id": "areas", "label": {"pt": "Áreas", "en": "Areas", "fr": "Surfaces"}}, {"id": "lengths", "label": {"pt": "Comprimentos", "en": "Lengths", "fr": "Longueurs"}}, {"id": "volumes", "label": {"pt": "Volumes", "en": "Volumes", "fr": "Volumes"}}, {"id": "structural", "label": {"pt": "Quantidades estruturais", "en": "Structural quantities", "fr": "Quantités structurelles"}}]},
+      {"id": "a_plans_week", "multi": false, "quick": false, "label": {"pt": "Quantas plantas analisa por semana?", "en": "How many drawings do you analyse per week?", "fr": "Combien de plans analysez-vous par semaine ?"}, "options": [
+        {"id": "w1_3", "label": {"pt": "1 a 3", "en": "1 to 3", "fr": "1 à 3"}}, {"id": "w4_10", "label": {"pt": "4 a 10", "en": "4 to 10", "fr": "4 à 10"}}, {"id": "w10p", "label": {"pt": "Mais de 10", "en": "More than 10", "fr": "Plus de 10"}}]},
+      {"id": "a_time", "multi": false, "quick": false, "label": {"pt": "Quanto tempo demora a medir um projeto habitual?", "en": "How long does measuring a typical project take?", "fr": "Combien de temps pour métrer un projet habituel ?"}, "options": [
+        {"id": "lt2h", "label": {"pt": "Menos de 2 horas", "en": "Under 2 hours", "fr": "Moins de 2 heures"}}, {"id": "h2_8", "label": {"pt": "2 a 8 horas", "en": "2 to 8 hours", "fr": "2 à 8 heures"}}, {"id": "d1_3", "label": {"pt": "1 a 3 dias", "en": "1 to 3 days", "fr": "1 à 3 jours"}}, {"id": "d3p", "label": {"pt": "Mais de 3 dias", "en": "More than 3 days", "fr": "Plus de 3 jours"}}]},
+      {"id": "tools", "multi": false, "quick": false, "label": {"pt": "Que ferramenta utiliza hoje?", "en": "Which tool do you use today?", "fr": "Quel outil utilisez-vous aujourd'hui ?"}, "options": "@tools"},
+      {"id": "a_main_issue", "multi": false, "quick": true, "label": {"pt": "O maior problema é…", "en": "The biggest problem is…", "fr": "Le principal problème est…"}, "options": [
+        {"id": "time", "label": {"pt": "O tempo", "en": "Time", "fr": "Le temps"}}, {"id": "accuracy", "label": {"pt": "A precisão", "en": "Accuracy", "fr": "La précision"}}, {"id": "handover", "label": {"pt": "Passar as medições para o orçamento", "en": "Moving measurements into the estimate", "fr": "Reporter le métré dans le devis"}}]}
+    ],
+    "B": [
+      {"id": "tools", "multi": false, "quick": true, "label": {"pt": "Com que ferramenta prepara hoje os orçamentos?", "en": "Which tool do you use for estimates today?", "fr": "Avec quel outil préparez-vous vos devis aujourd'hui ?"}, "options": "@tools"},
+      {"id": "b_boq", "multi": false, "quick": false, "label": {"pt": "Recebe mapas de quantidades e cadernos de encargos?", "en": "Do you receive bills of quantities and specifications?", "fr": "Recevez-vous des DPGF et des CCTP ?"}, "options": [
+        {"id": "often", "label": {"pt": "Frequentemente", "en": "Often", "fr": "Souvent"}}, {"id": "sometimes", "label": {"pt": "Às vezes", "en": "Sometimes", "fr": "Parfois"}}, {"id": "never", "label": {"pt": "Nunca", "en": "Never", "fr": "Jamais"}}]},
+      {"id": "b_pricing", "multi": false, "quick": false, "label": {"pt": "Como calcula preços e margens?", "en": "How do you set prices and margins?", "fr": "Comment calculez-vous prix et marges ?"}, "options": [
+        {"id": "own_list", "label": {"pt": "Tabela de preços própria", "en": "My own price list", "fr": "Ma propre bibliothèque de prix"}}, {"id": "supplier_quotes", "label": {"pt": "Consulta a fornecedores", "en": "Supplier quotes", "fr": "Consultation de fournisseurs"}}, {"id": "experience", "label": {"pt": "Por experiência", "en": "From experience", "fr": "À l'expérience"}}, {"id": "coefficient", "label": {"pt": "Coeficiente sobre o custo", "en": "Coefficient on cost", "fr": "Coefficient sur le coût"}}]},
+      {"id": "b_revisions", "multi": false, "quick": false, "label": {"pt": "Como controla as revisões dos orçamentos?", "en": "How do you track estimate revisions?", "fr": "Comment suivez-vous les révisions de devis ?"}, "options": [
+        {"id": "files", "label": {"pt": "Cópias de ficheiros", "en": "File copies", "fr": "Copies de fichiers"}}, {"id": "software", "label": {"pt": "No software", "en": "In my software", "fr": "Dans mon logiciel"}}, {"id": "none", "label": {"pt": "Não controlo", "en": "I don't track them", "fr": "Je ne les suis pas"}}]},
+      {"id": "b_time", "multi": false, "quick": true, "label": {"pt": "Quanto tempo demora um orçamento habitual?", "en": "How long does a typical estimate take?", "fr": "Combien de temps prend un devis habituel ?"}, "options": [
+        {"id": "lt1h", "label": {"pt": "Menos de 1 hora", "en": "Under 1 hour", "fr": "Moins d'1 heure"}, "hours": 0.75}, {"id": "h1_3", "label": {"pt": "1 a 3 horas", "en": "1 to 3 hours", "fr": "1 à 3 heures"}, "hours": 2}, {"id": "h3_8", "label": {"pt": "3 a 8 horas", "en": "3 to 8 hours", "fr": "3 à 8 heures"}, "hours": 5}, {"id": "d1p", "label": {"pt": "Mais de 1 dia", "en": "More than a day", "fr": "Plus d'une journée"}, "hours": 10}]}
+    ],
+    "C": [
+      {"id": "c_level", "multi": false, "quick": true, "label": {"pt": "Controla a margem por obra ou por especialidade?", "en": "Do you track margin per job or per trade?", "fr": "Suivez-vous la marge par chantier ou par lot ?"}, "options": [
+        {"id": "per_job", "label": {"pt": "Por obra", "en": "Per job", "fr": "Par chantier"}}, {"id": "per_trade", "label": {"pt": "Por especialidade", "en": "Per trade", "fr": "Par lot"}}, {"id": "both", "label": {"pt": "Ambos", "en": "Both", "fr": "Les deux"}}, {"id": "neither", "label": {"pt": "Nenhum", "en": "Neither", "fr": "Aucun"}}]},
+      {"id": "c_compare", "multi": false, "quick": true, "label": {"pt": "Consegue comparar o orçamento previsto com os custos reais?", "en": "Can you compare budgeted vs actual costs?", "fr": "Comparez-vous le budget prévu aux coûts réels ?"}, "options": [
+        {"id": "yes", "label": {"pt": "Sim, facilmente", "en": "Yes, easily", "fr": "Oui, facilement"}}, {"id": "hard", "label": {"pt": "Sim, mas com muito trabalho", "en": "Yes, but it takes a lot of work", "fr": "Oui, mais avec beaucoup d'effort"}}, {"id": "no", "label": {"pt": "Não", "en": "No", "fr": "Non"}}]},
+      {"id": "c_changes", "multi": false, "quick": false, "label": {"pt": "Como regista alterações durante a execução?", "en": "How do you record changes during works?", "fr": "Comment enregistrez-vous les modifications en cours de chantier ?"}, "options": [
+        {"id": "written", "label": {"pt": "Por escrito / e-mail", "en": "In writing / e-mail", "fr": "Par écrit / e-mail"}}, {"id": "spreadsheet", "label": {"pt": "Folha de cálculo", "en": "Spreadsheet", "fr": "Tableur"}}, {"id": "not_recorded", "label": {"pt": "Muitas vezes não ficam registadas", "en": "Often not recorded", "fr": "Souvent pas enregistrées"}}]},
+      {"id": "c_losses", "multi": true, "quick": false, "label": {"pt": "O que provoca mais perda de margem?", "en": "What causes the most margin loss?", "fr": "Qu'est-ce qui fait perdre le plus de marge ?"}, "options": [
+        {"id": "underestimate", "label": {"pt": "Quantidades subestimadas", "en": "Underestimated quantities", "fr": "Quantités sous-estimées"}}, {"id": "price_rises", "label": {"pt": "Subida de preços", "en": "Price rises", "fr": "Hausse des prix"}}, {"id": "extra_work", "label": {"pt": "Trabalhos a mais não faturados", "en": "Unbilled extra work", "fr": "Travaux supplémentaires non facturés"}}, {"id": "labour", "label": {"pt": "Horas de mão de obra", "en": "Labour hours", "fr": "Heures de main-d'œuvre"}}]},
+      {"id": "c_kpis", "multi": true, "quick": false, "label": {"pt": "Que indicadores gostaria de acompanhar?", "en": "Which indicators would you like to track?", "fr": "Quels indicateurs aimeriez-vous suivre ?"}, "options": [
+        {"id": "margin", "label": {"pt": "Margem por obra", "en": "Margin per job", "fr": "Marge par chantier"}}, {"id": "cost_drift", "label": {"pt": "Desvio de custos", "en": "Cost drift", "fr": "Dérive des coûts"}}, {"id": "cashflow", "label": {"pt": "Tesouraria", "en": "Cash flow", "fr": "Trésorerie"}}, {"id": "win_rate", "label": {"pt": "Taxa de adjudicação", "en": "Win rate", "fr": "Taux de transformation"}}]}
+    ],
+    "D": [
+      {"id": "d_sites", "multi": false, "quick": true, "label": {"pt": "Quantas obras estão em execução em simultâneo?", "en": "How many jobs run at the same time?", "fr": "Combien de chantiers en cours simultanément ?"}, "options": [
+        {"id": "s1_2", "label": {"pt": "1 a 2", "en": "1 to 2", "fr": "1 à 2"}}, {"id": "s3_5", "label": {"pt": "3 a 5", "en": "3 to 5", "fr": "3 à 5"}}, {"id": "s6_15", "label": {"pt": "6 a 15", "en": "6 to 15", "fr": "6 à 15"}}, {"id": "s15p", "label": {"pt": "Mais de 15", "en": "More than 15", "fr": "Plus de 15"}}]},
+      {"id": "d_tracking", "multi": false, "quick": false, "label": {"pt": "Como acompanha o estado dos trabalhos?", "en": "How do you follow work progress?", "fr": "Comment suivez-vous l'avancement ?"}, "options": [
+        {"id": "visits", "label": {"pt": "Visitas e telefone", "en": "Site visits and phone", "fr": "Visites et téléphone"}}, {"id": "messaging", "label": {"pt": "Mensagens (WhatsApp, etc.)", "en": "Messaging apps", "fr": "Messageries (WhatsApp…)"}}, {"id": "spreadsheet", "label": {"pt": "Folha de cálculo", "en": "Spreadsheet", "fr": "Tableur"}}, {"id": "software", "label": {"pt": "Software", "en": "Software", "fr": "Logiciel"}}]},
+      {"id": "d_late_info", "multi": true, "quick": true, "label": {"pt": "Que informação chega demasiado tarde?", "en": "Which information arrives too late?", "fr": "Quelle information arrive trop tard ?"}, "options": [
+        {"id": "costs", "label": {"pt": "Custos e despesas", "en": "Costs and expenses", "fr": "Coûts et dépenses"}}, {"id": "changes", "label": {"pt": "Alterações ao projeto", "en": "Design changes", "fr": "Modifications du projet"}}, {"id": "materials", "label": {"pt": "Materiais e entregas", "en": "Materials and deliveries", "fr": "Matériaux et livraisons"}}, {"id": "progress", "label": {"pt": "Avanço dos trabalhos", "en": "Work progress", "fr": "Avancement des travaux"}}]},
+      {"id": "d_docs", "multi": false, "quick": false, "label": {"pt": "Onde guarda documentos, alterações e despesas?", "en": "Where do you keep documents, changes and expenses?", "fr": "Où rangez-vous documents, modifications et dépenses ?"}, "options": [
+        {"id": "email", "label": {"pt": "E-mail", "en": "E-mail", "fr": "E-mail"}}, {"id": "cloud", "label": {"pt": "Pastas na cloud", "en": "Cloud folders", "fr": "Dossiers cloud"}}, {"id": "paper", "label": {"pt": "Papel", "en": "Paper", "fr": "Papier"}}, {"id": "mixed", "label": {"pt": "Um pouco de tudo", "en": "A bit of everything", "fr": "Un peu de tout"}}]}
+    ],
+    "E": [
+      {"id": "e_record", "multi": false, "quick": true, "label": {"pt": "Como regista os trabalhos executados?", "en": "How do you record completed work?", "fr": "Comment enregistrez-vous les travaux exécutés ?"}, "options": [
+        {"id": "spreadsheet", "label": {"pt": "Folha de cálculo", "en": "Spreadsheet", "fr": "Tableur"}}, {"id": "paper", "label": {"pt": "Papel", "en": "Paper", "fr": "Papier"}}, {"id": "software", "label": {"pt": "Software", "en": "Software", "fr": "Logiciel"}}, {"id": "not_formal", "label": {"pt": "Sem registo formal", "en": "No formal record", "fr": "Pas d'enregistrement formel"}}]},
+      {"id": "e_claims", "multi": false, "quick": false, "label": {"pt": "Como prepara os autos de medição?", "en": "How do you prepare progress claims?", "fr": "Comment préparez-vous les situations de travaux ?"}, "options": [
+        {"id": "manual", "label": {"pt": "Manualmente", "en": "Manually", "fr": "Manuellement"}}, {"id": "spreadsheet", "label": {"pt": "Folha de cálculo", "en": "Spreadsheet", "fr": "Tableur"}}, {"id": "software", "label": {"pt": "Software", "en": "Software", "fr": "Logiciel"}}, {"id": "not_used", "label": {"pt": "Não utilizo autos", "en": "I don't use progress claims", "fr": "Je n'utilise pas de situations"}}]},
+      {"id": "e_retentions", "multi": false, "quick": false, "label": {"pt": "Acompanha adiantamentos e retenções?", "en": "Do you track advances and retentions?", "fr": "Suivez-vous acomptes et retenues ?"}, "options": [
+        {"id": "yes", "label": {"pt": "Sim", "en": "Yes", "fr": "Oui"}}, {"id": "partly", "label": {"pt": "Parcialmente", "en": "Partly", "fr": "En partie"}}, {"id": "no", "label": {"pt": "Não", "en": "No", "fr": "Non"}}]},
+      {"id": "e_link", "multi": false, "quick": true, "label": {"pt": "O orçamento está ligado à faturação?", "en": "Is the estimate linked to invoicing?", "fr": "Le devis est-il relié à la facturation ?"}, "options": [
+        {"id": "yes", "label": {"pt": "Sim", "en": "Yes", "fr": "Oui"}}, {"id": "no", "label": {"pt": "Não, refaço tudo", "en": "No, I re-enter everything", "fr": "Non, je ressaisis tout"}}, {"id": "partly", "label": {"pt": "Em parte", "en": "Partly", "fr": "En partie"}}]},
+      {"id": "e_delays", "multi": true, "quick": false, "label": {"pt": "Quais são os atrasos mais frequentes?", "en": "What are the most frequent delays?", "fr": "Quels sont les retards les plus fréquents ?"}, "options": [
+        {"id": "issuing", "label": {"pt": "Emitir faturas", "en": "Issuing invoices", "fr": "Émettre les factures"}}, {"id": "approval", "label": {"pt": "Aprovação dos autos", "en": "Claim approval", "fr": "Validation des situations"}}, {"id": "payments", "label": {"pt": "Pagamentos de clientes", "en": "Client payments", "fr": "Paiements clients"}}]}
+    ],
+    "GENERAL": [
+      {"id": "tools", "multi": false, "quick": true, "label": {"pt": "Que ferramentas utiliza hoje no seu trabalho?", "en": "Which tools do you use today?", "fr": "Quels outils utilisez-vous aujourd'hui ?"}, "options": "@tools"},
+      {"id": "g_goal", "multi": false, "quick": true, "label": {"pt": "O que gostaria de conseguir primeiro?", "en": "What would you like to achieve first?", "fr": "Que souhaitez-vous obtenir en premier ?"}, "options": [
+        {"id": "faster_quotes", "label": {"pt": "Orçamentos mais rápidos", "en": "Faster estimates", "fr": "Des devis plus rapides"}}, {"id": "accurate_quantities", "label": {"pt": "Quantidades mais fiáveis", "en": "More reliable quantities", "fr": "Des quantités plus fiables"}}, {"id": "control", "label": {"pt": "Mais controlo financeiro", "en": "More financial control", "fr": "Plus de maîtrise financière"}}, {"id": "overview", "label": {"pt": "Uma visão geral do software", "en": "An overview of the software", "fr": "Une vue d'ensemble du logiciel"}}]}
+    ]
+  },
+  "tools": [
+    {"id": "excel", "label": {"pt": "Excel / folha de cálculo", "en": "Excel / spreadsheet", "fr": "Excel / tableur"}},
+    {"id": "paper", "label": {"pt": "Papel e calculadora", "en": "Paper and calculator", "fr": "Papier et calculatrice"}},
+    {"id": "erp", "label": {"pt": "ERP", "en": "ERP", "fr": "ERP"}},
+    {"id": "specialized", "label": {"pt": "Software de construção especializado", "en": "Specialised construction software", "fr": "Logiciel bâtiment spécialisé"}},
+    {"id": "cad", "label": {"pt": "CAD / BIM", "en": "CAD / BIM", "fr": "CAO / BIM"}},
+    {"id": "none", "label": {"pt": "Nenhuma em particular", "en": "Nothing in particular", "fr": "Rien de particulier"}}
+  ],
+  "track_questions": {
+    "painting": {"id": "t_surfaces", "multi": true, "label": {"pt": "Que superfícies orça com mais frequência?", "en": "Which surfaces do you price most often?", "fr": "Quelles surfaces chiffrez-vous le plus souvent ?"}, "options": [
+      {"id": "interior_walls", "label": {"pt": "Paredes interiores", "en": "Interior walls", "fr": "Murs intérieurs"}}, {"id": "ceilings", "label": {"pt": "Tetos", "en": "Ceilings", "fr": "Plafonds"}}, {"id": "facades", "label": {"pt": "Fachadas", "en": "Façades", "fr": "Façades"}}, {"id": "joinery", "label": {"pt": "Madeiras e metais", "en": "Wood and metal", "fr": "Boiseries et métaux"}}]},
+    "electrical": {"id": "t_scope", "multi": true, "label": {"pt": "Que tipo de trabalhos faz mais?", "en": "Which work do you do most?", "fr": "Quels travaux faites-vous le plus ?"}, "options": [
+      {"id": "new_install", "label": {"pt": "Instalações novas", "en": "New installations", "fr": "Installations neuves"}}, {"id": "renovation", "label": {"pt": "Remodelação", "en": "Renovation", "fr": "Rénovation"}}, {"id": "maintenance", "label": {"pt": "Manutenção", "en": "Maintenance", "fr": "Maintenance"}}]},
+    "plumbing": {"id": "t_scope", "multi": true, "label": {"pt": "Que tipo de trabalhos faz mais?", "en": "Which work do you do most?", "fr": "Quels travaux faites-vous le plus ?"}, "options": [
+      {"id": "bathrooms", "label": {"pt": "Casas de banho", "en": "Bathrooms", "fr": "Salles de bain"}}, {"id": "networks", "label": {"pt": "Redes de água e esgotos", "en": "Water and drainage networks", "fr": "Réseaux eau et évacuation"}}, {"id": "hvac", "label": {"pt": "AVAC / bombas de calor", "en": "HVAC / heat pumps", "fr": "CVC / pompes à chaleur"}}]}
+  },
+  "capabilities": [
+    {
+      "id": "cap_takeoff", "route": "/plan", "public_demo": "/demo/entrar", "status": "VERIFICADA",
+      "evidence": "engines/geometry.py — calibração, distâncias e áreas executadas em testes automáticos (tests/test_connect_engine.py) e chamadas ao vivo pela demonstração; rotas /api/plans/{id}/calibrate e /measure existentes.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade", "estimator", "design"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Medições sobre planta", "en": "Drawing take-off", "fr": "Métré sur plan"},
+      "description": {"pt": "Importa uma planta, calibra a escala com uma cota conhecida e mede comprimentos e áreas diretamente no desenho.", "en": "Import a drawing, calibrate the scale against a known dimension, then measure lengths and areas directly on it.", "fr": "Importez un plan, calibrez l'échelle sur une cote connue, puis mesurez longueurs et surfaces directement sur le dessin."},
+      "inputs": {"pt": "Planta em PDF ou imagem com pelo menos uma cota legível.", "en": "A PDF or image drawing with at least one readable dimension.", "fr": "Un plan PDF ou image avec au moins une cote lisible."},
+      "limitations": {"pt": "A leitura automática de plantas pode falhar em desenhos pouco legíveis ou sem cotas; a calibração deve ser conferida numa segunda cota. DWG é convertido antes da medição.", "en": "Automatic reading can fail on poor-quality or undimensioned drawings; calibration should be checked against a second dimension. DWG is converted before measuring.", "fr": "La lecture automatique peut échouer sur des plans peu lisibles ou non cotés ; l'échelle doit être contrôlée sur une seconde cote. Le DWG est converti avant le métré."},
+      "human_checks": {"pt": "Confirmar a escala, rever os contornos medidos e validar as quantidades antes de orçamentar.", "en": "Confirm the scale, review measured outlines and validate quantities before pricing.", "fr": "Confirmer l'échelle, revoir les contours mesurés et valider les quantités avant chiffrage."}
+    },
+    {
+      "id": "cap_quantities", "route": "/calculadoras", "public_demo": null, "status": "VERIFICADA",
+      "evidence": "engines/geometry.py — paint_liters, placo_quantity, floor_quantity, skirting_length_m executados em testes e ao vivo na demonstração.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade", "estimator", "private"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Quantidades de materiais", "en": "Material quantities", "fr": "Quantités de matériaux"},
+      "description": {"pt": "Converte áreas e perímetros medidos em quantidades a encomendar (tinta, placas, pavimento, rodapé), com desperdício explícito.", "en": "Turns measured areas and perimeters into order quantities (paint, boards, flooring, skirting) with explicit waste allowances.", "fr": "Transforme surfaces et périmètres mesurés en quantités à commander (peinture, plaques, sols, plinthes), avec pertes explicites."},
+      "inputs": {"pt": "Áreas ou perímetros (medidos ou introduzidos).", "en": "Areas or perimeters (measured or typed in).", "fr": "Surfaces ou périmètres (mesurés ou saisis)."},
+      "limitations": {"pt": "Rendimentos e percentagens de desperdício são valores por defeito ajustáveis; não substituem as fichas técnicas do fabricante.", "en": "Yields and waste rates are adjustable defaults; they do not replace manufacturer data sheets.", "fr": "Rendements et taux de perte sont des valeurs par défaut ajustables ; ils ne remplacent pas les fiches fabricant."},
+      "human_checks": {"pt": "Confirmar rendimentos com o produto escolhido.", "en": "Confirm yields with the chosen product.", "fr": "Confirmer les rendements avec le produit choisi."}
+    },
+    {
+      "id": "cap_plan_ai", "route": "/plans-pro", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Módulos de leitura de plantas (routes/plans_analysis.py, engines/plan_*) existentes; dependem de fornecedores de IA externos e não foram exercidos ponta a ponta nesta auditoria.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "estimator", "design"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Leitura assistida de plantas", "en": "Assisted drawing reading", "fr": "Lecture assistée de plans"},
+      "description": {"pt": "Propõe divisões, cotas e quantidades a partir da planta, para o profissional rever.", "en": "Suggests rooms, dimensions and quantities from the drawing for the professional to review.", "fr": "Propose pièces, cotes et quantités à partir du plan, à revoir par le professionnel."},
+      "inputs": {"pt": "Planta de arquitetura legível.", "en": "A legible architectural drawing.", "fr": "Un plan d'architecte lisible."},
+      "limitations": {"pt": "Resultados variam com a qualidade do desenho; usa serviços de IA externos. Não é apresentado como resultado real nesta página.", "en": "Results vary with drawing quality; relies on external AI services. Not shown as a real result on this page.", "fr": "Les résultats varient selon la qualité du plan ; s'appuie sur des services d'IA externes. Non présenté comme résultat réel sur cette page."},
+      "human_checks": {"pt": "Revisão integral pelo profissional.", "en": "Full review by the professional.", "fr": "Revue complète par le professionnel."}
+    },
+    {
+      "id": "cap_quote", "route": "/devis-editeur", "public_demo": "/demo/entrar", "status": "PARCIAL",
+      "evidence": "Editor de orçamentos (routes/project_quotes.py, quote_templates.py) existente; o cálculo de linha (quantidade × preço × (1 − desconto)) é verificado em testes; a demo offline mostra a lista de orçamentos.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade", "estimator"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Orçamentação", "en": "Estimating", "fr": "Chiffrage"},
+      "description": {"pt": "Constrói o orçamento por capítulos e artigos, com quantidades, unidades, preços e exportação em PDF.", "en": "Builds the estimate by sections and items with quantities, units, prices and PDF export.", "fr": "Construit le devis par lots et articles avec quantités, unités, prix et export PDF."},
+      "inputs": {"pt": "Quantidades (medidas ou introduzidas) e a sua tabela de preços.", "en": "Quantities (measured or typed) and your price list.", "fr": "Quantités (métrées ou saisies) et votre bibliothèque de prix."},
+      "limitations": {"pt": "Os preços sugeridos devem ser substituídos pelos preços da empresa; o documento final é revisto pelo utilizador.", "en": "Suggested prices should be replaced with your company's prices; the final document is reviewed by the user.", "fr": "Les prix suggérés doivent être remplacés par ceux de l'entreprise ; le document final est relu par l'utilisateur."},
+      "human_checks": {"pt": "Rever artigos, quantidades, preços e condições antes de enviar.", "en": "Review items, quantities, prices and terms before sending.", "fr": "Relire articles, quantités, prix et conditions avant envoi."}
+    },
+    {
+      "id": "cap_price_library", "route": "/bibliotheque", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Biblioteca de preços (routes/library.py, company_library.py) existente; não exercida ponta a ponta nesta auditoria.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade", "estimator"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Biblioteca de preços própria", "en": "Own price library", "fr": "Bibliothèque de prix"},
+      "description": {"pt": "Guarda os seus artigos e preços para os reutilizar em cada orçamento.", "en": "Stores your items and prices to reuse in every estimate.", "fr": "Conserve vos articles et prix pour les réutiliser dans chaque devis."},
+      "inputs": {"pt": "Os seus artigos e preços (importação ou introdução).", "en": "Your items and prices (import or entry).", "fr": "Vos articles et prix (import ou saisie)."},
+      "limitations": {"pt": "A qualidade depende dos preços introduzidos pela empresa.", "en": "Quality depends on the prices the company enters.", "fr": "La qualité dépend des prix saisis par l'entreprise."},
+      "human_checks": {"pt": "Atualizar preços periodicamente.", "en": "Update prices periodically.", "fr": "Mettre à jour les prix régulièrement."}
+    },
+    {
+      "id": "cap_margin", "route": "/rentabilite", "public_demo": null, "status": "VERIFICADA",
+      "evidence": "Fórmulas de engines/chantier_costs.py (margem = (venda − custo)/venda; markup = (venda − custo)/custo) verificadas em teste que executa o motor real e compara com a demonstração.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade", "estimator", "owner"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Custos e margens", "en": "Costs and margins", "fr": "Coûts et marges"},
+      "description": {"pt": "Calcula a margem e o markup por especialidade a partir dos preços de venda e dos custos previstos, distinguindo dados em falta de zeros.", "en": "Calculates margin and markup per trade from sale prices and planned costs, telling missing data apart from zeros.", "fr": "Calcule marge et coefficient par lot à partir des prix de vente et des coûts prévus, en distinguant données manquantes et zéros."},
+      "inputs": {"pt": "Orçamento com preço de custo por linha.", "en": "An estimate with a cost price per line.", "fr": "Un devis avec prix de revient par ligne."},
+      "limitations": {"pt": "Se faltar o custo de alguma linha, a margem não é calculada (em vez de ser inflacionada).", "en": "If any line lacks a cost, margin is not computed (rather than overstated).", "fr": "Si une ligne n'a pas de coût, la marge n'est pas calculée (plutôt que surestimée)."},
+      "human_checks": {"pt": "Confirmar custos reais e mão de obra.", "en": "Confirm actual costs and labour.", "fr": "Confirmer coûts réels et main-d'œuvre."}
+    },
+    {
+      "id": "cap_site_costs", "route": "/chantiers", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Custos por obra (engines/chantier_costs.py, routes/chantiers.py) com compras e horas registadas; não exercido ponta a ponta com dados reais nesta auditoria.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Previsto vs. real por obra", "en": "Budget vs. actual per job", "fr": "Prévu vs réel par chantier"},
+      "description": {"pt": "Junta o orçamento adjudicado, as compras e as horas registadas para mostrar o desvio de custos.", "en": "Combines the signed estimate, purchases and recorded hours to show cost drift.", "fr": "Rapproche devis signé, achats et heures saisies pour montrer la dérive des coûts."},
+      "inputs": {"pt": "Orçamento adjudicado, compras e horas.", "en": "Signed estimate, purchases and hours.", "fr": "Devis signé, achats et heures."},
+      "limitations": {"pt": "Depende de as compras e horas serem registadas na plataforma.", "en": "Requires purchases and hours to be recorded in the platform.", "fr": "Nécessite que achats et heures soient saisis dans la plateforme."},
+      "human_checks": {"pt": "Validar lançamentos de custos.", "en": "Validate cost entries.", "fr": "Valider les saisies de coûts."}
+    },
+    {
+      "id": "cap_sites", "route": "/chantiers", "public_demo": "/demo/entrar", "status": "PARCIAL",
+      "evidence": "Dossiers de obra, planeamento e acompanhamento (routes/chantiers.py, planning.py, photos.py) existentes; a demo offline mostra projetos de exemplo.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade", "design", "owner"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Acompanhamento de obras", "en": "Job tracking", "fr": "Suivi de chantier"},
+      "description": {"pt": "Um dossier por obra com planeamento, fotografias, documentos e estado dos trabalhos.", "en": "One file per job with schedule, photos, documents and work status.", "fr": "Un dossier par chantier avec planning, photos, documents et avancement."},
+      "inputs": {"pt": "Obras, equipas e documentos.", "en": "Jobs, teams and documents.", "fr": "Chantiers, équipes et documents."},
+      "limitations": {"pt": "Não substitui a coordenação de segurança em obra.", "en": "Does not replace on-site safety coordination.", "fr": "Ne remplace pas la coordination sécurité sur chantier."},
+      "human_checks": {"pt": "Atualização regular pela equipa.", "en": "Regular updates by the team.", "fr": "Mise à jour régulière par l'équipe."}
+    },
+    {
+      "id": "cap_documents", "route": "/analyse-documents", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Gestão e análise de documentos (routes/documents.py, doc_intel.py) existentes; ligação automática entre todas as etapas não verificada.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade", "design", "estimator", "owner"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Documentos do projeto", "en": "Project documents", "fr": "Documents du projet"},
+      "description": {"pt": "Reúne plantas, cadernos de encargos e documentos no projeto, ao lado do orçamento.", "en": "Keeps drawings, specifications and documents in the project, next to the estimate.", "fr": "Réunit plans, CCTP et documents dans le projet, à côté du devis."},
+      "inputs": {"pt": "Ficheiros do projeto.", "en": "Project files.", "fr": "Fichiers du projet."},
+      "limitations": {"pt": "Nem todas as etapas estão ligadas automaticamente entre si.", "en": "Not every stage is automatically linked to the next.", "fr": "Toutes les étapes ne sont pas reliées automatiquement."},
+      "human_checks": {"pt": "Organização inicial dos ficheiros.", "en": "Initial file organisation.", "fr": "Organisation initiale des fichiers."}
+    },
+    {
+      "id": "cap_procurement", "route": "/appro", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Aprovisionamento e pesquisa de preços (routes/appro.py, prices.py, suppliers.py) existentes; preços de mercado dependem de fontes externas.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Materiais e fornecedores", "en": "Materials and suppliers", "fr": "Matériaux et fournisseurs"},
+      "description": {"pt": "Lista de materiais por obra e comparação de preços de fornecedores.", "en": "Materials list per job and supplier price comparison.", "fr": "Liste de matériaux par chantier et comparaison des prix fournisseurs."},
+      "inputs": {"pt": "Quantidades e fornecedores.", "en": "Quantities and suppliers.", "fr": "Quantités et fournisseurs."},
+      "limitations": {"pt": "Preços de mercado indicativos; confirmar com o fornecedor.", "en": "Market prices are indicative; confirm with the supplier.", "fr": "Prix de marché indicatifs ; à confirmer auprès du fournisseur."},
+      "human_checks": {"pt": "Confirmar preço e prazo de entrega.", "en": "Confirm price and lead time.", "fr": "Confirmer prix et délai."}
+    },
+    {
+      "id": "cap_progress_claims", "route": "/situations", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Autos/situações, adiantamentos e retenções (routes/situations.py) existentes; terminologia e regras originalmente francesas; adaptação ao contexto português não verificada.",
+      "validated_at": "2026-11-10", "profiles": ["builder"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Autos de medição", "en": "Progress claims", "fr": "Situations de travaux"},
+      "description": {"pt": "Regista a percentagem executada por artigo do orçamento e gera o auto correspondente, com adiantamentos e retenções.", "en": "Records the completed percentage per estimate item and produces the matching claim, with advances and retentions.", "fr": "Enregistre l'avancement par article du devis et produit la situation, avec acomptes et retenues."},
+      "inputs": {"pt": "Orçamento adjudicado e percentagens executadas.", "en": "Signed estimate and completed percentages.", "fr": "Devis signé et pourcentages réalisés."},
+      "limitations": {"pt": "Não constitui software de faturação certificado pela AT. Regras contratuais a confirmar caso a caso.", "en": "Not invoicing software certified by the Portuguese Tax Authority. Contract rules to be confirmed case by case.", "fr": "Pas un logiciel de facturation certifié par l'administration fiscale portugaise. Règles contractuelles à confirmer au cas par cas."},
+      "human_checks": {"pt": "Validação do auto pelo dono de obra / fiscalização.", "en": "Claim approval by the client / supervisor.", "fr": "Validation par le maître d'ouvrage / la maîtrise d'œuvre."}
+    },
+    {
+      "id": "cap_invoices", "route": "/factures", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Faturas e documentos (routes/documents.py, einvoicing.py) existentes; certificação fiscal portuguesa não demonstrada.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Documentos de faturação", "en": "Invoicing documents", "fr": "Documents de facturation"},
+      "description": {"pt": "Prepara documentos de faturação a partir do orçamento e acompanha os pagamentos.", "en": "Prepares invoicing documents from the estimate and tracks payments.", "fr": "Prépare les documents de facturation à partir du devis et suit les paiements."},
+      "inputs": {"pt": "Orçamento e autos aprovados.", "en": "Estimate and approved claims.", "fr": "Devis et situations validées."},
+      "limitations": {"pt": "A emissão de faturas fiscalmente válidas em Portugal exige software certificado; a conformidade não é afirmada aqui.", "en": "Issuing tax-valid invoices in Portugal requires certified software; compliance is not claimed here.", "fr": "L'émission de factures fiscalement valables au Portugal exige un logiciel certifié ; la conformité n'est pas revendiquée ici."},
+      "human_checks": {"pt": "Confirmar com o contabilista.", "en": "Confirm with your accountant.", "fr": "Confirmer avec votre comptable."}
+    },
+    {
+      "id": "cap_quote_tracking", "route": "/devis", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Acompanhamento de orçamentos enviados e assinatura (routes/project_quotes.py, páginas /devis e /sign/:token) existentes.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Acompanhamento de propostas", "en": "Proposal tracking", "fr": "Suivi des devis envoyés"},
+      "description": {"pt": "Mostra que propostas foram enviadas, abertas e assinadas, para relembrar o cliente no momento certo.", "en": "Shows which proposals were sent, opened and signed, so you can follow up at the right time.", "fr": "Montre les devis envoyés, ouverts et signés pour relancer au bon moment."},
+      "inputs": {"pt": "Propostas enviadas a partir da plataforma.", "en": "Proposals sent from the platform.", "fr": "Devis envoyés depuis la plateforme."},
+      "limitations": {"pt": "A abertura só é detetada quando o cliente usa a ligação enviada.", "en": "Opening is only detected when the client uses the sent link.", "fr": "L'ouverture n'est détectée que via le lien envoyé."},
+      "human_checks": {"pt": "Decidir o seguimento.", "en": "Decide the follow-up.", "fr": "Décider de la relance."}
+    },
+    {
+      "id": "cap_team", "route": "/equipe", "public_demo": null, "status": "PARCIAL",
+      "evidence": "Equipa, RH e registo de horas (routes/hr.py, /equipe, /pointage) existentes.",
+      "validated_at": "2026-11-10", "profiles": ["builder", "trade"], "languages": ["pt", "en", "fr"],
+      "name": {"pt": "Equipa e horas", "en": "Team and hours", "fr": "Équipe et heures"},
+      "description": {"pt": "Partilha das obras com a equipa e registo de horas por obra.", "en": "Share jobs with the team and record hours per job.", "fr": "Partage des chantiers avec l'équipe et pointage des heures."},
+      "inputs": {"pt": "Membros da equipa.", "en": "Team members.", "fr": "Membres de l'équipe."},
+      "limitations": {"pt": "Comunicação com subempreiteiros externos limitada às funcionalidades de partilha existentes.", "en": "Communication with external subcontractors is limited to existing sharing features.", "fr": "Communication avec sous-traitants externes limitée aux fonctions de partage existantes."},
+      "human_checks": {"pt": "Validação das horas registadas.", "en": "Validation of recorded hours.", "fr": "Validation des heures saisies."}
+    },
+    {
+      "id": "cap_mep_plans", "route": null, "public_demo": null, "status": "NAO_VERIFICADA",
+      "evidence": "Planos de execução de eletricidade e canalização anunciados internamente; sem evidência verificada nesta auditoria. Excluído das demonstrações públicas.",
+      "validated_at": "2026-11-10", "profiles": [], "languages": ["pt"],
+      "name": {"pt": "Planos de execução de especialidades", "en": "MEP execution drawings", "fr": "Plans d'exécution lots techniques"},
+      "description": {"pt": "Em avaliação.", "en": "Under evaluation.", "fr": "En évaluation."},
+      "inputs": {"pt": "—", "en": "—", "fr": "—"},
+      "limitations": {"pt": "Não demonstrado publicamente.", "en": "Not publicly demonstrated.", "fr": "Non démontré publiquement."},
+      "human_checks": {"pt": "—", "en": "—", "fr": "—"}
+    }
+  ],
+  "demos": [
+    {"id": "demo_takeoff", "capabilities": ["cap_takeoff", "cap_quantities"], "kind": "engine", "title": {"pt": "Medições sobre planta", "en": "Drawing take-off", "fr": "Métré sur plan"}},
+    {"id": "demo_quote", "capabilities": ["cap_quote", "cap_price_library", "cap_margin"], "kind": "engine", "title": {"pt": "Do levantamento ao orçamento", "en": "From take-off to estimate", "fr": "Du métré au devis"}},
+    {"id": "demo_margin", "capabilities": ["cap_margin", "cap_site_costs"], "kind": "engine", "title": {"pt": "Custos, margem e markup", "en": "Costs, margin and markup", "fr": "Coûts, marge et coefficient"}},
+    {"id": "demo_documents", "capabilities": ["cap_documents", "cap_sites"], "kind": "guided", "title": {"pt": "Projeto, documentos e acompanhamento", "en": "Project, documents and tracking", "fr": "Projet, documents et suivi"}},
+    {"id": "demo_billing", "capabilities": ["cap_progress_claims", "cap_invoices"], "kind": "conceptual", "title": {"pt": "Autos e faturação", "en": "Progress claims and invoicing", "fr": "Situations et facturation"}},
+    {"id": "demo_painting", "capabilities": ["cap_takeoff", "cap_quantities", "cap_quote"], "kind": "engine", "track": "painting", "title": {"pt": "Percurso pintura", "en": "Painting track", "fr": "Parcours peinture"}}
+  ],
+  "case_demo": {"A": "demo_takeoff", "B": "demo_quote", "C": "demo_margin", "D": "demo_documents", "E": "demo_billing"},
+  "track_demo": {"painting": "demo_painting", "electrical": "demo_quote", "plumbing": "demo_quote", "builder": "demo_quote", "design": "demo_takeoff", "estimator": "demo_takeoff"},
+  "process": {
+    "current": {
+      "excel": {"pt": ["Receber planta", "Medir à mão", "Passar para Excel", "Pesquisar preços", "Montar orçamento", "Rever"], "en": ["Receive drawing", "Measure by hand", "Copy into Excel", "Look up prices", "Build estimate", "Review"], "fr": ["Recevoir le plan", "Métrer à la main", "Recopier dans Excel", "Chercher les prix", "Monter le devis", "Relire"]},
+      "paper": {"pt": ["Receber planta", "Medir com escalímetro", "Calcular à mão", "Telefonar a fornecedores", "Escrever orçamento", "Rever"], "en": ["Receive drawing", "Measure with a scale ruler", "Calculate by hand", "Phone suppliers", "Write estimate", "Review"], "fr": ["Recevoir le plan", "Mesurer au réglet", "Calculer à la main", "Appeler les fournisseurs", "Rédiger le devis", "Relire"]},
+      "erp": {"pt": ["Receber planta", "Medir noutra ferramenta", "Introduzir no ERP", "Atualizar preços", "Emitir orçamento", "Rever"], "en": ["Receive drawing", "Measure in another tool", "Enter into the ERP", "Update prices", "Issue estimate", "Review"], "fr": ["Recevoir le plan", "Métrer dans un autre outil", "Saisir dans l'ERP", "Mettre à jour les prix", "Éditer le devis", "Relire"]},
+      "specialized": {"pt": ["Receber planta", "Medir", "Exportar quantidades", "Importar no software", "Ajustar preços", "Rever"], "en": ["Receive drawing", "Measure", "Export quantities", "Import into software", "Adjust prices", "Review"], "fr": ["Recevoir le plan", "Métrer", "Exporter les quantités", "Importer dans le logiciel", "Ajuster les prix", "Relire"]},
+      "cad": {"pt": ["Modelo CAD/BIM", "Extrair quantidades", "Limpar em folha de cálculo", "Aplicar preços", "Montar orçamento", "Rever"], "en": ["CAD/BIM model", "Extract quantities", "Clean up in a spreadsheet", "Apply prices", "Build estimate", "Review"], "fr": ["Maquette CAO/BIM", "Extraire les quantités", "Nettoyer dans un tableur", "Appliquer les prix", "Monter le devis", "Relire"]},
+      "none": {"pt": ["Receber o pedido", "Visitar e medir", "Fazer contas", "Pedir preços", "Escrever proposta", "Rever"], "en": ["Receive the request", "Visit and measure", "Do the maths", "Ask for prices", "Write proposal", "Review"], "fr": ["Recevoir la demande", "Visiter et mesurer", "Faire les calculs", "Demander des prix", "Rédiger la proposition", "Relire"]}
+    },
+    "with": {"pt": ["Importar planta", "Calibrar e medir", "Validar quantidades", "Aplicar os seus preços", "Rever margens", "Exportar orçamento"], "en": ["Import drawing", "Calibrate and measure", "Validate quantities", "Apply your prices", "Review margins", "Export estimate"], "fr": ["Importer le plan", "Calibrer et métrer", "Valider les quantités", "Appliquer vos prix", "Contrôler les marges", "Exporter le devis"]},
+    "with_tracking": {"pt": ["Criar a obra", "Juntar plantas e documentos", "Ligar o orçamento", "Registar compras e horas", "Ver desvios", "Decidir"], "en": ["Create the job", "Add drawings and documents", "Link the estimate", "Record purchases and hours", "See variances", "Decide"], "fr": ["Créer le chantier", "Ajouter plans et documents", "Rattacher le devis", "Saisir achats et heures", "Voir les écarts", "Décider"]},
+    "with_billing": {"pt": ["Orçamento adjudicado", "Registar % executada", "Gerar auto", "Validar com o cliente", "Preparar faturação", "Acompanhar pagamentos"], "en": ["Signed estimate", "Record % completed", "Generate claim", "Approve with client", "Prepare invoicing", "Track payments"], "fr": ["Devis signé", "Saisir l'avancement", "Générer la situation", "Valider avec le client", "Préparer la facturation", "Suivre les paiements"]}
+  },
+  "investor": {
+    "types": [
+      {"id": "vc", "label": {"pt": "Capital de risco (VC)", "en": "Venture capital", "fr": "Capital-risque"}},
+      {"id": "angel", "label": {"pt": "Business angel", "en": "Business angel", "fr": "Business angel"}},
+      {"id": "cvc", "label": {"pt": "Investimento corporativo", "en": "Corporate venture", "fr": "Corporate venture"}},
+      {"id": "family_office", "label": {"pt": "Family office", "en": "Family office", "fr": "Family office"}},
+      {"id": "accelerator", "label": {"pt": "Aceleradora / programa", "en": "Accelerator / programme", "fr": "Accélérateur / programme"}},
+      {"id": "public_fund", "label": {"pt": "Fundo público", "en": "Public fund", "fr": "Fonds public"}},
+      {"id": "other", "label": {"pt": "Outro", "en": "Other", "fr": "Autre"}}
+    ],
+    "sectors": [
+      {"id": "contech", "label": {"pt": "ConTech", "en": "ConTech", "fr": "ConTech"}},
+      {"id": "proptech", "label": {"pt": "PropTech", "en": "PropTech", "fr": "PropTech"}},
+      {"id": "b2b_saas", "label": {"pt": "SaaS B2B", "en": "B2B SaaS", "fr": "SaaS B2B"}},
+      {"id": "ai", "label": {"pt": "Inteligência artificial", "en": "Artificial intelligence", "fr": "Intelligence artificielle"}},
+      {"id": "climate", "label": {"pt": "Clima / eficiência energética", "en": "Climate / energy efficiency", "fr": "Climat / efficacité énergétique"}},
+      {"id": "other", "label": {"pt": "Outro", "en": "Other", "fr": "Autre"}}
+    ],
+    "stages": [
+      {"id": "pre_seed", "label": {"pt": "Pre-seed", "en": "Pre-seed", "fr": "Pre-seed"}},
+      {"id": "seed", "label": {"pt": "Seed", "en": "Seed", "fr": "Seed"}},
+      {"id": "series_a", "label": {"pt": "Série A", "en": "Series A", "fr": "Série A"}},
+      {"id": "later", "label": {"pt": "Fases posteriores", "en": "Later stages", "fr": "Stades ultérieurs"}}
+    ],
+    "geos": [
+      {"id": "pt", "label": {"pt": "Portugal", "en": "Portugal", "fr": "Portugal"}},
+      {"id": "fr", "label": {"pt": "França", "en": "France", "fr": "France"}},
+      {"id": "eu", "label": {"pt": "Europa", "en": "Europe", "fr": "Europe"}},
+      {"id": "global", "label": {"pt": "Global", "en": "Global", "fr": "Mondial"}}
+    ],
+    "tickets": [
+      {"id": "t_lt100k", "label": {"pt": "Menos de 100 k€", "en": "Under €100k", "fr": "Moins de 100 k€"}},
+      {"id": "t100_500k", "label": {"pt": "100 k€ a 500 k€", "en": "€100k to €500k", "fr": "100 k€ à 500 k€"}},
+      {"id": "t500k_2m", "label": {"pt": "500 k€ a 2 M€", "en": "€500k to €2M", "fr": "500 k€ à 2 M€"}},
+      {"id": "t2mp", "label": {"pt": "Mais de 2 M€", "en": "Over €2M", "fr": "Plus de 2 M€"}},
+      {"id": "t_na", "label": {"pt": "Prefiro não indicar", "en": "Prefer not to say", "fr": "Je préfère ne pas répondre"}}
+    ],
+    "collab": [
+      {"id": "equity", "label": {"pt": "Investimento em capital", "en": "Equity investment", "fr": "Investissement en capital"}},
+      {"id": "strategic", "label": {"pt": "Parceria estratégica", "en": "Strategic partnership", "fr": "Partenariat stratégique"}},
+      {"id": "advisory", "label": {"pt": "Mentoria / advisory", "en": "Mentoring / advisory", "fr": "Mentorat / conseil"}},
+      {"id": "learn", "label": {"pt": "Conhecer primeiro", "en": "Learn more first", "fr": "D'abord en savoir plus"}}
+    ],
+    "availability": [
+      {"id": "this_week", "label": {"pt": "Esta semana (Web Summit)", "en": "This week (Web Summit)", "fr": "Cette semaine (Web Summit)"}},
+      {"id": "two_weeks", "label": {"pt": "Nas próximas 2 semanas", "en": "In the next 2 weeks", "fr": "Dans les 2 prochaines semaines"}},
+      {"id": "later", "label": {"pt": "Mais tarde", "en": "Later", "fr": "Plus tard"}}
+    ]
+  },
+  "partner": {
+    "types": [
+      {"id": "design_office", "label": {"pt": "Gabinete de arquitetura ou engenharia", "en": "Architecture or engineering firm", "fr": "Cabinet d'architecture ou bureau d'études"}},
+      {"id": "materials", "label": {"pt": "Empresa de materiais", "en": "Materials company", "fr": "Entreprise de matériaux"}},
+      {"id": "manufacturer", "label": {"pt": "Fabricante", "en": "Manufacturer", "fr": "Fabricant"}},
+      {"id": "distributor", "label": {"pt": "Distribuidor", "en": "Distributor", "fr": "Distributeur"}},
+      {"id": "association", "label": {"pt": "Associação profissional", "en": "Professional association", "fr": "Association professionnelle"}},
+      {"id": "consulting", "label": {"pt": "Consultora", "en": "Consultancy", "fr": "Cabinet de conseil"}},
+      {"id": "integrator", "label": {"pt": "Integrador de software", "en": "Software integrator", "fr": "Intégrateur logiciel"}},
+      {"id": "training", "label": {"pt": "Organização de formação", "en": "Training organisation", "fr": "Organisme de formation"}}
+    ],
+    "kinds": [
+      {"id": "integration", "label": {"pt": "Integração técnica", "en": "Technical integration", "fr": "Intégration technique"}},
+      {"id": "distribution", "label": {"pt": "Distribuição / revenda", "en": "Distribution / resale", "fr": "Distribution / revente"}},
+      {"id": "demonstration", "label": {"pt": "Demonstração aos meus clientes", "en": "Demonstration to my clients", "fr": "Démonstration à mes clients"}},
+      {"id": "pilot", "label": {"pt": "Piloto conjunto", "en": "Joint pilot", "fr": "Pilote commun"}},
+      {"id": "content", "label": {"pt": "Catálogo de produtos / preços", "en": "Product / price catalogue", "fr": "Catalogue produits / prix"}},
+      {"id": "training", "label": {"pt": "Formação", "en": "Training", "fr": "Formation"}}
+    ],
+    "scale": [
+      {"id": "s_lt50", "label": {"pt": "Menos de 50 clientes", "en": "Under 50 clients", "fr": "Moins de 50 clients"}},
+      {"id": "s50_500", "label": {"pt": "50 a 500 clientes", "en": "50 to 500 clients", "fr": "50 à 500 clients"}},
+      {"id": "s500p", "label": {"pt": "Mais de 500 clientes", "en": "Over 500 clients", "fr": "Plus de 500 clients"}}
+    ],
+    "timeline": [
+      {"id": "now", "label": {"pt": "Já", "en": "Now", "fr": "Maintenant"}},
+      {"id": "quarter", "label": {"pt": "Este trimestre", "en": "This quarter", "fr": "Ce trimestre"}},
+      {"id": "later", "label": {"pt": "Mais tarde", "en": "Later", "fr": "Plus tard"}}
+    ],
+    "use_cases": {
+      "design_office": "cap_takeoff", "materials": "cap_procurement", "manufacturer": "cap_procurement", "distributor": "cap_quote",
+      "association": "cap_quote", "consulting": "cap_margin", "integrator": "cap_quote", "training": "cap_takeoff"
+    }
+  }
+}

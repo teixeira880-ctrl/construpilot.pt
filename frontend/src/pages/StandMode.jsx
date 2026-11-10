@@ -60,6 +60,7 @@ export default function StandMode() {
         <p className="mt-3 text-base text-muted-foreground max-w-2xl">
           Da planta ao processo de estudo pronto a assinar. Funciona sem internet: dados fictícios da Moradia Martins, nada é enviado.
         </p>
+        <p className="mt-2 text-sm"><Link to="/connect/stand" className="text-primary underline underline-offset-2" data-testid="stand-connect-link">Diagnóstico de visitantes e QR Codes (Discovery Engine) →</Link></p>
 
         {!active && (
           <div className="mt-8 rounded-md border border-primary/30 bg-primary/5 p-6" data-testid="stand-start-block">
