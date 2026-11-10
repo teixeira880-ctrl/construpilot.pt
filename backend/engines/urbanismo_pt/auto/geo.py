@@ -420,7 +420,10 @@ _SRUP_PAT = re.compile(r"(\bren\b|reserva ecol|\bran\b|reserva agr|dom[ií]nio h
                        r"rede natura|zec|zpe|ardid|perigosidade|linha.{0,6}el[eé]tric|gasod|ferrov|estrad|aeroport)", re.I)
 
 
-async def servidoes(lat: float, lon: float, raio_m: float = 40.0) -> Dict[str, Any]:
+async def servidoes(lat: float, lon: float, raio_m: float = 40.0, prazo_s: float = 75.0) -> Dict[str, Any]:
+    """Consulta as servidões com um prazo total: com a DGT lenta, o que não respondeu a tempo fica «por confirmar»
+    (nunca «sem servidões») e o processo continua, em vez de ficar parado minutos à espera."""
+    fim = time.monotonic() + prazo_s
     cols = [c for c in await dgt_collections() if _SRUP_PAT.search(c["id"].replace("_", " ") + " " + c["title"])]
     if not cols:
         return _res(False, nota="lista de servidões indisponível")
@@ -435,14 +438,26 @@ async def servidoes(lat: float, lon: float, raio_m: float = 40.0) -> Dict[str, A
             return c, f
 
     hits, falhadas = [], []
-    for c, f in await asyncio.gather(*(one(c) for c in cols[:40])):
+    tarefas = {asyncio.ensure_future(one(c)): c for c in cols[:40]}
+    feitas, pendentes = await asyncio.wait(tarefas, timeout=max(1.0, fim - time.monotonic()))
+    for t in pendentes:
+        t.cancel()
+        falhadas.append(tarefas[t])
+    for t in feitas:
+        c, f = t.result() if not t.exception() else (tarefas[t], None)
         if f is None:
             falhadas.append(c)
         elif f:
             hits.append({"id": c["id"], "titulo": c["title"]})
     ainda = []
-    for c in falhadas:                     # segunda volta, uma a uma
-        f = await _dgt_items(c["id"], bbox, 3, uso)
+    for c in falhadas:                     # segunda volta, uma a uma, só enquanto houver tempo
+        resta = fim - time.monotonic()
+        f = None
+        if resta > 2:
+            try:
+                f = await asyncio.wait_for(_dgt_items(c["id"], bbox, 3, uso), timeout=resta)
+            except asyncio.TimeoutError:
+                f = None
         if f is None:
             ainda.append({"id": c["id"], "titulo": c["title"]})
         elif f:
