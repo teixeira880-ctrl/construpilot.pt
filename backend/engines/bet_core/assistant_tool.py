@@ -249,7 +249,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                   "questions": [], "decisions": [str(d) for d in (cached["model"].get("_decisions") or [])], "cached": True}
         else:
             await step("Lecture des plans par IA et relevé du modèle bâtiment")
-            rd = await reader.read_building(docs, hypotheses, country, llm=llm, decide_alone=decide_alone)
+            rd = await reader.read_building(docs, hypotheses, country, llm=llm, decide_alone=decide_alone, on_progress=step)
             if rd["ok"] and not rd.get("demo"):
                 try:
                     await db.bet_models.update_one({"user_id": uid, "docs_hash": key}, {"$set": {

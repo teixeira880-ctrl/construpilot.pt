@@ -24,6 +24,36 @@ MAX_IMAGES = 14
 MAX_PX = 1568
 MAX_OUT = int(__import__("os").environ.get("BET_MAX_TOKENS", "32000"))
 
+# Prazo total da leitura por IA (s). Sem ele, 4 fornecedores × 600 s × 3 correções = estudos parados mais de 1 h.
+# Com ele, cada chamada usa só o tempo que resta e as correções só correm se houver tempo para uma leitura completa.
+import contextvars as _cv
+import time as _time
+READ_BUDGET_S = float(__import__("os").environ.get("BET_READ_BUDGET_S", "480"))
+FIX_MIN_S = float(__import__("os").environ.get("BET_FIX_MIN_S", "150"))
+_PRAZO: "_cv.ContextVar[float | None]" = _cv.ContextVar("bet_read_deadline", default=None)
+
+
+def prazo_resta() -> float | None:
+    d = _PRAZO.get()
+    return None if d is None else d - _time.monotonic()
+
+
+def ha_tempo(minimo: float = FIX_MIN_S) -> bool:
+    r = prazo_resta()
+    return r is None or r > minimo
+
+
+def abrir_prazo(segundos: float | None = None):
+    """Abre o prazo da leitura (se ainda não houver um). Devolve o token para fechar_prazo."""
+    if _PRAZO.get() is not None:
+        return None
+    return _PRAZO.set(_time.monotonic() + (segundos or READ_BUDGET_S))
+
+
+def fechar_prazo(token) -> None:
+    if token is not None:
+        _PRAZO.reset(token)
+
 # ------------------------------------------------------------------ classement des pages
 PCMI = {"01": "autre", "02.1": "masse", "02": "plan", "03": "coupe", "04": "notice", "05": "facade"}
 TITLES = [   # ordre = priorité ; les renvois de coupe (« Coupe 1 ») sur les plans ne doivent pas l'emporter sur le titre
@@ -511,10 +541,15 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
     status = {}
     first_text = None
     for name in order:
+        resta = prazo_resta()
+        if resta is not None and resta < 20:      # prazo da leitura esgotado: não se arranca outro fornecedor
+            errors.append(f"{name}: prazo da leitura esgotado")
+            status[name] = "timeout"
+            continue
         try:
             kw = {"json_schema": json_schema} if name == "claude" and json_schema is not None else {}
             txt = await asyncio.wait_for(PROVIDERS[name](system, text, images=images, model=model if name == "claude" else None,
-                                                         max_tokens=max_tokens, **kw), timeout)
+                                                         max_tokens=max_tokens, **kw), timeout if resta is None else min(timeout, resta))
             if txt and first_text is None:
                 first_text = txt
             try:
@@ -541,7 +576,24 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
 
 # ------------------------------------------------------------------ point d'entrée
 async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR",
-                        llm: LLM | None = None, max_fix: int = 2, decide_alone: bool = False) -> dict:
+                        llm: LLM | None = None, max_fix: int = 2, decide_alone: bool = False, on_progress=None) -> dict:
+    """Leitura com prazo total (READ_BUDGET_S) e progresso visível (`on_progress(label)`) — ver _read_building."""
+    tok = abrir_prazo()
+    try:
+        return await _read_building(docs, hypotheses, country, llm, max_fix, decide_alone, on_progress)
+    finally:
+        fechar_prazo(tok)
+
+
+async def _progresso(on_progress, label: str) -> None:
+    if on_progress is not None:
+        try:
+            await on_progress(label)
+        except Exception:  # noqa: BLE001 — o progresso nunca faz falhar a leitura
+            pass
+
+
+async def _read_building(docs, hypotheses, country, llm, max_fix, decide_alone, on_progress) -> dict:
     """docs = [(nom, pdf_bytes)]. Retourne {model, anomalies, questions, decisions, pages, attempts, ok}.
     decide_alone=True : l'IA tranche seule les points en suspens, ne pose plus de questions et liste ses choix dans _decisions."""
     if str(country).upper() == "UA":
@@ -602,8 +654,9 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
         except Exception as exc:  # noqa: BLE001
             anomalies = [{"code": "JSON", "level": checks.BLOCK, "message": f"JSON illisible : {exc}"}]
         blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
-        if not blocking or attempts > max_fix:
+        if not blocking or attempts > max_fix or not ha_tempo():
             break
+        await _progresso(on_progress, "Lecture des plans par IA : correction du relevé")
         fix = (base + "\n\nTON RELEVÉ PRÉCÉDENT :\n" + (json.dumps(raw, ensure_ascii=False) if raw else txt[:20000]) +
                "\n\nLES CONTRÔLES DÉTERMINISTES ONT TROUVÉ CES ANOMALIES BLOQUANTES :\n" +
                "\n".join(f"- {a['code']} : {a['message']} {a.get('fix', '')}" for a in blocking) +
@@ -613,7 +666,7 @@ async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", cou
         txt = await llm(SYSTEM, fix, images=images, max_tokens=MAX_OUT, **sx)
         attempts += 1
     blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
-    if raw is not None and any(a.get("code") == "REF-OPENINGS" for a in blocking):
+    if raw is not None and any(a.get("code") == "REF-OPENINGS" for a in blocking) and ha_tempo(90):
         # dernière chance ciblée : relevé des seules baies sur les façades et plans (le modèle complet a « oublié » la section)
         try:
             ctx = {k: raw.get(k) for k in ("envelope", "sides", "levels")}

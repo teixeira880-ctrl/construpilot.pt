@@ -46,6 +46,8 @@ _PT_STATUS_LABELS = {
     "En file d'attente": "Em fila de espera",
     "Lecture des plans par IA et relevé du modèle bâtiment":
         "Leitura dos desenhos por IA e levantamento do modelo do edifício",
+    "Lecture des plans par IA : correction du relevé":
+        "Leitura dos desenhos por IA: correção do levantamento",
     "Calculs, plans, devis et contrôle":
         "Cálculos, desenhos, orçamento e verificação",
     "Terminé": "Concluído",
