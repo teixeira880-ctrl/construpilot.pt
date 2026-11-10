@@ -564,6 +564,49 @@ def dossiers(p: dict) -> dict:
     return {lg: note(dict(p, lingua=lg)) for lg in ("uk", "en")}
 
 
+def _render_proc(args, destino):
+    """Processo filho: render Mitsuba → pickle em `destino`."""
+    import pickle
+    from . import render3d
+    modelo, opcoes, largura, altura, spp, budget = args
+    out = render3d.render(modelo, opcoes, largura, altura, spp, orcamento_s=budget)
+    with open(destino, "wb") as fh:
+        pickle.dump(out, fh)
+
+
+def _render_isolado(modelo, opcoes, largura, altura, spp, budget, hard):
+    """Render num processo separado (spawn) com teto de tempo: se o motor de render encravar ou demorar demasiado, o
+    processo é terminado e o dossier sai sem renders — o cálculo nunca fica parado."""
+    import multiprocessing as mp
+    import os
+    import pickle
+    import tempfile
+    if os.environ.get("CP_RENDER_INLINE") == "1":            # testes / depuração
+        from . import render3d
+        return render3d.render(modelo, opcoes, largura, altura, spp, orcamento_s=budget)
+    fd, destino = tempfile.mkstemp(suffix=".pkl")
+    os.close(fd)
+    try:
+        pr = mp.get_context("spawn").Process(target=_render_proc, args=((modelo, opcoes, largura, altura, spp, budget), destino), daemon=True)
+        pr.start()
+        pr.join(hard)
+        if pr.is_alive():
+            pr.terminate()
+            pr.join(5)
+            if pr.is_alive():
+                pr.kill()
+            raise TimeoutError(f"render 3D > {hard:.0f} s — dossier sem renders")
+        if pr.exitcode != 0 or os.path.getsize(destino) == 0:
+            raise RuntimeError(f"processo de render terminou com código {pr.exitcode}")
+        with open(destino, "rb") as fh:
+            return pickle.load(fh)
+    finally:
+        try:
+            os.unlink(destino)
+        except OSError:
+            pass
+
+
 def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura=None, spp=None):
     """Render 3D fotorrealista a partir do modelo dos planos (sempre que há modelo estrutural).
     Produção: 1280 × 720, 32 amostras, orçamento de tempo CP_RENDER_BUDGET (80 s; a 1.ª vista é sempre feita) e cache em disco
@@ -585,9 +628,9 @@ def gerar_renders(modelo: dict, opcoes: dict | None = None, largura=None, altura
             return pickle.load(open(cache, "rb"))
     except Exception:  # noqa: BLE001
         pass
+    hard = float(os.environ.get("CP_RENDER_HARD", 150))        # teto absoluto: o render corre num processo à parte, morto se exceder
     try:
-        from . import render3d
-        out = render3d.render(modelo, opcoes or {}, largura, altura, spp, orcamento_s=budget)
+        out = _render_isolado(modelo, opcoes or {}, largura, altura, spp, budget, hard)
     except Exception as exc:  # noqa: BLE001 — o render nunca pode impedir o dossier
         logging.getLogger(__name__).warning("render 3D indisponível: %s", exc)
         return []
