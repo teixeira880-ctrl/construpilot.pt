@@ -403,8 +403,20 @@ def compute(m: Frame) -> dict:
                                    f"{sname}: CLT {imposed[0]} per span: " + "; ".join(det) + ".",
                                    f"{sname}: CLT {imposed[0]} за прольотами: " + "; ".join(det) + "."))
         else:
+            mini = None
             clt = timber.design_clt(max(spans), ld["g"], ld["q"], ld["psi1"], ld["psi2"], R, q_dur=ld["dur"], defl=defl, a_vib=_avib(m, ld))
-        if not clt["ok"]:
+        if not clt["ok"] and imposed and mini is not None and mini["ok"]:
+            # composition imposée insuffisante mais un CLT du catalogue passe : le dire précisément (pas « 280 mm »)
+            issues.append({"code": "CLT-NOK", "level": BLOCK, "message": t(
+                f"Plancher {sname} : le CLT {imposed[0]} imposé par le plan ne vérifie pas sur {num(max(spans))} m (taux {num(clt['u_max'])}, {clt['governing']}).",
+                f"Laje {sname}: o CLT {imposed[0]} imposto pela planta não verifica em {num(max(spans))} m (taxa {num(clt['u_max'])}, {clt['governing']}).",
+                f"Floor {sname}: the {imposed[0]} CLT specified on the drawings fails over {num(max(spans))} m (ratio {num(clt['u_max'])}, {clt['governing']}).",
+                f"Перекриття {sname}: заданий кресленнями CLT {imposed[0]} не проходить на {num(max(spans))} м (коеф. {num(clt['u_max'])}, {clt['governing']})."),
+                "fix": t(f"Passer au CLT {mini['name']} (taux {num(mini['u_max'])}) ou ajouter des pannes.",
+                         f"Passar para CLT {mini['name']} (taxa {num(mini['u_max'])}) ou acrescentar madres.",
+                         f"Use {mini['name']} CLT (ratio {num(mini['u_max'])}) or add purlins.",
+                         f"Перейти на CLT {mini['name']} (коеф. {num(mini['u_max'])}) або додати прогони.")})
+        elif not clt["ok"]:
             issues.append({"code": "CLT-NOK", "level": BLOCK, "message": t(
                 f"Plancher {sname} : portée {num(max(spans))} m trop grande pour le CLT 280 mm (taux {num(clt['u_max'])}, {clt['governing']}).",
                 f"Laje {sname}: vão {num(max(spans))} m demasiado grande para CLT 280 mm (taxa {num(clt['u_max'])}).",

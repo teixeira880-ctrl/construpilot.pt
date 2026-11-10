@@ -16,7 +16,7 @@ from engines.bet_core.pipeline import _RENDER_LOCK, _slug
 from engines.bet_frame import model
 
 from . import calc, devis, report, sheets
-from .lang import LANGS, pick_lang, t, use_lang
+from .lang import LANGS, num, pick_lang, t, use_lang
 
 _LOCK = threading.Lock()
 _KEEP = {"GRID-01", "GRID-02", "GRID-03", "LEV-01", "LEV-02", "LEV-03", "CORE-01", "VOID-01"}
@@ -170,13 +170,38 @@ def validate(raw: dict) -> tuple[model.Frame | None, list[dict]]:
     return m, out
 
 
-def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict | None) -> dict:
+def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict | None, progress=None) -> dict:
+    def say(msg):
+        if progress is not None:
+            try:
+                progress(msg)
+            except Exception:  # noqa: BLE001 — journal en direct facultatif
+                pass
     with use_lang(lang):
         m, anomalies = validate(raw)
         if m is None or model.has_block(anomalies):
             return {"status": "MODELE_INVALIDE", "blocking": sum(a.get("level") == model.BLOCK for a in anomalies), "anomalies": anomalies, "files": {}}
         try:
+            say(f"[{lang.upper()}] Calcul EN 1995 : {len(m.levels)} niveau(x), trame {len(m.gx)} × {len(m.gy)} files, pays {m.country}")
             r = calc.compute(m)
+            if progress is not None:
+                say(f"Schéma : {r['system']} — portée selon {r['scheme'].get('o', '?').upper()} ({num(r['scheme'].get('s') or 0)} m), feu R{r['R']}, "
+                    f"neige s = {num(r['snow']['s'])} kN/m², vent q_p = {num(r['wind']['qp'])} kN/m²")
+                for d in r["decisions"]:
+                    say("Décision : " + d)
+                for f in r["floors"]:
+                    c = f["clt"]
+                    say(f"{f['name']} : CLT {c['name']} — taux {num(c['u_max'])} ({c['governing']}), {len(f['panels'])} panneaux, {len(f['beams'])} poutres"
+                        + ("" if c["u_max"] <= 1 else "  ✗ À REPRENDRE"))
+                for w in r["walls"]:
+                    for sg in w["segs"]:
+                        say(f"Mur {w['id']} {sg['level']} : CLT {sg['layup']} — taux {num(max(sg['u'], sg['u_c90']))}" + ("" if sg["ok"] else "  ✗"))
+                for c in r["columns"][:20]:
+                    s0 = c["segs"][0]
+                    say(f"Poteau {c['name']} : {s0['b']}×{s0['h']} {s0['grade']} — N_Ed {num(s0['NEd'], 0)} kN")
+                q = r["quantities"]
+                say(f"Quantités : CLT {num(q['clt_m3'] + q['wall_m3'], 1)} m³, lamellé-collé {num(q['gl_beams_m3'] + q['gl_cols_m3'], 1)} m³, "
+                    f"béton {num(q['conc_fnd_m3'] + q['conc_slab_m3'] + q['conc_plinth_m3'], 1)} m³, acier {num(q['rebar_kg'], 0)} kg")
             try:
                 from . import thermal
                 house = str(m.raw.get("building_type", "")).lower() in ("maison", "moradia", "house", "maison_individuelle")
@@ -186,7 +211,16 @@ def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict |
                 r["issues"].append({"code": "TH-00", "level": model.WARN, "message": t("Étude thermique non produite", "Estudo térmico não produzido",
                                                                                       "Thermal study not produced", "Теплотехнічний розрахунок не виконано")
                                     + f" ({type(exc).__name__}: {str(exc)[:160]})"})
+            th = r.get("thermal")
+            if th and progress is not None:
+                if th.get("reh"):
+                    say(f"Thermique REH : classe {th['reh']['classe']}, Nic {num(th['reh']['Nic'], 1)} / Ni {num(th['reh']['Ni'], 1)} kWh/m².an, "
+                        f"puissance {num(th['phi_w'] / 1000, 1)} kW")
+                elif th.get("re2020") and "error" not in th["re2020"]:
+                    say(f"Thermique RE2020 : Bbio {num(th['re2020']['Bbio'], 1)}, Cep {num(th['re2020']['Cep'], 1)}, "
+                        f"{'conforme' if th['re2020'].get('conforme') else 'NON conforme'}, puissance {num(th['phi_w'] / 1000, 1)} kW")
             shs = sheets.all_sheets(m, r)
+            say(f"Plans : {len(shs)} planches")
             lines = devis.build_lines(m, r)
             tot = devis.totals(lines, r["country"])
             rev = report.review(m, r, anomalies)
@@ -220,6 +254,50 @@ def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict |
         with open(pdf, "wb") as fh:
             w.write(fh)
         note.unlink()
+        hero = None
+        try:                                           # couverture premium : rendu 3D du bâtiment + chiffres clés
+            from . import premium
+            given = Path(str(raw.get("_hero_png") or ""))
+            if raw.get("_hero_png") and given.exists():          # rendu photoréaliste préparé en amont (IA image, même volumétrie)
+                hero = out / f"Rendu_3D_{stem}{sfx}{given.suffix}"
+                hero.write_bytes(given.read_bytes())
+            else:
+                hero = premium.render_hero(m, r, out / f"Rendu_3D_{stem}{sfx}.png")
+            with _RENDER_LOCK:
+                brand.use(branding, m.country if m.country in ("FR", "PT") else "FR")
+                try:
+                    cv = premium.cover(out / f"_cover_{lang}.pdf", m, r, premium.study_kpis(m, r, tot, rev),
+                                       t("Étude structure bois massif", "Estudo de estrutura em madeira maciça", "Mass timber structural study",
+                                         "Розрахунок конструкцій з масивної деревини"),
+                                       t("CLT / lamellé-collé — note de calcul EN 1995, étude thermique, plans et devis",
+                                         "CLT / lamelado-colado — memória EN 1995, estudo térmico, desenhos e orçamento",
+                                         "CLT / glulam — EN 1995 calculation report, thermal study, drawings and estimate",
+                                         "CLT / клеєний брус — розрахунок EN 1995, теплотехніка, креслення, кошторис"), hero)
+                finally:
+                    brand.use(None, "FR")
+            try:                                        # planche « Perspectives » : latérales, arrière, aérienne (même modèle)
+                views = [(k, Path(p)) for k, p in (raw.get("_views") or []) if Path(p).exists()]
+                if len(views) < 5:
+                    views = premium.render_views(m, r, out, f"_vue_{lang}")
+                with _RENDER_LOCK:
+                    brand.use(branding, m.country if m.country in ("FR", "PT") else "FR")
+                    try:
+                        vp = premium.views_page(out / f"_views_{lang}.pdf", views,
+                                                t("Perspectives du projet", "Perspetivas do projeto", "Project perspectives", "Перспективи проєкту"))
+                    finally:
+                        brand.use(None, "FR")
+                premium.prepend(vp, pdf)
+                vp.unlink()
+                for _k, p in views:
+                    if p.name.startswith("_vue_"):
+                        p.unlink(missing_ok=True)
+            except Exception as exc:  # noqa: BLE001
+                say(f"Planche perspectives non générée ({type(exc).__name__})")
+            premium.prepend(cv, pdf)
+            cv.unlink()
+            say("Couverture premium, perspectives et rendu 3D générés")
+        except Exception as exc:  # noqa: BLE001 — la couverture embellit, elle ne bloque jamais le dossier
+            say(f"Couverture premium non générée ({type(exc).__name__})")
         zp = out / f"{names[1]}_{stem}{sfx}.zip"
         with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
             for f in dxf:
@@ -230,11 +308,30 @@ def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict |
         if str((m.raw.get("estimate") or {}).get("market") or "").upper() == "UA":       # devis final aux prix ukrainiens (грн + €)
             from . import estimate
             est = estimate.build(m, r, r.get("thermal"))
+            say(f"Devis final UA : {num(est['ht'], 0)} грн HT ≈ {num(est['ht'] / est['eur'], 0)} € ({num(est['per_m2'], 0)} грн/m²)")
             en = {"fr": "Devis_final_UA", "pt": "Orcamento_final_UA", "en": "Final_Estimate_UA", "uk": "Koshtorys_final_UA"}[lang]
             with _RENDER_LOCK:
                 brand.use(branding, m.country if m.country in ("FR", "PT") else "FR")
                 try:
-                    est_files["estimate_pdf"] = str(estimate.write_pdf(out / f"{en}_{stem}{sfx}.pdf", m, est))
+                    epdf = estimate.write_pdf(out / f"{en}_{stem}{sfx}.pdf", m, est)
+                    try:
+                        from . import premium
+                        k = [(t("Total HT", "Total s/IVA", "Total excl. VAT", "Разом без ПДВ"), f"{num(est['ht'] / 1e6, 2)} M грн"),
+                             (t("Total TTC", "Total c/IVA", "Total incl. VAT", "Разом з ПДВ"), f"{num(est['ttc'] / 1e6, 2)} M грн"),
+                             (t("Contre-valeur", "Contravalor", "Euro equivalent", "Еквівалент"), f"{num(est['ht'] / est['eur'], 0)} €"),
+                             (t("Ratio", "Rácio", "Ratio", "Питомий показник"), f"{num(est['per_m2'], 0)} грн/m²"),
+                             (t("Surface brute", "Área bruta", "Gross area", "Загальна площа"), f"{num(est['gross'], 0)} m²"),
+                             (t("Postes chiffrés", "Artigos", "Line items", "Позицій"), str(len(est["lines"])))]
+                        cv = premium.cover(out / f"_cover_est_{lang}.pdf", m, r, k,
+                                           t("Devis final", "Orçamento final", "Final estimate", "Остаточний кошторис"),
+                                           t("Prix du marché ukrainien 2026 — грн et €", "Preços do mercado ucraniano 2026 — грн e €",
+                                             "Ukrainian market prices 2026 — UAH and €", "Ціни ринку України 2026 — грн і €"),
+                                           hero)
+                        premium.prepend(cv, epdf)
+                        cv.unlink()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    est_files["estimate_pdf"] = str(epdf)
                 finally:
                     brand.use(None, "FR")
             est_files["estimate_xlsx"] = str(estimate.write_xlsx(out / f"{en}_{stem}{sfx}.xlsx", m, est))
@@ -247,11 +344,13 @@ def _one(raw: dict, out: Path, date: str, lang: str, stem: str, branding: dict |
                    "quantities": r["quantities"], "devis": tot, "review": rev,
                    "thermal": _th_summary(r.get("thermal"))}
         (out / f"resultats_{lang}.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+        say(f"[{lang.upper()}] Dossier prêt : {rev['status']} — devis {num(tot['ht'], 0)} € HT")
         return {"status": rev["status"], "blocking": rev["blocking"], "lang": lang, "kind": "clt", "sheets": [s.code + " " + s.title for s in shs],
                 "devis_ht": tot["ht"], "devis_ttc": tot["ttc"], "decisions": r["decisions"],
                 "anomalies": [a for a in anomalies + r["issues"] if a.get("level") != model.BLOCK],
                 "review": [i for i in rev["items"] if str(i.get("level", "")).upper() != "OK"][:40], "summary": summary,
-                "files": {"pdf": str(pdf), "plans_pdf": str(plans_pdf), "zip": str(zp), "xlsx": str(xlsx), **est_files}}
+                "files": {"pdf": str(pdf), "plans_pdf": str(plans_pdf), "zip": str(zp), "xlsx": str(xlsx), **est_files,
+                          **({"render_png": str(hero)} if hero and Path(hero).exists() else {})}}
 
 
 def _th_summary(th: dict | None) -> dict | None:
@@ -266,7 +365,7 @@ def _th_summary(th: dict | None) -> dict | None:
 
 
 def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = None, stem: str | None = None,
-        branding: dict | None = None, langs: list[str] | None = None) -> dict:
+        branding: dict | None = None, langs: list[str] | None = None, progress=None) -> dict:
     """Étude complète. `langs` : plusieurs langues de livrables (la première est la principale)."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -279,7 +378,7 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
     extra = {}
     with _LOCK:
         for lg in todo:
-            r_ = _one(json.loads(json.dumps(raw)), out, date, lg, stem, branding)
+            r_ = _one(json.loads(json.dumps(raw)), out, date, lg, stem, branding, progress if lg == main else None)
             if res is None:
                 res = r_
                 if r_["status"] == "MODELE_INVALIDE":

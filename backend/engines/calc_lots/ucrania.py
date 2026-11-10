@@ -312,6 +312,9 @@ def note(p: dict) -> dict:
             mod["projeto"] = p[f"projeto_{lingua}"]            # título dos planos na língua do dossier
         if lingua == "en":
             mod = LU.modelo_en(mod)
+            for g, nm in zip(mod.get("grelhas_y") or [], "ABCDEFGHIJ"):     # eixos em letras latinas seguidas (А Б В Г Д → A B C D E)
+                if not str(g.get("nome", "")).isdigit():
+                    g["nome"] = nm
         mod.setdefault("local", f"{c['nome']} ({c['name']})")
         for lj in mod.get("lajes") or []:
             if lj.get("tipo") == "clt":

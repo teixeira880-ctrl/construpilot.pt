@@ -21,6 +21,7 @@ S50 = 72 / 25.4 * 1000 / 50          # pt por metro a 1:50
 FOLHAS = {"A0": (3370.39, 2383.94), "A1": (2383.94, 1683.78)}
 VERDE, COBRE, CREME, CINZA, BRANCO = (0.09, 0.29, 0.22), (0.72, 0.42, 0.20), (0.98, 0.95, 0.89), (0.38, 0.38, 0.38), (1, 1, 1)
 BET, MAD, MAD_E, ISO = (0.80, 0.80, 0.80), (0.93, 0.82, 0.60), (0.80, 0.60, 0.32), (0.75, 0.88, 0.95)
+HATCH_BA = (0.50, 0.50, 0.50)
 CASTANHO = (0.45, 0.30, 0.10)
 FC0K = {"C18": 18.0, "C24": 21.0, "C30": 23.0, "GL24h": 24.0, "GL28h": 28.0}
 MADEIRAS = ("C18", "C24", "C30", "GL24h", "GL28h")
@@ -498,6 +499,16 @@ class _Folha:
         sh.finish(color=cor, width=w, dashes=dash, closePath=False)
         sh.commit()
 
+    def segs(self, segs, cor=(0, 0, 0), w=0.3, dash=None):
+        """Plusieurs segments en une seule forme (hachures : rapide et léger)."""
+        if not segs:
+            return
+        sh = self.p.new_shape()
+        for a, b in segs:
+            sh.draw_line(a, b)
+        sh.finish(color=cor, width=w, dashes=dash, closePath=False)
+        sh.commit()
+
     def poli(self, pts, cor=(0, 0, 0), fill=None, w=0.8):
         sh = self.p.new_shape()
         sh.draw_polyline(pts + [pts[0]])
@@ -601,6 +612,41 @@ class _Pl:
     def poli(self, pts, cor=(0, 0, 0), fill=None, w=0.8):
         self.fl.poli([self.P(*q) for q in pts], cor, fill, w)
 
+    def hatch(self, x0, y0, x1, y1, step=0.08, cor=(0.45, 0.45, 0.45), w=0.25, ang=45, dash=None):
+        """Hachures à `ang`° (45 / 135 / 0 / 90) dans le rectangle (mètres), découpées analytiquement."""
+        x0, x1, y0, y1 = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
+        out = []
+        if ang in (0, 180):
+            y = y0 + step / 2
+            while y < y1:
+                out.append((self.P(x0, y), self.P(x1, y)))
+                y += step
+        elif ang == 90:
+            x = x0 + step / 2
+            while x < x1:
+                out.append((self.P(x, y0), self.P(x, y1)))
+                x += step
+        else:
+            sg = 1 if ang == 45 else -1                  # 45 : y = x + c ; 135 : y = −x + c
+            st = step * 1.4142
+            cmin, cmax = (y0 - x1, y1 - x0) if sg == 1 else (y0 + x0, y1 + x1)
+            c = cmin + st / 2
+            while c < cmax:
+                pts = []
+                for x in (x0, x1):
+                    y = sg * x + c
+                    if y0 - 1e-9 <= y <= y1 + 1e-9:
+                        pts.append((x, y))
+                for y in (y0, y1):
+                    x = (y - c) * sg
+                    if x0 - 1e-9 <= x <= x1 + 1e-9:
+                        pts.append((x, y))
+                if len(pts) >= 2:
+                    pts.sort()
+                    out.append((self.P(*pts[0]), self.P(*pts[-1])))
+                c += st
+        self.fl.segs(out, cor, w, dash)
+
     def txt(self, x, y, s, size=7, cor=(0, 0, 0), bold=False, centrado=True, rot=0):
         q = self.P(x, y)
         self.fl.t(q[0], q[1], s, size, cor, bold, centrado, rot)
@@ -634,10 +680,16 @@ class _Pl:
             if ref is not None:
                 self.lin([(ref, y), (x + (0.15 if x > ref else -0.15), y)], (0.45, 0.45, 0.45), 0.3)
             self._tick(self.P(x, y))
+        alt = 0
         for a, b in zip(ys[:-1], ys[1:]):
             if b - a > 1e-3:
                 q = self.P(x, (a + b) / 2)
-                self.fl.t(q[0] - 3, q[1], _mm(b - a), size, (0, 0, 0), bold, True, rot=90)
+                txt = _mm(b - a)
+                if self.fl.lw(txt, size) > (b - a) * self.s - 2:      # petit écart : texte horizontal décalé, en quinconce
+                    alt += 1
+                    self.fl.t(q[0] - 6 - self.fl.lw(txt, size * 0.9) - (alt % 2) * 22, q[1] + 2.5, txt, size * 0.9, (0, 0, 0), bold)
+                    continue
+                self.fl.t(q[0] - 3, q[1], txt, size, (0, 0, 0), bold, True, rot=90)
 
     def nivel(self, x, y, s, size=7.5):
         q = self.P(x, y)
@@ -895,6 +947,19 @@ def _corte(fl, m, c, s, ox, oy_top, zmax, zmin):
     grel = m["grelhas_x"] if d == "x" else m["grelhas_y"]
     us = [g["pos_m"] for g in grel]
     umin, umax = min(us), max(us)
+    rotulos = []                                     # (importance, u, z, position, texte) — un libellé par élément distinct
+    enterrado = any(mu.get("cota_base_m", 0) < -0.5 for mu in m.get("muros") or [])
+    terreno = float(m.get("cota_terreno_m") if m.get("cota_terreno_m") is not None else (-0.30 if enterrado else -0.20))
+    # terrain naturel : remblai hachuré de part et d'autre du bâtiment, jusqu'au bas des fondations
+    zf = min([sc["cota_topo_m"] - sc["h_m"] for sc in (m.get("sapatas_continuas") or []) + (m.get("sapatas") or []) if sc.get("cota_topo_m") is not None]
+             + [terreno - 0.6])
+    for a_, b_ in ((umin - 2.2, umin - 0.30), (umax + 0.30, umax + 2.2)):
+        p.rect(a_, zf - 0.25, b_, terreno, None, (0.95, 0.92, 0.86), 0)
+        p.hatch(a_, zf - 0.25, b_, terreno, 0.16, (0.62, 0.50, 0.36), 0.3, ang=45, dash="[3 2] 0")
+    p.lin([(umin - 2.4, terreno), (umin - 0.30, terreno)], (0.35, 0.25, 0.15), 1.6)
+    p.lin([(umax + 0.30, terreno), (umax + 2.4, terreno)], (0.35, 0.25, 0.15), 1.6)
+    p.txt(umin - 1.3, terreno + 0.12, "Terreno natural", 6.5, (0.35, 0.25, 0.15), False, True)
+    niveis.add(round(terreno, 3))
 
     def seg_corta(pts, e):
         """Intervalos u e se o segmento é paralelo ao corte."""
@@ -915,6 +980,10 @@ def _corte(fl, m, c, s, ox, oy_top, zmax, zmin):
             continue
         for a, b, *_ in seg_corta(sc["pontos"], sc["b_m"]):
             p.rect(a, Z(sc["cota_topo_m"] - sc["h_m"]), b, Z(sc["cota_topo_m"]), (0, 0, 0), BET, 0.8)
+            p.hatch(a, sc["cota_topo_m"] - sc["h_m"], b, sc["cota_topo_m"], 0.07, HATCH_BA, 0.25)
+            p.rect(a - 0.05, sc["cota_topo_m"] - sc["h_m"] - 0.05, b + 0.05, sc["cota_topo_m"] - sc["h_m"], (0.3, 0.3, 0.3), (0.90, 0.90, 0.90), 0.4)
+            rotulos.append((b - a, (a + b) / 2, sc["cota_topo_m"] - sc["h_m"] - 0.05, "below",
+                            f"{sc.get('ref') or ''} {_mm(b - a)}×{_mm(sc['h_m'])}".strip()))
             niveis.add(sc["cota_topo_m"])
     for sp in m.get("sapatas") or []:
         if sp.get("cota_topo_m") is None:
@@ -924,11 +993,31 @@ def _corte(fl, m, c, s, ox, oy_top, zmax, zmin):
         if abs(w_of(sp["x_m"], sp["y_m"]) - pos) <= a_w / 2:
             uc = u_of(sp["x_m"], sp["y_m"])
             p.rect(uc - a_u / 2, Z(sp["cota_topo_m"] - sp["h_m"]), uc + a_u / 2, Z(sp["cota_topo_m"]), (0, 0, 0), BET, 0.8)
+            p.hatch(uc - a_u / 2, sp["cota_topo_m"] - sp["h_m"], uc + a_u / 2, sp["cota_topo_m"], 0.07, HATCH_BA, 0.25)
             p.cota_h(sp["cota_topo_m"] - sp["h_m"] - 0.35, [uc - a_u / 2, uc + a_u / 2], 6.5)
             niveis.add(sp["cota_topo_m"])
     for mu in m.get("muros") or []:
-        for a, b, *_ in seg_corta(mu["pontos"], mu.get("espessura_m") or 0.2):
-            p.rect(a, Z(mu["cota_base_m"]), b, Z(mu["cota_topo_m"]), (0, 0, 0), MURO_FILL.get(mu.get("material"), BET), 0.8)
+        mat = mu.get("material") or "betao"
+        for a, b, par, *_ in seg_corta(mu["pontos"], mu.get("espessura_m") or 0.2):
+            if par:                                  # mur parallèle au plan de coupe : vu en élévation (pas coupé)
+                p.rect(a, Z(mu["cota_base_m"]), b, Z(mu["cota_topo_m"]), (0.55, 0.55, 0.55), None, 0.35)
+                continue
+            p.rect(a, Z(mu["cota_base_m"]), b, Z(mu["cota_topo_m"]), (0, 0, 0), MURO_FILL.get(mat, BET), 0.9)
+            if mat in ("clt", "madeira"):
+                p.hatch(a, mu["cota_base_m"], b, mu["cota_topo_m"], max(0.02, (b - a) / 5), (0.62, 0.45, 0.22), 0.25, ang=90)
+            elif mat in ("tijolo", "alvenaria", "gazobeton"):
+                p.hatch(a, mu["cota_base_m"], b, mu["cota_topo_m"], 0.10, (0.55, 0.35, 0.25), 0.25, ang=135)
+            else:
+                p.hatch(a, mu["cota_base_m"], b, mu["cota_topo_m"], 0.07, HATCH_BA, 0.25)
+                if mu["cota_base_m"] < -0.5:      # mur enterré : étanchéité + isolant côté terre
+                    ext = a <= umin + 0.4 or b >= umax - 0.4
+                    if ext:
+                        side = -1 if a <= umin + 0.4 else 1
+                        x_in = a if side < 0 else b
+                        p.rect(x_in, mu["cota_base_m"], x_in + side * 0.10, min(mu["cota_topo_m"], terreno), (0.2, 0.4, 0.6), ISO, 0.4)
+                        p.lin([(x_in + side * 0.10, mu["cota_base_m"]), (x_in + side * 0.10, min(mu["cota_topo_m"], terreno))], (0, 0, 0), 1.6)
+            rotulos.append((mu["cota_topo_m"] - mu["cota_base_m"], (a + b) / 2, (mu["cota_base_m"] + mu["cota_topo_m"]) / 2, "side",
+                            mu.get("descricao") or (("Parede CLT " if mat in ("clt", "madeira") else "Muro BA ") + _mm(b - a))))
             niveis.add(mu["cota_topo_m"])
     for lj in m.get("lajes") or []:
         wa, wb = (lj["y0_m"], lj["y1_m"]) if d == "x" else (lj["x0_m"], lj["x1_m"])
@@ -947,6 +1036,20 @@ def _corte(fl, m, c, s, ox, oy_top, zmax, zmin):
             continue
         p.poli([(pts_top[0][0], pts_top[0][1]), (pts_top[1][0], pts_top[1][1]), (pts_top[1][0], pts_top[1][1] - e), (pts_top[0][0], pts_top[0][1] - e)],
                CASTANHO if tipo != "laje_ba" else (0, 0, 0), fill, 0.7)
+        flat = abs(pts_top[0][1] - pts_top[1][1]) < 1e-3
+        zt = min(pts_top[0][1], pts_top[1][1])
+        if flat and tipo == "laje_ba":
+            p.hatch(ua, zt - e, ub, zt, 0.07, HATCH_BA, 0.25)
+        elif flat and tipo == "clt":                  # plis croisés : longitudinaux clairs, transversaux foncés
+            n = 3 if e <= 0.125 else 5 if e <= 0.205 else 7
+            for q in range(n):
+                z0, z1 = zt - e + e * q / n, zt - e + e * (q + 1) / n
+                if q % 2 == 1:
+                    p.rect(ua, z0, ub, z1, None, (0.83, 0.66, 0.42), 0)
+                p.lin([(ua, z1), (ub, z1)], (0.62, 0.45, 0.22), 0.25)
+            p.poli([(ua, zt), (ub, zt), (ub, zt - e), (ua, zt - e)], CASTANHO, None, 0.8)
+        rotulos.append((ub - ua, (ua + ub) / 2, zt + float(lj.get("isolamento_m") or 0), "above",
+                        lj.get("descricao") or (f"CLT {_mm(e)} · {3 if e <= 0.125 else 5 if e <= 0.205 else 7} camadas" if tipo == "clt" else f"Laje BA {_mm(e)}")))
         if lj.get("isolamento_m"):
             ei = float(lj["isolamento_m"])
             p.poli([(pts_top[0][0], pts_top[0][1] + ei), (pts_top[1][0], pts_top[1][1] + ei), (pts_top[1][0], pts_top[1][1]), (pts_top[0][0], pts_top[0][1])],
@@ -990,25 +1093,59 @@ def _corte(fl, m, c, s, ox, oy_top, zmax, zmin):
                 niveis.add(round(z, 3))
     for nv in m.get("niveis") or []:
         niveis.add(round(nv["cota_m"], 3))
+    # libellés des éléments coupés (un par désignation, sur l'élément le plus long), avec ligne de rappel
+    vus = set()
+    caixas = []
+    for imp, u, z, pos_, txt in sorted(rotulos, key=lambda r: -r[0]):
+        key = txt.strip().lower()
+        if not txt or key in vus:
+            continue
+        vus.add(key)
+        if pos_ == "side":
+            x_t = umax + 0.55 if u > (umin + umax) / 2 else umin - 0.55
+            p.lin([(u, z), (x_t, z)], (0.35, 0.35, 0.35), 0.35)
+            q = p.P(x_t, z)
+            w_ = fl.lw(txt, 6.6)
+            fl.t(q[0] + (3 if x_t > u else -w_ - 3), q[1] + 2.3, txt, 6.6, (0.15, 0.15, 0.15))
+        elif pos_ == "above":
+            q = p.P(u, z)
+            w_ = fl.lw(txt, 6.6)
+            dy = 12
+
+            def bate(dy_):
+                x0_, x1_, yb, yt = q[0] + 10, q[0] + 10 + w_, q[1] - dy_ + 2, q[1] - dy_ - 8
+                return any(not (x1_ < bx0 or x0_ > bx1 or yb < byt or yt > byb) for bx0, bx1, byb, byt in caixas)
+            while bate(dy) and dy < 80:
+                dy += 10
+            caixas.append((q[0] + 10, q[0] + 10 + w_, q[1] - dy + 2, q[1] - dy - 8))
+            fl.linha([(q[0], q[1]), (q[0] + 8, q[1] - dy + 1)], (0.35, 0.35, 0.35), 0.35)
+            fl.circ((q[0], q[1]), 1.2, (0.2, 0.2, 0.2), (0.2, 0.2, 0.2), 0.3)
+            fl.t(q[0] + 10, q[1] - dy, txt, 6.6, (0.15, 0.15, 0.15))
+        else:
+            q = p.P(u, z)
+            fl.t(q[0], q[1] + 9, txt, 6.3, (0.25, 0.25, 0.25), centrado=True)
     # eixos, cotas, níveis
     for g in grel:
         p.lin([(g["pos_m"], zmax + 0.2), (g["pos_m"], zmin - 0.2)], (0.5, 0.5, 0.5), 0.3, "[14 3 2 3] 0")
         q = p.P(g["pos_m"], zmax + 0.45)
         fl.circ(q, 10, (0, 0, 0), BRANCO, 0.8)
         fl.t(q[0], q[1] + 3.5, str(g["nome"]), 8.5, bold=True, centrado=True)
-    p.cota_h(zmin - 0.7, us, 7)
+    p.cota_h(zmin - 0.7, us, 7.5)
+    p.cota_h(zmin - 1.15, [umin, umax], 7.5, bold=True)
     zs = sorted(n for n in niveis if zmin - 0.01 <= n <= zmax + 0.01)
-    p.cota_v(umin - 1.6, zs, 6.3)
+    p.cota_v(umin - 2.6, zs, 6.8)
     nom = {round(nv["cota_m"], 3): nv["nome"] for nv in m.get("niveis") or []}
     ult = -1e9
     for z in zs:
         if (z - ult) * s < 11:
             continue
-        p.nivel(umax + 1.2, z, _cota_txt(z) + (f"  {nom[z]}" if z in nom else ""), 7)
+        p.nivel(umax + 2.6, z, _cota_txt(z) + (f"  {nom[z]}" if z in nom else ""), 7.5)
         ult = z
-    q = p.P((umin + umax) / 2, zmax + 1.1)
-    fl.t(q[0], q[1], f"CORTE {c.get('nome', '')} — " + ("LONGITUDINAL" if d == "x" else "TRANSVERSAL") + f" ({'y' if d == 'x' else 'x'} = {_c(pos)} m)",
-         11, VERDE, True, centrado=True)
+    q = p.P((umin + umax) / 2, zmax + 1.2)
+    tit = f"CORTE {c.get('nome', '')} — " + ("LONGITUDINAL" if d == "x" else "TRANSVERSAL")
+    fl.t(q[0], q[1], tit, 13, VERDE, True, centrado=True)
+    fl.linha([(q[0] - fl.lw(tit, 13, True) / 2, q[1] + 4), (q[0] + fl.lw(tit, 13, True) / 2, q[1] + 4)], VERDE, 1.2)
+    fl.t(q[0], q[1] + 15, f"{'y' if d == 'x' else 'x'} = {_c(pos)} m · escala 1:{round(2834.6 / s)}", 8, CINZA, centrado=True)
 
 
 def _zrange(m):
@@ -1041,14 +1178,70 @@ def _f_cortes(doc, m, fmt, s, k, n, tot, data):
     fl = _Folha(doc, fmt)
     fl.t(40, 52, "GO-04 · CORTES CONSTRUTIVOS COTADOS", 20, VERDE, True)
     fl.t(40, 74, f"Sapatas, muros, pilares, vigas, lajes / painéis com níveis absolutos · escala 1:{k}", 10, CINZA)
-    y = 150
-    for c in _cortes_auto(m)[:2]:
+    cortes = _cortes_auto(m)[:2]
+    larg = []
+    for c in cortes:
         grel = m["grelhas_x"] if c["direcao"] == "x" else m["grelhas_y"]
-        umin = min(g["pos_m"] for g in grel)
-        ox = 60 + 3.2 * s - umin * s
-        _corte(fl, m, c, s, ox, y + 1.4 * s, zmax, zmin)
-        y += (zmax - zmin + 3.2) * s
+        u0, u1 = min(g["pos_m"] for g in grel), max(g["pos_m"] for g in grel)
+        larg.append((u0, u1, (u1 - u0 + 3.6 + 2.6 + 6.0) * s))      # cotes à gauche, niveaux + libellés à droite
+    alto = (zmax - zmin + 3.4) * s
+    lado_a_lado = sum(L for *_, L in larg) + 80 <= fl.W - 60 and len(cortes) == 2
+    x, y = 40, 140
+    for c, (u0, u1, L) in zip(cortes, larg):
+        ox = x + 3.6 * s - u0 * s
+        _corte(fl, m, c, s, ox, y + 1.6 * s, zmax, zmin)
+        if lado_a_lado:
+            x += L + 40
+        else:
+            y += alto
+    # légende des matériaux + composition des éléments coupés, dans la colonne libre à droite
+    xr = max(40 + max(L for *_, L in larg) + 60, fl.W * 0.55) if not lado_a_lado else 40
+    yl = 150 if not lado_a_lado else min(y + alto + 10, fl.H - 220)
+    comp = []
+    for lj in m.get("lajes") or []:
+        dsc = lj.get("descricao")
+        if dsc and dsc not in comp:
+            comp.append(dsc)
+    for mu in m.get("muros") or []:
+        dsc = mu.get("descricao") or (("Parede CLT " if (mu.get("material") or "") in ("clt", "madeira") else "Muro BA ") + _mm(mu.get("espessura_m") or 0.2))
+        if dsc not in comp:
+            comp.append(dsc)
+    if not lado_a_lado:
+        fl.t(xr, yl, "Composição dos elementos cortados", 12, VERDE, True)
+        fl.linha([(xr, yl + 5), (min(fl.W - 60, xr + 620), yl + 5)], VERDE, 0.8)
+        yy = yl + 24
+        for k_, dsc in enumerate(comp[:24]):
+            fl.circ((xr + 6, yy - 3), 7, VERDE, BRANCO, 0.7)
+            fl.t(xr + 6, yy, str(k_ + 1), 7, VERDE, True, centrado=True)
+            yy = fl.caixa(xr + 20, yy, 600, dsc, 8)
+            yy += 6
+        yl = yy + 20
+        x40 = xr
+    else:
+        x40 = 40
+    fl.t(x40, yl, "Legenda", 10, VERDE, True)
+    sw = [("Betão armado", BET, "ba"), ("Painel CLT (camadas cruzadas)", MAD, "clt"), ("Madeira lamelada-colada / estrutura", MAD_E, None),
+          ("Isolamento térmico", ISO, None), ("Terreno natural / aterro", (0.95, 0.92, 0.86), "terra")]
+    xx = x40
+    for lab, cor, kind in sw:
+        if xx + 52 + fl.lw(lab, 8) > fl.W - 50:
+            xx, yl = x40, yl + 30
+        fl.ret((xx, yl + 10, xx + 34, yl + 26), (0, 0, 0), cor, 0.6)
+        pl = _Pl(fl, xx, yl + 26, 100)            # 1 m = 100 pt pour les hachures d'échantillon
+        if kind == "ba":
+            pl.hatch(0, 0, 0.34, 0.16, 0.05, HATCH_BA, 0.25)
+        elif kind == "clt":
+            for q in (1, 3):
+                pl.rect(0, q * 0.032, 0.34, (q + 1) * 0.032, None, (0.83, 0.66, 0.42), 0)
+        elif kind == "terra":
+            pl.hatch(0, 0, 0.34, 0.16, 0.08, (0.62, 0.50, 0.36), 0.3)
+        fl.t(xx + 40, yl + 22, lab, 8)
+        xx += 52 + fl.lw(lab, 8) + 24
+    yy = yl + 46
+    yy = fl.caixa(x40, yy - 8, min(620, fl.W - x40 - 60), "Cotas em mm, níveis em m (absolutos, ±0,000 = pavimento acabado do rés-do-chão). Composições CLT: camadas longitudinais claras, "
+                      "transversais escuras. Muros enterrados com impermeabilização e isolamento pelo exterior.", 7.5, CINZA)
     fl.cartucho(m.get("projeto") or "—", m.get("local") or "—", "Gros-œuvre — cortes construtivos", "GO-04", n, tot, f"1:{k}", data)
+    fl.escala_grafica(x40, yy + 30, s)
     return True
 
 

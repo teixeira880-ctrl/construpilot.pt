@@ -209,10 +209,10 @@ async def _doc_langs(db, uid) -> list[str]:
 
 
 CLT_LABELS = {
-    "fr": {"pdf": "Dossier bois massif CLT — note de calcul + plans", "plans_pdf": "Plans CLT / lamellé-collé (PDF)", "xlsx": "Devis et métré CLT (Excel)", "zip": "Plans DXF", "estimate_pdf": "Devis final aux prix ukrainiens (PDF)", "estimate_xlsx": "Devis final aux prix ukrainiens (Excel)"},
+    "fr": {"pdf": "Dossier bois massif CLT — note de calcul + plans", "plans_pdf": "Plans CLT / lamellé-collé (PDF)", "xlsx": "Devis et métré CLT (Excel)", "zip": "Plans DXF", "estimate_pdf": "Devis final aux prix ukrainiens (PDF)", "estimate_xlsx": "Devis final aux prix ukrainiens (Excel)", "render_png": "Rendu 3D photoréaliste (HD)", "render_png": "Render 3D fotorrealista (HD)"},
     "pt": {"pdf": "Processo madeira maciça CLT — memória de cálculo + desenhos", "plans_pdf": "Desenhos CLT / lamelado-colado (PDF)", "xlsx": "Medições e orçamento CLT (Excel)", "zip": "Desenhos DXF", "estimate_pdf": "Orçamento final com preços da Ucrânia (PDF)", "estimate_xlsx": "Orçamento final com preços da Ucrânia (Excel)"},
-    "en": {"pdf": "Mass timber CLT study — calculation report + drawings", "plans_pdf": "CLT / glulam drawings (PDF)", "xlsx": "CLT quantities and estimate (Excel)", "zip": "DXF drawings", "estimate_pdf": "Final estimate at Ukrainian prices (PDF)", "estimate_xlsx": "Final estimate at Ukrainian prices (Excel)"},
-    "uk": {"pdf": "Розрахунок CLT — записка + креслення", "plans_pdf": "Креслення CLT / клеєний брус (PDF)", "xlsx": "Кошторис CLT (Excel)", "zip": "Креслення DXF", "estimate_pdf": "Остаточний кошторис за цінами України (PDF)", "estimate_xlsx": "Остаточний кошторис за цінами України (Excel)"},
+    "en": {"pdf": "Mass timber CLT study — calculation report + drawings", "plans_pdf": "CLT / glulam drawings (PDF)", "xlsx": "CLT quantities and estimate (Excel)", "zip": "DXF drawings", "estimate_pdf": "Final estimate at Ukrainian prices (PDF)", "estimate_xlsx": "Final estimate at Ukrainian prices (Excel)", "render_png": "Photorealistic 3D render (HD)"},
+    "uk": {"pdf": "Розрахунок CLT — записка + креслення", "plans_pdf": "Креслення CLT / клеєний брус (PDF)", "xlsx": "Кошторис CLT (Excel)", "zip": "Креслення DXF", "estimate_pdf": "Остаточний кошторис за цінами України (PDF)", "estimate_xlsx": "Остаточний кошторис за цінами України (Excel)", "render_png": "Фотореалістична 3D-візуалізація (HD)"},
 }
 
 
@@ -254,6 +254,17 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
     main = extra[0] if extra else pick_lang(country, wanted if country == "FR" else None)
     await step("Calculs CLT (EN 1995), plans, devis et contrôle", model=raw, pages=rd["pages"])
     with tempfile.TemporaryDirectory() as tmp:
+        try:                                          # perspectivas 3D: mesma geometria calculada, depois fotorrealismo (GPT Image 2 / Nano Banana Pro / Runway)
+            from engines.bet_clt import calc as _cc, premium as _pr
+            from engines.bet_frame import model as _fm
+            m0 = _fm.from_dict(copy.deepcopy(raw))
+            bases = await asyncio.to_thread(_pr.render_views, m0, await asyncio.to_thread(_cc.compute, m0), tmp, "base")
+            await step(f"{len(bases)} perspetivas 3D calculadas; renders fotorrealistas em curso")
+            views = await _pr.photoreal_views(bases, tmp)
+            raw["_views"] = [[k, str(p)] for k, p in views]
+            raw["_hero_png"] = str(dict(views)["main"])
+        except Exception:  # noqa: BLE001 — as perspetivas embelezam, nunca bloqueiam o estudo
+            log.warning("CLT perspectives failed", exc_info=True)
         res = await asyncio.to_thread(cp.run, raw, tmp, None, main, None, branding, extra[1:] if extra else None)
         if res["status"] == "MODELE_INVALIDE":
             msg = "; ".join(a["message"] for a in res["anomalies"] if a.get("level") == "bloquant")
@@ -263,7 +274,7 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
         arts = []
         for key, path in res["files"].items():
             base, _, lg = key.partition("_")
-            for two in ("plans_pdf", "estimate_pdf", "estimate_xlsx"):
+            for two in ("plans_pdf", "estimate_pdf", "estimate_xlsx", "render_png"):
                 if key == two:
                     base, lg = two, ""
                 elif key.startswith(two + "_"):

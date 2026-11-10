@@ -9,6 +9,7 @@ Déterministe, sans IA.
 from __future__ import annotations
 
 from datetime import date as _date
+from pathlib import Path
 
 from .lang import num, t
 
@@ -280,6 +281,13 @@ def write_pdf(path, m, e: dict, branding_name: str | None = None):
             st.append(("BACKGROUND", (0, len(rows) - 1 - k), (-1, len(rows) - 1 - k), br.tint))
         tb.setStyle(TableStyle(st))
         return tb
+    try:
+        from reportlab.platypus import Image as RLImage
+        from . import premium
+        png = premium.estimate_chart(e, Path(str(path) + ".chart.png"))
+        s.append(RLImage(str(png), width=178 * mm, height=89 * mm))
+    except Exception:  # noqa: BLE001 — graphique facultatif
+        png = None
     s.append(tbl(rows, (92, 34, 26, 22), bold_last=3))
     s.append(Spacer(1, 4))
     s.append(Paragraph(_esc(t(f"Ratio : {num(e['per_m2'], 0)} грн HT/m² de surface de plancher brute ({num(e['gross'], 1)} m², sous-sol compris) — "
@@ -336,6 +344,8 @@ def write_pdf(path, m, e: dict, branding_name: str | None = None):
     doc = SimpleDocTemplate(str(path), pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=20 * mm, bottomMargin=18 * mm,
                             title=t("Devis final — ", "Orçamento final — ", "Final estimate — ", "Кошторис — ") + str(pr.get("name", "")))
     doc.build(s, onFirstPage=page, onLaterPages=page)
+    if png:
+        Path(png).unlink(missing_ok=True)
     return path
 
 

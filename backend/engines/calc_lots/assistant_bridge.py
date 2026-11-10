@@ -40,7 +40,9 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
     uid, cid = user["user_id"], conv["conversation_id"]
     rid = conv.get("_quote_request_id") or cid
     digest = hashlib.sha256((rid + str(conv.get("_file_call_id", "")) + name + repr(sorted((args or {}).items(), key=lambda x: x[0]))).encode()).hexdigest()[:27]
-    old = await db.assistant_artifacts.find_one({"artifact_id": "file_" + digest + "n", "user_id": uid}, {"_id": 0, "data_b64": 0})
+    from engines import calc_live
+    # conta seguida ao vivo (CLT Rezult): recalcula sempre, para a página de acompanhamento mostrar o cálculo real
+    old = None if calc_live.ativo() else await db.assistant_artifacts.find_one({"artifact_id": "file_" + digest + "n", "user_id": uid}, {"_id": 0, "data_b64": 0})
     if old:
         return {"ok": True, "artifact": {k: old.get(k) for k in ("artifact_id", "title", "filename", "format", "mime", "size", "download")},
                 "resume": old.get("body", "")}

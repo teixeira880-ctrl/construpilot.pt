@@ -67,12 +67,60 @@ def _area(pts) -> float:
     return abs(a) / 2.0
 
 
+def anel_utilizador(parcela_latlon: Any, frente_idx: Any) -> Optional[Dict[str, Any]]:
+    """Valida a parcela desenhada/detetada pelo utilizador sobre o ortofotomapa. None se for inválida."""
+    try:
+        from shapely.geometry import Polygon as _P
+        pts = [(float(a), float(b)) for a, b in parcela_latlon]
+    except Exception:  # noqa: BLE001
+        return None
+    if len(pts) > 2 and pts[0] == pts[-1]:
+        pts = pts[:-1]
+    if not 3 <= len(pts) <= 200 or not all(29.0 <= a <= 43.0 and -32.0 <= b <= -6.0 for a, b in pts):
+        return None
+    loc = Local(pts[0][0], pts[0][1])
+    en = [loc.xy(a, b) for a, b in pts]
+    poly = _P(en)
+    if not poly.is_valid or not 30.0 <= poly.area <= 500_000.0:
+        return None
+    fi = frente_idx if isinstance(frente_idx, int) and 0 <= frente_idx < len(pts) else 0
+    return {"anel_latlon": pts, "frente_idx": fi}
+
+
 def construir_terreno(geo: Dict[str, Any], via: Optional[Dict[str, Any]], cad: Optional[Dict[str, Any]],
-                      area_m2: Optional[float] = None, frente_m: Optional[float] = None) -> Dict[str, Any]:
-    """Polígono do terreno no referencial da frente + metadados de origem (oficial / indicado / hipótese)."""
+                      area_m2: Optional[float] = None, frente_m: Optional[float] = None,
+                      parcela_user: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Polígono do terreno no referencial da frente + metadados de origem (oficial / indicado / hipótese).
+
+    `parcela_user` (de `anel_utilizador`): limites desenhados ou detetados pelo requerente sobre o ortofotomapa, com o
+    limite que dá para a via (`frente_idx`). Tem prioridade sobre o cadastro e sobre a hipótese retangular.
+    """
     lat, lon = geo["lat"], geo["lon"]
     loc = Local(lat, lon)
     pressupostos: List[str] = []
+    if parcela_user:
+        ring_en = [loc.xy(a, b) for a, b in parcela_user["anel_latlon"]]
+        n = len(ring_en)
+        i = parcela_user["frente_idx"]
+        a, b = ring_en[i], ring_en[(i + 1) % n]
+        u = _unit((b[0] - a[0], b[1] - a[1]))
+        cx, cy = sum(p[0] for p in ring_en) / n, sum(p[1] for p in ring_en) / n
+        mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+        ey = (-u[1], u[0])                       # normal ao limite da frente, virada para dentro do terreno
+        if (cx - mid[0]) * ey[0] + (cy - mid[1]) * ey[1] < 0:
+            ey = (u[1], -u[0])
+        ref0 = Referencial((0.0, 0.0), ey)
+        loc_pts = [ref0.para_local(*p) for p in ring_en]
+        ref = Referencial(ref0.para_en(min(p[0] for p in loc_pts), min(p[1] for p in loc_pts)), ey)
+        poly = [ref.para_local(*p) for p in ring_en]
+        area = _area(poly)
+        origem_area = "limites indicados pelo requerente no ortofotomapa"
+        pressupostos.append(f"Limites do terreno desenhados pelo requerente sobre o ortofotomapa ({area:.0f} m²), com a frente "
+                            "no limite que indicou: confirmar com a caderneta predial e o levantamento topográfico.")
+        if area_m2 and abs(area_m2 - area) / max(area, 1) > 0.1:
+            pressupostos.append(f"A área da caderneta ({area_m2:.0f} m²) difere da área desenhada ({area:.0f} m²): "
+                                "usou-se a desenhada; acertar os limites no mapa ou confirmar a certidão predial.")
+        return _saida(poly, area, origem_area, "frente indicada pelo requerente", ref, loc, pressupostos)
     # direção da via e normal para o terreno
     if via and via.get("ok"):
         a, b = via["data"]["a"], via["data"]["b"]
@@ -133,6 +181,10 @@ def construir_terreno(geo: Dict[str, Any], via: Optional[Dict[str, Any]], cad: O
             pressupostos.append(f"Sem cadastro geométrico nem área indicada: assumiu-se um terreno de {A:.0f} m² "
                                 f"({F:.0f} m de frente × {D:.0f} m). Indique a área da caderneta para afinar.")
 
+    return _saida(poly, area, origem_area, fonte_frente, ref, loc, pressupostos)
+
+
+def _saida(poly, area, origem_area, fonte_frente, ref, loc, pressupostos) -> Dict[str, Any]:
     xs, ys = [p[0] for p in poly], [p[1] for p in poly]
     plot_l, plot_w = max(xs) - min(xs), max(ys) - min(ys)
     poly_ll = [loc.ll(*ref.para_en(x, y)) for x, y in poly]

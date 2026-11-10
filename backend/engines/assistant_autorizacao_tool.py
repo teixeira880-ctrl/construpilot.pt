@@ -62,6 +62,7 @@ AUTORIZACAO_TOOLS += [
             "lugares": {"type": "integer", "description": "Lugares de garagem (0-3)."},
             "fachada": {"type": "string", "description": "granito, madeira, xisto, tijolo, betão, reboco branco, misto…"},
             "area_terreno_m2": {"type": "number", "description": "Área do terreno (caderneta)."},
+            "area_casa_m2": {"type": "number", "description": "Área da casa pedida (m², área bruta da habitação sem garagem), p. ex. «casa de 200 m2». Nunca confundir com a área do terreno."},
             "frente_m": {"type": "number", "description": "Largura da frente do terreno, se souber."},
             "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
             "artigo_matricial": {"type": "string"},
@@ -73,7 +74,7 @@ AUTORIZACAO_TOOLS += [
         "garagem, requerente, artigo matricial…) e recalcula TUDO a partir dos mesmos dados.",
         {"processo_id": {"type": "string"}, "tipologia": {"type": "string"}, "pisos": {"type": "integer"},
          "garagem": {"type": "boolean"}, "lugares": {"type": "integer"}, "area_terreno_m2": {"type": "number"},
-         "frente_m": {"type": "number"}, "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
+         "frente_m": {"type": "number"}, "area_casa_m2": {"type": "number"}, "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
          "artigo_matricial": {"type": "string"}, "fachada": {"type": "string"}},
     ),
     function(
@@ -99,7 +100,7 @@ AUTORIZACAO_INSTRUCTIONS = (
     "energética.\n"
     "LICENCIAMENTO AUTOMÁTICO (0-100 %): quando alguém pedir uma autorização/licença/projeto para construir uma casa numa "
     "morada (mesmo em linguagem simples, p. ex. «quero uma autorização de construção na Rua do Monte 7, Braga»), chama "
-    "licenciamento_automatico IMEDIATAMENTE com o texto e o que já souberes — não faças perguntas antes. Depois explica em "
+    "licenciamento_automatico IMEDIATAMENTE com o texto e o que já souberes — não faças perguntas antes. Se o pedido disser a área da casa («casa de 200 m2») passa-a em area_casa_m2 e a do terreno em area_terreno_m2; se a casa não couber, o motor reduz-a sozinho e diz quanto — explica isso ao utilizador. Depois explica em "
     "linguagem corrente: procedimento (licença ou comunicação prévia), a casa proposta, as decisões (sol, garagem, declive), "
     "as hipóteses assumidas e faz no máximo 2 ou 3 perguntas simples das «perguntas» devolvidas (área da caderneta, nome do "
     "requerente…). Quando responderem, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "

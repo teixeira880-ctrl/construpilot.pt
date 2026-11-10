@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { SEO } from "@/components/SEO";
 import { FeatureClips } from "@/components/FeatureClips";
+import { OfferNotice, useOffer } from "@/components/OfferNotice";
 
 const PRO_VALUE = [
   { icon: FileText, title: "Orçamento para o cliente num instante", text: "Gere estimativa, quantidades, preços de fornecedores e orçamento em PDF pronto a enviar." },
@@ -38,6 +39,7 @@ export default function ProOffer() {
     () => plans.filter((p) => p.audience === "pro" && p.kind === "subscription" && p.interval === "month"),
     [plans]);
   const trialDays = flags?.trial_days || 7;
+  const offer = useOffer();
 
   const subscribe = async (plan) => {
     if (!user) { toast.info("Crie a sua conta para iniciar a experiência Pro"); navigate("/inscription?signup=1&intent=pro"); return; }
@@ -80,9 +82,13 @@ export default function ProOffer() {
             </Button>
             <a href="#offre-pro" className="text-sm font-medium underline underline-offset-4" data-testid="pro-see-plans">Ver as ofertas</a>
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-2">
-            <CreditCard className="h-3.5 w-3.5" /> Cartão obrigatório na inscrição · nenhum débito antes do fim da experiência · cancelável a qualquer momento
-          </p>
+          {offer?.free_promo ? (
+            <OfferNotice lang="pt" className="max-w-xl" />
+          ) : (
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <CreditCard className="h-3.5 w-3.5" /> Cartão pedido na inscrição · nenhum débito antes do fim da experiência · cancelável a qualquer momento
+            </p>
+          )}
         </div>
       </header>
 

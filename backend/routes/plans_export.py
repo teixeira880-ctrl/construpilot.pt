@@ -12,7 +12,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
-from fastapi import Depends, HTTPException
+import hashlib
+from fastapi import Depends, HTTPException, Request
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -1242,10 +1243,11 @@ async def get_signature_page_data(token: str) -> dict:
         {"_id": 0, "plan_id": 1, "user_id": 1, "client_email": 1, "client_name": 1,
          "total_ttc": 1, "finish": 1, "floor_material": 1, "log_id": 1,
          "signed": 1, "signed_at": 1, "deposit_pct": 1, "deposit_paid": 1,
-         "deposit_amount": 1, "deposit_at": 1}
+         "deposit_amount": 1, "deposit_at": 1, "signature_expires_at": 1}
     )
     if not log:
         raise HTTPException(404, "Ligação inválida ou expirada")
+    _exp = log.get("signature_expires_at")
     branding = await _resolve_branding(log["user_id"]) or {}
     ttc = float(log.get("total_ttc") or 0)
     pct = log.get("deposit_pct")
@@ -1258,6 +1260,8 @@ async def get_signature_page_data(token: str) -> dict:
         "finish": log.get("finish"), "floor_material": log.get("floor_material"),
         "signed": bool(log.get("signed")),
         "signed_at": log.get("signed_at"),
+        "expires_at": _exp,
+        "expired": bool(_exp and str(_exp) < _now() and not log.get("signed")),
         "company_name": branding.get("company_name"),
         "contact_line": branding.get("contact_line"),
         "deposit": {
@@ -1345,26 +1349,48 @@ async def _auto_deposit_after_signature(log: dict) -> dict | None:
 
 
 @quote_router.post("/public/sign/{token}")
-async def submit_signature(token: str, body: SignatureIn) -> dict:
+async def submit_signature(token: str, body: SignatureIn, request: Request) -> dict:
     """Endpoint public : le client soumet sa signature (image base64)."""
     log = await db.quote_sends.find_one({"signature_token": token},
                                           {"_id": 0, "log_id": 1, "user_id": 1,
                                            "signed": 1, "client_email": 1,
                                            "plan_id": 1, "doc_id": 1, "client_name": 1,
-                                           "total_ttc": 1})
+                                           "total_ttc": 1, "sent_content_hash": 1,
+                                           "signature_expires_at": 1})
     if not log:
         raise HTTPException(404, "Ligação inválida")
     if log.get("signed"):
         raise HTTPException(400, "Este orçamento já foi assinado")
+    # Auditoria V2 : validade, integridade do conteúdo e prova da assinatura.
+    exp = log.get("signature_expires_at")
+    if exp and str(exp) < _now():
+        raise HTTPException(410, "A validade deste orçamento terminou. Peça à empresa um orçamento atualizado.")
+    content_hash = None
+    if log.get("doc_id"):
+        from routes.documents import _content_hash
+        current = await db.pro_documents.find_one({"doc_id": log["doc_id"], "user_id": log["user_id"]}, {"_id": 0})
+        if not current:
+            raise HTTPException(404, "Orçamento já não disponível")
+        content_hash = _content_hash(current)
+        if log.get("sent_content_hash") and content_hash != log["sent_content_hash"]:
+            raise HTTPException(409, "Este orçamento foi alterado depois do envio. Peça à empresa que lhe reenvie a versão atual antes de assinar.")
     b64_clean = body.signature_b64.split(",")[-1]
     signer = body.signer_name.strip()[:120]
     client_email = log.get("client_email") or ""
-    await db.quote_sends.update_one(
-        {"log_id": log["log_id"]},
+    fwd = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    evidence = {"ip": fwd or (request.client.host if request.client else None),
+                "user_agent": (request.headers.get("user-agent") or "")[:300],
+                "content_sha256": content_hash,
+                "signature_sha256": hashlib.sha256(b64_clean.encode()).hexdigest()}
+    res = await db.quote_sends.update_one(
+        {"log_id": log["log_id"], "signed": {"$ne": True}},
         {"$set": {"signed": True, "signed_at": _now(),
                    "signer_name": signer,
-                   "signature_b64": b64_clean}}
+                   "signature_b64": b64_clean,
+                   "signature_evidence": evidence}}
     )
+    if not res.modified_count:
+        raise HTTPException(400, "Este orçamento já foi assinado")
     # Bascule automatique du statut du devis lié → « Signé »
     if log.get("doc_id"):
         await db.pro_documents.update_one(

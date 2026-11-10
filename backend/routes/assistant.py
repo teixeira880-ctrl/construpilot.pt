@@ -443,6 +443,17 @@ async def _compare_source(ident: str, user_id: str) -> dict:
 
 
 async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
+    """Conta CLT Rezult: cada ferramenta é seguida ao vivo na página /acompanhamento-calculo (motor, dados, fórmulas, decisões)."""
+    from engines import calc_live
+    if not calc_live.is_clt(user):
+        return await _exec_tool_inner(name, args, user, conv)
+    async with calc_live.ferramenta(db, user, conv, name, args):
+        res = await _exec_tool_inner(name, args, user, conv)
+        await calc_live.resultado_ferramenta(name, res)
+        return res
+
+
+async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dict:
     """Exécution contrôlée : identité, tenant, accès document, brouillon vs définitif."""
     uid = user["user_id"]
     if conv.get("_background_job_id"):
@@ -1514,7 +1525,6 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
     if account_type(user) != "individual":
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
-        instructions += PAC_LAYOUT_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. Se o pedido indicar as plantas e o entregável, lança-o diretamente (o resultado fica um rascunho editável, nada é enviado); se o âmbito for ambíguo (plantas, margem, nome do projeto), pergunta-o numa frase. Para vários entregáveis de uma vez, prefere lancer_programme_ia. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
     await db.assistant_prefs.update_many({"active": True, "user_id": user["user_id"]}, {"$set": {"last_used_at": _now()}})
@@ -1861,9 +1871,7 @@ class _StatusMap(dict):
 
 TOOL_STATUS_PT.update({"licenciamento_automatico": "A preparar o processo completo: terreno, PDM, implantação, plantas e verificação…",
                        "licenciamento_atualizar": "A recalcular o processo com os novos dados…",
-                       "licenciamento_materiais": "A aplicar os materiais da casa…",
-                       "licenciamento_imagens": "A criar as imagens realistas da casa (vistas 3D e antes/depois)…",
-                       "licenciamento_estilos": "A consultar os estilos de casa disponíveis…"})
+                       "licenciamento_materiais": "A aplicar os materiais da casa…"})
 TOOL_STATUS_PT = _StatusMap({**TOOL_STATUS, **TOOL_STATUS_PT})
 TOOL_STATUS = _StatusMap(TOOL_STATUS)
 TOOL_STATUS.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")

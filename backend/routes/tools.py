@@ -38,14 +38,16 @@ def _price_status(result: dict) -> dict:
     Uma calculadora sem tabela de preços devolve estimated_budget = None
     (nunca 0 €) e o estado explícito dos preços."""
     mats = result.get("materials") or []
+    priced = sum(1 for m in mats if m.get("unit_price") is not None)
     budget = result.get("estimated_budget")
     if budget is None:
         result["estimated_budget"] = None
         result["price_status"] = {"status": "unavailable", "priced_items": 0, "items": len(mats),
                                   "message": "Preços indisponíveis para estes materiais : quantidades calculadas, orçamento a completar."}
     else:
-        result["price_status"] = {"status": "indicative", "priced_items": len(mats), "items": len(mats),
-                                  "message": "Preços indicativos por omissão (não são preços de fornecedor)."}
+        result["price_status"] = {"status": "indicative", "priced_items": priced, "items": len(mats),
+                                  "message": "Preços indicativos por omissão (não são preços de fornecedor)."
+                                             + (f" {len(mats) - priced} material(is) sem preço." if priced < len(mats) else "")}
     return result
 
 

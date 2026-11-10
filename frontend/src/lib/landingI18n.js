@@ -119,7 +119,7 @@ export const LANDING_TRANSLATIONS = {
     "landing.faq.q1": "How much does a full renovation cost per m² in 2026?",
     "landing.faq.a1": "For heavy renovation in France, expect €900 to €1,800/m² depending on region and range. ConstruPilot builds a detailed estimate from your areas and finish level. These ranges are indicative.",
     "landing.faq.q2": "Is ConstruPilot free?",
-    "landing.faq.a2": "A free plan exists (2 projects, 3 estimates per month). For homeowners, Premium is €19/month. For tradespeople, Pro starts at €149/month and Pro Business at €249/month, with a 7-day trial. Full details on the Pricing page.",
+    "landing.faq.a2": "A free plan exists (2 projects, 3 estimates per month). For homeowners, Premium is €19/month. For tradespeople, Pro starts at €149/month and Pro Business at €249/month. Current terms (launch phase or trial period) are shown on the Pricing page.",
     "landing.faq.q3": "How does automatic 2D take-off work?",
     "landing.faq.a3": "Upload your plan (PDF, PNG, DXF). Our engine automatically detects walls, doors and computes surfaces.",
     "landing.faq.q4": "Can I generate a quote with a 10% VAT certificate?",

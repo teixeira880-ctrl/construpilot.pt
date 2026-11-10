@@ -170,7 +170,9 @@ def numeros_sem_fonte(texto: str, permitidos: Iterable[float]) -> List[str]:
         x = _to_float(m.group(1))
         if x is None or x in (0.0, 1.0, 2.0):
             continue
-        nd = len(re.split(r"[.,]", m.group(1))[1]) if re.search(r"[.,]\d+$", m.group(1)) else 0
-        if not any(abs(x - p) <= max(0.011, 0.006 * abs(p)) or abs(round(p, nd) - x) < 1e-9 for p in perm):
-            fora.append(m.group(0))   # um arredondamento correto de um valor com fonte é aceite (ex.: 5,54 → «5,5»)
+        # um número escrito com 1 casa decimal (4,2) corresponde a qualquer valor que arredonde para ele (4,15 … 4,25)
+        dec = re.search(r"[.,](\d+)$", m.group(1).replace(" ", ""))
+        meio = 0.5 * 10 ** -len(dec.group(1)) + 1e-9 if dec and len(dec.group(1)) < 3 else 0.0
+        if not any(abs(x - p) <= max(0.011, 0.006 * abs(p), meio) for p in perm):
+            fora.append(m.group(0))
     return fora

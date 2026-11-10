@@ -90,7 +90,7 @@ def test_pipeline_ua_uk_en(tmp_path):
     assert r["summary"]["system"] == "walls" and r["blocking"] == 0
     assert "pdf_en" in r["files"] and Path(r["files"]["pdf_en"]).exists()
     from pypdf import PdfReader
-    txt = PdfReader(r["files"]["pdf"]).pages[0].extract_text()
+    txt = " ".join(pg.extract_text() for pg in PdfReader(r["files"]["pdf"]).pages[:4])     # p.1 = capa premium, p.2 = perspetivas
     assert "Розрахункова записка" in txt
 
 

@@ -13,7 +13,7 @@ import asyncio
 import logging
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -662,6 +662,24 @@ def _content_hash(doc: dict) -> str:
     payload = {k: doc.get(k) for k in CONTENT_FIELDS}
     payload["lines"] = [{k: v for k, v in (ln or {}).items() if not str(k).startswith("_")} for ln in (doc.get("lines") or [])]
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+
+
+def _signature_expiry(doc: dict) -> str | None:
+    """Fim da validade do orçamento (valid_until, senão emissão + validity_days)."""
+    vu = (doc.get("valid_until") or "").strip() if isinstance(doc.get("valid_until"), str) else None
+    if vu:
+        return vu[:10] + "T23:59:59+00:00" if len(vu) == 10 else vu
+    days = int(doc.get("validity_days") or 0)
+    if days <= 0:
+        return None
+    base = doc.get("issue_date") or _now()
+    try:
+        start = datetime.fromisoformat(str(base).replace("Z", "+00:00"))
+    except ValueError:
+        start = datetime.now(timezone.utc)
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    return (start + timedelta(days=days)).isoformat()
 
 
 def _is_frozen(doc: dict) -> bool:
@@ -2034,6 +2052,13 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
         raise HTTPException(
             403, "Confirme primeiro o seu endereço de e-mail (ligação recebida no registo) antes de enviar um orçamento.")
     doc = await _get_owned(doc_id, user)
+    # Auditoria V2 : um orçamento com preços em falta não pode sair como total final.
+    _incomplete = [ln.get("designation") or "—" for ln in (doc.get("lines") or [])
+                   if (ln.get("kind") or "line") == "line" and ln.get("price_missing")
+                   and not float(ln.get("unit_price_ht") or 0)]
+    if _incomplete:
+        raise HTTPException(409, f"{len(_incomplete)} linha(s) sem preço ({', '.join(_incomplete[:3])}"
+                                 f"{'…' if len(_incomplete) > 3 else ''}). Complete os preços antes de enviar.")
     if not doc.get("number"):
         doc["number"] = await _next_number(user["user_id"], doc["doc_type"])
         doc["issue_date"] = doc.get("issue_date") or _now()
@@ -2157,6 +2182,10 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
         "signature_token_created_at": _now(),
         "client_email": body.client_email, "client_name": body.client_name,
         "total_ttc": ttc, "subject": subject,
+        # Auditoria V2 : impressão do conteúdo enviado — a assinatura só é aceite
+        # sobre exatamente este conteúdo ; e data-limite = validade do orçamento.
+        "sent_content_hash": _content_hash(doc),
+        "signature_expires_at": _signature_expiry(doc),
         "email_status": "queued", "email_id": None, "error": None,
         "created_at": _now(), "opened": False, "open_count": 0,
         "signed": False, "reminder_sent": False,

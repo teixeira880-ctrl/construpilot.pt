@@ -8,6 +8,7 @@ import { FeatureClips } from "@/components/FeatureClips";
 import { LandingLayout, LandingHeading, LandingPricing, scrollToLanding } from "@/components/landing/LandingLayout";
 import { ProductPreview } from "@/components/landing/ProductPreview";
 import { LandingProof } from "@/components/landing/LandingProof";
+import { useOffer } from "@/components/OfferNotice";
 
 const FEATURES = [
   { id: "metre", icon: Ruler, clip: "metre", tag: "Plantas e medições", title: "Meça a obra na planta, sem régua nem calculadora", desc: "Importe as suas plantas PDF, DWG ou DXF, calibre a escala e controle as suas áreas, comprimentos e volumes.", to: "/plan" },
@@ -43,6 +44,10 @@ const FAQ = [
 
 export default function LandingPro() {
   const navigate = useNavigate();
+  const offer = useOffer();
+  const offerNote = !offer ? "" : offer.free_promo
+    ? "Fase de lançamento · acesso completo grátis · sem cartão"
+    : offer.trial_days ? `Experiência de ${offer.trial_days} dias · cartão pedido, sem débito antes do fim da experiência · sem fidelização` : "Sem fidelização";
   const [preview, setPreview] = useState(null);
   const [videosOpen, setVideosOpen] = useState(false);
   useEffect(() => { try { if (localStorage.getItem("construpilot_audience") === "particulier") navigate("/particulares", { replace: true }); } catch {} }, [navigate]);
@@ -57,7 +62,7 @@ export default function LandingPro() {
         <p className="landing-hero-pain" data-testid="pro-hero-pain">Chega de medir à mão e repetir orçamentos em folhas de cálculo.</p>
         <p className="landing-hero-description">Da primeira planta ao acompanhamento da obra, encontre as suas medições, orçamentos e documentos num espaço de trabalho pensado para o terreno.</p>
         <div className="landing-hero-actions"><Link to="/inscription" className="landing-button" data-testid="pro-hero-primary-cta">Experimentar o ConstruPilot <ArrowRight size={18} /></Link><a href="#landing-demo" className="landing-button landing-button-outline" onClick={e=>{e.preventDefault();showDemo();}} data-testid="pro-hero-secondary-cta"><Play size={16} />Ver a demonstração em vídeo</a></div>
-        <p className="landing-hero-note">Experiência de 7 dias · Cartão obrigatório, sem débito antes do fim da experiência · Sem fidelização após a experiência · <Link to="/confidentialite" data-testid="pro-hero-privacy">Os seus dados e a privacidade</Link></p>
+        <p className="landing-hero-note">{offerNote}{offerNote ? " · " : ""}<Link to="/confidentialite" data-testid="pro-hero-privacy">Os seus dados e a privacidade</Link></p>
         <div className="landing-hero-proof"><span><Check size={15} />Plantas e medições</span><span><Check size={15} />Orçamentos e faturas</span><span><Check size={15} />Processos de obra</span></div>
       </div>
       <ProductPreview />

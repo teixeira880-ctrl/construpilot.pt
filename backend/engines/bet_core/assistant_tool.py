@@ -118,7 +118,7 @@ from engines.bet_frame.hook import INSTRUCTIONS_EXTRA as _FRAME_INSTRUCTIONS  # 
 INSTRUCTIONS += _FRAME_INSTRUCTIONS
 
 
-MIME = {"pdf": "application/pdf", "zip": "application/zip",
+MIME = {"pdf": "application/pdf", "zip": "application/zip", "png": "image/png", "jpg": "image/jpeg",
         "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
 
 
@@ -141,7 +141,8 @@ def _nom_livrable(path: Path) -> str:
 
 
 async def _store(db, uid, cid, request_id, kind, path: Path, title):
-    fmt = "pdf" if kind in ("plans_pdf", "re2020_pdf", "estimate_pdf") else "xlsx" if kind == "estimate_xlsx" else kind
+    fmt = ("pdf" if kind in ("plans_pdf", "re2020_pdf", "estimate_pdf") else "xlsx" if kind == "estimate_xlsx"
+           else ("jpg" if path.suffix.lower() in (".jpg", ".jpeg") else "png") if kind == "render_png" else kind)
     data = path.read_bytes()
     if len(data) > MAX_ARTIFACT:
         raise ValueError(f"{path.name} trop volumineux ({len(data)} o)")
@@ -223,6 +224,10 @@ async def _cached_model(db, uid, key):
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None, decide_alone=False):
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
+        from engines import calc_live                    # acompanhamento ao vivo (conta CLT Rezult; no-op nas outras)
+        await calc_live.ev("erro" if extra.get("status") == "failed" else "etapa", label, motor="generate_full_bet_study",
+                           resultado=extra.get("error"), valores={k: str(v)[:200] for k, v in extra.items()
+                                                                   if k in ("status", "provider", "building_kind", "review_status")})
     if str(country).upper() == "UA":                     # bet_clt_ua : Ucrânia (CLT), nunca os motores FR / PT
         try:
             from engines.bet_clt_ua.hook import handle

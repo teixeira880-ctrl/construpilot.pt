@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/context/I18nContext";
 import { SHOWCASE_I18N, SHOWCASE_STATS } from "@/lib/showcaseI18n";
+import { useOffer, offerShort } from "@/components/OfferNotice";
 
 const IMGS = [
   "https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
@@ -98,6 +99,7 @@ function Row({ item, index, cta }) {
 export function FeatureShowcase() {
   const { lang } = useI18n();
   const L = SHOWCASE_I18N[lang] || SHOWCASE_I18N.fr;
+  const offer = useOffer();
   const ctaRef = useRef(null);
   const ctaInView = useInView(ctaRef, { once: true, margin: "-60px" });
   return (
@@ -131,7 +133,7 @@ export function FeatureShowcase() {
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
-          <p className="relative mt-4 text-xs text-muted-foreground">{L.tryNote}</p>
+          <p className="relative mt-4 text-xs text-muted-foreground">{offer ? (offer.free_promo ? L.tryNote : offerShort(offer).card) : ""}</p>
         </motion.div>
       </div>
     </section>

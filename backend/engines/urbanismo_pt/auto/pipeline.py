@@ -10,24 +10,20 @@ import asyncio
 import os
 import base64
 import io
-import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from engines.urbanismo_pt import regras as R
 from engines.urbanismo_pt.auto import coerencia as C
-from engines.urbanismo_pt.auto import estilos as E
-from engines.urbanismo_pt.auto import pedido as PD
 from engines.urbanismo_pt.auto import geo as G
 from engines.urbanismo_pt.auto import implantacao as I
 from engines.urbanismo_pt.auto import pecas_auto as PA
 from engines.urbanismo_pt.auto import plantas as PL
 from engines.urbanismo_pt.auto import programa as PG
+from engines.urbanismo_pt.auto import rastreio as RT
 from engines.urbanismo_pt.auto import terreno as T
-
-log = logging.getLogger("urbanismo_pt.auto")
 
 Emit = Optional[Callable[[str, str], Awaitable[None]]]
 
@@ -40,24 +36,6 @@ def _bool(v, d=None):
     if v is None or v == "":
         return d
     return str(v).strip().lower() in ("1", "true", "sim", "yes", "s", "y", "oui")
-
-
-_ABREV = ("av", "r", "lg", "trav", "tv", "dr", "dra", "eng", "prof", "n", "nº", "sr", "sra", "sto", "sta", "s", "estr", "urb")
-
-
-def _cortar_morada(s: str) -> str:
-    """A morada acaba no fim da frase: «Rua do Monte 7, Braga. Dossier completo para a câmara…» → «Rua do Monte 7, Braga».
-    Não corta em abreviaturas («Av. da Liberdade», «R. de Santa Catarina») e corta também antes de pedidos colados à
-    morada («, mesmo que…», «para a câmara», «dossier…»)."""
-    for m in re.finditer(r"\.\s+(?=\S)", s):
-        antes = re.findall(r"([\wº]+)$", s[:m.start()])
-        if antes and antes[0].lower() in _ABREV:
-            continue
-        s = s[:m.start()]
-        break
-    s = re.split(r",?\s+(?:mesmo que|mesmo se|para (?:a|o) (?:c[âa]mara|munic[ií]pio)|dossier|com (?:piscina|garagem))\b", s,
-                 maxsplit=1, flags=re.I)[0]
-    return s.strip(" .,;")
 
 
 def interpretar_pedido(texto: str) -> Dict[str, Any]:
@@ -79,142 +57,33 @@ def interpretar_pedido(texto: str) -> Dict[str, Any]:
         found = re.findall(rgx, t, re.I)
         if found:
             out[k] = " ".join(found)
-    m = re.search(r"(\d[\d .]*)\s*m(?:²|2|etros quadrados)", t, re.I)
-    if m:
+    # áreas: «casa de 200 m2 num terreno de 1500 m2» → casa 200, terreno 1500 (pelo contexto de cada número)
+    soltas = []
+    for m in re.finditer(r"(\d[\d .]*?)\s*m(?:²|2\b|etros quadrados)", t, re.I):
         try:
-            out["area_terreno_m2"] = float(m.group(1).replace(" ", "").replace(".", ""))
+            v = float(m.group(1).replace(" ", "").replace(".", ""))
         except ValueError:
-            pass
+            continue
+        antes, depois = t[max(0, m.start() - 48):m.start()].lower(), t[m.end():m.end() + 24].lower()
+        lig = r"(?:\s+[\wçãõáéíóúâêô]+){0,3}?\s+(?:de|com|tem|:)\s+(?:cerca de\s+|aprox\w*\s+|±\s*)?$"
+        if re.search(r"(?:terreno|lote|parcela|quintal|propriedade)" + lig, antes) or re.match(r"\s*(?:de\s+)?(?:terreno|lote)", depois):
+            out.setdefault("area_terreno_m2", v)
+        elif re.search(r"(?:casa|moradia|habita\w*|constru\w*|vivenda|edif\w*|[áa]rea bruta|[áa]rea [úu]til)" + lig, antes) \
+                or re.match(r"\s*(?:de\s+)?(?:constru|[áa]rea bruta|habita|casa)", depois):
+            out.setdefault("area_casa_m2", v)
+        else:
+            soltas.append(v)
+    if soltas and "area_terreno_m2" not in out:          # número sem contexto: como antes, é a área do terreno
+        out["area_terreno_m2"] = soltas[0]
     # morada: depois de «na/no/em» até ao fim (sem «município de»)
-    m = re.search(r"\b(?:na|no|em|sito em|situad[oa] em)\s+((?:rua|avenida|av\.|travessa|largo|estrada|caminho|lugar|praça|"
+    m = re.search(r"\b(?:na|no|em|sito em|situad[oa] em|endere[çc]o:?|morada:?)\s+((?:rua|avenida|av\.|travessa|largo|estrada|caminho|lugar|praça|"
                   r"urbaniza[çc][ãa]o|quinta)\b.+)$", t, re.I)
     if m:
-        out["morada"] = _cortar_morada(re.sub(r"\s+", " ", m.group(1)))
-    m = re.search(r"(?:endere[çc]o|morada)\s*(?:é|e|:)\s*:?\s*([^\n(]+)", t, re.I)
-    if m and not out.get("morada"):
-        out["morada"] = _cortar_morada(re.sub(r"\s+", " ", m.group(1)))
-    if not out.get("morada"):   # morada escrita sem «na/no/em» (ex.: «…, Rua do Monte 7, Braga»)
-        m = re.search(r"\b((?:rua|avenida|av\.|travessa|largo|estrada|caminho|lugar|praça|urbaniza[çc][ãa]o|quinta|bairro)\s+"
-                      r"[^\n]+)$", t, re.I)
-        if m:
-            out["morada"] = _cortar_morada(re.sub(r"\s+", " ", m.group(1)))
-    # leitura v2 (forma, área habitável vs terreno, piscina, garagem exterior, estilo…): acrescenta sem apagar o anterior
-    novo = PD.interpretar(t)
-    for k, v in novo.items():
-        if k in ("area_terreno_m2", "fachada") or k not in out:
-            out[k] = v
-    if "area_terreno_m2" not in novo and "area_util_alvo_m2" in novo:
-        out.pop("area_terreno_m2", None)   # a única área escrita era a da casa, não a do terreno
-    return out
-
-
-# ------------------------------------------------------------------ modo leigo (por omissão)
-# Para quem não tem conhecimentos técnicos: o piloto NÃO pergunta nada que consiga decidir sozinho. Tenta variantes
-# prudentes (morada aproximada, casa mais pequena, sem piscina…), repete quando um serviço oficial falha, e regista
-# cada decisão em «pressupostos». Só fica a faltar o que é impossível adivinhar (a morada) — e os dados de papelada
-# (nome/NIF, artigo matricial) passam para «a_completar», sem bloquear nada.
-MODO_LEIGO = os.environ.get("URB_MODO_LEIGO", "1") not in ("0", "false", "nao", "não")
-ESPERA_SERVICO_S = float(os.environ.get("URB_LEIGO_ESPERA_S", "15"))
-
-
-def _leigo(pedido: Dict[str, Any]) -> bool:
-    v = pedido.get("modo_leigo")
-    return MODO_LEIGO if v is None else _bool(v, MODO_LEIGO)
-
-
-def _moradas_alternativas(morada: str) -> List[str]:
-    partes = [x.strip() for x in re.split(r",", morada or "") if x.strip()]
-    sem_num = re.sub(r"\b(n\.?\s*º?|nº|n\.)?\s*\d+[a-zA-Z]?\b", "", partes[0]).strip(" ,") if partes else ""
-    alt = []
-    if sem_num and sem_num != partes[0]:
-        alt.append(", ".join([sem_num] + partes[1:]))
-    if len(partes) >= 3:
-        alt.append(", ".join(partes[1:]))
-    if len(partes) >= 2:
-        alt.append(", ".join(partes[-2:]))
-        alt.append(partes[-1])
-    vistos, out = {morada.strip().lower()}, []
-    for a in alt:
-        if a and a.lower() not in vistos:
-            vistos.add(a.lower())
-            out.append(a)
-    return out
-
-
-def _mais_pequena(p: Dict[str, Any]) -> List[Tuple[Dict[str, Any], str]]:
-    """Variantes prudentes, da mais próxima do pedido para a mais simples."""
-    out = []
-    alvo = p.get("area_util_alvo_m2")
-    if alvo:
-        for f in (0.85, 0.7, 0.55):
-            a = round(float(alvo) * f)
-            if a >= 60:
-                out.append(({**p, "area_util_alvo_m2": a}, f"Os {round(float(alvo))} m² pedidos não cabiam com os afastamentos "
-                                                          f"legais: proposta com cerca de {a} m² habitáveis."))
-    t = str(p.get("tipologia") or "").upper().lstrip("T")
-    n = int(t) if t.isdigit() else None
-    if n and n > 1:
-        for k in range(n - 1, 0, -1):
-            out.append(({**{x: y for x, y in p.items() if x != "area_util_alvo_m2"}, "tipologia": f"T{k}"},
-                        f"A {p['tipologia']} não cabia no terreno: proposta T{k}."))
-    if p.get("piscina") or "piscina" in str(p.get("texto", "")).lower():
-        out.append(({**p, "piscina": False, "texto": re.sub(r"(?i)piscina", "", p.get("texto") or "")},
-                    "A piscina não cabia com os afastamentos: fica fora da proposta (pode ser estudada depois)."))
+        out["morada"] = re.sub(r"\s+", " ", m.group(1)).strip(" .")
     return out
 
 
 async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
-    if not _leigo(pedido):
-        return await _executar(pedido, emit)
-    import asyncio
-    extra: List[str] = []
-    p = dict(pedido)
-    if PD.interpretar(p.get("texto") or "").get("tipo_obra") in ("renovacao", "ampliacao") or p.get("tipo_obra") in ("renovacao", "ampliacao"):
-        if not _bool(p.get("forcar_estudo"), False):
-            p["forcar_estudo_renovacao"] = True
-    r = await _executar(p, emit)
-    def _pendente(x):   # serviço de mapas em baixo, ou dados oficiais críticos (PDM/servidões) sem resposta
-        return x.get("estado") == "servico_indisponivel" or (
-            x.get("estado") == "revisao" and any("PDM" in c or "servid" in c
-                                                  for c in ((x.get("processo") or {}).get("auto") or {}).get("por_confirmar") or []))
-    for _ in range(2):   # espera e repete sozinho
-        if not _pendente(r):
-            break
-        await asyncio.sleep(ESPERA_SERVICO_S)
-        r = await _executar(p, emit)
-    if r.get("estado") == "morada_nao_encontrada":
-        base = {**interpretar_pedido(p.get("texto") or ""), **{k: v for k, v in p.items() if v not in (None, "")}}
-        for alt in _moradas_alternativas(base.get("morada") or ""):
-            r2 = await _executar({**p, "morada": alt}, emit)
-            if r2.get("estado") != "morada_nao_encontrada":
-                extra.append(f"Não encontrei a morada exata; usei «{alt}» (localização aproximada — confirme o terreno no mapa).")
-                p, r = {**p, "morada": alt}, r2
-                break
-    if r.get("estado") == "nao_cabe":
-        base = {**interpretar_pedido(p.get("texto") or ""), **{k: v for k, v in p.items() if v not in (None, "")}}
-        if not base.get("tipologia") and base.get("area_util_alvo_m2"):
-            base["tipologia"] = PD.tipologia_por_area(base["area_util_alvo_m2"])
-        for variante, motivo in _mais_pequena(base)[:8]:
-            r2 = await _executar(variante, emit)
-            if r2.get("ok"):
-                extra.append(motivo)
-                r = r2
-                break
-    if r.get("ok"):
-        r["pressupostos"] = extra + (r.get("pressupostos") or [])
-        r["a_completar"] = r.get("perguntas") or []
-        r["perguntas"] = []
-        r["modo_leigo"] = True
-        auto = (r.get("processo") or {}).setdefault("auto", {})
-        auto["modo_leigo"] = True
-        auto["pressupostos"] = extra + [x for x in auto.get("pressupostos") or [] if x not in extra]
-        auto["a_completar"] = r["a_completar"]
-    else:
-        r["modo_leigo"] = True
-    return r
-
-
-async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     p = {**interpretar_pedido(pedido.get("texto") or ""), **{k: v for k, v in pedido.items() if v not in (None, "")}}
     etapas: List[Dict[str, Any]] = []
     pressupostos: List[str] = []
@@ -233,37 +102,13 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
         if r and r.get("ok") and r.get("fonte"):
             fontes.append({"fonte": r["fonte"], "url": r.get("url")})
 
-    if p.get("tipo_obra") in ("renovacao", "ampliacao") and p.get("forcar_estudo_renovacao"):
-        pressupostos.append("Pediu uma " + ("renovação" if p["tipo_obra"] == "renovacao" else "ampliação") + ": sem as plantas da "
-                            "casa existente, preparei o estudo completo como construção nova no mesmo terreno. Para o processo de "
-                            + ("renovação" if p["tipo_obra"] == "renovacao" else "ampliação") + " junte depois as plantas antigas "
-                            "ou fotografias da casa atual, e o estudo é refeito sobre o existente.")
-    elif p.get("tipo_obra") in ("renovacao", "ampliacao") and not _bool(p.get("forcar_estudo"), False):
-        return {"ok": False, "estado": "renovacao", "pressupostos": [], "perguntas": [
-            "Para uma " + ("renovação" if p["tipo_obra"] == "renovacao" else "ampliação") + " preciso de conhecer a casa existente: "
-            "tem as plantas antigas (da câmara ou do arquiteto) ou pode enviar fotografias de todas as fachadas e das divisões?",
-            "Qual é a morada e a área aproximada da casa existente?"],
-            "resposta": "Numa renovação o processo depende do que já existe (área, estrutura, licença anterior). Com as plantas "
-                        "ou fotografias da casa atual preparo o levantamento, o projeto e o processo para a câmara."}
+    await RT.pedido(p)
     morada = (p.get("morada") or "").strip()
     if not morada:
-        return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"],
-                "resposta": "Só preciso da morada do terreno (ou a localidade e o concelho) — o resto faço eu."}
+        return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"]}
 
-    # 1. localizar — coordenadas dadas pelo cliente (ponto no mapa) têm prioridade sobre a geocodificação da morada
-    g = None
-    try:
-        lat_c, lon_c = float(p.get("lat")), float(p.get("lon"))
-    except (TypeError, ValueError):
-        lat_c = lon_c = None
-    if lat_c is not None and 36.8 <= lat_c <= 42.2 and -9.6 <= lon_c <= -6.1:
-        g = {"ok": True, "fonte": "Ponto indicado pelo requerente no mapa", "url": None,
-             "data": {"lat": lat_c, "lon": lon_c, "morada_formatada": morada, "rua": None, "numero": None,
-                      "freguesia": None, "concelho": None, "codigo_postal": None, "precisao": "porta",
-                      "consulta": f"{lat_c:.6f},{lon_c:.6f}", "via_geom": None}}
-        pressupostos.append(f"Localização: ponto indicado pelo requerente ({lat_c:.6f}, {lon_c:.6f}); a morada «{morada}» "
-                            "é a do pedido.")
-    g = g or await G.geocode(morada)
+    # 1. localizar
+    g = await G.geocode(morada)
     if not g["ok"]:
         inacessivel = "inacess" in (g.get("nota") or "")
         await passo("localizar", "falhou", g.get("nota") or "morada não encontrada")
@@ -285,6 +130,7 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
     if geo.get("precisao") != "porta":
         pressupostos.append(f"A localização exata da porta não foi encontrada: usou-se o ponto da {geo.get('precisao')} "
                             f"«{geo.get('morada_formatada')}». Confirme o terreno no mapa.")
+    await RT.localizacao(geo, g)
     await passo("localizar", "ok", geo.get("morada_formatada", ""))
     lat, lon = geo["lat"], geo["lon"]
 
@@ -320,6 +166,7 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
         asyncio.get_running_loop().create_task(G.prefetch_zona(lat, lon))
     concelho = (mun.get("data") or {}).get("concelho") if mun["ok"] else None
     concelho = concelho or geo.get("concelho")
+    await RT.dados_oficiais(mun, crus, srup, cad, via, orto)
     await passo("dados_oficiais", "ok", ", ".join(f["fonte"] for f in fontes))
 
     # 3. viabilidade (sem esconder nada)
@@ -353,6 +200,7 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
         + ([] if srup["ok"] and not (srup.get("data") or {}).get("incompleta") else ["servidões e restrições (REN, RAN…)"]) \
         + (["localização do terreno"] if geo.get("precisao") == "localidade" else [])
     criticos_por_confirmar = bool(por_confirmar)
+    await RT.viabilidade(classe, bloqueios, avisos, por_confirmar)
     await passo("viabilidade", "bloqueado" if bloqueios else ("atencao" if criticos_por_confirmar else "ok"), "; ".join(bloqueios)[:300])
     if bloqueios and not _bool(p.get("forcar_estudo"), False):
         return {"ok": False, "estado": "inviavel", "bloqueios": bloqueios, "avisos": avisos, "etapas": etapas,
@@ -360,30 +208,22 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
                 "resposta": "Encontrei um impedimento sério antes de desenhar a casa: " + " ".join(bloqueios)}
 
     # 4. terreno e topografia
-    ter = T.construir_terreno(geo, via, cad, p.get("area_terreno_m2"), p.get("frente_m"))
+    parcela_user = None
+    if p.get("parcela_latlon"):
+        parcela_user = T.anel_utilizador(p["parcela_latlon"], p.get("frente_idx"))
+        if not parcela_user:
+            return {"ok": False, "estado": "parcela_invalida", "etapas": etapas,
+                    "motivo": "Os limites desenhados no mapa não formam um terreno válido (linhas cruzadas ou área demasiado pequena).",
+                    "perguntas": ["Pode acertar os pontos da parcela no mapa para que os limites não se cruzem?"]}
+    ter = T.construir_terreno(geo, via, cad, p.get("area_terreno_m2"), p.get("frente_m"), parcela_user=parcela_user)
+    centro = None
+    cc = p.get("casa_centro_latlon")
+    if isinstance(cc, (list, tuple)) and len(cc) == 2:
+        try:
+            centro = ter["_ref"].para_local(*ter["_local"].xy(float(cc[0]), float(cc[1])))
+        except (TypeError, ValueError):
+            centro = None
     pressupostos += ter["pressupostos"]
-    # ficha oficial do terreno (CAOP/DICOFRE, PDM, REN, RAN e servidões cruzados com o POLÍGONO do terreno, não só o ponto)
-    ficha_t = None
-    try:
-        from engines.urbanismo_pt.auto import ficha_terreno as FT
-        ficha_t = await FT.ficha(lat, lon, ter["poligono_latlon"], ter["area_m2"])
-        for f_ in ficha_t["fontes"]:
-            if f_ not in fontes:
-                fontes.append(f_)
-        par = ficha_t["parecer"]
-        if par["estado"] == "inviavel":
-            for m_ in par["fundamentos"]:
-                if ("REN" in m_ or "RAN" in m_ or "rústico" in m_) and m_ not in bloqueios:
-                    bloqueios.append(m_)
-        for c_ in par["condicoes"]:
-            if c_ not in avisos:
-                avisos.append(c_)
-        if bloqueios and not _bool(p.get("forcar_estudo"), False):
-            return {"ok": False, "estado": "inviavel", "bloqueios": bloqueios, "avisos": avisos, "etapas": etapas,
-                    "fontes": fontes, "localizacao": geo, "ficha_terreno": ficha_t,
-                    "resposta": "Encontrei um impedimento sério no terreno: " + " ".join(bloqueios)}
-    except Exception:  # noqa: BLE001 — a ficha é um complemento: nunca impede o processo
-        log.warning("ficha do terreno falhou", exc_info=True)
     pts = T.grelha_pontos(ter, 9)
     el = await G.elevacoes([(q[2], q[3]) for q in pts])
     topo = T.topografia(pts, el["data"]["z"], el["fonte"], el.get("nota")) if el["ok"] else {"ok": False}
@@ -391,58 +231,53 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
         fonte(el)
     else:
         pressupostos.append("Altimetria indisponível: assumiu-se terreno plano. O levantamento topográfico é indispensável.")
+    await RT.terreno(ter, topo, el)
     await passo("terreno", "ok", f"{ter['area_m2']:.0f} m², declive {topo.get('declive_pct', 0) if topo.get('ok') else '?'} %")
 
     # 5. programa + implantação + plantas (variantes até caber, cada mudança registada)
     pdm_conhecido: Dict[str, Any] = {}
     alv = I.alvos(pdm_conhecido)
+    await RT.alvos(alv)
     pressupostos.append("Parâmetros numéricos do PDM não disponíveis em dados abertos: a casa foi desenhada com alvos prudentes "
                         "(implantação ≤ 30 % do terreno, índice ≤ 0,60, fachada ≤ 6,5 m, 2 pisos, afastamentos 5 / 3 / 6 m) "
                         "— a confirmar no regulamento do PDM.")
-    area_alvo = float(p["area_util_alvo_m2"]) if str(p.get("area_util_alvo_m2") or "").replace(".", "", 1).isdigit() else None
-    if not area_alvo and p.get("area_construcao_alvo_m2"):
-        try:
-            area_alvo = round(float(p["area_construcao_alvo_m2"]) / PG.COEF_BRUTA, 1)
-        except (TypeError, ValueError):
-            area_alvo = None
-    tip = p.get("tipologia") or (PD.tipologia_por_area(area_alvo) if area_alvo else "T3")
-    if not p.get("tipologia"):
-        pressupostos.append(f"Tipologia não indicada: assumiu-se {tip} " + (f"(adequada a {area_alvo:g} m² habitáveis)." if area_alvo
-                            else "(sala, cozinha, 3 quartos com uma suite)."))
-    if area_alvo:
-        pressupostos.append(f"«Área habitável» entendida como área útil de habitação ({area_alvo:g} m²), sem garagem.")
-    estilo = E.obter(p.get("estilo"))
-    if not p.get("estilo"):
-        pressupostos.append(f"Estilo não indicado: proposta {estilo['nome'].lower()} (pode pedir tradicional, minhoto, alentejano…).")
-    forma = (p.get("forma") or "retangulo").lower()
-    if forma in ("u", "t"):
-        pressupostos.append(f"Forma em {forma.upper()} ainda não é desenhada automaticamente: proposta em L (o mais próximo).")
-        forma = "l"
-    garagem_tipo = p.get("garagem_tipo") or "integrada"
-    pisc_dims = None
-    if _bool(p.get("piscina"), False):
-        try:
-            pisc_dims = (float(p.get("piscina_l_m") or I.PISCINA_PADRAO[0]), float(p.get("piscina_w_m") or I.PISCINA_PADRAO[1]))
-        except (TypeError, ValueError):
-            pisc_dims = I.PISCINA_PADRAO
-        if not p.get("piscina_l_m"):
-            pressupostos.append("Dimensão da piscina não indicada: 8 × 4 m (dimensão corrente).")
     pisos_pref = p.get("pisos")
+    try:
+        area_casa = float(p.get("area_casa_m2") or 0) or None
+    except (TypeError, ValueError):
+        area_casa = None
+    if area_casa:
+        area_casa = max(35.0, min(area_casa, 600.0))
+    tip = p.get("tipologia") or (f"T{PG.tipologia_para_area(area_casa, pisos_pref or 2)}" if area_casa else "T3")
+    if not p.get("tipologia"):
+        pressupostos.append(f"Tipologia não indicada: assumiu-se {tip} (a que melhor aproveita os {area_casa:.0f} m² pedidos)." if area_casa
+                            else "Tipologia não indicada: assumiu-se T3 (sala, cozinha, 3 quartos com uma suite).")
     garagem = _bool(p.get("garagem"), True)
     if p.get("garagem") in (None, ""):
         pressupostos.append("Garagem não indicada: previu-se garagem para 2 carros.")
     lugares = int(p.get("lugares") or 2)
-    variantes = [(pisos_pref or 2, garagem, lugares, forma)]
-    if forma == "l":
-        variantes.append((pisos_pref or 2, garagem, lugares, "retangulo"))
+    variantes = [(pisos_pref or 2, garagem, lugares)]
     if (pisos_pref or 2) == 1:
-        variantes += [(2, garagem, lugares, forma)] + ([(2, garagem, lugares, "retangulo")] if forma == "l" else [])
+        variantes.append((2, garagem, lugares))
     if garagem:
-        variantes += [(2, True, 1, "retangulo"), (2, False, 0, "retangulo")]
+        variantes += [(2, True, 1), (2, False, 0)]
+    # com área pedida: primeiro mantém pisos e garagem e reduz a casa (90 %, 80 %); depois as outras variantes à área
+    # pedida; por fim reduz mais (70 %, 60 %) até ao mínimo do RGEU. Sem área pedida: só as variantes, como antes.
+    # Se ainda não couber, desce a tipologia (menos quartos) nas mesmas áreas reduzidas.
+    if area_casa:
+        t0 = int(str(tip).upper().lstrip("T") or 3)
+        tentativas_prog = [(variantes[0], f, tip) for f in (1.0, 0.9, 0.8)] + [(v, 1.0, tip) for v in variantes[1:]] \
+            + [(v, f, tip) for f in (0.7, 0.6) for v in variantes] \
+            + [(v, f, f"T{t2}") for t2 in range(t0 - 1, 0, -1) for f in (0.8, 0.6, 0.45) for v in variantes]
+    else:
+        tentativas_prog = [(v, None, tip) for v in variantes]
     res = prog = None
     motivos = []
-    for (np_, gar_, lug_, forma_) in variantes:
-        prog = PG.programa(tip, np_, gar_, lug_, escritorio=_bool(p.get("escritorio"), False), area_util_alvo=area_alvo)
+    for ((np_, gar_, lug_), fator, tip_) in tentativas_prog:
+        alvo = area_casa * fator if area_casa and fator else None
+        prog = PG.programa(tip_, np_, gar_, lug_, escritorio=_bool(p.get("escritorio"), False), area_alvo_m2=alvo)
+        if alvo and prog.get("limitado_pelo_rgeu") and fator < 1.0:
+            continue                                      # abaixo do mínimo regulamentar: não vale a pena reduzir mais
 
         def validar(r, prog=prog):
             pl = PL.distribuir(r["volume"], prog, r["fachada_sol"], r["lado_garagem"])
@@ -452,17 +287,31 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
                 return False, "; ".join(pl["nao_conformes"][:2])
             r["plantas"] = pl
             return True, ""
-        res = I.implantar(ter, topo, prog, alv, validar=validar, forma=forma_, garagem_tipo=garagem_tipo,
-                          piscina_dims=pisc_dims)
+        await RT.programa(prog, np_, gar_, lug_)
+        res = I.implantar(ter, topo, prog, alv, validar=validar, centro=centro)
+        await RT.variante(np_, gar_, lug_, res)
         if res["ok"]:
-            if forma_ != forma:
-                pressupostos.append("A forma em L não cabia no terreno com os afastamentos: proposta retangular.")
-            if (np_, gar_, lug_) != variantes[0][:3]:
+            if area_casa:
+                if fator and fator < 1.0 or tip_ != tip:
+                    pressupostos.append(f"A casa pedida ({area_casa:.0f} m²) não cabe no terreno com os afastamentos e índices: "
+                                        f"foi reduzida automaticamente para {prog['area_bruta_total_m2']:.0f} m² "
+                                        f"({prog['area_bruta_total_m2'] / area_casa * 100:.0f} % do pedido)"
+                                        + (f", passando de {tip} a {tip_}." if tip_ != tip else ", com as mesmas divisões."))
+                else:
+                    pressupostos.append(f"Área da casa pedida respeitada: {prog['area_bruta_total_m2']:.0f} m² de área bruta "
+                                        "(sem a garagem), compartimentos dimensionados à medida.")
+            if (np_, gar_, lug_) != variantes[0]:
                 pressupostos.append(f"Para caber no terreno com os afastamentos, passou-se a {np_} {'piso' if np_ == 1 else 'pisos'}"
                                     + ((f" e garagem para {lug_} {'carro' if lug_ == 1 else 'carros'}") if gar_
                                        else " sem garagem (estacionamento no logradouro)") + ".")
             break
         motivos.append(res.get("motivo"))
+        if res.get("posicao_invalida"):      # posição escolhida no mapa: nunca encolher a casa às escondidas
+            await passo("projeto", "falhou", res["motivo"])
+            return {"ok": False, "estado": "posicao_invalida", "motivo": res["motivo"], "pressupostos": pressupostos,
+                    "etapas": etapas, "fontes": fontes,
+                    "perguntas": ["Arraste a casa para dentro da zona amarela tracejada (onde se pode construir) ou use "
+                                  "«Posicionar automaticamente»."]}
     if not res or not res["ok"]:
         await passo("projeto", "falhou", motivos[-1] if motivos else "")
         return {"ok": False, "estado": "nao_cabe", "motivo": motivos[-1] if motivos else "", "pressupostos": pressupostos,
@@ -470,27 +319,15 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
                 "perguntas": ["Quer uma casa mais pequena (por exemplo T2) ou sem garagem?",
                               "Sabe a área exata do terreno (está na caderneta predial)?"]}
     plan = res["plantas"]
+    await RT.implantacao(res, plan)
     await passo("projeto", "ok", f"{prog['tipologia']} em {res['n_pisos']} piso(s)")
 
     # 6. processo (formato do motor de urbanismo — a mesma verdade para todos)
-    cob_tipo = p.get("cobertura_tipo") or estilo["cobertura"]["tipo"]
-    res["volume"]["roof_type"] = cob_tipo if cob_tipo in ("duas_aguas", "uma_agua", "plana") else "duas_aguas"
-    if res["volume"]["roof_type"] == "plana":   # platibanda: sem altura de telhado
-        res["volume"]["total_h_m"] = round(res["n_pisos"] * I.PISO_A_PISO_M + 0.5, 2)
-    cob_mat = p.get("cobertura") if p.get("cobertura") in PA.MATERIAIS_COBERTURA else (
-        "plana_seixo" if res["volume"]["roof_type"] == "plana" else (
-            estilo["cobertura"]["material"] if estilo["cobertura"]["material"] != "plana_seixo" else "telha_ceramica"))
-    mats = {"fachada": PA.material_fachada(p.get("fachada")) if p.get("fachada") else estilo["fachada"],
-            "cobertura": cob_mat,
-            "caixilharia": p.get("caixilharia") if p.get("caixilharia") in PA.CAIXILHARIA else estilo["caixilharia"]}
+    mats = {"fachada": PA.material_fachada(p.get("fachada")),
+            "cobertura": p.get("cobertura") if p.get("cobertura") in PA.MATERIAIS_COBERTURA else "telha_ceramica",
+            "caixilharia": p.get("caixilharia") if p.get("caixilharia") in PA.CAIXILHARIA else "aluminio_antracite"}
     if not p.get("fachada"):
-        pressupostos.append(f"Material de fachada não indicado: {PA.MATERIAIS_FACHADA[mats['fachada']].lower()} (estilo "
-                            f"{estilo['nome'].lower()}).")
-    if res.get("piscina") and res["piscina"].get("ok"):
-        pressupostos.append("Piscina descoberta não contabilizada na área de implantação nem de construção; o afastamento aos "
-                            f"limites ({I.PISCINA_AFAST_LIMITES_M:g} m) é um alvo prudente — confirmar no regulamento municipal.")
-    elif pisc_dims:
-        pressupostos.append("Piscina pedida mas não implantada: " + ((res.get("piscina") or {}).get("motivo") or "sem espaço") + ".")
+        pressupostos.append("Material de fachada não indicado: reboco branco (pode pedir granito, madeira, xisto…).")
     ref, loc = ter["_ref"], ter["_local"]
 
     def to_ll(pts_m):
@@ -532,19 +369,13 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
             "terreno": {k: ter[k] for k in ("poligono_m", "poligono_latlon", "area_m2", "area_origem", "plot_l_m", "plot_w_m",
                                              "azimutes", "frente_fonte")},
             "topografia": topo, "classe_solo": classe, "servidoes": hits or [], "alvos": alv,
-            "ficha_terreno": ({k: v for k, v in ficha_t.items() if k != "terreno"} | {"terreno": {k: v for k, v in ficha_t["terreno"].items()
-                                                                                           if k != "poligono_latlon"}}) if ficha_t else None,
             "programa": {k: prog[k] for k in ("tipologia", "n_pisos", "area_bruta_total_m2", "minimo_area_bruta_m2", "garagem",
                                               "fonte_minimos")},
             "implantacao": {k: res[k] for k in ("fachada_sol", "lado_garagem", "cota_soleira_m", "terras", "decisoes",
                                                  "casa_rect", "garagem_rect", "declive_profundidade_pct")},
-            "geometria_l": res.get("geometria_l"),
-            "plantas": {"pisos": plan["pisos"], "casa_rect": plan["casa_rect"],
-                        **({"contorno": plan["contorno"]} if plan.get("contorno") else {})},
+            "plantas": {"pisos": plan["pisos"], "casa_rect": plan["casa_rect"]},
             "vaos": PA.vaos(plan, res["volume"], res["fachada_sol"]),
-            "materiais": mats, "casa_latlon": casa_ll, "estilo": {"id": estilo["id"], "nome": estilo["nome"]},
-            "forma": res.get("forma", "retangulo"), "garagem_tipo": garagem_tipo if res["volume"].get("blocks") else None,
-            "piscina": (res["volume"].get("piscina") or None), "ajuste_area": prog.get("ajuste_area"),
+            "materiais": mats, "casa_latlon": casa_ll,
             "orto": {"b64": orto_b64, "bbox": (orto.get("data") or {}).get("bbox"), "fonte": orto.get("fonte")} if orto_b64 else None,
             "fontes": fontes, "pressupostos": pressupostos, "avisos": avisos, "bloqueios": bloqueios, "etapas": etapas,
         },
@@ -555,15 +386,16 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
 
     # 7. verificação (motores existentes) — a única fonte dos números finais
     verif = R.verificar(processo)
+    await RT.verificacao(verif)
     await passo("verificacao", "ok", verif["rjue"]["procedimento"])
 
     # 8. documentos: memória determinística, com controlo de números
     mem = PA.memoria_descritiva(processo, verif)
     sem_fonte = C.numeros_sem_fonte(mem, C.numeros_permitidos(verif["quadro"], processo["volume"], plan, processo["auto"]["implantacao"],
-                                                               processo["auto"]["programa"], processo["auto"]["alvos"], processo["auto"].get("geometria_l") or {},
-                                                               processo["auto"].get("piscina") or {}, processo["auto"].get("ajuste_area") or {},
+                                                               processo["auto"]["programa"], processo["auto"]["alvos"],
                                                                {k: v for k, v in (topo or {}).items() if k != "grelha"}))
     processo["memoria_texto"] = mem
+    await RT.memoria(sem_fonte)
     await passo("documentos", "ok" if not sem_fonte else "atencao", "; ".join(sem_fonte))
 
     # 9. coerência entre motores
@@ -574,6 +406,7 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
         coer["falhas"].append({"codigo": "MEMORIA_NUMEROS", "descricao": "Números da memória sem correspondência nos dados",
                                "obtido": sem_fonte, "ok": False, "critico": True})
     processo["auto"]["coerencia"] = coer
+    await RT.coerencia(coer)
     await passo("coerencia", "ok" if coer["ok"] else "falhou", f"{coer['aprovados']}/{coer['total']}")
 
     perguntas = []
@@ -590,7 +423,9 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
         perguntas.append("Qual é a área do terreno indicada na caderneta predial? (assim ajusto a casa ao terreno real)")
     if not p.get("artigo_matricial"):
         perguntas.append("Tem o número do artigo matricial ou da descrição predial? (está na caderneta / certidão)")
-    return {"ok": True, "estado": "pronto" if coer["ok"] and not bloqueios and not criticos_por_confirmar else "revisao", "processo": processo, "verificacao": verif,
+    estado_final = "pronto" if coer["ok"] and not bloqueios and not criticos_por_confirmar else "revisao"
+    await RT.fim(estado_final, pressupostos, avisos, perguntas)
+    return {"ok": True, "estado": estado_final, "processo": processo, "verificacao": verif,
             "coerencia": coer, "pressupostos": pressupostos, "avisos": avisos, "bloqueios": bloqueios, "fontes": fontes,
             "perguntas": perguntas, "etapas": etapas}
 
@@ -598,13 +433,11 @@ async def _executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]
 def resumo_publico(r: Dict[str, Any], processo_id: Optional[str] = None) -> Dict[str, Any]:
     """Resumo curto (para o Assistente BTP, a Aurora e o ecrã)."""
     if not r.get("ok"):
-        return {k: r.get(k) for k in ("ok", "estado", "motivo", "bloqueios", "avisos", "perguntas", "resposta", "pressupostos",
-                                      "modo_leigo") if r.get(k)}
+        return {k: r.get(k) for k in ("ok", "estado", "motivo", "bloqueios", "avisos", "perguntas", "resposta", "pressupostos") if r.get(k)}
     v, q, a = r["verificacao"], r["verificacao"]["quadro"], r["processo"]["auto"]
     return {
         "ok": True, "estado": r["estado"], "processo_id": processo_id,
         "pagina": f"/urbanismo/processos/{processo_id}" if processo_id else None,
-        "ficha_condicionantes_pdf": f"/api/urbanismo-auto/processos/{processo_id}/ficha-condicionantes.pdf" if processo_id else None,
         "procedimento": v["rjue"]["procedimento"], "procedimento_label": R.PROCEDIMENTO_LABEL.get(v["rjue"]["procedimento"]),
         "fundamento": v["rjue"].get("fundamento_legal"), "tecnicos_obrigatorios": v["rjue"].get("tecnicos_obrigatorios"),
         "casa": {"tipologia": a["programa"]["tipologia"], "pisos": q["n_pisos"], "area_construcao_m2": q["area_construcao_m2"],
@@ -614,9 +447,6 @@ def resumo_publico(r: Dict[str, Any], processo_id: Optional[str] = None) -> Dict
         "decisoes": a["implantacao"]["decisoes"], "pressupostos": r["pressupostos"], "avisos": r["avisos"],
         "coerencia": {"ok": r["coerencia"]["ok"], "aprovados": r["coerencia"]["aprovados"], "total": r["coerencia"]["total"],
                       "falhas": [f["descricao"] for f in r["coerencia"]["falhas"]]},
-        "perguntas": r["perguntas"], "a_completar": r.get("a_completar") or [], "modo_leigo": bool(r.get("modo_leigo")),
-        "fontes": [f["fonte"] for f in r["fontes"]],
-        "proximo_passo": ("Está tudo feito. Quando quiser, complete os dados em falta (nome, NIF, artigo matricial) e peça a "
-                          "subscrição por arquiteto/engenheiro (termos de responsabilidade)." if r.get("modo_leigo") else
-                          "Rever no ecrã, responder às perguntas e pedir a subscrição por arquiteto/engenheiro (termos de responsabilidade)."),
+        "perguntas": r["perguntas"], "fontes": [f["fonte"] for f in r["fontes"]],
+        "proximo_passo": "Rever no ecrã, responder às perguntas e pedir a subscrição por arquiteto/engenheiro (termos de responsabilidade).",
     }

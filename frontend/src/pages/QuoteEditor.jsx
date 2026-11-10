@@ -1914,6 +1914,7 @@ export default function QuoteEditor() {
           </div></details>
         )}
 
+        {!assistantOrigin && lines.some((l) => l.price_missing) && <p className="text-sm text-amber-700 dark:text-amber-400 border-l-2 border-amber-500 pl-3 mb-4" data-testid="editor-partial-total-warning-generic">{quoteText("missing")}</p>}
         {assistantOrigin && <div className="border-l-2 border-primary pl-3 text-sm grid gap-2 mb-4" data-testid="editor-assistant-origin"><p>{quoteText("source")}{assistantOrigin.client ? ` · ${quoteText("client")}: ${assistantOrigin.client}` : ""}</p>{lines.some(l => l.price_missing || l.quantity_missing) && <p className="text-amber-700 dark:text-amber-400" data-testid="editor-partial-total-warning">{quoteText("missing")}</p>}{assistantOrigin.conversation && <button className="text-primary underline text-left w-fit" data-testid="editor-assistant-conversation" onClick={() => nav(`/assistant?conversation=${assistantOrigin.conversation}`)}>{quoteText("source")} →</button>}</div>}
         {lines.map((l, i) => {
           const num = blockNumbers[i];

@@ -205,6 +205,8 @@ api_router.include_router(assistant_routes.public_router)
 api_router.include_router(assistant_routes.bet_studies_router)
 from routes import agents as agents_routes
 api_router.include_router(agents_routes.router)
+from routes import calc_live as calc_live_routes  # noqa: E402  (acompanhamento do cálculo ao vivo — conta CLT Rezult)
+api_router.include_router(calc_live_routes.router)
 from routes import missions as missions_routes   # programa IA de opções
 api_router.include_router(missions_routes.router)
 from routes import marketing as marketing_routes
@@ -287,8 +289,6 @@ api_router.include_router(urbanismo_routes.router)
 api_router.include_router(urbanismo_routes.public_router)
 from routes import urbanismo_auto as urbanismo_auto_routes  # noqa: E402  — piloto automático de licenciamento (morada → processo)
 api_router.include_router(urbanismo_auto_routes.router)
-from routes import edificio3d as edificio3d_routes  # noqa: E402  — edifício 3D real: Blender + ArcGIS Pro, georreferenciado
-api_router.include_router(edificio3d_routes.router)
 from routes import structuro_bet_visto as bet_visto_routes  # noqa: E402  — visto do engenheiro (autopiloto BET)
 api_router.include_router(bet_visto_routes.bet_visto_router)
 api_router.include_router(bet_visto_routes.bet_visto_public)

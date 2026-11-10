@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Nav, Footer } from "@/components/Nav";
 import { SEO } from "@/components/SEO";
+import { useOffer, offerShort } from "@/components/OfferNotice";
 
 const ROOMS = [
   ["Sala", 24], ["Cozinha", 11], ["Ch. 1", 14], ["Ch. 2", 12], ["Ch. 3", 11], ["WC", 5], ["Entrada", 8], ["WC", 2],
@@ -66,6 +67,7 @@ function Counter({ to, suffix = "" }) {
 }
 
 export default function LandingMetre() {
+  const metreOffer = offerShort(useOffer()).card;
   return (
     <div className="min-h-screen bg-background text-foreground" data-testid="landing-metre">
       <SEO title="Medições IA — da planta ao orçamento com os seus preços | ConstruPilot"
@@ -200,7 +202,7 @@ export default function LandingMetre() {
             <p className="mt-4"><span className="text-sm text-muted-foreground">a partir de</span> <span className="num text-4xl font-extrabold">99 €</span> <span className="text-sm text-muted-foreground">/ mês + IVA · Solo · sem fidelização{metreOffer ? ` · ${metreOffer}` : ""}</span></p>
             <p className="text-xs text-muted-foreground">Professional (5 utilizadores): 249 €/mês + IVA · Business (15 utilizadores): 599 €/mês + IVA · Enterprise: à medida</p>
             <ul className="text-sm space-y-2 mt-5">
-              {["Orçamentos e faturas ilimitados (sinal, autos de medição, saldo, Factur-X)", "Medições IA: o plano torna-se superfícies e trabalhos", "Fotos, vídeos, notas de voz e cotas dos seus planos lidos pela IA", "Mapa de quantidades recebido, lido e orçamentado aos seus preços", "Margem previsional por especialidade + alerta «a perder»", "Recuperação da sua biblioteca a partir dos seus antigos orçamentos PDF", "Obras, clientes, reforços, assinatura online"].map((f) => (
+              {["Orçamentos ilimitados (faturação: incluída no Pro Business ou opção 5 €/mês)", "Medições IA: o plano torna-se superfícies e trabalhos", "Fotos, vídeos, notas de voz e cotas dos seus planos lidos pela IA", "Mapa de quantidades recebido, lido e orçamentado aos seus preços", "Margem previsional por especialidade + alerta «a perder»", "Recuperação da sua biblioteca a partir dos seus antigos orçamentos PDF", "Obras, clientes, reforços, assinatura online"].map((f) => (
                 <li key={f} className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> {f}</li>
               ))}
             </ul>
