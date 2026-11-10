@@ -797,7 +797,7 @@ def run(name: str, args: dict) -> dict:
             # ordem: 1) estudo estrutural (geometria lida nos planos) 2) renders 3D Full HD desse modelo 3) dossiers com os renders
             mod_calc = gros_oeuvre.calcular(__import__("copy").deepcopy(p["modelo_estrutural"]))["modelo"]
             RTU.renders()
-            p["renders"] = ucrania.gerar_renders(mod_calc, p.get("render_opcoes"))
+            p["renders"] = pacote_ua.renders_fixos(caso) or ucrania.gerar_renders(mod_calc, p.get("render_opcoes"))
         for k, v in a.items():
             if k not in ("exemplo", "modelo_estrutural_json", "sistema"):
                 p[k] = v
