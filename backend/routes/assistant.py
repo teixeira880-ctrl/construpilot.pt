@@ -406,6 +406,17 @@ async def _compare_source(ident: str, user_id: str) -> dict:
 
 
 async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
+    """Conta CLT Rezult: cada ferramenta é seguida ao vivo na página /acompanhamento-calculo (motor, dados, fórmulas, decisões)."""
+    from engines import calc_live
+    if not calc_live.is_clt(user):
+        return await _exec_tool_inner(name, args, user, conv)
+    async with calc_live.ferramenta(db, user, conv, name, args):
+        res = await _exec_tool_inner(name, args, user, conv)
+        await calc_live.resultado_ferramenta(name, res)
+        return res
+
+
+async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dict:
     """Exécution contrôlée : identité, tenant, accès document, brouillon vs définitif."""
     uid = user["user_id"]
     if conv.get("_background_job_id"):

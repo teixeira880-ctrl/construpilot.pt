@@ -4,7 +4,7 @@ import { lastConversation, rememberConversation, submittedJob } from "@/componen
 import "@/components/assistant/AssistantStudio.css";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Check, FolderArchive } from "lucide-react";
+import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Check, FolderArchive, Activity } from "lucide-react";
 import { useDossierImport, DossierChips } from "@/components/assistant/DossierImport";
 import { toast } from "sonner";
 import { api, uploadPlan } from "@/lib/api";
@@ -40,6 +40,8 @@ export default function Assistant() {
   const dossierImport = useDossierImport();
   const confirm = useConfirm();
   const { user } = useAuth();
+  const [calcLive, setCalcLive] = useState(false);   // conta CLT Rezult: página de acompanhamento do cálculo
+  useEffect(() => { api.get("/calc-live/acesso").then(({ data }) => setCalcLive(Boolean(data?.acesso))).catch(() => {}); }, []);
   const chantierParam = searchParams.get("chantier") || "";
   const requestedConversation = searchParams.get("conversation") || (!chantierParam && lastConversation(user?.user_id));
   const { can } = usePermissions();
@@ -421,6 +423,7 @@ export default function Assistant() {
           <span>{betProg?.label ? `${betProg.label}${betProg.pct != null ? ` · ${betProg.pct}%` : ""}` : statusWorking ? bg("working") : bg("ready")}</span>
         </span>}
         <div className="assistant-topbar-actions">
+          {calcLive && <Button variant="outline" onClick={() => window.open("/acompanhamento-calculo", "construpilot-calc-live")} title={lang === "en" ? "Follow the engines' calculations live (new tab)" : lang === "fr" ? "Suivre les calculs des moteurs en direct (nouvel onglet)" : "Acompanhar os cálculos dos motores ao vivo (novo separador)"} data-testid="assistant-calc-live"><Activity size={16} /><span>{lang === "en" ? "Live calculation" : lang === "fr" ? "Calcul en direct" : "Cálculo ao vivo"}</span></Button>}
           <Button variant="ghost" className="assistant-conv-toggle" onClick={() => setConvOpen(v => !v)} aria-pressed={convOpen} aria-label={convOpen ? "Esconder as conversas" : "Mostrar as conversas"} title={convOpen ? "Esconder as conversas" : "Mostrar as conversas"} data-testid="assistant-conv-toggle">{convOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</Button>
           <Button variant="ghost" className="assistant-panels-toggle" onClick={() => setPanelsOpen(v => !v)} aria-pressed={panelsOpen} aria-label={panelsOpen ? "Esconder cálculos e estado" : "Cálculos e estado do processo"} title={panelsOpen ? "Esconder cálculos e estado" : "Cálculos e estado do processo"} data-testid="assistant-panels-toggle">{panelsOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}</Button>
           <Button ref={historyButtonRef} variant="ghost" className="assistant-mobile-history" onClick={() => setHistoryOpen(true)} aria-label={ui("history")} data-testid="assistant-history-open"><History size={17} /><span>{ui("history")}</span></Button>

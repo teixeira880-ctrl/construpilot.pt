@@ -102,6 +102,7 @@ const EstudioImagensLazy = lazy(() => import("@/pages/EstudioImagens"));
 const UrbanismoLazy = lazy(() => import("@/pages/Urbanismo"));
 const UrbanismoProcessoLazy = lazy(() => import("@/pages/UrbanismoProcesso"));
 const LicenciamentoAutoLazy = lazy(() => import("@/pages/LicenciamentoAuto"));
+const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 import AppsHub from "@/pages/AppsHub";
@@ -297,6 +298,8 @@ function AppRouter() {
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="/planning" element={<ProRoute><Shell><Planning /></Shell></ProRoute>} />
       <Route path="/agents" element={<Protected><Shell><AgentsHub /></Shell></Protected>} />
+      <Route path="/acompanhamento-calculo" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><CalcLiveLazy /></Suspense></Shell></Protected>} />
+      <Route path="/calc-live" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><CalcLiveLazy /></Suspense></Shell></Protected>} />
       <Route path="/missions" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><Missions /></Suspense></Shell></ProRoute>} />
       <Route path="/rendu-ia" element={<SubscriberRoute><Shell><RenderStudio /></Shell></SubscriberRoute>} />
       <Route path="/mes-demandes" element={<ProRoute><Shell><MyLeads /></Shell></ProRoute>} />

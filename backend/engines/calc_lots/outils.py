@@ -790,8 +790,11 @@ def run(name: str, args: dict) -> dict:
     if name == "calcul_ucrania":
         caso = a.get("caso")
         p = pacote_ua.parametros(caso) if caso else ((ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {})
+        from . import rastreio_ua as RTU                           # acompanhamento ao vivo (conta CLT Rezult; no-op nas outras)
+        RTU.inicio(p, caso)
         if caso:                                                   # o caso guardado manda na geometria; título/empresa do utilizador mantêm-se
             a = {k: v for k, v in a.items() if k in ("projeto_uk", "projeto_en", "empresa", "fogo_min", "produto_clt")}
+            RTU.renders()
             p["renders"] = ucrania.gerar_renders(gros_oeuvre.calcular(__import__("copy").deepcopy(p["modelo_estrutural"]))["modelo"], p.get("render_opcoes"))
         for k, v in a.items():
             if k not in ("exemplo", "modelo_estrutural_json", "sistema"):
@@ -800,7 +803,9 @@ def run(name: str, args: dict) -> dict:
             p["modelo_estrutural"] = a["modelo_estrutural_json"]
         dd = ucrania.dossiers(p)                                   # sempre dois dossiers completos: ucraniano + inglês
         o, oen = dd["uk"], dd["en"]
+        RTU.dossier(o, p)
         extra_pac = pacote_ua.pacote(caso, dd, p.get("renders") or [], p) if caso else []
+        RTU.pacote(extra_pac, p)
         r, c = o["r"], o["r"]["clima"]
         res = [o["titre"], "English summary: " + o["resumo_en"]]
         res += [f"{'OK' if e['ok'] else 'KO'} {e['nome']}: R = {e['R']:.2f} m²K/W" + (f" ≥ Rq,min {e['rq']:.2f}" if e["rq"] else "") for e in r["elementos"]]

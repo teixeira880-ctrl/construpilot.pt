@@ -224,6 +224,10 @@ async def _cached_model(db, uid, key):
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None, decide_alone=False):
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
+        from engines import calc_live                    # acompanhamento ao vivo (conta CLT Rezult; no-op nas outras)
+        await calc_live.ev("erro" if extra.get("status") == "failed" else "etapa", label, motor="generate_full_bet_study",
+                           resultado=extra.get("error"), valores={k: str(v)[:200] for k, v in extra.items()
+                                                                   if k in ("status", "provider", "building_kind", "review_status")})
     if str(country).upper() == "UA":                     # bet_clt_ua : Ucrânia (CLT), nunca os motores FR / PT
         try:
             from engines.bet_clt_ua.hook import handle

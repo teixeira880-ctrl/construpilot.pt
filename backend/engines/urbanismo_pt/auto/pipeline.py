@@ -22,6 +22,7 @@ from engines.urbanismo_pt.auto import implantacao as I
 from engines.urbanismo_pt.auto import pecas_auto as PA
 from engines.urbanismo_pt.auto import plantas as PL
 from engines.urbanismo_pt.auto import programa as PG
+from engines.urbanismo_pt.auto import rastreio as RT
 from engines.urbanismo_pt.auto import terreno as T
 
 Emit = Optional[Callable[[str, str], Awaitable[None]]]
@@ -89,6 +90,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         if r and r.get("ok") and r.get("fonte"):
             fontes.append({"fonte": r["fonte"], "url": r.get("url")})
 
+    await RT.pedido(p)
     morada = (p.get("morada") or "").strip()
     if not morada:
         return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"]}
@@ -116,6 +118,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     if geo.get("precisao") != "porta":
         pressupostos.append(f"A localização exata da porta não foi encontrada: usou-se o ponto da {geo.get('precisao')} "
                             f"«{geo.get('morada_formatada')}». Confirme o terreno no mapa.")
+    await RT.localizacao(geo, g)
     await passo("localizar", "ok", geo.get("morada_formatada", ""))
     lat, lon = geo["lat"], geo["lon"]
 
@@ -151,6 +154,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         asyncio.get_running_loop().create_task(G.prefetch_zona(lat, lon))
     concelho = (mun.get("data") or {}).get("concelho") if mun["ok"] else None
     concelho = concelho or geo.get("concelho")
+    await RT.dados_oficiais(mun, crus, srup, cad, via, orto)
     await passo("dados_oficiais", "ok", ", ".join(f["fonte"] for f in fontes))
 
     # 3. viabilidade (sem esconder nada)
@@ -184,6 +188,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         + ([] if srup["ok"] and not (srup.get("data") or {}).get("incompleta") else ["servidões e restrições (REN, RAN…)"]) \
         + (["localização do terreno"] if geo.get("precisao") == "localidade" else [])
     criticos_por_confirmar = bool(por_confirmar)
+    await RT.viabilidade(classe, bloqueios, avisos, por_confirmar)
     await passo("viabilidade", "bloqueado" if bloqueios else ("atencao" if criticos_por_confirmar else "ok"), "; ".join(bloqueios)[:300])
     if bloqueios and not _bool(p.get("forcar_estudo"), False):
         return {"ok": False, "estado": "inviavel", "bloqueios": bloqueios, "avisos": avisos, "etapas": etapas,
@@ -200,11 +205,13 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         fonte(el)
     else:
         pressupostos.append("Altimetria indisponível: assumiu-se terreno plano. O levantamento topográfico é indispensável.")
+    await RT.terreno(ter, topo, el)
     await passo("terreno", "ok", f"{ter['area_m2']:.0f} m², declive {topo.get('declive_pct', 0) if topo.get('ok') else '?'} %")
 
     # 5. programa + implantação + plantas (variantes até caber, cada mudança registada)
     pdm_conhecido: Dict[str, Any] = {}
     alv = I.alvos(pdm_conhecido)
+    await RT.alvos(alv)
     pressupostos.append("Parâmetros numéricos do PDM não disponíveis em dados abertos: a casa foi desenhada com alvos prudentes "
                         "(implantação ≤ 30 % do terreno, índice ≤ 0,60, fachada ≤ 6,5 m, 2 pisos, afastamentos 5 / 3 / 6 m) "
                         "— a confirmar no regulamento do PDM.")
@@ -234,7 +241,9 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                 return False, "; ".join(pl["nao_conformes"][:2])
             r["plantas"] = pl
             return True, ""
+        await RT.programa(prog, np_, gar_, lug_)
         res = I.implantar(ter, topo, prog, alv, validar=validar)
+        await RT.variante(np_, gar_, lug_, res)
         if res["ok"]:
             if (np_, gar_, lug_) != variantes[0]:
                 pressupostos.append(f"Para caber no terreno com os afastamentos, passou-se a {np_} {'piso' if np_ == 1 else 'pisos'}"
@@ -249,6 +258,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                 "perguntas": ["Quer uma casa mais pequena (por exemplo T2) ou sem garagem?",
                               "Sabe a área exata do terreno (está na caderneta predial)?"]}
     plan = res["plantas"]
+    await RT.implantacao(res, plan)
     await passo("projeto", "ok", f"{prog['tipologia']} em {res['n_pisos']} piso(s)")
 
     # 6. processo (formato do motor de urbanismo — a mesma verdade para todos)
@@ -315,6 +325,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
 
     # 7. verificação (motores existentes) — a única fonte dos números finais
     verif = R.verificar(processo)
+    await RT.verificacao(verif)
     await passo("verificacao", "ok", verif["rjue"]["procedimento"])
 
     # 8. documentos: memória determinística, com controlo de números
@@ -323,6 +334,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                                                                processo["auto"]["programa"], processo["auto"]["alvos"],
                                                                {k: v for k, v in (topo or {}).items() if k != "grelha"}))
     processo["memoria_texto"] = mem
+    await RT.memoria(sem_fonte)
     await passo("documentos", "ok" if not sem_fonte else "atencao", "; ".join(sem_fonte))
 
     # 9. coerência entre motores
@@ -333,6 +345,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         coer["falhas"].append({"codigo": "MEMORIA_NUMEROS", "descricao": "Números da memória sem correspondência nos dados",
                                "obtido": sem_fonte, "ok": False, "critico": True})
     processo["auto"]["coerencia"] = coer
+    await RT.coerencia(coer)
     await passo("coerencia", "ok" if coer["ok"] else "falhou", f"{coer['aprovados']}/{coer['total']}")
 
     perguntas = []
@@ -349,7 +362,9 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         perguntas.append("Qual é a área do terreno indicada na caderneta predial? (assim ajusto a casa ao terreno real)")
     if not p.get("artigo_matricial"):
         perguntas.append("Tem o número do artigo matricial ou da descrição predial? (está na caderneta / certidão)")
-    return {"ok": True, "estado": "pronto" if coer["ok"] and not bloqueios and not criticos_por_confirmar else "revisao", "processo": processo, "verificacao": verif,
+    estado_final = "pronto" if coer["ok"] and not bloqueios and not criticos_por_confirmar else "revisao"
+    await RT.fim(estado_final, pressupostos, avisos, perguntas)
+    return {"ok": True, "estado": estado_final, "processo": processo, "verificacao": verif,
             "coerencia": coer, "pressupostos": pressupostos, "avisos": avisos, "bloqueios": bloqueios, "fontes": fontes,
             "perguntas": perguntas, "etapas": etapas}
 
