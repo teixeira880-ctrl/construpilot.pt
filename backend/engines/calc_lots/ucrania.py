@@ -628,6 +628,20 @@ def _render_isolado(modelo, opcoes, largura, altura, spp, budget, hard):
 
 
 _VISTA_IA = {"principal": "main", "terraco": "side_main", "aerea": "aerial"}
+FOTO_PROMPT = (
+    "Turn the first reference image into a real photograph of EXACTLY this house. GEOMETRY IS LOCKED: same volumes, same "
+    "storeys, same setbacks and roof terraces, same flat roofs and parapets, the same number, size and position of every "
+    "window, glazed bay, canopy, post and deck, and the very same camera position, angle and framing. Do not add, remove "
+    "or move anything. MATERIALS AND COLOURS EXACTLY AS IN THE REFERENCE: white smooth render where the reference is white, "
+    "natural vertical larch timber cladding where the reference shows wood, light-grey roof edges, large clear glazing with "
+    "slim dark aluminium frames, timber deck. Realistic surroundings: well-kept lawn, a few mature trees, low shrubs along "
+    "the walls, concrete path, soft late-afternoon sunlight, natural shadows, clear blue sky with light clouds. Real "
+    "architectural photography, natural colours, sharp details, no CGI look. No text, no watermark, no people."
+)
+FOTO_VISTA = {"principal": "", "terraco": " This is the terrace side of the same house.",
+              "aerea": " This is a drone view of the same house, looking down at the flat roofs."}
+FOTO_IGUAL = (" The second reference image is the approved photograph of this SAME house from another angle: use exactly "
+              "the same materials, colours, garden, trees and light, but keep the geometry and camera of the first image.")
 LOOP = None          # loop asyncio do servidor (definido pelo assistant_bridge): as chamadas IA correm nele (cliente Mongo / métricas)
 
 
@@ -644,8 +658,8 @@ def _leve(img: bytes, lado: int = 1920) -> bytes:
 
 def _fotorrealismo(base: list) -> list:
     """Passa cada vista geométrica (render rápido, geometria exata dos planos) a fotografia realista por IA —
-    GPT Image 2 (4K) / Nano Banana Pro / Runway Gen-4 / Nano Banana 3.1 (engines.photoreal). A vista principal primeiro,
-    as outras alinham-se com ela (mesmos materiais e luz). Vista sem resposta da IA → fica o render geométrico."""
+    Nano Banana 3.1 primeiro (engines.photoreal). A vista principal primeiro; as outras recebem-na como referência de
+    estilo (mesmos materiais, jardim e luz), em paralelo entre si. Vista sem resposta da IA → fica o render geométrico."""
     import asyncio
     import logging
     import os
@@ -653,15 +667,15 @@ def _fotorrealismo(base: list) -> list:
 
     async def _todas():
         from engines import photoreal as PR
-        from engines.bet_clt.premium import MATCH_HINT, PHOTO_PROMPT, VIEW_HINT
 
         async def uma(nome, png, ref):
-            k = _VISTA_IA.get(nome, "main")
-            prompt = PHOTO_PROMPT + VIEW_HINT.get(k, "") + (MATCH_HINT if ref else "")
+            prompt = FOTO_PROMPT + FOTO_VISTA.get(nome, "") + (FOTO_IGUAL if ref else "")
             r = await PR.render(png, prompt, style_ref=ref, timeout=60, feature="ua_render", session_id="calcul_ucrania")
             return r[0] if r else None
-        # todas as vistas em paralelo (mesmo prompt de materiais e luz) : o tempo total é o de uma só imagem
-        return list(await asyncio.gather(*(uma(n, p, None) for n, p in base)))
+        # 1) a vista principal fixa materiais, cores, jardim e luz ; 2) as outras copiam-na (em paralelo entre si)
+        principal = await uma(base[0][0], base[0][1], None)
+        outras = await asyncio.gather(*(uma(n, p, principal) for n, p in base[1:]))
+        return [principal] + list(outras)
     try:
         if LOOP is not None and LOOP.is_running():
             fotos = asyncio.run_coroutine_threadsafe(asyncio.wait_for(_todas(), teto), LOOP).result(teto + 10)
