@@ -18,7 +18,7 @@ import os
 
 log = logging.getLogger(__name__)
 
-DEFAULT_ORDER = "gpt_image_2,gemini_image3_pro,gen4_image,emergent"
+DEFAULT_ORDER = "emergent,gemini_image3_pro,gpt_image_2,gen4_image"     # Nano Banana 3.1 primeiro (~15 s), GPT Image 2 é lento (~2 min)
 RATIO = {"gpt_image_2": "1920:1088", "gemini_image3_pro": "1344:768", "gen4_image": "1920:1080"}  # menores resoluções 16:9 de cada motor
 LONG_SIDE = int(os.environ.get("PHOTOREAL_LONG", 1920))      # Full HD : rápido e nítido no PDF
 PROMPT_MAX = {"gen4_image": 1000}

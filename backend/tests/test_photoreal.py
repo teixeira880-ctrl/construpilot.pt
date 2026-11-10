@@ -15,7 +15,7 @@ def test_order_env(monkeypatch):
     monkeypatch.setenv("PHOTOREAL_MODELS", "gen4_image, emergent")
     assert PR._order() == ["gen4_image", "emergent"]
     monkeypatch.delenv("PHOTOREAL_MODELS")
-    assert PR._order()[0] == "gpt_image_2"
+    assert PR._order()[0] == "emergent"
 
 
 def test_cascade_falls_through(monkeypatch):

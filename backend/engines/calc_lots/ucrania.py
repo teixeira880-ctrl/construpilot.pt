@@ -658,7 +658,7 @@ def _fotorrealismo(base: list) -> list:
         async def uma(nome, png, ref):
             k = _VISTA_IA.get(nome, "main")
             prompt = PHOTO_PROMPT + VIEW_HINT.get(k, "") + (MATCH_HINT if ref else "")
-            r = await PR.render(png, prompt, style_ref=ref, timeout=90, feature="ua_render", session_id="calcul_ucrania")
+            r = await PR.render(png, prompt, style_ref=ref, timeout=60, feature="ua_render", session_id="calcul_ucrania")
             return r[0] if r else None
         # todas as vistas em paralelo (mesmo prompt de materiais e luz) : o tempo total é o de uma só imagem
         return list(await asyncio.gather(*(uma(n, p, None) for n, p in base)))
