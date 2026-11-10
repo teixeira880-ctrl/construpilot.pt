@@ -206,8 +206,8 @@ class TestVideoWatermarkAndAudio:
         assert audio_streams, f"no audio stream: {streams}"
         v = video_streams[0]
         assert v.get("codec_name") == "h264", f"video codec != h264: {v.get('codec_name')}"
-        assert v.get("width") == 1280 and v.get("height") == 720, (
-            f"resolution != 1280x720: {v.get('width')}x{v.get('height')}"
+        assert v.get("width") == 1920 and v.get("height") == 1080, (
+            f"resolution != 1920x1080: {v.get('width')}x{v.get('height')}"
         )
         assert audio_streams[0].get("codec_name") == "aac", (
             f"audio codec != aac: {audio_streams[0].get('codec_name')}"
