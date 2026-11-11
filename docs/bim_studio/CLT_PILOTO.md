@@ -52,24 +52,50 @@ espessura do pavimento e do teto falso medidas no corte. A escala do corte vem
 das espessuras impressas da laje (240 mm) e da cobertura (140 mm). As quebras
 do corte não permitem medir a altura total do painel diretamente.
 
-## Parâmetros de custo da empresa
+## Bibliotecas de preços, cálculo e plano
 
-O separador "Parâmetros de custo" guarda os valores da empresa, partilhados por
-toda a organização. Cobre compra de madeira e adesivo, hora do operário, tempo
-de fabrico por m³, eletricidade, transporte, montagem subcontratada por m² ou m³,
-prazos, revestimentos (placa, fixações, pintura e subempreitada) e preços de venda.
+O separador "Custos, preços e plano" tem três partes, partilhadas por toda a
+organização:
+
+1. **Cálculo**: os pisos chegam já preenchidos a partir da revisão do desenho
+   (comprimentos por espessura, altura estrutural, placa e pintura). Indica-se a
+   data de início e se o plano começa na compra da matéria-prima ou no fabrico.
+   O resultado traz custo, venda, margem, prazo, plano (Gantt), detalhe por preço
+   e a lista de hipóteses. Um botão cria o lote de seguimento com esse plano.
+2. **Bibliotecas**: matéria-prima, energia e água, colaboradores, transporte,
+   gruas e máquinas, montagem em obra, revestimentos e venda do CLT. Cada preço
+   tem custo, venda opcional, base de cálculo (m³ de CLT, m³ de madeira, kg de
+   cola, m² de montagem, horas, kWh, km, viagem, dia de fabrico ou montagem,
+   m² de placa ou pintura, projeto) e quantidade por base. A empresa pode
+   acrescentar, alterar ou retirar preços.
+3. **Parâmetros técnicos**: rendimento da madeira, cola por junta, horas e
+   eletricidade por m³, capacidade da fábrica, distâncias, camiões, equipa e
+   prazos.
+
+Importação: colar diretamente do Excel, ou carregar `.xlsx`, `.csv` ou `.pdf`
+com tabela (`POST /clt-industrial/library/import` mostra a pré-visualização,
+`POST /clt-industrial/library/table` grava). Os cabeçalhos aceites estão no
+modelo CSV que se descarrega na página (categoria, código, designação,
+unidade, custo, venda, base, consumo por base, fonte). Preços como `1.234,50 €`
+são aceites.
+
+Eletricidade: `POST /clt-industrial/library/electricity/refresh` lê o preço
+médio não doméstico de Portugal no Eurostat (`nrg_pc_205`, sem IVA) e grava-o
+como valor de mercado com o período. A água não tem fonte automática (tarifas
+municipais) e fica como hipótese até a empresa a preencher.
+
 Cada valor indica a origem:
 
 - **empresa**: introduzido pela empresa;
-- **mercado**: média publicada, com a fonte (Holzkurier, Eurostat, ERSE, EPD
-  Södra, Kiilto, CNR, gerador de preços CYPE, Zaask);
+- **mercado**: média publicada, com a fonte (Holzkurier, Eurostat, EPD Södra,
+  Kiilto, CNR, gerador de preços CYPE, Zaask);
 - **hipótese**: sem fonte pública; tem de ser substituído antes de orçamentar.
 
-`POST /clt-industrial/estimate` devolve, por piso, m² de montagem, m³ de fabrico,
-madeira e adesivo, horas de fabrico e de montagem, custos por fase, receita,
-margem e prazo da compra à montagem, mais a lista de hipóteses ainda por confirmar.
 A ficha Rezult (ETA-21/0914) confirma o adesivo tipo I EN 15425 e lamelas de
-20 a 43 mm, mas não publica a dosagem de cola.
+20 a 43 mm, mas não publica a dosagem de cola nem a composição de cada parede.
+Por omissão, 100 mm conta como 3 camadas e 160 mm (80+80) como duas placas de 3
+camadas (4 juntas coladas); o valor pode ser alterado por piso. A ETA indica a
+fábrica em Kyiv: a distância de transporte por omissão é hipótese.
 
 ## Limites desta entrega
 

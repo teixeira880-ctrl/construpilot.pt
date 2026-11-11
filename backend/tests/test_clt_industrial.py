@@ -257,33 +257,70 @@ def test_section_offsets_from_printed_panel_thickness():
     assert abs(result["RDC"]["ceiling_zone_m"] - .115) < .001
 
 
-def test_cost_estimate_by_floor_with_company_values():
+def test_cost_estimate_by_floor_from_libraries():
+    from datetime import date
     from decimal import Decimal
-    from bim_studio.clt_economics import EstimateInput, estimate, merged
+    from bim_studio.clt_economics import EstimateInput, estimate, library_merged, lot_from_estimate, merged
+    from bim_studio.clt_costs import CostLot
 
     params = merged({"fabrication_h_m3": {"value": "2", "origin": "empresa"},
                      "truck_m3": {"value": "10", "origin": "empresa"}})
-    assert params["fabrication_h_m3"]["origin"] == "empresa"
-    assert params["timber_eur_m3"]["origin"] == "mercado" and params["timber_eur_m3"]["source"]
+    library = library_merged({
+        "MAQ-GRUA": {"deleted": True},
+        "COL-AJUDANTE": {"code": "COL-AJUDANTE", "category": "colaboradores", "name": "Ajudante", "unit": "h",
+                         "cost_eur": "15", "sale_eur": None, "basis": "h_fabrico", "per_basis": "0.5", "origin": "empresa"},
+    })
+    assert "MAQ-GRUA" not in library and library["COL-AJUDANTE"]["standard"] is False
     body = EstimateInput(floors=[
         {"name": "RDC", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "10"}],
          "board_layers_m2": "20", "paint_m2": "10"},
         {"name": "+1", "height_m": "2.5", "walls": [{"thickness_mm": "160", "layers": 3, "length_m": "4"}]},
-    ])
-    result = estimate(body, params)
+    ], start=date(2027, 1, 4))
+    result = estimate(body, params, library)
     rdc, first = result["pisos"]
-    assert rdc["montagem_m2"] == 30 and rdc["fabrico_m3"] == 3
-    assert first["fabrico_m3"] == 1.6
+    assert rdc["montagem_m2"] == 30 and rdc["fabrico_m3"] == 3 and first["fabrico_m3"] == 1.6
     assert rdc["horas_fabrico"] == 6
-    p = {k: Decimal(v["value"]) for k, v in params.items()}
-    compra = 3 * p["timber_input_m3_per_m3"] * p["timber_eur_m3"] + 30 * 4 * p["adhesive_kg_m2"] * p["adhesive_eur_kg"]
-    assert rdc["custos_eur"]["compra"] == float(compra.quantize(Decimal("0.01")))
+    lines = {line["codigo"]: line for line in result["linhas"]}
+    assert lines["COL-AJUDANTE"]["quantidade"] == 4.6     # 0.5 × 9.2 h
+    assert lines["MP-COLA-PUR"]["quantidade"] == float(Decimal("0.16") * (30 * 4 + 10 * 2))
+    timber = Decimal(3) * Decimal("1.18") * 315 + Decimal("0.16") * 120 * 5
+    assert rdc["custos_eur"]["compra"] == float(timber.quantize(Decimal("0.01")))
     assert result["total"]["viagens"] == 1
-    transport = float(p["transport_km"] * p["transport_eur_km"])
-    assert abs(rdc["custos_eur"]["transporte"] + first["custos_eur"]["transporte"] - transport) < .02
-    assert result["prazo"]["fabrico_dias"] == 1
+    assert lines["TR-OBRA"]["quantidade"] == 300          # one trip × 300 km
+    assert abs(rdc["receita_eur"] - (3 * 500 + 30 * 61.69 + 20 * 1.05 * 4.03 + 20 * 1.73 + 20 * 28.75 + 10 * (1.73 + 8.05))) < .02
+    plan = result["plano"]
+    assert [s["fase"] for s in plan["fases"]] == ["compra", "fabrico", "transporte", "montagem"]
+    assert plan["inicio"] == "2027-01-04" and plan["fases"][1]["inicio"] == "2027-01-25"
     assert abs(result["total"]["margem_eur"] - (result["total"]["receita_eur"] - result["total"]["custo_total_eur"])) <= .011
-    assert result["status"] == "estimativa" and "Tempo de fabrico por m³ de CLT" not in result["hipoteses_por_confirmar"]
+    assert any("Adesivo PUR" in h for h in result["hipoteses_por_confirmar"])
+    lot = CostLot.model_validate(lot_from_estimate("Home A", result))
+    assert lot.planned_delivery.isoformat() == plan["fim"]
+    assert {line.code for line in lot.lines} >= {"MP-LAMELA", "EN-ELETRICIDADE", "TR-OBRA", "COL-AJUDANTE"}
+
+
+def test_price_table_from_excel_paste_and_files(tmp_path):
+    from io import BytesIO
+    from openpyxl import Workbook
+    from bim_studio.clt_economics import read_table_file, rows_to_items, parse_eurostat
+
+    rows = [["Categoria", "Código", "Designação", "Unidade", "Custo", "Venda", "Base", "Consumo por base"],
+            ["Matéria-prima", "mp-lamela", "Lamela C24", "m³", "1.234,50 €", "", "m³ de madeira comprada", "1"],
+            ["Gruas e máquinas", "GRUA-50", "Grua 50 t", "dia", "650", "", "dia_montagem", "1"],
+            ["Revestimentos", "", "Sem código", "m²", "3", "", "m2_placa", "1"]]
+    items, errors = rows_to_items(rows)
+    assert items[0]["code"] == "MP-LAMELA" and items[0]["cost_eur"] == "1234.50" and items[0]["basis"] == "m3_madeira"
+    assert items[1]["category"] == "maquinas" and items[1]["basis"] == "dia_montagem"
+    assert errors and errors[0]["row"] == 4
+    book = Workbook()
+    for row in rows[:2]:
+        book.active.append(row)
+    buffer = BytesIO()
+    book.save(buffer)
+    assert read_table_file(buffer.getvalue(), "precos.xlsx")[1][1] == "mp-lamela"
+    assert read_table_file("Código;Designação;Custo\nX;Y;2,5\n".encode(), "p.csv")[1] == ["X", "Y", "2,5"]
+    payload = {"value": {"0": 0.1133, "1": 0.1086},
+               "dimension": {"time": {"category": {"index": {"2025-S2": 0, "2026-S1": 1}}}}}
+    assert parse_eurostat(payload) == ("2026-S1", __import__("decimal").Decimal("0.1086"))
 
 
 def test_home_a_basement_sheet_is_out_of_scope():
@@ -297,7 +334,7 @@ def test_home_a_basement_sheet_is_out_of_scope():
     assert review["interior_base_m2"] is None and not review["markers"]
 
 
-def test_http_company_parameters_and_estimate(monkeypatch):
+def test_http_company_libraries_estimate_and_lot(monkeypatch):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from mongomock_motor import AsyncMongoMockClient
@@ -319,15 +356,30 @@ def test_http_company_parameters_and_estimate(monkeypatch):
     prefix = "/clt-industrial"
     with TestClient(app) as client:
         items = client.get(prefix + "/parameters").json()["items"]
-        assert items["adhesive_eur_kg"]["origin"] == "hipotese"
-        saved = client.put(prefix + "/parameters", json={"adhesive_eur_kg": {"value": "6.2"}})
-        assert saved.status_code == 200, saved.text
-        assert saved.json()["items"]["adhesive_eur_kg"] == {**items["adhesive_eur_kg"], "value": "6.2",
-                                                           "origin": "empresa", "source": "Valor da empresa"}
+        assert items["fabrication_h_m3"]["origin"] == "hipotese"
+        assert client.put(prefix + "/parameters", json={"fabrication_h_m3": {"value": "2.4"}}).status_code == 200
         assert client.put(prefix + "/parameters", json={"nao_existe": {"value": 1}}).status_code == 422
+        library = client.get(prefix + "/library").json()
+        glue = {**library["items"]["MP-COLA-PUR"], "cost_eur": "6.2", "origin": "empresa"}
+        glue.pop("standard")
+        assert client.put(prefix + "/library/MP-COLA-PUR", json=glue).status_code == 200
+        preview = client.post(prefix + "/library/table", json={"rows": [["Código", "Designação", "Custo", "Base", "Categoria"],
+                                                                      ["GRUA-50", "Grua 50 t", "650", "dia_montagem", "maquinas"]]}).json()
+        assert preview["saved"] is False and preview["items"][0]["code"] == "GRUA-50"
+        assert client.post(prefix + "/library/table", json={"rows": [["Código", "Designação", "Custo", "Base", "Categoria"],
+                                                                   ["GRUA-50", "Grua 50 t", "650", "dia_montagem", "maquinas"]],
+                                                          "save": True}).json()["saved"]
+        assert client.delete(prefix + "/library/MAQ-GRUA").status_code == 200
         actor["user_id"] = "bia"
-        assert client.get(prefix + "/parameters").json()["items"]["adhesive_eur_kg"]["value"] == "6.2"
-        estimate = client.post(prefix + "/estimate", json={"floors": [
-            {"name": "RDC", "height_m": 3, "walls": [{"thickness_mm": 100, "layers": 5, "length_m": 10}]}]})
-        assert estimate.status_code == 200, estimate.text
-        assert "Adesivo PUR, preço de compra" not in estimate.json()["hipoteses_por_confirmar"]
+        shared = client.get(prefix + "/library").json()["items"]
+        assert shared["MP-COLA-PUR"]["cost_eur"] == "6.2" and "GRUA-50" in shared and "MAQ-GRUA" not in shared
+        body = {"floors": [{"name": "RDC", "height_m": 3, "walls": [{"thickness_mm": 100, "layers": 5, "length_m": 10}]}],
+                "start": "2027-01-04", "start_mode": "fabrico"}
+        estimate = client.post(prefix + "/estimate", json=body).json()
+        assert estimate["plano"]["fases"][0]["fase"] == "fabrico"
+        assert any(line["codigo"] == "GRUA-50" and line["custo_eur"] == 650 * estimate["plano"]["fases"][-1]["dias"]
+                   for line in estimate["linhas"])
+        lot = client.post(prefix + "/estimate/lot", json={**body, "lot_name": "Home A"})
+        assert lot.status_code == 201, lot.text
+        forecast = float(lot.json()["lot"]["summary"]["forecast_cost_eur"])
+        assert abs(forecast - estimate["total"]["custo_total_eur"]) < .01 * len(estimate["linhas"])
