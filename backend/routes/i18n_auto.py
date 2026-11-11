@@ -71,7 +71,7 @@ SYSTEM = (
     "- Translate each string into the TARGET language only; if it is already in the target language, return it unchanged.\n"
     "- Keep placeholders like {0}, {1} EXACTLY (same numbers, same count), and keep emojis, symbols, "
     "numbers, units, currency, punctuation, leading/trailing characters (→ · : • … ✓) and capitalisation style.\n"
-    "- Never translate brand/product names: ConstruPilot, Aurora, Solo, Professional, Business, Enterprise, "
+    "- Never translate or transliterate brand/product names (keep Latin letters): ConstruPilot, StructuroPilot, RenoPilot, Aurora, Web Summit, Solo, Professional, Business, Enterprise, "
     "Pro, Premium, BIM Studio, Stripe, Google, DPGF/CCTP/DCE acronyms stay as they are.\n"
     "- Keep it short and natural like real UI copy (buttons stay short). No explanations.\n"
     "- Answer ONLY with a JSON object mapping each input id to its translation."
@@ -164,8 +164,22 @@ def _parse_json(text: str) -> dict:
         return {}
 
 
+# Marcas e nomes de produto: nunca traduzidos nem transliterados (ex.: o logótipo «Constru|Pilot»
+# está partido em dois nós de texto e «Pilot» saía «Пілот» em ucraniano).
+BRANDS = ("ConstruPilot", "StructuroPilot", "RenoPilot", "Aurora", "Web Summit", "BIM Studio", "CLT Rezult")
+BRAND_FRAGMENTS = {"Constru", "Pilot", "ConstruPilot", "Aurora", "Structuro", "StructuroPilot", "RenoPilot"}
+
+
+def _brand_ok(src: str, tgt: str) -> bool:
+    if src.strip() in BRAND_FRAGMENTS:
+        return False                      # fica no original (não se guarda tradução)
+    return all(b in tgt for b in BRANDS if b in src)
+
+
 def _valid(src: str, tgt: str) -> bool:
     if not isinstance(tgt, str) or not tgt.strip():
+        return False
+    if not _brand_ok(src, tgt):
         return False
     if sorted(PH_RE.findall(src)) != sorted(PH_RE.findall(tgt)):
         return False
@@ -351,8 +365,8 @@ async def build_dict(lang: str, background: BackgroundTasks | None = None) -> di
     if hit and hit[0] > time.time() and hit[1].get("version") == m["version"]:
         return hit[1]
     have = await cached(lang)
-    exact = {s: have[s] for s in m["exact"] if s in have and have[s] != s}
-    patterns = [[p, have[p]] for p in m["patterns"] if p in have and have[p] != p]
+    exact = {s: have[s] for s in m["exact"] if s in have and have[s] != s and _brand_ok(s, have[s])}
+    patterns = [[p, have[p]] for p in m["patterns"] if p in have and have[p] != p and _brand_ok(p, have[p])]
     total = len(m["exact"]) + len(m["patterns"])
     covered = sum(1 for s in m["exact"] if s in have) + sum(1 for p in m["patterns"] if p in have)
     complete = covered >= total * 0.98
@@ -402,7 +416,8 @@ async def translate_now(request: Request, response: Response, body: TranslateIn)
     if not wanted:
         return {"lang": lang, "translations": {}}
     have = await cached(lang, wanted)
-    missing = [s for s in wanted if s not in have]
+    have = {k: v for k, v in have.items() if _brand_ok(k, v)}
+    missing = [s for s in wanted if s not in have and s.strip() not in BRAND_FRAGMENTS]
     for b in _batches(missing):
         res = await translate_batch(lang, b)
         await _store(lang, res)
