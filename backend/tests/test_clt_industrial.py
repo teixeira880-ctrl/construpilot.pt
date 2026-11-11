@@ -194,3 +194,64 @@ def test_dwg_uses_autodesk_and_measures_the_result(monkeypatch, tmp_path):
     monkeypatch.setenv("CLT_PILOT_ACCOUNTS", '{"bia":"org_b"}')
     assert allowed({"user_id": "bia", "organization_id": "b"})
     assert not allowed({"user_id": "bia", "organization_id": "a"})
+
+
+def test_hatched_wall_without_outline_is_measured():
+    import fitz
+    from shapely.geometry import Polygon
+    from bim_studio.home_a_takeoff import _hatched_runs
+
+    doc = fitz.open()
+    page = doc.new_page(width=600, height=400)
+    tan = (0.82, 0.733, 0.463)
+
+    def hatch(x0, y0, x1, y1):
+        x = x0
+        while x < x1:
+            page.draw_line((x, y1), (min(x + 4, x1), y0), color=tan, width=.36)
+            x += 2
+
+    hatch(50, 100, 250, 110)    # outlined wall, 10 points = 100 mm at 0.01 m/point
+    hatch(300, 200, 450, 210)   # same hatch, no outline: 1.50 m
+    hatch(300, 300, 450, 315)   # 150 mm wide: does not match the 100 mm hatch
+    outlined = [Polygon([(50, 100), (250, 100), (250, 110), (50, 110)])]
+    markers = [{"id": "clt-1", "drawing_width_mm": 100.0}]
+    runs = _hatched_runs(page, .01, outlined, markers)
+    measured = [r for r in runs if r["status"] == "measured"]
+    assert len(measured) == 1
+    assert abs(measured[0]["length_m"] - 1.5) < .01
+    assert abs(measured[0]["drawing_width_mm"] - 100) < 1
+    assert [r["status"] for r in runs].count("pending") == 1
+
+
+def test_section_offsets_from_printed_panel_thickness():
+    import fitz
+    from bim_studio.home_a_takeoff import section_heights
+
+    doc = fitz.open()
+    page = doc.new_page(width=600, height=800)
+    cyan, red, black = (0, 1, 1), (0.722, 0, 0), (0, 0, 0)
+    k = 5.0  # mm per point
+
+    def stack(top, layers, thickness_mm, label):
+        for i in range(layers + 1):
+            y = top + i * thickness_mm / k / layers
+            page.draw_line((100, y), (400, y), color=cyan)
+        page.insert_text((20, top + thickness_mm / k / 2 + 2), label, fontsize=5)
+        return top + thickness_mm / k
+
+    roof_under = stack(100, 5, 140, "Panel140-5s")
+    for y in (roof_under + 100 / k, roof_under + 115 / k):
+        page.draw_line((100, y), (400, y), color=red)
+    page.draw_line((100, 380), (400, 380), color=black)          # +1 finished floor
+    slab_under = stack(380 + 100 / k, 7, 240, "Panel240-7s")
+    for y in (slab_under + 100 / k, slab_under + 115 / k):
+        page.draw_line((100, y), (400, y), color=red)
+    page.draw_line((100, 700), (400, 700), color=black)          # RDC finished floor
+    page.draw_line((250, slab_under), (250, 700 + 60 / k), color=cyan)  # RDC wall to its base
+    result = section_heights(page)
+    assert abs(result["scale_mm_per_point"] - k) < .01
+    assert abs(result["+1"]["floor_buildup_m"] - .100) < .001
+    assert abs(result["+1"]["ceiling_zone_m"] - .115) < .001
+    assert abs(result["RDC"]["floor_buildup_m"] - .060) < .001
+    assert abs(result["RDC"]["ceiling_zone_m"] - .115) < .001

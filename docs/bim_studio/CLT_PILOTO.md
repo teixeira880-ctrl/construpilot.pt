@@ -40,6 +40,18 @@ O Assistente BTP analisa PDFs da própria conta, consulta lotes e calcula rascun
 O avatar administrador pode encaminhar o pedido pelo Assistente BTP da sessão
 autenticada. O piloto não atribui funções de administrador.
 
+## Home A: troços e alturas
+
+O levantamento do Home A junta os contornos CLT a magenta com o tracejado CLT
+que não tem contorno. A espessura de cada tracejado é aprendida nos troços com
+contorno da mesma folha. Uma faixa só conta como parede quando a largura
+desenhada coincide com essa espessura a 3 mm. As restantes ficam pendentes.
+
+A altura estrutural das paredes é o pé-direito acabado cotado na planta, mais a
+espessura do pavimento e do teto falso medidas no corte. A escala do corte vem
+das espessuras impressas da laje (240 mm) e da cobertura (140 mm). As quebras
+do corte não permitem medir a altura total do painel diretamente.
+
 ## Limites desta entrega
 
 - O PDF fornece evidência de dimensões e materiais. A reconstrução automática
