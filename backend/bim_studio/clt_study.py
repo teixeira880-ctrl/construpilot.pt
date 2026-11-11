@@ -188,7 +188,7 @@ def _fabrication(body, title, press=(18.0, 3.5)):
                 span = band.difference(drawn).area / min(band.bounds[2] - band.bounds[0], band.bounds[3] - band.bounds[1])
                 t_mm = li.thickness_mm or next((w.thickness_mm for w in walls if w.id == row["peca"]), 100)
                 estimated += span * (float(fl.height_m) - li.head_m) * t_mm / 1000
-        network.append([_(fl.name), str(len(runs)), str(len(walls)), " · ".join(f"{k} {v}" for k, v in sorted(kinds.items())),
+        network.append([_(fl.name), str(len(runs)), str(len(walls)), " · ".join(f"{_(k)} {v}" for k, v in sorted(kinds.items())),
                         str(len(net["ligacoes"])), f"{len(net['linteis'])} / {len(fl.lintels)}", _n(lintel_volume, 3), _n(estimated, 3) if estimated else "—"])
     if not staged:
         return None
@@ -219,7 +219,7 @@ def _annex_pages(drawings, title):
         box = pymupdf.Rect(W - 240, H - 200, W - 30, H - 25)
         pg.draw_rect(box, color=(0.2, 0.2, 0.2), width=0.6)
         lines = [(title, 9, True), (_("Anexo A · folha {i} / {n}", i=i + 1, n=len(drawings["folhas"])), 8, False),
-                 (sheet["folha"][:58], 7.5, True), (_("Cotas em mm · desenho sem escala"), 7, False),
+                 (sheet["folha"][:110], 7.5, True), (_("Cotas em mm · desenho sem escala"), 7, False),
                  (_("Origem: troços medidos no take-off (mesmas referências das tabelas)"), 6.2, False),
                  (_("Desenho de conferência de fabrico. Não substitui o projeto de execução."), 6.2, False),
                  ("ConstruPilot · " + date.today().isoformat(), 6.2, False)]
