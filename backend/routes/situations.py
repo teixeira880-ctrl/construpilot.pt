@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user, pro_required
-from routes.documents import _compute_totals, _next_number, _now, _client_snapshot
+from routes.documents import _compute_totals, _next_number, _now, _client_snapshot, ensure_client_link
 from engines import emailer, activity
 from engines.deposit_credit import deposit_state, imputation_amount, deduction_lines
 
@@ -154,6 +154,7 @@ async def create_situation(body: SituationIn, user=Depends(current_user)):
         "works_ht": works_ht, "deposit_imputed_ht": deposit_ht,
         "created_at": _now(), "updated_at": _now(),
     }
+    await ensure_client_link(user, inv)
     await db.pro_documents.insert_one(dict(inv))
     inv.pop("_id", None)
 
@@ -560,6 +561,7 @@ async def create_dgd(body: DgdIn, user=Depends(current_user)):
         "retention_released_amount": held if body.release_retention else 0,
         "created_at": _now(), "updated_at": _now(),
     }
+    await ensure_client_link(user, inv)
     await db.pro_documents.insert_one(dict(inv))
     inv.pop("_id", None)
     update = {"dgd_doc_id": inv["doc_id"], "dgd_at": _now()}

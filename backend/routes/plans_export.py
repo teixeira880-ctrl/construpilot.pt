@@ -1048,6 +1048,8 @@ async def send_to_invoice(log_id: str, body: SendToInvoiceIn | None = None,
         "source": "from_quote_send", "parent_log_id": log_id,
         "created_at": now, "updated_at": now,
     }
+    from routes.documents import ensure_client_link
+    await ensure_client_link(user, doc)
     await db.pro_documents.insert_one(dict(doc))
     await db.quote_sends.update_one(
         {"log_id": log_id}, {"$set": {"invoice_doc_id": doc["doc_id"],

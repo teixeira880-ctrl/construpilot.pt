@@ -157,6 +157,17 @@ async def save_quote(args, user, conv, *, doc_id=None, expected_updated_at=None)
         if not previous and chantier.get("client_id"):
             from routes.documents import _client_snapshot
             fields["client"] = await _client_snapshot(chantier["client_id"], user)
+        elif body.client_name and not chantier.get("client_id"):
+            # Rattache le brouillon à la fiche CRM existante portant ce nom (aucune création ici),
+            # pour que devis puis factures apparaissent dans la fiche du client.
+            try:
+                from routes.documents import _client_snapshot, _match_client, _snapshot_identity
+                cid = await _match_client(user["user_id"], _snapshot_identity(None, body.client_name))
+                if cid:
+                    fields["client_id"] = cid
+                    fields["client"] = await _client_snapshot(cid, user) or fields["client"]
+            except Exception:  # noqa: BLE001 — le rattachement CRM ne doit jamais bloquer le brouillon
+                pass
     if doc_id:
         result = await db.pro_documents.update_one({**query, "updated_at": expected_updated_at, "status": "draft", "signed": {"$ne": True}}, {"$set": fields})
         if not result.matched_count:
@@ -165,7 +176,7 @@ async def save_quote(args, user, conv, *, doc_id=None, expected_updated_at=None)
         # Mongo _id is an atomic idempotency key; $setOnInsert never overwrites an edited draft.
         await db.pro_documents.update_one({"_id": f"assistant_quote:{ident}"}, {"$setOnInsert": {
             **query, **fields, "number": None, "status": "draft", "signed": False,
-            "client_id": chantier.get("client_id"), "chantier_id": chantier.get("chantier_id"), "payment_terms": "", "deposit_pct": 0, "issue_date": None, "due_date": None,
+            "client_id": chantier.get("client_id") or fields.get("client_id"), "chantier_id": chantier.get("chantier_id"), "payment_terms": "", "deposit_pct": 0, "issue_date": None, "due_date": None,
             "source": "assistant", "lang": conv.get("_quote_lang", "fr"), "assistant_conversation_id": conv["conversation_id"],
             "project_id": conv.get("project_id"), "created_at": timestamp}}, upsert=True)
     # Read back after persistence, never claim successful saving before this succeeds.
