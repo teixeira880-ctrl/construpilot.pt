@@ -49,6 +49,7 @@ import { api, eur, num, uploadPlan, waitPlanJob } from "@/lib/api";
 import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
 import PlanCanvas from "@/components/planTakeoff/PlanCanvas";
 import { TOOLS, TOOL_LABELS, COUNTER_COLORS } from "@/components/planTakeoff/planConstants";
+import { currentUiLocale } from "@/lib/uiLang";
 
 
 // ============ MAIN PAGE ============
@@ -2255,7 +2256,7 @@ export default function PlanTakeoff() {
     try {
       if (!window.speechSynthesis) return;
       const u = new window.SpeechSynthesisUtterance(text);
-      u.lang = "pt-PT"; u.rate = 1;
+      u.lang = currentUiLocale(); u.rate = 1;
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
     } catch { /* non supporté */ }
@@ -2337,7 +2338,7 @@ export default function PlanTakeoff() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast.error("O ditado por voz não é suportado por este navegador (experimente o Chrome)."); return; }
     const rec = new SR();
-    rec.lang = "pt-PT"; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.lang = currentUiLocale(); rec.interimResults = false; rec.maxAlternatives = 1;
     rec.onstart = () => setAiListening(true);
     rec.onerror = () => { setAiListening(false); toast.error("Microfone indisponível ou permissão recusada."); };
     rec.onend = () => setAiListening(false);

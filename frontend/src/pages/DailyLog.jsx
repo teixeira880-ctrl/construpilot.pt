@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, Mic, Plus, Trash2, TriangleAlert, Wand2 } from "
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { newRequestId } from "@/lib/workProfile";
+import { currentUiLocale } from "@/lib/uiLang";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -22,7 +23,7 @@ export default function DailyLog() {
   const dictate = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast.info("O ditado por voz não está disponível neste navegador."); return; }
-    const rec = new SR(); rec.lang = "pt-PT";
+    const rec = new SR(); rec.lang = currentUiLocale();
     rec.onresult = e => setText(t => `${t} ${e.results[0][0].transcript}`.trim());
     rec.onend = () => setListening(false); setListening(true); rec.start();
   };

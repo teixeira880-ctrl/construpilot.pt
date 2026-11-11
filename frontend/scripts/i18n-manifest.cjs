@@ -202,10 +202,67 @@ function extract() {
       },
     });
   }
+  extractPublicPages(exact, patterns);
   const ex = [...exact].sort();
   const pa = [...patterns].filter((p) => !exact.has(p)).sort();
   const version = crypto.createHash("sha1").update(JSON.stringify([ex, pa])).digest("hex").slice(0, 12);
-  return { version, generated_from: "frontend/src", exact: ex, patterns: pa };
+  return { version, generated_from: "frontend/src + public pages", exact: ex, patterns: pa };
+}
+
+// Páginas estáticas de public/ com textos em tríades [PT, FR, EN] (ex.: /experiencia).
+// A versão EN (3.º elemento) entra no manifesto: é a origem das traduções para outras línguas (UK…).
+const PUBLIC_PAGES = ["cp-experience/index.html"];
+
+function extractPublicPages(exact, patterns) {
+  const pub = path.resolve(__dirname, "..", "public");
+  for (const rel of PUBLIC_PAGES) {
+    const file = path.join(pub, rel);
+    if (!fs.existsSync(file)) continue;
+    const html = fs.readFileSync(file, "utf8");
+    const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+    let n = 0;
+    for (const code of scripts) {
+      let ast;
+      try {
+        ast = parser.parse(code, { sourceType: "script", errorRecovery: true, allowReturnOutsideFunction: true });
+      } catch (e) {
+        process.stderr.write(`[i18n-manifest] ignorado (parse): public/${rel}\n`);
+        continue;
+      }
+      const strLike = (e) => e && (e.type === "StringLiteral" || e.type === "TemplateLiteral");
+      const addEn = (en) => {
+        if (en.type === "StringLiteral") {
+          const s = norm(en.value);
+          if (s.length >= 2 && /[A-Za-z]{2}/.test(s)) { exact.add(s); n++; }
+          return;
+        }
+        const pat = templateToPattern(en);
+        if (en.expressions.length === 0) { if (/[A-Za-z]{2}/.test(pat)) { exact.add(pat); n++; } return; }
+        if (/[A-Za-z]{3}/.test(staticPart(pat)) && !/^\{\d+\}$/.test(pat)) { patterns.add(pat); n++; }
+      };
+      traverse(ast, {
+        // helpers do tipo o(id, pt, fr, en) / add(pt, fr, en): três últimos argumentos = [PT, FR, EN]
+        CallExpression(p) {
+          const a = p.node.arguments;
+          if (a.length >= 3 && a.slice(-3).every(strLike)) addEn(a[a.length - 1]);
+        },
+        ArrayExpression(p) {
+          const el = p.node.elements;
+          if (el.length !== 3 || !el.every((e) => e && (e.type === "StringLiteral" || e.type === "TemplateLiteral"))) return;
+          const en = el[2];
+          if (en.type === "StringLiteral") {
+            const s = norm(en.value);
+            if (s.length >= 2 && /[A-Za-z]{2}/.test(s)) { exact.add(s); n++; }
+            return;
+          }
+          const pat = templateToPattern(en);
+          if (en.expressions.length === 0) { if (/[A-Za-z]{2}/.test(pat)) { exact.add(pat); n++; } return; }
+          if (/[A-Za-z]{3}/.test(staticPart(pat)) && !/^\{\d+\}$/.test(pat)) { patterns.add(pat); n++; }
+        },
+      });
+    }
+    process.stderr.write(`[i18n-manifest] public/${rel}: ${n} textos\n`);
+  }
 }
 
 function main() {

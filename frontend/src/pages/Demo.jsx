@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { useI18n } from "@/context/I18nContext";
 import scenarios from "@/demo/scenarios.json";
 import "@/styles/demo.css";
+import { currentUiLocale } from "@/lib/uiLang";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
 const ICONS = { Footprints, Ruler, Receipt, LayoutDashboard, FileCheck2 };
@@ -116,7 +117,7 @@ export default function Demo() {
     if (listening) { try { recRef.current?.stop(); } catch { /* vazio */ } setListening(false); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const r = new SR();
-    r.lang = lang === "fr" ? "fr-FR" : lang === "en" ? "en-GB" : "pt-PT";
+    r.lang = currentUiLocale();
     r.continuous = false;
     r.interimResults = true;
     r.onresult = (e) => setPrompt(Array.from(e.results).map((x) => x[0].transcript).join(" "));

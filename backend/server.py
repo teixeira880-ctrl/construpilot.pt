@@ -156,6 +156,8 @@ api_router.include_router(btp_router_routes.router)
 api_router.include_router(billing.router)
 from routes import commercial as commercial_routes  # noqa: E402 — ofertas B2B 2026-11
 api_router.include_router(commercial_routes.router)
+from routes import experience as experience_routes  # noqa: E402 — página pública /experiencia (diagnóstico comercial)
+api_router.include_router(experience_routes.router)
 api_router.include_router(revenue.router)
 api_router.include_router(phase4.router)
 api_router.include_router(phase5.router)
@@ -303,6 +305,9 @@ app.add_event_handler("startup", bim_studio_routes.on_startup)
 app.add_event_handler("shutdown", bim_studio_routes.on_shutdown)
 app.include_router(api_router)
 app.add_middleware(ExpenseContextMiddleware)
+# Língua do ecrã (X-UI-Lang): respostas IA e documentos na língua da interface (PT/EN/FR/UK).
+from core.ui_lang import UILangMiddleware  # noqa: E402
+app.add_middleware(UILangMiddleware)
 
 # SEC-Y-003 / SEC-Z-001 : CORS restrito em produção via core.environment.
 # - Produção: apenas origens explícitas construpilot.pt (override CORS_ORIGINS_PROD).
@@ -530,6 +535,14 @@ async def _seed_impl():
         logger.info("client grants: %s", await apply_client_grants(db, hash_password, new_user_id))
     except Exception as e:  # noqa: BLE001
         logger.warning("client grants skipped: %s", e)
+    # Empresa de demonstração « Teste Websummit » (Pro Business completa, PT/FR/UK/US) — semeada uma
+    # única vez através da própria API, em tarefa separada para não atrasar o resto do arranque.
+    try:
+        import asyncio as _aio
+        from core.demo_tws.seed import run_on_startup as _tws_seed
+        app.state.tws_seed_task = _aio.create_task(_tws_seed(app, db, hash_password, new_user_id))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("teste websummit seed skipped: %s", e)
     # Contas Pro de empresas parceiras (ex. CLT Rezult) — idempotente, sem palavra-passe.
     try:
         from core.company_seeds import apply_company_seeds

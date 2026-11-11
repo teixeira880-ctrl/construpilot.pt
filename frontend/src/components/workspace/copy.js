@@ -74,7 +74,7 @@ const EN = {
 export const normalizeSearch = (text) => String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().trim();
 export function useWorkspaceCopy() {
   const { lang, t } = useI18n();
-  const translations = lang === "pt" ? PT : lang === "en" ? EN : lang === "fr" ? FR : null;
+  const translations = lang === "pt" || lang === "uk" ? PT : lang === "en" ? EN : lang === "fr" ? FR : null; // uk: base PT, traduzida no ecrã
   // Reuse existing translations for established controls in the other languages.
   const aliases = { home: "nav.dashboard", assistant: "nav.assistant", account: "nav.account", newQuote: "nav.newquote", estimate: "nav.estimator", plan: "nav.plan2d", quotes: "nav.tracking", calculators: "nav.calculators", preferences: "nav.preferences", subscription: "nav.pricing", logout: "nav.logout", prices: "nav.prices" };
   return (key) => WORKSPACE_EXTRA[lang]?.[key] || translations?.[key] || (!translations && aliases[key] ? t(aliases[key], FR[key]) : null) || WORKSPACE_EXTRA.fr[key] || FR[key] || key;

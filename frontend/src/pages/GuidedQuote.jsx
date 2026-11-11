@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, CircleHelp, FileText, Loader2, Mic
 import { Button } from "@/components/ui/button";
 import { api, eur2 } from "@/lib/api";
 import { MODES, fmt, newRequestId, term, useWorkProfile } from "@/lib/workProfile";
+import { currentUiLocale } from "@/lib/uiLang";
 
 const DRAFT_KEY = "cp_guided_quote_draft_v1";
 const EMPTY_ROOM = () => ({ name: "", length_m: "", width_m: "", height_m: "", openings: [], paint_ceiling: false });
@@ -148,7 +149,7 @@ export default function GuidedQuote() {
   const dictate = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast.info("O ditado por voz não está disponível neste navegador. Escreva o pedido."); return; }
-    const rec = new SR(); rec.lang = "pt-PT"; rec.interimResults = false;
+    const rec = new SR(); rec.lang = currentUiLocale(); rec.interimResults = false;
     rec.onresult = e => set({ description: `${job.description} ${e.results[0][0].transcript}`.trim() });
     rec.onend = () => setListening(false); setListening(true); rec.start();
   };

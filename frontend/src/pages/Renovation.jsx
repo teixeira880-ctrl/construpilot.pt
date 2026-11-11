@@ -11,6 +11,7 @@ import {
   Info, CheckCircle2, HelpCircle, Gauge, Hammer, Mic, Upload, Download, Sparkles, Ruler,
   PiggyBank, Landmark, Loader2,
 } from "lucide-react";
+import { currentUiLocale } from "@/lib/uiLang";
 
 const STEPS = ["Descrever", "Compreender", "Comparar", "Preparar"];
 const ASSESS_STYLE = {
@@ -197,7 +198,7 @@ export default function Renovation() {
     if (!SR) { toast.error("Ditado não suportado por este navegador"); return; }
     if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
     const rec = new SR();
-    rec.lang = "pt-PT"; rec.continuous = true; rec.interimResults = false;
+    rec.lang = currentUiLocale(); rec.continuous = true; rec.interimResults = false;
     rec.onresult = (e) => {
       let t = "";
       for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript + " ";

@@ -3,6 +3,7 @@ import { Video, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { avatarStore, preloadAvatar, startAvatar, stopAvatar } from "@/components/admin/AvatarDock";
+import { currentUiLang } from "@/lib/uiLang";
 
 // Assistant vidéo interne : lance l'assistante, qui s'affiche ensuite dans un coin de l'écran
 // (fenêtre flottante AvatarDock) et reste là quand on change de page.
@@ -35,7 +36,13 @@ export default function AvatarAssistantPanel() {
   useEffect(() => { preloadAvatar().catch(() => {}); }, []);
   useEffect(() => {
     api.get("/admin/avatar/status")
-      .then(({ data }) => { setStatus(data); if (data.default_lang) setLang(data.default_lang); })
+      .then(({ data }) => {
+        setStatus(data);
+        // A Aurora fala, por defeito, a língua do ecrã (PT, EN, FR ou UK) se o agente a suportar.
+        const ui = currentUiLang();
+        if (ui !== "pt" && (data.langs || []).includes(ui)) setLang(ui);
+        else if (data.default_lang) setLang(data.default_lang);
+      })
       .catch(() => setStatus({ configured: false }));
   }, []);
   const langs = status?.langs?.length ? status.langs : ["fr", "pt", "en"];

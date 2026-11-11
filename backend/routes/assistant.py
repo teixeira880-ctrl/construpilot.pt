@@ -1668,6 +1668,8 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
     conv, plans, instructions, inputs = prepared or await _prepare(body, user)
     status_map = TOOL_STATUS_PT if instructions.endswith("[[lang=pt]]") else TOOL_STATUS
     instructions = instructions.replace("\n[[lang=pt]]", "")
+    from core.ui_lang import reply_language_instruction
+    instructions += reply_language_instruction()   # ecrã em EN/FR/UK → respostas nessa língua
     settings = conv.get("_settings") or await _settings(user["user_id"])
     available = tools_for(user)
     if os.environ.get("ASSISTANT_PROVIDER", "").lower() == "gemini":

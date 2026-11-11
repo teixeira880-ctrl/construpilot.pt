@@ -162,7 +162,7 @@ class EnterpriseLeadIn(BaseModel):
     features: list[str] = Field(default_factory=list, max_length=20)
     message: str = Field(default="", max_length=4000)
     consent: bool
-    lang: Literal["fr", "pt", "en"] = "fr"
+    lang: Literal["fr", "pt", "en", "uk"] = "fr"
     website: str = ""          # honeypot : doit rester vide
     elapsed_ms: int = 0        # temps passé sur le formulaire (anti-bot)
     submission_id: str = Field(default="", max_length=64)
@@ -174,7 +174,8 @@ _PHONE_RE = re.compile(r"^[+()\d][\d\s().-]{5,38}$")
 
 _OK_MSG = {"fr": "Merci. Notre équipe commerciale vous recontacte sous 2 jours ouvrés.",
            "pt": "Obrigado. A nossa equipa comercial entrará em contacto consigo em 2 dias úteis.",
-           "en": "Thank you. Our sales team will contact you within 2 business days."}
+           "en": "Thank you. Our sales team will contact you within 2 business days.",
+           "uk": "Дякуємо. Наша команда продажів зв'яжеться з вами протягом 2 робочих днів."}
 
 
 def _lead_email_html(d: dict) -> str:

@@ -3,6 +3,7 @@ import { Mic, MicOff, Sparkles, Loader2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useHaptic } from "@/hooks/useHaptic";
+import { currentUiLocale } from "@/lib/uiLang";
 
 /**
  * Barra de prompt IA transversal.
@@ -33,7 +34,7 @@ export default function PromptBar({
     setRecognitionAvailable(Boolean(SR));
     if (!SR) return;
     const r = new SR();
-    r.lang = "pt-PT";
+    r.lang = currentUiLocale();
     r.continuous = false;
     r.interimResults = true;
     r.onresult = (e) => {

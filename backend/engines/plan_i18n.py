@@ -294,6 +294,8 @@ def localize_plan(plan: dict, lang: str) -> dict:
     """Retourne le plan avec name/tagline/description/badge/features traduits si dispo."""
     if not lang or lang == "fr":
         return plan
+    if lang == "uk":   # ucraniano: base inglesa; o ecrã traduz EN→UK (manifesto do backend)
+        lang = "en"
     tr = PLAN_I18N.get(lang, {}).get(plan.get("plan_id"))
     if not tr:
         return plan

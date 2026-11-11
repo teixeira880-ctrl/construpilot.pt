@@ -15,7 +15,8 @@ import FR from "@/i18n/fr_auto.json";
 // Frases partidas pelo React em vários nós de texto ("Por mais ", "127,50 €", " por mês…")
 // são juntadas, traduzidas e reescritas no 1.º nó.
 //
-// Sentidos: lang="pt" FR→PT (resíduos) · lang="en" PT/FR→EN · lang="fr" PT→FR.
+// Sentidos: lang="pt" FR→PT (resíduos) · lang="en" PT/FR→EN · lang="fr" PT→FR · lang="uk" PT/FR/EN→UK
+// (ucraniano: só dicionário do servidor, traduzido do manifesto inteiro).
 
 const ATTRS = ["placeholder", "title", "aria-label", "alt"];
 const SKIP = new Set(["SCRIPT", "STYLE", "TEXTAREA", "CODE", "PRE", "NOSCRIPT"]);
@@ -40,6 +41,7 @@ const STATIC = {
   pt: PT,
   en: EN,
   fr: { ...PT_TO_FR_LEGACY, ...FR },
+  uk: {},
 };
 
 // ── Padrões ──────────────────────────────────────────────────────────────────

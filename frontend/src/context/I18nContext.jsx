@@ -4,6 +4,9 @@ import { CRM_TRANSLATIONS } from "@/lib/crmI18n";
 import { ADMIN_TRANSLATIONS } from "@/lib/adminI18n";
 import { HR_TRANSLATIONS, HR_EXTRA } from "@/lib/hrI18n";
 import { LANDING_TRANSLATIONS } from "@/lib/landingI18n";
+import { UI_LANGS, UI_LOCALES, currentUiLang } from "@/lib/uiLang";
+
+export { UI_LANGS, UI_LOCALES, currentUiLang, currentUiLocale } from "@/lib/uiLang";
 
 const I18nContext = createContext(null);
 
@@ -1552,12 +1555,39 @@ for (const l of Object.keys(LANDING_TRANSLATIONS)) {
 }
 
 const STORAGE_KEY = "construpilot_lang";
-const SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar"];
+const SUPPORTED = ["fr", "en", "es", "pt", "it", "de", "ar", "uk"];
 const RTL_LANGS = ["ar"];
 
 // Idiomas expostos na interface do utilizador (seletor na página inicial).
-// PT é o idioma por defeito; EN e FR são opções adicionais.
-const UI_LANGS = ["pt", "en", "fr"];
+// PT é o idioma por defeito; EN, FR e UK (ucraniano) são opções adicionais.
+// Os textos que não têm chave própria são traduzidos pelo DomTranslator (dicionário do servidor).
+// As datas eram formatadas com "pt-PT" fixo em ~200 sítios: numa interface noutra língua os
+// nomes dos meses e dos dias ficavam em português. Aqui, só para datas/horas, um locale PT/FR
+// pedido pelo código passa a ser o da interface. Números e moedas não mudam.
+(function localizeDates() {
+  const target = UI_LOCALES[currentUiLang()];
+  if (!target || target === "pt-PT" || typeof Date === "undefined") return;
+  const swap = (loc) => {
+    if (loc === undefined || loc === null) return target;
+    const one = Array.isArray(loc) ? loc[0] : loc;
+    return typeof one === "string" && /^(pt|fr)(-|$)/i.test(one) ? target : loc;
+  };
+  for (const name of ["toLocaleDateString", "toLocaleTimeString", "toLocaleString"]) {
+    const orig = Date.prototype[name];
+    if (!orig || orig.__cpLocalized) return;
+    const wrapped = function (loc, opts) { return orig.call(this, swap(loc), opts); };
+    wrapped.__cpLocalized = true;
+    Date.prototype[name] = wrapped;
+  }
+  if (typeof Intl !== "undefined" && Intl.DateTimeFormat && !Intl.DateTimeFormat.__cpLocalized) {
+    const OrigDTF = Intl.DateTimeFormat;
+    const Wrapped = function (loc, opts) { return new OrigDTF(swap(loc), opts); };
+    Wrapped.prototype = OrigDTF.prototype;
+    Wrapped.supportedLocalesOf = OrigDTF.supportedLocalesOf.bind(OrigDTF);
+    Wrapped.__cpLocalized = true;
+    try { Intl.DateTimeFormat = Wrapped; } catch { /* só leitura */ }
+  }
+})();
 
 // Idioma por defeito do site (mercado: Portugal). Mantido para gating do MarketToggle
 // (mercado único) e como fallback em `detectLang`/`setLang` quando o pedido é inválido.
@@ -1624,6 +1654,7 @@ export function LangToggle({ testId = "lang-toggle" }) {
     { code: "pt", code_label: "PT", full: "Português" },
     { code: "en", code_label: "EN", full: "English" },
     { code: "fr", code_label: "FR", full: "Français" },
+    { code: "uk", code_label: "UK", full: "Українська" },
   ];
   const activeIdx = Math.max(0, LANGS.findIndex((l) => l.code === lang));
   const current = LANGS[activeIdx] || LANGS[0];
@@ -1694,7 +1725,7 @@ export function LangToggle({ testId = "lang-toggle" }) {
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={onBtnKey}
-        aria-label={`Mudar idioma: ${current.code_label}`}
+        aria-label={`Mudar idioma: ${current.full}`}
         aria-haspopup="menu"
         aria-expanded={open}
         data-testid={testId}

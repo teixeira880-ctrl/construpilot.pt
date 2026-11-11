@@ -338,6 +338,7 @@ body::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;opa
       <button type="button" data-lang="0" aria-pressed="true">PT</button>
       <button type="button" data-lang="1" aria-pressed="false">FR</button>
       <button type="button" data-lang="2" aria-pressed="false">EN</button>
+      <button type="button" data-lang="3" aria-pressed="false" lang="uk" title="Українська">UK</button>
     </div>
   </header>
 
@@ -443,9 +444,27 @@ body::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;opa
 <script>
 (()=>{
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
-const LOC=['pt-PT','fr-FR','en-GB'], CODE=['pt-PT','fr-FR','en'];
+const LOC=['pt-PT','fr-FR','en-GB','uk-UA'], CODE=['pt-PT','fr-FR','en','uk'];
 let LI=0;
-const L=a=>a[LI];
+/* Ucraniano (4.ª língua): os textos são as tríades [PT, FR, EN]; a versão EN é traduzida pelo
+   dicionário do servidor (/api/i18n/dict/uk — o mesmo motor do resto do site). Enquanto o
+   dicionário não chega, mostra-se o inglês. */
+let UK=null,UKP=[];
+const nz=s=>String(s).replace(/\s+/g,' ').trim();
+function ukCompile(list){const out=[];for(const [src,tgt] of list||[]){if(typeof src!=='string'||typeof tgt!=='string')continue;
+  const parts=src.split(/(\{\d+\})/),order=[];let re='^';
+  for(const q of parts){const m=q.match(/^\{(\d+)\}$/);if(m){order.push(+m[1]);re+='(.*?)'}else re+=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+  try{out.push([new RegExp(re+'$'),tgt,order])}catch(e){}}return out}
+function ukT(s){if(typeof s!=='string'||!UK)return s;const k=nz(s);if(UK[k])return UK[k];
+  for(const [rx,t,o] of UKP){const m=k.match(rx);if(m)return t.replace(/\{(\d+)\}/g,(_,i)=>{const j=o.indexOf(+i);return j>=0?m[j+1]:''})}
+  return s}
+const L=a=>LI===3?ukT(a[2]):a[LI];
+function loadUK(){if(UK)return;
+  try{const c=JSON.parse(localStorage.getItem('cp_exp_dict_uk')||'null');if(c&&c.exact){UK=c.exact;UKP=ukCompile(c.patterns)}}catch(e){}
+  fetch('/api/i18n/dict/uk',{credentials:'omit'}).then(r=>r.ok?r.json():null).then(d=>{if(!d||!d.exact)return;
+    UK=d.exact;UKP=ukCompile(d.patterns);
+    try{localStorage.setItem('cp_exp_dict_uk',JSON.stringify({exact:d.exact,patterns:d.patterns}))}catch(e){}
+    if(LI===3)applyLang()}).catch(()=>{})}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nf=(n,d=1)=>new Intl.NumberFormat(LOC[LI],{maximumFractionDigits:d}).format(n);
 const eur=(n,d=0)=>new Intl.NumberFormat(LOC[LI],{style:'currency',currency:'EUR',maximumFractionDigits:d,minimumFractionDigits:d}).format(n);
@@ -910,7 +929,7 @@ function resultHTML(){const sp=special(),a=S.a,p=prio(),im=impact(),ch=a.chall||
     <div class="two"><label>${L(['Nome','Nom','Name'])}<input type="text" id="f-name" autocomplete="name" maxlength="120" required></label>
     <label>${L(['Empresa','Entreprise','Company'])}<input type="text" id="f-company" autocomplete="organization" maxlength="120"></label></div>
     <div class="two"><label>E-mail<input type="email" id="f-email" autocomplete="email" maxlength="160" required></label>
-    <label>${L(['Idioma da demonstração','Langue de la démonstration','Demo language'])}<select id="f-lang"><option value="pt-PT"${LI===0?' selected':''}>Português</option><option value="fr-FR"${LI===1?' selected':''}>Français</option><option value="en"${LI===2?' selected':''}>English</option></select></label></div>
+    <label>${L(['Idioma da demonstração','Langue de la démonstration','Demo language'])}<select id="f-lang"><option value="pt-PT"${LI===0?' selected':''}>Português</option><option value="fr-FR"${LI===1?' selected':''}>Français</option><option value="en"${LI===2?' selected':''}>English</option><option value="uk"${LI===3?' selected':''}>Українська</option></select></label></div>
     <label class="check"><input type="checkbox" id="f-demo"${S.a.urgency==='now'?' checked':''}><span>${L(['Quero uma demonstração. A equipa propõe horários depois de consultar a agenda.',"Je souhaite une démonstration. L'équipe propose des créneaux après consultation de l'agenda.",'I want a demo. The team offers time slots after checking the calendar.'])}${S.a.urgency==='now'?' <b>'+L(['Demonstração funcional em até 5 dias úteis.','Démonstration fonctionnelle sous 5 jours ouvrés.','Working demo within 5 business days.'])+'</b>':''}</span></label>
     <label>${L(['Objetivo da reunião','Objectif du rendez-vous','Goal of the meeting'])} <input type="text" id="f-goal" maxlength="200"></label>
     <label class="check"><input type="checkbox" id="f-consent" required><span>${L(['Autorizo a ConstruPilot a usar estes dados para me responder a este pedido. Posso pedir a eliminação a qualquer momento.',"J'autorise ConstruPilot à utiliser ces données pour répondre à cette demande. Je peux demander leur suppression à tout moment.",'I allow ConstruPilot to use these details to answer this request. I can ask for deletion at any time.'])} <a href="/privacidade" target="_blank" rel="noopener">${L(['Política de privacidade','Politique de confidentialité','Privacy policy'])}</a></span></label>
@@ -978,7 +997,7 @@ wiz.addEventListener('submit',e=>{e.preventDefault();
   const A={};Object.keys(S.a).forEach(k=>{if(Q[k]&&!['chall','prio','role'].includes(k)){const v=lab(k);if(v)A[L(Q[k].q).slice(0,200)]=String(v).slice(0,600)}});
   const R=roi(),needs=ch.map(id=>({id,label:(L(Q.chall.o.find(x=>x.id===id).l)+(isOth(id)&&S.a.chall_other?': '+S.a.chall_other:'')).slice(0,200)})),p=prio(),num=x=>Number.isFinite(x)&&x>=0?+x.toFixed(2):null;
   fetch('/api/experience/lead',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    name,company:lead.company,email,lang:['pt','fr','en'][LI],demo,demo_lang:lead.lang,goal:lead.goal,consent:true,role:S.a.role,role_label:lab('role').slice(0,120),
+    name,company:lead.company,email,lang:['pt','fr','en','uk'][LI],demo,demo_lang:lead.lang,goal:lead.goal,consent:true,role:S.a.role,role_label:lab('role').slice(0,120),
     country:lab('country'),company_type:lab('ctype'),team:S.a.team||'',decision:S.a.decision||'',urgency:S.a.urgency||'',software:lab('software'),
     needs,priority:p?needs.find(n=>n.id===p)||null:null,features:lead.features,answers:A,
     estimate:R?(R.owner?{scenario_pct:R.r*100,at_stake_eur:num(R.stake)}:{scenario_pct:R.r*100,hours_month_today:R.im?num(R.im.h):null,hours_month_saved:num(R.H),value_month_eur:num(R.V),extra_estimates_month:num(R.extra),extra_margin_month_eur:num(R.profit)}):{},
@@ -986,7 +1005,7 @@ wiz.addEventListener('submit',e=>{e.preventDefault();
   .then(r=>r.ok?r.json():Promise.reject(r.status))
   .then(j=>{lead.id=j.lead_id||lead.id;lead.msg=j.message||'';S.lead=lead;S.status=lead.status;render('#done')})
   .catch(()=>{btn.disabled=false;err.textContent=L(['Não foi possível enviar o pedido. Tenta de novo ou escreve para info@construpilot.pt.',"L'envoi de la demande a échoué. Réessayez ou écrivez à info@construpilot.pt.",'The request could not be sent. Try again or write to info@construpilot.pt.']);err.hidden=false})});
-$$('[data-lang]').forEach(b=>b.addEventListener('click',()=>{LI=+b.dataset.lang;applyLang()}));
+$$('[data-lang]').forEach(b=>b.addEventListener('click',()=>{LI=+b.dataset.lang;if(LI===3)loadUK();applyLang()}));
 $('#cta1').addEventListener('click',e=>{e.preventDefault();$('#diagnostico').scrollIntoView({behavior:reduce?'auto':'smooth'});const f=$('.chip',wiz)||$('#wh');if(f)f.focus({preventScroll:true})});
 
 /* ---------- studio ---------- */
@@ -1214,7 +1233,9 @@ function initFilm(){
 /* ---------- boot ---------- */
 function start(d){
   try{localStorage.removeItem('cpx-v1');localStorage.removeItem(KEY)}catch(e){}
-  const ql=new URLSearchParams(location.search).get('lang')||navigator.language||'pt';LI=/^fr/i.test(ql)?1:/^en/i.test(ql)?2:0;
+  let site=null;try{site=localStorage.getItem('construpilot_lang')}catch(e){}
+  const ql=new URLSearchParams(location.search).get('lang')||site||navigator.language||'pt';LI=/^fr/i.test(ql)?1:/^en/i.test(ql)?2:/^(uk|ua)/i.test(ql)?3:0;
+  if(LI===3)loadUK();
   filmApi=initFilm();if(filmApi){$('#fb').hidden=true;playing=false}
   applyLang();
   if(playing)timer=setTimeout(tick,1200);

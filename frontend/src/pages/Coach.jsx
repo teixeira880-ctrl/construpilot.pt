@@ -8,6 +8,7 @@ import { API, api } from "@/lib/api";
 import { SectionTitle } from "@/components/Bits";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/context/I18nContext";
+import { currentUiLocale } from "@/lib/uiLang";
 
 const EXAMPLE_KEYS = ["coach.ex1", "coach.ex2", "coach.ex3", "coach.ex4", "coach.ex5", "coach.ex6"];
 
@@ -86,7 +87,7 @@ export default function Coach() {
       }
       if (speak && full && window.speechSynthesis) {
         const u = new SpeechSynthesisUtterance(full.slice(0, 600));
-        u.lang = "pt-PT";
+        u.lang = currentUiLocale();
         window.speechSynthesis.speak(u);
       }
     } catch {
@@ -105,7 +106,7 @@ export default function Coach() {
       return;
     }
     const r = new SR();
-    r.lang = "pt-PT";
+    r.lang = currentUiLocale();
     r.interimResults = false;
     r.onresult = (e) => {
       const text = e.results[0][0].transcript;

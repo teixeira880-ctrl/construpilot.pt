@@ -230,8 +230,18 @@ def _reduced_vat_rate(doc: dict) -> float | None:
     return reduced[0] if reduced else None
 
 
+def _ui_doc_lang() -> str | None:
+    """Língua do ecrã para os PDF (EN, UK ou francês "fr-FR"); None em português."""
+    from core.ui_lang import current_doc_lang
+    lg = current_doc_lang()
+    return {"en": "en", "uk": "uk", "fr": "fr-FR"}.get(lg or "")
+
+
 async def _doc_lang(doc: dict, branding: dict | None) -> str:
-    """Langue des PDF : celle du document, sinon PT si l'entreprise est au Portugal, sinon FR."""
+    """Langue des PDF : celle de l'écran (EN/FR/UK), sinon celle du document, sinon PT."""
+    ui = _ui_doc_lang()
+    if ui:
+        return ui
     if doc.get("lang") in ("fr", "pt"):
         return doc["lang"]
     return "pt" if ((branding or {}).get("country") or "").upper() == "PT" else "pt"
@@ -1866,6 +1876,12 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
     pdf_lang = await _doc_lang(doc, branding)
     suffix = None
     acct_langs = [x for x in (user.get("doc_langs") or []) if x in ("pt", "en", "uk")]
+    if lang == "pt":                     # ?lang=pt pedido explícito: português, seja qual for o ecrã
+        pdf_lang = "pt"
+    if not acct_langs and pdf_lang in ("en", "uk", "fr-FR"):
+        # Ecrã noutra língua: rótulos E conteúdo (designações, capítulos, notas) nessa língua.
+        from engines.doc_translate import translate_doc
+        doc = await translate_doc(db, doc, pdf_lang[:2])
     if acct_langs:
         # Conta multilingue (ex. CLT Rezult: EN + UK): ?lang= escolhe uma das línguas da conta,
         # senão a 1.ª. O conteúdo (designações, capítulos…) é traduzido, não só os rótulos.

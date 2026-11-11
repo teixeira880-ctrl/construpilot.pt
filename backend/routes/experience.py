@@ -40,7 +40,8 @@ CATEGORIES = {"takeoff", "estimation", "drawings", "docs", "coord", "materials",
 STATUSES = ("discovery_completed", "demo_requested")
 _OK_MSG = {"pt": "Obrigado. A equipa ConstruPilot entra em contacto contigo em 2 dias úteis.",
            "fr": "Merci. L'équipe ConstruPilot vous recontacte sous 2 jours ouvrés.",
-           "en": "Thank you. The ConstruPilot team will contact you within 2 business days."}
+           "en": "Thank you. The ConstruPilot team will contact you within 2 business days.",
+           "uk": "Дякуємо. Команда ConstruPilot зв'яжеться з вами протягом 2 робочих днів."}
 
 
 def _now() -> datetime:
@@ -50,7 +51,8 @@ def _now() -> datetime:
 DEMO_SLA_BUSINESS_DAYS = 5   # quem responde «Já» e pede demonstração recebe uma demo funcional neste prazo
 _SLA_MSG = {"pt": "Obrigado. Como pediste para avançar já, a equipa ConstruPilot mostra-te uma demonstração funcional em até 5 dias úteis.",
             "fr": "Merci. Comme vous souhaitez avancer tout de suite, l'équipe ConstruPilot vous présente une démonstration fonctionnelle sous 5 jours ouvrés.",
-            "en": "Thank you. Since you want to move now, the ConstruPilot team will show you a working demo within 5 business days."}
+            "en": "Thank you. Since you want to move now, the ConstruPilot team will show you a working demo within 5 business days.",
+            "uk": "Дякуємо. Оскільки ви хочете почати вже зараз, команда ConstruPilot покаже вам робочу демонстрацію протягом 5 робочих днів."}
 _WEEKDAYS = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
 
 
@@ -89,9 +91,9 @@ class ExperienceLeadIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     company: str = Field(default="", max_length=160)
     email: EmailStr
-    lang: Literal["pt", "fr", "en"] = "pt"
+    lang: Literal["pt", "fr", "en", "uk"] = "pt"
     demo: bool = False
-    demo_lang: Literal["pt-PT", "fr-FR", "en"] = "pt-PT"
+    demo_lang: Literal["pt-PT", "fr-FR", "en", "uk"] = "pt-PT"
     goal: str = Field(default="", max_length=200)
     consent: bool
     role: str = Field(max_length=20)
@@ -134,7 +136,8 @@ _PT = {
     "criterion": {"problem_intensity": "Intensidade do problema", "urgency": "Urgência", "product_fit": "Adequação ao produto",
                   "decision_authority": "Capacidade de decisão", "budget": "Orçamento (não perguntado)",
                   "next_step_commitment": "Compromisso com o próximo passo"},
-    "lang": {"pt": "Português", "fr": "Francês", "en": "Inglês", "pt-PT": "português", "fr-FR": "francês"},
+    "lang": {"pt": "Português", "fr": "Francês", "en": "Inglês", "uk": "Ucraniano", "pt-PT": "português",
+             "fr-FR": "francês"},
 }
 # Paleta escura "cinema", igual à da página /experiencia. Cada gradiente tem cor sólida de recurso
 # (clientes de e-mail que ignoram gradientes mostram a cor sólida).

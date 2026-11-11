@@ -299,12 +299,48 @@ PDF_LABELS = {
 }
 
 
+# Correções de rótulos que tinham ficado em português nos conjuntos EN/PT.
+PDF_LABELS["en"].update({
+    "doc_generic": "DOCUMENT", "client": "Client", "p_client": "CLIENT", "c_designation": "Description",
+    "c_vat": "VAT", "date": "Date", "notes": "Notes", "doc_quote_lots": "QUOTE BY WORK PACKAGE",
+})
+PDF_LABELS["pt"]["date"] = "Data"
+
+# Francês verdadeiro (o conjunto histórico "fr" contém, no .pt, os textos portugueses de base).
+PDF_LABELS_FR = {
+    "doc_quote": "DEVIS", "doc_invoice": "FACTURE", "doc_credit": "AVOIR", "doc_generic": "DOCUMENT",
+    "doc_quote_lots": "DEVIS PAR LOTS", "addressed_to": "Facturé à", "client": "Client", "p_client": "CLIENT",
+    "p_site": "CHANTIER", "p_validity": "VALIDITÉ", "p_duration": "Durée", "p_start": "Début",
+    "p_valid_until": "Valable jusqu'au", "schedule_title": "Échéancier de paiement", "schedule_stage": "Échéance",
+    "schedule_amount": "Montant TTC", "lines_title": "Détail des prestations", "c_designation": "Désignation",
+    "c_qty": "Qté", "c_unit": "U.", "c_pu_ht": "PU HT", "c_vat": "TVA", "c_total_ht": "Total HT",
+    "c_discount": "Remise", "no_line": "Aucune ligne", "recap": "Récapitulatif", "total_ht": "Total HT",
+    "vat": "TVA {rate} %", "total_ttc": "TOTAL TTC", "deposit_asked": "Acompte demandé ({pct} %)",
+    "remaining": "Reste à payer", "num": "N°", "date": "Date", "due": "Échéance", "notes": "Notes",
+    "agreement": "Bon pour accord (date + signature) :", "other_lot": "Autres",
+    "lot_recap_title": "Récapitulatif par lot (HT)", "default_title": "Votre projet de travaux",
+    "sign_date": "Date et signature du client :", "scan_to_sign": "Scanner pour signer",
+    "sign_online": "Ou signer en ligne :", "page": "page", "bank_details": "Coordonnées bancaires",
+    "ht_suffix": "HT",
+    "footer": "Document émis via ConstruPilot. TVA applicable selon la nature des travaux. "
+              "Conditions de paiement indiquées ci-dessus.",
+}
+
+
 def pdf_labels(lang: str | None) -> dict:
-    # construpilot.pt: documentos em português europeu, exceto contas multilingues
-    # (users.doc_langs, ex. CLT Rezult) que pedem explicitamente inglês ou ucraniano.
-    lg = (lang or "").lower()[:2]
-    if lg not in ("en", "uk"):
-        lg = "pt"
+    # construpilot.pt: documentos em português europeu por defeito; inglês, francês ou ucraniano
+    # quando a interface está nessa língua (core.ui_lang) ou a conta o pede (users.doc_langs).
+    # NB: "fr" sozinho é o código histórico do .pt para documentos em PORTUGUÊS (ex. estudos com
+    # lang="fr") e continua a dar rótulos portugueses. Francês verdadeiro = "fr-FR" (ecrã em francês).
+    raw = (lang or "").lower().replace("_", "-")
+    if raw.startswith("fr-"):
+        lg = "fr"
+    else:
+        lg = raw[:2] if raw[:2] in ("en", "uk") else "pt"
     base = dict(PDF_LABELS["fr"])
-    base.update(PDF_LABELS.get(lg, {}))
+    base.update(PDF_LABELS["pt"])
+    if lg == "fr":
+        base.update(PDF_LABELS_FR)
+    elif lg != "pt":
+        base.update(PDF_LABELS.get(lg, {}))
     return base

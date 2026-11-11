@@ -1,5 +1,6 @@
 import axios from "axios";
 import { currentMarket } from "@/lib/market";
+import { currentUiLang } from "@/lib/uiLang";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -8,6 +9,13 @@ export const API = `${BACKEND_URL}/api`;
 // httpOnly `session_token` (SameSite=lax, Secure). Le JWT n'est plus stocké
 // dans localStorage — plus de surface d'attaque XSS.
 export const api = axios.create({ baseURL: API, withCredentials: true });
+
+// Língua da interface em todos os pedidos: o backend responde (IA, PDFs, documentos)
+// na mesma língua que o ecrã — PT, EN, FR ou UK.
+api.interceptors.request.use((cfg) => {
+  try { cfg.headers = cfg.headers || {}; cfg.headers["X-UI-Lang"] = currentUiLang(); } catch { /* noop */ }
+  return cfg;
+});
 
 // LOTE 2b WebSummit : adapter demo offline. Enquanto `localStorage.is_demo !==
 // "true"`, o adapter original (XHR) é chamado tal como antes. Contas normais

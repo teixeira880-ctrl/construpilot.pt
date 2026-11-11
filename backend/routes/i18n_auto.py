@@ -41,6 +41,9 @@ router = APIRouter(prefix="/i18n", tags=["i18n"])
 MANIFEST_PATHS = [
     Path(__file__).resolve().parent.parent / "data" / "i18n_manifest.json",
 ]
+# Mensagens do backend mostradas no ecrã (erros, avisos): scripts/i18n_backend_manifest.py —
+# ficheiro ao lado do manifesto do frontend.
+EXTRA_MANIFEST_NAME = "i18n_manifest_backend.json"
 COLL = "i18n_translations"
 JOBS = "i18n_jobs"
 
@@ -54,6 +57,9 @@ LANG_NAMES = {
     "it": "Italian",
     "de": "German",
     "ar": "Modern Standard Arabic",
+    "uk": "Ukrainian (українська, standard literary Ukrainian — never Russian; construction terms: "
+          "'кошторис' for quote, 'рахунок' for invoice, 'ПДВ' for VAT, 'об'єкт'/'будівельний майданчик' for site, "
+          "'обміри' for take-off, 'підрядник' for contractor, 'креслення' for plans)",
 }
 SUPPORTED = set(LANG_NAMES)
 
@@ -88,26 +94,39 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
 
 
+def _read_manifest(p: Path) -> dict | None:
+    try:
+        data = json.loads(p.read_text("utf-8"))
+    except OSError:
+        return None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("i18n: manifesto ilegível %s: %s", p, exc)
+        return None
+    return {"version": str(data.get("version") or "0"),
+            "exact": [_norm(x) for x in data.get("exact") or [] if isinstance(x, str) and _norm(x)],
+            "patterns": [_norm(x) for x in data.get("patterns") or [] if isinstance(x, str) and _norm(x)]}
+
+
 def load_manifest() -> dict:
-    """Carrega (e recarrega se o ficheiro mudou) o manifesto gerado no build do frontend."""
+    """Carrega (e recarrega se mudou) o manifesto do frontend + mensagens do backend."""
     global _manifest, _manifest_mtime, _exact_set, _pattern_set
-    for p in MANIFEST_PATHS:
-        try:
-            mt = p.stat().st_mtime
-        except OSError:
-            continue
-        if mt != _manifest_mtime:
-            try:
-                data = json.loads(p.read_text("utf-8"))
-                _manifest = {"version": str(data.get("version") or "0"),
-                             "exact": [_norm(x) for x in data.get("exact") or [] if _norm(x)],
-                             "patterns": [_norm(x) for x in data.get("patterns") or [] if _norm(x)]}
-                _exact_set = set(_manifest["exact"])
-                _pattern_set = set(_manifest["patterns"])
-                _manifest_mtime = mt
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("i18n: manifesto ilegível %s: %s", p, exc)
-        break
+    files = [p for p in MANIFEST_PATHS[:1] + [MANIFEST_PATHS[0].parent / EXTRA_MANIFEST_NAME] if p.exists()]
+    try:
+        mt = sum(p.stat().st_mtime for p in files)
+    except OSError:
+        return _manifest
+    if files and mt != _manifest_mtime:
+        parts = [m for m in (_read_manifest(p) for p in files) if m]
+        if parts:
+            exact = list(dict.fromkeys(x for m in parts for x in m["exact"]))
+            ex_set = set(exact)
+            pats = [x for x in dict.fromkeys(x for m in parts for x in m["patterns"]) if x not in ex_set]
+            version = parts[0]["version"] if len(parts) == 1 else hashlib.sha1(
+                "|".join(m["version"] for m in parts).encode()).hexdigest()[:12]
+            _manifest = {"version": version, "exact": exact, "patterns": pats}
+            _exact_set = ex_set
+            _pattern_set = set(pats)
+            _manifest_mtime = mt
     return _manifest
 
 
@@ -259,9 +278,14 @@ async def warm(lang: str) -> dict:
             "finished_at": datetime.now(timezone.utc), "done": done}})
 
 
+# Línguas da interface (seletor): são sempre pré-traduzidas, mesmo que I18N_WARM_LANGS não as liste.
+UI_LANGS = ("pt", "en", "fr", "uk")
+
+
 def warm_langs() -> list[str]:
-    raw = os.environ.get("I18N_WARM_LANGS", "en,fr,pt")
-    return [x.strip() for x in raw.split(",") if x.strip() in SUPPORTED]
+    raw = os.environ.get("I18N_WARM_LANGS", "en,fr,pt,uk")
+    out = [x.strip() for x in raw.split(",") if x.strip() in SUPPORTED]
+    return out + [x for x in UI_LANGS if x not in out]
 
 
 async def warm_all_background() -> None:
@@ -269,6 +293,17 @@ async def warm_all_background() -> None:
     if os.environ.get("I18N_AUTOWARM", "1") == "0":
         return
     await asyncio.sleep(20)  # deixa o arranque terminar
+    try:  # mensagens do backend: manifesto sempre alinhado com o código desta versão
+        from scripts.i18n_backend_manifest import OUT, extract
+
+        def _regen():
+            m = extract()
+            OUT.write_text(json.dumps(m, ensure_ascii=False, separators=(",", ":")), "utf-8")
+            return m
+        m = await asyncio.to_thread(_regen)
+        logger.info("i18n: manifesto backend %s textos + %s padrões", len(m["exact"]), len(m["patterns"]))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("i18n: manifesto backend não regenerado (%s) — usa o ficheiro do repositório", exc)
     for lang in warm_langs():
         try:
             await warm(lang)

@@ -279,6 +279,8 @@ async def web_answer(query: str) -> dict:
         return {"answer": "", "sources": [], "error": "Pesquisa web indisponível."}
     from perplexity import AsyncPerplexity
     system = (BRAND + " És o Assistente Construção, o assistente IA de obras do ConstruPilot. Responde de forma concisa, factual e acionável. Se deres preços, indica que são indicativos e datados. Cita as normas (NP EN, Eurocódigos, LNEC, RGEU) quando for pertinente. Propõe algumas opções quando for útil. Responde em português europeu.")
+    from core.ui_lang import reply_language_instruction
+    system += reply_language_instruction()
     client = AsyncPerplexity(api_key=os.environ["PERPLEXITY_API_KEY"], max_retries=1, timeout=PER_PROVIDER_TIMEOUT)
     try:
         r = await client.responses.create(input=query, instructions=system, preset="fast",
@@ -373,7 +375,8 @@ async def _learning_suffix(feature: str) -> str:
 async def _complete(system: str, text: str, images: list[str] | None = None,
                     session_id: str | None = None, feature: str = "misc") -> str:
     from engines.llm_keys import key_source, note_openai_error
-    system = system + await _learning_suffix(feature)
+    from core.ui_lang import reply_language_instruction
+    system = system + await _learning_suffix(feature) + reply_language_instruction()
     errors = []
     for provider, model in await _chain(bool(images)):
         if provider == "perplexity" and (images or not os.environ.get("PERPLEXITY_API_KEY")):
@@ -417,6 +420,8 @@ async def _stream_chat_text(system, text, images, session_id, provider, model, f
 async def stream_chat(history: list[dict], message: str, session_id: str, context: str = "") -> None:
     system = BRAND + (f'\n\nContexto do projeto do utilizador:\n{context}' if context else "")
     system += await _learning_suffix("coach")
+    from core.ui_lang import reply_language_instruction
+    system += reply_language_instruction()
     convo = "\n".join(f"{('Utilizador' if m['role'] == 'user' else 'ConstruPilot')}: {m['content']}"
                       for m in history[-10:])
     prompt = (f'Histórico da conversa:\n{convo}\n\nNova mensagem: {message}'

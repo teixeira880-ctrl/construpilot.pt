@@ -1,6 +1,6 @@
 /*!
  * ConstruPilot — Pop-up publicitário Web Summit 2026
- * Funciona em construpilot.pt (português) e construpilot.fr (francês).
+ * Funciona em construpilot.pt e construpilot.fr; segue a língua escolhida no site (PT, FR, EN, UK).
  */
 (function () {
   "use strict";
@@ -33,12 +33,40 @@
         ctaHref: "mailto:info@construpilot.fr?subject=D%C3%A9monstration%20ConstruPilot%20-%20Web%20Summit%202026",
         secondary: "Découvrir la plateforme",
         close: "Fermer"
+      },
+      en: {
+        badge: "WEB SUMMIT 2026 · LISBON",
+        title: "Welcome to ConstruPilot",
+        subtitle: "The AI platform for construction comes to Web Summit!",
+        body: "Join the live ConstruPilot demo: automatic plan reading, quantity take-off, estimating and the AI-powered Construction Assistant.",
+        when: "📅 9–12 November 2026",
+        where: "📍 MEO Arena & FIL — Lisbon",
+        cta: "Book a demo",
+        ctaHref: "mailto:info@construpilot.pt?subject=ConstruPilot%20demo%20-%20Web%20Summit%202026",
+        secondary: "Explore the platform",
+        close: "Close"
+      },
+      uk: {
+        badge: "WEB SUMMIT 2026 · ЛІСАБОН",
+        title: "Ласкаво просимо до ConstruPilot",
+        subtitle: "Платформа штучного інтелекту для будівництва — на Web Summit!",
+        body: "Приходьте на живу демонстрацію ConstruPilot: автоматичне читання креслень, обміри, кошторисування та будівельний асистент на основі штучного інтелекту.",
+        when: "📅 9–12 листопада 2026",
+        where: "📍 MEO Arena & FIL — Лісабон",
+        cta: "Записатися на демонстрацію",
+        ctaHref: "mailto:info@construpilot.pt?subject=ConstruPilot%20demo%20-%20Web%20Summit%202026",
+        secondary: "Переглянути платформу",
+        close: "Закрити"
       }
     }
   };
   if (new Date() >= new Date(CONFIG.endDate)) return;
   function detectLang() {
     var host = (location.hostname || "").toLowerCase();
+    try {                                   // língua escolhida no seletor do site
+      var chosen = localStorage.getItem("construpilot_lang");
+      if (chosen && CONFIG.texts[chosen]) return chosen;
+    } catch (e) {}
     if (/\.pt$/.test(host)) return "pt";
     if (/\.fr$/.test(host)) return "fr";
     var htmlLang = (document.documentElement.lang || navigator.language || "").toLowerCase();
@@ -50,6 +78,9 @@
   if (alreadySeen()) return;
   var lang = detectLang();
   var t = CONFIG.texts[lang];
+  if (lang === "fr" && !/\.fr$/.test((location.hostname || "").toLowerCase())) {
+    t = Object.assign({}, t, { ctaHref: t.ctaHref.replace("info@construpilot.fr", "info@construpilot.pt") });
+  }
   var accent = lang === "pt" ? CONFIG.colors.accentPT : CONFIG.colors.accentFR;
   var c = CONFIG.colors;
   var css =
