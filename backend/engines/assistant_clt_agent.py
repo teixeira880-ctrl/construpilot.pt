@@ -27,10 +27,12 @@ import json
 import math
 from datetime import datetime, timezone
 
+SYSTEMS = ["clt", "alvenaria_tijolo", "alvenaria_bloco", "betao_armado", "ossatura_madeira", "ossatura_metalica", "divisoria_gesso"]
+
 TOOLS = [
     {
         "type": "function", "name": "clt_agente_estado",
-        "description": "Estudo CLT passo a passo (planta → paredes → custos → verificação → dossier). Abre ou retoma o estudo desta "
+        "description": "Estudo passo a passo de uma casa, em CLT ou construção tradicional (planta → paredes → custos → verificação → dossier). Abre ou retoma o estudo desta "
                        "conversa e devolve os pisos lidos, as correções feitas, o resultado da última verificação e o PASSO SEGUINTE. "
                        "Chama-o primeiro em qualquer estudo CLT a partir de plantas, e sempre que não souberes em que passo estás.",
         "parameters": {"type": "object", "properties": {
@@ -55,9 +57,11 @@ TOOLS = [
             "cor_paredes": {"type": ["string", "null"], "description": "#rrggbb das paredes CLT quando há várias cores candidatas"},
             "cor_linteis": {"type": ["string", "null"], "description": "#rrggbb dos lintéis CLT (tracejado), se confirmada na legenda"},
             "camadas": {"type": ["integer", "null"], "description": "camadas do painel de parede (legenda); null = 5"},
-            "pixels_por_metro": {"type": ["number", "null"], "description": "só para imagens: escala lida na barra gráfica"}},
+            "pixels_por_metro": {"type": ["number", "null"], "description": "só para imagens: escala lida na barra gráfica"},
+            "plan_id": {"type": ["string", "null"], "description": "plans_… de uma planta já medida no módulo de medições (construção "
+                        "tradicional: paredes de duas faces, qualquer espessura). Com plan_id, document_id pode ser ''"}},
             "required": ["document_id", "pagina", "piso", "ordem", "altura_m", "escala", "cor_paredes", "cor_linteis", "camadas",
-                         "pixels_por_metro"], "additionalProperties": False},
+                         "pixels_por_metro", "plan_id"], "additionalProperties": False},
         "strict": True,
     },
     {
@@ -128,8 +132,12 @@ TOOLS = [
             "regime_iva": {"type": ["string", "null"], "enum": ["pt", "ua", "ua_export", None],
                            "description": "pt = Portugal 23 %; ua = obra na Ucrânia 20 %; ua_export = 0 %; null = pt"},
             "inicio": {"type": ["string", "null"], "description": "data de início AAAA-MM-DD; null = hoje"},
-            "modo_inicio": {"type": ["string", "null"], "enum": ["compra", "fabrico", None]}},
-            "required": ["regime_iva", "inicio", "modo_inicio"], "additionalProperties": False},
+            "modo_inicio": {"type": ["string", "null"], "enum": ["compra", "fabrico", None]},
+            "sistema": {"type": ["string", "null"], "enum": [*SYSTEMS, None],
+                        "description": "sistema construtivo das paredes; null = o já escolhido (por defeito clt). Fora de clt usa o "
+                                       "motor geral (construção tradicional) com os parâmetros e a biblioteca de medições da empresa"},
+            "pais": {"type": ["string", "null"], "enum": ["PT", "FR", "UA", None], "description": "IVA do motor geral; null = PT"}},
+            "required": ["regime_iva", "inicio", "modo_inicio", "sistema", "pais"], "additionalProperties": False},
         "strict": True,
     },
     {
@@ -138,7 +146,7 @@ TOOLS = [
                        "verificado. Recusa enquanto a última verificação tiver falhas bloqueantes ou não for da revisão atual.",
         "parameters": {"type": "object", "properties": {
             "titulo": {"type": "string"}, "local": {"type": ["string", "null"]},
-            "lingua": {"type": ["string", "null"], "enum": ["pt", "en", "uk", None]},
+            "lingua": {"type": ["string", "null"], "enum": ["pt", "en", "uk", "fr", None]},
             "empresa": {"type": ["string", "null"], "enum": ["clt-rezult", None]}},
             "required": ["titulo", "local", "lingua", "empresa"], "additionalProperties": False},
         "strict": True,
@@ -157,8 +165,10 @@ STATUS = {
 
 INSTRUCTIONS = """
 
-ESTUDO CLT PASSO A PASSO (agente de motores). Quando o utilizador pede um estudo, medição, orçamento ou dossier CLT a partir de
-plantas, trabalha como um engenheiro que comanda os motores, por esta ordem, sem saltar passos:
+ESTUDO PASSO A PASSO (agente de motores). Quando o utilizador pede um estudo, medição, orçamento ou dossier de uma casa a partir
+de plantas, em CLT ou em construção tradicional (alvenaria, betão armado, ossatura de madeira ou metálica: escolhe `sistema` em
+clt_agente_calcular; uma planta já medida no módulo de medições lê-se com plan_id), trabalha como um engenheiro que comanda os
+motores, por esta ordem, sem saltar passos:
 1. PLANEAR: chama clt_agente_estado. Lê o passo seguinte que ele indica. Identifica as folhas (uma por piso), a escala, a legenda
    (cores das paredes CLT, espessuras e camadas, lintéis) e o corte (alturas). Se a planta não marca alturas, altura_m = null.
 2. LER: clt_agente_ler_planta para cada piso. OLHA para a imagem de controlo devolvida e compara-a com a planta: paredes em falta,
@@ -638,6 +648,163 @@ def run_chain(doc, params, library, regime="pt", start=None, start_mode="compra"
                           "status": est["status"]}}
 
 
+
+# ---------------------------------------------------------------------------------------------------------------------
+# general engine (traditional construction and every system): engines.takeoff_core
+# ---------------------------------------------------------------------------------------------------------------------
+def _takeoff():
+    try:
+        from engines.takeoff_core import adaptadores, dossier, estudo
+    except ImportError:
+        return None
+    return estudo, dossier, adaptadores
+
+
+def read_takeoff_page(plan: dict, pagina: int, piso: str, ordem: int):
+    """A page already measured in the take-off module (two-face walls of any thickness) → floor fields + control image."""
+    t = _takeoff()
+    if t is None:
+        raise ValueError("O motor geral (construção tradicional) ainda não está instalado nesta versão.")
+    _estudo, _dossier, adaptadores = t
+    pages = {pg.get("index", i): pg for i, pg in enumerate(plan.get("pages") or [])}
+    page = pages.get(pagina - 1)
+    if not page:
+        raise ValueError(f"A página {pagina} não existe nesta planta.")
+    rooms = [r for r in plan.get("rooms") or [] if r.get("page_index", 0) == pagina - 1]
+    cal = (plan.get("calibrations") or {}).get(str(pagina - 1)) or {}
+    floor, notes = adaptadores.from_plan_page(page, name=piso, nivel=ordem, rooms=rooms, room_ppm=cal.get("pixels_per_meter"),
+                                              ref=f"{plan.get('filename', plan.get('plan_id'))} p.{pagina}")
+    walls = [{"id": w["id"], "x1": w["x1"], "y1": w["y1"], "x2": w["x2"], "y2": w["y2"], "thickness_mm": w["thickness_mm"],
+              "layers": 5, "height_m": 3.0, "base_z_m": 0.0, "openings": [], "source": w.get("source", "")} for w in floor["paredes"]]
+    png = None
+    if page.get("image_png_b64"):
+        import cv2
+        import numpy as np
+        img = cv2.imdecode(np.frombuffer(base64.b64decode(page["image_png_b64"]), np.uint8), cv2.IMREAD_COLOR)
+        if img is not None:
+            for w in (page.get("walls_analysis") or {}).get("walls") or []:
+                a = w.get("axis") or {}
+                if a and not w.get("is_post"):
+                    cv2.line(img, (int(a["x1"]), int(a["y1"])), (int(a["x2"]), int(a["y2"])), (0, 0, 255), 4)
+                    cv2.putText(img, str(w.get("wall_id", "")), (int(a["x1"]), int(a["y1"]) - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                                (0, 0, 180), 1, cv2.LINE_AA)
+            scale = min(1.0, 1600 / max(img.shape[:2]))
+            if scale < 1:
+                img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            png = cv2.imencode(".png", img)[1].tobytes()
+    fields = {"paredes": walls, "linteis": [], "fonte_paredes": f"módulo de medições, {plan.get('filename', '')} p.{pagina}",
+              "estado": "medido no módulo de medições (" + floor.get("leitura", "vetorial") + "), vãos inferidos dos intervalos",
+              "leitura": floor.get("leitura", "vetorial"), "divisoes_poligono": floor.get("divisoes", [])}
+    return fields, {"notas_leitura": notes[:30]}, png
+
+
+def _rect_poly(rect):
+    x0, y0, x1, y1 = rect
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+
+def general_project(doc, sistema, pais="PT"):
+    estudo = _takeoff()[0]
+    floors = []
+    for p in _floors(doc):
+        rooms = [{"nome": r["nome"][:60], "poligono": _rect_poly(r["rect_m"])} for r in p.get("divisoes") or [] if r.get("rect_m")]
+        if not rooms:
+            rooms = p.get("divisoes_poligono") or []
+        walls = [{"id": w["id"], "x1": w["x1"], "y1": w["y1"], "x2": w["x2"], "y2": w["y2"], "thickness_mm": w["thickness_mm"],
+                  "layers": w.get("layers") if sistema == "clt" else None, "openings": w.get("openings") or [],
+                  "source": w.get("source", "")[:200]} for w in p["paredes"]]
+        floors.append({"nome": p["nome"], "nivel": p["ordem"], "altura_m": p.get("altura_m"),
+                       "altura_fonte": p.get("altura_origem") if p.get("altura_m") else "", "paredes": walls,
+                       "linteis": [{k: li[k] for k in ("ref", "rect_m", "head_m", "thickness_mm")} for li in p.get("linteis", [])],
+                       "divisoes": rooms, "ligar": True, "inferir_vaos": p.get("leitura") in ("vetorial", "dxf") and not p.get("linteis"),
+                       "leitura": {"imagem": "imagem"}.get(p.get("leitura"), p.get("leitura") or "vetorial")})
+    return estudo.Project(nome="Estudo", pais=pais or "PT", sistema=sistema, pisos=floors)
+
+
+def run_general(doc, sistema, pais, values, library):
+    """Same method on the general engine: quantities with origin, its own cross-checks, prices with sources."""
+    estudo = _takeoff()[0]
+    checks = []
+
+    def check(cid, ok, nivel, valor, limite, como, origem=""):
+        checks.append({"id": cid, "ok": bool(ok), "nivel": nivel, "valor": valor, "limite": limite, "como_corrigir": como, "motores": origem})
+
+    try:
+        result = estudo.run(general_project(doc, sistema, pais), values, library)
+    except ValueError as exc:
+        check("motores_geometria", False, "bloqueante", str(exc)[:300], "rede de paredes válida",
+              "corrigir com clt_agente_corrigir_paredes a parede indicada no erro", "takeoff_core")
+        return {"checks": checks}
+    for c in result["verificacoes"]:
+        if c.get("informativo"):
+            continue
+        check(f"{c['verificacao']}[{c['piso']}]", c["passou"], "bloqueante", {"a": c["a"], "b": c["b"], "erro_pct": c.get("erro_pct")},
+              "≤ 2 %", "paredes duplicadas ou vãos fora da parede: ver a imagem de controlo", "takeoff_core.rede")
+    for f in result["pisos"]:
+        notes = (f.get("rede") or {}).get("notas") or []
+        check(f"vaos_inferidos[{f['nome']}]", not f["vaos_inferidos"], "aviso", len(f["vaos_inferidos"]), "vãos lidos na planta",
+              "vãos inferidos dos intervalos entre paredes ficam estimativa: confirmar na planta", "takeoff_core.rede")
+        if notes:
+            check(f"rede[{f['nome']}]", False, "aviso", notes[:10], "", "rever as ligações indicadas", "takeoff_core.rede")
+    budget = result.get("orcamento")
+    check("biblioteca_de_precos", bool(budget), "aviso", bool(budget), "biblioteca da empresa preenchida",
+          "a empresa preenche a biblioteca de medições (/metodos/biblioteca); sem ela só há quantidades", "biblioteca")
+    if budget:
+        check("precos_em_falta", not budget["sem_preco"], "aviso", budget["sem_preco"][:20], "todas as quantidades com preço",
+              "completar a biblioteca com os códigos indicados", "biblioteca")
+    hyp = [f"{h['chave']}: {h.get('valor')} {h.get('unidade', '')} ({h.get('origem')}; {h.get('fonte', '')})" for h in result["hipoteses"]][:40]
+    pub = estudo.public(result)
+    ok = sum(c["ok"] for c in checks)
+    return {"checks": checks, "aprovadas": ok, "total": len(checks), "hipoteses_geometria": hyp,
+            "geometria": {"sistemas": pub["sistemas_usados"], "pisos": {f["nome"]: {"altura": f["altura"], "pecas": len(f["analise"]["pecas"])}
+                                                                         for f in pub["pisos"]}},
+            "orcamento": {"quantidades": pub["totais"][:60], "total": budget and {k: budget[k] for k in ("subtotal", "iva_pct", "iva", "total",
+                                                                                                         "parte_estimativa", "iva_fonte")}}}
+
+
+async def _takeoff_company(db, user):
+    from bim_studio.store import tenant_of
+    estudo = _takeoff()[0]
+    doc = await db.takeoff_parameters.find_one({"_id": tenant_of(user)}) or {}
+    lib = await db.takeoff_library.find_one({"_id": tenant_of(user)}) or {}
+    return doc.get("valores") or {}, [estudo.PriceItem(**i) for i in lib.get("itens") or []]
+
+
+def _brand(user):
+    from engines.takeoff_core import dossier
+    try:
+        from bim_studio.clt_access import is_pilot
+        from engines.calc_lots.premium import marca
+        if is_pilot(user):
+            b = marca("clt-rezult")
+            if b:
+                return {"nome": b["nome"], "cor": b["cor"], "logo_bytes": b.get("logo_bytes"), "site": b.get("site", "")}
+    except Exception:  # noqa: BLE001 - the brand never blocks a dossier
+        pass
+    return dict(dossier.CONSTRUPILOT)
+
+
+async def _general_dossier(doc, args, user, conv, db):
+    import hashlib
+    import uuid
+    estudo, dossier, _a = _takeoff()
+    values, library = await _takeoff_company(db, user)
+    result = await asyncio.to_thread(estudo.run, general_project(doc, doc["sistema"], doc.get("pais")), values, library)
+    pdf = await asyncio.to_thread(dossier.build, result, brand=_brand(user), lang=args.get("lingua") or "pt", title=args["titulo"])
+    rid = conv.get("_quote_request_id") or conv["conversation_id"]
+    aid = "file_" + hashlib.sha256(f"{rid}{doc['_id']}{doc['revisao']}{args}".encode()).hexdigest()[:27] + "g"
+    art = {"artifact_id": aid, "user_id": user["user_id"], "conversation_id": conv["conversation_id"], "request_id": rid,
+           "title": args["titulo"], "body": "", "filename": f"ConstruPilot_Dossier_{uuid.uuid4().hex[:6]}.pdf", "format": "pdf",
+           "kind": "calc_note", "mime": "application/pdf", "size": len(pdf), "data_b64": base64.b64encode(pdf).decode(),
+           "source_artifact_ids": [], "created_at": _now(), "illustrative": False, "calc_note": "metodos_comuns",
+           "download": f"/assistant/artifacts/{aid}/content"}
+    await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": user["user_id"]}, {"$setOnInsert": art}, upsert=True)
+    pub = estudo.public(result)
+    return {"ok": True, "artifact": {k: art[k] for k in ("artifact_id", "title", "filename", "format", "kind", "mime", "size", "download")},
+            "resumo": {"sistemas": pub["sistemas_usados"], "orcamento": pub["orcamento"] and {k: pub["orcamento"][k] for k in ("subtotal", "iva", "total")}},
+            "note": "Dossier produzido pelo motor geral. Restitui os resultados-chave e as hipóteses; não recalcules."}
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 # tool execution
 # ---------------------------------------------------------------------------------------------------------------------
@@ -654,19 +821,32 @@ async def execute(name, args, user, conv, db, load_doc):
 
     if name == "clt_agente_ler_planta":
         params, _lib = await _company(db, user)
-        src = await load_doc(args["document_id"], user["user_id"])
-        data = base64.b64decode(src.get("data_b64") or "")
-        if not data or len(data) > 20 * 1024 * 1024:
-            return {"ok": False, "error": "Ficheiro vazio ou acima de 20 MB."}
         h = args.get("altura_m") or _standard_height(params, args["ordem"])
         try:
-            fields, summary, png = await asyncio.to_thread(read_sheet, data, src.get("mime", ""), args, h)
+            if args.get("plan_id"):
+                plan = await db.plans_takeoff.find_one({"plan_id": args["plan_id"], "user_id": user["user_id"]},
+                                                       {"_id": 0, "pages.vectors": 0, "pages.text_blocks": 0})
+                if not plan:
+                    return {"ok": False, "error": "Planta inacessível para esta conta."}
+                fields, summary, png = await asyncio.to_thread(read_takeoff_page, plan, args.get("pagina") or 1, args["piso"][:60],
+                                                               int(args["ordem"]))
+                for w in fields["paredes"]:
+                    w["height_m"] = h
+            else:
+                src = await load_doc(args["document_id"], user["user_id"])
+                data = base64.b64decode(src.get("data_b64") or "")
+                if not data or len(data) > 20 * 1024 * 1024:
+                    return {"ok": False, "error": "Ficheiro vazio ou acima de 20 MB."}
+                fields, summary, png = await asyncio.to_thread(read_sheet, data, src.get("mime", ""), args, h)
         except ValueError as exc:
             return {"ok": False, "error": str(exc)[:400]}
         piso = {"nome": args["piso"][:60], "ordem": int(args["ordem"]), "document_id": args["document_id"], "pagina": args.get("pagina"),
                 "altura_m": args.get("altura_m"), "altura_origem": "planta/corte" if args.get("altura_m") else f"standard da empresa ({h} m)",
                 **fields}
         old = doc["pisos"].get(piso["nome"]) or {}
+        for keep in ("divisoes_poligono",):
+            if keep in piso and not piso[keep]:
+                piso.pop(keep)
         for keep in ("divisoes", "vaos", "portas_interiores", "laje", "cobertura", "prumada_m", "fonte_piso"):
             if keep in old:
                 piso[keep] = old[keep]
@@ -678,7 +858,7 @@ async def execute(name, args, user, conv, db, load_doc):
         return {"ok": True, "piso": piso["nome"], "estado": fields["estado"], "altura_usada_m": h, "altura_origem": piso["altura_origem"],
                 "paredes": walls[:150], "linteis": [{k: li[k] for k in ("ref", "rect_m", "head_m")} for li in fields["linteis"]],
                 **summary, "controlo": "Imagem anexa: vermelho = paredes detetadas (número = id), azul = lintéis. Compara com a planta.",
-                "passo_seguinte": next_step(doc), "_model_attachments": [_png_data_url(png)]}
+                "passo_seguinte": next_step(doc), **({"_model_attachments": [_png_data_url(png)]} if png else {})}
 
     piso = doc["pisos"].get(args.get("piso") or "")
     if name in ("clt_agente_corrigir_paredes", "clt_agente_definir_piso") and not piso:
@@ -739,10 +919,24 @@ async def execute(name, args, user, conv, db, load_doc):
         return {"ok": True, **_public(doc)}
 
     if name == "clt_agente_calcular":
-        params, library = await _company(db, user)
+        if args.get("sistema") and args["sistema"] != doc.get("sistema", "clt"):
+            doc["sistema"] = args["sistema"]
+            doc["registo"].append({"quando": _now(), "acao": "sistema", "detalhe": args["sistema"]})
+            await _save(db, doc)
+        if args.get("pais"):
+            doc["pais"] = args["pais"]
+        sistema = doc.get("sistema", "clt")
         try:
-            out = await asyncio.to_thread(run_chain, doc, params, library, args.get("regime_iva") or "pt", args.get("inicio"),
-                                          args.get("modo_inicio") or "compra")
+            if sistema == "clt":
+                params, library = await _company(db, user)
+                out = await asyncio.to_thread(run_chain, doc, params, library, args.get("regime_iva") or "pt", args.get("inicio"),
+                                              args.get("modo_inicio") or "compra")
+            else:
+                if _takeoff() is None:
+                    return {"ok": False, "error": "O motor geral (construção tradicional) ainda não está instalado nesta versão."}
+                values, library = await _takeoff_company(db, user)
+                out = await asyncio.to_thread(run_general, doc, sistema, doc.get("pais") or "PT", values, library)
+                out["entrada"] = {"sistema": sistema}
         except ValueError as exc:
             out = {"checks": [{"id": "motores", "ok": False, "nivel": "bloqueante", "valor": str(exc)[:300], "limite": "",
                                "como_corrigir": "corrigir o dado indicado no erro", "motores": "validação"}]}
@@ -755,7 +949,7 @@ async def execute(name, args, user, conv, db, load_doc):
             doc["entrada_revisao"] = doc["revisao"]
         await _save(db, doc, changed=False)
         failed = [c for c in out["checks"] if not c["ok"]]
-        return {"ok": True, "revisao": doc["revisao"], "aprovadas": out["aprovadas"], "total": out["total"],
+        return {"ok": True, "revisao": doc["revisao"], "sistema": sistema, "aprovadas": out["aprovadas"], "total": out["total"],
                 "bloqueantes": [c for c in failed if c["nivel"] == "bloqueante"], "avisos": [c for c in failed if c["nivel"] != "bloqueante"],
                 "aprovadas_ids": [c["id"] for c in out["checks"] if c["ok"]],
                 **{k: out[k] for k in ("geometria", "orcamento", "origens", "hipoteses_geometria") if k in out},
@@ -768,6 +962,14 @@ async def execute(name, args, user, conv, db, load_doc):
         blocking = [c for c in ver.get("checks", []) if not c["ok"] and c["nivel"] == "bloqueante"]
         if blocking:
             return {"ok": False, "error": "Verificação com falhas bloqueantes: corrige-as antes do dossier.", "bloqueantes": blocking}
+        if doc.get("sistema", "clt") != "clt":
+            res = await _general_dossier(doc, args, user, conv, db)
+            doc["dossier"] = {"revisao": doc["revisao"], "artifact_id": res["artifact"]["artifact_id"], "quando": _now()}
+            await _save(db, doc, changed=False)
+            res["verificacao"] = {"aprovadas": ver.get("aprovadas"), "total": ver.get("total"),
+                                  "avisos": [c["id"] for c in ver.get("checks", []) if not c["ok"]]}
+            res["correcoes"] = doc.get("registo", [])[-20:]
+            return res
         from engines.calc_lots.assistant_bridge import execute_calc_tool
         empresa = args.get("empresa") if args.get("empresa") != "clt-rezult" or is_pilot(user) else None
         res = await execute_calc_tool("estudo_clt_completo", {"titulo": args["titulo"], "local": args.get("local"), "empresa": empresa,

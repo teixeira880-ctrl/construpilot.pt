@@ -167,3 +167,44 @@ def test_read_sheet_returns_walls_and_a_control_image():
     total = sum(((w["x2"] - w["x1"]) ** 2 + (w["y2"] - w["y1"]) ** 2) ** .5 for w in fields["paredes"])
     assert total == pytest.approx(2 * 10 + 2 * 7.8, abs=0.01)
     assert base64.b64encode(png)
+
+
+async def _update_one(self, q, u, upsert=False):
+    self.docs[q.get("artifact_id") or q.get("_id")] = copy.deepcopy(u.get("$setOnInsert") or u.get("$set"))
+_Col.update_one = _update_one
+
+
+def test_traditional_construction_on_the_general_engine(monkeypatch):
+    """Same method, other system: masonry from a page measured in the take-off module, verified, then the dossier."""
+    pytest.importorskip("engines.takeoff_core")
+    import bim_studio.clt_access as access
+    monkeypatch.setattr(access, "allowed", lambda user: True)
+    db = _DB()
+    user, conv = {"user_id": "u1", "organization_id": "A"}, {"conversation_id": "c9"}
+    k = 50.0                                      # page px per metre: pt_per_m 25 × px_per_pt 2
+    walls = [{"wall_id": f"w{i}", "axis": {"x1": a * k, "y1": b * k, "x2": c * k, "y2": d * k}, "thickness_m": 0.3,
+              "source": "vetorial", "confidence": 0.9}
+             for i, (a, b, c, d) in enumerate(((0, 0, 10, 0), (10, 0, 10, 8), (10, 8, 0, 8), (0, 8, 0, 0)))]
+    db.plans_takeoff.docs["p"] = {"_id": "p", "plan_id": "plans_1", "user_id": "u1", "filename": "casa.pdf",
+                                  "pages": [{"index": 0, "walls_analysis": {"pt_per_m": 25.0, "px_per_pt": 2.0, "walls": walls}}]}
+
+    async def find_plan(q, *a, **kw):
+        d = db.plans_takeoff.docs["p"]
+        return copy.deepcopy(d) if q.get("plan_id") == d["plan_id"] and q.get("user_id") == d["user_id"] else None
+    db.plans_takeoff.find_one = find_plan
+
+    async def run():
+        args = {"document_id": "", "pagina": 1, "piso": "RDC", "ordem": 0, "altura_m": None, "escala": None, "cor_paredes": None,
+                "cor_linteis": None, "camadas": None, "pixels_por_metro": None, "plan_id": "plans_1"}
+        r = await ag.execute("clt_agente_ler_planta", args, user, conv, db, None)
+        assert r["ok"] and len(r["paredes"]) == 4 and r["altura_usada_m"] == 3.0
+        other = await ag.execute("clt_agente_ler_planta", args, {"user_id": "u2", "organization_id": "B"}, conv, db, None)
+        assert not other["ok"]                              # another account cannot read this plan
+        r = await ag.execute("clt_agente_calcular", {"regime_iva": None, "inicio": None, "modo_inicio": None,
+                                                      "sistema": "alvenaria_tijolo", "pais": "PT"}, user, conv, db, None)
+        assert r["ok"] and r["sistema"] == "alvenaria_tijolo" and not r["bloqueantes"], r["bloqueantes"]
+        assert any(c["id"] == "biblioteca_de_precos" for c in r["avisos"])   # no price library yet: quantities only, said so
+        r = await ag.execute("clt_agente_dossier", {"titulo": "Casa em tijolo", "local": None, "lingua": "pt", "empresa": None},
+                             user, conv, db, None)
+        assert r["ok"] and r["artifact"]["mime"] == "application/pdf" and r["artifact"]["size"] > 10_000
+    asyncio.run(run())
