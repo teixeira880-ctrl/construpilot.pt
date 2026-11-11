@@ -54,7 +54,7 @@ async def pdf_evidence(file: UploadFile = File(...), user=Depends(editor)):
     from fitz import FileDataError
 
     try:
-        return await asyncio.to_thread(inspect_pdf, await _upload(file))
+        return await asyncio.to_thread(inspect_pdf, await _upload(file), include_review_images=True)
     except (ValueError, FileDataError) as exc:
         raise HTTPException(422, "PDF inválido ou fora dos limites da análise.") from exc
 

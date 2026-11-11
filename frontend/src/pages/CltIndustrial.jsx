@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import CltConfirmation from "@/components/bim/CltConfirmation";
 
 const base = "/clt-industrial";
 const input = "w-full rounded border bg-background px-2 py-1.5 text-sm";
@@ -24,6 +25,10 @@ function Evidence({ file, report }) {
   const [error, setError] = useState("");
   const page = report.pages[number - 1];
   const mark = page.evidence.find((item) => item.id === selected);
+  const review = page.review;
+  const hasReview = report.pages.some((sheet) => sheet.review);
+  const reviewMarkers = review?.markers || [];
+  const overlays = reviewMarkers.length ? reviewMarkers : (mark ? [{ ...mark, status: "pending" }] : []);
   useEffect(() => {
     const controller = new AbortController();
     let previewUrl;
@@ -43,18 +48,46 @@ function Evidence({ file, report }) {
     <div className="flex flex-wrap items-center gap-3">
       <strong>{file.name}</strong>
       <Field label="Folha"><select className={input} value={number} onChange={(e) => { setNumber(Number(e.target.value)); setSelected(null); }}>
-        {report.pages.map((p) => <option key={p.page} value={p.page}>{p.page} de {report.pages.length}</option>)}
+        {report.pages.map((p) => <option key={p.page} value={p.page}>{p.review?.floor || `${p.page} de ${report.pages.length}`}</option>)}
       </select></Field>
     </div>
+    {hasReview && <div className="overflow-x-auto rounded border p-3">
+      <h2 className="mb-2 font-semibold">Medições por piso</h2>
+      <table className="w-full text-left text-sm">
+        <thead><tr><th>Piso</th><th>CLT em planta</th><th>Volume CLT</th><th>Base interior declarada</th><th>Área de revestimento</th><th>Volume de revestimento</th></tr></thead>
+        <tbody>{report.pages.filter((p) => p.review && p.page !== 4).map((p) => <tr key={p.page} className="border-t">
+          <th><button type="button" className="py-2 underline" onClick={() => { setNumber(p.page); setSelected(null); }}>{p.review.floor}</button></th>
+          {[
+            [p.review.clt_plan_m2, "m²"], [p.review.clt_volume_m3, "m³"], [p.review.interior_base_m2, "m²"],
+            [p.review.finish_area_m2, "m²"], [p.review.finish_volume_m3, "m³"],
+          ].map(([v, unit], i) => <td key={i} className="pr-3">{v == null ? "Por confirmar" : `${decimal.format(Number(v.toFixed(2)))} ${unit}`}</td>)}
+        </tr>)}</tbody>
+      </table>
+      <p className="mt-2 text-sm"><span className="text-emerald-700 dark:text-emerald-400">Verde: medido em planta</span> · <span className="text-sky-700 dark:text-sky-400">Azul: área declarada</span> · <span className="text-amber-700 dark:text-amber-400">Âmbar: associação por confirmar</span></p>
+    </div>}
     <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(250px,2fr)]">
       {url ? <div className="relative self-start overflow-hidden rounded border">
         <img src={url} alt={`Folha ${number} do desenho`} className="block w-full" />
-        {mark && <span aria-hidden="true" className="absolute border-2 border-amber-500 bg-amber-400/25" style={{
-          left: `${mark.rect[0] * 100}%`, top: `${mark.rect[1] * 100}%`,
-          width: `${(mark.rect[2] - mark.rect[0]) * 100}%`, height: `${(mark.rect[3] - mark.rect[1]) * 100}%`,
-        }} />}
+        {overlays.map((item) => <span key={item.id} aria-hidden="true" className={`pointer-events-none absolute border ${item.id === selected ? "z-10 border-2" : ""} ${
+          item.status === "measured" ? "border-emerald-600 bg-emerald-400/30" :
+          item.status === "declared" ? "border-sky-600 bg-sky-400/30" : "border-amber-500 bg-amber-400/25"}`}
+          style={{
+          left: `${item.rect[0] * 100}%`, top: `${item.rect[1] * 100}%`,
+          width: `${(item.rect[2] - item.rect[0]) * 100}%`, height: `${(item.rect[3] - item.rect[1]) * 100}%`,
+        }} />)}
       </div> : <p role="status">{error || "A carregar a folha…"}</p>}
       <div>
+        {review && <div className="mb-4 grid gap-2 text-sm">
+          <h2 className="font-semibold">Conferência · {review.floor}</h2>
+          {review.notes.map((note) => <p key={note}>{note}</p>)}
+          {reviewMarkers.some((m) => m.status === "measured") && <Field label="Localizar troço ou cota de escala">
+            <select className={input} value={reviewMarkers.some((m) => m.id === selected && m.status === "measured") ? selected : ""}
+              onChange={(e) => setSelected(e.target.value || null)}>
+              <option value="">Selecionar</option>
+              {reviewMarkers.filter((m) => m.status === "measured").map((m) => <option key={m.id} value={m.id}>{m.label} · {m.id}</option>)}
+            </select>
+          </Field>}
+        </div>}
         <h2 className="font-semibold">Referências na folha {number}</h2>
         <p className="mb-2 text-sm text-muted-foreground">Selecione uma referência para localizar a origem no desenho. As anotações precisam de revisão antes de servir de base ao fabrico.</p>
         {!page.evidence.length && <p>Sem cotas ou anotações reconhecidas automaticamente nesta folha.</p>}
@@ -96,7 +129,9 @@ function Drawings() {
       <Field label="PDF vetorial"><input className={input} type="file" name="file" accept=".pdf" required /></Field>
       <button className={button} disabled={busy}>Ler referências</button>
     </form>
-    {pdf && <Evidence key={pdf.report.sha256} {...pdf} />}
+    {pdf && (pdf.report.pages.length === 4 && pdf.report.pages.every((page) => page.review && page.image)
+      ? <CltConfirmation key={pdf.report.sha256} {...pdf} />
+      : <Evidence key={pdf.report.sha256} {...pdf} />)}
     <details className="rounded border p-3">
       <summary className="cursor-pointer font-medium">Medir painéis de um DWG ou DXF</summary>
       <form onSubmit={(event) => submit(event, "cad")} className="mt-3 flex flex-wrap items-end gap-3">

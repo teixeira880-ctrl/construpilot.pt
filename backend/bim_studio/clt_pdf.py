@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import re
 from threading import Lock
 
@@ -35,9 +36,12 @@ def _reading_lines(page):
             yield text, line["bbox"]
 
 
-def inspect_pdf(data, *, max_pages=30):
+def inspect_pdf(data, *, max_pages=30, include_review_images=False):
     if not data.startswith(b"%PDF-"):
         raise ValueError("O ficheiro não é um PDF.")
+    from bim_studio.home_a_takeoff import SOURCE_SHA256, review_page
+
+    checksum = hashlib.sha256(data).hexdigest()
     with _PDF_LOCK, fitz.open(stream=data, filetype="pdf") as doc:
         if doc.needs_pass or not 1 <= len(doc) <= max_pages:
             raise ValueError(f"Use um PDF sem senha, com 1 a {max_pages} folhas.")
@@ -66,9 +70,18 @@ def inspect_pdf(data, *, max_pages=30):
                             "rect": _rect(page, bounds), "source": "documented",
                             "requires_unit_confirmation": kind == "declared_area" and "�" in match.group(),
                         })
-            pages.append({"page": page.number + 1, "width": page.rect.width, "height": page.rect.height,
-                          "rotation": page.rotation, "evidence": records})
-    return {"sha256": hashlib.sha256(data).hexdigest(), "pages": pages,
+            info = {"page": page.number + 1, "width": page.rect.width, "height": page.rect.height,
+                    "rotation": page.rotation, "evidence": records}
+            if checksum == SOURCE_SHA256:
+                info["review"] = review_page(page, records)
+                if include_review_images:
+                    scale = min(1.5, 1200 / max(page.rect.width, page.rect.height))
+                    preview = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+                    jpeg = base64.b64encode(preview.tobytes("jpeg", jpg_quality=83)).decode("ascii")
+                    info["image"] = "data:image/jpeg;base64," + jpeg
+                    info["label"] = f"Folha {page.number + 1} · {info['review']['floor']}"
+            pages.append(info)
+    return {"sha256": checksum, "pages": pages,
             "status": "review_required", "fabrication_ready": False}
 
 
