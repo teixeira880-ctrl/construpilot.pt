@@ -116,8 +116,14 @@ _PT = {
                   "next_step_commitment": "Compromisso com o próximo passo"},
     "lang": {"pt": "Português", "fr": "Francês", "en": "Inglês", "pt-PT": "português", "fr-FR": "francês"},
 }
-_C = {"ink": "#0b1215", "muted": "#5b6a70", "line": "#dde4e1", "bg": "#f1f4f2", "card": "#ffffff", "green": "#15924f",
-      "soft": "#e7f6ee", "amber": "#b26a00", "amber_soft": "#fff3df", "blue": "#2c5cc5", "blue_soft": "#e9effc"}
+# Paleta escura "cinema", igual à da página /experiencia. Cada gradiente tem cor sólida de recurso
+# (clientes de e-mail que ignoram gradientes mostram a cor sólida).
+_C = {"ink": "#f2f6f4", "muted": "#9fb0b6", "line": "#22303a", "bg": "#03060b", "card": "#0b1116", "green": "#23c56f",
+      "teal": "#1fe3c4", "copper": "#f6a968", "soft": "#0f2a1d", "amber": "#f6c560", "amber_soft": "#2a2212",
+      "blue": "#8aa2ff", "blue_soft": "#161d38", "dark": "#02130c",
+      "grad": "linear-gradient(100deg,#23c56f 0%,#1fe3c4 55%,#f6a968 100%)",
+      "hero": "linear-gradient(135deg,#0e3a27 0%,#0b1116 48%,#2e1c10 100%)"}
+LOGO_URL = "https://construpilot.pt/construpilot-icon.png"
 
 
 def _eur(v) -> str:
@@ -152,7 +158,7 @@ def _email_html(d: dict) -> str:
     c, est, sc = _C, d["estimate"], d["score"]
     lvl, lvl_fg, lvl_bg = _level(sc["total"])
     demo = d["demo"]
-    badge_bg, badge_fg, badge = (c["green"], "#ffffff", "DEMONSTRAÇÃO PEDIDA") if demo else (c["blue_soft"], c["blue"], "RELATÓRIO PEDIDO")
+    badge_bg, badge_fg, badge = (c["green"], c["dark"], "DEMONSTRAÇÃO PEDIDA") if demo else (c["blue_soft"], c["blue"], "RELATÓRIO PEDIDO")
     first = d["name"].split()[0] if d["name"].split() else d["name"]
     try:
         when = datetime.fromisoformat(d["created_at"]).astimezone(timezone.utc).strftime("%d/%m/%Y · %H:%M UTC")
@@ -171,7 +177,7 @@ def _email_html(d: dict) -> str:
     def tile(title, big, small, fg=c["ink"], bg=c["card"]):
         return (f"<td width='33%' valign='top' style='padding:0 5px'><table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
                 f"style='background:{bg};border:1px solid {c['line']};border-radius:10px'><tr><td style='padding:14px 14px 12px'>"
-                f"<div style='{label}'>{title}</div><div style='font:700 24px Arial,sans-serif;color:{fg};padding-top:6px'>{big}</div>"
+                f"<div style='{label}'>{title}</div><div style='font:800 28px Arial,sans-serif;color:{fg};padding-top:8px;letter-spacing:-.01em'>{big}</div>"
                 f"<div style='font:13px Arial,sans-serif;color:{c['muted']};padding-top:2px'>{small}</div></td></tr></table></td>")
 
     def section(title, body):
@@ -203,7 +209,7 @@ def _email_html(d: dict) -> str:
     est_rows = [r for r in est_rows if r[1] != "—"] or [("Estimativa", "O visitante não deu números para calcular.", False)]
 
     def bar(points, mx):
-        cells = "".join(f"<td width='18' height='8' style='background:{c['green'] if i < points else c['line']};font-size:0;line-height:0'>&nbsp;</td>"
+        cells = "".join(f"<td width='22' height='8' style='background:{(c['green'], c['teal'], c['copper'])[i % 3] if i < points else c['line']};font-size:0;line-height:0'>&nbsp;</td>"
                         f"<td width='3' style='font-size:0;line-height:0'>&nbsp;</td>" for i in range(mx))
         return f"<table role='presentation' cellpadding='0' cellspacing='0' style='display:inline-table;vertical-align:middle'><tr>{cells}</tr></table>"
     score_rows = [(_PT["criterion"].get(r["criterion"], r["criterion"]),
@@ -221,24 +227,26 @@ def _email_html(d: dict) -> str:
         f"<div style='display:none;max-height:0;overflow:hidden'>{e(badge.capitalize())} · {e(d['company'] or d['name'])} · "
         f"prioridade: {e(prio)} · {money_label.lower()}: {money}</div>"
         f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:{c['bg']}'><tr><td align='center' style='padding:20px 6px'>"
-        f"<table role='presentation' width='640' cellpadding='0' cellspacing='0' style='width:100%;max-width:640px;background:{c['card']};border-radius:14px;overflow:hidden'>"
-        f"<tr><td style='background:{c['ink']};padding:14px 24px'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
-        f"<td style='font:700 15px Arial,sans-serif;color:#ffffff'>ConstruPilot Experience</td>"
-        f"<td align='right' style='font:12px Arial,sans-serif;color:#b9c6c1'>{e(when)}</td></tr></table></td></tr>"
-        f"<tr><td style='padding:24px 24px 0'>"
-        f"<span style='display:inline-block;padding:6px 12px;border-radius:6px;background:{badge_bg};color:{badge_fg};font:700 12px Arial,sans-serif;letter-spacing:.06em'>{badge}</span>"
-        f"<div style='font:700 26px/1.2 Arial,sans-serif;color:{c['ink']};padding-top:12px'>{e(d['name'])}</div>"
-        f"<div style='font:15px/1.4 Arial,sans-serif;color:{c['muted']};padding-top:4px'>{e(d['company'])} · {e(d['role_label'] or d['role'])}</div>"
-        f"<div style='padding-top:16px'><a href='{mailto}' style='display:inline-block;padding:11px 18px;border-radius:8px;background:{c['green']};"
-        f"color:#ffffff;font:700 14px Arial,sans-serif;text-decoration:none'>Responder a {e(first)}</a>"
-        f"<div style='font:14px Arial,sans-serif;color:{c['muted']};padding-top:8px'>{e(d['email'])}</div></div></td></tr>"
+        f"<table role='presentation' width='640' cellpadding='0' cellspacing='0' style='width:100%;max-width:640px;background:{c['card']};border:1px solid {c['line']};border-radius:16px;overflow:hidden'>"
+        f"<tr><td height='5' style='height:5px;font-size:0;line-height:0;background:{c['green']};background-image:{c['grad']}'>&nbsp;</td></tr>"
+        f"<tr><td style='background:#000000;padding:14px 24px'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
+        f"<td width='34'><img src='{LOGO_URL}' width='26' height='26' alt='' style='display:block;border-radius:6px'></td>"
+        f"<td style='font:700 13px Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#ffffff'>ConstruPilot Experience</td>"
+        f"<td align='right' style='font:12px Arial,sans-serif;color:{c['muted']}'>{e(when)}</td></tr></table></td></tr>"
+        f"<tr><td style='padding:34px 24px 30px;background:{c['card']};background-image:{c['hero']}'>"
+        f"<span style='display:inline-block;padding:7px 13px;border-radius:5px;background:{badge_bg};color:{badge_fg};font:700 11px Arial,sans-serif;letter-spacing:.14em'>{badge}</span>"
+        f"<div style='font:800 38px/1.02 Arial,sans-serif;letter-spacing:-.02em;text-transform:uppercase;color:#ffffff;padding-top:16px'>{e(d['name'])}</div>"
+        f"<div style='font:16px/1.4 Arial,sans-serif;color:{c['ink']};padding-top:8px'>{e(d['company'])} <span style='color:{c['green']}'>·</span> {e(d['role_label'] or d['role'])}</div>"
+        f"<div style='padding-top:22px'><a href='{mailto}' style='display:inline-block;padding:13px 22px;border-radius:8px;background:{c['green']};background-image:{c['grad']};"
+        f"color:{c['dark']};font:700 15px Arial,sans-serif;text-decoration:none'>Responder a {e(first)} &rarr;</a>"
+        f"<div style='font:14px Arial,sans-serif;color:{c['muted']};padding-top:10px'>{e(d['email'])}</div></div></td></tr>"
         f"<tr><td style='padding:20px 19px 0'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
         + tile("Pontuação", f"{sc['total']} / {sc['max']}", f"Prioridade {lvl.lower()}", lvl_fg, lvl_bg)
-        + tile(money_label, money, f"Cenário de {_num(est.get('scenario_pct'), '%')}" if (value or stake) else "Sem números")
-        + tile("Urgência", e(urgency), _PT["decision"].get(d["decision"], "Decisão por apurar"))
+        + tile(money_label, money, f"Cenário de {_num(est.get('scenario_pct'), '%')}" if (value or stake) else "Sem números", c["copper"])
+        + tile("Urgência", e(urgency), _PT["decision"].get(d["decision"], "Decisão por apurar"), c["teal"])
         + "</tr></table></td></tr>"
         + section("Próximo passo", f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:{c['soft']};border-left:4px solid {c['green']};border-radius:6px'>"
-                  f"<tr><td style='padding:12px 14px;font:15px/1.45 Arial,sans-serif;color:{c['ink']}'><b>{e(step)}</b>"
+                  f"<tr><td style='padding:16px 16px;font:17px/1.4 Arial,sans-serif;color:#ffffff'><b>{e(step)}</b>"
                   + (f"<br><span style='color:{c['muted']}'>Objetivo indicado: {e(d['goal'])}</span>" if d["goal"] else "") + "</td></tr></table>")
         + section("O que precisa (★ = prioridade)", f"<div>{chips}</div>")
         + section("Estimativa mostrada ao visitante", rows(est_rows))
