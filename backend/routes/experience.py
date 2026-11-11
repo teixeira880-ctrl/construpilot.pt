@@ -108,28 +108,148 @@ def score(body: ExperienceLeadIn) -> dict:
             "suggest_qualified": total >= 9, "has_estimate": bool(h or est.at_stake_eur)}
 
 
+_PT = {
+    "decision": {"decide": "Decide a compra", "influence": "Participa na decisão", "user": "Outra pessoa decide"},
+    "urgency": {"now": "Já", "q": "Nos próximos 3 meses", "year": "Este ano", "explore": "Só a explorar"},
+    "criterion": {"problem_intensity": "Intensidade do problema", "urgency": "Urgência", "product_fit": "Adequação ao produto",
+                  "decision_authority": "Capacidade de decisão", "budget": "Orçamento (não perguntado)",
+                  "next_step_commitment": "Compromisso com o próximo passo"},
+    "lang": {"pt": "Português", "fr": "Francês", "en": "Inglês", "pt-PT": "português", "fr-FR": "francês"},
+}
+_C = {"ink": "#0b1215", "muted": "#5b6a70", "line": "#dde4e1", "bg": "#f1f4f2", "card": "#ffffff", "green": "#15924f",
+      "soft": "#e7f6ee", "amber": "#b26a00", "amber_soft": "#fff3df", "blue": "#2c5cc5", "blue_soft": "#e9effc"}
+
+
+def _eur(v) -> str:
+    return "—" if v is None else f"{v:,.0f}".replace(",", " ") + " €"
+
+
+def _num(v, unit: str = "") -> str:
+    if v is None:
+        return "—"
+    t = f"{v:,.1f}".replace(",", " ").replace(".", ",")
+    return (t[:-2] if t.endswith(",0") else t) + (f" {unit}" if unit else "")
+
+
+def _level(total: int) -> tuple[str, str, str]:
+    """Etiqueta de leitura rápida da pontuação (resume as respostas; não é probabilidade de compra)."""
+    if total >= 12:
+        return "Alta", _C["green"], _C["soft"]
+    if total >= 9:
+        return "Média", _C["amber"], _C["amber_soft"]
+    return "Baixa", _C["muted"], _C["bg"]
+
+
+def email_subject(d: dict) -> str:
+    kind = "Demonstração pedida" if d["demo"] else "Relatório pedido"
+    who = d["company"] or d["name"]
+    return f"[Experience] {kind} · {who[:60]} · {(d['role_label'] or d['role'])[:40]} · {d['score']['total']}/{d['score']['max']}"
+
+
 def _email_html(d: dict) -> str:
-    esc = lambda v: html.escape(str(v if v not in (None, "") else "—"))  # noqa: E731
-    est = d["estimate"]
-    fields = [("Nome", d["name"]), ("Empresa", d["company"]), ("E-mail", d["email"]), ("Idioma", d["lang"]),
-              ("Perfil", d["role_label"] or d["role"]), ("País", d["country"]), ("Tipo de empresa", d["company_type"]),
-              ("Equipa", d["team"]), ("Software atual", d["software"]),
-              ("Necessidades", ", ".join(n["label"] for n in d["needs"])),
-              ("Prioridade", (d["priority"] or {}).get("label")),
-              ("Pedido", "Demonstração" + (f" ({d['demo_lang']})" if d["demo"] else "") if d["demo"] else "Relatório"),
-              ("Objetivo da reunião", d["goal"]),
-              ("Horas por mês hoje", est.get("hours_month_today")), ("Horas ganhas por mês (cenário)", est.get("hours_month_saved")),
-              ("Valor por mês (cenário, €)", est.get("value_month_eur")), ("Cenário (%)", est.get("scenario_pct")),
-              ("Em jogo na obra (€)", est.get("at_stake_eur")),
-              ("Pontuação", f"{d['score']['total']} / {d['score']['max']}"), ("Estado", d["status"]), ("Lead ID", d["lead_id"])]
-    rows = "".join(f"<tr><td style='padding:4px 14px 4px 0;color:#666;vertical-align:top'>{esc(k)}</td><td>{esc(v)}</td></tr>"
-                   for k, v in fields)
-    answers = "".join(f"<tr><td style='padding:3px 14px 3px 0;color:#666;vertical-align:top'>{esc(k)}</td><td>{esc(v)}</td></tr>"
-                      for k, v in d["answers"].items())
-    return (f"<h2>Novo diagnóstico ConstruPilot Experience</h2><table>{rows}</table>"
-            f"<h3>Respostas</h3><table>{answers}</table>"
-            "<p style='color:#666'>A pontuação resume as respostas; não é uma probabilidade de compra. "
-            "Os valores do cenário foram indicados pelo visitante e não são resultados medidos.</p>")
+    """E-mail interno: lê-se de cima para baixo em 10 segundos (quem, o que pede, quanto vale, o que fazer)."""
+    e = lambda v: html.escape(str(v)) if v not in (None, "", []) else "—"  # noqa: E731
+    c, est, sc = _C, d["estimate"], d["score"]
+    lvl, lvl_fg, lvl_bg = _level(sc["total"])
+    demo = d["demo"]
+    badge_bg, badge_fg, badge = (c["green"], "#ffffff", "DEMONSTRAÇÃO PEDIDA") if demo else (c["blue_soft"], c["blue"], "RELATÓRIO PEDIDO")
+    first = d["name"].split()[0] if d["name"].split() else d["name"]
+    try:
+        when = datetime.fromisoformat(d["created_at"]).astimezone(timezone.utc).strftime("%d/%m/%Y · %H:%M UTC")
+    except Exception:  # noqa: BLE001
+        when = d["created_at"]
+    value = est.get("value_month_eur")
+    stake = est.get("at_stake_eur")
+    money_label, money = ("Em jogo na obra", _eur(stake)) if stake else ("Ganho estimado por mês", _eur(value) if value else "—")
+    urgency = _PT["urgency"].get(d["urgency"], "Por apurar")
+    reply_subject = "A sua demonstração ConstruPilot" if demo else "O seu diagnóstico ConstruPilot"
+    mailto = f"mailto:{html.escape(d['email'])}?subject={html.escape(reply_subject.replace(' ', '%20'))}"
+    step = (f"Propor 2 horários reais para a demonstração, em {_PT['lang'].get(d['demo_lang'], d['demo_lang'])}."
+            if demo else "Enviar o relatório de diagnóstico e propor uma conversa.")
+    label = f"font:700 11px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:{c['muted']}"
+
+    def tile(title, big, small, fg=c["ink"], bg=c["card"]):
+        return (f"<td width='33%' valign='top' style='padding:0 5px'><table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
+                f"style='background:{bg};border:1px solid {c['line']};border-radius:10px'><tr><td style='padding:14px 14px 12px'>"
+                f"<div style='{label}'>{title}</div><div style='font:700 24px Arial,sans-serif;color:{fg};padding-top:6px'>{big}</div>"
+                f"<div style='font:13px Arial,sans-serif;color:{c['muted']};padding-top:2px'>{small}</div></td></tr></table></td>")
+
+    def section(title, body):
+        return (f"<tr><td style='padding:22px 24px 0'><div style='{label};padding-bottom:8px'>{title}</div>{body}</td></tr>")
+
+    def rows(pairs):
+        out = "".join(f"<tr><td width='42%' valign='top' style='padding:7px 12px 7px 0;font:13px Arial,sans-serif;color:{c['muted']};"
+                      f"border-bottom:1px solid {c['line']}'>{e(k)}</td><td valign='top' style='padding:7px 0;font:14px Arial,sans-serif;"
+                      f"color:{c['ink']};border-bottom:1px solid {c['line']}'>{v if raw else e(v)}</td></tr>" for k, v, raw in pairs)
+        return f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0'>{out}</table>"
+
+    prio = (d["priority"] or {}).get("label")
+    chips = "".join(
+        f"<span style='display:inline-block;margin:0 6px 6px 0;padding:6px 10px;border-radius:14px;font:13px Arial,sans-serif;"
+        f"background:{c['soft'] if n['label'] == prio else c['bg']};color:{c['green'] if n['label'] == prio else c['ink']};"
+        f"border:1px solid {c['green'] if n['label'] == prio else c['line']}'>{'★ ' if n['label'] == prio else ''}{e(n['label'])}</span>"
+        for n in d["needs"]) or f"<span style='font:14px Arial,sans-serif;color:{c['muted']}'>Nenhuma necessidade indicada.</span>"
+
+    if stake:
+        est_rows = [("Valor previsto em risco de derrapagem", _eur(stake), False),
+                    ("Cenário de controlo", _num(est.get("scenario_pct"), "%"), False)]
+    else:
+        est_rows = [("Horas por mês hoje, na prioridade", _num(est.get("hours_month_today"), "h"), False),
+                    ("Horas ganhas por mês, prioridade e equipa (cenário)", _num(est.get("hours_month_saved"), "h"), False),
+                    ("Valor desse tempo por mês", _eur(value), False),
+                    ("Orçamentos a mais por mês", _num(est.get("extra_estimates_month")), False),
+                    ("Margem adicional por mês", _eur(est.get("extra_margin_month_eur")), False),
+                    ("Cenário de redução de tempo", _num(est.get("scenario_pct"), "%"), False)]
+    est_rows = [r for r in est_rows if r[1] != "—"] or [("Estimativa", "O visitante não deu números para calcular.", False)]
+
+    def bar(points, mx):
+        cells = "".join(f"<td width='18' height='8' style='background:{c['green'] if i < points else c['line']};font-size:0;line-height:0'>&nbsp;</td>"
+                        f"<td width='3' style='font-size:0;line-height:0'>&nbsp;</td>" for i in range(mx))
+        return f"<table role='presentation' cellpadding='0' cellspacing='0' style='display:inline-table;vertical-align:middle'><tr>{cells}</tr></table>"
+    score_rows = [(_PT["criterion"].get(r["criterion"], r["criterion"]),
+                   f"{bar(r['points'], r['max'])}&nbsp;<span style='font:13px Arial,sans-serif;color:{c['muted']}'>{r['points']} / {r['max']}</span>", True)
+                  for r in sc["rows"]]
+
+    contact = [("E-mail", f"<a href='{mailto}' style='color:{c['blue']}'>{e(d['email'])}</a>", True), ("Empresa", d["company"], False),
+               ("Perfil", d["role_label"] or d["role"], False), ("País", d["country"], False), ("Tipo de empresa", d["company_type"], False),
+               ("Equipa", (d["team"].replace("-", " a ") + " pessoas") if d["team"] else "", False), ("Quem decide", _PT["decision"].get(d["decision"], "Por apurar"), False),
+               ("Ferramentas atuais", d["software"], False), ("Idioma no site", _PT["lang"].get(d["lang"], d["lang"]), False)]
+    answers = [(k, v, False) for k, v in d["answers"].items()] or [("Respostas", "Sem respostas adicionais.", False)]
+    consent_at = d["consent"]["at"][:16].replace("T", " ")
+
+    return (
+        f"<div style='display:none;max-height:0;overflow:hidden'>{e(badge.capitalize())} · {e(d['company'] or d['name'])} · "
+        f"prioridade: {e(prio)} · {money_label.lower()}: {money}</div>"
+        f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:{c['bg']}'><tr><td align='center' style='padding:20px 6px'>"
+        f"<table role='presentation' width='640' cellpadding='0' cellspacing='0' style='width:100%;max-width:640px;background:{c['card']};border-radius:14px;overflow:hidden'>"
+        f"<tr><td style='background:{c['ink']};padding:14px 24px'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
+        f"<td style='font:700 15px Arial,sans-serif;color:#ffffff'>ConstruPilot Experience</td>"
+        f"<td align='right' style='font:12px Arial,sans-serif;color:#b9c6c1'>{e(when)}</td></tr></table></td></tr>"
+        f"<tr><td style='padding:24px 24px 0'>"
+        f"<span style='display:inline-block;padding:6px 12px;border-radius:6px;background:{badge_bg};color:{badge_fg};font:700 12px Arial,sans-serif;letter-spacing:.06em'>{badge}</span>"
+        f"<div style='font:700 26px/1.2 Arial,sans-serif;color:{c['ink']};padding-top:12px'>{e(d['name'])}</div>"
+        f"<div style='font:15px/1.4 Arial,sans-serif;color:{c['muted']};padding-top:4px'>{e(d['company'])} · {e(d['role_label'] or d['role'])}</div>"
+        f"<div style='padding-top:16px'><a href='{mailto}' style='display:inline-block;padding:11px 18px;border-radius:8px;background:{c['green']};"
+        f"color:#ffffff;font:700 14px Arial,sans-serif;text-decoration:none'>Responder a {e(first)}</a>"
+        f"<div style='font:14px Arial,sans-serif;color:{c['muted']};padding-top:8px'>{e(d['email'])}</div></div></td></tr>"
+        f"<tr><td style='padding:20px 19px 0'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
+        + tile("Pontuação", f"{sc['total']} / {sc['max']}", f"Prioridade {lvl.lower()}", lvl_fg, lvl_bg)
+        + tile(money_label, money, f"Cenário de {_num(est.get('scenario_pct'), '%')}" if (value or stake) else "Sem números")
+        + tile("Urgência", e(urgency), _PT["decision"].get(d["decision"], "Decisão por apurar"))
+        + "</tr></table></td></tr>"
+        + section("Próximo passo", f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:{c['soft']};border-left:4px solid {c['green']};border-radius:6px'>"
+                  f"<tr><td style='padding:12px 14px;font:15px/1.45 Arial,sans-serif;color:{c['ink']}'><b>{e(step)}</b>"
+                  + (f"<br><span style='color:{c['muted']}'>Objetivo indicado: {e(d['goal'])}</span>" if d["goal"] else "") + "</td></tr></table>")
+        + section("O que precisa (★ = prioridade)", f"<div>{chips}</div>")
+        + section("Estimativa mostrada ao visitante", rows(est_rows))
+        + section("Contacto e empresa", rows(contact))
+        + section("Pontuação em detalhe", rows(score_rows))
+        + section("Todas as respostas", rows(answers))
+        + f"<tr><td style='padding:22px 24px 24px;font:12px/1.5 Arial,sans-serif;color:{c['muted']}'>"
+        f"Lead {e(d['lead_id'])} · estado {e(d['status'])} · consentimento dado em {e(consent_at)} UTC.<br>"
+        "A pontuação resume as respostas; não é uma probabilidade de compra. A estimativa é um cenário escolhido pelo visitante, não um resultado medido.<br>"
+        "Responder a este e-mail escreve diretamente ao visitante.</td></tr>"
+        "</table></td></tr></table>")
 
 
 @router.post("/lead")
@@ -177,7 +297,7 @@ async def create_lead(body: ExperienceLeadIn, request: Request, response: Respon
     sent = []
     try:
         from engines import emailer
-        subject = f"[Experience] {'Demonstração' if body.demo else 'Relatório'} — {(doc['company'] or doc['name'])[:80]}"
+        subject = email_subject(doc)
         for to in recipients():
             try:
                 await emailer.send_email(to, subject, _email_html(doc), reply_to=email)
