@@ -575,6 +575,90 @@ async def _default_llm(system, text, images=None, model=None, max_tokens=4096, j
 
 
 # ------------------------------------------------------------------ point d'entrée
+
+# ------------------------------------------------------------------ escada que não cabe na caixa
+_STAIR_GOING = 0.25          # cobertor alvo (m) — conforto corrente, acima do mínimo do controlo (21 cm)
+_STAIR_RISER = 0.18          # espelho máximo (m)
+_STAIR_WIDTH = 1.90          # caixa de dois lanços 0,85 + núcleo 0,10 + folgas
+
+
+def _stair_fit(s: dict, levels: dict) -> tuple[float, float] | None:
+    """Menor caixa B×Lc (m) onde a escada atual tem cobertor ≥ 25 cm em todos os lanços."""
+    import math
+    B = max(s["x1"] - s["x0"], _STAIR_WIDTH)
+    Lc = max(s["y1"] - s["y0"], B)
+    need = 0.0
+    for f in s.get("flights") or []:
+        a, b = levels.get(f.get("from")), levels.get(f.get("to"))
+        if not a or not b or a.get("floor_top") is None or b.get("floor_top") is None:
+            return None
+        H = abs(b["floor_top"] - a["floor_top"])
+        n = max(2, math.ceil(H / _STAIR_RISER))
+        need = max(need, _STAIR_GOING * (n - 1))
+    for _ in range(200):
+        if checks.stair_walking_line(B, Lc) >= need:
+            return round(B, 2), round(Lc, 2)
+        Lc += 0.05
+    return None
+
+
+def autofix_stair(raw: dict, country: str = "FR") -> str | None:
+    """Modo «decidir sozinho»: quando a caixa de escada lida é pequena demais (controlo GEO-31), em vez de
+    bloquear o estudo, redimensiona a caixa para a menor escada regulamentar de dois lanços (cobertor 25 cm,
+    espelho ≤ 18 cm) dentro da envolvente, sem paredes interiores na trémie. Devolve a decisão (texto) ou None."""
+    s = raw.get("stair") or {}
+    env = raw.get("envelope") or {}
+    try:
+        old = (float(s["x0"]), float(s["x1"]), float(s["y0"]), float(s["y1"]))
+        Lx, Wy = float(env["length_x"]), float(env["width_y"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    t = float(env.get("wall_total_thickness") or 0.30)
+    levels = {lv.get("id"): lv for lv in raw.get("levels") or []}
+    fit = _stair_fit(s, levels)
+    if not fit:
+        return None
+    B, Lc = fit
+    cx, cy = (old[0] + old[1]) / 2, (old[2] + old[3]) / 2
+    candidates = []
+    for orient in ((B, Lc), (Lc, B)) if B != Lc else ((B, Lc),):
+        w, h = orient
+        if w > Lx - 2 * t or h > Wy - 2 * t:
+            continue
+        for ax, ay in ((cx - w / 2, cy - h / 2), (old[0], old[2]), (old[1] - w, old[2]), (old[0], old[3] - h), (old[1] - w, old[3] - h)):
+            x0 = min(max(ax, t), Lx - t - w)
+            y0 = min(max(ay, t), Wy - t - h)
+            candidates.append((round(x0, 2), round(x0 + w, 2), round(y0, 2), round(y0 + h, 2)))
+    import copy as _copy
+    for x0, x1, y0, y1 in candidates:
+        trial = _copy.deepcopy(raw)
+        ts = trial["stair"]
+        # paredes da caixa nos lados maiores (os motores de fundações e desenhos precisam delas)
+        ts.setdefault("_original_cage", {"x0": old[0], "x1": old[1], "y0": old[2], "y1": old[3],
+                                         "lang": "pt" if str(country).upper() == "PT" else "fr"})
+        ts.update({"x0": x0, "x1": x1, "y0": y0, "y1": y1,
+                   "cage_walls": [{"x": round(x0 - 0.075, 3), "y0": y0, "y1": y1, "t": 0.15},
+                                  {"x": round(x1 + 0.075, 3), "y0": y0, "y1": y1, "t": 0.15}],
+                   "type": "deux quarts tournants, deux volées de 0,85 + limon central 0,10"})
+        _, anomalies = pipeline.validate(trial)
+        if any(a.get("code") in ("GEO-30", "GEO-31") and a.get("level") == checks.BLOCK for a in anomalies):
+            continue
+        raw["stair"] = ts
+        o = f"{old[1] - old[0]:.2f}×{old[3] - old[2]:.2f}".replace(".", ",")
+        n = f"{x1 - x0:.2f}×{y1 - y0:.2f}".replace(".", ",")
+        pos = f"x {x0:.2f}–{x1:.2f} / y {y0:.2f}–{y1:.2f}".replace(".", ",")
+        if str(country).upper() == "PT":
+            msg = (f"⚠ Incoerência no projeto — escada: a caixa desenhada ({o} m) não comporta uma escada regulamentar. "
+                   f"Para concluir o estudo foi adotada uma escada de dois lanços "
+                   f"com patamar de quarto de volta, caixa {n} m ({pos}), cobertor ≈ 25 cm, espelho ≤ 18 cm. Confirmar em obra/projeto.")
+        else:
+            msg = (f"⚠ Incohérence du projet — escalier : la cage dessinée ({o} m) ne permet pas un escalier réglementaire. "
+                   f"Pour terminer l'étude, retenu un escalier à deux quarts "
+                   f"tournants, cage {n} m ({pos}), giron ≈ 25 cm, hauteur de marche ≤ 18 cm. À confirmer par l'architecte.")
+        raw.setdefault("_decisions", []).append(msg)
+        return msg
+    return None
+
 async def read_building(docs: list[tuple[str, bytes]], hypotheses: str = "", country: str = "FR",
                         llm: LLM | None = None, max_fix: int = 2, decide_alone: bool = False, on_progress=None) -> dict:
     """Leitura com prazo total (READ_BUDGET_S) e progresso visível (`on_progress(label)`) — ver _read_building."""
@@ -686,6 +770,19 @@ async def _read_building(docs, hypotheses, country, llm, max_fix, decide_alone, 
         except Exception:  # noqa: BLE001 — la relance ciblée ne doit jamais faire échouer la lecture
             pass
         blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
+    if (decide_alone and raw is not None and blocking
+            and any(a.get("code") == "GEO-31" for a in blocking)):
+        # A IA voltou a ler a mesma caixa impossível: em vez de falhar, adota-se a menor escada regulamentar.
+        try:
+            if autofix_stair(raw, country):
+                m, anomalies = pipeline.validate(raw)
+                if m is not None and not any(a.get("level") == checks.BLOCK for a in anomalies):
+                    calc = pipeline.dry_run(m)
+                    if calc:
+                        anomalies = anomalies + [calc]
+                blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
+        except Exception:  # noqa: BLE001 — a correção automática nunca deve fazer falhar a leitura
+            pass
     decisions = [str(d) for d in (raw or {}).get("_decisions") or []]
     if decide_alone:
         questions = []                      # l'utilisateur a demandé de décider seul : on ne repose aucune question

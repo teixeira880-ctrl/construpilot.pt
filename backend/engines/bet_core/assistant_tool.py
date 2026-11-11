@@ -265,9 +265,11 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"extraction": extraction}})
         if not rd["ok"] and decide_alone and not rd.get("questions"):     # « décide seul » sans question possible : échec explicite, pas de boucle
             blocking = [a for a in rd.get("anomalies") or [] if a.get("level") == "bloquant"]
-            msg = ("Relevé impossible à compléter, même en tranchant seul : "
-                   + " ; ".join(f"{a['message']} ({a.get('fix') or 'à préciser'})" for a in blocking[:3])
-                   + ". Ne relance pas l'étude à l'identique : il faut un document ou une donnée en plus.")
+            msg = (("Levantamento impossível de completar, mesmo decidindo sozinho: " if country == "PT"
+                    else "Relevé impossible à compléter, même en tranchant seul : ")
+                   + " ; ".join(f"{a['message']} ({a.get('fix') or '?'})" for a in blocking[:3])
+                   + (". Não relance o estudo igual: é preciso mais um documento ou dado (ex.: planta com a escada cotada)."
+                      if country == "PT" else ". Ne relance pas l'étude à l'identique : il faut un document ou une donnée en plus."))
             await step("Échec", status="failed", error=msg[:1200], anomalies=rd.get("anomalies"), decisions=decisions,
                        decide_alone=decide_alone, extraction=extraction, provider=rd.get("provider"))
             return
@@ -280,6 +282,14 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             raw = copy.deepcopy(rd["model"])
             raw["user_hypotheses"] = dict(raw.get("user_hypotheses") or {}, _text=(hypotheses or "")[:2000])   # choix du client (PAC, plancher chauffant, VMC, isolation…)
             res = await asyncio.to_thread(pipeline.run, raw, tmp, None, "pt" if country == "PT" else "fr", None, branding)
+            if (res["status"] == "MODELE_INVALIDE" and decide_alone
+                    and any(a.get("code") == "GEO-31" for a in res["anomalies"] if a.get("level") == "bloquant")):
+                # escada que não cabe na caixa: adota a menor escada regulamentar e refaz os cálculos (sem perguntas)
+                raw = copy.deepcopy(rd["model"])
+                raw["user_hypotheses"] = dict(raw.get("user_hypotheses") or {}, _text=(hypotheses or "")[:2000])
+                if reader.autofix_stair(raw, country):
+                    decisions = list(dict.fromkeys(decisions + [str(d) for d in raw.get("_decisions") or []]))
+                    res = await asyncio.to_thread(pipeline.run, raw, tmp, None, "pt" if country == "PT" else "fr", None, branding)
             if res["status"] == "MODELE_INVALIDE":
                 try:                                    # relevé en cache qui ne passe pas les calculs : on l'oublie, sinon chaque relance rejoue l'échec
                     await db.bet_models.delete_one({"user_id": uid, "docs_hash": key})
@@ -287,9 +297,11 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                     log.warning("bet model cache delete failed", exc_info=True)
                 blocking = [a for a in res["anomalies"] if a.get("level") == "bloquant"]
                 if decide_alone:                        # « décide seul » : pas de question possible → échec explicite, pas de relance en boucle
-                    msg = ("Étude impossible sur ces documents, même en tranchant seul : "
-                           + " ; ".join(f"{a['message']} ({a.get('fix') or 'à préciser'})" for a in blocking[:3])
-                           + ". Ne relance pas l'étude à l'identique : il faut un document ou une donnée en plus.")
+                    msg = (("Estudo impossível com estes documentos, mesmo decidindo sozinho: " if country == "PT"
+                            else "Étude impossible sur ces documents, même en tranchant seul : ")
+                           + " ; ".join(f"{a['message']} ({a.get('fix') or '?'})" for a in blocking[:3])
+                           + (". Não relance o estudo igual: é preciso mais um documento ou dado."
+                              if country == "PT" else ". Ne relance pas l'étude à l'identique : il faut un document ou une donnée en plus."))
                     await step("Échec", status="failed", error=msg[:1200], anomalies=res["anomalies"], decisions=decisions,
                                decide_alone=decide_alone, provider=rd.get("provider"))
                     return

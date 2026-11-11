@@ -78,6 +78,19 @@ def check_stair(m: Model) -> list[dict]:
         cx, cy = (w["x0"] + w["x1"]) / 2, (w["y0"] + w["y1"]) / 2
         if s["x0"] + 0.05 < cx < s["x1"] - 0.05 and s["y0"] + 0.05 < cy < s["y1"] - 0.05:
             out.append(_a("GEO-30", BLOCK, f"Un mur ({w['kind']}) passe dans la trémie d'escalier", "Relire le plan"))
+    oc = s.get("_original_cage")
+    if oc:   # caixa redimensionada automaticamente (modo «decidir sozinho»): a incoerência do projeto fica visível
+        o = f"{oc['x1'] - oc['x0']:.2f}×{oc['y1'] - oc['y0']:.2f}"
+        if oc.get("lang") == "pt":
+            out.append(_a("GEO-31I", WARN,
+                          f"Incoerência no projeto: a caixa de escada desenhada ({o} m) não comporta uma escada regulamentar; "
+                          f"estudo feito com uma caixa de {B:.2f}×{Lc:.2f} m".replace(".", ","),
+                          "Corrigir a caixa de escada nas plantas de arquitetura antes da execução"))
+        else:
+            out.append(_a("GEO-31I", WARN,
+                          f"Incohérence du projet : la cage d'escalier dessinée ({o} m) ne permet pas un escalier réglementaire ; "
+                          f"étude faite avec une cage de {B:.2f}×{Lc:.2f} m".replace(".", ","),
+                          "Corriger la cage d'escalier sur les plans d'architecte avant exécution"))
     walk = stair_walking_line(B, Lc)
     for f in s["flights"]:
         H = m.level(f["to"]).floor_top - m.level(f["from"]).floor_top
