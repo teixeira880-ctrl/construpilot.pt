@@ -62,6 +62,12 @@ def test_creates_opportunity_and_notifies_both_mailboxes(env):
     assert d["score"]["total"] == 14 and d["score"]["suggest_qualified"]
     assert [m["to"] for m in sent] == ["info@construpilot.pt", "info@construpilot.fr"]
     assert sent[0]["reply_to"] == "ana@example.com" and "Obras Teste Lda" in sent[0]["html"]
+    # leitura rápida: tipo de pedido, quem, pontuação e valor estão no assunto e no topo do e-mail
+    assert sent[0]["subject"] == "[Experience] Demonstração pedida · Obras Teste Lda · Especialista em remodelação · 14/18"
+    h = sent[0]["html"]
+    assert "DEMONSTRAÇÃO PEDIDA" in h and "Responder a Ana" in h and "mailto:ana@example.com" in h
+    assert "1\u202f080\u00a0€" in h and "Prioridade alta" in h and "★ Orçamentos rápidos" in h
+    assert h.index("DEMONSTRAÇÃO PEDIDA") < h.index("Próximo passo") < h.index("Todas as respostas")
     assert d["notified"] == ["info@construpilot.pt", "info@construpilot.fr"]
 
 
@@ -70,6 +76,7 @@ def test_report_only_status_and_html_is_escaped(env):
     r = c.post("/api/experience/lead", json={**BODY, "demo": False, "company": "<script>x</script>", "submission_id": "s2"})
     assert r.status_code == 200
     assert leads(db)[0]["status"] == "discovery_completed"
+    assert "RELATÓRIO PEDIDO" in sent[0]["html"] and "Relatório pedido" in sent[0]["subject"]
     assert "<script>" not in sent[0]["html"] and "&lt;script&gt;" in sent[0]["html"]
 
 
