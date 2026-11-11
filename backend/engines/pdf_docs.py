@@ -841,10 +841,18 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
                        sign_url: str | None = None, cover: list | None = None,
                        watermark_logo_b64: str | None = None,
                        appendix: list | None = None, facturx: bool = False) -> bytes:
+    # Orçamentos: acabamento premium (capa com indicadores, índice, marca da empresa) para TODAS as contas —
+    # substitui a antiga página de garde. Faturas e notas de crédito ficam intactas (Factur-X / valor legal).
+    from engines import pdf_premium
+    premium = (doc.get("doc_type") == "quote" and pdf_premium.ativo(branding)
+               and (doc.get("study_dossier") or {}).get("schema_version") != "construction-dossier-1")
     # Ucraniano (cirílico): fontes DejaVu só para este PDF; PT/FR/EN sem alterações.
     with cyrillic_fonts(needs_cyrillic(lang)):
-        return _build_document_pdf(doc, branding, reviews, lang, sign_url, cover,
-                                   watermark_logo_b64, appendix, facturx)
+        pdf = _build_document_pdf(doc, branding, reviews, lang, sign_url, None if premium else cover,
+                                  watermark_logo_b64, appendix, facturx)
+    if premium:
+        pdf = pdf_premium.acabar_orcamento(pdf, doc, branding, lang)
+    return pdf
 
 
 def _build_document_pdf(doc: dict, branding: dict | None = None,

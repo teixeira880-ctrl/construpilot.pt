@@ -59,6 +59,20 @@ def _fmt(v, unit="", digits=2):
     return str(v)
 
 
+def _accent(S: dict, branding: dict | None) -> dict:
+    """Títulos e destaques na cor da empresa (branding["accent_color"]), como nos orçamentos — senão laranja ConstruPilot."""
+    raw = str((branding or {}).get("accent_color") or "").strip()
+    if len(raw) == 7 and raw.startswith("#"):
+        try:
+            c = colors.HexColor(raw)
+        except ValueError:
+            return S
+        S["h2"].textColor = c
+        S["kicker"].textColor = c
+        S["_accent"] = c
+    return S
+
+
 def _styles() -> dict:
     ss = getSampleStyleSheet()
     return remap_styles({
@@ -226,8 +240,8 @@ def _story_rooms_detail(story: list, rooms: list, S: dict) -> None:
     if not rooms:
         return
     story.append(Paragraph("Detalhe por divisão", S["h2"]))
-    rows = [["Divisão", "Pavimento", "Perím.", "Paredes brutas", "Aberto.", "Paredes líquidas",
-             "Volume", "Esp. pavimento", "H."]]
+    rows = [["Divisão", "Pavimento", "Perím.", "Paredes\nbrutas", "Aberto.", "Paredes\nlíquidas",
+             "Volume", "Esp.\npavimento", "H."]]
     for r in rooms:
         rows.append([r.get("name", "—"),
                      _fmt(r.get("surface_m2", 0), "m²"),
@@ -442,7 +456,7 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             leftMargin=18 * mm, rightMargin=18 * mm,
                             topMargin=18 * mm, bottomMargin=18 * mm)
-    S = _styles()
+    S = _accent(_styles(), branding)
     story: list = []
 
     _story_header_branding(story, branding, S)
@@ -456,7 +470,8 @@ def build_takeoff_pdf(plan: dict, takeoff: dict, materials: dict | None = None,
     _story_footer(story, S)
 
     doc.build(story)
-    return buf.getvalue()
+    from engines import pdf_premium                      # acabamento premium (capa, marca, índice) — todas as contas
+    return pdf_premium.acabar_medicao(buf.getvalue(), plan, takeoff, branding)
 
 
 # ============ RAPPORT ÉCARTS SURFACES (iter63) ============
@@ -661,7 +676,7 @@ def _story_quote_recap(story: list, quote: dict, S: dict) -> None:
     ]
     story.append(_table(tot_rows, [110 * mm, 45 * mm], style_extras=[
         ("BACKGROUND", (0, 0), (0, -1), LIGHT_GREY),
-        ("BACKGROUND", (0, -1), (-1, -1), ORANGE),
+        ("BACKGROUND", (0, -1), (-1, -1), S.get("_accent", ORANGE)),
         ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
         ("FONTNAME", (0, -1), (-1, -1), F("Helvetica-Bold")),
         ("FONTNAME", (1, 0), (1, -1), F("Helvetica-Bold")),
@@ -749,7 +764,7 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
     doc = SimpleDocTemplate(buf, pagesize=A4,
                              leftMargin=18 * mm, rightMargin=18 * mm,
                              topMargin=18 * mm, bottomMargin=18 * mm)
-    S = _styles()
+    S = _accent(_styles(), branding)
     story: list = []
 
     _story_header_branding(story, branding, S)
@@ -762,7 +777,8 @@ def build_quote_pdf(quote: dict, branding: dict | None = None,
     _story_quote_footer(story, S)
 
     doc.build(story)
-    return buf.getvalue()
+    from engines import pdf_premium                      # acabamento premium (capa, marca, índice) — todas as contas
+    return pdf_premium.acabar_orcamento_medicao(buf.getvalue(), quote, branding)
 
 
 # ============ MULTI-PLAN PROJECT PDF ============
