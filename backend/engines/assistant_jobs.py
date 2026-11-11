@@ -93,6 +93,8 @@ async def enqueue(body, user):
         raise HTTPException(422, "Falta um anexo no contexto.")
     counter = await db.assistant_convs.find_one_and_update({"conversation_id": body.conversation_id, "user_id": uid},
         {"$inc": {"turn_sequence": 1}}, return_document=ReturnDocument.AFTER, projection={"_id": 0, "turn_sequence": 1})
+    if not counter:
+        raise HTTPException(404, "Conversa não encontrada (foi eliminada?). Abra uma nova conversa.")
     now = _now()
     job = {"job_id": ident, "user_id": uid, "conversation_id": body.conversation_id, "request_id": body.request_id,
            "sequence": counter["turn_sequence"], "payload": payload, "payload_hash": digest, "status": "preparing", "created_at": now,
