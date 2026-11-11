@@ -297,6 +297,8 @@ api_router.include_router(bim_studio_routes.router)
 api_router.include_router(bim_studio_routes.files_router)
 from routes import clt_industrial as clt_industrial_routes
 api_router.include_router(clt_industrial_routes.router)
+from routes import clt_engines as clt_engines_routes
+api_router.include_router(clt_engines_routes.router)
 app.add_event_handler("startup", bim_studio_routes.on_startup)
 app.add_event_handler("shutdown", bim_studio_routes.on_shutdown)
 app.include_router(api_router)

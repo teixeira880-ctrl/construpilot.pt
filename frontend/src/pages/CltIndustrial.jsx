@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import CltConfirmation from "@/components/bim/CltConfirmation";
+import CltEngines from "@/components/bim/CltEngines";
 
 const base = "/clt-industrial";
 const input = "w-full rounded border bg-background px-2 py-1.5 text-sm";
@@ -654,10 +655,10 @@ export default function CltIndustrial() {
   return <main className="mx-auto grid max-w-7xl gap-5 p-4">
     <h1 className="text-2xl font-semibold">ConstruPilot CLT</h1>
     <nav aria-label="Piloto CLT" className="flex flex-wrap gap-2">
-      {Object.entries({ desenhos: "Desenhos e medições", parametros: "Custos, preços e plano", lotes: "Seguimento e avanço", precos: "Tarifas dos lotes" }).map(([key, label]) =>
+      {Object.entries({ desenhos: "Desenhos e medições", motores: "Juntas, corte, 3D e fabrico", parametros: "Custos, preços e plano", lotes: "Seguimento e avanço", precos: "Tarifas dos lotes" }).map(([key, label]) =>
         <button key={key} type="button" aria-pressed={tab === key} className={tab === key ? button : secondary} onClick={() => setTab(key)}>{label}</button>)}
     </nav>
     <div hidden={tab !== "desenhos"}><Drawings onReport={setReport} /></div>
-    {tab === "parametros" ? <CostWorkspace key={report?.sha256 || "manual"} report={report} /> : tab === "precos" ? <Rates /> : tab === "lotes" ? <Lots /> : null}
+    {tab === "parametros" ? <CostWorkspace key={report?.sha256 || "manual"} report={report} /> : tab === "motores" ? <CltEngines /> : tab === "precos" ? <Rates /> : tab === "lotes" ? <Lots /> : null}
   </main>;
 }
