@@ -79,7 +79,7 @@ SYSTEM = (
 
 BATCH_ITEMS = 60
 BATCH_CHARS = 5000
-CONCURRENCY = int(os.environ.get("I18N_CONCURRENCY", "4"))
+CONCURRENCY = int(os.environ.get("I18N_CONCURRENCY", "3"))  # por língua; as 4 correm em paralelo
 MODEL = os.environ.get("I18N_MODEL", "claude-haiku-5-5")
 PH_RE = re.compile(r"\{\d+\}")
 
@@ -172,15 +172,17 @@ def _valid(src: str, tgt: str) -> bool:
     return len(tgt) <= max(40, len(src) * 4)
 
 
-async def translate_batch(lang: str, texts: list[str]) -> dict[str, str]:
-    """Traduz um lote; devolve só as traduções válidas (placeholders preservados)."""
+async def translate_batch(lang: str, texts: list[str], _depth: int = 0) -> dict[str, str]:
+    """Traduz um lote; devolve só as traduções válidas (placeholders preservados).
+    Se o lote falhar ou vier incompleto (ex.: resposta cortada), divide-o ao meio e tenta de novo."""
     if not texts:
         return {}
     items = {str(i): t for i, t in enumerate(texts)}
     prompt = (f"TARGET language: {LANG_NAMES[lang]}.\n"
               f"Translate the values of this JSON object (keys are ids):\n"
               f"{json.dumps(items, ensure_ascii=False)}")
-    max_tokens = min(16000, 400 + sum(len(t) for t in texts))
+    # Cirílico e acentos custam mais tokens do que caracteres: margem larga para não cortar o JSON.
+    max_tokens = min(16000, 600 + 3 * sum(len(t) for t in texts))
     out: dict[str, str] = {}
     for attempt in range(2):
         try:
@@ -195,6 +197,11 @@ async def translate_batch(lang: str, texts: list[str]) -> dict[str, str]:
                 out[src] = tgt.strip() if src == src.strip() else tgt
         if len(out) >= len(items) * 0.9:
             break
+    missing = [t for t in texts if t not in out]
+    if missing and len(texts) > 1 and _depth < 3 and len(out) < len(items) * 0.9:
+        half = max(1, len(missing) // 2)
+        for part in (missing[:half], missing[half:]):
+            out.update(await translate_batch(lang, part, _depth + 1))
     return out
 
 
@@ -233,12 +240,18 @@ def _batches(texts: list[str]):
 
 
 # ── Pré-tradução do manifesto inteiro ────────────────────────────────────────
+# Bloqueio entre workers, renovado a cada lote. Curto: se o processo for reiniciado a meio (deploy,
+# reciclagem do pod), outro worker retoma a língua em poucos minutos em vez de esperar 20.
+LOCK_MINUTES = 3
+REWARM_SECONDS = int(os.environ.get("I18N_REWARM_SECONDS", "600"))
+
+
 async def _acquire(lang: str, version: str) -> bool:
     now = datetime.now(timezone.utc)
     try:
         res = await db[JOBS].find_one_and_update(
             {"_id": lang, "$or": [{"locked_until": {"$lt": now}}, {"locked_until": {"$exists": False}}]},
-            {"$set": {"locked_until": now + timedelta(minutes=20), "version": version, "started_at": now}},
+            {"$set": {"locked_until": now + timedelta(minutes=LOCK_MINUTES), "version": version, "started_at": now}},
             upsert=True, return_document=True)
         return bool(res)
     except Exception:  # noqa: BLE001  (DuplicateKey: outro worker já tem o bloqueio)
@@ -267,9 +280,19 @@ async def warm(lang: str) -> dict:
                 await _store(lang, res)
                 done += len(res)
                 await db[JOBS].update_one({"_id": lang}, {"$set": {
-                    "locked_until": datetime.now(timezone.utc) + timedelta(minutes=20), "done": done, "todo": len(todo)}})
+                    "locked_until": datetime.now(timezone.utc) + timedelta(minutes=LOCK_MINUTES), "done": done,
+                    "todo": len(todo)}})
 
         await asyncio.gather(*(run(b) for b in _batches(todo)))
+        # Segunda passagem só sobre o que falhou (limites de débito, respostas cortadas…).
+        for _pass in range(2):
+            have = await cached(lang)
+            rest = [s for s in todo if s not in have]
+            if not rest:
+                break
+            logger.info("i18n: %s → nova passagem para %s textos em falta", lang, len(rest))
+            await asyncio.sleep(10)
+            await asyncio.gather(*(run(b) for b in _batches(rest)))
         logger.info("i18n: %s → %s/%s traduções novas", lang, done, len(todo))
         return {"lang": lang, "translated": done, "todo": len(todo)}
     finally:
@@ -304,11 +327,18 @@ async def warm_all_background() -> None:
         logger.info("i18n: manifesto backend %s textos + %s padrões", len(m["exact"]), len(m["patterns"]))
     except Exception as exc:  # noqa: BLE001
         logger.warning("i18n: manifesto backend não regenerado (%s) — usa o ficheiro do repositório", exc)
-    for lang in warm_langs():
+    # As línguas correm em paralelo (o ucraniano já não espera pelo fim das outras) e o ciclo repete-se:
+    # se uma pré-tradução for interrompida por um reinício, retoma onde ficou (o que já está em cache
+    # não volta a ser traduzido). Termina quando o processo é parado.
+    while True:
+        results = await asyncio.gather(*(warm(lang) for lang in warm_langs()), return_exceptions=True)
+        for lang, res in zip(warm_langs(), results):
+            if isinstance(res, Exception):
+                logger.warning("i18n: pré-tradução %s falhou: %s", lang, res)
         try:
-            await warm(lang)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("i18n: pré-tradução %s falhou: %s", lang, exc)
+            await asyncio.sleep(REWARM_SECONDS)
+        except asyncio.CancelledError:
+            return
 
 
 # ── API ──────────────────────────────────────────────────────────────────────
