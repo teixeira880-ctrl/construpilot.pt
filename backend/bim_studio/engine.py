@@ -208,23 +208,32 @@ def _tri_areas_normals(v: np.ndarray, faces: np.ndarray):
     return areas, normals
 
 
-def _signed_volume(v: np.ndarray, faces: np.ndarray) -> float:
+def _signed_volume(v: np.ndarray, faces: np.ndarray, *, recenter: bool = False) -> float:
+    if recenter:
+        v = v - v[0]
     a, b, c = v[faces[:, 0]], v[faces[:, 1]], v[faces[:, 2]]
     return float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum() / 6.0)
 
 
-def _is_closed(v: np.ndarray, faces: np.ndarray) -> bool:
+def _is_closed(v: np.ndarray, faces: np.ndarray, *, oriented: bool = False) -> bool:
     if len(faces) < 4:
         return False
     key = np.round(v, 6)
     _, inv = np.unique(key, axis=0, return_inverse=True)
     f = inv.reshape(-1)[faces]
-    edges = np.sort(np.concatenate([f[:, [0, 1]], f[:, [1, 2]], f[:, [2, 0]]]), axis=1)
-    _, counts = np.unique(edges, axis=0, return_counts=True)
-    return bool(np.all(counts == 2))
+    directed = np.concatenate([f[:, [0, 1]], f[:, [1, 2]], f[:, [2, 0]]])
+    edges = np.sort(directed, axis=1)
+    if not oriented:
+        _, counts = np.unique(edges, axis=0, return_counts=True)
+        return bool(np.all(counts == 2))
+    if np.any(directed[:, 0] == directed[:, 1]):
+        return False
+    _, indexes, counts = np.unique(edges, axis=0, return_inverse=True, return_counts=True)
+    orientation = np.bincount(indexes, weights=np.where(directed[:, 0] < directed[:, 1], 1, -1))
+    return bool(np.all(counts == 2) and np.all(orientation == 0))
 
 
-def _geom_quantities(cat: str, v: np.ndarray, faces: np.ndarray) -> list[dict]:
+def _geom_quantities(cat: str, v: np.ndarray, faces: np.ndarray, *, industrial: bool = False) -> list[dict]:
     """Quantidades calculadas/estimadas a partir da malha (coordenadas em metros)."""
     out: list[dict] = []
     if len(faces) == 0:
@@ -232,8 +241,8 @@ def _geom_quantities(cat: str, v: np.ndarray, faces: np.ndarray) -> list[dict]:
     areas, normals = _tri_areas_normals(v, faces)
     mn, mx = v.min(axis=0), v.max(axis=0)
     dims = mx - mn
-    closed = _is_closed(v, faces)
-    vol = abs(_signed_volume(v, faces))
+    closed = _is_closed(v, faces, oriented=industrial)
+    vol = abs(_signed_volume(v, faces, recenter=industrial))
     if closed and vol > 0:
         out.append(_q("volume", vol, "calculated", "geometria: volume da malha fechada"))
     elif dims.prod() > 0:
@@ -301,7 +310,7 @@ def _is_straight(areas: np.ndarray, normals: np.ndarray, side: float) -> bool:
 FACE_CATEGORIES = ("paredes", "fachadas", "lajes", "coberturas", "pavimentos")
 
 
-def face_info(cat: str, v: np.ndarray, faces: np.ndarray) -> dict | None:
+def face_info(cat: str, v: np.ndarray, faces: np.ndarray, *, industrial: bool = False) -> dict | None:
     """Faces revestíveis de um elemento (metros).
 
     Paredes: lados A/B segundo a normal horizontal dominante (eixo ``axis``); área de cada lado
@@ -322,15 +331,25 @@ def face_info(cat: str, v: np.ndarray, faces: np.ndarray) -> dict | None:
             bins[float(a)] = bins.get(float(a), 0.0) + float(ar)
         best = max(bins, key=bins.get)
         axis = np.array([math.cos(math.radians(best)), math.sin(math.radians(best))])
+        if industrial:
+            dominant = np.flatnonzero(horiz)[ang == best]
+            axis = normals[dominant[np.argmax(areas[dominant])], :2]
+            axis = axis / np.linalg.norm(axis)
         d = normals[:, 0] * axis[0] + normals[:, 1] * axis[1]
-        a_area = float(areas[horiz & (d > 0.95)].sum())
-        b_area = float(areas[horiz & (d < -0.95)].sum())
+        sides = {}
+        for side, mask in (("A", horiz & (d > 0.95)), ("B", horiz & (d < -0.95))):
+            measured = {"area": round(float(areas[mask].sum()), 4), "label": "interior"}
+            if industrial:
+                from bim_studio.clt_geometry import face_profile
+                profile = face_profile(v[faces[mask]], axis)
+                if profile is not None:
+                    measured["profile"] = profile
+            sides[side] = measured
         c = v.mean(axis=0)
         return {"kind": "wall", "axis": [round(float(axis[0]), 5), round(float(axis[1]), 5)],
                 "center": [round(float(c[0]), 3), round(float(c[1]), 3)],
-                "z0": round(z0, 4), "z1": round(z1, 4),
-                "sides": {"A": {"area": round(a_area, 4), "label": "interior"},
-                          "B": {"area": round(b_area, 4), "label": "interior"}}}
+                "z0": z0 if industrial else round(z0, 4),
+                "z1": z1 if industrial else round(z1, 4), "sides": sides}
     up = float(areas[normals[:, 2] > 0.9].sum())
     down = float(areas[normals[:, 2] < -0.9].sum())
     top_label = "cobertura" if cat == "coberturas" else "pavimento"
@@ -513,7 +532,7 @@ def _instancias_ilegiveis(ifc_path: str, f) -> int:
 
 def process(ifc_path: str, out_dir: str, *, max_elements: int = 60000, max_triangles: int = 4_000_000,
             chunk_triangles: int = 250_000, threads: int = 1,
-            progress: Callable[[float, str], None] | None = None) -> dict:
+            progress: Callable[[float, str], None] | None = None, industrial: bool = False) -> dict:
     """Processa um IFC e escreve ``result.json.gz`` + ``geom_N.json.gz`` em ``out_dir``."""
     prog = progress or (lambda p, s: None)
     prog(0.02, "a abrir o ficheiro IFC")
@@ -605,8 +624,8 @@ def process(ifc_path: str, out_dir: str, *, max_elements: int = 60000, max_trian
                         # O iterador de geometria devolve sempre coordenadas em metros (SI).
                         v = np.asarray(g.verts, dtype=np.float64).reshape(-1, 3)
                         faces = np.asarray(g.faces, dtype=np.int64).reshape(-1, 3)
-                        rec["_geom"] = _geom_quantities(rec["category"], v, faces)
-                        rec["faces"] = face_info(rec["category"], v, faces)
+                        rec["_geom"] = _geom_quantities(rec["category"], v, faces, industrial=industrial)
+                        rec["faces"] = face_info(rec["category"], v, faces, industrial=industrial)
                         rec["has_geometry"] = len(faces) > 0
                         rec["bbox"] = ([round(float(x), 3) for x in v.min(axis=0)] + [round(float(x), 3) for x in v.max(axis=0)]) if len(v) else None
                         if len(faces) and total_tris + len(faces) <= max_triangles:

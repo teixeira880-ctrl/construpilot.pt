@@ -5,7 +5,7 @@ zona em altura (ex.: azulejo de 0 a 1,20 m, pintura de 1,20 m ao teto), espessur
 e artigo da biblioteca opcional. As áreas de cada camada alimentam o orçamento como
 qualquer outra medição, com origem explícita:
   * camada em toda a altura da face → mesma fiabilidade da área da face (calculada pela geometria);
-  * camada numa zona parcial → "estimada" (proporção da altura; aberturas supostas uniformes).
+  * camada numa zona parcial → recorte da face quando existe perfil, senão estimativa explícita.
 """
 from __future__ import annotations
 
@@ -122,6 +122,11 @@ def layer_area(faces: dict, side: str, layer: dict, wall_area: dict | None = Non
         frac = max(0.0, hi - lo) / h
         if frac <= 0:
             return {"value": 0.0, "origin": "estimated", "source": "zona fora da altura da parede"}
+        if sd.get("profile"):
+            from bim_studio.clt_geometry import band_area
+            lower, upper = faces["z0"] + lo, faces["z0"] + hi
+            return {"value": round(band_area(sd["profile"], lower, upper), 4), "origin": "calculated",
+                    "source": f"geometria: interseção da face {side} com a zona {lo:.3f}–{hi:.3f} m"}
         if frac < 0.999:
             return {"value": round(base * frac, 4), "origin": "estimated",
                     "source": f"{source} × {frac:.0%} da altura ({lo:.2f}–{hi:.2f} m; aberturas supostas uniformes)"}

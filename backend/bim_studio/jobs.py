@@ -78,10 +78,12 @@ async def run_job(v: dict) -> None:
         with open(ifc_path, "wb") as fh:
             fh.write(data)
         del data
+        from bim_studio.clt_access import enabled_for
         limits = json.dumps({
             "memory_mb": config.WORKER_MEMORY_MB, "cpu_seconds": config.WORKER_CPU_S,
             "output_mb": config.WORKER_OUTPUT_MB, "max_elements": config.MAX_ELEMENTS,
-            "max_triangles": config.MAX_TRIANGLES, "threads": config.WORKER_THREADS})
+            "max_triangles": config.MAX_TRIANGLES, "threads": config.WORKER_THREADS,
+            "industrial": enabled_for(v.get("created_by"), tenant)})
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "OMP_NUM_THREADS": "1",
                "HOME": work, "TMPDIR": work}
         proc = await asyncio.create_subprocess_exec(

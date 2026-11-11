@@ -1,0 +1,196 @@
+from datetime import date
+from io import StringIO
+
+import numpy as np
+import pytest
+
+from bim_studio.clt_access import allowed
+from bim_studio.clt_costs import CostLot, summary
+from bim_studio.clt_geometry import panel_quantities, reconciliation
+from bim_studio.finishes import layer_area
+
+
+def ring(x0, y0, x1, y1):
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+
+
+def test_panel_cutouts_and_two_percent_gate():
+    gross = ring(0, 0, 5, 3)
+    opening = ring(1, 0, 2, 2)
+    result = panel_quantities(gross, [opening], 140)
+    assert result["net_area_m2"] == 13
+    assert result["gross_volume_m3"] == 2.1
+    assert result["net_volume_m3"] == 1.82
+    assert reconciliation(1.02, 1)["passed"]
+    assert not reconciliation(1.021, 1)["passed"]
+    assert not reconciliation(0.0001, 0)["passed"]
+    with pytest.raises(ValueError, match="sobrepostos"):
+        panel_quantities(gross, [opening, ring(1.5, 0, 2.5, 2)], 140)
+
+
+def test_cut_band_excludes_only_the_part_of_window_inside_it():
+    from bim_studio.clt_geometry import face_profile
+
+    def triangles(x0, z0, x1, z1):
+        a, b, c, d = [(x, 7, z) for x, z in ring(x0, z0, x1, z1)[:4]]
+        return [(a, b, c), (a, c, d)]
+
+    mesh = np.asarray(triangles(0, 0, 5, 1) + triangles(0, 1, 1, 2)
+                      + triangles(2, 1, 5, 2) + triangles(0, 2, 5, 3))
+    profile = face_profile(mesh, np.array([0., 1.]))
+    faces = {"kind": "wall", "z0": 0, "z1": 3, "sides": {"A": {"area": 14, "profile": profile}}}
+    exact = layer_area(faces, "A", {"from_m": 0, "to_m": 1.2})
+    assert exact["origin"] == "calculated"
+    assert exact["value"] == 5.8
+    faces["sides"]["A"].pop("profile")
+    assert layer_area(faces, "A", {"from_m": 0, "to_m": 1.2})["origin"] == "estimated"
+
+
+def test_dxf_units_and_source_handles(monkeypatch, tmp_path):
+    import ezdxf
+    from bim_studio.clt_cad import measure_dxf
+
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    monkeypatch.setenv("TMP", str(tmp_path))
+    doc = ezdxf.new(units=ezdxf.units.MM)
+    panel = doc.modelspace().add_lwpolyline(ring(0, 0, 5000, 3000)[:-1], close=True, dxfattribs={"layer": "CLT"})
+    opening = doc.modelspace().add_lwpolyline(ring(1000, 0, 2000, 2000)[:-1], close=True, dxfattribs={"layer": "VAOS"})
+    stream = StringIO()
+    doc.write(stream)
+    (result,) = measure_dxf(stream.getvalue().encode(), "CLT", "VAOS", 140)
+    assert result["net_volume_m3"] == 1.82
+    assert result["handle"] == panel.dxf.handle
+    assert result["opening_handles"] == [opening.dxf.handle]
+
+
+def test_rotated_pdf_annotations_and_unconfirmed_units():
+    import fitz
+    from bim_studio.clt_pdf import inspect_pdf
+
+    with fitz.open() as doc:
+        page = doc.new_page(width=600, height=400)
+        page.insert_text((50, 100), "Opening 900x2100H")
+        page.insert_text((50, 140), "Ceiling height 2350 mm")
+        page.set_rotation(270)
+        report = inspect_pdf(doc.tobytes())
+    records = report["pages"][0]["evidence"]
+    assert [x["values"] for x in records] == [[900, 2100], [2350]]
+    assert all(0 <= v <= 1 for x in records for v in x["rect"])
+    assert not report["fabrication_ready"]
+
+
+def test_progress_and_forecast_separate_missing_costs():
+    lot = CostLot.model_validate({
+        "name": "Painéis A", "revenue_eur": "2000", "planned_delivery": date(2027, 1, 15),
+        "forecast_delivery": date(2027, 1, 18),
+        "lines": [{"code": "CLT", "stage": "producao", "name": "Corte", "unit": "m3",
+                   "rate_eur": "100", "baseline_qty": 10, "planned_to_date_qty": 6, "accepted_qty": 5,
+                   "actual_eur": 600, "actual_reference": "FT-1", "source_reference": "IFC rev B / painel A",
+                   "open_commitment_eur": 300}],
+    })
+    assert summary(lot)["forecast_cost_eur"] is None
+    lot.lines[0].uncommitted_remaining_eur = 200
+    result = summary(lot)
+    assert result["planned_percent"] == "60.00"
+    assert result["accepted_percent"] == "50.00"
+    assert result["cost_overrun_to_date_eur"] == "100.00"
+    assert result["forecast_margin_eur"] == "900.00"
+    assert result["delay_days"] == 3
+
+
+def test_pilot_is_closed_to_other_accounts_and_organisations(monkeypatch):
+    monkeypatch.setenv("CLT_PILOT_USER_ID", "ana")
+    monkeypatch.setenv("CLT_PILOT_TENANT_ID", "org_a")
+    monkeypatch.delenv("CLT_PILOT_ACCOUNTS", raising=False)
+    assert allowed({"user_id": "ana", "organization_id": "a"})
+    assert not allowed({"user_id": "ana", "organization_id": "b"})
+    assert not allowed({"user_id": "bia", "organization_id": "a"})
+
+
+def test_http_access_rate_and_lot_revision(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from mongomock_motor import AsyncMongoMockClient
+
+    monkeypatch.setenv("MONGO_URL", "mongodb://127.0.0.1:27017")
+    monkeypatch.setenv("DB_NAME", "clt_test")
+    monkeypatch.setenv("JWT_SECRET", "local-test-only")
+    monkeypatch.setenv("CLT_PILOT_USER_ID", "ana")
+    monkeypatch.setenv("CLT_PILOT_TENANT_ID", "org_a")
+    monkeypatch.setenv("CLT_PILOT_ACCOUNTS", '{"bia":"org_a"}')
+    from bim_studio import store
+    from routes import clt_industrial as route
+
+    monkeypatch.setattr(store, "_DB", AsyncMongoMockClient().clt_test)
+    actor = {"user_id": "ana", "organization_id": "a", "org_role": "owner"}
+    app = FastAPI()
+    app.include_router(route.router)
+    app.dependency_overrides[route.pro_required] = lambda: actor
+    prefix = "/clt-industrial"
+    with TestClient(app) as client:
+        rate_body = {"code": "CLT", "name": "Madeira", "kind": "compra", "unit": "m3",
+                     "rate_eur": 100, "effective_from": "2026-11-11"}
+        rate = client.post(prefix + "/rates", json=rate_body)
+        assert rate.status_code == 201, rate.text
+        assert client.post(prefix + "/rates", json=rate_body).status_code == 409
+        body = {"name": "Lote A", "revenue_eur": 2000, "planned_delivery": "2026-12-01", "lines": [
+            {"code": "CLT", "name": "Compra", "stage": "compra", "unit": "m3", "rate_id": rate.json()["rate_id"],
+             "rate_eur": 100, "baseline_qty": 10, "source_reference": "Plano 1, rev A"}]}
+        result = client.post(prefix + "/lots", json=body)
+        assert result.status_code == 201, result.text
+        lot_id = result.json()["lot_id"]
+        body["expected_revision"] = 1
+        path = prefix + f"/lots/{lot_id}"
+        assert client.put(path, json=body).json()["revision"] == 2
+        assert client.put(path, json=body).status_code == 409
+        actor["user_id"] = "bia"
+        assert client.get(prefix + "/rates").json() == {"items": []}
+        assert client.get(prefix + "/lots").json() == {"items": []}
+        body["expected_revision"] = 0
+        assert client.post(prefix + "/lots", json=body).status_code == 422
+        actor["user_id"] = "unlisted"
+        assert client.get(prefix + "/config").status_code == 404
+
+
+def test_dwg_uses_autodesk_and_measures_the_result(monkeypatch, tmp_path):
+    from unittest.mock import AsyncMock
+
+    import ezdxf
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("MONGO_URL", "mongodb://127.0.0.1:27017")
+    monkeypatch.setenv("DB_NAME", "clt_test")
+    monkeypatch.setenv("JWT_SECRET", "local-test-only")
+    monkeypatch.setenv("CLT_PILOT_USER_ID", "ana")
+    monkeypatch.setenv("CLT_PILOT_TENANT_ID", "usr_ana")
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    monkeypatch.setenv("TMP", str(tmp_path))
+    from engines import autodesk_dwg
+    from routes import clt_industrial as route
+
+    doc = ezdxf.new(units=ezdxf.units.MM)
+    doc.modelspace().add_lwpolyline(ring(0, 0, 5000, 3000)[:-1], close=True, dxfattribs={"layer": "CLT"})
+    stream = StringIO()
+    doc.write(stream)
+    conversion = AsyncMock(return_value=(stream.getvalue().encode(), {}))
+    monkeypatch.setattr(autodesk_dwg, "convert", conversion)
+    app = FastAPI()
+    app.include_router(route.router)
+    app.dependency_overrides[route.pro_required] = lambda: {"user_id": "ana"}
+    dwg = b"AC1032synthetic"
+    with TestClient(app) as client:
+        monkeypatch.setenv("APS_DWG_ENABLED", "false")
+        payload = {"files": {"file": ("plan.dwg", dwg)}, "data": {"panel_layer": "CLT", "thickness_mm": "140"}}
+        assert client.post("/clt-industrial/cad", **payload).status_code == 503
+        conversion.assert_not_awaited()
+        monkeypatch.setenv("APS_DWG_ENABLED", "true")
+        result = client.post("/clt-industrial/cad", **payload)
+        assert result.status_code == 200, result.text
+        conversion.assert_awaited_once_with(dwg, user_id="ana")
+        assert result.json()["provider"] == "autodesk-aps"
+        assert result.json()["panels"][0]["net_volume_m3"] == 2.1
+    assert not allowed({"user_id": "ana", "organization_id": "a", "active": False})
+    monkeypatch.setenv("CLT_PILOT_ACCOUNTS", '{"bia":"org_b"}')
+    assert allowed({"user_id": "bia", "organization_id": "b"})
+    assert not allowed({"user_id": "bia", "organization_id": "a"})

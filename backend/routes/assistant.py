@@ -27,6 +27,7 @@ from engines.assistant_state import PROTOCOL, STATE_TOOL, apply_entry, get_state
 from engines.assistant_trace import save_trace, summarize_inputs, usage_dict
 from engines.assistant_collaboration import COLLABORATION_INSTRUCTIONS, continuity_message
 from engines.assistant_workspace import EXTRA_TOOLS, WORK_INSTRUCTIONS, validate_args, calculate, read_pages, inspect_region, style_preferences
+from engines import assistant_clt
 from engines.platform_agent_tools import PLATFORM_TOOLS, PLATFORM_TOOL_NAMES, PLATFORM_INSTRUCTIONS, execute_platform_tool
 from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS, QUOTE_TOOLS
 from engines.assistant_files import FILE_INSTRUCTIONS, FILE_TOOLS, create_file, create_schema, edit_image, image_requested, owned_artifact, public_artifact
@@ -273,6 +274,8 @@ def tools_for(user: dict) -> list:
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
     out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
+    if assistant_clt.allowed(user) and permissions_for(user)["devis"]:
+        out += assistant_clt.TOOLS
     return [t for t in out if t.get("name") not in BET_SUPERSEDED_TOOL_NAMES]
 
 
@@ -464,6 +467,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
     if name not in {t.get("name") for t in tools_for(user)}:
         return {"ok": False, "error": "Ferramenta indisponível para este tipo de conta"}
     validate_args(name, args, tools_for(user))
+    if name in assistant_clt.NAMES:
+        return await assistant_clt.execute(name, args, user, db, _allowed_doc)
     if name in PLATFORM_TOOL_NAMES:
         return await execute_platform_tool(name, args, user, conv, db)
     if name == "create_downloadable_file":
@@ -1526,6 +1531,8 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
+        if any(t.get("name") in assistant_clt.NAMES for t in tools_for(user)):
+            instructions += assistant_clt.INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. Se o pedido indicar as plantas e o entregável, lança-o diretamente (o resultado fica um rascunho editável, nada é enviado); se o âmbito for ambíguo (plantas, margem, nome do projeto), pergunta-o numa frase. Para vários entregáveis de uma vez, prefere lancer_programme_ia. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
     await db.assistant_prefs.update_many({"active": True, "user_id": user["user_id"]}, {"$set": {"last_used_at": _now()}})
     try:
