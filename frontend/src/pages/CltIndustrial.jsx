@@ -129,6 +129,18 @@ function Drawings({ onReport }) {
       <Field label="PDF vetorial"><input className={input} type="file" name="file" accept=".pdf" required /></Field>
       <button className={button} disabled={busy}>Ler referências</button>
     </form>
+    {pdf?.report.estimate_extras && <div className="flex flex-wrap items-center gap-2">
+      <button type="button" className={button} disabled={busy} onClick={async () => {
+        setBusy(true); setError("");
+        try {
+          const fd = new FormData(); fd.append("file", pdf.file);
+          const { data } = await api.post(`${base}/pdf/model3d`, fd, { responseType: "blob" });
+          const url = URL.createObjectURL(data); const a = document.createElement("a");
+          a.href = url; a.download = "modelo-clt.ifc"; a.click(); URL.revokeObjectURL(url);
+        } catch (e) { setError(errText(e)); } finally { setBusy(false); }
+      }}>Descarregar modelo 3D (IFC)</button>
+      <span className="text-sm">Paredes, lintéis, laje, coberturas, vigas, vãos e divisões por piso, cada elemento com a folha e a referência de origem.</span>
+    </div>}
     {pdf && (pdf.report.pages.length === 4 && pdf.report.pages.every((page) => page.review && page.image)
       ? <CltConfirmation key={pdf.report.sha256} {...pdf} />
       : <Evidence key={pdf.report.sha256} {...pdf} />)}

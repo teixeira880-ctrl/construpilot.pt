@@ -455,3 +455,21 @@ def test_fitout_rooms_fixtures_and_windows_reach_the_estimate():
     assert result["plano"]["fases"][-1]["fase"] == "acabamentos"
     assert any("RTIEBT" in n for n in result["notas_quantidades"])
     CostLot.model_validate(lot_from_estimate("Casa", result))
+
+
+def test_ifc_model_from_measured_polygons():
+    import ifcopenshell
+    from shapely.geometry import box
+    from bim_studio.clt_model3d import _Model
+
+    b = _Model(units="m")
+    st = b.storey("RDC", 0.0)
+    wall = b.solid(st, "IfcWall", "Parede CLT 100 mm · clt-1", box(0, 0, 5, .1), 0.0, 3.0, "CLT 100 mm 5 camadas",
+                   {"Folha": 2, "Referencia": "clt-1", "Fonte": "medido"}, "SOLIDWALL")
+    assert wall.is_a("IfcWall") and wall.ContainedInStructure[0].RelatingStructure == st
+    props = {p.Name: p.NominalValue.wrappedValue for r in wall.IsDefinedBy for p in r.RelatingPropertyDefinition.HasProperties}
+    assert props["Referencia"] == "clt-1"
+    import ifcopenshell.geom, ifcopenshell.util.shape as us
+    shape = ifcopenshell.geom.create_shape(ifcopenshell.geom.settings(), wall)
+    v = us.get_vertices(shape.geometry)
+    assert abs(v[:, 2].max() - 3.0) < 1e-6 and abs(v[:, 0].max() - 5.0) < 1e-6

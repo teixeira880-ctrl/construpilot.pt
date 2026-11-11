@@ -62,6 +62,35 @@ async def pdf_evidence(file: UploadFile = File(...), user=Depends(editor)):
         raise HTTPException(422, "PDF inválido ou fora dos limites da análise.") from exc
 
 
+def _model_ifc(data):
+    import tempfile
+
+    import fitz
+    from bim_studio.clt_model3d import build
+    from bim_studio.clt_pdf import inspect_pdf
+
+    extras = inspect_pdf(data)["estimate_extras"]
+    if not extras:
+        raise ValueError("Modelo 3D disponível só para desenhos revistos.")
+    with fitz.open(stream=data, filetype="pdf") as doc:
+        model, _ = build(doc, extras)
+    with tempfile.NamedTemporaryFile(suffix=".ifc") as tmp:
+        model.write(tmp.name)
+        return open(tmp.name, "rb").read()
+
+
+@router.post("/pdf/model3d")
+async def pdf_model3d(file: UploadFile = File(...), user=Depends(editor)):
+    from fitz import FileDataError
+
+    try:
+        result = await asyncio.to_thread(_model_ifc, await _upload(file))
+    except (ValueError, FileDataError) as exc:
+        raise HTTPException(422, str(exc) if "revistos" in str(exc) else "PDF inválido ou fora dos limites da análise.") from exc
+    return Response(result, media_type="application/x-step",
+                    headers={"Content-Disposition": 'attachment; filename="modelo-clt.ifc"', "Cache-Control": "no-store"})
+
+
 @router.post("/pdf/preview")
 async def pdf_preview(file: UploadFile = File(...), page: int = Form(..., ge=1, le=30), user=Depends(editor)):
     from bim_studio.clt_pdf import render_page
