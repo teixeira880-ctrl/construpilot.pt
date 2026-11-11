@@ -142,7 +142,8 @@ def embelezar(pdf: bytes, capa: dict, empresa: dict | None = None, n_nota: int |
         nota = (i - 1) < nn
         if logo:
             if nota:
-                p.insert_image(pymupdf.Rect(*_logo_rect(lw, lh, r.width / 2 - 14 * 2.835, r.height - 11.5 * 2.835, 28 * 2.835, 7 * 2.835)), stream=logo)
+                # under the footer text (baseline 8.5 mm), above the coloured band: never over the text
+                p.insert_image(pymupdf.Rect(*_logo_rect(lw, lh, r.width / 2 - 12 * 2.835, r.height - 7.2 * 2.835, 24 * 2.835, 5.4 * 2.835)), stream=logo)
                 wm = pymupdf.Rect(r.width * 0.18, r.height * 0.40, r.width * 0.82, r.height * 0.40 + (r.width * 0.64) * lh / lw)
                 p.insert_image(wm, stream=_opaco(logo, 0.06), overlay=False)
             else:
