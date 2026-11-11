@@ -101,7 +101,7 @@ def status(passed):
     return "PASSOU" if passed else "FALHOU"
 
 
-def run(pdf_path, images, ppm, out):
+def run(pdf_path, images, ppm, out, screenshot=None):
     out.mkdir(parents=True, exist_ok=True)
     story, tests = [], []
     started = time.time()
@@ -251,7 +251,13 @@ def run(pdf_path, images, ppm, out):
                             f"peças {a.get('metodos', {}).get('pecas_producao_m', 0):.1f} m, "
                             f"volume a 3,00 m de altura {a.get('totais', {}).get('volume_bruto_m3', 0):.1f} m³ (estimativa).", P),
                   img(overlay_image(path, found["bandas_px"]), 150)]
-    story += [PageBreak(), Paragraph("6 · Software open-source usado e licenças", H2), table([
+    if screenshot:
+        story += [PageBreak(), Paragraph("6 · Página CLT no browser (teste local)", H2),
+                  Paragraph("Separador \"Juntas, corte, 3D e fabrico\" num Chromium local, contra a API real: leitura das "
+                            "páginas 2 e 3 do Home A, cálculo, e descarga do IFC e dos desenhos PDF, sem erros na consola. "
+                            "Sem os estilos da aplicação; não é o teste em produção.", P),
+                  img(Path(screenshot).read_bytes(), 170)]
+    story += [PageBreak(), Paragraph(f"{7 if screenshot else 6} · Software open-source usado e licenças", H2), table([
         ["Biblioteca", "Licença", "Uso na ConstruPilot", "Forma de uso"],
         ["Shapely / GEOS", "BSD-3 / LGPL-2.1", "Plantas, uniões, juntas, contagem dupla", "dependência (já instalada)"],
         ["OR-Tools CP-SAT (Google)", "Apache-2.0", "Plano de corte dos painéis", "dependência (já instalada)"],
@@ -278,9 +284,10 @@ def main():
     parser.add_argument("--image", action="append", default=[], help="NOME=caminho.jpg")
     parser.add_argument("--image-ppm", type=float, default=20.2)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--screenshot")
     args = parser.parse_args()
     images = [tuple(i.split("=", 1)) for i in args.image]
-    for t in run(args.pdf, images, args.image_ppm, Path(args.out)):
+    for t in run(args.pdf, images, args.image_ppm, Path(args.out), args.screenshot):
         print(" | ".join(map(str, t)))
 
 

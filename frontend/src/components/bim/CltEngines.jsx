@@ -37,13 +37,15 @@ export default function CltEngines() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const name = form.get("floor_name");
+    const elevation = Number(form.get("elevation_m") || 0);
     form.delete("floor_name");
+    form.delete("elevation_m");
     if (!form.get("scale")) form.delete("scale");
     setBusy("read"); setError("");
     try {
       const { data } = await api.post(`${base}/pdf-paredes`, form);
       setFloors((prev) => [...prev.filter((f) => f.name !== name),
-        { name, elevation_m: prev.length ? 3 * prev.length : 0, walls: data.paredes, scale: data.origem_escala,
+        { name, elevation_m: elevation, walls: data.paredes, scale: data.origem_escala,
           pending: data.tracejados_por_confirmar.length, rejected: data.rejeitados.length, analysis: data.analise }]);
       setResult(null);
     } catch (e) { setError(errText(e)); } finally { setBusy(""); }
@@ -70,6 +72,7 @@ export default function CltEngines() {
     <form onSubmit={read} className="grid gap-3 rounded border p-3 md:grid-cols-4">
       <Field label="Planta em PDF vetorial"><input className={input} type="file" name="file" accept="application/pdf" required /></Field>
       <Field label="Piso"><input className={input} name="floor_name" defaultValue={floors.length ? "+1" : "RDC"} required maxLength={60} /></Field>
+      <Field label="Cota da base das paredes (m)"><input className={input} name="elevation_m" type="number" step="0.001" min="-50" max="500" defaultValue={floors.length ? "3.384" : "0"} /></Field>
       <Field label="Página"><input className={input} name="page" type="number" min="1" max="60" defaultValue="2" required /></Field>
       <Field label="Altura estrutural das paredes (m)"><input className={input} name="height_m" type="number" step="0.001" min="0.5" max="3.5" defaultValue="2.9" required /></Field>
       <Field label="Escala 1: (vazio = ler na folha)"><input className={input} name="scale" type="number" min="10" max="500" placeholder="50" /></Field>
