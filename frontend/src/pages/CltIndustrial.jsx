@@ -353,7 +353,8 @@ export function floorsFromReport(report) {
       ceiling_m2: ceiling.toFixed(2), slab_buildup_m2: String(more?.slab_buildup_m2 || 0), roof_buildup_m2: String(more?.roof_buildup_m2 || 0),
       facade_m2: outer.toFixed(2), steel_beam_m: String(more?.steel_beam_m || 0),
       rooms: more?.rooms || [], windows: more?.windows || [], interior_doors: more?.interior_doors || 0,
-      ceiling_height_m: more?.ceiling_height_m ?? null, riser_m: more?.riser_m || null };
+      ceiling_height_m: more?.ceiling_height_m ?? null, riser_m: more?.riser_m || null,
+      segments: runs.map((m) => ({ ref: m.id, thickness_mm: String(Math.round(m.drawing_width_mm / 10) * 10), length_m: m.length_m.toFixed(3) })) };
   });
 }
 

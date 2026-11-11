@@ -449,13 +449,14 @@ UCRANIA_TOOL = _tool(
 # 16. Estudo CLT completo (página CLT da empresa: quantidades, preços, plano, rentabilidade)
 ESTUDO_CLT_TOOL = _tool(
     "estudo_clt_completo",
-    "Estudo CLT completo de uma casa em CLT, numa nota PDF: quantidades de todos os materiais (painéis CLT de paredes, laje, coberturas e "
+    "Dossier CLT completo de uma casa em CLT, num PDF premium com a marca da empresa: quantidades de todos os materiais (painéis CLT de paredes, laje, coberturas e "
     "lintéis, madeira comprada, cola, vigas de aço, placa, isolamentos, estanquidade, caixilharia, eletricidade e canalização por divisão, "
     "acabamentos), preços de compra e de produção da biblioteca da empresa, custos indiretos, IVA, plano de seguimento da compra e fabrico "
-    "até à montagem e à entrega da chave, e rentabilidade (margem). Usa os pisos revistos na página CLT (última estimativa da conta) ou "
+    "até à montagem e à entrega da chave (Gantt, curva de custo, folha de controlo do lote), rentabilidade e sensibilidade. Se o utilizador é da CLT Rezult, empresa=clt-rezult. Usa os pisos revistos na página CLT (última estimativa da conta) ou "
     "pisos_json. Betão e lajes de betão ficam fora. NÃO faz cálculo de cargas, muros, planos de execução nem projetos de eletricidade ou "
     "canalização: só quantidades e preços. Disponível só nas contas com o piloto CLT.",
-    {"titulo": _NS("título do estudo, p. ex. 'Home A · CLT'"),
+    {"titulo": _NS("título do estudo, p. ex. 'Home A · CLT'"), "local": _NS("local da obra, se conhecido"),
+     "empresa": _enum(["clt-rezult"], "marca da empresa no dossier premium (logótipo na capa e nas páginas): clt-rezult = CLT Rezult"),
      "pisos_json": _NS("JSON {floors:[…]} no formato da página CLT; null = a última estimativa feita na página CLT da conta")})
 
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
@@ -855,6 +856,7 @@ def run(name: str, args: dict) -> dict:
                 raise ValueError(f"pisos_json inválido: {exc}") from None
         if not entrada:
             raise ValueError("Sem pisos: faça primeiro a estimativa na página CLT (planos revistos) ou indique pisos_json.")
-        o = estudo(entrada, a.get("_parametros") or merged({}), a.get("_biblioteca") or library_merged({}), a.get("titulo"))
+        o = estudo(entrada, a.get("_parametros") or merged({}), a.get("_biblioteca") or library_merged({}), a.get("titulo"),
+                   empresa=a.get("empresa"), local=a.get("local"))
         return _ret(o, o["resumo"], o["data"])
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")

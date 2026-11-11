@@ -356,6 +356,13 @@ class Window(BaseModel):
     tipo: Literal["janela", "vao_envidracado"] = "janela"
 
 
+class Segment(BaseModel):
+    """One measured wall run, kept for traceability (the estimate uses the walls by thickness)."""
+    ref: str = Field(min_length=1, max_length=40)
+    thickness_mm: Annotated[Decimal, Field(gt=0, le=500)]
+    length_m: Annotated[Decimal, Field(gt=0, le=1_000)]
+
+
 class FloorInput(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     height_m: Annotated[Decimal, Field(gt=0, le=20)]
@@ -373,6 +380,7 @@ class FloorInput(BaseModel):
     interior_doors: Annotated[int, Field(ge=0, le=500)] = 0
     ceiling_height_m: Value | None = None
     riser_m: list[float] | None = Field(default=None, min_length=2, max_length=2)
+    segments: list[Segment] = Field(default_factory=list, max_length=2000)
 
     @model_validator(mode="after")
     def has_clt(self):
@@ -406,6 +414,15 @@ def _q(value):
 STAGE_ORDER = ("compra", "producao", "transporte", "montagem", "revestimentos", "acabamentos", "indiretos")
 
 
+def fitout_floors(body: EstimateInput):
+    """The floors as the fit-out engine reads them (rooms without the exterior ones)."""
+    return [{"name": fl.name, "height_m": fl.height_m, "ceiling_height_m": fl.ceiling_height_m, "riser_m": fl.riser_m,
+             "interior_doors": fl.interior_doors, "windows": [w.model_dump() for w in fl.windows],
+             "rooms": [{**r.model_dump(), "area_m2": float(r.area_m2), "perimetro_m": float(r.perimetro_m),
+                        "comprimento_m": float(r.comprimento_m)} for r in fl.rooms if r.tipo != "exterior"]}
+            for fl in body.floors]
+
+
 def estimate(body: EstimateInput, parameters, library):
     p = {key: Decimal(str(item["value"])) for key, item in parameters.items()}
     items = [LibraryItem.model_validate({k: v for k, v in item.items() if k != "standard"}) for item in library.values()]
@@ -427,12 +444,7 @@ def estimate(body: EstimateInput, parameters, library):
             "paineis_m2": {kind: sum((e.area_m2 for e in floor.panels if e.kind == kind), Decimal(0))
                            for kind in ("laje", "cobertura", "lintel", "parede")},
         })
-    fit, fit_notes = clt_fitout.quantities([
-        {"name": fl.name, "height_m": fl.height_m, "ceiling_height_m": fl.ceiling_height_m, "riser_m": fl.riser_m,
-         "interior_doors": fl.interior_doors, "windows": [w.model_dump() for w in fl.windows],
-         "rooms": [{**r.model_dump(), "area_m2": float(r.area_m2), "perimetro_m": float(r.perimetro_m),
-                    "comprimento_m": float(r.comprimento_m)} for r in fl.rooms if r.tipo != "exterior"]}
-        for fl in body.floors])
+    fit, fit_notes = clt_fitout.quantities(fitout_floors(body))
     for f, extra in zip(floors, fit):
         for basis in BASES:
             f.setdefault(basis, extra.get(basis, Decimal(0)))

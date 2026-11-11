@@ -495,6 +495,14 @@ def test_assistant_complete_clt_study_note(monkeypatch):
     assert "HIPÓTESE" not in out["resume"] and "Hipóteses por confirmar" in out["resume"]
     with pytest.raises(ValueError):
         outils.run("estudo_clt_completo", {"_parametros": {}, "_biblioteca": {}})
+    import pymupdf
+    branded = outils.run("estudo_clt_completo", {"empresa": "clt-rezult", "_entrada": {**floors, "floors": [{
+        **floors["floors"][0], "segments": [{"ref": "clt-1", "thickness_mm": "100", "length_m": "10"}]}]},
+        "_parametros": merged({}), "_biblioteca": library_merged({})})
+    doc = pymupdf.open(stream=branded["pdf"], filetype="pdf")
+    assert "CLT Rezult" in doc.metadata["author"] and doc.get_toc()[0][1] == "Capa"
+    text = "".join(pg.get_text() for pg in doc)
+    assert "clt-1" in text and "Plano de seguimento" in text and "Sensibilidade" in text
 
     db = AsyncMongoMockClient()["t"]
     monkeypatch.setattr(store, "get_db", lambda: db)
