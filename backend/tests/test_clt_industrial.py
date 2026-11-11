@@ -473,3 +473,35 @@ def test_ifc_model_from_measured_polygons():
     shape = ifcopenshell.geom.create_shape(ifcopenshell.geom.settings(), wall)
     v = us.get_vertices(shape.geometry)
     assert abs(v[:, 2].max() - 3.0) < 1e-6 and abs(v[:, 0].max() - 5.0) < 1e-6
+
+
+def test_assistant_complete_clt_study_note(monkeypatch):
+    import asyncio
+    from mongomock_motor import AsyncMongoMockClient
+    from bim_studio import store
+    from bim_studio.clt_economics import EstimateInput, estimate, library_merged, merged
+    from engines.calc_lots import assistant_bridge, outils
+
+    floors = {"floors": [{
+        "name": "RDC", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "10"}],
+        "rooms": [{"nome": "WC", "tipo": "casa_de_banho", "area_m2": "4", "perimetro_m": "8", "rect_m": [0, 0, 2, 2],
+                   "aparelhos": ["autoclismo"]}], "windows": [{"largura_m": "2", "sobre": "lintel", "tipo": "janela"}]}]}
+    assert "estudo_clt_completo" in outils.CALC_TOOL_NAMES
+    out = outils.run("estudo_clt_completo", {"titulo": "Casa teste", "_entrada": floors,
+                                             "_parametros": merged({}), "_biblioteca": library_merged({})})
+    ref = estimate(EstimateInput.model_validate(floors), merged({}), library_merged({}))["total"]
+    assert out["pdf"].startswith(b"%PDF") and out["png"]
+    assert out["data"]["custo_total_eur"] == ref["custo_total_eur"] and out["data"]["estado"] == "estimativa"
+    assert "HIPÓTESE" not in out["resume"] and "Hipóteses por confirmar" in out["resume"]
+    with pytest.raises(ValueError):
+        outils.run("estudo_clt_completo", {"_parametros": {}, "_biblioteca": {}})
+
+    db = AsyncMongoMockClient()["t"]
+    monkeypatch.setattr(store, "get_db", lambda: db)
+    monkeypatch.setattr("bim_studio.clt_access.allowed", lambda user: user["user_id"] == "u1")
+    user, conv = {"user_id": "u1", "tenant_id": "t1"}, {"conversation_id": "c1"}
+    asyncio.run(db.clt_estimate_inputs.insert_one({"_id": store.tenant_of(user), "body": floors}))
+    r = asyncio.run(assistant_bridge.execute_calc_tool("estudo_clt_completo", {"titulo": None, "pisos_json": None}, user, conv, db))
+    assert r["ok"] and r["data"]["custo_total_eur"] == ref["custo_total_eur"]
+    denied = asyncio.run(assistant_bridge.execute_calc_tool("estudo_clt_completo", {}, {"user_id": "u2", "tenant_id": "t1"}, conv, db))
+    assert not denied["ok"] and "piloto CLT" in denied["error"]

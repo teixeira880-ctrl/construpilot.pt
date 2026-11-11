@@ -132,6 +132,9 @@ CASOS = {
                                              deposito=_o("verificar_solar_termico", "deposito", volume_l=150)),
     "calcul_patio_pluvial": lambda: _fill("calcul_patio_pluvial", area_m2=16, profundidade_m=1.1, regiao_pluviometrica="B"),
     "calcul_ucrania": lambda: _fill("calcul_ucrania", exemplo=True, cidade="lviv"),
+    "estudo_clt_completo": lambda: _fill("estudo_clt_completo", titulo="Casa CLT", pisos_json=json.dumps({"floors": [{
+        "name": "RDC", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "12"}],
+        "rooms": [{"nome": "Sala", "tipo": "sala", "area_m2": "20", "perimetro_m": "18", "rect_m": [0, 0, 5, 4]}]}]})),
     "calcul_gros_oeuvre": lambda: _fill("calcul_gros_oeuvre", modelo_json=json.dumps({
         "projeto": "Moradia T3", "local": "Braga", "solo_q_adm_kpa": 200, "cota_pavimento_m": 0.0,
         "grelhas_x": [{"nome": "1", "pos_m": 0}, {"nome": "2", "pos_m": 5}, {"nome": "3", "pos_m": 10}],
