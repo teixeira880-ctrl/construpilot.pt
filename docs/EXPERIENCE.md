@@ -18,6 +18,9 @@ No fim, o visitante pode pedir o relatório ou uma demonstração; só nesse mom
 - Guardado em `commercial_leads` com `source: "experience"` e estado `demo_requested` ou `discovery_completed`.
 - Notificação interna por e-mail para `info@construpilot.pt` e `info@construpilot.fr`.
   Para mudar: variável `EXPERIENCE_LEAD_EMAILS` (endereços separados por vírgula). Precisa de `RESEND_API_KEY`.
+- **Compromisso de 5 dias úteis:** quem responde «Já» à urgência e pede demonstração recebe a promessa de uma demo funcional
+  em até 5 dias úteis. O registo guarda `demo_due_at` (segunda a sexta, sem feriados) e `next_action: deliver_demo`;
+  o e-mail interno mostra a data-limite no topo e no assunto. O prazo está em `DEMO_SLA_BUSINESS_DAYS`.
 - Nenhum e-mail é enviado ao visitante. Não há agenda: a equipa propõe horários reais por resposta ao e-mail.
 - Exige consentimento; regista data e texto do consentimento; conservação de 3 anos (`retain_until`).
 - Anti-spam: campo armadilha, tempo mínimo de 2,5 s, 5 pedidos por hora por IP, deduplicação de 24 h.
