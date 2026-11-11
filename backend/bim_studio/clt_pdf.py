@@ -81,7 +81,11 @@ def inspect_pdf(data, *, max_pages=30, include_review_images=False):
                     info["image"] = "data:image/jpeg;base64," + jpeg
                     info["label"] = f"Folha {page.number + 1} · {info['review']['floor']}"
             pages.append(info)
-    return {"sha256": checksum, "pages": pages,
+    extras = None
+    if checksum == SOURCE_SHA256:
+        from bim_studio.home_a_takeoff import estimate_extras
+        extras = estimate_extras(pages)
+    return {"sha256": checksum, "pages": pages, "estimate_extras": extras,
             "status": "review_required", "fabrication_ready": False}
 
 

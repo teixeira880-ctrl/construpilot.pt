@@ -287,10 +287,14 @@ function Lots() {
   </div>;
 }
 
-const groups = { fabrico: "Fabrico", transporte: "Transporte", montagem: "Montagem em obra", prazos: "Prazos" };
+const groups = { fabrico: "Fabrico", transporte: "Transporte", montagem: "Montagem em obra", prazos: "Prazos", venda: "Venda e impostos" };
 const origins = { empresa: "Empresa", mercado: "Média de mercado", hipotese: "Hipótese por confirmar" };
-const stageNames = { compra: "Compra", producao: "Fabrico", transporte: "Transporte", montagem: "Montagem", revestimentos: "Revestimentos", fabrico: "Fabrico" };
-const newFloor = () => ({ name: "", height_m: "", walls: [{ thickness_mm: "100", layers: "3", length_m: "" }], board_layers_m2: "0", paint_m2: "0" });
+const stageNames = { compra: "Compra", producao: "Fabrico", transporte: "Transporte", montagem: "Montagem", revestimentos: "Revestimentos e isolamentos", indiretos: "Engenharia e indiretos", fabrico: "Fabrico" };
+const panelKinds = { laje: "Laje", cobertura: "Cobertura", lintel: "Lintel", parede: "Painel sobre vão" };
+const EXTRA_FIELDS = [["ceiling_m2", "Teto falso BA15 (m²)"], ["slab_buildup_m2", "Laje: membrana e betão leve (m²)"],
+  ["roof_buildup_m2", "Cobertura plana: isolamento e impermeabilização (m²)"], ["facade_m2", "Face exterior das paredes (m²)"], ["steel_beam_m", "Vigas de aço (m)"]];
+const newFloor = () => ({ name: "", height_m: "", walls: [{ thickness_mm: "100", layers: "5", length_m: "" }], panels: [], board_layers_m2: "0", paint_m2: "0",
+  ceiling_m2: "0", slab_buildup_m2: "0", roof_buildup_m2: "0", facade_m2: "0", steel_beam_m: "0" });
 const blankItem = (category) => ({ code: "", category, name: "", unit: "un", cost_eur: "", sale_eur: "", basis: "m3_clt", per_basis: "1", origin: "empresa", source: "", isNew: true });
 const TEMPLATE = "Categoria;Código;Designação;Unidade;Custo;Venda;Base;Consumo por base;Fonte\nmateria_prima;MP-LAMELA;Madeira de lamelas C24;m³;315;;m3_madeira;1;Fatura fornecedor\n";
 
@@ -324,10 +328,18 @@ export function floorsFromReport(report) {
       byThickness[t] = (byThickness[t] || 0) + m.length_m;
     });
     const height = ceilings.length ? Math.max(...ceilings) + extra.floor_buildup_m + extra.ceiling_zone_m : 0;
-    const faces = runs.reduce((sum, m) => sum + m.length_m * interiorFaces(m, runs, page.width, page.height), 0) * height;
+    const inner = runs.reduce((sum, m) => sum + m.length_m * interiorFaces(m, runs, page.width, page.height), 0);
+    const faces = inner * height;
+    const outer = (2 * runs.reduce((sum, m) => sum + m.length_m, 0) - inner) * height;
+    const more = report.estimate_extras?.floors?.[keys[i]];
+    const ceiling = more?.ceiling_m2 || 0;
+    // Key of the plans: 100 mm = 5 layers; 80+80 mm = two 3-layer panels (4 glued joints, like 5 layers).
     return { name: keys[i] || page.review.floor, height_m: height ? height.toFixed(3) : "",
-      walls: Object.entries(byThickness).map(([t, l]) => ({ thickness_mm: t, layers: Number(t) >= 160 ? "5" : "3", length_m: l.toFixed(3) })),
-      board_layers_m2: (2 * faces).toFixed(2), paint_m2: faces.toFixed(2) };
+      walls: Object.entries(byThickness).map(([t, l]) => ({ thickness_mm: t, layers: "5", length_m: l.toFixed(3) })),
+      panels: (more?.panels || []).map((p) => ({ ...p, thickness_mm: String(p.thickness_mm), layers: String(p.layers), area_m2: String(p.area_m2) })),
+      board_layers_m2: (2 * faces).toFixed(2), paint_m2: (faces + ceiling).toFixed(2),
+      ceiling_m2: ceiling.toFixed(2), slab_buildup_m2: String(more?.slab_buildup_m2 || 0), roof_buildup_m2: String(more?.roof_buildup_m2 || 0),
+      facade_m2: outer.toFixed(2), steel_beam_m: String(more?.steel_beam_m || 0) };
   });
 }
 
@@ -519,8 +531,10 @@ function Calculation({ report }) {
   }
   const setFloor = (i, key, value) => setFloors((all) => all.map((f, n) => n === i ? { ...f, [key]: value } : f));
   const setWall = (i, w, key, value) => setFloors((all) => all.map((f, n) => n === i ? { ...f, walls: f.walls.map((x, m) => m === w ? { ...x, [key]: value } : x) } : f));
+  const setPanel = (i, w, key, value) => setFloors((all) => all.map((f, n) => n === i ? { ...f, panels: (f.panels || []).map((x, m) => m === w ? { ...x, [key]: value } : x) } : f));
   return <form onSubmit={calculate} className="grid gap-3">
-    {fromPdf && <p className="text-sm">Pisos preenchidos a partir do último PDF lido: comprimentos medidos, altura estrutural tirada do corte e revestimentos estimados (BA13 duplo e pintura em cada face de parede virada para o interior, como no corte). Confirme antes de orçamentar.</p>}
+    {fromPdf && <p className="text-sm">Pisos preenchidos a partir do último PDF lido: paredes medidas, altura estrutural do corte, laje, cobertura, lintéis, painéis sobre portas, teto BA15, vigas de aço e revestimentos (BA13 duplo e pintura nas faces interiores, como no corte). Confirme antes de orçamentar.</p>}
+    {report?.estimate_extras?.notes?.length > 0 && <ul className="list-disc pl-5 text-sm">{report.estimate_extras.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
     <div className="flex flex-wrap gap-3">
       <Field label="Data de início"><input className={input} type="date" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
       <Field label="Começar o plano em"><select className={input} value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -537,17 +551,28 @@ function Calculation({ report }) {
         <Field label="Camadas (juntas coladas + 1)"><input className={input} type="number" min="3" max="9" step="1" value={wall.layers} onChange={(e) => setWall(i, w, "layers", e.target.value)} required /></Field>
         <Field label="Comprimento medido (m)"><input className={input} type="number" min="0.01" step="any" value={wall.length_m} onChange={(e) => setWall(i, w, "length_m", e.target.value)} required /></Field>
       </div>)}
-      <button type="button" className={secondary} onClick={() => setFloor(i, "walls", [...floor.walls, { thickness_mm: "100", layers: "3", length_m: "" }])}>Adicionar espessura</button>
+      <button type="button" className={secondary} onClick={() => setFloor(i, "walls", [...floor.walls, { thickness_mm: "100", layers: "5", length_m: "" }])}>Adicionar espessura</button>
+      {(floor.panels || []).map((panel, w) => <div key={`p${w}`} className="grid gap-3 sm:col-span-2 lg:col-span-4 sm:grid-cols-5">
+        <Field label="Elemento CLT"><select className={input} value={panel.kind} onChange={(e) => setPanel(i, w, "kind", e.target.value)}>
+          {Object.entries(panelKinds).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        <Field label="Descrição"><input className={input} value={panel.label || ""} onChange={(e) => setPanel(i, w, "label", e.target.value)} /></Field>
+        <Field label="Espessura (mm)"><input className={input} type="number" min="1" step="any" value={panel.thickness_mm} onChange={(e) => setPanel(i, w, "thickness_mm", e.target.value)} required /></Field>
+        <Field label="Camadas"><input className={input} type="number" min="3" max="13" step="1" value={panel.layers} onChange={(e) => setPanel(i, w, "layers", e.target.value)} required /></Field>
+        <Field label="Área (m²)"><span className="flex gap-1"><input className={input} type="number" min="0.001" step="any" value={panel.area_m2} onChange={(e) => setPanel(i, w, "area_m2", e.target.value)} required />
+          <button type="button" className={secondary} aria-label="Retirar elemento" onClick={() => setFloor(i, "panels", floor.panels.filter((_, m) => m !== w))}>×</button></span></Field>
+      </div>)}
+      <button type="button" className={secondary} onClick={() => setFloor(i, "panels", [...(floor.panels || []), { kind: "laje", label: "", thickness_mm: "240", layers: "7", area_m2: "" }])}>Adicionar laje, cobertura ou lintel</button>
+      {EXTRA_FIELDS.map(([key, label]) => <Field key={key} label={label}><input className={input} type="number" min="0" step="any" value={floor[key] ?? "0"} onChange={(e) => setFloor(i, key, e.target.value)} /></Field>)}
     </fieldset>)}
     <div className="flex flex-wrap gap-2">
       <button type="button" className={secondary} onClick={() => setFloors((all) => [...all, newFloor()])}>Adicionar piso</button>
       <button className={button}>Calcular custo total</button>
     </div>
     {result && <div className="grid gap-4 text-sm">
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-5">
         {[["Custo total", fmt(result.total.custo_total_eur)], ["Venda", fmt(result.total.receita_eur)],
           ["Margem", `${fmt(result.total.margem_eur)}${result.total.margem_percent != null ? ` · ${result.total.margem_percent}%` : ""}`],
-          ["Prazo", `${result.plano.dias} dias`]].map(([label, value]) => <div key={label} className="rounded border p-3"><span className="block text-muted-foreground">{label}</span><strong className="text-lg">{value}</strong></div>)}
+          ["Prazo", `${result.plano.dias} dias`], [`Venda com IVA ${result.total.iva_percent}%`, fmt(result.total.receita_com_iva_eur)]].map(([label, value]) => <div key={label} className="rounded border p-3"><span className="block text-muted-foreground">{label}</span><strong className="text-lg">{value}</strong></div>)}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left"><thead><tr><th>Piso</th><th>m² montagem</th><th>m³ fabrico</th><th>h fabrico</th><th>h montagem</th>

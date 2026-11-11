@@ -41,6 +41,7 @@ SOURCES = {
     "zaask_pladur": "Zaask Portugal: placa de gesso 1,90–5,03 €/m² de material, instalação média 25 €/m²",
     "zaask_pintura": "Zaask Portugal: pintura interior, média 7 €/m² de mão de obra",
     "rezult_eta": "Rezult ETA-21/0914: adesivo tipo I EN 15425, lamelas de 20 a 43 mm, dosagem não publicada",
+    "civa": "Código do IVA, art. 18.º: taxa normal de 23% no continente. A taxa de 6% só se aplica a obras específicas (verba 2.27 e 2.32 da lista I).",
     "agua": "Tarifa municipal (ERSAR não publica uma média nacional por API). Indicar a tarifa do concelho da fábrica.",
 }
 
@@ -52,6 +53,9 @@ CATEGORIES = {
     "maquinas": ("Gruas e máquinas", "montagem"),
     "montagem": ("Montagem em obra", "montagem"),
     "revestimentos": ("Revestimentos", "revestimentos"),
+    "isolamentos": ("Isolamentos, impermeabilização e betão leve", "revestimentos"),
+    "estrutura": ("Estrutura complementar", "compra"),
+    "indiretos": ("Engenharia, estaleiro e imprevistos", "indiretos"),
     "venda": ("Venda do CLT", "venda"),
 }
 BASES = {
@@ -61,6 +65,9 @@ BASES = {
     "km_obra": "km de transporte para a obra", "viagem": "viagem para a obra",
     "dia_fabrico": "dia de fabrico", "dia_montagem": "dia de montagem",
     "m2_placa": "m² de placa aplicada (por camada)", "m2_pintura": "m² pintado", "projeto": "projeto",
+    "m2_teto": "m² de teto falso", "m2_laje": "m² de laje CLT com betão leve", "m2_cobertura": "m² de cobertura plana",
+    "m2_fachada": "m² de face exterior de parede", "m_viga_aco": "m de viga de aço",
+    "pct_custo": "% do custo direto",
 }
 PROJECT_BASES = {"km_materia_prima", "km_obra", "viagem", "dia_fabrico", "dia_montagem", "projeto"}
 
@@ -81,6 +88,15 @@ LIBRARY = {
     "REV-PLACA-SUB": ("revestimentos", "Aplicação de placa subcontratada", "m²", "25", "28.75", "m2_placa", "1", "mercado", "zaask_pladur"),
     "REV-TINTA": ("revestimentos", "Tinta, duas demãos", "m²", "1.5", "1.73", "m2_pintura", "1", "hipotese", "Preencher com o preço da tinta e o rendimento."),
     "REV-PINTURA-SUB": ("revestimentos", "Pintura subcontratada", "m²", "7", "8.05", "m2_pintura", "1", "mercado", "zaask_pintura"),
+    "REV-PLACA-BA15": ("revestimentos", "Placa de gesso BA15 do teto (material)", "m²", "4.5", "5.18", "m2_teto", "1.05", "mercado", "zaask_pladur"),
+    "REV-TETO-SUB": ("revestimentos", "Teto falso suspenso subcontratado (perfis e aplicação)", "m²", "25", "28.75", "m2_teto", "1", "mercado", "zaask_pladur"),
+    "ISO-LAJE": ("isolamentos", "Membrana acústica e betão leve 100 mm sobre a laje", "m²", "28", "32.2", "m2_laje", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "ISO-COBERTURA": ("isolamentos", "Cobertura plana: XPS 100 mm, betão leve, PVC e seixo", "m²", "60", "69", "m2_cobertura", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "ISO-FACHADA": ("isolamentos", "Fachada: lã mineral 100 mm e membrana de vapor (sem acabamento exterior)", "m²", "22", "25.3", "m2_fachada", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EST-VIGA-ACO": ("estrutura", "Viga de aço (perfil não indicado no desenho), fornecida e montada", "m", "90", "103.5", "m_viga_aco", "1", "hipotese", "O perfil não está no desenho. Preencher após o cálculo estrutural."),
+    "IND-ENGENHARIA": ("indiretos", "Projeto de estabilidade e desenhos de fabrico", "%", "3", "3", "pct_custo", "1", "hipotese", "Percentagem do custo direto, faturada ao custo. Preencher com o valor da empresa."),
+    "IND-ESTALEIRO": ("indiretos", "Estaleiro, seguros e segurança em obra", "%", "3", "3", "pct_custo", "1", "hipotese", "Percentagem do custo direto, faturada ao custo. Preencher com o valor da empresa."),
+    "IND-IMPREVISTOS": ("indiretos", "Imprevistos", "%", "5", "5", "pct_custo", "1", "hipotese", "Percentagem do custo direto, faturada ao custo. Preencher com o valor da empresa."),
     "VENDA-CLT": ("venda", "Painel CLT fornecido", "m³", "0", "500", "m3_clt", "1", "mercado", "holzkurier_clt"),
 }
 
@@ -100,6 +116,7 @@ CATALOGUE = {
     "work_hours_day": ("montagem", "Horas de trabalho por dia", "h/dia", "8", "hipotese", "Horário da obra."),
     "purchase_days": ("prazos", "Prazo de compra e receção da madeira", "dias", "21", "hipotese", "Prazo do fornecedor."),
     "transport_days": ("prazos", "Prazo de entrega na obra", "dias", "2", "hipotese", "Planeamento logístico."),
+    "iva_percent": ("venda", "IVA sobre a venda", "%", "23", "mercado", "civa"),
 }
 
 
@@ -272,12 +289,33 @@ class Wall(BaseModel):
     length_m: Annotated[Decimal, Field(gt=0, le=10_000)]
 
 
+class Panel(BaseModel):
+    """CLT element given by its area: slab, roof, lintel or panel over an opening."""
+    kind: Literal["laje", "cobertura", "lintel", "parede"]
+    label: str = Field(default="", max_length=120)
+    thickness_mm: Annotated[Decimal, Field(gt=0, le=500)]
+    layers: Annotated[int, Field(ge=3, le=13)]
+    area_m2: Annotated[Decimal, Field(gt=0, le=100_000)]
+
+
 class FloorInput(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     height_m: Annotated[Decimal, Field(gt=0, le=20)]
-    walls: list[Wall] = Field(min_length=1, max_length=500)
+    walls: list[Wall] = Field(default_factory=list, max_length=500)
+    panels: list[Panel] = Field(default_factory=list, max_length=500)
     board_layers_m2: Value = Decimal(0)
     paint_m2: Value = Decimal(0)
+    ceiling_m2: Value = Decimal(0)
+    slab_buildup_m2: Value = Decimal(0)
+    roof_buildup_m2: Value = Decimal(0)
+    facade_m2: Value = Decimal(0)
+    steel_beam_m: Value = Decimal(0)
+
+    @model_validator(mode="after")
+    def has_clt(self):
+        if not self.walls and not self.panels:
+            raise ValueError("Cada piso precisa de paredes ou de painéis CLT.")
+        return self
 
 
 class EstimateInput(BaseModel):
@@ -302,7 +340,7 @@ def _q(value):
     return float(Decimal(value).quantize(CENT, rounding=ROUND_HALF_UP))
 
 
-STAGE_ORDER = ("compra", "producao", "transporte", "montagem", "revestimentos")
+STAGE_ORDER = ("compra", "producao", "transporte", "montagem", "revestimentos", "indiretos")
 
 
 def estimate(body: EstimateInput, parameters, library):
@@ -310,14 +348,21 @@ def estimate(body: EstimateInput, parameters, library):
     items = [LibraryItem.model_validate({k: v for k, v in item.items() if k != "standard"}) for item in library.values()]
     floors = []
     for floor in body.floors:
-        area = sum((w.length_m * floor.height_m for w in floor.walls), Decimal(0))
-        volume = sum((w.length_m * floor.height_m * w.thickness_mm / 1000 for w in floor.walls), Decimal(0))
-        glue_area = sum((w.length_m * floor.height_m * (w.layers - 1) for w in floor.walls), Decimal(0))
+        elements = [(w.length_m * floor.height_m, w.thickness_mm, w.layers) for w in floor.walls]
+        elements += [(e.area_m2, e.thickness_mm, e.layers) for e in floor.panels]
+        area = sum((a for a, _, _ in elements), Decimal(0))
+        volume = sum((a * t / 1000 for a, t, _ in elements), Decimal(0))
+        glue_area = sum((a * (n - 1) for a, _, n in elements), Decimal(0))
         floors.append({
             "floor": floor, "m3_clt": volume, "m2_montagem": area, "kg_cola": glue_area * p["adhesive_kg_m2"],
             "m3_madeira": volume * p["timber_input_m3_per_m3"], "h_fabrico": volume * p["fabrication_h_m3"],
             "h_montagem": area * p["assembly_h_m2"], "kwh": volume * p["electricity_kwh_m3"],
-            "m2_placa": floor.board_layers_m2, "m2_pintura": floor.paint_m2,
+            "m2_placa": floor.board_layers_m2, "m2_pintura": floor.paint_m2, "m2_teto": floor.ceiling_m2,
+            "m2_laje": floor.slab_buildup_m2, "m2_cobertura": floor.roof_buildup_m2, "m2_fachada": floor.facade_m2,
+            "m_viga_aco": floor.steel_beam_m,
+            "parede_m2": sum((w.length_m * floor.height_m for w in floor.walls), Decimal(0)),
+            "paineis_m2": {kind: sum((e.area_m2 for e in floor.panels if e.kind == kind), Decimal(0))
+                           for kind in ("laje", "cobertura", "lintel", "parede")},
         })
     volume_total = sum((f["m3_clt"] for f in floors), Decimal(0))
     timber_total = sum((f["m3_madeira"] for f in floors), Decimal(0))
@@ -331,12 +376,18 @@ def estimate(body: EstimateInput, parameters, library):
                "viagem": trips, "dia_fabrico": days["fabrico"], "dia_montagem": days["montagem"], "projeto": Decimal(1)}
 
     lines, rows = [], []
-    for item in items:
+    for item in sorted(items, key=lambda i: i.basis == "pct_custo"):
         stage = CATEGORIES[item.category][1]
         per_floor = []
-        for f in floors:
+        for index, f in enumerate(floors):
             share = f["m3_clt"] / volume_total if volume_total else Decimal(1) / len(floors)
-            base = project[item.basis] * share if item.basis in PROJECT_BASES else f[item.basis]
+            if item.basis == "pct_custo":
+                base = sum((l["per_floor"][index] * l["item"].cost_eur for l in lines
+                            if l["stage"] != "venda" and l["item"].basis != "pct_custo"), Decimal(0)) / 100
+            elif item.basis in PROJECT_BASES:
+                base = project[item.basis] * share
+            else:
+                base = f[item.basis]
             per_floor.append(base * item.per_basis)
         qty = sum(per_floor, Decimal(0))
         lines.append({"item": item, "stage": stage, "per_floor": per_floor, "qty": qty})
@@ -356,7 +407,10 @@ def estimate(body: EstimateInput, parameters, library):
             "altura_m": float(f["floor"].height_m), "montagem_m2": _q(f["m2_montagem"]), "fabrico_m3": _q(f["m3_clt"]),
             "madeira_comprada_m3": _q(f["m3_madeira"]), "adesivo_kg": _q(f["kg_cola"]), "eletricidade_kwh": _q(f["kwh"]),
             "horas_fabrico": _q(f["h_fabrico"]), "horas_montagem": _q(f["h_montagem"]),
-            "placa_m2": _q(f["m2_placa"]), "pintura_m2": _q(f["m2_pintura"]),
+            "placa_m2": _q(f["m2_placa"]), "pintura_m2": _q(f["m2_pintura"]), "teto_m2": _q(f["m2_teto"]),
+            "parede_m2": _q(f["parede_m2"]), "paineis_m2": {k: _q(v) for k, v in f["paineis_m2"].items()},
+            "laje_betao_m2": _q(f["m2_laje"]), "cobertura_m2": _q(f["m2_cobertura"]), "fachada_m2": _q(f["m2_fachada"]),
+            "viga_aco_m": _q(f["m_viga_aco"]),
             "custos_eur": {k: _q(v) for k, v in costs.items()}, "custo_total_eur": _q(cost),
             "receita_eur": _q(revenue), "margem_eur": _q(margin),
             "margem_percent": _q(margin * 100 / revenue) if revenue else None,
@@ -374,6 +428,8 @@ def estimate(body: EstimateInput, parameters, library):
         "custos_eur": stages_total, "custo_total_eur": _q(total_cost), "receita_eur": _q(total_revenue),
         "margem_eur": _q(total_margin), "margem_percent": _q(total_margin * 100 / total_revenue) if total_revenue else None,
         "viagens": int(trips), "viagens_materia_prima": int(timber_trips),
+        "iva_percent": float(p["iva_percent"]), "iva_eur": _q(total_revenue * p["iva_percent"] / 100),
+        "receita_com_iva_eur": _q(total_revenue * (1 + p["iva_percent"] / 100)),
     }
     detail = [{"codigo": l["item"].code, "designacao": l["item"].name, "categoria": l["item"].category, "fase": l["stage"],
                "base": l["item"].basis, "quantidade": _q(l["qty"]), "unidade": l["item"].unit,
@@ -414,7 +470,7 @@ def lot_from_estimate(name, result):
         if line["fase"] == "venda" or not line["quantidade"] or not line["custo_unitario_eur"]:
             continue
         unit = LOT_UNITS.get(line["unidade"].lower(), "un")
-        lines.append({"code": line["codigo"], "stage": {"producao": "producao", "revestimentos": "montagem"}.get(line["fase"], line["fase"]),
+        lines.append({"code": line["codigo"], "stage": {"revestimentos": "montagem", "indiretos": "montagem"}.get(line["fase"], line["fase"]),
                       "name": line["designacao"][:120], "unit": unit, "rate_eur": str(line["custo_unitario_eur"]),
                       "baseline_qty": str(line["quantidade"]), "uncommitted_remaining_eur": str(line["custo_eur"]),
                       "source_reference": f"Cálculo automático ConstruPilot · base {line['base']}"})

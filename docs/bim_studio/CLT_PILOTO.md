@@ -93,9 +93,36 @@ Cada valor indica a origem:
 
 A ficha Rezult (ETA-21/0914) confirma o adesivo tipo I EN 15425 e lamelas de
 20 a 43 mm, mas não publica a dosagem de cola nem a composição de cada parede.
-Por omissão, 100 mm conta como 3 camadas e 160 mm (80+80) como duas placas de 3
-camadas (4 juntas coladas); o valor pode ser alterado por piso. A ETA indica a
+A composição das paredes vem da legenda das plantas (100 mm com 5 camadas;
+80+80 mm com dois painéis de 3 camadas, 4 juntas coladas) e pode ser alterada
+por piso. A ETA indica a
 fábrica em Kyiv: a distância de transporte por omissão é hipótese.
+
+## O que entra no custo total
+
+Para o Home A, a leitura do PDF devolve também `estimate_extras` por piso, que
+preenche o cálculo:
+
+- **Paredes**: troços medidos × altura estrutural. Pela legenda das plantas,
+  100 mm tem 5 camadas e 80+80 mm são dois painéis de 3 camadas.
+- **Laje do +1**: CLT 240 de 7 camadas (corte), pela face exterior das paredes do
+  +1, menos a abertura da escada.
+- **Coberturas**: CLT 140 de 5 camadas (corte). Sobre o +1, a área da laje; sobre
+  o RDC, o contorno violeta da cobertura menos a parte coberta pelo +1.
+- **Lintéis** (tracejado vermelho): vão livre fora das paredes × (altura
+  estrutural − 2,30 m). **Painéis sobre portas** em paredes CLT sem lintel:
+  largura × (altura estrutural − altura da porta cotada).
+- **Vigas de aço** (tracejado azul): comprimento. O perfil não está no desenho.
+- **Teto falso BA15**, membrana e betão leve da laje, cobertura plana
+  (XPS, betão leve, PVC e seixo) e isolamento da fachada (lã mineral e
+  membrana), pelas áreas acima.
+- **Engenharia, estaleiro e imprevistos**: percentagens do custo direto,
+  faturadas ao custo.
+- **IVA**: 23% por omissão, editável; o resultado mostra a venda com IVA.
+
+Fundações, laje térrea e caixilharia não fazem parte do fornecimento CLT e não
+estão no total. A legenda não tem amostra de cor para lintéis e vigas, por
+isso a leitura vermelho = lintel e azul = viga fica marcada para confirmação.
 
 ## Limites desta entrega
 

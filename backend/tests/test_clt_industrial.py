@@ -287,7 +287,8 @@ def test_cost_estimate_by_floor_from_libraries():
     assert rdc["custos_eur"]["compra"] == float(timber.quantize(Decimal("0.01")))
     assert result["total"]["viagens"] == 1
     assert lines["TR-OBRA"]["quantidade"] == 300          # one trip × 300 km
-    assert abs(rdc["receita_eur"] - (3 * 500 + 30 * 61.69 + 20 * 1.05 * 4.03 + 20 * 1.73 + 20 * 28.75 + 10 * (1.73 + 8.05))) < .02
+    assert abs(rdc["receita_eur"] - (3 * 500 + 30 * 61.69 + 20 * 1.05 * 4.03 + 20 * 1.73 + 20 * 28.75 + 10 * (1.73 + 8.05)
+                                 + rdc["custo_total_eur"] / 1.11 * .11)) < .05   # engineering, site and contingency billed at cost
     plan = result["plano"]
     assert [s["fase"] for s in plan["fases"]] == ["compra", "fabrico", "transporte", "montagem"]
     assert plan["inicio"] == "2027-01-04" and plan["fases"][1]["inicio"] == "2027-01-25"
@@ -383,3 +384,49 @@ def test_http_company_libraries_estimate_and_lot(monkeypatch):
         assert lot.status_code == 201, lot.text
         forecast = float(lot.json()["lot"]["summary"]["forecast_cost_eur"])
         assert abs(forecast - estimate["total"]["custo_total_eur"]) < .01 * len(estimate["linhas"])
+
+
+def test_lintel_band_clear_span_and_door_in_clt_wall():
+    import fitz
+    from shapely.geometry import box
+    from bim_studio.home_a_takeoff import DOOR, LINTEL, _openings
+
+    doc = fitz.open()
+    page = doc.new_page(width=600, height=400)
+    for y in (100, 110):                         # dashed red band, 100 mm wide, 3.00 m long
+        x = 50
+        while x < 350:
+            page.draw_line((x, y), (min(x + 3, 350), y), color=LINTEL, width=.6)
+            x += 5
+    walls = [box(50, 100, 100, 110), box(300, 100, 350, 110), box(400, 200, 500, 210)]
+    page.draw_line((410, 210), (410, 300), color=DOOR, width=.72)   # leaf
+    page.draw_bezier((410, 300), (450, 300), (500, 260), (500, 210), color=DOOR, width=.72)
+    page.draw_line((410, 210), (500, 210), color=DOOR, width=.72)   # opening, on the wall line
+    evidence = [{"kind": "opening_dimensions", "values": [900.0, 2300.0], "rect": [440 / 600, 250 / 400, 460 / 600, 255 / 400]}]
+    lintels, beams, doors = _openings(page, .01, walls, evidence)
+    assert len(lintels) == 1 and not beams
+    assert abs(lintels[0]["length_m"] - 3.0) < .05 and abs(lintels[0]["clear_span_m"] - 2.0) < .05
+    assert lintels[0]["thickness_mm"] == 100
+    assert doors == [{"width_m": .9, "height_m": 2.3, "source": "cotado", "under_lintel": False}]
+
+
+def test_full_estimate_counts_slab_roof_lintels_indirects_and_vat():
+    from decimal import Decimal
+    from bim_studio.clt_economics import EstimateInput, estimate, library_merged, merged
+
+    body = EstimateInput(floors=[{
+        "name": "+1", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "10"}],
+        "panels": [{"kind": "laje", "thickness_mm": "240", "layers": 7, "area_m2": "50"},
+                   {"kind": "lintel", "thickness_mm": "100", "layers": 5, "area_m2": "2"}],
+        "ceiling_m2": "45", "slab_buildup_m2": "50", "roof_buildup_m2": "50", "facade_m2": "30", "steel_beam_m": "4"}])
+    result = estimate(body, merged({}), library_merged({}))
+    floor, lines = result["pisos"][0], {l["codigo"]: l for l in result["linhas"]}
+    assert floor["fabrico_m3"] == 3 + 12 + .2 and floor["montagem_m2"] == 82
+    assert lines["MP-COLA-PUR"]["quantidade"] == float(Decimal("0.16") * (30 * 4 + 50 * 6 + 2 * 4))
+    assert lines["REV-TETO-SUB"]["custo_eur"] == 45 * 25 and lines["EST-VIGA-ACO"]["quantidade"] == 4
+    assert lines["ISO-COBERTURA"]["quantidade"] == 50 and lines["ISO-FACHADA"]["quantidade"] == 30
+    direct = sum(l["custo_eur"] for l in result["linhas"] if l["fase"] not in ("venda", "indiretos"))
+    assert abs(lines["IND-IMPREVISTOS"]["custo_eur"] - direct * .05) < .02
+    assert abs(result["total"]["custo_total_eur"] - direct * 1.11) < .05
+    assert result["total"]["iva_percent"] == 23
+    assert abs(result["total"]["receita_com_iva_eur"] - result["total"]["receita_eur"] * 1.23) < .02
