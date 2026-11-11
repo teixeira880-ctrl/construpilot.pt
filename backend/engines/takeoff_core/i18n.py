@@ -168,6 +168,8 @@ T = {
     "uma placa por face": ("one board per face", "одна плита на сторону", "une plaque par face"),
     "Rezult, características técnicas (clt-rezult.com/en/technical-characteristics), lido em 2026-11-11": ("Rezult, technical characteristics (clt-rezult.com/en/technical-characteristics), read 2026-11-11", "Rezult, технічні характеристики (clt-rezult.com/en/technical-characteristics), прочитано 2026-11-11", "Rezult, caractéristiques techniques (clt-rezult.com/en/technical-characteristics), lu le 2026-11-11"),
     "altura indicada no projeto": ("height given in the project", "висота, вказана в проєкті", "hauteur indiquée au projet"),
+    "altura indicada pelo utilizador": ("height entered by the user", "висота, введена користувачем", "hauteur indiquée par l'utilisateur"),
+    "hauteur indiquée par l'utilisateur": ("height entered by the user", "висота, введена користувачем", "hauteur indiquée par l'utilisateur"),
     "valor da empresa": ("company value", "значення компанії", "valeur de l'entreprise"),
 }
 
@@ -272,3 +274,34 @@ def tr(text, lang="pt"):
 def code_label(code, lang="pt"):
     row = CODES.get(code)
     return row[_IDX.get(lang, 0)] if row else code
+
+
+# Engine error messages (raised in Portuguese) → the user's language. Patterns keep the wall / room names.
+ERRORS = [
+    (r"Cada piso deve ter um nome único\.", ("Each floor needs a unique name.", "Кожен поверх повинен мати унікальну назву.", "Chaque niveau doit avoir un nom unique.")),
+    (r"Os identificadores das paredes devem ser únicos em todo o projeto\.", ("Wall identifiers must be unique in the whole project.", "Ідентифікатори стін мають бути унікальними в усьому проєкті.", "Les identifiants des murs doivent être uniques dans tout le projet.")),
+    (r"Cada parede precisa de um identificador único\.", ("Each wall needs a unique identifier.", "Кожна стіна потребує унікального ідентифікатора.", "Chaque mur doit avoir un identifiant unique.")),
+    (r"As paredes (.+) e (.+) estão duplicadas no desenho\.", (r"Walls \1 and \2 are duplicated on the drawing.", r"Стіни \1 і \2 продубльовано на кресленні.", r"Les murs \1 et \2 sont en double sur le plan.")),
+    (r"A parede (.+) tem menos de 5 cm de eixo\.", (r"Wall \1 has an axis shorter than 5 cm.", r"Вісь стіни \1 коротша за 5 см.", r"Le mur \1 a un axe de moins de 5 cm.")),
+    (r"O vão (.*) sai da parede (.+)\.", (r"Opening \1 runs out of wall \2.", r"Проріз \1 виходить за межі стіни \2.", r"La baie \1 sort du mur \2.")),
+    (r"Há vãos sobrepostos na parede (.+)\.", (r"Overlapping openings on wall \1.", r"Прорізи на стіні \1 перекриваються.", r"Baies superposées sur le mur \1.")),
+    (r"Um vão da parede (.+) fica sobre uma junta; ajuste a divisão do painel\.", (r"An opening of wall \1 lies on a panel joint; adjust the panel split.", r"Проріз стіни \1 потрапляє на стик панелей; змініть поділ.", r"Une baie du mur \1 tombe sur un joint de panneau ; ajustez le découpage.")),
+    (r"Paredes acima da altura máxima do painel exigem painel vertical: (.+)\.", (r"Walls above the maximum panel height need a vertical panel: \1.", r"Стіни, вищі за максимальну висоту панелі, потребують вертикальної панелі: \1.", r"Les murs au-dessus de la hauteur maximale du panneau exigent un panneau vertical : \1.")),
+    (r"Valor inválido para (.+)\.", (r"Invalid value for \1.", r"Недійсне значення для \1.", r"Valeur invalide pour \1.")),
+    (r"A divisão (.+) tem um contorno inválido\.", (r"Room \1 has an invalid outline.", r"Приміщення \1 має недійсний контур.", r"La pièce \1 a un contour invalide.")),
+    (r"A página não tem escala: calibre a planta antes de a medir\.", ("The page has no scale: calibrate the plan before measuring it.", "Сторінка не має масштабу: відкалібруйте план перед обміром.", "La page n'a pas d'échelle : calibrez le plan avant le métré.")),
+    (r"(\S+): sem eixo ou espessura, não medida", (r"\1: no axis or thickness, not measured", r"\1: немає осі чи товщини, не обміряно", r"\1 : sans axe ni épaisseur, non métré")),
+    (r"(\S+): leitura ambígua, a confirmar", (r"\1: ambiguous reading, to confirm", r"\1: неоднозначне зчитування, підтвердити", r"\1 : lecture ambiguë, à confirmer")),
+    (r"Nenhuma parede lida nesta página\.", ("No wall read on this page.", "На цій сторінці не зчитано жодної стіни.", "Aucun mur lu sur cette page.")),
+]
+
+
+def error(message, lang="pt"):
+    import re
+
+    if lang == "pt":
+        return message
+    out = message
+    for pattern, translations in ERRORS:
+        out = re.sub(pattern, translations[_IDX[lang] - 1], out)
+    return out
