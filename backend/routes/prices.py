@@ -58,6 +58,8 @@ async def departments():
 
 @router.post("/optimize")
 async def optimize(body: CartIn, user=Depends(optional_user)):
+    if any(not isinstance(it, dict) or not str(it.get("query") or "").strip() for it in (body.items or [])):
+        raise HTTPException(422, "Cada artigo precisa de um campo «query» (nome do produto).")
     if not body.items:
         raise HTTPException(status_code=400, detail="Carrinho vazio")
     catalog = None

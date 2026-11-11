@@ -208,8 +208,13 @@ async def stair_to_quote(body: StairToQuoteIn, user=Depends(pro_required)):
 
     ca = body.concrete_analysis
     if not ca:
-        res = compute_concrete_analysis(ConcreteAnalysisInput(
-            stair_result=body.stair_result, stair_type=body.stair_result.get("stair_type", "straight")))
+        from pydantic import ValidationError as _VE
+        try:
+            _inp = ConcreteAnalysisInput(
+                stair_result=body.stair_result, stair_type=body.stair_result.get("stair_type", "straight"))
+        except _VE:
+            raise HTTPException(422, "Resultado da escada incompleto: recalcule a escada antes de criar o orçamento.") from None
+        res = compute_concrete_analysis(_inp)
         ca = res.model_dump()
     q = ca.get("quantities", {})
     steel = (ca.get("reinforcement", {}) or {}).get("total_steel_kg") or q.get("total_steel_kg") or 0

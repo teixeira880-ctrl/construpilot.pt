@@ -81,6 +81,8 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+from core.service_errors import service_error_handler  # noqa: E402
+app.add_exception_handler(Exception, service_error_handler)
 app.add_middleware(SlowAPIMiddleware)
 # Demo guard middleware — bloqueia acções sensíveis para sessões `is_demo=True`.
 from core.demo_middleware import DemoActionsMiddleware  # noqa: E402

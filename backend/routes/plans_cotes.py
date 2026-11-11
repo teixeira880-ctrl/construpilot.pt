@@ -928,7 +928,7 @@ async def cotes_send(plan_id: str, body: CotesSendIn, user=Depends(current_user)
     company = branding.get("company_name") or user.get("name") or "ConstruPilot"
     perso = _html.escape(body.message.strip()[:2000]).replace("\n", "<br/>")
     verdict = tr({"ok": "nenhuma incoerência", "warn": "desvios a verificar",
-                  "ko": f"{sm['ko']} incohérence(s)"}[sm["verdict"]], lang)
+                  "ko": f"{sm['ko']} incohérence(s)", "nd": "não determinado (cotas não associadas ao desenho com certeza)"}.get(sm.get("verdict"), sm.get("verdict") or "—"), lang)
     fname = _html.escape(p.get("filename") or "plan")
     inner = _EMAIL_PT(sm, report, fname, body.page_index, verdict, perso) if lang == "pt" else (
         (f"<p>{perso}</p>" if perso else "") +
