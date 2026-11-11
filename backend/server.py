@@ -295,6 +295,8 @@ api_router.include_router(bet_visto_routes.bet_visto_public)
 from routes import bim_studio as bim_studio_routes  # noqa: E402  — ConstruPilot BIM Studio (IFC, só PT)
 api_router.include_router(bim_studio_routes.router)
 api_router.include_router(bim_studio_routes.files_router)
+from routes import clt_industrial as clt_industrial_routes
+api_router.include_router(clt_industrial_routes.router)
 app.add_event_handler("startup", bim_studio_routes.on_startup)
 app.add_event_handler("shutdown", bim_studio_routes.on_shutdown)
 app.include_router(api_router)

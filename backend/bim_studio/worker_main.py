@@ -55,6 +55,7 @@ def main(argv: list[str]) -> int:
             max_elements=int(limits.get("max_elements", 60000)),
             max_triangles=int(limits.get("max_triangles", 4_000_000)),
             threads=int(limits.get("threads", 1)),
+            industrial=limits.get("industrial") is True,
             progress=lambda p, s: _emit({"progress": round(p, 3), "stage": s}),
         )
         _emit({"done": True, "summary": result["stats"]})
