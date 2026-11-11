@@ -75,9 +75,55 @@ def validate(raw: dict) -> tuple[model.Model | None, list[dict]]:
                           "message": "Relevé non conforme au schéma : " + " ; ".join(schema_errors[:6]),
                           "fix": "Respecter le schéma du relevé (types et champs requis)."})
     try:
-        return m, anomalies + checks.run_all(m)
+        return m, force_warn(raw, anomalies + checks.run_all(m))
     except Exception as exc:  # noqa: BLE001
         return m, anomalies + [{"code": "MODEL-01", "level": checks.BLOCK, "message": f"Contrôle impossible : {type(exc).__name__}: {exc}"}]
+
+
+def price_anomalies(lines: list[dict], country: str) -> list[dict]:
+    """Origine des prix du devis : toujours affichée quand des prix ne viennent pas de la bibliothèque de l'entreprise."""
+    sm = devis.price_summary(lines)
+    lib = sm.get("company_library", 0) + sm.get("shared_library", 0)
+    web, ref = sm.get("market_web", 0), sm.get("reference", 0)
+    if not (web or ref):
+        return []
+    if country == "PT":
+        msg = (f"Origem dos preços do orçamento: {lib} linha(s) da biblioteca, {web} preço(s) de mercado pesquisados online, "
+               f"{ref} preço(s) de referência ConstruPilot")
+        fix = "Analisar e validar os preços de mercado / referência (comentário em cada preço do Excel) antes de enviar ao cliente"
+    else:
+        msg = (f"Origine des prix du devis : {lib} ligne(s) de la bibliothèque, {web} prix de marché trouvés en ligne, "
+               f"{ref} prix de référence ConstruPilot")
+        fix = "Analyser et valider les prix de marché / de référence (commentaire sur chaque prix de l'Excel) avant envoi au client"
+    return [{"code": "PRIX-01", "level": checks.WARN, "message": msg, "fix": fix}]
+
+
+# Anomalies qui empêchent physiquement le calcul : jamais converties.
+UNFORCEABLE = {"MODEL-00", "MODEL-01", "SCHEMA", "JSON", "CALC-00", "CALC-01", "CALC-02", "ENGINE-SCOPE"}
+
+
+def forceable(anomalies: list[dict]) -> bool:
+    """Toutes les anomalies bloquantes sont des incohérences du projet (pas une impossibilité de calcul)."""
+    blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
+    return bool(blocking) and not any(a.get("code") in UNFORCEABLE for a in blocking)
+
+
+def force_warn(raw: dict, anomalies: list[dict]) -> list[dict]:
+    """Mode « décider seul » jusqu'au bout (raw["_force"]) : une incohérence des plans ne bloque plus le dossier —
+    elle devient une alerte bien visible dans le résultat et le PDF, l'étude va jusqu'au devis."""
+    f = raw.get("_force") if isinstance(raw, dict) else None
+    if not f:
+        return anomalies
+    pt = (f.get("lang") if isinstance(f, dict) else "") == "pt"
+    out = []
+    for a in anomalies:
+        if a.get("level") == checks.BLOCK and a.get("code") not in UNFORCEABLE:
+            a = dict(a, level=checks.WARN, code=f"{a.get('code')}F",
+                     message=("⚠ Incoerência no projeto (estudo concluído apesar dela): " if pt
+                              else "⚠ Incohérence du projet (étude menée malgré elle) : ") + str(a.get("message", "")),
+                     fix=a.get("fix") or ("Verificar nas plantas antes da execução" if pt else "À vérifier sur les plans avant exécution"))
+        out.append(a)
+    return out
 
 
 def thermal_first(raw: dict, m, anomalies: list):
@@ -177,6 +223,7 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
         lines = devis.build_lines(m, r, tim, e, p)
         tot = devis.totals(lines)
         anomalies += checks.check_hypotheses(m, r)
+        anomalies += price_anomalies(lines, country)
         rev = report.review(m, r, tim, e, p, lines, shs, anomalies)
     except Exception as exc:  # noqa: BLE001 — même règle : une anomalie lisible, jamais un plantage muet
         return {"status": "MODELE_INVALIDE", "blocking": 1, "files": {},

@@ -34,6 +34,23 @@ PRICES = {   # clé : (unité, PU € HT)
 }
 
 
+PRICE_SRC_LABEL = {
+    "company_library": "Prix de la bibliothèque de l'entreprise",
+    "shared_library": "Prix de la bibliothèque partagée ConstruPilot",
+    "market_web": "Prix de marché trouvé en ligne — à vérifier avant envoi",
+    "reference": "Prix de référence ConstruPilot (indicatif) — à vérifier avant envoi",
+}
+
+
+def price_summary(lines: list[dict]) -> dict:
+    """Nombre de lignes du devis par origine du prix (bibliothèque, marché en ligne, référence)."""
+    out: dict[str, int] = {}
+    for l in lines:
+        k = l.get("price_src") or "reference"
+        out[k] = out.get(k, 0) + 1
+    return out
+
+
 def build_lines(m, r: dict, tim: dict, e: dict, p: dict) -> list[dict]:
     q = {i["item"]: i for i in r["quantities"]["items"]}
     L, W = m.L, m.W
@@ -43,10 +60,17 @@ def build_lines(m, r: dict, tim: dict, e: dict, p: dict) -> list[dict]:
     bsmt = m.levels[0].floor_top < -1.0
     mit = any(d["type"] == "mitoyen" for d in m.raw["sides"].values())
 
+    overrides = m.raw.get("_price_overrides") or {}
+
     def add(lot, label, key, qty, note=""):
         u, pu = PRICES[key]
         pu = _price(country, key, pu)
-        lines.append({"lot": lot, "label": label, "unit": u, "qty": round(qty, 2), "pu": pu, "key": key, "note": note, "vat": vat})
+        src = "reference"
+        ov = overrides.get(key)
+        if isinstance(ov, dict) and isinstance(ov.get("pu"), (int, float)) and ov["pu"] > 0:
+            pu, src = round(float(ov["pu"]), 2), ov.get("src") or "reference"
+        lines.append({"lot": lot, "label": label, "unit": u, "qty": round(qty, 2), "pu": pu, "key": key, "note": note, "vat": vat,
+                      "price_src": src, "price_ref": (ov or {}).get("ref", "") if isinstance(ov, dict) else ""})
 
     lot = "01 — Installation, études, terrassement"
     add(lot, "Installation de chantier, clôture, base vie, panneau", "inst_chantier", 1)
@@ -276,6 +300,9 @@ def _build_xlsx(m, r: dict, tim: dict, e: dict, p: dict, lines: list[dict]):
         cq.font, cq.number_format = norm, "#,##0.00"
         cp = ws.cell(row=row, column=5, value=l["pu"])
         cp.font, cp.number_format = blue, "#,##0.00 €"
+        src_txt = PRICE_SRC_LABEL.get(l.get("price_src") or "reference", "")
+        if src_txt:
+            cp.comment = Comment(src_txt + (f" — {l['price_ref']}" if l.get("price_ref") else ""), "ConstruPilot")
         ct = ws.cell(row=row, column=6, value=f"=D{row}*E{row}")
         ct.font, ct.number_format = norm, "#,##0.00 €"
         for j in range(1, 7):

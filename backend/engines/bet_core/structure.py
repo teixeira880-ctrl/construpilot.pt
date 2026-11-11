@@ -783,8 +783,9 @@ def quantities(m: Model, fl: dict, lin: dict, fnd: dict, bw: dict, ld: dict | No
             (l["span"] + 0.4) * (AREA_KG(l["bottom"]) + 2 * MASS[10]) + (l["span"] / 0.15) * 2 * (l["b"] + l["h"]) * MASS[6])
     for p in lin["posts"]:
         add("Béton armé", f"Poteau {p['id']} {p['section']}, h = {p['height']:.2f}", "u", 1, p["height"] * 4 * MASS[12] + p["height"] / 0.15 * 1.4 * MASS[6])
-    nf = len(m.stair["flights"])
-    add("Escalier", f"Escalier béton 2 quarts tournants ({nf} volée{'s' if nf > 1 else ''} {m.stair['flights'][0]['from']}→{last_name})", "u", nf)
+    nf = len(m.stair.get("flights") or [])
+    if nf:
+        add("Escalier", f"Escalier béton 2 quarts tournants ({nf} volée{'s' if nf > 1 else ''} {m.stair['flights'][0]['from']}→{last_name})", "u", nf)
     return {"items": q, "steel_total_kg": round(sum(i["steel_kg"] for i in q)), "concrete_total_m3": round(sum(i["qty"] for i in q if i["unit"] == "m³" and i["lot"] in ("Fondations", "Sous-sol", "Dallage", "Gros œuvre")), 1)}
 
 

@@ -81,7 +81,14 @@ def check_stair(m: Model) -> list[dict]:
     oc = s.get("_original_cage")
     if oc:   # caixa redimensionada automaticamente (modo «decidir sozinho»): a incoerência do projeto fica visível
         o = f"{oc['x1'] - oc['x0']:.2f}×{oc['y1'] - oc['y0']:.2f}"
-        if oc.get("lang") == "pt":
+        if oc.get("why") == "wall":
+            pt = oc.get("lang") == "pt"
+            out.append(_a("GEO-31I", WARN,
+                          (f"Incoerência no projeto: uma parede atravessa a caixa de escada desenhada ({o} m); estudo feito com a caixa deslocada"
+                           if pt else f"Incohérence du projet : un mur traverse la cage d'escalier dessinée ({o} m) ; étude faite avec la cage déplacée").replace(".", ","),
+                          "Corrigir a caixa de escada nas plantas de arquitetura antes da execução" if pt
+                          else "Corriger la cage d'escalier sur les plans d'architecte avant exécution"))
+        elif oc.get("lang") == "pt":
             out.append(_a("GEO-31I", WARN,
                           f"Incoerência no projeto: a caixa de escada desenhada ({o} m) não comporta uma escada regulamentar; "
                           f"estudo feito com uma caixa de {B:.2f}×{Lc:.2f} m".replace(".", ","),

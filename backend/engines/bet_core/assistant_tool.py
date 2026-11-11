@@ -281,15 +281,39 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
         with tempfile.TemporaryDirectory() as tmp:
             raw = copy.deepcopy(rd["model"])
             raw["user_hypotheses"] = dict(raw.get("user_hypotheses") or {}, _text=(hypotheses or "")[:2000])   # choix du client (PAC, plancher chauffant, VMC, isolation…)
-            res = await asyncio.to_thread(pipeline.run, raw, tmp, None, "pt" if country == "PT" else "fr", None, branding)
-            if (res["status"] == "MODELE_INVALIDE" and decide_alone
-                    and any(a.get("code") == "GEO-31" for a in res["anomalies"] if a.get("level") == "bloquant")):
-                # escada que não cabe na caixa: adota a menor escada regulamentar e refaz os cálculos (sem perguntas)
-                raw = copy.deepcopy(rd["model"])
-                raw["user_hypotheses"] = dict(raw.get("user_hypotheses") or {}, _text=(hypotheses or "")[:2000])
-                if reader.autofix_stair(raw, country):
+            if decide_alone:
+                # « decidir sozinho »: corrigir ANTES dos cálculos o que se sabe corrigir (escada) e aceitar as incoerências
+                # restantes como avisos — o estudo e o orçamento vão sempre até ao fim
+                try:
+                    _m, _an = pipeline.validate(copy.deepcopy(raw))
+                    if any(a.get("code") in ("GEO-30", "GEO-31") and a.get("level") == "bloquant" for a in _an):
+                        reader.autofix_stair(raw, country)
+                        _m, _an = pipeline.validate(copy.deepcopy(raw))
+                    if pipeline.forceable(_an):
+                        raw["_force"] = {"lang": "pt" if country == "PT" else "fr"}
                     decisions = list(dict.fromkeys(decisions + [str(d) for d in raw.get("_decisions") or []]))
-                    res = await asyncio.to_thread(pipeline.run, raw, tmp, None, "pt" if country == "PT" else "fr", None, branding)
+                except Exception:  # noqa: BLE001
+                    log.warning("bet pre-fix failed", exc_info=True)
+            await step("Preços do orçamento: biblioteca da empresa, depois preços de mercado online" if country == "PT"
+                       else "Prix du devis : bibliothèque de l'entreprise, puis prix de marché en ligne")
+            try:
+                from . import price_resolver
+                psum = await price_resolver.resolve(raw, db, uid, country)
+                if psum:
+                    decisions = list(dict.fromkeys(decisions + [
+                        (f"Preços do orçamento: {psum['library']} da biblioteca da empresa, {psum['market_web']} preços de mercado "
+                         f"pesquisados online, {psum['reference']} preços de referência — analisar antes de enviar ao cliente.")
+                        if country == "PT" else
+                        (f"Prix du devis : {psum['library']} de la bibliothèque de l'entreprise, {psum['market_web']} prix de marché "
+                         f"trouvés en ligne, {psum['reference']} prix de référence — à analyser avant envoi au client.")]))
+            except Exception:  # noqa: BLE001 — les prix ne bloquent jamais l'étude
+                log.warning("bet price resolve failed", exc_info=True)
+            res = await asyncio.to_thread(pipeline.run, raw, tmp, None, "pt" if country == "PT" else "fr", None, branding)
+            if res["status"] == "MODELE_INVALIDE" and decide_alone and pipeline.forceable(res["anomalies"]):
+                # « decidir sozinho »: o estudo vai SEMPRE até ao fim — incoerências restantes passam a avisos visíveis
+                raw["_force"] = {"lang": "pt" if country == "PT" else "fr"}
+                res = await asyncio.to_thread(pipeline.run, raw, tmp, None, "pt" if country == "PT" else "fr", None, branding)
+                decisions = list(dict.fromkeys(decisions + [str(d) for d in raw.get("_decisions") or []]))
             if res["status"] == "MODELE_INVALIDE":
                 try:                                    # relevé en cache qui ne passe pas les calculs : on l'oublie, sinon chaque relance rejoue l'échec
                     await db.bet_models.delete_one({"user_id": uid, "docs_hash": key})

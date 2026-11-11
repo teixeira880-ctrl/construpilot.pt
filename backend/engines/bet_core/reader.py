@@ -606,6 +606,12 @@ def autofix_stair(raw: dict, country: str = "FR") -> str | None:
     """Modo «decidir sozinho»: quando a caixa de escada lida é pequena demais (controlo GEO-31), em vez de
     bloquear o estudo, redimensiona a caixa para a menor escada regulamentar de dois lanços (cobertor 25 cm,
     espelho ≤ 18 cm) dentro da envolvente, sem paredes interiores na trémie. Devolve a decisão (texto) ou None."""
+    if not isinstance(raw.get("stair"), dict) or not (raw["stair"].get("flights")):
+        try:
+            from . import complete as _complete
+            _complete.complete(raw)            # escada ausente / volées vides → cage et volées par défaut (tracées)
+        except Exception:  # noqa: BLE001
+            pass
     s = raw.get("stair") or {}
     env = raw.get("envelope") or {}
     try:
@@ -629,13 +635,39 @@ def autofix_stair(raw: dict, country: str = "FR") -> str | None:
             x0 = min(max(ax, t), Lx - t - w)
             y0 = min(max(ay, t), Wy - t - h)
             candidates.append((round(x0, 2), round(x0 + w, 2), round(y0, 2), round(y0 + h, 2)))
+    # mur dans la trémie (GEO-30) : balayage de l'enveloppe, du plus proche au plus loin de la cage relevée,
+    # en écartant d'abord les positions où un mur d'étage passe dans la trémie (même règle que checks.check_stair)
+    ordered = sorted((lv for lv in raw.get("levels") or [] if isinstance(lv.get("floor_top"), (int, float))),
+                     key=lambda lv: lv["floor_top"])
+    upper = [w for lv in ordered[1:] for w in (raw.get("interior_walls") or {}).get(lv.get("id"), []) or []
+             if all(isinstance(w.get(k), (int, float)) for k in ("x0", "x1", "y0", "y1"))]
+
+    def _clear(c):
+        x0, x1, y0, y1 = c
+        return not any(x0 + 0.05 < (w["x0"] + w["x1"]) / 2 < x1 - 0.05 and y0 + 0.05 < (w["y0"] + w["y1"]) / 2 < y1 - 0.05
+                       for w in upper)
+    grid = []
+    for w, h in ((B, Lc), (Lc, B)) if B != Lc else ((B, Lc),):
+        if w > Lx - 2 * t or h > Wy - 2 * t:
+            continue
+        nx, ny = int((Lx - 2 * t - w) / 0.25) + 1, int((Wy - 2 * t - h) / 0.25) + 1
+        for i in range(nx):
+            for j in range(ny):
+                x0, y0 = round(t + i * 0.25, 2), round(t + j * 0.25, 2)
+                grid.append((x0, round(x0 + w, 2), y0, round(y0 + h, 2)))
+    grid.sort(key=lambda c: abs((c[0] + c[1]) / 2 - cx) + abs((c[2] + c[3]) / 2 - cy))
+    candidates = [c for c in candidates if _clear(c)] + [c for c in grid if _clear(c)][:12] + candidates[:2]
+    auto = bool(s.get("_auto"))
+    ow, oh = old[1] - old[0], old[3] - old[2]
+    why = "wall" if (min(ow, oh) >= min(B, Lc) - 0.01 and max(ow, oh) >= max(B, Lc) - 0.01) else "size"
     import copy as _copy
     for x0, x1, y0, y1 in candidates:
         trial = _copy.deepcopy(raw)
         ts = trial["stair"]
         # paredes da caixa nos lados maiores (os motores de fundações e desenhos precisam delas)
-        ts.setdefault("_original_cage", {"x0": old[0], "x1": old[1], "y0": old[2], "y1": old[3],
-                                         "lang": "pt" if str(country).upper() == "PT" else "fr"})
+        if not auto:
+            ts.setdefault("_original_cage", {"x0": old[0], "x1": old[1], "y0": old[2], "y1": old[3],
+                                             "lang": "pt" if str(country).upper() == "PT" else "fr", "why": why})
         ts.update({"x0": x0, "x1": x1, "y0": y0, "y1": y1,
                    "cage_walls": [{"x": round(x0 - 0.075, 3), "y0": y0, "y1": y1, "t": 0.15},
                                   {"x": round(x1 + 0.075, 3), "y0": y0, "y1": y1, "t": 0.15}],
@@ -647,7 +679,19 @@ def autofix_stair(raw: dict, country: str = "FR") -> str | None:
         o = f"{old[1] - old[0]:.2f}×{old[3] - old[2]:.2f}".replace(".", ",")
         n = f"{x1 - x0:.2f}×{y1 - y0:.2f}".replace(".", ",")
         pos = f"x {x0:.2f}–{x1:.2f} / y {y0:.2f}–{y1:.2f}".replace(".", ",")
-        if str(country).upper() == "PT":
+        if auto and str(country).upper() == "PT":
+            msg = (f"⚠ Escada não lida nas plantas: para concluir o estudo foi colocada uma caixa de escada de dois lanços "
+                   f"{n} m ({pos}), sem paredes na trémie. Confirmar a posição real da escada no projeto de arquitetura.")
+        elif auto:
+            msg = (f"⚠ Escalier non relevé sur les plans : pour terminer l'étude, cage à deux quarts tournants "
+                   f"{n} m ({pos}) placée sans mur dans la trémie. Position réelle à confirmer par l'architecte.")
+        elif why == "wall" and str(country).upper() == "PT":
+            msg = (f"⚠ Incoerência no projeto — escada: uma parede do andar atravessa a caixa desenhada ({o} m). "
+                   f"Para concluir o estudo a caixa foi deslocada para {pos} ({n} m), sem paredes na trémie. Confirmar em obra/projeto.")
+        elif why == "wall":
+            msg = (f"⚠ Incohérence du projet — escalier : un mur d'étage traverse la cage dessinée ({o} m). "
+                   f"Pour terminer l'étude, cage déplacée en {pos} ({n} m), sans mur dans la trémie. À confirmer par l'architecte.")
+        elif str(country).upper() == "PT":
             msg = (f"⚠ Incoerência no projeto — escada: a caixa desenhada ({o} m) não comporta uma escada regulamentar. "
                    f"Para concluir o estudo foi adotada uma escada de dois lanços "
                    f"com patamar de quarto de volta, caixa {n} m ({pos}), cobertor ≈ 25 cm, espelho ≤ 18 cm. Confirmar em obra/projeto.")
@@ -771,7 +815,7 @@ async def _read_building(docs, hypotheses, country, llm, max_fix, decide_alone, 
             pass
         blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
     if (decide_alone and raw is not None and blocking
-            and any(a.get("code") == "GEO-31" for a in blocking)):
+            and any(a.get("code") in ("GEO-30", "GEO-31") for a in blocking)):
         # A IA voltou a ler a mesma caixa impossível: em vez de falhar, adota-se a menor escada regulamentar.
         try:
             if autofix_stair(raw, country):
@@ -782,6 +826,23 @@ async def _read_building(docs, hypotheses, country, llm, max_fix, decide_alone, 
                         anomalies = anomalies + [calc]
                 blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
         except Exception:  # noqa: BLE001 — a correção automática nunca deve fazer falhar a leitura
+            pass
+    if decide_alone and raw is not None and blocking and pipeline.forceable(anomalies):
+        # « décide seul » : l'étude va TOUJOURS jusqu'au bout — les incohérences restantes deviennent des alertes visibles.
+        try:
+            raw["_force"] = {"lang": "pt" if str(country).upper() == "PT" else "fr"}
+            m, anomalies = pipeline.validate(raw)
+            if m is not None and not any(a.get("level") == checks.BLOCK for a in anomalies):
+                calc = pipeline.dry_run(m)
+                if calc:
+                    anomalies = anomalies + [calc]
+            blocking = [a for a in anomalies if a.get("level") == checks.BLOCK]
+            if not blocking:
+                raw.setdefault("_decisions", []).append(
+                    "⚠ Incoerências do projeto não resolvidas: estudo concluído com alertas (ver avisos no dossier)."
+                    if str(country).upper() == "PT" else
+                    "⚠ Incohérences du projet non résolues : étude menée jusqu'au bout avec alertes (voir le dossier).")
+        except Exception:  # noqa: BLE001
             pass
     decisions = [str(d) for d in (raw or {}).get("_decisions") or []]
     if decide_alone:

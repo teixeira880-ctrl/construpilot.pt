@@ -198,7 +198,49 @@ def complete(raw: dict) -> list[str]:
                 note(f"Contrainte {k[2:5].upper()} absente de l'étude de sol : {dflt:.0f} kPa (valeur prudente à confirmer par la G2).", f"geotech.{k}", dflt)
             else:
                 geo[k] = v * 1000 if v < 5 else v              # 0,25 MPa écrit sans unité → 250 kPa
+    _complete_stair(raw, note)
     if dec:
         raw.setdefault("_decisions", [])
         raw["_decisions"] += [d for d in dec if d not in raw["_decisions"]]
     return dec
+
+
+def _complete_stair(raw: dict, note) -> None:
+    """Escalier relevé incomplet (volées vides, murs de cage absents, cage absente sur une maison à étage) :
+    règles de projeteur, tracées — l'étude ne doit jamais s'arrêter sur un détail d'escalier."""
+    levels = [lv for lv in raw.get("levels") or [] if isinstance(lv, dict) and lv.get("id")
+              and isinstance(lv.get("floor_top"), (int, float))]
+    levels.sort(key=lambda lv: lv["floor_top"])
+    ids = {lv["id"] for lv in levels}
+    s = raw.get("stair")
+    env = raw.get("envelope") or {}
+    if not isinstance(s, dict):
+        if len(levels) < 2:
+            return
+        L, W = num(env.get("length_x")), num(env.get("width_y"))
+        if not L or not W:
+            return
+        B, Lc = 1.90, 2.50
+        x0, y0 = round(max(L / 2 - B / 2, 0.4), 2), round(max(W / 2 - Lc / 2, 0.4), 2)
+        s = raw["stair"] = {"x0": x0, "x1": round(x0 + B, 2), "y0": y0, "y1": round(y0 + Lc, 2),
+                            "type": "deux quarts tournants, deux volées de 0,85 + limon central 0,10", "flights": [],
+                            "_auto": True}
+        note(f"Cage d'escalier non relevée : cage {B:.2f} × {Lc:.2f} m retenue au centre de la maison (à placer sur les plans d'architecte).".replace(".", ","))
+    for k in ("x0", "x1", "y0", "y1"):
+        v = num(s.get(k))
+        if v is not None:
+            s[k] = v
+    flights = [f for f in s.get("flights") or [] if isinstance(f, dict) and f.get("from") in ids and f.get("to") in ids
+               and f.get("from") != f.get("to")]
+    if not flights and len(levels) >= 2:
+        flights = [{"from": a["id"], "to": b["id"]} for a, b in zip(levels, levels[1:])]
+        note("Volées d'escalier non relevées : une volée entre chaque niveau ("
+             + ", ".join(f"{f['from']}→{f['to']}" for f in flights) + ").")
+    if flights != (s.get("flights") or []):
+        s["flights"] = flights
+    if flights and all(isinstance(s.get(k), (int, float)) for k in ("x0", "x1", "y0", "y1")):
+        walls = [w for w in s.get("cage_walls") or [] if isinstance(w, dict) and isinstance(w.get("x"), (int, float))]
+        if len(walls) < 2:
+            s["cage_walls"] = [{"x": round(s["x0"] - 0.075, 3), "y0": s["y0"], "y1": s["y1"], "t": 0.15},
+                               {"x": round(s["x1"] + 0.075, 3), "y0": s["y0"], "y1": s["y1"], "t": 0.15}]
+            note("Murs de la cage d'escalier non relevés : voiles BA 15 sur les deux grands côtés de la trémie.")
