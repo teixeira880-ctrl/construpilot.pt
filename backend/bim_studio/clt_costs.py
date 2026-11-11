@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, model_validator
 
 Stage = Literal["compra", "producao", "transporte", "montagem", "entrega"]
-Unit = Literal["m3", "m2", "m", "kg", "h", "un", "viagem", "lote", "L"]
+Unit = Literal["m3", "m2", "m", "kg", "h", "un", "viagem", "lote", "L", "kWh", "km", "dia"]
 Money = Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=6)]
 Quantity = Annotated[Decimal, Field(ge=0, max_digits=16, decimal_places=6)]
 Code = Annotated[str, Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")]

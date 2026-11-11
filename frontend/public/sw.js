@@ -5,7 +5,7 @@
    - LOTE 2 WebSummit : pré-cache do app shell + rotas demo + ficheiros estáticos
      para funcionamento 100% offline no stand (modo avião após 1ª carga).
    IMPORTANTE : bumpar CACHE a cada deploy para purgar o cache antigo. */
-const CACHE = "construpilot-v13-experience";
+const CACHE = "construpilot-v10-stand";
 
 // App shell + manifest + ícones (sempre em pré-cache)
 const APP_SHELL = [

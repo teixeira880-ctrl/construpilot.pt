@@ -36,8 +36,35 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+async def _clt_context(args: dict, user: dict) -> dict:
+    """Estudo CLT: parâmetros e biblioteca da conta e os pisos revistos (última estimativa da página CLT, ou pisos_json)."""
+    import json
+    from bim_studio.clt_access import allowed
+    from bim_studio.clt_economics import library_merged, merged
+    from bim_studio.store import get_db, tenant_of
+    if not allowed(user):
+        raise ValueError("O estudo CLT só está disponível nas contas com o piloto CLT.")
+    db, tenant = get_db(), tenant_of(user)
+    params = await db.clt_parameters.find_one({"_id": tenant}) or {}
+    library = await db.clt_library.find_one({"_id": tenant}) or {}
+    if args.get("pisos_json"):
+        try:
+            entrada = json.loads(args["pisos_json"])
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"pisos_json inválido: {exc}") from None
+    else:
+        last = await db.clt_estimate_inputs.find_one({"_id": tenant}) or {}
+        entrada = last.get("body")
+    return {**args, "_entrada": entrada, "_parametros": merged(params.get("values")), "_biblioteca": library_merged(library.get("items", {}))}
+
+
 async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -> dict:
     uid, cid = user["user_id"], conv["conversation_id"]
+    if name == "estudo_clt_completo":                          # o resultado depende dos preços atuais: entram no digest
+        try:
+            args = await _clt_context(args or {}, user)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)[:400]}
     rid = conv.get("_quote_request_id") or cid
     digest = hashlib.sha256((rid + str(conv.get("_file_call_id", "")) + name + repr(sorted((args or {}).items(), key=lambda x: x[0]))).encode()).hexdigest()[:27]
     from engines import calc_live

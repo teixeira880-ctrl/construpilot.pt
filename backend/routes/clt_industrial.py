@@ -14,6 +14,9 @@ from pymongo.errors import DuplicateKeyError
 
 from bim_studio.clt_access import allowed
 from bim_studio.clt_costs import CostLot, Rate, summary
+from bim_studio.clt_economics import (ELECTRICITY_URL, EstimateInput, LibraryItem, Parameter, estimate,
+                                      library_merged, lot_from_estimate, merged, parse_eurostat,
+                                      read_table_file, rows_to_items)
 from bim_studio.store import get_db, now, tenant_of
 from core.permissions import require_feature
 from core.security import pro_required
@@ -57,6 +60,35 @@ async def pdf_evidence(file: UploadFile = File(...), user=Depends(editor)):
         return await asyncio.to_thread(inspect_pdf, await _upload(file), include_review_images=True)
     except (ValueError, FileDataError) as exc:
         raise HTTPException(422, "PDF inválido ou fora dos limites da análise.") from exc
+
+
+def _model_ifc(data):
+    import tempfile
+
+    import fitz
+    from bim_studio.clt_model3d import build
+    from bim_studio.clt_pdf import inspect_pdf
+
+    extras = inspect_pdf(data)["estimate_extras"]
+    if not extras:
+        raise ValueError("Modelo 3D disponível só para desenhos revistos.")
+    with fitz.open(stream=data, filetype="pdf") as doc:
+        model, _ = build(doc, extras)
+    with tempfile.NamedTemporaryFile(suffix=".ifc") as tmp:
+        model.write(tmp.name)
+        return open(tmp.name, "rb").read()
+
+
+@router.post("/pdf/model3d")
+async def pdf_model3d(file: UploadFile = File(...), user=Depends(editor)):
+    from fitz import FileDataError
+
+    try:
+        result = await asyncio.to_thread(_model_ifc, await _upload(file))
+    except (ValueError, FileDataError) as exc:
+        raise HTTPException(422, str(exc) if "revistos" in str(exc) else "PDF inválido ou fora dos limites da análise.") from exc
+    return Response(result, media_type="application/x-step",
+                    headers={"Content-Disposition": 'attachment; filename="modelo-clt.ifc"', "Cache-Control": "no-store"})
 
 
 @router.post("/pdf/preview")
@@ -224,3 +256,136 @@ async def update_lot(lot_id: str, body: LotWrite, user=Depends(editor)):
     if not body.expected_revision:
         raise HTTPException(422, "Indique a revisão atual do lote.")
     return await _save_lot(lot_id, body, user)
+
+
+@router.get("/parameters")
+async def get_parameters(user=Depends(viewer)):
+    doc = await get_db().clt_parameters.find_one({"_id": tenant_of(user)}) or {}
+    return {"items": merged(doc.get("values")), "updated_at": doc.get("updated_at")}
+
+
+@router.put("/parameters")
+async def save_parameters(body: dict[str, Parameter], user=Depends(editor)):
+    items = merged({})
+    unknown = sorted(set(body) - set(items))
+    if unknown:
+        raise HTTPException(422, f"Parâmetros desconhecidos: {', '.join(unknown)}")
+    values = {key: {**item.model_dump(mode="json"), "origin": item.origin} for key, item in body.items()}
+    await get_db().clt_parameters.update_one({"_id": tenant_of(user)}, {"$set": {
+        "values": values, "updated_at": now(), "updated_by": user["user_id"]}}, upsert=True)
+    return {"items": merged(values)}
+
+
+async def _library(user):
+    doc = await get_db().clt_library.find_one({"_id": tenant_of(user)}) or {}
+    return doc.get("items", {})
+
+
+async def _store_library(user, changes):
+    """Upsert or delete items atomically per code, keeping the other items."""
+    sets = {f"items.{code}": value for code, value in changes.items()}
+    await get_db().clt_library.update_one({"_id": tenant_of(user)}, {"$set": {
+        **sets, "updated_at": now(), "updated_by": user["user_id"]}}, upsert=True)
+
+
+@router.get("/library")
+async def get_library(user=Depends(viewer)):
+    from bim_studio.clt_economics import BASES, CATEGORIES
+
+    return {"items": library_merged(await _library(user)),
+            "categories": {k: v[0] for k, v in CATEGORIES.items()}, "bases": BASES}
+
+
+@router.put("/library/{code}")
+async def save_library_item(code: str, body: LibraryItem, user=Depends(editor)):
+    if body.code != code.upper():
+        raise HTTPException(422, "O código do URL e do artigo não coincidem.")
+    item = body.model_dump(mode="json")
+    await _store_library(user, {body.code: item})
+    return {"items": library_merged(await _library(user))}
+
+
+@router.delete("/library/{code}")
+async def delete_library_item(code: str, user=Depends(editor)):
+    await _store_library(user, {code.upper(): {"deleted": True}})
+    return {"items": library_merged(await _library(user))}
+
+
+class TablePaste(BaseModel):
+    rows: list[list[str | float | int | None]] = Field(min_length=2, max_length=2000)
+    save: bool = False
+
+
+@router.post("/library/table")
+async def library_table(body: TablePaste, user=Depends(editor)):
+    """Rows pasted from Excel. With save=false returns the preview only."""
+    try:
+        items, errors = rows_to_items(body.rows)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if body.save and items:
+        await _store_library(user, {item["code"]: item for item in items})
+    return {"items": items, "errors": errors, "saved": bool(body.save and items)}
+
+
+@router.post("/library/import")
+async def library_import(file: UploadFile = File(...), user=Depends(editor)):
+    """Excel, CSV or PDF price list → preview rows for confirmation."""
+    data = await _upload(file)
+    try:
+        rows = await asyncio.to_thread(read_table_file, data, file.filename or "")
+        items, errors = rows_to_items(rows)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - unreadable file
+        raise HTTPException(422, "Não foi possível ler a tabela do ficheiro.") from exc
+    return {"items": items, "errors": errors, "saved": False}
+
+
+@router.post("/library/electricity/refresh")
+async def refresh_electricity(band: Literal["MWH_LT20", "MWH20-499", "MWH500-1999", "MWH2000-19999",
+                                            "MWH20000-69999", "MWH70000-149999"] = Query("MWH500-1999"),
+                              geo: str = Query("PT", pattern=r"^[A-Z]{2}$"), user=Depends(editor)):
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(ELECTRICITY_URL.format(geo=geo, band=band))
+            response.raise_for_status()
+            period, value = parse_eurostat(response.json())
+    except (httpx.HTTPError, KeyError, ValueError) as exc:
+        raise HTTPException(502, "O Eurostat não respondeu. Tente mais tarde ou introduza o preço.") from exc
+    current = library_merged(await _library(user)).get("EN-ELETRICIDADE")
+    item = {**(current or {"code": "EN-ELETRICIDADE", "category": "energia", "name": "Eletricidade da fábrica",
+                           "unit": "kWh", "sale_eur": None, "basis": "kwh", "per_basis": "1"}),
+            "cost_eur": str(value), "origin": "mercado", "effective_from": None,
+            "source": f"Eurostat nrg_pc_205, {geo}, não doméstico {band}, sem impostos, {period} (atualizado automaticamente)"}
+    item.pop("standard", None)
+    await _store_library(user, {"EN-ELETRICIDADE": LibraryItem.model_validate(item).model_dump(mode="json")})
+    return {"period": period, "eur_kwh": float(value), "items": library_merged(await _library(user))}
+
+
+async def _estimate(body, user):
+    # the last reviewed floors feed the Assistant's complete CLT study ("estudo_clt_completo")
+    await get_db().clt_estimate_inputs.update_one({"_id": tenant_of(user)}, {"$set": {
+        "body": body.model_dump(mode="json", include={"floors", "start", "start_mode", "vat_regime"}), "updated_at": now(),
+        "updated_by": user["user_id"]}}, upsert=True)
+    doc = await get_db().clt_parameters.find_one({"_id": tenant_of(user)}) or {}
+    return estimate(body, merged(doc.get("values")), library_merged(await _library(user)))
+
+
+@router.post("/estimate")
+async def estimate_costs(body: EstimateInput, user=Depends(viewer)):
+    return await _estimate(body, user)
+
+
+class EstimateLot(EstimateInput):
+    lot_name: str = Field(min_length=1, max_length=120)
+
+
+@router.post("/estimate/lot", status_code=201)
+async def estimate_to_lot(body: EstimateLot, user=Depends(editor)):
+    """Create the cost-tracking lot whose baseline is the full estimate."""
+    result = await _estimate(body, user)
+    lot = LotWrite.model_validate(lot_from_estimate(body.lot_name, result))
+    return {"estimate": result, "lot": await _save_lot("clt_" + secrets.token_hex(12), lot, user)}

@@ -156,8 +156,6 @@ api_router.include_router(btp_router_routes.router)
 api_router.include_router(billing.router)
 from routes import commercial as commercial_routes  # noqa: E402 — ofertas B2B 2026-11
 api_router.include_router(commercial_routes.router)
-from routes import experience as experience_routes  # noqa: E402 — página pública /experiencia (diagnóstico comercial)
-api_router.include_router(experience_routes.router)
 api_router.include_router(revenue.router)
 api_router.include_router(phase4.router)
 api_router.include_router(phase5.router)
@@ -299,6 +297,8 @@ api_router.include_router(bim_studio_routes.router)
 api_router.include_router(bim_studio_routes.files_router)
 from routes import clt_industrial as clt_industrial_routes
 api_router.include_router(clt_industrial_routes.router)
+from routes import clt_engines as clt_engines_routes
+api_router.include_router(clt_engines_routes.router)
 app.add_event_handler("startup", bim_studio_routes.on_startup)
 app.add_event_handler("shutdown", bim_studio_routes.on_shutdown)
 app.include_router(api_router)
@@ -530,14 +530,6 @@ async def _seed_impl():
         logger.info("client grants: %s", await apply_client_grants(db, hash_password, new_user_id))
     except Exception as e:  # noqa: BLE001
         logger.warning("client grants skipped: %s", e)
-    # Empresa de demonstração « Teste Websummit » (Pro Business completa, PT/FR/UK/US) — semeada uma
-    # única vez através da própria API, em tarefa separada para não atrasar o resto do arranque.
-    try:
-        import asyncio as _aio
-        from core.demo_tws.seed import run_on_startup as _tws_seed
-        app.state.tws_seed_task = _aio.create_task(_tws_seed(app, db, hash_password, new_user_id))
-    except Exception as e:  # noqa: BLE001
-        logger.warning("teste websummit seed skipped: %s", e)
     # Contas Pro de empresas parceiras (ex. CLT Rezult) — idempotente, sem palavra-passe.
     try:
         from core.company_seeds import apply_company_seeds

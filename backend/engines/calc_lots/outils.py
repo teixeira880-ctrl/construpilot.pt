@@ -446,8 +446,24 @@ UCRANIA_TOOL = _tool(
                    "delivers the COMPLETE package (dossiers UK + EN, construction drawings UK + EN with electrical / water / heating, detailed cost "
                    "estimate UK + EN). Other fields may stay null.")})
 
+# 16. Estudo CLT completo (página CLT da empresa: quantidades, preços, plano, rentabilidade)
+ESTUDO_CLT_TOOL = _tool(
+    "estudo_clt_completo",
+    "Dossier CLT completo de uma casa em CLT, num PDF premium com a marca da empresa: quantidades de todos os materiais (painéis CLT de paredes, laje, coberturas e "
+    "lintéis, madeira comprada, cola, vigas de aço, placa, isolamentos, estanquidade, caixilharia, eletricidade e canalização por divisão, "
+    "acabamentos), preços de compra e de produção da biblioteca da empresa, custos indiretos, IVA, plano de seguimento da compra e fabrico "
+    "até à montagem e à entrega da chave (Gantt, curva de custo, folha de controlo do lote), rentabilidade e sensibilidade. Se o utilizador é da CLT Rezult, empresa=clt-rezult. Usa os pisos revistos na página CLT (última estimativa da conta) ou "
+    "pisos_json. Betão e lajes de betão ficam fora. NÃO faz cálculo de cargas, muros, planos de execução nem projetos de eletricidade ou "
+    "canalização: só quantidades e preços. Disponível só nas contas com o piloto CLT.",
+    {"titulo": _NS("título do estudo, p. ex. 'Home A · CLT'"), "local": _NS("local da obra, se conhecido"),
+     "empresa": _enum(["clt-rezult"], "marca da empresa no dossier premium (logótipo na capa e nas páginas): clt-rezult = CLT Rezult"),
+     "regime_iva": _enum(["pt", "ua", "ua_export"], "IVA: pt = Portugal 23 % (CIVA art. 18.º); ua = casa construída na Ucrânia, ПДВ 20 % (ПКУ ст. 193.1); "
+                         "ua_export = painéis exportados da Ucrânia, 0 % (ПКУ ст. 195.1.1). Projeto na Ucrânia ou CLT Rezult a construir na Ucrânia → ua"),
+     "lingua": _enum(["pt", "en", "uk"], "língua do dossier (null = pt; en = inglês, uk = ucraniano); os números são os mesmos"),
+     "pisos_json": _NS("JSON {floors:[…]} no formato da página CLT; null = a última estimativa feita na página CLT da conta")})
+
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
-              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL]
+              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, ESTUDO_CLT_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -465,6 +481,7 @@ PROGRESS_LABELS = {
     "verificar_solar_termico": "A verificar a instalação solar térmica…",
     "calcul_patio_pluvial": "A dimensionar a drenagem do pátio rebaixado…",
     "calcul_gros_oeuvre": "A verificar a estrutura e a desenhar os planos de gros-œuvre cotados…",
+    "estudo_clt_completo": "A preparar o estudo CLT completo (quantidades, preços, plano e rentabilidade)…",
     "calcul_ucrania": "Розрахунок за нормами України (ДБН / ДСТУ)… / Calculating to Ukrainian norms…",
 }
 
@@ -479,7 +496,9 @@ PROTOCOL_PT = (
     "canalização → solar térmico) usa calcul_lotes_tecnicos; só o piso radiante: calcul_piso_radiante; solar térmico (AQS, coletores, depósito): "
     "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial; estrutura completa de um edifício com planos de execução de gros-œuvre "
     "cotados (fundações, pavimento, cobertura, cortes) a partir da geometria dos planos: calcul_gros_oeuvre; projeto na Ucrânia ou pedido em "
-    "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN) e NÃO lances o estudo BET completo "
+    "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN) e NÃO lances o estudo BET completo; "
+    "estudo completo de uma casa em CLT na conta do piloto CLT (quantidades CLT e de todos os materiais, preços, plano da fabricação à montagem, "
+    "rentabilidade; sem cálculos de cargas nem projetos de especialidade): estudo_clt_completo "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -828,4 +847,21 @@ def run(name: str, args: dict) -> dict:
                              "custo_com_pdv_uah": round(o["orcamento"]["com_pdv"]) if o.get("orcamento") else None},
                     extra=[("Dossier-EN", oen["titre"], oen["pdf"])] + extra_pac)
         return out_
+    if name == "estudo_clt_completo":
+        from bim_studio.clt_economics import library_merged, merged
+        import json
+        from bim_studio.clt_study import note as estudo
+        entrada = a.get("_entrada")                                # a ponte junta os pisos, parâmetros e biblioteca da conta
+        if entrada is None and a.get("pisos_json"):
+            try:
+                entrada = json.loads(a["pisos_json"])
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"pisos_json inválido: {exc}") from None
+        if not entrada:
+            raise ValueError("Sem pisos: faça primeiro a estimativa na página CLT (planos revistos) ou indique pisos_json.")
+        if a.get("regime_iva"):
+            entrada = {**entrada, "vat_regime": a["regime_iva"]}
+        o = estudo(entrada, a.get("_parametros") or merged({}), a.get("_biblioteca") or library_merged({}), a.get("titulo"),
+                   empresa=a.get("empresa"), local=a.get("local"), lingua=a.get("lingua") or "pt")
+        return _ret(o, o["resumo"], o["data"])
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")

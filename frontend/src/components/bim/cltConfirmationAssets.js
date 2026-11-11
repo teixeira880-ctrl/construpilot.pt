@@ -202,12 +202,12 @@ export const confirmationScript = String.raw`(() => {
       return false;
     }
     state = next;
-    const modelContent = { home_a: pages.slice(0, 3).map(floorTotals) };
+    const modelContent = { home_a: pages.filter((page) => page.review?.in_scope).map(floorTotals) };
     window.openai?.setWidgetState?.({ privateContent, modelContent })?.catch(() => {});
     return true;
   }
   function renderTotals() {
-    const rows = pages.slice(0, 3).map((page) => {
+    const rows = pages.filter((page) => page.review?.in_scope).map((page) => {
       const totals = floorTotals(page);
       const tr = document.createElement("tr");
       const vals = [totals.piso,

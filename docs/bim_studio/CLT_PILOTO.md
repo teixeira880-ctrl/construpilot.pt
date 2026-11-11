@@ -40,6 +40,109 @@ O Assistente BTP analisa PDFs da própria conta, consulta lotes e calcula rascun
 O avatar administrador pode encaminhar o pedido pelo Assistente BTP da sessão
 autenticada. O piloto não atribui funções de administrador.
 
+## Home A: troços e alturas
+
+O levantamento do Home A junta os contornos CLT a magenta com o tracejado CLT
+que não tem contorno. A espessura de cada tracejado é aprendida nos troços com
+contorno da mesma folha. Uma faixa só conta como parede quando a largura
+desenhada coincide com essa espessura a 3 mm. As restantes ficam pendentes.
+
+A altura estrutural das paredes é o pé-direito acabado cotado na planta, mais a
+espessura do pavimento e do teto falso medidas no corte. A escala do corte vem
+das espessuras impressas da laje (240 mm) e da cobertura (140 mm). As quebras
+do corte não permitem medir a altura total do painel diretamente.
+
+## Bibliotecas de preços, cálculo e plano
+
+O separador "Custos, preços e plano" tem três partes, partilhadas por toda a
+organização:
+
+1. **Cálculo**: os pisos chegam já preenchidos a partir da revisão do desenho
+   (comprimentos por espessura, altura estrutural, placa e pintura). Indica-se a
+   data de início e se o plano começa na compra da matéria-prima ou no fabrico.
+   O resultado traz custo, venda, margem, prazo, plano (Gantt), detalhe por preço
+   e a lista de hipóteses. Um botão cria o lote de seguimento com esse plano.
+2. **Bibliotecas**: matéria-prima, energia e água, colaboradores, transporte,
+   gruas e máquinas, montagem em obra, revestimentos e venda do CLT. Cada preço
+   tem custo, venda opcional, base de cálculo (m³ de CLT, m³ de madeira, kg de
+   cola, m² de montagem, horas, kWh, km, viagem, dia de fabrico ou montagem,
+   m² de placa ou pintura, projeto) e quantidade por base. A empresa pode
+   acrescentar, alterar ou retirar preços.
+3. **Parâmetros técnicos**: rendimento da madeira, cola por junta, horas e
+   eletricidade por m³, capacidade da fábrica, distâncias, camiões, equipa e
+   prazos.
+
+Importação: colar diretamente do Excel, ou carregar `.xlsx`, `.csv` ou `.pdf`
+com tabela (`POST /clt-industrial/library/import` mostra a pré-visualização,
+`POST /clt-industrial/library/table` grava). Os cabeçalhos aceites estão no
+modelo CSV que se descarrega na página (categoria, código, designação,
+unidade, custo, venda, base, consumo por base, fonte). Preços como `1.234,50 €`
+são aceites.
+
+Eletricidade: `POST /clt-industrial/library/electricity/refresh` lê o preço
+médio não doméstico de Portugal no Eurostat (`nrg_pc_205`, sem IVA) e grava-o
+como valor de mercado com o período. A água não tem fonte automática (tarifas
+municipais) e fica como hipótese até a empresa a preencher.
+
+Cada valor indica a origem:
+
+- **empresa**: introduzido pela empresa;
+- **mercado**: média publicada, com a fonte (Holzkurier, Eurostat, EPD Södra,
+  Kiilto, CNR, gerador de preços CYPE, Zaask);
+- **hipótese**: sem fonte pública; tem de ser substituído antes de orçamentar.
+
+A ficha Rezult (ETA-21/0914) confirma o adesivo tipo I EN 15425 e lamelas de
+20 a 43 mm, mas não publica a dosagem de cola nem a composição de cada parede.
+A composição das paredes vem da legenda das plantas (100 mm com 5 camadas;
+80+80 mm com dois painéis de 3 camadas, 4 juntas coladas) e pode ser alterada
+por piso. A ETA indica a
+fábrica em Kyiv: a distância de transporte por omissão é hipótese.
+
+## O que entra no custo total
+
+Para o Home A, a leitura do PDF devolve também `estimate_extras` por piso, que
+preenche o cálculo:
+
+- **Paredes**: troços medidos × altura estrutural. Pela legenda das plantas,
+  100 mm tem 5 camadas e 80+80 mm são dois painéis de 3 camadas.
+- **Laje do +1**: CLT 240 de 7 camadas (corte), pela face exterior das paredes do
+  +1, menos a abertura da escada.
+- **Coberturas**: CLT 140 de 5 camadas (corte). Sobre o +1, a área da laje; sobre
+  o RDC, o contorno violeta da cobertura menos a parte coberta pelo +1.
+- **Lintéis** (tracejado vermelho): vão livre fora das paredes × (altura
+  estrutural − 2,30 m). **Painéis sobre portas** em paredes CLT sem lintel:
+  largura × (altura estrutural − altura da porta cotada).
+- **Vigas de aço** (tracejado azul): comprimento. O perfil não está no desenho.
+- **Teto falso BA15**, membrana e betão leve da laje, cobertura plana
+  (XPS, betão leve, PVC e seixo) e isolamento da fachada (lã mineral e
+  membrana), pelas áreas acima.
+- **Engenharia, estaleiro e imprevistos**: percentagens do custo direto,
+  faturadas ao custo.
+- **IVA**: 23% por omissão, editável; o resultado mostra a venda com IVA.
+
+### Até à entrega da chave (tudo menos betão)
+
+- **Divisões**: retângulos revistos nas plantas, com cada lado encostado à linha
+  desenhada mais próxima (parede CLT, tracejado ou linha de acabamento); os lados
+  sem linha ficam "a confirmar". Os aparelhos sanitários e de cozinha são os
+  desenhados em cada divisão.
+- **Eletricidade**: motor RTIEBT da app (`engines/calc_lots/instalacoes.py`):
+  tomadas e pontos de luz por divisão, circuitos de 8 pontos no máximo, cabo
+  pela distância de cada divisão ao quadro (nicho técnico), diferenciais.
+- **Canalização**: aparelhos desenhados (DR 23/95); tubagem pela distância em
+  planta à coluna técnica + altura do piso + 1,5 m, água quente só onde é usada,
+  +10 % de acessórios. Louças por aparelho.
+- **Caixilharia**: vãos medidos como interrupções das paredes CLT na envolvente
+  aquecida; altura sob viga = pé-direito acabado, sob lintel = 2,30 m, outras
+  janelas 1,20 m e vãos envidraçados 2,10 m (hipóteses). Portas interiores =
+  portas Dv numeradas; uma porta de entrada.
+- **Acabamentos**: pavimento por divisão seca, cerâmica no chão e nas paredes
+  das casas de banho (2,10 m), rodapé, acabamento exterior da fachada.
+- **Plano**: fase de instalações e acabamentos depois da montagem.
+
+Fundações e laje térrea (betão) não estão no total. A legenda não tem amostra de cor para lintéis e vigas, por
+isso a leitura vermelho = lintel e azul = viga fica marcada para confirmação.
+
 ## Limites desta entrega
 
 - O PDF fornece evidência de dimensões e materiais. A reconstrução automática
