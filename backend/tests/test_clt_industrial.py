@@ -503,6 +503,12 @@ def test_assistant_complete_clt_study_note(monkeypatch):
     assert "CLT Rezult" in doc.metadata["author"] and doc.get_toc()[0][1] == "Capa"
     text = "".join(pg.get_text() for pg in doc)
     assert "clt-1" in text and "Plano de seguimento" in text and "Sensibilidade" in text
+    for lingua, words in (("en", ("Tracking plan", "Detailed budget", "bathroom")), ("uk", ("План контролю", "Детальний кошторис", "санвузол"))):
+        o = outils.run("estudo_clt_completo", {"empresa": "clt-rezult", "lingua": lingua, "_entrada": floors,
+                                                 "_parametros": merged({}), "_biblioteca": library_merged({})})
+        text = "".join(pg.get_text() for pg in pymupdf.open(stream=o["pdf"], filetype="pdf"))
+        assert o["data"]["custo_total_eur"] == ref["custo_total_eur"] and all(w in text for w in words), lingua
+        assert "Preencher" not in text and "Custo total" not in text
 
     db = AsyncMongoMockClient()["t"]
     monkeypatch.setattr(store, "get_db", lambda: db)
