@@ -430,3 +430,28 @@ def test_full_estimate_counts_slab_roof_lintels_indirects_and_vat():
     assert abs(result["total"]["custo_total_eur"] - direct * 1.11) < .05
     assert result["total"]["iva_percent"] == 23
     assert abs(result["total"]["receita_com_iva_eur"] - result["total"]["receita_eur"] * 1.23) < .02
+
+
+def test_fitout_rooms_fixtures_and_windows_reach_the_estimate():
+    from bim_studio.clt_economics import EstimateInput, estimate, library_merged, lot_from_estimate, merged
+    from bim_studio.clt_costs import CostLot
+
+    body = EstimateInput(floors=[{
+        "name": "RDC", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "10"}],
+        "rooms": [{"nome": "Sala", "tipo": "sala", "area_m2": "30", "perimetro_m": "22", "rect_m": [0, 0, 6, 5]},
+                  {"nome": "WC", "tipo": "casa_de_banho", "area_m2": "4", "perimetro_m": "8", "rect_m": [6, 0, 8, 2],
+                   "aparelhos": ["autoclismo", "lavatorio", "chuveiro"]}],
+        "windows": [{"largura_m": "2", "sobre": "lintel", "tipo": "janela"}], "interior_doors": 2, "riser_m": [8, 0]}])
+    result = estimate(body, merged({}), library_merged({}))
+    lines = {l["codigo"]: l for l in result["linhas"]}
+    assert lines["CN-SANITA"]["quantidade"] == 1 and lines["CN-DUCHE"]["quantidade"] == 1
+    assert lines["CN-PONTO-AGUA"]["quantidade"] == 5          # cold to 3 fixtures, hot to lavatory and shower
+    assert lines["CN-PONTO-ESGOTO"]["quantidade"] == 3
+    assert abs(lines["CX-CAIXILHARIA"]["quantidade"] - 4.6) < .01   # 2 m × 2.30 m under a lintel
+    assert lines["CX-PORTA-INTERIOR"]["quantidade"] == 2 and lines["CX-PORTA-ENTRADA"]["quantidade"] == 1
+    assert lines["AC-PAVIMENTO"]["quantidade"] == 30 and lines["AC-PAV-CERAMICO"]["quantidade"] == 4
+    assert abs(lines["AC-CERAMICA-PAREDE"]["quantidade"] - 16.8) < .01
+    assert lines["EL-TOMADA"]["quantidade"] > 0 and lines["EL-QUADRO"]["quantidade"] == 1
+    assert result["plano"]["fases"][-1]["fase"] == "acabamentos"
+    assert any("RTIEBT" in n for n in result["notas_quantidades"])
+    CostLot.model_validate(lot_from_estimate("Casa", result))

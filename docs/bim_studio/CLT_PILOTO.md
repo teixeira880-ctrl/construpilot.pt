@@ -120,8 +120,27 @@ preenche o cálculo:
   faturadas ao custo.
 - **IVA**: 23% por omissão, editável; o resultado mostra a venda com IVA.
 
-Fundações, laje térrea e caixilharia não fazem parte do fornecimento CLT e não
-estão no total. A legenda não tem amostra de cor para lintéis e vigas, por
+### Até à entrega da chave (tudo menos betão)
+
+- **Divisões**: retângulos revistos nas plantas, com cada lado encostado à linha
+  desenhada mais próxima (parede CLT, tracejado ou linha de acabamento); os lados
+  sem linha ficam "a confirmar". Os aparelhos sanitários e de cozinha são os
+  desenhados em cada divisão.
+- **Eletricidade**: motor RTIEBT da app (`engines/calc_lots/instalacoes.py`):
+  tomadas e pontos de luz por divisão, circuitos de 8 pontos no máximo, cabo
+  pela distância de cada divisão ao quadro (nicho técnico), diferenciais.
+- **Canalização**: aparelhos desenhados (DR 23/95); tubagem pela distância em
+  planta à coluna técnica + altura do piso + 1,5 m, água quente só onde é usada,
+  +10 % de acessórios. Louças por aparelho.
+- **Caixilharia**: vãos medidos como interrupções das paredes CLT na envolvente
+  aquecida; altura sob viga = pé-direito acabado, sob lintel = 2,30 m, outras
+  janelas 1,20 m e vãos envidraçados 2,10 m (hipóteses). Portas interiores =
+  portas Dv numeradas; uma porta de entrada.
+- **Acabamentos**: pavimento por divisão seca, cerâmica no chão e nas paredes
+  das casas de banho (2,10 m), rodapé, acabamento exterior da fachada.
+- **Plano**: fase de instalações e acabamentos depois da montagem.
+
+Fundações e laje térrea (betão) não estão no total. A legenda não tem amostra de cor para lintéis e vigas, por
 isso a leitura vermelho = lintel e azul = viga fica marcada para confirmação.
 
 ## Limites desta entrega

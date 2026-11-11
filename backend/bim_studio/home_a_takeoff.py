@@ -358,6 +358,16 @@ def review_page(page, evidence):
             result["markers"].append({"id": f"beam-{n + 1}", "rect": item["rect"], "status": "pending",
                                       "label": f"Viga de aço · {item['length_m']:.2f} m · perfil não indicado"})
         result["notes"].append("Lintéis (tracejado vermelho) e vigas de aço (tracejado azul): a legenda não tem amostra de cor; confirmar a leitura.")
+        result["rooms"] = rooms(page, metre_per_point)
+        result["metre_per_point"] = metre_per_point
+        result["interior_doors"] = len(set(re.findall(r"Dv\s?(\d\.\s?\d)", page.get_text())))
+        if number == 2:
+            x0, _, x1, y1 = union_all(polygons).bounds
+            terrace_wall = min(m["rect"][1] for m in markers if m["id"] == "clt-2905") * page.rect.height
+            envelope = box(x0, terrace_wall, x1, y1)
+        else:
+            envelope = upper_plate(page, markers)[0]
+        result["openings"]["exterior"] = exterior_openings(page, metre_per_point, polygons, envelope)
         if number == 3:
             plate, void, outline = upper_plate(page, markers)
             k2 = metre_per_point ** 2
@@ -443,7 +453,16 @@ def estimate_extras(pages):
                            "area_m2": round(plates["upper_plate_m2"], 3)})
             ceiling = plates["upper_plate_m2"] - review["clt_plan_m2"]
             extras = {"ceiling_m2": ceiling, "roof_buildup_m2": plates["upper_plate_m2"], "slab_buildup_m2": slab_area}
+        page = next(p for p in pages if p["page"] == number)
+        to_m = lambda r: [round(r[0] * page["width"] * review["metre_per_point"], 3), round(r[1] * page["height"] * review["metre_per_point"], 3),
+                          round(r[2] * page["width"] * review["metre_per_point"], 3), round(r[3] * page["height"] * review["metre_per_point"], 3)]
+        room_list = [{**{k: v for k, v in r.items() if k != "rect"}, "rect_m": to_m(r["rect"])} for r in review["rooms"]]
+        riser = next((r for r in room_list if r["nome"] == "Nicho técnico"), None)
+        ceilings = [e["values"][0] / 1000 for e in page["evidence"] if e["kind"] == "ceiling_height"]
         out[key] = {"height_m": round(height, 3), "panels": panels, "steel_beam_m": round(beams, 3),
+                    "rooms": room_list, "windows": [{k: v for k, v in w.items() if k != "rect"} for w in review["openings"]["exterior"]],
+                    "interior_doors": review["interior_doors"], "ceiling_height_m": max(ceilings),
+                    "riser_m": [round((riser["rect_m"][0] + riser["rect_m"][2]) / 2, 3), round((riser["rect_m"][1] + riser["rect_m"][3]) / 2, 3)] if riser else None,
                     **{k: round(v, 2) for k, v in extras.items()}}
     notes.extend((
         "A cobertura do RDC fora do +1 usa a composição da cobertura do corte (CLT 140, 5 camadas). Confirmar no projeto de estruturas.",
@@ -453,3 +472,94 @@ def estimate_extras(pages):
         "Fundações, laje térrea e caixilharia não fazem parte do fornecimento CLT e não estão no total.",
     ))
     return {"floors": out, "notes": notes}
+
+
+# Rooms reviewed on the Home A plans. Each rectangle was placed on the sheet and every side is snapped
+# to the nearest drawn wall or lining line (CLT outline, hatch, black or green 0.72 line) within 8 points.
+# Sides with no line nearby keep the reviewed position and are reported as "a confirmar".
+# Fixtures are the sanitary and kitchen symbols drawn in each room.
+ROOM_LINES = {((0.82, 0.733, 0.463), .36), ((0.451, 0.725, 0.725), .36), ((1.0, 0.0, 1.0), .6),
+              ((0.0, 0.0, 0.0), .72), ((0.0, 0.867, 0.216), .72)}
+_PT = 842 / 1348  # reviewed positions were taken on a 1348-pixel-wide view of the sheet
+ROOMS = {
+    2: [("Sala e cozinha", "sala", (205, 480, 1185, 930), ["lava_loica", "maquina_lavar_loica"]),
+        ("I.S. 2", "casa_de_banho", (215, 945, 415, 1190), ["autoclismo", "lavatorio", "chuveiro"]),
+        ("I.S. 1", "casa_de_banho", (590, 940, 790, 1180), ["autoclismo", "lavatorio", "chuveiro"]),
+        ("I.S. RDC", "casa_de_banho", (975, 1010, 1065, 1190), ["autoclismo", "lavatorio"]),
+        ("Hall 1", "corredor", (860, 1185, 1075, 1530), []),
+        ("Hall 2", "corredor", (975, 935, 1180, 1005), []),
+        ("Hall 2 passagem", "corredor", (1065, 1005, 1180, 1180), []),
+        ("Nicho entre I.S.", "corredor", (425, 940, 520, 1180), []),
+        ("Nicho técnico", "arrumos", (800, 940, 970, 1180), ["maquina_lavar_roupa"]),
+        ("Escada", "corredor", (1075, 1180, 1185, 1530), []),
+        ("Roupeiro Quarto 2", "quarto", (205, 1190, 525, 1255), []),
+        ("Quarto 2", "quarto", (205, 1255, 525, 1680), []),
+        ("Quarto 1", "quarto", (550, 1185, 840, 1680), [])],
+    3: [("I.S. 3", "casa_de_banho", (710, 475, 870, 930), ["autoclismo", "lavatorio", "lavatorio", "banheira"]),
+        ("Quarto 3", "quarto", (880, 475, 1205, 935), []),
+        ("Hall 3", "corredor", (705, 940, 1205, 1050), []),
+        ("I.S. 4", "casa_de_banho", (565, 1060, 910, 1235), ["autoclismo", "lavatorio", "chuveiro"]),
+        ("Quarto 4", "quarto", (570, 1240, 1010, 1520), []),
+        ("Quarto 4 entrada", "quarto", (910, 1060, 1010, 1240), []),
+        ("Quarto 4 roupeiro", "quarto", (1010, 1060, 1095, 1520), []),
+        ("Escada +1", "corredor", (1095, 1055, 1205, 1520), [])],
+}
+
+
+def _room_lines(page):
+    M, xs, ys = page.rotation_matrix, [], []
+    for path in page.get_drawings():
+        key = (tuple(round(c, 3) for c in (path.get("color") or ())), round(path.get("width") or 0, 2))
+        if key not in ROOM_LINES:
+            continue
+        for item in path["items"]:
+            if item[0] == "l":
+                edges = [(item[1] * M, item[2] * M)]
+            elif item[0] == "qu":
+                q = [v * M for v in (item[1].ul, item[1].ur, item[1].lr, item[1].ll)]
+                edges = [(q[i], q[(i + 1) % 4]) for i in range(4)]
+            else:
+                continue
+            for a, b in edges:
+                if abs(a.x - b.x) < .3 and abs(a.y - b.y) > 3:
+                    xs.append((a.x, min(a.y, b.y), max(a.y, b.y)))
+                elif abs(a.y - b.y) < .3 and abs(a.x - b.x) > 3:
+                    ys.append((a.y, min(a.x, b.x), max(a.x, b.x)))
+    return xs, ys
+
+
+def rooms(page, metre_per_point):
+    """Reviewed rooms with sides snapped to drawn lines; area, perimeter and fixtures."""
+    xs, ys = _room_lines(page)
+
+    def snap(value, lines, lo, hi):
+        near = [l[0] for l in lines if abs(l[0] - value) < 8 and min(l[2], hi) - max(l[1], lo) > .3 * (hi - lo)]
+        return min(near, key=lambda z: abs(z - value)) if near else None
+
+    out = []
+    for name, kind, rect, fixtures in ROOMS.get(page.number + 1, []):
+        x0, y0, x1, y1 = (v * _PT for v in rect)
+        sides = {"esquerda": snap(x0, xs, y0, y1), "topo": snap(y0, ys, x0, x1),
+                 "direita": snap(x1, xs, y0, y1), "base": snap(y1, ys, x0, x1)}
+        b = [sides["esquerda"] or x0, sides["topo"] or y0, sides["direita"] or x1, sides["base"] or y1]
+        w, h = (b[2] - b[0]) * metre_per_point, (b[3] - b[1]) * metre_per_point
+        out.append({"nome": name, "tipo": kind, "area_m2": round(w * h, 2), "perimetro_m": round(2 * (w + h), 2),
+                    "comprimento_m": round(max(w, h), 2), "aparelhos": fixtures, "rect": _rectangle(page, b),
+                    "lados_a_confirmar": [k for k, v in sides.items() if v is None]})
+    return out
+
+
+def exterior_openings(page, metre_per_point, walls, envelope):
+    """Gaps in the CLT walls along the heated envelope: windows and glazed bays, with what spans them."""
+    gaps = envelope.exterior.difference(union_all(walls).buffer(1.5))
+    bands = [(b, "lintel") for b in _bands(page, LINTEL, metre_per_point)] + \
+            [(b, "viga") for b in _bands(page, STEEL_BEAM, metre_per_point)]
+    out = []
+    for segment in getattr(gaps, "geoms", [gaps]):
+        width = segment.length * metre_per_point
+        if width < .3:
+            continue
+        over = next((kind for band, kind in bands if band.buffer(3).intersection(segment).length > .5 * segment.length), None)
+        out.append({"largura_m": round(width, 2), "sobre": over, "tipo": "vao_envidracado" if over == "viga" or width > 2 else "janela",
+                    "rect": _rectangle(page, segment.buffer(2).bounds)})
+    return out

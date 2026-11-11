@@ -22,6 +22,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from bim_studio import clt_fitout
+
 Origin = Literal["empresa", "mercado", "hipotese"]
 Value = Annotated[Decimal, Field(ge=0, max_digits=14, decimal_places=6)]
 CENT = Decimal("0.01")
@@ -55,6 +57,10 @@ CATEGORIES = {
     "revestimentos": ("Revestimentos", "revestimentos"),
     "isolamentos": ("Isolamentos, impermeabilização e betão leve", "revestimentos"),
     "estrutura": ("Estrutura complementar", "compra"),
+    "caixilharia": ("Caixilharia e portas", "acabamentos"),
+    "eletricidade": ("Eletricidade", "acabamentos"),
+    "canalizacao": ("Canalização e louças", "acabamentos"),
+    "acabamentos": ("Pavimentos, cerâmica e acabamentos", "acabamentos"),
     "indiretos": ("Engenharia, estaleiro e imprevistos", "indiretos"),
     "venda": ("Venda do CLT", "venda"),
 }
@@ -68,6 +74,14 @@ BASES = {
     "m2_teto": "m² de teto falso", "m2_laje": "m² de laje CLT com betão leve", "m2_cobertura": "m² de cobertura plana",
     "m2_fachada": "m² de face exterior de parede", "m_viga_aco": "m de viga de aço",
     "pct_custo": "% do custo direto",
+    "un_tomada": "tomada", "un_ponto_luz": "ponto de luz", "un_interruptor": "interruptor", "m_cabo": "m de cabo",
+    "m_tubo_eletrico": "m de tubo elétrico", "un_circuito": "circuito", "un_quadro": "quadro elétrico", "un_diferencial": "diferencial",
+    "un_ponto_agua": "ponto de água", "m_tubo_agua": "m de tubo de água", "un_ponto_esgoto": "ponto de esgoto",
+    "m_tubo_esgoto": "m de tubo de esgoto", "un_sanita": "sanita", "un_lavatorio": "lavatório", "un_base_duche": "base de duche",
+    "un_banheira": "banheira", "un_lava_loica": "lava-loiça", "un_aqs": "equipamento de águas quentes",
+    "m2_caixilharia": "m² de caixilharia exterior", "un_vao_exterior": "vão exterior", "un_porta_interior": "porta interior",
+    "un_porta_entrada": "porta de entrada", "m2_pavimento": "m² de pavimento", "m2_pavimento_ceramico": "m² de pavimento cerâmico",
+    "m2_ceramica_parede": "m² de cerâmica de parede", "m_rodape": "m de rodapé",
 }
 PROJECT_BASES = {"km_materia_prima", "km_obra", "viagem", "dia_fabrico", "dia_montagem", "projeto"}
 
@@ -94,6 +108,32 @@ LIBRARY = {
     "ISO-COBERTURA": ("isolamentos", "Cobertura plana: XPS 100 mm, betão leve, PVC e seixo", "m²", "60", "69", "m2_cobertura", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
     "ISO-FACHADA": ("isolamentos", "Fachada: lã mineral 100 mm e membrana de vapor (sem acabamento exterior)", "m²", "22", "25.3", "m2_fachada", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
     "EST-VIGA-ACO": ("estrutura", "Viga de aço (perfil não indicado no desenho), fornecida e montada", "m", "90", "103.5", "m_viga_aco", "1", "hipotese", "O perfil não está no desenho. Preencher após o cálculo estrutural."),
+    "CX-CAIXILHARIA": ("caixilharia", "Caixilharia exterior em alumínio com corte térmico e vidro duplo, colocada", "m²", "350", "402.5", "m2_caixilharia", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CX-REMATES": ("caixilharia", "Peitoris, soleiras e remates de vão", "un", "60", "69", "un_vao_exterior", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CX-PORTA-ENTRADA": ("caixilharia", "Porta de entrada de segurança, colocada", "un", "1200", "1380", "un_porta_entrada", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CX-PORTA-INTERIOR": ("caixilharia", "Porta interior lacada com aro e ferragens, colocada", "un", "280", "322", "un_porta_interior", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EL-TOMADA": ("eletricidade", "Tomada com caixa, aparelhagem e mão de obra", "un", "35", "40.25", "un_tomada", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EL-PONTO-LUZ": ("eletricidade", "Ponto de luz com caixa e mão de obra", "un", "30", "34.5", "un_ponto_luz", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EL-INTERRUPTOR": ("eletricidade", "Interruptor com caixa e aparelhagem", "un", "25", "28.75", "un_interruptor", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EL-CABO": ("eletricidade", "Cabo H07V (equivalente 3 condutores)", "m", "1.2", "1.38", "m_cabo", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EL-TUBO": ("eletricidade", "Tubo corrugado VD embebido na parede técnica", "m", "0.6", "0.69", "m_tubo_eletrico", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EL-QUADRO": ("eletricidade", "Quadro elétrico com disjuntores, montado", "un", "450", "517.5", "un_quadro", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "EL-DIFERENCIAL": ("eletricidade", "Interruptor diferencial 30 mA", "un", "60", "69", "un_diferencial", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-PONTO-AGUA": ("canalizacao", "Ponto de água (multicamada, acessórios e mão de obra)", "un", "45", "51.75", "un_ponto_agua", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-TUBO-AGUA": ("canalizacao", "Tubo multicamada isolado", "m", "4", "4.6", "m_tubo_agua", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-PONTO-ESGOTO": ("canalizacao", "Ponto de esgoto em PVC com sifão", "un", "40", "46", "un_ponto_esgoto", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-TUBO-ESGOTO": ("canalizacao", "Tubo PVC de esgoto", "m", "6", "6.9", "m_tubo_esgoto", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-SANITA": ("canalizacao", "Sanita suspensa com autoclismo embutido, colocada", "un", "380", "437", "un_sanita", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-LAVATORIO": ("canalizacao", "Lavatório com misturadora, colocado", "un", "220", "253", "un_lavatorio", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-DUCHE": ("canalizacao", "Base de duche, resguardo e misturadora", "un", "450", "517.5", "un_base_duche", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-BANHEIRA": ("canalizacao", "Banheira com misturadora, colocada", "un", "550", "632.5", "un_banheira", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-LAVA-LOICA": ("canalizacao", "Lava-loiça com misturadora, colocado", "un", "200", "230", "un_lava_loica", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "CN-AQS": ("canalizacao", "Bomba de calor para águas quentes 200 L, instalada", "un", "1800", "2070", "un_aqs", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "AC-PAVIMENTO": ("acabamentos", "Pavimento flutuante com base acústica e rodapé de remate", "m²", "35", "40.25", "m2_pavimento", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "AC-PAV-CERAMICO": ("acabamentos", "Pavimento cerâmico com impermeabilização, colocado", "m²", "45", "51.75", "m2_pavimento_ceramico", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "AC-CERAMICA-PAREDE": ("acabamentos", "Cerâmica de parede 10×10 com impermeabilização, colocada", "m²", "50", "57.5", "m2_ceramica_parede", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "AC-RODAPE": ("acabamentos", "Rodapé de madeira lacado", "m", "8", "9.2", "m_rodape", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
+    "AC-FACHADA": ("acabamentos", "Acabamento exterior da fachada (sistema a definir)", "m²", "45", "51.75", "m2_fachada", "1", "hipotese", "Preencher com o preço do fornecedor ou subempreiteiro."),
     "IND-ENGENHARIA": ("indiretos", "Projeto de estabilidade e desenhos de fabrico", "%", "3", "3", "pct_custo", "1", "hipotese", "Percentagem do custo direto, faturada ao custo. Preencher com o valor da empresa."),
     "IND-ESTALEIRO": ("indiretos", "Estaleiro, seguros e segurança em obra", "%", "3", "3", "pct_custo", "1", "hipotese", "Percentagem do custo direto, faturada ao custo. Preencher com o valor da empresa."),
     "IND-IMPREVISTOS": ("indiretos", "Imprevistos", "%", "5", "5", "pct_custo", "1", "hipotese", "Percentagem do custo direto, faturada ao custo. Preencher com o valor da empresa."),
@@ -116,6 +156,7 @@ CATALOGUE = {
     "work_hours_day": ("montagem", "Horas de trabalho por dia", "h/dia", "8", "hipotese", "Horário da obra."),
     "purchase_days": ("prazos", "Prazo de compra e receção da madeira", "dias", "21", "hipotese", "Prazo do fornecedor."),
     "transport_days": ("prazos", "Prazo de entrega na obra", "dias", "2", "hipotese", "Planeamento logístico."),
+    "fitout_days": ("prazos", "Prazo de instalações e acabamentos até à entrega da chave", "dias", "60", "hipotese", "Planeamento da empresa e dos subempreiteiros."),
     "iva_percent": ("venda", "IVA sobre a venda", "%", "23", "mercado", "civa"),
 }
 
@@ -298,6 +339,23 @@ class Panel(BaseModel):
     area_m2: Annotated[Decimal, Field(gt=0, le=100_000)]
 
 
+class Room(BaseModel):
+    nome: str = Field(min_length=1, max_length=80)
+    tipo: Literal["sala", "quarto", "cozinha", "casa_de_banho", "lavandaria", "corredor", "escritorio", "arrumos", "exterior"]
+    area_m2: Annotated[Decimal, Field(gt=0, le=10_000)]
+    perimetro_m: Value = Decimal(0)
+    comprimento_m: Value = Decimal(0)
+    aparelhos: list[Literal["lavatorio", "bide", "banheira", "chuveiro", "autoclismo", "lava_loica", "maquina_lavar_loica",
+                            "maquina_lavar_roupa", "tanque", "torneira_exterior"]] = Field(default_factory=list, max_length=30)
+    rect_m: list[float] | None = Field(default=None, min_length=4, max_length=4)
+
+
+class Window(BaseModel):
+    largura_m: Annotated[Decimal, Field(gt=0, le=100)]
+    sobre: Literal["lintel", "viga"] | None = None
+    tipo: Literal["janela", "vao_envidracado"] = "janela"
+
+
 class FloorInput(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     height_m: Annotated[Decimal, Field(gt=0, le=20)]
@@ -310,6 +368,11 @@ class FloorInput(BaseModel):
     roof_buildup_m2: Value = Decimal(0)
     facade_m2: Value = Decimal(0)
     steel_beam_m: Value = Decimal(0)
+    rooms: list[Room] = Field(default_factory=list, max_length=200)
+    windows: list[Window] = Field(default_factory=list, max_length=200)
+    interior_doors: Annotated[int, Field(ge=0, le=500)] = 0
+    ceiling_height_m: Value | None = None
+    riser_m: list[float] | None = Field(default=None, min_length=2, max_length=2)
 
     @model_validator(mode="after")
     def has_clt(self):
@@ -340,7 +403,7 @@ def _q(value):
     return float(Decimal(value).quantize(CENT, rounding=ROUND_HALF_UP))
 
 
-STAGE_ORDER = ("compra", "producao", "transporte", "montagem", "revestimentos", "indiretos")
+STAGE_ORDER = ("compra", "producao", "transporte", "montagem", "revestimentos", "acabamentos", "indiretos")
 
 
 def estimate(body: EstimateInput, parameters, library):
@@ -364,6 +427,15 @@ def estimate(body: EstimateInput, parameters, library):
             "paineis_m2": {kind: sum((e.area_m2 for e in floor.panels if e.kind == kind), Decimal(0))
                            for kind in ("laje", "cobertura", "lintel", "parede")},
         })
+    fit, fit_notes = clt_fitout.quantities([
+        {"name": fl.name, "height_m": fl.height_m, "ceiling_height_m": fl.ceiling_height_m, "riser_m": fl.riser_m,
+         "interior_doors": fl.interior_doors, "windows": [w.model_dump() for w in fl.windows],
+         "rooms": [{**r.model_dump(), "area_m2": float(r.area_m2), "perimetro_m": float(r.perimetro_m),
+                    "comprimento_m": float(r.comprimento_m)} for r in fl.rooms if r.tipo != "exterior"]}
+        for fl in body.floors])
+    for f, extra in zip(floors, fit):
+        for basis in BASES:
+            f.setdefault(basis, extra.get(basis, Decimal(0)))
     volume_total = sum((f["m3_clt"] for f in floors), Decimal(0))
     timber_total = sum((f["m3_madeira"] for f in floors), Decimal(0))
     assembly_hours = sum((f["h_montagem"] for f in floors), Decimal(0))
@@ -371,7 +443,8 @@ def estimate(body: EstimateInput, parameters, library):
     timber_trips = _ceil(timber_total, p["materia_prima_truck_m3"])
     crew_day = p["assembly_crew"] * p["work_hours_day"]
     days = {"compra": p["purchase_days"], "fabrico": _ceil(volume_total, p["factory_m3_day"]),
-            "transporte": p["transport_days"], "montagem": _ceil(assembly_hours, crew_day)}
+            "transporte": p["transport_days"], "montagem": _ceil(assembly_hours, crew_day),
+            "acabamentos": p["fitout_days"] if any(f["floor"].rooms or f["floor"].windows for f in floors) else Decimal(0)}
     project = {"km_materia_prima": timber_trips * p["materia_prima_km"], "km_obra": trips * p["obra_km"],
                "viagem": trips, "dia_fabrico": days["fabrico"], "dia_montagem": days["montagem"], "projeto": Decimal(1)}
 
@@ -439,7 +512,7 @@ def estimate(body: EstimateInput, parameters, library):
                "origem": l["item"].origin} for l in lines]
     hypotheses = sorted([item["label"] for item in parameters.values() if item["origin"] == "hipotese"]
                         + [f"{i.code} · {i.name}" for i in items if i.origin == "hipotese"])
-    return {"pisos": rows, "total": totals, "linhas": detail, "plano": planning(days, body.start, body.start_mode),
+    return {"pisos": rows, "total": totals, "notas_quantidades": fit_notes, "linhas": detail, "plano": planning(days, body.start, body.start_mode),
             "hipoteses_por_confirmar": hypotheses, "status": "estimativa" if hypotheses else "valores_da_empresa"}
 
 
@@ -447,7 +520,9 @@ def planning(days, start=None, mode="compra"):
     """Sequential plan: purchase, fabrication, delivery, assembly. Calendar days."""
     start = start or date.today()
     stages = [("compra", "Compra e receção da matéria-prima"), ("fabrico", "Fabrico dos painéis"),
-              ("transporte", "Transporte e entrega na obra"), ("montagem", "Montagem em obra")]
+              ("transporte", "Transporte e entrega na obra"), ("montagem", "Montagem em obra"),
+              ("acabamentos", "Instalações e acabamentos até à entrega da chave")]
+    stages = [s for s in stages if s[0] != "acabamentos" or days.get("acabamentos")]
     if mode == "fabrico":
         stages = stages[1:]
     plan, cursor = [], start
@@ -470,7 +545,7 @@ def lot_from_estimate(name, result):
         if line["fase"] == "venda" or not line["quantidade"] or not line["custo_unitario_eur"]:
             continue
         unit = LOT_UNITS.get(line["unidade"].lower(), "un")
-        lines.append({"code": line["codigo"], "stage": {"revestimentos": "montagem", "indiretos": "montagem"}.get(line["fase"], line["fase"]),
+        lines.append({"code": line["codigo"], "stage": {"revestimentos": "montagem", "indiretos": "montagem", "acabamentos": "entrega"}.get(line["fase"], line["fase"]),
                       "name": line["designacao"][:120], "unit": unit, "rate_eur": str(line["custo_unitario_eur"]),
                       "baseline_qty": str(line["quantidade"]), "uncommitted_remaining_eur": str(line["custo_eur"]),
                       "source_reference": f"Cálculo automático ConstruPilot · base {line['base']}"})

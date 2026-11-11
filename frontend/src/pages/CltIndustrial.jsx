@@ -289,7 +289,7 @@ function Lots() {
 
 const groups = { fabrico: "Fabrico", transporte: "Transporte", montagem: "Montagem em obra", prazos: "Prazos", venda: "Venda e impostos" };
 const origins = { empresa: "Empresa", mercado: "Média de mercado", hipotese: "Hipótese por confirmar" };
-const stageNames = { compra: "Compra", producao: "Fabrico", transporte: "Transporte", montagem: "Montagem", revestimentos: "Revestimentos e isolamentos", indiretos: "Engenharia e indiretos", fabrico: "Fabrico" };
+const stageNames = { compra: "Compra", producao: "Fabrico", transporte: "Transporte", montagem: "Montagem", revestimentos: "Revestimentos e isolamentos", acabamentos: "Instalações e acabamentos", entrega: "Entrega", indiretos: "Engenharia e indiretos", fabrico: "Fabrico" };
 const panelKinds = { laje: "Laje", cobertura: "Cobertura", lintel: "Lintel", parede: "Painel sobre vão" };
 const EXTRA_FIELDS = [["ceiling_m2", "Teto falso BA15 (m²)"], ["slab_buildup_m2", "Laje: membrana e betão leve (m²)"],
   ["roof_buildup_m2", "Cobertura plana: isolamento e impermeabilização (m²)"], ["facade_m2", "Face exterior das paredes (m²)"], ["steel_beam_m", "Vigas de aço (m)"]];
@@ -339,7 +339,9 @@ export function floorsFromReport(report) {
       panels: (more?.panels || []).map((p) => ({ ...p, thickness_mm: String(p.thickness_mm), layers: String(p.layers), area_m2: String(p.area_m2) })),
       board_layers_m2: (2 * faces).toFixed(2), paint_m2: (faces + ceiling).toFixed(2),
       ceiling_m2: ceiling.toFixed(2), slab_buildup_m2: String(more?.slab_buildup_m2 || 0), roof_buildup_m2: String(more?.roof_buildup_m2 || 0),
-      facade_m2: outer.toFixed(2), steel_beam_m: String(more?.steel_beam_m || 0) };
+      facade_m2: outer.toFixed(2), steel_beam_m: String(more?.steel_beam_m || 0),
+      rooms: more?.rooms || [], windows: more?.windows || [], interior_doors: more?.interior_doors || 0,
+      ceiling_height_m: more?.ceiling_height_m ?? null, riser_m: more?.riser_m || null };
   });
 }
 
@@ -562,6 +564,13 @@ function Calculation({ report }) {
           <button type="button" className={secondary} aria-label="Retirar elemento" onClick={() => setFloor(i, "panels", floor.panels.filter((_, m) => m !== w))}>×</button></span></Field>
       </div>)}
       <button type="button" className={secondary} onClick={() => setFloor(i, "panels", [...(floor.panels || []), { kind: "laje", label: "", thickness_mm: "240", layers: "7", area_m2: "" }])}>Adicionar laje, cobertura ou lintel</button>
+      {(floor.rooms?.length > 0 || floor.windows?.length > 0) && <details className="sm:col-span-2 lg:col-span-4">
+        <summary className="cursor-pointer">Divisões, aparelhos e vãos lidos no desenho ({floor.rooms.length} divisões, {floor.windows.length} vãos exteriores, {floor.interior_doors} portas interiores)</summary>
+        <table className="mt-2 w-full text-left text-sm"><thead><tr><th>Divisão</th><th>Tipo</th><th>Área</th><th>Aparelhos</th><th>Lados a confirmar</th></tr></thead>
+          <tbody>{floor.rooms.map((r) => <tr key={r.nome} className="border-t"><td>{r.nome}</td><td>{r.tipo}</td><td>{decimal.format(r.area_m2)} m²</td>
+            <td>{(r.aparelhos || []).join(", ") || "—"}</td><td>{(r.lados_a_confirmar || []).join(", ") || "—"}</td></tr>)}</tbody></table>
+        <p className="mt-2">Vãos exteriores: {floor.windows.map((w) => `${decimal.format(w.largura_m)} m${w.sobre ? ` sob ${w.sobre}` : ""}`).join(" · ")}</p>
+      </details>}
       {EXTRA_FIELDS.map(([key, label]) => <Field key={key} label={label}><input className={input} type="number" min="0" step="any" value={floor[key] ?? "0"} onChange={(e) => setFloor(i, key, e.target.value)} /></Field>)}
     </fieldset>)}
     <div className="flex flex-wrap gap-2">
@@ -593,6 +602,7 @@ function Calculation({ report }) {
             <td>{decimal.format(l.quantidade)} {l.unidade}</td><td>{fmt(l.custo_eur)}</td><td>{l.venda_eur == null ? "—" : fmt(l.venda_eur)}</td><td>{origins[l.origem]}</td></tr>)}</tbody>
         </table>
       </details>
+      {result.notas_quantidades?.length > 0 && <ul className="list-disc pl-5">{result.notas_quantidades.map((n) => <li key={n}>{n}</li>)}</ul>}
       {result.hipoteses_por_confirmar.length > 0 && <p className="text-amber-700 dark:text-amber-400">Estimativa com {result.hipoteses_por_confirmar.length} valores por confirmar: {result.hipoteses_por_confirmar.join(" · ")}.</p>}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={button} onClick={createLot}>Criar lote de seguimento com este plano</button>
