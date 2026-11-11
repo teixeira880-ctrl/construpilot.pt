@@ -20,6 +20,8 @@ log = logging.getLogger("bet.prices")
 
 WEB_TIMEOUT_S = 90
 MAX_WEB_ITEMS = 60
+CACHE_S = 30 * 86400                 # prix retenus réutilisés 30 jours : mêmes documents → même devis
+_CACHE: dict = {}                    # cache en mémoire (même processus), doublé d'un cache Mongo best-effort
 
 
 def reference_lines(raw: dict) -> list[dict]:
@@ -37,7 +39,8 @@ def reference_lines(raw: dict) -> list[dict]:
 
 async def _library(db, uid: str, lines: list[dict]) -> dict:
     from engines.assistant_quote_pricing import find_price, price_sources
-    user = await db.users.find_one({"user_id": uid}, {"_id": 0}) or {"user_id": uid}
+    coll = getattr(db, "users", None) if db is not None else None
+    user = (await coll.find_one({"user_id": uid}, {"_id": 0}) if coll is not None else None) or {"user_id": uid}
     user.setdefault("user_id", uid)
     sources = await price_sources(user)
     if not sources:
@@ -54,6 +57,9 @@ async def _library(db, uid: str, lines: list[dict]) -> dict:
 
 
 async def _market(lines: list[dict], country: str, region: str = "") -> dict:
+    import os
+    if os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("BET_MARKET_PRICES_IN_TESTS"):
+        return {}                                        # tests : jamais d'appel réseau (résultats reproductibles)
     from engines.perplexity_plus.pplx_client import PplxPlusClient
     client = PplxPlusClient()
     if not client.is_configured():
@@ -102,6 +108,22 @@ async def resolve(raw: dict, db, uid: str, country: str) -> dict:
         return {}
     if not lines:
         return {}
+    import hashlib
+    import time
+    keys = sorted({l["key"] for l in lines})
+    ck = hashlib.sha1(json.dumps([uid, country, keys], ensure_ascii=False).encode()).hexdigest()
+    hit = _CACHE.get(ck)
+    if hit is None:
+        try:
+            coll = getattr(db, "bet_price_cache", None) if db is not None else None
+            doc = await coll.find_one({"key": ck}, {"_id": 0}) if coll is not None else None
+            if doc and isinstance(doc.get("overrides"), dict):
+                hit = (float(doc.get("ts") or 0), doc["overrides"])
+        except Exception:  # noqa: BLE001
+            hit = None
+    if hit and time.time() - hit[0] < CACHE_S:
+        raw["_price_overrides"] = dict(hit[1])
+        return _summary(keys, raw["_price_overrides"])
     overrides: dict = {}
     try:
         overrides.update(await _library(db, uid, lines))
@@ -115,7 +137,18 @@ async def resolve(raw: dict, db, uid: str, country: str) -> dict:
         except Exception:  # noqa: BLE001 — recherche en ligne indisponible / trop lente : prix de référence
             log.warning("bet prices: market lookup failed", exc_info=True)
     raw["_price_overrides"] = overrides
-    keys = {l["key"] for l in lines}
-    return {"library": sum(1 for k in keys if overrides.get(k, {}).get("src") in ("company_library", "shared_library")),
-            "market_web": sum(1 for k in keys if overrides.get(k, {}).get("src") == "market_web"),
+    now = time.time()
+    _CACHE[ck] = (now, dict(overrides))
+    try:
+        coll = getattr(db, "bet_price_cache", None) if db is not None else None
+        if coll is not None:
+            await coll.update_one({"key": ck}, {"$set": {"key": ck, "user_id": uid, "ts": now, "overrides": overrides}}, upsert=True)
+    except Exception:  # noqa: BLE001
+        log.warning("bet prices: cache write failed", exc_info=True)
+    return _summary(keys, overrides)
+
+
+def _summary(keys, overrides: dict) -> dict:
+    return {"library": sum(1 for k in keys if (overrides.get(k) or {}).get("src") in ("company_library", "shared_library")),
+            "market_web": sum(1 for k in keys if (overrides.get(k) or {}).get("src") == "market_web"),
             "reference": sum(1 for k in keys if k not in overrides)}

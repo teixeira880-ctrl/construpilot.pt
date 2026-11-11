@@ -116,6 +116,7 @@ def test_price_overrides_and_origin_warning(tmp_path):
 
 def test_resolver_library_then_market_then_reference(monkeypatch):
     from engines.bet_core import price_resolver
+    monkeypatch.setattr(price_resolver, "_CACHE", {})
 
     async def lib(db, uid, lines):
         return {"escalier": {"pu": 3000.0, "src": "company_library", "ref": "Escada"}}
@@ -133,6 +134,7 @@ def test_resolver_library_then_market_then_reference(monkeypatch):
 
 def test_resolver_never_blocks_when_sources_fail(monkeypatch):
     from engines.bet_core import price_resolver
+    monkeypatch.setattr(price_resolver, "_CACHE", {})
 
     async def boom(*a, **k):
         raise RuntimeError("offline")
@@ -141,3 +143,18 @@ def test_resolver_never_blocks_when_sources_fail(monkeypatch):
     raw = _case("moradia_pt_demo.json")
     s = asyncio.run(price_resolver.resolve(raw, None, "u1", "PT"))
     assert s["library"] == 0 and s["market_web"] == 0 and raw["_price_overrides"] == {}
+
+
+def test_resolver_same_documents_same_prices(monkeypatch):
+    from engines.bet_core import price_resolver
+    monkeypatch.setattr(price_resolver, "_CACHE", {})
+    calls = []
+
+    async def market(lines, country, region=""):
+        calls.append(1)
+        return {"pc": {"pu": 60.0 + len(calls), "src": "market_web", "ref": "web"}}
+    monkeypatch.setattr(price_resolver, "_market", market)
+    a, b = _case("moradia_pt_demo.json"), _case("moradia_pt_demo.json")
+    asyncio.run(price_resolver.resolve(a, None, "u1", "PT"))
+    asyncio.run(price_resolver.resolve(b, None, "u1", "PT"))
+    assert len(calls) == 1 and a["_price_overrides"] == b["_price_overrides"]   # 2.º estudo: mesmos preços, sem nova pesquisa

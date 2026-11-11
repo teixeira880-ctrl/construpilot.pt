@@ -143,7 +143,8 @@ def empresa(branding: dict | None) -> dict:
     if not site:
         m = re.search(r"\b([\w-]+\.[a-z]{2,}(?:\.[a-z]{2})?)\b", str(b.get("contact_line") or ""))
         site = m.group(1) if m and "@" not in m.group(0) else ""
-    return {"nome": str(b.get("company_name") or "").strip(), "cor": cor, "logo_bytes": logo,
+    nome = str(b.get("company_name") or b.get("fallback_company_name") or "").strip()   # sem perfil: nome da conta (L103)
+    return {"nome": nome, "cor": cor, "logo_bytes": logo,
             "site": re.sub(r"^https?://", "", str(site)).rstrip("/")}
 
 
