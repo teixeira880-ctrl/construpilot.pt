@@ -322,7 +322,7 @@ def acabar_orcamento(pdf: bytes, doc: dict, branding: dict | None, lang: str | N
     capa = {"tipo": T["quote"] + (f" n.º {doc['number']}" if doc.get("number") and lg == "pt" else
                                   f" {doc['number']}" if doc.get("number") else ""),
             "titulo": doc.get("title") or T["quote"],
-            "subtitulo": (f"{T['client']}: {cli_nome}" if cli_nome else ""),
+            "subtitulo": (f"{T['client']}{' : ' if lg == 'fr' else ': '}{cli_nome}" if cli_nome else ""),
             "local": site, "data": str(doc.get("issue_date") or "")[:10], "kpis": kpis, "indice": lots, "imagem": imagem}
     return acabar(pdf, capa, branding, lg, paginas="leve")
 
