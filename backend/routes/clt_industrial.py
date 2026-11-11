@@ -14,6 +14,7 @@ from pymongo.errors import DuplicateKeyError
 
 from bim_studio.clt_access import allowed
 from bim_studio.clt_costs import CostLot, Rate, summary
+from bim_studio.clt_economics import EstimateInput, Parameter, estimate, merged
 from bim_studio.store import get_db, now, tenant_of
 from core.permissions import require_feature
 from core.security import pro_required
@@ -224,3 +225,27 @@ async def update_lot(lot_id: str, body: LotWrite, user=Depends(editor)):
     if not body.expected_revision:
         raise HTTPException(422, "Indique a revisão atual do lote.")
     return await _save_lot(lot_id, body, user)
+
+
+@router.get("/parameters")
+async def get_parameters(user=Depends(viewer)):
+    doc = await get_db().clt_parameters.find_one({"_id": tenant_of(user)}) or {}
+    return {"items": merged(doc.get("values")), "updated_at": doc.get("updated_at")}
+
+
+@router.put("/parameters")
+async def save_parameters(body: dict[str, Parameter], user=Depends(editor)):
+    items = merged({})
+    unknown = sorted(set(body) - set(items))
+    if unknown:
+        raise HTTPException(422, f"Parâmetros desconhecidos: {', '.join(unknown)}")
+    values = {key: {**item.model_dump(mode="json"), "origin": item.origin} for key, item in body.items()}
+    await get_db().clt_parameters.update_one({"_id": tenant_of(user)}, {"$set": {
+        "values": values, "updated_at": now(), "updated_by": user["user_id"]}}, upsert=True)
+    return {"items": merged(values)}
+
+
+@router.post("/estimate")
+async def estimate_costs(body: EstimateInput, user=Depends(viewer)):
+    doc = await get_db().clt_parameters.find_one({"_id": tenant_of(user)}) or {}
+    return estimate(body, merged(doc.get("values")))

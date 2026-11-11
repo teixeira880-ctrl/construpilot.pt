@@ -255,3 +255,79 @@ def test_section_offsets_from_printed_panel_thickness():
     assert abs(result["+1"]["ceiling_zone_m"] - .115) < .001
     assert abs(result["RDC"]["floor_buildup_m"] - .060) < .001
     assert abs(result["RDC"]["ceiling_zone_m"] - .115) < .001
+
+
+def test_cost_estimate_by_floor_with_company_values():
+    from decimal import Decimal
+    from bim_studio.clt_economics import EstimateInput, estimate, merged
+
+    params = merged({"fabrication_h_m3": {"value": "2", "origin": "empresa"},
+                     "truck_m3": {"value": "10", "origin": "empresa"}})
+    assert params["fabrication_h_m3"]["origin"] == "empresa"
+    assert params["timber_eur_m3"]["origin"] == "mercado" and params["timber_eur_m3"]["source"]
+    body = EstimateInput(floors=[
+        {"name": "RDC", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "10"}],
+         "board_layers_m2": "20", "paint_m2": "10"},
+        {"name": "+1", "height_m": "2.5", "walls": [{"thickness_mm": "160", "layers": 3, "length_m": "4"}]},
+    ])
+    result = estimate(body, params)
+    rdc, first = result["pisos"]
+    assert rdc["montagem_m2"] == 30 and rdc["fabrico_m3"] == 3
+    assert first["fabrico_m3"] == 1.6
+    assert rdc["horas_fabrico"] == 6
+    p = {k: Decimal(v["value"]) for k, v in params.items()}
+    compra = 3 * p["timber_input_m3_per_m3"] * p["timber_eur_m3"] + 30 * 4 * p["adhesive_kg_m2"] * p["adhesive_eur_kg"]
+    assert rdc["custos_eur"]["compra"] == float(compra.quantize(Decimal("0.01")))
+    assert result["total"]["viagens"] == 1
+    transport = float(p["transport_km"] * p["transport_eur_km"])
+    assert abs(rdc["custos_eur"]["transporte"] + first["custos_eur"]["transporte"] - transport) < .02
+    assert result["prazo"]["fabrico_dias"] == 1
+    assert abs(result["total"]["margem_eur"] - (result["total"]["receita_eur"] - result["total"]["custo_total_eur"])) <= .011
+    assert result["status"] == "estimativa" and "Tempo de fabrico por m³ de CLT" not in result["hipoteses_por_confirmar"]
+
+
+def test_home_a_basement_sheet_is_out_of_scope():
+    import fitz
+    from bim_studio.home_a_takeoff import review_page
+
+    doc = fitz.open()
+    page = doc.new_page()
+    review = review_page(page, [{"kind": "declared_area", "values": [40.45], "id": "x", "rect": [0, 0, 1, 1]}])
+    assert review["in_scope"] is False
+    assert review["interior_base_m2"] is None and not review["markers"]
+
+
+def test_http_company_parameters_and_estimate(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from mongomock_motor import AsyncMongoMockClient
+
+    monkeypatch.setenv("MONGO_URL", "mongodb://127.0.0.1:27017")
+    monkeypatch.setenv("DB_NAME", "clt_test")
+    monkeypatch.setenv("JWT_SECRET", "local-test-only")
+    monkeypatch.setenv("CLT_PILOT_USER_ID", "ana")
+    monkeypatch.setenv("CLT_PILOT_TENANT_ID", "org_a")
+    monkeypatch.setenv("CLT_PILOT_ACCOUNTS", '{"bia":"org_a"}')
+    from bim_studio import store
+    from routes import clt_industrial as route
+
+    monkeypatch.setattr(store, "_DB", AsyncMongoMockClient().clt_test)
+    actor = {"user_id": "ana", "organization_id": "a", "org_role": "owner"}
+    app = FastAPI()
+    app.include_router(route.router)
+    app.dependency_overrides[route.pro_required] = lambda: actor
+    prefix = "/clt-industrial"
+    with TestClient(app) as client:
+        items = client.get(prefix + "/parameters").json()["items"]
+        assert items["adhesive_eur_kg"]["origin"] == "hipotese"
+        saved = client.put(prefix + "/parameters", json={"adhesive_eur_kg": {"value": "6.2"}})
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["items"]["adhesive_eur_kg"] == {**items["adhesive_eur_kg"], "value": "6.2",
+                                                           "origin": "empresa", "source": "Valor da empresa"}
+        assert client.put(prefix + "/parameters", json={"nao_existe": {"value": 1}}).status_code == 422
+        actor["user_id"] = "bia"
+        assert client.get(prefix + "/parameters").json()["items"]["adhesive_eur_kg"]["value"] == "6.2"
+        estimate = client.post(prefix + "/estimate", json={"floors": [
+            {"name": "RDC", "height_m": 3, "walls": [{"thickness_mm": 100, "layers": 5, "length_m": 10}]}]})
+        assert estimate.status_code == 200, estimate.text
+        assert "Adesivo PUR, preço de compra" not in estimate.json()["hipoteses_por_confirmar"]

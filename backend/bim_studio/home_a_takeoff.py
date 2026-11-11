@@ -13,7 +13,7 @@ from shapely import union_all
 from shapely.geometry import Polygon, box
 
 SOURCE_SHA256 = "0320687a95e44a63dfe8e28c702ccd38ec4b46563b5bf44166b0e946b93a761d"
-FLOORS = {1: "Piso −1", 2: "Rés do chão", 3: "Primeiro piso", 4: "Pormenor construtivo"}
+FLOORS = {1: "Piso −1 (fora do âmbito)", 2: "Rés do chão", 3: "Primeiro piso", 4: "Pormenor construtivo"}
 # Reviewed quadrilaterals of the magenta CLT outlines, excluding legend and
 # duplicate paths. Source references are PyMuPDF drawing sequence numbers.
 OUTLINES = {
@@ -201,20 +201,13 @@ def review_page(page, evidence):
     number = page.number + 1
     result = {"floor": FLOORS[number], "clt_plan_m2": None, "clt_volume_m3": None,
               "interior_base_m2": None, "finish_area_m2": None, "finish_volume_m3": None,
-              "notes": [], "markers": []}
+              "notes": [], "markers": [], "in_scope": number in OUTLINES}
     if number in OUTLINES:
         result["clt_plan_m2"], result["markers"] = _clt_footprints(page)
         result["notes"].append("Área ocupada em planta pelos troços assinalados. Não corresponde à área da face vertical nem à área das lajes.")
     if number == 1:
-        declared = [r for r in evidence if r["kind"] == "declared_area"]
-        room_names = {40.45: "Sala de máquinas", 12.80: "Arrumos técnicos",
-                      47.80: "Ginásio", 19.60: "Arrumos"}
-        result["interior_base_m2"] = round(sum(r["values"][0] for r in declared), 2)
-        result["notes"].append("Subtotal declarado de quatro divisões: sala de máquinas, arrumos técnicos, ginásio e arrumos. Exclui hall, IS e escada; acabamento não atribuído.")
-        for item in declared:
-            area = item["values"][0]
-            result["markers"].append({"id": item["id"], "rect": item["rect"], "status": "declared",
-                                      "label": f"{room_names.get(area, 'Área indicada')} · {area:.2f} m²"})
+        result["notes"].append("Folha fora do âmbito da casa: o Home A tem só RDC e +1, por indicação do cliente.")
+        return result
     if number == 2:
         result["notes"].append("O terraço coberto de 26,50 m² está excluído dos acabamentos interiores.")
     if number != 4:

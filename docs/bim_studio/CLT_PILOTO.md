@@ -52,6 +52,25 @@ espessura do pavimento e do teto falso medidas no corte. A escala do corte vem
 das espessuras impressas da laje (240 mm) e da cobertura (140 mm). As quebras
 do corte não permitem medir a altura total do painel diretamente.
 
+## Parâmetros de custo da empresa
+
+O separador "Parâmetros de custo" guarda os valores da empresa, partilhados por
+toda a organização. Cobre compra de madeira e adesivo, hora do operário, tempo
+de fabrico por m³, eletricidade, transporte, montagem subcontratada por m² ou m³,
+prazos, revestimentos (placa, fixações, pintura e subempreitada) e preços de venda.
+Cada valor indica a origem:
+
+- **empresa**: introduzido pela empresa;
+- **mercado**: média publicada, com a fonte (Holzkurier, Eurostat, ERSE, EPD
+  Södra, Kiilto, CNR, gerador de preços CYPE, Zaask);
+- **hipótese**: sem fonte pública; tem de ser substituído antes de orçamentar.
+
+`POST /clt-industrial/estimate` devolve, por piso, m² de montagem, m³ de fabrico,
+madeira e adesivo, horas de fabrico e de montagem, custos por fase, receita,
+margem e prazo da compra à montagem, mais a lista de hipóteses ainda por confirmar.
+A ficha Rezult (ETA-21/0914) confirma o adesivo tipo I EN 15425 e lamelas de
+20 a 43 mm, mas não publica a dosagem de cola.
+
 ## Limites desta entrega
 
 - O PDF fornece evidência de dimensões e materiais. A reconstrução automática

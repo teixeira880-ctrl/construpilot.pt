@@ -55,7 +55,7 @@ function Evidence({ file, report }) {
       <h2 className="mb-2 font-semibold">Medições por piso</h2>
       <table className="w-full text-left text-sm">
         <thead><tr><th>Piso</th><th>CLT em planta</th><th>Volume CLT</th><th>Base interior declarada</th><th>Área de revestimento</th><th>Volume de revestimento</th></tr></thead>
-        <tbody>{report.pages.filter((p) => p.review && p.page !== 4).map((p) => <tr key={p.page} className="border-t">
+        <tbody>{report.pages.filter((p) => p.review?.in_scope).map((p) => <tr key={p.page} className="border-t">
           <th><button type="button" className="py-2 underline" onClick={() => { setNumber(p.page); setSelected(null); }}>{p.review.floor}</button></th>
           {[
             [p.review.clt_plan_m2, "m²"], [p.review.clt_volume_m3, "m³"], [p.review.interior_base_m2, "m²"],
@@ -287,6 +287,95 @@ function Lots() {
   </div>;
 }
 
+const groups = { compra: "Compra de matéria-prima", producao: "Fabrico", transporte: "Transporte", montagem: "Montagem em obra",
+  prazos: "Prazos", revestimentos: "Revestimentos", venda: "Venda" };
+const origins = { empresa: "Empresa", mercado: "Média de mercado", hipotese: "Hipótese por confirmar" };
+const newFloor = () => ({ name: "", height_m: "", walls: [{ thickness_mm: "100", layers: "5", length_m: "" }], board_layers_m2: "0", paint_m2: "0" });
+
+function Parameters() {
+  const [items, setItems] = useState(null);
+  const [edits, setEdits] = useState({});
+  const [floors, setFloors] = useState([newFloor()]);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    api.get(`${base}/parameters`).then(({ data }) => setItems(data.items)).catch((e) => setError(errText(e)));
+  }, []);
+  async function save(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      const saved = Object.fromEntries(Object.entries(items).filter(([, item]) => item.origin === "empresa")
+        .map(([key, item]) => [key, { value: item.value, origin: "empresa", source: item.source }]));
+      const payload = { ...saved, ...Object.fromEntries(Object.entries(edits).map(([key, value]) => [key, { value, origin: "empresa", source: "Valor da empresa" }])) };
+      const { data } = await api.put(`${base}/parameters`, payload);
+      setItems(data.items);
+      setEdits({});
+    } catch (e) { setError(errText(e)); }
+    finally { setSaving(false); }
+  }
+  async function calculate(event) {
+    event.preventDefault();
+    setError("");
+    try {
+      const { data } = await api.post(`${base}/estimate`, { floors });
+      setResult(data);
+    } catch (e) { setError(errText(e)); }
+  }
+  const setFloor = (i, key, value) => setFloors((all) => all.map((f, n) => n === i ? { ...f, [key]: value } : f));
+  const setWall = (i, w, key, value) => setFloors((all) => all.map((f, n) => n === i ? { ...f, walls: f.walls.map((x, m) => m === w ? { ...x, [key]: value } : x) } : f));
+  if (!items) return <p role="status">{error || "A carregar os parâmetros…"}</p>;
+  const hypotheses = Object.values(items).filter((item) => item.origin === "hipotese" && !(item.label in edits)).length;
+  return <div className="grid gap-5">
+    <form onSubmit={save} className="grid gap-4">
+      <p className="text-sm">Introduza os valores reais da empresa. Os valores de mercado indicam a fonte. As hipóteses não têm fonte pública e devem ser substituídas antes de orçamentar{hypotheses ? ` (${hypotheses} por confirmar)` : ""}.</p>
+      {Object.entries(groups).map(([group, title]) => <fieldset key={group} className="grid gap-3 rounded border p-3 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className="px-1 font-medium">{title}</legend>
+        {Object.entries(items).filter(([, item]) => item.group === group).map(([key, item]) => <Field key={key} label={`${item.label} (${item.unit})`}>
+          <input className={input} type="number" min="0" step="any" value={edits[key] ?? item.value}
+            onChange={(e) => setEdits((current) => ({ ...current, [key]: e.target.value }))} required />
+          <span className="text-xs text-muted-foreground">{key in edits ? "Empresa · por guardar" : `${origins[item.origin]} · ${item.source}`}</span>
+        </Field>)}
+      </fieldset>)}
+      <button className={button} disabled={saving}>Guardar parâmetros da empresa</button>
+    </form>
+    <form onSubmit={calculate} className="grid gap-3 rounded border p-3">
+      <h2 className="font-semibold">Custos, horas, margem e prazo por piso</h2>
+      {floors.map((floor, i) => <fieldset key={i} className="grid gap-3 rounded border p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <legend className="px-1">Piso {i + 1}</legend>
+        <Field label="Nome"><input className={input} value={floor.name} onChange={(e) => setFloor(i, "name", e.target.value)} required /></Field>
+        <Field label="Altura estrutural (m)"><input className={input} type="number" min="0.01" step="any" value={floor.height_m} onChange={(e) => setFloor(i, "height_m", e.target.value)} required /></Field>
+        <Field label="Placa de gesso aplicada (m² de camadas)"><input className={input} type="number" min="0" step="any" value={floor.board_layers_m2} onChange={(e) => setFloor(i, "board_layers_m2", e.target.value)} /></Field>
+        <Field label="Pintura (m²)"><input className={input} type="number" min="0" step="any" value={floor.paint_m2} onChange={(e) => setFloor(i, "paint_m2", e.target.value)} /></Field>
+        {floor.walls.map((wall, w) => <div key={w} className="grid gap-3 sm:col-span-2 lg:col-span-4 sm:grid-cols-3">
+          <Field label="Espessura (mm)"><input className={input} type="number" min="1" step="any" value={wall.thickness_mm} onChange={(e) => setWall(i, w, "thickness_mm", e.target.value)} required /></Field>
+          <Field label="Camadas"><input className={input} type="number" min="3" max="9" step="1" value={wall.layers} onChange={(e) => setWall(i, w, "layers", e.target.value)} required /></Field>
+          <Field label="Comprimento medido (m)"><input className={input} type="number" min="0.01" step="any" value={wall.length_m} onChange={(e) => setWall(i, w, "length_m", e.target.value)} required /></Field>
+        </div>)}
+        <button type="button" className={secondary} onClick={() => setFloor(i, "walls", [...floor.walls, { thickness_mm: "100", layers: "5", length_m: "" }])}>Adicionar espessura</button>
+      </fieldset>)}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={secondary} onClick={() => setFloors((all) => [...all, newFloor()])}>Adicionar piso</button>
+        <button className={button}>Calcular</button>
+      </div>
+      {result && <div className="overflow-x-auto text-sm">
+        <table className="w-full text-left"><thead><tr><th>Piso</th><th>m² montagem</th><th>m³ fabrico</th><th>Horas fabrico</th><th>Horas montagem</th><th>Custo</th><th>Receita</th><th>Margem</th></tr></thead>
+          <tbody>{[...result.pisos, { piso: "Total", ...result.total }].map((row) => <tr key={row.piso} className="border-t">
+            <th>{row.piso}</th><td>{decimal.format(row.montagem_m2)}</td><td>{decimal.format(row.fabrico_m3)}</td><td>{decimal.format(row.horas_fabrico)}</td>
+            <td>{decimal.format(row.horas_montagem)}</td><td>{fmt(row.custo_total_eur)}</td><td>{fmt(row.receita_eur)}</td>
+            <td>{fmt(row.margem_eur)}{row.margem_percent != null ? ` · ${row.margem_percent}%` : ""}</td>
+          </tr>)}</tbody>
+        </table>
+        <p className="mt-2">Prazo: {result.prazo.total_dias} dias (compra {result.prazo.compra_dias} · fabrico {result.prazo.fabrico_dias} · transporte {result.prazo.transporte_dias} · montagem {result.prazo.montagem_dias}).</p>
+        {result.hipoteses_por_confirmar.length > 0 && <p className="mt-1 text-amber-700 dark:text-amber-400">Estimativa com hipóteses por confirmar: {result.hipoteses_por_confirmar.join(" · ")}.</p>}
+      </div>}
+    </form>
+    {error && <p role="alert" className="text-destructive">{error}</p>}
+  </div>;
+}
+
 export default function CltIndustrial() {
   const [available, setAvailable] = useState(null);
   const [tab, setTab] = useState("desenhos");
@@ -298,9 +387,9 @@ export default function CltIndustrial() {
   return <main className="mx-auto grid max-w-7xl gap-5 p-4">
     <h1 className="text-2xl font-semibold">ConstruPilot CLT</h1>
     <nav aria-label="Piloto CLT" className="flex flex-wrap gap-2">
-      {Object.entries({ desenhos: "Desenhos e medições", precos: "Biblioteca da empresa", lotes: "Custos e avanço" }).map(([key, label]) =>
+      {Object.entries({ desenhos: "Desenhos e medições", parametros: "Parâmetros de custo", precos: "Biblioteca da empresa", lotes: "Custos e avanço" }).map(([key, label]) =>
         <button key={key} type="button" aria-pressed={tab === key} className={tab === key ? button : secondary} onClick={() => setTab(key)}>{label}</button>)}
     </nav>
-    {tab === "desenhos" ? <Drawings /> : tab === "precos" ? <Rates /> : <Lots />}
+    {tab === "desenhos" ? <Drawings /> : tab === "parametros" ? <Parameters /> : tab === "precos" ? <Rates /> : <Lots />}
   </main>;
 }
