@@ -171,3 +171,31 @@ def test_no_commitment_without_now_or_without_demo(env):
     assert a["demo_due_at"] is None and b["demo_due_at"] is None and "2 dias úteis" in a["message"]
     assert all(d["demo_due_at"] is None for d in leads(db))
     assert all("Compromisso · 5 dias úteis" not in m["html"] and "DEMO ATÉ" not in m["subject"] for m in sent)
+
+
+def test_investor_and_partner_are_flagged_in_the_lead_and_the_email(env):
+    c, db, sent, _ = env
+    inv = {**BODY, "role": "investor", "role_label": "Investidor", "decision": "", "email": "inv@example.com", "submission_id": "i1",
+           "needs": [{"id": "inv_1", "label": "Produto e tecnologia"}], "priority": {"id": "inv_1", "label": "Produto e tecnologia"},
+           "estimate": {}, "answers": {"Que tipo de investidor és?": "Business angel"}}
+    par = {**inv, "role": "partner", "role_label": "Parceiro", "demo": False, "email": "par@example.com", "submission_id": "p1",
+           "needs": [{"id": "part_2", "label": "Integrar catálogo e preços de materiais"}], "priority": None}
+    assert c.post("/api/experience/lead", json=inv).status_code == 200
+    assert c.post("/api/experience/lead", json=par).status_code == 200
+    kinds = {d["email"]: d["lead_kind"] for d in leads(db)}
+    assert kinds == {"inv@example.com": "investor", "par@example.com": "partner"}
+    by = {m["reply_to"]: m for m in sent}
+    assert "INVESTIDOR · Reunião pedida" in by["inv@example.com"]["subject"] and "INVESTIDOR · REUNIÃO PEDIDA" in by["inv@example.com"]["html"]
+    assert "Marcar reunião com os fundadores" in by["inv@example.com"]["html"] or "Mostrar uma demonstração funcional" in by["inv@example.com"]["html"]
+    assert "PARCEIRO · Contacto pedido" in by["par@example.com"]["subject"] and "conversa sobre a parceria" in by["par@example.com"]["html"]
+
+
+def test_client_and_other_roles_are_customers(env):
+    c, db, _, _ = env
+    body = {**BODY, "role": "client", "role_label": "Dono de obra / promotor", "decision": "", "submission_id": "c1",
+            "estimate": {"scenario_pct": 60, "at_stake_eur": 160000}}
+    assert c.post("/api/experience/lead", json=body).status_code == 200
+    d = leads(db)[0]
+    assert d["lead_kind"] == "customer" and {r["criterion"]: r["points"] for r in d["score"]["rows"]}["decision_authority"] == 3
+    other = {**BODY, "role": "other", "role_label": "Outro: Canalizador", "email": "o@example.com", "submission_id": "o1"}
+    assert c.post("/api/experience/lead", json=other).status_code == 200
