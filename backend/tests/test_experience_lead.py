@@ -63,7 +63,7 @@ def test_creates_opportunity_and_notifies_both_mailboxes(env):
     assert [m["to"] for m in sent] == ["info@construpilot.pt", "info@construpilot.fr"]
     assert sent[0]["reply_to"] == "ana@example.com" and "Obras Teste Lda" in sent[0]["html"]
     # leitura rápida: tipo de pedido, quem, pontuação e valor estão no assunto e no topo do e-mail
-    assert sent[0]["subject"] == "[Experience] Demonstração pedida · Obras Teste Lda · Especialista em remodelação · 14/18"
+    assert sent[0]["subject"].startswith("[Experience] DEMO ATÉ ") and sent[0]["subject"].endswith("· Demonstração pedida · Obras Teste Lda · Especialista em remodelação · 14/18")
     h = sent[0]["html"]
     assert "DEMONSTRAÇÃO PEDIDA" in h and "Responder a Ana" in h and "mailto:ana@example.com" in h
     assert "1\u202f080\u00a0€" in h and "Prioridade alta" in h and "★ Orçamentos rápidos" in h
@@ -137,3 +137,37 @@ def test_owner_profile_scores_decision_and_stake(env):
     assert c.post("/api/experience/lead", json=body).status_code == 200
     d = leads(db)[0]
     assert d["score"]["has_estimate"] and {r["criterion"]: r["points"] for r in d["score"]["rows"]}["decision_authority"] == 3
+
+
+def test_business_days_skip_weekends():
+    from datetime import datetime, timezone
+    from routes.experience import add_business_days
+    wed = datetime(2026, 11, 11, 3, 0, tzinfo=timezone.utc)   # quarta-feira
+    assert add_business_days(wed, 5).date().isoformat() == "2026-11-18"
+    fri = datetime(2026, 11, 13, 18, 0, tzinfo=timezone.utc)  # sexta-feira
+    assert add_business_days(fri, 5).date().isoformat() == "2026-11-20"
+    sat = datetime(2026, 11, 14, 9, 0, tzinfo=timezone.utc)   # sábado
+    assert add_business_days(sat, 1).date().isoformat() == "2026-11-16"
+
+
+def test_now_plus_demo_commits_to_a_working_demo_in_5_business_days(env):
+    from datetime import datetime
+    c, db, sent, experience = env
+    r = c.post("/api/experience/lead", json=BODY).json()
+    d = leads(db)[0]
+    assert d["next_action"] == "deliver_demo" and d["demo_due_at"] == d["follow_up_at"] == r["demo_due_at"]
+    created, due = datetime.fromisoformat(d["created_at"]), datetime.fromisoformat(d["demo_due_at"])
+    assert due == experience.add_business_days(created, 5) and due.weekday() < 5
+    assert "5 dias úteis" in r["message"]
+    h = sent[0]["html"]
+    assert "Compromisso · 5 dias úteis" in h and "Demo funcional até" in h and due.strftime("%d/%m/%Y") in h
+    assert h.index("Compromisso · 5 dias úteis") < h.index("Próximo passo")
+
+
+def test_no_commitment_without_now_or_without_demo(env):
+    c, db, sent, _ = env
+    a = c.post("/api/experience/lead", json={**BODY, "urgency": "q", "submission_id": "a", "email": "a@example.com"}).json()
+    b = c.post("/api/experience/lead", json={**BODY, "demo": False, "submission_id": "b", "email": "b@example.com"}).json()
+    assert a["demo_due_at"] is None and b["demo_due_at"] is None and "2 dias úteis" in a["message"]
+    assert all(d["demo_due_at"] is None for d in leads(db))
+    assert all("Compromisso · 5 dias úteis" not in m["html"] and "DEMO ATÉ" not in m["subject"] for m in sent)

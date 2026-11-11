@@ -44,6 +44,23 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+DEMO_SLA_BUSINESS_DAYS = 5   # quem responde «Já» e pede demonstração recebe uma demo funcional neste prazo
+_SLA_MSG = {"pt": "Obrigado. Como pediste para avançar já, a equipa ConstruPilot mostra-te uma demonstração funcional em até 5 dias úteis.",
+            "fr": "Merci. Comme vous souhaitez avancer tout de suite, l'équipe ConstruPilot vous présente une démonstration fonctionnelle sous 5 jours ouvrés.",
+            "en": "Thank you. Since you want to move now, the ConstruPilot team will show you a working demo within 5 business days."}
+_WEEKDAYS = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
+
+
+def add_business_days(start: datetime, days: int) -> datetime:
+    """Soma dias úteis (segunda a sexta). Os feriados não são considerados."""
+    d = start
+    while days > 0:
+        d += timedelta(days=1)
+        if d.weekday() < 5:
+            days -= 1
+    return d
+
+
 def recipients() -> list[str]:
     raw = os.environ.get("EXPERIENCE_LEAD_EMAILS") or DEFAULT_RECIPIENTS
     return [e.strip() for e in raw.split(",") if "@" in e]
@@ -148,6 +165,9 @@ def _level(total: int) -> tuple[str, str, str]:
 
 def email_subject(d: dict) -> str:
     kind = "Demonstração pedida" if d["demo"] else "Relatório pedido"
+    if d.get("demo_due_at"):
+        due = datetime.fromisoformat(d["demo_due_at"])
+        kind = f"DEMO ATÉ {due.strftime('%d/%m')} · {kind}"
     who = d["company"] or d["name"]
     return f"[Experience] {kind} · {who[:60]} · {(d['role_label'] or d['role'])[:40]} · {d['score']['total']}/{d['score']['max']}"
 
@@ -172,6 +192,18 @@ def _email_html(d: dict) -> str:
     mailto = f"mailto:{html.escape(d['email'])}?subject={html.escape(reply_subject.replace(' ', '%20'))}"
     step = (f"Propor 2 horários reais para a demonstração, em {_PT['lang'].get(d['demo_lang'], d['demo_lang'])}."
             if demo else "Enviar o relatório de diagnóstico e propor uma conversa.")
+    sla = ""
+    if d.get("demo_due_at"):
+        due = datetime.fromisoformat(d["demo_due_at"])
+        due_txt = f"{_WEEKDAYS[due.weekday()]}, {due.strftime('%d/%m/%Y')}"
+        step = f"Mostrar uma demonstração funcional até {due_txt}, em {_PT['lang'].get(d['demo_lang'], d['demo_lang'])}."
+        sla = (f"<tr><td style='padding:0 24px'><table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
+               f"style='margin-top:20px;background:{c['amber_soft']};border:1px solid {c['amber']};border-radius:10px'><tr>"
+               f"<td style='padding:14px 16px'><div style='font:700 11px Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:{c['amber']}'>"
+               f"Compromisso · {DEMO_SLA_BUSINESS_DAYS} dias úteis</div>"
+               f"<div style='font:800 22px/1.2 Arial,sans-serif;color:#ffffff;padding-top:6px'>Demo funcional até {e(due_txt)}</div>"
+               f"<div style='font:13px Arial,sans-serif;color:{c['muted']};padding-top:4px'>O visitante respondeu «Já» e pediu demonstração. "
+               f"Foi-lhe prometido este prazo no site.</div></td></tr></table></td></tr>")
     label = f"font:700 11px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:{c['muted']}"
 
     def tile(title, big, small, fg=c["ink"], bg=c["card"]):
@@ -240,6 +272,7 @@ def _email_html(d: dict) -> str:
         f"<div style='padding-top:22px'><a href='{mailto}' style='display:inline-block;padding:13px 22px;border-radius:8px;background:{c['green']};background-image:{c['grad']};"
         f"color:{c['dark']};font:700 15px Arial,sans-serif;text-decoration:none'>Responder a {e(first)} &rarr;</a>"
         f"<div style='font:14px Arial,sans-serif;color:{c['muted']};padding-top:10px'>{e(d['email'])}</div></div></td></tr>"
+        + sla +
         f"<tr><td style='padding:20px 19px 0'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
         + tile("Pontuação", f"{sc['total']} / {sc['max']}", f"Prioridade {lvl.lower()}", lvl_fg, lvl_bg)
         + tile(money_label, money, f"Cenário de {_num(est.get('scenario_pct'), '%')}" if (value or stake) else "Sem números", c["copper"])
@@ -282,7 +315,11 @@ async def create_lead(body: ExperienceLeadIn, request: Request, response: Respon
         {"_id": 0, "lead_id": 1})
     if dup:
         return {"ok": True, "lead_id": dup["lead_id"], "duplicate": True, "message": _OK_MSG[lang]}
-    now = _now().isoformat()
+    created = _now()
+    now = created.isoformat()
+    urgent_demo = body.demo and body.urgency == "now"
+    demo_due = add_business_days(created, DEMO_SLA_BUSINESS_DAYS).isoformat() if urgent_demo else None
+    ok_msg = (_SLA_MSG if urgent_demo else _OK_MSG)[lang]
     doc = {
         "lead_id": "lead_" + secrets.token_hex(8), "market": "pt", "source": "experience",
         "name": body.name.strip(), "company": body.company.strip(), "email": email, "lang": lang,
@@ -294,7 +331,8 @@ async def create_lead(body: ExperienceLeadIn, request: Request, response: Respon
         "estimate": body.estimate.model_dump(), "demo": body.demo, "demo_lang": body.demo_lang, "goal": body.goal.strip(),
         "score": score(body),
         "status": STATUSES[1] if body.demo else STATUSES[0],
-        "owner": None, "next_action": "propose_demo_slot" if body.demo else "send_report", "follow_up_at": None,
+        "owner": None, "next_action": "deliver_demo" if urgent_demo else "propose_demo_slot" if body.demo else "send_report",
+        "demo_due_at": demo_due, "follow_up_at": demo_due,
         "consent": {"given": True, "at": now, "policy": "/privacidade",
                     "text": "Autorizo a ConstruPilot a usar estes dados para me responder a este pedido."},
         "dedup_key": dedup_key, "submission_id": body.submission_id or None, "created_at": now,
@@ -315,7 +353,7 @@ async def create_lead(body: ExperienceLeadIn, request: Request, response: Respon
     except Exception as e:  # noqa: BLE001 — a oportunidade fica guardada mesmo sem e-mail
         logger.warning(f"experience lead notification failed: {e}")
     await db.commercial_leads.update_one({"lead_id": doc["lead_id"]}, {"$set": {"notified": sent}})
-    return {"ok": True, "lead_id": doc["lead_id"], "message": _OK_MSG[lang]}
+    return {"ok": True, "lead_id": doc["lead_id"], "message": ok_msg, "demo_due_at": demo_due}
 
 
 @router.get("/leads")
