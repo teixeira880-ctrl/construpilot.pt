@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ConstruPilot Experience</title>
+<meta name="description" content="Descobre em três minutos onde a ConstruPilot te pode fazer ganhar tempo e dinheiro: plantas, projeto 3D, medições, orçamentos e documentos de obra.">
+<meta name="theme-color" content="#03060b">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a dark projection room. Giant left-set headline, then one wide drawing sheet that becomes the app;
+   below it, a consultant conversation beside a live record card. Single committed dark look. */
+:root{
+  color-scheme:dark;
+  --ink:#03060b; --graphite:rgba(9,15,20,.7); --panel:rgba(255,255,255,.05); --line:rgba(170,205,210,.17);
+  --tech:#a3b4ba; --paper:#f4f8f6;
+  --green:#23c56f; --teal:#1fe3c4; --indigo:#4a63ff; --copper:#f6a968; --warn:#f6c560;
+  --grid:rgba(160,205,210,.055); --tint:rgba(35,197,111,.17);
+  --grad:linear-gradient(100deg,var(--green),var(--teal) 55%,var(--copper));
+  --f-d:'Outfit','Avenir Next','Segoe UI',sans-serif;
+  --f-b:'Manrope','Segoe UI',system-ui,sans-serif;
+  --f-m:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--ink);color:var(--paper);font:400 16px/1.55 var(--f-b);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3,p,figure,fieldset{margin:0}
+h1,h2,h3{text-wrap:balance}
+a{color:var(--green)}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:4px}
+.mono{font:500 .72rem/1.3 var(--f-m);letter-spacing:.09em;text-transform:uppercase;color:var(--tech)}
+.logo{display:inline-block;width:28px;height:28px;border-radius:7px;background:center/cover no-repeat url(data:image/png;base64,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);flex:none}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:16px}
+.brand{display:flex;align-items:center;gap:10px;font:600 1.05rem var(--f-d);margin-right:auto}
+.badge{font:500 .68rem var(--f-m);letter-spacing:.08em;text-transform:uppercase;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);padding:.25rem .5rem;border-radius:4px}
+.langs{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.langs button{background:none;border:0;color:var(--tech);font:500 .78rem var(--f-m);padding:.45rem .7rem;cursor:pointer}
+.langs button[aria-pressed="true"]{background:var(--paper);color:var(--ink)}
+
+/* hero */
+.hero{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px}
+.hero-in{padding-block:clamp(28px,6vw,72px) 40px;display:grid;gap:clamp(24px,4vw,44px)}
+.hero h1{font:800 clamp(2.9rem,10.5vw,8rem)/.9 var(--f-d);letter-spacing:-.025em;text-transform:uppercase}
+.hero h1 i{font-style:normal;color:var(--green)}
+.lede{display:grid;gap:22px;grid-template-columns:minmax(0,1fr)}
+.lede p{font-size:clamp(1.02rem,1.6vw,1.2rem);color:color-mix(in srgb,var(--paper) 82%,var(--ink));max-width:58ch}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:.5rem;font:700 .95rem var(--f-b);padding:.85rem 1.25rem;border-radius:6px;border:1px solid transparent;cursor:pointer;text-decoration:none}
+.btn-p{background:var(--green);color:#03150b}
+.btn-p:hover{background:color-mix(in srgb,var(--green) 85%,var(--paper))}
+.btn-s{background:none;border-color:var(--line);color:var(--paper)}
+.btn-s:hover{border-color:var(--tech)}
+@media(min-width:900px){.lede{grid-template-columns:minmax(0,1fr) auto;align-items:end}}
+
+/* stage: drawing sheet -> app */
+.stage{background:var(--graphite);border:1px solid var(--line);border-radius:10px;overflow:hidden;transition:border-color .8s,box-shadow .8s}
+.stage[data-s="6"]{border-color:color-mix(in srgb,var(--green) 55%,var(--line));box-shadow:0 0 0 1px var(--tint),0 30px 80px -40px rgba(35,197,111,.45)}
+.bar{position:relative;height:44px;border-bottom:1px solid var(--line)}
+.bar>span{position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:0 14px;transition:opacity .7s;white-space:nowrap;overflow:hidden}
+.bar-app{opacity:0;font:600 .92rem var(--f-d)}
+.bar-app small{font:400 .82rem var(--f-b);color:var(--tech)}
+.bar-app .logo{width:22px;height:22px;border-radius:5px}
+.stage[data-s="6"] .bar-app{opacity:1}
+.stage[data-s="6"] .bar-sheet{opacity:0}
+.stage-body{display:grid;grid-template-columns:minmax(0,1fr)}
+@media(min-width:860px){.stage-body{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+.plan{display:block;width:100%;height:auto}
+.plan text{font-family:var(--f-m)}
+.wall{fill:none;stroke:var(--paper);stroke-linecap:square;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.5s ease-in-out}
+.wall.on{stroke-dashoffset:0}
+.room{fill:var(--green);fill-opacity:0;transition:fill-opacity .8s}
+.room.on{fill-opacity:.13}
+.fx{opacity:0;transition:opacity .7s}
+.fx.on{opacity:1}
+.dim{stroke:var(--copper);stroke-width:1.2;fill:none}
+.dimt{fill:var(--copper);font-size:14px}
+.rname{fill:var(--paper);font-size:14px;font-family:var(--f-b)!important;font-weight:700}
+.rarea{fill:var(--green);font-size:14px}
+.qpanel{border-top:1px solid var(--line);padding:16px 14px;display:grid;gap:2px;align-content:start;min-width:0}
+@media(min-width:860px){.qpanel{border-top:0;border-left:1px solid var(--line);padding:22px 20px}}
+.qrow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(5.6rem,auto);gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line)}
+.qrow.h{padding-top:0}
+.qa{display:grid;min-width:0}
+.qart{font-weight:700}
+.qsrc{font:400 .72rem var(--f-m);color:var(--tech)}
+.qq,.qt{font:500 .86rem var(--f-m);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.qq{color:var(--green)}
+.qrow.tot{border:0;font-weight:700}
+.qrow.tot .qt{font-size:1rem;color:var(--paper)}
+.note{font-size:.78rem;color:var(--tech)}
+.nofx,.nofx *{transition:none!important}
+
+.ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:14px}
+.sbtn{background:none;border:1px solid var(--line);color:var(--tech);font:500 .72rem var(--f-m);letter-spacing:.04em;padding:.42rem .6rem;border-radius:5px;cursor:pointer}
+.sbtn[aria-current="step"]{border-color:var(--green);color:var(--paper);background:var(--tint)}
+.sbtn span{display:none}
+@media(min-width:720px){.sbtn span{display:inline}}
+#cap{margin-top:10px;font:600 1.05rem var(--f-d);min-height:1.6em}
+
+/* about band */
+.about{border-block:1px solid var(--line);margin-top:48px}
+.about-in{padding-block:36px;display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+.about h2{font:600 clamp(1.4rem,2.6vw,2rem)/1.15 var(--f-d)}
+.about p{color:color-mix(in srgb,var(--paper) 80%,var(--ink));max-width:62ch}
+@media(min-width:860px){.about-in{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:48px}}
+
+/* diagnostic */
+.dx{padding-block:56px 72px;display:grid;gap:24px;grid-template-columns:minmax(0,1fr);align-items:start}
+@media(min-width:980px){.dx{grid-template-columns:minmax(0,1fr) 320px;gap:32px}}
+.card{background:var(--graphite);border:1px solid var(--line);border-radius:10px;padding:clamp(18px,3vw,32px);min-width:0}
+.prog{display:flex;gap:4px;margin:10px 0 22px}
+.prog i{height:3px;flex:1;background:var(--line);border-radius:2px}
+.prog i.d{background:var(--green)}
+.wiz h2{font:600 clamp(1.5rem,3vw,2.2rem)/1.12 var(--f-d)}
+.say{color:color-mix(in srgb,var(--paper) 78%,var(--ink));margin-top:8px;max-width:60ch}
+.qs{display:grid;gap:22px;margin-top:26px}
+.q{border:0;padding:0;min-width:0}
+.q legend{font-weight:700;padding:0;margin-bottom:10px}
+.q legend small{font:400 .72rem var(--f-m);color:var(--tech);margin-left:.4rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--paper);font:500 .92rem var(--f-b);padding:.6rem .9rem;border-radius:6px;cursor:pointer;text-align:left}
+.chip:hover{border-color:var(--tech)}
+.chip[aria-pressed="true"]{border-color:var(--green);background:var(--tint)}
+.chip[aria-pressed="true"]::before{content:"✓ ";color:var(--green);font-weight:700}
+.chips.big{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.chips.big .chip{padding:1rem;font:600 1rem var(--f-d)}
+input[type=text],input[type=email],input[type=number],textarea,select{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--paper);font:400 1rem var(--f-b);padding:.7rem .8rem;border-radius:6px}
+.num{display:flex;align-items:center;gap:10px;max-width:16rem}
+.num span{color:var(--tech);font:400 .82rem var(--f-m);white-space:nowrap}
+.nav{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:30px;padding-top:20px;border-top:1px solid var(--line)}
+.err{color:var(--warn);font-weight:700;margin-top:14px}
+.calc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;display:grid;gap:8px}
+.calc b.big{font:600 clamp(1.6rem,4vw,2.4rem)/1.1 var(--f-d);font-variant-numeric:tabular-nums}
+.calc code{font:400 .82rem var(--f-m);color:var(--tech);overflow-wrap:anywhere}
+.hyp{border:1px dashed var(--copper);border-radius:8px;padding:16px;display:grid;gap:10px}
+.hyp .mono{color:var(--copper)}
+input[type=range]{width:100%;accent-color:var(--copper)}
+
+/* result */
+.res{display:grid;gap:26px;margin-top:24px}
+.blk{display:grid;gap:8px;padding-top:20px;border-top:1px solid var(--line)}
+.blk ul{margin:0;padding-left:1.1rem;display:grid;gap:4px}
+.feat{display:grid;gap:4px;padding:12px 0;border-bottom:1px solid var(--line)}
+.feat:last-child{border:0}
+.feat b{font:600 1.02rem var(--f-d)}
+.pill{display:inline-block;font:500 .68rem var(--f-m);letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--line);color:var(--warn);padding:.18rem .45rem;border-radius:4px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{border:1px solid var(--line);border-radius:4px;padding:.25rem .55rem;font-size:.86rem}
+.form{display:grid;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px}
+.form label{display:grid;gap:6px;font-weight:700;font-size:.92rem}
+.two{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:640px){.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.check{display:flex!important;gap:10px;align-items:flex-start;font-weight:400!important}
+.check input{margin-top:.3rem;accent-color:var(--green);width:18px;height:18px;flex:none}
+.ok{border:1px solid var(--green);background:var(--tint);border-radius:8px;padding:18px;display:grid;gap:8px}
+.kv{display:grid;grid-template-columns:minmax(0,11rem) minmax(0,1fr);gap:6px 14px;font-size:.88rem}
+.kv dt{font:400 .74rem var(--f-m);color:var(--tech);text-transform:uppercase;letter-spacing:.05em}
+.kv dd{margin:0;overflow-wrap:anywhere}
+@media(max-width:520px){.kv{grid-template-columns:minmax(0,1fr)}.kv dd{margin-bottom:6px}}
+.pipe{display:flex;flex-wrap:wrap;gap:4px}
+.pipe span{font:500 .64rem var(--f-m);border:1px solid var(--line);color:var(--tech);padding:.2rem .4rem;border-radius:3px}
+.pipe span.d{color:var(--paper);border-color:var(--tech)}
+.pipe span.c{background:var(--green);border-color:var(--green);color:#03150b}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:400 .72rem var(--f-m);color:var(--tech);text-transform:uppercase;letter-spacing:.05em}
+td.n{font-family:var(--f-m);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+details summary{cursor:pointer;font-weight:700}
+details[open] summary{margin-bottom:14px}
+
+/* aside */
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);display:grid;gap:14px}
+.side h3{font:600 1.05rem var(--f-d)}
+.side dl{display:grid;gap:12px;margin:0}
+.side dt{font:400 .7rem var(--f-m);color:var(--tech);text-transform:uppercase;letter-spacing:.07em}
+.side dd{margin:2px 0 0;font-size:.92rem;overflow-wrap:anywhere}
+@media(max-width:979px){.side{position:static}}
+
+footer{border-top:1px solid var(--line);color:var(--tech);font-size:.84rem}
+footer .wrap{padding-block:24px;display:grid;gap:6px}
+footer span{user-select:all}
+.roi{display:grid;gap:18px;padding:clamp(16px,3vw,26px);border-radius:10px;border:1px solid rgba(35,197,111,.45);background:linear-gradient(140deg,rgba(35,197,111,.15),rgba(31,227,196,.05) 60%,rgba(246,169,104,.09))}
+.roi h3{font:600 clamp(1.3rem,2.8vw,1.9rem)/1.12 var(--f-d);margin-top:4px}
+.scn{display:flex;flex-wrap:wrap;gap:8px}
+.roi-big{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))}
+.roi-big b{display:block;font:800 clamp(1.8rem,5.4vw,3rem)/1.05 var(--f-d);font-variant-numeric:tabular-nums;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.roi-big span{font-size:.86rem;color:var(--tech)}
+.cmp{display:grid;gap:10px}
+.cmp>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center}
+.cmp span{grid-column:1/-1;font-size:.86rem}
+.cmp i{height:12px;border-radius:6px;background:var(--tech);opacity:.5}
+.cmp .g i{background:var(--grad);opacity:1}
+.cmp b{font:500 .9rem var(--f-m);min-width:4.6rem;text-align:right}
+.ways{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))}
+.ways>div{display:grid;gap:6px;align-content:start;padding-top:12px;border-top:1px solid var(--line)}
+.ways .mono{color:var(--teal)}
+.money{margin:0;padding-left:1.1rem;display:grid;gap:6px}
+.roi label{display:grid;gap:6px;font-weight:700;font-size:.9rem}
+.roi details .two{margin-top:4px}
+/* ---------- studio: measure -> 3D -> quantities -> estimate -> e-invoice ---------- */
+.studio{position:relative;z-index:1;padding-block:64px 8px;display:grid;gap:24px}
+.st-head{display:grid;gap:10px;max-width:70ch}
+.st-head h2{font:600 clamp(1.7rem,3.6vw,2.8rem)/1.08 var(--f-d)}
+.st-head p{color:color-mix(in srgb,var(--paper) 80%,var(--ink))}
+.st-grid,.inv-grid{display:grid;gap:24px;grid-template-columns:minmax(0,1fr);align-items:start}
+@media(min-width:980px){.st-grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}.inv-grid{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}}
+.st-card{display:grid;gap:18px;align-content:start}
+.st-card h3{font:600 1.25rem var(--f-d);margin-top:4px}
+.rng{display:grid;gap:4px}
+.rng label{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:.92rem}
+.rng output{font:500 .9rem var(--f-m);color:var(--teal)}
+.rng input{accent-color:var(--green)}
+.m3d{perspective:1200px;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:radial-gradient(75% 65% at 50% 55%,rgba(35,197,111,.15),transparent 72%);cursor:grab;touch-action:pan-y;user-select:none}
+.m3t{position:relative;transform-style:preserve-3d;transform:rotateX(52deg) rotateZ(var(--rz,-16deg)) scale(.9)}
+.mw{fill:none;stroke:var(--paper);stroke-linecap:square}
+.mr{fill:var(--green);fill-opacity:.2}
+.st-tab input,.sum input{width:5.2rem;padding:.4rem .5rem;text-align:right;font:500 .86rem var(--f-m)}
+.st-tab td{vertical-align:middle}
+.st-tab td:first-child{min-width:11.5rem}
+.sum{display:grid;gap:8px;justify-self:end;width:min(100%,25rem)}
+.sum>div{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.sum>div>span:last-child{display:flex;gap:10px;align-items:center}
+.sum b{font:500 .95rem var(--f-m);font-variant-numeric:tabular-nums}
+.sum .t{border-top:1px solid var(--line);padding-top:10px}
+.sum .t span{font:600 1.1rem var(--f-d)}
+.sum .t b{font-size:1.25rem}
+.st-card>.sum .t b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.inv{background:var(--paper);color:#0b1215;border-radius:8px;padding:clamp(16px,3vw,28px);display:grid;gap:18px;min-width:0}
+.inv .mono,.inv th,.inv .note{color:#55656b}
+.inv th,.inv td{border-color:#d5dcd9}
+.inv .sum .t{border-color:#c5cfca}
+.inv-h,.inv-p{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.inv-t{font:800 1.7rem/1 var(--f-d)}
+.inv-n{font:500 .84rem var(--f-m);text-align:right}
+.inv pre{margin:0;font:400 .74rem/1.5 var(--f-m)}
+@media(min-width:900px){.lede{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- cinematic layer ---------- */
+@property --a{syntax:'<angle>';initial-value:0deg;inherits:true}
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}
+.aurora i:nth-child(1){width:62vmax;height:62vmax;left:-18vmax;top:-26vmax;background:var(--green);opacity:.36;animation:dr1 22s ease-in-out infinite alternate}
+.aurora i:nth-child(2){width:54vmax;height:54vmax;right:-20vmax;top:-14vmax;background:var(--indigo);opacity:.34;animation:dr2 27s ease-in-out infinite alternate}
+.aurora i:nth-child(3){width:46vmax;height:46vmax;left:26vmax;top:28vmax;background:var(--teal);opacity:.2;animation:dr3 31s ease-in-out infinite alternate}
+.aurora i:nth-child(4){width:42vmax;height:42vmax;right:-8vmax;bottom:-18vmax;background:var(--copper);opacity:.24;animation:dr1 25s ease-in-out infinite alternate-reverse}
+.aurora::after{content:"";position:absolute;inset:0;background:radial-gradient(115% 85% at 50% 28%,transparent 28%,rgba(3,6,11,.88) 100%)}
+@keyframes dr1{to{transform:translate(14vmax,10vmax) scale(1.15)}}
+@keyframes dr2{to{transform:translate(-16vmax,12vmax) scale(.9)}}
+@keyframes dr3{to{transform:translate(-10vmax,-14vmax) scale(1.2)}}
+body::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+.hero,.about,.dx,footer{position:relative;z-index:1}
+.lb{position:fixed;left:0;right:0;height:14vh;background:#000;z-index:60;pointer-events:none}
+.lb.t{top:0;animation:lbt 1.5s .25s cubic-bezier(.75,0,.2,1) both}
+.lb.b{bottom:0;animation:lbb 1.5s .25s cubic-bezier(.75,0,.2,1) both}
+@keyframes lbt{to{transform:translateY(-101%)}}
+@keyframes lbb{to{transform:translateY(101%)}}
+@keyframes rise{from{transform:translateY(112%)}}
+@keyframes fadeup{from{opacity:0;transform:translateY(16px)}}
+@keyframes sheen{to{background-position:100% 0}}
+@keyframes spin{to{--a:360deg}}
+.hero h1 .ln{display:block;overflow:hidden;padding-block:.05em}
+.hero h1 .ln>span{display:inline-block;animation:rise 1.15s .7s cubic-bezier(.2,.8,.2,1) both}
+.hero h1 .ln>.grad{background:linear-gradient(100deg,var(--paper) 0 16%,var(--green) 40%,var(--teal) 60%,var(--copper) 82%,var(--paper));background-size:220% 100%;background-position:36% 0;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rise 1.15s .88s cubic-bezier(.2,.8,.2,1) both}
+.hero h1 i{color:inherit}
+.lede{animation:fadeup 1s 1.3s both}
+.btn{transition:transform .25s,filter .25s,box-shadow .25s,border-color .25s}
+.btn-p,.btn-p:hover{background:var(--grad);color:#02130c;box-shadow:0 12px 44px -12px rgba(35,197,111,.85)}
+.btn-p:hover{transform:translateY(-2px);filter:brightness(1.1)}
+.btn-s{background:rgba(255,255,255,.04);backdrop-filter:blur(10px)}
+.stagewrap{position:relative;isolation:isolate;padding:1.5px;border-radius:12px;background:conic-gradient(from var(--a),var(--green),var(--teal),var(--indigo),var(--copper),var(--green));animation:fadeup 1.2s 1.5s both}
+.stagewrap::after{content:"";position:absolute;inset:-2px;border-radius:inherit;background:inherit;filter:blur(40px);opacity:.4;z-index:-1}
+.stage,.stage[data-s="6"]{border:0;border-radius:10.5px;background:rgba(5,9,13,.92);box-shadow:none}
+.scene{perspective:1200px;min-width:0;overflow:hidden;display:grid;align-items:center;background:radial-gradient(75% 65% at 50% 55%,rgba(35,197,111,.13),transparent 72%)}
+.tilt,.orbit{position:relative;transform-style:preserve-3d}
+.tilt{transition:transform 1.8s cubic-bezier(.65,0,.2,1)}
+.stage:not([data-s="0"]):not([data-s="1"]) .tilt{transform:rotateX(50deg) rotateZ(-16deg) scale(.92)}
+.stage:not([data-s="0"]):not([data-s="1"]) .orbit{animation:orbit 13s ease-in-out infinite alternate}
+@keyframes orbit{from{transform:rotateZ(0)}to{transform:rotateZ(-7deg)}}
+.ext{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.ext path{fill:none;stroke:var(--green);stroke-opacity:.55;stroke-linecap:square}
+.ext.top path{stroke:var(--paper);stroke-opacity:1}
+.scan{position:absolute;left:11%;top:13%;bottom:13%;width:2px;background:var(--teal);box-shadow:0 0 24px 6px rgba(31,227,196,.7);opacity:0;transform:translateZ(calc(var(--k,1)*30px))}
+.stage[data-s="2"] .scan{animation:scan 2.2s .5s ease-in-out both}
+@keyframes scan{0%{left:11%;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:89%;opacity:0}}
+.room.on{fill-opacity:.2}
+.qq{color:var(--teal)}
+.qrow.tot .qt,.calc b.big{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.card{backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}
+.prog i.d{background:var(--grad)}
+.chip{transition:border-color .2s,background .2s,box-shadow .2s,transform .2s}
+.chip:hover{transform:translateY(-1px)}
+.chip[aria-pressed="true"]{background:linear-gradient(120deg,rgba(35,197,111,.24),rgba(31,227,196,.1));box-shadow:0 10px 32px -14px rgba(35,197,111,.9)}
+.sbtn[aria-current="step"]{border-color:var(--teal)}
+.about h2{background:linear-gradient(100deg,var(--paper) 30%,var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent}
+.aurora i{display:none}
+.aurora{background:radial-gradient(60vmax 60vmax at 8% -6%,rgba(35,197,111,.34),transparent 62%),radial-gradient(56vmax 56vmax at 100% 4%,rgba(74,99,255,.3),transparent 62%),radial-gradient(48vmax 48vmax at 50% 60%,rgba(31,227,196,.14),transparent 64%),radial-gradient(44vmax 44vmax at 96% 104%,rgba(246,169,104,.2),transparent 62%)}
+/* ---------- film (WebGL) ---------- */
+.film{position:relative;border-radius:10.5px;overflow:hidden;background:#04080d;aspect-ratio:2.1/1;max-width:100%;touch-action:pan-y;cursor:grab;user-select:none}
+@media(max-width:760px){.film{aspect-ratio:4/5}.fl{font-size:.62rem;padding:.12rem .3rem}}
+.film canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.flabels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.fl{position:absolute;left:0;top:0;opacity:0;font:500 .72rem var(--f-m);white-space:nowrap;color:var(--paper);padding:.2rem .45rem;border-radius:4px;background:rgba(4,8,13,.66);border:1px solid var(--line);will-change:transform,opacity}
+.fl.q{color:var(--teal);border-color:rgba(31,227,196,.5)}
+.fl.c{color:var(--copper);border-color:rgba(246,169,104,.5)}
+.fl.g{color:var(--green);border-color:rgba(35,197,111,.5)}
+.fcap{position:absolute;left:0;right:0;bottom:0;padding:90px clamp(14px,3vw,34px) clamp(16px,3vw,30px);background:linear-gradient(transparent,rgba(3,6,11,.94));display:grid;gap:6px;pointer-events:none}
+.fcap h2{font:800 clamp(1.5rem,4.6vw,3.6rem)/1 var(--f-d);letter-spacing:-.02em;text-transform:uppercase}
+.fcap p{max-width:54ch;color:color-mix(in srgb,var(--paper) 86%,var(--ink));font-size:clamp(.9rem,1.5vw,1.06rem)}
+.fcap>*{animation:capin .7s cubic-bezier(.2,.8,.2,1) both}
+.fcap>:nth-child(2){animation-delay:.08s}.fcap>:nth-child(3){animation-delay:.16s}
+@keyframes capin{from{opacity:0;transform:translateY(16px)}}
+.ftag{position:absolute;top:12px;right:12px;background:rgba(4,8,13,.66)}
+.fprompt{position:absolute;left:clamp(14px,3vw,34px);top:clamp(14px,3vw,30px);max-width:min(78%,32rem);opacity:0;display:grid;gap:6px;padding:12px 16px;border-radius:8px;background:rgba(4,8,13,.74);border:1px solid rgba(31,227,196,.55);box-shadow:0 0 40px -10px rgba(31,227,196,.6);pointer-events:none}
+.fprompt .mono{color:var(--teal)}
+.fprompt div{font:600 clamp(1rem,2vw,1.4rem)/1.25 var(--f-d)}
+.fprompt i{display:inline-block;width:2px;height:1.05em;background:var(--teal);margin-left:3px;vertical-align:-.15em;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.ffade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+.fbar{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--grad)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}.lb{display:none}}
+</style>
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div class="lb t" aria-hidden="true"></div><div class="lb b" aria-hidden="true"></div>
+<div class="hero">
+  <header class="wrap top">
+    <div class="brand"><i class="logo" role="img" aria-label="ConstruPilot"></i>ConstruPilot</div>
+    <div class="langs" role="group" aria-label="Language">
+      <button type="button" data-lang="0" aria-pressed="true">PT</button>
+      <button type="button" data-lang="1" aria-pressed="false">FR</button>
+      <button type="button" data-lang="2" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <main class="wrap hero-in">
+    <h1><span class="ln"><span>Build your</span></span> <span class="ln"><span class="grad">next move<i>.</i></span></span></h1>
+    <div class="lede">
+      <p data-t="sub"></p>
+      <div class="ctas">
+        <a class="btn btn-p" href="#diagnostico" id="cta1" data-t="cta1"></a>
+        <a class="btn btn-s" href="/" target="_top" data-t="cta2"></a>
+      </div>
+    </div>
+
+    <div id="filmwrap" hidden>
+      <div class="stagewrap"><div class="film" id="film">
+        <canvas id="fcv" aria-hidden="true"></canvas>
+        <div class="flabels" id="flabels" aria-hidden="true"></div>
+        <div class="fprompt" id="fprompt"><span class="mono" data-t="fpk"></span><div><span id="fptxt"></span><i></i></div></div>
+        <div class="fcap" id="fcap"></div>
+        <div class="ffade" id="ffade"></div>
+        <i class="fbar" id="fbar"></i>
+      </div></div>
+      <div class="ctl" id="fctl"></div>
+      <p class="note" style="margin-top:10px" data-t="fnote"></p>
+    </div>
+    <div id="fb">
+      <div class="stagewrap"><figure class="stage" id="stage" data-s="6" aria-describedby="cap">
+        <div class="bar">
+          <span class="bar-sheet mono" data-t="sheet"></span>
+          <span class="bar-app"><i class="logo"></i>ConstruPilot <small data-t="appbar"></small></span>
+        </div>
+        <div class="stage-body">
+          <div class="scene"><div class="tilt"><div class="orbit" id="orbit">
+          <svg class="plan" viewBox="0 0 620 440" role="img" aria-labelledby="plan-t">
+            <title id="plan-t" data-t="planalt"></title>
+            <g>
+              <rect class="room on" data-from="2" x="70" y="60" width="240" height="200"/>
+              <rect class="room on" data-from="2" x="310" y="60" width="240" height="140"/>
+              <rect class="room on" data-from="2" x="310" y="200" width="240" height="60"/>
+              <rect class="room on" data-from="2" x="70" y="260" width="160" height="120"/>
+              <rect class="room on" data-from="2" x="230" y="260" width="220" height="120"/>
+              <rect class="room on" data-from="2" x="450" y="260" width="100" height="120"/>
+            </g>
+            <path class="wall on" data-from="1" pathLength="1" stroke-width="6" d="M70 60H550V380H70Z"/>
+            <path class="wall on" data-from="1" pathLength="1" stroke-width="3" d="M310 60V260"/>
+            <path class="wall on" data-from="1" pathLength="1" stroke-width="3" d="M70 260H550"/>
+            <path class="wall on" data-from="1" pathLength="1" stroke-width="3" d="M310 200H550"/>
+            <path class="wall on" data-from="1" pathLength="1" stroke-width="3" d="M230 260V380"/>
+            <path class="wall on" data-from="1" pathLength="1" stroke-width="3" d="M450 260V380"/>
+            <g class="fx on" data-from="2">
+              <path class="dim" d="M70 36H550M70 28V44M550 28V44M310 31V41"/>
+              <text class="dimt" x="310" y="22" text-anchor="middle">12,00</text>
+              <path class="dim" d="M44 60V380M36 60H52M36 380H52M39 260H49"/>
+              <text class="dimt" x="30" y="220" text-anchor="middle" transform="rotate(-90 30 220)">8,00</text>
+            </g>
+            <g text-anchor="middle">
+              <text class="rname fx on" data-from="2" x="190" y="156" data-t="r1"></text>
+              <text class="rarea fx on" data-from="3" x="190" y="178">30,0 m²</text>
+              <text class="rname fx on" data-from="2" x="430" y="126" data-t="r2"></text>
+              <text class="rarea fx on" data-from="3" x="430" y="148">21,0 m²</text>
+              <text class="rname fx on" data-from="2" x="400" y="235" data-t="r3"></text>
+              <text class="rarea fx on" data-from="3" x="500" y="235">9,0 m²</text>
+              <text class="rname fx on" data-from="2" x="150" y="316" data-t="r4"></text>
+              <text class="rarea fx on" data-from="3" x="150" y="338">12,0 m²</text>
+              <text class="rname fx on" data-from="2" x="340" y="316" data-t="r5"></text>
+              <text class="rarea fx on" data-from="3" x="340" y="338">16,5 m²</text>
+              <text class="rname fx on" data-from="2" x="500" y="316" data-t="r6"></text>
+              <text class="rarea fx on" data-from="3" x="500" y="338">7,5 m²</text>
+            </g>
+            <text x="550" y="414" text-anchor="end" font-size="12" fill="#97a4a9" data-t="scale"></text>
+          </svg><i class="scan"></i></div></div></div>
+          <div class="qpanel" id="qpanel"></div>
+        </div>
+      </figure></div>
+      <div class="ctl" id="ctl"></div>
+      <p id="cap" aria-live="polite"></p>
+      <p class="note" data-t="concept"></p>
+    </div>
+  </main>
+</div>
+
+<section class="about">
+  <div class="wrap about-in">
+    <h2 data-t="ab_h"></h2>
+    <p data-t="ab_p"></p>
+  </div>
+</section>
+
+<section class="wrap dx" id="diagnostico">
+  <div class="card wiz" id="wiz"></div>
+  <aside class="card side" id="side" aria-live="polite"></aside>
+</section>
+
+<footer><div class="wrap"><div data-t="foot"></div><div><span>info@construpilot.pt</span></div></div></footer>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/CopyShader.js"></script>
+<script src="vendor/LuminosityHighPassShader.js"></script>
+<script src="vendor/EffectComposer.js"></script>
+<script src="vendor/ShaderPass.js"></script>
+<script src="vendor/RenderPass.js"></script>
+<script src="vendor/UnrealBloomPass.js"></script>
+<script>
+(()=>{
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const LOC=['pt-PT','fr-FR','en-GB'], CODE=['pt-PT','fr-FR','en'];
+let LI=0;
+const L=a=>a[LI];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=(n,d=1)=>new Intl.NumberFormat(LOC[LI],{maximumFractionDigits:d}).format(n);
+const eur=(n,d=0)=>new Intl.NumberFormat(LOC[LI],{style:'currency',currency:'EUR',maximumFractionDigits:d,minimumFractionDigits:d}).format(n);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- static copy ---------- */
+const T={
+ fpk:['Pedido','Demande','Request'],
+ ftag:['Módulos por validar','Modules à valider','Modules pending validation'],
+ fnote:['Filme conceptual em 3D. Arrasta para rodar a câmara. Valores de exemplo.','Film conceptuel en 3D. Faites glisser pour tourner la caméra. Valeurs d\u2019exemple.','Conceptual 3D film. Drag to turn the camera. Example values.'],
+ cta3:['Experimentar a demonstração','Essayer la démonstration','Try the demo'],
+ st_k:['Demonstração interativa','Démonstration interactive','Interactive demo'],
+ st_h:['Da criação à fatura, num só percurso.','De la création à la facture, en un seul parcours.','From creation to invoice in one flow.'],
+ st_p:['Muda as dimensões da moradia e vê o modelo 3D, as quantidades, o orçamento e a fatura a atualizarem ao mesmo tempo. A geometria é simplificada e os preços são valores de exemplo que podes alterar.','Modifiez les dimensions de la maison : la maquette 3D, les quantités, le devis et la facture se mettent à jour en même temps. La géométrie est simplifiée et les prix sont des valeurs d’exemple que vous pouvez modifier.','Change the house dimensions and watch the 3D model, quantities, estimate and invoice update together. The geometry is simplified and prices are example values you can edit.'],
+ sub:['Descobre como a ConstruPilot lê e cria plantas, projetos 3D, medições, orçamentos e documentos de obra, e como isso encaixa no teu trabalho.',"Découvrez comment ConstruPilot lit et crée plans, projets 3D, métrés, devis et documents de chantier, et comment cela s'intègre à votre travail.",'Discover how ConstruPilot reads and creates drawings, 3D projects, takeoffs, estimates and site documents, and how that fits your workflow.'],
+ cta1:['Descobre o teu fluxo de trabalho','Découvrez votre flux de travail','Discover your construction workflow'],
+ cta2:['Explorar a ConstruPilot','Explorer ConstruPilot','Explore ConstruPilot'],
+ sheet:['Folha 01 · Planta piso 0 · Esc. 1:100','Feuille 01 · Plan RDC · Éch. 1:100','Sheet 01 · Ground floor plan · Scale 1:100'],
+ appbar:['Moradia T2 · Orçamento','Maison T3 · Devis','House · Estimate'],
+ planalt:['Planta de uma moradia de 12 por 8 metros com seis divisões','Plan d’une maison de 12 par 8 mètres avec six pièces','Floor plan of a 12 by 8 metre house with six rooms'],
+ scale:['COTAS EM METROS','COTES EN MÈTRES','DIMENSIONS IN METRES'],
+ r1:['Sala','Séjour','Living'],r2:['Cozinha','Cuisine','Kitchen'],r3:['Corredor','Couloir','Hall'],
+ r4:['Quarto 1','Chambre 1','Bedroom 1'],r5:['Quarto 2','Chambre 2','Bedroom 2'],r6:['WC','SdB','Bath'],
+ concept:['Representação conceptual. Valores de exemplo, não são preços nem resultados da ConstruPilot.',"Représentation conceptuelle. Valeurs d'exemple : ni prix ni résultats ConstruPilot.",'Conceptual representation. Example values, not ConstruPilot prices or results.'],
+ ab_h:['Não se limita a ler o projeto. Também o cria.','Elle ne se contente pas de lire le projet. Elle le crée aussi.','It does not just read the project. It creates it too.'],
+ ab_p:['A ConstruPilot lê as plantas que já tens e cria o que falta: plantas, modelo 3D, peças técnicas, medições, orçamentos e documentos, num só sítio. Está em beta em Portugal e em França. O diagnóstico abaixo demora cerca de três minutos e não pede contacto.',"ConstruPilot lit les plans que vous avez déjà et crée ce qui manque : plans, maquette 3D, plans techniques, métrés, devis et documents, au même endroit. La plateforme est en bêta au Portugal et en France. Le diagnostic ci-dessous prend environ trois minutes et ne demande aucun contact.",'ConstruPilot reads the drawings you already have and creates what is missing: drawings, 3D model, technical layouts, takeoffs, estimates and documents, in one place. It is in beta in Portugal and France. The assessment below takes about three minutes and asks for no contact details.'],
+ foot:['As tuas respostas só são enviadas à ConstruPilot se pedires o relatório ou uma demonstração.','Vos réponses ne sont envoyées à ConstruPilot que si vous demandez le rapport ou une démonstration.','Your answers are only sent to ConstruPilot if you ask for the report or a demo.']
+};
+const STG=[['Planta','Plan','Drawing'],['Elementos','Éléments','Elements'],['Quantidades','Quantités','Quantities'],['Artigos','Articles','Items'],['Orçamento','Devis','Estimate'],['ConstruPilot','ConstruPilot','ConstruPilot']];
+const CAP=[['Tudo começa numa planta.','Tout commence par un plan.','It starts with a drawing.'],
+ ['Identificam-se os elementos que se podem medir.','On repère les éléments mesurables.','The measurable elements are identified.'],
+ ['Cada elemento ganha uma quantidade e uma unidade.','Chaque élément reçoit une quantité et une unité.','Each element gets a quantity and a unit.'],
+ ['As quantidades ligam-se a artigos de obra.','Les quantités sont rattachées à des articles.','Quantities are linked to work items.'],
+ ['Os artigos formam um orçamento.','Les articles forment un devis.','The items add up to an estimate.'],
+ ['A informação fica reunida na ConstruPilot.',"L'information est réunie dans ConstruPilot.",'The information comes together in ConstruPilot.']];
+const ROWS=[
+ {src:['Área útil · 6 divisões','Surface utile · 6 pièces','Floor area · 6 rooms'],art:['Pavimento cerâmico','Carrelage de sol','Ceramic floor tiling'],q:96,pu:38},
+ {src:['Paredes interiores · 29,0 m × 2,60 m','Cloisons · 29,0 m × 2,60 m','Internal walls · 29.0 m × 2.60 m'],art:['Paredes divisórias','Cloisons de distribution','Partition walls'],q:75.4,pu:29.5},
+ {src:['Perímetro exterior · 40,0 m × 2,80 m','Périmètre extérieur · 40,0 m × 2,80 m','Outer perimeter · 40.0 m × 2.80 m'],art:['Isolamento pelo exterior (ETICS)',"Isolation par l'extérieur (ITE)",'External wall insulation'],q:112,pu:62},
+ {src:['Tetos · 6 divisões','Plafonds · 6 pièces','Ceilings · 6 rooms'],art:['Teto em gesso cartonado','Plafond en plaques de plâtre','Plasterboard ceiling'],q:96,pu:27}];
+
+/* ---------- hero stage ---------- */
+const stage=$('#stage'); let st=6, playing=!reduce, timer=null;
+/* walls extruded into a cutaway model: stacked copies of the wall lines along Z */
+const orbit=$('#orbit'),WALLS=[['M70 60H550V380H70Z',6],['M310 60V260',3],['M70 260H550',3],['M310 200H550',3],['M230 260V380',3],['M450 260V380',3]];
+for(let i=1;i<=9;i++)orbit.insertAdjacentHTML('beforeend',`<svg class="ext fx on${i===9?' top':''}" data-from="2" viewBox="0 0 620 440" aria-hidden="true" style="transform:translateZ(calc(var(--k,1)*${i*3}px));transition-delay:${i*50}ms">${WALLS.map(w=>`<path d="${w[0]}" stroke-width="${w[1]}"/>`).join('')}</svg>`);
+const fit=()=>orbit.style.setProperty('--k',(orbit.clientWidth/620).toFixed(3));fit();addEventListener('resize',fit);
+function countUp(){const el=$('.tot .qt',stage),tot=ROWS.reduce((s,r)=>s+r.q*r.pu,0),t0=performance.now();
+  (function f(t){const k=Math.min(1,Math.max(0,(t-t0)/1100)),e=1-Math.pow(1-k,3);if(k<1&&st===5){el.textContent=eur(tot*e,2);requestAnimationFrame(f)}else el.textContent=eur(tot,2)})(t0)}
+function panel(){
+  const tot=ROWS.reduce((s,r)=>s+r.q*r.pu,0);
+  $('#qpanel').innerHTML=`<div class="qrow h mono"><span class="fx" data-from="4">${L(['Artigo','Article','Item'])}</span><span class="fx" data-from="3">${L(['Qtd.','Qté','Qty'])}</span><span class="fx qt" data-from="5">${L(['Total','Total','Total'])}</span></div>`+
+  ROWS.map(r=>`<div class="qrow"><div class="qa"><span class="qart fx" data-from="4">${esc(L(r.art))}</span><span class="qsrc fx" data-from="3">${esc(L(r.src))}</span></div><span class="qq fx" data-from="3">${new Intl.NumberFormat(LOC[LI],{minimumFractionDigits:1,maximumFractionDigits:1}).format(r.q)} m²</span><span class="qt fx" data-from="5">${eur(r.q*r.pu,2)}</span></div>`).join('')+
+  `<div class="qrow tot fx" data-from="5"><span>${L(['Total (exemplo)','Total (exemple)','Total (example)'])}</span><span></span><span class="qt">${eur(tot,2)}</span></div>`;
+}
+function ctl(){
+  $('#ctl').innerHTML=STG.map((s,i)=>`<button type="button" class="sbtn" data-go="${i+1}" aria-label="${esc(L(s))}">${i+1}<span> ${esc(L(s))}</span></button>`).join('')+
+  `<button type="button" class="sbtn" id="pp" style="margin-left:auto"></button>`;
+}
+function setStage(n){
+  st=n; stage.dataset.s=n;
+  $$('[data-from]',stage).forEach(e=>e.classList.toggle('on',+e.dataset.from<=n));
+  $$('[data-go]').forEach(b=>b.toggleAttribute('aria-current',false));
+  const cur=$(`[data-go="${n}"]`); if(cur)cur.setAttribute('aria-current','step');
+  $('#cap').textContent=n?L(CAP[n-1]):'';
+  if(n===5&&!reduce)countUp();
+  const pp=$('#pp'); if(pp)pp.textContent=playing?L(['Pausar','Pause','Pause']):L(['Reproduzir','Lecture','Play']);
+}
+function tick(){
+  if(!playing)return;
+  if(st>=6){stage.classList.add('nofx');setStage(0);void stage.offsetWidth;stage.classList.remove('nofx');setStage(1)}
+  else setStage(st+1);
+  timer=setTimeout(tick,st===6?8000:st===2?3400:2500);
+}
+$('#ctl').addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');
+  if(g){playing=false;clearTimeout(timer);setStage(+g.dataset.go);return}
+  if(e.target.closest('#pp')){playing=!playing;clearTimeout(timer);setStage(st);if(playing)tick()}
+});
+
+/* ---------- questions ---------- */
+const o=(id,pt,fr,en)=>({id,l:[pt,fr,en]});
+const HRS=['horas por semana','heures par semaine','hours per week'];
+const Q={
+ role:{q:['O que descreve melhor a tua função?','Qu’est-ce qui décrit le mieux votre rôle ?','What best describes your role?'],type:'one',o:[
+  o('company','Empresa de construção','Entreprise de construction','Construction company'),o('gc','Empreiteiro geral','Entreprise générale','General contractor'),
+  o('architect','Arquiteto','Architecte','Architect'),o('engineer','Engenheiro civil','Ingénieur civil','Civil engineer'),
+  o('qs','Orçamentista / medidor','Économiste / métreur','Quantity surveyor'),o('reno','Especialista em remodelação','Spécialiste de la rénovation','Renovation specialist'),
+  o('pm','Diretor de obra / gestor de projeto','Conducteur de travaux / chef de projet','Project manager'),o('owner','Particular / dono de obra',"Particulier / maître d'ouvrage",'Homeowner / private client'),o('other','Outro','Autre','Other')]},
+ country:{q:['Onde operas?','Où exercez-vous ?','Where do you operate?'],type:'one',o:[o('pt','Portugal','Portugal','Portugal'),o('fr','França','France','France'),o('other','Outro país','Autre pays','Another country')]},
+ ctype:{q:['Que tipo de empresa?',"Quel type d'entreprise ?",'What kind of company?'],type:'one',o:[o('solo','Independente','Indépendant','Self-employed'),o('small','Pequena empresa','Petite entreprise','Small company'),o('large','Média ou grande empresa','Moyenne ou grande entreprise','Mid-size or large company'),o('office','Gabinete de projeto',"Bureau d'études / agence",'Design office')]},
+ team:{q:['Quantas pessoas na equipa?',"Combien de personnes dans l'équipe ?",'How many people on the team?'],type:'one',o:[o('1','1','1','1'),o('2-5','2 a 5','2 à 5','2 to 5'),o('6-20','6 a 20','6 à 20','6 to 20'),o('21-50','21 a 50','21 à 50','21 to 50'),o('50+','Mais de 50','Plus de 50','More than 50')]},
+ ptypes:{q:['Que tipos de projeto fazes?','Quels types de projets ?','What kinds of projects?'],type:'multi',o:[o('house','Moradias','Maisons individuelles','Houses'),o('reno','Remodelação','Rénovation','Renovation'),o('resi','Edifícios residenciais','Logements collectifs','Residential buildings'),o('com','Comércio e serviços','Tertiaire et commerces','Commercial'),o('pub','Obras públicas','Marchés publics','Public works')]},
+ nproj:{q:['Quantos projetos por ano, mais ou menos?','Combien de projets par an, environ ?','Roughly how many projects a year?'],type:'one',o:[o('1-5','1 a 5','1 à 5','1 to 5'),o('6-20','6 a 20','6 à 20','6 to 20'),o('21-50','21 a 50','21 à 50','21 to 50'),o('50+','Mais de 50','Plus de 50','More than 50')]},
+ decision:{q:['Quem decide a compra de software?','Qui décide des achats de logiciels ?','Who decides on software purchases?'],type:'one',o:[o('decide','Sou eu','Moi','I do'),o('influence','Participo na decisão','Je participe à la décision','I take part in the decision'),o('user','Outra pessoa','Une autre personne','Someone else')]},
+ software:{q:['Que ferramentas usas hoje?',"Quels outils utilisez-vous aujourd'hui ?",'Which tools do you use today?'],type:'multi',o:[o('excel','Excel','Excel','Excel'),o('cad','AutoCAD','AutoCAD','AutoCAD'),o('bim','Revit ou outro BIM','Revit ou autre BIM','Revit or other BIM'),o('est','Software de orçamentação','Logiciel de chiffrage','Estimating software'),o('paper','Papel','Papier','Paper'),o('other','Outra','Autre','Other')]},
+ plans_in:{q:['Como recebes as plantas?','Comment recevez-vous les plans ?','How do drawings reach you?'],type:'multi',o:[o('pdf','PDF','PDF','PDF'),o('dwg','DWG','DWG','DWG'),o('ifc','IFC','IFC','IFC'),o('paper','Papel','Papier','Paper'),o('photo','Fotos','Photos','Photos')]},
+ qty_method:{q:['Como calculas as quantidades?','Comment calculez-vous les quantités ?','How do you work out quantities?'],type:'one',not:['pm'],o:[o('hand','À mão, sobre a planta','À la main, sur le plan','By hand, on the drawing'),o('excel','Em Excel','Dans Excel','In Excel'),o('soft','Com software de medição','Avec un logiciel de métré','With takeoff software'),o('sub','Subcontrato','Je sous-traite','I outsource it')]},
+ est_method:{q:['Como preparas os orçamentos?','Comment préparez-vous les devis ?','How do you prepare estimates?'],type:'one',not:['architect'],o:[o('excel','Em Excel','Dans Excel','In Excel'),o('soft','Com software de orçamentação','Avec un logiciel de chiffrage','With estimating software'),o('doc','Modelos em Word ou PDF','Modèles Word ou PDF','Word or PDF templates'),o('none','Não preparo orçamentos','Je ne prépare pas de devis','I do not prepare estimates')]},
+ changes:{q:['O que fazes quando o projeto muda?','Que faites-vous quand le projet change ?','What happens when the design changes?'],type:'one',o:[o('redo','Refaço as medições','Je refais les métrés','I redo the takeoff'),o('partial','Atualizo só o que mudou','Je mets à jour ce qui a changé','I update only what changed'),o('none','Não tenho um processo','Je n’ai pas de méthode','I have no set process')]},
+ cost_track:{q:['Como acompanhas os custos?','Comment suivez-vous les coûts ?','How do you track costs?'],type:'one',not:['architect','qs'],o:[o('excel','Em Excel','Dans Excel','In Excel'),o('soft','Com software de gestão','Avec un logiciel de gestion','With management software'),o('none','Sem acompanhamento estruturado','Sans suivi structuré','No structured tracking')]},
+ share:{q:['Como partilhas informação com a equipa?',"Comment partagez-vous l'information avec l'équipe ?",'How do you share information with the team?'],type:'multi',o:[o('mail','Email','E-mail','Email'),o('wa','WhatsApp','WhatsApp','WhatsApp'),o('drive','Pasta partilhada','Dossier partagé','Shared folder'),o('plat','Plataforma de gestão','Plateforme de gestion','Management platform')]},
+ wf_note:{q:['Queres acrescentar alguma coisa?','Souhaitez-vous ajouter quelque chose ?','Anything to add?'],type:'text',opt:1},
+ chall:{q:['Onde perdes mais tempo ou dinheiro? Podes escolher várias.','Où perdez-vous le plus de temps ou d’argent ? Plusieurs choix possibles.','What are your biggest workflow challenges? Pick as many as apply.'],type:'multi',o:[
+  o('takeoff','Medições e quantidades','Métrés et quantités','Quantity takeoff'),o('estimation','Orçamentação','Chiffrage et devis','Cost estimation'),
+  o('drawings','Gestão de plantas','Gestion des plans','Drawing management'),o('docs','Documentação de projeto','Documentation de projet','Project documentation'),
+  o('coord','Coordenação de obra','Coordination de chantier','Project coordination'),o('materials','Materiais e preços','Matériaux et prix','Material and price management'),
+  o('technical','Análise técnica','Analyse technique','Technical analysis'),o('other','Outra','Autre','Other')]},
+ prio:{q:['Qual destas pesa mais?','Laquelle pèse le plus ?','Which one matters most?'],type:'one',o:[]},
+ est_month:{q:['Quantos orçamentos preparas por mês?','Combien de devis préparez-vous par mois ?','How many estimates do you prepare a month?'],type:'num',unit:['por mês','par mois','per month']},
+ est_hours:{q:['Quantas horas demora cada um, em média?','Combien d’heures pour chacun, en moyenne ?','How many hours does each take, on average?'],type:'num',unit:['horas','heures','hours']},
+ hour_cost:{q:['Quanto custa uma hora de quem faz este trabalho?','Combien coûte une heure de la personne qui fait ce travail ?','What does an hour of this person’s time cost?'],type:'num',unit:['€ por hora','€ par heure','€ per hour'],opt:1},
+ price_src:{q:['Onde vais buscar os preços?','D’où viennent vos prix ?','Where do your prices come from?'],type:'multi',o:[o('own','Base própria','Base interne','Own database'),o('sup','Fornecedores','Fournisseurs','Suppliers'),o('pub','Tabelas publicadas','Bordereaux publiés','Published price books'),o('exp','Experiência','Expérience','Experience')]},
+ rev_freq:{q:['Com que frequência revês quantidades?','À quelle fréquence révisez-vous les quantités ?','How often do you revise quantities?'],type:'one',o:[o('rare','Raramente','Rarement','Rarely'),o('some','Às vezes','Parfois','Sometimes'),o('most','Em quase todos os orçamentos','Sur presque tous les devis','On almost every estimate')]},
+ change_pain:{q:['O que complica mais quando as plantas mudam?','Qu’est-ce qui complique le plus quand les plans changent ?','What gets hardest when drawings change?'],type:'text',opt:1},
+ revs:{q:['Como geres as revisões?','Comment gérez-vous les révisions ?','How do you manage revisions?'],type:'one',o:[o('names','Pelo nome dos ficheiros','Par le nom des fichiers','By file name'),o('vc','Com controlo de versões','Avec un contrôle de versions','With version control'),o('none','Sem processo definido','Sans méthode définie','No set process')]},
+ share_tech:{q:['Como partilhas a informação técnica?',"Comment partagez-vous l'information technique ?",'How do you share technical information?'],type:'multi',o:[o('mail','Email','E-mail','Email'),o('cloud','Cloud','Cloud','Cloud'),o('plat','Plataforma de projeto','Plateforme de projet','Project platform'),o('paper','Papel','Papier','Paper')]},
+ handover:{q:['Que informação tens de passar aos outros intervenientes?','Quelles informations devez-vous transmettre aux autres intervenants ?','What information do you need to pass on to others?'],type:'text',opt:1},
+ repeat:{q:['Que tarefas repetes à mão?','Quelles tâches répétez-vous à la main ?','Which tasks do you repeat by hand?'],type:'text',opt:1},
+ week_hours:{q:['Quantas horas por semana gastas nisto?','Combien d’heures par semaine y passez-vous ?','How many hours a week does this take?'],type:'num',unit:HRS},
+ n_follow:{q:['Quantos projetos acompanhas ao mesmo tempo?','Combien de projets suivez-vous en même temps ?','How many projects do you follow at once?'],type:'num',unit:['projetos','projets','projects']},
+ progress:{q:['Como registas o progresso?',"Comment enregistrez-vous l'avancement ?",'How do you record progress?'],type:'one',o:[o('paper','Em papel','Sur papier','On paper'),o('excel','Em Excel','Dans Excel','In Excel'),o('app','Numa aplicação','Dans une application','In an app'),o('none','Não registo','Je ne l’enregistre pas','I do not record it')]},
+ comm:{q:['Como comunicas com a equipa?',"Comment communiquez-vous avec l'équipe ?",'How do you communicate with the team?'],type:'multi',o:[o('wa','WhatsApp','WhatsApp','WhatsApp'),o('mail','Email','E-mail','Email'),o('meet','Reuniões de obra','Réunions de chantier','Site meetings'),o('plat','Plataforma','Plateforme','Platform')]},
+ price_update:{q:['Com que frequência atualizas preços?','À quelle fréquence mettez-vous les prix à jour ?','How often do you update prices?'],type:'one',o:[o('each','Em cada orçamento','À chaque devis','On every estimate'),o('month','Todos os meses','Tous les mois','Monthly'),o('rare','Raramente','Rarement','Rarely')]},
+ n_sup:{q:['Com quantos fornecedores trabalhas?','Avec combien de fournisseurs travaillez-vous ?','How many suppliers do you work with?'],type:'num',unit:['fornecedores','fournisseurs','suppliers']},
+ studies:{q:['Que análises te ocupam mais?','Quelles analyses vous occupent le plus ?','Which analyses take most of your time?'],type:'multi',o:[o('struct','Estrutura','Structure','Structure'),o('therm','Térmica','Thermique','Thermal'),o('water','Águas e esgotos','Plomberie et assainissement','Water and drainage'),o('elec','Eletricidade','Électricité','Electrical'),o('other','Outra','Autre','Other')]},
+ who_studies:{q:['Quem as faz hoje?',"Qui les réalise aujourd'hui ?",'Who does them today?'],type:'one',o:[o('in','Equipa interna','Équipe interne','In-house team'),o('ext','Gabinete externo',"Bureau d'études externe",'External engineering firm'),o('both','Ambos','Les deux','Both')]},
+ tech_note:{q:['O que gostavas de resolver primeiro?','Que voudriez-vous résoudre en premier ?','What would you like to solve first?'],type:'text',opt:1},
+ other_note:{q:['Conta-nos qual é a dificuldade.','Décrivez-nous la difficulté.','Tell us about the challenge.'],type:'text'},
+ none_note:{q:['O que te trouxe aqui?','Qu’est-ce qui vous amène ?','What brought you here?'],type:'text',opt:1},
+ win_rate:{q:['De cada 10 orçamentos que entregas, quantos ganhas?','Sur 10 devis remis, combien en gagnez-vous ?','Out of 10 estimates you submit, how many do you win?'],type:'one',only:['company','gc'],o:[o('1-2','1 ou 2','1 ou 2','1 or 2'),o('3-5','3 a 5','3 à 5','3 to 5'),o('5+','Mais de 5','Plus de 5','More than 5'),o('na','Não sei','Je ne sais pas','I do not know')]},
+ survey:{q:['Como fazes o levantamento no local?','Comment faites-vous le relevé sur place ?','How do you survey the site?'],type:'multi',only:['reno'],o:[o('tape','Fita e papel','Mètre et papier','Tape and paper'),o('laser','Medidor laser','Télémètre laser','Laser measure'),o('photo','Fotos','Photos','Photos'),o('app','Aplicação','Application','App')]},
+ phases:{q:['Em que fases trabalhas mais?','Sur quelles phases travaillez-vous le plus ?','Which stages do you work on most?'],type:'multi',only:['architect'],o:[o('concept','Estudo prévio','Esquisse / APS','Concept design'),o('permit','Licenciamento','Permis de construire','Permit'),o('exec','Projeto de execução',"Études d'exécution",'Construction documents'),o('site','Assistência técnica à obra','Suivi de chantier','Site supervision')]},
+ specialty:{q:['Quais são as tuas especialidades?','Quelles sont vos spécialités ?','What are your disciplines?'],type:'multi',only:['engineer'],o:[o('struct','Estruturas','Structure','Structures'),o('water','Águas e esgotos','Plomberie et assainissement','Water and drainage'),o('therm','Térmica','Thermique','Thermal'),o('elec','Eletricidade','Électricité','Electrical'),o('site','Direção ou fiscalização de obra','Direction ou contrôle de travaux','Site management or supervision')]},
+ boq_fmt:{q:['Em que formato entregas o mapa de quantidades?','Sous quel format remettez-vous le DPGF ?','In what format do you deliver the bill of quantities?'],type:'one',only:['qs'],o:[o('excel','Excel','Excel','Excel'),o('pdf','PDF','PDF','PDF'),o('soft','Software de orçamentação','Logiciel de chiffrage','Estimating software'),o('client','No formato do cliente','Au format du client','In the client’s format')]},
+ reporting:{q:['Com que frequência reportas ao dono de obra?',"À quelle fréquence rendez-vous compte au maître d'ouvrage ?",'How often do you report to the client?'],type:'one',only:['pm'],o:[o('week','Todas as semanas','Chaque semaine','Weekly'),o('two','De 15 em 15 dias','Tous les 15 jours','Every two weeks'),o('month','Todos os meses','Chaque mois','Monthly'),o('none','Sem regularidade','Sans régularité','No fixed rhythm')]},
+ win10:{q:['De cada 10 propostas, quantas ganhas?','Sur 10 offres, combien en gagnez-vous ?','Out of 10 bids, how many do you win?'],type:'num',unit:['em 10','sur 10','in 10'],opt:1},
+ job_value:{q:['Valor médio de uma obra','Montant moyen d’un chantier','Average job value'],type:'num',unit:['€','€','€'],opt:1},
+ job_margin:{q:['Margem média por obra','Marge moyenne par chantier','Average margin per job'],type:'num',unit:['%','%','%'],opt:1},
+ owner_stage:{q:['Em que fase estás?','Où en êtes-vous ?','What stage are you at?'],type:'one',o:[o('idea','Ainda é uma ideia','Encore une idée','Still an idea'),o('land','Já tenho terreno ou casa','J’ai déjà le terrain ou la maison','I have the plot or house'),o('design','Projeto em curso','Projet en cours','Design under way'),o('build','Obra a decorrer','Chantier en cours','Build under way')]},
+ own_budget:{q:['Quanto prevês gastar na obra?','Quel budget prévoyez-vous pour les travaux ?','How much do you expect to spend on the build?'],type:'num',unit:['€','€','€']},
+ own_overrun:{q:['Que derrapagem temes?','Quel dépassement craignez-vous ?','What overrun do you fear?'],type:'num',unit:['%','%','%']},
+ urgency:{q:['Quando queres resolver isto?','Quand voulez-vous régler cela ?','When do you want this solved?'],type:'one',o:[o('now','Já','Tout de suite','Now'),o('q','Nos próximos 3 meses','Dans les 3 prochains mois','Within 3 months'),o('year','Este ano','Cette année','This year'),o('explore','Só estou a explorar','Je me renseigne','Just exploring')]}
+};
+const DEEP={takeoff:'est',estimation:'est',drawings:'draw',docs:'draw',coord:'coord',materials:'mat',technical:'tech',other:'other'};
+const SETS={est:['est_month','est_hours','hour_cost','price_src','rev_freq','change_pain'],draw:['revs','share_tech','handover','repeat','week_hours','hour_cost'],
+ coord:['n_follow','cost_track','progress','comm','week_hours','hour_cost'],mat:['price_src','price_update','n_sup','week_hours','hour_cost'],tech:['studies','who_studies','tech_note'],other:['other_note'],none:['none_note'],own:['own_budget','own_overrun','none_note']};
+const ST={UNVERIFIED:['A confirmar na demonstração','À confirmer en démonstration','To be confirmed in the demo'],VERIFIED:['Verificada','Vérifiée','Verified'],DEMO_AVAILABLE:['Demonstração disponível','Démonstration disponible','Demo available'],
+ PARTIALLY_AVAILABLE:['Parcialmente disponível','Partiellement disponible','Partially available'],IN_DEVELOPMENT:['Em desenvolvimento','En développement','In development'],PLANNED:['Planeada','Prévue','Planned']};
+/* Need -> solution matrix. Every status stays UNVERIFIED until the team validates it. */
+const MATRIX={
+ takeoff:{f:['Criação e leitura de plantas, medições','Création et lecture de plans, métrés','Drawing creation, reading and takeoff'],ev:'backend/routes/plans_analysis.py, plans_cotes.py',st:'UNVERIFIED',lim:['As medições devem ser conferidas por um profissional antes de serem usadas.','Les métrés doivent être vérifiés par un professionnel avant utilisation.','Takeoffs must be checked by a professional before use.']},
+ estimation:{f:['Orçamentos e mapas de quantidades','Devis et DPGF','Estimates and bills of quantities'],ev:'backend/routes/estimation_routes.py, dpgf.py',st:'UNVERIFIED',lim:['Os preços dependem da tua base e dos teus fornecedores. Não há valores de mercado garantidos.','Les prix dépendent de votre base et de vos fournisseurs. Aucun prix de marché n’est garanti.','Prices depend on your own database and suppliers. No market price is guaranteed.']},
+ drawings:{f:['Criação, gestão e visualização de plantas','Création, gestion et visualisation des plans','Drawing creation, management and viewing'],ev:'backend/routes/plans_crud.py, plans_render.py',st:'UNVERIFIED',lim:['Os formatos suportados confirmam-se na demonstração, com os teus ficheiros.','Les formats pris en charge se confirment en démonstration, avec vos fichiers.','Supported formats are confirmed in the demo, with your own files.']},
+ docs:{f:['Criação de documentos de projeto','Création de documents de projet','Project document creation'],ev:'backend/routes/documents.py, docs.py',st:'UNVERIFIED',lim:['Os modelos de documento disponíveis confirmam-se na demonstração.','Les modèles de documents disponibles se confirment en démonstration.','Available document templates are confirmed in the demo.']},
+ coord:{f:['Obras e planeamento','Chantiers et planning','Sites and planning'],ev:'backend/routes/chantiers.py, planning.py',st:'UNVERIFIED',lim:['O acompanhamento depende dos registos feitos pela equipa.',"Le suivi dépend des saisies faites par l'équipe.",'Tracking depends on what the team records.']},
+ materials:{f:['Preços e fornecedores','Prix et fournisseurs','Prices and suppliers'],ev:'backend/routes/prices.py, suppliers.py',st:'UNVERIFIED',lim:['As fontes de preço e a sua atualização confirmam-se na demonstração.','Les sources de prix et leur mise à jour se confirment en démonstration.','Price sources and update frequency are confirmed in the demo.']},
+ technical:{f:['Estudos técnicos de apoio','Études techniques d’appui','Supporting technical studies'],ev:'backend/routes/structuro_calc.py, btp_solver.py',st:'UNVERIFIED',lim:['Não substituem o projeto nem a responsabilidade de um técnico habilitado. A validação passa por gabinetes de engenharia parceiros.',"Elles ne remplacent ni l'étude ni la responsabilité d'un professionnel habilité. La validation passe par des bureaux d'études partenaires.",'They do not replace the design or the liability of a qualified engineer. Validation goes through partner engineering firms.']}
+};
+/* Needs per profession. A need id is "<matrix category>_<n>", so each need maps to one matrix row. */
+const OTH=o('other_1','Outra','Autre','Other');
+const PROF={
+ b:{say:['Numa empresa de construção, orçamentar e controlar custos ocupa muita gente. O que te pesa mais?','Dans une entreprise de construction, chiffrer et suivre les coûts mobilise beaucoup de monde. Qu’est-ce qui vous pèse le plus ?','In a construction company, estimating and cost control tie up a lot of people. What weighs on you most?'],needs:[
+  o('estimation_1','Responder a mais concursos sem aumentar a equipa',"Répondre à plus d'appels d'offres sans agrandir l'équipe",'Bidding on more tenders without growing the team'),
+  o('takeoff_1','Medições lentas e sujeitas a erros','Métrés lents et sources d’erreurs','Slow, error-prone takeoffs'),
+  o('materials_1','Preços de materiais desatualizados','Prix des matériaux pas à jour','Out-of-date material prices'),
+  o('coord_1','Derrapagens de custos em obra','Dérives de coûts sur chantier','Cost overruns on site'),
+  o('docs_1','Autos de medição e faturação demorados','Situations de travaux et facturation chronophages','Slow progress claims and invoicing'),OTH]},
+ r:{say:['Na remodelação, o cliente quer o orçamento depressa. Onde é que perdes mais tempo?','En rénovation, le client veut son devis rapidement. Où perdez-vous le plus de temps ?','In renovation, the client wants the quote fast. Where do you lose the most time?'],needs:[
+  o('takeoff_1','Levantamento no local e medições à mão','Relevés sur place et métrés à la main','On-site surveys and manual takeoffs'),
+  o('estimation_1','Orçamentos rápidos para o cliente decidir','Devis rapides pour que le client décide','Fast quotes so the client can decide'),
+  o('drawings_1','Mostrar ao cliente como vai ficar, em 3D','Montrer le résultat au client, en 3D','Showing the client the result in 3D'),
+  o('materials_1','Quantidades a encomendar e desperdício','Quantités à commander et pertes','Order quantities and waste'),
+  o('docs_1','Faturação e trabalhos a mais','Facturation et travaux supplémentaires','Invoicing and extra works'),OTH]},
+ a:{say:['Num gabinete de arquitetura, as horas vão para revisões, licenciamento e peças escritas. O que te pesa mais?',"En agence d'architecture, les heures partent dans les révisions, les autorisations et les pièces écrites. Qu’est-ce qui vous pèse le plus ?",'In an architecture practice, hours go into revisions, permits and written documents. What weighs on you most?'],needs:[
+  o('drawings_1','Criar e rever plantas mais depressa','Créer et réviser les plans plus vite','Creating and revising drawings faster'),
+  o('drawings_2','Mostrar o projeto em 3D ao cliente','Présenter le projet en 3D au client','Presenting the project in 3D to the client'),
+  o('docs_1','Processos de licenciamento',"Dossiers de demande d'autorisation",'Permit applications'),
+  o('docs_2','Cadernos de encargos e peças escritas','CCTP et pièces écrites','Specifications and written documents'),
+  o('estimation_1','Estimar custos logo no estudo prévio',"Estimer les coûts dès l'esquisse",'Estimating costs at concept stage'),
+  o('coord_1','Compatibilizar as especialidades','Synthèse entre les lots techniques','Coordinating the engineering disciplines'),OTH]},
+ e:{say:['Em engenharia, muito tempo vai para cálculo repetitivo e peças de execução. Onde está o teu maior peso?',"En ingénierie, beaucoup de temps part dans les calculs répétitifs et les plans d'exécution. Où est votre plus gros poids ?",'In engineering, a lot of time goes into repetitive calculations and construction drawings. Where is your biggest load?'],needs:[
+  o('technical_1','Pré-dimensionamento e cálculos repetitivos','Prédimensionnement et calculs répétitifs','Preliminary sizing and repetitive calculations'),
+  o('technical_2','Peças desenhadas de execução',"Plans d'exécution",'Construction drawings'),
+  o('takeoff_1','Medições por especialidade','Métrés par lot','Takeoffs per discipline'),
+  o('docs_1','Memórias descritivas e peças escritas','Notes de calcul et notices','Calculation reports and written documents'),
+  o('coord_1','Alterações de arquitetura a meio do projeto',"Modifications d'architecture en cours d'étude",'Architectural changes mid-design'),OTH]},
+ q:{say:['Para quem mede e orçamenta, cada alteração de projeto custa horas. O que te pesa mais?','Pour qui métre et chiffre, chaque modification du projet coûte des heures. Qu’est-ce qui vous pèse le plus ?','For anyone measuring and estimating, every design change costs hours. What weighs on you most?'],needs:[
+  o('takeoff_1','Medições a partir de PDF e DWG','Métrés à partir de PDF et DWG','Takeoffs from PDF and DWG'),
+  o('takeoff_2','Refazer medições quando o projeto muda','Refaire les métrés quand le projet change','Redoing takeoffs when the design changes'),
+  o('estimation_1','Mapas de quantidades e orçamentos','DPGF et estimations','Bills of quantities and estimates'),
+  o('materials_1','Manter a base de preços atualizada','Tenir la base de prix à jour','Keeping the price database current'),
+  o('materials_2','Comparar propostas de subempreiteiros','Comparer les offres des sous-traitants','Comparing subcontractor quotes'),OTH]},
+ m:{say:['Em obra, prazo e custo andam sempre juntos. O que te dá mais trabalho?','Sur chantier, délais et coûts vont toujours ensemble. Qu’est-ce qui vous donne le plus de travail ?','On site, time and cost always go together. What takes the most effort?'],needs:[
+  o('coord_1','Planeamento e prazos','Planning et délais','Scheduling and deadlines'),
+  o('coord_2','Controlo de custos em obra','Suivi des coûts de chantier','Site cost control'),
+  o('docs_1','Autos de medição e faturação','Situations de travaux et facturation','Progress claims and invoicing'),
+  o('docs_2','Documentação e registos de obra','Documents et comptes rendus de chantier','Site documents and records'),
+  o('materials_1','Encomendas e fornecedores','Commandes et fournisseurs','Orders and suppliers'),OTH]},
+ o:{say:['Sem rodeios: o que te custa mais?','Sans détour : qu’est-ce qui vous coûte le plus ?','Plainly: what costs you the most?'],needs:Q.chall.o.map(x=>({id:x.id+'_1',l:x.l}))}};
+Object.entries({"b": [["Orçamentar mais depressa, para responder a mais concursos com a mesma equipa.", "Chiffrer plus vite, pour répondre à plus d'appels d'offres avec la même équipe.", "Estimate faster, so the same team can bid on more tenders."], ["Medições com menos erros, para a margem não desaparecer em obra.", "Des métrés avec moins d'erreurs, pour que la marge ne fonde pas sur le chantier.", "Takeoffs with fewer errors, so the margin does not vanish on site."], ["Autos e faturas a tempo, para receber mais cedo.", "Situations et factures à temps, pour être payé plus tôt.", "Progress claims and invoices on time, so you get paid sooner."]], "r": [["Entregar o orçamento ao cliente mais depressa.", "Remettre le devis au client plus vite.", "Get the quote to the client faster."], ["Encomendar as quantidades certas e desperdiçar menos material.", "Commander les bonnes quantités et gaspiller moins de matériaux.", "Order the right quantities and waste less material."], ["Registar e faturar os trabalhos a mais.", "Consigner et facturer les travaux supplémentaires.", "Record and invoice the extra works."]], "a": [["Menos horas em revisões e peças escritas, mais horas de projeto.", "Moins d'heures en révisions et pièces écrites, plus d'heures de conception.", "Fewer hours on revisions and written documents, more on design."], ["Mostrar o projeto em 3D, para o cliente decidir mais cedo.", "Présenter le projet en 3D, pour que le client décide plus tôt.", "Show the project in 3D, so the client decides sooner."], ["Estimar custos no estudo prévio, para não refazer o projeto.", "Estimer les coûts dès l'esquisse, pour ne pas reprendre le projet.", "Estimate costs at concept stage, to avoid redesign."]], "e": [["Menos horas em cálculo repetitivo e peças de execução.", "Moins d'heures en calculs répétitifs et plans d'exécution.", "Fewer hours on repetitive calculations and construction drawings."], ["Responder mais depressa às alterações de arquitetura.", "Réagir plus vite aux modifications d'architecture.", "Respond faster to architectural changes."], ["Medições por especialidade sem refazer tudo à mão.", "Des métrés par lot sans tout refaire à la main.", "Takeoffs per discipline without redoing everything by hand."]], "q": [["Mais medições e orçamentos por mês com as mesmas horas.", "Plus de métrés et de devis par mois avec les mêmes heures.", "More takeoffs and estimates a month in the same hours."], ["Atualizar em vez de refazer quando o projeto muda.", "Mettre à jour au lieu de refaire quand le projet change.", "Update instead of redoing when the design changes."], ["Preços atualizados, para não orçamentar abaixo do custo.", "Des prix à jour, pour ne pas chiffrer sous le coût.", "Current prices, so you do not estimate below cost."]], "m": [["Menos horas em relatórios e autos, mais tempo em obra.", "Moins d'heures en comptes rendus et situations, plus de temps sur le chantier.", "Fewer hours on reports and claims, more time on site."], ["Ver os desvios de custo cedo, enquanto ainda se corrigem.", "Voir les écarts de coûts tôt, tant qu'ils se corrigent encore.", "See cost deviations early, while they can still be fixed."], ["Faturar a tempo, para proteger a tesouraria.", "Facturer à temps, pour protéger la trésorerie.", "Invoice on time, to protect cash flow."]], "o": [["Menos horas em tarefas repetidas.", "Moins d'heures sur les tâches répétitives.", "Fewer hours on repeated tasks."], ["A informação do projeto num só sítio.", "Les informations du projet au même endroit.", "Project information in one place."]]}).forEach(([k,v])=>{PROF[k].money=v});
+PROF.p={say:['Quando a obra é tua, o que mais custa é não saber quanto vai custar. O que te preocupa mais?',"Quand le chantier est le vôtre, le plus dur est de ne pas savoir ce qu'il va coûter. Qu’est-ce qui vous inquiète le plus ?",'When the build is yours, the hardest part is not knowing what it will cost. What worries you most?'],needs:[
+  o('estimation_1','Saber quanto vai custar antes de pedir orçamentos','Savoir combien cela va coûter avant de demander des devis','Knowing the cost before asking for quotes'),
+  o('materials_1','Comparar orçamentos de empreiteiros','Comparer les devis des entreprises','Comparing contractor quotes'),
+  o('docs_1','Tratar do licenciamento','Gérer les autorisations de travaux','Handling the permit'),
+  o('drawings_1','Ver a casa em 3D antes de decidir','Voir la maison en 3D avant de décider','Seeing the house in 3D before deciding'),
+  o('coord_1','Acompanhar custos e prazos da obra','Suivre les coûts et les délais du chantier','Tracking cost and schedule during the build'),OTH],
+ money:[['Saber o custo real antes de assinar, para negociar com números.','Connaître le coût réel avant de signer, pour négocier chiffres en main.','Know the real cost before signing, so you negotiate with numbers.'],
+  ['Comparar orçamentos linha a linha e ver o que falta em cada um.','Comparer les devis ligne par ligne et voir ce qui manque dans chacun.','Compare quotes line by line and see what each one leaves out.'],
+  ['Detetar derrapagens cedo, enquanto ainda se corrigem.','Repérer les dérives tôt, tant qu’elles se corrigent encore.','Spot overruns early, while they can still be fixed.']]};
+const PF={owner:'p',company:'b',gc:'b',reno:'r',architect:'a',engineer:'e',qs:'q',pm:'m',other:'o'};
+function needsFor(role){return PROF[PF[role]||'o'].needs}
+const cat=id=>id?String(id).split('_')[0]:null,MX=id=>MATRIX[cat(id)];
+Object.defineProperty(Q.chall,'o',{get:()=>needsFor(S.a.role)});
+const GROUP={owner:'b',company:'b',gc:'b',reno:'b',qs:'b',other:'b',architect:'a',engineer:'e',pm:'m'};
+const DEMO={b:[['Plantas','Medições','Quantidades','Orçamentos','Custos'],['Plans','Métrés','Quantités','Devis','Coûts'],['Drawings','Takeoff','Quantities','Estimates','Costs']],
+ a:[['Importação de desenhos','Visualização','Informação técnica','Documentação','Revisões'],['Import de dessins','Visualisation','Informations techniques','Documentation','Révisions'],['Drawing import','Viewing','Technical information','Documentation','Revisions']],
+ e:[['Medições','Regras de cálculo','Resultados','Verificabilidade','Ferramentas técnicas'],['Métrés','Règles de calcul','Résultats','Vérifiabilité','Outils techniques'],['Takeoff','Calculation rules','Results','Traceability','Technical tools']],
+ m:[['Projetos','Documentação','Custos','Materiais','Acompanhamento'],['Projets','Documentation','Coûts','Matériaux','Suivi'],['Projects','Documentation','Costs','Materials','Tracking']]};
+const PIPE=['NEW','DISCOVERY_STARTED','DISCOVERY_COMPLETED','QUALIFIED','DEMO_REQUESTED','DEMO_SCHEDULED','DEMO_COMPLETED','PILOT_PROPOSED','PILOT_ACTIVE','PROPOSAL_SENT','NEGOTIATION','WON','LOST'];
+const STEPS=['role','company','workflow','chall','deep','impact','result'];
+const STEP_T=[['Quem és?','Qui êtes-vous ?','Who are you?'],['A tua empresa','Votre entreprise','Your company'],['Como trabalhas hoje',"Votre façon de travailler aujourd'hui",'How you work today'],['As tuas dificuldades','Vos difficultés','Your challenges'],['Vamos ao detalhe','Entrons dans le détail','Let’s go deeper'],['Quanto pesa este problema','Ce que pèse ce problème','What this problem costs'],['A tua avaliação','Votre évaluation','Your Construction Workflow Assessment']];
+
+/* ---------- state ---------- */
+let S={step:0,a:{},status:'NEW',lead:null,err:''};
+const KEY='cpx-v2',T0=Date.now(),SUB=Math.random().toString(36).slice(2)+Date.now().toString(36);
+function save(){}
+function load(d){if(!d)return;if(d.a)S.a=d.a;if(Number.isInteger(d.step))S.step=Math.min(d.step,6);if(d.status)S.status=d.status;if(d.li>=0&&d.li<3)LI=d.li;const ok=needsFor(S.a.role).map(n=>n.id);S.a.chall=(S.a.chall||[]).filter(i=>ok.includes(i))}
+const lab=id=>{const d=Q[id],v=S.a[id];if(v==null||v===''||(Array.isArray(v)&&!v.length))return '';
+  const src=id==='prio'?Q.chall.o:d.o; if(d.type==='one')return L((src.find(x=>x.id===v)||{l:['','','']}).l);
+  if(d.type==='multi')return v.map(i=>L((src.find(x=>x.id===i)||{l:['','','']}).l)).join(', ');
+  if(d.type==='num')return nf(v)+' '+L(d.unit); return String(v)};
+function prio(){const c=S.a.chall||[];if(!c.length)return null;if(c.length===1)return c[0];return c.includes(S.a.prio)?S.a.prio:c[0]}
+const prioLab=()=>{const p=prio();return p?L(Q.chall.o.find(x=>x.id===p).l):''};
+function impact(){const a=S.a,p=cat(prio());let h=null,f='';
+  if((p==='takeoff'||p==='estimation')&&a.est_month>0&&a.est_hours>0){h=a.est_month*a.est_hours;f=`${nf(a.est_month)} ${L(['orçamentos','devis','estimates'])} × ${nf(a.est_hours)} h`}
+  else if(p&&DEEP[p]!=='est'&&a.week_hours>0){h=a.week_hours*52/12;f=`${nf(a.week_hours)} h × 52 ${L(['semanas','semaines','weeks'])} ÷ 12 ${L(['meses','mois','months'])}`}
+  if(h==null)return null;
+  const c=a.hour_cost>0?h*a.hour_cost:null;
+  return {h,c,f:f+` = ${nf(h)} h`+(c!=null?` × ${eur(a.hour_cost,2)} = ${eur(c)}`:'')}}
+function score(){const a=S.a,im=impact(),p=prio(),ch=a.chall||[],r=[];
+  let v=im?(im.h>=40?3:im.h>=15?2:1):(ch.length>=3?2:ch.length?1:0);
+  r.push({k:['Intensidade do problema','Intensité du problème','Problem intensity'],v,w:im?L([`${nf(im.h)} h por mês declaradas`,`${nf(im.h)} h par mois déclarées`,`${nf(im.h)} h a month reported`]):L([`${ch.length} dificuldades indicadas, sem horas`,`${ch.length} difficultés indiquées, sans heures`,`${ch.length} challenges named, no hours`])});
+  r.push({k:['Urgência','Urgence','Urgency'],v:({now:3,q:2,year:1,explore:0})[a.urgency]??0,w:lab('urgency')||L(['Por apurar','À préciser','To be confirmed'])});
+  const m=MX(p);
+  r.push({k:['Adequação ao produto','Adéquation au produit','Product fit'],v:m?(m.st==='VERIFIED'?3:2):0,w:m?L(m.f)+' · '+L(ST[m.st]):L(['Sem correspondência na matriz','Aucune correspondance dans la matrice','No match in the matrix'])});
+  r.push({k:['Capacidade de decisão','Pouvoir de décision','Decision authority'],v:({decide:3,influence:2,user:1})[a.decision]??0,w:lab('decision')||L(['Por apurar','À préciser','To be confirmed'])});
+  r.push({k:['Orçamento','Budget','Budget'],v:0,w:L(['Não perguntado no diagnóstico. A apurar na conversa.','Non demandé dans le diagnostic. À voir en entretien.','Not asked in the assessment. To cover in conversation.'])});
+  r.push({k:['Compromisso com o próximo passo','Engagement sur la prochaine étape','Commitment to next step'],v:S.lead?(S.lead.demo?3:2):0,w:S.lead?(S.lead.demo?L(['Pediu demonstração','A demandé une démonstration','Requested a demo']):L(['Deixou contacto','A laissé ses coordonnées','Left contact details'])):L(['Sem contacto','Sans contact','No contact'])});
+  return {rows:r,total:r.reduce((s,x)=>s+x.v,0),max:18}}
+function missing(){const a=S.a,m=[];const add=(pt,fr,en)=>m.push(L([pt,fr,en]));
+  if(!a.country)add('País de operação','Pays d’activité','Country of operation');
+  if(!a.team&&a.role!=='owner')add('Dimensão da equipa',"Taille de l'équipe",'Team size');
+  if(!a.decision&&a.role!=='owner')add('Quem decide a compra','Qui décide de l’achat','Who decides the purchase');
+  if(!a.urgency)add('Prazo para resolver','Délai souhaité','Timeline');
+  if((a.chall||[]).length>1&&!(a.chall||[]).includes(a.prio))add('Prioridade entre as dificuldades','Priorité entre les difficultés','Priority among the challenges');
+  if(prio()&&!impact())add('Dados para calcular o impacto (volume e horas)',"Données pour calculer l'impact (volume et heures)",'Data to estimate impact (volume and hours)');
+  else if(impact()&&impact().c==null)add('Custo por hora','Coût horaire','Hourly cost');
+  add('Orçamento disponível','Budget disponible','Available budget');return m}
+
+/* ---------- rendering ---------- */
+function qHTML(id,opts){const d=Q[id],v=S.a[id],list=opts||d.o;
+  let h=`<fieldset class="q"><legend>${esc(L(d.q))}${d.opt?`<small>${L(['opcional','facultatif','optional'])}</small>`:''}</legend>`;
+  if(d.type==='one'||d.type==='multi')h+=`<div class="chips${id==='role'?' big':''}">`+list.map(x=>{const on=d.type==='multi'?(v||[]).includes(x.id):v===x.id;
+    return `<button type="button" class="chip" data-q="${id}" data-v="${x.id}" aria-pressed="${on}">${esc(L(x.l))}</button>`}).join('')+`</div>`;
+  else if(d.type==='num')h+=`<label class="num"><input id="in-${id}" data-in="${id}" type="number" min="0" step="any" inputmode="decimal" value="${v??''}" aria-label="${esc(L(d.q))}"><span>${esc(L(d.unit))}</span></label>`;
+  else h+=`<textarea id="in-${id}" data-in="${id}" rows="2" maxlength="500" aria-label="${esc(L(d.q))}">${esc(v||'')}</textarea>`;
+  return h+`</fieldset>`}
+const forRole=ids=>ids.filter(i=>!(Q[i].not||[]).includes(S.a.role)&&(!Q[i].only||Q[i].only.includes(S.a.role)));
+function impactBox(){if(S.a.role==='owner'){const R=roi();return `<div class="calc"><span class="mono">${L(['O que está em jogo','Ce qui est en jeu','What is at stake'])}</span>${R?`<b class="big">${eur(R.stake)}</b><code>${eur(S.a.own_budget)} × ${nf(S.a.own_overrun)} %</code>`:`<p>${L(['Sem orçamento e derrapagem indicados, não fazemos a conta. Podes avançar assim.','Sans budget ni dépassement indiqués, pas de calcul. Vous pouvez continuer ainsi.','Without a budget and overrun we cannot do the maths. You can carry on as is.'])}</p>`}</div>`}
+  const im=impact();
+  if(!im)return `<div class="calc"><span class="mono">${L(['Impacto','Impact','Impact'])}</span><p>${L(['Ainda não temos dados para calcular. Podes voltar atrás e indicar volume e horas, ou avançar assim.',"Nous n'avons pas encore de données pour calculer. Vous pouvez revenir en arrière pour indiquer volume et heures, ou continuer ainsi.",'We do not have enough data to calculate yet. Go back to add volume and hours, or carry on as is.'])}</p></div>`;
+  const hyp=S.a.hyp??20;
+  return `<div class="calc"><span class="mono">${L(['Tempo que este trabalho ocupa hoje','Temps que ce travail occupe aujourd’hui','Time this work takes today'])}</span>
+   <b class="big">${nf(im.h)} h ${L(['por mês','par mois','a month'])}${im.c!=null?` · ${eur(im.c)}`:''}</b>
+   <code>${esc(im.f)}</code>
+   <span class="note">${L(['Calculado só com os teus números.','Calculé uniquement avec vos chiffres.','Calculated from your own numbers only.'])} ${im.c!=null?L([`Num ano: ${nf(im.h*12)} h e ${eur(im.c*12)}.`,`Sur un an : ${nf(im.h*12)} h et ${eur(im.c*12)}.`,`Over a year: ${nf(im.h*12)} h and ${eur(im.c*12)}.`]):L([`Num ano: ${nf(im.h*12)} h.`,`Sur un an : ${nf(im.h*12)} h.`,`Over a year: ${nf(im.h*12)} h.`])}</span></div>`}
+function sayFor(step){const r=lab('role'),own=S.a.role==='owner';
+  return [L(['Para te mostrar o que interessa, preciso de saber com quem falo.','Pour vous montrer ce qui compte, j’ai besoin de savoir à qui je m’adresse.','To show you what matters, I need to know who I am talking to.']),
+   L([`Percebido: ${r.toLowerCase()}. ${own?'Fala-me do teu projeto.':'Fala-me da tua empresa.'} Responde só ao que quiseres.`,`C'est noté : ${r.toLowerCase()}. ${own?'Parlez-moi de votre projet.':'Parlez-moi de votre entreprise.'} Répondez seulement à ce que vous voulez.`,`Got it: ${r.toLowerCase()}. ${own?'Tell me about your project.':'Tell me about your company.'} Answer only what you want to.`]),
+   L(['Agora o dia a dia. Como é que o trabalho chega e sai da tua mesa?','Passons au quotidien. Comment le travail arrive-t-il sur votre bureau, et comment en repart-il ?','Now the day to day. How does work arrive on your desk and leave it?']),
+   L(PROF[PF[S.a.role]||'o'].say),
+   prio()?L([`Vamos olhar para ${prioLab().toLowerCase()}. Números aproximados chegam.`,`Regardons de près : ${prioLab().toLowerCase()}. Des chiffres approximatifs suffisent.`,`Let’s look at ${prioLab().toLowerCase()}. Rough numbers are enough.`]):L(['Não indicaste uma dificuldade concreta, e está tudo bem.','Vous n’avez pas indiqué de difficulté précise, et ce n’est pas un problème.','You did not name a specific challenge, and that is fine.']),
+   L(['Faço a conta só com os números que me deste.','Je fais le calcul uniquement avec vos chiffres.','I only use the numbers you gave me.']),''][step]}
+function bodyFor(step){
+  if(step===0)return qHTML('role')+(S.a.role&&S.a.role!=='other'?`<div style="display:grid;gap:10px"><span class="mono">${L(['Com este perfil vamos explorar','Avec ce profil, nous allons explorer','With this profile we will explore'])}</span><div class="tags">${needsFor(S.a.role).filter(n=>cat(n.id)!=='other').map(n=>`<span>${esc(L(n.l))}</span>`).join('')}</div></div>`:'');
+  if(step===1)return (S.a.role==='owner'?['country','ptypes']:['country','ctype','team','ptypes','nproj','decision']).map(i=>qHTML(i)).join('');
+  if(step===2&&S.a.role==='owner')return ['owner_stage','plans_in','wf_note'].map(i=>qHTML(i)).join('');
+  if(step===2)return forRole(['software','survey','phases','specialty','boq_fmt','reporting','plans_in','qty_method','est_method','changes','cost_track','share','wf_note']).map(i=>qHTML(i)).join('');
+  if(step===3){const c=S.a.chall||[];return qHTML('chall')+(c.length>1?qHTML('prio',Q.chall.o.filter(x=>c.includes(x.id))):'')}
+  if(step===4){const p=prio();if(S.a.role==='owner')return SETS.own.map(i=>qHTML(i)).join('');return forRole(SETS[p?DEEP[cat(p)]:'none']).filter((v,i,a)=>a.indexOf(v)===i).map(i=>qHTML(i)).join('')}
+  if(step===5)return `<div id="impbox" style="display:grid;gap:16px">${impactBox()}</div>`+(prio()&&DEEP[cat(prio())]==='est'?qHTML('win10')+qHTML('job_value')+qHTML('job_margin'):'')+qHTML('urgency');
+  return ''}
+const SCN={p:.4,m:.6,a:.7},SCN_L={p:['Prudente','Prudent','Cautious'],m:['Médio','Moyen','Medium'],a:['Ambicioso','Ambitieux','Ambitious']};
+/* plan prices come from the platform catalogue (engines/commercial_plans.py), per month, excl. VAT */
+const PLAN={'1':['Solo',99],'2-5':['Professional',249],'6-20':['Business',599],'21-50':['Enterprise',null],'50+':['Enterprise',null]};
+/* REF_H: hours per person per week that better project information can address (FMI/PlanGrid 2018):
+   5.5 h looking for information + 48% of the 4 h of rework that comes from poor information. */
+const TM={'1':1,'2-5':3.5,'6-20':13,'21-50':35,'50+':50},REF_H=7.4;
+function roi(){const a=S.a,r=SCN[a.scn]||SCN.m;
+  if(a.role==='owner'){if(!(a.own_budget>0&&a.own_overrun>0))return null;const stake=a.own_budget*a.own_overrun/100;return {owner:true,r,stake,save:stake*r}}
+  const im=impact(),n=TM[a.team]||null,hc=a.hour_cost>0?a.hour_cost:null;if(!im&&!n)return null;
+  const sh=im?im.h*r:0,th=n?REF_H*n*52/12*r:0,H=sh+th,est=!!im&&DEEP[cat(prio())]==='est';
+  let extra=null,jobs=null,profit=null;
+  if(est){extra=Math.min(a.est_month,sh/(a.est_hours*(1-r)));if(a.win10>0){jobs=extra*Math.min(10,a.win10)/10;if(a.job_value>0&&a.job_margin>0)profit=jobs*a.job_value*a.job_margin/100}}
+  return {im,r,n,sh,th,H,V:hc?H*hc:null,sv:hc&&im?sh*hc:null,tv:hc&&n?th*hc:null,est,extra,jobs,profit,plan:PLAN[a.team]||['Solo',99]}}
+function roiOut(){const R=roi(),k=SCN[S.a.scn]?S.a.scn:'m';
+  if(!R)return `<p>${L(['Indica abaixo quanto tempo este trabalho te ocupa hoje e fazemos a conta.','Indiquez ci-dessous le temps que ce travail vous prend aujourd’hui et nous faisons le calcul.','Tell us below how much time this work takes today and we will do the maths.'])}</p>`;
+  const scn=`<div class="scn" role="group" aria-label="${L(['Cenário','Scénario','Scenario'])}">${['p','m','a'].map(x=>`<button type="button" class="chip" data-scn="${x}" aria-pressed="${x===k}">${L(SCN_L[x])} · ${SCN[x]*100}%</button>`).join('')}</div>`;
+  const yr=L(['por ano','par an','a year']),mo=L(['por mês','par mois','a month']);
+  if(R.owner)return scn+`<div class="roi-big"><div><b>${eur(R.stake)}</b><span>${L(['em jogo se a obra derrapar','en jeu si le chantier dérape','at stake if the build overruns'])}</span></div><div><b>${eur(R.save)}</b><span>${L(['que um bom controlo pode proteger','qu’un bon suivi peut protéger','that good control can protect'])}</span></div></div>
+  <div class="cmp"><div><span>${L(['Sem controlo de custos','Sans suivi des coûts','Without cost control'])}</span><i style="width:100%"></i><b>${eur(R.stake)}</b></div><div class="g"><span>${L(['Com a ConstruPilot (cenário)','Avec ConstruPilot (scénario)','With ConstruPilot (scenario)'])}</span><i style="width:${(100*(1-R.r)).toFixed(0)}%"></i><b>${eur(R.stake-R.save)}</b></div></div>
+  <p class="note">${L(['Cenário baseado nos teus números. Não é uma garantia nem uma medição da ConstruPilot.',"Scénario fondé sur vos chiffres. Ce n'est ni une garantie ni une mesure ConstruPilot.",'Scenario based on your numbers. It is not a guarantee and not a ConstruPilot measurement.'])}</p>`;
+  const pl=R.plan,net=R.V!=null&&pl[1]!=null?R.V-pl[1]:null,netB=R.profit!=null&&pl[1]!=null?R.profit-pl[1]:null;
+  const planTxt=v=>pl[1]==null?L([' Plano Enterprise: preço sob consulta.',' Offre Enterprise : prix sur demande.',' Enterprise plan: price on request.']):v>=0?L([` Depois do plano ${pl[0]} (${eur(pl[1])} por mês, sem IVA), ficam ${eur(v)} por mês.`,` Après l'offre ${pl[0]} (${eur(pl[1])} par mois, HT), il reste ${eur(v)} par mois.`,` After the ${pl[0]} plan (${eur(pl[1])} a month, excl. VAT), that leaves ${eur(v)} a month.`]):L([` Neste cenário, não chega para cobrir o plano ${pl[0]} (${eur(pl[1])} por mês, sem IVA).`,` Dans ce scénario, cela ne couvre pas l'offre ${pl[0]} (${eur(pl[1])} par mois, HT).`,` In this scenario it does not cover the ${pl[0]} plan (${eur(pl[1])} a month, excl. VAT).`]);
+  let h=scn+`<div class="roi-big">${R.V!=null?`<div><b>${eur(R.V*12)}</b><span>${yr}</span></div><div><b>${eur(R.V)}</b><span>${mo}</span></div>`:`<div><b>${nf(R.H*12)} h</b><span>${yr}</span></div>`}<div><b>${nf(R.H)} h</b><span>${L(['ganhas por mês','gagnées par mois','saved a month'])}</span></div></div>`;
+  if(R.im)h+=`<div class="cmp"><div><span>${esc(prioLab())}: ${L(['hoje, método tradicional','aujourd’hui, méthode traditionnelle','today, traditional method'])}</span><i style="width:100%"></i><b>${nf(R.im.h)} h</b></div><div class="g"><span>${L(['Com a ConstruPilot (cenário)','Avec ConstruPilot (scénario)','With ConstruPilot (scenario)'])}</span><i style="width:${(100*(1-R.r)).toFixed(0)}%"></i><b>${nf(R.im.h*(1-R.r))} h</b></div></div>`;
+  h+=`<div class="ways">`+(R.im?`<div><span class="mono">${L(['Na tua prioridade','Sur votre priorité','On your priority'])}</span><p>${L([`${nf(R.sh)} horas ganhas por mês`,`${nf(R.sh)} heures gagnées par mois`,`${nf(R.sh)} hours saved a month`])}${R.sv!=null?L([`, que valem ${eur(R.sv)}.`,`, soit ${eur(R.sv)}.`,`, worth ${eur(R.sv)}.`]):'.'}</p></div>`:'')+
+   (R.n?`<div><span class="mono">${L(['No resto do dia da equipa','Dans le reste de la journée de l’équipe','Across the rest of the team’s day'])}</span><p>${L([`No setor, cada pessoa perde cerca de ${nf(REF_H)} horas por semana a procurar informação e a refazer trabalho. Numa equipa de ${lab('team')}, recuperam-se ${nf(R.th)} horas por mês`,`Dans le secteur, chaque personne perd environ ${nf(REF_H)} heures par semaine à chercher l'information et à refaire le travail. Dans une équipe de ${lab('team')}, on récupère ${nf(R.th)} heures par mois`,`Across the industry, each person loses about ${nf(REF_H)} hours a week looking for information and redoing work. In a team of ${lab('team')}, that recovers ${nf(R.th)} hours a month`])}${R.tv!=null?L([`, que valem ${eur(R.tv)}.`,`, soit ${eur(R.tv)}.`,`, worth ${eur(R.tv)}.`]):'.'}</p></div>`:'')+`</div>
+  <div class="ways"><div><span class="mono">A · ${L(['Poupar','Économiser','Save'])}</span><p>${R.V!=null?L([`O tempo ganho vale ${eur(R.V)} por mês.`,`Le temps gagné vaut ${eur(R.V)} par mois.`,`The time saved is worth ${eur(R.V)} a month.`])+planTxt(net):L(['Indica o custo por hora para ver este tempo em euros.','Indiquez le coût horaire pour voir ce temps en euros.','Add the hourly cost to see this time in euros.'])}</p></div>
+  <div><span class="mono">B · ${L(['Crescer','Développer','Grow'])}</span><p>${R.est?L([`Com as mesmas horas, cabem mais ${nf(R.extra)} orçamentos por mês.`,`Avec les mêmes heures, vous pouvez faire ${nf(R.extra)} devis de plus par mois.`,`In the same hours you can fit ${nf(R.extra)} more estimates a month.`])+(R.jobs!=null?L([` À tua taxa de sucesso, são cerca de ${nf(R.jobs)} obras a mais por mês`,` À votre taux de réussite, cela fait environ ${nf(R.jobs)} chantiers de plus par mois`,` At your win rate that is about ${nf(R.jobs)} more jobs a month`])+(R.profit!=null?L([`, ou ${eur(R.profit)} de margem.`,`, soit ${eur(R.profit)} de marge.`,`, or ${eur(R.profit)} in margin.`])+planTxt(netB):'.'):L([' Indica a tua taxa de sucesso, o valor médio e a margem de uma obra para ver isto em euros.',' Indiquez votre taux de réussite, le montant moyen et la marge d’un chantier pour le voir en euros.',' Add your win rate, average job value and margin to see this in euros.'])):L([`São ${nf(R.H)} horas por mês para trabalho faturável ou para acompanhar mais projetos.`,`Ce sont ${nf(R.H)} heures par mois pour du travail facturable ou pour suivre plus de projets.`,`That is ${nf(R.H)} hours a month for billable work or for taking on more projects.`])}</p></div></div>
+  <p class="note">${L(['Cenários baseados em estudos do setor e nos teus números. Não são uma garantia nem medições da ConstruPilot. A e B são usos alternativos do mesmo tempo e não se somam; em B, o crescimento está limitado ao dobro do teu volume atual. Uma demonstração com um projeto teu confirma o cenário.',"Scénarios fondés sur des études du secteur et sur vos chiffres. Ce ne sont ni une garantie ni des mesures ConstruPilot. A et B sont deux usages du même temps et ne s'additionnent pas ; pour B, la croissance est limitée au double de votre volume actuel. Une démonstration sur l'un de vos projets confirme le scénario.",'Scenarios based on industry studies and your numbers. They are not a guarantee and not ConstruPilot measurements. A and B are alternative uses of the same time and do not add up; in B, growth is capped at double your current volume. A demo on one of your projects confirms the scenario.'])}</p>`;
+  return h}
+const SRC=[
+ ['https://www.arcsite.com/blog/comparing-manual-vs-digital-takeoffs-time-and-accuracy-results',['40%: redução de 30 a 40% no tempo de medição ao passar do método manual para o digital, segundo um fornecedor do setor.','40 % : 30 à 40 % de temps de métré en moins en passant du manuel au numérique, selon un éditeur du secteur.','40%: a 30 to 40% cut in takeoff time moving from manual to digital, according to an industry vendor.']],
+ ['https://www.trimble.com/en/blog/construction/article/actual-results-mep-estimators-ai-assisted-takeoff',['60%: menos 60% de tempo na contagem de elementos com IA, já com revisão humana. Trimble, 1.º semestre de 2026, mais de 4 000 empreiteiros.',"60 % : 60 % de temps en moins pour le comptage d'éléments avec IA, relecture humaine comprise. Trimble, 1er semestre 2026, plus de 4 000 entreprises.",'60%: 60% less time counting objects with AI, human review included. Trimble, first half of 2026, more than 4,000 contractors.']],
+ ['https://www.togal.ai/case-study/peer-reviewed-study-togal-ai-vs-on-screen-takeoff',['70%: cerca de 70% menos tempo em medições com IA, com diferenças abaixo de 5%. Estudo universitário de 2025, com um só utilizador.',"70 % : environ 70 % de temps en moins pour les métrés avec IA, avec des écarts inférieurs à 5 %. Étude universitaire de 2025, avec un seul utilisateur.",'70%: about 70% less takeoff time with AI, with differences under 5%. University study from 2025, with a single user.']],
+ ['https://www.autodesk.com/blogs/construction/survey-plangrid-fmi/',['Tempo tradicional: mais de 14 horas por semana, por pessoa, a procurar informação, resolver conflitos e refazer trabalho. FMI e PlanGrid, 2018, 599 profissionais. Na conta usamos 7,4 horas: 5,5 a procurar informação e 1,9 de trabalho refeito por má informação.',"Temps traditionnel : plus de 14 heures par semaine et par personne à chercher l'information, régler des conflits et refaire le travail. FMI et PlanGrid, 2018, 599 professionnels. Le calcul retient 7,4 heures : 5,5 à chercher l'information et 1,9 de travail refait faute d'information.",'Traditional time: more than 14 hours a week per person looking for information, resolving conflicts and redoing work. FMI and PlanGrid, 2018, 599 professionals. The maths uses 7.4 hours: 5.5 looking for information and 1.9 of rework caused by poor information.']],
+ ['https://www.constructconnect.com/blog/bid-hit-ratio-commercial-gcs-2026',['Taxa de sucesso habitual: 15 a 25% em concursos privados, 30 a 50% em obra negociada. ConstructConnect, 2026.','Taux de réussite habituel : 15 à 25 % en appel d’offres privé, 30 à 50 % en marché négocié. ConstructConnect, 2026.','Typical win rate: 15 to 25% on competitive private bids, 30 to 50% on negotiated work. ConstructConnect, 2026.']],
+ ['https://www.loveproperty.com/news/132704/house-renovation-costs-how-much-does-the-average-project-go-over-budget-by',['Particulares: 55% das grandes remodelações passaram do orçamento. Inquérito a 1 000 proprietários no Reino Unido, 2022.','Particuliers : 55 % des grosses rénovations ont dépassé le budget. Enquête auprès de 1 000 propriétaires au Royaume-Uni, 2022.','Homeowners: 55% of large renovations went over budget. Survey of 1,000 UK homeowners, 2022.']]];
+function srcHTML(){return `<details><summary>${L(['De onde vêm estes cenários','D’où viennent ces scénarios','Where these scenarios come from'])}</summary><ul class="money">${SRC.map(x=>`<li>${esc(L(x[1]))} <a href="${x[0]}" target="_blank" rel="noopener">${L(['Fonte','Source','Source'])}</a></li>`).join('')}</ul><p class="note" style="margin-top:8px">${L(['São resultados de outras ferramentas e de estudos do setor. Servem de referência; não são medições da ConstruPilot.',"Ce sont des résultats d'autres outils et d'études du secteur. Ils servent de repère ; ce ne sont pas des mesures ConstruPilot.",'These are results from other tools and industry studies. They are a reference, not ConstruPilot measurements.'])}</p></details>`}
+function roiHTML(){const p=prio(),own=S.a.role==='owner';if(!p&&!own)return '';const est=!own&&DEEP[cat(p)]==='est';
+  const inp=id=>{const d=Q[id];return `<label>${esc(L(d.q))}<span class="num"><input id="rin-${id}" data-in="${id}" type="number" min="0" step="any" inputmode="decimal" value="${S.a[id]??''}"><span>${esc(L(d.unit))}</span></span></label>`};
+  return `<div class="roi"><div><span class="mono">${L(['Estimativa de ganho com uso diário','Estimation du gain en usage quotidien','Estimated gain from daily use'])}</span><h3>${L(['Onde a ConstruPilot te pode dar dinheiro','Où ConstruPilot peut vous faire gagner de l’argent','Where ConstruPilot can make you money'])}</h3></div>
+  <div id="roi-out" style="display:grid;gap:18px">${roiOut()}</div>
+  <details${roi()?'':' open'}><summary>${L(['Ajustar os meus números','Ajuster mes chiffres','Adjust my numbers'])}</summary><div class="two">${(own?['own_budget','own_overrun']:est?['est_month','est_hours','hour_cost','win10','job_value','job_margin']:['week_hours','hour_cost']).map(inp).join('')}</div></details>
+  ${srcHTML()}
+  <div style="display:grid;gap:8px"><span class="mono">${L(['No dia a dia','Au quotidien','Day to day'])}</span><ul class="money">${PROF[PF[S.a.role]||'o'].money.map(m=>`<li>${esc(L(m))}</li>`).join('')}</ul></div></div>`}
+function narrative(){const p=prio(),im=impact(),r=lab('role'),tm=lab('team');
+  let s=r+(tm?L([`, equipa de ${tm}`,`, équipe de ${tm}`,`, team of ${tm}`]):'')+'. ';
+  if(!p)return s+L(['Não identificámos uma dificuldade concreta nas tuas respostas. Podes explorar a plataforma ao teu ritmo.',"Nous n'avons pas identifié de difficulté précise dans vos réponses. Vous pouvez découvrir la plateforme à votre rythme.",'We did not identify a specific challenge in your answers. You can explore the platform at your own pace.']);
+  if(im)s+=L([`Hoje, ${prioLab().toLowerCase()} ocupa cerca de ${nf(im.h)} horas por mês. `,`Aujourd'hui, ce sujet (${prioLab().toLowerCase()}) occupe environ ${nf(im.h)} heures par mois. `,`Today, ${prioLab().toLowerCase()} takes about ${nf(im.h)} hours a month. `]);
+  if(MX(p))s+=L([`Pelas tuas respostas, ${prioLab().toLowerCase()} pode ser uma área relevante a avaliar. Recomendamos uma demonstração guiada com um projeto representativo.`,`D'après vos réponses, ce sujet (${prioLab().toLowerCase()}) peut être un domaine pertinent à évaluer. Nous recommandons une démonstration guidée sur un projet représentatif.`,`Based on your answers, ${prioLab().toLowerCase()} may be a relevant area to evaluate. We recommend a guided demonstration using a representative construction project.`]);
+  else s+=L(['Ainda não conseguimos associar esta necessidade a uma funcionalidade da ConstruPilot. Preferimos dizê-lo já. Se quiseres, a equipa analisa o teu caso.',"Nous ne pouvons pas encore associer ce besoin à une fonctionnalité de ConstruPilot. Nous préférons le dire tout de suite. Si vous le souhaitez, l'équipe étudiera votre cas.",'We cannot yet match this need to a ConstruPilot feature. We would rather say so now. If you like, the team will look at your case.']);
+  return s}
+function fichaHTML(){const ld=S.lead,sc=score(),ci=PIPE.indexOf(ld.status);
+  const rows=[['Lead ID',ld.id],[L(['Criada em','Créée le','Created']),new Date(ld.created).toLocaleString(LOC[LI])],[L(['Nome','Nom','Name']),ld.name],[L(['Empresa','Entreprise','Company']),ld.company||'—'],['E-mail',ld.email],
+   [L(['País','Pays','Country']),lab('country')||'—'],[L(['Idioma','Langue','Language']),ld.lang],[L(['Profissão','Profession','Role']),lab('role')],[L(['Tipo de empresa',"Type d'entreprise",'Company type']),lab('ctype')||'—'],
+   [L(['Dimensão','Taille','Size']),lab('team')||'—'],[L(['Necessidades','Besoins','Needs']),lab('chall')||'—'],[L(['Prioridade','Priorité','Priority']),prioLab()||'—'],[L(['Software atual','Logiciels actuels','Current software']),lab('software')||'—'],
+   [L(['Impacto estimado','Impact estimé','Estimated impact']),ld.impact||'—'],[L(['Interesse demonstrado','Intérêt exprimé','Interest shown']),ld.demo?L(['Pediu demonstração','Démonstration demandée','Demo requested'])+(ld.goal?': '+ld.goal:''):L(['Pediu o relatório','Rapport demandé','Report requested'])],
+   [L(['Funcionalidades recomendadas','Fonctionnalités recommandées','Recommended features']),ld.features.join(', ')||'—'],[L(['Estado comercial','Statut commercial','Pipeline status']),ld.status],[L(['Responsável','Responsable','Owner']),L(['Por atribuir','À attribuer','Unassigned'])],
+   [L(['Próxima ação','Prochaine action','Next action']),ld.demo?L(['Propor horário real para a demonstração','Proposer un créneau réel pour la démonstration','Offer a real slot for the demo']):L(['Enviar o relatório de diagnóstico','Envoyer le rapport de diagnostic','Send the assessment report'])],
+   [L(['Data de acompanhamento','Date de suivi','Follow-up date']),L(['A definir pela equipa',"À définir par l'équipe",'Set by the team'])],[L(['Origem','Origine','Source']),'ConstruPilot Experience'],[L(['Consentimento','Consentement','Consent']),L(['Dado em','Donné le','Given'])+' '+new Date(ld.consentAt).toLocaleString(LOC[LI])]];
+  return `<details class="blk" id="ficha" open><summary>${L(['Ficha comercial: o que a equipa recebe','Fiche commerciale : ce que reçoit l’équipe','Sales brief: what the team receives'])}</summary>
+   <div class="pipe" aria-label="Pipeline">${PIPE.map((p,i)=>`<span class="${i===ci?'c':i<ci&&p!=='QUALIFIED'?'d':''}">${p}</span>`).join('')}</div>
+   <dl class="kv">${rows.map(r=>`<dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl>
+   <div class="tw"><table><thead><tr><th>${L(['Critério','Critère','Criterion'])}</th><th>${L(['Pontos','Points','Points'])}</th><th>${L(['Porquê','Pourquoi','Why'])}</th></tr></thead><tbody>
+   ${sc.rows.map(r=>`<tr><td>${esc(L(r.k))}</td><td class="n">${r.v} / 3</td><td>${esc(r.w)}</td></tr>`).join('')}
+   <tr><td><b>Total</b></td><td class="n"><b>${sc.total} / ${sc.max}</b></td><td>${sc.total>=9?L(['Sugestão: rever para QUALIFIED. A decisão é da equipa.',"Suggestion : à examiner pour QUALIFIED. La décision revient à l'équipe.",'Suggestion: review for QUALIFIED. The team decides.']):L(['Abaixo do limiar de qualificação (9). Revisão manual possível.','Sous le seuil de qualification (9). Révision manuelle possible.','Below the qualification threshold (9). Manual review possible.'])}</td></tr></tbody></table></div>
+   <p class="note">${L(['A pontuação resume as respostas. Não é uma probabilidade de compra.',"Le score résume les réponses. Ce n'est pas une probabilité d'achat.",'The score summarises the answers. It is not a purchase probability.'])}</p></details>`}
+function resultHTML(){const a=S.a,p=prio(),im=impact(),ch=a.chall||[],order=p?[p,...ch.filter(c=>c!==p)]:[];
+  const feats=[...new Set(order.map(cat))].filter(c=>MATRIX[c]),nomatch=order.filter(c=>!MX(c)),g=GROUP[a.role]||'b';
+  const prof=['country','ctype','team','ptypes','nproj'].map(lab).filter(Boolean);
+  const B=(n,t,h)=>`<div class="blk"><span class="mono">${n} · ${t}</span>${h}</div>`;
+  let h=`<p class="say" style="color:var(--paper);font-size:1.08rem">${esc(narrative())}</p><div class="res">`+roiHTML()+`<details class="blk" id="full"><summary>${L(['Ver a avaliação completa','Voir l\u2019évaluation complète','See the full assessment'])}</summary><div class="res" style="margin-top:0">`;
+  h+=B(1,L(['Perfil','Profil','Profile']),`<p><b>${esc(lab('role'))}</b>${prof.length?' · '+esc(prof.join(' · ')):''}</p>`);
+  h+=B(2,L(['Dificuldades identificadas','Difficultés identifiées','Challenges identified']),ch.length?`<div class="tags">${ch.map(c=>`<span>${esc(L(Q.chall.o.find(x=>x.id===c).l))}</span>`).join('')}</div>`:`<p>${L(['Nenhuma indicada.','Aucune indiquée.','None named.'])}</p>`);
+  h+=B(3,L(['Prioridade','Priorité','Top priority']),`<p>${p?`<b>${esc(prioLab())}</b>`:'—'}</p>`);
+  h+=B(4,L(['Impacto potencial','Impact potentiel','Potential impact']),im?`<p><b>${nf(im.h)} h ${L(['por mês','par mois','a month'])}${im.c!=null?' · '+eur(im.c):''}</b></p><p class="note">${esc(im.f)}</p>`:`<p>${L(['Não calculável com os dados fornecidos.','Non calculable avec les données fournies.','Cannot be calculated from the data provided.'])}</p>`);
+  h+=B(5,L(['Áreas da ConstruPilot a avaliar','Domaines de ConstruPilot à évaluer','ConstruPilot areas to evaluate']),
+   (feats.length?feats.map(c=>{const m=MATRIX[c];return `<div class="feat"><b>${esc(L(m.f))}</b><span><span class="pill">${esc(L(ST[m.st]))}</span></span><span class="note">${esc(L(m.lim))}</span></div>`}).join(''):'')+
+   (nomatch.length||!feats.length?`<p>${p?L(['Para "Outra" ainda não temos uma funcionalidade associada.','Pour « Autre », aucune fonctionnalité associée pour l’instant.','For "Other" we have no matching feature yet.']):L(['Sem necessidade identificada, não recomendamos nada em particular.','Sans besoin identifié, nous ne recommandons rien en particulier.','With no need identified, we recommend nothing in particular.'])}</p>`:''));
+  h+=B(6,L(['Demonstração para o teu perfil','Démonstration adaptée à votre profil','Demo for your profile']),`<div class="tags">${L(DEMO[g]).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p class="note">${L(['Feita com dados de teste ou com um projeto que autorizes. Só entram funcionalidades validadas.','Réalisée avec des données de test ou un projet que vous autorisez. Seules les fonctionnalités validées y figurent.','Run on test data or a project you authorise. Only validated features are shown.'])}</p>`);
+  h+=B(7,L(['Limitações e informação por confirmar','Limites et informations à confirmer','Limitations and information to confirm']),`<ul>${missing().map(x=>`<li>${esc(x)}</li>`).join('')}<li>${L(['Este diagnóstico não prova que a plataforma resolve o problema. Isso só se valida num projeto real.',"Ce diagnostic ne prouve pas que la plateforme résout le problème. Cela se valide uniquement sur un projet réel.",'This assessment does not prove the platform solves the problem. That is only validated on a real project.'])}</li></ul>`);
+  h+=B(8,L(['Próximo passo recomendado','Prochaine étape recommandée','Recommended next step']),`<p><b>${feats.length&&MX(p)?L(['Demonstração guiada com um projeto representativo.','Démonstration guidée sur un projet représentatif.','Guided demonstration on a representative project.']):p?L(['Conversa com a equipa para perceber se faz sentido.',"Échange avec l'équipe pour voir si cela a du sens.",'A conversation with the team to see whether it makes sense.']):L(['Explorar a ConstruPilot ao teu ritmo.','Découvrir ConstruPilot à votre rythme.','Explore ConstruPilot at your own pace.'])}</b></p>`);
+  h+='</div></details>';
+  if(S.lead){h+=`<div class="ok" id="done" tabindex="-1"><b>${L(['Pedido enviado','Demande envoyée','Request sent'])}</b><span>${esc(S.lead.msg||'')}</span></div>`}
+  else h+=`<form class="form" id="lead" novalidate>
+    <div><span class="mono">${L(['Opcional','Facultatif','Optional'])}</span><h3 style="font:600 1.25rem var(--f-d);margin-top:4px">${L(['Queres o relatório ou uma demonstração?','Souhaitez-vous le rapport ou une démonstration ?','Want the report or a demo?'])}</h3>
+    <p class="note">${L(['A avaliação acima é tua, com ou sem contacto.','L’évaluation ci-dessus est à vous, avec ou sans coordonnées.','The assessment above is yours, with or without contact details.'])}</p></div>
+    <div class="two"><label>${L(['Nome','Nom','Name'])}<input type="text" id="f-name" autocomplete="name" maxlength="120" required></label>
+    <label>${L(['Empresa','Entreprise','Company'])}<input type="text" id="f-company" autocomplete="organization" maxlength="120"></label></div>
+    <div class="two"><label>E-mail<input type="email" id="f-email" autocomplete="email" maxlength="160" required></label>
+    <label>${L(['Idioma da demonstração','Langue de la démonstration','Demo language'])}<select id="f-lang"><option value="pt-PT"${LI===0?' selected':''}>Português</option><option value="fr-FR"${LI===1?' selected':''}>Français</option><option value="en"${LI===2?' selected':''}>English</option></select></label></div>
+    <label class="check"><input type="checkbox" id="f-demo"><span>${L(['Quero uma demonstração. A equipa propõe horários depois de consultar a agenda.',"Je souhaite une démonstration. L'équipe propose des créneaux après consultation de l'agenda.",'I want a demo. The team offers time slots after checking the calendar.'])}</span></label>
+    <label>${L(['Objetivo da reunião','Objectif du rendez-vous','Goal of the meeting'])} <input type="text" id="f-goal" maxlength="200"></label>
+    <label class="check"><input type="checkbox" id="f-consent" required><span>${L(['Autorizo a ConstruPilot a usar estes dados para me responder a este pedido. Posso pedir a eliminação a qualquer momento.',"J'autorise ConstruPilot à utiliser ces données pour répondre à cette demande. Je peux demander leur suppression à tout moment.",'I allow ConstruPilot to use these details to answer this request. I can ask for deletion at any time.'])} <a href="/privacidade" target="_blank" rel="noopener">${L(['Política de privacidade','Politique de confidentialité','Privacy policy'])}</a></span></label>
+    <input type="text" id="f-web" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
+    <p class="err" id="f-err" role="alert" hidden></p>
+    <div><button class="btn btn-p" type="submit">${L(['Criar pedido','Créer la demande','Create request'])}</button></div></form>`;
+  return h+'</div>'}
+function render(focusSel){
+  const i=S.step,last=i===6;
+  let h=`<span class="mono">${L(['Diagnóstico','Diagnostic','Assessment'])} · ${L(['passo','étape','step'])} ${i+1} ${L(['de','sur','of'])} 7</span>
+  <div class="prog" aria-hidden="true">${STEPS.map((_,k)=>`<i class="${k<=i?'d':''}"></i>`).join('')}</div>
+  <h2 id="wh" tabindex="-1">${esc(L(i===1&&S.a.role==='owner'?['O teu projeto','Votre projet','Your project']:STEP_T[i]))}</h2>${last?'':`<p class="say">${esc(sayFor(i))}</p>`}`;
+  h+=last?resultHTML():`<div class="qs">${bodyFor(i)}</div>`;
+  if(S.err)h+=`<p class="err" role="alert">${esc(S.err)}</p>`;
+  h+=`<div class="nav">${i>0?`<button type="button" class="btn btn-s" data-nav="-1">${L(['Voltar','Retour','Back'])}</button>`:'<span></span>'}
+   ${last?`<button type="button" class="btn btn-s" data-nav="reset">${L(['Recomeçar','Recommencer','Start over'])}</button>`:`<button type="button" class="btn btn-p" data-nav="1">${i===5?L(['Ver a minha avaliação','Voir mon évaluation','See my assessment']):L(['Continuar','Continuer','Continue'])}</button>`}</div>`;
+  $('#wiz').innerHTML=h;
+  if(focusSel){const f=$(focusSel,$('#wiz'));if(f)f.focus({preventScroll:true})}
+  side();save()}
+function side(){const im=impact(),row=(k,v)=>`<div><dt>${k}</dt><dd>${v?esc(v):'—'}</dd></div>`;
+  $('#side').innerHTML=`<div><span class="mono">${L(['Registo em curso','Dossier en cours','Record in progress'])}</span><h3>${L(['O que já percebemos','Ce que nous avons compris','What we know so far'])}</h3></div>
+  <dl>${row(L(['Perfil','Profil','Profile']),lab('role'))}${row(L(['Empresa','Entreprise','Company']),['country','team','ptypes'].map(lab).filter(Boolean).join(' · '))}
+  ${row(L(['Ferramentas','Outils','Tools']),lab('software'))}${row(L(['Dificuldades','Difficultés','Challenges']),lab('chall'))}${row(L(['Prioridade','Priorité','Priority']),prioLab())}
+  ${row(L(['Impacto','Impact','Impact']),im?`${nf(im.h)} h ${L(['por mês','par mois','a month'])}${im.c!=null?' · '+eur(im.c):''}`:'')}
+  </dl>
+  <p class="note">${L(['Sem contacto pedido até ao fim.',"Aucune coordonnée demandée avant la fin.",'No contact details asked until the end.'])}</p>`}
+function applyLang(){
+  document.documentElement.lang=CODE[LI];
+  $$('[data-t]').forEach(e=>e.textContent=L(T[e.dataset.t]));
+  $$('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.lang===LI)));
+  panel();ctl();setStage(st);studio();render();if(filmApi)filmApi.lang()}
+
+/* ---------- events ---------- */
+const wiz=$('#wiz');
+wiz.addEventListener('click',e=>{
+  const c=e.target.closest('[data-q]');
+  if(c){const id=c.dataset.q,v=c.dataset.v,d=Q[id];S.err='';
+    if(d.type==='multi'){const s=new Set(S.a[id]||[]);s.has(v)?s.delete(v):s.add(v);S.a[id]=[...s]}else S.a[id]=S.a[id]===v?undefined:v;
+    if(id==='role'){S.a.chall=[];S.a.prio=undefined}
+    if(id==='role'&&S.status==='NEW')S.status='DISCOVERY_STARTED';
+    render(`[data-q="${id}"][data-v="${v}"]`);return}
+  const sc=e.target.closest('[data-scn]');if(sc){S.a.scn=sc.dataset.scn;$('#roi-out').innerHTML=roiOut();const f=$(`[data-scn="${S.a.scn}"]`);if(f)f.focus({preventScroll:true});save();return}
+  const n=e.target.closest('[data-nav]');if(!n)return;
+  if(n.dataset.nav==='reset'){S={step:0,a:{},status:'NEW',lead:null,err:''}}
+  else{const d=+n.dataset.nav;
+    if(d>0&&S.step===0&&!S.a.role){S.err=L(['Escolhe a opção que mais se aproxima da tua função.','Choisissez l’option la plus proche de votre rôle.','Pick the option closest to your role.']);render();return}
+    S.err='';S.step=Math.max(0,Math.min(6,S.step+d));
+    if(S.step===6&&(S.status==='NEW'||S.status==='DISCOVERY_STARTED'))S.status='DISCOVERY_COMPLETED'}
+  render('#wh');$('#diagnostico').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'})});
+wiz.addEventListener('input',e=>{const el=e.target.closest('[data-in]');if(!el)return;const id=el.dataset.in;
+  if(el.type==='number'||el.type==='range'){const x=parseFloat(el.value);S.a[id]=Number.isFinite(x)&&x>=0?x:undefined}else S.a[id]=el.value.slice(0,500);
+  if(id==='hyp'){$('#impbox').innerHTML=impactBox();$('#in-hyp').focus()}
+  const ro=$('#roi-out');if(ro)ro.innerHTML=roiOut();
+  side();save()});
+wiz.addEventListener('submit',e=>{e.preventDefault();
+  const name=$('#f-name').value.trim(),email=$('#f-email').value.trim(),err=$('#f-err');let msg='';
+  if(!name)msg=L(['Indica o teu nome.','Indiquez votre nom.','Enter your name.']);
+  else if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))msg=L(['Indica um e-mail válido, por exemplo nome@empresa.pt.','Indiquez un e-mail valide, par exemple nom@entreprise.fr.','Enter a valid email, for example name@company.com.']);
+  else if(!$('#f-consent').checked)msg=L(['Para criar o pedido precisamos da tua autorização.','Pour créer la demande, nous avons besoin de votre autorisation.','We need your permission to create the request.']);
+  if(msg){err.textContent=msg;err.hidden=false;return}
+  const im=impact(),demo=$('#f-demo').checked,now=new Date().toISOString(),ch=S.a.chall||[];
+  const lead={id:'CP-'+now.slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),created:now,name,company:$('#f-company').value.trim(),email,lang:$('#f-lang').value,demo,goal:$('#f-goal').value.trim(),
+    impact:im?`${nf(im.h)} h/${L(['mês','mois','month'])}${im.c!=null?' · '+eur(im.c):''}`:'',features:[...new Set(ch.map(cat))].filter(c=>MATRIX[c]).map(c=>L(MATRIX[c].f)),status:demo?'DEMO_REQUESTED':'DISCOVERY_COMPLETED',consentAt:now};
+  const btn=$('#lead button[type=submit]');btn.disabled=true;err.hidden=true;
+  const A={};Object.keys(S.a).forEach(k=>{if(Q[k]&&!['chall','prio','role'].includes(k)){const v=lab(k);if(v)A[L(Q[k].q).slice(0,200)]=String(v).slice(0,600)}});
+  const R=roi(),needs=ch.map(id=>({id,label:L(Q.chall.o.find(x=>x.id===id).l)})),p=prio(),num=x=>Number.isFinite(x)&&x>=0?+x.toFixed(2):null;
+  fetch('/api/experience/lead',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    name,company:lead.company,email,lang:['pt','fr','en'][LI],demo,demo_lang:lead.lang,goal:lead.goal,consent:true,role:S.a.role,role_label:lab('role'),
+    country:lab('country'),company_type:lab('ctype'),team:S.a.team||'',decision:S.a.decision||'',urgency:S.a.urgency||'',software:lab('software'),
+    needs,priority:p?needs.find(n=>n.id===p)||null:null,features:lead.features,answers:A,
+    estimate:R?(R.owner?{scenario_pct:R.r*100,at_stake_eur:num(R.stake)}:{scenario_pct:R.r*100,hours_month_today:R.im?num(R.im.h):null,hours_month_saved:num(R.H),value_month_eur:num(R.V),extra_estimates_month:num(R.extra),extra_margin_month_eur:num(R.profit)}):{},
+    website:$('#f-web').value,elapsed_ms:Date.now()-T0,submission_id:SUB})})
+  .then(r=>r.ok?r.json():Promise.reject(r.status))
+  .then(j=>{lead.id=j.lead_id||lead.id;lead.msg=j.message||'';S.lead=lead;S.status=lead.status;render('#done')})
+  .catch(()=>{btn.disabled=false;err.textContent=L(['Não foi possível enviar o pedido. Tenta de novo ou escreve para info@construpilot.pt.',"L'envoi de la demande a échoué. Réessayez ou écrivez à info@construpilot.pt.",'The request could not be sent. Try again or write to info@construpilot.pt.']);err.hidden=false})});
+$$('[data-lang]').forEach(b=>b.addEventListener('click',()=>{LI=+b.dataset.lang;applyLang()}));
+$('#cta1').addEventListener('click',e=>{e.preventDefault();$('#diagnostico').scrollIntoView({behavior:reduce?'auto':'smooth'});const f=$('.chip',wiz)||$('#wh');if(f)f.focus({preventScroll:true})});
+
+/* ---------- studio ---------- */
+const M={W:12,D:8,h:2.6,rot:-16,waste:[10,5,5,5],pu:[38,29.5,62,27],margin:15,vat:23,client:''};
+const ITEMS=ROWS.map(r=>r.art), CLI=['Cliente','Client','Customer'], VAT=['IVA','TVA','VAT'];
+const RM=[['r1',0,0,.5,.625],['r2',.5,0,1,.4375],['r3',.5,.4375,1,.625],['r4',0,.625,1/3,1],['r5',1/3,.625,19/24,1],['r6',19/24,.625,1,1]];
+const f1=n=>new Intl.NumberFormat(LOC[LI],{minimumFractionDigits:1,maximumFractionDigits:1}).format(n);
+function calc(){const {W,D,h}=M,A=W*D,inner=1.5*W+1.375*D,per=2*(W+D),q=[A,inner*h,per*(h+.2),A];
+  const ord=q.map((x,i)=>x*(1+M.waste[i]/100)),tot=ord.map((x,i)=>x*M.pu[i]),sub=tot.reduce((a,b)=>a+b,0),mar=sub*M.margin/100,base=sub+mar,vat=base*M.vat/100;
+  return {A,inner,per,q,ord,tot,sub,mar,base,vat,total:base+vat}}
+function draw3d(){const t=$('#m3t');if(!t)return;const {W,D,h}=M,s=Math.min(480/W,320/D),w=W*s,d=D*s,x0=(620-w)/2,y0=(440-d)/2,X=f=>+(x0+f*w).toFixed(1),Y=f=>+(y0+f*d).toFixed(1);
+  const walls=[[`M${X(0)} ${Y(0)}H${X(1)}V${Y(1)}H${X(0)}Z`,6],[`M${X(.5)} ${Y(0)}V${Y(.625)}`,3],[`M${X(0)} ${Y(.625)}H${X(1)}`,3],[`M${X(.5)} ${Y(.4375)}H${X(1)}`,3],[`M${X(1/3)} ${Y(.625)}V${Y(1)}`,3],[`M${X(19/24)} ${Y(.625)}V${Y(1)}`,3]];
+  const wp=c=>walls.map(a=>`<path ${c?`class="${c}"`:''} d="${a[0]}" stroke-width="${a[1]}"/>`).join('');
+  let g=`<svg class="plan" viewBox="0 0 620 440" role="img" aria-label="${esc(L(['Modelo 3D da moradia','Maquette 3D de la maison','3D model of the house']))}">`+
+   RM.map(r=>`<rect class="mr" x="${X(r[1])}" y="${Y(r[2])}" width="${((r[3]-r[1])*w).toFixed(1)}" height="${((r[4]-r[2])*d).toFixed(1)}"/>`).join('')+wp('mw')+
+   `<path class="dim" d="M${X(0)} ${y0-22}H${X(1)}M${X(0)} ${y0-30}V${y0-14}M${X(1)} ${y0-30}V${y0-14}M${x0-22} ${Y(0)}V${Y(1)}M${x0-30} ${Y(0)}H${x0-14}M${x0-30} ${Y(1)}H${x0-14}"/>
+    <text class="dimt" x="310" y="${y0-32}" text-anchor="middle">${f1(W)} m</text><text class="dimt" x="${x0-34}" y="220" text-anchor="middle" transform="rotate(-90 ${x0-34} 220)">${f1(D)} m</text><g text-anchor="middle">`+
+   RM.map(r=>{const cx=(X(r[1])+X(r[3]))/2,cy=(Y(r[2])+Y(r[4]))/2;return `<text class="rname" x="${cx}" y="${cy-3}">${esc(L(T[r[0]]))}</text><text class="rarea" x="${cx}" y="${cy+16}">${f1((r[3]-r[1])*(r[4]-r[2])*W*D)} m²</text>`}).join('')+`</g></svg>`;
+  for(let i=1;i<=9;i++)g+=`<svg class="ext${i===9?' top':''}" viewBox="0 0 620 440" aria-hidden="true" style="transform:translateZ(calc(var(--k,1)*${(i*3*h/2.6).toFixed(2)}px))">${wp('')}</svg>`;
+  t.innerHTML=g;t.style.setProperty('--k',(t.clientWidth/620).toFixed(3))}
+function setRot(){const t=$('#m3t'),i=$('#in-rot'),o=$('#o-rot');if(t)t.style.setProperty('--rz',M.rot+'deg');if(i)i.value=M.rot;if(o)o.textContent=Math.round(M.rot)+'°'}
+function inv(c){const el=$('#inv');if(!el)return;const was=!!$('details[open]',el),k=1+M.margin/100,d=new Date();
+  const xml=`<Invoice>\n  <ID>DEMO 2026/0001</ID>\n  <IssueDate>${d.toISOString().slice(0,10)}</IssueDate>\n  <Customer>${M.client||L(CLI)}</Customer>\n`+
+   ITEMS.map((a,i)=>`  <Line><Item>${L(a)}</Item><Quantity unit="m2">${c.ord[i].toFixed(2)}</Quantity><Price>${(M.pu[i]*k).toFixed(2)}</Price><Amount>${(c.tot[i]*k).toFixed(2)}</Amount></Line>\n`).join('')+
+   `  <TaxableAmount>${c.base.toFixed(2)}</TaxableAmount>\n  <TaxAmount rate="${M.vat}">${c.vat.toFixed(2)}</TaxAmount>\n  <PayableAmount currency="EUR">${c.total.toFixed(2)}</PayableAmount>\n</Invoice>`;
+  el.innerHTML=`<div class="inv-h"><div><b class="inv-t">${L(['Fatura','Facture','Invoice'])}</b><div class="mono" style="margin-top:6px">${L(['Demonstração · sem valor fiscal','Démonstration · sans valeur fiscale','Demo · no fiscal value'])}</div></div><div class="inv-n"><div>DEMO 2026/0001</div><div>${d.toLocaleDateString(LOC[LI])}</div></div></div>
+  <div class="inv-p"><div><span class="mono">${L(['De','De','From'])}</span><div><b>${L(['A tua empresa','Votre entreprise','Your company'])}</b></div></div><div><span class="mono">${L(['Para','Pour','To'])}</span><div><b id="inv-to">${esc(M.client||L(CLI))}</b></div></div></div>
+  <div class="tw"><table><thead><tr><th>${L(['Artigo','Article','Item'])}</th><th>${L(['Qtd.','Qté','Qty'])}</th><th>${L(['Preço unit.','Prix unit.','Unit price'])}</th><th>Total</th></tr></thead><tbody>
+  ${ITEMS.map((a,i)=>`<tr><td>${esc(L(a))}</td><td class="n">${f1(c.ord[i])} m²</td><td class="n">${eur(M.pu[i]*k,2)}</td><td class="n">${eur(c.tot[i]*k,2)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="sum"><div><span>${L(['Base tributável','Total HT','Taxable amount'])}</span><b>${eur(c.base,2)}</b></div><div><span>${L(VAT)} ${nf(M.vat)} %</span><b>${eur(c.vat,2)}</b></div><div class="t"><span>Total</span><b>${eur(c.total,2)}</b></div></div>
+  <details${was?' open':''}><summary>${L(['Ver os dados estruturados','Voir les données structurées','View the structured data'])}</summary><div class="tw"><pre>${esc(xml)}</pre></div><p class="note">${L(['Estrutura ilustrativa. Não é um ficheiro conforme com nenhuma norma.',"Structure illustrative. Ce n'est pas un fichier conforme à une norme.",'Illustrative structure. Not a file compliant with any standard.'])}</p></details>`}
+function upd(){const c=calc(),set=(id,v)=>{const e=$('#'+id);if(e)e.textContent=v};
+  set('o-W',f1(M.W)+' m');set('o-D',f1(M.D)+' m');set('o-h',nf(M.h,2)+' m');setRot();draw3d();
+  const src=[`${f1(M.W)} × ${f1(M.D)} m`,`${f1(c.inner)} m × ${nf(M.h,2)} m`,`${f1(c.per)} m × ${nf(M.h+.2,2)} m`,`${f1(M.W)} × ${f1(M.D)} m`];
+  c.q.forEach((q,i)=>{set('n-'+i,src[i]);set('q-'+i,f1(q)+' m²');set('d-'+i,f1(c.ord[i])+' m²');set('t-'+i,eur(c.tot[i],2))});
+  set('s-sub',eur(c.sub,2));set('s-mar',eur(c.mar,2));set('s-vat',eur(c.vat,2));set('s-total',eur(c.total,2));inv(c);
+  const r=$('#send-res');if(r)r.innerHTML=''}
+function studio(){if(!$('#st-a'))return;
+  const rg=(k,min,max,step,lbl)=>`<div class="rng"><label for="in-${k}"><span>${lbl}</span><output id="o-${k}"></output></label><input id="in-${k}" data-m="${k}" type="range" min="${min}" max="${max}" step="${step}" value="${M[k]}"></div>`;
+  $('#st-a').innerHTML=`<div><span class="mono">1 · ${L(['Criar e medir','Créer et métrer','Create and measure'])}</span><h3>${L(['Define a moradia','Définissez la maison','Set up the house'])}</h3></div>`+
+   rg('W',6,20,.5,L(['Comprimento','Longueur','Length']))+rg('D',5,14,.5,L(['Largura','Largeur','Width']))+rg('h',2.4,3.2,.05,L(['Pé-direito','Hauteur sous plafond','Ceiling height']))+
+   `<div><span class="mono">2 · ${L(['Projeto 3D','Projet 3D','3D project'])}</span></div><div class="m3d" id="m3d"><div class="m3t" id="m3t"></div></div>`+
+   rg('rot',-70,70,1,L(['Rodar o modelo','Faire pivoter la maquette','Rotate the model']))+`<p class="note">${L(['Também podes arrastar o modelo para o rodar.','Vous pouvez aussi faire glisser la maquette pour la faire pivoter.','You can also drag the model to rotate it.'])}</p>`;
+  $('#st-b').innerHTML=`<div><span class="mono">3 · ${L(['Quantidades necessárias','Quantités nécessaires','Quantities needed'])} → 4 · ${L(['Orçamento','Devis','Estimate'])}</span><h3>${L(['Do que mediste ao que custa','De la mesure au coût','From what you measured to what it costs'])}</h3></div>
+   <div class="tw"><table class="st-tab"><thead><tr><th>${L(['Artigo','Article','Item'])}</th><th>${L(['Medição','Métré','Measured'])}</th><th>${L(['Desperdício %','Pertes %','Waste %'])}</th><th>${L(['A encomendar','À commander','To order'])}</th><th>${L(['Preço unit. €','Prix unit. €','Unit price €'])}</th><th>Total</th></tr></thead><tbody>
+   ${ITEMS.map((a,i)=>`<tr><td><b>${esc(L(a))}</b><br><span class="note" id="n-${i}"></span></td><td class="n" id="q-${i}"></td><td><input id="in-w${i}" data-m="waste.${i}" type="number" min="0" max="50" step="1" value="${M.waste[i]}" aria-label="${esc(L(['Desperdício %','Pertes %','Waste %']))}: ${esc(L(a))}"></td><td class="n" id="d-${i}"></td><td><input id="in-p${i}" data-m="pu.${i}" type="number" min="0" step="0.5" value="${M.pu[i]}" aria-label="${esc(L(['Preço unitário','Prix unitaire','Unit price']))}: ${esc(L(a))}"></td><td class="n" id="t-${i}"></td></tr>`).join('')}</tbody></table></div>
+   <div class="sum"><div><span>Subtotal</span><b id="s-sub"></b></div>
+   <div><label for="in-margin">${L(['Margem %','Marge %','Margin %'])}</label><span><input id="in-margin" data-m="margin" type="number" min="0" max="100" step="1" value="${M.margin}"><b id="s-mar"></b></span></div>
+   <div><label for="in-vat">${L(VAT)} %</label><span><input id="in-vat" data-m="vat" type="number" min="0" max="30" step="0.5" value="${M.vat}"><b id="s-vat"></b></span></div>
+   <div class="t"><span>Total</span><b id="s-total"></b></div></div>
+   <p class="note">${L(['Total de cada linha = quantidade a encomendar × preço unitário. Os preços iniciais são exemplos, não são preços da ConstruPilot.','Total de chaque ligne = quantité à commander × prix unitaire. Les prix initiaux sont des exemples, pas des prix ConstruPilot.','Each line total = quantity to order × unit price. Starting prices are examples, not ConstruPilot prices.'])}</p>`;
+  $('#st-c').innerHTML=`<div><span class="mono">5 · ${L(['Fatura eletrónica','Facture électronique','E-invoice'])}</span><h3>${L(['Do orçamento à fatura','Du devis à la facture','From estimate to invoice'])}</h3></div>
+   <div class="inv-grid"><div class="inv" id="inv"></div>
+   <form class="form" id="sendf" novalidate><label>${L(CLI)}<input type="text" id="in-client" data-m="client" maxlength="120" value="${esc(M.client)}"></label>
+   <label>${L(['E-mail do cliente','E-mail du client','Customer email'])}<input type="email" id="in-cmail" maxlength="160"></label>
+   <div><button class="btn btn-p" type="submit">${L(['Simular envio','Simuler l’envoi','Simulate sending'])}</button></div><div id="send-res" aria-live="polite"></div>
+   <p class="note">${L(['Simulação: nada é enviado. Uma fatura eletrónica real tem de ser emitida por software certificado (em Portugal, com ATCUD e código QR, comunicada à Autoridade Tributária).',"Simulation : rien n'est envoyé. Une vraie facture électronique doit passer par une plateforme agréée et respecter le format réglementaire.",'Simulation: nothing is sent. A real e-invoice must be issued by certified software and meet the legal format of the country.'])}</p></form></div>`;
+  upd()}
+const stu=$('#estudio')||document.createElement('div');let drag=null;
+stu.addEventListener('input',e=>{const el=e.target.closest('[data-m]');if(!el)return;const [k,i]=el.dataset.m.split('.');
+  if(k==='client'){M.client=el.value.slice(0,120);const t=$('#inv-to');if(t)t.textContent=M.client||L(CLI);return}
+  let v=parseFloat(el.value);if(!Number.isFinite(v)||(v<0&&k!=='rot'))v=0;
+  if(i!=null)M[k][+i]=v;else M[k]=v;
+  if(k==='rot')setRot();else upd()});
+stu.addEventListener('submit',e=>{e.preventDefault();const m=$('#in-cmail').value.trim(),r=$('#send-res'),c=calc();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(m)){r.innerHTML=`<p class="err" role="alert">${L(['Indica o e-mail do cliente, por exemplo cliente@empresa.pt.','Indiquez l’e-mail du client, par exemple client@entreprise.fr.','Enter the customer email, for example customer@company.com.'])}</p>`;return}
+  r.innerHTML=`<div class="ok"><b>${L(['Envio simulado','Envoi simulé','Sending simulated'])}</b><span>✓ ${L(['Fatura gerada: 4 linhas, total','Facture générée : 4 lignes, total','Invoice generated: 4 lines, total'])} ${eur(c.total,2)}</span><span>✓ ${L(['Dados estruturados preparados','Données structurées préparées','Structured data prepared'])}</span><span>✓ ${L(['Destinatário','Destinataire','Recipient'])}: ${esc(m)}</span><span class="note">${L(['Nada foi enviado nem comunicado à Autoridade Tributária.',"Rien n'a été envoyé ni transmis à l'administration fiscale.",'Nothing was sent or reported to any tax authority.'])}</span></div>`});
+stu.addEventListener('pointerdown',e=>{if(e.target.closest('#m3d'))drag={x:e.clientX,r:M.rot}});
+addEventListener('pointermove',e=>{if(!drag)return;M.rot=Math.max(-70,Math.min(70,drag.r+(e.clientX-drag.x)*.4));setRot()});
+addEventListener('pointerup',()=>{drag=null});addEventListener('pointercancel',()=>{drag=null});
+addEventListener('resize',()=>{const t=$('#m3t');if(t)t.style.setProperty('--k',(t.clientWidth/620).toFixed(3))});
+$$('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=$(a.getAttribute('href'));if(t){e.preventDefault();t.scrollIntoView({behavior:reduce?'auto':'smooth'})}}));
+window.__cpm={M,calc};
+
+/* ---------- film: WebGL tour of every feature, one timeline (chapter = 1 unit of time) ---------- */
+const CH=[
+ {t:['Terreno e licenciamento','Terrain et autorisations','Plot and permits'],d:['O lote, os afastamentos e a implantação da casa.',"La parcelle, les reculs et l'implantation de la maison.",'The plot, the setbacks and where the house sits.']},
+ {t:['Criar ou ler a planta','Créer ou lire le plan','Create or read the drawing'],d:['Descreve a casa por palavras e a planta é criada. Ou carrega a tua e ela é lida.','Décrivez la maison et le plan est créé. Ou importez le vôtre et il est lu.','Describe the house and the drawing is created. Or upload yours and it is read.']},
+ {t:['Medições','Métrés','Takeoff'],d:['Áreas e comprimentos, divisão a divisão.','Surfaces et longueurs, pièce par pièce.','Areas and lengths, room by room.']},
+ {t:['Projeto 3D','Projet 3D','3D project'],d:['O modelo 3D é criado a partir da planta: as paredes ganham altura.','La maquette 3D est créée à partir du plan : les murs prennent de la hauteur.','The 3D model is created from the drawing: walls gain height.']},
+ {t:['Estudos técnicos','Études techniques','Technical studies'],d:['Cria as peças de estrutura, águas e eletricidade. Sempre validadas por um técnico habilitado.','Crée les plans de structure, de plomberie et d\u2019électricité. Toujours validés par un professionnel habilité.','Creates structure, water and electrical layouts. Always validated by a qualified engineer.']},
+ {t:['Quantidades','Quantités','Quantities'],d:['Cada elemento com a sua quantidade e a sua unidade.','Chaque élément avec sa quantité et son unité.','Every element with its quantity and unit.']},
+ {t:['Orçamento','Devis','Estimate'],d:['As quantidades transformam-se em custos. Valores de exemplo.',"Les quantités deviennent des coûts. Valeurs d'exemple.",'Quantities turn into costs. Example values.']},
+ {t:['Planeamento de obra','Planning de chantier','Site planning'],d:['As fases da obra, lado a lado. Durações ilustrativas.','Les phases du chantier, côte à côte. Durées illustratives.','The construction phases side by side. Illustrative durations.']},
+ {t:['Peças desenhadas e documentos','Plans et documents','Drawings and documents'],d:['Cria as plantas de arquitetura e de execução e o caderno de encargos.',"Crée les plans d'architecture et d'exécution ainsi que le CCTP.",'Creates the architectural and construction drawings and the specification.']},
+ {t:['Faturação','Facturation','Invoicing'],d:['Do orçamento à fatura. Envio simulado nesta demonstração.','Du devis à la facture. Envoi simulé dans cette démonstration.','From estimate to invoice. Sending is simulated in this demo.']}];
+const F={T:0,play:true,az:0,ch:-1,pn:-1};
+const PROMPT=['Moradia térrea T2 com 96 m²','Maison de plain-pied, 2 chambres, 96 m²','Single-storey house, 2 bedrooms, 96 m²'];
+const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+const f2=n=>new Intl.NumberFormat(LOC[LI],{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+const vis=(a,b)=>t=>sm((t-a)/.4)*(1-sm((t-b)/.3));
+const GANTT=[[['Fundações','Fondations','Foundations'],0,3],[['Estrutura','Structure','Structure'],3,5],[['Alvenarias','Maçonnerie','Masonry'],8,4],[['Redes','Réseaux','Services'],11,4],[['Acabamentos','Finitions','Finishes'],15,7]];
+const BTOT=ROWS.map(r=>r.q*r.pu),BH=BTOT.map(x=>x/2000);
+const RC=[['r1',-3,-1.5,30],['r2',3,-2.25,21],['r3',3,.25,9],['r4',-4,2.5,12],['r5',.75,2.5,16.5],['r6',4.75,2.5,7.5]];
+const FLD=[
+ {p:[-13,0,10],c:'c',t:()=>L(['Lote','Parcelle','Plot'])+' · 520 m²',v:vis(.3,.95)},
+ {p:[0,0,7],c:'c',t:()=>L(['Afastamento','Recul','Setback'])+' '+f2(6)+' m',v:vis(.5,.95)},
+ {p:[9.5,0,0],c:'c',t:()=>L(['Afastamento','Recul','Setback'])+' '+f2(7)+' m',v:vis(.6,.95)},
+ ...RC.map(r=>({p:[r[1],0,r[2]],c:'g',t:()=>L(T[r[0]])+' · '+f1(r[3])+' m²',v:vis(2.2,3.05)})),
+ {p:[0,0,-5.2],c:'c',t:()=>f2(12)+' m',v:vis(2.4,3.05)},{p:[-7.2,0,0],c:'c',t:()=>f2(8)+' m',v:vis(2.4,3.05)},
+ {p:[-6,2.6,4],c:'',t:()=>L(['Pé-direito','Hauteur sous plafond','Ceiling height'])+' '+f2(2.6)+' m',v:vis(3.6,4)},
+ {p:[6,2.9,-4],c:'q',t:()=>L(['Estrutura','Structure','Structure']),v:vis(4.3,5)},
+ {p:[8,.2,-2.5],c:'',t:()=>L(['Águas','Plomberie','Water']),v:vis(4.4,5)},
+ {p:[-5.5,2.5,2.4],c:'c',t:()=>L(['Eletricidade','Électricité','Electrical']),v:vis(4.5,5)},
+ {p:[-3,0,-1.5],c:'q',t:()=>L(ROWS[0].art)+' · '+f1(96)+' m²',v:vis(5.15,6)},
+ {p:[0,2.7,-1.5],c:'q',t:()=>L(ROWS[1].art)+' · '+f1(75.4)+' m²',v:vis(5.3,6)},
+ {p:[6,1.6,2.5],c:'q',t:()=>L(ROWS[2].art)+' · '+f1(112)+' m²',v:vis(5.45,6)},
+ {p:[-3,3.3,2.5],c:'q',t:()=>L(ROWS[3].art)+' · '+f1(96)+' m²',v:vis(5.6,6)},
+ ...BTOT.map((x,i)=>({p:[9.5,BH[i]+.2,-3+i*2],c:'',t:()=>eur(x,2),v:vis(6.5+i*.15,7.9)})),
+ {p:[9.5,5,0],c:'q',t:()=>L(['Total (exemplo)','Total (exemple)','Total (example)'])+' '+eur(BTOT.reduce((a,b)=>a+b,0),2),v:vis(7.1,7.9)},
+ ...GANTT.map((g,i)=>({p:[-6+g[1]*.55,.3,6.2+i*.75],c:'g',t:()=>L(g[0]),v:vis(7.3+i*.2,8.05)}))];
+let filmApi=null;
+function initFilm(){
+  const host=$('#film'),TH=window.THREE;if(reduce||!TH||!host)return null;
+  let R;try{R=new TH.WebGLRenderer({canvas:$('#fcv'),antialias:true})}catch(e){return null}
+  $('#filmwrap').hidden=false;
+  R.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+  const sc=new TH.Scene();sc.background=new TH.Color(0x04080d);sc.fog=new TH.FogExp2(0x04080d,.011);
+  const cam=new TH.PerspectiveCamera(38,2,.1,400);
+  sc.add(new TH.HemisphereLight(0xcfe9ff,0x06110c,.9));const sun=new TH.DirectionalLight(0xffffff,.8);sun.position.set(-8,14,10);sc.add(sun);
+  const grid=new TH.GridHelper(140,140,0x1fe3c4,0x16404a);grid.material.transparent=true;grid.material.opacity=.2;grid.position.y=-.03;sc.add(grid);
+  const lm=(c,o)=>new TH.LineBasicMaterial({color:c,transparent:true,opacity:o==null?1:o});
+  const bm=(c,o)=>new TH.MeshBasicMaterial({color:c,transparent:true,opacity:o==null?1:o});
+  const segs=(arr,mat,par)=>{const g=new TH.BufferGeometry();g.setAttribute('position',new TH.Float32BufferAttribute(arr,3));const l=new TH.LineSegments(g,mat);(par||sc).add(l);return l};
+  /* plot + setbacks */
+  const plotM=lm(0xf6a968,0);
+  segs([-13,0,-10,13,0,-10, 13,0,-10,13,0,10, 13,0,10,-13,0,10, -13,0,10,-13,0,-10, 0,0,4,0,0,10, 6,0,0,13,0,0],plotM);
+  /* plan lines */
+  const WD=[[-6,-4,6,-4,.25],[6,-4,6,4,.25],[6,4,-6,4,.25],[-6,4,-6,-4,.25],[0,-4,0,1,.12],[-6,1,6,1,.12],[0,-.5,6,-.5,.12],[-2,1,-2,4,.12],[3.5,1,3.5,4,.12]];
+  const planL=segs(WD.flatMap(w=>[w[0],.03,w[1],w[2],.03,w[3]]),lm(0xf4f8f6,1)),planN=WD.length*2;
+  /* floors */
+  const floorM=[bm(0x23c56f,0),bm(0x1fe3c4,0)];floorM.forEach(m=>{m.depthWrite=false});
+  [[-6,-4,0,1],[0,-4,6,-.5],[0,-.5,6,1],[-6,1,-2,4],[-2,1,3.5,4],[3.5,1,6,4]].forEach((r,i)=>{const m=new TH.Mesh(new TH.PlaneGeometry(r[2]-r[0]-.12,r[3]-r[1]-.12),floorM[i%2]);m.rotation.x=-Math.PI/2;m.position.set((r[0]+r[2])/2,.01,(r[1]+r[3])/2);sc.add(m)});
+  /* dimensions */
+  const dimM=lm(0xf6a968,0);
+  segs([-6,0,-5,6,0,-5, -6,0,-5.3,-6,0,-4.7, 6,0,-5.3,6,0,-4.7, -7,0,-4,-7,0,4, -7.3,0,-4,-6.7,0,-4, -7.3,0,4,-6.7,0,4],dimM);
+  /* walls */
+  const walls=new TH.Group();sc.add(walls);
+  const wallM=new TH.MeshStandardMaterial({color:0x9fb0ab,roughness:.9,transparent:true}),edgeM=lm(0x23c56f,.95);
+  WD.forEach(w=>{const dx=w[2]-w[0],dz=w[3]-w[1],len=Math.hypot(dx,dz)+w[4],g=new TH.BoxGeometry(dx?len:w[4],2.6,dz?len:w[4]);g.translate(0,1.3,0);
+    const m=new TH.Mesh(g,wallM);m.position.set((w[0]+w[2])/2,0,(w[1]+w[3])/2);walls.add(m);
+    const e=new TH.LineSegments(new TH.EdgesGeometry(g),edgeM);e.position.copy(m.position);walls.add(e)});
+  /* roof */
+  const roof=new TH.Group();sc.add(roof);
+  const rg=new TH.BufferGeometry();rg.setAttribute('position',new TH.Float32BufferAttribute([-6.4,2.6,-4.5, 6.4,2.6,-4.5, 6.4,4.3,0, -6.4,4.3,0, -6.4,2.6,4.5, 6.4,2.6,4.5],3));rg.setIndex([0,1,2,0,2,3,3,2,5,3,5,4]);
+  const roofM=bm(0xf6a968,0);roofM.side=TH.DoubleSide;roofM.depthWrite=false;roof.add(new TH.Mesh(rg,roofM));
+  const roofE=lm(0xf6a968,0);segs([-6.4,2.6,-4.5,6.4,2.6,-4.5, 6.4,2.6,-4.5,6.4,4.3,0, 6.4,4.3,0,-6.4,4.3,0, -6.4,4.3,0,-6.4,2.6,-4.5, 6.4,4.3,0,6.4,2.6,4.5, 6.4,2.6,4.5,-6.4,2.6,4.5, -6.4,2.6,4.5,-6.4,4.3,0],roofE,roof);
+  /* structure + services */
+  const str=new TH.Group();sc.add(str);const strM=bm(0x1fe3c4,0);
+  [[-6,-4],[6,-4],[6,4],[-6,4],[0,-4],[0,4],[-6,1],[6,1]].forEach(c=>{const g=new TH.BoxGeometry(.34,2.6,.34);g.translate(0,1.3,0);const m=new TH.Mesh(g,strM);m.position.set(c[0],0,c[1]);str.add(m);
+    const f=new TH.Mesh(new TH.BoxGeometry(1,.3,1),strM);f.position.set(c[0],-.16,c[1]);str.add(f)});
+  [[0,-4,12.3,.34],[0,4,12.3,.34],[-6,0,.34,8.3],[6,0,.34,8.3]].forEach(b=>{const m=new TH.Mesh(new TH.BoxGeometry(b[2],.32,b[3]),strM);m.position.set(b[0],2.6,b[1]);str.add(m)});
+  const tube=(pts,c)=>{const m=bm(c,0),t=new TH.Mesh(new TH.TubeGeometry(new TH.CatmullRomCurve3(pts.map(p=>new TH.Vector3(p[0],p[1],p[2])),false,'catmullrom',.04),80,.07,8),m);str.add(t);return m};
+  const tubeM=[tube([[4.7,.15,3.4],[4.7,.15,.3],[3,.15,.3],[3,.15,-2.5],[8,.15,-2.5]],0x7b95ff),tube([[-5.5,2.45,3.5],[-5.5,2.45,1.3],[-.3,2.45,1.3],[-.3,2.45,-3.5],[5.5,2.45,-3.5]],0xf6a968)];
+  /* estimate bars */
+  const bars=BH.map((h,i)=>{const g=new TH.BoxGeometry(.95,1,.95);g.translate(0,.5,0);const m=new TH.Mesh(g,bm([0x23c56f,0x1fe3c4,0xf6a968,0x7b95ff][i],.92));m.position.set(9.5,0,-3+i*2);sc.add(m);return m});
+  /* gantt */
+  const gantt=GANTT.map((d,i)=>{const g=new TH.BoxGeometry(1,.16,.5);g.translate(.5,0,0);const m=new TH.Mesh(g,bm([0x23c56f,0x1fe3c4,0x7b95ff,0xf6a968,0x23c56f][i],.95));m.position.set(-6+d[1]*.55,.08,6.2+i*.75);sc.add(m);return m});
+  /* invoice sheet */
+  const ic=document.createElement('canvas');ic.width=480;ic.height=680;const itx=new TH.CanvasTexture(ic);
+  const drawInv=()=>{const x=ic.getContext('2d');x.fillStyle='#f4f8f6';x.fillRect(0,0,480,680);x.fillStyle='#0b1215';x.font='800 56px Outfit,sans-serif';x.fillText(L(['Fatura','Facture','Invoice']),40,96);
+    x.font='500 20px monospace';x.fillStyle='#55656b';x.fillText('DEMO 2026/0001',40,134);
+    for(let i=0;i<4;i++){x.fillStyle='#c3cec9';x.fillRect(40,210+i*70,230,16);x.fillRect(340,210+i*70,100,16);x.fillStyle='#dfe6e3';x.fillRect(40,246+i*70,400,2)}
+    const g=x.createLinearGradient(240,0,440,0);g.addColorStop(0,'#23c56f');g.addColorStop(1,'#1fe3c4');x.fillStyle=g;x.fillRect(240,522,200,34);
+    x.fillStyle='#0b1215';x.font='700 28px Outfit,sans-serif';x.fillText('Total',40,548);
+    x.font='500 17px monospace';x.fillStyle='#55656b';x.fillText(L(['DEMONSTRAÇÃO · SEM VALOR FISCAL','DÉMONSTRATION · SANS VALEUR FISCALE','DEMO · NO FISCAL VALUE']),40,632);itx.needsUpdate=true};
+  const invM=new TH.MeshBasicMaterial({map:itx,color:0xb8c2be,transparent:true,side:TH.DoubleSide}),sheet=new TH.Mesh(new TH.PlaneGeometry(2.6,3.68),invM);sheet.scale.setScalar(1.6);sc.add(sheet);
+  const px=x=>90+(x+6)*28.3,pz=z=>52+(z+4)*28.3;
+  const basePlan=(x,col,title)=>{x.fillStyle='#f4f8f6';x.fillRect(0,0,520,368);x.strokeStyle=col;x.lineCap='square';WD.forEach(w=>{x.lineWidth=w[4]>.2?5:2.5;x.beginPath();x.moveTo(px(w[0]),pz(w[1]));x.lineTo(px(w[2]),pz(w[3]));x.stroke()});
+    x.fillStyle='#0b1215';x.font='700 21px Outfit,sans-serif';x.fillText(title,24,338);x.font='500 13px monospace';x.fillStyle='#55656b';x.fillText('1:100 · DEMO',400,338)};
+  const SP=[[-5.6,3.9,7.5],[0,4.7,6.5],[5.6,3.9,7.5]];
+  const docs=[x=>basePlan(x,'#0b1215',L(['Planta de arquitetura',"Plan d'architecture",'Architectural plan'])),
+   x=>{basePlan(x,'#9aa8a3',L(['Planta de eletricidade','Plan électrique','Electrical plan']));x.strokeStyle='#d9772b';x.lineWidth=3;x.beginPath();[[-5.5,3.5],[-5.5,1.3],[-.3,1.3],[-.3,-3.5],[5.5,-3.5]].forEach((q,i)=>i?x.lineTo(px(q[0]),pz(q[1])):x.moveTo(px(q[0]),pz(q[1])));x.stroke();RC.forEach(r=>{x.beginPath();x.arc(px(r[1]),pz(r[2]),6,0,7);x.stroke()})},
+   x=>{x.fillStyle='#f4f8f6';x.fillRect(0,0,520,368);x.fillStyle='#0b1215';x.font='800 30px Outfit,sans-serif';x.fillText(L(['Caderno de encargos','CCTP','Specification']),28,62);
+    for(let i=0;i<9;i++){x.fillStyle=i%3?'#c3cec9':'#23c56f';x.fillRect(28,100+i*26,i%3?[420,380,440,300,410,360][i%6]:150,i%3?10:12)}}
+  ].map(draw=>{const cv=document.createElement('canvas');cv.width=520;cv.height=368;const tx=new TH.CanvasTexture(cv),m=new TH.MeshBasicMaterial({map:tx,color:0xb8c2be,transparent:true,opacity:0,side:TH.DoubleSide}),s=new TH.Mesh(new TH.PlaneGeometry(3.9,2.76),m);sc.add(s);return {cv,tx,m,s,draw}});
+  /* bloom */
+  let comp=null;if(TH.EffectComposer&&TH.RenderPass&&TH.UnrealBloomPass){try{comp=new TH.EffectComposer(R);comp.addPass(new TH.RenderPass(sc,cam));comp.addPass(new TH.UnrealBloomPass(new TH.Vector2(256,256),.75,.55,.78))}catch(e){comp=null}}
+  let W=1,H=1,zoom=1;
+  const size=()=>{W=host.clientWidth;H=host.clientHeight;if(!W||!H)return;R.setSize(W,H,false);cam.aspect=W/H;cam.fov=W/H<1?56:38;zoom=W/H<1?1.18:1;cam.updateProjectionMatrix();if(comp)comp.setSize(W,H)};
+  size();if(window.ResizeObserver)new ResizeObserver(size).observe(host);else addEventListener('resize',size);
+  const K=[[0,34,22,0,0,0],[0,24,7,0,0,0],[-9,14,12,0,0,0],[-16,6,13,0,1.3,0],[13,7,14,0,1.3,0],[14,11,7,1,1,0],[21,6,10,7,1.5,0],[2,10,21,0,0,6.5],[0,6.5,23,0,3.2,4],[-8,5,19,0,2.5,6],[0,30,26,0,0,2]];
+  const v=new TH.Vector3(),tg=new TH.Vector3(),ps=new TH.Vector3(),camP=new TH.Vector3(),camT=new TH.Vector3();let azS=0;
+  const posC=new TH.CatmullRomCurve3(K.map(k=>new TH.Vector3(k[0],k[1],k[2])),false,'centripetal'),tgtC=new TH.CatmullRomCurve3(K.map(k=>new TH.Vector3(k[3],k[4],k[5])),false,'centripetal');
+  const eF=$('#ffade'),eB=$('#fbar'),eP=$('#fprompt'),eT=$('#fptxt');
+  function update(t,dt,snap){const a=(t0,d)=>sm((t-t0)/(d||1)),c=Math.min(CH.length-1,Math.floor(t));
+    plotM.opacity=a(0,.8)*(1-.75*a(3,1));
+    planL.geometry.setDrawRange(0,Math.round(planN*a(1.45,1.3)/2)*2);
+    floorM[0].opacity=.32*a(2,.8)*(1-.5*a(3,1));floorM[1].opacity=.26*a(2.2,.8)*(1-.5*a(3,1));
+    dimM.opacity=a(2.3,.6)*(1-a(3.1,.6));
+    walls.visible=t>=3;walls.scale.y=Math.max(.001,a(3,1.5));
+    const xr=a(4,.6)-a(5,.6);wallM.opacity=1-.88*xr;wallM.depthWrite=xr<.05;
+    roof.visible=t>3.4&&t<4.5;roofM.opacity=.4*a(3.45,.4)*(1-a(4,.4));roofE.opacity=roofM.opacity/.4;roof.position.y=(1-a(3.45,.5))*3;
+    str.visible=t>=4.05;strM.opacity=.95*a(4.1,.6)*(1-.85*a(5,.6));tubeM.forEach((m,i)=>{m.opacity=a(4.35+i*.15,.6)*(1-.85*a(5,.6))});
+    bars.forEach((b,i)=>{b.visible=t>=6.05;b.scale.y=Math.max(.001,BH[i]*a(6.1+i*.15,.9))});
+    gantt.forEach((g,i)=>{g.visible=t>=7.05;g.scale.x=Math.max(.001,GANTT[i][2]*.55*a(7.1+i*.2,.8))});
+    const u=Math.min(1,(c+(t-c)*.45+.55*sm(t-c))/CH.length),kd=snap?1:1-Math.exp(-(dt||0)*5);
+    posC.getPoint(u,ps);tgtC.getPoint(u,tg);azS+=(F.az-azS)*(snap?1:1-Math.exp(-(dt||0)*8));
+    ps.sub(tg).multiplyScalar(zoom).applyAxisAngle(TH.Object3D.DefaultUp,azS+Math.sin(t*.9)*.05).add(tg);
+    camP.lerp(ps,kd);camT.lerp(tg,kd);cam.position.copy(camP);cam.lookAt(camT);cam.updateMatrixWorld();
+    const ia=a(9.05,.4);sheet.visible=ia>0;invM.opacity=Math.min(1,ia*2);sheet.position.set(9.5-9.5*ia,2+1.4*ia,9*ia);sheet.lookAt(cam.position);sheet.rotateY((1-ia)*1.2);
+    docs.forEach((d,i)=>{const k=a(8.06+i*.1,.3),o=k*(1-a(9,.3));d.s.visible=o>.01;d.m.opacity=o;d.s.position.set(SP[i][0]*k,1.3+(SP[i][1]-1.3)*k,SP[i][2]*k);d.s.lookAt(cam.position);d.s.scale.setScalar(.4+.95*k)});
+    const po=sm((t-1.02)/.15)*(1-sm((t-1.9)/.1));eP.style.opacity=po.toFixed(2);
+    if(po>.02){const tx=L(PROMPT),n=Math.round(tx.length*Math.min(1,Math.max(0,(t-1.06)/.34)));if(n!==F.pn){F.pn=n;eT.textContent=tx.slice(0,n)}}
+    FLD.forEach(d=>{if(!d.el)return;const o=d.v(t);if(o<.02){d.el.style.opacity=0;return}v.set(d.p[0],d.p[1],d.p[2]).project(cam);if(v.z>1){d.el.style.opacity=0;return}
+      d.el.style.opacity=o.toFixed(2);d.el.style.transform=`translate3d(${((v.x*.5+.5)*W).toFixed(1)}px,${((-v.y*.5+.5)*H).toFixed(1)}px,0) translate(-50%,-130%)`});
+    eF.style.opacity=Math.max(sm((t-CH.length+.2)/.2),1-sm(t/.25)).toFixed(2);eB.style.width=(t/CH.length*100).toFixed(2)+'%';
+    if(c!==F.ch){F.ch=c;$('#fcap').innerHTML=`<span class="mono">${String(c+1).padStart(2,'0')} / ${String(CH.length).padStart(2,'0')}</span><h2>${esc(L(CH[c].t))}</h2><p>${esc(L(CH[c].d))}</p>`;
+      $$('[data-ch]').forEach(b=>{+b.dataset.ch===c?b.setAttribute('aria-current','step'):b.removeAttribute('aria-current')})}}
+  let last=performance.now(),seen=true,lastT=-9,ema=.016,fc=0,ql=0;
+  if(window.IntersectionObserver)new IntersectionObserver(es=>{seen=es[0].isIntersecting}).observe(host);
+  (function frame(now){requestAnimationFrame(frame);const raw=Math.max(0,(now-last)/1000),dt=Math.min(.05,raw);last=now;if(!seen||document.hidden)return;
+    /* adaptive quality: if frames run slow, drop resolution first, then bloom */
+    ema=ema*.92+Math.min(.1,raw)*.08;if(++fc>90&&ema>.024&&ql<3){ql++;fc=0;if(ql===1)R.setPixelRatio(1);else if(ql===2)comp=null;else R.setPixelRatio(.75);size()}
+    if(F.play)F.T=(F.T+dt/4.6)%CH.length;update(F.T,dt,F.T<lastT-1||lastT<0);lastT=F.T;if(comp)comp.render();else R.render(sc,cam)})(last);
+  const fctl=()=>{$('#fctl').innerHTML=CH.map((c,i)=>`<button type="button" class="sbtn" data-ch="${i}" aria-label="${esc(L(c.t))}">${i+1}<span> ${esc(L(c.t))}</span></button>`).join('')+`<button type="button" class="sbtn" id="fpp" style="margin-left:auto">${F.play?L(['Pausar','Pause','Pause']):L(['Reproduzir','Lecture','Play'])}</button>`};
+  $('#fctl').addEventListener('click',e=>{const b=e.target.closest('[data-ch]');if(b){F.T=+b.dataset.ch+(F.play?0:.85);F.ch=-1;return}
+    if(e.target.closest('#fpp')){F.play=!F.play;fctl();F.ch=-1}});
+  let fd=null;host.addEventListener('pointerdown',e=>{fd={x:e.clientX,a:F.az}});
+  addEventListener('pointermove',e=>{if(fd)F.az=Math.max(-1.4,Math.min(1.4,fd.a-(e.clientX-fd.x)*.006))});
+  addEventListener('pointerup',()=>{fd=null});addEventListener('pointercancel',()=>{fd=null});
+  F.probe=t=>{update(t,0,true);return cam.position.toArray()};window.__film=F;
+  return {lang(){const box=$('#flabels');box.innerHTML='';FLD.forEach(d=>{const el=document.createElement('span');el.className='fl '+d.c;el.textContent=d.t();box.appendChild(el);d.el=el});fctl();drawInv();docs.forEach(d=>{d.draw(d.cv.getContext('2d'));d.tx.needsUpdate=true});F.ch=-1;F.pn=-1}}}
+
+/* ---------- boot ---------- */
+function start(d){
+  try{localStorage.removeItem('cpx-v1');localStorage.removeItem(KEY)}catch(e){}
+  const ql=new URLSearchParams(location.search).get('lang')||navigator.language||'pt';LI=/^fr/i.test(ql)?1:/^en/i.test(ql)?2:0;
+  filmApi=initFilm();if(filmApi){$('#fb').hidden=true;playing=false}
+  applyLang();
+  if(playing)timer=setTimeout(tick,1200);
+  window.__cpx={S:()=>S,score,impact,prio,roi};
+}
+const hot=window.claude&&window.claude.hot;
+if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});
+})();
+</script>
+
+</body>
+</html>

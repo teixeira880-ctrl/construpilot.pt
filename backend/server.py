@@ -156,6 +156,8 @@ api_router.include_router(btp_router_routes.router)
 api_router.include_router(billing.router)
 from routes import commercial as commercial_routes  # noqa: E402 — ofertas B2B 2026-11
 api_router.include_router(commercial_routes.router)
+from routes import experience as experience_routes  # noqa: E402 — página pública /experiencia (diagnóstico comercial)
+api_router.include_router(experience_routes.router)
 api_router.include_router(revenue.router)
 api_router.include_router(phase4.router)
 api_router.include_router(phase5.router)
