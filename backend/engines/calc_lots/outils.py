@@ -457,6 +457,8 @@ ESTUDO_CLT_TOOL = _tool(
     "canalização: só quantidades e preços. Disponível só nas contas com o piloto CLT.",
     {"titulo": _NS("título do estudo, p. ex. 'Home A · CLT'"), "local": _NS("local da obra, se conhecido"),
      "empresa": _enum(["clt-rezult"], "marca da empresa no dossier premium (logótipo na capa e nas páginas): clt-rezult = CLT Rezult"),
+     "regime_iva": _enum(["pt", "ua", "ua_export"], "IVA: pt = Portugal 23 % (CIVA art. 18.º); ua = casa construída na Ucrânia, ПДВ 20 % (ПКУ ст. 193.1); "
+                         "ua_export = painéis exportados da Ucrânia, 0 % (ПКУ ст. 195.1.1). Projeto na Ucrânia ou CLT Rezult a construir na Ucrânia → ua"),
      "lingua": _enum(["pt", "en", "uk"], "língua do dossier (null = pt; en = inglês, uk = ucraniano); os números são os mesmos"),
      "pisos_json": _NS("JSON {floors:[…]} no formato da página CLT; null = a última estimativa feita na página CLT da conta")})
 
@@ -857,6 +859,8 @@ def run(name: str, args: dict) -> dict:
                 raise ValueError(f"pisos_json inválido: {exc}") from None
         if not entrada:
             raise ValueError("Sem pisos: faça primeiro a estimativa na página CLT (planos revistos) ou indique pisos_json.")
+        if a.get("regime_iva"):
+            entrada = {**entrada, "vat_regime": a["regime_iva"]}
         o = estudo(entrada, a.get("_parametros") or merged({}), a.get("_biblioteca") or library_merged({}), a.get("titulo"),
                    empresa=a.get("empresa"), local=a.get("local"), lingua=a.get("lingua") or "pt")
         return _ret(o, o["resumo"], o["data"])

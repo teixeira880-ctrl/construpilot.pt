@@ -531,10 +531,11 @@ function Calculation({ report }) {
   const [floors, setFloors] = useState(fromPdf || [newFloor()]);
   const [start, setStart] = useState(new Date().toISOString().slice(0, 10));
   const [mode, setMode] = useState("compra");
+  const [vat, setVat] = useState("pt");
   const [result, setResult] = useState(null);
   const [lot, setLot] = useState(null);
   const [error, setError] = useState("");
-  const body = () => ({ floors, start, start_mode: mode });
+  const body = () => ({ floors, start, start_mode: mode, vat_regime: vat });
   async function calculate(event) {
     event?.preventDefault();
     setError(""); setLot(null);
@@ -554,6 +555,9 @@ function Calculation({ report }) {
       <Field label="Data de início"><input className={input} type="date" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
       <Field label="Começar o plano em"><select className={input} value={mode} onChange={(e) => setMode(e.target.value)}>
         <option value="compra">Compra da matéria-prima</option><option value="fabrico">Início do fabrico</option></select></Field>
+      <Field label="IVA da venda"><select className={input} value={vat} onChange={(e) => setVat(e.target.value)}>
+        <option value="pt">Portugal · 23 % (CIVA art. 18.º)</option><option value="ua">Ucrânia · ПДВ 20 % (ПКУ ст. 193.1)</option>
+        <option value="ua_export">Exportação da Ucrânia · 0 % (ПКУ ст. 195.1.1)</option></select></Field>
     </div>
     {floors.map((floor, i) => <fieldset key={i} className="grid gap-3 rounded border p-3 sm:grid-cols-2 lg:grid-cols-4">
       <legend className="px-1">Piso {i + 1}</legend>
@@ -616,6 +620,7 @@ function Calculation({ report }) {
         </table>
       </details>
       {result.notas_quantidades?.length > 0 && <ul className="list-disc pl-5">{result.notas_quantidades.map((n) => <li key={n}>{n}</li>)}</ul>}
+      {result.total.iva_fonte && <p className="text-sm text-muted-foreground">IVA {result.total.iva_percent}%: {result.total.iva_fonte}</p>}
       {result.hipoteses_por_confirmar.length > 0 && <p className="text-amber-700 dark:text-amber-400">Estimativa com {result.hipoteses_por_confirmar.length} valores por confirmar: {result.hipoteses_por_confirmar.join(" · ")}.</p>}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={button} onClick={createLot}>Criar lote de seguimento com este plano</button>

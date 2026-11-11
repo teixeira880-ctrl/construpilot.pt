@@ -161,6 +161,10 @@ T = {
     "Resultado": ("Result", "Результат"), "VERIFICAR": ("CHECK", "ПЕРЕВІРИТИ"),
     "Valores a confirmar pela empresa": ("Values to be confirmed by the company", "Значення для підтвердження компанією"),
     "nenhum": ("none", "немає"),
+    "IVA aplicado: ": ("VAT applied: ", "Застосований ПДВ: "),
+    "Depende do local da obra e do comprador: casa construída na Ucrânia → ПДВ 20 %; painéis exportados da Ucrânia → 0 % na Ucrânia e IVA do país de destino; obra em Portugal → IVA 23 %.": (
+        "Depends on where the house is built and who buys: house built in Ukraine → VAT 20 %; panels exported from Ukraine → 0 % in Ukraine and the destination country's VAT; site in Portugal → VAT 23 %.",
+        "Залежить від місця будівництва та покупця: будинок в Україні → ПДВ 20 %; панелі на експорт з України → 0 % в Україні та ПДВ країни призначення; об'єкт у Португалії → ПДВ 23 %."),
     "Medições, custos, benefício e plano de seguimento · motor ConstruPilot CLT": ("Take-off, costs, profit and tracking plan · ConstruPilot CLT engine",
                                                                                 "Обміри, витрати, прибуток і план контролю · модуль ConstruPilot CLT"),
     "Dossier completo: medições, custos, benefício e plano de seguimento, da fabricação à entrega da chave.": (
@@ -269,9 +273,16 @@ PARAMS = {
     "work_hours_day": ("Working hours per day", "Робочих годин на день"), "purchase_days": ("Timber purchase and receipt time", "Термін закупівлі та приймання деревини"),
     "transport_days": ("Delivery time to site", "Термін доставки на об'єкт"),
     "fitout_days": ("Services and finishes time to key handover", "Термін інженерних мереж і оздоблення до здачі"),
-    "iva_percent": ("VAT on sale", "ПДВ на продаж"),
+    "iva_percent": ("VAT on sale (Portugal)", "ПДВ на продаж (Португалія)"),
+    "iva_ua_percent": ("Ukrainian VAT (ПДВ) on sale", "ПДВ України на продаж"),
 }
 SOURCES = {
+    'Código Tributário da Ucrânia (Податковий кодекс України), art. 193.1 a): taxa base de ПДВ 20 %. A primeira venda de habitação nova é tributada; o art. 197.1.14 isenta só as vendas seguintes.': (
+        "Tax Code of Ukraine (Податковий кодекс України), art. 193.1(a): base VAT rate 20 %. The first sale of new housing is taxed; art. 197.1.14 exempts only later sales.",
+        "Податковий кодекс України, ст. 193.1 «а»: базова ставка ПДВ 20 %. Перше постачання нового житла оподатковується; п. 197.1.14 звільняє лише наступні продажі."),
+    'Código Tributário da Ucrânia, art. 195.1.1: taxa 0 % na exportação de bens (painéis enviados para fora da Ucrânia); aplica-se o IVA do país de destino.': (
+        "Tax Code of Ukraine, art. 195.1.1: 0 % rate on export of goods (panels shipped outside Ukraine); the destination country's VAT applies there.",
+        "Податковий кодекс України, п. 195.1.1: ставка 0 % на експорт товарів (панелі, вивезені за межі України); застосовується ПДВ країни призначення."),
     "Brandt et al. 2019, BioResources 14(4): perda de 15% na madeira, 1,18 m³ de lamela por m³ de CLT": (
         "Brandt et al. 2019, BioResources 14(4): 15% timber loss, 1.18 m³ of lamella per m³ of CLT",
         "Brandt et al. 2019, BioResources 14(4): втрати деревини 15%, 1,18 м³ ламелей на м³ CLT"),

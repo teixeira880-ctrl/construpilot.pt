@@ -174,6 +174,7 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
              [_("IVA {p} %", p=_n(t["iva_percent"], 0)), _n(t["iva_eur"]), ""], [_("Venda com IVA (cliente final)"), _n(t["receita_com_iva_eur"]), ""],
              [_("Benefício (margem)"), _n(t["margem_eur"]), _("{p} % da venda", p=_n(t["margem_percent"], 1))]]
     B.append(("table", [_("Fase"), "€", _("% do custo")], rows, [100 * W, 45 * W, 35 * W]))
+    B.append(("p", _("IVA aplicado: ") + _(t["iva_fonte"]) + " " + _("Depende do local da obra e do comprador: casa construída na Ucrânia → ПДВ 20 %; painéis exportados da Ucrânia → 0 % na Ucrânia e IVA do país de destino; obra em Portugal → IVA 23 %.")))
     B.append(("chart", G.barres_h([(stage(s), float(t["custos_eur"][s])) for s in STAGE_ORDER if t["custos_eur"].get(s)],
                                   titre=_("Custo por fase"), unite="€"), _("Custo direto e indireto por fase, a partir do orçamento linha a linha.")))
     per = lambda v, d: _n(v / d) if d else "—"

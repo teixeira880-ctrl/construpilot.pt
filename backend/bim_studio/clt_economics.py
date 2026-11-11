@@ -43,6 +43,10 @@ SOURCES = {
     "zaask_pladur": "Zaask Portugal: placa de gesso 1,90–5,03 €/m² de material, instalação média 25 €/m²",
     "zaask_pintura": "Zaask Portugal: pintura interior, média 7 €/m² de mão de obra",
     "rezult_eta": "Rezult ETA-21/0914: adesivo tipo I EN 15425, lamelas de 20 a 43 mm, dosagem não publicada",
+    "pku_193": ("Código Tributário da Ucrânia (Податковий кодекс України), art. 193.1 a): taxa base de ПДВ 20 %. A primeira venda de "
+                "habitação nova é tributada; o art. 197.1.14 isenta só as vendas seguintes."),
+    "pku_195": ("Código Tributário da Ucrânia, art. 195.1.1: taxa 0 % na exportação de bens (painéis enviados para fora da Ucrânia); "
+                "aplica-se o IVA do país de destino."),
     "civa": "Código do IVA, art. 18.º: taxa normal de 23% no continente. A taxa de 6% só se aplica a obras específicas (verba 2.27 e 2.32 da lista I).",
     "agua": "Tarifa municipal (ERSAR não publica uma média nacional por API). Indicar a tarifa do concelho da fábrica.",
 }
@@ -158,6 +162,7 @@ CATALOGUE = {
     "transport_days": ("prazos", "Prazo de entrega na obra", "dias", "2", "hipotese", "Planeamento logístico."),
     "fitout_days": ("prazos", "Prazo de instalações e acabamentos até à entrega da chave", "dias", "60", "hipotese", "Planeamento da empresa e dos subempreiteiros."),
     "iva_percent": ("venda", "IVA sobre a venda", "%", "23", "mercado", "civa"),
+    "iva_ua_percent": ("venda", "ПДВ (IVA ucraniano) sobre a venda", "%", "20", "mercado", "pku_193"),
 }
 
 
@@ -393,6 +398,8 @@ class EstimateInput(BaseModel):
     floors: list[FloorInput] = Field(min_length=1, max_length=20)
     start: date | None = None
     start_mode: Literal["compra", "fabrico"] = "compra"
+    # pt: Portuguese VAT (CIVA art. 18); ua: Ukrainian ПДВ (Tax Code art. 193.1); ua_export: export from Ukraine, 0 % (art. 195.1.1)
+    vat_regime: Literal["pt", "ua", "ua_export"] = "pt"
 
     @model_validator(mode="after")
     def unique(self):
@@ -501,6 +508,9 @@ def estimate(body: EstimateInput, parameters, library):
             "margem_percent": _q(margin * 100 / revenue) if revenue else None,
             "_raw": (cost, revenue, margin, costs),
         })
+    vat, vat_source = {"pt": (p["iva_percent"], parameters["iva_percent"]["source"]),
+                       "ua": (p.get("iva_ua_percent", Decimal(20)), (parameters.get("iva_ua_percent") or {}).get("source") or _source("pku_193")),
+                       "ua_export": (Decimal(0), _source("pku_195"))}[body.vat_regime]
     total_cost = sum((r["_raw"][0] for r in rows), Decimal(0))
     total_revenue = sum((r["_raw"][1] for r in rows), Decimal(0))
     total_margin = total_revenue - total_cost
@@ -513,8 +523,8 @@ def estimate(body: EstimateInput, parameters, library):
         "custos_eur": stages_total, "custo_total_eur": _q(total_cost), "receita_eur": _q(total_revenue),
         "margem_eur": _q(total_margin), "margem_percent": _q(total_margin * 100 / total_revenue) if total_revenue else None,
         "viagens": int(trips), "viagens_materia_prima": int(timber_trips),
-        "iva_percent": float(p["iva_percent"]), "iva_eur": _q(total_revenue * p["iva_percent"] / 100),
-        "receita_com_iva_eur": _q(total_revenue * (1 + p["iva_percent"] / 100)),
+        "iva_percent": float(vat), "iva_eur": _q(total_revenue * vat / 100),
+        "receita_com_iva_eur": _q(total_revenue * (1 + vat / 100)), "iva_regime": body.vat_regime, "iva_fonte": vat_source,
     }
     detail = [{"codigo": l["item"].code, "designacao": l["item"].name, "categoria": l["item"].category, "fase": l["stage"],
                "base": l["item"].basis, "quantidade": _q(l["qty"]), "unidade": l["item"].unit,

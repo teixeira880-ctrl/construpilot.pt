@@ -368,7 +368,7 @@ async def refresh_electricity(band: Literal["MWH_LT20", "MWH20-499", "MWH500-199
 async def _estimate(body, user):
     # the last reviewed floors feed the Assistant's complete CLT study ("estudo_clt_completo")
     await get_db().clt_estimate_inputs.update_one({"_id": tenant_of(user)}, {"$set": {
-        "body": body.model_dump(mode="json", include={"floors", "start", "start_mode"}), "updated_at": now(),
+        "body": body.model_dump(mode="json", include={"floors", "start", "start_mode", "vat_regime"}), "updated_at": now(),
         "updated_by": user["user_id"]}}, upsert=True)
     doc = await get_db().clt_parameters.find_one({"_id": tenant_of(user)}) or {}
     return estimate(body, merged(doc.get("values")), library_merged(await _library(user)))
