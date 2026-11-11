@@ -421,7 +421,6 @@ def estimate_extras(pages):
                     if e["kind"] == "ceiling_height"]
         heights[key] = max(ceilings) + section[key]["floor_buildup_m"] + section[key]["ceiling_zone_m"]
     slab, roof = section["panels"]["laje"], section["panels"]["cobertura"]
-    terrace = sum(e["values"][0] for p in pages if p["page"] == 2 for e in p["evidence"] if e["kind"] == "declared_area")
     out, notes = {}, []
     for number, key in ((2, "RDC"), (3, "+1")):
         review, height = reviews[number], heights[key]
@@ -438,11 +437,12 @@ def estimate_extras(pages):
                            "thickness_mm": 100, "layers": WALL_LAYERS[100],
                            "area_m2": round(door["width_m"] * (height - door["height_m"]), 3)})
         beams = sum(b["length_m"] for b in review["openings"]["steel_beams"])
+        # suspended ceiling = the rooms, to their finished faces: the roof outline also covers the open entrance porch
+        ceiling = sum(r["area_m2"] for r in review["rooms"] if r.get("tipo") != "exterior")
         if key == "RDC":
             roof_area = plates["rdc_roof_only_m2"]
             panels.append({"kind": "cobertura", "label": f"Cobertura do RDC fora do +1 (CLT {roof['thickness_mm']})",
                            "thickness_mm": roof["thickness_mm"], "layers": roof["layers"], "area_m2": round(roof_area, 3)})
-            ceiling = plates["rdc_outline_m2"] - terrace - review["clt_plan_m2"]
             extras = {"ceiling_m2": ceiling, "roof_buildup_m2": roof_area, "slab_buildup_m2": 0}
         else:
             slab_area = plates["upper_plate_m2"] - plates["stair_void_m2"]
@@ -451,7 +451,6 @@ def estimate_extras(pages):
             panels.append({"kind": "cobertura", "label": f"Cobertura do +1 (CLT {roof['thickness_mm']})",
                            "thickness_mm": roof["thickness_mm"], "layers": roof["layers"],
                            "area_m2": round(plates["upper_plate_m2"], 3)})
-            ceiling = plates["upper_plate_m2"] - review["clt_plan_m2"]
             extras = {"ceiling_m2": ceiling, "roof_buildup_m2": plates["upper_plate_m2"], "slab_buildup_m2": slab_area}
         page = next(p for p in pages if p["page"] == number)
         to_m = lambda r: [round(r[0] * page["width"] * review["metre_per_point"], 3), round(r[1] * page["height"] * review["metre_per_point"], 3),
@@ -467,6 +466,7 @@ def estimate_extras(pages):
     notes.extend((
         "A cobertura do RDC fora do +1 usa a composição da cobertura do corte (CLT 140, 5 camadas). Confirmar no projeto de estruturas.",
         f"Altura dos lintéis = altura estrutural do piso − {OPENING_HEAD_M:.2f} m (topo das portas cotadas). Nas janelas o topo não está cotado.",
+        "Teto falso = soma das divisões revistas (faces acabadas). O alpendre de entrada sob a cobertura do RDC fica fora do teto interior.",
         "Abertura da escada na laje medida entre as paredes da escada; confirmar o comprimento real do vão.",
         "Teto falso: área da cobertura ou laje menos a planta das paredes CLT; o terraço coberto fica de fora.",
         "Fundações, laje térrea e caixilharia não fazem parte do fornecimento CLT e não estão no total.",
@@ -550,14 +550,17 @@ def rooms(page, metre_per_point):
 
 
 def exterior_openings(page, metre_per_point, walls, envelope):
-    """Gaps in the CLT walls along the heated envelope: windows and glazed bays, with what spans them."""
+    """Gaps in the CLT walls along the heated envelope: windows and glazed bays, with what spans them.
+    A gap counts only when a reviewed room lies right behind it (within 0.5 m): an open porch is not glazing."""
     gaps = envelope.exterior.difference(union_all(walls).buffer(1.5))
+    behind = union_all([box(r["rect"][0] * page.rect.width, r["rect"][1] * page.rect.height, r["rect"][2] * page.rect.width,
+                            r["rect"][3] * page.rect.height) for r in rooms(page, metre_per_point)])
     bands = [(b, "lintel") for b in _bands(page, LINTEL, metre_per_point)] + \
             [(b, "viga") for b in _bands(page, STEEL_BEAM, metre_per_point)]
     out = []
     for segment in getattr(gaps, "geoms", [gaps]):
         width = segment.length * metre_per_point
-        if width < .3:
+        if width < .3 or not segment.buffer(.5 / metre_per_point, cap_style="flat").intersects(behind):
             continue
         over = next((kind for band, kind in bands if band.buffer(3).intersection(segment).length > .5 * segment.length), None)
         out.append({"largura_m": round(width, 2), "sobre": over, "tipo": "vao_envidracado" if over == "viga" or width > 2 else "janela",
