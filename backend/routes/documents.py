@@ -471,6 +471,10 @@ async def build_deposit_invoice(doc_id: str, user: dict, pct: float = 30) -> dic
         "deposit_pct_of_quote": pct,
         "created_at": now, "updated_at": now,
     }
+    if q.get("chantier_id"):
+        inv["chantier_id"] = q["chantier_id"]
+    await ensure_client_link(user, inv)
+    await _link_source_quote(user, q, inv.get("client_id"))
     await db.pro_documents.insert_one(dict(inv))
     inv.pop("_id", None)
     await db.pro_documents.update_one({"doc_id": q["doc_id"]},
@@ -574,6 +578,10 @@ async def _create_child_invoice(q: dict, user: dict, lines: list, title: str, no
         "created_at": now, "updated_at": now,
     }
     inv.update(extra or {})
+    if q.get("chantier_id") and not inv.get("chantier_id"):
+        inv["chantier_id"] = q["chantier_id"]
+    await ensure_client_link(user, inv)
+    await _link_source_quote(user, q, inv.get("client_id"))
     await db.pro_documents.insert_one(dict(inv))
     inv.pop("_id", None)
     return inv
@@ -892,6 +900,75 @@ async def _find_or_create_client(user_id: str, cl: dict) -> str | None:
         "created_at": _now(), "updated_at": _now(),
     })
     return cid
+
+
+def _snapshot_identity(snap: dict | None, client_name: str = "") -> dict:
+    """Identité exploitable d'un instantané client (y compris les brouillons de l'assistant
+    qui ne stockent que {"last_name": "<nom libre>"})."""
+    snap = dict(snap or {})
+    if not any((snap.get(k) or "").strip() for k in ("email", "company", "first_name", "last_name")):
+        name = (client_name or snap.get("name") or "").strip()
+        if name:
+            snap["last_name"] = name
+    return snap
+
+
+async def _match_client(user_id: str, snap: dict) -> str | None:
+    """Retrouve une fiche CRM existante (e-mail, société, nom complet, ou nom libre = société)."""
+    import re
+    email = (snap.get("email") or "").strip()
+    company = (snap.get("company") or "").strip()
+    first = (snap.get("first_name") or "").strip()
+    last = (snap.get("last_name") or "").strip()
+
+    def _ci(val: str) -> dict:
+        return {"$regex": f"^{re.escape(val)}$", "$options": "i"}
+
+    probes = []
+    if email:
+        probes.append({"email": _ci(email)})
+    if company:
+        probes.append({"company": _ci(company)})
+    if first or last:
+        probes.append({"first_name": _ci(first), "last_name": _ci(last)})
+        full = " ".join(filter(None, [first, last]))
+        # Nom libre saisi via l'assistant : « Cunha Jardins » peut être une société.
+        probes.append({"company": _ci(full)})
+    for q in probes:
+        hit = await db.clients.find_one({"user_id": user_id, **q}, {"_id": 0, "client_id": 1})
+        if hit:
+            return hit["client_id"]
+    return None
+
+
+async def ensure_client_link(user: dict, doc: dict, create: bool = True) -> dict:
+    """Garantit qu'un document (facture, avoir, devis) est rattaché à une fiche CRM :
+    sans client_id, retrouve la fiche correspondant à l'instantané client, ou la crée.
+    Modifie et renvoie `doc`. Ne lève jamais d'erreur (le document reste créé)."""
+    if doc.get("client_id"):
+        return doc
+    try:
+        snap = _snapshot_identity(doc.get("client"), doc.get("client_name") or "")
+        if not any((snap.get(k) or "").strip() for k in ("email", "company", "first_name", "last_name")):
+            return doc
+        cid = await _match_client(user["user_id"], snap)
+        if not cid and create:
+            cid = await _find_or_create_client(user["user_id"], snap)
+        if cid:
+            doc["client_id"] = cid
+            doc["client"] = await _client_snapshot(cid, user) or doc.get("client")
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).warning("client link failed for %s", doc.get("doc_id"), exc_info=True)
+    return doc
+
+
+async def _link_source_quote(user: dict, quote: dict, client_id: str | None) -> None:
+    """Rattache aussi le devis d'origine à la fiche client, s'il ne l'était pas."""
+    if client_id and not quote.get("client_id"):
+        await db.pro_documents.update_one(
+            {"doc_id": quote["doc_id"], "user_id": user["user_id"], "client_id": {"$in": [None, ""]}},
+            {"$set": {"client_id": client_id, "client": await _client_snapshot(client_id, user)}})
+        quote["client_id"] = client_id
 
 
 async def _bump_counter(user_id: str, doc_type: str, seq: int) -> None:
@@ -2347,6 +2424,8 @@ async def quote_to_invoice(doc_id: str, body: ToInvoiceIn,
         "created_at": now,
         "updated_at": now,
     }
+    await ensure_client_link(user, doc)
+    await _link_source_quote(user, q, doc.get("client_id"))
     await db.pro_documents.insert_one(dict(doc))
     doc.pop("_id", None)
     return doc
@@ -2383,6 +2462,10 @@ async def invoice_to_credit_note(doc_id: str, user=Depends(current_user)) -> dic
         "created_at": now,
         "updated_at": now,
     }
+    if inv.get("chantier_id"):
+        doc["chantier_id"] = inv["chantier_id"]
+    await ensure_client_link(user, doc)
+    await _link_source_quote(user, inv, doc.get("client_id"))
     await db.pro_documents.insert_one(dict(doc))
     doc.pop("_id", None)
     return doc
@@ -2443,9 +2526,56 @@ async def delete_payment(doc_id: str, payment_id: str,
     return await _get_owned(doc_id, user)
 
 
+async def _backfill_client_docs(client_id: str, user: dict) -> int:
+    """Rattache à cette fiche les documents orphelins (sans client_id) qui la désignent :
+    même e-mail / société / nom dans l'instantané client, ou facture/avoir issu d'un devis de ce client."""
+    import re
+    uid = user["user_id"]
+    c = await db.clients.find_one({"client_id": client_id, "user_id": uid}, {"_id": 0})
+    if not c:
+        return 0
+    orphan = {"user_id": uid, "$or": [{"client_id": None}, {"client_id": ""}, {"client_id": {"$exists": False}}]}
+
+    def _ci(val: str) -> dict:
+        return {"$regex": f"^\\s*{re.escape(val.strip())}\\s*$", "$options": "i"}
+
+    ors = []
+    email = (c.get("email") or "").strip()
+    company = (c.get("company") or "").strip()
+    first = (c.get("first_name") or "").strip()
+    last = (c.get("last_name") or "").strip()
+    full = " ".join(filter(None, [first, last]))
+    if email:
+        ors.append({"client.email": _ci(email)})
+    if company:
+        ors += [{"client.company": _ci(company)}, {"client.last_name": _ci(company)}, {"client_name": _ci(company)}]
+    if full:
+        ors += [{"client_name": _ci(full)}, {"client.company": _ci(full)}]
+        if first:
+            ors.append({"client.first_name": _ci(first), "client.last_name": _ci(last)})
+        else:
+            ors.append({"client.last_name": _ci(last), "client.first_name": {"$in": [None, ""]}})
+    linked = 0
+    snapshot = await _client_snapshot(client_id, user)
+    if ors:
+        res = await db.pro_documents.update_many(
+            {"$and": [orphan, {"$or": ors}]}, {"$set": {"client_id": client_id, "client": snapshot}})
+        linked += res.modified_count
+    # Factures / avoirs issus d'un devis déjà rattaché à ce client.
+    quote_ids = [d["doc_id"] async for d in db.pro_documents.find(
+        {"user_id": uid, "client_id": client_id, "doc_type": {"$in": ["quote", "invoice"]}}, {"_id": 0, "doc_id": 1})]
+    if quote_ids:
+        res = await db.pro_documents.update_many(
+            {"$and": [orphan, {"$or": [{"parent_doc_id": {"$in": quote_ids}}, {"source_quote_id": {"$in": quote_ids}}]}]},
+            {"$set": {"client_id": client_id, "client": snapshot}})
+        linked += res.modified_count
+    return linked
+
+
 @router.get("/client-summary/{client_id}")
 async def client_summary(client_id: str, user=Depends(current_user)) -> dict:
     """Synthèse par client : devis signés/refusés, factures, encaissements, reste à facturer."""
+    await _backfill_client_docs(client_id, user)
     docs = await db.pro_documents.find(
         {"user_id": user["user_id"], "client_id": client_id}, {"_id": 0, "lines": 0}
     ).sort("created_at", -1).to_list(3000)

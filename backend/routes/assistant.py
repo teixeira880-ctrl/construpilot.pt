@@ -27,6 +27,7 @@ from engines.assistant_trace import save_trace, summarize_inputs, usage_dict
 from engines.assistant_collaboration import COLLABORATION_INSTRUCTIONS, continuity_message
 from engines.assistant_workspace import EXTRA_TOOLS, WORK_INSTRUCTIONS, validate_args, calculate, read_pages, inspect_region, style_preferences
 from engines.platform_agent_tools import PLATFORM_TOOLS, PLATFORM_TOOL_NAMES, PLATFORM_INSTRUCTIONS, execute_platform_tool
+from engines.assistant_crm_tools import CRM_TOOLS, CRM_TOOL_NAMES, CRM_INSTRUCTIONS, execute_crm_tool
 from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS, QUOTE_TOOLS
 from engines.assistant_files import FILE_INSTRUCTIONS, FILE_TOOLS, create_file, create_schema, edit_image, image_requested, owned_artifact, public_artifact
 from engines.section_schema import SCHEMA_TOOL
@@ -267,7 +268,7 @@ def tools_for(user: dict) -> list:
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + CRM_TOOLS
     return [t for t in out if t.get("name") not in BET_SUPERSEDED_TOOL_NAMES]
 
 
@@ -429,6 +430,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
     validate_args(name, args, tools_for(user))
     if name in PLATFORM_TOOL_NAMES:
         return await execute_platform_tool(name, args, user, conv, db)
+    if name in CRM_TOOL_NAMES:
+        return await execute_crm_tool(name, args, user, conv, db)
     if name == "create_downloadable_file":
         return await create_file(args, user, conv)
     if name == "ask_user_choices":
@@ -1446,7 +1449,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
@@ -1741,7 +1744,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
 
 TOOL_STATUS_PT = {"read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
                   "generate_branded_pdf": "Preparação do relatório PDF…", "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "A consultar o orçamento atual…", "update_quote_draft": "A atualizar o rascunho de orçamento…", "add_quote_lines": "A adicionar as linhas ao orçamento…", "find_quote_drafts": "A procurar os seus orçamentos existentes…",
-                  "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…",
+                  "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…",
                   "estimate_budget_range": "Cálculo do intervalo orçamental…", "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…",
                   "search_product_sources": "Pesquisa da documentação oficial do produto…", "fetch_verified_source": "Abertura e verificação da fonte…",
                   "compare_technical_options": "Comparação das soluções técnicas…", "check_dimension_chain": "Cálculo da cadeia de cotas…",
@@ -1758,7 +1761,7 @@ TOOL_STATUS = {"read_building_geometry": "Leitura das plantas e do estudo geoté
                "get_plan_results": "Leitura dos resultados da planta…", "generate_branded_pdf": "Preparação do relatório PDF…",
                "run_construpilot_agent": "Agente em curso — agrupamento, medição e orçamentação…",
                "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "Leitura do orçamento atual…", "update_quote_draft": "Atualização do rascunho de orçamento…", "add_quote_lines": "Adição das linhas ao orçamento…", "find_quote_drafts": "Pesquisa dos seus orçamentos existentes…", "save_user_preference": "Memorização da preferência…",
-               "create_project_task": "Criação da tarefa…", "estimate_budget_range": "Cálculo do intervalo orçamental…",
+               "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…", "estimate_budget_range": "Cálculo do intervalo orçamental…",
                "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…", "search_product_sources": "Pesquisa da documentação oficial do produto…", "fetch_verified_source": "Abertura e verificação da fonte…",
                "compare_technical_options": "Comparação das soluções técnicas…", "check_dimension_chain": "Cálculo da cadeia de cotas…",
                "calculate_quantities": "Cálculo das quantidades…", "compare_dimension_values": "Comparação das cotas…",
