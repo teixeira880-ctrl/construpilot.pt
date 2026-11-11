@@ -8,7 +8,7 @@ import uuid
 from core.db import db
 from engines.assistant_trace import save_trace, summarize_inputs
 
-MAX_STEPS = 24  # plafond de tours d'outils : assez pour lire plusieurs plans ET bâtir un devis
+MAX_STEPS = int(os.environ.get("ASSISTANT_CLAUDE_MAX_STEPS", "32"))  # plafond de tours d'outils : assez pour lire plusieurs plans ET bâtir un devis
                 # multi-étage (create_quote_draft + add_quote_lines par étage) dans le même tour.
                 # Ne touche que les gros dossiers : une demande simple s'arrête dès que le modèle
                 # cesse d'appeler des outils.
