@@ -161,6 +161,7 @@ import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 import CookieConsent from "@/components/CookieConsent";
 import StandBar from "@/components/StandBar";
 import StandMode from "@/pages/StandMode";
+import Experience from "@/pages/Experience";
 import { DomTranslator } from "@/components/DomTranslator";
 
 const PostalFeature = ({ children }) => {
@@ -264,6 +265,8 @@ function AppRouter() {
       <Route path="/demo" element={<Demo />} />
       <Route path="/demo/entrar" element={<DemoPage />} />
       <Route path="/stand" element={<StandMode />} />
+      <Route path="/experiencia" element={<Experience />} />
+      <Route path="/experience" element={<Navigate to="/experiencia" replace />} />
       <Route path="/demo-entrar" element={<DemoPage />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
       <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />
