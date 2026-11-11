@@ -71,6 +71,12 @@ def _wall_geometry(page):
                         "label": f"Troço CLT {id} · {length:.3f} m"})
     markers.extend(_hatched_runs(page, metre_per_point, polygons, markers))
     polygons.extend(Polygon(m.pop("_polygon")) for m in markers if "_polygon" in m)
+    # Plan rectangle of each run in metres (x right, y up), for the fabrication drawings of the dossier.
+    for m in markers:
+        if "length_m" in m:
+            x0, y0, x1, y1 = m["rect"]
+            w, h = page.rect.width * metre_per_point, page.rect.height * metre_per_point
+            m["plan_rect_m"] = [round(x0 * w, 4), round(-y1 * h, 4), round(x1 * w, 4), round(-y0 * h, 4)]
     markers.append({"id": "scale", "status": "measured", "label": scale_label,
                     "rect": _rectangle(page, (scale_box.x0 - 3, scale_box.y0 - 3, scale_box.x1 + 3, scale_box.y1 + 3))})
     return metre_per_point, markers, polygons

@@ -41,12 +41,15 @@ export default function CltEngines() {
     form.delete("floor_name");
     form.delete("elevation_m");
     if (!form.get("scale")) form.delete("scale");
+    // Plan without heights: company standard, RDC 3,00 m and the other floors 2,50 m.
+    const standard = !form.get("height_m");
+    if (standard) form.set("height_m", floors.filter((f) => f.name !== name).length ? "2.5" : "3");
     setBusy("read"); setError("");
     try {
       const { data } = await api.post(`${base}/pdf-paredes`, form);
       setFloors((prev) => [...prev.filter((f) => f.name !== name),
         { name, elevation_m: elevation, walls: data.paredes, scale: data.origem_escala,
-          pending: data.tracejados_por_confirmar.length, rejected: data.rejeitados.length, analysis: data.analise }]);
+          standardHeight: standard, pending: data.tracejados_por_confirmar.length, rejected: data.rejeitados.length, analysis: data.analise }]);
       setResult(null);
     } catch (e) { setError(errText(e)); } finally { setBusy(""); }
   }
@@ -74,7 +77,7 @@ export default function CltEngines() {
       <Field label="Piso"><input className={input} name="floor_name" defaultValue={floors.length ? "+1" : "RDC"} required maxLength={60} /></Field>
       <Field label="Cota da base das paredes (m)"><input className={input} name="elevation_m" type="number" step="0.001" min="-50" max="500" defaultValue={floors.length ? "3.384" : "0"} /></Field>
       <Field label="Página"><input className={input} name="page" type="number" min="1" max="60" defaultValue="2" required /></Field>
-      <Field label="Altura estrutural das paredes (m)"><input className={input} name="height_m" type="number" step="0.001" min="0.5" max="3.5" defaultValue="2.9" required /></Field>
+      <Field label="Altura estrutural das paredes (m)"><input className={input} name="height_m" type="number" step="0.001" min="0.5" max="3.5" placeholder={floors.length ? "standard 2,50" : "standard 3,00"} /></Field>
       <Field label="Escala 1: (vazio = ler na folha)"><input className={input} name="scale" type="number" min="10" max="500" placeholder="50" /></Field>
       <Field label="Camadas"><input className={input} name="layers" type="number" min="3" max="13" defaultValue="5" /></Field>
       <div className="flex items-end"><button className={button} disabled={!!busy}>{busy === "read" ? "A ler…" : "Ler paredes do PDF"}</button></div>
@@ -82,7 +85,7 @@ export default function CltEngines() {
     {floors.length > 0 && <div className="overflow-x-auto rounded border p-3 text-sm">
       <table className="w-full text-left"><thead><tr><th>Piso</th><th>Paredes</th><th>Comprimento (m)</th><th>Volume bruto (m³)</th><th>Juntas</th><th>Escala</th><th>Por confirmar</th><th /></tr></thead>
         <tbody>{floors.map((f) => <tr key={f.name} className="border-t">
-          <td>{f.name}</td><td>{f.walls.length}</td><td>{num.format(f.analysis?.metodos.pecas_producao_m || 0)}</td>
+          <td>{f.name}{f.standardHeight && <span className="block text-xs text-muted-foreground">altura standard</span>}</td><td>{f.walls.length}</td><td>{num.format(f.analysis?.metodos.pecas_producao_m || 0)}</td>
           <td>{num.format(f.analysis?.totais.volume_bruto_m3 || 0)}</td><td>{f.analysis?.juntas.length || 0}</td><td>{f.scale}</td>
           <td>{f.pending} tracejados · {f.rejected} rejeitados</td>
           <td><button type="button" className={secondary} onClick={() => setFloors(floors.filter((x) => x.name !== f.name))}>Retirar</button></td>

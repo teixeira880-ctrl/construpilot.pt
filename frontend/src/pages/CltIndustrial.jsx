@@ -300,7 +300,7 @@ function Lots() {
   </div>;
 }
 
-const groups = { fabrico: "Fabrico", transporte: "Transporte", montagem: "Montagem em obra", prazos: "Prazos", venda: "Venda e impostos" };
+const groups = { geometria: "Alturas standard (planta sem alturas)", fabrico: "Fabrico", transporte: "Transporte", montagem: "Montagem em obra", prazos: "Prazos", venda: "Venda e impostos" };
 const origins = { empresa: "Empresa", mercado: "Média de mercado", hipotese: "Hipótese por confirmar" };
 const stageNames = { compra: "Compra", producao: "Fabrico", transporte: "Transporte", montagem: "Montagem", revestimentos: "Revestimentos e isolamentos", acabamentos: "Instalações e acabamentos", entrega: "Entrega", indiretos: "Engenharia e indiretos", fabrico: "Fabrico" };
 const panelKinds = { laje: "Laje", cobertura: "Cobertura", lintel: "Lintel", parede: "Painel sobre vão" };
@@ -342,8 +342,11 @@ export function floorsFromReport(report) {
     });
     const height = ceilings.length ? Math.max(...ceilings) + extra.floor_buildup_m + extra.ceiling_zone_m : 0;
     const inner = runs.reduce((sum, m) => sum + m.length_m * interiorFaces(m, runs, page.width, page.height), 0);
-    const faces = inner * height;
-    const outer = (2 * runs.reduce((sum, m) => sum + m.length_m, 0) - inner) * height;
+    // No height on the plan: linings use the company standard (RDC 3,00 m, other floors 2,50 m); height_m stays empty so
+    // the server applies the editable standard and labels it in the dossier.
+    const h = height || (i === 0 ? 3 : 2.5);
+    const faces = inner * h;
+    const outer = (2 * runs.reduce((sum, m) => sum + m.length_m, 0) - inner) * h;
     const more = report.estimate_extras?.floors?.[keys[i]];
     const ceiling = more?.ceiling_m2 || 0;
     // Key of the plans: 100 mm = 5 layers; 80+80 mm = two 3-layer panels (4 glued joints, like 5 layers).
@@ -355,7 +358,8 @@ export function floorsFromReport(report) {
       facade_m2: outer.toFixed(2), steel_beam_m: String(more?.steel_beam_m || 0),
       rooms: more?.rooms || [], windows: more?.windows || [], interior_doors: more?.interior_doors || 0,
       ceiling_height_m: more?.ceiling_height_m ?? null, riser_m: more?.riser_m || null,
-      segments: runs.map((m) => ({ ref: m.id, thickness_mm: String(Math.round(m.drawing_width_mm / 10) * 10), length_m: m.length_m.toFixed(3) })) };
+      segments: runs.map((m) => ({ ref: m.id, thickness_mm: String(Math.round(m.drawing_width_mm / 10) * 10), length_m: m.length_m.toFixed(3),
+        rect_m: m.plan_rect_m || null })) };
   });
 }
 
@@ -563,7 +567,7 @@ function Calculation({ report }) {
     {floors.map((floor, i) => <fieldset key={i} className="grid gap-3 rounded border p-3 sm:grid-cols-2 lg:grid-cols-4">
       <legend className="px-1">Piso {i + 1}</legend>
       <Field label="Nome"><input className={input} value={floor.name} onChange={(e) => setFloor(i, "name", e.target.value)} required /></Field>
-      <Field label="Altura estrutural (m)"><input className={input} type="number" min="0.01" step="any" value={floor.height_m} onChange={(e) => setFloor(i, "height_m", e.target.value)} required /></Field>
+      <Field label="Altura estrutural (m)"><input className={input} type="number" min="0.01" step="any" value={floor.height_m} onChange={(e) => setFloor(i, "height_m", e.target.value)} placeholder={i === 0 ? "standard 3,00" : "standard 2,50"} title="Vazio = altura standard da empresa (RDC 3,00 m, outros pisos 2,50 m), editável nos parâmetros" /></Field>
       <Field label="Placa de gesso (m², somando camadas)"><input className={input} type="number" min="0" step="any" value={floor.board_layers_m2} onChange={(e) => setFloor(i, "board_layers_m2", e.target.value)} /></Field>
       <Field label="Pintura (m²)"><input className={input} type="number" min="0" step="any" value={floor.paint_m2} onChange={(e) => setFloor(i, "paint_m2", e.target.value)} /></Field>
       {floor.walls.map((wall, w) => <div key={w} className="grid gap-3 sm:col-span-2 lg:col-span-4 sm:grid-cols-3">

@@ -523,3 +523,43 @@ def test_assistant_complete_clt_study_note(monkeypatch):
     assert r["ok"] and r["data"]["custo_total_eur"] == ref["custo_total_eur"]
     denied = asyncio.run(assistant_bridge.execute_calc_tool("estudo_clt_completo", {}, {"user_id": "u2", "tenant_id": "t1"}, conv, db))
     assert not denied["ok"] and "piloto CLT" in denied["error"]
+
+
+def test_dossier_fabrication_annex_and_standard_heights():
+    """Runs with plan rectangles bring the dimensioned fabrication drawings as Annex A (same references);
+    floors without a height take the company standard: RDC 3,00 m, other floors 2,50 m (editable)."""
+    import pymupdf
+    from bim_studio.clt_economics import EstimateInput, estimate, library_merged, merged
+    from bim_studio.clt_study import note
+
+    def floor(name, height):
+        return {"name": name, "height_m": height, "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "14"}],
+                "segments": [{"ref": f"{name}-A", "thickness_mm": "100", "length_m": "6", "rect_m": [0, 0, 6, 0.1]},
+                             {"ref": f"{name}-B", "thickness_mm": "100", "length_m": "8", "rect_m": [0, 0.1, 0.1, 8.1]}]}
+
+    entrada = {"floors": [floor("RDC", ""), floor("+1", None)]}
+    r = estimate(EstimateInput.model_validate(entrada), merged({}), library_merged({}))
+    assert [f["altura_m"] for f in r["pisos"]] == [3.0, 2.5]
+    assert any("altura standard de 3.00 m" in n for n in r["notas_quantidades"])
+    edited = merged({"standard_height_upper_m": {"value": "2.7"}})
+    assert estimate(EstimateInput.model_validate(entrada), edited, library_merged({}))["pisos"][1]["altura_m"] == 2.7
+    for lingua, words in (("pt", ("Anexo A", "RDC-A", "altura standard da empresa", "Cotas em mm")),
+                          ("en", ("Annex A", "RDC-A", "company standard height", "Dimensions in mm")),
+                          ("uk", ("Додаток A", "RDC-A", "стандартна висота", "Розміри в мм"))):
+        doc = pymupdf.open(stream=note(entrada, merged({}), library_merged({}), "Casa teste", lingua=lingua)["pdf"], filetype="pdf")
+        text = "".join(pg.get_text() for pg in doc)
+        assert all(w in text for w in words), (lingua, [w for w in words if w not in text])
+        assert doc[-1].rect.width > doc[-1].rect.height  # annex sheets in A3 landscape
+
+
+def test_fabrication_dimensions_are_millimetres():
+    import ezdxf, io
+    from bim_studio import clt_drawings, clt_walls
+
+    walls, _ = clt_walls.rectangles_to_axes([[(0, 0), (6, 0), (6, 0.1), (0, 0.1)]], height_m=3.0, nominal_mm=(100.0,))
+    a = clt_walls.analyse(clt_walls.Floor(name="RDC", walls=walls))
+    out = clt_drawings.build([("RDC", walls, a["pecas"])])
+    doc = ezdxf.read(io.StringIO(out["dxf"].decode()))
+    values = {round(d.get_measurement()) for d in doc.modelspace().query("DIMENSION")}
+    texts = " ".join(t.dxf.text for b in doc.blocks if b.name.startswith("*D") for t in b.query("MTEXT TEXT"))
+    assert 6000 in values and "6000" in texts and "600000" not in texts

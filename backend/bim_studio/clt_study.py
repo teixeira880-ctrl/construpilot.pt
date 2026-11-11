@@ -16,7 +16,7 @@ from decimal import Decimal
 from bim_studio import clt_fitout
 from bim_studio import clt_i18n as I
 from bim_studio.clt_economics import (CATALOGUE, CATEGORIES, STAGE_ORDER, EstimateInput, estimate, fitout_floors,
-                                      library_defaults, lot_from_estimate)
+                                      library_defaults, lot_from_estimate, standard_heights)
 
 STAGE_NAMES = {"compra": "Compra de matéria-prima", "fabrico": "Fabrico", "producao": "Produção (energia e mão de obra)",
                "transporte": "Transporte", "montagem": "Montagem", "revestimentos": "Revestimentos e isolamentos",
@@ -121,6 +121,87 @@ def _s_curve(plan, stages):
     return rows
 
 
+def _fabrication(body, title):
+    """Dimensioned fabrication drawings from the plan rectangles of the measured runs (segments with rect_m).
+
+    Each run keeps its take-off reference as wall id, so a quantity line, the plan dimension and the
+    production piece carry the same name. Returns None when no floor has run geometry."""
+    from bim_studio import clt_drawings, clt_nesting, clt_walls
+
+    staged, rows, notes = [], [], []
+    for fl in body.floors:
+        segs = [s for s in fl.segments if s.rect_m]
+        if not segs:
+            continue
+        layers = {w.thickness_mm: w.layers for w in fl.walls}
+        walls = []
+        for seg in segs:
+            x0, y0, x1, y1 = seg.rect_m
+            found, _rej = clt_walls.rectangles_to_axes([[(x0, y0), (x1, y0), (x1, y1), (x0, y1)]], height_m=float(fl.height_m),
+                                                     layers=int(layers.get(seg.thickness_mm, 5)),
+                                                     nominal_mm=(float(seg.thickness_mm),), tolerance_mm=5)
+            if found:
+                walls.append(found[0].model_copy(update={"id": seg.ref, "source": f"take-off {seg.ref}"}))
+            else:
+                notes.append(_("{r}: contorno não convertível em eixo; fica só na tabela de medições.", r=seg.ref))
+        if not walls:
+            continue
+        try:
+            analysis = clt_walls.analyse(clt_walls.Floor(name=fl.name, walls=walls))
+        except ValueError as exc:
+            notes.append(f"{fl.name}: {exc}")
+            continue
+        staged.append((_(fl.name), walls, analysis))
+        by_wall = {}
+        for piece in analysis["pecas"]:
+            by_wall.setdefault(piece["parede"], []).append(piece)
+        measured = {s.ref: s for s in segs}
+        for w in walls:
+            ps = by_wall.get(w.id, [])
+            rows.append([_(fl.name), w.id, _n(w.thickness_mm, 0), _n(measured[w.id].length_m, 3), _n(w.length, 3),
+                         ", ".join(f"{p['id']} {_n(p['comprimento_m'], 3)}" for p in ps) or "—",
+                         _n(sum(p["volume_bruto_m3"] for p in ps), 3)])
+    if not staged:
+        return None
+    pieces = [p for _n_, _w, a in staged for p in clt_nesting.pieces_from_walls(a)]
+    nesting = clt_nesting.plan(clt_nesting.NestingInput(pieces=pieces, time_limit_s=5))
+    drawings = clt_drawings.build([(n, w, a["pecas"]) for n, w, a in staged], nesting, title=title, tr=_)
+    checks = [(n, a["verificacao_volume"]["passed"], a["metodos"]["volume_pecas_m3"], a["metodos"]["volume_uniao_planta_m3"])
+              for n, _w, a in staged]
+    return {"pdf": drawings["pdf"], "folhas": drawings["folhas"], "rows": rows, "notes": notes, "checks": checks,
+            "corte": nesting["total"]}
+
+
+def _annex_pages(drawings, title):
+    """A3 landscape annex pages: the drawing on the left, a title block on the right (the company stamp goes above it)."""
+    import pymupdf
+    from engines.calc_lots import premium
+
+    fr, fb = premium._fontes()
+    src = pymupdf.open(stream=drawings["pdf"], filetype="pdf")
+    out = pymupdf.open()
+    W, H = 1190.55, 841.89
+    for i, sheet in enumerate(drawings["folhas"]):
+        pg = out.new_page(width=W, height=H)
+        pg.insert_font(fontname="cr", fontfile=fr)
+        pg.insert_font(fontname="cb", fontfile=fb)
+        pg.show_pdf_page(pymupdf.Rect(18, 18, W - 252, H - 18), src, i)
+        pg.draw_rect(pymupdf.Rect(12, 12, W - 12, H - 12), color=(0.2, 0.2, 0.2), width=0.8)
+        box = pymupdf.Rect(W - 240, H - 200, W - 30, H - 25)
+        pg.draw_rect(box, color=(0.2, 0.2, 0.2), width=0.6)
+        lines = [(title, 9, True), (_("Anexo A · folha {i} / {n}", i=i + 1, n=len(drawings["folhas"])), 8, False),
+                 (sheet["folha"][:58], 7.5, True), (_("Cotas em mm · desenho sem escala"), 7, False),
+                 (_("Origem: troços medidos no take-off (mesmas referências das tabelas)"), 6.2, False),
+                 (_("Desenho de conferência de fabrico. Não substitui o projeto de execução."), 6.2, False),
+                 ("ConstruPilot · " + date.today().isoformat(), 6.2, False)]
+        y = box.y0 + 16
+        for text, size, bold in lines:
+            pg.insert_textbox(pymupdf.Rect(box.x0 + 8, y - size, box.x1 - 6, y + 2 * size), text, fontname="cb" if bold else "cr",
+                              fontsize=size, color=(0.1, 0.1, 0.1))
+            y += size * 2.1 if len(text) > 50 else size * 1.7
+    return out
+
+
 def note(entrada: dict, parametros: dict, biblioteca: dict, titulo: str | None = None, empresa: str | None = None,
          anexos: list | None = None, local: str | None = None, capa_imagem: bytes | None = None, lingua: str = "pt") -> dict:
     """entrada: EstimateInput as JSON; parametros / biblioteca: the account's merged parameters and library;
@@ -148,6 +229,8 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
     stage = lambda s: _(STAGE_NAMES.get(s, s))
 
     body = EstimateInput.model_validate(entrada)
+    standard_h = {fl.name for fl in body.floors if fl.height_m is None}
+    body, _height_notes = standard_heights(body, parametros)
     r = estimate(body, parametros, biblioteca)
     t, plan = r["total"], r["plano"]
     p = {k: Decimal(str(v["value"])) for k, v in parametros.items()}
@@ -188,7 +271,8 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
     B.append(("h2", _("2. Medições (métrés)")))
     B.append(("p", _("Medidas nos planos vetoriais revistos na página CLT: cada troço de parede, cada painel, vão e divisão tem a sua referência de leitura. Altura estrutural de cada piso = pé-direito acabado + pavimento + zona do teto falso, medidos no corte.")))
     for fl, row in zip(body.floors, r["pisos"]):
-        B.append(("p", _("Piso {f} · altura estrutural {h} m", f=_(fl.name), h=_n(fl.height_m, 3))))
+        B.append(("p", _("Piso {f} · altura estrutural {h} m", f=_(fl.name), h=_n(fl.height_m, 3))
+                  + (" · " + _("altura standard da empresa: a planta não marca alturas (editável)") if fl.name in standard_h else "")))
         if fl.segments:
             segs = [[s.ref, _n(s.thickness_mm, 0), _n(s.length_m, 3), _n(s.length_m * fl.height_m), _n(s.length_m * fl.height_m * s.thickness_mm / 1000, 3)]
                     for s in fl.segments]
@@ -332,6 +416,24 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
     B.append(("p", _("Controlos automáticos")))
     B.append(("table", [_("Controlo"), _("Valores"), _("Resultado")], checks, [100 * W, 55 * W, 25 * W]))
 
+    fab = _fabrication(body, titre)
+    if fab:
+        B.append(("h2", _("Anexo A — Desenhos de fabrico cotados (origem das cotas e medições)")))
+        B.append(("p", _("Cada troço medido no take-off é desenhado com a mesma referência: a planta cota o comprimento de cada parede ao milímetro, "
+                         "os alçados cotam cada peça de produção (comprimento, altura e vãos) e o plano de corte mostra os painéis de prensa. "
+                         "As juntas resolvem-se sem contagem dupla: a parede mais comprida passa e a outra encosta.")))
+        B.append(("table", [_("Piso"), _("Ref. take-off"), _("Espessura mm"), _("Medido m"), _("Desenhado m"), _("Peças de produção m"), _("Volume m³")],
+                  fab["rows"], [16 * W, 24 * W, 18 * W, 20 * W, 22 * W, 56 * W, 24 * W]))
+        checks_rows = [[_(n), f"{_n(a, 3)} / {_n(b, 3)} m³", "OK" if ok else _("VERIFICAR")] for n, ok, a, b in fab["checks"]]
+        B.append(("table", [_("Controlo volume: peças / união das plantas"), _("Valores"), _("Resultado")], checks_rows, [100 * W, 55 * W, 25 * W]))
+        B.append(("p", _("Plano de corte: {n} painéis de prensa, desperdício {d} % (formato Rezult 18 × 3,5 m).",
+                         n=fab["corte"]["paineis"], d=_n(fab["corte"]["desperdicio_percent"], 1))))
+        for line in fab["notes"]:
+            B.append(("p", line))
+    else:
+        B.append(("h2", _("Anexo A — Desenhos de fabrico cotados (origem das cotas e medições)")))
+        B.append(("p", _("Sem geometria dos troços nesta estimativa: volte a calcular na página CLT a partir do PDF para juntar os desenhos cotados.")))
+
     for title, png, caption in anexos or []:
         B.append(("h2", title))
         pix = pymupdf.Pixmap(png)
@@ -352,6 +454,10 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
             if hit:
                 index.append((block[1], hit))
     png = doc[0].get_pixmap(dpi=110).tobytes("png")
+    n_note = len(doc)
+    if fab:
+        doc.insert_pdf(_annex_pages(fab, titre))
+        body_pdf = doc.tobytes()
     capa = {"titulo": titre, "subtitulo": _("Dossier completo: medições, custos, benefício e plano de seguimento, da fabricação à entrega da chave."),
             "local": local or "", "data": _("Início previsto {a} · entrega {b}", a=plan["inicio"], b=plan["fim"]),
             "kpis": [(_("Custo total"), _n(t["custo_total_eur"], 0), "€"), (_("Venda com IVA"), _n(t["receita_com_iva_eur"], 0), "€"),
@@ -360,7 +466,7 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
                      (_("Prazo"), str(plan["dias"]), _("dias de calendário")), (_("Área útil"), _n(useful), _("m²")),
                      (_("Hipóteses"), str(len(hyp)), _("valores a confirmar"))],
             "indice": index, "miniatura_pagina": None, "capa_imagem": capa_imagem}
-    pdf = premium.embelezar(body_pdf, capa, premium.marca(empresa) if empresa else None, tr=_tr)
+    pdf = premium.embelezar(body_pdf, capa, premium.marca(empresa) if empresa else None, n_nota=n_note, tr=_tr)
     resumo = [f"{titre}: custo {_n(t['custo_total_eur'], 0)} €, venda {_n(t['receita_eur'], 0)} € sem IVA "
               f"({_n(t['receita_com_iva_eur'], 0)} € com IVA {_n(t['iva_percent'], 0)} %), benefício {_n(t['margem_eur'], 0)} € ({_n(t['margem_percent'], 1)} %).",
               f"CLT {_n(t['fabrico_m3'])} m³, montagem {_n(t['montagem_m2'])} m², prazo {plan['dias']} dias ({plan['inicio']} → {plan['fim']}).",

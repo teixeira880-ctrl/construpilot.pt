@@ -161,6 +161,10 @@ CATALOGUE = {
     "purchase_days": ("prazos", "Prazo de compra e receção da madeira", "dias", "21", "hipotese", "Prazo do fornecedor."),
     "transport_days": ("prazos", "Prazo de entrega na obra", "dias", "2", "hipotese", "Planeamento logístico."),
     "fitout_days": ("prazos", "Prazo de instalações e acabamentos até à entrega da chave", "dias", "60", "hipotese", "Planeamento da empresa e dos subempreiteiros."),
+    "standard_height_ground_m": ("geometria", "Altura standard do RDC (quando a planta não marca alturas)", "m", "3.00", "empresa",
+                                 "Standard da empresa: RDC 3,00 m quando a planta não indica altura."),
+    "standard_height_upper_m": ("geometria", "Altura standard dos outros pisos (quando a planta não marca alturas)", "m", "2.50", "empresa",
+                                "Standard da empresa: 2,50 m nos pisos acima do RDC quando a planta não indica altura."),
     "iva_percent": ("venda", "IVA sobre a venda", "%", "23", "mercado", "civa"),
     "iva_ua_percent": ("venda", "ПДВ (IVA ucraniano) sobre a venda", "%", "20", "mercado", "pku_193"),
 }
@@ -366,11 +370,15 @@ class Segment(BaseModel):
     ref: str = Field(min_length=1, max_length=40)
     thickness_mm: Annotated[Decimal, Field(gt=0, le=500)]
     length_m: Annotated[Decimal, Field(gt=0, le=1_000)]
+    # Plan rectangle of the run in metres [x0, y0, x1, y1], read on the drawing; it draws the fabrication annex.
+    rect_m: list[Annotated[float, Field(ge=-100_000, le=100_000, allow_inf_nan=False)]] | None = Field(
+        default=None, min_length=4, max_length=4)
 
 
 class FloorInput(BaseModel):
     name: str = Field(min_length=1, max_length=60)
-    height_m: Annotated[Decimal, Field(gt=0, le=20)]
+    # Empty when the plan marks no height: the company standard is used (see standard_heights).
+    height_m: Annotated[Decimal, Field(gt=0, le=20)] | None = None
     walls: list[Wall] = Field(default_factory=list, max_length=500)
     panels: list[Panel] = Field(default_factory=list, max_length=500)
     board_layers_m2: Value = Decimal(0)
@@ -386,6 +394,11 @@ class FloorInput(BaseModel):
     ceiling_height_m: Value | None = None
     riser_m: list[float] | None = Field(default=None, min_length=2, max_length=2)
     segments: list[Segment] = Field(default_factory=list, max_length=2000)
+
+    @field_validator("height_m", mode="before")
+    @classmethod
+    def blank_height(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
 
     @model_validator(mode="after")
     def has_clt(self):
@@ -421,6 +434,23 @@ def _q(value):
 STAGE_ORDER = ("compra", "producao", "transporte", "montagem", "revestimentos", "acabamentos", "indiretos")
 
 
+def standard_heights(body: EstimateInput, parameters):
+    """Floors without a height get the company standard: the first floor (RDC) the ground value, the others the upper
+    value (parameters standard_height_ground_m / standard_height_upper_m, editable). Returns (body, notes)."""
+    if all(fl.height_m is not None for fl in body.floors):
+        return body, []
+    value = lambda key: Decimal(str(parameters.get(key, {}).get("value", CATALOGUE[key][3])))
+    floors, notes = [], []
+    for i, fl in enumerate(body.floors):
+        if fl.height_m is None:
+            h = value("standard_height_ground_m" if i == 0 else "standard_height_upper_m")
+            floors.append(fl.model_copy(update={"height_m": h}))
+            notes.append(f"{fl.name}: altura não marcada na planta, usada a altura standard de {h} m (editável).")
+        else:
+            floors.append(fl)
+    return body.model_copy(update={"floors": floors}), notes
+
+
 def fitout_floors(body: EstimateInput):
     """The floors as the fit-out engine reads them (rooms without the exterior ones)."""
     return [{"name": fl.name, "height_m": fl.height_m, "ceiling_height_m": fl.ceiling_height_m, "riser_m": fl.riser_m,
@@ -432,6 +462,7 @@ def fitout_floors(body: EstimateInput):
 
 def estimate(body: EstimateInput, parameters, library):
     p = {key: Decimal(str(item["value"])) for key, item in parameters.items()}
+    body, height_notes = standard_heights(body, parameters)
     items = [LibraryItem.model_validate({k: v for k, v in item.items() if k != "standard"}) for item in library.values()]
     floors = []
     for floor in body.floors:
@@ -534,7 +565,7 @@ def estimate(body: EstimateInput, parameters, library):
                "origem": l["item"].origin} for l in lines]
     hypotheses = sorted([item["label"] for item in parameters.values() if item["origin"] == "hipotese"]
                         + [f"{i.code} · {i.name}" for i in items if i.origin == "hipotese"])
-    return {"pisos": rows, "total": totals, "notas_quantidades": fit_notes, "linhas": detail, "plano": planning(days, body.start, body.start_mode),
+    return {"pisos": rows, "total": totals, "notas_quantidades": height_notes + fit_notes, "linhas": detail, "plano": planning(days, body.start, body.start_mode),
             "hipoteses_por_confirmar": hypotheses, "status": "estimativa" if hypotheses else "valores_da_empresa"}
 
 
