@@ -62,3 +62,29 @@ def test_takeoff_and_estimate_get_cover():
 
 def test_finishing_never_breaks_document():
     assert pdf_premium.acabar(b"not a pdf", {"titulo": "x"}, BR) == b"not a pdf"
+
+
+def _logo_cor(rgb):
+    b = io.BytesIO()
+    im = Image.new("RGBA", (300, 100), (255, 255, 255, 0))
+    im.paste(Image.new("RGBA", (120, 80), rgb + (255,)), (10, 10))
+    im.save(b, "PNG")
+    return base64.b64encode(b.getvalue()).decode()
+
+
+def test_company_colour_chosen_then_logo_then_default():
+    assert pdf_premium.cor_empresa({"accent_color": "#e21411"}) == "#E21411"
+    c = pdf_premium.cor_empresa({"logo_b64": _logo_cor((200, 30, 40))})
+    r, g, b = int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)
+    assert r > 150 and g < 80 and b < 80                     # vermelho do logótipo
+    assert pdf_premium.cor_empresa({"logo_b64": _logo_cor((0, 0, 0))}) == pdf_premium.COR_PADRAO   # logótipo preto
+    assert pdf_premium.cor_empresa({}) == pdf_premium.COR_PADRAO
+
+
+def test_quote_uses_logo_colour_everywhere_when_no_colour_chosen():
+    br = {"company_name": "Vermelha", "logo_b64": _logo_cor((200, 30, 40)), "country": "PT"}
+    d = pymupdf.open(stream=build_document_pdf(_doc(), branding=br, lang="pt"), filetype="pdf")
+    pix = d[0].get_pixmap(dpi=40)
+    y = int(300 / 841.89 * pix.height)                       # filete da cor da empresa sob a faixa escura
+    r, g, b = pix.pixel(pix.width // 2, y)[:3]
+    assert r > 150 and g < 90 and b < 90

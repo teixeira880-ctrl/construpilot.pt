@@ -66,13 +66,70 @@ def _hex(c: str) -> tuple:
     return tuple(int(c[i:i + 2], 16) / 255 for i in (0, 2, 4))
 
 
-def empresa(branding: dict | None) -> dict:
+def cor_do_logo(logo_b64: str | None) -> str | None:
+    """Cor dominante (saturada) do logótipo da empresa, em #RRGGBB. Ignora fundo branco/transparente e cinzentos;
+    logótipo só preto / cinzento → None."""
+    if not logo_b64:
+        return None
+    try:
+        import colorsys
+        import io
+
+        from PIL import Image
+        im = Image.open(io.BytesIO(base64.b64decode(str(logo_b64).split(",", 1)[-1]))).convert("RGBA")
+        im.thumbnail((96, 96))
+        conta: dict = {}
+        for r, g, b, a in im.getdata():
+            if a < 128:
+                continue
+            h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+            if l > 0.92 or l < 0.08 or sat < 0.25:
+                continue
+            k = (r // 24, g // 24, b // 24)
+            n, sr, sg, sb = conta.get(k, (0, 0, 0, 0))
+            conta[k] = (n + 1, sr + r, sg + g, sb + b)
+        if not conta:
+            return None
+        n, sr, sg, sb = max(conta.values())
+        if n < 12:
+            return None
+        r, g, b = sr / n, sg / n, sb / n
+        h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+        if l > 0.62:                                      # cor muito clara: escurece para ser legível em texto branco
+            r, g, b = (c * 255 for c in colorsys.hls_to_rgb(h, 0.48, sat))
+        return "#%02X%02X%02X" % (round(r), round(g), round(b))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def cor_empresa(branding: dict | None) -> str:
+    """Cor da empresa: a escolhida em « A minha página & documentos » (accent_color), senão a cor dominante do
+    logótipo, senão a cor ConstruPilot por defeito."""
     b = branding or {}
     raw = str(b.get("accent_color") or "").strip()
-    try:
-        cor = _hex(raw) if len(raw) == 7 and raw.startswith("#") else _hex(COR_PADRAO)
-    except ValueError:
-        cor = _hex(COR_PADRAO)
+    if len(raw) == 7 and raw.startswith("#"):
+        try:
+            int(raw[1:], 16)
+            return raw.upper()
+        except ValueError:
+            pass
+    return cor_do_logo(b.get("logo_b64")) or COR_PADRAO
+
+
+def com_cor(branding: dict | None) -> dict | None:
+    """branding com accent_color preenchida (cor da empresa), para que o interior do documento use a mesma cor."""
+    if branding is None:
+        return None
+    if str(branding.get("accent_color") or "").strip():
+        return branding
+    if not branding.get("logo_b64"):
+        return branding
+    return {**branding, "accent_color": cor_empresa(branding)}
+
+
+def empresa(branding: dict | None) -> dict:
+    b = branding or {}
+    cor = _hex(cor_empresa(b))
     logo = None
     lb = b.get("logo_b64")
     if lb:

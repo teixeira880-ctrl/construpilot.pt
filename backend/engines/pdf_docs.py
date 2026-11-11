@@ -846,6 +846,8 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
     from engines import pdf_premium
     premium = (doc.get("doc_type") == "quote" and pdf_premium.ativo(branding)
                and (doc.get("study_dossier") or {}).get("schema_version") != "construction-dossier-1")
+    if premium:
+        branding = pdf_premium.com_cor(branding)          # cor da empresa (escolhida, senão a do logótipo) em todo o orçamento
     # Ucraniano (cirílico): fontes DejaVu só para este PDF; PT/FR/EN sem alterações.
     with cyrillic_fonts(needs_cyrillic(lang)):
         pdf = _build_document_pdf(doc, branding, reviews, lang, sign_url, None if premium else cover,

@@ -61,15 +61,16 @@ def _fmt(v, unit="", digits=2):
 
 def _accent(S: dict, branding: dict | None) -> dict:
     """Títulos e destaques na cor da empresa (branding["accent_color"]), como nos orçamentos — senão laranja ConstruPilot."""
-    raw = str((branding or {}).get("accent_color") or "").strip()
-    if len(raw) == 7 and raw.startswith("#"):
-        try:
-            c = colors.HexColor(raw)
-        except ValueError:
-            return S
-        S["h2"].textColor = c
-        S["kicker"].textColor = c
-        S["_accent"] = c
+    if not branding or not (branding.get("accent_color") or branding.get("logo_b64")):
+        return S
+    from engines.pdf_premium import cor_empresa            # escolhida pela empresa, senão a cor do logótipo
+    try:
+        c = colors.HexColor(cor_empresa(branding))
+    except ValueError:
+        return S
+    S["h2"].textColor = c
+    S["kicker"].textColor = c
+    S["_accent"] = c
     return S
 
 

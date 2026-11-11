@@ -125,7 +125,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                                   "brand_postal": 1, "brand_country": 1,
                                   "brand_logo_b64": 1, "brand_certifications": 1,
                                   "brand_default_email_message": 1,
-                                  "bank_details": 1,
+                                  "bank_details": 1, "brand_accent_color": 1,
                                   "kyc_status": 1})
     if not u:
         return None
@@ -160,6 +160,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                     "default_email_message": u.get("brand_default_email_message"),
                     "bank_details": u.get("bank_details"),
                     "verified": verified,
+                    "accent_color": u.get("brand_accent_color"),
                     "profile_photo_b64": photo}
     if any(u.get(k) for k in ("brand_company_name", "brand_contact_line", "brand_logo_b64",
                               "brand_certifications", "brand_default_email_message",
@@ -180,6 +181,7 @@ async def _resolve_branding(user_id: str) -> dict | None:
                 "default_email_message": u.get("brand_default_email_message"),
                 "bank_details": u.get("bank_details"),
                 "verified": verified,
+                "accent_color": u.get("brand_accent_color"),
                 "profile_photo_b64": photo}
     if verified or photo:
         return {"company_name": None, "contact_line": None, "logo_b64": None,
