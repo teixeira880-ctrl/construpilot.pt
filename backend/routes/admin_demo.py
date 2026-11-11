@@ -7,7 +7,7 @@ Protegido por admin_user — a conta demo nunca pode aceder (não tem role=admin
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from core.db import db
 from core.security import admin_user
@@ -45,3 +45,26 @@ async def admin_demo_status(user=Depends(admin_user)) -> dict:
         "pro_email": pro_user.get("email") if pro_user else None,
         "particular_email": part_user.get("email") if part_user else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Empresa de demonstração « Teste Websummit » (conta Pro Business completa)
+# ---------------------------------------------------------------------------
+
+@router.get("/teste-websummit/status")
+async def teste_websummit_status(user=Depends(admin_user)) -> dict:
+    """Estado do seed (contagens por módulo, erros de API). Nunca devolve palavras-passe."""
+    st = await db.demo_seed_state.find_one({"_id": "teste_websummit"}, {"_id": 0}) or {"status": "absent"}
+    owner = await db.users.find_one({"email": "teste.websummit@construpilot.pt"}, {"_id": 0, "user_id": 1, "organization_id": 1})
+    return {**st, "owner_exists": bool(owner), "organization_id": (owner or {}).get("organization_id")}
+
+
+@router.post("/teste-websummit/reseed")
+async def teste_websummit_reseed(request: Request, user=Depends(admin_user)) -> dict:
+    """Apaga APENAS os dados da empresa Teste Websummit e recria tudo (em segundo plano, ~1 min)."""
+    import asyncio
+    from core.demo_tws.seed import run_seed
+    from core.security import hash_password, new_user_id
+    request.app.state.tws_reseed_task = asyncio.create_task(
+        run_seed(request.app, db, hash_password, new_user_id, force=True))
+    return {"ok": True, "started": True, "status_url": "/api/admin/demo/teste-websummit/status"}

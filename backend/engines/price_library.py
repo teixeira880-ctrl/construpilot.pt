@@ -14,9 +14,11 @@ import pymupdf
 from PIL import Image
 
 _DESIGN = ("désignation", "designation", "libellé", "libelle", "prestation",
-           "descriptif", "ouvrage", "article", "produit", "description")
-_UNIT = ("unité", "unite", "un.", "u.", "unit")
-_PU = ("prix unitaire", "p.u", "pu ht", "prix u", "prix", "tarif", "pu")
+           "descriptif", "ouvrage", "article", "produit", "description",
+           "designação", "designacao", "descrição", "descricao", "artigo")
+_UNIT = ("unité", "unite", "un.", "u.", "unit", "unidade")
+_PU = ("prix unitaire", "p.u", "pu ht", "prix u", "prix", "tarif", "pu",
+       "preço unitário", "preco unitario", "preço", "preco")
 _REF = ("réf", "ref", "code", "référence", "reference")
 
 # Mots vides ignorés pour la comparaison floue des désignations.

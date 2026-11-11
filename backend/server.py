@@ -519,6 +519,14 @@ async def _seed_impl():
         logger.info("client grants: %s", await apply_client_grants(db, hash_password, new_user_id))
     except Exception as e:  # noqa: BLE001
         logger.warning("client grants skipped: %s", e)
+    # Empresa de demonstração « Teste Websummit » (Pro Business completa, PT/FR/UK/US) — semeada uma
+    # única vez através da própria API, em tarefa separada para não atrasar o resto do arranque.
+    try:
+        import asyncio as _aio
+        from core.demo_tws.seed import run_on_startup as _tws_seed
+        app.state.tws_seed_task = _aio.create_task(_tws_seed(app, db, hash_password, new_user_id))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("teste websummit seed skipped: %s", e)
     # Contas Pro de empresas parceiras (ex. CLT Rezult) — idempotente, sem palavra-passe.
     try:
         from core.company_seeds import apply_company_seeds
