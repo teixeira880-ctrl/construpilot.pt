@@ -121,14 +121,14 @@ def _s_curve(plan, stages):
     return rows
 
 
-def _fabrication(body, title):
+def _fabrication(body, title, press=(18.0, 3.5)):
     """Dimensioned fabrication drawings from the plan rectangles of the measured runs (segments with rect_m).
 
     Each run keeps its take-off reference as wall id, so a quantity line, the plan dimension and the
     production piece carry the same name. Returns None when no floor has run geometry."""
     from bim_studio import clt_drawings, clt_nesting, clt_walls
 
-    staged, rows, notes = [], [], []
+    staged, rows, notes, network = [], [], [], []
     for fl in body.floors:
         segs = [s for s in fl.segments if s.rect_m]
         if not segs:
@@ -146,29 +146,58 @@ def _fabrication(body, title):
                 notes.append(_("{r}: contorno não convertível em eixo; fica só na tabela de medições.", r=seg.ref))
         if not walls:
             continue
+        runs = {w.id: w for w in walls}
         try:
+            walls, net = clt_walls.connect(walls, lintels=[li.model_dump() for li in fl.lintels])
             analysis = clt_walls.analyse(clt_walls.Floor(name=fl.name, walls=walls))
         except ValueError as exc:
-            notes.append(f"{fl.name}: {exc}")
+            notes.append(f"{_(fl.name)}: {exc}")
             continue
         staged.append((_(fl.name), walls, analysis))
+        notes.extend(f"{_(fl.name)} · {n}" for n in net["notas"])
         by_wall = {}
         for piece in analysis["pecas"]:
             by_wall.setdefault(piece["parede"], []).append(piece)
         measured = {s.ref: s for s in segs}
-        for w in walls:
-            ps = by_wall.get(w.id, [])
-            rows.append([_(fl.name), w.id, _n(w.thickness_mm, 0), _n(measured[w.id].length_m, 3), _n(w.length, 3),
+        seen = set()
+        for ref, run in runs.items():
+            wall = net["membros"].get(ref, ref)
+            ps = by_wall.get(wall, [])
+            # a piece made of several runs (joined over a lintel) shows its volume once, on its first run
+            rows.append([_(fl.name), ref, _n(run.thickness_mm, 0), _n(measured[ref].length_m, 3), _n(run.length, 3),
                          ", ".join(f"{p['id']} {_n(p['comprimento_m'], 3)}" for p in ps) or "—",
-                         _n(sum(p["volume_bruto_m3"] for p in ps), 3)])
+                         "↑" if wall in seen else _n(sum(p["volume_liquido_m3"] for p in ps), 3)])
+            seen.add(wall)
+        kinds = {}
+        for j in analysis["juntas"]:
+            kinds[j["tipo"]] = kinds.get(j["tipo"], 0) + 1
+        # CLT over the lintel openings, measured on the final pieces (after the junctions cut them at the faces)
+        bridged = {r["lintel"] for r in net["linteis"]}
+        lintel_volume = sum(o["width_m"] * (p["altura_m"] - o["sill_m"] - o["height_m"]) * p["espessura_mm"] / 1000
+                            for p in analysis["pecas"] for o in p["vaos"] if o["kind"] == "vao" and o["label"] in bridged)
+        # same lintels measured like the estimate does: band minus the drawn runs (GEOS), × (height − head) × thickness
+        from shapely import union_all
+        from shapely.geometry import box
+        drawn = union_all([w.footprint() for w in runs.values()])
+        estimated = 0.0
+        for li in fl.lintels:
+            row = next((r for r in net["linteis"] if r["lintel"] == li.ref), None)
+            if row:
+                x0, y0, x1, y1 = li.rect_m
+                band = box(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+                span = band.difference(drawn).area / min(band.bounds[2] - band.bounds[0], band.bounds[3] - band.bounds[1])
+                t_mm = li.thickness_mm or next((w.thickness_mm for w in walls if w.id == row["peca"]), 100)
+                estimated += span * (float(fl.height_m) - li.head_m) * t_mm / 1000
+        network.append([_(fl.name), str(len(runs)), str(len(walls)), " · ".join(f"{k} {v}" for k, v in sorted(kinds.items())),
+                        str(len(net["ligacoes"])), f"{len(net['linteis'])} / {len(fl.lintels)}", _n(lintel_volume, 3), _n(estimated, 3) if estimated else "—"])
     if not staged:
         return None
     pieces = [p for _n_, _w, a in staged for p in clt_nesting.pieces_from_walls(a)]
-    nesting = clt_nesting.plan(clt_nesting.NestingInput(pieces=pieces, time_limit_s=5))
+    nesting = clt_nesting.plan(clt_nesting.NestingInput(pieces=pieces, time_limit_s=5, blank_length_m=press[0], blank_width_m=press[1]))
     drawings = clt_drawings.build([(n, w, a["pecas"]) for n, w, a in staged], nesting, title=title, tr=_)
     checks = [(n, a["verificacao_volume"]["passed"], a["metodos"]["volume_pecas_m3"], a["metodos"]["volume_uniao_planta_m3"])
               for n, _w, a in staged]
-    return {"pdf": drawings["pdf"], "folhas": drawings["folhas"], "rows": rows, "notes": notes, "checks": checks,
+    return {"pdf": drawings["pdf"], "folhas": drawings["folhas"], "rows": rows, "notes": notes, "checks": checks, "rede": network,
             "corte": nesting["total"]}
 
 
@@ -416,7 +445,7 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
     B.append(("p", _("Controlos automáticos")))
     B.append(("table", [_("Controlo"), _("Valores"), _("Resultado")], checks, [100 * W, 55 * W, 25 * W]))
 
-    fab = _fabrication(body, titre)
+    fab = _fabrication(body, titre, (float(p.get("press_length_m", 18)), float(p.get("press_width_m", 3.5))))
     if fab:
         B.append(("h2", _("Anexo A — Desenhos de fabrico cotados (origem das cotas e medições)")))
         B.append(("p", _("Cada troço medido no take-off é desenhado com a mesma referência: a planta cota o comprimento de cada parede ao milímetro, "
@@ -426,10 +455,19 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
                   fab["rows"], [16 * W, 24 * W, 18 * W, 20 * W, 22 * W, 56 * W, 24 * W]))
         checks_rows = [[_(n), f"{_n(a, 3)} / {_n(b, 3)} m³", "OK" if ok else _("VERIFICAR")] for n, ok, a, b in fab["checks"]]
         B.append(("table", [_("Controlo volume: peças / união das plantas"), _("Valores"), _("Resultado")], checks_rows, [100 * W, 55 * W, 25 * W]))
-        B.append(("p", _("Plano de corte: {n} painéis de prensa, desperdício {d} % (formato Rezult 18 × 3,5 m).",
-                         n=fab["corte"]["paineis"], d=_n(fab["corte"]["desperdicio_percent"], 1))))
+        if fab.get("rede"):
+            B.append(("p", _("Rede de paredes: cada extremo de troço que encosta a outra parede é levado ao eixo dessa parede "
+                             "(no máximo meia espessura), para reconhecer os cantos L, T e X. Dois troços alinhados dos dois lados "
+                             "de um lintel CLT passam a uma só peça com o vão recortado; o volume do lintel fica dentro da peça "
+                             "e é comparado com o painel de lintel da estimativa.")))
+            B.append(("table", [_("Piso"), _("Troços"), _("Peças-mãe"), _("Juntas"), _("Extremos ligados"), _("Lintéis na peça"),
+                                _("Lintéis m³ (peças)"), _("Lintéis m³ (estimativa)")], fab["rede"],
+                      [14 * W, 16 * W, 20 * W, 36 * W, 22 * W, 22 * W, 26 * W, 26 * W]))
+        B.append(("p", _("Plano de corte: {n} painéis de prensa, desperdício {d} % (formato de prensa {l} × {w} m, parâmetro da empresa).",
+                         n=fab["corte"]["paineis"], d=_n(fab["corte"]["desperdicio_percent"], 1),
+                         l=_n(p.get("press_length_m", 18), 2), w=_n(p.get("press_width_m", 3.5), 2))))
         for line in fab["notes"]:
-            B.append(("p", line))
+            B.append(("p", _(line)))
     else:
         B.append(("h2", _("Anexo A — Desenhos de fabrico cotados (origem das cotas e medições)")))
         B.append(("p", _("Sem geometria dos troços nesta estimativa: volte a calcular na página CLT a partir do PDF para juntar os desenhos cotados.")))

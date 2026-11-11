@@ -4,7 +4,7 @@ from io import StringIO
 import numpy as np
 import pytest
 
-from bim_studio.clt_access import allowed
+from bim_studio.clt_access import allowed, is_pilot
 from bim_studio.clt_costs import CostLot, summary
 from bim_studio.clt_geometry import panel_quantities, reconciliation
 from bim_studio.finishes import layer_area
@@ -98,13 +98,18 @@ def test_progress_and_forecast_separate_missing_costs():
     assert result["delay_days"] == 3
 
 
-def test_pilot_is_closed_to_other_accounts_and_organisations(monkeypatch):
+def test_clt_engine_open_to_every_account_pilot_dedications_closed(monkeypatch):
     monkeypatch.setenv("CLT_PILOT_USER_ID", "ana")
     monkeypatch.setenv("CLT_PILOT_TENANT_ID", "org_a")
     monkeypatch.delenv("CLT_PILOT_ACCOUNTS", raising=False)
-    assert allowed({"user_id": "ana", "organization_id": "a"})
-    assert not allowed({"user_id": "ana", "organization_id": "b"})
-    assert not allowed({"user_id": "bia", "organization_id": "a"})
+    # the CLT engine is open to every active PT account (2026-11-11), each on its own tenant data
+    assert allowed({"user_id": "ana", "organization_id": "a"}) and allowed({"user_id": "bia", "organization_id": "b"})
+    assert not allowed({"user_id": "bia", "organization_id": "b", "active": False})
+    assert not allowed({"user_id": "bia", "organization_id": "b", "company_active": False})
+    # what is dedicated to the pilot (CLT Rezult branding) stays with the pilot account only
+    assert is_pilot({"user_id": "ana", "organization_id": "a"})
+    assert not is_pilot({"user_id": "ana", "organization_id": "b"})
+    assert not is_pilot({"user_id": "bia", "organization_id": "a"})
 
 
 def test_http_access_rate_and_lot_revision(monkeypatch):
@@ -149,7 +154,10 @@ def test_http_access_rate_and_lot_revision(monkeypatch):
         body["expected_revision"] = 0
         assert client.post(prefix + "/lots", json=body).status_code == 422
         actor["user_id"] = "unlisted"
+        assert client.get(prefix + "/config").status_code == 200  # every account
+        actor["active"] = False
         assert client.get(prefix + "/config").status_code == 404
+        actor.pop("active")
 
 
 def test_dwg_uses_autodesk_and_measures_the_result(monkeypatch, tmp_path):
@@ -192,8 +200,8 @@ def test_dwg_uses_autodesk_and_measures_the_result(monkeypatch, tmp_path):
         assert result.json()["panels"][0]["net_volume_m3"] == 2.1
     assert not allowed({"user_id": "ana", "organization_id": "a", "active": False})
     monkeypatch.setenv("CLT_PILOT_ACCOUNTS", '{"bia":"org_b"}')
-    assert allowed({"user_id": "bia", "organization_id": "b"})
-    assert not allowed({"user_id": "bia", "organization_id": "a"})
+    assert is_pilot({"user_id": "bia", "organization_id": "b"})
+    assert not is_pilot({"user_id": "bia", "organization_id": "a"})
 
 
 def test_hatched_wall_without_outline_is_measured():
@@ -522,7 +530,7 @@ def test_assistant_complete_clt_study_note(monkeypatch):
     r = asyncio.run(assistant_bridge.execute_calc_tool("estudo_clt_completo", {"titulo": None, "pisos_json": None}, user, conv, db))
     assert r["ok"] and r["data"]["custo_total_eur"] == ref["custo_total_eur"]
     denied = asyncio.run(assistant_bridge.execute_calc_tool("estudo_clt_completo", {}, {"user_id": "u2", "tenant_id": "t1"}, conv, db))
-    assert not denied["ok"] and "piloto CLT" in denied["error"]
+    assert not denied["ok"] and "app PT" in denied["error"]
 
 
 def test_dossier_fabrication_annex_and_standard_heights():
@@ -563,3 +571,26 @@ def test_fabrication_dimensions_are_millimetres():
     values = {round(d.get_measurement()) for d in doc.modelspace().query("DIMENSION")}
     texts = " ".join(t.dxf.text for b in doc.blocks if b.name.startswith("*D") for t in b.query("MTEXT TEXT"))
     assert 6000 in values and "6000" in texts and "600000" not in texts
+
+
+def test_rezult_branding_stays_with_the_pilot(monkeypatch):
+    import asyncio
+    from mongomock_motor import AsyncMongoMockClient
+    from bim_studio import store
+    from engines.calc_lots import assistant_bridge
+
+    monkeypatch.setenv("CLT_PILOT_USER_ID", "ana")
+    monkeypatch.setenv("CLT_PILOT_TENANT_ID", "org_a")
+    monkeypatch.delenv("CLT_PILOT_ACCOUNTS", raising=False)
+    monkeypatch.setattr(store, "get_db", lambda: AsyncMongoMockClient()["t"])
+    pilot = asyncio.run(assistant_bridge._clt_context({"empresa": "clt-rezult"}, {"user_id": "ana", "organization_id": "a"}))
+    other = asyncio.run(assistant_bridge._clt_context({"empresa": "clt-rezult"}, {"user_id": "bia", "organization_id": "b"}))
+    assert pilot["empresa"] == "clt-rezult" and other["empresa"] is None
+
+
+def test_page_dictionary_translates_server_labels():
+    from bim_studio.clt_i18n import page_dictionary
+
+    uk = page_dictionary("uk")
+    assert uk["Comprimento máximo do painel de prensa"] == "Максимальна довжина пресової панелі"
+    assert uk["Fabrico"] == "Виготовлення" and page_dictionary("pt") == {}

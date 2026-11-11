@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import CltConfirmation from "@/components/bim/CltConfirmation";
 import CltEngines from "@/components/bim/CltEngines";
+import { useAuth } from "@/context/AuthContext";
+import { CLT_LANGS, LangScope, initialCltLang, rememberCltLang } from "@/lib/cltI18n";
 
 const base = "/clt-industrial";
 const input = "w-full rounded border bg-background px-2 py-1.5 text-sm";
@@ -359,7 +361,9 @@ export function floorsFromReport(report) {
       rooms: more?.rooms || [], windows: more?.windows || [], interior_doors: more?.interior_doors || 0,
       ceiling_height_m: more?.ceiling_height_m ?? null, riser_m: more?.riser_m || null,
       segments: runs.map((m) => ({ ref: m.id, thickness_mm: String(Math.round(m.drawing_width_mm / 10) * 10), length_m: m.length_m.toFixed(3),
-        rect_m: m.plan_rect_m || null })) };
+        rect_m: m.plan_rect_m || null })),
+      lintels: page.review.markers.filter((m) => m.id.startsWith("lintel-") && m.plan_rect_m && m.head_m)
+        .map((m) => ({ ref: m.id, rect_m: m.plan_rect_m, head_m: m.head_m, thickness_mm: m.thickness_mm || null })) };
   });
 }
 
@@ -651,18 +655,32 @@ export default function CltIndustrial() {
   const [available, setAvailable] = useState(null);
   const [tab, setTab] = useState("desenhos");
   const [report, setReport] = useState(null);
+  const { user } = useAuth() || {};
+  const [lang, setLang] = useState(() => initialCltLang(user));
+  const [dict, setDict] = useState(null);
   useEffect(() => {
     api.get(`${base}/config`).then(() => setAvailable(true)).catch(() => setAvailable(false));
   }, []);
+  useEffect(() => {
+    if (lang === "pt" || !available) { setDict(null); return; }
+    api.get(`${base}/i18n/${lang}`).then(({ data }) => setDict(data.items)).catch(() => setDict(null));
+  }, [lang, available]);
+  const chooseLang = (value) => { setLang(value); rememberCltLang(value); };
   if (available === null) return <p className="p-4" role="status">A verificar o acesso…</p>;
   if (!available) return <p className="p-4">O piloto CLT está indisponível nesta conta.</p>;
-  return <main className="mx-auto grid max-w-7xl gap-5 p-4">
-    <h1 className="text-2xl font-semibold">ConstruPilot CLT</h1>
+  return <LangScope lang={lang} dict={dict}><main className="mx-auto grid max-w-7xl gap-5 p-4" lang={lang}>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h1 className="text-2xl font-semibold">ConstruPilot CLT</h1>
+      <div role="group" aria-label="Língua da página" className="flex gap-1" data-no-clt-translate>
+        {Object.entries(CLT_LANGS).map(([key, label]) => <button key={key} type="button" aria-pressed={lang === key}
+          className={lang === key ? button : secondary} onClick={() => chooseLang(key)}>{label}</button>)}
+      </div>
+    </div>
     <nav aria-label="Piloto CLT" className="flex flex-wrap gap-2">
       {Object.entries({ desenhos: "Desenhos e medições", motores: "Juntas, corte, 3D e fabrico", parametros: "Custos, preços e plano", lotes: "Seguimento e avanço", precos: "Tarifas dos lotes" }).map(([key, label]) =>
         <button key={key} type="button" aria-pressed={tab === key} className={tab === key ? button : secondary} onClick={() => setTab(key)}>{label}</button>)}
     </nav>
     <div hidden={tab !== "desenhos"}><Drawings onReport={setReport} /></div>
     {tab === "parametros" ? <CostWorkspace key={report?.sha256 || "manual"} report={report} /> : tab === "motores" ? <CltEngines /> : tab === "precos" ? <Rates /> : tab === "lotes" ? <Lots /> : null}
-  </main>;
+  </main></LangScope>;
 }

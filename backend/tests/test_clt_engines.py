@@ -199,6 +199,8 @@ def test_http_engines(monkeypatch):
         assert bad.status_code == 422
         other = {"user_id": "zé", "organization_id": "b", "org_role": "owner"}
         app.dependency_overrides[clt_industrial.pro_required] = lambda: other
+        assert client.post("/clt-industrial/motores/analise", json=body).status_code == 200  # every account
+        app.dependency_overrides[clt_industrial.pro_required] = lambda: {**other, "active": False}
         assert client.post("/clt-industrial/motores/analise", json=body).status_code == 404
 
 
@@ -229,3 +231,67 @@ def test_raster_reader_is_an_estimate_with_pixel_uncertainty():
     assert a["verificacao_volume"]["passed"]
     with pytest.raises(ValueError, match="ilegível"):
         detect(b"not an image", pixels_per_metre=ppm, height_m=3.0)
+
+
+def test_network_healing_joins_runs_over_lintels_and_resolves_t_stems():
+    from bim_studio.clt_walls import connect
+
+    # outlines as a plan reader returns them: each run stops at the other wall's face, the door gap has a lintel
+    runs = [wall("A1", 0, 0.05, 4, 0.05), wall("A2", 5, 0.05, 10, 0.05),        # front wall, door 4–5 m
+            wall("B", 0.05, 0.1, 0.05, 6), wall("C", 9.95, 0.1, 9.95, 6),        # side walls butt on the front wall
+            wall("T", 3, 0.1, 3, 4)]                                             # interior stem, shorter than nothing
+    lintel = {"ref": "L1", "rect_m": [3.95, 0, 5.05, 0.1], "head_m": 2.1, "thickness_mm": 100}
+    walls, net = connect(runs, lintels=[lintel])
+    assert net["membros"] == {"A1": "A1+A2", "A2": "A1+A2", "B": "B", "C": "C", "T": "T"} and not net["notas"]
+    front = next(w for w in walls if w.id == "A1+A2")
+    assert front.length == pytest.approx(9.9) and len(front.openings) == 1  # axis to axis of the side walls
+    assert front.openings[0].width_m == pytest.approx(1.0) and front.openings[0].height_m == 2.1
+    r = analyse(Floor(name="RDC", walls=walls))
+    kinds = sorted(j["tipo"] for j in r["juntas"])
+    assert kinds == ["L", "L", "T"] and r["verificacao_volume"]["passed"]
+    assert r["metodos"]["volume_pecas_m3"] == pytest.approx(r["metodos"]["volume_uniao_planta_m3"], abs=1e-6)
+    piece = next(p for p in r["pecas"] if p["parede"] == "A1+A2")
+    # one 10 m piece (closing both corners) with the 1.0 × 2.1 m door cut out; the CLT over the door is inside it
+    assert piece["comprimento_m"] == pytest.approx(10.0) and piece["area_vaos_m2"] == pytest.approx(2.1)
+    assert piece["volume_liquido_m3"] == pytest.approx((10 * 2.9 - 2.1) * 0.1)
+    # a lintel of another thickness, or with no run on its line, stays a separate panel and is reported
+    _w, other = connect(runs, lintels=[{**lintel, "thickness_mm": 160}, {"ref": "L2", "rect_m": [20, 0, 21, .1], "head_m": 2.1}])
+    assert len(other["notas"]) == 2 and not other["linteis"]
+
+
+def test_t_stem_is_cut_even_when_longer():
+    """The through wall runs on at a T: a long stem must not notch a short through wall."""
+    floor = Floor(name="RDC", walls=[wall("short", 0, 0, 1, 0), wall("stem", 0.5, 0, 0.5, 6)])
+    r = analyse(floor)
+    by = {p["parede"]: p for p in r["pecas"]}
+    assert by["short"]["comprimento_m"] == pytest.approx(1.0) and by["stem"]["comprimento_m"] == pytest.approx(5.95)
+    assert r["metodos"]["volume_pecas_m3"] == pytest.approx(r["metodos"]["volume_uniao_planta_m3"], abs=1e-9)
+
+
+def lintel_plan():
+    k = 72 / 25.4 / 50 * 1000
+    doc = fitz.open()
+    page = doc.new_page(width=842, height=595)
+    X = lambda x: 100 + x * k
+    Y = lambda y: 450 - y * k
+    for x0, y0, x1, y1 in ((0, 0, 4, .1), (5, 0, 10, .1), (0, .1, .1, 5.9), (9.9, .1, 10, 5.9), (0, 5.9, 2, 6), (4, 5.9, 10, 6)):
+        page.draw_rect(fitz.Rect(X(x0), Y(y1), X(x1), Y(y0)), color=(0, 0, 0), fill=(1, 0, 1))
+    for y in (0, .1):  # red dashed lintel over the 1 m door
+        page.draw_line((X(3.95), Y(y)), (X(5.05), Y(y)), color=(1, 0, 0), dashes="[3 2] 0", width=.6)
+    for y in (5.9, 6):  # orange dashed band over the 2 m window: another symbol
+        page.draw_line((X(1.95), Y(y)), (X(4.05), Y(y)), color=(.867, .435, 0), dashes="[3 2] 0", width=.6)
+    page.insert_text((600, 560), "Escala 1:50")
+    page.insert_text((300, 300), "P1 900x2300H")
+    return doc.tobytes()
+
+
+def test_pdf_reader_reads_lintels_and_only_uses_a_confirmed_colour():
+    from bim_studio.clt_pdf_walls import detect
+
+    r = detect(lintel_plan(), 1, height_m=2.9)
+    assert {c["cor"] for c in r["cores_linteis"]} == {"#ff0000", "#dd6f00"} and not r["linteis"]  # two symbols: ask
+    r = detect(lintel_plan(), 1, height_m=2.9, lintel_colour="#FF0000")
+    assert len(r["linteis"]) == 1 and r["linteis"][0]["thickness_mm"] == 100 and r["linteis"][0]["head_m"] == 2.3
+    assert "lida" in r["linteis"][0]["origem_altura"] and r["estado"] == "detetado, por confirmar"
+    assert len(r["rede"]["linteis"]) == 1 and r["analise"]["verificacao_volume"]["passed"]
+    assert any(len(p["vaos"]) == 1 and p["vaos"][0]["height_m"] == 2.3 for p in r["analise"]["pecas"])

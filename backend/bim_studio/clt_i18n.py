@@ -213,9 +213,22 @@ T = {
     "Desenhado m": ("Drawn m", "Накреслено, м"),
     "Peças de produção m": ("Production pieces m", "Виробничі деталі, м"),
     "Controlo volume: peças / união das plantas": ("Volume check: pieces / union of plan outlines", "Контроль об'єму: деталі / об'єднання контурів"),
-    "Plano de corte: {n} painéis de prensa, desperdício {d} % (formato Rezult 18 × 3,5 m).": (
-        "Cutting plan: {n} press panels, waste {d} % (Rezult format 18 × 3.5 m).",
-        "План розкрою: {n} пресових панелей, відходи {d} % (формат Rezult 18 × 3,5 м)."),
+    "Plano de corte: {n} painéis de prensa, desperdício {d} % (formato de prensa {l} × {w} m, parâmetro da empresa).": (
+        "Cutting plan: {n} press panels, waste {d} % (press format {l} × {w} m, company parameter).",
+        "План розкрою: {n} пресових панелей, відходи {d} % (формат преса {l} × {w} м, параметр компанії)."),
+    "Rede de paredes: cada extremo de troço que encosta a outra parede é levado ao eixo dessa parede "
+    "(no máximo meia espessura), para reconhecer os cantos L, T e X. Dois troços alinhados dos dois lados "
+    "de um lintel CLT passam a uma só peça com o vão recortado; o volume do lintel fica dentro da peça "
+    "e é comparado com o painel de lintel da estimativa.": (
+        "Wall network: each run end that butts against another wall is taken to that wall's axis (at most half a thickness), so L, T "
+        "and X corners are recognised. Two aligned runs on both sides of a CLT lintel become one piece with the opening cut out; the "
+        "lintel volume is inside the piece and is compared with the lintel measured like the estimate.",
+        "Мережа стін: кожен кінець ділянки, що примикає до іншої стіни, доводиться до осі цієї стіни (не більше половини товщини), "
+        "щоб розпізнати кути L, T і X. Дві ділянки по обидва боки перемички CLT стають однією деталлю з вирізаним отвором; об'єм "
+        "перемички входить у деталь і порівнюється з перемичкою, обміряною як у кошторисі."),
+    "Troços": ("Runs", "Ділянки"), "Peças-mãe": ("Parent pieces", "Основні деталі"), "Extremos ligados": ("Ends joined", "З'єднані кінці"),
+    "Lintéis na peça": ("Lintels in a piece", "Перемички в деталі"), "Lintéis m³ (peças)": ("Lintels m³ (pieces)", "Перемички м³ (деталі)"),
+    "Lintéis m³ (estimativa)": ("Lintels m³ (estimate)", "Перемички м³ (кошторис)"),
     "Sem geometria dos troços nesta estimativa: volte a calcular na página CLT a partir do PDF para juntar os desenhos cotados.": (
         "No run geometry in this estimate: recalculate on the CLT page from the PDF to attach the dimensioned drawings.",
         "У цьому кошторисі немає геометрії ділянок: перерахуйте на сторінці CLT з PDF, щоб додати креслення з розмірами."),
@@ -319,6 +332,8 @@ PARAMS = {
     "work_hours_day": ("Working hours per day", "Робочих годин на день"), "purchase_days": ("Timber purchase and receipt time", "Термін закупівлі та приймання деревини"),
     "transport_days": ("Delivery time to site", "Термін доставки на об'єкт"),
     "fitout_days": ("Services and finishes time to key handover", "Термін інженерних мереж і оздоблення до здачі"),
+    "press_length_m": ("Maximum press panel length", "Максимальна довжина пресової панелі"),
+    "press_width_m": ("Maximum press panel width", "Максимальна ширина пресової панелі"),
     "standard_height_ground_m": ("Standard ground-floor height (when the plan gives no heights)",
                                  "Стандартна висота першого поверху (коли план не містить висот)"),
     "standard_height_upper_m": ("Standard height of the other floors (when the plan gives no heights)",
@@ -327,6 +342,12 @@ PARAMS = {
     "iva_ua_percent": ("Ukrainian VAT (ПДВ) on sale", "ПДВ України на продаж"),
 }
 SOURCES = {
+    "Formato de prensa de referência: Rezult, comprimento ≤ 18,00 m e largura ≤ 3,50 m "
+    "(clt-rezult.com/en/technical-characteristics, lido em 2026-11-11). Indique o formato da sua prensa.": (
+        "Reference press format: Rezult, length ≤ 18.00 m and width ≤ 3.50 m (clt-rezult.com/en/technical-characteristics, read "
+        "2026-11-11). Enter your own press format.",
+        "Еталонний формат преса: Rezult, довжина ≤ 18,00 м і ширина ≤ 3,50 м (clt-rezult.com/en/technical-characteristics, "
+        "переглянуто 2026-11-11). Вкажіть формат свого преса."),
     "Standard da empresa: RDC 3,00 m quando a planta não indica altura.": (
         "Company standard: ground floor 3.00 m when the plan gives no height.",
         "Стандарт компанії: перший поверх 3,00 м, коли план не містить висоти."),
@@ -405,6 +426,11 @@ PHRASES = {  # room and panel names read on the plans, longest first
 }
 _PH = sorted(PHRASES, key=len, reverse=True)
 NOTES = [
+    (r"(.+) · (.+): sem parede alinhada; fica como painel à parte\.", ("{0} · {1}: no aligned wall; stays a separate panel.",
+                                                                       "{0} · {1}: немає співвісної стіни; лишається окремою панеллю.")),
+    (r"(.+) · (.+): lintel de ([\d.]+) mm com espessura diferente das paredes; fica como painel à parte\.",
+     ("{0} · {1}: {2} mm lintel, thickness differs from the walls; stays a separate panel.",
+      "{0} · {1}: перемичка {2} мм, товщина відрізняється від стін; лишається окремою панеллю.")),
     (r"(.+): altura não marcada na planta, usada a altura standard de ([\d.]+) m \(editável\)\.",
      ("{0}: no height on the plan, company standard height {1} m used (editable).",
       "{0}: висоту на плані не вказано, застосовано стандартну висоту {1} м (можна змінити).")),
@@ -460,3 +486,18 @@ def param_label(key, label, lang, standard):
     if lang in ("en", "uk") and key in PARAMS and label == standard:
         return PARAMS[key][0 if lang == "en" else 1]
     return label
+
+
+def page_dictionary(lang):
+    """Portuguese text → translation for the CLT page: fixed dossier texts, parameter labels, standard library item
+    names, categories and sources (the page shows the same labels the dossier prints)."""
+    if lang not in ("en", "uk"):
+        return {}
+    from bim_studio.clt_economics import CATALOGUE, CATEGORIES, library_defaults
+
+    i = 0 if lang == "en" else 1
+    out = {k: v[i] for table in (T, FIT, UNITS, SOURCES) for k, v in table.items()}
+    out.update({label: PARAMS[key][i] for key, (_g, label, *_rest) in CATALOGUE.items() if key in PARAMS})
+    out.update({item["name"]: ITEMS[code][i] for code, item in library_defaults().items() if code in ITEMS})
+    out.update({label: T[label][i] for label in CATEGORIES.values() if label in T})
+    return out
