@@ -26,6 +26,15 @@ No fim, o visitante pode pedir o relatório ou uma demonstração; só nesse mom
 - Anti-spam: campo armadilha, tempo mínimo de 2,5 s, 5 pedidos por hora por IP, deduplicação de 24 h.
 - A pontuação (0–18) é calculada no servidor. Resume as respostas; não é uma probabilidade de compra.
 
+## Perfis
+
+- 12 perfis: empresa de construção, empreiteiro geral, arquiteto, engenheiro, orçamentista, remodelação, diretor de obra,
+  particular, dono de obra / promotor, investidor, parceiro e outro.
+- Particular e dono de obra têm perguntas e contas diferentes (uma obra em jogo; volume anual em jogo).
+- Investidor e parceiro têm percurso próprio, sem estimativa de ganho. O registo fica com `lead_kind`
+  `investor` ou `partner` e o e-mail interno mostra a etiqueta INVESTIDOR ou PARCEIRO.
+- Em qualquer opção «Outro» aparece um campo de texto; o texto segue nas respostas.
+
 ## Estimativa de ganho
 
 - Cenários de redução de tempo: 40 %, 60 % (inicial) e 70 %. As fontes estão na própria página

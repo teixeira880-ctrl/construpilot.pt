@@ -32,7 +32,10 @@ router = APIRouter(prefix="/experience", tags=["experience"])
 
 # Caixas que recebem cada formulário preenchido (separadas por vírgula em EXPERIENCE_LEAD_EMAILS).
 DEFAULT_RECIPIENTS = "info@construpilot.pt,info@construpilot.fr"
-ROLES = {"company", "gc", "architect", "engineer", "qs", "reno", "pm", "owner", "other"}
+ROLES = {"company", "gc", "architect", "engineer", "qs", "reno", "pm", "owner", "client", "investor", "partner", "other"}
+# Tipo de contacto: muda a etiqueta e o próximo passo do e-mail interno.
+KIND = {"investor": "investor", "partner": "partner"}   # todos os outros perfis são "customer"
+_KIND_PT = {"investor": "INVESTIDOR", "partner": "PARCEIRO"}
 CATEGORIES = {"takeoff", "estimation", "drawings", "docs", "coord", "materials", "technical", "other"}
 STATUSES = ("discovery_completed", "demo_requested")
 _OK_MSG = {"pt": "Obrigado. A equipa ConstruPilot entra em contacto contigo em 2 dias úteis.",
@@ -116,7 +119,7 @@ def score(body: ExperienceLeadIn) -> dict:
         ("problem_intensity", (3 if h >= 40 else 2 if h >= 15 else 1) if h else (2 if len(body.needs) >= 3 else 1 if body.needs else 0)),
         ("urgency", {"now": 3, "q": 2, "year": 1}.get(body.urgency, 0)),
         ("product_fit", 2 if body.priority and body.priority.id.split("_")[0] in CATEGORIES - {"other"} else 0),
-        ("decision_authority", {"decide": 3, "influence": 2, "user": 1}.get(body.decision, 3 if body.role == "owner" else 0)),
+        ("decision_authority", {"decide": 3, "influence": 2, "user": 1}.get(body.decision, 3 if body.role in ("owner", "client", "investor") else 0)),
         ("budget", 0),   # não perguntado no diagnóstico: a apurar na conversa comercial
         ("next_step_commitment", 3 if body.demo else 2),
     ]
@@ -165,6 +168,8 @@ def _level(total: int) -> tuple[str, str, str]:
 
 def email_subject(d: dict) -> str:
     kind = "Demonstração pedida" if d["demo"] else "Relatório pedido"
+    if d.get("lead_kind") in _KIND_PT:
+        kind = f"{_KIND_PT[d['lead_kind']]} · " + ("Reunião pedida" if d["demo"] else "Contacto pedido")
     if d.get("demo_due_at"):
         due = datetime.fromisoformat(d["demo_due_at"])
         kind = f"DEMO ATÉ {due.strftime('%d/%m')} · {kind}"
@@ -192,6 +197,15 @@ def _email_html(d: dict) -> str:
     mailto = f"mailto:{html.escape(d['email'])}?subject={html.escape(reply_subject.replace(' ', '%20'))}"
     step = (f"Propor 2 horários reais para a demonstração, em {_PT['lang'].get(d['demo_lang'], d['demo_lang'])}."
             if demo else "Enviar o relatório de diagnóstico e propor uma conversa.")
+    lk = d.get("lead_kind")
+    if lk in _KIND_PT:
+        badge = f"{_KIND_PT[lk]} · " + ("REUNIÃO PEDIDA" if demo else "CONTACTO PEDIDO")
+        badge_bg, badge_fg = (c["copper"], c["dark"]) if lk == "investor" else (c["teal"], c["dark"])
+        reply_subject = "A sua conversa com a ConstruPilot"
+        mailto = f"mailto:{html.escape(d['email'])}?subject={html.escape(reply_subject.replace(' ', '%20'))}"
+        step = ("Marcar reunião com os fundadores, com demonstração." if lk == "investor" and demo
+                else "Responder e propor uma conversa com os fundadores." if lk == "investor"
+                else "Responder e propor uma conversa sobre a parceria.")
     sla = ""
     if d.get("demo_due_at"):
         due = datetime.fromisoformat(d["demo_due_at"])
@@ -322,6 +336,7 @@ async def create_lead(body: ExperienceLeadIn, request: Request, response: Respon
     ok_msg = (_SLA_MSG if urgent_demo else _OK_MSG)[lang]
     doc = {
         "lead_id": "lead_" + secrets.token_hex(8), "market": "pt", "source": "experience",
+        "lead_kind": KIND.get(body.role, "customer"),
         "name": body.name.strip(), "company": body.company.strip(), "email": email, "lang": lang,
         "role": body.role, "role_label": body.role_label.strip(), "country": body.country.strip(),
         "company_type": body.company_type.strip(), "team": body.team.strip(), "decision": body.decision,
