@@ -9,7 +9,7 @@ L'ordre se règle par la variable PHOTOREAL_MODELS (ex. "gpt_image_2,gemini_imag
 Chaque image retenue passe par engines.image_hd (Full HD affiné, PHOTOREAL_LONG). Aucune exception ne remonte : None si tout échoue.
 
 Moteur « openai » : OpenAI GPT Image en direct (clé OPENAI_API_KEY de l'entreprise), images.edit avec input_fidelity=high
-— la vue calculée est la photo de départ, donc la géométrie est conservée ; modèle OPENAI_IMAGE_MODEL (gpt-image-1 par défaut).
+— la vue calculée est la photo de départ, donc la géométrie est conservée ; modèle OPENAI_IMAGE_MODEL, sinon gpt-image-2 → gpt-image-1.5 → gpt-image-1.
 Avec verify= (engines.geometry_lock), chaque image est alignée sur la vue calculée et refusée si les arêtes de la géométrie
 (murs, toiture, baies) ne sont pas exactement au même endroit ; on passe alors au moteur suivant.
 """
@@ -101,9 +101,10 @@ async def _openai(prompt: str, base: bytes, style: bytes | None, timeout: float)
             "to make it a real photograph. ")
     if style:
         head += "The second image is the approved style: match its materials, colours, garden and light. "
-    models = [os.environ.get("OPENAI_IMAGE_MODEL") or "gpt-image-1"]
-    if models[0] != "gpt-image-1":
-        models.append("gpt-image-1")
+    models = []
+    for m in [os.environ.get("OPENAI_IMAGE_MODEL"), "gpt-image-2", "gpt-image-1.5", "gpt-image-1"]:  # o mais recente disponível
+        if m and m not in models:
+            models.append(m)
     for m in models:
         try:
             r = await client.images.edit(model=m, image=imgs if len(imgs) > 1 else imgs[0], prompt=(head + prompt)[:31000],

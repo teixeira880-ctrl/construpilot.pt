@@ -90,7 +90,7 @@ def test_metered_chat_never_bypasses_budget_refusal(monkeypatch):
     async def single(*a, **k):
         raise AssertionError("não deve contornar o orçamento")
     monkeypatch.setattr(ai, "_complete_vision_single", single)
-    chat = metering.MeteredChat(api_key="k", session_id="s", failover=True).with_model("openai", "gpt-5.5")
+    chat = metering.MeteredChat(api_key="k", session_id="s", system_message="s", failover=True).with_model("openai", "gpt-5.5")
     with pytest.raises(HTTPException):
         asyncio.run(chat.send_message(_Msg("x")))
 
