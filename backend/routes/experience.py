@@ -38,7 +38,7 @@ KIND = {"investor": "investor", "partner": "partner"}   # todos os outros perfis
 _KIND_PT = {"investor": "INVESTIDOR", "partner": "PARCEIRO"}
 CATEGORIES = {"takeoff", "estimation", "drawings", "docs", "coord", "materials", "technical", "other"}
 STATUSES = ("discovery_completed", "demo_requested")
-_OK_MSG = {"pt": "Obrigado. A equipa ConstruPilot entra em contacto contigo em 2 dias úteis.",
+_OK_MSG = {"pt": "Obrigado. A equipa ConstruPilot entra em contacto consigo em 2 dias úteis.",
            "fr": "Merci. L'équipe ConstruPilot vous recontacte sous 2 jours ouvrés.",
            "en": "Thank you. The ConstruPilot team will contact you within 2 business days."}
 
@@ -48,7 +48,7 @@ def _now() -> datetime:
 
 
 DEMO_SLA_BUSINESS_DAYS = 5   # quem responde «Já» e pede demonstração recebe uma demo funcional neste prazo
-_SLA_MSG = {"pt": "Obrigado. Como pediste para avançar já, a equipa ConstruPilot mostra-te uma demonstração funcional em até 5 dias úteis.",
+_SLA_MSG = {"pt": "Obrigado. Como pediu para avançar já, a equipa ConstruPilot mostra-lhe uma demonstração funcional em até 5 dias úteis.",
             "fr": "Merci. Comme vous souhaitez avancer tout de suite, l'équipe ConstruPilot vous présente une démonstration fonctionnelle sous 5 jours ouvrés.",
             "en": "Thank you. Since you want to move now, the ConstruPilot team will show you a working demo within 5 business days."}
 _WEEKDAYS = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
