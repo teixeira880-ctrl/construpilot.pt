@@ -34,6 +34,10 @@ def should_failover(exc: Exception) -> bool:
 
 def friendly_error(exc: Exception) -> str:
     """Message clair pour l'utilisateur, sans aucun détail technique (clé, coût, fournisseur, litellm)."""
+    if type(exc).__name__ == "QuotaError":                      # limite / orçamento do plano: mensagem de negócio
+        return str(exc)
+    if getattr(exc, "status_code", None) == 402 and isinstance(getattr(exc, "detail", None), str):
+        return exc.detail
     msg = str(exc).lower()
     if any(m in msg for m in ("budget", "exceeded", "current cost", "max budget", "quota", "no credits", "credits remaining", "insufficient", "payment", "billing")):
         return ("O assistente atingiu o seu limite de utilização por agora. Tente novamente dentro de alguns minutos.")

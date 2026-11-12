@@ -35,6 +35,10 @@ class StudiesError(Exception):
     pass
 
 
+class QuotaError(StudiesError):
+    """Recusa por limite / orçamento do plano: nunca contornada por outro fornecedor de IA."""
+
+
 def _client():
     from engines.llm_keys import openai_direct_active
     key = os.environ.get("OPENAI_API_KEY")
@@ -50,12 +54,12 @@ async def check_quota(user_id: str) -> None:
     since = datetime.now(timezone.utc) - timedelta(hours=1)
     n = await db.ai_usage.count_documents({"user_id": user_id, "engine": "openai_studies", "created": {"$gte": since}})
     if n >= MAX_PER_HOUR:
-        raise StudiesError(f'Limite atingido: {MAX_PER_HOUR} análises OpenAI por hora e por conta')
+        raise QuotaError(f'Limite atingido: {MAX_PER_HOUR} análises OpenAI por hora e por conta')
     from engines import usage_meter
     try:
         await usage_meter.check_ai_budget(user_id)
     except Exception as e:  # HTTPException 402 → mensagem de negócio
-        raise StudiesError("Orçamento mensal de IA do seu plano atingido. Mude para o plano superior ou aguarde pelo próximo mês.") from e
+        raise QuotaError("Orçamento mensal de IA do seu plano atingido. Mude para o plano superior ou aguarde pelo próximo mês.") from e
 
 
 async def _log_usage(user_id: str, project_id: str | None, kind: str, model: str, usage, plan_id: str | None) -> None:

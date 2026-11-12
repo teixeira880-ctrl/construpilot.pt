@@ -1804,7 +1804,8 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
     except Exception as exc:
         # Repli automatique sur TOUTE erreur OpenAI sans réponse produite (pas seulement crédits / débit) :
         # Claude, puis Gemini en dernier recours — l'utilisateur ne voit jamais « momentaneamente indisponível ».
-        if fallback_available() and not reply.strip():
+        refused = type(exc).__name__ == "QuotaError" or (isinstance(exc, HTTPException) and exc.status_code in (402, 429))
+        if fallback_available() and not reply.strip() and not refused:   # limite / orçamento do plano: nunca contornar
             logger.warning("OpenAI turn failed (%s: %s) — fallback Claude", type(exc).__name__, str(exc)[:300])
             if should_failover(exc):
                 rec = await mark_openai_degraded(exc)
