@@ -262,6 +262,9 @@ async def intends_decide_alone(text: str, llm: LLM | None = None) -> bool:
         return False
     if _DA_RX.search(_norm(t)):
         return True
+    from engines.best_effort import detect as _best_effort       # «é um teste, faz o melhor que puderes» / «c'est un test…»
+    if _best_effort(t):
+        return True
     if llm is not None:                      # llm fourni (tests / appel personnalisé) : on s'en tient au repérage FR/PT
         return False
     try:
