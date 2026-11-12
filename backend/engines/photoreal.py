@@ -7,6 +7,11 @@ Cascade de moteurs (le premier qui répond gagne ; la géométrie de la référe
   4. Nano Banana 3.1 via la clé universelle Emergent (engines.image_studio).
 L'ordre se règle par la variable PHOTOREAL_MODELS (ex. "gpt_image_2,gemini_image3_pro,gen4_image,emergent").
 Chaque image retenue passe par engines.image_hd (Full HD affiné, PHOTOREAL_LONG). Aucune exception ne remonte : None si tout échoue.
+
+Moteur « openai » : OpenAI GPT Image en direct (clé OPENAI_API_KEY de l'entreprise), images.edit avec input_fidelity=high
+— la vue calculée est la photo de départ, donc la géométrie est conservée ; modèle OPENAI_IMAGE_MODEL (gpt-image-1 par défaut).
+Avec verify= (engines.geometry_lock), chaque image est alignée sur la vue calculée et refusée si les arêtes de la géométrie
+(murs, toiture, baies) ne sont pas exactement au même endroit ; on passe alors au moteur suivant.
 """
 from __future__ import annotations
 
@@ -79,10 +84,43 @@ async def _runway(model: str, prompt: str, refs: list[tuple[str, bytes]], timeou
         return r.content
 
 
-async def _meter(model: str, feature: str, session_id: str) -> None:
+async def _openai(prompt: str, base: bytes, style: bytes | None, timeout: float) -> bytes | None:
+    """GPT Image (OpenAI direct) : édition de la vue calculée, fidélité d'entrée haute, 1536×1024 puis recadrage exact."""
+    from engines import llm_keys
+    if not llm_keys.openai_direct_active():
+        return None
+    from openai import AsyncOpenAI
+    from engines import geometry_lock as G
+    padded, box = G.pad(base, 1.5)
+    from PIL import Image
+    pw, ph = Image.open(io.BytesIO(padded)).size
+    imgs = [("geometry.png", padded, "image/png")] + ([("style.jpg", style, "image/jpeg")] if style else [])
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=timeout)
+    head = ("The first image is the exact geometry of the building: keep every edge where it is — same outline, storeys, roof, "
+            "every window and door at the same position and size, same camera. Only change materials, light and surroundings "
+            "to make it a real photograph. ")
+    if style:
+        head += "The second image is the approved style: match its materials, colours, garden and light. "
+    models = [os.environ.get("OPENAI_IMAGE_MODEL") or "gpt-image-1"]
+    if models[0] != "gpt-image-1":
+        models.append("gpt-image-1")
+    for m in models:
+        try:
+            r = await client.images.edit(model=m, image=imgs if len(imgs) > 1 else imgs[0], prompt=(head + prompt)[:31000],
+                                         size="1536x1024", quality="high", input_fidelity="high", output_format="png")
+            data = base64.b64decode(r.data[0].b64_json)
+            return G.crop(data, (pw, ph), box)
+        except Exception as exc:  # noqa: BLE001
+            if await llm_keys.note_openai_error(exc):
+                return None
+            log.warning("photoreal openai %s: %s", m, str(exc)[:200])
+    return None
+
+
+async def _meter(model: str, feature: str, session_id: str, provider: str = "runway") -> None:
     try:
         from engines.expenses.store import observe
-        await observe(source="photoreal", source_id=session_id, provider="runway", feature=feature, model=model,
+        await observe(source="photoreal", source_id=session_id, provider=provider, feature=feature, model=model,
                       units={"images": 1}, state="completed")
     except Exception:  # noqa: BLE001
         pass
@@ -99,18 +137,39 @@ def _tagged(prompt: str, style: bool, head: str | None = None) -> str:
 
 async def render(base: bytes, prompt: str, *, style_ref: bytes | None = None, timeout: float = 240.0,
                  feature: str = "photoreal", session_id: str = "photoreal", head: str | None = None,
-                 engines: list[str] | None = None) -> tuple[bytes, str] | None:
-    """Photo réaliste de la référence `base`. Renvoie (octets, nom du moteur) ou None."""
+                 engines: list[str] | None = None, verify=None) -> tuple[bytes, str] | None:
+    """Photo réaliste de la référence `base`. Renvoie (octets, nom du moteur) ou None.
+    verify(octets) → (octets alignés, score 0..1) : l'image n'est retenue que si score ≥ geometry_lock.threshold()."""
     from engines import image_hd
+
+    async def accept(img: bytes, name: str):
+        if verify is None:
+            return img, name
+        from engines import geometry_lock as G
+        aligned, sc = await asyncio.to_thread(verify, img)
+        log.info("photoreal %s geometry score %.2f (min %.2f)", name, sc, G.threshold())
+        return (aligned, name) if sc >= G.threshold() else None
+
     for model in (engines or _order()):
         try:
+            if model == "openai":
+                data = await asyncio.wait_for(_openai(prompt, base, style_ref, timeout), timeout + 30)
+                if data:
+                    await _meter("gpt-image", feature, session_id, provider="openai")
+                    hd, _ = await asyncio.to_thread(image_hd.sharpen, data, "image/png", long_side=LONG_SIDE)
+                    ok = await accept(hd, "openai_gpt_image")
+                    if ok:
+                        return ok
+                continue
             if model == "emergent":
                 from engines import image_studio
                 out = await asyncio.wait_for(image_studio.generate(
                     prompt=prompt, provider="gemini", reference_images=[base] + ([style_ref] if style_ref else []),
                     feature=feature, session_id=session_id), timeout)
                 if out:
-                    return out[0][0], "nano_banana_3.1"
+                    ok = await accept(out[0][0], "nano_banana_3.1")
+                    if ok:
+                        return ok
                 continue
             if model not in RATIO:
                 continue
@@ -119,7 +178,9 @@ async def render(base: bytes, prompt: str, *, style_ref: bytes | None = None, ti
             if data:
                 await _meter(model, feature, session_id)
                 hd, _ = await asyncio.to_thread(image_hd.sharpen, data, "image/png", long_side=LONG_SIDE)
-                return hd, model
+                ok = await accept(hd, model)
+                if ok:
+                    return ok
         except Exception as exc:  # noqa: BLE001 — on passe au moteur suivant
             log.warning("photoreal %s failed: %s", model, str(exc)[:200])
     return None

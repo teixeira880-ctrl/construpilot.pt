@@ -58,3 +58,66 @@ def test_model_found_from_conversation_and_views_cached(monkeypatch):
     out, none = asyncio.run(run())
     assert out["_building_model"]["envelope"] == raw["envelope"] and "main" in out["_house_views"] and "cut_0" in out["_house_views"]
     assert "_building_model" not in none
+
+
+# ---- geometria das fotos: só aceites se respeitarem 100 % a geometria calculada
+def _case(name="moradia_pt_demo"):
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).resolve().parents[1] / "engines/bet_core/cases" / f"{name}.json").read_text())
+
+
+def test_geometry_lock_accepts_same_rejects_moved_windows():
+    import copy
+    from engines import geometry_lock as G
+    from engines import house3d
+    raw = _case()
+    base, mask = house3d.render_png(raw, 1600, 900, "side"), house3d.render_png(raw, 1600, 900, "side", mask=True)
+    assert G.check(base, base, mask)[1] >= G.threshold()
+    moved = copy.deepcopy(raw)
+    for o in moved["openings"]:
+        w = o["to"] - o["from"]
+        o["from"] += 1.2
+        o["to"] = o["from"] + w
+    assert G.check(house3d.render_png(moved, 1600, 900, "side"), base, mask)[1] < G.threshold()
+    none = {**raw, "openings": []}
+    assert G.check(house3d.render_png(none, 1600, 900, "side"), base, mask)[1] < G.threshold()
+
+
+def test_pad_crop_roundtrip_keeps_box():
+    from PIL import Image
+    import io
+    from engines import geometry_lock as G
+    from engines import house3d
+    base = house3d.render_png(_case(), 1600, 900, "main")
+    p, box = G.pad(base, 1.5)
+    W, H = Image.open(io.BytesIO(p)).size
+    assert abs(W / H - 1.5) < 0.01 and box[2:] == (1600, 900)
+    back = G.crop(p, (W, H), box)
+    assert Image.open(io.BytesIO(back)).size == (1600, 900)
+
+
+def test_photoreal_rejects_wrong_geometry_then_takes_next_engine(monkeypatch):
+    import asyncio
+    import copy
+    from engines import geometry_lock as G
+    from engines import house3d, image_studio, photoreal as PR
+    raw = _case()
+    base, mask = house3d.render_png(raw, 1600, 900, "main"), house3d.render_png(raw, 1600, 900, "main", mask=True)
+    wrong = copy.deepcopy(raw)
+    wrong["openings"] = []
+    bad = house3d.render_png(wrong, 1600, 900, "main")
+
+    async def fake_runway(model, prompt, refs, timeout):
+        return bad                                    # motor que inventa a casa (sem vãos) → recusado
+
+    async def fake_gen(**kw):
+        return [(base, "image/png")]                  # motor que respeita a geometria → aceite
+    monkeypatch.setattr(PR, "_runway", fake_runway)
+    monkeypatch.setattr(image_studio, "generate", fake_gen)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    r = asyncio.run(PR.render(base, "x", engines=["openai", "gpt_image_2", "emergent"],
+                              verify=lambda img: G.check(img, base, mask)))
+    assert r and r[1] == "nano_banana_3.1"
+    r2 = asyncio.run(PR.render(base, "x", engines=["gpt_image_2"], verify=lambda img: G.check(img, base, mask)))
+    assert r2 is None                                 # nenhum motor respeitou → fica a vista calculada

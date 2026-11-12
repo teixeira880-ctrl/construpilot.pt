@@ -61,9 +61,11 @@ def _sides(raw: dict, L: float, W: float) -> dict:
 VIEWS = ("main", "side", "rear", "side_other", "aerial")
 
 
-def render_png(raw: dict, width: int = 1800, height: int = 1100, view: str = "main") -> bytes:
+def render_png(raw: dict, width: int = 1800, height: int = 1100, view: str = "main", mask: bool = False) -> bytes:
     """Axonometria pintada (mesma linguagem visual dos rendus da conta CLT: céu → horizonte dourado, sol difuso,
-    árvores, sombra projetada, anti-serrilhado) com a geometria REAL da moradia: pisos, telhado, vãos."""
+    árvores, sombra projetada, anti-serrilhado) com a geometria REAL da moradia: pisos, telhado, vãos.
+    mask=True: mesma câmara, só a geometria (fundo 0, um tom por face, vãos 40) — serve para verificar que a
+    versão fotorrealista respeita 100 % a geometria (engines.geometry_lock)."""
     from PIL import Image, ImageDraw, ImageFilter
     SS = 2                                                        # sobre-amostragem (anti-serrilhado)
     out_w, out_h = width, height
@@ -196,6 +198,21 @@ def render_png(raw: dict, width: int = 1800, height: int = 1100, view: str = "ma
         u, v, _d = P(*p)
         return (ox + sc * u, oy + sc * v)
 
+    def depth_(f):
+        ds = [P(*p)[2] for p in f[0]]
+        return sum(ds) / len(ds)
+
+    if mask:
+        img = Image.new("L", (width, height), 0)
+        dr = ImageDraw.Draw(img)
+        for i_, (poly, col, layer, kids) in enumerate(sorted(faces, key=lambda f: (-depth_(f), f[2]))):
+            dr.polygon([S(p) for p in poly], fill=130 + (i_ * 47) % 125)       # um tom por face → todas as arestas contam
+            for q, _kc in kids:
+                dr.polygon([S(p) for p in q], fill=40)
+        img = img.resize((out_w, out_h), Image.NEAREST)
+        buf = io.BytesIO()
+        img.save(buf, "PNG", optimize=True)
+        return buf.getvalue()
     img = Image.new("RGB", (width, height))
     dr = ImageDraw.Draw(img)
     for yy in range(height):                                       # céu: azul profundo → horizonte dourado (estilo CLT)
