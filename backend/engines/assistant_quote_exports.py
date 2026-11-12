@@ -34,21 +34,21 @@ L = {
            "ht": "Total HT", "tva": "TVA", "ttc": "Total TTC", "client": "Client", "date": "Date", "general": "Général",
            "summary": "Récapitulatif par lot", "lines": "lignes", "estimated": "Prix estimé — à vérifier", "user": "Prix fourni",
            "library": "Bibliothèque", "missing": "À compléter", "note_metre": "Quantités issues du devis brouillon ; les quantités « à confirmer » doivent être relevées sur plans ou sur site.",
-           "file_quote_pdf": "Devis (PDF)", "file_quote_xlsx": "Devis (Excel)", "file_metre_pdf": "Métré (PDF)", "file_metre_xlsx": "Métré (Excel)"},
+           "file_quote_pdf": "Devis (PDF)", "file_quote_xlsx": "Devis (Excel)", "file_metre_pdf": "Métré (PDF)", "file_metre_xlsx": "Métré (Excel)", "file_economic_pdf": "Dossier économique — coût, vente, marge (PDF)"},
     "pt": {"quote": "Orcamento", "takeoff": "Medicao", "draft": "RASCUNHO — a verificar antes do envio", "lot": "Capítulo", "designation": "Designação",
            "description": "Descrição", "qty": "Quantidade", "unit": "Unidade", "pu": "PU s/ IVA", "vat": "IVA %", "total": "Total s/ IVA",
            "origin": "Origem do preço", "status": "Estado", "to_confirm": "Quantidade a confirmar", "ok": "Indicada",
            "ht": "Total s/ IVA", "tva": "IVA", "ttc": "Total c/ IVA", "client": "Cliente", "date": "Data", "general": "Geral",
            "summary": "Resumo por capítulo", "lines": "linhas", "estimated": "Preço estimado — a verificar", "user": "Preço fornecido",
            "library": "Biblioteca", "missing": "A completar", "note_metre": "Quantidades do rascunho de orçamento; as quantidades «a confirmar» devem ser medidas nas plantas ou em obra.",
-           "file_quote_pdf": "Orçamento (PDF)", "file_quote_xlsx": "Orçamento (Excel)", "file_metre_pdf": "Medição (PDF)", "file_metre_xlsx": "Medição (Excel)"},
+           "file_quote_pdf": "Orçamento (PDF)", "file_quote_xlsx": "Orçamento (Excel)", "file_metre_pdf": "Medição (PDF)", "file_metre_xlsx": "Medição (Excel)", "file_economic_pdf": "Dossier económico — custo, venda, margem (PDF)"},
     "en": {"quote": "Quote", "takeoff": "Takeoff", "draft": "DRAFT — to be checked before sending", "lot": "Trade", "designation": "Item",
            "description": "Description", "qty": "Quantity", "unit": "Unit", "pu": "Unit price excl. VAT", "vat": "VAT %", "total": "Total excl. VAT",
            "origin": "Price origin", "status": "Status", "to_confirm": "Quantity to confirm", "ok": "Given",
            "ht": "Total excl. VAT", "tva": "VAT", "ttc": "Total incl. VAT", "client": "Client", "date": "Date", "general": "General",
            "summary": "Summary by trade", "lines": "lines", "estimated": "Estimated price — to check", "user": "Price provided",
            "library": "Library", "missing": "To complete", "note_metre": "Quantities taken from the draft quote; quantities marked 'to confirm' must be measured on drawings or on site.",
-           "file_quote_pdf": "Quote (PDF)", "file_quote_xlsx": "Quote (Excel)", "file_metre_pdf": "Takeoff (PDF)", "file_metre_xlsx": "Takeoff (Excel)"},
+           "file_quote_pdf": "Quote (PDF)", "file_quote_xlsx": "Quote (Excel)", "file_metre_pdf": "Takeoff (PDF)", "file_metre_xlsx": "Takeoff (Excel)", "file_economic_pdf": "Economic dossier — cost, sale, margin (PDF)"},
 }
 
 
@@ -303,6 +303,27 @@ def _quote_pdf(doc, branding, lang):
     return build_document_pdf(draft, branding=branding, lang=lang)
 
 
+DEFAULT_COUNTRY = "PT"
+
+
+async def _economic_builder(doc, uid):
+    """Dossier económico do orçamento (custo com a biblioteca de compra e os recursos da empresa, venda, margem, cenários)."""
+    from engines import economic_dossier as E
+    purchase = await db.library_items.find({"user_id": uid, "cost_price_ht": {"$gt": 0}},
+                                           {"_id": 0, "designation": 1, "unit": 1, "cost_price_ht": 1}).to_list(5000)
+    u = await db.users.find_one({"user_id": uid}, {"_id": 0, "brand_country": 1, "country": 1}) or {}
+    raw_c = str(u.get("brand_country") or u.get("country") or DEFAULT_COUNTRY).upper()
+    country = "FR" if raw_c == "FR" else ("PT" if raw_c == "PT" else DEFAULT_COUNTRY)
+    company = E.merge(await db.company_cost_resources.find_one({"user_id": uid}, {"_id": 0}), country)
+
+    def build(src, branding, lang):
+        from engines import economic_dossier_pdf
+        r = E.compute(src, company, purchase, country)
+        lg = "pt" if str(lang or "").startswith("pt") else ("fr-FR" if str(lang or "").startswith("fr") else lang)
+        return economic_dossier_pdf.build(r, branding or {}, lg)
+    return build
+
+
 async def attach_quote_exports(doc_id, user, conv) -> list[dict]:
     """Produit (ou retrouve) devis PDF/XLSX + métré PDF/XLSX pour la version courante du devis."""
     from engines.assistant_files import public_artifact
@@ -311,15 +332,22 @@ async def attach_quote_exports(doc_id, user, conv) -> list[dict]:
     if not doc or not _rows(doc):
         return []
     version = hashlib.sha256(f"{doc_id}|{doc.get('updated_at')}".encode()).hexdigest()[:20]
-    kinds = ("quote_pdf", "quote_xlsx", "metre_pdf", "metre_xlsx")
+    kinds = ("quote_pdf", "quote_xlsx", "metre_pdf", "metre_xlsx", "economic_pdf")
     ids = {k: f"qx_{version}_{k}" for k in kinds}
     existing = {a["artifact_id"]: a async for a in db.assistant_artifacts.find(
         {"artifact_id": {"$in": list(ids.values())}, "user_id": uid}, {"_id": 0, "data_b64": 0, "body": 0})}
-    if len(existing) == len(kinds):
+    if all(ids[k] in existing for k in kinds):
         return [public_artifact(existing[ids[k]]) for k in kinds]
     src, branding, lang = await _context(doc, user)
+    try:
+        economic = await _economic_builder(doc, uid)
+    except Exception:  # noqa: BLE001 — sem dossier económico, os 4 ficheiros do orçamento saem na mesma
+        import logging
+        logging.getLogger(__name__).warning("economic dossier setup failed", exc_info=True)
+        economic = None
     builders = {"quote_pdf": (_quote_pdf, "pdf"), "quote_xlsx": (build_quote_xlsx, "xlsx"),
-                "metre_pdf": (build_metre_pdf, "pdf"), "metre_xlsx": (build_metre_xlsx, "xlsx")}
+                "metre_pdf": (build_metre_pdf, "pdf"), "metre_xlsx": (build_metre_xlsx, "xlsx"),
+                "economic_pdf": (economic, "pdf")}
     t = L[_lang(lang)]
     out, now = [], datetime.now(timezone.utc).isoformat()
     for k in kinds:
@@ -327,8 +355,17 @@ async def attach_quote_exports(doc_id, user, conv) -> list[dict]:
             out.append(public_artifact(existing[ids[k]]))
             continue
         fn, ext = builders[k]
-        data = await asyncio.to_thread(fn, src, branding, lang)
-        type_doc = t["quote"] if k.startswith("quote") else t["takeoff"]
+        if fn is None:
+            continue
+        try:
+            data = await asyncio.to_thread(fn, src, branding, lang)
+        except Exception:  # noqa: BLE001 — o dossier económico nunca impede os 4 ficheiros do orçamento
+            if k != "economic_pdf":
+                raise
+            import logging
+            logging.getLogger(__name__).warning("economic dossier export failed", exc_info=True)
+            continue
+        type_doc = t["quote"] if k.startswith("quote") else ("Dossier" if k == "economic_pdf" else t["takeoff"])
         art = {"artifact_id": ids[k], "user_id": uid, "conversation_id": conv["conversation_id"],
                "request_id": conv.get("_quote_request_id"), "title": t["file_" + k], "body": f"{type_doc} — {doc.get('title') or ''}",
                "filename": nom_document(type_doc, doc.get("title") or _client(doc), ext=ext), "format": ext,
@@ -354,7 +391,7 @@ async def with_exports(result, user, conv):
         return {**result, "files_error": f"Fichiers PDF/Excel non générés : {type(exc).__name__}. Le devis est enregistré ; réessayer avec read_quote_draft."}
     if files:
         result = {**result, "artifacts": files,
-                  "files_note": "Devis et métré fournis en PDF ET en Excel (4 fichiers joints). Annonce-les tous les quatre."}
+                  "files_note": "Devis et métré fournis en PDF ET en Excel, plus le dossier économique (coût, vente, marge, bénéfice) : annonce TOUS les fichiers joints."}
     return result
 
 

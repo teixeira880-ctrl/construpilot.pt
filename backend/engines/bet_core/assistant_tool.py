@@ -35,7 +35,7 @@ TOOLS = [
                      "note de calcul Eurocodes, plans d'exécution GROS ŒUVRE entièrement cotés (fondations, niveaux, planchers, coupes, "
                      "façades, détails ferraillés), charpente, électricité, plomberie, devis chiffré Excel et DXF. Lecture des plans par "
                      "IA puis calculs 100 % déterministes et contrôle automatique. Tâche de fond (3 à 8 min) : renvoie un job_id. "
-                     "AVANT d'appeler : confirme avec l'utilisateur les documents à utiliser, le pays et ses hypothèses (planchers, murs). "
+                     "Appelle-le DIRECTEMENT, sans confirmation préalable : documents joints, pays du projet (adresse) et précisions de l'utilisateur dans hypotheses. "
                      "Ne l'utilise pas pour un simple métré ou un devis de rénovation."),
      "parameters": {"type": "object", "properties": {
          "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… des PDF joints à la conversation (PC, plans, coupes, façades, étude de sol)"},
@@ -85,7 +85,15 @@ INSTRUCTIONS = (
     "« Décisions prises (modifiables) », et invite l'utilisateur à corriger un point s'il le souhaite. Quand l'utilisateur corrige "
     "ensuite une décision (ou que tu relances un calcul), ajoute sa correction aux hypothèses, relance l'étude et n'affiche QUE ce "
     "qui change, au format « Modifié : X → Y ; impacts : … » — sans reposer les questions ni réafficher tout le dossier. "
-    "ÉTUDE THERMIQUE D'ABORD : en France, si l'utilisateur ne joint pas d'étude thermique, l'étude BET exécute AUTOMATIQUEMENT la "
+    "ÉTUDE COMPLÈTE / ESTUDO COMPLETO (« estudo completo », « étude complète », « orçamentação completa », margens, benefícios, "
+    "métrés, estudo térmico, plantas de execução…) : fais TOUT dans le même tour, sans question : (1) generate_full_bet_study "
+    "(plans d'exécution cotés, note de calcul, métré, devis Excel, étude thermique — RE2020 en France, pré-certificat REH au "
+    "Portugal) puis read_full_bet_study jusqu'au dossier terminé ; (2) create_quote_draft avec TOUS les lots et quantités du métré "
+    "de l'étude (le devis PDF/Excel, le métré PDF/Excel et le dossier économique coût / vente / marge / bénéfice sont joints "
+    "automatiquement). Termine par la liste de CHAQUE livrable demandé avec son fichier ; si un livrable manque, dis lequel et "
+    "pourquoi — ne dis jamais « fait » pour un livrable absent. "
+    "ÉTUDE THERMIQUE D'ABORD : au Portugal, l'étude BET joint automatiquement le pré-certificat REH (Estudo térmico) calculé "
+    "sur la géométrie lue ; en France, si l'utilisateur ne joint pas d'étude thermique, l'étude BET exécute AUTOMATIQUEMENT la "
     "pré-étude RE2020 avant les plans (isolant au plus juste qui passe Bbio / Cep / Cep,nr / Ic énergie / DH, puis épaisseur des "
     "murs reportée dans les plans et le devis) ; ne lance donc PAS etude_re2020 séparément avant generate_full_bet_study, et ne "
     "demande pas l'épaisseur des murs ni l'isolant : présente ensuite le champ `thermal` (classe, Bbio, Cep,nr, épaisseur des murs, "

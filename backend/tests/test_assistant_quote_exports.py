@@ -60,17 +60,17 @@ def test_attach_exports_four_files_idempotent(monkeypatch):
         await db.pro_documents.insert_one(dict(DOC))
         res = await qx.with_exports({"ok": True, "doc_id": "doc_q1"}, {"user_id": "u1"}, conv)
         files = res["artifacts"]
-        assert [f["format"] for f in files] == ["pdf", "xlsx", "pdf", "xlsx"]
-        assert [f["quote_export"] for f in files] == ["quote_pdf", "quote_xlsx", "metre_pdf", "metre_xlsx"]
+        assert [f["format"] for f in files] == ["pdf", "xlsx", "pdf", "xlsx", "pdf"]
+        assert [f["quote_export"] for f in files] == ["quote_pdf", "quote_xlsx", "metre_pdf", "metre_xlsx", "economic_pdf"]
         assert all("data_b64" not in f and f["download"].startswith("/assistant/artifacts/") for f in files)
-        assert await db.assistant_artifacts.count_documents({}) == 4
+        assert await db.assistant_artifacts.count_documents({}) == 5
         again = await qx.with_exports({"ok": True, "doc_id": "doc_q1"}, {"user_id": "u1"}, conv)
         assert [f["artifact_id"] for f in again["artifacts"]] == [f["artifact_id"] for f in files]
-        assert await db.assistant_artifacts.count_documents({}) == 4
+        assert await db.assistant_artifacts.count_documents({}) == 5
         # nouvelle version du devis → 4 nouveaux fichiers
         await db.pro_documents.update_one({"doc_id": "doc_q1"}, {"$set": {"updated_at": "2026-11-09T08:00:00+00:00"}})
         await qx.with_exports({"ok": True, "doc_id": "doc_q1"}, {"user_id": "u1"}, conv)
-        assert await db.assistant_artifacts.count_documents({}) == 8
+        assert await db.assistant_artifacts.count_documents({}) == 10
         # un autre compte n'obtient rien
         other = await qx.with_exports({"ok": True, "doc_id": "doc_q1"}, {"user_id": "u2"}, conv)
         assert "artifacts" not in other

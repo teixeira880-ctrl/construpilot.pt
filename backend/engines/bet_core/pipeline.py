@@ -126,6 +126,48 @@ def force_warn(raw: dict, anomalies: list[dict]) -> list[dict]:
     return out
 
 
+def thermal_pt(raw: dict, out, stem: str):
+    """Estudo térmico de um projeto português: pré-certificado REH (DL 101-D/2020, Portaria 138-I/2021) calculado com a
+    geometria lida nas plantas (área útil, pé-direito, pisos, envidraçados) e o concelho da morada. → (caminho PDF, resumo)."""
+    from pathlib import Path
+
+    from engines.calc_lots import reh
+    env = raw.get("envelope") or {}
+    L, W = float(env.get("length_x") or 10), float(env.get("width_y") or 8)
+    t = float(env.get("wall_total_thickness") or 0.3)
+    lv = [x for x in raw.get("levels") or [] if float(x.get("floor_top") or 0) > -1.0
+          and not any(k in str(x.get("name") or x.get("id") or "").lower() for k in ("cave", "sous", "garag", "arrecad"))]
+    n = max(1, len(lv))
+    ap = round(max(20.0, (L - 2 * t) * (W - 2 * t) * n * 0.9), 1)
+    pdir = round(sum(float(x.get("ceiling_height") or 2.6) for x in lv) / n, 2) if lv else 2.6
+    aw = sum(max(0.0, float(o.get("to") or 0) - float(o.get("from") or 0)) * float(o.get("height") or 0)
+             for o in raw.get("openings") or [] if isinstance(o, dict))
+    proj = raw.get("project") or {}
+    addr = " ".join(str(proj.get(k) or "") for k in ("city", "commune", "concelho", "address"))
+    concelho = None
+    for name in sorted(reh.CONCELHOS if hasattr(reh, "CONCELHOS") else [], key=len, reverse=True):
+        if reh._norm(name) and reh._norm(name) in reh._norm(addr):
+            concelho = name
+            break
+    p = {"tipo": "moradia", "obra": "nova", "area_util_m2": ap, "pe_direito_m": pdir, "pisos": n,
+         "area_envidracada_m2": round(aw, 1) if aw > 1 else None, "altitude_m": proj.get("altitude_m"),
+         "concelho": concelho or (addr.split(",")[-1].strip() or None),
+         "hipoteses_entrada": [f"geometria lida nas plantas: {n} piso(s) aquecido(s), área útil ≈ {ap:.0f} m², pé-direito {pdir:.2f} m"
+                               + (f", envidraçados {aw:.1f} m²" if aw > 1 else "")]}
+    try:
+        o = reh.note({k: v for k, v in p.items() if v is not None})
+    except Exception:  # noqa: BLE001 — concelho não reconhecido: clima de Lisboa e aviso nas hipóteses
+        p["concelho"] = None
+        p["nuts"] = "Grande Lisboa"
+        p["hipoteses_entrada"].append("concelho não reconhecido na morada: clima da Grande Lisboa admitido — indicar o concelho")
+        o = reh.note({k: v for k, v in p.items() if v is not None})
+    path = Path(out) / f"{stem}_Estudo_termico_REH.pdf"
+    path.write_bytes(o["pdf"])
+    data = {k: o.get(k) for k in ("classe", "RNt", "Nic", "Ni", "Nvc", "Nv", "Ntc", "Nt")}
+    data["area_util_m2"], data["clima"] = ap, (o.get("clima") or {}).get("nuts")
+    return path, data
+
+
 def thermal_first(raw: dict, m, anomalies: list):
     """Étude thermique d'abord : sans étude fournie, le moteur RE2020 dimensionne l'isolation, puis l'épaisseur des murs
     est reportée dans le relevé et le modèle est rechargé. Renvoie (modèle, anomalies, étude | None)."""
@@ -238,6 +280,14 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
         i18n.KEEP_NORMS[0] = lang == "pt" and country != "PT"     # projet français lu en portugais : normes françaises conservées
         try:
             res = _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomalies)
+            if th is None and country == "PT":           # Portugal: pré-certificado REH (estudo térmico) no mesmo dossier
+                try:
+                    path, data = thermal_pt(m.raw, out, stem)
+                    res["files"]["re2020_pdf"] = str(path)
+                    res["thermal"] = data
+                except Exception as exc:  # noqa: BLE001 — o estudo térmico nunca bloqueia o dossier
+                    res["anomalies"].append({"code": "TH-02", "level": checks.WARN,
+                                             "message": f"Estudo térmico REH não produzido ({type(exc).__name__}: {str(exc)[:160]})"})
             if th is not None:
                 try:
                     res["files"]["re2020_pdf"] = str(thermal_note(th, out, stem))
