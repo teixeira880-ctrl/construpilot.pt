@@ -450,6 +450,7 @@ TEMPLATES.update({
         "Laje pedida « laje aligeirada de vigotas » → calculada : vigotas pré-esforçadas e abobadilhas de betão ⟨0⟩+⟨1⟩, afastamento ⟨2⟩",
     "Murs demandés « brique Porotherme ⟨0⟩ » → calculés en Porotherme ⟨1⟩ (NP EN ⟨2⟩)": "Paredes pedidas « tijolo térmico ⟨0⟩ » → calculadas em tijolo térmico ⟨1⟩ (NP EN ⟨2⟩)",
     "Dernier niveau (⟪A⟫) classé habitation (cat. A)": "Último piso (⟪A⟫) classificado como habitação (cat. A)",
+    "Maison de plain-pied : ⟪A⟫ dimensionnée comme toiture-terrasse / plancher haut (cat. H), sans escalier": "Moradia de um só piso: ⟪A⟫ dimensionada como cobertura em terraço / laje de esteira (cat. H), sem escada",
     "Comble classé habitable (cat. A) — ⟨0⟩ chambres + SDB au PC": "Sótão classificado como habitável (cat. A) — ⟨0⟩ quartos + IS no projeto",
     "Livrable « Plan de fondations » (GO-⟨0⟩) produit": "Peça « Planta de fundações » (GO-⟨0⟩) produzida",
     "Livrable « Plans de maçonnerie cotés » (GO-⟨0⟩) produit": "Peça « Plantas de estrutura e alvenarias cotadas » (GO-⟨0⟩) produzida",

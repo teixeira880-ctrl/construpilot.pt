@@ -107,6 +107,8 @@ def review(m, r, tim, e, p, devis_lines, sheets, model_anomalies) -> dict:
         nch = len([x for x in m.rooms(top.id) if x["type"] == "chambre"])
         nsb = len([x for x in m.rooms(top.id) if x["type"] == "salle_eau"])
         a("ok" if top.use == "habitation" else "bloquant", f"Comble classé habitable (cat. A) — {nch} chambres" + (" + SDB" if nsb else "") + " au PC")
+    elif top.id == "COB" and m.stair.get("_none"):                   # moradia térrea: laje de cobertura (nível técnico)
+        a("ok", f"Maison de plain-pied : {top.name} dimensionnée comme toiture-terrasse / plancher haut (cat. H), sans escalier")
     else:
         a("ok" if top.use.startswith("habitation") else "bloquant", f"Dernier niveau ({top.name}) classé habitation (cat. A)")
     first = next(l for l in m.levels if l.floor_top > -1.0)

@@ -50,7 +50,7 @@ def check_levels(m: Model) -> list[dict]:
         h = m.storey_height(lv.id)
         if lv.id != m.levels[-1].id and not (2.0 <= h <= 4.0):
             out.append(_a("GEO-10", BLOCK, f"Hauteur d'étage {lv.name} = {h:.2f} m invraisemblable", "Relire la coupe"))
-        if lv.hsp < 1.80 and lv.use != "annexe":
+        if lv.hsp < 1.80 and lv.use != "annexe" and not (lv.id == "COB" and (m.raw.get("stair") or {}).get("_none")):
             out.append(_a("GEO-11", BLOCK, f"{lv.name} : HSP {lv.hsp:.2f} m < 1,80 m pour un niveau habité", "Vérifier l'usage du niveau"))
     top = m.levels[-1]
     hab = [r for r in m.rooms(top.id) if r["type"] in ("chambre", "salle_eau")]

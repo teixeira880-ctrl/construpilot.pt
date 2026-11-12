@@ -296,6 +296,9 @@ def descent(m: Model, ld: dict, fl: dict) -> dict:
     st = m.stair
     Bt = st["x1"] - st["x0"]
     trem_len = st["y1"] - st["y0"]
+    if st.get("_none") or trem_len <= 0.05 or Bt <= 0.05:              # moradia térrea: sem cage de escada
+        return {"rows": rows, "roof_G_per_gable": r2(roof_G_line), "roof_S_per_gable": r2(roof_S_line),
+                "trusses": tr, "panne_span": r2(panne_span)}
     top_cage = m.levels[-1].floor_top + m.levels[-1].hsp
     full = stair_full_bay(m)
     bay = next((b - a + 0.10 for a, b in m.bays if a - 0.06 <= st["y0"] < b), m.span_y_calc)
@@ -576,7 +579,8 @@ def foundations(m: Model, desc: dict) -> dict:
     for rf in m.refends:
         gaps_low = sum(float(g["x1"]) - float(g["x0"]) for g in rf["gaps"] if g.get("level") == low)
         groups.append((rf["id"], f"Semelle filante sous {rf['label']}", False, 1, rf["x1"] - rf["x0"] - gaps_low))
-    groups.append(("cage", "Semelles sous voiles de cage d'escalier", False, 2, m.stair["y1"] - m.stair["y0"]))
+    if not m.stair.get("_none"):
+        groups.append(("cage", "Semelles sous voiles de cage d'escalier", False, 2, m.stair["y1"] - m.stair["y0"]))
     for side, label, excentric, count, length in groups:
         r = row(desc, side, low)
         b_wall = 0.15 if side == "cage" else 0.20
@@ -667,6 +671,8 @@ def slab_on_grade(m: Model) -> dict:
 def stairs(m: Model) -> dict:
     from .checks import stair_walking_line
     s = m.stair
+    if s.get("_none"):
+        return {"type": s.get("type") or "sem escada", "cage": "—", "walking_line_m": 0.0, "flights": [], "structure": "Sem escada interior (moradia de um só piso)."}
     B, Lc = s["x1"] - s["x0"], s["y1"] - s["y0"]
     walk = stair_walking_line(B, Lc)
     out = []

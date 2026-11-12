@@ -99,6 +99,8 @@ def _ext_walls(sh: Sheet, m: Model, lid: str, light=False, lining=True):
 
 def _stair(sh: Sheet, m: Model, lid: str):
     s = m.stair
+    if s.get("_none"):                                              # moradia térrea: sem escada
+        return
     for w in s["cage_walls"]:
         sh.rect("BA", w["x"] - w["t"] / 2, w["y0"], w["x"] + w["t"] / 2, w["y1"], lw=0.4, fill=BA_FILL)
     x0, x1, y0, y1 = s["x0"], s["x1"], s["y0"], s["y1"]
@@ -360,7 +362,7 @@ def go_foundations(m: Model, r: dict) -> Sheet:
             rect = (c0, yb0, c0 + B, W - yb0)
         rects.append((side, rect, it))
         sh.rect("FOND", *rect, lw=0.4, fill=FOND_FILL)
-    cage = items["cage"]
+    cage = items.get("cage") or {"B": 0.0}
     yb_top = W - items[bearing_sides(m)[-1]]["B"] if bearing_sides(m) else W
     yb_bot = items[bearing_sides(m)[0]]["B"] if bearing_sides(m) else 0.0
 
@@ -438,9 +440,10 @@ def go_foundations(m: Model, r: dict) -> Sheet:
     sh.dim((0, -1.20), (L, -1.20), 0, size=2.0)
     sh.chain([0.0, m.t_str / 2, W - m.t_str / 2, W], "y", L + 0.85, size=1.5)
     sh.dim((L + 1.20, 0), (L + 1.20, W), 0, size=2.0)
-    cw = m.stair["cage_walls"][0]
-    lo, hi = cage_span(cw)
-    sh.chain(sorted({0.0, round(lo, 3), round(hi, 3), W}), "y", cw["x"] - cage["B"] / 2 - 0.35, size=1.4)
+    if m.stair.get("cage_walls"):
+        cw = m.stair["cage_walls"][0]
+        lo, hi = cage_span(cw)
+        sh.chain(sorted({0.0, round(lo, 3), round(hi, 3), W}), "y", cw["x"] - cage["B"] / 2 - 0.35, size=1.4)
     for z, lab, p in ((zb, "arase inf. semelles", (m.t_tot + 0.8, W / 2 + 0.6)), (zb + 0.35, "arase sup. semelles", (m.t_tot + 0.8, W / 2 - 0.2)),
                       (m.levels[0].floor_top, "fini dallage", (m.t_tot + 0.8, W / 2 - 1.0))):
         sh.level_mark(p, z, lab)

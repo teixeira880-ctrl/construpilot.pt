@@ -198,11 +198,42 @@ def complete(raw: dict) -> list[str]:
                 note(f"Contrainte {k[2:5].upper()} absente de l'étude de sol : {dflt:.0f} kPa (valeur prudente à confirmer par la G2).", f"geotech.{k}", dflt)
             else:
                 geo[k] = v * 1000 if v < 5 else v              # 0,25 MPa écrit sans unité → 250 kPa
+    _complete_single_storey(raw, note)
     _complete_stair(raw, note)
     if dec:
         raw.setdefault("_decisions", [])
         raw["_decisions"] += [d for d in dec if d not in raw["_decisions"]]
     return dec
+
+
+def _complete_single_storey(raw: dict, note) -> None:
+    """Moradia térrea / maison de plain-pied : um só nível habitável. O motor dimensiona a laje de cobertura como um
+    pavimento (nível técnico «COB», sem divisões) e não cria escada. O estudo vai até ao fim; o que não se calcula fica dito."""
+    levels = [lv for lv in raw.get("levels") or [] if isinstance(lv, dict) and lv.get("id") and isinstance(lv.get("floor_top"), (int, float))]
+    if len(levels) != 1:
+        return
+    lv = levels[0]
+    ceil = num(lv.get("ceiling_height")) or 2.7
+    slab = num(lv.get("slab_thickness")) or 0.22
+    top = round(float(lv["floor_top"]) + ceil + slab, 2)
+    roof = raw.get("roof") if isinstance(raw.get("roof"), dict) else raw.setdefault("roof", {"type": "terrasse"})
+    rtype = str(roof.get("type") or "")
+    flat = (not rtype) or any(k in rtype.lower() for k in ("terras", "plat", "plan", "laje"))
+    raw["levels"].append({"id": "COB", "name": "Cobertura (laje)" if flat else "Teto / laje de esteira", "floor_top": top,
+                          "slab_thickness": slab, "ceiling_height": 0.0, "use": "toiture" if flat else "combles",
+                          "_auto": True})
+    for k in ("rooms", "interior_walls"):
+        if isinstance(raw.get(k), dict):
+            raw[k].setdefault("COB", [])
+    eav = num(roof.get("eaves_level"))
+    if eav is None or eav < top:
+        roof["eaves_level"] = round(top + (0.3 if flat else 0.0), 2)
+        if flat or num(roof.get("ridge_level")) is None or num(roof.get("ridge_level")) < roof["eaves_level"]:
+            roof["ridge_level"] = roof["eaves_level"]
+    raw["stair"] = {"x0": 0.0, "x1": 0.0, "y0": 0.0, "y1": 0.0, "type": "sem escada (moradia de um só piso)",   # um só piso: nunca
+                    "flights": [], "cage_walls": [], "_none": True}                                             # escada interior
+    note("Moradia de um só piso: laje de cobertura dimensionada como pavimento (nível técnico COB, sem divisões); sem escada interior. "
+         "Escadas exteriores ou de acesso à cobertura, se existirem, ficam por desenhar.")
 
 
 def _complete_stair(raw: dict, note) -> None:
@@ -214,6 +245,9 @@ def _complete_stair(raw: dict, note) -> None:
     ids = {lv["id"] for lv in levels}
     s = raw.get("stair")
     env = raw.get("envelope") or {}
+    if isinstance(s, dict) and s.get("_none"):                     # moradia térrea: sem escada, nada a gerar
+        s["flights"], s["cage_walls"] = [], []
+        return
     if not isinstance(s, dict):
         if len(levels) < 2:
             return
