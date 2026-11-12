@@ -18,13 +18,20 @@ import { useAuth } from "@/context/AuthContext";
 import LibraryImportDialog from "@/components/library/LibraryImportDialog";
 import LibraryDuplicatesDialog from "@/components/library/LibraryDuplicatesDialog";
 import LearnedPricesPanel from "@/components/library/LearnedPricesPanel";
+import CostResourcesPanel from "@/components/library/CostResourcesPanel";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
 const VAT_RATES = [6, 13, 23]; // Portugal continental (CIVA)
 const EMPTY = {
   type: "ouvrage", category: "", designation: "", unit: "m²",
-  unit_price_ht: "", cost_price_ht: "", vat_rate: 23, notes: "",
+  unit_price_ht: "", cost_price_ht: "", vat_rate: 23, notes: "", library_kind: "ambas",
 };
+// Duas bibliotecas: VENDA (preços ao cliente, usados nos orçamentos) e COMPRA (preços de custo: fornecedores,
+// mão de obra, equipamento). Um artigo com os dois preços dá a margem no dossier económico.
+const KINDS = [["venda", "Biblioteca de venda", "preços ao cliente"], ["compra", "Biblioteca de compra", "preços de custo"],
+               ["recursos", "Recursos e custos da empresa", "mão de obra, veículos, máquinas, gasóleo"]];
+const marginPct = (it) => (Number(it.unit_price_ht) > 0 && Number(it.cost_price_ht) > 0)
+  ? Math.round((1 - Number(it.cost_price_ht) / Number(it.unit_price_ht)) * 100) : null;
 const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
 export default function Library() {
@@ -35,6 +42,8 @@ export default function Library() {
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [kind, setKind] = useState("venda");
+  const [kinds, setKinds] = useState({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -43,12 +52,13 @@ export default function Library() {
   const [importOpen, setImportOpen] = useState(false);
   const [dupOpen, setDupOpen] = useState(false);
 
-  const load = async (search = q, type = typeFilter, source = sourceFilter) => {
+  const load = async (search = q, type = typeFilter, source = sourceFilter, k = kind) => {
     setLoading(true);
     try {
       const { data } = await api.get(
-        `/library?q=${encodeURIComponent(search)}&type=${type}&source=${encodeURIComponent(source)}`);
+        `/library?q=${encodeURIComponent(search)}&type=${type}&source=${encodeURIComponent(source)}&kind=${k}`);
       setItems(data.items || []);
+      setKinds(data.kinds || {});
       setCategories(data.categories || []);
       setSources(data.sources || []);
     } catch { toast.error("Impossível carregar a biblioteca"); }
@@ -56,15 +66,15 @@ export default function Library() {
   };
   useEffect(() => { if (user) load(); }, [user]);
   useEffect(() => {
-    const id = setTimeout(() => { if (user) load(q, typeFilter, sourceFilter); }, 300);
+    const id = setTimeout(() => { if (user && kind !== "recursos") load(q, typeFilter, sourceFilter, kind); }, 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, typeFilter, sourceFilter]);
+  }, [q, typeFilter, sourceFilter, kind]);
 
-  const openNew = () => { setEditing(null); setForm(EMPTY); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ ...EMPTY, library_kind: kind === "compra" ? "compra" : "ambas", type: kind === "compra" ? "materiau" : "ouvrage" }); setOpen(true); };
   const openEdit = (it) => {
     setEditing(it.item_id);
-    setForm({ ...EMPTY, ...it, unit_price_ht: String(it.unit_price_ht ?? ""), cost_price_ht: String(it.cost_price_ht || "") });
+    setForm({ ...EMPTY, ...it, unit_price_ht: String(it.unit_price_ht ?? ""), cost_price_ht: String(it.cost_price_ht || ""), library_kind: it.library_kind || "ambas" });
     setOpen(true);
   };
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -78,6 +88,7 @@ export default function Library() {
         unit: form.unit, unit_price_ht: parseFloat(form.unit_price_ht) || 0,
         cost_price_ht: parseFloat(form.cost_price_ht) || 0,
         vat_rate: (form.vat_rate === "" || form.vat_rate == null) ? 23 : parseFloat(form.vat_rate), notes: form.notes,
+        library_kind: form.library_kind || "ambas",
       };
       if (editing) await api.put(`/library/${editing}`, payload);
       else await api.post("/library", payload);
@@ -127,6 +138,17 @@ export default function Library() {
         </div>
       </div>
 
+      <div className="grid sm:grid-cols-3 gap-2" data-testid="library-kind-tabs">
+        {KINDS.map(([k, label, sub]) => (
+          <button key={k} onClick={() => setKind(k)} data-testid={`library-kind-${k}`}
+                  className={`rounded-md border-2 px-4 py-3 text-left transition ${kind === k ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>
+            <span className="block font-display font-bold text-sm">{label}{k !== "recursos" && <span className="num text-muted-foreground font-normal"> ({kinds[k] ?? "…"})</span>}</span>
+            <span className="block text-xs text-muted-foreground">{sub}{k === "compra" ? " — fornecedores, subempreiteiros; servem para o custo e a margem" : k === "venda" ? " — usados automaticamente nos orçamentos" : " — entram no dossier económico"}</span>
+          </button>
+        ))}
+      </div>
+
+      {kind === "recursos" ? <CostResourcesPanel /> : <>
       <SharedLibraryPanel />
       <LearnedPricesPanel onValidated={() => load()} />
       <LibraryImportDialog open={importOpen} onClose={() => setImportOpen(false)} onDone={() => load()} />
@@ -182,7 +204,7 @@ export default function Library() {
             <span className="col-span-5">Designação</span>
             <span className="col-span-2">Categoria</span>
             <span className="col-span-1 text-center">Un.</span>
-            <span className="col-span-2 text-right">PU s/ IVA</span>
+            <span className="col-span-2 text-right">{kind === "compra" ? "Custo s/ IVA" : "PU s/ IVA"} · margem</span>
             <span className="col-span-1 text-center">IVA</span>
             <span className="col-span-1 text-right">Ações</span>
           </div>
@@ -198,7 +220,10 @@ export default function Library() {
               </div>
               <span className="hidden md:block col-span-2 text-xs text-muted-foreground truncate">{it.category}</span>
               <span className="hidden md:block col-span-1 text-center text-xs num">{it.unit}</span>
-              <span className="col-span-1 md:col-span-2 text-right num font-bold text-sm">{eur(it.unit_price_ht)}</span>
+              <span className="col-span-1 md:col-span-2 text-right num font-bold text-sm">
+                {eur(kind === "compra" ? it.cost_price_ht : it.unit_price_ht)}
+                {marginPct(it) != null && <span className={`block text-[10px] font-normal ${marginPct(it) < 0 ? "text-destructive" : "text-muted-foreground"}`}>margem {marginPct(it)} %</span>}
+              </span>
               <span className="hidden md:block col-span-1 text-center">
                 <Badge variant="outline" className="rounded-sm text-[10px] num">{it.vat_rate}%</Badge>
               </span>
@@ -216,6 +241,8 @@ export default function Library() {
           ))}
         </div>
       )}
+
+      </>}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg" data-testid="library-dialog">
@@ -240,6 +267,15 @@ export default function Library() {
               </datalist>
             </div>
             <div className="sm:col-span-2">
+              <Label>Biblioteca</Label>
+              <select value={form.library_kind} onChange={set("library_kind")} data-testid="library-kind-select"
+                      className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+                <option value="ambas">Compra e venda (custo + preço ao cliente → margem)</option>
+                <option value="venda">Só venda (preço ao cliente)</option>
+                <option value="compra">Só compra (preço de custo: fornecedor, mão de obra, equipamento)</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
               <Label>Designação</Label>
               <Input value={form.designation} onChange={set("designation")}
                      className="rounded-sm mt-1" data-testid="library-designation"
@@ -253,16 +289,16 @@ export default function Library() {
               </select>
             </div>
             <div>
-              <Label>Preço unitário s/ IVA (€)</Label>
+              <Label>Preço de venda s/ IVA (€)</Label>
               <Input type="number" step="0.01" min="0" value={form.unit_price_ht}
                      onChange={set("unit_price_ht")} className="rounded-sm mt-1 num"
                      data-testid="library-price" placeholder="0,00" />
             </div>
             <div>
-              <Label>Custo s/ IVA (€) — MO + materiais</Label>
+              <Label>Preço de compra / custo s/ IVA (€)</Label>
               <Input type="number" step="0.01" min="0" value={form.cost_price_ht}
                      onChange={set("cost_price_ht")} className="rounded-sm mt-1 num"
-                     data-testid="library-cost" placeholder="opcional · serve para cálculo de margem" />
+                     data-testid="library-cost" placeholder="MO + materiais · dá a margem" />
             </div>
             <div>
               <Label>IVA</Label>

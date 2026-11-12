@@ -86,6 +86,9 @@ class LibraryItemIn(BaseModel):
     cost_price_ht: float = Field(default=0.0, ge=0)
     vat_rate: float = Field(default=10.0, ge=0, le=100)
     notes: str = ""
+    # Duas bibliotecas: « compra » (preços de custo: fornecedores, mão de obra, equipamento) e « venda » (preços ao cliente).
+    # Um artigo pode estar nas duas (custo e venda), o que dá a margem.
+    library_kind: str = "ambas"
 
 
 def _clean(body: LibraryItemIn) -> dict:
@@ -99,6 +102,7 @@ def _clean(body: LibraryItemIn) -> dict:
         "cost_price_ht": round(float(body.cost_price_ht or 0), 2),
         "vat_rate": float(body.vat_rate if body.vat_rate is not None else 10.0),
         "notes": (body.notes or "").strip()[:500],
+        "library_kind": body.library_kind if body.library_kind in ("compra", "venda", "ambas") else "ambas",
     }
 
 
@@ -130,11 +134,16 @@ SOURCE_LABELS = {"starter": "Catálogo", "devis": "Orçamento", "dpgf": "DPGF",
 
 
 @router.get("")
-async def list_items(q: str = "", type: str = "", category: str = "", source: str = "",
+async def list_items(q: str = "", type: str = "", category: str = "", source: str = "", kind: str = "",
                      user=Depends(current_user)) -> dict:
     await _seed_if_needed(user)
     uid = user["user_id"]
     query: dict = {"user_id": uid}
+    if kind == "compra":          # biblioteca de compra: artigos com preço de custo (ou criados como compra)
+        query["$and"] = [{"$or": [{"cost_price_ht": {"$gt": 0}}, {"library_kind": "compra"}]}]
+    elif kind == "venda":         # biblioteca de venda: artigos com preço ao cliente
+        query["$and"] = [{"$or": [{"unit_price_ht": {"$gt": 0}}, {"library_kind": {"$in": ["venda", "ambas"]}}]},
+                         {"library_kind": {"$ne": "compra"}}]
     if type in ("ouvrage", "materiau"):
         query["type"] = type
     if category.strip():
@@ -154,7 +163,10 @@ async def list_items(q: str = "", type: str = "", category: str = "", source: st
         src_counts[s] = src_counts.get(s, 0) + 1
     sources = [{"key": k, "label": SOURCE_LABELS.get(k, k.title()), "count": v}
                for k, v in sorted(src_counts.items(), key=lambda x: -x[1])]
-    return {"items": items, "count": len(items), "categories": cats, "sources": sources}
+    kinds = {"compra": await db.library_items.count_documents({"user_id": uid, "$or": [{"cost_price_ht": {"$gt": 0}}, {"library_kind": "compra"}]}),
+             "venda": await db.library_items.count_documents({"user_id": uid, "library_kind": {"$ne": "compra"},
+                                                              "$or": [{"unit_price_ht": {"$gt": 0}}, {"library_kind": {"$in": ["venda", "ambas"]}}]})}
+    return {"items": items, "count": len(items), "categories": cats, "sources": sources, "kinds": kinds}
 
 
 def _dedup_key(designation: str, unit: str) -> str:

@@ -24,7 +24,8 @@ async def price_sources(user):
 
     profile = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "price_library_mode": 1, "lang": 1, "brand_country": 1}) or {}
     mode = profile.get("price_library_mode") or "shared_first"
-    company = await db.library_items.find({"user_id": user["user_id"]}, {
+    # biblioteca de VENDA: os artigos só de compra (preço de custo, sem preço ao cliente) nunca dão um preço de orçamento
+    company = await db.library_items.find({"user_id": user["user_id"], "library_kind": {"$ne": "compra"}}, {
         "_id": 0, "item_id": 1, "designation": 1, "unit": 1, "unit_price_ht": 1,
         "source": 1, "updated_at": 1}).to_list(5000)
     sources = [("company_library", company)]

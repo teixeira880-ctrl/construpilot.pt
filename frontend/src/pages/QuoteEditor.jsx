@@ -1044,6 +1044,22 @@ export default function QuoteEditor() {
     } finally { setTranscriptBusy(false); }
   };
 
+  // Dossier económico (documento interno): custo, venda e margem com as bibliotecas de compra/venda e os recursos da empresa.
+  const downloadEconomic = async () => {
+    const d = docId ? { doc_id: docId } : await save();
+    if (!d) return;
+    if (docId) await save();
+    const tid = toast.loading("A calcular o dossier económico…");
+    try {
+      const res = await api.get(`/documents/${d.doc_id}/economic-dossier`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url; a.download = "dossier-economico.pdf"; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Dossier económico descarregado", { id: tid });
+    } catch { toast.error("Não foi possível gerar o dossier económico", { id: tid }); }
+  };
+
   const downloadPdf = async (internal = false) => {
     const d = docId ? { doc_id: docId } : await save();
     if (!d) return;
@@ -1434,6 +1450,12 @@ export default function QuoteEditor() {
                   title="PDF com custos de produção e margens por lote — reservado à empresa" data-testid="editor-pdf-internal-btn">
             <Download /> PDF interno (margens)
           </DropdownMenuItem>
+            {docType === "quote" && (
+            <DropdownMenuItem onSelect={downloadEconomic}
+                  title="Custo, venda e margem com as bibliotecas de compra e venda e os recursos da empresa (mão de obra, veículos, máquinas, gasóleo)"
+                  data-testid="editor-economic-dossier-btn">
+            <Download /> Dossier económico (custo, venda, margem)
+          </DropdownMenuItem>)}
               {docType === "quote" && docId && (
             <DropdownMenuItem onSelect={() => nav(`/assistant?intent=quote&resumeQuote=${docId}`)}
                     title="Retomar este orçamento com o Assistente Construção (orçamentação, adição de linhas, correções)"

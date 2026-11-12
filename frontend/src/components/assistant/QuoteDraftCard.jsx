@@ -1,8 +1,8 @@
 import { useId } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, FilePenLine, CheckCircle2, Sparkles, Send } from "lucide-react";
+import { ArrowRight, FilePenLine, CheckCircle2, Sparkles, Send, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { eur2 as eur } from "@/lib/api";
+import { api, eur2 as eur } from "@/lib/api";
 import { useQuoteCopy } from "./quoteCopy";
 
 export const QuoteDraftCard = ({ result }) => {
@@ -30,6 +30,13 @@ export const QuoteDraftCard = ({ result }) => {
         <Button asChild size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis-editeur/${result.doc_id}`} data-testid={id("open")}><FilePenLine size={15} />{text("toEditor")}</Link></Button>
         <Button asChild variant="secondary" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis-editeur/${result.doc_id}?send=1`} data-testid={id("send")}><Send size={15} />{text("toSend")}</Link></Button>
         <Button asChild variant="outline" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis?highlight=${result.doc_id}`} data-testid={id("tracking")}><ArrowRight size={15} />{text("tracking")}</Link></Button>
+        <Button variant="outline" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2" data-testid={id("economic")} onClick={async () => {
+          try {
+            const res = await api.get(`/documents/${result.doc_id}/economic-dossier`, { responseType: "blob" });
+            const url = URL.createObjectURL(res.data); const a = document.createElement("a");
+            a.href = url; a.download = "dossier-economico.pdf"; a.click(); URL.revokeObjectURL(url);
+          } catch { /* sem dossier */ }
+        }}><TrendingUp size={15} />{text("economic")}</Button>
       </div>
     </div>}
   </div>;
