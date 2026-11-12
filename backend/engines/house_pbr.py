@@ -390,3 +390,61 @@ def _render(raw, width, height, view, spp):
     out = io.BytesIO()
     im.save(out, "PNG", optimize=True)
     return out.getvalue()
+
+
+DOSSIER_VIEWS = (("main", "Perspetiva principal", "Perspective principale"), ("side", "Perspetiva lateral", "Perspective latérale"),
+                 ("rear", "Perspetiva posterior", "Perspective arrière"), ("aerial", "Vista aérea", "Vue aérienne"))
+
+
+def dossier_renders(raw: dict, out_dir, width: int = 1920, height: int = 1080, spp: int = 64) -> list:
+    """Pelo menos 3 perspetivas (aqui 4) da moradia para o dossier: render físico; sem Mitsuba, vistas 3D calculadas.
+    → [(caminho PNG, legenda PT, legenda FR)]."""
+    import os
+    from pathlib import Path
+    if os.environ.get("PYTEST_CURRENT_TEST"):                      # testes: imagens pequenas e rápidas
+        width, height, spp = 320, 180, 4
+    out = []
+    for view, pt, fr in DOSSIER_VIEWS:
+        png = render(raw, width, height, view, spp) if available() else None
+        if not png:
+            try:
+                png = H.render_png(raw, width, height, view)
+            except Exception:  # noqa: BLE001
+                continue
+        p = Path(out_dir) / f"perspetiva_{view}.png"
+        p.write_bytes(png)
+        out.append((p, pt, fr))
+    return out
+
+
+def add_to_dossier(raw: dict, pdf_path, lang: str = "pt", out_dir=None) -> list:
+    """Insere no dossier, logo a seguir à capa, uma página por perspetiva (imagem a toda a largura + legenda).
+    Devolve as imagens geradas (para também serem entregues como ficheiros)."""
+    from pathlib import Path
+
+    import pymupdf
+    pdf_path = Path(pdf_path)
+    rs = dossier_renders(raw, out_dir or pdf_path.parent)
+    if not rs:
+        return []
+    doc = pymupdf.open(str(pdf_path))
+    W, Hh = (doc[0].rect.width, doc[0].rect.height) if len(doc) else (842, 595)
+    fr = str(lang or "").lower().startswith("fr")
+    title = "Perspectives 3D du projet" if fr else "Perspetivas 3D do projeto"
+    note = ("Rendus physiques (soleil, ciel, matériaux) générés depuis la géométrie lue sur les plans — sans IA."
+            if fr else "Renders físicos (sol, céu, materiais) gerados a partir da geometria lida nas plantas — sem IA.")
+    for i, (p, pt, frl) in enumerate(rs):
+        pg = doc.new_page(pno=1 + i, width=W, height=Hh)
+        m = 28
+        pg.insert_text((m, m + 14), title if i == 0 else (frl if fr else pt), fontsize=14 if i == 0 else 12, fontname="hebo")
+        if i == 0:
+            pg.insert_text((m, m + 30), note, fontsize=8, fontname="helv", color=(0.35, 0.35, 0.38))
+        top = m + 40
+        box = pymupdf.Rect(m, top, W - m, Hh - m - 18)
+        pg.insert_image(box, filename=str(p), keep_proportion=True)
+        pg.insert_text((m, Hh - m - 4), frl if fr else pt, fontsize=9, fontname="helv", color=(0.3, 0.3, 0.32))
+    tmp = pdf_path.with_suffix(".tmp.pdf")
+    doc.save(str(tmp), garbage=3, deflate=True)
+    doc.close()
+    tmp.replace(pdf_path)
+    return rs

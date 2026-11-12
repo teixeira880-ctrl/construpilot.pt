@@ -401,9 +401,18 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                 labels = {"pdf": "Processo de estudo (memória de cálculo + desenhos)", "plans_pdf": "Desenhos PDF (para as empresas)",
                           "xlsx": "Medições e orçamento (Excel)", "zip": "Desenhos DXF (para software CAD)"}
             labels["re2020_pdf"] = "Étude thermique RE2020 (pré-étude, faite avant les plans)" if country != "PT" else "Estudo térmico"
+            renders = []
+            try:                              # pelo menos 3 perspetivas 3D reais no dossier (render físico, sem IA)
+                from engines import house_pbr
+                if res["files"].get("pdf"):
+                    renders = await asyncio.to_thread(house_pbr.add_to_dossier, raw, res["files"]["pdf"], "pt" if country == "PT" else "fr")
+            except Exception:  # noqa: BLE001 — as perspetivas nunca bloqueiam o dossier
+                log.warning("bet study renders failed", exc_info=True)
             for kind in ("pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"):
                 if res["files"].get(kind):
                     arts.append(await _store(db, uid, cid, request_id, kind, Path(res["files"][kind]), labels[kind]))
+            for rp, pt, frl in renders:
+                arts.append(await _store(db, uid, cid, request_id, "render_png", Path(rp), pt if country == "PT" else frl))
         quote_doc_id = None
         try:                              # devis OFFICIEL = métré déterministe de l'étude (mêmes documents → même devis)
             quote_doc_id, qarts = await study_quote(db, uid, cid, job_id, res, country, raw)
