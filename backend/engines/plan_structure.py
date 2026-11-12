@@ -168,7 +168,7 @@ async def detect_structure(image_b64_png: str, width_px: int, height_px: int) ->
 
         from engines.expenses.metering import MeteredChat as LlmChat
         chat = LlmChat(
-            api_key=api_key, session_id="plan-structure", expense_feature="plan_structure",
+            api_key=api_key, session_id="plan-structure", expense_feature="plan_structure", failover=True,
             system_message="Respondes sempre em JSON estrito, sem markdown.",
         ).with_model("gemini", "gemini-3-flash-preview")
         raw = await chat.send_message(UserMessage(
@@ -239,7 +239,7 @@ async def refine_structure(image_b64_png: str, width_px: int, height_px: int,
 
         from engines.expenses.metering import MeteredChat as LlmChat
         chat = LlmChat(
-            api_key=api_key, session_id="plan-structure-refine", expense_feature="plan_structure_refine",
+            api_key=api_key, session_id="plan-structure-refine", expense_feature="plan_structure_refine", failover=True,
             system_message="Respondes sempre em JSON estrito, sem markdown.",
         ).with_model("gemini", "gemini-3-flash-preview")
         raw = await chat.send_message(UserMessage(

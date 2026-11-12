@@ -273,33 +273,63 @@ async def chat_with_assistant(
             continue
         initial_messages.append({"role": role, "content": content})
 
-    chat = (
-        LlmChat(
-            api_key=api_key,
-            session_id=conversation_id,
-            system_message=SYSTEM_PROMPT,
-            initial_messages=initial_messages,
+    # Bascule automatique : modèle préféré puis les autres fournisseurs si l'un tombe.
+    # Les outils escalier sont des calculs déterministes sans effet de bord : relancer est sûr.
+    try:
+        from engines.ai import FAILOVER_TEXT
+        backups = [c for c in FAILOVER_TEXT if c[0] != "perplexity"]
+    except Exception:  # noqa: BLE001
+        backups = [("openai", "gpt-5.4"), ("gemini", "gemini-3.5-flash")]
+    chain = [(MODEL_PROVIDER, MODEL_NAME)] + [c for c in backups if c != (MODEL_PROVIDER, MODEL_NAME)]
+
+    async def _run(provider: str, model: str, attempt: int):
+        chat = (
+            LlmChat(
+                api_key=api_key,
+                session_id=conversation_id if attempt == 0 else f"{conversation_id}-fb{attempt}",
+                system_message=SYSTEM_PROMPT,
+                initial_messages=initial_messages,
+            )
+            .with_model(provider, model)
+            .with_tools(TOOLS, tool_choice="auto")
+            .with_params(max_tokens=1024)
         )
-        .with_model(MODEL_PROVIDER, MODEL_NAME)
-        .with_tools(TOOLS, tool_choice="auto")
-        .with_params(max_tokens=1024)
-    )
+        refs: List[Dict[str, Any]] = []
+        sols: List[Dict[str, Any]] = []
+        response = await chat.send_message_with_tools(UserMessage(text=message))
+        safety_max_loops = 4
+        while getattr(response, "tool_calls", None) and safety_max_loops > 0:
+            safety_max_loops -= 1
+            for tc in response.tool_calls:
+                args = tc.arguments if isinstance(tc.arguments, dict) else {}
+                result = _dispatch_tool(tc.name, args)
+                refs.append({"tool": tc.name, "arguments": args, "ok": result.get("ok", True)})
+                if tc.name == "optimize_stair" and result.get("ok"):
+                    sols.extend(result.get("solutions", []))
+                chat.add_tool_result(tc.id, json.dumps(result))
+            response = await chat.send_message_with_tools()
+        return response, refs, sols
 
-    referenced: List[Dict[str, Any]] = []
-    solutions_captured: List[Dict[str, Any]] = []
-
-    response = await chat.send_message_with_tools(UserMessage(text=message))
-    safety_max_loops = 4
-    while getattr(response, "tool_calls", None) and safety_max_loops > 0:
-        safety_max_loops -= 1
-        for tc in response.tool_calls:
-            args = tc.arguments if isinstance(tc.arguments, dict) else {}
-            result = _dispatch_tool(tc.name, args)
-            referenced.append({"tool": tc.name, "arguments": args, "ok": result.get("ok", True)})
-            if tc.name == "optimize_stair" and result.get("ok"):
-                solutions_captured.extend(result.get("solutions", []))
-            chat.add_tool_result(tc.id, json.dumps(result))
-        response = await chat.send_message_with_tools()
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+    errors: List[str] = []
+    response, referenced, solutions_captured = None, [], []
+    used = chain[0]
+    for attempt, (prov, mdl) in enumerate(chain):
+        try:
+            response, referenced, solutions_captured = await _run(prov, mdl, attempt)
+            if (getattr(response, "content", None) or "").strip() or referenced:
+                used = (prov, mdl)
+                if errors:
+                    _log.warning("stairs chat failover → %s/%s ok après : %s", prov, mdl, " | ".join(errors))
+                break
+            errors.append(f"{prov}/{mdl}: resposta vazia")
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{prov}/{mdl}: {type(e).__name__}: {str(e)[:120]}")
+            response = None
+    if response is None:
+        _log.error("stairs chat: tous les fournisseurs ont échoué : %s", " | ".join(errors))
+        raise ConnectionError("LLM indisponível: " + " | ".join(errors)[:300])
 
     reply_text = (getattr(response, "content", None) or "").strip()
     if not reply_text:
@@ -311,5 +341,5 @@ async def chat_with_assistant(
         reply_text=reply_text,
         referenced_engine_calls=referenced,
         computed_solutions=solutions_captured,
-        metadata={"model": f"{MODEL_PROVIDER}/{MODEL_NAME}", "timing_ms": elapsed_ms},
+        metadata={"model": f"{used[0]}/{used[1]}", "timing_ms": elapsed_ms},
     )

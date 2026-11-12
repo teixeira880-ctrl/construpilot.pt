@@ -507,15 +507,26 @@ async def help_assistant(history: list[dict], message: str, session_id: str,
                       for m in (history or [])[-8:])
     prompt = (f'Conversation:\n{convo}\n\nNova mensagem: {message}' if convo else message)
     prov, mdl = provider or HELP_PROVIDER, model or HELP_MODEL
-    await _log_usage("help_chat", prov, mdl)
-    chat = _chat(system, session_id, prov, mdl, feature="help_chat")
-    out = []
-    async for ev in chat.stream_message(UserMessage(text=prompt)):
-        if isinstance(ev, TextDelta):
-            out.append(ev.content)
-        elif isinstance(ev, StreamDone):
-            break
-    return "".join(out)
+    try:
+        await _log_usage("help_chat", prov, mdl)
+        chat = _chat(system, session_id, prov, mdl, feature="help_chat")
+
+        async def _collect() -> str:
+            out = []
+            async for ev in chat.stream_message(UserMessage(text=prompt)):
+                if isinstance(ev, TextDelta):
+                    out.append(ev.content)
+                elif isinstance(ev, StreamDone):
+                    break
+            return "".join(out)
+
+        reply = await asyncio.wait_for(_collect(), PER_PROVIDER_TIMEOUT)
+        if len((reply or "").strip()) >= MIN_ANSWER_CHARS:
+            return reply
+        logger.warning("help_chat %s/%s : réponse vide, bascule", prov, mdl)
+    except Exception as e:  # noqa: BLE001 — bascule automatique sur les autres fournisseurs
+        logger.warning("help_chat %s/%s a échoué (%s), bascule automatique", prov, mdl, type(e).__name__)
+    return await _complete(system, prompt, None, session_id, feature="help_chat")
 
 
 
@@ -524,6 +535,32 @@ GEMINI_PRO = ("gemini", "gemini-3.1-pro-preview")
 
 async def _complete_vision(system: str, text: str, images: list[str],
                            provider: str, model: str, feature: str = "misc") -> str:
+    """Vision avec modèle préféré (ex. Gemini 3.1 Pro pour les plans) + BASCULE AUTOMATIQUE :
+    si ce fournisseur échoue ou répond vide, on essaie les autres modèles vision
+    (OpenAI, Gemini, Claude) avant d'abandonner. L'analyse va au bout dès qu'une IA répond."""
+    errors = []
+    tried = set()
+    candidates = [(provider, model)] + [c for c in await _chain(bool(images)) if c != (provider, model)]
+    for prov, mdl in candidates:
+        if prov == "perplexity" or (prov, mdl) in tried:
+            continue
+        tried.add((prov, mdl))
+        try:
+            out = await asyncio.wait_for(
+                _complete_vision_single(system, text, images, prov, mdl, feature), PER_PROVIDER_TIMEOUT)
+            if len((out or "").strip()) >= MIN_ANSWER_CHARS:
+                if errors:
+                    logger.warning("ai vision failover %s → %s/%s ok après : %s", feature, prov, mdl, " | ".join(errors))
+                return out
+            errors.append(f"{prov}/{mdl}: resposta vazia")
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{prov}/{mdl}: {type(e).__name__}: {str(e)[:120]}")
+    logger.error("ai vision: tous les fournisseurs ont échoué (%s) : %s", feature, " | ".join(errors))
+    raise RuntimeError("Serviço IA momentaneamente indisponível — tente novamente dentro de instantes")
+
+
+async def _complete_vision_single(system: str, text: str, images: list[str],
+                                  provider: str, model: str, feature: str = "misc") -> str:
     """Appel vision avec modèle explicite (ex. Gemini 3.1 Pro pour plans techniques)."""
     system = system + await _learning_suffix(feature)
     # Chemin Gemini natif (SDK Google, facturation entreprise) si activé par l'admin
