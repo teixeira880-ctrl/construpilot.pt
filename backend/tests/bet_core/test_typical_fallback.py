@@ -52,3 +52,24 @@ def test_study_without_drawings_completes():
 def test_model_fr_labels():
     raw, dec = typical.model([], "Maison T4 de plain-pied, surface habitable 120 m²", "FR")
     assert "INDICATIVE" in raw["project"]["name"] and dec[0].startswith("ÉTUDE INDICATIVE")
+
+
+def test_slow_reading_falls_back_to_typical(monkeypatch):
+    """Leitura demasiado longa (peças escritas sem desenhos): o estudo passa ao modelo-tipo em vez de ficar preso."""
+    from tests.bet_core.test_assistant_tool import DB
+    from engines.bet_core import reader
+    monkeypatch.setenv("BET_READ_TIMEOUT", "1")
+
+    async def slow(*a, **k):
+        await asyncio.sleep(30)
+    monkeypatch.setattr(reader, "read_building", slow)
+    db = DB()
+    db.assistant_docs.docs.append({"doc_id": "d1", "user_id": "u1", "filename": "memoria.pdf", "mime": "application/pdf",
+                                   "data_b64": base64.b64encode(_memoria()).decode()})
+    user, conv = {"user_id": "u1"}, {"conversation_id": "c1", "_quote_request_id": "r1"}
+    out = asyncio.run(assistant_tool.execute(
+        "generate_full_bet_study", {"document_ids": ["d1"], "hypotheses": "é um teste", "country": "PT"},
+        user, conv, db, llm=None, background=False))
+    st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
+    assert st["status"] == "done", st
+    assert any("INDICATIVO" in d for d in st["decisions"])

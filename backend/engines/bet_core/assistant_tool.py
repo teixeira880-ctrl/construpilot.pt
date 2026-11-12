@@ -312,7 +312,14 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                   "questions": [], "decisions": [str(d) for d in (cached["model"].get("_decisions") or [])], "cached": True}
         else:
             await step("Lecture des plans par IA et relevé du modèle bâtiment")
-            rd = await reader.read_building(docs, hypotheses, country, llm=llm, decide_alone=decide_alone, on_progress=step)
+            try:   # leitura limitada no tempo: peças escritas sem desenhos não podem prender o estudo (12/11: 11 min em produção)
+                rd = await asyncio.wait_for(reader.read_building(docs, hypotheses, country, llm=llm, decide_alone=decide_alone,
+                                                                 on_progress=step),
+                                            float(os.environ.get("BET_READ_TIMEOUT") or 240))
+            except asyncio.TimeoutError:
+                log.warning("bet study %s: reading timed out — typical model", job_id)
+                rd = {"ok": False, "model": None, "anomalies": [], "pages": [], "attempts": 0, "questions": [], "decisions": [],
+                      "read_timeout": True}
             if rd["ok"] and not rd.get("demo"):
                 try:
                     await db.bet_models.update_one({"user_id": uid, "docs_hash": key}, {"$set": {
@@ -326,7 +333,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             log.info("bet extraction quality: job=%s absent=%d/%d (%.0f%%) fields=%s", job_id,
                      extraction["hyp_absent"], extraction["hyp_total"], extraction["absent_rate"] * 100, extraction["absent_fields"])
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"extraction": extraction}})
-        if not rd["ok"] and (decide_alone or not rd.get("questions")):
+        if not rd["ok"] and (decide_alone or not rd.get("questions") or rd.get("read_timeout")):
             # Sem desenhos utilizáveis (só memórias / fichas / especialidades): «faz o melhor possível» — modelo-tipo com o que os
             # textos dizem, tudo em hipótese, dossier ESTUDO INDICATIVO. Nunca parar sem resultado (pedido do Martinho, 12/11).
             try:
