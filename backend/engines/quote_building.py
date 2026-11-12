@@ -89,12 +89,13 @@ CUT_PROMPT = (
     "soft daylight, clean white background, high-end architectural presentation. Do not move, add or remove walls; no text.")
 
 
-QUOTE_ENGINES = "openai,gpt_image_2,gemini_image3_pro,emergent"   # OpenAI primeiro; QUOTE_PHOTOREAL_MODELS altera
+FAST_ENGINES = "emergent,gemini_image3_pro,gpt_image_2,gen4_image"  # como na conta CLT: Nano Banana primeiro (~15 s)
+UPGRADE_ENGINES = "openai"                                          # depois, em segundo plano: OpenAI GPT Image (melhor, mais lento)
 
 
-def _engines() -> list[str]:
+def _engines(var: str, default: str) -> list[str]:
     import os
-    return [m.strip() for m in (os.environ.get("QUOTE_PHOTOREAL_MODELS") or QUOTE_ENGINES).split(",") if m.strip()]
+    return [m.strip() for m in (os.environ.get(var) or default).split(",") if m.strip()]
 
 
 def computed_masks(raw: dict) -> dict[str, bytes]:
@@ -112,39 +113,72 @@ def computed_views(raw: dict) -> dict[str, bytes]:
     return out
 
 
-async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, bytes] | None = None) -> None:
-    """Fotos ao nível OpenAI, mas só aceites se respeitarem a geometria calculada (alinhamento + verificação das arestas
-    de paredes, cobertura e vãos). Vista recusada por todos os motores → fica a vista calculada (nunca uma casa diferente)."""
-    from engines import geometry_lock as G
+async def _pass(base: dict[str, bytes], verifier, engines: list[str], timeout: float, style: bytes | None = None,
+                only: list[str] | None = None) -> dict[str, tuple[bytes, str]]:
+    """Uma passagem de fotos: a principal primeiro, as outras em paralelo alinhadas nela. Só entram fotos verificadas."""
     from engines import photoreal as PR
+    out: dict[str, tuple[bytes, str]] = {}
+    keys = only or list(base)
+    if "main" in keys:
+        r = await PR.render(base["main"], PHOTO_PROMPT, feature="quote_house_render", session_id="quote_house",
+                            engines=engines, verify=verifier("main"), timeout=timeout)
+        if r:
+            out["main"] = r
+            style = r[0]
+    if style is None:
+        return out
+    others = [k for k in keys if k != "main"]
+    res = await asyncio.gather(*((PR.render(base[k], CUT_PROMPT, feature="quote_house_render", session_id="quote_house",
+                                            engines=engines, verify=verifier(k), timeout=timeout)
+                                  if k.startswith("cut_") else
+                                  PR.render(base[k], PHOTO_PROMPT + VIEW_HINT.get(k, "") + MATCH_HINT, style_ref=style,
+                                            feature="quote_house_render", session_id="quote_house", engines=engines,
+                                            verify=verifier(k), timeout=timeout)) for k in others), return_exceptions=True)
+    for k, r in zip(others, res):
+        if isinstance(r, tuple) and r:
+            out[k] = r
+    return out
+
+
+async def _save(db, key: str, base: dict[str, bytes], got: dict, quality: str, previous: dict | None = None) -> dict:
+    views_ = dict(previous or {k: v for k, v in base.items()})
+    for k, (img, _eng) in got.items():
+        views_[k] = _jpeg(img)
+    await db.house_renders.update_one({"key": key}, {"$set": {
+        "key": key, "photoreal": True, "geometry_checked": True, "quality": quality,
+        "engine": (got.get("main") or (None, ""))[1] or quality, "updated_at": datetime.now(timezone.utc).isoformat(),
+        "views": {k: base64.b64encode(v).decode() for k, v in views_.items()}}}, upsert=True)
+    return views_
+
+
+async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, bytes] | None = None) -> None:
+    """Como na conta CLT: passagem RÁPIDA (Nano Banana primeiro) para o PDF não esperar; depois, em segundo plano,
+    melhoria OpenAI GPT Image — cada foto só substitui a anterior se também respeitar a geometria. Em qualquer fase,
+    uma vista sem foto verificada fica com a vista calculada (geometria exata), nunca uma casa diferente."""
+    import os
+    from engines import geometry_lock as G
+    from engines import llm_keys
     masks = masks or {}
 
     def verifier(k):
         m = masks.get(k) or G.mask_from_render(base[k])
         return lambda img: G.check(img, base[k], m)
     try:
-        eng = _engines()
-        main = await PR.render(base["main"], PHOTO_PROMPT, feature="quote_house_render", session_id="quote_house",
-                               engines=eng, verify=verifier("main"))
-        if not main:
-            log.info("house renders %s: no engine respected the geometry — computed views kept", key[:10])
-            return
-        out = {"main": _jpeg(main[0])}
-        others = [k for k in base if k != "main"]
-        res = await asyncio.gather(*((PR.render(base[k], CUT_PROMPT, feature="quote_house_render", session_id="quote_house",
-                                                engines=eng, verify=verifier(k))
-                                      if k.startswith("cut_") else
-                                      PR.render(base[k], PHOTO_PROMPT + VIEW_HINT.get(k, "") + MATCH_HINT, style_ref=main[0],
-                                                feature="quote_house_render", session_id="quote_house", engines=eng,
-                                                verify=verifier(k))) for k in others),
-                                   return_exceptions=True)
-        for k, r in zip(others, res):
-            out[k] = _jpeg(r[0]) if isinstance(r, tuple) and r else base[k]
-        await db.house_renders.update_one({"key": key}, {"$set": {
-            "key": key, "photoreal": True, "engine": main[1], "geometry_checked": True,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "views": {k: base64.b64encode(v).decode() for k, v in out.items()}}}, upsert=True)
-        log.info("house renders %s: photoreal %s", key[:10], main[1])
+        fast_t = float(os.environ.get("QUOTE_PHOTO_FAST_TIMEOUT") or 60)
+        got = await _pass(base, verifier, _engines("QUOTE_PHOTO_FAST", FAST_ENGINES), fast_t)
+        current = await _save(db, key, base, got, "fast") if got.get("main") else None
+        log.info("house renders %s: fast %s/%d", key[:10], len(got), len(base))
+        up = _engines("QUOTE_PHOTO_UPGRADE", UPGRADE_ENGINES)
+        if "openai" in up and not llm_keys.openai_direct_active():
+            up = [e for e in up if e != "openai"]
+        if up:
+            better = await _pass(base, verifier, up, float(os.environ.get("QUOTE_PHOTO_UPGRADE_TIMEOUT") or 240),
+                                 style=None)
+            if better.get("main"):
+                await _save(db, key, base, better, "openai", previous=current)
+                log.info("house renders %s: upgraded %s/%d", key[:10], len(better), len(base))
+        if not got.get("main"):
+            log.info("house renders %s: no fast photo respected the geometry — computed views kept", key[:10])
     except Exception:  # noqa: BLE001 — o fotorrealismo embeleza, nunca bloqueia
         log.warning("house photoreal failed", exc_info=True)
     finally:
@@ -164,15 +198,22 @@ async def views(db, raw: dict, wait: float = 0) -> dict[str, bytes]:
     if key not in _PENDING:
         _PENDING.add(key)
         task = asyncio.get_running_loop().create_task(_photoreal_all(db, key, base, masks))
-        if wait > 0:
+        # espera só pela passagem RÁPIDA (como na conta CLT); a melhoria OpenAI continua em segundo plano
+        loop = asyncio.get_running_loop()
+        end = loop.time() + max(0.0, wait)
+        while loop.time() < end and not task.done():
+            await asyncio.sleep(min(1.0, max(0.05, end - loop.time())))
             try:
-                await asyncio.wait_for(asyncio.shield(task), wait)
                 hit = await db.house_renders.find_one({"key": key}, {"_id": 0})
-                if hit and hit.get("views"):
-                    return {k: base64.b64decode(v) for k, v in hit["views"].items()}
-            except Exception:  # noqa: BLE001 — tempo esgotado: vistas calculadas agora, fotos na próxima vez
-                pass
-    return base
+            except Exception:  # noqa: BLE001
+                hit = None
+            if hit and hit.get("views"):
+                return {k: base64.b64decode(v) for k, v in hit["views"].items()}
+        if wait > 0 and task.done():
+            hit = await db.house_renders.find_one({"key": key}, {"_id": 0})
+            if hit and hit.get("views"):
+                return {k: base64.b64decode(v) for k, v in hit["views"].items()}
+    return base                                     # tempo esgotado: vistas calculadas (geometria exata) agora
 
 
 async def enrich(db, doc: dict, uid: str, wait: float = 0) -> dict:

@@ -121,3 +121,36 @@ def test_photoreal_rejects_wrong_geometry_then_takes_next_engine(monkeypatch):
     assert r and r[1] == "nano_banana_3.1"
     r2 = asyncio.run(PR.render(base, "x", engines=["gpt_image_2"], verify=lambda img: G.check(img, base, mask)))
     assert r2 is None                                 # nenhum motor respeitou → fica a vista calculada
+
+
+def test_fast_pass_first_then_openai_upgrade(monkeypatch):
+    """Como na conta CLT: o PDF recebe logo as fotos rápidas; a melhoria OpenAI substitui-as depois, em segundo plano."""
+    import asyncio
+    mm = __import__("pytest").importorskip("mongomock_motor")
+    from engines import llm_keys, photoreal as PR
+    from engines import quote_building as QB
+    db = mm.AsyncMongoMockClient()["t"]
+    raw = _case()
+    calls = []
+
+    async def fake_render(base, prompt, *, engines=None, verify=None, timeout=0, style_ref=None, **kw):
+        calls.append(engines[0])
+        if engines == ["openai"]:
+            await asyncio.sleep(0.6)                   # OpenAI é lento
+            return verify(base)[0], "openai_gpt_image"
+        return verify(base)[0], "nano_banana_3.1"
+    monkeypatch.setattr(PR, "render", fake_render)
+    monkeypatch.setattr(llm_keys, "openai_direct_active", lambda: True)
+    from engines import house3d
+    monkeypatch.setattr(QB, "computed_views", lambda r: {k: QB._jpeg(house3d.render_png(r, 800, 450, k)) for k in QB.VIEW_KEYS})
+
+    async def run():
+        QB._PENDING.clear()
+        v = await QB.views(db, raw, wait=0.4)
+        first = (await db.house_renders.find_one({}, {"_id": 0}))["quality"]
+        await asyncio.sleep(1.5)
+        last = (await db.house_renders.find_one({}, {"_id": 0}))["quality"]
+        return v, first, last
+    v, first, last = asyncio.run(run())
+    assert set(v) == set(QB.VIEW_KEYS) and first == "fast" and last == "openai"
+    assert calls[0] == "emergent" and "openai" in calls
