@@ -278,6 +278,44 @@ def mat_orto(nome, caminho, dentro_relva=None):
     return m
 
 
+def mat_pbr(nome, info, rodar=False, tom=None):
+    """Material fotografado (Poly Haven, CC0): cor + normal + rugosidade, à escala real (UV em metros)."""
+    m = _novo(nome)
+    nt, b = _bsdf(m)
+    uv = _uv_metros(nt)
+    mp = nt.nodes.new("ShaderNodeMapping")
+    s = 1.0 / float(info["tamanho_m"])
+    mp.inputs["Scale"].default_value = (s, s, 1.0)
+    if rodar:
+        mp.inputs["Rotation"].default_value = (0.0, 0.0, math.pi / 2)
+    nt.links.new(uv, mp.inputs["Vector"])
+
+    def img(caminho, cor):
+        t = nt.nodes.new("ShaderNodeTexImage")
+        t.image = bpy.data.images.load(caminho, check_existing=True)
+        if not cor:
+            t.image.colorspace_settings.name = "Non-Color"
+        t.interpolation = "Cubic"
+        nt.links.new(mp.outputs["Vector"], t.inputs["Vector"])
+        return t
+    d = img(info["diff"], True)
+    if tom:                                             # ligeira variação de tom (ex.: soco mais escuro)
+        hs = nt.nodes.new("ShaderNodeHueSaturation")
+        hs.inputs["Value"].default_value = tom
+        nt.links.new(d.outputs["Color"], hs.inputs["Color"])
+        nt.links.new(hs.outputs["Color"], b.inputs["Base Color"])
+    else:
+        nt.links.new(d.outputs["Color"], b.inputs["Base Color"])
+    r = img(info["rough"], False)
+    nt.links.new(r.outputs["Color"], b.inputs["Roughness"])
+    n = img(info["nor_gl"], False)
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    nm.inputs["Strength"].default_value = 1.0
+    nt.links.new(n.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
 def mat_emissao(nome, cor, forca=4.0):
     m = _novo(nome)
     nt = m.node_tree
@@ -340,7 +378,7 @@ class Construtor:
                 uvs = [(p[0], p[1]) for p in pts]
             self.quad(pts, uvs, mi)
 
-    def criar(self, nome, mats, colecao, solidify=0.0):
+    def criar(self, nome, mats, colecao, solidify=0.0, mat_rebordo=None):
         me = bpy.data.meshes.new(nome)
         me.from_pydata(self.v, [], self.f)
         lay = me.uv_layers.new(name="UVMap")
@@ -367,6 +405,8 @@ class Construtor:
             mod = ob.modifiers.new("espessura", "SOLIDIFY")
             mod.thickness = solidify
             mod.offset = -1
+            if mat_rebordo is not None and self.mi:     # testeira / beirado com material próprio (não a telha esticada)
+                mod.material_offset_rim = mat_rebordo - self.mi[0]
         return ob
 
 
@@ -403,8 +443,23 @@ def construir(spec, pasta):
     }
     cobm = spec["cobertura_material"]
     M["telha"] = mat_telha("Cobertura", COB.get(cobm, COB["telha_ceramica"]), plana=(cobm == "plana_seixo"))
-    if "faixa_granito_reboco" in json.dumps(spec["paredes"]):
-        pass
+    # materiais fotografados (Poly Haven) quando a biblioteca está disponível; senão ficam os procedimentais
+    P = spec.get("pbr") or {}
+    for chave, nome, rodar, tom in (("granito", "Granito", False, None), ("xisto", "Xisto", False, None), ("tijolo", "Tijolo", False, None),
+                                    ("betao", "Betão", False, None), ("madeira", "Madeira ripada", True, 1.55),
+                                    ("reboco", "Reboco branco", False, None),
+                                    ("lajeado", "Lajeado de granito", False, None)):
+        if chave in P:
+            M[chave] = mat_pbr(nome, P[chave], rodar, tom)
+    if "granito" in P:
+        M["soco"] = mat_pbr("Soco de granito", P["granito"], False, 0.75)
+    if "betao" in P:
+        M["ombreira"] = mat_pbr("Ombreiras", P["betao"], False, 1.1)
+    if "madeira" in P:
+        M["porta"] = mat_pbr("Porta", P["madeira"], True, 0.6)
+    chave_cob = {"telha_ceramica": "telha_ceramica", "telha_preta": "telha_preta", "plana_seixo": "seixo"}.get(cobm)
+    if chave_cob in P:
+        M["telha"] = mat_pbr("Cobertura", P[chave_cob])
     ordem = list(M.keys())
     mi = {k: i for i, k in enumerate(ordem)}
     lista = [M[k] for k in ordem]
@@ -526,7 +581,7 @@ def construir(spec, pasta):
         cobj.hide_render = True
         cobj.hide_viewport = True
     if tel.v:
-        tel.criar("Cobertura (projeto)", lista, col["projeto"], solidify=0.2)
+        tel.criar("Cobertura (projeto)", lista, col["projeto"], solidify=0.2, mat_rebordo=mi["rufo"])
     if pl.v:
         pl.criar("Coberturas planas (projeto)", lista, col["projeto"])
 

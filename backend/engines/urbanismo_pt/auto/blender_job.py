@@ -25,7 +25,9 @@ log = logging.getLogger(__name__)
 _TAREFAS: Dict[str, asyncio.Task] = {}
 MIME = {"jpg": "image/jpeg", "png": "image/png", "glb": "model/gltf-binary", "blend": "application/x-blender",
         "json": "application/json"}
-PRINCIPAL = ("drone", "rua", "aerea", "jardim")      # a primeira vista acabada serve de referência de estilo às outras
+PRINCIPAL = ("drone", "rua", "aerea", "jardim")
+# dossier de licenciamento: o motor de maior qualidade primeiro, mesmo que demore (GPT Image 2 «high» ~2 min por vista)
+MOTORES_DOSSIER = [m.strip() for m in os.environ.get("BLENDER_FOTO_MOTORES", "gpt_image_2,gemini_image3_pro,gen4_image,emergent").split(",") if m.strip()]      # a primeira vista acabada serve de referência de estilo às outras
 
 
 def _now() -> str:
@@ -116,7 +118,8 @@ async def executar(db, pid: str, uid: str, qualidade: str = "normal", acabamento
         async def acabar(i, style):
             try:
                 res = await PR.render(r["ficheiros"][i["ficheiro"]], prompt_foto(processo, i["camara"], i["estado"]),
-                                      style_ref=style, feature="licenciamento_blender_foto", session_id=pid)
+                                      style_ref=style, feature="licenciamento_blender_foto", session_id=pid,
+                                      engines=MOTORES_DOSSIER, timeout=420.0)
             except Exception:  # noqa: BLE001
                 res = None
             if not res:

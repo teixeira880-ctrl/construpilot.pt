@@ -377,6 +377,11 @@ def renderizar(processo: Dict[str, Any], vizinhos: Optional[List[Dict[str, Any]]
     if not disponivel():
         return {"ok": False, "motivo": "O Blender não está instalado neste servidor (pacote bpy)."}
     spec = especificacao(processo, vizinhos, qualidade)
+    try:
+        from engines.urbanismo_pt.auto import pbr
+        spec["pbr"] = pbr.garantir()
+    except Exception:  # noqa: BLE001 — sem biblioteca: materiais procedimentais
+        spec["pbr"] = {}
     pasta = tempfile.mkdtemp(prefix="cp_blender_")
     t0 = time.time()
     try:

@@ -108,6 +108,7 @@ def test_trabalho_com_acabamento_e_pdf(processo, monkeypatch):
 
     async def fake_photo(base, prompt, style_ref=None, **kw):
         chamadas.append((prompt, style_ref))
+        assert kw["engines"][0] == "gpt_image_2" and kw["timeout"] >= 300     # qualidade máxima primeiro, para o dossier
         return b"\xff\xd8\xffFOTO" + b"1" * 600, "nano_banana_3.1"
     monkeypatch.setattr(B, "renderizar_async", fake_render)
     import engines.photoreal as PR
