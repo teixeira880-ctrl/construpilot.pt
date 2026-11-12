@@ -39,11 +39,13 @@ def _now() -> str:
 async def _clt_context(args: dict, user: dict) -> dict:
     """Estudo CLT: parâmetros e biblioteca da conta e os pisos revistos (última estimativa da página CLT, ou pisos_json)."""
     import json
-    from bim_studio.clt_access import allowed
+    from bim_studio.clt_access import allowed, is_pilot
     from bim_studio.clt_economics import library_merged, merged
     from bim_studio.store import get_db, tenant_of
     if not allowed(user):
-        raise ValueError("O estudo CLT só está disponível nas contas com o piloto CLT.")
+        raise ValueError("O estudo CLT só está disponível nas contas da app PT.")
+    if args.get("empresa") == "clt-rezult" and not is_pilot(user):
+        args = {**args, "empresa": None}  # the CLT Rezult branding is dedicated to the pilot account
     db, tenant = get_db(), tenant_of(user)
     params = await db.clt_parameters.find_one({"_id": tenant}) or {}
     library = await db.clt_library.find_one({"_id": tenant}) or {}

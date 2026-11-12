@@ -29,6 +29,8 @@ Value = Annotated[Decimal, Field(ge=0, max_digits=14, decimal_places=6)]
 CENT = Decimal("0.01")
 
 SOURCES = {
+    "press_reference": "Formato de prensa de referência: Rezult, comprimento ≤ 18,00 m e largura ≤ 3,50 m "
+                       "(clt-rezult.com/en/technical-characteristics, lido em 2026-11-11). Indique o formato da sua prensa.",
     "holzkurier_lamelas": "Holzkurier, lamelas da Europa Central, 2.º trimestre 2025: 305–325 €/m³ (timber-online.net)",
     "holzkurier_clt": "Holzkurier, abril 2025: CLT a cerca de 500 €/m³ à porta da fábrica (timber-online.net)",
     "brandt_2019": "Brandt et al. 2019, BioResources 14(4): perda de 15% na madeira, 1,18 m³ de lamela por m³ de CLT",
@@ -149,6 +151,8 @@ CATALOGUE = {
     "timber_input_m3_per_m3": ("fabrico", "Madeira comprada por m³ de CLT (perdas incluídas)", "m³/m³", "1.18", "mercado", "brandt_2019"),
     "adhesive_kg_m2": ("fabrico", "Cola por m² de junta colada", "kg/m²", "0.16", "mercado", "kiilto_pur"),
     "fabrication_h_m3": ("fabrico", "Tempo de fabrico por m³ de CLT", "h/m³", "2", "hipotese", "Sem dado público. Medir na fábrica: horas totais da linha ÷ m³ produzidos."),
+    "press_length_m": ("fabrico", "Comprimento máximo do painel de prensa", "m", "18", "mercado", "press_reference"),
+    "press_width_m": ("fabrico", "Largura máxima do painel de prensa", "m", "3.5", "mercado", "press_reference"),
     "electricity_kwh_m3": ("fabrico", "Eletricidade por m³ de CLT", "kWh/m³", "222", "mercado", "sodra_epd"),
     "factory_m3_day": ("fabrico", "Capacidade de fabrico", "m³/dia", "20", "hipotese", "Capacidade real da linha."),
     "materia_prima_km": ("transporte", "Distância serração–fábrica (ida e volta)", "km", "200", "hipotese", "Indicar o fornecedor."),
@@ -161,6 +165,10 @@ CATALOGUE = {
     "purchase_days": ("prazos", "Prazo de compra e receção da madeira", "dias", "21", "hipotese", "Prazo do fornecedor."),
     "transport_days": ("prazos", "Prazo de entrega na obra", "dias", "2", "hipotese", "Planeamento logístico."),
     "fitout_days": ("prazos", "Prazo de instalações e acabamentos até à entrega da chave", "dias", "60", "hipotese", "Planeamento da empresa e dos subempreiteiros."),
+    "standard_height_ground_m": ("geometria", "Altura standard do RDC (quando a planta não marca alturas)", "m", "3.00", "empresa",
+                                 "Standard da empresa: RDC 3,00 m quando a planta não indica altura."),
+    "standard_height_upper_m": ("geometria", "Altura standard dos outros pisos (quando a planta não marca alturas)", "m", "2.50", "empresa",
+                                "Standard da empresa: 2,50 m nos pisos acima do RDC quando a planta não indica altura."),
     "iva_percent": ("venda", "IVA sobre a venda", "%", "23", "mercado", "civa"),
     "iva_ua_percent": ("venda", "ПДВ (IVA ucraniano) sobre a venda", "%", "20", "mercado", "pku_193"),
 }
@@ -366,11 +374,23 @@ class Segment(BaseModel):
     ref: str = Field(min_length=1, max_length=40)
     thickness_mm: Annotated[Decimal, Field(gt=0, le=500)]
     length_m: Annotated[Decimal, Field(gt=0, le=1_000)]
+    # Plan rectangle of the run in metres [x0, y0, x1, y1], read on the drawing; it draws the fabrication annex.
+    rect_m: list[Annotated[float, Field(ge=-100_000, le=100_000, allow_inf_nan=False)]] | None = Field(
+        default=None, min_length=4, max_length=4)
+
+
+class Lintel(BaseModel):
+    """CLT lintel drawn over an opening between two runs (plan rectangle in metres, door head height)."""
+    ref: str = Field(min_length=1, max_length=40)
+    rect_m: list[Annotated[float, Field(ge=-100_000, le=100_000, allow_inf_nan=False)]] = Field(min_length=4, max_length=4)
+    head_m: Annotated[float, Field(gt=0, le=20, allow_inf_nan=False)]
+    thickness_mm: Annotated[float, Field(gt=0, le=500, allow_inf_nan=False)] | None = None
 
 
 class FloorInput(BaseModel):
     name: str = Field(min_length=1, max_length=60)
-    height_m: Annotated[Decimal, Field(gt=0, le=20)]
+    # Empty when the plan marks no height: the company standard is used (see standard_heights).
+    height_m: Annotated[Decimal, Field(gt=0, le=20)] | None = None
     walls: list[Wall] = Field(default_factory=list, max_length=500)
     panels: list[Panel] = Field(default_factory=list, max_length=500)
     board_layers_m2: Value = Decimal(0)
@@ -386,6 +406,12 @@ class FloorInput(BaseModel):
     ceiling_height_m: Value | None = None
     riser_m: list[float] | None = Field(default=None, min_length=2, max_length=2)
     segments: list[Segment] = Field(default_factory=list, max_length=2000)
+    lintels: list[Lintel] = Field(default_factory=list, max_length=500)
+
+    @field_validator("height_m", mode="before")
+    @classmethod
+    def blank_height(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
 
     @model_validator(mode="after")
     def has_clt(self):
@@ -421,6 +447,23 @@ def _q(value):
 STAGE_ORDER = ("compra", "producao", "transporte", "montagem", "revestimentos", "acabamentos", "indiretos")
 
 
+def standard_heights(body: EstimateInput, parameters):
+    """Floors without a height get the company standard: the first floor (RDC) the ground value, the others the upper
+    value (parameters standard_height_ground_m / standard_height_upper_m, editable). Returns (body, notes)."""
+    if all(fl.height_m is not None for fl in body.floors):
+        return body, []
+    value = lambda key: Decimal(str(parameters.get(key, {}).get("value", CATALOGUE[key][3])))
+    floors, notes = [], []
+    for i, fl in enumerate(body.floors):
+        if fl.height_m is None:
+            h = value("standard_height_ground_m" if i == 0 else "standard_height_upper_m")
+            floors.append(fl.model_copy(update={"height_m": h}))
+            notes.append(f"{fl.name}: altura não marcada na planta, usada a altura standard de {h} m (editável).")
+        else:
+            floors.append(fl)
+    return body.model_copy(update={"floors": floors}), notes
+
+
 def fitout_floors(body: EstimateInput):
     """The floors as the fit-out engine reads them (rooms without the exterior ones)."""
     return [{"name": fl.name, "height_m": fl.height_m, "ceiling_height_m": fl.ceiling_height_m, "riser_m": fl.riser_m,
@@ -432,6 +475,7 @@ def fitout_floors(body: EstimateInput):
 
 def estimate(body: EstimateInput, parameters, library):
     p = {key: Decimal(str(item["value"])) for key, item in parameters.items()}
+    body, height_notes = standard_heights(body, parameters)
     items = [LibraryItem.model_validate({k: v for k, v in item.items() if k != "standard"}) for item in library.values()]
     floors = []
     for floor in body.floors:
@@ -534,7 +578,7 @@ def estimate(body: EstimateInput, parameters, library):
                "origem": l["item"].origin} for l in lines]
     hypotheses = sorted([item["label"] for item in parameters.values() if item["origin"] == "hipotese"]
                         + [f"{i.code} · {i.name}" for i in items if i.origin == "hipotese"])
-    return {"pisos": rows, "total": totals, "notas_quantidades": fit_notes, "linhas": detail, "plano": planning(days, body.start, body.start_mode),
+    return {"pisos": rows, "total": totals, "notas_quantidades": height_notes + fit_notes, "linhas": detail, "plano": planning(days, body.start, body.start_mode),
             "hipoteses_por_confirmar": hypotheses, "status": "estimativa" if hypotheses else "valores_da_empresa"}
 
 

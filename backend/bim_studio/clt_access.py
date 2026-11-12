@@ -1,4 +1,4 @@
-"""The CLT pilot belongs to one authenticated account in one tenant."""
+"""CLT access: the engines are open to every PT account; the pilot account keeps what is dedicated to it."""
 import hmac
 import json
 import os
@@ -21,7 +21,17 @@ def enabled_for(user_id, tenant_id):
     return bool(isinstance(accounts, dict) and tenant_id and accounts.get(user_id) == tenant_id)
 
 
+def _active(user):
+    return bool(user and user.get("user_id") and user.get("active") is not False and user.get("company_active") is not False)
+
+
 def allowed(user):
-    return bool(user and user.get("user_id") and user.get("active") is not False
-                and user.get("company_active") is not False
-                and enabled_for(user["user_id"], tenant_of(user)))
+    """CLT page, engines and CLT study: every active account of the PT app (decision of 2026-11-11).
+
+    Each company works on its own data (parameters, prices, libraries and lots are stored per tenant)."""
+    return _active(user) and SITE_COUNTRY == "PT" and isinstance(tenant_of(user), str)
+
+
+def is_pilot(user):
+    """The pilot account(s): what is dedicated to them (CLT Rezult branding of the dossiers) stays theirs."""
+    return _active(user) and enabled_for(user["user_id"], tenant_of(user))

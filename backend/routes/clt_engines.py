@@ -16,10 +16,20 @@ from routes.clt_industrial import _upload, editor, viewer
 router = APIRouter(prefix="/clt-industrial/motores", tags=["clt-industrial"])
 
 
+class EngineLintel(BaseModel):
+    ref: str = Field(min_length=1, max_length=40)
+    rect_m: list[Annotated[float, Field(ge=-100_000, le=100_000, allow_inf_nan=False)]] = Field(min_length=4, max_length=4)
+    head_m: Annotated[float, Field(gt=0, le=20, allow_inf_nan=False)]
+    thickness_mm: Annotated[float, Field(gt=0, le=500, allow_inf_nan=False)] | None = None
+
+
 class EngineFloor(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     elevation_m: float = Field(default=0.0, ge=-50, le=500, allow_inf_nan=False)
     walls: list[WallAxis] = Field(min_length=1, max_length=500)
+    lintels: list[EngineLintel] = Field(default_factory=list, max_length=500)
+    # heal the network read from a drawing: ends onto the other wall's axis, runs joined over the lintels
+    connect: bool = True
 
 
 class Slab(BaseModel):
@@ -62,12 +72,16 @@ class Project(BaseModel):
 def _run(body: Project, *, ifc=False, drawings=False):
     from bim_studio import clt_nesting, clt_walls
 
-    analyses = [clt_walls.analyse(clt_walls.Floor(name=f.name, walls=f.walls), body.cutting.blank_length_m)
+    networks = [clt_walls.connect(f.walls, lintels=[li.model_dump() for li in f.lintels]) if f.connect else (f.walls, None)
                 for f in body.floors]
+    analyses = [clt_walls.analyse(clt_walls.Floor(name=f.name, walls=walls), body.cutting.blank_length_m)
+                for f, (walls, _net) in zip(body.floors, networks)]
+    for a, (_walls, net) in zip(analyses, networks):
+        a["rede"] = net
     pieces = [p for a in analyses for p in clt_nesting.pieces_from_walls(a)]
     nesting = clt_nesting.plan(NestingInput(pieces=pieces, **body.cutting.model_dump()))
     out = {"pisos": analyses, "corte": nesting}
-    staged = [(f.name, f.elevation_m, f.walls, a["pecas"]) for f, a in zip(body.floors, analyses)]
+    staged = [(f.name, f.elevation_m, walls, a["pecas"]) for f, (walls, _net), a in zip(body.floors, networks, analyses)]
     if ifc:
         from bim_studio import clt_ifc
 
@@ -134,6 +148,7 @@ async def pdf_walls(
     height_m: float = Form(..., gt=0, le=3.5),
     scale: int | None = Form(None, ge=10, le=500),
     colour: str | None = Form(None, pattern=r"^#[0-9a-fA-F]{6}$"),
+    lintel_colour: str | None = Form(None, pattern=r"^#[0-9a-fA-F]{6}$"),
     layers: int = Form(5, ge=3, le=13),
     user=Depends(editor),
 ):
@@ -143,7 +158,8 @@ async def pdf_walls(
 
     data = await _upload(file)
     try:
-        result = await asyncio.to_thread(detect, data, page, scale=scale, height_m=height_m, layers=layers, colour=colour)
+        result = await asyncio.to_thread(detect, data, page, scale=scale, height_m=height_m, layers=layers, colour=colour,
+                                         lintel_colour=lintel_colour)
     except FileDataError as exc:
         raise HTTPException(422, "PDF inválido.") from exc
     except ValueError as exc:

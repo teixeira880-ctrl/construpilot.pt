@@ -14,14 +14,18 @@ sempre "estimativa de imagem".
 
 | Módulo | Faz | Verificação cruzada |
 |---|---|---|
-| `bim_studio/clt_walls.py` | Rede de paredes por eixos: juntas L/T/X/colineares, peças de produção (a parede mais longa passa, a outra encosta), divisão acima de 18 m, vãos por peça, comprimento de juntas verticais | Volume das peças vs união das plantas (Shapely/GEOS) menos sobreposições |
+| `bim_studio/clt_walls.py` | Rede de paredes por eixos: juntas L/T/X/colineares, peças de produção (num T a parede que encosta é cortada; num L ou X a mais longa passa), divisão acima do formato de prensa, vãos por peça, comprimento de juntas verticais. `connect()` liga a rede lida num desenho: cada extremo que encosta a outra parede vai ao eixo dela (no máximo meia espessura) e os troços alinhados sob um lintel CLT passam a uma peça com o vão recortado | Volume das peças vs união exata das plantas (Shapely/GEOS); volume do lintel na peça vs lintel medido como na estimativa |
 | `bim_studio/clt_nesting.py` | Plano de corte das peças nos painéis de prensa, por espessura e número de camadas; comprimento e largura à medida opcionais; corte de serra | Heurística de prateleiras vs OR-Tools CP-SAT (fica o melhor) e mínimo teórico por área |
 | `bim_studio/clt_ifc.py` | Modelo IFC4: IfcWall por peça, IfcOpeningElement por vão, conjunto de camadas CLT, Qto_WallBaseQuantities e Pset ConstruPilot_CLT com a origem | Volume de cada sólido recalculado por OpenCascade vs volume analítico, peça a peça |
 | `bim_studio/clt_drawings.py` | DXF em mm (planta dos eixos, alçado de fabrico por peça com vãos e cotas, plano de corte) e PDF A3 com uma folha por grupo | DXF relido pelo ezdxf nos testes |
-| `bim_studio/clt_pdf_walls.py` | Leitor genérico de PDF vetorial: escala "1:N" lida na folha, contornos pela cor da legenda, larguras nominais ±3 mm, paredes só tracejadas | Comparado com o take-off revisto do Home A |
+| `bim_studio/clt_pdf_walls.py` | Leitor genérico de PDF vetorial: escala "1:N" lida na folha, contornos pela cor da legenda, larguras nominais ±3 mm, paredes só tracejadas, lintéis (duas linhas tracejadas paralelas a uma espessura CLT sobre um vão; usados só para a cor indicada ou quando há uma só cor) e altura dos vãos lida nas cotas "900x2300H" (senão standard 2,10 m) | Comparado com o take-off revisto do Home A |
 | `bim_studio/clt_raster_walls.py` | Leitor de plantas em imagem (JPG/PNG): banda de cinzento das paredes, separação horizontal/vertical, incerteza de 1 píxel | Só estimativa; nunca passa a "medido" |
 
-Formato de prensa por omissão: Rezult, comprimento ≤ 18,00 m, largura ≤ 3,50 m,
+Acesso (2026-11-11): a página CLT, os motores e o estudo CLT do Assistente estão abertos a todas as contas ativas da app PT;
+cada empresa trabalha com os seus parâmetros, preços, bibliotecas e lotes (guardados por conta). A marca CLT Rezult nos
+dossiers fica reservada à conta piloto. A página tem PT, EN e УКР.
+
+Formato de prensa por omissão (parâmetro editável de cada empresa): Rezult, comprimento ≤ 18,00 m, largura ≤ 3,50 m,
 espessura 60 a 360 mm (clt-rezult.com/en/technical-characteristics, lido em
 2026-11-11). Corte de serra de 10 mm: hipótese editável.
 

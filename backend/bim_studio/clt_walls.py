@@ -149,21 +149,35 @@ def _junctions(walls):
     return out
 
 
+def _ends_on(a, b, feet):
+    """True when an end of a lies on b's footprint (a stops at b)."""
+    return any(feet[b.id].buffer(SNAP_M).contains(Point(p)) for p in ((a.x1, a.y1), (a.x2, a.y2)))
+
+
+def _yields(a, b, feet):
+    """Whether wall a is cut where it overlaps wall b. At a T the stem (the wall whose end stops on the other) is cut,
+    whatever its length; at an L or an X the shorter wall is cut (then the id decides)."""
+    a_on_b, b_on_a = _ends_on(a, b, feet), _ends_on(b, a, feet)
+    if a_on_b != b_on_a:
+        return a_on_b
+    return (a.length, a.id) < (b.length, b.id)
+
+
 def pieces(floor: Floor, max_length_m=REZULT_FORMAT["max_length_m"]):
-    """Production pieces. Longer walls win at junctions; the others are trimmed.
+    """Production pieces. At a T the through wall runs on and the stem is trimmed; at an L or X the longer wall wins.
 
     The order (longest first, then id) is deterministic, so the same drawing
     always gives the same pieces. A piece longer than the press format is
     split into equal parts and each split is reported as a panel joint.
     """
-    taken = []
     out, splits = [], []
     feet = footprints(floor.walls)
     for wall in sorted(floor.walls, key=lambda w: (-w.length, w.id)):
         free = feet[wall.id]
-        if taken:
-            free = free.difference(union_all(taken))
-        taken.append(feet[wall.id])
+        winners = [feet[o.id] for o in floor.walls if o is not wall and feet[o.id].intersects(free) and _yields(wall, o, feet)]
+        if winners:
+            # opening by a micron drops the slivers that floating point leaves along a shared face
+            free = free.difference(union_all(winners)).buffer(-1e-6, join_style="mitre").buffer(1e-6, join_style="mitre")
         parts = [g for g in getattr(free, "geoms", [free]) if isinstance(g, Polygon) and g.area > 1e-6]
         for k, part in enumerate(sorted(parts, key=lambda g: _extent(g, wall)[0])):
             start, end = _extent(part, wall)
@@ -171,11 +185,16 @@ def pieces(floor: Floor, max_length_m=REZULT_FORMAT["max_length_m"]):
             if length < 0.01:
                 continue
             count = max(1, math.ceil(length / max_length_m - 1e-9))
+            # an opening that runs into a junction (cut at the face of the through wall) is clipped to the piece
+            part_openings = [o.model_copy(update={"offset_m": max(o.offset_m, start),
+                                                  "width_m": min(o.offset_m + o.width_m, end) - max(o.offset_m, start)})
+                             for o in wall.openings
+                             if min(o.offset_m + o.width_m, end) - max(o.offset_m, start) > 0.01]
             for n in range(count):
                 s = start + length * n / count
                 e = start + length * (n + 1) / count
-                openings = [o for o in wall.openings if s - 1e-6 <= o.offset_m and o.offset_m + o.width_m <= e + 1e-6]
-                crossing = [o for o in wall.openings if o.offset_m < e - 1e-6 and o.offset_m + o.width_m > s + 1e-6
+                openings = [o for o in part_openings if s - 1e-6 <= o.offset_m and o.offset_m + o.width_m <= e + 1e-6]
+                crossing = [o for o in part_openings if o.offset_m < e - 1e-6 and o.offset_m + o.width_m > s + 1e-6
                             and o not in openings]
                 if crossing:
                     raise ValueError(f"Um vão da parede {wall.id} fica sobre uma junta; ajuste a divisão do painel.")
@@ -211,7 +230,12 @@ def analyse(floor: Floor, max_length_m=REZULT_FORMAT["max_length_m"]):
     for t, group in by_thickness.items():
         union_length += union_all([feet[w.id] for w in group]).area / (t / 1000)
     gross_volume = sum(feet[w.id].area * w.height_m for w in floor.walls)
-    footprint_volume = gross_volume - _overlap_volume(floor.walls, feet)
+    if len({(w.base_z_m, w.height_m) for w in floor.walls}) == 1:
+        # one storey height: the exact union, also where three footprints meet at a healed corner
+        footprint_volume = union_all(list(feet.values())).area * floor.walls[0].height_m
+        _overlap_volume(floor.walls, feet)  # still rejects duplicated walls
+    else:
+        footprint_volume = gross_volume - _overlap_volume(floor.walls, feet)
     piece_length = sum(p["comprimento_m"] for p in production)
     piece_volume = sum(p["volume_bruto_m3"] for p in production)
     joints = _junctions(floor.walls)
@@ -301,3 +325,149 @@ def rectangles_to_axes(rectangles, *, height_m, layers=5, nominal_mm=(60, 80, 10
                               thickness_mm=nominal, layers=layers, height_m=height_m,
                               source=source or f"contorno {n}, largura desenhada {short * 1000:.1f} mm"))
     return walls, rejected
+
+
+def _line_hit(a, b):
+    """Intersection of the two infinite axis lines, as (t along a from its start, t along b from its start), or None."""
+    ax, ay = a.direction()
+    bx, by = b.direction()
+    den = ax * by - ay * bx
+    if abs(den) < 1e-9:
+        return None
+    dx, dy = b.x1 - a.x1, b.y1 - a.y1
+    return (dx * by - dy * bx) / den, (dx * ay - dy * ax) / den
+
+
+def _clip_openings(openings, t0, length):
+    """Openings re-measured from a new axis start t0 and clipped to the new length (a cut end can shorten an opening)."""
+    out = []
+    for o in openings:
+        a, b = max(o.offset_m - t0, 0.0), min(o.offset_m - t0 + o.width_m, length)
+        if b - a > 0.01:
+            out.append(o.model_copy(update={"offset_m": a, "width_m": b - a}))
+    return out
+
+
+def _bridge(walls, lin, tolerance_m):
+    """One piece over a drawn lintel: every collinear run the band touches, plus the band beyond them, becomes one wall
+    with an opening in each gap (sill 0, height head_m). Returns (new wall, merged runs, row) or None with a reason."""
+    x0, y0, x1, y1 = lin["rect_m"]
+    x0, x1, y0, y1 = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
+    band = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+    horizontal = x1 - x0 >= y1 - y0
+    axis = (1.0, 0.0) if horizontal else (0.0, 1.0)
+    across = (y0 + y1) / 2 if horizontal else (x0 + x1) / 2
+    width = (y1 - y0) if horizontal else (x1 - x0)
+    proj = lambda x, y: x * axis[0] + y * axis[1]
+    side = lambda x, y: y if horizontal else x
+    runs = [w for w in walls if abs(w.direction()[0 if horizontal else 1]) > 0.999
+            and abs(side(w.x1, w.y1) - across) <= max(w.thickness_m, width) / 2 + tolerance_m
+            and w.footprint().buffer(tolerance_m).intersects(band)]
+    if not runs:
+        return None, "sem parede alinhada"
+    if lin.get("thickness_mm"):
+        runs = [w for w in runs if abs(w.thickness_mm - float(lin["thickness_mm"])) < 1]
+        if not runs:
+            return None, f"lintel de {float(lin['thickness_mm']):g} mm com espessura diferente das paredes"
+    ref = runs[0]
+    runs = [w for w in runs if w.thickness_mm == ref.thickness_mm and w.height_m == ref.height_m and w.base_z_m == ref.base_z_m]
+    head = float(lin["head_m"])
+    if head >= ref.height_m - 0.05:
+        return None, f"altura do vão {head:.2f} m sem lintel abaixo da altura da parede"
+    spans = sorted((min(proj(w.x1, w.y1), proj(w.x2, w.y2)), max(proj(w.x1, w.y1), proj(w.x2, w.y2)), w) for w in runs)
+    b0, b1 = proj(x0, y0), proj(x1, y1)
+    start, end = min(b0, spans[0][0]), max(b1, spans[-1][1])
+    openings, cursor = [], start
+    for s0, s1, w in spans:
+        if s0 - cursor > 0.05:
+            openings.append((cursor, s0 - cursor))
+        forward = proj(w.x2 - w.x1, w.y2 - w.y1) > 0
+        for o in w.openings:
+            at = (proj(w.x1, w.y1) + o.offset_m) if forward else (proj(w.x1, w.y1) - o.offset_m - o.width_m)
+            openings.append((at, o.width_m, o))
+        cursor = max(cursor, s1)
+    if end - cursor > 0.05:
+        openings.append((cursor, end - cursor))
+    new_openings = []
+    for item in sorted(openings, key=lambda t: t[0]):
+        if len(item) == 3:
+            new_openings.append(item[2].model_copy(update={"offset_m": item[0] - start}))
+        else:
+            new_openings.append(Opening(offset_m=item[0] - start, width_m=item[1], sill_m=0.0, height_m=head, kind="vao",
+                                        label=str(lin.get("ref", "lintel"))[:60]))
+    if not any(o.label == str(lin.get("ref", "lintel"))[:60] and o.kind == "vao" for o in new_openings):
+        return None, "o lintel não cobre nenhum vão entre troços"
+    line = side(ref.x1, ref.y1)
+    p, q = ((start, line), (end, line)) if horizontal else ((line, start), (line, end))
+    ids = [w.id for _s, _e, w in spans]
+    new = WallAxis(id="+".join(ids)[:40], x1=p[0], y1=p[1], x2=q[0], y2=q[1], thickness_mm=ref.thickness_mm, layers=ref.layers,
+                   height_m=ref.height_m, base_z_m=ref.base_z_m, openings=new_openings,
+                   source=(" + ".join(w.source or w.id for w in [s[2] for s in spans]) + f" + lintel {lin.get('ref', '')}")[:200])
+    gaps = sum(o.width_m for o in new_openings if o.kind == "vao" and o.label == str(lin.get("ref", "lintel"))[:60])
+    row = {"lintel": lin.get("ref", ""), "paredes": ids, "peca": new.id, "vao_m": round(gaps, 4), "altura_vao_m": head,
+           "volume_lintel_m3": round(gaps * (ref.height_m - head) * ref.thickness_m, 5)}
+    return (new, ids, row), None
+
+
+def connect(walls, *, lintels=(), tolerance_m=0.02):
+    """Heal a wall network read from a drawing, where every run is its own outline.
+
+    1. Lintels: the runs on one line under a drawn CLT lintel, and the lintel beyond them up to the next wall, become one
+       production piece with each opening cut out (sill 0, height = head_m), which is how the panel is cut. The
+       lintel volume is then inside the piece, so it can be compared with the separate lintel panel of the estimate.
+    2. Junctions: a wall end that stops at another wall's face, or runs to its outer face, is moved along its own axis
+       onto the other wall's axis (at most half the other thickness plus the tolerance). L, T and X junctions are then
+       recognised by _junctions and resolved by pieces() without double count.
+
+    lintels: [{"ref", "rect_m": [x0, y0, x1, y1], "head_m", "thickness_mm" (optional)}] in the same metres as the walls.
+    Returns (walls, report) with report = {"ligacoes", "linteis", "membros": {run id: piece wall id}, "notas"}.
+    """
+    original = {w.id for w in walls}
+    walls = list(walls)
+    members = {w.id: w.id for w in walls}
+    rows, notes = [], []
+    for lin in lintels:
+        done, why = _bridge(walls, lin, tolerance_m)
+        if not done:
+            notes.append(f"{lin.get('ref', 'lintel')}: {why}; fica como painel à parte.")
+            continue
+        new, ids, row = done
+        walls = [w for w in walls if w.id not in ids] + [new]
+        for run, wall in list(members.items()):
+            if wall in ids:
+                members[run] = new.id
+        rows.append(row)
+    moves, links = {}, []
+    for a in walls:
+        for k in (0, 1):
+            best = None
+            for b in walls:
+                if b is a:
+                    continue
+                cos = abs(a.direction()[0] * b.direction()[0] + a.direction()[1] * b.direction()[1])
+                hit = _line_hit(a, b)
+                if cos > 0.999 or hit is None:
+                    continue
+                ta, tb = hit
+                shift = (ta - a.length) if k else -ta          # > 0 lengthens the wall at that end
+                if abs(shift) > b.thickness_m / 2 + tolerance_m:
+                    continue
+                if not -(a.thickness_m / 2 + tolerance_m) <= tb <= b.length + a.thickness_m / 2 + tolerance_m:
+                    continue
+                if best is None or abs(shift) < abs(best[0]):
+                    best = (shift, ta, b.id)
+            if best and abs(best[0]) > 1e-6:
+                moves[(a.id, k)] = best[1]
+                links.append({"parede": a.id, "extremo": "fim" if k else "início", "a": best[2], "ajuste_mm": round(best[0] * 1000, 1)})
+    healed = []
+    for a in walls:
+        t0, t1 = moves.get((a.id, 0), 0.0), moves.get((a.id, 1), a.length)
+        ux, uy = a.direction()
+        if t1 - t0 < 0.05:
+            healed.append(a)
+            continue
+        healed.append(a.model_copy(update={"x1": a.x1 + ux * t0, "y1": a.y1 + uy * t0, "x2": a.x1 + ux * t1, "y2": a.y1 + uy * t1,
+                                           "openings": _clip_openings(a.openings, t0, t1 - t0)}))
+    healed = [WallAxis.model_validate(w.model_dump()) for w in healed]
+    return healed, {"ligacoes": links, "linteis": rows, "membros": {k: v for k, v in members.items() if k in original},
+                    "notas": notes}

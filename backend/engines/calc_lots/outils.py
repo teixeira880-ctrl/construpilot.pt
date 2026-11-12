@@ -454,7 +454,7 @@ ESTUDO_CLT_TOOL = _tool(
     "acabamentos), preços de compra e de produção da biblioteca da empresa, custos indiretos, IVA, plano de seguimento da compra e fabrico "
     "até à montagem e à entrega da chave (Gantt, curva de custo, folha de controlo do lote), rentabilidade e sensibilidade. Se o utilizador é da CLT Rezult, empresa=clt-rezult. Usa os pisos revistos na página CLT (última estimativa da conta) ou "
     "pisos_json. Betão e lajes de betão ficam fora. NÃO faz cálculo de cargas, muros, planos de execução nem projetos de eletricidade ou "
-    "canalização: só quantidades e preços. Disponível só nas contas com o piloto CLT.",
+    "canalização: só quantidades e preços. Disponível em todas as contas da app PT; cada empresa usa os seus parâmetros e preços.",
     {"titulo": _NS("título do estudo, p. ex. 'Home A · CLT'"), "local": _NS("local da obra, se conhecido"),
      "empresa": _enum(["clt-rezult"], "marca da empresa no dossier premium (logótipo na capa e nas páginas): clt-rezult = CLT Rezult"),
      "regime_iva": _enum(["pt", "ua", "ua_export"], "IVA: pt = Portugal 23 % (CIVA art. 18.º); ua = casa construída na Ucrânia, ПДВ 20 % (ПКУ ст. 193.1); "
@@ -497,7 +497,7 @@ PROTOCOL_PT = (
     "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial; estrutura completa de um edifício com planos de execução de gros-œuvre "
     "cotados (fundações, pavimento, cobertura, cortes) a partir da geometria dos planos: calcul_gros_oeuvre; projeto na Ucrânia ou pedido em "
     "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN) e NÃO lances o estudo BET completo; "
-    "estudo completo de uma casa em CLT na conta do piloto CLT (quantidades CLT e de todos os materiais, preços, plano da fabricação à montagem, "
+    "estudo completo de uma casa em CLT (quantidades CLT e de todos os materiais, preços, plano da fabricação à montagem, "
     "rentabilidade; sem cálculos de cargas nem projetos de especialidade): estudo_clt_completo "
     "(os motores calculam, tu restituis).")
 

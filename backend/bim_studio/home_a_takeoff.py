@@ -71,6 +71,12 @@ def _wall_geometry(page):
                         "label": f"Troço CLT {id} · {length:.3f} m"})
     markers.extend(_hatched_runs(page, metre_per_point, polygons, markers))
     polygons.extend(Polygon(m.pop("_polygon")) for m in markers if "_polygon" in m)
+    # Plan rectangle of each run in metres (x right, y up), for the fabrication drawings of the dossier.
+    for m in markers:
+        if "length_m" in m:
+            x0, y0, x1, y1 = m["rect"]
+            w, h = page.rect.width * metre_per_point, page.rect.height * metre_per_point
+            m["plan_rect_m"] = [round(x0 * w, 4), round(-y1 * h, 4), round(x1 * w, 4), round(-y0 * h, 4)]
     markers.append({"id": "scale", "status": "measured", "label": scale_label,
                     "rect": _rectangle(page, (scale_box.x0 - 3, scale_box.y0 - 3, scale_box.x1 + 3, scale_box.y1 + 3))})
     return metre_per_point, markers, polygons
@@ -351,9 +357,15 @@ def review_page(page, evidence):
         result["notes"].append("Área ocupada em planta pelos troços assinalados. Não corresponde à área da face vertical nem à área das lajes.")
         lintels, beams, doors = _openings(page, metre_per_point, polygons, evidence)
         result["openings"] = {"lintels": lintels, "steel_beams": beams, "doors_in_clt": doors}
+        w_m, h_m = page.rect.width * metre_per_point, page.rect.height * metre_per_point
         for n, item in enumerate(lintels):
+            x0, y0, x1, y1 = item["rect"]
+            # plan_rect_m (x right, y up, like the runs) and the door head: the fabrication annex cuts the opening
+            # out of one piece spanning both runs instead of a separate lintel panel.
             result["markers"].append({"id": f"lintel-{n + 1}", "rect": item["rect"], "status": "pending",
-                                      "label": f"Lintel CLT {item['thickness_mm']} mm · vão livre {item['clear_span_m']:.2f} m"})
+                                      "label": f"Lintel CLT {item['thickness_mm']} mm · vão livre {item['clear_span_m']:.2f} m",
+                                      "thickness_mm": item["thickness_mm"], "head_m": OPENING_HEAD_M,
+                                      "plan_rect_m": [round(x0 * w_m, 4), round(-y1 * h_m, 4), round(x1 * w_m, 4), round(-y0 * h_m, 4)]})
         for n, item in enumerate(beams):
             result["markers"].append({"id": f"beam-{n + 1}", "rect": item["rect"], "status": "pending",
                                       "label": f"Viga de aço · {item['length_m']:.2f} m · perfil não indicado"})

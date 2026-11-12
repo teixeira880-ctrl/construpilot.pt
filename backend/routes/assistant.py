@@ -28,6 +28,7 @@ from engines.assistant_trace import save_trace, summarize_inputs, usage_dict
 from engines.assistant_collaboration import COLLABORATION_INSTRUCTIONS, continuity_message
 from engines.assistant_workspace import EXTRA_TOOLS, WORK_INSTRUCTIONS, validate_args, calculate, read_pages, inspect_region, style_preferences
 from engines import assistant_clt
+from engines import assistant_clt_agent  # agente de estudo CLT: o Assistente comanda os motores passo a passo e verifica
 from engines.platform_agent_tools import PLATFORM_TOOLS, PLATFORM_TOOL_NAMES, PLATFORM_INSTRUCTIONS, execute_platform_tool
 from engines.assistant_crm_tools import CRM_TOOLS, CRM_TOOL_NAMES, CRM_INSTRUCTIONS, execute_crm_tool
 from engines.assistant_quote_schema import QUOTE_INSTRUCTIONS, QUOTE_TOOLS
@@ -277,6 +278,8 @@ def tools_for(user: dict) -> list:
     out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
     if assistant_clt.allowed(user) and permissions_for(user)["devis"]:
         out += assistant_clt.TOOLS
+    if assistant_clt.allowed(user):
+        out += assistant_clt_agent.TOOLS
     return [t for t in out if t.get("name") not in BET_SUPERSEDED_TOOL_NAMES]
 
 
@@ -470,6 +473,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
     validate_args(name, args, tools_for(user))
     if name in assistant_clt.NAMES:
         return await assistant_clt.execute(name, args, user, db, _allowed_doc)
+    if name in assistant_clt_agent.NAMES:
+        return await assistant_clt_agent.execute(name, args, user, conv, db, _allowed_doc)
     if name in PLATFORM_TOOL_NAMES:
         return await execute_platform_tool(name, args, user, conv, db)
     if name in CRM_TOOL_NAMES:
@@ -1536,6 +1541,8 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         instructions += "\n\n" + MISSION_INSTRUCTIONS
         if any(t.get("name") in assistant_clt.NAMES for t in tools_for(user)):
             instructions += assistant_clt.INSTRUCTIONS
+        if any(t.get("name") in assistant_clt_agent.NAMES for t in tools_for(user)):
+            instructions += assistant_clt_agent.INSTRUCTIONS
         instructions += ("\n\nAGENTES DE NEGÓCIO (run_construpilot_agent): quando o utilizador pede um processamento de ponta a ponta das suas plantas (ex. «mede estas plantas e faz o processo/orçamento completo»), podes lançar um agente. Se o pedido indicar as plantas e o entregável, lança-o diretamente (o resultado fica um rascunho editável, nada é enviado); se o âmbito for ambíguo (plantas, margem, nome do projeto), pergunta-o numa frase. Para vários entregáveis de uma vez, prefere lancer_programme_ia. report = processo PDF completo, devis = orçamento consolidado editável, metre = síntese. Apresenta depois a ligação de descarga e os avisos devolvidos. Nunca recalcules tu os montantes.")
     await db.assistant_prefs.update_many({"active": True, "user_id": user["user_id"]}, {"$set": {"last_used_at": _now()}})
     try:
@@ -1600,7 +1607,7 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         conv["_file_call_id"] = call_id
         validate_args(name, args, available)
         key = (name, json.dumps(args, sort_keys=True, allow_nan=False))
-        read_tool = name in ('read_construction_study', 'get_supervision_result', 'list_platform_resources', 'read_work_draft', 'read_quote_draft', 'find_quote_drafts', 'get_plan_results', 'read_document', 'inspect_document_region', 'search_own_history')
+        read_tool = name in ('read_construction_study', 'get_supervision_result', 'list_platform_resources', 'read_work_draft', 'read_quote_draft', 'find_quote_drafts', 'get_plan_results', 'read_document', 'inspect_document_region', 'search_own_history') or name in assistant_clt_agent.NAMES  # o estudo muda entre chamadas
         if not read_tool and key in cache:
             result, attachments = cache[key]
         else:
@@ -1866,6 +1873,8 @@ TOOL_STATUS.update(CALC_STATUS)
 TOOL_STATUS_PT.update(WINDOW_STATUS)
 TOOL_STATUS_PT.update(DOSSIER_STATUS)
 TOOL_STATUS.update(DOSSIER_STATUS)
+TOOL_STATUS_PT.update(assistant_clt_agent.STATUS)
+TOOL_STATUS.update(assistant_clt_agent.STATUS)
 TOOL_STATUS_PT.setdefault("edit_image_from_photo", "Edição da fotografia (IA)…")
 TOOL_STATUS_PT.setdefault("generate_bet_lot_plans", "Desenho das plantas da especialidade (alguns segundos)…")
 TOOL_STATUS.setdefault("generate_bet_lot_plans", "Desenho das plantas da especialidade (alguns segundos)…")

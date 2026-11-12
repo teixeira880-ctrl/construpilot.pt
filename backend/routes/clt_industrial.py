@@ -30,7 +30,7 @@ Thickness = Annotated[float, Field(gt=0, le=1500, allow_inf_nan=False)]
 
 async def viewer(user=Depends(pro_required)):
     if not allowed(user):
-        raise HTTPException(404, "Piloto CLT indisponível.")
+        raise HTTPException(404, "Módulo CLT indisponível nesta conta.")
     return user
 
 
@@ -42,6 +42,16 @@ async def editor(user=Depends(viewer)):
 @router.get("/config")
 async def configuration(user=Depends(viewer)):
     return {"enabled": True, "dwg": os.getenv("APS_DWG_ENABLED") == "true"}
+
+
+@router.get("/i18n/{lang}")
+async def page_texts(lang: str, user=Depends(viewer)):
+    """Translations of the server-side labels shown on the CLT page (parameters, library, categories, sources)."""
+    from bim_studio.clt_i18n import page_dictionary
+
+    if lang not in ("pt", "en", "uk"):
+        raise HTTPException(404, "Língua indisponível.")
+    return {"lang": lang, "items": page_dictionary(lang)}
 
 
 async def _upload(file):
