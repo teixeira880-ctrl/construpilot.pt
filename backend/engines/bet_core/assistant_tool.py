@@ -86,6 +86,8 @@ INSTRUCTIONS = (
     "« Décisions prises (modifiables) », et invite l'utilisateur à corriger un point s'il le souhaite. Quand l'utilisateur corrige "
     "ensuite une décision (ou que tu relances un calcul), ajoute sa correction aux hypothèses, relance l'étude et n'affiche QUE ce "
     "qui change, au format « Modifié : X → Y ; impacts : … » — sans reposer les questions ni réafficher tout le dossier. "
+    "SI L'ÉTUDE BET ÉCHOUE quand même (documents illisibles…), fais QUAND MÊME le devis avec create_quote_draft à partir des "
+    "documents (comme avant) : l'utilisateur doit toujours recevoir un devis. "
     "DEVIS OFFICIEL : quand une étude BET est terminée, son devis (quote_doc_id, calculé sur le métré de l'étude) EST le devis : "
     "ne crée JAMAIS un autre devis avec create_quote_draft pour le même projet (les chiffres divergeraient) ; pour changer un "
     "prix ou une ligne, utilise update_quote_draft sur ce quote_doc_id. "
@@ -323,6 +325,18 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             log.info("bet extraction quality: job=%s absent=%d/%d (%.0f%%) fields=%s", job_id,
                      extraction["hyp_absent"], extraction["hyp_total"], extraction["absent_rate"] * 100, extraction["absent_fields"])
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"extraction": extraction}})
+        if not rd["ok"] and (decide_alone or not rd.get("questions")):
+            # Sem desenhos utilizáveis (só memórias / fichas / especialidades): «faz o melhor possível» — modelo-tipo com o que os
+            # textos dizem, tudo em hipótese, dossier ESTUDO INDICATIVO. Nunca parar sem resultado (pedido do Martinho, 12/11).
+            try:
+                from . import typical
+                traw, tdec = typical.model(docs, hypotheses, country)
+                rd = {**rd, "ok": True, "model": traw, "typical": True,
+                      "decisions": list(rd.get("decisions") or []) + tdec, "anomalies": []}
+                decisions = [str(d) for d in rd["decisions"]]
+                await step("Sem desenhos cotados: estudo INDICATIVO sobre um modelo-tipo (área, tipologia e pisos lidos nos documentos)")
+            except Exception:  # noqa: BLE001
+                log.warning("typical model fallback failed", exc_info=True)
         if not rd["ok"] and decide_alone and not rd.get("questions"):     # « décide seul » sans question possible : échec explicite, pas de boucle
             blocking = [a for a in rd.get("anomalies") or [] if a.get("level") == "bloquant"]
             msg = (("Levantamento impossível de completar, mesmo decidindo sozinho: " if country == "PT"
