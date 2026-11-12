@@ -54,8 +54,9 @@ async def _pagina_completa(p: dict, page_index: int, user_id: str) -> dict:
     return page
 
 
-@router.post("/{plan_id}/geometria")
-async def geometria_analisar(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)):
+# ── Funções partilhadas: rotas do ecrã, Assistente BTP e avatar Aurora fazem EXATAMENTE a mesma coisa ──
+
+async def analisar(plan_id: str, page_index: int, user: dict) -> dict:
     from engines.geometria.servico import analisar_pagina
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                         {"_id": 0, "plan_id": 1, "kind": 1, "filename": 1, "pages": 1, "calibrations": 1})
@@ -71,10 +72,16 @@ async def geometria_analisar(plan_id: str, page_index: int = Query(0, ge=0), use
         logger.exception("geometria: análise falhou (%s p%s)", plan_id, page_index)
         raise HTTPException(500, "Análise geométrica impossível nesta página")
     res["page_index"] = page_index
+    res["plan_id"] = plan_id
     res["analisado_em"] = _now()
     await db.plans_takeoff.update_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                       {"$set": {f"geometria_v3.{page_index}": res}})
     return res
+
+
+@router.post("/{plan_id}/geometria")
+async def geometria_analisar(plan_id: str, page_index: int = Query(0, ge=0), user=Depends(current_user)):
+    return await analisar(plan_id, page_index, user)
 
 
 @router.get("/{plan_id}/geometria")
@@ -98,8 +105,7 @@ class CorrecaoIn(BaseModel):
     comentario: str | None = Field(None, max_length=1000)
 
 
-@router.post("/{plan_id}/geometria/correcao")
-async def geometria_correcao(plan_id: str, body: CorrecaoIn, user=Depends(current_user)):
+async def corrigir(plan_id: str, body: CorrecaoIn, user: dict) -> dict:
     """A correção fica junto da planta e numa coleção de treino (sem a imagem: só a referência e a geometria)."""
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                         {"_id": 0, "kind": 1, f"geometria_v3.{body.page_index}": 1})
@@ -121,14 +127,18 @@ async def geometria_correcao(plan_id: str, body: CorrecaoIn, user=Depends(curren
     return {"ok": True, "correcao_id": reg["correcao_id"]}
 
 
+@router.post("/{plan_id}/geometria/correcao")
+async def geometria_correcao(plan_id: str, body: CorrecaoIn, user=Depends(current_user)):
+    return await corrigir(plan_id, body, user)
+
+
 class AplicarIn(BaseModel):
     page_index: int = Field(0, ge=0)
     divisoes: list[str] = Field(default_factory=list, max_length=500)
     substituir_automaticas: bool = True
 
 
-@router.post("/{plan_id}/geometria/aplicar")
-async def geometria_aplicar(plan_id: str, body: AplicarIn, user=Depends(current_user)):
+async def aplicar(plan_id: str, body: AplicarIn, user: dict) -> dict:
     """Cria as divisões da planta (rooms) a partir da análise, com origem e confiança guardadas em cada uma.
     Só substitui as divisões criadas antes por esta mesma função; as divisões desenhadas à mão ficam intactas."""
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
@@ -171,6 +181,11 @@ async def geometria_aplicar(plan_id: str, body: AplicarIn, user=Depends(current_
     from routes.plans_common import _snapshot
     await _snapshot(plan_id, user["user_id"], "geometria_v3_aplicar", {"divisoes": len(escolhidas)})
     return {"ok": True, "aplicadas": len(escolhidas), "total_divisoes": len(rooms), "calibracao_criada": bool(novo_calib)}
+
+
+@router.post("/{plan_id}/geometria/aplicar")
+async def geometria_aplicar(plan_id: str, body: AplicarIn, user=Depends(current_user)):
+    return await aplicar(plan_id, body, user)
 
 
 @admin_router.get("/correcoes")

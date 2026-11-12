@@ -871,7 +871,11 @@ export default function PlanTakeoff() {
     if (!pid) return;
     api.get(`/takeoffs/${pid}`).then(({ data }) => {
       setPlan(data);
-      setPageIndex(0);
+      // ?page=N (0-based) e ?tab=divisoes : abertos pelo Assistente BTP / Aurora para mostrar a leitura da geometria
+      const pg = parseInt(params.get("page") || "0", 10);
+      const nPages = (data.pages || []).length || data.page_count || 1;
+      setPageIndex(Number.isInteger(pg) && pg >= 0 && pg < nPages ? pg : 0);
+      if (["divisoes", "rooms"].includes(params.get("tab"))) setRightTab("rooms");
       if (data.pc_study || params.get("study") === "1") setPcDialog(true);
       if (params.get("auto") === "1") setPendingAuto(true);
       const hl = params.get("highlight");

@@ -28,6 +28,11 @@ API ÚTEIS (ferramenta read = GET livre; act = escrita) — encontra o resto com
 - CEO (marketing assistido): /api/ceo/drafts, /api/ceo/calendar; criar rascunhos: POST /api/ceo/blog/draft, /api/ceo/email/draft,
   /api/ceo/ad/draft, /api/ceo/video/draft, /api/ceo/creative (um rascunho só é publicado/enviado após validação explícita).
 - Growth: /api/admin/babylovegrowth/status (conteúdos SEO); página /admin/growth para o resto.
+- Geometria das plantas (áreas das divisões, paredes, vãos, escala, confiança verde/laranja/vermelho): pede ao Assistente BTP com
+  assistant_ask (ferramentas ler_geometria_planta, aplicar_geometria_planta, corrigir_geometria_planta) ou age diretamente:
+  POST /api/takeoffs/{plan_id}/geometria?page_index=0 (ler), POST /api/takeoffs/{plan_id}/geometria/aplicar {page_index, divisoes:[]}
+  (meter nas medições), POST /api/takeoffs/{plan_id}/geometria/correcao {page_index, tipo, divisao_id…} (corrigir);
+  correções acumuladas: GET /api/admin/geometria/correcoes. Para MOSTRAR: ui_navigate para /plan?open={plan_id}&tab=divisoes&page=0.
 """
 
 WORK_RULES = """

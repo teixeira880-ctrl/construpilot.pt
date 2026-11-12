@@ -95,3 +95,35 @@ def test_calibracao_divergente_bloqueia_aplicar(cliente):
     loop.run_until_complete(cliente.db.plans_takeoff.update_one({"plan_id": "pl_geo"},
                                                                 {"$set": {"calibrations.0": {"pixels_per_meter": 50.0}}}))
     assert cliente.post("/api/takeoffs/pl_geo/geometria/aplicar", json={"page_index": 0}).status_code == 409
+
+
+# ---------------------------------------------------------------- Assistente BTP / Aurora
+
+def test_assistente_le_aplica_e_corrige(cliente):
+    """As ferramentas do Assistente (usadas também pela Aurora via assistant_ask) chamam as mesmas funções que o ecrã."""
+    import asyncio
+    from engines import assistant_geometria as AG
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    run = lambda n, a: loop.run_until_complete(AG.execute(n, a, USER))  # noqa: E731
+    r = run("ler_geometria_planta", {"plan_id": "pl_geo", "page_index": 0})
+    assert r["ok"] and r["escala"]["estado"] == "confirmada" and len(r["divisoes"]) == 5
+    assert "poligono_px" not in r["divisoes"][0]                     # resposta compacta para o modelo
+    assert r["ecra"] == "/plan?open=pl_geo&tab=divisoes&page=0"
+    sala = next(d for d in r["divisoes"] if d["nome"] == "Sala")
+    assert sala["area_m2"] == pytest.approx(27.494, abs=.01) and sala["nivel"] == "verde"
+    ap = run("aplicar_geometria_planta", {"plan_id": "pl_geo", "page_index": 0, "divisoes": [sala["id"]]})
+    assert ap["ok"] and ap["aplicadas"] == 1
+    c = run("corrigir_geometria_planta", {"plan_id": "pl_geo", "page_index": 0, "tipo": "area_errada", "divisao_id": sala["id"],
+                                          "nome_correto": None, "area_correta_m2": 27.0, "comentario": "medido em obra"})
+    assert c["ok"]
+    # erros devolvidos ao modelo em vez de rebentar a conversa
+    assert run("ler_geometria_planta", {"plan_id": "pl_inexistente", "page_index": 0}) == {"ok": False, "error": "Planta não encontrada"}
+    assert not run("corrigir_geometria_planta", {"plan_id": "pl_geo", "page_index": 0, "tipo": "area_errada", "divisao_id": None,
+                                                 "nome_correto": None, "area_correta_m2": -3, "comentario": None})["ok"]
+
+
+def test_ferramentas_estritas_e_expostas():
+    from engines.assistant_geometria import GEOMETRIA_TOOLS
+    for t in GEOMETRIA_TOOLS:
+        p = t["parameters"]
+        assert t["strict"] and p["additionalProperties"] is False and set(p["required"]) == set(p["properties"])

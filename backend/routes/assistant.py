@@ -46,6 +46,7 @@ from engines.assistant_autorizacao_tool import (
 from engines.assistant_media import image_content, normalize_attachment
 from engines.office_text import OFFICE_MIME_SET, OFFICE_MIMES, extract_office_text, office_model_parts, office_pages
 from engines.metre.tools import METRE_INSTRUCTIONS, METRE_TOOLS, METRE_TOOL_NAMES, run_metre_tool
+from engines.assistant_geometria import GEOMETRIA_INSTRUCTIONS, GEOMETRIA_TOOLS, GEOMETRIA_TOOL_NAMES
 from engines.assistant_sources_tools import SOURCE_INSTRUCTIONS, SOURCE_TOOLS, SOURCE_TOOL_NAMES, WEB_TOOL_NAMES
 from engines.autodesk_md_tools import AUTODESK_TOOLS, AUTODESK_TOOL_NAMES, compare_revisions
 from engines.assistant_bet_core_tool import (
@@ -200,6 +201,7 @@ TOOLS = [
                                                      "focus": {"type": "string", "description": "Pontos a privilegiar (vazio = comparação completa)"}},
                     "required": ["document_a", "document_b", "focus"], "additionalProperties": False}, "strict": True},
     *METRE_TOOLS,
+    *GEOMETRIA_TOOLS,
     *SOURCE_TOOLS,
     *AUTODESK_TOOLS,
     {"type": "function", "name": "read_native_dimensions", "strict": True,
@@ -267,7 +269,7 @@ TOOL_ESTIMATE = {"type": "function", "name": "estimate_budget_range",
                                   "recommended_questions_for_contractors", "confidence"], "additionalProperties": False}, "strict": True}
 
 INDIVIDUAL_TOOL_NAMES = {"start_construction_study", "read_construction_study", "define_analysis_scope", "analyze_plan", "get_plan_results", "generate_branded_pdf", "save_user_preference", "create_project_task", "ask_user_choices",
-                         "compare_documents", "generate_conversation_report", "read_native_dimensions", "read_rebar_schedule", "cross_check", *METRE_TOOL_NAMES, *SOURCE_TOOL_NAMES, *PLATFORM_TOOL_NAMES}
+                         "compare_documents", "generate_conversation_report", "read_native_dimensions", "read_rebar_schedule", "cross_check", *METRE_TOOL_NAMES, *GEOMETRIA_TOOL_NAMES, *SOURCE_TOOL_NAMES, *PLATFORM_TOOL_NAMES}
 
 
 def tools_for(user: dict) -> list:
@@ -477,6 +479,9 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
         return await assistant_clt.execute(name, args, user, db, _allowed_doc)
     if name in assistant_clt_agent.NAMES:
         return await assistant_clt_agent.execute(name, args, user, conv, db, _allowed_doc)
+    if name in GEOMETRIA_TOOL_NAMES:
+        from engines import assistant_geometria
+        return await assistant_geometria.execute(name, args, user)
     if name in PLATFORM_TOOL_NAMES:
         return await execute_platform_tool(name, args, user, conv, db)
     if name in CRM_TOOL_NAMES:
@@ -1536,7 +1541,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + GEOMETRIA_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
