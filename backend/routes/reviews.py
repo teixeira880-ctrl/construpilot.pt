@@ -239,14 +239,23 @@ async def list_site_reviews(limit: int = 12) -> dict:
     return {"reviews": [_clean_site(d) for d in await cur.to_list(30)]}
 
 
+BETA_USERS_CONFIRMED = 44
+
+
 @router.get("/site/usage")
 async def site_usage() -> dict:
     """Auditoria de site (D3.1) : contadores públicos reais da beta (nunca valores fixos no código).
 
     Conta as contas não-admin e os projetos de obra; a página só mostra o contador acima de um mínimo."""
-    users = await db.users.count_documents({"role": {"$ne": "admin"}})
+    import os
     projects = await db.projects.count_documents({})
-    return {"beta_users": int(users), "projects": int(projects)}
+    # Número real de testadores confirmado pela direção (12/11/2026): a contagem automática incluía contas de teste,
+    # de demonstração e semeadas. Atualizável sem código pela variável SITE_BETA_USERS.
+    try:
+        users = int(os.environ.get("SITE_BETA_USERS") or BETA_USERS_CONFIRMED)
+    except ValueError:
+        users = BETA_USERS_CONFIRMED
+    return {"beta_users": users, "projects": int(projects)}
 
 
 @router.get("/site/pending", dependencies=[Depends(admin_user)])
