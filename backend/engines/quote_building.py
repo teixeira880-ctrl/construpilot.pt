@@ -211,6 +211,9 @@ async def views(db, raw: dict, wait: float = 0) -> dict[str, bytes]:
         return {k: base64.b64decode(v) for k, v in hit["views"].items()}
     base = await asyncio.to_thread(computed_views, raw)
     masks = await asyncio.to_thread(computed_masks, raw)
+    import os
+    if str(os.environ.get("QUOTE_HOUSE_PHOTO") or "").lower() not in ("1", "true", "yes"):
+        return base          # sem imagens fotorrealistas/3D pesadas (pedido do Martinho 12/11: «esquece as imagens»)
     if key not in _PENDING:
         _PENDING.add(key)
         task = asyncio.get_running_loop().create_task(_photoreal_all(db, key, base, masks, raw))

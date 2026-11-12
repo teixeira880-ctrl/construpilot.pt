@@ -145,10 +145,10 @@ def test_tool_end_to_end_stores_four_artifacts():
     assert out["ok"]
     st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
     assert st["status"] == "done", st
-    assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx", "png"}   # + perspetivas 3D (PNG)
+    assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx"}   # perspetivas 3D desligadas (12/11)
     assert [a["kind"] for a in st["artifacts"]] == ["pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"]
     assert st["blocking"] == 0 and len(st["sheets"]) >= 20
-    assert len(db.assistant_artifacts.docs) == 9   # 5 livrables + 4 perspectives 3D
+    assert len(db.assistant_artifacts.docs) == 5   # 5 livrables (perspectives 3D désactivées)
     # un autre utilisateur ne voit ni le job ni les documents
     other = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, {"user_id": "u2"}, conv, db))
     assert "error" in other

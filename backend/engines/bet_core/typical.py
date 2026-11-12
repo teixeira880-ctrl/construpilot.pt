@@ -31,6 +31,42 @@ def _num(s: str) -> float:
     return float(s.replace(" ", "").replace(".", "").replace(",", ".")) if "," in s else float(s.replace(" ", ""))
 
 
+_SPECIALTY = re.compile(r"(el[eé]tric|[aá]guas|esgoto|ited|telecom|ventila|exaust|scie|incêndi|incendi|t[eé]rmic|ac[uú]stic|g[aá]s\b|avac|"
+                        r"estabilidade|geot|g2|sondag|pe[cç]a escrita|mem[oó]ria|caderno|mapa de quantidades|termo|notice|cctp|"
+                        r"[eé]lectri|plomberie|chauffage|thermique|[eé]tude de sol)", re.I)
+
+
+def has_drawings(docs) -> bool:
+    """Os documentos têm desenhos de ARQUITETURA (plantas/cortes/alçados)? Ficheiros de especialidades, memórias e estudos
+    geotécnicos não contam. Desenho = folha A3 ou maior / paisagem, ou página com muitos traços vetoriais. Se SIM, o modelo-tipo
+    NUNCA substitui a casa real (12/11: PC de La Courneuve trocado por uma moradia-tipo)."""
+    for name, data in docs or []:
+        n = (name or "").lower()
+        if _SPECIALTY.search(n):
+            continue
+        if re.search(r"(^|[^a-z])(pc|pcmi|dp)([^a-z]|$)|plan|planta|desenho|graphique|arquitet|architect", n):
+            return True
+        try:
+            import pymupdf
+            d = pymupdf.open(stream=data, filetype="pdf")
+        except Exception:  # noqa: BLE001 — imagem (foto/scan de planta): conta como desenho
+            if not n.endswith((".txt", ".doc", ".docx", ".xls", ".xlsx", ".csv")):
+                return True
+            continue
+        for i, pg in enumerate(d):
+            if i >= 30:
+                break
+            w, h = pg.rect.width, pg.rect.height
+            if max(w, h) > 900 or w > h * 1.05:              # A3 / A2 / A1 ou paisagem → folha de desenho
+                return True
+            try:
+                if len(pg.get_drawings()) > 400:              # muitos traços vetoriais
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
+    return False
+
+
 def facts(text: str, hypotheses: str = "") -> dict:
     t = (hypotheses or "") + "\n" + (text or "")
     low = t.lower()
@@ -128,7 +164,11 @@ def model(docs, hypotheses: str, country: str) -> tuple[dict, list[str]]:
                "_typical_model": True})
     pr["address"] = (f"{f['concelho']} (concelho)" if f["concelho"] else
                      ("Adresse à préciser (sans plans d'architecte)" if fr else "Morada a indicar (sem documentos de arquitetura)"))
-    raw["geotech"]["source"] = "Sem estudo geotécnico: valores prudentes por defeito (HIPÓTESE)"
+    raw["geotech"]["source"] = ("Sans étude de sol exploitable : valeurs prudentes par défaut (HYPOTHÈSE)" if fr
+                                else "Sem estudo geotécnico: valores prudentes por defeito (HIPÓTESE)")
+    for k in ("name", "ref", "title", "company"):
+        if isinstance(raw["geotech"].get(k), str):
+            raw["geotech"][k] = raw["geotech"]["source"]
     raw["_typical"] = f
     if fr:
         dec = [f"ÉTUDE INDICATIVE : les documents ne contiennent pas de plans cotés ; géométrie estimée (modèle-type) sur "

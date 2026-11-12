@@ -47,9 +47,9 @@ def test_demo_study_is_instant_without_llm():
                                              user, conv, db, llm=no_llm, background=False))
     st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
     assert st["status"] == "done" and st["demo"] == "moradia_pt_demo" and st["blocking"] == 0
-    assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx", "png"}   # + perspetivas 3D (PNG)
+    assert {a["format"] for a in st["artifacts"]} == {"pdf", "zip", "xlsx"}   # perspetivas 3D desligadas (12/11)
     assert [a["kind"] for a in st["artifacts"]][:5] == ["pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"]   # + estudo térmico REH (PT)
-    assert sum(a["kind"] == "render_png" for a in st["artifacts"]) >= 3                                 # ≥ 3 perspetivas 3D
+    assert sum(a["kind"] == "render_png" for a in st["artifacts"]) == 0                                 # perspetivas 3D desligadas
     assert any("Processo-estudo" in a["filename"] or a["filename"].startswith("Processo_estudo") for a in db.assistant_artifacts.docs)
 
 

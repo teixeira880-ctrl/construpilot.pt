@@ -125,6 +125,7 @@ def test_photoreal_rejects_wrong_geometry_then_takes_next_engine(monkeypatch):
 
 def test_fast_pass_first_then_openai_upgrade(monkeypatch):
     """Como na conta CLT: o PDF recebe logo as fotos rápidas; a melhoria OpenAI substitui-as depois, em segundo plano."""
+    monkeypatch.setenv("QUOTE_HOUSE_PHOTO", "1")               # imagens fotorrealistas desligadas por defeito (12/11)
     import asyncio
     mm = __import__("pytest").importorskip("mongomock_motor")
     from engines import llm_keys, photoreal as PR

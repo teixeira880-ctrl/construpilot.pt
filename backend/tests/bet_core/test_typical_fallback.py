@@ -73,3 +73,15 @@ def test_slow_reading_falls_back_to_typical(monkeypatch):
     st = asyncio.run(assistant_tool.execute("read_full_bet_study", {"job_id": out["job_id"]}, user, conv, db))
     assert st["status"] == "done", st
     assert any("INDICATIVO" in d for d in st["decisions"])
+
+
+def test_real_drawings_never_replaced_by_typical_model():
+    """PC com plantas A3: mesmo que a leitura falhe, NUNCA se troca a casa real por uma moradia-tipo."""
+    from reportlab.lib.pagesizes import A3, landscape
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=landscape(A3))
+    c.drawString(50, 50, "PLAN DU REZ-DE-CHAUSSEE"); c.rect(100, 100, 800, 500); c.showPage(); c.save()
+    assert typical.has_drawings([("PC.pdf", buf.getvalue())])
+    assert typical.has_drawings([("x.pdf", buf.getvalue())])
+    assert not typical.has_drawings([("G2-AVP etude de sol.pdf", buf.getvalue())])
+    assert not typical.has_drawings([("memoria.pdf", _memoria())])

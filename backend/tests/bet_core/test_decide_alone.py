@@ -129,7 +129,7 @@ def test_end_to_end_decide_alone_completes_with_decisions():
     assert st["status"] == "done", st
     assert st["questions"] == [] and st["decisions"][:len(model["_decisions"])] == model["_decisions"]
     assert any("Étude thermique RE2020" in d for d in st["decisions"])          # étude thermique faite d'abord, tracée
-    assert len(st["artifacts"]) == 9 and st["thermal"]["classe"]   # 5 livrables + 4 perspectives 3D
+    assert len(st["artifacts"]) == 5 and st["thermal"]["classe"]   # 5 livrables (perspectives 3D désactivées)
 
 
 def test_flag_is_inherited_on_relaunch_without_keyword():
