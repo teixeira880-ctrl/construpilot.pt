@@ -286,8 +286,9 @@ async def plan_images(db, doc: dict, uid: str, max_pages: int = 8) -> list[tuple
         def is_plan(d):
             name = (d.get("filename") or "").lower()
             return d.get("kind") == "plan" or any(h in name for h in PLAN_HINT)
-        chosen = [d for d in docs if is_plan(d) and ((d.get("mime") or "").startswith("image/") or (d.get("mime") or "").endswith("pdf")
-                                                   or (d.get("filename") or "").lower().endswith(".pdf"))]
+        visual = [d for d in docs if (d.get("mime") or "").startswith("image/") or (d.get("mime") or "").endswith("pdf")
+                  or (d.get("filename") or "").lower().endswith(".pdf")]
+        chosen = [d for d in visual if is_plan(d)] or visual          # sem nome « planta »: todos os PDF / imagens juntos
         for d in chosen:
             if len(imgs) >= max_pages:
                 break
@@ -297,6 +298,23 @@ async def plan_images(db, doc: dict, uid: str, max_pages: int = 8) -> list[tuple
             pages = await asyncio.to_thread(_render_pages, data, d.get("mime") or "application/pdf", max_pages - len(imgs))
             for i, im in enumerate(pages):
                 imgs.append((f"{d.get('filename') or 'Planta'}" + (f" — p. {i + 1}" if len(pages) > 1 else ""), im))
+        # plantas do módulo Plantas (plan_…) ativas na conversa ou citadas no orçamento: imagens das páginas já calculadas
+        if len(imgs) < max_pages:
+            plan_ids: list[str] = []
+            conv = doc.get("assistant_conversation_id")
+            if conv:
+                c = await db.assistant_convs.find_one({"conversation_id": conv, "user_id": uid}, {"_id": 0, "active_plans": 1}) or {}
+                plan_ids += [x for x in c.get("active_plans") or [] if x not in plan_ids]
+            txt = json.dumps([doc.get("lines"), doc.get("title"), doc.get("notes")], ensure_ascii=False)
+            plan_ids += [x for x in re.findall(r"plan_[0-9a-f]{6,}", txt) if x not in plan_ids]
+            for pid in plan_ids[:4]:
+                p = await db.plans_takeoff.find_one({"plan_id": pid, "user_id": uid},
+                                                    {"_id": 0, "filename": 1, "pages.image_png_b64": 1}) or {}
+                for i, pg in enumerate(p.get("pages") or []):
+                    if len(imgs) >= max_pages:
+                        break
+                    if pg.get("image_png_b64"):
+                        imgs.append((f"{p.get('filename') or 'Planta'} — p. {i + 1}", _jpeg(base64.b64decode(pg["image_png_b64"]), 2200)))
     except Exception:  # noqa: BLE001 — as plantas embelezam, nunca bloqueiam o orçamento
         log.warning("quote plan images failed", exc_info=True)
     return imgs
