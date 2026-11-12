@@ -246,6 +246,11 @@ async def _context(doc, user):
     except Exception:  # noqa: BLE001 — personnalisation facultative
         pass
     lang = await _doc_lang(doc, branding)
+    try:                                   # moradia lida nas plantas (Estudo BET): perspetivas 3D + paredes calculadas no PDF
+        from engines import quote_building
+        doc = await quote_building.enrich(db, doc, user["user_id"], wait=40)
+    except Exception:  # noqa: BLE001 — facultativo
+        pass
     acct_langs = [x for x in (user.get("doc_langs") or []) if x in ("fr", "pt", "en", "uk")]
     if acct_langs:
         lang = acct_langs[0]

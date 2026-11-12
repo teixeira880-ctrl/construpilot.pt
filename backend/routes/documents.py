@@ -1889,6 +1889,12 @@ async def document_pdf(doc_id: str, lang: str | None = None, user=Depends(curren
         from engines.doc_translate import translate_doc
         doc = await translate_doc(db, doc, pdf_lang)
         suffix = pdf_lang.upper()
+    if doc.get("doc_type") == "quote":     # moradia lida nas plantas: perspetivas 3D (fotorrealistas) + paredes calculadas
+        try:
+            from engines import quote_building
+            doc = await quote_building.enrich(db, doc, user["user_id"], wait=25)
+        except Exception:  # noqa: BLE001
+            pass
     pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
                                    lang=pdf_lang, sign_url=sign_url,
                                    cover=cover, watermark_logo_b64=watermark_logo,
@@ -2088,7 +2094,14 @@ async def send_document(doc_id: str, body: DocSendIn, background_tasks: Backgrou
     if acct_langs:
         from engines.doc_translate import translate_doc
         doc = await translate_doc(db, doc_src, acct_langs[0])
-    pdf_bytes = build_document_pdf(doc, branding=branding, reviews=reviews,
+    doc_pdf = doc
+    if doc.get("doc_type") == "quote":
+        try:
+            from engines import quote_building
+            doc_pdf = await quote_building.enrich(db, doc, user["user_id"], wait=25)
+        except Exception:  # noqa: BLE001
+            doc_pdf = doc
+    pdf_bytes = build_document_pdf(doc_pdf, branding=branding, reviews=reviews,
                                    lang=acct_langs[0] if acct_langs else await _doc_lang(doc, branding))
     company = branding.get("company_name") or user.get("name") or "ConstruPilot"
     company_email = branding.get("company_email")

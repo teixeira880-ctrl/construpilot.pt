@@ -371,8 +371,8 @@ def acabar_orcamento(pdf: bytes, doc: dict, branding: dict | None, lang: str | N
     cli = doc.get("client") or {}
     cli_nome = cli.get("name") or cli.get("company") or cli.get("nom") or ""
     site = doc.get("site_address") or doc.get("worksite_address") or cli.get("address") or ""
-    imagem = None
-    if doc.get("attachment_image_b64"):
+    imagem = (doc.get("_house_views") or {}).get("main")      # vista 3D da moradia (fotorrealista se já disponível)
+    if not imagem and doc.get("attachment_image_b64"):
         try:
             imagem = base64.b64decode(str(doc["attachment_image_b64"]).split(",", 1)[-1])
         except Exception:  # noqa: BLE001

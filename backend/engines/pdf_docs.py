@@ -848,6 +848,15 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
                and (doc.get("study_dossier") or {}).get("schema_version") != "construction-dossier-1")
     if premium:
         branding = pdf_premium.com_cor(branding)          # cor da empresa (escolhida, senão a do logótipo) em todo o orçamento
+        if isinstance(doc.get("_building_model"), dict):  # moradia lida nas plantas: perspetivas + paredes calculadas (como na conta CLT)
+            try:
+                from engines import house3d
+                extra = house3d.walls_flowables(doc["_building_model"], pdf_premium.cor_empresa(branding), lang or "",
+                                                doc.get("_house_views") or {})
+                appendix = (list(appendix) + extra) if appendix else extra[1:]
+            except Exception:  # noqa: BLE001 — as páginas da moradia embelezam, nunca bloqueiam o orçamento
+                import logging
+                logging.getLogger("pdf_docs").warning("house pages failed", exc_info=True)
     # Ucraniano (cirílico): fontes DejaVu só para este PDF; PT/FR/EN sem alterações.
     with cyrillic_fonts(needs_cyrillic(lang)):
         pdf = _build_document_pdf(doc, branding, reviews, lang, sign_url, None if premium else cover,
