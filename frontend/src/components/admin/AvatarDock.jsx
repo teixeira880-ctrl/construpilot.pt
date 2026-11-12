@@ -17,14 +17,14 @@ const PT = typeof window !== "undefined" && /construpilot\.pt|construpilot-recon
 const T = PT ? {
   waiting: "A ligar a assistente…", live: "Em direto", stop: "Terminar", min: "Reduzir", open: "Abrir", mic: "Microfone", cam: "Câmara", camOn: "Câmara ativa", camDenied: "Acesso à câmara recusado pelo navegador.",
   camConsent: "Ativar a câmara?\n\nA assistente vê a imagem para perceber o ambiente (sala, obra, plano mostrado à câmara).\nNão identifica pessoas pelo rosto e não guarda nenhuma imagem.\nPode desligar a qualquer momento.",
-  noagent: "A assistente não responde: o agente está online (LiveKit Cloud)?", micDenied: "Microfone bloqueado: autorize o microfone para este site nas definições do navegador.", micDead: "O microfone deixou de enviar som — foi religado automaticamente.", ended: "Conversa terminada.",
+  noagent: "A assistente não responde: o agente está online (LiveKit Cloud)?", micDenied: "Microfone bloqueado: autorize o microfone para este site nas definições do navegador.", sound: "Clique em qualquer sítio para ativar o som da assistente.", micDead: "O microfone deixou de enviar som — foi religado automaticamente.", ended: "Conversa terminada.",
   busy: "A assistente já está a ser usada por outro admin. Tente daqui a alguns minutos.", quota: "Quota Synthesia esgotada este mês.",
   config: "Problema de configuração do avatar (chave Synthesia ou LiveKit). ", error: "A assistente não conseguiu arrancar, tente de novo.",
   hush: "Silêncio (ou diga « cala-te »)", listening: "A ouvir", thinking: "A pensar…", speaking: "A falar", acting: "A agir no ecrã", you: "Você",
 } : {
   waiting: "Connexion de l'assistante…", live: "En direct", stop: "Terminer", min: "Réduire", open: "Ouvrir", mic: "Micro", cam: "Caméra", camOn: "Caméra active", camDenied: "Accès à la caméra refusé par le navigateur.",
   camConsent: "Activer la caméra ?\n\nL'assistante voit l'image pour comprendre l'environnement (pièce, chantier, plan montré à la caméra).\nElle n'identifie personne par le visage et n'enregistre aucune image.\nVous pouvez la couper à tout moment.",
-  noagent: "L'assistante ne répond pas : l'agent est-il en ligne (LiveKit Cloud) ?", micDenied: "Micro bloqué : autorisez le micro pour ce site dans les réglages du navigateur.", micDead: "Le micro n'envoyait plus de son — il a été rallumé automatiquement.", ended: "Conversation terminée.",
+  noagent: "L'assistante ne répond pas : l'agent est-il en ligne (LiveKit Cloud) ?", micDenied: "Micro bloqué : autorisez le micro pour ce site dans les réglages du navigateur.", sound: "Cliquez n'importe où pour activer le son de l'assistante.", micDead: "Le micro n'envoyait plus de son — il a été rallumé automatiquement.", ended: "Conversation terminée.",
   busy: "L'assistante est déjà utilisée par un autre admin. Réessayez dans quelques minutes.", quota: "Quota Synthesia épuisé pour ce mois.",
   config: "Problème de configuration de l'avatar (clé Synthesia ou LiveKit). ", error: "L'assistante n'a pas pu démarrer, réessayez.",
   hush: "Silence (ou dites « tais-toi »)", listening: "À l'écoute", thinking: "Réfléchit…", speaking: "Parle", acting: "Agit à l'écran", you: "Vous",
@@ -445,6 +445,7 @@ export async function startAvatar(lang = "fr") {
     r.on(RoomEvent.TrackSubscribed, (track) => {
       if (!videoEl) { videoEl = document.createElement("video"); videoEl.playsInline = true; videoEl.autoplay = true; }
       track.attach(videoEl);
+      if (track.kind === "audio" && !state.hushed) { videoEl.muted = false; videoEl.play?.().catch(() => set({ message: T.sound })); }
       if (track.kind === "video") { clearTimeout(timer); set({ phase: "live", message: "" }); }
       else set({});
     });
@@ -478,7 +479,16 @@ export async function startAvatar(lang = "fr") {
       isAgentActing: agentActing,
       markAgentAction,
     });
+    // Som da assistente: o navegador pode bloquear o áudio que chega depois do clique (política de autoplay) — a cara
+    // aparece mas não se ouve nada. Desbloqueia-se já e, se ainda bloqueado, no próximo clique em qualquer sítio (12/11).
+    const unlockAudio = () => { try { r.startAudio(); } catch { /* */ } if (videoEl && !state.hushed) { videoEl.muted = false; videoEl.play?.().catch(() => {}); } };
+    r.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+      if (r.canPlaybackAudio) { if (state.message === T.sound) set({ message: "" }); return; }
+      set({ message: T.sound });
+      document.addEventListener("pointerdown", unlockAudio, { once: true, capture: true });
+    });
     await r.connect(data.url, data.token);
+    unlockAudio();
     startScreenWatch(r);
     try { await r.localParticipant.setMicrophoneEnabled(true); }
     catch (e) { const err = new Error(T.micDenied); err.cause = e; throw err; }
