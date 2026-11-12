@@ -396,16 +396,25 @@ DOSSIER_VIEWS = (("main", "Perspetiva principal", "Perspective principale"), ("s
                  ("rear", "Perspetiva posterior", "Perspective arrière"), ("aerial", "Vista aérea", "Vue aérienne"))
 
 
-def dossier_renders(raw: dict, out_dir, width: int = 1920, height: int = 1080, spp: int = 64) -> list:
+def dossier_renders(raw: dict, out_dir, width: int = 0, height: int = 0, spp: int = 0) -> list:
     """Pelo menos 3 perspetivas (aqui 4) da moradia para o dossier: render físico; sem Mitsuba, vistas 3D calculadas.
     → [(caminho PNG, legenda PT, legenda FR)]."""
     import os
     from pathlib import Path
+    import time
+    width = width or int(os.environ.get("DOSSIER_PBR_W") or 1600)
+    height = height or int(os.environ.get("DOSSIER_PBR_H") or 900)
+    spp = spp or int(os.environ.get("DOSSIER_PBR_SPP") or 24)
     if os.environ.get("PYTEST_CURRENT_TEST"):                      # testes: imagens pequenas e rápidas
         width, height, spp = 320, 180, 4
+    # orçamento de tempo (produção = CPU fraco): passado o limite, as vistas restantes são as vistas 3D rápidas — o estudo
+    # nunca fica preso nas imagens (12/11: 26 min em produção)
+    budget = float(os.environ.get("DOSSIER_RENDER_BUDGET") or 90)
+    t0 = time.monotonic()
     out = []
     for view, pt, fr in DOSSIER_VIEWS:
-        png = render(raw, width, height, view, spp) if available() else None
+        slow_ok = available() and (time.monotonic() - t0) < budget
+        png = render(raw, width, height, view, spp) if slow_ok else None
         if not png:
             try:
                 png = H.render_png(raw, width, height, view)

@@ -170,7 +170,7 @@ async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, 
             if house_pbr.available():
                 got_pbr = {}
                 for k in VIEW_KEYS:
-                    png = await asyncio.to_thread(house_pbr.render, raw, int(os.environ.get("QUOTE_PBR_W") or 2560), int(os.environ.get("QUOTE_PBR_H") or 1440), k, int(os.environ.get("QUOTE_PBR_SPP") or 128))
+                    png = await asyncio.to_thread(house_pbr.render, raw, int(os.environ.get("QUOTE_PBR_W") or 1600), int(os.environ.get("QUOTE_PBR_H") or 900), k, int(os.environ.get("QUOTE_PBR_SPP") or 32))
                     if png:
                         got_pbr[k] = (png, "pbr_mitsuba")
                         if k == "main":

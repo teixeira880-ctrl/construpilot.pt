@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import asyncio
+import os
 import base64
 import copy
 import hashlib
@@ -420,7 +421,9 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             try:                              # pelo menos 3 perspetivas 3D reais no dossier (render físico, sem IA)
                 from engines import house_pbr
                 if res["files"].get("pdf"):
-                    renders = await asyncio.to_thread(house_pbr.add_to_dossier, raw, res["files"]["pdf"], "pt" if country == "PT" else "fr")
+                    renders = await asyncio.wait_for(asyncio.to_thread(house_pbr.add_to_dossier, raw, res["files"]["pdf"],
+                                                                       "pt" if country == "PT" else "fr"),
+                                                     float(os.environ.get("BET_RENDER_TIMEOUT") or 240))
             except Exception:  # noqa: BLE001 — as perspetivas nunca bloqueiam o dossier
                 log.warning("bet study renders failed", exc_info=True)
             for kind in ("pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"):
@@ -430,7 +433,8 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                 arts.append(await _store(db, uid, cid, request_id, "render_png", Path(rp), pt if country == "PT" else frl))
         quote_doc_id = None
         try:                              # devis OFFICIEL = métré déterministe de l'étude (mêmes documents → même devis)
-            quote_doc_id, qarts = await study_quote(db, uid, cid, job_id, res, country, raw)
+            quote_doc_id, qarts = await asyncio.wait_for(study_quote(db, uid, cid, job_id, res, country, raw),
+                                                         float(os.environ.get("BET_QUOTE_TIMEOUT") or 300))
             arts += qarts
         except Exception:  # noqa: BLE001 — le devis officiel ne bloque jamais le dossier d'étude
             log.warning("bet study quote failed", exc_info=True)
