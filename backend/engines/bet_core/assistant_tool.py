@@ -284,6 +284,11 @@ async def _cached_model(db, uid, key):
         return None
 
 
+def _images3d_on() -> bool:
+    from engines import images3d
+    return images3d.enabled() or str(os.environ.get("BET_DOSSIER_RENDERS") or "").lower() in ("1", "true", "yes")
+
+
 def _has_drawings(docs) -> bool:
     try:
         from . import typical
@@ -438,7 +443,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             renders = []
             try:                              # pelo menos 3 perspetivas 3D reais no dossier (render físico, sem IA)
                 from engines import house_pbr
-                if res["files"].get("pdf") and str(os.environ.get("BET_DOSSIER_RENDERS") or "").lower() in ("1", "true", "yes"):
+                if res["files"].get("pdf") and _images3d_on():
                     renders = await asyncio.wait_for(asyncio.to_thread(house_pbr.add_to_dossier, raw, res["files"]["pdf"],
                                                                        "pt" if country == "PT" else "fr"),
                                                      float(os.environ.get("BET_RENDER_TIMEOUT") or 240))

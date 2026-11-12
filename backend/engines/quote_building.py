@@ -345,6 +345,12 @@ async def enrich(db, doc: dict, uid: str, wait: float = 0) -> dict:
         return doc
     raw = await model_for_quote(db, doc, uid)
     plans = await plan_images(db, doc, uid)
+    from engines import images3d
+    if not images3d.enabled():                      # imagens 3D desligadas (12/11): só as plantas reais
+        out = {**doc, **({"_plan_images": plans, "_house_views": {"main": plans[0][1]}} if plans else {})}
+        if raw:
+            out["_building_model"] = raw
+        return out
     if not raw:
         if plans:                                   # sem Estudo BET: as plantas da conversa entram na capa e no PDF
             return {**doc, "_plan_images": plans, "_house_views": {"main": plans[0][1]}}

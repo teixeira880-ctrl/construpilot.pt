@@ -346,6 +346,10 @@ def walls_flowables(raw: dict, accent: str = "#15803D", lang: str = "pt", views:
     fr = str(lang or "").lower().startswith("fr-") or lang == "fr_true"
     T = (lambda pt, f: f if fr else pt)
     views = views or {}
+    from engines import images3d as _i3
+    show3d = _i3.enabled()
+    if not show3d:                                   # imagens 3D desligadas (12/11): sem perspetivas nem cortes 3D
+        views = {}
     acc = colors.HexColor(accent if str(accent).startswith("#") and len(str(accent)) == 7 else "#15803D")
     rgb = tuple(int(str(accent).lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)) if str(accent).startswith("#") and len(str(accent)) == 7 else (21, 128, 61)
     H1 = ParagraphStyle("w1", fontName=F("Helvetica-Bold"), fontSize=15, leading=19, textColor=acc, spaceAfter=4)
@@ -422,10 +426,13 @@ def walls_flowables(raw: dict, accent: str = "#15803D", lang: str = "pt", views:
             s.append(PageBreak())
         s.append(Paragraph(f"{T('Piso', 'Niveau')} — {f['level']}", H2))
         cut = views.get(f"cut_{k}")
-        pics = [[img(plan_png(raw, f, 1300, rgb), 86), img(cut or cutaway_png(raw, f, 1300, 820), 86)],
-                [Paragraph(T("Planta das paredes medidas", "Plan des murs mesurés"), CAP),
-                 Paragraph(T("Corte 3D do piso (geometria real)", "Coupe 3D du niveau (géométrie réelle)"), CAP)]]
-        s.append(Table(pics, colWidths=[88 * mm, 88 * mm]))
+        if show3d:
+            pics = [[img(plan_png(raw, f, 1300, rgb), 86), img(cut or cutaway_png(raw, f, 1300, 820), 86)],
+                    [Paragraph(T("Planta das paredes medidas", "Plan des murs mesurés"), CAP),
+                     Paragraph(T("Corte 3D do piso (geometria real)", "Coupe 3D du niveau (géométrie réelle)"), CAP)]]
+            s.append(Table(pics, colWidths=[88 * mm, 88 * mm]))
+        else:
+            s += [img(plan_png(raw, f, 1600, rgb), 120), Paragraph(T("Planta das paredes medidas", "Plan des murs mesurés"), CAP)]
         ck = f["check"]
         jn = " / ".join(f"{a} {b}" for a, b in sorted(f["joints"].items()))
         s.append(Paragraph(

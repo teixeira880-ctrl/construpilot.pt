@@ -13,6 +13,12 @@ from engines.pdf_docs import build_document_pdf
 CASES = Path(__file__).parents[1] / "engines/bet_core/cases"
 
 
+@pytest.fixture(autouse=True)
+def _with_3d(monkeypatch):
+    """Estes testes cobrem as imagens 3D quando LIGADAS (CP_3D_IMAGES=1); desligadas por defeito desde 12/11."""
+    monkeypatch.setenv("CP_3D_IMAGES", "1")
+
+
 def _raw(name="moradia_pt_demo.json"):
     return json.loads((CASES / name).read_text(encoding="utf-8"))
 

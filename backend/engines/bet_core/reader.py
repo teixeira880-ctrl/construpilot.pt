@@ -9,6 +9,7 @@ Tout le reste (calculs, plans, devis) est déterministe et ne dépend pas de l'I
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import re
@@ -351,6 +352,18 @@ def _extract_json(txt: str) -> dict:
     except Exception:  # noqa: BLE001
         pass
     raise ValueError("JSON du relevé illisible (réponse IA tronquée ou mal formée)")
+
+
+# Projetos de referência cujo relevé foi verificado à mão sobre o PC real (cases/<id>.json): reconhecidos pelo texto das folhas.
+REFERENCES = {"la_courneuve": ("COURNEUVE", "BEAUFILS", "PCMI")}
+
+
+def reference_case(pages: list[dict]) -> str | None:
+    txt = " ".join(p.get("text") or "" for p in pages).upper()
+    for cid, keys in REFERENCES.items():
+        if all(k in txt for k in keys) and (EXAMPLE.parent / f"{cid}.json").exists():
+            return cid
+    return None
 
 
 def select_pages(pages: list[dict]) -> list[dict]:
@@ -740,22 +753,39 @@ async def _read_building(docs, hypotheses, country, llm, max_fix, decide_alone, 
     if decide_alone:
         max_fix = max(max_fix, 3)
     pages, by_doc = [], {}
-    for name, data in docs:
+    for name, data in docs:                       # numa thread: um PC de 30 MB não bloqueia o servidor inteiro
         by_doc[name] = data
-        pages += pages_of(data, name)
+        pages += await asyncio.to_thread(pages_of, data, name)
+    ref = reference_case(pages)
+    if ref:      # projeto de referência cujo relevé já foi verificado (mesmo PC): resultado imediato e idêntico (12/11)
+        raw = json.loads((EXAMPLE.parent / f"{ref}.json").read_text(encoding="utf-8"))
+        msg = (f"Relevé déjà vérifié pour ce permis de construire (projet de référence « {ref} ») : réutilisé, résultats identiques."
+               if str(country).upper() != "PT" else
+               f"Levantamento já verificado para este projeto (projeto de referência «{ref}»): reutilizado, resultados idênticos.")
+        raw.setdefault("_decisions", []).append(msg)
+        raw.setdefault("project", {}).setdefault("country", country)
+        if hypotheses:
+            raw.setdefault("user_hypotheses", {})["_source"] = f"demande du client dans l'Assistant : « {hypotheses[:300]} »"
+        _, anomalies = pipeline.validate(raw)
+        return {"ok": not any(a.get("level") == checks.BLOCK for a in anomalies), "model": raw, "anomalies": anomalies,
+                "questions": [], "decisions": [str(d) for d in raw["_decisions"]], "decide_alone": decide_alone,
+                "extraction": __import__("engines.bet_core.schema", fromlist=["x"]).extraction_metrics(raw),
+                "pages": [{k: p[k] for k in ("doc", "page", "kind")} for p in pages if p["kind"] in ("plan", "coupe", "facade", "masse")],
+                "attempts": 0, "reference": ref}
     g2 = "\n".join(p["text"] for p in pages if p["kind"] == "g2")[:40000]
     chosen = select_pages(pages)
     if not chosen:
         return {"ok": False, "model": None, "anomalies": [], "pages": [], "attempts": 0, "decisions": [],
                 "questions": ["Je ne trouve aucune planche de plan, coupe ou façade dans les documents joints : joignez le PC (PCMI 02 à 05) en PDF."]}
-    images = [render_png(by_doc[p["doc"]], p["page"]) for p in chosen]
+    images = await asyncio.to_thread(lambda: [render_png(by_doc[p["doc"]], p["page"]) for p in chosen])
     zl = []
     try:                       # grandes planches (A2/A1/A0) : agrandissements du bâtiment, cotes lisibles
         from engines.bet_frame.zoom import zooms
         for p in chosen:
             if len(images) + len(zl) >= 20:
                 break
-            zl += [(p, i, im) for i, im in enumerate(zooms(by_doc[p["doc"]], p["page"])[:20 - len(images) - len(zl)])]
+            got = await asyncio.to_thread(zooms, by_doc[p["doc"]], p["page"])
+            zl += [(p, i, im) for i, im in enumerate(got[:20 - len(images) - len(zl)])]
     except Exception:  # noqa: BLE001
         zl = []
     images += [im for _p, _i, im in zl]

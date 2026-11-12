@@ -257,6 +257,9 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
     await step("Calculs CLT (EN 1995), plans, devis et contrôle", model=raw, pages=rd["pages"])
     with tempfile.TemporaryDirectory() as tmp:
         try:                                          # perspectivas 3D: mesma geometria calculada, depois fotorrealismo (GPT Image 2 / Nano Banana Pro / Runway)
+            from engines import images3d as _i3
+            if not _i3.enabled():
+                raise _No3D()
             from engines.bet_clt import calc as _cc, premium as _pr
             from engines.bet_frame import model as _fm
             m0 = _fm.from_dict(copy.deepcopy(raw))
@@ -265,6 +268,8 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
             views = await _pr.photoreal_views(bases, tmp)
             raw["_views"] = [[k, str(p)] for k, p in views]
             raw["_hero_png"] = str(dict(views)["main"])
+        except _No3D:
+            pass                                      # imagens 3D desligadas (12/11)
         except Exception:  # noqa: BLE001 — as perspetivas embelezam, nunca bloqueiam o estudo
             log.warning("CLT perspectives failed", exc_info=True)
         res = await asyncio.to_thread(cp.run, raw, tmp, None, main, None, branding, extra[1:] if extra else None)
@@ -290,3 +295,7 @@ async def _handle_clt(db, job_id, uid, cid, request_id, docs, hypotheses, countr
                points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
                questions=rd["questions"], provider=rd.get("provider"), building_kind="clt", langs=res.get("langs"))
     return True
+
+
+class _No3D(Exception):
+    """Imagens 3D desligadas (engines.images3d)."""
