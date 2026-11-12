@@ -7,6 +7,7 @@ export default function PlanCanvas({
   pageData, tool, points, rooms, calibration, zoom, offset, rotation,
   onCanvasClick, onZoomChange, onOffsetChange, onAutoRotate,
   detectedWalls, showWalls, pixelsPerMeter, orthoSnap = true, locked = false,
+  geometria = null,  // análise geometria-v3 : divisões com nível de confiança (verde / laranja / vermelho)
   structure = null, showStructure = false, selectedStruct = null,
   onStructSelect = null, onStructDrag = null, onStructDragEnd = null,
   dimensionLines = [], showDimensionLines = false,
@@ -144,6 +145,36 @@ export default function PlanCanvas({
         ctx.moveTo(s.x1, s.y1);
         ctx.lineTo(s.x2, s.y2);
         ctx.stroke();
+      });
+    }
+
+    // GEOMETRIA v3 — divisões lidas automaticamente, cor = confiança
+    if (geometria?.divisoes?.length) {
+      const COR = { verde: [22, 163, 74], laranja: [245, 158, 11], vermelho: [220, 38, 38] };
+      geometria.divisoes.forEach((d) => {
+        const pts = d.poligono_px || [];
+        if (pts.length < 3) return;
+        const [r, g, b] = COR[d.nivel] || COR.laranja;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${r},${g},${b},0.16)`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(${r},${g},${b},0.95)`;
+        ctx.lineWidth = 2 / zoom;
+        ctx.setLineDash([6 / zoom, 4 / zoom]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        let cx = 0, cy = 0;
+        pts.forEach(([x, y]) => { cx += x; cy += y; });
+        cx /= pts.length; cy /= pts.length;
+        const fs = 13 / zoom;
+        ctx.font = `600 ${fs}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillStyle = `rgba(${r},${g},${b},1)`;
+        ctx.fillText(`${d.nome} · ${Number(d.area_m2).toFixed(2)} m²`, cx, cy);
+        ctx.textAlign = "start";
       });
     }
 
@@ -839,7 +870,7 @@ export default function PlanCanvas({
       ctx.restore();
     }
   }, [points, rooms, zoom, offset, rotation, hoverPoint, tool,
-       calibration, detectedWalls, showWalls, pixelsPerMeter,
+       calibration, detectedWalls, showWalls, pixelsPerMeter, geometria,
        dimensionLines, showDimensionLines, annotations, activeCounterId,
        selectedCoteIndex, showDeltas, measurements, checkedCotes, selectedCheckedIndex,
        structure, showStructure, selectedStruct, contrast, brightness, cumulSegments, cumulColor, highlightIds]);

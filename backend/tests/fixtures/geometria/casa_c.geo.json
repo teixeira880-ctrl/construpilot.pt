@@ -1,0 +1,59 @@
+{
+ "planta": "casa_c",
+ "descricao": "Apartamento T1 8,40×6,20 m à escala 1:100",
+ "verificado": true,
+ "fonte": "modelo geométrico exato (scripts/geometria_referencia.py)",
+ "escala_declarada": "1:100",
+ "area_implantacao_m2": 52.08,
+ "area_paredes_m2": 7.91,
+ "divisoes": {
+  "Sala e cozinha": {
+   "area_m2": 27.93,
+   "perimetro_m": 21.2
+  },
+  "Instalação sanitária": {
+   "area_m2": 6.09,
+   "perimetro_m": 10.0
+  },
+  "Quarto": {
+   "area_m2": 10.15,
+   "perimetro_m": 12.8
+  }
+ },
+ "area_util_total_m2": 44.17,
+ "paredes": {
+  "exteriores_eixo_m": 28.2,
+  "interiores_eixo_m": 8.6,
+  "espessuras_m": [
+   0.1,
+   0.25
+  ]
+ },
+ "contagens": {
+  "porta": 3,
+  "janela": 3
+ },
+ "cotas_m": [
+  2.4,
+  3.8,
+  6.2,
+  8.4
+ ],
+ "imagem": {
+  "dpi": 150,
+  "dpi_scan": 150,
+  "rotacao_scan_graus": 0.6,
+  "scan_300": {
+   "dpi": 150,
+   "dpi_scan": 300,
+   "rotacao_scan_graus": 0.6
+  }
+ },
+ "pdf": {
+  "formato": "A3 paisagem",
+  "origem_mm": [
+   40,
+   45
+  ]
+ }
+}

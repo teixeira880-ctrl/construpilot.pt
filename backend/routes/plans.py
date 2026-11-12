@@ -22,6 +22,8 @@ from routes import plans_export as _export  # noqa: F401
 from routes import plans_cotes as _cotes  # noqa: F401
 from routes.plans_cotes import latest_router as cotes_latest_router  # noqa: F401
 from routes import plans_pc as _pc  # noqa: F401
+from routes import plans_geometria as _geometria  # noqa: F401
+from routes.plans_geometria import admin_router as geometria_admin_router  # noqa: F401
 from routes import study_dossier as _dossier  # noqa: F401
 from routes.plans_pc import pc_router  # noqa: F401
 from routes.plans_pc import _run_pc_reminders  # noqa: F401 - scheduler entry point

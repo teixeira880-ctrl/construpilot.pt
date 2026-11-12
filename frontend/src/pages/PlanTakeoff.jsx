@@ -24,6 +24,7 @@ import PinchZoom from "@/components/mobile/PinchZoom";
 import RoomEstimateDialog from "@/components/planTakeoff/RoomEstimateDialog";
 import { MeasureHelpDialog } from "@/components/planTakeoff/MeasureHelpDialog";
 import CotesCheckPanel from "@/components/planTakeoff/CotesCheckPanel";
+import GeometriaPanel from "@/components/planTakeoff/GeometriaPanel";
 import { OuvrageComposeDialog } from "@/components/OuvrageComposeDialog";
 import { LiveTotalBar } from "@/components/planTakeoff/LiveTotalBar";
 import {
@@ -320,6 +321,7 @@ export default function PlanTakeoff() {
   const [sendingEcarts, setSendingEcarts] = useState(false);
   const [msgTemplates, setMsgTemplates] = useState([]);
   const [detectedWalls, setDetectedWalls] = useState(null);
+  const [geometriaV3, setGeometriaV3] = useState(null);
   const [showWalls, setShowWalls] = useState(true);
   const [structure, setStructure] = useState(null);
   const [showStructure, setShowStructure] = useState(true);
@@ -4993,6 +4995,7 @@ export default function PlanTakeoff() {
               }
             }}
             detectedWalls={detectedWalls} showWalls={showWalls}
+            geometria={geometriaV3}
             pixelsPerMeter={currentCalib?.pixels_per_meter || 0}
             orthoSnap={true}
             locked={locked}
@@ -6233,6 +6236,8 @@ export default function PlanTakeoff() {
             </TabsList>
 
             <TabsContent value="rooms" className="mt-3 grid gap-3">
+              <GeometriaPanel planId={plan?.plan_id} pageIndex={pageIndex} onOverlay={setGeometriaV3}
+                onApplied={async () => { setGeometriaV3(null); await refreshPlan(); }} />
               {rooms.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   Calibre a planta e depois utilize a ferramenta <b>Divisão</b> para traçar um contorno.
