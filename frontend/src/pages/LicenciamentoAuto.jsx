@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import Casa3D from "@/components/licenciamento/Casa3D";
 import ImplantacaoMapa from "@/components/licenciamento/ImplantacaoMapa";
+import ImagensBlender from "@/components/licenciamento/ImagensBlender";
 
 const ETAPA_LABEL = {
   localizar: "Localizar a morada", dados_oficiais: "Ler PDM, servidões, cadastro e ortofotomapa (DGT)",
@@ -209,6 +210,8 @@ function Processo({ pid }) {
         </div>
         <ImplantacaoMapa pid={pid} auto={a} onAplicado={carregar} />
       </Card>
+
+      <ImagensBlender pid={pid} />
 
       {render && (
         <Card className="p-3"><img src={render} alt="Imagem fotorrealista da moradia" className="w-full rounded" />

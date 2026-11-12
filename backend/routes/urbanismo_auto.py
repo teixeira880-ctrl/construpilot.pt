@@ -10,6 +10,8 @@ POST /urbanismo-auto/processos/{pid}/render      imagem fotorrealista a partir d
 POST /urbanismo-auto/zona             zona edificável de uma parcela desenhada no mapa (mesma regra do motor)
 GET  /urbanismo-auto/processos/{pid}/streetview.jpg  fotografia real da rua virada para o terreno (Street View)
 GET  /urbanismo-auto/processos/{pid}/desenhos/{n}.png · pecas-desenhadas.pdf · export.zip
+POST /urbanismo-auto/processos/{pid}/blender          renders reais no Blender (antes/depois) + modelo 3D georreferenciado
+GET  /urbanismo-auto/processos/{pid}/blender          estado e lista de imagens · GET …/blender/{nome} ficheiro
 """
 from __future__ import annotations
 
@@ -105,7 +107,18 @@ async def executar_e_gravar(pedido: Dict[str, Any], user: Dict[str, Any], pid: O
         await db.urbanismo_processos.replace_one({"processo_id": pid, "user_id": user["user_id"]}, doc, upsert=True)
     else:
         await db.urbanismo_processos.insert_one(dict(doc))
-    return P.resumo_publico(r, doc["processo_id"])
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    blender = None
+    if BJ.auto_ativo():          # imagens do projeto no Blender, em segundo plano (não atrasa o processo)
+        try:
+            blender = (await BJ.lancar(db, doc["processo_id"], user["user_id"])).get("estado")
+        except Exception:  # noqa: BLE001
+            blender = None
+    out = P.resumo_publico(r, doc["processo_id"])
+    if blender == "a_renderizar" and isinstance(out, dict):
+        out["imagens_blender"] = ("As imagens do projeto (antes / depois, Blender + acabamento fotográfico) e o modelo 3D "
+                                  "georreferenciado estão a ser gerados em segundo plano (alguns minutos) na página do processo.")
+    return out
 
 
 async def _owned(pid: str, uid: str) -> Dict[str, Any]:
@@ -328,10 +341,47 @@ async def desenho(pid: str, n: int, user=Depends(current_user)):
     return Response(content=ds[n]["png"], media_type="image/png")
 
 
+class BlenderIn(BaseModel):
+    qualidade: str = Field(default="normal", pattern="^(rapido|normal|alta)$")
+    acabamento: bool = True
+
+
+@router.post("/processos/{pid}/blender")
+async def blender_lancar(pid: str, body: BlenderIn = BlenderIn(), user=Depends(current_user)) -> dict:
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    await _owned(pid, user["user_id"])
+    r = await BJ.lancar(db, pid, user["user_id"], body.qualidade, body.acabamento)
+    if not r.get("ok"):
+        raise HTTPException(503, r.get("motivo") or "Blender indisponível.")
+    return r
+
+
+@router.get("/processos/{pid}/blender")
+async def blender_estado(pid: str, user=Depends(current_user)) -> dict:
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    await _owned(pid, user["user_id"])
+    return await BJ.estado(db, pid, user["user_id"])
+
+
+@router.get("/processos/{pid}/blender/{nome}")
+async def blender_ficheiro(pid: str, nome: str, user=Depends(current_user)):
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    f = await BJ.ler_ficheiro(db, pid, user["user_id"], nome)
+    if not f:
+        raise HTTPException(404, "Ficheiro inexistente.")
+    d = await _owned(pid, user["user_id"])
+    base = nom_document("Projeto-3D", d.get("title"), ext=nome.rsplit(".", 1)[-1]).rsplit(".", 1)[0]
+    inline = f["mime"].startswith("image/")
+    return Response(content=bytes(f["data"]), media_type=f["mime"], headers={
+        "Content-Disposition": content_disposition(f"{base}_{nome}", inline=inline), "Cache-Control": "private, max-age=600"})
+
+
 @router.get("/processos/{pid}/pecas-desenhadas.pdf")
 async def pecas_pdf(pid: str, user=Depends(current_user)):
+    from engines.urbanismo_pt.auto import blender_job as BJ
     d = await _owned(pid, user["user_id"])
-    data = await run_in_threadpool(lambda: UP.pecas_desenhadas_pdf(d, UP.desenhos(d, None)))
+    sims = await BJ.desenhos_para_pdf(db, pid, user["user_id"])
+    data = await run_in_threadpool(lambda: UP.pecas_desenhadas_pdf(d, UP.desenhos(d, None) + sims))
     return Response(content=data, media_type="application/pdf", headers={
         "Content-Disposition": content_disposition(nom_document("Pecas-desenhadas", d.get("title")), inline=True)})
 
@@ -355,6 +405,28 @@ def _anexar_relatorio(zbytes: bytes, d: Dict[str, Any], coer: Dict[str, Any]) ->
     return buf.getvalue()
 
 
+async def _anexar_blender(zbytes: bytes, d: Dict[str, Any], pid: str, uid: str) -> bytes:
+    """Simulações fotográficas (PDF A3 + imagens) e modelo 3D georreferenciado, quando já foram gerados."""
+    import io
+    import zipfile
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    sims = await BJ.desenhos_para_pdf(db, pid, uid)
+    if not sims:
+        return zbytes
+    st = await db.urbanismo_blender.find_one({"processo_id": pid, "user_id": uid}, {"_id": 0, "ficheiros": 1})
+    pdf = await run_in_threadpool(UP.pecas_desenhadas_pdf, d, sims)
+    buf = io.BytesIO(zbytes)
+    with zipfile.ZipFile(buf, "a", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("07_simulacoes_fotograficas.pdf", pdf)
+        for s_ in sims:
+            z.writestr(f"07_simulacoes/{s_['filename']}", s_["png"])
+        for nome in (st or {}).get("ficheiros") or []:
+            f = await BJ.ler_ficheiro(db, pid, uid, nome)
+            if f:
+                z.writestr(f"08_modelo_3d/{nome}", bytes(f["data"]))
+    return buf.getvalue()
+
+
 @router.get("/processos/{pid}/export.zip")
 async def exportar(pid: str, user=Depends(current_user)):
     d = await _owned(pid, user["user_id"])
@@ -369,5 +441,6 @@ async def exportar(pid: str, user=Depends(current_user)):
                                  + ". Use «Refazer» para voltar a consultar antes de exportar.")
     data = await run_in_threadpool(UP.export_zip, d, verif, [])
     data = _anexar_relatorio(data, d, coer)
+    data = await _anexar_blender(data, d, pid, user["user_id"])
     return Response(content=data, media_type="application/zip", headers={
         "Content-Disposition": content_disposition(nom_document("Processo-licenciamento", d.get("title"), ext="zip"))})

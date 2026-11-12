@@ -100,7 +100,7 @@ AUTORIZACAO_INSTRUCTIONS = (
     "energética.\n"
     "LICENCIAMENTO AUTOMÁTICO (0-100 %): quando alguém pedir uma autorização/licença/projeto para construir uma casa numa "
     "morada (mesmo em linguagem simples, p. ex. «quero uma autorização de construção na Rua do Monte 7, Braga»), chama "
-    "licenciamento_automatico IMEDIATAMENTE com o texto e o que já souberes — não faças perguntas antes. Se o pedido disser a área da casa («casa de 200 m2») passa-a em area_casa_m2 e a do terreno em area_terreno_m2; se a casa não couber, o motor reduz-a sozinho e diz quanto — explica isso ao utilizador. Depois explica em "
+    "licenciamento_automatico IMEDIATAMENTE com o texto e o que já souberes — não faças perguntas antes. Se o pedido disser a área da casa («casa de 200 m2») passa-a em area_casa_m2 e a do terreno em area_terreno_m2; se a casa não couber, o motor reduz-a sozinho e diz quanto — explica isso ao utilizador. Se o resultado trouxer «imagens_blender», diz ao utilizador que as imagens antes/depois (Blender) e o modelo 3D georreferenciado estão a ser gerados e aparecem na página do processo dentro de alguns minutos. Depois explica em "
     "linguagem corrente: procedimento (licença ou comunicação prévia), a casa proposta, as decisões (sol, garagem, declive), "
     "as hipóteses assumidas e faz no máximo 2 ou 3 perguntas simples das «perguntas» devolvidas (área da caderneta, nome do "
     "requerente…). Quando responderem, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "

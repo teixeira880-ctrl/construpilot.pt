@@ -603,6 +603,46 @@ def _dist_seg(p, a, b) -> Tuple[float, float]:
     return math.hypot(cx - px, cy - py), t
 
 
+# ------------------------------------------------------------------ edifícios vizinhos (contexto 3D)
+async def edificios_osm(lat: float, lon: float, raio_m: int = 90) -> Dict[str, Any]:
+    """Contornos dos edifícios existentes à volta (OpenStreetMap), com a altura quando está etiquetada.
+
+    Só serve de envolvente no modelo 3D (Blender): volumes simples, nunca entram em cálculos nem em peças desenhadas."""
+    q = f"[out:json][timeout:20];way(around:{raio_m},{lat},{lon})[building];out geom 200;"
+    if time.time() < _OVERPASS_KO["ate"]:
+        return _res(False, nota="OpenStreetMap (Overpass) indisponível (falhou há pouco)")
+
+    async def um(url):
+        try:
+            return await asyncio.wait_for(_fetch("GET", url, {"data": q}, None, "json"), 15)
+        except Exception:  # noqa: BLE001
+            return 0, None
+    js = None
+    for st, j in await asyncio.gather(*(um(u) for u in OVERPASS_ESPELHOS)):
+        if j and js is None:
+            js = j
+    if not js:
+        return _res(False, nota="OpenStreetMap (Overpass) sem resposta para os edifícios vizinhos")
+    out = []
+    for w in js.get("elements", []):
+        g = [(p["lat"], p["lon"]) for p in w.get("geometry") or []]
+        if len(g) < 4:
+            continue
+        t = w.get("tags") or {}
+        h = None
+        try:
+            h = float(str(t.get("height", "")).replace("m", "").strip()) if t.get("height") else None
+        except ValueError:
+            h = None
+        if h is None and t.get("building:levels"):
+            try:
+                h = float(t["building:levels"]) * 3.0
+            except ValueError:
+                h = None
+        out.append({"latlon": g[:-1] if g[0] == g[-1] else g, "altura_m": h, "tipo": t.get("building")})
+    return _res(True, {"edificios": out}, "OpenStreetMap (edifícios)", None)
+
+
 # ------------------------------------------------------------------ ortofotomapa
 async def ortofoto(lat: float, lon: float, meia_largura_m: float = 60.0, px: int = 1024) -> Dict[str, Any]:
     bbox = _bbox_around(lat, lon, meia_largura_m)

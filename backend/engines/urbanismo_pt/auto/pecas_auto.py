@@ -21,6 +21,7 @@ MATERIAIS_FACHADA = {
     "betao": "Betão aparente",
     "misto_granito_reboco": "Granito no rés-do-chão e reboco branco no andar",
     "misto_madeira_reboco": "Reboco branco com apontamentos em madeira",
+    "misto_granito_madeira": "Granito da região com revestimento em ripado de madeira na fachada principal",
 }
 MATERIAIS_COBERTURA = {"telha_ceramica": "Telha cerâmica vermelha (tipo Marselha / lusa)", "telha_preta": "Telha cerâmica preta",
                        "zinco": "Chapa de zinco", "plana_seixo": "Cobertura plana com proteção em seixo"}
@@ -37,6 +38,8 @@ def material_fachada(txt: Optional[str]) -> str:
     if t in MATERIAIS_FACHADA:
         return t
     hits = [v for k, v in _SINONIMOS.items() if k in t]
+    if "granito" in hits and "madeira" in hits:
+        return "misto_granito_madeira"
     if "granito" in hits and "reboco_branco" in hits:
         return "misto_granito_reboco"
     if "madeira" in hits and "reboco_branco" in hits:
