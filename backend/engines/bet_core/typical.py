@@ -118,13 +118,26 @@ def model(docs, hypotheses: str, country: str) -> tuple[dict, list[str]]:
         top = raw["levels"][-1]["floor_top"] + raw["levels"][-1]["ceiling_height"] + 0.25
         raw["roof"] = {"type": "terrasse", "eaves_level": round(top + 0.3, 2), "ridge_level": round(top + 0.3, 2),
                        "covering": "laje maciça BA com impermeabilização e isolamento", "_source": "HIPÓTESE"}
+    fr = str(country).upper() == "FR"
     pr = raw["project"]
-    pr.update({"name": f"Moradia unifamiliar{(' T' + str(f['typology'])) if f['typology'] else ''} — ESTUDO INDICATIVO (sem desenhos)",
+    tname = (" T" + str(f["typology"])) if f["typology"] else ""
+    pr.update({"name": (f"Maison individuelle{tname} — ÉTUDE INDICATIVE (sans plans)" if fr
+                        else f"Moradia unifamiliar{tname} — ESTUDO INDICATIVO (sem desenhos)"),
                "address": f["concelho"] or pr.get("address"), "country": country,
-               "pc_ref": "Sem desenhos de arquitetura: modelo-tipo", "_typical_model": True})
-    pr["address"] = f"{f['concelho']} (concelho)" if f["concelho"] else "Morada a indicar (sem documentos de arquitetura)"
+               "pc_ref": "Sans plans d'architecte : modèle-type" if fr else "Sem desenhos de arquitetura: modelo-tipo",
+               "_typical_model": True})
+    pr["address"] = (f"{f['concelho']} (concelho)" if f["concelho"] else
+                     ("Adresse à préciser (sans plans d'architecte)" if fr else "Morada a indicar (sem documentos de arquitetura)"))
     raw["geotech"]["source"] = "Sem estudo geotécnico: valores prudentes por defeito (HIPÓTESE)"
     raw["_typical"] = f
+    if fr:
+        dec = [f"ÉTUDE INDICATIVE : les documents ne contiennent pas de plans cotés ; géométrie estimée (modèle-type) sur "
+               f"{area:.0f} m² {'(lus dans les documents)' if f['area'] else '(par défaut)'}, {floors} niveau(x)"
+               f"{', T' + str(f['typology']) if f['typology'] else ''}{', toiture-terrasse' if raw['roof']['type'] == 'terrasse' else ''}. "
+               "Toutes les cotes sont des HYPOTHÈSES — joindre plans, coupes et façades cotés pour l'étude définitive."]
+        raw.setdefault("_decisions", [])
+        raw["_decisions"] += dec
+        return raw, dec
     dec = [f"ESTUDO INDICATIVO: os documentos não têm desenhos de arquitetura cotados; geometria estimada (modelo-tipo) com "
            f"{area:.0f} m² {'(lidos nos documentos)' if f['area'] else '(por defeito)'}, "
            f"{floors} piso(s){', T' + str(f['typology']) if f['typology'] else ''}"

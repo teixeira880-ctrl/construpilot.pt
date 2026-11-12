@@ -47,3 +47,8 @@ def test_study_without_drawings_completes():
     assert st["status"] == "done", st
     assert any("INDICATIVO" in d for d in st["decisions"])
     assert len(st["artifacts"]) >= 5
+
+
+def test_model_fr_labels():
+    raw, dec = typical.model([], "Maison T4 de plain-pied, surface habitable 120 m²", "FR")
+    assert "INDICATIVE" in raw["project"]["name"] and dec[0].startswith("ÉTUDE INDICATIVE")
