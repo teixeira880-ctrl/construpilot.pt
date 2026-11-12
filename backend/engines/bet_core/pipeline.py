@@ -333,7 +333,8 @@ def _render(m, r, tim, e, p, shs, lines, tot, rev, proj, out, lang, stem, anomal
     return {"status": rev["status"], "blocking": rev["blocking"], "lang": lang, "sheets": [s.code + " " + s.title for s in shs],
             "devis_ht": tot["ht"], "devis_ttc": tot["ttc"], "anomalies": [a for a in anomalies if a.get("level") != checks.BLOCK],
             "review": [i for i in rev["items"] if str(i.get("level", "")).upper() != "OK"][:40],
-            "files": {"pdf": str(pdf), "plans_pdf": str(plans_pdf), "zip": str(zp), "xlsx": str(xlsx)}}
+            "files": {"pdf": str(pdf), "plans_pdf": str(plans_pdf), "zip": str(zp), "xlsx": str(xlsx)},
+            "lines": lines}
 
 
 LOT_KINDS = {

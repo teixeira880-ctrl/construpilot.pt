@@ -85,12 +85,14 @@ INSTRUCTIONS = (
     "« Décisions prises (modifiables) », et invite l'utilisateur à corriger un point s'il le souhaite. Quand l'utilisateur corrige "
     "ensuite une décision (ou que tu relances un calcul), ajoute sa correction aux hypothèses, relance l'étude et n'affiche QUE ce "
     "qui change, au format « Modifié : X → Y ; impacts : … » — sans reposer les questions ni réafficher tout le dossier. "
+    "DEVIS OFFICIEL : quand une étude BET est terminée, son devis (quote_doc_id, calculé sur le métré de l'étude) EST le devis : "
+    "ne crée JAMAIS un autre devis avec create_quote_draft pour le même projet (les chiffres divergeraient) ; pour changer un "
+    "prix ou une ligne, utilise update_quote_draft sur ce quote_doc_id. "
     "ÉTUDE COMPLÈTE / ESTUDO COMPLETO (« estudo completo », « étude complète », « orçamentação completa », margens, benefícios, "
     "métrés, estudo térmico, plantas de execução…) : fais TOUT dans le même tour, sans question : (1) generate_full_bet_study "
     "(plans d'exécution cotés, note de calcul, métré, devis Excel, étude thermique — RE2020 en France, pré-certificat REH au "
-    "Portugal) puis read_full_bet_study jusqu'au dossier terminé ; (2) create_quote_draft avec TOUS les lots et quantités du métré "
-    "de l'étude (le devis PDF/Excel, le métré PDF/Excel et le dossier économique coût / vente / marge / bénéfice sont joints "
-    "automatiquement). Termine par la liste de CHAQUE livrable demandé avec son fichier ; si un livrable manque, dis lequel et "
+    "Portugal) puis read_full_bet_study jusqu'au dossier terminé ; (2) le devis officiel est créé AUTOMATIQUEMENT par l'étude à partir de son métré "
+    "(devis PDF/Excel, métré PDF/Excel et dossier économique coût / vente / marge / bénéfice joints) : ne crée pas d'autre devis. Termine par la liste de CHAQUE livrable demandé avec son fichier ; si un livrable manque, dis lequel et "
     "pourquoi — ne dis jamais « fait » pour un livrable absent. "
     "ÉTUDE THERMIQUE D'ABORD : au Portugal, l'étude BET joint automatiquement le pré-certificat REH (Estudo térmico) calculé "
     "sur la géométrie lue ; en France, si l'utilisateur ne joint pas d'étude thermique, l'étude BET exécute AUTOMATIQUEMENT la "
@@ -146,6 +148,55 @@ def _nom_livrable(path: Path) -> str:
         if stem.startswith(prefix + "_"):
             return nom_document(prefix.replace("_", "-"), stem[len(prefix) + 1:], ext=ext)
     return nom_document("Estudo-engenharia", stem, ext=ext)
+
+
+def _vat_pct(v, country) -> float:
+    """IVA do estudo em fração (0,23) ou em % (23) → percentagem."""
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return 23.0 if country == "PT" else 20.0
+    return round(x * 100, 2) if 0 < x <= 1 else x
+
+
+async def study_quote(db, uid, cid, job_id, res, country, raw) -> tuple[str | None, list]:
+    """Cria (ou reutiliza) o orçamento oficial a partir das linhas DETERMINÍSTICAS do estudo: mesmos documentos →
+    mesmo métré → mesmo orçamento. Junta os 5 ficheiros (orçamento PDF/Excel, medição PDF/Excel, dossier económico)."""
+    from engines.assistant_quote_exports import attach_quote_exports
+    from engines.assistant_quote_service import save_quote
+    from engines.bet_core.i18n import tr
+    lines = res.get("lines") or []
+    if not lines:
+        return None, []
+    lang = res.get("lang") or ("pt" if country == "PT" else "fr")
+    user = await db.users.find_one({"user_id": uid}, {"_id": 0}) or {"user_id": uid}
+    conv = {"user_id": uid, "conversation_id": cid, "_quote_request_id": "bet_" + job_id, "_quote_create_slot": "bet_study"}
+    out = []
+    for ln in lines:
+        lot = str(tr(ln.get("lot") or "", lang))[:80]
+        pu = float(ln.get("pu") or 0)
+        out.append({"designation": str(tr(ln.get("label") or "", lang))[:500] or "—", "line_id": None,
+                    "description": str(tr(ln.get("note") or "", lang))[:2000], "quantity": float(round(float(ln.get("qty") or 0), 2)),
+                    "unit": str(tr(ln.get("unit") or "u", lang))[:12] or "u", "unit_price": round(pu, 2),
+                    "price_origin": "estimate", "vat_rate": _vat_pct(ln.get("vat"), country), "lot": lot})
+    if len(out) > 150:                    # limite do rascunho: as linhas excedentes agregadas por lote
+        head, tail = out[:149], out[149:]
+        tot = sum((x["quantity"] or 0) * (x["unit_price"] or 0) for x in tail)
+        head.append({**tail[0], "designation": "Restantes artigos do estudo (ver medição Excel)", "description": "", "quantity": 1.0,
+                     "unit": "vg", "unit_price": round(tot, 2)})
+        out = head
+    name = ((raw or {}).get("project") or {}).get("name") or "Moradia"
+    client = ((raw or {}).get("project") or {}).get("client") or ""
+    title = (("Orçamento — " if lang == "pt" else "Devis — ") + str(name))[:160]
+    r = await save_quote({"title": title, "client_name": "" if client in ("—", "-") else str(client)[:200],
+                          "vat_rate": out[0]["vat_rate"], "lines": out, "notes": ""}, user, conv)
+    doc_id = (r or {}).get("doc_id") or ((r or {}).get("draft") or {}).get("doc_id")
+    if not doc_id:
+        return None, []
+    await db.pro_documents.update_one({"doc_id": doc_id, "user_id": uid},
+                                      {"$set": {"assistant_conversation_id": cid, "bet_study_job_id": job_id, "source": "bet_study"}})
+    files = await attach_quote_exports(doc_id, user, conv)
+    return doc_id, files
 
 
 async def _store(db, uid, cid, request_id, kind, path: Path, title):
@@ -353,7 +404,13 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             for kind in ("pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"):
                 if res["files"].get(kind):
                     arts.append(await _store(db, uid, cid, request_id, kind, Path(res["files"][kind]), labels[kind]))
-        await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"],
+        quote_doc_id = None
+        try:                              # devis OFFICIEL = métré déterministe de l'étude (mêmes documents → même devis)
+            quote_doc_id, qarts = await study_quote(db, uid, cid, job_id, res, country, raw)
+            arts += qarts
+        except Exception:  # noqa: BLE001 — le devis officiel ne bloque jamais le dossier d'étude
+            log.warning("bet study quote failed", exc_info=True)
+        await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"], quote_doc_id=quote_doc_id,
                    sheets=res["sheets"], devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"], decisions=decisions, decide_alone=decide_alone,
                    extraction=extraction,
                    points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
