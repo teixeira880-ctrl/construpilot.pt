@@ -301,6 +301,8 @@ body::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;opa
 .about h2{background:linear-gradient(100deg,var(--paper) 30%,var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent}
 .aurora i{display:none}
 .aurora{background:radial-gradient(60vmax 60vmax at 8% -6%,rgba(35,197,111,.34),transparent 62%),radial-gradient(56vmax 56vmax at 100% 4%,rgba(74,99,255,.3),transparent 62%),radial-gradient(48vmax 48vmax at 50% 60%,rgba(31,227,196,.14),transparent 64%),radial-gradient(44vmax 44vmax at 96% 104%,rgba(246,169,104,.2),transparent 62%)}
+html[lang^="pt"] .hero h1{font-size:clamp(2.3rem,8.6vw,7.2rem)}
+html[lang^="fr"] .hero h1{font-size:clamp(1.9rem,7.4vw,6.2rem)}
 /* ---------- film (WebGL) ---------- */
 .film{position:relative;border-radius:10.5px;overflow:hidden;background:#04080d;aspect-ratio:2.1/1;max-width:100%;touch-action:pan-y;cursor:grab;user-select:none}
 @media(max-width:760px){.film{aspect-ratio:4/5}.fl{font-size:.62rem;padding:.12rem .3rem}}
@@ -342,7 +344,7 @@ body::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;opa
   </header>
 
   <main class="wrap hero-in">
-    <h1><span class="ln"><span>Build your</span></span> <span class="ln"><span class="grad">next move<i>.</i></span></span></h1>
+    <h1><span class="ln"><span data-t="h1a">Build your</span></span> <span class="ln"><span class="grad"><span data-t="h1b">next move</span><i>.</i></span></span></h1>
     <div class="lede">
       <p data-t="sub"></p>
       <div class="ctas">
@@ -456,6 +458,8 @@ const T={
  fpk:['Pedido','Demande','Request'],
  ftag:['Módulos por validar','Modules à valider','Modules pending validation'],
  fnote:['Filme conceptual em 3D. Arrasta para rodar a câmara. Valores de exemplo.','Film conceptuel en 3D. Faites glisser pour tourner la caméra. Valeurs d\u2019exemple.','Conceptual 3D film. Drag to turn the camera. Example values.'],
+ h1a:['Constrói o teu','Construisez votre','Build your'],
+ h1b:['próximo passo','prochaine étape','next move'],
  cta3:['Experimentar a demonstração','Essayer la démonstration','Try the demo'],
  st_k:['Demonstração interativa','Démonstration interactive','Interactive demo'],
  st_h:['Da criação à fatura, num só percurso.','De la création à la facture, en un seul parcours.','From creation to invoice in one flow.'],
