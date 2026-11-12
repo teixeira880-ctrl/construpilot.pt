@@ -147,7 +147,7 @@ SYSTEM = "És o ConstruPilot, assistente IA especializado em construção / reab
 TOOLS = [
     *PLATFORM_TOOLS,
     {"type": "function", "name": "ask_user_choices",
-     "description": "Coloca ao utilizador uma ou várias perguntas FECHADAS sob a forma de cartões de escolha clicáveis, em vez de uma lista numerada para copiar. NUNCA antes ou durante um estudo (BET, térmico, orçamento, licenciamento, medição) : esses estudos decidem sozinhos com a opção recomendada. Usar só se o utilizador pedir expressamente para escolher. 2 a 6 opções por pergunta, a opção recomendada/corrente EM PRIMEIRO e com o sufixo «(recomendado)». Só pergunta o que os documentos anexados não indicam. Reserva o texto livre para as verdadeiras perguntas abertas.",
+     "description": "Coloca ao utilizador uma ou várias perguntas FECHADAS sob a forma de cartões de escolha clicáveis, em vez de uma lista numerada para copiar. USA-O ANTES de um estudo ou orçamento (BET, térmico, medição, orçamento) quando as plantas/peças NÃO indicam materiais ou escolhas que mudam o preço (paredes, lajes, cobertura, isolamento, caixilharia, revestimentos, pavimentos, AQS/climatização…): UMA só chamada com todas essas perguntas, opção recomendada pré-selecionada, multi=true quando o cliente pode escolher vários materiais. NÃO o uses no MODO SEM PERGUNTAS («faz», «é um teste», «sem perguntas», «automático», «decide tu») nem para o que os documentos já indicam. 2 a 6 opções por pergunta, a opção recomendada/corrente EM PRIMEIRO e com o sufixo «(recomendado)». Só pergunta o que os documentos anexados não indicam. Reserva o texto livre para as verdadeiras perguntas abertas.",
      "parameters": {"type": "object", "properties": {
          "intro": {"type": "string", "description": "Frase curta de introdução (contexto das perguntas)"},
          "questions": {"type": "array", "items": {"type": "object", "properties": {
@@ -294,10 +294,12 @@ garagem, armazém…) e eventualmente o estudo geotécnico e pede um estudo de e
 armaduras), especialidades (águas, esgotos, eletricidade), um dossier de gabinete de projeto ou um orçamento a partir das
 plantas : utiliza UNICAMENTE generate_full_bet_study e depois read_full_bet_study para acompanhar e obter os ficheiros. NÃO
 utilizes read_building_geometry, generate_structural_execution_dossier nem generate_multifamily_building_study (substituídos).
-Reporta FIELMENTE no parâmetro `hypotheses` todas as precisões dadas pelo utilizador. ESTUDOS AUTOMÁTICOS (regra de 09/11/2026) : dado o
-pedido, um estudo (BET, térmico, medição, orçamento, licenciamento) vai ATÉ AO FIM SEM PERGUNTAS : o que as peças não indicam é
+Reporta FIELMENTE no parâmetro `hypotheses` todas as precisões dadas pelo utilizador. MATERIAIS EM FALTA (regra de 12/11/2026, substitui a de 09/11) : se as
+peças NÃO indicam materiais ou escolhas que mudam o orçamento, mostra PRIMEIRO os cartões ask_user_choices (uma só chamada, todas as
+perguntas, opção recomendada pré-selecionada, multi=true quando fizer sentido) e lança o estudo/orçamento com as respostas em
+`hypotheses`. MODO SEM PERGUNTAS («faz», «é um teste», «sem perguntas», «automático», «decide tu») : nenhuma pergunta — o que falta é
 tomado com a opção recomendada abaixo, escrito em `hypotheses` («hipótese adotada : …») e listado no fim em «Decisões tomadas
-(modificáveis)». NÃO uses ask_user_choices antes de um estudo, só se o utilizador pedir expressamente para escolher ele próprio.
+(modificáveis)». Nunca perguntes o que os documentos já indicam.
 Opções recomendadas por defeito (a primeira de cada lista) : paredes exteriores (Tijolo térmico 30 cm (recomendado) / Bloco de
 betão 20 cm / Betão armado) ; lajes (Laje maciça BA (recomendado) / Laje aligeirada de vigotas / Pré-laje) ; fundações (Sapatas
 isoladas BA (recomendado) / Ensoleiramento geral) ; cobertura (Laje + terraço (recomendado) / Cobertura inclinada em madeira) ;

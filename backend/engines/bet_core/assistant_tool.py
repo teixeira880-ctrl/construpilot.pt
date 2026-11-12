@@ -35,7 +35,7 @@ TOOLS = [
                      "note de calcul Eurocodes, plans d'exécution GROS ŒUVRE entièrement cotés (fondations, niveaux, planchers, coupes, "
                      "façades, détails ferraillés), charpente, électricité, plomberie, devis chiffré Excel et DXF. Lecture des plans par "
                      "IA puis calculs 100 % déterministes et contrôle automatique. Tâche de fond (3 à 8 min) : renvoie un job_id. "
-                     "Appelle-le DIRECTEMENT, sans confirmation préalable : documents joints, pays du projet (adresse) et précisions de l'utilisateur dans hypotheses. "
+                     "Sans confirmation du périmètre : documents joints, pays du projet (adresse) et précisions de l'utilisateur (dont les matériaux choisis dans les cartes ask_user_choices) dans hypotheses. "
                      "Ne l'utilise pas pour un simple métré ou un devis de rénovation."),
      "parameters": {"type": "object", "properties": {
          "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… des PDF joints à la conversation (PC, plans, coupes, façades, étude de sol)"},
@@ -74,13 +74,14 @@ TOOL_NAMES = {t["name"] for t in TOOLS}
 INSTRUCTIONS = (
     "\n\nÉTUDE BET COMPLÈTE (generate_full_bet_study / read_full_bet_study) : quand l'utilisateur demande un dossier de bureau d'études "
     "(plans d'exécution, coupes, ferraillage, charpente, électricité, plomberie, thermique, devis) à partir de plans, LANCE "
-    "IMMÉDIATEMENT generate_full_bet_study avec les documents joints et ses précisions dans `hypotheses` — sans demander de "
-    "confirmation du périmètre ni poser de questions préalables (pas d'ask_user_choices avant l'étude). Suis l'avancement avec "
+    "generate_full_bet_study avec les documents joints et ses précisions dans `hypotheses`, sans demander de confirmation du "
+    "périmètre. MATÉRIAUX MANQUANTS (étude complète, gros œuvre / estrutura, devis) : si les plans n'indiquent pas les matériaux (murs, planchers, toiture, isolation, menuiseries, "
+    "revêtements…), affiche D'ABORD les cartes ask_user_choices (un seul appel, recommandé présélectionné, multi=true si plusieurs "
+    "matériaux possibles), puis lance l'étude avec les réponses dans `hypotheses` — sauf MODE SANS QUESTIONS. Suis l'avancement avec "
     "read_full_bet_study jusqu'au dossier terminé. "
-    "MODE AUTOMATIQUE (par défaut, règle du 09/11/2026) : l'étude va TOUJOURS jusqu'au bout seule ; tout ce que les plans ne "
-    "précisent pas est tranché avec la meilleure option (recommandée, la plus sûre / la plus courante) et renvoyé dans le champ "
-    "`decisions`. Les questions ne sont posées QUE si l'utilisateur l'a expressément demandé (« pose-moi les questions »). "
-    "NE REPOSE AUCUNE question : "
+    "MODE SANS QUESTIONS (« fais », « c'est un test », « sans questions », « automatique », « décide ») : l'étude va jusqu'au bout "
+    "seule ; tout ce que les plans ne précisent pas est tranché avec la meilleure option (recommandée, la plus sûre / la plus "
+    "courante) et renvoyé dans le champ `decisions`. Une fois l'étude lancée, NE REPOSE AUCUNE question : "
     "présente le dossier terminé, puis liste brièvement les décisions prises, UNE LIGNE chacune telle quelle, sous le titre "
     "« Décisions prises (modifiables) », et invite l'utilisateur à corriger un point s'il le souhaite. Quand l'utilisateur corrige "
     "ensuite une décision (ou que tu relances un calcul), ajoute sa correction aux hypothèses, relance l'étude et n'affiche QUE ce "
@@ -89,7 +90,7 @@ INSTRUCTIONS = (
     "ne crée JAMAIS un autre devis avec create_quote_draft pour le même projet (les chiffres divergeraient) ; pour changer un "
     "prix ou une ligne, utilise update_quote_draft sur ce quote_doc_id. "
     "ÉTUDE COMPLÈTE / ESTUDO COMPLETO (« estudo completo », « étude complète », « orçamentação completa », margens, benefícios, "
-    "métrés, estudo térmico, plantas de execução…) : fais TOUT dans le même tour, sans question : (1) generate_full_bet_study "
+    "métrés, estudo térmico, plantas de execução…) : fais TOUT (après les cartes de matériaux manquants, sauf mode sans questions) : (1) generate_full_bet_study "
     "(plans d'exécution cotés, note de calcul, métré, devis Excel, étude thermique — RE2020 en France, pré-certificat REH au "
     "Portugal) puis read_full_bet_study jusqu'au dossier terminé ; (2) le devis officiel est créé AUTOMATIQUEMENT par l'étude à partir de son métré "
     "(devis PDF/Excel, métré PDF/Excel et dossier économique coût / vente / marge / bénéfice joints) : ne crée pas d'autre devis. Termine par la liste de CHAQUE livrable demandé avec son fichier ; si un livrable manque, dis lequel et "
