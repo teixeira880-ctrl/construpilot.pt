@@ -96,4 +96,29 @@ async def build_lines(body, user, previous=None):
                 match = find_price(item.designation, item.unit, sources) if item.price_origin == "library" else None
             row.update(match or {"price_source": "unpriced", "price_missing": True})
         lines.append(row)
+    await _fill_market_prices(lines, branding, db)
     return lines
+
+
+MARKET_LABEL = {"PT": "Preço de mercado online — a verificar", "FR": "Prix du marché trouvé en ligne — à vérifier"}
+
+
+async def _fill_market_prices(lines, branding, db_):
+    """Orçamentação sempre completa: linhas sem preço depois da biblioteca → preço de mercado online (estimado, a verificar)."""
+    todo = [i for i, r in enumerate(lines) if r.get("price_missing")]
+    if not todo:
+        return
+    try:
+        from engines.market_prices import lookup
+        country = str((branding or {}).get("country") or "PT").upper()
+        hits = await lookup([{"designation": lines[i]["designation"], "unit": lines[i]["unit"], "description": lines[i].get("description")}
+                             for i in todo], country, str((branding or {}).get("city") or ""), db_)
+    except Exception:  # noqa: BLE001 — nunca bloqueia a criação do orçamento
+        return
+    label = MARKET_LABEL.get(country, MARKET_LABEL["PT"])
+    for j, i in enumerate(todo):
+        h = hits.get(j)
+        if h:
+            lines[i].update(unit_price_ht=h["price"], price_source="market_web", price_estimated=True, price_missing=False,
+                            price_reference=f"market:{h.get('source', '')}"[:200],
+                            price_reference_label=f"{label} ({h.get('source', '')})"[:300])

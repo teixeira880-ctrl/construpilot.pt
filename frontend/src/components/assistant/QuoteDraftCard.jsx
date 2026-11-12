@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, FilePenLine, CheckCircle2, Sparkles } from "lucide-react";
+import { ArrowRight, FilePenLine, CheckCircle2, Sparkles, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { eur2 as eur } from "@/lib/api";
 import { useQuoteCopy } from "./quoteCopy";
@@ -21,9 +21,16 @@ export const QuoteDraftCard = ({ result }) => {
     {saved && d.estimated_lines > 0 && <Link to="/bibliotheque" data-testid={id("learned-cta")}
       className="flex items-center gap-2 rounded-sm border border-amber-400/60 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 hover:border-amber-500 transition-colors">
       <Sparkles size={14} className="shrink-0" />
-      <span>{d.estimated_lines} {d.estimated_lines > 1 ? "preços médios" : "preço médio"} de mercado {d.estimated_lines > 1 ? "aprendidos" : "aprendido"} — valide-os para tornar os próximos orçamentos mais fiáveis</span>
+      <span>{d.estimated_lines} · {text("learned")}</span>
       <ArrowRight size={14} className="shrink-0 ml-auto" />
     </Link>}
-    {saved && <div className="flex flex-wrap gap-2"><Button asChild size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis-editeur/${result.doc_id}`} data-testid={id("open")}><FilePenLine size={15} />{text("edit")}</Link></Button><Button asChild variant="outline" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis?highlight=${result.doc_id}`} data-testid={id("tracking")}><ArrowRight size={15} />{text("tracking")}</Link></Button></div>}
+    {saved && <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 grid gap-2" data-testid={id("editor-zone")}>
+      <p className="text-xs font-semibold text-primary break-words">{text("editorZone")}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis-editeur/${result.doc_id}`} data-testid={id("open")}><FilePenLine size={15} />{text("toEditor")}</Link></Button>
+        <Button asChild variant="secondary" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis-editeur/${result.doc_id}?send=1`} data-testid={id("send")}><Send size={15} />{text("toSend")}</Link></Button>
+        <Button asChild variant="outline" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal py-2"><Link to={`/devis?highlight=${result.doc_id}`} data-testid={id("tracking")}><ArrowRight size={15} />{text("tracking")}</Link></Button>
+      </div>
+    </div>}
   </div>;
 };

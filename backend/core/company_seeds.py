@@ -215,6 +215,8 @@ async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
                 user["password_hash"] = "set"
                 summary[email] += "+temp_password"
             if c.get("pro_business_entitlement"):
+                if user.get("plan") != "premium":              # mesmo nível que a conta Teste Websummit
+                    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"plan": "premium"}})
                 ent_id = f"company_seed_{user['user_id']}"
                 if not await db.entitlements.find_one({"entitlement_id": ent_id}, {"_id": 1}):
                     await db.entitlements.insert_one({

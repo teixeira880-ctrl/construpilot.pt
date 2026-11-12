@@ -1158,6 +1158,13 @@ export default function QuoteEditor() {
       .then((res) => setPdfPreviewUrl(URL.createObjectURL(res.data)))
       .catch(() => {});
   };
+  // Vindo do Assistente (« Enviar para o editor de orçamentos »): ?send=1 abre logo o envio ao cliente.
+  const autoSendDone = useRef(false);
+  useEffect(() => {
+    if (autoSendDone.current || loading || !docId || sp.get("send") !== "1") return;
+    autoSendDone.current = true;
+    openSend();
+  }, [loading, docId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const closeSend = (v) => {
     setSendOpen(v);

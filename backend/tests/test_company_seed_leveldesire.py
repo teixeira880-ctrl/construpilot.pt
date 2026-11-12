@@ -27,7 +27,7 @@ def test_leveldesire_account_created(monkeypatch):
     assert "created" in s1["info@leveldesire.com"] and "+pro_business" in s1["info@leveldesire.com"]
     assert s2["info@leveldesire.com"] == "exists"
     assert bcrypt.checkpw(b"Ruquinha2020", u["password_hash"].encode()) and u["must_change_password"] is False
-    assert u["account_type"] == "pro_business" and u["brand_accent_color"] == "#009B95"
+    assert u["account_type"] == "pro_business" and u["plan"] == "premium" and u["brand_accent_color"] == "#009B95"
     assert u["public_slug"] == "leveldesire" and u["brand_logo_b64"].startswith("data:image/png;base64,")
     assert "Avenida João XXI" in u["brand_address"] and u["public_contact_phone"] == "+351 968 364 515"
     assert ents == 1 and photos and photos[0][1] == 16

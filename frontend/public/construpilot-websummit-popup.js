@@ -75,6 +75,8 @@
   function alreadySeen() { try { return sessionStorage.getItem(CONFIG.storageKey) === "1"; } catch (e) { return false; } }
   function markSeen() { try { sessionStorage.setItem(CONFIG.storageKey, "1"); } catch (e) {} }
   if (/^\/demo(\/|$)/.test(location.pathname || "")) return;
+  // Páginas públicas das empresas, orçamentos e documentos partilhados com clientes: nunca o popup do salão.
+  if (/^\/(entreprise|sign|e|subscrever|espace|estimation-partagee|rendu|prospection|avis|etude|visto-bet|appel-offres)\//.test(location.pathname || "")) return;
   if (alreadySeen()) return;
   var lang = detectLang();
   var t = CONFIG.texts[lang];
