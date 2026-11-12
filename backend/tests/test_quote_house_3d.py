@@ -141,6 +141,8 @@ def test_fast_pass_first_then_openai_upgrade(monkeypatch):
         return verify(base)[0], "nano_banana_3.1"
     monkeypatch.setattr(PR, "render", fake_render)
     monkeypatch.setattr(llm_keys, "openai_direct_active", lambda: True)
+    from engines import house_pbr
+    monkeypatch.setattr(house_pbr, "available", lambda: False)        # este teste cobre o caminho IA
     from engines import house3d
     monkeypatch.setattr(QB, "computed_views", lambda r: {k: QB._jpeg(house3d.render_png(r, 800, 450, k)) for k in QB.VIEW_KEYS})
 
@@ -209,3 +211,15 @@ def test_quote_uses_conversation_plans_without_bet_study():
     assert len(d["_plan_images"]) == 1 and d["_house_views"]["main"]
     pdf = pymupdf.open(stream=build_document_pdf(d, branding={"company_name": "X"}, lang="pt"), filetype="pdf")
     assert "Plantas do projeto" in "".join(p.get_text() for p in pdf)
+
+
+def test_physical_render_without_ai():
+    """Imagem real calculada (Mitsuba: sol, céu, materiais) a partir da geometria lida — sem IA nem API."""
+    import io
+    from PIL import Image
+    from engines import house_pbr
+    if not house_pbr.available():
+        __import__("pytest").skip("mitsuba não instalado")
+    png = house_pbr.render(_case(), 320, 180, "main", spp=4)
+    im = Image.open(io.BytesIO(png)).convert("RGB")
+    assert im.size == (320, 180) and len(set(im.getdata())) > 500        # imagem renderizada, não vazia

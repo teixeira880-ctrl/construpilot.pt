@@ -151,7 +151,7 @@ async def _save(db, key: str, base: dict[str, bytes], got: dict, quality: str, p
     return views_
 
 
-async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, bytes] | None = None) -> None:
+async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, bytes] | None = None, raw: dict | None = None) -> None:
     """Como na conta CLT: passagem RÁPIDA (Nano Banana primeiro) para o PDF não esperar; depois, em segundo plano,
     melhoria OpenAI GPT Image — cada foto só substitui a anterior se também respeitar a geometria. Em qualquer fase,
     uma vista sem foto verificada fica com a vista calculada (geometria exata), nunca uma casa diferente."""
@@ -164,6 +164,22 @@ async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, 
         m = masks.get(k) or G.mask_from_render(base[k])
         return lambda img: G.check(img, base[k], m)
     try:
+        # 1) Renderização FÍSICA da geometria real (Mitsuba: sol, céu, materiais) — sem IA, geometria exata por construção
+        if raw is not None:
+            from engines import house_pbr
+            if house_pbr.available():
+                got_pbr = {}
+                for k in VIEW_KEYS:
+                    png = await asyncio.to_thread(house_pbr.render, raw, int(os.environ.get("QUOTE_PBR_W") or 2560), int(os.environ.get("QUOTE_PBR_H") or 1440), k, int(os.environ.get("QUOTE_PBR_SPP") or 128))
+                    if png:
+                        got_pbr[k] = (png, "pbr_mitsuba")
+                        if k == "main":
+                            await _save(db, key, base, got_pbr, "pbr")       # a vista principal fica logo disponível
+                if got_pbr.get("main"):
+                    await _save(db, key, base, got_pbr, "pbr")
+                    log.info("house renders %s: physical render %s/%d", key[:10], len(got_pbr), len(VIEW_KEYS))
+                    if str(os.environ.get("QUOTE_PHOTO_AI") or "").lower() not in ("1", "true", "yes"):
+                        return                                            # sem IA (pedido do Martinho): imagens reais calculadas
         fast_t = float(os.environ.get("QUOTE_PHOTO_FAST_TIMEOUT") or 60)
         got = await _pass(base, verifier, _engines("QUOTE_PHOTO_FAST", FAST_ENGINES), fast_t)
         current = await _save(db, key, base, got, "fast") if got.get("main") else None
@@ -197,7 +213,7 @@ async def views(db, raw: dict, wait: float = 0) -> dict[str, bytes]:
     masks = await asyncio.to_thread(computed_masks, raw)
     if key not in _PENDING:
         _PENDING.add(key)
-        task = asyncio.get_running_loop().create_task(_photoreal_all(db, key, base, masks))
+        task = asyncio.get_running_loop().create_task(_photoreal_all(db, key, base, masks, raw))
         # espera só pela passagem RÁPIDA (como na conta CLT); a melhoria OpenAI continua em segundo plano
         loop = asyncio.get_running_loop()
         end = loop.time() + max(0.0, wait)
