@@ -88,3 +88,15 @@ def test_quote_uses_logo_colour_everywhere_when_no_colour_chosen():
     y = int(300 / 841.89 * pix.height)                       # filete da cor da empresa sob a faixa escura
     r, g, b = pix.pixel(pix.width // 2, y)[:3]
     assert r > 150 and g < 90 and b < 90
+
+
+def test_metre_pdf_is_premium_with_company_colour():
+    import pymupdf
+    from engines.assistant_quote_exports import build_metre_pdf
+    doc = {"title": "Moradia T4", "client": {"name": "Ana"},
+           "lines": [{"category": "LOT 01", "designation": "Estaleiro", "qty": 1, "unit": "vg"},
+                     {"category": "LOT 02", "designation": "Enrocamento", "quantity_missing": True, "unit": "m³"}]}
+    d = pymupdf.open(stream=build_metre_pdf(doc, {"company_name": "CM RENOV", "accent_color": "#C2410C"}, "pt"), filetype="pdf")
+    txt = "".join(p.get_text() for p in d)
+    assert len(d) >= 3 and "CM RENOV" in txt and "Resumo por capítulo" in txt and "Quantidade a confirmar" in txt
+    assert [t[1] for t in d.get_toc()][:2] == ["Capa", "Resumo por capítulo"]

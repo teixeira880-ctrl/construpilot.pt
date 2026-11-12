@@ -182,3 +182,30 @@ def test_openai_retries_without_input_fidelity(monkeypatch):
     monkeypatch.delenv("OPENAI_IMAGE_MODEL", raising=False)
     out = asyncio.run(PR._openai("x", base, None, 30))
     assert out and calls == [("gpt-image-2", True), ("gpt-image-2", False)]
+
+
+def test_quote_uses_conversation_plans_without_bet_study():
+    import asyncio
+    import base64
+    import pymupdf
+    mm = __import__("pytest").importorskip("mongomock_motor")
+    from engines import house3d
+    from engines import quote_building as QB
+    from engines.pdf_docs import build_document_pdf
+    db = mm.AsyncMongoMockClient()["t"]
+    plan = pymupdf.open()
+    pg = plan.new_page(width=842, height=595)
+    pg.insert_image(pg.rect, stream=house3d.render_png(_case(), 800, 450, "main"))
+
+    async def run():
+        await db.assistant_docs.insert_one({"doc_id": "doc_plan0001", "user_id": "u1", "filename": "Plantas PC.pdf", "kind": "plan",
+                                            "mime": "application/pdf", "data_b64": base64.b64encode(plan.tobytes()).decode()})
+        await db.assistant_msgs.insert_one({"conversation_id": "c1", "user_id": "u1", "role": "user",
+                                            "attachments": [{"doc_id": "doc_plan0001"}], "created_at": "1"})
+        doc = {"doc_id": "q1", "doc_type": "quote", "title": "Moradia", "assistant_conversation_id": "c1",
+               "lines": [{"kind": "line", "designation": "Estaleiro", "qty": 1, "unit": "vg", "unit_price_ht": 100, "vat_rate": 23}]}
+        return await QB.enrich(db, doc, "u1")
+    d = asyncio.run(run())
+    assert len(d["_plan_images"]) == 1 and d["_house_views"]["main"]
+    pdf = pymupdf.open(stream=build_document_pdf(d, branding={"company_name": "X"}, lang="pt"), filetype="pdf")
+    assert "Plantas do projeto" in "".join(p.get_text() for p in pdf)

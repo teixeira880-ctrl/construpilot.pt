@@ -848,6 +848,14 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
                and (doc.get("study_dossier") or {}).get("schema_version") != "construction-dossier-1")
     if premium:
         branding = pdf_premium.com_cor(branding)          # cor da empresa (escolhida, senão a do logótipo) em todo o orçamento
+        if doc.get("_plan_images"):                       # plantas da conversa (com ou sem Estudo BET)
+            try:
+                from engines import house3d
+                pl = house3d.plans_flowables(doc["_plan_images"], pdf_premium.cor_empresa(branding), lang or "")
+                appendix = (list(appendix) + pl) if appendix else pl[1:]
+            except Exception:  # noqa: BLE001
+                import logging
+                logging.getLogger("pdf_docs").warning("plan pages failed", exc_info=True)
         if isinstance(doc.get("_building_model"), dict):  # moradia lida nas plantas: perspetivas + paredes calculadas (como na conta CLT)
             try:
                 from engines import house3d

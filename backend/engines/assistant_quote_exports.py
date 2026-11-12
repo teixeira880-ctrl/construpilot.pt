@@ -202,38 +202,73 @@ def build_metre_xlsx(doc, branding=None, lang="fr") -> bytes:
 
 
 def build_metre_pdf(doc, branding=None, lang="fr") -> bytes:
+    """Medição do rascunho de orçamento — mesmo nível que o orçamento premium: cores da empresa, resumo por capítulo,
+    tabela detalhada e acabamento pdf_premium (capa com indicadores, índice, logótipo, numeração)."""
     from xml.sax.saxutils import escape
 
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.platypus import LongTable, Paragraph, SimpleDocTemplate, Spacer, TableStyle
+    from reportlab.platypus import LongTable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    from engines import pdf_premium as PP
     t = L[_lang(lang)]
+    lg = PP.lang_of(lang, (branding or {}).get("country"))
+    TT = PP.TXT.get(lg, PP.TXT["pt"])
+    titulo_tipo = TT["takeoff"]                                     # « Medição » / « Métré » / « Quantity take-off »
+    accent = colors.HexColor(PP.cor_empresa(branding))
+    dark = colors.HexColor("#1B2430")
     ss = getSampleStyleSheet()
     small = ss["BodyText"].clone("small", fontSize=8, leading=10)
+    h2 = ss["Heading2"].clone("h2c", textColor=dark, spaceBefore=2, spaceAfter=6)
     buf = io.BytesIO()
-    pdf = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm, topMargin=12 * mm, bottomMargin=12 * mm,
-                            title=f"{t['takeoff']} — {doc.get('title') or ''}")
-    story = [Paragraph(escape((branding or {}).get("company_name") or "ConstruPilot"), ss["Heading3"]),
-             Paragraph(escape(f"{t['takeoff']} — {doc.get('title') or ''}".strip(" —")), ss["Title"]),
-             Paragraph(f"<i>{escape(t['draft'])}</i>", small),
-             Paragraph(escape(f"{t['client']} : {_client(doc) or '—'}  ·  {t['date']} : {datetime.now(timezone.utc).date().isoformat()}"), small),
-             Spacer(1, 4 * mm)]
+    pdf = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm, topMargin=14 * mm, bottomMargin=16 * mm,
+                            title=f"{titulo_tipo} — {doc.get('title') or ''}")
+    rows = _rows(doc)
+    lots: dict[str, list] = {}
+    for r in rows:
+        lots.setdefault(r.get("category") or t["general"], []).append(r)
+    n_conf = sum(1 for r in rows if r.get("quantity_missing"))
+    head_style = [("BACKGROUND", (0, 0), (-1, 0), dark), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                  ("LINEBELOW", (0, 0), (-1, 0), 1.6, accent), ("FONTSIZE", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                  ("GRID", (0, 1), (-1, -1), 0.25, colors.HexColor("#D7DCE3")),
+                  ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F8")])]
+    story = [Paragraph(escape(t["summary"]), h2),
+             Paragraph(escape(f"{t['client']} : {_client(doc) or '—'}  ·  {t['date']} : {datetime.now(timezone.utc).date().isoformat()}"
+                              f"  ·  {t['draft']}"), small), Spacer(1, 3 * mm)]
+    summ = [[t["lot"], t["lines"].capitalize(), t["to_confirm"]]]
+    for lot, rs in lots.items():
+        summ.append([Paragraph(escape(lot), small), str(len(rs)), str(sum(1 for r in rs if r.get("quantity_missing")))])
+    summ.append([Paragraph(f"<b>{escape(TT['lines'])}</b>", small), f"{len(rows)}", f"{n_conf}"])
+    st = Table(summ, colWidths=[150 * mm, 40 * mm, 50 * mm], repeatRows=1)
+    st.setStyle(TableStyle(head_style + [("ALIGN", (1, 1), (-1, -1), "RIGHT"), ("LINEABOVE", (0, -1), (-1, -1), 1, accent),
+                                         ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#EEF1F4"))]))
+    story += [st, PageBreak(), Paragraph(escape(f"{titulo_tipo} — {doc.get('title') or ''}".strip(" —")), h2)]
     data = [[t["lot"], t["designation"], t["description"], t["qty"], t["unit"], t["status"]]]
-    for r in _rows(doc):
-        qty = "—" if r.get("quantity_missing") else f"{float(r.get('qty') or 0):,.2f}".replace(",", " ")
-        data.append([Paragraph(escape(r.get("category") or t["general"]), small), Paragraph(escape(r.get("designation") or ""), small),
-                     Paragraph(escape((r.get("description") or "")[:600]), small), qty, r.get("unit") or "",
-                     Paragraph(escape(t["to_confirm"] if r.get("quantity_missing") else t["ok"]), small)])
+    for lot, rs in lots.items():
+        data.append([Paragraph(f"<b>{escape(lot)}</b>", small), "", "", "", "", ""])
+        for r in rs:
+            qty = "—" if r.get("quantity_missing") else f"{float(r.get('qty') or 0):,.2f}".replace(",", " ")
+            data.append(["", Paragraph(escape(r.get("designation") or ""), small),
+                         Paragraph(escape((r.get("description") or "")[:600]), small), qty, r.get("unit") or "",
+                         Paragraph(escape(t["to_confirm"] if r.get("quantity_missing") else t["ok"]), small)])
     tbl = LongTable(data, colWidths=[35 * mm, 70 * mm, 105 * mm, 22 * mm, 15 * mm, 26 * mm], repeatRows=1)
-    tbl.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F3A5F")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                             ("FONTSIZE", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (3, 1), (3, -1), "RIGHT"),
-                             ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
-                             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F1F5F9")])]))
+    lot_rows = [i for i, d in enumerate(data) if i and d[1] == ""]
+    tbl.setStyle(TableStyle(head_style + [("ALIGN", (3, 1), (3, -1), "RIGHT")]
+                            + [("SPAN", (0, i), (-1, i)) for i in lot_rows]
+                            + [("BACKGROUND", (0, i), (-1, i), colors.HexColor("#E9EDF1")) for i in lot_rows]
+                            + [("LINEBELOW", (0, i), (-1, i), 0.8, accent) for i in lot_rows]))
     story += [tbl, Spacer(1, 4 * mm), Paragraph(f"<i>{escape(t['note_metre'])}</i>", small)]
     pdf.build(story)
-    return buf.getvalue()
+    raw = buf.getvalue()
+    capa = {"tipo": titulo_tipo, "titulo": doc.get("title") or titulo_tipo, "subtitulo": _client(doc) or "",
+            "local": "", "data": datetime.now(timezone.utc).date().isoformat(),
+            "kpis": [(TT["lines"], str(len(rows)), ""), (TT["lots"], str(len(lots)), ""),
+                     (t["to_confirm"], str(n_conf), "")],
+            "indice": [t["summary"], titulo_tipo],
+            "imagem": ((doc.get("_house_views") or {}).get("main"))}
+    return PP.acabar(raw, capa, PP.com_cor(branding) if branding is not None else {}, lg, paginas="completo")
 
 
 async def _context(doc, user):

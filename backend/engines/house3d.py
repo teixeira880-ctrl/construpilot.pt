@@ -680,3 +680,39 @@ def cutaway_png(raw: dict, floor: dict, width: int = 1600, height: int = 1000) -
     b = io.BytesIO()
     img.resize((width, height), Image.LANCZOS).save(b, "PNG", optimize=True)
     return b.getvalue()
+
+
+def plans_flowables(images: list, accent: str, lang: str = "") -> list:
+    """Páginas « Plantas do projeto »: cada página das plantas juntas, em grande, com o nome do ficheiro."""
+    from io import BytesIO
+
+    from PIL import Image
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Image as RLImage
+    from reportlab.platypus import PageBreak, Paragraph, Spacer
+    from engines.pdf_fonts import F
+    lg = str(lang or "").lower()
+    fr = lg.startswith("fr") or lg == "fr_true"
+    en = lg.startswith("en")
+    title = "Plans du projet" if fr else ("Project drawings" if en else "Plantas do projeto")
+    sub = ("Plans joints à la demande, utilisés pour le métré et le devis." if fr else
+           "Drawings attached to the request, used for the take-off and the quote." if en else
+           "Plantas juntas ao pedido, usadas na medição e no orçamento.")
+    H1 = ParagraphStyle("pl_h1", fontName=F("Helvetica-Bold"), fontSize=16, leading=20,
+                        textColor=colors.HexColor("#1B2430"), spaceAfter=4)
+    CAP = ParagraphStyle("pl_cap", fontName=F("Helvetica"), fontSize=8, leading=10,
+                         textColor=colors.HexColor("#5B6573"))
+    s: list = [PageBreak(), Paragraph(title, H1), Paragraph(sub, CAP), Spacer(1, 3 * mm)]
+    maxw, maxh = 180 * mm, 225 * mm
+    for i, (name, data) in enumerate(images):
+        try:
+            w, h = Image.open(BytesIO(data)).size
+        except Exception:  # noqa: BLE001
+            continue
+        k = min(maxw / w, maxh / h)
+        if i:
+            s.append(PageBreak())
+        s += [RLImage(BytesIO(data), width=w * k, height=h * k), Spacer(1, 2 * mm), Paragraph(str(name)[:120], CAP)]
+    return s

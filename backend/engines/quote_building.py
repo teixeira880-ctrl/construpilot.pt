@@ -216,16 +216,105 @@ async def views(db, raw: dict, wait: float = 0) -> dict[str, bytes]:
     return base                                     # tempo esgotado: vistas calculadas (geometria exata) agora
 
 
+PLAN_HINT = ("plan", "planta", "plantas", "pc", "permis", "projet", "projeto", "alçado", "alcado", "façade", "facade", "corte", "coupe",
+             "arquitet", "architect", "rdc", "r+1", "piso", "étage", "etage", "implant")
+
+
+async def _conversation_doc_ids(db, doc: dict, uid: str) -> list[str]:
+    ids: list[str] = []
+    conv = doc.get("assistant_conversation_id")
+    if conv:
+        try:
+            async for m in db.assistant_msgs.find({"conversation_id": conv, "user_id": uid, "role": "user"},
+                                                  {"_id": 0, "attachments": 1}).sort("created_at", 1).limit(80):
+                for a in m.get("attachments") or []:
+                    if a.get("doc_id") and a["doc_id"] not in ids:
+                        ids.append(a["doc_id"])
+            c = await db.assistant_convs.find_one({"conversation_id": conv, "user_id": uid}, {"_id": 0, "active_docs": 1}) or {}
+            for d in c.get("active_docs") or []:
+                if d not in ids:
+                    ids.append(d)
+        except Exception:  # noqa: BLE001
+            log.warning("quote plan docs lookup failed", exc_info=True)
+    for d in _ids_in(doc):
+        if d not in ids:
+            ids.append(d)
+    return ids[:12]
+
+
+async def _doc_bytes(db, d: dict) -> bytes | None:
+    if d.get("data_b64"):
+        return base64.b64decode(d["data_b64"])
+    if d.get("chunk_count"):
+        chunks = [c async for c in db.assistant_doc_chunks.find({"doc_id": d["doc_id"], "user_id": d.get("user_id")},
+                                                                {"_id": 0}).sort("index", 1)]
+        if [c["index"] for c in chunks] == list(range(d["chunk_count"])):
+            return b"".join(base64.b64decode(c["data_b64"]) for c in chunks)
+    return None
+
+
+def _render_pages(data: bytes, mime: str, max_pages: int) -> list[bytes]:
+    """Páginas das plantas em JPEG (PDF: cada página; imagem: a própria imagem)."""
+    out: list[bytes] = []
+    if (mime or "").startswith("image/"):
+        out.append(_jpeg(data, 2000))
+        return out
+    import pymupdf
+    pdf = pymupdf.open(stream=data, filetype="pdf")
+    for i, pg in enumerate(pdf):
+        if i >= max_pages:
+            break
+        r = pg.rect
+        zoom = min(2.6, 2200 / max(r.width, r.height))
+        out.append(_jpeg(pg.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom)).tobytes("png"), 2200))
+    return out
+
+
+async def plan_images(db, doc: dict, uid: str, max_pages: int = 8) -> list[tuple[str, bytes]]:
+    """Plantas juntas na conversa do Assistente (ou citadas no orçamento): as páginas entram no PDF do orçamento
+    (capa + « Plantas do projeto ») mesmo sem Estudo BET."""
+    imgs: list[tuple[str, bytes]] = []
+    try:
+        ids = await _conversation_doc_ids(db, doc, uid)
+        if not ids:
+            return []
+        me = await db.users.find_one({"user_id": uid}, {"_id": 0, "organization_id": 1}) or {}
+        scope = [{"user_id": uid}] + ([{"organization_id": me["organization_id"]}] if me.get("organization_id") else [])
+        docs = [d async for d in db.assistant_docs.find({"doc_id": {"$in": ids}, "$or": scope}, {"_id": 0, "text": 0})]
+        docs.sort(key=lambda d: ids.index(d["doc_id"]))
+
+        def is_plan(d):
+            name = (d.get("filename") or "").lower()
+            return d.get("kind") == "plan" or any(h in name for h in PLAN_HINT)
+        chosen = [d for d in docs if is_plan(d) and ((d.get("mime") or "").startswith("image/") or (d.get("mime") or "").endswith("pdf")
+                                                   or (d.get("filename") or "").lower().endswith(".pdf"))]
+        for d in chosen:
+            if len(imgs) >= max_pages:
+                break
+            data = await _doc_bytes(db, d)
+            if not data:
+                continue
+            pages = await asyncio.to_thread(_render_pages, data, d.get("mime") or "application/pdf", max_pages - len(imgs))
+            for i, im in enumerate(pages):
+                imgs.append((f"{d.get('filename') or 'Planta'}" + (f" — p. {i + 1}" if len(pages) > 1 else ""), im))
+    except Exception:  # noqa: BLE001 — as plantas embelezam, nunca bloqueiam o orçamento
+        log.warning("quote plan images failed", exc_info=True)
+    return imgs
+
+
 async def enrich(db, doc: dict, uid: str, wait: float = 0) -> dict:
     """Cópia do orçamento com o modelo do edifício e as vistas 3D (para pdf_docs / pdf_premium)."""
     if (doc or {}).get("doc_type") != "quote":
         return doc
     raw = await model_for_quote(db, doc, uid)
+    plans = await plan_images(db, doc, uid)
     if not raw:
+        if plans:                                   # sem Estudo BET: as plantas da conversa entram na capa e no PDF
+            return {**doc, "_plan_images": plans, "_house_views": {"main": plans[0][1]}}
         return doc
     try:
         v = await views(db, raw, wait)
     except Exception:  # noqa: BLE001
         log.warning("house views failed", exc_info=True)
         v = {}
-    return {**doc, "_building_model": raw, "_house_views": v}
+    return {**doc, "_building_model": raw, "_house_views": v, **({"_plan_images": plans} if plans else {})}
