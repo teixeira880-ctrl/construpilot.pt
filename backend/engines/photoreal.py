@@ -106,15 +106,19 @@ async def _openai(prompt: str, base: bytes, style: bytes | None, timeout: float)
         if m and m not in models:
             models.append(m)
     for m in models:
-        try:
-            r = await client.images.edit(model=m, image=imgs if len(imgs) > 1 else imgs[0], prompt=(head + prompt)[:31000],
-                                         size="1536x1024", quality="high", input_fidelity="high", output_format="png")
-            data = base64.b64decode(r.data[0].b64_json)
-            return G.crop(data, (pw, ph), box)
-        except Exception as exc:  # noqa: BLE001
-            if await llm_keys.note_openai_error(exc):
-                return None
-            log.warning("photoreal openai %s: %s", m, str(exc)[:200])
+        for fidelity in (True, False):          # gpt-image-2 já preserva a imagem e recusa input_fidelity → sem ele
+            kw = {"input_fidelity": "high"} if fidelity else {}
+            try:
+                r = await client.images.edit(model=m, image=imgs if len(imgs) > 1 else imgs[0], prompt=(head + prompt)[:31000],
+                                             size="1536x1024", quality="high", output_format="png", **kw)
+                data = base64.b64decode(r.data[0].b64_json)
+                return G.crop(data, (pw, ph), box)
+            except Exception as exc:  # noqa: BLE001
+                if await llm_keys.note_openai_error(exc):
+                    return None
+                log.warning("photoreal openai %s%s: %s", m, "" if fidelity else " (sem input_fidelity)", str(exc)[:200])
+                if not (fidelity and "input_fidelity" in str(exc)):
+                    break
     return None
 
 

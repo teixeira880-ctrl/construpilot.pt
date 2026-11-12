@@ -154,3 +154,31 @@ def test_fast_pass_first_then_openai_upgrade(monkeypatch):
     v, first, last = asyncio.run(run())
     assert set(v) == set(QB.VIEW_KEYS) and first == "fast" and last == "openai"
     assert calls[0] == "emergent" and "openai" in calls
+
+
+def test_openai_retries_without_input_fidelity(monkeypatch):
+    """gpt-image-2 recusa input_fidelity: repete o MESMO modelo sem o parâmetro antes de passar ao seguinte."""
+    import asyncio
+    import base64
+    import sys
+    import types
+    from engines import house3d, llm_keys, photoreal as PR
+    base = house3d.render_png(_case(), 800, 450, "main")
+    calls = []
+
+    class Images:
+        async def edit(self, **kw):
+            calls.append((kw["model"], "input_fidelity" in kw))
+            if "input_fidelity" in kw:
+                raise Exception("The model 'gpt-image-2' does not support the 'input_fidelity' parameter.")
+            return types.SimpleNamespace(data=[types.SimpleNamespace(b64_json=base64.b64encode(base).decode())])
+
+    class Client:
+        def __init__(self, **kw):
+            self.images = Images()
+    monkeypatch.setitem(sys.modules, "openai", types.SimpleNamespace(AsyncOpenAI=Client))
+    monkeypatch.setattr(llm_keys, "openai_direct_active", lambda: True)
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.delenv("OPENAI_IMAGE_MODEL", raising=False)
+    out = asyncio.run(PR._openai("x", base, None, 30))
+    assert out and calls == [("gpt-image-2", True), ("gpt-image-2", False)]
