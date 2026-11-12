@@ -21,7 +21,7 @@ async def _llm(system: str, prompt: str, project_id: str, feature: str) -> str:
     from emergentintegrations.llm.chat import UserMessage
 
     from engines.expenses.metering import MeteredChat
-    chat = MeteredChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"growth-{feature}-{new_id('s')}", expense_feature="growth", system_message=system).with_model(*CONTENT_MODEL)
+    chat = MeteredChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"growth-{feature}-{new_id('s')}", expense_feature="growth", failover=True, system_message=system).with_model(*CONTENT_MODEL)
     out = await chat.send_message(UserMessage(text=prompt))
     text = out if isinstance(out, str) else str(out)
     await record_cost(project_id, "openai", feature, (len(prompt) / 4 * 1.25 + len(text) / 4 * 10) / 1_000_000, estimated=True)

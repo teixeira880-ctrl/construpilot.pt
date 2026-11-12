@@ -19,7 +19,7 @@ async def _chat(prompt, *, image=None, feature="planning_study"):
     key = studies_key(plan_model()[0])
     if not key:
         raise StudyError("Chave do fornecedor IA ausente para o estudo")
-    chat = MeteredChat(api_key=key, session_id="construction-dossier", expense_feature=feature,
+    chat = MeteredChat(api_key=key, session_id="construction-dossier", expense_feature=feature, failover=True,
                        system_message="Lê as fontes; responde apenas em JSON estrito.").with_model(*plan_model())
     content = [ImageContent(image_base64=image)] if image else []
     raw = await chat.send_message(UserMessage(text=prompt, file_contents=content))

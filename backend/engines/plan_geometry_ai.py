@@ -41,7 +41,7 @@ async def _call(image_b64: str, prompt: str, lang: str = "pt") -> dict:
     if not api_key:
         return {"error": "EMERGENT_LLM_KEY absent"}
     provider, model = plan_model()
-    chat = LlmChat(api_key=api_key, session_id="plan-geometry", expense_feature="plan_geometry",
+    chat = LlmChat(api_key=api_key, session_id="plan-geometry", expense_feature="plan_geometry", failover=True,
                    system_message=CORE_PRINCIPLES + "\n\n" + SYSTEM_GEOMETRY + "\n\n" + LANG_INSTRUCTION.get(lang, LANG_INSTRUCTION["fr"])
                    ).with_model(provider, model)
     raw = await chat.send_message(UserMessage(text=prompt, file_contents=[ImageContent(image_base64=image_b64)]))

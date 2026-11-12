@@ -40,7 +40,7 @@ async def _call_gpt_vision(image_b64_png: str, api_key: str, prompt: str | None 
     provider, model = plan_model()
     chat = LlmChat(
         api_key=api_key,
-        session_id="plan-analyze", expense_feature="plan_analysis",
+        session_id="plan-analyze", expense_feature="plan_analysis", failover=True,
         system_message=CORE_PRINCIPLES + "\n\nRespondes sempre em JSON estrito, sem markdown. As chaves JSON ficam tal como pedidas; os VALORES textuais (nomes de divisões, localizações, notas): "
         + LANG_INSTRUCTION.get(lang, LANG_INSTRUCTION["fr"]),
     ).with_model(provider, model)

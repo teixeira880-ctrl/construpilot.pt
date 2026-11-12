@@ -60,7 +60,7 @@ async def _ask_text(prompt: str) -> str:
 
     chat = MeteredChat(
         api_key=key,
-        expense_feature="prompt_fill",
+        expense_feature="prompt_fill", failover=True,
         session_id="prompt-fill",
         system_message="Responde em JSON válido, em português europeu, sem texto fora do JSON.",
     ).with_model(*_MODEL)
