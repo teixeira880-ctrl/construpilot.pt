@@ -374,6 +374,37 @@ async def create_lead(body: ExperienceLeadIn, request: Request, response: Respon
     return {"ok": True, "lead_id": doc["lead_id"], "message": ok_msg, "demo_due_at": demo_due}
 
 
+# Idioma automático da página pelo país do IP. O país vem do cabeçalho posto pela rede à frente
+# do site (Cloudflare e equivalentes). O endereço IP não é lido, guardado nem registado aqui.
+_COUNTRY_HEADERS = ("cf-ipcountry", "x-vercel-ip-country", "cloudfront-viewer-country", "x-appengine-country", "x-country-code")
+_LANG_PT = {"PT", "BR", "AO", "MZ", "CV", "GW", "ST", "TL"}
+_LANG_FR = {"FR", "BE", "LU", "MC", "CH", "RE", "GP", "MQ", "GF", "YT", "NC", "PF", "SN", "CI", "ML", "BF", "NE", "TG", "BJ",
+            "CM", "GA", "CG", "CD", "MG", "DZ", "MA", "TN", "HT"}
+
+
+def country_from_request(request: Request) -> str | None:
+    for h in _COUNTRY_HEADERS:
+        v = (request.headers.get(h) or "").strip().upper()
+        if len(v) == 2 and v.isalpha() and v not in ("XX", "T1"):   # XX = desconhecido, T1 = Tor
+            return v
+    return None
+
+
+def lang_for_country(country: str | None) -> str | None:
+    if not country:
+        return None
+    return "pt" if country in _LANG_PT else "fr" if country in _LANG_FR else "uk" if country == "UA" else "en"
+
+
+@router.get("/geo")
+@limiter.limit("120/minute")
+async def geo(request: Request, response: Response) -> dict:
+    """País do visitante (pelo cabeçalho da rede) e idioma sugerido para a página. Nada é guardado."""
+    response.headers["Cache-Control"] = "no-store"
+    country = country_from_request(request)
+    return {"country": country, "lang": lang_for_country(country)}
+
+
 @router.get("/leads")
 async def list_leads(limit: int = 100, user=Depends(admin_user)) -> dict:
     """Oportunidades vindas da Experience (só administradores)."""

@@ -1016,7 +1016,8 @@ wiz.addEventListener('submit',e=>{e.preventDefault();
   .then(r=>r.ok?r.json():Promise.reject(r.status))
   .then(j=>{lead.id=j.lead_id||lead.id;lead.msg=j.message||'';S.lead=lead;S.status=lead.status;render('#done')})
   .catch(()=>{btn.disabled=false;err.textContent=L(['Não foi possível enviar o pedido. Tente de novo ou escreva para info@construpilot.pt.',"L'envoi de la demande a échoué. Réessayez ou écrivez à info@construpilot.pt.",'The request could not be sent. Try again or write to info@construpilot.pt.']);err.hidden=false})});
-$$('[data-lang]').forEach(b=>b.addEventListener('click',()=>{LI=+b.dataset.lang;if(LI===3)loadUK();applyLang()}));
+let LANG_MANUAL=false;
+$$('[data-lang]').forEach(b=>b.addEventListener('click',()=>{LANG_MANUAL=true;LI=+b.dataset.lang;if(LI===3)loadUK();applyLang()}));
 $('#cta1').addEventListener('click',e=>{e.preventDefault();$('#diagnostico').scrollIntoView({behavior:reduce?'auto':'smooth'});const f=$('.chip',wiz)||$('#wh');if(f)f.focus({preventScroll:true})});
 
 /* ---------- studio ---------- */
@@ -1245,10 +1246,16 @@ function initFilm(){
 function start(d){
   try{localStorage.removeItem('cpx-v1');localStorage.removeItem(KEY)}catch(e){}
   let site=null;try{site=localStorage.getItem('construpilot_lang')}catch(e){}
-  const ql=new URLSearchParams(location.search).get('lang')||site||navigator.language||'pt';LI=/^fr/i.test(ql)?1:/^en/i.test(ql)?2:/^(uk|ua)/i.test(ql)?3:0;
+  const qlang=new URLSearchParams(location.search).get('lang'),pick=c=>/^fr/i.test(c)?1:/^en/i.test(c)?2:/^(uk|ua)/i.test(c)?3:0;
+  LI=pick(qlang||site||navigator.language||'pt');
   if(LI===3)loadUK();
   filmApi=initFilm();if(filmApi){$('#fb').hidden=true;playing=false}
   applyLang();
+  /* Idioma automático pelo país do IP (o servidor lê o cabeçalho do país; o IP não é guardado).
+     Prioridade: ?lang= no endereço > escolha manual nesta visita > país do IP > idioma do site/browser.
+     Não muda depois de o visitante começar o diagnóstico. */
+  if(!qlang)fetch('/api/experience/geo',{cache:'no-store',credentials:'omit'}).then(r=>r.ok?r.json():null).then(g=>{
+    if(!g||!g.lang||LANG_MANUAL||S.step>0||S.a.role)return;const n=pick(g.lang);if(n!==LI){LI=n;if(LI===3)loadUK();applyLang()}}).catch(()=>{});
   if(playing)timer=setTimeout(tick,1200);
   window.__cpx={S:()=>S,score,impact,prio,roi};
 }

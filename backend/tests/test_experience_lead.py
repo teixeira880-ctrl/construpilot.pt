@@ -199,3 +199,21 @@ def test_client_and_other_roles_are_customers(env):
     assert d["lead_kind"] == "customer" and {r["criterion"]: r["points"] for r in d["score"]["rows"]}["decision_authority"] == 3
     other = {**BODY, "role": "other", "role_label": "Outro: Canalizador", "email": "o@example.com", "submission_id": "o1"}
     assert c.post("/api/experience/lead", json=other).status_code == 200
+
+
+def test_geo_suggests_language_from_country_header_and_stores_nothing(env):
+    c, db, sent, _ = env
+    def g(headers):
+        r = c.get("/api/experience/geo", headers=headers)
+        assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+        return r.json()
+    assert g({"CF-IPCountry": "PT"}) == {"country": "PT", "lang": "pt"}
+    assert g({"CF-IPCountry": "br"})["lang"] == "pt"
+    assert g({"CF-IPCountry": "FR"})["lang"] == "fr" and g({"CF-IPCountry": "BE"})["lang"] == "fr"
+    assert g({"CF-IPCountry": "UA"})["lang"] == "uk"
+    assert g({"CF-IPCountry": "DE"})["lang"] == "en" and g({"CF-IPCountry": "US"})["lang"] == "en"
+    assert g({"X-Vercel-IP-Country": "FR"})["lang"] == "fr"
+    # sem cabeçalho, país desconhecido ou valor inválido: a página mantém o idioma que já tinha
+    for h in ({}, {"CF-IPCountry": "XX"}, {"CF-IPCountry": "T1"}, {"CF-IPCountry": "<script>"}):
+        assert g(h) == {"country": None, "lang": None}
+    assert not leads(db) and not sent
