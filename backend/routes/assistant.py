@@ -1580,6 +1580,29 @@ def _fill_optional_tool_args(name: str, args: dict) -> None:
                 line.setdefault("lot", "")
 
 
+try:
+    from jsonschema.exceptions import ValidationError as _ArgsError
+except Exception:  # noqa: BLE001
+    class _ArgsError(Exception):
+        message = ""
+
+_ENUM_SYNONYMS = {"kind": {"facto": "fait", "fato": "fait", "fact": "fait", "facts": "fait", "factos": "fait", "faits": "fait",
+                           "hipotese": "hypothese", "hipótese": "hypothese", "hypothèse": "hypothese", "hypothesis": "hypothese",
+                           "acao": "action", "ação": "action", "acção": "action", "accao": "action",
+                           "esquema_de_principio": "schema_de_principe", "schema": "schema_de_principe",
+                           "validacao_execucao": "validation_execution", "validação_execução": "validation_execution"}}
+
+
+def _normalize_enum_args(name: str, args) -> None:
+    """Corrige sinónimos óbvios de valores enumerados vindos do modelo (PT/EN → valor canónico) antes da validação."""
+    if not isinstance(args, dict):
+        return
+    for field, syn in _ENUM_SYNONYMS.items():
+        v = args.get(field)
+        if isinstance(v, str) and v.strip().lower() in syn:
+            args[field] = syn[v.strip().lower()]
+
+
 def _error_ref() -> str:
     import secrets as _secrets
     return "ERR-" + _secrets.token_hex(2).upper()
@@ -1605,6 +1628,7 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         if isinstance(args, dict):
             _fill_optional_tool_args(name, args)
         conv["_file_call_id"] = call_id
+        _normalize_enum_args(name, args)
         validate_args(name, args, available)
         key = (name, json.dumps(args, sort_keys=True, allow_nan=False))
         read_tool = name in ('read_construction_study', 'get_supervision_result', 'list_platform_resources', 'read_work_draft', 'read_quote_draft', 'find_quote_drafts', 'get_plan_results', 'read_document', 'inspect_document_region', 'search_own_history') or name in assistant_clt_agent.NAMES  # o estudo muda entre chamadas
@@ -1634,6 +1658,10 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
         raise
+    except _ArgsError as exc:
+        # argumento fora do esquema (ex. kind="facto"): o modelo corrige e volta a chamar — nunca um ERR para o utilizador
+        result = {"ok": False, "error": f"Argumento inválido: {exc.message}. Corrige o valor (usa exatamente um dos valores permitidos) "
+                                        "e chama de novo a ferramenta; não menciones este erro ao utilizador."}
     except PermissionError:
         result = {"ok": False, "error": "Recurso inacessível: o documento referido não pertence a esta conta ou já não existe. Pede ao utilizador para (re)anexar o ficheiro à mensagem (não é um problema de assinatura)."}
     except HTTPException as exc:
