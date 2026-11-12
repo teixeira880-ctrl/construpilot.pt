@@ -283,7 +283,9 @@ def _loud_room(rt: dict) -> dict:
 
 def _noise_cancel():
     """Suppression des voix d'arrière-plan (LiveKit Cloud, BVC) : seule la voix la plus proche du micro est gardée."""
-    if os.environ.get("AVATAR_BVC", "1") == "0":
+    # Désactivé par défaut : en conditions réelles (iPad posé, haut-parleur de l'avatar), le BVC prenait la voix de
+    # l'admin pour une voix d'arrière-plan et la supprimait → l'assistante « n'entendait plus ». AVATAR_BVC=1 pour le stand.
+    if os.environ.get("AVATAR_BVC", "0") != "1":
         return None
     try:
         from livekit.plugins import noise_cancellation  # noqa: PLC0415

@@ -17,14 +17,14 @@ const PT = typeof window !== "undefined" && /construpilot\.pt|construpilot-recon
 const T = PT ? {
   waiting: "A ligar a assistente…", live: "Em direto", stop: "Terminar", min: "Reduzir", open: "Abrir", mic: "Microfone", cam: "Câmara", camOn: "Câmara ativa", camDenied: "Acesso à câmara recusado pelo navegador.",
   camConsent: "Ativar a câmara?\n\nA assistente vê a imagem para perceber o ambiente (sala, obra, plano mostrado à câmara).\nNão identifica pessoas pelo rosto e não guarda nenhuma imagem.\nPode desligar a qualquer momento.",
-  noagent: "A assistente não responde: o agente está online (LiveKit Cloud)?", ended: "Conversa terminada.",
+  noagent: "A assistente não responde: o agente está online (LiveKit Cloud)?", micDenied: "Microfone bloqueado: autorize o microfone para este site nas definições do navegador.", micDead: "O microfone deixou de enviar som — foi religado automaticamente.", ended: "Conversa terminada.",
   busy: "A assistente já está a ser usada por outro admin. Tente daqui a alguns minutos.", quota: "Quota Synthesia esgotada este mês.",
   config: "Problema de configuração do avatar (chave Synthesia ou LiveKit). ", error: "A assistente não conseguiu arrancar, tente de novo.",
   hush: "Silêncio (ou diga « cala-te »)", listening: "A ouvir", thinking: "A pensar…", speaking: "A falar", acting: "A agir no ecrã", you: "Você",
 } : {
   waiting: "Connexion de l'assistante…", live: "En direct", stop: "Terminer", min: "Réduire", open: "Ouvrir", mic: "Micro", cam: "Caméra", camOn: "Caméra active", camDenied: "Accès à la caméra refusé par le navigateur.",
   camConsent: "Activer la caméra ?\n\nL'assistante voit l'image pour comprendre l'environnement (pièce, chantier, plan montré à la caméra).\nElle n'identifie personne par le visage et n'enregistre aucune image.\nVous pouvez la couper à tout moment.",
-  noagent: "L'assistante ne répond pas : l'agent est-il en ligne (LiveKit Cloud) ?", ended: "Conversation terminée.",
+  noagent: "L'assistante ne répond pas : l'agent est-il en ligne (LiveKit Cloud) ?", micDenied: "Micro bloqué : autorisez le micro pour ce site dans les réglages du navigateur.", micDead: "Le micro n'envoyait plus de son — il a été rallumé automatiquement.", ended: "Conversation terminée.",
   busy: "L'assistante est déjà utilisée par un autre admin. Réessayez dans quelques minutes.", quota: "Quota Synthesia épuisé pour ce mois.",
   config: "Problème de configuration de l'avatar (clé Synthesia ou LiveKit). ", error: "L'assistante n'a pas pu démarrer, réessayez.",
   hush: "Silence (ou dites « tais-toi »)", listening: "À l'écoute", thinking: "Réfléchit…", speaking: "Parle", acting: "Agit à l'écran", you: "Vous",
@@ -221,7 +221,7 @@ async function clickTestId(testid) {
 let pttKeys = null;
 async function micOn(on) {
   if (!room) return;
-  try { await room.localParticipant.setMicrophoneEnabled(on); set({ micOn: on }); } catch { /* micro refusé */ }
+  try { await room.localParticipant.setMicrophoneEnabled(on); set({ micOn: on }); } catch { set({ micOn: false, message: T.micDenied }); }
 }
 export async function setPushToTalk(on) {
   set({ ptt: on });
@@ -414,6 +414,7 @@ const act = {
 
 // ------------------------------------------------------------------ session
 function reset(message = "") {
+  clearInterval(micWatch);
   setPushToTalk(false);   // Lot 107
   stopScreenWatch();
   stopSpeechSync();
@@ -423,7 +424,7 @@ function reset(message = "") {
   videoEl = null;
   cursor?.remove(); cursor = null;
   clearTimeout(hushTimer);
-  set({ phase: "idle", message, caption: null, agentState: null, acting: 0, hushed: false });
+  set({ phase: "idle", message, caption: null, agentState: null, acting: 0, hushed: false, micLevel: 0 });
 }
 // Préchargement du client LiveKit dès que le panneau admin s'affiche : « Parler » démarre sans attendre le téléchargement.
 let lkModule = null;
@@ -437,7 +438,7 @@ export async function startAvatar(lang = "fr") {
   try {
     const [{ data }, { Room, RoomEvent }] = await Promise.all([api.get("/admin/avatar/token", { params: { lang } }), preloadAvatar()]);
     roomName = data.room;
-    const r = new Room({ audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, voiceIsolation: true, channelCount: 1 },   // Lot 107 : micro propre dans le bruit
+    const r = new Room({ audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },   // Lot 107 : micro propre dans le bruit
        adaptiveStream: false });
     room = r;
     let notice = null;
@@ -479,7 +480,9 @@ export async function startAvatar(lang = "fr") {
     });
     await r.connect(data.url, data.token);
     startScreenWatch(r);
-    await r.localParticipant.setMicrophoneEnabled(true);
+    try { await r.localParticipant.setMicrophoneEnabled(true); }
+    catch (e) { const err = new Error(T.micDenied); err.cause = e; throw err; }
+    startMicWatch(r);
     if (state.phase !== "live") set({ phase: "waiting" });
     timer = setTimeout(() => { if (state.phase !== "live") set({ message: T.noagent }); }, 60000);
   } catch (e) {
@@ -529,8 +532,36 @@ export const hushAvatar = () => hush(true);
 async function toggleMic() {
   if (!room) return;
   const on = !state.micOn;
-  await room.localParticipant.setMicrophoneEnabled(on);
-  set({ micOn: on });
+  try { await room.localParticipant.setMicrophoneEnabled(on); set({ micOn: on, message: "" }); }
+  catch { set({ micOn: false, message: T.micDenied }); }
+}
+
+// Surveillance du micro : niveau sonore affiché (l'admin voit que sa voix part) et relance automatique si le
+// navigateur coupe la piste (iPad/Safari : interruption audio, changement de casque, onglet mis en veille…).
+let micWatch = null;
+function startMicWatch(r) {
+  clearInterval(micWatch);
+  let silentTicks = 0;
+  micWatch = setInterval(async () => {
+    if (room !== r) { clearInterval(micWatch); return; }
+    const lp = r.localParticipant;
+    const level = Math.min(1, (lp?.audioLevel || 0) * 4);
+    if (Math.abs((state.micLevel || 0) - level) > 0.05) set({ micLevel: level });
+    if (!state.micOn || state.ptt) { silentTicks = 0; return; }
+    const pub = [...(lp?.audioTrackPublications?.values?.() || [])][0];
+    const mst = pub?.track?.mediaStreamTrack;
+    const dead = !pub || !mst || mst.readyState === "ended" || pub.isMuted;
+    silentTicks = dead ? silentTicks + 1 : 0;
+    if (silentTicks >= 2) {   // ~2 s sans piste valide : on relance le micro
+      silentTicks = 0;
+      try {
+        await lp.setMicrophoneEnabled(false);
+        await lp.setMicrophoneEnabled(true);
+        set({ message: T.micDead });
+        setTimeout(() => { if (state.message === T.micDead) set({ message: "" }); }, 6000);
+      } catch { set({ micOn: false, message: T.micDenied }); }
+    }
+  }, 1000);
 }
 
 // ------------------------------------------------------------------ fenêtre flottante
@@ -585,7 +616,9 @@ function Dock() {
           </span>
           <button type="button" data-testid="avatar-hush" style={{ ...btn, background: s.hushed ? "#c8763a" : "#285541" }} onClick={() => hush(true)}
             title={T.hush} aria-label={T.hush}>🤫</button>
-          <button type="button" style={{ ...btn, background: s.micOn ? "#285541" : "#7a2e2e" }} onClick={toggleMic} title={T.mic}>{s.micOn ? "🎙" : "🔇"}</button>
+          <button type="button" data-testid="avatar-dock-mic" style={{ ...btn, background: s.micOn ? "#285541" : "#7a2e2e", position: "relative", overflow: "hidden" }} onClick={toggleMic} title={T.mic}>
+            {s.micOn && <span aria-hidden="true" style={{ position: "absolute", left: 0, bottom: 0, width: "100%", height: `${Math.round((s.micLevel || 0) * 100)}%`, background: "rgba(140,230,170,.55)", transition: "height .15s" }} />}
+            <span style={{ position: "relative" }}>{s.micOn ? "🎙" : "🔇"}</span></button>
           <button type="button" style={{ ...btn, background: s.camOn ? "#b42318" : "#285541" }} onClick={toggleCam} title={T.cam}
             data-testid="avatar-dock-cam" aria-pressed={s.camOn}>📷</button>
           <button type="button" style={{ ...btn, background: s.ptt ? "#c8763a" : "#285541" }} onClick={() => setPushToTalk(!s.ptt)}
