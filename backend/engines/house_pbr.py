@@ -298,16 +298,61 @@ def _post(rgb):
     return ImageEnhance.Contrast(im).enhance(1.05)
 
 
+RENDER_VERSION = "3"          # muda quando o motor muda → a cache antiga deixa de servir
+
+
+def _cache_path(raw, width, height, view, spp):
+    """Mesma geometria → mesma imagem: a cache é endereçada pela geometria (não pelo projeto nem pela data)."""
+    import hashlib
+    import json
+    import os
+    from pathlib import Path
+    geo = {k: raw.get(k) for k in ("envelope", "sides", "levels", "openings", "roof", "interior_walls", "materials", "walls")}
+    key = hashlib.sha256(json.dumps([RENDER_VERSION, geo, width, height, view, spp], sort_keys=True, default=str).encode()).hexdigest()
+    d = Path(os.environ.get("RENDER_CACHE_DIR") or "/tmp/cp_render_cache")
+    return d / f"{key[:40]}.png"
+
+
+def _oidn(img, spp: int):
+    """Poucas amostras (rápido) + Intel Open Image Denoise no CPU (o filtro dos motores de render profissionais): qualidade
+    próxima de 4-8× mais amostras. Sem pyoidn, a imagem fica tal como saiu (mais ruído, nunca erro)."""
+    if spp > 48:
+        return img
+    try:
+        import pyoidn
+        arr = np.ascontiguousarray(np.array(img, dtype=np.float32)[..., :3])
+        return pyoidn.denoise(arr, hdr=True, quality="balanced")
+    except Exception:  # noqa: BLE001
+        return img
+
+
 def render(raw: dict, width: int = 2560, height: int = 1440, view: str = "main", spp: int = SPP) -> bytes | None:
-    """PNG fotorrealista (renderização física) ou None se o motor não estiver disponível."""
+    """PNG fotorrealista (renderização física) ou None se o motor não estiver disponível.
+    Cache pela geometria (repetir o estudo/orçamento da mesma casa = imagem imediata) + limpeza do ruído."""
     if not available():
         return None
+    cp = None
+    try:
+        cp = _cache_path(raw, width, height, view, spp)
+        if cp.exists():
+            return cp.read_bytes()
+    except Exception:  # noqa: BLE001
+        cp = None
     try:
         with _LOCK:
-            return _render(raw, width, height, view, spp)
+            png = _render(raw, width, height, view, spp)
     except Exception:  # noqa: BLE001 — nunca bloqueia o orçamento: fica a vista calculada
         log.warning("pbr render failed", exc_info=True)
         return None
+    if cp is not None and png:
+        try:
+            cp.parent.mkdir(parents=True, exist_ok=True)
+            tmp = cp.with_suffix(".tmp")
+            tmp.write_bytes(png)
+            tmp.replace(cp)
+        except Exception:  # noqa: BLE001
+            pass
+    return png
 
 
 VIEWS_EYE = {"main": ((0.55, -0.84), 1.6, 1.0), "side": ((0.84, 0.55), 1.6, 1.0), "rear": ((-0.55, 0.84), 1.6, 1.0),
@@ -384,6 +429,7 @@ def _render(raw, width, height, view, spp):
                                             [[(-1.2, -1.2, 0.0), (L + 1.2, -1.2, 0.0), (L + 1.2, W + 1.2, 0.0), (-1.2, W + 1.2, 0.0)]],
                                             (8.0, 8.0), XY)}
         img = mi.render(mi.load_dict(sc), spp=int(spp))
+        img = _oidn(img, spp)
         rgb = R3._tonemap(img)
     from PIL import Image, ImageFilter
     im = Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.UnsharpMask(radius=1.0, percent=50, threshold=2))
@@ -404,7 +450,7 @@ def dossier_renders(raw: dict, out_dir, width: int = 0, height: int = 0, spp: in
     import time
     width = width or int(os.environ.get("DOSSIER_PBR_W") or 1600)
     height = height or int(os.environ.get("DOSSIER_PBR_H") or 900)
-    spp = spp or int(os.environ.get("DOSSIER_PBR_SPP") or 24)
+    spp = spp or int(os.environ.get("DOSSIER_PBR_SPP") or 16)
     if os.environ.get("PYTEST_CURRENT_TEST"):                      # testes: imagens pequenas e rápidas
         width, height, spp = 320, 180, 4
     # orçamento de tempo (produção = CPU fraco): passado o limite, as vistas restantes são as vistas 3D rápidas — o estudo

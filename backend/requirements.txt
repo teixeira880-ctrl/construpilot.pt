@@ -183,3 +183,4 @@ weasyprint==70.0
 matplotlib==3.11.2
 mitsuba==3.9.1
 drjit==1.5.0
+pyoidn==2.5.1.0

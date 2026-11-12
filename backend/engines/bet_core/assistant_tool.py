@@ -284,6 +284,36 @@ async def _cached_model(db, uid, key):
         return None
 
 
+_BG: set = set()
+
+
+async def _late_renders(db, job_id, uid, cid, request_id, late, country):
+    """Perspetivas 3D em segundo plano, DEPOIS da entrega: inseridas no dossier PDF já entregue (mesmo ficheiro, mesmo link)
+    e juntas como imagens. Cache pela geometria: repetir o estudo da mesma casa = imediato."""
+    raw, pdf_path, pdf_aid = late
+    try:
+        from engines import house_pbr
+        renders = await asyncio.wait_for(asyncio.to_thread(house_pbr.add_to_dossier, raw, pdf_path, "pt" if country == "PT" else "fr"),
+                                         float(os.environ.get("BET_RENDER_TIMEOUT") or 600))
+        new = []
+        if renders and pdf_aid:
+            data = Path(pdf_path).read_bytes()
+            if len(data) <= MAX_ARTIFACT:
+                await db.assistant_artifacts.update_one({"artifact_id": pdf_aid, "user_id": uid},
+                                                        {"$set": {"data_b64": base64.b64encode(data).decode(), "size": len(data)}})
+        for rp, pt, frl in renders:
+            new.append(await _store(db, uid, cid, request_id, "render_png", Path(rp), pt if country == "PT" else frl))
+        job = await db.bet_study_jobs.find_one({"job_id": job_id}) or {}
+        await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"artifacts": list(job.get("artifacts") or []) + new,
+                                                                         "renders_status": "done", "updated_at": _now()}})
+    except Exception:  # noqa: BLE001 — as perspetivas nunca estragam um estudo já entregue
+        log.warning("bet study late renders failed", exc_info=True)
+        await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"renders_status": "failed", "updated_at": _now()}})
+    finally:
+        import shutil
+        shutil.rmtree(Path(pdf_path).parent, ignore_errors=True)
+
+
 def _images3d_on() -> bool:
     from engines import images3d
     return images3d.enabled() or str(os.environ.get("BET_DOSSIER_RENDERS") or "").lower() in ("1", "true", "yes")
@@ -433,6 +463,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                            decisions=decisions, decide_alone=decide_alone, questions=qs)
                 return
             decisions = list(dict.fromkeys(decisions + [str(d) for d in (raw.get("_decisions") or [])]))   # + complétion et étude thermique
+            late = None
             arts = []
             labels = {"pdf": "Dossier d'étude BET (note de calcul + plans)", "plans_pdf": "Plans PDF (pour les entreprises)",
                       "xlsx": "Devis et métré (Excel)", "zip": "Plans DXF (pour logiciel de DAO)"}
@@ -440,20 +471,16 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                 labels = {"pdf": "Processo de estudo (memória de cálculo + desenhos)", "plans_pdf": "Desenhos PDF (para as empresas)",
                           "xlsx": "Medições e orçamento (Excel)", "zip": "Desenhos DXF (para software CAD)"}
             labels["re2020_pdf"] = "Étude thermique RE2020 (pré-étude, faite avant les plans)" if country != "PT" else "Estudo térmico"
-            renders = []
-            try:                              # pelo menos 3 perspetivas 3D reais no dossier (render físico, sem IA)
-                from engines import house_pbr
-                if res["files"].get("pdf") and _images3d_on():
-                    renders = await asyncio.wait_for(asyncio.to_thread(house_pbr.add_to_dossier, raw, res["files"]["pdf"],
-                                                                       "pt" if country == "PT" else "fr"),
-                                                     float(os.environ.get("BET_RENDER_TIMEOUT") or 240))
-            except Exception:  # noqa: BLE001 — as perspetivas nunca bloqueiam o dossier
-                log.warning("bet study renders failed", exc_info=True)
             for kind in ("pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"):
                 if res["files"].get(kind):
                     arts.append(await _store(db, uid, cid, request_id, kind, Path(res["files"][kind]), labels[kind]))
-            for rp, pt, frl in renders:
-                arts.append(await _store(db, uid, cid, request_id, "render_png", Path(rp), pt if country == "PT" else frl))
+            if res["files"].get("pdf") and _images3d_on():
+                # o estudo NUNCA espera pelas imagens: entrega já, as perspetivas 3D entram depois no mesmo dossier (12/11)
+                import shutil as _sh
+                import tempfile as _tf
+                keep = Path(_tf.mkdtemp(prefix="cp_late_")) / Path(res["files"]["pdf"]).name   # a pasta do estudo é apagada
+                _sh.copy2(res["files"]["pdf"], keep)
+                late = (copy.deepcopy(raw), str(keep), next((a["artifact_id"] for a in arts if a["kind"] == "pdf"), None))
         quote_doc_id = None
         try:                              # devis OFFICIEL = métré déterministe de l'étude (mêmes documents → même devis)
             quote_doc_id, qarts = await asyncio.wait_for(study_quote(db, uid, cid, job_id, res, country, raw),
@@ -467,6 +494,15 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                    points=[a["message"] for a in res["anomalies"]][:30] + [i["message"] for i in res["review"]][:30],
                    questions=rd["questions"], demo=rd.get("demo"), cached=bool(rd.get("cached")), provider=rd.get("provider"),
                    thermal={k: v for k, v in (res.get("thermal") or {}).items() if k not in ("tried", "systems")} or None)
+        if late:
+            await step("Terminé", status="done", renders_status="pending")
+            t = _late_renders(db, job_id, uid, cid, request_id, late, country)
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                await t
+            else:
+                task = asyncio.create_task(t)
+                _BG.add(task)
+                task.add_done_callback(_BG.discard)
     except Exception as exc:  # noqa: BLE001
         log.exception("bet study %s failed", job_id)
         txt = str(exc).lower()
@@ -584,7 +620,11 @@ async def _read_job(db, uid, job_id, cid=None):
         if isinstance(out.get(k), list):
             out[k] = out[k][:40]
     out.pop("anomalies", None) if out.get("status") == "done" else None
-    return {"ok": True, **out, "note": "Pré-dimensionnement à faire viser par un ingénieur structure avant exécution."}
+    note = "Pré-dimensionnement à faire viser par un ingénieur structure avant exécution."
+    if out.get("renders_status") == "pending":
+        note += (" Les perspectives 3D sont en cours de calcul en arrière-plan : elles s'ajoutent toutes seules au même dossier "
+                 "dans 1 à 2 minutes — livre les résultats MAINTENANT, sans attendre.")
+    return {"ok": True, **out, "note": note}
 
 
 LOT_LABEL = {"electricite": "Électricité", "plomberie": "Plomberie", "ventilation": "Ventilation", "chauffage": "Chauffage",
