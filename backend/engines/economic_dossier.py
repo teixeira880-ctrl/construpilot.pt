@@ -104,7 +104,7 @@ def cost_lookup(purchase: list[dict]):
             if s_ > score:
                 best, score = p, s_
         if best is not None and score >= 0.6:
-            return float(best["cost_price_ht"]), "biblioteca de compra", best.get("designation", "")
+            return float(best["cost_price_ht"]), "@lib", best.get("designation", "")
         return None
     return f
 
@@ -133,8 +133,30 @@ def _lots(lines: list[dict]) -> list[tuple[str, list[dict]]]:
     return [g for g in out if g[1]]
 
 
+# ------------------------------------------------------------------ textos (PT / FR)
+_TX = {
+    "PT": {"quote_cost": "custo indicado no orçamento", "lib": "biblioteca de compra", "hyp": "HIPÓTESE (venda − margem-alvo {:.0f} %)",
+           "sup": "Enquadramento — {}", "use": "{} — utilização", "day": "dia", "month": "mês", "fuel_v": "{} — gasóleo ({:.0f} km/dia, {:.0f} L/100 km)",
+           "truck": "{} — evacuação e transporte", "fuel": "{} — gasóleo", "dig": "{} — terraplenagens", "base": "Base",
+           "s_mat": "Materiais +10 %", "s_lab": "Mão de obra +10 %", "s_fuel": "Gasóleo +20 %", "s_disc": "Desconto comercial −5 %",
+           "h_lines": "{} linha(s) sem preço de compra: custo estimado pela margem-alvo de {:.0f} % — introduza os preços de compra na biblioteca de compra.",
+           "h_res": "Custos horários, veículos e máquinas por defeito (hipótese): substitua-os pelos custos reais da empresa.",
+           "h_par": "Parâmetros por defeito: gasóleo {:.2f} €/L, {:.0f} km/dia, {:.0f} h/dia, custos de estrutura {:.0f} %, mão de obra = {:.0f} % dos custos diretos.",
+           "h_team": "Equipa no local: {} → {} dias úteis ({:.1f} semanas)."},
+    "FR": {"quote_cost": "coût indiqué dans le devis", "lib": "bibliothèque d'achat", "hyp": "HYPOTHÈSE (vente − marge cible {:.0f} %)",
+           "sup": "Encadrement — {}", "use": "{} — utilisation", "day": "jour", "month": "mois", "fuel_v": "{} — gazole ({:.0f} km/jour, {:.0f} L/100 km)",
+           "truck": "{} — évacuation et transport", "fuel": "{} — gazole", "dig": "{} — terrassements", "base": "Base",
+           "s_mat": "Matériaux +10 %", "s_lab": "Main-d'œuvre +10 %", "s_fuel": "Gazole +20 %", "s_disc": "Remise commerciale −5 %",
+           "h_lines": "{} ligne(s) sans prix d'achat : coût estimé par la marge cible de {:.0f} % — saisissez les prix d'achat dans la bibliothèque d'achat.",
+           "h_res": "Coûts horaires, véhicules et engins par défaut (hypothèse) : remplacez-les par les coûts réels de l'entreprise.",
+           "h_par": "Paramètres par défaut : gazole {:.2f} €/L, {:.0f} km/jour, {:.0f} h/jour, frais généraux {:.0f} %, main-d'œuvre = {:.0f} % des déboursés secs.",
+           "h_team": "Équipe sur site : {} → {} jours ouvrés ({:.1f} semaines)."},
+}
+
+
 # ------------------------------------------------------------------ cálculo
 def compute(doc: dict, company: dict, purchase: list[dict] | None = None, country: str = "PT") -> dict:
+    X = _TX["FR" if str(country).upper() == "FR" else "PT"]
     res = {r["id"]: r for r in company["resources"]}
     P = company["params"]
     tm = float(P.get("target_margin_pct") or 20) / 100
@@ -149,13 +171,14 @@ def compute(doc: dict, company: dict, purchase: list[dict] | None = None, countr
             sale = q * pu
             cu, origin, ref = None, "", ""
             if float(l.get("cost_price_ht") or 0) > 0:
-                cu, origin, ref = float(l["cost_price_ht"]), "custo indicado no orçamento", ""
+                cu, origin, ref = float(l["cost_price_ht"]), X["quote_cost"], ""
             else:
                 hit = look(l.get("designation", ""), l.get("unit", ""))
                 if hit:
                     cu, origin, ref = hit
+                    origin = X["lib"]
             if cu is None:
-                cu, origin = pu * (1 - tm), f"HIPÓTESE (venda − margem-alvo {tm * 100:.0f} %)"
+                cu, origin = pu * (1 - tm), X["hyp"].format(tm * 100)
                 hyp_lines += 1
             cost = q * cu
             lines_out.append({"lot": lot, "designation": l.get("designation", ""), "unit": l.get("unit", ""), "qty": q, "pu": pu,
@@ -176,7 +199,7 @@ def compute(doc: dict, company: dict, purchase: list[dict] | None = None, countr
     sup = res.get("engenheiro")
     if sup:
         h = float(P.get("supervision_h_week") or 0) * weeks
-        site.append({"item": f"Enquadramento — {sup['name']}", "qty": round(h, 1), "unit": "h", "pu": sup["cost"], "total": round(h * sup["cost"], 2),
+        site.append({"item": X["sup"].format(sup["name"]), "qty": round(h, 1), "unit": "h", "pu": sup["cost"], "total": round(h * sup["cost"], 2),
                      "origin": sup.get("origin", "")})
     fuel = float(P.get("fuel_price_l") or 1.65)
     km = float(P.get("km_per_day") or 0)
@@ -185,30 +208,30 @@ def compute(doc: dict, company: dict, purchase: list[dict] | None = None, countr
         if not v:
             continue
         d_ = days * float(n)
-        site.append({"item": f"{v['name']} — utilização", "qty": d_, "unit": "dia", "pu": v["cost"], "total": round(d_ * v["cost"], 2),
+        site.append({"item": X["use"].format(v["name"]), "qty": d_, "unit": X["day"], "pu": v["cost"], "total": round(d_ * v["cost"], 2),
                      "origin": v.get("origin", "")})
         litres = d_ * km * float(v.get("consumption_l_100km") or 0) / 100
-        site.append({"item": f"{v['name']} — gasóleo ({km:.0f} km/dia, {float(v.get('consumption_l_100km') or 0):.0f} L/100 km)",
+        site.append({"item": X["fuel_v"].format(v["name"], km, float(v.get("consumption_l_100km") or 0)),
                      "qty": round(litres, 1), "unit": "L", "pu": fuel, "total": round(litres * fuel, 2), "origin": P.get("origin", "")})
     truck = res.get("camiao")
     if truck and float(P.get("truck_days_pct") or 0) > 0:
         d_ = max(1, round(days * float(P["truck_days_pct"]) / 100))
         litres = d_ * km * float(truck.get("consumption_l_100km") or 0) / 100
-        site += [{"item": f"{truck['name']} — evacuação e transporte", "qty": d_, "unit": "dia", "pu": truck["cost"],
+        site += [{"item": X["truck"].format(truck["name"]), "qty": d_, "unit": X["day"], "pu": truck["cost"],
                   "total": round(d_ * truck["cost"], 2), "origin": truck.get("origin", "")},
-                 {"item": f"{truck['name']} — gasóleo", "qty": round(litres, 1), "unit": "L", "pu": fuel, "total": round(litres * fuel, 2),
+                 {"item": X["fuel"].format(truck["name"]), "qty": round(litres, 1), "unit": "L", "pu": fuel, "total": round(litres * fuel, 2),
                   "origin": P.get("origin", "")}]
     dig = res.get("giratoria")
     if dig and float(P.get("digger_days_pct") or 0) > 0:
         d_ = max(1, round(days * float(P["digger_days_pct"]) / 100))
-        site.append({"item": f"{dig['name']} — terraplenagens", "qty": d_, "unit": "dia", "pu": dig["cost"], "total": round(d_ * dig["cost"], 2),
+        site.append({"item": X["dig"].format(dig["name"]), "qty": d_, "unit": X["day"], "pu": dig["cost"], "total": round(d_ * dig["cost"], 2),
                      "origin": dig.get("origin", "")})
     for mid, n in (P.get("machines") or {}).items():
         m = res.get(mid)
         if not m:
             continue
         d_ = days * float(n)
-        site.append({"item": f"{m['name']}", "qty": d_, "unit": m.get("unit", "dia"), "pu": m["cost"], "total": round(d_ * m["cost"], 2),
+        site.append({"item": f"{m['name']}", "qty": d_, "unit": {"dia": X["day"], "h": "h", "km": "km", "mes": X["month"]}.get(m.get("unit"), X["day"]), "pu": m["cost"], "total": round(d_ * m["cost"], 2),
                      "origin": m.get("origin", "")})
     site_total = sum(x["total"] for x in site)
     overhead = (direct + site_total) * float(P.get("overhead_pct") or 0) / 100
@@ -229,9 +252,8 @@ def compute(doc: dict, company: dict, purchase: list[dict] | None = None, countr
         s2 = sale * (1 + ds)
         return {"label": label, "cost": round(c2, 2), "sale": round(s2, 2), "margin": round(s2 - c2, 2),
                 "margin_pct": round((s2 - c2) / s2 * 100, 1) if s2 else 0.0}
-    base_check = scen("Base")
-    scenarios = [base_check, scen("Materiais +10 %", dm=0.10), scen("Mão de obra +10 %", dl=0.10), scen("Gasóleo +20 %", df=0.20),
-                 scen("Desconto comercial −5 %", ds=-0.05)]
+    base_check = scen(X["base"])
+    scenarios = [base_check, scen(X["s_mat"], dm=0.10), scen(X["s_lab"], dl=0.10), scen(X["s_fuel"], df=0.20), scen(X["s_disc"], ds=-0.05)]
     # planeamento: capítulos em sequência com sobreposição de 20 %, duração proporcional ao custo direto
     plan, t0 = [], 0.0
     for lt in lots_out:
@@ -241,15 +263,12 @@ def compute(doc: dict, company: dict, purchase: list[dict] | None = None, countr
     total_days = max((p["start"] + p["days"] for p in plan), default=days)
     hyps = []
     if hyp_lines:
-        hyps.append(f"{hyp_lines} linha(s) sem preço de compra: custo estimado pela margem-alvo de {tm * 100:.0f} % — "
-                    "introduza os preços de compra na biblioteca de compra.")
+        hyps.append(X["h_lines"].format(hyp_lines, tm * 100))
     if any(r.get("origin") == "hipotese" for r in company["resources"]):
-        hyps.append("Custos horários, veículos e máquinas por defeito (hipótese): substitua-os pelos custos reais da empresa.")
+        hyps.append(X["h_res"])
     if P.get("origin") == "hipotese":
-        hyps.append(f"Parâmetros por defeito: gasóleo {fuel:.2f} €/L, {km:.0f} km/dia, {hpd:.0f} h/dia, custos de estrutura "
-                    f"{float(P.get('overhead_pct') or 0):.0f} %, mão de obra = {float(P.get('labour_share_pct') or 40):.0f} % dos custos diretos.")
-    hyps.append(f"Equipa no local: " + ", ".join(f"{n:g} × {res[k]['name']}" for k, n in team.items())
-                + f" → {days} dias úteis ({weeks:.1f} semanas).")
+        hyps.append(X["h_par"].format(fuel, km, hpd, float(P.get('overhead_pct') or 0), float(P.get('labour_share_pct') or 40)))
+    hyps.append(X["h_team"].format(", ".join(f"{n:g} × {res[k]['name']}" for k, n in team.items()), days, weeks))
     return {"title": doc.get("title") or "", "client": (doc.get("client") or {}).get("name") or doc.get("client_name") or "",
             "number": doc.get("number") or "", "sale": round(sale, 2), "direct": round(direct, 2), "site": site,
             "site_total": round(site_total, 2), "overhead": round(overhead, 2), "overhead_pct": float(P.get("overhead_pct") or 0),

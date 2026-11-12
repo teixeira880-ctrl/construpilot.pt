@@ -58,3 +58,10 @@ def test_route_uses_saved_resources(monkeypatch):
         return await C.economic_dossier("d1", format="json", user={"user_id": "u1"})
     r = asyncio.run(run())
     assert r["params"]["fuel_price_l"] == 1.5 and next(l for l in r["lines"] if l["designation"] == "Parede tijolo 15")["cu"] == 30
+
+
+def test_french_company_gets_french_texts():
+    r = E.compute({"lines": LINES}, E.merge(None, "FR"), [], "FR")
+    assert next(l for l in r["lines"] if l["designation"] == "Cerâmico 60x60")["origin"].startswith("HYPOTHÈSE")
+    assert any("gazole" in x["item"] for x in r["site"]) and all(x["unit"] != "dia" for x in r["site"])
+    assert r["scenarios"][2]["label"] == "Main-d'œuvre +10 %" and any("Équipe sur site" in h for h in r["hypotheses"])
