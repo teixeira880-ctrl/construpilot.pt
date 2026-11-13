@@ -144,6 +144,8 @@ class BuildingModel:
     footings: list[Footing] = field(default_factory=list)
     spaces: list[Space] = field(default_factory=list)
     warnings: list[dict] = field(default_factory=list)
+    ifc_guids: bool = False      # True: source_id já é o GlobalId do IFC de origem
+    origin: tuple = (0.0, 0.0)   # deslocamento aplicado às coordenadas do IFC importado (m)
 
     def counts(self) -> dict:
         return {"walls": len(self.walls), "openings": len(self.openings), "slabs": len(self.slabs),

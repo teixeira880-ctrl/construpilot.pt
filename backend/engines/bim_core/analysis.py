@@ -278,9 +278,9 @@ def build_frame(model: BuildingModel, loads: dict | None = None) -> dict:
 # ---------------------------------------------------------------- solver + verificações
 
 def analyze(model: BuildingModel, loads: dict | None = None) -> dict:
-    from Pynite import FEModel3D  # noqa: PLC0415
+    from Pynite import FEModel3D
 
-    from engines.structuro_ec2 import design_section  # noqa: PLC0415
+    from engines.structuro_ec2 import design_section
 
     fr = build_frame(model, loads)
     p = fr["params"]
@@ -315,11 +315,10 @@ def analyze(model: BuildingModel, loads: dict | None = None) -> dict:
     fe.add_load_combo("QP", {"G": 1.0, "Q": p["psi2"]})
     try:
         fe.analyze_linear(check_stability=True)
-    except Exception as e:  # noqa: BLE001 — mecanismo / matriz singular
+    except Exception as e:
         raise AnalysisError(f"Pórtico instável (verifique apoios e ligações): {e}") from e
 
     fcd = p["fck"] / 1.5
-    fyd = p["fyk"] / 1.15
     lt = 1 + p["creep_phi"]
     key = (model.plan_id or "plan", model.page_index)
     beams: dict[str, dict] = {}
@@ -336,7 +335,7 @@ def analyze(model: BuildingModel, loads: dict | None = None) -> dict:
             v = float(max(abs(mem.max_shear("Fy", "ELU")), abs(mem.min_shear("Fy", "ELU"))))
             defl = float(max(abs(mem.rel_deflection("dy", x, "QP")) for x in xs)) * lt
             r = beams.setdefault(m["source_id"], {
-                "guid": stable_guid(*key, "IfcBeam", m["source_id"]), "source_id": m["source_id"],
+                "guid": _guid(model, key, "IfcBeam", m["source_id"]), "source_id": m["source_id"],
                 "b_m": m["b"], "h_m": m["h"], **fr["beam_meta"].get(m["source_id"], {}),
                 "spans_m": [], "m_span_knm": 0.0, "m_support_knm": 0.0, "v_knm": 0.0,
                 "deflection_mm": 0.0, "deflection_limit_mm": 0.0, "deflection_ratio": 0.0})
@@ -350,19 +349,9 @@ def analyze(model: BuildingModel, loads: dict | None = None) -> dict:
                 r["deflection_mm"], r["deflection_limit_mm"], r["deflection_ratio"] = defl * 1000, lim * 1000, ratio
         else:
             n_ed = float(max(abs(mem.max_axial("ELU")), abs(mem.min_axial("ELU"))))
-            ac = m["b"] * m["h"]
-            as_min = max(0.10 * n_ed / (fyd * 1000), 0.002 * ac)       # m²
-            n_rd = (0.85 * ac * fcd + as_min * fyd) * 1000             # kN (fcd e fyd em MPa → kN/m² × 1000)
-            i_min = m["b"] / math.sqrt(12)
-            lam = fr["height_m"] / i_min
-            util = n_ed / n_rd if n_rd > 0 else 0.0
-            col = {"guid": stable_guid(*key, "IfcColumn", m["source_id"]), "source_id": m["source_id"],
-                   "b_m": m["b"], "h_m": m["h"], "n_ed_kn": round(n_ed, 2), "n_rd_kn": round(n_rd, 1),
-                   "as_min_cm2": round(as_min * 1e4, 2), "slenderness": round(lam, 1),
-                   "utilization": round(util, 3), "warnings": []}
-            if lam > 25:
-                col["warnings"].append("Esbelteza > 25: verificar efeitos de 2.ª ordem (EN 1992-1-1 §5.8).")
-            col["status"] = _status(util)
+            col = {"guid": _guid(model, key, "IfcColumn", m["source_id"]), "source_id": m["source_id"],
+                   "b_m": m["b"], "h_m": m["h"], "height_m": fr["height_m"]}
+            col.update(check_column(n_ed, m["b"], m["h"], fr["height_m"], p))
             columns.append(col)
 
     out_beams = []
@@ -397,6 +386,26 @@ def analyze(model: BuildingModel, loads: dict | None = None) -> dict:
             "columns": sorted(columns, key=lambda c: -c["utilization"]),
             "max_utilization": round(worst, 3), "status": _status(worst),
             "warnings": fr["warnings"], "execution_ready": False}
+
+
+def check_column(n_ed: float, b: float, h: float, height: float, p: dict) -> dict:
+    """Pilar à compressão centrada (EN 1992-1-1): armadura mínima §9.5.2, N_Rd, esbelteza assinalada acima de 25."""
+    fcd, fyd = p["fck"] / 1.5, p["fyk"] / 1.15
+    ac = b * h
+    as_min = max(0.10 * n_ed / (fyd * 1000), 0.002 * ac)       # m²
+    n_rd = (0.85 * ac * fcd + as_min * fyd) * 1000             # kN (fcd e fyd em MPa → kN/m² × 1000)
+    lam = height / (min(b, h) / math.sqrt(12))
+    util = n_ed / n_rd if n_rd > 0 else 0.0
+    out = {"n_ed_kn": round(n_ed, 2), "n_rd_kn": round(n_rd, 1), "as_min_cm2": round(as_min * 1e4, 2),
+           "slenderness": round(lam, 1), "utilization": round(util, 3), "status": _status(util), "warnings": []}
+    if lam > 25:
+        out["warnings"].append("Esbelteza > 25: verificar efeitos de 2.ª ordem (EN 1992-1-1 §5.8).")
+    return out
+
+
+def _guid(model: BuildingModel, key, ifc_class: str, source_id: str) -> str:
+    """GlobalId do elemento: o do IFC importado, ou o GUID estável do IFC gerado pelo ConstruPilot."""
+    return source_id if model.ifc_guids else stable_guid(*key, ifc_class, source_id)
 
 
 def _status(u: float) -> str:

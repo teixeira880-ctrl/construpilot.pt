@@ -24,3 +24,21 @@ EN 1991-1-1 por faixas de influência, combinações EN 1990 (ELU, ELS quase-per
 dimensionamento das vigas com `engines.structuro_ec2.design_section` (EN 1992-1-1) e flecha a longo prazo (L/250).
 Resultados por GlobalId → cores no visualizador. Só cargas verticais; `execution_ready` sempre False.
 Rota: `GET /api/bim/takeoffs/{plan_id}/{page}/analysis`.
+
+## IFC externos (`ifc_reader.py`)
+
+`POST /api/bim/ifc/analysis` recebe um IFC de qualquer programa (Revit, Archicad, Tekla, Allplan…), lê-o em memória
+(não é guardado) e devolve o pré-dimensionamento de um piso com os **GlobalId do próprio ficheiro**, para colorir
+o modelo no visualizador. No `/bim`, "Abrir IFC" seguido de "Calcular estrutura" usa esta rota; o piso escolhe-se
+no painel.
+
+- Geometria lida em coordenadas do mundo (IfcOpenShell), em metros, qualquer que seja a unidade do ficheiro;
+  edifícios rodados e georreferenciados são deslocados para perto de (0, 0).
+- Paredes, pilares e vigas: retângulo de área mínima em planta; lajes: união das faces projetadas (Shapely).
+- Piso *i*: paredes/pilares com o centro entre a cota do piso e a do seguinte; vigas e lajes com o topo à cota do
+  piso seguinte (teto). Sem laje no teto, a laje do pavimento é usada como laje tipo (aviso `slab_from_floor`).
+- Paredes resistentes: `Pset_WallCommon.LoadBearing`; sem a propriedade, espessura ≥ 15 cm.
+- Pilares: o N_Ed dos pilares empilhados dos pisos de cima (± 30 cm em planta) é somado; um pilar sem pilar por
+  baixo é assinalado (`column_transfer`).
+- Limites: pilares que atravessam vários pisos num só elemento contam só no piso do seu centro; cargas de paredes
+  dos pisos de cima sobre vigas não são transmitidas.
