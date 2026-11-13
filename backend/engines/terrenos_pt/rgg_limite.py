@@ -70,10 +70,16 @@ def candidatos_gpkg(caminho: str, x: float, y: float, raio_m: float = 0.0) -> Li
             (x + raio_m, x - raio_m, y + raio_m, y - raio_m)).fetchall()
     finally:
         con.close()
+    return filtrar([(f, _wkb_de_gpkg(blob)) for f, blob in rows], x, y, raio_m)
+
+
+def filtrar(itens, x: float, y: float, raio_m: float = 0.0) -> List[Dict[str, Any]]:
+    """Dos pares (fid, WKB), os polígonos que contêm o ponto (sem duplicados), do mais pequeno para o maior."""
+    from shapely import wkb
+    from shapely.geometry import Point
     p = Point(x, y)
     out, vistos = [], set()
-    for f, blob in rows:
-        w = _wkb_de_gpkg(blob)
+    for f, w in itens:
         if not w:
             continue
         try:
@@ -119,6 +125,26 @@ async def limite_no_ponto(lat: float, lon: float) -> Dict[str, Any]:
                           FONTE_GPKG, "https://dados.gov.pt/pt/datasets/representacao-grafica-georreferenciada/", nota)
         if erro:
             return G._res(False, nota=f"GeoPackage das RGG ilegível ({erro})")
+    # mosaicos no armazenamento de objetos (Tigris), publicados por scripts/bupi_rgg_mosaicos.py
+    from . import rgg_mosaicos as MO
+    if MO.configurado():
+        x, y = GM.tm06(lat, lon)
+        try:
+            itens = await asyncio.wait_for(asyncio.to_thread(MO.poligonos_no_mosaico, x, y), timeout=30)
+        except Exception as e:  # noqa: BLE001
+            itens, gp_erro = None, type(e).__name__
+        else:
+            gp_erro = None
+        if itens:
+            cand = filtrar([(f, w) for f, _a, w in itens], x, y)
+            if cand:
+                m = cand[0]
+                nota = (f"O ponto cai em {len(cand)} RGG diferentes (sobreposição no BUPi): usada a mais pequena "
+                        f"({m['area_m2']:.0f} m²). Confirme qual é o seu prédio.") if len(cand) > 1 else None
+                ver = (MO.manifesto() or {}).get("data")
+                return G._res(True, {"anel_latlon": _anel_latlon(m["geom"]), "area_m2": m["area_m2"], "fid": m["fid"],
+                                     "sobreposicoes": len(cand) - 1, "origem": "mosaicos", "versao_dados": ver},
+                              FONTE_GPKG, "https://dados.gov.pt/pt/datasets/representacao-grafica-georreferenciada/", nota)
     # recurso: geometria no GetFeatureInfo do WMS, se o serviço a devolver
     r = await B.rgg_no_ponto(lat, lon)
     if r.get("ok"):

@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import math
+import sys
 import os
 import zipfile
 
@@ -615,3 +616,91 @@ def test_script_cria_indice_no_geopackage_sem_rtree(tmp_path):
     con.close()
     from engines.terrenos_pt import rgg_limite as RL
     assert RL.candidatos_gpkg(gp, x0 + 10, y0 + 10)[0]["area_m2"] == pytest.approx(900, abs=0.5)
+
+
+# ------------------------------------------------------------------ RGG em mosaicos no Tigris (sem disco no servidor)
+class _S3Falso:
+    def __init__(self):
+        self.obj = {}
+
+    def put_object(self, Bucket, Key, Body, ContentType=None):
+        self.obj[(Bucket, Key)] = Body
+
+    def get_object(self, Bucket, Key):
+        if (Bucket, Key) not in self.obj:
+            raise KeyError("NoSuchKey")
+
+        class B:
+            def __init__(s, b):
+                s.b = b
+
+            def read(s):
+                return s.b
+        return {"Body": B(self.obj[(Bucket, Key)])}
+
+    def list_objects_v2(self, **k):
+        return {"KeyCount": 0}
+
+
+def test_mosaicos_rgg_publicar_e_ler(tmp_path, monkeypatch):
+    import importlib.util
+    from engines.terrenos_pt import rgg_limite as RL
+    from engines.terrenos_pt import rgg_mosaicos as MO
+    s3 = _S3Falso()
+    monkeypatch.setenv("TIGRIS_BUCKET", "cp-teste")
+    monkeypatch.setenv("BUPI_RGG_GPKG", "/nao/existe.gpkg")
+    monkeypatch.setattr(MO, "cliente", lambda: s3)
+    MO._RAM.clear()
+    MO._MANIFESTO.update(t=0.0, m=None)
+    # codificação ida e volta
+    itens = [(1, 10.5, b"\x01\x02"), (2, 0.0, b"")]
+    assert MO.descodificar(MO.codificar(itens)) == [(1, 10.5, b"\x01\x02"), (2, 0.0, b"")]
+    # GeoPackage sintético com um prédio a atravessar a fronteira entre dois mosaicos de 2 km
+    x0, y0 = GM.tm06(LAT, LON)
+    bx = math.floor(x0 / 2000) * 2000 + 2000          # fronteira de mosaico a leste do ponto
+    pred = [(bx - 30, y0 - 20), (bx + 30, y0 - 20), (bx + 30, y0 + 20), (bx - 30, y0 + 20)]
+    gp = str(tmp_path / "rgg.gpkg")
+    _gpkg(gp, [pred, pred])                            # duplicado
+    spec = importlib.util.spec_from_file_location("bupi_mos", os.path.join(os.path.dirname(__file__), "..", "scripts", "bupi_rgg_mosaicos.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    monkeypatch.setattr(mod.DL, "recursos", lambda: [{"titulo": "rgg", "formato": "gpkg.zip", "url": "x", "tamanho": 1,
+                                                      "atualizado": "2026-11-01T00:00:00"}])
+    monkeypatch.setattr(sys, "argv", ["x", "--gpkg", gp])
+    assert mod.main() == 0
+    assert os.path.exists(gp)                          # GeoPackage dado pelo utilizador nunca é apagado
+    keys = sorted(k for _, k in s3.obj)
+    assert "bupi/rgg/atual.json" in keys and sum(k.endswith(".bin.gz") for k in keys) == 2   # o prédio entra nos 2 mosaicos
+    man = json.loads(s3.obj[("cp-teste", "bupi/rgg/atual.json")])
+    assert man["versao"] == "2026-11-01" and man["mosaicos"] == 2
+    # leitura pelo backend dos dois lados da fronteira
+    for dx in (-10, 10):
+        la, lo = GM.tm06_inv(bx + dx, y0)
+        r = asyncio.run(RL.limite_no_ponto(la, lo))
+        assert r["ok"] and r["data"]["origem"] == "mosaicos", r
+        assert r["data"]["area_m2"] == pytest.approx(2400, abs=0.5) and r["data"]["sobreposicoes"] == 0
+        assert r["data"]["versao_dados"] == "2026-11-01"
+    # ponto sem prédio: sem resultado, sem erro
+    la, lo = GM.tm06_inv(bx + 500, y0 + 500)
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        return 200, {"type": "FeatureCollection", "features": []}
+    G.set_transport(t)
+    assert asyncio.run(RL.limite_no_ponto(la, lo))["ok"] is False
+
+
+def test_mosaicos_sem_manifesto_cai_para_wms(monkeypatch):
+    from engines.terrenos_pt import rgg_limite as RL
+    from engines.terrenos_pt import rgg_mosaicos as MO
+    s3 = _S3Falso()
+    monkeypatch.setenv("TIGRIS_BUCKET", "cp-teste")
+    monkeypatch.setenv("BUPI_RGG_GPKG", "/nao/existe.gpkg")
+    monkeypatch.setattr(MO, "cliente", lambda: s3)
+    MO._RAM.clear()
+    MO._MANIFESTO.update(t=0.0, m=None)
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        return 200, {"type": "FeatureCollection", "features": []}
+    G.set_transport(t)
+    r = asyncio.run(RL.limite_no_ponto(LAT, LON))
+    assert r["ok"] is False
