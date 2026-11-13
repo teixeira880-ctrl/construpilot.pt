@@ -150,7 +150,8 @@ class DwgRegressions(unittest.IsolatedAsyncioTestCase):
         fail=types.SimpleNamespace(status_code=500,is_success=False)
         client=types.SimpleNamespace(post=AsyncMock(side_effect=[create,fail]),delete=AsyncMock())
         cm=AsyncMock();cm.__aenter__.return_value=client
-        with patch.dict(os.environ,{'ODA_FILE_CONVERTER':'','CLOUDCONVERT_API_KEY':'test-only','APS_DWG_ENABLED':'false'}),patch.object(dwg_convert.httpx,'AsyncClient',return_value=cm):
+        from engines import dwg_local
+        with patch.dict(os.environ,{'ODA_FILE_CONVERTER':'','CLOUDCONVERT_API_KEY':'test-only','APS_DWG_ENABLED':'false'}),patch.object(dwg_convert.httpx,'AsyncClient',return_value=cm),patch.object(dwg_local,'available',return_value=False):
             with self.assertRaises(RuntimeError):await dwg_convert.dwg_to_dxf(b'AC1032synthetic')
         client.delete.assert_awaited_once()
 
@@ -173,6 +174,8 @@ def test_invalid_oda_path_falls_through_to_autodesk(monkeypatch):
     monkeypatch.setenv("ODA_FILE_CONVERTER", "/opt/nao/existe/ODAFileConverter")
     monkeypatch.setenv("APS_DWG_ENABLED", "true")
     monkeypatch.setenv("APS_ACTIVITY_QUALIFIED", "x.y+z")
+    from engines import dwg_local
+    monkeypatch.setattr(dwg_local, "available", lambda: False)     # sem LibreDWG local: vai para a Autodesk
     calls = []
 
     async def convert(data, user_id=None):

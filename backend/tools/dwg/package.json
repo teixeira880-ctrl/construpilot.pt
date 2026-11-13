@@ -1,0 +1,9 @@
+{
+  "name": "construpilot-dwg-reader",
+  "private": true,
+  "type": "module",
+  "description": "Lecture DWG côté serveur (LibreDWG en WebAssembly, GPL-3.0, exécuté en processus séparé, jamais servi au navigateur).",
+  "dependencies": {
+    "@mlightcad/libredwg-web": "0.8.1"
+  }
+}

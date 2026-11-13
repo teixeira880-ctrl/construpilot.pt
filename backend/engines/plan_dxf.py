@@ -310,6 +310,39 @@ def _extract_dimensions(msp, to_px, unit_to_m, diagnostics=None):
     return out
 
 
+def _focus_by_density(doc, bounds, diagnostics=None):
+    """Sem cotas: um bloco perdido a quilómetros (ex.: seta/vista inserida longe, 13/11 implantação de Valpaços) espremia a
+    planta num ponto. Foco na zona onde está a maioria dos objetos (centros entre os percentis 5 e 95), se a extensão total
+    for mais de 20× maior. Registado nos diagnósticos."""
+    try:
+        from ezdxf import bbox as _bb
+        cs = []
+        for e in doc.modelspace():
+            try:
+                b = _bb.extents([e], fast=True)
+            except Exception:  # noqa: BLE001
+                continue
+            if b.has_data:
+                cs.append(((b.extmin.x + b.extmax.x) / 2, (b.extmin.y + b.extmax.y) / 2))
+        if len(cs) < 10:
+            return bounds
+        xs, ys = sorted(c[0] for c in cs), sorted(c[1] for c in cs)
+        lo, hi = int(len(xs) * 0.05), max(int(len(xs) * 0.95), int(len(xs) * 0.05) + 1) - 1
+        min_x, max_x, min_y, max_y = xs[lo], xs[hi], ys[lo], ys[hi]
+        span = max(max_x - min_x, max_y - min_y, 1e-6)
+        full_x, full_y = max(bounds[2] - bounds[0], 1e-9), max(bounds[3] - bounds[1], 1e-9)
+        if full_x * full_y <= 20 * (span * span):
+            return bounds
+        m = 0.25 * span
+        focus = (min_x - m, min_y - m, max_x + m, max_y + m)
+        if diagnostics is not None:
+            diagnostics.append({"code": "EXTENTS_FOCUSED_ON_DENSITY", "full_extents": [round(v, 3) for v in bounds],
+                                "focus": [round(v, 3) for v in focus]})
+        return focus
+    except Exception:  # noqa: BLE001
+        return bounds
+
+
 def _focus_bounds(doc, bounds, diagnostics=None):
     """Stray far-away entities must not squeeze the drawing: when the dimensions occupy a small part of the full
     extents, the render focuses on the dimensioned drawing (+15 %). Recorded in diagnostics, never silent."""
@@ -320,7 +353,7 @@ def _focus_bounds(doc, bounds, diagnostics=None):
             if p is not None:
                 pts.append((p.x, p.y))
     if len(pts) < 8:
-        return bounds
+        return _focus_by_density(doc, bounds, diagnostics)
     xs, ys = sorted(p[0] for p in pts), sorted(p[1] for p in pts)
     lo, hi = int(len(xs) * 0.01), max(int(len(xs) * 0.99), int(len(xs) * 0.01) + 1)
     min_x, max_x, min_y, max_y = xs[lo], xs[hi - 1], ys[lo], ys[hi - 1]
@@ -361,7 +394,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
         return ((x-mapping["offset_x"])*ratio, mapping["height"]-(y-mapping["offset_y"])*ratio)
     vectors=[]; text_blocks=[]; capped=False
     for entity in entities:
-        if len(vectors)<1500000:
+        if len(vectors)<300000:
             vectors.extend(entity_vectors(entity,to_px,max(.0005/unit_to_m,1e-8)))
         elif not capped:
             # 13/11: implantação com topografia (milhões de primitivas) — antes recusada; a prancha e o texto são conservados,
