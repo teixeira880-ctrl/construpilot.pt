@@ -121,3 +121,4 @@ frontend/node_modules/.cache/default-development/16.pack
 
 # MDT Portugal — folhas LiDAR da DGT em cache
 backend/data/mdt_cache/
+backend/data/bupi/

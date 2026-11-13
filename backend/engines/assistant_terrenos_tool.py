@@ -26,13 +26,13 @@ TERRENOS_TOOLS = [
         "RAN, REN, domínio hídrico, linhas de água e outras servidões em m² e % (SRUP da DGT), prédios do cadastro, RGG já "
         "submetidas no BUPi, declives (MDT LiDAR da DGT ou Copernicus) e alertas. Usar sempre que perguntarem «posso construir "
         "aqui?», pelo PDM, RAN, REN, condicionantes de um terreno, ou antes de um licenciamento. Dar terreno_id (terreno gravado) "
-        "OU lat/lon (usa o limite do cadastro nesse ponto; se não houver cadastro, um quadrado com area_m2, por omissão 500 m²).",
+        "OU lat/lon (usa o limite do cadastro nesse ponto, senão o da RGG do BUPi; se não houver nenhum, um quadrado com area_m2, por omissão 500 m²).",
         {"terreno_id": N("string"), "lat": N("number"), "lon": N("number"), "area_m2": N("number")},
     ),
     function(
         "terreno_gravar",
         "Grava um terreno na página Terrenos do utilizador: com anel_latlon (vértices [[lat, lon], …] por ordem) ou com lat/lon "
-        "(usa o limite oficial do cadastro nesse ponto). Devolve terreno_id, área e perímetro medidos em PT-TM06.",
+        "(usa o limite oficial do cadastro nesse ponto, senão o da RGG do BUPi). Devolve terreno_id, área e perímetro medidos em PT-TM06.",
         {"nome": N("string"), "lat": N("number"), "lon": N("number"),
          "anel_latlon": {"type": ["array", "null"], "items": {"type": "array", "items": {"type": "number"}}},
          "artigo_matricial": N("string")},
@@ -74,6 +74,14 @@ async def _anel_no_ponto(lat: float, lon: float, area_m2: Optional[float]) -> Di
     if cad.get("ok") and len((cad.get("data") or {}).get("anel_lonlat") or []) >= 4:
         return {"anel": [[p[1], p[0]] for p in cad["data"]["anel_lonlat"]], "origem": "cadastro",
                 "nota": "Limite do prédio da Carta Cadastral (DGT)."}
+    try:
+        from engines.terrenos_pt import rgg_limite as RL
+        rl = await asyncio.wait_for(RL.limite_no_ponto(lat, lon), timeout=30)
+    except Exception:  # noqa: BLE001
+        rl = {"ok": False}
+    if rl.get("ok"):
+        return {"anel": rl["data"]["anel_latlon"], "origem": "rgg",
+                "nota": "Limite da RGG do BUPi (declarado pelo proprietário, não é cadastro)." + (" " + rl["nota"] if rl.get("nota") else "")}
     return {"anel": _quadrado(lat, lon, area_m2 or 500.0), "origem": "hipotese",
             "nota": f"Sem cadastro geométrico neste ponto: analisado um quadrado de {round(area_m2 or 500)} m² centrado no ponto. "
                     "Desenhe o terreno em /terrenos para a análise exata."}
@@ -132,10 +140,10 @@ async def run_terrenos_tool(name: str, args: Dict[str, Any], user: Dict[str, Any
                 if "lat" not in args or "lon" not in args:
                     return {"ok": False, "error": "Indique os vértices (anel_latlon) ou um ponto (lat, lon)."}
                 r = await _anel_no_ponto(float(args["lat"]), float(args["lon"]), None)
-                if r["origem"] != "cadastro":
-                    return {"ok": False, "error": "Não há cadastro geométrico neste ponto: desenhe o terreno em /terrenos.",
+                if r["origem"] not in ("cadastro", "rgg"):
+                    return {"ok": False, "error": "Não há cadastro geométrico nem RGG do BUPi neste ponto: desenhe o terreno em /terrenos.",
                             "pagina": "/terrenos"}
-                anel, origem, nota = r["anel"], "cadastro", r["nota"]
+                anel, origem, nota = r["anel"], r["origem"], r["nota"]
             m = GM.medir(anel)
             now = _now()
             doc = {"terreno_id": uuid.uuid4().hex[:16], "user_id": uid, "nome": (args.get("nome") or "").strip()[:120] or "Terreno",

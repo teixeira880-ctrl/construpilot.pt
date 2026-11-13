@@ -145,6 +145,7 @@ export default function Terrenos() {
       setConsulta({ ...data, latlon: [ll.lat, ll.lng] });
       const g = grupos.current;
       g.extra.clearLayers();
+      if (data.rgg_limite?.anel_latlon?.length) L.polygon(data.rgg_limite.anel_latlon, { color: "#f59e0b", weight: 2, fillOpacity: 0.1, interactive: false }).addTo(g.extra);
       if (data.cadastro?.anel_latlon?.length) L.polygon(data.cadastro.anel_latlon, { color: COR.cad, weight: 2, dashArray: "4 4", fillOpacity: 0.08, interactive: false }).addTo(g.extra);
       L.circleMarker([ll.lat, ll.lng], { radius: 5, color: "#fff", fillColor: COR.cad, fillOpacity: 1 }).addTo(g.extra);
     } catch (e) {
@@ -232,6 +233,13 @@ export default function Terrenos() {
   const usarImportado = (p) => {
     pararGps(); setSel(null); setPts(p.anel_latlon); setNome(p.nome || ""); setOrigem("importacao"); setMudou(true); setImportados(null); setModo("ver");
     enquadrar(p.anel_latlon); setMsg({ t: "info", x: "Polígono importado. Confirme os limites no ortofotomapa e grave." });
+  };
+  const usarRgg = () => {
+    const r = consulta?.rgg_limite; if (!r?.anel_latlon) return;
+    pararGps(); setSel(null); setPts(r.anel_latlon); setOrigem("rgg"); setMudou(true); setModo("ver");
+    if (!nome) setNome("Prédio (RGG do BUPi)");
+    grupos.current?.extra.clearLayers(); enquadrar(r.anel_latlon);
+    setMsg({ t: "info", x: "Limite da RGG do BUPi: é o desenho declarado pelo proprietário, não é cadastro. Confirme as estremas e grave." + (r.nota ? " " + r.nota : "") });
   };
   const usarCadastro = () => {
     const c = consulta?.cadastro; if (!c?.anel_latlon) return;
@@ -349,6 +357,12 @@ export default function Terrenos() {
                         <div key={r.id} className="rounded bg-amber-500/10 border border-amber-500/30 p-2 mt-1">
                           {Object.entries(r.atributos).slice(0, 8).map(([k, v]) => <div key={k} className="text-xs"><span className="text-muted-foreground">{k}:</span> {v}</div>)}
                         </div>)) : <p>Sem RGG submetida neste ponto{consulta.rgg.data.cobertura ? "" : " (região sem dados da eBUPi)"}.</p>}
+                    {consulta.rgg_limite && (
+                      <div className="mt-2">
+                        <div className="text-xs">Limite da RGG: {num(consulta.rgg_limite.area_m2, 0)} m²{consulta.rgg_limite.sobreposicoes > 0 ? ` · sobrepõe-se a ${consulta.rgg_limite.sobreposicoes} outra(s) RGG` : ""}</div>
+                        <Button size="sm" variant="outline" className="mt-1" onClick={usarRgg} data-testid="terrenos-usar-rgg">Usar o limite da RGG (BUPi)</Button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-muted-foreground">Carta Cadastral (DGT)</div>

@@ -173,10 +173,16 @@ async def ponto(lat: float, lon: float, user=Depends(current_user)) -> dict:
     from engines.urbanismo_pt.auto import geo as G
     if not (GM.PT_LAT[0] <= lat <= GM.PT_LAT[1] and GM.PT_LON[0] <= lon <= GM.PT_LON[1]):
         raise HTTPException(422, "Ponto fora de Portugal.")
-    rgg, cad = await asyncio.gather(B.rgg_no_ponto(lat, lon), G.cadastro(lat, lon))
+    from engines.terrenos_pt import rgg_limite as RL
+    rgg, cad, lim = await asyncio.gather(B.rgg_no_ponto(lat, lon), G.cadastro(lat, lon), RL.limite_no_ponto(lat, lon))
     cad_out = None
     if cad.get("ok"):
         ring = cad["data"]["anel_lonlat"]
         cad_out = {"anel_latlon": [[p[1], p[0]] for p in ring], "atributos": cad["data"]["props"], "fonte": cad["fonte"],
                    "url": cad["url"]}
-    return {"rgg": rgg, "cadastro": cad_out, "cadastro_nota": None if cad.get("ok") else cad.get("nota")}
+    rgg_lim = None
+    if lim.get("ok"):
+        rgg_lim = {"anel_latlon": lim["data"]["anel_latlon"], "area_m2": lim["data"]["area_m2"],
+                   "sobreposicoes": lim["data"]["sobreposicoes"], "fonte": lim["fonte"], "nota": lim.get("nota")}
+    return {"rgg": rgg, "rgg_limite": rgg_lim, "rgg_limite_nota": None if lim.get("ok") else lim.get("nota"),
+            "cadastro": cad_out, "cadastro_nota": None if cad.get("ok") else cad.get("nota")}

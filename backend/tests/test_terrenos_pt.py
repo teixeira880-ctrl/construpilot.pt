@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import math
+import os
 import zipfile
 
 import pytest
@@ -541,3 +542,76 @@ def test_licenciamento_terreno_sem_morada_com_caop_lenta():
     assert g["ok"] and g["data"]["precisao"] == "terreno"
     assert abs(g["data"]["lat"] - TU.LAT) < 1e-4 and abs(g["data"]["lon"] - TU.LON) < 1e-4
     assert g["data"]["concelho"] is None
+
+
+# ------------------------------------------------------------------ limite a partir das RGG do BUPi (GeoPackage)
+def _gpkg(caminho, poligonos_m, com_rtree=True):
+    """GeoPackage mínimo em EPSG:3763 com polígonos (listas de (x, y)), com ou sem índice R-tree."""
+    import sqlite3
+    import struct
+    from shapely.geometry import Polygon
+    con = sqlite3.connect(caminho)
+    con.execute("CREATE TABLE gpkg_geometry_columns (table_name TEXT, column_name TEXT, geometry_type_name TEXT, srs_id INT, z INT, m INT)")
+    con.execute("INSERT INTO gpkg_geometry_columns VALUES ('rgg','geom','MULTIPOLYGON',3763,0,0)")
+    con.execute("CREATE TABLE rgg (fid INTEGER PRIMARY KEY AUTOINCREMENT, geom BLOB, area REAL)")
+    if com_rtree:
+        con.execute("CREATE VIRTUAL TABLE rtree_rgg_geom USING rtree(id, minx, maxx, miny, maxy)")
+    for pts in poligonos_m:
+        g = Polygon(pts)
+        minx, miny, maxx, maxy = g.bounds
+        blob = b"GP" + bytes([0, 0b00000011]) + struct.pack("<i", 3763) + struct.pack("<4d", minx, maxx, miny, maxy) + g.wkb
+        cur = con.execute("INSERT INTO rgg (geom, area) VALUES (?, ?)", (blob, g.area))
+        if com_rtree:
+            con.execute("INSERT INTO rtree_rgg_geom VALUES (?,?,?,?,?)", (cur.lastrowid, minx, maxx, miny, maxy))
+    con.commit()
+    con.close()
+
+
+def test_rgg_limite_do_geopackage(tmp_path, monkeypatch):
+    from engines.terrenos_pt import rgg_limite as RL
+    x0, y0 = GM.tm06(LAT, LON)
+    grande = [(x0 - 50, y0 - 50), (x0 + 50, y0 - 50), (x0 + 50, y0 + 50), (x0 - 50, y0 + 50)]
+    pequeno = [(x0 - 10, y0 - 10), (x0 + 20, y0 - 10), (x0 + 20, y0 + 15), (x0 - 10, y0 + 15)]
+    longe = [(x0 + 500, y0), (x0 + 520, y0), (x0 + 520, y0 + 20), (x0 + 500, y0 + 20)]
+    gp = str(tmp_path / "rgg.gpkg")
+    _gpkg(gp, [grande, pequeno, pequeno, longe])           # «pequeno» duplicado, como no conjunto real
+    monkeypatch.setenv("BUPI_RGG_GPKG", gp)
+    r = asyncio.run(RL.limite_no_ponto(LAT, LON))
+    assert r["ok"] and r["data"]["origem"] == "gpkg"
+    assert r["data"]["area_m2"] == pytest.approx(750.0, abs=0.5)        # escolhe a mais pequena
+    assert r["data"]["sobreposicoes"] == 1                               # o duplicado não conta
+    assert "2 RGG" in r["nota"]
+    m = GM.medir(r["data"]["anel_latlon"])
+    assert abs(m["area_m2"] - 750) < 0.5
+
+
+def test_rgg_limite_sem_geopackage_nem_geometria_no_wms(monkeypatch):
+    from engines.terrenos_pt import rgg_limite as RL
+    monkeypatch.setenv("BUPI_RGG_GPKG", "/nao/existe.gpkg")
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        if "geo.bupi.gov.pt" in url:
+            return 200, {"type": "FeatureCollection", "features": [{"properties": {"N_PROCESSO": "1"}}]}
+        return 404, None
+
+    G.set_transport(t)
+    r = asyncio.run(RL.limite_no_ponto(LAT, LON))
+    assert r["ok"] is False and "não está instalado" in r["nota"]
+
+
+def test_script_cria_indice_no_geopackage_sem_rtree(tmp_path):
+    import importlib.util
+    import sqlite3
+    spec = importlib.util.spec_from_file_location("bupi_dl", os.path.join(os.path.dirname(__file__), "..", "scripts", "bupi_rgg_descarregar.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    x0, y0 = GM.tm06(LAT, LON)
+    gp = str(tmp_path / "sem_rtree.gpkg")
+    _gpkg(gp, [[(x0, y0), (x0 + 30, y0), (x0 + 30, y0 + 30), (x0, y0 + 30)]], com_rtree=False)
+    info = mod.verificar_e_indexar(gp)
+    assert info == {"tabela": "rgg", "geometria": "geom", "elementos": 1, "srs": 3763, "indice_criado": True}
+    con = sqlite3.connect(gp)
+    assert con.execute("SELECT COUNT(*) FROM rtree_rgg_geom").fetchone()[0] == 1
+    con.close()
+    from engines.terrenos_pt import rgg_limite as RL
+    assert RL.candidatos_gpkg(gp, x0 + 10, y0 + 10)[0]["area_m2"] == pytest.approx(900, abs=0.5)
