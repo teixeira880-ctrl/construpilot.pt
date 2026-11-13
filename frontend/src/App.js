@@ -102,6 +102,7 @@ const EstudioImagensLazy = lazy(() => import("@/pages/EstudioImagens"));
 const UrbanismoLazy = lazy(() => import("@/pages/Urbanismo"));
 const UrbanismoProcessoLazy = lazy(() => import("@/pages/UrbanismoProcesso"));
 const LicenciamentoAutoLazy = lazy(() => import("@/pages/LicenciamentoAuto"));
+const TerrenosLazy = lazy(() => import("@/pages/Terrenos"));
 const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
@@ -280,6 +281,7 @@ function AppRouter() {
       <Route path="/particulares/autorizacao-obras" element={<Shell><AutorizacaoObras /></Shell>} />
       <Route path="/licenciamento-automatico" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><LicenciamentoAutoLazy /></Suspense></Shell></Protected>} />
       <Route path="/licenciamento-automatico/:id" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><LicenciamentoAutoLazy /></Suspense></Shell></Protected>} />
+      <Route path="/terrenos" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><TerrenosLazy /></Suspense></Shell></Protected>} />
       <Route path="/subscrever/:token" element={<SubscrevePublic />} />
       <Route path="/radar" element={<Shell><RadarChantiers /></Shell>} />
       <Route path="/radar/courrier/retour" element={<Protected><Shell><PostalFeature><PostalPaymentReturn /></PostalFeature></Shell></Protected>} />
