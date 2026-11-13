@@ -137,9 +137,12 @@ class DwgRegressions(unittest.IsolatedAsyncioTestCase):
             convert.assert_not_called()
 
     async def test_local_converter_has_priority_and_no_external_fallback(self):
-        with patch.dict(os.environ,{'ODA_FILE_CONVERTER':'/configured/oda','CLOUDCONVERT_API_KEY':'test-only'}), patch.object(dwg_convert,'_local_dwg_to_dxf',side_effect=RuntimeError('local fail')), patch.object(dwg_convert.httpx,'AsyncClient') as client:
-            with self.assertRaisesRegex(RuntimeError,'local fail'):await dwg_convert.dwg_to_dxf(b'AC1032synthetic')
-            client.assert_not_called()
+        # ODA instalado (o ficheiro existe) e falha → erro, sem envio externo. Caminho ausente → ver test_invalid_oda_path_*.
+        with tempfile.TemporaryDirectory() as temp:
+            oda = Path(temp) / 'oda'; oda.touch()
+            with patch.dict(os.environ,{'ODA_FILE_CONVERTER':str(oda),'CLOUDCONVERT_API_KEY':'test-only'}), patch.object(dwg_convert,'_local_dwg_to_dxf',side_effect=RuntimeError('local fail')), patch.object(dwg_convert.httpx,'AsyncClient') as client:
+                with self.assertRaisesRegex(RuntimeError,'local fail'):await dwg_convert.dwg_to_dxf(b'AC1032synthetic')
+                client.assert_not_called()
 
     async def test_cloud_job_deleted_even_if_upload_fails(self):
         import types
@@ -159,3 +162,25 @@ class DwgRegressions(unittest.IsolatedAsyncioTestCase):
                 (Path(args[2])/'plan.dxf').write_bytes(b'0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n')
             with patch.dict(os.environ,{'ODA_FILE_CONVERTER':str(executable)}),patch('subprocess.run',side_effect=run):
                 self.assertIn(b'SECTION',await dwg_convert.dwg_to_dxf(b'AC1032synthetic'))
+
+
+def test_invalid_oda_path_falls_through_to_autodesk(monkeypatch):
+    """13/11: ODA_FILE_CONVERTER definido em produção mas programa ausente → o DWG vai para a Autodesk (APS), não é recusado."""
+    import asyncio
+    import sys
+    import types
+    from engines import dwg_convert
+    monkeypatch.setenv("ODA_FILE_CONVERTER", "/opt/nao/existe/ODAFileConverter")
+    monkeypatch.setenv("APS_DWG_ENABLED", "true")
+    monkeypatch.setenv("APS_ACTIVITY_QUALIFIED", "x.y+z")
+    calls = []
+
+    async def convert(data, user_id=None):
+        calls.append(len(data))
+        return b"0\nSECTION\n", {"provider": "autodesk"}
+    fake = types.ModuleType("engines.autodesk_dwg")
+    fake.convert = convert
+    monkeypatch.setitem(sys.modules, "engines.autodesk_dwg", fake)
+    assert dwg_convert.is_configured()
+    out = asyncio.run(dwg_convert.dwg_to_dxf(b"AC1018" + b"\0" * 100, "p.dwg"))
+    assert out.startswith(b"0\nSECTION") and calls == [106]

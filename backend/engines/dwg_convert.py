@@ -18,8 +18,19 @@ API_BASE = os.environ["CLOUDCONVERT_API_BASE"].rstrip("/")
 SYNC_BASE = os.environ["CLOUDCONVERT_SYNC_BASE"].rstrip("/")
 
 
+def _oda_ok() -> bool:
+    """ODA só conta se o caminho existir MESMO neste servidor (13/11: variável definida em produção, programa ausente →
+    «Caminho ODA_FILE_CONVERTER inválido» e nenhum DWG passava, mesmo com outro conversor disponível)."""
+    from pathlib import Path
+    p = os.environ.get("ODA_FILE_CONVERTER") or ""
+    try:
+        return bool(p) and Path(p).is_absolute() and Path(p).is_file()
+    except OSError:
+        return False
+
+
 def is_configured() -> bool:
-    return bool(os.environ.get("ODA_FILE_CONVERTER") or os.environ.get("CLOUDCONVERT_API_KEY") or
+    return bool(_oda_ok() or os.environ.get("CLOUDCONVERT_API_KEY") or
                 (os.environ.get("APS_DWG_ENABLED") == "true" and os.environ.get("APS_ACTIVITY_QUALIFIED")))
 
 
@@ -29,10 +40,12 @@ async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg", *, user_id=No
     import re
     if not re.match(rb"AC10[0-9]{2}",dwg_bytes[:6]):
         raise RuntimeError("O ficheiro não tem uma assinatura DWG AutoCAD reconhecida")
-    if os.environ.get("ODA_FILE_CONVERTER"):
+    if _oda_ok():
         output = await asyncio.to_thread(_local_dwg_to_dxf,dwg_bytes)
         if provenance is not None: provenance.update(provider="oda", status="converted")
         return output
+    if os.environ.get("ODA_FILE_CONVERTER"):
+        logger.warning("ODA_FILE_CONVERTER set but not an executable file on this server — ignored")
     if os.environ.get("APS_DWG_ENABLED") == "true":
         from engines.autodesk_client import AutodeskError
         from engines.autodesk_dwg import convert
