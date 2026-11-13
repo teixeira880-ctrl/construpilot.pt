@@ -1,7 +1,7 @@
 # Integração de `edificio_ba` no Assistente (construpilot.pt e construpilot.fr)
 
 Estudo completo de um **edifício multifamiliar em betão armado** (cave opcional + pisos, núcleos de escada/elevador) :
-estrutura (vigas e painéis gerados, sismo com proposta de paredes, modelo 3D OpenSees opcional, muros, fundações), 6 desenhos A3,
+estrutura (vigas e painéis gerados, sismo com proposta de paredes, modelo 3D por elementos finitos (PyNite), muros, fundações), 6 desenhos A3,
 memória de cálculo, medições, orçamento, quadro de quantidades, Excel com fórmulas e — em Portugal — térmica REH, pichelaria e
 eletricidade. Leitura IA das plantas reaproveitando `engines/bet_core/reader.py` ; tudo o resto é determinístico.
 
@@ -11,8 +11,9 @@ eletricidade. Leitura IA das plantas reaproveitando `engines/bet_core/reader.py`
 backend/engines/edificio_ba/**      (incluindo casos/exemplo_pt.json)
 backend/tests/edificio_ba/**
 ```
-Dependências : numpy, matplotlib, reportlab, openpyxl, PyMuPDF (já presentes). **Opcional** : `openseespy==3.8.0.0` (modelo 3D) ;
-sem ele o estudo usa o método das forças laterais e indica-o.
+Dependências : numpy, matplotlib, reportlab, openpyxl, PyMuPDF (já presentes). **Modelo 3D** : `PyNiteFEA` + `scipy` (licenças MIT/BSD) ;
+sem eles o estudo usa o método das forças laterais e indica-o. O OpenSeesPy deixou de ser usado : a licença da UC Berkeley
+não permite uso comercial sem acordo.
 
 ## 2. Patch de `backend/routes/assistant.py` (4 inserções, nada é apagado)
 
@@ -35,6 +36,6 @@ Livrables em `assistant_artifacts` (mesmo formato do bet_core), descarregados po
 ## 3. Verificação
 
 ```bash
-cd backend && python -m pytest -q tests/edificio_ba          # 16 testes, ≈ 45 s (o teste 3D é ignorado sem OpenSeesPy)
+cd backend && python -m pytest -q tests/edificio_ba          # 19 testes, ≈ 25 s (o teste 3D é ignorado sem PyNite)
 python -c "from engines.edificio_ba import assistant_tool as A; print(A.run_demo('/tmp/edif')['status'])"   # PRONTO, sem internet
 ```

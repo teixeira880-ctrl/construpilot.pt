@@ -120,12 +120,39 @@ def test_full_run_files(raw, tmp_path):
     assert res["summary"]["especialidades"]["classes"]
 
 
-@pytest.mark.skipif(not fem3d.available(), reason="OpenSeesPy não instalado")
+@pytest.mark.skipif(not fem3d.available(), reason="PyNite não instalado")
 def test_fem_model(S):
     R = pipeline.calcular(S, use_fem=True)
     fm = R["fem"]
     assert fm and 0.3 < fm["modes"][0]["T"] < 0.8
     assert sum(m["Mx"] for m in fm["modes"]) > 0.85 and sum(m["My"] for m in fm["modes"]) > 0.85
+
+
+# Valores do antigo modelo OpenSeesPy (ShellMITC4) no caso de exemplo, para garantir que o PyNite dá o mesmo edifício.
+OPENSEES_REF = {"T": [0.526, 0.479, 0.391], "Vb": {"X": 1255, "Y": 1120},
+                "M": {"NE": {"My": 9798, "Mx": 3642}, "W1": {"Mx": 4912}}, "V": {"NE": {"Vx": 1013}, "W1": {"Vy": 543}}}
+
+
+@pytest.mark.skipif(not fem3d.available(), reason="PyNite não instalado")
+def test_fem_matches_former_opensees_model(S):
+    R = pipeline.calcular(S, use_fem=False)
+    F = fem3d.run(S, R)
+    for t, ref in zip([m["T"] for m in F["modes"]], OPENSEES_REF["T"]):
+        assert t == pytest.approx(ref, rel=0.05)
+    for d in "XY":
+        assert F["sp"][d]["Vb"] == pytest.approx(OPENSEES_REF["Vb"][d], rel=0.06)
+    for group in ("M", "V"):
+        for el, comps in OPENSEES_REF[group].items():
+            for c, ref in comps.items():
+                assert F["env"][el][c] == pytest.approx(ref, rel=0.08), (el, c)
+    assert len(F["geo"]["lines"]) == F["n_el"]
+
+
+@pytest.mark.skipif(not fem3d.available(), reason="PyNite não instalado")
+def test_fem_report_figures(S, tmp_path):
+    R = pipeline.calcular(S, use_fem=True)
+    fem3d.figures(S, R["_F"], tmp_path / "m.png", tmp_path / "modes.png")
+    assert (tmp_path / "m.png").stat().st_size > 10000 and (tmp_path / "modes.png").stat().st_size > 10000
 
 
 def test_tool_schema():

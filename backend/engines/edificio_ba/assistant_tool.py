@@ -46,13 +46,13 @@ TOOLS = [
     {"type": "function", "name": "generate_multifamily_building_study", "strict": True,
      "description": _t(
          "ESTUDO COMPLETO DE UM EDIFÍCIO MULTIFAMILIAR em betão armado (cave opcional + pisos, núcleos de escada/elevador) a partir das plantas de "
-         "arquitetura em PDF : estrutura (lajes, vigas e pilares gerados, sismo com proposta de paredes, modelo 3D OpenSees quando disponível, muros de "
+         "arquitetura em PDF : estrutura (lajes, vigas e pilares gerados, sismo com proposta de paredes, modelo 3D por elementos finitos, muros de "
          "cave, sapatas e ensoleiramentos), 6 desenhos A3, memória de cálculo, mapa de medições, orçamento, quadro de quantidades (paredes, sapatas, lajes, "
          "janelas), Excel com fórmulas e estudos de térmica (REH), pichelaria e eletricidade. Leitura das plantas por IA e cálculos determinísticos. "
          "Tarefa de fundo (3 a 10 min) : devolve um job_id. demo = true corre o caso de exemplo sem documentos (funciona sem internet). "
          "Para moradias usa generate_full_bet_study.",
          "ÉTUDE COMPLÈTE D'UN IMMEUBLE DE LOGEMENTS en béton armé (sous-sol optionnel + niveaux, noyaux d'escalier/ascenseur) à partir des plans "
-         "d'architecte en PDF : structure (dalles, poutres et poteaux générés, séisme avec proposition de voiles, modèle 3D OpenSees si disponible, voiles "
+         "d'architecte en PDF : structure (dalles, poutres et poteaux générés, séisme avec proposition de voiles, modèle 3D aux éléments finis, voiles "
          "enterrés, semelles et radiers), 6 plans A3, note de calcul, métré, estimation, quantitatifs (murs, semelles, dalles, fenêtres) et Excel à "
          "formules. Lecture des plans par IA, calculs déterministes. Tâche de fond (3 à 10 min) : renvoie un job_id. demo = true lance le cas exemple "
          "sans documents (fonctionne hors ligne). Pour une maison individuelle, utiliser generate_full_bet_study."),
