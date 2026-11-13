@@ -10,7 +10,7 @@ Fontes (por ordem):
 - Classe de espaço do PDM: DGT OGC API «crus» (Carta do Regime de Uso do Solo).
 - Servidões e restrições (REN, RAN, domínio hídrico…): coleções SRUP da DGT, descobertas dinamicamente.
 - Cadastro predial (onde existe): coleção «cadastro» da DGT, descoberta dinamicamente.
-- Altimetria: Google Elevation API (se chave) → EU-DEM 25 m (OpenTopoData). É o equivalente programático do Google Earth;
+- Altimetria: MDT LiDAR da DGT (50 cm / 2 m) → Copernicus DEM GLO-30 → Google Elevation API (se chave) → EU-DEM 25 m (OpenTopoData). É o equivalente programático do Google Earth;
   NÃO substitui o levantamento topográfico georreferenciado exigido para o projeto (feito por topógrafo).
 - Via de acesso: OpenStreetMap (Overpass), para orientar a frente do terreno.
 - Ortofotomapa: DGT OGC API Maps «ortos-rgb» (30 cm) → Google Static Maps (satélite, se chave).
@@ -501,6 +501,14 @@ async def elevacoes(pontos: List[Tuple[float, float]]) -> Dict[str, Any]:
             d = None
         if d:
             return _res(True, {"z": d["z"], "resolucao_m": d["resolucao_m"]}, d["fonte"], d.get("url"), d.get("nota"))
+    # 2.º Copernicus DEM GLO-30 (oficial europeu, 30 m, modelo de superfície) — antes das fontes comerciais/antigas
+    try:
+        from engines.terrenos_pt import copernicus as _cop
+        c = await asyncio.wait_for(_cop.cotas(list(pontos)), timeout=25)
+    except Exception:  # noqa: BLE001 — nunca impede os recursos seguintes
+        c = None
+    if c and c.get("ok"):
+        return c
     key = _gkey()
     if key:
         out: List[Optional[float]] = []

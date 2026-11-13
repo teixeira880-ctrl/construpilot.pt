@@ -119,11 +119,13 @@ export default function ImplantacaoMapa({ pid, auto, onAplicado }) {
     if (!el.current || mapa.current) return;
     const m = L.map(el.current, { maxZoom: 21, zoomControl: true });
     camadas.current = {
-      dgt: L.tileLayer.wms("https://cartografia.dgterritorio.gov.pt/wms/ortos2021?", { layers: "Ortos2021-RGB", format: "image/jpeg", version: "1.3.0", crossOrigin: true, maxZoom: 21, attribution: "© DGT — Ortofotomapas 2021" }),
+      dgt: L.tileLayer.wms("https://ortos.dgterritorio.gov.pt/wms/ortosat2023?", { layers: "ortoSat2023-CorVerdadeira", format: "image/jpeg", version: "1.3.0", crossOrigin: true, maxZoom: 21, attribution: "© DGT — OrtoSat 2023 (30 cm, CC BY 4.0)" }),
+      o21: L.tileLayer.wms("https://cartografia.dgterritorio.gov.pt/wms/ortos2021?", { layers: "Ortos2021-RGB", format: "image/jpeg", version: "1.3.0", crossOrigin: true, maxZoom: 21, attribution: "© DGT — Ortofotomapas 2021" }),
       esri: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { crossOrigin: true, maxNativeZoom: 19, maxZoom: 21, attribution: "Imagem © Esri, Maxar" }),
     };
     camadas.current.dgt.addTo(m);
-    camadas.current.dgt.on("tileerror", () => { if (st.current.base === "dgt") setMsg("O ortofotomapa da DGT não respondeu: mude para «Satélite»."); });
+    let falhas = 0;   // OrtoSat 2023 em baixo (ou sem CORS) → passa sozinho para os Ortos 2021 da DGT
+    camadas.current.dgt.on("tileerror", () => { if (st.current.base === "dgt" && ++falhas === 4) { setBase("o21"); setMsg("O OrtoSat 2023 da DGT não respondeu: a mostrar os Ortos 2021 (DGT)."); } });
     grupos.current = { base: L.layerGroup().addTo(m), zona: L.layerGroup().addTo(m), casa: L.layerGroup().addTo(m), cotas: L.layerGroup().addTo(m), pontos: L.layerGroup().addTo(m) };
     mapa.current = m;
     const pll = auto?.terreno?.poligono_latlon;
@@ -287,7 +289,7 @@ export default function ImplantacaoMapa({ pid, auto, onAplicado }) {
     casas.forEach((c) => { caminho(c); ctx.fillStyle = v?.ok ? "rgba(47,125,95,.7)" : "rgba(196,60,51,.7)"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); });
     ctx.fillStyle = "rgba(20,27,24,.85)"; ctx.fillRect(0, cv.height - 26, cv.width, 26); ctx.fillStyle = "#fff"; ctx.font = "12px sans-serif";
     const c = m.getCenter();
-    ctx.fillText(`ConstruPilot · ${base === "dgt" ? "Ortofotomapa DGT 2021" : "Imagem Esri"} · ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)} · ${new Date().toLocaleDateString("pt-PT")}`, 10, cv.height - 9);
+    ctx.fillText(`ConstruPilot · ${base === "dgt" ? "DGT OrtoSat 2023" : base === "o21" ? "Ortofotomapa DGT 2021" : "Imagem Esri"} · ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)} · ${new Date().toLocaleDateString("pt-PT")}`, 10, cv.height - 9);
     try {
       cv.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "implantacao-ortofoto.png"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); });
     } catch { setMsg("Esta imagem não permite captura: mude para «Satélite» e tente de novo."); }
@@ -304,7 +306,7 @@ export default function ImplantacaoMapa({ pid, auto, onAplicado }) {
       <div className="lg:col-span-2 relative">
         <div ref={el} className="h-[460px] w-full" style={{ cursor: modo ? "crosshair" : undefined }} />
         <div className="absolute top-2 right-2 z-[500] flex rounded-md overflow-hidden border bg-background text-xs">
-          {[["dgt", "Ortofoto DGT"], ["esri", "Satélite"]].map(([k, t]) => (
+          {[["dgt", "OrtoSat 2023"], ["o21", "Ortos 2021"], ["esri", "Satélite"]].map(([k, t]) => (
             <button type="button" key={k} onClick={() => setBase(k)} className={`px-2 py-1 ${base === k ? "bg-primary text-primary-foreground" : ""}`}>{t}</button>
           ))}
         </div>

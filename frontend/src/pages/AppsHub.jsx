@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import {
-  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera, Mountain,
+  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera, Mountain, MapPinned
 } from "lucide-react";
 import { useState } from "react";
 import CameraCapture from "@/components/CameraCapture";
@@ -41,6 +41,13 @@ const APPS = [
     title: "Autorização de Obras",
     desc: "Diagnóstico e dossier RJUE para a Câmara Municipal.",
     testId: "apps-autorizacao",
+  },
+  {
+    to: "/terrenos",
+    icon: MapPinned,
+    title: "Terrenos",
+    desc: "Identificar o prédio sobre o OrtoSat 2023: RGG do BUPi, cadastro, PDM, RAN, REN e KML para o BUPi.",
+    testId: "apps-terrenos",
   },
   {
     to: "/mdt",
