@@ -29,6 +29,7 @@ emergentintegrations==0.2.0
 et_xmlfile==2.0.0
 execnet==2.1.2
 ezdxf==1.4.4
+ifcopenshell==0.8.5
 PyNiteFEA==3.2.1
 factur-x==6.7
 fastapi==0.110.1

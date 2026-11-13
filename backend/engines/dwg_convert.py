@@ -1,4 +1,4 @@
-"""Conversion DWG → DXF : ODA local, Autodesk si activé, puis CloudConvert historique.
+"""Conversion DWG → DXF : ODA local, LibreDWG local (open source), Autodesk si activé, puis CloudConvert historique.
 
 Le DWG est un format AutoCAD propriétaire binaire qu'aucune lib Python ne lit
 directement. On délègue la conversion à CloudConvert : création d'un job
@@ -19,7 +19,8 @@ SYNC_BASE = os.environ["CLOUDCONVERT_SYNC_BASE"].rstrip("/")
 
 
 def is_configured() -> bool:
-    return bool(os.environ.get("ODA_FILE_CONVERTER") or os.environ.get("CLOUDCONVERT_API_KEY") or
+    from engines import dwg_libredwg
+    return bool(os.environ.get("ODA_FILE_CONVERTER") or dwg_libredwg.available() or os.environ.get("CLOUDCONVERT_API_KEY") or
                 (os.environ.get("APS_DWG_ENABLED") == "true" and os.environ.get("APS_ACTIVITY_QUALIFIED")))
 
 
@@ -33,6 +34,16 @@ async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg", *, user_id=No
         output = await asyncio.to_thread(_local_dwg_to_dxf,dwg_bytes)
         if provenance is not None: provenance.update(provider="oda", status="converted")
         return output
+    from engines import dwg_libredwg
+    if dwg_libredwg.available():
+        # LibreDWG local (open source) : gratuito e o desenho não sai do servidor. Falha → conversores seguintes.
+        try:
+            output, stats = await asyncio.to_thread(dwg_libredwg.dwg_to_dxf, dwg_bytes)
+            if provenance is not None: provenance.update(status="converted", **stats)
+            return output
+        except RuntimeError as exc:
+            logger.warning("LibreDWG: %s", exc)
+            if provenance is not None: provenance.update(libredwg_error=str(exc)[:200])
     if os.environ.get("APS_DWG_ENABLED") == "true":
         from engines.autodesk_client import AutodeskError
         from engines.autodesk_dwg import convert
