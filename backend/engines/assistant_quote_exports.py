@@ -311,14 +311,15 @@ async def _economic_builder(doc, uid):
     from engines import economic_dossier as E
     purchase = await db.library_items.find({"user_id": uid, "cost_price_ht": {"$gt": 0}},
                                            {"_id": 0, "designation": 1, "unit": 1, "cost_price_ht": 1}).to_list(5000)
-    u = await db.users.find_one({"user_id": uid}, {"_id": 0, "brand_country": 1, "country": 1}) or {}
-    raw_c = str(u.get("brand_country") or u.get("country") or DEFAULT_COUNTRY).upper()
-    country = "FR" if raw_c == "FR" else ("PT" if raw_c == "PT" else DEFAULT_COUNTRY)
-    company = E.merge(await db.company_cost_resources.find_one({"user_id": uid}, {"_id": 0}), country)
+    saved = await db.company_cost_resources.find_one({"user_id": uid}, {"_id": 0})
 
     def build(src, branding, lang):
         from engines import economic_dossier_pdf
-        r = E.compute(src, company, purchase, country)
+        # país = língua do ORÇAMENTO (obra), não o país da conta: um orçamento português de uma conta francesa saía com
+        # recursos franceses («Maçon», encargos 15 %) — 13/11, Valpaços
+        lg0 = str(lang or "").lower()
+        country = "PT" if lg0.startswith("pt") else ("FR" if lg0.startswith("fr") else DEFAULT_COUNTRY)
+        r = E.compute(src, E.merge(saved, country), purchase, country)
         lg = "pt" if str(lang or "").startswith("pt") else ("fr-FR" if str(lang or "").startswith("fr") else lang)
         return economic_dossier_pdf.build(r, branding or {}, lg)
     return build

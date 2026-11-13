@@ -65,3 +65,14 @@ def test_french_company_gets_french_texts():
     assert next(l for l in r["lines"] if l["designation"] == "Cerâmico 60x60")["origin"].startswith("HYPOTHÈSE")
     assert any("gazole" in x["item"] for x in r["site"]) and all(x["unit"] != "dia" for x in r["site"])
     assert r["scenarios"][2]["label"] == "Main-d'œuvre +10 %" and any("Équipe sur site" in h for h in r["hypotheses"])
+
+
+def test_hypothesis_costs_reach_target_net_margin_and_crews_scale():
+    """13/11 (Valpaços): 1,98 M€ sem preços de compra → margem −0,9 % e 934 dias com 3 pessoas. Agora: margem líquida = alvo,
+    várias equipas em paralelo."""
+    from engines import economic_dossier as E
+    doc = {"lines": [{"designation": f"Item {i}", "unit": "m2", "qty": 100, "unit_price_ht": 220, "category": f"Lot {i % 9}"}
+                     for i in range(90)]}
+    r = E.compute(doc, E.merge(None, "PT"), [], "PT")
+    assert abs(r["margin_pct"] - 20.0) < 0.5
+    assert r["days"] <= E.MAX_TEAM_DAYS and r["team"]["trolha"] > 2
