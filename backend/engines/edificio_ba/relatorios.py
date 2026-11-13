@@ -241,10 +241,10 @@ def memoria(S, R, path, out_dir) -> Path:
             figs = True
         except Exception:  # noqa: BLE001
             figs = False
-        b.append(("p", T(f"Modelo da superestrutura (OpenSees) com {fm['n_nodes']} nós e {fm['n_el']} elementos : núcleos e paredes em cascas ShellMITC4, pilares e vigas em "
-                         "barras, lajes como diafragmas rígidos. Rigidez fendilhada 0,5·EI. Análise modal, CQC (ξ = 5 %), excentricidade acidental ± 5 %, E_X ± 0,3·E_Y.",
-                         f"Modèle de la superstructure (OpenSees) : {fm['n_nodes']} nœuds, {fm['n_el']} éléments — noyaux et voiles en coques ShellMITC4, poteaux et poutres "
-                         "en barres, dalles en diaphragmes rigides. Raideur fissurée 0,5·EI. Analyse modale, CQC (ξ = 5 %), excentricité accidentelle ± 5 %, E_X ± 0,3·E_Y.")))
+        b.append(("p", T(f"Modelo da superestrutura (PyNite) com {fm['n_nodes']} nós e {fm['n_el']} elementos : núcleos e paredes em cascas MITC4, pilares e vigas em "
+                         "barras (prolongadas dentro das paredes), lajes como diafragmas rígidos. Rigidez fendilhada 0,5·EI. Análise modal, CQC (ξ = 5 %), excentricidade acidental ± 5 %, E_X ± 0,3·E_Y.",
+                         f"Modèle de la superstructure (PyNite) : {fm['n_nodes']} nœuds, {fm['n_el']} éléments — noyaux et voiles en coques MITC4, poteaux et poutres "
+                         "en barres (prolongées dans les voiles), dalles en diaphragmes rigides. Raideur fissurée 0,5·EI. Analyse modale, CQC (ξ = 5 %), excentricité accidentelle ± 5 %, E_X ± 0,3·E_Y.")))
         if figs:
             b.append(("figure", Image(str(pm), width=150 * mm, height=95 * mm), T("Modelo 3D.", "Modèle 3D.")))
         rows = []
