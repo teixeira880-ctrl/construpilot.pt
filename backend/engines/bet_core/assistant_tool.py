@@ -39,7 +39,7 @@ TOOLS = [
                      "Sans confirmation du périmètre : documents joints, pays du projet (adresse) et précisions de l'utilisateur (dont les matériaux choisis dans les cartes ask_user_choices) dans hypotheses. "
                      "Ne l'utilise pas pour un simple métré ou un devis de rénovation."),
      "parameters": {"type": "object", "properties": {
-         "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… des PDF joints à la conversation (PC, plans, coupes, façades, étude de sol)"},
+         "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… des PDF joints à la conversation (PC, plans, coupes, façades, étude de sol) ET plan_… des plans importés (DWG/DXF/PDF du module Plans) : passe-les tous"},
          "hypotheses": {"type": "string", "description": "Hypothèses du client (ex. « planchers poutrelles-hourdis, murs brique 20 »), vide sinon"},
          "country": {"type": "string", "enum": ["FR", "PT", "UA"]}},
          "required": ["document_ids", "hypotheses", "country"], "additionalProperties": False}},
@@ -534,11 +534,59 @@ async def _plan_as_doc(db, plan_id, uid):
     except ImportError:       # plataforma sem módulo Plans (.pt) : o plano tem de ser junto como anexo PDF
         raise ValueError(f"{name} : junte o PDF do plano como anexo da conversa.") from None
     src = await load_plan_source(db, plan_id, uid)
-    if not src or not src.get("data_b64"):
-        raise ValueError(f"{name} n'a pas de PDF source sur le serveur : réimportez le plan.")
+    raw_src = base64.b64decode(src["data_b64"]) if src and src.get("data_b64") else b""
+    if not raw_src.startswith(b"%PDF"):
+        # DWG / DXF (convertido na importação) ou imagem: o estudo lê as folhas desenhadas pelo módulo Plantas (13/11 —
+        # «o assistente tem de executar tudo»: um DWG metido no Assistente entra no estudo e no orçamento)
+        pdf = await _plan_pages_pdf(db, plan_id, uid)
+        if not pdf:
+            raise ValueError(f"{name} : planta sem folhas desenhadas no servidor — reimporte o DWG/DXF.")
+        return {"filename": name.rsplit(".", 1)[0] + ".pdf", "mime": "application/pdf",
+                "data_b64": base64.b64encode(pdf).decode()}
     if not name.lower().endswith(".pdf"):
         name = name.rsplit(".", 1)[0] + ".pdf"
     return {"filename": name, "mime": "application/pdf", "data_b64": src["data_b64"]}
+
+
+async def _plan_pages_pdf(db, plan_id, uid) -> bytes | None:
+    """Folhas de uma planta DWG/DXF (imagens geradas na importação) → PDF de desenho (formato A1, como uma prancha)."""
+    p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": uid}, {"_id": 0, "pages.image_png_b64": 1})
+    imgs = [base64.b64decode(pg["image_png_b64"]) for pg in (p or {}).get("pages") or [] if pg.get("image_png_b64")][:30]
+    if not imgs:
+        return None
+
+    def build():
+        import pymupdf
+        out = pymupdf.open()
+        for png in imgs:
+            pix = pymupdf.Pixmap(png)
+            k = 2384.0 / max(pix.width, pix.height)            # lado maior = A1 (841 mm): lido como prancha de desenho
+            page = out.new_page(width=pix.width * k, height=pix.height * k)
+            page.insert_image(page.rect, stream=png)
+        return out.tobytes()
+    return await asyncio.to_thread(build)
+
+
+async def _cad_to_pdf(data: bytes, name: str, uid) -> tuple[bytes, str]:
+    """DWG (→ DXF pelas APIs Autodesk / conversor configurado) ou DXF → prancha PDF, para o estudo ler o desenho (13/11)."""
+    if name.lower().endswith(".dwg"):
+        from engines.dwg_convert import dwg_to_dxf
+        try:
+            data = await dwg_to_dxf(data, name, user_id=uid)
+        except RuntimeError as exc:
+            raise ValueError(f"{name} : conversion DWG impossible ({exc}). Exportez le plan en PDF ou DXF.") from None
+    from engines.plan_dxf import process_dxf
+    dxf_name = name.rsplit(".", 1)[0] + ".dxf"
+    parsed = None
+    for unit in (None, "mm"):                          # unidades não declaradas no DXF: milímetros (o caso corrente)
+        try:
+            parsed = await asyncio.to_thread(process_dxf, data, dxf_name, unit)
+            break
+        except Exception:  # noqa: BLE001
+            parsed = None
+    if not parsed or not parsed.get("analysis_pdf_b64"):
+        raise ValueError(f"{name} : dessin DXF illisible. Exportez le plan en PDF.")
+    return base64.b64decode(parsed["analysis_pdf_b64"]), name.rsplit(".", 1)[0] + ".pdf"
 
 
 async def _load_assistant_docs(db, ids, uid):
@@ -552,7 +600,8 @@ async def _load_assistant_docs(db, ids, uid):
         if not d:
             raise PermissionError(f"Document {did} inaccessible pour ce compte")
         name = d.get("filename") or did
-        if (d.get("mime") or "") != "application/pdf" and not name.lower().endswith(".pdf"):
+        cad = name.lower().endswith((".dwg", ".dxf"))
+        if (d.get("mime") or "") != "application/pdf" and not name.lower().endswith(".pdf") and not cad:
             raise ValueError(f"{name} n'est pas un PDF : seuls les PDF de plans et d'études de sol sont lus.")
         if d.get("data_b64"):
             data = base64.b64decode(d["data_b64"])
@@ -563,6 +612,8 @@ async def _load_assistant_docs(db, ids, uid):
             data = b"".join(base64.b64decode(c["data_b64"]) for c in chunks)
         else:
             raise ValueError(f"{name} est vide sur le serveur : réimportez le fichier.")
+        if cad and not data.startswith(b"%PDF"):
+            data, name = await _cad_to_pdf(data, name, uid)
         if not data.startswith(b"%PDF"):
             raise ValueError(f"{name} n'est pas un PDF lisible : réimportez-le.")
         docs.append((name, data))

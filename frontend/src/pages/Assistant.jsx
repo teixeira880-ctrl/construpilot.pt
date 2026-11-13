@@ -361,8 +361,15 @@ export default function Assistant() {
     const room = 10 - activeDocs.length;
     if (list.length > room) toast.error(bg("maxFiles"));
     uploadKind.current = "doc";
+    let planRoom = 5 - activePlans.length;
     for (const f of list.slice(0, Math.max(0, room))) {
-      if (["dxf", "dwg"].includes(f.name.toLowerCase().split(".").pop())) continue;
+      // DWG / DXF: importados como plantas (conversão Autodesk) — antes eram ignorados em silêncio na seleção múltipla (13/11)
+      if (["dxf", "dwg"].includes(f.name.toLowerCase().split(".").pop())) {
+        if (planRoom <= 0) { toast.error(bg("maxFiles")); continue; }
+        planRoom -= 1;
+        await upload(f, "plan");
+        continue;
+      }
       await upload(f, "doc");
     }
   };

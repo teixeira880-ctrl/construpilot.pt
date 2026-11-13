@@ -359,16 +359,20 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
     ratio=mapping["scale_px_per_dxf_unit"]
     def to_px(x,y):
         return ((x-mapping["offset_x"])*ratio, mapping["height"]-(y-mapping["offset_y"])*ratio)
-    vectors=[]; text_blocks=[]
+    vectors=[]; text_blocks=[]; capped=False
     for entity in entities:
-        vectors.extend(entity_vectors(entity,to_px,max(.0005/unit_to_m,1e-8)))
+        if len(vectors)<1500000:
+            vectors.extend(entity_vectors(entity,to_px,max(.0005/unit_to_m,1e-8)))
+        elif not capped:
+            # 13/11: implantação com topografia (milhões de primitivas) — antes recusada; a prancha e o texto são conservados,
+            # só a análise automática das paredes não é tentada (como em qualquer planta densa).
+            capped=True; diagnostics.append({"code":"DXF_DENSE_CAPPED","kept_vectors":len(vectors)})
         kind=entity.dxftype()
         if kind in ("TEXT","MTEXT","ATTRIB","ATTDEF"):
             pos=entity.dxf.insert
             text=entity.plain_text() if kind=="MTEXT" else str(entity.dxf.get("text", ""))
             x,y=to_px(pos.x,pos.y)
             text_blocks.append({"text":text,"x":x,"y":y,"w":0,"h":0,"layer":entity.dxf.layer})
-    if len(vectors)>1500000:raise ValueError("Demasiadas primitivas CAD: isolar uma zona da planta")
     dims=_extract_dimensions(doc.modelspace(),to_px,unit_to_m,diagnostics)
     if len(vectors)>150000:
         # Plan dense (BET) : cotes natives et inventaire conservés, analyse automatique des murs non tentée (pas de classification hasardeuse).
