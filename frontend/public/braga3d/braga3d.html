@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Braga 3D ConstruPilot</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: painel de comando fixo à esquerda, cidade 3D a ocupar o resto; cartão de dados flutua sobre a cena */
+  --ink:#0f1b26; --panel:#14232f; --panel-2:#1c3040; --line:#2c4558;
+  --text:#e6edf2; --muted:#93a7b6; --accent:#f2a516; --accent-ink:#1a1403;
+  --ok:#5fc48d; --warn:#f08a4b;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ink);color:var(--text);font:14px/1.45 var(--body);display:flex;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+aside{width:340px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+header{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+h1{font:600 26px/1 var(--display);letter-spacing:.02em;margin:0;text-transform:uppercase}
+h1 span{color:var(--accent)}
+header p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.status{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px}
+.pill{padding:2px 8px;border-radius:99px;font-weight:600;font-size:11px;white-space:nowrap}
+.pill.warn{background:rgba(240,138,75,.18);color:var(--warn)}
+.pill.ok{background:rgba(95,196,141,.18);color:var(--ok)}
+nav{display:flex;border-bottom:1px solid var(--line)}
+nav button{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:10px 4px;cursor:pointer;color:var(--muted);font:600 15px var(--display);letter-spacing:.05em;text-transform:uppercase}
+nav button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
+.tab{display:none;padding:14px 16px;overflow-y:auto;flex:1;min-height:0;flex-direction:column;gap:14px}
+.tab.on{display:flex}
+h2{font:600 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+.list{display:flex;flex-direction:column;gap:2px}
+.list button{display:flex;justify-content:space-between;gap:8px;text-align:left;background:none;border:0;border-radius:6px;padding:6px 8px;cursor:pointer}
+.list button:hover{background:var(--panel-2)}
+.list small{color:var(--muted);white-space:nowrap}
+label.chk{display:flex;gap:8px;align-items:center;cursor:pointer}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:3px;flex:1;min-width:90px}
+.field span{font-size:12px;color:var(--muted)}
+input[type=number],input[type=text],select{background:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.btn{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.note{color:var(--muted);font-size:12px;margin:0}
+ol.steps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px}
+a{color:var(--accent)}
+.drop{border:1.5px dashed var(--line);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--ink)}
+.drop.over{border-color:var(--accent)}
+main{flex:1;position:relative;min-width:0;min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none;outline-offset:-2px}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lb{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;font:600 13px var(--display);letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:rgba(15,27,38,.78);color:#fff;pointer-events:auto;cursor:pointer;border:0}
+.lb.d{background:none;color:#22313d;text-transform:uppercase;font-size:14px;letter-spacing:.14em;text-shadow:0 0 4px #fff,0 0 4px #fff;pointer-events:none}
+#card{position:absolute;top:12px;right:12px;width:290px;max-width:calc(100% - 24px);max-height:calc(100% - 70px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;display:none;flex-direction:column;gap:8px}
+#card.on{display:flex}
+#card h3{font:600 20px/1.1 var(--display);margin:0;padding-right:24px;text-wrap:balance}
+#card .x{position:absolute;top:6px;right:8px;background:none;border:0;cursor:pointer;font-size:18px;color:var(--muted)}
+#hud{position:absolute;left:12px;bottom:10px;right:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px;color:#22313d;text-shadow:0 0 3px #fff,0 0 3px #fff;pointer-events:none}
+#hud a{color:inherit;pointer-events:auto}
+#busy{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);border-radius:99px;padding:6px 16px;display:none;font-weight:500}
+#busy.on{display:block}
+#mode{position:absolute;left:50%;bottom:36px;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:6px 16px;font-weight:600;display:none}
+#mode.on{display:block}
+.lg{display:flex;gap:8px;align-items:flex-start}
+.lg i{flex:none;width:14px;height:14px;border-radius:3px;margin-top:3px}
+.pdm{border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;border-left:4px solid}
+.pdm.s0{background:rgba(47,158,85,.16);border-color:#2f9e55}
+.pdm.s1{background:rgba(242,194,48,.16);border-color:#f2c230}
+.pdm.s2{background:rgba(214,58,49,.18);border-color:#d63a31}
+.pdm ul{margin:0;padding-left:16px}
+@media (max-width:720px){
+  body{flex-direction:column-reverse}
+  aside{width:100%;height:46%;border-right:0;border-top:1px solid var(--line)}
+  header p{display:none}
+}
+</style>
+</head>
+<body>
+<aside>
+  <header>
+    <h1>Braga <span>3D</span> · ConstruPilot</h1>
+    <p>Maquete digital da cidade para estudo de obras: edifícios, monumentos, sol e sombras.</p>
+    <div class="status"><span class="pill warn" id="dataPill">Edifícios por carregar</span><span id="dataMsg">Monumentos e relevo já estão na cena.</span></div>
+  </header>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-tab="explorar">Explorar</button>
+    <button role="tab" aria-selected="false" data-tab="sol">Sol</button>
+    <button role="tab" aria-selected="false" data-tab="obras">Obras</button>
+    <button role="tab" aria-selected="false" data-tab="pdm">PDM</button>
+    <button role="tab" aria-selected="false" data-tab="dados">Dados</button>
+  </nav>
+
+  <section class="tab on" id="tab-explorar">
+    <h2>Voar até</h2>
+    <div class="list" id="monList"></div>
+    <h2>Coordenadas</h2>
+    <label class="field"><span>PT-TM06/ETRS89 (M, P) em metros</span><input type="text" id="gotoIn" placeholder="-24452.6 209049.0"></label>
+    <div class="row"><button class="btn" id="gotoBtn">Ir para</button><button class="btn" id="placeAtBtn">Colocar obra aqui</button></div>
+    <p class="note" id="gotoMsg">Cena em metros da grelha PT-TM06/ETRS89 (EPSG:3763). As coordenadas do cursor aparecem em baixo, em M e P.</p>
+    <h2>Camadas</h2>
+    <label class="chk"><input type="checkbox" id="lyBuild" checked> Edifícios</label>
+    <label class="chk"><input type="checkbox" id="lyMon" checked> Monumentos modelados</label>
+    <label class="chk"><input type="checkbox" id="lyCtx" checked> Ruas, água e jardins</label>
+    <label class="chk"><input type="checkbox" id="lyLim" checked> Limite da cidade</label>
+    <label class="chk"><input type="checkbox" id="lyLab" checked> Nomes</label>
+    <p class="note">Arrastar move o mapa. Botão direito (ou Shift) roda e inclina. Roda do rato aproxima. Clicar num edifício mostra os dados.</p>
+  </section>
+
+  <section class="tab" id="tab-sol">
+    <h2>Dia e hora</h2>
+    <div class="field"><span>Data: <b id="dateOut"></b></span><input type="range" id="doy" min="1" max="365" value="172"></div>
+    <div class="row">
+      <button class="btn" data-doy="172">Solstício de verão</button>
+      <button class="btn" data-doy="80">Equinócio</button>
+      <button class="btn" data-doy="355">Solstício de inverno</button>
+    </div>
+    <div class="field"><span>Hora legal: <b id="hourOut"></b></span><input type="range" id="hour" min="5" max="22" step="0.05" value="16"></div>
+    <div class="row"><button class="btn primary" id="playDay">Percorrer o dia</button><label class="chk"><input type="checkbox" id="shadows" checked> Sombras</label></div>
+    <dl class="kv"><dt>Altura do sol</dt><dd id="sunAlt"></dd><dt>Azimute</dt><dd id="sunAz"></dd><dt>Sombra de 10 m de altura</dt><dd id="sunLen"></dd></dl>
+    <p class="note">Posição solar calculada para 41,55° N, 8,43° O, com hora de verão entre o fim de março e o fim de outubro.</p>
+  </section>
+
+  <section class="tab" id="tab-obras">
+    <h2>Nova obra</h2>
+    <div class="row">
+      <label class="field"><span>Frente (m)</span><input type="number" id="wW" value="24" min="2" max="400"></label>
+      <label class="field"><span>Fundo (m)</span><input type="number" id="wD" value="16" min="2" max="400"></label>
+    </div>
+    <div class="row">
+      <label class="field"><span>Pisos</span><input type="number" id="wF" value="5" min="1" max="60"></label>
+      <label class="field"><span>Rotação (°)</span><input type="number" id="wR" value="0" min="0" max="359" step="5"></label>
+    </div>
+    <label class="field"><span>Uso</span><select id="wU"><option>Habitação</option><option>Comércio e serviços</option><option>Indústria e armazéns</option><option>Equipamento</option></select></label>
+    <dl class="kv"><dt>Implantação</dt><dd id="wA"></dd><dt>Área bruta de construção</dt><dd id="wG"></dd><dt>Cércea (3 m por piso)</dt><dd id="wH"></dd></dl>
+    <button class="btn primary" id="placeBtn">Colocar no mapa</button>
+    <h2>Obras colocadas</h2>
+    <div class="list" id="workList"></div>
+    <dl class="kv"><dt>Implantação total</dt><dd id="wTA">0 m²</dd><dt>ABC total</dt><dd id="wTG">0 m²</dd></dl>
+    <button class="btn" id="expBtn">Copiar obras em GeoJSON</button>
+    <textarea id="expOut" readonly hidden style="width:100%;height:110px;background:var(--ink);color:inherit;border:1px solid var(--line);border-radius:6px;font:12px monospace"></textarea>
+    <p class="note" id="expMsg">As obras ficam guardadas só neste navegador.</p>
+  </section>
+
+  <section class="tab" id="tab-pdm">
+    <h2>PDM de Braga em vigor</h2>
+    <p class="note">Braga: 3.ª Revisão do PDM, Aviso n.º 8551/2026/2 (Diário da República, 2.ª série, n.º 73), em vigor desde 16 de abril de 2026. Guimarães: 2.ª alteração do PDM, Aviso n.º 18789/2019 (Diário da República, 2.ª série, n.º 225, de 22 de novembro de 2019).</p>
+    <p class="note" id="pdmMsg"></p>
+    <label class="chk"><input type="checkbox" id="lyPdm" checked> Mostrar a aptidão para construir no terreno</label>
+    <div class="field"><span>Opacidade</span><input type="range" id="pdmOp" min="0.2" max="1" step="0.05" value="0.7"></div>
+    <div class="lg"><i style="background:#2f9e55"></i><span><b>Verde</b>: solo urbano edificável pela categoria do PDM, sem condicionantes nas plantas analisadas.</span></div>
+    <div class="lg"><i style="background:#f2c230"></i><span><b>Amarelo</b>: edificação condicionada ou sujeita a servidão. Confirmar com a entidade competente.</span></div>
+    <div class="lg"><i style="background:#d63a31"></i><span><b>Vermelho</b>: nova construção interdita pelo regulamento ou pela condicionante.</span></div>
+    <p class="note">Clica no terreno, num edifício ou numa obra para ver a categoria, as condicionantes e a entidade a contactar.</p>
+    <dl class="kv" id="pdmStats"></dl>
+    <p class="note">Guimarães: lidas as 17 folhas da planta de ordenamento e as 17 da planta de condicionantes, georreferenciadas pela grelha impressa em cada folha e amostradas a 10 m. As tramas da RAN e da REN são separadas pela direção do riscado, vertical e horizontal. Ficam de fora os anexos de áreas ardidas, perigosidade de incêndio e zonas de conflito acústico.</p>
+    <p class="note">Usadas as 11 plantas do PDM. Em vetor, com rigor de desenho: 1.1 Classificação e Qualificação do Solo e 2.1 Condicionantes Gerais. Lidas das folhas em imagem, com rigor de cerca de 10 m: 1.3 (estrutura ecológica e área do aeródromo), 1.4.1, 1.4.2, 1.6, 1.7 e 2.3. A 1.2 e a 2.2 entram pelas UOPG, pelas áreas de infraestruturação programada e pela REN que já vêm nas plantas em vetor. Não lidas: superfícies de proteção do aeródromo e do heliporto desenhadas só em contorno, vias previstas da planta 1.5 e faixas de proteção das condutas (art. 18.º). Todo o concelho tem suscetibilidade elevada ao radão (art. 14.º). As faixas das linhas de água, estradas, linhas elétricas e gasodutos têm largura aproximada. O PDM não tem parcelas cadastrais: as cores seguem as manchas do plano. Esta leitura não substitui um pedido de informação prévia à Câmara Municipal de Braga.</p>
+  </section>
+
+  <section class="tab" id="tab-dados">
+    <h2>Dados do distrito de Braga</h2>
+    <p class="note">Edifícios, ruas, água e jardins dos 14 concelhos, do OpenStreetMap, carregados por zonas à medida que a vista se move. Altimetria real: Terrain Tiles (SRTM), com cerca de 30 m de resolução, reamostrada a 100 m.</p>
+    <ol class="steps" style="display:none">
+      <li>Clica com o botão direito em cada ligação e escolhe <b>Guardar ligação como</b>:<br><a id="q1" target="_blank" rel="noopener">Edifícios de Braga (ficheiro grande)</a><br><a id="q2" target="_blank" rel="noopener">Todas as ruas, caminhos, linha férrea, rio e jardins</a></li>
+      <li>Arrasta os ficheiros guardados para a caixa abaixo.</li>
+    </ol>
+    <div class="drop" id="drop" tabindex="0" role="button" hidden>Largar ficheiros aqui</div>
+    <input type="file" id="file" multiple accept=".json,.geojson,.osm,application/json" hidden>
+    <h2>Cidade carregada</h2>
+    <dl class="kv" id="cityStats"><dt>Edifícios</dt><dd>0</dd></dl>
+    <button class="btn" id="clearData" hidden>Apagar dados carregados</button>
+    <p class="note">Os edifícios vêm do OpenStreetMap. Quando o mapa não indica a altura nem os pisos, a altura é estimada pelo tipo e pela área e aparece marcada como estimativa. O relevo e o limite da cidade são aproximados.</p>
+  </section>
+</aside>
+
+<main id="stage">
+  <canvas id="cv" tabindex="0" aria-label="Vista 3D de Braga"></canvas>
+  <div id="labels"></div>
+  <div id="card"><button class="x" id="cardX" aria-label="Fechar">×</button><h3 id="cardT"></h3><div id="cardB"></div></div>
+  <div id="busy"></div>
+  <div id="mode">Clica no terreno para colocar a obra · Esc cancela</div>
+  <div id="hud"><span id="coords">Braga</span><span>Edifícios e ruas © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contribuidores do OpenStreetMap</a></span></div>
+</main>
+
+<script src="vendor/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<script src="dist/dem.js"></script>
+<script src="dist/index.js"></script>
+
+<script src="dados-pdm.js"></script>
+<script src="dados-pdm-raster.js"></script>
+<script src="dados-pdm-guimaraes.js"></script>
+<script src="dados-pdm-gmr-cond.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+if(!window.THREE){$('busy').textContent='Não foi possível carregar o motor 3D. Verifica a ligação e recarrega a página.';$('busy').classList.add('on');return;}
+
+/* ---------- geografia ---------- */
+const LAT0=41.5503, LON0=-8.4265, MX=111320*Math.cos(LAT0*Math.PI/180), MZ=110574;
+/* projecao PT-TM06/ETRS89 (EPSG:3763): a cena usa metros reais desta grelha */
+const TM=(function(){const a=6378137,f=1/298.257222101,n=f/(2-f),A=a/(1+n)*(1+n*n/4+n*n*n*n/64),l0=-8.133108333333334*Math.PI/180,e=2*Math.sqrt(n)/(1+n),
+ al=[n/2-2*n*n/3+5*n*n*n/16,13*n*n/48-3*n*n*n/5,61*n*n*n/240],be=[n/2-2*n*n/3+37*n*n*n/96,n*n/48+n*n*n/15,17*n*n*n/480],de=[2*n-2*n*n/3-2*n*n*n,7*n*n/3-8*n*n*n/5,56*n*n*n/15];
+ function raw(lat,lon){const p=lat*Math.PI/180,l=lon*Math.PI/180-l0,s=Math.sin(p),t=Math.sinh(Math.atanh(s)-e*Math.atanh(e*s)),xi=Math.atan2(t,Math.cos(l)),et=Math.atanh(Math.sin(l)/Math.sqrt(1+t*t));let X=xi,Y=et;for(let j=1;j<=3;j++){X+=al[j-1]*Math.sin(2*j*xi)*Math.cosh(2*j*et);Y+=al[j-1]*Math.cos(2*j*xi)*Math.sinh(2*j*et);}return[A*Y,A*X];}
+ const N0=raw(39.66825833333333,-8.133108333333334)[1];
+ return{fwd(lat,lon){const r=raw(lat,lon);return[r[0],r[1]-N0];},
+  inv(M,P){const xi=(P+N0)/A,et=M/A;let X=xi,Y=et;for(let j=1;j<=3;j++){X-=be[j-1]*Math.sin(2*j*xi)*Math.cosh(2*j*et);Y-=be[j-1]*Math.cos(2*j*xi)*Math.sinh(2*j*et);}const ch=Math.asin(Math.sin(X)/Math.cosh(Y));let p=ch;for(let j=1;j<=3;j++)p+=de[j-1]*Math.sin(2*j*ch);return[p*180/Math.PI,(l0+Math.atan2(Math.sinh(Y),Math.cos(X)))*180/Math.PI];}};})();
+const C0=TM.fwd(LAT0,LON0);
+const toXZ=(lat,lon)=>{const r=TM.fwd(lat,lon);return[r[0]-C0[0],-(r[1]-C0[1])];};
+const toLL=(x,z)=>TM.inv(x+C0[0],C0[1]-z);
+const toMP=(x,z)=>[x+C0[0],C0[1]-z];
+const llText=(x,z)=>{const l=toLL(x,z);return fmt(l[0],6)+'; '+fmt(l[1],6);};
+const mpText=(x,z)=>{const m=toMP(x,z);return fmt(m[0],1)+'; '+fmt(m[1],1);};
+function coordText(x,z){const m=toMP(x,z);return 'PT-TM06/ETRS89 | M '+fmt(m[0],1)+' | P '+fmt(m[1],1)+' | cota aprox. '+fmt(elev(x,z))+' m';}
+const BBOX=[41.505,-8.485,41.587,-8.338];
+const DEM=window.__DEM||null;let demA=null;
+if(DEM){const bin=atob(DEM.b64),nn=bin.length>>1;demA=new Int16Array(nn);for(let i=0;i<nn;i++)demA[i]=((bin.charCodeAt(2*i)|(bin.charCodeAt(2*i+1)<<8))<<16)>>16;}
+const BX0=demA?-57000-C0[0]:-7000,BX1=demA?28000-C0[0]:9500,BZ0=demA?C0[1]-239500:-6000,BZ1=demA?C0[1]-181500:7000;
+function elev(x,z){
+  if(demA){const fx=(x+C0[0]-DEM.x0)/DEM.res,fy=(DEM.y1-(C0[1]-z))/DEM.res;if(fx>=0&&fy>=0&&fx<DEM.w-1&&fy<DEM.h-1){const ix=fx|0,iy=fy|0,tx=fx-ix,ty=fy-iy,i=iy*DEM.w+ix;return(demA[i]*(1-tx)+demA[i+1]*tx)*(1-ty)+(demA[i+DEM.w]*(1-tx)+demA[i+DEM.w+1]*tx)*ty;}return 0;}
+  return elevApprox(x,z);
+}
+function elevApprox(x,z){
+  const n=-z; let h=150;
+  const g=(cx,cn,a,s)=>a*Math.exp(-((x-cx)*(x-cx)+(n-cn)*(n-cn))/(2*s*s));
+  h+=g(0,0,40,1300)+g(4600,500,240,950)+g(4950,-1000,360,800)+g(541,-1360,120,420)+g(3457,-3129,300,900)+g(-300,1360,35,300)+g(2300,2200,60,900);
+  const d=(-x+n)/1.414; if(d>0)h-=Math.min(110,d*0.02);
+  return h;
+}
+const gy=(x,z)=>elev(x,z)-190;
+const fmt=(v,d=0)=>v.toLocaleString('pt-PT',{maximumFractionDigits:d,minimumFractionDigits:d});
+
+/* ---------- cena ---------- */
+const cv=$('cv'), stage=$('stage');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate=false;
+const scene=new THREE.Scene(); scene.background=new THREE.Color('#a9cbe6'); scene.fog=new THREE.Fog('#a9cbe6',40000,220000);
+const camera=new THREE.PerspectiveCamera(45,1,10,300000);
+const hemi=new THREE.HemisphereLight('#ffffff','#8a8f80',0.55); scene.add(hemi);
+const sun=new THREE.DirectionalLight('#fff4e0',1); sun.castShadow=true;
+sun.shadow.mapSize.set(4096,4096); sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.6;
+scene.add(sun); scene.add(sun.target);
+let dirty=true; const touch=()=>{dirty=true;};
+
+/* buffers que crescem */
+class Buf{constructor(T,n){this.T=T;this.a=new T(n||4096);this.n=0;}
+  need(k){if(this.n+k>this.a.length){const b=new this.T(Math.max(this.a.length*2,this.n+k));b.set(this.a);this.a=b;}}
+  p3(x,y,z){this.need(3);const a=this.a;a[this.n++]=x;a[this.n++]=y;a[this.n++]=z;}
+  done(){return this.a.subarray(0,this.n);}}
+const rgb=h=>{const c=new THREE.Color(h);return[Math.round(c.r*255),Math.round(c.g*255),Math.round(c.b*255)];};
+function meshFrom(P,N,C,mat){
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(P.done(),3));
+  g.setAttribute('normal',new THREE.BufferAttribute(N.done(),3,true));
+  g.setAttribute('color',new THREE.BufferAttribute(C.done(),3,true));
+  g.computeBoundingSphere(); g.computeBoundingBox();
+  return new THREE.Mesh(g,mat);
+}
+
+/* terreno */
+let ground;
+(function(){
+  const g=demA?new THREE.PlaneGeometry((DEM.w-1)*DEM.res,(DEM.h-1)*DEM.res,DEM.w-1,DEM.h-1):new THREE.PlaneGeometry(18000,14000,180,140); g.rotateX(-Math.PI/2); if(demA)g.translate(DEM.x0+(DEM.w-1)*DEM.res/2-C0[0],0,C0[1]-(DEM.y1-(DEM.h-1)*DEM.res/2));else g.translate(1250,0,475);
+  const p=g.attributes.position, col=new Float32Array(p.count*3);
+  const a=new THREE.Color('#c6cab4'), b=new THREE.Color('#84a071'), c=new THREE.Color();
+  for(let i=0;i<p.count;i++){const y=gy(p.getX(i),p.getZ(i)); p.setY(i,y); c.copy(a).lerp(b,Math.max(0,Math.min(1,(y+150)/420))); col[3*i]=c.r;col[3*i+1]=c.g;col[3*i+2]=c.b;}
+  g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.computeVertexNormals();
+  ground=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true})); ground.receiveShadow=true; scene.add(ground);
+})();
+
+/* fitas sobre o terreno (ruas, rio, limite) */
+function ribbon(pts,hw,c,yo,P,N,C,flat){
+  const n=pts.length;let tot=0;
+  if(flat)for(let i=0;i+3<n;i+=2)tot+=Math.hypot(pts[i+2]-pts[i],pts[i+3]-pts[i+1]);
+  const yA=flat?gy(pts[0],pts[1])+flat:0,yB=flat?gy(pts[n-2],pts[n-1])+flat:0;
+  let run=0;
+  for(let i=0;i+3<n;i+=2){
+    const x0=pts[i],z0=pts[i+1],x1=pts[i+2],z1=pts[i+3],L=Math.hypot(x1-x0,z1-z0); if(L<0.2)continue;
+    const k=Math.max(1,Math.ceil(L/60)),px=-(z1-z0)/L*hw,pz=(x1-x0)/L*hw;
+    for(let s=0;s<k;s++){
+      const ax=x0+(x1-x0)*s/k,az=z0+(z1-z0)*s/k,bx=x0+(x1-x0)*(s+1)/k,bz=z0+(z1-z0)*(s+1)/k;
+      let ya,yb;
+      if(flat){const fa=tot?(run+L*s/k)/tot:0,fb=tot?(run+L*(s+1)/k)/tot:1;ya=yA+(yB-yA)*fa;yb=yA+(yB-yA)*fb;}
+      else{ya=gy(ax,az)+yo;yb=gy(bx,bz)+yo;}
+      P.p3(ax+px,ya,az+pz);P.p3(bx+px,yb,bz+pz);P.p3(bx-px,yb,bz-pz);
+      P.p3(ax+px,ya,az+pz);P.p3(bx-px,yb,bz-pz);P.p3(ax-px,ya,az-pz);
+      for(let v=0;v<6;v++){N.p3(0,127,0);C.p3(c[0],c[1],c[2]);}
+    }
+    run+=L;
+  }
+}
+const flatMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
+
+/* limite da cidade, traçado a partir da imagem enviada */
+let limit;
+(function(){
+  const px=[[503,42],[545,125],[583,95],[605,90],[598,135],[612,140],[640,118],[800,97],[820,55],[832,130],[880,180],[885,245],[912,222],[968,330],[968,355],[860,368],[780,400],[745,470],[710,497],[570,513],[450,555],[440,490],[400,470],[375,418],[345,390],[348,345],[250,358],[243,300],[310,262],[372,205],[370,132],[440,85],[503,42]];
+  const pts=[]; for(const q of px){const xz=toXZ(41.5454-(q[1]-303)/7085,-8.4265+(q[0]-523)/5303);pts.push(xz[0],xz[1]);}
+  const P=new Buf(Float32Array),N=new Buf(Int8Array),C=new Buf(Uint8Array); ribbon(pts,5,rgb('#d8362b'),2.5,P,N,C);
+  limit=meshFrom(P,N,C,flatMat); scene.add(limit);
+})();
+
+/* ---------- monumentos ---------- */
+const mats={}; const mat=c=>mats[c]||(mats[c]=new THREE.MeshLambertMaterial({color:c}));
+const sh=m=>{m.castShadow=m.receiveShadow=true;return m;};
+function box(g,w,h,d,x,y,z,c,ry){const m=sh(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c)));m.position.set(x,y+h/2,z);if(ry)m.rotation.y=ry;g.add(m);return m;}
+function cyl(g,r,h,x,y,z,c,rt){const m=sh(new THREE.Mesh(new THREE.CylinderGeometry(rt===undefined?r:rt,r,h,20),mat(c)));m.position.set(x,y+h/2,z);g.add(m);return m;}
+function pyr(g,r,h,x,y,z,c){const m=sh(new THREE.Mesh(new THREE.ConeGeometry(r,h,4),mat(c)));m.rotation.y=Math.PI/4;m.position.set(x,y+h/2,z);g.add(m);return m;}
+function dome(g,r,x,y,z,c){const m=sh(new THREE.Mesh(new THREE.SphereGeometry(r,24,12,0,Math.PI*2,0,Math.PI/2),mat(c)));m.position.set(x,y,z);g.add(m);return m;}
+function gable(g,len,h,span,x,y,z,c,alongZ){ // telhado de duas águas
+  const s=new THREE.Shape();s.moveTo(-span/2,0);s.lineTo(span/2,0);s.lineTo(0,h);s.lineTo(-span/2,0);
+  const ge=new THREE.ExtrudeGeometry(s,{depth:len,bevelEnabled:false});ge.translate(0,0,-len/2);if(!alongZ)ge.rotateY(Math.PI/2);
+  const m=sh(new THREE.Mesh(ge,mat(c)));m.position.set(x,y,z);g.add(m);return m;}
+const ST='#d9cfb8',GR='#a8a49a',WH='#f1eee6',RF='#a9573b',DK='#59606a',GN='#6f9a5a';
+function tower(g,x,z,w,h,c){box(g,w,h,w,x,0,z,c);box(g,w+1,1,w+1,x,h,z,GR);pyr(g,w*0.72,w*1.1,x,h+1,z,GR);}
+function church(g,len,w,h,th){box(g,len,h,w,0,0,0,WH);gable(g,len,w*0.35,w+1,0,h,0,RF);tower(g,-len/2+3,w/2-3,6.5,th,ST);tower(g,-len/2+3,-w/2+3,6.5,th,ST);box(g,2,h+4,w-12,-len/2-0.5,0,0,ST);}
+const MON=[
+ {n:'Sé de Braga',lat:41.5499,lon:-8.4273,r:42,k:'Catedral',i:'A catedral mais antiga de Portugal, iniciada no final do século XI. Românico de base, com capelas góticas e talha barroca.',b(g){church(g,62,22,16,32);box(g,14,13,16,36,0,0,WH);box(g,30,9,24,6,0,-24,WH);gable(g,30,4,25,6,9,-24,RF);box(g,26,8,18,-4,0,22,WH);gable(g,26,3.5,19,-4,8,22,RF);cyl(g,4,5,14,16,0,ST);dome(g,4,14,21,0,GR);}},
+ {n:'Bom Jesus do Monte',lat:41.5547,lon:-8.3771,r:60,k:'Santuário · Património Mundial UNESCO (2019)',i:'Igreja neoclássica de Carlos Amarante no topo do escadório barroco, com cerca de 580 degraus e 116 m de desnível.',stairs:'bj',b(g,o){church(g,46,19,16,28);cyl(g,6,6,10,16,0,ST);dome(g,6,10,22,0,GR);
+   for(let i=0;i<20;i++){const x=-42-i*14,y=gy(o[0]+x,o[1])-o[2];box(g,4,3,30,x,y-1.5,0,WH);if(i<19){const y2=gy(o[0]+x-14,o[1])-o[2],ym=(y+y2)/2;box(g,15,1.4,3.2,x-7,ym,0,GR,(i%2?1:-1)*0.95);box(g,15,1.4,3.2,x-7,ym,0,GR,(i%2?-1:1)*0.95);} if(i%3==1){box(g,5,5,5,x,y,17,WH);pyr(g,4,3,x,y+5,17,RF);box(g,5,5,5,x,y,-17,WH);pyr(g,4,3,x,y+5,-17,RF);}}}},
+ {n:'Santuário do Sameiro',lat:41.5417,lon:-8.3697,r:60,k:'Santuário mariano',i:'Iniciado em 1863 no ponto mais alto de Braga, a cerca de 570 m. O escadório desce em direção à cidade.',b(g,o){box(g,42,14,20,0,0,0,WH);box(g,18,14,40,6,0,0,WH);gable(g,42,5,21,0,14,0,GR);cyl(g,9,9,6,14,0,WH);dome(g,9,6,23,0,GR);cyl(g,1.5,4,6,32,0,WH);tower(g,-19,7,6,26,WH);tower(g,-19,-7,6,26,WH);
+   for(let i=0;i<14;i++){const x=-34-i*11,y=gy(o[0]+x,o[1])-o[2];box(g,11.5,3,26,x,y-2,0,GR);} const xf=-34-14*11,yf=gy(o[0]+xf,o[1])-o[2];cyl(g,1.3,22,xf,yf,10,WH);cyl(g,1.3,22,xf,yf,-10,WH);cyl(g,0.9,3,xf,yf+22,10,ST);cyl(g,0.9,3,xf,yf+22,-10,ST);}},
+ {n:'Arco da Porta Nova',lat:41.5503,lon:-8.4296,r:12,k:'Arco monumental',i:'Porta barroca e neoclássica desenhada por André Soares, concluída em 1772.',b(g){box(g,3,10,3.2,0,0,4.2,ST);box(g,3,10,3.2,0,0,-4.2,ST);box(g,3.3,3,11.8,0,10,0,ST);gable(g,3.3,3,11.8,0,13,0,ST);pyr(g,0.9,2.5,0,13,5,GR);pyr(g,0.9,2.5,0,13,-5,GR);}},
+ {n:'Torre de Menagem',lat:41.5512,lon:-8.4247,r:14,k:'Torre medieval',i:'Resto do castelo de Braga, do século XIV, com cerca de 30 m de altura.',b(g){box(g,10,30,10,0,0,0,GR);for(const a of[-4,4])for(const b of[-4,4])box(g,2.2,2.2,2.2,a,30,b,GR);}},
+ {n:'Theatro Circo',lat:41.5496,lon:-8.4222,r:38,k:'Teatro',i:'Inaugurado em 1915 na Avenida da Liberdade, uma das grandes salas de espetáculo do país.',b(g){box(g,56,18,34,0,0,0,'#e8dcc3');box(g,6,14,26,-31,0,0,WH);cyl(g,11,3,8,18,0,GR);dome(g,11,8,21,0,DK);}},
+ {n:'Estádio Municipal de Braga',lat:41.5626,lon:-8.4301,r:120,k:'Estádio · A Pedreira',i:'Projeto de Eduardo Souto de Moura (2003), escavado numa pedreira do Monte Castro. Duas bancadas laterais unidas por cabos de aço.',b(g){box(g,72,0.6,108,0,0,0,'#4f9a4a');for(const s of[-1,1]){const m=box(g,34,3,128,s*56,14,0,'#c9ccce');m.rotation.z=s*0.55;box(g,46,1.2,132,s*52,38,0,'#dfe2e4');box(g,3,38,128,s*74,0,0,'#b9bcbf');}for(let i=-6;i<=6;i++)box(g,60,0.35,0.35,0,38.5,i*10,DK);box(g,150,34,22,0,0,-78,'#8b8478');}},
+ {n:'Universidade do Minho (Gualtar)',lat:41.5607,lon:-8.3962,r:150,k:'Campus universitário',i:'Campus de Gualtar, em funcionamento desde os anos 1980.',b(g){for(let i=0;i<5;i++)box(g,70,13,16,-20,0,-80+i*40,'#d9d4c8');box(g,14,15,180,-62,0,0,'#cfc9bb');box(g,40,22,40,60,0,-40,'#b9623f');box(g,50,10,60,60,0,50,'#d9d4c8');}},
+ {n:'Mosteiro de Tibães',lat:41.5560,lon:-8.4790,r:70,k:'Mosteiro beneditino',i:'Antiga casa-mãe da Congregação Beneditina portuguesa, reconstruída nos séculos XVII e XVIII.',b(g){church(g,52,16,16,26);for(const cz of[-34,-78]){box(g,44,9,5,0,0,cz+20,WH);box(g,44,9,5,0,0,cz-20,WH);box(g,5,9,40,-20,0,cz,WH);box(g,5,9,40,20,0,cz,WH);}}},
+ {n:'Basílica dos Congregados',lat:41.5510,lon:-8.4217,r:26,k:'Basílica',i:'Igreja barroca do século XVIII, com fachada de André Soares, na Avenida Central.',b(g){church(g,40,18,15,30);}},
+ {n:'Capela de São Frutuoso',lat:41.5607,lon:-8.4399,r:16,k:'Capela pré-românica',i:'Mausoléu de planta em cruz grega do século VII, um dos raros edifícios visigóticos do país.',b(g){box(g,15,7,5,0,0,0,ST);box(g,5,7,15,0,0,0,ST);box(g,6,10,6,0,0,0,ST);pyr(g,4.6,3,0,10,0,RF);}},
+ {n:'Palácio do Raio',lat:41.5488,lon:-8.4236,r:18,k:'Palácio barroco',i:'Casa de 1754–55 de André Soares, com fachada de azulejo azul do século XIX.',b(g){box(g,22,12,16,0,0,0,'#3f6fa8');box(g,23,1.2,17,0,12,0,WH);for(let i=-2;i<=2;i++)pyr(g,0.8,2,-11,13.2,i*3.6,WH);}},
+ {n:'Jardim de Santa Bárbara',lat:41.5513,lon:-8.4262,r:34,k:'Jardim público',i:'Jardim de 1955 junto à ala medieval do antigo Paço Arquiepiscopal.',b(g){box(g,56,0.5,36,0,0,0,GN);const fc=['#c9403f','#e4b93a','#b65aa6','#e07a3a'];for(let i=0;i<8;i++)box(g,9,0.9,9,-21+(i%4)*14,0.3,i<4?-9:9,fc[i%4]);cyl(g,3,1.2,0,0.3,0,GR);cyl(g,0.6,4,0,1,0,ST);box(g,56,12,6,0,0,-22,GR);for(let i=-6;i<=6;i++)box(g,2,1.6,6,i*4.2,12,-22,GR);}},
+ {n:'Praça da República (Arcada)',lat:41.5513,lon:-8.4229,r:26,k:'Praça',i:'Centro cívico da cidade, com a Arcada do século XVIII e a fonte luminosa.',b(g){box(g,10,10,46,-14,0,0,ST);gable(g,46,3,11,-14,10,0,RF,true);cyl(g,9,0.8,12,0,0,'#5b9bc4');cyl(g,1,3,12,0.5,0,WH);}},
+ {n:'Estação de Braga',lat:41.5480,lon:-8.4345,r:50,k:'Estação ferroviária',i:'Término da Linha de Braga, com ligações a Porto e Lisboa.',b(g){box(g,16,10,70,0,0,0,'#d7dade');box(g,40,1,80,-28,7,0,DK);for(let i=-3;i<=3;i++)box(g,0.8,7,0.8,-40,0,i*12,DK);}},
+ {n:'Hospital de Braga',lat:41.5680,lon:-8.3990,r:130,k:'Hospital',i:'Hospital central da região, aberto em 2011 em Sete Fontes.',b(g){box(g,190,20,24,0,0,0,'#dcdfe1');for(let i=-2;i<=2;i++)box(g,24,17,80,i*40,0,48,'#e6e8ea');}}
+];
+const monGroup=new THREE.Group(); scene.add(monGroup);
+MON.forEach((m,i)=>{const xz=toXZ(m.lat,m.lon);m.x=xz[0];m.z=xz[1];m.y=gy(m.x,m.z);const g=new THREE.Group();g.position.set(m.x,m.y,m.z);g.userData.mon=i;m.b(g,[m.x,m.z,m.y]);
+  box(g,m.r*1.5,6,m.r*1.5,0,-6,0,'#b8b39f'); monGroup.add(g);m.g=g;});
+
+/* ---------- controlos ---------- */
+const ctl={t:new THREE.Vector3(-70,0,40),dist:1500,yaw:0.55,pitch:0.6};
+function applyCam(){
+  ctl.pitch=Math.max(0.09,Math.min(1.55,ctl.pitch)); ctl.dist=Math.max(40,Math.min(90000,ctl.dist));
+  ctl.t.x=Math.max(BX0,Math.min(BX1,ctl.t.x)); ctl.t.z=Math.max(BZ0,Math.min(BZ1,ctl.t.z)); ctl.t.y=gy(ctl.t.x,ctl.t.z);
+  const cp=Math.cos(ctl.pitch); camera.position.set(ctl.t.x+ctl.dist*cp*Math.sin(ctl.yaw),ctl.t.y+ctl.dist*Math.sin(ctl.pitch),ctl.t.z+ctl.dist*cp*Math.cos(ctl.yaw));
+  const gh=gy(camera.position.x,camera.position.z)+8; if(camera.position.y<gh)camera.position.y=gh;
+  camera.lookAt(ctl.t); const ll=toLL(ctl.t.x,ctl.t.z);
+  $('coords').textContent=coordText(ctl.t.x,ctl.t.z);
+  updateSun(); touch(); if(typeof tileSync==='function')tileSync();
+}
+function pan(dx,dy){const s=ctl.dist*0.0016;ctl.t.x+=-Math.cos(ctl.yaw)*dx*s-Math.sin(ctl.yaw)*dy*s;ctl.t.z+=Math.sin(ctl.yaw)*dx*s-Math.cos(ctl.yaw)*dy*s;}
+let fly=null; const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function flyTo(x,z,dist,pitch){const to={x,z,dist,pitch:pitch||0.55};if(still){ctl.t.x=x;ctl.t.z=z;ctl.dist=dist;ctl.pitch=to.pitch;applyCam();return;}fly={f:{x:ctl.t.x,z:ctl.t.z,dist:ctl.dist,pitch:ctl.pitch},to,t0:performance.now()};touch();}
+const ptr=new Map(); let drag=null,pinch=null;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId);}catch(_){ }ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});fly=null;
+  if(ptr.size===1)drag={moved:0,btn:e.button,orbit:e.button===2||e.shiftKey||e.ctrlKey};
+  else if(ptr.size===2){const p=[...ptr.values()];pinch={d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),a:Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x)};if(drag)drag.moved=99;}});
+cv.addEventListener('pointermove',e=>{const p=ptr.get(e.pointerId);
+  if(!p){if(placing)moveGhost(e);hoverCoords(e);return;}
+  const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+  if(ptr.size===1&&drag){drag.moved+=Math.abs(dx)+Math.abs(dy);if(drag.moved<5)return;if(drag.orbit){ctl.yaw-=dx*0.005;ctl.pitch+=dy*0.005;}else pan(dx,dy);applyCam();}
+  else if(ptr.size===2&&pinch){const q=[...ptr.values()],d=Math.hypot(q[0].x-q[1].x,q[0].y-q[1].y),a=Math.atan2(q[1].y-q[0].y,q[1].x-q[0].x);if(d>0&&pinch.d>0)ctl.dist*=pinch.d/d;ctl.yaw-=a-pinch.a;pinch.d=d;pinch.a=a;applyCam();}});
+function endPtr(e){const had=ptr.has(e.pointerId);ptr.delete(e.pointerId);if(ptr.size<2)pinch=null;if(had&&ptr.size===0&&drag){if(drag.moved<5&&drag.btn===0&&e.type==='pointerup')click(e);drag=null;}}
+cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
+cv.addEventListener('wheel',e=>{e.preventDefault();fly=null;ctl.dist*=Math.exp(e.deltaY*0.0012);applyCam();},{passive:false});
+cv.addEventListener('keydown',e=>{const k=e.key;let u=true;
+  if(k==='ArrowLeft')pan(60,0);else if(k==='ArrowRight')pan(-60,0);else if(k==='ArrowUp')pan(0,60);else if(k==='ArrowDown')pan(0,-60);
+  else if(k==='q'||k==='Q')ctl.yaw+=0.1;else if(k==='e'||k==='E')ctl.yaw-=0.1;else if(k==='+'||k==='=')ctl.dist*=0.85;else if(k==='-')ctl.dist*=1.18;
+  else if(k==='PageUp')ctl.pitch+=0.08;else if(k==='PageDown')ctl.pitch-=0.08;else u=false;
+  if(u){e.preventDefault();applyCam();}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&placing)setPlacing(false);});
+
+/* ---------- sol ---------- */
+let sunDir=new THREE.Vector3(0,1,0),sunAlt=1;
+function sunPos(doy,hour){
+  const dst=doy>=88&&doy<298?1:0,utc=hour-dst,g=2*Math.PI/365*(doy-1+(utc-12)/24);
+  const eot=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+  const dec=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  const ha=((utc*60+eot+4*LON0)/4-180)*Math.PI/180,lat=LAT0*Math.PI/180;
+  const alt=Math.asin(Math.sin(lat)*Math.sin(dec)+Math.cos(lat)*Math.cos(dec)*Math.cos(ha));
+  const az=Math.atan2(Math.sin(ha),Math.cos(ha)*Math.sin(lat)-Math.tan(dec)*Math.cos(lat))+Math.PI;
+  return{alt,az};
+}
+const cNight=new THREE.Color('#0d1826'),cDawn=new THREE.Color('#e9b07c'),cDay=new THREE.Color('#a9cbe6'),cTmp=new THREE.Color();
+function setSun(){
+  const doy=+$('doy').value,hour=+$('hour').value,s=sunPos(doy,hour);sunAlt=s.alt;
+  const d=new Date(2026,0,doy);$('dateOut').textContent=d.toLocaleDateString('pt-PT',{day:'numeric',month:'long'});
+  const hh=Math.floor(hour),mm=Math.round((hour-hh)*60);$('hourOut').textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  const deg=s.alt*180/Math.PI;$('sunAlt').textContent=deg>0?fmt(deg,1)+'°':'abaixo do horizonte';
+  $('sunAz').textContent=fmt(s.az*180/Math.PI)+'°';$('sunLen').textContent=deg>1?fmt(10/Math.tan(s.alt),1)+' m':'sem sol';
+  const a=Math.max(s.alt,0.03);sunDir.set(Math.sin(s.az)*Math.cos(a),Math.sin(a),-Math.cos(s.az)*Math.cos(a));
+  const k=Math.max(0,Math.min(1,Math.sin(s.alt)*3));sun.intensity=0.8*k;sun.castShadow=$('shadows').checked&&k>0.05;
+  hemi.intensity=0.2+0.22*k;sun.color.set(k<0.6?'#ffd2a0':'#fff4e0');
+  if(deg<-4)cTmp.copy(cNight);else if(deg<6)cTmp.copy(cNight).lerp(cDawn,(deg+4)/10);else cTmp.copy(cDawn).lerp(cDay,Math.min(1,(deg-6)/14));
+  scene.background.copy(cTmp);scene.fog.color.copy(cTmp);updateSun();touch();
+}
+function updateSun(){
+  const R=Math.max(350,Math.min(3200,ctl.dist*0.85)),c=sun.shadow.camera;
+  sun.target.position.copy(ctl.t);sun.position.copy(ctl.t).addScaledVector(sunDir,6000);
+  c.left=-R;c.right=R;c.top=R;c.bottom=-R;c.near=500;c.far=14000;c.updateProjectionMatrix();
+}
+
+/* ---------- dados OSM ---------- */
+const DATA={b:[],roads:[],lines:[],polys:[],ids:new Set()};
+const KEEP=['name','building','building:levels','height','amenity','shop','addr:street','addr:housenumber','start_date','building:use'];
+const TYPE={house:'hab',detached:'hab',residential:'hab',semidetached_house:'hab',terrace:'hab',bungalow:'hab',apartments:'apt',industrial:'ind',warehouse:'ind',factory:'ind',commercial:'com',retail:'com',office:'com',supermarket:'com',church:'rel',chapel:'rel',cathedral:'rel',religious:'rel',school:'pub',university:'pub',hospital:'pub',public:'pub',civic:'pub',garage:'anx',garages:'anx',shed:'anx',roof:'anx',hut:'anx'};
+const TNAME={hab:'Habitação',apt:'Habitação coletiva',ind:'Indústria ou armazém',com:'Comércio ou serviços',rel:'Edifício religioso',pub:'Equipamento',anx:'Anexo ou garagem',ger:'Edifício'};
+const WALL={hab:rgb('#efe8da'),apt:rgb('#e9e4d8'),ind:rgb('#c9ced2'),com:rgb('#dfe3e6'),rel:rgb('#e8dcc0'),pub:rgb('#e6dccb'),anx:rgb('#d6d0c4'),ger:rgb('#ece5d8')};
+const ROOFT=rgb('#b4623f'),ROOFG=rgb('#8f969b');
+function ringArea(r){let a=0;const n=r.length/2;for(let i=0;i<n;i++){const j=(i+1)%n;a+=r[2*i]*(-r[2*j+1])-r[2*j]*(-r[2*i+1]);}return a/2;}
+function mkRing(ll,wantCCW){ // ll: [[lat,lon],...]
+  const r=[];for(const p of ll){const q=toXZ(p[0],p[1]);r.push(Math.round(q[0]*100)/100,Math.round(q[1]*100)/100);}
+  let n=r.length/2;if(n>1&&r[0]===r[2*n-2]&&r[1]===r[2*n-1]){r.length-=2;n--;}
+  if(n<3)return null;const a=ringArea(r);if(Math.abs(a)<2)return null;
+  if((a>0)!==wantCCW){const o=[];for(let i=n-1;i>=0;i--)o.push(r[2*i],r[2*i+1]);return o;}return r;
+}
+function inRing(x,z,r){let c=false;const n=r.length/2;for(let i=0,j=n-1;i<n;j=i++){const zi=r[2*i+1],zj=r[2*j+1];if((zi>z)!==(zj>z)&&x<(r[2*j]-r[2*i])*(z-zi)/(zj-zi)+r[2*i])c=!c;}return c;}
+function finish(b){
+  const r=b.r,n=r.length/2;let cx=0,cz=0,per=0;for(let i=0;i<n;i++){cx+=r[2*i];cz+=r[2*i+1];const j=(i+1)%n;per+=Math.hypot(r[2*j]-r[2*i],r[2*j+1]-r[2*i+1]);}
+  b.cx=cx/n;b.cz=cz/n;b.per=per;b.area=Math.abs(ringArea(r));if(b.o)for(const h of b.o)b.area-=Math.abs(ringArea(h));
+  const t=b.t,ty=TYPE[t.building]||'ger';b.ty=ty;const h=parseFloat(t.height),lv=parseFloat(t['building:levels']);
+  if(h>0){b.h=h;b.src=0;}else if(lv>0){b.h=lv*3+1.5;b.src=1;}
+  else{b.src=2;b.h=ty==='hab'?7:ty==='apt'?16:ty==='ind'?9:ty==='com'?9:ty==='rel'?13:ty==='pub'?11:ty==='anx'?3:(b.area<60?4:b.area<250?7:b.area<800?10:9);}
+  b.lv=lv>0?lv:Math.max(1,Math.round(b.h/3));b.base=gy(b.cx,b.cz);
+}
+function nearMon(x,z){for(const m of MON){const dx=x-m.x,dz=z-m.z;if(dx*dx+dz*dz<m.r*m.r)return true;}return false;}
+function pickTags(t){const o={};if(t)for(const k of KEEP)if(t[k]!==undefined)o[k]=String(t[k]);return o;}
+function addBuilding(id,outer,inners,tags){
+  if(DATA.ids.has(id))return;const r=mkRing(outer,true);if(!r)return;DATA.ids.add(id);
+  const b={id,r,t:pickTags(tags)};if(inners&&inners.length){b.o=[];for(const h of inners){const hr=mkRing(h,false);if(hr&&inRing(hr[0],hr[1],r))b.o.push(hr);}if(!b.o.length)delete b.o;}
+  finish(b);DATA.b.push(b);
+}
+const ROAD={motorway:[8,0],trunk:[7,0],primary:[5.5,0],secondary:[4.5,0],tertiary:[3.8,1],residential:[3,1],unclassified:[3,1],living_street:[2.6,1],pedestrian:[2.6,2],motorway_link:[3.5,0],trunk_link:[3.5,0],primary_link:[3,0],service:[1.8,1],secondary_link:[3,0],tertiary_link:[2.6,1],road:[2.5,1],busway:[3,1],track:[1.4,2],footway:[1,2],path:[0.8,2],steps:[1,2],cycleway:[1,2],bridleway:[0.8,2]};
+function addFeature(id,tags,geomLL,inners){
+  tags=tags||{};
+  if(tags.building){addBuilding(id,geomLL,inners,tags);return;}
+  if(DATA.ids.has(id))return;
+  const flat=()=>{const p=[];for(const q of geomLL){const xz=toXZ(q[0],q[1]);p.push(xz[0],xz[1]);}return p;};
+  if(tags.railway==='rail'||tags.railway==='light_rail'){if(tags.tunnel==='yes'||geomLL.length<2)return;DATA.ids.add(id);DATA.roads.push({p:flat(),w:1.6,c:3});return;}
+  if(tags.highway){const c=ROAD[tags.highway];if(!c||tags.tunnel==='yes'||geomLL.length<2)return;DATA.ids.add(id);DATA.roads.push({p:flat(),w:c[0],c:c[1]});}
+  else if(tags.waterway){if(geomLL.length<2)return;DATA.ids.add(id);DATA.lines.push({p:flat(),w:tags.waterway==='river'?6:2});}
+  else if(tags.leisure||tags.natural==='water'||tags.landuse==='grass'){const r=mkRing(geomLL,true);if(!r)return;DATA.ids.add(id);DATA.polys.push({r,k:tags.natural==='water'?1:0});}
+}
+const sleep=()=>new Promise(r=>setTimeout(r,0));
+const busy=t=>{$('busy').textContent=t||'';$('busy').classList.toggle('on',!!t);};
+async function ingest(j){
+  const gl=g=>g.map(p=>[p.lat,p.lon]);
+  if(j&&Array.isArray(j.elements)){
+    const E=j.elements;
+    for(let i=0;i<E.length;i++){const e=E[i];
+      if(e.type==='way'&&e.geometry)addFeature('way/'+e.id,e.tags,gl(e.geometry.filter(Boolean)));
+      else if(e.type==='relation'&&e.members&&e.tags&&e.tags.building){
+        const cl=m=>m.geometry&&m.geometry.length>3&&m.geometry[0].lat===m.geometry[m.geometry.length-1].lat&&m.geometry[0].lon===m.geometry[m.geometry.length-1].lon;
+        const outs=e.members.filter(m=>m.type==='way'&&m.role!=='inner'&&cl(m)),ins=e.members.filter(m=>m.type==='way'&&m.role==='inner'&&cl(m)).map(m=>gl(m.geometry));
+        outs.forEach((m,k)=>addBuilding('relation/'+e.id+(k?'#'+k:''),gl(m.geometry),ins,e.tags));
+      }
+      if(i%5000===0){busy('A ler o ficheiro: '+fmt(i)+' de '+fmt(E.length)+' elementos');await sleep();}
+    }
+  }else if(j&&Array.isArray(j.features)){
+    const F=j.features;
+    for(let i=0;i<F.length;i++){const f=F[i],g=f.geometry,p=f.properties||{},tags=p.tags||p,id=String(f.id||p['@id']||p.id||('f'+i+'-'+DATA.ids.size));if(!g)continue;
+      const sw=c=>c.map(q=>[q[1],q[0]]);
+      if(g.type==='Polygon')addFeature(id,tags,sw(g.coordinates[0]),g.coordinates.slice(1).map(sw));
+      else if(g.type==='MultiPolygon')g.coordinates.forEach((pc,k)=>addFeature(id+(k?'#'+k:''),tags,sw(pc[0]),pc.slice(1).map(sw)));
+      else if(g.type==='LineString')addFeature(id,tags,sw(g.coordinates));
+      else if(g.type==='MultiLineString')g.coordinates.forEach((lc,k)=>addFeature(id+'#'+k,tags,sw(lc)));
+      if(i%5000===0){busy('A ler o ficheiro: '+fmt(i)+' de '+fmt(F.length)+' elementos');await sleep();}
+    }
+  }else throw new Error('formato');
+}
+
+/* construção da malha da cidade */
+const cityGroup=new THREE.Group(),ctxGroup=new THREE.Group();scene.add(cityGroup);scene.add(ctxGroup);
+const bMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
+bMat.onBeforeCompile=sh=>{
+  sh.vertexShader='attribute vec2 wuv;\nvarying vec2 vWuv;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vWuv=wuv;');
+  sh.fragmentShader='varying vec2 vWuv;\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n if(vWuv.y>-50.0){float fx=fract(vWuv.x/3.4),fy=fract(vWuv.y/3.0);float dd=gl_FragCoord.z/gl_FragCoord.w;float k=1.0-smoothstep(500.0,1400.0,dd);if(vWuv.y>0.3&&fx>0.22&&fx<0.78&&fy>0.34&&fy<0.82)diffuseColor.rgb*=mix(vec3(0.86,0.88,0.9),vec3(0.42,0.5,0.62),k);diffuseColor.rgb*=0.8+0.2*smoothstep(-0.5,2.5,vWuv.y);}');
+};
+let tiles=[];
+function w2(Wb,u,v){if(!Wb)return;Wb.need(2);Wb.a[Wb.n++]=u;Wb.a[Wb.n++]=v;}
+function hsh(t){let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;return h;}
+const WPAL=['#f2ede3','#ece4d3','#e8dcc6','#f4f1ea','#e3d5c0','#efe3d0','#f0e6d8','#e6e2da'].map(rgb),RPAL=['#b4623f','#a9573b','#bd6a45','#9f4f37','#c0714d'].map(rgb);
+function wallCol(b){return(b.ty==='hab'||b.ty==='apt'||b.ty==='ger')?WPAL[hsh(b.id)%WPAL.length]:WALL[b.ty];}
+function roofCol(b){return roofOf(b)===ROOFG?ROOFG:RPAL[(hsh(b.id)>>>3)%RPAL.length];}
+function emit(b,P,N,C,wc,rc,Wb){
+  const y0=b.base-3,y1=b.base+b.h,rings=b.o?[b.r].concat(b.o):[b.r];
+  for(const r of rings){const n=r.length/2;let u=0;
+    for(let i=0;i<n;i++){const j=(i+1)%n,ax=r[2*i],az=r[2*i+1],ex=r[2*j],ez=r[2*j+1];let nx=-(ez-az),nz=ex-ax;const l=Math.hypot(nx,nz)||1;nx=Math.round(nx/l*127);nz=Math.round(nz/l*127);
+      P.p3(ax,y0,az);P.p3(ex,y0,ez);P.p3(ex,y1,ez);P.p3(ax,y0,az);P.p3(ex,y1,ez);P.p3(ax,y1,az);
+      w2(Wb,u,-3);w2(Wb,u+l,-3);w2(Wb,u+l,b.h);w2(Wb,u,-3);w2(Wb,u+l,b.h);w2(Wb,u,b.h);
+      for(let v=0;v<6;v++){N.p3(nx,0,nz);C.p3(wc[0],wc[1],wc[2]);}u+=l;}}
+  const r=b.r,n=r.length/2;
+  if(!b.o&&rc!==ROOFG&&n<=12&&b.area<700){
+    let bi=0,bl=0;for(let i=0;i<n;i++){const j=(i+1)%n,l=Math.hypot(r[2*j]-r[2*i],r[2*j+1]-r[2*i+1]);if(l>bl){bl=l;bi=i;}}
+    const j0=(bi+1)%n,ux=(r[2*j0]-r[2*bi])/bl,uz=(r[2*j0+1]-r[2*bi+1])/bl,wx=-uz,wz=ux;
+    let u0=1e9,u1=-1e9,w0=1e9,w1=-1e9;const U=[];for(let i=0;i<n;i++){const a=r[2*i]*ux+r[2*i+1]*uz,c=r[2*i]*wx+r[2*i+1]*wz;U.push(a);if(a<u0)u0=a;if(a>u1)u1=a;if(c<w0)w0=c;if(c>w1)w1=c;}
+    const hw=(w1-w0)/2;
+    if(hw<=11&&hw>1.2){const wm=(w0+w1)/2,um=(u0+u1)/2,rh=Math.min(3.4,hw*0.6),ra=Math.min(u0+hw,um),rb=Math.max(u1-hw,um),yr=y1+rh;
+      const Rg=i=>{const t=U[i]<ra?ra:U[i]>rb?rb:U[i];return[t*ux+wm*wx,t*uz+wm*wz];};
+      const tri=(x1,yA,z1,x2,yB,z2,x3,yC,z3)=>{let nx=(yB-yA)*(z3-z1)-(z2-z1)*(yC-yA),ny=(z2-z1)*(x3-x1)-(x2-x1)*(z3-z1),nz=(x2-x1)*(yC-yA)-(yB-yA)*(x3-x1);const l=Math.hypot(nx,ny,nz);if(l<1e-6)return;
+        if(ny<0){P.p3(x1,yA,z1);P.p3(x3,yC,z3);P.p3(x2,yB,z2);nx=-nx;ny=-ny;nz=-nz;}else{P.p3(x1,yA,z1);P.p3(x2,yB,z2);P.p3(x3,yC,z3);}
+        for(let v=0;v<3;v++){N.p3(Math.round(nx/l*127),Math.round(ny/l*127),Math.round(nz/l*127));C.p3(rc[0],rc[1],rc[2]);w2(Wb,0,-100);}};
+      for(let i=0;i<n;i++){const j=(i+1)%n,a=Rg(i),c=Rg(j);tri(r[2*i],y1,r[2*i+1],r[2*j],y1,r[2*j+1],c[0],yr,c[1]);tri(r[2*i],y1,r[2*i+1],c[0],yr,c[1],a[0],yr,a[1]);}
+      return;}
+  }
+  const V=q=>{const o=[];for(let i=0;i<q.length;i+=2)o.push(new THREE.Vector2(q[i],-q[i+1]));return o;};
+  const ct=V(b.r),hs=b.o?b.o.map(V):[];let all=ct;for(const h of hs)all=all.concat(h);
+  let tr;try{tr=THREE.ShapeUtils.triangulateShape(ct,hs);}catch(_){tr=[];}
+  for(const t of tr){const a=all[t[0]];let p=all[t[1]],q=all[t[2]];if(!a||!p||!q)continue;
+    const ny=(-(p.y-a.y))*(q.x-a.x)-(p.x-a.x)*(-(q.y-a.y));if(ny<0){const sw=p;p=q;q=sw;}
+    P.p3(a.x,y1,-a.y);P.p3(p.x,y1,-p.y);P.p3(q.x,y1,-q.y);for(let v=0;v<3;v++){N.p3(0,127,0);C.p3(rc[0],rc[1],rc[2]);w2(Wb,0,-100);}}
+}
+function emitV1(b,P,N,C,wc,rc){
+  const y0=b.base-3,y1=b.base+b.h,rings=b.o?[b.r].concat(b.o):[b.r];
+  for(const r of rings){const n=r.length/2;
+    for(let i=0;i<n;i++){const j=(i+1)%n,ax=r[2*i],az=r[2*i+1],ex=r[2*j],ez=r[2*j+1];let nx=-(ez-az),nz=ex-ax;const l=Math.hypot(nx,nz)||1;nx=Math.round(nx/l*127);nz=Math.round(nz/l*127);
+      P.p3(ax,y0,az);P.p3(ex,y0,ez);P.p3(ex,y1,ez);P.p3(ax,y0,az);P.p3(ex,y1,ez);P.p3(ax,y1,az);
+      for(let v=0;v<6;v++){N.p3(nx,0,nz);C.p3(wc[0],wc[1],wc[2]);}}}
+  const V=r=>{const o=[];for(let i=0;i<r.length;i+=2)o.push(new THREE.Vector2(r[i],-r[i+1]));return o;};
+  const ct=V(b.r),hs=b.o?b.o.map(V):[];let all=ct;for(const h of hs)all=all.concat(h);
+  let tr;try{tr=THREE.ShapeUtils.triangulateShape(ct,hs);}catch(_){tr=[];}
+  for(const t of tr){const a=all[t[0]];let p=all[t[1]],q=all[t[2]];if(!a||!p||!q)continue;
+    const ny=(-(p.y-a.y))*(q.x-a.x)-(p.x-a.x)*(-(q.y-a.y));if(ny<0){const s=p;p=q;q=s;}
+    P.p3(a.x,y1,-a.y);P.p3(p.x,y1,-p.y);P.p3(q.x,y1,-q.y);for(let v=0;v<3;v++){N.p3(0,127,0);C.p3(rc[0],rc[1],rc[2]);}}
+}
+const roofOf=b=>(b.ty==='ind'||b.ty==='com'||b.ty==='anx'||b.area>700)?ROOFG:ROOFT;
+async function rebuild(){
+  for(const t of tiles){cityGroup.remove(t.mesh);t.mesh.geometry.dispose();}tiles=[];
+  while(ctxGroup.children.length){const m=ctxGroup.children[0];ctxGroup.remove(m);m.geometry.dispose();}
+  const by=new Map();
+  DATA.b.forEach((b,i)=>{if(nearMon(b.cx,b.cz)){b.hid=true;return;}b.hid=false;const k=Math.floor(b.cx/800)+','+Math.floor(b.cz/800);let a=by.get(k);if(!a)by.set(k,a=[]);a.push(i);});
+  let done=0;const tot=by.size;
+  for(const idx of by.values()){
+    const P=new Buf(Float32Array,idx.length*400),N=new Buf(Int8Array,idx.length*400),C=new Buf(Uint8Array,idx.length*400),Wb=new Buf(Float32Array,idx.length*260),st=new Uint32Array(idx.length);
+    idx.forEach((bi,k)=>{st[k]=P.n/3;const b=DATA.b[bi];emit(b,P,N,C,wallCol(b),roofCol(b),Wb);});
+    const mesh=meshFrom(P,N,C,bMat);mesh.geometry.setAttribute('wuv',new THREE.BufferAttribute(Wb.done(),2));mesh.castShadow=mesh.receiveShadow=true;cityGroup.add(mesh);tiles.push({mesh,st,idx});
+    if(++done%4===0){busy('A construir a cidade: '+Math.round(done/tot*100)+'%');touch();await sleep();}
+  }
+  if(DATA.roads.length||DATA.lines.length||DATA.polys.length){
+    const P=new Buf(Float32Array),N=new Buf(Int8Array),C=new Buf(Uint8Array),rc=[rgb('#6d737a'),rgb('#888d93'),rgb('#cdc5b3'),rgb('#4a4038')],wc=rgb('#5b9bc4'),gc=rgb('#7fae69');
+    for(const r of DATA.roads)ribbon(r.p,r.w,rc[r.c],r.c===0?0.6:0.45,P,N,C);
+    for(const l of DATA.lines)ribbon(l.p,l.w,wc,0.35,P,N,C);
+    for(const pg of DATA.polys){const r=pg.r,ct=[];for(let i=0;i<r.length;i+=2)ct.push(new THREE.Vector2(r[i],-r[i+1]));let tr;try{tr=THREE.ShapeUtils.triangulateShape(ct,[]);}catch(_){continue;}const c=pg.k?wc:gc;
+      for(const t of tr)for(const k of t){const v=ct[k];if(!v)continue;P.p3(v.x,gy(v.x,-v.y)+(pg.k?0.3:0.25),-v.y);N.p3(0,127,0);C.p3(c[0],c[1],c[2]);}}
+    if(P.n%9)P.n-=P.n%9,N.n=P.n,C.n=P.n;
+    const m=meshFrom(P,N,C,flatMat);m.receiveShadow=true;ctxGroup.add(m);
+  }
+  busy('');stats();touch();
+}
+function stats(){if(TI){tileStats();return;}
+  const B=DATA.b.filter(b=>!b.hid),n=B.length;let a=0,g=0,h=0,real=0;for(const b of B){a+=b.area;g+=b.area*b.lv;h+=b.h;if(b.src<2)real++;}
+  $('cityStats').innerHTML='<dt>Edifícios</dt><dd>'+fmt(n)+'</dd>'+(n?'<dt>Área de implantação</dt><dd>'+fmt(a/10000,1)+' ha</dd><dt>ABC estimada</dt><dd>'+fmt(g/10000,1)+' ha</dd><dt>Altura média</dt><dd>'+fmt(h/n,1)+' m</dd><dt>Com altura ou pisos no mapa</dt><dd>'+fmt(real/n*100)+'%</dd>':'')+'<dt>Troços de rua</dt><dd>'+fmt(DATA.roads.length)+'</dd>';
+  const p=$('dataPill');p.className='pill '+(n?'ok':'warn');p.textContent=n?fmt(n)+' edifícios reais':'Edifícios por carregar';
+  $('dataMsg').textContent=n?'Dados do OpenStreetMap.':'Monumentos e relevo já estão na cena.';
+}
+
+/* cache no navegador */
+function idb(mode,fn){return new Promise((res,rej)=>{let rq;try{rq=indexedDB.open('braga3d',1);}catch(e){rej(e);return;}
+  rq.onupgradeneeded=()=>rq.result.createObjectStore('s');rq.onerror=()=>rej(rq.error);
+  rq.onsuccess=()=>{try{const tx=rq.result.transaction('s',mode),r=fn(tx.objectStore('s'));tx.oncomplete=()=>res(r&&r.result);tx.onerror=()=>rej(tx.error);}catch(e){rej(e);}};});}
+async function saveData(){try{await idb('readwrite',s=>s.put({b:DATA.b.map(b=>({id:b.id,r:b.r,o:b.o,t:b.t})),roads:DATA.roads,lines:DATA.lines,polys:DATA.polys},'city'));return true;}catch(_){return false;}}
+async function loadSaved(){try{const d=await idb('readonly',s=>s.get('city'));if(!d||!d.b)return;busy('A abrir a cidade guardada neste navegador');await sleep();
+  for(const b of d.b){if(!b.o)delete b.o;finish(b);DATA.b.push(b);DATA.ids.add(b.id);}DATA.roads=d.roads||[];DATA.lines=d.lines||[];DATA.polys=d.polys||[];await rebuild();}catch(_){busy('');}}
+async function handleFiles(files){
+  let okN=0;
+  for(const f of files){try{busy('A abrir '+f.name);await sleep();const j=JSON.parse(await f.text());await ingest(j);okN++;}
+    catch(e){busy('');$('dataMsg').textContent='Não consegui ler '+f.name+'. Confirma que é o JSON guardado a partir da ligação.';}}
+  if(!okN)return;await rebuild();busy('A guardar neste navegador');const s=await saveData();busy('');
+  if(!s)$('dataMsg').textContent='Carregado, mas o navegador não deixou guardar: terás de largar os ficheiros outra vez na próxima visita.';
+}
+const drop=$('drop'),fileIn=$('file');
+drop.addEventListener('click',()=>fileIn.click());drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileIn.click();}});
+fileIn.addEventListener('change',()=>{handleFiles([...fileIn.files]);fileIn.value='';});
+for(const el of[drop,stage]){
+  el.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+  el.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  el.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer&&e.dataTransfer.files.length)handleFiles([...e.dataTransfer.files]);});
+}
+$('clearData').addEventListener('click',async()=>{DATA.b=[];DATA.roads=[];DATA.lines=[];DATA.polys=[];DATA.ids=new Set();select(null);await rebuild();try{await idb('readwrite',s=>s.delete('city'));}catch(_){ }});
+(function(){const bb=BBOX.join(','),u='https://overpass-api.de/api/interpreter?data=';
+  $('q1').href=u+encodeURIComponent('[out:json][timeout:180];(way["building"]('+bb+');relation["building"]["type"="multipolygon"]('+bb+'););out geom qt;');
+  $('q2').href=u+encodeURIComponent('[out:json][timeout:180];(way["highway"]('+bb+');way["railway"~"^(rail|light_rail)$"]('+bb+');way["waterway"~"^(river|stream)$"]('+bb+');way["leisure"~"^(park|garden|pitch)$"]('+bb+');way["natural"="water"]('+bb+'););out geom qt;');})();
+
+/* ---------- seleção e cartão ---------- */
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let hi=null;
+const hiMat=new THREE.MeshLambertMaterial({color:'#f2a516',emissive:'#7a4a00',side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+function groundHit(){const o=ray.ray.origin,d=ray.ray.direction;let t0=0;for(let i=0;i<600;i++){const t=t0+Math.max(6,t0*0.015);if(o.y+d.y*t<gy(o.x+d.x*t,o.z+d.z*t)){let a=t0,b=t;for(let k=0;k<14;k++){const m=(a+b)/2;if(o.y+d.y*m<gy(o.x+d.x*m,o.z+d.z*m))b=m;else a=m;}return{point:new THREE.Vector3(o.x+d.x*b,o.y+d.y*b,o.z+d.z*b),distance:b};}t0=t;if(t>200000)break;}return null;}
+function setRay(e){const r=cv.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera);}
+function card(title,html){$('cardT').textContent=title;$('cardB').innerHTML=html;$('card').classList.add('on');}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function select(b){
+  if(hi){scene.remove(hi);hi.geometry.dispose();hi=null;}
+  if(!b){$('card').classList.remove('on');touch();return;}
+  const P=new Buf(Float32Array),N=new Buf(Int8Array),C=new Buf(Uint8Array);emit(b,P,N,C,[255,255,255],[255,255,255]);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P.done(),3));g.setAttribute('normal',new THREE.BufferAttribute(N.done(),3,true));hi=new THREE.Mesh(g,hiMat);scene.add(hi);
+  const t=b.t,src=['indicada no mapa','calculada pelos pisos','estimativa'][b.src],addr=[t['addr:street'],t['addr:housenumber']].filter(Boolean).join(' ');
+  card(t.name||TNAME[b.ty],'<dl class="kv"><dt>Tipo</dt><dd>'+TNAME[b.ty]+'</dd>'+(addr?'<dt>Morada</dt><dd>'+esc(addr)+'</dd>':'')+
+   '<dt>Altura</dt><dd>'+fmt(b.h,1)+' m <span class="pill '+(b.src<2?'ok':'warn')+'">'+src+'</span></dd><dt>Pisos</dt><dd>'+fmt(b.lv)+(t['building:levels']?'':' (est.)')+'</dd>'+
+   '<dt>Área de implantação</dt><dd>'+fmt(b.area)+' m²</dd><dt>Perímetro</dt><dd>'+fmt(b.per)+' m</dd><dt>ABC estimada</dt><dd>'+fmt(b.area*b.lv)+' m²</dd><dt>Cota aprox.</dt><dd>'+fmt(b.base+190)+' m</dd><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(b.cx,b.cz)+'</dd>'+
+   (t.start_date?'<dt>Construção</dt><dd>'+esc(t.start_date)+'</dd>':'')+'</dl>'+(/^(way|relation)\/\d+/.test(b.id)?'<a href="https://www.openstreetmap.org/'+b.id.split('#')[0]+'" target="_blank" rel="noopener">Ver no OpenStreetMap</a>':'')+pdmCard([[b.cx,b.cz]]));
+  touch();
+}
+$('cardX').addEventListener('click',()=>select(null));
+function click(e){
+  setRay(e);
+  if(placing){const h=groundHit();if(h)placeWork(h.point.x,h.point.z);return;}
+  let best=null,kind=null,ref=null;
+  const consider=(hit,k,r)=>{if(hit&&(!best||hit.distance<best.distance)){best=hit;kind=k;ref=r;}};
+  if(cityGroup.visible)for(const t of tiles){const h=ray.intersectObject(t.mesh)[0];if(h){const v=h.faceIndex*3;let lo=0,hi2=t.st.length-1;while(lo<hi2){const m=(lo+hi2+1)>>1;if(t.st[m]<=v)lo=m;else hi2=m-1;}consider(h,'b',DATA.b[t.idx[lo]]);}}
+  if($('lyBuild').checked)for(const t of TL.values())if(t.mesh){const h=ray.intersectObject(t.mesh)[0];if(h){const v=h.faceIndex*3;let lo=0,hi2=t.st.length-1;while(lo<hi2){const m=(lo+hi2+1)>>1;if(t.st[m]<=v)lo=m;else hi2=m-1;}consider(h,'b',t.bs[lo]);}}
+  if(monGroup.visible){const h=ray.intersectObjects(monGroup.children,true)[0];if(h){let o=h.object;while(o&&o.userData.mon===undefined)o=o.parent;if(o)consider(h,'m',MON[o.userData.mon]);}}
+  {const h=ray.intersectObjects(workGroup.children,false)[0];if(h)consider(h,'w',h.object.userData.w);}
+  if(kind==='b')select(ref);
+  else if(kind==='m'){select(null);card(ref.n,'<p class="note">'+ref.k+'</p><p style="margin:0">'+ref.i+'</p><p class="note">Modelo simplificado, posição aproximada.</p>');}
+  else if(kind==='w'){select(null);showWork(ref);}
+  else{select(null);const h=groundHit();if(h&&PDM)card('PDM neste ponto','<dl class="kv"><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(h.point.x,h.point.z)+'</dd></dl>'+pdmCard([[h.point.x,h.point.z]]));}
+}
+
+/* ---------- obras ---------- */
+const workGroup=new THREE.Group();scene.add(workGroup);
+let works=[];try{works=JSON.parse(localStorage.getItem('braga3d-obras')||'[]');}catch(_){works=[];}
+const UCOL={'Habitação':'#f2a516','Comércio e serviços':'#3aa0c9','Indústria e armazéns':'#8d7bd1','Equipamento':'#e0604f'};
+let placing=false,ghost=null;
+const wParams=()=>({w:Math.max(2,+$('wW').value||2),d:Math.max(2,+$('wD').value||2),f:Math.max(1,Math.round(+$('wF').value||1)),rot:+$('wR').value||0,u:$('wU').value});
+function wMesh(w,ghostly){const h=w.f*3,m=new THREE.Mesh(new THREE.BoxGeometry(w.w,h+3,w.d),new THREE.MeshLambertMaterial({color:UCOL[w.u]||'#f2a516',transparent:!!ghostly,opacity:ghostly?0.55:1}));
+  m.position.set(w.x,gy(w.x,w.z)-3+(h+3)/2,w.z);m.rotation.y=-w.rot*Math.PI/180;if(!ghostly){m.castShadow=m.receiveShadow=true;m.userData.w=w;}return m;}
+function drawWorks(){
+  while(workGroup.children.length){const m=workGroup.children[0];workGroup.remove(m);m.geometry.dispose();}
+  let a=0,g=0;const L=$('workList');L.innerHTML='';
+  works.forEach((w,i)=>{workGroup.add(wMesh(w));a+=w.w*w.d;g+=w.w*w.d*w.f;const b=document.createElement('button');b.innerHTML='<span>Obra '+(i+1)+' · '+esc(w.u)+'</span><small>'+fmt(w.w*w.d*w.f)+' m² · '+w.f+' pisos</small>';b.addEventListener('click',()=>{flyTo(w.x,w.z,Math.max(250,w.f*12));showWork(w);});L.appendChild(b);});
+  if(!works.length)L.innerHTML='<p class="note">Ainda não colocaste nenhuma obra.</p>';
+  $('wTA').textContent=fmt(a)+' m²';$('wTG').textContent=fmt(g)+' m²';
+  try{localStorage.setItem('braga3d-obras',JSON.stringify(works));}catch(_){ }touch();
+}
+function showWork(w){const i=works.indexOf(w);card('Obra '+(i+1),'<dl class="kv"><dt>Uso</dt><dd>'+esc(w.u)+'</dd><dt>Frente × fundo</dt><dd>'+fmt(w.w,1)+' × '+fmt(w.d,1)+' m</dd><dt>Pisos</dt><dd>'+w.f+'</dd><dt>Cércea</dt><dd>'+fmt(w.f*3)+' m</dd><dt>Implantação</dt><dd>'+fmt(w.w*w.d)+' m²</dd><dt>ABC</dt><dd>'+fmt(w.w*w.d*w.f)+' m²</dd><dt>Cota aprox.</dt><dd>'+fmt(elev(w.x,w.z))+' m</dd><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(w.x,w.z)+'</dd></dl>'+pdmCard(workPts(w))+'<button class="btn" id="delWork">Remover esta obra</button>');
+  $('delWork').addEventListener('click',()=>{works.splice(works.indexOf(w),1);drawWorks();select(null);});}
+function placeWork(x,z){const w=Object.assign(wParams(),{x,z});works.push(w);setPlacing(false);drawWorks();showWork(w);}
+function setPlacing(on){placing=on;$('placeBtn').classList.toggle('on',on);$('placeBtn').textContent=on?'Cancelar':'Colocar no mapa';$('mode').classList.toggle('on',on);cv.style.cursor=on?'crosshair':'';if(ghost){scene.remove(ghost);ghost.geometry.dispose();ghost=null;}touch();}
+function moveGhost(e){setRay(e);const h=groundHit();if(!h)return;if(ghost){scene.remove(ghost);ghost.geometry.dispose();}ghost=wMesh(Object.assign(wParams(),{x:h.point.x,z:h.point.z}),true);scene.add(ghost);touch();}
+function wSummary(){const p=wParams();$('wA').textContent=fmt(p.w*p.d)+' m²';$('wG').textContent=fmt(p.w*p.d*p.f)+' m²';$('wH').textContent=fmt(p.f*3)+' m';}
+for(const id of['wW','wD','wF','wR','wU'])$(id).addEventListener('input',wSummary);
+$('placeBtn').addEventListener('click',()=>setPlacing(!placing));
+
+/* ---------- nomes ---------- */
+const DIST=[['Braga',41.5470,-8.4265],['Guimarães',41.4425,-8.2918],['Barcelos',41.5388,-8.6151],['Vila Nova de Famalicão',41.4080,-8.5198],['Fafe',41.4508,-8.1728],['Esposende',41.5320,-8.7824],['Vila Verde',41.6489,-8.4363],['Amares',41.6300,-8.3500],['Póvoa de Lanhoso',41.5760,-8.2700],['Vieira do Minho',41.6340,-8.1420],['Terras de Bouro',41.7190,-8.3090],['Cabeceiras de Basto',41.5150,-7.9930],['Celorico de Basto',41.3880,-8.0010],['Vizela',41.3890,-8.3080],['Dume',41.5690,-8.4370],['Gualtar',41.5650,-8.3880],['Nogueiró',41.5450,-8.3930],['Lamaçães',41.5410,-8.4020],['Fraião',41.5330,-8.4050],['Ferreiros',41.5330,-8.4440],['Semelhe',41.5490,-8.4640],['Celeirós',41.5110,-8.4500],['Este (São Mamede)',41.5680,-8.3550],['São Pedro de Merelim',41.5760,-8.4530],['Real',41.5560,-8.4480]];
+const labels=[],LB=$('labels');
+MON.forEach(m=>{const el=document.createElement('button');el.className='lb';el.textContent=m.n;el.addEventListener('click',()=>flyTo(m.x,m.z,Math.max(220,m.r*5)));LB.appendChild(el);labels.push({el,p:new THREE.Vector3(m.x,m.y+45,m.z),mon:true});
+  const b=document.createElement('button');b.innerHTML='<span>'+m.n+'</span><small>'+m.k.split(' · ')[0]+'</small>';b.addEventListener('click',()=>{flyTo(m.x,m.z,Math.max(220,m.r*5));card(m.n,'<p class="note">'+m.k+'</p><p style="margin:0">'+m.i+'</p><p class="note">Modelo simplificado, posição aproximada.</p>');});$('monList').appendChild(b);});
+DIST.forEach((d,i)=>{const xz=toXZ(d[1],d[2]),el=document.createElement('span');el.className='lb d';el.textContent=d[0];if(i<14)el.style.fontSize='17px';LB.appendChild(el);labels.push({el,p:new THREE.Vector3(xz[0],gy(xz[0],xz[1])+30,xz[1]),mon:false,mun:i<14});});
+const v3=new THREE.Vector3();
+function drawLabels(){
+  const on=$('lyLab').checked,w=stage.clientWidth,h=stage.clientHeight;
+  for(const l of labels){let show=on&&(l.mon?monGroup.visible&&ctl.dist<7000:l.mun?ctl.dist>9000:ctl.dist>1800&&ctl.dist<=12000);
+    if(show){v3.copy(l.p).project(camera);show=v3.z<1&&Math.abs(v3.x)<1.05&&Math.abs(v3.y)<1.05;if(show){l.el.style.left=((v3.x+1)/2*w)+'px';l.el.style.top=((1-v3.y)/2*h)+'px';}}
+    l.el.style.display=show?'':'none';}
+}
+
+/* ---------- interface ---------- */
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+b.dataset.tab));}));
+$('dataPill').style.cursor='pointer';$('dataPill').addEventListener('click',()=>document.querySelector('nav button[data-tab="dados"]').click());
+$('lyBuild').addEventListener('change',e=>{cityGroup.visible=e.target.checked;touch();});
+$('lyMon').addEventListener('change',e=>{monGroup.visible=e.target.checked;touch();});
+$('lyCtx').addEventListener('change',e=>{ctxGroup.visible=e.target.checked;touch();});
+$('lyLim').addEventListener('change',e=>{limit.visible=e.target.checked;touch();});
+$('lyLab').addEventListener('change',touch);
+$('doy').addEventListener('input',setSun);$('hour').addEventListener('input',setSun);$('shadows').addEventListener('change',setSun);
+document.querySelectorAll('[data-doy]').forEach(b=>b.addEventListener('click',()=>{$('doy').value=b.dataset.doy;setSun();}));
+let playing=false;
+$('playDay').addEventListener('click',()=>{playing=!playing;$('playDay').textContent=playing?'Parar':'Percorrer o dia';if(playing&&+$('hour').value>=21.5)$('hour').value=5;touch();});
+
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();touch();}
+if(window.ResizeObserver)new ResizeObserver(resize).observe(stage);window.addEventListener('resize',resize);
+
+function frame(now){
+  requestAnimationFrame(frame);
+  if(fly){const k=Math.min(1,(now-fly.t0)/1100),s=k*k*(3-2*k),f=fly.f,t=fly.to;ctl.t.x=f.x+(t.x-f.x)*s;ctl.t.z=f.z+(t.z-f.z)*s;ctl.dist=f.dist+(t.dist-f.dist)*s;ctl.pitch=f.pitch+(t.pitch-f.pitch)*s;if(k>=1)fly=null;applyCam();}
+  if(playing){let h=+$('hour').value+0.05;if(h>=22){h=22;playing=false;$('playDay').textContent='Percorrer o dia';}$('hour').value=h;setSun();}
+  if(!dirty)return;dirty=false;
+  renderer.shadowMap.needsUpdate=true;renderer.render(scene,camera);drawLabels();
+}
+/* ---------- mosaicos do distrito ---------- */
+const TI=window.__TI||null,TL=new Map(),CT=new Map();let tPend=0,tLast=0;
+function ringXZ(a,ccw){const r=[];for(let i=0;i<a.length;i+=2)r.push(Math.round((TI.ox+a[i]/10-C0[0])*100)/100,Math.round((C0[1]-TI.oy-a[i+1]/10)*100)/100);let n=r.length/2;if(n>1&&r[0]===r[2*n-2]&&r[1]===r[2*n-1]){r.length-=2;n--;}if(n<3)return null;const ar=ringArea(r);if(Math.abs(ar)<2)return null;if((ar>0)!==ccw){const o=[];for(let i=n-1;i>=0;i--)o.push(r[2*i],r[2*i+1]);return o;}return r;}
+function lineXZ(a){const q=[];for(let i=0;i<a.length;i+=2)q.push(TI.ox+a[i]/10-C0[0],C0[1]-TI.oy-a[i+1]/10);return q;}
+window.__tile=function(key,d){const t=TL.get(key);if(!t||t.state!==1)return;tPend--;
+  const bs=[];for(const o of (d.b||[])){const r=ringXZ(o.r,true);if(!r)continue;const b={id:o.i,r,t:o.t||{}};
+    if(o.o){b.o=[];for(const h of o.o){const hr=ringXZ(h,false);if(hr)b.o.push(hr);}if(!b.o.length)delete b.o;}
+    finish(b);if(!nearMon(b.cx,b.cz))bs.push(b);}
+  if(bs.length){const P=new Buf(Float32Array,bs.length*400),N=new Buf(Int8Array,bs.length*400),C=new Buf(Uint8Array,bs.length*400),Wb=new Buf(Float32Array,bs.length*260),st=new Uint32Array(bs.length);
+    bs.forEach((b,k)=>{st[k]=P.n/3;emit(b,P,N,C,wallCol(b),roofCol(b),Wb);});
+    const mesh=meshFrom(P,N,C,bMat);mesh.geometry.setAttribute('wuv',new THREE.BufferAttribute(Wb.done(),2));mesh.castShadow=mesh.receiveShadow=true;
+    t.mesh=mesh;t.st=st;t.bs=bs;mesh.visible=$('lyBuild').checked;scene.add(mesh);}
+  t.state=2;tileStats();touch();};
+window.__ctx=function(key,d){const c=CT.get(key);if(!c||c.state!==1)return;tPend--;
+  const P=new Buf(Float32Array),N=new Buf(Int8Array),C=new Buf(Uint8Array),rc=[rgb('#6d737a'),rgb('#888d93'),rgb('#cdc5b3'),rgb('#4a4038')],wc=rgb('#5b9bc4'),gc=rgb('#7fae69');
+  for(const r of (d.r||[]))ribbon(lineXZ(r.p),Math.max(r.w*1.8,r.c===2?1.6:3.2),rc[r.c],r.c===0?0.7:0.5,P,N,C,r.b||0);
+  for(const l of (d.l||[]))ribbon(lineXZ(l.p),Math.max(l.w*1.6,2.5),wc,0.35,P,N,C);
+  for(const pg of (d.g||[])){const r=ringXZ(pg.r,true);if(!r)continue;const ct=[];for(let i=0;i<r.length;i+=2)ct.push(new THREE.Vector2(r[i],-r[i+1]));let tr;try{tr=THREE.ShapeUtils.triangulateShape(ct,[]);}catch(_){continue;}const col=pg.k?wc:gc;
+    for(const tt of tr){if(!ct[tt[0]]||!ct[tt[1]]||!ct[tt[2]])continue;for(const k of tt){const v=ct[k];P.p3(v.x,gy(v.x,-v.y)+(pg.k?0.3:0.25),-v.y);N.p3(0,127,0);C.p3(col[0],col[1],col[2]);}}}
+  if(P.n){const m=meshFrom(P,N,C,flatMat);m.receiveShadow=true;m.visible=$('lyCtx').checked;c.mesh=m;scene.add(m);}
+  c.state=2;touch();};
+function tileVis(){for(const t of TL.values())if(t.mesh)t.mesh.visible=$('lyBuild').checked;for(const c of CT.values())if(c.mesh)c.mesh.visible=$('lyCtx').checked;}
+function wanted(M,P,Rd){const ts=TI.ts,out=[];
+  for(let i=Math.floor((M-Rd-TI.ox)/ts);i<=Math.floor((M+Rd-TI.ox)/ts);i++)for(let j=Math.floor((P-Rd-TI.oy)/ts);j<=Math.floor((P+Rd-TI.oy)/ts);j++){const k=i+'_'+j;if(TI.tiles[k]){const dx=TI.ox+(i+0.5)*ts-M,dy=TI.oy+(j+0.5)*ts-P;out.push([dx*dx+dy*dy,k]);}}
+  out.sort((a,b)=>a[0]-b[0]);return out;}
+function pump(map,pre,list,keep){let falta=false;
+  for(const w of list){const k=w[1];if(map.has(k))continue;if(tPend>=6){falta=true;continue;}
+    map.set(k,{state:1});tPend++;const sc=document.createElement('script');sc.src='dist/'+pre+k+'.js';
+    const fim=()=>{const t=map.get(k);if(t&&t.state===1){tPend--;map.delete(k);}};sc.onerror=fim;sc.onload=fim;document.head.appendChild(sc);}
+  if(map.size>keep+8){const set=new Set(list.map(w=>w[1]));
+    for(const e of Array.from(map)){const t=e[1];if(t.state===2&&!set.has(e[0])&&map.size>keep){if(t.mesh){scene.remove(t.mesh);t.mesh.geometry.dispose();}map.delete(e[0]);}}}
+  return falta;}
+function tileSync(){if(!TI)return;const now=performance.now();if(now-tLast<250)return;tLast=now;
+  const M=ctl.t.x+C0[0],P=C0[1]-ctl.t.z;
+  const Rb=Math.max(2600,Math.min(7000,ctl.dist*1.1)),Rc=Math.max(14000,Math.min(60000,ctl.dist*3.2));
+  const f1=pump(TL,'t_',wanted(M,P,Rb),26),f2=pump(CT,'c_',wanted(M,P,Rc),150);
+  tileStats();
+  if(tPend||f1||f2)setTimeout(()=>{tLast=0;tileSync();},300);}
+function tileStats(){let n=0;for(const t of TL.values())if(t.bs)n+=t.bs.length;const pl=$('dataPill');pl.className='pill ok';pl.textContent=fmt(TI.nb)+' edifícios no distrito';$('dataMsg').textContent=fmt(n)+' carregados à volta da vista.';
+  $('cityStats').innerHTML='<dt>Edifícios no distrito</dt><dd>'+fmt(TI.nb)+'</dd><dt>Carregados agora</dt><dd>'+fmt(n)+'</dd><dt>Zonas de edifícios</dt><dd>'+TL.size+' de '+Object.keys(TI.tiles).length+'</dd><dt>Zonas de ruas</dt><dd>'+CT.size+'</dd>';}
+$('lyBuild').addEventListener('change',()=>{tileVis();touch();});$('lyCtx').addEventListener('change',()=>{tileVis();touch();});
+function pdmGeo(mg,pg,wm,hm){
+  if(mg===undefined){mg=C0[0]+1250-9000;pg=C0[1]-(475-7000);wm=18000;hm=14000;}
+  if(!demA){const g0=new THREE.PlaneGeometry(wm,hm,180,140);g0.rotateX(-Math.PI/2);g0.translate(mg+wm/2-C0[0],0,C0[1]-(pg-hm/2));const q=g0.attributes.position;for(let i=0;i<q.count;i++)q.setY(i,gy(q.getX(i),q.getZ(i)));g0.computeVertexNormals();return g0;}
+  const M0=mg,P1=pg,Rs=DEM.res,i0=Math.ceil((M0-DEM.x0)/Rs),i1=Math.floor((M0+wm-DEM.x0)/Rs),j0=Math.ceil((DEM.y1-P1)/Rs),j1=Math.floor((DEM.y1-(P1-hm))/Rs),nx=i1-i0+1,ny=j1-j0+1;
+  const pos=new Float32Array(nx*ny*3),uv=new Float32Array(nx*ny*2),idx=new Uint32Array((nx-1)*(ny-1)*6);let k=0,u=0,q=0;
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const M=DEM.x0+(i0+i)*Rs,P=DEM.y1-(j0+j)*Rs;pos[k++]=M-C0[0];pos[k++]=demA[(j0+j)*DEM.w+i0+i]-190;pos[k++]=C0[1]-P;uv[u++]=(M-M0)/wm;uv[u++]=1-(P1-P)/hm;}
+  for(let j=0;j<ny-1;j++)for(let i=0;i<nx-1;i++){const a=i+nx*j,b=i+nx*(j+1),c=i+1+nx*(j+1),d=i+1+nx*j;idx[q++]=a;idx[q++]=b;idx[q++]=d;idx[q++]=b;idx[q++]=c;idx[q++]=d;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(new THREE.BufferAttribute(idx,1));g.computeVertexNormals();return g;
+}
+
+/* ---------- PDM ---------- */
+const PDM=window.__PDM||null;let pdmMesh=null,pdmMeshG=null;const PL=[];
+const CMB='Câmara Municipal de Braga',APA='Agência Portuguesa do Ambiente (ARH do Norte)',PC='Património Cultural, I.P.';
+const CATS={EC1:[0,'59.º','Centro histórico: privilegia a conservação do existente.'],EC2:[0,'60.º',''],EC3:[0,'60.º',''],EC4:[1,'61.º','Regras fixadas no Plano de Urbanização das Sete Fontes.'],AE:[0,'62.º e 63.º','Indústria, armazéns e logística. Habitação interdita, salvo exceções.'],BD:[0,'66.º e 67.º',''],UEE:[1,'68.º e 69.º','Só equipamentos. Habitação interdita, salvo interstícios urbanos.'],EV:[1,'64.º e 65.º','Só instalações de apoio ao parque, com impermeabilização máxima de 10%.'],EVE:[2,'65.º, n.º 3','Não são admitidas edificações.'],A:[1,'42.º e 43.º','Solo rústico: só usos agrícolas, pecuários, turismo e apoio, com índices próprios.'],F2:[1,'44.º e 45.º','Solo rústico: aplica as regras de edificabilidade dos espaços agrícolas.'],FRVP:[1,'44.º e 45.º','Solo rústico: só apoio a empreendimentos existentes e campismo.'],EG:[1,'46.º e 47.º','Só exploração de recursos, anexos e infraestruturas de apoio.'],C:[1,'50.º e 51.º','Solo rústico: equipamentos, turismo e apoio, com índices baixos.'],EI1:[1,'52.º e 53.º','Solo rústico: só equipamentos, turismo e recreio.'],F1:[2,'44.º, n.º 4','Não são admitidas operações urbanísticas, salvo exceções pontuais.'],NP:[2,'49.º, n.º 2','Interdita qualquer nova construção ou ampliação.']};
+const CONDS=[['Zona Non Aedificandi',2,PC,'Zona non aedificandi de património classificado.'],['Leito das Águas',2,APA,'Leito de curso de água (domínio hídrico).'],['Albufeira Classificada - Zona Terrestre',1,APA,'Zona terrestre de proteção de albufeira.'],['Zona Reservada',1,APA,'Zona reservada da albufeira.'],['Albufeira Classificada',2,APA,'Plano de água de albufeira classificada.'],['Margens do Domínio',1,APA,'Margem do domínio hídrico.'],['Linhas de Água',1,APA,'Linha de água: faixa de 10 m para cada lado.',10],['Reserva Agrícola',1,'Entidade Regional da Reserva Agrícola Nacional do Norte','Reserva Agrícola Nacional (RAN).'],['Excluida da Reserva Ecológica',1,'CCDR Norte e '+CMB,'Área excluída da REN para um fim específico.'],['Reserva Ecológica',1,'CCDR Norte','Reserva Ecológica Nacional (REN).'],['Regime Florestal',1,'ICNF','Regime florestal parcial.'],['Pedreiras',1,'DGEG','Área concessionada de pedreira.'],['Monumento Nacional',1,PC,'Monumento nacional.'],['Interesse Público',1,PC,'Imóvel de interesse público.'],['Interesse Municipal',1,CMB,'Imóvel de interesse municipal.'],['Em Vias de Classificação',1,PC,'Imóvel em vias de classificação.'],['Zona Especial de Proteção',1,PC,'Zona especial de proteção de património.'],['Zona Geral de Proteção',1,PC,'Zona geral de proteção de património.'],['Estabelecimento Prisional',1,'Direção-Geral de Reinserção e Serviços Prisionais','Zona de proteção de estabelecimento prisional ou tutelar.'],['Servidão Militar',1,'Ministério da Defesa Nacional','Zona de servidão militar.'],['Transporte de Energia',1,'REN - Rede Eléctrica Nacional','Linha de transporte de energia: faixa de servidão.',22],['Rede de Gás',1,'operador da rede de gás (REN Gasodutos)','Gasoduto: faixa de servidão.',10],['Rede Rodoviária Nacional',1,'Infraestruturas de Portugal','Estrada da rede nacional: zona de servidão.',20],['UOPG',1,CMB,'UOPG: execução por unidades de execução (art. 82.º a 86.º).'],['Rede de saneamento',1,CMB,'Polígono de redes de saneamento ou água da planta: possível área a infraestruturar (art. 83.º).']];
+const PR=window.__PDMR||null,RL=[],RUST=['A','F1','F2','FRVP','EG','C','EI1','NP'];
+const RDEF={EEM:[0,CMB,'Estrutura Ecológica Municipal (planta 1.3): aplicam-se as regras da categoria com exigências de proteção (art. 9.º e 10.º).'],AERO:[1,CMB+' e gestor do aeródromo','Área de proteção do aeródromo municipal (planta 1.3, art. 16.º).'],INV:[1,CMB,'Imóvel inventariado ou área de salvaguarda arquitetónica (planta 1.4.1, art. 21.º).'],SARQ:[1,CMB,'Área de sensibilidade arqueológica (planta 1.4.2): parecer prévio vinculativo da Câmara (art. 22.º).'],PARQ:[1,PC,'Património arqueológico ou a sua zona de proteção (planta 1.4.2).'],CONF:[1,CMB,'Área de conflito acústico (planta 1.6, art. 15.º).'],SENS:[0,CMB,'Zona sensível no zonamento acústico (planta 1.6).'],ARPSI:[1,APA+' e '+CMB,'Área de risco de inundação do PGRI (planta 1.7, art. 13.º): confirmar a cota de cheia.'],ZAC:[1,'CCDR Norte e '+APA,'Zona ameaçada pelas cheias (planta 1.7, art. 11.º): aplica-se o regime da REN.'],INUN:[1,APA+' e '+CMB,'Zona inundável (planta 1.7, art. 12.º): interditas construções que obstruam o escoamento, caves, edifícios sensíveis e empreendimentos turísticos.'],APPS:[3,'ICNF e '+CMB,'Área prioritária de prevenção e segurança, com perigosidade de incêndio alta ou muito alta (planta 2.3).'],FGC:[1,CMB,'Rede secundária de faixas de gestão de combustível (planta 2.3).']};
+if(PR)for(const l of PR.L)if(RDEF[l.id]){const img=new Image();img.src=l.png;RL.push({id:l.id,kind:'ras',st:RDEF[l.id][0],ent:RDEF[l.id][1],note:RDEF[l.id][2],img});}
+/* Guimaraes: 2.a alteracao do PDM, Aviso n.o 18789/2019 (DR, 2.a serie, n.o 225, 22-11-2019) */
+const PG=window.__PDMG||null,GL=[];
+const GCATS={
+ EC:[0,'','Solo urbano: edificação admitida pela categoria.'],
+ ER:[0,'','Solo urbano: edificação admitida pela categoria.'],
+ BD:[0,'','Solo urbano: edificação admitida pela categoria.'],
+ AE:[0,'','Solo urbano: indústria, armazéns e serviços.'],
+ UE:[1,'79.º e 80.º','Só equipamentos e infraestruturas de apoio, com índice de ocupação até 0,7.'],
+ VC:[1,'66.º e 67.º','Só desporto, recreio e lazer, com edificações de apoio.'],
+ VEQ:[2,'82.º','Edificabilidade restrita às obras necessárias à qualificação do espaço.'],
+ A:[1,'46.º e 47.º','Solo rural na RAN: exige autorização prévia de inutilização do solo agrícola.'],
+ FP:[1,'','Solo rural florestal: edificação condicionada.'],
+ FPT:[2,'50.º e 51.º','Solo rural integrado maioritariamente na REN, com função de proteção.'],
+ M:[1,'','Solo rural de uso múltiplo agrícola e florestal: edificação condicionada.'],
+ G:[1,'60.º e 61.º','Aglomerado rural: habitação admitida, sem abertura de novos arruamentos.'],
+ ED:[1,'62.º e 63.º','Edificação dispersa: privilegia a recuperação do existente, sem novos arruamentos.'],
+ EI:[1,'','Solo rural destinado a equipamentos e infraestruturas.'],
+ DP:[1,'','Espaços de depósitos minerais: exploração, anexos e infraestruturas de apoio condicionados.'],
+ RG:[1,'','Espaços de recursos geológicos: exploração, anexos e infraestruturas de apoio condicionados.']};
+if(PG)for(const l of PG.L){const d=GCATS[l.id];if(!d)continue;const img=new Image();img.src=l.png;GL.push({id:l.id,gm:true,kind:'cat',name:l.nome,st:d[0],art:d[1],note:d[2],ent:'Câmara Municipal de Guimarães',img});}
+/* Guimaraes, planta de condicionantes (17 folhas, tramas lidas por cor e direcao) */
+const PGC=window.__PDMGC||null,GCL=[];
+const CMG='Câmara Municipal de Guimarães';
+const GCOND={
+ RAN:[1,'Entidade Regional da Reserva Agrícola Nacional do Norte','Reserva Agrícola Nacional (RAN).'],
+ REN:[1,'CCDR Norte','Reserva Ecológica Nacional (REN).'],
+ RENX:[1,'CCDR Norte e '+CMG,'Área excluída da REN para um fim específico.'],
+ DH:[1,'Agência Portuguesa do Ambiente (ARH do Norte)','Elementos a azul-ciano da planta: albufeira classificada, zona terrestre de proteção e perímetros de proteção de nascentes. Confirmar qual se aplica.'],
+ INUN:[1,'Agência Portuguesa do Ambiente (ARH do Norte) e '+CMG,'Zona inundável.'],
+ ZRES:[1,'Agência Portuguesa do Ambiente (ARH do Norte)','Zona reservada da zona terrestre de proteção da albufeira.'],
+ PAT:[1,'Património Cultural, I.P.','Imóvel classificado, de interesse público, municipal ou em vias de classificação.'],
+ PATZ:[1,'Património Cultural, I.P.','Zona de proteção de património classificado.'],
+ PRIS:[1,'Direção-Geral de Reinserção e Serviços Prisionais','Estabelecimento prisional ou a sua zona de proteção.'],
+ LCA:[0,'Agência Portuguesa do Ambiente (ARH do Norte)','Elemento a verde vivo da planta de condicionantes: contorno da REN, leito de curso de água ou arvoredo de interesse público. Não foi possível separá-los.']};
+if(PGC)for(const l of PGC.L){const d=GCOND[l.id];if(!d)continue;const img=new Image();img.src=l.png;GCL.push({id:l.id,gm:true,kind:'cond',st:d[0],ent:d[1],note:d[2],img});}
+const PCOL=['#2f9e55','#f2c230','#d63a31'],PLAB=['Verde: edificável pela categoria do PDM','Amarelo: confirmar com a entidade competente','Vermelho: nova construção interdita'];
+if(PDM)for(const L of PDM.L){const code=L.n.split(' - ')[0];
+  if(L.f==='CQS'&&CATS[code])PL.push({L,kind:'cat',code,name:L.n.slice(code.length+3),st:CATS[code][0]});
+  else{const c=CONDS.find(q=>L.n.indexOf(q[0])>=0);if(c)PL.push({L,kind:'cond',name:L.n,st:c[1],ent:c[2],note:c[3],buf:c[4]||0});}}
+async function pdmBuild(){
+  if(!PDM){$('pdmMsg').textContent='Camada do PDM por carregar: falta o ficheiro dados-pdm.js ao lado desta página.';return;}
+  if(PR)await Promise.all(RL.map(q=>q.img.decode?q.img.decode().catch(()=>{}):0));
+  if(PG)await Promise.all(GL.map(q=>q.img.decode?q.img.decode().catch(()=>{}):0));
+  if(PGC)await Promise.all(GCL.map(q=>q.img.decode?q.img.decode().catch(()=>{}):0));
+  const W=Math.min(6000,renderer.capabilities.maxTextureSize),H=Math.round(W*14000/18000),cvs=document.createElement('canvas');cvs.width=W;cvs.height=H;const g=cvs.getContext('2d');
+  const M0=C0[0]+1250-9000,P1=C0[1]-(475-7000),kx=W/180000,ky=H/140000,bx=(PDM.ox-M0)*W/18000,by=(P1-PDM.oy)*H/14000;
+  const path=r=>{g.moveTo(r[0]*kx+bx,by-r[1]*ky);for(let i=2;i<r.length;i+=2)g.lineTo(r[i]*kx+bx,by-r[i+1]*ky);};
+  const fillL=(q)=>{const L=q.L;g.fillStyle=PCOL[q.st];if(L.h)for(const hs of L.h){g.beginPath();for(const r of hs){path(r);g.closePath();}g.fill('evenodd');}if(L.p)for(const r of L.p){g.beginPath();path(r);g.closePath();g.fill();}
+    if(L.l&&q.buf){g.strokeStyle=PCOL[q.st];g.lineWidth=Math.max(2,2*q.buf*W/18000);g.lineJoin='round';g.lineCap='round';g.beginPath();for(const r of L.l)path(r);g.stroke();}};
+  const pass=(k,st)=>{for(const q of PL)if(q.kind===k&&q.st===st)fillL(q);};
+  pass('cat',0);pass('cat',1);pass('cond',1);
+  const clipTo=urb=>{g.beginPath();for(const q of PL)if(q.kind==='cat'&&(RUST.indexOf(q.code)<0)===urb&&q.L.h)for(const hs of q.L.h)for(const r of hs){path(r);g.closePath();}g.clip('evenodd');};
+  if(PR&&RL.length){const tc=document.createElement('canvas');tc.width=PR.w;tc.height=PR.h;const t=tc.getContext('2d');
+    const dx=(PR.x0-M0)*W/18000,dy=(P1-PR.y1)*H/14000,dw=PR.w*PR.res*W/18000,dh=PR.h*PR.res*H/14000;
+    const tint=(q,col)=>{t.globalCompositeOperation='source-over';t.clearRect(0,0,tc.width,tc.height);t.drawImage(q.img,0,0);t.globalCompositeOperation='source-in';t.fillStyle=col;t.fillRect(0,0,tc.width,tc.height);};
+    for(const q of RL){if(q.st===1){tint(q,PCOL[1]);g.drawImage(tc,dx,dy,dw,dh);}else if(q.st===3){tint(q,PCOL[1]);g.save();clipTo(true);g.drawImage(tc,dx,dy,dw,dh);g.restore();}}
+    pass('cat',2);pass('cond',2);
+    for(const q of RL)if(q.st===3){tint(q,PCOL[2]);g.save();clipTo(false);g.drawImage(tc,dx,dy,dw,dh);g.restore();}
+    tc.width=tc.height=1;
+  }else{pass('cat',2);pass('cond',2);}
+  /* agua sempre por cima: traco escuro a contornar a cor do estado, para ler sobre o amarelo */
+  const HYD=/Linhas de Água|Leito das Águas|Margens do Domínio|Albufeira|Zona Reservada/;
+  g.lineJoin='round';g.lineCap='round';
+  for(const q of PL){const L=q.L;if(q.kind!=='cond'||!HYD.test(L.n))continue;
+    const lw=Math.max(1.5,2*(q.buf||2.5)*W/18000);
+    if(L.l&&L.l.length){g.strokeStyle='#123a5c';g.lineWidth=lw*2.1;g.beginPath();for(const r of L.l)path(r);g.stroke();
+      g.strokeStyle=PCOL[q.st];g.lineWidth=lw;g.beginPath();for(const r of L.l)path(r);g.stroke();}
+    const rings=[];if(L.h)for(const hs of L.h)for(const r of hs)rings.push(r);if(L.p)for(const r of L.p)rings.push(r);
+    if(rings.length){g.fillStyle=PCOL[q.st];if(L.h)for(const hs of L.h){g.beginPath();for(const r of hs){path(r);g.closePath();}g.fill('evenodd');}
+      if(L.p)for(const r of L.p){g.beginPath();path(r);g.closePath();g.fill();}
+      g.strokeStyle='#123a5c';g.lineWidth=Math.max(1.3,1.1*W/18000*2);g.beginPath();for(const r of rings){path(r);g.closePath();}g.stroke();}}
+  g.strokeStyle='rgba(255,255,255,.45)';g.lineWidth=1.2;for(const q of PL)if(q.kind==='cat'&&q.L.h)for(const hs of q.L.h){g.beginPath();for(const r of hs){path(r);g.closePath();}g.stroke();}
+  const tex=new THREE.CanvasTexture(cvs);tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  pdmMesh=new THREE.Mesh(pdmGeo(),new THREE.MeshLambertMaterial({map:tex,transparent:true,opacity:+$('pdmOp').value,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}));pdmMesh.receiveShadow=true;scene.add(pdmMesh);
+  try{pdmBuildG();}catch(e){}
+  $('pdmMsg').textContent='Camadas carregadas das plantas oficiais de Braga e de Guimarães.';
+  $('pdmStats').innerHTML='<dt>Braga: categorias de solo</dt><dd>'+PL.filter(q=>q.kind==='cat').length+'</dd><dt>Braga: condicionantes e UOPG</dt><dd>'+PL.filter(q=>q.kind==='cond').length+'</dd><dt>Braga: salvaguardas das folhas</dt><dd>'+RL.length+'</dd><dt>Guimarães: categorias de solo</dt><dd>'+GL.length+'</dd><dt>Guimarães: condicionantes</dt><dd>'+GCL.length+'</dd>';touch();
+}
+function pdmBuildG(){
+  if(!PG||!GL.length)return;
+  const cvs=document.createElement('canvas');cvs.width=PG.w;cvs.height=PG.h;const g=cvs.getContext('2d');
+  const tc=document.createElement('canvas');tc.width=PG.w;tc.height=PG.h;const t=tc.getContext('2d');
+  const okC=PGC&&PGC.x0===PG.x0&&PGC.y1===PG.y1;
+  const drawL=(arr,st)=>{for(const q of arr){if(q.st!==st)continue;
+    t.globalCompositeOperation='source-over';t.clearRect(0,0,PG.w,PG.h);t.drawImage(q.img,0,0);
+    t.globalCompositeOperation='source-in';t.fillStyle=PCOL[st];t.fillRect(0,0,PG.w,PG.h);
+    g.drawImage(tc,0,0);}};
+  drawL(GL,0);drawL(GL,1);if(okC)drawL(GCL,1);drawL(GL,2);if(okC)drawL(GCL,2);
+
+  tc.width=tc.height=1;
+  const tex=new THREE.CanvasTexture(cvs);tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  pdmMeshG=new THREE.Mesh(pdmGeo(PG.x0,PG.y1,PG.w*PG.res,PG.h*PG.res),new THREE.MeshLambertMaterial({map:tex,transparent:true,opacity:+$('pdmOp').value,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}));
+  pdmMeshG.receiveShadow=true;scene.add(pdmMeshG);
+}
+function pin(x,y,r){let c=false;for(let i=0,j=r.length-2;i<r.length;j=i,i+=2){const yi=r[i+1],yj=r[j+1];if((yi>y)!==(yj>y)&&x<(r[j]-r[i])*(y-yi)/(yj-yi)+r[i])c=!c;}return c;}
+function nearLine(x,y,r,d){for(let i=0;i+3<r.length;i+=2){const ax=r[i],ay=r[i+1],ux=r[i+2]-ax,uy=r[i+3]-ay,l=ux*ux+uy*uy;let t=l?((x-ax)*ux+(y-ay)*uy)/l:0;t=t<0?0:t>1?1:t;const dx=x-ax-t*ux,dy=y-ay-t*uy;if(dx*dx+dy*dy<d*d)return true;}return false;}
+function inPL(q,x,y){const L=q.L;if(L.h)for(const hs of L.h){let c=false;for(const r of hs)if(pin(x,y,r))c=!c;if(c)return true;}if(L.p)for(const r of L.p)if(pin(x,y,r))return true;if(L.l&&q.buf)for(const r of L.l)if(nearLine(x,y,r,q.buf*10))return true;return false;}
+const qc=document.createElement('canvas');qc.width=qc.height=1;const qx=qc.getContext('2d',{willReadFrequently:true});
+function rasAt(q,M,P,g){const G=g||PR;const x=Math.floor((M-G.x0)/G.res),y=Math.floor((G.y1-P)/G.res);if(x<0||y<0||x>=G.w||y>=G.h)return false;try{qx.clearRect(0,0,1,1);qx.drawImage(q.img,x,y,1,1,0,0,1,1);return qx.getImageData(0,0,1,1).data[3]>0;}catch(e){return false;}}
+function pdmAt(x,z){const X=(x+C0[0]-PDM.ox)*10,Y=(C0[1]-z-PDM.oy)*10,o={cat:null,conds:[]};for(const q of PL)if(inPL(q,X,Y)){if(q.kind==='cat'){if(!o.cat)o.cat=q;}else o.conds.push(q);}
+  if(PG&&!o.cat)for(const q of GL)if(rasAt(q,x+C0[0],C0[1]-z,PG)){o.cat=q;break;}
+  if(PR)for(const q of RL)if(rasAt(q,x+C0[0],C0[1]-z))o.conds.push(q);
+  if(PGC)for(const q of GCL)if(rasAt(q,x+C0[0],C0[1]-z,PGC))o.conds.push(q);return o;}
+function pdmCard(pts){
+  if(!PDM)return'';let st=0,fora=false;const cats=[],conds=[],info=[],reds=[];
+  for(const pt of pts){const o=pdmAt(pt[0],pt[1]);if(o.cat){if(cats.indexOf(o.cat)<0)cats.push(o.cat);if(o.cat.st>st)st=o.cat.st;}else{fora=true;if(st<1)st=1;}
+    for(const c of o.conds){let v=c.st;if(v===3)v=o.cat&&RUST.indexOf(o.cat.code)>=0?2:1;
+      if(v===0){if(info.indexOf(c)<0)info.push(c);}else{if(conds.indexOf(c)<0)conds.push(c);if(v===2&&reds.indexOf(c)<0)reds.push(c);if(v>st)st=v;}}}
+  const ents=[];const add=e=>{if(ents.indexOf(e)<0)ents.push(e);};for(const q of cats)if(q.st===1)add(q.ent||CMB);for(const q of conds)add(q.ent);if(fora)add(CMB);
+  let h='<div class="pdm s'+st+'"><b>'+PLAB[st]+'</b>';
+  for(const q of cats){if(q.gm){h+='<span>'+esc(q.name)+' — PDM de Guimarães'+(q.art?' (art. '+q.art+' do Regulamento)':'')+'. '+q.note+'</span>';continue;}
+    const c=CATS[q.code];h+='<span>'+esc(q.name)+' (art. '+c[1]+' do Regulamento). '+c[2]+'</span>';}
+  if(fora)h+='<span>Ponto fora das manchas de categoria lidas.</span>';
+  if(cats.some(q=>q.gm))h+='<span class="note">Guimarães: lidas a planta de ordenamento e a planta de condicionantes. Não entram as plantas de áreas ardidas, perigosidade de incêndio e zonas de conflito acústico.</span>';
+  if(conds.length){h+='<span>Condicionantes e salvaguardas neste local:</span><ul>';for(const q of conds)h+='<li>'+esc(q.note)+(q.st===3?(reds.indexOf(q)>=0?' Em solo rústico a edificação é interdita, salvo exceções (Decreto-Lei n.º 82/2021, art. 60.º).':' Em solo urbano: confirmar as condições de edificação.'):'')+' Entidade: '+esc(q.ent)+'.</li>';h+='</ul>';}
+  if(info.length){h+='<span>Outras indicações:</span><ul>';for(const q of info)h+='<li>'+esc(q.note)+'</li>';h+='</ul>';}
+  if(st===1)h+='<b>Alerta: confirma com '+esc(ents.join('; '))+' antes de avançar.</b>';
+  else if(st===0)h+='<span>Sem condicionantes nem salvaguardas impeditivas nas plantas lidas. A licença depende sempre da '+CMB+'.</span>';
+  else h+='<span>Confirma sempre o enquadramento com a '+CMB+(ents.length?' e com '+esc(ents.join('; ')):'')+'.</span>';
+  return h+'</div>';
+}
+function pdmCardV1(pts){
+  if(!PDM)return'';let st=0;const cats=[],conds=[];let fora=false;
+  for(const pt of pts){const o=pdmAt(pt[0],pt[1]);if(o.cat){if(cats.indexOf(o.cat)<0)cats.push(o.cat);}else fora=true;for(const c of o.conds)if(conds.indexOf(c)<0)conds.push(c);}
+  for(const q of cats.concat(conds))if(q.st>st)st=q.st;if(fora&&st<1)st=1;
+  const ents=[];const add=e=>{if(ents.indexOf(e)<0)ents.push(e);};for(const q of cats)if(q.st===1)add(q.ent||CMB);for(const q of conds)add(q.ent);if(fora)add(CMB);
+  let h='<div class="pdm s'+st+'"><b>'+PLAB[st]+'</b>';
+  for(const q of cats){const c=CATS[q.code];h+='<span>'+esc(q.name)+' (art. '+c[1]+' do Regulamento). '+c[2]+'</span>';}
+  if(fora)h+='<span>Ponto fora das manchas de categoria lidas.</span>';
+  if(conds.length){h+='<span>Condicionantes neste local:</span><ul>';for(const q of conds)h+='<li>'+esc(q.note)+' Entidade: '+esc(q.ent)+'.</li>';h+='</ul>';}
+  if(st===1)h+='<b>Alerta: confirma com '+esc(ents.join('; '))+' antes de avançar.</b>';
+  else if(st===0)h+='<span>Sem condicionantes nas duas plantas analisadas. A licença depende sempre da '+CMB+'.</span>';
+  else h+='<span>Confirma sempre o enquadramento com a '+CMB+(ents.length?' e com '+esc(ents.join('; ')):'')+'.</span>';
+  return h+'</div>';
+}
+function workPts(w){const a=-w.rot*Math.PI/180,c=Math.cos(a),s=Math.sin(a),o=[[w.x,w.z]];for(const q of[[-1,-1],[1,-1],[1,1],[-1,1]]){const dx=q[0]*w.w/2,dz=q[1]*w.d/2;o.push([w.x+dx*c+dz*s,w.z-dx*s+dz*c]);}return o;}
+$('lyPdm').addEventListener('change',e=>{if(pdmMesh)pdmMesh.visible=e.target.checked;if(pdmMeshG)pdmMeshG.visible=e.target.checked;touch();});
+$('pdmOp').addEventListener('input',e=>{const v=+e.target.value;if(pdmMesh)pdmMesh.material.opacity=v;if(pdmMeshG)pdmMeshG.material.opacity=v;touch();});
+pdmBuild().catch(()=>{$('pdmMsg').textContent='Não foi possível desenhar a camada do PDM neste navegador.';});
+
+/* ---------- georreferenciacao ---------- */
+let hv=null;
+function hoverCoords(e){if(hv){hv=e;return;}hv=e;requestAnimationFrame(()=>{const ev=hv;hv=null;setRay(ev);const h=groundHit();if(h)$('coords').textContent=coordText(h.point.x,h.point.z);});}
+function parseCoord(s){
+  const str=String(s).replace(/\u2212/g,'-'),parts=str.indexOf(';')>=0?str.split(';').map(t=>t.replace(/\s/g,'')):(str.match(/-?\d+(?:[.,]\d+)?/g)||[]),v=parts.map(t=>parseFloat(t.replace(',','.')));if(v.length<2||isNaN(v[0])||isNaN(v[1]))return null;
+  const inside=q=>q[0]>BX0&&q[0]<BX1&&q[1]>BZ0&&q[1]<BZ1;let q;
+  q=[v[0]-C0[0],C0[1]-v[1]];
+
+  return inside(q)?q:null;
+}
+function gotoCoord(place){const q=parseCoord($('gotoIn').value);
+  if(!q){$('gotoMsg').textContent='Coordenadas fora da maquete ou por reconhecer. Exemplo: -24452.6 209049.0 (M e P em metros)';return;}
+  $('gotoMsg').textContent='PT-TM06/ETRS89 (M; P): '+mpText(q[0],q[1]);
+  if(place)placeWork(q[0],q[1]);flyTo(q[0],q[1],place?350:300);}
+$('gotoBtn').addEventListener('click',()=>gotoCoord(false));$('placeAtBtn').addEventListener('click',()=>gotoCoord(true));
+$('gotoIn').addEventListener('keydown',e=>{if(e.key==='Enter')gotoCoord(false);});
+function worksGeoJSON(){return JSON.stringify({type:'FeatureCollection',name:'obras',crs:{type:'name',properties:{name:'urn:ogc:def:crs:EPSG::3763'}},features:works.map((w,i)=>{const a=-w.rot*Math.PI/180,c=Math.cos(a),s=Math.sin(a),ring=[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]].map(q=>{const dx=q[0]*w.w/2,dz=q[1]*w.d/2,l=toMP(w.x+dx*c+dz*s,w.z-dx*s+dz*c);return[+l[0].toFixed(3),+l[1].toFixed(3)];}),m=toMP(w.x,w.z);
+  return{type:'Feature',properties:{nome:'Obra '+(i+1),uso:w.u,pisos:w.f,cercea_m:w.f*3,implantacao_m2:w.w*w.d,abc_m2:w.w*w.d*w.f,rotacao_graus:w.rot,M_PTTM06:+m[0].toFixed(2),P_PTTM06:+m[1].toFixed(2)},geometry:{type:'Polygon',coordinates:[ring]}};})},null,1);}
+$('expBtn').addEventListener('click',()=>{const t=worksGeoJSON(),o=$('expOut');o.hidden=false;o.value=t;
+  const ok=()=>{$('expMsg').textContent='GeoJSON copiado em PT-TM06/ETRS89 (EPSG:3763).';},no=()=>{$('expMsg').textContent='Seleciona o texto da caixa e copia.';o.select();};
+  try{navigator.clipboard.writeText(t).then(ok,no);}catch(_){no();}});
+
+/* ---------- ponte ConstruPilot: terreno vindo da página /terrenos (PT-TM06) ---------- */
+let cpTer=null;
+function cpTerreno(anelMP,nome){
+  if(cpTer){scene.remove(cpTer);cpTer.geometry.dispose();cpTer=null;}
+  const pts=(anelMP||[]).map(q=>[q[0]-C0[0],C0[1]-q[1]]).filter(q=>isFinite(q[0])&&isFinite(q[1])&&q[0]>BX0&&q[0]<BX1&&q[1]>BZ0&&q[1]<BZ1);
+  if(pts.length<3){card('Terreno','<p class="note">O terreno está fora da área desta maquete 3D (distrito de Braga).</p>');return false;}
+  const pos=[],H=20,gz=(x,z)=>(typeof gy==='function'?gy(x,z):elev(x,z));
+  for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],ya=gz(a[0],a[1]),yb=gz(b[0],b[1]);
+    pos.push(a[0],ya-1,a[1], b[0],yb-1,b[1], b[0],yb+H,b[1],  a[0],ya-1,a[1], b[0],yb+H,b[1], a[0],ya+H,a[1]);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  /* vedação vermelha visível através dos edifícios, para localizar o terreno no meio da cidade */
+  cpTer=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:'#e53935',transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false,depthTest:false}));
+  cpTer.renderOrder=999;scene.add(cpTer);
+  let cx=0,cz=0,x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of pts){cx+=q[0];cz+=q[1];x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);z0=Math.min(z0,q[1]);z1=Math.max(z1,q[1]);}
+  cx/=pts.length;cz/=pts.length;
+  flyTo(cx,cz,Math.max(260,Math.max(x1-x0,z1-z0)*3));
+  const amostra=pts.concat([[cx,cz]]),pc=PDM?pdmCard(amostra):'';
+  card('Terreno'+(nome?': '+nome:''),(pc||'<p class="note">Sem PDM municipal carregado para este local.</p>')+
+    '<p class="note">Leitura automática das plantas municipais do PDM: confirme na ficha oficial (DGT) da página Terrenos e na câmara municipal.</p>');
+  touch();return true;
+}
+window.addEventListener('message',e=>{if(e.origin!==location.origin)return;const d=e.data;
+  if(d&&d.type==='cp-terreno'&&Array.isArray(d.anel_tm06))cpTerreno(d.anel_tm06,String(d.nome||'').slice(0,120));});
+try{const u=new URLSearchParams(location.search),t=u.get('t');
+  if(t){const a=t.split(';').map(s=>s.split(',').map(Number)).filter(q=>q.length===2&&q.every(isFinite));
+    if(a.length>=3)setTimeout(()=>cpTerreno(a,(u.get('nome')||'').slice(0,120)),400);}}catch(_){}
+resize();setSun();applyCam();wSummary();drawWorks();stats();requestAnimationFrame(frame);
+if(window.__OSM&&window.__OSM.length){(async()=>{try{for(const j of window.__OSM)await ingest(j);window.__OSM=null;await rebuild();}catch(e){busy('');$('dataMsg').textContent='Os ficheiros de dados ao lado desta página não puderam ser lidos.';}})();}else loadSaved();
+})();
+</script>
+</body>
+</html>

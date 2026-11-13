@@ -1,0 +1,45 @@
+BRAGA 3D - CONSTRUPILOT
+Maquete 3D do distrito de Braga com PDM, em PT-TM06/ETRS89 (EPSG:3763)
+
+CONTEUDO
+  braga3d.html              a aplicacao inteira (HTML + CSS + JavaScript num so ficheiro)
+  dist/index.js             indice das zonas (mosaicos de 4 km)
+  dist/dem.js               altimetria do distrito (SRTM, 100 m)
+  dist/t_<x>_<y>.js         edificios por zona (386 ficheiros, 787 023 edificios)
+  dist/c_<x>_<y>.js         ruas, caminhos, linha ferrea, rios e jardins por zona
+  dados-pdm.js              PDM de Braga: categorias de solo e condicionantes (vetor, do DWG)
+  dados-pdm-raster.js       PDM de Braga: salvaguardas lidas das folhas em imagem
+  dados-pdm-guimaraes.js    PDM de Guimaraes: 16 categorias de solo
+  dados-pdm-gmr-cond.js     PDM de Guimaraes: 10 camadas de condicionantes
+
+INSTALACAO
+  1) Abrir diretamente: duplo clique em braga3d.html. Funciona em Chrome, Edge e Firefox.
+  2) Servir num servidor web: copiar a pasta toda para a raiz do site. Nao precisa de
+     backend, base de dados nem compilacao; sao ficheiros estaticos.
+     Exemplo local:  python -m http.server 8080   e abrir http://localhost:8080/braga3d.html
+  3) Integrar na ConstruPilot: embeber braga3d.html num iframe, ou copiar o bloco <script>
+     para a aplicacao, mantendo a pasta dist e os ficheiros dados-*.js no mesmo nivel.
+
+REQUISITOS
+  - Navegador com WebGL.
+  - Ligacao a internet na primeira abertura: o motor 3D (three.js r128) e os tipos de letra
+    vem de CDN. Para funcionar offline, descarregar three.min.js e as fontes e trocar os
+    enderecos no inicio do ficheiro.
+  - Cerca de 120 MB em disco.
+
+FONTES DE DADOS
+  - Edificios, ruas, agua e jardins: OpenStreetMap (c) contribuidores do OpenStreetMap, ODbL.
+  - Edificios por deteccao automatica: Microsoft Building Footprints, ODbL.
+  - Altimetria: Terrain Tiles / SRTM (dominio publico).
+  - PDM de Braga: 3.a Revisao, Aviso n.o 8551/2026/2 (DR, 2.a serie, n.o 73, 15-04-2026),
+    plantas publicadas pela Camara Municipal de Braga.
+  - PDM de Guimaraes: 2.a alteracao, Aviso n.o 18789/2019 (DR, 2.a serie, n.o 225, 22-11-2019),
+    plantas publicadas pela Camara Municipal de Guimaraes.
+  - Limites administrativos: CAOP, atraves das plantas municipais.
+
+AVISO
+  As cores verde, amarelo e vermelho sao uma leitura automatica das plantas do PDM, feita por
+  extracao de geometria (Braga) e por amostragem de cor e trama (Guimaraes e salvaguardas de
+  Braga). Nao substituem um pedido de informacao previa a camara municipal. As pegadas de
+  edificios por deteccao automatica tem erros de contorno e podem faltar ou sobrar edificios.
+  As alturas, quando nao vem indicadas no mapa, sao estimadas pela area.
