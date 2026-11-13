@@ -133,6 +133,15 @@ def _bounds_from_entity(e, upd) -> None:
     """Feed the per-type extents of entity `e` into `upd(x, y)`.
     Silent no-op if the entity has an unsupported type or bad geometry."""
     t = e.dxftype()
+    ext = e.dxf.get("extrusion") if e.dxf.is_supported("extrusion") else None
+    if ext is not None and (abs(ext[0]) > 1e-9 or abs(ext[1]) > 1e-9 or ext[2] < 0):
+        # Entidade espelhada (OCS com Z para baixo) : as coordenadas DXF não são as do mundo.
+        from ezdxf import bbox
+        b = bbox.extents([e], fast=True)
+        if b.has_data:
+            upd(b.extmin.x, b.extmin.y)
+            upd(b.extmax.x, b.extmax.y)
+        return
     if t == "LINE":
         upd(e.dxf.start.x, e.dxf.start.y)
         upd(e.dxf.end.x, e.dxf.end.y)
@@ -360,15 +369,19 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
     def to_px(x,y):
         return ((x-mapping["offset_x"])*ratio, mapping["height"]-(y-mapping["offset_y"])*ratio)
     vectors=[]; text_blocks=[]
+    capped=False
     for entity in entities:
-        vectors.extend(entity_vectors(entity,to_px,max(.0005/unit_to_m,1e-8)))
+        if not capped:
+            vectors.extend(entity_vectors(entity,to_px,max(.0005/unit_to_m,1e-8)))
+            if len(vectors)>1500000:
+                # Implantações com paisagismo/topografia : a imagem e os textos ficam completos, as primitivas param aqui.
+                capped=True;diagnostics.append({"code":"VECTORS_CAPPED","limit":1500000})
         kind=entity.dxftype()
         if kind in ("TEXT","MTEXT","ATTRIB","ATTDEF"):
             pos=entity.dxf.insert
             text=entity.plain_text() if kind=="MTEXT" else str(entity.dxf.get("text", ""))
             x,y=to_px(pos.x,pos.y)
             text_blocks.append({"text":text,"x":x,"y":y,"w":0,"h":0,"layer":entity.dxf.layer})
-    if len(vectors)>1500000:raise ValueError("Demasiadas primitivas CAD: isolar uma zona da planta")
     dims=_extract_dimensions(doc.modelspace(),to_px,unit_to_m,diagnostics)
     if len(vectors)>150000:
         # Plan dense (BET) : cotes natives et inventaire conservés, analyse automatique des murs non tentée (pas de classification hasardeuse).
@@ -390,7 +403,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
             "analysis_pdf_b64":base64.b64encode(mapping["pdf_bytes"]).decode("ascii"),"detected_scale_denominator":None,
             "pages":[{"index":0,"width_px":mapping["width"],"height_px":mapping["height"],"dpi":mapping["dpi"],
                       "image_png_b64":base64.b64encode(png).decode("ascii"),"img_mime":"image/png",
-                      "vectors":vectors[:8000],"vectors_total":len(vectors),"vectors_truncated":len(vectors)>8000,
+                      "vectors":vectors[:8000],"vectors_total":len(vectors),"vectors_capped":capped,"vectors_truncated":len(vectors)>8000,
                       "geometry_coordinate_space":"image_px","geometry_version":2,"cad_import":cad,
                       "walls_analysis":walls,"text_blocks":text_blocks[:3000],"dimensions_count":len(dims),
                       "dxf_dimensions":dims,"unit_to_m":unit_to_m,"raw_text_length":sum(len(t["text"]) for t in text_blocks),

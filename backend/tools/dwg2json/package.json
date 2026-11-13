@@ -1,0 +1,11 @@
+{
+  "name": "construpilot-dwg2json",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Leitura de DWG (LibreDWG, GPL-3.0, processo separado) para JSON — usado por engines/dwg_libredwg.py",
+  "type": "module",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@mlightcad/libredwg-web": "0.8.2"
+  }
+}
