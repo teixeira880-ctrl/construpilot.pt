@@ -1,5 +1,5 @@
 import { AssistantMark } from "@/components/assistant/AssistantMark";
-import { Trash2, Bot, LayoutDashboard, FileText, Calculator, Ruler, Search, Users, HardHat, Building2, Receipt, Layers, Camera, Truck, Wand2, Radar, Contact, Library, Tag, Brain, KeyRound, Sparkles, Wrench, FileSearch, MessageSquare, Handshake, TrendingUp, Inbox, Shield, Globe, LifeBuoy, FileSpreadsheet, Footprints, Leaf, CalendarRange } from "lucide-react";
+import { Trash2, Bot, LayoutDashboard, FileText, Calculator, Ruler, Search, Users, HardHat, Building2, Receipt, Layers, Camera, Truck, Wand2, Radar, Contact, Library, Tag, Brain, KeyRound, Sparkles, Wrench, FileSearch, MessageSquare, Handshake, TrendingUp, Inbox, Shield, Globe, LifeBuoy, FileSpreadsheet, Footprints, Leaf, CalendarRange, Mountain } from "lucide-react";
 
 export const AssistantIcon = ({ size = 18, className = "" }) => (
   <AssistantMark size={size} className={className} />
@@ -28,6 +28,7 @@ export const WORKSPACE_LINKS = [
   { to: "/planos-execucao", key: "nav.mep", label: "Planos de execução (eletricidade e canalização)", icon: Ruler, group: "chantiers", pro: true, pin: true, words: "planta eletricidade canalização tomadas circuitos quadro unifilar rtiebt águas esgotos especialidades instalações execução" },
   { to: "/estudio-imagens", label: "Estúdio de imagens IA", icon: Sparkles, group: "chantiers", pro: true, words: "imagem ilustração gerar fotomontagem inserção fotografia retoque fachada visual render nano banana gpt image não contratual" },
   { to: "/urbanismo", key: "nav.urbanismo", label: "Urbanismo (editor de volumes)", icon: Building2, group: "chantiers", pro: true, pin: true, words: "urbanismo planta de implantação alçados cortes área de implantação área de construção cércea afastamentos índice de ocupação índice de utilização pdm rgeu pé-direito estacionamento volumes" },
+  { to: "/mdt", label: "MDT Portugal (terreno, declives, 3D)", icon: Mountain, group: "chantiers", pin: true, words: "mdt modelo digital do terreno lidar dgt topografia cotas altimetria declives carta de declives curvas de nível linhas de água recursos hídricos escorrência perfil 3d movimento de terras escavação aterro dxf geotiff desnível relevo" },
   { to: "/structuro-bet", key: "nav.betdossier", label: "Análise de processo de engenharia", icon: FileSearch, group: "chantiers", pro: true, pin: true, words: "gabinete projeto engenharia memória cálculo revisão índice incoerência controlo planta comparar versões processo" },
   { to: "/btp-solver", key: "nav.solver", label: "Resolver um problema", icon: Wrench, group: "chantiers", pin: true, words: "fissura humidade patologia diagnóstico solução" },
   { to: "/plans-pro", key: "nav.plansPro", label: "Plantas BIM / Autodesk", icon: Layers, group: "chantiers", min: "pro", pin: false, words: "autodesk revit ifc visão quantidades paredes portas janelas" },
@@ -122,6 +123,7 @@ export const UPSELL_BENEFITS = {
   "/planos-execucao": "Gere as plantas de eletricidade e canalização a partir da sua planta: pontos, circuitos, esquema unifilar, quantidades e PDF A3.",
   "/estudio-imagens": "Gere ilustrações IA a partir de um texto ou retoque uma fotografia (inserção de projeto, fachada): imagens marcadas «Ilustração IA não contratual».",
   "/urbanismo": "Gere planta de implantação, corte, alçado e quadro de áreas a partir de algumas dimensões e verifique os parâmetros do seu PDM.",
+  "/mdt": "Modelo digital do terreno de Portugal continental (LiDAR DGT 50 cm / 2 m): cotas, carta de declives, curvas de nível, linhas de água, movimentos de terras, perfil, 3D e exportação PDF/DXF/GeoTIFF.",
   "/structuro-bet": "Controle um processo de engenharia: revisões, incoerências e relatório de controlo.",
   "/plans-pro": "Análise de plantas Pro: quantidades de paredes/portas/janelas por IA.",
   "/controle-cotes": "Verifique automaticamente as cotas e dimensões das plantas.",
