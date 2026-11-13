@@ -648,6 +648,8 @@ def test_mosaicos_rgg_publicar_e_ler(tmp_path, monkeypatch):
     from engines.terrenos_pt import rgg_mosaicos as MO
     s3 = _S3Falso()
     monkeypatch.setenv("TIGRIS_BUCKET", "cp-teste")
+    monkeypatch.setenv("TIGRIS_ACCESS_KEY_ID", "k")
+    monkeypatch.setenv("TIGRIS_SECRET_ACCESS_KEY", "s")
     monkeypatch.setenv("BUPI_RGG_GPKG", "/nao/existe.gpkg")
     monkeypatch.setattr(MO, "cliente", lambda: s3)
     MO._RAM.clear()
@@ -694,6 +696,8 @@ def test_mosaicos_sem_manifesto_cai_para_wms(monkeypatch):
     from engines.terrenos_pt import rgg_mosaicos as MO
     s3 = _S3Falso()
     monkeypatch.setenv("TIGRIS_BUCKET", "cp-teste")
+    monkeypatch.setenv("TIGRIS_ACCESS_KEY_ID", "k")
+    monkeypatch.setenv("TIGRIS_SECRET_ACCESS_KEY", "s")
     monkeypatch.setenv("BUPI_RGG_GPKG", "/nao/existe.gpkg")
     monkeypatch.setattr(MO, "cliente", lambda: s3)
     MO._RAM.clear()
@@ -704,3 +708,16 @@ def test_mosaicos_sem_manifesto_cai_para_wms(monkeypatch):
     G.set_transport(t)
     r = asyncio.run(RL.limite_no_ponto(LAT, LON))
     assert r["ok"] is False
+
+
+def test_tigris_credenciais_vazias_nao_tenta(monkeypatch):
+    from engines.terrenos_pt import rgg_mosaicos as MO
+    monkeypatch.setenv("TIGRIS_BUCKET", "cp")
+    monkeypatch.setenv("TIGRIS_ACCESS_KEY_ID", "")
+    monkeypatch.setenv("TIGRIS_SECRET_ACCESS_KEY", "")
+    monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
+    assert MO.configurado() is False
+    monkeypatch.setenv("TIGRIS_ACCESS_KEY_ID", "k")
+    monkeypatch.setenv("TIGRIS_SECRET_ACCESS_KEY", "s")
+    assert MO.configurado() is True

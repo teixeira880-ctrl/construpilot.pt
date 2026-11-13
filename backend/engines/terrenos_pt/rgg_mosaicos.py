@@ -58,7 +58,11 @@ def descodificar(dados: bytes) -> List[Tuple[int, float, bytes]]:
 
 # ------------------------------------------------------------------ armazenamento (Tigris / S3)
 def configurado() -> bool:
-    return bool(os.environ.get("TIGRIS_BUCKET") or os.environ.get("BUPI_RGG_BUCKET"))
+    """Bucket e credenciais preenchidos (TIGRIS_* ou AWS_*). Sem credenciais, não se tenta (sem erros nem esperas)."""
+    env = os.environ.get
+    return bool((env("TIGRIS_BUCKET") or env("BUPI_RGG_BUCKET"))
+                and (env("TIGRIS_ACCESS_KEY_ID") or env("AWS_ACCESS_KEY_ID"))
+                and (env("TIGRIS_SECRET_ACCESS_KEY") or env("AWS_SECRET_ACCESS_KEY")))
 
 
 def _bucket() -> str:
@@ -70,10 +74,18 @@ def cliente():
     if _CLIENTE["c"] is None:
         import boto3
         from botocore.config import Config
-        ep = (os.environ.get("AWS_ENDPOINT_URL_S3") or os.environ.get("TIGRIS_ENDPOINT")
-              or "https://fly.storage.tigris.dev")
-        _CLIENTE["c"] = boto3.client("s3", endpoint_url=ep, region_name=os.environ.get("AWS_REGION") or "auto",
-                                     config=Config(retries={"max_attempts": 3}, connect_timeout=10, read_timeout=30))
+        env = os.environ.get
+        ep = env("TIGRIS_ENDPOINT") or env("AWS_ENDPOINT_URL_S3") or "https://fly.storage.tigris.dev"
+        if not ep.startswith("http"):
+            ep = "https://" + ep
+        kw = {}
+        # o .env do ConstruPilot usa TIGRIS_*; AWS_* fica como alternativa (padrão do boto3)
+        kid = env("TIGRIS_ACCESS_KEY_ID") or env("AWS_ACCESS_KEY_ID")
+        sec = env("TIGRIS_SECRET_ACCESS_KEY") or env("AWS_SECRET_ACCESS_KEY")
+        if kid and sec:
+            kw = {"aws_access_key_id": kid, "aws_secret_access_key": sec}
+        _CLIENTE["c"] = boto3.client("s3", endpoint_url=ep, region_name=env("AWS_REGION") or "auto",
+                                     config=Config(retries={"max_attempts": 3}, connect_timeout=10, read_timeout=30), **kw)
     return _CLIENTE["c"]
 
 

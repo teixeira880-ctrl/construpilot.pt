@@ -48,7 +48,7 @@ def gb(n) -> str:
 
 def verificar_bucket() -> str:
     if not MO.configurado():
-        return "NAO configurado (TIGRIS_BUCKET em falta)"
+        return "NAO configurado (falta TIGRIS_BUCKET, TIGRIS_ACCESS_KEY_ID ou TIGRIS_SECRET_ACCESS_KEY com valor)"
     try:
         MO.cliente().list_objects_v2(Bucket=MO._bucket(), Prefix=MO.PREFIXO + "/", MaxKeys=1)
         return f"OK ({MO._bucket()})"
