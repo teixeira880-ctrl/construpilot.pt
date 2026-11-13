@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bim", tags=["bim"])
 
 IFC_MEDIA_TYPE = "application/x-step"
+MAX_IFC_BYTES = 80 * 1024 * 1024
 
 
 def _bim():
     try:
-        from engines import bim_core  # noqa: PLC0415
+        from engines import bim_core
     except ImportError as e:  # ifcopenshell em falta no servidor
         logger.error("bim_core indisponível: %s", e)
         raise HTTPException(503, "Módulo BIM indisponível neste servidor (ifcopenshell não instalado).") from e
@@ -122,7 +123,7 @@ async def bim_analysis(plan_id: str, page_index: int,
                        fck: float | None = Query(None, ge=20, le=50, description="fck do betão (MPa)"),
                        user=Depends(current_user)) -> dict:
     """Pré-dimensionamento do pórtico (vigas e pilares) para cargas verticais, por elemento IFC (GUID)."""
-    from engines.bim_core import analysis as A  # noqa: PLC0415
+    from engines.bim_core import analysis as A
 
     params = _params(wall_height, voile_ep, cloison_ep, dalle_ep, poutre_l, poutre_h)
     bim, model, _ = await _load_model(plan_id, page_index, user, params)
@@ -135,3 +136,40 @@ async def bim_analysis(plan_id: str, page_index: int,
     except ImportError as e:
         raise HTTPException(503, "Solver estrutural indisponível neste servidor (PyNiteFEA não instalado).") from e
     return {"plan_id": plan_id, "page_index": page_index, **result}
+
+
+def _analyze_ifc(data: bytes, storey: int | None, loads: dict) -> dict:
+    from engines.bim_core import ifc_reader as IR
+
+    f = IR.open_ifc(data)
+    model, storeys, result = IR.analyze_storey(f, storey, loads)
+    st = storeys[model.page_index]
+    return {"origin": "ifc", "schema": f.schema, "storey": st, "storeys": storeys,
+            "model_counts": model.counts(), "model_warnings": model.warnings, **result}
+
+
+@router.post("/ifc/analysis")
+async def bim_ifc_analysis(file: UploadFile = File(..., description="Ficheiro IFC (Revit, Archicad, Tekla…)"),
+                           storey: int | None = Query(None, ge=0, description="Índice do piso; omisso = piso com mais vigas e pilares"),
+                           imposed_kn_m2: float | None = Query(None, ge=0, le=20, description="Sobrecarga (kN/m²)"),
+                           finishes_kn_m2: float | None = Query(None, ge=0, le=10, description="Revestimentos (kN/m²)"),
+                           partitions_kn_m2: float | None = Query(None, ge=0, le=5, description="Divisórias (kN/m²)"),
+                           fck: float | None = Query(None, ge=20, le=50, description="fck do betão (MPa)"),
+                           user=Depends(current_user)) -> dict:
+    """Pré-dimensionamento do pórtico de um piso de um IFC externo; resultados pelos GlobalId do próprio ficheiro.
+
+    O ficheiro não é guardado: é lido em memória, calculado e descartado."""
+    bim = _bim()
+    data = await file.read(MAX_IFC_BYTES + 1)
+    if len(data) > MAX_IFC_BYTES:
+        raise HTTPException(413, "IFC demasiado grande para o cálculo em linha (máx. 80 MB).")
+    from engines.bim_core import analysis as A
+
+    loads = {"imposed_kn_m2": imposed_kn_m2, "finishes_kn_m2": finishes_kn_m2,
+             "partitions_kn_m2": partitions_kn_m2, "fck": fck}
+    try:
+        return await run_in_threadpool(_analyze_ifc, data, storey, loads)
+    except (bim.ModelError, A.AnalysisError) as e:
+        raise HTTPException(422, str(e)) from e
+    except ImportError as e:
+        raise HTTPException(503, "Solver estrutural indisponível neste servidor.") from e
