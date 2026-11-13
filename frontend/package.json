@@ -33,7 +33,10 @@
     "@radix-ui/react-toggle-group": "1.1.7",
     "@radix-ui/react-tooltip": "1.2.4",
     "@tanstack/react-query": "5.56.2",
+    "@thatopen/components": "3.6.0",
+    "@thatopen/fragments": "3.6.0",
     "axios": "1.18.0",
+    "camera-controls": "3.1.2",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
@@ -65,20 +68,23 @@
     "swr": "2.3.8",
     "tailwind-merge": "3.2.0",
     "tailwindcss-animate": "1.0.7",
-    "three": "0.170.0",
+    "three": "0.185.0",
     "vaul": "1.1.2",
+    "web-ifc": "0.0.77",
     "zod": "3.24.4"
   },
   "scripts": {
     "start": "craco start",
-    "prebuild": "node scripts/i18n-manifest.cjs || echo i18n-manifest-skipped",
+    "prebuild": "node scripts/copy-bim-assets.cjs && (node scripts/i18n-manifest.cjs || echo i18n-manifest-skipped)",
     "i18n:manifest": "node scripts/i18n-manifest.cjs",
     "build": "DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false craco build",
     "test": "craco test",
     "test:pilot": "node scripts/test-platform-pilot.cjs",
     "test:workspace": "node scripts/test-chantier-workspace.cjs",
     "test:dossier": "node scripts/test-study-dossier.cjs",
-    "test:landing": "node scripts/test-landing-presentations.cjs"
+    "test:landing": "node scripts/test-landing-presentations.cjs",
+    "prestart": "node scripts/copy-bim-assets.cjs",
+    "bim:assets": "node scripts/copy-bim-assets.cjs"
   },
   "browserslist": {
     "production": [

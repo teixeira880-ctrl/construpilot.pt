@@ -105,6 +105,7 @@ const LicenciamentoAutoLazy = lazy(() => import("@/pages/LicenciamentoAuto"));
 const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
+const BimViewerLazy = lazy(() => import("@/pages/BimViewer"));
 import AppsHub from "@/pages/AppsHub";
 import MedicaoRapida from "@/pages/MedicaoRapida";
 import BottomTabBar from "@/components/mobile/BottomTabBar";
@@ -405,6 +406,7 @@ function AppRouter() {
       <Route path="/passez-pro" element={<Protected><Shell><ProUpsell /></Shell></Protected>} />
       <Route path="/verifier-email/:token" element={<Shell><VerifyEmail /></Shell>} />
       <Route path="/plan/compare" element={<ProRoute><Shell><PlanCompare /></Shell></ProRoute>} />
+      <Route path="/bim" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><BimViewerLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />
       <Route path="/pro/paiement/succes" element={<Protected><Shell><PaymentSuccess /></Shell></Protected>} />

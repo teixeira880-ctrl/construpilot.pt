@@ -98,6 +98,14 @@ let webpackConfig = {
         ],
       };
 
+      // Visualizador BIM: o @thatopen/components referencia THREE.NodeMaterial (só existe no build
+      // WebGPU do three, e o código verifica-o antes de o usar). O CRA trata uma exportação em falta
+      // como erro; aqui, e só para esse pacote, passa a aviso.
+      webpackConfig.module.rules.unshift({
+        test: /[\\/]node_modules[\\/]@thatopen[\\/]/,
+        parser: { exportsPresence: "warn" },
+      });
+
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);

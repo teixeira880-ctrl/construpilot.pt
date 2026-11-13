@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Visualizador BIM: copiados de node_modules por scripts/copy-bim-assets.cjs
+/public/bim/

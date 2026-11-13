@@ -33,7 +33,7 @@ import {
   Wand2, Zap, Droplet, FileDown, History, Film, DoorOpen, Copy,
   Hash, StickyNote, Triangle, MountainSnow, X, Mail, Hexagon, Sheet, FileSearch,
   ArrowLeft, Eraser, Plus, ArrowRight, Bot, Minimize2, Contrast, SunMedium, Scissors,
-  ScanLine, GitCompare, FileText, Mic, Pencil,
+  ScanLine, GitCompare, FileText, Mic, Pencil, Box,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6132,6 +6132,11 @@ export default function PlanTakeoff() {
                     <Button size="sm" variant="outline" onClick={exportBetonPdf} data-testid="structure-export-beton-pdf"
                             className="rounded-sm h-7 text-xs gap-1 flex-1 text-red-700 border-red-600/40">
                       <FileDown className="h-3 w-3" /> Medições PDF
+                    </Button>
+                    <Button size="sm" variant="outline" data-testid="structure-open-bim"
+                            onClick={() => nav(`/bim?plan=${encodeURIComponent(plan.plan_id)}&page=${pageIndex}&wall_height=${wallHeight}&voile_ep=${voileEp}&dalle_ep=${dalleEp}&poutre_l=${poutreL}&poutre_h=${poutreH}`)}
+                            className="rounded-sm h-7 text-xs gap-1 flex-1 text-sky-700 border-sky-600/40">
+                      <Box className="h-3 w-3" /> Modelo BIM 3D
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setAiChatOpen(true)} data-testid="structure-ai-assistant"
                             className="rounded-sm h-7 text-xs gap-1 flex-1 text-primary border-primary/40">
