@@ -396,6 +396,7 @@ export default function Terrenos() {
                   <Button size="sm" variant="outline" onClick={() => descarregar(`/terrenos/${sel.terreno_id}/exportar.kml`, `${nomeFich}.kml`)}><Download className="h-4 w-4 mr-1" /> KML (BUPi)</Button>
                   <Button size="sm" variant="outline" onClick={() => descarregar(`/terrenos/${sel.terreno_id}/exportar.geojson`, `${nomeFich}.geojson`)}>GeoJSON</Button>
                   <Button size="sm" variant="outline" onClick={() => descarregar(`/terrenos/${sel.terreno_id}/exportar.csv`, `${nomeFich}_vertices_PTTM06.csv`)}>Vértices PT-TM06</Button>
+                  <Button size="sm" asChild><Link to="/licenciamento-automatico" state={{ terreno_id: sel.terreno_id, terreno_nome: nome, terreno_area: sel.area_m2 }} data-testid="terrenos-licenciamento">Licenciar uma moradia neste terreno</Link></Button>
                   {med?.vertices_tm06?.length > 2 && sel?.centroide && sel.centroide[0] > 41.3 && sel.centroide[0] < 42.0 && sel.centroide[1] > -8.95 && sel.centroide[1] < -7.85 && (
                     <Button size="sm" variant="outline" asChild><Link to="/maquete-3d" state={{ anel_tm06: med.vertices_tm06.map((v) => [v.M, v.P]), nome }} data-testid="terrenos-maquete3d">Ver na maquete 3D (Braga)</Link></Button>
                   )}

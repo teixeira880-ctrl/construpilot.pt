@@ -73,6 +73,8 @@ class PedidoIn(BaseModel):
     parcela_latlon: Optional[List[List[float]]] = Field(default=None, max_length=200)
     frente_idx: Optional[int] = Field(default=None, ge=0, le=199)
     casa_centro_latlon: Optional[List[float]] = Field(default=None, max_length=2)
+    # terreno gravado na página Terrenos (limites, área e artigo vêm daí)
+    terreno_id: Optional[str] = Field(default=None, max_length=40)
 
 
 class MateriaisIn(BaseModel):
@@ -92,8 +94,34 @@ def _doc(user_id: str, processo: Dict[str, Any], pid: Optional[str] = None) -> D
             "validacao": None, "status": "rascunho", "created_at": _now(), "updated_at": _now()}
 
 
+async def com_terreno(pedido: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
+    """Junta ao pedido o terreno gravado na página Terrenos (limites, área medida em PT-TM06, artigo matricial)."""
+    tid = (pedido or {}).get("terreno_id")
+    if not tid:
+        return pedido
+    t = await db.terrenos.find_one({"terreno_id": str(tid), "user_id": user["user_id"]}, {"_id": 0, "anel_latlon": 1,
+                                                                                             "area_m2": 1, "artigo_matricial": 1})
+    if not t:
+        raise HTTPException(404, "Terreno não encontrado.")
+    from engines.terrenos_pt import geometria as GM
+    anel = t["anel_latlon"]
+    tol = 0.05
+    while len(anel) > 200 and tol < 5:              # o motor de implantação aceita até 200 vértices
+        anel = GM.simplificar(t["anel_latlon"], tol) if len(t["anel_latlon"]) >= 50 else anel
+        tol *= 2
+    out = {k: v for k, v in pedido.items() if k != "terreno_id"}
+    if not out.get("parcela_latlon"):
+        out["parcela_latlon"] = [[round(a, 7), round(b, 7)] for a, b in anel[:200]]
+    out.setdefault("area_terreno_m2", t.get("area_m2"))
+    if t.get("artigo_matricial"):
+        out.setdefault("artigo_matricial", t["artigo_matricial"])
+    out["terreno_origem"] = tid
+    return out
+
+
 async def executar_e_gravar(pedido: Dict[str, Any], user: Dict[str, Any], pid: Optional[str] = None, emit=None) -> Dict[str, Any]:
     """Usado pela página, pelo Assistente BTP e pela Aurora: o mesmo caminho para todos."""
+    pedido = await com_terreno(pedido, user)
     r = await P.executar(pedido, emit=emit)
     if not r.get("ok"):
         return P.resumo_publico(r)
@@ -127,8 +155,8 @@ async def criar_pedido(body: PedidoIn, user=Depends(current_user)) -> dict:
     pedido = {k: v for k, v in body.model_dump(exclude_none=True).items() if v != ""}
     if body.requerente:
         pedido["requerente"] = body.requerente.model_dump()
-    if not (pedido.get("texto") or pedido.get("morada")):
-        raise HTTPException(422, "Escreva o que pretende e a morada do terreno.")
+    if not (pedido.get("texto") or pedido.get("morada") or pedido.get("terreno_id") or pedido.get("parcela_latlon")):
+        raise HTTPException(422, "Escreva o que pretende e a morada do terreno (ou escolha um terreno gravado).")
     job_id = "auto_" + uuid.uuid4().hex[:12]
     await db.urbanismo_auto_jobs.insert_one({"job_id": job_id, "user_id": user["user_id"], "estado": "a_correr",
                                              "etapas": [], "created_at": _now(), "pedido": {k: v for k, v in pedido.items() if k != "requerente"}})

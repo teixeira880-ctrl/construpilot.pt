@@ -66,6 +66,7 @@ AUTORIZACAO_TOOLS += [
             "frente_m": {"type": "number", "description": "Largura da frente do terreno, se souber."},
             "requerente_nome": {"type": "string"}, "requerente_nif": {"type": "string"},
             "artigo_matricial": {"type": "string"},
+            "terreno_id": {"type": ["string", "null"], "description": "Terreno gravado na página Terrenos (terreno_gravar / terrenos_listar): usa os limites, a área e o artigo desse terreno; a morada passa a ser opcional."},
         },
     ),
     function(
@@ -104,7 +105,8 @@ AUTORIZACAO_INSTRUCTIONS = (
     "linguagem corrente: procedimento (licença ou comunicação prévia), a casa proposta, as decisões (sol, garagem, declive), "
     "as hipóteses assumidas e faz no máximo 2 ou 3 perguntas simples das «perguntas» devolvidas (área da caderneta, nome do "
     "requerente…). Quando responderem, usa licenciamento_atualizar. Para «quero a fachada em granito/madeira…» usa "
-    "licenciamento_materiais. Nunca inventes números: usa só os devolvidos pela ferramenta. Se o estado for «inviavel» "
+    "licenciamento_materiais. Se o terreno estiver gravado em /terrenos (ou acabaste de o gravar com terreno_gravar), passa "
+    "terreno_id ao licenciamento_automatico: os limites reais, a área e o artigo vêm do terreno. Nunca inventes números: usa só os devolvidos pela ferramenta. Se o estado for «inviavel» "
     "(solo rústico, REN/RAN), explica o impedimento com honestidade e sugere o pedido de informação prévia à câmara. "
     "Diz sempre que o levantamento topográfico, os projetos de especialidades e a assinatura de arquiteto/engenheiros "
     "(termos de responsabilidade) são obrigatórios, e que a página do processo permite pedir essa subscrição.\n"

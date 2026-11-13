@@ -43,6 +43,7 @@ from engines.assistant_autorizacao_tool import (
     AUTORIZACAO_INSTRUCTIONS,
     run_autorizacao_tool,
 )
+from engines.assistant_terrenos_tool import TERRENOS_INSTRUCTIONS, TERRENOS_TOOLS, TERRENOS_TOOL_NAMES, run_terrenos_tool
 from engines.assistant_media import image_content, normalize_attachment
 from engines.office_text import OFFICE_MIME_SET, OFFICE_MIMES, extract_office_text, office_model_parts, office_pages
 from engines.metre.tools import METRE_INSTRUCTIONS, METRE_TOOLS, METRE_TOOL_NAMES, run_metre_tool
@@ -275,7 +276,7 @@ def tools_for(user: dict) -> list:
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + TERRENOS_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
     if assistant_clt.allowed(user) and permissions_for(user)["devis"]:
         out += assistant_clt.TOOLS
     if assistant_clt.allowed(user):
@@ -549,6 +550,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
         return await execute_ed3d_tool(name, args, user)
     if name in AUTORIZACAO_TOOL_NAMES:
         return await run_autorizacao_tool(name, args, user, conv)
+    if name in TERRENOS_TOOL_NAMES:
+        return await run_terrenos_tool(name, args, user, db)
     if name == "read_generated_file":
         artifact = await owned_artifact(args["artifact_id"], uid, conv["conversation_id"])
         result = {"ok": True, "artifact": public_artifact(artifact), "body": artifact["body"]}
@@ -1536,7 +1539,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + TERRENOS_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS

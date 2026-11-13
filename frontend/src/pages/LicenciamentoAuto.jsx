@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, Box, CheckCircle2, Download, FileText, Image as ImageIcon, Loader2, MapPin, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,7 +39,9 @@ async function descarregar(path, nome) {
 
 function Pedido() {
   const nav = useNavigate();
-  const [texto, setTexto] = useState("");
+  const loc = useLocation();
+  const terreno = loc.state?.terreno_id ? { id: loc.state.terreno_id, nome: loc.state.terreno_nome, area: loc.state.terreno_area } : null;
+  const [texto, setTexto] = useState(terreno ? "Quero construir uma moradia T3 de 2 pisos com garagem neste terreno." : "");
   const [job, setJob] = useState(null);
   const [erro, setErro] = useState("");
   const timer = useRef(null);
@@ -62,7 +64,7 @@ function Pedido() {
   const enviar = async () => {
     setErro(""); setJob(null);
     try {
-      const { data } = await api.post("/urbanismo-auto/pedidos", { texto });
+      const { data } = await api.post("/urbanismo-auto/pedidos", terreno ? { texto, terreno_id: terreno.id } : { texto });
       setJob({ estado: "a_correr", etapas: [], etapas_previstas: data.etapas_previstas });
       seguir(data.job_id);
     } catch (e) { setErro(e?.response?.data?.detail || "Não foi possível iniciar o pedido."); }
@@ -76,6 +78,12 @@ function Pedido() {
         <p className="text-muted-foreground mt-2">Escreva o que quer e a morada. O ConstruPilot lê os dados oficiais do terreno, desenha a casa,
           verifica as regras e prepara o processo completo — com tudo o que assumiu explicado em linguagem simples.</p>
       </div>
+      {terreno && (
+        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm" data-testid="lic-auto-terreno">
+          Terreno escolhido: <b>{terreno.nome || "terreno gravado"}</b>{terreno.area ? ` (${Math.round(terreno.area)} m²)` : ""}. Os limites, a área e o
+          artigo vêm da página Terrenos — a morada é opcional.
+        </div>
+      )}
       <Card className="p-4 space-y-3">
         <Textarea rows={3} value={texto} onChange={e => setTexto(e.target.value)} placeholder={EXEMPLO} data-testid="lic-auto-texto" />
         <div className="flex flex-wrap gap-2">

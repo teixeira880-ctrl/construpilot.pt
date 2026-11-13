@@ -414,3 +414,108 @@ def test_verificacao_cruzada(monkeypatch, tmp_path):
     G.set_transport(t)
     v = asyncio.run(C.verificar([(41.5, -8.5), (41.6, -8.4)], [200.0, 201.0]))
     assert v["pontos"] == 2 and v["dif_media_m"] == pytest.approx(-2.5, abs=0.01) and v["dif_max_abs_m"] == pytest.approx(3.0, abs=0.01)
+
+
+# ------------------------------------------------------------------ integração: licenciamento automático + Assistente BTP / Aurora
+def _parcela_padim(lado=30.0):
+    import test_urbanismo_auto as TU
+    x0, y0 = GM.tm06(TU.LAT, TU.LON)
+    return [list(GM.tm06_inv(x0 + dx, y0 + dy)) for dx, dy in ((-lado, -lado), (lado, -lado), (lado, lado), (-lado, lado))]
+
+
+def _fake_com_bupi(rgg_id=None):
+    import test_urbanismo_auto as TU
+    base = TU.fake()
+
+    async def t(method, url, params=None, headers=None, want="json"):
+        if "geo.bupi.gov.pt" in url:
+            return 200, {"type": "FeatureCollection", "features": [{"properties": {"N_PROCESSO": rgg_id}}] if rgg_id else []}
+        if "/collections/freguesias/items" in url:
+            return 200, {"features": [{"properties": {"freguesia": "Padim da Graça", "municipio": "Braga", "dtmnfr": "030330"},
+                                       "geometry": {"type": "Polygon", "coordinates": [[[-9, 41], [-8, 41], [-8, 42], [-9, 42], [-9, 41]]]}}]}
+        return await base(method, url, params, headers, want)
+    return t
+
+
+def _run_pipeline(pedido, transport):
+    from engines.urbanismo_pt.auto import pipeline as P
+    G.set_transport(transport)
+    G._COLLECTIONS.update(t=0.0, list=[])
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(P.executar(pedido))
+    finally:
+        loop.close()
+        G.set_transport(None)
+
+
+def test_licenciamento_a_partir_do_terreno_sem_morada():
+    parcela = _parcela_padim()
+    r = _run_pipeline({"texto": "Quero uma moradia T3 de 2 pisos com garagem neste terreno.", "parcela_latlon": parcela},
+                      _fake_com_bupi("3504983"))
+    assert r["ok"], r
+    a = r["processo"]["auto"]
+    assert a["localizacao"]["precisao"] == "terreno"
+    assert r["processo"]["terreno"]["concelho"] == "Braga"
+    assert abs(a["terreno"]["area_m2"] - 3600) < 5
+    assert not any("porta" in x for x in r["pressupostos"])
+    assert a["bupi"]["rgg"][0]["id"] == "3504983"
+    assert any("3504983" in x for x in r["avisos"])
+
+
+def test_licenciamento_sem_morada_nem_terreno_pede_morada():
+    r = _run_pipeline({"texto": "quero uma casa"}, _fake_com_bupi())
+    assert r["ok"] is False and r["estado"] == "falta_morada"
+
+
+def test_assistente_terrenos_e_licenciamento(monkeypatch):
+    import os
+    os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
+    os.environ.setdefault("DB_NAME", "test_terrenos")
+    os.environ.setdefault("JWT_SECRET", "test")
+    from engines import assistant_terrenos_tool as AT
+    from engines.assistant_autorizacao_tool import AUTORIZACAO_TOOLS, run_autorizacao_tool
+    from routes import urbanismo_auto as UA
+
+    class _DB:
+        terrenos = _Col()
+        urbanismo_processos = _Col()
+    fdb = _DB()
+    monkeypatch.setattr(UA, "db", fdb)
+    u = {"user_id": "u1"}
+    # esquemas válidos para o modelo (todas as propriedades em required, sem extras)
+    for t in AT.TERRENOS_TOOLS:
+        assert set(t["parameters"]["required"]) == set(t["parameters"]["properties"])
+    assert "terreno_id" in next(t for t in AUTORIZACAO_TOOLS if t["name"] == "licenciamento_automatico")["parameters"]["properties"]
+
+    loop = asyncio.new_event_loop()
+    run = loop.run_until_complete
+    try:
+        parcela = _parcela_padim()
+        g = run(AT.run_terrenos_tool("terreno_gravar", {"nome": "Leira", "anel_latlon": parcela, "artigo_matricial": "R-123",
+                                                          "lat": None, "lon": None}, u, fdb))
+        assert g["ok"] and abs(g["area_m2"] - 3600) < 1
+        tid = g["terreno_id"]
+        # ficha do terreno gravado
+        G.set_transport(_servidor(parcela, rgg_props={"N_PROCESSO": "999"}))
+        G._COLLECTIONS.update(t=0.0, list=[])
+        f = run(AT.run_terrenos_tool("terreno_ficha", {"terreno_id": tid}, u, fdb))
+        assert f["ok"] and f["origem_limite"] == "terreno_gravado"
+        assert f["freguesias"][0]["dicofre"] == "030341" and f["ran"] and f["bupi_rgg"][0]["id"] == "999"
+        assert f["paginas"]["terrenos"] == "/terrenos"
+        lst = run(AT.run_terrenos_tool("terrenos_listar", {}, u, fdb))
+        assert lst["terrenos"][0]["terreno_id"] == tid and lst["terrenos"][0]["alertas_criticos"] >= 1
+        # outra conta não vê o terreno
+        assert run(AT.run_terrenos_tool("terreno_ficha", {"terreno_id": tid}, {"user_id": "u2"}, fdb))["ok"] is False
+        # licenciamento automático com terreno_id: limites, área e artigo vêm do terreno
+        G.set_transport(_fake_com_bupi())
+        G._COLLECTIONS.update(t=0.0, list=[])
+        r = run(run_autorizacao_tool("licenciamento_automatico", {"texto": "moradia T3 neste terreno", "terreno_id": tid}, u, {}))
+        assert r["ok"], r
+        doc = fdb.urbanismo_processos.d[0]
+        ped = doc["auto"]["pedido"]
+        assert ped["terreno_origem"] == tid and ped["artigo_matricial"] == "R-123" and abs(ped["area_terreno_m2"] - 3600) < 1
+        assert doc["auto"]["localizacao"]["precisao"] == "terreno"
+    finally:
+        loop.close()
+        G.set_transport(None)

@@ -96,6 +96,39 @@ def interpretar_pedido(texto: str) -> Dict[str, Any]:
     return out
 
 
+async def _geo_da_parcela(parcela: List[List[float]]) -> Dict[str, Any]:
+    """Localização a partir de um terreno já delimitado: centro do polígono + concelho e freguesia oficiais (CAOP)."""
+    pts = [(float(q[0]), float(q[1])) for q in parcela if len(q) >= 2]
+    if len(pts) < 3:
+        return G._res(False, nota="terreno sem vértices suficientes")
+    lat = sum(q[0] for q in pts) / len(pts)
+    lon = sum(q[1] for q in pts) / len(pts)
+    d = 0.00002
+    mun, fr = await asyncio.gather(G.municipio(lat, lon),
+                                   G._dgt_items("freguesias", f"{lon - d},{lat - d},{lon + d},{lat + d}", 3, {}))
+    concelho = (mun.get("data") or {}).get("concelho") if mun.get("ok") else None
+    freguesia = None
+    for f in fr or []:
+        freguesia = G._pick(G._props_text(f.get("properties")), "freguesia", "nome", "designacao")
+        if freguesia:
+            break
+    nome = ", ".join(x for x in (freguesia, concelho) if x)
+    return G._res(True, {"lat": round(lat, 7), "lon": round(lon, 7), "precisao": "terreno", "freguesia": freguesia,
+                         "concelho": concelho, "morada_formatada": f"Terreno delimitado{(' em ' + nome) if nome else ''}",
+                         "via_geom": None, "rua": None},
+                  "DGT — CAOP (terreno delimitado pelo utilizador)", f"{G.DGT}/collections/freguesias")
+
+
+async def _bupi_parcela(poligono_latlon: List[List[float]]) -> Dict[str, Any]:
+    """RGG já submetidas no BUPi dentro do terreno (eBUPi, dados abertos)."""
+    from engines.terrenos_pt import analise as TA
+    from engines.terrenos_pt import bupi as B
+    from engines.terrenos_pt import geometria as GM
+    poly = GM.poligono_m(GM.normalizar_anel(poligono_latlon))
+    pts = [TA._ll(q) for q in TA._pontos_interiores(poly, n_max=9)]
+    return await B.rgg_no_terreno(pts, prazo_s=20)
+
+
 async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     p = {**interpretar_pedido(pedido.get("texto") or ""), **{k: v for k, v in pedido.items() if v not in (None, "")}}
     etapas: List[Dict[str, Any]] = []
@@ -117,12 +150,15 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
 
     await RT.pedido(p)
     morada = (p.get("morada") or "").strip()
-    if not morada:
+    if not morada and not p.get("parcela_latlon"):
         return {"ok": False, "estado": "falta_morada", "perguntas": ["Qual é a morada do terreno (rua, número, freguesia e concelho)?"]}
 
-    # 1. localizar
+    # 1. localizar — pela morada ou, sem morada, pelo terreno já delimitado (página Terrenos, KML, GPS)
     t0 = time.monotonic()
-    g = await _prazo(G.geocode(morada), 40, "os serviços de moradas não responderam a tempo (inacessíveis)")
+    if morada:
+        g = await _prazo(G.geocode(morada), 40, "os serviços de moradas não responderam a tempo (inacessíveis)")
+    else:
+        g = await _prazo(_geo_da_parcela(p["parcela_latlon"]), 45, "a CAOP da DGT não respondeu a tempo")
     if not g["ok"]:
         inacessivel = "inacess" in (g.get("nota") or "")
         await passo("localizar", "falhou", g.get("nota") or "morada não encontrada")
@@ -141,7 +177,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
         else:
             pressupostos.append(f"O OpenStreetMap indica outra freguesia para esta rua («{geo.get('morada_formatada')}»), mas a "
                                 f"carta oficial de freguesias (CAOP) confirma que o ponto fica em {geo.get('freguesia')}.")
-    if geo.get("precisao") != "porta":
+    if geo.get("precisao") not in ("porta", "terreno"):
         pressupostos.append(f"A localização exata da porta não foi encontrada: usou-se o ponto da {geo.get('precisao')} "
                             f"«{geo.get('morada_formatada')}». Confirme o terreno no mapa.")
     await RT.localizacao(geo, g)
@@ -239,6 +275,18 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
                     "motivo": "Os limites desenhados no mapa não formam um terreno válido (linhas cruzadas ou área demasiado pequena).",
                     "perguntas": ["Pode acertar os pontos da parcela no mapa para que os limites não se cruzem?"]}
     ter = T.construir_terreno(geo, via, cad, p.get("area_terreno_m2"), p.get("frente_m"), parcela_user=parcela_user)
+    # RGG já submetidas no BUPi sobre este terreno (aviso de estremas; nunca bloqueia)
+    bupi = None
+    try:
+        bupi = await _prazo(_bupi_parcela(ter["poligono_latlon"]), 25, "BUPi: sem resposta a tempo")
+    except Exception:  # noqa: BLE001
+        bupi = None
+    if bupi and bupi.get("ok"):
+        fonte(bupi)
+        for rg in (bupi.get("data") or {}).get("rgg", []):
+            if rg.get("fracao_amostras", 0) >= 0.3:
+                avisos.append(f"Já existe uma RGG no BUPi ({rg['id']}) sobre cerca de {round(rg['fracao_amostras'] * 100)} % do "
+                              "terreno: confirme as estremas e a titularidade antes de submeter.")
     centro = None
     cc = p.get("casa_centro_latlon")
     if isinstance(cc, (list, tuple)) and len(cc) == 2:
@@ -392,6 +440,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
             "terreno": {k: ter[k] for k in ("poligono_m", "poligono_latlon", "area_m2", "area_origem", "plot_l_m", "plot_w_m",
                                              "azimutes", "frente_fonte")},
             "topografia": topo, "classe_solo": classe, "servidoes": hits or [], "alvos": alv,
+            "bupi": (bupi or {}).get("data") if (bupi or {}).get("ok") else None,
             "programa": {k: prog[k] for k in ("tipologia", "n_pisos", "area_bruta_total_m2", "minimo_area_bruta_m2", "garagem",
                                               "fonte_minimos")},
             "implantacao": {k: res[k] for k in ("fachada_sol", "lado_garagem", "cota_soleira_m", "terras", "decisoes",
