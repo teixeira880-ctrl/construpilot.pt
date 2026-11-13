@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import {
-  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera, Mountain, MapPinned
+  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera, Mountain, MapPinned, Building2
 } from "lucide-react";
 import { useState } from "react";
 import CameraCapture from "@/components/CameraCapture";
@@ -48,6 +48,13 @@ const APPS = [
     title: "Terrenos",
     desc: "Identificar o prédio sobre o OrtoSat 2023: RGG do BUPi, cadastro, PDM, RAN, REN e KML para o BUPi.",
     testId: "apps-terrenos",
+  },
+  {
+    to: "/maquete-3d",
+    icon: Building2,
+    title: "Maquete 3D Braga",
+    desc: "Distrito de Braga em 3D: 787 mil edifícios, ruas, rios, relevo e PDM de Braga e Guimarães.",
+    testId: "apps-maquete3d",
   },
   {
     to: "/mdt",

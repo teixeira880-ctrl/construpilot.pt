@@ -111,6 +111,7 @@ const UrbanismoProcessoLazy = lazy(() => import("@/pages/UrbanismoProcesso"));
 const LicenciamentoAutoLazy = lazy(() => import("@/pages/LicenciamentoAuto"));
 const MdtPortugalLazy = lazy(() => import("@/pages/MdtPortugal"));
 const TerrenosLazy = lazy(() => import("@/pages/Terrenos"));
+const Maquete3DBragaLazy = lazy(() => import("@/pages/Maquete3DBraga"));
 const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
@@ -289,6 +290,7 @@ function AppRouter() {
       <Route path="/particulares/autorizacao-obras" element={<Shell><AutorizacaoObras /></Shell>} />
       <Route path="/mdt" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><MdtPortugalLazy /></Suspense></Shell></Protected>} />
       <Route path="/terrenos" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><TerrenosLazy /></Suspense></Shell></Protected>} />
+      <Route path="/maquete-3d" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><Maquete3DBragaLazy /></Suspense></Shell></Protected>} />
       <Route path="/licenciamento-automatico" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><LicenciamentoAutoLazy /></Suspense></Shell></Protected>} />
       <Route path="/licenciamento-automatico/:id" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><LicenciamentoAutoLazy /></Suspense></Shell></Protected>} />
       <Route path="/subscrever/:token" element={<SubscrevePublic />} />
