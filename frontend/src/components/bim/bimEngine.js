@@ -111,6 +111,28 @@ export async function createBimViewer(container, { onSelect, background = "#f5f5
       await world.camera.projection.set(mode === "ortho" ? "Orthographic" : "Perspective");
     },
     clearSelection,
+    /** Pinta elementos por GlobalId: `colors` = { [guid]: "#rrggbb" }. Os restantes ficam semitransparentes. */
+    async colorByGuid(colors) {
+      const guids = Object.keys(colors);
+      for (const model of fragments.list.values()) {
+        await model.resetColor(undefined);
+        await model.resetOpacity(undefined);
+        if (!guids.length) continue;
+        const ids = await model.getLocalIdsByGuids(guids);
+        const byColor = new Map();
+        ids.forEach((id, i) => {
+          if (id === null || id === undefined) return;
+          const c = colors[guids[i]];
+          byColor.set(c, [...(byColor.get(c) || []), id]);
+        });
+        const colored = new Set(ids.filter((id) => id !== null && id !== undefined));
+        const all = await model.getItemsIdsWithGeometry();
+        const others = all.filter((id) => !colored.has(id));
+        if (others.length) await model.setOpacity(others, 0.25);
+        for (const [c, list] of byColor) await model.setColor(list, new THREE.Color(c));
+      }
+      await fragments.core.update(true);
+    },
     dispose() {
       container.removeEventListener("pointerdown", onDown);
       container.removeEventListener("pointerup", onUp);
